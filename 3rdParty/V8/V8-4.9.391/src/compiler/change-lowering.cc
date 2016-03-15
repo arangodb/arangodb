@@ -49,14 +49,6 @@ Reduction ChangeLowering::Reduce(Node* node) {
       return StoreElement(node);
     case IrOpcode::kAllocate:
       return Allocate(node);
-    case IrOpcode::kObjectIsReceiver:
-      return ObjectIsReceiver(node);
-    case IrOpcode::kObjectIsSmi:
-      return ObjectIsSmi(node);
-    case IrOpcode::kObjectIsNumber:
-      return ObjectIsNumber(node);
-    case IrOpcode::kObjectIsUndetectable:
-      return ObjectIsUndetectable(node);
     default:
       return NoChange();
   }
@@ -590,108 +582,6 @@ Reduction ChangeLowering::Allocate(Node* node) {
   return Changed(node);
 }
 
-Node* ChangeLowering::IsSmi(Node* value) {
-  return graph()->NewNode(
-      machine()->WordEqual(),
-      graph()->NewNode(machine()->WordAnd(), value,
-                       jsgraph()->IntPtrConstant(kSmiTagMask)),
-      jsgraph()->IntPtrConstant(kSmiTag));
-}
-
-Node* ChangeLowering::LoadHeapObjectMap(Node* object, Node* control) {
-  return graph()->NewNode(
-      machine()->Load(MachineType::AnyTagged()), object,
-      jsgraph()->IntPtrConstant(HeapObject::kMapOffset - kHeapObjectTag),
-      graph()->start(), control);
-}
-
-Node* ChangeLowering::LoadMapBitField(Node* map) {
-  return graph()->NewNode(
-      machine()->Load(MachineType::Uint8()), map,
-      jsgraph()->IntPtrConstant(Map::kBitFieldOffset - kHeapObjectTag),
-      graph()->start(), graph()->start());
-}
-
-Node* ChangeLowering::LoadMapInstanceType(Node* map) {
-  return graph()->NewNode(
-      machine()->Load(MachineType::Uint8()), map,
-      jsgraph()->IntPtrConstant(Map::kInstanceTypeOffset - kHeapObjectTag),
-      graph()->start(), graph()->start());
-}
-
-Reduction ChangeLowering::ObjectIsNumber(Node* node) {
-  Node* input = NodeProperties::GetValueInput(node, 0);
-  // TODO(bmeurer): Optimize somewhat based on input type.
-  Node* check = IsSmi(input);
-  Node* branch = graph()->NewNode(common()->Branch(), check, graph()->start());
-  Node* if_true = graph()->NewNode(common()->IfTrue(), branch);
-  Node* vtrue = jsgraph()->Int32Constant(1);
-  Node* if_false = graph()->NewNode(common()->IfFalse(), branch);
-  Node* vfalse = graph()->NewNode(
-      machine()->WordEqual(), LoadHeapObjectMap(input, if_false),
-      jsgraph()->HeapConstant(isolate()->factory()->heap_number_map()));
-  Node* control = graph()->NewNode(common()->Merge(2), if_true, if_false);
-  node->ReplaceInput(0, vtrue);
-  node->AppendInput(graph()->zone(), vfalse);
-  node->AppendInput(graph()->zone(), control);
-  NodeProperties::ChangeOp(node, common()->Phi(MachineRepresentation::kBit, 2));
-  return Changed(node);
-}
-
-Reduction ChangeLowering::ObjectIsReceiver(Node* node) {
-  Node* input = NodeProperties::GetValueInput(node, 0);
-  // TODO(bmeurer): Optimize somewhat based on input type.
-  STATIC_ASSERT(LAST_TYPE == LAST_JS_RECEIVER_TYPE);
-  Node* check = IsSmi(input);
-  Node* branch = graph()->NewNode(common()->Branch(), check, graph()->start());
-  Node* if_true = graph()->NewNode(common()->IfTrue(), branch);
-  Node* vtrue = jsgraph()->Int32Constant(0);
-  Node* if_false = graph()->NewNode(common()->IfFalse(), branch);
-  Node* vfalse =
-      graph()->NewNode(machine()->Uint32LessThanOrEqual(),
-                       jsgraph()->Uint32Constant(FIRST_JS_RECEIVER_TYPE),
-                       LoadMapInstanceType(LoadHeapObjectMap(input, if_false)));
-  Node* control = graph()->NewNode(common()->Merge(2), if_true, if_false);
-  node->ReplaceInput(0, vtrue);
-  node->AppendInput(graph()->zone(), vfalse);
-  node->AppendInput(graph()->zone(), control);
-  NodeProperties::ChangeOp(node, common()->Phi(MachineRepresentation::kBit, 2));
-  return Changed(node);
-}
-
-Reduction ChangeLowering::ObjectIsUndetectable(Node* node) {
-  Node* input = NodeProperties::GetValueInput(node, 0);
-  // TODO(bmeurer): Optimize somewhat based on input type.
-  Node* check = IsSmi(input);
-  Node* branch = graph()->NewNode(common()->Branch(), check, graph()->start());
-  Node* if_true = graph()->NewNode(common()->IfTrue(), branch);
-  Node* vtrue = jsgraph()->Int32Constant(0);
-  Node* if_false = graph()->NewNode(common()->IfFalse(), branch);
-  Node* vfalse = graph()->NewNode(
-      machine()->Word32Equal(),
-      graph()->NewNode(
-          machine()->Word32Equal(),
-          graph()->NewNode(machine()->Word32And(),
-                           jsgraph()->Uint32Constant(1 << Map::kIsUndetectable),
-                           LoadMapBitField(LoadHeapObjectMap(input, if_false))),
-          jsgraph()->Int32Constant(0)),
-      jsgraph()->Int32Constant(0));
-  Node* control = graph()->NewNode(common()->Merge(2), if_true, if_false);
-  node->ReplaceInput(0, vtrue);
-  node->AppendInput(graph()->zone(), vfalse);
-  node->AppendInput(graph()->zone(), control);
-  NodeProperties::ChangeOp(node, common()->Phi(MachineRepresentation::kBit, 2));
-  return Changed(node);
-}
-
-Reduction ChangeLowering::ObjectIsSmi(Node* node) {
-  node->ReplaceInput(0,
-                     graph()->NewNode(machine()->WordAnd(), node->InputAt(0),
-                                      jsgraph()->IntPtrConstant(kSmiTagMask)));
-  node->AppendInput(graph()->zone(), jsgraph()->IntPtrConstant(kSmiTag));
-  NodeProperties::ChangeOp(node, machine()->WordEqual());
-  return Changed(node);
-}
 
 Isolate* ChangeLowering::isolate() const { return jsgraph()->isolate(); }
 

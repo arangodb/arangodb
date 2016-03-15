@@ -14,7 +14,11 @@ namespace internal {
 
 // Forward declarations.
 class ExternalReference;
-class Type;
+template <class>
+class TypeImpl;
+struct ZoneTypeConfig;
+typedef TypeImpl<ZoneTypeConfig> Type;
+
 
 namespace compiler {
 
@@ -133,8 +137,6 @@ class CommonOperatorBuilder final : public ZoneObject {
   const Operator* IfDefault();
   const Operator* Throw();
   const Operator* Deoptimize(DeoptimizeKind kind);
-  const Operator* DeoptimizeIf();
-  const Operator* DeoptimizeUnless();
   const Operator* Return(int value_input_count = 1);
   const Operator* Terminate();
 
@@ -172,6 +174,7 @@ class CommonOperatorBuilder final : public ZoneObject {
   const Operator* Call(const CallDescriptor* descriptor);
   const Operator* TailCall(const CallDescriptor* descriptor);
   const Operator* Projection(size_t index);
+  const Operator* LazyBailout();
 
   // Constructs a new merge or phi operator with the same opcode as {op}, but
   // with {size} inputs.
@@ -180,7 +183,8 @@ class CommonOperatorBuilder final : public ZoneObject {
   // Constructs function info for frame state construction.
   const FrameStateFunctionInfo* CreateFrameStateFunctionInfo(
       FrameStateType type, int parameter_count, int local_count,
-      Handle<SharedFunctionInfo> shared_info);
+      Handle<SharedFunctionInfo> shared_info,
+      ContextCallingMode context_calling_mode);
 
  private:
   Zone* zone() const { return zone_; }

@@ -203,7 +203,7 @@ void RegExpMacroAssemblerX64::CheckGreedyLoop(Label* on_equal) {
 
 
 void RegExpMacroAssemblerX64::CheckNotBackReferenceIgnoreCase(
-    int start_reg, bool read_backward, bool unicode, Label* on_no_match) {
+    int start_reg, bool read_backward, Label* on_no_match) {
   Label fallthrough;
   ReadPositionFromRegister(rdx, start_reg);  // Offset of start of capture
   ReadPositionFromRegister(rbx, start_reg + 1);  // Offset of end of capture
@@ -308,10 +308,8 @@ void RegExpMacroAssemblerX64::CheckNotBackReferenceIgnoreCase(
     //   Address byte_offset1 - Address captured substring's start.
     //   Address byte_offset2 - Address of current character position.
     //   size_t byte_length - length of capture in bytes(!)
-//   Isolate* isolate or 0 if unicode flag.
+    //   Isolate* isolate
 #ifdef _WIN64
-    DCHECK(rcx.is(arg_reg_1));
-    DCHECK(rdx.is(arg_reg_2));
     // Compute and set byte_offset1 (start of capture).
     __ leap(rcx, Operand(rsi, rdx, times_1, 0));
     // Set byte_offset2.
@@ -319,9 +317,11 @@ void RegExpMacroAssemblerX64::CheckNotBackReferenceIgnoreCase(
     if (read_backward) {
       __ subq(rdx, rbx);
     }
+    // Set byte_length.
+    __ movp(r8, rbx);
+    // Isolate.
+    __ LoadAddress(r9, ExternalReference::isolate_address(isolate()));
 #else  // AMD64 calling convention
-    DCHECK(rdi.is(arg_reg_1));
-    DCHECK(rsi.is(arg_reg_2));
     // Compute byte_offset2 (current position = rsi+rdi).
     __ leap(rax, Operand(rsi, rdi, times_1, 0));
     // Compute and set byte_offset1 (start of capture).
@@ -331,19 +331,11 @@ void RegExpMacroAssemblerX64::CheckNotBackReferenceIgnoreCase(
     if (read_backward) {
       __ subq(rsi, rbx);
     }
-#endif  // _WIN64
-
     // Set byte_length.
-    __ movp(arg_reg_3, rbx);
+    __ movp(rdx, rbx);
     // Isolate.
-#ifdef V8_I18N_SUPPORT
-    if (unicode) {
-      __ movp(arg_reg_4, Immediate(0));
-    } else  // NOLINT
-#endif      // V8_I18N_SUPPORT
-    {
-      __ LoadAddress(arg_reg_4, ExternalReference::isolate_address(isolate()));
-    }
+    __ LoadAddress(rcx, ExternalReference::isolate_address(isolate()));
+#endif
 
     { // NOLINT: Can't find a way to open this scope without confusing the
       // linter.
@@ -877,14 +869,11 @@ Handle<HeapObject> RegExpMacroAssemblerX64::GetCode(Handle<String> source) {
         __ testp(rdi, rdi);
         __ j(zero, &exit_label_, Label::kNear);
         // Advance current position after a zero-length match.
-        Label advance;
-        __ bind(&advance);
         if (mode_ == UC16) {
           __ addq(rdi, Immediate(2));
         } else {
           __ incq(rdi);
         }
-        if (global_unicode()) CheckNotInSurrogatePair(0, &advance);
       }
 
       __ jmp(&load_char_start_regexp);
@@ -1008,7 +997,7 @@ Handle<HeapObject> RegExpMacroAssemblerX64::GetCode(Handle<String> source) {
   Handle<Code> code = isolate->factory()->NewCode(
       code_desc, Code::ComputeFlags(Code::REGEXP),
       masm_.CodeObject());
-  PROFILE(isolate, RegExpCodeCreateEvent(AbstractCode::cast(*code), *source));
+  PROFILE(isolate, RegExpCodeCreateEvent(*code, *source));
   return Handle<HeapObject>::cast(code);
 }
 

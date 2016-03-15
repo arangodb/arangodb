@@ -3,6 +3,8 @@
 // found in the LICENSE file.
 
 // Flags: --harmony-do-expressions --harmony-sloppy-let --allow-natives-syntax
+// Flags: --harmony-default-parameters --harmony-destructuring-bind
+// Flags: --harmony-completion
 
 function returnValue(v) { return v; }
 function MyError() {}

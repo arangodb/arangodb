@@ -812,7 +812,7 @@ ObjectMirror.prototype.lookupProperty = function(value) {
     // Skip properties which are defined through accessors.
     var property = properties[i];
     if (property.propertyType() != PropertyType.AccessorConstant) {
-      if (property.value_ === value.value_) {
+      if (%_ObjectEquals(property.value_, value.value_)) {
         return property;
       }
     }
@@ -1801,6 +1801,11 @@ FrameDetails.prototype.scopeCount = function() {
 };
 
 
+FrameDetails.prototype.stepInPositionsImpl = function() {
+  return %GetStepInPositions(this.break_id_, this.frameId());
+};
+
+
 /**
  * Mirror object for stack frames.
  * @param {number} break_id The break id in the VM for which this frame is
@@ -1980,6 +1985,29 @@ FrameMirror.prototype.allScopes = function(opt_ignore_nested_scopes) {
 };
 
 
+FrameMirror.prototype.stepInPositions = function() {
+  var script = this.func().script();
+  var funcOffset = this.func().sourcePosition_();
+
+  var stepInRaw = this.details_.stepInPositionsImpl();
+  var result = [];
+  if (stepInRaw) {
+    for (var i = 0; i < stepInRaw.length; i++) {
+      var posStruct = {};
+      var offset = script.locationFromPosition(funcOffset + stepInRaw[i],
+                                               true);
+      serializeLocationFields(offset, posStruct);
+      var item = {
+        position: posStruct
+      };
+      result.push(item);
+    }
+  }
+
+  return result;
+};
+
+
 FrameMirror.prototype.evaluate = function(source, disable_break,
                                           opt_context_object) {
   return MakeMirror(%DebugEvaluate(this.break_id_,
@@ -2149,9 +2177,6 @@ FrameMirror.prototype.toText = function(opt_locals) {
 var kScopeDetailsTypeIndex = 0;
 var kScopeDetailsObjectIndex = 1;
 var kScopeDetailsNameIndex = 2;
-var kScopeDetailsStartPositionIndex = 3;
-var kScopeDetailsEndPositionIndex = 4;
-var kScopeDetailsFunctionIndex = 5;
 
 function ScopeDetails(frame, fun, index, opt_details) {
   if (frame) {
@@ -2194,29 +2219,6 @@ ScopeDetails.prototype.name = function() {
   }
   return this.details_[kScopeDetailsNameIndex];
 };
-
-
-ScopeDetails.prototype.startPosition = function() {
-  if (!IS_UNDEFINED(this.break_id_)) {
-    %CheckExecutionState(this.break_id_);
-  }
-  return this.details_[kScopeDetailsStartPositionIndex];
-}
-
-
-ScopeDetails.prototype.endPosition = function() {
-  if (!IS_UNDEFINED(this.break_id_)) {
-    %CheckExecutionState(this.break_id_);
-  }
-  return this.details_[kScopeDetailsEndPositionIndex];
-}
-
-ScopeDetails.prototype.func = function() {
-  if (!IS_UNDEFINED(this.break_id_)) {
-    %CheckExecutionState(this.break_id_);
-  }
-  return this.details_[kScopeDetailsFunctionIndex];
-}
 
 
 ScopeDetails.prototype.setVariableValueImpl = function(name, new_value) {

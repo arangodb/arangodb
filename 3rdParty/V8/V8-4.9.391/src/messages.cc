@@ -223,12 +223,9 @@ bool CheckMethodName(Isolate* isolate, Handle<JSObject> obj, Handle<Name> name,
 
 
 Handle<Object> CallSite::GetMethodName() {
-  if (receiver_->IsNull() || receiver_->IsUndefined()) {
-    return isolate_->factory()->null_value();
-  }
-  Handle<JSReceiver> receiver =
-      Object::ToObject(isolate_, receiver_).ToHandleChecked();
-  if (!receiver->IsJSObject()) {
+  MaybeHandle<JSReceiver> maybe = Object::ToObject(isolate_, receiver_);
+  Handle<JSReceiver> receiver;
+  if (!maybe.ToHandle(&receiver) || !receiver->IsJSObject()) {
     return isolate_->factory()->null_value();
   }
 
@@ -236,20 +233,9 @@ Handle<Object> CallSite::GetMethodName() {
   Handle<Object> function_name(fun_->shared()->name(), isolate_);
   if (function_name->IsName()) {
     Handle<Name> name = Handle<Name>::cast(function_name);
-    // ES2015 gives getters and setters name prefixes which must
-    // be stripped to find the property name.
-    if (name->IsString() && FLAG_harmony_function_name) {
-      Handle<String> name_string = Handle<String>::cast(name);
-      if (name_string->IsUtf8EqualTo(CStrVector("get "), true) ||
-          name_string->IsUtf8EqualTo(CStrVector("set "), true)) {
-        name = isolate_->factory()->NewProperSubString(name_string, 4,
-                                                       name_string->length());
-      }
-    }
     if (CheckMethodName(isolate_, obj, name, fun_,
-                        LookupIterator::PROTOTYPE_CHAIN_SKIP_INTERCEPTOR)) {
+                        LookupIterator::PROTOTYPE_CHAIN_SKIP_INTERCEPTOR))
       return name;
-    }
   }
 
   HandleScope outer_scope(isolate_);
@@ -261,7 +247,7 @@ Handle<Object> CallSite::GetMethodName() {
     if (!current->IsJSObject()) break;
     Handle<JSObject> current_obj = Handle<JSObject>::cast(current);
     if (current_obj->IsAccessCheckNeeded()) break;
-    Handle<FixedArray> keys = JSObject::GetEnumPropertyKeys(current_obj);
+    Handle<FixedArray> keys = JSObject::GetEnumPropertyKeys(current_obj, false);
     for (int i = 0; i < keys->length(); i++) {
       HandleScope inner_scope(isolate_);
       if (!keys->get(i)->IsName()) continue;

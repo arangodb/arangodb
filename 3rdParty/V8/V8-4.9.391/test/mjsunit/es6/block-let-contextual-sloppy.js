@@ -2,7 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Flags: --harmony-sloppy --harmony-sloppy-let --legacy-const
+// Flags: --harmony-sloppy --harmony-sloppy-let --harmony-destructuring-bind
+// Flags: --legacy-const
 
 // let is usable as a variable with var or legacy const, not let or ES6 const
 

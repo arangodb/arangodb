@@ -803,11 +803,6 @@ void Assembler::cmp(Register reg, const Operand& op) {
   emit_operand(reg, op);
 }
 
-void Assembler::cmp(const Operand& op, Register reg) {
-  EnsureSpace ensure_space(this);
-  EMIT(0x39);
-  emit_operand(reg, op);
-}
 
 void Assembler::cmp(const Operand& op, const Immediate& imm) {
   EnsureSpace ensure_space(this);
@@ -1068,26 +1063,19 @@ void Assembler::sar_cl(const Operand& dst) {
   emit_operand(edi, dst);
 }
 
+
 void Assembler::sbb(Register dst, const Operand& src) {
   EnsureSpace ensure_space(this);
   EMIT(0x1B);
   emit_operand(dst, src);
 }
 
-void Assembler::shld(Register dst, Register src, uint8_t shift) {
-  DCHECK(is_uint5(shift));
-  EnsureSpace ensure_space(this);
-  EMIT(0x0F);
-  EMIT(0xA4);
-  emit_operand(src, Operand(dst));
-  EMIT(shift);
-}
 
-void Assembler::shld_cl(Register dst, Register src) {
+void Assembler::shld(Register dst, const Operand& src) {
   EnsureSpace ensure_space(this);
   EMIT(0x0F);
   EMIT(0xA5);
-  emit_operand(src, Operand(dst));
+  emit_operand(dst, src);
 }
 
 
@@ -1111,6 +1099,15 @@ void Assembler::shl_cl(const Operand& dst) {
   emit_operand(esp, dst);
 }
 
+
+void Assembler::shrd(Register dst, const Operand& src) {
+  EnsureSpace ensure_space(this);
+  EMIT(0x0F);
+  EMIT(0xAD);
+  emit_operand(dst, src);
+}
+
+
 void Assembler::shr(const Operand& dst, uint8_t imm8) {
   EnsureSpace ensure_space(this);
   DCHECK(is_uint5(imm8));  // illegal shift count
@@ -1131,21 +1128,6 @@ void Assembler::shr_cl(const Operand& dst) {
   emit_operand(ebp, dst);
 }
 
-void Assembler::shrd(Register dst, Register src, uint8_t shift) {
-  DCHECK(is_uint5(shift));
-  EnsureSpace ensure_space(this);
-  EMIT(0x0F);
-  EMIT(0xAC);
-  emit_operand(dst, Operand(src));
-  EMIT(shift);
-}
-
-void Assembler::shrd_cl(const Operand& dst, Register src) {
-  EnsureSpace ensure_space(this);
-  EMIT(0x0F);
-  EMIT(0xAD);
-  emit_operand(src, dst);
-}
 
 void Assembler::sub(const Operand& dst, const Immediate& x) {
   EnsureSpace ensure_space(this);
@@ -2014,15 +1996,6 @@ void Assembler::cvtsd2si(Register dst, XMMRegister src) {
   EMIT(0xF2);
   EMIT(0x0F);
   EMIT(0x2D);
-  emit_sse_operand(dst, src);
-}
-
-
-void Assembler::cvtsi2ss(XMMRegister dst, const Operand& src) {
-  EnsureSpace ensure_space(this);
-  EMIT(0xF3);
-  EMIT(0x0F);
-  EMIT(0x2A);
   emit_sse_operand(dst, src);
 }
 

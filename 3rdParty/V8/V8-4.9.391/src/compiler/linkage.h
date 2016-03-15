@@ -76,12 +76,6 @@ class LinkageLocation {
                               kPointerSize);
   }
 
-  static LinkageLocation ForSavedCallerFunction() {
-    return ForCalleeFrameSlot((StandardFrameConstants::kCallerPCOffset -
-                               StandardFrameConstants::kFunctionOffset) /
-                              kPointerSize);
-  }
-
   static LinkageLocation ConvertToTailCallerLocation(
       LinkageLocation caller_location, int stack_param_delta) {
     if (!caller_location.IsRegister()) {
@@ -146,7 +140,8 @@ class CallDescriptor final : public ZoneObject {
   enum Kind {
     kCallCodeObject,  // target is a Code object
     kCallJSFunction,  // target is a JSFunction object
-    kCallAddress      // target is a machine pointer
+    kCallAddress,     // target is a machine pointer
+    kLazyBailout      // the call is no-op, only used for lazy bailout
   };
 
   enum Flag {
@@ -158,12 +153,9 @@ class CallDescriptor final : public ZoneObject {
     kHasLocalCatchHandler = 1u << 4,
     kSupportsTailCalls = 1u << 5,
     kCanUseRoots = 1u << 6,
-    // (arm64 only) native stack should be used for arguments.
+    // Indicates that the native stack should be used for a code object. This
+    // information is important for native calls on arm64.
     kUseNativeStack = 1u << 7,
-    // (arm64 only) call instruction has to restore JSSP.
-    kRestoreJSSP = 1u << 8,
-    // Causes the code generator to initialize the root register.
-    kInitializeRootRegister = 1u << 9,
     kPatchableCallSiteWithNop = kPatchableCallSite | kNeedsNopAfterCall
   };
   typedef base::Flags<Flag> Flags;
@@ -230,9 +222,6 @@ class CallDescriptor final : public ZoneObject {
   bool NeedsFrameState() const { return flags() & kNeedsFrameState; }
   bool SupportsTailCalls() const { return flags() & kSupportsTailCalls; }
   bool UseNativeStack() const { return flags() & kUseNativeStack; }
-  bool InitializeRootRegister() const {
-    return flags() & kInitializeRootRegister;
-  }
 
   LinkageLocation GetReturnLocation(size_t index) const {
     return location_sig_->GetReturn(index);
@@ -324,6 +313,8 @@ class Linkage : public ZoneObject {
       Zone* zone, Runtime::FunctionId function, int parameter_count,
       Operator::Properties properties, CallDescriptor::Flags flags);
 
+  static CallDescriptor* GetLazyBailoutDescriptor(Zone* zone);
+
   static CallDescriptor* GetStubCallDescriptor(
       Isolate* isolate, Zone* zone, const CallInterfaceDescriptor& descriptor,
       int stack_parameter_count, CallDescriptor::Flags flags,
@@ -335,9 +326,13 @@ class Linkage : public ZoneObject {
   // for the host platform. This simplified calling convention only supports
   // integers and pointers of one word size each, i.e. no floating point,
   // structs, pointers to members, etc.
-  static CallDescriptor* GetSimplifiedCDescriptor(
-      Zone* zone, const MachineSignature* sig,
-      bool set_initialize_root_flag = false);
+  static CallDescriptor* GetSimplifiedCDescriptor(Zone* zone,
+                                                  const MachineSignature* sig);
+
+  // Creates a call descriptor for interpreter handler code stubs. These are not
+  // intended to be called directly but are instead dispatched to by the
+  // interpreter.
+  static CallDescriptor* GetInterpreterDispatchDescriptor(Zone* zone);
 
   // Get the location of an (incoming) parameter to this function.
   LinkageLocation GetParameterLocation(int index) const {
@@ -367,11 +362,6 @@ class Linkage : public ZoneObject {
   // Get the location where an incoming OSR value is stored.
   LinkageLocation GetOsrValueLocation(int index) const;
 
-  // A special {Parameter} index for Stub Calls that represents context.
-  static int GetStubCallContextParamIndex(int parameter_count) {
-    return parameter_count + 0;  // Parameter (arity + 0) is special.
-  }
-
   // A special {Parameter} index for JSCalls that represents the new target.
   static int GetJSCallNewTargetParamIndex(int parameter_count) {
     return parameter_count + 0;  // Parameter (arity + 0) is special.
@@ -392,6 +382,15 @@ class Linkage : public ZoneObject {
 
   // A special {OsrValue} index to indicate the context spill slot.
   static const int kOsrContextSpillSlotIndex = -1;
+
+  // Special parameter indices used to pass fixed register data through
+  // interpreter dispatches.
+  static const int kInterpreterAccumulatorParameter = 0;
+  static const int kInterpreterRegisterFileParameter = 1;
+  static const int kInterpreterBytecodeOffsetParameter = 2;
+  static const int kInterpreterBytecodeArrayParameter = 3;
+  static const int kInterpreterDispatchTableParameter = 4;
+  static const int kInterpreterContextParameter = 5;
 
  private:
   CallDescriptor* const incoming_;

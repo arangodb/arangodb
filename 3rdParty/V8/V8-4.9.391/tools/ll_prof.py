@@ -173,19 +173,11 @@ class Code(object):
           break
         count += cnt
       total_count += count
-      percent = 100.0 * count / self.self_ticks
-      offset = lines[i][0]
-      if percent >= 0.01:
-        # 5 spaces for tick count
-        # 1 space following
-        # 1 for '|'
-        # 1 space following
-        # 6 for the percentage number, incl. the '.'
-        # 1 for the '%' sign
-        # => 15
-        print "%5d | %6.2f%% %x(%d): %s" % (count, percent, offset, offset, lines[i][1])
+      count = 100.0 * count / self.self_ticks
+      if count >= 0.01:
+        print "%15.2f %x: %s" % (count, lines[i][0], lines[i][1])
       else:
-        print "%s %x(%d): %s" % (" " * 15, offset, offset, lines[i][1])
+        print "%s %x: %s" % (" " * 15, lines[i][0], lines[i][1])
     print
     assert total_count == self.self_ticks, \
         "Lost ticks (%d != %d) in %s" % (total_count, self.self_ticks, self)
@@ -365,6 +357,7 @@ class LogReader(object):
 
   _CODE_CREATE_TAG = "C"
   _CODE_MOVE_TAG = "M"
+  _CODE_DELETE_TAG = "D"
   _SNAPSHOT_POSITION_TAG = "P"
   _CODE_MOVING_GC_TAG = "G"
 
@@ -456,6 +449,19 @@ class LogReader(object):
         code.start_address = new_start_address
         code.end_address = new_start_address + size
         self.code_map.Add(code)
+        continue
+
+      if tag == LogReader._CODE_DELETE_TAG:
+        event = self.code_delete_struct.from_buffer(self.log, self.log_pos)
+        self.log_pos += ctypes.sizeof(event)
+        old_start_address = event.address
+        code = self.code_map.Find(old_start_address)
+        if not code:
+          print >>sys.stderr, "Warning: Not found %x" % old_start_address
+          continue
+        assert code.start_address == old_start_address, \
+            "Inexact delete address %x for %s" % (old_start_address, code)
+        self.code_map.Remove(code)
         continue
 
       if tag == LogReader._SNAPSHOT_POSITION_TAG:

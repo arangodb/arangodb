@@ -208,7 +208,6 @@ void AstExpressionVisitor::VisitNativeFunctionLiteral(
 
 
 void AstExpressionVisitor::VisitDoExpression(DoExpression* expr) {
-  VisitExpression(expr);
   RECURSE(VisitBlock(expr->block()));
   RECURSE(VisitVariableProxy(expr->result()));
 }
@@ -400,8 +399,8 @@ void AstExpressionVisitor::VisitSuperCallReference(SuperCallReference* expr) {
 }
 
 
-void AstExpressionVisitor::VisitRewritableExpression(
-    RewritableExpression* expr) {
+void AstExpressionVisitor::VisitRewritableAssignmentExpression(
+    RewritableAssignmentExpression* expr) {
   VisitExpression(expr);
   RECURSE(Visit(expr->expression()));
 }

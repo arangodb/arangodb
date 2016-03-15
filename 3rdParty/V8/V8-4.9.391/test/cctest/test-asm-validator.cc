@@ -16,15 +16,14 @@
 #include "test/cctest/expression-type-collector-macros.h"
 
 // Macros for function types.
-#define FUNC_FOREIGN_TYPE Bounds(Type::Function(Type::Any(), zone))
-#define FUNC_V_TYPE Bounds(Type::Function(Type::Undefined(), zone))
+#define FUNC_V_TYPE Bounds(Type::Function(Type::Undefined(zone), zone))
 #define FUNC_I_TYPE Bounds(Type::Function(cache.kAsmSigned, zone))
 #define FUNC_F_TYPE Bounds(Type::Function(cache.kAsmFloat, zone))
 #define FUNC_D_TYPE Bounds(Type::Function(cache.kAsmDouble, zone))
 #define FUNC_D2D_TYPE \
   Bounds(Type::Function(cache.kAsmDouble, cache.kAsmDouble, zone))
 #define FUNC_N2F_TYPE \
-  Bounds(Type::Function(cache.kAsmFloat, Type::Number(), zone))
+  Bounds(Type::Function(cache.kAsmFloat, Type::Number(zone), zone))
 #define FUNC_I2I_TYPE \
   Bounds(Type::Function(cache.kAsmSigned, cache.kAsmInt, zone))
 #define FUNC_II2D_TYPE \
@@ -34,10 +33,11 @@
 #define FUNC_DD2D_TYPE                                                        \
   Bounds(Type::Function(cache.kAsmDouble, cache.kAsmDouble, cache.kAsmDouble, \
                         zone))
-#define FUNC_NN2N_TYPE \
-  Bounds(Type::Function(Type::Number(), Type::Number(), Type::Number(), zone))
+#define FUNC_NN2N_TYPE                                          \
+  Bounds(Type::Function(Type::Number(zone), Type::Number(zone), \
+                        Type::Number(zone), zone))
 #define FUNC_N2N_TYPE \
-  Bounds(Type::Function(Type::Number(), Type::Number(), zone))
+  Bounds(Type::Function(Type::Number(zone), Type::Number(zone), zone))
 
 // Macros for array types.
 #define FLOAT64_ARRAY_TYPE Bounds(Type::Array(cache.kAsmDouble, zone))
@@ -265,7 +265,7 @@ TEST(ValidateMinimum) {
         }
       }
       // "use asm";
-      CHECK_EXPR(Literal, Bounds(Type::String()));
+      CHECK_EXPR(Literal, Bounds(Type::String(zone)));
       // var exp = stdlib.Math.exp;
       CHECK_EXPR(Assignment, FUNC_D2D_TYPE) {
         CHECK_VAR(exp, FUNC_D2D_TYPE);
@@ -518,10 +518,11 @@ void CheckStdlibShortcuts2(Zone* zone, ZoneVector<ExpressionTypeEntry>& types,
     CHECK_EXPR(FunctionLiteral, Bounds::Unbounded()) {
 #define CHECK_FUNC_TYPES_END_1()                           \
   /* "use asm"; */                                         \
-  CHECK_EXPR(Literal, Bounds(Type::String()));             \
+  CHECK_EXPR(Literal, Bounds(Type::String(zone)));         \
   /* stdlib shortcuts. */                                  \
   CheckStdlibShortcuts1(zone, types, index, depth, cache); \
   CheckStdlibShortcuts2(zone, types, index, depth, cache);
+
 
 #define CHECK_FUNC_TYPES_END_2()                   \
   /* return { foo: foo }; */                       \
@@ -563,10 +564,10 @@ TEST(ReturnVoid) {
       "function foo() { bar(); }") {
     CHECK_EXPR(FunctionLiteral, FUNC_V_TYPE) {
       // return undefined;
-      CHECK_EXPR(Literal, Bounds(Type::Undefined()));
+      CHECK_EXPR(Literal, Bounds(Type::Undefined(zone)));
     }
     CHECK_EXPR(FunctionLiteral, FUNC_V_TYPE) {
-      CHECK_EXPR(Call, Bounds(Type::Undefined())) {
+      CHECK_EXPR(Call, Bounds(Type::Undefined(zone))) {
         CHECK_VAR(bar, FUNC_V_TYPE);
       }
     }
@@ -581,7 +582,7 @@ TEST(EmptyBody) {
       "function foo() { bar(); }") {
     CHECK_EXPR(FunctionLiteral, FUNC_V_TYPE);
     CHECK_EXPR(FunctionLiteral, FUNC_V_TYPE) {
-      CHECK_EXPR(Call, Bounds(Type::Undefined())) {
+      CHECK_EXPR(Call, Bounds(Type::Undefined(zone))) {
         CHECK_VAR(bar, FUNC_V_TYPE);
       }
     }
@@ -601,7 +602,7 @@ TEST(DoesNothing) {
       }
     }
     CHECK_EXPR(FunctionLiteral, FUNC_V_TYPE) {
-      CHECK_EXPR(Call, Bounds(Type::Undefined())) {
+      CHECK_EXPR(Call, Bounds(Type::Undefined(zone))) {
         CHECK_VAR(bar, FUNC_V_TYPE);
       }
     }
@@ -1065,7 +1066,7 @@ TEST(UnsignedDivide) {
         CHECK_EXPR(Literal, Bounds(cache.kAsmFixnum));
       }
       CHECK_EXPR(BinaryOperation, Bounds(cache.kAsmSigned)) {
-        CHECK_EXPR(BinaryOperation, Bounds(Type::None(), Type::Any())) {
+        CHECK_EXPR(BinaryOperation, Bounds(Type::None(zone), Type::Any(zone))) {
           CHECK_EXPR(BinaryOperation, Bounds(cache.kAsmUnsigned)) {
             CHECK_VAR(x, Bounds(cache.kAsmInt));
             CHECK_EXPR(Literal, Bounds(cache.kAsmFixnum));
@@ -1171,12 +1172,6 @@ TEST(TernaryBadCondition) {
       "asm: line 39: condition must be of type int\n");
 }
 
-TEST(BadIntishMultiply) {
-  CHECK_FUNC_ERROR(
-      "function bar() { var x = 1; return ((x + x) * 4) | 0; }\n"
-      "function foo() { bar(); }",
-      "asm: line 39: intish not allowed in multiply\n");
-}
 
 TEST(FroundFloat32) {
   CHECK_FUNC_TYPES_BEGIN(
@@ -1235,7 +1230,7 @@ TEST(Multiplication2) {
   CHECK_FUNC_ERROR(
       "function bar() { var x = 1; var y = 2; return (x*y)|0; }\n"
       "function foo() { bar(); }",
-      "asm: line 39: multiply must be by an integer literal\n");
+      "asm: line 39: direct integer multiply forbidden\n");
 }
 
 
@@ -1332,7 +1327,7 @@ TEST(Load1) {
           CHECK_EXPR(Property, Bounds(cache.kAsmInt)) {
             CHECK_VAR(i8, Bounds(cache.kInt8Array));
             CHECK_EXPR(BinaryOperation, Bounds(cache.kAsmSigned)) {
-              CHECK_VAR(x, Bounds(cache.kAsmInt));
+              CHECK_VAR(x, Bounds(cache.kAsmSigned));
               CHECK_EXPR(Literal, Bounds(cache.kAsmFixnum));
             }
           }
@@ -1392,7 +1387,7 @@ TEST(Store1) {
         CHECK_EXPR(Property, Bounds::Unbounded()) {
           CHECK_VAR(i8, Bounds(cache.kInt8Array));
           CHECK_EXPR(BinaryOperation, Bounds(cache.kAsmSigned)) {
-            CHECK_VAR(x, Bounds(cache.kAsmInt));
+            CHECK_VAR(x, Bounds(cache.kAsmSigned));
             CHECK_EXPR(Literal, Bounds(cache.kAsmFixnum));
           }
         }
@@ -1440,71 +1435,6 @@ TEST(StoreFloat) {
   CHECK_FUNC_TYPES_END
 }
 
-TEST(StoreIntish) {
-  CHECK_FUNC_TYPES_BEGIN(
-      "function bar() { var x = 1; var y = 1; i32[0] = x + y; }\n"
-      "function foo() { bar(); }") {
-    CHECK_EXPR(FunctionLiteral, FUNC_V_TYPE) {
-      CHECK_EXPR(Assignment, Bounds(cache.kAsmInt)) {
-        CHECK_VAR(x, Bounds(cache.kAsmInt));
-        CHECK_EXPR(Literal, Bounds(cache.kAsmFixnum));
-      }
-      CHECK_EXPR(Assignment, Bounds(cache.kAsmInt)) {
-        CHECK_VAR(y, Bounds(cache.kAsmInt));
-        CHECK_EXPR(Literal, Bounds(cache.kAsmFixnum));
-      }
-      CHECK_EXPR(Assignment, Bounds(cache.kAsmInt)) {
-        CHECK_EXPR(Property, Bounds::Unbounded()) {
-          CHECK_VAR(i32, Bounds(cache.kInt32Array));
-          CHECK_EXPR(Literal, Bounds(cache.kAsmFixnum));
-        }
-        CHECK_EXPR(BinaryOperation, Bounds(cache.kAsmInt)) {
-          CHECK_VAR(x, Bounds(cache.kAsmInt));
-          CHECK_VAR(y, Bounds(cache.kAsmInt));
-        }
-      }
-    }
-    CHECK_SKIP();
-  }
-  CHECK_FUNC_TYPES_END
-}
-
-TEST(StoreFloatish) {
-  CHECK_FUNC_TYPES_BEGIN(
-      "function bar() { "
-      "var x = fround(1.0); "
-      "var y = fround(1.0); f32[0] = x + y; }\n"
-      "function foo() { bar(); }") {
-    CHECK_EXPR(FunctionLiteral, FUNC_V_TYPE) {
-      CHECK_EXPR(Assignment, Bounds(cache.kAsmFloat)) {
-        CHECK_VAR(x, Bounds(cache.kAsmFloat));
-        CHECK_EXPR(Call, Bounds(cache.kAsmFloat)) {
-          CHECK_VAR(fround, FUNC_N2F_TYPE);
-          CHECK_EXPR(Literal, Bounds(cache.kAsmDouble));
-        }
-      }
-      CHECK_EXPR(Assignment, Bounds(cache.kAsmFloat)) {
-        CHECK_VAR(y, Bounds(cache.kAsmFloat));
-        CHECK_EXPR(Call, Bounds(cache.kAsmFloat)) {
-          CHECK_VAR(fround, FUNC_N2F_TYPE);
-          CHECK_EXPR(Literal, Bounds(cache.kAsmDouble));
-        }
-      }
-      CHECK_EXPR(Assignment, Bounds(cache.kAsmFloat)) {
-        CHECK_EXPR(Property, Bounds::Unbounded()) {
-          CHECK_VAR(f32, Bounds(cache.kFloat32Array));
-          CHECK_EXPR(Literal, Bounds(cache.kAsmFixnum));
-        }
-        CHECK_EXPR(BinaryOperation, Bounds(cache.kAsmFloat)) {
-          CHECK_VAR(x, Bounds(cache.kAsmFloat));
-          CHECK_VAR(y, Bounds(cache.kAsmFloat));
-        }
-      }
-    }
-    CHECK_SKIP();
-  }
-  CHECK_FUNC_TYPES_END
-}
 
 TEST(Load1Constant) {
   CHECK_FUNC_TYPES_BEGIN(
@@ -1592,9 +1522,7 @@ TEST(FunctionTables) {
           CHECK_EXPR(Property, FUNC_I2I_TYPE) {
             CHECK_VAR(table1, FUNC_I2I_ARRAY_TYPE);
             CHECK_EXPR(BinaryOperation, Bounds(cache.kAsmSigned)) {
-              // TODO(bradnelson): revert this
-              // CHECK_VAR(x, Bounds(cache.kAsmSigned));
-              CHECK_VAR(x, Bounds(cache.kAsmInt));
+              CHECK_VAR(x, Bounds(cache.kAsmSigned));
               CHECK_EXPR(Literal, Bounds(cache.kAsmFixnum));
             }
           }
@@ -1783,9 +1711,9 @@ TEST(MismatchedReturnTypeExpression) {
 
 TEST(AssignToFloatishToF64) {
   CHECK_FUNC_ERROR(
-      "function bar() { var v = fround(1.0); f64[0] = v + fround(1.0); }\n"
+      "function bar() { var v = fround(1.0); f32[0] = v + fround(1.0); }\n"
       "function foo() { bar(); }",
-      "asm: line 39: floatish assignment to double array\n");
+      "asm: line 39: intish or floatish assignment\n");
 }
 
 
@@ -1796,8 +1724,8 @@ TEST(ForeignFunction) {
       "function foo() { bar(); }") {
     CHECK_EXPR(FunctionLiteral, FUNC_I_TYPE) {
       CHECK_EXPR(BinaryOperation, Bounds(cache.kAsmSigned)) {
-        CHECK_EXPR(Call, Bounds(cache.kAsmSigned)) {
-          CHECK_VAR(baz, FUNC_FOREIGN_TYPE);
+        CHECK_EXPR(Call, Bounds(Type::Number(zone))) {
+          CHECK_VAR(baz, Bounds(Type::Any(zone)));
           CHECK_EXPR(Literal, Bounds(cache.kAsmFixnum));
           CHECK_EXPR(Literal, Bounds(cache.kAsmFixnum));
         }
@@ -1811,9 +1739,9 @@ TEST(ForeignFunction) {
     }
   }
   CHECK_FUNC_TYPES_END_1()
-  CHECK_EXPR(Assignment, Bounds(FUNC_FOREIGN_TYPE)) {
-    CHECK_VAR(baz, Bounds(FUNC_FOREIGN_TYPE));
-    CHECK_EXPR(Property, Bounds(FUNC_FOREIGN_TYPE)) {
+  CHECK_EXPR(Assignment, Bounds(Type::Any(zone))) {
+    CHECK_VAR(baz, Bounds(Type::Any(zone)));
+    CHECK_EXPR(Property, Bounds(Type::Any(zone))) {
       CHECK_VAR(foreign, Bounds::Unbounded());
       CHECK_EXPR(Literal, Bounds::Unbounded());
     }
@@ -1821,28 +1749,6 @@ TEST(ForeignFunction) {
   CHECK_FUNC_TYPES_END_2()
 }
 
-TEST(ByteArray) {
-  // Forbidden by asm.js spec, present in embenchen.
-  CHECK_FUNC_TYPES_BEGIN(
-      "function bar() { var x = 0; i8[x] = 2; }\n"
-      "function foo() { bar(); }") {
-    CHECK_EXPR(FunctionLiteral, FUNC_V_TYPE) {
-      CHECK_EXPR(Assignment, Bounds(cache.kAsmInt)) {
-        CHECK_VAR(x, Bounds(cache.kAsmInt));
-        CHECK_EXPR(Literal, Bounds(cache.kAsmFixnum));
-      }
-      CHECK_EXPR(Assignment, Bounds(cache.kAsmInt)) {
-        CHECK_EXPR(Property, Bounds::Unbounded()) {
-          CHECK_VAR(i8, Bounds(cache.kInt8Array));
-          CHECK_VAR(x, Bounds(cache.kAsmSigned));
-        }
-        CHECK_EXPR(Literal, Bounds(cache.kAsmFixnum));
-      }
-    }
-    CHECK_SKIP();
-  }
-  CHECK_FUNC_TYPES_END
-}
 
 TEST(BadExports) {
   HARNESS_PREAMBLE()
@@ -1861,14 +1767,7 @@ TEST(BadExports) {
 
 TEST(NestedHeapAssignment) {
   CHECK_FUNC_ERROR(
-      "function bar() { var x = 0; i16[x = 1] = 2; }\n"
-      "function foo() { bar(); }",
-      "asm: line 39: expected >> in heap access\n");
-}
-
-TEST(BadOperatorHeapAssignment) {
-  CHECK_FUNC_ERROR(
-      "function bar() { var x = 0; i16[x & 1] = 2; }\n"
+      "function bar() { var x = 0; i8[x = 1] = 2; }\n"
       "function foo() { bar(); }",
       "asm: line 39: expected >> in heap access\n");
 }
@@ -1887,7 +1786,7 @@ TEST(BadStandardFunctionCallOutside) {
       "var s0 = sin(0);\n"
       "function bar() { }\n"
       "function foo() { bar(); }",
-      "asm: line 39: illegal variable reference in module body\n");
+      "asm: line 39: calls forbidden outside function bodies\n");
 }
 
 
@@ -1896,7 +1795,7 @@ TEST(BadFunctionCallOutside) {
       "function bar() { return 0.0; }\n"
       "var s0 = bar(0);\n"
       "function foo() { bar(); }",
-      "asm: line 40: illegal variable reference in module body\n");
+      "asm: line 40: calls forbidden outside function bodies\n");
 }
 
 
@@ -1936,7 +1835,7 @@ TEST(NestedAssignmentInHeap) {
         CHECK_EXPR(Property, Bounds::Unbounded()) {
           CHECK_VAR(i8, Bounds(cache.kInt8Array));
           CHECK_EXPR(BinaryOperation, Bounds(cache.kAsmSigned)) {
-            CHECK_EXPR(Assignment, Bounds(cache.kAsmInt)) {
+            CHECK_EXPR(Assignment, Bounds(cache.kAsmSigned)) {
               CHECK_VAR(x, Bounds(cache.kAsmInt));
               CHECK_EXPR(Literal, Bounds(cache.kAsmFixnum));
             }
@@ -2032,30 +1931,6 @@ TEST(CeilFloat) {
   CHECK_FUNC_TYPES_END
 }
 
-TEST(FloatReturnAsDouble) {
-  CHECK_FUNC_TYPES_BEGIN(
-      "function bar() { var x = fround(3.1); return +fround(x); }\n"
-      "function foo() { bar(); }") {
-    CHECK_EXPR(FunctionLiteral, FUNC_D_TYPE) {
-      CHECK_EXPR(Assignment, Bounds(cache.kAsmFloat)) {
-        CHECK_VAR(x, Bounds(cache.kAsmFloat));
-        CHECK_EXPR(Call, Bounds(cache.kAsmFloat)) {
-          CHECK_VAR(fround, FUNC_N2F_TYPE);
-          CHECK_EXPR(Literal, Bounds(cache.kAsmDouble));
-        }
-      }
-      CHECK_EXPR(BinaryOperation, Bounds(cache.kAsmDouble)) {
-        CHECK_EXPR(Call, Bounds(cache.kAsmFloat)) {
-          CHECK_VAR(fround, FUNC_N2F_TYPE);
-          CHECK_VAR(x, Bounds(cache.kAsmFloat));
-        }
-        CHECK_EXPR(Literal, Bounds(cache.kAsmDouble));
-      }
-    }
-    CHECK_SKIP();
-  }
-  CHECK_FUNC_TYPES_END
-}
 
 TEST(TypeConsistency) {
   v8::V8::Initialize();
@@ -2132,7 +2007,7 @@ TEST(SwitchTest) {
           CHECK_EXPR(Literal, Bounds(cache.kAsmFixnum));
         }
       }
-      CHECK_EXPR(Literal, Bounds(Type::Undefined()));
+      CHECK_EXPR(Literal, Bounds(Type::Undefined(zone)));
       CHECK_VAR(.switch_tag, Bounds(cache.kAsmSigned));
       // case 1: return 23;
       CHECK_EXPR(Literal, Bounds(cache.kAsmFixnum));
@@ -2172,243 +2047,4 @@ TEST(BadSwitchOrder) {
       "function bar() { switch (1) { default: case 0: } }\n"
       "function foo() { bar(); }",
       "asm: line 39: default case out of order\n");
-}
-
-TEST(BadForeignCall) {
-  const char test_function[] =
-      "function TestModule(stdlib, foreign, buffer) {\n"
-      "  \"use asm\";\n"
-      "  var ffunc = foreign.foo;\n"
-      "  function test1() { var x = 0; ffunc(x); }\n"
-      "  return { testFunc1: test1 };\n"
-      "}\n";
-  v8::V8::Initialize();
-  HandleAndZoneScope handles;
-  Zone* zone = handles.main_zone();
-  ZoneVector<ExpressionTypeEntry> types(zone);
-  CHECK_EQ(
-      "asm: line 4: foreign call argument expected to be int, double, or "
-      "fixnum\n",
-      Validate(zone, test_function, &types));
-}
-
-TEST(BadImports) {
-  const char test_function[] =
-      "function TestModule(stdlib, foreign, buffer) {\n"
-      "  \"use asm\";\n"
-      "  var fint = (foreign.bar | 0) | 0;\n"
-      "  function test1() {}\n"
-      "  return { testFunc1: test1 };\n"
-      "}\n";
-  v8::V8::Initialize();
-  HandleAndZoneScope handles;
-  Zone* zone = handles.main_zone();
-  ZoneVector<ExpressionTypeEntry> types(zone);
-  CHECK_EQ("asm: line 3: illegal computation inside module body\n",
-           Validate(zone, test_function, &types));
-}
-
-TEST(BadVariableReference) {
-  const char test_function[] =
-      "function TestModule(stdlib, foreign, buffer) {\n"
-      "  \"use asm\";\n"
-      "  var x = 0;\n"
-      "  var y = x;\n"
-      "  function test1() {}\n"
-      "  return { testFunc1: test1 };\n"
-      "}\n";
-  v8::V8::Initialize();
-  HandleAndZoneScope handles;
-  Zone* zone = handles.main_zone();
-  ZoneVector<ExpressionTypeEntry> types(zone);
-  CHECK_EQ("asm: line 4: illegal variable reference in module body\n",
-           Validate(zone, test_function, &types));
-}
-
-TEST(BadForeignVariableReferenceValueOr) {
-  const char test_function[] =
-      "function TestModule(stdlib, foreign, buffer) {\n"
-      "  \"use asm\";\n"
-      "  var fint = foreign.bar | 1;\n"
-      "}\n";
-  v8::V8::Initialize();
-  HandleAndZoneScope handles;
-  Zone* zone = handles.main_zone();
-  ZoneVector<ExpressionTypeEntry> types(zone);
-  CHECK_EQ("asm: line 3: illegal integer annotation value\n",
-           Validate(zone, test_function, &types));
-}
-
-TEST(BadForeignVariableReferenceValueOrDot) {
-  const char test_function[] =
-      "function TestModule(stdlib, foreign, buffer) {\n"
-      "  \"use asm\";\n"
-      "  var fint = foreign.bar | 1.0;\n"
-      "}\n";
-  v8::V8::Initialize();
-  HandleAndZoneScope handles;
-  Zone* zone = handles.main_zone();
-  ZoneVector<ExpressionTypeEntry> types(zone);
-  CHECK_EQ("asm: line 3: illegal integer annotation value\n",
-           Validate(zone, test_function, &types));
-}
-
-TEST(BadForeignVariableReferenceValueMul) {
-  const char test_function[] =
-      "function TestModule(stdlib, foreign, buffer) {\n"
-      "  \"use asm\";\n"
-      "  var fint = foreign.bar * 2.0;\n"
-      "}\n";
-  v8::V8::Initialize();
-  HandleAndZoneScope handles;
-  Zone* zone = handles.main_zone();
-  ZoneVector<ExpressionTypeEntry> types(zone);
-  CHECK_EQ("asm: line 3: illegal double annotation value\n",
-           Validate(zone, test_function, &types));
-}
-
-TEST(BadForeignVariableReferenceValueMulNoDot) {
-  const char test_function[] =
-      "function TestModule(stdlib, foreign, buffer) {\n"
-      "  \"use asm\";\n"
-      "  var fint = foreign.bar * 1;\n"
-      "}\n";
-  v8::V8::Initialize();
-  HandleAndZoneScope handles;
-  Zone* zone = handles.main_zone();
-  ZoneVector<ExpressionTypeEntry> types(zone);
-  CHECK_EQ("asm: line 3: ill-typed arithmetic operation\n",
-           Validate(zone, test_function, &types));
-}
-
-TEST(Imports) {
-  const char test_function[] =
-      "function TestModule(stdlib, foreign, buffer) {\n"
-      "  \"use asm\";\n"
-      "  var ffunc = foreign.foo;\n"
-      "  var fint = foreign.bar | 0;\n"
-      "  var fdouble = +foreign.baz;\n"
-      "  function test1() { return ffunc(fint|0, fdouble) | 0; }\n"
-      "  function test2() { return +ffunc(fdouble, fint|0); }\n"
-      "  return { testFunc1: test1, testFunc2: test2 };\n"
-      "}\n";
-
-  v8::V8::Initialize();
-  HandleAndZoneScope handles;
-  Zone* zone = handles.main_zone();
-  ZoneVector<ExpressionTypeEntry> types(zone);
-  CHECK_EQ("", Validate(zone, test_function, &types));
-  TypeCache cache;
-
-  CHECK_TYPES_BEGIN {
-    // Module.
-    CHECK_EXPR(FunctionLiteral, Bounds::Unbounded()) {
-      // function test1
-      CHECK_EXPR(FunctionLiteral, FUNC_I_TYPE) {
-        CHECK_EXPR(BinaryOperation, Bounds(cache.kAsmSigned)) {
-          CHECK_EXPR(Call, Bounds(cache.kAsmSigned)) {
-            CHECK_VAR(ffunc, FUNC_FOREIGN_TYPE);
-            CHECK_EXPR(BinaryOperation, Bounds(cache.kAsmSigned)) {
-              CHECK_VAR(fint, Bounds(cache.kAsmInt));
-              CHECK_EXPR(Literal, Bounds(cache.kAsmFixnum));
-            }
-            CHECK_VAR(fdouble, Bounds(cache.kAsmDouble));
-          }
-          CHECK_EXPR(Literal, Bounds(cache.kAsmFixnum));
-        }
-      }
-      // function test2
-      CHECK_EXPR(FunctionLiteral, FUNC_D_TYPE) {
-        CHECK_EXPR(BinaryOperation, Bounds(cache.kAsmDouble)) {
-          CHECK_EXPR(Call, Bounds(cache.kAsmDouble)) {
-            CHECK_VAR(ffunc, FUNC_FOREIGN_TYPE);
-            CHECK_VAR(fdouble, Bounds(cache.kAsmDouble));
-            CHECK_EXPR(BinaryOperation, Bounds(cache.kAsmSigned)) {
-              CHECK_VAR(fint, Bounds(cache.kAsmInt));
-              CHECK_EXPR(Literal, Bounds(cache.kAsmFixnum));
-            }
-          }
-          CHECK_EXPR(Literal, Bounds(cache.kAsmDouble));
-        }
-      }
-      // "use asm";
-      CHECK_EXPR(Literal, Bounds(Type::String()));
-      // var func = foreign.foo;
-      CHECK_EXPR(Assignment, Bounds(FUNC_FOREIGN_TYPE)) {
-        CHECK_VAR(ffunc, Bounds(FUNC_FOREIGN_TYPE));
-        CHECK_EXPR(Property, Bounds(FUNC_FOREIGN_TYPE)) {
-          CHECK_VAR(foreign, Bounds::Unbounded());
-          CHECK_EXPR(Literal, Bounds::Unbounded());
-        }
-      }
-      // var fint = foreign.bar | 0;
-      CHECK_EXPR(Assignment, Bounds(cache.kAsmInt)) {
-        CHECK_VAR(fint, Bounds(cache.kAsmInt));
-        CHECK_EXPR(BinaryOperation, Bounds(cache.kAsmSigned)) {
-          CHECK_EXPR(Property, Bounds(Type::Number())) {
-            CHECK_VAR(foreign, Bounds::Unbounded());
-            CHECK_EXPR(Literal, Bounds::Unbounded());
-          }
-          CHECK_EXPR(Literal, Bounds(cache.kAsmFixnum));
-        }
-      }
-      // var fdouble = +foreign.baz;
-      CHECK_EXPR(Assignment, Bounds(cache.kAsmDouble)) {
-        CHECK_VAR(fdouble, Bounds(cache.kAsmDouble));
-        CHECK_EXPR(BinaryOperation, Bounds(cache.kAsmDouble)) {
-          CHECK_EXPR(Property, Bounds(Type::Number())) {
-            CHECK_VAR(foreign, Bounds::Unbounded());
-            CHECK_EXPR(Literal, Bounds::Unbounded());
-          }
-          CHECK_EXPR(Literal, Bounds(cache.kAsmDouble));
-        }
-      }
-      // return { testFunc1: test1, testFunc2: test2 };
-      CHECK_EXPR(ObjectLiteral, Bounds::Unbounded()) {
-        CHECK_VAR(test1, FUNC_I_TYPE);
-        CHECK_VAR(test2, FUNC_D_TYPE);
-      }
-    }
-  }
-  CHECK_TYPES_END
-}
-
-TEST(StoreFloatFromDouble) {
-  CHECK_FUNC_TYPES_BEGIN(
-      "function bar() { f32[0] = 0.0; }\n"
-      "function foo() { bar(); }") {
-    CHECK_EXPR(FunctionLiteral, FUNC_V_TYPE) {
-      CHECK_EXPR(Assignment, Bounds(cache.kAsmDouble)) {
-        CHECK_EXPR(Property, Bounds::Unbounded()) {
-          CHECK_VAR(f32, Bounds(cache.kFloat32Array));
-          CHECK_EXPR(Literal, Bounds(cache.kAsmFixnum));
-        }
-        CHECK_EXPR(Literal, Bounds(cache.kAsmDouble));
-      }
-    }
-    CHECK_SKIP();
-  }
-  CHECK_FUNC_TYPES_END
-}
-
-TEST(NegateDouble) {
-  CHECK_FUNC_TYPES_BEGIN(
-      "function bar() { var x = 0.0; x = -x; }\n"
-      "function foo() { bar(); }") {
-    CHECK_EXPR(FunctionLiteral, FUNC_V_TYPE) {
-      CHECK_EXPR(Assignment, Bounds(cache.kAsmDouble)) {
-        CHECK_VAR(x, Bounds(cache.kAsmDouble));
-        CHECK_EXPR(Literal, Bounds(cache.kAsmDouble));
-      }
-      CHECK_EXPR(Assignment, Bounds(cache.kAsmDouble)) {
-        CHECK_VAR(x, Bounds(cache.kAsmDouble));
-        CHECK_EXPR(BinaryOperation, Bounds(cache.kAsmDouble)) {
-          CHECK_VAR(x, Bounds(cache.kAsmDouble));
-          CHECK_EXPR(Literal, Bounds(cache.kAsmDouble));
-        }
-      }
-    }
-    CHECK_SKIP();
-  }
-  CHECK_FUNC_TYPES_END
 }

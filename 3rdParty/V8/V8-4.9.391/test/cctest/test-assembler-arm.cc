@@ -46,7 +46,7 @@ typedef Object* (*F1)(int x, int p1, int p2, int p3, int p4);
 typedef Object* (*F2)(int x, int y, int p2, int p3, int p4);
 typedef Object* (*F3)(void* p0, int p1, int p2, int p3, int p4);
 typedef Object* (*F4)(void* p0, void* p1, int p2, int p3, int p4);
-typedef Object* (*F5)(uint32_t p0, void* p1, void* p2, int p3, int p4);
+
 
 #define __ assm.
 
@@ -232,8 +232,6 @@ TEST(4) {
     double j;
     double m;
     double n;
-    float o;
-    float p;
     float x;
     float y;
   } T;
@@ -316,12 +314,6 @@ TEST(4) {
     __ vneg(d0, d1);
     __ vstr(d0, r4, offsetof(T, n));
 
-    // Test vmov for single-precision immediates.
-    __ vmov(s0, 0.25f);
-    __ vstr(s0, r4, offsetof(T, o));
-    __ vmov(s0, -16.0f);
-    __ vstr(s0, r4, offsetof(T, p));
-
     __ ldm(ia_w, sp, r4.bit() | fp.bit() | pc.bit());
 
     CodeDesc desc;
@@ -349,8 +341,6 @@ TEST(4) {
     t.y = 9.0;
     Object* dummy = CALL_GENERATED_CODE(isolate, f, &t, 0, 0, 0, 0);
     USE(dummy);
-    CHECK_EQ(-16.0f, t.p);
-    CHECK_EQ(0.25f, t.o);
     CHECK_EQ(-123.456, t.n);
     CHECK_EQ(2718.2818, t.m);
     CHECK_EQ(2, t.i);
@@ -1829,55 +1819,6 @@ TEST(uxtah) {
 }
 
 
-#define TEST_RBIT(expected_, input_)                       \
-  t.input = input_;                                        \
-  t.result = 0;                                            \
-  dummy = CALL_GENERATED_CODE(isolate, f, &t, 0, 0, 0, 0); \
-  CHECK_EQ(expected_, t.result);
-
-
-TEST(rbit) {
-  CcTest::InitializeVM();
-  Isolate* const isolate = CcTest::i_isolate();
-  HandleScope scope(isolate);
-  Assembler assm(isolate, nullptr, 0);
-
-  if (CpuFeatures::IsSupported(ARMv7)) {
-    CpuFeatureScope scope(&assm, ARMv7);
-
-    typedef struct {
-      uint32_t input;
-      uint32_t result;
-    } T;
-    T t;
-
-    __ ldr(r1, MemOperand(r0, offsetof(T, input)));
-    __ rbit(r1, r1);
-    __ str(r1, MemOperand(r0, offsetof(T, result)));
-    __ bx(lr);
-
-    CodeDesc desc;
-    assm.GetCode(&desc);
-    Handle<Code> code = isolate->factory()->NewCode(
-        desc, Code::ComputeFlags(Code::STUB), Handle<Code>());
-
-#ifdef OBJECT_PRINT
-    code->Print(std::cout);
-#endif
-
-    F3 f = FUNCTION_CAST<F3>(code->entry());
-    Object* dummy = NULL;
-    TEST_RBIT(0xffffffff, 0xffffffff);
-    TEST_RBIT(0x00000000, 0x00000000);
-    TEST_RBIT(0xffff0000, 0x0000ffff);
-    TEST_RBIT(0xff00ff00, 0x00ff00ff);
-    TEST_RBIT(0xf0f0f0f0, 0x0f0f0f0f);
-    TEST_RBIT(0x1e6a2c48, 0x12345678);
-    USE(dummy);
-  }
-}
-
-
 TEST(code_relative_offset) {
   // Test extracting the offset of a label from the beginning of the code
   // in a register.
@@ -1949,78 +1890,6 @@ TEST(code_relative_offset) {
   CHECK_EQ(42, res);
 }
 
-TEST(msr_mrs) {
-  // Test msr and mrs.
-  CcTest::InitializeVM();
-  Isolate* isolate = CcTest::i_isolate();
-  HandleScope scope(isolate);
-
-  Assembler assm(isolate, NULL, 0);
-
-  // Create a helper function:
-  //  void TestMsrMrs(uint32_t nzcv,
-  //                  uint32_t * result_conditionals,
-  //                  uint32_t * result_mrs);
-  __ msr(CPSR_f, Operand(r0));
-
-  // Test that the condition flags have taken effect.
-  __ mov(r3, Operand(0));
-  __ orr(r3, r3, Operand(1 << 31), LeaveCC, mi);  // N
-  __ orr(r3, r3, Operand(1 << 30), LeaveCC, eq);  // Z
-  __ orr(r3, r3, Operand(1 << 29), LeaveCC, cs);  // C
-  __ orr(r3, r3, Operand(1 << 28), LeaveCC, vs);  // V
-  __ str(r3, MemOperand(r1));
-
-  // Also check mrs, ignoring everything other than the flags.
-  __ mrs(r3, CPSR);
-  __ and_(r3, r3, Operand(kSpecialCondition));
-  __ str(r3, MemOperand(r2));
-
-  __ bx(lr);
-
-  CodeDesc desc;
-  assm.GetCode(&desc);
-  Handle<Code> code = isolate->factory()->NewCode(
-      desc, Code::ComputeFlags(Code::STUB), Handle<Code>());
-#ifdef DEBUG
-  OFStream os(stdout);
-  code->Print(os);
-#endif
-  F5 f = FUNCTION_CAST<F5>(code->entry());
-  Object* dummy = nullptr;
-  USE(dummy);
-
-#define CHECK_MSR_MRS(n, z, c, v)                                       \
-  do {                                                                  \
-    uint32_t nzcv = (n << 31) | (z << 30) | (c << 29) | (v << 28);      \
-    uint32_t result_conditionals = -1;                                  \
-    uint32_t result_mrs = -1;                                           \
-    dummy = CALL_GENERATED_CODE(isolate, f, nzcv, &result_conditionals, \
-                                &result_mrs, 0, 0);                     \
-    CHECK_EQ(nzcv, result_conditionals);                                \
-    CHECK_EQ(nzcv, result_mrs);                                         \
-  } while (0);
-
-  //            N  Z  C  V
-  CHECK_MSR_MRS(0, 0, 0, 0);
-  CHECK_MSR_MRS(0, 0, 0, 1);
-  CHECK_MSR_MRS(0, 0, 1, 0);
-  CHECK_MSR_MRS(0, 0, 1, 1);
-  CHECK_MSR_MRS(0, 1, 0, 0);
-  CHECK_MSR_MRS(0, 1, 0, 1);
-  CHECK_MSR_MRS(0, 1, 1, 0);
-  CHECK_MSR_MRS(0, 1, 1, 1);
-  CHECK_MSR_MRS(1, 0, 0, 0);
-  CHECK_MSR_MRS(1, 0, 0, 1);
-  CHECK_MSR_MRS(1, 0, 1, 0);
-  CHECK_MSR_MRS(1, 0, 1, 1);
-  CHECK_MSR_MRS(1, 1, 0, 0);
-  CHECK_MSR_MRS(1, 1, 0, 1);
-  CHECK_MSR_MRS(1, 1, 1, 0);
-  CHECK_MSR_MRS(1, 1, 1, 1);
-
-#undef CHECK_MSR_MRS
-}
 
 TEST(ARMv8_float32_vrintX) {
   // Test the vrintX floating point instructions.

@@ -34,13 +34,12 @@ struct TickSample {
   TickSample()
       : state(OTHER),
         pc(NULL),
-        external_callback_entry(NULL),
+        external_callback(NULL),
         frames_count(0),
         has_external_callback(false),
-        update_stats(true),
         top_frame_type(StackFrame::NONE) {}
   void Init(Isolate* isolate, const v8::RegisterState& state,
-            RecordCEntryFrame record_c_entry_frame, bool update_stats);
+            RecordCEntryFrame record_c_entry_frame);
   static void GetStackSample(Isolate* isolate, const v8::RegisterState& state,
                              RecordCEntryFrame record_c_entry_frame,
                              void** frames, size_t frames_limit,
@@ -49,7 +48,7 @@ struct TickSample {
   Address pc;      // Instruction pointer.
   union {
     Address tos;   // Top stack value (*sp).
-    Address external_callback_entry;
+    Address external_callback;
   };
   static const unsigned kMaxFramesCountLog2 = 8;
   static const unsigned kMaxFramesCount = (1 << kMaxFramesCountLog2) - 1;
@@ -57,8 +56,7 @@ struct TickSample {
   base::TimeTicks timestamp;
   unsigned frames_count : kMaxFramesCountLog2;  // Number of captured frames.
   bool has_external_callback : 1;
-  bool update_stats : 1;  // Whether the sample should update aggregated stats.
-  StackFrame::Type top_frame_type : 5;
+  StackFrame::Type top_frame_type : 4;
 };
 
 class Sampler {
@@ -100,12 +98,12 @@ class Sampler {
   }
 
   // Used in tests to make sure that stack sampling is performed.
-  unsigned js_sample_count() const { return js_sample_count_; }
-  unsigned external_sample_count() const { return external_sample_count_; }
+  unsigned js_and_external_sample_count() const {
+    return js_and_external_sample_count_;
+  }
   void StartCountingSamples() {
-    js_sample_count_ = 0;
-    external_sample_count_ = 0;
-    is_counting_samples_ = true;
+      is_counting_samples_ = true;
+      js_and_external_sample_count_ = 0;
   }
 
   class PlatformData;
@@ -125,10 +123,9 @@ class Sampler {
   base::Atomic32 has_processing_thread_;
   base::Atomic32 active_;
   PlatformData* data_;  // Platform specific data.
-  // Counts stack samples taken in various VM states.
   bool is_counting_samples_;
-  unsigned js_sample_count_;
-  unsigned external_sample_count_;
+  // Counts stack samples taken in JS VM state.
+  unsigned js_and_external_sample_count_;
   DISALLOW_IMPLICIT_CONSTRUCTORS(Sampler);
 };
 

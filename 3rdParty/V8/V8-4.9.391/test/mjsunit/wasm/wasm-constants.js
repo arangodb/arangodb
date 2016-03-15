@@ -15,41 +15,6 @@ function bytes() {
   return buffer;
 }
 
-// Header declaration constants
-var kWasmH0 = 0;
-var kWasmH1 = 0x61;
-var kWasmH2 = 0x73;
-var kWasmH3 = 0x6d;
-
-var kWasmV0 = 10;
-var kWasmV1 = 0;
-var kWasmV2 = 0;
-var kWasmV3 = 0;
-
-var kHeaderSize = 8;
-var kPageSize = 65536;
-
-function bytesWithHeader() {
-  var buffer = new ArrayBuffer(kHeaderSize + arguments.length);
-  var view = new Uint8Array(buffer);
-  view[0] = kWasmH0;
-  view[1] = kWasmH1;
-  view[2] = kWasmH2;
-  view[3] = kWasmH3;
-  view[4] = kWasmV0;
-  view[5] = kWasmV1;
-  view[6] = kWasmV2;
-  view[7] = kWasmV3;
-  for (var i = 0; i < arguments.length; i++) {
-    var val = arguments[i];
-    if ((typeof val) == "string") val = val.charCodeAt(0);
-    view[kHeaderSize + i] = val | 0;
-  }
-  return buffer;
-}
-
-var kDeclNoLocals = 0;
-
 // Section declaration constants
 var kDeclMemory = 0x00;
 var kDeclSignatures = 0x01;
@@ -58,17 +23,6 @@ var kDeclGlobals = 0x03;
 var kDeclDataSegments = 0x04;
 var kDeclFunctionTable = 0x05;
 var kDeclEnd = 0x06;
-var kDeclStartFunction = 0x07;
-var kDeclImportTable = 0x08;
-var kDeclExportTable = 0x09;
-var kDeclFunctionSignatures = 0x0a;
-var kDeclFunctionBodies = 0x0b;
-var kDeclNames = 0x0c;
-
-var section_names = [
-  "memory", "signatures", "functions", "globals", "data_segments",
-  "function_table", "end", "start_function", "import_table", "export_table",
-  "function_signatures", "function_bodies", "names"];
 
 // Function declaration flags
 var kDeclFunctionName   = 0x01;
@@ -107,7 +61,6 @@ var kExprLoadGlobal = 0x10;
 var kExprStoreGlobal = 0x11;
 var kExprCallFunction = 0x12;
 var kExprCallIndirect = 0x13;
-var kExprCallImport = 0x1F;
 
 var kExprI32LoadMem8S = 0x20;
 var kExprI32LoadMem8U = 0x21;
@@ -163,7 +116,7 @@ var kExprI32GeU = 0x56;
 var kExprI32Clz = 0x57;
 var kExprI32Ctz = 0x58;
 var kExprI32Popcnt = 0x59;
-var kExprI32Eqz = 0x5a;
+var kExprBoolNot = 0x5a;
 var kExprI64Add = 0x5b;
 var kExprI64Sub = 0x5c;
 var kExprI64Mul = 0x5d;
@@ -255,10 +208,6 @@ var kExprF64ConvertF32 = 0xb2;
 var kExprF64ReinterpretI64 = 0xb3;
 var kExprI32ReinterpretF32 = 0xb4;
 var kExprI64ReinterpretF64 = 0xb5;
-var kExprI32Ror = 0xb6;
-var kExprI32Rol = 0xb7;
-var kExprI64Ror = 0xb8;
-var kExprI64Rol = 0xb9;
 
 var kTrapUnreachable          = 0;
 var kTrapMemOutOfBounds       = 1;

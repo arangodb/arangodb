@@ -82,7 +82,7 @@ static void TestHashMap(Handle<HashMap> table) {
     CHECK_EQ(table->NumberOfElements(), i + 1);
     CHECK_NE(table->FindEntry(key), HashMap::kNotFound);
     CHECK_EQ(table->Lookup(key), *value);
-    CHECK(JSReceiver::GetIdentityHash(isolate, key)->IsSmi());
+    CHECK(key->GetIdentityHash()->IsSmi());
   }
 
   // Keys never added to the map which already have an identity hash
@@ -92,7 +92,7 @@ static void TestHashMap(Handle<HashMap> table) {
     CHECK(JSReceiver::GetOrCreateIdentityHash(key)->IsSmi());
     CHECK_EQ(table->FindEntry(key), HashMap::kNotFound);
     CHECK_EQ(table->Lookup(key), CcTest::heap()->the_hole_value());
-    CHECK(JSReceiver::GetIdentityHash(isolate, key)->IsSmi());
+    CHECK(key->GetIdentityHash()->IsSmi());
   }
 
   // Keys that don't have an identity hash should not be found and also
@@ -100,8 +100,8 @@ static void TestHashMap(Handle<HashMap> table) {
   for (int i = 0; i < 100; i++) {
     Handle<JSReceiver> key = factory->NewJSArray(7);
     CHECK_EQ(table->Lookup(key), CcTest::heap()->the_hole_value());
-    Handle<Object> identity_hash = JSReceiver::GetIdentityHash(isolate, key);
-    CHECK_EQ(CcTest::heap()->undefined_value(), *identity_hash);
+    Object* identity_hash = key->GetIdentityHash();
+    CHECK_EQ(identity_hash, CcTest::heap()->undefined_value());
   }
 }
 
@@ -227,19 +227,5 @@ TEST(ObjectHashTableCausesGC) {
   TestHashMapCausesGC(ObjectHashTable::New(isolate, 1));
 }
 #endif
-
-TEST(SetRequiresCopyOnCapacityChange) {
-  LocalContext context;
-  v8::HandleScope scope(context->GetIsolate());
-  Isolate* isolate = CcTest::i_isolate();
-  Handle<NameDictionary> dict = NameDictionary::New(isolate, 0, TENURED);
-  dict->SetRequiresCopyOnCapacityChange();
-  Handle<Name> key = isolate->factory()->InternalizeString(
-      v8::Utils::OpenHandle(*v8_str("key")));
-  Handle<Object> value = handle(Smi::FromInt(0), isolate);
-  Handle<NameDictionary> new_dict =
-      NameDictionary::Add(dict, key, value, PropertyDetails::Empty());
-  CHECK_NE(*dict, *new_dict);
-}
 
 }  // namespace

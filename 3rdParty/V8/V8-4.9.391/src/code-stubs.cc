@@ -7,7 +7,6 @@
 #include <sstream>
 
 #include "src/bootstrapper.h"
-#include "src/code-factory.h"
 #include "src/compiler/code-stub-assembler.h"
 #include "src/factory.h"
 #include "src/gdb-jit.h"
@@ -83,8 +82,7 @@ void CodeStub::RecordCodeGeneration(Handle<Code> code) {
   std::ostringstream os;
   os << *this;
   PROFILE(isolate(),
-          CodeCreateEvent(Logger::STUB_TAG, AbstractCode::cast(*code),
-                          os.str().c_str()));
+          CodeCreateEvent(Logger::STUB_TAG, *code, os.str().c_str()));
   Counters* counters = isolate()->counters();
   counters->total_stubs_code_size()->Increment(code->instruction_size());
 #ifdef DEBUG
@@ -95,12 +93,6 @@ void CodeStub::RecordCodeGeneration(Handle<Code> code) {
 
 Code::Kind CodeStub::GetCodeKind() const {
   return Code::STUB;
-}
-
-
-Code::Flags CodeStub::GetCodeFlags() const {
-  return Code::ComputeFlags(GetCodeKind(), GetICState(), GetExtraICState(),
-                            GetStubType());
 }
 
 
@@ -278,7 +270,7 @@ MaybeHandle<Code> CodeStub::GetCode(Isolate* isolate, uint32_t key) {
 void BinaryOpICStub::GenerateAheadOfTime(Isolate* isolate) {
   // Generate the uninitialized versions of the stub.
   for (int op = Token::BIT_OR; op <= Token::MOD; ++op) {
-    BinaryOpICStub stub(isolate, static_cast<Token::Value>(op));
+    BinaryOpICStub stub(isolate, static_cast<Token::Value>(op), Strength::WEAK);
     stub.GetCode();
   }
 
@@ -453,41 +445,40 @@ void CompareICStub::Generate(MacroAssembler* masm) {
 }
 
 
+void CompareNilICStub::UpdateStatus(Handle<Object> object) {
+  State state = this->state();
+  DCHECK(!state.Contains(GENERIC));
+  State old_state = state;
+  if (object->IsNull()) {
+    state.Add(NULL_TYPE);
+  } else if (object->IsUndefined()) {
+    state.Add(UNDEFINED);
+  } else if (object->IsUndetectableObject() ||
+             object->IsOddball() ||
+             !object->IsHeapObject()) {
+    state.RemoveAll();
+    state.Add(GENERIC);
+  } else if (IsMonomorphic()) {
+    state.RemoveAll();
+    state.Add(GENERIC);
+  } else {
+    state.Add(MONOMORPHIC_MAP);
+  }
+  TraceTransition(old_state, state);
+  set_sub_minor_key(TypesBits::update(sub_minor_key(), state.ToIntegral()));
+}
+
+
 Handle<Code> TurboFanCodeStub::GenerateCode() {
   const char* name = CodeStub::MajorName(MajorKey());
   Zone zone;
   CallInterfaceDescriptor descriptor(GetCallInterfaceDescriptor());
   compiler::CodeStubAssembler assembler(isolate(), &zone, descriptor,
-                                        GetCodeFlags(), name);
+                                        GetCodeKind(), name);
   GenerateAssembly(&assembler);
   return assembler.GenerateCode();
 }
 
-void AllocateHeapNumberStub::GenerateAssembly(
-    compiler::CodeStubAssembler* assembler) const {
-  compiler::Node* result = assembler->Allocate(
-      HeapNumber::kSize, compiler::CodeStubAssembler::kNone);
-  compiler::Node* map_offset =
-      assembler->IntPtrConstant(HeapObject::kMapOffset - kHeapObjectTag);
-  compiler::Node* map = assembler->IntPtrAdd(result, map_offset);
-  assembler->StoreNoWriteBarrier(
-      MachineRepresentation::kTagged, map,
-      assembler->HeapConstant(isolate()->factory()->heap_number_map()));
-  assembler->Return(result);
-}
-
-void AllocateMutableHeapNumberStub::GenerateAssembly(
-    compiler::CodeStubAssembler* assembler) const {
-  compiler::Node* result = assembler->Allocate(
-      HeapNumber::kSize, compiler::CodeStubAssembler::kNone);
-  compiler::Node* map_offset =
-      assembler->IntPtrConstant(HeapObject::kMapOffset - kHeapObjectTag);
-  compiler::Node* map = assembler->IntPtrAdd(result, map_offset);
-  assembler->StoreNoWriteBarrier(
-      MachineRepresentation::kTagged, map,
-      assembler->HeapConstant(isolate()->factory()->mutable_heap_number_map()));
-  assembler->Return(result);
-}
 
 void StringLengthStub::GenerateAssembly(
     compiler::CodeStubAssembler* assembler) const {
@@ -499,1203 +490,6 @@ void StringLengthStub::GenerateAssembly(
   assembler->Return(result);
 }
 
-namespace {
-
-enum RelationalComparisonMode {
-  kLessThan,
-  kLessThanOrEqual,
-  kGreaterThan,
-  kGreaterThanOrEqual
-};
-
-void GenerateAbstractRelationalComparison(
-    compiler::CodeStubAssembler* assembler, RelationalComparisonMode mode) {
-  typedef compiler::CodeStubAssembler::Label Label;
-  typedef compiler::Node Node;
-  typedef compiler::CodeStubAssembler::Variable Variable;
-
-  Node* context = assembler->Parameter(2);
-
-  Label return_true(assembler), return_false(assembler);
-
-  // Shared entry for floating point comparison.
-  Label do_fcmp(assembler);
-  Variable var_fcmp_lhs(assembler, MachineRepresentation::kFloat64),
-      var_fcmp_rhs(assembler, MachineRepresentation::kFloat64);
-
-  // We might need to loop several times due to ToPrimitive and/or ToNumber
-  // conversions.
-  Variable var_lhs(assembler, MachineRepresentation::kTagged),
-      var_rhs(assembler, MachineRepresentation::kTagged);
-  Variable* loop_vars[2] = {&var_lhs, &var_rhs};
-  Label loop(assembler, 2, loop_vars);
-  var_lhs.Bind(assembler->Parameter(0));
-  var_rhs.Bind(assembler->Parameter(1));
-  assembler->Goto(&loop);
-  assembler->Bind(&loop);
-  {
-    // Load the current {lhs} and {rhs} values.
-    Node* lhs = var_lhs.value();
-    Node* rhs = var_rhs.value();
-
-    // Check if the {lhs} is a Smi or a HeapObject.
-    Label if_lhsissmi(assembler), if_lhsisnotsmi(assembler);
-    assembler->Branch(assembler->WordIsSmi(lhs), &if_lhsissmi, &if_lhsisnotsmi);
-
-    assembler->Bind(&if_lhsissmi);
-    {
-      // Check if {rhs} is a Smi or a HeapObject.
-      Label if_rhsissmi(assembler), if_rhsisnotsmi(assembler);
-      assembler->Branch(assembler->WordIsSmi(rhs), &if_rhsissmi,
-                        &if_rhsisnotsmi);
-
-      assembler->Bind(&if_rhsissmi);
-      {
-        // Both {lhs} and {rhs} are Smi, so just perform a fast Smi comparison.
-        switch (mode) {
-          case kLessThan:
-            assembler->BranchIfSmiLessThan(lhs, rhs, &return_true,
-                                           &return_false);
-            break;
-          case kLessThanOrEqual:
-            assembler->BranchIfSmiLessThanOrEqual(lhs, rhs, &return_true,
-                                                  &return_false);
-            break;
-          case kGreaterThan:
-            assembler->BranchIfSmiLessThan(rhs, lhs, &return_true,
-                                           &return_false);
-            break;
-          case kGreaterThanOrEqual:
-            assembler->BranchIfSmiLessThanOrEqual(rhs, lhs, &return_true,
-                                                  &return_false);
-            break;
-        }
-      }
-
-      assembler->Bind(&if_rhsisnotsmi);
-      {
-        // Load the map of {rhs}.
-        Node* rhs_map = assembler->LoadObjectField(rhs, HeapObject::kMapOffset);
-
-        // Check if the {rhs} is a HeapNumber.
-        Node* number_map = assembler->HeapNumberMapConstant();
-        Label if_rhsisnumber(assembler),
-            if_rhsisnotnumber(assembler, Label::kDeferred);
-        assembler->Branch(assembler->WordEqual(rhs_map, number_map),
-                          &if_rhsisnumber, &if_rhsisnotnumber);
-
-        assembler->Bind(&if_rhsisnumber);
-        {
-          // Convert the {lhs} and {rhs} to floating point values, and
-          // perform a floating point comparison.
-          var_fcmp_lhs.Bind(assembler->SmiToFloat64(lhs));
-          var_fcmp_rhs.Bind(assembler->LoadHeapNumberValue(rhs));
-          assembler->Goto(&do_fcmp);
-        }
-
-        assembler->Bind(&if_rhsisnotnumber);
-        {
-          // Convert the {rhs} to a Number; we don't need to perform the
-          // dedicated ToPrimitive(rhs, hint Number) operation, as the
-          // ToNumber(rhs) will by itself already invoke ToPrimitive with
-          // a Number hint.
-          Callable callable = CodeFactory::ToNumber(assembler->isolate());
-          var_rhs.Bind(assembler->CallStub(callable, context, rhs));
-          assembler->Goto(&loop);
-        }
-      }
-    }
-
-    assembler->Bind(&if_lhsisnotsmi);
-    {
-      // Load the HeapNumber map for later comparisons.
-      Node* number_map = assembler->HeapNumberMapConstant();
-
-      // Load the map of {lhs}.
-      Node* lhs_map = assembler->LoadObjectField(lhs, HeapObject::kMapOffset);
-
-      // Check if {rhs} is a Smi or a HeapObject.
-      Label if_rhsissmi(assembler), if_rhsisnotsmi(assembler);
-      assembler->Branch(assembler->WordIsSmi(rhs), &if_rhsissmi,
-                        &if_rhsisnotsmi);
-
-      assembler->Bind(&if_rhsissmi);
-      {
-        // Check if the {lhs} is a HeapNumber.
-        Label if_lhsisnumber(assembler),
-            if_lhsisnotnumber(assembler, Label::kDeferred);
-        assembler->Branch(assembler->WordEqual(lhs_map, number_map),
-                          &if_lhsisnumber, &if_lhsisnotnumber);
-
-        assembler->Bind(&if_lhsisnumber);
-        {
-          // Convert the {lhs} and {rhs} to floating point values, and
-          // perform a floating point comparison.
-          var_fcmp_lhs.Bind(assembler->LoadHeapNumberValue(lhs));
-          var_fcmp_rhs.Bind(assembler->SmiToFloat64(rhs));
-          assembler->Goto(&do_fcmp);
-        }
-
-        assembler->Bind(&if_lhsisnotnumber);
-        {
-          // Convert the {lhs} to a Number; we don't need to perform the
-          // dedicated ToPrimitive(lhs, hint Number) operation, as the
-          // ToNumber(lhs) will by itself already invoke ToPrimitive with
-          // a Number hint.
-          Callable callable = CodeFactory::ToNumber(assembler->isolate());
-          var_lhs.Bind(assembler->CallStub(callable, context, lhs));
-          assembler->Goto(&loop);
-        }
-      }
-
-      assembler->Bind(&if_rhsisnotsmi);
-      {
-        // Load the map of {rhs}.
-        Node* rhs_map = assembler->LoadObjectField(rhs, HeapObject::kMapOffset);
-
-        // Check if {lhs} is a HeapNumber.
-        Label if_lhsisnumber(assembler), if_lhsisnotnumber(assembler);
-        assembler->Branch(assembler->WordEqual(lhs_map, number_map),
-                          &if_lhsisnumber, &if_lhsisnotnumber);
-
-        assembler->Bind(&if_lhsisnumber);
-        {
-          // Check if {rhs} is also a HeapNumber.
-          Label if_rhsisnumber(assembler),
-              if_rhsisnotnumber(assembler, Label::kDeferred);
-          assembler->Branch(assembler->WordEqual(lhs_map, rhs_map),
-                            &if_rhsisnumber, &if_rhsisnotnumber);
-
-          assembler->Bind(&if_rhsisnumber);
-          {
-            // Convert the {lhs} and {rhs} to floating point values, and
-            // perform a floating point comparison.
-            var_fcmp_lhs.Bind(assembler->LoadHeapNumberValue(lhs));
-            var_fcmp_rhs.Bind(assembler->LoadHeapNumberValue(rhs));
-            assembler->Goto(&do_fcmp);
-          }
-
-          assembler->Bind(&if_rhsisnotnumber);
-          {
-            // Convert the {rhs} to a Number; we don't need to perform
-            // dedicated ToPrimitive(rhs, hint Number) operation, as the
-            // ToNumber(rhs) will by itself already invoke ToPrimitive with
-            // a Number hint.
-            Callable callable = CodeFactory::ToNumber(assembler->isolate());
-            var_rhs.Bind(assembler->CallStub(callable, context, rhs));
-            assembler->Goto(&loop);
-          }
-        }
-
-        assembler->Bind(&if_lhsisnotnumber);
-        {
-          // Load the instance type of {lhs}.
-          Node* lhs_instance_type = assembler->LoadMapInstanceType(lhs_map);
-
-          // Check if {lhs} is a String.
-          Label if_lhsisstring(assembler),
-              if_lhsisnotstring(assembler, Label::kDeferred);
-          assembler->Branch(assembler->Int32LessThan(
-                                lhs_instance_type,
-                                assembler->Int32Constant(FIRST_NONSTRING_TYPE)),
-                            &if_lhsisstring, &if_lhsisnotstring);
-
-          assembler->Bind(&if_lhsisstring);
-          {
-            // Load the instance type of {rhs}.
-            Node* rhs_instance_type = assembler->LoadMapInstanceType(rhs_map);
-
-            // Check if {rhs} is also a String.
-            Label if_rhsisstring(assembler),
-                if_rhsisnotstring(assembler, Label::kDeferred);
-            assembler->Branch(assembler->Int32LessThan(
-                                  rhs_instance_type, assembler->Int32Constant(
-                                                         FIRST_NONSTRING_TYPE)),
-                              &if_rhsisstring, &if_rhsisnotstring);
-
-            assembler->Bind(&if_rhsisstring);
-            {
-              // Both {lhs} and {rhs} are strings.
-              switch (mode) {
-                case kLessThan:
-                  assembler->TailCallStub(
-                      CodeFactory::StringLessThan(assembler->isolate()),
-                      context, lhs, rhs);
-                  break;
-                case kLessThanOrEqual:
-                  assembler->TailCallStub(
-                      CodeFactory::StringLessThanOrEqual(assembler->isolate()),
-                      context, lhs, rhs);
-                  break;
-                case kGreaterThan:
-                  assembler->TailCallStub(
-                      CodeFactory::StringGreaterThan(assembler->isolate()),
-                      context, lhs, rhs);
-                  break;
-                case kGreaterThanOrEqual:
-                  assembler->TailCallStub(CodeFactory::StringGreaterThanOrEqual(
-                                              assembler->isolate()),
-                                          context, lhs, rhs);
-                  break;
-              }
-            }
-
-            assembler->Bind(&if_rhsisnotstring);
-            {
-              // The {lhs} is a String, while {rhs} is neither a Number nor a
-              // String, so we need to call ToPrimitive(rhs, hint Number) if
-              // {rhs} is a receiver or ToNumber(lhs) and ToNumber(rhs) in the
-              // other cases.
-              STATIC_ASSERT(LAST_JS_RECEIVER_TYPE == LAST_TYPE);
-              Label if_rhsisreceiver(assembler, Label::kDeferred),
-                  if_rhsisnotreceiver(assembler, Label::kDeferred);
-              assembler->Branch(
-                  assembler->Int32LessThanOrEqual(
-                      assembler->Int32Constant(FIRST_JS_RECEIVER_TYPE),
-                      rhs_instance_type),
-                  &if_rhsisreceiver, &if_rhsisnotreceiver);
-
-              assembler->Bind(&if_rhsisreceiver);
-              {
-                // Convert {rhs} to a primitive first passing Number hint.
-                // TODO(bmeurer): Hook up ToPrimitiveStub here, once it's there.
-                var_rhs.Bind(assembler->CallRuntime(
-                    Runtime::kToPrimitive_Number, context, rhs));
-                assembler->Goto(&loop);
-              }
-
-              assembler->Bind(&if_rhsisnotreceiver);
-              {
-                // Convert both {lhs} and {rhs} to Number.
-                Callable callable = CodeFactory::ToNumber(assembler->isolate());
-                var_lhs.Bind(assembler->CallStub(callable, context, lhs));
-                var_rhs.Bind(assembler->CallStub(callable, context, rhs));
-                assembler->Goto(&loop);
-              }
-            }
-          }
-
-          assembler->Bind(&if_lhsisnotstring);
-          {
-            // The {lhs} is neither a Number nor a String, so we need to call
-            // ToPrimitive(lhs, hint Number) if {lhs} is a receiver or
-            // ToNumber(lhs) and ToNumber(rhs) in the other cases.
-            STATIC_ASSERT(LAST_JS_RECEIVER_TYPE == LAST_TYPE);
-            Label if_lhsisreceiver(assembler, Label::kDeferred),
-                if_lhsisnotreceiver(assembler, Label::kDeferred);
-            assembler->Branch(
-                assembler->Int32LessThanOrEqual(
-                    assembler->Int32Constant(FIRST_JS_RECEIVER_TYPE),
-                    lhs_instance_type),
-                &if_lhsisreceiver, &if_lhsisnotreceiver);
-
-            assembler->Bind(&if_lhsisreceiver);
-            {
-              // Convert {lhs} to a primitive first passing Number hint.
-              // TODO(bmeurer): Hook up ToPrimitiveStub here, once it's there.
-              var_lhs.Bind(assembler->CallRuntime(Runtime::kToPrimitive_Number,
-                                                  context, lhs));
-              assembler->Goto(&loop);
-            }
-
-            assembler->Bind(&if_lhsisnotreceiver);
-            {
-              // Convert both {lhs} and {rhs} to Number.
-              Callable callable = CodeFactory::ToNumber(assembler->isolate());
-              var_lhs.Bind(assembler->CallStub(callable, context, lhs));
-              var_rhs.Bind(assembler->CallStub(callable, context, rhs));
-              assembler->Goto(&loop);
-            }
-          }
-        }
-      }
-    }
-  }
-
-  assembler->Bind(&do_fcmp);
-  {
-    // Load the {lhs} and {rhs} floating point values.
-    Node* lhs = var_fcmp_lhs.value();
-    Node* rhs = var_fcmp_rhs.value();
-
-    // Perform a fast floating point comparison.
-    switch (mode) {
-      case kLessThan:
-        assembler->BranchIfFloat64LessThan(lhs, rhs, &return_true,
-                                           &return_false);
-        break;
-      case kLessThanOrEqual:
-        assembler->BranchIfFloat64LessThanOrEqual(lhs, rhs, &return_true,
-                                                  &return_false);
-        break;
-      case kGreaterThan:
-        assembler->BranchIfFloat64GreaterThan(lhs, rhs, &return_true,
-                                              &return_false);
-        break;
-      case kGreaterThanOrEqual:
-        assembler->BranchIfFloat64GreaterThanOrEqual(lhs, rhs, &return_true,
-                                                     &return_false);
-        break;
-    }
-  }
-
-  assembler->Bind(&return_true);
-  assembler->Return(assembler->BooleanConstant(true));
-
-  assembler->Bind(&return_false);
-  assembler->Return(assembler->BooleanConstant(false));
-}
-
-enum ResultMode { kDontNegateResult, kNegateResult };
-
-void GenerateStrictEqual(compiler::CodeStubAssembler* assembler,
-                         ResultMode mode) {
-  // Here's pseudo-code for the algorithm below in case of kDontNegateResult
-  // mode; for kNegateResult mode we properly negate the result.
-  //
-  // if (lhs == rhs) {
-  //   if (lhs->IsHeapNumber()) return HeapNumber::cast(lhs)->value() != NaN;
-  //   return true;
-  // }
-  // if (!lhs->IsSmi()) {
-  //   if (lhs->IsHeapNumber()) {
-  //     if (rhs->IsSmi()) {
-  //       return Smi::cast(rhs)->value() == HeapNumber::cast(lhs)->value();
-  //     } else if (rhs->IsHeapNumber()) {
-  //       return HeapNumber::cast(rhs)->value() ==
-  //       HeapNumber::cast(lhs)->value();
-  //     } else {
-  //       return false;
-  //     }
-  //   } else {
-  //     if (rhs->IsSmi()) {
-  //       return false;
-  //     } else {
-  //       if (lhs->IsString()) {
-  //         if (rhs->IsString()) {
-  //           return %StringEqual(lhs, rhs);
-  //         } else {
-  //           return false;
-  //         }
-  //       } else if (lhs->IsSimd128()) {
-  //         if (rhs->IsSimd128()) {
-  //           return %StrictEqual(lhs, rhs);
-  //         }
-  //       } else {
-  //         return false;
-  //       }
-  //     }
-  //   }
-  // } else {
-  //   if (rhs->IsSmi()) {
-  //     return false;
-  //   } else {
-  //     if (rhs->IsHeapNumber()) {
-  //       return Smi::cast(lhs)->value() == HeapNumber::cast(rhs)->value();
-  //     } else {
-  //       return false;
-  //     }
-  //   }
-  // }
-
-  typedef compiler::CodeStubAssembler::Label Label;
-  typedef compiler::Node Node;
-
-  Node* lhs = assembler->Parameter(0);
-  Node* rhs = assembler->Parameter(1);
-  Node* context = assembler->Parameter(2);
-
-  Label if_equal(assembler), if_notequal(assembler);
-
-  // Check if {lhs} and {rhs} refer to the same object.
-  Label if_same(assembler), if_notsame(assembler);
-  assembler->Branch(assembler->WordEqual(lhs, rhs), &if_same, &if_notsame);
-
-  assembler->Bind(&if_same);
-  {
-    // The {lhs} and {rhs} reference the exact same value, yet we need special
-    // treatment for HeapNumber, as NaN is not equal to NaN.
-    // TODO(bmeurer): This seems to violate the SIMD.js specification, but it
-    // seems to be what is tested in the current SIMD.js testsuite.
-
-    // Check if {lhs} (and therefore {rhs}) is a Smi or a HeapObject.
-    Label if_lhsissmi(assembler), if_lhsisnotsmi(assembler);
-    assembler->Branch(assembler->WordIsSmi(lhs), &if_lhsissmi, &if_lhsisnotsmi);
-
-    assembler->Bind(&if_lhsisnotsmi);
-    {
-      // Load the map of {lhs}.
-      Node* lhs_map = assembler->LoadObjectField(lhs, HeapObject::kMapOffset);
-
-      // Check if {lhs} (and therefore {rhs}) is a HeapNumber.
-      Node* number_map = assembler->HeapNumberMapConstant();
-      Label if_lhsisnumber(assembler), if_lhsisnotnumber(assembler);
-      assembler->Branch(assembler->WordEqual(lhs_map, number_map),
-                        &if_lhsisnumber, &if_lhsisnotnumber);
-
-      assembler->Bind(&if_lhsisnumber);
-      {
-        // Convert {lhs} (and therefore {rhs}) to floating point value.
-        Node* lhs_value = assembler->LoadHeapNumberValue(lhs);
-
-        // Check if the HeapNumber value is a NaN.
-        assembler->BranchIfFloat64IsNaN(lhs_value, &if_notequal, &if_equal);
-      }
-
-      assembler->Bind(&if_lhsisnotnumber);
-      assembler->Goto(&if_equal);
-    }
-
-    assembler->Bind(&if_lhsissmi);
-    assembler->Goto(&if_equal);
-  }
-
-  assembler->Bind(&if_notsame);
-  {
-    // The {lhs} and {rhs} reference different objects, yet for Smi, HeapNumber,
-    // String and Simd128Value they can still be considered equal.
-    Node* number_map = assembler->HeapNumberMapConstant();
-
-    // Check if {lhs} is a Smi or a HeapObject.
-    Label if_lhsissmi(assembler), if_lhsisnotsmi(assembler);
-    assembler->Branch(assembler->WordIsSmi(lhs), &if_lhsissmi, &if_lhsisnotsmi);
-
-    assembler->Bind(&if_lhsisnotsmi);
-    {
-      // Load the map of {lhs}.
-      Node* lhs_map = assembler->LoadObjectField(lhs, HeapObject::kMapOffset);
-
-      // Check if {lhs} is a HeapNumber.
-      Label if_lhsisnumber(assembler), if_lhsisnotnumber(assembler);
-      assembler->Branch(assembler->WordEqual(lhs_map, number_map),
-                        &if_lhsisnumber, &if_lhsisnotnumber);
-
-      assembler->Bind(&if_lhsisnumber);
-      {
-        // Check if {rhs} is a Smi or a HeapObject.
-        Label if_rhsissmi(assembler), if_rhsisnotsmi(assembler);
-        assembler->Branch(assembler->WordIsSmi(rhs), &if_rhsissmi,
-                          &if_rhsisnotsmi);
-
-        assembler->Bind(&if_rhsissmi);
-        {
-          // Convert {lhs} and {rhs} to floating point values.
-          Node* lhs_value = assembler->LoadHeapNumberValue(lhs);
-          Node* rhs_value = assembler->SmiToFloat64(rhs);
-
-          // Perform a floating point comparison of {lhs} and {rhs}.
-          assembler->BranchIfFloat64Equal(lhs_value, rhs_value, &if_equal,
-                                          &if_notequal);
-        }
-
-        assembler->Bind(&if_rhsisnotsmi);
-        {
-          // Load the map of {rhs}.
-          Node* rhs_map =
-              assembler->LoadObjectField(rhs, HeapObject::kMapOffset);
-
-          // Check if {rhs} is also a HeapNumber.
-          Label if_rhsisnumber(assembler), if_rhsisnotnumber(assembler);
-          assembler->Branch(assembler->WordEqual(rhs_map, number_map),
-                            &if_rhsisnumber, &if_rhsisnotnumber);
-
-          assembler->Bind(&if_rhsisnumber);
-          {
-            // Convert {lhs} and {rhs} to floating point values.
-            Node* lhs_value = assembler->LoadHeapNumberValue(lhs);
-            Node* rhs_value = assembler->LoadHeapNumberValue(rhs);
-
-            // Perform a floating point comparison of {lhs} and {rhs}.
-            assembler->BranchIfFloat64Equal(lhs_value, rhs_value, &if_equal,
-                                            &if_notequal);
-          }
-
-          assembler->Bind(&if_rhsisnotnumber);
-          assembler->Goto(&if_notequal);
-        }
-      }
-
-      assembler->Bind(&if_lhsisnotnumber);
-      {
-        // Check if {rhs} is a Smi or a HeapObject.
-        Label if_rhsissmi(assembler), if_rhsisnotsmi(assembler);
-        assembler->Branch(assembler->WordIsSmi(rhs), &if_rhsissmi,
-                          &if_rhsisnotsmi);
-
-        assembler->Bind(&if_rhsissmi);
-        assembler->Goto(&if_notequal);
-
-        assembler->Bind(&if_rhsisnotsmi);
-        {
-          // Load the instance type of {lhs}.
-          Node* lhs_instance_type = assembler->LoadMapInstanceType(lhs_map);
-
-          // Check if {lhs} is a String.
-          Label if_lhsisstring(assembler), if_lhsisnotstring(assembler);
-          assembler->Branch(assembler->Int32LessThan(
-                                lhs_instance_type,
-                                assembler->Int32Constant(FIRST_NONSTRING_TYPE)),
-                            &if_lhsisstring, &if_lhsisnotstring);
-
-          assembler->Bind(&if_lhsisstring);
-          {
-            // Load the instance type of {rhs}.
-            Node* rhs_instance_type = assembler->LoadInstanceType(rhs);
-
-            // Check if {rhs} is also a String.
-            Label if_rhsisstring(assembler), if_rhsisnotstring(assembler);
-            assembler->Branch(assembler->Int32LessThan(
-                                  rhs_instance_type, assembler->Int32Constant(
-                                                         FIRST_NONSTRING_TYPE)),
-                              &if_rhsisstring, &if_rhsisnotstring);
-
-            assembler->Bind(&if_rhsisstring);
-            {
-              Callable callable =
-                  (mode == kDontNegateResult)
-                      ? CodeFactory::StringEqual(assembler->isolate())
-                      : CodeFactory::StringNotEqual(assembler->isolate());
-              assembler->TailCallStub(callable, context, lhs, rhs);
-            }
-
-            assembler->Bind(&if_rhsisnotstring);
-            assembler->Goto(&if_notequal);
-          }
-
-          assembler->Bind(&if_lhsisnotstring);
-          {
-            // Check if {lhs} is a Simd128Value.
-            Label if_lhsissimd128value(assembler),
-                if_lhsisnotsimd128value(assembler);
-            assembler->Branch(assembler->Word32Equal(
-                                  lhs_instance_type,
-                                  assembler->Int32Constant(SIMD128_VALUE_TYPE)),
-                              &if_lhsissimd128value, &if_lhsisnotsimd128value);
-
-            assembler->Bind(&if_lhsissimd128value);
-            {
-              // TODO(bmeurer): Inline the Simd128Value equality check.
-              Runtime::FunctionId function_id = (mode == kDontNegateResult)
-                                                    ? Runtime::kStrictEqual
-                                                    : Runtime::kStrictNotEqual;
-              assembler->TailCallRuntime(function_id, context, lhs, rhs);
-            }
-
-            assembler->Bind(&if_lhsisnotsimd128value);
-            assembler->Goto(&if_notequal);
-          }
-        }
-      }
-    }
-
-    assembler->Bind(&if_lhsissmi);
-    {
-      // We already know that {lhs} and {rhs} are not reference equal, and {lhs}
-      // is a Smi; so {lhs} and {rhs} can only be strictly equal if {rhs} is a
-      // HeapNumber with an equal floating point value.
-
-      // Check if {rhs} is a Smi or a HeapObject.
-      Label if_rhsissmi(assembler), if_rhsisnotsmi(assembler);
-      assembler->Branch(assembler->WordIsSmi(rhs), &if_rhsissmi,
-                        &if_rhsisnotsmi);
-
-      assembler->Bind(&if_rhsissmi);
-      assembler->Goto(&if_notequal);
-
-      assembler->Bind(&if_rhsisnotsmi);
-      {
-        // Load the map of the {rhs}.
-        Node* rhs_map = assembler->LoadObjectField(rhs, HeapObject::kMapOffset);
-
-        // The {rhs} could be a HeapNumber with the same value as {lhs}.
-        Label if_rhsisnumber(assembler), if_rhsisnotnumber(assembler);
-        assembler->Branch(assembler->WordEqual(rhs_map, number_map),
-                          &if_rhsisnumber, &if_rhsisnotnumber);
-
-        assembler->Bind(&if_rhsisnumber);
-        {
-          // Convert {lhs} and {rhs} to floating point values.
-          Node* lhs_value = assembler->SmiToFloat64(lhs);
-          Node* rhs_value = assembler->LoadHeapNumberValue(rhs);
-
-          // Perform a floating point comparison of {lhs} and {rhs}.
-          assembler->BranchIfFloat64Equal(lhs_value, rhs_value, &if_equal,
-                                          &if_notequal);
-        }
-
-        assembler->Bind(&if_rhsisnotnumber);
-        assembler->Goto(&if_notequal);
-      }
-    }
-  }
-
-  assembler->Bind(&if_equal);
-  assembler->Return(assembler->BooleanConstant(mode == kDontNegateResult));
-
-  assembler->Bind(&if_notequal);
-  assembler->Return(assembler->BooleanConstant(mode == kNegateResult));
-}
-
-void GenerateStringRelationalComparison(compiler::CodeStubAssembler* assembler,
-                                        RelationalComparisonMode mode) {
-  typedef compiler::CodeStubAssembler::Label Label;
-  typedef compiler::Node Node;
-  typedef compiler::CodeStubAssembler::Variable Variable;
-
-  Node* lhs = assembler->Parameter(0);
-  Node* rhs = assembler->Parameter(1);
-  Node* context = assembler->Parameter(2);
-
-  Label if_less(assembler), if_equal(assembler), if_greater(assembler);
-
-  // Fast check to see if {lhs} and {rhs} refer to the same String object.
-  Label if_same(assembler), if_notsame(assembler);
-  assembler->Branch(assembler->WordEqual(lhs, rhs), &if_same, &if_notsame);
-
-  assembler->Bind(&if_same);
-  assembler->Goto(&if_equal);
-
-  assembler->Bind(&if_notsame);
-  {
-    // Load instance types of {lhs} and {rhs}.
-    Node* lhs_instance_type = assembler->LoadInstanceType(lhs);
-    Node* rhs_instance_type = assembler->LoadInstanceType(rhs);
-
-    // Combine the instance types into a single 16-bit value, so we can check
-    // both of them at once.
-    Node* both_instance_types = assembler->Word32Or(
-        lhs_instance_type,
-        assembler->Word32Shl(rhs_instance_type, assembler->Int32Constant(8)));
-
-    // Check that both {lhs} and {rhs} are flat one-byte strings.
-    int const kBothSeqOneByteStringMask =
-        kStringEncodingMask | kStringRepresentationMask |
-        ((kStringEncodingMask | kStringRepresentationMask) << 8);
-    int const kBothSeqOneByteStringTag =
-        kOneByteStringTag | kSeqStringTag |
-        ((kOneByteStringTag | kSeqStringTag) << 8);
-    Label if_bothonebyteseqstrings(assembler),
-        if_notbothonebyteseqstrings(assembler);
-    assembler->Branch(assembler->Word32Equal(
-                          assembler->Word32And(both_instance_types,
-                                               assembler->Int32Constant(
-                                                   kBothSeqOneByteStringMask)),
-                          assembler->Int32Constant(kBothSeqOneByteStringTag)),
-                      &if_bothonebyteseqstrings, &if_notbothonebyteseqstrings);
-
-    assembler->Bind(&if_bothonebyteseqstrings);
-    {
-      // Load the length of {lhs} and {rhs}.
-      Node* lhs_length = assembler->LoadObjectField(lhs, String::kLengthOffset);
-      Node* rhs_length = assembler->LoadObjectField(rhs, String::kLengthOffset);
-
-      // Determine the minimum length.
-      Node* length = assembler->SmiMin(lhs_length, rhs_length);
-
-      // Compute the effective offset of the first character.
-      Node* begin = assembler->IntPtrConstant(SeqOneByteString::kHeaderSize -
-                                              kHeapObjectTag);
-
-      // Compute the first offset after the string from the length.
-      Node* end = assembler->IntPtrAdd(begin, assembler->SmiUntag(length));
-
-      // Loop over the {lhs} and {rhs} strings to see if they are equal.
-      Variable var_offset(assembler, MachineType::PointerRepresentation());
-      Label loop(assembler, &var_offset);
-      var_offset.Bind(begin);
-      assembler->Goto(&loop);
-      assembler->Bind(&loop);
-      {
-        // Check if {offset} equals {end}.
-        Node* offset = var_offset.value();
-        Label if_done(assembler), if_notdone(assembler);
-        assembler->Branch(assembler->WordEqual(offset, end), &if_done,
-                          &if_notdone);
-
-        assembler->Bind(&if_notdone);
-        {
-          // Load the next characters from {lhs} and {rhs}.
-          Node* lhs_value = assembler->Load(MachineType::Uint8(), lhs, offset);
-          Node* rhs_value = assembler->Load(MachineType::Uint8(), rhs, offset);
-
-          // Check if the characters match.
-          Label if_valueissame(assembler), if_valueisnotsame(assembler);
-          assembler->Branch(assembler->Word32Equal(lhs_value, rhs_value),
-                            &if_valueissame, &if_valueisnotsame);
-
-          assembler->Bind(&if_valueissame);
-          {
-            // Advance to next character.
-            var_offset.Bind(
-                assembler->IntPtrAdd(offset, assembler->IntPtrConstant(1)));
-          }
-          assembler->Goto(&loop);
-
-          assembler->Bind(&if_valueisnotsame);
-          assembler->BranchIfInt32LessThan(lhs_value, rhs_value, &if_less,
-                                           &if_greater);
-        }
-
-        assembler->Bind(&if_done);
-        {
-          // All characters up to the min length are equal, decide based on
-          // string length.
-          Label if_lengthisequal(assembler), if_lengthisnotequal(assembler);
-          assembler->Branch(assembler->SmiEqual(lhs_length, rhs_length),
-                            &if_lengthisequal, &if_lengthisnotequal);
-
-          assembler->Bind(&if_lengthisequal);
-          assembler->Goto(&if_equal);
-
-          assembler->Bind(&if_lengthisnotequal);
-          assembler->BranchIfSmiLessThan(lhs_length, rhs_length, &if_less,
-                                         &if_greater);
-        }
-      }
-    }
-
-    assembler->Bind(&if_notbothonebyteseqstrings);
-    {
-      // TODO(bmeurer): Add fast case support for flattened cons strings;
-      // also add support for two byte string relational comparisons.
-      switch (mode) {
-        case kLessThan:
-          assembler->TailCallRuntime(Runtime::kStringLessThan, context, lhs,
-                                     rhs);
-          break;
-        case kLessThanOrEqual:
-          assembler->TailCallRuntime(Runtime::kStringLessThanOrEqual, context,
-                                     lhs, rhs);
-          break;
-        case kGreaterThan:
-          assembler->TailCallRuntime(Runtime::kStringGreaterThan, context, lhs,
-                                     rhs);
-          break;
-        case kGreaterThanOrEqual:
-          assembler->TailCallRuntime(Runtime::kStringGreaterThanOrEqual,
-                                     context, lhs, rhs);
-          break;
-      }
-    }
-  }
-
-  assembler->Bind(&if_less);
-  switch (mode) {
-    case kLessThan:
-    case kLessThanOrEqual:
-      assembler->Return(assembler->BooleanConstant(true));
-      break;
-
-    case kGreaterThan:
-    case kGreaterThanOrEqual:
-      assembler->Return(assembler->BooleanConstant(false));
-      break;
-  }
-
-  assembler->Bind(&if_equal);
-  switch (mode) {
-    case kLessThan:
-    case kGreaterThan:
-      assembler->Return(assembler->BooleanConstant(false));
-      break;
-
-    case kLessThanOrEqual:
-    case kGreaterThanOrEqual:
-      assembler->Return(assembler->BooleanConstant(true));
-      break;
-  }
-
-  assembler->Bind(&if_greater);
-  switch (mode) {
-    case kLessThan:
-    case kLessThanOrEqual:
-      assembler->Return(assembler->BooleanConstant(false));
-      break;
-
-    case kGreaterThan:
-    case kGreaterThanOrEqual:
-      assembler->Return(assembler->BooleanConstant(true));
-      break;
-  }
-}
-
-void GenerateStringEqual(compiler::CodeStubAssembler* assembler,
-                         ResultMode mode) {
-  // Here's pseudo-code for the algorithm below in case of kDontNegateResult
-  // mode; for kNegateResult mode we properly negate the result.
-  //
-  // if (lhs == rhs) return true;
-  // if (lhs->length() != rhs->length()) return false;
-  // if (lhs->IsInternalizedString() && rhs->IsInternalizedString()) {
-  //   return false;
-  // }
-  // if (lhs->IsSeqOneByteString() && rhs->IsSeqOneByteString()) {
-  //   for (i = 0; i != lhs->length(); ++i) {
-  //     if (lhs[i] != rhs[i]) return false;
-  //   }
-  //   return true;
-  // }
-  // return %StringEqual(lhs, rhs);
-
-  typedef compiler::CodeStubAssembler::Label Label;
-  typedef compiler::Node Node;
-  typedef compiler::CodeStubAssembler::Variable Variable;
-
-  Node* lhs = assembler->Parameter(0);
-  Node* rhs = assembler->Parameter(1);
-  Node* context = assembler->Parameter(2);
-
-  Label if_equal(assembler), if_notequal(assembler);
-
-  // Fast check to see if {lhs} and {rhs} refer to the same String object.
-  Label if_same(assembler), if_notsame(assembler);
-  assembler->Branch(assembler->WordEqual(lhs, rhs), &if_same, &if_notsame);
-
-  assembler->Bind(&if_same);
-  assembler->Goto(&if_equal);
-
-  assembler->Bind(&if_notsame);
-  {
-    // The {lhs} and {rhs} don't refer to the exact same String object.
-
-    // Load the length of {lhs} and {rhs}.
-    Node* lhs_length = assembler->LoadObjectField(lhs, String::kLengthOffset);
-    Node* rhs_length = assembler->LoadObjectField(rhs, String::kLengthOffset);
-
-    // Check if the lengths of {lhs} and {rhs} are equal.
-    Label if_lengthisequal(assembler), if_lengthisnotequal(assembler);
-    assembler->Branch(assembler->WordEqual(lhs_length, rhs_length),
-                      &if_lengthisequal, &if_lengthisnotequal);
-
-    assembler->Bind(&if_lengthisequal);
-    {
-      // Load instance types of {lhs} and {rhs}.
-      Node* lhs_instance_type = assembler->LoadInstanceType(lhs);
-      Node* rhs_instance_type = assembler->LoadInstanceType(rhs);
-
-      // Combine the instance types into a single 16-bit value, so we can check
-      // both of them at once.
-      Node* both_instance_types = assembler->Word32Or(
-          lhs_instance_type,
-          assembler->Word32Shl(rhs_instance_type, assembler->Int32Constant(8)));
-
-      // Check if both {lhs} and {rhs} are internalized.
-      int const kBothInternalizedMask =
-          kIsNotInternalizedMask | (kIsNotInternalizedMask << 8);
-      int const kBothInternalizedTag =
-          kInternalizedTag | (kInternalizedTag << 8);
-      Label if_bothinternalized(assembler), if_notbothinternalized(assembler);
-      assembler->Branch(assembler->Word32Equal(
-                            assembler->Word32And(both_instance_types,
-                                                 assembler->Int32Constant(
-                                                     kBothInternalizedMask)),
-                            assembler->Int32Constant(kBothInternalizedTag)),
-                        &if_bothinternalized, &if_notbothinternalized);
-
-      assembler->Bind(&if_bothinternalized);
-      {
-        // Fast negative check for internalized-to-internalized equality.
-        assembler->Goto(&if_notequal);
-      }
-
-      assembler->Bind(&if_notbothinternalized);
-      {
-        // Check that both {lhs} and {rhs} are flat one-byte strings.
-        int const kBothSeqOneByteStringMask =
-            kStringEncodingMask | kStringRepresentationMask |
-            ((kStringEncodingMask | kStringRepresentationMask) << 8);
-        int const kBothSeqOneByteStringTag =
-            kOneByteStringTag | kSeqStringTag |
-            ((kOneByteStringTag | kSeqStringTag) << 8);
-        Label if_bothonebyteseqstrings(assembler),
-            if_notbothonebyteseqstrings(assembler);
-        assembler->Branch(
-            assembler->Word32Equal(
-                assembler->Word32And(
-                    both_instance_types,
-                    assembler->Int32Constant(kBothSeqOneByteStringMask)),
-                assembler->Int32Constant(kBothSeqOneByteStringTag)),
-            &if_bothonebyteseqstrings, &if_notbothonebyteseqstrings);
-
-        assembler->Bind(&if_bothonebyteseqstrings);
-        {
-          // Compute the effective offset of the first character.
-          Node* begin = assembler->IntPtrConstant(
-              SeqOneByteString::kHeaderSize - kHeapObjectTag);
-
-          // Compute the first offset after the string from the length.
-          Node* end =
-              assembler->IntPtrAdd(begin, assembler->SmiUntag(lhs_length));
-
-          // Loop over the {lhs} and {rhs} strings to see if they are equal.
-          Variable var_offset(assembler, MachineType::PointerRepresentation());
-          Label loop(assembler, &var_offset);
-          var_offset.Bind(begin);
-          assembler->Goto(&loop);
-          assembler->Bind(&loop);
-          {
-            // Check if {offset} equals {end}.
-            Node* offset = var_offset.value();
-            Label if_done(assembler), if_notdone(assembler);
-            assembler->Branch(assembler->WordEqual(offset, end), &if_done,
-                              &if_notdone);
-
-            assembler->Bind(&if_notdone);
-            {
-              // Load the next characters from {lhs} and {rhs}.
-              Node* lhs_value =
-                  assembler->Load(MachineType::Uint8(), lhs, offset);
-              Node* rhs_value =
-                  assembler->Load(MachineType::Uint8(), rhs, offset);
-
-              // Check if the characters match.
-              Label if_valueissame(assembler), if_valueisnotsame(assembler);
-              assembler->Branch(assembler->Word32Equal(lhs_value, rhs_value),
-                                &if_valueissame, &if_valueisnotsame);
-
-              assembler->Bind(&if_valueissame);
-              {
-                // Advance to next character.
-                var_offset.Bind(
-                    assembler->IntPtrAdd(offset, assembler->IntPtrConstant(1)));
-              }
-              assembler->Goto(&loop);
-
-              assembler->Bind(&if_valueisnotsame);
-              assembler->Goto(&if_notequal);
-            }
-
-            assembler->Bind(&if_done);
-            assembler->Goto(&if_equal);
-          }
-        }
-
-        assembler->Bind(&if_notbothonebyteseqstrings);
-        {
-          // TODO(bmeurer): Add fast case support for flattened cons strings;
-          // also add support for two byte string equality checks.
-          Runtime::FunctionId function_id = (mode == kDontNegateResult)
-                                                ? Runtime::kStringEqual
-                                                : Runtime::kStringNotEqual;
-          assembler->TailCallRuntime(function_id, context, lhs, rhs);
-        }
-      }
-    }
-
-    assembler->Bind(&if_lengthisnotequal);
-    {
-      // Mismatch in length of {lhs} and {rhs}, cannot be equal.
-      assembler->Goto(&if_notequal);
-    }
-  }
-
-  assembler->Bind(&if_equal);
-  assembler->Return(assembler->BooleanConstant(mode == kDontNegateResult));
-
-  assembler->Bind(&if_notequal);
-  assembler->Return(assembler->BooleanConstant(mode == kNegateResult));
-}
-
-}  // namespace
-
-void LessThanStub::GenerateAssembly(
-    compiler::CodeStubAssembler* assembler) const {
-  GenerateAbstractRelationalComparison(assembler, kLessThan);
-}
-
-void LessThanOrEqualStub::GenerateAssembly(
-    compiler::CodeStubAssembler* assembler) const {
-  GenerateAbstractRelationalComparison(assembler, kLessThanOrEqual);
-}
-
-void GreaterThanStub::GenerateAssembly(
-    compiler::CodeStubAssembler* assembler) const {
-  GenerateAbstractRelationalComparison(assembler, kGreaterThan);
-}
-
-void GreaterThanOrEqualStub::GenerateAssembly(
-    compiler::CodeStubAssembler* assembler) const {
-  GenerateAbstractRelationalComparison(assembler, kGreaterThanOrEqual);
-}
-
-void StrictEqualStub::GenerateAssembly(
-    compiler::CodeStubAssembler* assembler) const {
-  GenerateStrictEqual(assembler, kDontNegateResult);
-}
-
-void StrictNotEqualStub::GenerateAssembly(
-    compiler::CodeStubAssembler* assembler) const {
-  GenerateStrictEqual(assembler, kNegateResult);
-}
-
-void StringEqualStub::GenerateAssembly(
-    compiler::CodeStubAssembler* assembler) const {
-  GenerateStringEqual(assembler, kDontNegateResult);
-}
-
-void StringNotEqualStub::GenerateAssembly(
-    compiler::CodeStubAssembler* assembler) const {
-  GenerateStringEqual(assembler, kNegateResult);
-}
-
-void StringLessThanStub::GenerateAssembly(
-    compiler::CodeStubAssembler* assembler) const {
-  GenerateStringRelationalComparison(assembler, kLessThan);
-}
-
-void StringLessThanOrEqualStub::GenerateAssembly(
-    compiler::CodeStubAssembler* assembler) const {
-  GenerateStringRelationalComparison(assembler, kLessThanOrEqual);
-}
-
-void StringGreaterThanStub::GenerateAssembly(
-    compiler::CodeStubAssembler* assembler) const {
-  GenerateStringRelationalComparison(assembler, kGreaterThan);
-}
-
-void StringGreaterThanOrEqualStub::GenerateAssembly(
-    compiler::CodeStubAssembler* assembler) const {
-  GenerateStringRelationalComparison(assembler, kGreaterThanOrEqual);
-}
-
-void ToBooleanStub::GenerateAssembly(
-    compiler::CodeStubAssembler* assembler) const {
-  typedef compiler::Node Node;
-  typedef compiler::CodeStubAssembler::Label Label;
-
-  Node* value = assembler->Parameter(0);
-  Label if_valueissmi(assembler), if_valueisnotsmi(assembler);
-
-  // Check if {value} is a Smi or a HeapObject.
-  assembler->Branch(assembler->WordIsSmi(value), &if_valueissmi,
-                    &if_valueisnotsmi);
-
-  assembler->Bind(&if_valueissmi);
-  {
-    // The {value} is a Smi, only need to check against zero.
-    Label if_valueiszero(assembler), if_valueisnotzero(assembler);
-    assembler->Branch(assembler->SmiEqual(value, assembler->SmiConstant(0)),
-                      &if_valueiszero, &if_valueisnotzero);
-
-    assembler->Bind(&if_valueiszero);
-    assembler->Return(assembler->BooleanConstant(false));
-
-    assembler->Bind(&if_valueisnotzero);
-    assembler->Return(assembler->BooleanConstant(true));
-  }
-
-  assembler->Bind(&if_valueisnotsmi);
-  {
-    Label if_valueisstring(assembler), if_valueisheapnumber(assembler),
-        if_valueisoddball(assembler), if_valueisother(assembler);
-
-    // The {value} is a HeapObject, load its map.
-    Node* value_map = assembler->LoadObjectField(value, HeapObject::kMapOffset);
-
-    // Load the {value}s instance type.
-    Node* value_instancetype = assembler->Load(
-        MachineType::Uint8(), value_map,
-        assembler->IntPtrConstant(Map::kInstanceTypeOffset - kHeapObjectTag));
-
-    // Dispatch based on the instance type; we distinguish all String instance
-    // types, the HeapNumber type and the Oddball type.
-    size_t const kNumCases = FIRST_NONSTRING_TYPE + 2;
-    Label* case_labels[kNumCases];
-    int32_t case_values[kNumCases];
-    for (int32_t i = 0; i < FIRST_NONSTRING_TYPE; ++i) {
-      case_labels[i] = new Label(assembler);
-      case_values[i] = i;
-    }
-    case_labels[FIRST_NONSTRING_TYPE + 0] = &if_valueisheapnumber;
-    case_values[FIRST_NONSTRING_TYPE + 0] = HEAP_NUMBER_TYPE;
-    case_labels[FIRST_NONSTRING_TYPE + 1] = &if_valueisoddball;
-    case_values[FIRST_NONSTRING_TYPE + 1] = ODDBALL_TYPE;
-    assembler->Switch(value_instancetype, &if_valueisother, case_values,
-                      case_labels, arraysize(case_values));
-    for (int32_t i = 0; i < FIRST_NONSTRING_TYPE; ++i) {
-      assembler->Bind(case_labels[i]);
-      assembler->Goto(&if_valueisstring);
-      delete case_labels[i];
-    }
-
-    assembler->Bind(&if_valueisstring);
-    {
-      // Load the string length field of the {value}.
-      Node* value_length =
-          assembler->LoadObjectField(value, String::kLengthOffset);
-
-      // Check if the {value} is the empty string.
-      Label if_valueisempty(assembler), if_valueisnotempty(assembler);
-      assembler->Branch(
-          assembler->SmiEqual(value_length, assembler->SmiConstant(0)),
-          &if_valueisempty, &if_valueisnotempty);
-
-      assembler->Bind(&if_valueisempty);
-      assembler->Return(assembler->BooleanConstant(false));
-
-      assembler->Bind(&if_valueisnotempty);
-      assembler->Return(assembler->BooleanConstant(true));
-    }
-
-    assembler->Bind(&if_valueisheapnumber);
-    {
-      Node* value_value = assembler->Load(
-          MachineType::Float64(), value,
-          assembler->IntPtrConstant(HeapNumber::kValueOffset - kHeapObjectTag));
-
-      Label if_valueispositive(assembler), if_valueisnotpositive(assembler),
-          if_valueisnegative(assembler), if_valueisnanorzero(assembler);
-      assembler->Branch(assembler->Float64LessThan(
-                            assembler->Float64Constant(0.0), value_value),
-                        &if_valueispositive, &if_valueisnotpositive);
-
-      assembler->Bind(&if_valueispositive);
-      assembler->Return(assembler->BooleanConstant(true));
-
-      assembler->Bind(&if_valueisnotpositive);
-      assembler->Branch(assembler->Float64LessThan(
-                            value_value, assembler->Float64Constant(0.0)),
-                        &if_valueisnegative, &if_valueisnanorzero);
-
-      assembler->Bind(&if_valueisnegative);
-      assembler->Return(assembler->BooleanConstant(true));
-
-      assembler->Bind(&if_valueisnanorzero);
-      assembler->Return(assembler->BooleanConstant(false));
-    }
-
-    assembler->Bind(&if_valueisoddball);
-    {
-      // The {value} is an Oddball, and every Oddball knows its boolean value.
-      Node* value_toboolean =
-          assembler->LoadObjectField(value, Oddball::kToBooleanOffset);
-      assembler->Return(value_toboolean);
-    }
-
-    assembler->Bind(&if_valueisother);
-    {
-      Node* value_map_bitfield = assembler->Load(
-          MachineType::Uint8(), value_map,
-          assembler->IntPtrConstant(Map::kBitFieldOffset - kHeapObjectTag));
-      Node* value_map_undetectable = assembler->Word32And(
-          value_map_bitfield,
-          assembler->Int32Constant(1 << Map::kIsUndetectable));
-
-      // Check if the {value} is undetectable.
-      Label if_valueisundetectable(assembler),
-          if_valueisnotundetectable(assembler);
-      assembler->Branch(assembler->Word32Equal(value_map_undetectable,
-                                               assembler->Int32Constant(0)),
-                        &if_valueisnotundetectable, &if_valueisundetectable);
-
-      assembler->Bind(&if_valueisundetectable);
-      assembler->Return(assembler->BooleanConstant(false));
-
-      assembler->Bind(&if_valueisnotundetectable);
-      assembler->Return(assembler->BooleanConstant(true));
-    }
-  }
-}
 
 template<class StateType>
 void HydrogenCodeStub::TraceTransition(StateType from, StateType to) {
@@ -1707,6 +501,17 @@ void HydrogenCodeStub::TraceTransition(StateType from, StateType to) {
   os << "[";
   PrintBaseName(os);
   os << ": " << from << "=>" << to << "]" << std::endl;
+}
+
+
+void CompareNilICStub::PrintBaseName(std::ostream& os) const {  // NOLINT
+  CodeStub::PrintBaseName(os);
+  os << ((nil_value() == kNullValue) ? "(NullValue)" : "(UndefinedValue)");
+}
+
+
+void CompareNilICStub::PrintState(std::ostream& os) const {  // NOLINT
+  os << state();
 }
 
 
@@ -1728,6 +533,47 @@ class SimpleListPrinter {
   std::ostream& os_;
   bool first_;
 };
+
+
+std::ostream& operator<<(std::ostream& os, const CompareNilICStub::State& s) {
+  os << "(";
+  SimpleListPrinter p(os);
+  if (s.IsEmpty()) p.Add("None");
+  if (s.Contains(CompareNilICStub::UNDEFINED)) p.Add("Undefined");
+  if (s.Contains(CompareNilICStub::NULL_TYPE)) p.Add("Null");
+  if (s.Contains(CompareNilICStub::MONOMORPHIC_MAP)) p.Add("MonomorphicMap");
+  if (s.Contains(CompareNilICStub::GENERIC)) p.Add("Generic");
+  return os << ")";
+}
+
+
+Type* CompareNilICStub::GetType(Zone* zone, Handle<Map> map) {
+  State state = this->state();
+  if (state.Contains(CompareNilICStub::GENERIC)) return Type::Any(zone);
+
+  Type* result = Type::None(zone);
+  if (state.Contains(CompareNilICStub::UNDEFINED)) {
+    result = Type::Union(result, Type::Undefined(zone), zone);
+  }
+  if (state.Contains(CompareNilICStub::NULL_TYPE)) {
+    result = Type::Union(result, Type::Null(zone), zone);
+  }
+  if (state.Contains(CompareNilICStub::MONOMORPHIC_MAP)) {
+    Type* type =
+        map.is_null() ? Type::Detectable(zone) : Type::Class(map, zone);
+    result = Type::Union(result, type, zone);
+  }
+
+  return result;
+}
+
+
+Type* CompareNilICStub::GetInputType(Zone* zone, Handle<Map> map) {
+  Type* output_type = GetType(zone, map);
+  Type* nil_type =
+      nil_value() == kNullValue ? Type::Null(zone) : Type::Undefined(zone);
+  return Type::Union(output_type, nil_type, zone);
+}
 
 
 void CallICStub::PrintState(std::ostream& os) const {  // NOLINT
@@ -1753,7 +599,9 @@ void LoadDictionaryElementStub::InitializeDescriptor(
 void KeyedLoadGenericStub::InitializeDescriptor(
     CodeStubDescriptor* descriptor) {
   descriptor->Initialize(
-      Runtime::FunctionForId(Runtime::kKeyedGetProperty)->entry);
+      Runtime::FunctionForId(is_strong(language_mode())
+                                 ? Runtime::kKeyedGetPropertyStrong
+                                 : Runtime::kKeyedGetProperty)->entry);
 }
 
 
@@ -1890,7 +738,15 @@ void AllocateInNewSpaceStub::InitializeDescriptor(
   descriptor->Initialize();
 }
 
-void ToBooleanICStub::InitializeDescriptor(CodeStubDescriptor* descriptor) {
+
+void CompareNilICStub::InitializeDescriptor(CodeStubDescriptor* descriptor) {
+  descriptor->Initialize(FUNCTION_ADDR(Runtime_CompareNilIC_Miss));
+  descriptor->SetMissHandler(ExternalReference(
+      Runtime::FunctionForId(Runtime::kCompareNilIC_Miss), isolate()));
+}
+
+
+void ToBooleanStub::InitializeDescriptor(CodeStubDescriptor* descriptor) {
   descriptor->Initialize(FUNCTION_ADDR(Runtime_ToBooleanIC_Miss));
   descriptor->SetMissHandler(ExternalReference(
       Runtime::FunctionForId(Runtime::kToBooleanIC_Miss), isolate()));
@@ -1942,8 +798,28 @@ void CreateWeakCellStub::GenerateAheadOfTime(Isolate* isolate) {
 
 
 void StoreElementStub::Generate(MacroAssembler* masm) {
-  DCHECK_EQ(DICTIONARY_ELEMENTS, elements_kind());
-  ElementHandlerCompiler::GenerateStoreSlow(masm);
+  switch (elements_kind()) {
+    case FAST_ELEMENTS:
+    case FAST_HOLEY_ELEMENTS:
+    case FAST_SMI_ELEMENTS:
+    case FAST_HOLEY_SMI_ELEMENTS:
+    case FAST_DOUBLE_ELEMENTS:
+    case FAST_HOLEY_DOUBLE_ELEMENTS:
+#define TYPED_ARRAY_CASE(Type, type, TYPE, ctype, size) \
+    case TYPE##_ELEMENTS:
+
+    TYPED_ARRAYS(TYPED_ARRAY_CASE)
+#undef TYPED_ARRAY_CASE
+      UNREACHABLE();
+      break;
+    case DICTIONARY_ELEMENTS:
+      ElementHandlerCompiler::GenerateStoreSlow(masm);
+      break;
+    case FAST_SLOPPY_ARGUMENTS_ELEMENTS:
+    case SLOW_SLOPPY_ARGUMENTS_ELEMENTS:
+      UNREACHABLE();
+      break;
+  }
 }
 
 
@@ -1959,6 +835,52 @@ void StoreFastElementStub::GenerateAheadOfTime(Isolate* isolate) {
     StoreFastElementStub(isolate, true, kind, STORE_AND_GROW_NO_TRANSITION)
         .GetCode();
   }
+}
+
+
+void RestParamAccessStub::Generate(MacroAssembler* masm) { GenerateNew(masm); }
+
+
+void ArgumentsAccessStub::Generate(MacroAssembler* masm) {
+  switch (type()) {
+    case READ_ELEMENT:
+      GenerateReadElement(masm);
+      break;
+    case NEW_SLOPPY_FAST:
+      GenerateNewSloppyFast(masm);
+      break;
+    case NEW_SLOPPY_SLOW:
+      GenerateNewSloppySlow(masm);
+      break;
+    case NEW_STRICT:
+      GenerateNewStrict(masm);
+      break;
+  }
+}
+
+
+void ArgumentsAccessStub::PrintName(std::ostream& os) const {  // NOLINT
+  os << "ArgumentsAccessStub_";
+  switch (type()) {
+    case READ_ELEMENT:
+      os << "ReadElement";
+      break;
+    case NEW_SLOPPY_FAST:
+      os << "NewSloppyFast";
+      break;
+    case NEW_SLOPPY_SLOW:
+      os << "NewSloppySlow";
+      break;
+    case NEW_STRICT:
+      os << "NewStrict";
+      break;
+  }
+  return;
+}
+
+
+void RestParamAccessStub::PrintName(std::ostream& os) const {  // NOLINT
+  os << "RestParamAccessStub_";
 }
 
 
@@ -1992,7 +914,8 @@ std::ostream& ArrayConstructorStubBase::BasePrintName(
   return os;
 }
 
-bool ToBooleanICStub::UpdateStatus(Handle<Object> object) {
+
+bool ToBooleanStub::UpdateStatus(Handle<Object> object) {
   Types new_types = types();
   Types old_types = new_types;
   bool to_boolean_value = new_types.UpdateStatus(object);
@@ -2001,27 +924,30 @@ bool ToBooleanICStub::UpdateStatus(Handle<Object> object) {
   return to_boolean_value;
 }
 
-void ToBooleanICStub::PrintState(std::ostream& os) const {  // NOLINT
+
+void ToBooleanStub::PrintState(std::ostream& os) const {  // NOLINT
   os << types();
 }
 
-std::ostream& operator<<(std::ostream& os, const ToBooleanICStub::Types& s) {
+
+std::ostream& operator<<(std::ostream& os, const ToBooleanStub::Types& s) {
   os << "(";
   SimpleListPrinter p(os);
   if (s.IsEmpty()) p.Add("None");
-  if (s.Contains(ToBooleanICStub::UNDEFINED)) p.Add("Undefined");
-  if (s.Contains(ToBooleanICStub::BOOLEAN)) p.Add("Bool");
-  if (s.Contains(ToBooleanICStub::NULL_TYPE)) p.Add("Null");
-  if (s.Contains(ToBooleanICStub::SMI)) p.Add("Smi");
-  if (s.Contains(ToBooleanICStub::SPEC_OBJECT)) p.Add("SpecObject");
-  if (s.Contains(ToBooleanICStub::STRING)) p.Add("String");
-  if (s.Contains(ToBooleanICStub::SYMBOL)) p.Add("Symbol");
-  if (s.Contains(ToBooleanICStub::HEAP_NUMBER)) p.Add("HeapNumber");
-  if (s.Contains(ToBooleanICStub::SIMD_VALUE)) p.Add("SimdValue");
+  if (s.Contains(ToBooleanStub::UNDEFINED)) p.Add("Undefined");
+  if (s.Contains(ToBooleanStub::BOOLEAN)) p.Add("Bool");
+  if (s.Contains(ToBooleanStub::NULL_TYPE)) p.Add("Null");
+  if (s.Contains(ToBooleanStub::SMI)) p.Add("Smi");
+  if (s.Contains(ToBooleanStub::SPEC_OBJECT)) p.Add("SpecObject");
+  if (s.Contains(ToBooleanStub::STRING)) p.Add("String");
+  if (s.Contains(ToBooleanStub::SYMBOL)) p.Add("Symbol");
+  if (s.Contains(ToBooleanStub::HEAP_NUMBER)) p.Add("HeapNumber");
+  if (s.Contains(ToBooleanStub::SIMD_VALUE)) p.Add("SimdValue");
   return os << ")";
 }
 
-bool ToBooleanICStub::Types::UpdateStatus(Handle<Object> object) {
+
+bool ToBooleanStub::Types::UpdateStatus(Handle<Object> object) {
   if (object->IsUndefined()) {
     Add(UNDEFINED);
     return false;
@@ -2036,16 +962,16 @@ bool ToBooleanICStub::Types::UpdateStatus(Handle<Object> object) {
     return Smi::cast(*object)->value() != 0;
   } else if (object->IsJSReceiver()) {
     Add(SPEC_OBJECT);
-    return !object->IsUndetectable();
+    return !object->IsUndetectableObject();
   } else if (object->IsString()) {
-    DCHECK(!object->IsUndetectable());
     Add(STRING);
-    return String::cast(*object)->length() != 0;
+    return !object->IsUndetectableObject() &&
+        String::cast(*object)->length() != 0;
   } else if (object->IsSymbol()) {
     Add(SYMBOL);
     return true;
   } else if (object->IsHeapNumber()) {
-    DCHECK(!object->IsUndetectable());
+    DCHECK(!object->IsUndetectableObject());
     Add(HEAP_NUMBER);
     double value = HeapNumber::cast(*object)->value();
     return value != 0 && !std::isnan(value);
@@ -2059,12 +985,12 @@ bool ToBooleanICStub::Types::UpdateStatus(Handle<Object> object) {
   }
 }
 
-bool ToBooleanICStub::Types::NeedsMap() const {
-  return Contains(ToBooleanICStub::SPEC_OBJECT) ||
-         Contains(ToBooleanICStub::STRING) ||
-         Contains(ToBooleanICStub::SYMBOL) ||
-         Contains(ToBooleanICStub::HEAP_NUMBER) ||
-         Contains(ToBooleanICStub::SIMD_VALUE);
+
+bool ToBooleanStub::Types::NeedsMap() const {
+  return Contains(ToBooleanStub::SPEC_OBJECT) ||
+         Contains(ToBooleanStub::STRING) || Contains(ToBooleanStub::SYMBOL) ||
+         Contains(ToBooleanStub::HEAP_NUMBER) ||
+         Contains(ToBooleanStub::SIMD_VALUE);
 }
 
 

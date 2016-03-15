@@ -47,8 +47,7 @@ f(null);
 eval('f(null)');
 
 // Check called from strict builtin functions.
-// [null, null].sort(f);  // Does not work because sort tail calls.
-[null].forEach(f, null);
+[null, null].sort(f);
 
 // Check called from sloppy builtin functions.
 "abel".replace(/b/g, function h() {

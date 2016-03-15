@@ -9,7 +9,7 @@
 #include "src/elements.h"
 #include "src/factory.h"
 #include "src/isolate-inl.h"
-#include "src/keys.h"
+#include "src/key-accumulator.h"
 #include "src/messages.h"
 #include "src/prototype.h"
 
@@ -88,6 +88,29 @@ RUNTIME_FUNCTION(Runtime_TransitionElementsKind) {
 }
 
 
+// Push an object unto an array of objects if it is not already in the
+// array.  Returns true if the element was pushed on the stack and
+// false otherwise.
+RUNTIME_FUNCTION(Runtime_PushIfAbsent) {
+  HandleScope scope(isolate);
+  DCHECK(args.length() == 2);
+  CONVERT_ARG_HANDLE_CHECKED(JSArray, array, 0);
+  CONVERT_ARG_HANDLE_CHECKED(JSReceiver, element, 1);
+  RUNTIME_ASSERT(array->HasFastSmiOrObjectElements());
+  int length = Smi::cast(array->length())->value();
+  FixedArray* elements = FixedArray::cast(array->elements());
+  for (int i = 0; i < length; i++) {
+    if (elements->get(i) == *element) return isolate->heap()->false_value();
+  }
+
+  // Strict not needed. Used for cycle detection in Array join implementation.
+  RETURN_FAILURE_ON_EXCEPTION(
+      isolate, JSObject::AddDataElement(array, length, element, NONE));
+  JSObject::ValidateElements(array);
+  return isolate->heap()->true_value();
+}
+
+
 // Moves all own elements of an object, that are below a limit, to positions
 // starting at zero. All undefined values are placed after non-undefined values,
 // and are followed by non-existing element. Does not change the length
@@ -97,11 +120,9 @@ RUNTIME_FUNCTION(Runtime_TransitionElementsKind) {
 RUNTIME_FUNCTION(Runtime_RemoveArrayHoles) {
   HandleScope scope(isolate);
   DCHECK(args.length() == 2);
-  CONVERT_ARG_HANDLE_CHECKED(JSReceiver, object, 0);
+  CONVERT_ARG_HANDLE_CHECKED(JSObject, object, 0);
   CONVERT_NUMBER_CHECKED(uint32_t, limit, Uint32, args[1]);
-  if (object->IsJSProxy()) return Smi::FromInt(-1);
-  return *JSObject::PrepareElementsForSort(Handle<JSObject>::cast(object),
-                                           limit);
+  return *JSObject::PrepareElementsForSort(object, limit);
 }
 
 
@@ -178,15 +199,6 @@ RUNTIME_FUNCTION(Runtime_GetArrayKeys) {
   CONVERT_ARG_HANDLE_CHECKED(JSObject, array, 0);
   CONVERT_NUMBER_CHECKED(uint32_t, length, Uint32, args[1]);
 
-  if (array->HasFastStringWrapperElements()) {
-    int string_length =
-        String::cast(Handle<JSValue>::cast(array)->value())->length();
-    int backing_store_length = array->elements()->length();
-    return *isolate->factory()->NewNumberFromUint(
-        Min(length,
-            static_cast<uint32_t>(Max(string_length, backing_store_length))));
-  }
-
   if (!array->elements()->IsDictionary()) {
     RUNTIME_ASSERT(array->HasFastSmiOrObjectElements() ||
                    array->HasFastDoubleElements());
@@ -194,8 +206,8 @@ RUNTIME_FUNCTION(Runtime_GetArrayKeys) {
     return *isolate->factory()->NewNumberFromUint(Min(actual_length, length));
   }
 
-  KeyAccumulator accumulator(isolate, OWN_ONLY, ALL_PROPERTIES);
-  // No need to separate prototype levels since we only get element keys.
+  KeyAccumulator accumulator(isolate, ALL_PROPERTIES);
+  // No need to separate protoype levels since we only get numbers/element keys
   for (PrototypeIterator iter(isolate, array,
                               PrototypeIterator::START_AT_RECEIVER);
        !iter.IsAtEnd(); iter.Advance()) {
@@ -465,6 +477,15 @@ RUNTIME_FUNCTION(Runtime_GetCachedArrayIndex) {
   // returns false.
   UNIMPLEMENTED();
   return nullptr;
+}
+
+
+RUNTIME_FUNCTION(Runtime_FastOneByteArrayJoin) {
+  SealHandleScope shs(isolate);
+  DCHECK(args.length() == 2);
+  // Returning undefined means that this fast path fails and one has to resort
+  // to a slow path.
+  return isolate->heap()->undefined_value();
 }
 
 

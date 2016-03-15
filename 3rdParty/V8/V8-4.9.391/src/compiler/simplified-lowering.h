@@ -36,12 +36,12 @@ class SimplifiedLowering final {
   void DoLoadBuffer(Node* node, MachineRepresentation rep,
                     RepresentationChanger* changer);
   void DoStoreBuffer(Node* node);
+  void DoObjectIsNumber(Node* node);
+  void DoObjectIsSmi(Node* node);
   void DoShift(Node* node, Operator const* op, Type* rhs_type);
-
-  // TODO(bmeurer): This is a gigantic hack to support the gigantic LoadBuffer
-  // typing hack to support the gigantic "asm.js should be fast without proper
-  // verifier"-hack, ... Kill this! Soon! Really soon! I'm serious!
-  bool abort_compilation_ = false;
+  void DoStringEqual(Node* node);
+  void DoStringLessThan(Node* node);
+  void DoStringLessThanOrEqual(Node* node);
 
  private:
   JSGraph* const jsgraph_;
@@ -55,6 +55,7 @@ class SimplifiedLowering final {
   // position information via the SourcePositionWrapper like all other reducers.
   SourcePositionTable* source_positions_;
 
+  Node* StringComparison(Node* node);
   Node* Int32Div(Node* const node);
   Node* Int32Mod(Node* const node);
   Node* Uint32Div(Node* const node);

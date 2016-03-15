@@ -25,11 +25,6 @@ void Bitmap::Clear(MemoryChunk* chunk) {
   chunk->ResetLiveBytes();
 }
 
-void Bitmap::SetAllBits(MemoryChunk* chunk) {
-  Bitmap* bitmap = chunk->markbits();
-  for (int i = 0; i < bitmap->CellsCount(); i++)
-    bitmap->cells()[i] = 0xffffffff;
-}
 
 // -----------------------------------------------------------------------------
 // PageIterator
@@ -152,19 +147,6 @@ HeapObject* HeapObjectIterator::FromCurrentPage() {
   return NULL;
 }
 
-// -----------------------------------------------------------------------------
-// LargePageIterator
-
-LargePageIterator::LargePageIterator(LargeObjectSpace* space)
-    : next_page_(space->first_page()) {}
-
-LargePage* LargePageIterator::next() {
-  LargePage* result = next_page_;
-  if (next_page_ != nullptr) {
-    next_page_ = next_page_->next_page();
-  }
-  return result;
-}
 
 // -----------------------------------------------------------------------------
 // MemoryAllocator
@@ -196,52 +178,6 @@ void MemoryAllocator::UnprotectChunkFromPage(Page* page) {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// SemiSpace
-
-bool SemiSpace::Contains(HeapObject* o) {
-  return id_ == kToSpace
-             ? MemoryChunk::FromAddress(o->address())->InToSpace()
-             : MemoryChunk::FromAddress(o->address())->InFromSpace();
-}
-
-bool SemiSpace::Contains(Object* o) {
-  return o->IsHeapObject() && Contains(HeapObject::cast(o));
-}
-
-bool SemiSpace::ContainsSlow(Address a) {
-  NewSpacePageIterator it(this);
-  while (it.has_next()) {
-    if (it.next() == MemoryChunk::FromAddress(a)) return true;
-  }
-  return false;
-}
-
-// --------------------------------------------------------------------------
-// NewSpace
-
-bool NewSpace::Contains(HeapObject* o) {
-  return MemoryChunk::FromAddress(o->address())->InNewSpace();
-}
-
-bool NewSpace::Contains(Object* o) {
-  return o->IsHeapObject() && Contains(HeapObject::cast(o));
-}
-
-bool NewSpace::ContainsSlow(Address a) {
-  return from_space_.ContainsSlow(a) || to_space_.ContainsSlow(a);
-}
-
-bool NewSpace::ToSpaceContainsSlow(Address a) {
-  return to_space_.ContainsSlow(a);
-}
-
-bool NewSpace::FromSpaceContainsSlow(Address a) {
-  return from_space_.ContainsSlow(a);
-}
-
-bool NewSpace::ToSpaceContains(Object* o) { return to_space_.Contains(o); }
-bool NewSpace::FromSpaceContains(Object* o) { return from_space_.Contains(o); }
 
 // --------------------------------------------------------------------------
 // AllocationResult
@@ -269,37 +205,6 @@ Page* Page::Initialize(Heap* heap, MemoryChunk* chunk, Executability executable,
   return page;
 }
 
-void MemoryChunk::IncrementLiveBytesFromGC(HeapObject* object, int by) {
-  MemoryChunk::FromAddress(object->address())->IncrementLiveBytes(by);
-}
-
-void MemoryChunk::ResetLiveBytes() {
-  if (FLAG_trace_live_bytes) {
-    PrintIsolate(heap()->isolate(), "live-bytes: reset page=%p %d->0\n", this,
-                 live_byte_count_);
-  }
-  live_byte_count_ = 0;
-}
-
-void MemoryChunk::IncrementLiveBytes(int by) {
-  if (IsFlagSet(BLACK_PAGE)) return;
-  if (FLAG_trace_live_bytes) {
-    PrintIsolate(heap()->isolate(),
-                 "live-bytes: update page=%p delta=%d %d->%d\n", this, by,
-                 live_byte_count_, live_byte_count_ + by);
-  }
-  live_byte_count_ += by;
-  DCHECK_GE(live_byte_count_, 0);
-  DCHECK_LE(static_cast<size_t>(live_byte_count_), size_);
-}
-
-void MemoryChunk::IncrementLiveBytesFromMutator(HeapObject* object, int by) {
-  MemoryChunk* chunk = MemoryChunk::FromAddress(object->address());
-  if (!chunk->InNewSpace() && !static_cast<Page*>(chunk)->SweepingDone()) {
-    static_cast<PagedSpace*>(chunk->owner())->Allocate(by);
-  }
-  chunk->IncrementLiveBytes(by);
-}
 
 bool PagedSpace::Contains(Address addr) {
   Page* p = Page::FromAddress(addr);
@@ -307,35 +212,50 @@ bool PagedSpace::Contains(Address addr) {
   return p->owner() == this;
 }
 
-bool PagedSpace::Contains(Object* o) {
-  if (!o->IsHeapObject()) return false;
-  Page* p = Page::FromAddress(HeapObject::cast(o)->address());
-  if (!p->is_valid()) return false;
-  return p->owner() == this;
+
+bool PagedSpace::Contains(HeapObject* o) { return Contains(o->address()); }
+
+
+void MemoryChunk::set_scan_on_scavenge(bool scan) {
+  if (scan) {
+    if (!scan_on_scavenge()) heap_->increment_scan_on_scavenge_pages();
+    SetFlag(SCAN_ON_SCAVENGE);
+  } else {
+    if (scan_on_scavenge()) heap_->decrement_scan_on_scavenge_pages();
+    ClearFlag(SCAN_ON_SCAVENGE);
+  }
+  heap_->incremental_marking()->SetOldSpacePageFlags(this);
 }
+
 
 MemoryChunk* MemoryChunk::FromAnyPointerAddress(Heap* heap, Address addr) {
-  MemoryChunk* chunk = MemoryChunk::FromAddress(addr);
-  uintptr_t offset = addr - chunk->address();
-  if (offset < MemoryChunk::kHeaderSize || !chunk->HasPageHeader()) {
-    chunk = heap->lo_space()->FindPage(addr);
+  MemoryChunk* maybe = reinterpret_cast<MemoryChunk*>(
+      OffsetFrom(addr) & ~Page::kPageAlignmentMask);
+  if (maybe->owner() != NULL) return maybe;
+  LargeObjectIterator iterator(heap->lo_space());
+  for (HeapObject* o = iterator.Next(); o != NULL; o = iterator.Next()) {
+    // Fixed arrays are the only pointer-containing objects in large object
+    // space.
+    if (o->IsFixedArray()) {
+      MemoryChunk* chunk = MemoryChunk::FromAddress(o->address());
+      if (chunk->Contains(addr)) {
+        return chunk;
+      }
+    }
   }
-  return chunk;
+  UNREACHABLE();
+  return NULL;
 }
 
-Page* Page::FromAnyPointerAddress(Heap* heap, Address addr) {
-  return static_cast<Page*>(MemoryChunk::FromAnyPointerAddress(heap, addr));
-}
 
-MemoryChunkIterator::MemoryChunkIterator(Heap* heap, Mode mode)
+PointerChunkIterator::PointerChunkIterator(Heap* heap)
     : state_(kOldSpaceState),
-      mode_(mode),
       old_iterator_(heap->old_space()),
-      code_iterator_(heap->code_space()),
       map_iterator_(heap->map_space()),
       lo_iterator_(heap->lo_space()) {}
 
-MemoryChunk* MemoryChunkIterator::next() {
+
+MemoryChunk* PointerChunkIterator::next() {
   switch (state_) {
     case kOldSpaceState: {
       if (old_iterator_.has_next()) {
@@ -345,34 +265,33 @@ MemoryChunk* MemoryChunkIterator::next() {
       // Fall through.
     }
     case kMapState: {
-      if (mode_ != ALL_BUT_MAP_SPACE && map_iterator_.has_next()) {
+      if (map_iterator_.has_next()) {
         return map_iterator_.next();
-      }
-      state_ = kCodeState;
-      // Fall through.
-    }
-    case kCodeState: {
-      if (mode_ != ALL_BUT_CODE_SPACE && code_iterator_.has_next()) {
-        return code_iterator_.next();
       }
       state_ = kLargeObjectState;
       // Fall through.
     }
     case kLargeObjectState: {
-      MemoryChunk* answer = lo_iterator_.next();
-      if (answer != nullptr) {
-        return answer;
-      }
-      state_ = kFinishedState;
-      // Fall through;
+      HeapObject* heap_object;
+      do {
+        heap_object = lo_iterator_.Next();
+        if (heap_object == NULL) {
+          state_ = kFinishedState;
+          return NULL;
+        }
+        // Fixed arrays are the only pointer-containing objects in large
+        // object space.
+      } while (!heap_object->IsFixedArray());
+      MemoryChunk* answer = MemoryChunk::FromAddress(heap_object->address());
+      return answer;
     }
     case kFinishedState:
-      return nullptr;
+      return NULL;
     default:
       break;
   }
   UNREACHABLE();
-  return nullptr;
+  return NULL;
 }
 
 
@@ -506,18 +425,12 @@ AllocationResult PagedSpace::AllocateRawAligned(int size_in_bytes,
 AllocationResult PagedSpace::AllocateRaw(int size_in_bytes,
                                          AllocationAlignment alignment) {
 #ifdef V8_HOST_ARCH_32_BIT
-  AllocationResult result =
-      alignment == kDoubleAligned
-          ? AllocateRawAligned(size_in_bytes, kDoubleAligned)
-          : AllocateRawUnaligned(size_in_bytes);
+  return alignment == kDoubleAligned
+             ? AllocateRawAligned(size_in_bytes, kDoubleAligned)
+             : AllocateRawUnaligned(size_in_bytes);
 #else
-  AllocationResult result = AllocateRawUnaligned(size_in_bytes);
+  return AllocateRawUnaligned(size_in_bytes);
 #endif
-  HeapObject* heap_obj = nullptr;
-  if (!result.IsRetry() && result.To(&heap_obj)) {
-    AllocationStep(heap_obj->address(), size_in_bytes);
-  }
-  return result;
 }
 
 

@@ -51,6 +51,42 @@ ConvertReceiverMode ConvertReceiverModeOf(Operator const* op);
 ToBooleanHints ToBooleanHintsOf(Operator const* op);
 
 
+// Defines whether tail call optimization is allowed.
+enum class TailCallMode : unsigned { kAllow, kDisallow };
+
+size_t hash_value(TailCallMode);
+
+std::ostream& operator<<(std::ostream&, TailCallMode);
+
+
+// Defines the language mode and hints for a JavaScript binary operations.
+// This is used as parameter by JSAdd, JSSubtract, etc. operators.
+class BinaryOperationParameters final {
+ public:
+  BinaryOperationParameters(LanguageMode language_mode,
+                            BinaryOperationHints hints)
+      : language_mode_(language_mode), hints_(hints) {}
+
+  LanguageMode language_mode() const { return language_mode_; }
+  BinaryOperationHints hints() const { return hints_; }
+
+ private:
+  LanguageMode const language_mode_;
+  BinaryOperationHints const hints_;
+};
+
+bool operator==(BinaryOperationParameters const&,
+                BinaryOperationParameters const&);
+bool operator!=(BinaryOperationParameters const&,
+                BinaryOperationParameters const&);
+
+size_t hash_value(BinaryOperationParameters const&);
+
+std::ostream& operator<<(std::ostream&, BinaryOperationParameters const&);
+
+BinaryOperationParameters const& BinaryOperationParametersOf(Operator const*);
+
+
 // Defines the arity and the feedback for a JavaScript constructor call. This is
 // used as a parameter by JSCallConstruct operators.
 class CallConstructParameters final {
@@ -80,15 +116,20 @@ CallConstructParameters const& CallConstructParametersOf(Operator const*);
 // used as a parameter by JSCallFunction operators.
 class CallFunctionParameters final {
  public:
-  CallFunctionParameters(size_t arity, VectorSlotPair const& feedback,
+  CallFunctionParameters(size_t arity, LanguageMode language_mode,
+                         VectorSlotPair const& feedback,
                          TailCallMode tail_call_mode,
                          ConvertReceiverMode convert_mode)
       : bit_field_(ArityField::encode(arity) |
                    ConvertReceiverModeField::encode(convert_mode) |
+                   LanguageModeField::encode(language_mode) |
                    TailCallModeField::encode(tail_call_mode)),
         feedback_(feedback) {}
 
   size_t arity() const { return ArityField::decode(bit_field_); }
+  LanguageMode language_mode() const {
+    return LanguageModeField::decode(bit_field_);
+  }
   ConvertReceiverMode convert_mode() const {
     return ConvertReceiverModeField::decode(bit_field_);
   }
@@ -110,8 +151,9 @@ class CallFunctionParameters final {
     return base::hash_combine(p.bit_field_, p.feedback_);
   }
 
-  typedef BitField<size_t, 0, 29> ArityField;
-  typedef BitField<ConvertReceiverMode, 29, 2> ConvertReceiverModeField;
+  typedef BitField<size_t, 0, 27> ArityField;
+  typedef BitField<ConvertReceiverMode, 27, 2> ConvertReceiverModeField;
+  typedef BitField<LanguageMode, 29, 2> LanguageModeField;
   typedef BitField<TailCallMode, 31, 1> TailCallModeField;
 
   const uint32_t bit_field_;
@@ -177,6 +219,30 @@ size_t hash_value(ContextAccess const&);
 std::ostream& operator<<(std::ostream&, ContextAccess const&);
 
 ContextAccess const& ContextAccessOf(Operator const*);
+
+
+// Defines the name for a dynamic variable lookup. This is used as a parameter
+// by JSLoadDynamic and JSStoreDynamic operators.
+class DynamicAccess final {
+ public:
+  DynamicAccess(const Handle<String>& name, TypeofMode typeof_mode);
+
+  const Handle<String>& name() const { return name_; }
+  TypeofMode typeof_mode() const { return typeof_mode_; }
+
+ private:
+  const Handle<String> name_;
+  const TypeofMode typeof_mode_;
+};
+
+size_t hash_value(DynamicAccess const&);
+
+bool operator==(DynamicAccess const&, DynamicAccess const&);
+bool operator!=(DynamicAccess const&, DynamicAccess const&);
+
+std::ostream& operator<<(std::ostream&, DynamicAccess const&);
+
+DynamicAccess const& DynamicAccessOf(Operator const*);
 
 
 // Defines the property of an object for a named access. This is
@@ -290,8 +356,33 @@ std::ostream& operator<<(std::ostream&, PropertyAccess const&);
 PropertyAccess const& PropertyAccessOf(const Operator* op);
 
 
-// CreateArgumentsType is used as parameter to JSCreateArguments nodes.
-CreateArgumentsType const& CreateArgumentsTypeOf(const Operator* op);
+// Defines specifics about arguments object or rest parameter creation. This is
+// used as a parameter by JSCreateArguments operators.
+class CreateArgumentsParameters final {
+ public:
+  enum Type { kMappedArguments, kUnmappedArguments, kRestArray };
+  CreateArgumentsParameters(Type type, int start_index)
+      : type_(type), start_index_(start_index) {}
+
+  Type type() const { return type_; }
+  int start_index() const { return start_index_; }
+
+ private:
+  const Type type_;
+  const int start_index_;
+};
+
+bool operator==(CreateArgumentsParameters const&,
+                CreateArgumentsParameters const&);
+bool operator!=(CreateArgumentsParameters const&,
+                CreateArgumentsParameters const&);
+
+size_t hash_value(CreateArgumentsParameters const&);
+
+std::ostream& operator<<(std::ostream&, CreateArgumentsParameters const&);
+
+const CreateArgumentsParameters& CreateArgumentsParametersOf(
+    const Operator* op);
 
 
 // Defines shared information for the array that should be created. This is
@@ -350,18 +441,15 @@ const CreateClosureParameters& CreateClosureParametersOf(const Operator* op);
 // JSCreateLiteralRegExp operators.
 class CreateLiteralParameters final {
  public:
-  CreateLiteralParameters(Handle<HeapObject> constant, int length, int flags,
-                          int index)
-      : constant_(constant), length_(length), flags_(flags), index_(index) {}
+  CreateLiteralParameters(Handle<HeapObject> constant, int flags, int index)
+      : constant_(constant), flags_(flags), index_(index) {}
 
   Handle<HeapObject> constant() const { return constant_; }
-  int length() const { return length_; }
   int flags() const { return flags_; }
   int index() const { return index_; }
 
  private:
   Handle<HeapObject> const constant_;
-  int const length_;
   int const flags_;
   int const index_;
 };
@@ -387,21 +475,31 @@ class JSOperatorBuilder final : public ZoneObject {
   const Operator* NotEqual();
   const Operator* StrictEqual();
   const Operator* StrictNotEqual();
-  const Operator* LessThan();
-  const Operator* GreaterThan();
-  const Operator* LessThanOrEqual();
-  const Operator* GreaterThanOrEqual();
-  const Operator* BitwiseOr(BinaryOperationHints hints);
-  const Operator* BitwiseXor(BinaryOperationHints hints);
-  const Operator* BitwiseAnd(BinaryOperationHints hints);
-  const Operator* ShiftLeft(BinaryOperationHints hints);
-  const Operator* ShiftRight(BinaryOperationHints hints);
-  const Operator* ShiftRightLogical(BinaryOperationHints hints);
-  const Operator* Add(BinaryOperationHints hints);
-  const Operator* Subtract(BinaryOperationHints hints);
-  const Operator* Multiply(BinaryOperationHints hints);
-  const Operator* Divide(BinaryOperationHints hints);
-  const Operator* Modulus(BinaryOperationHints hints);
+  const Operator* LessThan(LanguageMode language_mode);
+  const Operator* GreaterThan(LanguageMode language_mode);
+  const Operator* LessThanOrEqual(LanguageMode language_mode);
+  const Operator* GreaterThanOrEqual(LanguageMode language_mode);
+  const Operator* BitwiseOr(LanguageMode language_mode,
+                            BinaryOperationHints hints);
+  const Operator* BitwiseXor(LanguageMode language_mode,
+                             BinaryOperationHints hints);
+  const Operator* BitwiseAnd(LanguageMode language_mode,
+                             BinaryOperationHints hints);
+  const Operator* ShiftLeft(LanguageMode language_mode,
+                            BinaryOperationHints hints);
+  const Operator* ShiftRight(LanguageMode language_mode,
+                             BinaryOperationHints hints);
+  const Operator* ShiftRightLogical(LanguageMode language_mode,
+                                    BinaryOperationHints hints);
+  const Operator* Add(LanguageMode language_mode, BinaryOperationHints hints);
+  const Operator* Subtract(LanguageMode language_mode,
+                           BinaryOperationHints hints);
+  const Operator* Multiply(LanguageMode language_mode,
+                           BinaryOperationHints hints);
+  const Operator* Divide(LanguageMode language_mode,
+                         BinaryOperationHints hints);
+  const Operator* Modulus(LanguageMode language_mode,
+                          BinaryOperationHints hints);
 
   const Operator* ToBoolean(ToBooleanHints hints);
   const Operator* ToNumber();
@@ -411,33 +509,33 @@ class JSOperatorBuilder final : public ZoneObject {
   const Operator* Yield();
 
   const Operator* Create();
-  const Operator* CreateArguments(CreateArgumentsType type);
+  const Operator* CreateArguments(CreateArgumentsParameters::Type type,
+                                  int start_index);
   const Operator* CreateArray(size_t arity, Handle<AllocationSite> site);
   const Operator* CreateClosure(Handle<SharedFunctionInfo> shared_info,
                                 PretenureFlag pretenure);
   const Operator* CreateIterResultObject();
   const Operator* CreateLiteralArray(Handle<FixedArray> constant_elements,
-                                     int literal_flags, int literal_index,
-                                     int number_of_elements);
+                                     int literal_flags, int literal_index);
   const Operator* CreateLiteralObject(Handle<FixedArray> constant_properties,
-                                      int literal_flags, int literal_index,
-                                      int number_of_properties);
+                                      int literal_flags, int literal_index);
   const Operator* CreateLiteralRegExp(Handle<String> constant_pattern,
                                       int literal_flags, int literal_index);
 
   const Operator* CallFunction(
-      size_t arity, VectorSlotPair const& feedback = VectorSlotPair(),
+      size_t arity, LanguageMode language_mode,
+      VectorSlotPair const& feedback = VectorSlotPair(),
       ConvertReceiverMode convert_mode = ConvertReceiverMode::kAny,
       TailCallMode tail_call_mode = TailCallMode::kDisallow);
-  const Operator* CallRuntime(Runtime::FunctionId id);
   const Operator* CallRuntime(Runtime::FunctionId id, size_t arity);
-  const Operator* CallRuntime(const Runtime::Function* function, size_t arity);
   const Operator* CallConstruct(size_t arity, VectorSlotPair const& feedback);
 
   const Operator* ConvertReceiver(ConvertReceiverMode convert_mode);
 
-  const Operator* LoadProperty(VectorSlotPair const& feedback);
-  const Operator* LoadNamed(Handle<Name> name, VectorSlotPair const& feedback);
+  const Operator* LoadProperty(LanguageMode language_mode,
+                               VectorSlotPair const& feedback);
+  const Operator* LoadNamed(LanguageMode language_mode, Handle<Name> name,
+                            VectorSlotPair const& feedback);
 
   const Operator* StoreProperty(LanguageMode language_mode,
                                 VectorSlotPair const& feedback);
@@ -457,6 +555,9 @@ class JSOperatorBuilder final : public ZoneObject {
 
   const Operator* LoadContext(size_t depth, size_t index, bool immutable);
   const Operator* StoreContext(size_t depth, size_t index);
+
+  const Operator* LoadDynamic(const Handle<String>& name,
+                              TypeofMode typeof_mode);
 
   const Operator* TypeOf();
   const Operator* InstanceOf();

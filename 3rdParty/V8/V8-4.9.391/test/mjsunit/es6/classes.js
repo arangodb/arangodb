@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Flags: --harmony-sloppy --harmony-function-name --allow-natives-syntax
+// Flags: --harmony-sloppy --allow-natives-syntax
 
 (function TestBasics() {
   var C = class C {}
@@ -22,11 +22,13 @@
   class D2 { constructor() {} }
   assertEquals('D2', D2.name);
 
+  // TODO(arv): The logic for the name of anonymous functions in ES6 requires
+  // the below to be 'E';
   var E = class {}
-  assertEquals('E', E.name);  // Should be 'E'.
+  assertEquals('', E.name);  // Should be 'E'.
 
   var F = class { constructor() {} };
-  assertEquals('F', F.name);  // Should be 'F'.
+  assertEquals('', F.name);  // Should be 'F'.
 })();
 
 

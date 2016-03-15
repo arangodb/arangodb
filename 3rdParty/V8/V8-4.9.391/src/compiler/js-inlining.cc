@@ -205,7 +205,6 @@ Reduction JSInliner::InlineCall(Node* call, Node* new_target, Node* context,
       case IrOpcode::kThrow:
         NodeProperties::MergeControlToEnd(jsgraph_->graph(), jsgraph_->common(),
                                           input);
-        Revisit(jsgraph_->graph()->end());
         break;
       default:
         UNREACHABLE();
@@ -244,7 +243,8 @@ Node* JSInliner::CreateArtificialFrameState(Node* node, Node* outer_frame_state,
                                             Handle<SharedFunctionInfo> shared) {
   const FrameStateFunctionInfo* state_info =
       jsgraph_->common()->CreateFrameStateFunctionInfo(
-          frame_state_type, parameter_count + 1, 0, shared);
+          frame_state_type, parameter_count + 1, 0, shared,
+          CALL_MAINTAINS_NATIVE_CONTEXT);
 
   const Operator* op = jsgraph_->common()->FrameState(
       BailoutId(-1), OutputFrameStateCombine::Ignore(), state_info);
@@ -263,54 +263,14 @@ Node* JSInliner::CreateArtificialFrameState(Node* node, Node* outer_frame_state,
                                     node->InputAt(0), outer_frame_state);
 }
 
-Node* JSInliner::CreateTailCallerFrameState(Node* node, Node* frame_state) {
-  FrameStateInfo const& frame_info = OpParameter<FrameStateInfo>(frame_state);
-  Handle<SharedFunctionInfo> shared;
-  frame_info.shared_info().ToHandle(&shared);
-
-  Node* function = frame_state->InputAt(kFrameStateFunctionInput);
-
-  // If we are inlining a tail call drop caller's frame state and an
-  // arguments adaptor if it exists.
-  frame_state = NodeProperties::GetFrameStateInput(frame_state, 0);
-  if (frame_state->opcode() == IrOpcode::kFrameState) {
-    FrameStateInfo const& frame_info = OpParameter<FrameStateInfo>(frame_state);
-    if (frame_info.type() == FrameStateType::kArgumentsAdaptor) {
-      frame_state = NodeProperties::GetFrameStateInput(frame_state, 0);
-    }
-  }
-
-  const FrameStateFunctionInfo* state_info =
-      jsgraph_->common()->CreateFrameStateFunctionInfo(
-          FrameStateType::kTailCallerFunction, 0, 0, shared);
-
-  const Operator* op = jsgraph_->common()->FrameState(
-      BailoutId(-1), OutputFrameStateCombine::Ignore(), state_info);
-  const Operator* op0 = jsgraph_->common()->StateValues(0);
-  Node* node0 = jsgraph_->graph()->NewNode(op0);
-  return jsgraph_->graph()->NewNode(op, node0, node0, node0,
-                                    jsgraph_->UndefinedConstant(), function,
-                                    frame_state);
-}
 
 namespace {
 
 // TODO(mstarzinger,verwaest): Move this predicate onto SharedFunctionInfo?
-bool NeedsImplicitReceiver(Handle<SharedFunctionInfo> shared_info) {
-  DisallowHeapAllocation no_gc;
-  Isolate* const isolate = shared_info->GetIsolate();
-  Code* const construct_stub = shared_info->construct_stub();
+bool NeedsImplicitReceiver(Handle<JSFunction> function, Isolate* isolate) {
+  Code* construct_stub = function->shared()->construct_stub();
   return construct_stub != *isolate->builtins()->JSBuiltinsConstructStub() &&
-         construct_stub !=
-             *isolate->builtins()->JSBuiltinsConstructStubForDerived() &&
-         construct_stub != *isolate->builtins()->JSConstructStubApi();
-}
-
-bool IsNonConstructible(Handle<SharedFunctionInfo> shared_info) {
-  DisallowHeapAllocation no_gc;
-  Isolate* const isolate = shared_info->GetIsolate();
-  Code* const construct_stub = shared_info->construct_stub();
-  return construct_stub == *isolate->builtins()->ConstructedNonConstructable();
+         construct_stub != *isolate->builtins()->ConstructedNonConstructable();
 }
 
 }  // namespace
@@ -334,21 +294,20 @@ Reduction JSInliner::Reduce(Node* node) {
 Reduction JSInliner::ReduceJSCall(Node* node, Handle<JSFunction> function) {
   DCHECK(IrOpcode::IsInlineeOpcode(node->opcode()));
   JSCallAccessor call(node);
-  Handle<SharedFunctionInfo> shared_info(function->shared());
 
   // Function must be inlineable.
-  if (!shared_info->IsInlineable()) {
+  if (!function->shared()->IsInlineable()) {
     TRACE("Not inlining %s into %s because callee is not inlineable\n",
-          shared_info->DebugName()->ToCString().get(),
+          function->shared()->DebugName()->ToCString().get(),
           info_->shared_info()->DebugName()->ToCString().get());
     return NoChange();
   }
 
   // Constructor must be constructable.
   if (node->opcode() == IrOpcode::kJSCallConstruct &&
-      IsNonConstructible(shared_info)) {
+      !function->IsConstructor()) {
     TRACE("Not inlining %s into %s because constructor is not constructable.\n",
-          shared_info->DebugName()->ToCString().get(),
+          function->shared()->DebugName()->ToCString().get(),
           info_->shared_info()->DebugName()->ToCString().get());
     return NoChange();
   }
@@ -356,17 +315,17 @@ Reduction JSInliner::ReduceJSCall(Node* node, Handle<JSFunction> function) {
   // Class constructors are callable, but [[Call]] will raise an exception.
   // See ES6 section 9.2.1 [[Call]] ( thisArgument, argumentsList ).
   if (node->opcode() == IrOpcode::kJSCallFunction &&
-      IsClassConstructor(shared_info->kind())) {
+      IsClassConstructor(function->shared()->kind())) {
     TRACE("Not inlining %s into %s because callee is a class constructor.\n",
-          shared_info->DebugName()->ToCString().get(),
+          function->shared()->DebugName()->ToCString().get(),
           info_->shared_info()->DebugName()->ToCString().get());
     return NoChange();
   }
 
   // Function contains break points.
-  if (shared_info->HasDebugInfo()) {
+  if (function->shared()->HasDebugInfo()) {
     TRACE("Not inlining %s into %s because callee may contain break points\n",
-          shared_info->DebugName()->ToCString().get(),
+          function->shared()->DebugName()->ToCString().get(),
           info_->shared_info()->DebugName()->ToCString().get());
     return NoChange();
   }
@@ -382,7 +341,7 @@ Reduction JSInliner::ReduceJSCall(Node* node, Handle<JSFunction> function) {
   if (function->context()->native_context() !=
       info_->context()->native_context()) {
     TRACE("Not inlining %s into %s because of different native contexts\n",
-          shared_info->DebugName()->ToCString().get(),
+          function->shared()->DebugName()->ToCString().get(),
           info_->shared_info()->DebugName()->ToCString().get());
     return NoChange();
   }
@@ -393,12 +352,12 @@ Reduction JSInliner::ReduceJSCall(Node* node, Handle<JSFunction> function) {
   for (Node* frame_state = call.frame_state_after();
        frame_state->opcode() == IrOpcode::kFrameState;
        frame_state = frame_state->InputAt(kFrameStateOuterStateInput)) {
-    FrameStateInfo const& frame_info = OpParameter<FrameStateInfo>(frame_state);
-    Handle<SharedFunctionInfo> frame_shared_info;
-    if (frame_info.shared_info().ToHandle(&frame_shared_info) &&
-        *frame_shared_info == *shared_info) {
+    FrameStateInfo const& info = OpParameter<FrameStateInfo>(frame_state);
+    Handle<SharedFunctionInfo> shared_info;
+    if (info.shared_info().ToHandle(&shared_info) &&
+        *shared_info == function->shared()) {
       TRACE("Not inlining %s into %s because call is recursive\n",
-            shared_info->DebugName()->ToCString().get(),
+            function->shared()->DebugName()->ToCString().get(),
             info_->shared_info()->DebugName()->ToCString().get());
       return NoChange();
     }
@@ -407,7 +366,7 @@ Reduction JSInliner::ReduceJSCall(Node* node, Handle<JSFunction> function) {
   // TODO(turbofan): Inlining into a try-block is not yet supported.
   if (NodeProperties::IsExceptionalCall(node)) {
     TRACE("Not inlining %s into %s because of surrounding try-block\n",
-          shared_info->DebugName()->ToCString().get(),
+          function->shared()->DebugName()->ToCString().get(),
           info_->shared_info()->DebugName()->ToCString().get());
     return NoChange();
   }
@@ -415,11 +374,13 @@ Reduction JSInliner::ReduceJSCall(Node* node, Handle<JSFunction> function) {
   Zone zone;
   ParseInfo parse_info(&zone, function);
   CompilationInfo info(&parse_info);
-  if (info_->is_deoptimization_enabled()) info.MarkAsDeoptimizationEnabled();
+  if (info_->is_deoptimization_enabled()) {
+    info.MarkAsDeoptimizationEnabled();
+  }
 
   if (!Compiler::ParseAndAnalyze(info.parse_info())) {
     TRACE("Not inlining %s into %s because parsing failed\n",
-          shared_info->DebugName()->ToCString().get(),
+          function->shared()->DebugName()->ToCString().get(),
           info_->shared_info()->DebugName()->ToCString().get());
     if (info_->isolate()->has_pending_exception()) {
       info_->isolate()->clear_pending_exception();
@@ -427,23 +388,34 @@ Reduction JSInliner::ReduceJSCall(Node* node, Handle<JSFunction> function) {
     return NoChange();
   }
 
+  // In strong mode, in case of too few arguments we need to throw a TypeError
+  // so we must not inline this call.
+  int parameter_count = info.literal()->parameter_count();
+  if (is_strong(info.language_mode()) &&
+      call.formal_arguments() < parameter_count) {
+    TRACE("Not inlining %s into %s because too few arguments for strong mode\n",
+          function->shared()->DebugName()->ToCString().get(),
+          info_->shared_info()->DebugName()->ToCString().get());
+    return NoChange();
+  }
+
   if (!Compiler::EnsureDeoptimizationSupport(&info)) {
     TRACE("Not inlining %s into %s because deoptimization support failed\n",
-          shared_info->DebugName()->ToCString().get(),
+          function->shared()->DebugName()->ToCString().get(),
           info_->shared_info()->DebugName()->ToCString().get());
     return NoChange();
   }
   // Remember that we inlined this function. This needs to be called right
   // after we ensure deoptimization support so that the code flusher
   // does not remove the code with the deoptimization support.
-  info_->AddInlinedFunction(shared_info);
+  info_->AddInlinedFunction(info.shared_info());
 
   // ----------------------------------------------------------------
   // After this point, we've made a decision to inline this function.
   // We shall not bailout from inlining if we got here.
 
   TRACE("Inlining %s into %s\n",
-        shared_info->DebugName()->ToCString().get(),
+        function->shared()->DebugName()->ToCString().get(),
         info_->shared_info()->DebugName()->ToCString().get());
 
   // TODO(mstarzinger): We could use the temporary zone for the graph because
@@ -470,7 +442,7 @@ Reduction JSInliner::ReduceJSCall(Node* node, Handle<JSFunction> function) {
   // Note that the context has to be the callers context (input to call node).
   Node* receiver = jsgraph_->UndefinedConstant();  // Implicit receiver.
   if (node->opcode() == IrOpcode::kJSCallConstruct &&
-      NeedsImplicitReceiver(shared_info)) {
+      NeedsImplicitReceiver(function, info_->isolate())) {
     Node* effect = NodeProperties::GetEffectInput(node);
     Node* context = NodeProperties::GetContextInput(node);
     Node* create = jsgraph_->graph()->NewNode(
@@ -519,7 +491,7 @@ Reduction JSInliner::ReduceJSCall(Node* node, Handle<JSFunction> function) {
   // in that frame state tho, as the conversion of the receiver can be repeated
   // any number of times, it's not observable.
   if (node->opcode() == IrOpcode::kJSCallFunction &&
-      is_sloppy(info.language_mode()) && !shared_info->native()) {
+      is_sloppy(info.language_mode()) && !function->shared()->native()) {
     const CallFunctionParameters& p = CallFunctionParametersOf(node->op());
     Node* effect = NodeProperties::GetEffectInput(node);
     Node* convert = jsgraph_->graph()->NewNode(
@@ -529,30 +501,15 @@ Reduction JSInliner::ReduceJSCall(Node* node, Handle<JSFunction> function) {
     NodeProperties::ReplaceEffectInput(node, convert);
   }
 
-  // If we are inlining a JS call at tail position then we have to pop current
-  // frame state and its potential arguments adaptor frame state in order to
-  // make the call stack be consistent with non-inlining case.
-  // After that we add a tail caller frame state which lets deoptimizer handle
-  // the case when the outermost function inlines a tail call (it should remove
-  // potential arguments adaptor frame that belongs to outermost function when
-  // deopt happens).
-  if (node->opcode() == IrOpcode::kJSCallFunction) {
-    const CallFunctionParameters& p = CallFunctionParametersOf(node->op());
-    if (p.tail_call_mode() == TailCallMode::kAllow) {
-      frame_state = CreateTailCallerFrameState(node, frame_state);
-    }
-  }
-
   // Insert argument adaptor frame if required. The callees formal parameter
   // count (i.e. value outputs of start node minus target, receiver, new target,
   // arguments count and context) have to match the number of arguments passed
   // to the call.
-  int parameter_count = info.literal()->parameter_count();
   DCHECK_EQ(parameter_count, start->op()->ValueOutputCount() - 5);
   if (call.formal_arguments() != parameter_count) {
     frame_state = CreateArtificialFrameState(
         node, frame_state, call.formal_arguments(),
-        FrameStateType::kArgumentsAdaptor, shared_info);
+        FrameStateType::kArgumentsAdaptor, info.shared_info());
   }
 
   return InlineCall(node, new_target, context, frame_state, start, end);

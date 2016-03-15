@@ -133,19 +133,23 @@ void TypeFeedbackVector::ComputeCounts(int* with_type_info, int* generic) {
   *generic = gen;
 }
 
-Handle<Symbol> TypeFeedbackVector::UninitializedSentinel(Isolate* isolate) {
+
+Handle<Object> TypeFeedbackVector::UninitializedSentinel(Isolate* isolate) {
   return isolate->factory()->uninitialized_symbol();
 }
 
-Handle<Symbol> TypeFeedbackVector::MegamorphicSentinel(Isolate* isolate) {
+
+Handle<Object> TypeFeedbackVector::MegamorphicSentinel(Isolate* isolate) {
   return isolate->factory()->megamorphic_symbol();
 }
 
-Handle<Symbol> TypeFeedbackVector::PremonomorphicSentinel(Isolate* isolate) {
+
+Handle<Object> TypeFeedbackVector::PremonomorphicSentinel(Isolate* isolate) {
   return isolate->factory()->premonomorphic_symbol();
 }
 
-Symbol* TypeFeedbackVector::RawUninitializedSentinel(Isolate* isolate) {
+
+Object* TypeFeedbackVector::RawUninitializedSentinel(Isolate* isolate) {
   return isolate->heap()->uninitialized_symbol();
 }
 

@@ -5,6 +5,7 @@
 #include "src/type-cache.h"
 
 #include "src/base/lazy-instance.h"
+#include "src/types-inl.h"
 
 namespace v8 {
 namespace internal {

@@ -7,7 +7,6 @@
 
 #include "src/cancelable-task.h"
 #include "src/execution.h"
-#include "src/heap/heap.h"
 #include "src/heap/incremental-marking-job.h"
 #include "src/heap/spaces.h"
 #include "src/objects.h"
@@ -105,7 +104,7 @@ class IncrementalMarking {
   void Epilogue();
 
   // Performs incremental marking steps of step_size_in_bytes as long as
-  // deadline_in_ms is not reached. step_size_in_bytes can be 0 to compute
+  // deadline_ins_ms is not reached. step_size_in_bytes can be 0 to compute
   // an estimate increment. Returns the remaining time that cannot be used
   // for incremental marking anymore because a single step would exceed the
   // deadline.
@@ -154,9 +153,6 @@ class IncrementalMarking {
   static void RecordWriteFromCode(HeapObject* obj, Object** slot,
                                   Isolate* isolate);
 
-  static void RecordWriteOfCodeEntryFromCode(JSFunction* host, Object** slot,
-                                             Isolate* isolate);
-
   // Record a slot for compaction.  Returns false for objects that are
   // guaranteed to be rescanned or not guaranteed to survive.
   //
@@ -165,13 +161,15 @@ class IncrementalMarking {
   // the incremental cycle (stays white).
   INLINE(bool BaseRecordWrite(HeapObject* obj, Object* value));
   INLINE(void RecordWrite(HeapObject* obj, Object** slot, Object* value));
-  INLINE(void RecordWriteIntoCode(Code* host, RelocInfo* rinfo, Object* value));
+  INLINE(void RecordWriteIntoCode(HeapObject* obj, RelocInfo* rinfo,
+                                  Object* value));
   INLINE(void RecordWriteOfCodeEntry(JSFunction* host, Object** slot,
                                      Code* value));
 
 
   void RecordWriteSlow(HeapObject* obj, Object** slot, Object* value);
-  void RecordWriteIntoCodeSlow(Code* host, RelocInfo* rinfo, Object* value);
+  void RecordWriteIntoCodeSlow(HeapObject* obj, RelocInfo* rinfo,
+                               Object* value);
   void RecordWriteOfCodeEntrySlow(JSFunction* host, Object** slot, Code* value);
   void RecordCodeTargetPatch(Code* host, Address pc, HeapObject* value);
   void RecordCodeTargetPatch(Address pc, HeapObject* value);
@@ -208,9 +206,7 @@ class IncrementalMarking {
 
   bool IsIdleMarkingDelayCounterLimitReached();
 
-  static void MarkObject(Heap* heap, HeapObject* object);
-
-  void IterateBlackObject(HeapObject* object);
+  INLINE(static void MarkObject(Heap* heap, HeapObject* object));
 
   Heap* heap() const { return heap_; }
 
@@ -218,13 +214,11 @@ class IncrementalMarking {
     return &incremental_marking_job_;
   }
 
-  bool black_allocation() { return black_allocation_; }
-
  private:
-  class Observer : public AllocationObserver {
+  class Observer : public InlineAllocationObserver {
    public:
     Observer(IncrementalMarking& incremental_marking, intptr_t step_size)
-        : AllocationObserver(step_size),
+        : InlineAllocationObserver(step_size),
           incremental_marking_(incremental_marking) {}
 
     void Step(int bytes_allocated, Address, size_t) override {
@@ -243,9 +237,6 @@ class IncrementalMarking {
   void ResetStepCounters();
 
   void StartMarking();
-
-  void StartBlackAllocation();
-  void FinishBlackAllocation();
 
   void MarkRoots();
   void MarkObjectGroups();
@@ -298,8 +289,6 @@ class IncrementalMarking {
   int unscanned_bytes_of_large_object_;
 
   bool was_activated_;
-
-  bool black_allocation_;
 
   bool finalize_marking_completed_;
 

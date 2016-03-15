@@ -4,9 +4,8 @@
 
 // Flags: --expose-wasm
 
-assertFalse(undefined === Wasm);
-assertFalse(undefined == Wasm);
-assertEquals("function", typeof Wasm.verifyModule);
-assertEquals("function", typeof Wasm.verifyFunction);
-assertEquals("function", typeof Wasm.instantiateModule);
-assertEquals("function", typeof Wasm.instantiateModuleFromAsm);
+assertFalse(undefined === _WASMEXP_);
+assertFalse(undefined == _WASMEXP_);
+assertEquals("function", typeof _WASMEXP_.verifyModule);
+assertEquals("function", typeof _WASMEXP_.verifyFunction);
+assertEquals("function", typeof _WASMEXP_.compileRun);

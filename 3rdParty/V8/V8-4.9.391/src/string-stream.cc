@@ -527,19 +527,12 @@ void StringStream::PrintPrototype(JSFunction* fun, Object* receiver) {
   Object* name = fun->shared()->name();
   bool print_name = false;
   Isolate* isolate = fun->GetIsolate();
-  if (receiver->IsNull() || receiver->IsUndefined() || receiver->IsJSProxy()) {
-    print_name = true;
-  } else {
-    if (!receiver->IsJSObject()) {
-      receiver = receiver->GetRootMap(isolate)->prototype();
-    }
-
-    for (PrototypeIterator iter(isolate, JSObject::cast(receiver),
-                                PrototypeIterator::START_AT_RECEIVER);
-         !iter.IsAtEnd(); iter.Advance()) {
-      if (iter.GetCurrent()->IsJSProxy()) break;
+  for (PrototypeIterator iter(isolate, receiver,
+                              PrototypeIterator::START_AT_RECEIVER);
+       !iter.IsAtEnd(); iter.Advance()) {
+    if (iter.GetCurrent()->IsJSObject()) {
       Object* key = iter.GetCurrent<JSObject>()->SlowReverseLookup(fun);
-      if (!key->IsUndefined()) {
+      if (key != isolate->heap()->undefined_value()) {
         if (!name->IsString() ||
             !key->IsString() ||
             !String::cast(name)->Equals(String::cast(key))) {
@@ -549,8 +542,9 @@ void StringStream::PrintPrototype(JSFunction* fun, Object* receiver) {
           print_name = false;
         }
         name = key;
-        break;
       }
+    } else {
+      print_name = true;
     }
   }
   PrintName(name);

@@ -36,6 +36,13 @@ var handler = {
   set: function(target, name, value) {
     return false;                    // l
   },                                 // m
+  enumerate: function(target) {
+    function* keys() {               // n
+      yield "foo";                   // o
+      yield "bar";                   // p
+    }                                // q
+    return keys();                   // r
+  },                                 // s
 }
 
 var proxy = new Proxy(target, handler);
@@ -45,6 +52,9 @@ debugger;                            // a
 var has = "step" in proxy;           // b
 var get = proxy.step;                // c
 proxy.step = 43;                     // d
+for (var i in proxy) {               // e
+  log.push(i);                       // f
+}
 
 Debug.setListener(null);             // g
 
@@ -54,8 +64,15 @@ assertEquals(42, get);
 
 assertEquals([
   "a0",
-  "b17", "h4b20", "i2b20",  // [[Has]]
-  "c15", "j4c15", "k2c15",  // [[Get]]
-  "d0", "l4d11", "m2d11",   // [[Set]]
+  "b0", "h4b20", "i2b20",                           // [[Has]]
+  "c0", "j4c15", "k2c15",                           // [[Get]]
+  "d0", "l4d11", "m2d11",                           // [[Set]]
+  "e14", "r4e14", "q4r11e14", "s2e14",              // for-in [[Enumerate]]
+      "o6e14", "q4e14", "p6e14", "q4e14", "q4e14",  // exhaust iterator
+  "e9",                                             // for-in-body
+      "h4e9","i2e9",                                // [[Has]] property
+  "f2","foo", "e9",                                 // for-in-body
+    "h4e9","i2e9",                                  // [[Has]]property
+  "f2","bar", "e9",                                 // for-in-body
   "g0"
 ], log);

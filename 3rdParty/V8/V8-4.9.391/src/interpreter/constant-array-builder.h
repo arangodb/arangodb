@@ -12,30 +12,27 @@
 namespace v8 {
 namespace internal {
 
+class Factory;
 class Isolate;
 
 namespace interpreter {
 
-// A helper class for constructing constant arrays for the
-// interpreter. Each instance of this class is intended to be used to
-// generate exactly one FixedArray of constants via the ToFixedArray
-// method.
-class ConstantArrayBuilder final BASE_EMBEDDED {
+// A helper class for constructing constant arrays for the interpreter.
+class ConstantArrayBuilder final : public ZoneObject {
  public:
   // Capacity of the 8-bit operand slice.
-  static const size_t k8BitCapacity = 1u << kBitsPerByte;
+  static const size_t kLowCapacity = 1u << kBitsPerByte;
+
+  // Capacity of the combined 8-bit and 16-bit operand slices.
+  static const size_t kMaxCapacity = 1u << (2 * kBitsPerByte);
 
   // Capacity of the 16-bit operand slice.
-  static const size_t k16BitCapacity = (1u << 2 * kBitsPerByte) - k8BitCapacity;
-
-  // Capacity of the 32-bit operand slice.
-  static const size_t k32BitCapacity =
-      kMaxUInt32 - k16BitCapacity - k8BitCapacity + 1;
+  static const size_t kHighCapacity = kMaxCapacity - kLowCapacity;
 
   ConstantArrayBuilder(Isolate* isolate, Zone* zone);
 
   // Generate a fixed array of constants based on inserted objects.
-  Handle<FixedArray> ToFixedArray();
+  Handle<FixedArray> ToFixedArray(Factory* factory) const;
 
   // Returns the object in the constant pool array that at index
   // |index|.
@@ -61,13 +58,12 @@ class ConstantArrayBuilder final BASE_EMBEDDED {
   void DiscardReservedEntry(OperandSize operand_size);
 
  private:
-  typedef uint32_t index_t;
+  typedef uint16_t index_t;
 
   index_t AllocateEntry(Handle<Object> object);
 
-  struct ConstantArraySlice final : public ZoneObject {
-    ConstantArraySlice(Zone* zone, size_t start_index, size_t capacity,
-                       OperandSize operand_size);
+  struct ConstantArraySlice final {
+    ConstantArraySlice(Zone* zone, size_t start_index, size_t capacity);
     void Reserve();
     void Unreserve();
     size_t Allocate(Handle<Object> object);
@@ -78,26 +74,19 @@ class ConstantArrayBuilder final BASE_EMBEDDED {
     inline size_t capacity() const { return capacity_; }
     inline size_t size() const { return constants_.size(); }
     inline size_t start_index() const { return start_index_; }
-    inline size_t max_index() const { return start_index_ + capacity() - 1; }
-    inline OperandSize operand_size() const { return operand_size_; }
 
    private:
     const size_t start_index_;
     const size_t capacity_;
     size_t reserved_;
-    OperandSize operand_size_;
     ZoneVector<Handle<Object>> constants_;
 
     DISALLOW_COPY_AND_ASSIGN(ConstantArraySlice);
   };
 
-  const ConstantArraySlice* IndexToSlice(size_t index) const;
-  ConstantArraySlice* OperandSizeToSlice(OperandSize operand_size) const;
-
-  IdentityMap<index_t>* constants_map() { return &constants_map_; }
-
   Isolate* isolate_;
-  ConstantArraySlice* idx_slice_[2];
+  ConstantArraySlice idx8_slice_;
+  ConstantArraySlice idx16_slice_;
   IdentityMap<index_t> constants_map_;
 };
 

@@ -48,6 +48,7 @@ class LChunkBuilder;
   V(AbnormalExit)                             \
   V(AccessArgumentsAt)                        \
   V(Add)                                      \
+  V(AllocateBlockContext)                     \
   V(Allocate)                                 \
   V(ApplyArguments)                           \
   V(ArgumentsElements)                        \
@@ -59,8 +60,11 @@ class LChunkBuilder;
   V(BoundsCheckBaseIndexInformation)          \
   V(Branch)                                   \
   V(CallWithDescriptor)                       \
+  V(CallJSFunction)                           \
+  V(CallFunction)                             \
   V(CallNewArray)                             \
   V(CallRuntime)                              \
+  V(CallStub)                                 \
   V(CapturedObject)                           \
   V(Change)                                   \
   V(CheckArrayBufferNotNeutered)              \
@@ -75,6 +79,7 @@ class LChunkBuilder;
   V(CompareNumericAndBranch)                  \
   V(CompareHoleAndBranch)                     \
   V(CompareGeneric)                           \
+  V(CompareMinusZeroAndBranch)                \
   V(CompareObjectEqAndBranch)                 \
   V(CompareMap)                               \
   V(Constant)                                 \
@@ -112,6 +117,7 @@ class LChunkBuilder;
   V(LoadNamedField)                           \
   V(LoadNamedGeneric)                         \
   V(LoadRoot)                                 \
+  V(MapEnumLength)                            \
   V(MathFloorOfDiv)                           \
   V(MathMinMax)                               \
   V(MaybeGrowElements)                        \
@@ -144,6 +150,7 @@ class LChunkBuilder;
   V(StringCompareAndBranch)                   \
   V(Sub)                                      \
   V(ThisFunction)                             \
+  V(ToFastProperties)                         \
   V(TransitionElementsKind)                   \
   V(TrapAllocationMemento)                    \
   V(Typeof)                                   \
@@ -1365,8 +1372,10 @@ class HUnaryControlInstruction : public HTemplateControlInstruction<2, 1> {
 class HBranch final : public HUnaryControlInstruction {
  public:
   DECLARE_INSTRUCTION_FACTORY_P1(HBranch, HValue*);
-  DECLARE_INSTRUCTION_FACTORY_P2(HBranch, HValue*, ToBooleanICStub::Types);
-  DECLARE_INSTRUCTION_FACTORY_P4(HBranch, HValue*, ToBooleanICStub::Types,
+  DECLARE_INSTRUCTION_FACTORY_P2(HBranch, HValue*,
+                                 ToBooleanStub::Types);
+  DECLARE_INSTRUCTION_FACTORY_P4(HBranch, HValue*,
+                                 ToBooleanStub::Types,
                                  HBasicBlock*, HBasicBlock*);
 
   Representation RequiredInputRepresentation(int index) override {
@@ -1378,22 +1387,23 @@ class HBranch final : public HUnaryControlInstruction {
 
   std::ostream& PrintDataTo(std::ostream& os) const override;  // NOLINT
 
-  ToBooleanICStub::Types expected_input_types() const {
+  ToBooleanStub::Types expected_input_types() const {
     return expected_input_types_;
   }
 
   DECLARE_CONCRETE_INSTRUCTION(Branch)
 
  private:
-  HBranch(HValue* value, ToBooleanICStub::Types expected_input_types =
-                             ToBooleanICStub::Types(),
-          HBasicBlock* true_target = NULL, HBasicBlock* false_target = NULL)
+  HBranch(HValue* value,
+          ToBooleanStub::Types expected_input_types = ToBooleanStub::Types(),
+          HBasicBlock* true_target = NULL,
+          HBasicBlock* false_target = NULL)
       : HUnaryControlInstruction(value, true_target, false_target),
         expected_input_types_(expected_input_types) {
     SetFlag(kAllowUndefinedAsNaN);
   }
 
-  ToBooleanICStub::Types expected_input_types_;
+  ToBooleanStub::Types expected_input_types_;
 };
 
 
@@ -2214,6 +2224,38 @@ class HBinaryCall : public HCall<2> {
 };
 
 
+class HCallJSFunction final : public HCall<1> {
+ public:
+  static HCallJSFunction* New(Isolate* isolate, Zone* zone, HValue* context,
+                              HValue* function, int argument_count);
+
+  HValue* function() const { return OperandAt(0); }
+
+  std::ostream& PrintDataTo(std::ostream& os) const override;  // NOLINT
+
+  Representation RequiredInputRepresentation(int index) final {
+    DCHECK(index == 0);
+    return Representation::Tagged();
+  }
+
+  bool HasStackCheck() final { return has_stack_check_; }
+
+  DECLARE_CONCRETE_INSTRUCTION(CallJSFunction)
+
+ private:
+  // The argument count includes the receiver.
+  HCallJSFunction(HValue* function,
+                  int argument_count,
+                  bool has_stack_check)
+      : HCall<1>(argument_count),
+        has_stack_check_(has_stack_check) {
+      SetOperandAt(0, function);
+  }
+
+  bool has_stack_check_;
+};
+
+
 enum CallMode { NORMAL_CALL, TAIL_CALL };
 
 
@@ -2226,7 +2268,7 @@ class HCallWithDescriptor final : public HInstruction {
                                   CallMode call_mode = NORMAL_CALL) {
     HCallWithDescriptor* res = new (zone) HCallWithDescriptor(
         target, argument_count, descriptor, operands, call_mode, zone);
-    DCHECK_EQ(operands.length(), res->GetParameterCount());
+    DCHECK(operands.length() == res->GetParameterCount());
     return res;
   }
 
@@ -2306,50 +2348,86 @@ class HCallWithDescriptor final : public HInstruction {
 
 class HInvokeFunction final : public HBinaryCall {
  public:
-  DECLARE_INSTRUCTION_WITH_CONTEXT_FACTORY_P4(HInvokeFunction, HValue*,
-                                              Handle<JSFunction>, int,
-                                              TailCallMode);
+  DECLARE_INSTRUCTION_WITH_CONTEXT_FACTORY_P2(HInvokeFunction, HValue*, int);
+
+  HInvokeFunction(HValue* context,
+                  HValue* function,
+                  Handle<JSFunction> known_function,
+                  int argument_count)
+      : HBinaryCall(context, function, argument_count),
+        known_function_(known_function) {
+    formal_parameter_count_ =
+        known_function.is_null()
+            ? 0
+            : known_function->shared()->internal_formal_parameter_count();
+    has_stack_check_ = !known_function.is_null() &&
+        (known_function->code()->kind() == Code::FUNCTION ||
+         known_function->code()->kind() == Code::OPTIMIZED_FUNCTION);
+  }
+
+  static HInvokeFunction* New(Isolate* isolate, Zone* zone, HValue* context,
+                              HValue* function,
+                              Handle<JSFunction> known_function,
+                              int argument_count) {
+    return new(zone) HInvokeFunction(context, function,
+                                     known_function, argument_count);
+  }
 
   HValue* context() { return first(); }
   HValue* function() { return second(); }
   Handle<JSFunction> known_function() { return known_function_; }
   int formal_parameter_count() const { return formal_parameter_count_; }
 
-  bool HasStackCheck() final { return HasStackCheckField::decode(bit_field_); }
-  TailCallMode tail_call_mode() const {
-    return TailCallModeField::decode(bit_field_);
-  }
+  bool HasStackCheck() final { return has_stack_check_; }
 
   DECLARE_CONCRETE_INSTRUCTION(InvokeFunction)
 
  private:
-  void set_has_stack_check(bool has_stack_check) {
-    bit_field_ = HasStackCheckField::update(bit_field_, has_stack_check);
-  }
-
-  HInvokeFunction(HValue* context, HValue* function,
-                  Handle<JSFunction> known_function, int argument_count,
-                  TailCallMode tail_call_mode)
+  HInvokeFunction(HValue* context, HValue* function, int argument_count)
       : HBinaryCall(context, function, argument_count),
-        known_function_(known_function),
-        bit_field_(TailCallModeField::encode(tail_call_mode)) {
-    formal_parameter_count_ =
-        known_function.is_null()
-            ? 0
-            : known_function->shared()->internal_formal_parameter_count();
-    set_has_stack_check(
-        !known_function.is_null() &&
-        (known_function->code()->kind() == Code::FUNCTION ||
-         known_function->code()->kind() == Code::OPTIMIZED_FUNCTION));
+        has_stack_check_(false) {
   }
 
   Handle<JSFunction> known_function_;
   int formal_parameter_count_;
+  bool has_stack_check_;
+};
 
-  class HasStackCheckField : public BitField<bool, 0, 1> {};
-  class TailCallModeField
-      : public BitField<TailCallMode, HasStackCheckField::kNext, 1> {};
-  uint32_t bit_field_;
+
+class HCallFunction final : public HBinaryCall {
+ public:
+  DECLARE_INSTRUCTION_WITH_CONTEXT_FACTORY_P3(HCallFunction, HValue*, int,
+                                              ConvertReceiverMode);
+
+  HValue* context() const { return first(); }
+  HValue* function() const { return second(); }
+
+  ConvertReceiverMode convert_mode() const { return convert_mode_; }
+  FeedbackVectorSlot slot() const { return slot_; }
+  Handle<TypeFeedbackVector> feedback_vector() const {
+    return feedback_vector_;
+  }
+  bool HasVectorAndSlot() const { return !feedback_vector_.is_null(); }
+  void SetVectorAndSlot(Handle<TypeFeedbackVector> vector,
+                        FeedbackVectorSlot slot) {
+    feedback_vector_ = vector;
+    slot_ = slot;
+  }
+
+  DECLARE_CONCRETE_INSTRUCTION(CallFunction)
+
+  std::ostream& PrintDataTo(std::ostream& os) const override;  // NOLINT
+
+  int argument_delta() const override { return -argument_count(); }
+
+ private:
+  HCallFunction(HValue* context, HValue* function, int argument_count,
+                ConvertReceiverMode convert_mode)
+      : HBinaryCall(context, function, argument_count),
+        convert_mode_(convert_mode) {}
+  Handle<TypeFeedbackVector> feedback_vector_;
+  FeedbackVectorSlot slot_;
+  ConvertReceiverMode convert_mode_;
 };
 
 
@@ -2412,6 +2490,31 @@ class HCallRuntime final : public HCall<1> {
 
   const Runtime::Function* c_function_;
   SaveFPRegsMode save_doubles_;
+};
+
+
+class HMapEnumLength final : public HUnaryOperation {
+ public:
+  DECLARE_INSTRUCTION_FACTORY_P1(HMapEnumLength, HValue*);
+
+  Representation RequiredInputRepresentation(int index) override {
+    return Representation::Tagged();
+  }
+
+  DECLARE_CONCRETE_INSTRUCTION(MapEnumLength)
+
+ protected:
+  bool DataEquals(HValue* other) override { return true; }
+
+ private:
+  explicit HMapEnumLength(HValue* value)
+      : HUnaryOperation(value, HType::Smi()) {
+    set_representation(Representation::Smi());
+    SetFlag(kUseGVN);
+    SetDependsOnFlag(kMaps);
+  }
+
+  bool IsDeletable() const override { return true; }
 };
 
 
@@ -2707,6 +2810,8 @@ class HCheckValue final : public HUnaryOperation {
     bool in_new_space = isolate->heap()->InNewSpace(*func);
     // NOTE: We create an uninitialized Unique and initialize it later.
     // This is because a JSFunction can move due to GC during graph creation.
+    // TODO(titzer): This is a migration crutch. Replace with some kind of
+    // Uniqueness scope later.
     Unique<JSFunction> target = Unique<JSFunction>::CreateUninitialized(func);
     HCheckValue* check = new(zone) HCheckValue(value, target, in_new_space);
     return check;
@@ -3236,6 +3341,7 @@ class HPhi final : public HValue {
   Representation representation_from_non_phi_uses_ = Representation::None();
   bool has_type_feedback_from_uses_ = false;
 
+  // TODO(titzer): we can't eliminate the receiver for generating backtraces
   bool IsDeletable() const override { return !IsReceiver(); }
 };
 
@@ -3650,8 +3756,9 @@ class HConstant final : public HTemplateInstruction<0> {
 class HBinaryOperation : public HTemplateInstruction<3> {
  public:
   HBinaryOperation(HValue* context, HValue* left, HValue* right,
-                   HType type = HType::Tagged())
+                   Strength strength, HType type = HType::Tagged())
       : HTemplateInstruction<3>(type),
+        strength_(strength),
         observed_output_representation_(Representation::None()) {
     DCHECK(left != NULL && right != NULL);
     SetOperandAt(0, context);
@@ -3664,6 +3771,7 @@ class HBinaryOperation : public HTemplateInstruction<3> {
   HValue* context() const { return OperandAt(0); }
   HValue* left() const { return OperandAt(1); }
   HValue* right() const { return OperandAt(2); }
+  Strength strength() const { return strength_; }
 
   // True if switching left and right operands likely generates better code.
   bool AreOperandsBetterSwitched() {
@@ -3739,10 +3847,13 @@ class HBinaryOperation : public HTemplateInstruction<3> {
     return base::bits::IsPowerOfTwo32(static_cast<uint32_t>(value));
   }
 
+  Strength strength() { return strength_; }
+
   DECLARE_ABSTRACT_INSTRUCTION(BinaryOperation)
 
  private:
   bool IgnoreObservedOutputRepresentation(Representation current_rep);
+  Strength strength_;
 
   Representation observed_input_representation_[2];
   Representation observed_output_representation_;
@@ -3785,8 +3896,8 @@ class HWrapReceiver final : public HTemplateInstruction<2> {
 
 class HApplyArguments final : public HTemplateInstruction<4> {
  public:
-  DECLARE_INSTRUCTION_FACTORY_P5(HApplyArguments, HValue*, HValue*, HValue*,
-                                 HValue*, TailCallMode);
+  DECLARE_INSTRUCTION_FACTORY_P4(HApplyArguments, HValue*, HValue*, HValue*,
+                                 HValue*);
 
   Representation RequiredInputRepresentation(int index) override {
     // The length is untagged, all other inputs are tagged.
@@ -3800,16 +3911,13 @@ class HApplyArguments final : public HTemplateInstruction<4> {
   HValue* length() { return OperandAt(2); }
   HValue* elements() { return OperandAt(3); }
 
-  TailCallMode tail_call_mode() const {
-    return TailCallModeField::decode(bit_field_);
-  }
-
   DECLARE_CONCRETE_INSTRUCTION(ApplyArguments)
 
  private:
-  HApplyArguments(HValue* function, HValue* receiver, HValue* length,
-                  HValue* elements, TailCallMode tail_call_mode)
-      : bit_field_(TailCallModeField::encode(tail_call_mode)) {
+  HApplyArguments(HValue* function,
+                  HValue* receiver,
+                  HValue* length,
+                  HValue* elements) {
     set_representation(Representation::Tagged());
     SetOperandAt(0, function);
     SetOperandAt(1, receiver);
@@ -3817,9 +3925,6 @@ class HApplyArguments final : public HTemplateInstruction<4> {
     SetOperandAt(3, elements);
     SetAllSideEffects();
   }
-
-  class TailCallModeField : public BitField<TailCallMode, 0, 1> {};
-  uint32_t bit_field_;
 };
 
 
@@ -4018,10 +4123,11 @@ class HBoundsCheckBaseIndexInformation final : public HTemplateInstruction<2> {
 class HBitwiseBinaryOperation : public HBinaryOperation {
  public:
   HBitwiseBinaryOperation(HValue* context, HValue* left, HValue* right,
-                          HType type = HType::TaggedNumber())
-      : HBinaryOperation(context, left, right, type) {
+                          Strength strength, HType type = HType::TaggedNumber())
+      : HBinaryOperation(context, left, right, strength, type) {
     SetFlag(kFlexibleRepresentation);
     SetFlag(kTruncatingToInt32);
+    if (!is_strong(strength)) SetFlag(kAllowUndefinedAsNaN);
     SetAllSideEffects();
   }
 
@@ -4076,7 +4182,7 @@ class HMathFloorOfDiv final : public HBinaryOperation {
 
  private:
   HMathFloorOfDiv(HValue* context, HValue* left, HValue* right)
-      : HBinaryOperation(context, left, right) {
+      : HBinaryOperation(context, left, right, Strength::WEAK) {
     set_representation(Representation::Integer32());
     SetFlag(kUseGVN);
     SetFlag(kCanOverflow);
@@ -4095,11 +4201,13 @@ class HMathFloorOfDiv final : public HBinaryOperation {
 
 class HArithmeticBinaryOperation : public HBinaryOperation {
  public:
-  HArithmeticBinaryOperation(HValue* context, HValue* left, HValue* right)
-      : HBinaryOperation(context, left, right, HType::TaggedNumber()) {
+  HArithmeticBinaryOperation(HValue* context, HValue* left, HValue* right,
+                             Strength strength)
+      : HBinaryOperation(context, left, right, strength,
+                         HType::TaggedNumber()) {
     SetAllSideEffects();
     SetFlag(kFlexibleRepresentation);
-    SetFlag(kAllowUndefinedAsNaN);
+    if (!is_strong(strength)) SetFlag(kAllowUndefinedAsNaN);
   }
 
   void RepresentationChanged(Representation to) override {
@@ -4124,8 +4232,9 @@ class HArithmeticBinaryOperation : public HBinaryOperation {
 class HCompareGeneric final : public HBinaryOperation {
  public:
   static HCompareGeneric* New(Isolate* isolate, Zone* zone, HValue* context,
-                              HValue* left, HValue* right, Token::Value token) {
-    return new (zone) HCompareGeneric(context, left, right, token);
+                              HValue* left, HValue* right, Token::Value token,
+                              Strength strength = Strength::WEAK) {
+    return new (zone) HCompareGeneric(context, left, right, token, strength);
   }
 
   Representation RequiredInputRepresentation(int index) override {
@@ -4141,8 +4250,8 @@ class HCompareGeneric final : public HBinaryOperation {
 
  private:
   HCompareGeneric(HValue* context, HValue* left, HValue* right,
-                  Token::Value token)
-      : HBinaryOperation(context, left, right, HType::Boolean()),
+                  Token::Value token, Strength strength)
+      : HBinaryOperation(context, left, right, strength, HType::Boolean()),
         token_(token) {
     DCHECK(Token::IsCompareOp(token));
     set_representation(Representation::Tagged());
@@ -4159,9 +4268,17 @@ class HCompareNumericAndBranch : public HTemplateControlInstruction<2, 2> {
                                        HValue* context, HValue* left,
                                        HValue* right, Token::Value token,
                                        HBasicBlock* true_target = NULL,
-                                       HBasicBlock* false_target = NULL) {
+                                       HBasicBlock* false_target = NULL,
+                                       Strength strength = Strength::WEAK) {
+    return new (zone) HCompareNumericAndBranch(left, right, token, true_target,
+                                               false_target, strength);
+  }
+  static HCompareNumericAndBranch* New(Isolate* isolate, Zone* zone,
+                                       HValue* context, HValue* left,
+                                       HValue* right, Token::Value token,
+                                       Strength strength) {
     return new (zone)
-        HCompareNumericAndBranch(left, right, token, true_target, false_target);
+        HCompareNumericAndBranch(left, right, token, NULL, NULL, strength);
   }
 
   HValue* left() const { return OperandAt(0); }
@@ -4185,6 +4302,8 @@ class HCompareNumericAndBranch : public HTemplateControlInstruction<2, 2> {
 
   bool KnownSuccessorBlock(HBasicBlock** block) override;
 
+  Strength strength() const { return strength_; }
+
   std::ostream& PrintDataTo(std::ostream& os) const override;  // NOLINT
 
   void SetOperandPositions(Zone* zone, SourcePosition left_pos,
@@ -4197,8 +4316,9 @@ class HCompareNumericAndBranch : public HTemplateControlInstruction<2, 2> {
 
  private:
   HCompareNumericAndBranch(HValue* left, HValue* right, Token::Value token,
-                           HBasicBlock* true_target, HBasicBlock* false_target)
-      : token_(token) {
+                           HBasicBlock* true_target, HBasicBlock* false_target,
+                           Strength strength)
+      : token_(token), strength_(strength) {
     SetFlag(kFlexibleRepresentation);
     DCHECK(Token::IsCompareOp(token));
     SetOperandAt(0, left);
@@ -4209,6 +4329,7 @@ class HCompareNumericAndBranch : public HTemplateControlInstruction<2, 2> {
 
   Representation observed_input_representation_[2];
   Token::Value token_;
+  Strength strength_;
 };
 
 
@@ -4233,6 +4354,27 @@ class HCompareHoleAndBranch final : public HUnaryControlInstruction {
       : HUnaryControlInstruction(value, true_target, false_target) {
     SetFlag(kFlexibleRepresentation);
     SetFlag(kAllowUndefinedAsNaN);
+  }
+};
+
+
+class HCompareMinusZeroAndBranch final : public HUnaryControlInstruction {
+ public:
+  DECLARE_INSTRUCTION_FACTORY_P1(HCompareMinusZeroAndBranch, HValue*);
+
+  void InferRepresentation(HInferRepresentationPhase* h_infer) override;
+
+  Representation RequiredInputRepresentation(int index) override {
+    return representation();
+  }
+
+  bool KnownSuccessorBlock(HBasicBlock** block) override;
+
+  DECLARE_CONCRETE_INSTRUCTION(CompareMinusZeroAndBranch)
+
+ private:
+  explicit HCompareMinusZeroAndBranch(HValue* value)
+      : HUnaryControlInstruction(value, NULL, NULL) {
   }
 };
 
@@ -4540,7 +4682,8 @@ class HInstanceOf final : public HBinaryOperation {
 
  private:
   HInstanceOf(HValue* context, HValue* left, HValue* right)
-      : HBinaryOperation(context, left, right, HType::Boolean()) {
+      : HBinaryOperation(context, left, right, Strength::WEAK,
+                         HType::Boolean()) {
     set_representation(Representation::Tagged());
     SetAllSideEffects();
   }
@@ -4623,9 +4766,10 @@ enum ExternalAddType {
 class HAdd final : public HArithmeticBinaryOperation {
  public:
   static HInstruction* New(Isolate* isolate, Zone* zone, HValue* context,
-                           HValue* left, HValue* right);
-  static HInstruction* New(Isolate* isolate, Zone* zone, HValue* context,
                            HValue* left, HValue* right,
+                           Strength strength = Strength::WEAK);
+  static HInstruction* New(Isolate* isolate, Zone* zone, HValue* context,
+                           HValue* left, HValue* right, Strength strength,
                            ExternalAddType external_add_type);
 
   // Add is only commutative if two integer values are added and not if two
@@ -4687,9 +4831,9 @@ class HAdd final : public HArithmeticBinaryOperation {
   Range* InferRange(Zone* zone) override;
 
  private:
-  HAdd(HValue* context, HValue* left, HValue* right,
+  HAdd(HValue* context, HValue* left, HValue* right, Strength strength,
        ExternalAddType external_add_type = NoExternalAdd)
-      : HArithmeticBinaryOperation(context, left, right),
+      : HArithmeticBinaryOperation(context, left, right, strength),
         external_add_type_(external_add_type) {
     SetFlag(kCanOverflow);
     switch (external_add_type_) {
@@ -4724,7 +4868,8 @@ class HAdd final : public HArithmeticBinaryOperation {
 class HSub final : public HArithmeticBinaryOperation {
  public:
   static HInstruction* New(Isolate* isolate, Zone* zone, HValue* context,
-                           HValue* left, HValue* right);
+                           HValue* left, HValue* right,
+                           Strength strength = Strength::WEAK);
 
   HValue* Canonicalize() override;
 
@@ -4745,8 +4890,8 @@ class HSub final : public HArithmeticBinaryOperation {
   Range* InferRange(Zone* zone) override;
 
  private:
-  HSub(HValue* context, HValue* left, HValue* right)
-      : HArithmeticBinaryOperation(context, left, right) {
+  HSub(HValue* context, HValue* left, HValue* right, Strength strength)
+      : HArithmeticBinaryOperation(context, left, right, strength) {
     SetFlag(kCanOverflow);
   }
 };
@@ -4755,11 +4900,14 @@ class HSub final : public HArithmeticBinaryOperation {
 class HMul final : public HArithmeticBinaryOperation {
  public:
   static HInstruction* New(Isolate* isolate, Zone* zone, HValue* context,
-                           HValue* left, HValue* right);
+                           HValue* left, HValue* right,
+                           Strength strength = Strength::WEAK);
 
   static HInstruction* NewImul(Isolate* isolate, Zone* zone, HValue* context,
-                               HValue* left, HValue* right) {
-    HInstruction* instr = HMul::New(isolate, zone, context, left, right);
+                               HValue* left, HValue* right,
+                               Strength strength = Strength::WEAK) {
+    HInstruction* instr =
+        HMul::New(isolate, zone, context, left, right, strength);
     if (!instr->IsMul()) return instr;
     HMul* mul = HMul::cast(instr);
     // TODO(mstarzinger): Prevent bailout on minus zero for imul.
@@ -4789,8 +4937,8 @@ class HMul final : public HArithmeticBinaryOperation {
   Range* InferRange(Zone* zone) override;
 
  private:
-  HMul(HValue* context, HValue* left, HValue* right)
-      : HArithmeticBinaryOperation(context, left, right) {
+  HMul(HValue* context, HValue* left, HValue* right, Strength strength)
+      : HArithmeticBinaryOperation(context, left, right, strength) {
     SetFlag(kCanOverflow);
   }
 };
@@ -4799,7 +4947,8 @@ class HMul final : public HArithmeticBinaryOperation {
 class HMod final : public HArithmeticBinaryOperation {
  public:
   static HInstruction* New(Isolate* isolate, Zone* zone, HValue* context,
-                           HValue* left, HValue* right);
+                           HValue* left, HValue* right,
+                           Strength strength = Strength::WEAK);
 
   HValue* Canonicalize() override;
 
@@ -4818,8 +4967,8 @@ class HMod final : public HArithmeticBinaryOperation {
   Range* InferRange(Zone* zone) override;
 
  private:
-  HMod(HValue* context, HValue* left, HValue* right)
-      : HArithmeticBinaryOperation(context, left, right) {
+  HMod(HValue* context, HValue* left, HValue* right, Strength strength)
+      : HArithmeticBinaryOperation(context, left, right, strength) {
     SetFlag(kCanBeDivByZero);
     SetFlag(kCanOverflow);
     SetFlag(kLeftCanBeNegative);
@@ -4830,7 +4979,8 @@ class HMod final : public HArithmeticBinaryOperation {
 class HDiv final : public HArithmeticBinaryOperation {
  public:
   static HInstruction* New(Isolate* isolate, Zone* zone, HValue* context,
-                           HValue* left, HValue* right);
+                           HValue* left, HValue* right,
+                           Strength strength = Strength::WEAK);
 
   HValue* Canonicalize() override;
 
@@ -4849,8 +4999,8 @@ class HDiv final : public HArithmeticBinaryOperation {
   Range* InferRange(Zone* zone) override;
 
  private:
-  HDiv(HValue* context, HValue* left, HValue* right)
-      : HArithmeticBinaryOperation(context, left, right) {
+  HDiv(HValue* context, HValue* left, HValue* right, Strength strength)
+      : HArithmeticBinaryOperation(context, left, right, strength) {
     SetFlag(kCanBeDivByZero);
     SetFlag(kCanOverflow);
   }
@@ -4896,7 +5046,8 @@ class HMathMinMax final : public HArithmeticBinaryOperation {
 
  private:
   HMathMinMax(HValue* context, HValue* left, HValue* right, Operation op)
-      : HArithmeticBinaryOperation(context, left, right), operation_(op) {}
+      : HArithmeticBinaryOperation(context, left, right, Strength::WEAK),
+        operation_(op) {}
 
   Operation operation_;
 };
@@ -4905,7 +5056,8 @@ class HMathMinMax final : public HArithmeticBinaryOperation {
 class HBitwise final : public HBitwiseBinaryOperation {
  public:
   static HInstruction* New(Isolate* isolate, Zone* zone, HValue* context,
-                           Token::Value op, HValue* left, HValue* right);
+                           Token::Value op, HValue* left, HValue* right,
+                           Strength strength = Strength::WEAK);
 
   Token::Value op() const { return op_; }
 
@@ -4925,8 +5077,9 @@ class HBitwise final : public HBitwiseBinaryOperation {
   Range* InferRange(Zone* zone) override;
 
  private:
-  HBitwise(HValue* context, Token::Value op, HValue* left, HValue* right)
-      : HBitwiseBinaryOperation(context, left, right), op_(op) {
+  HBitwise(HValue* context, Token::Value op, HValue* left, HValue* right,
+           Strength strength)
+      : HBitwiseBinaryOperation(context, left, right, strength), op_(op) {
     DCHECK(op == Token::BIT_AND || op == Token::BIT_OR || op == Token::BIT_XOR);
     // BIT_AND with a smi-range positive value will always unset the
     // entire sign-extension of the smi-sign.
@@ -4960,7 +5113,8 @@ class HBitwise final : public HBitwiseBinaryOperation {
 class HShl final : public HBitwiseBinaryOperation {
  public:
   static HInstruction* New(Isolate* isolate, Zone* zone, HValue* context,
-                           HValue* left, HValue* right);
+                           HValue* left, HValue* right,
+                           Strength strength = Strength::WEAK);
 
   Range* InferRange(Zone* zone) override;
 
@@ -4981,15 +5135,16 @@ class HShl final : public HBitwiseBinaryOperation {
   bool DataEquals(HValue* other) override { return true; }
 
  private:
-  HShl(HValue* context, HValue* left, HValue* right)
-      : HBitwiseBinaryOperation(context, left, right) {}
+  HShl(HValue* context, HValue* left, HValue* right, Strength strength)
+      : HBitwiseBinaryOperation(context, left, right, strength) {}
 };
 
 
 class HShr final : public HBitwiseBinaryOperation {
  public:
   static HInstruction* New(Isolate* isolate, Zone* zone, HValue* context,
-                           HValue* left, HValue* right);
+                           HValue* left, HValue* right,
+                           Strength strength = Strength::WEAK);
 
   bool TryDecompose(DecompositionResult* decomposition) override {
     if (right()->IsInteger32Constant()) {
@@ -5018,15 +5173,16 @@ class HShr final : public HBitwiseBinaryOperation {
   bool DataEquals(HValue* other) override { return true; }
 
  private:
-  HShr(HValue* context, HValue* left, HValue* right)
-      : HBitwiseBinaryOperation(context, left, right) {}
+  HShr(HValue* context, HValue* left, HValue* right, Strength strength)
+      : HBitwiseBinaryOperation(context, left, right, strength) {}
 };
 
 
 class HSar final : public HBitwiseBinaryOperation {
  public:
   static HInstruction* New(Isolate* isolate, Zone* zone, HValue* context,
-                           HValue* left, HValue* right);
+                           HValue* left, HValue* right,
+                           Strength strength = Strength::WEAK);
 
   bool TryDecompose(DecompositionResult* decomposition) override {
     if (right()->IsInteger32Constant()) {
@@ -5055,16 +5211,17 @@ class HSar final : public HBitwiseBinaryOperation {
   bool DataEquals(HValue* other) override { return true; }
 
  private:
-  HSar(HValue* context, HValue* left, HValue* right)
-      : HBitwiseBinaryOperation(context, left, right) {}
+  HSar(HValue* context, HValue* left, HValue* right, Strength strength)
+      : HBitwiseBinaryOperation(context, left, right, strength) {}
 };
 
 
 class HRor final : public HBitwiseBinaryOperation {
  public:
   static HInstruction* New(Isolate* isolate, Zone* zone, HValue* context,
-                           HValue* left, HValue* right) {
-    return new (zone) HRor(context, left, right);
+                           HValue* left, HValue* right,
+                           Strength strength = Strength::WEAK) {
+    return new (zone) HRor(context, left, right, strength);
   }
 
   void UpdateRepresentation(Representation new_rep,
@@ -5080,8 +5237,8 @@ class HRor final : public HBitwiseBinaryOperation {
   bool DataEquals(HValue* other) override { return true; }
 
  private:
-  HRor(HValue* context, HValue* left, HValue* right)
-      : HBitwiseBinaryOperation(context, left, right) {
+  HRor(HValue* context, HValue* left, HValue* right, Strength strength)
+      : HBitwiseBinaryOperation(context, left, right, strength) {
     ChangeRepresentation(Representation::Integer32());
   }
 };
@@ -5156,6 +5313,27 @@ class HParameter final : public HTemplateInstruction<0> {
 
   unsigned index_;
   ParameterKind kind_;
+};
+
+
+class HCallStub final : public HUnaryCall {
+ public:
+  DECLARE_INSTRUCTION_WITH_CONTEXT_FACTORY_P2(HCallStub, CodeStub::Major, int);
+  CodeStub::Major major_key() { return major_key_; }
+
+  HValue* context() { return value(); }
+
+  std::ostream& PrintDataTo(std::ostream& os) const override;  // NOLINT
+
+  DECLARE_CONCRETE_INSTRUCTION(CallStub)
+
+ private:
+  HCallStub(HValue* context, CodeStub::Major major_key, int argument_count)
+      : HUnaryCall(context, argument_count),
+        major_key_(major_key) {
+  }
+
+  CodeStub::Major major_key_;
 };
 
 
@@ -5849,11 +6027,6 @@ class HObjectAccess final {
                          Representation::UInteger8());
   }
 
-  static HObjectAccess ForMapBitField3() {
-    return HObjectAccess(kInobject, Map::kBitField3Offset,
-                         Representation::Integer32());
-  }
-
   static HObjectAccess ForNameHashField() {
     return HObjectAccess(kInobject,
                          Name::kHashFieldOffset,
@@ -6226,8 +6399,9 @@ class HLoadNamedField final : public HTemplateInstruction<2> {
 
 class HLoadNamedGeneric final : public HTemplateInstruction<2> {
  public:
-  DECLARE_INSTRUCTION_WITH_CONTEXT_FACTORY_P3(HLoadNamedGeneric, HValue*,
-                                              Handle<Name>, InlineCacheState);
+  DECLARE_INSTRUCTION_WITH_CONTEXT_FACTORY_P4(HLoadNamedGeneric, HValue*,
+                                              Handle<Name>, LanguageMode,
+                                              InlineCacheState);
 
   HValue* context() const { return OperandAt(0); }
   HValue* object() const { return OperandAt(1); }
@@ -6255,10 +6429,14 @@ class HLoadNamedGeneric final : public HTemplateInstruction<2> {
 
   DECLARE_CONCRETE_INSTRUCTION(LoadNamedGeneric)
 
+  LanguageMode language_mode() const { return language_mode_; }
+
  private:
   HLoadNamedGeneric(HValue* context, HValue* object, Handle<Name> name,
+                    LanguageMode language_mode,
                     InlineCacheState initialization_state)
       : name_(name),
+        language_mode_(language_mode),
         initialization_state_(initialization_state) {
     SetOperandAt(0, context);
     SetOperandAt(1, object);
@@ -6269,6 +6447,7 @@ class HLoadNamedGeneric final : public HTemplateInstruction<2> {
   Handle<Name> name_;
   Handle<TypeFeedbackVector> feedback_vector_;
   FeedbackVectorSlot slot_;
+  LanguageMode language_mode_;
   InlineCacheState initialization_state_;
 };
 
@@ -6511,8 +6690,9 @@ class HLoadKeyed final : public HTemplateInstruction<4>,
 
 class HLoadKeyedGeneric final : public HTemplateInstruction<3> {
  public:
-  DECLARE_INSTRUCTION_WITH_CONTEXT_FACTORY_P3(HLoadKeyedGeneric, HValue*,
-                                              HValue*, InlineCacheState);
+  DECLARE_INSTRUCTION_WITH_CONTEXT_FACTORY_P4(HLoadKeyedGeneric, HValue*,
+                                              HValue*, LanguageMode,
+                                              InlineCacheState);
   HValue* object() const { return OperandAt(0); }
   HValue* key() const { return OperandAt(1); }
   HValue* context() const { return OperandAt(2); }
@@ -6544,10 +6724,14 @@ class HLoadKeyedGeneric final : public HTemplateInstruction<3> {
 
   DECLARE_CONCRETE_INSTRUCTION(LoadKeyedGeneric)
 
+  LanguageMode language_mode() const { return language_mode_; }
+
  private:
   HLoadKeyedGeneric(HValue* context, HValue* obj, HValue* key,
+                    LanguageMode language_mode,
                     InlineCacheState initialization_state)
-      : initialization_state_(initialization_state) {
+      : initialization_state_(initialization_state),
+        language_mode_(language_mode) {
     set_representation(Representation::Tagged());
     SetOperandAt(0, obj);
     SetOperandAt(1, key);
@@ -6558,6 +6742,7 @@ class HLoadKeyedGeneric final : public HTemplateInstruction<3> {
   Handle<TypeFeedbackVector> feedback_vector_;
   FeedbackVectorSlot slot_;
   InlineCacheState initialization_state_;
+  LanguageMode language_mode_;
 };
 
 
@@ -7113,7 +7298,7 @@ class HStringAdd final : public HBinaryOperation {
   HStringAdd(HValue* context, HValue* left, HValue* right,
              PretenureFlag pretenure_flag, StringAddFlags flags,
              Handle<AllocationSite> allocation_site)
-      : HBinaryOperation(context, left, right, HType::String()),
+      : HBinaryOperation(context, left, right, Strength::WEAK, HType::String()),
         flags_(flags),
         pretenure_flag_(pretenure_flag) {
     set_representation(Representation::Tagged());
@@ -7314,6 +7499,35 @@ class HMaybeGrowElements final : public HTemplateInstruction<5> {
 
   bool is_js_array_;
   ElementsKind kind_;
+};
+
+
+class HToFastProperties final : public HUnaryOperation {
+ public:
+  DECLARE_INSTRUCTION_FACTORY_P1(HToFastProperties, HValue*);
+
+  Representation RequiredInputRepresentation(int index) override {
+    return Representation::Tagged();
+  }
+
+  DECLARE_CONCRETE_INSTRUCTION(ToFastProperties)
+
+ private:
+  explicit HToFastProperties(HValue* value) : HUnaryOperation(value) {
+    set_representation(Representation::Tagged());
+    SetChangesFlag(kNewSpacePromotion);
+
+    // This instruction is not marked as kChangesMaps, but does
+    // change the map of the input operand. Use it only when creating
+    // object literals via a runtime call.
+    DCHECK(value->IsCallRuntime());
+#ifdef DEBUG
+    const Runtime::Function* function = HCallRuntime::cast(value)->function();
+    DCHECK(function->function_id == Runtime::kCreateObjectLiteral);
+#endif
+  }
+
+  bool IsDeletable() const override { return true; }
 };
 
 
@@ -7561,6 +7775,36 @@ class HStoreFrameContext: public HUnaryOperation {
     set_representation(Representation::Tagged());
     SetChangesFlag(kContextSlots);
   }
+};
+
+
+class HAllocateBlockContext: public HTemplateInstruction<2> {
+ public:
+  DECLARE_INSTRUCTION_FACTORY_P3(HAllocateBlockContext, HValue*,
+                                 HValue*, Handle<ScopeInfo>);
+  HValue* context() const { return OperandAt(0); }
+  HValue* function() const { return OperandAt(1); }
+  Handle<ScopeInfo> scope_info() const { return scope_info_; }
+
+  Representation RequiredInputRepresentation(int index) override {
+    return Representation::Tagged();
+  }
+
+  std::ostream& PrintDataTo(std::ostream& os) const override;  // NOLINT
+
+  DECLARE_CONCRETE_INSTRUCTION(AllocateBlockContext)
+
+ private:
+  HAllocateBlockContext(HValue* context,
+                        HValue* function,
+                        Handle<ScopeInfo> scope_info)
+      : scope_info_(scope_info) {
+    SetOperandAt(0, context);
+    SetOperandAt(1, function);
+    set_representation(Representation::Tagged());
+  }
+
+  Handle<ScopeInfo> scope_info_;
 };
 
 

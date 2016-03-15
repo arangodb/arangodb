@@ -99,43 +99,28 @@ class BufferedZoneList {
 // Accumulates RegExp atoms and assertions into lists of terms and alternatives.
 class RegExpBuilder : public ZoneObject {
  public:
-  RegExpBuilder(Zone* zone, bool ignore_case, bool unicode);
+  explicit RegExpBuilder(Zone* zone);
   void AddCharacter(uc16 character);
   void AddUnicodeCharacter(uc32 character);
-  void AddEscapedUnicodeCharacter(uc32 character);
   // "Adds" an empty expression. Does nothing except consume a
   // following quantifier
   void AddEmpty();
-  void AddCharacterClass(RegExpCharacterClass* cc);
-  void AddCharacterClassForDesugaring(uc32 c);
   void AddAtom(RegExpTree* tree);
-  void AddTerm(RegExpTree* tree);
   void AddAssertion(RegExpTree* tree);
   void NewAlternative();  // '|'
-  bool AddQuantifierToAtom(int min, int max,
+  void AddQuantifierToAtom(int min, int max,
                            RegExpQuantifier::QuantifierType type);
   RegExpTree* ToRegExp();
 
  private:
-  static const uc16 kNoPendingSurrogate = 0;
-  void AddLeadSurrogate(uc16 lead_surrogate);
-  void AddTrailSurrogate(uc16 trail_surrogate);
-  void FlushPendingSurrogate();
   void FlushCharacters();
   void FlushText();
   void FlushTerms();
-  bool NeedsDesugaringForUnicode(RegExpCharacterClass* cc);
-  bool NeedsDesugaringForIgnoreCase(uc32 c);
   Zone* zone() const { return zone_; }
-  bool ignore_case() const { return ignore_case_; }
-  bool unicode() const { return unicode_; }
 
   Zone* zone_;
   bool pending_empty_;
-  bool ignore_case_;
-  bool unicode_;
   ZoneList<uc16>* characters_;
-  uc16 pending_surrogate_;
   BufferedZoneList<RegExpTree, 2> terms_;
   BufferedZoneList<RegExpTree, 2> text_;
   BufferedZoneList<RegExpTree, 2> alternatives_;
@@ -150,11 +135,12 @@ class RegExpBuilder : public ZoneObject {
 
 class RegExpParser BASE_EMBEDDED {
  public:
-  RegExpParser(FlatStringReader* in, Handle<String>* error,
-               JSRegExp::Flags flags, Isolate* isolate, Zone* zone);
+  RegExpParser(FlatStringReader* in, Handle<String>* error, bool multiline_mode,
+               bool unicode, Isolate* isolate, Zone* zone);
 
   static bool ParseRegExp(Isolate* isolate, Zone* zone, FlatStringReader* input,
-                          JSRegExp::Flags flags, RegExpCompileData* result);
+                          bool multiline, bool unicode,
+                          RegExpCompileData* result);
 
   RegExpTree* ParsePattern();
   RegExpTree* ParseDisjunction();
@@ -174,7 +160,6 @@ class RegExpParser BASE_EMBEDDED {
   bool ParseHexEscape(int length, uc32* value);
   bool ParseUnicodeEscape(uc32* value);
   bool ParseUnlimitedLengthHexNumber(int max_value, uc32* value);
-  bool ParsePropertyClass(ZoneList<CharacterRange>* result);
 
   uc32 ParseOctalLiteral();
 
@@ -184,7 +169,6 @@ class RegExpParser BASE_EMBEDDED {
   // can be reparsed.
   bool ParseBackReferenceIndex(int* index_out);
 
-  bool ParseClassProperty(ZoneList<CharacterRange>* result);
   CharacterRange ParseClassAtom(uc16* char_class);
   RegExpTree* ReportError(Vector<const char> message);
   void Advance();
@@ -199,11 +183,8 @@ class RegExpParser BASE_EMBEDDED {
   int captures_started() { return captures_started_; }
   int position() { return next_pos_ - 1; }
   bool failed() { return failed_; }
-  bool ignore_case() const { return ignore_case_; }
-  bool multiline() const { return multiline_; }
-  bool unicode() const { return unicode_; }
 
-  static bool IsSyntaxCharacterOrSlash(uc32 c);
+  static bool IsSyntaxCharacter(uc32 c);
 
   static const int kMaxCaptures = 1 << 16;
   static const uc32 kEndMarker = (1 << 21);
@@ -222,10 +203,9 @@ class RegExpParser BASE_EMBEDDED {
     RegExpParserState(RegExpParserState* previous_state,
                       SubexpressionType group_type,
                       RegExpLookaround::Type lookaround_type,
-                      int disjunction_capture_index, bool ignore_case,
-                      bool unicode, Zone* zone)
+                      int disjunction_capture_index, Zone* zone)
         : previous_state_(previous_state),
-          builder_(new (zone) RegExpBuilder(zone, ignore_case, unicode)),
+          builder_(new (zone) RegExpBuilder(zone)),
           group_type_(group_type),
           lookaround_type_(lookaround_type),
           disjunction_capture_index_(disjunction_capture_index) {}
@@ -269,8 +249,6 @@ class RegExpParser BASE_EMBEDDED {
   bool has_more() { return has_more_; }
   bool has_next() { return next_pos_ < in()->length(); }
   uc32 Next();
-  template <bool update_position>
-  uc32 ReadNext();
   FlatStringReader* in() { return in_; }
   void ScanForCaptures();
 
@@ -280,14 +258,13 @@ class RegExpParser BASE_EMBEDDED {
   ZoneList<RegExpCapture*>* captures_;
   FlatStringReader* in_;
   uc32 current_;
-  bool ignore_case_;
-  bool multiline_;
-  bool unicode_;
   int next_pos_;
   int captures_started_;
   // The capture count is only valid after we have scanned for captures.
   int capture_count_;
   bool has_more_;
+  bool multiline_;
+  bool unicode_;
   bool simple_;
   bool contains_anchor_;
   bool is_scanned_for_captures_;

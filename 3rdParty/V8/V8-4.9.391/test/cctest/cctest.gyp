@@ -71,7 +71,6 @@
         'compiler/test-pipeline.cc',
         'compiler/test-representation-change.cc',
         'compiler/test-run-bytecode-graph-builder.cc',
-        'compiler/test-run-calls-to-external-references.cc',
         'compiler/test-run-deopt.cc',
         'compiler/test-run-inlining.cc',
         'compiler/test-run-intrinsics.cc',
@@ -82,6 +81,7 @@
         'compiler/test-run-jsops.cc',
         'compiler/test-run-machops.cc',
         'compiler/test-run-native-calls.cc',
+        'compiler/test-run-properties.cc',
         'compiler/test-run-stackcheck.cc',
         'compiler/test-run-stubs.cc',
         'compiler/test-run-variables.cc',
@@ -91,8 +91,6 @@
         'expression-type-collector.h',
         'interpreter/test-bytecode-generator.cc',
         'interpreter/test-interpreter.cc',
-        'interpreter/bytecode-expectations-printer.cc',
-        'interpreter/bytecode-expectations-printer.h',
         'gay-fixed.cc',
         'gay-precision.cc',
         'gay-shortest.cc',
@@ -168,6 +166,7 @@
         'test-sampler-api.cc',
         'test-serialize.cc',
         'test-simd.cc',
+        'test-slots-buffer.cc',
         'test-strings.cc',
         'test-symbols.cc',
         'test-strtod.cc',
@@ -188,7 +187,6 @@
         'test-weaksets.cc',
         'trace-extension.cc',
         'wasm/test-run-wasm.cc',
-        'wasm/test-run-wasm-64.cc',
         'wasm/test-run-wasm-js.cc',
         'wasm/test-run-wasm-module.cc',
         'wasm/test-signatures.h',
@@ -234,20 +232,6 @@
             'test-fuzz-arm64.cc',
             'test-javascript-arm64.cc',
             'test-js-arm64-variables.cc'
-          ],
-        }],
-        ['v8_target_arch=="s390"', {
-          'sources': [  ### gcmole(arch:s390) ###
-            'test-assembler-s390.cc',
-            'test-code-stubs.cc',
-            'test-disasm-s390.cc'
-          ],
-        }],
-        ['v8_target_arch=="s390x"', {
-          'sources': [  ### gcmole(arch:s390x) ###
-            'test-assembler-s390.cc',
-            'test-code-stubs.cc',
-            'test-disasm-s390.cc'
           ],
         }],
         ['v8_target_arch=="ppc"', {
@@ -308,8 +292,7 @@
             },
           },
         }],
-        ['v8_target_arch=="ppc" or v8_target_arch=="ppc64" \
-          or v8_target_arch=="arm" or v8_target_arch=="arm64"', {
+        ['v8_target_arch=="ppc" or v8_target_arch=="ppc64"', {
           # disable fmadd/fmsub so that expected results match generated code in
           # RunFloat64MulAndFloat64Add1 and friends.
           'cflags': ['-ffp-contract=off'],
@@ -361,51 +344,15 @@
         }
       ],
     },
-    {
-      'target_name': 'generate-bytecode-expectations',
-      'type': 'executable',
-      'dependencies': [
-        '../../tools/gyp/v8.gyp:v8_libplatform',
-      ],
-      'conditions': [
-        ['component=="shared_library"', {
-          # Same as cctest, we need to depend on the underlying static target.
-          'dependencies': ['../../tools/gyp/v8.gyp:v8_maybe_snapshot'],
-        }, {
-          'dependencies': ['../../tools/gyp/v8.gyp:v8'],
-        }],
-      ],
-      'include_dirs+': [
-        '../..',
-      ],
-      'sources': [
-        'interpreter/bytecode-expectations-printer.cc',
-        'interpreter/bytecode-expectations-printer.h',
-        'interpreter/generate-bytecode-expectations.cc',
-      ],
-    },
   ],
   'conditions': [
     ['test_isolation_mode != "noop"', {
       'targets': [
         {
-          'target_name': 'cctest_exe_run',
-          'type': 'none',
-          'dependencies': [
-            'cctest',
-          ],
-          'includes': [
-            '../../build/isolate.gypi',
-          ],
-          'sources': [
-            'cctest_exe.isolate',
-          ],
-        },
-        {
           'target_name': 'cctest_run',
           'type': 'none',
           'dependencies': [
-            'cctest_exe_run',
+            'cctest',
           ],
           'includes': [
             '../../build/isolate.gypi',

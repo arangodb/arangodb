@@ -30,9 +30,6 @@
 #elif V8_TARGET_ARCH_PPC
 #include "src/crankshaft/ppc/lithium-ppc.h"          // NOLINT
 #include "src/crankshaft/ppc/lithium-codegen-ppc.h"  // NOLINT
-#elif V8_TARGET_ARCH_S390
-#include "src/crankshaft/s390/lithium-s390.h"          // NOLINT
-#include "src/crankshaft/s390/lithium-codegen-s390.h"  // NOLINT
 #else
 #error Unsupported target architecture.
 #endif
@@ -157,9 +154,7 @@ void LCodeGenBase::Comment(const char* format, ...) {
 
 
 void LCodeGenBase::DeoptComment(const Deoptimizer::DeoptInfo& deopt_info) {
-  SourcePosition position = deopt_info.position;
-  int raw_position = position.IsUnknown() ? 0 : position.raw();
-  masm()->RecordDeoptReason(deopt_info.deopt_reason, raw_position);
+  masm()->RecordDeoptReason(deopt_info.deopt_reason, deopt_info.position);
 }
 
 

@@ -11,7 +11,6 @@
 #include "src/ast/scopes.h"
 #include "src/bailout-reason.h"
 #include "src/compiler.h"
-#include "src/crankshaft/compilation-phase.h"
 #include "src/crankshaft/hydrogen-instructions.h"
 #include "src/zone.h"
 
@@ -298,12 +297,11 @@ class BoundsCheckTable;
 class InductionVariableBlocksTable;
 class HGraph final : public ZoneObject {
  public:
-  explicit HGraph(CompilationInfo* info, CallInterfaceDescriptor descriptor);
+  explicit HGraph(CompilationInfo* info);
 
   Isolate* isolate() const { return isolate_; }
   Zone* zone() const { return zone_; }
   CompilationInfo* info() const { return info_; }
-  CallInterfaceDescriptor descriptor() const { return descriptor_; }
 
   const ZoneList<HBasicBlock*>* blocks() const { return &blocks_; }
   const ZoneList<HPhi*>* phi_list() const { return phi_list_; }
@@ -347,6 +345,13 @@ class HGraph final : public ZoneObject {
   bool IsStandardConstant(HConstant* constant);
 
   HBasicBlock* CreateBasicBlock();
+  HArgumentsObject* GetArgumentsObject() const {
+    return arguments_object_.get();
+  }
+
+  void SetArgumentsObject(HArgumentsObject* object) {
+    arguments_object_.set(object);
+  }
 
   int GetMaximumValueID() const { return values_.length(); }
   int GetNextBlockID() { return next_block_id_++; }
@@ -400,6 +405,9 @@ class HGraph final : public ZoneObject {
   void set_use_optimistic_licm(bool value) {
     use_optimistic_licm_ = value;
   }
+
+  void MarkRecursive() { is_recursive_ = true; }
+  bool is_recursive() const { return is_recursive_; }
 
   void MarkDependsOnEmptyArrayProtoElements() {
     // Add map dependency if not already added.
@@ -473,13 +481,14 @@ class HGraph final : public ZoneObject {
   SetOncePointer<HConstant> constant_the_hole_;
   SetOncePointer<HConstant> constant_null_;
   SetOncePointer<HConstant> constant_invalid_context_;
+  SetOncePointer<HArgumentsObject> arguments_object_;
 
   HOsrBuilder* osr_;
 
   CompilationInfo* info_;
-  CallInterfaceDescriptor descriptor_;
   Zone* zone_;
 
+  bool is_recursive_;
   bool use_optimistic_licm_;
   bool depends_on_empty_array_proto_elements_;
   int type_change_checksum_;
@@ -849,9 +858,10 @@ class TestContext final : public AstContext {
 
 class FunctionState final {
  public:
-  FunctionState(HOptimizedGraphBuilder* owner, CompilationInfo* info,
-                InliningKind inlining_kind, int inlining_id,
-                TailCallMode tail_call_mode);
+  FunctionState(HOptimizedGraphBuilder* owner,
+                CompilationInfo* info,
+                InliningKind inlining_kind,
+                int inlining_id);
   ~FunctionState();
 
   CompilationInfo* compilation_info() { return compilation_info_; }
@@ -865,11 +875,6 @@ class FunctionState final {
   }
 
   FunctionState* outer() { return outer_; }
-
-  TailCallMode ComputeTailCallMode(TailCallMode tail_call_mode) const {
-    if (tail_call_mode_ == TailCallMode::kDisallow) return tail_call_mode_;
-    return tail_call_mode;
-  }
 
   HEnterInlined* entry() { return entry_; }
   void set_entry(HEnterInlined* entry) { entry_ = entry; }
@@ -888,10 +893,6 @@ class FunctionState final {
 
   int inlining_id() const { return inlining_id_; }
 
-  void IncrementInDoExpressionScope() { do_expression_scope_count_++; }
-  void DecrementInDoExpressionScope() { do_expression_scope_count_--; }
-  bool IsInsideDoExpressionScope() { return do_expression_scope_count_ > 0; }
-
  private:
   HOptimizedGraphBuilder* owner_;
 
@@ -903,10 +904,6 @@ class FunctionState final {
 
   // The kind of call which is currently being inlined.
   InliningKind inlining_kind_;
-
-  // Defines whether the calls with TailCallMode::kAllow in the function body
-  // can be generated as tail calls.
-  TailCallMode tail_call_mode_;
 
   // When inlining in an effect or value context, this is the return block.
   // It is NULL otherwise.  When inlining in a test context, there are a
@@ -927,8 +924,6 @@ class FunctionState final {
 
   int inlining_id_;
   SourcePosition outer_source_position_;
-
-  int do_expression_scope_count_;
 
   FunctionState* outer_;
 };
@@ -1011,10 +1006,8 @@ class HAllocationMode final BASE_EMBEDDED {
 
 class HGraphBuilder {
  public:
-  explicit HGraphBuilder(CompilationInfo* info,
-                         CallInterfaceDescriptor descriptor)
+  explicit HGraphBuilder(CompilationInfo* info)
       : info_(info),
-        descriptor_(descriptor),
         graph_(NULL),
         current_block_(NULL),
         scope_(info->scope()),
@@ -1301,8 +1294,6 @@ class HGraphBuilder {
 
   HValue* BuildGetElementsKind(HValue* object);
 
-  HValue* BuildEnumLength(HValue* map);
-
   HValue* BuildCheckHeapObject(HValue* object);
   HValue* BuildCheckString(HValue* string);
   HValue* BuildWrapReceiver(HValue* object, HValue* function);
@@ -1332,7 +1323,6 @@ class HGraphBuilder {
                                    bool is_jsarray);
 
   HValue* BuildNumberToString(HValue* object, Type* type);
-  HValue* BuildToNumber(HValue* input);
   HValue* BuildToObject(HValue* receiver);
 
   void BuildJSObjectCheck(HValue* receiver,
@@ -1359,7 +1349,8 @@ class HGraphBuilder {
 
   HValue* BuildUncheckedDictionaryElementLoad(HValue* receiver,
                                               HValue* elements, HValue* key,
-                                              HValue* hash);
+                                              HValue* hash,
+                                              LanguageMode language_mode);
 
   // ES6 section 7.4.7 CreateIterResultObject ( value, done )
   HValue* BuildCreateIterResultObject(HValue* value, HValue* done);
@@ -1438,6 +1429,7 @@ class HGraphBuilder {
                                Type* left_type, Type* right_type,
                                Type* result_type, Maybe<int> fixed_right_arg,
                                HAllocationMode allocation_mode,
+                               Strength strength,
                                BailoutId opt_id = BailoutId::None());
 
   HLoadNamedField* AddLoadFixedArrayLength(HValue *object,
@@ -1848,6 +1840,11 @@ class HGraphBuilder {
 
   HValue* BuildElementIndexHash(HValue* index);
 
+  enum MapEmbedding { kEmbedMapsDirectly, kEmbedMapsViaWeakCells };
+
+  void BuildCompareNil(HValue* value, Type* type, HIfContinuation* continuation,
+                       MapEmbedding map_embedding = kEmbedMapsDirectly);
+
   void BuildCreateAllocationMemento(HValue* previous_object,
                                     HValue* previous_object_size,
                                     HValue* payload);
@@ -1915,7 +1912,6 @@ class HGraphBuilder {
   }
 
   CompilationInfo* info_;
-  CallInterfaceDescriptor descriptor_;
   HGraph* graph_;
   HBasicBlock* current_block_;
   Scope* scope_;
@@ -2204,21 +2200,28 @@ class HOptimizedGraphBuilder : public HGraphBuilder, public AstVisitor {
   F(IsRegExp)                          \
   F(IsJSProxy)                         \
   F(Call)                              \
+  F(ArgumentsLength)                   \
+  F(Arguments)                         \
   F(ValueOf)                           \
+  F(SetValueOf)                        \
+  F(IsDate)                            \
   F(StringCharFromCode)                \
   F(StringCharAt)                      \
   F(OneByteSeqStringSetChar)           \
   F(TwoByteSeqStringSetChar)           \
+  F(ObjectEquals)                      \
   F(ToInteger)                         \
-  F(ToName)                            \
   F(ToObject)                          \
   F(ToString)                          \
   F(ToLength)                          \
   F(ToNumber)                          \
+  F(IsFunction)                        \
   F(IsJSReceiver)                      \
   F(MathPow)                           \
+  F(IsMinusZero)                       \
   F(HasCachedArrayIndex)               \
   F(GetCachedArrayIndex)               \
+  F(FastOneByteArrayJoin)              \
   F(DebugBreakInOptimizedCode)         \
   F(StringCharCodeAt)                  \
   F(SubString)                         \
@@ -2228,8 +2231,10 @@ class HOptimizedGraphBuilder : public HGraphBuilder, public AstVisitor {
   F(RegExpSource)                      \
   F(NumberToString)                    \
   F(DebugIsActive)                     \
+  F(HasInPrototypeChain)               \
   /* Typed Arrays */                   \
   F(TypedArrayInitialize)              \
+  F(DataViewInitialize)                \
   F(MaxSmi)                            \
   F(TypedArrayMaxSizeInHeap)           \
   F(ArrayBufferViewGetByteLength)      \
@@ -2258,7 +2263,9 @@ class HOptimizedGraphBuilder : public HGraphBuilder, public AstVisitor {
   /* ES6 Iterators */                  \
   F(CreateIterResultObject)            \
   /* Arrays */                         \
-  F(HasFastPackedElements)
+  F(HasFastPackedElements)             \
+  /* JSValue */                        \
+  F(JSValueGetValue)
 
 #define GENERATOR_DECLARATION(Name) void Generate##Name(CallRuntime* call);
   FOR_EACH_HYDROGEN_INTRINSIC(GENERATOR_DECLARATION)
@@ -2410,15 +2417,18 @@ class HOptimizedGraphBuilder : public HGraphBuilder, public AstVisitor {
   int InliningAstSize(Handle<JSFunction> target);
   bool TryInline(Handle<JSFunction> target, int arguments_count,
                  HValue* implicit_return_value, BailoutId ast_id,
-                 BailoutId return_id, InliningKind inlining_kind,
-                 TailCallMode syntactic_tail_call_mode);
+                 BailoutId return_id, InliningKind inlining_kind);
 
   bool TryInlineCall(Call* expr);
   bool TryInlineConstruct(CallNew* expr, HValue* implicit_return_value);
-  bool TryInlineGetter(Handle<Object> getter, Handle<Map> receiver_map,
-                       BailoutId ast_id, BailoutId return_id);
-  bool TryInlineSetter(Handle<Object> setter, Handle<Map> receiver_map,
-                       BailoutId id, BailoutId assignment_id,
+  bool TryInlineGetter(Handle<JSFunction> getter,
+                       Handle<Map> receiver_map,
+                       BailoutId ast_id,
+                       BailoutId return_id);
+  bool TryInlineSetter(Handle<JSFunction> setter,
+                       Handle<Map> receiver_map,
+                       BailoutId id,
+                       BailoutId assignment_id,
                        HValue* implicit_return_value);
   bool TryInlineIndirectCall(Handle<JSFunction> function, Call* expr,
                              int arguments_count);
@@ -2436,23 +2446,27 @@ class HOptimizedGraphBuilder : public HGraphBuilder, public AstVisitor {
                               HValue* receiver,
                               SmallMapList* receiver_types);
   bool TryInlineApiFunctionCall(Call* expr, HValue* receiver);
-  bool TryInlineApiGetter(Handle<Object> function, Handle<Map> receiver_map,
+  bool TryInlineApiGetter(Handle<JSFunction> function,
+                          Handle<Map> receiver_map,
                           BailoutId ast_id);
-  bool TryInlineApiSetter(Handle<Object> function, Handle<Map> receiver_map,
+  bool TryInlineApiSetter(Handle<JSFunction> function,
+                          Handle<Map> receiver_map,
                           BailoutId ast_id);
-  bool TryInlineApiCall(Handle<Object> function, HValue* receiver,
-                        SmallMapList* receiver_maps, int argc, BailoutId ast_id,
-                        ApiCallType call_type,
-                        TailCallMode syntactic_tail_call_mode);
+  bool TryInlineApiCall(Handle<JSFunction> function,
+                         HValue* receiver,
+                         SmallMapList* receiver_maps,
+                         int argc,
+                         BailoutId ast_id,
+                         ApiCallType call_type);
   static bool IsReadOnlyLengthDescriptor(Handle<Map> jsarray_map);
   static bool CanInlineArrayResizeOperation(Handle<Map> receiver_map);
 
   // If --trace-inlining, print a line of the inlining trace.  Inlining
   // succeeded if the reason string is NULL and failed if there is a
   // non-NULL reason string.
-  void TraceInline(Handle<JSFunction> target, Handle<JSFunction> caller,
-                   const char* failure_reason,
-                   TailCallMode tail_call_mode = TailCallMode::kDisallow);
+  void TraceInline(Handle<JSFunction> target,
+                   Handle<JSFunction> caller,
+                   const char* failure_reason);
 
   void HandleGlobalVariableAssignment(Variable* var, HValue* value,
                                       FeedbackVectorSlot slot,
@@ -2521,7 +2535,7 @@ class HOptimizedGraphBuilder : public HGraphBuilder, public AstVisitor {
         : builder_(builder),
           access_type_(access_type),
           map_(map),
-          name_(isolate()->factory()->InternalizeName(name)),
+          name_(name),
           field_type_(HType::Tagged()),
           access_(HObjectAccess::ForMap()),
           lookup_type_(NOT_FOUND),
@@ -2586,7 +2600,7 @@ class HOptimizedGraphBuilder : public HGraphBuilder, public AstVisitor {
 
     Isolate* isolate() const { return builder_->isolate(); }
     Handle<JSObject> holder() { return holder_; }
-    Handle<Object> accessor() { return accessor_; }
+    Handle<JSFunction> accessor() { return accessor_; }
     Handle<Object> constant() { return constant_; }
     Handle<Map> transition() { return transition_; }
     SmallMapList* field_maps() { return &field_maps_; }
@@ -2623,7 +2637,12 @@ class HOptimizedGraphBuilder : public HGraphBuilder, public AstVisitor {
     Handle<Object> GetAccessorsFromMap(Handle<Map> map) const {
       return GetConstantFromMap(map);
     }
-    Handle<FieldType> GetFieldTypeFromMap(Handle<Map> map) const;
+    Handle<HeapType> GetFieldTypeFromMap(Handle<Map> map) const {
+      DCHECK(IsFound());
+      DCHECK(number_ < map->NumberOfOwnDescriptors());
+      return handle(map->instance_descriptors()->GetFieldType(number_),
+                    isolate());
+    }
     Handle<Map> GetFieldOwnerFromMap(Handle<Map> map) const {
       DCHECK(IsFound());
       DCHECK(number_ < map->NumberOfOwnDescriptors());
@@ -2639,7 +2658,7 @@ class HOptimizedGraphBuilder : public HGraphBuilder, public AstVisitor {
 
     void LookupDescriptor(Map* map, Name* name) {
       DescriptorArray* descriptors = map->instance_descriptors();
-      int number = descriptors->SearchWithCache(isolate(), name, map);
+      int number = descriptors->SearchWithCache(name, map);
       if (number == DescriptorArray::kNotFound) return NotFound();
       lookup_type_ = DESCRIPTOR_TYPE;
       details_ = descriptors->GetDetails(number);
@@ -2687,7 +2706,7 @@ class HOptimizedGraphBuilder : public HGraphBuilder, public AstVisitor {
     Handle<Map> map_;
     Handle<Name> name_;
     Handle<JSObject> holder_;
-    Handle<Object> accessor_;
+    Handle<JSFunction> accessor_;
     Handle<JSObject> api_holder_;
     Handle<Object> constant_;
     SmallMapList field_maps_;
@@ -2834,18 +2853,14 @@ class HOptimizedGraphBuilder : public HGraphBuilder, public AstVisitor {
   void AddCheckPrototypeMaps(Handle<JSObject> holder,
                              Handle<Map> receiver_map);
 
-  HInstruction* NewCallFunction(HValue* function, int argument_count,
-                                ConvertReceiverMode convert_mode,
-                                TailCallMode tail_call_mode);
+  HInstruction* NewPlainFunctionCall(HValue* fun, int argument_count);
 
-  HInstruction* NewCallFunctionViaIC(HValue* function, int argument_count,
-                                     ConvertReceiverMode convert_mode,
-                                     TailCallMode tail_call_mode,
-                                     FeedbackVectorSlot slot);
+  HInstruction* NewArgumentAdaptorCall(HValue* fun, HValue* context,
+                                       int argument_count,
+                                       HValue* expected_param_count);
 
-  HInstruction* NewCallConstantFunction(Handle<JSFunction> target,
-                                        int argument_count,
-                                        TailCallMode tail_call_mode);
+  HInstruction* BuildCallConstantFunction(Handle<JSFunction> target,
+                                          int argument_count);
 
   bool CanBeFunctionApplyArguments(Call* expr);
 
@@ -3044,19 +3059,6 @@ class NoObservableSideEffectsScope final {
   HGraphBuilder* builder_;
 };
 
-class DoExpressionScope final {
- public:
-  explicit DoExpressionScope(HOptimizedGraphBuilder* builder)
-      : builder_(builder) {
-    builder_->function_state()->IncrementInDoExpressionScope();
-  }
-  ~DoExpressionScope() {
-    builder_->function_state()->DecrementInDoExpressionScope();
-  }
-
- private:
-  HOptimizedGraphBuilder* builder_;
-};
 
 }  // namespace internal
 }  // namespace v8

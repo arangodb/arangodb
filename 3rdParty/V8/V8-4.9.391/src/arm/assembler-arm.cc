@@ -82,7 +82,7 @@ static unsigned CpuFeaturesImpliedByCompiler() {
 
 void CpuFeatures::ProbeImpl(bool cross_compile) {
   supported_ |= CpuFeaturesImpliedByCompiler();
-  dcache_line_size_ = 64;
+  cache_line_size_ = 64;
 
   // Only use statically determined features for cross compile (snapshot).
   if (cross_compile) return;
@@ -137,7 +137,7 @@ void CpuFeatures::ProbeImpl(bool cross_compile) {
   if (cpu.implementer() == base::CPU::ARM &&
       (cpu.part() == base::CPU::ARM_CORTEX_A5 ||
        cpu.part() == base::CPU::ARM_CORTEX_A9)) {
-    dcache_line_size_ = 32;
+    cache_line_size_ = 32;
   }
 
   if (FLAG_enable_32dregs && cpu.has_vfp3_d32()) supported_ |= 1u << VFP32DREGS;
@@ -1947,16 +1947,6 @@ void Assembler::uxtah(Register dst, Register src1, Register src2, int rotate,
 }
 
 
-void Assembler::rbit(Register dst, Register src, Condition cond) {
-  // Instruction details available in ARM DDI 0406C.b, A8.8.144.
-  // cond(31-28) | 011011111111(27-16) | Rd(15-12) | 11110011(11-4) | Rm(3-0)
-  DCHECK(IsEnabled(ARMv7));
-  DCHECK(!dst.is(pc));
-  DCHECK(!src.is(pc));
-  emit(cond | 0x6FF * B16 | dst.code() * B12 | 0xF3 * B4 | src.code());
-}
-
-
 // Status register access instructions.
 void Assembler::mrs(Register dst, SRegister s, Condition cond) {
   DCHECK(!dst.is(pc));
@@ -1966,8 +1956,7 @@ void Assembler::mrs(Register dst, SRegister s, Condition cond) {
 
 void Assembler::msr(SRegisterFieldMask fields, const Operand& src,
                     Condition cond) {
-  DCHECK((fields & 0x000f0000) != 0);  // At least one field must be set.
-  DCHECK(((fields & 0xfff0ffff) == CPSR) || ((fields & 0xfff0ffff) == SPSR));
+  DCHECK(fields >= B16 && fields < B20);  // at least one field set
   Instr instr;
   if (!src.rm_.is_valid()) {
     // Immediate.
@@ -2143,21 +2132,6 @@ void Assembler::bkpt(uint32_t imm16) {  // v5 and above
 void Assembler::svc(uint32_t imm24, Condition cond) {
   DCHECK(is_uint24(imm24));
   emit(cond | 15*B24 | imm24);
-}
-
-
-void Assembler::dmb(BarrierOption option) {
-  emit(kSpecialCondition | 0x57ff*B12 | 5*B4 | option);
-}
-
-
-void Assembler::dsb(BarrierOption option) {
-  emit(kSpecialCondition | 0x57ff*B12 | 4*B4 | option);
-}
-
-
-void Assembler::isb(BarrierOption option) {
-  emit(kSpecialCondition | 0x57ff*B12 | 6*B4 | option);
 }
 
 
@@ -2547,6 +2521,12 @@ void  Assembler::vstm(BlockAddrMode am,
 }
 
 
+void Assembler::vmov(const SwVfpRegister dst, float imm) {
+  mov(ip, Operand(bit_cast<int32_t>(imm)));
+  vmov(dst, ip);
+}
+
+
 static void DoubleAsTwoUInt32(double d, uint32_t* lo, uint32_t* hi) {
   uint64_t i;
   memcpy(&i, &d, 8);
@@ -2558,7 +2538,7 @@ static void DoubleAsTwoUInt32(double d, uint32_t* lo, uint32_t* hi) {
 
 // Only works for little endian floating point formats.
 // We don't support VFP on the mixed endian floating point platform.
-static bool FitsVmovFPImmediate(double d, uint32_t* encoding) {
+static bool FitsVMOVDoubleImmediate(double d, uint32_t *encoding) {
   DCHECK(CpuFeatures::IsSupported(VFP3));
 
   // VMOV can accept an immediate of the form:
@@ -2587,12 +2567,12 @@ static bool FitsVmovFPImmediate(double d, uint32_t* encoding) {
     return false;
   }
 
-  // Bits 61:54 must be all clear or all set.
+  // Bits 62:55 must be all clear or all set.
   if (((hi & 0x3fc00000) != 0) && ((hi & 0x3fc00000) != 0x3fc00000)) {
     return false;
   }
 
-  // Bit 62 must be NOT bit 61.
+  // Bit 63 must be NOT bit 62.
   if (((hi ^ (hi << 1)) & (0x40000000)) == 0) {
     return false;
   }
@@ -2607,25 +2587,6 @@ static bool FitsVmovFPImmediate(double d, uint32_t* encoding) {
 }
 
 
-void Assembler::vmov(const SwVfpRegister dst, float imm) {
-  uint32_t enc;
-  if (CpuFeatures::IsSupported(VFP3) && FitsVmovFPImmediate(imm, &enc)) {
-    // The float can be encoded in the instruction.
-    //
-    // Sd = immediate
-    // Instruction details available in ARM DDI 0406C.b, A8-936.
-    // cond(31-28) | 11101(27-23) | D(22) | 11(21-20) | imm4H(19-16) |
-    // Vd(15-12) | 101(11-9) | sz=0(8) | imm4L(3-0)
-    int vd, d;
-    dst.split_code(&vd, &d);
-    emit(al | 0x1D * B23 | d * B22 | 0x3 * B20 | vd * B12 | 0x5 * B9 | enc);
-  } else {
-    mov(ip, Operand(bit_cast<int32_t>(imm)));
-    vmov(dst, ip);
-  }
-}
-
-
 void Assembler::vmov(const DwVfpRegister dst,
                      double imm,
                      const Register scratch) {
@@ -2636,7 +2597,7 @@ void Assembler::vmov(const DwVfpRegister dst,
   // pointer (pp) is valid.
   bool can_use_pool =
       !FLAG_enable_embedded_constant_pool || is_constant_pool_available();
-  if (CpuFeatures::IsSupported(VFP3) && FitsVmovFPImmediate(imm, &enc)) {
+  if (CpuFeatures::IsSupported(VFP3) && FitsVMOVDoubleImmediate(imm, &enc)) {
     // The double can be encoded in the instruction.
     //
     // Dd = immediate
@@ -2959,24 +2920,6 @@ void Assembler::vcvt_f64_u32(const DwVfpRegister dst,
                              VFPConversionMode mode,
                              const Condition cond) {
   emit(EncodeVCVT(F64, dst.code(), U32, src.code(), mode, cond));
-}
-
-
-void Assembler::vcvt_f32_u32(const SwVfpRegister dst, const SwVfpRegister src,
-                             VFPConversionMode mode, const Condition cond) {
-  emit(EncodeVCVT(F32, dst.code(), U32, src.code(), mode, cond));
-}
-
-
-void Assembler::vcvt_s32_f32(const SwVfpRegister dst, const SwVfpRegister src,
-                             VFPConversionMode mode, const Condition cond) {
-  emit(EncodeVCVT(S32, dst.code(), F32, src.code(), mode, cond));
-}
-
-
-void Assembler::vcvt_u32_f32(const SwVfpRegister dst, const SwVfpRegister src,
-                             VFPConversionMode mode, const Condition cond) {
-  emit(EncodeVCVT(U32, dst.code(), F32, src.code(), mode, cond));
 }
 
 

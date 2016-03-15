@@ -12,8 +12,8 @@
 #include "src/flags.h"
 #include "src/list.h"
 #include "src/snapshot/natives.h"
-#include "src/snapshot/partial-serializer.h"
-#include "src/snapshot/startup-serializer.h"
+#include "src/snapshot/serialize.h"
+
 
 using namespace v8;
 

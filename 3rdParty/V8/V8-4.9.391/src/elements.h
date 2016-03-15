@@ -8,7 +8,7 @@
 #include "src/elements-kind.h"
 #include "src/heap/heap.h"
 #include "src/isolate.h"
-#include "src/keys.h"
+#include "src/key-accumulator.h"
 #include "src/objects.h"
 
 namespace v8 {
@@ -28,6 +28,8 @@ class ElementsAccessor {
     DCHECK(static_cast<int>(elements_kind) < kElementsKindCount);
     return elements_accessors_[elements_kind];
   }
+
+  static ElementsAccessor* ForArray(Handle<FixedArrayBase> array);
 
   // Checks the elements of an object for consistency, asserting when a problem
   // is found.
@@ -52,9 +54,13 @@ class ElementsAccessor {
     return HasElement(holder, index, handle(holder->elements()), filter);
   }
 
-  virtual Handle<Object> Get(Handle<JSObject> holder, uint32_t entry) = 0;
+  // Returns true if the backing store is compact in the given range
+  virtual bool IsPacked(Handle<JSObject> holder,
+                        Handle<FixedArrayBase> backing_store, uint32_t start,
+                        uint32_t end) = 0;
 
-  virtual PropertyDetails GetDetails(JSObject* holder, uint32_t entry) = 0;
+  virtual Handle<Object> Get(Handle<FixedArrayBase> backing_store,
+                             uint32_t entry) = 0;
 
   // Modifies the length data property as specified for JSArrays and resizes the
   // underlying backing store accordingly. The method honors the semantics of
@@ -75,6 +81,38 @@ class ElementsAccessor {
   // destination array with the hole.
   static const int kCopyToEndAndInitializeToHole = -2;
 
+  // Copy elements from one backing store to another. Typically, callers specify
+  // the source JSObject or JSArray in source_holder. If the holder's backing
+  // store is available, it can be passed in source and source_holder is
+  // ignored.
+  virtual void CopyElements(
+      Handle<FixedArrayBase> source,
+      uint32_t source_start,
+      ElementsKind source_kind,
+      Handle<FixedArrayBase> destination,
+      uint32_t destination_start,
+      int copy_size) = 0;
+
+  // NOTE: this method violates the handlified function signature convention:
+  // raw pointer parameter |source_holder| in the function that allocates.
+  // This is done intentionally to avoid ArrayConcat() builtin performance
+  // degradation.
+  virtual void CopyElements(
+      JSObject* source_holder,
+      uint32_t source_start,
+      ElementsKind source_kind,
+      Handle<FixedArrayBase> destination,
+      uint32_t destination_start,
+      int copy_size) = 0;
+
+  inline void CopyElements(
+      Handle<JSObject> from_holder,
+      Handle<FixedArrayBase> to,
+      ElementsKind from_kind) {
+    CopyElements(
+      *from_holder, 0, from_kind, to, 0, kCopyToEndAndInitializeToHole);
+  }
+
   // Copy all indices that have elements from |object| into the given
   // KeyAccumulator. For Dictionary-based element-kinds we filter out elements
   // whose PropertyAttribute match |filter|.
@@ -94,19 +132,6 @@ class ElementsAccessor {
                           filter, offset);
   }
 
-  //
-  virtual Handle<FixedArray> PrependElementIndices(
-      Handle<JSObject> object, Handle<FixedArrayBase> backing_store,
-      Handle<FixedArray> keys, GetKeysConversion convert,
-      PropertyFilter filter = ALL_PROPERTIES) = 0;
-
-  inline Handle<FixedArray> PrependElementIndices(
-      Handle<JSObject> object, Handle<FixedArray> keys,
-      GetKeysConversion convert, PropertyFilter filter = ALL_PROPERTIES) {
-    return PrependElementIndices(object, handle(object->elements()), keys,
-                                 convert, filter);
-  }
-
   virtual void AddElementsToKeyAccumulator(Handle<JSObject> receiver,
                                            KeyAccumulator* accumulator,
                                            AddKeyConversion convert) = 0;
@@ -117,7 +142,8 @@ class ElementsAccessor {
   static void InitializeOncePerProcess();
   static void TearDown();
 
-  virtual void Set(Handle<JSObject> holder, uint32_t entry, Object* value) = 0;
+  virtual void Set(FixedArrayBase* backing_store, uint32_t entry,
+                   Object* value) = 0;
 
   virtual void Reconfigure(Handle<JSObject> object,
                            Handle<FixedArrayBase> backing_store, uint32_t entry,
@@ -131,25 +157,34 @@ class ElementsAccessor {
   static Handle<JSArray> Concat(Isolate* isolate, Arguments* args,
                                 uint32_t concat_size);
 
-  virtual uint32_t Push(Handle<JSArray> receiver, Arguments* args,
+  virtual uint32_t Push(Handle<JSArray> receiver,
+                        Handle<FixedArrayBase> backing_store, Arguments* args,
                         uint32_t push_size) = 0;
 
   virtual uint32_t Unshift(Handle<JSArray> receiver,
+                           Handle<FixedArrayBase> backing_store,
                            Arguments* args, uint32_t unshift_size) = 0;
 
   virtual Handle<JSArray> Slice(Handle<JSObject> receiver,
+                                Handle<FixedArrayBase> backing_store,
                                 uint32_t start, uint32_t end) = 0;
 
   virtual Handle<JSArray> Splice(Handle<JSArray> receiver,
+                                 Handle<FixedArrayBase> backing_store,
                                  uint32_t start, uint32_t delete_count,
                                  Arguments* args, uint32_t add_count) = 0;
 
-  virtual Handle<Object> Pop(Handle<JSArray> receiver) = 0;
+  virtual Handle<Object> Pop(Handle<JSArray> receiver,
+                             Handle<FixedArrayBase> backing_store) = 0;
 
-  virtual Handle<Object> Shift(Handle<JSArray> receiver) = 0;
+  virtual Handle<Object> Shift(Handle<JSArray> receiver,
+                               Handle<FixedArrayBase> backing_store) = 0;
 
  protected:
   friend class LookupIterator;
+
+  static ElementsAccessor* ForArray(FixedArrayBase* array);
+
 
   // Element handlers distinguish between entries and indices when they
   // manipulate elements. Entries refer to elements in terms of their location
@@ -162,15 +197,8 @@ class ElementsAccessor {
   virtual uint32_t GetEntryForIndex(JSObject* holder,
                                     FixedArrayBase* backing_store,
                                     uint32_t index) = 0;
-
-  // NOTE: this method violates the handlified function signature convention:
-  // raw pointer parameter |source_holder| in the function that allocates.
-  // This is done intentionally to avoid ArrayConcat() builtin performance
-  // degradation.
-  virtual void CopyElements(JSObject* source_holder, uint32_t source_start,
-                            ElementsKind source_kind,
-                            Handle<FixedArrayBase> destination,
-                            uint32_t destination_start, int copy_size) = 0;
+  virtual PropertyDetails GetDetails(FixedArrayBase* backing_store,
+                                     uint32_t entry) = 0;
 
  private:
   virtual uint32_t GetCapacity(JSObject* holder,

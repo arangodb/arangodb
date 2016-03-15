@@ -31,13 +31,28 @@ function MathAbs(x) {
   return (x > 0) ? x : 0 - x;
 }
 
+// ECMA 262 - 15.8.2.2
+function MathAcosJS(x) {
+  return %_MathAcos(+x);
+}
+
+// ECMA 262 - 15.8.2.3
+function MathAsinJS(x) {
+  return %_MathAsin(+x);
+}
+
+// ECMA 262 - 15.8.2.4
+function MathAtanJS(x) {
+  return %_MathAtan(+x);
+}
+
 // ECMA 262 - 15.8.2.5
 // The naming of y and x matches the spec, as does the order in which
 // ToNumber (valueOf) is called.
 function MathAtan2JS(y, x) {
   y = +y;
   x = +x;
-  return %MathAtan2(y, x);
+  return %_MathAtan2(y, x);
 }
 
 // ECMA 262 - 15.8.2.6
@@ -58,6 +73,60 @@ function MathFloorJS(x) {
 // ECMA 262 - 15.8.2.10
 function MathLog(x) {
   return %_MathLogRT(TO_NUMBER(x));
+}
+
+// ECMA 262 - 15.8.2.11
+function MathMax(arg1, arg2) {  // length == 2
+  var length = %_ArgumentsLength();
+  if (length == 2) {
+    arg1 = TO_NUMBER(arg1);
+    arg2 = TO_NUMBER(arg2);
+    if (arg2 > arg1) return arg2;
+    if (arg1 > arg2) return arg1;
+    if (arg1 == arg2) {
+      // Make sure -0 is considered less than +0.
+      return (arg1 === 0 && %_IsMinusZero(arg1)) ? arg2 : arg1;
+    }
+    // All comparisons failed, one of the arguments must be NaN.
+    return NaN;
+  }
+  var r = -INFINITY;
+  for (var i = 0; i < length; i++) {
+    var n = %_Arguments(i);
+    n = TO_NUMBER(n);
+    // Make sure +0 is considered greater than -0.
+    if (NUMBER_IS_NAN(n) || n > r || (r === 0 && n === 0 && %_IsMinusZero(r))) {
+      r = n;
+    }
+  }
+  return r;
+}
+
+// ECMA 262 - 15.8.2.12
+function MathMin(arg1, arg2) {  // length == 2
+  var length = %_ArgumentsLength();
+  if (length == 2) {
+    arg1 = TO_NUMBER(arg1);
+    arg2 = TO_NUMBER(arg2);
+    if (arg2 > arg1) return arg1;
+    if (arg1 > arg2) return arg2;
+    if (arg1 == arg2) {
+      // Make sure -0 is considered less than +0.
+      return (arg1 === 0 && %_IsMinusZero(arg1)) ? arg1 : arg2;
+    }
+    // All comparisons failed, one of the arguments must be NaN.
+    return NaN;
+  }
+  var r = INFINITY;
+  for (var i = 0; i < length; i++) {
+    var n = %_Arguments(i);
+    n = TO_NUMBER(n);
+    // Make sure -0 is considered less than +0.
+    if (NUMBER_IS_NAN(n) || n < r || (r === 0 && n === 0 && %_IsMinusZero(n))) {
+      r = n;
+    }
+  }
+  return r;
 }
 
 // ECMA 262 - 15.8.2.13
@@ -90,6 +159,11 @@ function MathRound(x) {
 // ECMA 262 - 15.8.2.17
 function MathSqrtJS(x) {
   return %_MathSqrt(+x);
+}
+
+// Non-standard extension.
+function MathImul(x, y) {
+  return %NumberImul(TO_NUMBER(x), TO_NUMBER(y));
 }
 
 // ES6 draft 09-27-13, section 20.2.2.28.
@@ -144,14 +218,17 @@ function MathHypot(x, y) {  // Function length is 2.
   // We may want to introduce fast paths for two arguments and when
   // normalization to avoid overflow is not necessary.  For now, we
   // simply assume the general case.
-  var length = arguments.length;
+  var length = %_ArgumentsLength();
+  var args = new InternalArray(length);
   var max = 0;
   for (var i = 0; i < length; i++) {
-    var n = MathAbs(arguments[i]);
+    var n = %_Arguments(i);
+    n = TO_NUMBER(n);
+    if (n === INFINITY || n === -INFINITY) return INFINITY;
+    n = MathAbs(n);
     if (n > max) max = n;
-    arguments[i] = n;
+    args[i] = n;
   }
-  if (max === INFINITY) return INFINITY;
 
   // Kahan summation to avoid rounding errors.
   // Normalize the numbers to the largest one to avoid overflow.
@@ -159,13 +236,18 @@ function MathHypot(x, y) {  // Function length is 2.
   var sum = 0;
   var compensation = 0;
   for (var i = 0; i < length; i++) {
-    var n = arguments[i] / max;
+    var n = args[i] / max;
     var summand = n * n - compensation;
     var preliminary = sum + summand;
     compensation = (preliminary - sum) - summand;
     sum = preliminary;
   }
   return %_MathSqrt(sum) * max;
+}
+
+// ES6 draft 09-27-13, section 20.2.2.16.
+function MathFroundJS(x) {
+  return %MathFround(TO_NUMBER(x));
 }
 
 // ES6 draft 07-18-14, section 20.2.2.11
@@ -221,6 +303,9 @@ utils.InstallConstants(GlobalMath, [
 utils.InstallFunctions(GlobalMath, DONT_ENUM, [
   "random", MathRandom,
   "abs", MathAbs,
+  "acos", MathAcosJS,
+  "asin", MathAsinJS,
+  "atan", MathAtanJS,
   "ceil", MathCeil,
   "exp", MathExp,
   "floor", MathFloorJS,
@@ -229,17 +314,24 @@ utils.InstallFunctions(GlobalMath, DONT_ENUM, [
   "sqrt", MathSqrtJS,
   "atan2", MathAtan2JS,
   "pow", MathPowJS,
+  "max", MathMax,
+  "min", MathMin,
+  "imul", MathImul,
   "sign", MathSign,
   "trunc", MathTrunc,
   "asinh", MathAsinh,
   "acosh", MathAcosh,
   "atanh", MathAtanh,
   "hypot", MathHypot,
+  "fround", MathFroundJS,
   "clz32", MathClz32JS,
   "cbrt", MathCbrt
 ]);
 
 %SetForceInlineFlag(MathAbs);
+%SetForceInlineFlag(MathAcosJS);
+%SetForceInlineFlag(MathAsinJS);
+%SetForceInlineFlag(MathAtanJS);
 %SetForceInlineFlag(MathAtan2JS);
 %SetForceInlineFlag(MathCeil);
 %SetForceInlineFlag(MathClz32JS);
@@ -257,6 +349,8 @@ utils.Export(function(to) {
   to.MathExp = MathExp;
   to.MathFloor = MathFloorJS;
   to.IntRandom = MathRandomRaw;
+  to.MathMax = MathMax;
+  to.MathMin = MathMin;
 });
 
 })

@@ -58,7 +58,7 @@ LinkageLocation stackloc(int i) {
 // ===========================================================================
 // == ia32 ===================================================================
 // ===========================================================================
-#define GP_PARAM_REGISTERS eax, edx, ecx, ebx
+#define GP_PARAM_REGISTERS eax, edx, ecx, ebx, esi, edi
 #define GP_RETURN_REGISTERS eax, edx
 #define FP_PARAM_REGISTERS xmm1, xmm2, xmm3, xmm4, xmm5, xmm6
 #define FP_RETURN_REGISTERS xmm1, xmm2
@@ -76,7 +76,7 @@ LinkageLocation stackloc(int i) {
 // ===========================================================================
 // == x87 ====================================================================
 // ===========================================================================
-#define GP_PARAM_REGISTERS eax, edx, ecx, ebx, esi
+#define GP_PARAM_REGISTERS eax, edx, ecx, ebx, esi, edi
 #define GP_RETURN_REGISTERS eax, edx
 #define FP_RETURN_REGISTERS stX_0
 
@@ -122,26 +122,8 @@ LinkageLocation stackloc(int i) {
 // ===========================================================================
 #define GP_PARAM_REGISTERS r3, r4, r5, r6, r7, r8, r9, r10
 #define GP_RETURN_REGISTERS r3, r4
-#define FP_PARAM_REGISTERS d1, d2, d3, d4, d5, d6, d7, d8
-#define FP_RETURN_REGISTERS d1, d2
-
-#elif V8_TARGET_ARCH_S390X
-// ===========================================================================
-// == s390x ==================================================================
-// ===========================================================================
-#define GP_PARAM_REGISTERS r2, r3, r4, r5, r6
-#define GP_RETURN_REGISTERS r2
-#define FP_PARAM_REGISTERS d0, d2, d4, d6
-#define FP_RETURN_REGISTERS d0, d2, d4, d6
-
-#elif V8_TARGET_ARCH_S390
-// ===========================================================================
-// == s390 ===================================================================
-// ===========================================================================
-#define GP_PARAM_REGISTERS r2, r3, r4, r5, r6
-#define GP_RETURN_REGISTERS r2, r3
-#define FP_PARAM_REGISTERS d0, d2
-#define FP_RETURN_REGISTERS d0, d2
+#define FP_PARAM_REGISTERS d0, d1, d2, d3, d4, d5, d6, d7
+#define FP_RETURN_REGISTERS d0, d1
 
 #else
 // ===========================================================================
@@ -209,7 +191,15 @@ struct Allocator {
 };
 }  // namespace
 
-static Allocator GetReturnRegisters() {
+
+// General code uses the above configuration data.
+CallDescriptor* ModuleEnv::GetWasmCallDescriptor(Zone* zone,
+                                                 FunctionSig* fsig) {
+  MachineSignature::Builder msig(zone, fsig->return_count(),
+                                 fsig->parameter_count());
+  LocationSignature::Builder locations(zone, fsig->return_count(),
+                                       fsig->parameter_count());
+
 #ifdef GP_RETURN_REGISTERS
   static const Register kGPReturnRegisters[] = {GP_RETURN_REGISTERS};
   static const int kGPReturnRegistersCount =
@@ -231,10 +221,14 @@ static Allocator GetReturnRegisters() {
   Allocator rets(kGPReturnRegisters, kGPReturnRegistersCount,
                  kFPReturnRegisters, kFPReturnRegistersCount);
 
-  return rets;
-}
+  // Add return location(s).
+  const int return_count = static_cast<int>(locations.return_count_);
+  for (int i = 0; i < return_count; i++) {
+    LocalType ret = fsig->GetReturn(i);
+    msig.AddReturn(MachineTypeFor(ret));
+    locations.AddReturn(rets.Next(ret));
+  }
 
-static Allocator GetParameterRegisters() {
 #ifdef GP_PARAM_REGISTERS
   static const Register kGPParamRegisters[] = {GP_PARAM_REGISTERS};
   static const int kGPParamRegistersCount =
@@ -256,29 +250,6 @@ static Allocator GetParameterRegisters() {
   Allocator params(kGPParamRegisters, kGPParamRegistersCount, kFPParamRegisters,
                    kFPParamRegistersCount);
 
-  return params;
-}
-
-// General code uses the above configuration data.
-CallDescriptor* ModuleEnv::GetWasmCallDescriptor(Zone* zone,
-                                                 FunctionSig* fsig) {
-  MachineSignature::Builder msig(zone, fsig->return_count(),
-                                 fsig->parameter_count());
-  LocationSignature::Builder locations(zone, fsig->return_count(),
-                                       fsig->parameter_count());
-
-  Allocator rets = GetReturnRegisters();
-
-  // Add return location(s).
-  const int return_count = static_cast<int>(locations.return_count_);
-  for (int i = 0; i < return_count; i++) {
-    LocalType ret = fsig->GetReturn(i);
-    msig.AddReturn(MachineTypeFor(ret));
-    locations.AddReturn(rets.Next(ret));
-  }
-
-  Allocator params = GetParameterRegisters();
-
   // Add register and/or stack parameter(s).
   const int parameter_count = static_cast<int>(fsig->parameter_count());
   for (int i = 0; i < parameter_count; i++) {
@@ -293,7 +264,6 @@ CallDescriptor* ModuleEnv::GetWasmCallDescriptor(Zone* zone,
   // The target for WASM calls is always a code object.
   MachineType target_type = MachineType::AnyTagged();
   LinkageLocation target_loc = LinkageLocation::ForAnyRegister();
-
   return new (zone) CallDescriptor(       // --
       CallDescriptor::kCallCodeObject,    // kind
       target_type,                        // target MachineType
@@ -305,82 +275,8 @@ CallDescriptor* ModuleEnv::GetWasmCallDescriptor(Zone* zone,
       kCalleeSaveRegisters,               // callee-saved registers
       kCalleeSaveFPRegisters,             // callee-saved fp regs
       CallDescriptor::kUseNativeStack,    // flags
-      "wasm-call");
+      "c-call");
 }
-
-CallDescriptor* ModuleEnv::GetI32WasmCallDescriptor(
-    Zone* zone, CallDescriptor* descriptor) {
-  const MachineSignature* signature = descriptor->GetMachineSignature();
-  size_t parameter_count = signature->parameter_count();
-  size_t return_count = signature->return_count();
-  for (size_t i = 0; i < signature->parameter_count(); i++) {
-    if (signature->GetParam(i) == MachineType::Int64()) {
-      // For each int64 input we get two int32 inputs.
-      parameter_count++;
-    }
-  }
-  for (size_t i = 0; i < signature->return_count(); i++) {
-    if (signature->GetReturn(i) == MachineType::Int64()) {
-      // For each int64 return we get two int32 returns.
-      return_count++;
-    }
-  }
-  if (parameter_count == signature->parameter_count() &&
-      return_count == signature->return_count()) {
-    // If there is no int64 parameter or return value, we can just return the
-    // original descriptor.
-    return descriptor;
-  }
-
-  MachineSignature::Builder msig(zone, return_count, parameter_count);
-  LocationSignature::Builder locations(zone, return_count, parameter_count);
-
-  Allocator rets = GetReturnRegisters();
-
-  for (size_t i = 0; i < signature->return_count(); i++) {
-    if (signature->GetReturn(i) == MachineType::Int64()) {
-      // For each int64 return we get two int32 returns.
-      msig.AddReturn(MachineType::Int32());
-      msig.AddReturn(MachineType::Int32());
-      locations.AddReturn(rets.Next(MachineRepresentation::kWord32));
-      locations.AddReturn(rets.Next(MachineRepresentation::kWord32));
-    } else {
-      msig.AddReturn(signature->GetReturn(i));
-      locations.AddReturn(rets.Next(signature->GetReturn(i).representation()));
-    }
-  }
-
-  Allocator params = GetParameterRegisters();
-
-  for (size_t i = 0; i < signature->parameter_count(); i++) {
-    if (signature->GetParam(i) == MachineType::Int64()) {
-      // For each int64 input we get two int32 inputs.
-      msig.AddParam(MachineType::Int32());
-      msig.AddParam(MachineType::Int32());
-      locations.AddParam(params.Next(MachineRepresentation::kWord32));
-      locations.AddParam(params.Next(MachineRepresentation::kWord32));
-    } else {
-      msig.AddParam(signature->GetParam(i));
-      locations.AddParam(params.Next(signature->GetParam(i).representation()));
-    }
-  }
-
-  return new (zone) CallDescriptor(          // --
-      descriptor->kind(),                    // kind
-      descriptor->GetInputType(0),           // target MachineType
-      descriptor->GetInputLocation(0),       // target location
-      msig.Build(),                          // machine_sig
-      locations.Build(),                     // location_sig
-      params.stack_offset,                   // stack_parameter_count
-      descriptor->properties(),              // properties
-      descriptor->CalleeSavedRegisters(),    // callee-saved registers
-      descriptor->CalleeSavedFPRegisters(),  // callee-saved fp regs
-      descriptor->flags(),                   // flags
-      descriptor->debug_name());
-
-  return descriptor;
-}
-
 }  // namespace wasm
 }  // namespace internal
 }  // namespace v8

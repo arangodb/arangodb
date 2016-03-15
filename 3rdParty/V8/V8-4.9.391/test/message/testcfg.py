@@ -94,9 +94,7 @@ class MessageTestSuite(testsuite.TestSuite):
             string.find("Native Client module will be loaded") > 0 or
             string.find("NaClHostDescOpen:") > 0)
 
-  def IsFailureOutput(self, testcase):
-    output = testcase.output
-    testpath = testcase.path
+  def IsFailureOutput(self, output, testpath):
     expected_path = os.path.join(self.root, testpath + ".out")
     expected_lines = []
     # Can't use utils.ReadLinesFrom() here because it strips whitespace.

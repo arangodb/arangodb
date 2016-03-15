@@ -5,7 +5,7 @@
 #ifndef V8_LIBPLATFORM_LIBPLATFORM_H_
 #define V8_LIBPLATFORM_LIBPLATFORM_H_
 
-#include "v8-platform.h"  // NOLINT(build/include)
+#include "include/v8-platform.h"
 
 namespace v8 {
 namespace platform {

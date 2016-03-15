@@ -79,15 +79,6 @@ Context* Context::declaration_context() {
   return current;
 }
 
-Context* Context::closure_context() {
-  Context* current = this;
-  while (!current->IsFunctionContext() && !current->IsScriptContext() &&
-         !current->IsNativeContext()) {
-    current = current->previous();
-    DCHECK(current->closure() == closure());
-  }
-  return current;
-}
 
 JSObject* Context::extension_object() {
   DCHECK(IsNativeContext() || IsFunctionContext() || IsBlockContext());
@@ -164,16 +155,14 @@ static Maybe<bool> UnscopableLookup(LookupIterator* it) {
   Handle<Object> unscopables;
   ASSIGN_RETURN_ON_EXCEPTION_VALUE(
       isolate, unscopables,
-      JSReceiver::GetProperty(Handle<JSReceiver>::cast(it->GetReceiver()),
-                              isolate->factory()->unscopables_symbol()),
+      Object::GetProperty(it->GetReceiver(),
+                          isolate->factory()->unscopables_symbol()),
       Nothing<bool>());
   if (!unscopables->IsJSReceiver()) return Just(true);
   Handle<Object> blacklist;
-  ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, blacklist,
-      JSReceiver::GetProperty(Handle<JSReceiver>::cast(unscopables),
-                              it->name()),
-      Nothing<bool>());
+  ASSIGN_RETURN_ON_EXCEPTION_VALUE(isolate, blacklist,
+                                   Object::GetProperty(unscopables, it->name()),
+                                   Nothing<bool>());
   return Just(!blacklist->BooleanValue());
 }
 
@@ -293,7 +282,7 @@ Handle<Object> Context::Lookup(Handle<String> name,
         if (name->Equals(*isolate->factory()->this_string())) {
           maybe = Just(ABSENT);
         } else {
-          LookupIterator it(object, name, object);
+          LookupIterator it(object, name);
           Maybe<bool> found = UnscopableLookup(&it);
           if (found.IsNothing()) {
             maybe = Nothing<PropertyAttributes>();
@@ -551,6 +540,16 @@ int Context::IntrinsicIndexForName(Handle<String> string) {
 }
 
 #undef COMPARE_NAME
+
+
+bool Context::IsJSBuiltin(Handle<Context> native_context,
+                          Handle<JSFunction> function) {
+#define COMPARE_FUNCTION(index, type, name) \
+  if (*function == native_context->get(index)) return true;
+  NATIVE_CONTEXT_JS_BUILTINS(COMPARE_FUNCTION);
+#undef COMPARE_FUNCTION
+  return false;
+}
 
 
 #ifdef DEBUG

@@ -36,6 +36,7 @@ void HStoreEliminationPhase::Run() {
       HInstruction* instr = it.Current();
       if (instr->CheckFlag(HValue::kIsDead)) continue;
 
+      // TODO(titzer): eliminate unobserved HStoreKeyed instructions too.
       switch (instr->opcode()) {
         case HValue::kStoreNamedField:
           // Remove any unobserved stores overwritten by this store.
@@ -67,6 +68,7 @@ void HStoreEliminationPhase::ProcessStore(HStoreNamedField* store) {
              prev->id(), store->id()));
       unobserved_.Remove(i);
     } else {
+      // TODO(titzer): remove map word clearing from folded allocations.
       i++;
     }
   }

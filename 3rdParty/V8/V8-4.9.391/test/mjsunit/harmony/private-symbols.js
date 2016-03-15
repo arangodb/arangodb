@@ -16,6 +16,7 @@ for (var key of Object.keys(object)) assertUnreachable();
 for (var key of Object.getOwnPropertySymbols(object)) assertUnreachable();
 for (var key of Object.getOwnPropertyNames(object)) assertUnreachable();
 for (var key of Reflect.ownKeys(object)) assertUnreachable();
+for (var key of Reflect.enumerate(object)) assertUnreachable();
 for (var key in object) assertUnreachable();
 
 var object2 = {__proto__: object};
@@ -23,6 +24,7 @@ for (var key of Object.keys(object2)) assertUnreachable();
 for (var key of Object.getOwnPropertySymbols(object2)) assertUnreachable();
 for (var key of Object.getOwnPropertyNames(object2)) assertUnreachable();
 for (var key of Reflect.ownKeys(object2)) assertUnreachable();
+for (var key of Reflect.enumerate(object2)) assertUnreachable();
 for (var key in object2) assertUnreachable();
 
 

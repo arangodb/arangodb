@@ -129,6 +129,9 @@ var handler4 = {
   get: function(target, name) {
     return 0;
   },
+  enumerate: function(target) {
+    return [][Symbol.iterator]();
+  },
   has: function() {
     return true;
   },
@@ -149,8 +152,8 @@ var handler5 = {
     if (name == 'z') return 97000;
     return function(key) { return key.charCodeAt(0) + this.z; };
   },
-  ownKeys: function(target) {
-    return ['toJSON', 'z'];
+  enumerate: function(target) {
+    return ['toJSON', 'z'][Symbol.iterator]();
   },
   has: function() {
     return true;
@@ -170,8 +173,8 @@ var handler6 = {
   get: function(target, name) {
     return function(key) { return undefined; };
   },
-  ownKeys: function(target) {
-    return ['toJSON'];
+  enumerate: function(target) {
+    return ['toJSON'][Symbol.iterator]();
   },
   has: function() {
     return true;

@@ -329,7 +329,9 @@ class Local {
   friend class PersistentValueMapBase;
   template<class F1, class F2> friend class PersistentValueVector;
 
-  explicit V8_INLINE Local(T* that) : val_(that) {}
+  template <class S>
+  V8_INLINE Local(S* that)
+      : val_(that) {}
   V8_INLINE static Local<T> New(Isolate* isolate, T* that);
   T* val_;
 };
@@ -432,10 +434,7 @@ class WeakCallbackInfo {
     return internal_fields_[1];
   }
 
-  V8_DEPRECATED("Not realiable once SetSecondPassCallback() was used.",
-                bool IsFirstPass() const) {
-    return callback_ != nullptr;
-  }
+  bool IsFirstPass() const { return callback_ != nullptr; }
 
   // When first called, the embedder MUST Reset() the Global which triggered the
   // callback. The Global itself is unusable for anything else. No v8 other api
@@ -788,7 +787,7 @@ template <class T, class M> class Persistent : public PersistentBase<T> {
   template<class F1, class F2> friend class Persistent;
   template<class F> friend class ReturnValue;
 
-  explicit V8_INLINE Persistent(T* that) : PersistentBase<T>(that) {}
+  template <class S> V8_INLINE Persistent(S* that) : PersistentBase<T>(that) { }
   V8_INLINE T* operator*() const { return this->val_; }
   template<class S, class M2>
   V8_INLINE void Copy(const Persistent<S, M2>& that);
@@ -887,7 +886,7 @@ using UniquePersistent = Global<T>;
  */
 class V8_EXPORT HandleScope {
  public:
-  explicit HandleScope(Isolate* isolate);
+  HandleScope(Isolate* isolate);
 
   ~HandleScope();
 
@@ -940,7 +939,7 @@ class V8_EXPORT HandleScope {
  */
 class V8_EXPORT EscapableHandleScope : public HandleScope {
  public:
-  explicit EscapableHandleScope(Isolate* isolate);
+  EscapableHandleScope(Isolate* isolate);
   V8_INLINE ~EscapableHandleScope() {}
 
   /**
@@ -1610,8 +1609,7 @@ class V8_EXPORT StackFrame {
   /**
    * Returns the name of the resource that contains the script for the
    * function for this StackFrame or sourceURL value if the script name
-   * is undefined and its source ends with //# sourceURL=... string or
-   * deprecated //@ sourceURL=... string.
+   * is undefined and its source ends with //# sourceURL=... string.
    */
   Local<String> GetScriptNameOrSourceURL() const;
 
@@ -3193,21 +3191,19 @@ class PropertyCallbackInfo {
   V8_INLINE Local<Object> This() const;
   V8_INLINE Local<Object> Holder() const;
   V8_INLINE ReturnValue<T> GetReturnValue() const;
-  V8_INLINE bool ShouldThrowOnError() const;
   // This shouldn't be public, but the arm compiler needs it.
-  static const int kArgsLength = 7;
+  static const int kArgsLength = 6;
 
  protected:
   friend class MacroAssembler;
   friend class internal::PropertyCallbackArguments;
   friend class internal::CustomArguments<PropertyCallbackInfo>;
-  static const int kShouldThrowOnErrorIndex = 0;
-  static const int kHolderIndex = 1;
-  static const int kIsolateIndex = 2;
-  static const int kReturnValueDefaultValueIndex = 3;
-  static const int kReturnValueIndex = 4;
-  static const int kDataIndex = 5;
-  static const int kThisIndex = 6;
+  static const int kHolderIndex = 0;
+  static const int kIsolateIndex = 1;
+  static const int kReturnValueDefaultValueIndex = 2;
+  static const int kReturnValueIndex = 3;
+  static const int kDataIndex = 4;
+  static const int kThisIndex = 5;
 
   V8_INLINE PropertyCallbackInfo(internal::Object** args) : args_(args) {}
   internal::Object** args_;
@@ -4326,10 +4322,8 @@ enum AccessType {
  * object.
  */
 typedef bool (*AccessCheckCallback)(Local<Context> accessing_context,
-                                    Local<Object> accessed_object,
-                                    Local<Value> data);
-typedef bool (*DeprecatedAccessCheckCallback)(Local<Context> accessing_context,
-                                              Local<Object> accessed_object);
+                                    Local<Object> accessed_object);
+
 
 /**
  * Returns true if cross-context access should be allowed to the named
@@ -4759,10 +4753,6 @@ class V8_EXPORT ObjectTemplate : public Template {
    */
   void SetAccessCheckCallback(AccessCheckCallback callback,
                               Local<Value> data = Local<Value>());
-  V8_DEPRECATED(
-      "Use SetAccessCheckCallback with new AccessCheckCallback signature.",
-      void SetAccessCheckCallback(DeprecatedAccessCheckCallback callback,
-                                  Local<Value> data = Local<Value>()));
 
   V8_DEPRECATED(
       "Use SetAccessCheckCallback instead",
@@ -4886,6 +4876,7 @@ V8_INLINE Local<Primitive> Null(Isolate* isolate);
 V8_INLINE Local<Boolean> True(Isolate* isolate);
 V8_INLINE Local<Boolean> False(Isolate* isolate);
 
+
 /**
  * A set of constraints that specifies the limits of the runtime's memory use.
  * You must set the heap size before initializing the VM - the size cannot be
@@ -4894,9 +4885,6 @@ V8_INLINE Local<Boolean> False(Isolate* isolate);
  * If you are using threads then you should hold the V8::Locker lock while
  * setting the stack limit and you must set a non-default stack limit separately
  * for each thread.
- *
- * The arguments for set_max_semi_space_size, set_max_old_space_size,
- * set_max_executable_size, set_code_range_size specify limits in MB.
  */
 class V8_EXPORT ResourceConstraints {
  public:
@@ -4915,23 +4903,17 @@ class V8_EXPORT ResourceConstraints {
                          uint64_t virtual_memory_limit);
 
   int max_semi_space_size() const { return max_semi_space_size_; }
-  void set_max_semi_space_size(int limit_in_mb) {
-    max_semi_space_size_ = limit_in_mb;
-  }
+  void set_max_semi_space_size(int value) { max_semi_space_size_ = value; }
   int max_old_space_size() const { return max_old_space_size_; }
-  void set_max_old_space_size(int limit_in_mb) {
-    max_old_space_size_ = limit_in_mb;
-  }
+  void set_max_old_space_size(int value) { max_old_space_size_ = value; }
   int max_executable_size() const { return max_executable_size_; }
-  void set_max_executable_size(int limit_in_mb) {
-    max_executable_size_ = limit_in_mb;
-  }
+  void set_max_executable_size(int value) { max_executable_size_ = value; }
   uint32_t* stack_limit() const { return stack_limit_; }
   // Sets an address beyond which the VM's stack may not grow.
   void set_stack_limit(uint32_t* value) { stack_limit_ = value; }
   size_t code_range_size() const { return code_range_size_; }
-  void set_code_range_size(size_t limit_in_mb) {
-    code_range_size_ = limit_in_mb;
+  void set_code_range_size(size_t value) {
+    code_range_size_ = value;
   }
 
  private:
@@ -5017,10 +4999,8 @@ typedef void (*MemoryAllocationCallback)(ObjectSpace space,
                                          AllocationAction action,
                                          int size);
 
-// --- Enter/Leave Script Callback ---
-typedef void (*BeforeCallEnteredCallback)(Isolate*);
-typedef void (*CallCompletedCallback)(Isolate*);
-typedef void (*DeprecatedCallCompletedCallback)();
+// --- Leave Script Callback ---
+typedef void (*CallCompletedCallback)();
 
 // --- Promise Reject Callback ---
 enum PromiseRejectEvent {
@@ -5055,56 +5035,8 @@ class PromiseRejectMessage {
 
 typedef void (*PromiseRejectCallback)(PromiseRejectMessage message);
 
-// --- Microtasks Callbacks ---
-typedef void (*MicrotasksCompletedCallback)(Isolate*);
+// --- Microtask Callback ---
 typedef void (*MicrotaskCallback)(void* data);
-
-
-/**
- * Policy for running microtasks:
- *   - explicit: microtasks are invoked with Isolate::RunMicrotasks() method;
- *   - scoped: microtasks invocation is controlled by MicrotasksScope objects;
- *   - auto: microtasks are invoked when the script call depth decrements
- *           to zero.
- */
-enum class MicrotasksPolicy { kExplicit, kScoped, kAuto };
-
-
-/**
- * This scope is used to control microtasks when kScopeMicrotasksInvocation
- * is used on Isolate. In this mode every non-primitive call to V8 should be
- * done inside some MicrotasksScope.
- * Microtasks are executed when topmost MicrotasksScope marked as kRunMicrotasks
- * exits.
- * kDoNotRunMicrotasks should be used to annotate calls not intended to trigger
- * microtasks.
- */
-class V8_EXPORT MicrotasksScope {
- public:
-  enum Type { kRunMicrotasks, kDoNotRunMicrotasks };
-
-  MicrotasksScope(Isolate* isolate, Type type);
-  ~MicrotasksScope();
-
-  /**
-   * Runs microtasks if no kRunMicrotasks scope is currently active.
-   */
-  static void PerformCheckpoint(Isolate* isolate);
-
-  /**
-   * Returns current depth of nested kRunMicrotasks scopes.
-   */
-  static int GetCurrentDepth(Isolate* isolate);
-
- private:
-  internal::Isolate* const isolate_;
-  bool run_;
-
-  // Prevent copying.
-  MicrotasksScope(const MicrotasksScope&);
-  MicrotasksScope& operator=(const MicrotasksScope&);
-};
-
 
 // --- Failed Access Check Callback ---
 typedef void (*FailedAccessCheckCallback)(Local<Object> target,
@@ -5137,24 +5069,11 @@ enum GCType {
                kGCTypeIncrementalMarking | kGCTypeProcessWeakCallbacks
 };
 
-/**
- * GCCallbackFlags is used to notify additional information about the GC
- * callback.
- *   - kGCCallbackFlagConstructRetainedObjectInfos: The GC callback is for
- *     constructing retained object infos.
- *   - kGCCallbackFlagForced: The GC callback is for a forced GC for testing.
- *   - kGCCallbackFlagSynchronousPhantomCallbackProcessing: The GC callback
- *     is called synchronously without getting posted to an idle task.
- *   - kGCCallbackFlagCollectAllAvailableGarbage: The GC callback is called
- *     in a phase where V8 is trying to collect all available garbage
- *     (e.g., handling a low memory notification).
- */
 enum GCCallbackFlags {
   kNoGCCallbackFlags = 0,
   kGCCallbackFlagConstructRetainedObjectInfos = 1 << 1,
   kGCCallbackFlagForced = 1 << 2,
-  kGCCallbackFlagSynchronousPhantomCallbackProcessing = 1 << 3,
-  kGCCallbackFlagCollectAllAvailableGarbage = 1 << 4,
+  kGCCallbackFlagSynchronousPhantomCallbackProcessing = 1 << 3
 };
 
 typedef void (*GCCallback)(GCType type, GCCallbackFlags flags);
@@ -5536,21 +5455,6 @@ class V8_EXPORT Isolate {
     kPromiseChain = 17,
     kPromiseAccept = 18,
     kPromiseDefer = 19,
-    kHtmlCommentInExternalScript = 20,
-    kHtmlComment = 21,
-    kSloppyModeBlockScopedFunctionRedefinition = 22,
-    kForInInitializer = 23,
-    kArrayProtectorDirtied = 24,
-    kArraySpeciesModified = 25,
-    kArrayPrototypeConstructorModified = 26,
-    kArrayInstanceProtoModified = 27,
-    kArrayInstanceConstructorModified = 28,
-    kLegacyFunctionDeclaration = 29,
-    kRegExpPrototypeSourceGetter = 30,
-    kRegExpPrototypeOldFlagGetter = 31,
-
-    // If you add new values here, you'll also need to update V8Initializer.cpp
-    // in Chromium.
     kUseCounterFeatureCount  // This enum value must be last.
   };
 
@@ -5892,19 +5796,6 @@ class V8_EXPORT Isolate {
   void SetEventLogger(LogEventCallback that);
 
   /**
-   * Adds a callback to notify the host application right before a script
-   * is about to run. If a script re-enters the runtime during executing, the
-   * BeforeCallEnteredCallback is invoked for each re-entrance.
-   * Executing scripts inside the callback will re-trigger the callback.
-   */
-  void AddBeforeCallEnteredCallback(BeforeCallEnteredCallback callback);
-
-  /**
-   * Removes callback that was installed by AddBeforeCallEnteredCallback.
-   */
-  void RemoveBeforeCallEnteredCallback(BeforeCallEnteredCallback callback);
-
-  /**
    * Adds a callback to notify the host application when a script finished
    * running.  If a script re-enters the runtime during executing, the
    * CallCompletedCallback is only invoked when the outer-most script
@@ -5912,18 +5803,12 @@ class V8_EXPORT Isolate {
    * further callbacks.
    */
   void AddCallCompletedCallback(CallCompletedCallback callback);
-  V8_DEPRECATE_SOON(
-      "Use callback with parameter",
-      void AddCallCompletedCallback(DeprecatedCallCompletedCallback callback));
 
   /**
    * Removes callback that was installed by AddCallCompletedCallback.
    */
   void RemoveCallCompletedCallback(CallCompletedCallback callback);
-  V8_DEPRECATE_SOON(
-      "Use callback with parameter",
-      void RemoveCallCompletedCallback(
-          DeprecatedCallCompletedCallback callback));
+
 
   /**
    * Set callback to notify about promise reject with no handler, or
@@ -5947,39 +5832,17 @@ class V8_EXPORT Isolate {
    */
   void EnqueueMicrotask(MicrotaskCallback microtask, void* data = NULL);
 
-  /**
-   * Experimental: Controls how Microtasks are invoked. See MicrotasksPolicy
-   * for details.
+   /**
+   * Experimental: Controls whether the Microtask Work Queue is automatically
+   * run when the script call depth decrements to zero.
    */
-  void SetMicrotasksPolicy(MicrotasksPolicy policy);
-  V8_DEPRECATE_SOON("Use SetMicrotasksPolicy",
-                    void SetAutorunMicrotasks(bool autorun));
+  void SetAutorunMicrotasks(bool autorun);
 
   /**
-   * Experimental: Returns the policy controlling how Microtasks are invoked.
+   * Experimental: Returns whether the Microtask Work Queue is automatically
+   * run when the script call depth decrements to zero.
    */
-  MicrotasksPolicy GetMicrotasksPolicy() const;
-  V8_DEPRECATE_SOON("Use GetMicrotasksPolicy",
-                    bool WillAutorunMicrotasks() const);
-
-  /**
-   * Experimental: adds a callback to notify the host application after
-   * microtasks were run. The callback is triggered by explicit RunMicrotasks
-   * call or automatic microtasks execution (see SetAutorunMicrotasks).
-   *
-   * Callback will trigger even if microtasks were attempted to run,
-   * but the microtasks queue was empty and no single microtask was actually
-   * executed.
-   *
-   * Executing scriptsinside the callback will not re-trigger microtasks and
-   * the callback.
-   */
-  void AddMicrotasksCompletedCallback(MicrotasksCompletedCallback callback);
-
-  /**
-   * Removes callback that was installed by AddMicrotasksCompletedCallback.
-   */
-  void RemoveMicrotasksCompletedCallback(MicrotasksCompletedCallback callback);
+  bool WillAutorunMicrotasks() const;
 
   /**
    * Sets a callback for counting the number of times a feature of V8 is used.
@@ -7230,7 +7093,7 @@ class Internals {
       1 * kApiPointerSize + kApiIntSize;
   static const int kStringResourceOffset = 3 * kApiPointerSize;
 
-  static const int kOddballKindOffset = 5 * kApiPointerSize;
+  static const int kOddballKindOffset = 4 * kApiPointerSize;
   static const int kForeignAddressOffset = kApiPointerSize;
   static const int kJSObjectHeaderSize = 3 * kApiPointerSize;
   static const int kFixedArrayHeaderSize = 2 * kApiPointerSize;
@@ -7269,7 +7132,7 @@ class Internals {
   static const int kNodeIsPartiallyDependentShift = 4;
   static const int kNodeIsActiveShift = 4;
 
-  static const int kJSObjectType = 0xb8;
+  static const int kJSObjectType = 0xb7;
   static const int kFirstNonstringType = 0x80;
   static const int kOddballType = 0x83;
   static const int kForeignType = 0x87;
@@ -8397,12 +8260,6 @@ Local<Object> PropertyCallbackInfo<T>::Holder() const {
 template<typename T>
 ReturnValue<T> PropertyCallbackInfo<T>::GetReturnValue() const {
   return ReturnValue<T>(&args_[kReturnValueIndex]);
-}
-
-template <typename T>
-bool PropertyCallbackInfo<T>::ShouldThrowOnError() const {
-  typedef internal::Internals I;
-  return args_[kShouldThrowOnErrorIndex] != I::IntToSmi(0);
 }
 
 

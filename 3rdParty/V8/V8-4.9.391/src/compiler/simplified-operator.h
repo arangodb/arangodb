@@ -15,7 +15,10 @@ namespace v8 {
 namespace internal {
 
 // Forward declarations.
-class Type;
+template <class>
+class TypeImpl;
+struct ZoneTypeConfig;
+typedef TypeImpl<ZoneTypeConfig> Type;
 class Zone;
 
 
@@ -165,9 +168,7 @@ class SimplifiedOperatorBuilder final : public ZoneObject {
   const Operator* ChangeBitToBool();
 
   const Operator* ObjectIsNumber();
-  const Operator* ObjectIsReceiver();
   const Operator* ObjectIsSmi();
-  const Operator* ObjectIsUndetectable();
 
   const Operator* Allocate(PretenureFlag pretenure = NOT_TENURED);
 

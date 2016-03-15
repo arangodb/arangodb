@@ -19,13 +19,10 @@ namespace compiler {
   V(PPC_Xor)                       \
   V(PPC_ShiftLeft32)               \
   V(PPC_ShiftLeft64)               \
-  V(PPC_ShiftLeftPair)             \
   V(PPC_ShiftRight32)              \
   V(PPC_ShiftRight64)              \
-  V(PPC_ShiftRightPair)            \
   V(PPC_ShiftRightAlg32)           \
   V(PPC_ShiftRightAlg64)           \
-  V(PPC_ShiftRightAlgPair)         \
   V(PPC_RotRight32)                \
   V(PPC_RotRight64)                \
   V(PPC_Not)                       \
@@ -85,9 +82,7 @@ namespace compiler {
   V(PPC_Int64ToDouble)             \
   V(PPC_Uint64ToFloat32)           \
   V(PPC_Uint64ToDouble)            \
-  V(PPC_Int32ToFloat32)            \
   V(PPC_Int32ToDouble)             \
-  V(PPC_Uint32ToFloat32)           \
   V(PPC_Uint32ToDouble)            \
   V(PPC_Float32ToDouble)           \
   V(PPC_DoubleToInt32)             \
@@ -118,6 +113,7 @@ namespace compiler {
   V(PPC_StoreWord64)               \
   V(PPC_StoreFloat32)              \
   V(PPC_StoreDouble)
+
 
 // Addressing modes represent the "shape" of inputs to an instruction.
 // Many instructions support multiple addressing modes. Addressing modes

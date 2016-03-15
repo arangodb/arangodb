@@ -228,7 +228,7 @@ TEST(jump_tables4) {
   CcTest::InitializeVM();
   Isolate* isolate = CcTest::i_isolate();
   HandleScope scope(isolate);
-  MacroAssembler assembler(isolate, nullptr, 0,
+  MacroAssembler assembler(isolate, NULL, 0,
                            v8::internal::CodeObjectRequired::kYes);
   MacroAssembler* masm = &assembler;
 
@@ -236,9 +236,11 @@ TEST(jump_tables4) {
   int values[kNumCases];
   isolate->random_number_generator()->NextBytes(values, sizeof(values));
   Label labels[kNumCases];
-  Label near_start, end, done;
+  Label near_start, end;
 
-  __ Push(ra);
+  __ daddiu(sp, sp, -8);
+  __ sd(ra, MemOperand(sp));
+
   __ mov(v0, zero_reg);
 
   __ Branch(&end);
@@ -250,17 +252,36 @@ TEST(jump_tables4) {
     __ addiu(v0, v0, 1);
   }
 
-  __ GenerateSwitchTable(a0, kNumCases,
-                         [&labels](size_t i) { return labels + i; });
+  __ Align(8);
+  Label done;
+  {
+    __ BlockTrampolinePoolFor(kNumCases * 2 + 6);
+    PredictableCodeSizeScope predictable(
+        masm, (kNumCases * 2 + 6) * Assembler::kInstrSize);
+    Label here;
+
+    __ bal(&here);
+    __ dsll(at, a0, 3);  // In delay slot.
+    __ bind(&here);
+    __ daddu(at, at, ra);
+    __ ld(at, MemOperand(at, 4 * Assembler::kInstrSize));
+    __ jr(at);
+    __ nop();  // Branch delay slot nop.
+    for (int i = 0; i < kNumCases; ++i) {
+      __ dd(&labels[i]);
+    }
+  }
 
   for (int i = 0; i < kNumCases; ++i) {
     __ bind(&labels[i]);
-    __ li(v0, values[i]);
+    __ lui(v0, (values[i] >> 16) & 0xffff);
+    __ ori(v0, v0, values[i] & 0xffff);
     __ Branch(&done);
   }
 
   __ bind(&done);
-  __ Pop(ra);
+  __ ld(ra, MemOperand(sp));
+  __ daddiu(sp, sp, 8);
   __ jr(ra);
   __ nop();
 
@@ -302,22 +323,21 @@ TEST(jump_tables5) {
   Label labels[kNumCases];
   Label done;
 
-  __ Push(ra);
+  __ daddiu(sp, sp, -8);
+  __ sd(ra, MemOperand(sp));
 
-  // Opposite of Align(8) as we have unaligned number of instructions in the
-  // following block before the first dd().
-  if ((masm->pc_offset() & 7) == 0) {
-    __ nop();
-  }
-
+  __ Align(8);
   {
-    __ BlockTrampolinePoolFor(kNumCases * 2 + 6 + 1);
+    __ BlockTrampolinePoolFor(kNumCases * 2 + 7 + 1);
     PredictableCodeSizeScope predictable(
-        masm, kNumCases * kPointerSize + ((6 + 1) * Assembler::kInstrSize));
+        masm, kNumCases * kPointerSize + ((7 + 1) * Assembler::kInstrSize));
+    Label here;
 
-    __ addiupc(at, 6 + 1);
-    __ Dlsa(at, at, a0, 3);
-    __ ld(at, MemOperand(at));
+    __ bal(&here);
+    __ dsll(at, a0, 3);  // In delay slot.
+    __ bind(&here);
+    __ daddu(at, at, ra);
+    __ ld(at, MemOperand(at, 6 * Assembler::kInstrSize));
     __ jalr(at);
     __ nop();  // Branch delay slot nop.
     __ bc(&done);
@@ -331,13 +351,15 @@ TEST(jump_tables5) {
 
   for (int i = 0; i < kNumCases; ++i) {
     __ bind(&labels[i]);
-    __ li(v0, values[i]);
+    __ lui(v0, (values[i] >> 16) & 0xffff);
+    __ ori(v0, v0, values[i] & 0xffff);
     __ jr(ra);
     __ nop();
   }
 
   __ bind(&done);
-  __ Pop(ra);
+  __ ld(ra, MemOperand(sp));
+  __ daddiu(sp, sp, 8);
   __ jr(ra);
   __ nop();
 
@@ -519,159 +541,6 @@ TEST(Dlsa) {
            ", %hhu)\n",
            tc[i].expected_res, res, tc[i].rt, tc[i].rs, tc[i].sa);
     CHECK_EQ(tc[i].expected_res, res);
-  }
-}
-
-static const std::vector<uint32_t> uint32_test_values() {
-  static const uint32_t kValues[] = {0x00000000, 0x00000001, 0x00ffff00,
-                                     0x7fffffff, 0x80000000, 0x80000001,
-                                     0x80ffff00, 0x8fffffff, 0xffffffff};
-  return std::vector<uint32_t>(&kValues[0], &kValues[arraysize(kValues)]);
-}
-
-static const std::vector<int32_t> int32_test_values() {
-  static const int32_t kValues[] = {
-      static_cast<int32_t>(0x00000000), static_cast<int32_t>(0x00000001),
-      static_cast<int32_t>(0x00ffff00), static_cast<int32_t>(0x7fffffff),
-      static_cast<int32_t>(0x80000000), static_cast<int32_t>(0x80000001),
-      static_cast<int32_t>(0x80ffff00), static_cast<int32_t>(0x8fffffff),
-      static_cast<int32_t>(0xffffffff)};
-  return std::vector<int32_t>(&kValues[0], &kValues[arraysize(kValues)]);
-}
-
-static const std::vector<uint64_t> uint64_test_values() {
-  static const uint64_t kValues[] = {
-      0x0000000000000000, 0x0000000000000001, 0x0000ffffffff0000,
-      0x7fffffffffffffff, 0x8000000000000000, 0x8000000000000001,
-      0x8000ffffffff0000, 0x8fffffffffffffff, 0xffffffffffffffff};
-  return std::vector<uint64_t>(&kValues[0], &kValues[arraysize(kValues)]);
-}
-
-static const std::vector<int64_t> int64_test_values() {
-  static const int64_t kValues[] = {static_cast<int64_t>(0x0000000000000000),
-                                    static_cast<int64_t>(0x0000000000000001),
-                                    static_cast<int64_t>(0x0000ffffffff0000),
-                                    static_cast<int64_t>(0x7fffffffffffffff),
-                                    static_cast<int64_t>(0x8000000000000000),
-                                    static_cast<int64_t>(0x8000000000000001),
-                                    static_cast<int64_t>(0x8000ffffffff0000),
-                                    static_cast<int64_t>(0x8fffffffffffffff),
-                                    static_cast<int64_t>(0xffffffffffffffff)};
-  return std::vector<int64_t>(&kValues[0], &kValues[arraysize(kValues)]);
-}
-
-// Helper macros that can be used in FOR_INT32_INPUTS(i) { ... *i ... }
-#define FOR_INPUTS(ctype, itype, var)                        \
-  std::vector<ctype> var##_vec = itype##_test_values();      \
-  for (std::vector<ctype>::iterator var = var##_vec.begin(); \
-       var != var##_vec.end(); ++var)
-
-#define FOR_INT32_INPUTS(var) FOR_INPUTS(int32_t, int32, var)
-#define FOR_INT64_INPUTS(var) FOR_INPUTS(int64_t, int64, var)
-#define FOR_UINT32_INPUTS(var) FOR_INPUTS(uint32_t, uint32, var)
-#define FOR_UINT64_INPUTS(var) FOR_INPUTS(uint64_t, uint64, var)
-
-template <typename RET_TYPE, typename IN_TYPE, typename Func>
-RET_TYPE run_Cvt(IN_TYPE x, Func GenerateConvertInstructionFunc) {
-  typedef RET_TYPE (*F_CVT)(IN_TYPE x0, int x1, int x2, int x3, int x4);
-
-  Isolate* isolate = CcTest::i_isolate();
-  HandleScope scope(isolate);
-  MacroAssembler assm(isolate, nullptr, 0,
-                      v8::internal::CodeObjectRequired::kYes);
-  MacroAssembler* masm = &assm;
-
-  GenerateConvertInstructionFunc(masm);
-  __ dmfc1(v0, f2);
-  __ jr(ra);
-  __ nop();
-
-  CodeDesc desc;
-  assm.GetCode(&desc);
-  Handle<Code> code = isolate->factory()->NewCode(
-      desc, Code::ComputeFlags(Code::STUB), Handle<Code>());
-
-  F_CVT f = FUNCTION_CAST<F_CVT>(code->entry());
-
-  return reinterpret_cast<RET_TYPE>(
-      CALL_GENERATED_CODE(isolate, f, x, 0, 0, 0, 0));
-}
-
-TEST(Cvt_s_uw_Trunc_uw_s) {
-  CcTest::InitializeVM();
-  FOR_UINT32_INPUTS(i) {
-    uint32_t input = *i;
-    CHECK_EQ(static_cast<float>(input),
-             run_Cvt<uint64_t>(input, [](MacroAssembler* masm) {
-               __ Cvt_s_uw(f0, a0);
-               __ Trunc_uw_s(f2, f0, f1);
-             }));
-  }
-}
-
-TEST(Cvt_s_ul_Trunc_ul_s) {
-  CcTest::InitializeVM();
-  FOR_UINT64_INPUTS(i) {
-    uint64_t input = *i;
-    CHECK_EQ(static_cast<float>(input),
-             run_Cvt<uint64_t>(input, [](MacroAssembler* masm) {
-               __ Cvt_s_ul(f0, a0);
-               __ Trunc_ul_s(f2, f0, f1, v0);
-             }));
-  }
-}
-
-TEST(Cvt_d_ul_Trunc_ul_d) {
-  CcTest::InitializeVM();
-  FOR_UINT64_INPUTS(i) {
-    uint64_t input = *i;
-    CHECK_EQ(static_cast<double>(input),
-             run_Cvt<uint64_t>(input, [](MacroAssembler* masm) {
-               __ Cvt_d_ul(f0, a0);
-               __ Trunc_ul_d(f2, f0, f1, v0);
-             }));
-  }
-}
-
-TEST(cvt_d_l_Trunc_l_d) {
-  CcTest::InitializeVM();
-  FOR_INT64_INPUTS(i) {
-    int64_t input = *i;
-    CHECK_EQ(static_cast<double>(input),
-             run_Cvt<int64_t>(input, [](MacroAssembler* masm) {
-               __ dmtc1(a0, f4);
-               __ cvt_d_l(f0, f4);
-               __ Trunc_l_d(f2, f0);
-             }));
-  }
-}
-
-TEST(cvt_d_l_Trunc_l_ud) {
-  CcTest::InitializeVM();
-  FOR_INT64_INPUTS(i) {
-    int64_t input = *i;
-    uint64_t abs_input = (input < 0) ? -input : input;
-    CHECK_EQ(static_cast<double>(abs_input),
-             run_Cvt<uint64_t>(input, [](MacroAssembler* masm) {
-               __ dmtc1(a0, f4);
-               __ cvt_d_l(f0, f4);
-               __ Trunc_l_ud(f2, f0, f6);
-             }));
-  }
-}
-
-TEST(cvt_d_w_Trunc_w_d) {
-  CcTest::InitializeVM();
-  FOR_INT32_INPUTS(i) {
-    int32_t input = *i;
-    CHECK_EQ(static_cast<double>(input),
-             run_Cvt<int64_t>(input, [](MacroAssembler* masm) {
-               __ mtc1(a0, f4);
-               __ cvt_d_w(f0, f4);
-               __ Trunc_w_d(f2, f0);
-               __ mfc1(v1, f2);
-               __ dmtc1(v1, f2);
-             }));
   }
 }
 

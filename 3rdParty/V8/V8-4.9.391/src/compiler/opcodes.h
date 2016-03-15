@@ -21,8 +21,6 @@
   V(IfDefault)             \
   V(Merge)                 \
   V(Deoptimize)            \
-  V(DeoptimizeIf)          \
-  V(DeoptimizeUnless)      \
   V(Return)                \
   V(TailCall)              \
   V(Terminate)             \
@@ -130,6 +128,7 @@
 #define JS_CONTEXT_OP_LIST(V) \
   V(JSLoadContext)            \
   V(JSStoreContext)           \
+  V(JSLoadDynamic)            \
   V(JSCreateFunctionContext)  \
   V(JSCreateCatchContext)     \
   V(JSCreateWithContext)      \
@@ -203,9 +202,7 @@
   V(StoreBuffer)                   \
   V(StoreElement)                  \
   V(ObjectIsNumber)                \
-  V(ObjectIsReceiver)              \
-  V(ObjectIsSmi)                   \
-  V(ObjectIsUndetectable)
+  V(ObjectIsSmi)
 
 // Opcodes for Machine-level operators.
 #define MACHINE_COMPARE_BINOP_LIST(V) \
@@ -230,7 +227,6 @@
   MACHINE_COMPARE_BINOP_LIST(V) \
   V(Load)                       \
   V(Store)                      \
-  V(StackSlot)                  \
   V(Word32And)                  \
   V(Word32Or)                   \
   V(Word32Xor)                  \
@@ -240,7 +236,6 @@
   V(Word32Ror)                  \
   V(Word32Clz)                  \
   V(Word32Ctz)                  \
-  V(Word32ReverseBits)          \
   V(Word32Popcnt)               \
   V(Word64Popcnt)               \
   V(Word64And)                  \
@@ -252,7 +247,6 @@
   V(Word64Ror)                  \
   V(Word64Clz)                  \
   V(Word64Ctz)                  \
-  V(Word64ReverseBits)          \
   V(Int32Add)                   \
   V(Int32AddWithOverflow)       \
   V(Int32Sub)                   \
@@ -276,8 +270,6 @@
   V(ChangeFloat32ToFloat64)     \
   V(ChangeFloat64ToInt32)       \
   V(ChangeFloat64ToUint32)      \
-  V(TruncateFloat32ToInt32)     \
-  V(TruncateFloat32ToUint32)    \
   V(TryTruncateFloat32ToInt64)  \
   V(TryTruncateFloat64ToInt64)  \
   V(TryTruncateFloat32ToUint64) \
@@ -289,10 +281,8 @@
   V(TruncateFloat64ToFloat32)   \
   V(TruncateFloat64ToInt32)     \
   V(TruncateInt64ToInt32)       \
-  V(RoundInt32ToFloat32)        \
   V(RoundInt64ToFloat32)        \
   V(RoundInt64ToFloat64)        \
-  V(RoundUint32ToFloat32)       \
   V(RoundUint64ToFloat32)       \
   V(RoundUint64ToFloat64)       \
   V(BitcastFloat32ToInt32)      \
@@ -331,13 +321,8 @@
   V(Float64InsertHighWord32)    \
   V(LoadStackPointer)           \
   V(LoadFramePointer)           \
-  V(LoadParentFramePointer)     \
   V(CheckedLoad)                \
-  V(CheckedStore)               \
-  V(Int32PairAdd)               \
-  V(Word32PairShl)              \
-  V(Word32PairShr)              \
-  V(Word32PairSar)
+  V(CheckedStore)
 
 #define VALUE_OP_LIST(V) \
   COMMON_OP_LIST(V)      \

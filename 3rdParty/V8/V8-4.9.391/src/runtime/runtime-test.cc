@@ -377,7 +377,8 @@ RUNTIME_FUNCTION(Runtime_AbortJS) {
 
 RUNTIME_FUNCTION(Runtime_NativeScriptsCount) {
   DCHECK(args.length() == 0);
-  return Smi::FromInt(Natives::GetBuiltinsCount());
+  return Smi::FromInt(Natives::GetBuiltinsCount() +
+                      ExtraNatives::GetBuiltinsCount());
 }
 
 
@@ -398,7 +399,7 @@ RUNTIME_FUNCTION(Runtime_DisassembleFunction) {
   DCHECK(args.length() == 1);
   // Get the function and make sure it is compiled.
   CONVERT_ARG_HANDLE_CHECKED(JSFunction, func, 0);
-  if (!Compiler::Compile(func, Compiler::KEEP_EXCEPTION)) {
+  if (!Compiler::Compile(func, KEEP_EXCEPTION)) {
     return isolate->heap()->exception();
   }
   OFStream os(stdout);
@@ -408,54 +409,53 @@ RUNTIME_FUNCTION(Runtime_DisassembleFunction) {
   return isolate->heap()->undefined_value();
 }
 
-namespace {
 
-int StackSize(Isolate* isolate) {
+static int StackSize(Isolate* isolate) {
   int n = 0;
   for (JavaScriptFrameIterator it(isolate); !it.done(); it.Advance()) n++;
   return n;
 }
 
-void PrintIndentation(Isolate* isolate) {
-  const int nmax = 80;
-  int n = StackSize(isolate);
-  if (n <= nmax) {
-    PrintF("%4d:%*s", n, n, "");
+
+static void PrintTransition(Isolate* isolate, Object* result) {
+  // indentation
+  {
+    const int nmax = 80;
+    int n = StackSize(isolate);
+    if (n <= nmax)
+      PrintF("%4d:%*s", n, n, "");
+    else
+      PrintF("%4d:%*s", n, nmax, "...");
+  }
+
+  if (result == NULL) {
+    JavaScriptFrame::PrintTop(isolate, stdout, true, false);
+    PrintF(" {\n");
   } else {
-    PrintF("%4d:%*s", n, nmax, "...");
+    // function result
+    PrintF("} -> ");
+    result->ShortPrint();
+    PrintF("\n");
   }
 }
 
-}  // namespace
 
 RUNTIME_FUNCTION(Runtime_TraceEnter) {
   SealHandleScope shs(isolate);
-  DCHECK_EQ(0, args.length());
-  PrintIndentation(isolate);
-  JavaScriptFrame::PrintTop(isolate, stdout, true, false);
-  PrintF(" {\n");
+  DCHECK(args.length() == 0);
+  PrintTransition(isolate, NULL);
   return isolate->heap()->undefined_value();
 }
 
 
 RUNTIME_FUNCTION(Runtime_TraceExit) {
   SealHandleScope shs(isolate);
-  DCHECK_EQ(1, args.length());
+  DCHECK(args.length() == 1);
   CONVERT_ARG_CHECKED(Object, obj, 0);
-  PrintIndentation(isolate);
-  PrintF("} -> ");
-  obj->ShortPrint();
-  PrintF("\n");
+  PrintTransition(isolate, obj);
   return obj;  // return TOS
 }
 
-RUNTIME_FUNCTION(Runtime_TraceTailCall) {
-  SealHandleScope shs(isolate);
-  DCHECK_EQ(0, args.length());
-  PrintIndentation(isolate);
-  PrintF("} -> tail call ->\n");
-  return isolate->heap()->undefined_value();
-}
 
 RUNTIME_FUNCTION(Runtime_HaveSameMap) {
   SealHandleScope shs(isolate);

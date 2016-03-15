@@ -26,7 +26,7 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // Flags: --allow-natives-syntax
-// Flags: --noconcurrent-recompilation
+// Flags: --noconcurrent-recompilation --noconcurrent-osr
 
 if (%IsConcurrentRecompilationSupported()) {
   print("Concurrent recompilation is turned on after all. Skipping this test.");

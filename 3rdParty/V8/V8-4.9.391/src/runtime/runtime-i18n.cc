@@ -158,8 +158,8 @@ RUNTIME_FUNCTION(Runtime_GetLanguageTagVariants) {
   Handle<Name> base = factory->NewStringFromStaticChars("base");
   for (unsigned int i = 0; i < length; ++i) {
     Handle<Object> locale_id;
-    ASSIGN_RETURN_FAILURE_ON_EXCEPTION(
-        isolate, locale_id, JSReceiver::GetElement(isolate, input, i));
+    ASSIGN_RETURN_FAILURE_ON_EXCEPTION(isolate, locale_id,
+                                       Object::GetElement(isolate, input, i));
     if (!locale_id->IsString()) {
       return isolate->Throw(*factory->illegal_argument_string());
     }
@@ -586,9 +586,8 @@ RUNTIME_FUNCTION(Runtime_StringNormalize) {
 
   // TODO(mnita): check Normalizer2 (not available in ICU 46)
   UErrorCode status = U_ZERO_ERROR;
-  icu::UnicodeString input(false, u_value, string_value.length());
   icu::UnicodeString result;
-  icu::Normalizer::normalize(input, normalizationForms[form_id], 0, result,
+  icu::Normalizer::normalize(u_value, normalizationForms[form_id], 0, result,
                              status);
   if (U_FAILURE(status)) {
     return isolate->heap()->undefined_value();

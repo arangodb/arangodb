@@ -492,7 +492,7 @@ MUST_USE_RESULT static Object* StringReplaceGlobalRegExpWithString(
     }
   }
 
-  RegExpImpl::GlobalCache global_cache(regexp, subject, isolate);
+  RegExpImpl::GlobalCache global_cache(regexp, subject, true, isolate);
   if (global_cache.HasException()) return isolate->heap()->exception();
 
   int32_t* current_match = global_cache.FetchNext();
@@ -568,7 +568,7 @@ MUST_USE_RESULT static Object* StringReplaceGlobalRegExpWithEmptyString(
     }
   }
 
-  RegExpImpl::GlobalCache global_cache(regexp, subject, isolate);
+  RegExpImpl::GlobalCache global_cache(regexp, subject, true, isolate);
   if (global_cache.HasException()) return isolate->heap()->exception();
 
   int32_t* current_match = global_cache.FetchNext();
@@ -642,7 +642,7 @@ MUST_USE_RESULT static Object* StringReplaceGlobalRegExpWithEmptyString(
   // TODO(hpayer): We should shrink the large object page if the size
   // of the object changed significantly.
   if (!heap->lo_space()->Contains(*answer)) {
-    heap->CreateFillerObjectAt(end_of_string, delta, ClearRecordedSlots::kNo);
+    heap->CreateFillerObjectAt(end_of_string, delta);
   }
   heap->AdjustLiveBytes(*answer, -delta, Heap::CONCURRENT_TO_SWEEPER);
   return *answer;
@@ -876,7 +876,7 @@ static Object* SearchRegExpMultiple(Isolate* isolate, Handle<String> subject,
     }
   }
 
-  RegExpImpl::GlobalCache global_cache(regexp, subject, isolate);
+  RegExpImpl::GlobalCache global_cache(regexp, subject, true, isolate);
   if (global_cache.HasException()) return isolate->heap()->exception();
 
   // Ensured in Runtime_RegExpExecMultiple.

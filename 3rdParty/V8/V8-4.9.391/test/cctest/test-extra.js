@@ -12,15 +12,6 @@
     return binding.runtime(3);
   };
 
-  binding.testFunctionToString = function() {
-    function foo() { return 1; }
-    return foo.toString();
-  };
-
-  binding.testStackTrace = function(f) {
-    return f();
-  }
-
   // Exercise all of the extras utils:
   // - v8.createPrivateSymbol
   // - v8.simpleBind, v8.uncurryThis

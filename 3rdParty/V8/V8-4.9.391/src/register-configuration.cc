@@ -91,10 +91,6 @@ class ArchDefaultRegisterConfiguration : public RegisterConfiguration {
                               kMaxAllocatableGeneralRegisterCount,
                               kMaxAllocatableDoubleRegisterCount,
                               kMaxAllocatableDoubleRegisterCount,
-#elif V8_TARGET_ARCH_S390
-                              kMaxAllocatableGeneralRegisterCount,
-                              kMaxAllocatableDoubleRegisterCount,
-                              kMaxAllocatableDoubleRegisterCount,
 #else
 #error Unsupported target architecture.
 #endif

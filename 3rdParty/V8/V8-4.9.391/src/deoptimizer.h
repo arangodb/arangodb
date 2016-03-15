@@ -27,7 +27,6 @@ class TranslatedValue {
   Handle<Object> GetValue();
 
   bool IsMaterializedObject() const;
-  bool IsMaterializableByDebugger() const;
 
  private:
   friend class TranslatedState;
@@ -116,7 +115,6 @@ class TranslatedFrame {
     kInterpretedFunction,
     kGetter,
     kSetter,
-    kTailCallerFunction,
     kArgumentsAdaptor,
     kConstructStub,
     kCompiledStub,
@@ -129,11 +127,6 @@ class TranslatedFrame {
   BailoutId node_id() const { return node_id_; }
   Handle<SharedFunctionInfo> shared_info() const { return shared_info_; }
   int height() const { return height_; }
-
-  SharedFunctionInfo* raw_shared_info() const {
-    CHECK_NOT_NULL(raw_shared_info_);
-    return raw_shared_info_;
-  }
 
   class iterator {
    public:
@@ -187,7 +180,6 @@ class TranslatedFrame {
                                        SharedFunctionInfo* shared_info);
   static TranslatedFrame ArgumentsAdaptorFrame(SharedFunctionInfo* shared_info,
                                                int height);
-  static TranslatedFrame TailCallerFrame(SharedFunctionInfo* shared_info);
   static TranslatedFrame ConstructStubFrame(SharedFunctionInfo* shared_info,
                                             int height);
   static TranslatedFrame CompiledStubFrame(int height, Isolate* isolate) {
@@ -401,7 +393,15 @@ class OptimizedFunctionVisitor BASE_EMBEDDED {
 
 class Deoptimizer : public Malloced {
  public:
-  enum BailoutType { EAGER, LAZY, SOFT, kLastBailoutType = SOFT };
+  enum BailoutType {
+    EAGER,
+    LAZY,
+    SOFT,
+    // This last bailout type is not really a bailout, but used by the
+    // debugger to deoptimize stack frames to allow inspection.
+    DEBUGGER,
+    kBailoutTypesWithCodeEntry = SOFT + 1
+  };
 
 #define DEOPT_MESSAGES_CONSTANTS(C, T) C,
   enum DeoptReason {
@@ -503,6 +503,10 @@ class Deoptimizer : public Malloced {
 
   void MaterializeHeapObjects(JavaScriptFrameIterator* it);
 
+  void MaterializeHeapNumbersForDebuggerInspectableFrame(
+      int frame_index, int parameter_count, int expression_count,
+      DeoptimizedFrameInfo* info);
+
   static void ComputeOutputFrames(Deoptimizer* deoptimizer);
 
 
@@ -531,8 +535,8 @@ class Deoptimizer : public Malloced {
   }
   static int output_offset() { return OFFSET_OF(Deoptimizer, output_); }
 
-  static int caller_frame_top_offset() {
-    return OFFSET_OF(Deoptimizer, caller_frame_top_);
+  static int has_alignment_padding_offset() {
+    return OFFSET_OF(Deoptimizer, has_alignment_padding_);
   }
 
   static int GetDeoptimizedCodeCount(Isolate* isolate);
@@ -588,20 +592,12 @@ class Deoptimizer : public Malloced {
   void DeleteFrameDescriptions();
 
   void DoComputeOutputFrames();
-  void DoComputeJSFrame(TranslatedFrame* translated_frame, int frame_index,
-                        bool goto_catch_handler);
-  void DoComputeInterpretedFrame(TranslatedFrame* translated_frame,
-                                 int frame_index, bool goto_catch_handler);
-  void DoComputeArgumentsAdaptorFrame(TranslatedFrame* translated_frame,
-                                      int frame_index);
-  void DoComputeTailCallerFrame(TranslatedFrame* translated_frame,
-                                int frame_index);
-  void DoComputeConstructStubFrame(TranslatedFrame* translated_frame,
-                                   int frame_index);
-  void DoComputeAccessorStubFrame(TranslatedFrame* translated_frame,
-                                  int frame_index, bool is_setter_stub_frame);
-  void DoComputeCompiledStubFrame(TranslatedFrame* translated_frame,
-                                  int frame_index);
+  void DoComputeJSFrame(int frame_index);
+  void DoComputeInterpretedFrame(int frame_index);
+  void DoComputeArgumentsAdaptorFrame(int frame_index);
+  void DoComputeConstructStubFrame(int frame_index);
+  void DoComputeAccessorStubFrame(int frame_index, bool is_setter_stub_frame);
+  void DoComputeCompiledStubFrame(int frame_index);
 
   void WriteTranslatedValueToOutput(
       TranslatedFrame::iterator* iterator, int* input_index, int frame_index,
@@ -614,12 +610,11 @@ class Deoptimizer : public Malloced {
                             unsigned output_offset,
                             const char* debug_hint_string);
 
-  unsigned ComputeInputFrameAboveFpFixedSize() const;
   unsigned ComputeInputFrameSize() const;
-  static unsigned ComputeJavascriptFixedSize(SharedFunctionInfo* shared);
-  static unsigned ComputeInterpretedFixedSize(SharedFunctionInfo* shared);
+  unsigned ComputeJavascriptFixedSize(JSFunction* function) const;
+  unsigned ComputeInterpretedFixedSize(JSFunction* function) const;
 
-  static unsigned ComputeIncomingArgumentSize(SharedFunctionInfo* shared);
+  unsigned ComputeIncomingArgumentSize(JSFunction* function) const;
   static unsigned ComputeOutgoingArgumentSize(Code* code, unsigned bailout_id);
 
   Object* ComputeLiteral(int index) const;
@@ -645,6 +640,11 @@ class Deoptimizer : public Malloced {
   // searching all code objects).
   Code* FindDeoptimizingCode(Address addr);
 
+  // Fill the input from from a JavaScript frame. This is used when
+  // the debugger needs to inspect an optimized frame. For normal
+  // deoptimizations the input frame is filled in generated code.
+  void FillInputFrame(Address tos, JavaScriptFrame* frame);
+
   // Fill the given output frame's registers to contain the failure handler
   // address and the number of parameters for a stub failure trampoline.
   void SetPlatformCompiledStubRegisters(FrameDescription* output_frame,
@@ -654,6 +654,10 @@ class Deoptimizer : public Malloced {
   // from the input frame's double registers.
   void CopyDoubleRegisters(FrameDescription* output_frame);
 
+  // Determines whether the input frame contains alignment padding by looking
+  // at the dynamic alignment state slot inside the frame.
+  bool HasAlignmentPadding(JSFunction* function);
+
   Isolate* isolate_;
   JSFunction* function_;
   Code* compiled_code_;
@@ -661,9 +665,7 @@ class Deoptimizer : public Malloced {
   BailoutType bailout_type_;
   Address from_;
   int fp_to_sp_delta_;
-  bool deoptimizing_throw_;
-  int catch_handler_data_;
-  int catch_handler_pc_offset_;
+  int has_alignment_padding_;
 
   // Input frame description.
   FrameDescription* input_;
@@ -674,15 +676,8 @@ class Deoptimizer : public Malloced {
   // Array of output frame descriptions.
   FrameDescription** output_;
 
-  // Caller frame details computed from input frame.
-  intptr_t caller_frame_top_;
-  intptr_t caller_fp_;
-  intptr_t caller_pc_;
-  intptr_t caller_constant_pool_;
-  intptr_t input_frame_context_;
-
   // Key for lookup of previously materialized objects
-  intptr_t stack_fp_;
+  Address stack_fp_;
 
   TranslatedState translated_state_;
   struct ValueToMaterialize {
@@ -741,7 +736,8 @@ class RegisterValues {
 
 class FrameDescription {
  public:
-  explicit FrameDescription(uint32_t frame_size, int parameter_count = 0);
+  FrameDescription(uint32_t frame_size,
+                   JSFunction* function);
 
   void* operator new(size_t size, uint32_t frame_size) {
     // Subtracts kPointerSize, as the member frame_content_ already supplies
@@ -762,6 +758,8 @@ class FrameDescription {
     return static_cast<uint32_t>(frame_size_);
   }
 
+  JSFunction* GetFunction() const { return function_; }
+
   unsigned GetOffsetFromSlotIndex(int slot_index);
 
   intptr_t GetFrameSlot(unsigned offset) {
@@ -769,7 +767,8 @@ class FrameDescription {
   }
 
   Address GetFramePointerAddress() {
-    int fp_offset = GetFrameSize() - parameter_count() * kPointerSize -
+    int fp_offset = GetFrameSize() -
+                    (ComputeParametersCount() + 1) * kPointerSize -
                     StandardFrameConstants::kCallerSPOffset;
     return reinterpret_cast<Address>(GetFrameSlotPointer(fp_offset));
   }
@@ -827,8 +826,17 @@ class FrameDescription {
   StackFrame::Type GetFrameType() const { return type_; }
   void SetFrameType(StackFrame::Type type) { type_ = type; }
 
-  // Argument count, including receiver.
-  int parameter_count() { return parameter_count_; }
+  // Get the incoming arguments count.
+  int ComputeParametersCount();
+
+  // Get a parameter value for an unoptimized frame.
+  Object* GetParameter(int index);
+
+  // Get the expression stack height for a unoptimized frame.
+  unsigned GetExpressionCount();
+
+  // Get the expression stack value for an unoptimized frame.
+  Object* GetExpression(int index);
 
   static int registers_offset() {
     return OFFSET_OF(FrameDescription, register_values_.registers_);
@@ -861,7 +869,7 @@ class FrameDescription {
   // keep the variable-size array frame_content_ of type intptr_t at
   // the end of the structure aligned.
   uintptr_t frame_size_;  // Number of bytes.
-  int parameter_count_;
+  JSFunction* function_;
   RegisterValues register_values_;
   intptr_t top_;
   intptr_t pc_;
@@ -894,10 +902,14 @@ class DeoptimizerData {
   explicit DeoptimizerData(MemoryAllocator* allocator);
   ~DeoptimizerData();
 
+  void Iterate(ObjectVisitor* v);
+
  private:
   MemoryAllocator* allocator_;
-  int deopt_entry_code_entries_[Deoptimizer::kLastBailoutType + 1];
-  MemoryChunk* deopt_entry_code_[Deoptimizer::kLastBailoutType + 1];
+  int deopt_entry_code_entries_[Deoptimizer::kBailoutTypesWithCodeEntry];
+  MemoryChunk* deopt_entry_code_[Deoptimizer::kBailoutTypesWithCodeEntry];
+
+  DeoptimizedFrameInfo* deoptimized_frame_info_;
 
   Deoptimizer* current_;
 
@@ -941,6 +953,7 @@ class TranslationIterator BASE_EMBEDDED {
   int index_;
 };
 
+
 #define TRANSLATION_OPCODE_LIST(V) \
   V(BEGIN)                         \
   V(JS_FRAME)                      \
@@ -949,7 +962,6 @@ class TranslationIterator BASE_EMBEDDED {
   V(GETTER_STUB_FRAME)             \
   V(SETTER_STUB_FRAME)             \
   V(ARGUMENTS_ADAPTOR_FRAME)       \
-  V(TAIL_CALLER_FRAME)             \
   V(COMPILED_STUB_FRAME)           \
   V(DUPLICATED_OBJECT)             \
   V(ARGUMENTS_OBJECT)              \
@@ -964,7 +976,9 @@ class TranslationIterator BASE_EMBEDDED {
   V(UINT32_STACK_SLOT)             \
   V(BOOL_STACK_SLOT)               \
   V(DOUBLE_STACK_SLOT)             \
-  V(LITERAL)
+  V(LITERAL)                       \
+  V(JS_FRAME_FUNCTION)
+
 
 class Translation BASE_EMBEDDED {
  public:
@@ -993,7 +1007,6 @@ class Translation BASE_EMBEDDED {
                              unsigned height);
   void BeginCompiledStubFrame(int height);
   void BeginArgumentsAdaptorFrame(int literal_id, unsigned height);
-  void BeginTailCallerFrame(int literal_id);
   void BeginConstructStubFrame(int literal_id, unsigned height);
   void BeginGetterStubFrame(int literal_id);
   void BeginSetterStubFrame(int literal_id);
@@ -1058,20 +1071,28 @@ class MaterializedObjectStore {
 // formal parameter count.
 class DeoptimizedFrameInfo : public Malloced {
  public:
-  DeoptimizedFrameInfo(TranslatedState* state,
-                       TranslatedState::iterator frame_it, Isolate* isolate);
+  DeoptimizedFrameInfo(Deoptimizer* deoptimizer,
+                       int frame_index,
+                       bool has_arguments_adaptor,
+                       bool has_construct_stub);
+  virtual ~DeoptimizedFrameInfo();
+
+  // GC support.
+  void Iterate(ObjectVisitor* v);
 
   // Return the number of incoming arguments.
-  int parameters_count() { return static_cast<int>(parameters_.size()); }
+  int parameters_count() { return parameters_count_; }
 
   // Return the height of the expression stack.
-  int expression_count() { return static_cast<int>(expression_stack_.size()); }
+  int expression_count() { return expression_count_; }
 
   // Get the frame function.
-  Handle<JSFunction> GetFunction() { return function_; }
+  JSFunction* GetFunction() {
+    return function_;
+  }
 
   // Get the frame context.
-  Handle<Object> GetContext() { return context_; }
+  Object* GetContext() { return context_; }
 
   // Check if this frame is preceded by construct stub frame.  The bottom-most
   // inlined frame might still be called by an uninlined construct stub.
@@ -1080,13 +1101,13 @@ class DeoptimizedFrameInfo : public Malloced {
   }
 
   // Get an incoming argument.
-  Handle<Object> GetParameter(int index) {
+  Object* GetParameter(int index) {
     DCHECK(0 <= index && index < parameters_count());
     return parameters_[index];
   }
 
   // Get an expression from the expression stack.
-  Handle<Object> GetExpression(int index) {
+  Object* GetExpression(int index) {
     DCHECK(0 <= index && index < expression_count());
     return expression_stack_[index];
   }
@@ -1097,22 +1118,24 @@ class DeoptimizedFrameInfo : public Malloced {
 
  private:
   // Set an incoming argument.
-  void SetParameter(int index, Handle<Object> obj) {
+  void SetParameter(int index, Object* obj) {
     DCHECK(0 <= index && index < parameters_count());
     parameters_[index] = obj;
   }
 
   // Set an expression on the expression stack.
-  void SetExpression(int index, Handle<Object> obj) {
+  void SetExpression(int index, Object* obj) {
     DCHECK(0 <= index && index < expression_count());
     expression_stack_[index] = obj;
   }
 
-  Handle<JSFunction> function_;
-  Handle<Object> context_;
+  JSFunction* function_;
+  Object* context_;
   bool has_construct_stub_;
-  std::vector<Handle<Object> > parameters_;
-  std::vector<Handle<Object> > expression_stack_;
+  int parameters_count_;
+  int expression_count_;
+  Object** parameters_;
+  Object** expression_stack_;
   int source_position_;
 
   friend class Deoptimizer;

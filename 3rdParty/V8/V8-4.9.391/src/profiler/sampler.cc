@@ -336,14 +336,6 @@ class SimulatorHelper {
         reinterpret_cast<Address>(simulator_->get_register(Simulator::sp));
     state->fp =
         reinterpret_cast<Address>(simulator_->get_register(Simulator::fp));
-#elif V8_TARGET_ARCH_S390
-    if (!simulator_->has_bad_pc()) {
-      state->pc = reinterpret_cast<Address>(simulator_->get_pc());
-    }
-    state->sp =
-        reinterpret_cast<Address>(simulator_->get_register(Simulator::sp));
-    state->fp =
-        reinterpret_cast<Address>(simulator_->get_register(Simulator::fp));
 #endif
   }
 
@@ -449,7 +441,7 @@ void SignalHandler::HandleProfilerSignal(int signal, siginfo_t* info,
 #else
   // Extracting the sample from the context is extremely machine dependent.
   ucontext_t* ucontext = reinterpret_cast<ucontext_t*>(context);
-#if !(V8_OS_OPENBSD || (V8_OS_LINUX && (V8_HOST_ARCH_PPC || V8_HOST_ARCH_S390)))
+#if !(V8_OS_OPENBSD || (V8_OS_LINUX && V8_HOST_ARCH_PPC))
   mcontext_t& mcontext = ucontext->uc_mcontext;
 #endif
 #if V8_OS_LINUX
@@ -490,17 +482,6 @@ void SignalHandler::HandleProfilerSignal(int signal, siginfo_t* info,
   state.pc = reinterpret_cast<Address>(ucontext->uc_mcontext.regs->nip);
   state.sp = reinterpret_cast<Address>(ucontext->uc_mcontext.regs->gpr[PT_R1]);
   state.fp = reinterpret_cast<Address>(ucontext->uc_mcontext.regs->gpr[PT_R31]);
-#elif V8_HOST_ARCH_S390
-#if V8_TARGET_ARCH_32_BIT
-  // 31-bit target will have bit 0 (MSB) of the PSW set to denote addressing
-  // mode.  This bit needs to be masked out to resolve actual address.
-  state.pc =
-      reinterpret_cast<Address>(ucontext->uc_mcontext.psw.addr & 0x7FFFFFFF);
-#else
-  state.pc = reinterpret_cast<Address>(ucontext->uc_mcontext.psw.addr);
-#endif  // V8_TARGET_ARCH_32_BIT
-  state.sp = reinterpret_cast<Address>(ucontext->uc_mcontext.gregs[15]);
-  state.fp = reinterpret_cast<Address>(ucontext->uc_mcontext.gregs[11]);
 #endif  // V8_HOST_ARCH_*
 #elif V8_OS_MACOSX
 #if V8_HOST_ARCH_X64
@@ -676,12 +657,10 @@ SamplerThread* SamplerThread::instance_ = NULL;
 //
 DISABLE_ASAN void TickSample::Init(Isolate* isolate,
                                    const v8::RegisterState& regs,
-                                   RecordCEntryFrame record_c_entry_frame,
-                                   bool update_stats) {
+                                   RecordCEntryFrame record_c_entry_frame) {
   timestamp = base::TimeTicks::HighResolutionNow();
   pc = reinterpret_cast<Address>(regs.pc);
   state = isolate->current_vm_state();
-  this->update_stats = update_stats;
 
   // Avoid collecting traces while doing GC.
   if (state == GC) return;
@@ -690,8 +669,6 @@ DISABLE_ASAN void TickSample::Init(Isolate* isolate,
   if (js_entry_sp == 0) return;  // Not executing JS now.
 
   if (pc && IsNoFrameRegion(pc)) {
-    // Can't collect stack. Mark the sample as spoiled.
-    timestamp = base::TimeTicks();
     pc = 0;
     return;
   }
@@ -702,7 +679,7 @@ DISABLE_ASAN void TickSample::Init(Isolate* isolate,
   // we have already entrered JavaScript again and the external callback
   // is not the top function.
   if (scope && scope->scope_address() < handler) {
-    external_callback_entry = *scope->callback_entrypoint_address();
+    external_callback = scope->callback();
     has_external_callback = true;
   } else {
     // sp register may point at an arbitrary place in memory, make
@@ -722,12 +699,6 @@ DISABLE_ASAN void TickSample::Init(Isolate* isolate,
   GetStackSample(isolate, regs, record_c_entry_frame,
                  reinterpret_cast<void**>(&stack[0]), kMaxFramesCount, &info);
   frames_count = static_cast<unsigned>(info.frames_count);
-  if (!frames_count) {
-    // It is executing JS but failed to collect a stack trace.
-    // Mark the sample as spoiled.
-    timestamp = base::TimeTicks();
-    pc = 0;
-  }
 }
 
 
@@ -750,18 +721,7 @@ void TickSample::GetStackSample(Isolate* isolate, const v8::RegisterState& regs,
     frames[i++] = isolate->c_function();
   }
   while (!it.done() && i < frames_limit) {
-    if (it.frame()->is_interpreted()) {
-      // For interpreted frames use the bytecode array pointer as the pc.
-      InterpretedFrame* frame = static_cast<InterpretedFrame*>(it.frame());
-      // Since the sampler can interrupt execution at any point the
-      // bytecode_array might be garbage, so don't dereference it.
-      Address bytecode_array =
-          reinterpret_cast<Address>(frame->GetBytecodeArray()) - kHeapObjectTag;
-      frames[i++] = bytecode_array + BytecodeArray::kHeaderSize +
-                    frame->GetBytecodeOffset();
-    } else {
-      frames[i++] = it.frame()->pc();
-    }
+    frames[i++] = it.frame()->pc();
     it.Advance();
   }
   sample_info->frames_count = i;
@@ -783,6 +743,7 @@ void Sampler::TearDown() {
 #endif
 }
 
+
 Sampler::Sampler(Isolate* isolate, int interval)
     : isolate_(isolate),
       interval_(interval),
@@ -790,15 +751,16 @@ Sampler::Sampler(Isolate* isolate, int interval)
       has_processing_thread_(false),
       active_(false),
       is_counting_samples_(false),
-      js_sample_count_(0),
-      external_sample_count_(0) {
+      js_and_external_sample_count_(0) {
   data_ = new PlatformData;
 }
+
 
 Sampler::~Sampler() {
   DCHECK(!IsActive());
   delete data_;
 }
+
 
 void Sampler::Start() {
   DCHECK(!IsActive());
@@ -834,10 +796,11 @@ void Sampler::SampleStack(const v8::RegisterState& state) {
   TickSample* sample = isolate_->cpu_profiler()->StartTickSample();
   TickSample sample_obj;
   if (sample == NULL) sample = &sample_obj;
-  sample->Init(isolate_, state, TickSample::kIncludeCEntryFrame, true);
-  if (is_counting_samples_ && !sample->timestamp.IsNull()) {
-    if (sample->state == JS) ++js_sample_count_;
-    if (sample->state == EXTERNAL) ++external_sample_count_;
+  sample->Init(isolate_, state, TickSample::kIncludeCEntryFrame);
+  if (is_counting_samples_) {
+    if (sample->state == JS || sample->state == EXTERNAL) {
+      ++js_and_external_sample_count_;
+    }
   }
   Tick(sample);
   if (sample != &sample_obj) {

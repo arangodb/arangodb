@@ -34,7 +34,6 @@ class DefaultPlatform : public Platform {
   bool PumpMessageLoop(v8::Isolate* isolate);
 
   // v8::Platform implementation.
-  size_t NumberOfAvailableBackgroundThreads() override;
   void CallOnBackgroundThread(Task* task,
                               ExpectedRuntime expected_runtime) override;
   void CallOnForegroundThread(v8::Isolate* isolate, Task* task) override;
@@ -47,10 +46,9 @@ class DefaultPlatform : public Platform {
   const char* GetCategoryGroupName(
       const uint8_t* category_enabled_flag) override;
   uint64_t AddTraceEvent(char phase, const uint8_t* category_enabled_flag,
-                         const char* name, const char* scope, uint64_t id,
-                         uint64_t bind_id, int32_t num_args,
-                         const char** arg_names, const uint8_t* arg_types,
-                         const uint64_t* arg_values,
+                         const char* name, uint64_t id, uint64_t bind_id,
+                         int32_t num_args, const char** arg_names,
+                         const uint8_t* arg_types, const uint64_t* arg_values,
                          unsigned int flags) override;
   void UpdateTraceEventDuration(const uint8_t* category_enabled_flag,
                                 const char* name, uint64_t handle) override;

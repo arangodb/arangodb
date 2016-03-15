@@ -17,8 +17,11 @@ class ExternalReference;
 template <typename T>
 class Handle;
 class HeapObject;
-class Type;
+template <class>
+class TypeImpl;
 enum TypeofMode : int;
+struct ZoneTypeConfig;
+typedef TypeImpl<ZoneTypeConfig> Type;
 
 namespace compiler {
 
@@ -67,10 +70,6 @@ Matcher<Node*> IsFinishRegion(const Matcher<Node*>& value_matcher,
 Matcher<Node*> IsReturn(const Matcher<Node*>& value_matcher,
                         const Matcher<Node*>& effect_matcher,
                         const Matcher<Node*>& control_matcher);
-Matcher<Node*> IsReturn2(const Matcher<Node*>& value_matcher,
-                         const Matcher<Node*>& value2_matcher,
-                         const Matcher<Node*>& effect_matcher,
-                         const Matcher<Node*>& control_matcher);
 Matcher<Node*> IsTerminate(const Matcher<Node*>& effect_matcher,
                            const Matcher<Node*>& control_matcher);
 Matcher<Node*> IsExternalConstant(
@@ -247,7 +246,6 @@ Matcher<Node*> IsStoreElement(const Matcher<ElementAccess>& access_matcher,
                               const Matcher<Node*>& value_matcher,
                               const Matcher<Node*>& effect_matcher,
                               const Matcher<Node*>& control_matcher);
-Matcher<Node*> IsObjectIsReceiver(const Matcher<Node*>& value_matcher);
 Matcher<Node*> IsObjectIsSmi(const Matcher<Node*>& value_matcher);
 
 Matcher<Node*> IsLoad(const Matcher<LoadRepresentation>& rep_matcher,
@@ -261,13 +259,10 @@ Matcher<Node*> IsStore(const Matcher<StoreRepresentation>& rep_matcher,
                        const Matcher<Node*>& value_matcher,
                        const Matcher<Node*>& effect_matcher,
                        const Matcher<Node*>& control_matcher);
-Matcher<Node*> IsStackSlot(const Matcher<MachineRepresentation>& rep_matcher);
 Matcher<Node*> IsWord32And(const Matcher<Node*>& lhs_matcher,
                            const Matcher<Node*>& rhs_matcher);
 Matcher<Node*> IsWord32Or(const Matcher<Node*>& lhs_matcher,
                           const Matcher<Node*>& rhs_matcher);
-Matcher<Node*> IsWord32Xor(const Matcher<Node*>& lhs_matcher,
-                           const Matcher<Node*>& rhs_matcher);
 Matcher<Node*> IsWord32Sar(const Matcher<Node*>& lhs_matcher,
                            const Matcher<Node*>& rhs_matcher);
 Matcher<Node*> IsWord32Shl(const Matcher<Node*>& lhs_matcher,
@@ -279,7 +274,6 @@ Matcher<Node*> IsWord32Ror(const Matcher<Node*>& lhs_matcher,
 Matcher<Node*> IsWord32Equal(const Matcher<Node*>& lhs_matcher,
                              const Matcher<Node*>& rhs_matcher);
 Matcher<Node*> IsWord32Clz(const Matcher<Node*>& value_matcher);
-Matcher<Node*> IsWord32Popcnt(const Matcher<Node*>& value_matcher);
 Matcher<Node*> IsWord64And(const Matcher<Node*>& lhs_matcher,
                            const Matcher<Node*>& rhs_matcher);
 Matcher<Node*> IsWord64Or(const Matcher<Node*>& lhs_matcher,
@@ -359,23 +353,6 @@ Matcher<Node*> IsNumberToInt32(const Matcher<Node*>& input_matcher);
 Matcher<Node*> IsNumberToUint32(const Matcher<Node*>& input_matcher);
 Matcher<Node*> IsParameter(const Matcher<int> index_matcher);
 Matcher<Node*> IsLoadFramePointer();
-
-Matcher<Node*> IsInt32PairAdd(const Matcher<Node*>& a_matcher,
-                              const Matcher<Node*>& b_matcher,
-                              const Matcher<Node*>& c_matcher,
-                              const Matcher<Node*>& d_matcher);
-Matcher<Node*> IsWord32PairShl(const Matcher<Node*>& lhs_matcher,
-                               const Matcher<Node*>& mid_matcher,
-                               const Matcher<Node*>& rhs_matcher);
-Matcher<Node*> IsWord32PairShr(const Matcher<Node*>& lhs_matcher,
-                               const Matcher<Node*>& mid_matcher,
-                               const Matcher<Node*>& rhs_matcher);
-
-Matcher<Node*> IsWord32PairSar(const Matcher<Node*>& lhs_matcher,
-                               const Matcher<Node*>& mid_matcher,
-                               const Matcher<Node*>& rhs_matcher);
-
-Matcher<Node*> IsStackSlot();
 
 }  // namespace compiler
 }  // namespace internal

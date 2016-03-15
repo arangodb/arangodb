@@ -75,8 +75,9 @@ function SymbolKeyFor(symbol) {
 // -------------------------------------------------------------------
 
 utils.InstallConstants(GlobalSymbol, [
-  "hasInstance", hasInstanceSymbol,
-  "isConcatSpreadable", isConcatSpreadableSymbol,
+  // TODO(rossberg): expose when implemented.
+  // "hasInstance", hasInstanceSymbol,
+  // "isConcatSpreadable", isConcatSpreadableSymbol,
   "iterator", iteratorSymbol,
   // TODO(yangguo): expose when implemented.
   // "match", matchSymbol,
@@ -84,7 +85,9 @@ utils.InstallConstants(GlobalSymbol, [
   // "search", searchSymbol,
   // "split, splitSymbol,
   "toPrimitive", toPrimitiveSymbol,
-  "toStringTag", toStringTagSymbol,
+  // TODO(dslomov, caitp): Currently defined in harmony-tostring.js ---
+  // Move here when shipping
+  // "toStringTag", toStringTagSymbol,
   "unscopables", unscopablesSymbol,
 ]);
 

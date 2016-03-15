@@ -71,6 +71,12 @@ void HRangeAnalysisPhase::Run() {
                 instr->to().IsSmiOrInteger32());
           PropagateMinusZeroChecks(instr->value());
         }
+      } else if (value->IsCompareMinusZeroAndBranch()) {
+        HCompareMinusZeroAndBranch* instr =
+            HCompareMinusZeroAndBranch::cast(value);
+        if (instr->value()->representation().IsSmiOrInteger32()) {
+          PropagateMinusZeroChecks(instr->value());
+        }
       }
     }
 

@@ -24,8 +24,7 @@ void GraphTrimmer::TrimGraph() {
   MarkAsLive(graph()->end());
   // Compute transitive closure of live nodes.
   for (size_t i = 0; i < live_.size(); ++i) {
-    Node* const live = live_[i];
-    for (Node* const input : live->inputs()) MarkAsLive(input);
+    for (Node* const input : live_[i]->inputs()) MarkAsLive(input);
   }
   // Remove dead->live edges.
   for (Node* const live : live_) {

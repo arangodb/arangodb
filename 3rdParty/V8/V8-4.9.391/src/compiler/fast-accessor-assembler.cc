@@ -5,7 +5,6 @@
 #include "src/compiler/fast-accessor-assembler.h"
 
 #include "src/base/logging.h"
-#include "src/code-stubs.h"  // For CallApiCallbackStub.
 #include "src/compiler/graph.h"
 #include "src/compiler/linkage.h"
 #include "src/compiler/pipeline.h"
@@ -167,44 +166,6 @@ void FastAccessorAssembler::CheckNotZeroOrJump(ValueId value_id,
   assembler_->Bind(&pass);
 }
 
-FastAccessorAssembler::ValueId FastAccessorAssembler::Call(
-    FunctionCallback callback_function, ValueId arg) {
-  CHECK_EQ(kBuilding, state_);
-
-  // Create API function stub.
-  CallApiCallbackStub stub(assembler_->isolate(), 1, true);
-  DCHECK_EQ(1, stub.GetCallInterfaceDescriptor().GetStackParameterCount());
-
-  // Wrap the FunctionCallback in an ExternalReference.
-  ApiFunction callback_api_function(FUNCTION_ADDR(callback_function));
-  ExternalReference callback(&callback_api_function,
-                             ExternalReference::DIRECT_API_CALL,
-                             assembler_->isolate());
-
-  // The stub has 6 parameters.
-  // See: ApiCallbackDescriptorBase::BuildCallInterfaceDescriptorFunctionType
-  Node* args[] = {
-      // Stub/register parameters:
-      assembler_->Parameter(0),               /* receiver (use accessor's) */
-      assembler_->UndefinedConstant(),        /* call_data (undefined) */
-      assembler_->NullConstant(),             /* holder (null) */
-      assembler_->ExternalConstant(callback), /* API callback function */
-
-      // JS arguments, on stack:
-      FromId(arg),
-
-      // Context parameter. (See Linkage::GetStubCallDescriptor.)
-      assembler_->UndefinedConstant()};
-  DCHECK_EQ(arraysize(args),
-            1 + stub.GetCallInterfaceDescriptor().GetParameterCount());
-
-  Node* call = assembler_->CallN(
-      Linkage::GetStubCallDescriptor(
-          assembler_->isolate(), zone(), stub.GetCallInterfaceDescriptor(),
-          stub.GetStackParameterCount(), CallDescriptor::kNoFlags),
-      assembler_->HeapConstant(stub.GetCode()), args);
-  return FromRaw(call);
-}
 
 MaybeHandle<Code> FastAccessorAssembler::Build() {
   CHECK_EQ(kBuilding, state_);
@@ -215,10 +176,9 @@ MaybeHandle<Code> FastAccessorAssembler::Build() {
 
   // Export the schedule and call the compiler.
   Schedule* schedule = assembler_->Export();
-  Code::Flags flags = Code::ComputeFlags(Code::STUB);
   MaybeHandle<Code> code = Pipeline::GenerateCodeForCodeStub(
       assembler_->isolate(), assembler_->call_descriptor(), assembler_->graph(),
-      schedule, flags, "FastAccessorAssembler");
+      schedule, Code::STUB, "FastAccessorAssembler");
 
   // Update state & return.
   state_ = !code.is_null() ? kBuilt : kError;

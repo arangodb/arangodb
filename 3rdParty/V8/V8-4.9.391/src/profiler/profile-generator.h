@@ -99,11 +99,7 @@ class CodeEntry {
 
   int GetSourceLine(int pc_offset) const;
 
-  void AddInlineStack(int pc_offset, std::vector<CodeEntry*>& inline_stack);
-  const std::vector<CodeEntry*>* GetInlineStack(int pc_offset) const;
-
   Address instruction_start() const { return instruction_start_; }
-  Logger::LogEventsAndTags tag() const { return TagField::decode(bit_field_); }
 
   static const char* const kEmptyNamePrefix;
   static const char* const kEmptyResourceName;
@@ -113,6 +109,7 @@ class CodeEntry {
  private:
   class TagField : public BitField<Logger::LogEventsAndTags, 0, 8> {};
   class BuiltinIdField : public BitField<Builtins::Name, 8, 8> {};
+  Logger::LogEventsAndTags tag() const { return TagField::decode(bit_field_); }
 
   uint32_t bit_field_;
   const char* name_prefix_;
@@ -128,8 +125,6 @@ class CodeEntry {
   size_t pc_offset_;
   JITLineInfoTable* line_info_;
   Address instruction_start_;
-  // Should be an unordered_map, but it doesn't currently work on Win & MacOS.
-  std::map<int, std::vector<CodeEntry*>> inline_locations_;
 
   std::vector<InlinedFunctionInfo> inlined_function_infos_;
 
@@ -196,9 +191,8 @@ class ProfileTree {
   ~ProfileTree();
 
   ProfileNode* AddPathFromEnd(
-      const std::vector<CodeEntry*>& path,
-      int src_line = v8::CpuProfileNode::kNoLineNumberInfo,
-      bool update_stats = true);
+      const Vector<CodeEntry*>& path,
+      int src_line = v8::CpuProfileNode::kNoLineNumberInfo);
   ProfileNode* root() const { return root_; }
   unsigned next_node_id() { return next_node_id_++; }
   unsigned GetFunctionId(const ProfileNode* node);
@@ -230,8 +224,8 @@ class CpuProfile {
   CpuProfile(Isolate* isolate, const char* title, bool record_samples);
 
   // Add pc -> ... -> main() call path to the profile.
-  void AddPath(base::TimeTicks timestamp, const std::vector<CodeEntry*>& path,
-               int src_line, bool update_stats);
+  void AddPath(base::TimeTicks timestamp, const Vector<CodeEntry*>& path,
+               int src_line);
   void CalculateTotalTicksAndSamplingRate();
 
   const char* title() const { return title_; }
@@ -339,8 +333,7 @@ class CpuProfilesCollection {
 
   // Called from profile generator thread.
   void AddPathToCurrentProfiles(base::TimeTicks timestamp,
-                                const std::vector<CodeEntry*>& path,
-                                int src_line, bool update_stats);
+                                const Vector<CodeEntry*>& path, int src_line);
 
   // Limits the number of profiles that can be simultaneously collected.
   static const int kMaxSimultaneousProfiles = 100;

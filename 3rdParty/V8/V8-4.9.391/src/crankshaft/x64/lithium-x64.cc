@@ -261,6 +261,27 @@ void LInnerAllocatedObject::PrintDataTo(StringStream* stream) {
 }
 
 
+void LCallFunction::PrintDataTo(StringStream* stream) {
+  context()->PrintTo(stream);
+  stream->Add(" ");
+  function()->PrintTo(stream);
+  if (hydrogen()->HasVectorAndSlot()) {
+    stream->Add(" (type-feedback-vector ");
+    temp_vector()->PrintTo(stream);
+    stream->Add(" ");
+    temp_slot()->PrintTo(stream);
+    stream->Add(")");
+  }
+}
+
+
+void LCallJSFunction::PrintDataTo(StringStream* stream) {
+  stream->Add("= ");
+  function()->PrintTo(stream);
+  stream->Add("#%d / ", arity());
+}
+
+
 void LCallWithDescriptor::PrintDataTo(StringStream* stream) {
   for (int i = 0; i < InputCount(); i++) {
     InputAt(i)->PrintTo(stream);
@@ -313,15 +334,15 @@ void LAccessArgumentsAt::PrintDataTo(StringStream* stream) {
 int LPlatformChunk::GetNextSpillIndex(RegisterKind kind) {
   if (kind == DOUBLE_REGISTERS && kDoubleSize == 2 * kPointerSize) {
     // Skip a slot if for a double-width slot for x32 port.
-    current_frame_slots_++;
+    spill_slot_count_++;
     // The spill slot's address is at rbp - (index + 1) * kPointerSize -
     // StandardFrameConstants::kFixedFrameSizeFromFp. kFixedFrameSizeFromFp is
     // 2 * kPointerSize, if rbp is aligned at 8-byte boundary, the below "|= 1"
     // will make sure the spilled doubles are aligned at 8-byte boundary.
     // TODO(haitao): make sure rbp is aligned at 8-byte boundary for x32 port.
-    current_frame_slots_ |= 1;
+    spill_slot_count_ |= 1;
   }
-  return current_frame_slots_++;
+  return spill_slot_count_++;
 }
 
 
@@ -933,14 +954,14 @@ LInstruction* LChunkBuilder::DoBranch(HBranch* instr) {
   HValue* value = instr->value();
   Representation r = value->representation();
   HType type = value->type();
-  ToBooleanICStub::Types expected = instr->expected_input_types();
-  if (expected.IsEmpty()) expected = ToBooleanICStub::Types::Generic();
+  ToBooleanStub::Types expected = instr->expected_input_types();
+  if (expected.IsEmpty()) expected = ToBooleanStub::Types::Generic();
 
   bool easy_case = !r.IsTagged() || type.IsBoolean() || type.IsSmi() ||
       type.IsJSArray() || type.IsHeapNumber() || type.IsString();
   LInstruction* branch = new(zone()) LBranch(UseRegister(value));
   if (!easy_case &&
-      ((!expected.Contains(ToBooleanICStub::SMI) && expected.NeedsMap()) ||
+      ((!expected.Contains(ToBooleanStub::SMI) && expected.NeedsMap()) ||
        !expected.IsGeneric())) {
     branch = AssignEnvironment(branch);
   }
@@ -1057,6 +1078,16 @@ LInstruction* LChunkBuilder::DoContext(HContext* instr) {
 LInstruction* LChunkBuilder::DoDeclareGlobals(HDeclareGlobals* instr) {
   LOperand* context = UseFixed(instr->context(), rsi);
   return MarkAsCall(new(zone()) LDeclareGlobals(context), instr);
+}
+
+
+LInstruction* LChunkBuilder::DoCallJSFunction(
+    HCallJSFunction* instr) {
+  LOperand* function = UseFixed(instr->function(), rdi);
+
+  LCallJSFunction* result = new(zone()) LCallJSFunction(function);
+
+  return MarkAsCall(DefineFixed(result, rax), instr);
 }
 
 
@@ -1200,6 +1231,21 @@ LInstruction* LChunkBuilder::DoCallNewArray(HCallNewArray* instr) {
   LOperand* constructor = UseFixed(instr->constructor(), rdi);
   LCallNewArray* result = new(zone()) LCallNewArray(context, constructor);
   return MarkAsCall(DefineFixed(result, rax), instr);
+}
+
+
+LInstruction* LChunkBuilder::DoCallFunction(HCallFunction* instr) {
+  LOperand* context = UseFixed(instr->context(), rsi);
+  LOperand* function = UseFixed(instr->function(), rdi);
+  LOperand* slot = NULL;
+  LOperand* vector = NULL;
+  if (instr->HasVectorAndSlot()) {
+    slot = FixedTemp(rdx);
+    vector = FixedTemp(rbx);
+  }
+  LCallFunction* call =
+      new (zone()) LCallFunction(context, function, slot, vector);
+  return MarkAsCall(DefineFixed(call, rax), instr);
 }
 
 
@@ -1465,18 +1511,10 @@ LInstruction* LChunkBuilder::DoMul(HMul* instr) {
     DCHECK(instr->left()->representation().Equals(instr->representation()));
     DCHECK(instr->right()->representation().Equals(instr->representation()));
     LOperand* left = UseRegisterAtStart(instr->BetterLeftOperand());
-    HValue* h_right = instr->BetterRightOperand();
-    LOperand* right = UseOrConstant(h_right);
+    LOperand* right = UseOrConstant(instr->BetterRightOperand());
     LMulI* mul = new(zone()) LMulI(left, right);
-    int constant_value =
-        h_right->IsConstant() ? HConstant::cast(h_right)->Integer32Value() : 0;
-    // |needs_environment| must mirror the cases where LCodeGen::DoMulI calls
-    // |DeoptimizeIf|.
-    bool needs_environment =
-        instr->CheckFlag(HValue::kCanOverflow) ||
-        (instr->CheckFlag(HValue::kBailoutOnMinusZero) &&
-         (!right->IsConstantOperand() || constant_value <= 0));
-    if (needs_environment) {
+    if (instr->CheckFlag(HValue::kCanOverflow) ||
+        instr->CheckFlag(HValue::kBailoutOnMinusZero)) {
       AssignEnvironment(mul);
     }
     return DefineSameAsFirst(mul);
@@ -1656,6 +1694,13 @@ LInstruction* LChunkBuilder::DoCompareHoleAndBranch(
 }
 
 
+LInstruction* LChunkBuilder::DoCompareMinusZeroAndBranch(
+    HCompareMinusZeroAndBranch* instr) {
+  LOperand* value = UseRegister(instr->value());
+  return new(zone()) LCompareMinusZeroAndBranch(value);
+}
+
+
 LInstruction* LChunkBuilder::DoIsStringAndBranch(HIsStringAndBranch* instr) {
   DCHECK(instr->value()->representation().IsTagged());
   LOperand* value = UseRegisterAtStart(instr->value());
@@ -1725,6 +1770,12 @@ LInstruction* LChunkBuilder::DoClassOfTestAndBranch(
   return new(zone()) LClassOfTestAndBranch(value,
                                            TempRegister(),
                                            TempRegister());
+}
+
+
+LInstruction* LChunkBuilder::DoMapEnumLength(HMapEnumLength* instr) {
+  LOperand* map = UseRegisterAtStart(instr->value());
+  return DefineAsRegister(new(zone()) LMapEnumLength(map));
 }
 
 
@@ -2434,7 +2485,8 @@ LInstruction* LChunkBuilder::DoParameter(HParameter* instr) {
     return DefineAsSpilled(result, spill_index);
   } else {
     DCHECK(info()->IsStub());
-    CallInterfaceDescriptor descriptor = graph()->descriptor();
+    CallInterfaceDescriptor descriptor =
+        info()->code_stub()->GetCallInterfaceDescriptor();
     int index = static_cast<int>(instr->index());
     Register reg = descriptor.GetRegisterParameter(index);
     return DefineFixed(result, reg);
@@ -2455,9 +2507,15 @@ LInstruction* LChunkBuilder::DoUnknownOSRValue(HUnknownOSRValue* instr) {
       Retry(kTooManySpillSlotsNeededForOSR);
       spill_index = 0;
     }
-    spill_index += StandardFrameConstants::kFixedSlotCount;
   }
   return DefineAsSpilled(new(zone()) LUnknownOSRValue, spill_index);
+}
+
+
+LInstruction* LChunkBuilder::DoCallStub(HCallStub* instr) {
+  LOperand* context = UseFixed(instr->context(), rsi);
+  LCallStub* result = new(zone()) LCallStub(context);
+  return MarkAsCall(DefineFixed(result, rax), instr);
 }
 
 
@@ -2491,6 +2549,13 @@ LInstruction* LChunkBuilder::DoAccessArgumentsAt(HAccessArgumentsAt* instr) {
     index = Use(instr->index());
   }
   return DefineAsRegister(new(zone()) LAccessArgumentsAt(args, length, index));
+}
+
+
+LInstruction* LChunkBuilder::DoToFastProperties(HToFastProperties* instr) {
+  LOperand* object = UseFixed(instr->value(), rax);
+  LToFastProperties* result = new(zone()) LToFastProperties(object);
+  return MarkAsCall(DefineFixed(result, rax), instr);
 }
 
 
@@ -2601,6 +2666,16 @@ LInstruction* LChunkBuilder::DoLoadFieldByIndex(HLoadFieldByIndex* instr) {
 LInstruction* LChunkBuilder::DoStoreFrameContext(HStoreFrameContext* instr) {
   LOperand* context = UseRegisterAtStart(instr->context());
   return new(zone()) LStoreFrameContext(context);
+}
+
+
+LInstruction* LChunkBuilder::DoAllocateBlockContext(
+    HAllocateBlockContext* instr) {
+  LOperand* context = UseFixed(instr->context(), rsi);
+  LOperand* function = UseRegisterAtStart(instr->function());
+  LAllocateBlockContext* result =
+      new(zone()) LAllocateBlockContext(context, function);
+  return MarkAsCall(DefineFixed(result, rsi), instr);
 }
 
 

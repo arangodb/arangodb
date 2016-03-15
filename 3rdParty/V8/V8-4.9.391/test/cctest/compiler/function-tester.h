@@ -162,26 +162,15 @@ class FunctionTester : public InitializedHandleScope {
 
   Handle<Object> false_value() { return isolate->factory()->false_value(); }
 
-  static Handle<JSFunction> ForMachineGraph(Graph* graph, int param_count) {
-    JSFunction* p = NULL;
-    {  // because of the implicit handle scope of FunctionTester.
-      FunctionTester f(graph, param_count);
-      p = *f.function;
-    }
-    return Handle<JSFunction>(p);  // allocated in outer handle scope.
-  }
-
- private:
-  uint32_t flags_;
-
   Handle<JSFunction> Compile(Handle<JSFunction> function) {
+// TODO(titzer): make this method private.
     Zone zone;
     ParseInfo parse_info(&zone, function);
     CompilationInfo info(&parse_info);
     info.MarkAsDeoptimizationEnabled();
 
     CHECK(Parser::ParseStatic(info.parse_info()));
-    info.SetOptimizing();
+    info.SetOptimizing(BailoutId::None(), Handle<Code>(function->code()));
     if (flags_ & CompilationInfo::kFunctionContextSpecializing) {
       info.MarkAsFunctionContextSpecializing();
     }
@@ -203,13 +192,26 @@ class FunctionTester : public InitializedHandleScope {
     return function;
   }
 
+  static Handle<JSFunction> ForMachineGraph(Graph* graph, int param_count) {
+    JSFunction* p = NULL;
+    {  // because of the implicit handle scope of FunctionTester.
+      FunctionTester f(graph, param_count);
+      p = *f.function;
+    }
+    return Handle<JSFunction>(p);  // allocated in outer handle scope.
+  }
+
+ private:
+  uint32_t flags_;
+
   std::string BuildFunction(int param_count) {
     std::string function_string = "(function(";
     if (param_count > 0) {
-      function_string += 'a';
-      for (int i = 1; i < param_count; i++) {
+      char next = 'a';
+      function_string += next;
+      while (param_count-- > 0) {
         function_string += ',';
-        function_string += static_cast<char>('a' + i);
+        function_string += ++next;
       }
     }
     function_string += "){})";
@@ -229,7 +231,8 @@ class FunctionTester : public InitializedHandleScope {
     CompilationInfo info(&parse_info);
 
     CHECK(Parser::ParseStatic(info.parse_info()));
-    info.SetOptimizing();
+    info.SetOptimizing(BailoutId::None(),
+                       Handle<Code>(function->shared()->code()));
     CHECK(Compiler::Analyze(info.parse_info()));
     CHECK(Compiler::EnsureDeoptimizationSupport(&info));
 

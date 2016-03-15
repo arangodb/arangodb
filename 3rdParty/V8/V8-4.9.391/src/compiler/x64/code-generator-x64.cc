@@ -49,11 +49,8 @@ class X64OperandConverter : public InstructionOperandConverter {
 
   Operand ToOperand(InstructionOperand* op, int extra = 0) {
     DCHECK(op->IsStackSlot() || op->IsDoubleStackSlot());
-    return SlotToOperand(AllocatedOperand::cast(op)->index(), extra);
-  }
-
-  Operand SlotToOperand(int slot_index, int extra = 0) {
-    FrameOffset offset = frame_access_state()->GetFrameOffset(slot_index);
+    FrameOffset offset = frame_access_state()->GetFrameOffset(
+        AllocatedOperand::cast(op)->index());
     return Operand(offset.from_stack_pointer() ? rsp : rbp,
                    offset.offset() + extra);
   }
@@ -212,16 +209,15 @@ class OutOfLineRecordWrite final : public OutOfLineCode {
     if (mode_ > RecordWriteMode::kValueIsPointer) {
       __ JumpIfSmi(value_, exit());
     }
-    __ CheckPageFlag(value_, scratch0_,
-                     MemoryChunk::kPointersToHereAreInterestingMask, zero,
-                     exit());
-    RememberedSetAction const remembered_set_action =
-        mode_ > RecordWriteMode::kValueIsMap ? EMIT_REMEMBERED_SET
-                                             : OMIT_REMEMBERED_SET;
+    if (mode_ > RecordWriteMode::kValueIsMap) {
+      __ CheckPageFlag(value_, scratch0_,
+                       MemoryChunk::kPointersToHereAreInterestingMask, zero,
+                       exit());
+    }
     SaveFPRegsMode const save_fp_mode =
         frame()->DidAllocateDoubleRegisters() ? kSaveFPRegs : kDontSaveFPRegs;
     RecordWriteStub stub(isolate(), object_, scratch0_, scratch1_,
-                         remembered_set_action, save_fp_mode);
+                         EMIT_REMEMBERED_SET, save_fp_mode);
     __ leap(scratch1_, operand_);
     __ CallStub(&stub);
   }
@@ -265,32 +261,6 @@ class OutOfLineRecordWrite final : public OutOfLineCode {
     }                                                          \
   } while (0)
 
-#define ASSEMBLE_COMPARE(asm_instr)                                   \
-  do {                                                                \
-    if (AddressingModeField::decode(instr->opcode()) != kMode_None) { \
-      size_t index = 0;                                               \
-      Operand left = i.MemoryOperand(&index);                         \
-      if (HasImmediateInput(instr, index)) {                          \
-        __ asm_instr(left, i.InputImmediate(index));                  \
-      } else {                                                        \
-        __ asm_instr(left, i.InputRegister(index));                   \
-      }                                                               \
-    } else {                                                          \
-      if (HasImmediateInput(instr, 1)) {                              \
-        if (instr->InputAt(0)->IsRegister()) {                        \
-          __ asm_instr(i.InputRegister(0), i.InputImmediate(1));      \
-        } else {                                                      \
-          __ asm_instr(i.InputOperand(0), i.InputImmediate(1));       \
-        }                                                             \
-      } else {                                                        \
-        if (instr->InputAt(1)->IsRegister()) {                        \
-          __ asm_instr(i.InputRegister(0), i.InputRegister(1));       \
-        } else {                                                      \
-          __ asm_instr(i.InputRegister(0), i.InputOperand(1));        \
-        }                                                             \
-      }                                                               \
-    }                                                                 \
-  } while (0)
 
 #define ASSEMBLE_MULT(asm_instr)                              \
   do {                                                        \
@@ -624,37 +594,12 @@ void CodeGenerator::AssemblePrepareTailCall(int stack_param_delta) {
   frame_access_state()->SetFrameAccessToSP();
 }
 
-void CodeGenerator::AssemblePopArgumentsAdaptorFrame(Register args_reg,
-                                                     Register scratch1,
-                                                     Register scratch2,
-                                                     Register scratch3) {
-  DCHECK(!AreAliased(args_reg, scratch1, scratch2, scratch3));
-  Label done;
-
-  // Check if current frame is an arguments adaptor frame.
-  __ Cmp(Operand(rbp, StandardFrameConstants::kContextOffset),
-         Smi::FromInt(StackFrame::ARGUMENTS_ADAPTOR));
-  __ j(not_equal, &done, Label::kNear);
-
-  // Load arguments count from current arguments adaptor frame (note, it
-  // does not include receiver).
-  Register caller_args_count_reg = scratch1;
-  __ SmiToInteger32(
-      caller_args_count_reg,
-      Operand(rbp, ArgumentsAdaptorFrameConstants::kLengthOffset));
-
-  ParameterCount callee_args_count(args_reg);
-  __ PrepareForTailCall(callee_args_count, caller_args_count_reg, scratch2,
-                        scratch3, ReturnAddressState::kOnStack);
-  __ bind(&done);
-}
 
 // Assembles an instruction after register allocation, producing machine code.
 void CodeGenerator::AssembleArchInstruction(Instruction* instr) {
   X64OperandConverter i(this, instr);
-  InstructionCode opcode = instr->opcode();
-  ArchOpcode arch_opcode = ArchOpcodeField::decode(opcode);
-  switch (arch_opcode) {
+
+  switch (ArchOpcodeField::decode(instr->opcode())) {
     case kArchCallCodeObject: {
       EnsureSpaceForLazyDeopt();
       if (HasImmediateInput(instr, 0)) {
@@ -669,15 +614,9 @@ void CodeGenerator::AssembleArchInstruction(Instruction* instr) {
       frame_access_state()->ClearSPDelta();
       break;
     }
-    case kArchTailCallCodeObjectFromJSFunction:
     case kArchTailCallCodeObject: {
       int stack_param_delta = i.InputInt32(instr->InputCount() - 1);
       AssembleDeconstructActivationRecord(stack_param_delta);
-      if (arch_opcode == kArchTailCallCodeObjectFromJSFunction) {
-        AssemblePopArgumentsAdaptorFrame(kJavaScriptCallArgCountRegister,
-                                         i.TempRegister(0), i.TempRegister(1),
-                                         i.TempRegister(2));
-      }
       if (HasImmediateInput(instr, 0)) {
         Handle<Code> code = Handle<Code>::cast(i.InputHeapObject(0));
         __ jmp(code, RelocInfo::CODE_TARGET);
@@ -702,7 +641,6 @@ void CodeGenerator::AssembleArchInstruction(Instruction* instr) {
       RecordCallPosition(instr);
       break;
     }
-    case kArchTailCallJSFunctionFromJSFunction:
     case kArchTailCallJSFunction: {
       Register func = i.InputRegister(0);
       if (FLAG_debug_code) {
@@ -712,13 +650,13 @@ void CodeGenerator::AssembleArchInstruction(Instruction* instr) {
       }
       int stack_param_delta = i.InputInt32(instr->InputCount() - 1);
       AssembleDeconstructActivationRecord(stack_param_delta);
-      if (arch_opcode == kArchTailCallJSFunctionFromJSFunction) {
-        AssemblePopArgumentsAdaptorFrame(kJavaScriptCallArgCountRegister,
-                                         i.TempRegister(0), i.TempRegister(1),
-                                         i.TempRegister(2));
-      }
       __ jmp(FieldOperand(func, JSFunction::kCodeEntryOffset));
       frame_access_state()->ClearSPDelta();
+      break;
+    }
+    case kArchLazyBailout: {
+      EnsureSpaceForLazyDeopt();
+      RecordCallPosition(instr);
       break;
     }
     case kArchPrepareCallCFunction: {
@@ -774,13 +712,6 @@ void CodeGenerator::AssembleArchInstruction(Instruction* instr) {
     case kArchFramePointer:
       __ movq(i.OutputRegister(), rbp);
       break;
-    case kArchParentFramePointer:
-      if (frame_access_state()->frame()->needs_frame()) {
-        __ movq(i.OutputRegister(), Operand(rbp, 0));
-      } else {
-        __ movq(i.OutputRegister(), rbp);
-      }
-      break;
     case kArchTruncateDoubleToI: {
       auto result = i.OutputRegister();
       auto input = i.InputDoubleRegister(0);
@@ -809,18 +740,6 @@ void CodeGenerator::AssembleArchInstruction(Instruction* instr) {
       __ bind(ool->exit());
       break;
     }
-    case kArchStackSlot: {
-      FrameOffset offset =
-          frame_access_state()->GetFrameOffset(i.InputInt32(0));
-      Register base;
-      if (offset.from_stack_pointer()) {
-        base = rsp;
-      } else {
-        base = rbp;
-      }
-      __ leaq(i.OutputRegister(), Operand(base, offset.offset()));
-      break;
-    }
     case kX64Add32:
       ASSEMBLE_BINOP(addl);
       break;
@@ -840,16 +759,16 @@ void CodeGenerator::AssembleArchInstruction(Instruction* instr) {
       ASSEMBLE_BINOP(andq);
       break;
     case kX64Cmp32:
-      ASSEMBLE_COMPARE(cmpl);
+      ASSEMBLE_BINOP(cmpl);
       break;
     case kX64Cmp:
-      ASSEMBLE_COMPARE(cmpq);
+      ASSEMBLE_BINOP(cmpq);
       break;
     case kX64Test32:
-      ASSEMBLE_COMPARE(testl);
+      ASSEMBLE_BINOP(testl);
       break;
     case kX64Test:
-      ASSEMBLE_COMPARE(testq);
+      ASSEMBLE_BINOP(testq);
       break;
     case kX64Imul32:
       ASSEMBLE_MULT(imull);
@@ -1026,22 +945,6 @@ void CodeGenerator::AssembleArchInstruction(Instruction* instr) {
       RoundingMode const mode =
           static_cast<RoundingMode>(MiscField::decode(instr->opcode()));
       __ Roundss(i.OutputDoubleRegister(), i.InputDoubleRegister(0), mode);
-      break;
-    }
-    case kSSEFloat32ToInt32:
-      if (instr->InputAt(0)->IsDoubleRegister()) {
-        __ Cvttss2si(i.OutputRegister(), i.InputDoubleRegister(0));
-      } else {
-        __ Cvttss2si(i.OutputRegister(), i.InputOperand(0));
-      }
-      break;
-    case kSSEFloat32ToUint32: {
-      if (instr->InputAt(0)->IsDoubleRegister()) {
-        __ Cvttss2siq(i.OutputRegister(), i.InputDoubleRegister(0));
-      } else {
-        __ Cvttss2siq(i.OutputRegister(), i.InputOperand(0));
-      }
-      __ AssertZeroExtended(i.OutputRegister());
       break;
     }
     case kSSEFloat64Cmp:
@@ -1294,13 +1197,6 @@ void CodeGenerator::AssembleArchInstruction(Instruction* instr) {
         __ Cvtlsi2sd(i.OutputDoubleRegister(), i.InputOperand(0));
       }
       break;
-    case kSSEInt32ToFloat32:
-      if (instr->InputAt(0)->IsRegister()) {
-        __ Cvtlsi2ss(i.OutputDoubleRegister(), i.InputRegister(0));
-      } else {
-        __ Cvtlsi2ss(i.OutputDoubleRegister(), i.InputOperand(0));
-      }
-      break;
     case kSSEInt64ToFloat32:
       if (instr->InputAt(0)->IsRegister()) {
         __ Cvtqsi2ss(i.OutputDoubleRegister(), i.InputRegister(0));
@@ -1340,14 +1236,6 @@ void CodeGenerator::AssembleArchInstruction(Instruction* instr) {
         __ movl(kScratchRegister, i.InputOperand(0));
       }
       __ Cvtqsi2sd(i.OutputDoubleRegister(), kScratchRegister);
-      break;
-    case kSSEUint32ToFloat32:
-      if (instr->InputAt(0)->IsRegister()) {
-        __ movl(kScratchRegister, i.InputRegister(0));
-      } else {
-        __ movl(kScratchRegister, i.InputOperand(0));
-      }
-      __ Cvtqsi2ss(i.OutputDoubleRegister(), kScratchRegister);
       break;
     case kSSEFloat64ExtractLowWord32:
       if (instr->InputAt(0)->IsDoubleStackSlot()) {
@@ -1917,15 +1805,13 @@ static const int kQuadWordSize = 16;
 
 void CodeGenerator::AssemblePrologue() {
   CallDescriptor* descriptor = linkage()->GetIncomingDescriptor();
-  if (frame()->needs_frame()) {
-    if (descriptor->IsCFunctionCall()) {
-      __ pushq(rbp);
-      __ movq(rbp, rsp);
-    } else if (descriptor->IsJSFunctionCall()) {
-      __ Prologue(this->info()->GeneratePreagedPrologue());
-    } else {
-      __ StubPrologue(info()->GetOutputStackFrameType());
-    }
+  if (descriptor->IsCFunctionCall()) {
+    __ pushq(rbp);
+    __ movq(rbp, rsp);
+  } else if (descriptor->IsJSFunctionCall()) {
+    __ Prologue(this->info()->GeneratePreagedPrologue());
+  } else if (frame()->needs_frame()) {
+    __ StubPrologue();
   } else {
     frame()->SetElidedFrameSizeInSlots(kPCOnStackSize / kPointerSize);
   }
@@ -1942,6 +1828,8 @@ void CodeGenerator::AssemblePrologue() {
     // remaining stack slots.
     if (FLAG_code_comments) __ RecordComment("-- OSR entrypoint --");
     osr_pc_offset_ = __ pc_offset();
+    // TODO(titzer): cannot address target function == local #-1
+    __ movq(rdi, Operand(rbp, JavaScriptFrameConstants::kFunctionOffset));
     stack_shrink_slots -=
         static_cast<int>(OsrHelper(info()).UnoptimizedFrameSlots());
   }
@@ -2085,9 +1973,9 @@ void CodeGenerator::AssembleMove(InstructionOperand* source,
         case Constant::kHeapObject: {
           Handle<HeapObject> src_object = src.ToHeapObject();
           Heap::RootListIndex index;
-          int slot;
-          if (IsMaterializableFromFrame(src_object, &slot)) {
-            __ movp(dst, g.SlotToOperand(slot));
+          int offset;
+          if (IsMaterializableFromFrame(src_object, &offset)) {
+            __ movp(dst, Operand(rbp, offset));
           } else if (IsMaterializableFromRoot(src_object, &index)) {
             __ LoadRoot(dst, index);
           } else {

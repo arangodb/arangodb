@@ -26,12 +26,15 @@
 #include "include/v8-testing.h"
 #endif  // V8_SHARED
 
+#if !defined(V8_SHARED) && defined(ENABLE_GDB_JIT_INTERFACE)
+#include "src/gdb-jit.h"
+#endif
+
 #ifdef ENABLE_VTUNE_JIT_INTERFACE
 #include "src/third_party/vtune/v8-vtune.h"
 #endif
 
 #include "src/d8.h"
-#include "src/ostreams.h"
 
 #include "include/libplatform/libplatform.h"
 #ifndef V8_SHARED
@@ -133,8 +136,8 @@ class PredictablePlatform : public Platform {
   }
 
   uint64_t AddTraceEvent(char phase, const uint8_t* categoryEnabledFlag,
-                         const char* name, const char* scope, uint64_t id,
-                         uint64_t bind_id, int numArgs, const char** argNames,
+                         const char* name, uint64_t id, uint64_t bind_id,
+                         int numArgs, const char** argNames,
                          const uint8_t* argTypes, const uint64_t* argValues,
                          unsigned int flags) override {
     return 0;
@@ -372,7 +375,6 @@ bool Shell::ExecuteString(Isolate* isolate, Local<String> source,
                           bool report_exceptions, SourceType source_type) {
   HandleScope handle_scope(isolate);
   TryCatch try_catch(isolate);
-  try_catch.SetVerbose(true);
 
   MaybeLocal<Value> maybe_result;
   {
@@ -1058,7 +1060,20 @@ void Shell::AddHistogramSample(void* histogram, int sample) {
 }
 
 
+class NoUseStrongForUtilityScriptScope {
+ public:
+  NoUseStrongForUtilityScriptScope() : flag_(i::FLAG_use_strong) {
+    i::FLAG_use_strong = false;
+  }
+  ~NoUseStrongForUtilityScriptScope() { i::FLAG_use_strong = flag_; }
+
+ private:
+  bool flag_;
+};
+
+
 void Shell::InstallUtilityScript(Isolate* isolate) {
+  NoUseStrongForUtilityScriptScope no_use_strong;
   HandleScope scope(isolate);
   // If we use the utility context, we have to set the security tokens so that
   // utility, evaluation and debug context can all access each other.
@@ -1232,10 +1247,6 @@ Local<ObjectTemplate> Shell::CreateGlobalTemplate(Isolate* isolate) {
   return global_template;
 }
 
-static void EmptyMessageCallback(Local<Message> message, Local<Value> error) {
-  // Nothing to be done here, exceptions thrown up to the shell will be reported
-  // separately by {Shell::ReportException} after they are caught.
-}
 
 void Shell::Initialize(Isolate* isolate) {
 #ifndef V8_SHARED
@@ -1243,8 +1254,6 @@ void Shell::Initialize(Isolate* isolate) {
   if (i::StrLength(i::FLAG_map_counters) != 0)
     MapCounters(isolate, i::FLAG_map_counters);
 #endif  // !V8_SHARED
-  // Disable default message reporting.
-  isolate->AddMessageListener(EmptyMessageCallback);
 }
 
 
@@ -1307,6 +1316,7 @@ inline bool operator<(const CounterAndKey& lhs, const CounterAndKey& rhs) {
 
 void Shell::OnExit(v8::Isolate* isolate) {
 #ifndef V8_SHARED
+  reinterpret_cast<i::Isolate*>(isolate)->DumpAndResetCompilationStats();
   if (i::FLAG_dump_counters) {
     int number_of_counters = 0;
     for (CounterMap::Iterator i(counter_map_); i.More(); i.Next()) {
@@ -1983,6 +1993,8 @@ bool Shell::SetOptions(int argc, char* argv[]) {
 
   v8::V8::SetFlagsFromCommandLine(&argc, argv, true);
 
+  bool enable_harmony_modules = false;
+
   // Set up isolated source groups.
   options.isolate_sources = new SourceGroup[options.num_isolates];
   SourceGroup* current = options.isolate_sources;
@@ -1995,6 +2007,7 @@ bool Shell::SetOptions(int argc, char* argv[]) {
       current->Begin(argv, i + 1);
     } else if (strcmp(str, "--module") == 0) {
       // Pass on to SourceGroup, which understands this option.
+      enable_harmony_modules = true;
     } else if (strncmp(argv[i], "--", 2) == 0) {
       printf("Warning: unknown flag %s.\nTry --help for options\n", argv[i]);
     } else if (strcmp(str, "-e") == 0 && i + 1 < argc) {
@@ -2008,6 +2021,10 @@ bool Shell::SetOptions(int argc, char* argv[]) {
 
   if (!logfile_per_isolate && options.num_isolates) {
     SetFlagsFromString("--nologfile_per_isolate");
+  }
+
+  if (enable_harmony_modules) {
+    SetFlagsFromString("--harmony-modules");
   }
 
   return true;
@@ -2442,6 +2459,11 @@ int Shell::Main(int argc, char* argv[]) {
     Shell::array_buffer_allocator = &shell_array_buffer_allocator;
   }
   create_params.array_buffer_allocator = Shell::array_buffer_allocator;
+#if !defined(V8_SHARED) && defined(ENABLE_GDB_JIT_INTERFACE)
+  if (i::FLAG_gdbjit) {
+    create_params.code_event_handler = i::GDBJITInterface::EventHandler;
+  }
+#endif
 #ifdef ENABLE_VTUNE_JIT_INTERFACE
   create_params.code_event_handler = vTune::GetVtuneCodeEventHandler();
 #endif

@@ -25,7 +25,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// Flags: --allow-natives-syntax
+// Flags: --allow-natives-syntax --harmony-tostring
 
 
 var NONE = 0;
@@ -160,7 +160,7 @@ function TestArrayIteratorPrototype() {
   assertArrayEquals(['next'],
       Object.getOwnPropertyNames(ArrayIteratorPrototype));
   assertHasOwnProperty(ArrayIteratorPrototype, 'next', DONT_ENUM);
-  assertFalse(ArrayIteratorPrototype.hasOwnProperty(Symbol.iterator));
+  assertHasOwnProperty(ArrayIteratorPrototype, Symbol.iterator, DONT_ENUM);
 
   assertEquals("[object Array Iterator]",
       Object.prototype.toString.call(iterator));

@@ -159,21 +159,20 @@ void TransitionArray::Insert(Handle<Map> map, Handle<Name> name,
 // static
 Map* TransitionArray::SearchTransition(Map* map, PropertyKind kind, Name* name,
                                        PropertyAttributes attributes) {
-  DCHECK(name->IsUniqueName());
   Object* raw_transitions = map->raw_transitions();
   if (IsSimpleTransition(raw_transitions)) {
     Map* target = GetSimpleTransition(raw_transitions);
     Name* key = GetSimpleTransitionKey(target);
-    if (key != name) return nullptr;
+    if (!key->Equals(name)) return NULL;
     PropertyDetails details = GetSimpleTargetDetails(target);
-    if (details.attributes() != attributes) return nullptr;
-    if (details.kind() != kind) return nullptr;
+    if (details.attributes() != attributes) return NULL;
+    if (details.kind() != kind) return NULL;
     return target;
   }
   if (IsFullTransitionArray(raw_transitions)) {
     TransitionArray* transitions = TransitionArray::cast(raw_transitions);
     int transition = transitions->Search(kind, name, attributes);
-    if (transition == kNotFound) return nullptr;
+    if (transition == kNotFound) return NULL;
     return transitions->GetTarget(transition);
   }
   return NULL;
@@ -196,7 +195,6 @@ Map* TransitionArray::SearchSpecial(Map* map, Symbol* name) {
 // static
 Handle<Map> TransitionArray::FindTransitionToField(Handle<Map> map,
                                                    Handle<Name> name) {
-  DCHECK(name->IsUniqueName());
   DisallowHeapAllocation no_gc;
   Map* target = SearchTransition(*map, kData, *name, NONE);
   if (target == NULL) return Handle<Map>::null();
@@ -395,6 +393,7 @@ Handle<TransitionArray> TransitionArray::Allocate(Isolate* isolate,
                                                   int slack) {
   Handle<FixedArray> array = isolate->factory()->NewTransitionArray(
       LengthFor(number_of_transitions + slack));
+  array->set(kNextLinkIndex, isolate->heap()->undefined_value());
   array->set(kPrototypeTransitionsIndex, Smi::FromInt(0));
   array->set(kTransitionLengthIndex, Smi::FromInt(number_of_transitions));
   return Handle<TransitionArray>::cast(array);
@@ -546,7 +545,9 @@ int TransitionArray::Search(PropertyKind kind, Name* name,
                             PropertyAttributes attributes,
                             int* out_insertion_index) {
   int transition = SearchName(name, out_insertion_index);
-  if (transition == kNotFound) return kNotFound;
+  if (transition == kNotFound) {
+    return kNotFound;
+  }
   return SearchDetails(transition, kind, attributes, out_insertion_index);
 }
 }  // namespace internal

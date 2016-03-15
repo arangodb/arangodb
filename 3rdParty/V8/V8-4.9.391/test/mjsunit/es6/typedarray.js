@@ -25,6 +25,8 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+// Flags: --harmony-tostring
+
 // ArrayBuffer
 
 function TestByteLength(param, expectedByteLength) {
@@ -527,8 +529,6 @@ function TestTypedArraySet() {
 
   assertThrows(function() { a.set(0); }, TypeError);
   assertThrows(function() { a.set(0, 1); }, TypeError);
-
-  assertEquals(1, a.set.length);
 }
 
 TestTypedArraySet();
@@ -672,6 +672,7 @@ function TestDataViewConstructor() {
 
   // error cases
   assertThrows(function() { new DataView(ab, -1); }, RangeError);
+  assertThrows(function() { new DataView(ab, 1, -1); }, RangeError);
   assertThrows(function() { new DataView(); }, TypeError);
   assertThrows(function() { new DataView([]); }, TypeError);
   assertThrows(function() { new DataView(ab, 257); }, RangeError);
@@ -692,19 +693,6 @@ function TestDataViewPropertyTypeChecks() {
   CheckProperty("buffer");
   CheckProperty("byteOffset");
   CheckProperty("byteLength");
-
-  function CheckGetSetLength(name) {
-    assertEquals(1, DataView.prototype["get" + name].length);
-    assertEquals(2, DataView.prototype["set" + name].length);
-  }
-  CheckGetSetLength("Int8");
-  CheckGetSetLength("Uint8");
-  CheckGetSetLength("Int16");
-  CheckGetSetLength("Uint16");
-  CheckGetSetLength("Int32");
-  CheckGetSetLength("Uint32");
-  CheckGetSetLength("Float32");
-  CheckGetSetLength("Float64");
 }
 
 

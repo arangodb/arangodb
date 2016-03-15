@@ -189,7 +189,7 @@ void RegExpMacroAssemblerIA32::CheckGreedyLoop(Label* on_equal) {
 
 
 void RegExpMacroAssemblerIA32::CheckNotBackReferenceIgnoreCase(
-    int start_reg, bool read_backward, bool unicode, Label* on_no_match) {
+    int start_reg, bool read_backward, Label* on_no_match) {
   Label fallthrough;
   __ mov(edx, register_location(start_reg));  // Index of start of capture
   __ mov(ebx, register_location(start_reg + 1));  // Index of end of capture
@@ -296,18 +296,11 @@ void RegExpMacroAssemblerIA32::CheckNotBackReferenceIgnoreCase(
     //   Address byte_offset1 - Address captured substring's start.
     //   Address byte_offset2 - Address of current character position.
     //   size_t byte_length - length of capture in bytes(!)
-//   Isolate* isolate or 0 if unicode flag.
+    //   Isolate* isolate
 
     // Set isolate.
-#ifdef V8_I18N_SUPPORT
-    if (unicode) {
-      __ mov(Operand(esp, 3 * kPointerSize), Immediate(0));
-    } else  // NOLINT
-#endif      // V8_I18N_SUPPORT
-    {
-      __ mov(Operand(esp, 3 * kPointerSize),
-             Immediate(ExternalReference::isolate_address(isolate())));
-    }
+    __ mov(Operand(esp, 3 * kPointerSize),
+           Immediate(ExternalReference::isolate_address(isolate())));
     // Set byte_length.
     __ mov(Operand(esp, 2 * kPointerSize), ebx);
     // Set byte_offset2.
@@ -829,15 +822,13 @@ Handle<HeapObject> RegExpMacroAssemblerIA32::GetCode(Handle<String> source) {
         __ test(edi, edi);
         __ j(zero, &exit_label_, Label::kNear);
         // Advance current position after a zero-length match.
-        Label advance;
-        __ bind(&advance);
         if (mode_ == UC16) {
           __ add(edi, Immediate(2));
         } else {
           __ inc(edi);
         }
-        if (global_unicode()) CheckNotInSurrogatePair(0, &advance);
       }
+
       __ jmp(&load_char_start_regexp);
     } else {
       __ mov(eax, Immediate(SUCCESS));
@@ -936,8 +927,7 @@ Handle<HeapObject> RegExpMacroAssemblerIA32::GetCode(Handle<String> source) {
       isolate()->factory()->NewCode(code_desc,
                                     Code::ComputeFlags(Code::REGEXP),
                                     masm_->CodeObject());
-  PROFILE(masm_->isolate(),
-          RegExpCodeCreateEvent(AbstractCode::cast(*code), *source));
+  PROFILE(isolate(), RegExpCodeCreateEvent(*code, *source));
   return Handle<HeapObject>::cast(code);
 }
 

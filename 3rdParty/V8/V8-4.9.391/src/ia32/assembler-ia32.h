@@ -184,8 +184,6 @@ DOUBLE_REGISTERS(DECLARE_REGISTER)
 #undef DECLARE_REGISTER
 const DoubleRegister no_double_reg = {DoubleRegister::kCode_no_reg};
 
-typedef DoubleRegister Simd128Register;
-
 typedef DoubleRegister XMMRegister;
 
 enum Condition {
@@ -678,7 +676,6 @@ class Assembler : public AssemblerBase {
   void cmp(Register reg0, Register reg1) { cmp(reg0, Operand(reg1)); }
   void cmp(Register reg, const Operand& op);
   void cmp(Register reg, const Immediate& imm) { cmp(Operand(reg), imm); }
-  void cmp(const Operand& op, Register reg);
   void cmp(const Operand& op, const Immediate& imm);
   void cmp(const Operand& op, Handle<Object> handle);
 
@@ -738,20 +735,21 @@ class Assembler : public AssemblerBase {
 
   void sbb(Register dst, const Operand& src);
 
+  void shld(Register dst, Register src) { shld(dst, Operand(src)); }
+  void shld(Register dst, const Operand& src);
+
   void shl(Register dst, uint8_t imm8) { shl(Operand(dst), imm8); }
   void shl(const Operand& dst, uint8_t imm8);
   void shl_cl(Register dst) { shl_cl(Operand(dst)); }
   void shl_cl(const Operand& dst);
-  void shld(Register dst, Register src, uint8_t shift);
-  void shld_cl(Register dst, Register src);
+
+  void shrd(Register dst, Register src) { shrd(dst, Operand(src)); }
+  void shrd(Register dst, const Operand& src);
 
   void shr(Register dst, uint8_t imm8) { shr(Operand(dst), imm8); }
   void shr(const Operand& dst, uint8_t imm8);
   void shr_cl(Register dst) { shr_cl(Operand(dst)); }
   void shr_cl(const Operand& dst);
-  void shrd(Register dst, Register src, uint8_t shift);
-  void shrd_cl(Register dst, Register src) { shrd_cl(Operand(dst), src); }
-  void shrd_cl(const Operand& dst, Register src);
 
   void sub(Register dst, const Immediate& imm) { sub(Operand(dst), imm); }
   void sub(const Operand& dst, const Immediate& x);
@@ -962,8 +960,6 @@ class Assembler : public AssemblerBase {
   }
   void cvtsd2si(Register dst, XMMRegister src);
 
-  void cvtsi2ss(XMMRegister dst, Register src) { cvtsi2ss(dst, Operand(src)); }
-  void cvtsi2ss(XMMRegister dst, const Operand& src);
   void cvtsi2sd(XMMRegister dst, Register src) { cvtsi2sd(dst, Operand(src)); }
   void cvtsi2sd(XMMRegister dst, const Operand& src);
   void cvtss2sd(XMMRegister dst, const Operand& src);
@@ -1412,7 +1408,7 @@ class Assembler : public AssemblerBase {
 
   // Record a deoptimization reason that can be used by a log or cpu profiler.
   // Use --trace-deopt to enable.
-  void RecordDeoptReason(const int reason, int raw_position);
+  void RecordDeoptReason(const int reason, const SourcePosition position);
 
   // Writes a single byte or word of data in the code stream.  Used for
   // inline tables, e.g., jump-tables.
@@ -1434,9 +1430,7 @@ class Assembler : public AssemblerBase {
 
   static bool IsNop(Address addr);
 
-  AssemblerPositionsRecorder* positions_recorder() {
-    return &positions_recorder_;
-  }
+  PositionsRecorder* positions_recorder() { return &positions_recorder_; }
 
   int relocation_writer_size() {
     return (buffer_ + buffer_size_) - reloc_info_writer.pos();
@@ -1543,8 +1537,8 @@ class Assembler : public AssemblerBase {
   // code generation
   RelocInfoWriter reloc_info_writer;
 
-  AssemblerPositionsRecorder positions_recorder_;
-  friend class AssemblerPositionsRecorder;
+  PositionsRecorder positions_recorder_;
+  friend class PositionsRecorder;
 };
 
 

@@ -302,6 +302,18 @@ static void ChangeScriptBreakPointConditionFromJS(v8::Isolate* isolate,
 }
 
 
+static void ChangeScriptBreakPointIgnoreCountFromJS(v8::Isolate* isolate,
+                                                    int break_point_number,
+                                                    int ignoreCount) {
+  EmbeddedVector<char, SMALL_STRING_BUFFER_SIZE> buffer;
+  SNPrintF(buffer,
+           "debug.Debug.changeScriptBreakPointIgnoreCount(%d, %d)",
+           break_point_number, ignoreCount);
+  buffer[SMALL_STRING_BUFFER_SIZE - 1] = '\0';
+  CompileRunChecked(isolate, buffer.start());
+}
+
+
 // Change break on exception.
 static void ChangeBreakOnException(bool caught, bool uncaught) {
   v8::internal::Debug* debug = CcTest::i_isolate()->debug();
@@ -1705,6 +1717,72 @@ TEST(ConditionalScriptBreakPoint) {
 }
 
 
+// Test ignore count on script break points.
+TEST(ScriptBreakPointIgnoreCount) {
+  break_point_hit_count = 0;
+  DebugLocalContext env;
+  v8::HandleScope scope(env->GetIsolate());
+  env.ExposeDebug();
+
+  v8::Debug::SetDebugEventListener(env->GetIsolate(),
+                                   DebugEventBreakPointHitCount);
+
+  v8::Local<v8::String> script = v8_str(env->GetIsolate(),
+                                        "function f() {\n"
+                                        "  a = 0;  // line 1\n"
+                                        "};");
+
+  // Compile the script and get function f.
+  v8::Local<v8::Context> context = env.context();
+  v8::ScriptOrigin origin = v8::ScriptOrigin(v8_str(env->GetIsolate(), "test"));
+  v8::Script::Compile(context, script, &origin)
+      .ToLocalChecked()
+      ->Run(context)
+      .ToLocalChecked();
+  v8::Local<v8::Function> f = v8::Local<v8::Function>::Cast(
+      env->Global()
+          ->Get(context, v8_str(env->GetIsolate(), "f"))
+          .ToLocalChecked());
+
+  // Set script break point on line 1 (in function f).
+  int sbp = SetScriptBreakPointByNameFromJS(env->GetIsolate(), "test", 1, 0);
+
+  // Call f with different ignores on the script break point.
+  break_point_hit_count = 0;
+  ChangeScriptBreakPointIgnoreCountFromJS(env->GetIsolate(), sbp, 1);
+  f->Call(context, env->Global(), 0, NULL).ToLocalChecked();
+  CHECK_EQ(0, break_point_hit_count);
+  f->Call(context, env->Global(), 0, NULL).ToLocalChecked();
+  CHECK_EQ(1, break_point_hit_count);
+
+  ChangeScriptBreakPointIgnoreCountFromJS(env->GetIsolate(), sbp, 5);
+  break_point_hit_count = 0;
+  for (int i = 0; i < 10; i++) {
+    f->Call(context, env->Global(), 0, NULL).ToLocalChecked();
+  }
+  CHECK_EQ(5, break_point_hit_count);
+
+  // Reload the script and get f again checking that the ignore survives.
+  v8::Script::Compile(context, script, &origin)
+      .ToLocalChecked()
+      ->Run(context)
+      .ToLocalChecked();
+  f = v8::Local<v8::Function>::Cast(
+      env->Global()
+          ->Get(context, v8_str(env->GetIsolate(), "f"))
+          .ToLocalChecked());
+
+  break_point_hit_count = 0;
+  for (int i = 0; i < 10; i++) {
+    f->Call(context, env->Global(), 0, NULL).ToLocalChecked();
+  }
+  CHECK_EQ(5, break_point_hit_count);
+
+  v8::Debug::SetDebugEventListener(env->GetIsolate(), nullptr);
+  CheckDebuggerUnloaded(env->GetIsolate());
+}
+
+
 // Test that script break points survive when a script is reloaded.
 TEST(ScriptBreakPointReload) {
   break_point_hit_count = 0;
@@ -2747,7 +2825,7 @@ TEST(DebugStepKeyedLoadLoop) {
   foo->Call(context, env->Global(), kArgc, args).ToLocalChecked();
 
   // With stepping all break locations are hit.
-  CHECK_EQ(44, break_point_hit_count);
+  CHECK_EQ(45, break_point_hit_count);
 
   v8::Debug::SetDebugEventListener(env->GetIsolate(), nullptr);
   CheckDebuggerUnloaded(env->GetIsolate());
@@ -2888,6 +2966,7 @@ static void DoDebugStepNamedStoreLoop(int expected) {
 // Test of the stepping mechanism for named load in a loop.
 TEST(DebugStepNamedStoreLoop) { DoDebugStepNamedStoreLoop(34); }
 
+
 // Test the stepping mechanism with different ICs.
 TEST(DebugStepLinearMixedICs) {
   DebugLocalContext env;
@@ -2916,7 +2995,7 @@ TEST(DebugStepLinearMixedICs) {
   foo->Call(context, env->Global(), 0, NULL).ToLocalChecked();
 
   // With stepping all break locations are hit.
-  CHECK_EQ(10, break_point_hit_count);
+  CHECK_EQ(11, break_point_hit_count);
 
   v8::Debug::SetDebugEventListener(env->GetIsolate(), nullptr);
   CheckDebuggerUnloaded(env->GetIsolate());
@@ -2963,7 +3042,7 @@ TEST(DebugStepDeclarations) {
   step_action = StepIn;
   break_point_hit_count = 0;
   foo->Call(context, env->Global(), 0, NULL).ToLocalChecked();
-  CHECK_EQ(5, break_point_hit_count);
+  CHECK_EQ(6, break_point_hit_count);
 
   // Get rid of the debug event listener.
   v8::Debug::SetDebugEventListener(env->GetIsolate(), nullptr);
@@ -2997,7 +3076,7 @@ TEST(DebugStepLocals) {
   step_action = StepIn;
   break_point_hit_count = 0;
   foo->Call(context, env->Global(), 0, NULL).ToLocalChecked();
-  CHECK_EQ(5, break_point_hit_count);
+  CHECK_EQ(6, break_point_hit_count);
 
   // Get rid of the debug event listener.
   v8::Debug::SetDebugEventListener(env->GetIsolate(), nullptr);
@@ -3458,25 +3537,26 @@ TEST(DebugConditional) {
   v8::Local<v8::Context> context = env.context();
   // Create a function for testing stepping. Run it to allow it to get
   // optimized.
-  const char* src =
-      "function foo(x) { "
-      "  return x ? 1 : 2;"
-      "}"
-      "foo()";
+  const char* src = "function foo(x) { "
+                    "  var a;"
+                    "  a = x ? 1 : 2;"
+                    "  return a;"
+                    "}"
+                    "foo()";
   v8::Local<v8::Function> foo = CompileFunction(&env, src, "foo");
   SetBreakPoint(foo, 0);  // "var a;"
 
   step_action = StepIn;
   break_point_hit_count = 0;
   foo->Call(context, env->Global(), 0, NULL).ToLocalChecked();
-  CHECK_EQ(2, break_point_hit_count);
+  CHECK_EQ(4, break_point_hit_count);
 
   step_action = StepIn;
   break_point_hit_count = 0;
   const int argc = 1;
   v8::Local<v8::Value> argv_true[argc] = {v8::True(isolate)};
   foo->Call(context, env->Global(), argc, argv_true).ToLocalChecked();
-  CHECK_EQ(2, break_point_hit_count);
+  CHECK_EQ(4, break_point_hit_count);
 
   // Get rid of the debug event listener.
   v8::Debug::SetDebugEventListener(isolate, nullptr);
@@ -4323,22 +4403,6 @@ TEST(DisableBreak) {
   // Get rid of the debug event listener.
   v8::Debug::SetDebugEventListener(env->GetIsolate(), nullptr);
   CheckDebuggerUnloaded(env->GetIsolate());
-}
-
-TEST(DisableDebuggerStatement) {
-  DebugLocalContext env;
-  v8::HandleScope scope(env->GetIsolate());
-
-  // Register a debug event listener which sets the break flag and counts.
-  v8::Debug::SetDebugEventListener(env->GetIsolate(), DebugEventCounter);
-  CompileRun("debugger;");
-  CHECK_EQ(1, break_point_hit_count);
-
-  // Check that we ignore debugger statement when breakpoints aren't active.
-  i::Isolate* isolate = reinterpret_cast<i::Isolate*>(env->GetIsolate());
-  isolate->debug()->set_break_points_active(false);
-  CompileRun("debugger;");
-  CHECK_EQ(1, break_point_hit_count);
 }
 
 static const char* kSimpleExtensionSource =
@@ -7315,7 +7379,7 @@ static void DebugEventBreakWithOptimizedStack(
         CHECK(argument_name->Equals(context, v8_str(isolate, "count"))
                   .FromJust());
         // Get the value of the first argument in frame i. If the
-        // function is optimized the value will be undefined, otherwise
+        // funtion is optimized the value will be undefined, otherwise
         // the value will be '1 - i'.
         //
         // TODO(3141533): We should be able to get the real value for
@@ -7991,82 +8055,4 @@ TEST(NoInterruptsInDebugListener) {
   DebugLocalContext env;
   v8::Debug::SetDebugEventListener(env->GetIsolate(), NoInterruptsOnDebugEvent);
   CompileRun("void(0);");
-}
-
-class TestBreakLocation : public i::BreakLocation {
- public:
-  using i::BreakLocation::GetIterator;
-  using i::BreakLocation::Iterator;
-};
-
-TEST(BreakLocationIterator) {
-  DebugLocalContext env;
-  v8::Isolate* isolate = env->GetIsolate();
-  i::Isolate* i_isolate = reinterpret_cast<i::Isolate*>(isolate);
-  v8::HandleScope scope(isolate);
-
-  v8::Local<v8::Value> result = CompileRun(
-      "function f() {\n"
-      "  debugger;   \n"
-      "  f();        \n"
-      "  debugger;   \n"
-      "}             \n"
-      "f");
-  Handle<i::Object> function_obj = v8::Utils::OpenHandle(*result);
-  Handle<i::JSFunction> function = Handle<i::JSFunction>::cast(function_obj);
-  Handle<i::SharedFunctionInfo> shared(function->shared());
-
-  EnableDebugger(isolate);
-  CHECK(i_isolate->debug()->EnsureDebugInfo(shared, function));
-
-  Handle<i::DebugInfo> debug_info(shared->GetDebugInfo());
-  int code_size = debug_info->abstract_code()->Size();
-
-  bool found_return = false;
-  bool found_call = false;
-  bool found_debugger = false;
-
-  // Test public interface.
-  for (int i = 0; i < code_size; i++) {
-    i::BreakLocation location = i::BreakLocation::FromCodeOffset(debug_info, i);
-    if (location.IsCall()) found_call = true;
-    if (location.IsReturn()) found_return = true;
-    if (location.IsDebuggerStatement()) found_debugger = true;
-  }
-  CHECK(found_call);
-  CHECK(found_return);
-  CHECK(found_debugger);
-
-  // Test underlying implementation.
-  TestBreakLocation::Iterator* iterator =
-      TestBreakLocation::GetIterator(debug_info, i::ALL_BREAK_LOCATIONS);
-  CHECK(iterator->GetBreakLocation().IsDebuggerStatement());
-  CHECK_EQ(7, iterator->GetBreakLocation().position());
-  iterator->Next();
-  CHECK(iterator->GetBreakLocation().IsDebugBreakSlot());
-  CHECK_EQ(22, iterator->GetBreakLocation().position());
-  iterator->Next();
-  CHECK(iterator->GetBreakLocation().IsCall());
-  CHECK_EQ(22, iterator->GetBreakLocation().position());
-  iterator->Next();
-  CHECK(iterator->GetBreakLocation().IsDebuggerStatement());
-  CHECK_EQ(37, iterator->GetBreakLocation().position());
-  iterator->Next();
-  CHECK(iterator->GetBreakLocation().IsReturn());
-  CHECK_EQ(50, iterator->GetBreakLocation().position());
-  iterator->Next();
-  CHECK(iterator->Done());
-  delete iterator;
-
-  iterator = TestBreakLocation::GetIterator(debug_info, i::CALLS_AND_RETURNS);
-  CHECK(iterator->GetBreakLocation().IsCall());
-  CHECK_EQ(22, iterator->GetBreakLocation().position());
-  iterator->Next();
-  CHECK(iterator->GetBreakLocation().IsReturn());
-  CHECK_EQ(50, iterator->GetBreakLocation().position());
-  iterator->Next();
-  CHECK(iterator->Done());
-  delete iterator;
-
-  DisableDebugger(isolate);
 }

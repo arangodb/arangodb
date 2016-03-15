@@ -1372,21 +1372,17 @@ void Assembler::bne(Register rs, Register rt, int16_t offset) {
 
 void Assembler::bovc(Register rs, Register rt, int16_t offset) {
   DCHECK(kArchVariant == kMips64r6);
-  if (rs.code() >= rt.code()) {
-    GenInstrImmediate(ADDI, rs, rt, offset, CompactBranchType::COMPACT_BRANCH);
-  } else {
-    GenInstrImmediate(ADDI, rt, rs, offset, CompactBranchType::COMPACT_BRANCH);
-  }
+  DCHECK(!(rs.is(zero_reg)));
+  DCHECK(rs.code() >= rt.code());
+  GenInstrImmediate(ADDI, rs, rt, offset, CompactBranchType::COMPACT_BRANCH);
 }
 
 
 void Assembler::bnvc(Register rs, Register rt, int16_t offset) {
   DCHECK(kArchVariant == kMips64r6);
-  if (rs.code() >= rt.code()) {
-    GenInstrImmediate(DADDI, rs, rt, offset, CompactBranchType::COMPACT_BRANCH);
-  } else {
-    GenInstrImmediate(DADDI, rt, rs, offset, CompactBranchType::COMPACT_BRANCH);
-  }
+  DCHECK(!(rs.is(zero_reg)));
+  DCHECK(rs.code() >= rt.code());
+  GenInstrImmediate(DADDI, rs, rt, offset, CompactBranchType::COMPACT_BRANCH);
 }
 
 
@@ -1867,12 +1863,6 @@ void Assembler::drotr(Register rd, Register rt, uint16_t sa) {
   emit(instr);
 }
 
-void Assembler::drotr32(Register rd, Register rt, uint16_t sa) {
-  DCHECK(rd.is_valid() && rt.is_valid() && is_uint5(sa));
-  Instr instr = SPECIAL | (1 << kRsShift) | (rt.code() << kRtShift) |
-                (rd.code() << kRdShift) | (sa << kSaShift) | DSRL32;
-  emit(instr);
-}
 
 void Assembler::drotrv(Register rd, Register rt, Register rs) {
   DCHECK(rd.is_valid() && rt.is_valid() && rs.is_valid() );
@@ -1909,20 +1899,20 @@ void Assembler::dsra32(Register rd, Register rt, uint16_t sa) {
 
 void Assembler::lsa(Register rd, Register rt, Register rs, uint8_t sa) {
   DCHECK(rd.is_valid() && rt.is_valid() && rs.is_valid());
-  DCHECK(sa <= 3);
+  DCHECK(sa < 5 && sa > 0);
   DCHECK(kArchVariant == kMips64r6);
-  Instr instr = SPECIAL | rs.code() << kRsShift | rt.code() << kRtShift |
-                rd.code() << kRdShift | sa << kSaShift | LSA;
+  Instr instr = SPECIAL | (rs.code() << kRsShift) | (rt.code() << kRtShift) |
+                (rd.code() << kRdShift) | (sa - 1) << kSaShift | LSA;
   emit(instr);
 }
 
 
 void Assembler::dlsa(Register rd, Register rt, Register rs, uint8_t sa) {
   DCHECK(rd.is_valid() && rt.is_valid() && rs.is_valid());
-  DCHECK(sa <= 3);
+  DCHECK(sa < 5 && sa > 0);
   DCHECK(kArchVariant == kMips64r6);
-  Instr instr = SPECIAL | rs.code() << kRsShift | rt.code() << kRtShift |
-                rd.code() << kRdShift | sa << kSaShift | DLSA;
+  Instr instr = SPECIAL | (rs.code() << kRsShift) | (rt.code() << kRtShift) |
+                (rd.code() << kRdShift) | (sa - 1) << kSaShift | DLSA;
   emit(instr);
 }
 
@@ -3280,9 +3270,10 @@ void Assembler::CheckTrampolinePool() {
         bc(&after_pool);
       } else {
         b(&after_pool);
+        nop();
       }
-      nop();
 
+      EmitForbiddenSlotInstruction();
       int pool_start = pc_offset();
       for (int i = 0; i < unbound_labels_count_; i++) {
         { BlockGrowBufferScope block_buf_growth(this);

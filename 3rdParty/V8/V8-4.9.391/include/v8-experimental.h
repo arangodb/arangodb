@@ -10,7 +10,7 @@
 #ifndef V8_INCLUDE_V8_EXPERIMENTAL_H_
 #define V8_INCLUDE_V8_EXPERIMENTAL_H_
 
-#include "v8.h"  // NOLINT(build/include)
+#include "include/v8.h"
 
 namespace v8 {
 namespace experimental {
@@ -39,7 +39,6 @@ class V8_EXPORT FastAccessorBuilder {
   LabelId MakeLabel();
   void SetLabel(LabelId label_id);
   void CheckNotZeroOrJump(ValueId value_id, LabelId label_id);
-  ValueId Call(v8::FunctionCallback callback, ValueId value_id);
 
  private:
   FastAccessorBuilder() = delete;

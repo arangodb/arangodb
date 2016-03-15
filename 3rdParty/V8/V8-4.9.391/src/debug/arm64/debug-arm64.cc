@@ -74,10 +74,6 @@ void DebugCodegen::PatchDebugBreakSlot(Isolate* isolate, Address pc,
   patcher.blr(ip0);
 }
 
-bool DebugCodegen::DebugBreakSlotIsPatched(Address pc) {
-  Instruction* current_instr = reinterpret_cast<Instruction*>(pc);
-  return !current_instr->IsNop(Assembler::DEBUG_BREAK_NOP);
-}
 
 void DebugCodegen::GenerateDebugBreakStub(MacroAssembler* masm,
                                           DebugBreakCallHelperMode mode) {
@@ -130,12 +126,10 @@ void DebugCodegen::GenerateDebugBreakStub(MacroAssembler* masm,
 
 void DebugCodegen::GenerateFrameDropperLiveEdit(MacroAssembler* masm) {
   // We do not know our frame height, but set sp based on fp.
-  __ Add(masm->StackPointer(), fp, FrameDropperFrameConstants::kFunctionOffset);
+  __ Sub(masm->StackPointer(), fp, kPointerSize);
   __ AssertStackConsistency();
 
-  __ Pop(x1);  // Function
-  __ Mov(masm->StackPointer(), Operand(fp));
-  __ Pop(fp, lr);  // Frame, Return address.
+  __ Pop(x1, fp, lr);  // Function, Frame, Return address.
 
   ParameterCount dummy(0);
   __ FloodFunctionIfStepping(x1, no_reg, dummy, dummy);

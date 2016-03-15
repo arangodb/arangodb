@@ -18,7 +18,6 @@ namespace internal {
 // Give alias names to registers for calling conventions.
 const Register kReturnRegister0 = {Register::kCode_rax};
 const Register kReturnRegister1 = {Register::kCode_rdx};
-const Register kReturnRegister2 = {Register::kCode_r8};
 const Register kJSFunctionRegister = {Register::kCode_rdi};
 const Register kContextRegister = {Register::kCode_rsi};
 const Register kInterpreterAccumulatorRegister = {Register::kCode_rax};
@@ -55,8 +54,6 @@ enum class SmiOperationConstraint {
   kBailoutOnNoOverflow = 1 << 1,
   kBailoutOnOverflow = 1 << 2
 };
-
-enum class ReturnAddressState { kOnStack, kNotOnStack };
 
 typedef base::Flags<SmiOperationConstraint> SmiOperationConstraints;
 
@@ -220,7 +217,7 @@ class MacroAssembler: public Assembler {
                            Register scratch,
                            Label* branch,
                            Label::Distance distance = Label::kFar) {
-    InNewSpace(object, scratch, zero, branch, distance);
+    InNewSpace(object, scratch, not_equal, branch, distance);
   }
 
   // Check if object is in new space.  Jumps if the object is in new space.
@@ -229,7 +226,7 @@ class MacroAssembler: public Assembler {
                         Register scratch,
                         Label* branch,
                         Label::Distance distance = Label::kFar) {
-    InNewSpace(object, scratch, not_zero, branch, distance);
+    InNewSpace(object, scratch, equal, branch, distance);
   }
 
   // Check if an object has the black incremental marking color.  Also uses rcx!
@@ -296,11 +293,6 @@ class MacroAssembler: public Assembler {
       PointersToHereCheck pointers_to_here_check_for_value =
           kPointersToHereMaybeInteresting);
 
-  // Notify the garbage collector that we wrote a code entry into a
-  // JSFunction. Only scratch is clobbered by the operation.
-  void RecordWriteCodeEntryField(Register js_function, Register code_entry,
-                                 Register scratch);
-
   void RecordWriteForMap(
       Register object,
       Register map,
@@ -328,7 +320,7 @@ class MacroAssembler: public Assembler {
   void DebugBreak();
 
   // Generates function and stub prologue code.
-  void StubPrologue(StackFrame::Type type);
+  void StubPrologue();
   void Prologue(bool code_pre_aging);
 
   // Enter specific kind of exit frame; either in normal or
@@ -372,16 +364,6 @@ class MacroAssembler: public Assembler {
   // ---------------------------------------------------------------------------
   // JavaScript invokes
 
-  // Removes current frame and its arguments from the stack preserving
-  // the arguments and a return address pushed to the stack for the next call.
-  // |ra_state| defines whether return address is already pushed to stack or
-  // not. Both |callee_args_count| and |caller_args_count_reg| do not include
-  // receiver. |callee_args_count| is not modified, |caller_args_count_reg|
-  // is trashed.
-  void PrepareForTailCall(const ParameterCount& callee_args_count,
-                          Register caller_args_count_reg, Register scratch0,
-                          Register scratch1, ReturnAddressState ra_state);
-
   // Invoke the JavaScript function code by either calling or jumping.
   void InvokeFunctionCode(Register function, Register new_target,
                           const ParameterCount& expected,
@@ -413,6 +395,10 @@ class MacroAssembler: public Assembler {
                       InvokeFlag flag,
                       const CallWrapper& call_wrapper);
 
+  // Invoke specified builtin JavaScript function.
+  void InvokeBuiltin(int native_context_index, InvokeFlag flag,
+                     const CallWrapper& call_wrapper = NullCallWrapper());
+
   // ---------------------------------------------------------------------------
   // Smi tagging, untagging and operations on tagged smis.
 
@@ -443,12 +429,6 @@ class MacroAssembler: public Assembler {
   // Convert smi to 64-bit integer (sign extended if necessary).
   void SmiToInteger64(Register dst, Register src);
   void SmiToInteger64(Register dst, const Operand& src);
-
-  // Convert smi to double.
-  void SmiToDouble(XMMRegister dst, Register src) {
-    SmiToInteger32(kScratchRegister, src);
-    Cvtlsi2sd(dst, kScratchRegister);
-  }
 
   // Multiply a positive smi's integer value by a power of two.
   // Provides result as 64-bit integer value.
@@ -831,8 +811,6 @@ class MacroAssembler: public Assembler {
   void Cvtlsi2sd(XMMRegister dst, Register src);
   void Cvtlsi2sd(XMMRegister dst, const Operand& src);
 
-  void Cvtlsi2ss(XMMRegister dst, Register src);
-  void Cvtlsi2ss(XMMRegister dst, const Operand& src);
   void Cvtqsi2ss(XMMRegister dst, Register src);
   void Cvtqsi2ss(XMMRegister dst, const Operand& src);
 
@@ -844,8 +822,6 @@ class MacroAssembler: public Assembler {
 
   void Cvtsd2si(Register dst, XMMRegister src);
 
-  void Cvttss2si(Register dst, XMMRegister src);
-  void Cvttss2si(Register dst, const Operand& src);
   void Cvttsd2si(Register dst, XMMRegister src);
   void Cvttsd2si(Register dst, const Operand& src);
   void Cvttss2siq(Register dst, XMMRegister src);
@@ -1024,6 +1000,12 @@ class MacroAssembler: public Assembler {
   int CallSize(const Operand& target) {
     // Opcode: REX_opt FF /2 m64
     return (target.requires_rex() ? 2 : 1) + target.operand_size();
+  }
+
+  // Emit call to the code we are currently generating.
+  void CallSelf() {
+    Handle<Code> self(reinterpret_cast<Code**>(CodeObject().location()));
+    Call(self, RelocInfo::CODE_TARGET);
   }
 
   // Non-SSE2 instructions.
@@ -1221,9 +1203,6 @@ class MacroAssembler: public Assembler {
   // Abort execution if argument is not a JSBoundFunction,
   // enabled via --debug-code.
   void AssertBoundFunction(Register object);
-
-  // Abort execution if argument is not a JSReceiver, enabled via --debug-code.
-  void AssertReceiver(Register object);
 
   // Abort execution if argument is not undefined or an AllocationSite, enabled
   // via --debug-code.
@@ -1561,7 +1540,8 @@ class MacroAssembler: public Assembler {
 
   // Expects object in rax and returns map with validated enum cache
   // in rax.  Assumes that any other register can be used as a scratch.
-  void CheckEnumCache(Label* call_runtime);
+  void CheckEnumCache(Register null_value,
+                      Label* call_runtime);
 
   // AllocationMemento support. Arrays may have an associated
   // AllocationMemento object that can be checked for in order to pretransition

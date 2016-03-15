@@ -62,10 +62,6 @@ void DebugCodegen::PatchDebugBreakSlot(Isolate* isolate, Address pc,
   patcher.masm()->blx(ip);
 }
 
-bool DebugCodegen::DebugBreakSlotIsPatched(Address pc) {
-  Instr current_instr = Assembler::instr_at(pc);
-  return !Assembler::IsNop(current_instr, Assembler::DEBUG_BREAK_NOP);
-}
 
 void DebugCodegen::GenerateDebugBreakStub(MacroAssembler* masm,
                                           DebugBreakCallHelperMode mode) {
@@ -119,7 +115,8 @@ void DebugCodegen::GenerateDebugBreakStub(MacroAssembler* masm,
 
 void DebugCodegen::GenerateFrameDropperLiveEdit(MacroAssembler* masm) {
   // Load the function pointer off of our current stack frame.
-  __ ldr(r1, MemOperand(fp, FrameDropperFrameConstants::kFunctionOffset));
+  __ ldr(r1, MemOperand(fp,
+         StandardFrameConstants::kConstantPoolOffset - kPointerSize));
 
   // Pop return address, frame and constant pool pointer (if
   // FLAG_enable_embedded_constant_pool).

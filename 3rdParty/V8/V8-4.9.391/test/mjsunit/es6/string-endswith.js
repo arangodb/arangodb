@@ -408,11 +408,3 @@ assertThrows(function() {
     "toString": function() { return "abc"; }
   }, [/./]);
 }, TypeError);
-
-// endsWith does its brand checks with Symbol.match
-var re = /./;
-assertThrows(function() {
-  "".startsWith(re);
-}, TypeError);
-re[Symbol.match] = false;
-assertEquals(false, "".startsWith(re));

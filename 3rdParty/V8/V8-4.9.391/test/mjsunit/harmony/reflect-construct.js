@@ -279,7 +279,10 @@
 (function() {
   function* f() { yield 1; yield 2; }
   function* g() { yield 3; yield 4; }
-  assertThrows(()=>Reflect.construct(f, [], g));
+  var o = Reflect.construct(f, [], g);
+  assertEquals([1, 2], [...o]);
+  assertTrue(o.__proto__ === g.prototype);
+  assertTrue(o.__proto__ !== f.prototype);
 })();
 
 (function () {

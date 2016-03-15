@@ -26,8 +26,6 @@ std::ostream& operator<<(std::ostream& os, MachineRepresentation rep) {
       return os << "kRepFloat32";
     case MachineRepresentation::kFloat64:
       return os << "kRepFloat64";
-    case MachineRepresentation::kSimd128:
-      return os << "kRepSimd128";
     case MachineRepresentation::kTagged:
       return os << "kRepTagged";
   }

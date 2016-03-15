@@ -151,8 +151,7 @@ void InstructionSelector::VisitLoad(Node* node) {
     case MachineRepresentation::kWord32:
       opcode = kX87Movl;
       break;
-    case MachineRepresentation::kWord64:   // Fall through.
-    case MachineRepresentation::kSimd128:  // Fall through.
+    case MachineRepresentation::kWord64:  // Fall through.
     case MachineRepresentation::kNone:
       UNREACHABLE();
       return;
@@ -193,7 +192,9 @@ void InstructionSelector::VisitStore(Node* node) {
       inputs[input_count++] = g.UseUniqueRegister(index);
       addressing_mode = kMode_MR1;
     }
-    inputs[input_count++] = g.UseUniqueRegister(value);
+    inputs[input_count++] = (write_barrier_kind == kMapWriteBarrier)
+                                ? g.UseRegister(value)
+                                : g.UseUniqueRegister(value);
     RecordWriteMode record_write_mode = RecordWriteMode::kValueIsAny;
     switch (write_barrier_kind) {
       case kNoWriteBarrier:
@@ -235,8 +236,7 @@ void InstructionSelector::VisitStore(Node* node) {
       case MachineRepresentation::kWord32:
         opcode = kX87Movl;
         break;
-      case MachineRepresentation::kWord64:   // Fall through.
-      case MachineRepresentation::kSimd128:  // Fall through.
+      case MachineRepresentation::kWord64:  // Fall through.
       case MachineRepresentation::kNone:
         UNREACHABLE();
         return;
@@ -288,10 +288,9 @@ void InstructionSelector::VisitCheckedLoad(Node* node) {
     case MachineRepresentation::kFloat64:
       opcode = kCheckedLoadFloat64;
       break;
-    case MachineRepresentation::kBit:      // Fall through.
-    case MachineRepresentation::kTagged:   // Fall through.
-    case MachineRepresentation::kWord64:   // Fall through.
-    case MachineRepresentation::kSimd128:  // Fall through.
+    case MachineRepresentation::kBit:     // Fall through.
+    case MachineRepresentation::kTagged:  // Fall through.
+    case MachineRepresentation::kWord64:  // Fall through.
     case MachineRepresentation::kNone:
       UNREACHABLE();
       return;
@@ -335,10 +334,9 @@ void InstructionSelector::VisitCheckedStore(Node* node) {
     case MachineRepresentation::kFloat64:
       opcode = kCheckedStoreFloat64;
       break;
-    case MachineRepresentation::kBit:      // Fall through.
-    case MachineRepresentation::kTagged:   // Fall through.
-    case MachineRepresentation::kWord64:   // Fall through.
-    case MachineRepresentation::kSimd128:  // Fall through.
+    case MachineRepresentation::kBit:     // Fall through.
+    case MachineRepresentation::kTagged:  // Fall through.
+    case MachineRepresentation::kWord64:  // Fall through.
     case MachineRepresentation::kNone:
       UNREACHABLE();
       return;
@@ -363,11 +361,10 @@ void InstructionSelector::VisitCheckedStore(Node* node) {
   }
 }
 
-namespace {
 
 // Shared routine for multiple binary operations.
-void VisitBinop(InstructionSelector* selector, Node* node,
-                InstructionCode opcode, FlagsContinuation* cont) {
+static void VisitBinop(InstructionSelector* selector, Node* node,
+                       InstructionCode opcode, FlagsContinuation* cont) {
   X87OperandGenerator g(selector);
   Int32BinopMatcher m(node);
   Node* left = m.left().node();
@@ -416,24 +413,18 @@ void VisitBinop(InstructionSelector* selector, Node* node,
   DCHECK_GE(arraysize(inputs), input_count);
   DCHECK_GE(arraysize(outputs), output_count);
 
-  opcode = cont->Encode(opcode);
-  if (cont->IsDeoptimize()) {
-    selector->EmitDeoptimize(opcode, output_count, outputs, input_count, inputs,
-                             cont->frame_state());
-  } else {
-    selector->Emit(opcode, output_count, outputs, input_count, inputs);
-  }
+  selector->Emit(cont->Encode(opcode), output_count, outputs, input_count,
+                 inputs);
 }
 
 
 // Shared routine for multiple binary operations.
-void VisitBinop(InstructionSelector* selector, Node* node,
-                InstructionCode opcode) {
+static void VisitBinop(InstructionSelector* selector, Node* node,
+                       InstructionCode opcode) {
   FlagsContinuation cont;
   VisitBinop(selector, node, opcode, &cont);
 }
 
-}  // namespace
 
 void InstructionSelector::VisitWord32And(Node* node) {
   VisitBinop(this, node, kX87And);
@@ -478,10 +469,9 @@ namespace {
 void VisitMulHigh(InstructionSelector* selector, Node* node,
                   ArchOpcode opcode) {
   X87OperandGenerator g(selector);
-  InstructionOperand temps[] = {g.TempRegister(eax)};
-  selector->Emit(
-      opcode, g.DefineAsFixed(node, edx), g.UseFixed(node->InputAt(0), eax),
-      g.UseUniqueRegister(node->InputAt(1)), arraysize(temps), temps);
+  selector->Emit(opcode, g.DefineAsFixed(node, edx),
+                 g.UseFixed(node->InputAt(0), eax),
+                 g.UseUniqueRegister(node->InputAt(1)));
 }
 
 
@@ -544,70 +534,6 @@ void InstructionSelector::VisitWord32Sar(Node* node) {
   VisitShift(this, node, kX87Sar);
 }
 
-void InstructionSelector::VisitInt32PairAdd(Node* node) { UNIMPLEMENTED(); }
-
-void InstructionSelector::VisitWord32PairShl(Node* node) {
-  X87OperandGenerator g(this);
-
-  Node* shift = node->InputAt(2);
-  InstructionOperand shift_operand;
-  if (g.CanBeImmediate(shift)) {
-    shift_operand = g.UseImmediate(shift);
-  } else {
-    shift_operand = g.UseFixed(shift, ecx);
-  }
-  InstructionOperand inputs[] = {g.UseFixed(node->InputAt(0), eax),
-                                 g.UseFixed(node->InputAt(1), edx),
-                                 shift_operand};
-
-  InstructionOperand outputs[] = {
-      g.DefineAsFixed(node, eax),
-      g.DefineAsFixed(NodeProperties::FindProjection(node, 1), edx)};
-
-  Emit(kX87ShlPair, 2, outputs, 3, inputs);
-}
-
-void InstructionSelector::VisitWord32PairShr(Node* node) {
-  X87OperandGenerator g(this);
-
-  Node* shift = node->InputAt(2);
-  InstructionOperand shift_operand;
-  if (g.CanBeImmediate(shift)) {
-    shift_operand = g.UseImmediate(shift);
-  } else {
-    shift_operand = g.UseFixed(shift, ecx);
-  }
-  InstructionOperand inputs[] = {g.UseFixed(node->InputAt(0), eax),
-                                 g.UseFixed(node->InputAt(1), edx),
-                                 shift_operand};
-
-  InstructionOperand outputs[] = {
-      g.DefineAsFixed(node, eax),
-      g.DefineAsFixed(NodeProperties::FindProjection(node, 1), edx)};
-
-  Emit(kX87ShrPair, 2, outputs, 3, inputs);
-}
-
-void InstructionSelector::VisitWord32PairSar(Node* node) {
-  X87OperandGenerator g(this);
-
-  Node* shift = node->InputAt(2);
-  InstructionOperand shift_operand;
-  if (g.CanBeImmediate(shift)) {
-    shift_operand = g.UseImmediate(shift);
-  } else {
-    shift_operand = g.UseFixed(shift, ecx);
-  }
-  InstructionOperand inputs[] = {g.UseFixed(node->InputAt(0), eax),
-                                 g.UseFixed(node->InputAt(1), edx),
-                                 shift_operand};
-
-  InstructionOperand outputs[] = {
-      g.DefineAsFixed(node, eax),
-      g.DefineAsFixed(NodeProperties::FindProjection(node, 1), edx)};
-
-  Emit(kX87SarPair, 2, outputs, 3, inputs);
-}
 
 void InstructionSelector::VisitWord32Ror(Node* node) {
   VisitShift(this, node, kX87Ror);
@@ -621,9 +547,6 @@ void InstructionSelector::VisitWord32Clz(Node* node) {
 
 
 void InstructionSelector::VisitWord32Ctz(Node* node) { UNREACHABLE(); }
-
-
-void InstructionSelector::VisitWord32ReverseBits(Node* node) { UNREACHABLE(); }
 
 
 void InstructionSelector::VisitWord32Popcnt(Node* node) {
@@ -732,20 +655,6 @@ void InstructionSelector::VisitChangeFloat32ToFloat64(Node* node) {
 }
 
 
-void InstructionSelector::VisitRoundInt32ToFloat32(Node* node) {
-  X87OperandGenerator g(this);
-  Emit(kX87Int32ToFloat32, g.DefineAsFixed(node, stX_0),
-       g.Use(node->InputAt(0)));
-}
-
-
-void InstructionSelector::VisitRoundUint32ToFloat32(Node* node) {
-  X87OperandGenerator g(this);
-  Emit(kX87Uint32ToFloat32, g.DefineAsFixed(node, stX_0),
-       g.Use(node->InputAt(0)));
-}
-
-
 void InstructionSelector::VisitChangeInt32ToFloat64(Node* node) {
   X87OperandGenerator g(this);
   Emit(kX87Int32ToFloat64, g.DefineAsFixed(node, stX_0),
@@ -757,18 +666,6 @@ void InstructionSelector::VisitChangeUint32ToFloat64(Node* node) {
   X87OperandGenerator g(this);
   Emit(kX87Uint32ToFloat64, g.DefineAsFixed(node, stX_0),
        g.UseRegister(node->InputAt(0)));
-}
-
-
-void InstructionSelector::VisitTruncateFloat32ToInt32(Node* node) {
-  X87OperandGenerator g(this);
-  Emit(kX87Float32ToInt32, g.DefineAsRegister(node), g.Use(node->InputAt(0)));
-}
-
-
-void InstructionSelector::VisitTruncateFloat32ToUint32(Node* node) {
-  X87OperandGenerator g(this);
-  Emit(kX87Float32ToUint32, g.DefineAsRegister(node), g.Use(node->InputAt(0)));
 }
 
 
@@ -1059,68 +956,21 @@ void InstructionSelector::EmitPrepareArguments(
 
 bool InstructionSelector::IsTailCallAddressImmediate() { return true; }
 
-int InstructionSelector::GetTempsCountForTailCallFromJSFunction() { return 0; }
 
 namespace {
-
-void VisitCompareWithMemoryOperand(InstructionSelector* selector,
-                                   InstructionCode opcode, Node* left,
-                                   InstructionOperand right,
-                                   FlagsContinuation* cont) {
-  DCHECK(left->opcode() == IrOpcode::kLoad);
-  X87OperandGenerator g(selector);
-  size_t input_count = 0;
-  InstructionOperand inputs[6];
-  AddressingMode addressing_mode =
-      g.GetEffectiveAddressMemoryOperand(left, inputs, &input_count);
-  opcode |= AddressingModeField::encode(addressing_mode);
-  opcode = cont->Encode(opcode);
-  inputs[input_count++] = right;
-
-  if (cont->IsBranch()) {
-    inputs[input_count++] = g.Label(cont->true_block());
-    inputs[input_count++] = g.Label(cont->false_block());
-    selector->Emit(opcode, 0, nullptr, input_count, inputs);
-  } else if (cont->IsDeoptimize()) {
-    selector->EmitDeoptimize(opcode, 0, nullptr, input_count, inputs,
-                             cont->frame_state());
-  } else {
-    DCHECK(cont->IsSet());
-    InstructionOperand output = g.DefineAsRegister(cont->result());
-    selector->Emit(opcode, 1, &output, input_count, inputs);
-  }
-}
-
-// Determines if {input} of {node} can be replaced by a memory operand.
-bool CanUseMemoryOperand(InstructionSelector* selector, InstructionCode opcode,
-                         Node* node, Node* input) {
-  if (input->opcode() != IrOpcode::kLoad || !selector->CanCover(node, input)) {
-    return false;
-  }
-  MachineRepresentation load_representation =
-      LoadRepresentationOf(input->op()).representation();
-  if (load_representation == MachineRepresentation::kWord32 ||
-      load_representation == MachineRepresentation::kTagged) {
-    return opcode == kX87Cmp || opcode == kX87Test;
-  }
-  return false;
-}
 
 // Shared routine for multiple compare operations.
 void VisitCompare(InstructionSelector* selector, InstructionCode opcode,
                   InstructionOperand left, InstructionOperand right,
                   FlagsContinuation* cont) {
   X87OperandGenerator g(selector);
-  opcode = cont->Encode(opcode);
   if (cont->IsBranch()) {
-    selector->Emit(opcode, g.NoOutput(), left, right,
+    selector->Emit(cont->Encode(opcode), g.NoOutput(), left, right,
                    g.Label(cont->true_block()), g.Label(cont->false_block()));
-  } else if (cont->IsDeoptimize()) {
-    selector->EmitDeoptimize(opcode, g.NoOutput(), left, right,
-                             cont->frame_state());
   } else {
     DCHECK(cont->IsSet());
-    selector->Emit(opcode, g.DefineAsByteRegister(cont->result()), left, right);
+    selector->Emit(cont->Encode(opcode), g.DefineAsByteRegister(cont->result()),
+                   left, right);
   }
 }
 
@@ -1146,10 +996,6 @@ void VisitFloat32Compare(InstructionSelector* selector, Node* node,
   if (cont->IsBranch()) {
     selector->Emit(cont->Encode(kX87Float32Cmp), g.NoOutput(),
                    g.Label(cont->true_block()), g.Label(cont->false_block()));
-  } else if (cont->IsDeoptimize()) {
-    selector->EmitDeoptimize(cont->Encode(kX87Float32Cmp), g.NoOutput(),
-                             g.Use(node->InputAt(0)), g.Use(node->InputAt(1)),
-                             cont->frame_state());
   } else {
     DCHECK(cont->IsSet());
     selector->Emit(cont->Encode(kX87Float32Cmp),
@@ -1167,10 +1013,6 @@ void VisitFloat64Compare(InstructionSelector* selector, Node* node,
   if (cont->IsBranch()) {
     selector->Emit(cont->Encode(kX87Float64Cmp), g.NoOutput(),
                    g.Label(cont->true_block()), g.Label(cont->false_block()));
-  } else if (cont->IsDeoptimize()) {
-    selector->EmitDeoptimize(cont->Encode(kX87Float64Cmp), g.NoOutput(),
-                             g.Use(node->InputAt(0)), g.Use(node->InputAt(1)),
-                             cont->frame_state());
   } else {
     DCHECK(cont->IsSet());
     selector->Emit(cont->Encode(kX87Float64Cmp),
@@ -1178,41 +1020,26 @@ void VisitFloat64Compare(InstructionSelector* selector, Node* node,
   }
 }
 
+
 // Shared routine for multiple word compare operations.
 void VisitWordCompare(InstructionSelector* selector, Node* node,
                       InstructionCode opcode, FlagsContinuation* cont) {
   X87OperandGenerator g(selector);
-  Node* left = node->InputAt(0);
-  Node* right = node->InputAt(1);
+  Node* const left = node->InputAt(0);
+  Node* const right = node->InputAt(1);
 
-  // If one of the two inputs is an immediate, make sure it's on the right.
-  if (!g.CanBeImmediate(right) && g.CanBeImmediate(left)) {
-    if (!node->op()->HasProperty(Operator::kCommutative)) cont->Commute();
-    std::swap(left, right);
-  }
-
-  // Match immediates on right side of comparison.
+  // Match immediates on left or right side of comparison.
   if (g.CanBeImmediate(right)) {
-    if (CanUseMemoryOperand(selector, opcode, node, left)) {
-      return VisitCompareWithMemoryOperand(selector, opcode, left,
-                                           g.UseImmediate(right), cont);
-    }
-    return VisitCompare(selector, opcode, g.Use(left), g.UseImmediate(right),
-                        cont);
-  }
-
-  if (g.CanBeBetterLeftOperand(right)) {
+    VisitCompare(selector, opcode, g.Use(left), g.UseImmediate(right), cont);
+  } else if (g.CanBeImmediate(left)) {
     if (!node->op()->HasProperty(Operator::kCommutative)) cont->Commute();
-    std::swap(left, right);
+    VisitCompare(selector, opcode, g.Use(right), g.UseImmediate(left), cont);
+  } else {
+    VisitCompare(selector, opcode, left, right, cont,
+                 node->op()->HasProperty(Operator::kCommutative));
   }
-
-  if (CanUseMemoryOperand(selector, opcode, node, left)) {
-    return VisitCompareWithMemoryOperand(selector, opcode, left,
-                                         g.UseRegister(right), cont);
-  }
-  return VisitCompare(selector, opcode, left, right, cont,
-                      node->op()->HasProperty(Operator::kCommutative));
 }
+
 
 void VisitWordCompare(InstructionSelector* selector, Node* node,
                       FlagsContinuation* cont) {
@@ -1229,9 +1056,6 @@ void VisitWordCompare(InstructionSelector* selector, Node* node,
       if (cont->IsBranch()) {
         selector->Emit(opcode, g.NoOutput(), g.Label(cont->true_block()),
                        g.Label(cont->false_block()));
-      } else if (cont->IsDeoptimize()) {
-        selector->EmitDeoptimize(opcode, 0, nullptr, 0, nullptr,
-                                 cont->frame_state());
       } else {
         DCHECK(cont->IsSet());
         selector->Emit(opcode, g.DefineAsRegister(cont->result()));
@@ -1341,17 +1165,6 @@ void InstructionSelector::VisitBranch(Node* branch, BasicBlock* tbranch,
   VisitWordCompareZero(this, branch, branch->InputAt(0), &cont);
 }
 
-void InstructionSelector::VisitDeoptimizeIf(Node* node) {
-  FlagsContinuation cont =
-      FlagsContinuation::ForDeoptimize(kNotEqual, node->InputAt(1));
-  VisitWordCompareZero(this, node, node->InputAt(0), &cont);
-}
-
-void InstructionSelector::VisitDeoptimizeUnless(Node* node) {
-  FlagsContinuation cont =
-      FlagsContinuation::ForDeoptimize(kEqual, node->InputAt(1));
-  VisitWordCompareZero(this, node, node->InputAt(0), &cont);
-}
 
 void InstructionSelector::VisitSwitch(Node* node, const SwitchInfo& sw) {
   X87OperandGenerator g(this);
@@ -1382,7 +1195,7 @@ void InstructionSelector::VisitSwitch(Node* node, const SwitchInfo& sw) {
 
 
 void InstructionSelector::VisitWord32Equal(Node* const node) {
-  FlagsContinuation cont = FlagsContinuation::ForSet(kEqual, node);
+  FlagsContinuation cont(kEqual, node);
   Int32BinopMatcher m(node);
   if (m.right().Is(0)) {
     return VisitWordCompareZero(this, m.node(), m.left().node(), &cont);
@@ -1392,34 +1205,32 @@ void InstructionSelector::VisitWord32Equal(Node* const node) {
 
 
 void InstructionSelector::VisitInt32LessThan(Node* node) {
-  FlagsContinuation cont = FlagsContinuation::ForSet(kSignedLessThan, node);
+  FlagsContinuation cont(kSignedLessThan, node);
   VisitWordCompare(this, node, &cont);
 }
 
 
 void InstructionSelector::VisitInt32LessThanOrEqual(Node* node) {
-  FlagsContinuation cont =
-      FlagsContinuation::ForSet(kSignedLessThanOrEqual, node);
+  FlagsContinuation cont(kSignedLessThanOrEqual, node);
   VisitWordCompare(this, node, &cont);
 }
 
 
 void InstructionSelector::VisitUint32LessThan(Node* node) {
-  FlagsContinuation cont = FlagsContinuation::ForSet(kUnsignedLessThan, node);
+  FlagsContinuation cont(kUnsignedLessThan, node);
   VisitWordCompare(this, node, &cont);
 }
 
 
 void InstructionSelector::VisitUint32LessThanOrEqual(Node* node) {
-  FlagsContinuation cont =
-      FlagsContinuation::ForSet(kUnsignedLessThanOrEqual, node);
+  FlagsContinuation cont(kUnsignedLessThanOrEqual, node);
   VisitWordCompare(this, node, &cont);
 }
 
 
 void InstructionSelector::VisitInt32AddWithOverflow(Node* node) {
   if (Node* ovf = NodeProperties::FindProjection(node, 1)) {
-    FlagsContinuation cont = FlagsContinuation::ForSet(kOverflow, ovf);
+    FlagsContinuation cont(kOverflow, ovf);
     return VisitBinop(this, node, kX87Add, &cont);
   }
   FlagsContinuation cont;
@@ -1429,7 +1240,7 @@ void InstructionSelector::VisitInt32AddWithOverflow(Node* node) {
 
 void InstructionSelector::VisitInt32SubWithOverflow(Node* node) {
   if (Node* ovf = NodeProperties::FindProjection(node, 1)) {
-    FlagsContinuation cont = FlagsContinuation::ForSet(kOverflow, ovf);
+    FlagsContinuation cont(kOverflow, ovf);
     return VisitBinop(this, node, kX87Sub, &cont);
   }
   FlagsContinuation cont;
@@ -1438,41 +1249,37 @@ void InstructionSelector::VisitInt32SubWithOverflow(Node* node) {
 
 
 void InstructionSelector::VisitFloat32Equal(Node* node) {
-  FlagsContinuation cont = FlagsContinuation::ForSet(kUnorderedEqual, node);
+  FlagsContinuation cont(kUnorderedEqual, node);
   VisitFloat32Compare(this, node, &cont);
 }
 
 
 void InstructionSelector::VisitFloat32LessThan(Node* node) {
-  FlagsContinuation cont =
-      FlagsContinuation::ForSet(kUnsignedGreaterThan, node);
+  FlagsContinuation cont(kUnsignedGreaterThan, node);
   VisitFloat32Compare(this, node, &cont);
 }
 
 
 void InstructionSelector::VisitFloat32LessThanOrEqual(Node* node) {
-  FlagsContinuation cont =
-      FlagsContinuation::ForSet(kUnsignedGreaterThanOrEqual, node);
+  FlagsContinuation cont(kUnsignedGreaterThanOrEqual, node);
   VisitFloat32Compare(this, node, &cont);
 }
 
 
 void InstructionSelector::VisitFloat64Equal(Node* node) {
-  FlagsContinuation cont = FlagsContinuation::ForSet(kUnorderedEqual, node);
+  FlagsContinuation cont(kUnorderedEqual, node);
   VisitFloat64Compare(this, node, &cont);
 }
 
 
 void InstructionSelector::VisitFloat64LessThan(Node* node) {
-  FlagsContinuation cont =
-      FlagsContinuation::ForSet(kUnsignedGreaterThan, node);
+  FlagsContinuation cont(kUnsignedGreaterThan, node);
   VisitFloat64Compare(this, node, &cont);
 }
 
 
 void InstructionSelector::VisitFloat64LessThanOrEqual(Node* node) {
-  FlagsContinuation cont =
-      FlagsContinuation::ForSet(kUnsignedGreaterThanOrEqual, node);
+  FlagsContinuation cont(kUnsignedGreaterThanOrEqual, node);
   VisitFloat64Compare(this, node, &cont);
 }
 

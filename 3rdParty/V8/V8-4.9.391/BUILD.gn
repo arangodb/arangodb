@@ -46,15 +46,6 @@ if (is_msan) {
   v8_target_arch = target_cpu
 }
 
-if (v8_use_snapshot && v8_use_external_startup_data) {
-  snapshot_target = ":v8_external_snapshot"
-} else if (v8_use_snapshot) {
-  snapshot_target = ":v8_snapshot"
-} else {
-  assert(!v8_use_external_startup_data)
-  snapshot_target = ":v8_nosnapshot"
-}
-
 ###############################################################################
 # Configurations
 #
@@ -75,11 +66,6 @@ config("internal_config_base") {
   visibility = [ ":*" ]  # Only targets in this file can depend on this.
 
   include_dirs = [ "." ]
-}
-
-# This config should be applied to code using the libplatform.
-config("libplatform_config") {
-  include_dirs = [ "include" ]
 }
 
 # This config should only be applied to code using V8 and not any V8 code
@@ -305,6 +291,7 @@ action("js2c_experimental") {
     "src/js/generator.js",
     "src/js/harmony-atomics.js",
     "src/js/harmony-regexp.js",
+    "src/js/harmony-reflect.js",
     "src/js/harmony-object-observe.js",
     "src/js/harmony-sharedarraybuffer.js",
     "src/js/harmony-simd.js",
@@ -640,8 +627,6 @@ source_set("v8_base") {
     "src/allocation-site-scopes.h",
     "src/api.cc",
     "src/api.h",
-    "src/api-arguments.cc",
-    "src/api-arguments.h",
     "src/api-experimental.cc",
     "src/api-experimental.h",
     "src/api-natives.cc",
@@ -706,7 +691,6 @@ source_set("v8_base") {
     "src/code-stubs-hydrogen.cc",
     "src/codegen.cc",
     "src/codegen.h",
-    "src/collector.h",
     "src/compilation-cache.cc",
     "src/compilation-cache.h",
     "src/compilation-dependencies.cc",
@@ -790,16 +774,16 @@ source_set("v8_base") {
     "src/compiler/instruction-selector.h",
     "src/compiler/instruction.cc",
     "src/compiler/instruction.h",
-    "src/compiler/int64-lowering.cc",
-    "src/compiler/int64-lowering.h",
+    "src/compiler/interpreter-assembler.cc",
+    "src/compiler/interpreter-assembler.h",
     "src/compiler/js-builtin-reducer.cc",
     "src/compiler/js-builtin-reducer.h",
     "src/compiler/js-call-reducer.cc",
     "src/compiler/js-call-reducer.h",
+    "src/compiler/js-context-relaxation.cc",
+    "src/compiler/js-context-relaxation.h",
     "src/compiler/js-context-specialization.cc",
     "src/compiler/js-context-specialization.h",
-    "src/compiler/js-create-lowering.cc",
-    "src/compiler/js-create-lowering.h",
     "src/compiler/js-frame-specialization.cc",
     "src/compiler/js-frame-specialization.h",
     "src/compiler/js-generic-lowering.cc",
@@ -915,8 +899,6 @@ source_set("v8_base") {
     "src/conversions.h",
     "src/counters.cc",
     "src/counters.h",
-    "src/crankshaft/compilation-phase.cc",
-    "src/crankshaft/compilation-phase.h",
     "src/crankshaft/hydrogen-alias-analysis.h",
     "src/crankshaft/hydrogen-bce.cc",
     "src/crankshaft/hydrogen-bce.h",
@@ -1027,8 +1009,6 @@ source_set("v8_base") {
     "src/fast-dtoa.h",
     "src/field-index.h",
     "src/field-index-inl.h",
-    "src/field-type.cc",
-    "src/field-type.h",
     "src/fixed-dtoa.cc",
     "src/fixed-dtoa.h",
     "src/flag-definitions.h",
@@ -1050,7 +1030,6 @@ source_set("v8_base") {
     "src/handles.cc",
     "src/handles.h",
     "src/hashmap.h",
-    "src/heap-symbols.h",
     "src/heap/array-buffer-tracker.cc",
     "src/heap/array-buffer-tracker.h",
     "src/heap/gc-idle-time-handler.cc",
@@ -1074,15 +1053,13 @@ source_set("v8_base") {
     "src/heap/objects-visiting-inl.h",
     "src/heap/objects-visiting.cc",
     "src/heap/objects-visiting.h",
-    "src/heap/page-parallel-job.h",
-    "src/heap/remembered-set.cc",
-    "src/heap/remembered-set.h",
     "src/heap/scavenge-job.h",
     "src/heap/scavenge-job.cc",
     "src/heap/scavenger-inl.h",
     "src/heap/scavenger.cc",
     "src/heap/scavenger.h",
-    "src/heap/slot-set.h",
+    "src/heap/slots-buffer.cc",
+    "src/heap/slots-buffer.h",
     "src/heap/spaces-inl.h",
     "src/heap/spaces.cc",
     "src/heap/spaces.h",
@@ -1127,23 +1104,14 @@ source_set("v8_base") {
     "src/interpreter/constant-array-builder.h",
     "src/interpreter/control-flow-builders.cc",
     "src/interpreter/control-flow-builders.h",
-    "src/interpreter/handler-table-builder.cc",
-    "src/interpreter/handler-table-builder.h",
     "src/interpreter/interpreter.cc",
     "src/interpreter/interpreter.h",
-    "src/interpreter/interpreter-assembler.cc",
-    "src/interpreter/interpreter-assembler.h",
-    "src/interpreter/register-translator.cc",
-    "src/interpreter/register-translator.h",
-    "src/interpreter/source-position-table.cc",
-    "src/interpreter/source-position-table.h",
     "src/isolate-inl.h",
     "src/isolate.cc",
     "src/isolate.h",
-    "src/json-parser.h",
     "src/json-stringifier.h",
-    "src/keys.h",
-    "src/keys.cc",
+    "src/key-accumulator.h",
+    "src/key-accumulator.cc",
     "src/layout-descriptor-inl.h",
     "src/layout-descriptor.cc",
     "src/layout-descriptor.h",
@@ -1176,6 +1144,7 @@ source_set("v8_base") {
     "src/parsing/expression-classifier.h",
     "src/parsing/func-name-inferrer.cc",
     "src/parsing/func-name-inferrer.h",
+    "src/parsing/json-parser.h",
     "src/parsing/parameter-initializer-rewriter.cc",
     "src/parsing/parameter-initializer-rewriter.h",
     "src/parsing/parser-base.h",
@@ -1214,8 +1183,6 @@ source_set("v8_base") {
     "src/profiler/profile-generator.h",
     "src/profiler/sampler.cc",
     "src/profiler/sampler.h",
-    "src/profiler/sampling-heap-profiler.cc",
-    "src/profiler/sampling-heap-profiler.h",
     "src/profiler/strings-storage.cc",
     "src/profiler/strings-storage.h",
     "src/profiler/unbound-queue-inl.h",
@@ -1288,24 +1255,13 @@ source_set("v8_base") {
     "src/signature.h",
     "src/simulator.h",
     "src/small-pointer-list.h",
-    "src/snapshot/code-serializer.cc",
-    "src/snapshot/code-serializer.h",
-    "src/snapshot/deserializer.cc",
-    "src/snapshot/deserializer.h",
     "src/snapshot/natives.h",
     "src/snapshot/natives-common.cc",
-    "src/snapshot/partial-serializer.cc",
-    "src/snapshot/partial-serializer.h",
-    "src/snapshot/serializer.cc",
-    "src/snapshot/serializer.h",
-    "src/snapshot/serializer-common.cc",
-    "src/snapshot/serializer-common.h",
+    "src/snapshot/serialize.cc",
+    "src/snapshot/serialize.h",
     "src/snapshot/snapshot-common.cc",
     "src/snapshot/snapshot-source-sink.cc",
     "src/snapshot/snapshot-source-sink.h",
-    "src/snapshot/startup-serializer.cc",
-    "src/snapshot/startup-serializer.h",
-    "src/source-position.h",
     "src/splay-tree.h",
     "src/splay-tree-inl.h",
     "src/snapshot/snapshot.h",
@@ -1330,6 +1286,7 @@ source_set("v8_base") {
     "src/type-feedback-vector.h",
     "src/type-info.cc",
     "src/type-info.h",
+    "src/types-inl.h",
     "src/types.cc",
     "src/types.h",
     "src/typing-asm.cc",
@@ -1343,7 +1300,6 @@ source_set("v8_base") {
     "src/unicode-cache.h",
     "src/unicode-decoder.cc",
     "src/unicode-decoder.h",
-    "src/utils-inl.h",
     "src/utils.cc",
     "src/utils.h",
     "src/v8.cc",
@@ -1364,7 +1320,6 @@ source_set("v8_base") {
     "src/wasm/encoder.h",
     "src/wasm/module-decoder.cc",
     "src/wasm/module-decoder.h",
-    "src/wasm/wasm-external-refs.h",
     "src/wasm/wasm-js.cc",
     "src/wasm/wasm-js.h",
     "src/wasm/wasm-macro-gen.h",
@@ -1641,48 +1596,6 @@ source_set("v8_base") {
       "src/regexp/mips64/regexp-macro-assembler-mips64.cc",
       "src/regexp/mips64/regexp-macro-assembler-mips64.h",
     ]
-  } else if (v8_target_arch == "s390" || v8_target_arch == "s390x") {
-    sources += [
-      "src/compiler/s390/code-generator-s390.cc",
-      "src/compiler/s390/instruction-codes-s390.h",
-      "src/compiler/s390/instruction-scheduler-s390.cc",
-      "src/compiler/s390/instruction-selector-s390.cc",
-      "src/crankshaft/s390/lithium-codegen-s390.cc",
-      "src/crankshaft/s390/lithium-codegen-s390.h",
-      "src/crankshaft/s390/lithium-gap-resolver-s390.cc",
-      "src/crankshaft/s390/lithium-gap-resolver-s390.h",
-      "src/crankshaft/s390/lithium-s390.cc",
-      "src/crankshaft/s390/lithium-s390.h",
-      "src/debug/s390/debug-s390.cc",
-      "src/full-codegen/s390/full-codegen-s390.cc",
-      "src/ic/s390/access-compiler-s390.cc",
-      "src/ic/s390/handler-compiler-s390.cc",
-      "src/ic/s390/ic-compiler-s390.cc",
-      "src/ic/s390/ic-s390.cc",
-      "src/ic/s390/stub-cache-s390.cc",
-      "src/regexp/s390/regexp-macro-assembler-s390.cc",
-      "src/regexp/s390/regexp-macro-assembler-s390.h",
-      "src/s390/assembler-s390.cc",
-      "src/s390/assembler-s390.h",
-      "src/s390/assembler-s390-inl.h",
-      "src/s390/builtins-s390.cc",
-      "src/s390/codegen-s390.cc",
-      "src/s390/codegen-s390.h",
-      "src/s390/code-stubs-s390.cc",
-      "src/s390/code-stubs-s390.h",
-      "src/s390/constants-s390.cc",
-      "src/s390/constants-s390.h",
-      "src/s390/cpu-s390.cc",
-      "src/s390/deoptimizer-s390.cc",
-      "src/s390/disasm-s390.cc",
-      "src/s390/frames-s390.cc",
-      "src/s390/frames-s390.h",
-      "src/s390/interface-descriptors-s390.cc",
-      "src/s390/macro-assembler-s390.cc",
-      "src/s390/macro-assembler-s390.h",
-      "src/s390/simulator-s390.cc",
-      "src/s390/simulator-s390.h",
-    ]
   }
 
   configs -= [ "//build/config/compiler:chromium_code" ]
@@ -1742,7 +1655,6 @@ source_set("v8_libbase") {
     "src/base/atomicops_internals_mips_gcc.h",
     "src/base/atomicops_internals_mips64_gcc.h",
     "src/base/atomicops_internals_portable.h",
-    "src/base/atomicops_internals_s390_gcc.h",
     "src/base/atomicops_internals_tsan.h",
     "src/base/atomicops_internals_x86_gcc.cc",
     "src/base/atomicops_internals_x86_gcc.h",
@@ -1809,6 +1721,8 @@ source_set("v8_libbase") {
 
     libs = [ "dl", "rt" ]
   } else if (is_android) {
+    defines += [ "CAN_USE_VFP_INSTRUCTIONS" ]
+
     if (current_toolchain == host_toolchain) {
       libs = [ "dl", "rt" ]
       if (host_os == "mac") {
@@ -1868,29 +1782,6 @@ source_set("v8_libplatform") {
   ]
 }
 
-source_set("fuzzer_support") {
-  visibility = [ ":*" ]  # Only targets in this file can depend on this.
-
-  sources = [
-    "test/fuzzer/fuzzer-support.cc",
-    "test/fuzzer/fuzzer-support.h",
-  ]
-
-  configs -= [ "//build/config/compiler:chromium_code" ]
-  configs += [ "//build/config/compiler:no_chromium_code" ]
-  configs += [
-    ":internal_config_base",
-    ":libplatform_config",
-    ":features",
-    ":toolchain",
-  ]
-
-  deps = [
-    ":v8_libplatform",
-    snapshot_target,
-  ]
-}
-
 ###############################################################################
 # Executables
 #
@@ -1907,7 +1798,6 @@ if (current_toolchain == snapshot_toolchain) {
     configs += [ "//build/config/compiler:no_chromium_code" ]
     configs += [
       ":internal_config",
-      ":libplatform_config",
       ":features",
       ":toolchain",
     ]
@@ -1924,6 +1814,15 @@ if (current_toolchain == snapshot_toolchain) {
 ###############################################################################
 # Public targets
 #
+
+if (v8_use_snapshot && v8_use_external_startup_data) {
+  snapshot_target = ":v8_external_snapshot"
+} else if (v8_use_snapshot) {
+  snapshot_target = ":v8_snapshot"
+} else {
+  assert(!v8_use_external_startup_data)
+  snapshot_target = ":v8_nosnapshot"
+}
 
 if (is_component_build) {
   component("v8") {
@@ -2005,99 +1904,4 @@ if ((current_toolchain == host_toolchain && v8_toolset_for_d8 == "host") ||
       deps += [ "//third_party/icu" ]
     }
   }
-}
-
-source_set("json_fuzzer") {
-  sources = [
-    "test/fuzzer/json.cc",
-  ]
-
-  deps = [
-    ":fuzzer_support",
-  ]
-
-  configs -= [ "//build/config/compiler:chromium_code" ]
-  configs += [ "//build/config/compiler:no_chromium_code" ]
-  configs += [
-    ":internal_config",
-    ":libplatform_config",
-    ":features",
-    ":toolchain",
-  ]
-}
-
-source_set("parser_fuzzer") {
-  sources = [
-    "test/fuzzer/parser.cc",
-  ]
-
-  deps = [
-    ":fuzzer_support",
-  ]
-
-  configs -= [ "//build/config/compiler:chromium_code" ]
-  configs += [ "//build/config/compiler:no_chromium_code" ]
-  configs += [
-    ":internal_config",
-    ":libplatform_config",
-    ":features",
-    ":toolchain",
-  ]
-}
-
-source_set("regexp_fuzzer") {
-  sources = [
-    "test/fuzzer/regexp.cc",
-  ]
-
-  deps = [
-    ":fuzzer_support",
-  ]
-
-  configs -= [ "//build/config/compiler:chromium_code" ]
-  configs += [ "//build/config/compiler:no_chromium_code" ]
-  configs += [
-    ":internal_config",
-    ":libplatform_config",
-    ":features",
-    ":toolchain",
-  ]
-}
-
-source_set("wasm_fuzzer") {
-  sources = [
-    "test/fuzzer/wasm.cc",
-  ]
-
-  deps = [
-    ":fuzzer_support",
-  ]
-
-  configs -= [ "//build/config/compiler:chromium_code" ]
-  configs += [ "//build/config/compiler:no_chromium_code" ]
-  configs += [
-    ":internal_config",
-    ":libplatform_config",
-    ":features",
-    ":toolchain",
-  ]
-}
-
-source_set("wasm_asmjs_fuzzer") {
-  sources = [
-    "test/fuzzer/wasm-asmjs.cc",
-  ]
-
-  deps = [
-    ":fuzzer_support",
-  ]
-
-  configs -= [ "//build/config/compiler:chromium_code" ]
-  configs += [ "//build/config/compiler:no_chromium_code" ]
-  configs += [
-    ":internal_config",
-    ":libplatform_config",
-    ":features",
-    ":toolchain",
-  ]
 }

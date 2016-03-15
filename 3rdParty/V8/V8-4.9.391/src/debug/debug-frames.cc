@@ -15,7 +15,6 @@ FrameInspector::FrameInspector(JavaScriptFrame* frame,
   has_adapted_arguments_ = frame_->has_adapted_arguments();
   is_bottommost_ = inlined_jsframe_index == 0;
   is_optimized_ = frame_->is_optimized();
-  is_interpreted_ = frame_->is_interpreted();
   // Calculate the deoptimized frame.
   if (frame->is_optimized()) {
     // TODO(turbofan): Revisit once we support deoptimization.
@@ -45,41 +44,33 @@ int FrameInspector::GetParametersCount() {
                        : frame_->ComputeParametersCount();
 }
 
-Handle<Object> FrameInspector::GetFunction() {
-  return is_optimized_ ? deoptimized_frame_->GetFunction()
-                       : handle(frame_->function(), isolate_);
+
+Object* FrameInspector::GetFunction() {
+  return is_optimized_ ? deoptimized_frame_->GetFunction() : frame_->function();
 }
 
-Handle<Object> FrameInspector::GetParameter(int index) {
+
+Object* FrameInspector::GetParameter(int index) {
   return is_optimized_ ? deoptimized_frame_->GetParameter(index)
-                       : handle(frame_->GetParameter(index), isolate_);
+                       : frame_->GetParameter(index);
 }
 
-Handle<Object> FrameInspector::GetExpression(int index) {
+
+Object* FrameInspector::GetExpression(int index) {
   // TODO(turbofan): Revisit once we support deoptimization.
   if (frame_->LookupCode()->is_turbofanned() &&
       frame_->function()->shared()->asm_function() &&
       !FLAG_turbo_asm_deoptimization) {
-    return isolate_->factory()->undefined_value();
+    return isolate_->heap()->undefined_value();
   }
   return is_optimized_ ? deoptimized_frame_->GetExpression(index)
-                       : handle(frame_->GetExpression(index), isolate_);
+                       : frame_->GetExpression(index);
 }
 
 
 int FrameInspector::GetSourcePosition() {
-  if (is_optimized_) {
-    return deoptimized_frame_->GetSourcePosition();
-  } else if (is_interpreted_) {
-    InterpretedFrame* frame = reinterpret_cast<InterpretedFrame*>(frame_);
-    BytecodeArray* bytecode_array =
-        frame->function()->shared()->bytecode_array();
-    return bytecode_array->SourcePosition(frame->GetBytecodeOffset());
-  } else {
-    Code* code = frame_->LookupCode();
-    int offset = static_cast<int>(frame_->pc() - code->instruction_start());
-    return code->SourcePosition(offset);
-  }
+  return is_optimized_ ? deoptimized_frame_->GetSourcePosition()
+                       : frame_->LookupCode()->SourcePosition(frame_->pc());
 }
 
 
@@ -89,9 +80,9 @@ bool FrameInspector::IsConstructor() {
              : frame_->IsConstructor();
 }
 
-Handle<Object> FrameInspector::GetContext() {
-  return is_optimized_ ? deoptimized_frame_->GetContext()
-                       : handle(frame_->context(), isolate_);
+
+Object* FrameInspector::GetContext() {
+  return is_optimized_ ? deoptimized_frame_->GetContext() : frame_->context();
 }
 
 
@@ -101,7 +92,6 @@ void FrameInspector::SetArgumentsFrame(JavaScriptFrame* frame) {
   DCHECK(has_adapted_arguments_);
   frame_ = frame;
   is_optimized_ = frame_->is_optimized();
-  is_interpreted_ = frame_->is_interpreted();
   DCHECK(!is_optimized_);
 }
 
@@ -119,10 +109,10 @@ void FrameInspector::MaterializeStackLocals(Handle<JSObject> target,
     Handle<String> name(scope_info->ParameterName(i));
     if (ParameterIsShadowedByContextLocal(scope_info, name)) continue;
 
-    Handle<Object> value =
-        i < GetParametersCount()
-            ? GetParameter(i)
-            : Handle<Object>::cast(isolate_->factory()->undefined_value());
+    Handle<Object> value(i < GetParametersCount()
+                             ? GetParameter(i)
+                             : isolate_->heap()->undefined_value(),
+                         isolate_);
     DCHECK(!value->IsTheHole());
 
     JSObject::SetOwnPropertyIgnoreAttributes(target, name, value, NONE).Check();
@@ -132,7 +122,8 @@ void FrameInspector::MaterializeStackLocals(Handle<JSObject> target,
   for (int i = 0; i < scope_info->StackLocalCount(); ++i) {
     if (scope_info->LocalIsSynthetic(i)) continue;
     Handle<String> name(scope_info->StackLocalName(i));
-    Handle<Object> value = GetExpression(scope_info->StackLocalIndex(i));
+    Handle<Object> value(GetExpression(scope_info->StackLocalIndex(i)),
+                         isolate_);
     if (value->IsTheHole()) value = isolate_->factory()->undefined_value();
 
     JSObject::SetOwnPropertyIgnoreAttributes(target, name, value, NONE).Check();

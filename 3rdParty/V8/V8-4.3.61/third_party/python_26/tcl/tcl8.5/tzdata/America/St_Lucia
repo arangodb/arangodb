@@ -1,7 +1,0 @@
-# created by tools/tclZIC.tcl - do not edit
-
-set TZData(:America/St_Lucia) {
-    {-9223372036854775808 -14640 0 LMT}
-    {-2524506960 -14640 0 CMT}
-    {-1830369360 -14400 0 AST}
-}

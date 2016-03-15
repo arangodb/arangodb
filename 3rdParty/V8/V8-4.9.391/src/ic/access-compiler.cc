@@ -18,8 +18,7 @@ Handle<Code> PropertyAccessCompiler::GetCodeWithFlags(Code::Flags flags,
   if (code->IsCodeStubOrIC()) code->set_stub_key(CodeStub::NoCacheKey());
 #ifdef ENABLE_DISASSEMBLER
   if (FLAG_print_code_stubs) {
-    CodeTracer::Scope trace_scope(isolate()->GetCodeTracer());
-    OFStream os(trace_scope.file());
+    OFStream os(stdout);
     code->Disassemble(name, os);
   }
 #endif

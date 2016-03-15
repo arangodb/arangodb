@@ -21,7 +21,6 @@ RUNTIME_FUNCTION(Runtime_CompileLazy) {
   HandleScope scope(isolate);
   DCHECK(args.length() == 1);
   CONVERT_ARG_HANDLE_CHECKED(JSFunction, function, 0);
-
 #ifdef DEBUG
   if (FLAG_trace_lazy && !function->shared()->is_compiled()) {
     PrintF("[unoptimized: ");
@@ -29,28 +28,62 @@ RUNTIME_FUNCTION(Runtime_CompileLazy) {
     PrintF("]\n");
   }
 #endif
-
   StackLimitCheck check(isolate);
   if (check.JsHasOverflowed(1 * KB)) return isolate->StackOverflow();
-  if (!Compiler::Compile(function, Compiler::KEEP_EXCEPTION)) {
-    return isolate->heap()->exception();
+
+  // Compile the target function.
+  DCHECK(function->shared()->allows_lazy_compilation());
+
+  Handle<Code> code;
+  ASSIGN_RETURN_FAILURE_ON_EXCEPTION(isolate, code,
+                                     Compiler::GetLazyCode(function));
+  DCHECK(code->IsJavaScriptCode());
+
+  function->ReplaceCode(*code);
+  return *code;
+}
+
+
+namespace {
+
+Object* CompileOptimized(Isolate* isolate, Handle<JSFunction> function,
+                         Compiler::ConcurrencyMode mode) {
+  StackLimitCheck check(isolate);
+  if (check.JsHasOverflowed(1 * KB)) return isolate->StackOverflow();
+
+  Handle<Code> code;
+  Handle<Code> unoptimized(function->shared()->code());
+  if (Compiler::GetOptimizedCode(function, unoptimized, mode).ToHandle(&code)) {
+    // Optimization succeeded, return optimized code.
+    function->ReplaceCode(*code);
+  } else {
+    // Optimization failed, get unoptimized code.
+    if (isolate->has_pending_exception()) {  // Possible stack overflow.
+      return isolate->heap()->exception();
+    }
+    code = Handle<Code>(function->shared()->code(), isolate);
+    if (code->kind() != Code::FUNCTION &&
+        code->kind() != Code::OPTIMIZED_FUNCTION) {
+      ASSIGN_RETURN_FAILURE_ON_EXCEPTION(
+          isolate, code, Compiler::GetUnoptimizedCode(function));
+    }
+    function->ReplaceCode(*code);
   }
-  DCHECK(function->is_compiled());
+
+  DCHECK(function->code()->kind() == Code::FUNCTION ||
+         function->code()->kind() == Code::OPTIMIZED_FUNCTION ||
+         function->IsInOptimizationQueue());
   return function->code();
 }
+
+}  // namespace
 
 
 RUNTIME_FUNCTION(Runtime_CompileOptimized_Concurrent) {
   HandleScope scope(isolate);
   DCHECK(args.length() == 1);
   CONVERT_ARG_HANDLE_CHECKED(JSFunction, function, 0);
-  StackLimitCheck check(isolate);
-  if (check.JsHasOverflowed(1 * KB)) return isolate->StackOverflow();
-  if (!Compiler::CompileOptimized(function, Compiler::CONCURRENT)) {
-    return isolate->heap()->exception();
-  }
-  DCHECK(function->is_compiled());
-  return function->code();
+  return CompileOptimized(isolate, function, Compiler::CONCURRENT);
 }
 
 
@@ -58,13 +91,7 @@ RUNTIME_FUNCTION(Runtime_CompileOptimized_NotConcurrent) {
   HandleScope scope(isolate);
   DCHECK(args.length() == 1);
   CONVERT_ARG_HANDLE_CHECKED(JSFunction, function, 0);
-  StackLimitCheck check(isolate);
-  if (check.JsHasOverflowed(1 * KB)) return isolate->StackOverflow();
-  if (!Compiler::CompileOptimized(function, Compiler::NOT_CONCURRENT)) {
-    return isolate->heap()->exception();
-  }
-  DCHECK(function->is_compiled());
-  return function->code();
+  return CompileOptimized(isolate, function, Compiler::NOT_CONCURRENT);
 }
 
 
@@ -108,8 +135,6 @@ RUNTIME_FUNCTION(Runtime_NotifyDeoptimized) {
       static_cast<Deoptimizer::BailoutType>(type_arg);
   Deoptimizer* deoptimizer = Deoptimizer::Grab(isolate);
   DCHECK(AllowHeapAllocation::IsAllowed());
-  TimerEventScope<TimerEventDeoptimizeCode> timer(isolate);
-  TRACE_EVENT0("v8", "V8.DeoptimizeCode");
 
   Handle<JSFunction> function = deoptimizer->function();
   Handle<Code> optimized_code = deoptimizer->compiled_code();
@@ -122,6 +147,10 @@ RUNTIME_FUNCTION(Runtime_NotifyDeoptimized) {
   deoptimizer->MaterializeHeapObjects(&it);
   delete deoptimizer;
 
+  JavaScriptFrame* frame = it.frame();
+  RUNTIME_ASSERT(frame->function()->IsJSFunction());
+  DCHECK(frame->function() == *function);
+
   // Ensure the context register is updated for materialized objects.
   JavaScriptFrameIterator top_it(isolate);
   JavaScriptFrame* top_frame = top_it.frame();
@@ -131,10 +160,7 @@ RUNTIME_FUNCTION(Runtime_NotifyDeoptimized) {
     return isolate->heap()->undefined_value();
   }
 
-  // Search for other activations of the same optimized code.
-  // At this point {it} is at the topmost frame of all the frames materialized
-  // by the deoptimizer. Note that this frame does not necessarily represent
-  // an activation of {function} because of potential inlined tail-calls.
+  // Search for other activations of the same function and code.
   ActivationsFinder activations_finder(*optimized_code);
   activations_finder.VisitFrames(&it);
   isolate->thread_manager()->IterateArchivedThreads(&activations_finder);
@@ -211,26 +237,65 @@ RUNTIME_FUNCTION(Runtime_CompileForOnStackReplacement) {
   DCHECK(caller_code->contains(frame->pc()));
 #endif  // DEBUG
 
+
   BailoutId ast_id = caller_code->TranslatePcOffsetToAstId(pc_offset);
   DCHECK(!ast_id.IsNone());
 
-  MaybeHandle<Code> maybe_result;
-  if (IsSuitableForOnStackReplacement(isolate, function)) {
+  // Disable concurrent OSR for asm.js, to enable frame specialization.
+  Compiler::ConcurrencyMode mode = (isolate->concurrent_osr_enabled() &&
+                                    !function->shared()->asm_function() &&
+                                    function->shared()->ast_node_count() > 512)
+                                       ? Compiler::CONCURRENT
+                                       : Compiler::NOT_CONCURRENT;
+  Handle<Code> result = Handle<Code>::null();
+
+  OptimizedCompileJob* job = NULL;
+  if (mode == Compiler::CONCURRENT) {
+    // Gate the OSR entry with a stack check.
+    BackEdgeTable::AddStackCheck(caller_code, pc_offset);
+    // Poll already queued compilation jobs.
+    OptimizingCompileDispatcher* dispatcher =
+        isolate->optimizing_compile_dispatcher();
+    if (dispatcher->IsQueuedForOSR(function, ast_id)) {
+      if (FLAG_trace_osr) {
+        PrintF("[OSR - Still waiting for queued: ");
+        function->PrintName();
+        PrintF(" at AST id %d]\n", ast_id.ToInt());
+      }
+      return NULL;
+    }
+
+    job = dispatcher->FindReadyOSRCandidate(function, ast_id);
+  }
+
+  if (job != NULL) {
+    if (FLAG_trace_osr) {
+      PrintF("[OSR - Found ready: ");
+      function->PrintName();
+      PrintF(" at AST id %d]\n", ast_id.ToInt());
+    }
+    result = Compiler::GetConcurrentlyOptimizedCode(job);
+  } else if (IsSuitableForOnStackReplacement(isolate, function)) {
     if (FLAG_trace_osr) {
       PrintF("[OSR - Compiling: ");
       function->PrintName();
       PrintF(" at AST id %d]\n", ast_id.ToInt());
     }
-    maybe_result = Compiler::GetOptimizedCodeForOSR(function, ast_id, frame);
+    MaybeHandle<Code> maybe_result = Compiler::GetOptimizedCode(
+        function, caller_code, mode, ast_id,
+        (mode == Compiler::NOT_CONCURRENT) ? frame : nullptr);
+    if (maybe_result.ToHandle(&result) &&
+        result.is_identical_to(isolate->builtins()->InOptimizationQueue())) {
+      // Optimization is queued.  Return to check later.
+      return NULL;
+    }
   }
 
   // Revert the patched back edge table, regardless of whether OSR succeeds.
   BackEdgeTable::Revert(isolate, *caller_code);
 
   // Check whether we ended up with usable optimized code.
-  Handle<Code> result;
-  if (maybe_result.ToHandle(&result) &&
-      result->kind() == Code::OPTIMIZED_FUNCTION) {
+  if (!result.is_null() && result->kind() == Code::OPTIMIZED_FUNCTION) {
     DeoptimizationInputData* data =
         DeoptimizationInputData::cast(result->deoptimization_data());
 

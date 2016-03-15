@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// Flags: --harmony-tolength
+
 // Test array functions do not cause infinite loops when length is negative,
 // max_value, etc.
 

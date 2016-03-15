@@ -24,7 +24,8 @@ class VariableMap: public ZoneHashMap {
 
   Variable* Declare(Scope* scope, const AstRawString* name, VariableMode mode,
                     Variable::Kind kind, InitializationFlag initialization_flag,
-                    MaybeAssignedFlag maybe_assigned_flag = kNotAssigned);
+                    MaybeAssignedFlag maybe_assigned_flag = kNotAssigned,
+                    int declaration_group_start = -1);
 
   Variable* Lookup(const AstRawString* name);
 
@@ -162,7 +163,8 @@ class Scope: public ZoneObject {
   // declared before, the previously declared variable is returned.
   Variable* DeclareLocal(const AstRawString* name, VariableMode mode,
                          InitializationFlag init_flag, Variable::Kind kind,
-                         MaybeAssignedFlag maybe_assigned_flag = kNotAssigned);
+                         MaybeAssignedFlag maybe_assigned_flag = kNotAssigned,
+                         int declaration_group_start = -1);
 
   // Declare an implicit global variable in this scope which must be a
   // script scope.  The variable was introduced (possibly from an inner
@@ -375,6 +377,12 @@ class Scope: public ZoneObject {
              IsClassConstructor(function_kind())));
   }
 
+  const Scope* NearestOuterEvalScope() const {
+    if (is_eval_scope()) return this;
+    if (outer_scope() == nullptr) return nullptr;
+    return outer_scope()->NearestOuterEvalScope();
+  }
+
   // ---------------------------------------------------------------------------
   // Accessors.
 
@@ -420,24 +428,7 @@ class Scope: public ZoneObject {
   // Returns the default function arity excluding default or rest parameters.
   int default_function_length() const { return arity_; }
 
-  // Returns the number of formal parameters, up to but not including the
-  // rest parameter index (if the function has rest parameters), i.e. it
-  // says 2 for
-  //
-  //   function foo(a, b) { ... }
-  //
-  // and
-  //
-  //   function foo(a, b, ...c) { ... }
-  //
-  // but for
-  //
-  //   function foo(a, b, c = 1) { ... }
-  //
-  // we return 3 here.
-  int num_parameters() const {
-    return has_rest_parameter() ? params_.length() - 1 : params_.length();
-  }
+  int num_parameters() const { return params_.length(); }
 
   // A function can have at most one rest parameter. Returns Variable* or NULL.
   Variable* rest_parameter(int* index) const {
@@ -495,15 +486,25 @@ class Scope: public ZoneObject {
   // The ModuleDescriptor for this scope; only for module scopes.
   ModuleDescriptor* module() const { return module_descriptor_; }
 
+
+  void set_class_declaration_group_start(int position) {
+    class_declaration_group_start_ = position;
+  }
+
+  int class_declaration_group_start() const {
+    return class_declaration_group_start_;
+  }
+
   // ---------------------------------------------------------------------------
   // Variable allocation.
 
   // Collect stack and context allocated local variables in this scope. Note
   // that the function variable - if present - is not collected and should be
   // handled separately.
-  void CollectStackAndContextLocals(ZoneList<Variable*>* stack_locals,
-                                    ZoneList<Variable*>* context_locals,
-                                    ZoneList<Variable*>* context_globals);
+  void CollectStackAndContextLocals(
+      ZoneList<Variable*>* stack_locals, ZoneList<Variable*>* context_locals,
+      ZoneList<Variable*>* context_globals,
+      ZoneList<Variable*>* strong_mode_free_variables = nullptr);
 
   // Current number of var or const locals.
   int num_var_or_const() { return num_var_or_const_; }
@@ -555,6 +556,13 @@ class Scope: public ZoneObject {
   Scope* ReceiverScope();
 
   Handle<ScopeInfo> GetScopeInfo(Isolate* isolate);
+
+  // Get the chain of nested scopes within this scope for the source statement
+  // position. The scopes will be added to the list from the outermost scope to
+  // the innermost scope. Only nested block, catch or with scopes are tracked
+  // and will be returned, but no inner function scopes.
+  void GetNestedScopeChain(Isolate* isolate, List<Handle<ScopeInfo> >* chain,
+                           int statement_position);
 
   void CollectNonLocals(HashMap* non_locals);
 
@@ -759,6 +767,12 @@ class Scope: public ZoneObject {
   MUST_USE_RESULT
   bool ResolveVariablesRecursively(ParseInfo* info, AstNodeFactory* factory);
 
+  bool CheckStrongModeDeclaration(VariableProxy* proxy, Variable* var);
+
+  // If this scope is a method scope of a class, return the corresponding
+  // class variable, otherwise nullptr.
+  ClassVariable* ClassVariableForMethod() const;
+
   // Scope analysis.
   void PropagateScopeInfo(bool outer_scope_calls_sloppy_eval);
   bool HasTrivialContext() const;
@@ -823,6 +837,10 @@ class Scope: public ZoneObject {
   Zone* zone_;
 
   PendingCompilationErrorHandler pending_error_handler_;
+
+  // For tracking which classes are declared consecutively. Needed for strong
+  // mode.
+  int class_declaration_group_start_;
 };
 
 }  // namespace internal

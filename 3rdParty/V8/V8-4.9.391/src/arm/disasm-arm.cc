@@ -604,26 +604,6 @@ int Decoder::FormatOption(Instruction* instr, const char* format) {
           Print("s");
         }
         return 4;
-      } else if (format[1] == 'p') {
-        if (format[8] == '_') {  // 'spec_reg_fields
-          DCHECK(STRING_STARTS_WITH(format, "spec_reg_fields"));
-          Print("_");
-          int mask = instr->Bits(19, 16);
-          if (mask == 0) Print("(none)");
-          if ((mask & 0x8) != 0) Print("f");
-          if ((mask & 0x4) != 0) Print("s");
-          if ((mask & 0x2) != 0) Print("x");
-          if ((mask & 0x1) != 0) Print("c");
-          return 15;
-        } else {  // 'spec_reg
-          DCHECK(STRING_STARTS_WITH(format, "spec_reg"));
-          if (instr->Bit(22) == 0) {
-            Print("CPSR");
-          } else {
-            Print("SPSR");
-          }
-          return 8;
-        }
       }
       // 's: S field of data processing instructions
       if (instr->HasS()) {
@@ -842,13 +822,7 @@ void Decoder::DecodeType01(Instruction* instr) {
       return;
     }
   } else if ((type == 0) && instr->IsMiscType0()) {
-    if ((instr->Bits(27, 23) == 2) && (instr->Bits(21, 20) == 2) &&
-        (instr->Bits(15, 4) == 0xf00)) {
-      Format(instr, "msr'cond 'spec_reg'spec_reg_fields, 'rm");
-    } else if ((instr->Bits(27, 23) == 2) && (instr->Bits(21, 20) == 0) &&
-               (instr->Bits(11, 0) == 0)) {
-      Format(instr, "mrs'cond 'rd, 'spec_reg");
-    } else if (instr->Bits(22, 21) == 1) {
+    if (instr->Bits(22, 21) == 1) {
       switch (instr->BitField(7, 4)) {
         case BX:
           Format(instr, "bx'cond 'rm");
@@ -1214,13 +1188,7 @@ void Decoder::DecodeType3(Instruction* instr) {
                   }
                 }
               } else {
-                // PU == 0b01, BW == 0b11, Bits(9, 6) != 0b0001
-                if ((instr->Bits(20, 16) == 0x1f) &&
-                    (instr->Bits(11, 4) == 0xf3)) {
-                  Format(instr, "rbit'cond 'rd, 'rm");
-                } else {
-                  UNREACHABLE();
-                }
+                UNREACHABLE();
               }
               break;
           }
@@ -1430,7 +1398,7 @@ void Decoder::DecodeTypeVFP(Instruction* instr) {
         if (instr->SzValue() == 0x1) {
           Format(instr, "vmov'cond.f64 'Dd, 'd");
         } else {
-          Format(instr, "vmov'cond.f32 'Sd, 'd");
+          Unknown(instr);  // Not used by V8.
         }
       } else if (((instr->Opc2Value() == 0x6)) && instr->Opc3Value() == 0x3) {
         // vrintz - round towards zero (truncate)
@@ -1721,12 +1689,6 @@ void Decoder::DecodeType6CoprocessorIns(Instruction* instr) {
 }
 
 
-static const char* const barrier_option_names[] = {
-    "invalid", "oshld", "oshst", "osh", "invalid", "nshld", "nshst", "nsh",
-    "invalid", "ishld", "ishst", "ish", "invalid", "ld",    "st",    "sy",
-};
-
-
 void Decoder::DecodeSpecialCondition(Instruction* instr) {
   switch (instr->SpecialValue()) {
     case 5:
@@ -1802,24 +1764,6 @@ void Decoder::DecodeSpecialCondition(Instruction* instr) {
         } else {
           out_buffer_pos_ += SNPrintF(out_buffer_ + out_buffer_pos_,
                                       "pld [r%d, #+%d]", Rn, offset);
-        }
-      } else if (instr->SpecialValue() == 0xA && instr->Bits(22, 20) == 7) {
-        int option = instr->Bits(3, 0);
-        switch (instr->Bits(7, 4)) {
-          case 4:
-            out_buffer_pos_ += SNPrintF(out_buffer_ + out_buffer_pos_,
-                                        "dsb %s", barrier_option_names[option]);
-            break;
-          case 5:
-            out_buffer_pos_ += SNPrintF(out_buffer_ + out_buffer_pos_,
-                                        "dmb %s", barrier_option_names[option]);
-            break;
-          case 6:
-            out_buffer_pos_ += SNPrintF(out_buffer_ + out_buffer_pos_,
-                                        "isb %s", barrier_option_names[option]);
-            break;
-          default:
-            Unknown(instr);
         }
       } else {
         Unknown(instr);

@@ -4,10 +4,7 @@
 
 
 load('../base.js');
-
 load('assign.js');
-load('values.js');
-load('entries.js');
 
 var success = true;
 

@@ -1149,9 +1149,7 @@ function CheckArgumentsPillDescriptor(func, name) {
 
   function strict() {
     "use strict";
-    // Returning result via local variable to avoid tail call optimization.
-    var res = return_my_caller();
-    return res;
+    return return_my_caller();
   }
   assertSame(null, strict());
 
@@ -1165,9 +1163,7 @@ function CheckArgumentsPillDescriptor(func, name) {
 (function TestNonStrictFunctionCallerPill() {
   function strict(n) {
     "use strict";
-    // Returning result via local variable to avoid tail call optimization.
-    var res = non_strict(n);
-    return res;
+    return non_strict(n);
   }
 
   function recurse(n, then) {
@@ -1195,9 +1191,7 @@ function CheckArgumentsPillDescriptor(func, name) {
 (function TestNonStrictFunctionCallerDescriptorPill() {
   function strict(n) {
     "use strict";
-    // Returning result via local variable to avoid tail call optimization.
-    var res = non_strict(n);
-    return res;
+    return non_strict(n);
   }
 
   function recurse(n, then) {

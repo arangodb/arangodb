@@ -23,6 +23,7 @@ var callSitePositionSymbol =
     utils.ImportNow("call_site_position_symbol");
 var callSiteStrictSymbol =
     utils.ImportNow("call_site_strict_symbol");
+var FLAG_harmony_tostring;
 var Float32x4ToString;
 var formattedStackTraceSymbol =
     utils.ImportNow("formatted_stack_trace_symbol");
@@ -33,7 +34,6 @@ var Int8x16ToString;
 var InternalArray = utils.InternalArray;
 var internalErrorSymbol = utils.ImportNow("internal_error_symbol");
 var ObjectDefineProperty;
-var ObjectHasOwnProperty;
 var ObjectToString = utils.ImportNow("object_to_string");
 var Script = utils.ImportNow("Script");
 var stackTraceSymbol = utils.ImportNow("stack_trace_symbol");
@@ -56,7 +56,6 @@ utils.Import(function(from) {
   Int32x4ToString = from.Int32x4ToString;
   Int8x16ToString = from.Int8x16ToString;
   ObjectDefineProperty = from.ObjectDefineProperty;
-  ObjectHasOwnProperty = from.ObjectHasOwnProperty;
   StringCharAt = from.StringCharAt;
   StringIndexOf = from.StringIndexOf;
   StringSubstring = from.StringSubstring;
@@ -64,6 +63,10 @@ utils.Import(function(from) {
   Uint16x8ToString = from.Uint16x8ToString;
   Uint32x4ToString = from.Uint32x4ToString;
   Uint8x16ToString = from.Uint8x16ToString;
+});
+
+utils.ImportFromExperimental(function(from) {
+  FLAG_harmony_tostring = from.FLAG_harmony_tostring;
 });
 
 // -------------------------------------------------------------------
@@ -82,8 +85,13 @@ function NoSideEffectsObjectToString() {
   if (IS_NULL(this)) return "[object Null]";
   var O = TO_OBJECT(this);
   var builtinTag = %_ClassOf(O);
-  var tag = %GetDataProperty(O, toStringTagSymbol);
-  if (!IS_STRING(tag)) {
+  var tag;
+  if (FLAG_harmony_tostring) {
+    tag = %GetDataProperty(O, toStringTagSymbol);
+    if (!IS_STRING(tag)) {
+      tag = builtinTag;
+    }
+  } else {
     tag = builtinTag;
   }
   return `[object ${tag}]`;
@@ -424,11 +432,10 @@ function ScriptLineEnd(n) {
  * If sourceURL comment is available returns sourceURL comment contents.
  * Otherwise, script name is returned. See
  * http://fbug.googlecode.com/svn/branches/firebug1.1/docs/ReleaseNotes_1.1.txt
- * and Source Map Revision 3 proposal for details on using //# sourceURL and
- * deprecated //@ sourceURL comment to identify scripts that don't have name.
+ * and Source Map Revision 3 proposal for details on using //# sourceURL
+ * comment to identify scripts that don't have name.
  *
- * @return {?string} script name if present, value for //# sourceURL comment or
- * deprecated //@ sourceURL comment otherwise.
+ * @return {?string} script name if present, value for //# sourceURL comment.
  */
 function ScriptNameOrSourceURL() {
   if (this.source_url) return this.source_url;

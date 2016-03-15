@@ -31,7 +31,6 @@ class Processor: public AstVisitor {
         result_assigned_(false),
         replacement_(nullptr),
         is_set_(false),
-        zone_(ast_value_factory->zone()),
         scope_(scope),
         factory_(ast_value_factory) {
     InitializeAstVisitor(parser->stack_limit());
@@ -149,7 +148,7 @@ void Processor::VisitIfStatement(IfStatement* node) {
   is_set_ = is_set_ && set_in_then;
   replacement_ = node;
 
-  if (!is_set_) {
+  if (FLAG_harmony_completion && !is_set_) {
     is_set_ = true;
     replacement_ = AssignUndefinedBefore(node);
   }
@@ -165,7 +164,7 @@ void Processor::VisitIterationStatement(IterationStatement* node) {
   is_set_ = is_set_ && set_after;
   replacement_ = node;
 
-  if (!is_set_) {
+  if (FLAG_harmony_completion && !is_set_) {
     is_set_ = true;
     replacement_ = AssignUndefinedBefore(node);
   }
@@ -209,7 +208,7 @@ void Processor::VisitTryCatchStatement(TryCatchStatement* node) {
   is_set_ = is_set_ && set_in_try;
   replacement_ = node;
 
-  if (!is_set_) {
+  if (FLAG_harmony_completion && !is_set_) {
     is_set_ = true;
     replacement_ = AssignUndefinedBefore(node);
   }
@@ -226,7 +225,6 @@ void Processor::VisitTryFinallyStatement(TryFinallyStatement* node) {
      // at the end again: ".backup = .result; ...; .result = .backup"
      // This is necessary because the finally block does not normally contribute
      // to the completion value.
-    CHECK(scope() != nullptr);
     Variable* backup = scope()->NewTemporary(
         factory()->ast_value_factory()->dot_result_string());
     Expression* backup_proxy = factory()->NewVariableProxy(backup);
@@ -247,7 +245,7 @@ void Processor::VisitTryFinallyStatement(TryFinallyStatement* node) {
   node->set_try_block(replacement_->AsBlock());
   replacement_ = node;
 
-  if (!is_set_) {
+  if (FLAG_harmony_completion && !is_set_) {
     is_set_ = true;
     replacement_ = AssignUndefinedBefore(node);
   }
@@ -265,7 +263,7 @@ void Processor::VisitSwitchStatement(SwitchStatement* node) {
   is_set_ = is_set_ && set_after;
   replacement_ = node;
 
-  if (!is_set_) {
+  if (FLAG_harmony_completion && !is_set_) {
     is_set_ = true;
     replacement_ = AssignUndefinedBefore(node);
   }
@@ -289,7 +287,7 @@ void Processor::VisitWithStatement(WithStatement* node) {
   node->set_statement(replacement_);
   replacement_ = node;
 
-  if (!is_set_) {
+  if (FLAG_harmony_completion && !is_set_) {
     is_set_ = true;
     replacement_ = AssignUndefinedBefore(node);
   }
@@ -355,7 +353,14 @@ bool Rewriter::Rewrite(ParseInfo* info) {
     if (processor.HasStackOverflow()) return false;
 
     if (processor.result_assigned()) {
-      int pos = RelocInfo::kNoPosition;
+      DCHECK(function->end_position() != RelocInfo::kNoPosition);
+      // Set the position of the assignment statement one character past the
+      // source code, such that it definitely is not in the source code range
+      // of an immediate inner scope. For example in
+      //   eval('with ({x:1}) x = 1');
+      // the end position of the function generated for executing the eval code
+      // coincides with the end of the with scope which is the position of '1'.
+      int pos = function->end_position();
       VariableProxy* result_proxy =
           processor.factory()->NewVariableProxy(result, pos);
       Statement* result_statement =

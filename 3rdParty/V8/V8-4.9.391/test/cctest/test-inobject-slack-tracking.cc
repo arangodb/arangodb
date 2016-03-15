@@ -61,9 +61,9 @@ Handle<T> GetLexical(const char* name) {
   ScriptContextTable::LookupResult lookup_result;
   if (ScriptContextTable::Lookup(script_contexts, str_name, &lookup_result)) {
     Handle<Object> result =
-        FixedArray::get(*ScriptContextTable::GetContext(
+        FixedArray::get(ScriptContextTable::GetContext(
                             script_contexts, lookup_result.context_index),
-                        lookup_result.slot_index, isolate);
+                        lookup_result.slot_index);
     return Handle<T>::cast(result);
   }
   return Handle<T>();
@@ -612,8 +612,6 @@ static void TestClassHierarchy(const std::vector<int>& hierarchy_desc, int n) {
       Handle<JSObject> tmp = Run<JSObject>(new_script);
       CHECK_EQ(initial_map->IsInobjectSlackTrackingInProgress(),
                IsObjectShrinkable(*tmp));
-      CHECK_EQ(Map::kSlackTrackingCounterStart - i - 1,
-               initial_map->construction_counter());
     }
     CHECK(!initial_map->IsInobjectSlackTrackingInProgress());
     CHECK(!IsObjectShrinkable(*obj));

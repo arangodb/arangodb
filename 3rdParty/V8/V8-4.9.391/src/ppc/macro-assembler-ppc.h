@@ -16,7 +16,6 @@ namespace internal {
 // Give alias names to registers for calling conventions.
 const Register kReturnRegister0 = {Register::kCode_r3};
 const Register kReturnRegister1 = {Register::kCode_r4};
-const Register kReturnRegister2 = {Register::kCode_r5};
 const Register kJSFunctionRegister = {Register::kCode_r4};
 const Register kContextRegister = {Register::kCode_r30};
 const Register kInterpreterAccumulatorRegister = {Register::kCode_r3};
@@ -147,7 +146,6 @@ class MacroAssembler : public Assembler {
   // Emit code to discard a non-negative number of pointer-sized elements
   // from the stack, clobbering only the sp register.
   void Drop(int count);
-  void Drop(Register count, Register scratch = r0);
 
   void Ret(int drop) {
     Drop(drop);
@@ -156,8 +154,13 @@ class MacroAssembler : public Assembler {
 
   void Call(Label* target);
 
+  // Emit call to the code we are currently generating.
+  void CallSelf() {
+    Handle<Code> self(reinterpret_cast<Code**>(CodeObject().location()));
+    Call(self, RelocInfo::CODE_TARGET);
+  }
+
   // Register move. May do nothing if the registers are identical.
-  void Move(Register dst, Smi* smi) { LoadSmiLiteral(dst, smi); }
   void Move(Register dst, Handle<Object> value);
   void Move(Register dst, Register src, Condition cond = al);
   void Move(DoubleRegister dst, DoubleRegister src);
@@ -197,13 +200,13 @@ class MacroAssembler : public Assembler {
   // Check if object is in new space.  Jumps if the object is not in new space.
   // The register scratch can be object itself, but scratch will be clobbered.
   void JumpIfNotInNewSpace(Register object, Register scratch, Label* branch) {
-    InNewSpace(object, scratch, eq, branch);
+    InNewSpace(object, scratch, ne, branch);
   }
 
   // Check if object is in new space.  Jumps if the object is in new space.
   // The register scratch can be object itself, but it will be clobbered.
   void JumpIfInNewSpace(Register object, Register scratch, Label* branch) {
-    InNewSpace(object, scratch, ne, branch);
+    InNewSpace(object, scratch, eq, branch);
   }
 
   // Check if an object has a given incremental marking color.
@@ -244,11 +247,6 @@ class MacroAssembler : public Assembler {
                      lr_status, save_fp, remembered_set_action, smi_check,
                      pointers_to_here_check_for_value);
   }
-
-  // Notify the garbage collector that we wrote a code entry into a
-  // JSFunction. Only scratch is clobbered by the operation.
-  void RecordWriteCodeEntryField(Register js_function, Register code_entry,
-                                 Register scratch);
 
   void RecordWriteForMap(Register object, Register map, Register dst,
                          LinkRegisterStatus lr_status, SaveFPRegsMode save_fp);
@@ -338,18 +336,10 @@ class MacroAssembler : public Assembler {
     addi(sp, sp, Operand(5 * kPointerSize));
   }
 
-  // Push a fixed frame, consisting of lr, fp, constant pool.
-  void PushCommonFrame(Register marker_reg = no_reg);
-
-  // Push a standard frame, consisting of lr, fp, constant pool,
-  // context and JS function
-  void PushStandardFrame(Register function_reg);
-
-  void PopCommonFrame(Register marker_reg = no_reg);
-
-  // Restore caller's frame pointer and return address prior to being
-  // overwritten by tail call stack preparation.
-  void RestoreFrameStateForTailCall();
+  // Push a fixed frame, consisting of lr, fp, context and
+  // JS function / marker id if marker_reg is a valid register.
+  void PushFixedFrame(Register marker_reg = no_reg);
+  void PopFixedFrame(Register marker_reg = no_reg);
 
   // Push and pop the registers that can hold pointers, as defined by the
   // RegList constant kSafepointSavedRegisters.
@@ -374,20 +364,18 @@ class MacroAssembler : public Assembler {
   }
 
   // Converts the integer (untagged smi) in |src| to a double, storing
-  // the result to |dst|
-  void ConvertIntToDouble(Register src, DoubleRegister dst);
+  // the result to |double_dst|
+  void ConvertIntToDouble(Register src, DoubleRegister double_dst);
 
   // Converts the unsigned integer (untagged smi) in |src| to
-  // a double, storing the result to |dst|
-  void ConvertUnsignedIntToDouble(Register src, DoubleRegister dst);
+  // a double, storing the result to |double_dst|
+  void ConvertUnsignedIntToDouble(Register src, DoubleRegister double_dst);
 
   // Converts the integer (untagged smi) in |src| to
   // a float, storing the result in |dst|
-  void ConvertIntToFloat(Register src, DoubleRegister dst);
-
-  // Converts the unsigned integer (untagged smi) in |src| to
-  // a float, storing the result in |dst|
-  void ConvertUnsignedIntToFloat(Register src, DoubleRegister dst);
+  // Warning: The value in |int_scrach| will be changed in the process!
+  void ConvertIntToFloat(const DoubleRegister dst, const Register src,
+                         const Register int_scratch);
 
 #if V8_TARGET_ARCH_PPC64
   void ConvertInt64ToFloat(Register src, DoubleRegister double_dst);
@@ -414,24 +402,8 @@ class MacroAssembler : public Assembler {
       FPRoundingMode rounding_mode = kRoundToZero);
 #endif
 
-#if !V8_TARGET_ARCH_PPC64
-  void ShiftLeftPair(Register dst_low, Register dst_high, Register src_low,
-                     Register src_high, Register scratch, Register shift);
-  void ShiftLeftPair(Register dst_low, Register dst_high, Register src_low,
-                     Register src_high, uint32_t shift);
-  void ShiftRightPair(Register dst_low, Register dst_high, Register src_low,
-                      Register src_high, Register scratch, Register shift);
-  void ShiftRightPair(Register dst_low, Register dst_high, Register src_low,
-                      Register src_high, uint32_t shift);
-  void ShiftRightAlgPair(Register dst_low, Register dst_high, Register src_low,
-                         Register src_high, Register scratch, Register shift);
-  void ShiftRightAlgPair(Register dst_low, Register dst_high, Register src_low,
-                         Register src_high, uint32_t shift);
-#endif
-
   // Generates function and stub prologue code.
-  void StubPrologue(StackFrame::Type type, Register base = no_reg,
-                    int prologue_offset = 0);
+  void StubPrologue(Register base = no_reg, int prologue_offset = 0);
   void Prologue(bool code_pre_aging, Register base, int prologue_offset = 0);
 
   // Enter exit frame.
@@ -577,15 +549,6 @@ class MacroAssembler : public Assembler {
 
   // ---------------------------------------------------------------------------
   // JavaScript invokes
-
-  // Removes current frame and its arguments from the stack preserving
-  // the arguments and a return address pushed to the stack for the next call.
-  // Both |callee_args_count| and |caller_args_count_reg| do not include
-  // receiver. |callee_args_count| is not modified, |caller_args_count_reg|
-  // is trashed.
-  void PrepareForTailCall(const ParameterCount& callee_args_count,
-                          Register caller_args_count_reg, Register scratch0,
-                          Register scratch1);
 
   // Invoke the JavaScript function code by either calling or jumping.
   void InvokeFunctionCode(Register function, Register new_target,
@@ -895,16 +858,6 @@ class MacroAssembler : public Assembler {
   void TestDoubleIsInt32(DoubleRegister double_input, Register scratch1,
                          Register scratch2, DoubleRegister double_scratch);
 
-  // Check if a double is equal to -0.0.
-  // CR_EQ in cr7 holds the result.
-  void TestDoubleIsMinusZero(DoubleRegister input, Register scratch1,
-                             Register scratch2);
-
-  // Check the sign of a double.
-  // CR_LT in cr7 holds the result.
-  void TestDoubleSign(DoubleRegister input, Register scratch);
-  void TestHeapNumberSign(Register input, Register scratch);
-
   // Try to convert a double to a signed 32-bit integer.
   // CR_EQ in cr7 is set and result assigned if the conversion is exact.
   void TryDoubleToInt32Exact(Register result, DoubleRegister double_input,
@@ -1050,6 +1003,10 @@ class MacroAssembler : public Assembler {
 
   // Jump to a runtime routine.
   void JumpToExternalReference(const ExternalReference& builtin);
+
+  // Invoke specified builtin JavaScript function.
+  void InvokeBuiltin(int native_context_index, InvokeFlag flag,
+                     const CallWrapper& call_wrapper = NullCallWrapper());
 
   Handle<Object> CodeObject() {
     DCHECK(!code_object_.is_null());
@@ -1375,9 +1332,6 @@ class MacroAssembler : public Assembler {
   // enabled via --debug-code.
   void AssertBoundFunction(Register object);
 
-  // Abort execution if argument is not a JSReceiver, enabled via --debug-code.
-  void AssertReceiver(Register object);
-
   // Abort execution if argument is not undefined or an AllocationSite, enabled
   // via --debug-code.
   void AssertUndefinedOrAllocationSite(Register object, Register scratch);
@@ -1492,9 +1446,9 @@ class MacroAssembler : public Assembler {
   // Returns the pc offset at which the frame ends.
   int LeaveFrame(StackFrame::Type type, int stack_adjustment = 0);
 
-  // Expects object in r3 and returns map with validated enum cache
-  // in r3.  Assumes that any other register can be used as a scratch.
-  void CheckEnumCache(Label* call_runtime);
+  // Expects object in r0 and returns map with validated enum cache
+  // in r0.  Assumes that any other register can be used as a scratch.
+  void CheckEnumCache(Register null_value, Label* call_runtime);
 
   // AllocationMemento support. Arrays may have an associated
   // AllocationMemento object that can be checked for in order to pretransition

@@ -29,10 +29,6 @@ namespace compiler {
   V(IA32Shl)                       \
   V(IA32Shr)                       \
   V(IA32Sar)                       \
-  V(IA32AddPair)                   \
-  V(IA32ShlPair)                   \
-  V(IA32ShrPair)                   \
-  V(IA32SarPair)                   \
   V(IA32Ror)                       \
   V(IA32Lzcnt)                     \
   V(IA32Tzcnt)                     \
@@ -62,12 +58,8 @@ namespace compiler {
   V(SSEFloat64Round)               \
   V(SSEFloat32ToFloat64)           \
   V(SSEFloat64ToFloat32)           \
-  V(SSEFloat32ToInt32)             \
-  V(SSEFloat32ToUint32)            \
   V(SSEFloat64ToInt32)             \
   V(SSEFloat64ToUint32)            \
-  V(SSEInt32ToFloat32)             \
-  V(SSEUint32ToFloat32)            \
   V(SSEInt32ToFloat64)             \
   V(SSEUint32ToFloat64)            \
   V(SSEFloat64ExtractLowWord32)    \
@@ -108,6 +100,7 @@ namespace compiler {
   V(IA32PushFloat64)               \
   V(IA32Poke)                      \
   V(IA32StackCheck)
+
 
 // Addressing modes represent the "shape" of inputs to an instruction.
 // Many instructions support multiple addressing modes. Addressing modes

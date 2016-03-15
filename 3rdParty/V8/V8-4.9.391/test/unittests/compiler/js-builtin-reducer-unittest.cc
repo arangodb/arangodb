@@ -43,7 +43,7 @@ class JSBuiltinReducerTest : public TypedGraphTest {
                               isolate()->factory()->NewStringFromAsciiChecked(
                                   "Math")).ToHandleChecked();
     Handle<JSFunction> f = Handle<JSFunction>::cast(
-        Object::GetProperty(
+        JSObject::GetProperty(
             m, isolate()->factory()->NewStringFromAsciiChecked(name))
             .ToHandleChecked());
     return HeapConstant(f);
@@ -64,6 +64,10 @@ Type* const kIntegral32Types[] = {Type::UnsignedSmall(), Type::Negative32(),
                                   Type::Integral32()};
 
 
+const LanguageMode kLanguageModes[] = {SLOPPY, STRICT, STRONG};
+
+
+// TODO(mstarzinger): Find a common place and unify with test-js-typed-lowering.
 Type* const kNumberTypes[] = {
     Type::UnsignedSmall(), Type::Negative32(),  Type::Unsigned31(),
     Type::SignedSmall(),   Type::Signed32(),    Type::Unsigned32(),
@@ -84,13 +88,15 @@ TEST_F(JSBuiltinReducerTest, MathMax0) {
   Node* control = graph()->start();
   Node* context = UndefinedConstant();
   Node* frame_state = graph()->start();
-  Node* call = graph()->NewNode(javascript()->CallFunction(2), function,
-                                UndefinedConstant(), context, frame_state,
-                                frame_state, effect, control);
-  Reduction r = Reduce(call);
+  TRACED_FOREACH(LanguageMode, language_mode, kLanguageModes) {
+    Node* call = graph()->NewNode(javascript()->CallFunction(2, language_mode),
+                                  function, UndefinedConstant(), context,
+                                  frame_state, frame_state, effect, control);
+    Reduction r = Reduce(call);
 
-  ASSERT_TRUE(r.Changed());
-  EXPECT_THAT(r.replacement(), IsNumberConstant(-V8_INFINITY));
+    ASSERT_TRUE(r.Changed());
+    EXPECT_THAT(r.replacement(), IsNumberConstant(-V8_INFINITY));
+  }
 }
 
 
@@ -101,15 +107,18 @@ TEST_F(JSBuiltinReducerTest, MathMax1) {
   Node* control = graph()->start();
   Node* context = UndefinedConstant();
   Node* frame_state = graph()->start();
-  TRACED_FOREACH(Type*, t0, kNumberTypes) {
-    Node* p0 = Parameter(t0, 0);
-    Node* call = graph()->NewNode(javascript()->CallFunction(3), function,
-                                  UndefinedConstant(), p0, context, frame_state,
-                                  frame_state, effect, control);
-    Reduction r = Reduce(call);
+  TRACED_FOREACH(LanguageMode, language_mode, kLanguageModes) {
+    TRACED_FOREACH(Type*, t0, kNumberTypes) {
+      Node* p0 = Parameter(t0, 0);
+      Node* call =
+          graph()->NewNode(javascript()->CallFunction(3, language_mode),
+                           function, UndefinedConstant(), p0, context,
+                           frame_state, frame_state, effect, control);
+      Reduction r = Reduce(call);
 
-    ASSERT_TRUE(r.Changed());
-    EXPECT_THAT(r.replacement(), p0);
+      ASSERT_TRUE(r.Changed());
+      EXPECT_THAT(r.replacement(), p0);
+    }
   }
 }
 
@@ -121,18 +130,22 @@ TEST_F(JSBuiltinReducerTest, MathMax2) {
   Node* control = graph()->start();
   Node* context = UndefinedConstant();
   Node* frame_state = graph()->start();
-  TRACED_FOREACH(Type*, t0, kIntegral32Types) {
-    TRACED_FOREACH(Type*, t1, kIntegral32Types) {
-      Node* p0 = Parameter(t0, 0);
-      Node* p1 = Parameter(t1, 1);
-      Node* call = graph()->NewNode(javascript()->CallFunction(4), function,
-                                    UndefinedConstant(), p0, p1, context,
-                                    frame_state, frame_state, effect, control);
-      Reduction r = Reduce(call);
+  TRACED_FOREACH(LanguageMode, language_mode, kLanguageModes) {
+    TRACED_FOREACH(Type*, t0, kIntegral32Types) {
+      TRACED_FOREACH(Type*, t1, kIntegral32Types) {
+        Node* p0 = Parameter(t0, 0);
+        Node* p1 = Parameter(t1, 1);
+        Node* call =
+            graph()->NewNode(javascript()->CallFunction(4, language_mode),
+                             function, UndefinedConstant(), p0, p1, context,
+                             frame_state, frame_state, effect, control);
+        Reduction r = Reduce(call);
 
-      ASSERT_TRUE(r.Changed());
-      EXPECT_THAT(r.replacement(), IsSelect(MachineRepresentation::kNone,
-                                            IsNumberLessThan(p1, p0), p0, p1));
+        ASSERT_TRUE(r.Changed());
+        EXPECT_THAT(r.replacement(),
+                    IsSelect(MachineRepresentation::kNone,
+                             IsNumberLessThan(p1, p0), p0, p1));
+      }
     }
   }
 }
@@ -149,17 +162,20 @@ TEST_F(JSBuiltinReducerTest, MathImul) {
   Node* control = graph()->start();
   Node* context = UndefinedConstant();
   Node* frame_state = graph()->start();
-  TRACED_FOREACH(Type*, t0, kIntegral32Types) {
-    TRACED_FOREACH(Type*, t1, kIntegral32Types) {
-      Node* p0 = Parameter(t0, 0);
-      Node* p1 = Parameter(t1, 1);
-      Node* call = graph()->NewNode(javascript()->CallFunction(4), function,
-                                    UndefinedConstant(), p0, p1, context,
-                                    frame_state, frame_state, effect, control);
-      Reduction r = Reduce(call);
+  TRACED_FOREACH(LanguageMode, language_mode, kLanguageModes) {
+    TRACED_FOREACH(Type*, t0, kIntegral32Types) {
+      TRACED_FOREACH(Type*, t1, kIntegral32Types) {
+        Node* p0 = Parameter(t0, 0);
+        Node* p1 = Parameter(t1, 1);
+        Node* call =
+            graph()->NewNode(javascript()->CallFunction(4, language_mode),
+                             function, UndefinedConstant(), p0, p1, context,
+                             frame_state, frame_state, effect, control);
+        Reduction r = Reduce(call);
 
-      ASSERT_TRUE(r.Changed());
-      EXPECT_THAT(r.replacement(), IsInt32Mul(p0, p1));
+        ASSERT_TRUE(r.Changed());
+        EXPECT_THAT(r.replacement(), IsInt32Mul(p0, p1));
+      }
     }
   }
 }
@@ -176,15 +192,18 @@ TEST_F(JSBuiltinReducerTest, MathFround) {
   Node* control = graph()->start();
   Node* context = UndefinedConstant();
   Node* frame_state = graph()->start();
-  TRACED_FOREACH(Type*, t0, kNumberTypes) {
-    Node* p0 = Parameter(t0, 0);
-    Node* call = graph()->NewNode(javascript()->CallFunction(3), function,
-                                  UndefinedConstant(), p0, context, frame_state,
-                                  frame_state, effect, control);
-    Reduction r = Reduce(call);
+  TRACED_FOREACH(LanguageMode, language_mode, kLanguageModes) {
+    TRACED_FOREACH(Type*, t0, kNumberTypes) {
+      Node* p0 = Parameter(t0, 0);
+      Node* call =
+          graph()->NewNode(javascript()->CallFunction(3, language_mode),
+                           function, UndefinedConstant(), p0, context,
+                           frame_state, frame_state, effect, control);
+      Reduction r = Reduce(call);
 
-    ASSERT_TRUE(r.Changed());
-    EXPECT_THAT(r.replacement(), IsTruncateFloat64ToFloat32(p0));
+      ASSERT_TRUE(r.Changed());
+      EXPECT_THAT(r.replacement(), IsTruncateFloat64ToFloat32(p0));
+    }
   }
 }
 

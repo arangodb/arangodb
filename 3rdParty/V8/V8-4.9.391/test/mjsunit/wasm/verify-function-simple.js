@@ -9,11 +9,14 @@ load("test/mjsunit/wasm/wasm-constants.js");
 try {
   var data = bytes(
       0,       kAstStmt,  // signature
-      kDeclNoLocals,      // --
+      3,       0,         // local int32 count
+      4,       0,         // local int64 count
+      5,       0,         // local float32 count
+      6,       0,         // local float64 count
       kExprNop            // body
   );
 
-  Wasm.verifyFunction(data);
+  _WASMEXP_.verifyFunction(data);
   print("ok");
 } catch (e) {
   assertTrue(false);
@@ -24,11 +27,14 @@ var threw = false;
 try {
   var data = bytes(
       0,       kAstI32,   // signature
-      kDeclNoLocals,      // --
+      2,       0,         // local int32 count
+      3,       0,         // local int64 count
+      4,       0,         // local float32 count
+      5,       0,         // local float64 count
       kExprBlock, 2, kExprNop, kExprNop  // body
   );
 
-  Wasm.verifyFunction(data);
+  _WASMEXP_.verifyFunction(data);
   print("not ok");
 } catch (e) {
   print("ok: " + e);

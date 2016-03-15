@@ -39,8 +39,7 @@ void Utf16CharacterStream::ResetToBookmark() { UNREACHABLE(); }
 Scanner::Scanner(UnicodeCache* unicode_cache)
     : unicode_cache_(unicode_cache),
       bookmark_c0_(kNoBookmark),
-      octal_pos_(Location::invalid()),
-      found_html_comment_(false) {
+      octal_pos_(Location::invalid()) {
   bookmark_current_.literal_chars = &bookmark_current_literal_;
   bookmark_current_.raw_literal_chars = &bookmark_current_raw_literal_;
   bookmark_next_.literal_chars = &bookmark_next_literal_;
@@ -357,7 +356,7 @@ Token::Value Scanner::SkipSourceURLComment() {
 
 
 void Scanner::TryToParseSourceURLComment() {
-  // Magic comments are of the form: //[#@]\s<name>=\s*<value>\s*.* and this
+  // Magic comments are of the form: //[#]\s<name>=\s*<value>\s*.* and this
   // function will just return if it cannot parse a magic comment.
   if (c0_ < 0 || !unicode_cache_->IsWhiteSpace(c0_)) return;
   Advance();
@@ -439,10 +438,7 @@ Token::Value Scanner::ScanHtmlComment() {
   Advance();
   if (c0_ == '-') {
     Advance();
-    if (c0_ == '-') {
-      found_html_comment_ = true;
-      return SkipSingleLineComment();
-    }
+    if (c0_ == '-') return SkipSingleLineComment();
     PushBack('-');  // undo Advance()
   }
   PushBack('!');  // undo Advance()
@@ -578,7 +574,7 @@ void Scanner::Scan() {
         Advance();
         if (c0_ == '/') {
           Advance();
-          if (c0_ == '#' || c0_ == '@') {
+          if (c0_ == '#') {
             Advance();
             token = SkipSourceURLComment();
           } else {
@@ -1210,9 +1206,7 @@ static Token::Value KeywordOrIdentifierToken(const uint8_t* input,
         (keyword_length <= 8 || input[8] == keyword[8]) &&          \
         (keyword_length <= 9 || input[9] == keyword[9])) {          \
       if (escaped) {                                                \
-        /* TODO(adamk): YIELD should be handled specially. */       \
-        return (token == Token::FUTURE_STRICT_RESERVED_WORD ||      \
-                token == Token::LET || token == Token::STATIC)      \
+        return token == Token::FUTURE_STRICT_RESERVED_WORD          \
                    ? Token::ESCAPED_STRICT_RESERVED_WORD            \
                    : Token::ESCAPED_KEYWORD;                        \
       }                                                             \

@@ -46,15 +46,26 @@ const LocalType kAstF64 = MachineRepresentation::kFloat64;
 // We use kTagged here because kNone is already used by kAstStmt.
 const LocalType kAstEnd = MachineRepresentation::kTagged;
 
-typedef Signature<LocalType> FunctionSig;
-std::ostream& operator<<(std::ostream& os, const FunctionSig& function);
+// Functionality related to encoding memory accesses.
+struct MemoryAccess {
+  // Atomicity annotations for access to the memory and globals.
+  enum Atomicity {
+    kNone = 0,        // non-atomic
+    kSequential = 1,  // sequential consistency
+    kAcquire = 2,     // acquire semantics
+    kRelease = 3      // release semantics
+  };
 
-struct WasmName {
-  const char* name;
-  uint32_t length;
+  // Alignment annotations for memory accesses.
+  enum Alignment { kAligned = 0, kUnaligned = 1 };
+
+  // Bitfields for the various annotations for memory accesses.
+  typedef BitField<Alignment, 7, 1> AlignmentField;
+  typedef BitField<Atomicity, 5, 2> AtomicityField;
+  typedef BitField<bool, 4, 1> OffsetField;
 };
 
-// TODO(titzer): Renumber all the opcodes to fill in holes.
+typedef Signature<LocalType> FunctionSig;
 
 // Control expressions and blocks.
 #define FOREACH_CONTROL_OPCODE(V) \
@@ -66,9 +77,10 @@ struct WasmName {
   V(Select, 0x05, _)              \
   V(Br, 0x06, _)                  \
   V(BrIf, 0x07, _)                \
-  V(BrTable, 0x08, _)             \
+  V(TableSwitch, 0x08, _)         \
   V(Return, 0x14, _)              \
   V(Unreachable, 0x15, _)
+// TODO(titzer): numbering
 
 // Constants, locals, globals, and calls.
 #define FOREACH_MISC_OPCODE(V) \
@@ -82,9 +94,7 @@ struct WasmName {
   V(LoadGlobal, 0x10, _)       \
   V(StoreGlobal, 0x11, _)      \
   V(CallFunction, 0x12, _)     \
-  V(CallIndirect, 0x13, _)     \
-  V(CallImport, 0x1F, _)       \
-  V(DeclLocals, 0x1E, _)
+  V(CallIndirect, 0x13, _)
 
 // Load memory expressions.
 #define FOREACH_LOAD_MEM_OPCODE(V) \
@@ -148,7 +158,7 @@ struct WasmName {
   V(I32Clz, 0x57, i_i)            \
   V(I32Ctz, 0x58, i_i)            \
   V(I32Popcnt, 0x59, i_i)         \
-  V(I32Eqz, 0x5a, i_i)            \
+  V(BoolNot, 0x5a, i_i)           \
   V(I64Add, 0x5b, l_ll)           \
   V(I64Sub, 0x5c, l_ll)           \
   V(I64Mul, 0x5d, l_ll)           \
@@ -175,7 +185,6 @@ struct WasmName {
   V(I64Clz, 0x72, l_l)            \
   V(I64Ctz, 0x73, l_l)            \
   V(I64Popcnt, 0x74, l_l)         \
-  V(I64Eqz, 0xba, i_l)            \
   V(F32Add, 0x75, f_ff)           \
   V(F32Sub, 0x76, f_ff)           \
   V(F32Mul, 0x77, f_ff)           \
@@ -240,25 +249,7 @@ struct WasmName {
   V(F64ConvertF32, 0xb2, d_f)     \
   V(F64ReinterpretI64, 0xb3, d_l) \
   V(I32ReinterpretF32, 0xb4, i_f) \
-  V(I64ReinterpretF64, 0xb5, l_d) \
-  V(I32Ror, 0xb6, i_ii)           \
-  V(I32Rol, 0xb7, i_ii)           \
-  V(I64Ror, 0xb8, l_ll)           \
-  V(I64Rol, 0xb9, l_ll)
-
-// For compatibility with Asm.js.
-#define FOREACH_ASMJS_COMPAT_OPCODE(V) \
-  V(F64Acos, 0xc0, d_d)                \
-  V(F64Asin, 0xc1, d_d)                \
-  V(F64Atan, 0xc2, d_d)                \
-  V(F64Cos, 0xc3, d_d)                 \
-  V(F64Sin, 0xc4, d_d)                 \
-  V(F64Tan, 0xc5, d_d)                 \
-  V(F64Exp, 0xc6, d_d)                 \
-  V(F64Log, 0xc7, d_d)                 \
-  V(F64Atan2, 0xc8, d_dd)              \
-  V(F64Pow, 0xc9, d_dd)                \
-  V(F64Mod, 0xca, d_dd)
+  V(I64ReinterpretF64, 0xb5, l_d)
 
 // All opcodes.
 #define FOREACH_OPCODE(V)     \
@@ -267,8 +258,7 @@ struct WasmName {
   FOREACH_SIMPLE_OPCODE(V)    \
   FOREACH_STORE_MEM_OPCODE(V) \
   FOREACH_LOAD_MEM_OPCODE(V)  \
-  FOREACH_MISC_MEM_OPCODE(V)  \
-  FOREACH_ASMJS_COMPAT_OPCODE(V)
+  FOREACH_MISC_MEM_OPCODE(V)
 
 // All signatures.
 #define FOREACH_SIGNATURE(V)         \
@@ -408,6 +398,7 @@ class WasmOpcodes {
     }
   }
 
+  // TODO(titzer): remove this method
   static WasmOpcode LoadStoreOpcodeOf(MachineType type, bool store) {
     if (type == MachineType::Int8()) {
       return store ? kExprI32StoreMem8 : kExprI32LoadMem8S;
@@ -433,6 +424,10 @@ class WasmOpcodes {
       UNREACHABLE();
       return kExprNop;
     }
+  }
+
+  static byte LoadStoreAccessOf(bool with_offset) {
+    return MemoryAccess::OffsetField::encode(with_offset);
   }
 
   static char ShortNameOf(LocalType type) {

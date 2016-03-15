@@ -179,6 +179,8 @@ function PostNatives(utils) {
     "MapEntries",
     "MapIterator",
     "MapIteratorNext",
+    "MathMax",
+    "MathMin",
     "MaxSimple",
     "MinSimple",
     "ObjectDefineProperty",
@@ -187,6 +189,7 @@ function PostNatives(utils) {
     "PromiseChain",
     "PromiseDeferred",
     "PromiseResolved",
+    "SameValueZero",
     "SetIterator",
     "SetIteratorNext",
     "SetValues",
@@ -323,14 +326,14 @@ extrasUtils.createPrivateSymbol = function createPrivateSymbol(name) {
 // indirection and slowness given how un-optimized bind is.
 
 extrasUtils.simpleBind = function simpleBind(func, thisArg) {
-  return function(...args) {
-    return %reflect_apply(func, thisArg, args);
+  return function() {
+    return %Apply(func, thisArg, arguments, 0, arguments.length);
   };
 };
 
 extrasUtils.uncurryThis = function uncurryThis(func) {
-  return function(thisArg, ...args) {
-    return %reflect_apply(func, thisArg, args);
+  return function(thisArg) {
+    return %Apply(func, thisArg, arguments, 1, arguments.length - 1);
   };
 };
 

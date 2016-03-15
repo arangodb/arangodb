@@ -21,36 +21,37 @@ TEST(SimpleCall) {
 
 TEST(SimpleCall2) {
   FunctionTester T("(function(foo,a) { return foo(a); })");
-  FunctionTester U("(function(a) { return a; })");
+  Handle<JSFunction> foo = T.NewFunction("(function(a) { return a; })");
+  T.Compile(foo);
 
-  T.CheckCall(T.Val(3), U.function, T.Val(3));
-  T.CheckCall(T.Val(3.1), U.function, T.Val(3.1));
-  T.CheckCall(U.function, U.function, U.function);
-  T.CheckCall(T.Val("Abba"), U.function, T.Val("Abba"));
+  T.CheckCall(T.Val(3), foo, T.Val(3));
+  T.CheckCall(T.Val(3.1), foo, T.Val(3.1));
+  T.CheckCall(foo, foo, foo);
+  T.CheckCall(T.Val("Abba"), foo, T.Val("Abba"));
 }
 
 
 TEST(ConstCall) {
   FunctionTester T("(function(foo,a) { return foo(a,3); })");
-  FunctionTester U("(function(a,b) { return a + b; })");
+  Handle<JSFunction> foo = T.NewFunction("(function(a,b) { return a + b; })");
+  T.Compile(foo);
 
-  T.CheckCall(T.Val(6), U.function, T.Val(3));
-  T.CheckCall(T.Val(6.1), U.function, T.Val(3.1));
-  T.CheckCall(T.Val("function (a,b) { return a + b; }3"), U.function,
-              U.function);
-  T.CheckCall(T.Val("Abba3"), U.function, T.Val("Abba"));
+  T.CheckCall(T.Val(6), foo, T.Val(3));
+  T.CheckCall(T.Val(6.1), foo, T.Val(3.1));
+  T.CheckCall(T.Val("function (a,b) { return a + b; }3"), foo, foo);
+  T.CheckCall(T.Val("Abba3"), foo, T.Val("Abba"));
 }
 
 
 TEST(ConstCall2) {
   FunctionTester T("(function(foo,a) { return foo(a,\"3\"); })");
-  FunctionTester U("(function(a,b) { return a + b; })");
+  Handle<JSFunction> foo = T.NewFunction("(function(a,b) { return a + b; })");
+  T.Compile(foo);
 
-  T.CheckCall(T.Val("33"), U.function, T.Val(3));
-  T.CheckCall(T.Val("3.13"), U.function, T.Val(3.1));
-  T.CheckCall(T.Val("function (a,b) { return a + b; }3"), U.function,
-              U.function);
-  T.CheckCall(T.Val("Abba3"), U.function, T.Val("Abba"));
+  T.CheckCall(T.Val("33"), foo, T.Val(3));
+  T.CheckCall(T.Val("3.13"), foo, T.Val(3.1));
+  T.CheckCall(T.Val("function (a,b) { return a + b; }3"), foo, foo);
+  T.CheckCall(T.Val("Abba3"), foo, T.Val("Abba"));
 }
 
 
@@ -129,18 +130,13 @@ TEST(ConstructorCall) {
 }
 
 
-TEST(RuntimeCall) {
+// TODO(titzer): factor these out into test-runtime-calls.cc
+TEST(RuntimeCallCPP2) {
   FLAG_allow_natives_syntax = true;
-  FunctionTester T("(function(a) { return %IsJSReceiver(a); })");
+  FunctionTester T("(function(a,b) { return %NumberImul(a, b); })");
 
-  T.CheckCall(T.false_value(), T.Val(23), T.undefined());
-  T.CheckCall(T.false_value(), T.Val(4.2), T.undefined());
-  T.CheckCall(T.false_value(), T.Val("str"), T.undefined());
-  T.CheckCall(T.false_value(), T.true_value(), T.undefined());
-  T.CheckCall(T.false_value(), T.false_value(), T.undefined());
-  T.CheckCall(T.false_value(), T.undefined(), T.undefined());
-  T.CheckCall(T.true_value(), T.NewObject("({})"), T.undefined());
-  T.CheckCall(T.true_value(), T.NewObject("([])"), T.undefined());
+  T.CheckCall(T.Val(2730), T.Val(42), T.Val(65));
+  T.CheckCall(T.Val(798), T.Val(42), T.Val(19));
 }
 
 

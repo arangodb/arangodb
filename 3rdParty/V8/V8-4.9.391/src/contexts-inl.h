@@ -33,8 +33,7 @@ void ScriptContextTable::set_used(int used) {
 Handle<Context> ScriptContextTable::GetContext(Handle<ScriptContextTable> table,
                                                int i) {
   DCHECK(i < table->used());
-  return Handle<Context>::cast(
-      FixedArray::get(*table, i + kFirstContextSlot, table->GetIsolate()));
+  return Handle<Context>::cast(FixedArray::get(table, i + kFirstContextSlot));
 }
 
 

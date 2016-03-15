@@ -21,13 +21,10 @@ int InstructionScheduler::GetTargetInstructionFlags(
     case kPPC_Xor:
     case kPPC_ShiftLeft32:
     case kPPC_ShiftLeft64:
-    case kPPC_ShiftLeftPair:
     case kPPC_ShiftRight32:
     case kPPC_ShiftRight64:
-    case kPPC_ShiftRightPair:
     case kPPC_ShiftRightAlg32:
     case kPPC_ShiftRightAlg64:
-    case kPPC_ShiftRightAlgPair:
     case kPPC_RotRight32:
     case kPPC_RotRight64:
     case kPPC_Not:
@@ -84,9 +81,7 @@ int InstructionScheduler::GetTargetInstructionFlags(
     case kPPC_Int64ToDouble:
     case kPPC_Uint64ToFloat32:
     case kPPC_Uint64ToDouble:
-    case kPPC_Int32ToFloat32:
     case kPPC_Int32ToDouble:
-    case kPPC_Uint32ToFloat32:
     case kPPC_Uint32ToDouble:
     case kPPC_Float32ToDouble:
     case kPPC_DoubleToInt32:

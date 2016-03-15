@@ -28,7 +28,6 @@
 
 import collections
 import os
-import re
 import shutil
 import sys
 import time
@@ -39,7 +38,6 @@ from . import perfdata
 from . import statusfile
 from . import testsuite
 from . import utils
-from ..objects import output
 
 
 # Base dir of the v8 checkout.
@@ -49,8 +47,9 @@ TEST_DIR = os.path.join(BASE_DIR, "test")
 
 
 class Instructions(object):
-  def __init__(self, command, test_id, timeout, verbose):
+  def __init__(self, command, dep_command, test_id, timeout, verbose):
     self.command = command
+    self.dep_command = dep_command
     self.id = test_id
     self.timeout = timeout
     self.verbose = verbose
@@ -83,7 +82,7 @@ def MakeProcessContext(context):
 
 def GetCommand(test, context):
   d8testflag = []
-  shell = test.shell()
+  shell = test.suite.shell()
   if shell == "d8":
     d8testflag = ["--test"]
   if utils.IsWindows():
@@ -111,7 +110,12 @@ def _GetInstructions(test, context):
   # the like.
   if statusfile.IsSlow(test.outcomes or [statusfile.PASS]):
     timeout *= 2
-  return Instructions(command, test.id, timeout, context.verbose)
+  if test.dependency is not None:
+    dep_command = [ c.replace(test.path, test.dependency) for c in command ]
+  else:
+    dep_command = None
+  return Instructions(
+      command, dep_command, test.id, timeout, context.verbose)
 
 
 class Job(object):
@@ -130,52 +134,27 @@ class Job(object):
     raise NotImplementedError()
 
 
-def SetupProblem(exception, test):
-  stderr = ">>> EXCEPTION: %s\n" % exception
-  match = re.match(r"^.*No such file or directory: '(.*)'$", str(exception))
-  if match:
-    # Extra debuging information when files are claimed missing.
-    f = match.group(1)
-    stderr += ">>> File %s exists? -> %s\n" % (f, os.path.exists(f))
-  return test.id, output.Output(1, False, "", stderr), 0
-
-
 class TestJob(Job):
   def __init__(self, test):
     self.test = test
 
-  def _rename_coverage_data(self, output, context):
-    """Rename coverage data.
-
-    Rename files with PIDs to files with unique test IDs, because the number
-    of tests might be higher than pid_max. E.g.:
-    d8.1234.sancov -> d8.test.1.sancov, where 1234 was the process' PID
-    and 1 is the test ID.
-    """
-    if context.sancov_dir:
-      sancov_file = os.path.join(
-          context.sancov_dir, "%s.%d.sancov" % (self.test.shell(), output.pid))
-
-      # Some tests are expected to fail and don't produce coverage data.
-      if os.path.exists(sancov_file):
-        parts = sancov_file.split(".")
-        new_sancov_file = ".".join(
-            parts[:-2] + ["test", str(self.test.id)] + parts[-1:])
-        assert not os.path.exists(new_sancov_file)
-        os.rename(sancov_file, new_sancov_file)
-
   def Run(self, process_context):
-    try:
-      # Retrieve a new suite object on the worker-process side. The original
-      # suite object isn't pickled.
-      self.test.SetSuiteObject(process_context.suites)
-      instr = _GetInstructions(self.test, process_context.context)
-    except Exception, e:
-      return SetupProblem(e, self.test)
+    # Retrieve a new suite object on the worker-process side. The original
+    # suite object isn't pickled.
+    self.test.SetSuiteObject(process_context.suites)
+    instr = _GetInstructions(self.test, process_context.context)
 
     start_time = time.time()
+    if instr.dep_command is not None:
+      dep_output = commands.Execute(
+          instr.dep_command, instr.verbose, instr.timeout)
+      # TODO(jkummerow): We approximate the test suite specific function
+      # IsFailureOutput() by just checking the exit code here. Currently
+      # only cctests define dependencies, for which this simplification is
+      # correct.
+      if dep_output.exit_code != 0:
+        return (instr.id, dep_output, time.time() - start_time)
     output = commands.Execute(instr.command, instr.verbose, instr.timeout)
-    self._rename_coverage_data(output, process_context.context)
     return (instr.id, output, time.time() - start_time)
 
 

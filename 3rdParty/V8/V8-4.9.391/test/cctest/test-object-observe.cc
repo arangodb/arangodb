@@ -491,17 +491,16 @@ TEST(ObservationWeakMap) {
   i::Isolate* i_isolate = CcTest::i_isolate();
   i::Handle<i::JSObject> observation_state =
       i_isolate->factory()->observation_state();
-  i::Handle<i::JSWeakMap> callbackInfoMap = i::Handle<i::JSWeakMap>::cast(
-      i::JSReceiver::GetProperty(i_isolate, observation_state,
-                                 "callbackInfoMap")
-          .ToHandleChecked());
-  i::Handle<i::JSWeakMap> objectInfoMap = i::Handle<i::JSWeakMap>::cast(
-      i::JSReceiver::GetProperty(i_isolate, observation_state, "objectInfoMap")
-          .ToHandleChecked());
-  i::Handle<i::JSWeakMap> notifierObjectInfoMap = i::Handle<i::JSWeakMap>::cast(
-      i::JSReceiver::GetProperty(i_isolate, observation_state,
-                                 "notifierObjectInfoMap")
-          .ToHandleChecked());
+  i::Handle<i::JSWeakMap> callbackInfoMap =
+      i::Handle<i::JSWeakMap>::cast(i::Object::GetProperty(
+          i_isolate, observation_state, "callbackInfoMap").ToHandleChecked());
+  i::Handle<i::JSWeakMap> objectInfoMap =
+      i::Handle<i::JSWeakMap>::cast(i::Object::GetProperty(
+          i_isolate, observation_state, "objectInfoMap").ToHandleChecked());
+  i::Handle<i::JSWeakMap> notifierObjectInfoMap =
+      i::Handle<i::JSWeakMap>::cast(i::Object::GetProperty(
+          i_isolate, observation_state, "notifierObjectInfoMap")
+              .ToHandleChecked());
   CHECK_EQ(1, NumberOfElements(callbackInfoMap));
   CHECK_EQ(1, NumberOfElements(objectInfoMap));
   CHECK_EQ(1, NumberOfElements(notifierObjectInfoMap));
@@ -1027,9 +1026,9 @@ TEST(UseCountObjectGetNotifier) {
   CHECK_EQ(1, use_counts[v8::Isolate::kObjectObserve]);
 }
 
+
 static bool NamedAccessCheckAlwaysAllow(Local<v8::Context> accessing_context,
-                                        Local<v8::Object> accessed_object,
-                                        Local<v8::Value> data) {
+                                        Local<v8::Object> accessed_object) {
   return true;
 }
 

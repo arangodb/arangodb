@@ -16,7 +16,6 @@
 #include "src/flags.h"
 #include "src/frames.h"
 #include "src/hashmap.h"
-#include "src/interpreter/source-position-table.h"
 #include "src/runtime/runtime.h"
 #include "src/string-stream.h"
 #include "src/v8threads.h"
@@ -65,28 +64,24 @@ class BreakLocation {
  public:
   // Find the break point at the supplied address, or the closest one before
   // the address.
-  static BreakLocation FromCodeOffset(Handle<DebugInfo> debug_info, int offset);
+  static BreakLocation FromAddress(Handle<DebugInfo> debug_info, Address pc);
 
-  static BreakLocation FromFrame(Handle<DebugInfo> debug_info,
-                                 JavaScriptFrame* frame);
-
-  static void AllForStatementPosition(Handle<DebugInfo> debug_info,
-                                      int statement_position,
-                                      List<BreakLocation>* result_out);
+  static void FromAddressSameStatement(Handle<DebugInfo> debug_info, Address pc,
+                                       List<BreakLocation>* result_out);
 
   static BreakLocation FromPosition(Handle<DebugInfo> debug_info, int position,
                                     BreakPositionAlignment alignment);
 
   bool IsDebugBreak() const;
 
-  inline bool IsReturn() const { return type_ == DEBUG_BREAK_SLOT_AT_RETURN; }
-  inline bool IsCall() const { return type_ == DEBUG_BREAK_SLOT_AT_CALL; }
-  inline bool IsDebugBreakSlot() const { return type_ >= DEBUG_BREAK_SLOT; }
-  inline bool IsDebuggerStatement() const {
-    return type_ == DEBUGGER_STATEMENT;
+  inline bool IsReturn() const {
+    return RelocInfo::IsDebugBreakSlotAtReturn(rmode_);
+  }
+  inline bool IsCall() const {
+    return RelocInfo::IsDebugBreakSlotAtCall(rmode_);
   }
   inline bool HasBreakPoint() const {
-    return debug_info_->HasBreakPoint(code_offset_);
+    return debug_info_->HasBreakPoint(pc_offset_);
   }
 
   Handle<Object> BreakPointObjects() const;
@@ -97,119 +92,79 @@ class BreakLocation {
   void SetOneShot();
   void ClearOneShot();
 
+
+  inline RelocInfo rinfo() const {
+    return RelocInfo(debug_info_->GetIsolate(), pc(), rmode(), data_, code());
+  }
+
   inline int position() const { return position_; }
   inline int statement_position() const { return statement_position_; }
 
-  inline int code_offset() const { return code_offset_; }
-  inline Isolate* isolate() { return debug_info_->GetIsolate(); }
+  inline Address pc() const { return code()->entry() + pc_offset_; }
 
-  inline AbstractCode* abstract_code() const {
-    return debug_info_->abstract_code();
-  }
+  inline RelocInfo::Mode rmode() const { return rmode_; }
 
- protected:
-  enum DebugBreakType {
-    NOT_DEBUG_BREAK,
-    DEBUGGER_STATEMENT,
-    DEBUG_BREAK_SLOT,
-    DEBUG_BREAK_SLOT_AT_CALL,
-    DEBUG_BREAK_SLOT_AT_RETURN
-  };
+  inline Code* code() const { return debug_info_->code(); }
 
-  BreakLocation(Handle<DebugInfo> debug_info, DebugBreakType type,
-                int code_offset, int position, int statement_position);
+ private:
+  BreakLocation(Handle<DebugInfo> debug_info, RelocInfo* rinfo, int position,
+                int statement_position);
 
   class Iterator {
    public:
-    virtual ~Iterator() {}
+    Iterator(Handle<DebugInfo> debug_info, BreakLocatorType type);
 
-    virtual BreakLocation GetBreakLocation() = 0;
-    virtual bool Done() const = 0;
-    virtual void Next() = 0;
+    BreakLocation GetBreakLocation() {
+      return BreakLocation(debug_info_, rinfo(), position(),
+                           statement_position());
+    }
+
+    inline bool Done() const { return reloc_iterator_.done(); }
+    void Next();
 
     void SkipTo(int count) {
       while (count-- > 0) Next();
     }
 
-    virtual int code_offset() = 0;
+    inline RelocInfo::Mode rmode() { return reloc_iterator_.rinfo()->rmode(); }
+    inline RelocInfo* rinfo() { return reloc_iterator_.rinfo(); }
+    inline Address pc() { return rinfo()->pc(); }
     int break_index() const { return break_index_; }
     inline int position() const { return position_; }
     inline int statement_position() const { return statement_position_; }
 
-   protected:
-    explicit Iterator(Handle<DebugInfo> debug_info);
-    int ReturnPosition();
+   private:
+    static int GetModeMask(BreakLocatorType type);
 
     Handle<DebugInfo> debug_info_;
+    RelocIterator reloc_iterator_;
     int break_index_;
     int position_;
     int statement_position_;
 
-   private:
     DisallowHeapAllocation no_gc_;
+
     DISALLOW_COPY_AND_ASSIGN(Iterator);
   };
 
-  class CodeIterator : public Iterator {
-   public:
-    CodeIterator(Handle<DebugInfo> debug_info, BreakLocatorType type);
-    ~CodeIterator() override {}
-
-    BreakLocation GetBreakLocation() override;
-    bool Done() const override { return reloc_iterator_.done(); }
-    void Next() override;
-
-    int code_offset() override {
-      return static_cast<int>(
-          rinfo()->pc() -
-          debug_info_->abstract_code()->GetCode()->instruction_start());
-    }
-
-   private:
-    static int GetModeMask(BreakLocatorType type);
-    RelocInfo::Mode rmode() { return reloc_iterator_.rinfo()->rmode(); }
-    RelocInfo* rinfo() { return reloc_iterator_.rinfo(); }
-
-    RelocIterator reloc_iterator_;
-    DISALLOW_COPY_AND_ASSIGN(CodeIterator);
-  };
-
-  class BytecodeArrayIterator : public Iterator {
-   public:
-    BytecodeArrayIterator(Handle<DebugInfo> debug_info, BreakLocatorType type);
-    ~BytecodeArrayIterator() override {}
-
-    BreakLocation GetBreakLocation() override;
-    bool Done() const override { return source_position_iterator_.done(); }
-    void Next() override;
-
-    int code_offset() override {
-      return source_position_iterator_.bytecode_offset();
-    }
-
-   private:
-    DebugBreakType GetDebugBreakType();
-
-    interpreter::SourcePositionTableIterator source_position_iterator_;
-    BreakLocatorType break_locator_type_;
-    int start_position_;
-    DISALLOW_COPY_AND_ASSIGN(BytecodeArrayIterator);
-  };
-
-  static Iterator* GetIterator(Handle<DebugInfo> debug_info,
-                               BreakLocatorType type = ALL_BREAK_LOCATIONS);
-
- private:
   friend class Debug;
 
-  static int BreakIndexFromCodeOffset(Handle<DebugInfo> debug_info, int offset);
+  static int BreakIndexFromAddress(Handle<DebugInfo> debug_info, Address pc);
 
   void SetDebugBreak();
   void ClearDebugBreak();
 
+  inline bool IsDebuggerStatement() const {
+    return RelocInfo::IsDebuggerStatement(rmode_);
+  }
+  inline bool IsDebugBreakSlot() const {
+    return RelocInfo::IsDebugBreakSlot(rmode_);
+  }
+
   Handle<DebugInfo> debug_info_;
-  int code_offset_;
-  DebugBreakType type_;
+  int pc_offset_;
+  RelocInfo::Mode rmode_;
+  intptr_t data_;
   int position_;
   int statement_position_;
 };
@@ -428,7 +383,7 @@ class Debug {
   // Internal logic
   bool Load();
   void Break(Arguments args, JavaScriptFrame*);
-  Object* SetAfterBreakTarget(JavaScriptFrame* frame);
+  void SetAfterBreakTarget(JavaScriptFrame* frame);
 
   // Scripts handling.
   Handle<FixedArray> GetLoadedScripts();
@@ -455,6 +410,9 @@ class Debug {
   void ClearStepping();
   void ClearStepOut();
   void EnableStepIn();
+
+  void GetStepinPositions(JavaScriptFrame* frame, StackFrame::Id frame_id,
+                          List<int>* results_out);
 
   bool PrepareFunctionForBreakPoints(Handle<SharedFunctionInfo> shared);
 
@@ -519,7 +477,6 @@ class Debug {
     return !!base::NoBarrier_Load(&thread_local_.current_debug_scope_);
   }
   void set_break_points_active(bool v) { break_points_active_ = v; }
-  bool break_points_active() const { return break_points_active_; }
 
   StackFrame::Id break_frame_id() { return thread_local_.break_frame_id_; }
   int break_id() { return thread_local_.break_id_; }
@@ -597,9 +554,7 @@ class Debug {
   void ClearOneShot();
   void ActivateStepOut(StackFrame* frame);
   void RemoveDebugInfoAndClearFromShared(Handle<DebugInfo> debug_info);
-  Handle<Object> CheckBreakPoints(BreakLocation* location,
-                                  bool* has_break_points = nullptr);
-  bool IsMutedAtCurrentLocation(JavaScriptFrame* frame);
+  Handle<Object> CheckBreakPoints(Handle<Object> break_point);
   bool CheckBreakPoint(Handle<Object> break_point_object);
   MaybeHandle<Object> CallFunction(const char* name, int argc,
                                    Handle<Object> args[]);
@@ -610,8 +565,6 @@ class Debug {
   }
 
   void ThreadInit();
-
-  void PrintBreakLocation();
 
   // Global handles.
   Handle<Context> debug_context_;
@@ -785,7 +738,6 @@ class DebugCodegen : public AllStatic {
 
   static void PatchDebugBreakSlot(Isolate* isolate, Address pc,
                                   Handle<Code> code);
-  static bool DebugBreakSlotIsPatched(Address pc);
   static void ClearDebugBreakSlot(Isolate* isolate, Address pc);
 };
 

@@ -271,12 +271,24 @@ class RecordWriteStub: public PlatformCodeStub {
     // registers are eax, ecx and edx.  The three scratch registers (incl. ecx)
     // will be restored by other means so we don't bother pushing them here.
     void SaveCallerSaveRegisters(MacroAssembler* masm, SaveFPRegsMode mode) {
-      masm->PushCallerSaved(mode, ecx, scratch0_, scratch1_);
+      if (!scratch0_.is(eax) && !scratch1_.is(eax)) masm->push(eax);
+      if (!scratch0_.is(edx) && !scratch1_.is(edx)) masm->push(edx);
+      if (mode == kSaveFPRegs) {
+        // Save FPU state in m108byte.
+        masm->sub(esp, Immediate(108));
+        masm->fnsave(Operand(esp, 0));
+      }
     }
 
     inline void RestoreCallerSaveRegisters(MacroAssembler* masm,
                                            SaveFPRegsMode mode) {
-      masm->PopCallerSaved(mode, ecx, scratch0_, scratch1_);
+      if (mode == kSaveFPRegs) {
+        // Restore FPU state in m108byte.
+        masm->frstor(Operand(esp, 0));
+        masm->add(esp, Immediate(108));
+      }
+      if (!scratch0_.is(edx) && !scratch1_.is(edx)) masm->pop(edx);
+      if (!scratch0_.is(eax) && !scratch1_.is(eax)) masm->pop(eax);
     }
 
     inline Register object() { return object_; }

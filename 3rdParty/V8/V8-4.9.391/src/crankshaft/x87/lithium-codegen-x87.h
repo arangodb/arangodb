@@ -31,6 +31,8 @@ class LCodeGen: public LCodeGenBase {
         jump_table_(4, info->zone()),
         scope_(info->scope()),
         deferred_(8, info->zone()),
+        dynamic_frame_alignment_(false),
+        support_aligned_spilled_doubles_(false),
         frame_is_built_(false),
         x87_stack_(assembler),
         safepoints_(info->zone()),
@@ -48,8 +50,10 @@ class LCodeGen: public LCodeGenBase {
   }
 
   bool NeedsEagerFrame() const {
-    return HasAllocatedStackSlots() || info()->is_non_deferred_calling() ||
-           !info()->IsStub() || info()->requires_frame();
+    return GetStackSlotCount() > 0 ||
+        info()->is_non_deferred_calling() ||
+        !info()->IsStub() ||
+        info()->requires_frame();
   }
   bool NeedsDeferredFrame() const {
     return !NeedsEagerFrame() && info()->is_deferred_calling();
@@ -161,13 +165,7 @@ class LCodeGen: public LCodeGenBase {
                        Register temporary,
                        Register temporary2);
 
-  bool HasAllocatedStackSlots() const {
-    return chunk()->HasAllocatedStackSlots();
-  }
-  int GetStackSlotCount() const { return chunk()->GetSpillSlotCount(); }
-  int GetTotalFrameSlotCount() const {
-    return chunk()->GetTotalFrameSlotCount();
-  }
+  int GetStackSlotCount() const { return chunk()->spill_slot_count(); }
 
   void AddDeferredCode(LDeferredCode* code) { deferred_.Add(code, zone()); }
 
@@ -219,14 +217,11 @@ class LCodeGen: public LCodeGenBase {
 
   void LoadContextFromDeferred(LOperand* context);
 
-  void PrepareForTailCall(const ParameterCount& actual, Register scratch1,
-                          Register scratch2, Register scratch3);
-
-  // Generate a direct call to a known function. Expects the function
+  // Generate a direct call to a known function.  Expects the function
   // to be in edi.
   void CallKnownFunction(Handle<JSFunction> function,
                          int formal_parameter_count, int arity,
-                         bool is_tail_call, LInstruction* instr);
+                         LInstruction* instr);
 
   void RecordSafepointWithLazyDeopt(LInstruction* instr,
                                     SafepointMode safepoint_mode);
@@ -330,7 +325,7 @@ class LCodeGen: public LCodeGenBase {
   template <class T>
   void EmitVectorStoreICRegisters(T* instr);
 
-  void EmitReturn(LReturn* instr);
+  void EmitReturn(LReturn* instr, bool dynamic_frame_alignment);
 
   // Emits code for pushing either a tagged constant, a (non-double)
   // register, or a stack slot operand.
@@ -355,6 +350,8 @@ class LCodeGen: public LCodeGenBase {
   ZoneList<Deoptimizer::JumpTableEntry> jump_table_;
   Scope* const scope_;
   ZoneList<LDeferredCode*> deferred_;
+  bool dynamic_frame_alignment_;
+  bool support_aligned_spilled_doubles_;
   bool frame_is_built_;
 
   class X87Stack : public ZoneObject {

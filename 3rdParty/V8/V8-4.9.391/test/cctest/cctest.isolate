@@ -4,13 +4,13 @@
 {
   'variables': {
     'files': [
+      '<(PRODUCT_DIR)/cctest<(EXECUTABLE_SUFFIX)',
       './cctest.status',
       './testcfg.py',
-      './interpreter/bytecode_expectations/',
     ],
   },
   'includes': [
-    'cctest_exe.isolate',
+    '../../src/base.isolate',
     '../../tools/testrunner/testrunner.isolate',
   ],
 }

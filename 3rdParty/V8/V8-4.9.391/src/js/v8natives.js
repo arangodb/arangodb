@@ -10,6 +10,7 @@
 // Imports
 
 var GlobalArray = global.Array;
+var GlobalBoolean = global.Boolean;
 var GlobalNumber = global.Number;
 var GlobalObject = global.Object;
 var InternalArray = utils.InternalArray;
@@ -23,6 +24,7 @@ var ObjectToString = utils.ImportNow("object_to_string");
 var ObserveBeginPerformSplice;
 var ObserveEndPerformSplice;
 var ObserveEnqueueSpliceRecord;
+var SameValue = utils.ImportNow("SameValue");
 var toStringTagSymbol = utils.ImportNow("to_string_tag_symbol");
 
 utils.Import(function(from) {
@@ -134,11 +136,19 @@ function ObjectValueOf() {
 }
 
 
+// ES6 7.3.11
+function ObjectHasOwnProperty(value) {
+  var name = TO_NAME(value);
+  var object = TO_OBJECT(this);
+  return %HasOwnProperty(object, name);
+}
+
+
 // ES6 19.1.3.3 Object.prototype.isPrototypeOf(V)
 function ObjectIsPrototypeOf(V) {
   if (!IS_RECEIVER(V)) return false;
   var O = TO_OBJECT(this);
-  return %HasInPrototypeChain(V, O);
+  return %_HasInPrototypeChain(V, O);
 }
 
 
@@ -535,17 +545,17 @@ function DefineObjectProperty(obj, p, desc, should_throw) {
     if ((IsGenericDescriptor(desc) ||
          IsDataDescriptor(desc) == IsDataDescriptor(current)) &&
         (!desc.hasEnumerable() ||
-         %SameValue(desc.isEnumerable(), current.isEnumerable())) &&
+         SameValue(desc.isEnumerable(), current.isEnumerable())) &&
         (!desc.hasConfigurable() ||
-         %SameValue(desc.isConfigurable(), current.isConfigurable())) &&
+         SameValue(desc.isConfigurable(), current.isConfigurable())) &&
         (!desc.hasWritable() ||
-         %SameValue(desc.isWritable(), current.isWritable())) &&
+         SameValue(desc.isWritable(), current.isWritable())) &&
         (!desc.hasValue() ||
-         %SameValue(desc.getValue(), current.getValue())) &&
+         SameValue(desc.getValue(), current.getValue())) &&
         (!desc.hasGetter() ||
-         %SameValue(desc.getGet(), current.getGet())) &&
+         SameValue(desc.getGet(), current.getGet())) &&
         (!desc.hasSetter() ||
-         %SameValue(desc.getSet(), current.getSet()))) {
+         SameValue(desc.getSet(), current.getSet()))) {
       return true;
     }
     if (!current.isConfigurable()) {
@@ -573,16 +583,18 @@ function DefineObjectProperty(obj, p, desc, should_throw) {
         if (IsDataDescriptor(current) && IsDataDescriptor(desc)) {
           var currentIsWritable = current.isWritable();
           if (currentIsWritable != desc.isWritable()) {
-            if (!currentIsWritable) {
+            if (!currentIsWritable || IS_STRONG(obj)) {
               if (should_throw) {
-                throw MakeTypeError(kRedefineDisallowed, p);
+                throw currentIsWritable
+                    ? MakeTypeError(kStrongRedefineDisallowed, obj, p)
+                    : MakeTypeError(kRedefineDisallowed, p);
               } else {
                 return false;
               }
             }
           }
           if (!currentIsWritable && desc.hasValue() &&
-              !%SameValue(desc.getValue(), current.getValue())) {
+              !SameValue(desc.getValue(), current.getValue())) {
             if (should_throw) {
               throw MakeTypeError(kRedefineDisallowed, p);
             } else {
@@ -593,14 +605,14 @@ function DefineObjectProperty(obj, p, desc, should_throw) {
         // Step 11
         if (IsAccessorDescriptor(desc) && IsAccessorDescriptor(current)) {
           if (desc.hasSetter() &&
-              !%SameValue(desc.getSet(), current.getSet())) {
+              !SameValue(desc.getSet(), current.getSet())) {
             if (should_throw) {
               throw MakeTypeError(kRedefineDisallowed, p);
             } else {
               return false;
             }
           }
-          if (desc.hasGetter() && !%SameValue(desc.getGet(),current.getGet())) {
+          if (desc.hasGetter() && !SameValue(desc.getGet(),current.getGet())) {
             if (should_throw) {
               throw MakeTypeError(kRedefineDisallowed, p);
             } else {
@@ -760,6 +772,19 @@ function ObjectSetPrototypeOf(obj, proto) {
 }
 
 
+// ES6 section 19.1.2.6
+function ObjectGetOwnPropertyDescriptor(obj, p) {
+  return %GetOwnProperty(obj, p);
+}
+
+
+// ES5 section 15.2.3.4.
+function ObjectGetOwnPropertyNames(obj) {
+  obj = TO_OBJECT(obj);
+  return %GetOwnPropertyKeys(obj, PROPERTY_FILTER_SKIP_SYMBOLS);
+}
+
+
 // ES5 section 15.2.3.6.
 function ObjectDefineProperty(obj, p, attributes) {
   // The new pure-C++ implementation doesn't support O.o.
@@ -777,6 +802,11 @@ function ObjectDefineProperty(obj, p, attributes) {
 }
 
 
+function GetOwnEnumerablePropertyNames(object) {
+  return %GetOwnPropertyKeys(object, PROPERTY_FILTER_ONLY_ENUMERABLE);
+}
+
+
 // ES5 section 15.2.3.7.
 function ObjectDefineProperties(obj, properties) {
   // The new pure-C++ implementation doesn't support O.o.
@@ -786,7 +816,7 @@ function ObjectDefineProperties(obj, properties) {
       throw MakeTypeError(kCalledOnNonObject, "Object.defineProperties");
     }
     var props = TO_OBJECT(properties);
-    var names = %GetOwnPropertyKeys(props, PROPERTY_FILTER_ONLY_ENUMERABLE);
+    var names = GetOwnEnumerablePropertyNames(props);
     var descriptors = new InternalArray();
     for (var i = 0; i < names.length; i++) {
       descriptors.push(ToPropertyDescriptor(props[names[i]]));
@@ -840,6 +870,7 @@ utils.InstallFunctions(GlobalObject.prototype, DONT_ENUM, [
   "toString", ObjectToString,
   "toLocaleString", ObjectToLocaleString,
   "valueOf", ObjectValueOf,
+  "hasOwnProperty", ObjectHasOwnProperty,
   "isPrototypeOf", ObjectIsPrototypeOf,
   "propertyIsEnumerable", ObjectPropertyIsEnumerable,
   "__defineGetter__", ObjectDefineGetter,
@@ -858,12 +889,64 @@ utils.InstallFunctions(GlobalObject, DONT_ENUM, [
   "defineProperties", ObjectDefineProperties,
   "getPrototypeOf", ObjectGetPrototypeOf,
   "setPrototypeOf", ObjectSetPrototypeOf,
+  "getOwnPropertyDescriptor", ObjectGetOwnPropertyDescriptor,
+  "getOwnPropertyNames", ObjectGetOwnPropertyNames,
   // getOwnPropertySymbols is added in symbol.js.
-  // is is added in bootstrapper.cc.
+  "is", SameValue,  // ECMA-262, Edition 6, section 19.1.2.10
   // deliverChangeRecords, getNotifier, observe and unobserve are added
   // in object-observe.js.
 ]);
 
+
+// ----------------------------------------------------------------------------
+// Boolean
+
+function BooleanConstructor(x) {
+  // TODO(bmeurer): Move this to toplevel.
+  "use strict";
+  if (!IS_UNDEFINED(new.target)) {
+    %_SetValueOf(this, TO_BOOLEAN(x));
+  } else {
+    return TO_BOOLEAN(x);
+  }
+}
+
+
+function BooleanToString() {
+  // NOTE: Both Boolean objects and values can enter here as
+  // 'this'. This is not as dictated by ECMA-262.
+  var b = this;
+  if (!IS_BOOLEAN(b)) {
+    if (!IS_BOOLEAN_WRAPPER(b)) {
+      throw MakeTypeError(kNotGeneric, 'Boolean.prototype.toString');
+    }
+    b = %_ValueOf(b);
+  }
+  return b ? 'true' : 'false';
+}
+
+
+function BooleanValueOf() {
+  // NOTE: Both Boolean objects and values can enter here as
+  // 'this'. This is not as dictated by ECMA-262.
+  if (!IS_BOOLEAN(this) && !IS_BOOLEAN_WRAPPER(this)) {
+    throw MakeTypeError(kNotGeneric, 'Boolean.prototype.valueOf');
+  }
+  return %_ValueOf(this);
+}
+
+
+// ----------------------------------------------------------------------------
+
+%SetCode(GlobalBoolean, BooleanConstructor);
+%FunctionSetPrototype(GlobalBoolean, new GlobalBoolean(false));
+%AddNamedProperty(GlobalBoolean.prototype, "constructor", GlobalBoolean,
+                  DONT_ENUM);
+
+utils.InstallFunctions(GlobalBoolean.prototype, DONT_ENUM, [
+  "toString", BooleanToString,
+  "valueOf", BooleanValueOf
+]);
 
 
 // ----------------------------------------------------------------------------
@@ -1097,7 +1180,7 @@ utils.Export(function(to) {
   to.NumberIsNaN = NumberIsNaN;
   to.ObjectDefineProperties = ObjectDefineProperties;
   to.ObjectDefineProperty = ObjectDefineProperty;
-  to.ObjectHasOwnProperty = GlobalObject.prototype.hasOwnProperty;
+  to.ObjectHasOwnProperty = ObjectHasOwnProperty;
 });
 
 %InstallToContext([

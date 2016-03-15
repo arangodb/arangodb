@@ -35,14 +35,12 @@ namespace compiler {
 // Compiles a single function, producing a code object.
 Handle<Code> CompileWasmFunction(wasm::ErrorThrower& thrower, Isolate* isolate,
                                  wasm::ModuleEnv* module_env,
-                                 const wasm::WasmFunction& function);
+                                 const wasm::WasmFunction& function, int index);
 
 // Wraps a JS function, producing a code object that can be called from WASM.
 Handle<Code> CompileWasmToJSWrapper(Isolate* isolate, wasm::ModuleEnv* module,
                                     Handle<JSFunction> function,
-                                    wasm::FunctionSig* sig,
-                                    wasm::WasmName module_name,
-                                    wasm::WasmName function_name);
+                                    uint32_t index);
 
 // Wraps a given wasm code object, producing a JSFunction that can be called
 // from JavaScript.
@@ -102,7 +100,6 @@ class WasmGraphBuilder {
   Node* Unreachable();
 
   Node* CallDirect(uint32_t index, Node** args);
-  Node* CallImport(uint32_t index, Node** args);
   Node* CallIndirect(uint32_t index, Node** args);
   void BuildJSToWasmWrapper(Handle<Code> wasm_code, wasm::FunctionSig* sig);
   void BuildWasmToJSWrapper(Handle<JSFunction> function,
@@ -135,8 +132,6 @@ class WasmGraphBuilder {
 
   wasm::FunctionSig* GetFunctionSignature() { return function_signature_; }
 
-  void Int64LoweringForTesting();
-
  private:
   static const int kDefaultBufferSize = 16;
   friend class WasmTrapHelper;
@@ -164,7 +159,6 @@ class WasmGraphBuilder {
   Node* MemBuffer(uint32_t offset);
   void BoundsCheckMem(MachineType memtype, Node* index, uint32_t offset);
 
-  Node* BuildCCall(MachineSignature* sig, Node** args);
   Node* BuildWasmCall(wasm::FunctionSig* sig, Node** args);
   Node* BuildF32Neg(Node* input);
   Node* BuildF64Neg(Node* input);
@@ -182,55 +176,6 @@ class WasmGraphBuilder {
   Node* BuildI32Popcnt(Node* input);
   Node* BuildI64Ctz(Node* input);
   Node* BuildI64Popcnt(Node* input);
-  Node* BuildCFuncInstruction(ExternalReference ref, MachineType type,
-                              Node* input0, Node* input1 = nullptr);
-  Node* BuildF32Trunc(Node* input);
-  Node* BuildF32Floor(Node* input);
-  Node* BuildF32Ceil(Node* input);
-  Node* BuildF32NearestInt(Node* input);
-  Node* BuildF64Trunc(Node* input);
-  Node* BuildF64Floor(Node* input);
-  Node* BuildF64Ceil(Node* input);
-  Node* BuildF64NearestInt(Node* input);
-  Node* BuildI32Rol(Node* left, Node* right);
-  Node* BuildI64Rol(Node* left, Node* right);
-
-  Node* BuildF64Acos(Node* input);
-  Node* BuildF64Asin(Node* input);
-  Node* BuildF64Atan(Node* input);
-  Node* BuildF64Cos(Node* input);
-  Node* BuildF64Sin(Node* input);
-  Node* BuildF64Tan(Node* input);
-  Node* BuildF64Exp(Node* input);
-  Node* BuildF64Log(Node* input);
-  Node* BuildF64Pow(Node* left, Node* right);
-  Node* BuildF64Atan2(Node* left, Node* right);
-  Node* BuildF64Mod(Node* left, Node* right);
-
-  Node* BuildIntToFloatConversionInstruction(
-      Node* input, ExternalReference ref,
-      MachineRepresentation parameter_representation,
-      const MachineType result_type);
-  Node* BuildF32SConvertI64(Node* input);
-  Node* BuildF32UConvertI64(Node* input);
-  Node* BuildF64SConvertI64(Node* input);
-  Node* BuildF64UConvertI64(Node* input);
-
-  Node* BuildFloatToIntConversionInstruction(
-      Node* input, ExternalReference ref,
-      MachineRepresentation parameter_representation,
-      const MachineType result_type);
-  Node* BuildI64SConvertF32(Node* input);
-  Node* BuildI64UConvertF32(Node* input);
-  Node* BuildI64SConvertF64(Node* input);
-  Node* BuildI64UConvertF64(Node* input);
-
-  Node* BuildI64DivS(Node* left, Node* right);
-  Node* BuildI64RemS(Node* left, Node* right);
-  Node* BuildI64DivU(Node* left, Node* right);
-  Node* BuildI64RemU(Node* left, Node* right);
-  Node* BuildDiv64Call(Node* left, Node* right, ExternalReference ref,
-                       MachineType result_type, int trap_zero);
 
   Node** Realloc(Node** buffer, size_t count) {
     Node** buf = Buffer(count);

@@ -45,7 +45,7 @@ AstTyper::AstTyper(Isolate* isolate, Zone* zone, Handle<JSFunction> closure,
 
 Effect AstTyper::ObservedOnStack(Object* value) {
   Type* lower = Type::NowOf(value, zone());
-  return Effect(Bounds(lower, Type::Any()));
+  return Effect(Bounds(lower, Type::Any(zone())));
 }
 
 
@@ -393,7 +393,7 @@ void AstTyper::VisitLiteral(Literal* expr) {
 
 void AstTyper::VisitRegExpLiteral(RegExpLiteral* expr) {
   // TODO(rossberg): Reintroduce RegExp type.
-  NarrowType(expr, Bounds(Type::Object()));
+  NarrowType(expr, Bounds(Type::Object(zone())));
 }
 
 
@@ -421,7 +421,7 @@ void AstTyper::VisitObjectLiteral(ObjectLiteral* expr) {
     RECURSE(Visit(prop->value()));
   }
 
-  NarrowType(expr, Bounds(Type::Object()));
+  NarrowType(expr, Bounds(Type::Object(zone())));
 }
 
 
@@ -432,7 +432,7 @@ void AstTyper::VisitArrayLiteral(ArrayLiteral* expr) {
     RECURSE(Visit(value));
   }
 
-  NarrowType(expr, Bounds(Type::Object()));
+  NarrowType(expr, Bounds(Type::Object(zone())));
 }
 
 
@@ -485,7 +485,7 @@ void AstTyper::VisitThrow(Throw* expr) {
   RECURSE(Visit(expr->exception()));
   // TODO(rossberg): is it worth having a non-termination effect?
 
-  NarrowType(expr, Bounds(Type::None()));
+  NarrowType(expr, Bounds(Type::None(zone())));
 }
 
 
@@ -569,7 +569,7 @@ void AstTyper::VisitCallNew(CallNew* expr) {
     RECURSE(Visit(arg));
   }
 
-  NarrowType(expr, Bounds(Type::None(), Type::Receiver()));
+  NarrowType(expr, Bounds(Type::None(zone()), Type::Receiver(zone())));
 }
 
 
@@ -596,13 +596,13 @@ void AstTyper::VisitUnaryOperation(UnaryOperation* expr) {
   switch (expr->op()) {
     case Token::NOT:
     case Token::DELETE:
-      NarrowType(expr, Bounds(Type::Boolean()));
+      NarrowType(expr, Bounds(Type::Boolean(zone())));
       break;
     case Token::VOID:
-      NarrowType(expr, Bounds(Type::Undefined()));
+      NarrowType(expr, Bounds(Type::Undefined(zone())));
       break;
     case Token::TYPEOF:
-      NarrowType(expr, Bounds(Type::InternalizedString()));
+      NarrowType(expr, Bounds(Type::InternalizedString(zone())));
       break;
     default:
       UNREACHABLE();
@@ -624,7 +624,7 @@ void AstTyper::VisitCountOperation(CountOperation* expr) {
 
   RECURSE(Visit(expr->expression()));
 
-  NarrowType(expr, Bounds(Type::SignedSmall(), Type::Number()));
+  NarrowType(expr, Bounds(Type::SignedSmall(zone()), Type::Number(zone())));
 
   VariableProxy* proxy = expr->expression()->AsVariableProxy();
   if (proxy != NULL && proxy->var()->IsStackAllocated()) {
@@ -679,8 +679,8 @@ void AstTyper::VisitBinaryOperation(BinaryOperation* expr) {
       RECURSE(Visit(expr->right()));
       Type* upper = Type::Union(
           expr->left()->bounds().upper, expr->right()->bounds().upper, zone());
-      if (!upper->Is(Type::Signed32())) upper = Type::Signed32();
-      Type* lower = Type::Intersect(Type::SignedSmall(), upper, zone());
+      if (!upper->Is(Type::Signed32())) upper = Type::Signed32(zone());
+      Type* lower = Type::Intersect(Type::SignedSmall(zone()), upper, zone());
       NarrowType(expr, Bounds(lower, upper));
       break;
     }
@@ -689,7 +689,8 @@ void AstTyper::VisitBinaryOperation(BinaryOperation* expr) {
     case Token::SAR:
       RECURSE(Visit(expr->left()));
       RECURSE(Visit(expr->right()));
-      NarrowType(expr, Bounds(Type::SignedSmall(), Type::Signed32()));
+      NarrowType(expr,
+          Bounds(Type::SignedSmall(zone()), Type::Signed32(zone())));
       break;
     case Token::SHR:
       RECURSE(Visit(expr->left()));
@@ -697,7 +698,7 @@ void AstTyper::VisitBinaryOperation(BinaryOperation* expr) {
       // TODO(rossberg): The upper bound would be Unsigned32, but since there
       // is no 'positive Smi' type for the lower bound, we use the smallest
       // union of Smi and Unsigned32 as upper bound instead.
-      NarrowType(expr, Bounds(Type::SignedSmall(), Type::Number()));
+      NarrowType(expr, Bounds(Type::SignedSmall(zone()), Type::Number(zone())));
       break;
     case Token::ADD: {
       RECURSE(Visit(expr->left()));
@@ -705,19 +706,17 @@ void AstTyper::VisitBinaryOperation(BinaryOperation* expr) {
       Bounds l = expr->left()->bounds();
       Bounds r = expr->right()->bounds();
       Type* lower =
-          !l.lower->IsInhabited() || !r.lower->IsInhabited()
-              ? Type::None()
-              : l.lower->Is(Type::String()) || r.lower->Is(Type::String())
-                    ? Type::String()
-                    : l.lower->Is(Type::Number()) && r.lower->Is(Type::Number())
-                          ? Type::SignedSmall()
-                          : Type::None();
+          !l.lower->IsInhabited() || !r.lower->IsInhabited() ?
+              Type::None(zone()) :
+          l.lower->Is(Type::String()) || r.lower->Is(Type::String()) ?
+              Type::String(zone()) :
+          l.lower->Is(Type::Number()) && r.lower->Is(Type::Number()) ?
+              Type::SignedSmall(zone()) : Type::None(zone());
       Type* upper =
-          l.upper->Is(Type::String()) || r.upper->Is(Type::String())
-              ? Type::String()
-              : l.upper->Is(Type::Number()) && r.upper->Is(Type::Number())
-                    ? Type::Number()
-                    : Type::NumberOrString();
+          l.upper->Is(Type::String()) || r.upper->Is(Type::String()) ?
+              Type::String(zone()) :
+          l.upper->Is(Type::Number()) && r.upper->Is(Type::Number()) ?
+              Type::Number(zone()) : Type::NumberOrString(zone());
       NarrowType(expr, Bounds(lower, upper));
       break;
     }
@@ -727,7 +726,7 @@ void AstTyper::VisitBinaryOperation(BinaryOperation* expr) {
     case Token::MOD:
       RECURSE(Visit(expr->left()));
       RECURSE(Visit(expr->right()));
-      NarrowType(expr, Bounds(Type::SignedSmall(), Type::Number()));
+      NarrowType(expr, Bounds(Type::SignedSmall(zone()), Type::Number(zone())));
       break;
     default:
       UNREACHABLE();
@@ -749,11 +748,11 @@ void AstTyper::VisitCompareOperation(CompareOperation* expr) {
   RECURSE(Visit(expr->left()));
   RECURSE(Visit(expr->right()));
 
-  NarrowType(expr, Bounds(Type::Boolean()));
+  NarrowType(expr, Bounds(Type::Boolean(zone())));
 }
 
 
-void AstTyper::VisitSpread(Spread* expr) { UNREACHABLE(); }
+void AstTyper::VisitSpread(Spread* expr) { RECURSE(Visit(expr->expression())); }
 
 
 void AstTyper::VisitEmptyParentheses(EmptyParentheses* expr) {
@@ -761,7 +760,8 @@ void AstTyper::VisitEmptyParentheses(EmptyParentheses* expr) {
 }
 
 
-void AstTyper::VisitThisFunction(ThisFunction* expr) {}
+void AstTyper::VisitThisFunction(ThisFunction* expr) {
+}
 
 
 void AstTyper::VisitSuperPropertyReference(SuperPropertyReference* expr) {}
@@ -770,7 +770,8 @@ void AstTyper::VisitSuperPropertyReference(SuperPropertyReference* expr) {}
 void AstTyper::VisitSuperCallReference(SuperCallReference* expr) {}
 
 
-void AstTyper::VisitRewritableExpression(RewritableExpression* expr) {
+void AstTyper::VisitRewritableAssignmentExpression(
+    RewritableAssignmentExpression* expr) {
   Visit(expr->expression());
 }
 

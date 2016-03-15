@@ -44,7 +44,7 @@ class LCodeGen : public LCodeGenBase {
   }
 
   bool NeedsEagerFrame() const {
-    return HasAllocatedStackSlots() || info()->is_non_deferred_calling() ||
+    return GetStackSlotCount() > 0 || info()->is_non_deferred_calling() ||
            !info()->IsStub() || info()->requires_frame();
   }
   bool NeedsDeferredFrame() const {
@@ -141,13 +141,7 @@ class LCodeGen : public LCodeGenBase {
                        Handle<String> class_name, Register input,
                        Register temporary, Register temporary2);
 
-  bool HasAllocatedStackSlots() const {
-    return chunk()->HasAllocatedStackSlots();
-  }
-  int GetStackSlotCount() const { return chunk()->GetSpillSlotCount(); }
-  int GetTotalFrameSlotCount() const {
-    return chunk()->GetTotalFrameSlotCount();
-  }
+  int GetStackSlotCount() const { return chunk()->spill_slot_count(); }
 
   void AddDeferredCode(LDeferredCode* code) { deferred_.Add(code, zone()); }
 
@@ -194,14 +188,11 @@ class LCodeGen : public LCodeGenBase {
   void CallRuntimeFromDeferred(Runtime::FunctionId id, int argc,
                                LInstruction* instr, LOperand* context);
 
-  void PrepareForTailCall(const ParameterCount& actual, Register scratch1,
-                          Register scratch2, Register scratch3);
-
   // Generate a direct call to a known function.  Expects the function
   // to be in r4.
   void CallKnownFunction(Handle<JSFunction> function,
                          int formal_parameter_count, int arity,
-                         bool is_tail_call, LInstruction* instr);
+                         LInstruction* instr);
 
   void RecordSafepointWithLazyDeopt(LInstruction* instr,
                                     SafepointMode safepoint_mode);

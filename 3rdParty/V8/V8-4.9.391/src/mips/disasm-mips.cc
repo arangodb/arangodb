@@ -1500,7 +1500,6 @@ void Decoder::DecodeTypeImmediate(Instruction* instr) {
         if (rs_reg >= rt_reg) {
           Format(instr, "bovc  'rs, 'rt, 'imm16s -> 'imm16p4s2");
         } else {
-          DCHECK(rt_reg > 0);
           if (rs_reg == 0) {
             Format(instr, "beqzalc 'rt, 'imm16s -> 'imm16p4s2");
           } else {
@@ -1517,7 +1516,6 @@ void Decoder::DecodeTypeImmediate(Instruction* instr) {
         if (rs_reg >= rt_reg) {
           Format(instr, "bnvc  'rs, 'rt, 'imm16s -> 'imm16p4s2");
         } else {
-          DCHECK(rt_reg > 0);
           if (rs_reg == 0) {
             Format(instr, "bnezalc 'rt, 'imm16s -> 'imm16p4s2");
           } else {

@@ -11,8 +11,6 @@ namespace v8 {
 namespace internal {
 namespace compiler {
 
-// Forward declarations.
-class CommonOperatorBuilder;
 class JSGraph;
 
 
@@ -75,7 +73,6 @@ class BranchElimination final : public AdvancedReducer {
   };
 
   Reduction ReduceBranch(Node* node);
-  Reduction ReduceDeoptimizeConditional(Node* node);
   Reduction ReduceIf(Node* node, bool is_true_branch);
   Reduction ReduceLoop(Node* node);
   Reduction ReduceMerge(Node* node);
@@ -87,11 +84,7 @@ class BranchElimination final : public AdvancedReducer {
                              const ControlPathConditions* conditions);
 
   Node* dead() const { return dead_; }
-  Graph* graph() const;
-  JSGraph* jsgraph() const { return jsgraph_; }
-  CommonOperatorBuilder* common() const;
 
-  JSGraph* const jsgraph_;
   PathConditionsForControlNodes node_conditions_;
   Zone* zone_;
   Node* dead_;

@@ -27,13 +27,8 @@ TEST(RunStringLengthStub) {
   // Create code and an accompanying descriptor.
   StringLengthStub stub(isolate);
   Handle<Code> code = stub.GenerateCode();
-  CompilationInfo info("test", isolate, zone,
-                       Code::ComputeFlags(Code::HANDLER));
-  CallInterfaceDescriptor interface_descriptor =
-      stub.GetCallInterfaceDescriptor();
-  CallDescriptor* descriptor = Linkage::GetStubCallDescriptor(
-      isolate, zone, interface_descriptor, stub.GetStackParameterCount(),
-      CallDescriptor::kNoFlags, Operator::kNoProperties);
+  CompilationInfo info(&stub, isolate, zone);
+  CallDescriptor* descriptor = Linkage::ComputeIncoming(zone, &info);
 
   // Create a function to call the code using the descriptor.
   Graph graph(zone);

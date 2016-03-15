@@ -34,9 +34,9 @@ namespace v8 {
 namespace internal {
 
 // Give alias names to registers for calling conventions.
+// TODO(titzer): arm64 is a pain for aliasing; get rid of these macros
 #define kReturnRegister0 x0
 #define kReturnRegister1 x1
-#define kReturnRegister2 x2
 #define kJSFunctionRegister x1
 #define kContextRegister cp
 #define kInterpreterAccumulatorRegister x0
@@ -895,7 +895,6 @@ class MacroAssembler : public Assembler {
   // This is required for compatibility with architecture independant code.
   // Remove if not needed.
   inline void Move(Register dst, Register src) { Mov(dst, src); }
-  inline void Move(Register dst, Handle<Object> x) { LoadObject(dst, x); }
   inline void Move(Register dst, Smi* src) { Mov(dst, src); }
 
   void LoadInstanceDescriptors(Register map,
@@ -971,9 +970,6 @@ class MacroAssembler : public Assembler {
   // enabled via --debug-code.
   void AssertBoundFunction(Register object);
 
-  // Abort execution if argument is not a JSReceiver, enabled via --debug-code.
-  void AssertReceiver(Register object);
-
   // Abort execution if argument is not undefined or an AllocationSite, enabled
   // via --debug-code.
   void AssertUndefinedOrAllocationSite(Register object, Register scratch);
@@ -984,9 +980,6 @@ class MacroAssembler : public Assembler {
   // Abort execution if argument is not a positive or zero integer, enabled via
   // --debug-code.
   void AssertPositiveOrZero(Register value);
-
-  // Abort execution if argument is not a number (heap number or smi).
-  void AssertNumber(Register value);
 
   void JumpIfHeapNumber(Register object, Label* on_heap_number,
                         SmiCheckType smi_check_type = DONT_DO_SMI_CHECK);
@@ -1145,6 +1138,10 @@ class MacroAssembler : public Assembler {
                              int num_arguments);
 
 
+  // Invoke specified builtin JavaScript function.
+  void InvokeBuiltin(int native_context_index, InvokeFlag flag,
+                     const CallWrapper& call_wrapper = NullCallWrapper());
+
   void Jump(Register target);
   void Jump(Address target, RelocInfo::Mode rmode, Condition cond = al);
   void Jump(Handle<Code> code, RelocInfo::Mode rmode, Condition cond = al);
@@ -1165,15 +1162,6 @@ class MacroAssembler : public Assembler {
   static int CallSize(Handle<Code> code,
                       RelocInfo::Mode rmode = RelocInfo::CODE_TARGET,
                       TypeFeedbackId ast_id = TypeFeedbackId::None());
-
-  // Removes current frame and its arguments from the stack preserving
-  // the arguments and a return address pushed to the stack for the next call.
-  // Both |callee_args_count| and |caller_args_count_reg| do not include
-  // receiver. |callee_args_count| is not modified, |caller_args_count_reg|
-  // is trashed.
-  void PrepareForTailCall(const ParameterCount& callee_args_count,
-                          Register caller_args_count_reg, Register scratch0,
-                          Register scratch1);
 
   // Registers used through the invocation chain are hard-coded.
   // We force passing the parameters to ensure the contracts are correctly
@@ -1598,8 +1586,12 @@ class MacroAssembler : public Assembler {
   void LeaveFrame(StackFrame::Type type);
 
   // Returns map with validated enum cache in object register.
-  void CheckEnumCache(Register object, Register scratch0, Register scratch1,
-                      Register scratch2, Register scratch3, Register scratch4,
+  void CheckEnumCache(Register object,
+                      Register null_value,
+                      Register scratch0,
+                      Register scratch1,
+                      Register scratch2,
+                      Register scratch3,
                       Label* call_runtime);
 
   // AllocationMemento support. Arrays may have an associated
@@ -1631,7 +1623,7 @@ class MacroAssembler : public Assembler {
   void ExitFrameRestoreFPRegs();
 
   // Generates function and stub prologue code.
-  void StubPrologue(StackFrame::Type type, int frame_slots);
+  void StubPrologue();
   void Prologue(bool code_pre_aging);
 
   // Enter exit frame. Exit frames are used when calling C code from generated
@@ -1738,9 +1730,6 @@ class MacroAssembler : public Assembler {
     Peek(src, SafepointRegisterStackIndex(dst.code()) * kPointerSize);
   }
 
-  void CheckPageFlag(const Register& object, const Register& scratch, int mask,
-                     Condition cc, Label* condition_met);
-
   void CheckPageFlagSet(const Register& object,
                         const Register& scratch,
                         int mask,
@@ -1803,11 +1792,6 @@ class MacroAssembler : public Assembler {
                      smi_check,
                      pointers_to_here_check_for_value);
   }
-
-  // Notify the garbage collector that we wrote a code entry into a
-  // JSFunction. Only scratch is clobbered by the operation.
-  void RecordWriteCodeEntryField(Register js_function, Register code_entry,
-                                 Register scratch);
 
   void RecordWriteForMap(
       Register object,

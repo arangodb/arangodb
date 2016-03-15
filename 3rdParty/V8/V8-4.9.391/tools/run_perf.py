@@ -350,9 +350,9 @@ class Node(object):
 
 class DefaultSentinel(Node):
   """Fake parent node with all default values."""
-  def __init__(self, binary = "d8"):
+  def __init__(self):
     super(DefaultSentinel, self).__init__()
-    self.binary = binary
+    self.binary = "d8"
     self.run_count = 10
     self.timeout = 60
     self.path = []
@@ -543,10 +543,11 @@ def MakeGraphConfig(suite, arch, parent):
     raise Exception("Invalid suite configuration.")
 
 
-def BuildGraphConfigs(suite, arch, parent):
+def BuildGraphConfigs(suite, arch, parent=None):
   """Builds a tree structure of graph objects that corresponds to the suite
   configuration.
   """
+  parent = parent or DefaultSentinel()
 
   # TODO(machenbach): Implement notion of cpu type?
   if arch not in suite.get("archs", SUPPORTED_ARCHS):
@@ -731,12 +732,6 @@ class AndroidPlatform(Platform):  # pragma: no cover
         target_dir,
         skip_if_missing=True,
     )
-    self._PushFile(
-        shell_dir,
-        "snapshot_blob_ignition.bin",
-        target_dir,
-        skip_if_missing=True,
-    )
 
   def PreTests(self, node, path):
     suite_dir = os.path.abspath(os.path.dirname(path))
@@ -818,11 +813,6 @@ def Main(args):
                     default="out")
   parser.add_option("--outdir-no-patch",
                     help="Base directory with compile output without patch")
-  parser.add_option("--binary-override-path",
-                    help="JavaScript engine binary. By default, d8 under "
-                    "architecture-specific build dir. "
-                    "Not supported in conjunction with outdir-no-patch.")
-
   (options, args) = parser.parse_args(args)
 
   if len(args) == 0:  # pragma: no cover
@@ -853,18 +843,7 @@ def Main(args):
   else:
     build_config = "%s.release" % options.arch
 
-  if options.binary_override_path == None:
-    options.shell_dir = os.path.join(workspace, options.outdir, build_config)
-    default_binary_name = "d8"
-  else:
-    if not os.path.isfile(options.binary_override_path):
-      print "binary-override-path must be a file name"
-      return 1
-    if options.outdir_no_patch:
-      print "specify either binary-override-path or outdir-no-patch"
-      return 1
-    options.shell_dir = os.path.dirname(options.binary_override_path)
-    default_binary_name = os.path.basename(options.binary_override_path)
+  options.shell_dir = os.path.join(workspace, options.outdir, build_config)
 
   if options.outdir_no_patch:
     options.shell_dir_no_patch = os.path.join(
@@ -893,8 +872,7 @@ def Main(args):
     platform.PreExecution()
 
     # Build the graph/trace tree structure.
-    default_parent = DefaultSentinel(default_binary_name)
-    root = BuildGraphConfigs(suite, options.arch, default_parent)
+    root = BuildGraphConfigs(suite, options.arch)
 
     # Callback to be called on each node on traversal.
     def NodeCB(node):

@@ -31,10 +31,7 @@ class ScopeIterator {
   static const int kScopeDetailsTypeIndex = 0;
   static const int kScopeDetailsObjectIndex = 1;
   static const int kScopeDetailsNameIndex = 2;
-  static const int kScopeDetailsStartPositionIndex = 3;
-  static const int kScopeDetailsEndPositionIndex = 4;
-  static const int kScopeDetailsFunctionIndex = 5;
-  static const int kScopeDetailsSize = 6;
+  static const int kScopeDetailsSize = 3;
 
   enum Option { DEFAULT, IGNORE_NESTED_SCOPES, COLLECT_NON_LOCALS };
 
@@ -86,18 +83,10 @@ class ScopeIterator {
 #endif
 
  private:
-  struct ExtendedScopeInfo {
-    ExtendedScopeInfo(Handle<ScopeInfo> info, int start, int end)
-        : scope_info(info), start_position(start), end_position(end) {}
-    Handle<ScopeInfo> scope_info;
-    int start_position;
-    int end_position;
-  };
-
   Isolate* isolate_;
   FrameInspector* const frame_inspector_;
   Handle<Context> context_;
-  List<ExtendedScopeInfo> nested_scope_chain_;
+  List<Handle<ScopeInfo> > nested_scope_chain_;
   HashMap* non_locals_;
   bool seen_script_scope_;
   bool failed_;
@@ -107,7 +96,8 @@ class ScopeIterator {
   }
 
   inline Handle<JSFunction> GetFunction() {
-    return Handle<JSFunction>::cast(frame_inspector_->GetFunction());
+    return Handle<JSFunction>(
+        JSFunction::cast(frame_inspector_->GetFunction()));
   }
 
   static bool InternalizedStringMatch(void* key1, void* key2) {
@@ -149,14 +139,7 @@ class ScopeIterator {
                                       Handle<JSObject> scope_object);
   bool CopyContextExtensionToScopeObject(Handle<JSObject> extension,
                                          Handle<JSObject> scope_object,
-                                         KeyCollectionType type);
-
-  // Get the chain of nested scopes within this scope for the source statement
-  // position. The scopes will be added to the list from the outermost scope to
-  // the innermost scope. Only nested block, catch or with scopes are tracked
-  // and will be returned, but no inner function scopes.
-  void GetNestedScopeChain(Isolate* isolate, Scope* scope,
-                           int statement_position);
+                                         JSReceiver::KeyCollectionType type);
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(ScopeIterator);
 };

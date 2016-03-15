@@ -41,7 +41,8 @@ ALL_VARIANT_FLAGS = {
   "turbofan": [["--turbo"]],
   "turbofan_opt": [["--turbo", "--always-opt"]],
   "nocrankshaft": [["--nocrankshaft"]],
-  "ignition": [["--ignition", "--turbo"]],
+  "ignition": [["--ignition", "--turbo", "--ignition-fake-try-catch",
+                "--ignition-fallback-on-eval-and-catch"]],
   "preparser": [["--min-preparse-length=0"]],
 }
 
@@ -51,7 +52,8 @@ FAST_VARIANT_FLAGS = {
   "stress": [["--stress-opt"]],
   "turbofan": [["--turbo"]],
   "nocrankshaft": [["--nocrankshaft"]],
-  "ignition": [["--ignition", "--turbo"]],
+  "ignition": [["--ignition", "--turbo", "--ignition-fake-try-catch",
+                "--ignition-fallback-on-eval-and-catch"]],
   "preparser": [["--min-preparse-length=0"]],
 }
 
@@ -102,12 +104,18 @@ class TestSuite(object):
 
   def __init__(self, name, root):
     # Note: This might be called concurrently from different processes.
+    # Changing harddisk state should be done in 'SetupWorkingDirectory' below.
     self.name = name  # string
     self.root = root  # string containing path
     self.tests = None  # list of TestCase objects
     self.rules = None  # dictionary mapping test path to list of outcomes
     self.wildcards = None  # dictionary mapping test paths to list of outcomes
     self.total_duration = None  # float, assigned on demand
+
+  def SetupWorkingDirectory(self):
+    # This is called once per test suite object in a multi-process setting.
+    # Multi-process-unsafe work-directory setup can go here.
+    pass
 
   def shell(self):
     return "d8"
@@ -256,14 +264,14 @@ class TestSuite(object):
   def GetSourceForTest(self, testcase):
     return "(no source available)"
 
-  def IsFailureOutput(self, testcase):
-    return testcase.output.exit_code != 0
+  def IsFailureOutput(self, output, testpath):
+    return output.exit_code != 0
 
   def IsNegativeTest(self, testcase):
     return False
 
   def HasFailed(self, testcase):
-    execution_failed = self.IsFailureOutput(testcase)
+    execution_failed = self.IsFailureOutput(testcase.output, testcase.path)
     if self.IsNegativeTest(testcase):
       return not execution_failed
     else:
@@ -322,7 +330,7 @@ class GoogleTestSuite(TestSuite):
       if test_desc.endswith('.'):
         test_case = test_desc
       elif test_case and test_desc:
-        test = testcase.TestCase(self, test_case + test_desc)
+        test = testcase.TestCase(self, test_case + test_desc, dependency=None)
         tests.append(test)
     tests.sort()
     return tests

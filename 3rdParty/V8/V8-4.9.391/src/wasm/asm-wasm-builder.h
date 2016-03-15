@@ -6,8 +6,6 @@
 #define V8_WASM_ASM_WASM_BUILDER_H_
 
 #include "src/allocation.h"
-#include "src/objects.h"
-#include "src/typing-asm.h"
 #include "src/wasm/encoder.h"
 #include "src/zone.h"
 
@@ -20,16 +18,13 @@ namespace wasm {
 
 class AsmWasmBuilder {
  public:
-  explicit AsmWasmBuilder(Isolate* isolate, Zone* zone, FunctionLiteral* root,
-                          Handle<Object> foreign, AsmTyper* typer);
+  explicit AsmWasmBuilder(Isolate* isolate, Zone* zone, FunctionLiteral* root);
   WasmModuleIndex* Run();
 
  private:
   Isolate* isolate_;
   Zone* zone_;
   FunctionLiteral* literal_;
-  Handle<Object> foreign_;
-  AsmTyper* typer_;
 };
 }  // namespace wasm
 }  // namespace internal

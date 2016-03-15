@@ -362,7 +362,6 @@ TEST(Type3) {
   SET_UP();
 
   if (CpuFeatures::IsSupported(ARMv7)) {
-    CpuFeatureScope scope(&assm, ARMv7);
     COMPARE(ubfx(r0, r1, 5, 10),
             "e7e902d1       ubfx r0, r1, #5, #10");
     COMPARE(ubfx(r1, r0, 5, 10),
@@ -438,9 +437,6 @@ TEST(Type3) {
     COMPARE(uxth(r3, r4, 8), "e6ff3474       uxth r3, r4, ror #8");
 
     COMPARE(uxtah(r3, r4, r5, 24), "e6f43c75       uxtah r3, r4, r5, ror #24");
-
-    COMPARE(rbit(r1, r2), "e6ff1f32       rbit r1, r2");
-    COMPARE(rbit(r10, ip), "e6ffaf3c       rbit r10, ip");
   }
 
   COMPARE(smmla(r0, r1, r2, r3), "e7503211       smmla r0, r1, r2, r3");
@@ -452,54 +448,6 @@ TEST(Type3) {
   VERIFY_RUN();
 }
 
-
-TEST(msr_mrs_disasm) {
-  SET_UP();
-
-  SRegisterFieldMask CPSR_all = CPSR_f | CPSR_s | CPSR_x | CPSR_c;
-  SRegisterFieldMask SPSR_all = SPSR_f | SPSR_s | SPSR_x | SPSR_c;
-
-  COMPARE(msr(CPSR_f, Operand(r0)),       "e128f000       msr CPSR_f, r0");
-  COMPARE(msr(CPSR_s, Operand(r1)),       "e124f001       msr CPSR_s, r1");
-  COMPARE(msr(CPSR_x, Operand(r2)),       "e122f002       msr CPSR_x, r2");
-  COMPARE(msr(CPSR_c, Operand(r3)),       "e121f003       msr CPSR_c, r3");
-  COMPARE(msr(CPSR_all, Operand(ip)),     "e12ff00c       msr CPSR_fsxc, ip");
-  COMPARE(msr(SPSR_f, Operand(r0)),       "e168f000       msr SPSR_f, r0");
-  COMPARE(msr(SPSR_s, Operand(r1)),       "e164f001       msr SPSR_s, r1");
-  COMPARE(msr(SPSR_x, Operand(r2)),       "e162f002       msr SPSR_x, r2");
-  COMPARE(msr(SPSR_c, Operand(r3)),       "e161f003       msr SPSR_c, r3");
-  COMPARE(msr(SPSR_all, Operand(ip)),     "e16ff00c       msr SPSR_fsxc, ip");
-  COMPARE(msr(CPSR_f, Operand(r0), eq),   "0128f000       msreq CPSR_f, r0");
-  COMPARE(msr(CPSR_s, Operand(r1), ne),   "1124f001       msrne CPSR_s, r1");
-  COMPARE(msr(CPSR_x, Operand(r2), cs),   "2122f002       msrcs CPSR_x, r2");
-  COMPARE(msr(CPSR_c, Operand(r3), cc),   "3121f003       msrcc CPSR_c, r3");
-  COMPARE(msr(CPSR_all, Operand(ip), mi), "412ff00c       msrmi CPSR_fsxc, ip");
-  COMPARE(msr(SPSR_f, Operand(r0), pl),   "5168f000       msrpl SPSR_f, r0");
-  COMPARE(msr(SPSR_s, Operand(r1), vs),   "6164f001       msrvs SPSR_s, r1");
-  COMPARE(msr(SPSR_x, Operand(r2), vc),   "7162f002       msrvc SPSR_x, r2");
-  COMPARE(msr(SPSR_c, Operand(r3), hi),   "8161f003       msrhi SPSR_c, r3");
-  COMPARE(msr(SPSR_all, Operand(ip), ls), "916ff00c       msrls SPSR_fsxc, ip");
-
-  // Other combinations of mask bits.
-  COMPARE(msr(CPSR_s | CPSR_x, Operand(r4)),
-          "e126f004       msr CPSR_sx, r4");
-  COMPARE(msr(SPSR_s | SPSR_x | SPSR_c, Operand(r5)),
-          "e167f005       msr SPSR_sxc, r5");
-  COMPARE(msr(SPSR_s | SPSR_c, Operand(r6)),
-          "e165f006       msr SPSR_sc, r6");
-  COMPARE(msr(SPSR_f | SPSR_c, Operand(r7)),
-          "e169f007       msr SPSR_fc, r7");
-  // MSR with no mask is UNPREDICTABLE, and checked by the assembler, but check
-  // that the disassembler does something sensible.
-  COMPARE(dd(0xe120f008), "e120f008       msr CPSR_(none), r8");
-
-  COMPARE(mrs(r0, CPSR),     "e10f0000       mrs r0, CPSR");
-  COMPARE(mrs(r1, SPSR),     "e14f1000       mrs r1, SPSR");
-  COMPARE(mrs(r2, CPSR, ge), "a10f2000       mrsge r2, CPSR");
-  COMPARE(mrs(r3, SPSR, lt), "b14f3000       mrslt r3, SPSR");
-
-  VERIFY_RUN();
-}
 
 
 TEST(Vfp) {
@@ -614,11 +562,6 @@ TEST(Vfp) {
     COMPARE(vmov(d2, -13.0),
             "eeba2b0a       vmov.f64 d2, #-13");
 
-    COMPARE(vmov(s1, -1.0),
-            "eeff0a00       vmov.f32 s1, #-1");
-    COMPARE(vmov(s3, 13.0),
-            "eef21a0a       vmov.f32 s3, #13");
-
     COMPARE(vmov(d0, VmovIndexLo, r0),
             "ee000b10       vmov.32 d0[0], r0");
     COMPARE(vmov(d0, VmovIndexHi, r0),
@@ -714,27 +657,18 @@ TEST(Vfp) {
     COMPARE(vmls(s6, s4, s5, cc),
             "3e023a62       vmlscc.f32 s6, s4, s5");
 
-    COMPARE(vcvt_f32_f64(s31, d15),
-            "eef7fbcf       vcvt.f32.f64 s31, d15");
-    COMPARE(vcvt_f32_s32(s30, s29),
-            "eeb8faee       vcvt.f32.s32 s30, s29");
-    COMPARE(vcvt_f64_f32(d14, s28),
-            "eeb7eace       vcvt.f64.f32 d14, s28");
-    COMPARE(vcvt_f64_s32(d13, s27),
-            "eeb8dbed       vcvt.f64.s32 d13, s27");
-    COMPARE(vcvt_f64_u32(d12, s26),
-            "eeb8cb4d       vcvt.f64.u32 d12, s26");
-    COMPARE(vcvt_s32_f32(s25, s24),
-            "eefdcacc       vcvt.s32.f32 s25, s24");
-    COMPARE(vcvt_s32_f64(s23, d11),
-            "eefdbbcb       vcvt.s32.f64 s23, d11");
-    COMPARE(vcvt_u32_f32(s22, s21),
-            "eebcbaea       vcvt.u32.f32 s22, s21");
-    COMPARE(vcvt_u32_f64(s20, d10),
-            "eebcabca       vcvt.u32.f64 s20, d10");
-
-    COMPARE(vcvt_f64_s32(d9, 2),
-            "eeba9bcf       vcvt.f64.s32 d9, d9, #2");
+    COMPARE(vcvt_u32_f64(s0, d0),
+            "eebc0bc0       vcvt.u32.f64 s0, d0");
+    COMPARE(vcvt_s32_f64(s0, d0),
+            "eebd0bc0       vcvt.s32.f64 s0, d0");
+    COMPARE(vcvt_f64_u32(d0, s1),
+            "eeb80b60       vcvt.f64.u32 d0, s1");
+    COMPARE(vcvt_f64_s32(d0, s1),
+            "eeb80be0       vcvt.f64.s32 d0, s1");
+    COMPARE(vcvt_f32_s32(s0, s2),
+            "eeb80ac1       vcvt.f32.s32 s0, s2");
+    COMPARE(vcvt_f64_s32(d0, 2),
+            "eeba0bcf       vcvt.f64.s32 d0, d0, #2");
 
     if (CpuFeatures::IsSupported(VFP32DREGS)) {
       COMPARE(vmov(d3, d27),
@@ -808,27 +742,12 @@ TEST(Vfp) {
       COMPARE(vmla(d16, d17, d18),
               "ee410ba2       vmla.f64 d16, d17, d18");
 
-      COMPARE(vcvt_f32_f64(s0, d31),
-              "eeb70bef       vcvt.f32.f64 s0, d31");
-      COMPARE(vcvt_f32_s32(s1, s2),
-              "eef80ac1       vcvt.f32.s32 s1, s2");
-      COMPARE(vcvt_f64_f32(d30, s3),
-              "eef7eae1       vcvt.f64.f32 d30, s3");
-      COMPARE(vcvt_f64_s32(d29, s4),
-              "eef8dbc2       vcvt.f64.s32 d29, s4");
-      COMPARE(vcvt_f64_u32(d28, s5),
-              "eef8cb62       vcvt.f64.u32 d28, s5");
-      COMPARE(vcvt_s32_f32(s6, s7),
-              "eebd3ae3       vcvt.s32.f32 s6, s7");
-      COMPARE(vcvt_s32_f64(s8, d27),
-              "eebd4beb       vcvt.s32.f64 s8, d27");
-      COMPARE(vcvt_u32_f32(s9, s10),
-              "eefc4ac5       vcvt.u32.f32 s9, s10");
-      COMPARE(vcvt_u32_f64(s11, d26),
-              "eefc5bea       vcvt.u32.f64 s11, d26");
-
-      COMPARE(vcvt_f64_s32(d25, 2),
-              "eefa9bcf       vcvt.f64.s32 d25, d25, #2");
+      COMPARE(vcvt_u32_f64(s0, d16),
+              "eebc0be0       vcvt.u32.f64 s0, d16");
+      COMPARE(vcvt_s32_f64(s0, d16),
+              "eebd0be0       vcvt.s32.f64 s0, d16");
+      COMPARE(vcvt_f64_u32(d16, s1),
+              "eef80b60       vcvt.f64.u32 d16, s1");
     }
   }
 
@@ -1080,48 +999,6 @@ TEST(LoadStore) {
             "f5d1f000       pld [r1]");
     COMPARE(pld(MemOperand(r2, 128)),
             "f5d2f080       pld [r2, #+128]");
-  }
-
-  VERIFY_RUN();
-}
-
-
-TEST(Barrier) {
-  SET_UP();
-
-  if (CpuFeatures::IsSupported(ARMv7)) {
-    CpuFeatureScope scope(&assm, ARMv7);
-
-    COMPARE(dmb(OSHLD),
-            "f57ff051       dmb oshld");
-    COMPARE(dmb(OSHST),
-            "f57ff052       dmb oshst");
-    COMPARE(dmb(OSH),
-            "f57ff053       dmb osh");
-    COMPARE(dmb(NSHLD),
-            "f57ff055       dmb nshld");
-    COMPARE(dmb(NSHST),
-            "f57ff056       dmb nshst");
-    COMPARE(dmb(NSH),
-            "f57ff057       dmb nsh");
-    COMPARE(dmb(ISHLD),
-            "f57ff059       dmb ishld");
-    COMPARE(dmb(ISHST),
-            "f57ff05a       dmb ishst");
-    COMPARE(dmb(ISH),
-            "f57ff05b       dmb ish");
-    COMPARE(dmb(LD),
-            "f57ff05d       dmb ld");
-    COMPARE(dmb(ST),
-            "f57ff05e       dmb st");
-    COMPARE(dmb(SY),
-            "f57ff05f       dmb sy");
-
-    COMPARE(dsb(ISH),
-            "f57ff04b       dsb ish");
-
-    COMPARE(isb(ISH),
-            "f57ff06b       isb ish");
   }
 
   VERIFY_RUN();

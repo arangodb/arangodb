@@ -4,10 +4,7 @@
 {
   'variables': {
     'files': [
-      'data.tar',
-      'harness-adapt.js',
-      'test262.status',
-      'testcfg.py',
+      './',
     ],
   },
   'includes': [

@@ -104,15 +104,15 @@ function PlotScriptComposer(kResX, kResY, error_output) {
         new TimerEvent("recompile sync", "#CC0044",  true, 0),
       'V8.RecompileConcurrent':
         new TimerEvent("recompile async", "#CC4499", false, 1),
-      'V8.CompileEvalMicroSeconds':
+      'V8.CompileEval':
         new TimerEvent("compile eval", "#CC4400",  true, 0),
       'V8.IcMiss':
         new TimerEvent("ic miss", "#CC9900", false, 0),
-      'V8.ParseMicroSeconds':
+      'V8.Parse':
         new TimerEvent("parse", "#00CC00",  true, 0),
-      'V8.PreParseMicroSeconds':
+      'V8.PreParse':
         new TimerEvent("preparse", "#44CC00",  true, 0),
-      'V8.ParseLazyMicroSeconds':
+      'V8.ParseLazy':
         new TimerEvent("lazy parse", "#00CC44",  true, 0),
       'V8.GCScavenger':
         new TimerEvent("gc scavenge", "#0044CC",  true, 0),
@@ -331,7 +331,7 @@ function PlotScriptComposer(kResX, kResY, error_output) {
 
     var line;
     while (line = input()) {
-      for (var s of line.split("\n")) logreader.processLogLine(s);
+      logreader.processLogLine(line);
     }
 
     // Collect execution pauses.

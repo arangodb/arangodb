@@ -144,13 +144,8 @@ void VisitBinop(InstructionSelector* selector, Node* node,
   DCHECK_GE(arraysize(inputs), input_count);
   DCHECK_GE(arraysize(outputs), output_count);
 
-  opcode = cont->Encode(opcode);
-  if (cont->IsDeoptimize()) {
-    selector->EmitDeoptimize(opcode, output_count, outputs, input_count, inputs,
-                             cont->frame_state());
-  } else {
-    selector->Emit(opcode, output_count, outputs, input_count, inputs);
-  }
+  selector->Emit(cont->Encode(opcode), output_count, outputs, input_count,
+                 inputs);
 }
 
 
@@ -205,7 +200,6 @@ void InstructionSelector::VisitLoad(Node* node) {
 #else
     case MachineRepresentation::kWord64:  // Fall through.
 #endif
-    case MachineRepresentation::kSimd128:  // Fall through.
     case MachineRepresentation::kNone:
       UNREACHABLE();
       return;
@@ -233,26 +227,16 @@ void InstructionSelector::VisitStore(Node* node) {
   WriteBarrierKind write_barrier_kind = store_rep.write_barrier_kind();
   MachineRepresentation rep = store_rep.representation();
 
+  // TODO(ppc): I guess this could be done in a better way.
   if (write_barrier_kind != kNoWriteBarrier) {
     DCHECK_EQ(MachineRepresentation::kTagged, rep);
-    AddressingMode addressing_mode;
     InstructionOperand inputs[3];
     size_t input_count = 0;
     inputs[input_count++] = g.UseUniqueRegister(base);
-    // OutOfLineRecordWrite uses the offset in an 'add' instruction as well as
-    // for the store itself, so we must check compatibility with both.
-    if (g.CanBeImmediate(offset, kInt16Imm)
-#if V8_TARGET_ARCH_PPC64
-        && g.CanBeImmediate(offset, kInt16Imm_4ByteAligned)
-#endif
-            ) {
-      inputs[input_count++] = g.UseImmediate(offset);
-      addressing_mode = kMode_MRI;
-    } else {
-      inputs[input_count++] = g.UseUniqueRegister(offset);
-      addressing_mode = kMode_MRR;
-    }
-    inputs[input_count++] = g.UseUniqueRegister(value);
+    inputs[input_count++] = g.UseUniqueRegister(offset);
+    inputs[input_count++] = (write_barrier_kind == kMapWriteBarrier)
+                                ? g.UseRegister(value)
+                                : g.UseUniqueRegister(value);
     RecordWriteMode record_write_mode = RecordWriteMode::kValueIsAny;
     switch (write_barrier_kind) {
       case kNoWriteBarrier:
@@ -271,7 +255,6 @@ void InstructionSelector::VisitStore(Node* node) {
     InstructionOperand temps[] = {g.TempRegister(), g.TempRegister()};
     size_t const temp_count = arraysize(temps);
     InstructionCode code = kArchStoreWithWriteBarrier;
-    code |= AddressingModeField::encode(addressing_mode);
     code |= MiscField::encode(static_cast<int>(record_write_mode));
     Emit(code, 0, nullptr, input_count, inputs, temp_count, temps);
   } else {
@@ -306,7 +289,6 @@ void InstructionSelector::VisitStore(Node* node) {
 #else
       case MachineRepresentation::kWord64:  // Fall through.
 #endif
-      case MachineRepresentation::kSimd128:  // Fall through.
       case MachineRepresentation::kNone:
         UNREACHABLE();
         return;
@@ -358,7 +340,6 @@ void InstructionSelector::VisitCheckedLoad(Node* node) {
 #if !V8_TARGET_ARCH_PPC64
     case MachineRepresentation::kWord64:  // Fall through.
 #endif
-    case MachineRepresentation::kSimd128:  // Fall through.
     case MachineRepresentation::kNone:
       UNREACHABLE();
       return;
@@ -404,7 +385,6 @@ void InstructionSelector::VisitCheckedStore(Node* node) {
 #if !V8_TARGET_ARCH_PPC64
     case MachineRepresentation::kWord64:  // Fall through.
 #endif
-    case MachineRepresentation::kSimd128:  // Fall through.
     case MachineRepresentation::kNone:
       UNREACHABLE();
       return;
@@ -723,6 +703,7 @@ void InstructionSelector::VisitWord32Shr(Node* node) {
   VisitRRO(this, kPPC_ShiftRight32, node, kShift32Imm);
 }
 
+
 #if V8_TARGET_ARCH_PPC64
 void InstructionSelector::VisitWord64Shr(Node* node) {
   PPCOperandGenerator g(this);
@@ -784,41 +765,6 @@ void InstructionSelector::VisitWord32Sar(Node* node) {
   VisitRRO(this, kPPC_ShiftRightAlg32, node, kShift32Imm);
 }
 
-#if !V8_TARGET_ARCH_PPC64
-void VisitPairShift(InstructionSelector* selector, ArchOpcode opcode,
-                    Node* node) {
-  PPCOperandGenerator g(selector);
-  Int32Matcher m(node->InputAt(2));
-  InstructionOperand shift_operand;
-  if (m.HasValue()) {
-    shift_operand = g.UseImmediate(m.node());
-  } else {
-    shift_operand = g.UseUniqueRegister(m.node());
-  }
-
-  InstructionOperand inputs[] = {g.UseRegister(node->InputAt(0)),
-                                 g.UseRegister(node->InputAt(1)),
-                                 shift_operand};
-
-  InstructionOperand outputs[] = {
-      g.DefineSameAsFirst(node),
-      g.DefineAsRegister(NodeProperties::FindProjection(node, 1))};
-
-  selector->Emit(opcode, 2, outputs, 3, inputs);
-}
-
-void InstructionSelector::VisitWord32PairShl(Node* node) {
-  VisitPairShift(this, kPPC_ShiftLeftPair, node);
-}
-
-void InstructionSelector::VisitWord32PairShr(Node* node) {
-  VisitPairShift(this, kPPC_ShiftRightPair, node);
-}
-
-void InstructionSelector::VisitWord32PairSar(Node* node) {
-  VisitPairShift(this, kPPC_ShiftRightAlgPair, node);
-}
-#endif
 
 #if V8_TARGET_ARCH_PPC64
 void InstructionSelector::VisitWord64Sar(Node* node) {
@@ -879,14 +825,6 @@ void InstructionSelector::VisitWord64Ctz(Node* node) { UNREACHABLE(); }
 #endif
 
 
-void InstructionSelector::VisitWord32ReverseBits(Node* node) { UNREACHABLE(); }
-
-
-#if V8_TARGET_ARCH_PPC64
-void InstructionSelector::VisitWord64ReverseBits(Node* node) { UNREACHABLE(); }
-#endif
-
-
 void InstructionSelector::VisitInt32Add(Node* node) {
   VisitBinop<Int32BinopMatcher>(this, node, kPPC_Add, kInt16Imm);
 }
@@ -898,9 +836,6 @@ void InstructionSelector::VisitInt64Add(Node* node) {
 }
 #endif
 
-#if !V8_TARGET_ARCH_PPC64
-void InstructionSelector::VisitInt32PairAdd(Node* node) { UNIMPLEMENTED(); }
-#endif
 
 void InstructionSelector::VisitInt32Sub(Node* node) {
   PPCOperandGenerator g(this);
@@ -1005,16 +940,6 @@ void InstructionSelector::VisitChangeFloat32ToFloat64(Node* node) {
 }
 
 
-void InstructionSelector::VisitRoundInt32ToFloat32(Node* node) {
-  VisitRR(this, kPPC_Int32ToFloat32, node);
-}
-
-
-void InstructionSelector::VisitRoundUint32ToFloat32(Node* node) {
-  VisitRR(this, kPPC_Uint32ToFloat32, node);
-}
-
-
 void InstructionSelector::VisitChangeInt32ToFloat64(Node* node) {
   VisitRR(this, kPPC_Int32ToDouble, node);
 }
@@ -1082,16 +1007,6 @@ void InstructionSelector::VisitTruncateFloat64ToInt32(Node* node) {
       return VisitRR(this, kPPC_DoubleToInt32, node);
   }
   UNREACHABLE();
-}
-
-
-void InstructionSelector::VisitTruncateFloat32ToInt32(Node* node) {
-  VisitRR(this, kPPC_DoubleToInt32, node);
-}
-
-
-void InstructionSelector::VisitTruncateFloat32ToUint32(Node* node) {
-  VisitRR(this, kPPC_DoubleToUint32, node);
 }
 
 
@@ -1304,7 +1219,7 @@ void InstructionSelector::VisitFloat64RoundTiesEven(Node* node) {
 
 void InstructionSelector::VisitInt32AddWithOverflow(Node* node) {
   if (Node* ovf = NodeProperties::FindProjection(node, 1)) {
-    FlagsContinuation cont = FlagsContinuation::ForSet(kOverflow, ovf);
+    FlagsContinuation cont(kOverflow, ovf);
     return VisitBinop<Int32BinopMatcher>(this, node, kPPC_AddWithOverflow32,
                                          kInt16Imm, &cont);
   }
@@ -1316,7 +1231,7 @@ void InstructionSelector::VisitInt32AddWithOverflow(Node* node) {
 
 void InstructionSelector::VisitInt32SubWithOverflow(Node* node) {
   if (Node* ovf = NodeProperties::FindProjection(node, 1)) {
-    FlagsContinuation cont = FlagsContinuation::ForSet(kOverflow, ovf);
+    FlagsContinuation cont(kOverflow, ovf);
     return VisitBinop<Int32BinopMatcher>(this, node, kPPC_SubWithOverflow32,
                                          kInt16Imm_Negate, &cont);
   }
@@ -1329,7 +1244,7 @@ void InstructionSelector::VisitInt32SubWithOverflow(Node* node) {
 #if V8_TARGET_ARCH_PPC64
 void InstructionSelector::VisitInt64AddWithOverflow(Node* node) {
   if (Node* ovf = NodeProperties::FindProjection(node, 1)) {
-    FlagsContinuation cont = FlagsContinuation::ForSet(kOverflow, ovf);
+    FlagsContinuation cont(kOverflow, ovf);
     return VisitBinop<Int64BinopMatcher>(this, node, kPPC_Add, kInt16Imm,
                                          &cont);
   }
@@ -1340,7 +1255,7 @@ void InstructionSelector::VisitInt64AddWithOverflow(Node* node) {
 
 void InstructionSelector::VisitInt64SubWithOverflow(Node* node) {
   if (Node* ovf = NodeProperties::FindProjection(node, 1)) {
-    FlagsContinuation cont = FlagsContinuation::ForSet(kOverflow, ovf);
+    FlagsContinuation cont(kOverflow, ovf);
     return VisitBinop<Int64BinopMatcher>(this, node, kPPC_Sub, kInt16Imm_Negate,
                                          &cont);
   }
@@ -1376,9 +1291,6 @@ void VisitCompare(InstructionSelector* selector, InstructionCode opcode,
   if (cont->IsBranch()) {
     selector->Emit(opcode, g.NoOutput(), left, right,
                    g.Label(cont->true_block()), g.Label(cont->false_block()));
-  } else if (cont->IsDeoptimize()) {
-    selector->EmitDeoptimize(opcode, g.NoOutput(), left, right,
-                             cont->frame_state());
   } else {
     DCHECK(cont->IsSet());
     selector->Emit(opcode, g.DefineAsRegister(cont->result()), left, right);
@@ -1616,17 +1528,6 @@ void InstructionSelector::VisitBranch(Node* branch, BasicBlock* tbranch,
   VisitWord32CompareZero(this, branch, branch->InputAt(0), &cont);
 }
 
-void InstructionSelector::VisitDeoptimizeIf(Node* node) {
-  FlagsContinuation cont =
-      FlagsContinuation::ForDeoptimize(kNotEqual, node->InputAt(1));
-  VisitWord32CompareZero(this, node, node->InputAt(0), &cont);
-}
-
-void InstructionSelector::VisitDeoptimizeUnless(Node* node) {
-  FlagsContinuation cont =
-      FlagsContinuation::ForDeoptimize(kEqual, node->InputAt(1));
-  VisitWord32CompareZero(this, node, node->InputAt(0), &cont);
-}
 
 void InstructionSelector::VisitSwitch(Node* node, const SwitchInfo& sw) {
   PPCOperandGenerator g(this);
@@ -1657,7 +1558,7 @@ void InstructionSelector::VisitSwitch(Node* node, const SwitchInfo& sw) {
 
 
 void InstructionSelector::VisitWord32Equal(Node* const node) {
-  FlagsContinuation cont = FlagsContinuation::ForSet(kEqual, node);
+  FlagsContinuation cont(kEqual, node);
   Int32BinopMatcher m(node);
   if (m.right().Is(0)) {
     return VisitWord32CompareZero(this, m.node(), m.left().node(), &cont);
@@ -1667,34 +1568,32 @@ void InstructionSelector::VisitWord32Equal(Node* const node) {
 
 
 void InstructionSelector::VisitInt32LessThan(Node* node) {
-  FlagsContinuation cont = FlagsContinuation::ForSet(kSignedLessThan, node);
+  FlagsContinuation cont(kSignedLessThan, node);
   VisitWord32Compare(this, node, &cont);
 }
 
 
 void InstructionSelector::VisitInt32LessThanOrEqual(Node* node) {
-  FlagsContinuation cont =
-      FlagsContinuation::ForSet(kSignedLessThanOrEqual, node);
+  FlagsContinuation cont(kSignedLessThanOrEqual, node);
   VisitWord32Compare(this, node, &cont);
 }
 
 
 void InstructionSelector::VisitUint32LessThan(Node* node) {
-  FlagsContinuation cont = FlagsContinuation::ForSet(kUnsignedLessThan, node);
+  FlagsContinuation cont(kUnsignedLessThan, node);
   VisitWord32Compare(this, node, &cont);
 }
 
 
 void InstructionSelector::VisitUint32LessThanOrEqual(Node* node) {
-  FlagsContinuation cont =
-      FlagsContinuation::ForSet(kUnsignedLessThanOrEqual, node);
+  FlagsContinuation cont(kUnsignedLessThanOrEqual, node);
   VisitWord32Compare(this, node, &cont);
 }
 
 
 #if V8_TARGET_ARCH_PPC64
 void InstructionSelector::VisitWord64Equal(Node* const node) {
-  FlagsContinuation cont = FlagsContinuation::ForSet(kEqual, node);
+  FlagsContinuation cont(kEqual, node);
   Int64BinopMatcher m(node);
   if (m.right().Is(0)) {
     return VisitWord64CompareZero(this, m.node(), m.left().node(), &cont);
@@ -1704,66 +1603,62 @@ void InstructionSelector::VisitWord64Equal(Node* const node) {
 
 
 void InstructionSelector::VisitInt64LessThan(Node* node) {
-  FlagsContinuation cont = FlagsContinuation::ForSet(kSignedLessThan, node);
+  FlagsContinuation cont(kSignedLessThan, node);
   VisitWord64Compare(this, node, &cont);
 }
 
 
 void InstructionSelector::VisitInt64LessThanOrEqual(Node* node) {
-  FlagsContinuation cont =
-      FlagsContinuation::ForSet(kSignedLessThanOrEqual, node);
+  FlagsContinuation cont(kSignedLessThanOrEqual, node);
   VisitWord64Compare(this, node, &cont);
 }
 
 
 void InstructionSelector::VisitUint64LessThan(Node* node) {
-  FlagsContinuation cont = FlagsContinuation::ForSet(kUnsignedLessThan, node);
+  FlagsContinuation cont(kUnsignedLessThan, node);
   VisitWord64Compare(this, node, &cont);
 }
 
 
 void InstructionSelector::VisitUint64LessThanOrEqual(Node* node) {
-  FlagsContinuation cont =
-      FlagsContinuation::ForSet(kUnsignedLessThanOrEqual, node);
+  FlagsContinuation cont(kUnsignedLessThanOrEqual, node);
   VisitWord64Compare(this, node, &cont);
 }
 #endif
 
 
 void InstructionSelector::VisitFloat32Equal(Node* node) {
-  FlagsContinuation cont = FlagsContinuation::ForSet(kEqual, node);
+  FlagsContinuation cont(kEqual, node);
   VisitFloat32Compare(this, node, &cont);
 }
 
 
 void InstructionSelector::VisitFloat32LessThan(Node* node) {
-  FlagsContinuation cont = FlagsContinuation::ForSet(kUnsignedLessThan, node);
+  FlagsContinuation cont(kUnsignedLessThan, node);
   VisitFloat32Compare(this, node, &cont);
 }
 
 
 void InstructionSelector::VisitFloat32LessThanOrEqual(Node* node) {
-  FlagsContinuation cont =
-      FlagsContinuation::ForSet(kUnsignedLessThanOrEqual, node);
+  FlagsContinuation cont(kUnsignedLessThanOrEqual, node);
   VisitFloat32Compare(this, node, &cont);
 }
 
 
 void InstructionSelector::VisitFloat64Equal(Node* node) {
-  FlagsContinuation cont = FlagsContinuation::ForSet(kEqual, node);
+  FlagsContinuation cont(kEqual, node);
   VisitFloat64Compare(this, node, &cont);
 }
 
 
 void InstructionSelector::VisitFloat64LessThan(Node* node) {
-  FlagsContinuation cont = FlagsContinuation::ForSet(kUnsignedLessThan, node);
+  FlagsContinuation cont(kUnsignedLessThan, node);
   VisitFloat64Compare(this, node, &cont);
 }
 
 
 void InstructionSelector::VisitFloat64LessThanOrEqual(Node* node) {
-  FlagsContinuation cont =
-      FlagsContinuation::ForSet(kUnsignedLessThanOrEqual, node);
+  FlagsContinuation cont(kUnsignedLessThanOrEqual, node);
   VisitFloat64Compare(this, node, &cont);
 }
 
@@ -1810,7 +1705,6 @@ void InstructionSelector::EmitPrepareArguments(
 
 bool InstructionSelector::IsTailCallAddressImmediate() { return false; }
 
-int InstructionSelector::GetTempsCountForTailCallFromJSFunction() { return 3; }
 
 void InstructionSelector::VisitFloat64ExtractLowWord32(Node* node) {
   PPCOperandGenerator g(this);

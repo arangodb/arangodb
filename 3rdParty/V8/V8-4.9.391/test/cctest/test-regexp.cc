@@ -54,11 +54,6 @@
 #include "src/arm64/macro-assembler-arm64.h"
 #include "src/regexp/arm64/regexp-macro-assembler-arm64.h"
 #endif
-#if V8_TARGET_ARCH_S390
-#include "src/regexp/s390/regexp-macro-assembler-s390.h"
-#include "src/s390/assembler-s390.h"
-#include "src/s390/macro-assembler-s390.h"
-#endif
 #if V8_TARGET_ARCH_PPC
 #include "src/ppc/assembler-ppc.h"
 #include "src/ppc/macro-assembler-ppc.h"
@@ -101,7 +96,7 @@ static bool CheckParse(const char* input) {
   FlatStringReader reader(CcTest::i_isolate(), CStrVector(input));
   RegExpCompileData result;
   return v8::internal::RegExpParser::ParseRegExp(
-      CcTest::i_isolate(), &zone, &reader, JSRegExp::kNone, &result);
+      CcTest::i_isolate(), &zone, &reader, false, false, &result);
 }
 
 
@@ -111,10 +106,8 @@ static void CheckParseEq(const char* input, const char* expected,
   Zone zone;
   FlatStringReader reader(CcTest::i_isolate(), CStrVector(input));
   RegExpCompileData result;
-  JSRegExp::Flags flags = JSRegExp::kNone;
-  if (unicode) flags |= JSRegExp::kUnicode;
-  CHECK(v8::internal::RegExpParser::ParseRegExp(CcTest::i_isolate(), &zone,
-                                                &reader, flags, &result));
+  CHECK(v8::internal::RegExpParser::ParseRegExp(
+      CcTest::i_isolate(), &zone, &reader, false, unicode, &result));
   CHECK(result.tree != NULL);
   CHECK(result.error.is_null());
   std::ostringstream os;
@@ -132,7 +125,7 @@ static bool CheckSimple(const char* input) {
   FlatStringReader reader(CcTest::i_isolate(), CStrVector(input));
   RegExpCompileData result;
   CHECK(v8::internal::RegExpParser::ParseRegExp(
-      CcTest::i_isolate(), &zone, &reader, JSRegExp::kNone, &result));
+      CcTest::i_isolate(), &zone, &reader, false, false, &result));
   CHECK(result.tree != NULL);
   CHECK(result.error.is_null());
   return result.simple;
@@ -150,7 +143,7 @@ static MinMaxPair CheckMinMaxMatch(const char* input) {
   FlatStringReader reader(CcTest::i_isolate(), CStrVector(input));
   RegExpCompileData result;
   CHECK(v8::internal::RegExpParser::ParseRegExp(
-      CcTest::i_isolate(), &zone, &reader, JSRegExp::kNone, &result));
+      CcTest::i_isolate(), &zone, &reader, false, false, &result));
   CHECK(result.tree != NULL);
   CHECK(result.error.is_null());
   int min_match = result.tree->min_match();
@@ -213,8 +206,8 @@ void TestRegExpParser(bool lookbehind) {
   }
   CheckParseEq("()", "(^ %)");
   CheckParseEq("(?=)", "(-> + %)");
-  CheckParseEq("[]", "^[\\x00-\\u{10ffff}]");  // Doesn't compile on windows
-  CheckParseEq("[^]", "[\\x00-\\u{10ffff}]");  // \uffff isn't in codepage 1252
+  CheckParseEq("[]", "^[\\x00-\\uffff]");  // Doesn't compile on windows
+  CheckParseEq("[^]", "[\\x00-\\uffff]");  // \uffff isn't in codepage 1252
   CheckParseEq("[x]", "[x]");
   CheckParseEq("[xyz]", "[x y z]");
   CheckParseEq("[a-zA-Z0-9]", "[a-z A-Z 0-9]");
@@ -322,10 +315,6 @@ void TestRegExpParser(bool lookbehind) {
                true);
   CheckParseEq("\\u{12345}{3}", "(# 3 3 g '\\ud808\\udf45')", true);
   CheckParseEq("\\u{12345}*", "(# 0 - g '\\ud808\\udf45')", true);
-
-  CheckParseEq("\\ud808\\udf45*", "(# 0 - g '\\ud808\\udf45')", true);
-  CheckParseEq("[\\ud808\\udf45-\\ud809\\udccc]", "[\\u{012345}-\\u{0124cc}]",
-               true);
 
   CHECK_SIMPLE("", false);
   CHECK_SIMPLE("a", true);
@@ -465,7 +454,7 @@ static void ExpectError(const char* input,
   FlatStringReader reader(CcTest::i_isolate(), CStrVector(input));
   RegExpCompileData result;
   CHECK(!v8::internal::RegExpParser::ParseRegExp(
-      CcTest::i_isolate(), &zone, &reader, JSRegExp::kNone, &result));
+            CcTest::i_isolate(), &zone, &reader, false, false, &result));
   CHECK(result.tree == NULL);
   CHECK(!result.error.is_null());
   v8::base::SmartArrayPointer<char> str = result.error->ToCString(ALLOW_NULLS);
@@ -534,7 +523,7 @@ static void TestCharacterClassEscapes(uc16 c, bool (pred)(uc16 c)) {
   ZoneList<CharacterRange>* ranges =
       new(&zone) ZoneList<CharacterRange>(2, &zone);
   CharacterRange::AddClassEscape(c, ranges, &zone);
-  for (uc32 i = 0; i < (1 << 16); i++) {
+  for (unsigned i = 0; i < (1 << 16); i++) {
     bool in_class = false;
     for (int j = 0; !in_class && j < ranges->length(); j++) {
       CharacterRange& range = ranges->at(j);
@@ -561,19 +550,17 @@ static RegExpNode* Compile(const char* input, bool multiline, bool unicode,
   Isolate* isolate = CcTest::i_isolate();
   FlatStringReader reader(isolate, CStrVector(input));
   RegExpCompileData compile_data;
-  JSRegExp::Flags flags = JSRegExp::kNone;
-  if (multiline) flags = JSRegExp::kMultiline;
-  if (unicode) flags = JSRegExp::kUnicode;
   if (!v8::internal::RegExpParser::ParseRegExp(CcTest::i_isolate(), zone,
-                                               &reader, flags, &compile_data))
+                                               &reader, multiline, unicode,
+                                               &compile_data))
     return NULL;
   Handle<String> pattern = isolate->factory()
                                ->NewStringFromUtf8(CStrVector(input))
                                .ToHandleChecked();
   Handle<String> sample_subject =
       isolate->factory()->NewStringFromUtf8(CStrVector("")).ToHandleChecked();
-  RegExpEngine::Compile(isolate, zone, &compile_data, flags, pattern,
-                        sample_subject, is_one_byte);
+  RegExpEngine::Compile(isolate, zone, &compile_data, false, false, multiline,
+                        false, pattern, sample_subject, is_one_byte);
   return compile_data.node;
 }
 
@@ -691,7 +678,7 @@ TEST(DispatchTableConstruction) {
   for (int i = 0; i < kRangeCount; i++) {
     uc16* range = ranges[i];
     for (int j = 0; j < 2 * kRangeSize; j += 2)
-      table.AddRange(CharacterRange::Range(range[j], range[j + 1]), i, &zone);
+      table.AddRange(CharacterRange(range[j], range[j + 1]), i, &zone);
   }
   // Check that the table looks as we would expect
   for (int p = 0; p < kLimit; p++) {
@@ -749,8 +736,6 @@ typedef RegExpMacroAssemblerX64 ArchRegExpMacroAssembler;
 typedef RegExpMacroAssemblerARM ArchRegExpMacroAssembler;
 #elif V8_TARGET_ARCH_ARM64
 typedef RegExpMacroAssemblerARM64 ArchRegExpMacroAssembler;
-#elif V8_TARGET_ARCH_S390
-typedef RegExpMacroAssemblerS390 ArchRegExpMacroAssembler;
 #elif V8_TARGET_ARCH_PPC
 typedef RegExpMacroAssemblerPPC ArchRegExpMacroAssembler;
 #elif V8_TARGET_ARCH_MIPS
@@ -1193,16 +1178,16 @@ TEST(MacroAssemblerNativeBackRefNoCase) {
   m.WriteCurrentPositionToRegister(2, 0);
   m.AdvanceCurrentPosition(3);
   m.WriteCurrentPositionToRegister(3, 0);
-  m.CheckNotBackReferenceIgnoreCase(2, false, false, &fail);  // Match "AbC".
-  m.CheckNotBackReferenceIgnoreCase(2, false, false, &fail);  // Match "ABC".
+  m.CheckNotBackReferenceIgnoreCase(2, false, &fail);  // Match "AbC".
+  m.CheckNotBackReferenceIgnoreCase(2, false, &fail);  // Match "ABC".
   Label expected_fail;
-  m.CheckNotBackReferenceIgnoreCase(2, false, false, &expected_fail);
+  m.CheckNotBackReferenceIgnoreCase(2, false, &expected_fail);
   m.Bind(&fail);
   m.Fail();
 
   m.Bind(&expected_fail);
   m.AdvanceCurrentPosition(3);  // Skip "xYz"
-  m.CheckNotBackReferenceIgnoreCase(2, false, false, &succ);
+  m.CheckNotBackReferenceIgnoreCase(2, false, &succ);
   m.Fail();
 
   m.Bind(&succ);
@@ -1505,7 +1490,7 @@ TEST(AddInverseToTable) {
       int from = PseudoRandom(t + 87, i + 25) % kLimit;
       int to = from + (PseudoRandom(i + 87, t + 25) % (kLimit / 20));
       if (to > kLimit) to = kLimit;
-      ranges->Add(CharacterRange::Range(from, to), &zone);
+      ranges->Add(CharacterRange(from, to), &zone);
     }
     DispatchTable table(&zone);
     DispatchTableConstructor cons(&table, false, &zone);
@@ -1522,7 +1507,7 @@ TEST(AddInverseToTable) {
   Zone zone;
   ZoneList<CharacterRange>* ranges =
       new(&zone) ZoneList<CharacterRange>(1, &zone);
-  ranges->Add(CharacterRange::Range(0xFFF0, 0xFFFE), &zone);
+  ranges->Add(CharacterRange(0xFFF0, 0xFFFE), &zone);
   DispatchTable table(&zone);
   DispatchTableConstructor cons(&table, false, &zone);
   cons.set_choice_index(0);
@@ -1636,9 +1621,7 @@ static void TestRangeCaseIndependence(Isolate* isolate, CharacterRange input,
   int count = expected.length();
   ZoneList<CharacterRange>* list =
       new(&zone) ZoneList<CharacterRange>(count, &zone);
-  list->Add(input, &zone);
-  CharacterRange::AddCaseEquivalents(isolate, &zone, list, false);
-  list->Remove(0);  // Remove the input before checking results.
+  input.AddCaseEquivalents(isolate, &zone, list, false);
   CHECK_EQ(count, list->length());
   for (int i = 0; i < list->length(); i++) {
     CHECK_EQ(expected[i].from(), list->at(i).from());
@@ -1662,33 +1645,31 @@ TEST(CharacterRangeCaseIndependence) {
                                   CharacterRange::Singleton('A'));
   TestSimpleRangeCaseIndependence(isolate, CharacterRange::Singleton('z'),
                                   CharacterRange::Singleton('Z'));
-  TestSimpleRangeCaseIndependence(isolate, CharacterRange::Range('a', 'z'),
-                                  CharacterRange::Range('A', 'Z'));
-  TestSimpleRangeCaseIndependence(isolate, CharacterRange::Range('c', 'f'),
-                                  CharacterRange::Range('C', 'F'));
-  TestSimpleRangeCaseIndependence(isolate, CharacterRange::Range('a', 'b'),
-                                  CharacterRange::Range('A', 'B'));
-  TestSimpleRangeCaseIndependence(isolate, CharacterRange::Range('y', 'z'),
-                                  CharacterRange::Range('Y', 'Z'));
-  TestSimpleRangeCaseIndependence(isolate,
-                                  CharacterRange::Range('a' - 1, 'z' + 1),
-                                  CharacterRange::Range('A', 'Z'));
-  TestSimpleRangeCaseIndependence(isolate, CharacterRange::Range('A', 'Z'),
-                                  CharacterRange::Range('a', 'z'));
-  TestSimpleRangeCaseIndependence(isolate, CharacterRange::Range('C', 'F'),
-                                  CharacterRange::Range('c', 'f'));
-  TestSimpleRangeCaseIndependence(isolate,
-                                  CharacterRange::Range('A' - 1, 'Z' + 1),
-                                  CharacterRange::Range('a', 'z'));
+  TestSimpleRangeCaseIndependence(isolate, CharacterRange('a', 'z'),
+                                  CharacterRange('A', 'Z'));
+  TestSimpleRangeCaseIndependence(isolate, CharacterRange('c', 'f'),
+                                  CharacterRange('C', 'F'));
+  TestSimpleRangeCaseIndependence(isolate, CharacterRange('a', 'b'),
+                                  CharacterRange('A', 'B'));
+  TestSimpleRangeCaseIndependence(isolate, CharacterRange('y', 'z'),
+                                  CharacterRange('Y', 'Z'));
+  TestSimpleRangeCaseIndependence(isolate, CharacterRange('a' - 1, 'z' + 1),
+                                  CharacterRange('A', 'Z'));
+  TestSimpleRangeCaseIndependence(isolate, CharacterRange('A', 'Z'),
+                                  CharacterRange('a', 'z'));
+  TestSimpleRangeCaseIndependence(isolate, CharacterRange('C', 'F'),
+                                  CharacterRange('c', 'f'));
+  TestSimpleRangeCaseIndependence(isolate, CharacterRange('A' - 1, 'Z' + 1),
+                                  CharacterRange('a', 'z'));
   // Here we need to add [l-z] to complete the case independence of
   // [A-Za-z] but we expect [a-z] to be added since we always add a
   // whole block at a time.
-  TestSimpleRangeCaseIndependence(isolate, CharacterRange::Range('A', 'k'),
-                                  CharacterRange::Range('a', 'z'));
+  TestSimpleRangeCaseIndependence(isolate, CharacterRange('A', 'k'),
+                                  CharacterRange('a', 'z'));
 }
 
 
-static bool InClass(uc32 c, ZoneList<CharacterRange>* ranges) {
+static bool InClass(uc16 c, ZoneList<CharacterRange>* ranges) {
   if (ranges == NULL)
     return false;
   for (int i = 0; i < ranges->length(); i++) {
@@ -1700,46 +1681,29 @@ static bool InClass(uc32 c, ZoneList<CharacterRange>* ranges) {
 }
 
 
-TEST(UnicodeRangeSplitter) {
+TEST(CharClassDifference) {
   Zone zone;
   ZoneList<CharacterRange>* base =
       new(&zone) ZoneList<CharacterRange>(1, &zone);
   base->Add(CharacterRange::Everything(), &zone);
-  UnicodeRangeSplitter splitter(&zone, base);
-  // BMP
-  for (uc32 c = 0; c < 0xd800; c++) {
-    CHECK(InClass(c, splitter.bmp()));
-    CHECK(!InClass(c, splitter.lead_surrogates()));
-    CHECK(!InClass(c, splitter.trail_surrogates()));
-    CHECK(!InClass(c, splitter.non_bmp()));
-  }
-  // Lead surrogates
-  for (uc32 c = 0xd800; c < 0xdbff; c++) {
-    CHECK(!InClass(c, splitter.bmp()));
-    CHECK(InClass(c, splitter.lead_surrogates()));
-    CHECK(!InClass(c, splitter.trail_surrogates()));
-    CHECK(!InClass(c, splitter.non_bmp()));
-  }
-  // Trail surrogates
-  for (uc32 c = 0xdc00; c < 0xdfff; c++) {
-    CHECK(!InClass(c, splitter.bmp()));
-    CHECK(!InClass(c, splitter.lead_surrogates()));
-    CHECK(InClass(c, splitter.trail_surrogates()));
-    CHECK(!InClass(c, splitter.non_bmp()));
-  }
-  // BMP
-  for (uc32 c = 0xe000; c < 0xffff; c++) {
-    CHECK(InClass(c, splitter.bmp()));
-    CHECK(!InClass(c, splitter.lead_surrogates()));
-    CHECK(!InClass(c, splitter.trail_surrogates()));
-    CHECK(!InClass(c, splitter.non_bmp()));
-  }
-  // Non-BMP
-  for (uc32 c = 0x10000; c < 0x10ffff; c++) {
-    CHECK(!InClass(c, splitter.bmp()));
-    CHECK(!InClass(c, splitter.lead_surrogates()));
-    CHECK(!InClass(c, splitter.trail_surrogates()));
-    CHECK(InClass(c, splitter.non_bmp()));
+  Vector<const int> overlay = CharacterRange::GetWordBounds();
+  ZoneList<CharacterRange>* included = NULL;
+  ZoneList<CharacterRange>* excluded = NULL;
+  CharacterRange::Split(base, overlay, &included, &excluded, &zone);
+  for (int i = 0; i < (1 << 16); i++) {
+    bool in_base = InClass(i, base);
+    if (in_base) {
+      bool in_overlay = false;
+      for (int j = 0; !in_overlay && j < overlay.length(); j += 2) {
+        if (overlay[j] <= i && i < overlay[j+1])
+          in_overlay = true;
+      }
+      CHECK_EQ(in_overlay, InClass(i, included));
+      CHECK_EQ(!in_overlay, InClass(i, excluded));
+    } else {
+      CHECK(!InClass(i, included));
+      CHECK(!InClass(i, excluded));
+    }
   }
 }
 
@@ -1750,9 +1714,9 @@ TEST(CanonicalizeCharacterSets) {
       new(&zone) ZoneList<CharacterRange>(4, &zone);
   CharacterSet set(list);
 
-  list->Add(CharacterRange::Range(10, 20), &zone);
-  list->Add(CharacterRange::Range(30, 40), &zone);
-  list->Add(CharacterRange::Range(50, 60), &zone);
+  list->Add(CharacterRange(10, 20), &zone);
+  list->Add(CharacterRange(30, 40), &zone);
+  list->Add(CharacterRange(50, 60), &zone);
   set.Canonicalize();
   CHECK_EQ(3, list->length());
   CHECK_EQ(10, list->at(0).from());
@@ -1763,9 +1727,9 @@ TEST(CanonicalizeCharacterSets) {
   CHECK_EQ(60, list->at(2).to());
 
   list->Rewind(0);
-  list->Add(CharacterRange::Range(10, 20), &zone);
-  list->Add(CharacterRange::Range(50, 60), &zone);
-  list->Add(CharacterRange::Range(30, 40), &zone);
+  list->Add(CharacterRange(10, 20), &zone);
+  list->Add(CharacterRange(50, 60), &zone);
+  list->Add(CharacterRange(30, 40), &zone);
   set.Canonicalize();
   CHECK_EQ(3, list->length());
   CHECK_EQ(10, list->at(0).from());
@@ -1776,11 +1740,11 @@ TEST(CanonicalizeCharacterSets) {
   CHECK_EQ(60, list->at(2).to());
 
   list->Rewind(0);
-  list->Add(CharacterRange::Range(30, 40), &zone);
-  list->Add(CharacterRange::Range(10, 20), &zone);
-  list->Add(CharacterRange::Range(25, 25), &zone);
-  list->Add(CharacterRange::Range(100, 100), &zone);
-  list->Add(CharacterRange::Range(1, 1), &zone);
+  list->Add(CharacterRange(30, 40), &zone);
+  list->Add(CharacterRange(10, 20), &zone);
+  list->Add(CharacterRange(25, 25), &zone);
+  list->Add(CharacterRange(100, 100), &zone);
+  list->Add(CharacterRange(1, 1), &zone);
   set.Canonicalize();
   CHECK_EQ(5, list->length());
   CHECK_EQ(1, list->at(0).from());
@@ -1795,9 +1759,9 @@ TEST(CanonicalizeCharacterSets) {
   CHECK_EQ(100, list->at(4).to());
 
   list->Rewind(0);
-  list->Add(CharacterRange::Range(10, 19), &zone);
-  list->Add(CharacterRange::Range(21, 30), &zone);
-  list->Add(CharacterRange::Range(20, 20), &zone);
+  list->Add(CharacterRange(10, 19), &zone);
+  list->Add(CharacterRange(21, 30), &zone);
+  list->Add(CharacterRange(20, 20), &zone);
   set.Canonicalize();
   CHECK_EQ(1, list->length());
   CHECK_EQ(10, list->at(0).from());

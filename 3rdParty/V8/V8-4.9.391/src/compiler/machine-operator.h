@@ -102,7 +102,6 @@ typedef MachineRepresentation CheckedStoreRepresentation;
 
 CheckedStoreRepresentation CheckedStoreRepresentationOf(Operator const*);
 
-MachineRepresentation StackSlotRepresentationOf(Operator const* op);
 
 // Interface for building machine-level operators. These operators are
 // machine-level but machine-independent and thus define a language suitable
@@ -135,15 +134,12 @@ class MachineOperatorBuilder final : public ZoneObject {
     kWord64Ctz = 1u << 17,
     kWord32Popcnt = 1u << 18,
     kWord64Popcnt = 1u << 19,
-    kWord32ReverseBits = 1u << 20,
-    kWord64ReverseBits = 1u << 21,
     kAllOptionalOps = kFloat32Max | kFloat32Min | kFloat64Max | kFloat64Min |
                       kFloat32RoundDown | kFloat64RoundDown | kFloat32RoundUp |
                       kFloat64RoundUp | kFloat32RoundTruncate |
                       kFloat64RoundTruncate | kFloat64RoundTiesAway |
                       kFloat32RoundTiesEven | kFloat64RoundTiesEven |
-                      kWord32Ctz | kWord64Ctz | kWord32Popcnt | kWord64Popcnt |
-                      kWord32ReverseBits | kWord64ReverseBits
+                      kWord32Ctz | kWord64Ctz | kWord32Popcnt | kWord64Popcnt
   };
   typedef base::Flags<Flag, unsigned> Flags;
 
@@ -164,9 +160,6 @@ class MachineOperatorBuilder final : public ZoneObject {
   const OptionalOperator Word32Ctz();
   const OptionalOperator Word32Popcnt();
   const OptionalOperator Word64Popcnt();
-  const Operator* Word64PopcntPlaceholder();
-  const OptionalOperator Word32ReverseBits();
-  const OptionalOperator Word64ReverseBits();
   bool Word32ShiftIsSafe() const { return flags_ & kWord32ShiftIsSafe; }
 
   const Operator* Word64And();
@@ -179,11 +172,6 @@ class MachineOperatorBuilder final : public ZoneObject {
   const Operator* Word64Clz();
   const OptionalOperator Word64Ctz();
   const Operator* Word64Equal();
-
-  const Operator* Int32PairAdd();
-  const Operator* Word32PairShl();
-  const Operator* Word32PairShr();
-  const Operator* Word32PairSar();
 
   const Operator* Int32Add();
   const Operator* Int32AddWithOverflow();
@@ -225,8 +213,6 @@ class MachineOperatorBuilder final : public ZoneObject {
   const Operator* ChangeFloat32ToFloat64();
   const Operator* ChangeFloat64ToInt32();   // narrowing
   const Operator* ChangeFloat64ToUint32();  // narrowing
-  const Operator* TruncateFloat32ToInt32();
-  const Operator* TruncateFloat32ToUint32();
   const Operator* TryTruncateFloat32ToInt64();
   const Operator* TryTruncateFloat64ToInt64();
   const Operator* TryTruncateFloat32ToUint64();
@@ -241,10 +227,8 @@ class MachineOperatorBuilder final : public ZoneObject {
   const Operator* TruncateFloat64ToFloat32();
   const Operator* TruncateFloat64ToInt32(TruncationMode);
   const Operator* TruncateInt64ToInt32();
-  const Operator* RoundInt32ToFloat32();
   const Operator* RoundInt64ToFloat32();
   const Operator* RoundInt64ToFloat64();
-  const Operator* RoundUint32ToFloat32();
   const Operator* RoundUint64ToFloat32();
   const Operator* RoundUint64ToFloat64();
 
@@ -319,12 +303,9 @@ class MachineOperatorBuilder final : public ZoneObject {
   // store [base + index], value
   const Operator* Store(StoreRepresentation rep);
 
-  const Operator* StackSlot(MachineRepresentation rep);
-
   // Access to the machine stack.
   const Operator* LoadStackPointer();
   const Operator* LoadFramePointer();
-  const Operator* LoadParentFramePointer();
 
   // checked-load heap, index, length
   const Operator* CheckedLoad(CheckedLoadRepresentation);

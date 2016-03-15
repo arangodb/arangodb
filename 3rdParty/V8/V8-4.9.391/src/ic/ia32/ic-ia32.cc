@@ -167,7 +167,7 @@ static void GenerateKeyedLoadReceiverCheck(MacroAssembler* masm,
 static void GenerateFastArrayLoad(MacroAssembler* masm, Register receiver,
                                   Register key, Register scratch,
                                   Register scratch2, Register result,
-                                  Label* slow) {
+                                  Label* slow, LanguageMode language_mode) {
   // Register use:
   //   receiver - holds the receiver and is unchanged.
   //   key - holds the key and is unchanged (must be a smi).
@@ -211,8 +211,13 @@ static void GenerateFastArrayLoad(MacroAssembler* masm, Register receiver,
   __ jmp(&check_next_prototype);
 
   __ bind(&absent);
-  __ mov(result, masm->isolate()->factory()->undefined_value());
-  __ jmp(&done);
+  if (is_strong(language_mode)) {
+    // Strong mode accesses must throw in this case, so call the runtime.
+    __ jmp(slow);
+  } else {
+    __ mov(result, masm->isolate()->factory()->undefined_value());
+    __ jmp(&done);
+  }
 
   __ bind(&in_bounds);
   // Fast case: Do the load.
@@ -257,7 +262,9 @@ static void GenerateKeyNameCheck(MacroAssembler* masm, Register key,
   __ bind(&unique);
 }
 
-void KeyedLoadIC::GenerateMegamorphic(MacroAssembler* masm) {
+
+void KeyedLoadIC::GenerateMegamorphic(MacroAssembler* masm,
+                                      LanguageMode language_mode) {
   // The return address is on the stack.
   Label slow, check_name, index_smi, index_name, property_array_property;
   Label probe_dictionary, check_number_dictionary;
@@ -279,10 +286,11 @@ void KeyedLoadIC::GenerateMegamorphic(MacroAssembler* masm) {
   // Check the receiver's map to see if it has fast elements.
   __ CheckFastElements(eax, &check_number_dictionary);
 
-  GenerateFastArrayLoad(masm, receiver, key, eax, ebx, eax, &slow);
+  GenerateFastArrayLoad(masm, receiver, key, eax, ebx, eax, &slow,
+                        language_mode);
   Isolate* isolate = masm->isolate();
   Counters* counters = isolate->counters();
-  __ IncrementCounter(counters->ic_keyed_load_generic_smi(), 1);
+  __ IncrementCounter(counters->keyed_load_generic_smi(), 1);
   __ ret(0);
 
   __ bind(&check_number_dictionary);
@@ -310,8 +318,8 @@ void KeyedLoadIC::GenerateMegamorphic(MacroAssembler* masm) {
 
   __ bind(&slow);
   // Slow case: jump to runtime.
-  __ IncrementCounter(counters->ic_keyed_load_generic_slow(), 1);
-  GenerateRuntimeGetProperty(masm);
+  __ IncrementCounter(counters->keyed_load_generic_slow(), 1);
+  GenerateRuntimeGetProperty(masm, language_mode);
 
   __ bind(&check_name);
   GenerateKeyNameCheck(masm, key, eax, ebx, &index_name, &slow);
@@ -355,7 +363,7 @@ void KeyedLoadIC::GenerateMegamorphic(MacroAssembler* masm) {
   GenerateGlobalInstanceTypeCheck(masm, eax, &slow);
 
   GenerateDictionaryLoad(masm, &slow, ebx, key, eax, edi, eax);
-  __ IncrementCounter(counters->ic_keyed_load_generic_symbol(), 1);
+  __ IncrementCounter(counters->keyed_load_generic_symbol(), 1);
   __ ret(0);
 
   __ bind(&index_name);
@@ -620,7 +628,8 @@ void KeyedStoreIC::GenerateMegamorphic(MacroAssembler* masm,
   GenerateMiss(masm);
 }
 
-void LoadIC::GenerateNormal(MacroAssembler* masm) {
+
+void LoadIC::GenerateNormal(MacroAssembler* masm, LanguageMode language_mode) {
   Register dictionary = eax;
   DCHECK(!dictionary.is(LoadDescriptor::ReceiverRegister()));
   DCHECK(!dictionary.is(LoadDescriptor::NameRegister()));
@@ -635,7 +644,7 @@ void LoadIC::GenerateNormal(MacroAssembler* masm) {
 
   // Dictionary load failed, go slow (but don't miss).
   __ bind(&slow);
-  GenerateRuntimeGetProperty(masm);
+  GenerateRuntimeGetProperty(masm, language_mode);
 }
 
 
@@ -659,14 +668,16 @@ static void LoadIC_PushArgs(MacroAssembler* masm) {
 
 void LoadIC::GenerateMiss(MacroAssembler* masm) {
   // Return address is on the stack.
-  __ IncrementCounter(masm->isolate()->counters()->ic_load_miss(), 1);
+  __ IncrementCounter(masm->isolate()->counters()->load_miss(), 1);
   LoadIC_PushArgs(masm);
 
   // Perform tail call to the entry.
   __ TailCallRuntime(Runtime::kLoadIC_Miss);
 }
 
-void LoadIC::GenerateRuntimeGetProperty(MacroAssembler* masm) {
+
+void LoadIC::GenerateRuntimeGetProperty(MacroAssembler* masm,
+                                        LanguageMode language_mode) {
   // Return address is on the stack.
   Register receiver = LoadDescriptor::ReceiverRegister();
   Register name = LoadDescriptor::NameRegister();
@@ -678,13 +689,14 @@ void LoadIC::GenerateRuntimeGetProperty(MacroAssembler* masm) {
   __ push(ebx);
 
   // Do tail-call to runtime routine.
-  __ TailCallRuntime(Runtime::kGetProperty);
+  __ TailCallRuntime(is_strong(language_mode) ? Runtime::kGetPropertyStrong
+                                              : Runtime::kGetProperty);
 }
 
 
 void KeyedLoadIC::GenerateMiss(MacroAssembler* masm) {
   // Return address is on the stack.
-  __ IncrementCounter(masm->isolate()->counters()->ic_keyed_load_miss(), 1);
+  __ IncrementCounter(masm->isolate()->counters()->keyed_load_miss(), 1);
 
   LoadIC_PushArgs(masm);
 
@@ -692,7 +704,9 @@ void KeyedLoadIC::GenerateMiss(MacroAssembler* masm) {
   __ TailCallRuntime(Runtime::kKeyedLoadIC_Miss);
 }
 
-void KeyedLoadIC::GenerateRuntimeGetProperty(MacroAssembler* masm) {
+
+void KeyedLoadIC::GenerateRuntimeGetProperty(MacroAssembler* masm,
+                                             LanguageMode language_mode) {
   // Return address is on the stack.
   Register receiver = LoadDescriptor::ReceiverRegister();
   Register name = LoadDescriptor::NameRegister();
@@ -704,7 +718,8 @@ void KeyedLoadIC::GenerateRuntimeGetProperty(MacroAssembler* masm) {
   __ push(ebx);
 
   // Do tail-call to runtime routine.
-  __ TailCallRuntime(Runtime::kKeyedGetProperty);
+  __ TailCallRuntime(is_strong(language_mode) ? Runtime::kKeyedGetPropertyStrong
+                                              : Runtime::kKeyedGetProperty);
 }
 
 
@@ -762,14 +777,14 @@ void StoreIC::GenerateNormal(MacroAssembler* masm) {
                           receiver, edi);
   __ Drop(3);
   Counters* counters = masm->isolate()->counters();
-  __ IncrementCounter(counters->ic_store_normal_hit(), 1);
+  __ IncrementCounter(counters->store_normal_hit(), 1);
   __ ret(0);
 
   __ bind(&restore_miss);
   __ pop(slot);
   __ pop(vector);
   __ pop(receiver);
-  __ IncrementCounter(counters->ic_store_normal_miss(), 1);
+  __ IncrementCounter(counters->store_normal_miss(), 1);
   GenerateMiss(masm);
 }
 
