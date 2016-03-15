@@ -26,9 +26,9 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
-class ArangobFeature final : public application_features::ApplicationFeature {
+class BenchFeature final : public application_features::ApplicationFeature {
  public:
-  ArangobFeature(application_features::ApplicationServer* server, int* result);
+  BenchFeature(application_features::ApplicationServer* server, int* result);
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
