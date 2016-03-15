@@ -107,26 +107,26 @@ std::vector<SrvRecord> srvRecords(std::string specification) {
 
       cp += n;
 
-      int type = _getshort(cp);
-      cp += 2;
+      int type;
+      GETSHORT(type, cp);
 
-      int nclass = _getshort(cp);
-      cp += 2;
+      int nclass;
+      GETSHORT(nclass, cp);
 
-      int ttl = _getlong(cp);
-      cp += 4;
+      int ttl;
+      GETLONG(ttl, cp);
 
-      int dlen = _getshort(cp);
-      cp += 2;
+      int dlen;
+      GETSHORT(dlen, cp);
 
-      int priority = _getshort(cp);
-      cp += 2;
+      int priority;
+      GETSHORT(priority, cp);
 
-      int weight = _getshort(cp);
-      cp += 2;
+      int weight;
+      GETSHORT(weight, cp);
 
-      int port = _getshort(cp);
-      cp += 2;
+      int port;
+      GETSHORT(port, cp);
 
       n = dn_expand(msg, eom, cp, (char*)hostbuf, 256);
 
