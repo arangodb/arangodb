@@ -1801,7 +1801,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
     arangodb::Transaction* trx = indexNode->trx();
     bool isSorted = false;
     bool isSparse = false;
-    std::vector<std::vector<arangodb::basics::AttributeName>> fields = fields =
+    std::vector<std::vector<arangodb::basics::AttributeName>> fields =
         trx->getIndexFeatures(collectionName, index, isSorted, isSparse);
     if (indexes.size() != 1) {
       // can only use this index node if it uses exactly one index or multiple
