@@ -3222,9 +3222,9 @@ int TRI_document_collection_t::read(Transaction* trx, std::string const& key,
   TRI_ASSERT(mptr != nullptr);
   mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
 
-  VPackBuilder builder;
-  builder.add(VPackValue(key));
-  VPackSlice slice = builder.slice();
+  TransactionBuilderLeaser builder(trx);
+  builder->add(VPackValue(key));
+  VPackSlice slice = builder->slice();
 
   {
     TRI_IF_FAILURE("ReadDocumentNoLock") {
@@ -3287,15 +3287,16 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const slice,
   }
 
   uint64_t hash = 0;
-  VPackBuilder builder;
+  
+  TransactionBuilderLeaser builder(trx);
   VPackSlice newSlice;
   int res = TRI_ERROR_NO_ERROR;
   if (options.recoveryMarker == nullptr) {
-    res = newObjectForInsert(trx, slice, hash, builder);
+    res = newObjectForInsert(trx, slice, hash, *builder.get());
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
-    newSlice = builder.slice();
+    newSlice = builder->slice();
   } else {
     newSlice = slice;
     hash = slice.get(TRI_VOC_ATTRIBUTE_KEY).hash();
@@ -3433,19 +3434,19 @@ int TRI_document_collection_t::update(Transaction* trx,
     }
 
     // merge old and new values 
-    VPackBuilder builder;
+    TransactionBuilderLeaser builder(trx);
     if (options.recoveryMarker == nullptr) {
       mergeObjectsForUpdate(
         trx, VPackSlice(oldHeader->vpack()), newSlice, 
         std::to_string(revisionId), options.mergeObjects, options.keepNull,
-        builder);
+        *builder.get());
  
       if (ServerState::instance()->isDBServer()) {
         // Need to check that no sharding keys have changed:
         if (arangodb::shardKeysChanged(_vocbase->_name,
                                        _info.name(),
                                        VPackSlice(oldHeader->vpack()),
-                                       builder.slice(), false)) {
+                                       builder->slice(), false)) {
           return TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES;
         }
       }
@@ -3454,7 +3455,7 @@ int TRI_document_collection_t::update(Transaction* trx,
     // create marker
     std::unique_ptr<arangodb::wal::Marker> marker;
     if (options.recoveryMarker == nullptr) {
-      marker.reset(createVPackInsertMarker(trx, builder.slice()));
+      marker.reset(createVPackInsertMarker(trx, builder->slice()));
     }
     
     auto actualMarker = (options.recoveryMarker == nullptr 
@@ -3564,17 +3565,17 @@ int TRI_document_collection_t::replace(Transaction* trx,
     }
 
     // merge old and new values 
-    VPackBuilder builder;
+    TransactionBuilderLeaser builder(trx);
     newObjectForReplace(
         trx, VPackSlice(oldHeader->vpack()),
-        newSlice, std::to_string(revisionId), builder);
+        newSlice, std::to_string(revisionId), *builder.get());
 
     if (ServerState::instance()->isDBServer()) {
       // Need to check that no sharding keys have changed:
       if (arangodb::shardKeysChanged(_vocbase->_name,
                                      _info.name(),
                                      VPackSlice(oldHeader->vpack()),
-                                     builder.slice(), false)) {
+                                     builder->slice(), false)) {
         return TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES;
       }
     }
@@ -3582,7 +3583,7 @@ int TRI_document_collection_t::replace(Transaction* trx,
     // create marker
     std::unique_ptr<arangodb::wal::Marker> marker;
     if (options.recoveryMarker == nullptr) {
-      marker.reset(createVPackInsertMarker(trx, builder.slice()));
+      marker.reset(createVPackInsertMarker(trx, builder->slice()));
     }
     
     auto actualMarker = (options.recoveryMarker == nullptr ? marker.get() : options.recoveryMarker);
@@ -4127,18 +4128,19 @@ void TRI_document_collection_t::newObjectForReplace(
     VPackSlice const& newValue,
     std::string const& rev,
     VPackBuilder& builder) {
-  {
-    VPackObjectBuilder guard(&builder);
 
-    TRI_SanitizeObject(newValue, builder);
-    VPackSlice s = oldValue.get(TRI_VOC_ATTRIBUTE_ID);
-    TRI_ASSERT(!s.isNone());
-    builder.add(TRI_VOC_ATTRIBUTE_ID, s);
-    s = oldValue.get(TRI_VOC_ATTRIBUTE_KEY);
-    TRI_ASSERT(!s.isNone());
-    builder.add(TRI_VOC_ATTRIBUTE_KEY, s);
-    builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(rev));
-  }
+  builder.openObject();
+
+  TRI_SanitizeObject(newValue, builder);
+  VPackSlice s = oldValue.get(TRI_VOC_ATTRIBUTE_ID);
+  TRI_ASSERT(!s.isNone());
+  builder.add(TRI_VOC_ATTRIBUTE_ID, s);
+  s = oldValue.get(TRI_VOC_ATTRIBUTE_KEY);
+  TRI_ASSERT(!s.isNone());
+  builder.add(TRI_VOC_ATTRIBUTE_KEY, s);
+  builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(rev));
+
+  builder.close();
 } 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4154,72 +4156,74 @@ void TRI_document_collection_t::mergeObjectsForUpdate(
       bool mergeObjects, bool keepNull,
       VPackBuilder& b) {
 
+  b.openObject();
+
+  // Find the attributes in the newValue object:
+  std::unordered_map<std::string, VPackSlice> newValues;
   { 
-    VPackObjectBuilder guard(&b);
-
-    // Find the attributes in the newValue object:
-    std::unordered_map<std::string, VPackSlice> newValues;
-    { VPackObjectIterator it(newValue);
-      while (it.valid()) {
-        std::string key = it.key().copyString();
-        if (key != TRI_VOC_ATTRIBUTE_KEY &&
-            key != TRI_VOC_ATTRIBUTE_ID &&
-            key != TRI_VOC_ATTRIBUTE_REV) {
-          newValues.emplace(it.key().copyString(), it.value());
-        }
-        it.next();
+    VPackObjectIterator it(newValue);
+    while (it.valid()) {
+      std::string key = it.key().copyString();
+      if (key != TRI_VOC_ATTRIBUTE_KEY &&
+          key != TRI_VOC_ATTRIBUTE_ID &&
+          key != TRI_VOC_ATTRIBUTE_REV) {
+        newValues.emplace(it.key().copyString(), it.value());
       }
+      it.next();
     }
-
-    { VPackObjectIterator it(oldValue);
-      while (it.valid()) {
-        auto key = it.key().copyString();
-        if (key == TRI_VOC_ATTRIBUTE_REV) {
-          it.next();
-          continue;
-        }
-        auto found = newValues.find(key);
-
-        if (found == newValues.end()) {
-          // use old value
-          b.add(key, it.value());
-        } else if (mergeObjects && it.value().isObject() &&
-                   (*found).second.isObject()) {
-          // merge both values
-          auto& value = (*found).second;
-          if (keepNull || (!value.isNone() && !value.isNull())) {
-            VPackBuilder sub = VPackCollection::merge(it.value(), value, 
-                                                      true, !keepNull);
-            b.add(key, sub.slice());
-          }
-          // clear the value in the map so its not added again
-          (*found).second = VPackSlice();
-        } else {
-          // use new value
-          auto& value = (*found).second;
-          if (keepNull || (!value.isNone() && !value.isNull())) {
-            b.add(key, value);
-          }
-          // clear the value in the map so its not added again
-          (*found).second = VPackSlice();
-        }
-        it.next();
-      }
-    }
-
-    // add remaining values that were only in new object
-    for (auto& it : newValues) {
-      auto& s = it.second;
-      if (s.isNone()) {
-        continue;
-      }
-      if (!keepNull && s.isNull()) {
-        continue;
-      }
-      b.add(std::move(it.first), s);
-    }
-
-    // Finally, add the new revision:
-    b.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(rev));
   }
+
+  { 
+    VPackObjectIterator it(oldValue);
+    while (it.valid()) {
+      auto key = it.key().copyString();
+      if (key == TRI_VOC_ATTRIBUTE_REV) {
+        it.next();
+        continue;
+      }
+      auto found = newValues.find(key);
+
+      if (found == newValues.end()) {
+        // use old value
+        b.add(key, it.value());
+      } else if (mergeObjects && it.value().isObject() &&
+                  (*found).second.isObject()) {
+        // merge both values
+        auto& value = (*found).second;
+        if (keepNull || (!value.isNone() && !value.isNull())) {
+          VPackBuilder sub = VPackCollection::merge(it.value(), value, 
+                                                    true, !keepNull);
+          b.add(key, sub.slice());
+        }
+        // clear the value in the map so its not added again
+        (*found).second = VPackSlice();
+      } else {
+        // use new value
+        auto& value = (*found).second;
+        if (keepNull || (!value.isNone() && !value.isNull())) {
+          b.add(key, value);
+        }
+        // clear the value in the map so its not added again
+        (*found).second = VPackSlice();
+      }
+      it.next();
+    }
+  }
+
+  // add remaining values that were only in new object
+  for (auto& it : newValues) {
+    auto& s = it.second;
+    if (s.isNone()) {
+      continue;
+    }
+    if (!keepNull && s.isNull()) {
+      continue;
+    }
+    b.add(std::move(it.first), s);
+  }
+
+  // Finally, add the new revision:
+  b.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(rev));
+
+  b.close();
 }

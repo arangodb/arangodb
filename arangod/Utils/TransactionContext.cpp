@@ -28,6 +28,7 @@
 #include "VocBase/document-collection.h"
 #include "Wal/LogfileManager.h"
 
+#include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
@@ -111,6 +112,7 @@ TransactionContext::TransactionContext(TRI_vocbase_t* vocbase)
       _resolver(nullptr), 
       _customTypeHandler(),
       _ditches(),
+      _builder(),
       _options(),
       _transaction{ 0, false }, 
       _ownsResolver(false) {}
@@ -209,6 +211,29 @@ DocumentDitch* TransactionContext::ditch(TRI_voc_cid_t cid) const {
     return nullptr;
   }
   return (*it).second;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief temporarily lease a Builder object
+//////////////////////////////////////////////////////////////////////////////
+
+VPackBuilder* TransactionContext::leaseBuilder() {
+  if (_builder == nullptr) {
+    _builder.reset(new VPackBuilder());
+  }
+  else {
+    _builder->clear();
+  }
+
+  return _builder.release();
+}
+  
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return a temporary Builder object
+//////////////////////////////////////////////////////////////////////////////
+
+void TransactionContext::returnBuilder(VPackBuilder* builder) {
+  _builder.reset(builder);
 }
   
 //////////////////////////////////////////////////////////////////////////////

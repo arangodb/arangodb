@@ -42,6 +42,10 @@ namespace basics {
 class AttributeName;
 }
 
+namespace velocypack {
+class Builder;
+}
+
 class Index;
 
 namespace aql {
@@ -781,6 +785,20 @@ class Transaction {
  public:
   static thread_local std::unordered_set<std::string>* _makeNolockHeaders;
 };
+
+class TransactionBuilderLeaser {
+ public:
+  explicit TransactionBuilderLeaser(arangodb::Transaction*); 
+  explicit TransactionBuilderLeaser(arangodb::TransactionContext*); 
+  ~TransactionBuilderLeaser();
+  arangodb::velocypack::Builder* builder() const { return _builder; }
+  arangodb::velocypack::Builder* operator->() const { return _builder; }
+  arangodb::velocypack::Builder* get() const { return _builder; }
+ private:
+  arangodb::TransactionContext* _transactionContext;
+  arangodb::velocypack::Builder* _builder;
+};
+
 }
 
 #endif

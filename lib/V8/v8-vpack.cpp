@@ -190,7 +190,6 @@ static inline void AddValuePair(BuilderContext& context, std::string const& attr
 static int V8ToVPack(BuilderContext& context,
                      v8::Handle<v8::Value> const parameter,
                      std::string const& attributeName, bool inObject) {
-  //v8::Isolate* isolate = context.isolate;
 
   if (parameter->IsNull() || parameter->IsUndefined()) {
     AddValue(context, attributeName, inObject,

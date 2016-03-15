@@ -1031,12 +1031,14 @@ AqlValue Functions::ToString(arangodb::aql::Query* query,
                               VPackFunctionParameters const& parameters,
                               bool& mustDestroy) {
   mustDestroy = true;
-  auto const value = ExtractFunctionParameter(trx, parameters, 0);
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
 
   arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24);
-
   arangodb::basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
-  AppendAsString(adapter, value);
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value);
+  AppendAsString(adapter, slice);
   std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
   try {
     b->add(VPackValuePair(buffer.begin(), buffer.length(), VPackValueType::String));
@@ -1056,9 +1058,7 @@ AqlValue Functions::ToBool(arangodb::aql::Query* query,
                            bool& mustDestroy) {
   mustDestroy = true;
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
-  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-  b->add(VPackValue(a.toBoolean()));
-  return AqlValue(b.get());
+  return AqlValue(arangodb::basics::VelocyPackHelper::BooleanValue(a.toBoolean()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

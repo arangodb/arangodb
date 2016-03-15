@@ -2546,4 +2546,30 @@ void Transaction::freeTransaction() {
     this->_transactionContext->unregisterTransaction();
   }
 }
+  
+//////////////////////////////////////////////////////////////////////////////
+/// @brief constructor, leases a builder
+//////////////////////////////////////////////////////////////////////////////
+
+TransactionBuilderLeaser::TransactionBuilderLeaser(arangodb::Transaction* trx) 
+      : _transactionContext(trx->transactionContext().get()), 
+        _builder(_transactionContext->leaseBuilder()) {
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief constructor, leases a builder
+//////////////////////////////////////////////////////////////////////////////
+
+TransactionBuilderLeaser::TransactionBuilderLeaser(arangodb::TransactionContext* transactionContext) 
+      : _transactionContext(transactionContext), 
+        _builder(_transactionContext->leaseBuilder()) {
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief destructor, returns a builder
+//////////////////////////////////////////////////////////////////////////////
+
+TransactionBuilderLeaser::~TransactionBuilderLeaser() { 
+  _transactionContext->returnBuilder(_builder); 
+}
 
