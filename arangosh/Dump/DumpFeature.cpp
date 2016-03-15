@@ -20,7 +20,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ArangodumpFeature.h"
+#include "DumpFeature.h"
 #include "ApplicationFeatures/ClientFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
