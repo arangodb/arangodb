@@ -56,7 +56,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-using CollectionNameResolver = arangodb::CollectionNameResolver;
 using VertexId = arangodb::traverser::VertexId;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -282,26 +281,6 @@ static double ValueToNumber(VPackSlice const& slice, bool& isValid) {
   // All other values are invalid
   isValid = false;
   return 0.0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a value into a boolean value
-////////////////////////////////////////////////////////////////////////////////
-
-static bool ValueToBoolean(VPackSlice const& slice) {
-  if (slice.isBoolean()) {
-    return slice.getBoolean();
-  }
-  if (slice.isNumber()) {
-    return slice.getNumericValue<double>() != 0.0;
-  }
-  if (slice.isString()) {
-    return slice.getStringLength() != 0;
-  }
-  if (slice.isArray() || slice.isObject()) {
-    return true;
-  }
-  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3165,8 +3144,8 @@ AqlValue Functions::Push(arangodb::aql::Query* query,
       b->add(it);
     }
     if (n == 3) {
-      VPackSlice unique = ExtractFunctionParameter(trx, parameters, 2);
-      if (!ValueToBoolean(unique) || !ListContainsElement(list, toPush)) {
+      AqlValue unique = ExtractFunctionParameterValue(trx, parameters, 2);
+      if (!unique.toBoolean() || !ListContainsElement(list, toPush)) {
         b->add(toPush);
       }
     } else {
@@ -3244,8 +3223,8 @@ AqlValue Functions::Append(arangodb::aql::Query* query,
 
   bool unique = false;
   if (n == 3) {
-    VPackSlice uniqueSlice = ExtractFunctionParameter(trx, parameters, 2);
-    unique = ValueToBoolean(uniqueSlice);
+    AqlValue a = ExtractFunctionParameterValue(trx, parameters, 2);
+    unique = a.toBoolean();
   }
 
   std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
@@ -3297,8 +3276,8 @@ AqlValue Functions::Unshift(arangodb::aql::Query* query,
   VPackSlice toAppend = ExtractFunctionParameter(trx, parameters, 1);
   bool unique = false;
   if (n == 3) {
-    VPackSlice uniqueSlice = ExtractFunctionParameter(trx, parameters, 2);
-    unique = ValueToBoolean(uniqueSlice);
+    AqlValue a = ExtractFunctionParameterValue(trx, parameters, 2);
+    unique = a.toBoolean();
   }
 
   if (unique && list.isArray() && ListContainsElement(list, toAppend)) {
@@ -4027,8 +4006,8 @@ AqlValue Functions::Position(arangodb::aql::Query* query,
 
   bool returnIndex = false;
   if (n == 3) {
-    VPackSlice returnIndexSlice = ExtractFunctionParameter(trx, parameters, 2);
-    returnIndex = ValueToBoolean(returnIndexSlice);
+    AqlValue a = ExtractFunctionParameterValue(trx, parameters, 2);
+    returnIndex = a.toBoolean();
   }
 
   std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
