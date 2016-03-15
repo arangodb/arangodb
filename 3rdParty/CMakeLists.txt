@@ -74,7 +74,7 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/OpenSSL)
 option(USE_PRECOMPILED_V8 "use a precompiled V8" OFF)
 
 if (USE_PRECOMPILED_V8)
-  set(V8_DIR ${CMAKE_CURRENT_SOURCE_DIR}/V8-4.3.61)
+  set(V8_DIR ${CMAKE_CURRENT_SOURCE_DIR}/V8-4.9.391)
 
   set(V8_PROC_ARCH "x64")
   set(V8_TARGET_ARCH "${V8_PROC_ARCH}.release")
