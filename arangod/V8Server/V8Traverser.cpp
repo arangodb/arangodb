@@ -69,6 +69,7 @@ OperationCursor EdgeCollectionInfo::getEdges(TRI_edge_direction_e direction,
 
   _searchBuilder.clear();
   EdgeIndex::buildSearchValue(direction, vertexId, _searchBuilder);
+  LOG(INFO) << _searchBuilder.slice().toJson();
   return _trx->indexScan(_collectionName,
                          arangodb::Transaction::CursorType::INDEX, _indexId,
                          _searchBuilder.slice(), 0, UINT64_MAX, 1000, false);
@@ -254,28 +255,19 @@ class SimpleEdgeExpander {
 
 void BasicOptions::addVertexFilter(v8::Isolate* isolate,
                                    v8::Handle<v8::Value> const& example,
-                                   ExplicitTransaction* trx,
-                                   TRI_document_collection_t* col,
-                                   VocShaper* shaper, TRI_voc_cid_t const& cid,
+                                   arangodb::Transaction* trx,
+                                   std::string const& name,
                                    std::string& errorMessage) {
-  auto it = _vertexFilter.find(cid);
+  auto it = _vertexFilter.find(name);
 
-  if (example->IsArray()) {
-    if (it == _vertexFilter.end()) {
-      _vertexFilter.emplace(
-          cid, VertexFilterInfo(
-                   trx, col, new ExampleMatcher(
-                                 isolate, v8::Handle<v8::Array>::Cast(example),
-                                 errorMessage)));
-    }
-  } else {
-    // Has to be Object
-    if (it == _vertexFilter.end()) {
-      _vertexFilter.emplace(
-          cid, VertexFilterInfo(
-                   trx, col, new ExampleMatcher(
-                                 isolate, v8::Handle<v8::Array>::Cast(example),
-                                 errorMessage)));
+  if (it == _vertexFilter.end()) {
+    if (example->IsArray()) {
+      _vertexFilter.emplace(name, new ExampleMatcher(
+          isolate, v8::Handle<v8::Array>::Cast(example), errorMessage));
+    } else {
+      // Has to be Object
+      _vertexFilter.emplace(name, new ExampleMatcher(
+          isolate, v8::Handle<v8::Object>::Cast(example), errorMessage));
     }
   }
 }
