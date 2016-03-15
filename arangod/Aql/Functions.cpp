@@ -1691,11 +1691,11 @@ AqlValue Functions::Values(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Min(arangodb::aql::Query* query,
-                         arangodb::AqlTransaction* trx,
-                         VPackFunctionParameters const& parameters,
-                         bool& mustDestroy) {
+                        arangodb::AqlTransaction* trx,
+                        VPackFunctionParameters const& parameters,
+                        bool& mustDestroy) {
   mustDestroy = true;
-  auto value = ExtractFunctionParameter(trx, parameters, 0);
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
 
   if (!value.isArray()) {
     // not an array
@@ -1703,8 +1703,11 @@ AqlValue Functions::Min(arangodb::aql::Query* query,
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
 
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value);
+
   VPackSlice minValue;
-  for (auto const& it : VPackArrayIterator(value)) {
+  for (auto const& it : VPackArrayIterator(slice)) {
     if (it.isNull()) {
       continue;
     }
@@ -1723,19 +1726,22 @@ AqlValue Functions::Min(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Max(arangodb::aql::Query* query,
-                         arangodb::AqlTransaction* trx,
-                         VPackFunctionParameters const& parameters,
-                         bool& mustDestroy) {
+                        arangodb::AqlTransaction* trx,
+                        VPackFunctionParameters const& parameters,
+                        bool& mustDestroy) {
   mustDestroy = true;
-  auto value = ExtractFunctionParameter(trx, parameters, 0);
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
 
   if (!value.isArray()) {
     // not an array
     RegisterWarning(query, "MAX", TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value);
   VPackSlice maxValue;
-  for (auto const& it : VPackArrayIterator(value)) {
+  for (auto const& it : VPackArrayIterator(slice)) {
     if (maxValue.isNone() || arangodb::basics::VelocyPackHelper::compare(it, maxValue, true) > 0) {
       maxValue = it;
     }
@@ -1751,11 +1757,11 @@ AqlValue Functions::Max(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Sum(arangodb::aql::Query* query,
-                         arangodb::AqlTransaction* trx,
-                         VPackFunctionParameters const& parameters,
-                         bool& mustDestroy) {
+                        arangodb::AqlTransaction* trx,
+                        VPackFunctionParameters const& parameters,
+                        bool& mustDestroy) {
   mustDestroy = true;
-  auto value = ExtractFunctionParameter(trx, parameters, 0);
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
 
   if (!value.isArray()) {
     // not an array
@@ -1763,8 +1769,10 @@ AqlValue Functions::Sum(arangodb::aql::Query* query,
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
 
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value);
   double sum = 0.0;
-  for (auto const& it : VPackArrayIterator(value)) {
+  for (auto const& it : VPackArrayIterator(slice)) {
     if (it.isNull()) {
       continue;
     }
@@ -1777,13 +1785,14 @@ AqlValue Functions::Sum(arangodb::aql::Query* query,
       sum += number;
     }
   }
-  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+
   if (!std::isnan(sum) && sum != HUGE_VAL && sum != -HUGE_VAL) {
-    b->add(VPackValue(sum));
-  } else {
-    b->add(VPackValue(VPackValueType::Null));
-  }
-  return AqlValue(b.get());
+    TransactionBuilderLeaser builder(trx);
+    builder->add(VPackValue(sum));
+    return AqlValue(builder.get());
+  } 
+
+  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1795,17 +1804,20 @@ AqlValue Functions::Average(arangodb::aql::Query* query,
                              VPackFunctionParameters const& parameters,
                              bool& mustDestroy) {
   mustDestroy = true;
-  auto value = ExtractFunctionParameter(trx, parameters, 0);
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
 
   if (!value.isArray()) {
     // not an array
     RegisterWarning(query, "AVERAGE", TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
+  
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value);
 
   double sum = 0.0;
   size_t count = 0;
-  for (auto const& v : VPackArrayIterator(value)) {
+  for (auto const& v : VPackArrayIterator(slice)) {
     if (v.isNull()) {
       continue;
     }
@@ -1823,13 +1835,13 @@ AqlValue Functions::Average(arangodb::aql::Query* query,
     }
   }
 
-  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
   if (count > 0 && !std::isnan(sum) && sum != HUGE_VAL && sum != -HUGE_VAL) {
-    b->add(VPackValue(sum / static_cast<size_t>(count)));
-  } else {
-    b->add(VPackValue(VPackValueType::Null));
-  }
-  return AqlValue(b.get());
+    TransactionBuilderLeaser builder(trx);
+    builder->add(VPackValue(sum / static_cast<size_t>(count)));
+    return AqlValue(builder.get());
+  } 
+
+  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1841,11 +1853,11 @@ AqlValue Functions::Md5(arangodb::aql::Query* query,
                          VPackFunctionParameters const& parameters,
                          bool& mustDestroy) {
   mustDestroy = true;
-  auto value = ExtractFunctionParameter(trx, parameters, 0);
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
   arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
 
-  AppendAsString(adapter, value);
+  AppendAsString(trx, adapter, value);
 
   // create md5
   char hash[17];
@@ -1861,9 +1873,9 @@ AqlValue Functions::Md5(arangodb::aql::Query* query,
 
   arangodb::rest::SslInterface::sslHEX(hash, 16, p, length);
 
-  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-  b->add(VPackValue(std::string(hex, 32)));
-  return AqlValue(b.get());
+  TransactionBuilderLeaser builder(trx);
+  builder->add(VPackValue(std::string(hex, 32)));
+  return AqlValue(builder.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
