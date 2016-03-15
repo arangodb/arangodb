@@ -63,8 +63,8 @@ class EdgeIndexIterator final : public IndexIterator {
                     arangodb::velocypack::Slice searchValues)
       : _trx(trx),
         _index(index),
-        _searchValues(nullptr),
-        _keys(searchValues),
+        _searchValues(arangodb::velocypack::Builder::clone(searchValues)),
+        _keys(_searchValues.slice()),
         _position(0),
         _last(nullptr),
         _buffer(nullptr),
@@ -194,6 +194,15 @@ class EdgeIndex final : public Index {
 
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Transform the list of search slices to search values.
+  ///        This will multiply all IN entries and simply return all other
+  ///        entries.
+  //////////////////////////////////////////////////////////////////////////////
+
+  void expandInSearchValues(arangodb::velocypack::Slice const,
+                            arangodb::velocypack::Builder&) const override;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief creates an IndexIterator for the given VelocyPackSlices.

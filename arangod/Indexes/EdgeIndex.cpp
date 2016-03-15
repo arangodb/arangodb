@@ -198,7 +198,6 @@ TRI_doc_mptr_t* EdgeIndexIterator::next() {
       if (tmp.isObject()) {
         tmp = tmp.get(TRI_SLICE_KEY_EQUAL);
       }
-      // TODO check if we have to decompose { eq: value } here!
       _buffer = _index->lookupByKey(_trx, &tmp, _batchSize);
       // fallthrough intentional
     } else if (_posInBuffer >= _buffer->size()) {
@@ -214,7 +213,6 @@ TRI_doc_mptr_t* EdgeIndexIterator::next() {
         if (tmp.isObject()) {
           tmp = tmp.get(TRI_SLICE_KEY_EQUAL);
         }
-        // TODO check if we have to decompose { eq: value } here!
         _buffer = _index->lookupByKey(_trx, &tmp, _batchSize);
       }
     }
@@ -317,10 +315,10 @@ void EdgeIndex::buildSearchValue(TRI_edge_direction_e dir,
       builder.add(TRI_SLICE_KEY_EQUAL, VPackValue(id));
       builder.close();
       builder.close();
-      builder.add(VPackValue(VPackValueType::None));
+      builder.add(VPackValue(VPackValueType::Null));
       break;
     case TRI_EDGE_IN:
-      builder.add(VPackValue(VPackValueType::None));
+      builder.add(VPackValue(VPackValueType::Null));
       builder.openArray();
       builder.openObject();
       builder.add(TRI_SLICE_KEY_EQUAL, VPackValue(id));
@@ -589,6 +587,16 @@ arangodb::aql::AstNode* EdgeIndex::specializeCondition(
   return matcher.specializeOne(this, node, reference);
 }
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Transform the list of search slices to search values.
+///        This will multiply all IN entries and simply return all other
+///        entries.
+//////////////////////////////////////////////////////////////////////////////
+
+void EdgeIndex::expandInSearchValues(VPackSlice const slice,
+                                     VPackBuilder& builder) const {
+  builder.add(slice);
+}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an IndexIterator for the given VelocyPackSlices.
 ///        The searchValue is a an Array with exactly two Entries.
@@ -616,9 +624,9 @@ IndexIterator* EdgeIndex::iteratorForSlice(
   VPackSlice const from = searchValues.at(0);
   VPackSlice const to = searchValues.at(1);
 
-  if (!from.isNone()) {
+  if (!from.isNull()) {
     TRI_ASSERT(from.isArray());
-    if (!to.isNone()) {
+    if (!to.isNull()) {
       // ANY search
       TRI_ASSERT(to.isArray());
       auto left = std::make_unique<EdgeIndexIterator>(trx, _edgesFrom, from);
@@ -626,7 +634,7 @@ IndexIterator* EdgeIndex::iteratorForSlice(
       return new AnyDirectionEdgeIndexIterator(left.release(), right.release());
     }
     // OUTBOUND search
-    TRI_ASSERT(to.isNone());
+    TRI_ASSERT(to.isNull());
     return new EdgeIndexIterator(trx, _edgesFrom, from);
   } else {
     // INBOUND search
