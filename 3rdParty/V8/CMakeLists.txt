@@ -33,12 +33,17 @@ endif()
 
 # detect 32bit or 64bit
 
-if ("${BITS}" STREQUAL "64")
-  set(V8_PROC_ARCH "x64")
+if (${CMAKE_TARGET_ARCHITECTURES} STREQUAL "armv7")
+  set(V8_PROC_ARCH "arm")
+  list(APPEND V8_GYP_ARGS -Darm_version=7 -Darm_fpu=default -Darm_float_abi=default)
 else ()
-  message(ERROR "#### WILLY FIX ME ####")
-  set(V8_PROC_ARCH "ia32")
-endif () # TODO: ARM? Win32?
+  if ("${BITS}" STREQUAL "64")
+    set(V8_PROC_ARCH "x64")
+  else ()
+    set(V8_PROC_ARCH "ia32")
+  endif ()
+endif()
+
 
 # target architecture
 
