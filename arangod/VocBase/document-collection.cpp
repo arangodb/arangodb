@@ -1838,26 +1838,34 @@ TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
       document->_info.id(), TRI_TRANSACTION_WRITE);
 
   // build the primary index
-  {
+  int res = TRI_ERROR_INTERNAL;
+
+  try {
     double start = TRI_microtime();
 
     LOG_TOPIC(TRACE, Logger::PERFORMANCE) <<
         "iterate-markers { collection: " << vocbase->_name << "/" << document->_info.name() << " }";
 
     // iterate over all markers of the collection
-    int res = IterateMarkersCollection(&trx, collection);
+    res = IterateMarkersCollection(&trx, collection);
 
     LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::DURATION(TRI_microtime() - start) << " s, iterate-markers { collection: " << vocbase->_name << "/" << document->_info.name() << " }";
+  } catch (arangodb::basics::Exception const& ex) {
+    res = ex.code();
+  } catch (std::bad_alloc const&) {
+    res = TRI_ERROR_OUT_OF_MEMORY;
+  } catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_CloseCollection(collection);
-      TRI_FreeCollection(collection);
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_CloseCollection(collection);
+    TRI_FreeCollection(collection);
 
-      LOG(ERR) << "cannot iterate data of document collection";
-      TRI_set_errno(res);
+    LOG(ERR) << "cannot iterate data of document collection";
+    TRI_set_errno(res);
 
-      return nullptr;
-    }
+    return nullptr;
   }
 
   TRI_ASSERT(document->getShaper() !=
@@ -3632,6 +3640,13 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
                                       bool lock,
                                       VPackSlice& prevRev,
                                       TRI_doc_mptr_t& previous) {
+  // create remove marker
+  TRI_voc_rid_t revisionId = TRI_NewTickServer();
+  TransactionBuilderLeaser builder(trx);
+  newObjectForRemove(
+      trx, slice, std::to_string(revisionId), *builder.get());
+
+
   prevRev = VPackSlice();
 
   TRI_IF_FAILURE("RemoveDocumentNoMarker") {
@@ -3646,7 +3661,7 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
   
   std::unique_ptr<arangodb::wal::Marker> marker;
   if (options.recoveryMarker == nullptr) {
-    marker.reset(createVPackRemoveMarker(trx, slice));
+    marker.reset(createVPackRemoveMarker(trx, builder->slice()));
   }
 
   int res;
@@ -4227,3 +4242,22 @@ void TRI_document_collection_t::mergeObjectsForUpdate(
 
   b.close();
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief new object for remove, must have _key set
+////////////////////////////////////////////////////////////////////////////////
+    
+void TRI_document_collection_t::newObjectForRemove(
+    Transaction* trx,
+    VPackSlice const& oldValue,
+    std::string const& rev,
+    VPackBuilder& builder) {
+
+  builder.openObject();
+  VPackSlice s = oldValue.get(TRI_VOC_ATTRIBUTE_KEY);
+  TRI_ASSERT(s.isString());
+  builder.add(TRI_VOC_ATTRIBUTE_KEY, s);
+  builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(rev));
+
+  builder.close();
+} 
