@@ -913,6 +913,7 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
       }
       // We have to add the value always, the key was added before
       value->toVelocyPackValue(searchValues);
+      searchValues.close();
     }
 
     // Now handle the next element, which might be a range

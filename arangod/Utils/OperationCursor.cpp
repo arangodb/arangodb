@@ -28,8 +28,6 @@
 using namespace arangodb;
 
 void OperationCursor::reset() {
-  _builder.clear();
-
   if (_indexIterator != nullptr) {
     _indexIterator->reset();
     _hasMore = true;
@@ -62,11 +60,10 @@ int OperationCursor::getMore(uint64_t batchSize, bool useExternals) {
     // You requested more even if you should have checked it before.
     return TRI_ERROR_FORBIDDEN;
   }
-  // We restart the builder
-  _builder.clear();
+  VPackBuilder builder(buffer);
 
 
-  VPackArrayBuilder guard(&_builder);
+  VPackArrayBuilder guard(&builder);
   TRI_doc_mptr_t* mptr = nullptr;
   // TODO: Improve this for baby awareness
   while (batchSize > 0 && _limit > 0 && (mptr = _indexIterator->next()) != nullptr) {
@@ -74,10 +71,10 @@ int OperationCursor::getMore(uint64_t batchSize, bool useExternals) {
     --_limit;
 #if 0    
     if (useExternals) {
-      _builder.add(VPackValue(mptr->vpack(), VPackValueType::External));
+      builder.add(VPackValue(mptr->vpack(), VPackValueType::External));
     } else {
 #endif      
-    _builder.add(VPackSlice(mptr->vpack()));
+    builder.add(VPackSlice(mptr->vpack()));
 #if 0      
     }
 #endif    

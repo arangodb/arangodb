@@ -40,6 +40,7 @@ struct OperationResult {
 
   explicit OperationResult(int code) 
       : customTypeHandler(), code(code), wasSynchronous(false) { 
+    buffer = std::make_shared<VPackBuffer<uint8_t>>();
     if (code != TRI_ERROR_NO_ERROR) {
       errorMessage = TRI_errno_string(code);
     }
@@ -48,6 +49,7 @@ struct OperationResult {
   OperationResult(int code, std::string const& message) 
       : customTypeHandler(), errorMessage(message), code(code),
         wasSynchronous(false) { 
+    buffer = std::make_shared<VPackBuffer<uint8_t>>();
     TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
   }
 

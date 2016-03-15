@@ -294,6 +294,7 @@ bool IndexBlock::initIndexes() {
         THROW_ARANGO_EXCEPTION(_cursor->code);
       }
     } else {
+      _cursor = nullptr;
       // We were not able to initialize any index with this condition
       return false;
     }
@@ -341,6 +342,8 @@ void IndexBlock::startNextCursor() {
   if (_currentIndex < _indexes.size()) {
     // This check will work as long as _indexes.size() < MAX_SIZE_T
     _cursor = createCursor();
+  } else {
+    _cursor = nullptr;
   }
 }
 
