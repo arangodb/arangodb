@@ -1714,15 +1714,14 @@ static v8::Handle<v8::Value> VertexIdToData(
   TRI_ASSERT(parts.size() == 2); // All internal _id attributes
 
   VPackBuilder builder;
-  builder.openArray();
   builder.openObject();
-  builder.add(TRI_SLICE_KEY_EQUAL, VPackValue(parts[1]));
-  builder.close();
+  builder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(parts[1]));
   builder.close();
 
   OperationResult opRes = trx->document(parts[0], builder.slice(), options);
 
-  if (!opRes.successful()) {
+  if (opRes.failed()) {
+    LOG(INFO) << opRes.code;
     v8::EscapableHandleScope scope(isolate);
     return scope.Escape<v8::Value>(v8::Null(isolate));
   }
@@ -2152,7 +2151,7 @@ static void JS_QueryShortestPath(
     std::unique_ptr<ArangoDBConstDistancePathFinder::Path> path;
 
     try {
-      path = TRI_RunSimpleShortestPathSearch(edgeCollectionInfos, opts);
+      path = TRI_RunSimpleShortestPathSearch(edgeCollectionInfos, trx.get(), opts);
     } catch (Exception& e) {
       trx->finish(e.code());
       TRI_V8_THROW_EXCEPTION(e.code());
