@@ -176,7 +176,6 @@ add_library(${LIB_ARANGO} STATIC
   Basics/Thread.cpp
   Basics/ThreadPool.cpp
   Basics/Utf8Helper.cpp
-  Basics/VPackStringBufferAdapter.cpp
   Basics/VelocyPackHelper.cpp
   Basics/WorkMonitor.cpp
   Basics/application-exit.cpp
