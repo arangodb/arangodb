@@ -71,7 +71,6 @@ bool RestAqlHandler::isDirect() const { return false; }
 /// @brief POST method for /_api/aql/instantiate (internal)
 /// The body is a VelocyPack with attributes "plan" for the execution plan and
 /// "options" for the options, all exactly as in AQL_EXECUTEJSON.
-#warning update this comment AQL_EXECUTEJSON => AQL_EXECUTEVPACK
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestAqlHandler::createQueryFromVelocyPack() {
@@ -135,7 +134,6 @@ void RestAqlHandler::createQueryFromVelocyPack() {
   VPackBuilder answerBody;
   try {
     VPackObjectBuilder guard(&answerBody);
-#warning Can we switch to A proper number type here?
     answerBody.add("queryId", VPackValue(arangodb::basics::StringUtils::itoa(_qId)));
     answerBody.add("ttl", VPackValue(ttl));
   } catch (...) {
@@ -710,8 +708,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
         currentThread->unblock();
       }
       answerBuilder.add("error", VPackValue(res != TRI_ERROR_NO_ERROR));
-#warning Do ne need cast to double or is integer ok?
-      answerBuilder.add("code", VPackValue(static_cast<double>(res)));
+      answerBuilder.add("code", VPackValue(res));
     } else if (operation == "getSome") {
       auto atLeast =
           VelocyPackHelper::getNumericValue<size_t>(querySlice, "atLeast", 1);
@@ -880,7 +877,6 @@ std::shared_ptr<VPackBuilder> RestAqlHandler::parseVelocyPackBody() {
     }
     return body;
   } catch (...) {
-#warning We can probably do something more use full with the error.
     LOG(ERR) << "cannot parse json object";
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON,
                   "cannot parse json object");

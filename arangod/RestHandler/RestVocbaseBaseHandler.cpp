@@ -360,11 +360,9 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& document,
   } else {
     // TODO can we optimize this?
     // Just dump some where else to find real length
-    TRI_string_buffer_t tmpBuffer;
+    StringBuffer tmp(TRI_UNKNOWN_MEM_ZONE);
     // convert object to string
-    TRI_InitStringBuffer(&tmpBuffer, TRI_UNKNOWN_MEM_ZONE);
-
-    VPackStringBufferAdapter buffer(&tmpBuffer);
+    VPackStringBufferAdapter buffer(tmp.stringBuffer());
     VPackDumper dumper(&buffer, options);
     try {
       dumper.dump(document);
@@ -372,8 +370,7 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& document,
       generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL,
                     "cannot generate output");
     }
-    _response->headResponse(TRI_LengthStringBuffer(&tmpBuffer));
-    TRI_DestroyStringBuffer(&tmpBuffer);
+    _response->headResponse(tmp.length());
   }
 }
 
