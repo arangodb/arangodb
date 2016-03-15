@@ -44,7 +44,6 @@ struct OperationCursor : public OperationResult {
  private:
 
   std::shared_ptr<IndexIterator> _indexIterator;
-  arangodb::velocypack::Builder  _builder;
   bool                           _hasMore;
   uint64_t                       _limit;
   uint64_t const                 _originalLimit;
@@ -53,11 +52,11 @@ struct OperationCursor : public OperationResult {
  public:
 
   explicit OperationCursor(int code) 
-      : OperationResult(code), _builder(buffer), _hasMore(false), _limit(0), _originalLimit(0), _batchSize(1000) { 
+      : OperationResult(code), _hasMore(false), _limit(0), _originalLimit(0), _batchSize(1000) { 
   }
 
   OperationCursor(int code, std::string const& message) 
-      : OperationResult(code, message), _builder(buffer), _hasMore(false), _limit(0), _originalLimit(0), _batchSize(1000) {
+      : OperationResult(code, message), _hasMore(false), _limit(0), _originalLimit(0), _batchSize(1000) {
   }
 
   OperationCursor(std::shared_ptr<VPackBuffer<uint8_t>> buffer,
@@ -66,7 +65,6 @@ struct OperationCursor : public OperationResult {
                   int code,
                   bool wasSynchronous)
       : OperationResult(buffer, handler, message, code, wasSynchronous),
-        _builder(buffer),
         _hasMore(false),
         _limit(0),
         _originalLimit(0),
@@ -78,7 +76,6 @@ struct OperationCursor : public OperationResult {
       : OperationResult(std::make_shared<VPackBuffer<uint8_t>>(), handler, "",
                         TRI_ERROR_NO_ERROR, false),
         _indexIterator(iterator),
-        _builder(buffer),
         _hasMore(true),
         _limit(limit), // _limit is modified later on
         _originalLimit(limit),

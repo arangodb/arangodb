@@ -4127,7 +4127,7 @@ void TRI_document_collection_t::newObjectForReplace(
     VPackSlice const& newValue,
     std::string const& rev,
     VPackBuilder& builder) {
-  { 
+  {
     VPackObjectBuilder guard(&builder);
 
     TRI_SanitizeObject(newValue, builder);
