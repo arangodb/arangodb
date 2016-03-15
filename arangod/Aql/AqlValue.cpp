@@ -69,6 +69,19 @@ uint64_t AqlValue::hash(arangodb::AqlTransaction* trx) const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the value contains a none value
+////////////////////////////////////////////////////////////////////////////////
+
+bool AqlValue::isNone() const {
+  AqlValueType t = type();
+  if (t == DOCVEC || t == RANGE) {
+    return false;
+  }
+ 
+  return slice().isNone();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the value contains a null value
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -91,9 +104,7 @@ bool AqlValue::isBoolean() const {
   if (t == VPACK_DOCUMENT || t == DOCVEC || t == RANGE) {
     return false;
   }
- 
-  VPackSlice s(slice());
-  return s.isBoolean();
+  return slice().isBoolean();
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -336,6 +347,30 @@ AqlValue AqlValue::get(arangodb::AqlTransaction* trx,
 
   // default is to return null
   return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief check whether an object has a specific key
+//////////////////////////////////////////////////////////////////////////////
+  
+bool AqlValue::hasKey(arangodb::AqlTransaction* trx,
+                      std::string const& name) const {
+  switch (type()) {
+    case VPACK_DOCUMENT: 
+    case VPACK_POINTER: 
+    case VPACK_INLINE:
+    case VPACK_EXTERNAL: {
+      VPackSlice s(slice());
+      return (s.isObject() && s.hasKey(name));
+    }
+    case DOCVEC: 
+    case RANGE: {
+      break;
+    }
+  }
+
+  // default is to return false
+  return false;
 }
 
 //////////////////////////////////////////////////////////////////////////////

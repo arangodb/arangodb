@@ -2124,7 +2124,7 @@ static void JS_InsertVocbaseVPack(
     // invalid value type. must be a document
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
- 
+
   // copy default options (and set exclude handler in copy)
   VPackOptions vpackOptions = VPackOptions::Defaults;
   vpackOptions.attributeExcludeHandler = basics::VelocyPackHelper::getExcludeHandler();
@@ -2171,7 +2171,7 @@ static void JS_InsertVocbaseVPack(
   auto transactionContext = std::make_shared<V8TransactionContext>(collection->_vocbase, true);
 
   SingleCollectionTransaction trx(transactionContext, collection->_cid, TRI_TRANSACTION_WRITE);
-  if (! payload->IsArray()) {
+  if (!payload->IsArray()) {
     trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
   }
 

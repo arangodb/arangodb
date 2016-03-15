@@ -234,6 +234,7 @@ VPackBuilder* TransactionContext::leaseBuilder() {
 
 void TransactionContext::returnBuilder(VPackBuilder* builder) {
   _builder.reset(builder);
+  _builder->clear();
 }
   
 //////////////////////////////////////////////////////////////////////////////
