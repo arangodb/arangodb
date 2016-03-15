@@ -1,0 +1,12 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/es_PR.xml
+// *
+// ***************************************************************************
+es_PR{
+    %%Parent{"es_419"}
+    Version{"2.1.8.19"}
+}

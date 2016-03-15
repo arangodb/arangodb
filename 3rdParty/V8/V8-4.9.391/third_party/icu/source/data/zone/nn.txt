@@ -1,0 +1,120 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/nn.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/nn.xml
+ */
+nn{
+    Version{"2.1.7.72"}
+    zoneStrings{
+        "America:Belem"{
+            ec{"Belém"}
+        }
+        "America:Cancun"{
+            ec{"Cancún"}
+        }
+        "America:Godthab"{
+            ec{"Godthåb"}
+        }
+        "America:Mexico_City"{
+            ec{"Mexico by"}
+        }
+        "America:North_Dakota:Center"{
+            ec{"Center, Nord-Dakota"}
+        }
+        "Asia:Tashkent"{
+            ec{"Tasjkent"}
+        }
+        "Asia:Ulaanbaatar"{
+            ec{"Ulan Bator"}
+        }
+        "Atlantic:Azores"{
+            ec{"Azorane"}
+        }
+        "Atlantic:Canary"{
+            ec{"Kanariøyane"}
+        }
+        "Etc:Unknown"{
+            ec{"ukjend"}
+        }
+        "Europe:Lisbon"{
+            ec{"Lisboa"}
+        }
+        "Europe:Moscow"{
+            ec{"Moskva"}
+        }
+        "Pacific:Easter"{
+            ec{"Påskeøya"}
+        }
+        "meta:Africa_Central"{
+            ls{"sentralafrikansk tid"}
+        }
+        "meta:Africa_Eastern"{
+            ls{"austafrikansk tid"}
+        }
+        "meta:Africa_Southern"{
+            ls{"sørafrikansk tid"}
+        }
+        "meta:Africa_Western"{
+            ld{"vestafrikansk sommartid"}
+            lg{"vestafrikansk tid"}
+            ls{"vestafrikansk standardtid"}
+        }
+        "meta:Australia_Central"{
+            ld{"sentralaustralsk sommartid"}
+            lg{"sentralaustralsk tid"}
+            ls{"sentralaustralsk standardtid"}
+        }
+        "meta:Australia_CentralWestern"{
+            ld{"vest-sentralaustralsk sommartid"}
+            lg{"vest-sentralaustralsk tid"}
+            ls{"vest-sentralaustralsk standardtid"}
+        }
+        "meta:Australia_Eastern"{
+            ld{"austaustralsk sommartid"}
+            lg{"austaustralsk tid"}
+            ls{"austaustralsk standardtid"}
+        }
+        "meta:Australia_Western"{
+            ld{"vestaustralsk sommartid"}
+            lg{"vestaustralsk tid"}
+            ls{"vestaustralsk standardtid"}
+        }
+        "meta:Europe_Central"{
+            ld{"sentraleuropeisk sommartid"}
+            lg{"sentraleuropeisk tid"}
+            ls{"sentraleuropeisk standardtid"}
+            sd{"CEST"}
+            sg{"CET"}
+            ss{"CET"}
+        }
+        "meta:Europe_Eastern"{
+            ld{"austeuropeisk sommartid"}
+            lg{"austeuropeisk tid"}
+            ls{"austeuropeisk standardtid"}
+            sd{"EEST"}
+            sg{"EET"}
+            ss{"EET"}
+        }
+        "meta:Europe_Western"{
+            ld{"vesteuropeisk sommartid"}
+            lg{"vesteuropeisk tid"}
+            ls{"vesteuropeisk standardtid"}
+            sd{"WEST"}
+            sg{"WET"}
+            ss{"WET"}
+        }
+        "meta:GMT"{
+            ls{"greenwich middeltid"}
+            ss{"GMT"}
+        }
+        fallbackFormat{"{1} ({0})"}
+        gmtFormat{"GMT{0}"}
+        hourFormat{"+HH:mm;-HH:mm"}
+    }
+}

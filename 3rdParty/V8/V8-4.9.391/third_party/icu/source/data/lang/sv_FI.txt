@@ -1,0 +1,47 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/sv_FI.xml
+// *
+// ***************************************************************************
+sv_FI{
+    Keys{
+        timezone{"tidszon"}
+    }
+    Languages{
+        chm{"mari"}
+        fj{"fiji"}
+        km{"khmer"}
+        ks{"kashmiri"}
+        ky{"kirgiziska"}
+        lo{"lao"}
+        nb{"bokmål"}
+        pa{"panjabi"}
+        ps{"pashto"}
+        te{"telugu"}
+        th{"thai"}
+        ti{"tigrinska"}
+        und{"okänt språk"}
+    }
+    LanguagesShort{
+        az{"azerbajdzjanska"}
+    }
+    Scripts{
+        Hrkt{"kana"}
+        Mero{"meroitiska"}
+    }
+    Scripts%variant{
+        Arab{"persisk-arabiska"}
+    }
+    Types{
+        calendar{
+            buddhist{"buddhistisk kalender"}
+        }
+    }
+    Variants{
+        1996{"1996 års stavning"}
+    }
+    Version{"2.1.8.19"}
+}

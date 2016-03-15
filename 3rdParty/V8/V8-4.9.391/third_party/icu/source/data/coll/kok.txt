@@ -1,0 +1,25 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/collation/kok.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/xml/collation/kok.xml
+ */
+kok{
+    Version{"2.0.96.14"}
+    collations{
+        standard{
+            Sequence{
+                "[normalization on][reorder Deva Beng Guru Gujr Orya Taml Telu Knda Mlym Sinh]"
+                "&ॐ<ं<<ँ<ः"
+                "&ह<ळ"
+                "<क्ष"
+            }
+            Version{"26"}
+        }
+    }
+}

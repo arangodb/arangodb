@@ -1,0 +1,20 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/nl_BE.xml
+// *
+// ***************************************************************************
+nl_BE{
+    Languages{
+        oc{"Occitaans; Provençaals"}
+        sh{"Servo-Kroatisch"}
+    }
+    Types{
+        collation{
+            traditional{"Traditioneel"}
+        }
+    }
+    Version{"2.1.8.19"}
+}

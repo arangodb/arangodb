@@ -1,0 +1,37 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/en_HK.xml
+// *
+// ***************************************************************************
+en_HK{
+    %%Parent{"en_GB"}
+    Version{"2.1.8.19"}
+    zoneStrings{
+        "Europe:London"{
+            sd{"∅∅∅"}
+        }
+        "meta:Europe_Central"{
+            sd{"∅∅∅"}
+            sg{"∅∅∅"}
+            ss{"∅∅∅"}
+        }
+        "meta:Europe_Eastern"{
+            sd{"∅∅∅"}
+            sg{"∅∅∅"}
+            ss{"∅∅∅"}
+        }
+        "meta:Europe_Western"{
+            sd{"∅∅∅"}
+            sg{"∅∅∅"}
+            ss{"∅∅∅"}
+        }
+        "meta:Hong_Kong"{
+            sd{"HKST"}
+            sg{"HKT"}
+            ss{"HKT"}
+        }
+    }
+}

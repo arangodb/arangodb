@@ -1,0 +1,294 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/et.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/et.xml
+ */
+et{
+    Languages{
+        ach{"akoli"}
+        af{"afrikaani"}
+        ak{"akani"}
+        am{"amhari"}
+        ar{"araabia"}
+        ar_001{"araabia (tänapäevane)"}
+        az{"aserbaidžaani"}
+        ban{"bali"}
+        be{"valgevene"}
+        bem{"bemba"}
+        bg{"bulgaaria"}
+        bn{"bengali"}
+        br{"bretooni"}
+        bs{"bosnia"}
+        ca{"katalaani"}
+        ceb{"sebu"}
+        chr{"tšerokii"}
+        ckb{"sorani kurdi"}
+        co{"korsika"}
+        cs{"tšehhi"}
+        cy{"kõmri"}
+        da{"taani"}
+        de{"saksa"}
+        de_CH{"saksa (kõrgsaksa)"}
+        ee{"eve"}
+        el{"kreeka"}
+        en{"inglise"}
+        en_GB{"inglise (Briti)"}
+        en_US{"inglise (USA)"}
+        eo{"esperanto"}
+        es{"hispaania"}
+        es_ES{"hispaania (Euroopa)"}
+        et{"eesti"}
+        eu{"baski"}
+        fa{"pärsia"}
+        fi{"soome"}
+        fil{"filipino"}
+        fo{"fääri"}
+        fr{"prantsuse"}
+        fy{"läänefriisi"}
+        ga{"iiri"}
+        gaa{"gaa"}
+        gd{"gaeli"}
+        gl{"galeegi"}
+        gn{"guaranii"}
+        gu{"gudžarati"}
+        ha{"hausa"}
+        haw{"havai"}
+        he{"heebrea"}
+        hi{"hindi"}
+        hr{"horvaadi"}
+        ht{"haiti"}
+        hu{"ungari"}
+        hy{"armeenia"}
+        ia{"interlingua"}
+        id{"indoneesia"}
+        ig{"ibo"}
+        is{"islandi"}
+        it{"itaalia"}
+        ja{"jaapani"}
+        ka{"gruusia"}
+        kg{"kongo"}
+        kk{"kasahhi"}
+        km{"khmeeri"}
+        kn{"kannada"}
+        ko{"korea"}
+        ku{"kurdi"}
+        ky{"kirgiisi"}
+        la{"ladina"}
+        lg{"ganda"}
+        ln{"lingala"}
+        lo{"lao"}
+        loz{"lozi"}
+        lt{"leedu"}
+        lua{"luba-lulua"}
+        lv{"läti"}
+        mfe{"Mauritiuse kreoolkeel"}
+        mg{"malagassi"}
+        mi{"maoori"}
+        mk{"makedoonia"}
+        ml{"malajalami"}
+        mn{"mongoli"}
+        mr{"marathi"}
+        ms{"malai"}
+        mt{"malta"}
+        my{"birma"}
+        nb{"norra bokmål"}
+        ne{"nepali"}
+        nl{"hollandi"}
+        nl_BE{"flaami"}
+        nn{"norra nynorsk"}
+        no{"norra"}
+        nso{"pedi"}
+        ny{"njandža"}
+        nyn{"nkole"}
+        oc{"provansi"}
+        om{"oromo"}
+        or{"oria"}
+        pa{"pandžabi"}
+        pl{"poola"}
+        ps{"puštu"}
+        pt{"portugali"}
+        pt_PT{"portugali (Euroopa)"}
+        qu{"ketšua"}
+        rm{"retoromaani"}
+        rn{"rundi"}
+        ro{"rumeenia"}
+        ro_MD{"moldova"}
+        ru{"vene"}
+        rw{"ruanda"}
+        sd{"sindhi"}
+        sh{"serbia-horvaadi"}
+        si{"singali"}
+        sk{"slovaki"}
+        sl{"sloveeni"}
+        sn{"šona"}
+        so{"somaali"}
+        sq{"albaania"}
+        sr{"serbia"}
+        st{"lõunasotho"}
+        su{"sunda"}
+        sv{"rootsi"}
+        sw{"suahiili"}
+        ta{"tamili"}
+        te{"telugu"}
+        tg{"tadžiki"}
+        th{"tai"}
+        ti{"tigrinja"}
+        tk{"türkmeeni"}
+        tl{"tagalogi"}
+        tn{"tsvana"}
+        to{"tonga"}
+        tr{"türgi"}
+        tt{"tatari"}
+        tum{"tumbuka"}
+        tw{"tvii"}
+        ug{"uiguuri"}
+        uk{"ukraina"}
+        ur{"urdu"}
+        uz{"usbeki"}
+        vi{"vietnami"}
+        wo{"volofi"}
+        xh{"koosa"}
+        yi{"jidiši"}
+        yo{"joruba"}
+        zh{"hiina"}
+        zh_Hans{"hiina (lihtsustatud)"}
+        zh_Hant{"hiina (traditsiooniline)"}
+        zu{"suulu"}
+    }
+    LanguagesShort{
+        az{"aseri"}
+        en_US{"inglise (USA)"}
+    }
+    Scripts{
+        Arab{"araabia"}
+        Armn{"armeenia"}
+        Bali{"bali"}
+        Batk{"bataki"}
+        Beng{"bengali"}
+        Blis{"Blissi sümbolid"}
+        Bopo{"bopomofo"}
+        Brah{"brahmi"}
+        Brai{"punktkiri"}
+        Bugi{"bugi"}
+        Buhd{"buhidi"}
+        Cans{"Kanada põlisrahvaste ühtlustatud silpkiri"}
+        Cham{"tšami"}
+        Cher{"tšerokii"}
+        Cirt{"cirth"}
+        Copt{"kopti"}
+        Cprt{"muinasküprose"}
+        Cyrl{"kirillitsa"}
+        Cyrs{"kirikuslaavi kirillitsa"}
+        Deva{"devanaagari"}
+        Dsrt{"deseret"}
+        Egyd{"egiptuse demootiline"}
+        Egyh{"egiptuse hieraatiline"}
+        Egyp{"egiptuse hieroglüüfkiri"}
+        Ethi{"etioopia"}
+        Geok{"gruusia hutsuri"}
+        Geor{"gruusia"}
+        Glag{"glagoolitsa"}
+        Goth{"gooti"}
+        Grek{"kreeka"}
+        Gujr{"gudžarati"}
+        Guru{"gurmukhi"}
+        Hang{"hanguli"}
+        Hani{"hiina han"}
+        Hano{"hanunoo"}
+        Hans{"hiina lihtsustatud"}
+        Hant{"hiina traditsiooniline"}
+        Hebr{"heebrea"}
+        Hira{"hiragana"}
+        Hrkt{"katakana või hiragana"}
+        Hung{"vanaungari"}
+        Inds{"induse"}
+        Ital{"vanaitali"}
+        Java{"jaava"}
+        Jpan{"jaapani"}
+        Kali{"kaja li"}
+        Kana{"katakana"}
+        Khar{"kharoshthi"}
+        Khmr{"khmeeri"}
+        Knda{"kannada"}
+        Kore{"koreani"}
+        Laoo{"lao"}
+        Latf{"ladina fraktuurkiri"}
+        Latg{"ladina keldi kiri"}
+        Latn{"ladina"}
+        Lepc{"leptša"}
+        Limb{"limbu"}
+        Lina{"lineaar-A"}
+        Linb{"lineaar-B"}
+        Mand{"mandea"}
+        Maya{"maaja hieroglüüfkiri"}
+        Mero{"meroe"}
+        Mlym{"malajalami"}
+        Mong{"mongoli"}
+        Mymr{"birma"}
+        Nkoo{"nkoo"}
+        Ogam{"ogam"}
+        Orkh{"orhoni"}
+        Orya{"oria"}
+        Osma{"osmanja"}
+        Perm{"vanapermi"}
+        Phag{"phags-pa"}
+        Phnx{"foiniikia"}
+        Plrd{"Pollardi miao"}
+        Roro{"rongorongo"}
+        Runr{"ruunikiri"}
+        Sara{"sarati"}
+        Shaw{"Shaw tähestik"}
+        Sinh{"singali"}
+        Sylo{"silotinagri"}
+        Syrc{"assüüria"}
+        Syre{"assüüria estrangelo"}
+        Syrj{"lääneassüüria"}
+        Syrn{"idaassüüria"}
+        Tagb{"tagbanwa"}
+        Tale{"tai le"}
+        Talu{"lihtsustatud tai lue"}
+        Taml{"tamili"}
+        Telu{"telugu"}
+        Teng{"tengwar"}
+        Tfng{"tifinagi"}
+        Tglg{"tagalogi"}
+        Thaa{"thaana"}
+        Thai{"tai"}
+        Tibt{"tiibeti"}
+        Ugar{"ugariti"}
+        Vaii{"vai"}
+        Visp{"häälduskiri"}
+        Xpeo{"vanapärsia"}
+        Xsux{"sumeri kiilkiri"}
+        Yiii{"jii"}
+        Zinh{"päritud"}
+        Zsym{"sümbolid"}
+        Zxxx{"kirjakeeleta"}
+        Zyyy{"üldine"}
+        Zzzz{"määramata"}
+    }
+    Scripts%stand-alone{
+        Hans{"lihtsustatud han"}
+        Hant{"traditsiooniline han"}
+    }
+    Scripts%variant{
+        Arab{"pärsia-araabia"}
+    }
+    Version{"2.1.8.9"}
+    codePatterns{
+        language{"Keel: {0}"}
+        script{"Skript: {0}"}
+        territory{"Regioon: {0}"}
+    }
+    localeDisplayPattern{
+        keyTypePattern{"{0}: {1}"}
+        pattern{"{0} ({1})"}
+        separator{"{0}, {1}"}
+    }
+}

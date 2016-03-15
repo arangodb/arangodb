@@ -1,0 +1,94 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/ee.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/ee.xml
+ */
+ee{
+    Version{"2.1.8.9"}
+    units{
+        duration{
+            day{
+                one{"ŋkeke {0} wo"}
+                other{"ŋkeke {0} wo"}
+            }
+            hour{
+                one{"gaƒoƒo {0} wo"}
+                other{"gaƒoƒo {0} wo"}
+            }
+            minute{
+                one{"aɖabaƒoƒo {0} wo"}
+                other{"aɖabaƒoƒo {0} wo"}
+            }
+            month{
+                one{"ɣleti {0} wo"}
+                other{"ɣleti {0} wo"}
+            }
+            second{
+                one{"sekend {0} wo"}
+                other{"sekend {0} wo"}
+            }
+            week{
+                one{"kɔsiɖa {0} wo"}
+                other{"kɔsiɖa {0} wo"}
+            }
+            year{
+                one{"ƒe {0} wo"}
+                other{"ƒe {0} wo"}
+            }
+        }
+    }
+    unitsNarrow{
+        duration{
+            hour{
+                one{"g {0}"}
+                other{"g {0}"}
+            }
+            minute{
+                one{"a {0}"}
+                other{"a {0}"}
+            }
+            second{
+                one{"s {0}"}
+                other{"s {0}"}
+            }
+        }
+    }
+    unitsShort{
+        duration{
+            day{
+                one{"ŋkeke {0}"}
+                other{"ŋkeke {0}"}
+            }
+            hour{
+                one{"gaƒoƒo {0}"}
+                other{"gaƒoƒo {0}"}
+            }
+            minute{
+                one{"aɖabaƒoƒo {0}"}
+                other{"aɖabaƒoƒo {0}"}
+            }
+            month{
+                one{"ɣleti {0}"}
+                other{"ɣleti {0}"}
+            }
+            second{
+                one{"sekend {0}"}
+                other{"sekend {0}"}
+            }
+            week{
+                one{"kɔsiɖa {0}"}
+                other{"kɔsiɖa {0}"}
+            }
+            year{
+                one{"ƒe {0}"}
+                other{"ƒe {0}"}
+            }
+        }
+    }
+}

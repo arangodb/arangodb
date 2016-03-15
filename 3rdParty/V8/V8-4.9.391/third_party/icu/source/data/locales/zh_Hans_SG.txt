@@ -1,0 +1,257 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/zh_Hans_SG.xml
+// *
+// ***************************************************************************
+zh_Hans_SG{
+    NumberElements{
+        latn{
+            patterns{
+                currencyFormat{"¤#,##0.00"}
+            }
+        }
+    }
+    Version{"2.1.8.19"}
+    calendar{
+        buddhist{
+            DateTimePatterns{
+                "zzzzah:mm:ss",
+                "ahh:mm:ssz",
+                "ah:mm:ss",
+                "ahh:mm",
+                "Gy年M月d日EEEE",
+                "Gy年M月d日",
+                "Gy年M月d日",
+                "Gd/M/yy",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+        }
+        chinese{
+            DateTimePatterns{
+                "zzzzah:mm:ss",
+                "ahh:mm:ssz",
+                "ah:mm:ss",
+                "ahh:mm",
+                {
+                    "U年MMMd日EEEE",
+                    "hanidec",
+                }
+                {
+                    "U年MMMd日",
+                    "hanidec",
+                }
+                {
+                    "U年MMMd日",
+                    "hanidec",
+                }
+                "U-M-d",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+        }
+        generic{
+            DateTimePatterns{
+                "zzzzah:mm:ss",
+                "ahh:mm:ssz",
+                "ah:mm:ss",
+                "ahh:mm",
+                "Gy年M月d日EEEE",
+                "Gy年M月d日",
+                "Gy年M月d日",
+                "dd/MM/yyGGGGG",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            availableFormats{
+                MEd{"M-dE"}
+                MMMMdd{"M月d日"}
+                MMdd{"MM-dd"}
+                Md{"M-d"}
+                yyyyMEd{"Gy年M月d日，E"}
+                yyyyMd{"Gy年M月d日"}
+            }
+            intervalFormats{
+                Hmv{
+                    H{"vHH:mm–HH:mm"}
+                    m{"vHH:mm–HH:mm"}
+                }
+                Hv{
+                    H{"vHH–HH"}
+                }
+                MEd{
+                    M{"M-dE至M-dE"}
+                    d{"M-dE至M-dE"}
+                }
+                MMMEd{
+                    d{"M月d日E至M月d日E"}
+                }
+                Md{
+                    M{"M-d至M-d"}
+                    d{"M-d至M-d"}
+                }
+                fallback{"{0}至{1}"}
+                yM{
+                    M{"y年M月至y年M月"}
+                }
+                yMEd{
+                    M{"d/M/yE至d/M/yE"}
+                    d{"d/M/yE至d/M/yE"}
+                    y{"d/M/yE至d/M/yE"}
+                }
+                yMd{
+                    M{"d/M/y至d/M/y"}
+                    d{"d/M/y至d/M/y"}
+                    y{"d/M/y至d/M/y"}
+                }
+            }
+        }
+        gregorian{
+            DateTimePatterns{
+                "zzzzah:mm:ss",
+                "ahh:mm:ssz",
+                "ah:mm:ss",
+                "ahh:mm",
+                "y年M月d日EEEE",
+                "y年M月d日",
+                "y年M月d日",
+                "dd/MM/yy",
+                "{1} {0}",
+                "{1}{0}",
+                "{1}{0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            availableFormats{
+                MEd{"M-dE"}
+                MMM{"M月"}
+                MMMMdd{"M月d日"}
+                MMdd{"MM-dd"}
+                Md{"M-d"}
+                yMEd{"y年M月d日，E"}
+                yMd{"y年M月d日"}
+            }
+            intervalFormats{
+                Hmv{
+                    H{"vHH:mm–HH:mm"}
+                    m{"vHH:mm–HH:mm"}
+                }
+                Hv{
+                    H{"vHH–HH"}
+                }
+                MEd{
+                    M{"M-dE至M-dE"}
+                    d{"M-dE至M-dE"}
+                }
+                MMMEd{
+                    d{"M月d日E至M月d日E"}
+                }
+                Md{
+                    M{"M-d至M-d"}
+                    d{"M-d至M-d"}
+                }
+                d{
+                    d{"d日至d日"}
+                }
+                fallback{"{0}至{1}"}
+                yM{
+                    M{"y年M月至y年M月"}
+                }
+                yMEd{
+                    M{"d/M/yE至d/M/yE"}
+                    d{"d/M/yE至d/M/yE"}
+                    y{"d/M/yE至d/M/yE"}
+                }
+                yMd{
+                    M{"d/M/y至d/M/y"}
+                    d{"d/M/y至d/M/y"}
+                    y{"d/M/y至d/M/y"}
+                }
+            }
+        }
+        islamic{
+            DateTimePatterns{
+                "zzzzah:mm:ss",
+                "ahh:mm:ssz",
+                "ah:mm:ss",
+                "ahh:mm",
+                "Gy年M月d日EEEE",
+                "Gy年M月d日",
+                "Gy年M月d日",
+                "Gd/M/yy",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+        }
+        japanese{
+            DateTimePatterns{
+                "zzzzah:mm:ss",
+                "ahh:mm:ssz",
+                "ah:mm:ss",
+                "ahh:mm",
+                "Gy年M月d日EEEE",
+                "Gy年M月d日",
+                "Gy年M月d日",
+                "Gd/M/yy",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            availableFormats{
+                MEd{"M/dE"}
+                Md{"M/d"}
+            }
+        }
+        roc{
+            DateTimePatterns{
+                "zzzzah:mm:ss",
+                "ahh:mm:ssz",
+                "ah:mm:ss",
+                "ahh:mm",
+                "Gy年M月d日EEEE",
+                "Gy年M月d日",
+                "Gy年M月d日",
+                "Gd/M/yy",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            availableFormats{
+                MEd{"M-dE"}
+                MMM{"M月"}
+                Md{"M-d"}
+            }
+        }
+    }
+    fields{
+        second{
+            relativeTime{
+                future{
+                    other{"{0}秒后"}
+                }
+                past{
+                    other{"{0}秒前"}
+                }
+            }
+        }
+    }
+}

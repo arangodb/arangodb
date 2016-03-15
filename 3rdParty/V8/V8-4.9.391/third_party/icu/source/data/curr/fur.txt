@@ -1,0 +1,270 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/fur.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/fur.xml
+ */
+fur{
+    Currencies{
+        AMD{
+            "AMD",
+            "Dram armen",
+        }
+        ARS{
+            "ARS",
+            "Peso argjentin",
+        }
+        AUD{
+            "A$",
+            "dolar australian",
+        }
+        BND{
+            "BND",
+            "Dolar dal Brunei",
+        }
+        BRL{
+            "R$",
+            "real brasilian",
+        }
+        BYR{
+            "BYR",
+            "Rubli bielorùs",
+        }
+        CAD{
+            "CA$",
+            "dolar canadês",
+        }
+        CHF{
+            "CHF",
+            "franc svuizar",
+        }
+        CNY{
+            "CN¥",
+            "yuan cinês",
+        }
+        CZK{
+            "CZK",
+            "Corone de Republiche Ceche",
+        }
+        DKK{
+            "DKK",
+            "corone danese",
+        }
+        DZD{
+            "DZD",
+            "Dinar algerin",
+        }
+        EUR{
+            "€",
+            "euro",
+        }
+        GBP{
+            "£",
+            "sterline britaniche",
+        }
+        HKD{
+            "HK$",
+            "dolar di Hong Kong",
+        }
+        HRK{
+            "HRK",
+            "Kuna cravuate",
+        }
+        IDR{
+            "IDR",
+            "rupiah indonesiane",
+        }
+        INR{
+            "Rs.",
+            "rupie indiane",
+        }
+        IRR{
+            "IRR",
+            "Rial iranian",
+        }
+        JPY{
+            "JP¥",
+            "yen gjaponês",
+        }
+        KRW{
+            "₩",
+            "won de Coree dal Sud",
+        }
+        MXN{
+            "MX$",
+            "peso messican",
+        }
+        NAD{
+            "NAD",
+            "Dolar namibian",
+        }
+        NIO{
+            "NIO",
+            "Córdoba oro nicaraguan",
+        }
+        NOK{
+            "NOK",
+            "corone norvegjese",
+        }
+        NZD{
+            "NZ$",
+            "Dollar neozelandês",
+        }
+        PKR{
+            "PKR",
+            "Rupie pachistane",
+        }
+        PLN{
+            "PLN",
+            "zloty polac",
+        }
+        RSD{
+            "RSD",
+            "Dinar serp",
+        }
+        RUB{
+            "RUB",
+            "rubli rus",
+        }
+        SAR{
+            "SAR",
+            "riyal de Arabie Saudite",
+        }
+        SEK{
+            "SEK",
+            "corone svedese",
+        }
+        THB{
+            "THB",
+            "baht tailandês",
+        }
+        TRY{
+            "TRY",
+            "lire turche",
+        }
+        TWD{
+            "NT$",
+            "gnûf dolar taiwanês",
+        }
+        USD{
+            "US$",
+            "dolar american",
+        }
+        XDR{
+            "XDR",
+            "Dirits speciâi di incas",
+        }
+        ZAR{
+            "ZAR",
+            "rand sudafrican",
+        }
+    }
+    CurrencyPlurals{
+        AUD{
+            one{"dolar australian"}
+            other{"dolars australians"}
+        }
+        BRL{
+            one{"real brasilian"}
+            other{"real brasilians"}
+        }
+        CAD{
+            one{"dolar canadês"}
+            other{"dolars canadês"}
+        }
+        CHF{
+            one{"franc svuizar"}
+            other{"francs svuizars"}
+        }
+        CNY{
+            one{"yuan cinês"}
+            other{"yuan cinês"}
+        }
+        DKK{
+            one{"corone danese"}
+            other{"coronis danesis"}
+        }
+        EUR{
+            one{"euro"}
+            other{"euros"}
+        }
+        GBP{
+            one{"sterline britaniche"}
+            other{"sterlinis britanichis"}
+        }
+        HKD{
+            one{"dolar di Hong Kong"}
+            other{"dolars di Hong Kong"}
+        }
+        IDR{
+            one{"rupiah indonesiane"}
+            other{"rupiah indonesianis"}
+        }
+        INR{
+            one{"rupie indiane"}
+            other{"rupiis indianis"}
+        }
+        JPY{
+            one{"yen gjaponês"}
+            other{"yen gjaponês"}
+        }
+        KRW{
+            one{"won de Coree dal Sud"}
+            other{"won de Coree dal Sud"}
+        }
+        MXN{
+            one{"peso messican"}
+            other{"pesos messicans"}
+        }
+        NOK{
+            one{"corone norvegjese"}
+            other{"coronis norvegjesis"}
+        }
+        PLN{
+            one{"zloty polac"}
+            other{"zloty polacs"}
+        }
+        RUB{
+            one{"rubli rus"}
+            other{"rublis rus"}
+        }
+        SAR{
+            one{"riyal de Arabie Saudite"}
+            other{"riyals de Arabie Saudite"}
+        }
+        SEK{
+            one{"corone svedese"}
+            other{"coronis svedesis"}
+        }
+        THB{
+            one{"baht tailandês"}
+            other{"baht tailandês"}
+        }
+        TRY{
+            one{"lire turche"}
+            other{"liris turchis"}
+        }
+        TWD{
+            one{"gnûf dolar taiwanês"}
+            other{"gnûfs dolars taiwanês"}
+        }
+        USD{
+            one{"dolar american"}
+            other{"dolars americans"}
+        }
+        ZAR{
+            one{"rand sudafrican"}
+            other{"rands sudafricans"}
+        }
+    }
+    CurrencyUnitPatterns{
+        one{"{0} {1}"}
+        other{"{0} {1}"}
+    }
+    Version{"2.1.7.53"}
+}

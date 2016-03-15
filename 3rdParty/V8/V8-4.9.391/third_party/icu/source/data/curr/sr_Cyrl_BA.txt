@@ -1,0 +1,17 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/sr_Cyrl_BA.xml
+// *
+// ***************************************************************************
+sr_Cyrl_BA{
+    Currencies{
+        BAM{
+            "КМ",
+            "Конвертибилна Марка",
+        }
+    }
+    Version{"2.1.8.19"}
+}

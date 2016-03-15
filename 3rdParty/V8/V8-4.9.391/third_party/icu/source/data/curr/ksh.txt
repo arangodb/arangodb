@@ -1,0 +1,636 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/ksh.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/ksh.xml
+ */
+ksh{
+    Currencies{
+        AED{
+            "AED",
+            "de vereineschte arraabesche Emiraate ier Dirham",
+        }
+        AFN{
+            "AFN",
+            "Afjahni",
+        }
+        ALL{
+            "ALL",
+            "albaanesche Lek",
+        }
+        AMD{
+            "AMD",
+            "armeenesche Dram",
+        }
+        AOA{
+            "AOA",
+            "angjolaanesche Kwansa",
+        }
+        ARS{
+            "ARS",
+            "ajentiinesche Peeso",
+        }
+        AUD{
+            "A$",
+            "austraalesche Dollaa",
+        }
+        AZN{
+            "AZN",
+            "Asserbaidschaani Manat",
+        }
+        BAM{
+            "BAM",
+            "ömtuuschbaa Mark us Boßnije un dä Hächejovvina",
+        }
+        BDT{
+            "BDT",
+            "Taka us Bangladäsch",
+        }
+        BGN{
+            "BGN",
+            "buljaaresche Lev",
+        }
+        BHD{
+            "BHD",
+            "Bachrainesche Denaa",
+        }
+        BND{
+            "BND",
+            "Brunei-Dollaa",
+        }
+        BOB{
+            "BOB",
+            "Bollivijano",
+        }
+        BRL{
+            "R$",
+            "brasilljaanesche Real",
+        }
+        BWP{
+            "BWP",
+            "Pula us Bozwaana",
+        }
+        BYR{
+            "BYR",
+            "wiißrußesche Rubel",
+        }
+        CAD{
+            "CA$",
+            "kannaadesche Dollaa",
+        }
+        CDF{
+            "CDF",
+            "kongjoleesesche Frang",
+        }
+        CHF{
+            "CHF",
+            "schweijzer Fränkli",
+        }
+        CLP{
+            "CLP",
+            "schileenesche Peeso",
+        }
+        CNY{
+            "CN¥",
+            "schineesesche Yuan Renminbi",
+        }
+        COP{
+            "COP",
+            "kolumbesche Peso",
+        }
+        CRC{
+            "CRC",
+            "koßtarikaanesche Colón",
+        }
+        CZK{
+            "CZK",
+            "tschäschesche Kruhne",
+        }
+        DKK{
+            "DKK",
+            "dänesche Kruhne",
+        }
+        DOP{
+            "DOP",
+            "dommenikaanesche Peesos",
+        }
+        DZD{
+            "DZD",
+            "aljeresche Denaa",
+        }
+        EGP{
+            "EGP",
+            "äjiptesche Pongk",
+        }
+        ETB{
+            "ETB",
+            "ätejoopesche Birr",
+        }
+        EUR{
+            "€",
+            "Euro",
+        }
+        GBP{
+            "£",
+            "brittesche £",
+        }
+        GEL{
+            "GEL",
+            "jeorjesche Lari",
+        }
+        GHS{
+            "GHS",
+            "janaaesche Cedi",
+        }
+        GNF{
+            "GNF",
+            "Jineea-Frang",
+        }
+        GTQ{
+            "GTQ",
+            "juatemalesche Quetzal",
+        }
+        HKD{
+            "HK$",
+            "Hongkong-Dollaa",
+        }
+        HNL{
+            "HNL",
+            "hondureanesche Lempira",
+        }
+        HRK{
+            "HRK",
+            "krowaatesche Kuna",
+        }
+        HTG{
+            "HTG",
+            "haiitesche Gourde",
+        }
+        HUF{
+            "HUF",
+            "unjarresche Forint",
+        }
+        IDR{
+            "IDR",
+            "indoneesesche Ruupije",
+        }
+        ILS{
+            "₪",
+            "ißraeelesche Schekel",
+        }
+        INR{
+            "Rs.",
+            "indesche Ruupije",
+        }
+        IQD{
+            "IQD",
+            "iraakesche Denaa",
+        }
+        IRR{
+            "IRR",
+            "persesche Rial",
+        }
+        ISK{
+            "ISK",
+            "ißländesche Kruhne",
+        }
+        JMD{
+            "JMD",
+            "jamaikaanesche Dollaa",
+        }
+        JOD{
+            "JOD",
+            "Jordaanesche Dollaa",
+        }
+        JPY{
+            "JP¥",
+            "japaanesche Jen",
+        }
+        KES{
+            "KES",
+            "Kenjaanesche Schillinge",
+        }
+        KGS{
+            "KGS",
+            "kirjiisesche Som",
+        }
+        KHR{
+            "KHR",
+            "kambodschaanesche Riel",
+        }
+        KRW{
+            "₩",
+            "söödkorejaansche Won",
+        }
+        KWD{
+            "KWD",
+            "kuwaitesche Denaa",
+        }
+        KZT{
+            "KZT",
+            "kasakesche Tenge",
+        }
+        LAK{
+            "LAK",
+            "loaatesche Kip",
+        }
+        LBP{
+            "LBP",
+            "libaneesesche Pongk",
+        }
+        LKR{
+            "LKR",
+            "schrilankesche Ruupije",
+        }
+        LTL{
+            "LTL",
+            "littouesche Litas",
+        }
+        LYD{
+            "LYD",
+            "libesche Denaa",
+        }
+        MAD{
+            "MAD",
+            "marrokaanesche Dirhamm",
+        }
+        MDL{
+            "MDL",
+            "moldaavesche Leu",
+        }
+        MGA{
+            "MGA",
+            "madajaskesche Ariary",
+        }
+        MKD{
+            "MKD",
+            "mazedoonesche Denaa",
+        }
+        MNT{
+            "MNT",
+            "mongjoolesche Tugrik",
+        }
+        MRO{
+            "MRO",
+            "mauretanesche Ouguiya",
+        }
+        MUR{
+            "MUR",
+            "maurizjahnesche Ruupije",
+        }
+        MWK{
+            "MWK",
+            "malaawesche Kwache",
+        }
+        MXN{
+            "MX$",
+            "mexekaanesche Peeso",
+        }
+        MYR{
+            "MYR",
+            "malaisesche Ringgit",
+        }
+        MZN{
+            "MZN",
+            "mossambikaanesche Metical",
+        }
+        NAD{
+            "NAD",
+            "namiibesche Dollaa",
+        }
+        NGN{
+            "NGN",
+            "nijerijaanesche Naira",
+        }
+        NIO{
+            "NIO",
+            "nikarajaanesche Córdoba",
+        }
+        NOK{
+            "NOK",
+            "norrweejesche Kruhne",
+        }
+        NPR{
+            "NPR",
+            "nepaleesesche Ruupije",
+        }
+        NZD{
+            "NZ$",
+            "neuseeländesche Dollaa",
+        }
+        OMR{
+            "OMR",
+            "ommaanesche Rijal",
+        }
+        PAB{
+            "PAB",
+            "pannameesesche Balboa",
+        }
+        PEN{
+            "PEN",
+            "perruaanesche Nuevo Sol",
+        }
+        PGK{
+            "PGK",
+            "papua neujinejaanesche Kina",
+        }
+        PHP{
+            "PHP",
+            "fillipiinesche Pesos",
+        }
+        PKR{
+            "PKR",
+            "pakestaanesche Ruupije",
+        }
+        PLN{
+            "PLN",
+            "polnesche Złoty",
+        }
+        PYG{
+            "PYG",
+            "parajuaanesche Juarani",
+        }
+        QAR{
+            "QAR",
+            "kataaresche Rijal",
+        }
+        RON{
+            "RON",
+            "romäänesche Leu",
+        }
+        RSD{
+            "RSD",
+            "särbesche Denaare",
+        }
+        RUB{
+            "RUB",
+            "russesche Ruubel",
+        }
+        RWF{
+            "RWF",
+            "ruandesche Frang",
+        }
+        SAR{
+            "SAR",
+            "saudesche Rijal",
+        }
+        SDG{
+            "SDG",
+            "sudaneesesche Pongk",
+        }
+        SEK{
+            "SEK",
+            "schweedesche Kruhne",
+        }
+        SGD{
+            "SGD",
+            "singjapurejaanesche Dollaa",
+        }
+        SLL{
+            "SLL",
+            "ẞjärra-lejoneesesche Leone",
+        }
+        SSP{
+            "SSP",
+            "södsudaneesesche Pongk",
+        }
+        THB{
+            "THB",
+            "tailändesche Baht",
+        }
+        TJS{
+            "TJS",
+            "tadschikißtaanesche Somoni",
+        }
+        TMT{
+            "TMT",
+            "turkmeneßtaanesche Manat",
+        }
+        TND{
+            "TND",
+            "tuneesesche Denaa",
+        }
+        TRY{
+            "TRY",
+            "törkesche Liire",
+        }
+        TTD{
+            "TTD",
+            "Dollaa uß Trinidad un Tobääjo",
+        }
+        TWD{
+            "NT$",
+            "neu taiwaneesesche Dollaa",
+        }
+        TZS{
+            "TZS",
+            "tansaanesche Schillenge",
+        }
+        UAH{
+            "UAH",
+            "ukraijnesche Hryvnia",
+        }
+        UGX{
+            "UGX",
+            "ujandesche Schillenge",
+        }
+        USD{
+            "US$",
+            "ammärrikaanesche Dollaa",
+        }
+        UYU{
+            "UYU",
+            "urrujuwaische Peeso",
+        }
+        UZS{
+            "UZS",
+            "ußbeekesche Som",
+        }
+        VEF{
+            "VEF",
+            "venezuelaanesche Bolívar",
+        }
+        VND{
+            "₫",
+            "vijätnammeesesche Dong",
+        }
+        XAF{
+            "FCFA",
+            "Kmmeruhner Frang",
+        }
+        XOF{
+            "CFA",
+            "Frang uß de Älfebeinköß",
+        }
+        YER{
+            "YER",
+            "jemenitesche Rijal",
+        }
+        ZAR{
+            "ZAR",
+            "södaffrekaanesche Rand",
+        }
+        ZMW{
+            "ZMW",
+            "sambesche Kwacha",
+        }
+    }
+    CurrencyPlurals{
+        ARS{
+            one{"ajentiinesche Peesos"}
+            other{"ajentiinesche Peesos"}
+            zero{"ajentiinesche Peesos"}
+        }
+        BAM{
+            one{"öpmtuuschbaa Mark us Boßnije un dä Hächejovvina"}
+            other{"öpmtuuschbaa Mark us Boßnije un dä Hächejovvina"}
+            zero{"öpmtuuschbaa Mark us Boßnije un dä Hächejovvina"}
+        }
+        BND{
+            one{"Brunei-Dollaaa"}
+            other{"Brunei-Dollaaa"}
+            zero{"Brunei-Dollaaa"}
+        }
+        BOB{
+            one{"Bollivijano"}
+            other{"Bollivijano"}
+            zero{"Bollivijano"}
+        }
+        CLP{
+            one{"schileenesche Peesos"}
+            other{"schileenesche Peesos"}
+            zero{"schileenesche Peesos"}
+        }
+        COP{
+            one{"kolumbesche Pesos"}
+            other{"kolumbesche Pesos"}
+            zero{"kolumbesche Pesos"}
+        }
+        CRC{
+            one{"Kaßtarikaanesche Colón"}
+            other{"Kaßtarikaanesche Colón"}
+            zero{"Kaßtarikaanesche Colón"}
+        }
+        CZK{
+            one{"tschäschesche Kruhne"}
+            other{"tschäschesche Kruhne"}
+            zero{"tschäschesche Kruhne"}
+        }
+        DKK{
+            one{"dänesche Kruhne"}
+            other{"dänesche Kruhne"}
+            zero{"dänesche Kruhne"}
+        }
+        DOP{
+            one{"dommenikaanesche Peeso"}
+            other{"dommenikaanesche Peesos"}
+            zero{"dommenikaanesche Peesos"}
+        }
+        GEL{
+            one{"jeorjesche LAri"}
+            other{"jeorjesche LAri"}
+            zero{"jeorjesche LAri"}
+        }
+        GNF{
+            one{"Jineea-Franke"}
+            other{"Jineea-Franke"}
+            zero{"Jineea-Franke"}
+        }
+        ISK{
+            one{"ißländesche Kruhne"}
+            other{"ißländesche Kruhne"}
+            zero{"ißländesche Kruhne"}
+        }
+        KES{
+            one{"Kenjaanesche Schillinge"}
+            other{"Kenjaanesche Schillinge"}
+            zero{"Kenjaanesche Schillinge"}
+        }
+        KZT{
+            one{"kasakstaanesche Tenge"}
+            other{"kasakstaanesche Tenge"}
+            zero{"kasakstaanesche Tenge"}
+        }
+        LKR{
+            one{"schri-lankesche Ruupije"}
+            other{"schri-lankesche Ruupije"}
+            zero{"schri-lankesche Ruupije"}
+        }
+        MXN{
+            one{"mexekaanesche Peeso"}
+            other{"mexekaanesche Peeso"}
+            zero{"mexekaanesche Peeso"}
+        }
+        NIO{
+            one{"nikarajaanesche Córdoba"}
+            other{"nikarajaanesche Córdoba"}
+            zero{"nikarajaanesche Córdoba"}
+        }
+        NOK{
+            one{"norrweejesche Kruhne"}
+            other{"norrweejesche Kruhne"}
+            zero{"norrweejesche Kruhne"}
+        }
+        PAB{
+            one{"pannameesesche Balboa"}
+            other{"pannameesesche Balboa"}
+            zero{"pannameesesche Balboa"}
+        }
+        PHP{
+            one{"fillipiinesche Pesos"}
+            other{"fillipiinesche Pesos"}
+            zero{"fillipiinesche Pesos"}
+        }
+        PLN{
+            one{"polnesche Złoty"}
+            other{"polnesche Złoty"}
+            zero{"polnesche Złoty"}
+        }
+        SEK{
+            one{"schweedesche Kruhne"}
+            other{"schweedesche Kruhne"}
+            zero{"schweedesche Kruhne"}
+        }
+        SSP{
+            one{"södsudaneesesche Pongk"}
+            other{"södsudaneesesche Pongk"}
+            zero{"södsudaneesesche Pongk"}
+        }
+        TMT{
+            one{"turkmeneßtaanesche Manat"}
+            other{"turkmeneßtaanesche Manat"}
+            zero{"turkmeneßtaanesche Manat"}
+        }
+        TTD{
+            one{"Dollaa uß Trinidad un Tobääjo"}
+            other{"Dollaa uß Trinidad un Tobääjo"}
+            zero{"Dollaa uß Trinidad un Tobääjo"}
+        }
+        TZS{
+            one{"tansaanesche Schillenge"}
+            other{"tansaanesche Schillenge"}
+            zero{"tansaanesche Schillenge"}
+        }
+        UGX{
+            one{"ujandesche Schillenge"}
+            other{"ujandesche Schillenge"}
+            zero{"ujandesche Schillenge"}
+        }
+        UYU{
+            one{"urrujuwaische Peeso"}
+            other{"urrujuwaische Peeso"}
+            zero{"urrujuwaische Peeso"}
+        }
+    }
+    CurrencyUnitPatterns{
+        one{"{0} {1}"}
+        other{"{0} {1}"}
+        zero{"{0} {1}"}
+    }
+    Version{"2.1.7.53"}
+}

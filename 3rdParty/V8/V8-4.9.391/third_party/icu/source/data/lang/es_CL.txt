@@ -1,0 +1,17 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/es_CL.xml
+// *
+// ***************************************************************************
+es_CL{
+    %%Parent{"es_419"}
+    Types{
+        collation{
+            phonebook{"orden de directorio telefónico"}
+        }
+    }
+    Version{"2.1.8.19"}
+}

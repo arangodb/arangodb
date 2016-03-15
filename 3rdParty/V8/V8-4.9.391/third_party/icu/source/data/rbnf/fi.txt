@@ -1,0 +1,84 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/rbnf/fi.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/xml/rbnf/fi.xml
+ */
+fi{
+    RBNFRules{
+        SpelloutRules{
+            "%spellout-numbering-year:",
+            "-x: miinus >>;",
+            "x.x: =#,###0.#=;",
+            "0: =%spellout-numbering=;",
+            "%spellout-numbering:",
+            "0: =%spellout-cardinal=;",
+            "%spellout-cardinal:",
+            "-x: miinus >>;",
+            "x.x: << pilkku >>;",
+            "0: nolla;",
+            "1: yksi;",
+            "2: kaksi;",
+            "3: kolme;",
+            "4: nelj\u00E4;",
+            "5: viisi;",
+            "6: kuusi;",
+            "7: seitsem\u00E4n;",
+            "8: kahdeksan;",
+            "9: yhdeks\u00E4n;",
+            "10: kymmenen;",
+            "11: >>toista;",
+            "20: <<kymment\u00E4[\u00AD>>];",
+            "100: sata[\u00AD>>];",
+            "200: <<\u00ADsataa[\u00AD>>];",
+            "1000: tuhat[\u00AD>>];",
+            "2000: <<\u00ADtuhatta[\u00AD>>];",
+            "1000000: << miljoona[ >>];",
+            "2000000: << miljoonaa[ >>];",
+            "1000000000: << miljardi[ >>];",
+            "2000000000: << miljardia[ >>];",
+            "1000000000000: << biljoona[ >>];",
+            "2000000000000: << biljoonaa[ >>];",
+            "1000000000000000000: =#,##0=;",
+            "%%spellout-ordinal-larger:",
+            "0: ;",
+            "2: kahdes;",
+            "3: =%spellout-ordinal=;",
+            "%spellout-ordinal:",
+            "-x: miinus >>;",
+            "x.x: =#,##0.#=;",
+            "0: nolla;",
+            "1: ensimm\u00E4inen;",
+            "2: toinen;",
+            "3: kolmas;",
+            "4: nelj\u00E4s;",
+            "5: viides;",
+            "6: kuudes;",
+            "7: seitsem\u00E4s;",
+            "8: kahdeksas;",
+            "9: yhdeks\u00E4s;",
+            "10: kymmenes;",
+            "11: yhdestoista;",
+            "12: kahdestoista;",
+            "13: >>toista;",
+            "20: <%%spellout-ordinal-larger<kymmenes[>>];",
+            "100: sadas[>>];",
+            "200: <%%spellout-ordinal-larger<sadas[>>];",
+            "1000: tuhannes[>>];",
+            "2000: <%%spellout-ordinal-larger<tuhannes[>>];",
+            "1000000: miljoonas[>>];",
+            "2000000: <%%spellout-ordinal-larger< miljoonas[>>];",
+            "1000000000: miljardis[>>];",
+            "2000000000: <%%spellout-ordinal-larger< miljardis[>>];",
+            "1000000000000: biljoonas[ >>];",
+            "2000000000000: <%%spellout-ordinal-larger< biljoonas[ >>];",
+            "1000000000000000000: =#,##0=;",
+        }
+    }
+    Version{"2.0.87.4"}
+}

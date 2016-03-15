@@ -1,0 +1,164 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/lu.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/lu.xml
+ */
+lu{
+    Currencies{
+        AED{
+            "AED",
+            "Ndiriha wa Lemila alabu",
+        }
+        AOA{
+            "AOA",
+            "Kwanza wa Angola",
+        }
+        AUD{
+            "A$",
+            "Ndola wa Ositali",
+        }
+        BHD{
+            "BHD",
+            "Ndina wa Bahrene",
+        }
+        BWP{
+            "BWP",
+            "Pula wa Botswana",
+        }
+        CAD{
+            "CA$",
+            "Ndola wa Kanada",
+        }
+        CDF{
+            "FC",
+            "Nfalanga wa Kongu",
+        }
+        CHF{
+            "CHF",
+            "Nfalanga wa Swise",
+        }
+        CNY{
+            "CN¥",
+            "Yuani Renminbi wa Shine",
+        }
+        DZD{
+            "DZD",
+            "Ndina wa Alijeri",
+        }
+        EGP{
+            "EGP",
+            "Pauni wa Mushidi",
+        }
+        ETB{
+            "ETB",
+            "Bira wa Etshiopi",
+        }
+        EUR{
+            "€",
+            "Iro",
+        }
+        GBP{
+            "£",
+            "Pauni wa Angeletele",
+        }
+        INR{
+            "Rs.",
+            "Rupi wa Inde",
+        }
+        JPY{
+            "JP¥",
+            "Yeni wa Zapɔ",
+        }
+        KES{
+            "KES",
+            "Nshili wa Kenya",
+        }
+        LYD{
+            "LYD",
+            "Ndina wa Libi",
+        }
+        MAD{
+            "MAD",
+            "Ndiriha wa Maroke",
+        }
+        MGA{
+            "MGA",
+            "Nfalanga wa Madagasikare",
+        }
+        MRO{
+            "MRO",
+            "Ugwiya wa Moritani",
+        }
+        MUR{
+            "MUR",
+            "Rupia wa Morisi",
+        }
+        MWK{
+            "MWK",
+            "Kwasha wa Malawi",
+        }
+        NAD{
+            "NAD",
+            "Ndola wa Namibi",
+        }
+        NGN{
+            "NGN",
+            "Naira wa Nizerya",
+        }
+        RWF{
+            "RWF",
+            "Nfalanga wa Rwanda",
+        }
+        SAR{
+            "SAR",
+            "Riyale wa Alabu Nsawu",
+        }
+        SDG{
+            "SDG",
+            "Ndina wa Suda",
+        }
+        SLL{
+            "SLL",
+            "Leone",
+        }
+        TND{
+            "TND",
+            "Ndina wa Tinizi",
+        }
+        TZS{
+            "TZS",
+            "Nshili wa Tanzani",
+        }
+        UGX{
+            "UGX",
+            "Nshili wa Uganda",
+        }
+        USD{
+            "US$",
+            "Ndola wa Ameriki",
+        }
+        XAF{
+            "FCFA",
+            "Nfalanga CFA BEAC",
+        }
+        XOF{
+            "CFA",
+            "Nfalanga CFA BCEAO",
+        }
+        ZAR{
+            "ZAR",
+            "Rande wa Afrika wa Mwinshi",
+        }
+        ZMW{
+            "ZMW",
+            "Kwasha wa Zambi",
+        }
+    }
+    Version{"2.1.6.69"}
+}

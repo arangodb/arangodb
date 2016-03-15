@@ -1,0 +1,11 @@
+﻿# ***************************************************************************
+# *
+# *  Copyright (C) 2004-2014, International Business Machines
+# *  Corporation; Unicode, Inc.; and others.  All Rights Reserved.
+# *
+# ***************************************************************************
+# File: az_Upper.txt
+# Generated from CLDR 
+#
+i→İ;
+::Any-Upper();

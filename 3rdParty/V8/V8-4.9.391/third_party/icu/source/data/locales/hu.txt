@@ -1,0 +1,1772 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/hu.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/hu.xml
+ */
+hu{
+    AuxExemplarCharacters{"[à ă â å ä ã ā æ ç è ĕ ê ë ē ì ĭ î ï ī ñ ò ŏ ô ø ō œ q ù ŭ û ū w x y ÿ]"}
+    Ellipsis{
+        final{"{0}…"}
+        initial{"…{0}"}
+        medial{"{0}…{1}"}
+        word-final{"{0}…"}
+        word-initial{"…{0}"}
+        word-medial{"{0} … {1}"}
+    }
+    ExemplarCharacters{
+        "[a á b c {cs} {ccs} d {dz} {ddz} {dzs} {ddzs} e é f g {gy} {ggy} h i í j k l"
+        " {ly} {lly} m n {ny} {nny} o ó ö ő p r s {sz} {ssz} t {ty} {tty} u ú ü ű v z"
+        " {zs} {zzs}]"
+    }
+    ExemplarCharactersIndex{
+        "[A Á B C {CS} D {DZ} {DZS} E É F G {GY} H I Í J K L {LY} M N {NY} O Ó Ö Ő P "
+        "Q R S {SZ} T {TY} U Ú Ü Ű V W X Y Z {ZS}]"
+    }
+    ExemplarCharactersPunctuation{
+        "[\\- – , ; \\: ! ? . … ' ’ \u0022 ” „ « » ( ) \\[ \\] \\{ \\} ⟨ ⟩ § @ * / "
+        "\\& # ~ ⁒]"
+    }
+    LocaleScript{
+        "Latn",
+    }
+    MoreInformation{"?"}
+    NumberElements{
+        default{"latn"}
+        latn{
+            miscPatterns{
+                atLeast{"{0}+"}
+                range{"{0}–{1}"}
+            }
+            patterns{
+                accountingFormat{"#,##0.00 ¤"}
+                currencyFormat{"#,##0.00 ¤"}
+                decimalFormat{"#,##0.###"}
+                percentFormat{"#,##0%"}
+                scientificFormat{"#E0"}
+            }
+            patternsLong{
+                decimalFormat{
+                    1000{
+                        one{"0 ezer"}
+                        other{"0 ezer"}
+                    }
+                    10000{
+                        one{"00 ezer"}
+                        other{"00 ezer"}
+                    }
+                    100000{
+                        one{"000 ezer"}
+                        other{"000 ezer"}
+                    }
+                    1000000{
+                        one{"0 millió"}
+                        other{"0 millió"}
+                    }
+                    10000000{
+                        one{"00 millió"}
+                        other{"00 millió"}
+                    }
+                    100000000{
+                        one{"000 millió"}
+                        other{"000 millió"}
+                    }
+                    1000000000{
+                        one{"0 milliárd"}
+                        other{"0 milliárd"}
+                    }
+                    10000000000{
+                        one{"00 milliárd"}
+                        other{"00 milliárd"}
+                    }
+                    100000000000{
+                        one{"000 milliárd"}
+                        other{"000 milliárd"}
+                    }
+                    1000000000000{
+                        one{"0 billió"}
+                        other{"0 billió"}
+                    }
+                    10000000000000{
+                        one{"00 billió"}
+                        other{"00 billió"}
+                    }
+                    100000000000000{
+                        one{"000 billió"}
+                        other{"000 billió"}
+                    }
+                }
+            }
+            patternsShort{
+                decimalFormat{
+                    1000{
+                        one{"0 E"}
+                        other{"0 E"}
+                    }
+                    10000{
+                        one{"00 E"}
+                        other{"00 E"}
+                    }
+                    100000{
+                        one{"000 E"}
+                        other{"000 E"}
+                    }
+                    1000000{
+                        one{"0 M"}
+                        other{"0 M"}
+                    }
+                    10000000{
+                        one{"00 M"}
+                        other{"00 M"}
+                    }
+                    100000000{
+                        one{"000 M"}
+                        other{"000 M"}
+                    }
+                    1000000000{
+                        one{"0 Mrd"}
+                        other{"0 Mrd"}
+                    }
+                    10000000000{
+                        one{"00 Mrd"}
+                        other{"00 Mrd"}
+                    }
+                    100000000000{
+                        one{"000 Mrd"}
+                        other{"000 Mrd"}
+                    }
+                    1000000000000{
+                        one{"0 B"}
+                        other{"0 B"}
+                    }
+                    10000000000000{
+                        one{"00 B"}
+                        other{"00 B"}
+                    }
+                    100000000000000{
+                        one{"000 B"}
+                        other{"000 B"}
+                    }
+                }
+            }
+            symbols{
+                decimal{","}
+                exponential{"E"}
+                group{" "}
+                infinity{"∞"}
+                list{";"}
+                minusSign{"-"}
+                nan{"NaN"}
+                perMille{"‰"}
+                percentSign{"%"}
+                plusSign{"+"}
+                superscriptingExponent{"×"}
+                timeSeparator{":"}
+            }
+        }
+        minimumGroupingDigits{"1"}
+        native{"latn"}
+    }
+    Version{"2.1.8.9"}
+    calendar{
+        buddhist{
+            eras{
+                abbreviated{
+                    "BK",
+                }
+            }
+        }
+        chinese{
+            monthNames{
+                format{
+                    abbreviated{
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7",
+                        "8",
+                        "9",
+                        "10",
+                        "11",
+                        "12",
+                    }
+                    narrow{
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7",
+                        "8",
+                        "9",
+                        "10",
+                        "11",
+                        "12",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7",
+                        "8",
+                        "9",
+                        "10",
+                        "11",
+                        "12",
+                    }
+                    wide{
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7",
+                        "8",
+                        "9",
+                        "10",
+                        "11",
+                        "12",
+                    }
+                }
+            }
+        }
+        coptic{
+            monthNames{
+                format{
+                    abbreviated{
+                        "Tout",
+                        "Baba",
+                        "Hator",
+                        "Kiahk",
+                        "Toba",
+                        "Amshir",
+                        "Baramhat",
+                        "Baramouda",
+                        "Bashans",
+                        "Paona",
+                        "Epep",
+                        "Mesra",
+                        "Nasie",
+                    }
+                    narrow{
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7",
+                        "8",
+                        "9",
+                        "10",
+                        "11",
+                        "12",
+                        "13",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "Tout",
+                        "Baba",
+                        "Hator",
+                        "Kiahk",
+                        "Toba",
+                        "Amshir",
+                        "Baramhat",
+                        "Baramouda",
+                        "Bashans",
+                        "Paona",
+                        "Epep",
+                        "Mesra",
+                        "Nasie",
+                    }
+                    wide{
+                        "Tout",
+                        "Baba",
+                        "Hator",
+                        "Kiahk",
+                        "Toba",
+                        "Amshir",
+                        "Baramhat",
+                        "Baramouda",
+                        "Bashans",
+                        "Paona",
+                        "Epep",
+                        "Mesra",
+                        "Nasie",
+                    }
+                }
+            }
+        }
+        ethiopic{
+            monthNames{
+                format{
+                    abbreviated{
+                        "Meskerem",
+                        "Tekemt",
+                        "Hedar",
+                        "Tahsas",
+                        "Ter",
+                        "Yekatit",
+                        "Megabit",
+                        "Miazia",
+                        "Genbot",
+                        "Sene",
+                        "Hamle",
+                        "Nehasse",
+                        "Pagumen",
+                    }
+                    narrow{
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7",
+                        "8",
+                        "9",
+                        "10",
+                        "11",
+                        "12",
+                        "13",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "Meskerem",
+                        "Tekemt",
+                        "Hedar",
+                        "Tahsas",
+                        "Ter",
+                        "Yekatit",
+                        "Megabit",
+                        "Miazia",
+                        "Genbot",
+                        "Sene",
+                        "Hamle",
+                        "Nehasse",
+                        "Pagumen",
+                    }
+                    wide{
+                        "Meskerem",
+                        "Tekemt",
+                        "Hedar",
+                        "Tahsas",
+                        "Ter",
+                        "Yekatit",
+                        "Megabit",
+                        "Miazia",
+                        "Genbot",
+                        "Sene",
+                        "Hamle",
+                        "Nehasse",
+                        "Pagumen",
+                    }
+                }
+            }
+        }
+        generic{
+            DateTimePatterns{
+                "H:mm:ss zzzz",
+                "H:mm:ss z",
+                "H:mm:ss",
+                "H:mm",
+                "G y. MMMM d., EEEE",
+                "G y. MMMM d.",
+                "G y. MMM d.",
+                "GGGGG y. M. d.",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            availableFormats{
+                Ed{"d., E"}
+                Gy{"G y."}
+                GyMMM{"G y. MMM"}
+                GyMMMEd{"G y. MMM d., E"}
+                GyMMMd{"G y. MMM d."}
+                H{"H"}
+                Hm{"H:mm"}
+                Hms{"H:mm:ss"}
+                M{"L"}
+                MEd{"M. d., E"}
+                MMM{"LLL"}
+                MMMEd{"MMM d., E"}
+                MMMMd{"MMMM d."}
+                MMMd{"MMM d."}
+                Md{"M. d."}
+                d{"d"}
+                h{"a h"}
+                hm{"a h:mm"}
+                hms{"a h:mm:ss"}
+                ms{"mm:ss"}
+                y{"G y."}
+                yyyy{"G y."}
+                yyyyM{"G y. MM."}
+                yyyyMEd{"G y. MM. dd., E"}
+                yyyyMMM{"G y. MMM"}
+                yyyyMMMEd{"G y. MMM d., E"}
+                yyyyMMMM{"G y. MMMM"}
+                yyyyMMMd{"G y. MMM d."}
+                yyyyMd{"G y. MM. dd."}
+                yyyyQQQ{"G y. QQQ"}
+                yyyyQQQQ{"G y. QQQQ"}
+            }
+            intervalFormats{
+                H{
+                    H{"H-H"}
+                }
+                Hm{
+                    H{"H:mm-H:mm"}
+                    m{"H:mm-H:mm"}
+                }
+                Hmv{
+                    H{"H:mm-H:mm v"}
+                    m{"H:mm-H:mm v"}
+                }
+                Hv{
+                    H{"H-H v"}
+                }
+                M{
+                    M{"M–M."}
+                }
+                MEd{
+                    M{"MM. dd., E – MM. dd., E"}
+                    d{"MM. dd., E – MM. dd., E"}
+                }
+                MMM{
+                    M{"MMM–MMM"}
+                }
+                MMMEd{
+                    M{"MMM d., E – MMM d., E"}
+                    d{"MMM d., E – d., E"}
+                }
+                MMMd{
+                    M{"MMM d. – MMM d."}
+                    d{"MMM d–d."}
+                }
+                Md{
+                    M{"MM. dd. – MM. dd."}
+                    d{"MM. dd–dd."}
+                }
+                d{
+                    d{"d–d."}
+                }
+                fallback{"{0} – {1}"}
+                h{
+                    a{"a h – a h"}
+                    h{"a h–h"}
+                }
+                hm{
+                    a{"a h:mm – a h:mm"}
+                    h{"a h:mm–h:mm"}
+                    m{"a h:mm–h:mm"}
+                }
+                hmv{
+                    a{"a h:mm – a h:mm v"}
+                    h{"a h:mm–h:mm v"}
+                    m{"a h:mm–h:mm v"}
+                }
+                hv{
+                    a{"a h – a h v"}
+                    h{"a h–h v"}
+                }
+                y{
+                    y{"G y–y."}
+                }
+                yM{
+                    M{"G y. MM–MM."}
+                    y{"G y. MM. – y. MM."}
+                }
+                yMEd{
+                    M{"G y. MM. dd., E – MM. dd., E"}
+                    d{"G y. MM. dd., E – dd., E"}
+                    y{"G y. MM. dd., E – y. MM. dd., E"}
+                }
+                yMMM{
+                    M{"G y. MMM–MMM"}
+                    y{"G y. MMM – y. MMM"}
+                }
+                yMMMEd{
+                    M{"G y. MMM d., E – MMM d., E"}
+                    d{"G y. MMM d., E – MMM d., E"}
+                    y{"G y. MMM d., E – y. MMM d., E"}
+                }
+                yMMMM{
+                    M{"G y. MMMM–MMMM"}
+                    y{"G y. MMMM – y. MMMM"}
+                }
+                yMMMd{
+                    M{"G y. MMM d. – MMM d."}
+                    d{"G y. MMM d–d."}
+                    y{"G y. MMM d. – y. MMM d."}
+                }
+                yMd{
+                    M{"G y. MM. dd. – MM. dd."}
+                    d{"G y. MM. dd–dd."}
+                    y{"G y. MM. dd. – y. MM. dd."}
+                }
+            }
+        }
+        gregorian{
+            AmPmMarkers{
+                "de.",
+                "du.",
+            }
+            AmPmMarkersNarrow{
+                "de.",
+                "du.",
+            }
+            DateTimePatterns{
+                "H:mm:ss zzzz",
+                "H:mm:ss z",
+                "H:mm:ss",
+                "H:mm",
+                "y. MMMM d., EEEE",
+                "y. MMMM d.",
+                "y. MMM d.",
+                "y. MM. dd.",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            NoonMarker{"dél"}
+            NoonMarkerNarrow{"dél"}
+            appendItems{
+                Timezone{"{0} {1}"}
+            }
+            availableFormats{
+                E{"ccc"}
+                EHm{"E HH:mm"}
+                EHms{"E HH:mm:ss"}
+                Ed{"d., E"}
+                Ehm{"E h:mm a"}
+                Ehms{"E h:mm:ss a"}
+                Gy{"G y."}
+                GyMMM{"G y. MMM"}
+                GyMMMEd{"G y. MMM d., E"}
+                GyMMMd{"G y. MMM d."}
+                H{"H"}
+                Hm{"H:mm"}
+                Hms{"H:mm:ss"}
+                M{"L"}
+                MEd{"M. d., E"}
+                MMM{"LLL"}
+                MMMEd{"MMM d., E"}
+                MMMMd{"MMMM d."}
+                MMMd{"MMM d."}
+                Md{"M. d."}
+                d{"d"}
+                h{"a h"}
+                hm{"a h:mm"}
+                hms{"a h:mm:ss"}
+                mmss{"mm:ss"}
+                ms{"mm:ss"}
+                y{"y."}
+                yM{"y. M."}
+                yMEd{"y. MM. dd., E"}
+                yMMM{"y. MMM"}
+                yMMMEd{"y. MMM d., E"}
+                yMMMM{"y. MMMM"}
+                yMMMd{"y. MMM d."}
+                yMd{"y. MM. dd."}
+                yQQQ{"y. QQQ"}
+                yQQQQ{"y. QQQQ"}
+            }
+            dayNames{
+                format{
+                    abbreviated{
+                        "V",
+                        "H",
+                        "K",
+                        "Sze",
+                        "Cs",
+                        "P",
+                        "Szo",
+                    }
+                    narrow{
+                        "V",
+                        "H",
+                        "K",
+                        "Sz",
+                        "Cs",
+                        "P",
+                        "Sz",
+                    }
+                    short{
+                        "V",
+                        "H",
+                        "K",
+                        "Sze",
+                        "Cs",
+                        "P",
+                        "Szo",
+                    }
+                    wide{
+                        "vasárnap",
+                        "hétfő",
+                        "kedd",
+                        "szerda",
+                        "csütörtök",
+                        "péntek",
+                        "szombat",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "V",
+                        "H",
+                        "K",
+                        "Sze",
+                        "Cs",
+                        "P",
+                        "Szo",
+                    }
+                    narrow{
+                        "V",
+                        "H",
+                        "K",
+                        "Sz",
+                        "Cs",
+                        "P",
+                        "Sz",
+                    }
+                    short{
+                        "V",
+                        "H",
+                        "K",
+                        "Sze",
+                        "Cs",
+                        "P",
+                        "Szo",
+                    }
+                    wide{
+                        "vasárnap",
+                        "hétfő",
+                        "kedd",
+                        "szerda",
+                        "csütörtök",
+                        "péntek",
+                        "szombat",
+                    }
+                }
+            }
+            eras{
+                abbreviated{
+                    "i. e.",
+                    "i. sz.",
+                }
+                narrow{
+                    "ie.",
+                    "isz.",
+                }
+                wide{
+                    "időszámításunk előtt",
+                    "időszámításunk szerint",
+                }
+                wide%variant{
+                    "i. e.",
+                    "i. sz.",
+                }
+            }
+            intervalFormats{
+                H{
+                    H{"H-H"}
+                }
+                Hm{
+                    H{"H:mm–H:mm"}
+                    m{"H:mm–H:mm"}
+                }
+                Hmv{
+                    H{"H:mm–H:mm v"}
+                    m{"H:mm–H:mm v"}
+                }
+                Hv{
+                    H{"H–H v"}
+                }
+                M{
+                    M{"M–M."}
+                }
+                MEd{
+                    M{"M. d., E – M. d., E"}
+                    d{"M. dd., E – M. d., E"}
+                }
+                MMM{
+                    M{"MMM–MMM"}
+                }
+                MMMEd{
+                    M{"MMM d., E – MMM d., E"}
+                    d{"MMM d., E – d., E"}
+                }
+                MMMd{
+                    M{"MMM d. – MMM d."}
+                    d{"MMM d–d."}
+                }
+                Md{
+                    M{"M. d. – M. d."}
+                    d{"M. d–d."}
+                }
+                d{
+                    d{"d–d."}
+                }
+                fallback{"{0} – {1}"}
+                h{
+                    a{"a h – a h"}
+                    h{"a h–h"}
+                }
+                hm{
+                    a{"a h:mm – a h:mm"}
+                    h{"a h:mm–h:mm"}
+                    m{"a h:mm–h:mm"}
+                }
+                hmv{
+                    a{"a h:mm – a h:mm v"}
+                    h{"a h:mm–h:mm v"}
+                    m{"a h:mm–h:mm v"}
+                }
+                hv{
+                    a{"a h – a h v"}
+                    h{"a h–h v"}
+                }
+                y{
+                    y{"y–y"}
+                }
+                yM{
+                    M{"y. MM–MM."}
+                    y{"y. MM. – y. MM."}
+                }
+                yMEd{
+                    M{"y. MM. dd., E – MM. dd., E"}
+                    d{"y. MM. dd., E – dd., E"}
+                    y{"y. MM. dd., E – y. MM. dd., E"}
+                }
+                yMMM{
+                    M{"y. MMM–MMM"}
+                    y{"y. MMM – y. MMM"}
+                }
+                yMMMEd{
+                    M{"y. MMM d., E – MMM d., E"}
+                    d{"y. MMM d., E – d., E"}
+                    y{"y. MMM d., E – y. MMM d., E"}
+                }
+                yMMMM{
+                    M{"y. MMMM–MMMM"}
+                    y{"y. MMMM – y. MMMM"}
+                }
+                yMMMd{
+                    M{"y. MMM d. – MMM d."}
+                    d{"y. MMM d–d."}
+                    y{"y. MMM d. – y. MMM d."}
+                }
+                yMd{
+                    M{"y. MM. dd. – MM. dd."}
+                    d{"y. MM. dd–dd."}
+                    y{"y. MM. dd. – y. MM. dd."}
+                }
+            }
+            monthNames{
+                format{
+                    abbreviated{
+                        "jan.",
+                        "febr.",
+                        "márc.",
+                        "ápr.",
+                        "máj.",
+                        "jún.",
+                        "júl.",
+                        "aug.",
+                        "szept.",
+                        "okt.",
+                        "nov.",
+                        "dec.",
+                    }
+                    narrow{
+                        "J",
+                        "F",
+                        "M",
+                        "Á",
+                        "M",
+                        "J",
+                        "J",
+                        "A",
+                        "Sz",
+                        "O",
+                        "N",
+                        "D",
+                    }
+                    wide{
+                        "január",
+                        "február",
+                        "március",
+                        "április",
+                        "május",
+                        "június",
+                        "július",
+                        "augusztus",
+                        "szeptember",
+                        "október",
+                        "november",
+                        "december",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "jan.",
+                        "febr.",
+                        "márc.",
+                        "ápr.",
+                        "máj.",
+                        "jún.",
+                        "júl.",
+                        "aug.",
+                        "szept.",
+                        "okt.",
+                        "nov.",
+                        "dec.",
+                    }
+                    narrow{
+                        "J",
+                        "F",
+                        "M",
+                        "Á",
+                        "M",
+                        "J",
+                        "J",
+                        "A",
+                        "Sz",
+                        "O",
+                        "N",
+                        "D",
+                    }
+                    wide{
+                        "január",
+                        "február",
+                        "március",
+                        "április",
+                        "május",
+                        "június",
+                        "július",
+                        "augusztus",
+                        "szeptember",
+                        "október",
+                        "november",
+                        "december",
+                    }
+                }
+            }
+            quarters{
+                format{
+                    abbreviated{
+                        "N1",
+                        "N2",
+                        "N3",
+                        "N4",
+                    }
+                    narrow{
+                        "1.",
+                        "2.",
+                        "3.",
+                        "4.",
+                    }
+                    wide{
+                        "I. negyedév",
+                        "II. negyedév",
+                        "III. negyedév",
+                        "IV. negyedév",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "N1",
+                        "N2",
+                        "N3",
+                        "N4",
+                    }
+                    narrow{
+                        "1.",
+                        "2.",
+                        "3.",
+                        "4.",
+                    }
+                    wide{
+                        "1. negyedév",
+                        "2. negyedév",
+                        "3. negyedév",
+                        "4. negyedév",
+                    }
+                }
+            }
+        }
+        hebrew{
+            eras{
+                abbreviated{
+                    "TÉ",
+                }
+            }
+            monthNames{
+                format{
+                    abbreviated{
+                        "Tisri",
+                        "Hesván",
+                        "Kiszlév",
+                        "Tévész",
+                        "Svát",
+                        "Ádár I",
+                        "Ádár",
+                        "Niszán",
+                        "Ijár",
+                        "Sziván",
+                        "Tamuz",
+                        "Áv",
+                        "Elul",
+                        "Ádár II",
+                    }
+                    wide{
+                        "Tisri",
+                        "Hesván",
+                        "Kiszlév",
+                        "Tévész",
+                        "Svát",
+                        "Ádár I",
+                        "Ádár",
+                        "Niszán",
+                        "Ijár",
+                        "Sziván",
+                        "Tamuz",
+                        "Áv",
+                        "Elul",
+                        "Ádár II",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "Tisri",
+                        "Hesván",
+                        "Kiszlév",
+                        "Tévész",
+                        "Svát",
+                        "Ádár I",
+                        "Ádár",
+                        "Niszán",
+                        "Ijár",
+                        "Sziván",
+                        "Tamuz",
+                        "Áv",
+                        "Elul",
+                        "Ádár II",
+                    }
+                    wide{
+                        "Tisri",
+                        "Hesván",
+                        "Kiszlév",
+                        "Tévész",
+                        "Svát",
+                        "Ádár I",
+                        "Ádár",
+                        "Niszán",
+                        "Ijár",
+                        "Sziván",
+                        "Tamuz",
+                        "Áv",
+                        "Elul",
+                        "Ádár II",
+                    }
+                }
+            }
+        }
+        indian{
+            monthNames{
+                format{
+                    abbreviated{
+                        "Chaitra",
+                        "Vaisakha",
+                        "Jyaistha",
+                        "Asadha",
+                        "Sravana",
+                        "Bhadra",
+                        "Asvina",
+                        "Kartika",
+                        "Agrahayana",
+                        "Pausa",
+                        "Magha",
+                        "Phalguna",
+                    }
+                    narrow{
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7",
+                        "8",
+                        "9",
+                        "10",
+                        "11",
+                        "12",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "Chaitra",
+                        "Vaisakha",
+                        "Jyaistha",
+                        "Asadha",
+                        "Sravana",
+                        "Bhadra",
+                        "Asvina",
+                        "Kartika",
+                        "Agrahayana",
+                        "Pausa",
+                        "Magha",
+                        "Phalguna",
+                    }
+                    wide{
+                        "Chaitra",
+                        "Vaisakha",
+                        "Jyaistha",
+                        "Asadha",
+                        "Sravana",
+                        "Bhadra",
+                        "Asvina",
+                        "Kartika",
+                        "Agrahayana",
+                        "Pausa",
+                        "Magha",
+                        "Phalguna",
+                    }
+                }
+            }
+        }
+        islamic{
+            eras{
+                abbreviated{
+                    "MF",
+                }
+            }
+            monthNames{
+                format{
+                    abbreviated{
+                        "Moh.",
+                        "Saf.",
+                        "Rébi I",
+                        "Rébi II",
+                        "Dsem. I",
+                        "Dsem. II",
+                        "Red.",
+                        "Sab.",
+                        "Ram.",
+                        "Sev.",
+                        "Dsül k.",
+                        "Dsül h.",
+                    }
+                    wide{
+                        "Moharrem",
+                        "Safar",
+                        "Rébi el avvel",
+                        "Rébi el accher",
+                        "Dsemádi el avvel",
+                        "Dsemádi el accher",
+                        "Redseb",
+                        "Sabán",
+                        "Ramadán",
+                        "Sevvál",
+                        "Dsül kade",
+                        "Dsül hedse",
+                    }
+                }
+                stand-alone{
+                    narrow{
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7",
+                        "8",
+                        "9",
+                        "10",
+                        "11",
+                        "12",
+                    }
+                    wide{
+                        "Moharrem",
+                        "Safar",
+                        "Rébi I",
+                        "Rébi II",
+                        "Dsemádi I",
+                        "Dsemádi II",
+                        "Redseb",
+                        "Sabán",
+                        "Ramadán",
+                        "Sevvál",
+                        "Dsül kade",
+                        "Dsül hedse",
+                    }
+                }
+            }
+        }
+        japanese{
+            DateTimePatterns{
+                "H:mm:ss zzzz",
+                "H:mm:ss z",
+                "H:mm:ss",
+                "H:mm",
+                "G y. MMMM d., EEEE",
+                "G y. MMMM d.",
+                "G y.MM.dd.",
+                "GGGGG y.MM.dd.",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+        }
+        persian{
+            monthNames{
+                format{
+                    abbreviated{
+                        "Farvardin",
+                        "Ordibehesht",
+                        "Khordad",
+                        "Tir",
+                        "Mordad",
+                        "Shahrivar",
+                        "Mehr",
+                        "Aban",
+                        "Azar",
+                        "Dey",
+                        "Bahman",
+                        "Esfand",
+                    }
+                    narrow{
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7",
+                        "8",
+                        "9",
+                        "10",
+                        "11",
+                        "12",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "Farvardin",
+                        "Ordibehesht",
+                        "Khordad",
+                        "Tir",
+                        "Mordad",
+                        "Shahrivar",
+                        "Mehr",
+                        "Aban",
+                        "Azar",
+                        "Dey",
+                        "Bahman",
+                        "Esfand",
+                    }
+                    wide{
+                        "Farvardin",
+                        "Ordibehesht",
+                        "Khordad",
+                        "Tir",
+                        "Mordad",
+                        "Shahrivar",
+                        "Mehr",
+                        "Aban",
+                        "Azar",
+                        "Dey",
+                        "Bahman",
+                        "Esfand",
+                    }
+                }
+            }
+        }
+        roc{
+            eras{
+                abbreviated{
+                    "R.O.C. előtt",
+                    "R.O.C.",
+                }
+            }
+        }
+    }
+    delimiters{
+        alternateQuotationEnd{"«"}
+        alternateQuotationStart{"»"}
+        quotationEnd{"”"}
+        quotationStart{"„"}
+    }
+    durationUnits{
+        hm{"h:mm"}
+        hms{"h:mm:ss"}
+        ms{"m:ss"}
+    }
+    fields{
+        day{
+            dn{"nap"}
+            relative{
+                "-1"{"tegnap"}
+                "-2"{"tegnapelőtt"}
+                "0"{"ma"}
+                "1"{"holnap"}
+                "2"{"holnapután"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} nap múlva"}
+                    other{"{0} nap múlva"}
+                }
+                past{
+                    one{"{0} nappal ezelőtt"}
+                    other{"{0} nappal ezelőtt"}
+                }
+            }
+        }
+        day-narrow{
+            dn{"nap"}
+            relativeTime{
+                future{
+                    one{"{0} nap múlva"}
+                    other{"{0} nap múlva"}
+                }
+                past{
+                    one{"{0} napja"}
+                    other{"{0} napja"}
+                }
+            }
+        }
+        day-short{
+            dn{"nap"}
+            relativeTime{
+                future{
+                    one{"{0} nap múlva"}
+                    other{"{0} nap múlva"}
+                }
+                past{
+                    one{"{0} napja"}
+                    other{"{0} napja"}
+                }
+            }
+        }
+        dayperiod{
+            dn{"napszak"}
+        }
+        era{
+            dn{"éra"}
+        }
+        fri{
+            relative{
+                "-1"{"előző péntek"}
+                "0"{"ez a péntek"}
+                "1"{"következő péntek"}
+            }
+        }
+        fri-narrow{
+            relative{
+                "-1"{"előző péntek"}
+                "0"{"ez a péntek"}
+                "1"{"következő péntek"}
+            }
+        }
+        fri-short{
+            relative{
+                "-1"{"előző péntek"}
+                "0"{"ez a péntek"}
+                "1"{"következő péntek"}
+            }
+        }
+        hour{
+            dn{"óra"}
+            relativeTime{
+                future{
+                    one{"{0} óra múlva"}
+                    other{"{0} óra múlva"}
+                }
+                past{
+                    one{"{0} órával ezelőtt"}
+                    other{"{0} órával ezelőtt"}
+                }
+            }
+        }
+        hour-narrow{
+            dn{"óra"}
+            relativeTime{
+                future{
+                    one{"{0} óra múlva"}
+                    other{"{0} óra múlva"}
+                }
+                past{
+                    one{"{0} órával ezelőtt"}
+                    other{"{0} órával ezelőtt"}
+                }
+            }
+        }
+        hour-short{
+            dn{"óra"}
+            relativeTime{
+                future{
+                    one{"{0} óra múlva"}
+                    other{"{0} óra múlva"}
+                }
+                past{
+                    one{"{0} órával ezelőtt"}
+                    other{"{0} órával ezelőtt"}
+                }
+            }
+        }
+        minute{
+            dn{"perc"}
+            relativeTime{
+                future{
+                    one{"{0} perc múlva"}
+                    other{"{0} perc múlva"}
+                }
+                past{
+                    one{"{0} perccel ezelőtt"}
+                    other{"{0} perccel ezelőtt"}
+                }
+            }
+        }
+        minute-narrow{
+            dn{"perc"}
+            relativeTime{
+                future{
+                    one{"{0} perc múlva"}
+                    other{"{0} perc múlva"}
+                }
+                past{
+                    one{"{0} perccel ezelőtt"}
+                    other{"{0} perccel ezelőtt"}
+                }
+            }
+        }
+        minute-short{
+            dn{"perc"}
+            relativeTime{
+                future{
+                    one{"{0} perc múlva"}
+                    other{"{0} perc múlva"}
+                }
+                past{
+                    one{"{0} perccel ezelőtt"}
+                    other{"{0} perccel ezelőtt"}
+                }
+            }
+        }
+        mon{
+            relative{
+                "-1"{"előző hétfő"}
+                "0"{"ez a hétfő"}
+                "1"{"következő hétfő"}
+            }
+        }
+        mon-narrow{
+            relative{
+                "-1"{"előző hétfő"}
+                "0"{"ez a hétfő"}
+                "1"{"következő hétfő"}
+            }
+        }
+        mon-short{
+            relative{
+                "-1"{"előző hétfő"}
+                "0"{"ez a hétfő"}
+                "1"{"következő hétfő"}
+            }
+        }
+        month{
+            dn{"hónap"}
+            relative{
+                "-1"{"előző hónap"}
+                "0"{"ez a hónap"}
+                "1"{"következő hónap"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} hónap múlva"}
+                    other{"{0} hónap múlva"}
+                }
+                past{
+                    one{"{0} hónappal ezelőtt"}
+                    other{"{0} hónappal ezelőtt"}
+                }
+            }
+        }
+        month-narrow{
+            dn{"hónap"}
+            relativeTime{
+                future{
+                    one{"{0} hónap múlva"}
+                    other{"{0} hónap múlva"}
+                }
+                past{
+                    one{"{0} hónappal ezelőtt"}
+                    other{"{0} hónappal ezelőtt"}
+                }
+            }
+        }
+        month-short{
+            dn{"hónap"}
+            relativeTime{
+                future{
+                    one{"{0} hónap múlva"}
+                    other{"{0} hónap múlva"}
+                }
+                past{
+                    one{"{0} hónappal ezelőtt"}
+                    other{"{0} hónappal ezelőtt"}
+                }
+            }
+        }
+        quarter{
+            dn{"negyedév"}
+            relativeTime{
+                future{
+                    one{"{0} negyedév múlva"}
+                    other{"{0} negyedév múlva"}
+                }
+                past{
+                    one{"{0} negyedévvel ezelőtt"}
+                    other{"{0} negyedévvel ezelőtt"}
+                }
+            }
+        }
+        quarter-narrow{
+            dn{"negyedév"}
+            relativeTime{
+                future{
+                    one{"{0} negyedév múlva"}
+                    other{"{0} negyedév múlva"}
+                }
+                past{
+                    one{"{0} negyedévvel ezelőtt"}
+                    other{"{0} negyedévvel ezelőtt"}
+                }
+            }
+        }
+        quarter-short{
+            dn{"negyedév"}
+            relativeTime{
+                future{
+                    one{"{0} negyedév múlva"}
+                    other{"{0} negyedév múlva"}
+                }
+                past{
+                    one{"{0} negyedévvel ezelőtt"}
+                    other{"{0} negyedévvel ezelőtt"}
+                }
+            }
+        }
+        sat{
+            relative{
+                "-1"{"előző szombat"}
+                "0"{"ez a szombat"}
+                "1"{"következő szombat"}
+            }
+        }
+        sat-narrow{
+            relative{
+                "-1"{"előző szombat"}
+                "0"{"ez a szombat"}
+                "1"{"következő szombat"}
+            }
+        }
+        sat-short{
+            relative{
+                "-1"{"előző szombat"}
+                "0"{"ez a szombat"}
+                "1"{"következő szombat"}
+            }
+        }
+        second{
+            dn{"másodperc"}
+            relative{
+                "0"{"most"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} másodperc múlva"}
+                    other{"{0} másodperc múlva"}
+                }
+                past{
+                    one{"{0} másodperccel ezelőtt"}
+                    other{"{0} másodperccel ezelőtt"}
+                }
+            }
+        }
+        second-narrow{
+            dn{"másodperc"}
+            relativeTime{
+                future{
+                    one{"{0} másodperc múlva"}
+                    other{"{0} másodperc múlva"}
+                }
+                past{
+                    one{"{0} másodperccel ezelőtt"}
+                    other{"{0} másodperccel ezelőtt"}
+                }
+            }
+        }
+        second-short{
+            dn{"másodperc"}
+            relativeTime{
+                future{
+                    one{"{0} másodperc múlva"}
+                    other{"{0} másodperc múlva"}
+                }
+                past{
+                    one{"{0} másodperccel ezelőtt"}
+                    other{"{0} másodperccel ezelőtt"}
+                }
+            }
+        }
+        sun{
+            relative{
+                "-1"{"előző vasárnap"}
+                "0"{"ez a vasárnap"}
+                "1"{"következő vasárnap"}
+            }
+        }
+        sun-narrow{
+            relative{
+                "-1"{"előző vasárnap"}
+                "0"{"ez a vasárnap"}
+                "1"{"következő vasárnap"}
+            }
+        }
+        sun-short{
+            relative{
+                "-1"{"előző vasárnap"}
+                "0"{"ez a vasárnap"}
+                "1"{"következő vasárnap"}
+            }
+        }
+        thu{
+            relative{
+                "-1"{"előző csütörtök"}
+                "0"{"ez a csütörtök"}
+                "1"{"következő csütörtök"}
+            }
+        }
+        thu-narrow{
+            relative{
+                "-1"{"előző csütörtök"}
+                "0"{"ez a csütörtök"}
+                "1"{"következő csütörtök"}
+            }
+        }
+        thu-short{
+            relative{
+                "-1"{"előző csütörtök"}
+                "0"{"ez a csütörtök"}
+                "1"{"következő csütörtök"}
+            }
+        }
+        tue{
+            relative{
+                "-1"{"előző kedd"}
+                "0"{"ez a kedd"}
+                "1"{"következő kedd"}
+            }
+        }
+        tue-narrow{
+            relative{
+                "-1"{"előző kedd"}
+                "0"{"ez a kedd"}
+                "1"{"következő kedd"}
+            }
+        }
+        tue-short{
+            relative{
+                "-1"{"előző kedd"}
+                "0"{"ez a kedd"}
+                "1"{"következő kedd"}
+            }
+        }
+        wed{
+            relative{
+                "-1"{"előző szerda"}
+                "0"{"ez a szerda"}
+                "1"{"következő szerda"}
+            }
+        }
+        wed-narrow{
+            relative{
+                "-1"{"előző szerda"}
+                "0"{"ez a szerda"}
+                "1"{"következő szerda"}
+            }
+        }
+        wed-short{
+            relative{
+                "-1"{"előző szerda"}
+                "0"{"ez a szerda"}
+                "1"{"következő szerda"}
+            }
+        }
+        week{
+            dn{"hét"}
+            relative{
+                "-1"{"előző hét"}
+                "0"{"ez a hét"}
+                "1"{"következő hét"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} hét múlva"}
+                    other{"{0} hét múlva"}
+                }
+                past{
+                    one{"{0} héttel ezelőtt"}
+                    other{"{0} héttel ezelőtt"}
+                }
+            }
+        }
+        week-narrow{
+            dn{"hét"}
+            relativeTime{
+                future{
+                    one{"{0} hét múlva"}
+                    other{"{0} hét múlva"}
+                }
+                past{
+                    one{"{0} héttel ezelőtt"}
+                    other{"{0} héttel ezelőtt"}
+                }
+            }
+        }
+        week-short{
+            dn{"hét"}
+            relativeTime{
+                future{
+                    one{"{0} hét múlva"}
+                    other{"{0} hét múlva"}
+                }
+                past{
+                    one{"{0} héttel ezelőtt"}
+                    other{"{0} héttel ezelőtt"}
+                }
+            }
+        }
+        weekday{
+            dn{"hét napja"}
+        }
+        year{
+            dn{"év"}
+            relative{
+                "-1"{"előző év"}
+                "0"{"ez az év"}
+                "1"{"következő év"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} év múlva"}
+                    other{"{0} év múlva"}
+                }
+                past{
+                    one{"{0} évvel ezelőtt"}
+                    other{"{0} évvel ezelőtt"}
+                }
+            }
+        }
+        year-narrow{
+            dn{"év"}
+            relativeTime{
+                future{
+                    one{"{0} év múlva"}
+                    other{"{0} év múlva"}
+                }
+                past{
+                    one{"{0} évvel ezelőtt"}
+                    other{"{0} évvel ezelőtt"}
+                }
+            }
+        }
+        year-short{
+            dn{"év"}
+            relativeTime{
+                future{
+                    one{"{0} év múlva"}
+                    other{"{0} év múlva"}
+                }
+                past{
+                    one{"{0} évvel ezelőtt"}
+                    other{"{0} évvel ezelőtt"}
+                }
+            }
+        }
+        zone{
+            dn{"időzóna"}
+        }
+    }
+    listPattern{
+        standard{
+            2{"{0} és {1}"}
+            end{"{0} és {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        unit{
+            2{"{0} és {1}"}
+            end{"{0} és {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        unit-narrow{
+            2{"{0} és {1}"}
+            end{"{0} és {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        unit-short{
+            2{"{0} és {1}"}
+            end{"{0} és {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+    }
+    measurementSystemNames{
+        UK{"angol"}
+        US{"amerikai"}
+        metric{"metrikus"}
+    }
+    transformNames{
+        BGN{"BGN"}
+        Numeric{"Szám"}
+        Tone{"Hangsúly"}
+        UNGEGN{"UNGEGN"}
+        x-Accents{"Ékezetek"}
+        x-Fullwidth{"Teljes szélesség"}
+        x-Halfwidth{"Fél szélesség"}
+        x-Jamo{"Jamo"}
+        x-Pinyin{"Pinjin"}
+        x-Publishing{"Kiadásra"}
+    }
+}

@@ -1,0 +1,21 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/se_FI.xml
+// *
+// ***************************************************************************
+se_FI{
+    Countries{
+        419{"Latiinnalaš-Amerihkká"}
+        BA{"Bosnia ja Hercegovina"}
+        KH{"Kamboža"}
+        SD{"Sudan"}
+        TD{"Chad"}
+    }
+    Countries%variant{
+        CI{"Côte d’Ivoire"}
+    }
+    Version{"2.1.8.19"}
+}

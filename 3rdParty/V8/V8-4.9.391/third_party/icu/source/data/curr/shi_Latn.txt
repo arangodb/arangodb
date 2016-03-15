@@ -1,0 +1,165 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/shi_Latn.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/shi_Latn.xml
+ */
+shi_Latn{
+    %%Parent{"root"}
+    Currencies{
+        AED{
+            "AED",
+            "adrim n limarat",
+        }
+        AOA{
+            "AOA",
+            "kwanza n angula",
+        }
+        AUD{
+            "A$",
+            "adular n ustralya",
+        }
+        BHD{
+            "BHD",
+            "adinar n bḥrayn",
+        }
+        BWP{
+            "BWP",
+            "abula n butswana",
+        }
+        CAD{
+            "CA$",
+            "adular n kanada",
+        }
+        CDF{
+            "CDF",
+            "frank n kungu",
+        }
+        CHF{
+            "CHF",
+            "afrank n swisra",
+        }
+        CNY{
+            "CN¥",
+            "ayan n ccinwa",
+        }
+        DZD{
+            "DZD",
+            "adinar n dzayr",
+        }
+        EGP{
+            "EGP",
+            "ajnih n miṣṛ",
+        }
+        ETB{
+            "ETB",
+            "bir n ityubya",
+        }
+        EUR{
+            "€",
+            "uru",
+        }
+        GBP{
+            "£",
+            "ajnih astrlini n nngliz",
+        }
+        INR{
+            "Rs.",
+            "arubi n lhind",
+        }
+        JPY{
+            "JP¥",
+            "ayan n lyaban",
+        }
+        KES{
+            "KES",
+            "acilin n kinya",
+        }
+        LYD{
+            "LYD",
+            "adinar n libya",
+        }
+        MAD{
+            "MAD",
+            "adrim n lmɣrib",
+        }
+        MGA{
+            "MGA",
+            "frank n madaɣacqar",
+        }
+        MRO{
+            "MRO",
+            "uqiyya n muṛiṭanya",
+        }
+        MUR{
+            "MUR",
+            "arubi n muris",
+        }
+        MWK{
+            "MWK",
+            "kwaca n malawi",
+        }
+        NAD{
+            "NAD",
+            "adular n namibya",
+        }
+        NGN{
+            "NGN",
+            "nayra n nijirya",
+        }
+        RWF{
+            "RWF",
+            "afrank n rwanda",
+        }
+        SAR{
+            "SAR",
+            "aryal n ssaɛudiya",
+        }
+        SDG{
+            "SDG",
+            "adinar n ssudan",
+        }
+        SLL{
+            "SLL",
+            "liyun",
+        }
+        TND{
+            "TND",
+            "adinar n tuns",
+        }
+        TZS{
+            "TZS",
+            "acilin n ṭanẓanya",
+        }
+        UGX{
+            "UGX",
+            "acilin n uɣanda",
+        }
+        USD{
+            "US$",
+            "adular n iwunak imunn",
+        }
+        XAF{
+            "FCFA",
+            "frank ṣifa",
+        }
+        XOF{
+            "CFA",
+            "frank ṣifa bisaw",
+        }
+        ZAR{
+            "ZAR",
+            "arand n afriqya n iffus",
+        }
+        ZMW{
+            "ZMW",
+            "akwaca n zambya",
+        }
+    }
+    Version{"2.1.6.69"}
+}

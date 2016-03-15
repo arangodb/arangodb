@@ -1,0 +1,26 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/yi.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/yi.xml
+ */
+yi{
+    AuxExemplarCharacters{"[\u200E\u200F]"}
+    ExemplarCharacters{
+        "[א {א\u05B7} {א\u05B8} ב {ב\u05BF} ג ד {דזש} ה ו {ו\u05BC} {וו} {וי} ז {זש} "
+        "ח ט {טש} י {י\u05B4} {יי} {ײ\u05B7} {כ\u05BC} כ ך ל מ ם נ ן ס ע {פ\u05BC} {פ"
+        "\u05BF} ף צ ץ ק ר ש {ש\u05C2} {ת\u05BC} ת]"
+    }
+    LocaleScript{
+        "Hebr",
+    }
+    Version{"2.1.7.41"}
+    layout{
+        characters{"right-to-left"}
+    }
+}

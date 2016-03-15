@@ -1,0 +1,18 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/mgo.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/mgo.xml
+ */
+mgo{
+    Countries{
+        CM{"Kamalun"}
+        ZZ{"aba aben tisɔ̀"}
+    }
+    Version{"2.1.6.69"}
+}

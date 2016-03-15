@@ -1,0 +1,164 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/teo.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/teo.xml
+ */
+teo{
+    Currencies{
+        AED{
+            "AED",
+            "Ango’otol lok’ Falme za Kiarabu",
+        }
+        AOA{
+            "AOA",
+            "Ango’otol lok’ Angola",
+        }
+        AUD{
+            "A$",
+            "Ango’otol lok’ Australia",
+        }
+        BHD{
+            "BHD",
+            "Ango’otol lok’ Bahareni",
+        }
+        BWP{
+            "BWP",
+            "Ango’otol lok’ Botswana",
+        }
+        CAD{
+            "CA$",
+            "Edola lok’Kanada",
+        }
+        CDF{
+            "CDF",
+            "Ango’otol lok’ Kongo",
+        }
+        CHF{
+            "CHF",
+            "Ango’otol lok’ Uswisi",
+        }
+        CNY{
+            "CN¥",
+            "Ango’otol lok’ China",
+        }
+        DZD{
+            "DZD",
+            "Ango’otol lok’ Aljeria",
+        }
+        EGP{
+            "EGP",
+            "Epaunt lok’ Misri",
+        }
+        ETB{
+            "ETB",
+            "Ango’otol lok’ Uhabeshi",
+        }
+        EUR{
+            "€",
+            "Yuro",
+        }
+        GBP{
+            "£",
+            "Epaunt lok’ Uingereza",
+        }
+        INR{
+            "Rs.",
+            "Ango’otol lok’ India",
+        }
+        JPY{
+            "JP¥",
+            "Ango’otol lok’ Kijapani",
+        }
+        KES{
+            "KES",
+            "Ango’otol lok’ Kenya",
+        }
+        LYD{
+            "LYD",
+            "Ango’otol lok’ Libya",
+        }
+        MAD{
+            "MAD",
+            "Ango’otol lok’ Moroko",
+        }
+        MGA{
+            "MGA",
+            "Ango’otol lok’ Bukini",
+        }
+        MRO{
+            "MRO",
+            "Ango’otol lok’ Moritania",
+        }
+        MUR{
+            "MUR",
+            "Ango’otol lok’ Morisi",
+        }
+        MWK{
+            "MWK",
+            "Ango’otol lok’ Malawi",
+        }
+        NAD{
+            "NAD",
+            "Ango’otol lok’ Namibia",
+        }
+        NGN{
+            "NGN",
+            "Ango’otol lok’ Nijeria",
+        }
+        RWF{
+            "RWF",
+            "Ango’otol lok’ Rwanda",
+        }
+        SAR{
+            "SAR",
+            "Ango’otol lok’ Saudia",
+        }
+        SDG{
+            "SDG",
+            "Epaunt Lok’ Sudan",
+        }
+        SLL{
+            "SLL",
+            "Leoni",
+        }
+        TND{
+            "TND",
+            "Ango’otol lok’ Tunisia",
+        }
+        TZS{
+            "TZS",
+            "Ango’otol lok’ Tanzania",
+        }
+        UGX{
+            "USh",
+            "Ango’otol lok’ Uganda",
+        }
+        USD{
+            "US$",
+            "edola lok’ Amareka",
+        }
+        XAF{
+            "FCFA",
+            "Ango’otol lok’ CFA BEAC",
+        }
+        XOF{
+            "CFA",
+            "Ango’otol lok’ CFA BCEAO",
+        }
+        ZAR{
+            "ZAR",
+            "Ango’otol lok’ Afrika Kusini",
+        }
+        ZMW{
+            "ZMW",
+            "Ango’otol lok’ Zambia",
+        }
+    }
+    Version{"2.1.7.39"}
+}

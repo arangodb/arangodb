@@ -1,0 +1,76 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/en_AU.xml
+// *
+// ***************************************************************************
+en_AU{
+    %%Parent{"en_GB"}
+    Currencies{
+        BYR{
+            "BYR",
+            "Belarusian Rouble",
+        }
+        GBP{
+            "£",
+            "British Pound",
+        }
+        RUB{
+            "RUB",
+            "Russian Rouble",
+        }
+        UZS{
+            "UZS",
+            "Uzbekistani Som",
+        }
+        XAF{
+            "FCFA",
+            "Central African CFA Franc",
+        }
+        XOF{
+            "CFA",
+            "West African CFA Franc",
+        }
+    }
+    CurrencyPlurals{
+        BYR{
+            one{"Belarusian rouble"}
+            other{"Belarusian roubles"}
+        }
+        EUR{
+            one{"euro"}
+            other{"euro"}
+        }
+        GBP{
+            one{"British pound"}
+            other{"British pounds"}
+        }
+        MGA{
+            one{"Malagasy ariary"}
+            other{"Malagasy ariarys"}
+        }
+        MWK{
+            one{"Malawian kwacha"}
+            other{"Malawian kwachas"}
+        }
+        RUB{
+            one{"Russian rouble"}
+            other{"Russian roubles"}
+        }
+        UZS{
+            one{"Uzbekistani som"}
+            other{"Uzbekistani som"}
+        }
+        XAF{
+            one{"Central African CFA franc"}
+            other{"Central African CFA francs"}
+        }
+        XOF{
+            one{"West African CFA franc"}
+            other{"West African CFA francs"}
+        }
+    }
+    Version{"2.1.8.19"}
+}

@@ -1,0 +1,60 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/segments/it.xml ../../xml/brkitr/it.xml
+// *
+// ***************************************************************************
+it{
+    Version{"2.1.7.45"}
+    exceptions{
+        SentenceBreak:array{
+            "N.B.",
+            "div.",
+            "a.C.",
+            "fig.",
+            "d.p.R.",
+            "c.c.p.",
+            "Cfr.",
+            "vol.",
+            "Geom.",
+            "O.d.G.",
+            "S.p.A.",
+            "ver.",
+            "N.d.A.",
+            "dott.",
+            "arch.",
+            "d.C.",
+            "N.d.T.",
+            "rag.",
+            "Sig.",
+            "Mod.",
+            "pag.",
+            "dr.",
+            "tav.",
+            "N.d.E.",
+            "DC.",
+            "mitt.",
+            "Ing.",
+            "int.",
+            "on.",
+            "C.P.",
+            "ag.",
+            "L.",
+            "U.S.",
+            "S.M.A.R.T.",
+            "p.i.",
+            "tab.",
+            "Ltd.",
+            "Liv.",
+            "D.",
+            "U.S.A.",
+            "sez.",
+            "avv.",
+            "S.A.R.",
+            "all.",
+            "p.",
+        }
+    }
+}

@@ -1,0 +1,24 @@
+# Copyright 2014 The Chromium Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+{
+  'conditions': [
+    # iOS always has the icu data in the bundle and we don't have to
+    # specify the dependency for iOS here.
+    ['icu_use_data_file_flag==1 and (OS=="linux" or OS=="win" or OS=="mac" or OS=="android")', {
+      'variables': {
+        'files': [
+          '<(PRODUCT_DIR)/icudtl.dat',
+        ],
+      },
+    }],
+    # When icu data is not used, other platforms link it statically.
+    ['icu_use_data_file_flag==0 and OS=="win"', {
+      'variables': {
+          'files': [
+            '<(PRODUCT_DIR)/icudt.dll',
+        ],
+      },
+    }],
+  ],
+}

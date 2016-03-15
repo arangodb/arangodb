@@ -1,0 +1,22 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/en_SS.xml
+// *
+// ***************************************************************************
+en_SS{
+    %%Parent{"en_001"}
+    Currencies{
+        GBP{
+            "GB£",
+            "British Pound Sterling",
+        }
+        SSP{
+            "£",
+            "South Sudanese Pound",
+        }
+    }
+    Version{"2.1.6.69"}
+}

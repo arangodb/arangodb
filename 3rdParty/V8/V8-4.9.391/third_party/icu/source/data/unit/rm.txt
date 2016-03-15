@@ -1,0 +1,110 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/rm.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/rm.xml
+ */
+rm{
+    Version{"2.1.8.9"}
+    units{
+        duration{
+            day{
+                one{"{0} di"}
+                other{"{0} dis"}
+            }
+            hour{
+                one{"{0} ura"}
+                other{"{0} uras"}
+            }
+            minute{
+                one{"{0} minuta"}
+                other{"{0} minutas"}
+            }
+            month{
+                one{"{0} mais"}
+                other{"{0} mais"}
+            }
+            second{
+                one{"{0} secunda"}
+                other{"{0} secundas"}
+            }
+            week{
+                one{"{0} emna"}
+                other{"{0} emnas"}
+            }
+            year{
+                one{"{0} onn"}
+                other{"{0} onns"}
+            }
+        }
+    }
+    unitsNarrow{
+        duration{
+            day{
+                one{"{0} dis"}
+                other{"{0} dis"}
+            }
+            hour{
+                one{"{0} uras"}
+                other{"{0} uras"}
+            }
+            minute{
+                one{"{0} mins."}
+                other{"{0} mins."}
+            }
+            month{
+                one{"{0} mais"}
+                other{"{0} mais"}
+            }
+            second{
+                one{"{0} secs."}
+                other{"{0} secs."}
+            }
+            week{
+                one{"{0} emnas"}
+                other{"{0} emnas"}
+            }
+            year{
+                one{"{0} onns"}
+                other{"{0} onns"}
+            }
+        }
+    }
+    unitsShort{
+        duration{
+            day{
+                one{"{0} di"}
+                other{"{0} dis"}
+            }
+            hour{
+                one{"{0} ura"}
+                other{"{0} uras"}
+            }
+            minute{
+                one{"{0} min."}
+                other{"{0} mins."}
+            }
+            month{
+                one{"{0} mais"}
+                other{"{0} mais"}
+            }
+            second{
+                one{"{0} sec."}
+                other{"{0} secs."}
+            }
+            week{
+                one{"{0} emna"}
+                other{"{0} emnas"}
+            }
+            year{
+                one{"{0} onn"}
+                other{"{0} onns"}
+            }
+        }
+    }
+}

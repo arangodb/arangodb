@@ -1,0 +1,43 @@
+diff --git a/source/i18n/regexcmp.cpp b/source/i18n/regexcmp.cpp
+index ea01d5a..29b789b 100644
+--- a/source/i18n/regexcmp.cpp
++++ b/source/i18n/regexcmp.cpp
+@@ -70,6 +70,7 @@ RegexCompile::RegexCompile(RegexPattern *rxp, UErrorCode &status) :
+ 
+     fMatchOpenParen   = -1;
+     fMatchCloseParen  = -1;
++    fLastSetLiteral   = U_SENTINEL;
+ 
+     if (U_SUCCESS(status) && U_FAILURE(rxp->fDeferredStatus)) {
+         status = rxp->fDeferredStatus;
+@@ -1625,12 +1626,14 @@ UBool RegexCompile::doParseActions(int32_t action)
+     case doSetNamedRange:
+         // We have scanned literal-\N{CHAR NAME}.  Add the range to the set.
+         // The left character is already in the set, and is saved in fLastSetLiteral.
++        // Nonetheless, check if |fLastSetLiteral| is indeed set because it's
++        // not set in some edge cases.
+         // The right side needs to be picked up, the scan is at the 'N'.
+         // Lower Limit > Upper limit being an error matches both Java
+         //        and ICU UnicodeSet behavior.
+         {
+             UChar32  c = scanNamedChar();
+-            if (U_SUCCESS(*fStatus) && fLastSetLiteral > c) {
++            if (U_SUCCESS(*fStatus) && (fLastSetLiteral == U_SENTINEL || fLastSetLiteral > c)) {
+                 error(U_REGEX_INVALID_RANGE);
+             }
+             UnicodeSet *s = (UnicodeSet *)fSetStack.peek();
+@@ -1695,11 +1698,13 @@ UBool RegexCompile::doParseActions(int32_t action)
+     case doSetRange:
+         // We have scanned literal-literal.  Add the range to the set.
+         // The left character is already in the set, and is saved in fLastSetLiteral.
++        // Nonetheless, check if |fLastSetLiteral| is indeed set because it's
++        // not set in some edge cases.
+         // The right side is the current character.
+         // Lower Limit > Upper limit being an error matches both Java
+         //        and ICU UnicodeSet behavior.
+         {
+-        if (fLastSetLiteral > fC.fChar) {
++        if (fLastSetLiteral == U_SENTINEL || fLastSetLiteral > fC.fChar) {
+             error(U_REGEX_INVALID_RANGE);
+         }
+         UnicodeSet *s = (UnicodeSet *)fSetStack.peek();

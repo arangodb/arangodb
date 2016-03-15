@@ -1,0 +1,1377 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/es.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/es.xml
+ */
+es{
+    AuxExemplarCharacters{"[ª à ă â å ä ã ā æ ç è ĕ ê ë ē ì ĭ î ï ī º ò ŏ ô ö ø ō œ ù ŭ û ū ÿ]"}
+    Ellipsis{
+        final{"{0}…"}
+        initial{"… {0}"}
+        medial{"{0}… {1}"}
+        word-final{"{0}…"}
+        word-initial{"… {0}"}
+        word-medial{"{0}… {1}"}
+    }
+    ExemplarCharacters{"[a á b c d e é f g h i í j k l m n ñ o ó p q r s t u ú ü v w x y z]"}
+    ExemplarCharactersIndex{"[A B C D E F G H I J K L M N Ñ O P Q R S T U V W X Y Z]"}
+    ExemplarCharactersPunctuation{
+        "[\\- ‐ – — , ; \\: ! ¡ ? ¿ . … ' ‘ ’ \u0022 “ ” « » ( ) \\[ \\] § @ * / "
+        "\\\\ \\& # † ‡ ′ ″]"
+    }
+    LocaleScript{
+        "Latn",
+    }
+    MoreInformation{"?"}
+    NumberElements{
+        default{"latn"}
+        latn{
+            miscPatterns{
+                atLeast{"Más de {0}"}
+                range{"{0}-{1}"}
+            }
+            patterns{
+                accountingFormat{"#,##0.00 ¤"}
+                currencyFormat{"#,##0.00 ¤"}
+                decimalFormat{"#,##0.###"}
+                percentFormat{"#,##0 %"}
+                scientificFormat{"#E0"}
+            }
+            patternsLong{
+                decimalFormat{
+                    1000{
+                        one{"0 mil"}
+                        other{"0 mil"}
+                    }
+                    10000{
+                        one{"00 mil"}
+                        other{"00 mil"}
+                    }
+                    100000{
+                        one{"000 mil"}
+                        other{"000 mil"}
+                    }
+                    1000000{
+                        one{"0 millón"}
+                        other{"0 millones"}
+                    }
+                    10000000{
+                        one{"00 millones"}
+                        other{"00 millones"}
+                    }
+                    100000000{
+                        one{"000 millones"}
+                        other{"000 millones"}
+                    }
+                    1000000000{
+                        one{"0 mil millones"}
+                        other{"0 mil millones"}
+                    }
+                    10000000000{
+                        one{"00 mil millones"}
+                        other{"00 mil millones"}
+                    }
+                    100000000000{
+                        one{"000 mil millones"}
+                        other{"000 mil millones"}
+                    }
+                    1000000000000{
+                        one{"0 billón"}
+                        other{"0 billones"}
+                    }
+                    10000000000000{
+                        one{"00 billones"}
+                        other{"00 billones"}
+                    }
+                    100000000000000{
+                        one{"000 billones"}
+                        other{"000 billones"}
+                    }
+                }
+            }
+            patternsShort{
+                decimalFormat{
+                    1000{
+                        one{"0K"}
+                        other{"0K"}
+                    }
+                    10000{
+                        one{"00K"}
+                        other{"00K"}
+                    }
+                    100000{
+                        one{"000K"}
+                        other{"000K"}
+                    }
+                    1000000{
+                        one{"0M"}
+                        other{"0M"}
+                    }
+                    10000000{
+                        one{"00M"}
+                        other{"00M"}
+                    }
+                    100000000{
+                        one{"000M"}
+                        other{"000M"}
+                    }
+                    1000000000{
+                        one{"0000M"}
+                        other{"0000M"}
+                    }
+                    10000000000{
+                        one{"00MRD"}
+                        other{"00MRD"}
+                    }
+                    100000000000{
+                        one{"000MRD"}
+                        other{"000MRD"}
+                    }
+                    1000000000000{
+                        one{"0B"}
+                        other{"0B"}
+                    }
+                    10000000000000{
+                        one{"00B"}
+                        other{"00B"}
+                    }
+                    100000000000000{
+                        one{"000B"}
+                        other{"000B"}
+                    }
+                }
+            }
+            symbols{
+                decimal{","}
+                exponential{"E"}
+                group{"."}
+                infinity{"∞"}
+                list{";"}
+                minusSign{"-"}
+                nan{"NaN"}
+                perMille{"‰"}
+                percentSign{"%"}
+                plusSign{"+"}
+                superscriptingExponent{"×"}
+                timeSeparator{":"}
+            }
+        }
+        minimumGroupingDigits{"1"}
+        native{"latn"}
+    }
+    Version{"2.1.8.9"}
+    calendar{
+        buddhist{
+            eras{
+                abbreviated{
+                    "BE",
+                }
+            }
+        }
+        chinese{
+            DateTimePatterns{
+                "H:mm:ss (zzzz)",
+                "H:mm:ss z",
+                "H:mm:ss",
+                "H:mm",
+                "EEEE, d-M-y",
+                "d-M-y",
+                "d-M-y",
+                "d-M-y",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            availableFormats{
+                Ed{"E d"}
+                Gy{"y"}
+                GyMMM{"M-y"}
+                GyMMMEd{"E, d-M-y"}
+                GyMMMd{"d-M-y"}
+                H{"HH"}
+                Hm{"HH:mm"}
+                Hms{"HH:mm:ss"}
+                M{"L"}
+                MEd{"E, d-M"}
+                MMM{"L"}
+                MMMEd{"E d-M"}
+                MMMd{"d-M"}
+                Md{"d-M"}
+                d{"d"}
+                h{"hh a"}
+                hm{"hh:mm a"}
+                hms{"hh:mm:ss a"}
+                ms{"mm:ss"}
+                y{"y"}
+                yyyy{"y"}
+                yyyyM{"M-y"}
+                yyyyMEd{"E, d-M-y"}
+                yyyyMMM{"M-y"}
+                yyyyMMMEd{"E, d-M-y"}
+                yyyyMMMM{"M-y"}
+                yyyyMMMd{"d-M-y"}
+                yyyyMd{"d-M-y"}
+                yyyyQQQ{"QQQ y"}
+                yyyyQQQQ{"QQQQ y"}
+            }
+        }
+        generic{
+            DateTimePatterns{
+                "H:mm:ss (zzzz)",
+                "H:mm:ss z",
+                "H:mm:ss",
+                "H:mm",
+                "EEEE, d 'de' MMMM 'de' y G",
+                "d 'de' MMMM 'de' y G",
+                "dd/MM/y G",
+                "dd/MM/yy GGGGG",
+                "{1} {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            availableFormats{
+                Ed{"E d"}
+                Gy{"y G"}
+                GyMMM{"MMM y G"}
+                GyMMMEd{"E, d 'de' MMMM 'de' y G"}
+                GyMMMd{"d MMM y G"}
+                H{"HH"}
+                Hm{"HH:mm"}
+                Hms{"HH:mm:ss"}
+                M{"L"}
+                MEd{"E, d/M"}
+                MMM{"LLL"}
+                MMMEd{"E, d MMM"}
+                MMMMd{"d 'de' MMMM"}
+                MMMd{"d MMM"}
+                MMMdd{"dd-MMM"}
+                Md{"d/M"}
+                d{"d"}
+                h{"hh a"}
+                hm{"hh:mm a"}
+                hms{"hh:mm:ss a"}
+                ms{"mm:ss"}
+                y{"y G"}
+                yyyy{"y G"}
+                yyyyM{"M/y GGGGG"}
+                yyyyMEd{"E, d/M/y GGGGG"}
+                yyyyMMM{"MMM 'de' y G"}
+                yyyyMMMEd{"E, d 'de' MMMM 'de' y G"}
+                yyyyMMMM{"MMMM 'de' y G"}
+                yyyyMMMd{"d 'de' MMM 'de' y G"}
+                yyyyMd{"d/M/y GGGGG"}
+                yyyyQQQ{"QQQ y G"}
+                yyyyQQQQ{"QQQQ 'de' y G"}
+            }
+            intervalFormats{
+                H{
+                    H{"HH–HH"}
+                }
+                Hm{
+                    H{"HH:mm – HH:mm"}
+                    m{"HH:mm – HH:mm"}
+                }
+                Hmv{
+                    H{"HH:mm – HH:mm v"}
+                    m{"HH:mm – HH:mm v"}
+                }
+                M{
+                    M{"M–M"}
+                }
+                MEd{
+                    M{"E, d/M–E, d/M"}
+                    d{"E, d/M–E, d/M"}
+                }
+                MMM{
+                    M{"MMM–MMM"}
+                }
+                MMMEd{
+                    M{"E, d 'de' MMM–E, d 'de' MMM"}
+                    d{"E, d 'de' MMM–E, d 'de' MMM"}
+                }
+                MMMd{
+                    M{"d 'de' MMM–d 'de' MMM"}
+                    d{"d-d 'de' MMM"}
+                }
+                Md{
+                    M{"d/M–d/M"}
+                    d{"d/M–d/M"}
+                }
+                d{
+                    d{"d–d"}
+                }
+                fallback{"{0}–{1}"}
+                h{
+                    a{"h a – h a"}
+                    h{"h–h a"}
+                }
+                hm{
+                    a{"h:mm a – h:mm a"}
+                    h{"h:mm – h:mm a"}
+                    m{"h:mm – h:mm a"}
+                }
+                hmv{
+                    a{"h:mm a – h:mm a v"}
+                    h{"h:mm – h:mm a v"}
+                    m{"h:mm – h:mm a v"}
+                }
+                hv{
+                    a{"h a – h a v"}
+                    h{"h–h a v"}
+                }
+                y{
+                    y{"y–y G"}
+                }
+                yM{
+                    M{"M/y–M/y G"}
+                    y{"M/y–M/y G"}
+                }
+                yMEd{
+                    M{"E, d/M/y–E, d/M/y G"}
+                    d{"E, d/M/y–E, d/M/y G"}
+                    y{"E, d/M/y–E, d/M/y G"}
+                }
+                yMMM{
+                    M{"MMM–MMM 'de' y G"}
+                    y{"MMM 'de' y–MMM 'de' y G"}
+                }
+                yMMMEd{
+                    M{"E, d 'de' MMM–E, d 'de' MMM 'de' y G"}
+                    d{"E, d 'de' MMM–E, d 'de' MMM 'de' y G"}
+                    y{"E, d 'de' MMM 'de' y–E, d 'de' MMM 'de' y G"}
+                }
+                yMMMM{
+                    M{"MMMM–MMMM 'de' y G"}
+                    y{"MMMM 'de' y–MMMM 'de' y G"}
+                }
+                yMMMd{
+                    M{"d 'de' MMM–d 'de' MMM y G"}
+                    d{"d–d 'de' MMM 'de' y G"}
+                    y{"d 'de' MMM 'de' y–d 'de' MMM 'de' y G"}
+                }
+                yMd{
+                    M{"d/M/y–d/M/y G"}
+                    d{"d/M/y–d/M/y G"}
+                    y{"d/M/y–d/M/y G"}
+                }
+            }
+        }
+        gregorian{
+            AmPmMarkers{
+                "a. m.",
+                "p. m.",
+            }
+            AmPmMarkersNarrow{
+                "a.m.",
+                "p.m.",
+            }
+            DateTimePatterns{
+                "H:mm:ss (zzzz)",
+                "H:mm:ss z",
+                "H:mm:ss",
+                "H:mm",
+                "EEEE, d 'de' MMMM 'de' y",
+                "d 'de' MMMM 'de' y",
+                "d 'de' MMM 'de' y",
+                "d/M/yy",
+                "{1} {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            NoonMarker{"mediodía"}
+            NoonMarkerNarrow{"m."}
+            appendItems{
+                Timezone{"{0} {1}"}
+            }
+            availableFormats{
+                E{"ccc"}
+                EHm{"E, H:mm"}
+                EHms{"E, H:mm:ss"}
+                Ed{"E d"}
+                Ehm{"E, h:mm a"}
+                Ehms{"E, h:mm:ss a"}
+                Gy{"y G"}
+                GyMMM{"MMM 'de' y G"}
+                GyMMMEd{"E, d 'de' MMMM 'de' y G"}
+                GyMMMd{"d MMM 'de' y G"}
+                H{"H"}
+                Hm{"H:mm"}
+                Hms{"H:mm:ss"}
+                M{"L"}
+                MEd{"E, d/M"}
+                MMM{"LLL"}
+                MMMEd{"E, d 'de' MMM"}
+                MMMMd{"d 'de' MMMM"}
+                MMMd{"d 'de' MMM"}
+                MMMdd{"d 'de' MMM"}
+                MMd{"d/M"}
+                MMdd{"d/M"}
+                Md{"d/M"}
+                d{"d"}
+                h{"h a"}
+                hm{"h:mm a"}
+                hms{"h:mm:ss a"}
+                ms{"mm:ss"}
+                y{"y"}
+                yM{"M/y"}
+                yMEd{"EEE, d/M/y"}
+                yMM{"M/y"}
+                yMMM{"MMM 'de' y"}
+                yMMMEd{"EEE, d 'de' MMMM 'de' y"}
+                yMMMM{"MMMM 'de' y"}
+                yMMMd{"d 'de' MMM 'de' y"}
+                yMd{"d/M/y"}
+                yQQQ{"QQQ y"}
+                yQQQQ{"QQQQ 'de' y"}
+            }
+            dayNames{
+                format{
+                    abbreviated{
+                        "dom.",
+                        "lun.",
+                        "mar.",
+                        "mié.",
+                        "jue.",
+                        "vie.",
+                        "sáb.",
+                    }
+                    narrow{
+                        "D",
+                        "L",
+                        "M",
+                        "X",
+                        "J",
+                        "V",
+                        "S",
+                    }
+                    short{
+                        "DO",
+                        "LU",
+                        "MA",
+                        "MI",
+                        "JU",
+                        "VI",
+                        "SA",
+                    }
+                    wide{
+                        "domingo",
+                        "lunes",
+                        "martes",
+                        "miércoles",
+                        "jueves",
+                        "viernes",
+                        "sábado",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "Dom.",
+                        "Lun.",
+                        "Mar.",
+                        "Mié.",
+                        "Jue.",
+                        "Vie.",
+                        "Sáb.",
+                    }
+                    narrow{
+                        "D",
+                        "L",
+                        "M",
+                        "X",
+                        "J",
+                        "V",
+                        "S",
+                    }
+                    short{
+                        "DO",
+                        "LU",
+                        "MA",
+                        "MI",
+                        "JU",
+                        "VI",
+                        "SA",
+                    }
+                    wide{
+                        "Domingo",
+                        "Lunes",
+                        "Martes",
+                        "Miércoles",
+                        "Jueves",
+                        "Viernes",
+                        "Sábado",
+                    }
+                }
+            }
+            eras{
+                abbreviated{
+                    "a. C.",
+                    "d. C.",
+                }
+                abbreviated%variant{
+                    "a. e. c.",
+                    "e. c.",
+                }
+                wide{
+                    "antes de Cristo",
+                    "anno Dómini",
+                }
+                wide%variant{
+                    "a. e. c.",
+                    "e. c.",
+                }
+            }
+            intervalFormats{
+                H{
+                    H{"H–H"}
+                }
+                Hm{
+                    H{"H:mm–H:mm"}
+                    m{"H:mm–H:mm"}
+                }
+                Hmv{
+                    H{"H:mm–H:mm v"}
+                    m{"H:mm–H:mm v"}
+                }
+                Hv{
+                    H{"H–H v"}
+                }
+                M{
+                    M{"M–M"}
+                }
+                MEd{
+                    M{"E, d/M–E, d/M"}
+                    d{"E, d/M–E, d/M"}
+                }
+                MMM{
+                    M{"MMM–MMM"}
+                }
+                MMMEd{
+                    M{"E, d MMM–E, d MMM"}
+                    d{"E, d MMM–E, d MMM"}
+                }
+                MMMd{
+                    M{"d MMM–d MMM"}
+                    d{"d–d MMM"}
+                }
+                Md{
+                    M{"d/M–d/M"}
+                    d{"d/M–d/M"}
+                }
+                d{
+                    d{"d–d"}
+                }
+                fallback{"{0}–{1}"}
+                h{
+                    a{"h a–h a"}
+                    h{"h–h a"}
+                }
+                hm{
+                    a{"h:mm a – h:mm a"}
+                    h{"h:mm – h:mm a"}
+                    m{"h:mm – h:mm a"}
+                }
+                hmv{
+                    a{"h:mm a–h:mm a v"}
+                    h{"h:mm–h:mm a v"}
+                    m{"h:mm–h:mm a v"}
+                }
+                hv{
+                    a{"h a–h a v"}
+                    h{"h–h a v"}
+                }
+                y{
+                    y{"y–y"}
+                }
+                yM{
+                    M{"M/y–M/y"}
+                    y{"M/y–M/y"}
+                }
+                yMEd{
+                    M{"E, d/M/y–E, d/M/y"}
+                    d{"E, d/M/y–E, d/M/y"}
+                    y{"E, d/M/y–E, d/M/y"}
+                }
+                yMMM{
+                    M{"MMM-MMM 'de' y"}
+                    y{"MMM y–MMM y"}
+                }
+                yMMMEd{
+                    M{"E, d MMM–E, d MMM 'de' y"}
+                    d{"E, d MMM–E, d MMM 'de' y"}
+                    y{"E, d MMM 'de' y–E, d MMM 'de' y"}
+                }
+                yMMMM{
+                    M{"MMMM–MMMM 'de' y"}
+                    y{"MMMM 'de' y–MMMM 'de' y"}
+                }
+                yMMMd{
+                    M{"d MMM–d MMM 'de' y"}
+                    d{"d–d 'de' MMM 'de' y"}
+                    y{"d MMM 'de' y–d MMM 'de' y"}
+                }
+                yMd{
+                    M{"d/M/y–d/M/y"}
+                    d{"d/M/y–d/M/y"}
+                    y{"d/M/y–d/M/y"}
+                }
+            }
+            monthNames{
+                format{
+                    abbreviated{
+                        "ene.",
+                        "feb.",
+                        "mar.",
+                        "abr.",
+                        "may.",
+                        "jun.",
+                        "jul.",
+                        "ago.",
+                        "sept.",
+                        "oct.",
+                        "nov.",
+                        "dic.",
+                    }
+                    narrow{
+                        "E",
+                        "F",
+                        "M",
+                        "A",
+                        "M",
+                        "J",
+                        "J",
+                        "A",
+                        "S",
+                        "O",
+                        "N",
+                        "D",
+                    }
+                    wide{
+                        "enero",
+                        "febrero",
+                        "marzo",
+                        "abril",
+                        "mayo",
+                        "junio",
+                        "julio",
+                        "agosto",
+                        "septiembre",
+                        "octubre",
+                        "noviembre",
+                        "diciembre",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "Ene.",
+                        "Feb.",
+                        "Mar.",
+                        "Abr.",
+                        "May.",
+                        "Jun.",
+                        "Jul.",
+                        "Ago.",
+                        "Sept.",
+                        "Oct.",
+                        "Nov.",
+                        "Dic.",
+                    }
+                    narrow{
+                        "E",
+                        "F",
+                        "M",
+                        "A",
+                        "M",
+                        "J",
+                        "J",
+                        "A",
+                        "S",
+                        "O",
+                        "N",
+                        "D",
+                    }
+                    wide{
+                        "Enero",
+                        "Febrero",
+                        "Marzo",
+                        "Abril",
+                        "Mayo",
+                        "Junio",
+                        "Julio",
+                        "Agosto",
+                        "Septiembre",
+                        "Octubre",
+                        "Noviembre",
+                        "Diciembre",
+                    }
+                }
+            }
+            quarters{
+                format{
+                    abbreviated{
+                        "T1",
+                        "T2",
+                        "T3",
+                        "T4",
+                    }
+                    narrow{
+                        "1T",
+                        "2T",
+                        "3T",
+                        "4T",
+                    }
+                    wide{
+                        "1.er trimestre",
+                        "2.º trimestre",
+                        "3.er trimestre",
+                        "4.º trimestre",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "T1",
+                        "T2",
+                        "T3",
+                        "T4",
+                    }
+                    narrow{
+                        "1T",
+                        "2T",
+                        "3T",
+                        "4T",
+                    }
+                    wide{
+                        "1.er trimestre",
+                        "2.º trimestre",
+                        "3.er trimestre",
+                        "4.º trimestre",
+                    }
+                }
+            }
+        }
+        hebrew{
+            eras{
+                abbreviated{
+                    "AM",
+                }
+            }
+        }
+        islamic{
+            eras{
+                abbreviated{
+                    "AH",
+                }
+            }
+        }
+        japanese{
+            DateTimePatterns{
+                "H:mm:ss (zzzz)",
+                "H:mm:ss z",
+                "H:mm:ss",
+                "H:mm",
+                "EEEE, d 'de' MMMM 'de' y G",
+                "d 'de' MMMM 'de' y G",
+                "dd/MM/y G",
+                "dd/MM/yy GGGGG",
+                "{1} {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+        }
+        roc{
+            eras{
+                abbreviated{
+                    "antes de R.O.C.",
+                    "R.O.C.",
+                }
+            }
+        }
+    }
+    contextTransforms{
+        day-format-except-narrow:intvector{
+            1,
+            1,
+        }
+        day-standalone-except-narrow:intvector{
+            1,
+            1,
+        }
+        languages:intvector{
+            1,
+            1,
+        }
+        month-format-except-narrow:intvector{
+            1,
+            1,
+        }
+        month-standalone-except-narrow:intvector{
+            1,
+            1,
+        }
+    }
+    delimiters{
+        alternateQuotationEnd{"”"}
+        alternateQuotationStart{"“"}
+        quotationEnd{"»"}
+        quotationStart{"«"}
+    }
+    durationUnits{
+        hm{"h:mm"}
+        hms{"h:mm:ss"}
+        ms{"m:ss"}
+    }
+    fields{
+        day{
+            dn{"Día"}
+            relative{
+                "-1"{"ayer"}
+                "-2"{"antes de ayer"}
+                "0"{"hoy"}
+                "1"{"mañana"}
+                "2"{"pasado mañana"}
+            }
+            relativeTime{
+                future{
+                    one{"dentro de {0} día"}
+                    other{"dentro de {0} días"}
+                }
+                past{
+                    one{"hace {0} día"}
+                    other{"hace {0} días"}
+                }
+            }
+        }
+        day-narrow{
+            dn{"d"}
+            relativeTime{
+                future{
+                    one{"dentro de {0} día"}
+                    other{"dentro de {0} días"}
+                }
+                past{
+                    one{"hace {0} día"}
+                    other{"hace {0} días"}
+                }
+            }
+        }
+        day-short{
+            dn{"d"}
+            relativeTime{
+                future{
+                    one{"dentro de {0} día"}
+                    other{"dentro de {0} días"}
+                }
+                past{
+                    one{"hace {0} día"}
+                    other{"hace {0} días"}
+                }
+            }
+        }
+        dayperiod{
+            dn{"a. m./p. m."}
+        }
+        era{
+            dn{"Era"}
+        }
+        fri{
+            relative{
+                "-1"{"el viernes pasado"}
+                "0"{"este viernes"}
+                "1"{"el próximo viernes"}
+            }
+        }
+        fri-narrow{
+            relative{
+                "-1"{"el VI pasado"}
+                "0"{"este VI"}
+                "1"{"el próximo VI"}
+            }
+        }
+        fri-short{
+            relative{
+                "-1"{"el vie. pasado"}
+                "0"{"este vie."}
+                "1"{"el próximo vie."}
+            }
+        }
+        hour{
+            dn{"Hora"}
+            relativeTime{
+                future{
+                    one{"dentro de {0} hora"}
+                    other{"dentro de {0} horas"}
+                }
+                past{
+                    one{"hace {0} hora"}
+                    other{"hace {0} horas"}
+                }
+            }
+        }
+        hour-narrow{
+            dn{"h"}
+            relativeTime{
+                future{
+                    one{"dentro de {0} h"}
+                    other{"dentro de {0} h"}
+                }
+                past{
+                    one{"hace {0} h"}
+                    other{"hace {0} h"}
+                }
+            }
+        }
+        hour-short{
+            dn{"h"}
+            relativeTime{
+                future{
+                    one{"dentro de {0} h"}
+                    other{"dentro de {0} h"}
+                }
+                past{
+                    one{"hace {0} h"}
+                    other{"hace {0} h"}
+                }
+            }
+        }
+        minute{
+            dn{"Minuto"}
+            relativeTime{
+                future{
+                    one{"dentro de {0} minuto"}
+                    other{"dentro de {0} minutos"}
+                }
+                past{
+                    one{"hace {0} minuto"}
+                    other{"hace {0} minutos"}
+                }
+            }
+        }
+        minute-narrow{
+            dn{"min"}
+            relativeTime{
+                future{
+                    one{"dentro de {0} min"}
+                    other{"dentro de {0} min"}
+                }
+                past{
+                    one{"hace {0} min"}
+                    other{"hace {0} min"}
+                }
+            }
+        }
+        minute-short{
+            dn{"min"}
+            relativeTime{
+                future{
+                    one{"dentro de {0} min"}
+                    other{"dentro de {0} min"}
+                }
+                past{
+                    one{"hace {0} min"}
+                    other{"hace {0} min"}
+                }
+            }
+        }
+        mon{
+            relative{
+                "-1"{"el lunes pasado"}
+                "0"{"este lunes"}
+                "1"{"el próximo lunes"}
+            }
+        }
+        mon-narrow{
+            relative{
+                "-1"{"el LU pasado"}
+                "0"{"este LU"}
+                "1"{"el próximo LU"}
+            }
+        }
+        mon-short{
+            relative{
+                "-1"{"el lun. pasado"}
+                "0"{"este lun."}
+                "1"{"el próximo lun."}
+            }
+        }
+        month{
+            dn{"Mes"}
+            relative{
+                "-1"{"el mes pasado"}
+                "0"{"este mes"}
+                "1"{"el próximo mes"}
+            }
+            relativeTime{
+                future{
+                    one{"dentro de {0} mes"}
+                    other{"dentro de {0} meses"}
+                }
+                past{
+                    one{"hace {0} mes"}
+                    other{"hace {0} meses"}
+                }
+            }
+        }
+        month-narrow{
+            dn{"m"}
+            relativeTime{
+                future{
+                    one{"dentro de {0} m"}
+                    other{"dentro de {0} m"}
+                }
+                past{
+                    one{"hace {0} m"}
+                    other{"hace {0} m"}
+                }
+            }
+        }
+        month-short{
+            dn{"m"}
+            relativeTime{
+                future{
+                    one{"dentro de {0} m"}
+                    other{"dentro de {0} m"}
+                }
+                past{
+                    one{"hace {0} m"}
+                    other{"hace {0} m"}
+                }
+            }
+        }
+        quarter{
+            dn{"Trimestre"}
+            relativeTime{
+                future{
+                    one{"dentro de {0} trimestre"}
+                    other{"dentro de {0} trimestres"}
+                }
+                past{
+                    one{"hace {0} trimestre"}
+                    other{"hace {0} trimestres"}
+                }
+            }
+        }
+        quarter-narrow{
+            dn{"trim."}
+            relativeTime{
+                future{
+                    one{"dentro de {0} trim."}
+                    other{"dentro de {0} trim."}
+                }
+                past{
+                    one{"hace {0} trim."}
+                    other{"hace {0} trim."}
+                }
+            }
+        }
+        quarter-short{
+            dn{"trim."}
+            relativeTime{
+                future{
+                    one{"dentro de {0} trim."}
+                    other{"dentro de {0} trim."}
+                }
+                past{
+                    one{"hace {0} trim."}
+                    other{"hace {0} trim."}
+                }
+            }
+        }
+        sat{
+            relative{
+                "-1"{"el sábado pasado"}
+                "0"{"este sábado"}
+                "1"{"el próximo sábado"}
+            }
+        }
+        sat-narrow{
+            relative{
+                "-1"{"el SA pasado"}
+                "0"{"este SA"}
+                "1"{"el próximo SA"}
+            }
+        }
+        sat-short{
+            relative{
+                "-1"{"el sáb. pasado"}
+                "0"{"este sáb."}
+                "1"{"el próximo sáb."}
+            }
+        }
+        second{
+            dn{"Segundo"}
+            relative{
+                "0"{"ahora"}
+            }
+            relativeTime{
+                future{
+                    one{"dentro de {0} segundo"}
+                    other{"dentro de {0} segundos"}
+                }
+                past{
+                    one{"hace {0} segundo"}
+                    other{"hace {0} segundos"}
+                }
+            }
+        }
+        second-narrow{
+            dn{"s"}
+            relativeTime{
+                future{
+                    one{"dentro de {0} s"}
+                    other{"dentro de {0} s"}
+                }
+                past{
+                    one{"hace {0} s"}
+                    other{"hace {0} s"}
+                }
+            }
+        }
+        second-short{
+            dn{"s"}
+            relativeTime{
+                future{
+                    one{"dentro de {0} s"}
+                    other{"dentro de {0} s"}
+                }
+                past{
+                    one{"hace {0} s"}
+                    other{"hace {0} s"}
+                }
+            }
+        }
+        sun{
+            relative{
+                "-1"{"el domingo pasado"}
+                "0"{"este domingo"}
+                "1"{"el próximo domingo"}
+            }
+        }
+        sun-narrow{
+            relative{
+                "-1"{"el DO pasado"}
+                "0"{"este DO"}
+                "1"{"el próximo DO"}
+            }
+        }
+        sun-short{
+            relative{
+                "-1"{"el dom. pasado"}
+                "0"{"este dom."}
+                "1"{"el próximo dom."}
+            }
+        }
+        thu{
+            relative{
+                "-1"{"el jueves pasado"}
+                "0"{"este jueves"}
+                "1"{"el próximo jueves"}
+            }
+        }
+        thu-narrow{
+            relative{
+                "-1"{"el JU pasado"}
+                "0"{"este JU"}
+                "1"{"el próximo JU"}
+            }
+        }
+        thu-short{
+            relative{
+                "-1"{"el jue. pasado"}
+                "0"{"este jue."}
+                "1"{"el próximo jue."}
+            }
+        }
+        tue{
+            relative{
+                "-1"{"el martes pasado"}
+                "0"{"este martes"}
+                "1"{"el próximo martes"}
+            }
+        }
+        tue-narrow{
+            relative{
+                "-1"{"el MA pasado"}
+                "0"{"este MA"}
+                "1"{"el próximo MA"}
+            }
+        }
+        tue-short{
+            relative{
+                "-1"{"el mar. pasado"}
+                "0"{"este mar."}
+                "1"{"el próximo mar."}
+            }
+        }
+        wed{
+            relative{
+                "-1"{"el miércoles pasado"}
+                "0"{"este miércoles"}
+                "1"{"el próximo miércoles"}
+            }
+        }
+        wed-narrow{
+            relative{
+                "-1"{"el MI pasado"}
+                "0"{"este MI"}
+                "1"{"el próximo MI"}
+            }
+        }
+        wed-short{
+            relative{
+                "-1"{"el mié. pasado"}
+                "0"{"este mié."}
+                "1"{"el próximo mié."}
+            }
+        }
+        week{
+            dn{"Semana"}
+            relative{
+                "-1"{"la semana pasada"}
+                "0"{"esta semana"}
+                "1"{"la próxima semana"}
+            }
+            relativeTime{
+                future{
+                    one{"dentro de {0} semana"}
+                    other{"dentro de {0} semanas"}
+                }
+                past{
+                    one{"hace {0} semana"}
+                    other{"hace {0} semanas"}
+                }
+            }
+        }
+        week-narrow{
+            dn{"sem."}
+            relativeTime{
+                future{
+                    one{"dentro de {0} sem."}
+                    other{"dentro de {0} sem."}
+                }
+                past{
+                    one{"hace {0} sem."}
+                    other{"hace {0} sem."}
+                }
+            }
+        }
+        week-short{
+            dn{"sem."}
+            relativeTime{
+                future{
+                    one{"dentro de {0} sem."}
+                    other{"dentro de {0} sem."}
+                }
+                past{
+                    one{"hace {0} sem."}
+                    other{"hace {0} sem."}
+                }
+            }
+        }
+        weekday{
+            dn{"Día de la semana"}
+        }
+        year{
+            dn{"Año"}
+            relative{
+                "-1"{"el año pasado"}
+                "0"{"este año"}
+                "1"{"el próximo año"}
+            }
+            relativeTime{
+                future{
+                    one{"dentro de {0} año"}
+                    other{"dentro de {0} años"}
+                }
+                past{
+                    one{"hace {0} año"}
+                    other{"hace {0} años"}
+                }
+            }
+        }
+        year-narrow{
+            dn{"a"}
+            relativeTime{
+                future{
+                    one{"dentro de {0} a"}
+                    other{"dentro de {0} a"}
+                }
+                past{
+                    one{"hace {0} a"}
+                    other{"hace {0} a"}
+                }
+            }
+        }
+        year-short{
+            dn{"a"}
+            relativeTime{
+                future{
+                    one{"dentro de {0} a"}
+                    other{"dentro de {0} a"}
+                }
+                past{
+                    one{"hace {0} a"}
+                    other{"hace {0} a"}
+                }
+            }
+        }
+        zone{
+            dn{"Zona horaria"}
+        }
+    }
+    listPattern{
+        standard{
+            2{"{0} y {1}"}
+            end{"{0} y {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        unit{
+            2{"{0} y {1}"}
+            end{"{0} y {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        unit-narrow{
+            2{"{0} y {1}"}
+            end{"{0}, {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        unit-short{
+            2{"{0} y {1}"}
+            end{"{0}, {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+    }
+    measurementSystemNames{
+        UK{"anglosajón"}
+        US{"estadounidense"}
+        metric{"métrico"}
+    }
+    transformNames{
+        BGN{"BGN"}
+        Numeric{"Numérico"}
+        Tone{"Tono"}
+        UNGEGN{"UNGEGN"}
+        x-Accents{"Acentos"}
+        x-Fullwidth{"Ancho completo"}
+        x-Halfwidth{"Ancho medio"}
+        x-Jamo{"Jamo"}
+        x-Pinyin{"Pinyin"}
+        x-Publishing{"Publicación"}
+    }
+}

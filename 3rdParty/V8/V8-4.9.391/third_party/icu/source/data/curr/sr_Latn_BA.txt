@@ -1,0 +1,18 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/sr_Latn_BA.xml
+// *
+// ***************************************************************************
+sr_Latn_BA{
+    %%Parent{"sr_Latn"}
+    Currencies{
+        BAM{
+            "KM",
+            "Konvertibilna Marka",
+        }
+    }
+    Version{"2.1.8.20"}
+}

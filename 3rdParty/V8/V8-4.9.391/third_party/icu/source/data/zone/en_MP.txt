@@ -1,0 +1,53 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/en_MP.xml
+// *
+// ***************************************************************************
+en_MP{
+    Version{"2.1.6.69"}
+    zoneStrings{
+        "Pacific:Honolulu"{
+            sd{"∅∅∅"}
+            sg{"∅∅∅"}
+            ss{"∅∅∅"}
+        }
+        "meta:Alaska"{
+            sd{"∅∅∅"}
+            sg{"∅∅∅"}
+            ss{"∅∅∅"}
+        }
+        "meta:America_Central"{
+            sd{"∅∅∅"}
+            sg{"∅∅∅"}
+            ss{"∅∅∅"}
+        }
+        "meta:America_Eastern"{
+            sd{"∅∅∅"}
+            sg{"∅∅∅"}
+            ss{"∅∅∅"}
+        }
+        "meta:America_Mountain"{
+            sd{"∅∅∅"}
+            sg{"∅∅∅"}
+            ss{"∅∅∅"}
+        }
+        "meta:America_Pacific"{
+            sd{"∅∅∅"}
+            sg{"∅∅∅"}
+            ss{"∅∅∅"}
+        }
+        "meta:Atlantic"{
+            sd{"∅∅∅"}
+            sg{"∅∅∅"}
+            ss{"∅∅∅"}
+        }
+        "meta:Hawaii_Aleutian"{
+            sd{"∅∅∅"}
+            sg{"∅∅∅"}
+            ss{"∅∅∅"}
+        }
+    }
+}

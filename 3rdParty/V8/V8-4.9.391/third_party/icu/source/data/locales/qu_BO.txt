@@ -1,0 +1,19 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/qu_BO.xml
+// *
+// ***************************************************************************
+qu_BO{
+    NumberElements{
+        latn{
+            symbols{
+                decimal{","}
+                group{"."}
+            }
+        }
+    }
+    Version{"2.1.6.71"}
+}

@@ -1,0 +1,164 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/lg.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/lg.xml
+ */
+lg{
+    Currencies{
+        AED{
+            "AED",
+            "Diraamu eya Emireeti",
+        }
+        AOA{
+            "AOA",
+            "Kwanza ey’Angola",
+        }
+        AUD{
+            "A$",
+            "Doola ey’Awusiturelya",
+        }
+        BHD{
+            "BHD",
+            "Dinaali ey’eBaareeni",
+        }
+        BWP{
+            "BWP",
+            "Pula ey’eBotiswana",
+        }
+        CAD{
+            "CA$",
+            "Doola ey’eKanada",
+        }
+        CDF{
+            "CDF",
+            "Faranga ey’eKongo",
+        }
+        CHF{
+            "CHF",
+            "Faranga ey’eSwitizirandi",
+        }
+        CNY{
+            "CN¥",
+            "Yuwani Reniminibi ey’eCayina",
+        }
+        DZD{
+            "DZD",
+            "Dinaali ey’Aligerya",
+        }
+        EGP{
+            "EGP",
+            "Pawundi ey’eMisiri",
+        }
+        ETB{
+            "ETB",
+            "Biiru ey’Esyopya",
+        }
+        EUR{
+            "€",
+            "Yuro",
+        }
+        GBP{
+            "£",
+            "Pawundi ey’eBungereza",
+        }
+        INR{
+            "Rs.",
+            "Rupiya ey’eBuyindi",
+        }
+        JPY{
+            "JP¥",
+            "Yeni ey’eJapani",
+        }
+        KES{
+            "KES",
+            "Silingi ey’eKenya",
+        }
+        LYD{
+            "LYD",
+            "Dinaali ey’eLibya",
+        }
+        MAD{
+            "MAD",
+            "Diraamu ey’eMoroko",
+        }
+        MGA{
+            "MGA",
+            "Faranga ey’eMalagase",
+        }
+        MRO{
+            "MRO",
+            "Wugwiya ey’eMawritenya",
+        }
+        MUR{
+            "MUR",
+            "Rupiya ey’eMawurisyasi",
+        }
+        MWK{
+            "MWK",
+            "Kwaca ey’eMalawi",
+        }
+        NAD{
+            "NAD",
+            "Doola ey’eNamibiya",
+        }
+        NGN{
+            "NGN",
+            "Nayira ey’eNayijerya",
+        }
+        RWF{
+            "RWF",
+            "Faranga ey’eRwanda",
+        }
+        SAR{
+            "SAR",
+            "Riyaali ey’eBuwarabu",
+        }
+        SDG{
+            "SDG",
+            "Dinaali ey’eSudaani",
+        }
+        SLL{
+            "SLL",
+            "Lewone",
+        }
+        TND{
+            "TND",
+            "Dinaali ey’eTunizya",
+        }
+        TZS{
+            "TZS",
+            "Silingi ey’eTanzaniya",
+        }
+        UGX{
+            "USh",
+            "Silingi eya Yuganda",
+        }
+        USD{
+            "US$",
+            "Doola ey’Amerika",
+        }
+        XAF{
+            "FCFA",
+            "Faranga ey’omu Afirika eya wakati",
+        }
+        XOF{
+            "CFA",
+            "Faranga ey’omu Afirika ey’ebugwanjuba",
+        }
+        ZAR{
+            "ZAR",
+            "Randi ey’eSawusafirika",
+        }
+        ZMW{
+            "ZMW",
+            "Kwaca ey’eZambya",
+        }
+    }
+    Version{"2.1.7.39"}
+}

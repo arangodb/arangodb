@@ -1,0 +1,62 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/fo.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/fo.xml
+ */
+fo{
+    Currencies{
+        DKK{
+            "kr",
+            "donsk króna",
+        }
+        EUR{
+            "€",
+            "euro",
+        }
+        ISK{
+            "ISK",
+            "íslendsk króna",
+        }
+        NOK{
+            "NOK",
+            "norsk króna",
+        }
+        SEK{
+            "SEK",
+            "svensk króna",
+        }
+    }
+    CurrencyPlurals{
+        DKK{
+            one{"donsk króna"}
+            other{"donska krónur"}
+        }
+        EUR{
+            one{"euro"}
+            other{"euro"}
+        }
+        ISK{
+            one{"íslendsk króna"}
+            other{"íslendska krónur"}
+        }
+        NOK{
+            one{"norsk króna"}
+            other{"norska krónur"}
+        }
+        SEK{
+            one{"svensk króna"}
+            other{"svenska krónur"}
+        }
+    }
+    CurrencyUnitPatterns{
+        one{"{0} {1}"}
+        other{"{0} {1}"}
+    }
+    Version{"2.1.7.53"}
+}

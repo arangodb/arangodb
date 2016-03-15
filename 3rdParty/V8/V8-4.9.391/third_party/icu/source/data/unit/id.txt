@@ -1,0 +1,151 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/id.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/id.xml
+ */
+id{
+    Version{"2.1.8.9"}
+    units{
+        compound{
+            per{"{0} per {1}"}
+        }
+        duration{
+            day{
+                dnam{"hari"}
+                other{"{0} hari"}
+            }
+            hour{
+                dnam{"jam"}
+                other{"{0} jam"}
+                per{"{0} per jam"}
+            }
+            microsecond{
+                dnam{"mikrodetik"}
+                other{"{0} mikrodetik"}
+            }
+            millisecond{
+                dnam{"milidetik"}
+                other{"{0} milidetik"}
+            }
+            minute{
+                dnam{"menit"}
+                other{"{0} menit"}
+            }
+            month{
+                dnam{"bulan"}
+                other{"{0} bulan"}
+            }
+            nanosecond{
+                dnam{"nanodetik"}
+                other{"{0} nanodetik"}
+            }
+            second{
+                dnam{"detik"}
+                other{"{0} detik"}
+                per{"{0} per detik"}
+            }
+            week{
+                dnam{"minggu"}
+                other{"{0} minggu"}
+            }
+            year{
+                dnam{"tahun"}
+                other{"{0} tahun"}
+            }
+        }
+    }
+    unitsNarrow{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"hari"}
+                other{"{0} hr"}
+            }
+            hour{
+                dnam{"jam"}
+                other{"{0} j"}
+            }
+            millisecond{
+                dnam{"milidetik"}
+                other{"{0} md"}
+            }
+            minute{
+                dnam{"mnt"}
+                other{"{0} mnt"}
+            }
+            month{
+                dnam{"bulan"}
+                other{"{0} bln"}
+            }
+            second{
+                dnam{"dtk"}
+                other{"{0} dtk"}
+            }
+            week{
+                dnam{"mgg"}
+                other{"{0} mgg"}
+            }
+            year{
+                dnam{"thn"}
+                other{"{0} thn"}
+            }
+        }
+    }
+    unitsShort{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"hari"}
+                other{"{0} hr"}
+            }
+            hour{
+                dnam{"jam"}
+                other{"{0} j"}
+                per{"{0}/j"}
+            }
+            microsecond{
+                dnam{"μdtk"}
+                other{"{0} μd"}
+            }
+            millisecond{
+                dnam{"milidtk"}
+                other{"{0} md"}
+            }
+            minute{
+                dnam{"mnt"}
+                other{"{0} mnt"}
+            }
+            month{
+                dnam{"bulan"}
+                other{"{0} bln"}
+            }
+            nanosecond{
+                dnam{"nanodtk"}
+                other{"{0} ndtk"}
+            }
+            second{
+                dnam{"dtk"}
+                other{"{0} dtk"}
+                per{"{0}/dtk"}
+            }
+            week{
+                dnam{"minggu"}
+                other{"{0} mgg"}
+            }
+            year{
+                dnam{"tahun"}
+                other{"{0} thn"}
+            }
+        }
+    }
+}

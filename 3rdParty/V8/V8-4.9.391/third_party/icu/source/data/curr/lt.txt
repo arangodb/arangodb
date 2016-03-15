@@ -1,0 +1,1245 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/lt.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/lt.xml
+ */
+lt{
+    Currencies{
+        AED{
+            "AED",
+            "Jungtinių Arabų Emyratų dirhamas",
+        }
+        AFN{
+            "AFN",
+            "Afganistano afganis",
+        }
+        ALL{
+            "ALL",
+            "Albanijos lekas",
+        }
+        AMD{
+            "AMD",
+            "Armėnijos dramas",
+        }
+        AOA{
+            "AOA",
+            "Angolos kvanza",
+        }
+        ARS{
+            "ARS",
+            "Argentinos pesas",
+        }
+        AUD{
+            "AUD",
+            "Australijos doleris",
+        }
+        AZN{
+            "AZN",
+            "Azerbaidžano manatas",
+        }
+        BAM{
+            "BAM",
+            "Bosnijos ir Hercegovinos konvertuojamoji markė",
+        }
+        BDT{
+            "BDT",
+            "Bangladešo taka",
+        }
+        BGN{
+            "BGN",
+            "Bulgarijos levas",
+        }
+        BHD{
+            "BHD",
+            "Bahreino dinaras",
+        }
+        BND{
+            "BND",
+            "Brunėjaus doleris",
+        }
+        BOB{
+            "BOB",
+            "Bolivijos bolivijanas",
+        }
+        BRL{
+            "BRL",
+            "Brazilijos realas",
+        }
+        BWP{
+            "BWP",
+            "Botsvanos pula",
+        }
+        BYR{
+            "BYR",
+            "Baltarusijos rublis",
+        }
+        CAD{
+            "CAD",
+            "Kanados doleris",
+        }
+        CDF{
+            "CDF",
+            "Kongo frankas",
+        }
+        CHF{
+            "CHF",
+            "Šveicarijos frankas",
+        }
+        CLP{
+            "CLP",
+            "Čilės pesas",
+        }
+        CNY{
+            "CNY",
+            "Kinijos ženminbi juanis",
+        }
+        COP{
+            "COP",
+            "Kolumbijos pesas",
+        }
+        CRC{
+            "CRC",
+            "Kosta Rikos kolonas",
+        }
+        CZK{
+            "CZK",
+            "Čekijos krona",
+        }
+        DKK{
+            "DKK",
+            "Danijos krona",
+        }
+        DOP{
+            "DOP",
+            "Dominikos pesas",
+        }
+        DZD{
+            "DZD",
+            "Alžyro dinaras",
+        }
+        EGP{
+            "EGP",
+            "Egipto svaras",
+        }
+        ETB{
+            "ETB",
+            "Etiopijos biras",
+        }
+        EUR{
+            "EUR",
+            "Euras",
+        }
+        GBP{
+            "GBP",
+            "Didžiosios Britanijos svaras sterlingų",
+        }
+        GEL{
+            "GEL",
+            "Gruzijos laris",
+        }
+        GHS{
+            "GHS",
+            "Ganos sedis",
+        }
+        GNF{
+            "GNF",
+            "Gvinėjos frankas",
+        }
+        GTQ{
+            "GTQ",
+            "Gvatemalos ketcalis",
+        }
+        HKD{
+            "HKD",
+            "Honkongo doleris",
+        }
+        HNL{
+            "HNL",
+            "Hondūro lempira",
+        }
+        HRK{
+            "HRK",
+            "Kroatijos kuna",
+        }
+        HTG{
+            "HTG",
+            "Haičio gurdas",
+        }
+        HUF{
+            "HUF",
+            "Vengrijos forintas",
+        }
+        IDR{
+            "IDR",
+            "Indonezijos rupija",
+        }
+        ILS{
+            "ILS",
+            "Izraelio naujasis šekelis",
+        }
+        INR{
+            "INR",
+            "Indijos rupija",
+        }
+        IQD{
+            "IQD",
+            "Irako dinaras",
+        }
+        IRR{
+            "IRR",
+            "Irano rialas",
+        }
+        ISK{
+            "ISK",
+            "Islandijos krona",
+        }
+        JMD{
+            "JMD",
+            "Jamaikos doleris",
+        }
+        JOD{
+            "JOD",
+            "Jordanijos dinaras",
+        }
+        JPY{
+            "JPY",
+            "Japonijos jena",
+        }
+        KES{
+            "KES",
+            "Kenijos šilingas",
+        }
+        KGS{
+            "KGS",
+            "Kirgizijos somas",
+        }
+        KHR{
+            "KHR",
+            "Kambodžos rielis",
+        }
+        KRW{
+            "KRW",
+            "Pietų Korėjos vonas",
+        }
+        KWD{
+            "KWD",
+            "Kuveito dinaras",
+        }
+        KZT{
+            "KZT",
+            "Kazachstano tengė",
+        }
+        LAK{
+            "LAK",
+            "Laoso kipas",
+        }
+        LBP{
+            "LBP",
+            "Libano svaras",
+        }
+        LKR{
+            "LKR",
+            "Šri Lankos rupija",
+        }
+        LTL{
+            "LTL",
+            "Lietuvos litas",
+        }
+        LYD{
+            "LYD",
+            "Libijos dinaras",
+        }
+        MAD{
+            "MAD",
+            "Maroko dirhamas",
+        }
+        MDL{
+            "MDL",
+            "Moldovos lėja",
+        }
+        MGA{
+            "MGA",
+            "Madagaskaro ariaris",
+        }
+        MKD{
+            "MKD",
+            "Makedonijos denaras",
+        }
+        MNT{
+            "MNT",
+            "Mongolijos tugrikas",
+        }
+        MRO{
+            "MRO",
+            "Mauritanijos ugija",
+        }
+        MUR{
+            "MUR",
+            "Mauricijaus rupija",
+        }
+        MWK{
+            "MWK",
+            "Malavio kvača",
+        }
+        MXN{
+            "MXN",
+            "Meksikos pesas",
+        }
+        MYR{
+            "MYR",
+            "Malaizijos ringitas",
+        }
+        MZN{
+            "MZN",
+            "Mozambiko metikalis",
+        }
+        NAD{
+            "NAD",
+            "Namibijos doleris",
+        }
+        NGN{
+            "NGN",
+            "Nigerijos naira",
+        }
+        NIO{
+            "NIO",
+            "Nikaragvos kordoba",
+        }
+        NOK{
+            "NOK",
+            "Norvegijos krona",
+        }
+        NPR{
+            "NPR",
+            "Nepalo rupija",
+        }
+        NZD{
+            "NZD",
+            "Naujosios Zelandijos doleris",
+        }
+        OMR{
+            "OMR",
+            "Omano rialas",
+        }
+        PAB{
+            "PAB",
+            "Panamos balboja",
+        }
+        PEN{
+            "PEN",
+            "Peru naujasis solis",
+        }
+        PGK{
+            "PGK",
+            "Papua Naujosios Gvinėjos kina",
+        }
+        PHP{
+            "PHP",
+            "Filipinų pesas",
+        }
+        PKR{
+            "PKR",
+            "Pakistano rupija",
+        }
+        PLN{
+            "PLN",
+            "Lenkijos zlotas",
+        }
+        PYG{
+            "PYG",
+            "Paragvajaus guaranis",
+        }
+        QAR{
+            "QAR",
+            "Kataro rialas",
+        }
+        RON{
+            "RON",
+            "Rumunijos lėja",
+        }
+        RSD{
+            "RSD",
+            "Serbijos dinaras",
+        }
+        RUB{
+            "RUB",
+            "Rusijos rublis",
+        }
+        RWF{
+            "RWF",
+            "Ruandos frankas",
+        }
+        SAR{
+            "SAR",
+            "Saudo Arabijos rijalas",
+        }
+        SDG{
+            "SDG",
+            "Sudano svaras",
+        }
+        SEK{
+            "SEK",
+            "Švedijos krona",
+        }
+        SGD{
+            "SGD",
+            "Singapūro doleris",
+        }
+        SLL{
+            "SLL",
+            "Siera Leonės leonė",
+        }
+        SSP{
+            "SSP",
+            "Pietų Sudano svaras",
+        }
+        THB{
+            "THB",
+            "Tailando batas",
+        }
+        TJS{
+            "TJS",
+            "Tadžikistano somonis",
+        }
+        TMT{
+            "TMT",
+            "Turkmėnistano manatas",
+        }
+        TND{
+            "TND",
+            "Tuniso dinaras",
+        }
+        TRY{
+            "TRY",
+            "Turkijos lira",
+        }
+        TTD{
+            "TTD",
+            "Trinidado ir Tobago doleris",
+        }
+        TWD{
+            "TWD",
+            "Taivano naujasis doleris",
+        }
+        TZS{
+            "TZS",
+            "Tanzanijos šilingas",
+        }
+        UAH{
+            "UAH",
+            "Ukrainos grivina",
+        }
+        UGX{
+            "UGX",
+            "Ugandos šilingas",
+        }
+        USD{
+            "USD",
+            "JAV doleris",
+        }
+        UYU{
+            "UYU",
+            "Urugvajaus pesas",
+        }
+        UZS{
+            "UZS",
+            "Uzbekistano sumas",
+        }
+        VEF{
+            "VEF",
+            "Venesuelos bolivaras",
+        }
+        VND{
+            "VND",
+            "Vietnamo dongas",
+        }
+        XAF{
+            "XAF",
+            "CFA BEAC frankas",
+        }
+        XDR{
+            "XDR",
+            "SDR tarptautinis valiutos fondas",
+        }
+        XOF{
+            "XOF",
+            "CFA BCEAO frankas",
+        }
+        YER{
+            "YER",
+            "Jemeno rialas",
+        }
+        ZAR{
+            "ZAR",
+            "Pietų Afrikos Respublikos randas",
+        }
+        ZMW{
+            "ZMW",
+            "Zambijos kvača",
+        }
+    }
+    Currencies%narrow{
+        ARS{"$"}
+        AUD{"$"}
+        BDT{"BDT"}
+        BND{"$"}
+        BRL{"R$"}
+        BYR{"Br"}
+        CAD{"$"}
+        CLP{"$"}
+        CNY{"¥"}
+        COP{"$"}
+        CRC{"₡"}
+        DOP{"$"}
+        EUR{"€"}
+        GBP{"£"}
+        HKD{"$"}
+        ILS{"ILS"}
+        INR{"INR"}
+        JMD{"$"}
+        JPY{"JPY"}
+        KHR{"KHR"}
+        KRW{"₩"}
+        KZT{"KZT"}
+        LAK{"LAK"}
+        MNT{"MNT"}
+        MXN{"$"}
+        NAD{"$"}
+        NGN{"₦"}
+        NZD{"$"}
+        PHP{"₱"}
+        PYG{"Gs"}
+        SGD{"$"}
+        SSP{"£"}
+        TRY{"₺"}
+        TTD{"$"}
+        TWD{"$"}
+        UAH{"₴"}
+        USD{"$"}
+        UYU{"$"}
+        VND{"VND"}
+    }
+    CurrencyPlurals{
+        AED{
+            few{"JAE dirhamai"}
+            many{"JAE dirhamo"}
+            one{"JAE dirhamas"}
+            other{"JAE dirhamų"}
+        }
+        AFN{
+            few{"Afganistano afganiai"}
+            many{"Afganistano afganio"}
+            one{"Afganistano afganis"}
+            other{"Afganistano afganių"}
+        }
+        ALL{
+            few{"Albanijos lekai"}
+            many{"Albanijos leko"}
+            one{"Albanijos lekas"}
+            other{"Albanijos lekų"}
+        }
+        AMD{
+            few{"Armėnijos dramai"}
+            many{"Armėnijos dramo"}
+            one{"Armėnijos dramas"}
+            other{"Armėnijos dramų"}
+        }
+        AOA{
+            few{"Angolos kvanzos"}
+            many{"Angolos kvanzos"}
+            one{"Angolos kvanza"}
+            other{"Angolos kvanzų"}
+        }
+        ARS{
+            few{"Argentinos pesai"}
+            many{"Argentinos peso"}
+            one{"Argentinos pesas"}
+            other{"Argentinos pesų"}
+        }
+        AUD{
+            few{"Australijos doleriai"}
+            many{"Australijos dolerio"}
+            one{"Australijos doleris"}
+            other{"Australijos dolerių"}
+        }
+        AZN{
+            few{"Azerbaidžano manatai"}
+            many{"Azerbaidžano manato"}
+            one{"Azerbaidžano manatas"}
+            other{"Azerbaidžano manatų"}
+        }
+        BAM{
+            few{"Bosnijos ir Hercegovinos konvertuojamosios markės"}
+            many{"Bosnijos ir Hercegovinos konvertuojamosios markės"}
+            one{"Bosnijos ir Hercegovinos konvertuojamoji markė"}
+            other{"Bosnijos ir Hercegovinos konvertuojamųjų markių"}
+        }
+        BDT{
+            few{"Bangladešo takos"}
+            many{"Bangladešo takos"}
+            one{"Bangladešo taka"}
+            other{"Bangladešo takų"}
+        }
+        BGN{
+            few{"Bulgarijos levai"}
+            many{"Bulgarijos levo"}
+            one{"Bulgarijos levas"}
+            other{"Bulgarijos levų"}
+        }
+        BHD{
+            few{"Bahreino dinarai"}
+            many{"Bahreino dinaro"}
+            one{"Bahreino dinaras"}
+            other{"Bahreino dinarų"}
+        }
+        BND{
+            few{"Brunėjaus doleriai"}
+            many{"Brunėjaus dolerio"}
+            one{"Brunėjaus doleris"}
+            other{"Brunėjaus dolerių"}
+        }
+        BOB{
+            few{"Bolivijos bolivijanai"}
+            many{"Bolivijos bolivijano"}
+            one{"Bolivijos bolivijanas"}
+            other{"Bolivijos bolivijanų"}
+        }
+        BRL{
+            few{"Brazilijos realai"}
+            many{"Brazilijos realo"}
+            one{"Brazilijos realas"}
+            other{"Brazilijos realų"}
+        }
+        BWP{
+            few{"Botsvanos pulos"}
+            many{"Botsvanos pulos"}
+            one{"Botsvanos pula"}
+            other{"Botsvanos pulų"}
+        }
+        BYR{
+            few{"Baltarusijos rubliai"}
+            many{"Baltarusijos rublio"}
+            one{"Baltarusijos rublis"}
+            other{"Baltarusijos rublių"}
+        }
+        CAD{
+            few{"Kanados doleriai"}
+            many{"Kanados dolerio"}
+            one{"Kanados doleris"}
+            other{"Kanados dolerių"}
+        }
+        CDF{
+            few{"Kongo frankai"}
+            many{"Kongo franko"}
+            one{"Kongo frankas"}
+            other{"Kongo frankų"}
+        }
+        CHF{
+            few{"Šveicarijos frankai"}
+            many{"Šveicarijos franko"}
+            one{"Šveicarijos frankas"}
+            other{"Šveicarijos frankų"}
+        }
+        CLP{
+            few{"Čilės pesai"}
+            many{"Čilės peso"}
+            one{"Čilės pesas"}
+            other{"Čilės pesų"}
+        }
+        CNY{
+            few{"Kinijos ženminbi juaniai"}
+            many{"Kinijos ženminbi juanio"}
+            one{"Kinijos ženminbi juanis"}
+            other{"Kinijos ženminbi juanių"}
+        }
+        COP{
+            few{"Kolumbijos pesai"}
+            many{"Kolumbijos peso"}
+            one{"Kolumbijos pesas"}
+            other{"Kolumbijos pesų"}
+        }
+        CRC{
+            few{"Kosta Rikos kolonai"}
+            many{"Kosta Rikos kolono"}
+            one{"Kosta Rikos kolonas"}
+            other{"Kosta Rikos kolonų"}
+        }
+        CZK{
+            few{"Čekijos kronos"}
+            many{"Čekijos kronos"}
+            one{"Čekijos krona"}
+            other{"Čekijos kronų"}
+        }
+        DKK{
+            few{"Danijos kronos"}
+            many{"Danijos kronos"}
+            one{"Danijos krona"}
+            other{"Danijos kronų"}
+        }
+        DOP{
+            few{"Dominikos pesai"}
+            many{"Dominikos peso"}
+            one{"Dominikos pesas"}
+            other{"Dominikos pesų"}
+        }
+        DZD{
+            few{"Alžyro dinarai"}
+            many{"Alžyro dinaro"}
+            one{"Alžyro dinaras"}
+            other{"Alžyro dinarų"}
+        }
+        EGP{
+            few{"Egipto svarai"}
+            many{"Egipto svaro"}
+            one{"Egipto svaras"}
+            other{"Egipto svarų"}
+        }
+        ETB{
+            few{"Etiopijos birai"}
+            many{"Etiopijos biro"}
+            one{"Etiopijos biras"}
+            other{"Etiopijos birų"}
+        }
+        EUR{
+            few{"eurai"}
+            many{"euro"}
+            one{"euras"}
+            other{"eurų"}
+        }
+        GBP{
+            few{"Didžiosios Britanijos svarai sterlingų"}
+            many{"Didžiosios Britanijos svaro sterlingų"}
+            one{"Didžiosios Britanijos svaras sterlingų"}
+            other{"Didžiosios Britanijos svarų sterlingų"}
+        }
+        GEL{
+            few{"Gruzijos lariai"}
+            many{"Gruzijos lario"}
+            one{"Gruzijos laris"}
+            other{"Gruzijos larių"}
+        }
+        GHS{
+            few{"Ganos sedžiai"}
+            many{"Ganos sedžio"}
+            one{"Ganos sedis"}
+            other{"Ganos sedžių"}
+        }
+        GNF{
+            few{"Gvinėjos frankai"}
+            many{"Gvinėjos franko"}
+            one{"Gvinėjos frankas"}
+            other{"Gvinėjos frankų"}
+        }
+        GTQ{
+            few{"Gvatemalos ketcaliai"}
+            many{"Gvatemalos ketcalio"}
+            one{"Gvatemalos ketcalis"}
+            other{"Gvatemalos ketcalių"}
+        }
+        HKD{
+            few{"Honkongo doleriai"}
+            many{"Honkongo dolerio"}
+            one{"Honkongo doleris"}
+            other{"Honkongo dolerių"}
+        }
+        HNL{
+            few{"Hondūro lempiros"}
+            many{"Hondūro lempiros"}
+            one{"Hondūro lempira"}
+            other{"Hondūro lempirų"}
+        }
+        HRK{
+            few{"Kroatijos kunos"}
+            many{"Kroatijos kunos"}
+            one{"Kroatijos kuna"}
+            other{"Kroatijos kunų"}
+        }
+        HTG{
+            few{"Haičio gurdai"}
+            many{"Haičio gurdo"}
+            one{"Haičio gurdas"}
+            other{"Haičio gurdų"}
+        }
+        HUF{
+            few{"Vengrijos forintai"}
+            many{"Vengrijos forinto"}
+            one{"Vengrijos forintas"}
+            other{"Vengrijos forintų"}
+        }
+        IDR{
+            few{"Indonezijos rupijos"}
+            many{"Indonezijos rupijos"}
+            one{"Indonezijos rupija"}
+            other{"Indonezijos rupijų"}
+        }
+        ILS{
+            few{"Izraelio naujieji šekeliai"}
+            many{"Izraelio naujojo šekelio"}
+            one{"Izraelio naujasis šekelis"}
+            other{"Izraelio naujųjų šekelių"}
+        }
+        INR{
+            few{"Indijos rupijos"}
+            many{"Indijos rupijos"}
+            one{"Indijos rupija"}
+            other{"Indijos rupijų"}
+        }
+        IQD{
+            few{"Irako dinarai"}
+            many{"Irako dinaro"}
+            one{"Irako dinaras"}
+            other{"Irako dinarų"}
+        }
+        IRR{
+            few{"Irano rialai"}
+            many{"Irano rialo"}
+            one{"Irano rialas"}
+            other{"Irano rialų"}
+        }
+        ISK{
+            few{"Islandijos kronos"}
+            many{"Islandijos kronos"}
+            one{"Islandijos krona"}
+            other{"Islandijos kronų"}
+        }
+        JMD{
+            few{"Jamaikos doleriai"}
+            many{"Jamaikos dolerio"}
+            one{"Jamaikos doleris"}
+            other{"Jamaikos dolerių"}
+        }
+        JOD{
+            few{"Jordanijos dinarai"}
+            many{"Jordanijos dinaro"}
+            one{"Jordanijos dinaras"}
+            other{"Jordanijos dinarų"}
+        }
+        JPY{
+            few{"Japonijos jenos"}
+            many{"Japonijos jenos"}
+            one{"Japonijos jena"}
+            other{"Japonijos jenų"}
+        }
+        KES{
+            few{"Kenijos šilingai"}
+            many{"Kenijos šilingo"}
+            one{"Kenijos šilingas"}
+            other{"Kenijos šilingų"}
+        }
+        KGS{
+            few{"Kirgizijos somai"}
+            many{"Kirgizijos somo"}
+            one{"Kirgizijos somas"}
+            other{"Kirgizijos somų"}
+        }
+        KHR{
+            few{"Kambodžos rieliai"}
+            many{"Kambodžos rielio"}
+            one{"Kambodžos rielis"}
+            other{"Kambodžos rielių"}
+        }
+        KRW{
+            few{"Pietų Korėjos vonai"}
+            many{"Pietų Korėjos vono"}
+            one{"Pietų Korėjos vonas"}
+            other{"Pietų Korėjos vonų"}
+        }
+        KWD{
+            few{"Kuveito dinarai"}
+            many{"Kuveito dinaro"}
+            one{"Kuveito dinaras"}
+            other{"Kuveito dinarų"}
+        }
+        KZT{
+            few{"Kazachstano tengės"}
+            many{"Kazachstano tengės"}
+            one{"Kazachstano tengė"}
+            other{"Kazachstano tengių"}
+        }
+        LAK{
+            few{"Laoso kipai"}
+            many{"Laoso kipo"}
+            one{"Laoso kipas"}
+            other{"Laoso kipų"}
+        }
+        LBP{
+            few{"Libano svarai"}
+            many{"Libano svaro"}
+            one{"Libano svaras"}
+            other{"Libano svarų"}
+        }
+        LKR{
+            few{"Šri Lankos rupijos"}
+            many{"Šri Lankos rupijos"}
+            one{"Šri Lankos rupija"}
+            other{"Šri Lankos rupijų"}
+        }
+        LTL{
+            few{"Lietuvos litai"}
+            many{"Lietuvos lito"}
+            one{"Lietuvos litas"}
+            other{"Lietuvos litų"}
+        }
+        LYD{
+            few{"Libijos dinarai"}
+            many{"Libijos dinaro"}
+            one{"Libijos dinaras"}
+            other{"Libijos dinarų"}
+        }
+        MAD{
+            few{"Maroko dirhamai"}
+            many{"Maroko dirhamo"}
+            one{"Maroko dirhamas"}
+            other{"Maroko dirhamų"}
+        }
+        MDL{
+            few{"Moldovos lėjos"}
+            many{"Moldovos lėjos"}
+            one{"Moldovos lėja"}
+            other{"Moldovos lėjų"}
+        }
+        MGA{
+            few{"Madagaskaro ariariai"}
+            many{"Madagaskaro ariario"}
+            one{"Madagaskaro ariaris"}
+            other{"Madagaskaro ariarių"}
+        }
+        MKD{
+            few{"Makedonijos denarai"}
+            many{"Makedonijos denaro"}
+            one{"Makedonijos denaras"}
+            other{"Makedonijos denarų"}
+        }
+        MNT{
+            few{"Mongolijos tugrikai"}
+            many{"Mongolijos tugriko"}
+            one{"Mongolijos tugrikas"}
+            other{"Mongolijos tugrikų"}
+        }
+        MRO{
+            few{"Mauritanijos ugijos"}
+            many{"Mauritanijos ugijos"}
+            one{"Mauritanijos ugija"}
+            other{"Mauritanijos ugijų"}
+        }
+        MUR{
+            few{"Mauricijaus rupijos"}
+            many{"Mauricijaus rupijos"}
+            one{"Mauricijaus rupija"}
+            other{"Mauricijaus rupijų"}
+        }
+        MWK{
+            few{"Malavio kvačos"}
+            many{"Malavio kvačos"}
+            one{"Malavio kvača"}
+            other{"Malavio kvačų"}
+        }
+        MXN{
+            few{"Meksikos pesai"}
+            many{"Meksikos peso"}
+            one{"Meksikos pesas"}
+            other{"Meksikos pesų"}
+        }
+        MYR{
+            few{"Malaizijos ringitai"}
+            many{"Malaizijos ringito"}
+            one{"Malaizijos ringitas"}
+            other{"Malaizijos ringitų"}
+        }
+        MZN{
+            few{"Mozambiko metikaliai"}
+            many{"Mozambiko metikalio"}
+            one{"Mozambiko metikalis"}
+            other{"Mozambiko metikalių"}
+        }
+        NAD{
+            few{"Namibijos doleriai"}
+            many{"Namibijos dolerio"}
+            one{"Namibijos doleris"}
+            other{"Namibijos dolerių"}
+        }
+        NGN{
+            few{"Nigerijos nairos"}
+            many{"Nigerijos nairos"}
+            one{"Nigerijos naira"}
+            other{"Nigerijos nairų"}
+        }
+        NIO{
+            few{"Nikaragvos kordobos"}
+            many{"Nikaragvos kordobos"}
+            one{"Nikaragvos kordoba"}
+            other{"Nikaragvos kordobų"}
+        }
+        NOK{
+            few{"Norvegijos kronos"}
+            many{"Norvegijos kronos"}
+            one{"Norvegijos krona"}
+            other{"Norvegijos kronų"}
+        }
+        NPR{
+            few{"Nepalo rupijos"}
+            many{"Nepalo rupijos"}
+            one{"Nepalo rupija"}
+            other{"Nepalo rupijų"}
+        }
+        NZD{
+            few{"Naujosios Zelandijos doleriai"}
+            many{"Naujosios Zelandijos dolerio"}
+            one{"Naujosios Zelandijos doleris"}
+            other{"Naujosios Zelandijos dolerių"}
+        }
+        OMR{
+            few{"Omano rialai"}
+            many{"Omano rialo"}
+            one{"Omano rialas"}
+            other{"Omano rialų"}
+        }
+        PAB{
+            few{"Panamos balbojos"}
+            many{"Panamos balbojos"}
+            one{"Panamos balboja"}
+            other{"Panamos balbojų"}
+        }
+        PEN{
+            few{"Peru naujieji soliai"}
+            many{"Peru naujojo solio"}
+            one{"Peru naujasis solis"}
+            other{"Peru naujųjų solių"}
+        }
+        PGK{
+            few{"Papua Naujosios Gvinėjos kinos"}
+            many{"Papua Naujosios Gvinėjos kinos"}
+            one{"Papua Naujosios Gvinėjos kina"}
+            other{"Papua Naujosios Gvinėjos kinų"}
+        }
+        PHP{
+            few{"Filipinų pesai"}
+            many{"Filipinų peso"}
+            one{"Filipinų pesas"}
+            other{"Filipinų pesų"}
+        }
+        PKR{
+            few{"Pakistano rupijos"}
+            many{"Pakistano rupijos"}
+            one{"Pakistano rupija"}
+            other{"Pakistano rupijų"}
+        }
+        PLN{
+            few{"Lenkijos zlotai"}
+            many{"Lenkijos zloto"}
+            one{"Lenkijos zlotas"}
+            other{"Lenkijos zlotų"}
+        }
+        PYG{
+            few{"Paragvajaus guaraniai"}
+            many{"Paragvajaus guaranio"}
+            one{"Paragvajaus guaranis"}
+            other{"Paragvajaus guaranių"}
+        }
+        QAR{
+            few{"Kataro rialai"}
+            many{"Kataro rialo"}
+            one{"Kataro rialas"}
+            other{"Kataro rialų"}
+        }
+        RON{
+            few{"Rumunijos lėjos"}
+            many{"Rumunijos lėjos"}
+            one{"Rumunijos lėja"}
+            other{"Rumunijos lėjų"}
+        }
+        RSD{
+            few{"Serbijos dinarai"}
+            many{"Serbijos dinaro"}
+            one{"Serbijos dinaras"}
+            other{"Serbijos dinarų"}
+        }
+        RUB{
+            few{"Rusijos rubliai"}
+            many{"Rusijos rublio"}
+            one{"Rusijos rublis"}
+            other{"Rusijos rublių"}
+        }
+        RWF{
+            few{"Ruandos frankai"}
+            many{"Ruandos franko"}
+            one{"Ruandos frankas"}
+            other{"Ruandos frankų"}
+        }
+        SAR{
+            few{"Saudo Arabijos rijalai"}
+            many{"Saudo Arabijos rijalo"}
+            one{"Saudo Arabijos rijalas"}
+            other{"Saudo Arabijos rijalų"}
+        }
+        SDG{
+            few{"Sudano svarai"}
+            many{"Sudano svaro"}
+            one{"Sudano svaras"}
+            other{"Sudano svarų"}
+        }
+        SEK{
+            few{"Švedijos kronos"}
+            many{"Švedijos kronos"}
+            one{"Švedijos krona"}
+            other{"Švedijos kronų"}
+        }
+        SGD{
+            few{"Singapūro doleriai"}
+            many{"Singapūro dolerio"}
+            one{"Singapūro doleris"}
+            other{"Singapūro dolerių"}
+        }
+        SLL{
+            few{"Siera Leonės leonės"}
+            many{"Siera Leonės leonės"}
+            one{"Siera Leonės leonė"}
+            other{"Siera Leonės leonių"}
+        }
+        SSP{
+            few{"Pietų Sudano svarai"}
+            many{"Pietų Sudano svaro"}
+            one{"Pietų Sudano svaras"}
+            other{"Pietų Sudano svarų"}
+        }
+        THB{
+            few{"Tailando batai"}
+            many{"Tailando bato"}
+            one{"Tailando batas"}
+            other{"Tailando batų"}
+        }
+        TJS{
+            few{"Tadžikistano somoniai"}
+            many{"Tadžikistano somonio"}
+            one{"Tadžikistano somonis"}
+            other{"Tadžikistano somonių"}
+        }
+        TMT{
+            few{"Turkmėnistano manatai"}
+            many{"Turkmėnistano manato"}
+            one{"Turkmėnistano manatas"}
+            other{"Turkmėnistano manatų"}
+        }
+        TND{
+            few{"Tuniso dinarai"}
+            many{"Tuniso dinaro"}
+            one{"Tuniso dinaras"}
+            other{"Tuniso dinarų"}
+        }
+        TRY{
+            few{"Turkijos liros"}
+            many{"Turkijos liros"}
+            one{"Turkijos lira"}
+            other{"Turkijos lirų"}
+        }
+        TTD{
+            few{"Trinidado ir Tobago doleriai"}
+            many{"Trinidado ir Tobago dolerio"}
+            one{"Trinidado ir Tobago doleris"}
+            other{"Trinidado ir Tobago dolerių"}
+        }
+        TWD{
+            few{"Taivano naujieji doleriai"}
+            many{"Taivano naujojo dolerio"}
+            one{"Taivano naujasis doleris"}
+            other{"Taivano naujųjų dolerių"}
+        }
+        TZS{
+            few{"Tanzanijos šilingai"}
+            many{"Tanzanijos šilingo"}
+            one{"Tanzanijos šilingas"}
+            other{"Tanzanijos šilingų"}
+        }
+        UAH{
+            few{"Ukrainos grivinos"}
+            many{"Ukrainos grivinos"}
+            one{"Ukrainos grivina"}
+            other{"Ukrainos grivinų"}
+        }
+        UGX{
+            few{"Ugandos šilingai"}
+            many{"Ugandos šilingo"}
+            one{"Ugandos šilingas"}
+            other{"Ugandos šilingų"}
+        }
+        USD{
+            few{"JAV doleriai"}
+            many{"JAV dolerio"}
+            one{"JAV doleris"}
+            other{"JAV dolerių"}
+        }
+        UYU{
+            few{"Urugvajaus pesai"}
+            many{"Urugvajaus peso"}
+            one{"Urugvajaus pesas"}
+            other{"Urugvajaus pesų"}
+        }
+        UZS{
+            few{"Uzbekistano sumai"}
+            many{"Uzbekistano sumo"}
+            one{"Uzbekistano sumas"}
+            other{"Uzbekistano sumų"}
+        }
+        VEF{
+            few{"Venesuelos bolivarai"}
+            many{"Venesuelos bolivaro"}
+            one{"Venesuelos bolivaras"}
+            other{"Venesuelos bolivarų"}
+        }
+        VND{
+            few{"Vietnamo dongai"}
+            many{"Vietnamo dongo"}
+            one{"Vietnamo dongas"}
+            other{"Vietnamo dongų"}
+        }
+        XAF{
+            few{"CFA BEAC frankai"}
+            many{"CFA BEAC franko"}
+            one{"CFA BEAC frankas"}
+            other{"CFA BEAC frankų"}
+        }
+        XDR{
+            few{"SDR tarptautinis valiutos fondas"}
+            many{"SDR tarptautinis valiutos fondas"}
+            one{"SDR tarptautinis valiutos fondas"}
+            other{"SDR tarptautinis valiutos fondas"}
+        }
+        XOF{
+            few{"CFA BCEAO frankai"}
+            many{"CFA BCEAO franko"}
+            one{"CFA BCEAO frankas"}
+            other{"CFA BCEAO frankų"}
+        }
+        YER{
+            few{"Jemeno rialai"}
+            many{"Jemeno rialo"}
+            one{"Jemeno rialas"}
+            other{"Jemeno rialų"}
+        }
+        ZAR{
+            few{"Pietų Afrikos Respublikos randai"}
+            many{"Pietų Afrikos Respublikos rando"}
+            one{"Pietų Afrikos Respublikos randas"}
+            other{"Pietų Afrikos Respublikos randų"}
+        }
+        ZMW{
+            few{"Zambijos kvačos"}
+            many{"Zambijos kvačos"}
+            one{"Zambijos kvača"}
+            other{"Zambijos kvačų"}
+        }
+    }
+    CurrencyUnitPatterns{
+        few{"{0} {1}"}
+        many{"{0} {1}"}
+        one{"{0} {1}"}
+        other{"{0} {1}"}
+    }
+    Version{"2.1.8.9"}
+}

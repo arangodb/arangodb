@@ -1,0 +1,235 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/ru.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/ru.xml
+ */
+ru{
+    Version{"2.1.8.9"}
+    units{
+        compound{
+            per{"{0} на {1}"}
+        }
+        duration{
+            day{
+                dnam{"дни"}
+                few{"{0} дня"}
+                many{"{0} дней"}
+                one{"{0} день"}
+                other{"{0} дня"}
+            }
+            hour{
+                dnam{"часы"}
+                few{"{0} часа"}
+                many{"{0} часов"}
+                one{"{0} час"}
+                other{"{0} часа"}
+                per{"{0} в час"}
+            }
+            microsecond{
+                dnam{"микросекунды"}
+                few{"{0} микросекунды"}
+                many{"{0} микросекунд"}
+                one{"{0} микросекунда"}
+                other{"{0} микросекунды"}
+            }
+            millisecond{
+                dnam{"миллисекунды"}
+                few{"{0} миллисекунды"}
+                many{"{0} миллисекунд"}
+                one{"{0} миллисекунда"}
+                other{"{0} миллисекунды"}
+            }
+            minute{
+                dnam{"минуты"}
+                few{"{0} минуты"}
+                many{"{0} минут"}
+                one{"{0} минута"}
+                other{"{0} минуты"}
+            }
+            month{
+                dnam{"месяцы"}
+                few{"{0} месяца"}
+                many{"{0} месяцев"}
+                one{"{0} месяц"}
+                other{"{0} месяца"}
+            }
+            nanosecond{
+                dnam{"наносекунды"}
+                few{"{0} наносекунды"}
+                many{"{0} наносекунд"}
+                one{"{0} наносекунда"}
+                other{"{0} наносекунды"}
+            }
+            second{
+                dnam{"секунды"}
+                few{"{0} секунды"}
+                many{"{0} секунд"}
+                one{"{0} секунда"}
+                other{"{0} секунды"}
+                per{"{0} в секунду"}
+            }
+            week{
+                dnam{"недели"}
+                few{"{0} недели"}
+                many{"{0} недель"}
+                one{"{0} неделя"}
+                other{"{0} недели"}
+            }
+            year{
+                dnam{"годы"}
+                few{"{0} года"}
+                many{"{0} лет"}
+                one{"{0} год"}
+                other{"{0} года"}
+            }
+        }
+    }
+    unitsNarrow{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"д."}
+                few{"{0} д."}
+                many{"{0} д."}
+                one{"{0} д."}
+                other{"{0} д."}
+            }
+            hour{
+                dnam{"ч"}
+                few{"{0} ч"}
+                many{"{0} ч"}
+                one{"{0} ч"}
+                other{"{0} ч"}
+            }
+            millisecond{
+                dnam{"мс"}
+                few{"{0} мс"}
+                many{"{0} мс"}
+                one{"{0} мс"}
+                other{"{0} мс"}
+            }
+            minute{
+                dnam{"мин."}
+                few{"{0} мин"}
+                many{"{0} мин"}
+                one{"{0} мин"}
+                other{"{0} мин"}
+            }
+            month{
+                dnam{"мес"}
+                few{"{0} м."}
+                many{"{0} м."}
+                one{"{0} м."}
+                other{"{0} м."}
+            }
+            second{
+                dnam{"c"}
+                few{"{0} с"}
+                many{"{0} с"}
+                one{"{0} с"}
+                other{"{0} с"}
+            }
+            week{
+                dnam{"нед"}
+                few{"{0} н."}
+                many{"{0} н."}
+                one{"{0} н."}
+                other{"{0} н."}
+            }
+            year{
+                dnam{"г."}
+                few{"{0} л."}
+                many{"{0} л."}
+                one{"{0} г."}
+                other{"{0} г."}
+            }
+        }
+    }
+    unitsShort{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"дн"}
+                few{"{0} дн"}
+                many{"{0} дн"}
+                one{"{0} дн"}
+                other{"{0} дн"}
+            }
+            hour{
+                dnam{"ч"}
+                few{"{0} ч"}
+                many{"{0} ч"}
+                one{"{0} ч"}
+                other{"{0} ч"}
+                per{"{0}/ч"}
+            }
+            microsecond{
+                dnam{"мкс"}
+                few{"{0} мкс"}
+                many{"{0} мкс"}
+                one{"{0} мкс"}
+                other{"{0} мкс"}
+            }
+            millisecond{
+                dnam{"мс"}
+                few{"{0} мс"}
+                many{"{0} мс"}
+                one{"{0} мс"}
+                other{"{0} мс"}
+            }
+            minute{
+                dnam{"мин"}
+                few{"{0} мин"}
+                many{"{0} мин"}
+                one{"{0} мин"}
+                other{"{0} мин"}
+            }
+            month{
+                dnam{"мес"}
+                few{"{0} мес"}
+                many{"{0} мес"}
+                one{"{0} мес"}
+                other{"{0} мес"}
+            }
+            nanosecond{
+                dnam{"нс"}
+                few{"{0} нс"}
+                many{"{0} нс"}
+                one{"{0} нс"}
+                other{"{0} нс"}
+            }
+            second{
+                dnam{"сек"}
+                few{"{0} сек"}
+                many{"{0} сек"}
+                one{"{0} сек"}
+                other{"{0} сек"}
+                per{"{0}/c"}
+            }
+            week{
+                dnam{"нед"}
+                few{"{0} нед"}
+                many{"{0} нед"}
+                one{"{0} нед"}
+                other{"{0} нед"}
+            }
+            year{
+                dnam{"г."}
+                few{"{0} г."}
+                many{"{0} л."}
+                one{"{0} г."}
+                other{"{0} г."}
+            }
+        }
+    }
+}

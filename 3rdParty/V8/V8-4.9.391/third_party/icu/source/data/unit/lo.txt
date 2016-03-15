@@ -1,0 +1,151 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/lo.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/lo.xml
+ */
+lo{
+    Version{"2.1.8.9"}
+    units{
+        compound{
+            per{"{0} ຕໍ່ {1}"}
+        }
+        duration{
+            day{
+                dnam{"ມື້"}
+                other{"{0} ມື້"}
+            }
+            hour{
+                dnam{"ຊົ່ວໂມງ"}
+                other{"{0} ຊົ່ວໂມງ"}
+                per{"{0} ຕໍ່ຊົ່ວໂມງ"}
+            }
+            microsecond{
+                dnam{"ໄມ​ໂຄຣ​ວິ​ນາ​ທີ"}
+                other{"{0} ໄມ​ໂຄຣ​ວິ​ນາ​ທີ"}
+            }
+            millisecond{
+                dnam{"ມິນລີວິນາທີ"}
+                other{"{0} ມິນລີວິນາທີ"}
+            }
+            minute{
+                dnam{"ນາທີ"}
+                other{"{0} ນາທີ"}
+            }
+            month{
+                dnam{"ເດືອນ"}
+                other{"{0} ເດືອນ"}
+            }
+            nanosecond{
+                dnam{"ນາ​ໂນ​ວິ​ນາ​ທີ"}
+                other{"{0} ນາ​ໂນ​ວິ​ນາ​ທີ"}
+            }
+            second{
+                dnam{"ວິນາທີ"}
+                other{"{0} ວິນາທີ"}
+                per{"{0} ຕໍ່ວິນາທີ"}
+            }
+            week{
+                dnam{"ອາທິດ"}
+                other{"{0} ອາທິດ"}
+            }
+            year{
+                dnam{"ປີ"}
+                other{"{0} ປີ"}
+            }
+        }
+    }
+    unitsNarrow{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"ມື້"}
+                other{"{0} ມ."}
+            }
+            hour{
+                dnam{"ຊົ່ວໂມງ"}
+                other{"{0} ຊມ"}
+            }
+            millisecond{
+                dnam{"ມລວ"}
+                other{"{0} ມລ. ວິ."}
+            }
+            minute{
+                dnam{"ນທ."}
+                other{"{0} ນທ"}
+            }
+            month{
+                dnam{"ເດືອນ"}
+                other{"{0} ດ."}
+            }
+            second{
+                dnam{"ວິ."}
+                other{"{0} ວິ"}
+            }
+            week{
+                dnam{"ອທ."}
+                other{"{0} ອທ."}
+            }
+            year{
+                dnam{"ປີ"}
+                other{"{0} ປ"}
+            }
+        }
+    }
+    unitsShort{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"ມື້"}
+                other{"{0} ມື້"}
+            }
+            hour{
+                dnam{"ຊົ່ວໂມງ"}
+                other{"{0} ຊມ."}
+                per{"{0}/ຊມ."}
+            }
+            microsecond{
+                dnam{"μວິ"}
+                other{"{0} μວິ"}
+            }
+            millisecond{
+                dnam{"ມິນລີວິ"}
+                other{"{0} ມລວ"}
+            }
+            minute{
+                dnam{"ນທ."}
+                other{"{0} ນທ."}
+            }
+            month{
+                dnam{"ເດືອນ"}
+                other{"{0} ດ."}
+            }
+            nanosecond{
+                dnam{"ນາ​ໂນ​ວິ​"}
+                other{"{0} ນນ​ວິ"}
+            }
+            second{
+                dnam{"ວິ."}
+                other{"{0} ວິ."}
+                per{"{0}/ວິ."}
+            }
+            week{
+                dnam{"ອາທິດ"}
+                other{"{0} ອທ."}
+            }
+            year{
+                dnam{"ປີ"}
+                other{"{0} ປີ"}
+            }
+        }
+    }
+}

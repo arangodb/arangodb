@@ -1,0 +1,36 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/smn.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/smn.xml
+ */
+smn{
+    Currencies{
+        DKK{
+            "DKK",
+            "Tanska ruvnâ",
+        }
+        EUR{
+            "€",
+            "euro",
+        }
+        ISK{
+            "ISK",
+            "Island ruvnâ",
+        }
+        NOK{
+            "NOK",
+            "Taažâ ruvnâ",
+        }
+        SEK{
+            "SEK",
+            "Ruotâ ruvnâ",
+        }
+    }
+    Version{"2.1.8.11"}
+}

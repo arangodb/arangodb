@@ -1,0 +1,26 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/ar_EG.xml
+// *
+// ***************************************************************************
+ar_EG{
+    Version{"2.1.8.19"}
+    zoneStrings{
+        "America:Matamoros"{
+            ec{"ماتامروس"}
+        }
+        "Asia:Hebron"{
+            ec{"هبرون"}
+        }
+        "meta:America_Pacific"{
+            ld{"توقيت المحيط الهادي الصيفي لأمريكا الشمالية"}
+            lg{"توقيت المحيط الهادي لأمريكا الشمالية"}
+            ls{"توقيت المحيط الهادي الرسمي لأمريكا الشمالية"}
+        }
+        regionFormatDaylight{"التوقيت الصيفي {0}"}
+        regionFormatStandard{"التوقيت الرسمي {0}"}
+    }
+}

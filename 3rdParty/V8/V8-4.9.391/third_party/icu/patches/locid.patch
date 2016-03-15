@@ -1,0 +1,331 @@
+diff --git a/source/test/intltest/loctest.cpp b/source/test/intltest/loctest.cpp
+index 1bcf771..5922e1c 100644
+--- a/source/test/intltest/loctest.cpp
++++ b/source/test/intltest/loctest.cpp
+@@ -1,6 +1,6 @@
+ /********************************************************************
+  * COPYRIGHT:
+- * Copyright (c) 1997-2014, International Business Machines Corporation and
++ * Copyright (c) 1997-2015, International Business Machines Corporation and
+  * others. All Rights Reserved.
+  ********************************************************************/
+ 
+@@ -181,6 +181,7 @@ LocaleTest::~LocaleTest()
+ void LocaleTest::runIndexedTest( int32_t index, UBool exec, const char* &name, char* /*par*/ )
+ {
+     TESTCASE_AUTO_BEGIN;
++    TESTCASE_AUTO(TestBug11421);         // Must run early in list to trigger failure.
+     TESTCASE_AUTO(TestBasicGetters);
+     TESTCASE_AUTO(TestSimpleResourceInfo);
+     TESTCASE_AUTO(TestDisplayNames);
+@@ -1756,12 +1757,13 @@ LocaleTest::TestGetBaseName(void) {
+     } testCases[] = {
+         { "de_DE@  C o ll A t i o n   = Phonebook   ", "de_DE" },
+         { "de@currency = euro; CoLLaTion   = PHONEBOOk", "de" },
+-        { "ja@calendar = buddhist", "ja" }
++        { "ja@calendar = buddhist", "ja" },
++        { "de-u-co-phonebk", "de"}
+     };
+ 
+     int32_t i = 0;
+ 
+-    for(i = 0; i < (int32_t)(sizeof(testCases)/sizeof(testCases[0])); i++) {
++    for(i = 0; i < UPRV_LENGTHOF(testCases); i++) {
+         Locale loc(testCases[i].localeID);
+         if(strcmp(testCases[i].baseName, loc.getBaseName())) {
+             errln("For locale \"%s\" expected baseName \"%s\", but got \"%s\"",
+@@ -1769,6 +1771,20 @@ LocaleTest::TestGetBaseName(void) {
+             return;
+         }
+     }
++
++    // Verify that adding a keyword to an existing Locale doesn't change the base name.
++    UErrorCode status = U_ZERO_ERROR;
++    Locale loc2("en-US");
++    if (strcmp("en_US", loc2.getBaseName())) {
++        errln("%s:%d Expected \"en_US\", got \"%s\"", __FILE__, __LINE__, loc2.getBaseName());
++    }
++    loc2.setKeywordValue("key", "value", status);
++    if (strcmp("en_US@key=value", loc2.getName())) {
++        errln("%s:%d Expected \"en_US@key=value\", got \"%s\"", __FILE__, __LINE__, loc2.getName());
++    }
++    if (strcmp("en_US", loc2.getBaseName())) {
++        errln("%s:%d Expected \"en_US\", got \"%s\"", __FILE__, __LINE__, loc2.getBaseName());
++    }
+ }
+ 
+ /**
+@@ -2549,3 +2565,17 @@ void LocaleTest::TestIsRightToLeft() {
+     assertFalse("fil LTR", Locale("fil").isRightToLeft());
+     assertFalse("he-Zyxw LTR", Locale("he-Zyxw").isRightToLeft());
+ }
++
++void LocaleTest::TestBug11421() {
++    Locale::getDefault().getBaseName();
++    int32_t numLocales;
++    const Locale *localeList = Locale::getAvailableLocales(numLocales);
++    for (int localeIndex = 0; localeIndex < numLocales; localeIndex++) {
++        const Locale &loc = localeList[localeIndex];
++        if (strncmp(loc.getName(), loc.getBaseName(), strlen(loc.getBaseName()))) {
++            errln("%s:%d loc.getName=\"%s\"; loc.getBaseName=\"%s\"",
++                __FILE__, __LINE__, loc.getName(), loc.getBaseName());
++            break;
++        }
++    }
++}
+diff --git a/source/test/intltest/loctest.h b/source/test/intltest/loctest.h
+index 53f606d..d556571 100644
+--- a/source/test/intltest/loctest.h
++++ b/source/test/intltest/loctest.h
+@@ -1,6 +1,6 @@
+ /********************************************************************
+  * COPYRIGHT: 
+- * Copyright (c) 1997-2014, International Business Machines Corporation and
++ * Copyright (c) 1997-2015, International Business Machines Corporation and
+  * others. All Rights Reserved.
+  ********************************************************************/
+ 
+@@ -102,6 +102,7 @@ public:
+ 
+     void TestGetVariantWithKeywords(void);
+     void TestIsRightToLeft();
++    void TestBug11421();
+ 
+ private:
+     void _checklocs(const char* label,
+diff --git a/source/common/locid.cpp b/source/common/locid.cpp
+index f073aad..c99c61c 100644
+--- a/source/common/locid.cpp
++++ b/source/common/locid.cpp
+@@ -38,6 +38,7 @@
+ #include "uassert.h"
+ #include "cmemory.h"
+ #include "cstring.h"
++#include "uassert.h"
+ #include "uhash.h"
+ #include "ucln_cmn.h"
+ #include "ustr_imp.h"
+@@ -240,16 +241,16 @@ UOBJECT_DEFINE_RTTI_IMPLEMENTATION(Locale)
+ 
+ Locale::~Locale()
+ {
++    if (baseName != fullName) {
++        uprv_free(baseName);
++    }
++    baseName = NULL;
+     /*if fullName is on the heap, we free it*/
+     if (fullName != fullNameBuffer)
+     {
+         uprv_free(fullName);
+         fullName = NULL;
+     }
+-    if (baseName && baseName != baseNameBuffer) {
+-        uprv_free(baseName);
+-        baseName = NULL;
+-    }
+ }
+ 
+ Locale::Locale()
+@@ -421,6 +422,10 @@ Locale &Locale::operator=(const Locale &other)
+     }
+ 
+     /* Free our current storage */
++    if (baseName != fullName) {
++        uprv_free(baseName);
++    }
++    baseName = NULL;
+     if(fullName != fullNameBuffer) {
+         uprv_free(fullName);
+         fullName = fullNameBuffer;
+@@ -436,18 +441,13 @@ Locale &Locale::operator=(const Locale &other)
+     /* Copy the full name */
+     uprv_strcpy(fullName, other.fullName);
+ 
+-    /* baseName is the cached result of getBaseName.  if 'other' has a
+-       baseName and it fits in baseNameBuffer, then copy it. otherwise set
+-       it to NULL, and let the user lazy-create it (in getBaseName) if they
+-       want it. */
+-    if(baseName && baseName != baseNameBuffer) {
+-        uprv_free(baseName);
+-    }
+-    baseName = NULL;
+-
+-    if(other.baseName == other.baseNameBuffer) {
+-        uprv_strcpy(baseNameBuffer, other.baseNameBuffer);
+-        baseName = baseNameBuffer;
++    /* Copy the baseName if it differs from fullName. */
++    if (other.baseName == other.fullName) {
++        baseName = fullName;
++    } else {
++        if (other.baseName) {
++            baseName = uprv_strdup(other.baseName);
++        }
+     }
+ 
+     /* Copy the language and country fields */
+@@ -479,16 +479,15 @@ Locale& Locale::init(const char* localeID, UBool canonicalize)
+ {
+     fIsBogus = FALSE;
+     /* Free our current storage */
++    if (baseName != fullName) {
++        uprv_free(baseName);
++    }
++    baseName = NULL;
+     if(fullName != fullNameBuffer) {
+         uprv_free(fullName);
+         fullName = fullNameBuffer;
+     }
+ 
+-    if(baseName && baseName != baseNameBuffer) {
+-        uprv_free(baseName);
+-        baseName = NULL;
+-    }
+-
+     // not a loop:
+     // just an easy way to have a common error-exit
+     // without goto and without another function
+@@ -588,6 +587,12 @@ Locale& Locale::init(const char* localeID, UBool canonicalize)
+             variantBegin = (int32_t)(field[variantField] - fullName);
+         }
+ 
++        err = U_ZERO_ERROR;
++        initBaseName(err);
++        if (U_FAILURE(err)) {
++            break;
++        }
++
+         // successful end of init()
+         return *this;
+     } while(0); /*loop doesn't iterate*/
+@@ -598,6 +603,43 @@ Locale& Locale::init(const char* localeID, UBool canonicalize)
+     return *this;
+ }
+ 
++/*
++ * Set up the base name.
++ * If there are no key words, it's exactly the full name.
++ * If key words exist, it's the full name truncated at the '@' character.
++ * Need to set up both at init() and after setting a keyword.
++ */
++void
++Locale::initBaseName(UErrorCode &status) {
++    if (U_FAILURE(status)) {
++        return;
++    }
++    U_ASSERT(baseName==NULL || baseName==fullName);
++    const char *atPtr = uprv_strchr(fullName, '@');
++    const char *eqPtr = uprv_strchr(fullName, '=');
++    if (atPtr && eqPtr && atPtr < eqPtr) {
++        // Key words exist.
++        int32_t baseNameLength = (int32_t)(atPtr - fullName);
++        baseName = (char *)uprv_malloc(baseNameLength + 1);
++        if (baseName == NULL) {
++            status = U_MEMORY_ALLOCATION_ERROR;
++            return;
++        }
++        uprv_strncpy(baseName, fullName, baseNameLength);
++        baseName[baseNameLength] = 0;
++
++        // The original computation of variantBegin leaves it equal to the length
++        // of fullName if there is no variant.  It should instead be
++        // the length of the baseName.
++        if (variantBegin > baseNameLength) {
++            variantBegin = baseNameLength;
++        }
++    } else {
++        baseName = fullName;
++    }
++}
++
++
+ int32_t
+ Locale::hashCode() const
+ {
+@@ -607,14 +649,14 @@ Locale::hashCode() const
+ void
+ Locale::setToBogus() {
+     /* Free our current storage */
++    if(baseName != fullName) {
++        uprv_free(baseName);
++    }
++    baseName = NULL;
+     if(fullName != fullNameBuffer) {
+         uprv_free(fullName);
+         fullName = fullNameBuffer;
+     }
+-    if(baseName && baseName != baseNameBuffer) {
+-        uprv_free(baseName);
+-        baseName = NULL;
+-    }
+     *fullNameBuffer = 0;
+     *language = 0;
+     *script = 0;
+@@ -990,33 +1032,14 @@ void
+ Locale::setKeywordValue(const char* keywordName, const char* keywordValue, UErrorCode &status)
+ {
+     uloc_setKeywordValue(keywordName, keywordValue, fullName, ULOC_FULLNAME_CAPACITY, &status);
++    if (U_SUCCESS(status) && baseName == fullName) {
++        // May have added the first keyword, meaning that the fullName is no longer also the baseName.
++        initBaseName(status);
++    }
+ }
+ 
+ const char *
+-Locale::getBaseName() const
+-{
+-    // lazy init
+-    UErrorCode status = U_ZERO_ERROR;
+-    // semantically const
+-    if(baseName == 0) {
+-        ((Locale *)this)->baseName = ((Locale *)this)->baseNameBuffer;
+-        int32_t baseNameSize = uloc_getBaseName(fullName, baseName, ULOC_FULLNAME_CAPACITY, &status);
+-        if(baseNameSize >= ULOC_FULLNAME_CAPACITY) {
+-            ((Locale *)this)->baseName = (char *)uprv_malloc(sizeof(char) * baseNameSize + 1);
+-            if (baseName == NULL) {
+-                return baseName;
+-            }
+-            uloc_getBaseName(fullName, baseName, baseNameSize+1, &status);
+-        }
+-        baseName[baseNameSize] = 0;
+-
+-        // the computation of variantBegin leaves it equal to the length
+-        // of fullName if there is no variant.  It should instead be
+-        // the length of the baseName.  Patch around this for now.
+-        if (variantBegin == (int32_t)uprv_strlen(fullName)) {
+-          ((Locale*)this)->variantBegin = baseNameSize;
+-        }
+-    }
++Locale::getBaseName() const {
+     return baseName;
+ }
+ 
+diff --git a/source/common/unicode/locid.h b/source/common/unicode/locid.h
+index 3546192..1ad5cb5 100644
+--- a/source/common/unicode/locid.h
++++ b/source/common/unicode/locid.h
+@@ -1,7 +1,7 @@
+ /*
+ ******************************************************************************
+ *
+-*   Copyright (C) 1996-2014, International Business Machines
++*   Copyright (C) 1996-2015, International Business Machines
+ *   Corporation and others.  All Rights Reserved.
+ *
+ ******************************************************************************
+@@ -750,7 +750,7 @@ private:
+     char fullNameBuffer[ULOC_FULLNAME_CAPACITY];
+     // name without keywords
+     char* baseName;
+-    char baseNameBuffer[ULOC_FULLNAME_CAPACITY];
++    void initBaseName(UErrorCode& status);
+ 
+     UBool fIsBogus;
+ 
+@@ -795,7 +795,6 @@ Locale::getScript() const
+ inline const char *
+ Locale::getVariant() const
+ {
+-    getBaseName(); // lazy init
+     return &baseName[variantBegin];
+ }
+ 

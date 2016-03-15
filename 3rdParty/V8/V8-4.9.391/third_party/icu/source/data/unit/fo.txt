@@ -1,0 +1,147 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/fo.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/fo.xml
+ */
+fo{
+    Version{"2.1.7.53"}
+    units{
+        compound{
+            per{"{0} á {1}"}
+        }
+        duration{
+            day{
+                dnam{"samdøgur"}
+                one{"{0} samdøgur"}
+                other{"{0} samdøgur"}
+            }
+            hour{
+                dnam{"tímar"}
+                one{"{0} tími"}
+                other{"{0} tímar"}
+            }
+            millisecond{
+                dnam{"millissekundir"}
+                one{"{0} millisekund"}
+                other{"{0} millissekundir"}
+            }
+            minute{
+                dnam{"minuttir"}
+                one{"{0} minuttur"}
+                other{"{0} minuttir"}
+            }
+            month{
+                dnam{"mánaðir"}
+                one{"{0} mánadur"}
+                other{"{0} mánaðir"}
+            }
+            second{
+                dnam{"sekundir"}
+                one{"{0} sekund"}
+                other{"{0} sekundir"}
+            }
+            week{
+                dnam{"vikur"}
+                one{"{0} vika"}
+                other{"{0} vikur"}
+            }
+            year{
+                dnam{"ára"}
+                one{"{0} ár"}
+                other{"{0} ára"}
+            }
+        }
+    }
+    unitsNarrow{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                one{"{0}d"}
+                other{"{0}d"}
+            }
+            hour{
+                one{"{0}h"}
+                other{"{0}h"}
+            }
+            millisecond{
+                one{"{0}ms"}
+                other{"{0}ms"}
+            }
+            minute{
+                one{"{0}m"}
+                other{"{0}m"}
+            }
+            month{
+                one{"{0}m"}
+                other{"{0}m"}
+            }
+            second{
+                one{"{0}s"}
+                other{"{0}s"}
+            }
+            week{
+                one{"{0}v"}
+                other{"{0}v"}
+            }
+            year{
+                one{"{0}á"}
+                other{"{0}á"}
+            }
+        }
+    }
+    unitsShort{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"samdøgur"}
+                one{"{0} d"}
+                other{"{0} d"}
+            }
+            hour{
+                dnam{"tímar"}
+                one{"{0} h"}
+                other{"{0} h"}
+            }
+            millisecond{
+                dnam{"millissekundir"}
+                one{"{0} ms"}
+                other{"{0} ms"}
+            }
+            minute{
+                dnam{"minuttir"}
+                one{"{0} min"}
+                other{"{0} min"}
+            }
+            month{
+                dnam{"mánaðir"}
+                one{"{0} mán"}
+                other{"{0} mán"}
+            }
+            second{
+                dnam{"sekundir"}
+                one{"{0} s"}
+                other{"{0} s"}
+            }
+            week{
+                dnam{"vikur"}
+                one{"{0} v"}
+                other{"{0} v"}
+            }
+            year{
+                dnam{"ára"}
+                one{"{0} á"}
+                other{"{0} á"}
+            }
+        }
+    }
+}

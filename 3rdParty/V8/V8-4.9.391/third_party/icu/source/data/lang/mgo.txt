@@ -1,0 +1,36 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/mgo.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/mgo.xml
+ */
+mgo{
+    Languages{
+        mgo{"metaʼ"}
+        und{"ngam tisɔʼ"}
+    }
+    Scripts{
+        Latn{"ngam ŋwaʼri"}
+        Zxxx{"ngam choʼ"}
+        Zzzz{"abo ŋwaʼri tisɔʼ"}
+    }
+    Types{
+        calendar{
+            gregorian{"ngàb mə̀kala"}
+        }
+        numbers{
+            latn{"inu"}
+        }
+    }
+    Version{"2.1.6.69"}
+    codePatterns{
+        language{"{0}"}
+        script{"{0}"}
+        territory{"{0}"}
+    }
+}

@@ -1,0 +1,92 @@
+diff --git a/source/data/brkitr/word.txt b/source/data/brkitr/word.txt
+index c74da4c..c5d6df7 100644
+--- a/source/data/brkitr/word.txt
++++ b/source/data/brkitr/word.txt
+@@ -60,11 +60,9 @@ $Control        = [\p{Grapheme_Cluster_Break = Control}];
+ $HangulSyllable = [\uac00-\ud7a3];
+ $ComplexContext = [:LineBreak = Complex_Context:];
+ $KanaKanji      = [$Han $Hiragana $Katakana];
+-$dictionaryCJK  = [$KanaKanji $HangulSyllable];
+-$dictionary     = [$ComplexContext $dictionaryCJK];
++$dictionary     = [$ComplexContext];
+ 
+-# leave CJK scripts out of ALetterPlus
+-$ALetterPlus  = [$ALetter-$dictionaryCJK [$ComplexContext-$Extend-$Control]];
++$ALetterPlus  = [$ALetter [$ComplexContext-$Extend-$Control]];
+ 
+ 
+ #
+@@ -166,11 +164,6 @@ $ExtendNumLetEx  $KatakanaEx     {400};    #  (13b)
+ 
+ $Regional_IndicatorEx $Regional_IndicatorEx;
+ 
+-# special handling for CJK characters: chain for later dictionary segmentation
+-$HangulSyllable $HangulSyllable {200};
+-$KanaKanji $KanaKanji {400}; # different rule status if both kana and kanji found 
+-
+-
+ ## -------------------------------------------------
+ 
+ !!reverse;
+@@ -237,10 +230,6 @@ $BackExtendNumLetEx ($BackALetterEx | $BackHebrew_LetterEx | $BackNumericEx | $B
+ 
+ $BackRegional_IndicatorEx $BackRegional_IndicatorEx;
+ 
+-# special handling for CJK characters: chain for later dictionary segmentation
+-$HangulSyllable $HangulSyllable;
+-$KanaKanji $KanaKanji; #different rule status if both kanji and kana found
+-
+ ## -------------------------------------------------
+ 
+ !!safe_reverse;
+diff --git a/source/data/brkitr/brklocal.mk b/source/data/brkitr/brklocal.mk
+index c41c85a..5e0641b 100644
+--- a/source/data/brkitr/brklocal.mk
++++ b/source/data/brkitr/brklocal.mk
+@@ -34,17 +34,17 @@ BRK_RES_ALIAS_SOURCE = $(BRK_RES_SYNTHETIC_ALIAS)
+ 
+ 
+ # List of dictionary files (dict).
+-BRK_DICT_SOURCE = burmesedict.txt cjdict.txt khmerdict.txt laodict.txt\
++BRK_DICT_SOURCE = burmesedict.txt khmerdict.txt laodict.txt\
+  thaidict.txt
+ 
+ 
+ # List of break iterator files (brk).
+ BRK_SOURCE = char.txt line.txt line_fi.txt\
+- sent.txt sent_el.txt title.txt word.txt
++ sent.txt sent_el.txt title.txt word.txt word_ja.txt
+ 
+ 
+ # Ordinary resources
+ BRK_RES_SOURCE = de.txt el.txt en.txt en_US.txt\
+  es.txt fi.txt fr.txt it.txt\
+- pt.txt ru.txt
++ pt.txt ru.txt ja.txt
+ 
+diff --git a/source/data/brkitr/root.txt b/source/data/brkitr/root.txt
+index 2dd1fdc..1d066be 100644
+--- a/source/data/brkitr/root.txt
++++ b/source/data/brkitr/root.txt
+@@ -16,9 +16,6 @@ root{
+         word:process(dependency){"word.brk"}
+     }
+     dictionaries{
+-        Hani:process(dependency){"cjdict.dict"}
+-        Hira:process(dependency){"cjdict.dict"}
+-        Kata:process(dependency){"cjdict.dict"}
+         Khmr:process(dependency){"khmerdict.dict"}
+         Laoo:process(dependency){"laodict.dict"}
+         Mymr:process(dependency){"burmesedict.dict"}
+diff --git a/source/data/brkitr/ja.txt b/source/data/brkitr/ja.txt
+index 3eb81d0..ffdbc6d 100644
+--- a/source/data/brkitr/ja.txt
++++ b/source/data/brkitr/ja.txt
+@@ -9,6 +9,6 @@
+ ja{
+     Version{"2.0.82.42"}
+     boundaries{
+-        line:process(dependency){"line_ja.brk"}
++        word:process(dependency){"word_ja.brk"}
+     }
+ }

@@ -1,0 +1,22 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/cy.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/cy.xml
+ */
+cy{
+    AuxExemplarCharacters{"[ă å ã ā æ ç ĕ ē ĭ ī k ñ ŏ ø ō œ q ŭ ū v x z]"}
+    ExemplarCharacters{
+        "[a á à â ä b c {ch} d {dd} e é è ê ë f {ff} g {ng} h i í ì î ï j l {ll} m n "
+        "o ó ò ô ö p {ph} r {rh} s t {th} u ú ù û ü w ẃ ẁ ŵ ẅ y ý ỳ ŷ ÿ]"
+    }
+    LocaleScript{
+        "Latn",
+    }
+    Version{"2.1.7.80"}
+}

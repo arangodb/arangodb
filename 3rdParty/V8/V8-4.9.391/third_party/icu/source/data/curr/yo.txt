@@ -1,0 +1,164 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/yo.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/yo.xml
+ */
+yo{
+    Currencies{
+        AED{
+            "AED",
+            "Diami ti Awon Orílẹ́ède Arabu",
+        }
+        AOA{
+            "AOA",
+            "Wansa ti Orílẹ́ède Àngólà",
+        }
+        AUD{
+            "A$",
+            "Dọla ti Orílẹ́ède Ástràlìá",
+        }
+        BHD{
+            "BHD",
+            "Dina ti Orílẹ́ède Báránì",
+        }
+        BWP{
+            "BWP",
+            "Pula ti Orílẹ́ède Bọ̀tìsúwánà",
+        }
+        CAD{
+            "CA$",
+            "Dọla ti Orílẹ́ède Kánádà",
+        }
+        CDF{
+            "CDF",
+            "Faransi ti Orílẹ́ède Kóngò",
+        }
+        CHF{
+            "CHF",
+            "Faransi ti Orílẹ́ède Siwisi",
+        }
+        CNY{
+            "CN¥",
+            "Reminibi ti Orílẹ́ède ṣáínà",
+        }
+        DZD{
+            "DZD",
+            "Dina ti Orílẹ́ède Àlùgèríánì",
+        }
+        EGP{
+            "EGP",
+            "pọọn ti Orílẹ́ède Egipiti",
+        }
+        ETB{
+            "ETB",
+            "Biri ti Orílẹ́ède Eutopia",
+        }
+        EUR{
+            "€",
+            "Uro",
+        }
+        GBP{
+            "£",
+            "Pọọn ti Orílẹ́ède Bírítísì",
+        }
+        INR{
+            "Rs.",
+            "Rupi ti Orílẹ́ède Indina",
+        }
+        JPY{
+            "JP¥",
+            "Yeni ti Orílẹ́ède Japani",
+        }
+        KES{
+            "KES",
+            "ṣiili ti Orílẹ́ède Kenya",
+        }
+        LYD{
+            "LYD",
+            "Dina ti Orílẹ́ède Libiya",
+        }
+        MAD{
+            "MAD",
+            "Dirami ti Orílẹ́ède Moroko",
+        }
+        MGA{
+            "MGA",
+            "Faransi ti Orílẹ́ède Malagasi",
+        }
+        MRO{
+            "MRO",
+            "Ouguiya ti Orílẹ́ède Maritania",
+        }
+        MUR{
+            "MUR",
+            "Rupi ti Orílẹ́ède Maritiusi",
+        }
+        MWK{
+            "MWK",
+            "Kaṣa ti Orílẹ́ède Malawi",
+        }
+        NAD{
+            "NAD",
+            "Dọla ti Orílẹ́ède Namibia",
+        }
+        NGN{
+            "₦",
+            "Naira ti Orílẹ́ède Nàìjíríà",
+        }
+        RWF{
+            "RWF",
+            "Faransi ti Orílẹ́ède Ruwanda",
+        }
+        SAR{
+            "SAR",
+            "Riya ti Orílẹ́ède Saudi",
+        }
+        SDG{
+            "SDG",
+            "Dina ti Orílẹ́ède Sudani",
+        }
+        SLL{
+            "SLL",
+            "Lioni",
+        }
+        TND{
+            "TND",
+            "Dina ti Orílẹ́ède Tunisia",
+        }
+        TZS{
+            "TZS",
+            "Sile ti Orílẹ́ède Tansania",
+        }
+        UGX{
+            "UGX",
+            "Siile ti Orílẹ́ède Uganda",
+        }
+        USD{
+            "US$",
+            "Dọla ti Orílẹ́ède Amerika",
+        }
+        XAF{
+            "FCFA",
+            "Faransi ti Orílẹ́ède BEKA",
+        }
+        XOF{
+            "CFA",
+            "Faransi ti Orílẹ́ède BIKEAO",
+        }
+        ZAR{
+            "ZAR",
+            "Randi ti Orílẹ́ède Ariwa Afirika",
+        }
+        ZMW{
+            "ZMW",
+            "Kawaṣa ti Orílẹ́ède Saabia",
+        }
+    }
+    Version{"2.1.6.69"}
+}

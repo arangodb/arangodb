@@ -1,0 +1,35 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/fa_AF.xml
+// *
+// ***************************************************************************
+fa_AF{
+    Languages{
+        es{"هسپانوی"}
+        fa{"دری"}
+        fi{"فنلندی"}
+        ga{"آیرلندی"}
+        hr{"کروشیایی"}
+        id{"اندونیزیایی"}
+        is{"آیسلندی"}
+        it{"ایتالوی"}
+        ja{"جاپانی"}
+        ko{"کوریایی"}
+        ky{"قرغزی"}
+        mn{"مغلی"}
+        ne{"نیپالی"}
+        nl{"هالندی"}
+        no{"نارویژی"}
+        pl{"پولندی"}
+        pt{"پرتگالی"}
+        sv{"سویدنی"}
+        tg{"تاجکی"}
+    }
+    Scripts{
+        Mong{"مغلی"}
+    }
+    Version{"2.1.6.69"}
+}

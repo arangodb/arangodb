@@ -1,0 +1,245 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/sk.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/sk.xml
+ */
+sk{
+    Languages{
+        ach{"ačoli"}
+        af{"afrikánčina"}
+        ak{"akančina"}
+        am{"amharčina"}
+        ar{"arabčina"}
+        ar_001{"arabčina (moderná štandardná)"}
+        az{"azerbajdžančina"}
+        ban{"balijčina"}
+        be{"bieloruština"}
+        bem{"bemba"}
+        bg{"bulharčina"}
+        bn{"bengálčina"}
+        br{"bretónčina"}
+        bs{"bosniačtina"}
+        ca{"katalánčina"}
+        ceb{"cebuánčina"}
+        chr{"čerokí"}
+        ckb{"kurdčina (sorání)"}
+        co{"korzičtina"}
+        cs{"čeština"}
+        cy{"waleština"}
+        da{"dánčina"}
+        de{"nemčina"}
+        de_AT{"nemčina (rakúska)"}
+        de_CH{"nemčina (švajčiarska spisovná)"}
+        ee{"ewe"}
+        el{"gréčtina"}
+        en{"angličtina"}
+        en_AU{"angličtina (austrálska)"}
+        en_CA{"angličtina (kanadská)"}
+        en_GB{"angličtina (britská)"}
+        en_US{"angličtina (americká)"}
+        eo{"esperanto"}
+        es{"španielčina"}
+        es_419{"španielčina (latinskoamerická)"}
+        es_ES{"španielčina (európska)"}
+        es_MX{"španielčina (mexická)"}
+        et{"estónčina"}
+        eu{"baskičtina"}
+        fa{"perzština"}
+        fi{"fínčina"}
+        fil{"filipínčina"}
+        fo{"faerčina"}
+        fr{"francúzština"}
+        fr_CA{"francúzština (kanadská)"}
+        fr_CH{"francúzština (švajčiarska)"}
+        fy{"západná frízština"}
+        ga{"írčina"}
+        gaa{"ga"}
+        gd{"škótska gaelčina"}
+        gl{"galícijčina"}
+        gn{"guaraní"}
+        gu{"gudžarátčina"}
+        ha{"hauština"}
+        haw{"havajčina"}
+        he{"hebrejčina"}
+        hi{"hindčina"}
+        hr{"chorvátčina"}
+        ht{"haitčina"}
+        hu{"maďarčina"}
+        hy{"arménčina"}
+        ia{"interlingua"}
+        id{"indonézština"}
+        ig{"igboština"}
+        is{"islandčina"}
+        it{"taliančina"}
+        ja{"japončina"}
+        ka{"gruzínčina"}
+        kg{"kongčina"}
+        kk{"kazaština"}
+        km{"khmérčina"}
+        kn{"kannadčina"}
+        ko{"kórejčina"}
+        ku{"kurdčina"}
+        ky{"kirgizština"}
+        la{"latinčina"}
+        lg{"gandčina"}
+        ln{"lingalčina"}
+        lo{"laoština"}
+        loz{"lozi"}
+        lt{"litovčina"}
+        lua{"luba-luluánčina"}
+        lv{"lotyština"}
+        mfe{"maurícijská kreolčina"}
+        mg{"malgaština"}
+        mi{"maorijčina"}
+        mk{"macedónčina"}
+        ml{"malajálamčina"}
+        mn{"mongolčina"}
+        mr{"maráthčina"}
+        ms{"malajčina"}
+        mt{"maltčina"}
+        my{"barmčina"}
+        nb{"nórsky bokmål"}
+        ne{"nepálčina"}
+        nl{"holandčina"}
+        nl_BE{"flámčina"}
+        nn{"nórsky nynorsk"}
+        no{"nórčina"}
+        nso{"severná sothčina"}
+        ny{"čewa"}
+        nyn{"ňankole"}
+        oc{"okcitánčina"}
+        om{"oromčina"}
+        or{"uríjčina"}
+        pa{"pandžábčina"}
+        pl{"poľština"}
+        ps{"paštčina"}
+        pt{"portugalčina"}
+        pt_BR{"portugalčina (brazílska)"}
+        pt_PT{"portugalčina (európska)"}
+        qu{"kečuánčina"}
+        rm{"rétorománčina"}
+        rn{"kirundčina"}
+        ro{"rumunčina"}
+        ro_MD{"moldavčina"}
+        ru{"ruština"}
+        rw{"kiňarwanda"}
+        sd{"sindhčina"}
+        sh{"srbochorvátčina"}
+        si{"sinhalčina"}
+        sk{"slovenčina"}
+        sl{"slovinčina"}
+        sn{"šončina"}
+        so{"somálčina"}
+        sq{"albánčina"}
+        sr{"srbčina"}
+        st{"južná sothčina"}
+        su{"sundčina"}
+        sv{"švédčina"}
+        sw{"svahilčina"}
+        ta{"tamilčina"}
+        te{"telugčina"}
+        tg{"tadžičtina"}
+        th{"thajčina"}
+        ti{"tigriňa"}
+        tk{"turkménčina"}
+        tl{"tagalčina"}
+        tn{"tswančina"}
+        to{"tongčina"}
+        tr{"turečtina"}
+        tt{"tatárčina"}
+        tum{"tumbuka"}
+        tw{"twi"}
+        ug{"ujgurčina"}
+        uk{"ukrajinčina"}
+        ur{"urdčina"}
+        uz{"uzbečtina"}
+        vi{"vietnamčina"}
+        wo{"wolof"}
+        xh{"xhosa"}
+        yi{"jidiš"}
+        yo{"jorubčina"}
+        zh{"čínština"}
+        zh_Hans{"čínština (zjednodušená)"}
+        zh_Hant{"čínština (tradičná)"}
+        zu{"zuluština"}
+    }
+    LanguagesShort{
+        az{"azerbajdžančina"}
+        en_GB{"angličtina (britská)"}
+        en_US{"angličtina (americká)"}
+    }
+    Scripts{
+        Arab{"arabské"}
+        Armn{"arménske"}
+        Bali{"balijský"}
+        Beng{"bengálske"}
+        Bopo{"bopomofo"}
+        Brai{"braillovo písmo"}
+        Cyrl{"cyrilika"}
+        Deva{"dévanágarí"}
+        Egyp{"egyptské hieroglyfy"}
+        Ethi{"etiópske"}
+        Geor{"gruzínske"}
+        Glag{"hlaholika"}
+        Goth{"gotický"}
+        Grek{"grécke"}
+        Gujr{"gudžarátí"}
+        Guru{"gurmukhi"}
+        Hang{"hangul"}
+        Hani{"han"}
+        Hans{"zjednodušené"}
+        Hant{"tradičné"}
+        Hebr{"hebrejské"}
+        Hira{"hiragana"}
+        Jpan{"japonské"}
+        Kana{"katakana"}
+        Khmr{"khmérske"}
+        Knda{"kannadské"}
+        Kore{"kórejské"}
+        Laoo{"laoské"}
+        Latn{"latinka"}
+        Lina{"lineárna A"}
+        Linb{"lineárna B"}
+        Maya{"mayské hieroglyfy"}
+        Mlym{"malajálamske"}
+        Mong{"mongolské"}
+        Mymr{"barmské"}
+        Orya{"uríjske"}
+        Osma{"osmanský"}
+        Runr{"Runové písmo"}
+        Sinh{"sinhálske"}
+        Taml{"tamilské"}
+        Telu{"telugské"}
+        Thaa{"tána"}
+        Thai{"thajské"}
+        Tibt{"tibetské"}
+        Zsym{"symboly"}
+        Zxxx{"bez zápisu"}
+        Zyyy{"všeobecné"}
+        Zzzz{"neznáme písmo"}
+    }
+    Scripts%stand-alone{
+        Hans{"han – zjednodušené"}
+        Hant{"han – tradičné"}
+    }
+    Scripts%variant{
+        Arab{"perzsko-arabské"}
+    }
+    Version{"2.1.8.9"}
+    codePatterns{
+        language{"Jazyk: {0}"}
+        script{"Písmo: {0}"}
+        territory{"Región: {0}"}
+    }
+    localeDisplayPattern{
+        keyTypePattern{"{0}: {1}"}
+        pattern{"{0} ({1})"}
+        separator{"{0}, {1}"}
+    }
+}

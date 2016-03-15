@@ -1,0 +1,19 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/ar_AE.xml
+// *
+// ***************************************************************************
+ar_AE{
+    Version{"2.1.8.19"}
+    zoneStrings{
+        "Europe:Dublin"{
+            ld{"توقيت ايرلندا الصيفي"}
+        }
+        "meta:French_Guiana"{
+            ls{"توقيت غويانا الفرنسية"}
+        }
+    }
+}

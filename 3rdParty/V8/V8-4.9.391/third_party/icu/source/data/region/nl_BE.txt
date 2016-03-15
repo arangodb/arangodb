@@ -1,0 +1,14 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/nl_BE.xml
+// *
+// ***************************************************************************
+nl_BE{
+    Countries{
+        IM{"Het Eiland Man"}
+    }
+    Version{"2.1.8.19"}
+}

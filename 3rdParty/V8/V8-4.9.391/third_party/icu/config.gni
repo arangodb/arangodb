@@ -1,0 +1,16 @@
+# Copyright 2014 The Chromium Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+declare_args() {
+  # Tells icu to load an external data file rather than rely on the icudata
+  # being linked directly into the binary.
+  #
+  # This flag is a bit confusing. As of this writing, icu.gyp set the value to
+  # 0 but common.gypi sets the value to 1 for most platforms (and the 1 takes
+  # precedence).
+  #
+  # TODO(GYP) We'll probably need to enhance this logic to set the value to
+  # true or false in similar circumstances.
+  icu_use_data_file = true
+}

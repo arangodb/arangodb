@@ -1,0 +1,16 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/bn_IN.xml
+// *
+// ***************************************************************************
+bn_IN{
+    Countries{
+        GD{"গ্রেনেডা"}
+        GT{"গোয়াতেমালা"}
+        JM{"জামাইকা"}
+    }
+    Version{"2.1.8.19"}
+}

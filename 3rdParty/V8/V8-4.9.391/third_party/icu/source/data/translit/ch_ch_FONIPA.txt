@@ -1,0 +1,72 @@
+﻿# ***************************************************************************
+# *
+# *  Copyright (C) 2004-2014, International Business Machines
+# *  Corporation; Unicode, Inc.; and others.  All Rights Reserved.
+# *
+# ***************************************************************************
+# File: ch_ch_FONIPA.txt
+# Generated from CLDR 
+#
+
+::Lower;
+::NFC;
+
+\' → ʔ;
+’ → ʔ;
+
+a → æ;
+å → ɑ;
+
+b → b;
+ch → t\u0361s;
+{c} [eéií] → θ; # loanwords
+c → k; # loanwords
+d → d;
+e → e;
+f → f;
+gu → ɡʷ;
+g → ɡ;
+h → h;
+i → i;
+j → x ; # loanwords
+k → k;
+l → l;
+m → m;
+ng → ŋ;
+ñ → ɲ;
+n → n;
+o → o;
+p → p;
+{qu} [eéiíy] → k; # loanwords
+q → k; # loanwords
+rr → r;
+r → ɾ;
+s → s;
+t → t;
+u → u;
+v → β; # loanwords
+w → w; # loanwords
+{x} h?[aáåeéiíoóuú$] → ks; # loanwords
+{x} [^aáåeéiíoóuú$] → s; # loanwords
+x → ks ; # loanwords
+
+y → d\u0361z;
+
+\- → \.; # hyphen is a syllable boundary, eg ‹sena-ta›
+
+::Null;
+bb → bː;
+dd → dː;
+ff → fː;
+ɡɡ → ɡː;
+hh → hː;
+kk → kː;
+ll → lː;
+mm → mː;
+nn → nː;
+pp → pː;
+rr → rː;
+ss → sː;
+tt → tː;
+
+::NFC;

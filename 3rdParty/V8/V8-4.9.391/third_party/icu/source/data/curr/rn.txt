@@ -1,0 +1,156 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/rn.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/rn.xml
+ */
+rn{
+    Currencies{
+        AED{
+            "AED",
+            "Idiramu ryo muri Leta Zunze Ubumwe z’Abarabu",
+        }
+        AOA{
+            "AOA",
+            "Ikwanza ryo muri Angola",
+        }
+        AUD{
+            "A$",
+            "Idolari ryo muri Ositaraliya",
+        }
+        BHD{
+            "BHD",
+            "Idinari ry’iribahireyini",
+        }
+        BWP{
+            "BWP",
+            "Ipula ryo muri Botswana",
+        }
+        CAD{
+            "CA$",
+            "Idolari rya Kanada",
+        }
+        CDF{
+            "CDF",
+            "Ifaranga rya Kongo",
+        }
+        CHF{
+            "CHF",
+            "Ifaranga ry’Ubusuwisi",
+        }
+        CNY{
+            "CN¥",
+            "Iyuwani ryo mu Bushinwa",
+        }
+        DZD{
+            "DZD",
+            "Idinari ryo muri Alijeriya",
+        }
+        EGP{
+            "EGP",
+            "Ipawundi rya Misiri",
+        }
+        ETB{
+            "ETB",
+            "Ibiri ryo muri Etiyopiya",
+        }
+        EUR{
+            "€",
+            "Iyero",
+        }
+        GBP{
+            "£",
+            "Ipawundi ryo mu Bwongereza",
+        }
+        INR{
+            "Rs.",
+            "Irupiya ryo mu Buhindi",
+        }
+        JPY{
+            "JP¥",
+            "Iyeni ry’Ubuyapani",
+        }
+        KES{
+            "KES",
+            "Ishilingi rya Kenya",
+        }
+        LYD{
+            "LYD",
+            "Idinari rya Libiya",
+        }
+        MAD{
+            "MAD",
+            "Idiramu ryo muri Maroke",
+        }
+        MGA{
+            "MGA",
+            "Iriyari ryo muri Madagasikari",
+        }
+        MRO{
+            "MRO",
+            "Ugwiya ryo muri Moritaniya",
+        }
+        MUR{
+            "MUR",
+            "Irupiya ryo mu birwa bya Morise",
+        }
+        MWK{
+            "MWK",
+            "Ikwaca ryo muri Malawi",
+        }
+        NAD{
+            "NAD",
+            "Idolari rya Namibiya",
+        }
+        NGN{
+            "NGN",
+            "Inayira ryo muri Nijeriya",
+        }
+        RWF{
+            "RWF",
+            "Ifaranga ry’u Rwanda",
+        }
+        SAR{
+            "SAR",
+            "Iriyari ryo muri Arabiya Sawudite",
+        }
+        SDG{
+            "SDG",
+            "Ipawundi rya Sudani",
+        }
+        SLL{
+            "SLL",
+            "Ilewone",
+        }
+        TND{
+            "TND",
+            "Idinari ryo muri Tuniziya",
+        }
+        TZS{
+            "TZS",
+            "Ishilingi rya Tanzaniya",
+        }
+        UGX{
+            "UGX",
+            "Ishilingi ry’Ubugande",
+        }
+        USD{
+            "US$",
+            "Idolari ry’abanyamerika",
+        }
+        ZAR{
+            "ZAR",
+            "Irandi ryo muri Afurika y’Epfo",
+        }
+        ZMW{
+            "ZMW",
+            "Ikwaca ryo muri Zambiya",
+        }
+    }
+    Version{"2.1.7.39"}
+}

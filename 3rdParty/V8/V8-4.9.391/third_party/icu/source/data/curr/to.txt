@@ -1,0 +1,37 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/to.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/to.xml
+ */
+to{
+    Currencies{
+        AUD{
+            "AUD$",
+            "AUD",
+        }
+        NZD{
+            "NZD$",
+            "NZD",
+        }
+        PGK{
+            "PGK",
+            "PGK",
+        }
+    }
+    Currencies%narrow{
+        AUD{"$"}
+        NZD{"$"}
+    }
+    CurrencyPlurals{
+    }
+    CurrencyUnitPatterns{
+        other{"{1} {0}"}
+    }
+    Version{"2.1.8.9"}
+}

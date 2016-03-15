@@ -1,0 +1,164 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/naq.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/naq.xml
+ */
+naq{
+    Currencies{
+        AED{
+            "AED",
+            "United Arab Emirates Dirham",
+        }
+        AOA{
+            "AOA",
+            "Angolan Kwanzab",
+        }
+        AUD{
+            "A$",
+            "Australian Dollari",
+        }
+        BHD{
+            "BHD",
+            "Bahrain Dinar",
+        }
+        BWP{
+            "BWP",
+            "Botswanan Pulab",
+        }
+        CAD{
+            "CA$",
+            "Canadian Dollari",
+        }
+        CDF{
+            "CDF",
+            "Congolese Franc",
+        }
+        CHF{
+            "CHF",
+            "Swiss Franci",
+        }
+        CNY{
+            "CN¥",
+            "Chinese Yuan Renminbi",
+        }
+        DZD{
+            "DZD",
+            "Algerian Dinar",
+        }
+        EGP{
+            "EGP",
+            "Egytian Ponds",
+        }
+        ETB{
+            "ETB",
+            "Ethiopian Birr",
+        }
+        EUR{
+            "€",
+            "Eurob",
+        }
+        GBP{
+            "£",
+            "British Ponds",
+        }
+        INR{
+            "Rs.",
+            "Indian Rupee",
+        }
+        JPY{
+            "JP¥",
+            "Japanese Yenni",
+        }
+        KES{
+            "KES",
+            "Kenyan Shilling",
+        }
+        LYD{
+            "LYD",
+            "Libyan Dinar",
+        }
+        MAD{
+            "MAD",
+            "Moroccan Dirham",
+        }
+        MGA{
+            "MGA",
+            "Malagasy Franc",
+        }
+        MRO{
+            "MRO",
+            "Mauritania Ouguiya",
+        }
+        MUR{
+            "MUR",
+            "Mauritius Rupeeb",
+        }
+        MWK{
+            "MWK",
+            "Malawian Kwachab",
+        }
+        NAD{
+            "$",
+            "Namibia Dollari",
+        }
+        NGN{
+            "NGN",
+            "Nigerian Naira",
+        }
+        RWF{
+            "RWF",
+            "Rwanda Franci",
+        }
+        SAR{
+            "SAR",
+            "Saudi Riyal",
+        }
+        SDG{
+            "SDG",
+            "Sudanese Dinar",
+        }
+        SLL{
+            "SLL",
+            "Leone",
+        }
+        TND{
+            "TND",
+            "Tunisian Dinar",
+        }
+        TZS{
+            "TZS",
+            "Tanzanian Shillings",
+        }
+        UGX{
+            "UGX",
+            "Ugandan Shillings",
+        }
+        USD{
+            "US$",
+            "US Dollari",
+        }
+        XAF{
+            "FCFA",
+            "CFA Franc BEAC",
+        }
+        XOF{
+            "CFA",
+            "CFA Franc BCEAO",
+        }
+        ZAR{
+            "ZAR",
+            "South African Randi",
+        }
+        ZMW{
+            "ZMW",
+            "Zambian Kwachab",
+        }
+    }
+    Version{"2.1.6.69"}
+}

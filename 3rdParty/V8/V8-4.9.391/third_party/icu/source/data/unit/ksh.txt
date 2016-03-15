@@ -1,0 +1,147 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/ksh.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/ksh.xml
+ */
+ksh{
+    Version{"2.1.7.53"}
+    units{
+        compound{
+            per{"{0} pro {1}"}
+        }
+        duration{
+            day{
+                dnam{"Dääsch"}
+                one{"{0} Dääsch"}
+                other{"{0} Dääsch"}
+                zero{"{0} Dääsch"}
+            }
+            hour{
+                dnam{"Schtunde"}
+                one{"{0} Schtunde"}
+                other{"{0} Schtunde"}
+                zero{"{0} Schtunde"}
+            }
+            millisecond{
+                dnam{"Millisekunde"}
+                one{"{0} Millisekunde"}
+                other{"{0} Millisekunde"}
+                zero{"{0} Millisekunde"}
+            }
+            minute{
+                dnam{"Menutte"}
+                one{"{0} Menutte"}
+                other{"{0} Menutte"}
+                zero{"{0} Menutte"}
+            }
+            month{
+                dnam{"Mohnde"}
+                one{"{0} Mohnde"}
+                other{"{0} Mohnde"}
+                zero{"{0} Mohnde"}
+            }
+            second{
+                dnam{"Sekunde"}
+                one{"{0} Sekunde"}
+                other{"{0} Sekunde"}
+                zero{"{0} Sekunde"}
+            }
+            week{
+                dnam{"Woche"}
+                one{"{0} Woche"}
+                other{"{0} Woche"}
+                zero{"{0} Woche"}
+            }
+            year{
+                dnam{"Johre"}
+                one{"{0} Johre"}
+                other{"{0} Johre"}
+                zero{"{0} Johre"}
+            }
+        }
+    }
+    unitsNarrow{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                one{"{0}d"}
+                other{"{0}d"}
+                zero{"{0}d"}
+            }
+            hour{
+                one{"{0}h"}
+                other{"{0}h"}
+                zero{"{0}h"}
+            }
+            millisecond{
+                one{"{0}ms"}
+                other{"{0}ms"}
+                zero{"{0}ms"}
+            }
+            minute{
+                one{"{0}m"}
+                other{"{0}m"}
+                zero{"{0}m"}
+            }
+            second{
+                one{"{0}s"}
+                other{"{0}s"}
+                zero{"{0}s"}
+            }
+        }
+    }
+    unitsShort{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"Dääsch"}
+                one{"{0} d"}
+                other{"{0} d"}
+                zero{"{0} d"}
+            }
+            hour{
+                dnam{"Schtunde"}
+                one{"{0} h"}
+                other{"{0} h"}
+                zero{"{0} h"}
+            }
+            millisecond{
+                dnam{"Millisekunde"}
+                one{"{0} ms"}
+                other{"{0} ms"}
+                zero{"{0} ms"}
+            }
+            minute{
+                dnam{"Menutte"}
+                one{"{0} min"}
+                other{"{0} min"}
+                zero{"{0} min"}
+            }
+            month{
+                dnam{"Mohnde"}
+            }
+            second{
+                dnam{"Sekunde"}
+                one{"{0} s"}
+                other{"{0} s"}
+                zero{"{0} s"}
+            }
+            week{
+                dnam{"Woche"}
+            }
+            year{
+                dnam{"Johre"}
+            }
+        }
+    }
+}

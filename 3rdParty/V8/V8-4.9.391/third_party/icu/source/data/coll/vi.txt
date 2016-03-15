@@ -1,0 +1,47 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/collation/vi.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/xml/collation/vi.xml
+ */
+vi{
+    Version{"2.0.96.14"}
+    collations{
+        standard{
+            Sequence{
+                "[normalization on]"
+                "&̀<<̉<<̃<<́<<̣"
+                "&a<ă<<<Ă<â<<<Â"
+                "&d<đ<<<Đ"
+                "&e<ê<<<Ê"
+                "&o<ô<<<Ô<ơ<<<Ơ"
+                "&u<ư<<<Ư"
+            }
+            Version{"26"}
+        }
+        traditional{
+            Sequence{
+                "[normalization on]"
+                "&̀<<̉<<̃<<́<<̣"
+                "&a<ă<<<Ă<â<<<Â"
+                "&C<ch<<<Ch<<<CH"
+                "&d<đ<<<Đ"
+                "&e<ê<<<Ê"
+                "&G<gh<<<Gh<<<GH<gi<<<Gi<<<GI"
+                "&K<kh<<<Kh<<<KH"
+                "&N<nh<<<Nh<<<NH<ng<<<Ng<<<NG<ngh<<<Ngh<<<NGh<<<NGH"
+                "&o<ô<<<Ô<ơ<<<Ơ"
+                "&P<ph<<<Ph<<<PH"
+                "&Q<qu<<<Qu<<<QU"
+                "&T<th<<<Th<<<TH<tr<<<Tr<<<TR"
+                "&u<ư<<<Ư"
+            }
+            Version{"26"}
+        }
+    }
+}

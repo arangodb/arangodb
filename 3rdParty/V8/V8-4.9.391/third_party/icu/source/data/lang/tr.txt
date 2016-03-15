@@ -1,0 +1,361 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/tr.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/tr.xml
+ */
+tr{
+    Languages{
+        ach{"Acoli"}
+        af{"Afrikaanca"}
+        ak{"Akan"}
+        am{"Amharca"}
+        ar{"Arapça"}
+        ar_001{"Modern Standart Arapça"}
+        az{"Azerice"}
+        ban{"Bali Dili"}
+        be{"Beyaz Rusça"}
+        bem{"Bemba"}
+        bg{"Bulgarca"}
+        bn{"Bengalce"}
+        br{"Bretonca"}
+        bs{"Boşnakça"}
+        ca{"Katalanca"}
+        ceb{"Cebuano"}
+        chr{"Çerokice"}
+        ckb{"Orta Kürtçe"}
+        co{"Korsikaca"}
+        cs{"Çekçe"}
+        cy{"Galce"}
+        da{"Danca"}
+        de{"Almanca"}
+        de_AT{"Avusturya Almancası"}
+        de_CH{"İsviçre Yüksek Almancası"}
+        ee{"Ewe"}
+        el{"Yunanca"}
+        en{"İngilizce"}
+        en_AU{"Avustralya İngilizcesi"}
+        en_CA{"Kanada İngilizcesi"}
+        en_GB{"İngiliz İngilizcesi"}
+        en_US{"Amerikan İngilizcesi"}
+        eo{"Esperanto"}
+        es{"İspanyolca"}
+        es_419{"Latin Amerika İspanyolcası"}
+        es_ES{"Avrupa İspanyolcası"}
+        es_MX{"Meksika İspanyolcası"}
+        et{"Estonca"}
+        eu{"Baskça"}
+        fa{"Farsça"}
+        fi{"Fince"}
+        fil{"Filipince"}
+        fo{"Faroe Dili"}
+        fr{"Fransızca"}
+        fr_CA{"Kanada Fransızcası"}
+        fr_CH{"İsviçre Fransızcası"}
+        fy{"Batı Frizcesi"}
+        ga{"İrlandaca"}
+        gaa{"Ga"}
+        gd{"İskoç Gal Dili"}
+        gl{"Galiçyaca"}
+        gn{"Guarani Dili"}
+        gu{"Güceratça"}
+        ha{"Hausa"}
+        haw{"Hawaii Dili"}
+        he{"İbranice"}
+        hi{"Hintçe"}
+        hr{"Hırvatça"}
+        ht{"Haiti Dili"}
+        hu{"Macarca"}
+        hy{"Ermenice"}
+        ia{"Interlingua"}
+        id{"Endonezce"}
+        ig{"İbo Dili"}
+        is{"İzlandaca"}
+        it{"İtalyanca"}
+        ja{"Japonca"}
+        ka{"Gürcüce"}
+        kg{"Kongo"}
+        kk{"Kazakça"}
+        km{"Kmerce"}
+        kn{"Kannada"}
+        ko{"Korece"}
+        kri{"Krio"}
+        ku{"Kürtçe"}
+        ky{"Kırgızca"}
+        la{"Latince"}
+        lg{"Ganda"}
+        ln{"Lingala"}
+        lo{"Laoca"}
+        loz{"Lozi"}
+        lt{"Litvanyaca"}
+        lua{"Luba-Lulua"}
+        lv{"Letonca"}
+        mfe{"Morisyen"}
+        mg{"Malgaşça"}
+        mi{"Maori Dili"}
+        mk{"Makedonca"}
+        ml{"Malayalam"}
+        mn{"Moğolca"}
+        mr{"Marathi"}
+        ms{"Malayca"}
+        mt{"Maltaca"}
+        my{"Burmaca"}
+        nb{"Norveççe Bokmål"}
+        ne{"Nepalce"}
+        nl{"Hollandaca"}
+        nl_BE{"Flamanca"}
+        nn{"Norveççe Nynorsk"}
+        no{"Norveççe"}
+        nso{"Kuzey Sotho"}
+        ny{"Nyanja"}
+        nyn{"Nyankole"}
+        oc{"Occitan"}
+        om{"Oromo"}
+        or{"Oriya Dili"}
+        pa{"Pencapça"}
+        pl{"Lehçe"}
+        ps{"Peştuca"}
+        pt{"Portekizce"}
+        pt_BR{"Brezilya Portekizcesi"}
+        pt_PT{"Avrupa Portekizcesi"}
+        qu{"Keçuvaca"}
+        rm{"Romanşça"}
+        rn{"Kirundi"}
+        ro{"Romence"}
+        ro_MD{"Moldovaca"}
+        ru{"Rusça"}
+        rw{"Kinyarwanda"}
+        sd{"Sindhi"}
+        sh{"Sırp-Hırvat Dili"}
+        si{"Seylanca"}
+        sk{"Slovakça"}
+        sl{"Slovence"}
+        sn{"Shona"}
+        so{"Somalice"}
+        sq{"Arnavutça"}
+        sr{"Sırpça"}
+        st{"Güney Sotho"}
+        su{"Sunda Dili"}
+        sv{"İsveççe"}
+        sw{"Svahili"}
+        ta{"Tamilce"}
+        te{"Telugu Dili"}
+        tg{"Tacikçe"}
+        th{"Tayca"}
+        ti{"Tigrinya"}
+        tk{"Türkmence"}
+        tl{"Takalotça"}
+        tn{"Setsvana"}
+        to{"Tongaca"}
+        tr{"Türkçe"}
+        tt{"Tatarca"}
+        tum{"Tumbuka"}
+        tw{"Tvi"}
+        ug{"Uygurca"}
+        uk{"Ukraynaca"}
+        ur{"Urduca"}
+        uz{"Özbekçe"}
+        vi{"Vietnamca"}
+        wo{"Volofça"}
+        xh{"Zosa"}
+        yi{"Yidiş"}
+        yo{"Yorubaca"}
+        zh{"Çince"}
+        zh_Hans{"Basitleştirilmiş Çince"}
+        zh_Hant{"Geleneksel Çince"}
+        zu{"Zuluca"}
+    }
+    LanguagesShort{
+        az{"Azerice"}
+        en_GB{"İngilizce (BK)"}
+    }
+    Scripts{
+        Afak{"Afaka"}
+        Aghb{"Kafkas Albanyası"}
+        Arab{"Arap"}
+        Armi{"İmparatorluk Aramicesi"}
+        Armn{"Ermeni"}
+        Avst{"Avesta"}
+        Bali{"Bali Dili"}
+        Bamu{"Bamum"}
+        Bass{"Bassa Vah"}
+        Batk{"Batak"}
+        Beng{"Bengal"}
+        Blis{"Blis Sembolleri"}
+        Bopo{"Bopomofo"}
+        Brah{"Brahmi"}
+        Brai{"Braille"}
+        Bugi{"Bugis"}
+        Buhd{"Buhid"}
+        Cakm{"Chakma"}
+        Cans{"UCAS"}
+        Cari{"Karya"}
+        Cham{"Cham"}
+        Cher{"Çeroki"}
+        Cirt{"Cirth"}
+        Copt{"Kıpti"}
+        Cprt{"Kıbrıs"}
+        Cyrl{"Kiril"}
+        Cyrs{"Eski Kilise Slavcası Kiril"}
+        Deva{"Devanagari"}
+        Dsrt{"Deseret"}
+        Dupl{"Duployé Stenografi"}
+        Egyd{"Demotik Mısır"}
+        Egyh{"Hiyeratik Mısır"}
+        Egyp{"Mısır Hiyeroglifleri"}
+        Elba{"Elbasan"}
+        Ethi{"Etiyopya"}
+        Geok{"Hutsuri Gürcü"}
+        Geor{"Gürcü"}
+        Glag{"Glagolit"}
+        Goth{"Gotik"}
+        Gran{"Grantha"}
+        Grek{"Yunan"}
+        Gujr{"Gücerat"}
+        Guru{"Gurmukhi"}
+        Hang{"Hangıl"}
+        Hani{"Han"}
+        Hano{"Hanunoo"}
+        Hans{"Basitleştirilmiş"}
+        Hant{"Geleneksel"}
+        Hebr{"İbrani"}
+        Hira{"Hiragana"}
+        Hluw{"Anadolu Hiyeroglifleri"}
+        Hmng{"Pahavh Hmong"}
+        Hrkt{"Katakana veya Hiragana"}
+        Hung{"Eski Macar"}
+        Inds{"Indus"}
+        Ital{"Eski İtalyan"}
+        Java{"Cava Dili"}
+        Jpan{"Japon"}
+        Jurc{"Jurchen"}
+        Kali{"Kayah Li"}
+        Kana{"Katakana"}
+        Khar{"Kharoshthi"}
+        Khmr{"Kmer"}
+        Khoj{"Khojki"}
+        Knda{"Kannada"}
+        Kore{"Kore"}
+        Kpel{"Kpelle"}
+        Kthi{"Kaithi"}
+        Lana{"Lanna"}
+        Laoo{"Lao"}
+        Latf{"Fraktur Latin"}
+        Latg{"Gael Latin"}
+        Latn{"Latin"}
+        Lepc{"Lepcha"}
+        Limb{"Limbu"}
+        Lina{"Lineer A"}
+        Linb{"Lineer B"}
+        Lisu{"Fraser"}
+        Loma{"Loma"}
+        Lyci{"Likya"}
+        Lydi{"Lidya"}
+        Mahj{"Mahajani"}
+        Mand{"Manden"}
+        Mani{"Mani"}
+        Maya{"Maya Hiyeroglifleri"}
+        Mend{"Mende"}
+        Merc{"Meroitik El Yazısı"}
+        Mero{"Meroitik"}
+        Mlym{"Malayalam"}
+        Modi{"Modi"}
+        Mong{"Moğol"}
+        Moon{"Moon"}
+        Mroo{"Mro"}
+        Mtei{"Meitei Mayek"}
+        Mymr{"Burma"}
+        Narb{"Eski Kuzey Arap"}
+        Nbat{"Nebati"}
+        Nkgb{"Naksi Geba"}
+        Nkoo{"N’Ko"}
+        Nshu{"Nüshu"}
+        Ogam{"Ogham"}
+        Olck{"Ol Chiki"}
+        Orkh{"Orhun"}
+        Orya{"Oriya"}
+        Osma{"Osmanya"}
+        Palm{"Palmira"}
+        Pauc{"Pau Cin Hau"}
+        Perm{"Eski Permik"}
+        Phag{"Phags-pa"}
+        Phli{"Pehlevi Kitabe Dili"}
+        Phlp{"Psalter Pehlevi"}
+        Phlv{"Kitap Pehlevi Dili"}
+        Phnx{"Fenike"}
+        Plrd{"Pollard Fonetik"}
+        Prti{"Partça Kitabe Dili"}
+        Rjng{"Rejang"}
+        Roro{"Rongorongo"}
+        Runr{"Runik"}
+        Samr{"Samarit"}
+        Sara{"Sarati"}
+        Sarb{"Eski Güney Arap"}
+        Saur{"Saurashtra"}
+        Sgnw{"İşaret Dili"}
+        Shaw{"Shavian"}
+        Shrd{"Sharada"}
+        Sidd{"Siddham"}
+        Sind{"Khudabadi"}
+        Sinh{"Seylan"}
+        Sora{"Sora Sompeng"}
+        Sund{"Sunda"}
+        Sylo{"Syloti Nagri"}
+        Syrc{"Süryani"}
+        Syre{"Estrangela Süryani"}
+        Syrj{"Batı Süryani"}
+        Syrn{"Doğu Süryani"}
+        Tagb{"Tagbanva"}
+        Takr{"Takri"}
+        Tale{"Tai Le"}
+        Talu{"New Tai Lue"}
+        Taml{"Tamil"}
+        Tang{"Tangut"}
+        Tavt{"Tai Viet"}
+        Telu{"Telugu"}
+        Teng{"Tengvar"}
+        Tfng{"Tifinagh"}
+        Tglg{"Takalot"}
+        Thaa{"Thaana"}
+        Thai{"Tay"}
+        Tibt{"Tibet"}
+        Tirh{"Tirhuta"}
+        Ugar{"Ugarit Çivi Yazısı"}
+        Vaii{"Vai"}
+        Visp{"Konuşma Sesleri Çizimlemesi"}
+        Wara{"Varang Kshiti"}
+        Wole{"Woleai"}
+        Xpeo{"Eski Fars"}
+        Xsux{"Sümer-Akad Çivi Yazısı"}
+        Yiii{"Yi"}
+        Zinh{"Kalıtsal"}
+        Zmth{"Matematiksel Gösterim"}
+        Zsym{"Sembol"}
+        Zxxx{"Yazılı Olmayan"}
+        Zyyy{"Ortak"}
+        Zzzz{"Bilinmeyen Alfabe"}
+    }
+    Scripts%stand-alone{
+        Hans{"Basitleştirilmiş Han"}
+        Hant{"Geleneksel Han"}
+    }
+    Scripts%variant{
+        Arab{"Fars-Arap"}
+    }
+    Version{"2.1.8.9"}
+    codePatterns{
+        language{"Dil: {0}"}
+        script{"Alfabe: {0}"}
+        territory{"Bölge: {0}"}
+    }
+    localeDisplayPattern{
+        keyTypePattern{"{0}: {1}"}
+        pattern{"{0} ({1})"}
+        separator{"{0}, {1}"}
+    }
+}

@@ -1,0 +1,1330 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/el.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/el.xml
+ */
+el{
+    AuxExemplarCharacters{
+        "[ἀ ἄ ἂ ἆ ἁ ἅ ἃ ἇ ὰ ᾶ ἐ ἔ ἒ ἑ ἕ ἓ ὲ ἠ ἤ ἢ ἦ ἡ ἥ ἣ ἧ ὴ ῆ ἰ ἴ ἲ ἶ ἱ ἵ ἳ ἷ ὶ ῖ ῒ"
+        " ῗ ὄ ὂ ὃ ὸ ὐ ὔ ὒ ὖ ὑ ὕ ὓ ὗ ὺ ῦ ῢ ῧ ὤ ὢ ὦ ὥ ὣ ὧ ὼ ῶ]"
+    }
+    Ellipsis{
+        final{"{0}…"}
+        initial{"…{0}"}
+        medial{"{0}…{1}"}
+        word-final{"{0} …"}
+        word-initial{"… {0}"}
+        word-medial{"{0} … {1}"}
+    }
+    ExemplarCharacters{"[α ά β γ δ ε έ ζ η ή θ ι ί ϊ ΐ κ λ μ ν ξ ο ό π ρ σ ς τ υ ύ ϋ ΰ φ χ ψ ω ώ]"}
+    ExemplarCharactersIndex{"[Α Β Γ Δ Ε Ζ Η Θ Ι Κ Λ Μ Ν Ξ Ο Π Ρ Σ Τ Υ Φ Χ Ψ Ω]"}
+    ExemplarCharactersPunctuation{"[\\- ‐ – — , ; \\: ! . … \u0022 « » ( ) \\[ \\] § @ * / \\\\ \\&]"}
+    LocaleScript{
+        "Grek",
+    }
+    MoreInformation{";"}
+    NumberElements{
+        default{"latn"}
+        latn{
+            miscPatterns{
+                atLeast{"{0}+"}
+                range{"{0}–{1}"}
+            }
+            patterns{
+                accountingFormat{"¤#,##0.00;(¤#,##0.00)"}
+                currencyFormat{"#,##0.00 ¤"}
+                decimalFormat{"#,##0.###"}
+                percentFormat{"#,##0%"}
+                scientificFormat{"#E0"}
+            }
+            patternsLong{
+                decimalFormat{
+                    1000{
+                        one{"0 χιλιάδα"}
+                        other{"0 χιλιάδες"}
+                    }
+                    10000{
+                        one{"00 χιλιάδες"}
+                        other{"00 χιλιάδες"}
+                    }
+                    100000{
+                        one{"000 χιλιάδες"}
+                        other{"000 χιλιάδες"}
+                    }
+                    1000000{
+                        one{"0 εκατομμύριο"}
+                        other{"0 εκατομμύρια"}
+                    }
+                    10000000{
+                        one{"00 εκατομμύρια"}
+                        other{"00 εκατομμύρια"}
+                    }
+                    100000000{
+                        one{"000 εκατομμύρια"}
+                        other{"000 εκατομμύρια"}
+                    }
+                    1000000000{
+                        one{"0 δισεκατομμύριο"}
+                        other{"0 δισεκατομμύρια"}
+                    }
+                    10000000000{
+                        one{"00 δισεκατομμύρια"}
+                        other{"00 δισεκατομμύρια"}
+                    }
+                    100000000000{
+                        one{"000 δισεκατομμύρια"}
+                        other{"000 δισεκατομμύρια"}
+                    }
+                    1000000000000{
+                        one{"0 τρισεκατομμύριο"}
+                        other{"0 τρισεκατομμύρια"}
+                    }
+                    10000000000000{
+                        one{"00 τρισεκατομμύρια"}
+                        other{"00 τρισεκατομμύρια"}
+                    }
+                    100000000000000{
+                        one{"000 τρισεκατομμύρια"}
+                        other{"000 τρισεκατομμύρια"}
+                    }
+                }
+            }
+            patternsShort{
+                decimalFormat{
+                    1000{
+                        one{"0 χιλ'.'"}
+                        other{"0 χιλ'.'"}
+                    }
+                    10000{
+                        one{"00 χιλ'.'"}
+                        other{"00 χιλ'.'"}
+                    }
+                    100000{
+                        one{"000 χιλ'.'"}
+                        other{"000 χιλ'.'"}
+                    }
+                    1000000{
+                        one{"0 εκ'.'"}
+                        other{"0 εκ'.'"}
+                    }
+                    10000000{
+                        one{"00 εκ'.'"}
+                        other{"00 εκ'.'"}
+                    }
+                    100000000{
+                        one{"000 εκ'.'"}
+                        other{"000 εκ'.'"}
+                    }
+                    1000000000{
+                        one{"0 δισ'.'"}
+                        other{"0 δισ'.'"}
+                    }
+                    10000000000{
+                        one{"00 δισ'.'"}
+                        other{"00 δισ'.'"}
+                    }
+                    100000000000{
+                        one{"000 δισ'.'"}
+                        other{"000 δισ'.'"}
+                    }
+                    1000000000000{
+                        one{"0 τρισ'.'"}
+                        other{"0 τρισ'.'"}
+                    }
+                    10000000000000{
+                        one{"00 τρισ'.'"}
+                        other{"00 τρισ'.'"}
+                    }
+                    100000000000000{
+                        one{"000 τρισ'.'"}
+                        other{"000 τρισ'.'"}
+                    }
+                }
+            }
+            symbols{
+                decimal{","}
+                exponential{"e"}
+                group{"."}
+                infinity{"∞"}
+                list{";"}
+                minusSign{"-"}
+                nan{"NaN"}
+                perMille{"‰"}
+                percentSign{"%"}
+                plusSign{"+"}
+                superscriptingExponent{"×"}
+                timeSeparator{":"}
+            }
+        }
+        minimumGroupingDigits{"1"}
+        native{"latn"}
+        traditional{"grek"}
+    }
+    Version{"2.1.8.9"}
+    calendar{
+        buddhist{
+            eras{
+                abbreviated{
+                    "BE",
+                }
+            }
+        }
+        generic{
+            DateTimePatterns{
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
+                "EEEE, d MMMM y G",
+                "d MMMM y G",
+                "d MMM y G",
+                "d/M/y GGGGG",
+                "{1} - {0}",
+                "{1} - {0}",
+                "{1} - {0}",
+                "{1} - {0}",
+                "{1} - {0}",
+            }
+            availableFormats{
+                Ed{"E d"}
+                Gy{"y G"}
+                GyMMM{"MMM y G"}
+                GyMMMEd{"E, d MMM y G"}
+                GyMMMd{"d MMM y G"}
+                H{"HH"}
+                HHmm{"HH:mm"}
+                HHmmss{"HH:mm:ss"}
+                Hm{"HH:mm"}
+                Hms{"HH:mm:ss"}
+                M{"L"}
+                MEd{"E, d/M"}
+                MMM{"LLL"}
+                MMMEd{"E, d MMM"}
+                MMMMEd{"E, d MMMM"}
+                MMMMd{"d MMMM"}
+                MMMd{"d MMM"}
+                Md{"d/M"}
+                d{"d"}
+                h{"h a"}
+                hm{"h:mm a"}
+                hms{"h:mm:ss a"}
+                ms{"mm:ss"}
+                y{"y G"}
+                yyyy{"y G"}
+                yyyyM{"M/y GGGGG"}
+                yyyyMEd{"E, d/M/y GGGGG"}
+                yyyyMMM{"MMM y G"}
+                yyyyMMMEd{"E, d MMM y G"}
+                yyyyMMMM{"MMMM y G"}
+                yyyyMMMd{"d MMM y G"}
+                yyyyMd{"d/M/y GGGGG"}
+                yyyyQQQ{"G y QQQ"}
+                yyyyQQQQ{"G y QQQQ"}
+            }
+            intervalFormats{
+                H{
+                    H{"HH–HH"}
+                }
+                Hm{
+                    H{"HH:mm–HH:mm"}
+                    m{"HH:mm–HH:mm"}
+                }
+                Hmv{
+                    H{"HH:mm–HH:mm v"}
+                    m{"HH:mm–HH:mm v"}
+                }
+                Hv{
+                    H{"HH–HH v"}
+                }
+                M{
+                    M{"M-M"}
+                }
+                MEd{
+                    M{"E, dd/MM - E, dd/MM"}
+                    d{"E, dd/MM - E, dd/MM"}
+                }
+                MMM{
+                    M{"MMM-MMM"}
+                }
+                MMMEd{
+                    M{"E, dd MMM - E, dd MMM"}
+                    d{"E, dd - E, dd MMM"}
+                }
+                MMMd{
+                    M{"dd MMM - dd MMM"}
+                    d{"dd-dd MMM"}
+                }
+                Md{
+                    M{"dd/MM - dd/MM"}
+                    d{"dd/MM - dd/MM"}
+                }
+                d{
+                    d{"d-d"}
+                }
+                fallback{"{0} - {1}"}
+                h{
+                    a{"h a - h a"}
+                    h{"h-h a"}
+                }
+                hm{
+                    a{"h:mm a - h:mm a"}
+                    h{"h:mm-h:mm a"}
+                    m{"h:mm-h:mm a"}
+                }
+                hmv{
+                    a{"h:mm a - h:mm a v"}
+                    h{"h:mm-h:mm a v"}
+                    m{"h:mm-h:mm a v"}
+                }
+                hv{
+                    a{"h a - h a v"}
+                    h{"h-h a v"}
+                }
+                y{
+                    y{"y-y G"}
+                }
+                yM{
+                    M{"MM/y - MM/y GGGGG"}
+                    y{"MM/y - MM/y GGGGG"}
+                }
+                yMEd{
+                    M{"E, dd/MM/y - E, dd/MM/y GGGGG"}
+                    d{"E, dd/MM/y - E, dd/MM/y GGGGG"}
+                    y{"E, dd/MM/y - E, dd/MM/y GGGGG"}
+                }
+                yMMM{
+                    M{"MMM-MMM y G"}
+                    y{"MMM y - MMM y G"}
+                }
+                yMMMEd{
+                    M{"E, dd MMM - E, dd MMM y G"}
+                    d{"E, dd - E, dd MMM y G"}
+                    y{"E, dd MMM y - E, dd MMM y G"}
+                }
+                yMMMM{
+                    M{"MMMM-MMMM y G"}
+                    y{"MMMM y - MMMM y G"}
+                }
+                yMMMd{
+                    M{"dd MMM - dd MMM y G"}
+                    d{"dd-dd MMM y G"}
+                    y{"dd MMM y - dd MMM y G"}
+                }
+                yMd{
+                    M{"dd/MM/y - dd/MM/y GGGGG"}
+                    d{"dd/MM/y - dd/MM/y GGGGG"}
+                    y{"dd/MM/y - dd/MM/y GGGGG"}
+                }
+            }
+        }
+        gregorian{
+            AmPmMarkers{
+                "π.μ.",
+                "μ.μ.",
+            }
+            AmPmMarkersNarrow{
+                "π",
+                "μ",
+            }
+            DateTimePatterns{
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
+                "EEEE, d MMMM y",
+                "d MMMM y",
+                "d MMM y",
+                "d/M/yy",
+                "{1}, {0}",
+                "{1} - {0}",
+                "{1} - {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+            NoonMarker{"μεσημέρι"}
+            NoonMarkerNarrow{"μεσ."}
+            appendItems{
+                Timezone{"{0} {1}"}
+            }
+            availableFormats{
+                E{"ccc"}
+                EHm{"E HH:mm"}
+                EHms{"E HH:mm:ss"}
+                Ed{"E d"}
+                Ehm{"E h:mm a"}
+                Ehms{"E h:mm:ss a"}
+                Gy{"y G"}
+                GyMMM{"LLL y G"}
+                GyMMMEd{"E, d MMM y G"}
+                GyMMMd{"d MMM y G"}
+                H{"HH"}
+                HHmm{"HH:mm"}
+                HHmmss{"HH:mm:ss"}
+                Hm{"HH:mm"}
+                Hms{"HH:mm:ss"}
+                M{"L"}
+                MEd{"E, d/M"}
+                MMM{"LLL"}
+                MMMEd{"E, d MMM"}
+                MMMMEd{"E, d MMMM"}
+                MMMMd{"d MMMM"}
+                MMMd{"d MMM"}
+                Md{"d/M"}
+                d{"d"}
+                h{"h a"}
+                hm{"h:mm a"}
+                hms{"h:mm:ss a"}
+                ms{"mm:ss"}
+                y{"y"}
+                yM{"M/y"}
+                yMEd{"E, d/M/y"}
+                yMMM{"MMM y"}
+                yMMMEd{"E, d MMM y"}
+                yMMMM{"MMMM y"}
+                yMMMd{"d MMM y"}
+                yMd{"d/M/y"}
+                yQQQ{"y QQQ"}
+                yQQQQ{"y QQQQ"}
+            }
+            dayNames{
+                format{
+                    abbreviated{
+                        "Κυρ",
+                        "Δευ",
+                        "Τρί",
+                        "Τετ",
+                        "Πέμ",
+                        "Παρ",
+                        "Σάβ",
+                    }
+                    narrow{
+                        "Κ",
+                        "Δ",
+                        "Τ",
+                        "Τ",
+                        "Π",
+                        "Π",
+                        "Σ",
+                    }
+                    short{
+                        "Κυ",
+                        "Δε",
+                        "Τρ",
+                        "Τε",
+                        "Πέ",
+                        "Πα",
+                        "Σά",
+                    }
+                    wide{
+                        "Κυριακή",
+                        "Δευτέρα",
+                        "Τρίτη",
+                        "Τετάρτη",
+                        "Πέμπτη",
+                        "Παρασκευή",
+                        "Σάββατο",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "Κυρ",
+                        "Δευ",
+                        "Τρί",
+                        "Τετ",
+                        "Πέμ",
+                        "Παρ",
+                        "Σάβ",
+                    }
+                    narrow{
+                        "Κ",
+                        "Δ",
+                        "Τ",
+                        "Τ",
+                        "Π",
+                        "Π",
+                        "Σ",
+                    }
+                    short{
+                        "Κυ",
+                        "Δε",
+                        "Τρ",
+                        "Τε",
+                        "Πέ",
+                        "Πα",
+                        "Σά",
+                    }
+                    wide{
+                        "Κυριακή",
+                        "Δευτέρα",
+                        "Τρίτη",
+                        "Τετάρτη",
+                        "Πέμπτη",
+                        "Παρασκευή",
+                        "Σάββατο",
+                    }
+                }
+            }
+            eras{
+                abbreviated{
+                    "π.Χ.",
+                    "μ.Χ.",
+                }
+                abbreviated%variant{
+                    "π.Κ.Χ.",
+                    "ΚΧ",
+                }
+                wide{
+                    "προ Χριστού",
+                    "μετά Χριστόν",
+                }
+                wide%variant{
+                    "πριν από την Κοινή Χρονολογία",
+                    "Κοινή Χρονολογία",
+                }
+            }
+            intervalFormats{
+                H{
+                    H{"HH–HH"}
+                }
+                Hm{
+                    H{"HH:mm–HH:mm"}
+                    m{"HH:mm–HH:mm"}
+                }
+                Hmv{
+                    H{"HH:mm–HH:mm v"}
+                    m{"HH:mm–HH:mm v"}
+                }
+                Hv{
+                    H{"HH–HH v"}
+                }
+                M{
+                    M{"M-M"}
+                }
+                MEd{
+                    M{"E, dd/MM - E, dd/MM"}
+                    d{"E, dd/MM - E, dd/MM"}
+                }
+                MMM{
+                    M{"MMM–MMM"}
+                }
+                MMMEd{
+                    M{"E, dd MMM - E, dd MMM"}
+                    d{"E, dd - E, dd MMM"}
+                }
+                MMMd{
+                    M{"dd MMM - dd MMM"}
+                    d{"dd-dd MMM"}
+                }
+                Md{
+                    M{"dd/MM - dd/MM"}
+                    d{"dd/MM - dd/MM"}
+                }
+                d{
+                    d{"d-d"}
+                }
+                fallback{"{0} - {1}"}
+                h{
+                    a{"h a - h a"}
+                    h{"h-h a"}
+                }
+                hm{
+                    a{"h:mm a - h:mm a"}
+                    h{"h:mm-h:mm a"}
+                    m{"h:mm-h:mm a"}
+                }
+                hmv{
+                    a{"h:mm a - h:mm a v"}
+                    h{"h:mm-h:mm a v"}
+                    m{"h:mm-h:mm a v"}
+                }
+                hv{
+                    a{"h a - h a v"}
+                    h{"h-h a v"}
+                }
+                y{
+                    y{"y-y"}
+                }
+                yM{
+                    M{"MM/y - MM/y"}
+                    y{"MM/y - MM/y"}
+                }
+                yMEd{
+                    M{"E, dd/MM/y - E, dd/MM/y"}
+                    d{"E, dd/MM/y - E, dd/MM/y"}
+                    y{"E, dd/MM/y - E, dd/MM/y"}
+                }
+                yMMM{
+                    M{"MMM-MMM y"}
+                    y{"MMM y - MMM y"}
+                }
+                yMMMEd{
+                    M{"E, dd MMM - E, dd MMM y"}
+                    d{"E, dd MMM - E, dd MMM y"}
+                    y{"E, dd MMM y - E, dd MMM y"}
+                }
+                yMMMM{
+                    M{"MMMM-MMMM y"}
+                    y{"MMMM y - MMMM y"}
+                }
+                yMMMd{
+                    M{"dd MMM - dd MMM y"}
+                    d{"dd-dd MMM y"}
+                    y{"dd MMM y - dd MMM y"}
+                }
+                yMd{
+                    M{"dd/MM/y - dd/MM/y"}
+                    d{"dd/MM/y - dd/MM/y"}
+                    y{"dd/MM/y - dd/MM/y"}
+                }
+            }
+            monthNames{
+                format{
+                    abbreviated{
+                        "Ιαν",
+                        "Φεβ",
+                        "Μαρ",
+                        "Απρ",
+                        "Μαΐ",
+                        "Ιουν",
+                        "Ιουλ",
+                        "Αυγ",
+                        "Σεπ",
+                        "Οκτ",
+                        "Νοε",
+                        "Δεκ",
+                    }
+                    narrow{
+                        "Ι",
+                        "Φ",
+                        "Μ",
+                        "Α",
+                        "Μ",
+                        "Ι",
+                        "Ι",
+                        "Α",
+                        "Σ",
+                        "Ο",
+                        "Ν",
+                        "Δ",
+                    }
+                    wide{
+                        "Ιανουαρίου",
+                        "Φεβρουαρίου",
+                        "Μαρτίου",
+                        "Απριλίου",
+                        "Μαΐου",
+                        "Ιουνίου",
+                        "Ιουλίου",
+                        "Αυγούστου",
+                        "Σεπτεμβρίου",
+                        "Οκτωβρίου",
+                        "Νοεμβρίου",
+                        "Δεκεμβρίου",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "Ιαν",
+                        "Φεβ",
+                        "Μάρ",
+                        "Απρ",
+                        "Μάι",
+                        "Ιούν",
+                        "Ιούλ",
+                        "Αύγ",
+                        "Σεπ",
+                        "Οκτ",
+                        "Νοέ",
+                        "Δεκ",
+                    }
+                    narrow{
+                        "Ι",
+                        "Φ",
+                        "Μ",
+                        "Α",
+                        "Μ",
+                        "Ι",
+                        "Ι",
+                        "Α",
+                        "Σ",
+                        "Ο",
+                        "Ν",
+                        "Δ",
+                    }
+                    wide{
+                        "Ιανουάριος",
+                        "Φεβρουάριος",
+                        "Μάρτιος",
+                        "Απρίλιος",
+                        "Μάιος",
+                        "Ιούνιος",
+                        "Ιούλιος",
+                        "Αύγουστος",
+                        "Σεπτέμβριος",
+                        "Οκτώβριος",
+                        "Νοέμβριος",
+                        "Δεκέμβριος",
+                    }
+                }
+            }
+            quarters{
+                format{
+                    abbreviated{
+                        "Τ1",
+                        "Τ2",
+                        "Τ3",
+                        "Τ4",
+                    }
+                    narrow{
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                    }
+                    wide{
+                        "1ο τρίμηνο",
+                        "2ο τρίμηνο",
+                        "3ο τρίμηνο",
+                        "4ο τρίμηνο",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "Τ1",
+                        "Τ2",
+                        "Τ3",
+                        "Τ4",
+                    }
+                    narrow{
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                    }
+                    wide{
+                        "1ο τρίμηνο",
+                        "2ο τρίμηνο",
+                        "3ο τρίμηνο",
+                        "4ο τρίμηνο",
+                    }
+                }
+            }
+        }
+        hebrew{
+            eras{
+                abbreviated{
+                    "AM",
+                }
+                wide{
+                    "AM",
+                }
+            }
+        }
+        japanese{
+            DateTimePatterns{
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
+                "EEEE, d MMMM, y G",
+                "d MMMM, y G",
+                "d MMM, y G",
+                "d/M/yy",
+                "{1} - {0}",
+                "{1} - {0}",
+                "{1} - {0}",
+                "{1} - {0}",
+                "{1} - {0}",
+            }
+            availableFormats{
+                Ed{"E d"}
+                Gy{"y G"}
+                MEd{"E, d/M"}
+                MMM{"LLL"}
+                MMMEd{"E, d MMM"}
+                MMMd{"d MMM"}
+                Md{"d/M"}
+                y{"y G"}
+                yM{"MM/y GGGGG"}
+                yMEd{"E, dd/MM/y GGGGG"}
+                yMMM{"LLL y GGGGG"}
+                yMMMEd{"E, d MMM, y G"}
+                yMMMd{"d MMM, y G"}
+                yMd{"dd/MM/y GGGGG"}
+                yQQQ{"y GGGGG QQQ"}
+            }
+        }
+        roc{
+            eras{
+                abbreviated{
+                    "Πριν R.O.C.",
+                    "R.O.C.",
+                }
+            }
+        }
+    }
+    contextTransforms{
+        relative:intvector{
+            1,
+            1,
+        }
+    }
+    delimiters{
+        alternateQuotationEnd{"\u0022"}
+        alternateQuotationStart{"\u0022"}
+        quotationEnd{"»"}
+        quotationStart{"«"}
+    }
+    durationUnits{
+        hm{"h:mm"}
+        hms{"h:mm:ss"}
+        ms{"m:ss"}
+    }
+    fields{
+        day{
+            dn{"Ημέρα"}
+            relative{
+                "-1"{"χθες"}
+                "-2"{"προχθές"}
+                "0"{"σήμερα"}
+                "1"{"αύριο"}
+                "2"{"μεθαύριο"}
+            }
+            relativeTime{
+                future{
+                    one{"σε {0} ημέρα"}
+                    other{"σε {0} ημέρες"}
+                }
+                past{
+                    one{"πριν από {0} ημέρα"}
+                    other{"πριν από {0} ημέρες"}
+                }
+            }
+        }
+        day-narrow{
+            dn{"ημέρα"}
+            relativeTime{
+                future{
+                    one{"σε {0} ημέρα"}
+                    other{"σε {0} ημέρες"}
+                }
+                past{
+                    one{"πριν από {0} ημέρα"}
+                    other{"πριν από {0} ημέρες"}
+                }
+            }
+        }
+        day-short{
+            dn{"ημέρα"}
+            relativeTime{
+                future{
+                    one{"σε {0} ημέρα"}
+                    other{"σε {0} ημέρες"}
+                }
+                past{
+                    one{"πριν από {0} ημέρα"}
+                    other{"πριν από {0} ημέρες"}
+                }
+            }
+        }
+        dayperiod{
+            dn{"π.μ./μ.μ."}
+        }
+        era{
+            dn{"Περίοδος"}
+        }
+        fri{
+            relative{
+                "-1"{"προηγούμενη Παρασκευή"}
+                "0"{"αυτήν την Παρασκευή"}
+                "1"{"επόμενη Παρασκευή"}
+            }
+        }
+        fri-narrow{
+            relative{
+                "-1"{"προηγ. Πα"}
+                "0"{"αυτήν την Πα"}
+                "1"{"επόμ. Πα"}
+            }
+        }
+        fri-short{
+            relative{
+                "-1"{"προηγ. Παρ."}
+                "0"{"αυτήν την Παρ."}
+                "1"{"επόμ. Παρ."}
+            }
+        }
+        hour{
+            dn{"Ώρα"}
+            relativeTime{
+                future{
+                    one{"σε {0} ώρα"}
+                    other{"σε {0} ώρες"}
+                }
+                past{
+                    one{"πριν από {0} ώρα"}
+                    other{"πριν από {0} ώρες"}
+                }
+            }
+        }
+        hour-narrow{
+            dn{"ώ"}
+            relativeTime{
+                future{
+                    one{"+{0} ώ"}
+                    other{"+{0} ώ"}
+                }
+                past{
+                    one{"-{0} ώ"}
+                    other{"-{0} ώ"}
+                }
+            }
+        }
+        hour-short{
+            dn{"ώρ."}
+            relativeTime{
+                future{
+                    one{"σε {0} ώρα"}
+                    other{"σε {0} ώρ."}
+                }
+                past{
+                    one{"πριν από {0} ώρα"}
+                    other{"πριν από {0} ώρ."}
+                }
+            }
+        }
+        minute{
+            dn{"Λεπτό"}
+            relativeTime{
+                future{
+                    one{"σε {0} λεπτό"}
+                    other{"σε {0} λεπτά"}
+                }
+                past{
+                    one{"πριν από {0} λεπτό"}
+                    other{"πριν από {0} λεπτά"}
+                }
+            }
+        }
+        minute-narrow{
+            dn{"λ"}
+            relativeTime{
+                future{
+                    one{"+{0} λ"}
+                    other{"+{0} λ"}
+                }
+                past{
+                    one{"-{0} λ"}
+                    other{"-{0} λ"}
+                }
+            }
+        }
+        minute-short{
+            dn{"λεπ."}
+            relativeTime{
+                future{
+                    one{"σε {0} λεπ."}
+                    other{"σε {0} λεπ."}
+                }
+                past{
+                    one{"πριν από {0} λεπ."}
+                    other{"πριν από {0} λεπ."}
+                }
+            }
+        }
+        mon{
+            relative{
+                "-1"{"προηγούμενη Δευτέρα"}
+                "0"{"αυτήν τη Δευτέρα"}
+                "1"{"επόμενη Δευτέρα"}
+            }
+        }
+        mon-narrow{
+            relative{
+                "-1"{"προηγ. Δε"}
+                "0"{"αυτήν τη Δε"}
+                "1"{"επόμ. Δε"}
+            }
+        }
+        mon-short{
+            relative{
+                "-1"{"προηγ. Δευτ."}
+                "0"{"αυτήν τη Δευτ."}
+                "1"{"επόμ. Δευτ."}
+            }
+        }
+        month{
+            dn{"Μήνας"}
+            relative{
+                "-1"{"προηγούμενος μήνας"}
+                "0"{"τρέχων μήνας"}
+                "1"{"επόμενος μήνας"}
+            }
+            relativeTime{
+                future{
+                    one{"σε {0} μήνα"}
+                    other{"σε {0} μήνες"}
+                }
+                past{
+                    one{"πριν από {0} μήνα"}
+                    other{"πριν από {0} μήνες"}
+                }
+            }
+        }
+        month-narrow{
+            dn{"μήν."}
+            relativeTime{
+                future{
+                    one{"+{0} μήν."}
+                    other{"+{0} μήν."}
+                }
+                past{
+                    one{"-{0} μήν."}
+                    other{"-{0} μήν."}
+                }
+            }
+        }
+        month-short{
+            dn{"μήν."}
+            relativeTime{
+                future{
+                    one{"σε {0} μήν."}
+                    other{"σε {0} μήν."}
+                }
+                past{
+                    one{"πριν από {0} μήν."}
+                    other{"πριν από {0} μήν."}
+                }
+            }
+        }
+        quarter{
+            dn{"Τρίμηνο"}
+            relativeTime{
+                future{
+                    one{"σε {0} τρίμηνο"}
+                    other{"σε {0} τρίμηνα"}
+                }
+                past{
+                    one{"πριν από {0} τρίμηνο"}
+                    other{"πριν από {0} τρίμηνα"}
+                }
+            }
+        }
+        quarter-narrow{
+            dn{"τρίμ."}
+            relativeTime{
+                future{
+                    one{"+{0} Τ"}
+                    other{"+{0} Τ"}
+                }
+                past{
+                    one{"-{0} Τ"}
+                    other{"-{0} Τ"}
+                }
+            }
+        }
+        quarter-short{
+            dn{"τρίμ."}
+            relativeTime{
+                future{
+                    one{"σε {0} τρίμ."}
+                    other{"σε {0} τρίμ."}
+                }
+                past{
+                    one{"πριν από {0} τρίμ."}
+                    other{"πριν από {0} τρίμ."}
+                }
+            }
+        }
+        sat{
+            relative{
+                "-1"{"προηγούμενο Σάββατο"}
+                "0"{"αυτό το Σάββατο"}
+                "1"{"επόμενο Σάββατο"}
+            }
+        }
+        sat-narrow{
+            relative{
+                "-1"{"προηγ. Σά"}
+                "0"{"αυτό το Σά"}
+                "1"{"επόμ. Σά"}
+            }
+        }
+        sat-short{
+            relative{
+                "-1"{"προηγ. Σάβ."}
+                "0"{"αυτό το Σάβ."}
+                "1"{"επόμ. Σάβ."}
+            }
+        }
+        second{
+            dn{"Δευτερόλεπτο"}
+            relative{
+                "0"{"τώρα"}
+            }
+            relativeTime{
+                future{
+                    one{"σε {0} δευτερόλεπτο"}
+                    other{"σε {0} δευτερόλεπτα"}
+                }
+                past{
+                    one{"πριν από {0} δευτερόλεπτο"}
+                    other{"πριν από {0} δευτερόλεπτα"}
+                }
+            }
+        }
+        second-narrow{
+            dn{"δ"}
+            relativeTime{
+                future{
+                    one{"+{0} δ"}
+                    other{"+{0} δ"}
+                }
+                past{
+                    one{"-{0} δ"}
+                    other{"-{0} δ"}
+                }
+            }
+        }
+        second-short{
+            dn{"δευτ."}
+            relativeTime{
+                future{
+                    one{"σε {0} δευτ."}
+                    other{"σε {0} δευτ."}
+                }
+                past{
+                    one{"πριν από {0} δευτ."}
+                    other{"πριν από {0} δευτ."}
+                }
+            }
+        }
+        sun{
+            relative{
+                "-1"{"προηγούμενη Κυριακή"}
+                "0"{"αυτήν την Κυριακή"}
+                "1"{"επόμενη Κυριακή"}
+            }
+        }
+        sun-narrow{
+            relative{
+                "-1"{"προηγ. Κυ"}
+                "0"{"αυτήν την Κυ"}
+                "1"{"επόμ. Κυ"}
+            }
+        }
+        sun-short{
+            relative{
+                "-1"{"προηγ. Κυρ."}
+                "0"{"αυτήν την Κυρ."}
+                "1"{"επόμ. Κυρ."}
+            }
+        }
+        thu{
+            relative{
+                "-1"{"επόμενη Πέμπτη"}
+                "0"{"αυτήν την Πέμπτη"}
+                "1"{"επόμενη Πέμπτη"}
+            }
+        }
+        thu-narrow{
+            relative{
+                "-1"{"προηγ. Πέ"}
+                "0"{"αυτήν την Πέ"}
+                "1"{"επόμ. Πέ"}
+            }
+        }
+        thu-short{
+            relative{
+                "-1"{"προηγ. Πέμ."}
+                "0"{"αυτήν την Πέμ."}
+                "1"{"επόμ. Πέμ."}
+            }
+        }
+        tue{
+            relative{
+                "-1"{"προηγούμενη Τρίτη"}
+                "0"{"αυτήν την Τρίτη"}
+                "1"{"επόμενη Τρίτη"}
+            }
+        }
+        tue-narrow{
+            relative{
+                "-1"{"προηγ. Τρ"}
+                "0"{"αυτήν την Τρ"}
+                "1"{"επόμ. Τρ"}
+            }
+        }
+        tue-short{
+            relative{
+                "-1"{"προηγ. Τρ."}
+                "0"{"αυτήν την Τρ."}
+                "1"{"επόμ. Τρ."}
+            }
+        }
+        wed{
+            relative{
+                "-1"{"προηγούμενη Τετάρτη"}
+                "0"{"αυτήν την Τετάρτη"}
+                "1"{"επόμενη Τετάρτη"}
+            }
+        }
+        wed-narrow{
+            relative{
+                "-1"{"προηγ. Τε"}
+                "0"{"αυτήν την Τε"}
+                "1"{"επόμ. Τε"}
+            }
+        }
+        wed-short{
+            relative{
+                "-1"{"προηγ. Τετ."}
+                "0"{"αυτήν την Τετ."}
+                "1"{"επόμ. Τετ."}
+            }
+        }
+        week{
+            dn{"Εβδομάδα"}
+            relative{
+                "-1"{"προηγούμενη εβδομάδα"}
+                "0"{"αυτήν την εβδομάδα"}
+                "1"{"επόμενη εβδομάδα"}
+            }
+            relativeTime{
+                future{
+                    one{"σε {0} εβδομάδα"}
+                    other{"σε {0} εβδομάδες"}
+                }
+                past{
+                    one{"πριν από {0} εβδομάδα"}
+                    other{"πριν από {0} εβδομάδες"}
+                }
+            }
+        }
+        week-narrow{
+            dn{"εβδ."}
+            relativeTime{
+                future{
+                    one{"+{0} εβδ."}
+                    other{"+{0} εβδ."}
+                }
+                past{
+                    one{"-{0} εβδ."}
+                    other{"-{0} εβδ."}
+                }
+            }
+        }
+        week-short{
+            dn{"εβδ."}
+            relativeTime{
+                future{
+                    one{"σε {0} εβδ."}
+                    other{"σε {0} εβδ."}
+                }
+                past{
+                    one{"πριν από {0} εβδ."}
+                    other{"πριν από {0} εβδ."}
+                }
+            }
+        }
+        weekday{
+            dn{"Ημέρα εβδομάδας"}
+        }
+        year{
+            dn{"Έτος"}
+            relative{
+                "-1"{"προηγούμενο έτος"}
+                "0"{"φέτος"}
+                "1"{"επόμενο έτος"}
+            }
+            relativeTime{
+                future{
+                    one{"σε {0} έτος"}
+                    other{"σε {0} έτη"}
+                }
+                past{
+                    one{"πριν από {0} έτος"}
+                    other{"πριν από {0} έτη"}
+                }
+            }
+        }
+        year-narrow{
+            dn{"έτ."}
+            relativeTime{
+                future{
+                    one{"+{0} έτος"}
+                    other{"+{0} έτη"}
+                }
+                past{
+                    one{"-{0} έτος"}
+                    other{"-{0} έτη"}
+                }
+            }
+        }
+        year-short{
+            dn{"έτ."}
+            relativeTime{
+                future{
+                    one{"σε {0} έτος"}
+                    other{"σε {0} έτη"}
+                }
+                past{
+                    one{"πριν από {0} έτος"}
+                    other{"πριν από {0} έτη"}
+                }
+            }
+        }
+        zone{
+            dn{"Ζώνη ώρας"}
+        }
+    }
+    listPattern{
+        standard{
+            2{"{0} και {1}"}
+            end{"{0} και {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        unit{
+            2{"{0} και {1}"}
+            end{"{0} και {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        unit-narrow{
+            2{"{0}, {1}"}
+            end{"{0}, {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        unit-short{
+            2{"{0}, {1}"}
+            end{"{0}, {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+    }
+    measurementSystemNames{
+        UK{"Βρετανικό"}
+        US{"Αγγλοσαξωνικό"}
+        metric{"Μετρικό"}
+    }
+    transformNames{
+        BGN{"BGN"}
+        Numeric{"Αριθμητικό"}
+        Tone{"Τόνος"}
+        UNGEGN{"UNGEGN"}
+        x-Accents{"Σημεία τονισμού"}
+        x-Fullwidth{"Πλήρους πλάτους"}
+        x-Halfwidth{"Μισού πλάτους"}
+        x-Jamo{"Τζάμο [Jamo]"}
+        x-Pinyin{"Πινγίν"}
+        x-Publishing{"Έκδοση"}
+    }
+}

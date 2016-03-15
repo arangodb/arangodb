@@ -1,0 +1,966 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/fy.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/fy.xml
+ */
+fy{
+    Currencies{
+        AED{
+            "AED",
+            "Verenigde Arabyske Emiraten-dirham",
+        }
+        AFN{
+            "AFN",
+            "Afghaanske afghani",
+        }
+        ALL{
+            "ALL",
+            "Albanese lek",
+        }
+        AMD{
+            "AMD",
+            "Armeense dram",
+        }
+        AOA{
+            "AOA",
+            "Angolese kwanza",
+        }
+        ARS{
+            "ARS",
+            "Argentynske peso",
+        }
+        AUD{
+            "AU$",
+            "Australyske dollar",
+        }
+        AZN{
+            "AZN",
+            "Azerbeidzjaanske manat",
+        }
+        BAM{
+            "BAM",
+            "Bosnyske convertibele mark",
+        }
+        BDT{
+            "BDT",
+            "Bengalese taka",
+        }
+        BGN{
+            "BGN",
+            "Bulgaarse lev",
+        }
+        BHD{
+            "BHD",
+            "Bahreinse dinar",
+        }
+        BND{
+            "BND",
+            "Bruneise dollar",
+        }
+        BOB{
+            "BOB",
+            "Boliviaanske boliviano",
+        }
+        BRL{
+            "R$",
+            "Braziliaanske real",
+        }
+        BWP{
+            "BWP",
+            "Botswaanske pula",
+        }
+        BYR{
+            "BYR",
+            "Wit-Russyske roebel",
+        }
+        CAD{
+            "C$",
+            "Canadese dollar",
+        }
+        CDF{
+            "CDF",
+            "Congolese frank",
+        }
+        CHF{
+            "CHF",
+            "Zwitserse frank",
+        }
+        CLP{
+            "CLP",
+            "Sileenske peso",
+        }
+        CNY{
+            "CN¥",
+            "Sineeske yuan renminbi",
+        }
+        COP{
+            "COP",
+            "Kolombiaanske peso",
+        }
+        CRC{
+            "CRC",
+            "Costaricaanske colón",
+        }
+        CZK{
+            "CZK",
+            "Tsjechyske kroon",
+        }
+        DKK{
+            "DKK",
+            "Deenske kroon",
+        }
+        DOP{
+            "DOP",
+            "Dominikaanske peso",
+        }
+        DZD{
+            "DZD",
+            "Algerynske dinar",
+        }
+        EGP{
+            "EGP",
+            "Egyptysk pûn",
+        }
+        ETB{
+            "ETB",
+            "Ethiopyske birr",
+        }
+        EUR{
+            "€",
+            "Euro",
+        }
+        GBP{
+            "£",
+            "Brits pûn sterling",
+        }
+        GEL{
+            "GEL",
+            "Georgyske lari",
+        }
+        GHS{
+            "GHS",
+            "Ghanese cedi",
+        }
+        GNF{
+            "GNF",
+            "Guinese franc",
+        }
+        GTQ{
+            "GTQ",
+            "Guatemalteekse quetzal",
+        }
+        HKD{
+            "HK$",
+            "Hongkongske dollar",
+        }
+        HNL{
+            "HNL",
+            "Hondurese lempira",
+        }
+        HRK{
+            "HRK",
+            "Kroatyske kuna",
+        }
+        HTG{
+            "HTG",
+            "Haïtiaanske gourde",
+        }
+        HUF{
+            "HUF",
+            "Hongaarse forint",
+        }
+        IDR{
+            "IDR",
+            "Indonesyske roepia",
+        }
+        ILS{
+            "₪",
+            "Israëlyske nieuwe shekel",
+        }
+        INR{
+            "Rs.",
+            "Indiase roepie",
+        }
+        IQD{
+            "IQD",
+            "Iraakse dinar",
+        }
+        IRR{
+            "IRR",
+            "Iraanske rial",
+        }
+        ISK{
+            "ISK",
+            "Yslânske kroon",
+        }
+        JMD{
+            "JMD",
+            "Jamaikaanske dollar",
+        }
+        JOD{
+            "JOD",
+            "Jordaanske dinar",
+        }
+        JPY{
+            "JP¥",
+            "Japanse yen",
+        }
+        KES{
+            "KES",
+            "Keniaanske shilling",
+        }
+        KGS{
+            "KGS",
+            "Kirgizyske som",
+        }
+        KHR{
+            "KHR",
+            "Kambodjaanske riel",
+        }
+        KRW{
+            "₩",
+            "Sûd-Koreaanske won",
+        }
+        KWD{
+            "KWD",
+            "Koeweitse dinar",
+        }
+        KZT{
+            "KZT",
+            "Kazachstaanske tenge",
+        }
+        LAK{
+            "LAK",
+            "Laotiaanske kip",
+        }
+        LBP{
+            "LBP",
+            "Libaneeske pûn",
+        }
+        LKR{
+            "LKR",
+            "Sri Lankaanske roepie",
+        }
+        LTL{
+            "LTL",
+            "Litouwse litas",
+        }
+        LYD{
+            "LYD",
+            "Libyske dinar",
+        }
+        MAD{
+            "MAD",
+            "Marokkaanske dirham",
+        }
+        MDL{
+            "MDL",
+            "Moldavyske leu",
+        }
+        MGA{
+            "MGA",
+            "Malagassyske ariary",
+        }
+        MKD{
+            "MKD",
+            "Macedonyske denar",
+        }
+        MNT{
+            "MNT",
+            "Mongoalske tugrik",
+        }
+        MRO{
+            "MRO",
+            "Mauritaanske ouguiya",
+        }
+        MUR{
+            "MUR",
+            "Mauritiaanske roepie",
+        }
+        MWK{
+            "MWK",
+            "Malawyske kwacha",
+        }
+        MXN{
+            "MX$",
+            "Meksikaanske peso",
+        }
+        MYR{
+            "MYR",
+            "Maleisyske ringgit",
+        }
+        MZN{
+            "MZN",
+            "Mozambikaanske metical",
+        }
+        NAD{
+            "NAD",
+            "Namibyske dollar",
+        }
+        NGN{
+            "NGN",
+            "Nigeriaanske naira",
+        }
+        NIO{
+            "NIO",
+            "Nicaraguaanske córdoba",
+        }
+        NOK{
+            "NOK",
+            "Noarske kroon",
+        }
+        NPR{
+            "NPR",
+            "Nepalese roepie",
+        }
+        NZD{
+            "NZ$",
+            "Nij-Seelânske dollar",
+        }
+        OMR{
+            "OMR",
+            "Omaanske rial",
+        }
+        PAB{
+            "PAB",
+            "Panamese balboa",
+        }
+        PEN{
+            "PEN",
+            "Peruaanske nieuwe sol",
+        }
+        PGK{
+            "PGK",
+            "Papuaanske kina",
+        }
+        PHP{
+            "PHP",
+            "Filipynske peso",
+        }
+        PKR{
+            "PKR",
+            "Pakistaanske roepie",
+        }
+        PLN{
+            "PLN",
+            "Poalske zloty",
+        }
+        PYG{
+            "PYG",
+            "Paraguayaanske guarani",
+        }
+        QAR{
+            "QAR",
+            "Katarese rial",
+        }
+        RON{
+            "RON",
+            "Roemeenske leu",
+        }
+        RSD{
+            "RSD",
+            "Servyske dinar",
+        }
+        RUB{
+            "RUB",
+            "Russyske roebel",
+        }
+        RWF{
+            "RWF",
+            "Rwandese frank",
+        }
+        SAR{
+            "SAR",
+            "Saoedi-Arabyske riyal",
+        }
+        SDG{
+            "SDG",
+            "Soedaneeske pûn",
+        }
+        SEK{
+            "SEK",
+            "Sweedske kroon",
+        }
+        SGD{
+            "SGD",
+            "Singaporese dollar",
+        }
+        SLL{
+            "SLL",
+            "Sierraleoonse leone",
+        }
+        SSP{
+            "SSP",
+            "Sûd-Soedaneeske pûn",
+        }
+        THB{
+            "฿",
+            "Thaise baht",
+        }
+        TJS{
+            "TJS",
+            "Tadzjikistaanske somoni",
+        }
+        TMT{
+            "TMT",
+            "Turkmeense manat",
+        }
+        TND{
+            "TND",
+            "Tunesyske dinar",
+        }
+        TRY{
+            "TRY",
+            "Turkse lira",
+        }
+        TTD{
+            "TTD",
+            "Trinidad en Tobago-dollar",
+        }
+        TWD{
+            "NT$",
+            "Nije Taiwanese dollar",
+        }
+        TZS{
+            "TZS",
+            "Tanzaniaanske shilling",
+        }
+        UAH{
+            "UAH",
+            "Oekraïense hryvnia",
+        }
+        UGX{
+            "UGX",
+            "Oegandese shilling",
+        }
+        USD{
+            "US$",
+            "Amerikaanske dollar",
+        }
+        UYU{
+            "UYU",
+            "Uruguayaanske peso",
+        }
+        UZS{
+            "UZS",
+            "Oezbekistaanske sum",
+        }
+        VEF{
+            "VEF",
+            "Fenezolaanske bolivar",
+        }
+        VND{
+            "₫",
+            "Fietnameeske dong",
+        }
+        XAF{
+            "FCFA",
+            "CFA-frank",
+        }
+        XDR{
+            "XDR",
+            "Special Drawing Rights",
+        }
+        XOF{
+            "CFA",
+            "CFA-franc BCEAO",
+        }
+        YER{
+            "YER",
+            "Jemenityske rial",
+        }
+        ZAR{
+            "ZAR",
+            "Sûd-Afrikaanske rand",
+        }
+        ZMW{
+            "ZMW",
+            "Sambiaanske kwacha",
+        }
+    }
+    CurrencyPlurals{
+        AED{
+            one{"VAE-dirham"}
+            other{"VAE-dirham"}
+        }
+        AFN{
+            one{"Afghaanske afghani"}
+            other{"Afghaanske afghani"}
+        }
+        ALL{
+            one{"Albanese lek"}
+            other{"Albanese lek"}
+        }
+        AMD{
+            one{"Armeense dram"}
+            other{"Armeense dram"}
+        }
+        AOA{
+            one{"Angolese kwanza"}
+            other{"Angolese kwanza"}
+        }
+        ARS{
+            one{"Argentynske peso"}
+            other{"Argentynske peso"}
+        }
+        AUD{
+            one{"Australyske dollar"}
+            other{"Australyske dollar"}
+        }
+        AZN{
+            one{"Azerbeidzjaanske manat"}
+            other{"Azerbeidzjaanske manat"}
+        }
+        BAM{
+            one{"Bosnyske convertibele mark"}
+            other{"Bosnyske convertibele mark"}
+        }
+        BDT{
+            one{"Bengalese taka"}
+            other{"Bengalese taka"}
+        }
+        BGN{
+            one{"Bulgaarse lev"}
+            other{"Bulgaarse leva"}
+        }
+        BHD{
+            one{"Bahreinse dinar"}
+            other{"Bahreinse dinar"}
+        }
+        BND{
+            one{"Bruneise dollar"}
+            other{"Bruneise dollar"}
+        }
+        BOB{
+            one{"Boliviaanske boliviano"}
+            other{"Boliviaanske boliviano"}
+        }
+        BRL{
+            one{"Braziliaanske real"}
+            other{"Braziliaanske real"}
+        }
+        BWP{
+            one{"Botswaanske pula"}
+            other{"Botswaanske pula"}
+        }
+        BYR{
+            one{"Wit-Russyske roebel"}
+            other{"Wit-Russyske roebel"}
+        }
+        CAD{
+            one{"Canadese dollar"}
+            other{"Canadese dollar"}
+        }
+        CDF{
+            one{"Congolese frank"}
+            other{"Congolese frank"}
+        }
+        CHF{
+            one{"Zwitserse frank"}
+            other{"Zwitserse frank"}
+        }
+        CLP{
+            one{"Sileenske peso"}
+            other{"Sileenske peso"}
+        }
+        CNY{
+            one{"Sineeske renminbi"}
+            other{"Sineeske renminbi"}
+        }
+        COP{
+            one{"Kolombiaanske peso"}
+            other{"Kolombiaanske peso"}
+        }
+        CRC{
+            one{"Costaricaanske colón"}
+            other{"Costaricaanske colón"}
+        }
+        CZK{
+            one{"Tsjechyske kroon"}
+            other{"Tsjechyske kronen"}
+        }
+        DKK{
+            one{"Deenske kroon"}
+            other{"Deenske kronen"}
+        }
+        DOP{
+            one{"Dominikaanske peso"}
+            other{"Dominikaanske peso"}
+        }
+        DZD{
+            one{"Algerynske dinar"}
+            other{"Algerynske dinar"}
+        }
+        EGP{
+            one{"Egyptysk pûn"}
+            other{"Egyptysk pûn"}
+        }
+        ETB{
+            one{"Ethiopyske birr"}
+            other{"Ethiopyske birr"}
+        }
+        EUR{
+            one{"euro"}
+            other{"euro"}
+        }
+        GBP{
+            one{"Brits pûn sterling"}
+            other{"Brits pûn sterling"}
+        }
+        GEL{
+            one{"Georgyske lari"}
+            other{"Georgyske lari"}
+        }
+        GHS{
+            one{"Ghanese cedi"}
+            other{"Ghanese cedi"}
+        }
+        GNF{
+            one{"Guinese franc"}
+            other{"Guinese franc"}
+        }
+        GTQ{
+            one{"Guatemalteekse quetzal"}
+            other{"Guatemalteekse quetzal"}
+        }
+        HKD{
+            one{"Hongkongske dollar"}
+            other{"Hongkongske dollar"}
+        }
+        HNL{
+            one{"Hondurese lempira"}
+            other{"Hondurese lempira"}
+        }
+        HRK{
+            one{"Kroatyske kuna"}
+            other{"Kroatyske kuna"}
+        }
+        HTG{
+            one{"Haïtiaanske gourde"}
+            other{"Haïtiaanske gourde"}
+        }
+        HUF{
+            one{"Hongaarse forint"}
+            other{"Hongaarse forint"}
+        }
+        IDR{
+            one{"Indonesyske roepia"}
+            other{"Indonesyske roepia"}
+        }
+        ILS{
+            one{"Israëlyske nieuwe shekel"}
+            other{"Israëlyske nieuwe shekel"}
+        }
+        INR{
+            one{"Indiase roepie"}
+            other{"Indiase roepie"}
+        }
+        IQD{
+            one{"Iraakse dinar"}
+            other{"Iraakse dinar"}
+        }
+        IRR{
+            one{"Iraanske rial"}
+            other{"Iraanske rial"}
+        }
+        ISK{
+            one{"Yslânske kroon"}
+            other{"Yslânske kronen"}
+        }
+        JMD{
+            one{"Jamaikaanske dollar"}
+            other{"Jamaikaanske dollar"}
+        }
+        JOD{
+            one{"Jordaanske dinar"}
+            other{"Jordaanske dinar"}
+        }
+        JPY{
+            one{"Japanse yen"}
+            other{"Japanse yen"}
+        }
+        KES{
+            one{"Keniaanske shilling"}
+            other{"Keniaanske shilling"}
+        }
+        KGS{
+            one{"Kirgizyske som"}
+            other{"Kirgizyske som"}
+        }
+        KHR{
+            one{"Kambodjaanske riel"}
+            other{"Kambodjaanske riel"}
+        }
+        KRW{
+            one{"Sûd-Koreaanske won"}
+            other{"Sûd-Koreaanske won"}
+        }
+        KWD{
+            one{"Koeweitse dinar"}
+            other{"Koeweitse dinar"}
+        }
+        KZT{
+            one{"Kazachstaanske tenge"}
+            other{"Kazachstaanske tenge"}
+        }
+        LAK{
+            one{"Laotiaanske kip"}
+            other{"Laotiaanske kip"}
+        }
+        LBP{
+            one{"Libaneeske pûn"}
+            other{"Libaneeske pûn"}
+        }
+        LKR{
+            one{"Sri Lankaanske roepie"}
+            other{"Sri Lankaanske roepie"}
+        }
+        LTL{
+            one{"Litouwse litas"}
+            other{"Litouwse litas"}
+        }
+        LYD{
+            one{"Libyske dinar"}
+            other{"Libyske dinar"}
+        }
+        MAD{
+            one{"Marokkaanske dirham"}
+            other{"Marokkaanske dirham"}
+        }
+        MDL{
+            one{"Moldavyske leu"}
+            other{"Moldavyske leu"}
+        }
+        MGA{
+            one{"Malagassyske ariary"}
+            other{"Malagassyske ariary"}
+        }
+        MKD{
+            one{"Macedonyske denar"}
+            other{"Macedonyske denar"}
+        }
+        MNT{
+            one{"Mongoalske tugrik"}
+            other{"Mongoalske tugrik"}
+        }
+        MRO{
+            one{"Mauritaanske ouguiya"}
+            other{"Mauritaanske ouguiya"}
+        }
+        MUR{
+            one{"Mauritiaanske roepie"}
+            other{"Mauritiaanske roepie"}
+        }
+        MWK{
+            one{"Malawyske kwacha"}
+            other{"Malawyske kwacha"}
+        }
+        MXN{
+            one{"Meksikaanske peso"}
+            other{"Meksikaanske peso"}
+        }
+        MYR{
+            one{"Maleisyske ringgit"}
+            other{"Maleisyske ringgit"}
+        }
+        MZN{
+            one{"Mozambikaanske metical"}
+            other{"Mozambikaanske metical"}
+        }
+        NAD{
+            one{"Namibyske dollar"}
+            other{"Namibyske dollar"}
+        }
+        NGN{
+            one{"Nigeriaanske naira"}
+            other{"Nigeriaanske naira"}
+        }
+        NIO{
+            one{"Nicaraguaanske córdoba"}
+            other{"Nicaraguaanske córdoba"}
+        }
+        NOK{
+            one{"Noarske kroon"}
+            other{"Noarske kronen"}
+        }
+        NPR{
+            one{"Nepalese roepie"}
+            other{"Nepalese roepie"}
+        }
+        NZD{
+            one{"Nij-Seelânske dollar"}
+            other{"Nij-Seelânske dollar"}
+        }
+        OMR{
+            one{"Omaanske rial"}
+            other{"Omaanske rial"}
+        }
+        PAB{
+            one{"Panamese balboa"}
+            other{"Panamese balboa"}
+        }
+        PEN{
+            one{"Peruaanske nieuwe sol"}
+            other{"Peruaanske nieuwe sol"}
+        }
+        PGK{
+            one{"Papuaanske kina"}
+            other{"Papuaanske kina"}
+        }
+        PHP{
+            one{"Filipynske peso"}
+            other{"Filipynske peso"}
+        }
+        PKR{
+            one{"Pakistaanske roepie"}
+            other{"Pakistaanske roepie"}
+        }
+        PLN{
+            one{"Poalske zloty"}
+            other{"Poalske zloty"}
+        }
+        PYG{
+            one{"Paraguayaanske guarani"}
+            other{"Paraguayaanske guarani"}
+        }
+        QAR{
+            one{"Katarese rial"}
+            other{"Katarese rial"}
+        }
+        RON{
+            one{"Roemeenske leu"}
+            other{"Roemeenske leu"}
+        }
+        RSD{
+            one{"Servyske dinar"}
+            other{"Servyske dinar"}
+        }
+        RUB{
+            one{"Russyske roebel"}
+            other{"Russyske roebel"}
+        }
+        RWF{
+            one{"Rwandese frank"}
+            other{"Rwandese frank"}
+        }
+        SAR{
+            one{"Saoedi-Arabyske riyal"}
+            other{"Saoedi-Arabyske riyal"}
+        }
+        SDG{
+            one{"Soedaneeske pûn"}
+            other{"Soedaneeske pûn"}
+        }
+        SEK{
+            one{"Sweedske kroon"}
+            other{"Sweedske kronen"}
+        }
+        SGD{
+            one{"Singaporese dollar"}
+            other{"Singaporese dollar"}
+        }
+        SLL{
+            one{"Sierraleoonse leone"}
+            other{"Sierraleoonse leone"}
+        }
+        SSP{
+            one{"Sûd-Soedaneeske pûn"}
+            other{"Sûd-Soedaneeske pûn"}
+        }
+        THB{
+            one{"Thaise baht"}
+            other{"Thaise baht"}
+        }
+        TJS{
+            one{"Tadzjikistaanske somoni"}
+            other{"Tadzjikistaanske somoni"}
+        }
+        TMT{
+            one{"Turkmeense manat"}
+            other{"Turkmeense manat"}
+        }
+        TND{
+            one{"Tunesyske dinar"}
+            other{"Tunesyske dinar"}
+        }
+        TRY{
+            one{"Turkse lira"}
+            other{"Turkse lira"}
+        }
+        TTD{
+            one{"Trinidad en Tobago-dollar"}
+            other{"Trinidad en Tobago-dollar"}
+        }
+        TWD{
+            one{"Nije Taiwanese dollar"}
+            other{"Nije Taiwanese dollar"}
+        }
+        TZS{
+            one{"Tanzaniaanske shilling"}
+            other{"Tanzaniaanske shilling"}
+        }
+        UAH{
+            one{"Oekraïense hryvnia"}
+            other{"Oekraïense hryvnia"}
+        }
+        UGX{
+            one{"Oegandese shilling"}
+            other{"Oegandese shilling"}
+        }
+        USD{
+            one{"Amerikaanske dollar"}
+            other{"Amerikaanske dollar"}
+        }
+        UYU{
+            one{"Uruguayaanske peso"}
+            other{"Uruguayaanske peso"}
+        }
+        UZS{
+            one{"Oezbekistaanske sum"}
+            other{"Oezbekistaanske sum"}
+        }
+        VEF{
+            one{"Fenezolaanske bolivar"}
+            other{"Fenezolaanske bolivar"}
+        }
+        VND{
+            one{"Fietnameeske dong"}
+            other{"Fietnameeske dong"}
+        }
+        XAF{
+            one{"CFA-frank"}
+            other{"CFA-frank"}
+        }
+        XDR{
+            one{"Special Drawing Rights"}
+            other{"Special Drawing Rights"}
+        }
+        XOF{
+            one{"CFA-franc BCEAO"}
+            other{"CFA-franc BCEAO"}
+        }
+        YER{
+            one{"Jemenityske rial"}
+            other{"Jemenityske rial"}
+        }
+        ZAR{
+            one{"Sûd-Afrikaanske rand"}
+            other{"Sûd-Afrikaanske rand"}
+        }
+        ZMW{
+            one{"Sambiaanske kwacha"}
+            other{"Sambiaanske kwacha"}
+        }
+    }
+    CurrencyUnitPatterns{
+        one{"{0} {1}"}
+        other{"{0} {1}"}
+    }
+    Version{"2.1.7.53"}
+}

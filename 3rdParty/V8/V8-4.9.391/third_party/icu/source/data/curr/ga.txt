@@ -1,0 +1,1357 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/ga.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/ga.xml
+ */
+ga{
+    Currencies{
+        AED{
+            "AED",
+            "Dirham Aontas na nÉimíríochtaí Arabacha",
+        }
+        AFN{
+            "AFN",
+            "Afghani na hAfganastáine",
+        }
+        ALL{
+            "ALL",
+            "Lek na hAlbáine",
+        }
+        AMD{
+            "AMD",
+            "Dram na hAirméine",
+        }
+        AOA{
+            "AOA",
+            "Kwanza Angóla",
+        }
+        ARS{
+            "ARS",
+            "Peso na hAirgintíne",
+        }
+        AUD{
+            "A$",
+            "Dollar na hAstráile",
+        }
+        AZN{
+            "AZN",
+            "Manat na hAsarbaiseáine",
+        }
+        BAM{
+            "BAM",
+            "Marg Inmhalartaithe na Boisnia-Heirseagaivéine",
+        }
+        BDT{
+            "BDT",
+            "Taka na Banglaidéise",
+        }
+        BGN{
+            "BGN",
+            "Lev na Bulgáire",
+        }
+        BHD{
+            "BHD",
+            "Dinar Bhairéin",
+        }
+        BND{
+            "BND",
+            "Dollar Bhrúiné",
+        }
+        BOB{
+            "BOB",
+            "Boliviano",
+        }
+        BRL{
+            "R$",
+            "Real na Brasaíle",
+        }
+        BWP{
+            "BWP",
+            "Pula na Botsuáine",
+        }
+        BYR{
+            "BYR",
+            "Rúbal na Bealarúise",
+        }
+        CAD{
+            "CA$",
+            "Dollar Cheanada",
+        }
+        CDF{
+            "CDF",
+            "Franc an Chongó",
+        }
+        CHF{
+            "CHF",
+            "Franc na hEilvéise",
+        }
+        CLP{
+            "CLP",
+            "Peso na Sile",
+        }
+        CNY{
+            "CN¥",
+            "Yuan na Síne",
+        }
+        COP{
+            "COP",
+            "Peso na Colóime",
+        }
+        CRC{
+            "CRC",
+            "Colón Chósta Ríce",
+        }
+        CZK{
+            "CZK",
+            "Koruna Phoblacht na Seice",
+        }
+        DKK{
+            "DKK",
+            "Coróin na Danmhairge",
+        }
+        DOP{
+            "DOP",
+            "Peso na Poblachta Doiminicí",
+        }
+        DZD{
+            "DZD",
+            "Dinar na hAilgéire",
+        }
+        EGP{
+            "EGP",
+            "Punt na hÉigipte",
+        }
+        ETB{
+            "ETB",
+            "Birr na hAetóipe",
+        }
+        EUR{
+            "€",
+            "Euro",
+        }
+        GBP{
+            "£",
+            "Punt Steirling",
+        }
+        GEL{
+            "GEL",
+            "Lari na Seoirsia",
+        }
+        GHS{
+            "GHS",
+            "Cedi Ghána",
+        }
+        GNF{
+            "GNF",
+            "Franc na Guine",
+        }
+        GTQ{
+            "GTQ",
+            "Quetzal Ghuatamala",
+        }
+        HKD{
+            "HK$",
+            "Dollar Hong Cong",
+        }
+        HNL{
+            "HNL",
+            "Lempira Hondúras",
+        }
+        HRK{
+            "HRK",
+            "Kuna na Cróite",
+        }
+        HTG{
+            "HTG",
+            "Gourde Háítí",
+        }
+        HUF{
+            "HUF",
+            "Forint na hUngáire",
+        }
+        IDR{
+            "IDR",
+            "Rupiah na hIndinéise",
+        }
+        ILS{
+            "₪",
+            "Seiceal Nua Iosrael",
+        }
+        INR{
+            "Rs.",
+            "Rúipí na hIndia",
+        }
+        IQD{
+            "IQD",
+            "Dinar na hIaráice",
+        }
+        IRR{
+            "IRR",
+            "Rial na hIaráine",
+        }
+        ISK{
+            "ISK",
+            "Króna na hÍoslainne",
+        }
+        JMD{
+            "JMD",
+            "Dollar na hIamáice",
+        }
+        JOD{
+            "JOD",
+            "Dinar na hIordáine",
+        }
+        JPY{
+            "¥",
+            "Yen na Seapáine",
+        }
+        KES{
+            "KES",
+            "Scilling na Céinia",
+        }
+        KGS{
+            "KGS",
+            "Som na Cirgeastáine",
+        }
+        KHR{
+            "KHR",
+            "Riel na Cambóide",
+        }
+        KRW{
+            "₩",
+            "Won na Cóiré Theas",
+        }
+        KWD{
+            "KWD",
+            "Dinar Chuáit",
+        }
+        KZT{
+            "KZT",
+            "Tenge na Casacstáine",
+        }
+        LAK{
+            "LAK",
+            "Kip Laos",
+        }
+        LBP{
+            "LBP",
+            "Punt na Liobáine",
+        }
+        LKR{
+            "LKR",
+            "Rúipí Shrí Lanca",
+        }
+        LTL{
+            "LTL",
+            "Litas na Liotuáine",
+        }
+        LYD{
+            "LYD",
+            "Dinar na Libia",
+        }
+        MAD{
+            "MAD",
+            "Dirham Mharacó",
+        }
+        MDL{
+            "MDL",
+            "Leu na Moldóive",
+        }
+        MGA{
+            "MGA",
+            "Ariary Mhadagascar",
+        }
+        MKD{
+            "MKD",
+            "Denar na Macadóine",
+        }
+        MNT{
+            "MNT",
+            "Tugrik na Mongóile",
+        }
+        MRO{
+            "MRO",
+            "Ouguiya na Máratáine",
+        }
+        MUR{
+            "MUR",
+            "Rúipí Oileán Mhuirís",
+        }
+        MWK{
+            "MWK",
+            "Kwacha na Maláive",
+        }
+        MXN{
+            "MX$",
+            "Peso Mheicsiceo",
+        }
+        MYR{
+            "MYR",
+            "Ringgit na Malaeisia",
+        }
+        MZN{
+            "MZN",
+            "Metical Mhósaimbíc",
+        }
+        NAD{
+            "NAD",
+            "Dollar na Namaibe",
+        }
+        NGN{
+            "NGN",
+            "Naira na Nigéire",
+        }
+        NIO{
+            "NIO",
+            "Córdoba Nicearagua",
+        }
+        NOK{
+            "NOK",
+            "Coróin na hIorua",
+        }
+        NPR{
+            "NPR",
+            "Rúipí Neipeal",
+        }
+        NZD{
+            "NZ$",
+            "Dollar na Nua-Shéalainne",
+        }
+        OMR{
+            "OMR",
+            "Rial Óman",
+        }
+        PAB{
+            "PAB",
+            "Balboa Phanama",
+        }
+        PEN{
+            "PEN",
+            "Nuevo Sol Pheiriú",
+        }
+        PGK{
+            "PGK",
+            "Kina Nua-Ghuine Phapua",
+        }
+        PHP{
+            "PHP",
+            "Peso na nOileán Filipíneach",
+        }
+        PKR{
+            "PKR",
+            "Rúipí na Pacastáine",
+        }
+        PLN{
+            "PLN",
+            "Zloty na Polainne",
+        }
+        PYG{
+            "PYG",
+            "Guaraní Pharagua",
+        }
+        QAR{
+            "QAR",
+            "Riyal Chatar",
+        }
+        RON{
+            "RON",
+            "Leu na Rómáine",
+        }
+        RSD{
+            "RSD",
+            "Dinar na Seirbia",
+        }
+        RUB{
+            "RUB",
+            "Rúbal na Rúise",
+        }
+        RWF{
+            "RWF",
+            "Franc Ruanda",
+        }
+        SAR{
+            "SAR",
+            "Riyal na hAraibe Sádaí",
+        }
+        SDG{
+            "SDG",
+            "Punt na Súdáine",
+        }
+        SEK{
+            "SEK",
+            "Coróin na Sualainne",
+        }
+        SGD{
+            "SGD",
+            "Dollar Shingeapór",
+        }
+        SLL{
+            "SLL",
+            "Leone Shiarra Leon",
+        }
+        SSP{
+            "SSP",
+            "Punt na Súdáine Theas",
+        }
+        THB{
+            "฿",
+            "Baht na Téalainne",
+        }
+        TJS{
+            "TJS",
+            "Somoni na Táidsíceastáine",
+        }
+        TMT{
+            "TMT",
+            "Manat na Tuircméanastáine",
+        }
+        TND{
+            "TND",
+            "Dinar na Túinéise",
+        }
+        TRY{
+            "TRY",
+            "Lira na Tuirce",
+        }
+        TTD{
+            "TTD",
+            "Dollar Oileán na Tríonóide agus Tobága",
+        }
+        TWD{
+            "NT$",
+            "Dollar Nua na Téaváine",
+        }
+        TZS{
+            "TZS",
+            "Scilling na Tansáine",
+        }
+        UAH{
+            "UAH",
+            "Hryvnia na hÚcráine",
+        }
+        UGX{
+            "UGX",
+            "Scilling Uganda",
+        }
+        USD{
+            "$",
+            "Dollar S.A.M.",
+        }
+        UYU{
+            "UYU",
+            "Peso Uragua",
+        }
+        UZS{
+            "UZS",
+            "Sum na hÚisbéiceastáine",
+        }
+        VEF{
+            "VEF",
+            "Bolívar Veiniséala",
+        }
+        VND{
+            "₫",
+            "Dong Vítneam",
+        }
+        XAF{
+            "FCFA",
+            "Franc CFA na hAfraice Láir",
+        }
+        XDR{
+            "XDR",
+            "Cearta Speisialta Tarraingthe",
+        }
+        XOF{
+            "CFA",
+            "Franc CFA Iarthar na hAfraice",
+        }
+        YER{
+            "YER",
+            "Rial Éimin",
+        }
+        ZAR{
+            "ZAR",
+            "Rand na hAfraice Theas",
+        }
+        ZMW{
+            "ZMW",
+            "Kwacha na Saimbia",
+        }
+    }
+    Currencies%narrow{
+        ARS{"$"}
+        AUD{"$"}
+        BDT{"৳"}
+        BND{"$"}
+        BRL{"R$"}
+        BYR{"р."}
+        CAD{"$"}
+        CLP{"$"}
+        CNY{"¥"}
+        COP{"$"}
+        CRC{"₡"}
+        DOP{"$"}
+        EUR{"€"}
+        GBP{"£"}
+        HKD{"$"}
+        ILS{"₪"}
+        INR{"₹"}
+        JMD{"$"}
+        JPY{"¥"}
+        KHR{"៛"}
+        KRW{"₩"}
+        KZT{"₸"}
+        LAK{"₭"}
+        MNT{"₮"}
+        MXN{"$"}
+        NAD{"$"}
+        NGN{"₦"}
+        NZD{"$"}
+        PHP{"₱"}
+        PYG{"₲"}
+        SGD{"$"}
+        SSP{"£"}
+        TRY{"₺"}
+        TTD{"$"}
+        TWD{"NT$"}
+        UAH{"₴"}
+        USD{"$"}
+        UYU{"$"}
+        VND{"₫"}
+    }
+    CurrencyPlurals{
+        AED{
+            few{"dhirham Aontas na nÉimíríochtaí Arabacha"}
+            many{"ndirham Aontas na nÉimíríochtaí Arabacha"}
+            one{"dirham Aontas na nÉimíríochtaí Arabacha"}
+            other{"dirham Aontas na nÉimíríochtaí Arabacha"}
+            two{"dhirham Aontas na nÉimíríochtaí Arabacha"}
+        }
+        AFN{
+            few{"afghani na hAfganastáine"}
+            many{"n-afghani na hAfganastáine"}
+            one{"afghani na hAfganastáine"}
+            other{"afghani na hAfganastáine"}
+            two{"afghani na hAfganastáine"}
+        }
+        ALL{
+            few{"lek na hAlbáine"}
+            many{"lek na hAlbáine"}
+            one{"lek na hAlbáine"}
+            other{"lek na hAlbáine"}
+            two{"lek na hAlbáine"}
+        }
+        AMD{
+            few{"dhram na hAirméine"}
+            many{"ndram na hAirméine"}
+            one{"dram na hAirméine"}
+            other{"dram na hAirméine"}
+            two{"dhram na hAirméine"}
+        }
+        AOA{
+            few{"kwanza Angóla"}
+            many{"kwanza Angóla"}
+            one{"kwanza Angóla"}
+            other{"kwanza Angóla"}
+            two{"kwanza Angóla"}
+        }
+        ARS{
+            few{"pheso na hAirgintíne"}
+            many{"bpeso na hAirgintíne"}
+            one{"pheso na hAirgintíne"}
+            other{"peso na hAirgintíne"}
+            two{"pheso na hAirgintíne"}
+        }
+        AUD{
+            few{"dhollar na hAstráile"}
+            many{"ndollar na hAstráile"}
+            one{"dollar na hAstráile"}
+            other{"dollar na hAstráile"}
+            two{"dhollar na hAstráile"}
+        }
+        AZN{
+            few{"mhanat na hAsarbaiseáine"}
+            many{"manat na hAsarbaiseáine"}
+            one{"mhanat na hAsarbaiseáine"}
+            other{"manat na hAsarbaiseáine"}
+            two{"mhanat na hAsarbaiseáine"}
+        }
+        BAM{
+            few{"mharg inmhalartaithe na Boisnia-Heirseagaivéine"}
+            many{"marg inmhalartaithe na Boisnia-Heirseagaivéine"}
+            one{"mharg inmhalartaithe na Boisnia-Heirseagaivéine"}
+            other{"marg inmhalartaithe na Boisnia-Heirseagaivéine"}
+            two{"mharg inmhalartaithe na Boisnia-Heirseagaivéine"}
+        }
+        BDT{
+            few{"thaka na Banglaidéise"}
+            many{"dtaka na Banglaidéise"}
+            one{"taka na Banglaidéise"}
+            other{"taka na Banglaidéise"}
+            two{"thaka na Banglaidéise"}
+        }
+        BGN{
+            few{"lev na Bulgáire"}
+            many{"lev na Bulgáire"}
+            one{"lev na Bulgáire"}
+            other{"lev na Bulgáire"}
+            two{"lev na Bulgáire"}
+        }
+        BHD{
+            few{"dhinar Bhairéin"}
+            many{"ndinar Bhairéin"}
+            one{"dinar Bhairéin"}
+            other{"dinar Bhairéin"}
+            two{"dhinar Bhairéin"}
+        }
+        BND{
+            few{"dhollar Bhrúiné"}
+            many{"ndollar Bhrúiné"}
+            one{"dollar Bhrúiné"}
+            other{"dollar Bhrúiné"}
+            two{"dhollar Bhrúiné"}
+        }
+        BOB{
+            few{"bholiviano"}
+            many{"mboliviano"}
+            one{"bholiviano"}
+            other{"boliviano"}
+            two{"bholiviano"}
+        }
+        BRL{
+            few{"real na Brasaíle"}
+            many{"real na Brasaíle"}
+            one{"real na Brasaíle"}
+            other{"real na Brasaíle"}
+            two{"real na Brasaíle"}
+        }
+        BWP{
+            few{"phula na Botsuáine"}
+            many{"bpula na Botsuáine"}
+            one{"phula na Botsuáine"}
+            other{"pula na Botsuáine"}
+            two{"phula na Botsuáine"}
+        }
+        BYR{
+            few{"rúbal na Bealarúise"}
+            many{"rúbal na Bealarúise"}
+            one{"rúbal na Bealarúise"}
+            other{"rúbal na Bealarúise"}
+            two{"rúbal na Bealarúise"}
+        }
+        CAD{
+            few{"dhollar Cheanada"}
+            many{"ndollar Cheanada"}
+            one{"dollar Cheanada"}
+            other{"dollar Cheanada"}
+            two{"dhollar Cheanada"}
+        }
+        CDF{
+            few{"fhranc an Chongó"}
+            many{"bhfranc an Chongó"}
+            one{"fhranc an Chongó"}
+            other{"franc an Chongó"}
+            two{"fhranc an Chongó"}
+        }
+        CHF{
+            few{"fhranc na hEilvéise"}
+            many{"bhfranc na hEilvéise"}
+            one{"fhranc na hEilvéise"}
+            other{"franc na hEilvéise"}
+            two{"fhranc na hEilvéise"}
+        }
+        CLP{
+            few{"pheso na Sile"}
+            many{"bpeso na Sile"}
+            one{"pheso na Sile"}
+            other{"peso na Sile"}
+            two{"pheso na Sile"}
+        }
+        CNY{
+            few{"yuan na Síne"}
+            many{"yuan na Síne"}
+            one{"yuan na Síne"}
+            other{"yuan na Síne"}
+            two{"yuan na Síne"}
+        }
+        COP{
+            few{"pheso na Colóime"}
+            many{"bpeso na Colóime"}
+            one{"pheso na Colóime"}
+            other{"peso na Colóime"}
+            two{"pheso na Colóime"}
+        }
+        CRC{
+            few{"cholón Chósta Ríce"}
+            many{"gcolón Chósta Ríce"}
+            one{"cholón Chósta Ríce"}
+            other{"colón Chósta Ríce"}
+            two{"cholón Chósta Ríce"}
+        }
+        CZK{
+            few{"koruna Phoblacht na Seice"}
+            many{"koruna Phoblacht na Seice"}
+            one{"koruna Phoblacht na Seice"}
+            other{"koruna Phoblacht na Seice"}
+            two{"koruna Phoblacht na Seice"}
+        }
+        DKK{
+            few{"choróin na Danmhairge"}
+            many{"gcoróin na Danmhairge"}
+            one{"choróin na Danmhairge"}
+            other{"coróin na Danmhairge"}
+            two{"choróin na Danmhairge"}
+        }
+        DOP{
+            few{"pheso na Poblachta Doiminicí"}
+            many{"bpeso na Poblachta Doiminicí"}
+            one{"pheso na Poblachta Doiminicí"}
+            other{"peso na Poblachta Doiminicí"}
+            two{"pheso na Poblachta Doiminicí"}
+        }
+        DZD{
+            few{"dhinar na hAilgéire"}
+            many{"ndinar na hAilgéire"}
+            one{"dinar na hAilgéire"}
+            other{"dinar na hAilgéire"}
+            two{"dhinar na hAilgéire"}
+        }
+        EGP{
+            few{"phunt na hÉigipte"}
+            many{"bpunt na hÉigipte"}
+            one{"phunt na hÉigipte"}
+            other{"punt na hÉigipte"}
+            two{"phunt na hÉigipte"}
+        }
+        ETB{
+            few{"bhirr na hAetóipe"}
+            many{"mbirr na hAetóipe"}
+            one{"bhirr na hAetóipe"}
+            other{"birr na hAetóipe"}
+            two{"bhirr na hAetóipe"}
+        }
+        EUR{
+            few{"euro"}
+            many{"euro"}
+            one{"euro"}
+            other{"euro"}
+            two{"euro"}
+        }
+        GBP{
+            few{"phunt steirling"}
+            many{"bpunt steirling"}
+            one{"phunt steirling"}
+            other{"punt steirling"}
+            two{"phunt steirling"}
+        }
+        GEL{
+            few{"lari na Seoirsia"}
+            many{"lari na Seoirsia"}
+            one{"lari na Seoirsia"}
+            other{"lari na Seoirsia"}
+            two{"lari na Seoirsia"}
+        }
+        GHS{
+            few{"chedi Ghána"}
+            many{"gcedi Ghána"}
+            one{"chedi Ghána"}
+            other{"cedi Ghána"}
+            two{"chedi Ghána"}
+        }
+        GNF{
+            few{"fhranc na Guine"}
+            many{"bhfranc na Guine"}
+            one{"fhranc na Guine"}
+            other{"franc na Guine"}
+            two{"fhranc na Guine"}
+        }
+        GTQ{
+            few{"quetzal Ghuatamala"}
+            many{"quetzal Ghuatamala"}
+            one{"quetzal Ghuatamala"}
+            other{"quetzal Ghuatamala"}
+            two{"quetzal Ghuatamala"}
+        }
+        HKD{
+            few{"dhollar Hong Cong"}
+            many{"ndollar Hong Cong"}
+            one{"dollar Hong Cong"}
+            other{"dollar Hong Cong"}
+            two{"dhollar Hong Cong"}
+        }
+        HNL{
+            few{"lempira Hondúras"}
+            many{"lempira Hondúras"}
+            one{"lempira Hondúras"}
+            other{"lempira Hondúras"}
+            two{"lempira Hondúras"}
+        }
+        HRK{
+            few{"kuna na Cróite"}
+            many{"kuna na Cróite"}
+            one{"kuna na Cróite"}
+            other{"kuna na Cróite"}
+            two{"kuna na Cróite"}
+        }
+        HTG{
+            few{"ghourde Háítí"}
+            many{"ngourde Háítí"}
+            one{"ghourde Háítí"}
+            other{"gourde Háítí"}
+            two{"ghourde Háítí"}
+        }
+        HUF{
+            few{"fhorint na hUngáire"}
+            many{"bhforint na hUngáire"}
+            one{"fhorint na hUngáire"}
+            other{"forint na hUngáire"}
+            two{"fhorint na hUngáire"}
+        }
+        IDR{
+            few{"rupiah na hIndinéise"}
+            many{"rupiah na hIndinéise"}
+            one{"rupiah na hIndinéise"}
+            other{"rupiah na hIndinéise"}
+            two{"rupiah na hIndinéise"}
+        }
+        ILS{
+            few{"sheiceal nua Iosrael"}
+            many{"seiceal nua Iosrael"}
+            one{"seiceal nua Iosrael"}
+            other{"seiceal nua Iosrael"}
+            two{"sheiceal nua Iosrael"}
+        }
+        INR{
+            few{"rúipí na hIndia"}
+            many{"rúipí na hIndia"}
+            one{"rúipí na hIndia"}
+            other{"rúipí na hIndia"}
+            two{"rúipí na hIndia"}
+        }
+        IQD{
+            few{"dhinar na hIaráice"}
+            many{"ndinar na hIaráice"}
+            one{"dinar na hIaráice"}
+            other{"dinar na hIaráice"}
+            two{"dhinar na hIaráice"}
+        }
+        IRR{
+            few{"rial na hIaráine"}
+            many{"rial na hIaráine"}
+            one{"rial na hIaráine"}
+            other{"rial na hIaráine"}
+            two{"rial na hIaráine"}
+        }
+        ISK{
+            few{"króna na hÍoslainne"}
+            many{"króna na hÍoslainne"}
+            one{"króna na hÍoslainne"}
+            other{"króna na hÍoslainne"}
+            two{"króna na hÍoslainne"}
+        }
+        JMD{
+            few{"dhollar na hIamáice"}
+            many{"ndollar na hIamáice"}
+            one{"dollar na hIamáice"}
+            other{"dollar na hIamáice"}
+            two{"dhollar na hIamáice"}
+        }
+        JOD{
+            few{"dhinar na hIordáine"}
+            many{"ndinar na hIordáine"}
+            one{"dinar na hIordáine"}
+            other{"dinar na hIordáine"}
+            two{"dhinar na hIordáine"}
+        }
+        JPY{
+            few{"yen na Seapáine"}
+            many{"yen na Seapáine"}
+            one{"yen na Seapáine"}
+            other{"yen na Seapáine"}
+            two{"yen na Seapáine"}
+        }
+        KES{
+            few{"scilling na Céinia"}
+            many{"scilling na Céinia"}
+            one{"scilling na Céinia"}
+            other{"scilling na Céinia"}
+            two{"scilling na Céinia"}
+        }
+        KGS{
+            few{"shom na Cirgeastáine"}
+            many{"som na Cirgeastáine"}
+            one{"som na Cirgeastáine"}
+            other{"som na Cirgeastáine"}
+            two{"shom na Cirgeastáine"}
+        }
+        KHR{
+            few{"riel na Cambóide"}
+            many{"riel na Cambóide"}
+            one{"riel na Cambóide"}
+            other{"riel na Cambóide"}
+            two{"riel na Cambóide"}
+        }
+        KRW{
+            few{"won na Cóiré Theas"}
+            many{"won na Cóiré Theas"}
+            one{"won na Cóiré Theas"}
+            other{"won na Cóiré Theas"}
+            two{"won na Cóiré Theas"}
+        }
+        KWD{
+            few{"dhinar Chuáit"}
+            many{"ndinar Chuáit"}
+            one{"dinar Chuáit"}
+            other{"dinar Chuáit"}
+            two{"dhinar Chuáit"}
+        }
+        KZT{
+            few{"thenge na Casacstáine"}
+            many{"dtenge na Casacstáine"}
+            one{"tenge na Casacstáine"}
+            other{"tenge na Casacstáine"}
+            two{"thenge na Casacstáine"}
+        }
+        LAK{
+            few{"kip Laos"}
+            many{"kip Laos"}
+            one{"kip Laos"}
+            other{"kip Laos"}
+            two{"kip Laos"}
+        }
+        LBP{
+            few{"phunt na Liobáine"}
+            many{"bpunt na Liobáine"}
+            one{"phunt na Liobáine"}
+            other{"punt na Liobáine"}
+            two{"phunt na Liobáine"}
+        }
+        LKR{
+            few{"rúipí Shrí Lanca"}
+            many{"rúipí Shrí Lanca"}
+            one{"rúipí Shrí Lanca"}
+            other{"rúipí Shrí Lanca"}
+            two{"rúipí Shrí Lanca"}
+        }
+        LTL{
+            few{"litas na Liotuáine"}
+            many{"litas na Liotuáine"}
+            one{"litas na Liotuáine"}
+            other{"litas na Liotuáine"}
+            two{"litas na Liotuáine"}
+        }
+        LYD{
+            few{"dhinar na Libia"}
+            many{"ndinar na Libia"}
+            one{"dinar na Libia"}
+            other{"dinar na Libia"}
+            two{"dhinar na Libia"}
+        }
+        MAD{
+            few{"dhirham Mharacó"}
+            many{"ndirham Mharacó"}
+            one{"dirham Mharacó"}
+            other{"dirham Mharacó"}
+            two{"dhirham Mharacó"}
+        }
+        MDL{
+            few{"leu na Moldóive"}
+            many{"leu na Moldóive"}
+            one{"leu na Moldóive"}
+            other{"leu na Moldóive"}
+            two{"leu na Moldóive"}
+        }
+        MGA{
+            few{"ariary Mhadagascar"}
+            many{"n-ariary Mhadagascar"}
+            one{"ariary Mhadagascar"}
+            other{"ariary Mhadagascar"}
+            two{"ariary Mhadagascar"}
+        }
+        MKD{
+            few{"dhenar na Macadóine"}
+            many{"ndenar na Macadóine"}
+            one{"denar na Macadóine"}
+            other{"denar na Macadóine"}
+            two{"dhenar na Macadóine"}
+        }
+        MNT{
+            few{"thugrik na Mongóile"}
+            many{"dtugrik na Mongóile"}
+            one{"tugrik na Mongóile"}
+            other{"tugrik na Mongóile"}
+            two{"thugrik na Mongóile"}
+        }
+        MRO{
+            few{"ouguiya na Máratáine"}
+            many{"n-ouguiya na Máratáine"}
+            one{"ouguiya na Máratáine"}
+            other{"ouguiya na Máratáine"}
+            two{"ouguiya na Máratáine"}
+        }
+        MUR{
+            few{"rúipí Oileán Mhuirís"}
+            many{"rúipí Oileán Mhuirís"}
+            one{"rúipí Oileán Mhuirís"}
+            other{"rúipí Oileán Mhuirís"}
+            two{"rúipí Oileán Mhuirís"}
+        }
+        MWK{
+            few{"kwacha na Maláive"}
+            many{"kwacha na Maláive"}
+            one{"kwacha na Maláive"}
+            other{"kwacha na Maláive"}
+            two{"kwacha na Maláive"}
+        }
+        MXN{
+            few{"pheso Mheicsiceo"}
+            many{"bpeso Mheicsiceo"}
+            one{"pheso Mheicsiceo"}
+            other{"peso Mheicsiceo"}
+            two{"pheso Mheicsiceo"}
+        }
+        MYR{
+            few{"ringgit na Malaeisia"}
+            many{"ringgit na Malaeisia"}
+            one{"ringgit na Malaeisia"}
+            other{"ringgit na Malaeisia"}
+            two{"ringgit na Malaeisia"}
+        }
+        MZN{
+            few{"mhetical Mhósaimbíc"}
+            many{"metical Mhósaimbíc"}
+            one{"mhetical Mhósaimbíc"}
+            other{"metical Mhósaimbíc"}
+            two{"mhetical Mhósaimbíc"}
+        }
+        NAD{
+            few{"dhollar na Namaibe"}
+            many{"ndollar na Namaibe"}
+            one{"dollar na Namaibe"}
+            other{"dollar na Namaibe"}
+            two{"dhollar na Namaibe"}
+        }
+        NGN{
+            few{"naira na Nigéire"}
+            many{"naira na Nigéire"}
+            one{"naira na Nigéire"}
+            other{"naira na Nigéire"}
+            two{"naira na Nigéire"}
+        }
+        NIO{
+            few{"chórdoba Nicearagua"}
+            many{"gcórdoba Nicearagua"}
+            one{"chórdoba Nicearagua"}
+            other{"córdoba Nicearagua"}
+            two{"chórdoba Nicearagua"}
+        }
+        NOK{
+            few{"choróin na hIorua"}
+            many{"gcoróin na hIorua"}
+            one{"choróin na hIorua"}
+            other{"coróin na hIorua"}
+            two{"choróin na hIorua"}
+        }
+        NPR{
+            few{"rúipí Neipeal"}
+            many{"rúipí Neipeal"}
+            one{"rúipí Neipeal"}
+            other{"rúipí Neipeal"}
+            two{"rúipí Neipeal"}
+        }
+        NZD{
+            few{"dhollar na Nua-Shéalainne"}
+            many{"ndollar na Nua-Shéalainne"}
+            one{"dollar na Nua-Shéalainne"}
+            other{"dollar na Nua-Shéalainne"}
+            two{"dhollar na Nua-Shéalainne"}
+        }
+        OMR{
+            few{"rial Óman"}
+            many{"rial Óman"}
+            one{"rial Óman"}
+            other{"rial Óman"}
+            two{"rial Óman"}
+        }
+        PAB{
+            few{"bhalboa Phanama"}
+            many{"mbalboa Phanama"}
+            one{"bhalboa Phanama"}
+            other{"balboa Phanama"}
+            two{"bhalboa Phanama"}
+        }
+        PEN{
+            few{"nuevo sol Pheiriú"}
+            many{"nuevo sol Pheiriú"}
+            one{"nuevo sol Pheiriú"}
+            other{"nuevo sol Pheiriú"}
+            two{"nuevo sol Pheiriú"}
+        }
+        PGK{
+            few{"kina Nua-Ghuine Phapua"}
+            many{"kina Nua-Ghuine Phapua"}
+            one{"kina Nua-Ghuine Phapua"}
+            other{"kina Nua-Ghuine Phapua"}
+            two{"kina Nua-Ghuine Phapua"}
+        }
+        PHP{
+            few{"pheso na nOileán Filipíneach"}
+            many{"bpeso na nOileán Filipíneach"}
+            one{"pheso na nOileán Filipíneach"}
+            other{"peso na nOileán Filipíneach"}
+            two{"pheso na nOileán Filipíneach"}
+        }
+        PKR{
+            few{"rúipí na Pacastáine"}
+            many{"rúipí na Pacastáine"}
+            one{"rúipí na Pacastáine"}
+            other{"rúipí na Pacastáine"}
+            two{"rúipí na Pacastáine"}
+        }
+        PLN{
+            few{"zloty na Polainne"}
+            many{"zloty na Polainne"}
+            one{"zloty na Polainne"}
+            other{"zloty na Polainne"}
+            two{"zloty na Polainne"}
+        }
+        PYG{
+            few{"ghuaraní Pharagua"}
+            many{"nguaraní Pharagua"}
+            one{"ghuaraní Pharagua"}
+            other{"guaraní Pharagua"}
+            two{"ghuaraní Pharagua"}
+        }
+        QAR{
+            few{"riyal Chatar"}
+            many{"riyal Chatar"}
+            one{"riyal Chatar"}
+            other{"riyal Chatar"}
+            two{"riyal Chatar"}
+        }
+        RON{
+            few{"leu na Rómáine"}
+            many{"leu na Rómáine"}
+            one{"leu na Rómáine"}
+            other{"leu na Rómáine"}
+            two{"leu na Rómáine"}
+        }
+        RSD{
+            few{"dhinar na Seirbia"}
+            many{"ndinar na Seirbia"}
+            one{"dinar na Seirbia"}
+            other{"dinar na Seirbia"}
+            two{"dhinar na Seirbia"}
+        }
+        RUB{
+            few{"rúbal na Rúise"}
+            many{"rúbal na Rúise"}
+            one{"rúbal na Rúise"}
+            other{"rúbal na Rúise"}
+            two{"rúbal na Rúise"}
+        }
+        RWF{
+            few{"fhranc Ruanda"}
+            many{"bhfranc Ruanda"}
+            one{"fhranc Ruanda"}
+            other{"franc Ruanda"}
+            two{"fhranc Ruanda"}
+        }
+        SAR{
+            few{"riyal na hAraibe Sádaí"}
+            many{"riyal na hAraibe Sádaí"}
+            one{"riyal na hAraibe Sádaí"}
+            other{"riyal na hAraibe Sádaí"}
+            two{"riyal na hAraibe Sádaí"}
+        }
+        SDG{
+            few{"phunt na Súdáine"}
+            many{"bpunt na Súdáine"}
+            one{"phunt na Súdáine"}
+            other{"punt na Súdáine"}
+            two{"phunt na Súdáine"}
+        }
+        SEK{
+            few{"choróin na Sualainne"}
+            many{"gcoróin na Sualainne"}
+            one{"choróin na Sualainne"}
+            other{"coróin na Sualainne"}
+            two{"choróin na Sualainne"}
+        }
+        SGD{
+            few{"dhollar Shingeapór"}
+            many{"ndollar Shingeapór"}
+            one{"dollar Shingeapór"}
+            other{"dollar Shingeapór"}
+            two{"dhollar Shingeapór"}
+        }
+        SLL{
+            few{"leone Shiarra Leon"}
+            many{"leone Shiarra Leon"}
+            one{"leone Shiarra Leon"}
+            other{"leone Shiarra Leon"}
+            two{"leone Shiarra Leon"}
+        }
+        SSP{
+            few{"phunt na Súdáine Theas"}
+            many{"bpunt na Súdáine Theas"}
+            one{"phunt na Súdáine Theas"}
+            other{"punt na Súdáine Theas"}
+            two{"phunt na Súdáine Theas"}
+        }
+        THB{
+            few{"bhaht na Téalainne"}
+            many{"mbaht na Téalainne"}
+            one{"bhaht na Téalainne"}
+            other{"baht na Téalainne"}
+            two{"bhaht na Téalainne"}
+        }
+        TJS{
+            few{"shomoni na Táidsíceastáine"}
+            many{"somoni na Táidsíceastáine"}
+            one{"somoni na Táidsíceastáine"}
+            other{"somoni na Táidsíceastáine"}
+            two{"shomoni na Táidsíceastáine"}
+        }
+        TMT{
+            few{"mhanat na Tuircméanastáine"}
+            many{"manat na Tuircméanastáine"}
+            one{"mhanat na Tuircméanastáine"}
+            other{"manat na Tuircméanastáine"}
+            two{"mhanat na Tuircméanastáine"}
+        }
+        TND{
+            few{"dhinar na Túinéise"}
+            many{"ndinar na Túinéise"}
+            one{"dinar na Túinéise"}
+            other{"dinar na Túinéise"}
+            two{"dhinar na Túinéise"}
+        }
+        TRY{
+            few{"lira na Tuirce"}
+            many{"lira na Tuirce"}
+            one{"lira na Tuirce"}
+            other{"lira na Tuirce"}
+            two{"lira na Tuirce"}
+        }
+        TTD{
+            few{"dhollar Oileán na Tríonóide agus Tobága"}
+            many{"ndollar Oileán na Tríonóide agus Tobága"}
+            one{"dollar Oileán na Tríonóide agus Tobága"}
+            other{"dollar Oileán na Tríonóide agus Tobága"}
+            two{"dhollar Oileán na Tríonóide agus Tobága"}
+        }
+        TWD{
+            few{"dhollar nua na Téaváine"}
+            many{"ndollar nua na Téaváine"}
+            one{"dollar nua na Téaváine"}
+            other{"dollar nua na Téaváine"}
+            two{"dhollar nua na Téaváine"}
+        }
+        TZS{
+            few{"scilling na Tansáine"}
+            many{"scilling na Tansáine"}
+            one{"scilling na Tansáine"}
+            other{"scilling na Tansáine"}
+            two{"scilling na Tansáine"}
+        }
+        UAH{
+            few{"hryvnia na hÚcráine"}
+            many{"hryvnia na hÚcráine"}
+            one{"hryvnia na hÚcráine"}
+            other{"hryvnia na hÚcráine"}
+            two{"hryvnia na hÚcráine"}
+        }
+        UGX{
+            few{"scilling Uganda"}
+            many{"scilling Uganda"}
+            one{"scilling Uganda"}
+            other{"scilling Uganda"}
+            two{"scilling Uganda"}
+        }
+        USD{
+            few{"dhollar S.A.M."}
+            many{"ndollar S.A.M."}
+            one{"dollar S.A.M."}
+            other{"dollar S.A.M."}
+            two{"dhollar S.A.M."}
+        }
+        UYU{
+            few{"pheso Uragua"}
+            many{"bpeso Uragua"}
+            one{"pheso Uragua"}
+            other{"peso Uragua"}
+            two{"pheso Uragua"}
+        }
+        UZS{
+            few{"shum na hÚisbéiceastáine"}
+            many{"sum na hÚisbéiceastáine"}
+            one{"sum na hÚisbéiceastáine"}
+            other{"sum na hÚisbéiceastáine"}
+            two{"shum na hÚisbéiceastáine"}
+        }
+        VEF{
+            few{"bholívar Veiniséala"}
+            many{"mbolívar Veiniséala"}
+            one{"bholívar Veiniséala"}
+            other{"bolívar Veiniséala"}
+            two{"bholívar Veiniséala"}
+        }
+        VND{
+            few{"dhong Vítneam"}
+            many{"ndong Vítneam"}
+            one{"dong Vítneam"}
+            other{"dong Vítneam"}
+            two{"dhong Vítneam"}
+        }
+        XAF{
+            few{"fhranc CFA na hAfraice Láir"}
+            many{"bhfranc CFA na hAfraice Láir"}
+            one{"fhranc CFA na hAfraice Láir"}
+            other{"franc CFA na hAfraice Láir"}
+            two{"fhranc CFA na hAfraice Láir"}
+        }
+        XOF{
+            few{"fhranc CFA Iarthar na hAfraice"}
+            many{"bhfranc CFA Iarthar na hAfraice"}
+            one{"fhranc CFA Iarthar na hAfraice"}
+            other{"franc CFA Iarthar na hAfraice"}
+            two{"fhranc CFA Iarthar na hAfraice"}
+        }
+        YER{
+            few{"rial Éimin"}
+            many{"rial Éimin"}
+            one{"rial Éimin"}
+            other{"rial Éimin"}
+            two{"rial Éimin"}
+        }
+        ZAR{
+            few{"rand na hAfraice Theas"}
+            many{"rand na hAfraice Theas"}
+            one{"rand na hAfraice Theas"}
+            other{"rand na hAfraice Theas"}
+            two{"rand na hAfraice Theas"}
+        }
+        ZMW{
+            few{"kwacha na Saimbia"}
+            many{"kwacha na Saimbia"}
+            one{"kwacha na Saimbia"}
+            other{"kwacha na Saimbia"}
+            two{"kwacha na Saimbia"}
+        }
+    }
+    CurrencyUnitPatterns{
+        few{"{0} {1}"}
+        many{"{0} {1}"}
+        one{"{0} {1}"}
+        other{"{0} {1}"}
+        two{"{0} {1}"}
+    }
+    Version{"2.1.8.9"}
+}

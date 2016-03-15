@@ -1,0 +1,242 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/kl.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/kl.xml
+ */
+kl{
+    AuxExemplarCharacters{"[]"}
+    ExemplarCharacters{
+        "[a á â ã b c d e é ê f g h i í î ĩ j k l m n o ô p q ĸ r s t u ú û ũ v w x y"
+        " z æ ø å]"
+    }
+    LocaleScript{
+        "Latn",
+    }
+    NumberElements{
+        latn{
+            patterns{
+                currencyFormat{"¤#,##0.00;¤-#,##0.00"}
+                percentFormat{"#,##0 %"}
+            }
+            symbols{
+                decimal{","}
+                group{"."}
+            }
+        }
+    }
+    Version{"2.1.6.69"}
+    calendar{
+        gregorian{
+            dayNames{
+                format{
+                    abbreviated{
+                        "sab",
+                        "ata",
+                        "mar",
+                        "pin",
+                        "sis",
+                        "tal",
+                        "arf",
+                    }
+                    short{
+                        "sab",
+                        "ata",
+                        "mar",
+                        "pin",
+                        "sis",
+                        "tal",
+                        "arf",
+                    }
+                    wide{
+                        "sabaat",
+                        "ataasinngorneq",
+                        "marlunngorneq",
+                        "pingasunngorneq",
+                        "sisamanngorneq",
+                        "tallimanngorneq",
+                        "arfininngorneq",
+                    }
+                }
+                stand-alone{
+                    short{
+                        "sab",
+                        "ata",
+                        "mar",
+                        "pin",
+                        "sis",
+                        "tal",
+                        "arf",
+                    }
+                    wide{
+                        "sabaat",
+                        "ataasinngorneq",
+                        "marlunngorneq",
+                        "pingasunngorneq",
+                        "sisamanngorneq",
+                        "tallimanngorneq",
+                        "arfininngorneq",
+                    }
+                }
+            }
+            monthNames{
+                format{
+                    abbreviated{
+                        "jan",
+                        "feb",
+                        "mar",
+                        "apr",
+                        "maj",
+                        "jun",
+                        "jul",
+                        "aug",
+                        "sep",
+                        "okt",
+                        "nov",
+                        "dec",
+                    }
+                    wide{
+                        "januari",
+                        "februari",
+                        "martsi",
+                        "aprili",
+                        "maji",
+                        "juni",
+                        "juli",
+                        "augustusi",
+                        "septemberi",
+                        "oktoberi",
+                        "novemberi",
+                        "decemberi",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "jan",
+                        "feb",
+                        "mar",
+                        "apr",
+                        "maj",
+                        "jun",
+                        "jul",
+                        "aug",
+                        "sep",
+                        "okt",
+                        "nov",
+                        "dec",
+                    }
+                    wide{
+                        "januari",
+                        "februari",
+                        "martsi",
+                        "aprili",
+                        "maji",
+                        "juni",
+                        "juli",
+                        "augustusi",
+                        "septemberi",
+                        "oktoberi",
+                        "novemberi",
+                        "decemberi",
+                    }
+                }
+            }
+        }
+    }
+    durationUnits{
+        hm{"h:mm"}
+        hms{"h:mm:ss"}
+        ms{"m:ss"}
+    }
+    fields{
+        day{
+            relativeTime{
+                future{
+                    one{"om {0} ulloq unnuarlu"}
+                    other{"om {0} ulloq unnuarlu"}
+                }
+                past{
+                    one{"for {0} ulloq unnuarlu siden"}
+                    other{"for {0} ulloq unnuarlu siden"}
+                }
+            }
+        }
+        hour{
+            relativeTime{
+                future{
+                    one{"om {0} nalunaaquttap-akunnera"}
+                    other{"om {0} nalunaaquttap-akunnera"}
+                }
+                past{
+                    one{"for {0} nalunaaquttap-akunnera siden"}
+                    other{"for {0} nalunaaquttap-akunnera siden"}
+                }
+            }
+        }
+        minute{
+            relativeTime{
+                future{
+                    one{"om {0} minutsi"}
+                    other{"om {0} minutsi"}
+                }
+                past{
+                    one{"for {0} minutsi siden"}
+                    other{"for {0} minutsi siden"}
+                }
+            }
+        }
+        month{
+            relativeTime{
+                future{
+                    one{"om {0} qaammat"}
+                    other{"om {0} qaammat"}
+                }
+                past{
+                    one{"for {0} qaammat siden"}
+                    other{"for {0} qaammat siden"}
+                }
+            }
+        }
+        second{
+            relativeTime{
+                future{
+                    one{"om {0} sekundi"}
+                    other{"om {0} sekundi"}
+                }
+                past{
+                    one{"for {0} sekundi siden"}
+                    other{"for {0} sekundi siden"}
+                }
+            }
+        }
+        week{
+            relativeTime{
+                future{
+                    one{"om {0} sapaatip-akunnera"}
+                    other{"om {0} sapaatip-akunnera"}
+                }
+                past{
+                    one{"for {0} sapaatip-akunnera siden"}
+                    other{"for {0} sapaatip-akunnera siden"}
+                }
+            }
+        }
+        year{
+            relativeTime{
+                future{
+                    one{"om {0} ukioq"}
+                    other{"om {0} ukioq"}
+                }
+                past{
+                    one{"for {0} ukioq siden"}
+                    other{"for {0} ukioq siden"}
+                }
+            }
+        }
+    }
+}

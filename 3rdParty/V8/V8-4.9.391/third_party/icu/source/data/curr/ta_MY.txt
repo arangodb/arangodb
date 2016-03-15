@@ -1,0 +1,21 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/ta_MY.xml
+// *
+// ***************************************************************************
+ta_MY{
+    Currencies{
+        MYR{
+            "RM",
+            "மலேசிய ரிங்கிட்",
+        }
+        SGD{
+            "S$",
+            "சிங்கப்பூர் டாலர்",
+        }
+    }
+    Version{"2.1.6.69"}
+}

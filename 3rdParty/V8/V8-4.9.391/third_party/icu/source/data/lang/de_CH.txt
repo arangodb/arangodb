@@ -1,0 +1,28 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/de_CH.xml
+// *
+// ***************************************************************************
+de_CH{
+    Keys{
+        colCaseFirst{"Sortierung nach Gross- bzw. Kleinbuchstaben"}
+        colCaseLevel{"Sortierung nach Gross- oder Kleinschreibung"}
+    }
+    Languages{
+        be{"Weissrussisch"}
+        prg{"Altpreussisch"}
+    }
+    Types{
+        colCaseFirst{
+            upper{"Grossbuchstaben zuerst aufführen"}
+        }
+        colCaseLevel{
+            no{"Ohne Gross-/Kleinschreibung sortieren"}
+            yes{"Nach Gross-/Kleinschreibung sortieren"}
+        }
+    }
+    Version{"2.1.8.21"}
+}

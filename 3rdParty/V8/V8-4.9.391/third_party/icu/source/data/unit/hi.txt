@@ -1,0 +1,179 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/hi.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/hi.xml
+ */
+hi{
+    Version{"2.1.8.9"}
+    units{
+        compound{
+            per{"{0} प्रति {1}"}
+        }
+        duration{
+            day{
+                dnam{"दिन"}
+                one{"{0} दिन"}
+                other{"{0} दिन"}
+            }
+            hour{
+                dnam{"घंटे"}
+                one{"{0} घंटा"}
+                other{"{0} घंटे"}
+                per{"{0} प्रति घंटा"}
+            }
+            microsecond{
+                dnam{"माइक्रोसेकंड"}
+                one{"{0} माइक्रोसेकंड"}
+                other{"{0} माइक्रोसेकंड"}
+            }
+            millisecond{
+                dnam{"मिलीसेकंड"}
+                one{"{0} मिलीसेकंड"}
+                other{"{0} मिलीसेकंड"}
+            }
+            minute{
+                dnam{"मिनट"}
+                one{"{0} मिनट"}
+                other{"{0} मिनट"}
+            }
+            month{
+                dnam{"माह"}
+                one{"{0} माह"}
+                other{"{0} माह"}
+            }
+            nanosecond{
+                dnam{"नैनो सेकंड"}
+                one{"{0} नैनो सेकंड"}
+                other{"{0} नैनो सेकंड"}
+            }
+            second{
+                dnam{"सेकंड"}
+                one{"{0} सेकंड"}
+                other{"{0} सेकंड"}
+                per{"{0} प्रति सेकंड"}
+            }
+            week{
+                dnam{"सप्ताह"}
+                one{"{0} सप्ताह"}
+                other{"{0} सप्ताह"}
+            }
+            year{
+                dnam{"वर्ष"}
+                one{"{0} वर्ष"}
+                other{"{0} वर्ष"}
+            }
+        }
+    }
+    unitsNarrow{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"दिन"}
+                one{"{0}दिन"}
+                other{"{0}दिन"}
+            }
+            hour{
+                dnam{"घंटा"}
+                one{"{0}घं."}
+                other{"{0}घं."}
+            }
+            millisecond{
+                dnam{"मि.से."}
+                one{"{0} मि.से."}
+                other{"{0} मि.से."}
+            }
+            minute{
+                dnam{"मिनट"}
+                one{"{0}मि."}
+                other{"{0}मि."}
+            }
+            month{
+                dnam{"माह"}
+                one{"{0}माह"}
+                other{"{0}माह"}
+            }
+            second{
+                dnam{"सेकंड"}
+                one{"{0}से."}
+                other{"{0}से."}
+            }
+            week{
+                dnam{"सप्ताह"}
+                one{"{0} सप्ताह"}
+                other{"{0} सप्ताह"}
+            }
+            year{
+                dnam{"वर्ष"}
+                one{"{0}वर्ष"}
+                other{"{0}वर्ष"}
+            }
+        }
+    }
+    unitsShort{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"दिन"}
+                one{"{0} दिन"}
+                other{"{0} दिन"}
+            }
+            hour{
+                dnam{"घंटे"}
+                one{"{0} घं."}
+                other{"{0} घं."}
+                per{"{0} प्र. घं."}
+            }
+            microsecond{
+                dnam{"मा॰ सेक॰"}
+                one{"{0} मा॰ से॰"}
+                other{"{0} मा॰ से॰"}
+            }
+            millisecond{
+                dnam{"मिलीसेकंड"}
+                one{"{0} मि.से."}
+                other{"{0} मि.से."}
+            }
+            minute{
+                dnam{"मिनट"}
+                one{"{0} मि."}
+                other{"{0} मि."}
+            }
+            month{
+                dnam{"माह"}
+                one{"{0} माह"}
+                other{"{0} माह"}
+            }
+            nanosecond{
+                dnam{"नैनो से."}
+                one{"{0} नैनो से."}
+                other{"{0} नैनो से."}
+            }
+            second{
+                dnam{"सेकंड"}
+                one{"{0} सेक."}
+                other{"{0} सेक."}
+                per{"{0} प्र. से."}
+            }
+            week{
+                dnam{"सप्ताह"}
+                one{"{0} सप्ताह"}
+                other{"{0} सप्ताह"}
+            }
+            year{
+                dnam{"वर्ष"}
+                one{"{0} वर्ष"}
+                other{"{0} वर्ष"}
+            }
+        }
+    }
+}

@@ -1,0 +1,71 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/sah.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/sah.xml
+ */
+sah{
+    Version{"2.1.7.53"}
+    units{
+        duration{
+            day{
+                dnam{"күн"}
+                other{"{0} күн"}
+            }
+            hour{
+                dnam{"чаас"}
+                other{"{0} чаас"}
+            }
+            minute{
+                dnam{"мүнүүтэ"}
+                other{"{0} мүнүүтэ"}
+            }
+            month{
+                dnam{"ый"}
+                other{"{0} ый"}
+            }
+            second{
+                dnam{"сөкүүндэ"}
+                other{"{0} сөкүүндэ"}
+            }
+            week{
+                dnam{"нэдиэлэ"}
+                other{"{0} нэдиэлэ"}
+            }
+            year{
+                dnam{"сыл"}
+                other{"{0} сыл"}
+            }
+        }
+    }
+    unitsShort{
+        duration{
+            day{
+                dnam{"күн"}
+            }
+            hour{
+                dnam{"чаас"}
+            }
+            minute{
+                dnam{"мүнүүтэ"}
+            }
+            month{
+                dnam{"ый"}
+            }
+            second{
+                dnam{"сөкүүндэ"}
+            }
+            week{
+                dnam{"нэдиэлэ"}
+            }
+            year{
+                dnam{"сыл"}
+            }
+        }
+    }
+}

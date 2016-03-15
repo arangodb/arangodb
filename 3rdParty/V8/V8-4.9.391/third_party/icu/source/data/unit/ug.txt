@@ -1,0 +1,128 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/ug.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/ug.xml
+ */
+ug{
+    Version{"2.1.7.39"}
+    units{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                one{"{0} كۈن"}
+                other{"{0} كۈن"}
+            }
+            hour{
+                one{"{0} سائەت"}
+                other{"{0} سائەت"}
+            }
+            millisecond{
+                one{"{0} مىللى سېكۇنت"}
+                other{"{0} مىللى سېكۇنت"}
+            }
+            minute{
+                one{"{0} مىنۇت"}
+                other{"{0} مىنۇت"}
+            }
+            month{
+                one{"{0} ئاي"}
+                other{"{0} ئاي"}
+            }
+            second{
+                one{"{0} سېكۇنت"}
+                other{"{0} سېكۇنت"}
+            }
+            week{
+                one{"{0} ھەپتە"}
+                other{"{0} ھەپتە"}
+            }
+            year{
+                one{"{0} يىل"}
+                other{"{0} يىل"}
+            }
+        }
+    }
+    unitsNarrow{
+        duration{
+            day{
+                one{"{0} كۈن"}
+                other{"{0} كۈن"}
+            }
+            hour{
+                one{"{0}h"}
+                other{"{0}h"}
+            }
+            millisecond{
+                one{"{0}ms"}
+                other{"{0}ms"}
+            }
+            minute{
+                one{"{0}m"}
+                other{"{0}m"}
+            }
+            month{
+                one{"{0} ئاي"}
+                other{"{0} ئاي"}
+            }
+            second{
+                one{"{0}s"}
+                other{"{0}s"}
+            }
+            week{
+                one{"{0} ھەپتە"}
+                other{"{0} ھەپتە"}
+            }
+            year{
+                one{"{0} يىل"}
+                other{"{0} يىل"}
+            }
+        }
+    }
+    unitsShort{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                one{"{0} كۈن"}
+                other{"{0} كۈن"}
+            }
+            hour{
+                one{"{0} سائەت"}
+                other{"{0} سائەت"}
+            }
+            millisecond{
+                one{"{0} مىللىسېكۇنت"}
+                other{"{0} مىللىسېكۇنت"}
+            }
+            minute{
+                one{"{0} مىنۇت"}
+                other{"{0} مىنۇت"}
+            }
+            month{
+                one{"{0} ئاي"}
+                other{"{0} ئاي"}
+            }
+            second{
+                one{"{0} سېكۇنت"}
+                other{"{0} سېكۇنت"}
+            }
+            week{
+                one{"{0} ھەپتە"}
+                other{"{0} ھەپتە"}
+            }
+            year{
+                one{"{0} يىل"}
+                other{"{0} يىل"}
+            }
+        }
+    }
+}

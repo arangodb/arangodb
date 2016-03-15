@@ -1,0 +1,63 @@
+<!--
+/*
+*******************************************************************************
+* Copyright (C) 2009-2014, International Business Machines Corporation and    *
+* others. All Rights Reserved.                                                *
+*******************************************************************************
+*/
+-->
+<deprecates>
+    <alias from="az_AZ" to="az_Latn_AZ"/>
+    <alias from="bs_BA" to="bs_Latn_BA" />
+    <alias from="en_NH" to="en_VU"/>
+    <alias from="en_RH" to="en_ZW"/>
+    <alias from="ha_GH" to="ha_Latn_GH"/>
+    <alias from="ha_NE" to="ha_Latn_NE"/>
+    <alias from="ha_NG" to="ha_Latn_NG"/>
+    <alias from="in" to="id"/>
+    <alias from="in_ID" to="id_ID"/>
+    <alias from="iw" to="he"/>
+    <alias from="iw_IL" to="he_IL"/>
+    <alias from="ja_JP_TRADITIONAL" to="ja_JP" rbpath="/calendar/default" value="japanese"/>
+    <alias from="kk_KZ" to="kk_Cyrl_KZ" />
+    <alias from="ky_KG" to="ky_Cyrl_KG" />
+    <alias from="ks_IN" to="ks_Arab_IN" />
+    <alias from="mo" to="ro_MD"/>
+    <alias from="mn_MN" to="mn_Cyrl_MN"/>
+    <alias from="ms_BN" to="ms_Latn_BN"/>
+    <alias from="ms_MY" to="ms_Latn_MY"/>
+    <alias from="ms_SG" to="ms_Latn_SG"/>
+    <alias from="no_NO" to="nb_NO"/>
+    <alias from="no_NO_NY" to="nn_NO"/>
+    <alias from="no" to="nb"/>
+    <alias from="pa_IN" to="pa_Guru_IN"/>
+    <alias from="pa_PK" to="pa_Arab_PK"/>
+    <alias from="sh" to="sr_Latn"/>
+    <alias from="sh_BA" to="sr_Latn_BA"/>
+    <alias from="sh_CS" to="sr_Latn_RS"/>
+    <alias from="sh_YU" to="sr_Latn_RS"/>
+    <alias from="shi_MA" to="shi_Tfng_MA"/>
+    <alias from="sr_BA" to="sr_Cyrl_BA"/>
+    <alias from="sr_CS" to="sr_Cyrl_RS"/>
+    <alias from="sr_ME" to="sr_Latn_ME"/>
+    <alias from="sr_RS" to="sr_Cyrl_RS"/>
+    <alias from="sr_XK" to="sr_Cyrl_XK"/>
+    <alias from="sr_YU" to="sr_Cyrl_RS"/>
+    <alias from="sr_Cyrl_YU" to="sr_Cyrl_RS"/>
+    <alias from="sr_Cyrl_CS" to="sr_Cyrl_RS"/>
+    <alias from="sr_Latn_YU" to="sr_Latn_RS"/>
+    <alias from="sr_Latn_CS" to="sr_Latn_RS"/>
+    <alias from="th_TH_TRADITIONAL" to="th_TH" rbpath="/calendar/default" value="buddhist"/>
+    <alias from="tl" to="fil"/>
+    <alias from="tl_PH" to="fil_PH"/>
+    <alias from="tzm_MA" to="tzm_Latn_MA"/>
+    <alias from="ug_CN" to="ug_Arab_CN" />
+    <alias from="uz_AF" to="uz_Arab_AF"/>
+    <alias from="uz_UZ" to="uz_Latn_UZ"/>
+    <alias from="vai_LR" to="vai_Vaii_LR"/>
+    <alias from="zh_CN" to="zh_Hans_CN"/>
+    <alias from="zh_HK" to="zh_Hant_HK"/>
+    <alias from="zh_MO" to="zh_Hant_MO"/>
+    <alias from="zh_SG" to="zh_Hans_SG"/>
+    <alias from="zh_TW" to="zh_Hant_TW"/>
+</deprecates>

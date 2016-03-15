@@ -1,0 +1,22 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/es_UY.xml
+// *
+// ***************************************************************************
+es_UY{
+    %%Parent{"es_419"}
+    Currencies{
+        USD{
+            "US$",
+            "dólar estadounidense",
+        }
+        UYU{
+            "$",
+            "peso uruguayo",
+        }
+    }
+    Version{"2.1.6.69"}
+}

@@ -1,0 +1,151 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/fr_CA.xml
+// *
+// ***************************************************************************
+fr_CA{
+    Currencies{
+        ARS{
+            "ARS",
+            "peso argentin",
+        }
+        AUD{
+            "$ AU",
+            "dollar australien",
+        }
+        AZN{
+            "AZN",
+            "manat azerbaïdjanais",
+        }
+        BND{
+            "BND",
+            "dollar brunéien",
+        }
+        CAD{
+            "$",
+            "dollar canadien",
+        }
+        CLP{
+            "CLP",
+            "peso chilien",
+        }
+        CNY{
+            "CN¥",
+            "yuan renminbi chinois",
+        }
+        COP{
+            "COP",
+            "peso colombien",
+        }
+        GBP{
+            "£",
+            "livre sterling",
+        }
+        HKD{
+            "$ HK",
+            "dollar de Hong Kong",
+        }
+        ILS{
+            "ILS",
+            "nouveau shekel israélien",
+        }
+        INR{
+            "INR",
+            "roupie indienne",
+        }
+        JPY{
+            "¥",
+            "yen japonais",
+        }
+        KRW{
+            "KRW",
+            "won sud-coréen",
+        }
+        LAK{
+            "LAK",
+            "kip laotien",
+        }
+        LBP{
+            "LBP",
+            "livre libanaise",
+        }
+        MXN{
+            "MXN",
+            "peso mexicain",
+        }
+        NAD{
+            "NAD",
+            "dollar namibien",
+        }
+        NZD{
+            "$ NZ",
+            "dollar néo-zélandais",
+        }
+        PGK{
+            "PGK",
+            "kina papou-néo-guinéen",
+        }
+        QAR{
+            "QAR",
+            "riyal du Qatar",
+        }
+        SGD{
+            "$ SG",
+            "dollar de Singapour",
+        }
+        THB{
+            "THB",
+            "baht thaïlandais",
+        }
+        TTD{
+            "TTD",
+            "dollar de Trinité-et-Tobago",
+        }
+        USD{
+            "$ US",
+            "dollar des États-Unis",
+        }
+        UYU{
+            "UYU",
+            "peso uruguayen",
+        }
+        VND{
+            "VND",
+            "dông vietnamien",
+        }
+        XAF{
+            "XAF",
+            "franc CFA (BEAC)",
+        }
+        XOF{
+            "XOF",
+            "franc CFA (BCEAO)",
+        }
+    }
+    CurrencyPlurals{
+        AZN{
+            one{"manat azerbaïdjanais"}
+            other{"manats azerbaïdjanais"}
+        }
+        GEL{
+            one{"lari géorgien"}
+            other{"laris géorgiens"}
+        }
+        LAK{
+            one{"kip laotien"}
+            other{"kips laotiens"}
+        }
+        PGK{
+            one{"kina papou-néo-guinéen"}
+            other{"kinas papou-néo-guinéens"}
+        }
+        QAR{
+            one{"riyal du Qatar"}
+            other{"riyals du Qatar"}
+        }
+    }
+    Version{"2.1.8.19"}
+}

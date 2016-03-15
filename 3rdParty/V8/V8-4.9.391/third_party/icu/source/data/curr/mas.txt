@@ -1,0 +1,164 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/mas.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/mas.xml
+ */
+mas{
+    Currencies{
+        AED{
+            "AED",
+            "Iropiyianí ɔ́ɔ̄ lmarabu",
+        }
+        AOA{
+            "AOA",
+            "Iropiyianí e Angola",
+        }
+        AUD{
+            "A$",
+            "Iropiyianí e Austria",
+        }
+        BHD{
+            "BHD",
+            "Iropiyianí e Bahareini",
+        }
+        BWP{
+            "BWP",
+            "Iropiyianí e Botswana",
+        }
+        CAD{
+            "CA$",
+            "Iropiyianí e Kanada",
+        }
+        CDF{
+            "CDF",
+            "Iropiyianí e Kongo",
+        }
+        CHF{
+            "CHF",
+            "Iropiyianí e Uswisi",
+        }
+        CNY{
+            "CN¥",
+            "Iropiyianí e China",
+        }
+        DZD{
+            "DZD",
+            "Iropiyianí e Algeria",
+        }
+        EGP{
+            "EGP",
+            "Iropiyianí e Misri",
+        }
+        ETB{
+            "ETB",
+            "Iropiyianí e Uhabeshi",
+        }
+        EUR{
+            "€",
+            "Iropiyianí e yuro",
+        }
+        GBP{
+            "£",
+            "Iropiyianí e Nkɨ́resa",
+        }
+        INR{
+            "Rs.",
+            "Iropiyianí e India",
+        }
+        JPY{
+            "JP¥",
+            "Iropiyianí e Japani",
+        }
+        KES{
+            "Ksh",
+            "Iropiyianí e Kenya",
+        }
+        LYD{
+            "LYD",
+            "Iropiyianí e Libya",
+        }
+        MAD{
+            "MAD",
+            "Iropiyianí e Moroko",
+        }
+        MGA{
+            "MGA",
+            "Iropiyianí e Bukini",
+        }
+        MRO{
+            "MRO",
+            "Iropiyianí e Moritania",
+        }
+        MUR{
+            "MUR",
+            "Iropiyianí e Morisi",
+        }
+        MWK{
+            "MWK",
+            "Iropiyianí e Malawi",
+        }
+        NAD{
+            "NAD",
+            "Iropiyianí e Namibia",
+        }
+        NGN{
+            "NGN",
+            "Iropiyianí e Nijeria",
+        }
+        RWF{
+            "RWF",
+            "Iropiyianí e Rwanda",
+        }
+        SAR{
+            "SAR",
+            "Iropiyianí e Saudi",
+        }
+        SDG{
+            "SDG",
+            "Iropiyianí e Sudani",
+        }
+        SLL{
+            "SLL",
+            "Iropiyianí e leoni",
+        }
+        TND{
+            "TND",
+            "Iropiyianí e Tunisia",
+        }
+        TZS{
+            "TZS",
+            "Iropiyianí e Tanzania",
+        }
+        UGX{
+            "UGX",
+            "Iropiyianí e Uganda",
+        }
+        USD{
+            "US$",
+            "Iropiyianí ɔ́ɔ̄ lamarekani",
+        }
+        XAF{
+            "FCFA",
+            "Iropiyianí e CFA BEAC",
+        }
+        XOF{
+            "CFA",
+            "Iropiyianí e CFA BCEAO",
+        }
+        ZAR{
+            "ZAR",
+            "Iropiyianí e Afrika Kusini",
+        }
+        ZMW{
+            "ZMW",
+            "Iropiyianí e Sambia",
+        }
+    }
+    Version{"2.1.7.39"}
+}

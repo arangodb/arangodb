@@ -1,0 +1,44 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/zh_Hans_SG.xml
+// *
+// ***************************************************************************
+zh_Hans_SG{
+    Languages{
+        en_GB{"英国英文"}
+        en_US{"美国英文"}
+        es_ES{"伊比利亚西班牙文"}
+        om{"奥罗莫文"}
+        pt_PT{"伊比利亚葡萄牙文"}
+    }
+    Scripts{
+        Knda{"卡纳塔克文"}
+        Sinh{"辛哈拉文"}
+        Thaa{"塔安娜文"}
+        Zzzz{"未知语系"}
+    }
+    Types{
+        collation{
+            big5han{"繁体中文排序顺序 (Big5)"}
+            dictionary{"字典排序"}
+            ducet{"默认 Unicode 排序顺序"}
+            gb2312han{"简体中文排序顺序 (GB2312)"}
+            phonebook{"电话簿排序"}
+            pinyin{"拼音排序顺序"}
+            traditional{"传统排序"}
+        }
+    }
+    Variants{
+        WADEGILE{"韦氏拼音罗马字"}
+    }
+    Version{"2.1.8.19"}
+    codePatterns{
+        script{"语系：{0}"}
+    }
+    localeDisplayPattern{
+        keyTypePattern{"{0}: {1}"}
+    }
+}

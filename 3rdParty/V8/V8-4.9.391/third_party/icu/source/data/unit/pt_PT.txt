@@ -1,0 +1,40 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/pt_PT.xml
+// *
+// ***************************************************************************
+pt_PT{
+    Version{"2.1.8.19"}
+    units{
+        duration{
+            hour{
+                per{"{0}/h"}
+            }
+            second{
+                per{"{0}/s"}
+            }
+        }
+    }
+    unitsNarrow{
+        duration{
+            second{
+                dnam{"s"}
+            }
+        }
+    }
+    unitsShort{
+        duration{
+            minute{
+                dnam{"minutos"}
+            }
+            second{
+                dnam{"segundos"}
+                one{"{0} s"}
+                other{"{0} s"}
+            }
+        }
+    }
+}

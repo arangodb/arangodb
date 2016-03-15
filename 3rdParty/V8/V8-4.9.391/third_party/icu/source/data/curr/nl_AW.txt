@@ -1,0 +1,13 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/nl_AW.xml
+// *
+// ***************************************************************************
+nl_AW{
+    Currencies{
+    }
+    Version{"2.1.6.69"}
+}

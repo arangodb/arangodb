@@ -1,0 +1,164 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/bas.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/bas.xml
+ */
+bas{
+    Currencies{
+        AED{
+            "AED",
+            "Dirhàm èmìrâ",
+        }
+        AOA{
+            "AOA",
+            "Kwànza àŋgolà",
+        }
+        AUD{
+            "A$",
+            "Dɔ̀lâr òstralìà",
+        }
+        BHD{
+            "BHD",
+            "Dinâr Bàraìn",
+        }
+        BWP{
+            "BWP",
+            "Pùla Bòtswanà",
+        }
+        CAD{
+            "CA$",
+            "Dɔ̀lâr kànadà",
+        }
+        CDF{
+            "CDF",
+            "Frǎŋ kòŋgo",
+        }
+        CHF{
+            "CHF",
+            "Frǎŋ sùwîs",
+        }
+        CNY{
+            "CN¥",
+            "Yùan kinà",
+        }
+        DZD{
+            "DZD",
+            "Dìnâr àlgerìà",
+        }
+        EGP{
+            "EGP",
+            "Paùnd ègîptò",
+        }
+        ETB{
+            "ETB",
+            "Bîr ètìopìà",
+        }
+        EUR{
+            "€",
+            "Èrô",
+        }
+        GBP{
+            "£",
+            "Stɛrlìŋ ŋgìsì",
+        }
+        INR{
+            "Rs.",
+            "Rùpi īndìà",
+        }
+        JPY{
+            "JP¥",
+            "Yɛ̂n yàpân",
+        }
+        KES{
+            "KES",
+            "Silîŋ kenìà",
+        }
+        LYD{
+            "LYD",
+            "Dìnâr libìà",
+        }
+        MAD{
+            "MAD",
+            "Dìrham màrôk",
+        }
+        MGA{
+            "MGA",
+            "Frǎŋ màlàgasì",
+        }
+        MRO{
+            "MRO",
+            "Ùgwiya mòrìtanìa",
+        }
+        MUR{
+            "MUR",
+            "Rupìɛ̀ mòrîs",
+        }
+        MWK{
+            "MWK",
+            "Kwaca màlawì",
+        }
+        NAD{
+            "NAD",
+            "Dɔ̀lâr nàmibìà",
+        }
+        NGN{
+            "NGN",
+            "Nayrà nìgerìà",
+        }
+        RWF{
+            "RWF",
+            "Frǎŋ Rùandà",
+        }
+        SAR{
+            "SAR",
+            "Rìal sàudì",
+        }
+        SDG{
+            "SDG",
+            "Dìnâr sùdân",
+        }
+        SLL{
+            "SLL",
+            "Lèonɛ̀",
+        }
+        TND{
+            "TND",
+            "Dìnâr tùnîs",
+        }
+        TZS{
+            "TZS",
+            "Silîŋ tànzànià",
+        }
+        UGX{
+            "UGX",
+            "Silîŋ ùgàndà",
+        }
+        USD{
+            "US$",
+            "Dɔla àmerkà",
+        }
+        XAF{
+            "FCFA",
+            "Frǎŋ CFA (BEAC)",
+        }
+        XOF{
+            "CFA",
+            "Frǎŋ CFA (BCEAO)",
+        }
+        ZAR{
+            "ZAR",
+            "Rân àfrǐkàsɔ̀",
+        }
+        ZMW{
+            "ZMW",
+            "Kwàca sàmbià",
+        }
+    }
+    Version{"2.1.6.69"}
+}

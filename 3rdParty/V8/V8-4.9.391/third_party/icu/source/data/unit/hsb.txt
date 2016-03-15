@@ -1,0 +1,226 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/hsb.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/hsb.xml
+ */
+hsb{
+    Version{"2.1.8.9"}
+    units{
+        duration{
+            day{
+                dnam{"dny"}
+                few{"{0} dny"}
+                one{"{0} dźeń"}
+                other{"{0} dnjow"}
+                two{"{0} dnjej"}
+            }
+            hour{
+                dnam{"hodźiny"}
+                few{"{0} hodźiny"}
+                one{"{0} hodźina"}
+                other{"{0} hodźinow"}
+                per{"na hodźinu"}
+                two{"{0} hodźinje"}
+            }
+            microsecond{
+                dnam{"mikrosekundy"}
+                few{"{0} mikrosekundy"}
+                one{"{0} mikrosekunda"}
+                other{"{0} mikrosekundow"}
+                two{"{0} mikrosekundźe"}
+            }
+            millisecond{
+                dnam{"milisekundy"}
+                few{"{0} milisekundy"}
+                one{"{0} milisekunda"}
+                other{"{0} milisekundow"}
+                two{"{0} milisekundźe"}
+            }
+            minute{
+                dnam{"minuty"}
+                few{"{0} minuty"}
+                one{"{0} minuta"}
+                other{"{0} minutow"}
+                two{"{0} minuće"}
+            }
+            month{
+                dnam{"měsacy"}
+                few{"{0} měsacy"}
+                one{"{0} měsac"}
+                other{"{0} měsacow"}
+                two{"{0} měsacaj"}
+            }
+            nanosecond{
+                dnam{"nanosekundy"}
+                few{"{0} nanosekundy"}
+                one{"{0} nanosekunda"}
+                other{"{0} nanosekundow"}
+                two{"{0} nanosekundźe"}
+            }
+            second{
+                dnam{"sekundy"}
+                few{"{0} sekundy"}
+                one{"{0} sekunda"}
+                other{"{0} sekundow"}
+                per{"na sekundu"}
+                two{"{0} sekundźe"}
+            }
+            week{
+                dnam{"tydźenje"}
+                few{"{0} tydźenje"}
+                one{"{0} tydźeń"}
+                other{"{0} tydźenjow"}
+                two{"{0} tydźenjej"}
+            }
+            year{
+                dnam{"lěta"}
+                few{"{0} lěta"}
+                one{"{0} lěto"}
+                other{"{0} lět"}
+                two{"{0} lěće"}
+            }
+        }
+    }
+    unitsNarrow{
+        duration{
+            day{
+                dnam{"d"}
+                few{"{0} d"}
+                one{"{0} d"}
+                other{"{0} d"}
+                two{"{0} d"}
+            }
+            hour{
+                dnam{"h"}
+                few{"{0} h"}
+                one{"{0} h"}
+                other{"{0} h"}
+                two{"{0} h"}
+            }
+            millisecond{
+                dnam{"ms"}
+                few{"{0} ms"}
+                one{"{0} ms"}
+                other{"{0} ms"}
+                two{"{0} ms"}
+            }
+            minute{
+                dnam{"min"}
+                few{"{0} min"}
+                one{"{0} min"}
+                other{"{0} min"}
+                two{"{0} min"}
+            }
+            month{
+                dnam{"měs."}
+                few{"{0} měs."}
+                one{"{0} měs."}
+                other{"{0} měs."}
+                two{"{0} měs."}
+            }
+            second{
+                dnam{"s"}
+                few{"{0} s"}
+                one{"{0} s"}
+                other{"{0} s"}
+                two{"{0} s"}
+            }
+            week{
+                dnam{"t."}
+                few{"{0} t."}
+                one{"{0} t."}
+                other{"{0} t."}
+                two{"{0} t."}
+            }
+            year{
+                dnam{"l."}
+                few{"{0} l."}
+                one{"{0} l."}
+                other{"{0} l."}
+                two{"{0} l."}
+            }
+        }
+    }
+    unitsShort{
+        duration{
+            day{
+                dnam{"dny"}
+                few{"{0} dn."}
+                one{"{0} dź."}
+                other{"{0} dn."}
+                two{"{0} dn."}
+            }
+            hour{
+                dnam{"hodź."}
+                few{"{0} hodź."}
+                one{"{0} hodź."}
+                other{"{0} hodź."}
+                per{"{0}/h"}
+                two{"{0} hodź."}
+            }
+            microsecond{
+                dnam{"μs"}
+                few{"{0} μs"}
+                one{"{0} μs"}
+                other{"{0} μs"}
+                two{"{0} μs"}
+            }
+            millisecond{
+                dnam{"ms"}
+                few{"{0} ms"}
+                one{"{0} ms"}
+                other{"{0} ms"}
+                two{"{0} ms"}
+            }
+            minute{
+                dnam{"min."}
+                few{"{0} min."}
+                one{"{0} min."}
+                other{"{0} min."}
+                two{"{0} min."}
+            }
+            month{
+                dnam{"měs."}
+                few{"{0} měs."}
+                one{"{0} měs."}
+                other{"{0} měs."}
+                two{"{0} měs."}
+            }
+            nanosecond{
+                dnam{"ns"}
+                few{"{0} ns"}
+                one{"{0} ns"}
+                other{"{0} ns"}
+                two{"{0} ns"}
+            }
+            second{
+                dnam{"sek."}
+                few{"{0} sek."}
+                one{"{0} sek."}
+                other{"{0} sek."}
+                per{"{0}/s"}
+                two{"{0} sek."}
+            }
+            week{
+                dnam{"tydź."}
+                few{"{0} tydź."}
+                one{"{0} tydź."}
+                other{"{0} tydź."}
+                two{"{0} tydź."}
+            }
+            year{
+                dnam{"l."}
+                few{"{0} l."}
+                one{"{0} l."}
+                other{"{0} l."}
+                two{"{0} l."}
+            }
+        }
+    }
+}

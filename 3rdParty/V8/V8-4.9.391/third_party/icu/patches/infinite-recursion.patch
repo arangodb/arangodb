@@ -1,0 +1,81 @@
+Index: /icu/trunk/source/i18n/filteredbrk.cpp
+===================================================================
+--- /icu/trunk/source/i18n/filteredbrk.cpp	(revision 36671)
++++ /icu/trunk/source/i18n/filteredbrk.cpp	(revision 36672)
+@@ -148,5 +148,5 @@
+   virtual BreakIterator* clone(void) const { return new SimpleFilteredSentenceBreakIterator(*this); }
+   virtual UClassID getDynamicClassID(void) const { return NULL; }
+-  virtual UBool operator==(const BreakIterator& o) const { if(*this==o) return true; return false; }
++  virtual UBool operator==(const BreakIterator& o) const { if(this==&o) return true; return false; }
+ 
+   /* -- text modifying -- */
+Index: /icu/trunk/source/test/intltest/rbbiapts.cpp
+===================================================================
+--- /icu/trunk/source/test/intltest/rbbiapts.cpp	(revision 36671)
++++ /icu/trunk/source/test/intltest/rbbiapts.cpp	(revision 36672)
+@@ -1227,4 +1227,5 @@
+   LocalPointer<BreakIterator> baseBI;
+   LocalPointer<BreakIterator> filteredBI;
++  LocalPointer<BreakIterator> frenchBI;
+ 
+   const UnicodeString text("In the meantime Mr. Weston arrived with his small ship, which he had now recovered. Capt. Gorges, who informed the Sgt. here that one purpose of his going east was to meet with Mr. Weston, took this opportunity to call him to account for some abuses he had to lay to his charge."); // (William Bradford, public domain. http://catalog.hathitrust.org/Record/008651224 ) - edited.
+@@ -1241,9 +1242,9 @@
+     TEST_ASSERT_SUCCESS(status);
+ 
+-    logln("Building new BI\n");
++	logln("Building new BI\n");
+     filteredBI.adoptInstead(builder->build(baseBI.orphan(), status));
+     TEST_ASSERT_SUCCESS(status);
+ 
+-    if (U_SUCCESS(status)) {
++	if (U_SUCCESS(status)) {
+         logln("Testing:");
+         filteredBI->setText(text);
+@@ -1375,5 +1376,4 @@
+   }
+ 
+-#if 0
+   // reenable once french is in
+   {
+@@ -1387,17 +1387,31 @@
+ 
+     logln("Building new BI\n");
+-    filteredBI.adoptInstead(builder->build(baseBI.orphan(), status));
+-    TEST_ASSERT_SUCCESS(status);
+-
+-    if(filteredBI.isValid()) {
++    frenchBI.adoptInstead(builder->build(baseBI.orphan(), status));
++    TEST_ASSERT_SUCCESS(status);
++
++    if(frenchBI.isValid()) {
+       logln("Testing:");
+-      filteredBI->setText(text);
+-      TEST_ASSERT(20 == filteredBI->next());
+-      TEST_ASSERT(84 == filteredBI->next());
++      UnicodeString frText("C'est MM. Duval.");
++      frenchBI->setText(frText);
++      TEST_ASSERT(16 == frenchBI->next());
++      TEST_ASSERT(BreakIterator::DONE == frenchBI->next());
++      frenchBI->first();
++      prtbrks(frenchBI.getAlias(), frText, *this);
++      logln("Testing against English:");
++      filteredBI->setText(frText);
++      TEST_ASSERT(10 == filteredBI->next()); // wrong for french, but filterBI is english.
++      TEST_ASSERT(16 == filteredBI->next());
++      TEST_ASSERT(BreakIterator::DONE == filteredBI->next());
+       filteredBI->first();
+-      prtbrks(filteredBI.getAlias(), text, *this);
+-    }
++      prtbrks(filteredBI.getAlias(), frText, *this);
++
++      // Verify ==
++      TEST_ASSERT_TRUE(*frenchBI   == *frenchBI);
++      TEST_ASSERT_TRUE(*filteredBI != *frenchBI);
++      TEST_ASSERT_TRUE(*frenchBI   != *filteredBI);
++    } else {
++      dataerrln("French BI: not valid.");
++	}
+   }
+-#endif
+ 
+ #else

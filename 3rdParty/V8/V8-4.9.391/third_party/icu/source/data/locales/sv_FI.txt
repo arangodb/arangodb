@@ -1,0 +1,83 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/sv_FI.xml
+// *
+// ***************************************************************************
+sv_FI{
+    AuxExemplarCharacters{"[ã ç ë í ñ ó š ÿ ü ž]"}
+    Version{"2.1.8.19"}
+    calendar{
+        gregorian{
+            DateTimePatterns{
+                "'kl'. HH:mm:ss zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                "EEEE'en' 'den' d:'e' MMMM y",
+                "d MMMM y",
+                "d MMM y",
+                "dd-MM-y",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            eras{
+                wide%variant{
+                    "före vår tideräkning",
+                    "vår tideräkning",
+                }
+            }
+        }
+    }
+    fields{
+        day{
+            dn{"dag"}
+        }
+        dayperiod{
+            dn{"dagsperiod"}
+        }
+        era{
+            dn{"era"}
+        }
+        minute{
+            dn{"minut"}
+        }
+        month{
+            dn{"månad"}
+        }
+        second{
+            dn{"sekund"}
+        }
+        week{
+            dn{"vecka"}
+        }
+        weekday{
+            dn{"veckodag"}
+        }
+        year{
+            dn{"år"}
+        }
+        zone{
+            dn{"tidszon"}
+        }
+    }
+    listPattern{
+        unit{
+            2{"{0} och {1}"}
+            end{"{0} och {1}"}
+        }
+        unit-short{
+            2{"{0} och {1}"}
+            end{"{0} och {1}"}
+        }
+    }
+    measurementSystemNames{
+        UK{"engelska enheter (UK)"}
+        US{"engelska enheter (USA)"}
+    }
+}

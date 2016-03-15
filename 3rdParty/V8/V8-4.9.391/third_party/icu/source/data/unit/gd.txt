@@ -1,0 +1,238 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/gd.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/gd.xml
+ */
+gd{
+    Version{"2.1.8.9"}
+    units{
+        duration{
+            day{
+                dnam{"latha"}
+                few{"{0} làithean"}
+                one{"{0} latha"}
+                other{"{0} latha"}
+                two{"{0} latha"}
+            }
+            hour{
+                dnam{"uair a thìde"}
+                few{"{0} uairean a thìde"}
+                one{"{0} uair a thìde"}
+                other{"{0} uair a thìde"}
+                per{"{0} gach uair"}
+                two{"{0} uair a thìde"}
+            }
+            microsecond{
+                dnam{"micreo-diog"}
+                few{"{0} micreo-diogan"}
+                one{"{0} mhicreo-diog"}
+                other{"{0} micreo-diog"}
+                two{"{0} mhicreo-diog"}
+            }
+            millisecond{
+                dnam{"mille-dhiog"}
+                few{"{0} mille-dhiogan"}
+                one{"{0} mhille-dhiog"}
+                other{"{0} mille-dhiog"}
+                two{"{0} mhille-dhiog"}
+            }
+            minute{
+                dnam{"mionaid"}
+                few{"{0} mionaidean"}
+                one{"{0} mhionaid"}
+                other{"{0} mionaid"}
+                two{"{0} mhionaid"}
+            }
+            month{
+                dnam{"mìos"}
+                few{"{0} mìosan"}
+                one{"{0} mhìos"}
+                other{"{0} mìos"}
+                two{"{0} mhìos"}
+            }
+            nanosecond{
+                dnam{"nano-dhiog"}
+                few{"{0} nano-dhiogan"}
+                one{"{0} nano-dhiog"}
+                other{"{0} nano-dhiog"}
+                two{"{0} nano-dhiog"}
+            }
+            second{
+                dnam{"diog"}
+                few{"{0} diogan"}
+                one{"{0} diog"}
+                other{"{0} diog"}
+                per{"{0} gach diog"}
+                two{"{0} dhiog"}
+            }
+            week{
+                dnam{"seachdain"}
+                few{"{0} seachdainean"}
+                one{"{0} seachdain"}
+                other{"{0} seachdain"}
+                two{"{0} sheachdain"}
+            }
+            year{
+                dnam{"bliadhna"}
+                few{"{0} bliadhnaichean"}
+                one{"{0} bhliadhna"}
+                other{"{0} bliadhna"}
+                two{"{0} bhliadhna"}
+            }
+        }
+    }
+    unitsNarrow{
+        duration{
+            day{
+                dnam{"là"}
+                few{"{0}là"}
+                one{"{0}là"}
+                other{"{0}là"}
+                two{"{0}là"}
+            }
+            hour{
+                dnam{"uair"}
+                few{"{0}u"}
+                one{"{0}u"}
+                other{"{0}u"}
+                two{"{0}u"}
+            }
+            microsecond{
+                few{"{0}μs"}
+                one{"{0}μs"}
+                other{"{0}μs"}
+                two{"{0}μs"}
+            }
+            millisecond{
+                dnam{"ms"}
+                few{"{0}ms"}
+                one{"{0}ms"}
+                other{"{0}ms"}
+                two{"{0}ms"}
+            }
+            minute{
+                dnam{"mion"}
+                few{"{0}m"}
+                one{"{0}m"}
+                other{"{0}m"}
+                two{"{0}m"}
+            }
+            month{
+                dnam{"mìos"}
+                few{"{0}m"}
+                one{"{0}m"}
+                other{"{0}m"}
+                two{"{0}m"}
+            }
+            nanosecond{
+                few{"{0}ns"}
+                one{"{0}ns"}
+                other{"{0}ns"}
+                two{"{0}ns"}
+            }
+            second{
+                dnam{"diog"}
+                few{"{0}d"}
+                one{"{0}d"}
+                other{"{0}d"}
+                two{"{0}d"}
+            }
+            week{
+                dnam{"s"}
+                few{"{0}s"}
+                one{"{0}s"}
+                other{"{0}s"}
+                two{"{0}s"}
+            }
+            year{
+                dnam{"blia"}
+                few{"{0}bl"}
+                one{"{0}bl"}
+                other{"{0}bl"}
+                two{"{0}bl"}
+            }
+        }
+    }
+    unitsShort{
+        duration{
+            day{
+                dnam{"latha"}
+                few{"{0} là"}
+                one{"{0} là"}
+                other{"{0} là"}
+                two{"{0} là"}
+            }
+            hour{
+                dnam{"uair"}
+                few{"{0} uair"}
+                one{"{0} uair"}
+                other{"{0} uair"}
+                per{"{0}/uair"}
+                two{"{0} uair"}
+            }
+            microsecond{
+                dnam{"μ-diog"}
+                few{"{0} μs"}
+                one{"{0} μs"}
+                other{"{0} μs"}
+                two{"{0} μs"}
+            }
+            millisecond{
+                dnam{"m-dhiog"}
+                few{"{0} ms"}
+                one{"{0} ms"}
+                other{"{0} ms"}
+                two{"{0} ms"}
+            }
+            minute{
+                dnam{"mion"}
+                few{"{0} mion"}
+                one{"{0} mhion"}
+                other{"{0} mion"}
+                two{"{0} mhion"}
+            }
+            month{
+                dnam{"mìos"}
+                few{"{0} mìos"}
+                one{"{0} mhìos"}
+                other{"{0} mìos"}
+                two{"{0} mhìos"}
+            }
+            nanosecond{
+                dnam{"n-dhiog"}
+                few{"{0} ns"}
+                one{"{0} ns"}
+                other{"{0} ns"}
+                two{"{0} ns"}
+            }
+            second{
+                dnam{"diog"}
+                few{"{0} diog"}
+                one{"{0} diog"}
+                other{"{0} diog"}
+                per{"{0}/d"}
+                two{"{0} dhiog"}
+            }
+            week{
+                dnam{"seachd"}
+                few{"{0} s"}
+                one{"{0} s"}
+                other{"{0} s"}
+                two{"{0} s"}
+            }
+            year{
+                dnam{"bliadhna"}
+                few{"{0} blia"}
+                one{"{0} bhlia"}
+                other{"{0} blia"}
+                two{"{0} bhlia"}
+            }
+        }
+    }
+}

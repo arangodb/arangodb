@@ -1,0 +1,48 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/collation/sk.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/xml/collation/sk.xml
+ */
+sk{
+    Version{"2.1.6.32"}
+    collations{
+        search{
+            Sequence{
+                "[import und-u-co-search]"
+                "&A<á<<<Á<ä<<<Ä"
+                "&C<č<<<Č"
+                "&D<ď<<<Ď"
+                "&E<é<<<É<ě<<<Ě"
+                "&I<í<<<Í"
+                "&L<ĺ<<<Ĺ<ľ<<<Ľ"
+                "&N<ň<<<Ň"
+                "&O<ó<<<Ó<ô<<<Ô"
+                "&R<ŕ<<<Ŕ<ř<<<Ř"
+                "&S<š<<<Š"
+                "&T<ť<<<Ť"
+                "&U<ú<<<Ú<ů<<<Ů"
+                "&Y<ý<<<Ý"
+                "&Z<ž<<<Ž"
+            }
+            Version{"26"}
+        }
+        standard{
+            Sequence{
+                "&A<ä<<<Ä"
+                "&C<č<<<Č"
+                "&H<ch<<<cH<<<Ch<<<CH"
+                "&O<ô<<<Ô"
+                "&R<ř<<<Ř"
+                "&S<š<<<Š"
+                "&Z<ž<<<Ž"
+            }
+            Version{"26"}
+        }
+    }
+}

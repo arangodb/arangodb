@@ -1,0 +1,36 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/ta_MY.xml
+// *
+// ***************************************************************************
+ta_MY{
+    Version{"2.1.6.69"}
+    zoneStrings{
+        "meta:Brunei"{
+            ls{"புருணை டாரு சலாம் நேரம்"}
+        }
+        "meta:India"{
+            ss{"∅∅∅"}
+        }
+        "meta:Indonesia_Central"{
+            ls{"மத்திய இந்தோனேசிய நேரம்"}
+        }
+        "meta:Indonesia_Eastern"{
+            ls{"கிழக்கத்திய இந்தோனேசிய நேரம்"}
+        }
+        "meta:Indonesia_Western"{
+            ls{"மேற்கத்திய இந்தோனேசிய நேரம்"}
+        }
+        "meta:Malaysia"{
+            ls{"மலேசிய நேரம்"}
+            ss{"MYT"}
+        }
+        "meta:Singapore"{
+            ls{"சிங்கப்பூர் நேரம்"}
+            ss{"SGT"}
+        }
+    }
+}

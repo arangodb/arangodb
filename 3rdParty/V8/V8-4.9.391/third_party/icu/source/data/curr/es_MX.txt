@@ -1,0 +1,394 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/es_MX.xml
+// *
+// ***************************************************************************
+es_MX{
+    %%Parent{"es_419"}
+    Currencies{
+        AFN{
+            "Af",
+            "afgani afgano",
+        }
+        ALL{
+            "ALL",
+            "lek albanés",
+        }
+        AMD{
+            "AMD",
+            "dram armenio",
+        }
+        AOA{
+            "Kz",
+            "kwanza angoleño",
+        }
+        ARS{
+            "$a",
+            "peso argentino",
+        }
+        AUD{
+            "AU$",
+            "dólar australiano",
+        }
+        BDT{
+            "BDT",
+            "taka de Bangladesh",
+        }
+        BGN{
+            "BGN",
+            "lev búlgaro",
+        }
+        BND{
+            "BND",
+            "dólar de Brunéi",
+        }
+        BWP{
+            "BWP",
+            "pula botsuano",
+        }
+        CNY{
+            "CN¥",
+            "yuan chino",
+        }
+        ETB{
+            "ETB",
+            "birr etíope",
+        }
+        GBP{
+            "GBP",
+            "libra esterlina británica",
+        }
+        GEL{
+            "GEL",
+            "lari georgiano",
+        }
+        GHS{
+            "GHS",
+            "cedi ghanés",
+        }
+        HKD{
+            "HKD",
+            "dólar de Hong Kong",
+        }
+        HRK{
+            "HRK",
+            "kuna croata",
+        }
+        HUF{
+            "HUF",
+            "florín húngaro",
+        }
+        ILS{
+            "ILS",
+            "nuevo shéquel israelí",
+        }
+        JMD{
+            "JMD",
+            "dólar jamaiquino",
+        }
+        JPY{
+            "JPY",
+            "yen japonés",
+        }
+        KGS{
+            "KGS",
+            "som kirguís",
+        }
+        KHR{
+            "KHR",
+            "riel camboyano",
+        }
+        KZT{
+            "KZT",
+            "tenge kazajo",
+        }
+        LAK{
+            "LAK",
+            "kip laosiano",
+        }
+        LKR{
+            "LKR",
+            "rupia de Sri Lanka",
+        }
+        LTL{
+            "LTL",
+            "litas lituano",
+        }
+        MGA{
+            "MGA",
+            "ariary malgache",
+        }
+        MNT{
+            "MNT",
+            "tugrik mongol",
+        }
+        MRO{
+            "MRO",
+            "ouguiya mauritano",
+        }
+        MWK{
+            "MWK",
+            "kwacha malauí",
+        }
+        MXN{
+            "$",
+            "peso mexicano",
+        }
+        MYR{
+            "MYR",
+            "ringgit malayo",
+        }
+        MZN{
+            "MZN",
+            "metical mozambiqueño",
+        }
+        NGN{
+            "NGN",
+            "naira nigeriano",
+        }
+        PGK{
+            "PGK",
+            "kina de Papúa Nueva Guinea",
+        }
+        PLN{
+            "PLN",
+            "zloty polaco",
+        }
+        QAR{
+            "QAR",
+            "riyal de Qatar",
+        }
+        SAR{
+            "SAR",
+            "riyal saudí",
+        }
+        SLL{
+            "SLL",
+            "leone de Sierra Leona",
+        }
+        THB{
+            "THB",
+            "baht tailandés",
+        }
+        TMT{
+            "TMT",
+            "manat turkmeno",
+        }
+        UAH{
+            "UAH",
+            "grivna ucraniana",
+        }
+        UZS{
+            "UZS",
+            "som uzbeko",
+        }
+        VND{
+            "VND",
+            "dong vietnamita",
+        }
+        ZAR{
+            "ZAR",
+            "rand sudafricano",
+        }
+        ZMW{
+            "ZMK",
+            "kwacha zambiano",
+        }
+    }
+    Currencies%narrow{
+        ARS{"$a"}
+        BYR{"Br"}
+        DOP{"RD$"}
+        TRY{"TL"}
+    }
+    CurrencyPlurals{
+        AFN{
+            one{"afgani afgano"}
+            other{"afganis afganos"}
+        }
+        ALL{
+            one{"lek albanés"}
+            other{"lekë albaneses"}
+        }
+        AMD{
+            one{"dram armenio"}
+            other{"dram armenios"}
+        }
+        AOA{
+            one{"kwanza angoleño"}
+            other{"kwanzas angoleños"}
+        }
+        BDT{
+            one{"taka de Bangladesh"}
+            other{"taka de Bangladesh"}
+        }
+        BGN{
+            one{"lev búlgaro"}
+            other{"levas búlgaras"}
+        }
+        BHD{
+            one{"dinar bahreiní"}
+            other{"dinares bahreiníes"}
+        }
+        BND{
+            one{"dólar de Brunéi"}
+            other{"dólares de Brunéi"}
+        }
+        BWP{
+            one{"pula botsuano"}
+            other{"pulas botsuanos"}
+        }
+        CNY{
+            one{"yuan chino"}
+            other{"yuanes chinos"}
+        }
+        ETB{
+            one{"birr etíope"}
+            other{"birrs etíopes"}
+        }
+        GBP{
+            one{"libra esterlina británica"}
+            other{"libras esterlinas británicas"}
+        }
+        GEL{
+            one{"lari georgiano"}
+            other{"laris georgianos"}
+        }
+        GHS{
+            one{"cedi ghanés"}
+            other{"cedis ghaneses"}
+        }
+        HKD{
+            one{"dólar de Hong Kong"}
+            other{"dólares de Hong Kong"}
+        }
+        HRK{
+            one{"kuna croata"}
+            other{"kunas croatas"}
+        }
+        HUF{
+            one{"florín húngaro"}
+            other{"florines húngaros"}
+        }
+        ILS{
+            one{"nuevo shéquel israelí"}
+            other{"nuevos shéquels israelíes"}
+        }
+        JMD{
+            one{"dólar jamaiquino"}
+            other{"dólares jamaiquinos"}
+        }
+        JPY{
+            one{"yen japonés"}
+            other{"yenes japoneses"}
+        }
+        KGS{
+            one{"som kirguís"}
+            other{"soms kirguises"}
+        }
+        KHR{
+            one{"riel camboyano"}
+            other{"rieles camboyanos"}
+        }
+        KZT{
+            one{"tenge kasajo"}
+            other{"tenges kasajos"}
+        }
+        LAK{
+            one{"kip laosiano"}
+            other{"kips laosianos"}
+        }
+        LKR{
+            one{"rupia de Sri Lanka"}
+            other{"rupias de Sri Lanka"}
+        }
+        LTL{
+            one{"litas lituana"}
+            other{"litas lituanas"}
+        }
+        MGA{
+            one{"ariary malgache"}
+            other{"ariarys malgaches"}
+        }
+        MNT{
+            one{"tugrik mongol"}
+            other{"tugriks mongoles"}
+        }
+        MRO{
+            one{"ouguiya mauritano"}
+            other{"ouguiyas mauritanos"}
+        }
+        MWK{
+            one{"kwacha malauí"}
+            other{"kwaschas malauíes"}
+        }
+        MYR{
+            one{"ringgit malayo"}
+            other{"ringgits malayos"}
+        }
+        MZN{
+            one{"metical mozambiqueño"}
+            other{"meticales mozambiqueños"}
+        }
+        NGN{
+            one{"naira nigeriano"}
+            other{"nairas nigerianos"}
+        }
+        PGK{
+            one{"kina de Papúa Nueva Guinea"}
+            other{"kinas de Papúa Nueva Guinea"}
+        }
+        PLN{
+            one{"zloty polaco"}
+            other{"zlotys polacos"}
+        }
+        QAR{
+            one{"riyal de Qatar"}
+            other{"riyales de Qatar"}
+        }
+        RON{
+            one{"leu rumano"}
+            other{"lei rumanos"}
+        }
+        SAR{
+            one{"riyal saudí"}
+            other{"riyales saudíes"}
+        }
+        SLL{
+            one{"leone de Sierra Leona"}
+            other{"leones de Sierra Leona"}
+        }
+        THB{
+            one{"baht tailandés"}
+            other{"bahts tailandeses"}
+        }
+        TMT{
+            one{"manat turkmeno"}
+            other{"manats turkmenos"}
+        }
+        UAH{
+            one{"grivna ucraniana"}
+            other{"grivnas ucranianas"}
+        }
+        UZS{
+            one{"som uzbeko"}
+            other{"soms uzbekos"}
+        }
+        VND{
+            one{"dong vietnamita"}
+            other{"dongs vietnamitas"}
+        }
+        ZAR{
+            one{"rand sudafricano"}
+            other{"rands sudafricanos"}
+        }
+        ZMW{
+            one{"kwacha zambiano"}
+            other{"kwachas zambianos"}
+        }
+    }
+    Version{"2.1.8.19"}
+}

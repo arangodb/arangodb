@@ -1,0 +1,23 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/collation/uk.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/xml/collation/uk.xml
+ */
+uk{
+    Version{"2.0.96.14"}
+    collations{
+        standard{
+            Sequence{
+                "[reorder Cyrl][suppressContractions [АаӘәГгЕеЖжЗзОоӨөКкУуЧчЫыЭэѴѵ]]"
+                "&Г<ґ<<<Ґ"
+            }
+            Version{"26"}
+        }
+    }
+}
