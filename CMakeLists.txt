@@ -382,11 +382,7 @@ endif ()
 ################################################################################
 
 if (NOT WINDOWS)
-  check_library_exists(resolv dn_expand "" RESOLV_LIB_REQ)
-
-  if (RESOLV_LIB_REQ)
-    set(NET_LIBS ${NET_LIBS} resolv)
-  endif ()
+  set(NET_LIBS ${NET_LIBS} resolv)
 endif ()
 
 ################################################################################
