@@ -20,7 +20,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ArangoshFeature.h"
+#include "ShellFeature.h"
 
 #include "ApplicationFeatures/ClientFeature.h"
 #include "Logger/Logger.h"
@@ -31,21 +31,21 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-ArangoshFeature::ArangoshFeature(
+ShellFeature::ShellFeature(
     application_features::ApplicationServer* server, int* result)
-    : ApplicationFeature(server, "ArangoshFeature"),
+    : ApplicationFeature(server, "Shell"),
       _jslint(),
       _result(result),
       _runMode(RunMode::INTERACTIVE) {
   requiresElevatedPrivileges(false);
   setOptional(false);
-  startsAfter("ConfigFeature");
-  startsAfter("LanguageFeature");
-  startsAfter("LoggerFeature");
-  startsAfter("V8ShellFeature");
+  startsAfter("Config");
+  startsAfter("Language");
+  startsAfter("Logger");
+  startsAfter("V8Shell");
 }
 
-void ArangoshFeature::collectOptions(
+void ShellFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
 
@@ -74,17 +74,17 @@ void ArangoshFeature::collectOptions(
                      new VectorParameter<StringParameter>(&_unitTests));
 }
 
-void ArangoshFeature::validateOptions(
+void ShellFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
 
   _positionals = options->processingResult()._positionals;
 
   ClientFeature* client =
-      dynamic_cast<ClientFeature*>(server()->feature("ClientFeature"));
+      dynamic_cast<ClientFeature*>(server()->feature("Client"));
 
   ConsoleFeature* console =
-      dynamic_cast<ConsoleFeature*>(server()->feature("ConsoleFeature"));
+      dynamic_cast<ConsoleFeature*>(server()->feature("Console"));
 
   if (client->endpoint() == "none") {
     client->disable();
@@ -134,13 +134,13 @@ void ArangoshFeature::validateOptions(
   }
 }
 
-void ArangoshFeature::start() {
+void ShellFeature::start() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
 
   *_result = EXIT_FAILURE;
 
   V8ShellFeature* shell =
-      dynamic_cast<V8ShellFeature*>(server()->feature("V8ShellFeature"));
+      dynamic_cast<V8ShellFeature*>(server()->feature("V8Shell"));
 
   bool ok = false;
 

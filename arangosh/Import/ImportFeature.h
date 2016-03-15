@@ -17,18 +17,27 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_ARANGOSH_FEATURE_H
-#define APPLICATION_FEATURES_ARANGOSH_FEATURE_H 1
+#ifndef APPLICATION_FEATURES_ARANGOIMP_FEATURE_H
+#define APPLICATION_FEATURES_ARANGOIMP_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "V8Client/ArangoClientHelper.h"
 
 namespace arangodb {
-class ArangoshFeature final : public application_features::ApplicationFeature {
+namespace httpclient {
+class GeneralClientConnection;
+class SimpleHttpClient;
+class SimpleHttpResult;
+}
+
+class ImportFeature final : public application_features::ApplicationFeature,
+                               public ArangoClientHelper {
  public:
-  ArangoshFeature(application_features::ApplicationServer* server, int* result);
+  ImportFeature(application_features::ApplicationServer* server,
+                   int* result);
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
@@ -37,26 +46,21 @@ class ArangoshFeature final : public application_features::ApplicationFeature {
   void start() override;
 
  private:
-  std::vector<std::string> _jslint;
-  std::vector<std::string> _executeScripts;
-  std::vector<std::string> _executeStrings;
-  std::vector<std::string> _checkSyntaxFiles;
-  std::vector<std::string> _unitTests;
-
- public:
-  enum class RunMode {
-    INTERACTIVE,
-    EXECUTE_SCRIPT,
-    EXECUTE_STRING,
-    CHECK_SYNTAX,
-    UNIT_TESTS,
-    JSLINT
-  };
+  std::string _filename;
+  bool _useBackslash;
+  uint64_t _chunkSize;
+  std::string _collectionName;
+  bool _createCollection;
+  std::string _createCollectionType;
+  std::string _typeImport;
+  bool _overwrite;
+  std::string _quote;
+  std::string _separator;
+  bool _progress;
+  std::string _onDuplicateAction;
 
  private:
   int* _result;
-  RunMode _runMode;
-  std::vector<std::string> _positionals;
 };
 }
 
