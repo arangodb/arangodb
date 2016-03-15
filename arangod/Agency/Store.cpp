@@ -262,10 +262,17 @@ bool Store::check (arangodb::velocypack::Slice const& slice) const {
     if (precond.value.type() == VPackValueType::Object) { //"old", "oldEmpty", "isArray"
       for (auto const& op : VPackObjectIterator(precond.value)) {
         std::string const& oper = op.key.copyString();
+        Node const& node = (*this)(path);
         if (oper == "old") {
-          return (*this)(path) == op.value;
-        } else if ("oldEmpty") {
-
+          return (node == op.value);
+        } else if ("isArray") {
+          if (op.value.type()!=VPackValueType::Bool) {
+            return false;
+          }
+          bool isArray =
+            (node.type() == LEAF &&
+             node.slice().type() == VPackValueType::Array);
+          return op.value.getBool() ? isArray : !isArray;
         }
       }
       
