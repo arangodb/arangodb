@@ -63,7 +63,8 @@ Node::Node (std::string const& name, Node const* parent) :
 Node::~Node() {}
 
 Slice Node::slice() const {
-  return (_value.size()==0) ? Slice() : Slice(_value.data());
+  return (_value.size()==0) ?
+    Slice("\x018",&Options::Defaults):Slice(_value.data());
 }
 
 std::string const& Node::name() const {return _name;}
@@ -71,7 +72,7 @@ std::string const& Node::name() const {return _name;}
 Node& Node::operator= (Slice const& slice) { // Assign value (become leaf)
   _children.clear();
   _value.reset();
-  _value.append((char const*)slice.begin(), slice.byteSize());
+  _value.append(reinterpret_cast<char const*>(slice.begin()), slice.byteSize());
   return *this;
 }
 
@@ -80,23 +81,43 @@ Node& Node::operator= (Node const& node) { // Assign node
   _type = node._type;
   _value = node._value;
   _children = node._children;
+  _ttl = node._ttl;
   return *this;
+}
+
+/*Node& Node::parent () {
+  return *_parent;
+  }
+
+Node const& Node::parent () const {
+  return *_parent;
+  }*/
+
+bool Node::remove (std::string const& path) {
+  std::vector<std::string> pv = split(path, '/');
+  std::string key(pv.back());
+  pv.pop_back();
+  try {
+    Node& parent = (*this)(pv);
+    return parent.removeChild(key);
+  } catch (StoreException const& e) {
+    return false;
+  }
+}
+
+bool Node::removeChild (std::string const& key) {
+  auto found = _children.find(key);
+  if (found == _children.end())
+    return false;
+  else
+    _children.erase(found);
+  return true;
 }
 
 NodeType Node::type() const {return _children.size() ? NODE : LEAF;}
 
 Node& Node::operator [](std::string name) {
   return *_children[name];
-}
-
-bool Node::isSingular () const {
-  if (type() == LEAF) {
-    return true;
-  } else if (_children.size()==1) {
-    return _children.begin()->second->isSingular();
-  } else {
-    return false;
-  }
 }
 
 bool Node::append (std::string const name, std::shared_ptr<Node> const node) {
@@ -111,13 +132,12 @@ bool Node::append (std::string const name, std::shared_ptr<Node> const node) {
 
 Node& Node::operator ()(std::vector<std::string>& pv) {
   if (pv.size()) {
-    auto found = _children.find(pv[0]);
-    if (found == _children.end()) {
-      _children[pv[0]] = std::make_shared<Node>(pv[0], this);
-      found = _children.find(pv[0]);
+    std::string const key = pv[0];
+    if (_children.find(key) == _children.end()) {
+      _children[key] = std::make_shared<Node>(pv[0], this);
     }
     pv.erase(pv.begin());
-    return (*found->second)(pv);
+    return (*_children[key])(pv);
   } else {
     return *this;
   }
@@ -125,12 +145,9 @@ Node& Node::operator ()(std::vector<std::string>& pv) {
 
 Node const& Node::operator ()(std::vector<std::string>& pv) const {
   if (pv.size()) {
-    auto found = _children.find(pv[0]);
-    if (found == _children.end()) {
-      throw PATH_NOT_FOUND;
-    }
+    std::string const key = pv[0];
     pv.erase(pv.begin());
-    return (*found->second)(pv);
+    return (*_children.at(key))(pv);
   } else {
     return *this;
   }
@@ -164,13 +181,13 @@ bool Node::apply (arangodb::velocypack::Slice const& slice) {
       auto found = _children.find(key);
       if (found == _children.end()) {
         _children[key] = std::make_shared<Node>(key, this);
-        found = _children.find(key);
       }
-      found->second->apply(i.value);
+      _children[key]->apply(i.value);
     }
   } else {
     *this = slice;
   }
+//  remove("/g/b");
   return true;
 }
 
@@ -190,7 +207,7 @@ void Node::toBuilder (Builder& builder) const {
   }
 }
 
-Store::Store () : Node("root") {}
+Store::Store (std::string const& name) : Node(name) {}
 Store::~Store () {}
 
 std::vector<bool> Store::apply (query_t const& query) {    
@@ -227,7 +244,8 @@ Node const& Store::read (std::string const& path) const {
   return Node::read(path);
 }
 
-bool Store::check (arangodb::velocypack::Slice const& slice) const{
+bool Store::check (arangodb::velocypack::Slice const& slice) const {
+  
   return true;
 }
 
@@ -272,12 +290,19 @@ bool Store::read (arangodb::velocypack::Slice const& query, Builder& ret) const 
   query_strs.erase (cut,query_strs.end());
 
   // Create response tree 
-  Node node("root");
+  Node node("copy");
+  const Node rhs(*this);
   for (auto i = query_strs.begin(); i != query_strs.end(); ++i) {
-    node(*i) = (*this).read(*i);
+    try {
+      rhs(*i);
+    } catch (StoreException const& e) {
+      std::cout << e.what();
+      continue;
+    }
+    node(*i) = rhs(*i);
   }
-  
-  // Assemble builder from node
+
+  // Assemble builder from response tree
   if (query_strs.size() == 1 && node(*query_strs.begin()).type() == LEAF) {
     ret.add(node(*query_strs.begin()).slice());
   } else {

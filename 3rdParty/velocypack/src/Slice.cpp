@@ -213,6 +213,8 @@ unsigned int const Slice::FirstSubMap[32] = {
     8,  // 0x12, object with unsorted index table
     0};
 
+static char const* NullStr = "0x18";
+
 // creates a Slice from Json and adds it to a scope
 Slice Slice::fromJson(SliceScope& scope, std::string const& json,
                       Options const* options) {

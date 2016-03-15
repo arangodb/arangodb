@@ -49,6 +49,14 @@ enum NodeType {NODE, LEAF};
 
 using namespace arangodb::velocypack;
 
+class StoreException : public std::exception {
+public:
+  StoreException(std::string const& message) : _message(message) {}
+  virtual char const* what() const noexcept { return _message.c_str(); }
+private:
+  std::string _message;
+};
+
 enum NODE_EXCEPTION {PATH_NOT_FOUND};
 
 class Node {
@@ -80,13 +88,21 @@ public:
   
   Node const& operator ()(std::vector<std::string>& pv) const;
   
-  Node const& operator ()(std::string const& path) const;
-
   Node& operator ()(std::string const& path);
+
+  Node const& operator ()(std::string const& path) const;
 
   Node const& read (std::string const& path) const;
 
   Node& write (std::string const& path);
+
+/*  Node& parent ();
+
+    Node const& parent () const;*/
+
+  bool remove (std::string const& path);
+
+  bool removeChild (std::string const& key);
 
   friend std::ostream& operator<<(std::ostream& os, const Node& n) {
     Node const* par = n._parent;
@@ -100,7 +116,7 @@ public:
       for (auto const& i : n._children)
         os << *(i.second);
     } else {
-      os << n.slice().toJson() << std::endl;
+      os << ((n.slice().type() == ValueType::None) ? "NONE" : n.slice().toJson()) << std::endl;
     }
     return os;
   }
@@ -113,14 +129,15 @@ public:
     return _value;
   }
 
-  bool isSingular () const;
-
   Slice slice() const;
+
+  
 
 protected:
   Node const* _parent;
   Children _children;
   Buffer<uint8_t> _value;
+  std::chrono::system_clock::time_point _ttl;
 
 private:
   NodeType _type;
@@ -132,7 +149,7 @@ private:
 class Store : public Node { // Root node
   
 public:
-  Store ();
+  Store (std::string const& name = "root");
   virtual ~Store ();
 
   std::vector<bool> apply (query_t const& query);
