@@ -76,7 +76,7 @@ set(V8_VERSION
 )
 
 set(V8_INCLUDE_DIR
-  ${V8_DIR}/include
+  ${V8_DIR}/include;${V8_DIR}
   CACHE INTERNAL
   "${PROJECT_NAME}: include path"
 )
