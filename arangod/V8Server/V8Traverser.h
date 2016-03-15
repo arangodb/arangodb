@@ -385,6 +385,7 @@ std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch(
 std::unique_ptr<ArangoDBConstDistancePathFinder::Path>
 TRI_RunSimpleShortestPathSearch(
     std::vector<EdgeCollectionInfo*>& collectionInfos,
+    arangodb::Transaction*,
     arangodb::traverser::ShortestPathOptions& opts);
 
 ////////////////////////////////////////////////////////////////////////////////
