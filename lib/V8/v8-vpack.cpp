@@ -285,7 +285,6 @@ static int V8ToVPack(BuilderContext& context,
     v8::Handle<v8::Object> o = parameter->ToObject();
 
     // first check if the object has a "toJSON" function
-//    v8::Handle<v8::String> toJsonString = TRI_V8_PAIR_STRING("toJSON", 6);
     if (o->Has(context.toJsonKey)) {
       // call it if yes
       v8::Handle<v8::Value> func = o->Get(context.toJsonKey);
