@@ -378,6 +378,18 @@ if (USE_TCMALLOC)
 endif ()
 
 ################################################################################
+## LIBRARY RESOLV
+################################################################################
+
+if (NOT WINDOWS)
+  check_library_exists(resolv dn_expand "" RESOLV_LIB_REQ)
+
+  if (RESOLV_LIB_REQ)
+    set(NET_LIBS ${NET_LIBS} resolv)
+  endif ()
+endif ()
+
+################################################################################
 ## FLAGS
 ################################################################################
 
@@ -723,6 +735,7 @@ list(INSERT SYSTEM_LIBRARIES 0
   ${BASE_LIBS}
   ${CMAKE_THREAD_LIBS_INIT}
   ${CMAKE_DL_LIBS}
+  ${NET_LIBS}
 )
 
 add_subdirectory(lib)

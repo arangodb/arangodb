@@ -20,47 +20,70 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_ARANGOIMP_FEATURE_H
-#define APPLICATION_FEATURES_ARANGOIMP_FEATURE_H 1
+#ifndef APPLICATION_FEATURES_ARANGODUMP_FEATURE_H
+#define APPLICATION_FEATURES_ARANGODUMP_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "V8Client/ArangoClientHelper.h"
 
 namespace arangodb {
 namespace httpclient {
-class GeneralClientConnection;
-class SimpleHttpClient;
 class SimpleHttpResult;
 }
 
-class ArangoimpFeature final : public application_features::ApplicationFeature,
-                               public ArangoClientHelper {
+class DumpFeature final : public application_features::ApplicationFeature,
+                                public ArangoClientHelper {
  public:
-  ArangoimpFeature(application_features::ApplicationServer* server,
-                   int* result);
+  DumpFeature(application_features::ApplicationServer* server,
+                    int* result);
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(
       std::shared_ptr<options::ProgramOptions> options) override;
+  void prepare() override;
   void start() override;
 
  private:
-  std::string _filename;
-  bool _useBackslash;
+  std::vector<std::string> _collections;
   uint64_t _chunkSize;
-  std::string _collectionName;
-  bool _createCollection;
-  std::string _createCollectionType;
-  std::string _typeImport;
+  uint64_t _maxChunkSize;
+  bool _dumpData;
+  bool _force;
+  bool _includeSystemCollections;
+  std::string _outputDirectory;
   bool _overwrite;
-  std::string _quote;
-  std::string _separator;
   bool _progress;
-  std::string _onDuplicateAction;
+  uint64_t _tickStart;
+  uint64_t _tickEnd;
+
+ private:
+  int startBatch(std::string DBserver, std::string& errorMsg);
+  void extendBatch(std::string DBserver);
+  void endBatch(std::string DBserver);
+  int dumpCollection(int fd, std::string const& cid, std::string const& name,
+                     uint64_t maxTick, std::string& errorMsg);
+  void flushWal();
+  int runDump(std::string& dbName, std::string& errorMsg);
+  int dumpShard(int fd, std::string const& DBserver, std::string const& name,
+                std::string& errorMsg);
+  int runClusterDump(std::string& errorMsg);
 
  private:
   int* _result;
+
+  // our batch id
+  uint64_t _batchId;
+
+  // cluster mode flag
+  bool _clusterMode;
+
+  // statistics
+  struct {
+    uint64_t _totalBatches;
+    uint64_t _totalCollections;
+    uint64_t _totalWritten;
+  } _stats;
 };
 }
 
