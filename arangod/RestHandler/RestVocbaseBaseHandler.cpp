@@ -63,12 +63,6 @@ std::string const RestVocbaseBaseHandler::CURSOR_PATH = "/_api/cursor";
 std::string const RestVocbaseBaseHandler::DOCUMENT_PATH = "/_api/document";
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief edge path
-////////////////////////////////////////////////////////////////////////////////
-
-std::string const RestVocbaseBaseHandler::EDGE_PATH = "/_api/edge";
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief edges path
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -234,15 +228,9 @@ void RestVocbaseBaseHandler::generate20x(
     // pre 1.4 location headers withdrawn for >= 3.0
     std::string escapedHandle(assembleDocumentId(
         collectionName, slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString(), true));
-    if (type == TRI_COL_TYPE_EDGE) {
-      _response->setHeader("location", 8,
-                           std::string("/_db/" + _request->databaseName() +
-                                       EDGE_PATH + "/" + escapedHandle));
-    } else {
-      _response->setHeader("location", 8,
-                           std::string("/_db/" + _request->databaseName() +
-                                       DOCUMENT_PATH + "/" + escapedHandle));
-    }
+    _response->setHeader("location", 8,
+                         std::string("/_db/" + _request->databaseName() +
+                                     DOCUMENT_PATH + "/" + escapedHandle));
   }
   VPackStringBufferAdapter buffer(_response->body().stringBuffer());
   VPackDumper dumper(&buffer, options);
