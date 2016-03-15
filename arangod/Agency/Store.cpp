@@ -152,6 +152,9 @@ Node const& Node::operator ()(std::vector<std::string>& pv) const {
   if (pv.size()) {
     std::string const key = pv[0];
     pv.erase(pv.begin());
+    if (_children.find(key) == _children.end()) {
+      throw StoreException("Not found");
+    }
     const Node& child = *_children.at(key);
     return child(pv);
   } else {
@@ -260,11 +263,9 @@ bool Store::check (arangodb::velocypack::Slice const& slice) const {
       for (auto const& op : VPackObjectIterator(precond.value)) {
         std::string const& oper = op.key.copyString();
         if (oper == "old") {
-          std::cout << path << std::endl;
-          std::cout << op.value.toJson() << std::endl;
-          std::cout << (*this)(path) << std::endl;
           return (*this)(path) == op.value;
         } else if ("oldEmpty") {
+
         }
       }
       
@@ -281,11 +282,11 @@ query_t Store::read (query_t const& queries) const { // list of list of paths
   MUTEX_LOCKER(storeLocker, _storeLock);
   query_t result = std::make_shared<arangodb::velocypack::Builder>();
   if (queries->slice().type() == VPackValueType::Array) {
-      result->add(VPackValue(VPackValueType::Array)); // top node array
-      for (auto const& query : VPackArrayIterator(queries->slice())) {
-        read (query, *result);
-      } 
-      result->close();
+    result->add(VPackValue(VPackValueType::Array)); // top node array
+    for (auto const& query : VPackArrayIterator(queries->slice())) {
+      read (query, *result);
+    } 
+    result->close();
   } else {
     LOG(FATAL) << "Read queries to stores must be arrays";
   }
@@ -318,16 +319,17 @@ bool Store::read (arangodb::velocypack::Slice const& query, Builder& ret) const 
   query_strs.erase (cut,query_strs.end());
 
   // Create response tree 
-  Node node("copy");
+  Node copy("copy");
   for (auto i = query_strs.begin(); i != query_strs.end(); ++i) {
-    node(*i) = (*this)(*i);
+    try {
+      copy(*i) = (*this)(*i);
+    } catch (StoreException const&) {}
   }
-
   // Assemble builder from response tree
-  if (query_strs.size() == 1 && node(*query_strs.begin()).type() == LEAF) {
-    ret.add(node(*query_strs.begin()).slice());
+  if (query_strs.size() == 1 && copy(*query_strs.begin()).type() == LEAF) {
+    ret.add(copy(*query_strs.begin()).slice());
   } else {
-    node.toBuilder(ret);
+    copy.toBuilder(ret);
   }
   
   return true;
