@@ -38,6 +38,7 @@ using namespace arangodb::options;
 #ifdef _WIN32
 static const int FOREGROUND_WHITE = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE;
 static const int BACKGROUND_WHITE = BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE;
+static const int INTENSITY = FOREGROUND_INTENSITY | BACKGROUND_INTENSITY;
 #endif
 
 ConsoleFeature::ConsoleFeature(application_features::ApplicationServer* server)
@@ -73,7 +74,7 @@ ConsoleFeature::ConsoleFeature(application_features::ApplicationServer* server)
   CONSOLE_SCREEN_BUFFER_INFO info;
   GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &info);
 
-  _defaultAttribute = info.wAttributes & (FOREGROUND_INTENSITY | BACKGROUND_INTENSITY);
+  _defaultAttribute = info.wAttributes & INTENSITY;
   _defaultColor = info.wAttributes & FOREGROUND_WHITE;
   _defaultBackground = info.wAttributes & BACKGROUND_WHITE;
 
@@ -210,7 +211,7 @@ void ConsoleFeature::_print(std::string const& s) {
 
                 case 1:  // BOLD
                 case 5:  // BLINK
-                  _consoleAttribute = FOREGROUND_INTENSITY;
+                  _consoleAttribute = (_defaultAttribute ^ FOREGROUND_INTENSITY) & INTENSITY;
                   break;
 
                 case 30:
