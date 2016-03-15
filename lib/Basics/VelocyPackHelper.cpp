@@ -69,7 +69,7 @@ static VPackBuilder FalseBuilder;
 /// expressions but must never be freed
 ////////////////////////////////////////////////////////////////////////////////
 
-static VPackBuilder ArrayBuilder;
+static VPackBuilder EmptyArrayBuilder;
 
 
 // attribute exclude handler for skipping over system attributes
@@ -129,8 +129,8 @@ void VelocyPackHelper::initialize() {
   // False value
   FalseBuilder.add(VPackValue(false));
   // Array value (empty)
-  ArrayBuilder.openArray();
-  ArrayBuilder.close();
+  EmptyArrayBuilder.openArray();
+  EmptyArrayBuilder.close();
 }
 
 arangodb::velocypack::Slice VelocyPackHelper::NullValue() {
@@ -145,8 +145,15 @@ arangodb::velocypack::Slice VelocyPackHelper::FalseValue() {
   return FalseBuilder.slice(); 
 }
 
-arangodb::velocypack::Slice VelocyPackHelper::ArrayValue() {
-  return ArrayBuilder.slice(); 
+arangodb::velocypack::Slice VelocyPackHelper::BooleanValue(bool value) {
+  if (value) {
+    return TrueBuilder.slice();
+  }
+  return FalseBuilder.slice(); 
+}
+
+arangodb::velocypack::Slice VelocyPackHelper::EmptyArrayValue() {
+  return EmptyArrayBuilder.slice(); 
 }
   
 ////////////////////////////////////////////////////////////////////////////////

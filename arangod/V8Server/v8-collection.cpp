@@ -2075,7 +2075,7 @@ static void JS_InsertVocbaseVPack(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  bool isEdgeCollection =
+  bool const isEdgeCollection =
       ((TRI_col_type_e)collection->_type == TRI_COL_TYPE_EDGE);
 
   uint32_t const argLength = args.Length();
@@ -2140,7 +2140,7 @@ static void JS_InsertVocbaseVPack(
 
     if (isEdgeCollection) {
       // Just insert from and to. Check is done later.
-      std::string tmpId = ExtractIdString(isolate, args[0]);
+      std::string tmpId(ExtractIdString(isolate, args[0]));
       if (tmpId.empty()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
       }

@@ -1007,7 +1007,7 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
     res = workOnOneDocument(value);
   } else {
     VPackArrayBuilder guard(&resultBuilder);
-    for (auto const s : VPackArrayIterator(value)) {
+    for (auto const& s : VPackArrayIterator(value)) {
       res = workOnOneDocument(s);
       if (res != TRI_ERROR_NO_ERROR) {
         break;
@@ -1149,10 +1149,10 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
     return TRI_ERROR_NO_ERROR;
   };
 
-  int res;
+  int res = TRI_ERROR_NO_ERROR;
   if (value.isArray()) {
     VPackArrayBuilder b(&resultBuilder);
-    for (auto const s : VPackArrayIterator(value)) {
+    for (auto const& s : VPackArrayIterator(value)) {
       res = workForOneDocument(s);
       if (res != TRI_ERROR_NO_ERROR) {
         break;
@@ -1570,7 +1570,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
   int res = TRI_ERROR_NO_ERROR;
   if (value.isArray()) {
     VPackArrayBuilder guard(&resultBuilder);
-    for (auto const s : VPackArrayIterator(value)) {
+    for (auto const& s : VPackArrayIterator(value)) {
       res = workOnOneDocument(s);
       if (res != TRI_ERROR_NO_ERROR) {
         break;

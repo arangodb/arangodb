@@ -4084,7 +4084,8 @@ int TRI_document_collection_t::newObjectForInsert(
     uint64_t& hash,
     VPackBuilder& builder) {
   // insert
-  { VPackObjectBuilder guard(&builder);
+  { 
+    VPackObjectBuilder guard(&builder);
 
     TRI_SanitizeObject(value, builder);
     uint8_t* p = builder.add(TRI_VOC_ATTRIBUTE_ID, 
@@ -4126,7 +4127,8 @@ void TRI_document_collection_t::newObjectForReplace(
     VPackSlice const& newValue,
     std::string const& rev,
     VPackBuilder& builder) {
-  { VPackObjectBuilder guard(&builder);
+  {
+    VPackObjectBuilder guard(&builder);
 
     TRI_SanitizeObject(newValue, builder);
     VPackSlice s = oldValue.get(TRI_VOC_ATTRIBUTE_ID);

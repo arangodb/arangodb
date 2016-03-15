@@ -852,7 +852,8 @@ AqlValue Expression::executeSimpleExpressionFCall(
 
     TRI_ASSERT(parameters.size() == destroyParameters.size());
 
-    AqlValue a = func->implementation(_ast->query(), trx, parameters);
+    AqlValue a = func->implementation(_ast->query(), trx, parameters, mustDestroy);
+#warning Do we have to free the old value
     mustDestroy = true; // function result is dynamic
 
     for (size_t i = 0; i < parameters.size(); ++i) {
@@ -1196,7 +1197,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
 
   if (offset < 0 || count <= 0) {
     // no items to return... can already stop here
-    return AqlValue(VelocyPackHelper::ArrayValue());
+    return AqlValue(VelocyPackHelper::EmptyArrayValue());
   }
 
   // FILTER
@@ -1210,7 +1211,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
       filterNode = nullptr;
     } else {
       // filter expression is always false
-      return AqlValue(VelocyPackHelper::ArrayValue());
+      return AqlValue(VelocyPackHelper::EmptyArrayValue());
     }
   }
 
@@ -1230,7 +1231,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
       
     if (!a.isArray()) {
       TRI_ASSERT(!mustDestroy);
-      return AqlValue(VelocyPackHelper::ArrayValue());
+      return AqlValue(VelocyPackHelper::EmptyArrayValue());
     }
     
     VPackBuilder builder;
@@ -1273,7 +1274,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
 
     if (!a.isArray()) {
       TRI_ASSERT(!mustDestroy);
-      return AqlValue(VelocyPackHelper::ArrayValue());
+      return AqlValue(VelocyPackHelper::EmptyArrayValue());
     }
 
     mustDestroy = localMustDestroy; // maybe we need to destroy...
