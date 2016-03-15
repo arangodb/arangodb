@@ -61,22 +61,6 @@ struct EdgeInfo {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Template for information required by vertex filter.
-///        Contains transaction, barrier and the Matcher Class.
-////////////////////////////////////////////////////////////////////////////////
-
-struct VertexFilterInfo {
-  arangodb::ExplicitTransaction* trx;
-  TRI_document_collection_t* col;
-  arangodb::ExampleMatcher* matcher;
-
-  VertexFilterInfo(arangodb::ExplicitTransaction* trx,
-                   TRI_document_collection_t* col,
-                   arangodb::ExampleMatcher* matcher)
-      : trx(trx), col(col), matcher(matcher) {}
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief typedef the template instantiation of the PathFinder
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -94,7 +78,7 @@ namespace traverser {
 struct BasicOptions {
  protected:
   std::unordered_map<std::string, arangodb::ExampleMatcher*> _edgeFilter;
-  std::unordered_map<TRI_voc_cid_t, VertexFilterInfo> _vertexFilter;
+  std::unordered_map<std::string, arangodb::ExampleMatcher*> _vertexFilter;
 
   BasicOptions() : useEdgeFilter(false), useVertexFilter(false) {}
 
@@ -104,8 +88,7 @@ struct BasicOptions {
       delete it.second;
     }
     for (auto& it : _vertexFilter) {
-      delete it.second.matcher;
-      it.second.matcher = nullptr;
+      delete it.second;
     }
   }
 
@@ -123,9 +106,9 @@ struct BasicOptions {
 
   void addVertexFilter(v8::Isolate* isolate,
                        v8::Handle<v8::Value> const& example,
-                       arangodb::ExplicitTransaction* trx,
-                       TRI_document_collection_t* col, VocShaper* shaper,
-                       TRI_voc_cid_t const& cid, std::string& errorMessage);
+                       arangodb::Transaction* trx,
+                       std::string const&,
+                       std::string& errorMessage);
 
   bool matchesEdge(arangodb::velocypack::Slice edge) const;
 
@@ -389,40 +372,6 @@ class EdgeCollectionInfo {
 
   std::string const& getName(); 
 
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Information required internally of the traverser.
-///        Used to easily pass around collections.
-////////////////////////////////////////////////////////////////////////////////
-
-class VertexCollectionInfo {
- private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief vertex collection
-  //////////////////////////////////////////////////////////////////////////////
-
-  TRI_voc_cid_t _vertexCollectionCid;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief vertex collection
-  //////////////////////////////////////////////////////////////////////////////
-
-  TRI_document_collection_t* _vertexCollection;
-
- public:
-  VertexCollectionInfo(TRI_voc_cid_t& vertexCollectionCid,
-                       TRI_document_collection_t* vertexCollection)
-      : _vertexCollectionCid(vertexCollectionCid),
-        _vertexCollection(vertexCollection) {}
-
-  TRI_voc_cid_t getCid() { return _vertexCollectionCid; }
-
-  TRI_document_collection_t* getCollection() { return _vertexCollection; }
-
-  VocShaper* getShaper() {
-    return _vertexCollection->getShaper();
-  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
