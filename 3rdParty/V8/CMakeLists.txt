@@ -33,7 +33,7 @@ endif()
 
 # detect 32bit or 64bit
 
-if (${CMAKE_TARGET_ARCHITECTURES} STREQUAL "armv7")
+if ("${CMAKE_TARGET_ARCHITECTURES}" STREQUAL "armv7")
   set(V8_PROC_ARCH "arm")
   list(APPEND V8_GYP_ARGS -Darm_version=7 -Darm_fpu=default -Darm_float_abi=default)
 else ()
