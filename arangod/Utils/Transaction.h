@@ -37,6 +37,11 @@
 #define TRI_DEFAULT_BATCH_SIZE 1000
 
 namespace arangodb {
+
+namespace basics {
+class AttributeName;
+}
+
 class Index;
 
 namespace aql {
@@ -401,6 +406,15 @@ class Transaction {
                                double&);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Get the index features:
+  ///        Returns the covered attributes, and sets the first bool value
+  ///        to isSorted and the second bool value to isSparse
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::vector<std::vector<arangodb::basics::AttributeName>> getIndexFeatures(
+      std::string const&, std::string const&, bool&, bool&);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Gets the best fitting index for an AQL sort condition
   /// note: the caller must have read-locked the underlying collection when
   /// calling this method
@@ -423,14 +437,6 @@ class Transaction {
                                         arangodb::aql::AstNode const*,
                                         arangodb::aql::Variable const*,
                                         uint64_t, uint64_t, bool);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief check if index is sorted
-  //////////////////////////////////////////////////////////////////////////////
- 
-  bool isIndexSorted(std::string const& collectionName,
-                     std::string const& indexId);
-                      
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief factory for OperationCursor objects

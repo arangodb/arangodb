@@ -1789,8 +1789,6 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       return true;
     }
 
-#warning Reimplement this rule
-    /*
     auto const& indexes = indexNode->getIndexes();
     auto cond = indexNode->condition();
     TRI_ASSERT(cond != nullptr);
@@ -1798,6 +1796,13 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
     Variable const* outVariable = indexNode->outVariable();
     TRI_ASSERT(outVariable != nullptr);
 
+    auto index = indexes[0];
+    std::string collectionName = indexNode->collection()->getName();
+    arangodb::Transaction* trx = indexNode->trx();
+    bool isSorted = false;
+    bool isSparse = false;
+    std::vector<std::vector<arangodb::basics::AttributeName>> fields = fields =
+        trx->getIndexFeatures(collectionName, index, isSorted, isSparse);
     if (indexes.size() != 1) {
       // can only use this index node if it uses exactly one index or multiple
       // indexes on exactly the same attributes
@@ -1807,17 +1812,13 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         return true;
       }
 
-      std::vector<std::vector<arangodb::basics::AttributeName>> seen;
+      if (!isSparse) {
+        return true;
+      }
 
-      for (auto& index : indexes) {
-        if (index->sparse) {
-          // cannot use a sparse index for sorting
-          return true;
-        }
-
-        if (!seen.empty() && arangodb::basics::AttributeName::isIdentical(
-                                 index->fields, seen, true)) {
-          // different attributes
+      for (auto& idx : indexes) {
+        if (idx != index) {
+          // Can only be sorted iff only one index is used.
           return true;
         }
       }
@@ -1828,22 +1829,21 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
 
     // if we get here, we either have one index or multiple indexes on the same
     // attributes
-    auto index = indexes[0];
     bool handled = false;
 
-    SortCondition sortCondition(_sorts, cond->getConstAttributes(outVariable, !index->sparse), _variableDefinitions);
+    SortCondition sortCondition(_sorts, cond->getConstAttributes(outVariable, !isSparse), _variableDefinitions);
 
     bool const isOnlyAttributeAccess =
         (!sortCondition.isEmpty() && sortCondition.isOnlyAttributeAccess());
 
-    if (isOnlyAttributeAccess && index->isSorted() && !index->sparse &&
+    if (isOnlyAttributeAccess && isSorted && !isSparse &&
         sortCondition.isUnidirectional() &&
         sortCondition.isDescending() == indexNode->reverse()) {
       // we have found a sort condition, which is unidirectional and in the same
       // order as the IndexNode...
       // now check if the sort attributes match the ones of the index
       size_t const numCovered =
-          sortCondition.coveredAttributes(outVariable, index->fields); 
+          sortCondition.coveredAttributes(outVariable, fields); 
 
       if (numCovered >= sortCondition.numAttributes()) {
         // sort condition is fully covered by index... now we can remove the
@@ -1869,12 +1869,11 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
           // fields
           // e.g. FILTER c.value1 == 1 && c.value2 == 42 SORT c.value1, c.value2
           size_t const numCovered = 
-              sortCondition.coveredAttributes(outVariable, index->fields); 
+              sortCondition.coveredAttributes(outVariable, fields);
 
           if (numCovered == sortCondition.numAttributes() &&
               sortCondition.isUnidirectional() &&
-              (index->isSorted() ||
-               index->fields.size() == sortCondition.numAttributes())) {
+              (isSorted || fields.size() == sortCondition.numAttributes())) {
             // no need to sort
             _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
             _modified = true;
@@ -1882,7 +1881,6 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         }
       }
     }
-*/
 
     return true;  // always abort after we found an IndexNode
   }

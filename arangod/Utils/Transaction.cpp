@@ -26,6 +26,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/Condition.h"
 #include "Aql/SortCondition.h"
+#include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -2007,6 +2008,28 @@ bool Transaction::supportsFilterCondition(
 }
 
 //////////////////////////////////////////////////////////////////////////////
+/// @brief Get the index features:
+///        Returns the covered attributes, and sets the first bool value
+///        to isSorted and the second bool value to isSparse
+//////////////////////////////////////////////////////////////////////////////
+
+std::vector<std::vector<arangodb::basics::AttributeName>>
+Transaction::getIndexFeatures(std::string const& collectionName,
+                              std::string const& indexHandle, bool& isSorted,
+                              bool& isSparse) {
+
+  if (ServerState::instance()->isCoordinator()) {
+    // The index is sorted check is only available on DBServers and Single Server.
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
+  }
+
+  arangodb::Index* idx = getIndexByIdentifier(collectionName, indexHandle);
+  isSorted = idx->isSorted();
+  isSparse = idx->sparse();
+  return idx->fields();
+}
+
+//////////////////////////////////////////////////////////////////////////////
 /// @brief Gets the best fitting index for an AQL sort condition
 /// note: the caller must have read-locked the underlying collection when
 /// calling this method
@@ -2090,25 +2113,12 @@ OperationCursor Transaction::indexScanForCondition(
 
   return OperationCursor(transactionContext()->orderCustomTypeHandler(),
                          iterator.release(), limit, batchSize);
-
 }
 
-
 //////////////////////////////////////////////////////////////////////////////
-/// @brief check if index is sorted
+/// @brief get the index by it's identifier. Will either throw or
+///        return a valid index. nullptr is impossible.
 //////////////////////////////////////////////////////////////////////////////
-
-bool Transaction::isIndexSorted(std::string const& collectionName,
-                                std::string const& indexId) {
-  if (ServerState::instance()->isCoordinator()) {
-    // The index is sorted check is only available on DBServers and Single Server.
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
-  }
-
-  arangodb::Index* idx = getIndexByIdentifier(collectionName, indexId);
-  TRI_ASSERT(idx != nullptr);
-  return idx->isSorted();
-}
 
 arangodb::Index* Transaction::getIndexByIdentifier(
     std::string const& collectionName, std::string const& indexHandle) {
