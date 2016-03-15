@@ -85,6 +85,10 @@ Node& Node::operator= (Node const& node) { // Assign node
   return *this;
 }
 
+bool Node::operator== (arangodb::velocypack::Slice const& rhs) const {
+  return rhs.equals(slice());
+}
+
 /*Node& Node::parent () {
   return *_parent;
   }
@@ -99,6 +103,7 @@ bool Node::remove (std::string const& path) {
   pv.pop_back();
   try {
     Node& parent = (*this)(pv);
+    
     return parent.removeChild(key);
   } catch (StoreException const& e) {
     return false;
@@ -147,7 +152,8 @@ Node const& Node::operator ()(std::vector<std::string>& pv) const {
   if (pv.size()) {
     std::string const key = pv[0];
     pv.erase(pv.begin());
-    return (*_children.at(key))(pv);
+    const Node& child = *_children.at(key);
+    return child(pv);
   } else {
     return *this;
   }
@@ -187,7 +193,6 @@ bool Node::apply (arangodb::velocypack::Slice const& slice) {
   } else {
     *this = slice;
   }
-//  remove("/g/b");
   return true;
 }
 
@@ -219,8 +224,8 @@ std::vector<bool> Store::apply (query_t const& query) {
     case 1:
       applied.push_back(this->apply(i[0])); break; // no precond
     case 2:
-      if (check(i[0])) {
-        applied.push_back(this->apply(i[1]));      // precondition
+      if (check(i[1])) {
+        applied.push_back(this->apply(i[0]));      // precondition
       } else {
         LOG(WARN) << "Precondition failed!";
         applied.push_back(false);
@@ -232,7 +237,6 @@ std::vector<bool> Store::apply (query_t const& query) {
       break;
     }
   }
-  std::cout << *this << std::endl;
   return applied;
 }
 
@@ -245,6 +249,30 @@ Node const& Store::read (std::string const& path) const {
 }
 
 bool Store::check (arangodb::velocypack::Slice const& slice) const {
+  if (slice.type() != VPackValueType::Object) {
+    LOG(WARN) << "Cannot check precondition: " << slice.toJson();
+    return false;
+  }
+  for (auto const& precond : VPackObjectIterator(slice)) {
+    std::string path = precond.key.toString();
+    path = path.substr(1,path.size()-2);
+    if (precond.value.type() == VPackValueType::Object) { //"old", "oldEmpty", "isArray"
+      for (auto const& op : VPackObjectIterator(precond.value)) {
+        std::string const& oper = op.key.copyString();
+        if (oper == "old") {
+          std::cout << path << std::endl;
+          std::cout << op.value.toJson() << std::endl;
+          std::cout << (*this)(path) << std::endl;
+          return (*this)(path) == op.value;
+        } else if ("oldEmpty") {
+        }
+      }
+      
+    } else {
+      
+    }
+  }
+  // 
   
   return true;
 }
@@ -291,15 +319,8 @@ bool Store::read (arangodb::velocypack::Slice const& query, Builder& ret) const 
 
   // Create response tree 
   Node node("copy");
-  const Node rhs(*this);
   for (auto i = query_strs.begin(); i != query_strs.end(); ++i) {
-    try {
-      rhs(*i);
-    } catch (StoreException const& e) {
-      std::cout << e.what();
-      continue;
-    }
-    node(*i) = rhs(*i);
+    node(*i) = (*this)(*i);
   }
 
   // Assemble builder from response tree

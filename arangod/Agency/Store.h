@@ -75,7 +75,9 @@ public:
 
   Node& operator= (Node const& node);
   
-  Node& operator= (arangodb::velocypack::Slice const& t);
+  Node& operator= (arangodb::velocypack::Slice const&);
+
+  bool operator== (arangodb::velocypack::Slice const&) const;
 
   NodeType type() const;
 
