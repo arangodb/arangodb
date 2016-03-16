@@ -35,10 +35,7 @@ const db = arangodb.db;
 const wait = require("internal").wait;
 const extend = require('lodash').extend;
 
-const endpoint = {
-  'hostname': '127.0.0.1',
-  port: 8529
-};
+let endpoint = {};
 
 describe('babies collection document', function() {
   const cn = "UnitTestsCollectionBasics";
@@ -434,7 +431,68 @@ describe('babies collection document', function() {
       expect(collection.count()).to.equal(l1.length);
     });
 
-    it('update multi precondition', function() {});
+    it('update multi precondition', function() {
+      let l1 = [{
+        value: 1
+      }, {
+        value: 2
+      }, {
+        value: 3
+      }];
+
+      let req1 = request.post("/_api/document/" + cn, extend(endpoint, {
+        body: JSON.stringify(l1)
+      }));
+
+      expect(req1.statusCode).to.equal(202);
+      expect(collection.count()).to.equal(l1.length);
+
+      let b1 = JSON.parse(req1.rawBody);
+
+      let l2 = [{
+        value: 4
+      }, {
+        value: 5
+      }, {
+        value: 6
+      }];
+
+      for (let i = 0; i < l1.length; ++i) {
+        l2[i]._key = b1[i]._key;
+        l2[i]._rev = b1[i]._rev;
+      }
+
+      let req2 = request.patch("/_api/document/" + cn + "?ignoreRevs=false",
+        extend(endpoint, {
+          body: JSON.stringify(l2)
+        }));
+
+      expect(req2.statusCode).to.equal(202);
+      expect(collection.count()).to.equal(l1.length);
+
+      let b2 = JSON.parse(req2.rawBody);
+
+      let l3 = [{
+        value: 7
+      }, {
+        value: 8
+      }, {
+        value: 9
+      }];
+
+      for (let i = 0; i < l1.length; ++i) {
+        l3[i]._key = b1[i]._key;
+        l3[i]._rev = b1[i]._rev;
+      }
+
+      let req3 = request.patch("/_api/document/" + cn + "?ignoreRevs=false",
+        extend(endpoint, {
+          body: JSON.stringify(l3)
+        }));
+
+      expect(req3.statusCode).to.equal(412);
+      expect(collection.count()).to.equal(l1.length);
+    });
 
     it('invalid document type', function() {
       let values1 = [null, false, true, 1, "abc", [],

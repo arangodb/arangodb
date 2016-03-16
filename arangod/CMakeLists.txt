@@ -222,7 +222,6 @@ add_executable(${BIN_ARANGOD}
   Utils/Cursor.cpp
   Utils/CursorRepository.cpp
   Utils/OperationCursor.cpp
-  Utils/ShapedJsonTransformer.cpp
   Utils/SingleCollectionTransaction.cpp
   Utils/StandaloneTransactionContext.cpp
   Utils/Transaction.cpp
@@ -242,7 +241,6 @@ add_executable(${BIN_ARANGOD}
   V8Server/v8-dispatcher.cpp
   V8Server/v8-query.cpp
   V8Server/v8-replication.cpp
-  V8Server/v8-shape-conv.cpp
   V8Server/v8-statistics.cpp
   V8Server/v8-user-structures.cpp
   V8Server/v8-util.cpp
