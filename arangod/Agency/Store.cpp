@@ -176,72 +176,68 @@ Node& Node::write (std::string const& path) {
 
 bool Node::applies (arangodb::velocypack::Slice const& slice) {
   if (slice.type() == ValueType::Object) {
-    VPackObjectIterator sit (slice);
-
-    auto b = sit.begin();
-    auto i = *b;
-    std::string key = i.key.toString();
-    key = key.substr(1,key.length()-2);
-    if (key == "op") {
-      std::string oper = i.value.toString();
-      oper = oper.substr(1,oper.length()-2);
-      Slice const& self = this->slice();
-      if (oper == "delete") {
-        return _parent->removeChild(_name);
-      } else if (oper == "increment") { // Increment
-        if (self.isInt() || self.isUInt()) {
-          Builder tmp;
-          tmp.add(Value(self.isInt() ? int64_t(self.getInt()+1) : uint64_t(self.getUInt()+1)));
-          *this = tmp.slice();
-          return true;
-        } else {
-          return false;
-        }
-      } else if (oper == "increment") { // Decrement
-        if (self.isInt() || self.isUInt()) {
-          Builder tmp;
-          tmp.add(Value(self.isInt() ? int64_t(self.getInt()-1) : uint64_t(self.getUInt()-1)));
-          *this = tmp.slice();
-          return true;
-        } else {
-          return false;
-        }
-      } else if (oper == "push") { // Push
-        if (self.isArray()) {
-          Builder tmp;
-          tmp.openArray();
-          for (auto const& old : VPackArrayIterator(self))
-            tmp.add(old);
-          tmp.close();
-          auto nval = *++b;
-          std::cout << nval.value.toString() << std::endl;
-          *this = tmp.slice();
-        }
-      } else if (oper == "pop") { // Pop
-        if (self.isArray()) {
-          Builder tmp;
-          tmp.openArray();
-          VPackArrayIterator it(self);
-          size_t j = it.size()-1;
-          for (auto old : it) {
-            tmp.add(old);
-            if (--j==0)
-              break;
+    for (auto const& i : VPackObjectIterator(slice)) {
+      std::string key = i.key.toString();
+      key = key.substr(1,key.length()-2);
+      if (key == "op") {
+        std::string oper = i.value.toString();
+        oper = oper.substr(1,oper.length()-2);
+        Slice const& self = this->slice();
+        if (oper == "delete") {
+          return _parent->removeChild(_name);
+        } else if (oper == "increment") { // Increment
+          if (self.isInt() || self.isUInt()) {
+            Builder tmp;
+            tmp.add(Value(self.isInt() ? int64_t(self.getInt()+1) : uint64_t(self.getUInt()+1)));
+            *this = tmp.slice();
+            return true;
+          } else {
+            return false;
           }
-          tmp.close();
-          *this = tmp.slice();
+        } else if (oper == "increment") { // Decrement
+          if (self.isInt() || self.isUInt()) {
+            Builder tmp;
+            tmp.add(Value(self.isInt() ? int64_t(self.getInt()-1) : uint64_t(self.getUInt()-1)));
+            *this = tmp.slice();
+            return true;
+          } else {
+            return false;
+          }
+        } else if (oper == "push") { // Push
+          if (self.isArray()) {
+            Builder tmp;
+            tmp.openArray();
+            for (auto const& old : VPackArrayIterator(self))
+              tmp.add(old);
+            tmp.close();
+            *this = tmp.slice();
+          }
+        } else if (oper == "pop") { // Pop
+          if (self.isArray()) {
+            Builder tmp;
+            tmp.openArray();
+            VPackArrayIterator it(self);
+            size_t j = it.size()-1;
+            std::cout << j << std::endl;
+            for (auto old : it) {
+                tmp.add(old);
+                if (--j==0)
+                  break;
+            }
+            tmp.close();
+            *this = tmp.slice();
+          }
         }
-      }
-    } else if (key.find('/')!=std::string::npos) {
-      (*this)(key).applies(i.value);
-    } else {
-      auto found = _children.find(key);
-      if (found == _children.end()) {
-        _children[key] = std::make_shared<Node>(key, this);
-      }
+      } else if (key.find('/')!=std::string::npos) {
+        (*this)(key).applies(i.value);
+      } else {
+        auto found = _children.find(key);
+        if (found == _children.end()) {
+          _children[key] = std::make_shared<Node>(key, this);
+        }
       _children[key]->applies(i.value);
+      }
     }
-
   } else {
     *this = slice;
   }
