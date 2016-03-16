@@ -4032,31 +4032,36 @@ AqlValue Functions::IsSameCollection(
   mustDestroy = true;
   ValidateParameters(parameters, "IS_SAME_COLLECTION", 2, 2);
 
-  VPackSlice collectionSlice = ExtractFunctionParameter(trx, parameters, 0);
+  AqlValue first = ExtractFunctionParameterValue(trx, parameters, 0);
 
-  if (!collectionSlice.isString()) {
+  if (!first.isString()) {
     THROW_ARANGO_EXCEPTION_PARAMS(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "IS_SAME_COLLECTION");
   }
 
-  std::string colName(collectionSlice.copyString());
+  std::string colName(first.slice().copyString());
 
-  VPackSlice value = ExtractFunctionParameter(trx, parameters, 1);
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 1);
   std::string identifier;
 
-  if (value.isObject() && value.hasKey(TRI_VOC_ATTRIBUTE_ID)) {
-    identifier = arangodb::basics::VelocyPackHelper::getStringValue(
-        value, TRI_VOC_ATTRIBUTE_ID, "");
+  if (value.isObject() && value.hasKey(trx, TRI_VOC_ATTRIBUTE_ID)) {
+    bool localMustDestroy;
+    value = value.get(trx, TRI_VOC_ATTRIBUTE_ID, localMustDestroy, false);
+    AqlValueGuard guard(value, localMustDestroy);
+
+    if (value.isString()) {
+      identifier = value.slice().copyString();
+    }
   } else if (value.isString()) {
-    identifier = value.copyString();
+    identifier = value.slice().copyString();
   }
 
   if (!identifier.empty()) {
     size_t pos = identifier.find('/');
 
     if (pos != std::string::npos) {
-      bool const same = (colName == identifier.substr(0, pos));
-      return AqlValue(same);
+      bool const isSame = (colName == identifier.substr(0, pos));
+      return AqlValue(isSame);
     }
 
     // fallthrough intentional
