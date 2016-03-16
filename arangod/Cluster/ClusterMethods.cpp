@@ -44,6 +44,23 @@ using namespace arangodb::rest;
 
 namespace arangodb {
 
+static int handleGeneralCommErrors(ClusterCommResult const* res) {
+  if (res->status == CL_COMM_TIMEOUT) {
+    // No reply, we give up:
+    return TRI_ERROR_CLUSTER_TIMEOUT;
+  } else if (res->status == CL_COMM_ERROR) {
+    // This could be a broken connection or an Http error:
+    if (res->result == nullptr || !res->result->isComplete()) {
+      // there is not result
+      return TRI_ERROR_CLUSTER_CONNECTION_LOST;
+    }
+  } else if (res->status == CL_COMM_BACKEND_UNAVAILABLE) {
+    return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE; 
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts a numeric value from an hierarchical VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
@@ -585,20 +602,10 @@ int createDocumentOnCoordinator(
           StringUtils::urlEncode(shardID) + "&waitForSync=" +
           (waitForSync ? "true" : "false"),
       body, headers, 60.0);
-
-  if (res->status == CL_COMM_TIMEOUT) {
-    // No reply, we give up:
-    return TRI_ERROR_CLUSTER_TIMEOUT;
-  }
-  if (res->status == CL_COMM_ERROR) {
-    // This could be a broken connection or an Http error:
-    if (res->result == nullptr || !res->result->isComplete()) {
-      // there is not result
-      return TRI_ERROR_CLUSTER_CONNECTION_LOST;
-    }
-    // In this case a proper HTTP error was reported by the DBserver,
-    // this can be 400 or 404, we simply forward the result.
-    // We intentionally fall through here.
+  
+  int commError = handleGeneralCommErrors(res.get());
+  if (commError != TRI_ERROR_NO_ERROR) {
+    return commError;
   }
   responseCode = static_cast<arangodb::rest::HttpResponse::HttpResponseCode>(
       res->result->getHttpReturnCode());
@@ -669,19 +676,10 @@ int deleteDocumentOnCoordinator(
             "/" + StringUtils::urlEncode(key) + "?waitForSync=" +
             (waitForSync ? "true" : "false") + revstr,
         "", *headers, 60.0);
-
-    if (res->status == CL_COMM_TIMEOUT) {
-      // No reply, we give up:
-      return TRI_ERROR_CLUSTER_TIMEOUT;
-    }
-    if (res->status == CL_COMM_ERROR) {
-      // This could be a broken connection or an Http error:
-      if (res->result == nullptr || !res->result->isComplete()) {
-        return TRI_ERROR_CLUSTER_CONNECTION_LOST;
-      }
-      // In this case a proper HTTP error was reported by the DBserver,
-      // this can be 400 or 404, we simply forward the result.
-      // We intentionally fall through here.
+    
+    int error = handleGeneralCommErrors(res.get());
+    if (error != TRI_ERROR_NO_ERROR) {
+      return error;
     }
     responseCode = static_cast<arangodb::rest::HttpResponse::HttpResponseCode>(
         res->result->getHttpReturnCode());
@@ -849,18 +847,9 @@ int getDocumentOnCoordinator(
             "/" + StringUtils::urlEncode(key) + revstr,
         "", *headers, 60.0);
 
-    if (res->status == CL_COMM_TIMEOUT) {
-      // No reply, we give up:
-      return TRI_ERROR_CLUSTER_TIMEOUT;
-    }
-    if (res->status == CL_COMM_ERROR) {
-      // This could be a broken connection or an Http error:
-      if (!res->result || !res->result->isComplete()) {
-        return TRI_ERROR_CLUSTER_CONNECTION_LOST;
-      }
-      // In this case a proper HTTP error was reported by the DBserver,
-      // this can be 400 or 404, we simply forward the result.
-      // We intentionally fall through here.
+    int error = handleGeneralCommErrors(res.get());
+    if (error != TRI_ERROR_NO_ERROR) {
+      return error;
     }
     responseCode = static_cast<arangodb::rest::HttpResponse::HttpResponseCode>(
         res->result->getHttpReturnCode());
@@ -1113,10 +1102,14 @@ int getAllDocumentsOnCoordinator(
 
   for (count = (int)shards->size(); count > 0; count--) {
     auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
-    if (res.status == CL_COMM_TIMEOUT) {
+
+    LOG(TRACE) << "Response status " << res.status;
+    int error = handleGeneralCommErrors(&res);
+    if (error != TRI_ERROR_NO_ERROR) {
       cc->drop("", coordTransactionID, 0, "");
-      return TRI_ERROR_CLUSTER_TIMEOUT;
+      return error;
     }
+    
     if (res.status == CL_COMM_ERROR || res.status == CL_COMM_DROPPED ||
         res.answer_code == arangodb::rest::HttpResponse::NOT_FOUND) {
       cc->drop("", coordTransactionID, 0, "");
@@ -1231,15 +1224,14 @@ int getFilteredEdgesOnCoordinator(
 
   for (count = (int)shards->size(); count > 0; count--) {
     auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
-    if (res.status == CL_COMM_TIMEOUT) {
+    int error = handleGeneralCommErrors(&res);
+    if (error != TRI_ERROR_NO_ERROR) {
       cc->drop("", coordTransactionID, 0, "");
-      return TRI_ERROR_CLUSTER_TIMEOUT;
+      return error;
     }
     if (res.status == CL_COMM_ERROR || res.status == CL_COMM_DROPPED) {
       cc->drop("", coordTransactionID, 0, "");
       return TRI_ERROR_INTERNAL;
-    }
-    if (res.status == CL_COMM_RECEIVED) {
     }
 
     std::unique_ptr<TRI_json_t> shardResult(
@@ -1415,20 +1407,12 @@ int modifyDocumentOnCoordinator(
             StringUtils::urlEncode(key) + "?waitForSync=" +
             (waitForSync ? "true" : "false") + revstr,
         *(body.get()), *headers, 60.0);
+    
+    int error = handleGeneralCommErrors(res.get());
+    if (error != TRI_ERROR_NO_ERROR) {
+      return error;
+    }
 
-    if (res->status == CL_COMM_TIMEOUT) {
-      // No reply, we give up:
-      return TRI_ERROR_CLUSTER_TIMEOUT;
-    }
-    if (res->status == CL_COMM_ERROR) {
-      // This could be a broken connection or an Http error:
-      if (res->result == nullptr || !res->result->isComplete()) {
-        return TRI_ERROR_CLUSTER_CONNECTION_LOST;
-      }
-      // In this case a proper HTTP error was reported by the DBserver,
-      // this can be 400 or 404, we simply forward the result.
-      // We intentionally fall through here.
-    }
     // Now we have to distinguish whether we still have to go the slow way:
     responseCode = static_cast<arangodb::rest::HttpResponse::HttpResponseCode>(
         res->result->getHttpReturnCode());
@@ -1549,19 +1533,9 @@ int createEdgeOnCoordinator(
           StringUtils::urlEncode(from) + "&to=" + StringUtils::urlEncode(to),
       body, headers, 60.0);
 
-  if (res->status == CL_COMM_TIMEOUT) {
-    // No reply, we give up:
-    return TRI_ERROR_CLUSTER_TIMEOUT;
-  }
-  if (res->status == CL_COMM_ERROR) {
-    // This could be a broken connection or an Http error:
-    if (res->result == nullptr || !res->result->isComplete()) {
-      // there is not result
-      return TRI_ERROR_CLUSTER_CONNECTION_LOST;
-    }
-    // In this case a proper HTTP error was reported by the DBserver,
-    // this can be 400 or 404, we simply forward the result.
-    // We intentionally fall through here.
+  int commError = handleGeneralCommErrors(res.get());
+  if (commError != TRI_ERROR_NO_ERROR) {
+    return commError;
   }
   responseCode = static_cast<arangodb::rest::HttpResponse::HttpResponseCode>(
       res->result->getHttpReturnCode());
