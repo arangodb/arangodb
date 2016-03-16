@@ -297,7 +297,7 @@ class Condition {
   //////////////////////////////////////////////////////////////////////////////
 
   std::pair<bool, bool> findIndexes(EnumerateCollectionNode const*,
-                                    std::vector<Index const*>&,
+                                    std::vector<std::string>&,
                                     SortCondition const*);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -376,22 +376,6 @@ class Condition {
   //////////////////////////////////////////////////////////////////////////////
 
   AstNode* fixRoot(AstNode*, int);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief tests if the given index supports the sort condition
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool indexSupportsSort(Index const*, Variable const*, SortCondition const*,
-                         size_t, double&) const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief finds the best index that can match this single node
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::pair<bool, bool> findIndexForAndNode(size_t, Variable const*,
-                                            EnumerateCollectionNode const*,
-                                            std::vector<Index const*>&,
-                                            SortCondition const*);
 
  private:
   //////////////////////////////////////////////////////////////////////////////

@@ -878,7 +878,7 @@ static TRI_vocbase_t* LookupDatabaseFromRequest(
       bool found = false;
 
       for (size_t i = 0; i < databases.size(); ++i) {
-        if (dbName == databases.at(i)) {
+        if (dbName == databases[i]) {
           request->setDatabaseName(dbName);
           found = true;
           break;

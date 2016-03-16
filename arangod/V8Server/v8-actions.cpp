@@ -355,9 +355,9 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   req->ForceSet(UrlKey, TRI_V8_STD_STRING(fullUrl));
 
   // set the protocol
-  std::string const& protocol = request->protocol();
+  char const* protocol = request->protocol();
   TRI_GET_GLOBAL_STRING(ProtocolKey);
-  req->ForceSet(ProtocolKey, TRI_V8_STD_STRING(protocol));
+  req->ForceSet(ProtocolKey, TRI_V8_ASCII_STRING(protocol));
 
   // set the task id
   std::string const taskId(StringUtils::itoa(request->clientTaskId()));

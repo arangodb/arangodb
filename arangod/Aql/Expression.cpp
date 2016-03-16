@@ -853,6 +853,8 @@ AqlValue Expression::executeSimpleExpressionFCall(
     TRI_ASSERT(parameters.size() == destroyParameters.size());
 
     AqlValue a = func->implementation(_ast->query(), trx, parameters, mustDestroy);
+#warning Do we have to free the old value
+    mustDestroy = true; // function result is dynamic
 
     for (size_t i = 0; i < parameters.size(); ++i) {
       if (destroyParameters[i]) {

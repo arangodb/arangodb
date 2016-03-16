@@ -38,6 +38,23 @@
 
 namespace arangodb {
 
+namespace basics {
+class AttributeName;
+}
+
+namespace velocypack {
+class Builder;
+}
+
+class Index;
+
+namespace aql {
+class Ast;
+class AstNode;
+class SortCondition;
+class Variable;
+}
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief forward declarations
 //////////////////////////////////////////////////////////////////////////////
@@ -369,7 +386,62 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   OperationResult count(std::string const& collectionName);
-  
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Gets the best fitting index for an AQL condition.
+  /// note: the caller must have read-locked the underlying collection when
+  /// calling this method
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
+      std::string const&, arangodb::aql::Ast*, arangodb::aql::AstNode*,
+      arangodb::aql::Variable const*, arangodb::aql::SortCondition const*,
+      size_t, std::vector<std::string>&, bool&) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Checks if the index supports the filter condition.
+  /// note: the caller must have read-locked the underlying collection when
+  /// calling this method
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool supportsFilterCondition(std::string const&, std::string const&,
+                               arangodb::aql::AstNode const*,
+                               arangodb::aql::Variable const*, size_t, size_t&,
+                               double&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Get the index features:
+  ///        Returns the covered attributes, and sets the first bool value
+  ///        to isSorted and the second bool value to isSparse
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::vector<std::vector<arangodb::basics::AttributeName>> getIndexFeatures(
+      std::string const&, std::string const&, bool&, bool&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Gets the best fitting index for an AQL sort condition
+  /// note: the caller must have read-locked the underlying collection when
+  /// calling this method
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::pair<bool, bool> getIndexForSortCondition(
+      std::string const&, arangodb::aql::SortCondition const*,
+      arangodb::aql::Variable const*, size_t,
+      std::vector<std::string>&) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief factory for OperationCursor objects from AQL
+  /// note: the caller must have read-locked the underlying collection when
+  /// calling this method
+  //////////////////////////////////////////////////////////////////////////////
+
+  OperationCursor indexScanForCondition(std::string const& collectionName,
+                                        std::string const& indexId,
+                                        arangodb::aql::Ast*,
+                                        arangodb::aql::AstNode const*,
+                                        arangodb::aql::Variable const*,
+                                        uint64_t, uint64_t, bool);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief factory for OperationCursor objects
   /// note: the caller must have read-locked the underlying collection when
@@ -562,6 +634,20 @@ class Transaction {
 
   int unlock(TRI_transaction_collection_t*, TRI_transaction_type_e);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Get all indexes for a collection name
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::vector<arangodb::Index*> indexesForCollection(std::string const&) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get the index by it's identifier. Will either throw or
+  ///        return a valid index. nullptr is impossible.
+  //////////////////////////////////////////////////////////////////////////////
+
+  arangodb::Index* getIndexByIdentifier(std::string const& collectionName,
+                                        std::string const& indexId);
+
  private:
 
   //////////////////////////////////////////////////////////////////////////////
@@ -699,6 +785,20 @@ class Transaction {
  public:
   static thread_local std::unordered_set<std::string>* _makeNolockHeaders;
 };
+
+class TransactionBuilderLeaser {
+ public:
+  explicit TransactionBuilderLeaser(arangodb::Transaction*); 
+  explicit TransactionBuilderLeaser(arangodb::TransactionContext*); 
+  ~TransactionBuilderLeaser();
+  arangodb::velocypack::Builder* builder() const { return _builder; }
+  arangodb::velocypack::Builder* operator->() const { return _builder; }
+  arangodb::velocypack::Builder* get() const { return _builder; }
+ private:
+  arangodb::TransactionContext* _transactionContext;
+  arangodb::velocypack::Builder* _builder;
+};
+
 }
 
 #endif

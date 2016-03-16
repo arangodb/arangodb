@@ -277,6 +277,16 @@ struct TRI_document_collection_t : public TRI_collection_t {
       std::string const& rev,
       bool mergeObjects, bool keepNull,
       arangodb::velocypack::Builder& b);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief new object for remove, must have _key set
+////////////////////////////////////////////////////////////////////////////////
+    
+  void newObjectForRemove(
+      arangodb::Transaction* trx,
+      arangodb::velocypack::Slice const& oldValue,
+      std::string const& rev,
+      arangodb::velocypack::Builder& builder);
 };
 
 ////////////////////////////////////////////////////////////////////////////////

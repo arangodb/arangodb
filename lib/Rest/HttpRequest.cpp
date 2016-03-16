@@ -60,9 +60,9 @@ HttpRequest::HttpRequest(ConnectionInfo const& info, char const* header,
       _arrayValues(1),
       _cookies(1),
       _contentLength(0),
+      _header(nullptr),
       _body(nullptr),
       _bodySize(0),
-      _freeables(),
       _connectionInfo(info),
       _type(HTTP_REQUEST_ILLEGAL),
       _prefix(),
@@ -81,9 +81,9 @@ HttpRequest::HttpRequest(ConnectionInfo const& info, char const* header,
   char* request = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, header, length);
 
   if (request != nullptr) {
-    _freeables.emplace_back(request);
+    _header = request;
 
-    parseHeader(request, length);
+    parseHeader(_header, length);
   }
 }
 
@@ -101,8 +101,11 @@ HttpRequest::~HttpRequest() {
     delete v;
   }
 
-  for (auto& it : _freeables) {
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, it);
+  if (_header != nullptr) {
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, _header);
+  }
+  if (_body != nullptr) {
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, _body);
   }
 
   if (_requestContext != nullptr && _isRequestContextOwner) {
@@ -206,8 +209,6 @@ void HttpRequest::write(TRI_string_buffer_t* buffer) const {
     TRI_AppendString2StringBuffer(buffer, _body, _bodySize);
   }
 }
-
-int64_t HttpRequest::contentLength() const { return _contentLength; }
 
 char const* HttpRequest::header(char const* key) const {
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key);
@@ -367,8 +368,6 @@ int HttpRequest::setBody(char const* newBody, size_t length) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  _freeables.push_back(_body);
-
   _contentLength = (int64_t)length;
   _bodySize = length;
 
@@ -493,20 +492,6 @@ int32_t HttpRequest::compatibility() {
   }
 
   return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the protocol
-////////////////////////////////////////////////////////////////////////////////
-
-std::string const& HttpRequest::protocol() const { return _protocol; }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the connection info
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpRequest::setProtocol(std::string const& protocol) {
-  _protocol = protocol;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

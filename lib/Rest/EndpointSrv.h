@@ -18,46 +18,36 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2016, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_ARANGOSH_FEATURE_H
-#define APPLICATION_FEATURES_ARANGOSH_FEATURE_H 1
+#ifndef ARANGODB_REST_ENDPOINT_SRV_H
+#define ARANGODB_REST_ENDPOINT_SRV_H 1
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "Rest/Endpoint.h"
 
 namespace arangodb {
-class ArangoshFeature final : public application_features::ApplicationFeature {
+namespace rest {
+class EndpointSrv final : public Endpoint {
  public:
-  ArangoshFeature(application_features::ApplicationServer* server, int* result);
+  explicit EndpointSrv(std::string const&);
+
+  ~EndpointSrv();
 
  public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(
-      std::shared_ptr<options::ProgramOptions> options) override;
-  void start() override;
+  bool isConnected() const override;
+  TRI_socket_t connect(double, double) override;
+  void disconnect() override;
+  bool initIncoming(TRI_socket_t) override;
+  int getDomain() const override;
+  int getPort() const override;
+  std::string getHost() const override;
+  std::string getHostString() const override;
 
  private:
-  std::vector<std::string> _jslint;
-  std::vector<std::string> _executeScripts;
-  std::vector<std::string> _executeStrings;
-  std::vector<std::string> _checkSyntaxFiles;
-  std::vector<std::string> _unitTests;
-
- public:
-  enum class RunMode {
-    INTERACTIVE,
-    EXECUTE_SCRIPT,
-    EXECUTE_STRING,
-    CHECK_SYNTAX,
-    UNIT_TESTS,
-    JSLINT
-  };
-
- private:
-  int* _result;
-  RunMode _runMode;
-  std::vector<std::string> _positionals;
+  std::unique_ptr<Endpoint> _endpoint;
 };
+}
 }
 
 #endif

@@ -161,8 +161,8 @@ SlotInfo Slots::nextUnused(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId
         else if (!mustWritePrologue &&
                  databaseId > 0 && 
                  collectionId > 0 && 
-                 _lastDatabaseId != databaseId && 
-                 _lastCollectionId != collectionId) {
+                 (_lastDatabaseId != databaseId || 
+                  _lastCollectionId != collectionId)) {
           // write a prologue
           alignedSize = size + PrologueSize;
           mustWritePrologue = true;

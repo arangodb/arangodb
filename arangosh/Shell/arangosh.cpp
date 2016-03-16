@@ -34,7 +34,7 @@
 #include "Basics/files.h"
 #include "ProgramOptions2/ProgramOptions.h"
 #include "Rest/InitializeRest.h"
-#include "Shell/ArangoshFeature.h"
+#include "Shell/ShellFeature.h"
 #include "Shell/V8ShellFeature.h"
 
 using namespace arangodb;
@@ -65,8 +65,8 @@ int main(int argc, char* argv[]) {
   server.addFeature(new ConsoleFeature(&server));
   server.addFeature(new V8PlatformFeature(&server));
   server.addFeature(new V8ShellFeature(&server, name));
-  server.addFeature(new ArangoshFeature(&server, &ret));
-  server.addFeature(new ShutdownFeature(&server, "ArangoshFeature"));
+  server.addFeature(new ShellFeature(&server, &ret));
+  server.addFeature(new ShutdownFeature(&server, "Shell"));
 
   server.run(argc, argv);
 

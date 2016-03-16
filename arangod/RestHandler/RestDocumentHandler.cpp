@@ -114,6 +114,10 @@ bool RestDocumentHandler::createDocument() {
   if (!parseSuccess) {
     return false;
   }
+  
+  arangodb::OperationOptions opOptions;
+  opOptions.waitForSync = extractBooleanParameter("waitForSync", false);
+  opOptions.returnNew = extractBooleanParameter("returnNew", false);
 
   // find and load collection given by name or identifier
   auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
@@ -131,9 +135,6 @@ bool RestDocumentHandler::createDocument() {
     return false;
   }
 
-  arangodb::OperationOptions opOptions;
-  opOptions.waitForSync = extractBooleanParameter("waitForSync", false);
-  opOptions.returnNew = extractBooleanParameter("returnNew", false);
   arangodb::OperationResult result = trx.insert(collectionName, body, opOptions);
 
   // Will commit if no error occured.

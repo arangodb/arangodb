@@ -35,6 +35,7 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace velocypack {
+class Builder;
 struct CustomTypeHandler;
 }
 
@@ -103,6 +104,18 @@ class TransactionContext {
   DocumentDitch* ditch(TRI_voc_cid_t) const;
   
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief temporarily lease a Builder object
+  //////////////////////////////////////////////////////////////////////////////
+
+  arangodb::velocypack::Builder* leaseBuilder();
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return a temporary Builder object
+  //////////////////////////////////////////////////////////////////////////////
+
+  void returnBuilder(arangodb::velocypack::Builder*);
+  
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief get velocypack options with a custom type handler
   //////////////////////////////////////////////////////////////////////////////
   
@@ -162,6 +175,8 @@ class TransactionContext {
   std::shared_ptr<velocypack::CustomTypeHandler> _customTypeHandler;
   
   std::unordered_map<TRI_voc_cid_t, DocumentDitch*> _ditches;
+  
+  std::unique_ptr<arangodb::velocypack::Builder> _builder;
 
   arangodb::velocypack::Options _options;
 

@@ -20,7 +20,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ArangobFeature.h"
+#include "BenchFeature.h"
 
 #include <iostream>
 
@@ -48,12 +48,12 @@ using namespace arangodb::rest;
 /// We use an evil global pointer here.
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangobFeature* ARANGOB;
+BenchFeature* ARANGOB;
 #include "Benchmark/test-cases.h"
 
-ArangobFeature::ArangobFeature(application_features::ApplicationServer* server,
+BenchFeature::BenchFeature(application_features::ApplicationServer* server,
                                int* result)
-    : ApplicationFeature(server, "ArangobFeature"),
+    : ApplicationFeature(server, "Bench"),
       _async(false),
       _concurreny(1),
       _operations(1000),
@@ -69,12 +69,12 @@ ArangobFeature::ArangobFeature(application_features::ApplicationServer* server,
       _result(result) {
   requiresElevatedPrivileges(false);
   setOptional(false);
-  startsAfter("ClientFeature");
-  startsAfter("ConfigFeature");
-  startsAfter("LoggerFeature");
+  startsAfter("Client");
+  startsAfter("Config");
+  startsAfter("Logger");
 }
 
-void ArangobFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
 
   options->addSection(
@@ -143,23 +143,23 @@ void ArangobFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new BooleanParameter(&_quiet, false));
 }
 
-void ArangobFeature::status(std::string const& value) {
+void BenchFeature::status(std::string const& value) {
   if (!_quiet) {
     std::cout << value << std::endl;
   }
 }
 
-std::atomic<int> ArangobFeature::_started;
+std::atomic<int> BenchFeature::_started;
 
-void ArangobFeature::updateStartCounter() { ++_started; }
+void BenchFeature::updateStartCounter() { ++_started; }
 
-int ArangobFeature::getStartCounter() { return _started; }
+int BenchFeature::getStartCounter() { return _started; }
 
-void ArangobFeature::start() {
+void BenchFeature::start() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
 
   ClientFeature* client =
-      dynamic_cast<ClientFeature*>(server()->feature("ClientFeature"));
+      dynamic_cast<ClientFeature*>(server()->feature("Client"));
   client->setRetries(3);
   client->setWarn(true);
 
@@ -206,7 +206,7 @@ void ArangobFeature::start() {
     endpoints.push_back(endpoint);
 
     BenchmarkThread* thread = new BenchmarkThread(
-        benchmark.get(), &startCondition, &ArangobFeature::updateStartCounter,
+        benchmark.get(), &startCondition, &BenchFeature::updateStartCounter,
         i, (unsigned long)_batchSize, &operationsCounter, client, _keepAlive,
         _async, _verbose);
 
@@ -321,7 +321,7 @@ void ArangobFeature::start() {
   *_result = ret;
 }
 
-void ArangobFeature::stop() {
+void BenchFeature::stop() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
 
   ARANGOB = nullptr;

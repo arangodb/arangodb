@@ -34,6 +34,8 @@
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
+class Transaction;
+
 namespace aql {
 struct Collection;
 class Condition;
@@ -52,7 +54,7 @@ class IndexNode : public ExecutionNode {
  public:
   IndexNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
             Collection const* collection, Variable const* outVariable,
-            std::vector<Index const*> indexes, Condition* condition,
+            std::vector<std::string> const& indexes, Condition* condition,
             bool reverse)
       : ExecutionNode(plan, id),
         _vocbase(vocbase),
@@ -100,6 +102,12 @@ class IndexNode : public ExecutionNode {
   //////////////////////////////////////////////////////////////////////////////
 
   Condition* condition() const { return _condition; }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return the transaction for the node
+  //////////////////////////////////////////////////////////////////////////////
+
+  arangodb::Transaction* trx() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not all indexes are accessed in reverse order
@@ -152,7 +160,7 @@ class IndexNode : public ExecutionNode {
   /// @brief getIndexes, hand out the indexes used
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<Index const*> getIndexes() const { return _indexes; }
+  std::vector<std::string> getIndexes() const { return _indexes; }
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -177,7 +185,7 @@ class IndexNode : public ExecutionNode {
   /// @brief the index
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<Index const*> _indexes;
+  std::vector<std::string> _indexes;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the index(es) condition

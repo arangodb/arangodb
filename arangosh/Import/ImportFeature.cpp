@@ -20,7 +20,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ArangoimpFeature.h"
+#include "ImportFeature.h"
 
 #include "ApplicationFeatures/ClientFeature.h"
 #include "Basics/StringUtils.h"
@@ -36,9 +36,9 @@ using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::options;
 
-ArangoimpFeature::ArangoimpFeature(
+ImportFeature::ImportFeature(
     application_features::ApplicationServer* server, int* result)
-    : ApplicationFeature(server, "ArangoimpFeature"),
+    : ApplicationFeature(server, "Import"),
       _filename(""),
       _useBackslash(false),
       _chunkSize(1024 * 1024 * 16),
@@ -54,12 +54,12 @@ ArangoimpFeature::ArangoimpFeature(
       _result(result) {
   requiresElevatedPrivileges(false);
   setOptional(false);
-  startsAfter("ClientFeature");
-  startsAfter("ConfigFeature");
-  startsAfter("LoggerFeature");
+  startsAfter("Client");
+  startsAfter("Config");
+  startsAfter("Logger");
 }
 
-void ArangoimpFeature::collectOptions(
+void ImportFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
 
@@ -131,7 +131,7 @@ void ArangoimpFeature::collectOptions(
       new DiscreteValuesParameter<StringParameter>(&_typeImport, actions));
 }
 
-void ArangoimpFeature::validateOptions(
+void ImportFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
 
@@ -147,11 +147,11 @@ void ArangoimpFeature::validateOptions(
   }
 }
 
-void ArangoimpFeature::start() {
+void ImportFeature::start() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
 
   ClientFeature* client =
-      dynamic_cast<ClientFeature*>(server()->feature("ClientFeature"));
+      dynamic_cast<ClientFeature*>(server()->feature("Client"));
 
   int ret = EXIT_SUCCESS;
   *_result = ret;

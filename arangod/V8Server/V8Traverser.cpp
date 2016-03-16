@@ -145,7 +145,6 @@ class MultiCollectionEdgeExpander {
           auto cand = candidates.find(t);
           if (cand == candidates.end()) {
             // Add weight
-#warning The third parameter has to be replaced by _id content. We need to extract the internal attribute here. Waiting for JAN
             result.emplace_back(new ArangoDBPathFinder::Step(
                 t, s, currentWeight,
                 edge.get(TRI_VOC_ATTRIBUTE_ID).copyString()));
@@ -254,28 +253,19 @@ class SimpleEdgeExpander {
 
 void BasicOptions::addVertexFilter(v8::Isolate* isolate,
                                    v8::Handle<v8::Value> const& example,
-                                   ExplicitTransaction* trx,
-                                   TRI_document_collection_t* col,
-                                   VocShaper* shaper, TRI_voc_cid_t const& cid,
+                                   arangodb::Transaction* trx,
+                                   std::string const& name,
                                    std::string& errorMessage) {
-  auto it = _vertexFilter.find(cid);
+  auto it = _vertexFilter.find(name);
 
-  if (example->IsArray()) {
-    if (it == _vertexFilter.end()) {
-      _vertexFilter.emplace(
-          cid, VertexFilterInfo(
-                   trx, col, new ExampleMatcher(
-                                 isolate, v8::Handle<v8::Array>::Cast(example),
-                                 errorMessage)));
-    }
-  } else {
-    // Has to be Object
-    if (it == _vertexFilter.end()) {
-      _vertexFilter.emplace(
-          cid, VertexFilterInfo(
-                   trx, col, new ExampleMatcher(
-                                 isolate, v8::Handle<v8::Array>::Cast(example),
-                                 errorMessage)));
+  if (it == _vertexFilter.end()) {
+    if (example->IsArray()) {
+      _vertexFilter.emplace(name, new ExampleMatcher(
+          isolate, v8::Handle<v8::Array>::Cast(example), errorMessage));
+    } else {
+      // Has to be Object
+      _vertexFilter.emplace(name, new ExampleMatcher(
+          isolate, v8::Handle<v8::Object>::Cast(example), errorMessage));
     }
   }
 }
@@ -477,6 +467,7 @@ std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch(
 std::unique_ptr<ArangoDBConstDistancePathFinder::Path>
 TRI_RunSimpleShortestPathSearch(
     std::vector<EdgeCollectionInfo*>& collectionInfos,
+    arangodb::Transaction* trx,
     ShortestPathOptions& opts) {
   TRI_edge_direction_e forward;
   TRI_edge_direction_e backward;
@@ -493,7 +484,7 @@ TRI_RunSimpleShortestPathSearch(
   }
 
   auto fwExpander =
-      [&collectionInfos, forward](std::string const& v, std::vector<std::string>& res_edges,
+      [&collectionInfos, forward, trx](std::string const& v, std::vector<std::string>& res_edges,
                                   std::vector<std::string>& neighbors) {
         for (auto const& edgeCollection : collectionInfos) {
           TRI_ASSERT(edgeCollection != nullptr);
@@ -506,8 +497,7 @@ TRI_RunSimpleShortestPathSearch(
             VPackSlice edges = edgeCursor.slice();
 
             for (auto const& edge : VPackArrayIterator(edges)) {
-#warning fucking custom type
-              std::string edgeId = edge.get(TRI_VOC_ATTRIBUTE_ID).copyString();
+              std::string edgeId = trx->extractIdString(edge);
               std::string from = edge.get(TRI_VOC_ATTRIBUTE_FROM).copyString();
               if (from == v) {
                 std::string to = edge.get(TRI_VOC_ATTRIBUTE_TO).copyString();
@@ -525,7 +515,7 @@ TRI_RunSimpleShortestPathSearch(
         }
       };
   auto bwExpander =
-      [&collectionInfos, backward](std::string const& v, std::vector<std::string>& res_edges,
+      [&collectionInfos, backward, trx](std::string const& v, std::vector<std::string>& res_edges,
                                    std::vector<std::string>& neighbors) {
         for (auto const& edgeCollection : collectionInfos) {
           TRI_ASSERT(edgeCollection != nullptr);
@@ -538,8 +528,7 @@ TRI_RunSimpleShortestPathSearch(
             VPackSlice edges = edgeCursor.slice();
 
             for (auto const& edge : VPackArrayIterator(edges)) {
-#warning fucking custom type
-              std::string edgeId = edge.get(TRI_VOC_ATTRIBUTE_ID).copyString();
+              std::string edgeId = trx->extractIdString(edge);
               std::string from = edge.get(TRI_VOC_ATTRIBUTE_FROM).copyString();
               if (from == v) {
                 std::string to = edge.get(TRI_VOC_ATTRIBUTE_TO).copyString();
@@ -558,7 +547,7 @@ TRI_RunSimpleShortestPathSearch(
       };
 
   ArangoDBConstDistancePathFinder pathFinder(fwExpander, bwExpander);
-  std::unique_ptr<ArangoDBConstDistancePathFinder::Path> path;
+  auto path = std::make_unique<ArangoDBConstDistancePathFinder::Path>();
   path.reset(pathFinder.search(opts.start, opts.end));
   return path;
 }

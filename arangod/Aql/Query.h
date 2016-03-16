@@ -429,17 +429,13 @@ class Query {
   /// @brief get a description of the query's current state
   ////////////////////////////////////////////////////////////////////////////////
 
-  std::string getStateString () const;
+  std::string getStateString() const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get a shared builder for in-place VelocyPack construction
   ////////////////////////////////////////////////////////////////////////////////
   
-  std::shared_ptr<arangodb::velocypack::Builder> getSharedBuilder ();
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
+  std::shared_ptr<arangodb::velocypack::Builder> getSharedBuilder();
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief look up a graph in the _graphs collection

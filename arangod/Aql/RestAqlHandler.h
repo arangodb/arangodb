@@ -61,7 +61,6 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   /// @brief POST method for /_api/aql/instantiate
   /// The body is a VelocyPack with attributes "plan" for the execution plan and
   /// "options" for the options, all exactly as in AQL_EXECUTEJSON.
-#warning update this comment AQL_EXECUTEJSON => AQL_EXECUTEVPACK
   //////////////////////////////////////////////////////////////////////////////
 
   void createQueryFromVelocyPack();

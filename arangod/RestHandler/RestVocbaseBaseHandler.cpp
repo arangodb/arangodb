@@ -63,12 +63,6 @@ std::string const RestVocbaseBaseHandler::CURSOR_PATH = "/_api/cursor";
 std::string const RestVocbaseBaseHandler::DOCUMENT_PATH = "/_api/document";
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief edge path
-////////////////////////////////////////////////////////////////////////////////
-
-std::string const RestVocbaseBaseHandler::EDGE_PATH = "/_api/edge";
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief edges path
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -234,15 +228,9 @@ void RestVocbaseBaseHandler::generate20x(
     // pre 1.4 location headers withdrawn for >= 3.0
     std::string escapedHandle(assembleDocumentId(
         collectionName, slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString(), true));
-    if (type == TRI_COL_TYPE_EDGE) {
-      _response->setHeader("location", 8,
-                           std::string("/_db/" + _request->databaseName() +
-                                       EDGE_PATH + "/" + escapedHandle));
-    } else {
-      _response->setHeader("location", 8,
-                           std::string("/_db/" + _request->databaseName() +
-                                       DOCUMENT_PATH + "/" + escapedHandle));
-    }
+    _response->setHeader("location", 8,
+                         std::string("/_db/" + _request->databaseName() +
+                                     DOCUMENT_PATH + "/" + escapedHandle));
   }
   VPackStringBufferAdapter buffer(_response->body().stringBuffer());
   VPackDumper dumper(&buffer, options);
@@ -372,11 +360,9 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& document,
   } else {
     // TODO can we optimize this?
     // Just dump some where else to find real length
-    TRI_string_buffer_t tmpBuffer;
+    StringBuffer tmp(TRI_UNKNOWN_MEM_ZONE);
     // convert object to string
-    TRI_InitStringBuffer(&tmpBuffer, TRI_UNKNOWN_MEM_ZONE);
-
-    VPackStringBufferAdapter buffer(&tmpBuffer);
+    VPackStringBufferAdapter buffer(tmp.stringBuffer());
     VPackDumper dumper(&buffer, options);
     try {
       dumper.dump(document);
@@ -384,8 +370,7 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& document,
       generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL,
                     "cannot generate output");
     }
-    _response->headResponse(TRI_LengthStringBuffer(&tmpBuffer));
-    TRI_DestroyStringBuffer(&tmpBuffer);
+    _response->headResponse(tmp.length());
   }
 }
 

@@ -56,7 +56,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-using CollectionNameResolver = arangodb::CollectionNameResolver;
 using VertexId = arangodb::traverser::VertexId;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -65,6 +64,38 @@ using VertexId = arangodb::traverser::VertexId;
 
 thread_local std::unordered_map<std::string, RegexMatcher*>* RegexCache =
     nullptr;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a number value into an AqlValue
+////////////////////////////////////////////////////////////////////////////////
+  
+static AqlValue NumberValue(arangodb::AqlTransaction* trx, double value) {
+  if (std::isnan(value) || !std::isfinite(value)) {
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+  
+  TransactionBuilderLeaser builder(trx);
+  builder->add(VPackValue(value));
+  return AqlValue(builder.get());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validate the number of parameters
+////////////////////////////////////////////////////////////////////////////////
+  
+static void ValidateParameters(std::vector<AqlValue> const& parameters,
+                               char const* function, int minParams, int maxParams) {
+  if (parameters.size() < static_cast<size_t>(minParams) || 
+      parameters.size() > static_cast<size_t>(maxParams)) {
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, function, minParams, maxParams);
+  }
+}
+
+static void ValidateParameters(std::vector<AqlValue> const& parameters,
+                               char const* function, int minParams) {
+  return ValidateParameters(parameters, function, minParams, static_cast<int>(Function::MaxArguments));
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Insert a mptr into the result
@@ -285,26 +316,6 @@ static double ValueToNumber(VPackSlice const& slice, bool& isValid) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a value into a boolean value
-////////////////////////////////////////////////////////////////////////////////
-
-static bool ValueToBoolean(VPackSlice const& slice) {
-  if (slice.isBoolean()) {
-    return slice.getBoolean();
-  }
-  if (slice.isNumber()) {
-    return slice.getNumericValue<double>() != 0.0;
-  }
-  if (slice.isString()) {
-    return slice.getStringLength() != 0;
-  }
-  if (slice.isArray() || slice.isObject()) {
-    return true;
-  }
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief extract a boolean parameter from an array
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -367,10 +378,16 @@ static void AppendAsString(arangodb::basics::VPackStringBufferAdapter& buffer,
                            VPackSlice const& slice) {
   if (slice.isNull()) {
     buffer.append("null", 4);
-  } else if (slice.isString()) {
+    return;
+  }
+
+  if (slice.isString()) {
     // dumping adds additional ''
     buffer.append(slice.copyString());
-  } else if (slice.isArray()) {
+    return;
+  }
+   
+  if (slice.isArray()) {
     bool first = true;
     for (auto const& sub : VPackArrayIterator(slice)) {
       if (!first) {
@@ -380,12 +397,30 @@ static void AppendAsString(arangodb::basics::VPackStringBufferAdapter& buffer,
       }
       AppendAsString(buffer, sub);
     }
-  } else if (slice.isObject()) {
-    buffer.append("[object Object]");
-  } else {
-    VPackDumper dumper(&buffer);
-    dumper.dump(slice);
+    return;
   }
+
+  if (slice.isObject()) {
+    buffer.append("[object Object]");
+    return;
+  } 
+
+  VPackDumper dumper(&buffer);
+  dumper.dump(slice);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief append the VelocyPack value to a string buffer
+///        Note: Backwards compatibility. Is different than Slice.toJson()
+////////////////////////////////////////////////////////////////////////////////
+
+static void AppendAsString(arangodb::AqlTransaction* trx,
+                           arangodb::basics::VPackStringBufferAdapter& buffer,
+                           AqlValue const& value) {
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value);
+
+  AppendAsString(buffer, slice);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -702,72 +737,75 @@ static void GetDocumentByIdentifier(arangodb::AqlTransaction* trx,
 static AqlValue MergeParameters(arangodb::aql::Query* query,
                                  arangodb::AqlTransaction* trx,
                                  VPackFunctionParameters const& parameters,
-                                 std::string const& funcName,
+                                 char const* funcName,
                                  bool recursive) {
+  VPackBuilder builder;
+
   size_t const n = parameters.size();
   if (n == 0) {
-    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-    {
-      VPackObjectBuilder guard(b.get());
-    }
-    return AqlValue(b.get());
+    builder.openObject();
+    builder.close();
+    return AqlValue(builder);
   }
+
   // use the first argument as the preliminary result
-  VPackBuilder b;
-  auto initial = ExtractFunctionParameter(trx, parameters, 0);
+  AqlValue initial = ExtractFunctionParameterValue(trx, parameters, 0);
+  AqlValueMaterializer materializer(trx);
+  VPackSlice initialSlice = materializer.slice(initial);
+
   if (initial.isArray() && n == 1) {
     // special case: a single array parameter
     try {
       // Create an empty document as start point
-      VPackObjectBuilder guard(&b);
+      builder.openObject();
+      builder.close();
     } catch (...) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
     // merge in all other arguments
-    for (auto const& it : VPackArrayIterator(initial)) {
+    for (auto const& it : VPackArrayIterator(initialSlice)) {
       if (!it.isObject()) {
-        RegisterInvalidArgumentWarning(query, funcName.c_str());
-        b.clear();
-        b.add(VPackValue(VPackValueType::Null));
-        return AqlValue(b);
+        RegisterInvalidArgumentWarning(query, funcName);
+        builder.clear();
+        builder.add(VPackValue(VPackValueType::Null));
+        return AqlValue(builder);
       }
       try {
-        b = arangodb::basics::VelocyPackHelper::merge(b.slice(), it, false,
-                                                      recursive);
+        builder = arangodb::basics::VelocyPackHelper::merge(builder.slice(), it, false,
+                                                            recursive);
       } catch (...) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
     }
-    return AqlValue(b);
+    return AqlValue(builder);
   }
 
   if (!initial.isObject()) {
-    RegisterInvalidArgumentWarning(query, funcName.c_str());
-    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-    b->add(VPackValue(VPackValueType::Null));
-    return AqlValue(b.get());
+    RegisterInvalidArgumentWarning(query, funcName);
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
 
   // merge in all other arguments
   for (size_t i = 1; i < n; ++i) {
-    auto param = ExtractFunctionParameter(trx, parameters, i);
+    AqlValue param = ExtractFunctionParameterValue(trx, parameters, i);
 
     if (!param.isObject()) {
-      RegisterInvalidArgumentWarning(query, funcName.c_str());
-      std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-      b->add(VPackValue(VPackValueType::Null));
-      return AqlValue(b.get());
+      RegisterInvalidArgumentWarning(query, funcName);
+      return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
     }
+    
+    AqlValueMaterializer materializer(trx);
+    VPackSlice slice = materializer.slice(param);
 
     try {
-      b = arangodb::basics::VelocyPackHelper::merge(initial, param, false,
-                                                    recursive);
-      initial = b.slice();
+      builder = arangodb::basics::VelocyPackHelper::merge(initialSlice, slice, false,
+                                                          recursive);
+      initialSlice = builder.slice();
     } catch (...) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
   }
-  return AqlValue(b);
+  return AqlValue(builder);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -949,10 +987,10 @@ void Functions::DestroyThreadContext() { ClearRegexCache(); }
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::IsNull(arangodb::aql::Query* query,
-                            arangodb::AqlTransaction* trx,
-                            VPackFunctionParameters const& parameters,
-                            bool& mustDestroy) {
-  mustDestroy = false;
+                           arangodb::AqlTransaction* trx,
+                           VPackFunctionParameters const& parameters,
+                           bool& mustDestroy) {
+  mustDestroy = true;
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
   return AqlValue(arangodb::basics::VelocyPackHelper::BooleanValue(a.isNull(true)));
 }
@@ -962,10 +1000,10 @@ AqlValue Functions::IsNull(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::IsBool(arangodb::aql::Query* query,
-                            arangodb::AqlTransaction* trx,
-                            VPackFunctionParameters const& parameters,
-                            bool& mustDestroy) {
-  mustDestroy = false;
+                           arangodb::AqlTransaction* trx,
+                           VPackFunctionParameters const& parameters,
+                           bool& mustDestroy) {
+  mustDestroy = true;
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
   return AqlValue(arangodb::basics::VelocyPackHelper::BooleanValue(a.isBoolean()));
 }
@@ -975,10 +1013,10 @@ AqlValue Functions::IsBool(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::IsNumber(arangodb::aql::Query* query,
-                              arangodb::AqlTransaction* trx,
-                              VPackFunctionParameters const& parameters,
-                              bool& mustDestroy) {
-  mustDestroy = false;
+                             arangodb::AqlTransaction* trx,
+                             VPackFunctionParameters const& parameters,
+                             bool& mustDestroy) {
+  mustDestroy = true;
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
   return AqlValue(arangodb::basics::VelocyPackHelper::BooleanValue(a.isNumber()));
 }
@@ -988,10 +1026,10 @@ AqlValue Functions::IsNumber(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::IsString(arangodb::aql::Query* query,
-                              arangodb::AqlTransaction* trx,
-                              VPackFunctionParameters const& parameters,
-                              bool& mustDestroy) {
-  mustDestroy = false;
+                             arangodb::AqlTransaction* trx,
+                             VPackFunctionParameters const& parameters,
+                             bool& mustDestroy) {
+  mustDestroy = true;
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
   return AqlValue(arangodb::basics::VelocyPackHelper::BooleanValue(a.isString()));
 }
@@ -1001,10 +1039,10 @@ AqlValue Functions::IsString(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::IsArray(arangodb::aql::Query* query,
-                             arangodb::AqlTransaction* trx,
-                             VPackFunctionParameters const& parameters,
-                             bool& mustDestroy) {
-  mustDestroy = false;
+                            arangodb::AqlTransaction* trx,
+                            VPackFunctionParameters const& parameters,
+                            bool& mustDestroy) {
+  mustDestroy = true;
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
   return AqlValue(arangodb::basics::VelocyPackHelper::BooleanValue(a.isArray()));
 }
@@ -1014,10 +1052,10 @@ AqlValue Functions::IsArray(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::IsObject(arangodb::aql::Query* query,
-                              arangodb::AqlTransaction* trx,
-                              VPackFunctionParameters const& parameters,
-                              bool& mustDestroy) {
-  mustDestroy = false;
+                             arangodb::AqlTransaction* trx,
+                             VPackFunctionParameters const& parameters,
+                             bool& mustDestroy) {
+  mustDestroy = true;
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
   return AqlValue(arangodb::basics::VelocyPackHelper::BooleanValue(a.isObject()));
 }
@@ -1030,7 +1068,7 @@ AqlValue Functions::ToNumber(arangodb::aql::Query* query,
                              arangodb::AqlTransaction* trx,
                              VPackFunctionParameters const& parameters,
                              bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
   bool failed;
   double value = a.toDouble(failed);
@@ -1048,23 +1086,23 @@ AqlValue Functions::ToNumber(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::ToString(arangodb::aql::Query* query,
-                              arangodb::AqlTransaction* trx,
-                              VPackFunctionParameters const& parameters,
-                              bool& mustDestroy) {
-  mustDestroy = false;
-  auto const value = ExtractFunctionParameter(trx, parameters, 0);
+                             arangodb::AqlTransaction* trx,
+                             VPackFunctionParameters const& parameters,
+                             bool& mustDestroy) {
+  mustDestroy = true;
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
 
   arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24);
-
   arangodb::basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
-  AppendAsString(adapter, value);
-  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+
+  AppendAsString(trx, adapter, value);
+  TransactionBuilderLeaser builder(trx);
   try {
-    b->add(VPackValuePair(buffer.begin(), buffer.length(), VPackValueType::String));
+    builder->add(VPackValuePair(buffer.begin(), buffer.length(), VPackValueType::String));
   } catch (...) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
-  return AqlValue(b.get());
+  return AqlValue(builder.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1075,11 +1113,9 @@ AqlValue Functions::ToBool(arangodb::aql::Query* query,
                            arangodb::AqlTransaction* trx,
                            VPackFunctionParameters const& parameters,
                            bool& mustDestroy) {
-  mustDestroy = false;
+  mustDestroy = true;
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
-  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-  b->add(VPackValue(a.toBoolean()));
-  return AqlValue(b.get());
+  return AqlValue(arangodb::basics::VelocyPackHelper::BooleanValue(a.toBoolean()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1087,32 +1123,34 @@ AqlValue Functions::ToBool(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::ToArray(arangodb::aql::Query* query,
-                             arangodb::AqlTransaction* trx,
-                             VPackFunctionParameters const& parameters,
-                             bool& mustDestroy) {
+                            arangodb::AqlTransaction* trx,
+                            VPackFunctionParameters const& parameters,
+                            bool& mustDestroy) {
   mustDestroy = false;
-  auto const value = ExtractFunctionParameter(trx, parameters, 0);
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
 
   if (value.isArray()) {
     // return copy of the original array
-    return AqlValue(value);
+    return value;
   }
 
-  std::shared_ptr<VPackBuilder> result = query->getSharedBuilder();
-  {
-    VPackArrayBuilder b(result.get());
-    if (value.isBoolean() || value.isNumber() || value.isString()) {
-      // return array with single member
-      result->add(value);
-    } else if (value.isObject()) {
-      // return an array with the attribute values
-      for (auto const& it : VPackObjectIterator(value)) {
-        result->add(it.value);
-      }
+  mustDestroy = true;
+  TransactionBuilderLeaser builder(trx);
+
+  builder->openArray();
+  if (value.isNull(true) || value.isBoolean() || value.isNumber() || value.isString()) {
+    // return array with single member
+    builder->add(value.slice());
+  } else if (value.isObject()) {
+    AqlValueMaterializer materializer(trx);
+    VPackSlice slice = materializer.slice(value);
+    // return an array with the attribute values
+    for (auto const& it : VPackObjectIterator(slice)) {
+      builder->add(it.value);
     }
-    // else return empty array
   }
-  return AqlValue(result.get());
+  builder->close();
+  return AqlValue(builder.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1120,37 +1158,38 @@ AqlValue Functions::ToArray(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Length(arangodb::aql::Query* q,
-                            arangodb::AqlTransaction* trx,
-                            VPackFunctionParameters const& parameters,
-                            bool& mustDestroy) {
-  mustDestroy = false;
-  auto const value = ExtractFunctionParameter(trx, parameters, 0);
-  std::shared_ptr<VPackBuilder> builder = q->getSharedBuilder();
+                           arangodb::AqlTransaction* trx,
+                           VPackFunctionParameters const& parameters,
+                           bool& mustDestroy) {
+  mustDestroy = true;
+  TransactionBuilderLeaser builder(trx);
+
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
   if (value.isArray()) {
     // shortcut!
-    builder->add(VPackValue(static_cast<double>(value.length())));
+    builder->add(VPackValue(value.length()));
     return AqlValue(builder->slice());
   }
+
   size_t length = 0;
-  if (value.isNone() || value.isNull()) {
+  if (value.isNull(true)) {
     length = 0;
   } else if (value.isBoolean()) {
-    if (value.getBoolean()) {
+    if (value.toBoolean()) {
       length = 1;
     } else {
       length = 0;
     }
   } else if (value.isNumber()) {
-    double tmp = value.getNumericValue<double>();
+    double tmp = value.toDouble();
     if (std::isnan(tmp) || !std::isfinite(tmp)) {
-      length = strlen("null");
+      length = 0;
     } else {
       char buffer[24];
       length = static_cast<size_t>(fpconv_dtoa(tmp, buffer));
     }
   } else if (value.isString()) {
-    std::string tmp = value.copyString();
-    length = TRI_CharLengthUtf8String(tmp.c_str());
+    length = TRI_CharLengthUtf8String(value.slice().copyString().c_str());
   } else if (value.isObject()) {
     length = static_cast<size_t>(value.length());
   }
@@ -1163,16 +1202,11 @@ AqlValue Functions::Length(arangodb::aql::Query* q,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::First(arangodb::aql::Query* query,
-                           arangodb::AqlTransaction* trx,
-                           VPackFunctionParameters const& parameters,
-                           bool& mustDestroy) {
-  mustDestroy = false;
-  if (parameters.size() < 1) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "FIRST", (int)1,
-        (int)1);
-  }
-
+                          arangodb::AqlTransaction* trx,
+                          VPackFunctionParameters const& parameters,
+                          bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "FIRST", 1, 1);
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
 
   if (!value.isArray()) {
@@ -1196,13 +1230,8 @@ AqlValue Functions::Last(arangodb::aql::Query* query,
                           arangodb::AqlTransaction* trx,
                           VPackFunctionParameters const& parameters,
                           bool& mustDestroy) {
-  mustDestroy = false;
-  if (parameters.size() < 1) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "LAST", (int)1,
-        (int)1);
-  }
-
+  mustDestroy = true;
+  ValidateParameters(parameters, "LAST", 1, 1);
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
 
   if (!value.isArray()) {
@@ -1227,13 +1256,8 @@ AqlValue Functions::Nth(arangodb::aql::Query* query,
                         arangodb::AqlTransaction* trx,
                         VPackFunctionParameters const& parameters,
                         bool& mustDestroy) {
-  mustDestroy = false;
-  if (parameters.size() < 2) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "LAST", (int)2,
-        (int)2);
-  }
-
+  mustDestroy = true;
+  ValidateParameters(parameters, "NTH", 2, 2);
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
 
   if (!value.isArray()) {
@@ -1263,25 +1287,27 @@ AqlValue Functions::Nth(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Concat(arangodb::aql::Query* query,
-                            arangodb::AqlTransaction* trx,
-                            VPackFunctionParameters const& parameters,
-                            bool& mustDestroy) {
-  mustDestroy = false;
+                           arangodb::AqlTransaction* trx,
+                           VPackFunctionParameters const& parameters,
+                           bool& mustDestroy) {
+  mustDestroy = true;
   arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
 
   size_t const n = parameters.size();
 
   for (size_t i = 0; i < n; ++i) {
-    auto const member = ExtractFunctionParameter(trx, parameters, i);
+    AqlValue member = ExtractFunctionParameterValue(trx, parameters, i);
 
-    if (member.isNone() || member.isNull()) {
+    if (member.isNull(true)) {
       continue;
     }
 
     if (member.isArray()) {
       // append each member individually
-      for (auto const& sub : VPackArrayIterator(member)) {
+      AqlValueMaterializer materializer(trx);
+      VPackSlice slice = materializer.slice(member);
+      for (auto const& sub : VPackArrayIterator(slice)) {
         if (sub.isNone() || sub.isNull()) {
           continue;
         }
@@ -1290,7 +1316,7 @@ AqlValue Functions::Concat(arangodb::aql::Query* query,
       }
     } else {
       // convert member to a string and append
-      AppendAsString(adapter, member);
+      AppendAsString(trx, adapter, member);
     }
   }
 
@@ -1298,9 +1324,9 @@ AqlValue Functions::Concat(arangodb::aql::Query* query,
   // multiple times
   size_t length = buffer.length();
   try {
-    std::shared_ptr<VPackBuilder> builder = query->getSharedBuilder();
+    TransactionBuilderLeaser builder(trx);
     builder->add(VPackValuePair(buffer.c_str(), length, VPackValueType::String));
-    return AqlValue(builder.get());
+    return AqlValue(*builder.get());
   } catch (...) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -1311,23 +1337,18 @@ AqlValue Functions::Concat(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Like(arangodb::aql::Query* query,
-                          arangodb::AqlTransaction* trx,
-                          VPackFunctionParameters const& parameters,
-                          bool& mustDestroy) {
-  mustDestroy = false;
-  if (parameters.size() < 2) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "LIKE", (int)2,
-        (int)3);
-  }
-
+                         arangodb::AqlTransaction* trx,
+                         VPackFunctionParameters const& parameters,
+                         bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "LIKE", 2, 3);
   bool const caseInsensitive = GetBooleanParameter(trx, parameters, 2, false);
   arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
 
   // build pattern from parameter #1
-  auto const regex = ExtractFunctionParameter(trx, parameters, 1);
-  AppendAsString(adapter, regex);
+  AqlValue regex = ExtractFunctionParameterValue(trx, parameters, 1);
+  AppendAsString(trx, adapter, regex);
 
   size_t const length = buffer.length();
 
@@ -1369,22 +1390,22 @@ AqlValue Functions::Like(arangodb::aql::Query* query,
 
   // extract value
   buffer.clear();
-  auto const value = ExtractFunctionParameter(trx, parameters, 0);
-  AppendAsString(adapter, value);
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  AppendAsString(trx, adapter, value);
 
   bool error = false;
   bool const result = arangodb::basics::Utf8Helper::DefaultUtf8Helper.matches(
       matcher, buffer.c_str(), buffer.length(), error);
 
-  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
   if (error) {
     // compiling regular expression failed
     RegisterWarning(query, "LIKE", TRI_ERROR_QUERY_INVALID_REGEX);
-    b->add(VPackValue(VPackValueType::Null));
-  } else {
-    b->add(VPackValue(result));
-  }
-  return AqlValue(b.get());
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  } 
+  
+  TransactionBuilderLeaser builder(trx);
+  builder->add(VPackValue(result));
+  return AqlValue(builder.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1392,16 +1413,16 @@ AqlValue Functions::Like(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Passthru(arangodb::aql::Query* query,
-                              arangodb::AqlTransaction* trx,
-                              VPackFunctionParameters const& parameters,
-                              bool& mustDestroy) {
-  mustDestroy = false;
+                             arangodb::AqlTransaction* trx,
+                             VPackFunctionParameters const& parameters,
+                             bool& mustDestroy) {
+  mustDestroy = true;
   if (parameters.empty()) {
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
 
-  auto value = ExtractFunctionParameter(trx, parameters, 0);
-  return AqlValue(value);
+  mustDestroy = false;
+  return ExtractFunctionParameterValue(trx, parameters, 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1409,11 +1430,12 @@ AqlValue Functions::Passthru(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Unset(arangodb::aql::Query* query,
-                           arangodb::AqlTransaction* trx,
-                           VPackFunctionParameters const& parameters,
-                           bool& mustDestroy) {
-  mustDestroy = false;
-  auto value = ExtractFunctionParameter(trx, parameters, 0);
+                          arangodb::AqlTransaction* trx,
+                          VPackFunctionParameters const& parameters,
+                          bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "UNSET", 2);
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
 
   if (!value.isObject()) {
     RegisterInvalidArgumentWarning(query, "UNSET");
@@ -1424,8 +1446,10 @@ AqlValue Functions::Unset(arangodb::aql::Query* query,
   ExtractKeys(names, query, trx, parameters, 1, "UNSET");
 
   try {
-    std::shared_ptr<VPackBuilder> builder = query->getSharedBuilder();
-    UnsetOrKeep(value, names, true, false, *builder);
+    AqlValueMaterializer materializer(trx);
+    VPackSlice slice = materializer.slice(value);
+    TransactionBuilderLeaser builder(trx);
+    UnsetOrKeep(slice, names, true, false, *builder.get());
     return AqlValue(builder.get());
   } catch (...) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -1437,11 +1461,12 @@ AqlValue Functions::Unset(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::UnsetRecursive(arangodb::aql::Query* query,
-                                    arangodb::AqlTransaction* trx,
-                                    VPackFunctionParameters const& parameters,
-                                    bool& mustDestroy) {
-  mustDestroy = false;
-  auto value = ExtractFunctionParameter(trx, parameters, 0);
+                                   arangodb::AqlTransaction* trx,
+                                   VPackFunctionParameters const& parameters,
+                                   bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "UNSET_RECURSIVE", 2);
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
 
   if (!value.isObject()) {
     RegisterInvalidArgumentWarning(query, "UNSET_RECURSIVE");
@@ -1452,8 +1477,10 @@ AqlValue Functions::UnsetRecursive(arangodb::aql::Query* query,
   ExtractKeys(names, query, trx, parameters, 1, "UNSET_RECURSIVE");
 
   try {
-    std::shared_ptr<VPackBuilder> builder = query->getSharedBuilder();
-    UnsetOrKeep(value, names, true, true, *builder);
+    AqlValueMaterializer materializer(trx);
+    VPackSlice slice = materializer.slice(value);
+    TransactionBuilderLeaser builder(trx);
+    UnsetOrKeep(slice, names, true, true, *builder.get());
     return AqlValue(builder.get());
   } catch (...) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -1465,11 +1492,12 @@ AqlValue Functions::UnsetRecursive(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Keep(arangodb::aql::Query* query,
-                          arangodb::AqlTransaction* trx,
-                          VPackFunctionParameters const& parameters,
-                          bool& mustDestroy) {
-  mustDestroy = false;
-  auto value = ExtractFunctionParameter(trx, parameters, 0);
+                         arangodb::AqlTransaction* trx,
+                         VPackFunctionParameters const& parameters,
+                         bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "KEEP", 2);
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
 
   if (!value.isObject()) {
     RegisterInvalidArgumentWarning(query, "KEEP");
@@ -1480,8 +1508,10 @@ AqlValue Functions::Keep(arangodb::aql::Query* query,
   ExtractKeys(names, query, trx, parameters, 1, "KEEP");
 
   try {
-    std::shared_ptr<VPackBuilder> builder = query->getSharedBuilder();
-    UnsetOrKeep(value, names, false, false, *builder);
+    AqlValueMaterializer materializer(trx);
+    VPackSlice slice = materializer.slice(value);
+    TransactionBuilderLeaser builder(trx);
+    UnsetOrKeep(slice, names, false, false, *builder.get());
     return AqlValue(builder.get());
   } catch (...) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -1493,10 +1523,10 @@ AqlValue Functions::Keep(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Merge(arangodb::aql::Query* query,
-                           arangodb::AqlTransaction* trx,
-                           VPackFunctionParameters const& parameters,
-                           bool& mustDestroy) {
-  mustDestroy = false;
+                          arangodb::AqlTransaction* trx,
+                          VPackFunctionParameters const& parameters,
+                          bool& mustDestroy) {
+  mustDestroy = true;
   return MergeParameters(query, trx, parameters, "MERGE", false);
 }
 
@@ -1505,10 +1535,10 @@ AqlValue Functions::Merge(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::MergeRecursive(arangodb::aql::Query* query,
-                                    arangodb::AqlTransaction* trx,
-                                    VPackFunctionParameters const& parameters,
-                                    bool& mustDestroy) {
-  mustDestroy = false;
+                                   arangodb::AqlTransaction* trx,
+                                   VPackFunctionParameters const& parameters,
+                                   bool& mustDestroy) {
+  mustDestroy = true;
   return MergeParameters(query, trx, parameters, "MERGE_RECURSIVE", true);
 }
 
@@ -1517,40 +1547,36 @@ AqlValue Functions::MergeRecursive(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Has(arangodb::aql::Query* query,
-                         arangodb::AqlTransaction* trx,
-                         VPackFunctionParameters const& parameters,
-                         bool& mustDestroy) {
-  mustDestroy = false;
+                        arangodb::AqlTransaction* trx,
+                        VPackFunctionParameters const& parameters,
+                        bool& mustDestroy) {
+  mustDestroy = true;
+
   size_t const n = parameters.size();
   if (n < 2) {
     // no parameters
-    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-    b->add(VPackValue(false));
-    return AqlValue(b.get());
+    return AqlValue(false);
   }
 
-  auto value = ExtractFunctionParameter(trx, parameters, 0);
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
 
   if (!value.isObject()) {
     // not an object
-    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-    b->add(VPackValue(false));
-    return AqlValue(b.get());
+    return AqlValue(false);
   }
 
-  auto name = ExtractFunctionParameter(trx, parameters, 1);
+  AqlValue name = ExtractFunctionParameterValue(trx, parameters, 1);
   std::string p;
   if (!name.isString()) {
     arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
     arangodb::basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
-    AppendAsString(adapter, name);
+    AppendAsString(trx, adapter, name);
     p = std::string(buffer.c_str(), buffer.length());
   } else {
-    p = name.copyString();
+    p = name.slice().copyString();
   }
-  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-  b->add(VPackValue(value.hasKey(p)));
-  return AqlValue(b.get());
+
+  return AqlValue(value.hasKey(trx, p));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1558,20 +1584,18 @@ AqlValue Functions::Has(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Attributes(arangodb::aql::Query* query,
-                                arangodb::AqlTransaction* trx,
-                                VPackFunctionParameters const& parameters,
-                                bool& mustDestroy) {
-  mustDestroy = false;
+                               arangodb::AqlTransaction* trx,
+                               VPackFunctionParameters const& parameters,
+                               bool& mustDestroy) {
+  mustDestroy = true;
   size_t const n = parameters.size();
 
   if (n < 1) {
     // no parameters
-    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-    b->add(VPackValue(VPackValueType::Null));
-    return AqlValue(b.get());
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
 
-  auto value = ExtractFunctionParameter(trx, parameters, 0);
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
   if (!value.isObject()) {
     // not an object
     RegisterWarning(query, "ATTRIBUTES",
@@ -1584,45 +1608,45 @@ AqlValue Functions::Attributes(arangodb::aql::Query* query,
 
   TRI_ASSERT(value.isObject());
   if (value.length() == 0) {
-    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-    {
-      VPackObjectBuilder guard(b.get());
-    }
-    return AqlValue(b.get());
+    return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
   }
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value);
 
   if (doSort) {
     std::set<std::string, arangodb::basics::VelocyPackHelper::AttributeSorter>
         keys;
-    VPackCollection::keys(value, keys);
-    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-    {
-      VPackArrayBuilder guard(b.get());
-      for (auto const& it : keys) {
-        TRI_ASSERT(!it.empty());
-        if (removeInternal && it.at(0) == '_') {
-            continue;
-        }
-        b->add(VPackValue(it));
+
+    VPackCollection::keys(slice, keys);
+    VPackBuilder result;
+    result.openArray();
+    for (auto const& it : keys) {
+      TRI_ASSERT(!it.empty());
+      if (removeInternal && it.at(0) == '_') {
+        continue;
       }
+      result.add(VPackValue(it));
     }
-    return AqlValue(b.get());
-  } else {
-    std::set<std::string> keys;
-    VPackCollection::keys(value, keys);
-    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-    {
-      VPackArrayBuilder guard(b.get());
-      for (auto const& it : keys) {
-        TRI_ASSERT(!it.empty());
-        if (removeInternal && it.at(0) == '_') {
-            continue;
-        }
-        b->add(VPackValue(it));
-      }
+    result.close();
+
+    return AqlValue(result);
+  } 
+   
+  std::unordered_set<std::string> keys;
+  VPackCollection::keys(slice, keys);
+
+  VPackBuilder result;
+  result.openArray();
+  for (auto const& it : keys) {
+    TRI_ASSERT(!it.empty());
+    if (removeInternal && it.at(0) == '_') {
+      continue;
     }
-    return AqlValue(b.get());
+    result.add(VPackValue(it));
   }
+  result.close();
+  return AqlValue(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1630,10 +1654,10 @@ AqlValue Functions::Attributes(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Values(arangodb::aql::Query* query,
-                            arangodb::AqlTransaction* trx,
-                            VPackFunctionParameters const& parameters,
-                            bool& mustDestroy) {
-  mustDestroy = false;
+                           arangodb::AqlTransaction* trx,
+                           VPackFunctionParameters const& parameters,
+                           bool& mustDestroy) {
+  mustDestroy = true;
   size_t const n = parameters.size();
 
   if (n < 1) {
@@ -1641,7 +1665,7 @@ AqlValue Functions::Values(arangodb::aql::Query* query,
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
 
-  auto value = ExtractFunctionParameter(trx, parameters, 0);
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
   if (!value.isObject()) {
     // not an object
     RegisterWarning(query, "VALUES",
@@ -1653,29 +1677,27 @@ AqlValue Functions::Values(arangodb::aql::Query* query,
 
   TRI_ASSERT(value.isObject());
   if (value.length() == 0) {
-    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-    {
-      VPackObjectBuilder guard(b.get());
-    }
-    return AqlValue(b.get());
+    return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
   }
 
-  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-  {
-    VPackArrayBuilder guard(b.get());
-    for (auto const& entry : VPackObjectIterator(value)) {
-      if (!entry.key.isString()) {
-        // somehow invalid
-        continue;
-      }
-      if (removeInternal && entry.key.copyString().at(0) == '_') {
-        // skip attribute
-        continue;
-      }
-      b->add(entry.value);
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value);
+  TransactionBuilderLeaser builder(trx);
+  builder->openArray();
+  for (auto const& entry : VPackObjectIterator(slice)) {
+    if (!entry.key.isString()) {
+      // somehow invalid
+      continue;
     }
+    if (removeInternal && entry.key.copyString().at(0) == '_') {
+      // skip attribute
+      continue;
+    }
+    builder->add(entry.value);
   }
-  return AqlValue(b.get());
+  builder->close();
+
+  return AqlValue(builder.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1683,11 +1705,11 @@ AqlValue Functions::Values(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Min(arangodb::aql::Query* query,
-                         arangodb::AqlTransaction* trx,
-                         VPackFunctionParameters const& parameters,
-                         bool& mustDestroy) {
-  mustDestroy = false;
-  auto value = ExtractFunctionParameter(trx, parameters, 0);
+                        arangodb::AqlTransaction* trx,
+                        VPackFunctionParameters const& parameters,
+                        bool& mustDestroy) {
+  mustDestroy = true;
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
 
   if (!value.isArray()) {
     // not an array
@@ -1695,8 +1717,11 @@ AqlValue Functions::Min(arangodb::aql::Query* query,
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
 
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value);
+
   VPackSlice minValue;
-  for (auto const& it : VPackArrayIterator(value)) {
+  for (auto const& it : VPackArrayIterator(slice)) {
     if (it.isNull()) {
       continue;
     }
@@ -1715,19 +1740,22 @@ AqlValue Functions::Min(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Max(arangodb::aql::Query* query,
-                         arangodb::AqlTransaction* trx,
-                         VPackFunctionParameters const& parameters,
-                         bool& mustDestroy) {
-  mustDestroy = false;
-  auto value = ExtractFunctionParameter(trx, parameters, 0);
+                        arangodb::AqlTransaction* trx,
+                        VPackFunctionParameters const& parameters,
+                        bool& mustDestroy) {
+  mustDestroy = true;
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
 
   if (!value.isArray()) {
     // not an array
     RegisterWarning(query, "MAX", TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value);
   VPackSlice maxValue;
-  for (auto const& it : VPackArrayIterator(value)) {
+  for (auto const& it : VPackArrayIterator(slice)) {
     if (maxValue.isNone() || arangodb::basics::VelocyPackHelper::compare(it, maxValue, true) > 0) {
       maxValue = it;
     }
@@ -1743,11 +1771,11 @@ AqlValue Functions::Max(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Sum(arangodb::aql::Query* query,
-                         arangodb::AqlTransaction* trx,
-                         VPackFunctionParameters const& parameters,
-                         bool& mustDestroy) {
-  mustDestroy = false;
-  auto value = ExtractFunctionParameter(trx, parameters, 0);
+                        arangodb::AqlTransaction* trx,
+                        VPackFunctionParameters const& parameters,
+                        bool& mustDestroy) {
+  mustDestroy = true;
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
 
   if (!value.isArray()) {
     // not an array
@@ -1755,8 +1783,10 @@ AqlValue Functions::Sum(arangodb::aql::Query* query,
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
 
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value);
   double sum = 0.0;
-  for (auto const& it : VPackArrayIterator(value)) {
+  for (auto const& it : VPackArrayIterator(slice)) {
     if (it.isNull()) {
       continue;
     }
@@ -1769,13 +1799,14 @@ AqlValue Functions::Sum(arangodb::aql::Query* query,
       sum += number;
     }
   }
-  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+
   if (!std::isnan(sum) && sum != HUGE_VAL && sum != -HUGE_VAL) {
-    b->add(VPackValue(sum));
-  } else {
-    b->add(VPackValue(VPackValueType::Null));
-  }
-  return AqlValue(b.get());
+    TransactionBuilderLeaser builder(trx);
+    builder->add(VPackValue(sum));
+    return AqlValue(builder.get());
+  } 
+
+  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1783,21 +1814,24 @@ AqlValue Functions::Sum(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Average(arangodb::aql::Query* query,
-                             arangodb::AqlTransaction* trx,
-                             VPackFunctionParameters const& parameters,
-                             bool& mustDestroy) {
-  mustDestroy = false;
-  auto value = ExtractFunctionParameter(trx, parameters, 0);
+                            arangodb::AqlTransaction* trx,
+                            VPackFunctionParameters const& parameters,
+                            bool& mustDestroy) {
+  mustDestroy = true;
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
 
   if (!value.isArray()) {
     // not an array
     RegisterWarning(query, "AVERAGE", TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
+  
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value);
 
   double sum = 0.0;
   size_t count = 0;
-  for (auto const& v : VPackArrayIterator(value)) {
+  for (auto const& v : VPackArrayIterator(slice)) {
     if (v.isNull()) {
       continue;
     }
@@ -1815,13 +1849,13 @@ AqlValue Functions::Average(arangodb::aql::Query* query,
     }
   }
 
-  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
   if (count > 0 && !std::isnan(sum) && sum != HUGE_VAL && sum != -HUGE_VAL) {
-    b->add(VPackValue(sum / static_cast<size_t>(count)));
-  } else {
-    b->add(VPackValue(VPackValueType::Null));
-  }
-  return AqlValue(b.get());
+    TransactionBuilderLeaser builder(trx);
+    builder->add(VPackValue(sum / static_cast<size_t>(count)));
+    return AqlValue(builder.get());
+  } 
+
+  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1829,15 +1863,15 @@ AqlValue Functions::Average(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Md5(arangodb::aql::Query* query,
-                         arangodb::AqlTransaction* trx,
-                         VPackFunctionParameters const& parameters,
-                         bool& mustDestroy) {
-  mustDestroy = false;
-  auto value = ExtractFunctionParameter(trx, parameters, 0);
+                        arangodb::AqlTransaction* trx,
+                        VPackFunctionParameters const& parameters,
+                        bool& mustDestroy) {
+  mustDestroy = true;
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
   arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
 
-  AppendAsString(adapter, value);
+  AppendAsString(trx, adapter, value);
 
   // create md5
   char hash[17];
@@ -1853,9 +1887,9 @@ AqlValue Functions::Md5(arangodb::aql::Query* query,
 
   arangodb::rest::SslInterface::sslHEX(hash, 16, p, length);
 
-  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-  b->add(VPackValue(std::string(hex, 32)));
-  return AqlValue(b.get());
+  TransactionBuilderLeaser builder(trx);
+  builder->add(VPackValue(std::string(hex, 32)));
+  return AqlValue(builder.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1863,16 +1897,16 @@ AqlValue Functions::Md5(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Sha1(arangodb::aql::Query* query,
-                          arangodb::AqlTransaction* trx,
-                          VPackFunctionParameters const& parameters,
-                          bool& mustDestroy) {
-  mustDestroy = false;
-  auto value = ExtractFunctionParameter(trx, parameters, 0);
+                         arangodb::AqlTransaction* trx,
+                         VPackFunctionParameters const& parameters,
+                         bool& mustDestroy) {
+  mustDestroy = true;
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
 
   arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
 
-  AppendAsString(adapter, value);
+  AppendAsString(trx, adapter, value);
 
   // create sha1
   char hash[21];
@@ -1888,9 +1922,9 @@ AqlValue Functions::Sha1(arangodb::aql::Query* query,
 
   arangodb::rest::SslInterface::sslHEX(hash, 20, p, length);
 
-  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-  b->add(VPackValue(std::string(hex, 40)));
-  return AqlValue(b.get());
+  TransactionBuilderLeaser builder(trx);
+  builder->add(VPackValue(std::string(hex, 40)));
+  return AqlValue(builder.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1898,17 +1932,13 @@ AqlValue Functions::Sha1(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Unique(arangodb::aql::Query* query,
-                            arangodb::AqlTransaction* trx,
-                            VPackFunctionParameters const& parameters,
-                            bool& mustDestroy) {
-  mustDestroy = false;
-  if (parameters.size() != 1) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "UNIQUE", (int)1,
-        (int)1);
-  }
+                           arangodb::AqlTransaction* trx,
+                           VPackFunctionParameters const& parameters,
+                           bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "UNIQUE", 1, 1);
 
-  auto const value = ExtractFunctionParameter(trx, parameters, 0);
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
 
   if (!value.isArray()) {
     // not an array
@@ -1916,28 +1946,32 @@ AqlValue Functions::Unique(arangodb::aql::Query* query,
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
 
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value);
+
   std::unordered_set<VPackSlice,
                      arangodb::basics::VelocyPackHelper::VPackHash,
                      arangodb::basics::VelocyPackHelper::VPackEqual>
       values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
              arangodb::basics::VelocyPackHelper::VPackEqual());
 
-  for (auto const& s : VPackArrayIterator(value)) {
+  for (auto const& s : VPackArrayIterator(slice)) {
     if (!s.isNone()) {
       values.emplace(s);
     }
   }
 
-  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  TransactionBuilderLeaser builder(trx);
   try {
-    VPackArrayBuilder guard(b.get());
+    builder->openArray();
     for (auto const& it : values) {
-      b->add(it);
+      builder->add(it);
     }
+    builder->close();
+    return AqlValue(builder.get());
   } catch (...) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
-  return AqlValue(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1945,41 +1979,40 @@ AqlValue Functions::Unique(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::SortedUnique(arangodb::aql::Query* query,
-                                  arangodb::AqlTransaction* trx,
-                                  VPackFunctionParameters const& parameters,
-                                  bool& mustDestroy) {
-  mustDestroy = false;
-  if (parameters.size() != 1) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "SORTED_UNIQUE",
-        (int)1, (int)1);
-  }
-
-  auto const value = ExtractFunctionParameter(trx, parameters, 0);
+                                 arangodb::AqlTransaction* trx,
+                                 VPackFunctionParameters const& parameters,
+                                 bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "SORTED_UNIQUE", 1, 1);
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
 
   if (!value.isArray()) {
     // not an array
     // this is an internal function - do NOT issue a warning here
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
+  
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value);
 
   std::set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackLess<true>> values;
-  for (auto const& it : VPackArrayIterator(value)) {
+  for (auto const& it : VPackArrayIterator(slice)) {
     if (!it.isNone()) {
       values.insert(it);
     }
   }
 
-  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+  TransactionBuilderLeaser builder(trx);
   try {
-    VPackArrayBuilder guard(b.get());
+    builder->openArray();
     for (auto const& it : values) {
-      b->add(it);
+      builder->add(it);
     }
+    builder->close();
+    return AqlValue(builder.get());
   } catch (...) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
-  return AqlValue(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1987,55 +2020,53 @@ AqlValue Functions::SortedUnique(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Union(arangodb::aql::Query* query,
-                           arangodb::AqlTransaction* trx,
-                           VPackFunctionParameters const& parameters,
-                           bool& mustDestroy) {
-  mustDestroy = false;
-  size_t const n = parameters.size();
+                          arangodb::AqlTransaction* trx,
+                          VPackFunctionParameters const& parameters,
+                          bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "UNION", 2);
 
-  if (n < 2) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "UNION", (int)2,
-        (int)Function::MaxArguments);
-  }
-
-  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
   try {
-    VPackArrayBuilder guard(b.get());
+    TransactionBuilderLeaser builder(trx);
+    builder->openArray();
+    size_t const n = parameters.size();
     for (size_t i = 0; i < n; ++i) {
-      auto value = ExtractFunctionParameter(trx, parameters, i);
+      AqlValue value = ExtractFunctionParameterValue(trx, parameters, i);
 
       if (!value.isArray()) {
         // not an array
         RegisterInvalidArgumentWarning(query, "UNION");
-        b->clear();
-        b->add(VPackValue(VPackValueType::Null));
-        return AqlValue(b.get());
+        return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
       }
 
       TRI_IF_FAILURE("AqlFunctions::OutOfMemory1") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
 
+      AqlValueMaterializer materializer(trx);
+      VPackSlice slice = materializer.slice(value);
+
       // this passes ownership for the JSON contens into result
-      for (auto const& it : VPackArrayIterator(value)) {
-        b->add(it);
+      for (auto const& it : VPackArrayIterator(slice)) {
+        builder->add(it);
         TRI_IF_FAILURE("AqlFunctions::OutOfMemory2") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
       }
     }
-  } catch (arangodb::basics::Exception const& e) {
+    builder->close();
+    TRI_IF_FAILURE("AqlFunctions::OutOfMemory3") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    return AqlValue(builder.get());
+  } catch (arangodb::basics::Exception const&) {
     // Rethrow arangodb Errors
     throw;
-  } catch (std::exception const& e) {
+  } catch (std::exception const&) {
     // All other exceptions are OUT_OF_MEMORY
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
-  TRI_IF_FAILURE("AqlFunctions::OutOfMemory3") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-  return AqlValue(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2043,17 +2074,12 @@ AqlValue Functions::Union(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::UnionDistinct(arangodb::aql::Query* query,
-                                   arangodb::AqlTransaction* trx,
-                                   VPackFunctionParameters const& parameters,
-                                   bool& mustDestroy) {
-  mustDestroy = false;
+                                  arangodb::AqlTransaction* trx,
+                                  VPackFunctionParameters const& parameters,
+                                  bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "UNION_DISTINCT", 2);
   size_t const n = parameters.size();
-
-  if (n < 2) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "UNION_DISTINCT",
-        (int)2, (int)Function::MaxArguments);
-  }
 
   std::unordered_set<VPackSlice,
                      arangodb::basics::VelocyPackHelper::VPackHash,
@@ -2063,7 +2089,7 @@ AqlValue Functions::UnionDistinct(arangodb::aql::Query* query,
 
 
   for (size_t i = 0; i < n; ++i) {
-    auto value = ExtractFunctionParameter(trx, parameters, i);
+    AqlValue value = ExtractFunctionParameterValue(trx, parameters, i);
 
     if (!value.isArray()) {
       // not an array
@@ -2071,7 +2097,10 @@ AqlValue Functions::UnionDistinct(arangodb::aql::Query* query,
       return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
     }
 
-    for (auto const& v : VPackArrayIterator(value)) {
+    AqlValueMaterializer materializer(trx);
+    VPackSlice slice = materializer.slice(value);
+
+    for (auto const& v : VPackArrayIterator(slice)) {
       if (values.find(v) == values.end()) {
         TRI_IF_FAILURE("AqlFunctions::OutOfMemory1") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -2082,25 +2111,25 @@ AqlValue Functions::UnionDistinct(arangodb::aql::Query* query,
     }
   }
 
-  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-
   TRI_IF_FAILURE("AqlFunctions::OutOfMemory2") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   try {
-    VPackArrayBuilder guard(b.get());
+    TransactionBuilderLeaser builder(trx);
+    builder->openArray();
     for (auto const& it : values) {
-      b->add(it);
+      builder->add(it);
     }
+    builder->close();
+ 
+    TRI_IF_FAILURE("AqlFunctions::OutOfMemory3") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    return AqlValue(builder.get());
   } catch (...) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
-
-  TRI_IF_FAILURE("AqlFunctions::OutOfMemory3") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  return AqlValue(b.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2108,38 +2137,32 @@ AqlValue Functions::UnionDistinct(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Intersection(arangodb::aql::Query* query,
-                                  arangodb::AqlTransaction* trx,
-                                  VPackFunctionParameters const& parameters,
-                                  bool& mustDestroy) {
-  mustDestroy = false;
-  size_t const n = parameters.size();
-
-  if (n < 2) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "INTERSECTION",
-        (int)2, (int)Function::MaxArguments);
-  }
-
+                                 arangodb::AqlTransaction* trx,
+                                 VPackFunctionParameters const& parameters,
+                                 bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "INTERSECTION", 2);
+  
   std::unordered_map<VPackSlice, size_t,
                      arangodb::basics::VelocyPackHelper::VPackHash,
                      arangodb::basics::VelocyPackHelper::VPackEqual>
       values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
              arangodb::basics::VelocyPackHelper::VPackEqual());
 
-  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-
+  size_t const n = parameters.size();
   for (size_t i = 0; i < n; ++i) {
-    auto value = ExtractFunctionParameter(trx, parameters, i);
+    AqlValue value = ExtractFunctionParameterValue(trx, parameters, i);
 
     if (!value.isArray()) {
       // not an array
       RegisterWarning(query, "INTERSECTION", TRI_ERROR_QUERY_ARRAY_EXPECTED);
-      b->clear();
-      b->add(VPackValue(VPackValueType::Null));
-      return AqlValue(b.get());
+      return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
     }
     
-    for (auto const& it : VPackArrayIterator(value)) {
+    AqlValueMaterializer materializer(trx);
+    VPackSlice slice = materializer.slice(value);
+
+    for (auto const& it : VPackArrayIterator(slice)) {
       if (i == 0) {
         // round one
 
@@ -2164,20 +2187,19 @@ AqlValue Functions::Intersection(arangodb::aql::Query* query,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  {
-    VPackArrayBuilder guard(b.get());
-    for (auto const& it : values) {
-      if (it.second == n) {
-        b->add(it.first);
-      }
+  TransactionBuilderLeaser builder(trx);
+  builder->openArray();
+  for (auto const& it : values) {
+    if (it.second == n) {
+      builder->add(it.first);
     }
   }
-  values.clear();
+  builder->close();
 
   TRI_IF_FAILURE("AqlFunctions::OutOfMemory3") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  return AqlValue(b.get());
+  return AqlValue(builder.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2185,18 +2207,14 @@ AqlValue Functions::Intersection(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Neighbors(arangodb::aql::Query* query,
-                               arangodb::AqlTransaction* trx,
-                               VPackFunctionParameters const& parameters,
-                               bool& mustDestroy) {
-  mustDestroy = false;
+                              arangodb::AqlTransaction* trx,
+                              VPackFunctionParameters const& parameters,
+                              bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "NEIGHBORS", 4, 6);
+
   size_t const n = parameters.size();
   arangodb::traverser::NeighborsOptions opts;
-
-  if (n < 4 || n > 6) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "NEIGHBORS", (int)4,
-        (int)6);
-  }
 
   auto resolver = trx->resolver();
 
@@ -2206,14 +2224,14 @@ AqlValue Functions::Neighbors(arangodb::aql::Query* query,
     THROW_ARANGO_EXCEPTION_PARAMS(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
   }
-  std::string vColName = vertexCol.copyString();
+  std::string vColName(vertexCol.copyString());
 
   VPackSlice edgeCol = ExtractFunctionParameter(trx, parameters, 1);
   if (!edgeCol.isString()) {
     THROW_ARANGO_EXCEPTION_PARAMS(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEIGHBORS");
   }
-  std::string eColName = edgeCol.copyString();
+  std::string eColName(edgeCol.copyString());
 
   VPackSlice vertexInfo = ExtractFunctionParameter(trx, parameters, 2);
   std::string vertexId;
@@ -2355,18 +2373,12 @@ AqlValue Functions::Neighbors(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Near(arangodb::aql::Query* query,
-                          arangodb::AqlTransaction* trx,
-                          VPackFunctionParameters const& parameters,
-                          bool& mustDestroy) {
-  mustDestroy = false;
+                         arangodb::AqlTransaction* trx,
+                         VPackFunctionParameters const& parameters,
+                         bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "NEAR", 3, 5);
   size_t const n = parameters.size();
-
-  if (n < 3 || n > 5) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "NEAR", (int)3,
-        (int)5);
-  }
-
   auto resolver = trx->resolver();
 
   VPackSlice collectionSlice = ExtractFunctionParameter(trx, parameters, 0);
@@ -2431,17 +2443,12 @@ AqlValue Functions::Near(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Within(arangodb::aql::Query* query,
-                            arangodb::AqlTransaction* trx,
-                            VPackFunctionParameters const& parameters,
-                            bool& mustDestroy) {
-  mustDestroy = false;
+                           arangodb::AqlTransaction* trx,
+                           VPackFunctionParameters const& parameters,
+                           bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "WITHIN", 4, 5);
   size_t const n = parameters.size();
-
-  if (n < 4 || n > 5) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "WITHIN", (int)4,
-        (int)5);
-  }
 
   auto resolver = trx->resolver();
 
@@ -2495,16 +2502,12 @@ AqlValue Functions::Within(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Flatten(arangodb::aql::Query* query,
-                             arangodb::AqlTransaction* trx,
-                             VPackFunctionParameters const& parameters,
-                             bool& mustDestroy) {
-  mustDestroy = false;
+                            arangodb::AqlTransaction* trx,
+                            VPackFunctionParameters const& parameters,
+                            bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "FLATTEN", 1, 2);
   size_t const n = parameters.size();
-  if (n == 0 || n > 2) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "FLATTEN", (int)1,
-        (int)2);
-  }
 
   VPackSlice listSlice = ExtractFunctionParameter(trx, parameters, 0);
   if (!listSlice.isArray()) {
@@ -2540,15 +2543,11 @@ AqlValue Functions::Flatten(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Zip(arangodb::aql::Query* query,
-                         arangodb::AqlTransaction* trx,
-                         VPackFunctionParameters const& parameters,
-                         bool& mustDestroy) {
-  mustDestroy = false;
-  if (parameters.size() != 2) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "ZIP", (int)2,
-        (int)2);
-  }
+                        arangodb::AqlTransaction* trx,
+                        VPackFunctionParameters const& parameters,
+                        bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "ZIP", 2, 2);
 
   VPackSlice keysSlice = ExtractFunctionParameter(trx, parameters, 0);
   VPackSlice valuesSlice = ExtractFunctionParameter(trx, parameters, 1);
@@ -2588,12 +2587,8 @@ AqlValue Functions::ParseIdentifier(
     arangodb::aql::Query* query, arangodb::AqlTransaction* trx,
     VPackFunctionParameters const& parameters,
     bool& mustDestroy) {
-  mustDestroy = false;
-  if (parameters.size() != 1) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "PARSE_IDENTIFIER",
-        (int)1, (int)1);
-  }
+  mustDestroy = true;
+  ValidateParameters(parameters, "PARSE_IDENTIFIER", 1, 1);
 
   VPackSlice value = ExtractFunctionParameter(trx, parameters, 0);
   std::string identifier;
@@ -2632,18 +2627,12 @@ AqlValue Functions::ParseIdentifier(
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Minus(arangodb::aql::Query* query,
-                           arangodb::AqlTransaction* trx,
-                           VPackFunctionParameters const& parameters,
-                           bool& mustDestroy) {
-  mustDestroy = false;
-  size_t const n = parameters.size();
+                          arangodb::AqlTransaction* trx,
+                          VPackFunctionParameters const& parameters,
+                          bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "MINUS", 2);
 
-  if (n < 2) {
-    // The max number is arbitrary
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "MINUS", (int)2,
-        (int)99999);
-  }
   VPackSlice baseArray = ExtractFunctionParameter(trx, parameters, 0);
 
   if (!baseArray.isArray()) {
@@ -2653,7 +2642,7 @@ AqlValue Functions::Minus(arangodb::aql::Query* query,
   }
 
   std::unordered_map<std::string, size_t> contains;
-  contains.reserve(n);
+  contains.reserve(parameters.size());
 
   // Fill the original map
   for (size_t i = 0; i < baseArray.length(); ++i) {
@@ -2662,6 +2651,7 @@ AqlValue Functions::Minus(arangodb::aql::Query* query,
 
   // Iterate through all following parameters and delete found elements from the
   // map
+  size_t const n = parameters.size();
   for (size_t k = 1; k < n; ++k) {
     VPackSlice nextArray = ExtractFunctionParameter(trx, parameters, k);
     if (!nextArray.isArray()) {
@@ -2697,17 +2687,12 @@ AqlValue Functions::Minus(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Document(arangodb::aql::Query* query,
-                              arangodb::AqlTransaction* trx,
-                              VPackFunctionParameters const& parameters,
-                              bool& mustDestroy) {
-  mustDestroy = false;
+                             arangodb::AqlTransaction* trx,
+                             VPackFunctionParameters const& parameters,
+                             bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "DOCUMENT", 1, 2);
   size_t const n = parameters.size();
-
-  if (n < 1 || 2 < n) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "DOCUMENT", (int)1,
-        (int)2);
-  }
 
   if (n == 1) {
     VPackSlice id = ExtractFunctionParameter(trx, parameters, 0);
@@ -2779,17 +2764,11 @@ AqlValue Functions::Document(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Edges(arangodb::aql::Query* query,
-                           arangodb::AqlTransaction* trx,
-                           VPackFunctionParameters const& parameters,
-                           bool& mustDestroy) {
-  mustDestroy = false;
-  size_t const n = parameters.size();
-
-  if (n < 3 || 5 < n) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "EDGES", (int)3,
-        (int)5);
-  }
+                          arangodb::AqlTransaction* trx,
+                          VPackFunctionParameters const& parameters,
+                          bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "EDGES", 3, 5);
 
   VPackSlice collectionSlice = ExtractFunctionParameter(trx, parameters, 0);
   if (!collectionSlice.isString()) {
@@ -2846,6 +2825,7 @@ AqlValue Functions::Edges(arangodb::aql::Query* query,
   TRI_ASSERT(edgeIndex != nullptr); // Checked because collection is edge Collection.
   std::string indexId = arangodb::basics::StringUtils::itoa(edgeIndex->id());
 
+  size_t const n = parameters.size();
   if (n > 3) {
     // We might have examples
     VPackSlice exampleSlice = ExtractFunctionParameter(trx, parameters, 3);
@@ -2904,27 +2884,23 @@ AqlValue Functions::Edges(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Round(arangodb::aql::Query* query,
-                           arangodb::AqlTransaction* trx,
-                           VPackFunctionParameters const& parameters,
-                           bool& mustDestroy) {
-  mustDestroy = false;
-  size_t const n = parameters.size();
+                          arangodb::AqlTransaction* trx,
+                          VPackFunctionParameters const& parameters,
+                          bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "ROUND", 1, 1);
 
-  if (n != 1) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "ROUND", (int)1,
-        (int)1);
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+
+  bool failed = false;
+  double input = value.toDouble(failed);
+
+  if (failed) {
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
 
-  VPackSlice inputSlice = ExtractFunctionParameter(trx, parameters, 0);
-
-  bool unused = false;
-  double input = arangodb::basics::VelocyPackHelper::toDouble(inputSlice, unused);
-
-  input = floor(input + 0.5);  // Rounds down for < x.4999 and up for > x.50000
-  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-  b->add(VPackValue(input));
-  return AqlValue(b.get());
+  // Rounds down for < x.4999 and up for > x.50000
+  return NumberValue(trx, floor(input + 0.5));  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2935,24 +2911,18 @@ AqlValue Functions::Abs(arangodb::aql::Query* query,
                         arangodb::AqlTransaction* trx,
                         VPackFunctionParameters const& parameters,
                         bool& mustDestroy) {
-  mustDestroy = false;
-  size_t const n = parameters.size();
+  mustDestroy = true;
+  ValidateParameters(parameters, "ABS", 1, 1);
 
-  if (n != 1) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "ABS", (int)1,
-        (int)1);
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+
+  bool failed = false;
+  double input = value.toDouble(failed);
+  if (failed) {
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
 
-  VPackSlice inputSlice = ExtractFunctionParameter(trx, parameters, 0);
-
-  bool unused = false;
-  double input = arangodb::basics::VelocyPackHelper::toDouble(inputSlice, unused);
-
-  input = std::abs(input);
-  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-  b->add(VPackValue(input));
-  return AqlValue(b.get());
+  return NumberValue(trx, std::abs(input));  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2960,27 +2930,21 @@ AqlValue Functions::Abs(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Ceil(arangodb::aql::Query* query,
-                          arangodb::AqlTransaction* trx,
-                          VPackFunctionParameters const& parameters,
-                          bool& mustDestroy) {
-  mustDestroy = false;
-  size_t const n = parameters.size();
+                         arangodb::AqlTransaction* trx,
+                         VPackFunctionParameters const& parameters,
+                         bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "CEIL", 1, 1);
 
-  if (n != 1) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "CEIL", (int)1,
-        (int)1);
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+
+  bool failed = false;
+  double input = value.toDouble(failed);
+  if (failed) {
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
 
-  VPackSlice inputSlice = ExtractFunctionParameter(trx, parameters, 0);
-
-  bool unused = false;
-  double input = arangodb::basics::VelocyPackHelper::toDouble(inputSlice, unused);
-
-  input = ceil(input);
-  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-  b->add(VPackValue(input));
-  return AqlValue(b.get());
+  return NumberValue(trx, ceil(input));  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2988,27 +2952,21 @@ AqlValue Functions::Ceil(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Floor(arangodb::aql::Query* query,
-                           arangodb::AqlTransaction* trx,
-                           VPackFunctionParameters const& parameters,
-                           bool& mustDestroy) {
-  mustDestroy = false;
-  size_t const n = parameters.size();
+                          arangodb::AqlTransaction* trx,
+                          VPackFunctionParameters const& parameters,
+                          bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "FLOOR", 1, 1);
+  
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
 
-  if (n != 1) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "FLOOR", (int)1,
-        (int)1);
+  bool failed = false;
+  double input = value.toDouble(failed);
+  if (failed) {
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
 
-  VPackSlice inputSlice = ExtractFunctionParameter(trx, parameters, 0);
-
-  bool unused = false;
-  double input = arangodb::basics::VelocyPackHelper::toDouble(inputSlice, unused);
-
-  input = floor(input);
-  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-  b->add(VPackValue(input));
-  return AqlValue(b.get());
+  return NumberValue(trx, floor(input));  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3016,30 +2974,21 @@ AqlValue Functions::Floor(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Sqrt(arangodb::aql::Query* query,
-                          arangodb::AqlTransaction* trx,
-                          VPackFunctionParameters const& parameters,
-                          bool& mustDestroy) {
-  mustDestroy = false;
-  size_t const n = parameters.size();
-
-  if (n != 1) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "SQRT", (int)1,
-        (int)1);
+                         arangodb::AqlTransaction* trx,
+                         VPackFunctionParameters const& parameters,
+                         bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "SQRT", 1, 1);
+  
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  
+  bool failed = false;
+  double input = value.toDouble(failed);
+  if (failed) {
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
 
-  VPackSlice inputSlice = ExtractFunctionParameter(trx, parameters, 0);
-
-  bool unused = false;
-  double input = arangodb::basics::VelocyPackHelper::toDouble(inputSlice, unused);
-  input = sqrt(input);
-  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-  if (std::isnan(input)) {
-    b->add(VPackValue(VPackValueType::Null));
-  } else {
-    b->add(VPackValue(input));
-  }
-  return AqlValue(b.get());
+  return NumberValue(trx, sqrt(input));  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3047,32 +2996,26 @@ AqlValue Functions::Sqrt(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Pow(arangodb::aql::Query* query,
-                         arangodb::AqlTransaction* trx,
-                         VPackFunctionParameters const& parameters,
-                         bool& mustDestroy) {
-  mustDestroy = false;
-  size_t const n = parameters.size();
+                        arangodb::AqlTransaction* trx,
+                        VPackFunctionParameters const& parameters,
+                        bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "POW", 2, 2);
 
-  if (n != 2) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "POW", (int)2,
-        (int)2);
+  AqlValue baseValue = ExtractFunctionParameterValue(trx, parameters, 0);
+  AqlValue expValue = ExtractFunctionParameterValue(trx, parameters, 1);
+
+  bool failed = false;
+  double base = baseValue.toDouble(failed);
+  if (failed) {
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+  double exp = expValue.toDouble(failed);
+  if (failed) {
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
 
-  VPackSlice baseSlice = ExtractFunctionParameter(trx, parameters, 0);
-  VPackSlice expSlice = ExtractFunctionParameter(trx, parameters, 1);
-
-  bool unused = false;
-  double base = arangodb::basics::VelocyPackHelper::toDouble(baseSlice, unused);
-  double exp = arangodb::basics::VelocyPackHelper::toDouble(expSlice, unused);
-  base = pow(base, exp);
-  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-  if (std::isnan(base) || !std::isfinite(base)) {
-    b->add(VPackValue(VPackValueType::Null));
-  } else {
-    b->add(VPackValue(base));
-  }
-  return AqlValue(b.get());
+  return NumberValue(trx, pow(base, exp));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3080,23 +3023,14 @@ AqlValue Functions::Pow(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Rand(arangodb::aql::Query* query,
-                          arangodb::AqlTransaction*,
-                          VPackFunctionParameters const& parameters,
-                          bool& mustDestroy) {
-  mustDestroy = false;
-  size_t const n = parameters.size();
+                         arangodb::AqlTransaction* trx,
+                         VPackFunctionParameters const& parameters,
+                         bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "RAND", 0, 0);
 
-  if (n != 0) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "RAND", (int)0,
-        (int)0);
-  }
-
-  // This Random functionality is not too good yet...
-  double output = static_cast<double>(std::rand()) / RAND_MAX;
-  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-  b->add(VPackValue(output));
-  return AqlValue(b.get());
+  // This random functionality is not too good yet...
+  return NumberValue(trx, static_cast<double>(std::rand()) / RAND_MAX);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3104,17 +3038,19 @@ AqlValue Functions::Rand(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::FirstDocument(arangodb::aql::Query* query,
-                                   arangodb::AqlTransaction* trx,
-                                   VPackFunctionParameters const& parameters,
-                                   bool& mustDestroy) {
+                                  arangodb::AqlTransaction* trx,
+                                  VPackFunctionParameters const& parameters,
+                                  bool& mustDestroy) {
   mustDestroy = false;
   size_t const n = parameters.size();
   for (size_t i = 0; i < n; ++i) {
-    VPackSlice element = ExtractFunctionParameter(trx, parameters, i);
-    if (element.isObject()) {
-      return AqlValue(element);
+    AqlValue a = ExtractFunctionParameterValue(trx, parameters, i);
+    if (a.isObject()) {
+      return a;
     }
   }
+
+  mustDestroy = true;
   return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
 }
 
@@ -3123,17 +3059,19 @@ AqlValue Functions::FirstDocument(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::FirstList(arangodb::aql::Query* query,
-                               arangodb::AqlTransaction* trx,
-                               VPackFunctionParameters const& parameters,
-                               bool& mustDestroy) {
+                              arangodb::AqlTransaction* trx,
+                              VPackFunctionParameters const& parameters,
+                              bool& mustDestroy) {
   mustDestroy = false;
   size_t const n = parameters.size();
   for (size_t i = 0; i < n; ++i) {
-    VPackSlice element = ExtractFunctionParameter(trx, parameters, i);
-    if (element.isArray()) {
-      return AqlValue(element);
+    AqlValue a = ExtractFunctionParameterValue(trx, parameters, i);
+    if (a.isArray()) {
+      return a;
     }
   }
+
+  mustDestroy = true;
   return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
 }
 
@@ -3142,16 +3080,13 @@ AqlValue Functions::FirstList(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Push(arangodb::aql::Query* query,
-                          arangodb::AqlTransaction* trx,
-                          VPackFunctionParameters const& parameters,
-                          bool& mustDestroy) {
-  mustDestroy = false;
+                         arangodb::AqlTransaction* trx,
+                         VPackFunctionParameters const& parameters,
+                         bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "PUSH", 2, 3);
   size_t const n = parameters.size();
-  if (n != 2 && n != 3) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "PUSH", (int)2,
-        (int)3);
-  }
+  
   VPackSlice list = ExtractFunctionParameter(trx, parameters, 0);
   VPackSlice toPush = ExtractFunctionParameter(trx, parameters, 1);
 
@@ -3165,8 +3100,8 @@ AqlValue Functions::Push(arangodb::aql::Query* query,
       b->add(it);
     }
     if (n == 3) {
-      VPackSlice unique = ExtractFunctionParameter(trx, parameters, 2);
-      if (!ValueToBoolean(unique) || !ListContainsElement(list, toPush)) {
+      AqlValue unique = ExtractFunctionParameterValue(trx, parameters, 2);
+      if (!unique.toBoolean() || !ListContainsElement(list, toPush)) {
         b->add(toPush);
       }
     } else {
@@ -3185,16 +3120,11 @@ AqlValue Functions::Push(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Pop(arangodb::aql::Query* query,
-                         arangodb::AqlTransaction* trx,
-                         VPackFunctionParameters const& parameters,
-                         bool& mustDestroy) {
-  mustDestroy = false;
-  size_t const n = parameters.size();
-  if (n != 1) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "POP", (int)1,
-        (int)1);
-  }
+                        arangodb::AqlTransaction* trx,
+                        VPackFunctionParameters const& parameters,
+                        bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "POP", 1, 1);
   VPackSlice list = ExtractFunctionParameter(trx, parameters, 0);
 
   if (list.isNull()) {
@@ -3225,16 +3155,11 @@ AqlValue Functions::Pop(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Append(arangodb::aql::Query* query,
-                            arangodb::AqlTransaction* trx,
-                            VPackFunctionParameters const& parameters,
-                            bool& mustDestroy) {
-  mustDestroy = false;
-  size_t const n = parameters.size();
-  if (n != 2 && n != 3) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "APPEND", (int)2,
-        (int)3);
-  }
+                           arangodb::AqlTransaction* trx,
+                           VPackFunctionParameters const& parameters,
+                           bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "APPEND", 2, 3);
   VPackSlice list = ExtractFunctionParameter(trx, parameters, 0);
   VPackSlice toAppend = ExtractFunctionParameter(trx, parameters, 1);
 
@@ -3243,9 +3168,10 @@ AqlValue Functions::Append(arangodb::aql::Query* query,
   }
 
   bool unique = false;
+  size_t const n = parameters.size();
   if (n == 3) {
-    VPackSlice uniqueSlice = ExtractFunctionParameter(trx, parameters, 2);
-    unique = ValueToBoolean(uniqueSlice);
+    AqlValue a = ExtractFunctionParameterValue(trx, parameters, 2);
+    unique = a.toBoolean();
   }
 
   std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
@@ -3277,16 +3203,11 @@ AqlValue Functions::Append(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Unshift(arangodb::aql::Query* query,
-                             arangodb::AqlTransaction* trx,
-                             VPackFunctionParameters const& parameters,
-                             bool& mustDestroy) {
-  mustDestroy = false;
-  size_t const n = parameters.size();
-  if (n != 2 && n != 3) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "UNSHIFT", (int)2,
-        (int)3);
-  }
+                            arangodb::AqlTransaction* trx,
+                            VPackFunctionParameters const& parameters,
+                            bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "UNSHIFT", 2, 3);
   VPackSlice list = ExtractFunctionParameter(trx, parameters, 0);
 
   if (!list.isNull() && !list.isArray()) {
@@ -3296,9 +3217,10 @@ AqlValue Functions::Unshift(arangodb::aql::Query* query,
 
   VPackSlice toAppend = ExtractFunctionParameter(trx, parameters, 1);
   bool unique = false;
+  size_t const n = parameters.size();
   if (n == 3) {
-    VPackSlice uniqueSlice = ExtractFunctionParameter(trx, parameters, 2);
-    unique = ValueToBoolean(uniqueSlice);
+    AqlValue a = ExtractFunctionParameterValue(trx, parameters, 2);
+    unique = a.toBoolean();
   }
 
   if (unique && list.isArray() && ListContainsElement(list, toAppend)) {
@@ -3324,18 +3246,12 @@ AqlValue Functions::Unshift(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Shift(arangodb::aql::Query* query,
-                           arangodb::AqlTransaction* trx,
-                           VPackFunctionParameters const& parameters,
-                           bool& mustDestroy) {
-  mustDestroy = false;
-  size_t const n = parameters.size();
-
-  if (n != 1) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "SHIFT", (int)1,
-        (int)1);
-  }
-
+                          arangodb::AqlTransaction* trx,
+                          VPackFunctionParameters const& parameters,
+                          bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "SHIFT", 1, 1);
+  
   VPackSlice list = ExtractFunctionParameter(trx, parameters, 0);
   if (list.isNull()) {
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
@@ -3364,31 +3280,23 @@ AqlValue Functions::Shift(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::RemoveValue(arangodb::aql::Query* query,
-                                 arangodb::AqlTransaction* trx,
-                                 VPackFunctionParameters const& parameters,
-                                 bool& mustDestroy) {
-  mustDestroy = false;
-  size_t const n = parameters.size();
-  if (n != 2 && n != 3) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "REMOVE_VALUE",
-        (int)2, (int)3);
-  }
+                                arangodb::AqlTransaction* trx,
+                                VPackFunctionParameters const& parameters,
+                                bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "REMOVE_VALUE", 2, 3);
 
   VPackSlice list = ExtractFunctionParameter(trx, parameters, 0);
 
   if (list.isNull()) {
-    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-    {
-      VPackArrayBuilder guard(b.get());
-    }
-    return AqlValue(b.get());
+    return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
   }
 
   if (!list.isArray()) {
     RegisterInvalidArgumentWarning(query, "REMOVE_VALUE");
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
+
   std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
   try {
     VPackArrayBuilder guard(b.get());
@@ -3396,6 +3304,7 @@ AqlValue Functions::RemoveValue(arangodb::aql::Query* query,
     size_t limit = static_cast<size_t>(list.length());
 
     VPackSlice toRemove = ExtractFunctionParameter(trx, parameters, 1);
+    size_t const n = parameters.size();
     if (n == 3) {
       VPackSlice limitSlice = ExtractFunctionParameter(trx, parameters, 2);
       if (!limitSlice.isNull()) {
@@ -3428,16 +3337,12 @@ AqlValue Functions::RemoveValue(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::RemoveValues(arangodb::aql::Query* query,
-                                  arangodb::AqlTransaction* trx,
-                                  VPackFunctionParameters const& parameters,
-                                  bool& mustDestroy) {
-  mustDestroy = false;
-  size_t const n = parameters.size();
-  if (n != 2) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "REMOVE_VALUES",
-        (int)2, (int)2);
-  }
+                                 arangodb::AqlTransaction* trx,
+                                 VPackFunctionParameters const& parameters,
+                                 bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "REMOVE_VALUES", 2, 2);
+  
   VPackSlice list = ExtractFunctionParameter(trx, parameters, 0);
   VPackSlice values = ExtractFunctionParameter(trx, parameters, 1);
 
@@ -3447,10 +3352,7 @@ AqlValue Functions::RemoveValues(arangodb::aql::Query* query,
 
   std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
   if (list.isNull()) {
-    {
-      VPackArrayBuilder guard(b.get());
-    }
-    return AqlValue(b.get());
+    return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
   }
 
   if (list.isArray() && values.isArray()) {
@@ -3477,25 +3379,16 @@ AqlValue Functions::RemoveValues(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::RemoveNth(arangodb::aql::Query* query,
-                               arangodb::AqlTransaction* trx,
-                               VPackFunctionParameters const& parameters,
-                               bool& mustDestroy) {
-  mustDestroy = false;
-  size_t const n = parameters.size();
-  if (n != 2) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "REMOVE_NTH", (int)2,
-        (int)2);
-  }
+                              arangodb::AqlTransaction* trx,
+                              VPackFunctionParameters const& parameters,
+                              bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "REMOVE_NTH", 2, 2);
 
   VPackSlice list = ExtractFunctionParameter(trx, parameters, 0);
 
   if (list.isNull()) {
-    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-    {
-      VPackArrayBuilder guard(b.get());
-    }
-    return AqlValue(b.get());
+    return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
   }
 
   if (list.isArray()) {
@@ -3535,17 +3428,18 @@ AqlValue Functions::RemoveNth(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::NotNull(arangodb::aql::Query* query,
-                             arangodb::AqlTransaction* trx,
-                             VPackFunctionParameters const& parameters,
-                             bool& mustDestroy) {
+                            arangodb::AqlTransaction* trx,
+                            VPackFunctionParameters const& parameters,
+                            bool& mustDestroy) {
   mustDestroy = false;
   size_t const n = parameters.size();
   for (size_t i = 0; i < n; ++i) {
-    VPackSlice element = ExtractFunctionParameter(trx, parameters, i);
-    if (!element.isNull()) {
-      return AqlValue(element);
+    AqlValue element = ExtractFunctionParameterValue(trx, parameters, i);
+    if (!element.isNull(true)) {
+      return element;
     }
   }
+  mustDestroy = true;
   return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
 }
 
@@ -3554,19 +3448,15 @@ AqlValue Functions::NotNull(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::CurrentDatabase(
-    arangodb::aql::Query* query, arangodb::AqlTransaction*,
+    arangodb::aql::Query* query, arangodb::AqlTransaction* trx,
     VPackFunctionParameters const& parameters,
     bool& mustDestroy) {
-  mustDestroy = false;
-  size_t const n = parameters.size();
-  if (n != 0) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "CURRENT_DATABASE",
-        (int)0, (int)0);
-  }
-  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-  b->add(VPackValue(query->vocbase()->_name));
-  return AqlValue(b.get());
+  mustDestroy = true;
+  ValidateParameters(parameters, "CURRENT_DATABASE", 0, 0);
+
+  TransactionBuilderLeaser builder(trx);
+  builder->add(VPackValue(query->vocbase()->_name));
+  return AqlValue(builder.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3577,13 +3467,8 @@ AqlValue Functions::CollectionCount(
     arangodb::aql::Query* query, arangodb::AqlTransaction* trx,
     VPackFunctionParameters const& parameters,
     bool& mustDestroy) {
-  mustDestroy = false;
-  size_t const n = parameters.size();
-  if (n != 1) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "COLLECTION_COUNT",
-        (int)1, (int)1);
-  }
+  mustDestroy = true;
+  ValidateParameters(parameters, "COLLECTION_COUNT", 1, 1);
 
   VPackSlice element = ExtractFunctionParameter(trx, parameters, 0);
   if (!element.isString()) {
@@ -3606,9 +3491,10 @@ AqlValue Functions::CollectionCount(
   if (document == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
-  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-  b->add(VPackValue(document->size()));
-  return AqlValue(b.get());
+
+  TransactionBuilderLeaser builder(trx);
+  builder->add(VPackValue(document->size()));
+  return AqlValue(builder.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3619,13 +3505,8 @@ AqlValue Functions::VarianceSample(
     arangodb::aql::Query* query, arangodb::AqlTransaction* trx,
     VPackFunctionParameters const& parameters,
     bool& mustDestroy) {
-  mustDestroy = false;
-  size_t const n = parameters.size();
-  if (n != 1) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "VARIANCE_SAMPLE",
-        (int)1, (int)1);
-  }
+  mustDestroy = true;
+  ValidateParameters(parameters, "VARIANCE_SAMPLE", 1, 1);
 
   VPackSlice list = ExtractFunctionParameter(trx, parameters, 0);
 
@@ -3647,9 +3528,7 @@ AqlValue Functions::VarianceSample(
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
 
-  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-  b->add(VPackValue(value / (count - 1)));
-  return AqlValue(b.get());
+  return NumberValue(trx, value / (count - 1));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3660,13 +3539,8 @@ AqlValue Functions::VariancePopulation(
     arangodb::aql::Query* query, arangodb::AqlTransaction* trx,
     VPackFunctionParameters const& parameters,
     bool& mustDestroy) {
-  mustDestroy = false;
-  size_t const n = parameters.size();
-  if (n != 1) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
-        "VARIANCE_POPULATION", (int)1, (int)1);
-  }
+  mustDestroy = true;
+  ValidateParameters(parameters, "VARIANCE_POPULATION", 1, 1);
 
   VPackSlice list = ExtractFunctionParameter(trx, parameters, 0);
 
@@ -3686,16 +3560,11 @@ AqlValue Functions::VariancePopulation(
   }
 
   if (count < 1) {
-    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-    b->add(VPackValue(VPackValueType::Null));
-    return AqlValue(b.get());
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
 
-  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-  b->add(VPackValue(value / count));
-  return AqlValue(b.get());
+  return NumberValue(trx, value / count);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief function STDDEV_SAMPLE
@@ -3705,13 +3574,8 @@ AqlValue Functions::StdDevSample(
     arangodb::aql::Query* query, arangodb::AqlTransaction* trx,
     VPackFunctionParameters const& parameters,
     bool& mustDestroy) {
-  mustDestroy = false;
-  size_t const n = parameters.size();
-  if (n != 1) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "STDDEV_SAMPLE",
-        (int)1, (int)1);
-  }
+  mustDestroy = true;
+  ValidateParameters(parameters, "STDDEV_SAMPLE", 1, 1);
 
   VPackSlice list = ExtractFunctionParameter(trx, parameters, 0);
 
@@ -3733,9 +3597,7 @@ AqlValue Functions::StdDevSample(
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
 
-  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-  b->add(VPackValue(sqrt(value / (count - 1) )));
-  return AqlValue(b.get());
+  return NumberValue(trx, sqrt(value / (count - 1)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3746,13 +3608,8 @@ AqlValue Functions::StdDevPopulation(
     arangodb::aql::Query* query, arangodb::AqlTransaction* trx,
     VPackFunctionParameters const& parameters,
     bool& mustDestroy) {
-  mustDestroy = false;
-  size_t const n = parameters.size();
-  if (n != 1) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "STDDEV_POPULATION",
-        (int)1, (int)1);
-  }
+  mustDestroy = true;
+  ValidateParameters(parameters, "STDDEV_POPULATION", 1, 1);
 
   VPackSlice list = ExtractFunctionParameter(trx, parameters, 0);
 
@@ -3774,9 +3631,7 @@ AqlValue Functions::StdDevPopulation(
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
 
-  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-  b->add(VPackValue(sqrt(value / count)));
-  return AqlValue(b.get());
+  return NumberValue(trx, sqrt(value / count));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3784,16 +3639,11 @@ AqlValue Functions::StdDevPopulation(
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Median(arangodb::aql::Query* query,
-                            arangodb::AqlTransaction* trx,
-                            VPackFunctionParameters const& parameters,
-                            bool& mustDestroy) {
-  mustDestroy = false;
-  size_t const n = parameters.size();
-  if (n != 1) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "MEDIAN", (int)1,
-        (int)1);
-  }
+                           arangodb::AqlTransaction* trx,
+                           VPackFunctionParameters const& parameters,
+                           bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "MEDIAN", 1, 1);
 
   VPackSlice list = ExtractFunctionParameter(trx, parameters, 0);
 
@@ -3814,13 +3664,10 @@ AqlValue Functions::Median(arangodb::aql::Query* query,
   size_t const l = values.size();
   size_t midpoint = l / 2;
 
-  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
   if (l % 2 == 0) {
-    b->add(VPackValue((values[midpoint - 1] + values[midpoint]) / 2));
-  } else {
-    b->add(VPackValue(values[midpoint]));
+    return NumberValue(trx, (values[midpoint - 1] + values[midpoint]) / 2);
   }
-  return AqlValue(b.get());
+  return NumberValue(trx, values[midpoint]);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3828,16 +3675,11 @@ AqlValue Functions::Median(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Percentile(arangodb::aql::Query* query,
-                                arangodb::AqlTransaction* trx,
-                                VPackFunctionParameters const& parameters,
-                                bool& mustDestroy) {
-  mustDestroy = false;
-  size_t const n = parameters.size();
-  if (n != 2 && n != 3) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "PERCENTILE", (int)2,
-        (int)3);
-  }
+                               arangodb::AqlTransaction* trx,
+                               VPackFunctionParameters const& parameters,
+                               bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "PERCENTILE", 2, 3);
 
   VPackSlice list = ExtractFunctionParameter(trx, parameters, 0);
 
@@ -3856,7 +3698,7 @@ AqlValue Functions::Percentile(arangodb::aql::Query* query,
 
   bool unused = false;
   double p = ValueToNumber(border, unused);
-  if (p <= 0 || p > 100) {
+  if (p <= 0.0 || p > 100.0) {
     RegisterWarning(query, "PERCENTILE",
                     TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
@@ -3864,7 +3706,7 @@ AqlValue Functions::Percentile(arangodb::aql::Query* query,
 
   bool useInterpolation = false;
 
-  if (n == 3) {
+  if (parameters.size() == 3) {
     VPackSlice methodSlice = ExtractFunctionParameter(trx, parameters, 2);
     if (!methodSlice.isString()) {
       RegisterWarning(query, "PERCENTILE",
@@ -3893,43 +3735,41 @@ AqlValue Functions::Percentile(arangodb::aql::Query* query,
   if (values.empty()) {
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
+
   size_t l = values.size();
   if (l == 1) {
-    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-    b->add(VPackValue(values[0]));
-    return AqlValue(b.get());
+    return NumberValue(trx, values[0]);
   }
 
   TRI_ASSERT(l > 1);
 
   if (useInterpolation) {
-    double idx = p * (l + 1) / 100;
-    double pos = floor(idx);
+    double const idx = p * (l + 1) / 100.0;
+    double const pos = floor(idx);
 
-    std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
     if (pos >= l) {
-      b->add(VPackValue(values[l - 1]));
-    } else if (pos <= 0) {
-      b->add(VPackValue(VPackValueType::Null));
-    } else {
-      double delta = idx - pos;
-      b->add(VPackValue(delta * (values[static_cast<size_t>(pos)] -
-                                 values[static_cast<size_t>(pos) - 1]) +
-                        values[static_cast<size_t>(pos) - 1]));
-    }
-    return AqlValue(b.get());
+      return NumberValue(trx, values[l - 1]);
+    } 
+    if (pos <= 0) {
+      return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    } 
+    
+    double const delta = idx - pos;
+    return NumberValue(trx, delta * (values[static_cast<size_t>(pos)] -
+                                     values[static_cast<size_t>(pos) - 1]) +
+                                  values[static_cast<size_t>(pos) - 1]);
   }
-  double idx = p * l / 100;
-  double pos = ceil(idx);
-  std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
+
+  double const idx = p * l / 100.0;
+  double const pos = ceil(idx);
   if (pos >= l) {
-    b->add(VPackValue(values[l - 1]));
-  } else if (pos <= 0) {
-    b->add(VPackValue(VPackValueType::Null));
-  } else {
-    b->add(VPackValue(values[static_cast<size_t>(pos) - 1]));
-  }
-  return AqlValue(b.get());
+    return NumberValue(trx, values[l - 1]);
+  } 
+  if (pos <= 0) {
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  } 
+    
+  return NumberValue(trx, values[static_cast<size_t>(pos) - 1]);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3937,17 +3777,11 @@ AqlValue Functions::Percentile(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Range(arangodb::aql::Query* query,
-                           arangodb::AqlTransaction* trx,
-                           VPackFunctionParameters const& parameters,
-                           bool& mustDestroy) {
-  mustDestroy = false;
-  size_t const n = parameters.size();
-
-  if (n != 2 && n != 3) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "RANGE", (int)2,
-        (int)3);
-  }
+                          arangodb::AqlTransaction* trx,
+                          VPackFunctionParameters const& parameters,
+                          bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "RANGE", 2, 3);
 
   VPackSlice const leftSlice = ExtractFunctionParameter(trx, parameters, 0);
   VPackSlice const rightSlice = ExtractFunctionParameter(trx, parameters, 1);
@@ -3957,6 +3791,7 @@ AqlValue Functions::Range(arangodb::aql::Query* query,
   double to = ValueToNumber(rightSlice, unused);
 
   double step = 0.0;
+  size_t const n = parameters.size();
   if (n == 3) {
     VPackSlice const stepSlice = ExtractFunctionParameter(trx, parameters, 2);
     if (!stepSlice.isNull()) {
@@ -4007,16 +3842,11 @@ AqlValue Functions::Range(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Position(arangodb::aql::Query* query,
-                              arangodb::AqlTransaction* trx,
-                              VPackFunctionParameters const& parameters,
-                              bool& mustDestroy) {
-  mustDestroy = false;
-  size_t const n = parameters.size();
-  if (n != 2 && n != 3) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "POSITION", (int)2,
-        (int)3);
-  }
+                             arangodb::AqlTransaction* trx,
+                             VPackFunctionParameters const& parameters,
+                             bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "POSITION", 2, 3);
 
   VPackSlice list = ExtractFunctionParameter(trx, parameters, 0);
 
@@ -4026,9 +3856,10 @@ AqlValue Functions::Position(arangodb::aql::Query* query,
   }
 
   bool returnIndex = false;
+  size_t const n = parameters.size();
   if (n == 3) {
-    VPackSlice returnIndexSlice = ExtractFunctionParameter(trx, parameters, 2);
-    returnIndex = ValueToBoolean(returnIndexSlice);
+    AqlValue a = ExtractFunctionParameterValue(trx, parameters, 2);
+    returnIndex = a.toBoolean();
   }
 
   std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
@@ -4046,14 +3877,14 @@ AqlValue Functions::Position(arangodb::aql::Query* query,
       if (returnIndex) {
         b->add(VPackValue(-1));
       } else {
-        b->add(VPackValue(false));
+        return AqlValue(false);
       }
     }
   } else {
     if (returnIndex) {
       b->add(VPackValue(-1));
     } else {
-      b->add(VPackValue(false));
+      return AqlValue(false);
     }
   }
   return AqlValue(b.get());
@@ -4064,19 +3895,11 @@ AqlValue Functions::Position(arangodb::aql::Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Fulltext(arangodb::aql::Query* query,
-                              arangodb::AqlTransaction* trx,
-                              VPackFunctionParameters const& parameters,
-                              bool& mustDestroy) {
-  mustDestroy = false;
-  size_t const n = parameters.size();
-
-  if (n < 3 || n > 4) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "FULLTEXT", (int)3,
-        (int)4);
-  }
-
-  auto resolver = trx->resolver();
+                             arangodb::AqlTransaction* trx,
+                             VPackFunctionParameters const& parameters,
+                             bool& mustDestroy) {
+  mustDestroy = true;
+  ValidateParameters(parameters, "FULLTEXT", 3, 4);
 
   VPackSlice collectionSlice = ExtractFunctionParameter(trx, parameters, 0);
 
@@ -4085,7 +3908,7 @@ AqlValue Functions::Fulltext(arangodb::aql::Query* query,
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
   }
 
-  std::string colName = collectionSlice.copyString();
+  std::string colName(collectionSlice.copyString());
 
   VPackSlice attribute = ExtractFunctionParameter(trx, parameters, 1);
 
@@ -4094,7 +3917,7 @@ AqlValue Functions::Fulltext(arangodb::aql::Query* query,
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
   }
 
-  std::string attributeName = attribute.copyString();
+  std::string attributeName(attribute.copyString());
 
   VPackSlice queryString = ExtractFunctionParameter(trx, parameters, 2);
 
@@ -4106,12 +3929,14 @@ AqlValue Functions::Fulltext(arangodb::aql::Query* query,
   std::string queryValue = queryString.copyString();
 
   size_t maxResults = 0;  // 0 means "all results"
+  size_t const n = parameters.size();
   if (n >= 4) {
     VPackSlice limit = ExtractFunctionParameter(trx, parameters, 3);
     if (!limit.isNull() && !limit.isNumber()) {
       THROW_ARANGO_EXCEPTION_PARAMS(
           TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
-    } else if (limit.isNumber()) {
+    } 
+    if (limit.isNumber()) {
       int64_t value = limit.getNumericValue<int64_t>();
       if (value > 0) {
         maxResults = static_cast<size_t>(value);
@@ -4119,6 +3944,7 @@ AqlValue Functions::Fulltext(arangodb::aql::Query* query,
     }
   }
 
+  auto resolver = trx->resolver();
   TRI_voc_cid_t cid = resolver->getCollectionIdLocal(colName);
   trx->addCollectionAtRuntime(cid);
 
@@ -4203,41 +4029,39 @@ AqlValue Functions::IsSameCollection(
     arangodb::aql::Query* query, arangodb::AqlTransaction* trx,
     VPackFunctionParameters const& parameters,
     bool& mustDestroy) {
-  mustDestroy = false;
-  if (parameters.size() != 2) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "IS_SAME_COLLECTION",
-        (int)2, (int)2);
-  }
+  mustDestroy = true;
+  ValidateParameters(parameters, "IS_SAME_COLLECTION", 2, 2);
 
-  VPackSlice collectionSlice = ExtractFunctionParameter(trx, parameters, 0);
+  AqlValue first = ExtractFunctionParameterValue(trx, parameters, 0);
 
-  if (!collectionSlice.isString()) {
+  if (!first.isString()) {
     THROW_ARANGO_EXCEPTION_PARAMS(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "IS_SAME_COLLECTION");
   }
 
-  std::string colName = collectionSlice.copyString();
+  std::string colName(first.slice().copyString());
 
-  VPackSlice value = ExtractFunctionParameter(trx, parameters, 1);
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 1);
   std::string identifier;
 
-  if (value.isObject() && value.hasKey(TRI_VOC_ATTRIBUTE_ID)) {
-    identifier = arangodb::basics::VelocyPackHelper::getStringValue(
-        value, TRI_VOC_ATTRIBUTE_ID, "");
+  if (value.isObject() && value.hasKey(trx, TRI_VOC_ATTRIBUTE_ID)) {
+    bool localMustDestroy;
+    value = value.get(trx, TRI_VOC_ATTRIBUTE_ID, localMustDestroy, false);
+    AqlValueGuard guard(value, localMustDestroy);
+
+    if (value.isString()) {
+      identifier = value.slice().copyString();
+    }
   } else if (value.isString()) {
-    identifier = value.copyString();
+    identifier = value.slice().copyString();
   }
 
   if (!identifier.empty()) {
     size_t pos = identifier.find('/');
 
     if (pos != std::string::npos) {
-      bool const same = (colName == identifier.substr(0, pos));
-
-      std::shared_ptr<VPackBuilder> b = query->getSharedBuilder();
-      b->add(VPackValue(same));
-      return AqlValue(b.get());
+      bool const isSame = (colName == identifier.substr(0, pos));
+      return AqlValue(isSame);
     }
 
     // fallthrough intentional

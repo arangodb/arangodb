@@ -191,6 +191,12 @@ struct AqlValue final {
   //////////////////////////////////////////////////////////////////////////////
 
   uint64_t hash(arangodb::AqlTransaction*) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the value contains a none value
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool isNone() const;
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the value contains a null value
@@ -250,6 +256,7 @@ struct AqlValue final {
   AqlValue get(arangodb::AqlTransaction* trx,
                std::vector<char const*> const& names, bool& mustDestroy,
                bool copy) const;
+  bool hasKey(arangodb::AqlTransaction* trx, std::string const& name) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the numeric value of an AqlValue
