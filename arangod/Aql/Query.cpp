@@ -158,7 +158,7 @@ bool Query::DoDisableQueryTracking = false;
 Query::Query(arangodb::ApplicationV8* applicationV8,
              bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
              char const* queryString, size_t queryLength,
-             std::shared_ptr<VPackBuilder> const bindParameters, std::shared_ptr<VPackBuilder> const options, QueryPart part)
+             std::shared_ptr<VPackBuilder> bindParameters, std::shared_ptr<VPackBuilder> options, QueryPart part)
     : _id(0),
       _applicationV8(applicationV8),
       _vocbase(vocbase),
@@ -199,7 +199,7 @@ Query::Query(arangodb::ApplicationV8* applicationV8,
 Query::Query(arangodb::ApplicationV8* applicationV8,
              bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
              std::shared_ptr<VPackBuilder> const queryStruct,
-             std::shared_ptr<VPackBuilder> const options, QueryPart part)
+             std::shared_ptr<VPackBuilder> options, QueryPart part)
     : _id(0),
       _applicationV8(applicationV8),
       _vocbase(vocbase),
@@ -283,7 +283,6 @@ Query::~Query() {
 ////////////////////////////////////////////////////////////////////////////////
 
 Query* Query::clone(QueryPart part, bool withPlan) {
-
   std::unique_ptr<Query> clone;
 
   clone.reset(new Query(_applicationV8, false, _vocbase, _queryString,
@@ -1147,6 +1146,10 @@ void Query::getStats(VPackBuilder& builder) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Query::getBooleanOption(char const* option, bool defaultValue) const {
+  if (_options == nullptr) {
+    return defaultValue;
+  }
+
   VPackSlice options = _options->slice();
   if (!options.isObject()) {
     return defaultValue;
@@ -1159,7 +1162,6 @@ bool Query::getBooleanOption(char const* option, bool defaultValue) const {
 
   return value.getBool();
 }
-
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief convert the list of warnings to VelocyPack.
@@ -1184,7 +1186,6 @@ void Query::addWarningsToVelocyPackObject(
     }
   }
 }
-
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief transform the list of warnings to VelocyPack.
@@ -1311,6 +1312,10 @@ bool Query::canUseQueryCache() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 double Query::getNumericOption(char const* option, double defaultValue) const {
+  if (_options == nullptr) {
+    return defaultValue;
+  }
+
   VPackSlice options = _options->slice();
   if (!options.isObject()) {
     return defaultValue;
@@ -1349,6 +1354,10 @@ QueryResult Query::transactionError(int errorCode) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Query::inspectSimplePlans() const {
+  if (_options == nullptr) {
+    return true;
+  }
+
   VPackSlice options = _options->slice();
   if (!options.isObject()) {
     return true;  // default
@@ -1370,6 +1379,10 @@ bool Query::inspectSimplePlans() const {
 
 std::vector<std::string> Query::getRulesFromOptions() const {
   std::vector<std::string> rules;
+  
+  if (_options == nullptr) {
+    return rules;
+  }
 
   VPackSlice options = _options->slice();
 

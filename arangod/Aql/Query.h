@@ -112,12 +112,12 @@ class Query {
 
  public:
   Query(arangodb::ApplicationV8*, bool, TRI_vocbase_t*, char const*, size_t,
-        std::shared_ptr<arangodb::velocypack::Builder> const,
-        std::shared_ptr<arangodb::velocypack::Builder> const, QueryPart);
+        std::shared_ptr<arangodb::velocypack::Builder>,
+        std::shared_ptr<arangodb::velocypack::Builder>, QueryPart);
 
   Query(arangodb::ApplicationV8*, bool, TRI_vocbase_t*,
         std::shared_ptr<arangodb::velocypack::Builder> const,
-        std::shared_ptr<arangodb::velocypack::Builder> const, QueryPart);
+        std::shared_ptr<arangodb::velocypack::Builder>, QueryPart);
 
   ~Query();
 
@@ -229,7 +229,7 @@ class Query {
 
   size_t maxNumberOfPlans() const {
     double value = getNumericOption("maxNumberOfPlans", 0.0);
-    if (value > 0) {
+    if (value > 0.0) {
       return static_cast<size_t>(value);
     }
     return 0;
@@ -241,7 +241,7 @@ class Query {
 
   int64_t literalSizeThreshold() const {
     double value = getNumericOption("literalSizeThreshold", 0.0);
-    if (value > 0) {
+    if (value > 0.0) {
       return static_cast<int64_t>(value);
     }
     return -1;
