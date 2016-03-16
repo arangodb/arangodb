@@ -135,12 +135,20 @@ class Collection {
     return keys(*slice, result);
   }
 
-  static Builder values(Slice const& slice);
+  static Builder extract(Slice const& slice, int64_t from, int64_t to = INT64_MAX);
+  static Builder extract(Slice const* slice, int64_t from, int64_t to = INT64_MAX) {
+    return extract(*slice, from, to);
+  }
 
+  static Builder concat(Slice const& slice1, Slice const& slice2);
+  static Builder concat(Slice const* slice1, Slice const* slice2) { 
+    return concat(*slice1, *slice2); 
+  }
+
+  static Builder values(Slice const& slice);
   static Builder values(Slice const* slice) { return values(*slice); }
 
   static Builder keep(Slice const& slice, std::vector<std::string> const& keys);
-
   static Builder keep(Slice const& slice,
                       std::unordered_set<std::string> const& keys);
 
