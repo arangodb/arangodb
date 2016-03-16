@@ -150,12 +150,6 @@ restReplyBodyParam = None
 restSubBodyParam = None
 
 ################################################################################
-### @brief C_FILE
-################################################################################
-
-C_FILE = False
-
-################################################################################
 ### @brief DEBUG
 ################################################################################
 
@@ -283,10 +277,7 @@ def LIT(txt, wordboundary = ['<b>','</b>']):
 ################################################################################
 
 def Typography(txt):
-    if C_FILE:
-        txt = txt[4:-1]
-    else:
-        txt = txt[0:-1]
+    txt = txt[0:-1]
 
 #    txt = BackTicks(txt)
 #    txt = AsteriskBold(txt)
@@ -376,7 +367,6 @@ class Regexen:
         self.END_EXAMPLE_ARANGOSH_RUN = re.compile('.*@END_EXAMPLE_ARANGOSH_RUN')
         self.EXAMPLES = re.compile('.*@EXAMPLES')
         self.EXAMPLE_ARANGOSH_RUN = re.compile('.*@EXAMPLE_ARANGOSH_RUN{')
-        self.FILE = re.compile('.*@file')
         self.RESTBODYPARAM = re.compile('.*@RESTBODYPARAM')
         self.RESTSTRUCT = re.compile('.*@RESTSTRUCT')
         self.RESTALLBODYPARAM = re.compile('.*@RESTALLBODYPARAM')
@@ -392,17 +382,13 @@ class Regexen:
         self.RESTRETURNCODES = re.compile('.*@RESTRETURNCODES')
         self.RESTURLPARAM = re.compile('.*@RESTURLPARAM{')
         self.RESTURLPARAMETERS = re.compile('.*@RESTURLPARAMETERS')
-        self.NON_COMMENT = re.compile('^[^/].*')
 
 ################################################################################
 ### @brief checks for end of comment
 ################################################################################
 
 def check_end_of_comment(line, r):
-    if C_FILE:
-        return r.NON_COMMENT.match(line)
-    else:
-        return r.RESTDONE.match(line)
+    return r.RESTDONE.match(line)
 
 ################################################################################
 ### @brief next_step
@@ -460,7 +446,7 @@ def generic_handler(cargo, r, message):
 ################################################################################
 
 def generic_handler_desc(cargo, r, message, op, para, name):
-    global DEBUG, C_FILE, operation
+    global DEBUG, operation
 
     if DEBUG: print >> sys.stderr, message
     (fp, last) = cargo
@@ -483,9 +469,6 @@ def generic_handler_desc(cargo, r, message, op, para, name):
                     raise
             return next, c
 
-        if C_FILE and line[0:4] == "////":
-            continue
-
         line = Typography(line)
         para[name] += line + '\n'
 
@@ -495,7 +478,11 @@ def start_docublock(cargo, r=Regexen()):
     global currentDocuBlock
     (fp, last) = cargo
     try:
-        currentDocuBlock = last.split(' ')[2].rstrip()
+        # TODO remove when all /// are removed from the docublocks
+        if last.startwith('/// '):
+          currentDocuBlock = last.split(' ')[2].rstrip()
+        else:
+          currentDocuBlock = last.split(' ')[1].rstrip()
     except Exception as x:
         print >> sys.stderr, "failed to fetch docublock in '" + last + "'"
         raise
@@ -1002,7 +989,7 @@ def examples(cargo, r=Regexen()):
 
 
 def example_arangosh_run(cargo, r=Regexen()):
-    global currentExample, DEBUG, C_FILE
+    global currentExample, DEBUG
 
     if DEBUG: print >> sys.stderr, "example_arangosh_run"
     fp, last = cargo
@@ -1040,7 +1027,7 @@ def example_arangosh_run(cargo, r=Regexen()):
 ################################################################################
 
 def eof(cargo):
-    global DEBUG, C_FILE
+    global DEBUG
     if DEBUG: print >> sys.stderr, "eof"
 
 ################################################################################
@@ -1048,7 +1035,7 @@ def eof(cargo):
 ################################################################################
 
 def error(cargo):
-    global DEBUG, C_FILE
+    global DEBUG
     if DEBUG: print >> sys.stderr, "error"
 
     sys.stderr.write('Unidentifiable line:\n' + cargo)
@@ -1058,7 +1045,7 @@ def error(cargo):
 ################################################################################
 
 def comment(cargo, r=Regexen()):
-    global DEBUG, C_FILE
+    global DEBUG
 
     if DEBUG: print >> sys.stderr, "comment"
     (fp, last) = cargo
@@ -1066,8 +1053,6 @@ def comment(cargo, r=Regexen()):
     while 1:
         line = fp.readline()
         if not line: return eof, (fp, line)
-
-        if r.FILE.match(line): C_FILE = True
 
         next, c = next_step(fp, line, r)
 
@@ -1081,22 +1066,12 @@ def comment(cargo, r=Regexen()):
 ################################################################################
 
 def skip_code(cargo, r=Regexen()):
-    global DEBUG, C_FILE
+    global DEBUG
 
     if DEBUG: print >> sys.stderr, "skip_code"
     (fp, last) = cargo
     
-    if not C_FILE:
-        return comment((fp, last), r)
-
-    while 1:
-        line = fp.readline()
-
-        if not line:
-            return eof, (fp, line)
-
-        if not r.NON_COMMENT.match(line):
-            return comment((fp, line), r)
+    return comment((fp, last), r)
 
 ################################################################################
 ### @brief main
