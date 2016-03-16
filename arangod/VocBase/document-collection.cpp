@@ -51,7 +51,6 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/MasterPointers.h"
 #include "VocBase/server.h"
-#include "VocBase/VocShaper.h"
 #include "Wal/DocumentOperation.h"
 #include "Wal/LogfileManager.h"
 #include "Wal/Marker.h"
@@ -71,7 +70,6 @@ using namespace arangodb::basics;
 
 TRI_document_collection_t::TRI_document_collection_t()
     : _lock(),
-      _shaper(nullptr),
       _nextCompactionStartIndex(0),
       _lastCompactionStatus(nullptr),
       _useSecondaryIndexes(true),
@@ -620,18 +618,6 @@ arangodb::Index* TRI_document_collection_t::lookupIndex(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a pointer to the shaper
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-VocShaper* TRI_document_collection_t::getShaper() const {
-  if (!_ditches.contains(arangodb::Ditch::TRI_DITCH_DOCUMENT)) {
-  }
-  return _shaper;
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief add a WAL operation for a transaction collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1062,11 +1048,9 @@ static bool OpenIndexIterator(std::string const& filename, void* data) {
 /// @brief initializes a document collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static int InitBaseDocumentCollection(TRI_document_collection_t* document,
-                                      VocShaper* shaper) {
+static int InitBaseDocumentCollection(TRI_document_collection_t* document) {
   TRI_ASSERT(document != nullptr);
 
-  document->setShaper(shaper);
   document->_numberDocuments = 0;
   document->_lastCompaction = 0.0;
 
@@ -1083,10 +1067,6 @@ static void DestroyBaseDocumentCollection(TRI_document_collection_t* document) {
     document->_keyGenerator = nullptr;
   }
 
-  if (document->getShaper() != nullptr) {  // PROTECTED by trx here
-    delete document->getShaper();          // PROTECTED by trx here
-  }
-
   document->ditches()->destroy();
   TRI_DestroyCollection(document);
 }
@@ -1095,15 +1075,13 @@ static void DestroyBaseDocumentCollection(TRI_document_collection_t* document) {
 /// @brief initializes a document collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool InitDocumentCollection(TRI_document_collection_t* document,
-                                   VocShaper* shaper) {
+static bool InitDocumentCollection(TRI_document_collection_t* document) {
   TRI_ASSERT(document != nullptr);
 
   document->_cleanupIndexes = false;
-
   document->_uncollectedLogfileEntries.store(0);
 
-  int res = InitBaseDocumentCollection(document, shaper);
+  int res = InitBaseDocumentCollection(document);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_DestroyCollection(document);
@@ -1258,10 +1236,8 @@ TRI_document_collection_t* TRI_CreateDocumentCollection(
     return nullptr;
   }
 
-  auto shaper = new VocShaper(TRI_UNKNOWN_MEM_ZONE, document);
-
-  // create document collection and shaper
-  if (false == InitDocumentCollection(document, shaper)) {
+  // create document collection
+  if (false == InitDocumentCollection(document)) {
     LOG(ERR) << "cannot initialize document collection";
 
     TRI_CloseCollection(collection);
@@ -1801,10 +1777,8 @@ TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
     return nullptr;
   }
 
-  auto shaper = new VocShaper(TRI_UNKNOWN_MEM_ZONE, document);
-
-  // create document collection and shaper
-  if (false == InitDocumentCollection(document, shaper)) {
+  // create document collection
+  if (false == InitDocumentCollection(document)) {
     TRI_CloseCollection(collection);
     TRI_FreeCollection(collection);
     LOG(ERR) << "cannot initialize document collection";
@@ -1868,9 +1842,6 @@ TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
     return nullptr;
   }
 
-  TRI_ASSERT(document->getShaper() !=
-             nullptr);  // ONLY in OPENCOLLECTION, PROTECTED by fake trx here
-
   if (!arangodb::wal::LogfileManager::instance()->isInRecovery()) {
     TRI_FillIndexesDocumentCollection(&trx, col, document);
   }
@@ -1900,10 +1871,6 @@ int TRI_CloseDocumentCollection(TRI_document_collection_t* document,
 
   // closes all open compactors, journals, datafiles
   int res = TRI_CloseCollection(document);
-
-  delete document
-      ->getShaper();  // ONLY IN CLOSECOLLECTION, PROTECTED by fake trx here
-  document->setShaper(nullptr);
 
   return res;
 }

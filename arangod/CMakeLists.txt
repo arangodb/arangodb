@@ -253,9 +253,7 @@ add_executable(${BIN_ARANGOD}
   VocBase/ExampleMatcher.cpp
   VocBase/Graphs.cpp
   VocBase/KeyGenerator.cpp
-  VocBase/Shaper.cpp
   VocBase/Traverser.cpp
-  VocBase/VocShaper.cpp
   VocBase/auth.cpp
   VocBase/cleanup.cpp
   VocBase/collection.cpp
@@ -268,7 +266,6 @@ add_executable(${BIN_ARANGOD}
   VocBase/replication-common.cpp
   VocBase/replication-dump.cpp
   VocBase/server.cpp
-  VocBase/shaped-json.cpp
   VocBase/transaction.cpp
   VocBase/vocbase-defaults.cpp
   VocBase/vocbase.cpp

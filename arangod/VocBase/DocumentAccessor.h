@@ -28,7 +28,6 @@
 #include "Basics/JsonHelper.h"
 #include "Utils/Transaction.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/shaped-json.h"
 #include "VocBase/Shaper.h"
 #include "Wal/Marker.h"
 

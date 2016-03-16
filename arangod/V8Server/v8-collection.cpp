@@ -48,11 +48,8 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "unicode/timezone.h"
-
 using namespace arangodb;
 using namespace arangodb::basics;
-
 using namespace arangodb::rest;
 
 struct LocalCollectionGuard {
