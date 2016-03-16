@@ -1591,12 +1591,13 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
     if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
       TRI_V8_THROW_EXCEPTION_USAGE(
           "replace(<document(s)>, <data>, {overwrite: booleanValue,"
-          " waitForSync: booleanValue})");
+          " waitForSync: booleanValue, returnNew: booleanValue,"
+          " returnOld: booleanValue})");
     } else {   // UPDATE
       TRI_V8_THROW_EXCEPTION_USAGE(
           "update(<document>, <data>, {overwrite: booleanValue, keepNull: "
           "booleanValue, mergeObjects: booleanValue, waitForSync: "
-          "booleanValue})");
+          "booleanValue, returnNew: booleanValue, returnOld: booleanValue})");
     }
   }
 
