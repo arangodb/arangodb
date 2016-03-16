@@ -51,7 +51,7 @@ class ClusterTraverser : public Traverser {
   ~ClusterTraverser() {
   }
 
-  void setStartVertex(arangodb::velocypack::Slice const&) override;
+  void setStartVertex(std::string const&) override;
 
   TraversalPath* next() override;
 
@@ -90,9 +90,13 @@ class ClusterTraverser : public Traverser {
     size_t _continueConst;
   };
 
-  std::unordered_map<std::string, arangodb::velocypack::Slice> _edges;
+  std::unordered_map<std::string,
+                     std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
+      _edges;
 
-  std::unordered_map<std::string, arangodb::velocypack::Slice> _vertices;
+  std::unordered_map<std::string,
+                     std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
+      _vertices;
 
   std::stack<std::stack<std::string>> _iteratorCache;
 
@@ -105,6 +109,15 @@ class ClusterTraverser : public Traverser {
   EdgeGetter _edgeGetter;
 
   CollectionNameResolver const* _resolver;
+
+#warning INITIALIZE
+  arangodb::velocypack::Builder _builder;
+
+#warning INITIALIZE
+  arangodb::Transaction* _trx;
+
+#warning INITIALIZE
+  arangodb::OperationOptions _operationOptions;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief internal cursor to enumerate the paths of a graph

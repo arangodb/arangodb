@@ -94,11 +94,12 @@ bool ClusterTraverser::VertexGetter::operator()(std::string const& edgeId,
                                                 std::string& result) {
   auto it = _traverser->_edges.find(edgeId);
   if (it != _traverser->_edges.end()) {
-    std::string from = it->second.get(TRI_VOC_ATTRIBUTE_FROM).copyString();
+    VPackSlice slice(it->second->data());
+    std::string from = slice.get(TRI_VOC_ATTRIBUTE_FROM).copyString();
     if (from != vertexId) {
       result = from;
     } else {
-      std::string to = it->second.get(TRI_VOC_ATTRIBUTE_TO).copyString();
+      std::string to = slice.get(TRI_VOC_ATTRIBUTE_TO).copyString();
       result = to;
     }
     auto exp = _traverser->_expressions->find(depth);
@@ -110,7 +111,7 @@ bool ClusterTraverser::VertexGetter::operator()(std::string const& edgeId,
         ++_traverser->_filteredPaths;
         return false;
       }
-      if (!_traverser->vertexMatchesCondition(v->second, exp->second)) {
+      if (!_traverser->vertexMatchesCondition(VPackSlice(v->second->data()), exp->second)) {
         return false;
       }
     }
@@ -258,43 +259,37 @@ void ClusterTraverser::EdgeGetter::operator()(std::string const& startVertex,
   }
 }
 
-void ClusterTraverser::setStartVertex(VPackSlice const& v) {
-  std::string start = v.get(TRI_VOC_ATTRIBUTE_ID).copyString();
+void ClusterTraverser::setStartVertex(std::string const& id) {
   _enumerator.reset(
       new arangodb::basics::PathEnumerator<std::string, std::string, size_t>(
-          _edgeGetter, _vertexGetter, start));
+          _edgeGetter, _vertexGetter, id));
   _done = false;
-  auto it = _vertices.find(start);
+  auto it = _vertices.find(id);
   if (it == _vertices.end()) {
-    /* TODO DEPRECATED: Get Document
-    arangodb::rest::HttpResponse::HttpResponseCode responseCode;
-    std::unique_ptr<std::map<std::string, std::string>> headers(
-        new std::map<std::string, std::string>());
-    std::map<std::string, std::string> resultHeaders;
-    std::vector<std::string> splitId =
+    std::vector<std::string> parts =
         arangodb::basics::StringUtils::split(id, '/');
-    TRI_ASSERT(splitId.size() == 2);
-    std::string vertexResult;
-    int res = getDocumentOnCoordinator(_dbname, splitId[0], splitId[1], 0,
-                                       headers, true, responseCode,
-                                       resultHeaders, vertexResult);
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
+    TRI_ASSERT(parts.size() == 2);
+    _trx->addCollectionAtRuntime(parts[0]);
+    _builder.clear();
+    _builder.openObject();
+    _builder.add(VPackValue(parts[1]));
+    _builder.close();
+
+    OperationResult result = _trx->document(parts[0], _builder.slice(), _operationOptions);
     ++_readDocuments;
-    if (responseCode ==
-        arangodb::rest::HttpResponse::HttpResponseCode::NOT_FOUND) {
-      _vertices.emplace(id, TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE));
+    if (result.failed()) {
+      // Vertex does not exist
+      _builder.clear();
+      _builder.add(VPackValue(VPackValueType::Null));
+      _vertices.emplace(id, _builder.steal());
     } else {
-      _vertices.emplace(id,
-                        arangodb::basics::JsonHelper::fromString(vertexResult));
+      _vertices.emplace(id, result.buffer);
     }
     it = _vertices.find(id);
-    */
   }
   auto exp = _expressions->find(0);
   if (exp != _expressions->end() &&
-      !vertexMatchesCondition(it->second, exp->second)) {
+      !vertexMatchesCondition(VPackSlice(it->second->data()), exp->second)) {
     // We can stop here. The start vertex does not match condition
     _done = true;
   }

@@ -36,6 +36,34 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::traverser;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Get a document by it's ID. Also lazy locks the collection.
+///        If DOCUMENT_NOT_FOUND this function will return normally
+///        with a OperationResult.failed() == true.
+///        On all other cases this function throws.
+////////////////////////////////////////////////////////////////////////////////
+
+static OperationResult FetchDocumentById(arangodb::Transaction* trx,
+                                         std::string const& id,
+                                         VPackBuilder& builder,
+                                         OperationOptions& options) {
+    std::vector<std::string> parts =
+            arangodb::basics::StringUtils::split(id, "/");
+      TRI_ASSERT(parts.size() == 2);
+      trx->addCollectionAtRuntime(parts[0]);
+      builder.clear();
+      builder.openObject();
+      builder.add(VPackValue(TRI_VOC_ATTRIBUTE_KEY));
+      builder.add(VPackValue(parts[1]));
+      builder.close();
+
+      OperationResult opRes = trx->document(parts[0], builder.slice(), options);
+
+      if (opRes.failed() && opRes.code != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+        THROW_ARANGO_EXCEPTION(opRes.code);
+      }
+      return opRes;
+}
 
 EdgeCollectionInfo::EdgeCollectionInfo(arangodb::Transaction* trx,
                                        std::string const& collectionName,
@@ -749,28 +777,9 @@ void SingleServerTraversalPath::getDocumentByIdentifier(Transaction* trx,
                                                         VPackBuilder& result) {
   // TODO Check if we can get away with using ONLY VPackSlices referencing externals instead of std::string.
   // I am afaid that they may run out of scope.
-  _searchBuilder.clear();
-  _searchBuilder.openObject();
-  _searchBuilder.add(VPackValue(TRI_VOC_ATTRIBUTE_KEY));
-
-  std::vector<std::string> parts =
-      arangodb::basics::StringUtils::split(identifier, "/");
-
-  TRI_ASSERT(parts.size() == 2);
-  _searchBuilder.add(VPackValue(parts[1]));
-  _searchBuilder.close();
-
-  TRI_voc_cid_t cid = trx->resolver()->getCollectionIdLocal(parts[0]);
-
-  if (cid == 0) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
-                                  parts[0].c_str());
-  }
-  trx->addCollectionAtRuntime(cid);
-
   OperationOptions options;
-  OperationResult opRes = trx->document(parts[0], _searchBuilder.slice(), options);
-      
+  OperationResult opRes = FetchDocumentById(trx, identifier, _searchBuilder, options);
+
   if (opRes.failed()) {
     THROW_ARANGO_EXCEPTION(opRes.code);
   }
@@ -810,15 +819,13 @@ DepthFirstTraverser::DepthFirstTraverser(
     std::unordered_map<size_t, std::vector<TraverserExpression*>> const*
         expressions)
     : Traverser(opts, expressions),
-      _resolver(resolver),
       _edgeGetter(this, opts, resolver, trx),
       _edgeCols(edgeCollections),
       _trx(trx) {
   _defInternalFunctions();
 }
 
-bool DepthFirstTraverser::edgeMatchesConditions(TRI_doc_mptr_t& e,
-                                                size_t& eColIdx, size_t depth) {
+bool DepthFirstTraverser::edgeMatchesConditions(VPackSlice e, size_t depth) {
   TRI_ASSERT(_expressions != nullptr);
 
   auto it = _expressions->find(depth);
@@ -827,8 +834,7 @@ bool DepthFirstTraverser::edgeMatchesConditions(TRI_doc_mptr_t& e,
     for (auto const& exp : it->second) {
       TRI_ASSERT(exp != nullptr);
 
-      if (exp->isEdgeAccess &&
-          !exp->matchesCheck(e, _edgeCols.at(eColIdx), _resolver)) {
+      if (exp->isEdgeAccess && !exp->matchesCheck(e)) {
         ++_filteredPaths;
         return false;
       }
@@ -837,77 +843,45 @@ bool DepthFirstTraverser::edgeMatchesConditions(TRI_doc_mptr_t& e,
   return true;
 }
 
-bool DepthFirstTraverser::vertexMatchesConditions(VPackSlice const& v,
+bool DepthFirstTraverser::vertexMatchesConditions(std::string const& v,
                                                   size_t depth) {
   TRI_ASSERT(_expressions != nullptr);
 
   auto it = _expressions->find(depth);
 
   if (it != _expressions->end()) {
-    /* TODO FIXME
-    // This has to be replaced by new Transaction API
-    TRI_doc_mptr_t mptr;
-    TRI_document_collection_t* docCol = nullptr;
     bool fetchVertex = true;
+    std::shared_ptr<VPackBuffer<uint8_t>> vertex;
     for (auto const& exp : it->second) {
       TRI_ASSERT(exp != nullptr);
 
       if (!exp->isEdgeAccess) {
         if (fetchVertex) {
           fetchVertex = false;
-          auto collection = _trx->trxCollection(v.cid);
-          if (collection == nullptr) {
-            int res = TRI_AddCollectionTransaction(
-                _trx->getInternals(), v.cid, TRI_TRANSACTION_READ,
-                _trx->nestingLevel(), true, true);
-            if (res != TRI_ERROR_NO_ERROR) {
-              THROW_ARANGO_EXCEPTION(res);
+          auto it = _vertices.find(v);
+          if (it == _vertices.end()) {
+            OperationResult opRes =
+                FetchDocumentById(_trx, v, _builder, _operationOptions);
+            ++_readDocuments;
+            if (opRes.failed()) {
+              TRI_ASSERT(opRes.code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+              VPackBuilder tmp;
+              tmp.add(VPackValue(VPackValueType::Null));
+              vertex = tmp.steal();
+            } else {
+              vertex = opRes.buffer;
             }
-            TRI_EnsureCollectionsTransaction(_trx->getInternals());
-            collection = _trx->trxCollection(v.cid);
-
-            if (collection == nullptr) {
-              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                             "collection is a nullptr");
-            }
-            auto trxCollection = _trx->trxCollection(v.cid);
-            if (trxCollection != nullptr) {
-              _trx->orderDitch(trxCollection);
-            }
+              _vertices.emplace(v, vertex);
+          } else {
+            vertex = it->second;
           }
-
-          int res = _trx->document(collection, &mptr, v.key);
-          ++_readDocuments;
-          if (res != TRI_ERROR_NO_ERROR) {
-            if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
-              // Vertex does not exist. Do not try filter
-              arangodb::basics::Json tmp(arangodb::basics::Json::Null);
-              // This needs a different check method now.
-              // Innerloop here
-              for (auto const& exp2 : it->second) {
-                TRI_ASSERT(exp2 != nullptr);
-
-                if (!exp2->isEdgeAccess) {
-                  if (!exp2->matchesCheck(tmp.json())) {
-                    ++_filteredPaths;
-                    return false;
-                  }
-                }
-              }
-              return true;
-            }
-            THROW_ARANGO_EXCEPTION(res);
-          }
-          docCol = collection->_collection->_collection;
         }
-        TRI_ASSERT(docCol != nullptr);
-        if (!exp->matchesCheck(mptr, docCol, _resolver)) {
+        if (!exp->matchesCheck(VPackSlice(vertex->data()))) {
           ++_filteredPaths;
           return false;
         }
       }
     }
-    */
   }
   return true;
 }
@@ -933,15 +907,14 @@ void DepthFirstTraverser::_defInternalFunctions() {
 }
 
 void DepthFirstTraverser::setStartVertex(
-    VPackSlice const& v) {
+    std::string const& v) {
   TRI_ASSERT(_expressions != nullptr);
 
   auto it = _expressions->find(0);
 
   if (it != _expressions->end()) {
     if (!it->second.empty()) {
-      TRI_doc_mptr_t mptr;
-      TRI_document_collection_t* docCol = nullptr;
+      std::shared_ptr<VPackBuffer<uint8_t>> vertex;
       bool fetchVertex = true;
       for (auto const& exp : it->second) {
         TRI_ASSERT(exp != nullptr);
@@ -949,41 +922,17 @@ void DepthFirstTraverser::setStartVertex(
         if (!exp->isEdgeAccess) {
           if (fetchVertex) {
             fetchVertex = false;
-            /* TODO Add Collection to Transaction!
-            auto collection = _trx->trxCollection(v.cid);
-            if (collection == nullptr) {
-              int res = TRI_AddCollectionTransaction(
-                  _trx->getInternals(), v.cid, TRI_TRANSACTION_READ,
-                  _trx->nestingLevel(), true, true);
-              if (res != TRI_ERROR_NO_ERROR) {
-                THROW_ARANGO_EXCEPTION(res);
-              }
-              TRI_EnsureCollectionsTransaction(_trx->getInternals());
-              collection = _trx->trxCollection(v.cid);
-
-              if (collection == nullptr) {
-                THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                               "collection is a nullptr");
-              }
-              auto trxCollection = _trx->trxCollection(v.cid);
-              if (trxCollection != nullptr) {
-                _trx->orderDitch(trxCollection);
-              }
-            }
-
-            int res = _trx->document(collection, &mptr, v.key);
+            OperationResult result = FetchDocumentById(_trx, v, _builder, _operationOptions);
             ++_readDocuments;
-            if (res != TRI_ERROR_NO_ERROR) {
+            if (result.failed()) {
               // Vertex does not exist
               _done = true;
               return;
             }
-            docCol = collection->_collection->_collection;
-            */
-            return;
+            vertex = result.buffer;
+            _vertices.emplace(v, vertex);
           }
-          TRI_ASSERT(docCol != nullptr);
-          if (!exp->matchesCheck(mptr, docCol, _resolver)) {
+          if (!exp->matchesCheck(VPackSlice(vertex->data()))) {
             ++_filteredPaths;
             _done = true;
             return;
@@ -992,9 +941,8 @@ void DepthFirstTraverser::setStartVertex(
       }
     }
   }
-  std::string tmp = v.get(TRI_VOC_ATTRIBUTE_ID).copyString();
   _enumerator.reset(new PathEnumerator<std::string, std::string, TRI_doc_mptr_t>(
-      _edgeGetter, _getVertex, tmp));
+      _edgeGetter, _getVertex, v));
   _done = false;
 }
 
