@@ -389,6 +389,7 @@ void DocumentAccessor::lookupDocumentAttribute(char const* name,
     // fall-through intentional
   }
 
+#if 0
   auto shaper = _document->getShaper();
 
   TRI_shape_pid_t pid = shaper->lookupAttributePathByName(name);
@@ -416,6 +417,7 @@ void DocumentAccessor::lookupDocumentAttribute(char const* name,
     _current = _json.get();
     return;
   }
+#endif
 
   // not found
   setToNull();
