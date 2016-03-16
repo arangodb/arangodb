@@ -316,7 +316,7 @@ static void ExistsVocbaseVPack(
 
   // first and only argument should be a document idenfifier
   if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("exists(<document-handle>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("exists(<document-handle> or <document-key> )");
   }
 
   TRI_vocbase_t* vocbase;
@@ -392,7 +392,11 @@ static void ExistsVocbaseVPack(
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-  TRI_V8_RETURN_TRUE();
+
+  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, opResult.slice(),
+      transactionContext->getVPackOptions());
+
+  TRI_V8_RETURN(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -404,9 +408,9 @@ static void DocumentVocbaseCol(
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  // first and only argument should be a document idenfifier
+  // first and only argument should be a document handle or key or an object
   if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("document(<document-handle(s)>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("document(<document-handle> or <document-key> or <object> or <array>)");
   }
 
   OperationOptions options;

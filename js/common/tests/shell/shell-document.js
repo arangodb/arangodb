@@ -666,25 +666,49 @@ function CollectionDocumentSuite () {
       // string keys
       assertFalse(collection.exists("foo"));
       assertFalse(collection.exists("bar"));
-      assertTrue(collection.exists("baz"));
+      var r = collection.exists("baz");
+      assertTypeOf("object", r);
+      assertTypeOf("string", r._id);
+      assertTypeOf("string", r._key);
+      assertTypeOf("string", r._rev);
 
       assertFalse(collection.exists(cn + "/foo"));
       assertFalse(collection.exists(cn + "/bar"));
-      assertTrue(collection.exists(cn + "/baz"));
+      r = collection.exists(cn + "/baz");
+      assertTypeOf("object", r);
+      assertTypeOf("string", r._id);
+      assertTypeOf("string", r._key);
+      assertTypeOf("string", r._rev);
 
       // object key
-      assertTrue(collection.exists(d1));
+      r = collection.exists(d1);
+      assertTypeOf("object", r);
+      assertTypeOf("string", r._id);
+      assertTypeOf("string", r._key);
+      assertTypeOf("string", r._rev);
       
       var d2 = collection.save({ _key : "2" });
       // string keys
       assertFalse(collection.exists("1"));
-      assertTrue(collection.exists("2"));
+      r = collection.exists("2");
+      assertTypeOf("object", r);
+      assertTypeOf("string", r._id);
+      assertTypeOf("string", r._key);
+      assertTypeOf("string", r._rev);
 
       assertFalse(collection.exists(cn + "/1"));
-      assertTrue(collection.exists(cn + "/2"));
+      r = collection.exists(cn + "/2");
+      assertTypeOf("object", r);
+      assertTypeOf("string", r._id);
+      assertTypeOf("string", r._key);
+      assertTypeOf("string", r._rev);
 
       // object key
-      assertTrue(collection.exists(d2));
+      r = collection.exists(d2);
+      assertTypeOf("object", r);
+      assertTypeOf("string", r._id);
+      assertTypeOf("string", r._key);
+      assertTypeOf("string", r._rev);
 
       // check with revision
       var d3 = collection.replace("2", { });
@@ -698,7 +722,11 @@ function CollectionDocumentSuite () {
       }
 
       // d3 is still there
-      assertTrue(collection.exists(d3));
+      r = collection.exists(d3);
+      assertTypeOf("object", r);
+      assertTypeOf("string", r._id);
+      assertTypeOf("string", r._key);
+      assertTypeOf("string", r._rev);
 
       // cross-collection query
       try {
@@ -1932,13 +1960,16 @@ function DatabaseDocumentSuite () {
       }
 
       var a3 = db._remove(a1, {"overwrite" : true});
-
-      assertEqual(a3, true);
+      assertTypeOf("object", a3);
+      assertTypeOf("string", a3._id);
+      assertTypeOf("string", a3._rev);
+      assertTypeOf("string", a3._key);
 
       var a4 = db._remove(a1, {"overwrite" : true});
 
       assertEqual(a4, false);
     },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a document using new signature of the remove function
 ///       of the remove function
@@ -1965,7 +1996,10 @@ function DatabaseDocumentSuite () {
 
       var a3 = db._remove(a1, {"overwrite" : true});
 
-      assertEqual(a3, true);
+      assertTypeOf("object", a3);
+      assertTypeOf("string", a3._id);
+      assertTypeOf("string", a3._rev);
+      assertTypeOf("string", a3._key);
 
       var a4 = db._remove(a1, {"overwrite" : true});
 
