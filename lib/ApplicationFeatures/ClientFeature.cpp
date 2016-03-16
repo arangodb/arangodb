@@ -39,7 +39,7 @@ using namespace arangodb::rest;
 
 ClientFeature::ClientFeature(application_features::ApplicationServer* server,
                              double connectionTimeout, double requestTimeout)
-    : ApplicationFeature(server, "ClientFeature"),
+    : ApplicationFeature(server, "Client"),
       _databaseName("_system"),
       _authentication(true),
       _endpoint(Endpoint::getDefaultEndpoint()),
@@ -53,7 +53,7 @@ ClientFeature::ClientFeature(application_features::ApplicationServer* server,
       _warn(false) {
   setOptional(true);
   requiresElevatedPrivileges(false);
-  startsAfter("LoggerFeature");
+  startsAfter("Logger");
 }
 
 void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -137,7 +137,7 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       !options->processingResult().touched(_section + ".password")) {
     usleep(10 * 1000);
 
-    ConsoleFeature* console = dynamic_cast<ConsoleFeature*>(ApplicationServer::lookupFeature("ConsoleFeature"));
+    ConsoleFeature* console = dynamic_cast<ConsoleFeature*>(ApplicationServer::lookupFeature("Console"));
 
     if (console != nullptr) {
       _password = console->readPassword("Please specify a password: ");

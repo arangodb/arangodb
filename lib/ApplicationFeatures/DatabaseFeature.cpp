@@ -32,7 +32,7 @@ using namespace arangodb::options;
 DatabaseFeature::DatabaseFeature(
     application_features::ApplicationServer* server,
     uint64_t maximalJournalSize)
-    : ApplicationFeature(server, "DatabaseFeature"),
+    : ApplicationFeature(server, "Database"),
       _directory(""),
       _maximalJournalSize(maximalJournalSize),
       _queryTracking(true),
@@ -40,7 +40,7 @@ DatabaseFeature::DatabaseFeature(
       _queryCacheEntries(128) {
   setOptional(false);
   requiresElevatedPrivileges(false);
-  startsAfter("LoggerFeature");
+  startsAfter("Logger");
 }
 
 void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

@@ -20,10 +20,13 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_ARANGODUMP_FEATURE_H
-#define APPLICATION_FEATURES_ARANGODUMP_FEATURE_H 1
+#ifndef APPLICATION_FEATURES_ARANGORESTORE_FEATURE_H
+#define APPLICATION_FEATURES_ARANGORESTORE_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+
+#include "ApplicationFeatures/ClientFeature.h"
+#include "Basics/VelocyPackHelper.h"
 #include "V8Client/ArangoClientHelper.h"
 
 namespace arangodb {
@@ -31,11 +34,12 @@ namespace httpclient {
 class SimpleHttpResult;
 }
 
-class ArangodumpFeature final : public application_features::ApplicationFeature,
-                                public ArangoClientHelper {
+class RestoreFeature final
+    : public application_features::ApplicationFeature,
+      public ArangoClientHelper {
  public:
-  ArangodumpFeature(application_features::ApplicationServer* server,
-                    int* result);
+  RestoreFeature(application_features::ApplicationServer* server,
+                       int* result);
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
@@ -47,42 +51,35 @@ class ArangodumpFeature final : public application_features::ApplicationFeature,
  private:
   std::vector<std::string> _collections;
   uint64_t _chunkSize;
-  uint64_t _maxChunkSize;
-  bool _dumpData;
-  bool _force;
   bool _includeSystemCollections;
-  std::string _outputDirectory;
-  bool _overwrite;
+  bool _createDatabase;
+  std::string _inputDirectory;
+  bool _importData;
+  bool _importStructure;
   bool _progress;
-  uint64_t _tickStart;
-  uint64_t _tickEnd;
+  bool _overwrite;
+  bool _recycleIds;
+  bool _force;
+  bool _clusterMode;
+  uint64_t _defaultNumberOfShards;
 
  private:
-  int startBatch(std::string DBserver, std::string& errorMsg);
-  void extendBatch(std::string DBserver);
-  void endBatch(std::string DBserver);
-  int dumpCollection(int fd, std::string const& cid, std::string const& name,
-                     uint64_t maxTick, std::string& errorMsg);
-  void flushWal();
-  int runDump(std::string& dbName, std::string& errorMsg);
-  int dumpShard(int fd, std::string const& DBserver, std::string const& name,
-                std::string& errorMsg);
-  int runClusterDump(std::string& errorMsg);
+  int tryCreateDatabase(ClientFeature*, std::string const& name);
+  int sendRestoreCollection(VPackSlice const& slice, std::string const& name,
+                            std::string& errorMsg);
+  int sendRestoreIndexes(VPackSlice const& slice, std::string& errorMsg);
+  int sendRestoreData(std::string const& cname, char const* buffer,
+                      size_t bufferSize, std::string& errorMsg);
+  int processInputDirectory(std::string& errorMsg);
 
  private:
   int* _result;
-
-  // our batch id
-  uint64_t _batchId;
-
-  // cluster mode flag
-  bool _clusterMode;
 
   // statistics
   struct {
     uint64_t _totalBatches;
     uint64_t _totalCollections;
-    uint64_t _totalWritten;
+    uint64_t _totalRead;
   } _stats;
 };
 }

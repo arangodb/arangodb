@@ -85,7 +85,7 @@ function startReadingQuery (endpoint, collName, timeout) {
     }
     catch (err) {
       console.error("startReadingQuery: Bad response body from",
-                    "/_api/query/current", r);
+                    "/_api/query/current", r, JSON.stringify(err));
       continue;
     }
     for (var i = 0; i < r.length; i++) {
@@ -1116,7 +1116,7 @@ function setupReplication () {
       }
     }
     catch (err) {
-      console.error("Could not set up replication for database ", database);
+      console.error("Could not set up replication for database ", database, JSON.stringify(err));
       ok = false;
     }
   }

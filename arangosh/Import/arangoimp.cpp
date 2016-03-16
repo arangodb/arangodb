@@ -28,7 +28,7 @@
 #include "ApplicationFeatures/LoggerFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
-#include "Import/ArangoimpFeature.h"
+#include "Import/ImportFeature.h"
 #include "ProgramOptions2/ProgramOptions.h"
 #include "Rest/InitializeRest.h"
 
@@ -54,8 +54,8 @@ int main(int argc, char* argv[]) {
   server.addFeature(new TempFeature(&server, "arangoimp"));
   server.addFeature(new ConfigFeature(&server, "arangoimp"));
   server.addFeature(new ClientFeature(&server));
-  server.addFeature(new ArangoimpFeature(&server, &ret));
-  server.addFeature(new ShutdownFeature(&server, "ArangoimpFeature"));
+  server.addFeature(new ImportFeature(&server, &ret));
+  server.addFeature(new ShutdownFeature(&server, "Import"));
 
   server.run(argc, argv);
 

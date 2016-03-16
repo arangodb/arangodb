@@ -35,12 +35,12 @@ using namespace arangodb::options;
 
 ConfigFeature::ConfigFeature(application_features::ApplicationServer* server,
                              std::string const& progname)
-    : ApplicationFeature(server, "ConfigFeature"),
+    : ApplicationFeature(server, "Config"),
       _file(""),
       _progname(progname) {
   setOptional(false);
   requiresElevatedPrivileges(false);
-  startsAfter("LoggerFeature");
+  startsAfter("Logger");
 }
 
 void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

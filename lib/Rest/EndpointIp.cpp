@@ -93,6 +93,7 @@ TRI_socket_t EndpointIp::connectSocket(const struct addrinfo* aip,
 #ifdef _WIN32
   char windowsErrorBuf[256];
 #endif
+
   // set address and port
   char host[NI_MAXHOST];
   char serv[NI_MAXSERV];

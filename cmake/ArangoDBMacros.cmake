@@ -396,22 +396,13 @@ set(CPACK_PROJECT_CONFIG_FILE "${CMAKE_BINARY_DIR}/CMakeCPackOptions.cmake")
 install(
   FILES ${PROJECT_SOURCE_DIR}/Installation/debian/arangodb.init
   PERMISSIONS OWNER_READ OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
-  DESTINATION /etc/init.d
+  DESTINATION etc/init.d
   RENAME arangodb
   COMPONENT debian-extras
 )
 
 
 # Custom targets ----------------------------------------------------------------
-
-# swagger
-add_custom_target (swagger
-  COMMAND ${PYTHON_EXECUTABLE}
-    ${PROJECT_SOURCE_DIR}/Documentation/Scripts/generateSwagger.py
-    ${PROJECT_SOURCE_DIR}
-    ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/APP/api-docs api-docs
-    ${PROJECT_SOURCE_DIR}/Documentation/DocuBlocks/Rest/
-    > ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/APP/api-docs.json)
 
 # love
 add_custom_target (love
