@@ -11,17 +11,12 @@
 ///
 /// @RESTQUERYPARAMETERS
 ///
-/// @RESTQUERYPARAM{rev,string,optional}
-/// You can conditionally remove a document based on a target revision id by
-/// using the *rev* query parameter.
-///
-/// @RESTQUERYPARAM{policy,string,optional}
-/// To control the update behavior in case there is a revision mismatch, you
-/// can use the *policy* parameter. This is the same as when replacing
-/// documents (see replacing documents for more details).
-///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
 /// Wait until deletion operation has been synced to disk.
+///
+/// @RESTQUERYPARAM{returnOld,boolean,optional}
+/// Return additionally the complete previous revision of the changed 
+/// document under the attribute *old* in the result.
 ///
 /// @RESTHEADERPARAMETERS
 ///
@@ -30,27 +25,31 @@
 /// using the *if-match* HTTP header.
 ///
 /// @RESTDESCRIPTION
-/// The body of the response contains a JSON object with the information about
-/// the handle and the revision. The attribute *_id* contains the known
-/// *document-handle* of the removed document, *_key* contains the key which
-/// uniquely identifies a document in a given collection, and the attribute *_rev*
-/// contains the new document revision.
+/// The body of the response contains a JSON object with the information
+/// about the handle and the revision. The attribute *_id* contains the
+/// known *document-handle* of the removed document, *_key* contains the
+/// key which uniquely identifies a document in a given collection, and
+/// the attribute *_rev* contains the new document revision.
 ///
-/// If the *waitForSync* parameter is not specified or set to
-/// *false*, then the collection's default *waitForSync* behavior is
-/// applied. The *waitForSync* query parameter cannot be used to disable
-/// synchronization for collections that have a default *waitForSync* value
-/// of *true*.
+/// If the *waitForSync* parameter is not specified or set to *false*,
+/// then the collection's default *waitForSync* behavior is applied.
+/// The *waitForSync* query parameter cannot be used to disable
+/// synchronization for collections that have a default *waitForSync*
+/// value of *true*.
+///
+/// If the query parameter *returnOld* is *true*, then
+/// the complete previous revision of the document
+/// is returned under the *old* attribute in the result.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// is returned if the document was removed successfully and *waitForSync* was
-/// *true*.
+/// is returned if the document was removed successfully and
+/// *waitForSync* was *true*.
 ///
 /// @RESTRETURNCODE{202}
-/// is returned if the document was removed successfully and *waitForSync* was
-/// *false*.
+/// is returned if the document was removed successfully and
+/// *waitForSync* was *false*.
 ///
 /// @RESTRETURNCODE{404}
 /// is returned if the collection or the document was not found.
