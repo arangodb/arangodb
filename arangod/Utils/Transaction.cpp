@@ -798,6 +798,19 @@ OperationResult Transaction::anyLocal(std::string const& collectionName,
 }
 
 //////////////////////////////////////////////////////////////////////////////
+/// @brief add a collection to the transaction for read, at runtime
+//////////////////////////////////////////////////////////////////////////////
+
+void Transaction::addCollectionAtRuntime(std::string const& collectionName) {
+
+  auto cid = resolver()->getCollectionId(collectionName);
+  if (cid == 0) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
+  addCollectionAtRuntime(cid);
+}
+
+//////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of a collection
 //////////////////////////////////////////////////////////////////////////////
 
