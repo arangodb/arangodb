@@ -3646,7 +3646,6 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
   newObjectForRemove(
       trx, slice, std::to_string(revisionId), *builder.get());
 
-
   prevRev = VPackSlice();
 
   TRI_IF_FAILURE("RemoveDocumentNoMarker") {

@@ -376,7 +376,7 @@ static void ExistsVocbaseVPack(
   }
 
   OperationOptions options;
-  options.silent = true; // We do not care for the result anyway
+  options.silent = false;
   options.ignoreRevs = false;
   OperationResult opResult = trx.document(collectionName, search, options);
 
@@ -782,7 +782,10 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  TRI_V8_RETURN_TRUE();
+  v8::Handle<v8::Value> finalResult = TRI_VPackToV8(isolate, result.slice(),
+      transactionContext->getVPackOptions());
+
+  TRI_V8_RETURN(finalResult);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
