@@ -46,7 +46,6 @@
 #include "Utils/Transaction.h"
 #include "V8Server/V8Traverser.h"
 #include "VocBase/KeyGenerator.h"
-#include "VocBase/VocShaper.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Dumper.h>

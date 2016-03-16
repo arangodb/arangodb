@@ -26,7 +26,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Utils/CollectionNameResolver.h"
-#include "VocBase/VocShaper.h"
 
 DocumentAccessor::DocumentAccessor(
     arangodb::CollectionNameResolver const* resolver,
@@ -80,14 +79,6 @@ bool DocumentAccessor::hasKey(std::string const& attribute) const {
         return true;
       }
 #endif
-    }
-
-    auto shaper = _document->getShaper();
-
-    TRI_shape_pid_t pid = shaper->lookupAttributePathByName(attribute.c_str());
-
-    if (pid != 0) {
-      return true;
     }
 
     return false;
@@ -169,6 +160,7 @@ DocumentAccessor& DocumentAccessor::at(int64_t index) {
 }
 
 arangodb::basics::Json DocumentAccessor::toJson() {
+#if 0
   if (_current == nullptr) {
     // we're still pointing to the original document
     auto shaper = _document->getShaper();
@@ -229,7 +221,7 @@ arangodb::basics::Json DocumentAccessor::toJson() {
     return arangodb::basics::Json(TRI_UNKNOWN_MEM_ZONE, copy);
   }
   // fall-through intentional
-
+#endif
   return arangodb::basics::Json(arangodb::basics::Json::Null);
 }
 

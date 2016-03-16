@@ -37,8 +37,6 @@
 #include "VocBase/voc-types.h"
 #include "Wal/Marker.h"
 
-class VocShaper;
-
 namespace arangodb {
 class EdgeIndex;
 class ExampleMatcher;
@@ -108,8 +106,6 @@ struct TRI_document_collection_t : public TRI_collection_t {
   arangodb::basics::ReadWriteLock _lock;
 
  private:
-  VocShaper* _shaper;
-
   arangodb::Mutex _compactionStatusLock;
   size_t _nextCompactionStartIndex;
   char const* _lastCompactionStatus;
@@ -125,13 +121,6 @@ struct TRI_document_collection_t : public TRI_collection_t {
 
  public:
   arangodb::DatafileStatistics _datafileStatistics;
-
-// We do some assertions with barriers and transactions in maintainer mode:
-#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
-  VocShaper* getShaper() const { return _shaper; }
-#else
-  VocShaper* getShaper() const;
-#endif
 
   std::unique_ptr<arangodb::FollowerInfo> const& followers() const {
     return _followers;
@@ -154,8 +143,6 @@ struct TRI_document_collection_t : public TRI_collection_t {
   inline bool useSecondaryIndexes() const { return _useSecondaryIndexes; }
 
   void useSecondaryIndexes(bool value) { _useSecondaryIndexes = value; }
-
-  void setShaper(VocShaper* s) { _shaper = s; }
 
   void addIndex(arangodb::Index*);
   arangodb::Index* removeIndex(TRI_idx_iid_t);
