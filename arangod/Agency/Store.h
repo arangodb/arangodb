@@ -67,7 +67,7 @@ public:
   
   Node (std::string const& name);
 
-  Node (std::string const& name, Node const* parent);
+  Node (std::string const& name, Node* parent);
 
   virtual ~Node ();
   
@@ -98,16 +98,12 @@ public:
 
   Node& write (std::string const& path);
 
-/*  Node& parent ();
-
-    Node const& parent () const;*/
-
   bool remove (std::string const& path);
 
   bool removeChild (std::string const& key);
 
   friend std::ostream& operator<<(std::ostream& os, const Node& n) {
-    Node const* par = n._parent;
+    Node* par = n._parent;
     while (par != 0) {
       par = par->_parent;
       os << "  ";
@@ -123,7 +119,7 @@ public:
     return os;
   }
 
-  virtual bool apply (arangodb::velocypack::Slice const&);
+  bool applies (arangodb::velocypack::Slice const&);
 
   void toBuilder (Builder&) const;
 
@@ -133,15 +129,12 @@ public:
 
   Slice slice() const;
 
-  
-
 protected:
-  Node const* _parent;
+  Node* _parent;
   Children _children;
   Buffer<uint8_t> _value;
   std::chrono::system_clock::time_point _ttl;
-
-private:
+  
   NodeType _type;
   std::string _name;
   
@@ -156,8 +149,6 @@ public:
 
   std::vector<bool> apply (query_t const& query);
   query_t read (query_t const& query) const;
-  virtual bool apply (arangodb::velocypack::Slice const&);
-  Node const& read (std::string const&) const;
 
 private:
   bool read  (arangodb::velocypack::Slice const&,

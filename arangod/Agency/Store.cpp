@@ -26,6 +26,7 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
+#include <velocypack/Hexdump.h>
 
 #include <iostream>
 
@@ -55,7 +56,7 @@ std::vector<std::string> split(const std::string& value, char separator) {
 Node::Node (std::string const& name) : _parent(nullptr), _name(name) {
   _value.clear();
 }
-Node::Node (std::string const& name, Node const* parent) :
+Node::Node (std::string const& name, Node* parent) :
   _parent(parent), _name(name) {
   _value.clear();
 }
@@ -89,21 +90,12 @@ bool Node::operator== (arangodb::velocypack::Slice const& rhs) const {
   return rhs.equals(slice());
 }
 
-/*Node& Node::parent () {
-  return *_parent;
-  }
-
-Node const& Node::parent () const {
-  return *_parent;
-  }*/
-
 bool Node::remove (std::string const& path) {
   std::vector<std::string> pv = split(path, '/');
   std::string key(pv.back());
   pv.pop_back();
   try {
     Node& parent = (*this)(pv);
-    
     return parent.removeChild(key);
   } catch (StoreException const& e) {
     return false;
@@ -182,17 +174,74 @@ Node& Node::write (std::string const& path) {
   return this->operator()(pv);
 }
 
-bool Node::apply (arangodb::velocypack::Slice const& slice) {
+bool Node::applies (arangodb::velocypack::Slice const& slice) {
   if (slice.type() == ValueType::Object) {
-    for (auto const& i : VPackObjectIterator(slice)) {
-      std::string key = i.key.toString();
-      key = key.substr(1,key.length()-2);
+    VPackObjectIterator sit (slice);
+
+    auto b = sit.begin();
+    auto i = *b;
+    std::string key = i.key.toString();
+    key = key.substr(1,key.length()-2);
+    if (key == "op") {
+      std::string oper = i.value.toString();
+      oper = oper.substr(1,oper.length()-2);
+      Slice const& self = this->slice();
+      if (oper == "delete") {
+        return _parent->removeChild(_name);
+      } else if (oper == "increment") { // Increment
+        if (self.isInt() || self.isUInt()) {
+          Builder tmp;
+          tmp.add(Value(self.isInt() ? int64_t(self.getInt()+1) : uint64_t(self.getUInt()+1)));
+          *this = tmp.slice();
+          return true;
+        } else {
+          return false;
+        }
+      } else if (oper == "increment") { // Decrement
+        if (self.isInt() || self.isUInt()) {
+          Builder tmp;
+          tmp.add(Value(self.isInt() ? int64_t(self.getInt()-1) : uint64_t(self.getUInt()-1)));
+          *this = tmp.slice();
+          return true;
+        } else {
+          return false;
+        }
+      } else if (oper == "push") { // Push
+        if (self.isArray()) {
+          Builder tmp;
+          tmp.openArray();
+          for (auto const& old : VPackArrayIterator(self))
+            tmp.add(old);
+          tmp.close();
+          auto nval = *++b;
+          std::cout << nval.value.toString() << std::endl;
+          *this = tmp.slice();
+        }
+      } else if (oper == "pop") { // Pop
+        if (self.isArray()) {
+          Builder tmp;
+          tmp.openArray();
+          VPackArrayIterator it(self);
+          size_t j = it.size()-1;
+          for (auto old : it) {
+            tmp.add(old);
+            if (--j==0)
+              break;
+          }
+          tmp.close();
+          *this = tmp.slice();
+        }
+      }
+    } else if (key.find('/')!=std::string::npos) {
+      (*this)(key).applies(i.value);
+    } else {
       auto found = _children.find(key);
       if (found == _children.end()) {
         _children[key] = std::make_shared<Node>(key, this);
       }
-      _children[key]->apply(i.value);
+      _children[key]->applies(i.value);
     }
+
   } else {
     *this = slice;
   }
@@ -216,39 +265,31 @@ void Node::toBuilder (Builder& builder) const {
 }
 
 Store::Store (std::string const& name) : Node(name) {}
+
 Store::~Store () {}
 
 std::vector<bool> Store::apply (query_t const& query) {    
   std::vector<bool> applied;
-  std::vector<std::string> path;
   MUTEX_LOCKER(storeLocker, _storeLock);
   for (auto const& i : VPackArrayIterator(query->slice())) {
     switch (i.length()) {
     case 1:
-      applied.push_back(this->apply(i[0])); break; // no precond
+      applied.push_back(applies(i[0])); break; // no precond
     case 2:
       if (check(i[1])) {
-        applied.push_back(this->apply(i[0]));      // precondition
+        applied.push_back(applies(i[0]));      // precondition
       } else {
         LOG(WARN) << "Precondition failed!";
         applied.push_back(false);
       }
       break;
-    default:                                 // wrong
+    default:                                   // wrong
       LOG(FATAL) << "We can only handle log entry with or without precondition!";
       applied.push_back(false);
       break;
     }
   }
   return applied;
-}
-
-bool Store::apply (arangodb::velocypack::Slice const& slice) {
-  return Node::apply(slice);
-}
-
-Node const& Store::read (std::string const& path) const {
-  return Node::read(path);
 }
 
 bool Store::check (arangodb::velocypack::Slice const& slice) const {
@@ -259,28 +300,40 @@ bool Store::check (arangodb::velocypack::Slice const& slice) const {
   for (auto const& precond : VPackObjectIterator(slice)) {
     std::string path = precond.key.toString();
     path = path.substr(1,path.size()-2);
-    if (precond.value.type() == VPackValueType::Object) { //"old", "oldEmpty", "isArray"
+
+    bool found = false;
+    Node node ("precond");
+    try {
+      node = (*this)(path);
+      found = true;
+    } catch (StoreException const&) {}
+    
+    if (precond.value.type() == VPackValueType::Object) { 
       for (auto const& op : VPackObjectIterator(precond.value)) {
         std::string const& oper = op.key.copyString();
-        Node const& node = (*this)(path);
-        if (oper == "old") {
+        if (oper == "old") {                           // old
           return (node == op.value);
-        } else if ("isArray") {
-          if (op.value.type()!=VPackValueType::Bool) {
+        } else if (oper == "isArray") {                // isArray
+          if (op.value.type()!=VPackValueType::Bool) { 
+            LOG (FATAL) << "Non boolsh expression for 'isArray' precondition";
             return false;
           }
           bool isArray =
             (node.type() == LEAF &&
              node.slice().type() == VPackValueType::Array);
           return op.value.getBool() ? isArray : !isArray;
+        } else if (oper == "oldEmpty") {              // isEmpty
+          if (op.value.type()!=VPackValueType::Bool) { 
+            LOG (FATAL) << "Non boolsh expression for 'oldEmpty' precondition";
+            return false;
+          }
+          return op.value.getBool() ? !found : found;
         }
       }
-      
     } else {
-      
+      return node == precond.value;
     }
   }
-  // 
   
   return true;
 }
