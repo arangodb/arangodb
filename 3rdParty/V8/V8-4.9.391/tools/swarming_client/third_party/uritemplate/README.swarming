@@ -1,0 +1,14 @@
+Name: uritemplate
+Short Name: uritemplate
+Version: 0.6
+Revision: 1e780a49412cdbb273e9421974cb91845c124f3f
+Home-page: https://chromium.googlesource.com/external/github.com/uri-templates/uritemplate-py
+License: Apache License, Version 2.0
+
+Description:
+This is a Python implementation of `RFC6570`_, URI Template, and can
+expand templates up to and including Level 4 in that specification.
+
+Local Modifications:
+- Installed using glyco (see ../README.txt for more info)
+- Added README.swarming

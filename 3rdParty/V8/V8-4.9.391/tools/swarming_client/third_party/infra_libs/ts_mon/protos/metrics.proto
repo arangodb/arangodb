@@ -1,0 +1,108 @@
+// Copyright 2015 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+syntax = "proto2";
+
+package ts_mon.proto;
+
+import "acquisition_network_device.proto";
+import "acquisition_task.proto";
+
+message MetricsCollection {
+  repeated MetricsData data = 1;
+
+  optional uint64 start_timestamp_us = 2;
+  optional string collection_point_id = 3;
+}
+
+message MetricsField {
+  optional string name = 1;
+
+  optional FieldType type = 3 [default = STRING];
+  enum FieldType {
+    STRING = 1;
+    INT = 2;
+    BOOL = 3;
+  };
+
+  optional string string_value = 4;
+  optional int64 int_value = 5;
+  optional bool bool_value = 6;
+}
+
+message PrecomputedDistribution {
+  enum SpecType {
+
+    CANONICAL_POWERS_OF_2 = 1;
+    CANONICAL_POWERS_OF_10_P_0_2 = 2;
+    CANONICAL_POWERS_OF_10 = 3;
+    CUSTOM_PARAMETERIZED = 20;
+    CUSTOM_BOUNDED = 21;
+  }
+
+  optional SpecType spec_type = 1;
+  optional double width = 2 [default = 10.0];
+  optional double growth_factor = 3 [default = 0.0];
+  optional int32 num_buckets = 4 [default = 10];
+  repeated double lower_bounds = 5;
+  optional bool is_cumulative = 6 [default = false];
+  repeated sint64 bucket = 7;
+  optional sint64 underflow = 8;
+  optional sint64 overflow = 9;
+  optional double mean = 10;
+  optional double sum_of_squared_deviation = 11;
+}
+
+message MetricsData {
+  required string name = 1;
+  optional string metric_name_prefix = 2;
+
+  optional ts_mon.proto.NetworkDevice network_device = 11;
+  optional ts_mon.proto.Task task = 12;
+
+  repeated MetricsField fields = 20;
+
+  optional int64 counter = 30;
+  optional int64 gauge = 32;
+  optional double noncumulative_double_value = 34;
+  optional PrecomputedDistribution distribution = 35;
+  optional string string_value = 36;
+  optional bool boolean_value = 37;
+  optional double cumulative_double_value = 38;
+
+  optional uint64 start_timestamp_us = 40;
+
+  enum Units {
+    UNKNOWN_UNITS = 0;
+    SECONDS = 1;
+    MILLISECONDS = 2;
+    MICROSECONDS = 3;
+    NANOSECONDS = 4;
+
+    BITS = 21;
+    BYTES = 22;
+
+    /** 1000 bytes (not 1024). */
+    KILOBYTES = 31;
+    /** 1e6 (1,000,000) bytes. */
+    MEGABYTES = 32;
+    /** 1e9 (1,000,000,000) bytes. */
+    GIGABYTES = 33;
+
+    /** 1024 bytes. */
+    KIBIBYTES = 41;
+    /** 1024^2 (1,048,576) bytes. */
+    MEBIBYTES = 42;
+    /** 1024^3 (1,073,741,824) bytes. */
+    GIBIBYTES = 43;
+
+    /** Extended Units */
+    AMPS = 60;
+    MILLIAMPS = 61;
+    DEGREES_CELSIUS = 62;
+  }
+  optional Units units = 41;
+
+  optional string description = 43;
+}

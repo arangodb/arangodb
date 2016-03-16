@@ -1,0 +1,15 @@
+Name: requests
+Short Name: requests
+URL: https://github.com/kennethreitz/requests/archive/v2.9.1.tar.gz
+Version: 2.9.1
+Revision: 1108058626450b863d154bb74d669754b480caa4
+License: Apache License, Version 2.0
+
+Description:
+Python HTTP for Humans.
+
+Local Modifications:
+- Only kept requests/.
+- Removed requests/packages/chardet/.
+- Kept LICENSE, NOTICE and README.rst.
+- Applied MODIFICATIONS.diff

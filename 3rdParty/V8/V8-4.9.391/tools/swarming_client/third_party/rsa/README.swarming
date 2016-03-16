@@ -1,0 +1,15 @@
+Name: python-rsa
+Short Name: rsa
+URL: https://bitbucket.org/sybren/python-rsa/commits/tag/version-3.2.3
+Version: 3.2.3
+Revision: 280:fad443c7ea1a
+License: Apache License
+
+Description:
+Python-RSA is a pure-Python RSA implementation. It supports encryption and
+decryption, signing and verifying signatures, and key generation according to
+PKCS#1 version 1.5.
+
+Local Modifications:
+- Kept rsa/.
+- Kept LICENSE and README.rst.

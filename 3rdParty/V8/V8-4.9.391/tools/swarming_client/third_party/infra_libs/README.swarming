@@ -1,0 +1,13 @@
+Name: infra_libs
+Short Name: infra_libs
+URL: https://chromium.googlesource.com/infra/infra/+/master/infra_libs/
+Version: 1.0.0
+Revision: 4887:48ebb96f3003b9e131b70a1f281329a0c4a473dd
+License: Chromium License
+
+Description:
+Common libraries used by Chrome Infrastructure.
+
+Local Modifications:
+- Removed all test/ directories.
+- Copied LICENSE from the root of infra.git.

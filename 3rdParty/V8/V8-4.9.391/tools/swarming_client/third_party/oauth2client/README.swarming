@@ -1,0 +1,14 @@
+Name: oauth2client
+Short Name: oauth2client
+URL: https://github.com/google/oauth2client/archive/v1.5.2.tar.gz
+Version: 1.5.2
+Revision: 73d9d55447de97dfe541395817a0c8241701f7d6
+License: Apache License, Version 2.0
+
+Description:
+The oauth2client is a client library for OAuth 2.0.
+
+Local Modifications:
+- Kept oauth2client/.
+- Removed: appengine.py devshell.py django_orm.py flask_util.py
+- Kept LICENSE and README.md.

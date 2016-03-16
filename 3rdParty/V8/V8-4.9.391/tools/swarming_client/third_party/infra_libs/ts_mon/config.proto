@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+// ts_mon's config file in /etc/chrome-infra/ts-mon.json is a JSON-encoded
+// ConfigFile message.
+// Note: this .proto file isn't currently used to encode/decode the config file,
+// it's just here as a reference.
+message ConfigFile {
+  // Url to post monitoring metrics to.  file:// URLs are supported as well.
+  string endpoint = 1;
+
+  // Path to a pkcs8 json credential file.
+  string credentials = 2;
+}

@@ -1,0 +1,8 @@
+URL: http://sourceforge.net/projects/pyasn1/files/pyasn1/0.1.9/pyasn1-0.1.9.tar.gz/download
+Version: 0.1.9
+License: BSD
+Description: Implementation of ASN.1 types and codecs.
+Revision: http://pyasn1.cvs.sourceforge.net/viewvc/pyasn1/pyasn1/?pathrev=release_0_1_9_tag
+
+Local Modifications:
+- Only kept pyasn1/.

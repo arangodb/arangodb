@@ -1,0 +1,891 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXAggregateTarget section */
+		1DD5FEFB7026680BCB3CD6F8 /* All */ = {
+			isa = PBXAggregateTarget;
+			buildConfigurationList = 6FAF7A4B25BAF4A29E90FD2A /* Build configuration list for PBXAggregateTarget "All" */;
+			buildPhases = (
+			);
+			dependencies = (
+				2986C7DD98EBC6790289B579 /* PBXTargetDependency */,
+				E0DA17DEC52BAE5AE71ADFF4 /* PBXTargetDependency */,
+				1D231E46B5D9DFCB8265BC67 /* PBXTargetDependency */,
+			);
+			name = All;
+			productName = All;
+		};
+		2999131A71FAFE50515AD0ED /* gtest_prod */ = {
+			isa = PBXAggregateTarget;
+			buildConfigurationList = 3FBD4C9EB466BE7F1CAF8044 /* Build configuration list for PBXAggregateTarget "gtest_prod" */;
+			buildPhases = (
+			);
+			dependencies = (
+			);
+			name = gtest_prod;
+			productName = gtest_prod;
+		};
+/* End PBXAggregateTarget section */
+
+/* Begin PBXBuildFile section */
+		05B1F7F5B6F28002E7EB4AAF /* gtest_main.cc in Sources */ = {isa = PBXBuildFile; fileRef = EE190C18D332D880DFDB008A /* gtest_main.cc */; };
+		09DB3D3D7DE9250AC84B0337 /* gtest-death-test.cc in Sources */ = {isa = PBXBuildFile; fileRef = E3C1D22510D829C5B7444739 /* gtest-death-test.cc */; };
+		0AD9E5922330BFF6FC45D0BD /* gtest.cc in Sources */ = {isa = PBXBuildFile; fileRef = 2C9D2A8B9DE565C9E753D889 /* gtest.cc */; };
+		B5E29E679E00A671B23FA973 /* gtest-filepath.cc in Sources */ = {isa = PBXBuildFile; fileRef = AF8D4890DDD7D76607350336 /* gtest-filepath.cc */; };
+		BB959D5B259CE9167F08FE1A /* gtest-printers.cc in Sources */ = {isa = PBXBuildFile; fileRef = 182FE003BB2727DF6CC2D95F /* gtest-printers.cc */; };
+		D806C34ABBB1AFC3119AB2AB /* gtest-port.cc in Sources */ = {isa = PBXBuildFile; fileRef = 33041FB10596B1BC28AA3F5A /* gtest-port.cc */; };
+		EBEBBCEE2B9B7BDF0FBC6205 /* gtest-typed-test.cc in Sources */ = {isa = PBXBuildFile; fileRef = 652DE990C04F59F2BA9563C8 /* gtest-typed-test.cc */; };
+		F41DD637F3405609D4CB8593 /* gtest-test-part.cc in Sources */ = {isa = PBXBuildFile; fileRef = F1186D2323D1655BA9160F6A /* gtest-test-part.cc */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		1A32203623ADF482B853FAFB /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 533C86BA25B98B6D80FCE4DA /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 203C595AB0E93BB1CB960E12;
+			remoteInfo = gtest;
+		};
+		1D6C24B0DBF9107777E47C30 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 533C86BA25B98B6D80FCE4DA /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 91AEE18BC6BE44B44AACCDBB;
+			remoteInfo = gtest_main;
+		};
+		4E84EDF26EC30D6C16218BE8 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 533C86BA25B98B6D80FCE4DA /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 2999131A71FAFE50515AD0ED;
+			remoteInfo = gtest_prod;
+		};
+		E1987AC8C0B8283E779932FB /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 533C86BA25B98B6D80FCE4DA /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 2999131A71FAFE50515AD0ED;
+			remoteInfo = gtest_prod;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		10B07A4D537F6FDA26231769 /* gtest-type-util.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "gtest-type-util.h"; sourceTree = "<group>"; };
+		1360D81774BF8B1AAF4E43DB /* gtest-support.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "gtest-support.h"; sourceTree = "<group>"; };
+		13734C676C0C01E67900A04B /* gtest.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = gtest.h; sourceTree = "<group>"; };
+		13BC3402309F1F1E1ABEC995 /* gtest_pred_impl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = gtest_pred_impl.h; sourceTree = "<group>"; };
+		14E0EC381E846AC88FCAA101 /* gtest-tuple.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "gtest-tuple.h"; sourceTree = "<group>"; };
+		17A27643F5B8F9E4841E8ED3 /* gtest-filepath.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "gtest-filepath.h"; sourceTree = "<group>"; };
+		182FE003BB2727DF6CC2D95F /* gtest-printers.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "gtest-printers.cc"; sourceTree = "<group>"; };
+		26D95DC6D0F00FB89F480ABC /* gtest-linked_ptr.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "gtest-linked_ptr.h"; sourceTree = "<group>"; };
+		26E2EF61CC692054402045E3 /* gtest-all.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "gtest-all.cc"; sourceTree = "<group>"; };
+		2C9D2A8B9DE565C9E753D889 /* gtest.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = gtest.cc; sourceTree = "<group>"; };
+		33041FB10596B1BC28AA3F5A /* gtest-port.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "gtest-port.cc"; sourceTree = "<group>"; };
+		3354930D9294AF2AD877269B /* gtest.gyp */ = {isa = PBXFileReference; explicitFileType = sourcecode; path = gtest.gyp; sourceTree = "<group>"; };
+		37CB9FD683DE03D2F970C64E /* gtest-param-test.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "gtest-param-test.h"; sourceTree = "<group>"; };
+		39C9BDAFF632121CAC80B889 /* standalone.gypi */ = {isa = PBXFileReference; explicitFileType = sourcecode; name = standalone.gypi; path = ../build/standalone.gypi; sourceTree = "<group>"; };
+		419C67262F31DE98088432E9 /* gtest_prod.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = gtest_prod.h; sourceTree = "<group>"; };
+		4ED165E2C6C6A39BAD5058CB /* gtest-internal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "gtest-internal.h"; sourceTree = "<group>"; };
+		55554AD3071BC3AB07D3AF8A /* gtest-test-part.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "gtest-test-part.h"; sourceTree = "<group>"; };
+		652DE990C04F59F2BA9563C8 /* gtest-typed-test.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "gtest-typed-test.cc"; sourceTree = "<group>"; };
+		7D7E7A2AA65724B7A03A26F4 /* gtest-param-util.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "gtest-param-util.h"; sourceTree = "<group>"; };
+		813988B9937B3484A36510C1 /* gtest-death-test-internal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "gtest-death-test-internal.h"; sourceTree = "<group>"; };
+		8AF3094E1C43ACA6267E0AA1 /* gtest-printers.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "gtest-printers.h"; sourceTree = "<group>"; };
+		9AB4BCCCC7FE3755EB683D59 /* gtest-typed-test.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "gtest-typed-test.h"; sourceTree = "<group>"; };
+		9E68A449AFD8E9ACAF44E2B4 /* toolchain.gypi */ = {isa = PBXFileReference; explicitFileType = sourcecode; name = toolchain.gypi; path = ../build/toolchain.gypi; sourceTree = "<group>"; };
+		AF8D4890DDD7D76607350336 /* gtest-filepath.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "gtest-filepath.cc"; sourceTree = "<group>"; };
+		B9690011C6515FA2BF017998 /* gtest-string.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "gtest-string.h"; sourceTree = "<group>"; };
+		B9F3C6DAB39986A99DEDDA14 /* gtest-message.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "gtest-message.h"; sourceTree = "<group>"; };
+		CC5680587F0519AB05DCA6E1 /* gtest-death-test.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "gtest-death-test.h"; sourceTree = "<group>"; };
+		D22CB0E3E1C7BFFE5177D82E /* libgtest_main.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libgtest_main.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		E0B3F1FB50FAAB76B5E11021 /* libgtest.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libgtest.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		E3C1D22510D829C5B7444739 /* gtest-death-test.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "gtest-death-test.cc"; sourceTree = "<group>"; };
+		EE190C18D332D880DFDB008A /* gtest_main.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = gtest_main.cc; sourceTree = "<group>"; };
+		EF6CE2217E069015A14E74A2 /* gtest-port.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "gtest-port.h"; sourceTree = "<group>"; };
+		EFAF03F9D1F21A9F8EA53D64 /* gtest-internal-inl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "gtest-internal-inl.h"; sourceTree = "<group>"; };
+		F1186D2323D1655BA9160F6A /* gtest-test-part.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "gtest-test-part.cc"; sourceTree = "<group>"; };
+		F36F670A8E451EC06B13A97F /* gtest-param-util-generated.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "gtest-param-util-generated.h"; sourceTree = "<group>"; };
+		FBF0F9D8DE3056093E055F56 /* gtest-spi.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "gtest-spi.h"; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		558D19B0BC61EDC35B1E24BA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		72215E97C954718643D584DF /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		097B3868ECEA756627236081 /* gtest */ = {
+			isa = PBXGroup;
+			children = (
+				95F35BAFB22D551AD6668834 /* include/gtest */,
+				5981EB8DE58597BC42963CF6 /* src */,
+			);
+			path = gtest;
+			sourceTree = "<group>";
+		};
+		1213F00E7D0022690F7834A4 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				E0B3F1FB50FAAB76B5E11021 /* libgtest.a */,
+				D22CB0E3E1C7BFFE5177D82E /* libgtest_main.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		1C551E01684A7E1A6412E4E7 /* Build */ = {
+			isa = PBXGroup;
+			children = (
+				3354930D9294AF2AD877269B /* gtest.gyp */,
+				39C9BDAFF632121CAC80B889 /* standalone.gypi */,
+				9E68A449AFD8E9ACAF44E2B4 /* toolchain.gypi */,
+			);
+			name = Build;
+			sourceTree = "<group>";
+		};
+		5981EB8DE58597BC42963CF6 /* src */ = {
+			isa = PBXGroup;
+			children = (
+				26E2EF61CC692054402045E3 /* gtest-all.cc */,
+				E3C1D22510D829C5B7444739 /* gtest-death-test.cc */,
+				AF8D4890DDD7D76607350336 /* gtest-filepath.cc */,
+				EFAF03F9D1F21A9F8EA53D64 /* gtest-internal-inl.h */,
+				33041FB10596B1BC28AA3F5A /* gtest-port.cc */,
+				182FE003BB2727DF6CC2D95F /* gtest-printers.cc */,
+				F1186D2323D1655BA9160F6A /* gtest-test-part.cc */,
+				652DE990C04F59F2BA9563C8 /* gtest-typed-test.cc */,
+				2C9D2A8B9DE565C9E753D889 /* gtest.cc */,
+				EE190C18D332D880DFDB008A /* gtest_main.cc */,
+			);
+			path = src;
+			sourceTree = "<group>";
+		};
+		70E6E569D56D9B2174F3B4E0 /* Source */ = {
+			isa = PBXGroup;
+			children = (
+				097B3868ECEA756627236081 /* gtest */,
+				1360D81774BF8B1AAF4E43DB /* gtest-support.h */,
+			);
+			name = Source;
+			sourceTree = "<group>";
+		};
+		8D5F8A9B33447AED8EB06731 = {
+			isa = PBXGroup;
+			children = (
+				70E6E569D56D9B2174F3B4E0 /* Source */,
+				1213F00E7D0022690F7834A4 /* Products */,
+				1C551E01684A7E1A6412E4E7 /* Build */,
+			);
+			sourceTree = "<group>";
+		};
+		95F35BAFB22D551AD6668834 /* include/gtest */ = {
+			isa = PBXGroup;
+			children = (
+				CE4B31EF30B4AF9242AA2504 /* internal */,
+				CC5680587F0519AB05DCA6E1 /* gtest-death-test.h */,
+				B9F3C6DAB39986A99DEDDA14 /* gtest-message.h */,
+				37CB9FD683DE03D2F970C64E /* gtest-param-test.h */,
+				8AF3094E1C43ACA6267E0AA1 /* gtest-printers.h */,
+				FBF0F9D8DE3056093E055F56 /* gtest-spi.h */,
+				55554AD3071BC3AB07D3AF8A /* gtest-test-part.h */,
+				9AB4BCCCC7FE3755EB683D59 /* gtest-typed-test.h */,
+				13734C676C0C01E67900A04B /* gtest.h */,
+				13BC3402309F1F1E1ABEC995 /* gtest_pred_impl.h */,
+				419C67262F31DE98088432E9 /* gtest_prod.h */,
+			);
+			path = include/gtest;
+			sourceTree = "<group>";
+		};
+		CE4B31EF30B4AF9242AA2504 /* internal */ = {
+			isa = PBXGroup;
+			children = (
+				813988B9937B3484A36510C1 /* gtest-death-test-internal.h */,
+				17A27643F5B8F9E4841E8ED3 /* gtest-filepath.h */,
+				4ED165E2C6C6A39BAD5058CB /* gtest-internal.h */,
+				26D95DC6D0F00FB89F480ABC /* gtest-linked_ptr.h */,
+				F36F670A8E451EC06B13A97F /* gtest-param-util-generated.h */,
+				7D7E7A2AA65724B7A03A26F4 /* gtest-param-util.h */,
+				EF6CE2217E069015A14E74A2 /* gtest-port.h */,
+				B9690011C6515FA2BF017998 /* gtest-string.h */,
+				14E0EC381E846AC88FCAA101 /* gtest-tuple.h */,
+				10B07A4D537F6FDA26231769 /* gtest-type-util.h */,
+			);
+			path = internal;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		203C595AB0E93BB1CB960E12 /* gtest */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FBD85910D05FCB62E6D2B8AD /* Build configuration list for PBXNativeTarget "gtest" */;
+			buildPhases = (
+				561DAA75025DD429E924D52B /* Sources */,
+				558D19B0BC61EDC35B1E24BA /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				861B5033EE80FEE677461963 /* PBXTargetDependency */,
+			);
+			name = gtest;
+			productName = gtest;
+			productReference = E0B3F1FB50FAAB76B5E11021 /* libgtest.a */;
+			productType = "com.apple.product-type.library.static";
+		};
+		91AEE18BC6BE44B44AACCDBB /* gtest_main */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2056C392FE5C991D68AA13B3 /* Build configuration list for PBXNativeTarget "gtest_main" */;
+			buildPhases = (
+				B8BF71B28518509D2B6984AE /* Sources */,
+				72215E97C954718643D584DF /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = gtest_main;
+			productName = gtest_main;
+			productReference = D22CB0E3E1C7BFFE5177D82E /* libgtest_main.a */;
+			productType = "com.apple.product-type.library.static";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		533C86BA25B98B6D80FCE4DA /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+			};
+			buildConfigurationList = 7609FECDCE37CCF1BA62889B /* Build configuration list for PBXProject "gtest" */;
+			compatibilityVersion = "Xcode 3.2";
+			hasScannedForEncodings = 1;
+			mainGroup = 8D5F8A9B33447AED8EB06731;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				1DD5FEFB7026680BCB3CD6F8 /* All */,
+				203C595AB0E93BB1CB960E12 /* gtest */,
+				91AEE18BC6BE44B44AACCDBB /* gtest_main */,
+				2999131A71FAFE50515AD0ED /* gtest_prod */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		561DAA75025DD429E924D52B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				09DB3D3D7DE9250AC84B0337 /* gtest-death-test.cc in Sources */,
+				B5E29E679E00A671B23FA973 /* gtest-filepath.cc in Sources */,
+				D806C34ABBB1AFC3119AB2AB /* gtest-port.cc in Sources */,
+				BB959D5B259CE9167F08FE1A /* gtest-printers.cc in Sources */,
+				F41DD637F3405609D4CB8593 /* gtest-test-part.cc in Sources */,
+				EBEBBCEE2B9B7BDF0FBC6205 /* gtest-typed-test.cc in Sources */,
+				0AD9E5922330BFF6FC45D0BD /* gtest.cc in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B8BF71B28518509D2B6984AE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				05B1F7F5B6F28002E7EB4AAF /* gtest_main.cc in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		1D231E46B5D9DFCB8265BC67 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 2999131A71FAFE50515AD0ED /* gtest_prod */;
+			targetProxy = E1987AC8C0B8283E779932FB /* PBXContainerItemProxy */;
+		};
+		2986C7DD98EBC6790289B579 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 203C595AB0E93BB1CB960E12 /* gtest */;
+			targetProxy = 1A32203623ADF482B853FAFB /* PBXContainerItemProxy */;
+		};
+		861B5033EE80FEE677461963 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 2999131A71FAFE50515AD0ED /* gtest_prod */;
+			targetProxy = 4E84EDF26EC30D6C16218BE8 /* PBXContainerItemProxy */;
+		};
+		E0DA17DEC52BAE5AE71ADFF4 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 91AEE18BC6BE44B44AACCDBB /* gtest_main */;
+			targetProxy = 1D6C24B0DBF9107777E47C30 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		299008542F8B2D5B824DA9E9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = All;
+			};
+			name = Release;
+		};
+		31E7A11C132A28C6816A61AD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = lib;
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					"GTEST_HAS_POSIX_RE=0",
+					"GTEST_LANG_CXX11=0",
+					"GTEST_HAS_RTTI=0",
+				);
+				GCC_STRICT_ALIASING = YES;
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = NO;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = (
+					gtest,
+					gtest/include,
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				PREBINDING = NO;
+				PRODUCT_NAME = gtest;
+				SYMROOT = ../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Release;
+		};
+		32E49196A4CC94A192210463 /* Optdebug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				INTERMEDIATE_DIR = "$(PROJECT_DERIVED_FILE_DIR)/$(CONFIGURATION)";
+				SDKROOT = macosx;
+				SHARED_INTERMEDIATE_DIR = "$(SYMROOT)/DerivedSources/$(CONFIGURATION)";
+				SYMROOT = ../xcodebuild;
+			};
+			name = Optdebug;
+		};
+		3678D892FFD71265E482D803 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				INTERMEDIATE_DIR = "$(PROJECT_DERIVED_FILE_DIR)/$(CONFIGURATION)";
+				SDKROOT = macosx;
+				SHARED_INTERMEDIATE_DIR = "$(SYMROOT)/DerivedSources/$(CONFIGURATION)";
+				SYMROOT = ../xcodebuild;
+			};
+			name = Release;
+		};
+		43C30C1EA63BA91CCB3968C5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				INTERMEDIATE_DIR = "$(PROJECT_DERIVED_FILE_DIR)/$(CONFIGURATION)";
+				SDKROOT = macosx;
+				SHARED_INTERMEDIATE_DIR = "$(SYMROOT)/DerivedSources/$(CONFIGURATION)";
+				SYMROOT = ../xcodebuild;
+			};
+			name = Debug;
+		};
+		5265FEF8370FBD78F049329F /* Optdebug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = lib;
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					"GTEST_HAS_POSIX_RE=0",
+					"GTEST_LANG_CXX11=0",
+					UNIT_TEST,
+					"GTEST_HAS_RTTI=0",
+					ENABLE_DISASSEMBLER,
+					V8_ENABLE_CHECKS,
+					OBJECT_PRINT,
+					VERIFY_HEAP,
+					TRACE_MAPS,
+				);
+				GCC_STRICT_ALIASING = YES;
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = NO;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = gtest/include;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				PREBINDING = NO;
+				PRODUCT_NAME = gtest_main;
+				SYMROOT = ../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Optdebug;
+		};
+		563537DE70B714D6EB46F76B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = lib;
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					"GTEST_HAS_POSIX_RE=0",
+					"GTEST_LANG_CXX11=0",
+					UNIT_TEST,
+					"GTEST_HAS_RTTI=0",
+				);
+				GCC_STRICT_ALIASING = YES;
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = NO;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = gtest/include;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				PREBINDING = NO;
+				PRODUCT_NAME = gtest_main;
+				SYMROOT = ../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Release;
+		};
+		5B83FDD29E424B33365A3A02 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = All;
+			};
+			name = Debug;
+		};
+		69C326E1630D39AF368BBF52 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = lib;
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					"GTEST_HAS_POSIX_RE=0",
+					"GTEST_LANG_CXX11=0",
+					"GTEST_HAS_RTTI=0",
+					ENABLE_DISASSEMBLER,
+					V8_ENABLE_CHECKS,
+					OBJECT_PRINT,
+					VERIFY_HEAP,
+					TRACE_MAPS,
+					ENABLE_SLOW_DCHECKS,
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = NO;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = (
+					gtest,
+					gtest/include,
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				PREBINDING = NO;
+				PRODUCT_NAME = gtest;
+				SYMROOT = ../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Debug;
+		};
+		6CA503A5C622C6A4B05165F2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+				);
+				GCC_STRICT_ALIASING = YES;
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = NO;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				OTHER_LDFLAGS = "-Wl,-search_paths_first";
+				PREBINDING = NO;
+				PRODUCT_NAME = gtest_prod;
+				SYMROOT = ../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Release;
+		};
+		80E1408A31FEF421437BCB28 /* Optdebug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = All;
+			};
+			name = Optdebug;
+		};
+		849A4FEBCAB7FA14E806F5A9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = lib;
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					"GTEST_HAS_POSIX_RE=0",
+					"GTEST_LANG_CXX11=0",
+					UNIT_TEST,
+					"GTEST_HAS_RTTI=0",
+					ENABLE_DISASSEMBLER,
+					V8_ENABLE_CHECKS,
+					OBJECT_PRINT,
+					VERIFY_HEAP,
+					TRACE_MAPS,
+					ENABLE_SLOW_DCHECKS,
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = NO;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = gtest/include;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				PREBINDING = NO;
+				PRODUCT_NAME = gtest_main;
+				SYMROOT = ../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Debug;
+		};
+		9D78DF2A529A9BF9C763AFF3 /* Optdebug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = lib;
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					"GTEST_HAS_POSIX_RE=0",
+					"GTEST_LANG_CXX11=0",
+					"GTEST_HAS_RTTI=0",
+					ENABLE_DISASSEMBLER,
+					V8_ENABLE_CHECKS,
+					OBJECT_PRINT,
+					VERIFY_HEAP,
+					TRACE_MAPS,
+				);
+				GCC_STRICT_ALIASING = YES;
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = NO;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = (
+					gtest,
+					gtest/include,
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				PREBINDING = NO;
+				PRODUCT_NAME = gtest;
+				SYMROOT = ../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Optdebug;
+		};
+		D8F7F4A7D3416EEECE4B6E5B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					ENABLE_DISASSEMBLER,
+					V8_ENABLE_CHECKS,
+					OBJECT_PRINT,
+					VERIFY_HEAP,
+					TRACE_MAPS,
+					ENABLE_SLOW_DCHECKS,
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = NO;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				OTHER_LDFLAGS = "-Wl,-search_paths_first";
+				PREBINDING = NO;
+				PRODUCT_NAME = gtest_prod;
+				SYMROOT = ../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Debug;
+		};
+		F21E727DD93EFC4CCDBB9B7D /* Optdebug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					ENABLE_DISASSEMBLER,
+					V8_ENABLE_CHECKS,
+					OBJECT_PRINT,
+					VERIFY_HEAP,
+					TRACE_MAPS,
+				);
+				GCC_STRICT_ALIASING = YES;
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = NO;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				OTHER_LDFLAGS = "-Wl,-search_paths_first";
+				PREBINDING = NO;
+				PRODUCT_NAME = gtest_prod;
+				SYMROOT = ../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Optdebug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		2056C392FE5C991D68AA13B3 /* Build configuration list for PBXNativeTarget "gtest_main" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				849A4FEBCAB7FA14E806F5A9 /* Debug */,
+				5265FEF8370FBD78F049329F /* Optdebug */,
+				563537DE70B714D6EB46F76B /* Release */,
+			);
+			defaultConfigurationIsVisible = 1;
+			defaultConfigurationName = Debug;
+		};
+		3FBD4C9EB466BE7F1CAF8044 /* Build configuration list for PBXAggregateTarget "gtest_prod" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D8F7F4A7D3416EEECE4B6E5B /* Debug */,
+				F21E727DD93EFC4CCDBB9B7D /* Optdebug */,
+				6CA503A5C622C6A4B05165F2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 1;
+			defaultConfigurationName = Debug;
+		};
+		6FAF7A4B25BAF4A29E90FD2A /* Build configuration list for PBXAggregateTarget "All" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5B83FDD29E424B33365A3A02 /* Debug */,
+				80E1408A31FEF421437BCB28 /* Optdebug */,
+				299008542F8B2D5B824DA9E9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 1;
+			defaultConfigurationName = Debug;
+		};
+		7609FECDCE37CCF1BA62889B /* Build configuration list for PBXProject "gtest" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				43C30C1EA63BA91CCB3968C5 /* Debug */,
+				32E49196A4CC94A192210463 /* Optdebug */,
+				3678D892FFD71265E482D803 /* Release */,
+			);
+			defaultConfigurationIsVisible = 1;
+			defaultConfigurationName = Debug;
+		};
+		FBD85910D05FCB62E6D2B8AD /* Build configuration list for PBXNativeTarget "gtest" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				69C326E1630D39AF368BBF52 /* Debug */,
+				9D78DF2A529A9BF9C763AFF3 /* Optdebug */,
+				31E7A11C132A28C6816A61AD /* Release */,
+			);
+			defaultConfigurationIsVisible = 1;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 533C86BA25B98B6D80FCE4DA /* Project object */;
+}

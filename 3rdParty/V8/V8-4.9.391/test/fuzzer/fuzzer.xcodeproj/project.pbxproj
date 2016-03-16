@@ -1,0 +1,3746 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXAggregateTarget section */
+		706FFEBD69C27192DF50A52A /* All */ = {
+			isa = PBXAggregateTarget;
+			buildConfigurationList = 448764A9042C04012953AED6 /* Build configuration list for PBXAggregateTarget "All" */;
+			buildPhases = (
+			);
+			dependencies = (
+				D217FDEED497397100DB0CB4 /* PBXTargetDependency */,
+				F27427F1EBCFCA978FF9AB04 /* PBXTargetDependency */,
+				1EB6464C1E9D6930FD35CE45 /* PBXTargetDependency */,
+				908217372FC06ABB4F90C38C /* PBXTargetDependency */,
+				E9AE98FD3A019D473BEF7AA2 /* PBXTargetDependency */,
+				46B241FC2CD55282B930CA69 /* PBXTargetDependency */,
+				2CBC4E8824118692F6262777 /* PBXTargetDependency */,
+				6048CCB1ADA80BDF3EE1C7AF /* PBXTargetDependency */,
+				4DE35C8746C53477AC16DD0B /* PBXTargetDependency */,
+				90C725963BC91D0E9ADE6C1A /* PBXTargetDependency */,
+				65134807B590DDC8BBACDB58 /* PBXTargetDependency */,
+			);
+			name = All;
+			productName = All;
+		};
+/* End PBXAggregateTarget section */
+
+/* Begin PBXBuildFile section */
+		02C8360C71411EF3930F31D4 /* libfuzzer_support.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 1418EBCDAD739F5141FAA922 /* libfuzzer_support.a */; };
+		02F6B12D0DF40EB2B2EDDEA7 /* libv8_libplatform.a in Frameworks */ = {isa = PBXBuildFile; fileRef = BA83F05DF37FA9E8E249B77A /* libv8_libplatform.a */; };
+		085C969FCE6208BA9536DB0B /* libicui18n.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 366A63DB7326B343CACD0170 /* libicui18n.a */; };
+		099CA4EFCF107F1877539883 /* fuzzer.cc in Sources */ = {isa = PBXBuildFile; fileRef = FDE3C84C4CDCB4121FAF26A3 /* fuzzer.cc */; };
+		119C07DD283DD74B2DF43C2B /* libicudata.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 24D9312322B1A5F92DBCF21C /* libicudata.a */; };
+		155F29574C110BB14E4265FE /* libwasm_asmjs_fuzzer_lib.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 420B9BAE38ADF893348C0869 /* libwasm_asmjs_fuzzer_lib.a */; };
+		167370D782D862A3BBC51329 /* libv8_libbase.a in Frameworks */ = {isa = PBXBuildFile; fileRef = EB161B7B9B7861336943CB4E /* libv8_libbase.a */; };
+		174B9FBDC749AA1129D958D3 /* libv8_base.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 2F415244C0E2178F9E3B136C /* libv8_base.a */; };
+		1898B498B4CD29E53367B5D1 /* libv8_base.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 2F415244C0E2178F9E3B136C /* libv8_base.a */; };
+		217E062A26C00434E0B34981 /* regexp.cc in Sources */ = {isa = PBXBuildFile; fileRef = FEEF7D31715D1F19238BBAA7 /* regexp.cc */; };
+		22397FFFFB27CB1DBBD5F876 /* parser.cc in Sources */ = {isa = PBXBuildFile; fileRef = 7A91A6EAD289DDA76D1CEE89 /* parser.cc */; };
+		25DDD0DFB25C777FB14D369B /* libv8_libplatform.a in Frameworks */ = {isa = PBXBuildFile; fileRef = BA83F05DF37FA9E8E249B77A /* libv8_libplatform.a */; };
+		331E0A2ACC2D9E051FDD846B /* libv8_external_snapshot.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 6FD96B2BA3130F0DD14074C6 /* libv8_external_snapshot.a */; };
+		355321DACE2694A4A5FA9AC7 /* libv8_external_snapshot.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 6FD96B2BA3130F0DD14074C6 /* libv8_external_snapshot.a */; };
+		37C8247154E6CFCF2A914B67 /* libv8_libbase.a in Frameworks */ = {isa = PBXBuildFile; fileRef = EB161B7B9B7861336943CB4E /* libv8_libbase.a */; };
+		3A607C6DBE3D0B1C43C05A31 /* wasm-asmjs.cc in Sources */ = {isa = PBXBuildFile; fileRef = 564D57232684120D369A65DD /* wasm-asmjs.cc */; };
+		3ABDB413E562BF4D467AF584 /* libv8_libplatform.a in Frameworks */ = {isa = PBXBuildFile; fileRef = BA83F05DF37FA9E8E249B77A /* libv8_libplatform.a */; };
+		3B91F6BA1F5B12EEEB5B30D3 /* json.cc in Sources */ = {isa = PBXBuildFile; fileRef = 0E1AB96911FFD070EB2BFA9E /* json.cc */; };
+		3D0BD4924F80ADA4759FB349 /* libicuuc.a in Frameworks */ = {isa = PBXBuildFile; fileRef = DAAAE16C5988A2712728A7E4 /* libicuuc.a */; };
+		466474D9CEB60254F4758646 /* fuzzer.cc in Sources */ = {isa = PBXBuildFile; fileRef = FDE3C84C4CDCB4121FAF26A3 /* fuzzer.cc */; };
+		5747F75A6AE93AEF4DC6C632 /* libicuuc.a in Frameworks */ = {isa = PBXBuildFile; fileRef = DAAAE16C5988A2712728A7E4 /* libicuuc.a */; };
+		585A180AF02EFD7A8DF698C7 /* libv8_libbase.a in Frameworks */ = {isa = PBXBuildFile; fileRef = EB161B7B9B7861336943CB4E /* libv8_libbase.a */; };
+		5F564D07D026E8D46CAD1E0D /* libjson_fuzzer_lib.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B2C2870B12335FEF6CC5A432 /* libjson_fuzzer_lib.a */; };
+		70FEF86CEEA2FCFC543E3F15 /* libv8_libplatform.a in Frameworks */ = {isa = PBXBuildFile; fileRef = BA83F05DF37FA9E8E249B77A /* libv8_libplatform.a */; };
+		71BA72103818E766BD641E77 /* libv8_libbase.a in Frameworks */ = {isa = PBXBuildFile; fileRef = EB161B7B9B7861336943CB4E /* libv8_libbase.a */; };
+		76D449BAA2B6B6F009C3222A /* libv8_base.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 2F415244C0E2178F9E3B136C /* libv8_base.a */; };
+		797B55F185C87BEB8BFDDCFB /* libfuzzer_support.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 1418EBCDAD739F5141FAA922 /* libfuzzer_support.a */; };
+		7A87062B21FB64838E55841E /* libicuuc.a in Frameworks */ = {isa = PBXBuildFile; fileRef = DAAAE16C5988A2712728A7E4 /* libicuuc.a */; };
+		7FA85B0214179627EDE8D6D8 /* fuzzer-support.cc in Sources */ = {isa = PBXBuildFile; fileRef = F8DBF591915F12519DB62811 /* fuzzer-support.cc */; };
+		833A63DD1C490A8DF2CBE3D0 /* libicui18n.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 366A63DB7326B343CACD0170 /* libicui18n.a */; };
+		87701898DDC79B3803104658 /* fuzzer.cc in Sources */ = {isa = PBXBuildFile; fileRef = FDE3C84C4CDCB4121FAF26A3 /* fuzzer.cc */; };
+		8C6A573DD54783A7D096496D /* libfuzzer_support.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 1418EBCDAD739F5141FAA922 /* libfuzzer_support.a */; };
+		8F12A7C212E246A4AD2FFFC1 /* libfuzzer_support.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 1418EBCDAD739F5141FAA922 /* libfuzzer_support.a */; };
+		92CCC888968D63DCBBFD00AE /* libicui18n.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 366A63DB7326B343CACD0170 /* libicui18n.a */; };
+		9645C825D28787AFD42348AA /* libwasm_fuzzer_lib.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A220E961A3BB83083B0DE9B9 /* libwasm_fuzzer_lib.a */; };
+		9DC773A472B9525951C7DA41 /* libv8_base.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 2F415244C0E2178F9E3B136C /* libv8_base.a */; };
+		A784BBCE79CD4C35D1E053CC /* libicuuc.a in Frameworks */ = {isa = PBXBuildFile; fileRef = DAAAE16C5988A2712728A7E4 /* libicuuc.a */; };
+		AECE455D25AE89964E0EFE36 /* libv8_external_snapshot.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 6FD96B2BA3130F0DD14074C6 /* libv8_external_snapshot.a */; };
+		AF0F785ECAA71F403FB66E2B /* libv8_external_snapshot.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 6FD96B2BA3130F0DD14074C6 /* libv8_external_snapshot.a */; };
+		B6E1E42C72B40E86A56A1277 /* libicudata.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 24D9312322B1A5F92DBCF21C /* libicudata.a */; };
+		B710032EE2784F5EE3DD3C7E /* fuzzer.cc in Sources */ = {isa = PBXBuildFile; fileRef = FDE3C84C4CDCB4121FAF26A3 /* fuzzer.cc */; };
+		C638D27408F1FC7D18F4AA64 /* libicui18n.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 366A63DB7326B343CACD0170 /* libicui18n.a */; };
+		C678D2677C29CB727841D047 /* libparser_fuzzer_lib.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 354176C5D23305BCC60408B3 /* libparser_fuzzer_lib.a */; };
+		C758F8B4B4F31C62E3A8DA14 /* libv8_libplatform.a in Frameworks */ = {isa = PBXBuildFile; fileRef = BA83F05DF37FA9E8E249B77A /* libv8_libplatform.a */; };
+		D3F1C80820C833B9421B8850 /* libicuuc.a in Frameworks */ = {isa = PBXBuildFile; fileRef = DAAAE16C5988A2712728A7E4 /* libicuuc.a */; };
+		D4F6426C3E1BBF6E28E4E6C2 /* libicudata.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 24D9312322B1A5F92DBCF21C /* libicudata.a */; };
+		D6CCAF19B20156313DA895E8 /* libv8_external_snapshot.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 6FD96B2BA3130F0DD14074C6 /* libv8_external_snapshot.a */; };
+		E1435D5243787D0B3E9A05ED /* libv8_libbase.a in Frameworks */ = {isa = PBXBuildFile; fileRef = EB161B7B9B7861336943CB4E /* libv8_libbase.a */; };
+		E1F0DF939AE8605F14506091 /* fuzzer.cc in Sources */ = {isa = PBXBuildFile; fileRef = FDE3C84C4CDCB4121FAF26A3 /* fuzzer.cc */; };
+		E351706430F013B1B4A15411 /* libicudata.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 24D9312322B1A5F92DBCF21C /* libicudata.a */; };
+		E3D7CF945436DAFBD7070AFA /* libfuzzer_support.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 1418EBCDAD739F5141FAA922 /* libfuzzer_support.a */; };
+		EA1E6EE2A748AD47FEF25421 /* wasm.cc in Sources */ = {isa = PBXBuildFile; fileRef = 706AE21AD9A830AB2C909440 /* wasm.cc */; };
+		EBBBE2A55F9CDB23531EB57D /* libicui18n.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 366A63DB7326B343CACD0170 /* libicui18n.a */; };
+		F10DCB66F9D647D0DD4CC8CD /* libicudata.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 24D9312322B1A5F92DBCF21C /* libicudata.a */; };
+		F8EE50F621D2EE3CE3B2CA03 /* libv8_base.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 2F415244C0E2178F9E3B136C /* libv8_base.a */; };
+		FD88A67FC5B96EC5BDBB5315 /* libregexp_fuzzer_lib.a in Frameworks */ = {isa = PBXBuildFile; fileRef = E934B87773470B18FA64E3DD /* libregexp_fuzzer_lib.a */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		01285531F2C03EBE09135496 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 65403222C89E874A5CE11AC6 /* icu.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = A8365F341FF32481B097DC30;
+			remoteInfo = icuuc;
+		};
+		04A8CC774728EA031101FA09 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = AFEC6253FB80927258083783;
+			remoteInfo = v8_maybe_snapshot;
+		};
+		04B71D322777290A56C38E57 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 09C0DA32EA5AD581FB62FFE1;
+			remoteInfo = v8_external_snapshot;
+		};
+		05937D445E90ABAA3AA028B9 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 792C62A0E4868989A4A36A3E;
+			remoteInfo = v8_libplatform;
+		};
+		064ADA5874EC52FA20131ADB /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C29356792D16C014B2391E4E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 313BEA001571675D32783C51;
+			remoteInfo = fuzzer_support;
+		};
+		07C0DBC62DE0B9F4D64AFAED /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 9ECCDE91D9EA1FE332B22C55;
+			remoteInfo = v8_libbase;
+		};
+		0838BCC00758A36AB31E477C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 65403222C89E874A5CE11AC6 /* icu.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = F46C1033BA316E88C6721A96;
+			remoteInfo = icudata;
+		};
+		0EA105CA435948F82EB176EE /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C29356792D16C014B2391E4E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 313BEA001571675D32783C51;
+			remoteInfo = fuzzer_support;
+		};
+		0ED3AE30712C767A75C55469 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 9ECCDE91D9EA1FE332B22C55;
+			remoteInfo = v8_libbase;
+		};
+		111B3EE1606E3D4E7F16DBDC /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C29356792D16C014B2391E4E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 6E24ACF1C9D23F37E3904279;
+			remoteInfo = regexp_fuzzer_lib;
+		};
+		12EDB2B777032F4C1573B511 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 09C0DA32EA5AD581FB62FFE1;
+			remoteInfo = v8_external_snapshot;
+		};
+		13E32F9173E302BAE64BFCE1 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C29356792D16C014B2391E4E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 676626A07F7004C66BD58E79;
+			remoteInfo = wasm_asmjs_fuzzer_lib;
+		};
+		154555D9473061BBF2395F34 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C29356792D16C014B2391E4E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 6E24ACF1C9D23F37E3904279;
+			remoteInfo = regexp_fuzzer_lib;
+		};
+		15AE31510F14B82B619D7D36 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C29356792D16C014B2391E4E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4E0C36E7C4E2F4A856FA2DAC;
+			remoteInfo = json_fuzzer_lib;
+		};
+		15D727771A2FE0506AC71E88 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 65403222C89E874A5CE11AC6 /* icu.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 438C51A5B19300095C141CAB;
+			remoteInfo = icui18n;
+		};
+		164E049BC330443142204C89 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 65403222C89E874A5CE11AC6 /* icu.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = A8365F341FF32481B097DC30;
+			remoteInfo = icuuc;
+		};
+		205C8467A93CB50B0CCE1A5A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 49377DA3B5C48339325D54A9;
+			remoteInfo = natives_blob;
+		};
+		22E65C658EDC5541E0CE5505 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 65403222C89E874A5CE11AC6 /* icu.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 438C51A5B19300095C141CAB;
+			remoteInfo = icui18n;
+		};
+		299EDC18B4CF91E0B5055A0F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 65403222C89E874A5CE11AC6 /* icu.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = F46C1033BA316E88C6721A96;
+			remoteInfo = icudata;
+		};
+		2D18CE821E0797364668D2EC /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 65403222C89E874A5CE11AC6 /* icu.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 232F791EEF1663B99B3948A0;
+			remoteInfo = icudata;
+		};
+		326B577333B8F99708C61A05 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 26A73E70B3C5D4B7FE523A1A;
+			remoteInfo = v8;
+		};
+		457AC963306AC0B349E5C40D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 9ECCDE91D9EA1FE332B22C55;
+			remoteInfo = v8_libbase;
+		};
+		48B6198AB5642423B7AD65FC /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 09C0DA32EA5AD581FB62FFE1;
+			remoteInfo = v8_external_snapshot;
+		};
+		491375D33C8A6BC8CAF78F51 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = AFEC6253FB80927258083783;
+			remoteInfo = v8_maybe_snapshot;
+		};
+		4AC9DB31E83B205E84B8ACFE /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 49377DA3B5C48339325D54A9;
+			remoteInfo = natives_blob;
+		};
+		4BB01A77DE96C9863F1CF4E2 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C29356792D16C014B2391E4E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4E0C36E7C4E2F4A856FA2DAC;
+			remoteInfo = json_fuzzer_lib;
+		};
+		4C40F8D5676F3C7BD5275FED /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C29356792D16C014B2391E4E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 313BEA001571675D32783C51;
+			remoteInfo = fuzzer_support;
+		};
+		4E95C8B3A85030EA247FCFAD /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 792C62A0E4868989A4A36A3E;
+			remoteInfo = v8_libplatform;
+		};
+		572D9D2D95101F1A1CD6F140 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = F254D34C24C76377F3729B84;
+			remoteInfo = v8_base;
+		};
+		5A9C494DE9A97297C7150C1C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 26273B5082FD9E2952EA55E6;
+			remoteInfo = v8_base;
+		};
+		5CE608C3AAB8412D4C2FD1ED /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 65403222C89E874A5CE11AC6 /* icu.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = F46C1033BA316E88C6721A96;
+			remoteInfo = icudata;
+		};
+		5D1D9C23282E327473A83273 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 26A73E70B3C5D4B7FE523A1A;
+			remoteInfo = v8;
+		};
+		636C0E23A832994E2BEB9053 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C29356792D16C014B2391E4E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 313BEA001571675D32783C51;
+			remoteInfo = fuzzer_support;
+		};
+		7024E9165B3580D9736DAB08 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = DC1F34142EA542A84E75D457;
+			remoteInfo = v8_nosnapshot;
+		};
+		703687BBCB0352E2699E4702 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 9ECCDE91D9EA1FE332B22C55;
+			remoteInfo = v8_libbase;
+		};
+		758235F1BE75F48F7C73E1E7 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C29356792D16C014B2391E4E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 3020D45545FF8852F5EFD061;
+			remoteInfo = wasm_fuzzer;
+		};
+		7957BA8086D089A4C93523C5 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C29356792D16C014B2391E4E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7D184AA92ED66D10AAA3A920;
+			remoteInfo = regexp_fuzzer;
+		};
+		7A78AE50E65D812F7C922389 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 554758952FC3AF9BD4BA01ED;
+			remoteInfo = js2c;
+		};
+		7BF10D70968537A301AA8F88 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 65403222C89E874A5CE11AC6 /* icu.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = C08DF88BB43555FDD0E6951C;
+			remoteInfo = icui18n;
+		};
+		7C25839E06BD56AACC0A83E5 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 792C62A0E4868989A4A36A3E;
+			remoteInfo = v8_libplatform;
+		};
+		7CB68356369ECA7F906251C5 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C29356792D16C014B2391E4E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 313BEA001571675D32783C51;
+			remoteInfo = fuzzer_support;
+		};
+		7FA1BE2046FB963177A55B8A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 76808CD7B8548E9CADFE2761;
+			remoteInfo = v8_libbase;
+		};
+		8026F5CEF1C1F092EA7E46B8 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 451E0376C6ED476190E95DA1;
+			remoteInfo = v8_libplatform;
+		};
+		81BF752AB71FA05EFAF7B28B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 09C0DA32EA5AD581FB62FFE1;
+			remoteInfo = v8_external_snapshot;
+		};
+		847B711C43E8D51AFFD04261 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C29356792D16C014B2391E4E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A80AA101C01A2E8C86EBFDBC;
+			remoteInfo = parser_fuzzer_lib;
+		};
+		8EDB4A9C2A85E58420D54E14 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = AFEC6253FB80927258083783;
+			remoteInfo = v8_maybe_snapshot;
+		};
+		90094EAB840126BCF91A3054 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 554758952FC3AF9BD4BA01ED;
+			remoteInfo = js2c;
+		};
+		9098FF7B777F577BEF6D29FE /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = F254D34C24C76377F3729B84;
+			remoteInfo = v8_base;
+		};
+		96F32B8AAB49B6A9C3771CD9 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 65403222C89E874A5CE11AC6 /* icu.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = F46C1033BA316E88C6721A96;
+			remoteInfo = icudata;
+		};
+		9CD101C4A8B7B446F53FD695 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 65403222C89E874A5CE11AC6 /* icu.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 438C51A5B19300095C141CAB;
+			remoteInfo = icui18n;
+		};
+		A0D23DAC5E095DCC0BB14979 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = AFEC6253FB80927258083783;
+			remoteInfo = v8_maybe_snapshot;
+		};
+		A3B5E5A0DEF9ED14E1C91C14 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 09C0DA32EA5AD581FB62FFE1;
+			remoteInfo = v8_external_snapshot;
+		};
+		AC379D255BA6BB9CB86446F8 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 792C62A0E4868989A4A36A3E;
+			remoteInfo = v8_libplatform;
+		};
+		ACA3C772E6FE163D5F59B4C6 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 65403222C89E874A5CE11AC6 /* icu.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = A8365F341FF32481B097DC30;
+			remoteInfo = icuuc;
+		};
+		ADCE3BB87AA98CE197BE2567 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C29356792D16C014B2391E4E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 313BEA001571675D32783C51;
+			remoteInfo = fuzzer_support;
+		};
+		AFA0F98736593D1FFCBA3273 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 26A73E70B3C5D4B7FE523A1A;
+			remoteInfo = v8;
+		};
+		B33F6CB770FCEC5E9BBC5E91 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = D031ED9682F21360344042FF;
+			remoteInfo = mksnapshot;
+		};
+		B8C01E1842563AA019F54CD4 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 26A73E70B3C5D4B7FE523A1A;
+			remoteInfo = v8;
+		};
+		B9C89E2501F2F2AA0D439B5F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 554758952FC3AF9BD4BA01ED;
+			remoteInfo = js2c;
+		};
+		BB159EC2A8C72215FE9A3E55 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 65403222C89E874A5CE11AC6 /* icu.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 438C51A5B19300095C141CAB;
+			remoteInfo = icui18n;
+		};
+		BB390C3DCA77623CC930A0D1 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 65403222C89E874A5CE11AC6 /* icu.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = A8365F341FF32481B097DC30;
+			remoteInfo = icuuc;
+		};
+		BB8C2EAD25A8EB3A174B2FA5 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 26A73E70B3C5D4B7FE523A1A;
+			remoteInfo = v8;
+		};
+		C309173109FA861F605E3371 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = F254D34C24C76377F3729B84;
+			remoteInfo = v8_base;
+		};
+		C350A3DA2FF41F8B1109B9F7 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 49377DA3B5C48339325D54A9;
+			remoteInfo = natives_blob;
+		};
+		C63F2A599B2465A5D16CB8A1 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 49377DA3B5C48339325D54A9;
+			remoteInfo = natives_blob;
+		};
+		CAD7472BD08C16A8803E5EDF /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 65403222C89E874A5CE11AC6 /* icu.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 438C51A5B19300095C141CAB;
+			remoteInfo = icui18n;
+		};
+		CAD9EE7849250C8E07398DC6 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C29356792D16C014B2391E4E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A80AA101C01A2E8C86EBFDBC;
+			remoteInfo = parser_fuzzer_lib;
+		};
+		CC79E5232B38A15CC8BA6F28 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 26A73E70B3C5D4B7FE523A1A;
+			remoteInfo = v8;
+		};
+		CDD968E1F8262A09250C4540 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 792C62A0E4868989A4A36A3E;
+			remoteInfo = v8_libplatform;
+		};
+		CEF9CFD658695BE4CD5F7B6B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C29356792D16C014B2391E4E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 676626A07F7004C66BD58E79;
+			remoteInfo = wasm_asmjs_fuzzer_lib;
+		};
+		D1477BF84B3F27B0294D260C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 65403222C89E874A5CE11AC6 /* icu.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = A8365F341FF32481B097DC30;
+			remoteInfo = icuuc;
+		};
+		D19B76DF82213C6F82EF4BC9 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = F254D34C24C76377F3729B84;
+			remoteInfo = v8_base;
+		};
+		D336F11EFE86F642E47DA1DB /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C29356792D16C014B2391E4E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 09D582D1D78E29BE2920059F;
+			remoteInfo = parser_fuzzer;
+		};
+		D6B9C6589819681C940B1876 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C29356792D16C014B2391E4E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 104E219BAE9CEC59323E73DC;
+			remoteInfo = wasm_fuzzer_lib;
+		};
+		D7873AD9E48667C1528F6B87 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C29356792D16C014B2391E4E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 196E744F5F37AB279E4DF0F5;
+			remoteInfo = json_fuzzer;
+		};
+		DA1DBDD2981A7F2D4AA39864 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 65403222C89E874A5CE11AC6 /* icu.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = F46C1033BA316E88C6721A96;
+			remoteInfo = icudata;
+		};
+		DB9B33EC6B95EFEF70D210C6 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C29356792D16C014B2391E4E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B3E2D0D09024C1DE48EB629E;
+			remoteInfo = wasm_asmjs_fuzzer;
+		};
+		E366349D7FF6A9AF30226240 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 9ECCDE91D9EA1FE332B22C55;
+			remoteInfo = v8_libbase;
+		};
+		E41C227D4BCD7E9F410E6214 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 49377DA3B5C48339325D54A9;
+			remoteInfo = natives_blob;
+		};
+		E7A4956B66A17D3093E2A2AD /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = AFEC6253FB80927258083783;
+			remoteInfo = v8_maybe_snapshot;
+		};
+		E9F66708E10864AFA2093776 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 554758952FC3AF9BD4BA01ED;
+			remoteInfo = js2c;
+		};
+		ECDF7E2484146592BE34FA58 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C29356792D16C014B2391E4E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 104E219BAE9CEC59323E73DC;
+			remoteInfo = wasm_fuzzer_lib;
+		};
+		F1638265BED3855F498C38AB /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 554758952FC3AF9BD4BA01ED;
+			remoteInfo = js2c;
+		};
+		F3D4D4059809FC35B59AE1B7 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = F254D34C24C76377F3729B84;
+			remoteInfo = v8_base;
+		};
+		F53EE233520AD2BCEEF89F6B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 5AF7710A7C268F6340457FCF;
+			remoteInfo = v8_external_snapshot;
+		};
+		FC3E30902815A553D915AF47 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 65403222C89E874A5CE11AC6 /* icu.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 47A48DEFDFDD22CF05CDA95B;
+			remoteInfo = icuuc;
+		};
+		FDDB0AFA53650D79AA847524 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = EA65271C3D0F7C3383C07B9B;
+			remoteInfo = v8_snapshot;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		05B9AE7D14CD867906B72570 /* parser_fuzzer */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = parser_fuzzer; sourceTree = BUILT_PRODUCTS_DIR; };
+		0A4E99B2475D8DFF267E36B0 /* standalone.gypi */ = {isa = PBXFileReference; explicitFileType = sourcecode; name = standalone.gypi; path = ../../build/standalone.gypi; sourceTree = "<group>"; };
+		0E1AB96911FFD070EB2BFA9E /* json.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = json.cc; sourceTree = "<group>"; };
+		1418EBCDAD739F5141FAA922 /* libfuzzer_support.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libfuzzer_support.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		354176C5D23305BCC60408B3 /* libparser_fuzzer_lib.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libparser_fuzzer_lib.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		420B9BAE38ADF893348C0869 /* libwasm_asmjs_fuzzer_lib.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libwasm_asmjs_fuzzer_lib.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		564D57232684120D369A65DD /* wasm-asmjs.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "wasm-asmjs.cc"; sourceTree = "<group>"; };
+		636CA29B5337E7E0BB0826AD /* fuzzer.gyp */ = {isa = PBXFileReference; explicitFileType = sourcecode; path = fuzzer.gyp; sourceTree = "<group>"; };
+		65403222C89E874A5CE11AC6 /* icu.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = icu.xcodeproj; path = ../../third_party/icu/icu.xcodeproj; sourceTree = SOURCE_ROOT; };
+		67F6A62B8F0A15216389A443 /* features.gypi */ = {isa = PBXFileReference; explicitFileType = sourcecode; name = features.gypi; path = ../../build/features.gypi; sourceTree = "<group>"; };
+		6F099EE8EAD2B0BB536DF13E /* toolchain.gypi */ = {isa = PBXFileReference; explicitFileType = sourcecode; name = toolchain.gypi; path = ../../build/toolchain.gypi; sourceTree = "<group>"; };
+		706AE21AD9A830AB2C909440 /* wasm.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = wasm.cc; sourceTree = "<group>"; };
+		7A91A6EAD289DDA76D1CEE89 /* parser.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = parser.cc; sourceTree = "<group>"; };
+		8966F50C5CF2E60010E7759E /* v8.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = v8.xcodeproj; path = ../../tools/gyp/v8.xcodeproj; sourceTree = SOURCE_ROOT; };
+		A220E961A3BB83083B0DE9B9 /* libwasm_fuzzer_lib.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libwasm_fuzzer_lib.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		ABF355F2641B5DC8A6250685 /* wasm_fuzzer */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = wasm_fuzzer; sourceTree = BUILT_PRODUCTS_DIR; };
+		B2C2870B12335FEF6CC5A432 /* libjson_fuzzer_lib.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libjson_fuzzer_lib.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		D0F52A24E0A9BB1897B87C16 /* fuzzer-support.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "fuzzer-support.h"; sourceTree = "<group>"; };
+		E6E8FB8F0F30040B07B5693B /* isolate.gypi */ = {isa = PBXFileReference; explicitFileType = sourcecode; name = isolate.gypi; path = ../../build/isolate.gypi; sourceTree = "<group>"; };
+		E934B87773470B18FA64E3DD /* libregexp_fuzzer_lib.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libregexp_fuzzer_lib.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		F6941BF549E4303A402411C0 /* wasm_asmjs_fuzzer */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = wasm_asmjs_fuzzer; sourceTree = BUILT_PRODUCTS_DIR; };
+		F8DBF591915F12519DB62811 /* fuzzer-support.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "fuzzer-support.cc"; sourceTree = "<group>"; };
+		F903226814A42D2F779E26E5 /* json_fuzzer */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = json_fuzzer; sourceTree = BUILT_PRODUCTS_DIR; };
+		FAB4D41BA373FA601C25B920 /* regexp_fuzzer */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = regexp_fuzzer; sourceTree = BUILT_PRODUCTS_DIR; };
+		FDE3C84C4CDCB4121FAF26A3 /* fuzzer.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = fuzzer.cc; sourceTree = "<group>"; };
+		FEEF7D31715D1F19238BBAA7 /* regexp.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = regexp.cc; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		06D244DEA062750C0F2BD8A3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FD88A67FC5B96EC5BDBB5315 /* libregexp_fuzzer_lib.a in Frameworks */,
+				E3D7CF945436DAFBD7070AFA /* libfuzzer_support.a in Frameworks */,
+				70FEF86CEEA2FCFC543E3F15 /* libv8_libplatform.a in Frameworks */,
+				E1435D5243787D0B3E9A05ED /* libv8_libbase.a in Frameworks */,
+				174B9FBDC749AA1129D958D3 /* libv8_base.a in Frameworks */,
+				EBBBE2A55F9CDB23531EB57D /* libicui18n.a in Frameworks */,
+				3D0BD4924F80ADA4759FB349 /* libicuuc.a in Frameworks */,
+				B6E1E42C72B40E86A56A1277 /* libicudata.a in Frameworks */,
+				D6CCAF19B20156313DA895E8 /* libv8_external_snapshot.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		14CF15987680DB0E9208364F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				155F29574C110BB14E4265FE /* libwasm_asmjs_fuzzer_lib.a in Frameworks */,
+				797B55F185C87BEB8BFDDCFB /* libfuzzer_support.a in Frameworks */,
+				C758F8B4B4F31C62E3A8DA14 /* libv8_libplatform.a in Frameworks */,
+				167370D782D862A3BBC51329 /* libv8_libbase.a in Frameworks */,
+				76D449BAA2B6B6F009C3222A /* libv8_base.a in Frameworks */,
+				085C969FCE6208BA9536DB0B /* libicui18n.a in Frameworks */,
+				A784BBCE79CD4C35D1E053CC /* libicuuc.a in Frameworks */,
+				E351706430F013B1B4A15411 /* libicudata.a in Frameworks */,
+				355321DACE2694A4A5FA9AC7 /* libv8_external_snapshot.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1E007466AB9055AE42EC6A83 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		27D71034A736AEA6B183E4ED /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6BC39E4AB37A57B75DBCF7BD /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9645C825D28787AFD42348AA /* libwasm_fuzzer_lib.a in Frameworks */,
+				02C8360C71411EF3930F31D4 /* libfuzzer_support.a in Frameworks */,
+				25DDD0DFB25C777FB14D369B /* libv8_libplatform.a in Frameworks */,
+				71BA72103818E766BD641E77 /* libv8_libbase.a in Frameworks */,
+				9DC773A472B9525951C7DA41 /* libv8_base.a in Frameworks */,
+				C638D27408F1FC7D18F4AA64 /* libicui18n.a in Frameworks */,
+				5747F75A6AE93AEF4DC6C632 /* libicuuc.a in Frameworks */,
+				119C07DD283DD74B2DF43C2B /* libicudata.a in Frameworks */,
+				AECE455D25AE89964E0EFE36 /* libv8_external_snapshot.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8C05348609336E4FA5BD134C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9E2F92E50F944B2BED1FE7D2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5F564D07D026E8D46CAD1E0D /* libjson_fuzzer_lib.a in Frameworks */,
+				8C6A573DD54783A7D096496D /* libfuzzer_support.a in Frameworks */,
+				3ABDB413E562BF4D467AF584 /* libv8_libplatform.a in Frameworks */,
+				37C8247154E6CFCF2A914B67 /* libv8_libbase.a in Frameworks */,
+				1898B498B4CD29E53367B5D1 /* libv8_base.a in Frameworks */,
+				833A63DD1C490A8DF2CBE3D0 /* libicui18n.a in Frameworks */,
+				D3F1C80820C833B9421B8850 /* libicuuc.a in Frameworks */,
+				D4F6426C3E1BBF6E28E4E6C2 /* libicudata.a in Frameworks */,
+				331E0A2ACC2D9E051FDD846B /* libv8_external_snapshot.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A3B1F816FAD230030EDAF906 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B81D434C934CBEA2402AA533 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CCA7ACEF76F03F3FDC266D2B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DC836FF9FBC8ADC38B6BE6A2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C678D2677C29CB727841D047 /* libparser_fuzzer_lib.a in Frameworks */,
+				8F12A7C212E246A4AD2FFFC1 /* libfuzzer_support.a in Frameworks */,
+				02F6B12D0DF40EB2B2EDDEA7 /* libv8_libplatform.a in Frameworks */,
+				585A180AF02EFD7A8DF698C7 /* libv8_libbase.a in Frameworks */,
+				F8EE50F621D2EE3CE3B2CA03 /* libv8_base.a in Frameworks */,
+				92CCC888968D63DCBBFD00AE /* libicui18n.a in Frameworks */,
+				7A87062B21FB64838E55841E /* libicuuc.a in Frameworks */,
+				F10DCB66F9D647D0DD4CC8CD /* libicudata.a in Frameworks */,
+				AF0F785ECAA71F403FB66E2B /* libv8_external_snapshot.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		18F52BD5BA2CBD9BC782E071 /* Projects */ = {
+			isa = PBXGroup;
+			children = (
+				65403222C89E874A5CE11AC6 /* icu.xcodeproj */,
+				8966F50C5CF2E60010E7759E /* v8.xcodeproj */,
+			);
+			name = Projects;
+			sourceTree = "<group>";
+		};
+		53ED917A34A1E46457BE2FBB /* Build */ = {
+			isa = PBXGroup;
+			children = (
+				67F6A62B8F0A15216389A443 /* features.gypi */,
+				636CA29B5337E7E0BB0826AD /* fuzzer.gyp */,
+				E6E8FB8F0F30040B07B5693B /* isolate.gypi */,
+				0A4E99B2475D8DFF267E36B0 /* standalone.gypi */,
+				6F099EE8EAD2B0BB536DF13E /* toolchain.gypi */,
+			);
+			name = Build;
+			sourceTree = "<group>";
+		};
+		57451BE89A6E23F6B35D3D4A = {
+			isa = PBXGroup;
+			children = (
+				C14CAA07E0A6783E608BE311 /* Source */,
+				18F52BD5BA2CBD9BC782E071 /* Projects */,
+				F147C23E6DCA69CAD022EA8D /* Products */,
+				53ED917A34A1E46457BE2FBB /* Build */,
+			);
+			sourceTree = "<group>";
+		};
+		7FA4D9A5B91DD1D85DE2AC94 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				24D9312322B1A5F92DBCF21C /* libicudata.a */,
+				366A63DB7326B343CACD0170 /* libicui18n.a */,
+				DAAAE16C5988A2712728A7E4 /* libicuuc.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		9825C506055792259F878EF2 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				35631AB07BC3E492C6A23B4D /* libv8_snapshot.a */,
+				E6E5917E8BA9B90A88BB6B2C /* libv8_nosnapshot.a */,
+				6FD96B2BA3130F0DD14074C6 /* libv8_external_snapshot.a */,
+				2F415244C0E2178F9E3B136C /* libv8_base.a */,
+				EB161B7B9B7861336943CB4E /* libv8_libbase.a */,
+				BA83F05DF37FA9E8E249B77A /* libv8_libplatform.a */,
+				3DA7CC2CFF9E3715557CFDBB /* mksnapshot */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		C14CAA07E0A6783E608BE311 /* Source */ = {
+			isa = PBXGroup;
+			children = (
+				F8DBF591915F12519DB62811 /* fuzzer-support.cc */,
+				D0F52A24E0A9BB1897B87C16 /* fuzzer-support.h */,
+				FDE3C84C4CDCB4121FAF26A3 /* fuzzer.cc */,
+				0E1AB96911FFD070EB2BFA9E /* json.cc */,
+				7A91A6EAD289DDA76D1CEE89 /* parser.cc */,
+				FEEF7D31715D1F19238BBAA7 /* regexp.cc */,
+				564D57232684120D369A65DD /* wasm-asmjs.cc */,
+				706AE21AD9A830AB2C909440 /* wasm.cc */,
+			);
+			name = Source;
+			sourceTree = "<group>";
+		};
+		F147C23E6DCA69CAD022EA8D /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				F903226814A42D2F779E26E5 /* json_fuzzer */,
+				B2C2870B12335FEF6CC5A432 /* libjson_fuzzer_lib.a */,
+				05B9AE7D14CD867906B72570 /* parser_fuzzer */,
+				354176C5D23305BCC60408B3 /* libparser_fuzzer_lib.a */,
+				FAB4D41BA373FA601C25B920 /* regexp_fuzzer */,
+				E934B87773470B18FA64E3DD /* libregexp_fuzzer_lib.a */,
+				ABF355F2641B5DC8A6250685 /* wasm_fuzzer */,
+				A220E961A3BB83083B0DE9B9 /* libwasm_fuzzer_lib.a */,
+				F6941BF549E4303A402411C0 /* wasm_asmjs_fuzzer */,
+				420B9BAE38ADF893348C0869 /* libwasm_asmjs_fuzzer_lib.a */,
+				1418EBCDAD739F5141FAA922 /* libfuzzer_support.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		09D582D1D78E29BE2920059F /* parser_fuzzer */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 46767DB6F6A0948E0ABD0465 /* Build configuration list for PBXNativeTarget "parser_fuzzer" */;
+			buildPhases = (
+				EF8D13E08843B0B00997273E /* Sources */,
+				DC836FF9FBC8ADC38B6BE6A2 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				85AFB99E6C46E715FD41EFC6 /* PBXTargetDependency */,
+				E9929DA11F58D61AB0E13C63 /* PBXTargetDependency */,
+				EE2988D8CCF707AA52C90360 /* PBXTargetDependency */,
+				F1CF9DEC6B938F4B98D9B9A5 /* PBXTargetDependency */,
+				D9E4432ADDC1DD17402FB459 /* PBXTargetDependency */,
+				5524A34C14336C4E5775D190 /* PBXTargetDependency */,
+				39CF9CD46B2EDFA9BB047F27 /* PBXTargetDependency */,
+				F93B28320615EAE444E311B2 /* PBXTargetDependency */,
+				6CBF417E5BDAAF940173B01D /* PBXTargetDependency */,
+				EFC0EA86199A046DD34C74DB /* PBXTargetDependency */,
+				6764B6CBD90B75455C063FB0 /* PBXTargetDependency */,
+				6555BEA4E89E9816B6F10500 /* PBXTargetDependency */,
+				55E1DAF51BCA98F3C788B32B /* PBXTargetDependency */,
+			);
+			name = parser_fuzzer;
+			productName = parser_fuzzer;
+			productReference = 05B9AE7D14CD867906B72570 /* parser_fuzzer */;
+			productType = "com.apple.product-type.tool";
+		};
+		104E219BAE9CEC59323E73DC /* wasm_fuzzer_lib */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 94F3681256A3887C8D4815EC /* Build configuration list for PBXNativeTarget "wasm_fuzzer_lib" */;
+			buildPhases = (
+				F474DAAEB10674407F43905A /* Sources */,
+				CCA7ACEF76F03F3FDC266D2B /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = wasm_fuzzer_lib;
+			productName = wasm_fuzzer_lib;
+			productReference = A220E961A3BB83083B0DE9B9 /* libwasm_fuzzer_lib.a */;
+			productType = "com.apple.product-type.library.static";
+		};
+		196E744F5F37AB279E4DF0F5 /* json_fuzzer */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C414F9931BDD81B5B9897127 /* Build configuration list for PBXNativeTarget "json_fuzzer" */;
+			buildPhases = (
+				574178E92EF52B8E171B4C9C /* Sources */,
+				9E2F92E50F944B2BED1FE7D2 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				0835DCB4BD1D264F3927D81F /* PBXTargetDependency */,
+				BCC91BA70D5152329E04FFDA /* PBXTargetDependency */,
+				5BBC7396188A7D43FB000765 /* PBXTargetDependency */,
+				809786C0F696B811C4E06DF2 /* PBXTargetDependency */,
+				C06EC72543DCAC0B050FFAF5 /* PBXTargetDependency */,
+				66FAC630FCAE209D63C93903 /* PBXTargetDependency */,
+				A162460CE8E8DA78D139B221 /* PBXTargetDependency */,
+				940DC7ADA96F316256D7DFFB /* PBXTargetDependency */,
+				F852ED46848B7E0D68CE47C1 /* PBXTargetDependency */,
+				4BCE94D888D509B67FBC9CBE /* PBXTargetDependency */,
+				F5ECC3139A870DBE11A202BE /* PBXTargetDependency */,
+				5474C29346352A974770B848 /* PBXTargetDependency */,
+				F40B0771AC14B25B1954ED7C /* PBXTargetDependency */,
+			);
+			name = json_fuzzer;
+			productName = json_fuzzer;
+			productReference = F903226814A42D2F779E26E5 /* json_fuzzer */;
+			productType = "com.apple.product-type.tool";
+		};
+		3020D45545FF8852F5EFD061 /* wasm_fuzzer */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 388B463D873E2867EDF78A74 /* Build configuration list for PBXNativeTarget "wasm_fuzzer" */;
+			buildPhases = (
+				32986FF94C4DD12418A8FD73 /* Sources */,
+				6BC39E4AB37A57B75DBCF7BD /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				4103FCF82617AF5FAE5C23B5 /* PBXTargetDependency */,
+				2FD17F0389D9AAB1800857A2 /* PBXTargetDependency */,
+				4FCCD427DB94DD0C94A85A31 /* PBXTargetDependency */,
+				C8593F7DE1848955D82F53C9 /* PBXTargetDependency */,
+				FBF0856F479C28D9C4B0BB6C /* PBXTargetDependency */,
+				3F3238C3E54B5CDFF503EC86 /* PBXTargetDependency */,
+				BF2428AC84233F01A539277E /* PBXTargetDependency */,
+				CFE4BCD76379A6C336F5CC26 /* PBXTargetDependency */,
+				B6F56C0CDE400F76125ECFAA /* PBXTargetDependency */,
+				08A13457FA3EA4756B083F97 /* PBXTargetDependency */,
+				5300FEEEFFC2AB4342DF7B9A /* PBXTargetDependency */,
+				A7D0B19D7FC922B25E09C5FE /* PBXTargetDependency */,
+				FE18ACD26C0FA29960D7C828 /* PBXTargetDependency */,
+			);
+			name = wasm_fuzzer;
+			productName = wasm_fuzzer;
+			productReference = ABF355F2641B5DC8A6250685 /* wasm_fuzzer */;
+			productType = "com.apple.product-type.tool";
+		};
+		313BEA001571675D32783C51 /* fuzzer_support */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E8CB2AFA263AAAF7C2A5F2FE /* Build configuration list for PBXNativeTarget "fuzzer_support" */;
+			buildPhases = (
+				101C1FF0392C8D3AF97D5AA5 /* Sources */,
+				A3B1F816FAD230030EDAF906 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				7EC189B5AEB66C6D7DCAB118 /* PBXTargetDependency */,
+			);
+			name = fuzzer_support;
+			productName = fuzzer_support;
+			productReference = 1418EBCDAD739F5141FAA922 /* libfuzzer_support.a */;
+			productType = "com.apple.product-type.library.static";
+		};
+		4E0C36E7C4E2F4A856FA2DAC /* json_fuzzer_lib */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C076E9461BE5B2194EF8B282 /* Build configuration list for PBXNativeTarget "json_fuzzer_lib" */;
+			buildPhases = (
+				E30E0139CDF9D39EB6C238F7 /* Sources */,
+				8C05348609336E4FA5BD134C /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = json_fuzzer_lib;
+			productName = json_fuzzer_lib;
+			productReference = B2C2870B12335FEF6CC5A432 /* libjson_fuzzer_lib.a */;
+			productType = "com.apple.product-type.library.static";
+		};
+		676626A07F7004C66BD58E79 /* wasm_asmjs_fuzzer_lib */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2AE9123FCAAFF7BB47040D34 /* Build configuration list for PBXNativeTarget "wasm_asmjs_fuzzer_lib" */;
+			buildPhases = (
+				3053464D4121B123001BA025 /* Sources */,
+				1E007466AB9055AE42EC6A83 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = wasm_asmjs_fuzzer_lib;
+			productName = wasm_asmjs_fuzzer_lib;
+			productReference = 420B9BAE38ADF893348C0869 /* libwasm_asmjs_fuzzer_lib.a */;
+			productType = "com.apple.product-type.library.static";
+		};
+		6E24ACF1C9D23F37E3904279 /* regexp_fuzzer_lib */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F58B4BF802DC87E4EFA53C5A /* Build configuration list for PBXNativeTarget "regexp_fuzzer_lib" */;
+			buildPhases = (
+				705C511ED52ABB57A50B23AC /* Sources */,
+				B81D434C934CBEA2402AA533 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = regexp_fuzzer_lib;
+			productName = regexp_fuzzer_lib;
+			productReference = E934B87773470B18FA64E3DD /* libregexp_fuzzer_lib.a */;
+			productType = "com.apple.product-type.library.static";
+		};
+		7D184AA92ED66D10AAA3A920 /* regexp_fuzzer */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7629055C391513AF22BFFFD6 /* Build configuration list for PBXNativeTarget "regexp_fuzzer" */;
+			buildPhases = (
+				7F6CF906FBAC11378E0690EE /* Sources */,
+				06D244DEA062750C0F2BD8A3 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				5DA4E6C39BD5B73F65AE8966 /* PBXTargetDependency */,
+				A41DC3049BBC2F1713CACFE8 /* PBXTargetDependency */,
+				DC357158B29E095C6ACB5F40 /* PBXTargetDependency */,
+				BC12F82C594AF0F1154CB9FE /* PBXTargetDependency */,
+				4438148415BAEA0D4C7C3A1F /* PBXTargetDependency */,
+				54F7A42AE1A98570A41399CC /* PBXTargetDependency */,
+				169DA4036C71C4DD06B34F6C /* PBXTargetDependency */,
+				600284957506CBF60E24D3B9 /* PBXTargetDependency */,
+				FAC4A3042BDC10BA0518C58E /* PBXTargetDependency */,
+				EB6B956E10D02E06BE864F89 /* PBXTargetDependency */,
+				F2798FEFD9202E208998E088 /* PBXTargetDependency */,
+				A9B641F6B2210164B51B77A0 /* PBXTargetDependency */,
+				4853C89F4CD46B2F456CBA63 /* PBXTargetDependency */,
+			);
+			name = regexp_fuzzer;
+			productName = regexp_fuzzer;
+			productReference = FAB4D41BA373FA601C25B920 /* regexp_fuzzer */;
+			productType = "com.apple.product-type.tool";
+		};
+		A80AA101C01A2E8C86EBFDBC /* parser_fuzzer_lib */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F27443FC6AF45E312B65698C /* Build configuration list for PBXNativeTarget "parser_fuzzer_lib" */;
+			buildPhases = (
+				BD322EAC8A67375056A15843 /* Sources */,
+				27D71034A736AEA6B183E4ED /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = parser_fuzzer_lib;
+			productName = parser_fuzzer_lib;
+			productReference = 354176C5D23305BCC60408B3 /* libparser_fuzzer_lib.a */;
+			productType = "com.apple.product-type.library.static";
+		};
+		B3E2D0D09024C1DE48EB629E /* wasm_asmjs_fuzzer */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 99D6CA6FF24AD07F6F2E56FB /* Build configuration list for PBXNativeTarget "wasm_asmjs_fuzzer" */;
+			buildPhases = (
+				3B0B21892075F855B2C258B5 /* Sources */,
+				14CF15987680DB0E9208364F /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				82F597A566837DC561B09653 /* PBXTargetDependency */,
+				08C7439D828DF511A3DD924F /* PBXTargetDependency */,
+				1E4B9B82CC9A97BDCB98863C /* PBXTargetDependency */,
+				7E4576AF53F9344FA3C2DDAB /* PBXTargetDependency */,
+				EF809C41E6EC933762A99889 /* PBXTargetDependency */,
+				C03C4C248EF01D8DE8CC9FB9 /* PBXTargetDependency */,
+				44F19901A36D104B6E30FFFF /* PBXTargetDependency */,
+				EDF4878E21BFAF90F6A63CC7 /* PBXTargetDependency */,
+				351CBD40274CA9692507E598 /* PBXTargetDependency */,
+				18E74DE713B80FEA51414CE7 /* PBXTargetDependency */,
+				89452A797D0AA9AA8055443D /* PBXTargetDependency */,
+				0C3A199E97A02491DFEC1108 /* PBXTargetDependency */,
+				FFFBF055ABC5AE5F45CDFA35 /* PBXTargetDependency */,
+			);
+			name = wasm_asmjs_fuzzer;
+			productName = wasm_asmjs_fuzzer;
+			productReference = F6941BF549E4303A402411C0 /* wasm_asmjs_fuzzer */;
+			productType = "com.apple.product-type.tool";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		C29356792D16C014B2391E4E /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+			};
+			buildConfigurationList = BB3E3853FB2C24363FB214AD /* Build configuration list for PBXProject "fuzzer" */;
+			compatibilityVersion = "Xcode 3.2";
+			hasScannedForEncodings = 1;
+			mainGroup = 57451BE89A6E23F6B35D3D4A;
+			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = 7FA4D9A5B91DD1D85DE2AC94 /* Products */;
+					ProjectRef = 65403222C89E874A5CE11AC6 /* icu.xcodeproj */;
+				},
+				{
+					ProductGroup = 9825C506055792259F878EF2 /* Products */;
+					ProjectRef = 8966F50C5CF2E60010E7759E /* v8.xcodeproj */;
+				},
+			);
+			projectRoot = "";
+			targets = (
+				706FFEBD69C27192DF50A52A /* All */,
+				196E744F5F37AB279E4DF0F5 /* json_fuzzer */,
+				4E0C36E7C4E2F4A856FA2DAC /* json_fuzzer_lib */,
+				09D582D1D78E29BE2920059F /* parser_fuzzer */,
+				A80AA101C01A2E8C86EBFDBC /* parser_fuzzer_lib */,
+				7D184AA92ED66D10AAA3A920 /* regexp_fuzzer */,
+				6E24ACF1C9D23F37E3904279 /* regexp_fuzzer_lib */,
+				3020D45545FF8852F5EFD061 /* wasm_fuzzer */,
+				104E219BAE9CEC59323E73DC /* wasm_fuzzer_lib */,
+				B3E2D0D09024C1DE48EB629E /* wasm_asmjs_fuzzer */,
+				676626A07F7004C66BD58E79 /* wasm_asmjs_fuzzer_lib */,
+				313BEA001571675D32783C51 /* fuzzer_support */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXReferenceProxy section */
+		24D9312322B1A5F92DBCF21C /* libicudata.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libicudata.a;
+			remoteRef = 2D18CE821E0797364668D2EC /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		2F415244C0E2178F9E3B136C /* libv8_base.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libv8_base.a;
+			remoteRef = 5A9C494DE9A97297C7150C1C /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		35631AB07BC3E492C6A23B4D /* libv8_snapshot.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libv8_snapshot.a;
+			remoteRef = FDDB0AFA53650D79AA847524 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		366A63DB7326B343CACD0170 /* libicui18n.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libicui18n.a;
+			remoteRef = 7BF10D70968537A301AA8F88 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		3DA7CC2CFF9E3715557CFDBB /* mksnapshot */ = {
+			isa = PBXReferenceProxy;
+			fileType = "compiled.mach-o.executable";
+			path = mksnapshot;
+			remoteRef = B33F6CB770FCEC5E9BBC5E91 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		6FD96B2BA3130F0DD14074C6 /* libv8_external_snapshot.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libv8_external_snapshot.a;
+			remoteRef = F53EE233520AD2BCEEF89F6B /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		BA83F05DF37FA9E8E249B77A /* libv8_libplatform.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libv8_libplatform.a;
+			remoteRef = 8026F5CEF1C1F092EA7E46B8 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		DAAAE16C5988A2712728A7E4 /* libicuuc.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libicuuc.a;
+			remoteRef = FC3E30902815A553D915AF47 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		E6E5917E8BA9B90A88BB6B2C /* libv8_nosnapshot.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libv8_nosnapshot.a;
+			remoteRef = 7024E9165B3580D9736DAB08 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		EB161B7B9B7861336943CB4E /* libv8_libbase.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libv8_libbase.a;
+			remoteRef = 7FA1BE2046FB963177A55B8A /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+/* End PBXReferenceProxy section */
+
+/* Begin PBXSourcesBuildPhase section */
+		101C1FF0392C8D3AF97D5AA5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7FA85B0214179627EDE8D6D8 /* fuzzer-support.cc in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		3053464D4121B123001BA025 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3A607C6DBE3D0B1C43C05A31 /* wasm-asmjs.cc in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		32986FF94C4DD12418A8FD73 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				099CA4EFCF107F1877539883 /* fuzzer.cc in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		3B0B21892075F855B2C258B5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B710032EE2784F5EE3DD3C7E /* fuzzer.cc in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		574178E92EF52B8E171B4C9C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E1F0DF939AE8605F14506091 /* fuzzer.cc in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		705C511ED52ABB57A50B23AC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				217E062A26C00434E0B34981 /* regexp.cc in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7F6CF906FBAC11378E0690EE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				466474D9CEB60254F4758646 /* fuzzer.cc in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BD322EAC8A67375056A15843 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				22397FFFFB27CB1DBBD5F876 /* parser.cc in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E30E0139CDF9D39EB6C238F7 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3B91F6BA1F5B12EEEB5B30D3 /* json.cc in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EF8D13E08843B0B00997273E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				87701898DDC79B3803104658 /* fuzzer.cc in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F474DAAEB10674407F43905A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EA1E6EE2A748AD47FEF25421 /* wasm.cc in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		0835DCB4BD1D264F3927D81F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4E0C36E7C4E2F4A856FA2DAC /* json_fuzzer_lib */;
+			targetProxy = 15AE31510F14B82B619D7D36 /* PBXContainerItemProxy */;
+		};
+		08A13457FA3EA4756B083F97 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = icudata;
+			targetProxy = 0838BCC00758A36AB31E477C /* PBXContainerItemProxy */;
+		};
+		08C7439D828DF511A3DD924F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 313BEA001571675D32783C51 /* fuzzer_support */;
+			targetProxy = 4C40F8D5676F3C7BD5275FED /* PBXContainerItemProxy */;
+		};
+		0C3A199E97A02491DFEC1108 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = js2c;
+			targetProxy = E9F66708E10864AFA2093776 /* PBXContainerItemProxy */;
+		};
+		169DA4036C71C4DD06B34F6C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = v8_base;
+			targetProxy = 572D9D2D95101F1A1CD6F140 /* PBXContainerItemProxy */;
+		};
+		18E74DE713B80FEA51414CE7 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = icudata;
+			targetProxy = 96F32B8AAB49B6A9C3771CD9 /* PBXContainerItemProxy */;
+		};
+		1E4B9B82CC9A97BDCB98863C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = v8_libplatform;
+			targetProxy = AC379D255BA6BB9CB86446F8 /* PBXContainerItemProxy */;
+		};
+		1EB6464C1E9D6930FD35CE45 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 09D582D1D78E29BE2920059F /* parser_fuzzer */;
+			targetProxy = D336F11EFE86F642E47DA1DB /* PBXContainerItemProxy */;
+		};
+		2CBC4E8824118692F6262777 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 3020D45545FF8852F5EFD061 /* wasm_fuzzer */;
+			targetProxy = 758235F1BE75F48F7C73E1E7 /* PBXContainerItemProxy */;
+		};
+		2FD17F0389D9AAB1800857A2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 313BEA001571675D32783C51 /* fuzzer_support */;
+			targetProxy = 636C0E23A832994E2BEB9053 /* PBXContainerItemProxy */;
+		};
+		351CBD40274CA9692507E598 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = icuuc;
+			targetProxy = ACA3C772E6FE163D5F59B4C6 /* PBXContainerItemProxy */;
+		};
+		39CF9CD46B2EDFA9BB047F27 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = v8_base;
+			targetProxy = F3D4D4059809FC35B59AE1B7 /* PBXContainerItemProxy */;
+		};
+		3F3238C3E54B5CDFF503EC86 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = v8_maybe_snapshot;
+			targetProxy = 491375D33C8A6BC8CAF78F51 /* PBXContainerItemProxy */;
+		};
+		4103FCF82617AF5FAE5C23B5 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 104E219BAE9CEC59323E73DC /* wasm_fuzzer_lib */;
+			targetProxy = ECDF7E2484146592BE34FA58 /* PBXContainerItemProxy */;
+		};
+		4438148415BAEA0D4C7C3A1F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = v8;
+			targetProxy = 5D1D9C23282E327473A83273 /* PBXContainerItemProxy */;
+		};
+		44F19901A36D104B6E30FFFF /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = v8_base;
+			targetProxy = 9098FF7B777F577BEF6D29FE /* PBXContainerItemProxy */;
+		};
+		46B241FC2CD55282B930CA69 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 6E24ACF1C9D23F37E3904279 /* regexp_fuzzer_lib */;
+			targetProxy = 154555D9473061BBF2395F34 /* PBXContainerItemProxy */;
+		};
+		4853C89F4CD46B2F456CBA63 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = natives_blob;
+			targetProxy = C63F2A599B2465A5D16CB8A1 /* PBXContainerItemProxy */;
+		};
+		4BCE94D888D509B67FBC9CBE /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = icudata;
+			targetProxy = DA1DBDD2981A7F2D4AA39864 /* PBXContainerItemProxy */;
+		};
+		4DE35C8746C53477AC16DD0B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B3E2D0D09024C1DE48EB629E /* wasm_asmjs_fuzzer */;
+			targetProxy = DB9B33EC6B95EFEF70D210C6 /* PBXContainerItemProxy */;
+		};
+		4FCCD427DB94DD0C94A85A31 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = v8_libplatform;
+			targetProxy = 7C25839E06BD56AACC0A83E5 /* PBXContainerItemProxy */;
+		};
+		5300FEEEFFC2AB4342DF7B9A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = v8_external_snapshot;
+			targetProxy = 12EDB2B777032F4C1573B511 /* PBXContainerItemProxy */;
+		};
+		5474C29346352A974770B848 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = js2c;
+			targetProxy = B9C89E2501F2F2AA0D439B5F /* PBXContainerItemProxy */;
+		};
+		54F7A42AE1A98570A41399CC /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = v8_maybe_snapshot;
+			targetProxy = E7A4956B66A17D3093E2A2AD /* PBXContainerItemProxy */;
+		};
+		5524A34C14336C4E5775D190 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = v8_maybe_snapshot;
+			targetProxy = 8EDB4A9C2A85E58420D54E14 /* PBXContainerItemProxy */;
+		};
+		55E1DAF51BCA98F3C788B32B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = natives_blob;
+			targetProxy = C350A3DA2FF41F8B1109B9F7 /* PBXContainerItemProxy */;
+		};
+		5BBC7396188A7D43FB000765 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = v8_libplatform;
+			targetProxy = 05937D445E90ABAA3AA028B9 /* PBXContainerItemProxy */;
+		};
+		5DA4E6C39BD5B73F65AE8966 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 6E24ACF1C9D23F37E3904279 /* regexp_fuzzer_lib */;
+			targetProxy = 111B3EE1606E3D4E7F16DBDC /* PBXContainerItemProxy */;
+		};
+		600284957506CBF60E24D3B9 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = icui18n;
+			targetProxy = 22E65C658EDC5541E0CE5505 /* PBXContainerItemProxy */;
+		};
+		6048CCB1ADA80BDF3EE1C7AF /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 104E219BAE9CEC59323E73DC /* wasm_fuzzer_lib */;
+			targetProxy = D6B9C6589819681C940B1876 /* PBXContainerItemProxy */;
+		};
+		65134807B590DDC8BBACDB58 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 313BEA001571675D32783C51 /* fuzzer_support */;
+			targetProxy = 7CB68356369ECA7F906251C5 /* PBXContainerItemProxy */;
+		};
+		6555BEA4E89E9816B6F10500 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = js2c;
+			targetProxy = F1638265BED3855F498C38AB /* PBXContainerItemProxy */;
+		};
+		66FAC630FCAE209D63C93903 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = v8_maybe_snapshot;
+			targetProxy = A0D23DAC5E095DCC0BB14979 /* PBXContainerItemProxy */;
+		};
+		6764B6CBD90B75455C063FB0 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = v8_external_snapshot;
+			targetProxy = A3B5E5A0DEF9ED14E1C91C14 /* PBXContainerItemProxy */;
+		};
+		6CBF417E5BDAAF940173B01D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = icuuc;
+			targetProxy = BB390C3DCA77623CC930A0D1 /* PBXContainerItemProxy */;
+		};
+		7E4576AF53F9344FA3C2DDAB /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = v8_libbase;
+			targetProxy = 0ED3AE30712C767A75C55469 /* PBXContainerItemProxy */;
+		};
+		7EC189B5AEB66C6D7DCAB118 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = v8;
+			targetProxy = AFA0F98736593D1FFCBA3273 /* PBXContainerItemProxy */;
+		};
+		809786C0F696B811C4E06DF2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = v8_libbase;
+			targetProxy = 07C0DBC62DE0B9F4D64AFAED /* PBXContainerItemProxy */;
+		};
+		82F597A566837DC561B09653 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 676626A07F7004C66BD58E79 /* wasm_asmjs_fuzzer_lib */;
+			targetProxy = 13E32F9173E302BAE64BFCE1 /* PBXContainerItemProxy */;
+		};
+		85AFB99E6C46E715FD41EFC6 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A80AA101C01A2E8C86EBFDBC /* parser_fuzzer_lib */;
+			targetProxy = CAD9EE7849250C8E07398DC6 /* PBXContainerItemProxy */;
+		};
+		89452A797D0AA9AA8055443D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = v8_external_snapshot;
+			targetProxy = 81BF752AB71FA05EFAF7B28B /* PBXContainerItemProxy */;
+		};
+		908217372FC06ABB4F90C38C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A80AA101C01A2E8C86EBFDBC /* parser_fuzzer_lib */;
+			targetProxy = 847B711C43E8D51AFFD04261 /* PBXContainerItemProxy */;
+		};
+		90C725963BC91D0E9ADE6C1A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 676626A07F7004C66BD58E79 /* wasm_asmjs_fuzzer_lib */;
+			targetProxy = CEF9CFD658695BE4CD5F7B6B /* PBXContainerItemProxy */;
+		};
+		940DC7ADA96F316256D7DFFB /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = icui18n;
+			targetProxy = 9CD101C4A8B7B446F53FD695 /* PBXContainerItemProxy */;
+		};
+		A162460CE8E8DA78D139B221 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = v8_base;
+			targetProxy = D19B76DF82213C6F82EF4BC9 /* PBXContainerItemProxy */;
+		};
+		A41DC3049BBC2F1713CACFE8 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 313BEA001571675D32783C51 /* fuzzer_support */;
+			targetProxy = 0EA105CA435948F82EB176EE /* PBXContainerItemProxy */;
+		};
+		A7D0B19D7FC922B25E09C5FE /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = js2c;
+			targetProxy = 7A78AE50E65D812F7C922389 /* PBXContainerItemProxy */;
+		};
+		A9B641F6B2210164B51B77A0 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = js2c;
+			targetProxy = 90094EAB840126BCF91A3054 /* PBXContainerItemProxy */;
+		};
+		B6F56C0CDE400F76125ECFAA /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = icuuc;
+			targetProxy = 164E049BC330443142204C89 /* PBXContainerItemProxy */;
+		};
+		BC12F82C594AF0F1154CB9FE /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = v8_libbase;
+			targetProxy = E366349D7FF6A9AF30226240 /* PBXContainerItemProxy */;
+		};
+		BCC91BA70D5152329E04FFDA /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 313BEA001571675D32783C51 /* fuzzer_support */;
+			targetProxy = 064ADA5874EC52FA20131ADB /* PBXContainerItemProxy */;
+		};
+		BF2428AC84233F01A539277E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = v8_base;
+			targetProxy = C309173109FA861F605E3371 /* PBXContainerItemProxy */;
+		};
+		C03C4C248EF01D8DE8CC9FB9 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = v8_maybe_snapshot;
+			targetProxy = 04A8CC774728EA031101FA09 /* PBXContainerItemProxy */;
+		};
+		C06EC72543DCAC0B050FFAF5 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = v8;
+			targetProxy = CC79E5232B38A15CC8BA6F28 /* PBXContainerItemProxy */;
+		};
+		C8593F7DE1848955D82F53C9 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = v8_libbase;
+			targetProxy = 703687BBCB0352E2699E4702 /* PBXContainerItemProxy */;
+		};
+		CFE4BCD76379A6C336F5CC26 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = icui18n;
+			targetProxy = CAD7472BD08C16A8803E5EDF /* PBXContainerItemProxy */;
+		};
+		D217FDEED497397100DB0CB4 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 196E744F5F37AB279E4DF0F5 /* json_fuzzer */;
+			targetProxy = D7873AD9E48667C1528F6B87 /* PBXContainerItemProxy */;
+		};
+		D9E4432ADDC1DD17402FB459 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = v8;
+			targetProxy = B8C01E1842563AA019F54CD4 /* PBXContainerItemProxy */;
+		};
+		DC357158B29E095C6ACB5F40 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = v8_libplatform;
+			targetProxy = CDD968E1F8262A09250C4540 /* PBXContainerItemProxy */;
+		};
+		E9929DA11F58D61AB0E13C63 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 313BEA001571675D32783C51 /* fuzzer_support */;
+			targetProxy = ADCE3BB87AA98CE197BE2567 /* PBXContainerItemProxy */;
+		};
+		E9AE98FD3A019D473BEF7AA2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7D184AA92ED66D10AAA3A920 /* regexp_fuzzer */;
+			targetProxy = 7957BA8086D089A4C93523C5 /* PBXContainerItemProxy */;
+		};
+		EB6B956E10D02E06BE864F89 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = icudata;
+			targetProxy = 5CE608C3AAB8412D4C2FD1ED /* PBXContainerItemProxy */;
+		};
+		EDF4878E21BFAF90F6A63CC7 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = icui18n;
+			targetProxy = BB159EC2A8C72215FE9A3E55 /* PBXContainerItemProxy */;
+		};
+		EE2988D8CCF707AA52C90360 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = v8_libplatform;
+			targetProxy = 4E95C8B3A85030EA247FCFAD /* PBXContainerItemProxy */;
+		};
+		EF809C41E6EC933762A99889 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = v8;
+			targetProxy = 326B577333B8F99708C61A05 /* PBXContainerItemProxy */;
+		};
+		EFC0EA86199A046DD34C74DB /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = icudata;
+			targetProxy = 299EDC18B4CF91E0B5055A0F /* PBXContainerItemProxy */;
+		};
+		F1CF9DEC6B938F4B98D9B9A5 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = v8_libbase;
+			targetProxy = 457AC963306AC0B349E5C40D /* PBXContainerItemProxy */;
+		};
+		F27427F1EBCFCA978FF9AB04 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4E0C36E7C4E2F4A856FA2DAC /* json_fuzzer_lib */;
+			targetProxy = 4BB01A77DE96C9863F1CF4E2 /* PBXContainerItemProxy */;
+		};
+		F2798FEFD9202E208998E088 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = v8_external_snapshot;
+			targetProxy = 04B71D322777290A56C38E57 /* PBXContainerItemProxy */;
+		};
+		F40B0771AC14B25B1954ED7C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = natives_blob;
+			targetProxy = E41C227D4BCD7E9F410E6214 /* PBXContainerItemProxy */;
+		};
+		F5ECC3139A870DBE11A202BE /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = v8_external_snapshot;
+			targetProxy = 48B6198AB5642423B7AD65FC /* PBXContainerItemProxy */;
+		};
+		F852ED46848B7E0D68CE47C1 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = icuuc;
+			targetProxy = D1477BF84B3F27B0294D260C /* PBXContainerItemProxy */;
+		};
+		F93B28320615EAE444E311B2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = icui18n;
+			targetProxy = 15D727771A2FE0506AC71E88 /* PBXContainerItemProxy */;
+		};
+		FAC4A3042BDC10BA0518C58E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = icuuc;
+			targetProxy = 01285531F2C03EBE09135496 /* PBXContainerItemProxy */;
+		};
+		FBF0856F479C28D9C4B0BB6C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = v8;
+			targetProxy = BB8C2EAD25A8EB3A174B2FA5 /* PBXContainerItemProxy */;
+		};
+		FE18ACD26C0FA29960D7C828 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = natives_blob;
+			targetProxy = 4AC9DB31E83B205E84B8ACFE /* PBXContainerItemProxy */;
+		};
+		FFFBF055ABC5AE5F45CDFA35 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = natives_blob;
+			targetProxy = 205C8467A93CB50B0CCE1A5A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		11367A80EF40D45CF9D7693F /* Optdebug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = "";
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					ENABLE_GDB_JIT_INTERFACE,
+					V8_DEPRECATION_WARNINGS,
+					V8_IMMINENT_DEPRECATION_WARNINGS,
+					V8_I18N_SUPPORT,
+					V8_USE_EXTERNAL_STARTUP_DATA,
+					ENABLE_DISASSEMBLER,
+					V8_ENABLE_CHECKS,
+					OBJECT_PRINT,
+					VERIFY_HEAP,
+					DEBUG,
+					TRACE_MAPS,
+					ENABLE_HANDLE_ZAPPING,
+				);
+				GCC_STRICT_ALIASING = YES;
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = ../..;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				OTHER_LDFLAGS = "-Wl,-search_paths_first";
+				PREBINDING = NO;
+				PRODUCT_NAME = json_fuzzer;
+				SYMROOT = ../../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Optdebug;
+		};
+		1CB6C288B2B9133606F30761 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = lib;
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					ENABLE_GDB_JIT_INTERFACE,
+					V8_DEPRECATION_WARNINGS,
+					V8_IMMINENT_DEPRECATION_WARNINGS,
+					V8_I18N_SUPPORT,
+					V8_USE_EXTERNAL_STARTUP_DATA,
+					ENABLE_HANDLE_ZAPPING,
+				);
+				GCC_STRICT_ALIASING = YES;
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = ../..;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				PREBINDING = NO;
+				PRODUCT_NAME = wasm_fuzzer_lib;
+				SYMROOT = ../../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Release;
+		};
+		2B4C7318D1AFD009463F2B1A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = lib;
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					ENABLE_GDB_JIT_INTERFACE,
+					V8_DEPRECATION_WARNINGS,
+					V8_IMMINENT_DEPRECATION_WARNINGS,
+					V8_I18N_SUPPORT,
+					V8_USE_EXTERNAL_STARTUP_DATA,
+					ENABLE_DISASSEMBLER,
+					V8_ENABLE_CHECKS,
+					OBJECT_PRINT,
+					VERIFY_HEAP,
+					DEBUG,
+					TRACE_MAPS,
+					ENABLE_HANDLE_ZAPPING,
+					ENABLE_SLOW_DCHECKS,
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = ../..;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				PREBINDING = NO;
+				PRODUCT_NAME = parser_fuzzer_lib;
+				SYMROOT = ../../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Debug;
+		};
+		2CCDE6417452F81ECFDD660A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = All;
+			};
+			name = Debug;
+		};
+		2E4EAC07AD7DE06D19661B3A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = lib;
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					ENABLE_GDB_JIT_INTERFACE,
+					V8_DEPRECATION_WARNINGS,
+					V8_IMMINENT_DEPRECATION_WARNINGS,
+					V8_I18N_SUPPORT,
+					V8_USE_EXTERNAL_STARTUP_DATA,
+					ENABLE_DISASSEMBLER,
+					V8_ENABLE_CHECKS,
+					OBJECT_PRINT,
+					VERIFY_HEAP,
+					DEBUG,
+					TRACE_MAPS,
+					ENABLE_HANDLE_ZAPPING,
+					ENABLE_SLOW_DCHECKS,
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = ../..;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				PREBINDING = NO;
+				PRODUCT_NAME = regexp_fuzzer_lib;
+				SYMROOT = ../../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Debug;
+		};
+		34509B2AB49EB983A5804994 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = lib;
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					ENABLE_GDB_JIT_INTERFACE,
+					V8_DEPRECATION_WARNINGS,
+					V8_IMMINENT_DEPRECATION_WARNINGS,
+					V8_I18N_SUPPORT,
+					V8_USE_EXTERNAL_STARTUP_DATA,
+					ENABLE_HANDLE_ZAPPING,
+				);
+				GCC_STRICT_ALIASING = YES;
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = ../..;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				PREBINDING = NO;
+				PRODUCT_NAME = wasm_asmjs_fuzzer_lib;
+				SYMROOT = ../../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Release;
+		};
+		34B0182EBDF409E5003A2430 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = All;
+			};
+			name = Release;
+		};
+		35DD45733C6F9C82645DA6F7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = "";
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					ENABLE_GDB_JIT_INTERFACE,
+					V8_DEPRECATION_WARNINGS,
+					V8_IMMINENT_DEPRECATION_WARNINGS,
+					V8_I18N_SUPPORT,
+					V8_USE_EXTERNAL_STARTUP_DATA,
+					ENABLE_HANDLE_ZAPPING,
+				);
+				GCC_STRICT_ALIASING = YES;
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = ../..;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				OTHER_LDFLAGS = "-Wl,-search_paths_first";
+				PREBINDING = NO;
+				PRODUCT_NAME = json_fuzzer;
+				SYMROOT = ../../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Release;
+		};
+		37EB3B4ACC1CFD089AFE44F7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = "";
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					ENABLE_GDB_JIT_INTERFACE,
+					V8_DEPRECATION_WARNINGS,
+					V8_IMMINENT_DEPRECATION_WARNINGS,
+					V8_I18N_SUPPORT,
+					V8_USE_EXTERNAL_STARTUP_DATA,
+					ENABLE_DISASSEMBLER,
+					V8_ENABLE_CHECKS,
+					OBJECT_PRINT,
+					VERIFY_HEAP,
+					DEBUG,
+					TRACE_MAPS,
+					ENABLE_HANDLE_ZAPPING,
+					ENABLE_SLOW_DCHECKS,
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = ../..;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				OTHER_LDFLAGS = "-Wl,-search_paths_first";
+				PREBINDING = NO;
+				PRODUCT_NAME = wasm_asmjs_fuzzer;
+				SYMROOT = ../../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Debug;
+		};
+		4593D8CF6A9241CFF2BCD9DD /* Optdebug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = lib;
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					ENABLE_GDB_JIT_INTERFACE,
+					V8_DEPRECATION_WARNINGS,
+					V8_IMMINENT_DEPRECATION_WARNINGS,
+					V8_I18N_SUPPORT,
+					V8_USE_EXTERNAL_STARTUP_DATA,
+					ENABLE_DISASSEMBLER,
+					V8_ENABLE_CHECKS,
+					OBJECT_PRINT,
+					VERIFY_HEAP,
+					DEBUG,
+					TRACE_MAPS,
+					ENABLE_HANDLE_ZAPPING,
+				);
+				GCC_STRICT_ALIASING = YES;
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = ../..;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				PREBINDING = NO;
+				PRODUCT_NAME = regexp_fuzzer_lib;
+				SYMROOT = ../../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Optdebug;
+		};
+		4BCF40BEC46DF4733E96D349 /* Optdebug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = "";
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					ENABLE_GDB_JIT_INTERFACE,
+					V8_DEPRECATION_WARNINGS,
+					V8_IMMINENT_DEPRECATION_WARNINGS,
+					V8_I18N_SUPPORT,
+					V8_USE_EXTERNAL_STARTUP_DATA,
+					ENABLE_DISASSEMBLER,
+					V8_ENABLE_CHECKS,
+					OBJECT_PRINT,
+					VERIFY_HEAP,
+					DEBUG,
+					TRACE_MAPS,
+					ENABLE_HANDLE_ZAPPING,
+				);
+				GCC_STRICT_ALIASING = YES;
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = ../..;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				OTHER_LDFLAGS = "-Wl,-search_paths_first";
+				PREBINDING = NO;
+				PRODUCT_NAME = regexp_fuzzer;
+				SYMROOT = ../../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Optdebug;
+		};
+		4C62EC493C89BC3AB3FD3FC2 /* Optdebug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = "";
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					ENABLE_GDB_JIT_INTERFACE,
+					V8_DEPRECATION_WARNINGS,
+					V8_IMMINENT_DEPRECATION_WARNINGS,
+					V8_I18N_SUPPORT,
+					V8_USE_EXTERNAL_STARTUP_DATA,
+					ENABLE_DISASSEMBLER,
+					V8_ENABLE_CHECKS,
+					OBJECT_PRINT,
+					VERIFY_HEAP,
+					DEBUG,
+					TRACE_MAPS,
+					ENABLE_HANDLE_ZAPPING,
+				);
+				GCC_STRICT_ALIASING = YES;
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = ../..;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				OTHER_LDFLAGS = "-Wl,-search_paths_first";
+				PREBINDING = NO;
+				PRODUCT_NAME = wasm_asmjs_fuzzer;
+				SYMROOT = ../../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Optdebug;
+		};
+		5E0803151A0A17F274D3C0B9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = "";
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					ENABLE_GDB_JIT_INTERFACE,
+					V8_DEPRECATION_WARNINGS,
+					V8_IMMINENT_DEPRECATION_WARNINGS,
+					V8_I18N_SUPPORT,
+					V8_USE_EXTERNAL_STARTUP_DATA,
+					ENABLE_HANDLE_ZAPPING,
+				);
+				GCC_STRICT_ALIASING = YES;
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = ../..;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				OTHER_LDFLAGS = "-Wl,-search_paths_first";
+				PREBINDING = NO;
+				PRODUCT_NAME = wasm_asmjs_fuzzer;
+				SYMROOT = ../../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Release;
+		};
+		5F7A94E019447491907C1F16 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				INTERMEDIATE_DIR = "$(PROJECT_DERIVED_FILE_DIR)/$(CONFIGURATION)";
+				SDKROOT = macosx;
+				SHARED_INTERMEDIATE_DIR = "$(SYMROOT)/DerivedSources/$(CONFIGURATION)";
+				SYMROOT = ../../xcodebuild;
+			};
+			name = Release;
+		};
+		6205A984497B7C3CDB96ADF2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = lib;
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					ENABLE_GDB_JIT_INTERFACE,
+					V8_DEPRECATION_WARNINGS,
+					V8_IMMINENT_DEPRECATION_WARNINGS,
+					V8_I18N_SUPPORT,
+					V8_USE_EXTERNAL_STARTUP_DATA,
+					ENABLE_HANDLE_ZAPPING,
+				);
+				GCC_STRICT_ALIASING = YES;
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = ../..;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				PREBINDING = NO;
+				PRODUCT_NAME = regexp_fuzzer_lib;
+				SYMROOT = ../../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Release;
+		};
+		68BF822F056A2D175F3DC1C1 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = "";
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					ENABLE_GDB_JIT_INTERFACE,
+					V8_DEPRECATION_WARNINGS,
+					V8_IMMINENT_DEPRECATION_WARNINGS,
+					V8_I18N_SUPPORT,
+					V8_USE_EXTERNAL_STARTUP_DATA,
+					ENABLE_HANDLE_ZAPPING,
+				);
+				GCC_STRICT_ALIASING = YES;
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = ../..;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				OTHER_LDFLAGS = "-Wl,-search_paths_first";
+				PREBINDING = NO;
+				PRODUCT_NAME = parser_fuzzer;
+				SYMROOT = ../../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Release;
+		};
+		6A42BB0ECAA7B004387FC5BA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = "";
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					ENABLE_GDB_JIT_INTERFACE,
+					V8_DEPRECATION_WARNINGS,
+					V8_IMMINENT_DEPRECATION_WARNINGS,
+					V8_I18N_SUPPORT,
+					V8_USE_EXTERNAL_STARTUP_DATA,
+					ENABLE_HANDLE_ZAPPING,
+				);
+				GCC_STRICT_ALIASING = YES;
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = ../..;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				OTHER_LDFLAGS = "-Wl,-search_paths_first";
+				PREBINDING = NO;
+				PRODUCT_NAME = wasm_fuzzer;
+				SYMROOT = ../../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Release;
+		};
+		6CA37F8D66484B295B046D49 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = "";
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					ENABLE_GDB_JIT_INTERFACE,
+					V8_DEPRECATION_WARNINGS,
+					V8_IMMINENT_DEPRECATION_WARNINGS,
+					V8_I18N_SUPPORT,
+					V8_USE_EXTERNAL_STARTUP_DATA,
+					ENABLE_DISASSEMBLER,
+					V8_ENABLE_CHECKS,
+					OBJECT_PRINT,
+					VERIFY_HEAP,
+					DEBUG,
+					TRACE_MAPS,
+					ENABLE_HANDLE_ZAPPING,
+					ENABLE_SLOW_DCHECKS,
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = ../..;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				OTHER_LDFLAGS = "-Wl,-search_paths_first";
+				PREBINDING = NO;
+				PRODUCT_NAME = json_fuzzer;
+				SYMROOT = ../../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Debug;
+		};
+		76BCF07D651B0D31944F7789 /* Optdebug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = lib;
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					ENABLE_GDB_JIT_INTERFACE,
+					V8_DEPRECATION_WARNINGS,
+					V8_IMMINENT_DEPRECATION_WARNINGS,
+					V8_I18N_SUPPORT,
+					V8_USE_EXTERNAL_STARTUP_DATA,
+					ENABLE_DISASSEMBLER,
+					V8_ENABLE_CHECKS,
+					OBJECT_PRINT,
+					VERIFY_HEAP,
+					DEBUG,
+					TRACE_MAPS,
+					ENABLE_HANDLE_ZAPPING,
+				);
+				GCC_STRICT_ALIASING = YES;
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = ../..;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				PREBINDING = NO;
+				PRODUCT_NAME = wasm_fuzzer_lib;
+				SYMROOT = ../../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Optdebug;
+		};
+		7D72C07217B263A73B9F72F5 /* Optdebug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = lib;
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					ENABLE_GDB_JIT_INTERFACE,
+					V8_DEPRECATION_WARNINGS,
+					V8_IMMINENT_DEPRECATION_WARNINGS,
+					V8_I18N_SUPPORT,
+					V8_USE_EXTERNAL_STARTUP_DATA,
+					ENABLE_DISASSEMBLER,
+					V8_ENABLE_CHECKS,
+					OBJECT_PRINT,
+					VERIFY_HEAP,
+					DEBUG,
+					TRACE_MAPS,
+					ENABLE_HANDLE_ZAPPING,
+				);
+				GCC_STRICT_ALIASING = YES;
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = ../..;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				PREBINDING = NO;
+				PRODUCT_NAME = parser_fuzzer_lib;
+				SYMROOT = ../../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Optdebug;
+		};
+		8E75FE3FF4A5C6819B0CEA4A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = lib;
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					ENABLE_GDB_JIT_INTERFACE,
+					V8_DEPRECATION_WARNINGS,
+					V8_IMMINENT_DEPRECATION_WARNINGS,
+					V8_I18N_SUPPORT,
+					V8_USE_EXTERNAL_STARTUP_DATA,
+					ENABLE_DISASSEMBLER,
+					V8_ENABLE_CHECKS,
+					OBJECT_PRINT,
+					VERIFY_HEAP,
+					DEBUG,
+					TRACE_MAPS,
+					ENABLE_HANDLE_ZAPPING,
+					ENABLE_SLOW_DCHECKS,
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = (
+					../..,
+					../../include,
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				PREBINDING = NO;
+				PRODUCT_NAME = fuzzer_support;
+				SYMROOT = ../../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Debug;
+		};
+		8EEE8C87C4451FF0DAD18FB8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = "";
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					ENABLE_GDB_JIT_INTERFACE,
+					V8_DEPRECATION_WARNINGS,
+					V8_IMMINENT_DEPRECATION_WARNINGS,
+					V8_I18N_SUPPORT,
+					V8_USE_EXTERNAL_STARTUP_DATA,
+					ENABLE_DISASSEMBLER,
+					V8_ENABLE_CHECKS,
+					OBJECT_PRINT,
+					VERIFY_HEAP,
+					DEBUG,
+					TRACE_MAPS,
+					ENABLE_HANDLE_ZAPPING,
+					ENABLE_SLOW_DCHECKS,
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = ../..;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				OTHER_LDFLAGS = "-Wl,-search_paths_first";
+				PREBINDING = NO;
+				PRODUCT_NAME = parser_fuzzer;
+				SYMROOT = ../../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Debug;
+		};
+		93F6D61918A3164E079D21BE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = lib;
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					ENABLE_GDB_JIT_INTERFACE,
+					V8_DEPRECATION_WARNINGS,
+					V8_IMMINENT_DEPRECATION_WARNINGS,
+					V8_I18N_SUPPORT,
+					V8_USE_EXTERNAL_STARTUP_DATA,
+					ENABLE_HANDLE_ZAPPING,
+				);
+				GCC_STRICT_ALIASING = YES;
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = (
+					../..,
+					../../include,
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				PREBINDING = NO;
+				PRODUCT_NAME = fuzzer_support;
+				SYMROOT = ../../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Release;
+		};
+		954D4D9CA9A90053D7D4D33E /* Optdebug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = "";
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					ENABLE_GDB_JIT_INTERFACE,
+					V8_DEPRECATION_WARNINGS,
+					V8_IMMINENT_DEPRECATION_WARNINGS,
+					V8_I18N_SUPPORT,
+					V8_USE_EXTERNAL_STARTUP_DATA,
+					ENABLE_DISASSEMBLER,
+					V8_ENABLE_CHECKS,
+					OBJECT_PRINT,
+					VERIFY_HEAP,
+					DEBUG,
+					TRACE_MAPS,
+					ENABLE_HANDLE_ZAPPING,
+				);
+				GCC_STRICT_ALIASING = YES;
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = ../..;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				OTHER_LDFLAGS = "-Wl,-search_paths_first";
+				PREBINDING = NO;
+				PRODUCT_NAME = wasm_fuzzer;
+				SYMROOT = ../../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Optdebug;
+		};
+		9565909F2A09FA02B802BA76 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = "";
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					ENABLE_GDB_JIT_INTERFACE,
+					V8_DEPRECATION_WARNINGS,
+					V8_IMMINENT_DEPRECATION_WARNINGS,
+					V8_I18N_SUPPORT,
+					V8_USE_EXTERNAL_STARTUP_DATA,
+					ENABLE_HANDLE_ZAPPING,
+				);
+				GCC_STRICT_ALIASING = YES;
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = ../..;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				OTHER_LDFLAGS = "-Wl,-search_paths_first";
+				PREBINDING = NO;
+				PRODUCT_NAME = regexp_fuzzer;
+				SYMROOT = ../../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Release;
+		};
+		959657B176653DDC7379EF4A /* Optdebug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = lib;
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					ENABLE_GDB_JIT_INTERFACE,
+					V8_DEPRECATION_WARNINGS,
+					V8_IMMINENT_DEPRECATION_WARNINGS,
+					V8_I18N_SUPPORT,
+					V8_USE_EXTERNAL_STARTUP_DATA,
+					ENABLE_DISASSEMBLER,
+					V8_ENABLE_CHECKS,
+					OBJECT_PRINT,
+					VERIFY_HEAP,
+					DEBUG,
+					TRACE_MAPS,
+					ENABLE_HANDLE_ZAPPING,
+				);
+				GCC_STRICT_ALIASING = YES;
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = ../..;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				PREBINDING = NO;
+				PRODUCT_NAME = json_fuzzer_lib;
+				SYMROOT = ../../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Optdebug;
+		};
+		A23B5395C5613ABE2E551C51 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = "";
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					ENABLE_GDB_JIT_INTERFACE,
+					V8_DEPRECATION_WARNINGS,
+					V8_IMMINENT_DEPRECATION_WARNINGS,
+					V8_I18N_SUPPORT,
+					V8_USE_EXTERNAL_STARTUP_DATA,
+					ENABLE_DISASSEMBLER,
+					V8_ENABLE_CHECKS,
+					OBJECT_PRINT,
+					VERIFY_HEAP,
+					DEBUG,
+					TRACE_MAPS,
+					ENABLE_HANDLE_ZAPPING,
+					ENABLE_SLOW_DCHECKS,
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = ../..;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				OTHER_LDFLAGS = "-Wl,-search_paths_first";
+				PREBINDING = NO;
+				PRODUCT_NAME = regexp_fuzzer;
+				SYMROOT = ../../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Debug;
+		};
+		A65A38C2A4008CFCA77C8F1E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = lib;
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					ENABLE_GDB_JIT_INTERFACE,
+					V8_DEPRECATION_WARNINGS,
+					V8_IMMINENT_DEPRECATION_WARNINGS,
+					V8_I18N_SUPPORT,
+					V8_USE_EXTERNAL_STARTUP_DATA,
+					ENABLE_DISASSEMBLER,
+					V8_ENABLE_CHECKS,
+					OBJECT_PRINT,
+					VERIFY_HEAP,
+					DEBUG,
+					TRACE_MAPS,
+					ENABLE_HANDLE_ZAPPING,
+					ENABLE_SLOW_DCHECKS,
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = ../..;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				PREBINDING = NO;
+				PRODUCT_NAME = wasm_fuzzer_lib;
+				SYMROOT = ../../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Debug;
+		};
+		A8777E33E9D43DA9D32EC97A /* Optdebug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				INTERMEDIATE_DIR = "$(PROJECT_DERIVED_FILE_DIR)/$(CONFIGURATION)";
+				SDKROOT = macosx;
+				SHARED_INTERMEDIATE_DIR = "$(SYMROOT)/DerivedSources/$(CONFIGURATION)";
+				SYMROOT = ../../xcodebuild;
+			};
+			name = Optdebug;
+		};
+		AAEDE2DB67AEE0680E4C4879 /* Optdebug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = "";
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					ENABLE_GDB_JIT_INTERFACE,
+					V8_DEPRECATION_WARNINGS,
+					V8_IMMINENT_DEPRECATION_WARNINGS,
+					V8_I18N_SUPPORT,
+					V8_USE_EXTERNAL_STARTUP_DATA,
+					ENABLE_DISASSEMBLER,
+					V8_ENABLE_CHECKS,
+					OBJECT_PRINT,
+					VERIFY_HEAP,
+					DEBUG,
+					TRACE_MAPS,
+					ENABLE_HANDLE_ZAPPING,
+				);
+				GCC_STRICT_ALIASING = YES;
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = ../..;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				OTHER_LDFLAGS = "-Wl,-search_paths_first";
+				PREBINDING = NO;
+				PRODUCT_NAME = parser_fuzzer;
+				SYMROOT = ../../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Optdebug;
+		};
+		BE0DB660B6155899204656EB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = lib;
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					ENABLE_GDB_JIT_INTERFACE,
+					V8_DEPRECATION_WARNINGS,
+					V8_IMMINENT_DEPRECATION_WARNINGS,
+					V8_I18N_SUPPORT,
+					V8_USE_EXTERNAL_STARTUP_DATA,
+					ENABLE_HANDLE_ZAPPING,
+				);
+				GCC_STRICT_ALIASING = YES;
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = ../..;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				PREBINDING = NO;
+				PRODUCT_NAME = parser_fuzzer_lib;
+				SYMROOT = ../../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Release;
+		};
+		CE950649510D4CAA3FA66922 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = lib;
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					ENABLE_GDB_JIT_INTERFACE,
+					V8_DEPRECATION_WARNINGS,
+					V8_IMMINENT_DEPRECATION_WARNINGS,
+					V8_I18N_SUPPORT,
+					V8_USE_EXTERNAL_STARTUP_DATA,
+					ENABLE_HANDLE_ZAPPING,
+				);
+				GCC_STRICT_ALIASING = YES;
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = ../..;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				PREBINDING = NO;
+				PRODUCT_NAME = json_fuzzer_lib;
+				SYMROOT = ../../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Release;
+		};
+		D18812FF47A359361D49F610 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = "";
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					ENABLE_GDB_JIT_INTERFACE,
+					V8_DEPRECATION_WARNINGS,
+					V8_IMMINENT_DEPRECATION_WARNINGS,
+					V8_I18N_SUPPORT,
+					V8_USE_EXTERNAL_STARTUP_DATA,
+					ENABLE_DISASSEMBLER,
+					V8_ENABLE_CHECKS,
+					OBJECT_PRINT,
+					VERIFY_HEAP,
+					DEBUG,
+					TRACE_MAPS,
+					ENABLE_HANDLE_ZAPPING,
+					ENABLE_SLOW_DCHECKS,
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = ../..;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				OTHER_LDFLAGS = "-Wl,-search_paths_first";
+				PREBINDING = NO;
+				PRODUCT_NAME = wasm_fuzzer;
+				SYMROOT = ../../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Debug;
+		};
+		DE37F581A6968A5B5DE948BE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = lib;
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					ENABLE_GDB_JIT_INTERFACE,
+					V8_DEPRECATION_WARNINGS,
+					V8_IMMINENT_DEPRECATION_WARNINGS,
+					V8_I18N_SUPPORT,
+					V8_USE_EXTERNAL_STARTUP_DATA,
+					ENABLE_DISASSEMBLER,
+					V8_ENABLE_CHECKS,
+					OBJECT_PRINT,
+					VERIFY_HEAP,
+					DEBUG,
+					TRACE_MAPS,
+					ENABLE_HANDLE_ZAPPING,
+					ENABLE_SLOW_DCHECKS,
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = ../..;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				PREBINDING = NO;
+				PRODUCT_NAME = wasm_asmjs_fuzzer_lib;
+				SYMROOT = ../../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Debug;
+		};
+		E008E2A8ABE6F7EF2EFA4046 /* Optdebug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = lib;
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					ENABLE_GDB_JIT_INTERFACE,
+					V8_DEPRECATION_WARNINGS,
+					V8_IMMINENT_DEPRECATION_WARNINGS,
+					V8_I18N_SUPPORT,
+					V8_USE_EXTERNAL_STARTUP_DATA,
+					ENABLE_DISASSEMBLER,
+					V8_ENABLE_CHECKS,
+					OBJECT_PRINT,
+					VERIFY_HEAP,
+					DEBUG,
+					TRACE_MAPS,
+					ENABLE_HANDLE_ZAPPING,
+				);
+				GCC_STRICT_ALIASING = YES;
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = (
+					../..,
+					../../include,
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				PREBINDING = NO;
+				PRODUCT_NAME = fuzzer_support;
+				SYMROOT = ../../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Optdebug;
+		};
+		E63F10E107F3EF538692B078 /* Optdebug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = All;
+			};
+			name = Optdebug;
+		};
+		F6F4EBB14F7CBCB4041CC79B /* Optdebug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = lib;
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					ENABLE_GDB_JIT_INTERFACE,
+					V8_DEPRECATION_WARNINGS,
+					V8_IMMINENT_DEPRECATION_WARNINGS,
+					V8_I18N_SUPPORT,
+					V8_USE_EXTERNAL_STARTUP_DATA,
+					ENABLE_DISASSEMBLER,
+					V8_ENABLE_CHECKS,
+					OBJECT_PRINT,
+					VERIFY_HEAP,
+					DEBUG,
+					TRACE_MAPS,
+					ENABLE_HANDLE_ZAPPING,
+				);
+				GCC_STRICT_ALIASING = YES;
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = ../..;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				PREBINDING = NO;
+				PRODUCT_NAME = wasm_asmjs_fuzzer_lib;
+				SYMROOT = ../../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Optdebug;
+		};
+		F7959005C6D75743A151BF99 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = x86_64;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				EXECUTABLE_PREFIX = lib;
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"CR_CLANG_REVISION=263324-1",
+					V8_TARGET_ARCH_X64,
+					ENABLE_GDB_JIT_INTERFACE,
+					V8_DEPRECATION_WARNINGS,
+					V8_IMMINENT_DEPRECATION_WARNINGS,
+					V8_I18N_SUPPORT,
+					V8_USE_EXTERNAL_STARTUP_DATA,
+					ENABLE_DISASSEMBLER,
+					V8_ENABLE_CHECKS,
+					OBJECT_PRINT,
+					VERIFY_HEAP,
+					DEBUG,
+					TRACE_MAPS,
+					ENABLE_HANDLE_ZAPPING,
+					ENABLE_SLOW_DCHECKS,
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_TREAT_WARNINGS_AS_ERRORS = YES;
+				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = ../..;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
+				OTHER_CFLAGS = "-fno-strict-aliasing";
+				PREBINDING = NO;
+				PRODUCT_NAME = json_fuzzer_lib;
+				SYMROOT = ../../xcodebuild;
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-Wno-unused-parameter",
+					"-Wno-missing-field-initializers",
+					"-Wno-gnu-zero-variadic-macro-arguments",
+					"-Wshorten-64-to-32",
+				);
+			};
+			name = Debug;
+		};
+		FCFF626BA8304BD93C460A75 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				INTERMEDIATE_DIR = "$(PROJECT_DERIVED_FILE_DIR)/$(CONFIGURATION)";
+				SDKROOT = macosx;
+				SHARED_INTERMEDIATE_DIR = "$(SYMROOT)/DerivedSources/$(CONFIGURATION)";
+				SYMROOT = ../../xcodebuild;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		2AE9123FCAAFF7BB47040D34 /* Build configuration list for PBXNativeTarget "wasm_asmjs_fuzzer_lib" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DE37F581A6968A5B5DE948BE /* Debug */,
+				F6F4EBB14F7CBCB4041CC79B /* Optdebug */,
+				34509B2AB49EB983A5804994 /* Release */,
+			);
+			defaultConfigurationIsVisible = 1;
+			defaultConfigurationName = Debug;
+		};
+		388B463D873E2867EDF78A74 /* Build configuration list for PBXNativeTarget "wasm_fuzzer" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D18812FF47A359361D49F610 /* Debug */,
+				954D4D9CA9A90053D7D4D33E /* Optdebug */,
+				6A42BB0ECAA7B004387FC5BA /* Release */,
+			);
+			defaultConfigurationIsVisible = 1;
+			defaultConfigurationName = Debug;
+		};
+		448764A9042C04012953AED6 /* Build configuration list for PBXAggregateTarget "All" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2CCDE6417452F81ECFDD660A /* Debug */,
+				E63F10E107F3EF538692B078 /* Optdebug */,
+				34B0182EBDF409E5003A2430 /* Release */,
+			);
+			defaultConfigurationIsVisible = 1;
+			defaultConfigurationName = Debug;
+		};
+		46767DB6F6A0948E0ABD0465 /* Build configuration list for PBXNativeTarget "parser_fuzzer" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8EEE8C87C4451FF0DAD18FB8 /* Debug */,
+				AAEDE2DB67AEE0680E4C4879 /* Optdebug */,
+				68BF822F056A2D175F3DC1C1 /* Release */,
+			);
+			defaultConfigurationIsVisible = 1;
+			defaultConfigurationName = Debug;
+		};
+		7629055C391513AF22BFFFD6 /* Build configuration list for PBXNativeTarget "regexp_fuzzer" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A23B5395C5613ABE2E551C51 /* Debug */,
+				4BCF40BEC46DF4733E96D349 /* Optdebug */,
+				9565909F2A09FA02B802BA76 /* Release */,
+			);
+			defaultConfigurationIsVisible = 1;
+			defaultConfigurationName = Debug;
+		};
+		94F3681256A3887C8D4815EC /* Build configuration list for PBXNativeTarget "wasm_fuzzer_lib" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A65A38C2A4008CFCA77C8F1E /* Debug */,
+				76BCF07D651B0D31944F7789 /* Optdebug */,
+				1CB6C288B2B9133606F30761 /* Release */,
+			);
+			defaultConfigurationIsVisible = 1;
+			defaultConfigurationName = Debug;
+		};
+		99D6CA6FF24AD07F6F2E56FB /* Build configuration list for PBXNativeTarget "wasm_asmjs_fuzzer" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				37EB3B4ACC1CFD089AFE44F7 /* Debug */,
+				4C62EC493C89BC3AB3FD3FC2 /* Optdebug */,
+				5E0803151A0A17F274D3C0B9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 1;
+			defaultConfigurationName = Debug;
+		};
+		BB3E3853FB2C24363FB214AD /* Build configuration list for PBXProject "fuzzer" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FCFF626BA8304BD93C460A75 /* Debug */,
+				A8777E33E9D43DA9D32EC97A /* Optdebug */,
+				5F7A94E019447491907C1F16 /* Release */,
+			);
+			defaultConfigurationIsVisible = 1;
+			defaultConfigurationName = Debug;
+		};
+		C076E9461BE5B2194EF8B282 /* Build configuration list for PBXNativeTarget "json_fuzzer_lib" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F7959005C6D75743A151BF99 /* Debug */,
+				959657B176653DDC7379EF4A /* Optdebug */,
+				CE950649510D4CAA3FA66922 /* Release */,
+			);
+			defaultConfigurationIsVisible = 1;
+			defaultConfigurationName = Debug;
+		};
+		C414F9931BDD81B5B9897127 /* Build configuration list for PBXNativeTarget "json_fuzzer" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6CA37F8D66484B295B046D49 /* Debug */,
+				11367A80EF40D45CF9D7693F /* Optdebug */,
+				35DD45733C6F9C82645DA6F7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 1;
+			defaultConfigurationName = Debug;
+		};
+		E8CB2AFA263AAAF7C2A5F2FE /* Build configuration list for PBXNativeTarget "fuzzer_support" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8E75FE3FF4A5C6819B0CEA4A /* Debug */,
+				E008E2A8ABE6F7EF2EFA4046 /* Optdebug */,
+				93F6D61918A3164E079D21BE /* Release */,
+			);
+			defaultConfigurationIsVisible = 1;
+			defaultConfigurationName = Debug;
+		};
+		F27443FC6AF45E312B65698C /* Build configuration list for PBXNativeTarget "parser_fuzzer_lib" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2B4C7318D1AFD009463F2B1A /* Debug */,
+				7D72C07217B263A73B9F72F5 /* Optdebug */,
+				BE0DB660B6155899204656EB /* Release */,
+			);
+			defaultConfigurationIsVisible = 1;
+			defaultConfigurationName = Debug;
+		};
+		F58B4BF802DC87E4EFA53C5A /* Build configuration list for PBXNativeTarget "regexp_fuzzer_lib" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2E4EAC07AD7DE06D19661B3A /* Debug */,
+				4593D8CF6A9241CFF2BCD9DD /* Optdebug */,
+				6205A984497B7C3CDB96ADF2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 1;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = C29356792D16C014B2391E4E /* Project object */;
+}

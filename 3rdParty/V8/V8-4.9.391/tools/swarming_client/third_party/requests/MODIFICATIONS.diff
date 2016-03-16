@@ -1,0 +1,56 @@
+--- a/compat.py
++++ b/compat.py
+@@ -4,7 +4,7 @@
+ pythoncompat
+ """
+ 
+-from .packages import chardet
++chardet = None
+ 
+ import sys
+ 
+--- a/models.py
++++ b/models.py
+@@ -639,8 +639,8 @@ class Response(object):
+ 
+     @property
+     def apparent_encoding(self):
+-        """The apparent encoding, provided by the chardet library"""
+-        return chardet.detect(self.content)['encoding']
++        # TODO(maruel): charade is really large, so it is trimmed off.
++        return 'utf-8'
+ 
+     def iter_content(self, chunk_size=1, decode_unicode=False):
+         """Iterates over the response data.  When stream=True is set on the
+--- a/packages/urllib3/__init__.py
++++ b/packages/urllib3/__init__.py
+@@ -76,14 +76,14 @@ del NullHandler
+ 
+ 
+ # SecurityWarning's always go off by default.
+-warnings.simplefilter('always', exceptions.SecurityWarning, append=True)
++warnings.simplefilter('ignore', exceptions.SecurityWarning, append=True)
+ # SubjectAltNameWarning's should go off once per host
+ warnings.simplefilter('default', exceptions.SubjectAltNameWarning)
+ # InsecurePlatformWarning's don't vary between requests, so we keep it default.
+-warnings.simplefilter('default', exceptions.InsecurePlatformWarning,
++warnings.simplefilter('ignore', exceptions.InsecurePlatformWarning,
+                       append=True)
+ # SNIMissingWarnings should go off only once.
+-warnings.simplefilter('default', exceptions.SNIMissingWarning)
++warnings.simplefilter('ignore', exceptions.SNIMissingWarning)
+ 
+ 
+ def disable_warnings(category=exceptions.HTTPWarning):
+--- a/packages/__init__.py
++++ b/packages/__init__.py
+@@ -28,9 +28,3 @@ try:
+ except ImportError:
+     import urllib3
+     sys.modules['%s.urllib3' % __name__] = urllib3
+-
+-try:
+-    from . import chardet
+-except ImportError:
+-    import chardet
+-    sys.modules['%s.chardet' % __name__] = chardet
