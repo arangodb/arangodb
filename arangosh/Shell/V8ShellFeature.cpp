@@ -48,7 +48,7 @@ using namespace arangodb::rest;
 
 V8ShellFeature::V8ShellFeature(application_features::ApplicationServer* server,
                                std::string const& name)
-    : ApplicationFeature(server, "V8ShellFeature"),
+    : ApplicationFeature(server, "V8Shell"),
       _startupDirectory("js"),
       _currentModuleDirectory(true),
       _gcInterval(10),
@@ -58,9 +58,9 @@ V8ShellFeature::V8ShellFeature(application_features::ApplicationServer* server,
   requiresElevatedPrivileges(false);
   setOptional(false);
 
-  startsAfter("LoggerFeature");
-  startsAfter("ConsoleFeature");
-  startsAfter("V8PlatformFeature");
+  startsAfter("Logger");
+  startsAfter("Console");
+  startsAfter("V8Platform");
 }
 
 void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -98,7 +98,7 @@ void V8ShellFeature::validateOptions(
 void V8ShellFeature::start() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
 
-  _console = dynamic_cast<ConsoleFeature*>(server()->feature("ConsoleFeature"));
+  _console = dynamic_cast<ConsoleFeature*>(server()->feature("Console"));
 
   _isolate = v8::Isolate::New();
 
@@ -239,7 +239,7 @@ V8ClientConnection* V8ShellFeature::setup(
   ClientFeature* client = nullptr;
 
   if (createConnection) {
-    client = dynamic_cast<ClientFeature*>(server()->feature("ClientFeature"));
+    client = dynamic_cast<ClientFeature*>(server()->feature("Client"));
 
     if (client != nullptr && client->isEnabled()) {
       auto connection = client->createConnection();
@@ -252,14 +252,14 @@ V8ClientConnection* V8ShellFeature::setup(
     }
   }
 
-  initMode(ArangoshFeature::RunMode::INTERACTIVE, positionals);
+  initMode(ShellFeature::RunMode::INTERACTIVE, positionals);
 
   if (createConnection && client != nullptr) {
     v8connection->initServer(_isolate, context, client);
   }
 
   bool pe = printHello(v8connection.get());
-  loadModules(ArangoshFeature::RunMode::INTERACTIVE);
+  loadModules(ShellFeature::RunMode::INTERACTIVE);
 
   if (promptError != nullptr) {
     *promptError = pe;
@@ -296,7 +296,7 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
   uint64_t nrCommands = 0;
 
   ClientFeature* client =
-      dynamic_cast<ClientFeature*>(server()->feature("ClientFeature"));
+      dynamic_cast<ClientFeature*>(server()->feature("Client"));
 
   if (!client->isEnabled()) {
     client = nullptr;
@@ -823,7 +823,7 @@ void V8ShellFeature::initGlobals() {
   }
 }
 
-void V8ShellFeature::initMode(ArangoshFeature::RunMode runMode,
+void V8ShellFeature::initMode(ShellFeature::RunMode runMode,
                               std::vector<std::string> const& positionals) {
   auto context = _isolate->GetCurrentContext();
 
@@ -841,29 +841,29 @@ void V8ShellFeature::initMode(ArangoshFeature::RunMode runMode,
   TRI_AddGlobalVariableVocbase(
       _isolate, context, TRI_V8_ASCII_STRING2(_isolate, "IS_EXECUTE_SCRIPT"),
       v8::Boolean::New(_isolate,
-                       runMode == ArangoshFeature::RunMode::EXECUTE_SCRIPT));
+                       runMode == ShellFeature::RunMode::EXECUTE_SCRIPT));
 
   TRI_AddGlobalVariableVocbase(
       _isolate, context, TRI_V8_ASCII_STRING2(_isolate, "IS_EXECUTE_STRING"),
       v8::Boolean::New(_isolate,
-                       runMode == ArangoshFeature::RunMode::EXECUTE_STRING));
+                       runMode == ShellFeature::RunMode::EXECUTE_STRING));
 
   TRI_AddGlobalVariableVocbase(
       _isolate, context, TRI_V8_ASCII_STRING2(_isolate, "IS_CHECK_SCRIPT"),
       v8::Boolean::New(_isolate,
-                       runMode == ArangoshFeature::RunMode::CHECK_SYNTAX));
+                       runMode == ShellFeature::RunMode::CHECK_SYNTAX));
 
   TRI_AddGlobalVariableVocbase(
       _isolate, context, TRI_V8_ASCII_STRING2(_isolate, "IS_UNIT_TESTS"),
       v8::Boolean::New(_isolate,
-                       runMode == ArangoshFeature::RunMode::UNIT_TESTS));
+                       runMode == ShellFeature::RunMode::UNIT_TESTS));
 
   TRI_AddGlobalVariableVocbase(
       _isolate, context, TRI_V8_ASCII_STRING2(_isolate, "IS_JS_LINT"),
-      v8::Boolean::New(_isolate, runMode == ArangoshFeature::RunMode::JSLINT));
+      v8::Boolean::New(_isolate, runMode == ShellFeature::RunMode::JSLINT));
 }
 
-void V8ShellFeature::loadModules(ArangoshFeature::RunMode runMode) {
+void V8ShellFeature::loadModules(ShellFeature::RunMode runMode) {
   auto context = _isolate->GetCurrentContext();
 
   JSLoader loader;
@@ -890,7 +890,7 @@ void V8ShellFeature::loadModules(ArangoshFeature::RunMode runMode) {
   files.push_back(
       "common/bootstrap/modules.js");  // must come last before patches
 
-  if (runMode != ArangoshFeature::RunMode::JSLINT) {
+  if (runMode != ShellFeature::RunMode::JSLINT) {
     files.push_back("common/bootstrap/monkeypatches.js");
   }
 

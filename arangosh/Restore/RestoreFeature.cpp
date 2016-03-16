@@ -20,7 +20,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ArangorestoreFeature.h"
+#include "RestoreFeature.h"
 
 #include <iostream>
 
@@ -48,9 +48,9 @@ using namespace arangodb::httpclient;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
-ArangorestoreFeature::ArangorestoreFeature(
+RestoreFeature::RestoreFeature(
     application_features::ApplicationServer* server, int* result)
-    : ApplicationFeature(server, "ArangorestoreFeature"),
+    : ApplicationFeature(server, "Restore"),
       _collections(),
       _chunkSize(1024 * 1024 * 8),
       _includeSystemCollections(false),
@@ -67,14 +67,14 @@ ArangorestoreFeature::ArangorestoreFeature(
       _result(result) {
   requiresElevatedPrivileges(false);
   setOptional(false);
-  startsAfter("ClientFeature");
-  startsAfter("LoggerFeature");
+  startsAfter("Client");
+  startsAfter("Logger");
 
   _inputDirectory =
       FileUtils::buildFilename(FileUtils::currentDirectory(), "dump");
 }
 
-void ArangorestoreFeature::collectOptions(
+void RestoreFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
 
@@ -126,7 +126,7 @@ void ArangorestoreFeature::collectOptions(
       new BooleanParameter(&_force, false));
 }
 
-void ArangorestoreFeature::validateOptions(
+void RestoreFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
 
@@ -147,7 +147,7 @@ void ArangorestoreFeature::validateOptions(
   }
 }
 
-void ArangorestoreFeature::prepare() {
+void RestoreFeature::prepare() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::prepare";
 
   if (!_inputDirectory.empty() &&
@@ -174,7 +174,7 @@ void ArangorestoreFeature::prepare() {
   }
 }
 
-int ArangorestoreFeature::tryCreateDatabase(ClientFeature* client,
+int RestoreFeature::tryCreateDatabase(ClientFeature* client,
                                             std::string const& name) {
   arangodb::basics::Json json(arangodb::basics::Json::Object);
   json("name", arangodb::basics::Json(name));
@@ -216,7 +216,7 @@ int ArangorestoreFeature::tryCreateDatabase(ClientFeature* client,
   return TRI_ERROR_INTERNAL;
 }
 
-int ArangorestoreFeature::sendRestoreCollection(VPackSlice const& slice,
+int RestoreFeature::sendRestoreCollection(VPackSlice const& slice,
                                                 std::string const& name,
                                                 std::string& errorMsg) {
   std::string url =
@@ -264,7 +264,7 @@ int ArangorestoreFeature::sendRestoreCollection(VPackSlice const& slice,
   return TRI_ERROR_NO_ERROR;
 }
 
-int ArangorestoreFeature::sendRestoreIndexes(VPackSlice const& slice,
+int RestoreFeature::sendRestoreIndexes(VPackSlice const& slice,
                                              std::string& errorMsg) {
   std::string const url = "/_api/replication/restore-indexes?force=" +
                           std::string(_force ? "true" : "false");
@@ -294,7 +294,7 @@ int ArangorestoreFeature::sendRestoreIndexes(VPackSlice const& slice,
   return TRI_ERROR_NO_ERROR;
 }
 
-int ArangorestoreFeature::sendRestoreData(std::string const& cname,
+int RestoreFeature::sendRestoreData(std::string const& cname,
                                           char const* buffer, size_t bufferSize,
                                           std::string& errorMsg) {
   std::string const url = "/_api/replication/restore-data?collection=" +
@@ -347,7 +347,7 @@ static bool SortCollections(VPackSlice const& l, VPackSlice const& r) {
   return strcasecmp(leftName.c_str(), rightName.c_str()) < 0;
 }
 
-int ArangorestoreFeature::processInputDirectory(std::string& errorMsg) {
+int RestoreFeature::processInputDirectory(std::string& errorMsg) {
   // create a lookup table for collections
   std::map<std::string, bool> restrictList;
   for (size_t i = 0; i < _collections.size(); ++i) {
@@ -630,11 +630,11 @@ int ArangorestoreFeature::processInputDirectory(std::string& errorMsg) {
   return TRI_ERROR_NO_ERROR;
 }
 
-void ArangorestoreFeature::start() {
+void RestoreFeature::start() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
 
   ClientFeature* client =
-      dynamic_cast<ClientFeature*>(server()->feature("ClientFeature"));
+      dynamic_cast<ClientFeature*>(server()->feature("Client"));
 
   int ret = EXIT_SUCCESS;
   *_result = ret;

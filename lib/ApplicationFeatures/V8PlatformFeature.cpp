@@ -48,10 +48,10 @@ class BufferAllocator : public v8::ArrayBuffer::Allocator {
 
 V8PlatformFeature::V8PlatformFeature(
     application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "V8PlatformFeature") {
+    : ApplicationFeature(server, "V8Platform") {
   setOptional(false);
   requiresElevatedPrivileges(false);
-  startsAfter("LoggerFeature");
+  startsAfter("Logger");
 }
 
 void V8PlatformFeature::collectOptions(

@@ -33,10 +33,10 @@ using namespace arangodb::options;
 
 LanguageFeature::LanguageFeature(
     application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "LanguageFeature") {
+    : ApplicationFeature(server, "Language") {
   setOptional(false);
   requiresElevatedPrivileges(false);
-  startsAfter("LoggerFeature");
+  startsAfter("Logger");
 }
 
 void LanguageFeature::collectOptions(

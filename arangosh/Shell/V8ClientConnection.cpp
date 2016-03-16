@@ -374,7 +374,7 @@ static void ClientConnection_reconnect(
 
   if (args.Length() < 4) {
     ConsoleFeature* console = dynamic_cast<ConsoleFeature*>(
-        ApplicationServer::lookupFeature("ConsoleFeature"));
+        ApplicationServer::lookupFeature("Console"));
 
     if (console == nullptr || !console->isEnabled()) {
       std::cout << "Please specify a password: " << std::flush;

@@ -30,7 +30,7 @@ using namespace arangodb;
 using namespace arangodb::options;
 
 LoggerFeature::LoggerFeature(application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "LoggerFeature"),
+    : ApplicationFeature(server, "Logger"),
       _output(),
       _levels(),
       _useLocalTime(false),

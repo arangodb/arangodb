@@ -96,6 +96,7 @@ else ()
     Basics/terminal-utils-posix.cpp
     Basics/threads-posix.cpp
     Rest/EndpointUnixDomain.cpp
+    Rest/EndpointSrv.cpp
   )
 endif ()
 

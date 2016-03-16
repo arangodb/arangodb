@@ -42,7 +42,7 @@ static const int INTENSITY = FOREGROUND_INTENSITY | BACKGROUND_INTENSITY;
 #endif
 
 ConsoleFeature::ConsoleFeature(application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "ConsoleFeature"),
+    : ApplicationFeature(server, "Console"),
 #ifdef _WIN32
       _codePage(-1),
       _cygwinShell(false),
@@ -61,7 +61,7 @@ ConsoleFeature::ConsoleFeature(application_features::ApplicationServer* server)
       _toAuditFile(nullptr) {
   setOptional(false);
   requiresElevatedPrivileges(false);
-  startsAfter("LoggerFeature");
+  startsAfter("Logger");
 
   if (!_supportsColors) {
     _colors = false;
