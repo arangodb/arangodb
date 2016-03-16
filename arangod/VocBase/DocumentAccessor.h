@@ -28,7 +28,6 @@
 #include "Basics/JsonHelper.h"
 #include "Utils/Transaction.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/Shaper.h"
 #include "Wal/Marker.h"
 
 #include <velocypack/Options.h>
@@ -120,39 +119,6 @@ static inline std::string TRI_EXTRACT_MARKER_KEY(
 static inline std::string TRI_EXTRACT_MARKER_KEY(arangodb::Transaction* trx,
                                                  TRI_doc_mptr_t const* mptr) {
   return TRI_EXTRACT_MARKER_KEY(
-      trx, static_cast<TRI_df_marker_t const*>(mptr->getDataPtr()));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts the revision id from a marker
-////////////////////////////////////////////////////////////////////////////////
-
-static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID(
-    arangodb::Transaction*, TRI_df_marker_t const* marker) {
-#if 0
-  if (marker->_type == TRI_WAL_MARKER_VPACK_DOCUMENT) {
-    auto b = reinterpret_cast<char const*>(marker) +
-             sizeof(arangodb::wal::vpack_document_marker_t);
-    VPackSlice slice(reinterpret_cast<uint8_t const*>(b));
-    VPackSlice value = slice.get(TRI_VOC_ATTRIBUTE_REV);
-    return arangodb::velocypack::readUInt64(value.start() + 1);
-  }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  // invalid marker type
-  TRI_ASSERT(false);
-#endif
-#endif
-  return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts the revision id from a master pointer
-////////////////////////////////////////////////////////////////////////////////
-
-static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID(arangodb::Transaction* trx,
-                                                   TRI_doc_mptr_t const* mptr) {
-  return TRI_EXTRACT_MARKER_RID(
       trx, static_cast<TRI_df_marker_t const*>(mptr->getDataPtr()));
 }
 
