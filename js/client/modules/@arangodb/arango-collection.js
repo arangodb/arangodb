@@ -119,6 +119,21 @@ ArangoCollection.prototype._appendSyncParameter = function (url, waitForSync) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief append some boolean parameter to a URL
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype._appendBoolParameter = function (url, name, val) {
+  if (url.indexOf('?') === -1) {
+    url += '?';
+  }
+  else {
+    url += '&';
+  }
+  url += name + (val ? '=true' : '=false');
+  return url;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief prefix a URL with the database name of the collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -766,12 +781,15 @@ ArangoCollection.prototype.document = function (id) {
   var rev = null;
   var requestResult;
 
-  if (id.hasOwnProperty("_id")) {
+  if (typeof id === "object") {
     if (id.hasOwnProperty("_rev")) {
       rev = id._rev;
     }
-
-    id = id._id;
+    if (id.hasOwnProperty("_id")) {
+      id = id._id;
+    } else if (id.hasOwnProperty("_key")) {
+      id = id._key;
+    }
   }
 
   if (rev === null) {
@@ -782,10 +800,10 @@ ArangoCollection.prototype.document = function (id) {
       {'if-match' : JSON.stringify(rev) });
   }
 
-  if (requestResult !== null
-      && requestResult.error === true
-      && requestResult.errorNum === internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code) {
-    throw new ArangoError(requestResult);
+  if (requestResult !== null && requestResult.error === true) {
+    if (requestResult.errorNum === internal.errors.ERROR_HTTP_PRECONDITION_FAILED.code) {
+      requestResult.errorNum = internal.errors.ERROR_ARANGO_CONFLICT.code;
+    }
   }
 
   arangosh.checkRequestResult(requestResult);
@@ -808,12 +826,15 @@ ArangoCollection.prototype.exists = function (id) {
     });
   }
 
-  if (id.hasOwnProperty("_id")) {
+  if (typeof id === "object") {
     if (id.hasOwnProperty("_rev")) {
       rev = id._rev;
     }
-
-    id = id._id;
+    if (id.hasOwnProperty("_id")) {
+      id = id._id;
+    } else if (id.hasOwnProperty("_key")) {
+      id = id._key;
+    }
   }
 
   if (rev === null) {
@@ -824,13 +845,15 @@ ArangoCollection.prototype.exists = function (id) {
       {'if-match' : JSON.stringify(rev) });
   }
 
-  if (requestResult !== null &&
-      requestResult.error === true &&
-      (requestResult.errorNum === internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code ||
-       requestResult.errorNum === internal.errors.ERROR_HTTP_NOT_FOUND.code ||
-       requestResult.errorNum === internal.errors.ERROR_HTTP_PRECONDITION_FAILED.code)) {
-    return false;
+  if (requestResult !== null && requestResult.error === true) {
+    if (requestResult.errorNum === internal.errors.ERROR_HTTP_NOT_FOUND.code) {
+      return false;
+    }
+    if (requestResult.errorNum === internal.errors.ERROR_HTTP_PRECONDITION_FAILED.code) {
+      requestResult.errorNum = internal.errors.ERROR_ARANGO_CONFLICT.code;
+    }
   }
+
 
   arangosh.checkRequestResult(requestResult);
 
@@ -892,52 +915,6 @@ ArangoCollection.prototype.firstExample = function (example) {
   arangosh.checkRequestResult(requestResult);
 
   return requestResult.document;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the first document(s) from the collection
-/// If an argument is supplied, the result will be a list of the first n
-/// documents. When no argument is supplied, the result is the first document
-/// from the collection, or null if the collection is empty.
-/// The document order is determined by the insertion/update order.
-////////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.first = function (count) {
-  var body = {
-    collection: this.name(),
-    count: count
-  };
-
-  var requestResult = this._database._connection.PUT(
-    this._prefixurl("/_api/simple/first"),
-    JSON.stringify(body));
-
-  arangosh.checkRequestResult(requestResult);
-
-  return requestResult.result;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the last document(s) from the collection
-/// If an argument is supplied, the result will be a list of the last n
-/// documents. When no argument is supplied, the result is the last document
-/// from the collection, or null if the collection is empty.
-/// The document order is determined by the insertion/update order.
-////////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.last = function (count) {
-  var body = {
-    collection: this.name(),
-    count: count
-  };
-
-  var requestResult = this._database._connection.PUT(
-    this._prefixurl("/_api/simple/last"),
-    JSON.stringify(body));
-
-  arangosh.checkRequestResult(requestResult);
-
-  return requestResult.result;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1017,16 +994,20 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
     });
   }
 
-  if (id.hasOwnProperty("_id")) {
+  if (typeof id === "object") {
     if (id.hasOwnProperty("_rev")) {
       rev = id._rev;
     }
-
-    id = id._id;
+    if (id.hasOwnProperty("_id")) {
+      id = id._id;
+    } else if (id.hasOwnProperty("_key")) {
+      id = id._key;
+    }
   }
 
   var params = "";
 
+  var ignoreRevs = false;
   if (typeof overwrite === "object") {
     // we assume the caller uses new signature (id, data, options)
     if (typeof waitForSync !== "undefined") {
@@ -1034,21 +1015,22 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
     }
     var options = overwrite;
     if (options.hasOwnProperty("overwrite") && options.overwrite) {
-      params += "?policy=last";
+      ignoreRevs = true;
     }
     if (options.hasOwnProperty("waitForSync") ) {
-     waitForSync = options.waitForSync;
+      waitForSync = options.waitForSync;
     }
   } else {
     if (overwrite) {
-      params += "?policy=last";
+      ignoreRevs = true;
     }
   }
 
   var url = this._documenturl(id) + params;
   url = this._appendSyncParameter(url, waitForSync);
+  url = this._appendBoolParameter(url, "ignoreRevs", true);
 
-  if (rev === null) {
+  if (rev === null || ignoreRevs) {
     requestResult = this._database._connection.DELETE(url);
   }
   else {
@@ -1057,18 +1039,14 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
   }
 
   if (requestResult !== null && requestResult.error === true) {
-    if (overwrite) {
-      if (requestResult.errorNum === internal.errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
-        return false;
-      }
+    if (requestResult.errorNum === internal.errors.ERROR_HTTP_PRECONDITION_FAILED.code) {
+      requestResult.errorNum = internal.errors.ERROR_ARANGO_CONFLICT.code;
     }
-
-    throw new ArangoError(requestResult);
   }
 
   arangosh.checkRequestResult(requestResult);
 
-  return true;
+  return requestResult;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1093,15 +1071,19 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
     });
   }
 
-  if (id.hasOwnProperty("_id")) {
+  if (typeof id === "object") {
     if (id.hasOwnProperty("_rev")) {
       rev = id._rev;
     }
-
-    id = id._id;
+    if (id.hasOwnProperty("_id")) {
+      id = id._id;
+    } else if (id.hasOwnProperty("_key")) {
+      id = id._key;
+    }
   }
 
   var params = "";
+  var ignoreRevs = false;
   if (typeof overwrite === "object") {
     if (typeof waitForSync !== "undefined") {
       throw "too many arguments";
@@ -1109,19 +1091,20 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
     // we assume the caller uses new signature (id, data, options)
     var options = overwrite;
     if (options.hasOwnProperty("overwrite") && options.overwrite) {
-      params += "?policy=last";
+      ignoreRevs = true;
     }
     if (options.hasOwnProperty("waitForSync") ) {
-     waitForSync = options.waitForSync;
+      waitForSync = options.waitForSync;
     }
   } else {
     if (overwrite) {
-      params += "?policy=last";
+      ignoreRevs = true;
     }
   }
-  var url = this._documenturl(id) + params;
+  var url = this._documenturl(id);
   url = this._appendSyncParameter(url, waitForSync);
-  if (rev === null) {
+  url = this._appendBoolParameter(url, "ignoreRevs", true);
+  if (rev === null || ignoreRevs) {
     requestResult = this._database._connection.PUT(url, JSON.stringify(data));
   }
   else {
@@ -1130,7 +1113,9 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
   }
 
   if (requestResult !== null && requestResult.error === true) {
-    throw new ArangoError(requestResult);
+    if (requestResult.errorNum === internal.errors.ERROR_HTTP_PRECONDITION_FAILED.code) {
+      requestResult.errorNum = internal.errors.ERROR_ARANGO_CONFLICT.code;
+    }
   }
 
   arangosh.checkRequestResult(requestResult);
@@ -1162,15 +1147,19 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
     });
   }
 
-  if (id.hasOwnProperty("_id")) {
+  if (typeof id === "object") {
     if (id.hasOwnProperty("_rev")) {
       rev = id._rev;
     }
-
-    id = id._id;
+    if (id.hasOwnProperty("_id")) {
+      id = id._id;
+    } else if (id.hasOwnProperty("_key")) {
+      id = id._key;
+    }
   }
 
   var params = "";
+  var ignoreRevs = false;
   if (typeof overwrite === "object") {
     if (typeof keepNull !== "undefined") {
       throw "too many arguments";
@@ -1188,7 +1177,7 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
     params += "&mergeObjects=" + options.mergeObjects;
 
     if (options.hasOwnProperty("overwrite") && options.overwrite) {
-      params += "&policy=last";
+      ignoreRevs = true;
     }
 
   } else {
@@ -1198,15 +1187,16 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
     params = "?keepNull=" + (keepNullValue ? "true" : "false");
 
     if (overwrite) {
-      params += "&policy=last";
+      ignoreRevs = true;
     }
 
   }
 
   var url = this._documenturl(id) + params;
   url = this._appendSyncParameter(url, waitForSync);
+  url = this._appendBoolParameter(url, "ignoreRevs", true);
 
-  if (rev === null) {
+  if (rev === null || ignoreRevs) {
     requestResult = this._database._connection.PATCH(url, JSON.stringify(data));
   }
   else {
@@ -1215,7 +1205,9 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
   }
 
   if (requestResult !== null && requestResult.error === true) {
-    throw new ArangoError(requestResult);
+    if (requestResult.errorNum === internal.errors.ERROR_HTTP_PRECONDITION_FAILED.code) {
+      requestResult.errorNum = internal.errors.ERROR_ARANGO_CONFLICT.code;
+    }
   }
 
   arangosh.checkRequestResult(requestResult);
