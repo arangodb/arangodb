@@ -1349,7 +1349,7 @@ void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
       for (size_t i = 0; i < n; ++i) {
         auto member = getMemberUnchecked(i);
         if (member != nullptr) {
-          builder.add(VPackValue(member->getStringValue()));
+          builder.add(VPackValue(std::string(member->getStringValue(), member->getStringLength())));
           member->getMember(0)->toVelocyPackValue(builder);
         }
       }

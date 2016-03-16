@@ -20,7 +20,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ArangodumpFeature.h"
+#include "DumpFeature.h"
 #include "ApplicationFeatures/ClientFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
@@ -46,9 +46,9 @@ using namespace arangodb::httpclient;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
-ArangodumpFeature::ArangodumpFeature(
+DumpFeature::DumpFeature(
     application_features::ApplicationServer* server, int* result)
-    : ApplicationFeature(server, "ArangodumpFeature"),
+    : ApplicationFeature(server, "Dump"),
       _collections(),
       _chunkSize(1024 * 1024 * 2),
       _maxChunkSize(1024 * 1024 * 12),
@@ -65,14 +65,14 @@ ArangodumpFeature::ArangodumpFeature(
       _clusterMode(false) {
   requiresElevatedPrivileges(false);
   setOptional(false);
-  startsAfter("ClientFeature");
-  startsAfter("LoggerFeature");
+  startsAfter("Client");
+  startsAfter("Logger");
 
   _outputDirectory =
       FileUtils::buildFilename(FileUtils::currentDirectory(), "dump");
 }
 
-void ArangodumpFeature::collectOptions(
+void DumpFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
 
@@ -119,7 +119,7 @@ void ArangodumpFeature::collectOptions(
                      new UInt64Parameter(&_tickEnd));
 }
 
-void ArangodumpFeature::validateOptions(
+void DumpFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
 
@@ -156,7 +156,7 @@ void ArangodumpFeature::validateOptions(
   }
 }
 
-void ArangodumpFeature::prepare() {
+void DumpFeature::prepare() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::prepare";
 
   bool isDirectory = false;
@@ -201,7 +201,7 @@ void ArangodumpFeature::prepare() {
 }
 
 // start a batch
-int ArangodumpFeature::startBatch(std::string DBserver, std::string& errorMsg) {
+int DumpFeature::startBatch(std::string DBserver, std::string& errorMsg) {
   std::string const url = "/_api/replication/batch";
   std::string const body = "{\"ttl\":300}";
 
@@ -251,7 +251,7 @@ int ArangodumpFeature::startBatch(std::string DBserver, std::string& errorMsg) {
 }
 
 // prolongs a batch
-void ArangodumpFeature::extendBatch(std::string DBserver) {
+void DumpFeature::extendBatch(std::string DBserver) {
   TRI_ASSERT(_batchId > 0);
 
   std::string const url =
@@ -269,7 +269,7 @@ void ArangodumpFeature::extendBatch(std::string DBserver) {
 }
 
 // end a batch
-void ArangodumpFeature::endBatch(std::string DBserver) {
+void DumpFeature::endBatch(std::string DBserver) {
   TRI_ASSERT(_batchId > 0);
 
   std::string const url =
@@ -288,7 +288,7 @@ void ArangodumpFeature::endBatch(std::string DBserver) {
 }
 
 /// @brief dump a single collection
-int ArangodumpFeature::dumpCollection(int fd, std::string const& cid,
+int DumpFeature::dumpCollection(int fd, std::string const& cid,
                                       std::string const& name, uint64_t maxTick,
                                       std::string& errorMsg) {
   uint64_t chunkSize = _chunkSize;
@@ -399,7 +399,7 @@ int ArangodumpFeature::dumpCollection(int fd, std::string const& cid,
 }
 
 // execute a WAL flush request
-void ArangodumpFeature::flushWal() {
+void DumpFeature::flushWal() {
   std::string const url =
       "/_admin/wal/flush?waitForSync=true&waitForCollector=true";
 
@@ -415,7 +415,7 @@ void ArangodumpFeature::flushWal() {
 }
 
 // dump data from server
-int ArangodumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
+int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
   std::string const url =
       "/_api/replication/inventory?includeSystem=" +
       std::string(_includeSystemCollections ? "true" : "false");
@@ -662,7 +662,7 @@ int ArangodumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
 }
 
 /// @brief dump a single shard, that is a collection on a DBserver
-int ArangodumpFeature::dumpShard(int fd, std::string const& DBserver,
+int DumpFeature::dumpShard(int fd, std::string const& DBserver,
                                  std::string const& name,
                                  std::string& errorMsg) {
   std::string const baseUrl = "/_api/replication/dump?DBserver=" + DBserver +
@@ -758,7 +758,7 @@ int ArangodumpFeature::dumpShard(int fd, std::string const& DBserver,
 }
 
 // dump data from cluster via a coordinator
-int ArangodumpFeature::runClusterDump(std::string& errorMsg) {
+int DumpFeature::runClusterDump(std::string& errorMsg) {
   int res;
 
   std::string const url =
@@ -970,11 +970,11 @@ int ArangodumpFeature::runClusterDump(std::string& errorMsg) {
   return TRI_ERROR_NO_ERROR;
 }
 
-void ArangodumpFeature::start() {
+void DumpFeature::start() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
 
   ClientFeature* client =
-      dynamic_cast<ClientFeature*>(server()->feature("ClientFeature"));
+      dynamic_cast<ClientFeature*>(server()->feature("Client"));
 
   int ret = EXIT_SUCCESS;
   *_result = ret;

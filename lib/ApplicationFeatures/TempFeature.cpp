@@ -32,10 +32,10 @@ using namespace arangodb::options;
 
 TempFeature::TempFeature(application_features::ApplicationServer* server,
                          std::string const& appname)
-    : ApplicationFeature(server, "TempFeature"), _path(), _appname(appname) {
+    : ApplicationFeature(server, "Temp"), _path(), _appname(appname) {
   setOptional(false);
   requiresElevatedPrivileges(false);
-  startsAfter("LoggerFeature");
+  startsAfter("Logger");
 }
 
 void TempFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

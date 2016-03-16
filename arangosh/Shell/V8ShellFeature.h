@@ -29,7 +29,7 @@
 #include <libplatform/libplatform.h>
 
 #include "ApplicationFeatures/ConsoleFeature.h"
-#include "Shell/ArangoshFeature.h"
+#include "Shell/ShellFeature.h"
 
 namespace arangodb {
 class ConsoleFeature;
@@ -65,8 +65,8 @@ class V8ShellFeature final : public application_features::ApplicationFeature {
  private:
   bool printHello(V8ClientConnection*);
   void initGlobals();
-  void initMode(ArangoshFeature::RunMode, std::vector<std::string> const&);
-  void loadModules(ArangoshFeature::RunMode);
+  void initMode(ShellFeature::RunMode, std::vector<std::string> const&);
+  void loadModules(ShellFeature::RunMode);
   V8ClientConnection* setup(v8::Local<v8::Context>& context, bool,
                             std::vector<std::string> const&,
                             bool* promptError = nullptr);
