@@ -43,6 +43,9 @@ void LanguageFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
 
+  options->addSection(
+      Section("", "Global configuration", "global options", false, false));
+
   options->addHiddenOption("--default-language", "ISO-639 language code",
                            new StringParameter(&_language));
 }
