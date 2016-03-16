@@ -18,17 +18,12 @@ var PortFinder = require("@arangodb/cluster").PortFinder;
 
 var documentationSourceDirs = [
   fs.join(fs.makeAbsolute(''), "Documentation/Examples/setup-arangosh.js"),
+  fs.join(fs.makeAbsolute(''), "Documentation/Books/Users"),
   fs.join(fs.makeAbsolute(''), "js/actions"),
   fs.join(fs.makeAbsolute(''), "js/client"),
   fs.join(fs.makeAbsolute(''), "js/common"),
   fs.join(fs.makeAbsolute(''), "js/server"),
-  fs.join(fs.makeAbsolute(''), "js/apps/system/_api/gharial/APP"),
-  fs.join(fs.makeAbsolute(''), "Documentation/Books/Users"),
-  fs.join(fs.makeAbsolute(''), "arangod/RestHandler"),
-  fs.join(fs.makeAbsolute(''), "arangod/V8Server")];
-
-
-	
+  fs.join(fs.makeAbsolute(''), "js/apps/system/_api/gharial/APP")];
 
 var theScript = 'Documentation/Scripts/generateExamples.py';
 
