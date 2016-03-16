@@ -35,10 +35,7 @@ const db = arangodb.db;
 const wait = require("internal").wait;
 const extend = require('lodash').extend;
 
-const endpoint = {
-  'hostname': '127.0.0.1',
-  port: 8529
-};
+let endpoint = {};
 
 describe('babies collection document', function() {
   const cn = "UnitTestsCollectionBasics";
