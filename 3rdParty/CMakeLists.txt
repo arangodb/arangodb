@@ -17,19 +17,17 @@ if (GO_FOUND)
     set (ETCD_BUILD_COMMAND ./build)
   endif ()
 
-  ExternalProject_Add(etcd_build
-    SOURCE_DIR
-      ${CMAKE_CURRENT_SOURCE_DIR}/etcd
+  ExternalProject_Add(etcd
     CONFIGURE_COMMAND
       ""
+    URL
+      "${CMAKE_CURRENT_SOURCE_DIR}/etcd"
     BUILD_IN_SOURCE
-      TRUE
+      1
     BUILD_COMMAND
       "${ETCD_BUILD_COMMAND}"
     INSTALL_COMMAND
-      "cp"
-        ${CMAKE_CURRENT_SOURCE_DIR}/etcd/bin/etcd
-        ${CMAKE_BINARY_DIR}/bin/etcd-arango
+      cp bin/etcd ${CMAKE_BINARY_DIR}/bin/etcd-arango
   )
 endif ()
 
