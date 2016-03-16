@@ -263,6 +263,7 @@ bool TraversalBlock::morePaths(size_t hint) {
   }
   auto en = static_cast<TraversalNode const*>(getPlanNode());
 
+  VPackBuilder tmp;
   for (size_t j = 0; j < hint; ++j) {
     std::unique_ptr<arangodb::traverser::TraversalPath> p(_traverser->next());
 
@@ -271,21 +272,20 @@ bool TraversalBlock::morePaths(size_t hint) {
       break;
     }
 
-    AqlValue pathValue;
-
-    if (usesPathOutput() || (en->condition() != nullptr)) {
-      // pathValue = AqlValue(p->pathToJson(_trx, _resolver));
-#warning FIX PATH CREATION
-    }
-
     if (usesVertexOutput()) {
-      _vertices.emplace_back(p->lastVertexToJson(_trx, _resolver));
+      tmp.clear();
+      p->lastVertexToVelocyPack(_trx, tmp);
+      _vertices.emplace_back(tmp.slice());
     }
     if (usesEdgeOutput()) {
-      _edges.emplace_back(p->lastEdgeToJson(_trx, _resolver));
+      tmp.clear();
+      p->lastEdgeToVelocyPack(_trx, tmp);
+      _edges.emplace_back(tmp.slice());
     }
     if (usesPathOutput()) {
-      _paths.emplace_back(pathValue);
+      tmp.clear();
+      p->pathToVelocyPack(_trx, tmp);
+      _paths.emplace_back(tmp.slice());
     }
     _engine->_stats.scannedIndex += p->getReadDocuments();
 
