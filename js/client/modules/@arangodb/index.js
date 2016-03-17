@@ -1,12 +1,9 @@
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief JavaScript base module
-///
-/// @file
-///
 /// DISCLAIMER
 ///
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,19 +18,17 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
 var common = require("@arangodb/common");
 
-Object.keys(common).forEach(function (key) {
+Object.keys(common).forEach(function(key) {
   exports[key] = common[key];
 });
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief isServer
@@ -90,8 +85,7 @@ if (typeof internal.arango !== 'undefined') {
     exports.arango = internal.arango;
     exports.db = new exports.ArangoDatabase(internal.arango);
     internal.db = exports.db; // TODO remove
-  }
-  catch (err) {
+  } catch (err) {
     internal.print("cannot connect to server: " + String(err));
   }
 }
@@ -103,17 +97,20 @@ if (typeof internal.arango !== 'undefined') {
 exports.plainServerVersion = function() {
   if (internal.arango) {
     let version = internal.arango.getVersion();
-    let devel = version.match(/(.*)-((alpha|beta|devel|rc)[0-9]*)$/);
+    let devel = version.match(/(.*)\.x-devel/);
 
     if (devel !== null) {
-      version = devel[1];
+      version = devel[1] + ".0";
+    } else {
+      devel = version.match(/(.*)-((alpha|beta|devel|rc)[0-9]*)$/);
+
+      if (devel !== null) {
+        version = devel[1];
+      }
     }
 
     return version;
-  }
-  else {
+  } else {
     return undefined;
   }
 };
-
-

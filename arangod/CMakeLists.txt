@@ -222,7 +222,6 @@ add_executable(${BIN_ARANGOD}
   Utils/Cursor.cpp
   Utils/CursorRepository.cpp
   Utils/OperationCursor.cpp
-  Utils/ShapedJsonTransformer.cpp
   Utils/SingleCollectionTransaction.cpp
   Utils/StandaloneTransactionContext.cpp
   Utils/Transaction.cpp
@@ -242,7 +241,6 @@ add_executable(${BIN_ARANGOD}
   V8Server/v8-dispatcher.cpp
   V8Server/v8-query.cpp
   V8Server/v8-replication.cpp
-  V8Server/v8-shape-conv.cpp
   V8Server/v8-statistics.cpp
   V8Server/v8-user-structures.cpp
   V8Server/v8-util.cpp
@@ -255,9 +253,7 @@ add_executable(${BIN_ARANGOD}
   VocBase/ExampleMatcher.cpp
   VocBase/Graphs.cpp
   VocBase/KeyGenerator.cpp
-  VocBase/Shaper.cpp
   VocBase/Traverser.cpp
-  VocBase/VocShaper.cpp
   VocBase/auth.cpp
   VocBase/cleanup.cpp
   VocBase/collection.cpp
@@ -270,7 +266,6 @@ add_executable(${BIN_ARANGOD}
   VocBase/replication-common.cpp
   VocBase/replication-dump.cpp
   VocBase/server.cpp
-  VocBase/shaped-json.cpp
   VocBase/transaction.cpp
   VocBase/vocbase-defaults.cpp
   VocBase/vocbase.cpp

@@ -85,7 +85,7 @@ SortCondition::SortCondition(
         std::vector<arangodb::basics::AttributeName> fieldNames;
         while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
           fieldNames.emplace_back(
-              arangodb::basics::AttributeName(node->getStringValue()));
+              arangodb::basics::AttributeName(node->getString()));
           node = node->getMember(0);
         }
 

@@ -2122,6 +2122,15 @@ void TRI_InitializeErrorMessages ();
 #define TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER                                (1477)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1478: ERROR_CLUSTER_BACKEND_UNAVAILABLE
+///
+/// A cluster backend which was required for the operation could not be reached
+///
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE                             (1478)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED
 ///
 /// query killed

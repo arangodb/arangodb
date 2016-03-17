@@ -27,7 +27,6 @@
 #include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/VocShaper.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>

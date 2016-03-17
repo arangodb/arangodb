@@ -29,7 +29,6 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Utils/AqlTransaction.h"
-#include "VocBase/shaped-json.h"
 
 struct TRI_df_marker_t;
 struct TRI_doc_mptr_t;

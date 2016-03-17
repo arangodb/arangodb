@@ -39,7 +39,8 @@ const functionsDocumentation = {
   "dfdb": "start test",
   "foxx_manager": "foxx manager tests",
   "http_replication": "http replication tests",
-  "http_server": "http server tests",
+  "http_server": "http server tests in Ruby",
+  "server_http" : "http server tests in Mocha",
   "importing": "import tests",
   "recovery": "run recovery tests",
   "replication_ongoing": "replication ongoing tests",
@@ -1982,6 +1983,14 @@ function findTests() {
         return fs.join(makePathUnix("js/server/perftests"), x);
       }).sort();
 
+  testsCases.server_http = _.filter(fs.list(makePathUnix("js/common/tests/http")),
+    function(p) {
+      return p.substr(-3) === ".js";
+    }).map(
+    function(x) {
+      return fs.join(makePathUnix("js/common/tests/http"), x);
+    }).sort();
+
   testsCases.replication = _.filter(fs.list(makePathUnix("js/common/tests/replication")),
     function(p) {
       return p.substr(-3) === ".js";
@@ -2095,6 +2104,7 @@ let allTests = [
   "dfdb",
   "http_server",
   "importing",
+  "server_http",
   "shell_client",
   "shell_server",
   "shell_server_aql",
@@ -2983,7 +2993,7 @@ testFuncs.foxx_manager = function(options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief TEST: http replication
+/// @brief TEST: http_replication
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.http_replication = function(options) {
@@ -2996,7 +3006,7 @@ testFuncs.http_replication = function(options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief TEST: http server
+/// @brief TEST: http_server
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.http_server = function(options) {
@@ -3482,7 +3492,7 @@ testFuncs.shell_replication = function(options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief TEST: shell client
+/// @brief TEST: shell_client
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.shell_client = function(options) {
@@ -3556,7 +3566,17 @@ testFuncs.shell_client = function(options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief TEST: shell server
+/// @brief TEST: shell_http
+////////////////////////////////////////////////////////////////////////////////
+
+testFuncs.server_http = function(options) {
+  findTests();
+
+  return performTests(options, testsCases.server_http, 'server_http');
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief TEST: shell_server
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.shell_server = function(options) {
@@ -3566,7 +3586,7 @@ testFuncs.shell_server = function(options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief TEST: shell server aql
+/// @brief TEST: shell_server_aql
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.shell_server_aql = function(options) {
@@ -3592,7 +3612,7 @@ testFuncs.shell_server_aql = function(options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief TEST: shell server only
+/// @brief TEST: shell_server_only
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.shell_server_only = function(options) {
@@ -3602,7 +3622,7 @@ testFuncs.shell_server_only = function(options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief TEST: shell server performance
+/// @brief TEST: shell_server_perf
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.shell_server_perf = function(options) {
@@ -3613,7 +3633,7 @@ testFuncs.shell_server_perf = function(options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief TEST: single client
+/// @brief TEST: single_client
 ////////////////////////////////////////////////////////////////////////////////
 
 function single_usage(testsuite, list) {
@@ -3685,7 +3705,7 @@ testFuncs.single_client = function(options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief TEST: single server
+/// @brief TEST: single_server
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.single_server = function(options) {
@@ -3743,7 +3763,7 @@ testFuncs.single_server = function(options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief TEST: https server
+/// @brief TEST: ssl_server
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.ssl_server = function(options) {

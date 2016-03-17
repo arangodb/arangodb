@@ -35,7 +35,7 @@
 namespace arangodb {
 namespace velocypack {
 struct AttributeExcludeHandler;
-struct AttributeTranslator;
+class AttributeTranslator;
 }
 
 namespace basics {

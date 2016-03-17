@@ -139,10 +139,10 @@ void Expression::variables(std::unordered_set<Variable const*>& result) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Expression::execute(arangodb::AqlTransaction* trx,
-                              AqlItemBlock const* argv, size_t startPos,
-                              std::vector<Variable const*> const& vars,
-                              std::vector<RegisterId> const& regs,
-                              bool& mustDestroy) {
+                             AqlItemBlock const* argv, size_t startPos,
+                             std::vector<Variable const*> const& vars,
+                             std::vector<RegisterId> const& regs,
+                             bool& mustDestroy) {
   if (!_built) {
     buildExpression();
   }
@@ -153,7 +153,7 @@ AqlValue Expression::execute(arangodb::AqlTransaction* trx,
   // and execute
   switch (_type) {
     case JSON: {
-      // TODO
+      mustDestroy = false;
       TRI_ASSERT(_data != nullptr);
       return AqlValue(_data);
     }
@@ -340,12 +340,10 @@ void Expression::analyzeExpression() {
     if (_node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
       TRI_ASSERT(_node->numMembers() == 1);
       auto member = _node->getMemberUnchecked(0);
-      std::vector<char const*> parts{
-          static_cast<char const*>(_node->getData())};
+      std::vector<std::string> parts{_node->getString()};
 
       while (member->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        parts.insert(parts.begin(),
-                     static_cast<char const*>(member->getData()));
+        parts.insert(parts.begin(), member->getString());
         member = member->getMemberUnchecked(0);
       }
 
@@ -447,7 +445,7 @@ AqlValue Expression::executeSimpleExpression(
       return executeSimpleExpressionValue(node, mustDestroy);
     case NODE_TYPE_REFERENCE:
       return executeSimpleExpressionReference(node, trx, argv, startPos,
-                                              vars, regs, doCopy, mustDestroy);
+                                              vars, regs, mustDestroy, doCopy);
     case NODE_TYPE_FCALL:
       return executeSimpleExpressionFCall(node, trx, argv, startPos, vars,
                                           regs, mustDestroy);
@@ -456,6 +454,7 @@ AqlValue Expression::executeSimpleExpression(
                                           regs, mustDestroy);
     case NODE_TYPE_OPERATOR_UNARY_NOT:
       return executeSimpleExpressionNot(node, trx, argv, startPos, vars, regs, mustDestroy);
+
     case NODE_TYPE_OPERATOR_BINARY_AND:
     case NODE_TYPE_OPERATOR_BINARY_OR:
       return executeSimpleExpressionAndOr(node, trx, argv, startPos, vars,
@@ -564,7 +563,6 @@ AqlValue Expression::executeSimpleExpressionAttributeAccess(
 
   AqlValue result = executeSimpleExpression(member, trx, argv,
                                             startPos, vars, regs, mustDestroy, false);
-
   AqlValueGuard guard(result, mustDestroy);
 
   AqlValue a = result.get(trx, name, mustDestroy, true);
@@ -598,7 +596,7 @@ AqlValue Expression::executeSimpleExpressionIndexedAccess(
 
   mustDestroy = false; 
   AqlValue result = executeSimpleExpression(member, trx, argv,
-                                             startPos, vars, regs, mustDestroy, false);
+                                            startPos, vars, regs, mustDestroy, false);
 
   AqlValueGuard guard(result, mustDestroy);
 
@@ -708,7 +706,7 @@ AqlValue Expression::executeSimpleExpressionObject(
     auto member = node->getMemberUnchecked(i);
     TRI_ASSERT(member->type == NODE_TYPE_OBJECT_ELEMENT);
     // key
-    builder.add(VPackValue(std::string(member->getStringValue(), member->getStringLength())));
+    builder.add(VPackValue(member->getString()));
 
     // value
     member = member->getMember(0);
@@ -837,8 +835,7 @@ AqlValue Expression::executeSimpleExpressionFCall(
 
       if (arg->type == NODE_TYPE_COLLECTION) {
         builder.clear();
-        builder.add(VPackValue(
-              std::string(arg->getStringValue(), arg->getStringLength())));
+        builder.add(VPackValue(arg->getString()));
         parameters.emplace_back(AqlValue(builder));
         destroyParameters.push_back(true);
       } else {
@@ -852,9 +849,8 @@ AqlValue Expression::executeSimpleExpressionFCall(
 
     TRI_ASSERT(parameters.size() == destroyParameters.size());
 
-    AqlValue a = func->implementation(_ast->query(), trx, parameters, mustDestroy);
-#warning Do we have to free the old value
-    mustDestroy = true; // function result is dynamic
+    AqlValue a = func->implementation(_ast->query(), trx, parameters);
+    mustDestroy = true; // function result is always dynamic
 
     for (size_t i = 0; i < parameters.size(); ++i) {
       if (destroyParameters[i]) {

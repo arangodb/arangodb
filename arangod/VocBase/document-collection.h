@@ -25,7 +25,6 @@
 #define ARANGOD_VOC_BASE_DOCUMENT_COLLECTION_H 1
 
 #include "Basics/Common.h"
-#include "Basics/fasthash.h"
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/collection.h"
@@ -34,15 +33,11 @@
 #include "VocBase/Ditch.h"
 #include "VocBase/MasterPointer.h"
 #include "VocBase/MasterPointers.h"
-#include "VocBase/shaped-json.h"
 #include "VocBase/voc-types.h"
 #include "Wal/Marker.h"
 
-class VocShaper;
-
 namespace arangodb {
 class EdgeIndex;
-class ExampleMatcher;
 class Index;
 class KeyGenerator;
 class OperationOptions;
@@ -109,8 +104,6 @@ struct TRI_document_collection_t : public TRI_collection_t {
   arangodb::basics::ReadWriteLock _lock;
 
  private:
-  VocShaper* _shaper;
-
   arangodb::Mutex _compactionStatusLock;
   size_t _nextCompactionStartIndex;
   char const* _lastCompactionStatus;
@@ -126,13 +119,6 @@ struct TRI_document_collection_t : public TRI_collection_t {
 
  public:
   arangodb::DatafileStatistics _datafileStatistics;
-
-// We do some assertions with barriers and transactions in maintainer mode:
-#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
-  VocShaper* getShaper() const { return _shaper; }
-#else
-  VocShaper* getShaper() const;
-#endif
 
   std::unique_ptr<arangodb::FollowerInfo> const& followers() const {
     return _followers;
@@ -155,8 +141,6 @@ struct TRI_document_collection_t : public TRI_collection_t {
   inline bool useSecondaryIndexes() const { return _useSecondaryIndexes; }
 
   void useSecondaryIndexes(bool value) { _useSecondaryIndexes = value; }
-
-  void setShaper(VocShaper* s) { _shaper = s; }
 
   void addIndex(arangodb::Index*);
   arangodb::Index* removeIndex(TRI_idx_iid_t);
@@ -468,28 +452,6 @@ static inline TRI_voc_cid_t TRI_EXTRACT_MARKER_TO_CID(
   TRI_df_marker_t const* marker =
       static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());
   return TRI_EXTRACT_MARKER_TO_CID(marker);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts the revision id from a marker
-////////////////////////////////////////////////////////////////////////////////
-
-static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID(
-    TRI_df_marker_t const* marker) {
-  // invalid marker type
-  TRI_ASSERT(false);
-
-  return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts the revision id from a master pointer
-////////////////////////////////////////////////////////////////////////////////
-
-static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID(TRI_doc_mptr_t const* mptr) {
-  TRI_df_marker_t const* marker =
-      static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());
-  return TRI_EXTRACT_MARKER_RID(marker);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

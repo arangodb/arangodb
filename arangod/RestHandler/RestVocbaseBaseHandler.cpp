@@ -262,20 +262,17 @@ void RestVocbaseBaseHandler::generateForbidden() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates precondition failed
-///        DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generatePreconditionFailed(
     VPackSlice const& slice) {
-  TRI_ASSERT(slice.isObject());
-  TRI_ASSERT(slice.hasKey(TRI_VOC_ATTRIBUTE_ID));
-  TRI_ASSERT(slice.hasKey(TRI_VOC_ATTRIBUTE_REV));
-  TRI_ASSERT(slice.hasKey(TRI_VOC_ATTRIBUTE_KEY));
 
   createResponse(HttpResponse::PRECONDITION_FAILED);
   _response->setContentType("application/json; charset=utf-8");
-  std::string const rev = VelocyPackHelper::getStringValue(slice, TRI_VOC_ATTRIBUTE_REV, "");
-  _response->setHeader("etag", 4, "\"" + rev + "\"");
+  if (slice.isObject()) {  // single document case
+    std::string const rev = VelocyPackHelper::getStringValue(slice, TRI_VOC_ATTRIBUTE_REV, "");
+    _response->setHeader("etag", 4, "\"" + rev + "\"");
+  }
   VPackBuilder builder;
   {
     VPackObjectBuilder guard(&builder);
@@ -285,9 +282,13 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
         VPackValue(static_cast<int32_t>(HttpResponse::PRECONDITION_FAILED)));
     builder.add("errorNum", VPackValue(TRI_ERROR_ARANGO_CONFLICT));
     builder.add("errorMessage", VPackValue("precondition failed"));
-    builder.add(TRI_VOC_ATTRIBUTE_ID, slice.get(TRI_VOC_ATTRIBUTE_ID));
-    builder.add(TRI_VOC_ATTRIBUTE_KEY, slice.get(TRI_VOC_ATTRIBUTE_KEY));
-    builder.add(TRI_VOC_ATTRIBUTE_REV, slice.get(TRI_VOC_ATTRIBUTE_REV));
+    if (slice.isObject()) {
+      builder.add(TRI_VOC_ATTRIBUTE_ID, slice.get(TRI_VOC_ATTRIBUTE_ID));
+      builder.add(TRI_VOC_ATTRIBUTE_KEY, slice.get(TRI_VOC_ATTRIBUTE_KEY));
+      builder.add(TRI_VOC_ATTRIBUTE_REV, slice.get(TRI_VOC_ATTRIBUTE_REV));
+    } else {
+      builder.add("result", slice);
+    }
   }
 
   VPackStringBufferAdapter buffer(_response->body().stringBuffer());
@@ -440,6 +441,10 @@ void RestVocbaseBaseHandler::generateTransactionError(
 
     case TRI_ERROR_CLUSTER_TIMEOUT:
       generateError(HttpResponse::SERVER_ERROR, res);
+      return;
+    
+    case TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE:
+      generateError(HttpResponse::SERVICE_UNAVAILABLE, res, "A required backend was not available");
       return;
 
     case TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES:

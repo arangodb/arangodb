@@ -40,8 +40,6 @@ class Slice;
 class Transaction;
 }
 
-class VocShaper;
-
 struct EdgeInfo {
   TRI_voc_cid_t cid;
   TRI_doc_mptr_t mptr;

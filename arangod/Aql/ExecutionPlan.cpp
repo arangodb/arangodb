@@ -483,19 +483,19 @@ ModificationOptions ExecutionPlan::createModificationOptions(
       auto member = node->getMember(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
-        auto name = member->getStringValue();
+        std::string const name = member->getString();
         auto value = member->getMember(0);
 
         TRI_ASSERT(value->isConstant());
 
-        if (strcmp(name, "waitForSync") == 0) {
+        if (name == "waitForSync") {
           options.waitForSync = value->isTrue();
-        } else if (strcmp(name, "ignoreErrors") == 0) {
+        } else if (name == "ignoreErrors") {
           options.ignoreErrors = value->isTrue();
-        } else if (strcmp(name, "keepNull") == 0) {
+        } else if (name == "keepNull") {
           // nullMeansRemove is the opposite of keepNull
           options.nullMeansRemove = value->isFalse();
-        } else if (strcmp(name, "mergeObjects") == 0) {
+        } else if (name == "mergeObjects") {
           options.mergeObjects = value->isTrue();
         }
       }
@@ -552,15 +552,15 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
       auto member = node->getMember(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
-        auto name = member->getStringValue();
+        std::string const name = member->getString();
         auto value = member->getMember(0);
 
         TRI_ASSERT(value->isConstant());
 
-        if (strcmp(name, "method") == 0) {
+        if (name == "method") {
           if (value->isStringValue()) {
             options.method =
-                CollectOptions::methodFromString(value->getStringValue());
+                CollectOptions::methodFromString(value->getString());
           }
         }
       }
@@ -641,7 +641,7 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
   // peek at second operand
   if (expression->type == NODE_TYPE_COLLECTION) {
     // second operand is a collection
-    char const* collectionName = expression->getStringValue();
+    std::string const collectionName = expression->getString();
     auto collections = _ast->query()->collections();
     auto collection = collections->get(collectionName);
 
@@ -691,8 +691,7 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
     for (size_t i = 0; i < n; ++i) {
       auto member = start->getMember(i);
       if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
-          strncmp(member->getStringValue(), TRI_VOC_ATTRIBUTE_ID,
-                  member->getStringLength()) == 0) {
+          member->getString() == TRI_VOC_ATTRIBUTE_ID) {
         start = member->getMember(0);
         break;
       }
@@ -860,11 +859,10 @@ ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous,
       if (ascending->type == NODE_TYPE_VALUE) {
         if (ascending->value.type == VALUE_TYPE_STRING) {
           // special treatment for string values ASC/DESC
-          if (TRI_CaseEqualString(ascending->value.value._string, "ASC")) {
+          if (ascending->stringEquals("ASC", true)) {
             isAscending = true;
             handled = true;
-          } else if (TRI_CaseEqualString(ascending->value.value._string,
-                                         "DESC")) {
+          } else if (ascending->stringEquals("DESC", true)) {
             isAscending = false;
             handled = true;
           }
@@ -1232,7 +1230,7 @@ ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous,
   TRI_ASSERT(node->numMembers() == 4);
 
   auto options = createModificationOptions(node->getMember(0));
-  char const* collectionName = node->getMember(1)->getStringValue();
+  std::string const collectionName = node->getMember(1)->getString();
   auto collections = _ast->query()->collections();
   auto collection = collections->get(collectionName);
 
@@ -1276,7 +1274,7 @@ ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous,
   TRI_ASSERT(node->numMembers() == 4);
 
   auto options = createModificationOptions(node->getMember(0));
-  char const* collectionName = node->getMember(1)->getStringValue();
+  std::string const collectionName = node->getMember(1)->getString();
   auto collections = _ast->query()->collections();
   auto collection = collections->get(collectionName);
   auto expression = node->getMember(2);
@@ -1315,7 +1313,7 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate(ExecutionNode* previous,
   TRI_ASSERT(node->numMembers() == 6);
 
   auto options = createModificationOptions(node->getMember(0));
-  char const* collectionName = node->getMember(1)->getStringValue();
+  std::string const collectionName = node->getMember(1)->getString();
   auto collections = _ast->query()->collections();
   auto collection = collections->get(collectionName);
   auto docExpression = node->getMember(2);
@@ -1376,7 +1374,7 @@ ExecutionNode* ExecutionPlan::fromNodeReplace(ExecutionNode* previous,
   TRI_ASSERT(node->numMembers() == 6);
 
   auto options = createModificationOptions(node->getMember(0));
-  char const* collectionName = node->getMember(1)->getStringValue();
+  std::string const collectionName = node->getMember(1)->getString();
   auto collections = _ast->query()->collections();
   auto collection = collections->get(collectionName);
   auto docExpression = node->getMember(2);
@@ -1437,7 +1435,7 @@ ExecutionNode* ExecutionPlan::fromNodeUpsert(ExecutionNode* previous,
   TRI_ASSERT(node->numMembers() == 7);
 
   auto options = createModificationOptions(node->getMember(0));
-  char const* collectionName = node->getMember(1)->getStringValue();
+  std::string const collectionName = node->getMember(1)->getString();
   auto collections = _ast->query()->collections();
   auto collection = collections->get(collectionName);
   auto docExpression = node->getMember(2);

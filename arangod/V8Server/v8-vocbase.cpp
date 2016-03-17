@@ -57,7 +57,6 @@
 #include "V8Server/V8VPackWrapper.h"
 #include "VocBase/auth.h"
 #include "VocBase/KeyGenerator.h"
-#include "VocBase/VocShaper.h"
 #include "Wal/LogfileManager.h"
 
 #include <unicode/timezone.h>

@@ -319,7 +319,7 @@ void Dumper::dumpValue(Slice const* slice, Slice const* base) {
         ++_indentation;
         while (it.valid()) {
           indent();
-          dumpValue(it.value(), base);
+          dumpValue(it.value(), slice);
           if (!it.isLast()) {
             _sink->push_back(',');
           }
@@ -333,7 +333,7 @@ void Dumper::dumpValue(Slice const* slice, Slice const* base) {
           if (!it.isFirst()) {
             _sink->push_back(',');
           }
-          dumpValue(it.value(), base);
+          dumpValue(it.value(), slice);
           it.next();
         }
       }
@@ -349,9 +349,9 @@ void Dumper::dumpValue(Slice const* slice, Slice const* base) {
         ++_indentation;
         while (it.valid()) {
           indent();
-          dumpValue(it.key().makeKey(), base);
+          dumpValue(it.key().makeKey(), slice);
           _sink->append(" : ", 3);
-          dumpValue(it.value(), base);
+          dumpValue(it.value(), slice);
           if (!it.isLast()) {
             _sink->push_back(',');
           }
@@ -365,9 +365,9 @@ void Dumper::dumpValue(Slice const* slice, Slice const* base) {
           if (!it.isFirst()) {
             _sink->push_back(',');
           }
-          dumpValue(it.key().makeKey(), base);
+          dumpValue(it.key().makeKey(), slice);
           _sink->push_back(':');
-          dumpValue(it.value(), base);
+          dumpValue(it.value(), slice);
           it.next();
         }
       }

@@ -259,8 +259,6 @@ static inline void InitMarker(TRI_df_marker_t* marker,
   TRI_ASSERT(type > TRI_DF_MARKER_MIN && type < TRI_DF_MARKER_MAX);
   TRI_ASSERT(size > 0);
 
-  // memset the last 8 bytes of the marker, as they might be uninitialized otherwise
-  memset(reinterpret_cast<char*>(marker) + DatafileHelper::AlignedSize(size) - 8, 0, 8); 
   marker->setSize(size);
   marker->setType(type);
   marker->setCrc(0);

@@ -34,7 +34,6 @@ const sinon = require('sinon');
 const FoxxRepository = require('@arangodb/foxx/repository').Repository;
 const FoxxModel = require('@arangodb/foxx/model').Model;
 
-
 describe('Repository', function () {
   const prefix = 'myApp';
   let collection;

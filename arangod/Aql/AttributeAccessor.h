@@ -41,7 +41,7 @@ struct Variable;
 
 class AttributeAccessor {
  public:
-  AttributeAccessor(std::vector<char const*> const&, Variable const*);
+  AttributeAccessor(std::vector<std::string> const&, Variable const*);
   ~AttributeAccessor() = default;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -58,7 +58,7 @@ class AttributeAccessor {
   /// @brief the attribute names vector (e.g. [ "a", "b", "c" ] for a.b.c)
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<char const*> const _attributeParts;
+  std::vector<std::string> const _attributeParts;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief full attribute name (e.g. "a.b.c")

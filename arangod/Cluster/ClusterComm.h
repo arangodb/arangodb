@@ -69,9 +69,10 @@ enum ClusterCommOpStatus {
   CL_COMM_TIMEOUT = 4,    // no answer received until timeout
   CL_COMM_RECEIVED = 5,   // answer received
   CL_COMM_ERROR = 6,      // original request could not be sent
-  CL_COMM_DROPPED = 7     // operation was dropped, not known
+  CL_COMM_DROPPED = 7,    // operation was dropped, not known
                           // this is only used to report an error
                           // in the wait or enquire methods
+  CL_COMM_BACKEND_UNAVAILABLE = 8 // mop: communication problem with the backend
 };
 
 ////////////////////////////////////////////////////////////////////////////////
