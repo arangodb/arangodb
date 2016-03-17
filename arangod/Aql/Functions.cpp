@@ -530,16 +530,20 @@ static void RequestEdges(VPackSlice const& vertexSlice,
   VPackBuilder searchValueBuilder;
   EdgeIndex::buildSearchValue(direction, vertexId, searchValueBuilder);
   VPackSlice search = searchValueBuilder.slice();
-  OperationCursor cursor = trx->indexScan(
+  std::shared_ptr<OperationCursor> cursor = trx->indexScan(
       collectionName, arangodb::Transaction::CursorType::INDEX, indexId,
       search, 0, UINT64_MAX, 1000, false);
-  if (cursor.failed()) {
-    THROW_ARANGO_EXCEPTION(cursor.code);
+  if (cursor->failed()) {
+    THROW_ARANGO_EXCEPTION(cursor->code);
   }
 
-  while (cursor.hasMore()) {
-    cursor.getMore();
-    VPackSlice edges = cursor.slice();
+  auto opRes = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
+  while (cursor->hasMore()) {
+    cursor->getMore(opRes);
+    if (opRes->failed()) {
+      THROW_ARANGO_EXCEPTION(opRes->code);
+    }
+    VPackSlice edges = opRes->slice();
     TRI_ASSERT(edges.isArray());
     if (includeVertices) {
       for (auto const& edge : VPackArrayIterator(edges)) {

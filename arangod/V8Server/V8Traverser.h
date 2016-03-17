@@ -191,34 +191,34 @@ class DepthFirstTraverser : public Traverser {
    public:
     EdgeGetter(DepthFirstTraverser* traverser,
                         TraverserOptions const& opts,
-                        CollectionNameResolver* resolver, Transaction* trx)
-        : _traverser(traverser), _resolver(resolver), _opts(opts), _trx(trx) {}
+                        Transaction* trx)
+        : _traverser(traverser), _opts(opts), _trx(trx) {}
 
     //////////////////////////////////////////////////////////////////////////////
     /// @brief Function to fill the list of edges properly.
     //////////////////////////////////////////////////////////////////////////////
 
     void operator()(std::string const&, std::vector<std::string>&,
-                    TRI_doc_mptr_t*&, size_t&, bool&);
+                    arangodb::velocypack::ValueLength*&, size_t&, bool&);
 
    private:
 
     //////////////////////////////////////////////////////////////////////////////
-    /// @brief Get an edge index for the given collection by name
+    /// @brief Get the next valid cursor
     //////////////////////////////////////////////////////////////////////////////
-    
-    EdgeIndex* getEdgeIndex(std::string const&, TRI_voc_cid_t&);
+
+    bool nextCursor(std::string const&, size_t&,
+                    arangodb::velocypack::ValueLength*&);
 
     //////////////////////////////////////////////////////////////////////////////
-    /// @brief Collection name resolver
+    /// @brief Get the next edge
     //////////////////////////////////////////////////////////////////////////////
+
+    void nextEdge(std::string const&, size_t&,
+                  arangodb::velocypack::ValueLength*&,
+                  std::vector<std::string>&);
+
     DepthFirstTraverser* _traverser;
-
-    //////////////////////////////////////////////////////////////////////////////
-    /// @brief Collection name resolver
-    //////////////////////////////////////////////////////////////////////////////
-
-    CollectionNameResolver* _resolver;
 
     //////////////////////////////////////////////////////////////////////////////
     /// @brief Cache for indexes. Maps collectionName to Index
@@ -237,15 +237,41 @@ class DepthFirstTraverser : public Traverser {
     /// @brief Pointer to active transaction
     ///        All Edge Collections have to be properly locked before traversing!
     //////////////////////////////////////////////////////////////////////////////
+
     Transaction* _trx;
+
+    //////////////////////////////////////////////////////////////////////////////
+    /// @brief Stack of all active cursors
+    //////////////////////////////////////////////////////////////////////////////
+
+    std::stack<std::shared_ptr<OperationCursor>> _cursors;
+
+    //////////////////////////////////////////////////////////////////////////////
+    /// @brief Stack of all active cursor batches
+    //////////////////////////////////////////////////////////////////////////////
+
+    std::stack<std::shared_ptr<OperationResult>> _results;
+
+    //////////////////////////////////////////////////////////////////////////////
+    /// @brief Stack of positions in the cursors
+    //////////////////////////////////////////////////////////////////////////////
+
+    std::stack<arangodb::velocypack::ValueLength> _posInCursor;
+
+    //////////////////////////////////////////////////////////////////////////////
+    /// @brief velocyPack builder to create temporary search values
+    //////////////////////////////////////////////////////////////////////////////
+
+    arangodb::velocypack::Builder _builder;
+
   };
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief internal cursor to enumerate the paths of a graph
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unique_ptr<arangodb::basics::PathEnumerator<std::string, std::string,
-                                                   TRI_doc_mptr_t>> _enumerator;
+  std::unique_ptr<arangodb::basics::PathEnumerator<
+      std::string, std::string, arangodb::velocypack::ValueLength>> _enumerator;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief internal getter to extract an edge
@@ -281,6 +307,14 @@ class DepthFirstTraverser : public Traverser {
       _vertices;
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Cache for edge documents
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::unordered_map<std::string,
+                     std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>
+      _edges;
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Shared builder to create temporary objects like search values
   //////////////////////////////////////////////////////////////////////////////
 
@@ -302,7 +336,7 @@ class DepthFirstTraverser : public Traverser {
  public:
   DepthFirstTraverser(
       std::vector<TRI_document_collection_t*> const&, TraverserOptions&,
-      CollectionNameResolver*, Transaction*,
+      Transaction*,
       std::unordered_map<size_t, std::vector<TraverserExpression*>> const*);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -376,8 +410,8 @@ class EdgeCollectionInfo {
 /// @brief Get edges for the given direction and start vertex.
 ////////////////////////////////////////////////////////////////////////////////
 
-  arangodb::OperationCursor getEdges(TRI_edge_direction_e direction,
-                                     std::string const&);
+  std::shared_ptr<arangodb::OperationCursor> getEdges(
+      TRI_edge_direction_e direction, std::string const&);
 
   double weightEdge(arangodb::velocypack::Slice const);
 

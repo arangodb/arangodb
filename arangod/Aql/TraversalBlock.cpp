@@ -48,7 +48,7 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
       _resolver(nullptr),
       _expressions(ep->expressions()),
       _hasV8Expression(false) {
-  arangodb::traverser::TraverserOptions opts;
+  arangodb::traverser::TraverserOptions opts(_trx);
   ep->fillTraversalOptions(opts);
   auto ast = ep->_plan->getAst();
 
@@ -98,7 +98,7 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
       _trx->orderDitch(cid);
     }
     _traverser.reset(new arangodb::traverser::DepthFirstTraverser(
-        edgeCollections, opts, _resolver, _trx, _expressions));
+        edgeCollections, opts, _trx, _expressions));
   }
   if (!ep->usesInVariable()) {
     _vertexId = ep->getStartVertex();
@@ -261,7 +261,6 @@ bool TraversalBlock::morePaths(size_t hint) {
     _engine->_stats.filtered += _traverser->getAndResetFilteredPaths();
     return false;
   }
-  auto en = static_cast<TraversalNode const*>(getPlanNode());
 
   VPackBuilder tmp;
   for (size_t j = 0; j < hint; ++j) {

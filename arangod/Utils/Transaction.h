@@ -308,6 +308,12 @@ class Transaction {
   std::string collectionName(TRI_voc_cid_t cid); 
   
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief return the edge index handle of collection
+  //////////////////////////////////////////////////////////////////////////////
+ 
+  std::string edgeIndexHandle(std::string const&); 
+  
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Iterate over all elements of the collection.
   //////////////////////////////////////////////////////////////////////////////
 
@@ -439,12 +445,10 @@ class Transaction {
   /// calling this method
   //////////////////////////////////////////////////////////////////////////////
 
-  OperationCursor indexScanForCondition(std::string const& collectionName,
-                                        std::string const& indexId,
-                                        arangodb::aql::Ast*,
-                                        arangodb::aql::AstNode const*,
-                                        arangodb::aql::Variable const*,
-                                        uint64_t, uint64_t, bool);
+  std::shared_ptr<OperationCursor> indexScanForCondition(
+      std::string const& collectionName, std::string const& indexId,
+      arangodb::aql::Ast*, arangodb::aql::AstNode const*,
+      arangodb::aql::Variable const*, uint64_t, uint64_t, bool);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief factory for OperationCursor objects
@@ -452,14 +456,12 @@ class Transaction {
   /// calling this method
   //////////////////////////////////////////////////////////////////////////////
 
-  OperationCursor indexScan(std::string const& collectionName,
-                            CursorType cursorType,
-                            std::string const& indexId,
-                            VPackSlice const search,
-                            uint64_t skip,
-                            uint64_t limit,
-                            uint64_t batchSize,
-                            bool reverse);
+  std::shared_ptr<OperationCursor> indexScan(std::string const& collectionName,
+                                             CursorType cursorType,
+                                             std::string const& indexId,
+                                             VPackSlice const search,
+                                             uint64_t skip, uint64_t limit,
+                                             uint64_t batchSize, bool reverse);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief test if a collection is already locked

@@ -38,8 +38,13 @@ namespace arangodb {
 
 // FORWARD declaration
 class IndexIterator;
+struct OperationResult;
 
-struct OperationCursor : public OperationResult {
+struct OperationCursor {
+
+ public:
+  int                                     code;
+  std::shared_ptr<VPackCustomTypeHandler> customTypeHandler;
 
  private:
 
@@ -50,34 +55,21 @@ struct OperationCursor : public OperationResult {
   uint64_t const                 _batchSize;
 
  public:
-
-  explicit OperationCursor(int code) 
-      : OperationResult(code), _hasMore(false), _limit(0), _originalLimit(0), _batchSize(1000) { 
-  }
-
-  OperationCursor(int code, std::string const& message) 
-      : OperationResult(code, message), _hasMore(false), _limit(0), _originalLimit(0), _batchSize(1000) {
-  }
-
-  OperationCursor(std::shared_ptr<VPackBuffer<uint8_t>> buffer,
-                  std::shared_ptr<VPackCustomTypeHandler> handler,
-                  std::string const& message,
-                  int code,
-                  bool wasSynchronous)
-      : OperationResult(buffer, handler, message, code, wasSynchronous),
+  explicit OperationCursor(int code)
+      : code(code),
+        customTypeHandler(),
         _hasMore(false),
         _limit(0),
         _originalLimit(0),
-        _batchSize(1000) {
-  }
+        _batchSize(1000) {}
 
-  OperationCursor(std::shared_ptr<VPackCustomTypeHandler> handler, IndexIterator* iterator,
-                  uint64_t limit, uint64_t batchSize)
-      : OperationResult(std::make_shared<VPackBuffer<uint8_t>>(), handler, "",
-                        TRI_ERROR_NO_ERROR, false),
+  OperationCursor(std::shared_ptr<VPackCustomTypeHandler> handler,
+                  IndexIterator* iterator, uint64_t limit, uint64_t batchSize)
+      : code(TRI_ERROR_NO_ERROR), 
+        customTypeHandler(handler),
         _indexIterator(iterator),
         _hasMore(true),
-        _limit(limit), // _limit is modified later on
+        _limit(limit),  // _limit is modified later on
         _originalLimit(limit),
         _batchSize(batchSize) {
           if (_indexIterator == nullptr) {
@@ -96,6 +88,14 @@ struct OperationCursor : public OperationResult {
     return _hasMore;
   }
 
+  bool successful() const {
+    return code == TRI_ERROR_NO_ERROR;
+  }
+  
+  bool failed() const {
+    return !successful();
+  }
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Reset the cursor
 //////////////////////////////////////////////////////////////////////////////
@@ -104,19 +104,23 @@ struct OperationCursor : public OperationResult {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Get next batchSize many elements.
+///        Defaults to _batchSize
 ///        Check hasMore()==true before using this
 ///        NOTE: This will throw on OUT_OF_MEMORY
 //////////////////////////////////////////////////////////////////////////////
 
-  int getMore(uint64_t, bool useExternals = false);
+  std::shared_ptr<OperationResult> getMore(uint64_t batchSize = UINT64_MAX,
+                                           bool useExternals = false);
 
 //////////////////////////////////////////////////////////////////////////////
-/// @brief Get next default batchSize many elements.
+/// @brief Get next batchSize many elements.
+///        Defaults to _batchSize
 ///        Check hasMore()==true before using this
 ///        NOTE: This will throw on OUT_OF_MEMORY
 //////////////////////////////////////////////////////////////////////////////
 
-  int getMore();
+  void getMore(std::shared_ptr<OperationResult>&, uint64_t batchSize = UINT64_MAX,
+               bool useExternals = false);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Skip the next toSkip many elements.
@@ -126,6 +130,7 @@ struct OperationCursor : public OperationResult {
 //////////////////////////////////////////////////////////////////////////////
 
   int skip(uint64_t, uint64_t&);
+
 };
 
 }

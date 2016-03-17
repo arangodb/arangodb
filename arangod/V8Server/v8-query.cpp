@@ -195,10 +195,12 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string collectionName(collection->_name);
 
   // We directly read the entire cursor. so batchsize == limit
-  OperationCursor opCursor = trx.indexScan(collectionName, Transaction::CursorType::ALL, "", {}, skip, limit, limit, false);
+  std::shared_ptr<OperationCursor> opCursor =
+      trx.indexScan(collectionName, Transaction::CursorType::ALL, "", {}, skip,
+                    limit, limit, false);
 
-  if (opCursor.failed()) {
-    TRI_V8_THROW_EXCEPTION(opCursor.code);
+  if (opCursor->failed()) {
+    TRI_V8_THROW_EXCEPTION(opCursor->code);
   }
 
   OperationResult countResult = trx.count(collectionName);
@@ -215,19 +217,20 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackSlice count = countResult.slice();
   TRI_ASSERT(count.isNumber());
 
-  if (!opCursor.hasMore()) {
+  if (!opCursor->hasMore()) {
     // OUT OF MEMORY. initial hasMore should return true even if index is empty
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
   
   // copy default options
   VPackOptions resultOptions = VPackOptions::Defaults;
-  resultOptions.customTypeHandler = opCursor.customTypeHandler.get();
+  resultOptions.customTypeHandler = opCursor->customTypeHandler.get();
 
-  opCursor.getMore();
+  auto batch = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
+  opCursor->getMore(batch);
   // We only need this one call, limit == batchsize
 
-  VPackSlice docs = opCursor.slice();
+  VPackSlice docs = batch->slice();
   TRI_ASSERT(docs.isArray());
   // setup result
   v8::Handle<v8::Object> result = v8::Object::New(isolate);

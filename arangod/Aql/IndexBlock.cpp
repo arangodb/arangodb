@@ -309,25 +309,23 @@ bool IndexBlock::initIndexes() {
 /// @brief create an OperationCursor object
 ////////////////////////////////////////////////////////////////////////////////
 
-std::unique_ptr<arangodb::OperationCursor> IndexBlock::createCursor() {
+std::shared_ptr<arangodb::OperationCursor> IndexBlock::createCursor() {
   IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
   auto outVariable = node->outVariable();
   auto ast = node->_plan->getAst();
 
   if (_condition == nullptr) {
-    return std::make_unique<arangodb::OperationCursor>(
-        ast->query()->trx()->indexScanForCondition(
-            _collection->getName(), _indexes[_currentIndex], ast, nullptr,
-            outVariable, UINT64_MAX, TRI_DEFAULT_BATCH_SIZE, node->_reverse));
+    return ast->query()->trx()->indexScanForCondition(
+        _collection->getName(), _indexes[_currentIndex], ast, nullptr,
+        outVariable, UINT64_MAX, TRI_DEFAULT_BATCH_SIZE, node->_reverse);
   }
 
   TRI_ASSERT(_indexes.size() == _condition->numMembers());
 
-  return std::make_unique<arangodb::OperationCursor>(
-      ast->query()->trx()->indexScanForCondition(
+  return ast->query()->trx()->indexScanForCondition(
           _collection->getName(), _indexes[_currentIndex], ast,
           _condition->getMember(_currentIndex), outVariable, UINT64_MAX,
-          TRI_DEFAULT_BATCH_SIZE, node->_reverse));
+          TRI_DEFAULT_BATCH_SIZE, node->_reverse);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -379,48 +377,43 @@ bool IndexBlock::readIndex(size_t atMost) {
   bool isReverse = (static_cast<IndexNode const*>(getPlanNode()))->_reverse;
   bool isLastIndex = (_currentIndex == lastIndexNr && !isReverse) ||
                      (_currentIndex == 0 && isReverse);
-  try {
-    while (_cursor != nullptr) {
-      if (!_cursor->hasMore()) {
-        startNextCursor();
-        continue;
-      }
-      int res = _cursor->getMore(atMost, true);
-      if (res != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
-      VPackSlice slice = _cursor->slice();
-      TRI_ASSERT(slice.isArray());
-      size_t length = static_cast<size_t>(slice.length());
+  auto result = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
+  while (_cursor != nullptr) {
+    if (!_cursor->hasMore()) {
+      startNextCursor();
+      continue;
+    }
+    _cursor->getMore(result, atMost, true);
+    if (result->failed()) {
+      THROW_ARANGO_EXCEPTION(result->code);
+    }
+    VPackSlice slice = result->slice();
+    TRI_ASSERT(slice.isArray());
+    size_t length = static_cast<size_t>(slice.length());
 
-      if (length == 0) {
-        startNextCursor();
-        continue;
-      }
+    if (length == 0) {
+      startNextCursor();
+      continue;
+    }
 
-      _engine->_stats.scannedIndex += length;
+    _engine->_stats.scannedIndex += length;
 
-      TRI_IF_FAILURE("IndexBlock::readIndex") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
+    TRI_IF_FAILURE("IndexBlock::readIndex") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
 
-      for (auto const& doc : VPackArrayIterator(slice)) {
-        std::string key =
-            arangodb::basics::VelocyPackHelper::getStringValue(doc, "_key", "");
-        if (_alreadyReturned.find(key) == _alreadyReturned.end()) {
-          if (!isLastIndex) {
-            _alreadyReturned.emplace(key);
-          }
-          _documents.emplace_back(doc);
+    for (auto const& doc : VPackArrayIterator(slice)) {
+      std::string key =
+          arangodb::basics::VelocyPackHelper::getStringValue(doc, "_key", "");
+      if (_alreadyReturned.find(key) == _alreadyReturned.end()) {
+        if (!isLastIndex) {
+          _alreadyReturned.emplace(key);
         }
+        _documents.emplace_back(doc);
       }
-      // Leave the loop here, we can only exhaust one cursor at a time, otherwise slices are lost
-      break;
     }
-  } catch (...) {
-    if (_cursor != nullptr) {
-      _cursor.release();
-    }
+    // Leave the loop here, we can only exhaust one cursor at a time, otherwise slices are lost
+    break;
   }
   _posInDocs = 0;
   return (!_documents.empty());

@@ -766,17 +766,20 @@ OperationResult Transaction::anyLocal(std::string const& collectionName,
   
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
-  
-  OperationCursor cursor = indexScan(collectionName, Transaction::CursorType::ANY, "", {}, skip, limit, 1000, false);
 
-  while (cursor.hasMore()) {
-    int res = cursor.getMore();
+  std::shared_ptr<OperationCursor> cursor =
+      indexScan(collectionName, Transaction::CursorType::ANY, "", {}, skip,
+                limit, 1000, false);
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      return OperationResult(res);
+  auto result = std::make_shared<OperationResult>();
+  while (cursor->hasMore()) {
+    cursor->getMore(result);
+
+    if (result->failed()) {
+      return OperationResult(result->code);
     }
   
-    VPackSlice docs = cursor.slice();
+    VPackSlice docs = result->slice();
     VPackArrayIterator it(docs);
     while (it.valid()) {
       resultBuilder.add(it.value());
@@ -789,7 +792,7 @@ OperationResult Transaction::anyLocal(std::string const& collectionName,
   res = unlock(trxCollection(cid), TRI_TRANSACTION_READ);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return OperationCursor(res);
+    return OperationResult(res);
   }
 
   return OperationResult(resultBuilder.steal(),
@@ -843,6 +846,23 @@ TRI_col_type_t Transaction::getCollectionType(std::string const& collectionName)
   
 std::string Transaction::collectionName(TRI_voc_cid_t cid) { 
   return resolver()->getCollectionName(cid);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return the edge index handle of collection
+//////////////////////////////////////////////////////////////////////////////
+
+std::string Transaction::edgeIndexHandle(std::string const& collectionName) {
+  if (!isEdgeCollection(collectionName)) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
+  }
+  std::vector<Index*> indexes = indexesForCollection(collectionName); 
+  for (auto idx : indexes) {
+    if (idx->type() == Index::TRI_IDX_TYPE_EDGE_INDEX) {
+      return arangodb::basics::StringUtils::itoa(idx->id());
+    }
+  }
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -1668,18 +1688,21 @@ OperationResult Transaction::allKeysLocal(std::string const& collectionName,
   VPackBuilder resultBuilder;
   resultBuilder.add(VPackValue(VPackValueType::Object));
   resultBuilder.add("documents", VPackValue(VPackValueType::Array));
-  
-  OperationCursor cursor = indexScan(collectionName, Transaction::CursorType::ALL, "", {}, 0, UINT64_MAX, 1000, false);
 
-  while (cursor.hasMore()) {
-    int res = cursor.getMore();
+  std::shared_ptr<OperationCursor> cursor =
+      indexScan(collectionName, Transaction::CursorType::ALL, "", {}, 0,
+                UINT64_MAX, 1000, false);
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      return OperationResult(res);
+  auto result = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
+  while (cursor->hasMore()) {
+    cursor->getMore(result);
+
+    if (result->failed()) {
+      return OperationResult(result->code);
     }
   
     std::string value;
-    VPackSlice docs = cursor.slice();
+    VPackSlice docs = result->slice();
     VPackArrayIterator it(docs);
     while (it.valid()) {
       value.assign(prefix);
@@ -1695,7 +1718,7 @@ OperationResult Transaction::allKeysLocal(std::string const& collectionName,
   res = unlock(trxCollection(cid), TRI_TRANSACTION_READ);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return OperationCursor(res);
+    return OperationResult(res);
   }
 
   return OperationResult(resultBuilder.steal(),
@@ -1754,17 +1777,20 @@ OperationResult Transaction::allLocal(std::string const& collectionName,
   
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
-  
-  OperationCursor cursor = indexScan(collectionName, Transaction::CursorType::ALL, "", {}, skip, limit, 1000, false);
 
-  while (cursor.hasMore()) {
-    int res = cursor.getMore();
+  std::shared_ptr<OperationCursor> cursor =
+      indexScan(collectionName, Transaction::CursorType::ALL, "", {}, skip,
+                limit, 1000, false);
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      return OperationResult(res);
+  auto result = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
+  while (cursor->hasMore()) {
+    cursor->getMore(result);
+
+    if (result->failed()) {
+      return OperationResult(result->code);
     }
   
-    VPackSlice docs = cursor.slice();
+    VPackSlice docs = result->slice();
     VPackArrayIterator it(docs);
     while (it.valid()) {
       resultBuilder.add(it.value());
@@ -1777,7 +1803,7 @@ OperationResult Transaction::allLocal(std::string const& collectionName,
   res = unlock(trxCollection(cid), TRI_TRANSACTION_READ);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return OperationCursor(res);
+    return OperationResult(res);
   }
 
   return OperationResult(resultBuilder.steal(),
@@ -1864,7 +1890,7 @@ OperationResult Transaction::truncateLocal(std::string const& collectionName,
   res = unlock(trxCollection(cid), TRI_TRANSACTION_WRITE);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return OperationCursor(res);
+    return OperationResult(res);
   }
 
   return OperationResult(TRI_ERROR_NO_ERROR);
@@ -2095,7 +2121,7 @@ std::pair<bool, bool> Transaction::getIndexForSortCondition(
 /// calling this method
 //////////////////////////////////////////////////////////////////////////////
 
-OperationCursor Transaction::indexScanForCondition(
+std::shared_ptr<OperationCursor> Transaction::indexScanForCondition(
     std::string const& collectionName, std::string const& indexId,
     arangodb::aql::Ast* ast, arangodb::aql::AstNode const* condition,
     arangodb::aql::Variable const* var, uint64_t limit, uint64_t batchSize,
@@ -2111,7 +2137,7 @@ OperationCursor Transaction::indexScanForCondition(
 
   if (limit == 0) {
     // nothing to do
-    return OperationCursor(TRI_ERROR_NO_ERROR);
+    return std::make_shared<OperationCursor>(TRI_ERROR_NO_ERROR);
   }
 
   // Now collect the Iterator
@@ -2121,11 +2147,12 @@ OperationCursor Transaction::indexScanForCondition(
 
   if (iterator == nullptr) {
     // We could not create an ITERATOR and it did not throw an error itself
-    return OperationCursor(TRI_ERROR_OUT_OF_MEMORY);
+    return std::make_shared<OperationCursor>(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  return OperationCursor(transactionContext()->orderCustomTypeHandler(),
-                         iterator.release(), limit, batchSize);
+  return std::make_shared<OperationCursor>(
+      transactionContext()->orderCustomTypeHandler(), iterator.release(), limit,
+      batchSize);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -2171,11 +2198,10 @@ arangodb::Index* Transaction::getIndexByIdentifier(
 /// calling this method
 //////////////////////////////////////////////////////////////////////////////
 
-OperationCursor Transaction::indexScan(
+std::shared_ptr<OperationCursor> Transaction::indexScan(
     std::string const& collectionName, CursorType cursorType,
-    std::string const& indexId, VPackSlice const search,
-    uint64_t skip, uint64_t limit, uint64_t batchSize, bool reverse) {
-
+    std::string const& indexId, VPackSlice const search, uint64_t skip,
+    uint64_t limit, uint64_t batchSize, bool reverse) {
 #warning TODO Who checks if indexId is valid and is used for this collection?
   // For now we assume indexId is the iid part of the index.
 
@@ -2187,12 +2213,12 @@ OperationCursor Transaction::indexScan(
   TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
 
   if (cid == 0) {
-    return OperationCursor(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    return std::make_shared<OperationCursor>(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
 
   if (limit == 0) {
     // nothing to do
-    return OperationCursor(TRI_ERROR_NO_ERROR);
+    return std::make_shared<OperationCursor>(TRI_ERROR_NO_ERROR);
   }
 
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
@@ -2267,14 +2293,15 @@ OperationCursor Transaction::indexScan(
   }
   if (iterator == nullptr) {
     // We could not create an ITERATOR and it did not throw an error itself
-    return OperationCursor(TRI_ERROR_OUT_OF_MEMORY);
+    return std::make_shared<OperationCursor>(TRI_ERROR_OUT_OF_MEMORY);
   }
 
   uint64_t unused = 0;
   iterator->skip(skip, unused);
 
-  return OperationCursor(transactionContext()->orderCustomTypeHandler(),
-                         iterator.release(), limit, batchSize);
+  return std::make_shared<OperationCursor>(
+      transactionContext()->orderCustomTypeHandler(), iterator.release(), limit,
+      batchSize);
 }
   
 ////////////////////////////////////////////////////////////////////////////////

@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "OperationCursor.h"
+#include "OperationResult.h"
+#include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
 #include "VocBase/MasterPointer.h"
 
@@ -36,55 +38,63 @@ void OperationCursor::reset() {
 }
 
 //////////////////////////////////////////////////////////////////////////////
-/// @brief Get next default batchSize many elements.
+/// @brief Get next batchSize many elements.
+///        Defaults to _batchSize
 ///        Check hasMore()==true before using this
 ///        NOTE: This will throw on OUT_OF_MEMORY
 //////////////////////////////////////////////////////////////////////////////
 
-int OperationCursor::getMore() {
-  return getMore(_batchSize);
+std::shared_ptr<OperationResult> OperationCursor::getMore(uint64_t batchSize,
+                                                          bool useExternals) {
+  auto res = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
+  getMore(res, batchSize, useExternals);
+  return res;
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief Get next batchSize many elements.
-///        Check hasMore()==true before using this
-///        If useExternals is set to true all elements in the vpack are
-///        externals. Otherwise they are inlined.
-///        NOTE: This will throw on OUT_OF_MEMORY
-//////////////////////////////////////////////////////////////////////////////
-
-int OperationCursor::getMore(uint64_t batchSize, bool useExternals) {
+void OperationCursor::getMore(std::shared_ptr<OperationResult>& opRes,
+                              uint64_t batchSize, bool useExternals) {
+  if (opRes == nullptr) {
+    // Create a valid pointer if none is given
+    auto tmp = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
+    opRes.swap(tmp);
+  }
   // This may throw out of memory
   if (!hasMore()) {
     TRI_ASSERT(false);
     // You requested more even if you should have checked it before.
-    return TRI_ERROR_FORBIDDEN;
+    opRes->code = TRI_ERROR_FORBIDDEN;
   }
-  VPackBuilder builder(buffer);
+  if (batchSize == UINT64_MAX) {
+    batchSize = _batchSize;
+  }
 
-
-  VPackArrayBuilder guard(&builder);
-  TRI_doc_mptr_t* mptr = nullptr;
-  // TODO: Improve this for baby awareness
-  while (batchSize > 0 && _limit > 0 && (mptr = _indexIterator->next()) != nullptr) {
-    --batchSize;
-    --_limit;
+  VPackBuilder builder(opRes->buffer);
+  builder.clear();
+  try {
+    VPackArrayBuilder guard(&builder);
+    TRI_doc_mptr_t* mptr = nullptr;
+    // TODO: Improve this for baby awareness
+    while (batchSize > 0 && _limit > 0 && (mptr = _indexIterator->next()) != nullptr) {
+      --batchSize;
+      --_limit;
 #if 0    
-    if (useExternals) {
-      builder.add(VPackValue(mptr->vpack(), VPackValueType::External));
-    } else {
+      if (useExternals) {
+        builder.add(VPackValue(mptr->vpack(), VPackValueType::External));
+      } else {
 #endif      
-    builder.add(VPackSlice(mptr->vpack()));
+      builder.add(VPackSlice(mptr->vpack()));
 #if 0      
-    }
+      }
 #endif    
+    }
+    if (batchSize > 0 || _limit == 0) {
+      // Iterator empty, there is no more
+      _hasMore = false;
+    }
+    opRes->code = TRI_ERROR_NO_ERROR;
+  } catch (arangodb::basics::Exception const& e) {
+    opRes->code = e.code();
   }
-  if (batchSize > 0 || _limit == 0) {
-    // Iterator empty, there is no more
-    _hasMore = false;
-  }
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 //////////////////////////////////////////////////////////////////////////////

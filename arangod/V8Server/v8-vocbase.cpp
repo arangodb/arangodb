@@ -1721,7 +1721,6 @@ static v8::Handle<v8::Value> VertexIdToData(
   OperationResult opRes = trx->document(parts[0], builder.slice(), options);
 
   if (opRes.failed()) {
-    LOG(INFO) << opRes.code;
     v8::EscapableHandleScope scope(isolate);
     return scope.Escape<v8::Value>(v8::Null(isolate));
   }

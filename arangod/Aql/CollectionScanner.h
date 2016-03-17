@@ -51,7 +51,8 @@ class CollectionScanner {
   int forward(size_t, uint64_t&);
 
  private:
-  OperationCursor _cursor;
+  std::shared_ptr<OperationCursor> _cursor;
+  std::shared_ptr<OperationResult> _currentBatch;
 };
 }
 }

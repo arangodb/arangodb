@@ -33,23 +33,26 @@ CollectionScanner::CollectionScanner(arangodb::AqlTransaction* trx,
                              (readRandom ? Transaction::CursorType::ANY
                                          : Transaction::CursorType::ALL),
                              "", VPackSlice(), 0, UINT64_MAX, 1000, false)) {
-  TRI_ASSERT(_cursor.successful());
+  TRI_ASSERT(_cursor->successful());
 }
 
 CollectionScanner::~CollectionScanner() {}
 
 VPackSlice CollectionScanner::scan(size_t batchSize) {
-  if (!_cursor.hasMore()) {
+  if (!_cursor->hasMore()) {
     return arangodb::basics::VelocyPackHelper::EmptyArrayValue();
   }
-  _cursor.getMore(batchSize, true);
-  return _cursor.slice();
+  _cursor->getMore(_currentBatch, batchSize, true);
+  if (_currentBatch->failed()) {
+    return arangodb::basics::VelocyPackHelper::EmptyArrayValue();
+  }
+  return _currentBatch->slice();
 }
 
 int CollectionScanner::forward(size_t batchSize, uint64_t& skipped) {
-  return _cursor.skip(batchSize, skipped);
+  return _cursor->skip(batchSize, skipped);
 }
 
 void CollectionScanner::reset() {
-  _cursor.reset();
+  _cursor->reset();
 }

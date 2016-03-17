@@ -24,6 +24,7 @@
 #include "Traverser.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/json-utilities.h"
+#include "Indexes/EdgeIndex.h"
 #include "VocBase/KeyGenerator.h"
 
 using TraverserExpression = arangodb::traverser::TraverserExpression;
@@ -60,6 +61,9 @@ void arangodb::traverser::TraverserOptions::setCollections(
   TRI_ASSERT(!colls.empty());
   _collections = colls;
   _directions.emplace_back(dir);
+  for (auto const& it : colls) {
+    _indexHandles.emplace_back(_trx->edgeIndexHandle(it));
+  }
 }
 
 void arangodb::traverser::TraverserOptions::setCollections(
@@ -72,6 +76,9 @@ void arangodb::traverser::TraverserOptions::setCollections(
   TRI_ASSERT(colls.size() == dirs.size());
   _collections = colls;
   _directions = dirs;
+  for (auto const& it : colls) {
+    _indexHandles.emplace_back(_trx->edgeIndexHandle(it));
+  }
 }
 
 size_t arangodb::traverser::TraverserOptions::collectionCount () const {
@@ -90,6 +97,29 @@ bool arangodb::traverser::TraverserOptions::getCollection(
     dir = _directions.at(index);
   }
   name = _collections.at(index);
+
+  // arangodb::EdgeIndex::buildSearchValue(direction, eColName, _builder);
+  return true;
+}
+
+bool arangodb::traverser::TraverserOptions::getCollectionAndSearchValue(
+    size_t index, std::string const& vertexId, std::string& name,
+    std::string& indexHandle, VPackBuilder& builder) {
+  if (index >= _collections.size()) {
+    // No more collections stop now
+    return false;
+  }
+  TRI_edge_direction_e dir;
+  if (_directions.size() == 1) {
+    dir = _directions.at(0);
+  } else {
+    dir = _directions.at(index);
+  }
+  name = _collections.at(index);
+  indexHandle = _indexHandles.at(index);
+
+  _builder.clear();
+  arangodb::EdgeIndex::buildSearchValue(dir, name, _builder);
   return true;
 }
 

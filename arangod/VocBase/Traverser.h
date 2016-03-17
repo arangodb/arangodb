@@ -189,17 +189,19 @@ class TraversalPath {
 };
 
 struct TraverserOptions {
-
+ private:
+  arangodb::Transaction* _trx;
   std::vector<std::string> _collections;
   std::vector<TRI_edge_direction_e> _directions;
+  std::vector<std::string> _indexHandles;
+  arangodb::velocypack::Builder _builder;
 
  public:
-
   uint64_t minDepth;
 
   uint64_t maxDepth;
 
-  TraverserOptions() : minDepth(1), maxDepth(1) {}
+  TraverserOptions(arangodb::Transaction* trx) : _trx(trx), minDepth(1), maxDepth(1) {}
 
   void setCollections(std::vector<std::string> const&, TRI_edge_direction_e);
   void setCollections(std::vector<std::string> const&, std::vector<TRI_edge_direction_e> const&);
@@ -207,6 +209,10 @@ struct TraverserOptions {
   size_t collectionCount() const;
 
   bool getCollection(size_t const, std::string&, TRI_edge_direction_e&) const;
+
+  bool getCollectionAndSearchValue(size_t, std::string const&, std::string&,
+                                   std::string&,
+                                   arangodb::velocypack::Builder&);
 };
 
 class Traverser {
@@ -215,11 +221,12 @@ class Traverser {
   /// @brief Constructor. This is an abstract only class.
   //////////////////////////////////////////////////////////////////////////////
 
-  Traverser()
+  Traverser(arangodb::Transaction* trx)
       : _readDocuments(0),
         _filteredPaths(0),
         _pruneNext(false),
         _done(true),
+        _opts(trx),
         _expressions(nullptr) {}
 
   //////////////////////////////////////////////////////////////////////////////

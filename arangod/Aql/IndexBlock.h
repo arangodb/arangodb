@@ -86,7 +86,7 @@ class IndexBlock : public ExecutionBlock {
   /// @brief create an iterator object
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unique_ptr<arangodb::OperationCursor> createCursor();
+  std::shared_ptr<arangodb::OperationCursor> createCursor();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Forwards _cursor to the next available index
@@ -182,7 +182,7 @@ class IndexBlock : public ExecutionBlock {
   /// necessarily all at once.
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unique_ptr<arangodb::OperationCursor> _cursor;
+  std::shared_ptr<arangodb::OperationCursor> _cursor;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief _condition: holds the complete condition this Block can serve for

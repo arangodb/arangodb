@@ -92,9 +92,8 @@ EdgeCollectionInfo::EdgeCollectionInfo(arangodb::Transaction* trx,
 /// @brief Get edges for the given direction and start vertex.
 ////////////////////////////////////////////////////////////////////////////////
 
-OperationCursor EdgeCollectionInfo::getEdges(TRI_edge_direction_e direction,
-                                             std::string const& vertexId) {
-
+std::shared_ptr<OperationCursor> EdgeCollectionInfo::getEdges(
+    TRI_edge_direction_e direction, std::string const& vertexId) {
   _searchBuilder.clear();
   EdgeIndex::buildSearchValue(direction, vertexId, _searchBuilder);
   return _trx->indexScan(_collectionName,
@@ -187,12 +186,13 @@ class MultiCollectionEdgeExpander {
         }
       };
 
-      while (edgeCursor.hasMore()) {
-        int res = edgeCursor.getMore();
-        if (res != TRI_ERROR_NO_ERROR) {
-          THROW_ARANGO_EXCEPTION(res);
+      auto opRes = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
+      while (edgeCursor->hasMore()) {
+        edgeCursor->getMore(opRes);
+        if (opRes->failed()) {
+          THROW_ARANGO_EXCEPTION(opRes->code);
         }
-        VPackSlice edges = edgeCursor.slice();
+        VPackSlice edges = opRes->slice();
 
         for (auto const& edge : VPackArrayIterator(edges)) {
           if (!_isAllowed(edge)) {
@@ -255,12 +255,13 @@ class SimpleEdgeExpander {
     };
 
     auto edgeCursor = _edgeCollection->getEdges(_direction, source);
-    while (edgeCursor.hasMore()) {
-      int res = edgeCursor.getMore();
-      if (res != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION(res);
+    auto opRes = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
+    while (edgeCursor->hasMore()) {
+      edgeCursor->getMore(opRes);
+      if (opRes->failed()) {
+        THROW_ARANGO_EXCEPTION(opRes->code);
       }
-      VPackSlice edges = edgeCursor.slice();
+      VPackSlice edges = opRes->slice();
       for (auto const& edge : VPackArrayIterator(edges)) {
         std::string const from = edge.get(TRI_VOC_ATTRIBUTE_FROM).copyString();
         std::string const to = edge.get(TRI_VOC_ATTRIBUTE_TO).copyString();
@@ -516,13 +517,14 @@ TRI_RunSimpleShortestPathSearch(
                                   std::vector<std::string>& neighbors) {
         for (auto const& edgeCollection : collectionInfos) {
           TRI_ASSERT(edgeCollection != nullptr);
-          OperationCursor edgeCursor = edgeCollection->getEdges(forward, v);
-          while (edgeCursor.hasMore()) {
-            int res = edgeCursor.getMore();
-            if (res != TRI_ERROR_NO_ERROR) {
-              THROW_ARANGO_EXCEPTION(res);
+          std::shared_ptr<OperationCursor> edgeCursor = edgeCollection->getEdges(forward, v);
+          auto opRes = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
+          while (edgeCursor->hasMore()) {
+            edgeCursor->getMore(opRes);
+            if (opRes->failed()) {
+              THROW_ARANGO_EXCEPTION(opRes->code);
             }
-            VPackSlice edges = edgeCursor.slice();
+            VPackSlice edges = opRes->slice();
 
             for (auto const& edge : VPackArrayIterator(edges)) {
               std::string edgeId = trx->extractIdString(edge);
@@ -545,15 +547,16 @@ TRI_RunSimpleShortestPathSearch(
   auto bwExpander =
       [&collectionInfos, backward, trx](std::string const& v, std::vector<std::string>& res_edges,
                                    std::vector<std::string>& neighbors) {
+        auto opRes = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
         for (auto const& edgeCollection : collectionInfos) {
           TRI_ASSERT(edgeCollection != nullptr);
-          OperationCursor edgeCursor = edgeCollection->getEdges(backward, v);
-          while (edgeCursor.hasMore()) {
-            int res = edgeCursor.getMore();
-            if (res != TRI_ERROR_NO_ERROR) {
-              THROW_ARANGO_EXCEPTION(res);
+          std::shared_ptr<OperationCursor> edgeCursor = edgeCollection->getEdges(backward, v);
+          while (edgeCursor->hasMore()) {
+            edgeCursor->getMore(opRes);
+            if (opRes->failed()) {
+              THROW_ARANGO_EXCEPTION(opRes->code);
             }
-            VPackSlice edges = edgeCursor.slice();
+            VPackSlice edges = opRes->slice();
 
             for (auto const& edge : VPackArrayIterator(edges)) {
               std::string edgeId = trx->extractIdString(edge);
@@ -593,17 +596,18 @@ static void InboundNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
   TRI_edge_direction_e dir = TRI_EDGE_IN;
   std::unordered_set<std::string> nextDepth;
 
+  auto opRes = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
   for (auto const& col : collectionInfos) {
     TRI_ASSERT(col != nullptr);
 
     for (auto const& start : startVertices) {
       auto edgeCursor = col->getEdges(dir, start);
-      while (edgeCursor.hasMore()) {
-        int res = edgeCursor.getMore();
-        if (res != TRI_ERROR_NO_ERROR) {
-          THROW_ARANGO_EXCEPTION(res);
+      while (edgeCursor->hasMore()) {
+        edgeCursor->getMore(opRes);
+        if (opRes->failed()) {
+          THROW_ARANGO_EXCEPTION(opRes->code);
         }
-        VPackSlice edges = edgeCursor.slice();
+        VPackSlice edges = opRes->slice();
         for (auto const& edge : VPackArrayIterator(edges)) {
           if (opts.matchesEdge(edge)) {
             std::string v = edge.get(TRI_VOC_ATTRIBUTE_FROM).copyString();
@@ -644,18 +648,19 @@ static void OutboundNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
                               uint64_t depth = 1) {
   TRI_edge_direction_e dir = TRI_EDGE_OUT;
   std::unordered_set<std::string> nextDepth;
+  auto opRes = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
 
   for (auto const& col : collectionInfos) {
     TRI_ASSERT(col != nullptr);
 
     for (auto const& start : startVertices) {
       auto edgeCursor = col->getEdges(dir, start);
-      while (edgeCursor.hasMore()) {
-        int res = edgeCursor.getMore();
-        if (res != TRI_ERROR_NO_ERROR) {
-          THROW_ARANGO_EXCEPTION(res);
+      while (edgeCursor->hasMore()) {
+        edgeCursor->getMore(opRes);
+        if (opRes->failed()) {
+          THROW_ARANGO_EXCEPTION(opRes->code);
         }
-        VPackSlice edges = edgeCursor.slice();
+        VPackSlice edges = opRes->slice();
         for (auto const& edge : VPackArrayIterator(edges)) {
           if (opts.matchesEdge(edge)) {
             std::string v = edge.get(TRI_VOC_ATTRIBUTE_TO).copyString();
@@ -697,18 +702,19 @@ static void AnyNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
 
   TRI_edge_direction_e dir = TRI_EDGE_ANY;
   std::unordered_set<std::string> nextDepth;
+  auto opRes = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
 
   for (auto const& col : collectionInfos) {
     TRI_ASSERT(col != nullptr);
 
     for (auto const& start : startVertices) {
       auto edgeCursor = col->getEdges(dir, start);
-      while (edgeCursor.hasMore()) {
-        int res = edgeCursor.getMore();
-        if (res != TRI_ERROR_NO_ERROR) {
-          THROW_ARANGO_EXCEPTION(res);
+      while (edgeCursor->hasMore()) {
+        edgeCursor->getMore(opRes);
+        if (opRes->failed()) {
+          THROW_ARANGO_EXCEPTION(opRes->code);
         }
-        VPackSlice edges = edgeCursor.slice();
+        VPackSlice edges = opRes->slice();
         for (auto const& edge : VPackArrayIterator(edges)) {
           if (opts.matchesEdge(edge)) {
             std::string v = edge.get(TRI_VOC_ATTRIBUTE_TO).copyString();
@@ -815,11 +821,11 @@ void SingleServerTraversalPath::lastVertexToVelocyPack(Transaction* trx, VPackBu
 
 DepthFirstTraverser::DepthFirstTraverser(
     std::vector<TRI_document_collection_t*> const& edgeCollections,
-    TraverserOptions& opts, CollectionNameResolver* resolver, Transaction* trx,
+    TraverserOptions& opts, Transaction* trx,
     std::unordered_map<size_t, std::vector<TraverserExpression*>> const*
         expressions)
     : Traverser(opts, expressions),
-      _edgeGetter(this, opts, resolver, trx),
+      _edgeGetter(this, opts, trx),
       _edgeCols(edgeCollections),
       _trx(trx) {
   _defInternalFunctions();
@@ -941,7 +947,7 @@ void DepthFirstTraverser::setStartVertex(
       }
     }
   }
-  _enumerator.reset(new PathEnumerator<std::string, std::string, TRI_doc_mptr_t>(
+  _enumerator.reset(new PathEnumerator<std::string, std::string, VPackValueLength>(
       _edgeGetter, _getVertex, v));
   _done = false;
 }
@@ -971,90 +977,95 @@ TraversalPath* DepthFirstTraverser::next() {
   return p.release();
 }
 
-EdgeIndex* DepthFirstTraverser::EdgeGetter::getEdgeIndex(
-    std::string const& eColName,
-    TRI_voc_cid_t& cid) {
-  auto it = _indexCache.find(eColName);
-
-  if (it == _indexCache.end()) {
-    cid = _resolver->getCollectionIdLocal(eColName);
-    TRI_document_collection_t* documentCollection = _trx->documentCollection(cid);
-    arangodb::EdgeIndex* edgeIndex = documentCollection->edgeIndex();
-    _indexCache.emplace(eColName, std::make_pair(cid, edgeIndex));
-    return edgeIndex;
+bool DepthFirstTraverser::EdgeGetter::nextCursor(std::string const& startVertex,
+                                                 size_t& eColIdx,
+                                                 VPackValueLength*& last) {
+  while (true) {
+    std::string eColName;
+    std::string indexHandle;
+    if (last != nullptr) {
+      // The cursor is empty clean up
+      last = nullptr;
+      _posInCursor.pop();
+      _cursors.pop();
+      _results.pop();
+    }
+    if (!_opts.getCollectionAndSearchValue(eColIdx, startVertex, eColName, indexHandle,
+                                           _builder)) {
+      // If we get here there are no valid edges at all
+      return false;
+    }
+    std::shared_ptr<OperationCursor> cursor = _trx->indexScan(
+        eColName, arangodb::Transaction::CursorType::INDEX, indexHandle,
+        _builder.slice(), 0, UINT64_MAX, TRI_DEFAULT_BATCH_SIZE, false);
+    if (cursor->failed()) {
+      // Some error, ignore and go to next
+      eColIdx++;
+      continue;
+    }
+    TRI_ASSERT(_posInCursor.size() == _cursors.size());
+    _cursors.push(cursor);
+    _results.emplace(std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR));
+    return true;
   }
+}
 
-  cid = it->second.first;
-  return it->second.second;
+void DepthFirstTraverser::EdgeGetter::nextEdge(
+    std::string const& startVertex, size_t& eColIdx, VPackValueLength*& last,
+    std::vector<std::string>& edges) {
+  auto cursor = _cursors.top();
+  auto opRes = _results.top();
+  if (last == nullptr) {
+    _posInCursor.push(0);
+    last = &_posInCursor.top();
+  } else {
+    ++(*last);
+  }
+  while (true) {
+    VPackSlice edge = opRes->slice();
+    if (!edge.isArray() || edge.length() <= *last) {
+      if (cursor->hasMore()) {
+        // Fetch next and try again
+        cursor->getMore(opRes);
+        *last = 0;
+        continue;
+      }
+      eColIdx++;
+      if (!nextCursor(startVertex, eColIdx, last)) {
+        // No further edges.
+        TRI_ASSERT(last == nullptr);
+        TRI_ASSERT(_cursors.size() == _posInCursor.size());
+        TRI_ASSERT(_cursors.size() == _results.size());
+        return;
+      }
+      // There is a new Cursor on top of the stack, try it
+      *last = 0;
+      continue;
+    }
+    edge = edge.at(*last);
+    if (!_traverser->edgeMatchesConditions(edge, edges.size())) {
+      ++_traverser->_filteredPaths;
+      (*last)++;
+      continue;
+    }
+    std::string id = _trx->extractIdString(edge);
+    VPackBuilder tmpBuilder = VPackBuilder::clone(edge);
+    _traverser->_edges.emplace(id, tmpBuilder.steal());
+    edges.emplace_back(id);
+    return;
+  }
 }
 
 void DepthFirstTraverser::EdgeGetter::operator()(
     std::string const& startVertex,
-    std::vector<std::string>& edges, TRI_doc_mptr_t*& last, size_t& eColIdx,
+    std::vector<std::string>& edges, VPackValueLength*& last, size_t& eColIdx,
     bool& dir) {
-#warning use new EdgeIndex VPACK lookup here.
-  // builderSearchValue(dir, startVertex, builder);
-  // trx->indexScan();
-  /*
-  std::string eColName;
-  TRI_edge_direction_e direction;
-  while (true) {
-    if (!_opts.getCollection(eColIdx, eColName, direction)) {
-      // We are done traversing.
+  if (last == nullptr) {
+    eColIdx = 0;
+    if (!nextCursor(startVertex, eColIdx, last)) {
+      // We were not able to find any edge
       return;
     }
-    TRI_voc_cid_t cid;
-    arangodb::EdgeIndex* edgeIndex = getEdgeIndex(eColName, cid);
-    std::vector<TRI_doc_mptr_t> tmp;
-    if (direction == TRI_EDGE_ANY) {
-      TRI_edge_direction_e currentDir = dir ? TRI_EDGE_OUT : TRI_EDGE_IN;
-      TRI_edge_index_iterator_t it(currentDir, startVertex);
-      edgeIndex->lookup(_trx, &it, tmp, last, 1);
-      if (last == nullptr) {
-        // Could not find next edge.
-        // Change direction and increase collectionId
-        if (dir) {
-          ++eColIdx;
-        }
-        dir = !dir;
-        continue;
-      }
-    }
-    else {
-      TRI_edge_index_iterator_t it(direction, startVertex);
-      edgeIndex->lookup(_trx, &it, tmp, last, 1);
-      if (last == nullptr) {
-        // Could not find next edge.
-        // Set direction to false and continue with next collection
-        dir = false;
-        ++eColIdx;
-        continue;
-      }
-    }
-    // If we get here we have found the next edge.
-    // Now validate expression checks
-    ++_traverser->_readDocuments;
-    // sth is stored in tmp. Now push it on edges
-    TRI_ASSERT(tmp.size() == 1);
-    if (!_traverser->edgeMatchesConditions(tmp.back(), eColIdx, edges.size())) {
-      // Retry with the next element
-      continue;
-    }
-    EdgeInfo e(cid, tmp.back());
-    VPackSlice other;
-    // This always returns true and third parameter is ignored
-    _traverser->_getVertex(e, startVertex, 0, other);
-    if (!_traverser->vertexMatchesConditions(other, edges.size() + 1)) {
-      // Retry with the next element
-      continue;
-    }
-    auto search = std::find(edges.begin(), edges.end(), e);
-    if (search != edges.end()) {
-      // The edge is included twice. Go on with the next
-      continue;
-    }
-    edges.push_back(e);
-    return;
   }
-  */
+  nextEdge(startVertex, eColIdx, last, edges);
 }

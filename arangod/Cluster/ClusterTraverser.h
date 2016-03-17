@@ -110,7 +110,6 @@ class ClusterTraverser : public Traverser {
 
   CollectionNameResolver const* _resolver;
 
-#warning INITIALIZE
   arangodb::velocypack::Builder _builder;
 
 #warning INITIALIZE
