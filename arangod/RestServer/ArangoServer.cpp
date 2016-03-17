@@ -1452,7 +1452,7 @@ int ArangoServer::runScript (TRI_vocbase_t* vocbase) {
     {
       v8::Context::Scope contextScope(localContext);
       for (size_t i = 0;  i < _scriptFile.size();  ++i) {
-        bool r = TRI_ExecuteGlobalJavaScriptFile(isolate, _scriptFile[i].c_str());
+        bool r = TRI_ExecuteGlobalJavaScriptFile(isolate, _scriptFile[i].c_str(), true);
 
         if (! r) {
           LOG_FATAL_AND_EXIT("cannot load script '%s', giving up", _scriptFile[i].c_str());

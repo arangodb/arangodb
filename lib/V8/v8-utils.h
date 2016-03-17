@@ -149,7 +149,7 @@ void TRI_LogV8Exception (v8::Isolate* isolate,
 /// @brief reads a file into the current context
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExecuteGlobalJavaScriptFile (v8::Isolate* isolate, char const*);
+bool TRI_ExecuteGlobalJavaScriptFile (v8::Isolate* isolate, char const*, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads all files from a directory into the current context
@@ -167,7 +167,7 @@ bool TRI_ExecuteLocalJavaScriptDirectory (v8::Isolate* isolate, char const*);
 /// @brief parses a file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ParseJavaScriptFile (v8::Isolate* isolate, char const*);
+bool TRI_ParseJavaScriptFile (v8::Isolate* isolate, char const*, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a string within a V8 context, optionally print the result

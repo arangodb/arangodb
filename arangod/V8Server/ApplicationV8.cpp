@@ -503,6 +503,7 @@ void ApplicationV8::exitContext (V8Context* context) {
 
   // update data for later garbage collection
   {
+    v8::HandleScope scope(isolate);
     TRI_GET_GLOBALS();
     context->_hasActiveExternals = v8g->hasActiveExternals();
     ++context->_numExecutions;
@@ -998,7 +999,6 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationV8::prepare () {
-
   // check the startup path
   if (_startupPath.empty()) {
     LOG_FATAL_AND_EXIT("no 'javascript.startup-directory' has been supplied, giving up");
