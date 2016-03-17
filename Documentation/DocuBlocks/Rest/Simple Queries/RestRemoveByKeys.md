@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock RestRemoveByKeys
-/// @brief removes multiple documents by their keys
+/// @brief Hihi removes multiple documents by their keys
 ///
 /// @RESTHEADER{PUT /_api/simple/remove-by-keys, Remove documents by their keys}
 ///
@@ -13,10 +13,21 @@
 /// @RESTBODYPARAM{options,object,optional,put_api_simple_remove_by_keys_opts}
 /// a json object which can contains following attributes:
 ///
-/// @RESTSTRUCT{waitForSync,put_api_simple_remove_by_keys_opts,string,optional,string}
+/// @RESTSTRUCT{waitForSync,put_api_simple_remove_by_keys_opts,boolean,optional,}
 /// if set to true, then all removal operations will
 /// instantly be synchronized to disk. If this is not specified, then the
 /// collection's default sync behavior will be applied.
+///
+/// @RESTSTRUCT{silent,put_api_simple_remove_by_keys_opts,boolean,optional,}
+/// if set to *false*, then the result will contain an additional
+/// attribute *old* which contains an array with one entry for each
+/// removed document. By default, these entries will have the *_id*,
+/// *_key* and *_rev* attributes.
+///
+/// @RESTSTRUCT{returnOld,put_api_simple_remove_by_keys_opts,boolean,optional,}
+/// if set to *true* and *silent* above is *false*, then the above
+/// information about the removed documents contains the complete
+/// removed documents.
 ///
 /// @RESTDESCRIPTION
 /// Looks up the documents in the specified collection using the array of keys
