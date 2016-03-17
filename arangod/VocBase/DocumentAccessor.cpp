@@ -308,6 +308,7 @@ void DocumentAccessor::lookupDocumentAttribute(char const* name,
       return;
     }
 
+#if 0
     if (name[1] == 'r' && nameLength == 4 &&
         memcmp(name, TRI_VOC_ATTRIBUTE_REV, nameLength) == 0) {
       // _rev
@@ -322,6 +323,7 @@ void DocumentAccessor::lookupDocumentAttribute(char const* name,
       _current = _json.get();
       return;
     }
+#endif
 
 #if 0
     // TODO

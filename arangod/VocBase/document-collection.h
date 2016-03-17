@@ -25,7 +25,6 @@
 #define ARANGOD_VOC_BASE_DOCUMENT_COLLECTION_H 1
 
 #include "Basics/Common.h"
-#include "Basics/fasthash.h"
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/collection.h"
@@ -39,7 +38,6 @@
 
 namespace arangodb {
 class EdgeIndex;
-class ExampleMatcher;
 class Index;
 class KeyGenerator;
 class OperationOptions;
@@ -454,28 +452,6 @@ static inline TRI_voc_cid_t TRI_EXTRACT_MARKER_TO_CID(
   TRI_df_marker_t const* marker =
       static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());
   return TRI_EXTRACT_MARKER_TO_CID(marker);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts the revision id from a marker
-////////////////////////////////////////////////////////////////////////////////
-
-static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID(
-    TRI_df_marker_t const* marker) {
-  // invalid marker type
-  TRI_ASSERT(false);
-
-  return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts the revision id from a master pointer
-////////////////////////////////////////////////////////////////////////////////
-
-static inline TRI_voc_rid_t TRI_EXTRACT_MARKER_RID(TRI_doc_mptr_t const* mptr) {
-  TRI_df_marker_t const* marker =
-      static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());
-  return TRI_EXTRACT_MARKER_RID(marker);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

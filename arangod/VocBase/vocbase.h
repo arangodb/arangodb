@@ -314,7 +314,7 @@ struct TRI_vocbase_t {
 /// in this enum for compatibility with earlier versions
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef enum {
+enum TRI_vocbase_col_status_e {
   TRI_VOC_COL_STATUS_CORRUPTED = 0,
   TRI_VOC_COL_STATUS_NEW_BORN = 1,  // DEPRECATED, and shouldn't be used anymore
   TRI_VOC_COL_STATUS_UNLOADED = 2,
@@ -322,7 +322,7 @@ typedef enum {
   TRI_VOC_COL_STATUS_UNLOADING = 4,
   TRI_VOC_COL_STATUS_DELETED = 5,
   TRI_VOC_COL_STATUS_LOADING = 6
-} TRI_vocbase_col_status_e;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection container
