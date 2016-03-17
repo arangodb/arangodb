@@ -315,7 +315,7 @@ in a production environment.
 
 `collection.document(object)`
 
-The *document* method finds a document given an object `object`
+The *document* method finds a document given an object *object*
 containing the *_id* or *_key* attribute. The method returns
 the document if it can be found. If both attributes are given,
 the *_id* takes precedence, it is an error, if the collection part
@@ -335,12 +335,12 @@ client.
 
 `collection.document(document-handle)`
 
-As before. Instead of document a *document-handle* can be passed as
+As before. Instead of *object* a *document-handle* can be passed as
 first argument. No revision can be specified in this case.
 
 `collection.document(document-key)`
 
-As before. Instead of document a *document-key* can be passed as
+As before. Instead of *object* a *document-key* can be passed as
 first argument.
 
 `collection.document(array)`
@@ -450,12 +450,12 @@ request is performed.
 
 `collection.exists(document-handle)`
 
-As before. Instead of document a *document-handle* can be passed as
+As before. Instead of *object* a *document-handle* can be passed as
 first argument.
 
 `collection.exists(document-key)`
 
-As before. Instead of document a *document-key* can be passed as
+As before. Instead of *object* a *document-key* can be passed as
 first argument.
 
 `collection.exists(array)`
@@ -637,14 +637,14 @@ boolean attributes:
 
 `collection.replace(document-handle, data, options)`
 
-As before. Instead of a selector a *document-handle* can be passed as
+As before. Instead of *selector* a *document-handle* can be passed as
 first argument. No revision precondition is tested.
 
 `collection.replace(document-key, data)`
 
 `collection.replace(document-key, data, options)`
 
-As before. Instead of a selector a *document-key* can be passed as
+As before. Instead of *selector* a *document-key* can be passed as
 first argument. No revision precondition is tested.
 
 `collection.replace(selectorarray, dataarray)`
@@ -753,14 +753,14 @@ boolean attributes:
 
 `collection.update(document-handle, data, options)`
 
-As before. Instead of a selector a *document-handle* can be passed as
+As before. Instead of *selector* a *document-handle* can be passed as
 first argument. No revision precondition is tested.
 
 `collection.update(document-key, data)`
 
 `collection.update(document-key, data, options)`
 
-As before. Instead of a selector a *document-key* can be passed as
+As before. Instead of *selector* a *document-key* can be passed as
 first argument. No revision precondition is tested.
 
 `collection.update(selectorarray, dataarray)`
@@ -895,14 +895,14 @@ boolean attributes:
 
 `collection.remove(document-handle, options)`
 
-As before. Instead of document a *document-handle* can be passed as
+As before. Instead of *selector* a *document-handle* can be passed as
 first argument. No revision check is performed.
 
 `collection.remove(document-key)`
 
 `collection.remove(document-handle, options)`
 
-As before. Instead of document a *document-handle* can be passed as
+As before. Instead of *selector* a *document-handle* can be passed as
 first argument. No revision check is performed.
 
 `collection.remove(selectorarray)`
