@@ -120,17 +120,39 @@ static void EdgesQuery(TRI_edge_direction_e direction,
 
   TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(collection);
   
+  auto addOne = [](v8::Isolate* isolate, VPackBuilder* builder, v8::Handle<v8::Value> const val) {
+    if (val->IsString() || val->IsStringObject()) {
+      builder->add(VPackValue(TRI_ObjectToString(val)));
+    } else if (val->IsObject()) {
+      v8::Handle<v8::Object> obj = val->ToObject();
+      if (obj->Has(TRI_V8_ASCII_STRING(TRI_VOC_ATTRIBUTE_ID))) {
+        builder->add(VPackValue(TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING(TRI_VOC_ATTRIBUTE_ID)))));
+      } else {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "object does not have _id attribute"); 
+      }
+    } else {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid value type. expecting string or object value");
+    }
+  };
+  
   auto bindVars = std::make_shared<VPackBuilder>();
   bindVars->openObject();
   bindVars->add("@collection", VPackValue(collection->name()));
   bindVars->add(VPackValue("value"));
-  int res = TRI_V8ToVPack(isolate, *(bindVars.get()), args[0], false);
-  bindVars->close();
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
+  if (args[0]->IsArray()) {
+    bindVars->openArray();
+    v8::Handle<v8::Array> arr = v8::Handle<v8::Array>::Cast(args[0]);
+    uint32_t n = arr->Length();
+    for (uint32_t i = 0; i < n; ++i) {
+      addOne(isolate, bindVars.get(), arr->Get(i));
+    }
+    bindVars->close();
   }
-
+  else {
+    addOne(isolate, bindVars.get(), args[0]);
+  }
+  bindVars->close();
 
   std::string filter;
   // argument is a list of vertices

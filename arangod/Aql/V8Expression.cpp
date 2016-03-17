@@ -63,11 +63,11 @@ V8Expression::~V8Expression() {
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
-                                arangodb::AqlTransaction* trx,
-                                AqlItemBlock const* argv, size_t startPos,
-                                std::vector<Variable const*> const& vars,
-                                std::vector<RegisterId> const& regs,
-                                bool& mustDestroy) {
+                               arangodb::AqlTransaction* trx,
+                               AqlItemBlock const* argv, size_t startPos,
+                               std::vector<Variable const*> const& vars,
+                               std::vector<RegisterId> const& regs,
+                               bool& mustDestroy) {
   size_t const n = vars.size();
   TRI_ASSERT(regs.size() == n);  // assert same vector length
 

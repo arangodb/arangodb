@@ -1,57 +1,92 @@
 /*jshint globalstrict:false, unused:false */
 /*global start_pretty_print */
+'use strict';
 
-var fs = require("fs");
-var internal = require("internal");
-var executeExternal = require("internal").executeExternal;
-var executeExternalAndWait = internal.executeExternalAndWait;
-var download = require("internal").download;
-var print = internal.print;
-var wait = require("internal").wait;
-var killExternal = require("internal").killExternal;
-var toArgv = require("internal").toArgv;
-var statusExternal = require("internal").statusExternal;
+const fs = require("fs");
+const internal = require("internal");
+const executeExternal = internal.executeExternal;
+const executeExternalAndWait = internal.executeExternalAndWait;
+const download = internal.download;
+const print = internal.print;
+const wait = internal.wait;
+const killExternal = internal.killExternal;
+const toArgv = internal.toArgv;
+const statusExternal = internal.statusExternal;
+const testPort = internal.testPort;
 
-var yaml = require("js-yaml");
-var endpointToURL = require("@arangodb/cluster/planner").endpointToURL;
-var PortFinder = require("@arangodb/cluster").PortFinder;
+const yaml = require("js-yaml");
 
-var documentationSourceDirs = [
+const documentationSourceDirs = [
   fs.join(fs.makeAbsolute(''), "Documentation/Examples/setup-arangosh.js"),
-  fs.join(fs.makeAbsolute(''), "Documentation/Books/Users"),
-  fs.join(fs.makeAbsolute(''), "js/actions"),
-  fs.join(fs.makeAbsolute(''), "js/client"),
-  fs.join(fs.makeAbsolute(''), "js/common"),
-  fs.join(fs.makeAbsolute(''), "js/server"),
-  fs.join(fs.makeAbsolute(''), "js/apps/system/_api/gharial/APP")];
+  fs.join(fs.makeAbsolute(''), "Documentation/DocuBlocks"),
+  fs.join(fs.makeAbsolute(''), "Documentation/Books/Users")
+];
 
-var theScript = 'Documentation/Scripts/generateExamples.py';
+const theScript = 'utils/generateExamples.py';
 
-var scriptArguments = {
+const scriptArguments = {
   'outputDir': fs.join(fs.makeAbsolute(''), "Documentation/Examples"),
-  'outputFile': '/tmp/arangosh.examples.js'
+  'outputFile': fs.join(fs.makeAbsolute(''), "arangosh.examples.js")
 };
 
-function main (argv) {
-  "use strict";
-  var thePython = 'python';
-  var test = argv[1];
-  var options = {};
-  var serverEndpoint = '';
-  var startServer = true;
-  var instanceInfo = {};
-  var serverCrashed = false;
-  var protocol = 'tcp';
-  var tmpDataDir = fs.getTempFile();
-  var count = 0;
+let ARANGOD;
+let ARANGOSH;
+
+if (fs.exists("bin")) {
+  ARANGOD = fs.join(fs.join(fs.makeAbsolute('')), "bin/arangod");
+  ARANGOSH = fs.join(fs.join(fs.makeAbsolute('')), "bin/arangosh");
+}
+else {
+  ARANGOD = fs.join(fs.join(fs.makeAbsolute('')), "build/bin/arangod");
+  ARANGOSH = fs.join(fs.join(fs.makeAbsolute('')), "build/bin/arangosh");
+}
+
+function endpointToURL(endpoint) {
+  if (endpoint.substr(0, 6) === "ssl://") {
+    return "https://" + endpoint.substr(6);
+  }
+
+  const pos = endpoint.indexOf("://");
+
+  if (pos === -1) {
+    return "http://" + endpoint;
+  }
+
+  return "http" + endpoint.substr(pos);
+}
+
+function findFreePort() {
+  while (true) {
+    const port = Math.floor(Math.random() * (65536 - 1024)) + 1024;
+    const free = testPort("tcp://0.0.0.0:" + port);
+
+    if (free) {
+      return port;
+    }
+  }
+
+  return 8529;
+}
+
+function main(argv) {
+  let thePython = 'python';
+  let options = {};
+  let serverEndpoint = '';
+  let startServer = true;
+  let instanceInfo = {};
+  let serverCrashed = false;
+  let protocol = 'tcp';
+  let tmpDataDir = fs.getTempFile();
+  let count = 0;
 
   try {
-    options = internal.parseArgv(argv, 1);
-  }
-  catch (x) {
+    options = internal.parseArgv(argv, 0);
+  } catch (x) {
     print("failed to parse the options: " + x.message);
     return -1;
   }
+
+  print(options);
 
   if (options.hasOwnProperty('withPython')) {
     thePython = options.withPython;
@@ -65,13 +100,13 @@ function main (argv) {
     startServer = false;
     serverEndpoint = options['server.endpoint'];
   }
-  var args = [theScript].concat(internal.toArgv(scriptArguments));
+
+  let args = [theScript].concat(internal.toArgv(scriptArguments));
   args = args.concat(['--arangoshSetup']);
   args = args.concat(documentationSourceDirs);
 
-  // internal.print(JSON.stringify(args));
+  let res = executeExternalAndWait(thePython, args);
 
-  var res = executeExternalAndWait(thePython, args);
   if (res.exit !== 0) {
     print("parsing the examples failed - aborting!");
     print(res);
@@ -79,36 +114,46 @@ function main (argv) {
   }
 
   if (startServer) {
-    // We use the PortFinder to find a free port for our subinstance,
-    // to this end, we have to fake a dummy dispatcher:
-    var dispatcher = {endpoint: "tcp://127.0.0.1:", avoidPorts: {}, id: "me"};
-    var pf = new PortFinder([8529],dispatcher);
-    var port = pf.next();
+    let port = findFreePort();
     instanceInfo.port = port;
-    serverEndpoint = protocol+"://127.0.0.1:"+port;
-    
+    serverEndpoint = protocol + "://127.0.0.1:" + port;
+
     instanceInfo.url = endpointToURL(serverEndpoint);
 
-    var serverArgs = {};
+    fs.makeDirectoryRecursive(fs.join(tmpDataDir, "data"));
+
+    let serverArgs = {};
+
+    serverArgs["configuration"] = "none";
+    serverArgs["database.directory"] = fs.join(tmpDataDir, "data");
+    serverArgs["javascript.app-path"] = fs.join(tmpDataDir, "apps");
+    serverArgs["javascript.startup-directory"] = "js";
+    serverArgs["log.file"] = fs.join(tmpDataDir, "log");
+    serverArgs["server.disable-authentication"] = "true";
     serverArgs["server.endpoint"] = serverEndpoint;
-    serverArgs["database.directory"] = fs.join(tmpDataDir,"data");
-    fs.makeDirectoryRecursive(fs.join(tmpDataDir,"data"));
-    args["log.file"] = fs.join(tmpDataDir,"log");
-    instanceInfo.pid = executeExternal(fs.join("bin","arangod"), toArgv(serverArgs));
+    serverArgs["server.threads"] = "3";
+
+    print("================================================================================");
+    print(toArgv(serverArgs));
+    instanceInfo.pid = executeExternal(ARANGOD, toArgv(serverArgs));
+
     // Wait until the server is up:
     count = 0;
     instanceInfo.endpoint = serverEndpoint;
 
     while (true) {
       wait(0.5, false);
-      var r = download(instanceInfo.url + "/_api/version", "");
+      let r = download(instanceInfo.url + "/_api/version", "");
 
-      if (! r.error && r.code === 200) {
+      if (!r.error && r.code === 200) {
         break;
       }
-      count ++;
+
+      count++;
+
       if (count % 60 === 0) {
         res = statusExternal(instanceInfo.pid, false);
+
         if (res.status !== "RUNNING") {
           print("start failed - process is gone: " + yaml.safeDump(res));
           return 1;
@@ -116,67 +161,71 @@ function main (argv) {
       }
     }
   }
-  var arangoshArgs = {
+
+  let arangoshArgs = {
     'configuration': fs.join(fs.makeAbsolute(''), 'etc', 'relative', 'arangosh.conf'),
     'server.password': "",
     'server.endpoint': serverEndpoint,
     'javascript.execute': scriptArguments.outputFile
   };
 
-  res = executeExternalAndWait('bin/arangosh', internal.toArgv(arangoshArgs));
+  res = executeExternalAndWait(ARANGOSH, internal.toArgv(arangoshArgs));
 
   if (startServer) {
     if (typeof(instanceInfo.exitStatus) === 'undefined') {
-      download(instanceInfo.url+"/_admin/shutdown","");
+      download(instanceInfo.url + "/_admin/shutdown", "");
 
       print("Waiting for server shut down");
       count = 0;
-      var bar = "[";
+      let bar = "[";
+
       while (1) {
         instanceInfo.exitStatus = statusExternal(instanceInfo.pid, false);
+
         if (instanceInfo.exitStatus.status === "RUNNING") {
-          count ++;
+          count++;
           if (typeof(options.valgrind) === 'string') {
             wait(1);
             continue;
           }
-          if (count % 10 ===0) {
+          if (count % 10 === 0) {
             bar = bar + "#";
           }
           if (count > 600) {
             print("forcefully terminating " + yaml.safeDump(instanceInfo.pid) +
-                  " after 600 s grace period; marking crashy.");
+              " after 600 s grace period; marking crashy.");
             serverCrashed = true;
             killExternal(instanceInfo.pid);
             break;
-          }
-          else {
+          } else {
             wait(1);
           }
-        }
-        else if (instanceInfo.exitStatus.status !== "TERMINATED") {
+        } else if (instanceInfo.exitStatus.status !== "TERMINATED") {
           if (instanceInfo.exitStatus.hasOwnProperty('signal')) {
             print("Server shut down with : " +
-                  yaml.safeDump(instanceInfo.exitStatus) +
-                  " marking build as crashy.");
+              yaml.safeDump(instanceInfo.exitStatus) +
+              " marking build as crashy.");
             serverCrashed = true;
             break;
           }
-          if (require("internal").platform.substr(0,3) === 'win') {
+          if (internal.platform.substr(0, 3) === 'win') {
             // Windows: wait for procdump to do its job...
             statusExternal(instanceInfo.monitor, true);
           }
-        }
-        else {
+        } else {
           print("Server shutdown: Success.");
           break; // Success.
         }
       }
+
       if (count > 10) {
         print("long Server shutdown: " + bar + ']');
       }
 
     }
   }
+
   return 0;
 }
+
+main(ARGUMENTS);
