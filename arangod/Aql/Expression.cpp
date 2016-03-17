@@ -139,10 +139,10 @@ void Expression::variables(std::unordered_set<Variable const*>& result) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Expression::execute(arangodb::AqlTransaction* trx,
-                              AqlItemBlock const* argv, size_t startPos,
-                              std::vector<Variable const*> const& vars,
-                              std::vector<RegisterId> const& regs,
-                              bool& mustDestroy) {
+                             AqlItemBlock const* argv, size_t startPos,
+                             std::vector<Variable const*> const& vars,
+                             std::vector<RegisterId> const& regs,
+                             bool& mustDestroy) {
   if (!_built) {
     buildExpression();
   }
@@ -153,7 +153,7 @@ AqlValue Expression::execute(arangodb::AqlTransaction* trx,
   // and execute
   switch (_type) {
     case JSON: {
-      // TODO
+      mustDestroy = false;
       TRI_ASSERT(_data != nullptr);
       return AqlValue(_data);
     }
@@ -445,7 +445,7 @@ AqlValue Expression::executeSimpleExpression(
       return executeSimpleExpressionValue(node, mustDestroy);
     case NODE_TYPE_REFERENCE:
       return executeSimpleExpressionReference(node, trx, argv, startPos,
-                                              vars, regs, doCopy, mustDestroy);
+                                              vars, regs, mustDestroy, doCopy);
     case NODE_TYPE_FCALL:
       return executeSimpleExpressionFCall(node, trx, argv, startPos, vars,
                                           regs, mustDestroy);
@@ -454,6 +454,7 @@ AqlValue Expression::executeSimpleExpression(
                                           regs, mustDestroy);
     case NODE_TYPE_OPERATOR_UNARY_NOT:
       return executeSimpleExpressionNot(node, trx, argv, startPos, vars, regs, mustDestroy);
+
     case NODE_TYPE_OPERATOR_BINARY_AND:
     case NODE_TYPE_OPERATOR_BINARY_OR:
       return executeSimpleExpressionAndOr(node, trx, argv, startPos, vars,
@@ -562,7 +563,6 @@ AqlValue Expression::executeSimpleExpressionAttributeAccess(
 
   AqlValue result = executeSimpleExpression(member, trx, argv,
                                             startPos, vars, regs, mustDestroy, false);
-
   AqlValueGuard guard(result, mustDestroy);
 
   AqlValue a = result.get(trx, name, mustDestroy, true);
@@ -596,7 +596,7 @@ AqlValue Expression::executeSimpleExpressionIndexedAccess(
 
   mustDestroy = false; 
   AqlValue result = executeSimpleExpression(member, trx, argv,
-                                             startPos, vars, regs, mustDestroy, false);
+                                            startPos, vars, regs, mustDestroy, false);
 
   AqlValueGuard guard(result, mustDestroy);
 
