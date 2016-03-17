@@ -406,7 +406,7 @@ bool IndexBlock::readIndex(size_t atMost) {
 
       for (auto const& doc : VPackArrayIterator(slice)) {
         std::string key =
-            arangodb::basics::VelocyPackHelper::getStringValue(doc, "_key", "");
+            arangodb::basics::VelocyPackHelper::getStringValue(doc, TRI_VOC_ATTRIBUTE_KEY, "");
         if (_alreadyReturned.find(key) == _alreadyReturned.end()) {
           if (!isLastIndex) {
             _alreadyReturned.emplace(key);

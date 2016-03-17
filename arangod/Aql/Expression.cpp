@@ -340,12 +340,10 @@ void Expression::analyzeExpression() {
     if (_node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
       TRI_ASSERT(_node->numMembers() == 1);
       auto member = _node->getMemberUnchecked(0);
-      std::vector<char const*> parts{
-          static_cast<char const*>(_node->getData())};
+      std::vector<std::string> parts{_node->getString()};
 
       while (member->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        parts.insert(parts.begin(),
-                     static_cast<char const*>(member->getData()));
+        parts.insert(parts.begin(), member->getString());
         member = member->getMemberUnchecked(0);
       }
 
@@ -708,7 +706,7 @@ AqlValue Expression::executeSimpleExpressionObject(
     auto member = node->getMemberUnchecked(i);
     TRI_ASSERT(member->type == NODE_TYPE_OBJECT_ELEMENT);
     // key
-    builder.add(VPackValue(std::string(member->getStringValue(), member->getStringLength())));
+    builder.add(VPackValue(member->getString()));
 
     // value
     member = member->getMember(0);
@@ -837,8 +835,7 @@ AqlValue Expression::executeSimpleExpressionFCall(
 
       if (arg->type == NODE_TYPE_COLLECTION) {
         builder.clear();
-        builder.add(VPackValue(
-              std::string(arg->getStringValue(), arg->getStringLength())));
+        builder.add(VPackValue(arg->getString()));
         parameters.emplace_back(AqlValue(builder));
         destroyParameters.push_back(true);
       } else {

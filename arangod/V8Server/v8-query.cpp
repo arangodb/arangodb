@@ -52,7 +52,7 @@ using namespace arangodb::basics;
 ////////////////////////////////////////////////////////////////////////////////
 
 static aql::QueryResultV8 AqlQuery(v8::Isolate* isolate, TRI_vocbase_col_t const* col, 
-                                    std::string const& aql, std::shared_ptr<VPackBuilder> bindVars) {
+                                   std::string const& aql, std::shared_ptr<VPackBuilder> bindVars) {
   TRI_ASSERT(col != nullptr);
 
   TRI_GET_GLOBALS();

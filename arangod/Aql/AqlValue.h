@@ -254,7 +254,7 @@ struct AqlValue final {
   AqlValue get(arangodb::AqlTransaction* trx,
                std::string const& name, bool& mustDestroy, bool copy) const;
   AqlValue get(arangodb::AqlTransaction* trx,
-               std::vector<char const*> const& names, bool& mustDestroy,
+               std::vector<std::string> const& names, bool& mustDestroy,
                bool copy) const;
   bool hasKey(arangodb::AqlTransaction* trx, std::string const& name) const;
 

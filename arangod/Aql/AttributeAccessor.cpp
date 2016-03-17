@@ -34,7 +34,7 @@ using namespace arangodb::aql;
 ////////////////////////////////////////////////////////////////////////////////
 
 AttributeAccessor::AttributeAccessor(
-    std::vector<char const*> const& attributeParts, Variable const* variable)
+    std::vector<std::string> const& attributeParts, Variable const* variable)
     : _attributeParts(attributeParts),
       _combinedName(),
       _variable(variable) {

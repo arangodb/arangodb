@@ -272,6 +272,13 @@ struct AstNode {
   ~AstNode();
 
  public:
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return the string value of a node, as an std::string
+  //////////////////////////////////////////////////////////////////////////////
+  
+  std::string getString() const;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief test if all members of a node are equality comparisons
   //////////////////////////////////////////////////////////////////////////////
@@ -866,8 +873,20 @@ struct AstNode {
   inline void setStringValue(char const* v, size_t length) {
     // note: v may contain the NUL byte and is not necessarily
     // null-terminated itself (if from VPack)
+    value.type = VALUE_TYPE_STRING;
     value.value._string = v;
     value.length = static_cast<uint32_t>(length);
+  }
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not a string is equal to another
+  //////////////////////////////////////////////////////////////////////////////
+  
+  inline bool stringEquals(char const* other, bool caseInsensitive) const {
+    if (caseInsensitive) {
+      return (strncasecmp(getStringValue(), other, getStringLength()) == 0);
+    }
+    return (strncmp(getStringValue(), other, getStringLength()) == 0);
   }
 
   //////////////////////////////////////////////////////////////////////////////

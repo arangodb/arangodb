@@ -68,7 +68,7 @@ class SortBlock : public ExecutionBlock {
           _sortRegisters(sortRegisters) {}
 
     bool operator()(std::pair<size_t, size_t> const& a,
-                    std::pair<size_t, size_t> const& b);
+                    std::pair<size_t, size_t> const& b) const;
 
    private:
     arangodb::AqlTransaction* _trx;
