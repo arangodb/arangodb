@@ -116,6 +116,10 @@ public:
   /// @brief Remove this node
   bool remove();
 
+  /// @brief Root node
+  Node& root();
+    
+
   /// @brief Dump
   friend std::ostream& operator<<(std::ostream& os, const Node& n) {
     Node const* par = n._parent;
@@ -146,7 +150,7 @@ public:
 protected:
 
   /// @brief Add time to live entry
-  bool addTimeToLive (long millis);
+  virtual bool addTimeToLive (long millis);
   
   Node* _parent;
   Children _children;

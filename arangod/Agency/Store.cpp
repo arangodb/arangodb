@@ -174,8 +174,18 @@ std::ostream& operator<< (std::ostream& o, std::map<S,T> const& d) {
   return o;
 }
 
+Node& Node::root() {
+  Node *par = _parent, *tmp;
+  while (par != 0) {
+    tmp = par;
+    par = par->_parent;
+  }
+  std::cout << par << std::endl;
+  return *tmp;
+}
+
 bool Node::addTimeToLive (long millis) {
-  _time_table[
+  root()._time_table[
     std::chrono::system_clock::now() + std::chrono::milliseconds(millis)] =
     _parent->_children[_name];
   return true;
@@ -478,7 +488,6 @@ void Store::beginShutdown() {
 void Store::clearTimeTable () {
   for (auto it = _time_table.cbegin(); it != _time_table.cend() ;) {
     if (it->first < std::chrono::system_clock::now()) {
-      std::cout << "clearing time table: " << it->second->name() << std::endl;
       it->second->remove();
       _time_table.erase(it++);
     } else {
@@ -491,10 +500,8 @@ void Store::run() {
   CONDITION_LOCKER(guard, _cv);
   
   while (!this->isStopping()) { // Check timetable and remove overage entries
-    
-    _cv.wait(1000000); // better wait to next known time point
+    _cv.wait(200000); // better wait to next known time point
     clearTimeTable();
-
   }
 }
 
