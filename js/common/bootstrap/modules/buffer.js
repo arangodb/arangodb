@@ -18,8 +18,6 @@ const exports = {};
 
 var SlowBuffer = require('internal').SlowBuffer;
 
-require('internal').setFastBufferConstructor(Buffer);
-
 // Copyright Joyent, Inc. and other Node contributors.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a
@@ -246,7 +244,8 @@ function Buffer(subject, encoding, offset) {
     }
   }
 
-  SlowBuffer.makeFastBuffer(this.parent, this, this.offset, this.length);
+  
+ // SlowBuffer.makeFastBuffer(this.parent, this, this.offset, this.length);
 }
 
 function isArrayIsh(subject) {

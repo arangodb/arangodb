@@ -51,6 +51,7 @@
 
 #include "Basics/Common.h"
 
+#include "V8/v8-globals.h"
 #include "V8/v8-wrapper.h"
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -102,24 +103,40 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
   static inline char* data(v8::Handle<v8::Value> val) {
     TRI_ASSERT(val->IsObject());
     auto o = val->ToObject();
+    int32_t offsetValue = 0;
 
     if (o->InternalFieldCount() == 0) {
       // seems object has become a FastBuffer already
-      if (!o->HasIndexedPropertiesInExternalArrayData()) {
-        // probably not...
-        return nullptr;
+      ISOLATE;
+      
+      if (o->Has(TRI_V8_ASCII_STRING("offset"))) {
+        v8::Handle<v8::Value> offset = o->Get(TRI_V8_ASCII_STRING("offset"));
+        if (offset->IsNumber()) {
+          offsetValue = offset->Int32Value();
+        }
       }
 
-      void* data = o->GetIndexedPropertiesExternalArrayData();
-      return static_cast<char*>(data);
+      if (o->Has(TRI_V8_ASCII_STRING("parent"))) {
+        v8::Handle<v8::Value> parent = o->Get(TRI_V8_ASCII_STRING("parent"));
+        if (!parent->IsObject()) {
+          return nullptr;
+        }
+        o = parent->ToObject();
+        // fallthrough intentional
+      }
     }
 
     V8Buffer* buffer = unwrap(o);
-    if (buffer == nullptr) {
+    if (buffer == nullptr || offsetValue < 0) {
       return nullptr;
     }
+    
+    size_t length = buffer->_length;
+    if (static_cast<size_t>(offsetValue) >= length) {
+      return nullptr; //OOB
+    }
 
-    return buffer->_data;
+    return buffer->_data + offsetValue;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -138,22 +155,37 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
   static inline size_t length(v8::Handle<v8::Value> val) {
     TRI_ASSERT(val->IsObject());
     auto o = val->ToObject();
+    int32_t lengthValue = -1;
 
     if (o->InternalFieldCount() == 0) {
       // seems object has become a FastBuffer already
-      if (!o->HasIndexedPropertiesInExternalArrayData()) {
-        // probably not...
-        return 0;
+      ISOLATE;
+      
+      if (o->Has(TRI_V8_ASCII_STRING("length"))) {
+        v8::Handle<v8::Value> length = o->Get(TRI_V8_ASCII_STRING("length"));
+        if (length->IsNumber()) {
+          lengthValue = length->Int32Value();
+        }
       }
 
-      int len = o->GetIndexedPropertiesExternalArrayDataLength();
-      return static_cast<size_t>(len);
+      if (o->Has(TRI_V8_ASCII_STRING("parent"))) {
+        v8::Handle<v8::Value> parent = o->Get(TRI_V8_ASCII_STRING("parent"));
+        if (!parent->IsObject()) {
+          return 0;
+        }
+        o = parent->ToObject();
+        // fallthrough intentional
+      }
     }
-
+    
     V8Buffer* buffer = unwrap(o);
     if (buffer == nullptr) {
       return 0;
     }
+
+    if (lengthValue >= 0) {
+      return static_cast<size_t>(lengthValue);
+    } 
 
     return buffer->_length;
   }
