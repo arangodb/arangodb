@@ -303,6 +303,28 @@ function CollectionEdgeSuite () {
       assertTypeOf("string", doc._id);
       assertTypeOf("string", doc._rev);
       assertMatch(/^UnitTestsCollectionEdge\//, doc._id);
+
+      var saved = edge.document(doc._id);
+
+      assertEqual(v1._id, saved._from);
+      assertEqual(v2._id, saved._to);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an edge using the shorthand
+////////////////////////////////////////////////////////////////////////////////
+
+    testSaveEdgeShorthand : function () {
+      var doc = edge.save({ "_from": v1._id, "_to": v2._id, "Hello" : "World" });
+
+      assertTypeOf("string", doc._id);
+      assertTypeOf("string", doc._rev);
+      assertMatch(/^UnitTestsCollectionEdge\//, doc._id);
+
+      var saved = edge.document(doc._id);
+
+      assertEqual(v1._id, saved._from);
+      assertEqual(v2._id, saved._to);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
