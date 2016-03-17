@@ -37,6 +37,12 @@ using namespace arangodb::basics;
 /// running
 ////////////////////////////////////////////////////////////////////////////////
 
+static bool isClusterRole(ServerState::RoleEnum role) {
+  return (role == ServerState::ROLE_PRIMARY ||
+          role == ServerState::ROLE_SECONDARY ||
+          role == ServerState::ROLE_COORDINATOR);
+}
+
 static ServerState Instance;
 
 ServerState::ServerState()
@@ -227,10 +233,8 @@ bool ServerState::isDBServer(ServerState::RoleEnum role) {
 
 bool ServerState::isRunningInCluster() {
   auto role = loadRole();
-
-  return (role == ServerState::ROLE_PRIMARY ||
-          role == ServerState::ROLE_SECONDARY ||
-          role == ServerState::ROLE_COORDINATOR);
+  
+  return isClusterRole(role);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1055,4 +1059,84 @@ ServerState::RoleEnum ServerState::checkServersList(std::string const& id) {
   }
 
   return role;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief store the server role
+//////////////////////////////////////////////////////////////////////////////
+void ServerState::storeRole(RoleEnum role)
+{
+  _role.store(role, std::memory_order_release);
+
+  if (!isClusterRole(role)) {
+    return;
+  }
+  AgencyComm comm;
+  AgencyCommResult result;
+  std::unique_ptr<AgencyCommLocker> locker;
+
+  do {
+    locker.reset(new AgencyCommLocker("Current", "WRITE"));
+    if (locker->successful()) {
+      break;
+    }
+    sleep(1);
+    LOG(DEBUG) << "Couldn't aquire lock on Current. Retrying";
+  } while (true);
+
+  if (role == ServerState::ROLE_COORDINATOR) {
+    VPackBuilder builder;
+    try {
+      builder.add(VPackValue("none"));
+    } catch (...) {
+      locker->unlock();
+      LOG(FATAL) << "out of memory"; FATAL_ERROR_EXIT();
+    }
+
+
+    // register coordinator
+    AgencyCommResult result =
+      comm.setValue("Current/Coordinators/" + _id, builder.slice(), 0.0);
+
+    if (!result.successful()) {
+      locker->unlock();
+      LOG(FATAL) << "unable to register coordinator in agency"; FATAL_ERROR_EXIT();
+    }
+  } else if (role == ServerState::ROLE_PRIMARY) {
+    VPackBuilder builder;
+    try {
+      builder.add(VPackValue("none"));
+    } catch (...) {
+      locker->unlock();
+      LOG(FATAL) << "out of memory"; FATAL_ERROR_EXIT();
+    }
+
+    // register server
+    AgencyCommResult result =
+      comm.setValue("Current/DBServers/" + _id, builder.slice(), 0.0);
+
+    if (!result.successful()) {
+      locker->unlock();
+      LOG(FATAL) << "unable to register db server in agency"; FATAL_ERROR_EXIT();
+    }
+  } else if (role == ServerState::ROLE_SECONDARY) {
+    std::string keyName = _id;
+    VPackBuilder builder;
+    try {
+      builder.add(VPackValue(keyName));
+    } catch (...) {
+      locker->unlock();
+      LOG(FATAL) << "out of memory"; FATAL_ERROR_EXIT();
+    }
+
+    // register server
+    AgencyCommResult result = comm.setValue(
+        "Current/DBServers/" + ServerState::instance()->getPrimaryId(),
+        builder.slice(), 0.0);
+
+    if (!result.successful()) {
+      locker->unlock();
+      LOG(FATAL) << "unable to register secondary db server in agency"; FATAL_ERROR_EXIT();
+    }
+  }
 }
