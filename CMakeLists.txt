@@ -33,7 +33,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 
 set(ARANGODB_VERSION_MAJOR      "3")
 set(ARANGODB_VERSION_MINOR      "0")
-set(ARANGODB_VERSION_REVISION   "0-devel")
+set(ARANGODB_VERSION_REVISION   "x-devel")
 
 set(ARANGODB_VERSION
     "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.${ARANGODB_VERSION_REVISION}")
@@ -355,6 +355,14 @@ endif ()
 
 if (USE_TCMALLOC)
   find_package(tcmalloc)
+endif ()
+
+################################################################################
+## LIBRARY RESOLV
+################################################################################
+
+if (NOT WINDOWS)
+  set(NET_LIBS ${NET_LIBS} resolv)
 endif ()
 
 ################################################################################
@@ -703,6 +711,7 @@ list(INSERT SYSTEM_LIBRARIES 0
   ${BASE_LIBS}
   ${CMAKE_THREAD_LIBS_INIT}
   ${CMAKE_DL_LIBS}
+  ${NET_LIBS}
 )
 
 add_subdirectory(lib)

@@ -48,7 +48,7 @@ using namespace arangodb::rest;
 
 V8ShellFeature::V8ShellFeature(application_features::ApplicationServer* server,
                                std::string const& name)
-    : ApplicationFeature(server, "V8ShellFeature"),
+    : ApplicationFeature(server, "V8Shell"),
       _startupDirectory("js"),
       _currentModuleDirectory(true),
       _gcInterval(10),
@@ -58,9 +58,9 @@ V8ShellFeature::V8ShellFeature(application_features::ApplicationServer* server,
   requiresElevatedPrivileges(false);
   setOptional(false);
 
-  startsAfter("LoggerFeature");
-  startsAfter("ConsoleFeature");
-  startsAfter("V8PlatformFeature");
+  startsAfter("Logger");
+  startsAfter("Console");
+  startsAfter("V8Platform");
 }
 
 void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -98,7 +98,7 @@ void V8ShellFeature::validateOptions(
 void V8ShellFeature::start() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
 
-  _console = dynamic_cast<ConsoleFeature*>(server()->feature("ConsoleFeature"));
+  _console = dynamic_cast<ConsoleFeature*>(server()->feature("Console"));
 
   _isolate = v8::Isolate::New();
 
@@ -137,6 +137,13 @@ void V8ShellFeature::stop() {
   {
     v8::Locker locker{_isolate};
     v8::Isolate::Scope isolate_scope{_isolate};
+
+    TRI_v8_global_t* v8g =
+        static_cast<TRI_v8_global_t*>(_isolate->GetData(V8DataSlot));
+    _isolate->SetData(V8DataSlot, nullptr);
+
+    delete v8g;
+
     _context.Reset();
   }
 
@@ -232,27 +239,26 @@ V8ClientConnection* V8ShellFeature::setup(
   ClientFeature* client = nullptr;
 
   if (createConnection) {
-    client = dynamic_cast<ClientFeature*>(server()->feature("ClientFeature"));
+    client = dynamic_cast<ClientFeature*>(server()->feature("Client"));
 
     if (client != nullptr && client->isEnabled()) {
       auto connection = client->createConnection();
       v8connection = std::make_unique<V8ClientConnection>(
           connection, client->databaseName(), client->username(),
           client->password(), client->requestTimeout());
-    }
-    else {
+    } else {
       client = nullptr;
     }
   }
 
-  initMode(ArangoshFeature::RunMode::INTERACTIVE, positionals);
+  initMode(ShellFeature::RunMode::INTERACTIVE, positionals);
 
   if (createConnection && client != nullptr) {
     v8connection->initServer(_isolate, context, client);
   }
 
   bool pe = printHello(v8connection.get());
-  loadModules(ArangoshFeature::RunMode::INTERACTIVE);
+  loadModules(ShellFeature::RunMode::INTERACTIVE);
 
   if (promptError != nullptr) {
     *promptError = pe;
@@ -274,11 +280,14 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
 
   bool promptError;
   auto v8connection = setup(context, true, positionals, &promptError);
+  std::unique_ptr<V8ClientConnection> guard(v8connection);
 
   V8LineEditor v8LineEditor(_isolate, context, "." + _name + ".history");
 
-  v8LineEditor.setSignalFunction(
-      [&v8connection]() { v8connection->setInterrupted(true); });
+  if (v8connection != nullptr) {
+    v8LineEditor.setSignalFunction(
+        [&v8connection]() { v8connection->setInterrupted(true); });
+  }
 
   v8LineEditor.open(_console->autoComplete());
 
@@ -288,7 +297,7 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
   uint64_t nrCommands = 0;
 
   ClientFeature* client =
-      dynamic_cast<ClientFeature*>(server()->feature("ClientFeature"));
+      dynamic_cast<ClientFeature*>(server()->feature("Client"));
 
   if (!client->isEnabled()) {
     client = nullptr;
@@ -364,7 +373,9 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
       promptError = true;
     }
 
-    v8connection->setInterrupted(false);
+    if (v8connection != nullptr) {
+      v8connection->setInterrupted(false);
+    }
 
     _console->stopPager();
     _console->printLine("");
@@ -400,7 +411,8 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
 
   v8::Context::Scope context_scope{context};
 
-  setup(context, execute, positionals);
+  auto v8connection = setup(context, execute, positionals);
+  std::unique_ptr<V8ClientConnection> guard(v8connection);
 
   bool ok = true;
 
@@ -477,7 +489,8 @@ bool V8ShellFeature::runString(std::vector<std::string> const& strings,
 
   v8::Context::Scope context_scope{context};
 
-  setup(context, true, positionals);
+  auto v8connection = setup(context, true, positionals);
+  std::unique_ptr<V8ClientConnection> guard(v8connection);
 
   bool ok = true;
 
@@ -556,7 +569,7 @@ bool V8ShellFeature::jslint(std::vector<std::string> const& files) {
   TRI_ExecuteJavaScriptString(_isolate, context, input, name, true);
 
   if (tryCatch.HasCaught()) {
-      LOG(ERR) << TRI_StringifyV8Exception(_isolate, &tryCatch);
+    LOG(ERR) << TRI_StringifyV8Exception(_isolate, &tryCatch);
     ok = false;
   } else {
     bool res = TRI_ObjectToBoolean(context->Global()->Get(
@@ -580,7 +593,8 @@ bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
 
   v8::Context::Scope context_scope{context};
 
-  setup(context, true, positionals);
+  auto v8connection = setup(context, true, positionals);
+  std::unique_ptr<V8ClientConnection> guard(v8connection);
 
   bool ok = true;
 
@@ -812,7 +826,7 @@ void V8ShellFeature::initGlobals() {
   }
 }
 
-void V8ShellFeature::initMode(ArangoshFeature::RunMode runMode,
+void V8ShellFeature::initMode(ShellFeature::RunMode runMode,
                               std::vector<std::string> const& positionals) {
   auto context = _isolate->GetCurrentContext();
 
@@ -830,29 +844,28 @@ void V8ShellFeature::initMode(ArangoshFeature::RunMode runMode,
   TRI_AddGlobalVariableVocbase(
       _isolate, context, TRI_V8_ASCII_STRING2(_isolate, "IS_EXECUTE_SCRIPT"),
       v8::Boolean::New(_isolate,
-                       runMode == ArangoshFeature::RunMode::EXECUTE_SCRIPT));
+                       runMode == ShellFeature::RunMode::EXECUTE_SCRIPT));
 
   TRI_AddGlobalVariableVocbase(
       _isolate, context, TRI_V8_ASCII_STRING2(_isolate, "IS_EXECUTE_STRING"),
       v8::Boolean::New(_isolate,
-                       runMode == ArangoshFeature::RunMode::EXECUTE_STRING));
+                       runMode == ShellFeature::RunMode::EXECUTE_STRING));
 
   TRI_AddGlobalVariableVocbase(
       _isolate, context, TRI_V8_ASCII_STRING2(_isolate, "IS_CHECK_SCRIPT"),
       v8::Boolean::New(_isolate,
-                       runMode == ArangoshFeature::RunMode::CHECK_SYNTAX));
+                       runMode == ShellFeature::RunMode::CHECK_SYNTAX));
 
   TRI_AddGlobalVariableVocbase(
       _isolate, context, TRI_V8_ASCII_STRING2(_isolate, "IS_UNIT_TESTS"),
-      v8::Boolean::New(_isolate,
-                       runMode == ArangoshFeature::RunMode::UNIT_TESTS));
+      v8::Boolean::New(_isolate, runMode == ShellFeature::RunMode::UNIT_TESTS));
 
   TRI_AddGlobalVariableVocbase(
       _isolate, context, TRI_V8_ASCII_STRING2(_isolate, "IS_JS_LINT"),
-      v8::Boolean::New(_isolate, runMode == ArangoshFeature::RunMode::JSLINT));
+      v8::Boolean::New(_isolate, runMode == ShellFeature::RunMode::JSLINT));
 }
 
-void V8ShellFeature::loadModules(ArangoshFeature::RunMode runMode) {
+void V8ShellFeature::loadModules(ShellFeature::RunMode runMode) {
   auto context = _isolate->GetCurrentContext();
 
   JSLoader loader;
@@ -879,7 +892,7 @@ void V8ShellFeature::loadModules(ArangoshFeature::RunMode runMode) {
   files.push_back(
       "common/bootstrap/modules.js");  // must come last before patches
 
-  if (runMode != ArangoshFeature::RunMode::JSLINT) {
+  if (runMode != ShellFeature::RunMode::JSLINT) {
     files.push_back("common/bootstrap/monkeypatches.js");
   }
 

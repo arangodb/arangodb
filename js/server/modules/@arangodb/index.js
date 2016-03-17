@@ -1,12 +1,9 @@
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief JavaScript base module
-///
-/// @file
-///
 /// DISCLAIMER
 ///
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,24 +18,22 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 module.isSystem = true;
 
 var common = require("@arangodb/common");
 
-Object.keys(common).forEach(function (key) {
+Object.keys(common).forEach(function(key) {
   exports[key] = common[key];
 });
 
 var internal = require("internal"); // OK: db
 
 var ShapedJson = require("@arangodb/shaped-json").ShapedJson;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief isServer
@@ -91,13 +86,17 @@ exports.db = internal.db;
 
 exports.plainServerVersion = function() {
   let version = internal.version;
-  let devel = version.match(/(.*)-((alpha|beta|devel|rc)[0-9]*)$/);
+  let devel = version.match(/(.*)\.x-devel/);
 
   if (devel !== null) {
-    version = devel[1];
+    version = devel[1] + ".0";
+  } else {
+    devel = version.match(/(.*)-((alpha|beta|devel|rc)[0-9]*)$/);
+
+    if (devel !== null) {
+      version = devel[1];
+    }
   }
 
   return version;
 };
-
-

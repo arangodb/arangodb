@@ -25,6 +25,8 @@ if [ ! -z "$3" ] ; then
     fi
 fi
 
+SECONDARIES="$4"
+
 if [ -z "$XTERMOPTIONS" ] ; then
     XTERMOPTIONS="-fa Monospace-14 -bg white -fg black -geometry 80x43"
 fi
@@ -56,7 +58,6 @@ start() {
                 --log.file cluster/$PORT.log \
                 --log.requests-file cluster/$PORT.req \
                 --server.disable-statistics true \
-                --server.foxx-queues false \
                 --server.foxx-queues false \
                 --javascript.startup-directory ./js \
                 --server.disable-authentication true \
@@ -162,6 +163,35 @@ done
 for p in `seq 8530 $PORTTOPCO` ; do
     testServer $p
 done
+
+if [ -n "$SECONDARIES" ]; then
+  let index=1
+  PORTTOPSE=`expr 8729 + $NRDBSERVERS - 1` 
+  for PORT in `seq 8729 $PORTTOPSE` ; do
+    mkdir cluster/data$PORT
+
+    CLUSTER_ID="Secondary$index"
+    
+    echo Registering secondary $CLUSTER_ID for "DBServer$index"
+    curl -f -X PUT --data "{\"primary\": \"DBServer$index\", \"oldSecondary\": \"none\", \"newSecondary\": \"$CLUSTER_ID\"}" -H "Content-Type: application/json" localhost:8530/_admin/cluster/replaceSecondary
+    echo Starting Secondary $CLUSTER_ID on port $PORT
+    build/bin/arangod --database.directory cluster/data$PORT \
+                --cluster.agency-endpoint tcp://127.0.0.1:4001 \
+                --cluster.my-address tcp://127.0.0.1:$PORT \
+                --server.endpoint tcp://127.0.0.1:$PORT \
+                --cluster.my-id $CLUSTER_ID \
+                --log.file cluster/$PORT.log \
+                --log.requests-file cluster/$PORT.req \
+                --server.disable-statistics true \
+                --server.foxx-queues false \
+                --javascript.startup-directory ./js \
+                --server.disable-authentication true \
+                --javascript.app-path ./js/apps \
+                > cluster/$PORT.stdout 2>&1 &
+
+    let index=$index+1
+  done
+fi
 
 echo Bootstrapping DBServers...
 curl -s -X POST "http://127.0.0.1:8530/_admin/cluster/bootstrapDbServers" \
