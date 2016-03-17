@@ -1965,9 +1965,13 @@ function DatabaseDocumentSuite () {
       assertTypeOf("string", a3._rev);
       assertTypeOf("string", a3._key);
 
-      var a4 = db._remove(a1, {"overwrite" : true});
-
-      assertEqual(a4, false);
+      try {
+        var a4 = db._remove(a1, {"overwrite" : true});
+        fail();
+      }
+      catch (err2) {
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err2.errorNum);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2001,9 +2005,13 @@ function DatabaseDocumentSuite () {
       assertTypeOf("string", a3._rev);
       assertTypeOf("string", a3._key);
 
-      var a4 = db._remove(a1, {"overwrite" : true});
-
-      assertEqual(a4, false);
+      try {
+        var a4 = db._remove(a1, {"overwrite" : true});
+        fail();
+      }
+      catch (err2) {
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err2.errorNum);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2328,8 +2336,32 @@ function DatabaseDocumentSuiteReturnStuff () {
       assertTypeOf("string", res2._id);
       assertTypeOf("string", res2._key);
       assertTypeOf("string", res2._rev);
-    }
+    },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test new features from 3.0
+////////////////////////////////////////////////////////////////////////////////
+
+    testNewFeatures : function () {
+      var x = collection.insert({Hallo: 12}, { silent: true });
+      assertEqual(true, x);
+      x = collection.insert([{Hallo: 13}], { silent: true });
+      assertEqual(true, x);
+      x = collection.insert({Hallo:14});
+      var y = collection.replace(x._key, {Hallo:15}, { silent: true });
+      assertEqual(true, y);
+      y = db._replace(x._id, {Hallo: 16}, {silent: true});
+      assertEqual(true, y);
+      y = collection.update(x._key, {Hallo:17}, { silent: true });
+      assertEqual(true, y);
+      y = db._update(x._id, {Hallo:18}, { silent: true });
+      assertEqual(true, y);
+      y = collection.remove(x._key, { silent: true });
+      assertEqual(true, y);
+      x = collection.insert({Hallo:19});
+      y = db._remove(x._id, {silent: true});
+      assertEqual(true, y);
+    }
   };
 }
 
