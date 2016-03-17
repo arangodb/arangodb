@@ -997,8 +997,8 @@ bool ApplicationV8::prepare2() {
   _platform = v8::platform::CreateDefaultPlatform();
   v8::V8::InitializePlatform(_platform);
   v8::V8::Initialize();
-
-  v8::V8::SetArrayBufferAllocator(&_bufferAllocator);
+  
+  _allocator.reset(new ArrayBufferAllocator);
 
   // setup instances
   {
@@ -1184,10 +1184,11 @@ ApplicationV8::V8Context* ApplicationV8::pickFreeContextForGc() {
 bool ApplicationV8::prepareV8Instance(size_t i, bool useActions) {
   CONDITION_LOCKER(guard, _contextCondition);
 
-  std::vector<std::string> files;
-  files.push_back("server/initialize.js");
-
-  v8::Isolate* isolate = v8::Isolate::New();
+  std::vector<std::string> files{ "server/initialize.js" };
+  
+  v8::Isolate::CreateParams createParams;
+  createParams.array_buffer_allocator = _allocator.get();
+  v8::Isolate* isolate = v8::Isolate::New(createParams);
 
   V8Context* context = _contexts[i] = new V8Context();
 

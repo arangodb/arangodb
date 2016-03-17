@@ -23,6 +23,7 @@
 #include "V8ShellFeature.h"
 
 #include "ApplicationFeatures/ClientFeature.h"
+#include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
@@ -99,8 +100,11 @@ void V8ShellFeature::start() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
 
   _console = dynamic_cast<ConsoleFeature*>(server()->feature("Console"));
+  auto platform = dynamic_cast<V8PlatformFeature*>(server()->feature("V8Platform"));
 
-  _isolate = v8::Isolate::New();
+  v8::Isolate::CreateParams createParams;
+  createParams.array_buffer_allocator = platform->arrayBufferAllocator();
+  _isolate = v8::Isolate::New(createParams);
 
   v8::Locker locker{_isolate};
 

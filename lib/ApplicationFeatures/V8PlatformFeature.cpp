@@ -29,23 +29,6 @@
 using namespace arangodb;
 using namespace arangodb::options;
 
-class BufferAllocator : public v8::ArrayBuffer::Allocator {
- public:
-  virtual void* Allocate(size_t length) {
-    void* data = AllocateUninitialized(length);
-    if (data != nullptr) {
-      memset(data, 0, length);
-    }
-    return data;
-  }
-  virtual void* AllocateUninitialized(size_t length) { return malloc(length); }
-  virtual void Free(void* data, size_t) {
-    if (data != nullptr) {
-      free(data);
-    }
-  }
-};
-
 V8PlatformFeature::V8PlatformFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "V8Platform") {
@@ -83,8 +66,7 @@ void V8PlatformFeature::start() {
   v8::V8::InitializePlatform(_platform.get());
   v8::V8::Initialize();
 
-  _allocator.reset(new BufferAllocator());
-  v8::V8::SetArrayBufferAllocator(_allocator.get());
+  _allocator.reset(new ArrayBufferAllocator);
 }
 
 void V8PlatformFeature::stop() {

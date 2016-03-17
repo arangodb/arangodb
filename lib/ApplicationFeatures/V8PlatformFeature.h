@@ -29,6 +29,17 @@
 #include <libplatform/libplatform.h>
 
 namespace arangodb {
+
+class ArrayBufferAllocator : public v8::ArrayBuffer::Allocator {
+ public:
+  virtual void* Allocate(size_t length) {
+    void* data = AllocateUninitialized(length);
+    return data == nullptr ? data : memset(data, 0, length);
+  }
+  virtual void* AllocateUninitialized(size_t length) { return malloc(length); }
+  virtual void Free(void* data, size_t) { free(data); }
+};
+
 class V8PlatformFeature final : public application_features::ApplicationFeature {
  public:
   explicit V8PlatformFeature(application_features::ApplicationServer* server);
@@ -37,6 +48,8 @@ class V8PlatformFeature final : public application_features::ApplicationFeature 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void start() override;
   void stop() override;
+
+  v8::ArrayBuffer::Allocator* arrayBufferAllocator() const { return _allocator.get(); }
 
  private:
   std::string _v8options;
