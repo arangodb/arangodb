@@ -19,39 +19,27 @@ mkdir -p ${DBDIR}
 echo Database has its data in ${DBDIR}
 echo Logfile is in ${LOGFILE}
 
-if [ -z "${ARANGOD}" ];  then
-  if [ -x build/bin/arangod ];  then
-    ARANGOD=build/bin/arangod
+if [ -z "${ARANGOSH}" ];  then
+  if [ -x build/bin/arangosh ];  then
+    ARANGOSH=build/bin/arangosh
   elif [ -x bin/arangosh ];  then
-    ARANGOD=bin/arangod
+    ARANGOSH=bin/arangosh
   else
-    echo "$0: cannot locate arangod"
+    echo "$0: cannot locate arangosh"
   fi
 fi
 
-${ARANGOD} \
+${ARANGOSH} \
     --configuration none \
-    --cluster.agent-path bin${PS}etcd-arango${EXT} \
-    --cluster.arangod-path bin${PS}arangod \
-    --cluster.coordinator-config etc${PS}relative${PS}arangod-coordinator.conf \
-    --cluster.dbserver-config etc${PS}relative${PS}arangod-dbserver.conf \
-    --cluster.disable-dispatcher-frontend false \
-    --cluster.disable-dispatcher-kickstarter false \
-    --cluster.data-path cluster \
-    --cluster.log-path cluster \
-    --database.directory ${DBDIR} \
+    --server.endpoint none \
     --log.file ${LOGFILE} \
-    --server.endpoint tcp://127.0.0.1:$PORT \
     --javascript.startup-directory js \
-    --javascript.app-path js${PS}apps \
-    --javascript.script $SCRIPT \
-    --no-server \
-    --temp-path ${PS}var${PS}tmp \
-    "${ARGS[@]}" \
+    --javascript.execute $SCRIPT \
+    "${ARGS[@]}"
 
 if test $? -eq 0; then
   echo "removing ${LOGFILE} ${DBDIR}"
-  rm -rf ${LOGFILE} ${DBDIR}
+  rm -rf ${LOGFILE} ${DBDIR} arangosh.examples.js
 else
   echo "failed - don't remove ${LOGFILE} ${DBDIR} - here's the logfile:"
   cat ${LOGFILE}
