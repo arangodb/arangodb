@@ -142,8 +142,8 @@ void V8ShellFeature::stop() {
     v8::Locker locker{_isolate};
     v8::Isolate::Scope isolate_scope{_isolate};
 
-    TRI_v8_global_t* v8g =                                              \
-      static_cast<TRI_v8_global_t*>(_isolate->GetData(V8DataSlot));
+    TRI_v8_global_t* v8g =
+        static_cast<TRI_v8_global_t*>(_isolate->GetData(V8DataSlot));
     _isolate->SetData(V8DataSlot, nullptr);
 
     delete v8g;
@@ -250,8 +250,7 @@ V8ClientConnection* V8ShellFeature::setup(
       v8connection = std::make_unique<V8ClientConnection>(
           connection, client->databaseName(), client->username(),
           client->password(), client->requestTimeout());
-    }
-    else {
+    } else {
       client = nullptr;
     }
   }
@@ -289,8 +288,10 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
 
   V8LineEditor v8LineEditor(_isolate, context, "." + _name + ".history");
 
-  v8LineEditor.setSignalFunction(
-      [&v8connection]() { v8connection->setInterrupted(true); });
+  if (v8connection != nullptr) {
+    v8LineEditor.setSignalFunction(
+        [&v8connection]() { v8connection->setInterrupted(true); });
+  }
 
   v8LineEditor.open(_console->autoComplete());
 
@@ -376,7 +377,9 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
       promptError = true;
     }
 
-    v8connection->setInterrupted(false);
+    if (v8connection != nullptr) {
+      v8connection->setInterrupted(false);
+    }
 
     _console->stopPager();
     _console->printLine("");
@@ -446,7 +449,7 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
       current->ForceSet(TRI_V8_ASCII_STRING2(_isolate, "__dirname"),
                         TRI_V8_STD_STRING2(_isolate, dirname));
 
-      ok = TRI_ExecuteGlobalJavaScriptFile(_isolate, file.c_str());
+      ok = TRI_ExecuteGlobalJavaScriptFile(_isolate, file.c_str(), true);
 
       // restore old values for __dirname and __filename
       if (oldFilename.IsEmpty() || oldFilename->IsUndefined()) {
@@ -469,7 +472,7 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
         ok = false;
       }
     } else {
-      ok = TRI_ParseJavaScriptFile(_isolate, file.c_str());
+      ok = TRI_ParseJavaScriptFile(_isolate, file.c_str(), true);
     }
   }
 
@@ -570,7 +573,7 @@ bool V8ShellFeature::jslint(std::vector<std::string> const& files) {
   TRI_ExecuteJavaScriptString(_isolate, context, input, name, true);
 
   if (tryCatch.HasCaught()) {
-      LOG(ERR) << TRI_StringifyV8Exception(_isolate, &tryCatch);
+    LOG(ERR) << TRI_StringifyV8Exception(_isolate, &tryCatch);
     ok = false;
   } else {
     bool res = TRI_ObjectToBoolean(context->Global()->Get(
@@ -859,8 +862,7 @@ void V8ShellFeature::initMode(ShellFeature::RunMode runMode,
 
   TRI_AddGlobalVariableVocbase(
       _isolate, context, TRI_V8_ASCII_STRING2(_isolate, "IS_UNIT_TESTS"),
-      v8::Boolean::New(_isolate,
-                       runMode == ShellFeature::RunMode::UNIT_TESTS));
+      v8::Boolean::New(_isolate, runMode == ShellFeature::RunMode::UNIT_TESTS));
 
   TRI_AddGlobalVariableVocbase(
       _isolate, context, TRI_V8_ASCII_STRING2(_isolate, "IS_JS_LINT"),

@@ -30,8 +30,6 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-
-
 const _ = require('lodash');
 const fs = require('fs');
 const joi = require('joi');

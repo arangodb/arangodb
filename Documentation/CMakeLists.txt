@@ -1,5 +1,16 @@
 # -*- mode: CMAKE; -*-
 
+# swagger
+add_custom_target(swagger
+  COMMAND ${PROJECT_SOURCE_DIR}/utils/generateSwagger.sh
+  WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
+
+# swagger
+add_custom_target(examples
+  COMMAND ${PROJECT_SOURCE_DIR}/utils/generateExamples.sh
+  WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
+
+# manual pages
 if (USE_MAINTAINER_MODE)
   set(MAN_NAMES
     man1/arangob.1

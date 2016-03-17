@@ -86,11 +86,14 @@ ConsoleFeature::ConsoleFeature(application_features::ApplicationServer* server)
 void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
 
-  options->addSection(Section("console", "Configure the console",
-                              "console options", false, false));
+  options->addSection(
+      Section("", "Global configuration", "global options", false, false));
 
   options->addOption("--quiet", "silent startup",
                      new BooleanParameter(&_quiet, false));
+
+  options->addSection(Section("console", "Configure the console",
+                              "console options", false, false));
 
   options->addOption("--console.colors", "enable color support",
                      new BooleanParameter(&_colors));
