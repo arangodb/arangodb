@@ -179,6 +179,14 @@ ArangoCollection.prototype._documenturl = function (id) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the base url for document usage with collection name
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype._documentcollectionurl = function () {
+  return this._prefixurl("/_api/document/" + this.name());
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the base url for collection index usage
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1004,19 +1012,6 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
     });
   }
 
-  if (typeof id === "object") {
-    if (id.hasOwnProperty("_rev")) {
-      rev = id._rev;
-    }
-    if (id.hasOwnProperty("_id")) {
-      id = id._id;
-    } else if (id.hasOwnProperty("_key")) {
-      id = id._key;
-    }
-  }
-
-  var params = "";
-
   var ignoreRevs = false;
   var options;
   if (typeof overwrite === "object") {
@@ -1038,17 +1033,33 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
     options = {};
   }
 
-  var url = this._documenturl(id) + params;
-  url = this._appendSyncParameter(url, waitForSync);
-  url = this._appendBoolParameter(url, "ignoreRevs", true);
+  var url;
+  var body = "";
+  if (Array.isArray(id)) {
+    url = this._documentcollectionurl();
+    body = JSON.stringify(id);
+  } else {
+    if (typeof id === "object")
+      if (id.hasOwnProperty("_rev")) {
+        rev = id._rev;
+      }
+      if (id.hasOwnProperty("_id")) {
+        id = id._id;
+      } else if (id.hasOwnProperty("_key")) {
+        id = id._key;
+      }
+    url = this._documenturl(id);
+  }
+
+  url = this._appendBoolParameter(url, "ignoreRevs", ignoreRevs);
   url = this._appendBoolParameter(url, "returnOld", options.returnOld);
 
   if (rev === null || ignoreRevs) {
-    requestResult = this._database._connection.DELETE(url);
+    requestResult = this._database._connection.DELETE(url, {}, body);
   }
   else {
     requestResult = this._database._connection.DELETE(url,
-      {'if-match' : JSON.stringify(rev) });
+      {'if-match' : JSON.stringify(rev)}, body);
   }
 
   if (requestResult !== null && requestResult.error === true) {
