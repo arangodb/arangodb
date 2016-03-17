@@ -77,16 +77,17 @@ if (WIN32)
   endif()
   if (OPENSSL_ROOT_DIR AND NUGET)
     message("Found nuGET installation of OpenSSL!")
+    set(SSL_BITS "x64")
     # its an openssl downloaded via nuget!
     set(OPENSSL_INCLUDE "${OPENSSL_ROOT_DIR}/build/native/include")
     set(_OPENSSL_ROOT_HINTS "${OPENSSL_ROOT_DIR}/build/native/include")
 
-    set(OPENSSL_LIB_DIR "${OPENSSL_ROOT_DIR}/lib/native/v140/windesktop/msvcstl/dyn/rt-dyn/x64/release/")
+    set(OPENSSL_LIB_DIR "${OPENSSL_ROOT_DIR}/lib/native/v140/windesktop/msvcstl/dyn/rt-dyn/${SSL_BITS}")
     set(_OPENSSL_ROOT_HINTS "${OPENSSL_ROOT_DIR}/build/native/include")
 
     set(_OPENSSL_ROOT_PATHS
       "${OPENSSL_ROOT_DIR}/build/native/include"
-      "${OPENSSL_ROOT_DIR}/lib/native/v140/windesktop/msvcstl/dyn/rt-dyn/x64/release/")
+      "${OPENSSL_ROOT_DIR}/lib/native/v140/windesktop/msvcstl/dyn/rt-dyn/${SSL_BITS}/")
   else()
     # http://www.slproweb.com/products/Win32OpenSSL.html
     set(_OPENSSL_ROOT_HINTS
@@ -129,7 +130,64 @@ find_path(OPENSSL_INCLUDE_DIR
 )
 
 if(WIN32 AND NOT CYGWIN)
-  if(MSVC)
+  if (NUGET)
+    # /MD and /MDd are the standard values - if someone wants to use
+    # others, the libnames have to change here too
+    # use also ssl and ssleay32 in debug as fallback for openssl < 0.9.8b
+    # enable OPENSSL_MSVC_STATIC_RT to get the libs build /MT (Multithreaded no-DLL)
+    # In Visual C++ naming convention each of these four kinds of Windows libraries has it's standard suffix:
+    #   * MD for dynamic-release
+    #   * MDd for dynamic-debug
+    #   * MT for static-release
+    #   * MTd for static-debug
+
+    # Implementation details:
+    # We are using the libraries located in the VC subdir instead of the parent directory eventhough :
+    # libeay32MD.lib is identical to ../libeay32.lib, and
+    # ssleay32MD.lib is identical to ../ssleay32.lib
+    # enable OPENSSL_USE_STATIC_LIBS to use the static libs located in lib/VC/static
+
+    if (OPENSSL_MSVC_STATIC_RT)
+      set(_OPENSSL_MSVC_RT_MODE "MT")
+    else ()
+      set(_OPENSSL_MSVC_RT_MODE "MD")
+    endif ()
+
+    set(LIB_EAY_DEBUG LIB_EAY_DEBUG-NOTFOUND)
+    if (EXISTS "${OPENSSL_LIB_DIR}/debug/libeay32.lib")
+      set(LIB_EAY_DEBUG "${OPENSSL_LIB_DIR}/debug/libeay32.lib")
+    endif()
+
+    set(LIB_EAY_RELEASE LIB_EAY_RELEASE-NOTFOUND)
+    if (EXISTS "${OPENSSL_LIB_DIR}/release/libeay32.lib")
+      set(LIB_EAY_RELEASE "${OPENSSL_LIB_DIR}/release/libeay32.lib")
+    endif()
+
+    set(SSL_EAY_DEBUG SSL_EAY_DEBUG-NOTFOUND)
+    if (EXISTS "${OPENSSL_LIB_DIR}/debug/ssleay32.lib")
+      set(SSL_EAY_DEBUG "${OPENSSL_LIB_DIR}/debug/ssleay32.lib")
+    endif()
+
+    set(SSL_EAY_RELEASE SSL_EAY_RELEASE-NOTFOUND)
+    if (EXISTS "${OPENSSL_LIB_DIR}/release/ssleay32.lib")
+      set(SSL_EAY_RELEASE "${OPENSSL_LIB_DIR}/release/ssleay32.lib")
+    endif()
+
+    set(LIB_EAY_LIBRARY_DEBUG "${LIB_EAY_DEBUG}")
+    set(LIB_EAY_LIBRARY_RELEASE "${LIB_EAY_RELEASE}")
+    set(SSL_EAY_LIBRARY_DEBUG "${SSL_EAY_DEBUG}")
+    set(SSL_EAY_LIBRARY_RELEASE "${SSL_EAY_RELEASE}")
+
+    include(${CMAKE_CURRENT_LIST_DIR}/SelectLibraryConfigurations.cmake)
+    select_library_configurations(LIB_EAY)
+    select_library_configurations(SSL_EAY)
+
+    mark_as_advanced(LIB_EAY_LIBRARY_DEBUG LIB_EAY_LIBRARY_RELEASE
+                     SSL_EAY_LIBRARY_DEBUG SSL_EAY_LIBRARY_RELEASE)
+    set(OPENSSL_SSL_LIBRARY ${SSL_EAY_LIBRARY} )
+    set(OPENSSL_CRYPTO_LIBRARY ${LIB_EAY_LIBRARY} )
+    set(OPENSSL_LIBRARIES ${SSL_EAY_LIBRARY} ${LIB_EAY_LIBRARY} )
+  elseif(MSVC)
     # /MD and /MDd are the standard values - if someone wants to use
     # others, the libnames have to change here too
     # use also ssl and ssleay32 in debug as fallback for openssl < 0.9.8b
