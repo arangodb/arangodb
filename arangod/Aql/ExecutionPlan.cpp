@@ -269,43 +269,49 @@ arangodb::basics::Json ExecutionPlan::toJson(Ast* ast, TRI_memory_zone_t* zone,
 std::shared_ptr<VPackBuilder> ExecutionPlan::toVelocyPack(Ast* ast, bool verbose) const {
   auto builder = std::make_shared<VPackBuilder>();
 
-  // keeps top level of built object open
-  _root->toVelocyPack(*builder, verbose, true);
+  toVelocyPack(*builder, ast, verbose);
+  return builder;
+}
 
-  TRI_ASSERT(!builder->isClosed());
+////////////////////////////////////////////////////////////////////////////////
+/// @brief export to VelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast, bool verbose) const {
+  // keeps top level of built object open
+  _root->toVelocyPack(builder, verbose, true);
+
+  TRI_ASSERT(!builder.isClosed());
 
   // set up rules
-  builder->add(VPackValue("rules"));
-  {
-    VPackArrayBuilder guard(builder.get());
-    for (auto const& r : Optimizer::translateRules(_appliedRules)) {
-      builder->add(VPackValue(r));
-    }
+  builder.add(VPackValue("rules"));
+  builder.openArray();
+  for (auto const& r : Optimizer::translateRules(_appliedRules)) {
+    builder.add(VPackValue(r));
   }
+  builder.close();
   
   // set up collections
-  builder->add(VPackValue("collections"));
-  {
-    VPackArrayBuilder guard(builder.get());
-    for (auto const& c : *ast->query()->collections()->collections()) {
-      VPackObjectBuilder objGuard(builder.get());
-      builder->add("name", VPackValue(c.first));
-      builder->add("type",
-                   VPackValue(TRI_TransactionTypeGetStr(c.second->accessType)));
-    }
+  builder.add(VPackValue("collections"));
+  builder.openArray();
+  for (auto const& c : *ast->query()->collections()->collections()) {
+    builder.openObject();
+    builder.add("name", VPackValue(c.first));
+    builder.add("type",
+                VPackValue(TRI_TransactionTypeGetStr(c.second->accessType)));
+    builder.close();
   }
+  builder.close();
 
   // set up variables
-  builder->add(VPackValue("variables"));
-  ast->variables()->toVelocyPack(*builder);
+  builder.add(VPackValue("variables"));
+  ast->variables()->toVelocyPack(builder);
 
   size_t nrItems = 0;
-  builder->add("estimatedCost", VPackValue(_root->getCost(nrItems)));
-  builder->add("estimatedNrItems", VPackValue(nrItems));
+  builder.add("estimatedCost", VPackValue(_root->getCost(nrItems)));
+  builder.add("estimatedNrItems", VPackValue(nrItems));
 
-  builder->close();
-
-  return builder;
+  builder.close();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

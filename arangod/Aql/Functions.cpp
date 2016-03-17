@@ -525,6 +525,8 @@ static void RequestEdges(VPackSlice const& vertexSlice,
                          TRI_edge_direction_e direction,
                          arangodb::ExampleMatcher const* matcher,
                          bool includeVertices, VPackBuilder& result) {
+  TRI_ASSERT(matcher != nullptr);
+
   std::string vertexId;
   if (vertexSlice.isString()) {
     vertexId = vertexSlice.copyString();
@@ -1129,10 +1131,13 @@ AqlValue Functions::ToArray(arangodb::aql::Query* query,
     return AqlValue(value);
   }
 
+  if (value.isNull(true)) {
+    return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
+  }
+  
   TransactionBuilderLeaser builder(trx);
-
   builder->openArray();
-  if (value.isNull(true) || value.isBoolean() || value.isNumber() || value.isString()) {
+  if (value.isBoolean() || value.isNumber() || value.isString()) {
     // return array with single member
     builder->add(value.slice());
   } else if (value.isObject()) {
@@ -2819,6 +2824,7 @@ AqlValue Functions::Edges(arangodb::aql::Query* query,
   if (vertexSlice.isArray()) {
     for (auto const& v : VPackArrayIterator(vertexSlice)) {
       try {
+#warning matcher.get() is a nullptr here
         RequestEdges(v, trx, collectionName, indexId, direction,
                      matcher.get(), includeVertices, *builder.get());
       } catch (...) {
@@ -2826,6 +2832,7 @@ AqlValue Functions::Edges(arangodb::aql::Query* query,
       }
     }
   } else {
+#warning matcher.get() is a nullptr here
     RequestEdges(vertexSlice, trx, collectionName, indexId, direction,
                  matcher.get(), includeVertices, *builder.get());
   }
@@ -2844,12 +2851,8 @@ AqlValue Functions::Round(arangodb::aql::Query* query,
 
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
 
-  bool failed = false;
+  bool failed = false; // we're intentionally ignoring this variable
   double input = value.toDouble(failed);
-
-  if (failed) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
-  }
 
   // Rounds down for < x.4999 and up for > x.50000
   return NumberValue(trx, floor(input + 0.5));  
@@ -2866,11 +2869,8 @@ AqlValue Functions::Abs(arangodb::aql::Query* query,
 
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
 
-  bool failed = false;
+  bool failed = false; // we're intentionally ignoring this variable
   double input = value.toDouble(failed);
-  if (failed) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
-  }
 
   return NumberValue(trx, std::abs(input));  
 }
@@ -2886,11 +2886,8 @@ AqlValue Functions::Ceil(arangodb::aql::Query* query,
 
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
 
-  bool failed = false;
+  bool failed = false; // we're intentionally ignoring this variable
   double input = value.toDouble(failed);
-  if (failed) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
-  }
 
   return NumberValue(trx, ceil(input));  
 }
@@ -2906,11 +2903,8 @@ AqlValue Functions::Floor(arangodb::aql::Query* query,
   
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
 
-  bool failed = false;
+  bool failed = false; // we're intentionally ignoring this variable
   double input = value.toDouble(failed);
-  if (failed) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
-  }
 
   return NumberValue(trx, floor(input));  
 }
@@ -2926,11 +2920,8 @@ AqlValue Functions::Sqrt(arangodb::aql::Query* query,
   
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
   
-  bool failed = false;
+  bool failed = false; // we're intentionally ignoring this variable here
   double input = value.toDouble(failed);
-  if (failed) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
-  }
 
   return NumberValue(trx, sqrt(input));  
 }
@@ -2947,15 +2938,9 @@ AqlValue Functions::Pow(arangodb::aql::Query* query,
   AqlValue baseValue = ExtractFunctionParameterValue(trx, parameters, 0);
   AqlValue expValue = ExtractFunctionParameterValue(trx, parameters, 1);
 
-  bool failed = false;
+  bool failed = false; // we're ignoring this variable intentionally
   double base = baseValue.toDouble(failed);
-  if (failed) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
-  }
   double exp = expValue.toDouble(failed);
-  if (failed) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
-  }
 
   return NumberValue(trx, pow(base, exp));
 }
@@ -3822,7 +3807,7 @@ AqlValue Functions::Position(arangodb::aql::Query* query,
   }
 
   // not found
-  if (returnIndex) {
+  if (!returnIndex) {
     // return false
     return AqlValue(arangodb::basics::VelocyPackHelper::FalseValue());
   }
