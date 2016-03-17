@@ -863,7 +863,7 @@ removed.
 The method returns a document with the attributes *_id*, *_key* and *_rev*.
 The attribute *_id* contains the document handle of the
 removed document, the attribute *_rev* contains the document revision of
-the removed eocument.
+the removed document.
 
 If the selector contains a *_rev* attribute, the method first checks
 that the specified revision is the current revision of that document.
