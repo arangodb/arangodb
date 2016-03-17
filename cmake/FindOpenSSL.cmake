@@ -71,11 +71,11 @@ endif()
 
 if (WIN32)
   if (IS_DIRECTORY "${OPENSSL_ROOT_DIR}/build/native/")
-    set(NUGET TRUE)
+    set(SSL_NUGET TRUE)
   else()
-    set(NUGET FALSE)
+    set(SSL_NUGET FALSE)
   endif()
-  if (OPENSSL_ROOT_DIR AND NUGET)
+  if (OPENSSL_ROOT_DIR AND SSL_NUGET)
     message("Found nuGET installation of OpenSSL!")
     set(SSL_BITS "x64")
     # its an openssl downloaded via nuget!
@@ -130,16 +130,11 @@ find_path(OPENSSL_INCLUDE_DIR
 )
 
 if(WIN32 AND NOT CYGWIN)
-  if (NUGET)
+  if (SSL_NUGET)
     # /MD and /MDd are the standard values - if someone wants to use
     # others, the libnames have to change here too
     # use also ssl and ssleay32 in debug as fallback for openssl < 0.9.8b
     # enable OPENSSL_MSVC_STATIC_RT to get the libs build /MT (Multithreaded no-DLL)
-    # In Visual C++ naming convention each of these four kinds of Windows libraries has it's standard suffix:
-    #   * MD for dynamic-release
-    #   * MDd for dynamic-debug
-    #   * MT for static-release
-    #   * MTd for static-debug
 
     # Implementation details:
     # We are using the libraries located in the VC subdir instead of the parent directory eventhough :
@@ -147,11 +142,11 @@ if(WIN32 AND NOT CYGWIN)
     # ssleay32MD.lib is identical to ../ssleay32.lib
     # enable OPENSSL_USE_STATIC_LIBS to use the static libs located in lib/VC/static
 
-    if (OPENSSL_MSVC_STATIC_RT)
-      set(_OPENSSL_MSVC_RT_MODE "MT")
-    else ()
-      set(_OPENSSL_MSVC_RT_MODE "MD")
-    endif ()
+    #if (OPENSSL_MSVC_STATIC_RT)
+    #  set(_OPENSSL_MSVC_RT_MODE "MT")
+    #else ()
+    #  set(_OPENSSL_MSVC_RT_MODE "MD")
+    #endif ()
 
     set(LIB_EAY_DEBUG LIB_EAY_DEBUG-NOTFOUND)
     if (EXISTS "${OPENSSL_LIB_DIR}/debug/libeay32.lib")
@@ -187,6 +182,7 @@ if(WIN32 AND NOT CYGWIN)
     set(OPENSSL_SSL_LIBRARY ${SSL_EAY_LIBRARY} )
     set(OPENSSL_CRYPTO_LIBRARY ${LIB_EAY_LIBRARY} )
     set(OPENSSL_LIBRARIES ${SSL_EAY_LIBRARY} ${LIB_EAY_LIBRARY} )
+
   elseif(MSVC)
     # /MD and /MDd are the standard values - if someone wants to use
     # others, the libnames have to change here too
@@ -451,7 +447,6 @@ else ()
 endif ()
 
 mark_as_advanced(OPENSSL_INCLUDE_DIR OPENSSL_LIBRARIES)
-
 if(OPENSSL_FOUND)
   if(NOT TARGET OpenSSL::Crypto AND
       (EXISTS "${OPENSSL_CRYPTO_LIBRARY}" OR
