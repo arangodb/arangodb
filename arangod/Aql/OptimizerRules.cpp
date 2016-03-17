@@ -614,9 +614,7 @@ class PropagateConstantAttributesHelper {
     TRI_ASSERT(name.empty());
 
     while (attribute->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      name = std::string(".") + std::string(attribute->getStringValue(),
-                                            attribute->getStringLength()) +
-             name;
+      name = std::string(".") + attribute->getString() + name;
       attribute = attribute->getMember(0);
     }
 

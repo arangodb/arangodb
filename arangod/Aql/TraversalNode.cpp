@@ -186,7 +186,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
         _directions.emplace_back(baseDirection);
       }
 
-      std::string eColName = col->getStringValue();
+      std::string eColName = col->getString();
       auto eColType = resolver->getCollectionTypeCluster(eColName);
       if (eColType != TRI_COL_TYPE_EDGE) {
         std::string msg("collection type invalid for collection '" +
@@ -201,7 +201,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
   } else {
     if (_edgeColls.empty()) {
       if (graph->isStringValue()) {
-        std::string graphName = graph->getStringValue();
+        std::string graphName = graph->getString();
         _graphJson = arangodb::basics::Json(graphName);
         _graphObj = plan->getAst()->query()->lookupGraphByName(graphName);
 
@@ -238,9 +238,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
                                        "an _id string or an object with _id.");
       }
       _inVariable = nullptr;
-      _vertexId =
-          std::string(start->getStringValue(), start->getStringLength());
-      ;
+      _vertexId = start->getString();
       break;
     default:
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,

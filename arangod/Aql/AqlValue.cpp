@@ -309,7 +309,7 @@ AqlValue AqlValue::get(arangodb::AqlTransaction* trx,
 //////////////////////////////////////////////////////////////////////////////
   
 AqlValue AqlValue::get(arangodb::AqlTransaction* trx,
-                       std::vector<char const*> const& names, 
+                       std::vector<std::string> const& names, 
                        bool& mustDestroy, bool doCopy) const {
   mustDestroy = false;
   switch (type()) {
@@ -390,6 +390,9 @@ double AqlValue::toDouble(bool& failed) const {
     case VPACK_INLINE:
     case VPACK_EXTERNAL: {
       VPackSlice s(slice());
+      if (s.isNull()) {
+        return 0.0;
+      }
       if (s.isNumber()) {
         return s.getNumber<double>();
       }
@@ -397,17 +400,25 @@ double AqlValue::toDouble(bool& failed) const {
         return s.getBoolean() ? 1.0 : 0.0;
       }
       if (s.isString()) {
+        std::string v(s.copyString());
         try {
-          return std::stod(s.copyString());
+          return std::stod(v);
         } catch (...) {
+          if (v.empty()) {
+            return 0.0;
+          }
           // conversion failed
-          failed = true;
+          break;
         }
       }
       else if (s.isArray()) {
-        if (s.length() == 1) {
+        auto length = s.length();
+        if (length == 0) {
+          return 0.0;
+        }
+        if (length == 1) {
           bool mustDestroy; // we can ignore destruction here
-          return at(0, mustDestroy, false).toDouble();
+          return at(0, mustDestroy, false).toDouble(failed);
         }
       }
       // fall-through intentional
@@ -417,13 +428,14 @@ double AqlValue::toDouble(bool& failed) const {
     case RANGE: {
       if (length() == 1) {
         bool mustDestroy; // we can ignore destruction here
-        return at(0, mustDestroy, false).toDouble();
+        return at(0, mustDestroy, false).toDouble(failed);
       }
       // will return 0
-      break;
+      return 0.0;
     }
   }
 
+  failed = true;
   return 0.0;
 }
 
@@ -445,14 +457,22 @@ int64_t AqlValue::toInt64() const {
         return s.getBoolean() ? 1 : 0;
       }
       if (s.isString()) {
+        std::string v(s.copyString());
         try {
-          return static_cast<int64_t>(std::stoll(s.copyString()));
+          return static_cast<int64_t>(std::stoll(v));
         } catch (...) {
+          if (v.empty()) {
+            return 0;
+          }
           // conversion failed
         }
       }
       else if (s.isArray()) {
-        if (s.length() == 1) {
+        auto length = s.length();
+        if (length == 0) {
+          return 0;
+        }
+        if (length == 1) {
           // we can ignore destruction here
           bool mustDestroy;
           return at(0, mustDestroy, false).toInt64();

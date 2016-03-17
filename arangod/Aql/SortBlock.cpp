@@ -224,8 +224,7 @@ void SortBlock::doSorting() {
 }
 
 bool SortBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
-                                        std::pair<size_t, size_t> const& b) {
-  size_t i = 0;
+                                        std::pair<size_t, size_t> const& b) const {
   for (auto const& reg : _sortRegisters) {
     int cmp = AqlValue::Compare(
         _trx, _buffer[a.first]->getValueReference(a.second, reg.first),
@@ -236,7 +235,6 @@ bool SortBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
     } else if (cmp > 0) {
       return !reg.second;
     }
-    i++;
   }
 
   return false;

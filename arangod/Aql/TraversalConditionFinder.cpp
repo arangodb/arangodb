@@ -61,15 +61,15 @@ static bool checkPathVariableAccessFeasible(CalculationNode const* cn,
     }
 
     if (onePath[len - 2]->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      isEdgeAccess = strcmp(onePath[len - 2]->getStringValue(), "edges") == 0;
+      isEdgeAccess = onePath[len - 2]->stringEquals("edges", false);
 
       if (!isEdgeAccess &&
-          strcmp(onePath[len - 2]->getStringValue(), "vertices") != 0) {
+          !onePath[len - 2]->stringEquals("vertices", false)) {
         /* We can't catch all cases in which this error would occur, so we don't
            throw here.
            std::string message("TRAVERSAL: path only knows 'edges' and
            'vertices', not ");
-           message += onePath[len - 2]->getStringValue();
+           message += onePath[len - 2]->getString();
            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, message);
         */
         return false;
@@ -117,7 +117,7 @@ static bool extractSimplePathAccesses(AstNode const* node, TraversalNode* tn,
 
     TRI_ASSERT(len >= 3);
     if (onePath[len - 2]->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      isEdgeAccess = strcmp(onePath[len - 2]->getStringValue(), "edges") == 0;
+      isEdgeAccess = onePath[len - 2]->stringEquals("edges", false);
     }
     // we now need to check for p.edges[n] whether n is >= 0
     if (onePath[len - 3]->type == NODE_TYPE_INDEXED_ACCESS) {

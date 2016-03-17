@@ -1157,7 +1157,7 @@ AstNode* Ast::createNodeWithCollections (AstNode const* collections) {
     auto c = collections->getMember(i);
 
     if (c->isStringValue()) {
-      _query->collections()->add(c->getStringValue(), TRI_TRANSACTION_READ);
+      _query->collections()->add(c->getString(), TRI_TRANSACTION_READ);
     }// else bindParameter use default for collection bindVar
     // We do not need to propagate these members
     node->addMember(c);
@@ -1182,12 +1182,12 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections) {
     // TODO Direction Parsing!
     auto eC = edgeCollections->getMember(i);
     if (eC->isStringValue()) {
-      _query->collections()->add(eC->getStringValue(), TRI_TRANSACTION_READ);
+      _query->collections()->add(eC->getString(), TRI_TRANSACTION_READ);
     } else if (eC->type == NODE_TYPE_DIRECTION) {
       TRI_ASSERT(eC->numMembers() == 2);
       auto eCSub = eC->getMember(1);
       if (eCSub->isStringValue()) {
-        _query->collections()->add(eCSub->getStringValue(), TRI_TRANSACTION_READ);
+        _query->collections()->add(eCSub->getString(), TRI_TRANSACTION_READ);
       }
     }// else bindParameter use default for collection bindVar
     // We do not need to propagate these members
@@ -1431,18 +1431,18 @@ void Ast::injectBindParameters(BindParameters& parameters) {
   auto func = [&](AstNode* node, void*) -> AstNode* {
     if (node->type == NODE_TYPE_PARAMETER) {
       // found a bind parameter in the query string
-      char const* param = node->getStringValue();
-      size_t const length = node->getStringLength();
+      std::string const param = node->getString();
 
-      if (param == nullptr) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      if (param.empty()) {
+        // parameter name must not be empty
+        _query->registerError(TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param.c_str());
+        return nullptr;
       }
-
-      auto const& it = p.find(std::string(param, length));
+      auto const& it = p.find(param);
 
       if (it == p.end()) {
         // query uses a bind parameter that was not defined by the user
-        _query->registerError(TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param);
+        _query->registerError(TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param.c_str());
         return nullptr;
       }
 
@@ -1451,7 +1451,8 @@ void Ast::injectBindParameters(BindParameters& parameters) {
 
       auto& value = (*it).second.first;
 
-      if (*param == '@') {
+      TRI_ASSERT(!param.empty());
+      if (param[0] == '@') {
         // collection parameter
         TRI_ASSERT(value.isString());
 
@@ -1459,8 +1460,7 @@ void Ast::injectBindParameters(BindParameters& parameters) {
         bool isWriteCollection = false;
 
         for (auto const& it : _writeCollections) {
-          if (it->type == NODE_TYPE_PARAMETER &&
-              strcmp(param, it->getStringValue()) == 0) {
+          if (it->type == NODE_TYPE_PARAMETER && param == it->getString()) {
             isWriteCollection = true;
             break;
           }
@@ -1482,7 +1482,7 @@ void Ast::injectBindParameters(BindParameters& parameters) {
           // parameter
           for (size_t i = 0; i < _writeCollections.size(); ++i) {
             if (_writeCollections[i]->type == NODE_TYPE_PARAMETER &&
-                strcmp(param, _writeCollections[i]->getStringValue()) == 0) {
+                param == _writeCollections[i]->getString()) {
               _writeCollections[i] = node;
               // no break here. replace all occurrences
             }
@@ -1518,7 +1518,7 @@ void Ast::injectBindParameters(BindParameters& parameters) {
         // if no string value was inserted for the parameter name, this is an
         // error
         THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE,
-                                      node->getStringValue());
+                                      node->getString().c_str());
       }
       // convert into a regular attribute access node to simplify handling later
       return createNodeAttributeAccess(
@@ -1527,7 +1527,7 @@ void Ast::injectBindParameters(BindParameters& parameters) {
       auto graphNode = node->getMember(2);
       if (graphNode->type == NODE_TYPE_VALUE) {
         TRI_ASSERT(graphNode->isStringValue());
-        std::string graphName = graphNode->getStringValue();
+        std::string graphName = graphNode->getString();
         auto graph = _query->lookupGraphByName(graphName);
         auto vColls = graph->vertexCollections();
         for (const auto& n : vColls) {
@@ -1548,7 +1548,7 @@ void Ast::injectBindParameters(BindParameters& parameters) {
   // add all collections used in data-modification statements
   for (auto& it : _writeCollections) {
     if (it->type == NODE_TYPE_COLLECTION) {
-      _query->collections()->add(it->getStringValue(), TRI_TRANSACTION_WRITE);
+      _query->collections()->add(it->getString(), TRI_TRANSACTION_WRITE);
     }
   }
 
@@ -1682,7 +1682,7 @@ void Ast::validateAndOptimize() {
       c->hasSeenWriteNodeInCurrentScope = false;
 
       auto collection = node->getMember(1);
-      auto name = collection->getStringValue();
+      std::string name = collection->getString();
       c->writeCollectionsSeen.emplace(name);
     } else if (node->type == NODE_TYPE_FCALL) {
       auto func = static_cast<Function*>(node->getData());
@@ -1802,11 +1802,9 @@ void Ast::validateAndOptimize() {
 
     // collection
     if (node->type == NODE_TYPE_COLLECTION) {
-      char const* name = node->getStringValue();
-
       auto c = static_cast<TraversalContext*>(data);
 
-      if (c->writeCollectionsSeen.find(name) != c->writeCollectionsSeen.end()) {
+      if (c->writeCollectionsSeen.find(node->getString()) != c->writeCollectionsSeen.end()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION);
       }
 
@@ -2834,13 +2832,13 @@ AstNode* Ast::optimizeIndexedAccess(AstNode* node) {
     // found a string value (e.g. a['foo']). now turn this into
     // an attribute access (e.g. a.foo) in order to make the node qualify
     // for being turned into an index range later
-    char const* indexValue = index->getStringValue();
+    std::string indexValue(index->getString());
 
-    if (indexValue != nullptr && (indexValue[0] < '0' || indexValue[0] > '9')) {
+    if (!indexValue.empty() && (indexValue[0] < '0' || indexValue[0] > '9')) {
       // we have to be careful with numeric values here...
       // e.g. array['0'] is not the same as array.0 but must remain a['0'] or
       // (a[0])
-      return createNodeAttributeAccess(node->getMember(0), indexValue,
+      return createNodeAttributeAccess(node->getMember(0), index->getStringValue(),
                                        index->getStringLength());
     }
   }
