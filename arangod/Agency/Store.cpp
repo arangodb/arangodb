@@ -175,59 +175,127 @@ Node& Node::write (std::string const& path) {
 }
 
 bool Node::applies (arangodb::velocypack::Slice const& slice) {
+
   if (slice.type() == ValueType::Object) {
+
     for (auto const& i : VPackObjectIterator(slice)) {
       std::string key = i.key.toString();
       key = key.substr(1,key.length()-2);
-      if (key == "op") {
-        std::string oper = i.value.toString();
+
+      if (slice.hasKey("op")) {
+        std::string oper = slice.get("op").toString();
         oper = oper.substr(1,oper.length()-2);
         Slice const& self = this->slice();
         if (oper == "delete") {
           return _parent->removeChild(_name);
+        } else if (oper == "set") {
+          if (!slice.hasKey("new")) {
+            LOG(WARN) << "Operator set without new value";
+            LOG(WARN) << slice.toJson();
+            return false;
+          }
+          *this = slice.get("new");
+          return true;
         } else if (oper == "increment") { // Increment
-          if (self.isInt() || self.isUInt()) {
-            Builder tmp;
-            tmp.add(Value(self.isInt() ? int64_t(self.getInt()+1) : uint64_t(self.getUInt()+1)));
-            *this = tmp.slice();
-            return true;
-          } else {
+          if (!(self.isInt() || self.isUInt())) {
+            LOG(WARN) << "Element to increment must be integral type";
+            LOG(WARN) << slice.toJson();
             return false;
           }
-        } else if (oper == "increment") { // Decrement
-          if (self.isInt() || self.isUInt()) {
-            Builder tmp;
-            tmp.add(Value(self.isInt() ? int64_t(self.getInt()-1) : uint64_t(self.getUInt()-1)));
-            *this = tmp.slice();
-            return true;
-          } else {
+          Builder tmp;
+          tmp.add(Value(self.isInt() ? int64_t(self.getInt()+1) :
+                        uint64_t(self.getUInt()+1)));
+          *this = tmp.slice();
+          return true;
+        } else if (oper == "decrement") { // Decrement
+          if (!(self.isInt() || self.isUInt())) {
+            LOG(WARN) << "Element to decrement must be integral type";
+            LOG(WARN) << slice.toJson();
             return false;
           }
+          Builder tmp;
+          tmp.add(Value(self.isInt() ? int64_t(self.getInt()-1) :
+                        uint64_t(self.getUInt()-1)));
+          *this = tmp.slice();
+          return true;
         } else if (oper == "push") { // Push
-          if (self.isArray()) {
-            Builder tmp;
-            tmp.openArray();
-            for (auto const& old : VPackArrayIterator(self))
-              tmp.add(old);
-            tmp.close();
-            *this = tmp.slice();
+          if (!self.isArray()) {
+            LOG(WARN) << "Push operation only on array types! We are " <<
+              self.toString();
           }
+          if (!slice.hasKey("new")) {
+            LOG(WARN) << "Operator push without new value";
+            LOG(WARN) << slice.toJson();
+            return false;
+          }
+          Builder tmp;
+          tmp.openArray();
+          for (auto const& old : VPackArrayIterator(self))
+            tmp.add(old);
+          tmp.add(slice.get("new"));
+          tmp.close();
+          *this = tmp.slice();
+          return true;
         } else if (oper == "pop") { // Pop
-          if (self.isArray()) {
-            Builder tmp;
-            tmp.openArray();
-            VPackArrayIterator it(self);
-            size_t j = it.size()-1;
-            std::cout << j << std::endl;
-            for (auto old : it) {
-                tmp.add(old);
-                if (--j==0)
-                  break;
-            }
-            tmp.close();
-            *this = tmp.slice();
+          if (!self.isArray()) {
+            LOG(WARN) << "Pop operation only on array types! We are " <<
+              self.toString();
           }
+          Builder tmp;
+          tmp.openArray();
+          VPackArrayIterator it(self);
+          size_t j = it.size()-1;
+          for (auto old : it) {
+            tmp.add(old);
+            if (--j==0)
+              break;
+          }
+          tmp.close();
+          *this = tmp.slice();
+          return true;
+        } else if (oper == "prepend") { // Prepend
+          if (!self.isArray()) {
+            LOG(WARN) << "Prepend operation only on array types! We are " <<
+              self.toString();
+          }
+          if (!slice.hasKey("new")) {
+            LOG(WARN) << "Operator push without new value";
+            LOG(WARN) << slice.toJson();
+            return false;
+          }
+          Builder tmp;
+          tmp.openArray();
+          tmp.add(slice.get("new"));
+          for (auto const& old : VPackArrayIterator(self))
+            tmp.add(old);
+          tmp.close();
+          *this = tmp.slice();
+          return true;
+        } else if (oper == "shift") { // Shift
+          if (!self.isArray()) {
+            LOG(WARN) << "Shift operation only on array types! We are " <<
+              self.toString();
+          }
+          Builder tmp;
+          tmp.openArray();
+          VPackArrayIterator it(self);
+          bool first = true;
+          for (auto old : it) {
+            if (first) {
+              first = false;
+            } else {
+              tmp.add(old);
+            }
+          }
+          tmp.close();
+          *this = tmp.slice();
+          return true;
+        } else {
+          LOG(WARN) << "Unknown operation " << oper;
         }
+      } else if (slice.hasKey("new")) { // new without set
+        *this = slice.get("new");
+        return true;
       } else if (key.find('/')!=std::string::npos) {
         (*this)(key).applies(i.value);
       } else {
