@@ -524,8 +524,8 @@ static void ClientConnection_httpDeleteAny(
   }
 
   // check params
-  if (args.Length() < 1 || args.Length() > 2 || !args[0]->IsString()) {
-    TRI_V8_THROW_EXCEPTION_USAGE("delete(<url>[, <headers>])");
+  if (args.Length() < 1 || args.Length() > 3 || !args[0]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("delete(<url>[, <headers>[, <body>]])");
   }
 
   TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, args[0]);
@@ -537,7 +537,13 @@ static void ClientConnection_httpDeleteAny(
     ObjectToMap(isolate, headerFields, args[1]);
   }
 
-  TRI_V8_RETURN(v8connection->deleteData(isolate, *url, headerFields, raw));
+  std::string body;
+  if (args.Length() > 2) {
+    TRI_Utf8ValueNFC bodyUtf(TRI_UNKNOWN_MEM_ZONE, args[2]);
+    body = *bodyUtf;
+  }
+
+  TRI_V8_RETURN(v8connection->deleteData(isolate, *url, headerFields, raw, body));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1265,12 +1271,13 @@ v8::Handle<v8::Value> V8ClientConnection::headData(
 
 v8::Handle<v8::Value> V8ClientConnection::deleteData(
     v8::Isolate* isolate, std::string const& location,
-    std::map<std::string, std::string> const& headerFields, bool raw) {
+    std::map<std::string, std::string> const& headerFields, bool raw,
+    std::string const& body) {
   if (raw) {
     return requestDataRaw(isolate, HttpRequest::HTTP_REQUEST_DELETE, location,
-                          "", headerFields);
+                          body, headerFields);
   }
-  return requestData(isolate, HttpRequest::HTTP_REQUEST_DELETE, location, "",
+  return requestData(isolate, HttpRequest::HTTP_REQUEST_DELETE, location, body,
                      headerFields);
 }
 
