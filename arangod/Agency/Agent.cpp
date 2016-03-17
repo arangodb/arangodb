@@ -51,6 +51,7 @@ Agent::~Agent () {
 
 void Agent::start() {
   _constituent.start();
+  _spear_head.start();
 }
 
 term_t Agent::term () const {

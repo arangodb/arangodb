@@ -39,6 +39,8 @@
 
 #include <Basics/Mutex.h>
 #include <Basics/MutexLocker.h>
+#include <Basics/Thread.h>
+#include <Basics/ConditionVariable.h>
 #include <velocypack/Buffer.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -59,51 +61,64 @@ private:
 
 enum NODE_EXCEPTION {PATH_NOT_FOUND};
 
+/// @brief Simple tree implementation
 class Node {
+  
 public:
 
   typedef std::vector<std::string> PathType;
   typedef std::map<std::string, std::shared_ptr<Node>> Children;
+  typedef std::chrono::system_clock::time_point TimePoint;
+  typedef std::map<TimePoint, std::shared_ptr<Node>> TimeTable;
   
+  /// @brief Construct with name
   Node (std::string const& name);
 
+  /// @brief Construct with name and introduce to tree under parent
   Node (std::string const& name, Node* parent);
 
+  /// @brief Default dtor
   virtual ~Node ();
-  
+
+  /// @brief Get name 
   std::string const& name() const;
 
+  /// @brief Apply rhs to this node (deep copy of rhs)
   Node& operator= (Node const& node);
-  
+
+  /// @brief Apply value slice to this node
   Node& operator= (arangodb::velocypack::Slice const&);
 
+  /// @brief Check equality with slice
   bool operator== (arangodb::velocypack::Slice const&) const;
 
+  /// @brief Type of this node (LEAF / NODE)
   NodeType type() const;
 
+  /// @brief Get child specified by name
   Node& operator [](std::string name);
+  Node const& operator [](std::string name) const;
 
-  bool append (std::string const name,
-               std::shared_ptr<Node> const node = nullptr);
-
+  /// @brief Get node specified by path vector  
   Node& operator ()(std::vector<std::string>& pv);
-  
   Node const& operator ()(std::vector<std::string>& pv) const;
   
+  /// @brief Get node specified by path string  
   Node& operator ()(std::string const& path);
-
   Node const& operator ()(std::string const& path) const;
 
-  Node const& read (std::string const& path) const;
-
-  Node& write (std::string const& path);
-
+  /// @brief Remove node with absolute path
   bool remove (std::string const& path);
 
+  /// @brief Remove child 
   bool removeChild (std::string const& key);
 
+  /// @brief Remove this node
+  bool remove();
+
+  /// @brief Dump
   friend std::ostream& operator<<(std::ostream& os, const Node& n) {
-    Node* par = n._parent;
+    Node const* par = n._parent;
     while (par != 0) {
       par = par->_parent;
       os << "  ";
@@ -119,19 +134,23 @@ public:
     return os;
   }
 
+  /// @brief Apply single slice
   bool applies (arangodb::velocypack::Slice const&);
 
+  /// @brief Create Builder representing this store
   void toBuilder (Builder&) const;
 
-  Buffer<uint8_t> const& value() const {
-    return _value;
-  }
-
+  /// @brief Create slice from value
   Slice slice() const;
 
 protected:
+
+  /// @brief Add time to live entry
+  bool addTimeToLive (long millis);
+  
   Node* _parent;
   Children _children;
+  TimeTable _time_table;
   Buffer<uint8_t> _value;
   std::chrono::system_clock::time_point _ttl;
   
@@ -141,20 +160,44 @@ protected:
 };
 
 
-class Store : public Node { // Root node
+/// @brief Key value tree 
+class Store : public Node, public arangodb::Thread {
   
 public:
+
+  /// @brief Construct with name
   Store (std::string const& name = "root");
+
+  /// @brief Destruct
   virtual ~Store ();
 
+  /// @brief Apply entry in query 
   std::vector<bool> apply (query_t const& query);
-  query_t read (query_t const& query) const;
 
+  /// @brief Read specified query from store
+  query_t read (query_t const& query) const;
+  
 private:
+  /// @brief Read individual entry specified in slice into builder
   bool read  (arangodb::velocypack::Slice const&,
               arangodb::velocypack::Builder&) const;
+
+  /// @brief Check precondition
   bool check (arangodb::velocypack::Slice const&) const;
 
+  /// @brief Clear entries, whose time to live has expired
+  void clearTimeTable ();
+
+  /// @brief Begin shutdown of thread
+  void beginShutdown () override;
+
+  /// @brief Run thread
+  void run () override final;
+
+  /// @brief Condition variable guarding removal of expired entries
+  arangodb::basics::ConditionVariable _cv;
+
+  /// @brief Read/Write mutex on database
   mutable arangodb::Mutex _storeLock;
   
 };

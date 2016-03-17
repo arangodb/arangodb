@@ -28,6 +28,8 @@
 #include <velocypack/velocypack-aliases.h>
 #include <velocypack/Hexdump.h>
 
+#include <Basics/ConditionLocker.h>
+
 #include <iostream>
 
 using namespace arangodb::consensus;
@@ -102,6 +104,11 @@ bool Node::remove (std::string const& path) {
   }
 }
 
+bool Node::remove () {
+  Node& parent = *_parent;
+  return parent.removeChild(_name);
+}
+
 bool Node::removeChild (std::string const& key) {
   auto found = _children.find(key);
   if (found == _children.end())
@@ -115,16 +122,6 @@ NodeType Node::type() const {return _children.size() ? NODE : LEAF;}
 
 Node& Node::operator [](std::string name) {
   return *_children[name];
-}
-
-bool Node::append (std::string const name, std::shared_ptr<Node> const node) {
-  if (node != nullptr) {
-    _children[name] = node;
-  } else {
-    _children[name] = std::make_shared<Node>(name);
-  }
-  _children[name]->_parent = this;
-  return true;
 }
 
 Node& Node::operator ()(std::vector<std::string>& pv) {
@@ -164,14 +161,24 @@ Node& Node::operator ()(std::string const& path) {
   return this->operator()(pv);
 }
 
-Node const& Node::read (std::string const& path) const {
-  PathType pv = split(path,'/');
-  return this->operator()(pv);
+std::ostream& operator<< (
+  std::ostream& o, std::chrono::system_clock::time_point const& t) {
+  std::time_t tmp = std::chrono::system_clock::to_time_t(t);
+  o << std::ctime(&tmp);
+  return o;
+}
+template<class S, class T>
+std::ostream& operator<< (std::ostream& o, std::map<S,T> const& d) {
+  for (auto const& i : d)
+    o << i.first << ":" << i.second << std::endl;
+  return o;
 }
 
-Node& Node::write (std::string const& path) {
-  PathType pv = split(path,'/');
-  return this->operator()(pv);
+bool Node::addTimeToLive (long millis) {
+  _time_table[
+    std::chrono::system_clock::now() + std::chrono::milliseconds(millis)] =
+    _parent->_children[_name];
+  return true;
 }
 
 bool Node::applies (arangodb::velocypack::Slice const& slice) {
@@ -188,11 +195,14 @@ bool Node::applies (arangodb::velocypack::Slice const& slice) {
         Slice const& self = this->slice();
         if (oper == "delete") {
           return _parent->removeChild(_name);
-        } else if (oper == "set") {
+        } else if (oper == "set") { //
           if (!slice.hasKey("new")) {
             LOG(WARN) << "Operator set without new value";
             LOG(WARN) << slice.toJson();
             return false;
+          }
+          if (slice.hasKey("ttl")) {
+            addTimeToLive ((long)slice.get("ttl").getDouble()*1000);
           }
           *this = slice.get("new");
           return true;
@@ -328,7 +338,7 @@ void Node::toBuilder (Builder& builder) const {
   }
 }
 
-Store::Store (std::string const& name) : Node(name) {}
+Store::Store (std::string const& name) : Node(name), Thread(name) {}
 
 Store::~Store () {}
 
@@ -353,6 +363,8 @@ std::vector<bool> Store::apply (query_t const& query) {
       break;
     }
   }
+  _cv.signal();                                // Wake up run
+
   return applied;
 }
 
@@ -459,5 +471,31 @@ bool Store::read (arangodb::velocypack::Slice const& query, Builder& ret) const 
   return true;
 }
 
+void Store::beginShutdown() {
+  Thread::beginShutdown();
+}
+
+void Store::clearTimeTable () {
+  for (auto it = _time_table.cbegin(); it != _time_table.cend() ;) {
+    if (it->first < std::chrono::system_clock::now()) {
+      std::cout << "clearing time table: " << it->second->name() << std::endl;
+      it->second->remove();
+      _time_table.erase(it++);
+    } else {
+      break;
+    }
+  }
+}
+
+void Store::run() {
+  CONDITION_LOCKER(guard, _cv);
+  
+  while (!this->isStopping()) { // Check timetable and remove overage entries
+    
+    _cv.wait(1000000); // better wait to next known time point
+    clearTimeTable();
+
+  }
+}
 
 
