@@ -70,23 +70,43 @@ if(OPENSSL_USE_STATIC_LIBS)
 endif()
 
 if (WIN32)
-  # http://www.slproweb.com/products/Win32OpenSSL.html
-  set(_OPENSSL_ROOT_HINTS
-    ${OPENSSL_ROOT_DIR}
-    "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\OpenSSL (32-bit)_is1;Inno Setup: App Path]"
-    "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\OpenSSL (64-bit)_is1;Inno Setup: App Path]"
-    ENV OPENSSL_ROOT_DIR
-    )
-  file(TO_CMAKE_PATH "$ENV{PROGRAMFILES}" _programfiles)
-  set(_OPENSSL_ROOT_PATHS
-    "${_programfiles}/OpenSSL"
-    "${_programfiles}/OpenSSL-Win32"
-    "${_programfiles}/OpenSSL-Win64"
-    "C:/OpenSSL/"
-    "C:/OpenSSL-Win32/"
-    "C:/OpenSSL-Win64/"
-    )
-  unset(_programfiles)
+  if (IS_DIRECTORY "${OPENSSL_ROOT_DIR}/build/native/")
+    set(SSL_NUGET TRUE)
+  else()
+    set(SSL_NUGET FALSE)
+  endif()
+  if (OPENSSL_ROOT_DIR AND SSL_NUGET)
+    message("Found nuGET installation of OpenSSL!")
+    set(SSL_BITS "x64")
+    # its an openssl downloaded via nuget!
+    set(OPENSSL_INCLUDE "${OPENSSL_ROOT_DIR}/build/native/include")
+    set(_OPENSSL_ROOT_HINTS "${OPENSSL_ROOT_DIR}/build/native/include")
+
+    set(OPENSSL_LIB_DIR "${OPENSSL_ROOT_DIR}/lib/native/v140/windesktop/msvcstl/dyn/rt-dyn/${SSL_BITS}")
+    set(_OPENSSL_ROOT_HINTS "${OPENSSL_ROOT_DIR}/build/native/include")
+
+    set(_OPENSSL_ROOT_PATHS
+      "${OPENSSL_ROOT_DIR}/build/native/include"
+      "${OPENSSL_ROOT_DIR}/lib/native/v140/windesktop/msvcstl/dyn/rt-dyn/${SSL_BITS}/")
+  else()
+    # http://www.slproweb.com/products/Win32OpenSSL.html
+    set(_OPENSSL_ROOT_HINTS
+      ${OPENSSL_ROOT_DIR}
+      "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\OpenSSL (32-bit)_is1;Inno Setup: App Path]"
+      "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\OpenSSL (64-bit)_is1;Inno Setup: App Path]"
+      ENV OPENSSL_ROOT_DIR
+      )
+    file(TO_CMAKE_PATH "$ENV{PROGRAMFILES}" _programfiles)
+    set(_OPENSSL_ROOT_PATHS
+      "${_programfiles}/OpenSSL"
+      "${_programfiles}/OpenSSL-Win32"
+      "${_programfiles}/OpenSSL-Win64"
+      "C:/OpenSSL/"
+      "C:/OpenSSL-Win32/"
+      "C:/OpenSSL-Win64/"
+      )
+    unset(_programfiles)
+  endif()
 else ()
   set(_OPENSSL_ROOT_HINTS
     ${OPENSSL_ROOT_DIR}
@@ -110,7 +130,60 @@ find_path(OPENSSL_INCLUDE_DIR
 )
 
 if(WIN32 AND NOT CYGWIN)
-  if(MSVC)
+  if (SSL_NUGET)
+    # /MD and /MDd are the standard values - if someone wants to use
+    # others, the libnames have to change here too
+    # use also ssl and ssleay32 in debug as fallback for openssl < 0.9.8b
+    # enable OPENSSL_MSVC_STATIC_RT to get the libs build /MT (Multithreaded no-DLL)
+
+    # Implementation details:
+    # We are using the libraries located in the VC subdir instead of the parent directory eventhough :
+    # libeay32MD.lib is identical to ../libeay32.lib, and
+    # ssleay32MD.lib is identical to ../ssleay32.lib
+    # enable OPENSSL_USE_STATIC_LIBS to use the static libs located in lib/VC/static
+
+    #if (OPENSSL_MSVC_STATIC_RT)
+    #  set(_OPENSSL_MSVC_RT_MODE "MT")
+    #else ()
+    #  set(_OPENSSL_MSVC_RT_MODE "MD")
+    #endif ()
+
+    set(LIB_EAY_DEBUG LIB_EAY_DEBUG-NOTFOUND)
+    if (EXISTS "${OPENSSL_LIB_DIR}/debug/libeay32.lib")
+      set(LIB_EAY_DEBUG "${OPENSSL_LIB_DIR}/debug/libeay32.lib")
+    endif()
+
+    set(LIB_EAY_RELEASE LIB_EAY_RELEASE-NOTFOUND)
+    if (EXISTS "${OPENSSL_LIB_DIR}/release/libeay32.lib")
+      set(LIB_EAY_RELEASE "${OPENSSL_LIB_DIR}/release/libeay32.lib")
+    endif()
+
+    set(SSL_EAY_DEBUG SSL_EAY_DEBUG-NOTFOUND)
+    if (EXISTS "${OPENSSL_LIB_DIR}/debug/ssleay32.lib")
+      set(SSL_EAY_DEBUG "${OPENSSL_LIB_DIR}/debug/ssleay32.lib")
+    endif()
+
+    set(SSL_EAY_RELEASE SSL_EAY_RELEASE-NOTFOUND)
+    if (EXISTS "${OPENSSL_LIB_DIR}/release/ssleay32.lib")
+      set(SSL_EAY_RELEASE "${OPENSSL_LIB_DIR}/release/ssleay32.lib")
+    endif()
+
+    set(LIB_EAY_LIBRARY_DEBUG "${LIB_EAY_DEBUG}")
+    set(LIB_EAY_LIBRARY_RELEASE "${LIB_EAY_RELEASE}")
+    set(SSL_EAY_LIBRARY_DEBUG "${SSL_EAY_DEBUG}")
+    set(SSL_EAY_LIBRARY_RELEASE "${SSL_EAY_RELEASE}")
+
+    include(${CMAKE_CURRENT_LIST_DIR}/SelectLibraryConfigurations.cmake)
+    select_library_configurations(LIB_EAY)
+    select_library_configurations(SSL_EAY)
+
+    mark_as_advanced(LIB_EAY_LIBRARY_DEBUG LIB_EAY_LIBRARY_RELEASE
+                     SSL_EAY_LIBRARY_DEBUG SSL_EAY_LIBRARY_RELEASE)
+    set(OPENSSL_SSL_LIBRARY ${SSL_EAY_LIBRARY} )
+    set(OPENSSL_CRYPTO_LIBRARY ${LIB_EAY_LIBRARY} )
+    set(OPENSSL_LIBRARIES ${SSL_EAY_LIBRARY} ${LIB_EAY_LIBRARY} )
+
+  elseif(MSVC)
     # /MD and /MDd are the standard values - if someone wants to use
     # others, the libnames have to change here too
     # use also ssl and ssleay32 in debug as fallback for openssl < 0.9.8b
@@ -374,7 +447,6 @@ else ()
 endif ()
 
 mark_as_advanced(OPENSSL_INCLUDE_DIR OPENSSL_LIBRARIES)
-
 if(OPENSSL_FOUND)
   if(NOT TARGET OpenSSL::Crypto AND
       (EXISTS "${OPENSSL_CRYPTO_LIBRARY}" OR

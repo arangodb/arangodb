@@ -35,7 +35,7 @@ set(OPENSSL_INCLUDE_DIR
   "OpenSSL: Include Directory"
 )
 
-if (WIN32)
+if (WIN32 AND NOT SSL_NUGET)
   if (DEBUG)
     set(OPENSSL_EXT "d")
   else ()
