@@ -1215,7 +1215,6 @@ function ahuacatlDateFunctionsTestSuite () {
       ];
         
       values.forEach(function(value) {
-        require("internal").print("VALUE: ", value);
         assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ISO8601(@value)", { value: value });
       });  
     },
