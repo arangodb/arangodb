@@ -3654,7 +3654,12 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
 
     // get the header pointer of the previous revision
     TRI_doc_mptr_t* oldHeader;
-    VPackSlice key = slice.get(TRI_VOC_ATTRIBUTE_KEY);
+    VPackSlice key;
+    if (slice.isString()) {
+      key = slice;
+    } else {
+      key = slice.get(TRI_VOC_ATTRIBUTE_KEY);
+    }
     TRI_ASSERT(!key.isNone());
     res = lookupDocument(trx, key, oldHeader);
     if (res != TRI_ERROR_NO_ERROR) {
@@ -3665,7 +3670,7 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
     previous = *oldHeader;
 
     // Check old revision:
-    if (!options.ignoreRevs) {
+    if (!options.ignoreRevs && slice.isObject()) {
       VPackSlice expectedRevSlice = slice.get(TRI_VOC_ATTRIBUTE_REV);
       int res = checkRevision(trx, expectedRevSlice, prevRev);
       if (res != TRI_ERROR_NO_ERROR) {
@@ -4220,10 +4225,13 @@ void TRI_document_collection_t::newObjectForRemove(
     VPackBuilder& builder) {
 
   builder.openObject();
-  VPackSlice s = oldValue.get(TRI_VOC_ATTRIBUTE_KEY);
-  TRI_ASSERT(s.isString());
-  builder.add(TRI_VOC_ATTRIBUTE_KEY, s);
+  if (oldValue.isString()) {
+    builder.add(TRI_VOC_ATTRIBUTE_KEY, oldValue);
+  } else {
+    VPackSlice s = oldValue.get(TRI_VOC_ATTRIBUTE_KEY);
+    TRI_ASSERT(s.isString());
+    builder.add(TRI_VOC_ATTRIBUTE_KEY, s);
+  }
   builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(rev));
-
   builder.close();
 } 

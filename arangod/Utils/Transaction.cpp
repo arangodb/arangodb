@@ -1550,7 +1550,12 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
     
     if (res != TRI_ERROR_NO_ERROR) {
       if (res == TRI_ERROR_ARANGO_CONFLICT && !options.silent) {
-        std::string key = value.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
+        std::string key;
+        if (value.isString()) {
+          key = value.copyString();
+        } else {
+          key = value.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
+        }
         buildDocumentIdentity(resultBuilder, cid, key,
                               actualRevision, VPackSlice(), 
                               options.returnOld ? &previous : nullptr, nullptr);
@@ -1559,7 +1564,12 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
     }
 
     if (!options.silent) {
-      std::string key = value.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
+      std::string key;
+      if (value.isString()) {
+        key = value.copyString();
+      } else {
+        key = value.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
+      }
       buildDocumentIdentity(resultBuilder, cid, key,
                             actualRevision, VPackSlice(),
                             options.returnOld ? &previous : nullptr, nullptr);

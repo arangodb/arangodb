@@ -495,33 +495,42 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
 bool RestDocumentHandler::deleteDocument() {
   std::vector<std::string> const& suffix = _request->suffix();
 
-  if (suffix.size() != 2) {
+  if (suffix.size() < 1 || suffix.size() > 2) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expecting DELETE /_api/document/<document-handle>");
+                  "expecting DELETE /_api/document/<document-handle> or "
+                  "/_api/document/<collection> with a BODY");
     return false;
   }
 
   // split the document reference
   std::string const& collectionName = suffix[0];
-  std::string const& key = suffix[1];
-
-  // extract the revision
-  bool isValidRevision;
-  TRI_voc_rid_t const revision =
-      extractRevision("if-match", nullptr, isValidRevision);
-  if (!isValidRevision) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid revision number");
-    return false;
+  std::string key;
+  if (suffix.size() == 2) {
+    key = suffix[1];
   }
+
+  // extract the revision if single document case
+  bool isValidRevision;
+  TRI_voc_rid_t revision = 0;
+  if (suffix.size() == 2) {
+    revision = extractRevision("if-match", nullptr, isValidRevision);
+    if (!isValidRevision) {
+      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "invalid revision number");
+      return false;
+    }
+  }
+
   OperationOptions opOptions;
-  opOptions.ignoreRevs = false;
   opOptions.returnOld = extractBooleanParameter("returnOld", false);
+  opOptions.ignoreRevs = extractBooleanParameter("ignoreRevs", false);
 
   auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
   SingleCollectionTransaction trx(transactionContext,
                                   collectionName, TRI_TRANSACTION_WRITE);
-  trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+  if (suffix.size() == 2) {
+    trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+  }
 
   // ...........................................................................
   // inside write transaction
@@ -534,16 +543,23 @@ bool RestDocumentHandler::deleteDocument() {
     return false;
   }
 
-
   VPackBuilder builder;
-  {
-    VPackObjectBuilder guard(&builder);
-    builder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
-    if (revision != 0) {
-      builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(std::to_string(revision)));
+  VPackSlice search;
+  std::shared_ptr<VPackBuilder> builderPtr;
+
+  if (suffix.size() == 2) {
+    {
+      VPackObjectBuilder guard(&builder);
+      builder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+      if (revision != 0) {
+        builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(std::to_string(revision)));
+      }
     }
+    search = builder.slice();
+  } else {
+    builderPtr = _request->toVelocyPack(transactionContext->getVPackOptions());
+    search = builderPtr->slice();
   }
-  VPackSlice search = builder.slice();
 
   OperationResult result = trx.remove(collectionName, search, opOptions);
 
