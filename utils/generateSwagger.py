@@ -1010,7 +1010,7 @@ def example_arangosh_run(cargo, r=Regexen()):
     exampleHeader = brTrim(operation['x-examples'][currentExample]).strip()
 
     # new examples code TODO should include for each example own object in json file
-    examplefile = open(os.path.join(os.path.dirname(__file__), '../Examples/' + parameters(last) + '.generated'))
+    examplefile = open(os.path.join(os.path.dirname(__file__), '../Documentation/Examples/' + parameters(last) + '.generated'))
     operation['x-examples'][currentExample]= '<details><summary>Example: ' + exampleHeader.strip('\n ') + '</summary><br><br><pre><code class="json">'
 
     for line in examplefile.readlines():

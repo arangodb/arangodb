@@ -33,12 +33,17 @@ endif()
 
 # detect 32bit or 64bit
 
-if ("${BITS}" STREQUAL "64")
-  set(V8_PROC_ARCH "x64")
+if ("${CMAKE_TARGET_ARCHITECTURES}" STREQUAL "armv7")
+  set(V8_PROC_ARCH "arm")
+  list(APPEND V8_GYP_ARGS -Darm_version=7 -Darm_fpu=default -Darm_float_abi=default)
 else ()
-  message(ERROR "#### WILLY FIX ME ####")
-  set(V8_PROC_ARCH "ia32")
-endif () # TODO: ARM? Win32?
+  if ("${BITS}" STREQUAL "64")
+    set(V8_PROC_ARCH "x64")
+  else ()
+    set(V8_PROC_ARCH "ia32")
+  endif ()
+endif()
+
 
 # target architecture
 
@@ -119,7 +124,7 @@ if (${CMAKE_GENERATOR} MATCHES "Ninja")
   # Gyp wants to use its own clang if we don't set this:
   list(APPEND V8_GYP_ARGS
     -Dclang=0)
-#    -Dv8_use_snapshot=true
+
   list(APPEND V8_GYP_ARGS
     -I${V8_DIR}/build/standalone.gypi
     --depth=.
@@ -131,6 +136,7 @@ if (${CMAKE_GENERATOR} MATCHES "Ninja")
   )
 
   set(NINJA_BUILD_DIR "${V8_TARGET_DIR}/${NINJA_TARGET}")
+
   ExternalProject_Add(v8_build
     SOURCE_DIR
       "${V8_DIR}"
@@ -323,6 +329,10 @@ else ()
 
   option(USE_DEBUG_V8 "compile V8 in DEBUG mode" OFF)
 
+  set(V8_CFLAGS   "")
+  set(V8_CXXFLAGS "")
+  set(V8_LDFLAGS "")
+
   if (USE_DEBUG_V8)
     set(V8_TARGET_ARCH "${V8_PROC_ARCH}.debug")
   else ()
@@ -361,6 +371,11 @@ else ()
     -Dwerror=
   )
 
+  if (APPLE AND CMAKE_COMPILER_IS_CLANG)
+    set(V8_CXXFLAGS "${V8_CXXFLAGS} -stdlib=libc++")
+    set(V8_LDFLAGS  "${V8_LDFLAGS} -stdlib=libc++")
+  endif ()
+
   set(V8_COMPILE_ARGS
     -C ${V8_TARGET_DIR}
     -f Makefile.${V8_TARGET_ARCH}
@@ -368,11 +383,10 @@ else ()
     builddir=${V8_TARGET_DIR}/${V8_TARGET_ARCH}
     CC=${CMAKE_C_COMPILER}
     CXX=${CMAKE_CXX_COMPILER}
+    CFLAGS=${V8_CFLAGS}
+    CXXFLAGS=${V8_CXXFLAGS}
+    LDFLAGS=${V8_LDFLAGS}
   )
-
-  if (APPLE AND CMAKE_COMPILER_IS_CLANG)
-    list(APPEND V8_COMPILE_ARGS CXXFLAGS=-stdlib=libc++ LDFLAGS=-stdlib=libc++)
-  endif ()
 
   list(APPEND V8_COMPILE_ARGS icui18n icuuc icudata)
   list(APPEND V8_COMPILE_ARGS v8)
