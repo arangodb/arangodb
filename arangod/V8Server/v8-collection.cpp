@@ -2082,7 +2082,7 @@ static void JS_SaveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 /// @brief inserts a document, using VPack
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_InsertVocbaseVPack(
+static void JS_InsertVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -2099,22 +2099,32 @@ static void JS_InsertVocbaseVPack(
   uint32_t const argLength = args.Length();
 
   // Position of <data> and <options>
-  // They differ for edge and document.
+  // They differ for edge (old signature) and document.
   uint32_t docIdx = 0;
   uint32_t optsIdx = 1;
 
   TRI_GET_GLOBALS();
 
-  if (isEdgeCollection) {
-    if (argLength < 3 || argLength > 4) {
+  if (argLength < 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("insert(<data>x, [, <options>i])");
+  }
+
+  bool oldEdgeSignature = false;
+
+  if (isEdgeCollection && argLength >= 3) {
+    oldEdgeSignature = true;
+    if (argLength > 4) {
       TRI_V8_THROW_EXCEPTION_USAGE(
-          "insert(<from>, <to>, <data>, [<waitForSync>])");
+          "insert(<from>, <to>, <data> [, <options>])");
     }
     docIdx = 2;
     optsIdx = 3;
+    if (args[2]->IsArray()) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+    }
   } else {
     if (argLength < 1 || argLength > 2) {
-      TRI_V8_THROW_EXCEPTION_USAGE("insert(<data>, [<waitForSync>])");
+      TRI_V8_THROW_EXCEPTION_USAGE("insert(<data> [, <options>])");
     }
   }
 
@@ -2156,7 +2166,7 @@ static void JS_InsertVocbaseVPack(
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    if (isEdgeCollection) {
+    if (isEdgeCollection && oldEdgeSignature) {
       // Just insert from and to. Check is done later.
       std::string tmpId(ExtractIdString(isolate, args[0]));
       if (tmpId.empty()) {
@@ -3027,7 +3037,7 @@ void TRI_InitV8collection(v8::Handle<v8::Context> context, TRI_server_t* server,
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("figures"),
                        JS_FiguresVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("insert"),
-                       JS_InsertVocbaseVPack);
+                       JS_InsertVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("load"),
                        JS_LoadVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("name"),
@@ -3050,7 +3060,7 @@ void TRI_InitV8collection(v8::Handle<v8::Context> context, TRI_server_t* server,
                        JS_RotateVocbaseCol);
   TRI_AddMethodVocbase(
       isolate, rt, TRI_V8_ASCII_STRING("save"),
-      JS_InsertVocbaseVPack);  // note: save is now an alias for insert
+      JS_InsertVocbaseCol);  // note: save is now an alias for insert
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("status"),
                        JS_StatusVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("TRUNCATE"),

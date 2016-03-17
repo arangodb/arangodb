@@ -72,6 +72,7 @@ function CollectionDocumentSuiteBabies() {
     testInsertRemoveMulti: function() {
       var docs = collection.insert([{}, {}, {}]);
       assertEqual(docs.length, 3);
+      require("internal").print("Foxxy:", docs);
       collection.remove(docs);
       assertEqual(collection.count(), 0);
     },

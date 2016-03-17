@@ -933,12 +933,18 @@ ArangoCollection.prototype.insert = function (from, to, data, options) {
     type = ArangoCollection.TYPE_DOCUMENT;
   }
 
-  if (type === ArangoCollection.TYPE_DOCUMENT) {
+  if (type === ArangoCollection.TYPE_DOCUMENT || data === undefined) {
     data = from;
     options = to;
-    url = "/_api/document?collection=" + encodeURIComponent(this.name());
+    url = "/_api/document/" + encodeURIComponent(this.name());
   }
   else if (type === ArangoCollection.TYPE_EDGE) {
+    if (typeof data === 'object' && Array.isArray(data)) {
+      throw new ArangoError({
+        errorNum : internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
+        errorMessage : internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.message
+      });
+    }
     if (typeof from === 'object' && from.hasOwnProperty("_id")) {
       from = from._id;
     }
@@ -950,7 +956,7 @@ ArangoCollection.prototype.insert = function (from, to, data, options) {
     data._from = from;
     data._to = to;
 
-    url = "/_api/collection?collection=" + encodeURIComponent(this.name());
+    url = "/_api/collection/" + encodeURIComponent(this.name());
   }
 
   if (options === undefined) {

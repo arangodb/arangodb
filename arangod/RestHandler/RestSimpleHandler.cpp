@@ -181,12 +181,22 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
     }
 
     bool waitForSync = false;
+    bool silent = true;
+    bool returnOld = false;
     {
       VPackSlice const value = slice.get("options");
       if (value.isObject()) {
         VPackSlice wfs = value.get("waitForSync");
         if (wfs.isBool()) {
           waitForSync = wfs.getBool();
+        }
+        wfs = value.get("silent");
+        if (wfs.isBool()) {
+          silent = wfs.getBool();
+        }
+        wfs = value.get("returnOld");
+        if (wfs.isBool()) {
+          returnOld = wfs.getBool();
         }
       }
     }
@@ -202,6 +212,13 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
         "true, waitForSync: ");
     aql.append(waitForSync ? "true" : "false");
     aql.append(" }");
+    if (!silent) {
+      if (returnOld) {
+        aql.append(" RETURN OLD");
+      } else {
+        aql.append(" RETURN {_id: OLD._id, _key: OLD._key, _rev: OLD._rev}");
+      }
+    }
 
     arangodb::aql::Query query(
         _applicationV8, false, _vocbase, aql.c_str(), aql.size(),
@@ -249,12 +266,16 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
       result.add("ignored", VPackValue(ignored));
       result.add("error", VPackValue(false));
       result.add("code", VPackValue(_response->responseCode()));
+      if (!silent) {
+        result.add("old", queryResult.result->slice());
+      }
       result.close();
       VPackSlice s = result.slice();
 
+      auto transactionContext = std::make_shared<StandaloneTransactionContext>(_vocbase);
       arangodb::basics::VPackStringBufferAdapter buffer(
           _response->body().stringBuffer());
-      VPackDumper dumper(&buffer);
+      VPackDumper dumper(&buffer, transactionContext->getVPackOptions());
       dumper.dump(s);
     }
   } catch (arangodb::basics::Exception const& ex) {
