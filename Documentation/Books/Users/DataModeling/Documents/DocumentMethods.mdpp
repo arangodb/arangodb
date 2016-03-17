@@ -4,7 +4,6 @@
 <!-- js/common/modules/@arangodb/arango-collection-common.js-->
 
 
-constructs an all query for a collection
 `collection.all()`
 
 Fetches all documents from a collection and returns a cursor. You can use
@@ -51,7 +50,6 @@ Use *limit* to restrict the documents:
 <!-- js/common/modules/@arangodb/arango-collection-common.js-->
 
 
-constructs a query-by-example for a collection
 `collection.byExample(example)`
 
 Fetches all documents from a collection that match the specified
@@ -147,7 +145,6 @@ Use *next* to loop over all documents:
 <!-- js/server/modules/@arangodb/arango-collection.js-->
 
 
-constructs a query-by-example for a collection
 `collection.firstExample(example)`
 
 Returns some document of a collection that matches the specified
@@ -180,7 +177,6 @@ As alternative you can supply an array of paths and values.
 <!-- js/common/modules/@arangodb/arango-collection-common.js-->
 
 
-constructs a range query for a collection
 `collection.range(attribute, left, right)`
 
 Returns all documents from a collection such that the *attribute* is
@@ -231,7 +227,6 @@ Use *toArray* to get all documents at once:
 <!-- js/common/modules/@arangodb/arango-collection-common.js-->
 
 
-constructs a closed range query for a collection
 `collection.closedRange(attribute, left, right)`
 
 Returns all documents of a collection such that the *attribute* is
@@ -277,7 +272,6 @@ Use *toArray* to get all documents at once:
 <!-- js/server/modules/@arangodb/arango-collection.js-->
 
 
-returns any document from a collection
 `collection.any()`
 
 Returns a random document from the collection or *null* if none exists.
@@ -287,7 +281,6 @@ Returns a random document from the collection or *null* if none exists.
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
-counts the number of documents in a result set
 `collection.count()`
 
 Returns the number of living documents in the collection.
@@ -310,7 +303,6 @@ Returns the number of living documents in the collection.
 <!-- js/server/modules/@arangodb/arango-collection.js-->
 
 
-converts collection into an array
 `collection.toArray()`
 
 Converts the collection into an array of documents. Never use this call
@@ -321,7 +313,6 @@ in a production environment.
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
-looks up a document
 `collection.document(object)`
 
 The *document* method finds a document given an object `object`
@@ -428,6 +419,9 @@ An error is raised if the handle is invalid:
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock documentsCollectionNameHandle
 
+!SUBSUBSECTION Changes in 3.0 from 2.8:
+
+*document* can now query multiple documents with one call.
 
 
 !SUBSECTION Exists
@@ -472,19 +466,26 @@ members of the array and all results are returned in an array. If an error
 occurs with any of the documents, the operation stops immediately returning
 only an error object.
 
+!SUBSUBSECTION Changes in 3.0 from 2.8:
+
+In the case of a revision mismatch *exists* now throws an error instead
+of simply returning *false*. This is to make it possible to tell the
+difference between a revision mismatch and a non-existing document.
+
+*exists* can now query multiple documents with one call.
+
 
 !SUBSECTION Lookup By Keys
 <!-- arangod/V8Server/v8-query.cpp-->
 
 
-fetches multiple documents by their keys
 `collection.documents(keys)`
 
-Looks up the documents in the specified collection using the array of keys
-provided. All documents for which a matching key was specified in the *keys*
-array and that exist in the collection will be returned.
-Keys for which no document can be found in the underlying collection are ignored,
-and no exception will be thrown for them.
+Looks up the documents in the specified collection using the array of
+keys provided. All documents for which a matching key was specified in
+the *keys* array and that exist in the collection will be returned. Keys
+for which no document can be found in the underlying collection are
+ignored, and no exception will be thrown for them.
 
 This method is deprecated in favour of the array variant of *document*.
 
@@ -510,7 +511,6 @@ This method is deprecated in favour of the array variant of *document*.
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
-insert a new document
 `collection.insert(data)`
 
 Creates a new document in the *collection* from the given *data*. The
@@ -558,6 +558,11 @@ array. If an error occurs with any of the documents, the operation stops
 immediately returning only an error object. The options behave exactly 
 as before.
 
+!SUBSUBSECTION Changes in 3.0 from 2.8:
+
+The options *silent* and *returnNew* are new. The method can now insert
+multiple documents with one call.
+
 
 **Examples**
 
@@ -586,7 +591,6 @@ as before.
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
-replaces a document
 `collection.replace(selector, data)`
 
 Replaces an existing document described by the *selector*, which must
@@ -683,12 +687,15 @@ Use a document handle:
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock documentsCollectionReplaceHandle
 
+!SUBSUBSECTION Changes in 3.0 from 2.8:
+
+The options *silent*, *returnNew* and *returnOld* are new. The method
+can now replace multiple documents with one call.
 
 
 !SUBSECTION Update
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
-updates a document
 `collection.update(selector, data)`
 
 Updates an existing document described by the *selector*, which must
@@ -837,11 +844,14 @@ Patching array values:
     @endDocuBlock documentsCollection_UpdateHandleArray
 
 
+!SUBSUBSECTION Changes in 3.0 from 2.8:
+
+The options *silent*, *returnNew* and *returnOld* are new. The method
+can now update multiple documents with one call.
+
 
 !SUBSECTION Remove
 <!-- arangod/V8Server/v8-vocbase.cpp -->
-
-removes a document
 
 `collection.remove(selector)`
 
@@ -879,6 +889,7 @@ boolean attributes:
   - *returnOld*: If this flag is set to *true*, the complete previous
     revision of the document is returned in the output under the 
     attribute *old*.
+  - *silent*: If this flag is set to *true*, no output is returned.
 
 `collection.remove(document-handle)`
 
@@ -935,13 +946,18 @@ Remove a document with a conflict:
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock documentDocumentRemoveConflict
 
+!SUBSUBSECTION Changes in 3.0 from 2.8:
+
+The method now returns not only *true* but information about the removed
+document(s). The options *silent* and *returnOld* are new. The method
+can now remove multiple documents with one call.
+
 
 
 !SUBSECTION Remove By Keys
 <!-- arangod/V8Server/v8-query.cpp-->
 
 
-removes multiple documents by their keys
 `collection.removeByKeys(keys)`
 
 
@@ -979,7 +995,6 @@ This method is deprecated in favour of the array variant of *remove*.
 <!-- js/common/modules/@arangodb/arango-collection-common.js-->
 
 
-removes documents matching an example
 `collection.removeByExample(example)`
 
 Removes all documents matching an example.
@@ -1022,7 +1037,6 @@ removed.
 <!-- js/common/modules/@arangodb/arango-collection-common.js-->
 
 
-replaces documents matching an example
 `collection.replaceByExample(example, newValue)`
 
 Replaces all documents matching an example with a new document body.
@@ -1068,7 +1082,6 @@ replaced.
 <!-- js/common/modules/@arangodb/arango-collection-common.js-->
 
 
-partially updates documents matching an example
 `collection.updateByExample(example, newValue)`
 
 Partially updates all documents matching an example with a new document body.
@@ -1109,10 +1122,11 @@ updated.
 
 Using this variant, the options for the operation can be passed using
 an object with the following sub-attributes:
-- *keepNull*
-- *waitForSync*
-- *limit*
-- *mergeObjects*
+
+  - *keepNull*
+  - *waitForSync*
+  - *limit*
+  - *mergeObjects*
 
 
 **Examples**
@@ -1132,7 +1146,6 @@ an object with the following sub-attributes:
 !SUBSECTION Collection type
 
 
-returns the type of a collection
 `collection.type()`
 
 Returns the type of a collection. Possible values are:
@@ -1143,7 +1156,6 @@ Returns the type of a collection. Possible values are:
 !SUBSECTION Get the Version of ArangoDB
 
 
-return the server version string
 `db._version()`
 
 Returns the server version string. Note that this is not the version of the
@@ -1163,28 +1175,24 @@ database.
 !SUBSECTION Misc
 
 
-returns all edges connected to a vertex
 `collection.edges(vertex-id)`
 
 Returns all edges connected to the vertex specified by *vertex-id*.
 
 
 
-returns inbound edges connected to a vertex
 `collection.inEdges(vertex-id)`
 
 Returns inbound edges connected to the vertex specified by *vertex-id*.
 
 
 
-returns outbound edges connected to a vertex
 `collection.outEdges(vertex-id)`
 
 Returns outbound edges connected to the vertex specified by *vertex-id*.
 
 
 
-iterates over some elements of a collection
 `collection.iterate(iterator, options)`
 
 Iterates over some elements of the collection and apply the function
@@ -1194,10 +1202,10 @@ as second argument.
 
 *options* must be an object with the following attributes:
 
-- *limit* (optional, default none): use at most *limit* documents.
+  - *limit* (optional, default none): use at most *limit* documents.
 
-- *probability* (optional, default all): a number between *0* and
-  *1*. Documents are chosen with this probability.
+  - *probability* (optional, default all): a number between *0* and
+    *1*. Documents are chosen with this probability.
 
 
 **Examples**

@@ -109,7 +109,7 @@ in a single command is to use JSON arrays of objects in the place of a
 single document. As a consequence, document keys, handles and revisions
 for preconditions have to be supplied embedded in the individual documents
 given. Multiple document operations are restricted to a single document
-or edge collections. 
+or edge collection. 
 See the [API descriptions for collection objects](DocumentMethods.md) 
 for details. Note that the [API for database objects](DatabaseMethods.md)
 do not offer these operations.
