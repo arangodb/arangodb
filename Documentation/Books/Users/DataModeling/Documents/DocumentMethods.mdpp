@@ -841,8 +841,8 @@ Patching array values:
 !SUBSECTION Remove
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
-
 removes a document
+
 `collection.remove(selector)`
 
 Removes a document described by the *selector*, which must be an object
