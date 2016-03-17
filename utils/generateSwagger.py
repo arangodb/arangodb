@@ -479,7 +479,7 @@ def start_docublock(cargo, r=Regexen()):
     (fp, last) = cargo
     try:
         # TODO remove when all /// are removed from the docublocks
-        if last.startwith('/// '):
+        if last.startswith('/// '):
           currentDocuBlock = last.split(' ')[2].rstrip()
         else:
           currentDocuBlock = last.split(' ')[1].rstrip()
@@ -755,7 +755,7 @@ def reststruct(cargo, r=Regexen()):
     try:
         (name, className, ptype, required, ptype2) = parameters(last).split(',')
     except Exception as x:
-        print >> sys.stderr, "RESTSTRUCT: 4 arguments required. You gave me: " + parameters(last)
+        print >> sys.stderr, "RESTSTRUCT: 5 arguments required. You gave me: " + parameters(last)
         raise
 
     CheckReqOpt(required)
