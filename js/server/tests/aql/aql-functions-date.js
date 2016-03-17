@@ -1199,7 +1199,6 @@ function ahuacatlDateFunctionsTestSuite () {
         " ", 
         "abc2012-01-01", 
         "2000-00-00", 
-        "2001-02-11 24:00:00",
         "2001-02-11 24:01:01",
         "2001-02-11 25:01:01",
         "2001-02-11 23:60:00",
@@ -1216,6 +1215,7 @@ function ahuacatlDateFunctionsTestSuite () {
       ];
         
       values.forEach(function(value) {
+        require("internal").print("VALUE: ", value);
         assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ISO8601(@value)", { value: value });
       });  
     },
