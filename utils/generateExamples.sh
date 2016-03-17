@@ -35,6 +35,7 @@ ${ARANGOSH} \
     --log.file ${LOGFILE} \
     --javascript.startup-directory js \
     --javascript.execute $SCRIPT \
+    --server.password "" \
     "${ARGS[@]}"
 
 if test $? -eq 0; then
