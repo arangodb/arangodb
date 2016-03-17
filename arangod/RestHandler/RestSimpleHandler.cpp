@@ -344,7 +344,6 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
       createResponse(HttpResponse::OK);
       _response->setContentType("application/json; charset=utf-8");
 
-
       if (qResult.isArray()) {
 
         // This is for internal use of AQL Traverser only.
@@ -421,12 +420,17 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(res);
       }
-
-      arangodb::basics::VPackStringBufferAdapter buffer(
-          _response->body().stringBuffer());
-      VPackDumper dumper(&buffer);
-      dumper.dump(result.slice());
     }
+
+    auto transactionContext = std::make_shared<StandaloneTransactionContext>(_vocbase);
+    auto customTypeHandler = transactionContext->orderCustomTypeHandler();
+    VPackOptions options = VPackOptions::Defaults; // copy defaults
+    options.customTypeHandler = customTypeHandler.get();
+     
+    arangodb::basics::VPackStringBufferAdapter buffer(
+        _response->body().stringBuffer());
+    VPackDumper dumper(&buffer, &options);
+    dumper.dump(result.slice());
   } catch (arangodb::basics::Exception const& ex) {
     unregisterQuery();
     generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());

@@ -1489,7 +1489,7 @@ void Ast::injectBindParameters(BindParameters& parameters) {
           }
         }
       } else {
-        node = nodeFromVPack(value, false);
+        node = nodeFromVPack(value, true);
 
         if (node != nullptr) {
           // already mark node as constant here
@@ -1507,9 +1507,7 @@ void Ast::injectBindParameters(BindParameters& parameters) {
           node->setFlag(FLAG_BIND_PARAMETER);
         }
       }
-    }
-
-    else if (node->type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS) {
+    } else if (node->type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS) {
       // look at second sub-node. this is the (replaced) bind parameter
       auto name = node->getMember(1);
 

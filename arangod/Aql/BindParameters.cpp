@@ -91,7 +91,7 @@ VPackBuilder BindParameters::StripCollectionNames(VPackSlice const& keys,
                                                   char const* collectionName) {
   TRI_ASSERT(keys.isArray());
   VPackBuilder result;
-  result.add(VPackValue(VPackValueType::Array));
+  result.openArray();
   for (auto const& element : VPackArrayIterator(keys)) {
     if (element.isString()) {
       VPackValueLength l;
