@@ -136,7 +136,7 @@ endpoints to request and delete multiple documents in one request.
 FIXME: ADD SENSIBLE LINKS HERE.
 
 
-!SUBSECTION Address and ETag of a Document
+!SUBSECTION URI of a Document
 
 Any document can be retrieved using its unique URI:
 
