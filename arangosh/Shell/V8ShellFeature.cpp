@@ -445,7 +445,7 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
       current->ForceSet(TRI_V8_ASCII_STRING2(_isolate, "__dirname"),
                         TRI_V8_STD_STRING2(_isolate, dirname));
 
-      ok = TRI_ExecuteGlobalJavaScriptFile(_isolate, file.c_str());
+      ok = TRI_ExecuteGlobalJavaScriptFile(_isolate, file.c_str(), true);
 
       // restore old values for __dirname and __filename
       if (oldFilename.IsEmpty() || oldFilename->IsUndefined()) {
@@ -468,7 +468,7 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
         ok = false;
       }
     } else {
-      ok = TRI_ParseJavaScriptFile(_isolate, file.c_str());
+      ok = TRI_ParseJavaScriptFile(_isolate, file.c_str(), true);
     }
   }
 
