@@ -838,15 +838,15 @@ ArangoCollection.prototype.exists = function (id) {
   }
 
   if (rev === null) {
-    requestResult = this._database._connection.HEAD(this._documenturl(id));
+    requestResult = this._database._connection.GET(this._documenturl(id));
   }
   else {
-    requestResult = this._database._connection.HEAD(this._documenturl(id),
+    requestResult = this._database._connection.GET(this._documenturl(id),
       {'if-match' : JSON.stringify(rev) });
   }
 
   if (requestResult !== null && requestResult.error === true) {
-    if (requestResult.errorNum === internal.errors.ERROR_HTTP_NOT_FOUND.code) {
+    if (requestResult.errorNum === internal.errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
       return false;
     }
     if (requestResult.errorNum === internal.errors.ERROR_HTTP_PRECONDITION_FAILED.code) {
@@ -854,10 +854,10 @@ ArangoCollection.prototype.exists = function (id) {
     }
   }
 
-
   arangosh.checkRequestResult(requestResult);
 
-  return true;
+  return {_id: requestResult._id, _key: requestResult._key,
+          _rev: requestResult._rev};
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -921,12 +921,12 @@ ArangoCollection.prototype.firstExample = function (example) {
 /// @brief saves a document in the collection
 /// note: this method is used to save documents and edges, but save() has a
 /// different signature for both. For document collections, the signature is
-/// save(<data>, <waitForSync>), whereas for edge collections, the signature is
-/// save(<from>, <to>, <data>, <waitForSync>)
+/// save(<data>, <options>), whereas for edge collections, the signature is
+/// save(<from>, <to>, <data>, <options>)
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.save =
-ArangoCollection.prototype.insert = function (from, to, data, waitForSync) {
+ArangoCollection.prototype.insert = function (from, to, data, options) {
   var type = this.type(), url;
 
   if (type === undefined) {
@@ -935,7 +935,7 @@ ArangoCollection.prototype.insert = function (from, to, data, waitForSync) {
 
   if (type === ArangoCollection.TYPE_DOCUMENT) {
     data = from;
-    waitForSync = to;
+    options = to;
     url = "/_api/document?collection=" + encodeURIComponent(this.name());
   }
   else if (type === ArangoCollection.TYPE_EDGE) {
@@ -953,7 +953,11 @@ ArangoCollection.prototype.insert = function (from, to, data, waitForSync) {
     url = "/_api/collection?collection=" + encodeURIComponent(this.name());
   }
 
-  url = this._appendSyncParameter(url, waitForSync);
+  if (options === undefined) {
+    options = {};
+  }
+  url = this._appendSyncParameter(url, options.waitForSync);
+  url = this._appendBoolParameter(url, "returnNew", options.returnNew);
 
   if (data === undefined || typeof data !== 'object') {
     throw new ArangoError({
@@ -969,7 +973,7 @@ ArangoCollection.prototype.insert = function (from, to, data, waitForSync) {
 
   arangosh.checkRequestResult(requestResult);
 
-  return requestResult;
+  return options.silent ? true : requestResult;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1008,12 +1012,13 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
   var params = "";
 
   var ignoreRevs = false;
+  var options;
   if (typeof overwrite === "object") {
     // we assume the caller uses new signature (id, data, options)
     if (typeof waitForSync !== "undefined") {
       throw "too many arguments";
     }
-    var options = overwrite;
+    options = overwrite;
     if (options.hasOwnProperty("overwrite") && options.overwrite) {
       ignoreRevs = true;
     }
@@ -1024,11 +1029,13 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
     if (overwrite) {
       ignoreRevs = true;
     }
+    options = {};
   }
 
   var url = this._documenturl(id) + params;
   url = this._appendSyncParameter(url, waitForSync);
   url = this._appendBoolParameter(url, "ignoreRevs", true);
+  url = this._appendBoolParameter(url, "returnOld", options.returnOld);
 
   if (rev === null || ignoreRevs) {
     requestResult = this._database._connection.DELETE(url);
@@ -1046,7 +1053,7 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
 
   arangosh.checkRequestResult(requestResult);
 
-  return requestResult;
+  return options.silent ? true :requestResult;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1084,12 +1091,13 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
 
   var params = "";
   var ignoreRevs = false;
+  var options;
   if (typeof overwrite === "object") {
     if (typeof waitForSync !== "undefined") {
       throw "too many arguments";
     }
     // we assume the caller uses new signature (id, data, options)
-    var options = overwrite;
+    options = overwrite;
     if (options.hasOwnProperty("overwrite") && options.overwrite) {
       ignoreRevs = true;
     }
@@ -1100,10 +1108,13 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
     if (overwrite) {
       ignoreRevs = true;
     }
+    options = {};
   }
   var url = this._documenturl(id);
   url = this._appendSyncParameter(url, waitForSync);
   url = this._appendBoolParameter(url, "ignoreRevs", true);
+  url = this._appendBoolParameter(url, "returnOld", options.returnOld);
+  url = this._appendBoolParameter(url, "returnNew", options.returnNew);
   if (rev === null || ignoreRevs) {
     requestResult = this._database._connection.PUT(url, JSON.stringify(data));
   }
@@ -1120,7 +1131,7 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
 
   arangosh.checkRequestResult(requestResult);
 
-  return requestResult;
+  return options.silent ? true : requestResult;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1160,12 +1171,13 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
 
   var params = "";
   var ignoreRevs = false;
+  var options;
   if (typeof overwrite === "object") {
     if (typeof keepNull !== "undefined") {
       throw "too many arguments";
     }
     // we assume the caller uses new signature (id, data, options)
-    var options = overwrite;
+    options = overwrite;
     if (! options.hasOwnProperty("keepNull")) {
       options.keepNull = true;
     }
@@ -1190,11 +1202,15 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
       ignoreRevs = true;
     }
 
+    options = {};
+
   }
 
   var url = this._documenturl(id) + params;
   url = this._appendSyncParameter(url, waitForSync);
   url = this._appendBoolParameter(url, "ignoreRevs", true);
+  url = this._appendBoolParameter(url, "returnOld", options.returnOld);
+  url = this._appendBoolParameter(url, "returnNew", options.returnNew);
 
   if (rev === null || ignoreRevs) {
     requestResult = this._database._connection.PATCH(url, JSON.stringify(data));
@@ -1212,7 +1228,7 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
 
   arangosh.checkRequestResult(requestResult);
 
-  return requestResult;
+  return options.silent ? true : requestResult;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

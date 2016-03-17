@@ -635,13 +635,14 @@ ArangoDatabase.prototype._remove = function (id, overwrite, waitForSync) {
 
   var params = "";
   var ignoreRevs = false;
+  var options;
 
   if (typeof overwrite === "object") {
     if (typeof waitForSync !== "undefined") {
       throw "too many arguments";
     }
     // we assume the caller uses new signature (id, data, options)
-    var options = overwrite;
+    options = overwrite;
     if (options.hasOwnProperty("overwrite") && options.overwrite) {
       ignoreRevs = true;
     }
@@ -652,11 +653,13 @@ ArangoDatabase.prototype._remove = function (id, overwrite, waitForSync) {
     if (overwrite) {
       ignoreRevs = true;
     }
+    options = {};
   }
 
   var url = this._documenturl(id) + params;
   url = this._appendSyncParameter(url, waitForSync);
   url = this._appendBoolParameter(url, "ignoreRevs", true);
+  url = this._appendBoolParameter(url, "returnOld", options.returnOld);
 
   if (rev === null || ignoreRevs) {
     requestResult = this._connection.DELETE(url);
@@ -674,7 +677,7 @@ ArangoDatabase.prototype._remove = function (id, overwrite, waitForSync) {
 
   arangosh.checkRequestResult(requestResult);
 
-  return requestResult;
+  return options.silent ? true : requestResult;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -696,13 +699,14 @@ ArangoDatabase.prototype._replace = function (id, data, overwrite, waitForSync) 
 
   var params = "";
   var ignoreRevs = false;
+  var options;
 
   if (typeof overwrite === "object") {
     if (typeof waitForSync !== "undefined") {
       throw "too many arguments";
     }
     // we assume the caller uses new signature (id, data, options)
-    var options = overwrite;
+    options = overwrite;
     if (options.hasOwnProperty("overwrite") && options.overwrite) {
       ignoreRevs = true;
     }
@@ -713,10 +717,13 @@ ArangoDatabase.prototype._replace = function (id, data, overwrite, waitForSync) 
     if (overwrite) {
       ignoreRevs = true;
     }
+    options = {};
   }
   var url = this._documenturl(id) + params;
   url = this._appendSyncParameter(url, waitForSync);
   url = this._appendBoolParameter(url, "ignoreRevs", true);
+  url = this._appendBoolParameter(url, "returnOld", options.returnOld);
+  url = this._appendBoolParameter(url, "returnNew", options.returnNew);
 
   if (rev === null || ignoreRevs) {
     requestResult = this._connection.PUT(url, JSON.stringify(data));
@@ -734,7 +741,7 @@ ArangoDatabase.prototype._replace = function (id, data, overwrite, waitForSync) 
 
   arangosh.checkRequestResult(requestResult);
 
-  return requestResult;
+  return options.silent ? true : requestResult;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -756,12 +763,13 @@ ArangoDatabase.prototype._update = function (id, data, overwrite, keepNull, wait
 
   var params = "";
   var ignoreRevs = false;
+  var options;
   if (typeof overwrite === "object") {
     if (typeof keepNull !== "undefined") {
       throw "too many arguments";
     }
     // we assume the caller uses new signature (id, data, options)
-    var options = overwrite;
+    options = overwrite;
     if (! options.hasOwnProperty("keepNull")) {
       options.keepNull = true;
     }
@@ -782,10 +790,13 @@ ArangoDatabase.prototype._update = function (id, data, overwrite, keepNull, wait
     if (overwrite) {
       ignoreRevs = true;
     }
+    options = {};
   }
   var url = this._documenturl(id) + params;
   url = this._appendSyncParameter(url, waitForSync);
   url = this._appendBoolParameter(url, "ignoreRevs", true);
+  url = this._appendBoolParameter(url, "returnOld", options.returnOld);
+  url = this._appendBoolParameter(url, "returnNew", options.returnNew);
 
   if (rev === null || ignoreRevs) {
     requestResult = this._connection.PATCH(url, JSON.stringify(data));
@@ -803,7 +814,7 @@ ArangoDatabase.prototype._update = function (id, data, overwrite, keepNull, wait
 
   arangosh.checkRequestResult(requestResult);
 
-  return requestResult;
+  return options.silent ? true : requestResult;
 };
 
 

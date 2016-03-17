@@ -372,7 +372,7 @@ static void ExistsVocbaseVPack(
   }
 
   OperationOptions options;
-  options.silent = true; // We do not care for the result anyway
+  options.silent = false;
   options.ignoreRevs = false;
   OperationResult opResult = trx.document(collectionName, search, options);
 
@@ -575,7 +575,9 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_GET_GLOBALS();
 
   if (argLength < 1 || argLength > 3) {
-    TRI_V8_THROW_EXCEPTION_USAGE("remove(<document>, <options>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("remove(<document>, "
+        "{overwrite: booleanValue, waitForSync: booleanValue, returnOld: "
+        "booleanValue, silent:booleanValue})");
   }
 
   if (argLength > 1) {
@@ -593,6 +595,10 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_GET_GLOBAL_STRING(ReturnOldKey);
       if (optionsObject->Has(ReturnOldKey)) {
         options.returnOld = TRI_ObjectToBoolean(optionsObject->Get(ReturnOldKey));
+      }
+      TRI_GET_GLOBAL_STRING(SilentKey);
+      if (optionsObject->Has(SilentKey)) {
+        options.silent = TRI_ObjectToBoolean(optionsObject->Get(SilentKey));
       }
     } else {  // old variant remove(<document>, <overwrite>, <waitForSync>)
       options.ignoreRevs = TRI_ObjectToBoolean(args[1]);
@@ -666,6 +672,11 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
+  if (options.silent) {
+    // no return value
+    TRI_V8_RETURN_TRUE();
+  }
+
   v8::Handle<v8::Value> finalResult = TRI_VPackToV8(isolate, result.slice(),
       transactionContext->getVPackOptions());
 
@@ -703,13 +714,13 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
         options.waitForSync =
             TRI_ObjectToBoolean(optionsObject->Get(WaitForSyncKey));
       }
-      TRI_GET_GLOBAL_STRING(ReturnNewKey);
-      if (optionsObject->Has(ReturnNewKey)) {
-        options.returnNew = TRI_ObjectToBoolean(optionsObject->Get(ReturnNewKey));
-      }
       TRI_GET_GLOBAL_STRING(ReturnOldKey);
       if (optionsObject->Has(ReturnOldKey)) {
         options.returnOld = TRI_ObjectToBoolean(optionsObject->Get(ReturnOldKey));
+      }
+      TRI_GET_GLOBAL_STRING(SilentKey);
+      if (optionsObject->Has(SilentKey)) {
+        options.silent = TRI_ObjectToBoolean(optionsObject->Get(SilentKey));
       }
     } else {  // old variant replace(<document>, <data>, <overwrite>,
               // <waitForSync>)
@@ -766,19 +777,22 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   res = trx.finish(result.code);
 
   if (!result.successful()) {
-    if (result.code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && 
-        options.ignoreRevs) {
-      TRI_V8_RETURN_FALSE();
-    } else {
-      TRI_V8_THROW_EXCEPTION(result.code);
-    }
+    TRI_V8_THROW_EXCEPTION(result.code);
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  TRI_V8_RETURN_TRUE();
+  if (options.silent) {
+    // no return value
+    TRI_V8_RETURN_TRUE();
+  }
+
+  v8::Handle<v8::Value> finalResult = TRI_VPackToV8(isolate, result.slice(),
+      transactionContext->getVPackOptions());
+
+  TRI_V8_RETURN(finalResult);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1585,12 +1599,14 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
     if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
       TRI_V8_THROW_EXCEPTION_USAGE(
           "replace(<document(s)>, <data>, {overwrite: booleanValue,"
-          " waitForSync: booleanValue})");
+          " waitForSync: booleanValue, returnNew: booleanValue,"
+          " returnOld: booleanValue, silent: booleanValue})");
     } else {   // UPDATE
       TRI_V8_THROW_EXCEPTION_USAGE(
           "update(<document>, <data>, {overwrite: booleanValue, keepNull: "
           "booleanValue, mergeObjects: booleanValue, waitForSync: "
-          "booleanValue})");
+          "booleanValue, returnNew: booleanValue, returnOld: booleanValue,"
+          " silent: booleanValue})");
     }
   }
 
@@ -1752,12 +1768,14 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
     if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
       TRI_V8_THROW_EXCEPTION_USAGE(
           "_replace(<document>, <data>, {overwrite: booleanValue, waitForSync: "
-          "booleanValue})");
+          "booleanValue, returnNew: booleanValue, returnOld: booleanValue,"
+          " silent: booleanValue})");
     } else {
       TRI_V8_THROW_EXCEPTION_USAGE(
           "_update(<document>, <data>, {overwrite: booleanValue, keepNull: "
           "booleanValue, mergeObjects: booleanValue, waitForSync: "
-          "booleanValue})");
+          "booleanValue, returnNew: booleanValue, returnOld: booleanValue,"
+          " silent: booleanValue})");
     }
   }
 
