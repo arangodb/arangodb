@@ -1966,7 +1966,7 @@ function DatabaseDocumentSuite () {
       assertTypeOf("string", a3._key);
 
       try {
-        var a4 = db._remove(a1, {"overwrite" : true});
+        db._remove(a1, {"overwrite" : true});
         fail();
       }
       catch (err2) {
@@ -2006,7 +2006,7 @@ function DatabaseDocumentSuite () {
       assertTypeOf("string", a3._key);
 
       try {
-        var a4 = db._remove(a1, {"overwrite" : true});
+        db._remove(a1, {"overwrite" : true});
         fail();
       }
       catch (err2) {
@@ -2079,7 +2079,6 @@ function DatabaseDocumentSuite () {
 function DatabaseDocumentSuiteReturnStuff () {
   'use strict';
   var cn = "UnitTestsCollectionBasics";
-  var ERRORS = require("internal").errors;
   var collection = null;
 
   return {
