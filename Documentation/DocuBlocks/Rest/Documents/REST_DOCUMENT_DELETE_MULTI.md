@@ -1,13 +1,18 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock REST_DOCUMENT_DELETE
-/// @brief removes a document
+/// @startDocuBlock REST_DOCUMENT_DELETE_MULTI
+/// @brief removes multiple document
 ///
-/// @RESTHEADER{DELETE /_api/document/{document-handle}, Removes a document}
+/// @RESTHEADER{DELETE /_api/document/{collection},Removes multiple documents}
+///
+/// @RESTALLBODYPARAM{array,json,required}
+/// A JSON array of strings or documents.
 ///
 /// @RESTURLPARAMETERS
 ///
-/// @RESTURLPARAM{document-handle,string,required}
-/// Removes the document identified by *document-handle*.
+/// @RESTURLPARAM{collection,string,required}
+/// Collection from which documents are removed.
+///
+/// @RESTURLPARAMETERS
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -18,13 +23,19 @@
 /// Return additionally the complete previous revision of the changed 
 /// document under the attribute *old* in the result.
 ///
-/// @RESTHEADERPARAMETERS
-///
-/// @RESTHEADERPARAM{If-Match,string,optional}
-/// You can conditionally remove a document based on a target revision id by
-/// using the *if-match* HTTP header.
+/// @RESTQUERYPARAM{ignoreRevs,boolean,optional}
+/// If set to *true*, ignore any *_rev* attribute in the selectors. No
+/// revision check is performed.
 ///
 /// @RESTDESCRIPTION
+/// The body of the request is an array consisting of selectors for
+/// documents. A selector can either be a string with a key or a string
+/// with a document handle or an object with a *_key* attribute. This
+/// API call removes all specified documents from *collection*. If the
+/// selector is an object and has a *_rev* attribute, it is a
+/// precondition that the actual revision of the removed document in the
+/// collection is the specified one.
+///
 /// The body of the response contains a JSON object with the information
 /// about the handle and the revision. The attribute *_id* contains the
 /// known *document-handle* of the removed document, *_key* contains the
@@ -56,10 +67,10 @@
 /// The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{412}
-/// is returned if a "If-Match" header or *rev* is given and the found
-/// document has a different version. The response will also contain the found
-/// document's current revision in the *_rev* attribute. Additionally, the
-/// attributes *_id* and *_key* will be returned.
+/// is returned if a *_rev* attribute is given and the found document
+/// has a different revision. The response will also contain the found
+/// document's current revision in the *_rev* attribute. Additionally,
+/// the attributes *_id* and *_key* will be returned.
 ///
 /// @EXAMPLES
 ///

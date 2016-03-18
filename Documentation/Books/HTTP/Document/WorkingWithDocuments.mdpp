@@ -115,3 +115,10 @@ situations or drivers. Essentially, one has to replace usage of the
 combination of *If-Match* given and *policy=last* no longer works, but can
 easily be achieved by leaving out the *If-Match* header.
 
+<!-- arangod/RestHandler/RestDocumentHandler.cpp -->
+@startDocuBlock REST_DOCUMENT_DELETE_MULTI
+
+!SUBSUBSECTION Changes in 3.0 from 2.8:
+
+This variant is new in 3.0. Note that it requires a body in the DELETE
+request.
