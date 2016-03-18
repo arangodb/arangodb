@@ -83,6 +83,26 @@ describe('babies collection document', function() {
       expect(collection.count()).to.equal(0);
     });
 
+    it('insert remove multi by DELETE (few)', function() {
+      let req = request.post("/_api/document/" + cn, extend(endpoint, {
+        body: JSON.stringify([{}, {}, {}])
+      }));
+
+      expect(req.statusCode).to.equal(202);
+      expect(collection.count()).to.equal(3);
+
+      let result = JSON.parse(req.rawBody);
+      let ids = result.map(function(x) {
+        return x._key;
+      });
+
+      req = request["delete"]("/_api/document/" + cn,
+          extend(endpoint, { body: JSON.stringify(ids) }));
+
+      expect(req.statusCode).to.equal(202);
+      expect(collection.count()).to.equal(0);
+    });
+
     it('insert remove multi (many)', function() {
       let l = [];
 
@@ -112,6 +132,34 @@ describe('babies collection document', function() {
       }));
 
       expect(req.statusCode).to.equal(200);
+      expect(collection.count()).to.equal(0);
+    });
+
+    it('insert remove multi (many) by DELETE', function() {
+      let l = [];
+
+      for (let i = 0; i < 10000; i++) {
+        l.push({
+          value: i
+        });
+      }
+
+      let req = request.post("/_api/document/" + cn, extend(endpoint, {
+        body: JSON.stringify(l)
+      }));
+
+      expect(req.statusCode).to.equal(202);
+      expect(collection.count()).to.equal(l.length);
+
+      let result = JSON.parse(req.rawBody);
+      let ids = result.map(function(x) {
+        return x._key;
+      });
+
+      req = request["delete"]("/_api/document/" + cn,
+          extend(endpoint, { body: JSON.stringify(ids) }));
+
+      expect(req.statusCode).to.equal(202);
       expect(collection.count()).to.equal(0);
     });
 
@@ -147,6 +195,34 @@ describe('babies collection document', function() {
       expect(collection.count()).to.equal(0);
     });
 
+    it('insert with key remove multi (few) by DELETE', function() {
+      let l = [{
+        _key: "a"
+      }, {
+        _key: "b"
+      }, {
+        _key: "c"
+      }];
+
+      let req = request.post("/_api/document/" + cn, extend(endpoint, {
+        body: JSON.stringify(l)
+      }));
+
+      expect(req.statusCode).to.equal(202);
+      expect(collection.count()).to.equal(l.length);
+
+      let result = JSON.parse(req.rawBody);
+      let ids = result.map(function(x) {
+        return x._key;
+      });
+
+      req = request["delete"]("/_api/document/" + cn,
+          extend(endpoint, { body: JSON.stringify(ids) }));
+
+      expect(req.statusCode).to.equal(202);
+      expect(collection.count()).to.equal(0);
+    });
+
     it('insert with key remove multi (many)', function() {
       let l = [];
 
@@ -177,6 +253,35 @@ describe('babies collection document', function() {
       }));
 
       expect(req.statusCode).to.equal(200);
+      expect(collection.count()).to.equal(0);
+    });
+
+    it('insert with key remove multi (many) by DELETE', function() {
+      let l = [];
+
+      for (let i = 0; i < 10000; i++) {
+        l.push({
+          _key: "K" + i,
+          value: i
+        });
+      }
+
+      let req = request.post("/_api/document/" + cn, extend(endpoint, {
+        body: JSON.stringify(l)
+      }));
+
+      expect(req.statusCode).to.equal(202);
+      expect(collection.count()).to.equal(l.length);
+
+      let result = JSON.parse(req.rawBody);
+      let ids = result.map(function(x) {
+        return x._key;
+      });
+
+      req = request["delete"]("/_api/document/" + cn,
+          extend(endpoint, { body: JSON.stringify(ids) }));
+
+      expect(req.statusCode).to.equal(202);
       expect(collection.count()).to.equal(0);
     });
 

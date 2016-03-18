@@ -325,6 +325,7 @@
       },
     }],
     ['OS=="solaris"', {'defines': ['_GLIBCXX_USE_C99_MATH']}],
+    ['OS=="solaris"', {'target_defaults': {'cflags': ['-m64']}}],
     ['OS=="linux" or OS=="freebsd" or OS=="openbsd" or OS=="solaris" \
        or OS=="netbsd" or OS=="aix"', {
       'target_defaults': {
@@ -336,9 +337,8 @@
           '-pthread',
           '-fno-exceptions',
           '-pedantic',
-	  '-m64',
           # Don't warn about the "struct foo f = {0};" initialization pattern.
-          '-Wno-missing-field-initializers',
+          '-Wno-missing-field-initializers'
         ],
         'cflags_cc': [ '-Wnon-virtual-dtor', '-fno-rtti', '-std=gnu++11' ],
         'ldflags': [ '-pthread', '-march=x86-64', '-m64'],

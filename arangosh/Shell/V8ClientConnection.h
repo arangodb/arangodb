@@ -79,7 +79,8 @@ class V8ClientConnection {
 
   v8::Handle<v8::Value> deleteData(
       v8::Isolate* isolate, std::string const& location,
-      std::map<std::string, std::string> const& headerFields, bool raw);
+      std::map<std::string, std::string> const& headerFields, bool raw,
+      std::string const& body);
 
   v8::Handle<v8::Value> optionsData(
       v8::Isolate* isolate, std::string const& location,

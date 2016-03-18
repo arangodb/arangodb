@@ -545,7 +545,12 @@ std::string Transaction::extractKey(VPackSlice const slice) {
     return k.copyString();
   } 
   if (slice.isString()) {
-    return slice.copyString();
+    std::string key = slice.copyString();
+    size_t pos = key.find('/');
+    if (pos != std::string::npos) {
+      key = key.substr(pos+1);
+    }
+    return key;
   } 
   return "";
 }
@@ -1001,7 +1006,7 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
   auto workOnOneDocument = [&](VPackSlice const value) -> int {
     std::string key(Transaction::extractKey(value));
     if (key.empty()) {
-      return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+      return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
     }
 
     VPackSlice expectedRevision;
@@ -1574,16 +1579,32 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
  
   VPackBuilder resultBuilder;
 
-  auto workOnOneDocument = [&](VPackSlice const value) -> int {
+  auto workOnOneDocument = [&](VPackSlice value) -> int {
     VPackSlice actualRevision;
     TRI_doc_mptr_t previous;
+    std::string key;
+    std::shared_ptr<VPackBuilder> builder;
+    if (value.isString()) {
+      key = value.copyString();
+      size_t pos = key.find('/');
+      if (pos != std::string::npos) {
+        key = key.substr(pos+1);
+        builder = std::make_shared<VPackBuilder>();
+        builder->add(VPackValue(key));
+        value = builder->slice();
+      }
+    } else if (value.isObject()) {
+      key = value.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
+    } else {
+      return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+    }
+
     int res = document->remove(this, value, options,
                                !isLocked(document, TRI_TRANSACTION_WRITE),
                                actualRevision, previous);
     
     if (res != TRI_ERROR_NO_ERROR) {
       if (res == TRI_ERROR_ARANGO_CONFLICT && !options.silent) {
-        std::string key = value.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
         buildDocumentIdentity(resultBuilder, cid, key,
                               actualRevision, VPackSlice(), 
                               options.returnOld ? &previous : nullptr, nullptr);
@@ -1592,7 +1613,6 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
     }
 
     if (!options.silent) {
-      std::string key = value.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
       buildDocumentIdentity(resultBuilder, cid, key,
                             actualRevision, VPackSlice(),
                             options.returnOld ? &previous : nullptr, nullptr);

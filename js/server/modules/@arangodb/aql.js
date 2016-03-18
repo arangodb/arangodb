@@ -4959,7 +4959,11 @@ function AQL_DATE_ISO8601 () {
   'use strict';
 
   try {
-    return MAKE_DATE(arguments, "DATE_ISO8601").toISOString();
+    var dt = MAKE_DATE(arguments, "DATE_ISO8601");
+    if (dt === null) {
+      return dt;
+    }
+    return dt.toISOString();
   }
   catch (err) {
     WARN("DATE_ISO8601", INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE);

@@ -402,7 +402,18 @@ double AqlValue::toDouble(bool& failed) const {
       if (s.isString()) {
         std::string v(s.copyString());
         try {
-          return std::stod(v);
+          size_t behind = 0;
+          double value = std::stod(v, &behind);
+          while (behind < v.size()) {
+            char c = v[behind];
+            if (c != ' ' && c != '\t' && c != '\r' && c != '\n' && c != '\f') {
+              failed = true;
+              return 0.0;
+            }
+            ++behind;
+          }
+          TRI_ASSERT(!failed);
+          return value;
         } catch (...) {
           if (v.empty()) {
             return 0.0;
@@ -581,7 +592,7 @@ v8::Handle<v8::Value> AqlValue::toV8Partial(
       }
 
       result->ForceSet(TRI_V8_STD_STRING((*it2)),
-                       TRI_VPackToV8(isolate, it.value, options));
+                       TRI_VPackToV8(isolate, it.value, options, &s));
 
       if (--left == 0) {
         // we have rendered all required attributes

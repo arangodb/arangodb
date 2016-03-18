@@ -625,6 +625,14 @@ ArangoDatabase.prototype._remove = function (id, overwrite, waitForSync) {
   var requestResult;
 
   if (typeof id === "object") {
+    if (Array.isArray(id)) {
+      throw new ArangoError({
+        error: true,
+        code: internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code,
+        errorNum: internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code,
+        errorMessage: internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.message
+      });
+    }
     if (id.hasOwnProperty("_rev")) {
       rev = id._rev;
     }
@@ -689,6 +697,14 @@ ArangoDatabase.prototype._replace = function (id, data, overwrite, waitForSync) 
   var requestResult;
 
   if (typeof id === "object") {
+    if (Array.isArray(id)) {
+      throw new ArangoError({
+        error: true,
+        code: internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
+        errorNum: internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
+        errorMessage: internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.message
+      });
+    }
     if (id.hasOwnProperty("_rev")) {
       rev = id._rev;
     }
@@ -753,6 +769,14 @@ ArangoDatabase.prototype._update = function (id, data, overwrite, keepNull, wait
   var requestResult;
 
   if (typeof id === "object") {
+    if (Array.isArray(id)) {
+      throw new ArangoError({
+        error: true,
+        code: internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
+        errorNum: internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
+        errorMessage: internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.message
+      });
+    }
     if (id.hasOwnProperty("_rev")) {
       rev = id._rev;
     }
