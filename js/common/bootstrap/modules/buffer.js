@@ -395,6 +395,9 @@ Buffer.prototype.write = function(string, offset, length, encoding) {
 
 
 Buffer.prototype.toJSON = function() {
+  if (this.parent) {
+    return Array.prototype.slice.call(this.parent, this.offset, this.offset + this.length);
+  }
   return Array.prototype.slice.call(this, 0);
 };
 

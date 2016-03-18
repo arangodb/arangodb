@@ -1547,13 +1547,26 @@ static void JS_ByteLength(v8::FunctionCallbackInfo<v8::Value> const& args) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief selects an indexed attribute from the buffer
 ////////////////////////////////////////////////////////////////////////////////
-/*
+
 static void MapGetIndexedBuffer(
     uint32_t idx, const v8::PropertyCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
   v8::Handle<v8::Object> self = args.Holder();
+
+  if (self->InternalFieldCount() == 0) {
+    // seems object has become a FastBuffer already
+    if (self->Has(TRI_V8_ASCII_STRING("parent"))) {
+      v8::Handle<v8::Value> parent = self->Get(TRI_V8_ASCII_STRING("parent"));
+      if (!parent->IsObject()) {
+        TRI_V8_RETURN(v8::Handle<v8::Value>());
+      }
+      self = parent->ToObject();
+      // fallthrough intentional
+    }
+  }
+
   V8Buffer* buffer = V8Buffer::unwrap(self);
 
   if (buffer == nullptr || idx >= buffer->_length) {
@@ -1575,6 +1588,19 @@ static void MapSetIndexedBuffer(
   v8::HandleScope scope(isolate);
 
   v8::Handle<v8::Object> self = args.Holder();
+  
+  if (self->InternalFieldCount() == 0) {
+    // seems object has become a FastBuffer already
+    if (self->Has(TRI_V8_ASCII_STRING("parent"))) {
+      v8::Handle<v8::Value> parent = self->Get(TRI_V8_ASCII_STRING("parent"));
+      if (!parent->IsObject()) {
+        TRI_V8_RETURN(v8::Handle<v8::Value>());
+      }
+      self = parent->ToObject();
+      // fallthrough intentional
+    }
+  }
+
   V8Buffer* buffer = V8Buffer::unwrap(self);
 
   if (buffer == nullptr || idx >= buffer->_length) {
@@ -1588,7 +1614,7 @@ static void MapSetIndexedBuffer(
   TRI_V8_RETURN(
       v8::Integer::NewFromUnsigned(isolate, ((uint8_t)buffer->_data[idx])));
 }
-*/
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the buffer module
 ////////////////////////////////////////////////////////////////////////////////
@@ -1620,7 +1646,7 @@ void TRI_InitV8Buffer(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   rt->SetInternalFieldCount(1);
 
   // accessor for indexed properties (e.g. buffer[1])
-//  rt->SetIndexedPropertyHandler(MapGetIndexedBuffer, MapSetIndexedBuffer);
+  rt->SetIndexedPropertyHandler(MapGetIndexedBuffer, MapSetIndexedBuffer);
 
   v8g->BufferTempl.Reset(isolate, ft);
 
