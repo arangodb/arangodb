@@ -525,7 +525,6 @@ static void RequestEdges(VPackSlice const& vertexSlice,
                          TRI_edge_direction_e direction,
                          arangodb::ExampleMatcher const* matcher,
                          bool includeVertices, VPackBuilder& result) {
-  TRI_ASSERT(matcher != nullptr);
 
   std::string vertexId;
   if (vertexSlice.isString()) {
@@ -572,7 +571,7 @@ static void RequestEdges(VPackSlice const& vertexSlice,
     if (includeVertices) {
       for (auto const& edge : VPackArrayIterator(edges)) {
         VPackObjectBuilder guard(&result);
-        if (matcher->matches(edge)) {
+        if (matcher == nullptr || matcher->matches(edge)) {
           result.add("edge", edge);
 
           std::string target;
@@ -599,6 +598,8 @@ static void RequestEdges(VPackSlice const& vertexSlice,
           }
           std::vector<std::string> split = arangodb::basics::StringUtils::split(target, "/");
           TRI_ASSERT(split.size() == 2);
+          // We have to make sure the transaction know this collection!
+          trx->addCollectionAtRuntime(split[0]);
           VPackBuilder vertexSearch;
           vertexSearch.openObject();
           vertexSearch.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(split[1]));
@@ -619,7 +620,7 @@ static void RequestEdges(VPackSlice const& vertexSlice,
       }
     } else {
       for (auto const& edge : VPackArrayIterator(edges)) {
-        if (matcher->matches(edge)) {
+        if (matcher == nullptr || matcher->matches(edge)) {
           result.add(edge);
         }
       }
@@ -2831,7 +2832,6 @@ AqlValue Functions::Edges(arangodb::aql::Query* query,
   if (vertexSlice.isArray()) {
     for (auto const& v : VPackArrayIterator(vertexSlice)) {
       try {
-#warning matcher.get() is a nullptr here
         RequestEdges(v, trx, collectionName, indexId, direction,
                      matcher.get(), includeVertices, *builder.get());
       } catch (...) {
@@ -2839,7 +2839,6 @@ AqlValue Functions::Edges(arangodb::aql::Query* query,
       }
     }
   } else {
-#warning matcher.get() is a nullptr here
     RequestEdges(vertexSlice, trx, collectionName, indexId, direction,
                  matcher.get(), includeVertices, *builder.get());
   }
