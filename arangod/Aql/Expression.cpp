@@ -565,9 +565,7 @@ AqlValue Expression::executeSimpleExpressionAttributeAccess(
                                             startPos, vars, regs, mustDestroy, false);
   AqlValueGuard guard(result, mustDestroy);
 
-  AqlValue a = result.get(trx, name, mustDestroy, true);
-
-  return a;
+  return result.get(trx, name, mustDestroy, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

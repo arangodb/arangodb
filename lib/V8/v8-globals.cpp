@@ -25,7 +25,6 @@
 
 TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
     : JSCollections(),
-      JSDitches(),
       JSVPack(),
 
       AgencyTempl(),
@@ -33,7 +32,6 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
       ServerStateTempl(),
       ClusterCommTempl(),
       ArangoErrorTempl(),
-      ShapedJsonTempl(),
       VPackTempl(),
       VocbaseColTempl(),
       VocbaseTempl(),
@@ -109,14 +107,11 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
       VersionKeyHidden(),
       WaitForSyncKey(),
 
-      _FromKey(),
       _DbCacheKey(),
       _DbNameKey(),
       _IdKey(),
       _KeyKey(),
-      _OldRevKey(),
       _RevKey(),
-      _ToKey(),
 
       _currentRequest(),
       _currentResponse(),
@@ -204,14 +199,10 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
   VersionKeyHidden.Reset(isolate, TRI_V8_ASCII_STRING("*version"));
   WaitForSyncKey.Reset(isolate, TRI_V8_ASCII_STRING("waitForSync"));
 
-  _FromKey.Reset(isolate, TRI_V8_ASCII_STRING("_from"));
   _DbCacheKey.Reset(isolate, TRI_V8_ASCII_STRING("__dbcache__"));
   _DbNameKey.Reset(isolate, TRI_V8_ASCII_STRING("_dbName"));
   _IdKey.Reset(isolate, TRI_V8_ASCII_STRING("_id"));
   _KeyKey.Reset(isolate, TRI_V8_ASCII_STRING("_key"));
-  _OldRevKey.Reset(isolate, TRI_V8_ASCII_STRING("_oldRev"));
-  _RevKey.Reset(isolate, TRI_V8_ASCII_STRING("_rev"));
-  _ToKey.Reset(isolate, TRI_V8_ASCII_STRING("_to"));
 }
 
 TRI_v8_global_s::~TRI_v8_global_s() {}
