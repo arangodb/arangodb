@@ -219,7 +219,11 @@ Endpoint* Endpoint::factory(const Endpoint::EndpointType type,
       return nullptr;
     }
 
+#ifndef _WIN32
     return new EndpointSrv(specification.substr(6));
+#else
+    return nullptr;
+#endif
   }
 
   else if (!StringUtils::isPrefix(domainType, "tcp://")) {
