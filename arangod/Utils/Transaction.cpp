@@ -2289,7 +2289,6 @@ std::shared_ptr<OperationCursor> Transaction::indexScan(
       // Normalize the search values
       VPackBuilder expander;
       idx->expandInSearchValues(search, expander);
-      LOG(INFO) << expander.slice().toJson();
 
       // Now collect the Iterator
       IndexIteratorContext ctxt(_vocbase, resolver());
