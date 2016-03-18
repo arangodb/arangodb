@@ -203,6 +203,7 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
   _DbNameKey.Reset(isolate, TRI_V8_ASCII_STRING("_dbName"));
   _IdKey.Reset(isolate, TRI_V8_ASCII_STRING("_id"));
   _KeyKey.Reset(isolate, TRI_V8_ASCII_STRING("_key"));
+  _RevKey.Reset(isolate, TRI_V8_ASCII_STRING("_rev"));
 }
 
 TRI_v8_global_s::~TRI_v8_global_s() {}
