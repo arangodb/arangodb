@@ -155,12 +155,16 @@ AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
     builder.add(VPackValue(VPackValueType::Null));
   } else {
     // expression had a result. convert it to JSON
-    int res = TRI_V8ToVPack(isolate, builder, result, false);
+    int res;
+    if (_isSimple) {
+      res = TRI_V8ToVPackSimple(isolate, builder, result, false);
+    } else {
+      res = TRI_V8ToVPack(isolate, builder, result, false);
+    }
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }
-    // TODO: what does _isSimple do here?
   }
 
   mustDestroy = true; // builder = dynamic data

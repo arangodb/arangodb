@@ -53,14 +53,6 @@ v8::Handle<v8::Value> TRI_ObjectJson(v8::Isolate* isolate, TRI_json_t const*);
 TRI_json_t* TRI_ObjectToJson(v8::Isolate*, v8::Handle<v8::Value> const);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert a V8 value to a json_t value
-/// this function assumes that the V8 object does not contain any cycles and
-/// does not contain types such as Function, Date or RegExp
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t* TRI_ObjectToJsonSimple(v8::Isolate*, v8::Handle<v8::Value> const);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief converts an V8 object to a string
 ////////////////////////////////////////////////////////////////////////////////
 

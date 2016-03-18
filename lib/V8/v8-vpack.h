@@ -48,4 +48,13 @@ v8::Handle<v8::Value> TRI_VPackToV8(
 int TRI_V8ToVPack(v8::Isolate* isolate, arangodb::velocypack::Builder& builder,
                   v8::Handle<v8::Value> const value, bool keepTopLevelOpen);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a V8 value to VPack value, simplified version
+/// this function assumes that the V8 object does not contain any cycles and
+/// does not contain types such as Function, Date or RegExp
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_V8ToVPackSimple(v8::Isolate* isolate, arangodb::velocypack::Builder& builder,
+                        v8::Handle<v8::Value> const value, bool keepTopLevelOpen);
+
 #endif

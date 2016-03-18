@@ -187,6 +187,7 @@ static inline void AddValuePair(BuilderContext& context, std::string const& attr
 /// @brief convert a V8 value to a VPack value
 ////////////////////////////////////////////////////////////////////////////////
 
+template <bool performAllChecks>
 static int V8ToVPack(BuilderContext& context,
                      v8::Handle<v8::Value> const parameter,
                      std::string const& attributeName, bool inObject) {
@@ -236,15 +237,21 @@ static int V8ToVPack(BuilderContext& context,
         // ignore object values which are undefined
         continue;
       }
-      int res = V8ToVPack(context, value, "", false);
+      int res = V8ToVPack<performAllChecks>(context, value, "", false);
 
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
       }
     }
 
-    if (!context.keepTopLevelOpen || !context.seenObjects.empty()) {
-      context.builder.close();
+    if (performAllChecks) {
+      if (!context.keepTopLevelOpen || !context.seenObjects.empty()) {
+        context.builder.close();
+      }
+    } else {
+      if (!context.keepTopLevelOpen) {
+        context.builder.close();
+      }
     }
     return TRI_ERROR_NO_ERROR;
   }
@@ -276,57 +283,60 @@ static int V8ToVPack(BuilderContext& context,
       return TRI_ERROR_NO_ERROR;
     }
 
-    if (parameter->IsRegExp() || parameter->IsFunction() ||
-        parameter->IsExternal()) {
-      // TODO: Need externals which refer to our data files?
-      return TRI_ERROR_BAD_PARAMETER;
+    if (performAllChecks) {
+      if (parameter->IsRegExp() || parameter->IsFunction() ||
+          parameter->IsExternal()) {
+        return TRI_ERROR_BAD_PARAMETER;
+      }
     }
 
     v8::Handle<v8::Object> o = parameter->ToObject();
 
-    // first check if the object has a "toJSON" function
-    if (o->Has(context.toJsonKey)) {
-      // call it if yes
-      v8::Handle<v8::Value> func = o->Get(context.toJsonKey);
-      if (func->IsFunction()) {
-        v8::Handle<v8::Function> toJson = v8::Handle<v8::Function>::Cast(func);
+    if (performAllChecks) {
+      // first check if the object has a "toJSON" function
+      if (o->Has(context.toJsonKey)) {
+        // call it if yes
+        v8::Handle<v8::Value> func = o->Get(context.toJsonKey);
+        if (func->IsFunction()) {
+          v8::Handle<v8::Function> toJson = v8::Handle<v8::Function>::Cast(func);
 
-        v8::Handle<v8::Value> args;
-        v8::Handle<v8::Value> converted = toJson->Call(o, 0, &args);
+          v8::Handle<v8::Value> args;
+          v8::Handle<v8::Value> converted = toJson->Call(o, 0, &args);
 
-        if (!converted.IsEmpty()) {
-          // return whatever toJSON returned
-          v8::String::Utf8Value str(converted->ToString());
+          if (!converted.IsEmpty()) {
+            // return whatever toJSON returned
+            v8::String::Utf8Value str(converted->ToString());
 
-          if (*str == nullptr) {
-            return TRI_ERROR_OUT_OF_MEMORY;
+            if (*str == nullptr) {
+              return TRI_ERROR_OUT_OF_MEMORY;
+            }
+
+            // this passes ownership for the utf8 string to the JSON object
+            AddValuePair(context, attributeName, inObject, VPackValuePair(*str, str.length(), VPackValueType::String));
+            return TRI_ERROR_NO_ERROR;
           }
-
-          // this passes ownership for the utf8 string to the JSON object
-          AddValuePair(context, attributeName, inObject, VPackValuePair(*str, str.length(), VPackValueType::String));
-          return TRI_ERROR_NO_ERROR;
         }
+
+        // fall-through intentional
       }
 
-      // fall-through intentional
-    }
+      int hash = o->GetIdentityHash();
 
-    int hash = o->GetIdentityHash();
+      if (context.seenHashes.find(hash) != context.seenHashes.end()) {
+        // LOG(TRACE) << "found hash " << hash;
 
-    if (context.seenHashes.find(hash) != context.seenHashes.end()) {
-      // LOG(TRACE) << "found hash " << hash;
-
-      for (auto& it : context.seenObjects) {
-        if (parameter->StrictEquals(it)) {
-          // object is recursive
-          return TRI_ERROR_BAD_PARAMETER;
+        for (auto& it : context.seenObjects) {
+          if (parameter->StrictEquals(it)) {
+            // object is recursive
+            return TRI_ERROR_BAD_PARAMETER;
+          }
         }
+      } else {
+        context.seenHashes.emplace(hash);
       }
-    } else {
-      context.seenHashes.emplace(hash);
-    }
 
-    context.seenObjects.emplace_back(o);
+      context.seenObjects.emplace_back(o);
+    }
 
     v8::Handle<v8::Array> names = o->GetOwnPropertyNames();
     uint32_t const n = names->Length();
@@ -349,16 +359,22 @@ static int V8ToVPack(BuilderContext& context,
         continue;
       }
 
-      int res = V8ToVPack(context, value, *str, true);
+      int res = V8ToVPack<performAllChecks>(context, value, *str, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
       }
     }
 
-    context.seenObjects.pop_back();
-    if (!context.keepTopLevelOpen || !context.seenObjects.empty()) {
-      context.builder.close();
+    if (performAllChecks) {
+      context.seenObjects.pop_back();
+      if (!context.keepTopLevelOpen || !context.seenObjects.empty()) {
+        context.builder.close();
+      }
+    } else {
+      if (!context.keepTopLevelOpen) {
+        context.builder.close();
+      }
     }
     return TRI_ERROR_NO_ERROR;
   }
@@ -377,5 +393,19 @@ int TRI_V8ToVPack(v8::Isolate* isolate, VPackBuilder& builder,
   BuilderContext context(isolate, builder, keepTopLevelOpen);
   TRI_GET_GLOBAL_STRING(ToJsonKey);
   context.toJsonKey = ToJsonKey;
-  return V8ToVPack(context, value, "", false);
+  return V8ToVPack<true>(context, value, "", false);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a V8 value to VPack value, simplified version
+/// this function assumes that the V8 object does not contain any cycles and
+/// does not contain types such as Function, Date or RegExp
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_V8ToVPackSimple(v8::Isolate* isolate, arangodb::velocypack::Builder& builder,
+                        v8::Handle<v8::Value> const value, bool keepTopLevelOpen) {
+  v8::HandleScope scope(isolate);
+  BuilderContext context(isolate, builder, keepTopLevelOpen);
+  return V8ToVPack<false>(context, value, "", false);
+}
+
