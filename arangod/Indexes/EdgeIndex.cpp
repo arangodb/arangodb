@@ -33,6 +33,9 @@
 #include "VocBase/edge-collection.h"
 #include "VocBase/transaction.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -194,7 +197,7 @@ TRI_doc_mptr_t* EdgeIndexIterator::next() {
       _posInBuffer = 0;
       _last = nullptr;
 
-      VPackSlice tmp = _keys.at(_position++);
+      VPackSlice tmp = _keys.at(_position);
       if (tmp.isObject()) {
         tmp = tmp.get(TRI_SLICE_KEY_EQUAL);
       }
@@ -595,7 +598,34 @@ arangodb::aql::AstNode* EdgeIndex::specializeCondition(
 
 void EdgeIndex::expandInSearchValues(VPackSlice const slice,
                                      VPackBuilder& builder) const {
-  builder.add(slice);
+  TRI_ASSERT(slice.isArray());
+  builder.openArray();
+  for (auto const& side : VPackArrayIterator(slice)) {
+    TRI_ASSERT(side.isArray());
+    builder.openArray();
+    for (auto const& item : VPackArrayIterator(side)) {
+      if (item.isNull()) {
+        builder.add(item);
+      } else {
+        TRI_ASSERT(item.isObject());
+        if (item.hasKey(TRI_SLICE_KEY_EQUAL)) {
+          TRI_ASSERT(!item.hasKey(TRI_SLICE_KEY_IN));
+          builder.add(item);
+        } else {
+          TRI_ASSERT(item.hasKey(TRI_SLICE_KEY_IN));
+          VPackSlice list = item.get(TRI_SLICE_KEY_IN);
+          TRI_ASSERT(list.isArray());
+          for (auto const& it : VPackArrayIterator(list)) {
+            builder.openObject();
+            builder.add(TRI_SLICE_KEY_EQUAL, it);
+            builder.close();
+          }
+        }
+      }
+    }
+    builder.close();
+  }
+  builder.close();
 }
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an IndexIterator for the given VelocyPackSlices.
