@@ -182,7 +182,7 @@ elseif (WIN32)
   endif()
 
   # try to find 2015 in 'Visual Studio 14 2015 Win64'
-  if (${CMAKE_GENERATOR} MATCHES "2013") 
+  if (${CMAKE_GENERATOR} MATCHES "2015") 
     list(APPEND V8_GYP_ARGS "-G msvs_version=2015")
   endif()
 
@@ -304,8 +304,12 @@ elseif (WIN32)
   set(ICU_LIBRARY_RELEASE "${V8_DIR}/build/Release")
 
   set(ICU_LIBS
-    debug "${ICU_LIBRARY_DEBUG}/lib/icui18n.lib;${ICU_LIBRARY_DEBUG}/lib/icuuc.lib"
-    optimized "${ICU_LIBRARY_RELEASE}/lib/icui18n.lib;${ICU_LIBRARY_RELEASE}/lib/icuuc.lib"
+    debug "${ICU_LIBRARY_DEBUG}/lib/icui18n.lib"
+    optimized "${ICU_LIBRARY_RELEASE}/lib/icui18n.lib"
+
+    debug "${ICU_LIBRARY_DEBUG}/lib/icuuc.lib"
+    optimized "${ICU_LIBRARY_RELEASE}/lib/icuuc.lib"
+
     CACHE INTERNAL
     "ICU: Libraries"
     FORCE
@@ -315,8 +319,18 @@ elseif (WIN32)
   set(V8_LIBRARY_RELEASE "${V8_DIR}/build/Release")
 
   set(V8_LIBS
-    debug "${V8_LIBRARY_DEBUG}/lib/v8_base.lib;${V8_LIBRARY_DEBUG}/lib/v8_libbase.lib;${V8_LIBRARY_DEBUG}/lib/v8_libplatform.lib;${V8_LIBRARY_DEBUG}/lib/v8_nosnapshot.lib"
-    optimized "${V8_LIBRARY_RELEASE}/lib/v8_base.lib;${V8_LIBRARY_RELEASE}/lib/v8_libbase.lib;${V8_LIBRARY_RELEASE}/lib/v8_libplatform.lib;${V8_LIBRARY_RELEASE}/lib/v8_nosnapshot.lib"
+    debug "${V8_LIBRARY_DEBUG}/lib/v8_base.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/v8_base.lib"
+
+    debug "${V8_LIBRARY_DEBUG}/lib/v8_libbase.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/v8_libbase.lib"
+
+    debug "${V8_LIBRARY_DEBUG}/lib/v8_libplatform.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/v8_libplatform.lib"
+
+    debug "${V8_LIBRARY_DEBUG}/lib/v8_nosnapshot.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/v8_nosnapshot.lib"
+
     CACHE INTERNAL
     "${PROJECT_NAME}: Libraries"
   )

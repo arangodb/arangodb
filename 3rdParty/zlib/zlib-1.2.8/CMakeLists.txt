@@ -69,7 +69,7 @@ endif()
 check_include_file(unistd.h Z_HAVE_UNISTD_H)
 
 if(MSVC)
-    set(CMAKE_DEBUG_POSTFIX "d")
+    # set(CMAKE_DEBUG_POSTFIX "d")
     add_definitions(-D_CRT_SECURE_NO_DEPRECATE)
     add_definitions(-D_CRT_NONSTDC_NO_DEPRECATE)
     include_directories(${CMAKE_CURRENT_SOURCE_DIR})
@@ -267,12 +267,12 @@ set(ZLIB_VERSION
 
 if (WINDOWS)
   set(ZLIB_LIBS
-    zlibstaticd
+    zlibstatic
     CACHE INTERNAL
     "${PROJECT_NAME}: Libraries"
   )
 
-  list(APPEND LINK_DIRECTORIES "${zlib_BINARY_DIR}/${CMAKE_BUILD_TYPE_INIT}")
+  list(APPEND LINK_DIRECTORIES "${zlib_BINARY_DIR}")
 else ()
   set(ZLIB_LIBS
     z
