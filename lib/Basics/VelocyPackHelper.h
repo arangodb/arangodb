@@ -75,10 +75,19 @@ class VelocyPackHelper {
 
   template <bool useUtf8>
   struct VPackLess {
+    VPackLess(arangodb::velocypack::Options const* options = &arangodb::velocypack::Options::Defaults,
+              arangodb::velocypack::Slice const* lhsBase = nullptr,
+              arangodb::velocypack::Slice const* rhsBase = nullptr)
+        : options(options), lhsBase(lhsBase), rhsBase(rhsBase) {}
+
     inline bool operator()(arangodb::velocypack::Slice const& lhs,
                            arangodb::velocypack::Slice const& rhs) const {
-      return VelocyPackHelper::compare(lhs, rhs, useUtf8) < 0;
+      return VelocyPackHelper::compare(lhs, rhs, useUtf8, options, lhsBase, rhsBase) < 0;
     }
+
+    arangodb::velocypack::Options const* options;
+    arangodb::velocypack::Slice const* lhsBase;
+    arangodb::velocypack::Slice const* rhsBase;
   };
 
   struct AttributeSorter {
@@ -193,7 +202,11 @@ class VelocyPackHelper {
   /// @brief Compares two VelocyPack slices
   //////////////////////////////////////////////////////////////////////////////
 
-  static int compare(VPackSlice const&, VPackSlice const&, bool);
+  static int compare(arangodb::velocypack::Slice const& lhs, 
+                     arangodb::velocypack::Slice const& rhs, 
+                     bool useUTF8, arangodb::velocypack::Options const* options = &arangodb::velocypack::Options::Defaults,
+                     arangodb::velocypack::Slice const* lhsBase = nullptr,
+                     arangodb::velocypack::Slice const* rhsBase = nullptr);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Merges two VelocyPack Slices

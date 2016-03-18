@@ -196,6 +196,8 @@ static int TypeWeight(VPackSlice const& slice) {
     case VPackValueType::SmallInt:
       return 2;
     case VPackValueType::String:
+    case VPackValueType::Custom:
+      // custom type is used for id
       return 3;
     case VPackValueType::Array:
       return 4;
@@ -374,24 +376,19 @@ static bool PrintVelocyPack(int fd, VPackSlice const& slice,
 bool VelocyPackHelper::velocyPackToFile(char const* filename,
                                         VPackSlice const& slice,
                                         bool syncFile) {
-  char* tmp = TRI_Concatenate2String(filename, ".tmp");
-
-  if (tmp == nullptr) {
-    return false;
-  }
+  std::string const tmp = std::string(filename) + ".tmp";
 
   // remove a potentially existing temporary file
-  if (TRI_ExistsFile(tmp)) {
-    TRI_UnlinkFile(tmp);
+  if (TRI_ExistsFile(tmp.c_str())) {
+    TRI_UnlinkFile(tmp.c_str());
   }
 
-  int fd = TRI_CREATE(tmp, O_CREAT | O_TRUNC | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+  int fd = TRI_CREATE(tmp.c_str(), O_CREAT | O_TRUNC | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
                       S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 
   if (fd < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     LOG(ERR) << "cannot create json file '" << tmp << "': " << TRI_LAST_ERROR_STR;
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
     return false;
   }
 
@@ -399,8 +396,7 @@ bool VelocyPackHelper::velocyPackToFile(char const* filename,
     TRI_CLOSE(fd);
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     LOG(ERR) << "cannot write to json file '" << tmp << "': " << TRI_LAST_ERROR_STR;
-    TRI_UnlinkFile(tmp);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
+    TRI_UnlinkFile(tmp.c_str());
     return false;
   }
 
@@ -411,8 +407,7 @@ bool VelocyPackHelper::velocyPackToFile(char const* filename,
       TRI_CLOSE(fd);
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
       LOG(ERR) << "cannot sync saved json '" << tmp << "': " << TRI_LAST_ERROR_STR;
-      TRI_UnlinkFile(tmp);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
+      TRI_UnlinkFile(tmp.c_str());
       return false;
     }
   }
@@ -422,29 +417,26 @@ bool VelocyPackHelper::velocyPackToFile(char const* filename,
   if (res < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     LOG(ERR) << "cannot close saved file '" << tmp << "': " << TRI_LAST_ERROR_STR;
-    TRI_UnlinkFile(tmp);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
+    TRI_UnlinkFile(tmp.c_str());
     return false;
   }
 
-  res = TRI_RenameFile(tmp, filename);
+  res = TRI_RenameFile(tmp.c_str(), filename);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
     LOG(ERR) << "cannot rename saved file '" << tmp << "' to '" << filename << "': " << TRI_LAST_ERROR_STR;
-    TRI_UnlinkFile(tmp);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
+    TRI_UnlinkFile(tmp.c_str());
 
     return false;
   }
-
-  TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
 
   return true;
 }
 
 int VelocyPackHelper::compare(VPackSlice const& lhs, VPackSlice const& rhs,
-                              bool useUTF8) {
+                              bool useUTF8, VPackOptions const* options,
+                              VPackSlice const* lhsBase, VPackSlice const* rhsBase) {
   {
     int lWeight = TypeWeight(lhs);
     int rWeight = TypeWeight(rhs);
@@ -499,12 +491,41 @@ int VelocyPackHelper::compare(VPackSlice const& lhs, VPackSlice const& rhs,
       }
       return 1;
     }
+    case VPackValueType::Custom: 
     case VPackValueType::String: {
-      int res;
+      std::string lhsString;
       VPackValueLength nl;
+      char const* left;
+      if (lhs.isCustom()) {
+        if (lhsBase == nullptr || options == nullptr || options->customTypeHandler == nullptr) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         "Could not extract custom attribute.");
+        }
+        lhsString.assign(options->customTypeHandler->toString(lhs, options, *lhsBase));
+        left = lhsString.c_str();
+        nl = lhsString.size();
+      } else {
+        left = lhs.getString(nl);
+      }
+      TRI_ASSERT(left != nullptr);
+     
+      std::string rhsString; 
       VPackValueLength nr;
-      char const* left = lhs.getString(nl);
-      char const* right = rhs.getString(nr);
+      char const* right;
+      if (rhs.isCustom()) {
+        if (rhsBase == nullptr || options == nullptr || options->customTypeHandler == nullptr) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         "Could not extract custom attribute.");
+        }
+        rhsString.assign(options->customTypeHandler->toString(rhs, options, *rhsBase));
+        right = rhsString.c_str();
+        nr = rhsString.size();
+      } else {
+        right = rhs.getString(nr);
+      }
+      TRI_ASSERT(right != nullptr);
+
+      int res;
       if (useUTF8) {
         res = TRI_compare_utf8(left, nl, right, nr);
       } else {
@@ -513,7 +534,8 @@ int VelocyPackHelper::compare(VPackSlice const& lhs, VPackSlice const& rhs,
       }
       if (res < 0) {
         return -1;
-      } else if (res > 0) {
+      }
+      if (res > 0) {
         return 1;
       }
       // res == 0
@@ -537,7 +559,7 @@ int VelocyPackHelper::compare(VPackSlice const& lhs, VPackSlice const& rhs,
           rhsValue = rhs.at(i);
         }
 
-        int result = compare(lhsValue, rhsValue, useUTF8);
+        int result = compare(lhsValue, rhsValue, useUTF8, options, &lhs, &rhs);
         if (result != 0) {
           return result;
         }
@@ -558,7 +580,7 @@ int VelocyPackHelper::compare(VPackSlice const& lhs, VPackSlice const& rhs,
           rhsValue = rhs.get(key);
         }
 
-        int result = compare(lhsValue, rhsValue, useUTF8);
+        int result = compare(lhsValue, rhsValue, useUTF8, options, &lhs, &rhs);
         if (result != 0) {
           return result;
         }
@@ -595,9 +617,8 @@ double VelocyPackHelper::toDouble(VPackSlice const& slice, bool& failed) {
     case VPackValueType::UInt:
     case VPackValueType::SmallInt:
       return slice.getNumericValue<double>();
-    case VPackValueType::String:
-    {
-      std::string tmp = slice.copyString();
+    case VPackValueType::String: {
+      std::string tmp(slice.copyString());
       try {
         // try converting string to number
         return std::stod(tmp);
@@ -609,8 +630,7 @@ double VelocyPackHelper::toDouble(VPackSlice const& slice, bool& failed) {
       }
       break;
     }
-    case VPackValueType::Array:
-    {
+    case VPackValueType::Array: {
       VPackValueLength const n = slice.length();
 
       if (n == 0) {
@@ -642,8 +662,7 @@ arangodb::LoggerStream& operator<< (arangodb::LoggerStream& logger,
   bool longer = sliceStr.size() > cutoff;
   if (longer) {
     logger << sliceStr.substr(cutoff) << "...";
-  }
-  else {
+  } else {
     logger << sliceStr;
   }
   return logger;

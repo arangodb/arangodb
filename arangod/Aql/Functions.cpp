@@ -1946,7 +1946,8 @@ AqlValue Functions::SortedUnique(arangodb::aql::Query* query,
   AqlValueMaterializer materializer(trx);
   VPackSlice slice = materializer.slice(value);
 
-  std::set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackLess<true>> values;
+  arangodb::basics::VelocyPackHelper::VPackLess<true> less(trx->transactionContext()->getVPackOptions(), &slice, &slice);
+  std::set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackLess<true>> values(less);
   for (auto const& it : VPackArrayIterator(slice)) {
     if (!it.isNone()) {
       values.insert(it);
