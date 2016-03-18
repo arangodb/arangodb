@@ -37,6 +37,12 @@ using namespace arangodb::basics;
 /// running
 ////////////////////////////////////////////////////////////////////////////////
 
+static bool isClusterRole(ServerState::RoleEnum role) {
+  return (role == ServerState::ROLE_PRIMARY ||
+          role == ServerState::ROLE_SECONDARY ||
+          role == ServerState::ROLE_COORDINATOR);
+}
+
 static ServerState Instance;
 
 ServerState::ServerState()
@@ -173,9 +179,24 @@ void ServerState::setAuthentication(std::string const& username,
 std::string ServerState::getAuthentication() { return _authentication; }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief find and set our role
+////////////////////////////////////////////////////////////////////////////////
+void ServerState::findAndSetRoleBlocking() {
+  while (true) {
+    auto role = determineRole(_localInfo, _id);
+    std::string roleString = roleToString(role);
+    LOG(DEBUG) << "Found my role: " << roleString;
+
+    if (storeRole(role)) {
+      break;
+    }
+    sleep(1);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief flush the server state (used for testing)
 ////////////////////////////////////////////////////////////////////////////////
-
 void ServerState::flush() {
   {
     WRITE_LOCKER(writeLocker, _lock);
@@ -186,8 +207,8 @@ void ServerState::flush() {
 
     _address = ClusterInfo::instance()->getTargetServerEndpoint(_id);
   }
-
-  storeRole(determineRole(_localInfo, _id));
+  
+  findAndSetRoleBlocking();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -227,10 +248,8 @@ bool ServerState::isDBServer(ServerState::RoleEnum role) {
 
 bool ServerState::isRunningInCluster() {
   auto role = loadRole();
-
-  return (role == ServerState::ROLE_PRIMARY ||
-          role == ServerState::ROLE_SECONDARY ||
-          role == ServerState::ROLE_COORDINATOR);
+  
+  return isClusterRole(role);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -272,15 +291,8 @@ ServerState::RoleEnum ServerState::getRole() {
     LOG(DEBUG) << "Have stored " << builder.slice().toJson() << " under Current/NewServers/" << _localInfo << " in agency.";
   }
 
-  // role not yet set
-  role = determineRole(info, id);
-  std::string roleString = roleToString(role);
-
-  LOG(DEBUG) << "Found my role: " << roleString;
-
-  storeRole(role);
-
-  return role;
+  findAndSetRoleBlocking();
+  return loadRole();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -351,8 +363,8 @@ bool ServerState::registerWithRole(ServerState::RoleEnum role) {
   }
   
   _id = id;
-  storeRole(role);
-  
+
+  findAndSetRoleBlocking();
   LOG(DEBUG) << "We successfully announced ourselves as " << roleToString(role) << " and our id is " << id;
   
   return true;
@@ -779,7 +791,9 @@ bool ServerState::redetermineRole() {
   RoleEnum oldRole = loadRole();
   if (role != oldRole) {
     LOG(INFO) << "Changed role to: " << roleString;
-    storeRole(role);
+    if (!storeRole(role)) {
+      return false;
+    }
     return true;
   }
   if (_idOfPrimary != saveIdOfPrimary) {
@@ -806,21 +820,12 @@ ServerState::RoleEnum ServerState::determineRole(std::string const& info,
     LOG(DEBUG) << "Learned my own Id: " << id;
     setId(id);
   }
-
-  ServerState::RoleEnum role = checkServersList(id);
-  ServerState::RoleEnum role2 = checkCoordinatorsList(id);
-
+  
+  ServerState::RoleEnum role = checkCoordinatorsList(id);
   if (role == ServerState::ROLE_UNDEFINED) {
-    // role is still unknown. check if we are a coordinator
-    role = role2;
-  } else {
-    // we are a primary or a secondary.
-    // now we double-check that we are not a coordinator as well
-    if (role2 != ServerState::ROLE_UNDEFINED) {
-      role = ServerState::ROLE_UNDEFINED;
-    }
+    role = checkServersList(id);
   }
-
+  // mop: role might still be undefined
   return role;
 }
 
@@ -1055,4 +1060,82 @@ ServerState::RoleEnum ServerState::checkServersList(std::string const& id) {
   }
 
   return role;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief store the server role
+//////////////////////////////////////////////////////////////////////////////
+bool ServerState::storeRole(RoleEnum role)
+{
+  if (isClusterRole(role)) {
+    AgencyComm comm;
+    AgencyCommResult result;
+    std::unique_ptr<AgencyCommLocker> locker;
+
+    locker.reset(new AgencyCommLocker("Current", "WRITE"));
+    if (!locker->successful()) {
+      return false;
+    }
+
+    if (role == ServerState::ROLE_COORDINATOR) {
+      VPackBuilder builder;
+      try {
+        builder.add(VPackValue("none"));
+      } catch (...) {
+        locker->unlock();
+        LOG(FATAL) << "out of memory"; FATAL_ERROR_EXIT();
+      }
+
+      // register coordinator
+      AgencyCommResult result =
+        comm.setValue("Current/Coordinators/" + _id, builder.slice(), 0.0);
+
+      if (!result.successful()) {
+        locker->unlock();
+        LOG(FATAL) << "unable to register coordinator in agency"; FATAL_ERROR_EXIT();
+      }
+    } else if (role == ServerState::ROLE_PRIMARY) {
+      VPackBuilder builder;
+      try {
+        builder.add(VPackValue("none"));
+      } catch (...) {
+        locker->unlock();
+        LOG(FATAL) << "out of memory"; FATAL_ERROR_EXIT();
+      }
+
+      // register server
+      AgencyCommResult result =
+        comm.setValue("Current/DBServers/" + _id, builder.slice(), 0.0);
+
+      if (!result.successful()) {
+        locker->unlock();
+        LOG(FATAL) << "unable to register db server in agency"; FATAL_ERROR_EXIT();
+      }
+    } else if (role == ServerState::ROLE_SECONDARY) {
+      std::string keyName = _id;
+      VPackBuilder builder;
+      try {
+        builder.add(VPackValue(keyName));
+      } catch (...) {
+        locker->unlock();
+        LOG(FATAL) << "out of memory"; FATAL_ERROR_EXIT();
+      }
+      
+      // register server
+      AgencyCommResult result = comm.casValue(
+          "Current/DBServers/" + ServerState::instance()->getPrimaryId(),
+          builder.slice(),
+          true,
+          0.0,
+          0.0);
+
+      if (!result.successful()) {
+        locker->unlock();
+        // mop: fail gracefully (allow retry)
+        return false;
+      }
+    }
+  }
+  _role.store(role, std::memory_order_release);
+  return true;
 }

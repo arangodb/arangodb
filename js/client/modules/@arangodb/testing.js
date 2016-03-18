@@ -2357,7 +2357,8 @@ testFuncs.arangob = function(options) {
         break;
       }
 
-      let args = benchTodo;
+      let args = _.clone(benchTodo);
+      delete args.transaction;
 
       if (options.hasOwnProperty('benchargs')) {
         args = _.extend(args, options.benchargs);
