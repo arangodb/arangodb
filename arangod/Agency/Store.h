@@ -149,6 +149,9 @@ public:
   /// @brief Create slice from value
   Slice slice() const;
 
+  /// @brief Get value type  
+  ValueType valueType () const;
+
 protected:
 
   /// @brief Add time to live entry

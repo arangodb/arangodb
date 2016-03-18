@@ -80,14 +80,24 @@ inline HttpHandler::status_t RestAgencyHandler::handleWrite () {
   arangodb::velocypack::Options options; // TODO: User not wait. 
   if (_request->requestType() == HttpRequest::HTTP_REQUEST_POST) {
     write_ret_t ret = _agent->write (_request->toVelocyPack(&options));
+    size_t errors = 0;
     if (ret.accepted) {
       Builder body;
       body.add(VPackValue(VPackValueType::Object));
       _agent->waitFor (ret.indices.back()); // Wait for confirmation (last entry is enough)
       for (size_t i = 0; i < ret.indices.size(); ++i) {
         body.add(std::to_string(i), Value(ret.indices[i]));
+        if (ret.indices[i] == 0) {
+          errors++;
+        }
       }
       body.close();
+      if (errors == ret.indices.size()) { // epic fail
+        _response->setResponseCode(HttpResponse::PRECONDITION_FAILED);
+      } else if (errors == 0) {// full success
+      } else { // 
+        _response->setResponseCode(HttpResponse::PRECONDITION_FAILED); 
+      }
       generateResult(body.slice());
     } else {
       generateError(HttpResponse::TEMPORARY_REDIRECT,307);

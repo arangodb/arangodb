@@ -67,7 +67,7 @@ Node::~Node() {}
 
 Slice Node::slice() const {
   return (_value.size()==0) ?
-    Slice("\x018",&Options::Defaults):Slice(_value.data());
+    Slice("\x00a",&Options::Defaults):Slice(_value.data());
 }
 
 std::string const& Node::name() const {return _name;}
@@ -184,6 +184,10 @@ Node& Node::root() {
   return *tmp;
 }
 
+ValueType Node::valueType() const {
+  return slice().type();
+}
+
 bool Node::addTimeToLive (long millis) {
   root()._time_table[
     std::chrono::system_clock::now() + std::chrono::milliseconds(millis)] =
@@ -200,6 +204,7 @@ bool Node::applies (arangodb::velocypack::Slice const& slice) {
       key = key.substr(1,key.length()-2);
 
       if (slice.hasKey("op")) {
+        
         std::string oper = slice.get("op").toString();
         oper = oper.substr(1,oper.length()-2);
         Slice const& self = this->slice();
@@ -218,8 +223,8 @@ bool Node::applies (arangodb::velocypack::Slice const& slice) {
           return true;
         } else if (oper == "increment") { // Increment
           if (!(self.isInt() || self.isUInt())) {
-            LOG(WARN) << "Element to increment must be integral type";
-            LOG(WARN) << slice.toJson();
+            LOG(WARN) << "Element to increment must be integral type: We are "
+                      << slice.toJson();
             return false;
           }
           Builder tmp;
@@ -229,8 +234,8 @@ bool Node::applies (arangodb::velocypack::Slice const& slice) {
           return true;
         } else if (oper == "decrement") { // Decrement
           if (!(self.isInt() || self.isUInt())) {
-            LOG(WARN) << "Element to decrement must be integral type";
-            LOG(WARN) << slice.toJson();
+            LOG(WARN) << "Element to decrement must be integral type. We are "
+                      << slice.toJson();
             return false;
           }
           Builder tmp;
@@ -240,8 +245,7 @@ bool Node::applies (arangodb::velocypack::Slice const& slice) {
           return true;
         } else if (oper == "push") { // Push
           if (!slice.hasKey("new")) {
-            LOG(WARN) << "Operator push without new value";
-            LOG(WARN) << slice.toJson();
+            LOG(WARN) << "Operator push without new value: " << slice.toJson();
             return false;
           }
           Builder tmp;
@@ -271,8 +275,8 @@ bool Node::applies (arangodb::velocypack::Slice const& slice) {
           return true;
         } else if (oper == "prepend") { // Prepend
           if (!slice.hasKey("new")) {
-            LOG(WARN) << "Operator push without new value";
-            LOG(WARN) << slice.toJson();
+            LOG(WARN) << "Operator prepend without new value: "
+                      << slice.toJson();
             return false;
           }
           Builder tmp;
@@ -304,6 +308,7 @@ bool Node::applies (arangodb::velocypack::Slice const& slice) {
           return true;
         } else {
           LOG(WARN) << "Unknown operation " << oper;
+          return false;
         }
       } else if (slice.hasKey("new")) { // new without set
         *this = slice.get("new");
@@ -325,6 +330,7 @@ bool Node::applies (arangodb::velocypack::Slice const& slice) {
 }
 
 void Node::toBuilder (Builder& builder) const {
+  
   try {
     if (type()==NODE) {
       VPackObjectBuilder guard(&builder);
@@ -338,6 +344,7 @@ void Node::toBuilder (Builder& builder) const {
   } catch (std::exception const& e) {
     std::cout << e.what() << std::endl;
   }
+  
 }
 
 Store::Store (std::string const& name) : Node(name), Thread(name) {}
@@ -463,14 +470,22 @@ bool Store::read (arangodb::velocypack::Slice const& query, Builder& ret) const 
       copy(*i) = (*this)(*i);
     } catch (StoreException const&) {}
   }
+
   // Assemble builder from response tree
-  if (query_strs.size() == 1 && copy(*query_strs.begin()).type() == LEAF) {
+  if (query.type() == VPackValueType::String &&
+      copy(*query_strs.begin()).type() == LEAF) {
     ret.add(copy(*query_strs.begin()).slice());
   } else {
-    copy.toBuilder(ret);
+    if (copy.type() == LEAF && copy.valueType() == VPackValueType::Null) {
+      ret.add(VPackValue(VPackValueType::Object));
+      ret.close();
+    } else {
+      copy.toBuilder(ret);
+    }
   }
   
   return true;
+  
 }
 
 void Store::beginShutdown() {

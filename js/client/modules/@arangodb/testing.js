@@ -1,4 +1,4 @@
-*jshint strict: false, sub: true */
+/*jshint strict: false, sub: true */
 /*global print, arango */
 'use strict';
 
@@ -1580,8 +1580,8 @@ function startInstanceAgency(instanceInfo, protocol, options,
     args["server.endpoint"] = endpoints[i];
     args["database.directory"] = td[i];
     args["log.file"] = fs.join(tmpDataDir, "log" + ports[i]);
-    //args["agency.id"] = String(i);
-    //args["agency.size"] = String(N);
+    args["agency.id"] = String(i);
+    args["agency.size"] = String(N);
 
     if (protocol === "ssl") {
       args["server.keyfile"] = fs.join("UnitTests", "server.pem");
@@ -1599,7 +1599,7 @@ function startInstanceAgency(instanceInfo, protocol, options,
         l.push("--agency.endpoint");
         l.push(endpoints[j]);
       }
-      //args["flatCommands"] = l;
+      args["flatCommands"] = l;
     }
     argss.push(args);
   }
