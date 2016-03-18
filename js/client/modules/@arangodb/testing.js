@@ -102,7 +102,8 @@ const optionsDocumentation = [
   '',
   '   - `build`: the directory containing the binaries',
   '   - `buildType`: Windows build type (Debug, Release), leave empty on linux',
-  '   - `rspec`: the location of rspec',
+  '   - `rspec`: the location of rspec program',
+  '   - `ruby`: the location of ruby program; if empty start rspec directly',
   '',
   '   - `sanitizer`: if set the programs are run with enabled sanitizer',
   '     and need longer tomeouts',
@@ -141,6 +142,7 @@ const optionsDefaults = {
   "password": "",
   "replication": false,
   "rspec": "rspec",
+  "ruby": "",
   "sanitizer": false,
   "skipAql": false,
   "skipArangoB": false,
@@ -1803,7 +1805,17 @@ function rubyTests(options, ssl) {
   let result = {};
 
   let args;
-  let command = options.rspec;
+  let command;
+  let rspec;
+
+  if (options.ruby === "") {
+    command = options.rspec;
+    rspec = undefined;
+  }
+  else {
+    command = options.ruby;
+    rspec = options.rspec;
+  }
 
   const parseRspecJson = function(testCase, res, totalDuration) {
     let tName = camelize(testCase.description);
@@ -1850,7 +1862,11 @@ function rubyTests(options, ssl) {
           "--out", fs.join("out", "UnitTests", te + ".json"),
           "--require", tmpname,
           fs.join("UnitTests", "HttpInterface", te)
-        ];
+               ];
+
+        if (rspec !== undefined) {
+          args = [rspec].concat(args);
+        }
 
         print("\n" + Date() + " rspec trying", te, "...");
 
