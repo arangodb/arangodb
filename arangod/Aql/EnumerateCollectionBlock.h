@@ -33,7 +33,7 @@ namespace arangodb {
 namespace aql {
 class AqlItemBlock;
 struct Collection;
-struct CollectionScanner;
+class CollectionScanner;
 class ExecutionEngine;
 
 class EnumerateCollectionBlock : public ExecutionBlock {
