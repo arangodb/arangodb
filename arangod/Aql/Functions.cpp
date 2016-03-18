@@ -2548,6 +2548,8 @@ AqlValue Functions::ParseIdentifier(
   }
 
   if (identifier.empty()) {
+    RegisterWarning(query, "PARSE_IDENTIFIER",
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
 

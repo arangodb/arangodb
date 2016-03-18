@@ -279,6 +279,7 @@ AqlValue AqlValue::get(arangodb::AqlTransaction* trx,
         VPackSlice found(s.get(name));
         if (found.isCustom()) { 
           // _id needs special treatment
+          mustDestroy = true;
           return AqlValue(trx->extractIdString(s));
         }
         if (!found.isNone()) {
@@ -324,6 +325,7 @@ AqlValue AqlValue::get(arangodb::AqlTransaction* trx,
         VPackSlice found(s.get(names));
         if (found.isCustom()) { 
           // _id needs special treatment
+          mustDestroy = true;
           return AqlValue(trx->extractIdString(s));
         }
         if (!found.isNone()) {
