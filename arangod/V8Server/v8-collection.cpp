@@ -962,7 +962,7 @@ static void InsertVocbaseCol(TRI_vocbase_col_t* col, uint32_t argOffset,
   TRI_GET_GLOBALS();
 
   if (argLength < 1 || argLength > 2) {
-    TRI_V8_THROW_EXCEPTION_USAGE("insert(<data>, [<waitForSync>])");
+    TRI_V8_THROW_EXCEPTION_USAGE("save(<data>, [<waitForSync>])");
   }
 
   InsertOptions options;
@@ -1116,7 +1116,7 @@ static void InsertVocbaseVPack(
   TRI_GET_GLOBALS();
 
   if (argLength < 1 || argLength > 2) {
-    TRI_V8_THROW_EXCEPTION_USAGE("insert(<data>, [<waitForSync>])");
+    TRI_V8_THROW_EXCEPTION_USAGE("save(<data>, [<waitForSync>])");
   }
 
   InsertOptions options;
@@ -2716,7 +2716,7 @@ static void InsertVocbaseColCoordinator(
   // Now get the arguments
   uint32_t const argLength = args.Length() - argOffset;
   if (argLength < 1 || argLength > 2) {
-    TRI_V8_THROW_EXCEPTION_USAGE("insert(<data>, [<waitForSync>])");
+    TRI_V8_THROW_EXCEPTION_USAGE("save(<data>, [<waitForSync>])");
   }
 
   InsertOptions options;
@@ -2987,7 +2987,7 @@ static void InsertEdgeColCoordinator(
   uint32_t const argLength = args.Length() - argOffset;
   if (argLength < 3 || argLength > 4) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "insert(<from>, <to>, <data>, [<waitForSync>])");
+        "save(<from>, <to>, <data>, [<waitForSync>])");
   }
 
   std::string _from = GetId(args, argOffset);
@@ -4080,7 +4080,7 @@ void TRI_InitV8collection(v8::Handle<v8::Context> context, TRI_server_t* server,
                        JS_ExistsVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("figures"),
                        JS_FiguresVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("insert"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("_insert"),
                        JS_InsertVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("insertv"),
                        JS_InsertVocbaseVPack);
@@ -4106,9 +4106,6 @@ void TRI_InitV8collection(v8::Handle<v8::Context> context, TRI_server_t* server,
                        JS_ReplaceVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("rotate"),
                        JS_RotateVocbaseCol);
-  TRI_AddMethodVocbase(
-      isolate, rt, TRI_V8_ASCII_STRING("save"),
-      JS_InsertVocbaseCol);  // note: save is now an alias for insert
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("status"),
                        JS_StatusVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("TRUNCATE"),

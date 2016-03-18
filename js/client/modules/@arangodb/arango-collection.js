@@ -962,6 +962,13 @@ ArangoCollection.prototype.insert = function (from, to, data, waitForSync) {
     url = "/_api/document?collection=" + encodeURIComponent(this.name());
   }
   else if (type === ArangoCollection.TYPE_EDGE) {
+    if (!data && from && typeof from === 'object' && from.hasOwnProperty("_from") && from.hasOwnProperty("_to")) {
+      data = from;
+      waitForSync = to;
+      from = data._from;
+      to = data._to;
+    }
+
     if (typeof from === 'object' && from.hasOwnProperty("_id")) {
       from = from._id;
     }

@@ -454,6 +454,47 @@ ArangoCollection.prototype.last = function (count) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief saves a document in the collection
+/// note: this method is used to save documents and edges, but save() has a
+/// different signature for both. For document collections, the signature is
+/// save(<data>, <waitForSync>), whereas for edge collections, the signature is
+/// save(<from>, <to>, <data>, <waitForSync>)
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype.save =
+ArangoCollection.prototype.insert = function (from, to, data, waitForSync) {
+  var type = this.type();
+
+  if (type === undefined) {
+    type = ArangoCollection.TYPE_DOCUMENT;
+  }
+
+  if (type === ArangoCollection.TYPE_DOCUMENT) {
+    data = from;
+    waitForSync = to;
+    return this._insert(data, waitForSync);
+  }
+  else if (type === ArangoCollection.TYPE_EDGE) {
+    if (!data && from && typeof from === 'object' && from.hasOwnProperty("_from") && from.hasOwnProperty("_to")) {
+      data = from;
+      waitForSync = to;
+      from = data._from;
+      to = data._to;
+    }
+
+    if (typeof from === 'object' && from.hasOwnProperty("_id")) {
+      from = from._id;
+    }
+
+    if (typeof to === 'object' && to.hasOwnProperty("_id")) {
+      to = to._id;
+    }
+  }
+
+  return this._insert(from, to, data, waitForSync);
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock collectionFirstExample
 ////////////////////////////////////////////////////////////////////////////////
 
