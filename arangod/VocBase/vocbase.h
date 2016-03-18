@@ -52,7 +52,7 @@ class Builder;
 namespace aql {
 class QueryList;
 }
-class VocbaseAuthCache;
+struct VocbaseAuthCache;
 class VocbaseAuthInfo;
 class VocbaseCollectionInfo;
 class CollectionKeysRepository;

@@ -28,7 +28,7 @@
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
-class OperationOptions;
+struct OperationOptions;
 class SingleCollectionTransaction;
 
 struct RestImportResult {

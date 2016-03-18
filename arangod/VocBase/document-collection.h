@@ -40,7 +40,7 @@ namespace arangodb {
 class EdgeIndex;
 class Index;
 class KeyGenerator;
-class OperationOptions;
+struct OperationOptions;
 class PrimaryIndex;
 class Transaction;
 namespace velocypack {
