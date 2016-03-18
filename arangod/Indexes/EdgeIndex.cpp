@@ -601,12 +601,12 @@ void EdgeIndex::expandInSearchValues(VPackSlice const slice,
   TRI_ASSERT(slice.isArray());
   builder.openArray();
   for (auto const& side : VPackArrayIterator(slice)) {
-    TRI_ASSERT(side.isArray());
-    builder.openArray();
-    for (auto const& item : VPackArrayIterator(side)) {
-      if (item.isNull()) {
-        builder.add(item);
-      } else {
+    if (side.isNull()) {
+      builder.add(side);
+    } else {
+      TRI_ASSERT(side.isArray());
+      builder.openArray();
+      for (auto const& item : VPackArrayIterator(side)) {
         TRI_ASSERT(item.isObject());
         if (item.hasKey(TRI_SLICE_KEY_EQUAL)) {
           TRI_ASSERT(!item.hasKey(TRI_SLICE_KEY_IN));
@@ -622,8 +622,8 @@ void EdgeIndex::expandInSearchValues(VPackSlice const slice,
           }
         }
       }
+      builder.close();
     }
-    builder.close();
   }
   builder.close();
 }
