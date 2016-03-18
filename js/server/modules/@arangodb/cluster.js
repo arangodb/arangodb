@@ -581,7 +581,6 @@ function createLocalCollections (plannedCollections, planVersion, takeOverRespon
           var localCollections = getLocalCollections();
 
           var collections = plannedCollections[database];
-          var collection;
 
           // diff the collections
           Object.keys(collections).forEach(function(collection) {
