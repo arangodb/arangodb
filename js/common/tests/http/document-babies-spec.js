@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 5000 */
-/*global fail, assertEqual */
+/*global describe, beforeEach, afterEach, it */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -25,7 +25,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const expect = require('chai').expect;
-const sinon = require('sinon');
 
 const arangodb = require("@arangodb");
 const request = require('@arangodb/request');
@@ -512,7 +511,7 @@ describe('babies collection document', function() {
       expect(req2.statusCode).to.equal(202);
       expect(collection.count()).to.equal(l1.length);
 
-      let b2 = JSON.parse(req2.rawBody);
+      JSON.parse(req2.rawBody);
 
       let l3 = [{
         value: 7
@@ -575,7 +574,7 @@ describe('babies collection document', function() {
       expect(req2.statusCode).to.equal(202);
       expect(collection.count()).to.equal(l1.length);
 
-      let b2 = JSON.parse(req2.rawBody);
+      JSON.parse(req2.rawBody);
 
       let l3 = [{
         value: 7

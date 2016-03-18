@@ -42,6 +42,7 @@ using Json = arangodb::basics::Json;
 IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
     : ExecutionBlock(engine, en),
       _collection(en->collection()),
+      _result(std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR)),
       _posInDocs(0),
       _currentIndex(0),
       _indexes(en->getIndexes()),
@@ -377,17 +378,17 @@ bool IndexBlock::readIndex(size_t atMost) {
   bool isReverse = (static_cast<IndexNode const*>(getPlanNode()))->_reverse;
   bool isLastIndex = (_currentIndex == lastIndexNr && !isReverse) ||
                      (_currentIndex == 0 && isReverse);
-  auto result = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
+  auto _result = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
   while (_cursor != nullptr) {
     if (!_cursor->hasMore()) {
       startNextCursor();
       continue;
     }
-    _cursor->getMore(result, atMost, true);
-    if (result->failed()) {
-      THROW_ARANGO_EXCEPTION(result->code);
+    _cursor->getMore(_result, atMost, true);
+    if (_result->failed()) {
+      THROW_ARANGO_EXCEPTION(_result->code);
     }
-    VPackSlice slice = result->slice();
+    VPackSlice slice = _result->slice();
     TRI_ASSERT(slice.isArray());
     size_t length = static_cast<size_t>(slice.length());
 
