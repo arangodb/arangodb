@@ -33,7 +33,7 @@
 struct TRI_doc_mptr_t;
 
 namespace arangodb {
-class OperationCursor;
+struct OperationCursor;
 
 namespace velocypack {
 class Slice;
