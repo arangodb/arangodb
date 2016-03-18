@@ -541,9 +541,9 @@ function handleDatabaseChanges (plan) {
 /// @brief create collections if they exist in the plan but not locally
 ////////////////////////////////////////////////////////////////////////////////
 
-function createLocalCollections (plannedCollections, planVersion) {
+function createLocalCollections (plannedCollections, planVersion, takeOverResponsibility) {
   var ourselves = global.ArangoServerState.id();
-
+  
   var createCollectionAgency = function (database, shard, collInfo, error) {
     var payload = { error: error.error,
                     errorNum: error.errorNum,
@@ -551,10 +551,15 @@ function createLocalCollections (plannedCollections, planVersion) {
                     indexes: collInfo.indexes,
                     servers: [ ourselves ],
                     planVersion: planVersion };
+
     global.ArangoAgency.set("Current/Collections/" + database + "/" + 
                             collInfo.planId + "/" + shard,
                             payload);
   };
+  
+  // mop: just a function alias but this way one at least knows what it is supposed to do :S
+  var takeOver = createCollectionAgency;
+
 
   var db = require("internal").db;
   db._useDatabase("_system");
@@ -579,198 +584,214 @@ function createLocalCollections (plannedCollections, planVersion) {
           var collection;
 
           // diff the collections
-          for (collection in collections) {
-            if (collections.hasOwnProperty(collection)) {
-              var collInfo = collections[collection];
-              var shards = collInfo.shards;
-              var shard;
+          Object.keys(collections).forEach(function(collection) {
+            var collInfo = collections[collection];
+            var shards = collInfo.shards;
+            var shard;
 
-              collInfo.planId = collInfo.id;
-              var save = [collInfo.id, collInfo.name];
-              delete collInfo.id;  // must not actually set it here
-              delete collInfo.name;  // name is now shard
+            collInfo.planId = collInfo.id;
+            var save = [collInfo.id, collInfo.name];
+            delete collInfo.id;  // must not actually set it here
+            delete collInfo.name;  // name is now shard
 
-              for (shard in shards) {
-                if (shards.hasOwnProperty(shard)) {
-                  if (shards[shard][0] === ourselves) {
-                    // found a shard we are responsible for
+            for (shard in shards) {
+              if (shards.hasOwnProperty(shard)) {
+                var didWrite = false;
+                if (shards[shard][0] === ourselves) {
+                  // found a shard we are responsible for
 
-                    var error = { error: false, errorNum: 0,
-                                  errorMessage: "no error" };
+                  var error = { error: false, errorNum: 0,
+                                errorMessage: "no error" };
 
-                    if (! localCollections.hasOwnProperty(shard)) {
-                      // must create this shard
-                      console.info("creating local shard '%s/%s' for central '%s/%s'",
-                                   database,
-                                   shard,
-                                   database,
-                                   collInfo.planId);
+                  if (! localCollections.hasOwnProperty(shard)) {
+                    // must create this shard
+                    console.info("creating local shard '%s/%s' for central '%s/%s'",
+                                 database,
+                                 shard,
+                                 database,
+                                 collInfo.planId);
 
-                      try {
-                        if (collInfo.type === ArangoCollection.TYPE_EDGE) {
-                          db._createEdgeCollection(shard, collInfo);
-                        }
-                        else {
-                          db._create(shard, collInfo);
-                        }
+                    try {
+                      if (collInfo.type === ArangoCollection.TYPE_EDGE) {
+                        db._createEdgeCollection(shard, collInfo);
                       }
-                      catch (err2) {
-                        error = { error: true, errorNum: err2.errorNum,
-                                  errorMessage: err2.errorMessage };
-                        console.error("creating local shard '%s/%s' for central '%s/%s' failed: %s",
-                                      database,
-                                      shard,
-                                      database,
-                                      collInfo.planId,
-                                      JSON.stringify(err2));
+                      else {
+                        db._create(shard, collInfo);
                       }
+                    }
+                    catch (err2) {
+                      error = { error: true, errorNum: err2.errorNum,
+                                errorMessage: err2.errorMessage };
+                      console.error("creating local shard '%s/%s' for central '%s/%s' failed: %s",
+                                    database,
+                                    shard,
+                                    database,
+                                    collInfo.planId,
+                                    JSON.stringify(err2));
+                    }
 
+                    writeLocked({ part: "Current" },
+                                createCollectionAgency,
+                                [ database, shard, collInfo, error ]);
+                    didWrite = true;
+                  }
+                  else {
+                    if (localCollections[shard].status !== collInfo.status) {
+                      console.info("detected status change for local shard '%s/%s'",
+                                   database,
+                                   shard);
+
+                      if (collInfo.status === ArangoCollection.STATUS_UNLOADED) {
+                        console.info("unloading local shard '%s/%s'",
+                                     database,
+                                     shard);
+                        db._collection(shard).unload();
+                      }
+                      else if (collInfo.status === ArangoCollection.STATUS_LOADED) {
+                        console.info("loading local shard '%s/%s'",
+                                     database,
+                                     shard);
+                        db._collection(shard).load();
+                      }
                       writeLocked({ part: "Current" },
                                   createCollectionAgency,
                                   [ database, shard, collInfo, error ]);
+                      didWrite = true;
                     }
-                    else {
-                      if (localCollections[shard].status !== collInfo.status) {
-                        console.info("detected status change for local shard '%s/%s'",
-                                     database,
-                                     shard);
 
-                        if (collInfo.status === ArangoCollection.STATUS_UNLOADED) {
-                          console.info("unloading local shard '%s/%s'",
-                                       database,
-                                       shard);
-                          db._collection(shard).unload();
-                        }
-                        else if (collInfo.status === ArangoCollection.STATUS_LOADED) {
-                          console.info("loading local shard '%s/%s'",
-                                       database,
-                                       shard);
-                          db._collection(shard).load();
-                        }
-                        writeLocked({ part: "Current" },
-                                    createCollectionAgency,
-                                    [ database, shard, collInfo, error ]);
+                    // collection exists, now compare collection properties
+                    var properties = { };
+                    var cmp = [ "journalSize", "waitForSync", "doCompact",
+                                "indexBuckets" ];
+                    for (i = 0; i < cmp.length; ++i) {
+                      var p = cmp[i];
+                      if (localCollections[shard][p] !== collInfo[p]) {
+                        // property change
+                        properties[p] = collInfo[p];
                       }
+                    }
 
-                      // collection exists, now compare collection properties
-                      var properties = { };
-                      var cmp = [ "journalSize", "waitForSync", "doCompact",
-                                  "indexBuckets" ];
-                      for (i = 0; i < cmp.length; ++i) {
-                        var p = cmp[i];
-                        if (localCollections[shard][p] !== collInfo[p]) {
-                          // property change
-                          properties[p] = collInfo[p];
-                        }
+                    if (Object.keys(properties).length > 0) {
+                      console.info("updating properties for local shard '%s/%s'",
+                                   database,
+                                   shard);
+
+                      try {
+                        db._collection(shard).properties(properties);
                       }
+                      catch (err3) {
+                        error = { error: true, errorNum: err3.errorNum,
+                                  errorMessage: err3.errorMessage };
+                      }
+                      writeLocked({ part: "Current" },
+                                  createCollectionAgency,
+                                  [ database, shard, collInfo, error ]);
+                      didWrite = true;
+                    }
+                  }
 
-                      if (Object.keys(properties).length > 0) {
-                        console.info("updating properties for local shard '%s/%s'",
+                  if (error.error) {
+                    if (takeOverResponsibility && !didWrite) {
+                      writeLocked({ part: "Current" },
+                                  takeOver,
+                                  [ database, shard, collInfo, error ]);
+                    }
+                    continue;  // No point to look for properties and
+                               // indices, if the creation has not worked
+                  }
+
+                  var indexes = getIndexMap(shard);
+                  var idx;
+                  var index;
+
+                  if (collInfo.hasOwnProperty("indexes")) {
+                    for (i = 0; i < collInfo.indexes.length; ++i) {
+                      index = collInfo.indexes[i];
+
+                      var changed = false;
+
+                      if (index.type !== "primary" && index.type !== "edge" &&
+                          ! indexes.hasOwnProperty(index.id)) {
+                        console.info("creating index '%s/%s': %s",
                                      database,
-                                     shard);
+                                     shard,
+                                     JSON.stringify(index));
 
                         try {
-                          db._collection(shard).properties(properties);
+                          arangodb.db._collection(shard).ensureIndex(index);
+                          index.error = false;
+                          index.errorNum = 0;
+                          index.errorMessage = "";
                         }
-                        catch (err3) {
-                          error = { error: true, errorNum: err3.errorNum,
-                                    errorMessage: err3.errorMessage };
+                        catch (err5) {
+                          index.error = true;
+                          index.errorNum = err5.errorNum;
+                          index.errorMessage = err5.errorMessage;
                         }
+
+                        changed = true;
+                      }
+                      if (changed) {
                         writeLocked({ part: "Current" },
                                     createCollectionAgency,
                                     [ database, shard, collInfo, error ]);
+                        didWrite = true;
                       }
                     }
 
-                    if (error.error) {
-                      continue;  // No point to look for properties and
-                                 // indices, if the creation has not worked
-                    }
+                    var changed2 = false;
+                    for (idx in indexes) {
+                      if (indexes.hasOwnProperty(idx)) {
+                        // found an index in the index map, check if it must be deleted
 
-                    var indexes = getIndexMap(shard);
-                    var idx;
-                    var index;
-
-                    if (collInfo.hasOwnProperty("indexes")) {
-                      for (i = 0; i < collInfo.indexes.length; ++i) {
-                        index = collInfo.indexes[i];
-
-                        var changed = false;
-
-                        if (index.type !== "primary" && index.type !== "edge" &&
-                            ! indexes.hasOwnProperty(index.id)) {
-                          console.info("creating index '%s/%s': %s",
-                                       database,
-                                       shard,
-                                       JSON.stringify(index));
-
-                          try {
-                            arangodb.db._collection(shard).ensureIndex(index);
-                            index.error = false;
-                            index.errorNum = 0;
-                            index.errorMessage = "";
-                          }
-                          catch (err5) {
-                            index.error = true;
-                            index.errorNum = err5.errorNum;
-                            index.errorMessage = err5.errorMessage;
-                          }
-
-                          changed = true;
-                        }
-                        if (changed) {
-                          writeLocked({ part: "Current" },
-                                      createCollectionAgency,
-                                      [ database, shard, collInfo, error ]);
-                        }
-                      }
-
-                      var changed2 = false;
-                      for (idx in indexes) {
-                        if (indexes.hasOwnProperty(idx)) {
-                          // found an index in the index map, check if it must be deleted
-
-                          if (indexes[idx].type !== "primary" && indexes[idx].type !== "edge") {
-                            var found = false;
-                            for (i = 0; i < collInfo.indexes.length; ++i) {
-                              if (collInfo.indexes[i].id === idx) {
-                                found = true;
-                                break;
-                              }
-                            }
-
-                            if (! found) {
-                              // found an index to delete locally
-                              changed2 = true;
-                              index = indexes[idx];
-
-                              console.info("dropping index '%s/%s': %s",
-                                            database,
-                                            shard,
-                                            JSON.stringify(index));
-
-                              arangodb.db._collection(shard).dropIndex(index);
-
-                              delete indexes[idx];
-                              collInfo.indexes.splice(i, i);
+                        if (indexes[idx].type !== "primary" && indexes[idx].type !== "edge") {
+                          var found = false;
+                          for (i = 0; i < collInfo.indexes.length; ++i) {
+                            if (collInfo.indexes[i].id === idx) {
+                              found = true;
+                              break;
                             }
                           }
+
+                          if (! found) {
+                            // found an index to delete locally
+                            changed2 = true;
+                            index = indexes[idx];
+
+                            console.info("dropping index '%s/%s': %s",
+                                          database,
+                                          shard,
+                                          JSON.stringify(index));
+
+                            arangodb.db._collection(shard).dropIndex(index);
+
+                            delete indexes[idx];
+                            collInfo.indexes.splice(i, i);
+                          }
                         }
                       }
-                      if (changed2) {
-                        writeLocked({ part: "Current" },
-                                    createCollectionAgency,
-                                    [ database, shard, collInfo, error ]);
-                      }
                     }
+                    if (changed2) {
+                      writeLocked({ part: "Current" },
+                                  createCollectionAgency,
+                                  [ database, shard, collInfo, error ]);
+                      didWrite = true;
+                    }
+                  }
 
+                  if (takeOverResponsibility && !didWrite) {
+                    console.info("HMMMM WRITE");
+                    writeLocked({ part: "Current" },
+                        takeOver,
+                        [ database, shard, collInfo, error ]);
                   }
                 }
               }
-              collInfo.id = save[0];
-              collInfo.name = save[1];
             }
-          }
+            collInfo.id = save[0];
+            collInfo.name = save[1];
+            
+          });
         }
         catch (err) {
           // always return to previous database
@@ -1062,20 +1083,20 @@ function synchronizeLocalFollowerCollections (plannedCollections) {
 /// @brief handle collection changes
 ////////////////////////////////////////////////////////////////////////////////
 
-function handleCollectionChanges (plan) {
+function handleCollectionChanges (plan, takeOverResponsibility) {
   var plannedCollections = getByPrefix3d(plan, "Plan/Collections/");
 
   var ok = true;
 
   try {
-    createLocalCollections(plannedCollections, plan["Plan/Version"]);
+    createLocalCollections(plannedCollections, plan["Plan/Version"], takeOverResponsibility);
     dropLocalCollections(plannedCollections);
     cleanupCurrentCollections(plannedCollections);
     synchronizeLocalFollowerCollections(plannedCollections);
   }
   catch (err) {
     console.error("Caught error in handleCollectionChanges: " + 
-                  JSON.stringify(err));
+                  JSON.stringify(err), JSON.stringify(err.stack));
     ok = false; 
   }
   return ok;
@@ -1183,8 +1204,11 @@ function handleChanges (plan, current) {
     }
     else { // role === "SECONDARY"
       if (plan.hasOwnProperty("Plan/DBServers/"+myId)) {
-        // Ooops! We are now a primary!
         changed = ArangoServerState.redetermineRole();
+        if (!changed) {
+          // mop: oops...changing role has failed. retry next time.
+          return false;
+        }
       }
       else {
         var found = null;
@@ -1219,7 +1243,7 @@ function handleChanges (plan, current) {
   if (role === "PRIMARY" || role === "COORDINATOR") {
     // Note: This is only ever called for DBservers (primary and secondary),
     // we keep the coordinator case here just in case...
-    success = handleCollectionChanges(plan, current);
+    success = handleCollectionChanges(plan, changed);
   }
   else {
     success = setupReplication();

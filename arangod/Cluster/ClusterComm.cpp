@@ -398,7 +398,7 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
       cm->leaseConnection(res->endpoint);
 
   if (nullptr == connection) {
-    res->status = CL_COMM_ERROR;
+    res->status = CL_COMM_BACKEND_UNAVAILABLE;
     res->errorMessage =
         "cannot create connection to server '" + res->serverID + "'";
     if (logConnectionErrors()) {
@@ -444,7 +444,7 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
       if (res->errorMessage == "Request timeout reached") {
         res->status = CL_COMM_TIMEOUT;
       } else {
-        res->status = CL_COMM_ERROR;
+        res->status = CL_COMM_BACKEND_UNAVAILABLE;
       }
       cm->brokenConnection(connection);
       client->invalidateConnection();
@@ -1062,7 +1062,7 @@ void ClusterCommThread::run() {
         httpclient::ConnectionManager::SingleServerConnection* connection =
             cm->leaseConnection(op->result.endpoint);
         if (nullptr == connection) {
-          op->result.status = CL_COMM_ERROR;
+          op->result.status = CL_COMM_BACKEND_UNAVAILABLE;
           op->result.errorMessage = "cannot create connection to server: ";
           op->result.errorMessage += op->result.serverID;
           if (cc->logConnectionErrors()) {
@@ -1112,7 +1112,7 @@ void ClusterCommThread::run() {
               op->result.status = CL_COMM_TIMEOUT;
               op->result.errorMessage = "timeout";
             } else {
-              op->result.status = CL_COMM_ERROR;
+              op->result.status = CL_COMM_BACKEND_UNAVAILABLE;
               op->result.errorMessage = client->getErrorMessage();
             }
             cm->brokenConnection(connection);

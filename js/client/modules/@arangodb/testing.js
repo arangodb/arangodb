@@ -1,4 +1,4 @@
-/*jshint strict: false, sub: true */
+*jshint strict: false, sub: true */
 /*global print, arango */
 'use strict';
 
@@ -122,7 +122,7 @@ const optionsDocumentation = [
 
 const optionsDefaults = {
   "build": "",
-  "buildType": "",    
+  "buildType": "",
   "cleanup": true,
   "cluster": false,
   "clusterNodes": 2,
@@ -2275,15 +2275,18 @@ const benchTodos = [{
   "requests": "500",
   "concurrency": "3",
   "test-case": "aqltrx",
-  "complexity": "1"
+  "complexity": "1",
+  "transaction": true
 }, {
   "requests": "100",
   "concurrency": "3",
-  "test-case": "counttrx"
+  "test-case": "counttrx",
+  "transaction": true
 }, {
   "requests": "500",
   "concurrency": "3",
-  "test-case": "multitrx"
+  "test-case": "multitrx",
+  "transaction": true
 }];
 
 testFuncs.arangob = function(options) {
@@ -2329,9 +2332,7 @@ testFuncs.arangob = function(options) {
     }
 
     // On the cluster we do not yet have working transaction functionality:
-    if (!options.cluster ||
-      (benchTodo.test !== "counttrx" &&
-        benchTodo.test !== "multitrx")) {
+    if (!options.cluster || !benchTodo.transaction) {
 
       if (!continueTesting) {
         print("Skipping " + benchTodo + ", server is gone.");
@@ -2346,7 +2347,8 @@ testFuncs.arangob = function(options) {
         break;
       }
 
-      let args = benchTodo;
+      let args = _.clone(benchTodo);
+      delete args.transaction;
 
       if (options.hasOwnProperty('benchargs')) {
         args = _.extend(args, options.benchargs);
@@ -4168,11 +4170,11 @@ function unitTest(cases, options) {
   BIN_DIR = fs.join(TOP_DIR, builddir, "bin");
   UNITTESTS_DIR = fs.join(TOP_DIR, fs.join(builddir, "tests"));
 
-  if (options.buildType !== "")  {
+  if (options.buildType !== "") {
     BIN_DIR = fs.join(BIN_DIR, options.buildType);
     UNITTESTS_DIR = fs.join(UNITTESTS_DIR, options.buildType);
   }
-	
+
   CONFIG_DIR = fs.join(TOP_DIR, builddir, "etc", "arangodb");
   ARANGOB_BIN = fs.join(BIN_DIR, "arangob");
   ARANGODUMP_BIN = fs.join(BIN_DIR, "arangodump");
