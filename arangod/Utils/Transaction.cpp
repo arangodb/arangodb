@@ -776,7 +776,7 @@ OperationResult Transaction::anyLocal(std::string const& collectionName,
       indexScan(collectionName, Transaction::CursorType::ANY, "", {}, skip,
                 limit, 1000, false);
 
-  auto result = std::make_shared<OperationResult>();
+  auto result = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
   while (cursor->hasMore()) {
     cursor->getMore(result);
 
@@ -2285,26 +2285,11 @@ std::shared_ptr<OperationCursor> Transaction::indexScan(
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                        "The index id cannot be empty.");
       }
-      arangodb::Index* idx = nullptr;
-
-      if (!arangodb::Index::validateId(indexId.c_str())) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
-      }
-      TRI_idx_iid_t iid = arangodb::basics::StringUtils::uint64(indexId);
-      idx = document->lookupIndex(iid);
-
-      if (idx == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
-                                       "Could not find index '" + indexId +
-                                           "' in collection '" +
-                                           collectionName + "'.");
-      }
-      
-      // We have successfully found an index with the requested id.
-      
+      arangodb::Index* idx = getIndexByIdentifier(collectionName, indexId);
       // Normalize the search values
       VPackBuilder expander;
       idx->expandInSearchValues(search, expander);
+      LOG(INFO) << expander.slice().toJson();
 
       // Now collect the Iterator
       IndexIteratorContext ctxt(_vocbase, resolver());

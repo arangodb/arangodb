@@ -39,7 +39,7 @@
 namespace arangodb {
 
 namespace basics {
-class AttributeName;
+struct AttributeName;
 }
 
 namespace velocypack {
@@ -50,9 +50,9 @@ class Index;
 
 namespace aql {
 class Ast;
-class AstNode;
+struct AstNode;
 class SortCondition;
-class Variable;
+struct Variable;
 }
 
 //////////////////////////////////////////////////////////////////////////////
