@@ -102,6 +102,7 @@ const optionsDocumentation = [
   '',
   '   - `build`: the directory containing the binaries',
   '   - `buildType`: Windows build type (Debug, Release), leave empty on linux',
+  '   - `rspec`: the location of rspec',
   '',
   '   - `sanitizer`: if set the programs are run with enabled sanitizer',
   '     and need longer tomeouts',
@@ -139,6 +140,7 @@ const optionsDefaults = {
   "onlyNightly": false,
   "password": "",
   "replication": false,
+  "rspec": "rspec",
   "sanitizer": false,
   "skipAql": false,
   "skipArangoB": false,
@@ -1801,13 +1803,7 @@ function rubyTests(options, ssl) {
   let result = {};
 
   let args;
-  let command;
-
-  if (require("internal").platform.substr(0, 3) === 'win') {
-    command = "rspec.bat";
-  } else {
-    command = "rspec";
-  }
+  let command = options.rspec;
 
   const parseRspecJson = function(testCase, res, totalDuration) {
     let tName = camelize(testCase.description);
