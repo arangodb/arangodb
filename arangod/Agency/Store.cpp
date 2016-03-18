@@ -239,10 +239,6 @@ bool Node::applies (arangodb::velocypack::Slice const& slice) {
           *this = tmp.slice();
           return true;
         } else if (oper == "push") { // Push
-          if (!self.isArray()) {
-            LOG(WARN) << "Push operation only on array types! We are " <<
-              self.toString();
-          }
           if (!slice.hasKey("new")) {
             LOG(WARN) << "Operator push without new value";
             LOG(WARN) << slice.toJson();
@@ -250,34 +246,30 @@ bool Node::applies (arangodb::velocypack::Slice const& slice) {
           }
           Builder tmp;
           tmp.openArray();
-          for (auto const& old : VPackArrayIterator(self))
-            tmp.add(old);
+          if (self.isArray()) {
+            for (auto const& old : VPackArrayIterator(self))
+              tmp.add(old);
+          }
           tmp.add(slice.get("new"));
           tmp.close();
           *this = tmp.slice();
           return true;
         } else if (oper == "pop") { // Pop
-          if (!self.isArray()) {
-            LOG(WARN) << "Pop operation only on array types! We are " <<
-              self.toString();
-          }
           Builder tmp;
           tmp.openArray();
-          VPackArrayIterator it(self);
-          size_t j = it.size()-1;
-          for (auto old : it) {
-            tmp.add(old);
-            if (--j==0)
-              break;
+          if (self.isArray()) {
+            VPackArrayIterator it(self);
+            size_t j = it.size()-1;
+            for (auto old : it) {
+              tmp.add(old);
+              if (--j==0)
+                break;
+            }
           }
           tmp.close();
           *this = tmp.slice();
           return true;
         } else if (oper == "prepend") { // Prepend
-          if (!self.isArray()) {
-            LOG(WARN) << "Prepend operation only on array types! We are " <<
-              self.toString();
-          }
           if (!slice.hasKey("new")) {
             LOG(WARN) << "Operator push without new value";
             LOG(WARN) << slice.toJson();
@@ -286,27 +278,27 @@ bool Node::applies (arangodb::velocypack::Slice const& slice) {
           Builder tmp;
           tmp.openArray();
           tmp.add(slice.get("new"));
+          if (self.isArray()) {
           for (auto const& old : VPackArrayIterator(self))
             tmp.add(old);
+          }
           tmp.close();
           *this = tmp.slice();
           return true;
         } else if (oper == "shift") { // Shift
-          if (!self.isArray()) {
-            LOG(WARN) << "Shift operation only on array types! We are " <<
-              self.toString();
-          }
           Builder tmp;
           tmp.openArray();
-          VPackArrayIterator it(self);
-          bool first = true;
-          for (auto old : it) {
-            if (first) {
-              first = false;
-            } else {
-              tmp.add(old);
+          if (self.isArray()) { // If a
+            VPackArrayIterator it(self);
+            bool first = true;
+            for (auto old : it) {
+              if (first) {
+                first = false;
+              } else {
+                tmp.add(old);
+              }
             }
-          }
+          } 
           tmp.close();
           *this = tmp.slice();
           return true;
