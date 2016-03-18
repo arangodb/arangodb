@@ -1799,7 +1799,8 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
   
   VPackBuilder updateBuilder;
 
-  { VPackObjectBuilder guard(&updateBuilder);
+  { 
+    VPackObjectBuilder guard(&updateBuilder);
     int res = V8ToVPackNoKeyRevId(isolate, updateBuilder, args[1]);
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);

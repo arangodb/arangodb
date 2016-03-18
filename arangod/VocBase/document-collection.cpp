@@ -3408,6 +3408,12 @@ int TRI_document_collection_t::update(Transaction* trx,
       }
     }
 
+    if (newSlice.length() <= 1) {
+      // no need to do anything
+      *mptr = *oldHeader;
+      return TRI_ERROR_NO_ERROR;
+    }
+
     // merge old and new values 
     TransactionBuilderLeaser builder(trx);
     if (options.recoveryMarker == nullptr) {

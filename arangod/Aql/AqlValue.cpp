@@ -902,6 +902,8 @@ AqlValue AqlValue::CreateFromBlocks(
 int AqlValue::Compare(arangodb::AqlTransaction* trx, AqlValue const& left,
                        AqlValue const& right,
                        bool compareUtf8) {
+  VPackOptions* options = trx->transactionContext()->getVPackOptions();
+
   AqlValue::AqlValueType const leftType = left.type();
   AqlValue::AqlValueType const rightType = right.type();
 
@@ -914,7 +916,7 @@ int AqlValue::Compare(arangodb::AqlTransaction* trx, AqlValue const& left,
       VPackBuilder rightBuilder;
       right.toVelocyPack(trx, rightBuilder);
     
-      return arangodb::basics::VelocyPackHelper::compare(leftBuilder.slice(), rightBuilder.slice(), compareUtf8);
+      return arangodb::basics::VelocyPackHelper::compare(leftBuilder.slice(), rightBuilder.slice(), compareUtf8, options);
     }
     // fall-through to other types intentional
   }
@@ -926,7 +928,7 @@ int AqlValue::Compare(arangodb::AqlTransaction* trx, AqlValue const& left,
     case VPACK_POINTER:
     case VPACK_INLINE:
     case VPACK_EXTERNAL: {
-      return arangodb::basics::VelocyPackHelper::compare(left.slice(), right.slice(), compareUtf8);
+      return arangodb::basics::VelocyPackHelper::compare(left.slice(), right.slice(), compareUtf8, options);
     }
     case DOCVEC: {
       // use lexicographic ordering of AqlValues regardless of block,
