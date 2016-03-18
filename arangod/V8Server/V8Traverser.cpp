@@ -1029,7 +1029,8 @@ void DepthFirstTraverser::EdgeGetter::nextEdge(
         return;
       }
       // There is a new Cursor on top of the stack, try it
-      *last = 0;
+      _posInCursor.push(0);
+      last = &_posInCursor.top();
       continue;
     }
     edge = edge.at(*last);
