@@ -1,4 +1,4 @@
-*jshint strict: false, sub: true */
+/*jshint strict: false, sub: true */
 /*global print, arango */
 'use strict';
 
