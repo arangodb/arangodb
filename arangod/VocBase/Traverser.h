@@ -201,7 +201,7 @@ struct TraverserOptions {
 
   uint64_t maxDepth;
 
-  TraverserOptions(arangodb::Transaction* trx) : _trx(trx), minDepth(1), maxDepth(1) {}
+  explicit TraverserOptions(arangodb::Transaction* trx) : _trx(trx), minDepth(1), maxDepth(1) {}
 
   void setCollections(std::vector<std::string> const&, TRI_edge_direction_e);
   void setCollections(std::vector<std::string> const&, std::vector<TRI_edge_direction_e> const&);
@@ -221,7 +221,7 @@ class Traverser {
   /// @brief Constructor. This is an abstract only class.
   //////////////////////////////////////////////////////////////////////////////
 
-  Traverser(arangodb::Transaction* trx)
+  explicit Traverser(arangodb::Transaction* trx)
       : _readDocuments(0),
         _filteredPaths(0),
         _pruneNext(false),

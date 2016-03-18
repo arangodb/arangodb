@@ -263,7 +263,6 @@ ServerState::RoleEnum ServerState::getRole() {
     return role;
   }
 
-  std::string info = _localInfo;
   std::string id = _id;
 
   if (id.empty()) {

@@ -37,6 +37,7 @@ ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
     : _engine(engine),
       _trx(engine->getQuery()->trx()),
       _exeNode(ep),
+      _pos(0),
       _done(false) {}
 
 ExecutionBlock::~ExecutionBlock() {
