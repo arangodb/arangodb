@@ -975,12 +975,13 @@
          or OS=="netbsd" or OS=="qnx" or OS=="aix"', {
         'conditions': [
           [ 'v8_no_strict_aliasing==1', {
-            'cflags': [ '-fno-strict-aliasing -m64' ],
+            'cflags': [ '-fno-strict-aliasing' ],
           }],
         ],  # conditions
       }],
       ['OS=="solaris"', {
         'defines': [ '__C99FEATURES__=1' ],  # isinf() etc.
+        'cflags': ['-m64']
       }],
       ['OS=="freebsd" or OS=="openbsd"', {
         'cflags': [ '-I/usr/local/include' ],

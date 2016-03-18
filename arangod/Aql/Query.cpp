@@ -931,9 +931,9 @@ QueryResult Query::explain() {
 
     QueryResult result(TRI_ERROR_NO_ERROR);
     QueryRegistry localRegistry;
-    result.result = std::make_shared<VPackBuilder>();
 
     if (allPlans()) {
+      result.result = std::make_shared<VPackBuilder>();
       {
         VPackArrayBuilder guard(result.result.get());
 
@@ -943,7 +943,7 @@ QueryResult Query::explain() {
 
           it->findVarUsage();
           it->planRegisters();
-          result.result = it->toVelocyPack(parser.ast(), verbosePlans());
+          it->toVelocyPack(*result.result.get(), parser.ast(), verbosePlans());
         }
       }
       // cacheability not available here

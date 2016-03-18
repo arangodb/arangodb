@@ -101,6 +101,8 @@ class ExecutionPlan {
   //////////////////////////////////////////////////////////////////////////////
 
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(Ast*, bool) const;
+  
+  void toVelocyPack(arangodb::velocypack::Builder&, Ast*, bool) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check if the plan is empty
