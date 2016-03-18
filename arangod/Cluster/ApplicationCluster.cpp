@@ -355,17 +355,16 @@ bool ApplicationCluster::open() {
   if (!enabled()) {
     return true;
   }
-
-  ServerState::RoleEnum role = ServerState::instance()->getRole();
-
-  // tell the agency that we are ready
-  {
-    AgencyComm comm;
-    AgencyCommResult result;
-
+  
+  AgencyComm comm;
+  AgencyCommResult result;
+  
+  bool success; 
+  do {
     AgencyCommLocker locker("Current", "WRITE");
-
-    if (locker.successful()) {
+    
+    success = locker.successful();
+    if (success) {
       VPackBuilder builder;
       try {
         VPackObjectBuilder b(&builder);
@@ -382,69 +381,22 @@ bool ApplicationCluster::open() {
       locker.unlock();
       LOG(FATAL) << "unable to register server in agency: http code: " << result.httpCode() << ", body: " << result.body(); FATAL_ERROR_EXIT();
     }
-
-    if (role == ServerState::ROLE_COORDINATOR) {
-      VPackBuilder builder;
-      try {
-        builder.add(VPackValue("none"));
-      } catch (...) {
-        locker.unlock();
-        LOG(FATAL) << "out of memory"; FATAL_ERROR_EXIT();
-      }
-
-      ServerState::instance()->setState(ServerState::STATE_SERVING);
-
-      // register coordinator
-      AgencyCommResult result =
-          comm.setValue("Current/Coordinators/" + _myId, builder.slice(), 0.0);
-
-      if (!result.successful()) {
-        locker.unlock();
-        LOG(FATAL) << "unable to register coordinator in agency"; FATAL_ERROR_EXIT();
-      }
-    } else if (role == ServerState::ROLE_PRIMARY) {
-      VPackBuilder builder;
-      try {
-        builder.add(VPackValue("none"));
-      } catch (...) {
-        locker.unlock();
-        LOG(FATAL) << "out of memory"; FATAL_ERROR_EXIT();
-      }
-
-      ServerState::instance()->setState(ServerState::STATE_SERVINGASYNC);
-
-      // register server
-      AgencyCommResult result =
-          comm.setValue("Current/DBServers/" + _myId, builder.slice(), 0.0);
-
-      if (!result.successful()) {
-        locker.unlock();
-        LOG(FATAL) << "unable to register db server in agency"; FATAL_ERROR_EXIT();
-      }
-    } else if (role == ServerState::ROLE_SECONDARY) {
-      std::string keyName = std::string("\"") + _myId + std::string("\"");
-      VPackBuilder builder;
-      try {
-        builder.add(VPackValue(keyName));
-      } catch (...) {
-        locker.unlock();
-        LOG(FATAL) << "out of memory"; FATAL_ERROR_EXIT();
-      }
-
-      ServerState::instance()->setState(ServerState::STATE_SYNCING);
-
-      // register server
-      AgencyCommResult result = comm.setValue(
-          "Current/DBServers/" + ServerState::instance()->getPrimaryId(),
-          builder.slice(), 0.0);
-
-      if (!result.successful()) {
-        locker.unlock();
-        LOG(FATAL) << "unable to register secondary db server in agency"; FATAL_ERROR_EXIT();
-      }
+    
+    if (success) {
+      break;
     }
-  }
+    sleep(1);
+  } while (true);
 
+  ServerState::RoleEnum role = ServerState::instance()->getRole();
+
+  if (role == ServerState::ROLE_COORDINATOR) {
+    ServerState::instance()->setState(ServerState::STATE_SERVING);
+  } else if (role == ServerState::ROLE_PRIMARY) {
+    ServerState::instance()->setState(ServerState::STATE_SERVINGASYNC);
+  } else if (role == ServerState::ROLE_SECONDARY) {
+    ServerState::instance()->setState(ServerState::STATE_SYNCING);
+  }
   return true;
 }
 

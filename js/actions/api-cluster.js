@@ -34,6 +34,7 @@
 var actions = require("@arangodb/actions");
 var cluster = require("@arangodb/cluster");
 var internal = require("internal");
+var _ = require("lodash");
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -921,42 +922,34 @@ actions.defineHttp({
 function changeAllShardReponsibilities (oldServer, newServer) {
   // This is only called when we have the write lock and we "only" have to
   // make sure that either all or none of the shards are moved.
-  var l = ArangoAgency.get("Plan/Collections", true, false);
-  var ll = Object.keys(l);
-
-  var i = 0;
-  var c;
-  var oldShards = [];
-  var shards;
-  var names;
-  var j;
+  var collections = ArangoAgency.get("Plan/Collections", true, false);
+  var done = {};
   try {
-    while (i < ll.length) {
-      c = l[ll[i]];   // A collection entry
-      shards = c.shards;
-      names = Object.keys(shards);
-      // Poor man's deep copy:
-      oldShards.push(JSON.parse(JSON.stringify(shards)));
-      for (j = 0; j < names.length; j++) {
-        if (shards[names[j]] === oldServer) {
-          shards[names[j]] = newServer;
+  Object.keys(collections).forEach(function(collectionKey) {
+    var collection = collections[collectionKey];
+    var old = _.cloneDeep(collection);
+
+    Object.keys(collection.shards).forEach(function(shardKey) {
+      var servers = collection.shards[shardKey];
+      collection.shards[shardKey] = servers.map(function(server) {
+        if (server == oldServer) {
+          return newServer;
+        } else {
+          return server;
         }
-      }
-      ArangoAgency.set(ll[i], c, 0);
-      i += 1;
-    }
-  }
-  catch (e) {
-    i -= 1;
-    while (i >= 0) {
-      c = l[ll[i]];
-      c.shards = oldShards[i];
-      try {
-        ArangoAgency.set(ll[i], c, 0);
-      }
-      catch (e2) {
-      }
-      i -= 1;
+      });
+    });
+    ArangoAgency.set(collectionKey, collection, 0);
+    done[collectionKey] = old;
+  });
+  } catch (e) {
+    // mop: rollback
+    try {
+      Object.keys(done).forEach(function(collectionKey) {
+        ArangoAgency.set(collectionKey, done[collectionKey], 0);
+      });
+    } catch (e2) {
+      console.error("Got error during rolback", e2);
     }
     throw e;
   }
