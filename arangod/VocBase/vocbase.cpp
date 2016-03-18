@@ -2341,7 +2341,9 @@ TRI_voc_rid_t TRI_ExtractRevisionId(VPackSlice const slice) {
 ////////////////////////////////////////////////////////////////////////////////
 
 VPackSlice TRI_ExtractRevisionIdAsSlice(VPackSlice const slice) {
-  TRI_ASSERT(slice.isObject());
+  if (!slice.isObject()) {
+    return VPackSlice();
+  }
 
   return slice.get(TRI_VOC_ATTRIBUTE_REV);
 }

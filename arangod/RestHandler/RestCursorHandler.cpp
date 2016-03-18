@@ -178,9 +178,10 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
 
+      auto transactionContext = std::make_shared<StandaloneTransactionContext>(_vocbase);
       arangodb::basics::VPackStringBufferAdapter bufferAdapter(
           _response->body().stringBuffer());
-      VPackDumper dumper(&bufferAdapter);
+      VPackDumper dumper(&bufferAdapter, transactionContext->getVPackOptions());
       dumper.dump(result.slice());
       return;
     }

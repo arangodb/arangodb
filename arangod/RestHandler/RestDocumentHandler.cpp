@@ -337,7 +337,14 @@ bool RestDocumentHandler::checkDocument() {
 /// @brief was docuBlock REST_DOCUMENT_REPLACE
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::replaceDocument() { return modifyDocument(false); }
+bool RestDocumentHandler::replaceDocument() { 
+  bool found;
+  std::string value = _request->value("onlyget", found);
+  if (found) {
+    return readManyDocuments();
+  }
+  return modifyDocument(false);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock REST_DOCUMENT_UPDATE
@@ -578,6 +585,62 @@ bool RestDocumentHandler::deleteDocument() {
   generateDeleted(result, collectionName,
                   TRI_col_type_e(trx.getCollectionType(collectionName)),
                   transactionContext->getVPackOptions());
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief was docuBlock REST_DOCUMENT_READ_MANY
+////////////////////////////////////////////////////////////////////////////////
+
+bool RestDocumentHandler::readManyDocuments() {
+  std::vector<std::string> const& suffix = _request->suffix();
+
+  if (suffix.size() != 1) {
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expecting PUT /_api/document/<collection> with a BODY");
+    return false;
+  }
+
+  // split the document reference
+  std::string const& collectionName = suffix[0];
+
+  OperationOptions opOptions;
+  opOptions.ignoreRevs = extractBooleanParameter("ignoreRevs", false);
+
+  auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
+  SingleCollectionTransaction trx(transactionContext,
+                                  collectionName, TRI_TRANSACTION_READ);
+
+  // ...........................................................................
+  // inside read transaction
+  // ...........................................................................
+
+  int res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collectionName, res, "");
+    return false;
+  }
+
+  auto builderPtr = _request->toVelocyPack(transactionContext->getVPackOptions());
+  VPackSlice search = builderPtr->slice();
+
+  OperationResult result = trx.document(collectionName, search, opOptions);
+
+  res = trx.finish(result.code);
+
+  if (!result.successful()) {
+    generateTransactionError(result);
+    return false;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collectionName, res, "");
+    return false;
+  }
+
+  generateDocument(result.slice(), true,
+                   transactionContext->getVPackOptions());
   return true;
 }
 

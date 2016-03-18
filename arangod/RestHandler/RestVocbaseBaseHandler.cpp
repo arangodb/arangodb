@@ -30,6 +30,7 @@
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
+#include "Utils/StandaloneTransactionContext.h"
 #include "Utils/Transaction.h"
 #include "VocBase/document-collection.h"
 
@@ -292,7 +293,8 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
   }
 
   VPackStringBufferAdapter buffer(_response->body().stringBuffer());
-  VPackDumper dumper(&buffer);
+  auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
+  VPackDumper dumper(&buffer, transactionContext->getVPackOptions());
 
   try {
     dumper.dump(builder.slice());
@@ -408,6 +410,10 @@ void RestVocbaseBaseHandler::generateTransactionError(
       generateError(HttpResponse::BAD, res, "invalid document key");
       return;
 
+    case TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD:
+      generateError(HttpResponse::BAD, res, "invalid document handle");
+      return;
+
     case TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE:
       generateError(HttpResponse::BAD, res, "invalid edge attribute");
       return;
@@ -497,6 +503,10 @@ void RestVocbaseBaseHandler::generateTransactionError(
 
     case TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD:
       generateError(HttpResponse::BAD, result.code, "invalid document key");
+      return;
+
+    case TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD:
+      generateError(HttpResponse::BAD, result.code, "invalid document handle");
       return;
 
     case TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE:

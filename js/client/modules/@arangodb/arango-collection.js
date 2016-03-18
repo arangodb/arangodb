@@ -789,23 +789,37 @@ ArangoCollection.prototype.document = function (id) {
   var rev = null;
   var requestResult;
 
-  if (typeof id === "object") {
-    if (id.hasOwnProperty("_rev")) {
-      rev = id._rev;
-    }
-    if (id.hasOwnProperty("_id")) {
-      id = id._id;
-    } else if (id.hasOwnProperty("_key")) {
-      id = id._key;
-    }
+  if (id === undefined || id === null) {
+    throw new ArangoError({
+      errorNum : internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code,
+      errorMessage : internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.message
+    });
   }
 
-  if (rev === null) {
-    requestResult = this._database._connection.GET(this._documenturl(id));
-  }
-  else {
-    requestResult = this._database._connection.GET(this._documenturl(id),
-      {'if-match' : JSON.stringify(rev) });
+  var url;
+  if (Array.isArray(id)) {
+    url = this._documentcollectionurl() + "?onlyget=true&ignoreRevs=false";
+    var body = JSON.stringify(id);
+    requestResult = this._database._connection.PUT(url, body); 
+  } else {
+    if (typeof id === "object") {
+      if (id.hasOwnProperty("_rev")) {
+        rev = id._rev;
+      }
+      if (id.hasOwnProperty("_id")) {
+        id = id._id;
+      } else if (id.hasOwnProperty("_key")) {
+        id = id._key;
+      }
+    }
+    url = this._documenturl(id);
+    if (rev === null) {
+      requestResult = this._database._connection.GET(this._documenturl(id));
+    }
+    else {
+      requestResult = this._database._connection.GET(this._documenturl(id),
+        {'if-match' : JSON.stringify(rev) });
+    }
   }
 
   if (requestResult !== null && requestResult.error === true) {
@@ -1034,12 +1048,13 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
   }
 
   var url;
+
   var body = "";
   if (Array.isArray(id)) {
     url = this._documentcollectionurl();
     body = JSON.stringify(id);
   } else {
-    if (typeof id === "object")
+    if (typeof id === "object") {
       if (id.hasOwnProperty("_rev")) {
         rev = id._rev;
       }
@@ -1048,6 +1063,7 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
       } else if (id.hasOwnProperty("_key")) {
         id = id._key;
       }
+    }
     url = this._documenturl(id);
   }
 
@@ -1073,6 +1089,7 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
   return options.silent ? true :requestResult;
 };
 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replaces a document in the collection
 /// @param id the id of the document
@@ -1084,29 +1101,72 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
 /// @example replace("example/996280832675", { a : 1, c : 2}, {waitForSync: false, overwrite: true})
 ////////////////////////////////////////////////////////////////////////////////
 
+function fillInSpecial(id, data) {
+  var pos;
+  if (data === null || typeof data !== "object" || Array.isArray(data)) {
+    throw new ArangoError({
+      error : true,
+      errorCode : internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
+      errorNum : internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
+      errorMessage : internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.message
+    });
+  }
+  if (typeof id === "object" && id !== null && !Array.isArray(id)) {
+    if (id.hasOwnProperty("_rev")) {
+      data._rev = id._rev;
+    }
+    if (id.hasOwnProperty("_id")) {
+      data._id = id._id;
+      pos = id._id.indexOf("/");
+      if (pos >= 0) {
+        data._key = id._id.substr(pos+1);
+      } else {
+        delete data._key;
+      }
+    } else if (id.hasOwnProperty("_key")) {
+      data._key = id._key;
+      delete data._id;
+    } else {
+      throw new ArangoError({
+        error : true,
+        errorCode : internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
+        errorNum : internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
+        errorMessage : internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.message
+      });
+    }
+  } else if (typeof id === "string") {
+    delete data._rev;
+    pos = id.indexOf("/");
+    if (pos >= 0) {
+      data._id = id;
+      data._key = id.substr(pos+1);
+    } else {
+      data._key = id;
+      delete data._id;
+    }
+  } else {
+    throw new ArangoError({
+      error : true,
+      errorCode : internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code,
+      errorNum : internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code,
+      errorMessage : internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.message
+    });
+  }
+}
+
 ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync) {
   var rev = null;
   var requestResult;
 
   if (id === undefined || id === null) {
     throw new ArangoError({
+      error : true,
+      errorCode : internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code,
       errorNum : internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code,
       errorMessage : internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.message
     });
   }
 
-  if (typeof id === "object") {
-    if (id.hasOwnProperty("_rev")) {
-      rev = id._rev;
-    }
-    if (id.hasOwnProperty("_id")) {
-      id = id._id;
-    } else if (id.hasOwnProperty("_key")) {
-      id = id._key;
-    }
-  }
-
-  var params = "";
   var ignoreRevs = false;
   var options;
   if (typeof overwrite === "object") {
@@ -1127,11 +1187,38 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
     }
     options = {};
   }
-  var url = this._documenturl(id);
+
+  var url;
+  if (Array.isArray(id)) {
+    if (!Array.isArray(data) || id.length !== data.length) {
+      throw new ArangoError({
+        error : true,
+        errorCode : internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code,
+        errorNum : internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
+        errorMessage : internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.message
+      });
+    }
+    for (var i = 0; i < id.length; i++) {
+      fillInSpecial(id[i], data[i]);
+    }
+    url = this._documentcollectionurl();
+  } else if (typeof id === "object") {
+    if (id.hasOwnProperty("_rev")) {
+      rev = id._rev;
+    }
+    if (id.hasOwnProperty("_id")) {
+      id = id._id;
+    } else if (id.hasOwnProperty("_key")) {
+      id = id._key;
+    }
+    url = this._documenturl(id);
+  }
+
   url = this._appendSyncParameter(url, waitForSync);
-  url = this._appendBoolParameter(url, "ignoreRevs", true);
+  url = this._appendBoolParameter(url, "ignoreRevs", ignoreRevs);
   url = this._appendBoolParameter(url, "returnOld", options.returnOld);
   url = this._appendBoolParameter(url, "returnNew", options.returnNew);
+
   if (rev === null || ignoreRevs) {
     requestResult = this._database._connection.PUT(url, JSON.stringify(data));
   }
@@ -1175,17 +1262,6 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
     });
   }
 
-  if (typeof id === "object") {
-    if (id.hasOwnProperty("_rev")) {
-      rev = id._rev;
-    }
-    if (id.hasOwnProperty("_id")) {
-      id = id._id;
-    } else if (id.hasOwnProperty("_key")) {
-      id = id._key;
-    }
-  }
-
   var params = "";
   var ignoreRevs = false;
   var options;
@@ -1223,9 +1299,32 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
 
   }
 
-  var url = this._documenturl(id) + params;
+  var url;
+  if (Array.isArray(id)) {
+    if (!Array.isArray(data) || id.length !== data.length) {
+      throw new ArangoError({
+        errorNum : internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
+        errorMessage : internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.message
+      });
+    }
+    for (var i = 0; i < id.length; i++) {
+      fillInSpecial(id[i], data[i]);
+    }
+    url = this._documentcollectionurl() + params;
+  } else if (typeof id === "object") {
+    if (id.hasOwnProperty("_rev")) {
+      rev = id._rev;
+    }
+    if (id.hasOwnProperty("_id")) {
+      id = id._id;
+    } else if (id.hasOwnProperty("_key")) {
+      id = id._key;
+    }
+    url = this._documenturl(id) + params;
+  }
+
   url = this._appendSyncParameter(url, waitForSync);
-  url = this._appendBoolParameter(url, "ignoreRevs", true);
+  url = this._appendBoolParameter(url, "ignoreRevs", ignoreRevs);
   url = this._appendBoolParameter(url, "returnOld", options.returnOld);
   url = this._appendBoolParameter(url, "returnNew", options.returnNew);
 
@@ -1425,5 +1524,4 @@ ArangoCollection.prototype.removeByKeys = function (keys) {
     ignored: requestResult.ignored
   };
 };
-
 
