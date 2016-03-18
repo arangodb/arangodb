@@ -1017,6 +1017,7 @@ void DepthFirstTraverser::EdgeGetter::nextEdge(
       if (cursor->hasMore()) {
         // Fetch next and try again
         cursor->getMore(opRes);
+        TRI_ASSERT(last != nullptr);
         *last = 0;
         continue;
       }
@@ -1036,6 +1037,7 @@ void DepthFirstTraverser::EdgeGetter::nextEdge(
     edge = edge.at(*last);
     if (!_traverser->edgeMatchesConditions(edge, edges.size())) {
       ++_traverser->_filteredPaths;
+      TRI_ASSERT(last != nullptr);
       (*last)++;
       continue;
     }

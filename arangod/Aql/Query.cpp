@@ -736,9 +736,15 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
       arangodb::aql::QueryCacheResultEntryGuard guard(cacheEntry);
 
       if (cacheEntry != nullptr) {
+        // we don't have yet a transaction when we're here, so let's create
+        // a mimimal context to build the result
+        auto transactionContext = createTransactionContext();
         // got a result from the query cache
         QueryResultV8 res(TRI_ERROR_NO_ERROR);
-        res.result = v8::Handle<v8::Array>::Cast(TRI_VPackToV8(isolate, cacheEntry->_queryResult->slice(), _trx->transactionContext()->getVPackOptions()));
+
+        v8::Handle<v8::Value> values = TRI_VPackToV8(isolate, cacheEntry->_queryResult->slice(), transactionContext->getVPackOptions());
+        TRI_ASSERT(values->IsArray());
+        res.result = v8::Handle<v8::Array>::Cast(values); 
         res.cached = true;
         return res;
       }
