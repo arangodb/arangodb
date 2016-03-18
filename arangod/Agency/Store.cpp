@@ -498,9 +498,8 @@ void Store::clearTimeTable () {
 
 void Store::run() {
   CONDITION_LOCKER(guard, _cv);
-  
   while (!this->isStopping()) { // Check timetable and remove overage entries
-    _cv.wait(200000); // better wait to next known time point
+    _cv.wait(100000);           // better wait to next known time point
     clearTimeTable();
   }
 }

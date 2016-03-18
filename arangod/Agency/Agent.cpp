@@ -76,7 +76,7 @@ priv_rpc_ret_t Agent::requestVote(term_t t, id_t id, index_t lastLogIndex,
         ++j;
       }
     }
-    LOG(WARN) << _config;
+    //LOG(WARN) << _config;
   }
     
   return priv_rpc_ret_t(

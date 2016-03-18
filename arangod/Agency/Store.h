@@ -118,9 +118,8 @@ public:
 
   /// @brief Root node
   Node& root();
-    
 
-  /// @brief Dump
+  /// @brief Dump to ostream
   friend std::ostream& operator<<(std::ostream& os, const Node& n) {
     Node const* par = n._parent;
     while (par != 0) {
@@ -138,6 +137,9 @@ public:
     return os;
   }
 
+  /// #brief Get path of this node
+  std::string path (); 
+  
   /// @brief Apply single slice
   bool applies (arangodb::velocypack::Slice const&);
 
