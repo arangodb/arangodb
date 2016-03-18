@@ -99,8 +99,7 @@ class AnyDirectionEdgeIndexIterator final : public IndexIterator {
                                 EdgeIndexIterator* inboundIterator)
       : _outbound(outboundIterator),
         _inbound(inboundIterator),
-        _useInbound(false),
-        _done(false) {}
+        _useInbound(false) {}
 
   ~AnyDirectionEdgeIndexIterator() {
     delete _outbound;
@@ -112,7 +111,6 @@ class AnyDirectionEdgeIndexIterator final : public IndexIterator {
   EdgeIndexIterator* _inbound;
   std::unordered_set<TRI_doc_mptr_t*> _seen;
   bool _useInbound;
-  bool _done;
 };
 
 class EdgeIndex final : public Index {
