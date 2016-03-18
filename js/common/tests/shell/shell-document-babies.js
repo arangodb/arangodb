@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 5000 */
-/*global fail, assertEqual */
+/*global fail, assertEqual, assertTypeOf, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -853,7 +853,6 @@ function CollectionDocumentSuiteBabies() {
 function CollectionDocumentSuiteReturnStuff() {
   'use strict';
   var cn = "UnitTestsCollectionBasics";
-  var ERRORS = require("internal").errors;
   var collection = null;
 
   return {

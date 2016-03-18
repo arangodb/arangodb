@@ -339,7 +339,7 @@ bool RestDocumentHandler::checkDocument() {
 
 bool RestDocumentHandler::replaceDocument() { 
   bool found;
-  std::string value = _request->value("onlyget", found);
+  _request->value("onlyget", found);
   if (found) {
     return readManyDocuments();
   }
@@ -517,7 +517,7 @@ bool RestDocumentHandler::deleteDocument() {
   }
 
   // extract the revision if single document case
-  bool isValidRevision;
+  bool isValidRevision = false;
   TRI_voc_rid_t revision = 0;
   if (suffix.size() == 2) {
     revision = extractRevision("if-match", nullptr, isValidRevision);

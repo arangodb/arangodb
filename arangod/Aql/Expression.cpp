@@ -752,7 +752,7 @@ AqlValue Expression::executeSimpleExpressionReference(
     auto it = _variables.find(v);
 
     if (it != _variables.end()) {
-      return AqlValue((*it).second);
+      return AqlValue((*it).second.begin()); // use only pointer to data
     }
   }
 
