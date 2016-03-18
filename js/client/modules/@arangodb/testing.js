@@ -1811,8 +1811,7 @@ function rubyTests(options, ssl) {
   if (options.ruby === "") {
     command = options.rspec;
     rspec = undefined;
-  }
-  else {
+  } else {
     command = options.ruby;
     rspec = options.rspec;
   }
@@ -1862,7 +1861,7 @@ function rubyTests(options, ssl) {
           "--out", fs.join("out", "UnitTests", te + ".json"),
           "--require", tmpname,
           fs.join("UnitTests", "HttpInterface", te)
-               ];
+        ];
 
         if (rspec !== undefined) {
           args = [rspec].concat(args);
@@ -2613,26 +2612,30 @@ testFuncs.boost = function(options) {
   if (!options.skipBoost) {
     const run = fs.join(UNITTESTS_DIR, "basics_suite");
 
-    if (options.valgrind) {
-      const valgrindArgs = valgrindArgsSingleServer(options, "basics", run);
-      const newargs = valgrindArgs.concat(args);
+    if (fs.exists(run)) {
+      if (options.valgrind) {
+        const valgrindArgs = valgrindArgsSingleServer(options, "basics", run);
+        const newargs = valgrindArgs.concat(args);
 
-      results.basics = executeAndWait(options.valgrind, newargs, options);
-    } else {
-      results.basics = executeAndWait(run, args, options);
+        results.basics = executeAndWait(options.valgrind, newargs, options);
+      } else {
+        results.basics = executeAndWait(run, args, options);
+      }
     }
   }
 
   if (!options.skipGeo) {
     const run = fs.join(UNITTESTS_DIR, "geo_suite");
 
-    if (options.valgrind) {
-      const valgrindArgs = valgrindArgsSingleServer(options, "geo_suite", run);
-      const newargs = valgrindArgs.concat(args);
+    if (fs.exists(run)) {
+      if (options.valgrind) {
+        const valgrindArgs = valgrindArgsSingleServer(options, "geo_suite", run);
+        const newargs = valgrindArgs.concat(args);
 
-      results.geo_suite = executeAndWait(options.valgrind, newargs, options);
-    } else {
-      results.geo_suite = executeAndWait(run, args, options);
+        results.geo_suite = executeAndWait(options.valgrind, newargs, options);
+      } else {
+        results.geo_suite = executeAndWait(run, args, options);
+      }
     }
   }
 
