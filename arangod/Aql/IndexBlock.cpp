@@ -378,7 +378,6 @@ bool IndexBlock::readIndex(size_t atMost) {
   bool isReverse = (static_cast<IndexNode const*>(getPlanNode()))->_reverse;
   bool isLastIndex = (_currentIndex == lastIndexNr && !isReverse) ||
                      (_currentIndex == 0 && isReverse);
-  auto _result = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
   while (_cursor != nullptr) {
     if (!_cursor->hasMore()) {
       startNextCursor();
