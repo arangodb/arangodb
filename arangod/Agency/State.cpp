@@ -71,8 +71,9 @@ bool State::save (arangodb::velocypack::Slice const& slice, index_t index,
         "1", 1, _end_point, HttpRequest::HTTP_REQUEST_POST, path,
         body.toJson(), headerFields, 0.0);
     
-    if (res->status != CL_COMM_SENT)
-      LOG(WARN) << res->errorMessage;
+    if (res->status != CL_COMM_SENT) {
+      //LOG(WARN) << res->errorMessage;
+    }
     
     return (res->status == CL_COMM_SENT); // TODO: More verbose result
 
