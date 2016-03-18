@@ -932,7 +932,7 @@ function changeAllShardReponsibilities (oldServer, newServer) {
     Object.keys(collection.shards).forEach(function(shardKey) {
       var servers = collection.shards[shardKey];
       collection.shards[shardKey] = servers.map(function(server) {
-        if (server == oldServer) {
+        if (server === oldServer) {
           return newServer;
         } else {
           return server;
