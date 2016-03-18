@@ -18,5 +18,6 @@
   "nonew": true,
   "strict": true,
   "undef": true,
-  "unused": true
+  "unused": true,
+  "loopfunc": true
 }
