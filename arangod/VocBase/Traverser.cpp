@@ -118,8 +118,8 @@ bool arangodb::traverser::TraverserOptions::getCollectionAndSearchValue(
   name = _collections.at(index);
   indexHandle = _indexHandles.at(index);
 
-  _builder.clear();
-  arangodb::EdgeIndex::buildSearchValue(dir, name, _builder);
+  builder.clear();
+  arangodb::EdgeIndex::buildSearchValue(dir, vertexId, builder);
   return true;
 }
 

@@ -333,8 +333,7 @@ class DepthFirstTraverser : public Traverser {
 
  public:
   DepthFirstTraverser(
-      std::vector<TRI_document_collection_t*> const&, TraverserOptions&,
-      Transaction*,
+      TraverserOptions&, Transaction*,
       std::unordered_map<size_t, std::vector<TraverserExpression*>> const*);
 
   //////////////////////////////////////////////////////////////////////////////

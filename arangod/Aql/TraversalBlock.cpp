@@ -90,15 +90,8 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
         std::string(_trx->vocbase()->_name, strlen(_trx->vocbase()->_name)),
         _resolver, _expressions));
   } else {
-    std::vector<TRI_document_collection_t*> edgeCollections;
-    for (auto const& coll : ep->edgeColls()) {
-      TRI_voc_cid_t cid = _resolver->getCollectionIdLocal(coll);
-      edgeCollections.push_back(_trx->documentCollection(cid));
-
-      _trx->orderDitch(cid);
-    }
-    _traverser.reset(new arangodb::traverser::DepthFirstTraverser(
-        edgeCollections, opts, _trx, _expressions));
+    _traverser.reset(
+        new arangodb::traverser::DepthFirstTraverser(opts, _trx, _expressions));
   }
   if (!ep->usesInVariable()) {
     _vertexId = ep->getStartVertex();

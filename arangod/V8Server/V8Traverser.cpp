@@ -819,14 +819,10 @@ void SingleServerTraversalPath::lastVertexToVelocyPack(Transaction* trx, VPackBu
 }
 
 DepthFirstTraverser::DepthFirstTraverser(
-    std::vector<TRI_document_collection_t*> const& edgeCollections,
     TraverserOptions& opts, Transaction* trx,
     std::unordered_map<size_t, std::vector<TraverserExpression*>> const*
         expressions)
-    : Traverser(opts, expressions),
-      _edgeGetter(this, opts, trx),
-      _edgeCols(edgeCollections),
-      _trx(trx) {
+    : Traverser(opts, expressions), _edgeGetter(this, opts, trx), _trx(trx) {
   _defInternalFunctions();
 }
 
@@ -892,22 +888,17 @@ bool DepthFirstTraverser::vertexMatchesConditions(std::string const& v,
 }
 
 void DepthFirstTraverser::_defInternalFunctions() {
-  _getVertex = [](std::string const& edge, std::string const& vertex, size_t depth,
+  _getVertex = [this](std::string const& edge, std::string const& vertex, size_t depth,
                   std::string& result) -> bool {
-    return false;
-    // TODO FIX THIS
-    /* Do we still use mptr here or do we switch to VPack?
-    auto mptr = edge.mptr;
-    if (strcmp(TRI_EXTRACT_MARKER_FROM_KEY(&mptr), vertex.key) == 0 &&
-        TRI_EXTRACT_MARKER_FROM_CID(&mptr) == vertex.cid) {
-      result = VertexId(TRI_EXTRACT_MARKER_TO_CID(&mptr),
-                        TRI_EXTRACT_MARKER_TO_KEY(&mptr));
-    } else {
-      result = VertexId(TRI_EXTRACT_MARKER_FROM_CID(&mptr),
-                        TRI_EXTRACT_MARKER_FROM_KEY(&mptr));
+    auto const& it = _edges.find(edge);
+    TRI_ASSERT(it != _edges.end());
+    VPackSlice v(it->second->data());
+    // NOTE: We assume that we only have valid edges.
+    result = v.get(TRI_VOC_ATTRIBUTE_FROM).copyString();
+    if (result == vertex) {
+      result = v.get(TRI_VOC_ATTRIBUTE_TO).copyString();
     }
     return true;
-    */
   };
 }
 
