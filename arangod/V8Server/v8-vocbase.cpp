@@ -1235,11 +1235,13 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_FULL(queryResult.code, queryResult.details);
   }
 
+  auto transactionContext = std::make_shared<StandaloneTransactionContext>(vocbase);
   // return the array value as it is. this is a performance optimisation
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   if (queryResult.result != nullptr) {
     result->ForceSet(TRI_V8_ASCII_STRING("json"),
-                     TRI_VPackToV8(isolate, queryResult.result->slice()));
+                     TRI_VPackToV8(isolate, queryResult.result->slice(),
+                                   transactionContext->getVPackOptions()));
   }
   if (queryResult.stats != nullptr) {
     VPackSlice stats = queryResult.stats->slice();
