@@ -87,6 +87,4 @@ static inline size_t JSONSkipWhiteSpaceInline(uint8_t const* ptr,
 size_t JSONSkipWhiteSpaceC(uint8_t const* ptr, size_t limit);
 extern size_t (*JSONSkipWhiteSpace)(uint8_t const*, size_t);
 
-void DisableAssemblerFunctions();
-
 #endif

@@ -30,7 +30,7 @@
 #include "velocypack/velocypack-common.h"
 #include "asm-functions.h"
 
-static bool DisableSSE42 = false;
+using namespace arangodb::velocypack;
 
 size_t JSONStringCopyC(uint8_t* dst, uint8_t const* src, size_t limit) {
   return JSONStringCopyInline(dst, src, limit);
@@ -103,7 +103,7 @@ static size_t JSONStringCopySSE42(uint8_t* dst, uint8_t const* src,
 }
 
 static size_t DoInitCopy(uint8_t* dst, uint8_t const* src, size_t limit) {
-  if (!DisableSSE42 && HasSSE42()) {
+  if (assemblerFunctionsEnabled() && HasSSE42()) {
     JSONStringCopy = JSONStringCopySSE42;
   } else {
     JSONStringCopy = JSONStringCopyC;
@@ -152,7 +152,7 @@ static size_t JSONStringCopyCheckUtf8SSE42(uint8_t* dst, uint8_t const* src,
 
 static size_t DoInitCopyCheckUtf8(uint8_t* dst, uint8_t const* src,
                                   size_t limit) {
-  if (!DisableSSE42 && HasSSE42()) {
+  if (assemblerFunctionsEnabled() && HasSSE42()) {
     JSONStringCopyCheckUtf8 = JSONStringCopyCheckUtf8SSE42;
   } else {
     JSONStringCopyCheckUtf8 = JSONStringCopyCheckUtf8C;
@@ -193,7 +193,7 @@ static size_t JSONSkipWhiteSpaceSSE42(uint8_t const* ptr, size_t limit) {
 }
 
 static size_t DoInitSkip(uint8_t const* ptr, size_t limit) {
-  if (!DisableSSE42 && HasSSE42()) {
+  if (assemblerFunctionsEnabled() && HasSSE42()) {
     JSONSkipWhiteSpace = JSONSkipWhiteSpaceSSE42;
   } else {
     JSONSkipWhiteSpace = JSONSkipWhiteSpaceC;
@@ -662,10 +662,6 @@ int main(int argc, char* argv[]) {
   delete[] src;
   delete[] dst;
   return 0;
-}
-
-void DisableAssemblerFunctions() {
-  DisableSSE42 = true;
 }
 
 #endif

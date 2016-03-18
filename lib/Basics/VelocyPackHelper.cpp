@@ -132,6 +132,10 @@ void VelocyPackHelper::initialize() {
   EmptyArrayBuilder.openArray();
   EmptyArrayBuilder.close();
 }
+  
+void VelocyPackHelper::disableAssemblerFunctions() {
+  arangodb::velocypack::disableAssemblerFunctions();
+}
 
 arangodb::velocypack::Slice VelocyPackHelper::NullValue() {
   return NullBuilder.slice(); 
