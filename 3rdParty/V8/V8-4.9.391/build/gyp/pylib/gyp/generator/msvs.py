@@ -1721,7 +1721,7 @@ def _DictsToFolders(base_path, bucket, flat):
         children += folder_children
       else:
         folder_children = MSVSNew.MSVSFolder(os.path.join(base_path, folder),
-                                             name=folder',
+                                             name=folder,
                                              entries=folder_children)
         children.append(folder_children)
     else:
