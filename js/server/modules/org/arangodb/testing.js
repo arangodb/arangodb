@@ -1683,7 +1683,8 @@ testFuncs.arangosh = function(options) {
     "ArangoshExitCodeTest": {
       "testArangoshExitCodeFail": {},
       "testArangoshExitCodeSuccess": {},
-      "total": 2,
+      "testArangoshebang": {},
+      "total": 3,
       "duration": 0.0
     }
   };
@@ -1728,9 +1729,34 @@ testFuncs.arangosh = function(options) {
   ret.ArangoshExitCodeTest.testArangoshExitCodeSuccess['duration'] = deltaTime2;
   print("Status: " + ((successSuccess) ? "SUCCESS" : "FAIL") + "\n");
 
+    // test shebang execution with arangosh
+    var shebangFile = fs.join(fs.getTempPath(), "testshebang.js");
+    print("Starting arangosh via shebang script:" + shebangFile);
+    fs.write(shebangFile,
+	     "#!" + ARANGOSH_BIN + " --javascript.execute \n" +
+	     "print('hello world');\n")
+    executeExternal('chmod', ["a+x", shebangFile])
+    const startTime3 = time();
+    rc = executeExternalAndWait(shebangFile, []);
+    const deltaTime3 = time() - startTime2;
+    print(rc)
+    const shebangSuccess = (rc.hasOwnProperty('exit') && rc.exit === 0);
+
+  if (!shebangSuccess) {
+    ret.ArangoshExitCodeTest.testArangoshebang['message'] =
+      "didn't get expected return code (0): \n" +
+      yaml.safeDump(rc);
+
+    ++failed;
+  }
+  ret.ArangoshExitCodeTest.testArangoshebang['status'] = failSuccess;
+  ret.ArangoshExitCodeTest.testArangoshebang['duration'] = deltaTime3;
+  print("Status: " + ((successSuccess) ? "SUCCESS" : "FAIL") + "\n");
+
+
   // return result
-  ret.ArangoshExitCodeTest.status = failSuccess && successSuccess;
-  ret.ArangoshExitCodeTest.duration = deltaTime + deltaTime2;
+  ret.ArangoshExitCodeTest.status = failSuccess && successSuccess && shebangSuccess;
+  ret.ArangoshExitCodeTest.duration = deltaTime + deltaTime2 + deltaTime3;
   return ret;
 };
 
