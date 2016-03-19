@@ -1,2 +1,3 @@
 *.sh eol=lf 
+VERSION eolf=lf
 scripts/unittest eol=lf
