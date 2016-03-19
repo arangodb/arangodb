@@ -1746,7 +1746,7 @@ testFuncs.arangosh = function(options) {
     executeExternal('chmod', ["a+x", shebangFile]);
 
     const startTime3 = time();
-    rc = executeExternalAndWait(shebangFile, []);
+    rc = executeExternalAndWait("sh", ["-c", shebangFile]);
     deltaTime3 = time() - startTime3;
     print(rc);
 
