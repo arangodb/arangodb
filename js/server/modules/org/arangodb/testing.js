@@ -1743,7 +1743,7 @@ testFuncs.arangosh = function(options) {
              "#!" + ARANGOSH_BIN + " --javascript.execute \n" +
              "print('hello world');\n");
 
-    executeExternal('chmod', ["a+x", shebangFile]);
+    executeExternal("sh", ['chmod', "a+x", shebangFile]);
 
     const startTime3 = time();
     rc = executeExternalAndWait("sh", ["-c", shebangFile]);
