@@ -475,7 +475,6 @@
               '-Wall',
               '-Werror',
               '-Wextra',
-              '-Wshorten-64-to-32',
             ],
             'cflags+': [
               # Clang considers the `register` keyword as deprecated, but
@@ -708,7 +707,7 @@
           }],
           [ 'clang==1 and (v8_target_arch=="x64" or v8_target_arch=="arm64" \
             or v8_target_arch=="mips64el")', {
-            'cflags': [ '-Wshorten-64-to-32' ],
+            'cflags': [],
           }],
           [ 'host_arch=="ppc64" and OS!="aix"', {
             'cflags': [ '-mminimal-toc' ],
@@ -978,7 +977,7 @@
             'conditions': [
               ['v8_target_arch=="x64" or v8_target_arch=="arm64" \
                 or v8_target_arch=="mips64el"', {
-                'xcode_settings': {'WARNING_CFLAGS': ['-Wshorten-64-to-32']},
+                'xcode_settings': {'WARNING_CFLAGS': []},
               }],
             ],
           }],
