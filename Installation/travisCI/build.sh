@@ -43,7 +43,8 @@ ulimit -c unlimited -S # enable core files
   --skipNondeterministic true \
   --skipSsl true \
   --skipBoost true \
-  --skipGeo true
+  --skipGeo true \
+  --skipShebang true
 
 success=`cat out/UNITTEST_RESULT_EXECUTIVE_SUMMARY.json`
 if test "$success" == "false"; then

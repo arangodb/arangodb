@@ -83,6 +83,7 @@ const optionsDocumentation = [
   '   - `skipSsl`: omit the ssl_server rspec tests.',
   '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
   '   - `skipNondeterministic`: if set, nondeterministic tests are skipped.',
+  '   - `skipShebang`: if set, the shebang tests are skipped.',
   '',
   '   - `onlyNightly`: execute only the nightly tests',
   '   - `loopEternal`: to loop one test over and over.',
@@ -154,6 +155,7 @@ const optionsDefaults = {
   "skipNightly": true,
   "skipNondeterministic": false,
   "skipRanges": false,
+  "skipShebang": false,
   "skipSsl": false,
   "skipTimeCritical": false,
   "test": undefined,
@@ -2200,7 +2202,7 @@ testFuncs.arangosh = function(options) {
   var shebangSuccess = true;
   var deltaTime3 = 0;
 
-  if (platform.substr(0, 3) !== "win") {
+  if (!options.skipShebang && platform.substr(0, 3) !== "win") {
     var shebangFile = fs.join(fs.getTempPath(), "testshebang.js");
 
     print("Starting arangosh via shebang script: " + shebangFile);
