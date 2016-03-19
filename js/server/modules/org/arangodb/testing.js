@@ -1729,30 +1729,42 @@ testFuncs.arangosh = function(options) {
   ret.ArangoshExitCodeTest.testArangoshExitCodeSuccess['duration'] = deltaTime2;
   print("Status: " + ((successSuccess) ? "SUCCESS" : "FAIL") + "\n");
 
-    // test shebang execution with arangosh
+  // test shebang execution with arangosh
+  var platform = require("internal").platform;
+  var shebangSuccess = true;
+  var deltaTime3 = 0;
+  
+  if (platform.substr(0, 3) !== "win") {
     var shebangFile = fs.join(fs.getTempPath(), "testshebang.js");
+    var ARANGOSH_BIN = fs.makeAbsolute(fs.join("bin", "arangosh"));
+
     print("Starting arangosh via shebang script:" + shebangFile);
     fs.write(shebangFile,
-	     "#!" + ARANGOSH_BIN + " --javascript.execute \n" +
-	     "print('hello world');\n")
-    executeExternal('chmod', ["a+x", shebangFile])
+             "#!" + ARANGOSH_BIN + " --javascript.execute \n" +
+             "print('hello world');\n");
+
+    executeExternal('chmod', ["a+x", shebangFile]);
+
     const startTime3 = time();
     rc = executeExternalAndWait(shebangFile, []);
-    const deltaTime3 = time() - startTime2;
-    print(rc)
-    const shebangSuccess = (rc.hasOwnProperty('exit') && rc.exit === 0);
+    deltaTime3 = time() - startTime3;
+    print(rc);
 
-  if (!shebangSuccess) {
-    ret.ArangoshExitCodeTest.testArangoshebang['message'] =
-      "didn't get expected return code (0): \n" +
-      yaml.safeDump(rc);
+    shebangSuccess = (rc.hasOwnProperty('exit') && rc.exit === 0);
 
-    ++failed;
+    if (!shebangSuccess) {
+      ret.ArangoshExitCodeTest.testArangoshebang['message'] =
+        "didn't get expected return code (0): \n" +
+        yaml.safeDump(rc);
+
+      ++failed;
+    }
+
+    ret.ArangoshExitCodeTest.testArangoshebang['status'] = failSuccess;
+    ret.ArangoshExitCodeTest.testArangoshebang['duration'] = deltaTime3;
+
+    print("Status: " + ((successSuccess) ? "SUCCESS" : "FAIL") + "\n");
   }
-  ret.ArangoshExitCodeTest.testArangoshebang['status'] = failSuccess;
-  ret.ArangoshExitCodeTest.testArangoshebang['duration'] = deltaTime3;
-  print("Status: " + ((successSuccess) ? "SUCCESS" : "FAIL") + "\n");
-
 
   // return result
   ret.ArangoshExitCodeTest.status = failSuccess && successSuccess && shebangSuccess;
