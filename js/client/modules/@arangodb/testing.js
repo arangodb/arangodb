@@ -180,6 +180,7 @@ const testPort = require("internal").testPort;
 const time = require("internal").time;
 const toArgv = require("internal").toArgv;
 const wait = require("internal").wait;
+const platform = require("internal").platform;
 
 const Planner = require("@arangodb/cluster").Planner;
 const Kickstarter = require("@arangodb/cluster").Kickstarter;
@@ -464,7 +465,7 @@ function checkInstanceAliveSingleServer(instanceInfo, options) {
       ((res.signal === 11) ||
         (res.signal === 6) ||
         // Windows sometimes has random numbers in signal...
-        (require("internal").platform.substr(0, 3) === 'win')
+        (platform.substr(0, 3) === 'win')
       )
     ) {
       const storeArangodPath = "/var/tmp/arangod_" + instanceInfo.pid.pid;
@@ -479,7 +480,7 @@ function checkInstanceAliveSingleServer(instanceInfo, options) {
       res.gdbHint = "Run debugger with 'gdb " +
         storeArangodPath + " " + corePath;
 
-      if (require("internal").platform.substr(0, 3) === 'win') {
+      if (platform.substr(0, 3) === 'win') {
         // Windows: wait for procdump to do its job...
         statusExternal(instanceInfo.monitor, true);
         analyzeCoreDumpWindows(instanceInfo);
@@ -521,7 +522,7 @@ function checkInstanceAliveAgency(instanceInfo, options) {
         ((res.signal === 11) ||
           (res.signal === 6) ||
           // Windows sometimes has random numbers in signal...
-          (require("internal").platform.substr(0, 3) === 'win')
+          (platform.substr(0, 3) === 'win')
         )
       ) {
         const storeArangodPath = "/var/tmp/arangod_" + instanceInfo.pids[i].pid;
@@ -536,7 +537,7 @@ function checkInstanceAliveAgency(instanceInfo, options) {
         res.gdbHint = "Run debugger with 'gdb " +
           storeArangodPath + " " + corePath;
 
-        if (require("internal").platform.substr(0, 3) === 'win') {
+        if (platform.substr(0, 3) === 'win') {
           // Windows: wait for procdump to do its job...
           statusExternal(instanceInfo.monitor, true);
           analyzeCoreDumpWindows(instanceInfo);
@@ -596,7 +597,7 @@ function checkInstanceAliveCluster(instanceInfo, options) {
               storeArangodPath +
               " /var/tmp/core*" + checkpid.pid + "*'";
 
-            if (require("internal").platform.substr(0, 3) === 'win') {
+            if (platform.substr(0, 3) === 'win') {
               // Windows: wait for procdump to do its job...
               checkRemoteInstance(instanceInfo.monitor, true, options);
               analyzeCoreDumpWindows(instanceInfo);
@@ -1277,7 +1278,7 @@ function shutdownInstance(instanceInfo, options) {
               serverCrashed = true;
               break;
             }
-            if (require("internal").platform.substr(0, 3) === 'win') {
+            if (platform.substr(0, 3) === 'win') {
               // Windows: wait for procdump to do its job...
               statusExternal(instanceInfo.monitor, true);
             }
@@ -1351,7 +1352,7 @@ function shutdownInstance(instanceInfo, options) {
             serverCrashed = true;
             break;
           }
-          if (require("internal").platform.substr(0, 3) === 'win') {
+          if (platform.substr(0, 3) === 'win') {
             // Windows: wait for procdump to do its job...
             statusExternal(instanceInfo.monitor, true);
           }
@@ -1734,7 +1735,7 @@ function startInstance(protocol, options, addArgs, testname, tmpDir) {
 
   print("up and running in " + (time() - startTime) + " seconds");
 
-  if (!options.cluster && (require("internal").platform.substr(0, 3) === 'win')) {
+  if (!options.cluster && (platform.substr(0, 3) === 'win')) {
     const procdumpArgs = [
       '-accepteula',
       '-e',
@@ -2144,13 +2145,13 @@ let testFuncs = {
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.arangosh = function(options) {
-  let failed = 0;
   let args = makeArgsArangosh(options);
 
   let ret = {
     "ArangoshExitCodeTest": {
       "testArangoshExitCodeFail": {},
       "testArangoshExitCodeSuccess": {},
+      "testArangoshebang": {},
       "total": 2,
       "duration": 0.0
     }
@@ -2169,7 +2170,6 @@ testFuncs.arangosh = function(options) {
     ret.ArangoshExitCodeTest.testArangoshExitCodeFail['message'] =
       "didn't get expected return code (1): \n" +
       yaml.safeDump(rc);
-    ++failed;
   }
 
   ret.ArangoshExitCodeTest.testArangoshExitCodeFail['status'] = failSuccess;
@@ -2190,17 +2190,48 @@ testFuncs.arangosh = function(options) {
     ret.ArangoshExitCodeTest.testArangoshExitCodeFail['message'] =
       "didn't get expected return code (0): \n" +
       yaml.safeDump(rc);
-
-    ++failed;
   }
 
   ret.ArangoshExitCodeTest.testArangoshExitCodeSuccess['status'] = failSuccess;
   ret.ArangoshExitCodeTest.testArangoshExitCodeSuccess['duration'] = deltaTime2;
   print("Status: " + ((successSuccess) ? "SUCCESS" : "FAIL") + "\n");
 
+  // test shebang execution with arangosh
+  var shebangSuccess = true;
+  var deltaTime3 = 0;
+
+  if (platform.substr(0, 3) !== "win") {
+    var shebangFile = fs.join(fs.getTempPath(), "testshebang.js");
+
+    print("Starting arangosh via shebang script: " + shebangFile);
+    fs.write(shebangFile,
+      "#!" + fs.makeAbsolute(ARANGOSH_BIN) + " --javascript.execute \n" +
+      "print('hello world');\n");
+
+    executeExternal('chmod', ["a+x", shebangFile]);
+
+    const startTime3 = time();
+    rc = executeExternalAndWait("sh", ["-c", shebangFile]);
+    deltaTime3 = time() - startTime3;
+    print(rc);
+
+    shebangSuccess = (rc.hasOwnProperty('exit') && rc.exit === 0);
+
+    if (!shebangSuccess) {
+      ret.ArangoshExitCodeTest.testArangoshebang['message'] =
+        "didn't get expected return code (0): \n" +
+        yaml.safeDump(rc);
+    }
+
+    ret.ArangoshExitCodeTest.testArangoshebang['status'] = failSuccess;
+    ret.ArangoshExitCodeTest.testArangoshebang['duration'] = deltaTime3;
+
+    print("Status: " + ((successSuccess) ? "SUCCESS" : "FAIL") + "\n");
+  }
+
   // return result
-  ret.ArangoshExitCodeTest.status = failSuccess && successSuccess;
-  ret.ArangoshExitCodeTest.duration = deltaTime + deltaTime2;
+  ret.ArangoshExitCodeTest.status = failSuccess && successSuccess && shebangSuccess;
+  ret.ArangoshExitCodeTest.duration = deltaTime + deltaTime2 + deltaTime3;
   return ret;
 };
 
