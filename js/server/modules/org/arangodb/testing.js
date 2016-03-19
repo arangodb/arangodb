@@ -70,6 +70,7 @@ var optionsDocumentation = [
   '   - `skipConfig`: omit the noisy configuration tests',
   '   - `skipFoxxQueues`: omit the test for the foxx queues',
   '   - `skipNightly`: omit the nightly tests',
+  '   - `skipShebang`: omit the shebang tests',
   '   - `onlyNightly`: execute only the nightly tests',
   '   - `loopEternal`: to loop one test over and over.',
   '   - `loopSleepWhen`: sleep every nth iteration',
@@ -141,6 +142,7 @@ var optionsDefaults = {
   "skipArangoBNonConnKeepAlive": false,
   "skipRanges": false,
   "skipLogAnalysis": false,
+  "skipShebang": false,
   "username": "root",
   "skipNondeterministic": false,
   "password": "",
@@ -1734,7 +1736,7 @@ testFuncs.arangosh = function(options) {
   var shebangSuccess = true;
   var deltaTime3 = 0;
   
-  if (platform.substr(0, 3) !== "win") {
+  if (!options.skipShebang && platform.substr(0, 3) !== "win") {
     var shebangFile = fs.join(fs.getTempPath(), "testshebang.js");
     var ARANGOSH_BIN = fs.makeAbsolute(fs.join("bin", "arangosh"));
 
