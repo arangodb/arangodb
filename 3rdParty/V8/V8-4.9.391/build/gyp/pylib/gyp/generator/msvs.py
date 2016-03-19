@@ -2014,7 +2014,7 @@ def GenerateOutput(target_list, target_dicts, data, params):
     sln_projects += gyp.common.DeepDependencyTargets(target_dicts, sln_projects)
     # Create folder hierarchy.
     root_entries = _GatherSolutionFolders(
-        sln_projects, project_objects, flat=msvs_version.FlatSolution())
+        sln_projects, project_objects, flat=True)
     # Create solution.
     sln = MSVSNew.MSVSSolution(sln_path,
                                entries=root_entries,
