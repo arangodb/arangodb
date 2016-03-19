@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Condition="'$(isolateBeforeTargets)' == '' and '$(isolateAfterTargets)' == '' and '$(ConfigurationType)' != 'Makefile'">
+    <isolateBeforeTargets>Midl</isolateBeforeTargets>
+    <isolateAfterTargets>CustomBuild</isolateAfterTargets>
+  </PropertyGroup>
+  <PropertyGroup>
+    <isolateDependsOn Condition="'$(ConfigurationType)' != 'Makefile'">_SelectedFiles;$(isolateDependsOn)</isolateDependsOn>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <isolate>
+      <CommandLineTemplate>call &quot;$(ProjectDir)..\..\third_party\cygwin\setup_env.bat&quot; &amp;&amp; set CYGWIN=nontsec&amp;&amp; set OUTDIR=$(OutDir)&amp;&amp; set INPUTPATH=%(Identity) &amp;&amp; bash -c &quot;\&quot;python\&quot; \&quot;../../tools/isolate_driver.py\&quot; \&quot;check\&quot; \&quot;--isolated\&quot; \&quot;`cygpath -m \\\&quot;${OUTDIR}\\\&quot;`/%(Filename).isolated\&quot; \&quot;--isolate\&quot; \&quot;`cygpath -m \\\&quot;${INPUTPATH}\\\&quot;`\&quot; \&quot;--path-variable\&quot; \&quot;DEPTH\&quot; \&quot;../..\&quot; \&quot;--path-variable\&quot; \&quot;PRODUCT_DIR\&quot; \&quot;`cygpath -m \\\&quot;${OUTDIR}\\\&quot;`\&quot; \&quot;--config-variable\&quot; \&quot;CONFIGURATION_NAME=$(Configuration)\&quot; \&quot;--config-variable\&quot; \&quot;OS=win\&quot; \&quot;--config-variable\&quot; \&quot;asan=0\&quot; \&quot;--config-variable\&quot; \&quot;cfi_vptr=0\&quot; \&quot;--config-variable\&quot; \&quot;icu_use_data_file_flag=0\&quot; \&quot;--config-variable\&quot; \&quot;msan=0\&quot; \&quot;--config-variable\&quot; \&quot;tsan=0\&quot; \&quot;--config-variable\&quot; \&quot;component=static_library\&quot; \&quot;--config-variable\&quot; \&quot;target_arch=ia32\&quot; \&quot;--config-variable\&quot; \&quot;use_custom_libcxx=0\&quot; \&quot;--config-variable\&quot; \&quot;v8_use_external_startup_data=1\&quot; \&quot;--config-variable\&quot; \&quot;v8_use_snapshot=true\&quot; \&quot;--config-variable\&quot; \&quot;msvs_version=2013\&quot;&quot;</CommandLineTemplate>
+      <Outputs>$(OutDir)%(Filename).isolated</Outputs>
+      <ExecutionDescription>isolate</ExecutionDescription>
+      <AdditionalDependencies>..\..\tools\isolate_driver.py;..\..\tools\swarming_client\isolate.py;..\..\tools\swarming_client\run_isolated.py</AdditionalDependencies>
+    </isolate>
+  </ItemDefinitionGroup>
+</Project>
