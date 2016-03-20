@@ -11,6 +11,7 @@ info: >
     9. Let trapResultObj be Call(trap, handler, «target, P»).
     10. ReturnIfAbrupt(trapResultObj).
     ...
+includes: [Test262Error.js]
 ---*/
 
 var p = new Proxy({}, {

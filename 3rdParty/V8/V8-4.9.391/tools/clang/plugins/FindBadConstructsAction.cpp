@@ -36,7 +36,9 @@ FindBadConstructsAction::FindBadConstructsAction() {
 std::unique_ptr<ASTConsumer> FindBadConstructsAction::CreateASTConsumer(
     CompilerInstance& instance,
     llvm::StringRef ref) {
-  return llvm::make_unique<PluginConsumer>(&instance, options_);
+  if (options_.with_ast_visitor)
+    return llvm::make_unique<PluginConsumer>(&instance, options_);
+  return llvm::make_unique<FindBadConstructsConsumer>(instance, options_);
 }
 
 bool FindBadConstructsAction::ParseArgs(const CompilerInstance& instance,
@@ -55,14 +57,12 @@ bool FindBadConstructsAction::ParseArgs(const CompilerInstance& instance,
       // TODO(tsepez): Enable this by default once http://crbug.com/356815
       // and http://crbug.com/356816 are fixed.
       options_.check_enum_last_value = true;
+    } else if (args[i] == "with-ast-visitor") {
+      options_.with_ast_visitor = true;
     } else if (args[i] == "check-templates") {
       options_.check_templates = true;
     } else if (args[i] == "follow-macro-expansion") {
       options_.follow_macro_expansion = true;
-    } else if (args[i] == "check-implicit-copy-ctors") {
-      options_.check_implicit_copy_ctors = true;
-    } else if (args[i] == "no-realpath") {
-      options_.no_realpath = true;
     } else {
       parsed = false;
       llvm::errs() << "Unknown clang plugin argument: " << args[i] << "\n";

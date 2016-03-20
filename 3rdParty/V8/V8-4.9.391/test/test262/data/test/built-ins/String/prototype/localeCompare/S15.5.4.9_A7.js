@@ -7,6 +7,8 @@ es5id: 15.5.4.9_A7
 description: >
     Checking if creating the String.prototype.localeCompare object
     fails
+includes:
+    - Test262Error.js
 ---*/
 
 var __FACTORY = String.prototype.localeCompare;

@@ -485,9 +485,8 @@ class MsvsSettings(object):
     if self.msvs_precompiled_header[config]:
       source_ext = os.path.splitext(self.msvs_precompiled_source[config])[1]
       if _LanguageMatchesForPch(source_ext, extension):
-        pch = self.msvs_precompiled_header[config]
-        pchbase = os.path.split(pch)[1]
-        return ['/Yu' + pch, '/FI' + pch, '/Fp${pchprefix}.' + pchbase + '.pch']
+        pch = os.path.split(self.msvs_precompiled_header[config])[1]
+        return ['/Yu' + pch, '/FI' + pch, '/Fp${pchprefix}.' + pch + '.pch']
     return  []
 
   def GetCflagsC(self, config):
@@ -889,7 +888,7 @@ class PrecompiledHeader(object):
   def _PchHeader(self):
     """Get the header that will appear in an #include line for all source
     files."""
-    return self.settings.msvs_precompiled_header[self.config]
+    return os.path.split(self.settings.msvs_precompiled_header[self.config])[1]
 
   def GetObjDependencies(self, sources, objs, arch):
     """Given a list of sources files and the corresponding object files,

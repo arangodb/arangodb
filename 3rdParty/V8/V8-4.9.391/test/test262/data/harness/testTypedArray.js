@@ -13,13 +13,8 @@ var typedArrayConstructors = [
   Uint32Array,
   Uint16Array,
   Uint8Array,
-  Uint8ClampedArray
+  Uint8ClampedArray,
 ];
-
-/**
- * The %TypedArray% intrinsic constructor function.
- */
-var TypedArray = Object.getPrototypeOf(Int8Array);
 
 /**
  * Callback for testing a typed array constructor.
@@ -32,12 +27,10 @@ var TypedArray = Object.getPrototypeOf(Int8Array);
  * Calls the provided function for every typed array constructor.
  *
  * @param {typedArrayConstructorCallback} f - the function to call for each typed array constructor.
- * @param {Array} selected - An optional Array with filtered typed arrays
  */
-function testWithTypedArrayConstructors(f, selected) {
-  var constructors = selected || typedArrayConstructors;
-  for (var i = 0; i < constructors.length; ++i) {
-    var constructor = constructors[i];
+function testWithTypedArrayConstructors(f) {
+  for (var i = 0; i < typedArrayConstructors.length; ++i) {
+    var constructor = typedArrayConstructors[i];
     try {
       f(constructor);
     } catch (e) {

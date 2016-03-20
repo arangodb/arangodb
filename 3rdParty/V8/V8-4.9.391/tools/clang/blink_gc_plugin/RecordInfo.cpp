@@ -399,7 +399,7 @@ RecordInfo::Bases* RecordInfo::CollectBases() {
     TracingStatus status = info->InheritsTrace()
                                ? TracingStatus::Needed()
                                : TracingStatus::Unneeded();
-    bases->push_back(std::make_pair(base, BasePoint(spec, info, status)));
+    bases->insert(std::make_pair(base, BasePoint(spec, info, status)));
   }
   return bases;
 }

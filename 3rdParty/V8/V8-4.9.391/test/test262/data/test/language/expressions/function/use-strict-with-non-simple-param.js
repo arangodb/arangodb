@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-esid: sec-function-definitions-static-semantics-early-errors
+es7id: 14.1.2
 description: >
   A SyntaxError is thrown if a function contains a non-simple parameter list and a UseStrict directive.
 info: >

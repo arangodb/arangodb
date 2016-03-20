@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="$(OutDir)obj">
+      <UniqueIdentifier>{7BD4F48B-77B4-AB58-9E24-A7302D190D1C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="$(OutDir)obj\global_intermediate">
+      <UniqueIdentifier>{14CEDE64-16A7-96A9-EF19-5C5D6085FF18}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="d8.h"/>
+    <ClCompile Include="d8.cc"/>
+    <ClCompile Include="d8-windows.cc"/>
+    <ClCompile Include="$(OutDir)obj\global_intermediate\d8-js.cc">
+      <Filter>$(OutDir)obj\global_intermediate</Filter>
+    </ClCompile>
+    <None Include="d8.gyp"/>
+  </ItemGroup>
+</Project>

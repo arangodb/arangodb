@@ -23,7 +23,6 @@
 #include "clang/Basic/SourceManager.h"
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/FrontendActions.h"
-#include "clang/Lex/HeaderSearchOptions.h"
 #include "clang/Lex/PPCallbacks.h"
 #include "clang/Lex/Preprocessor.h"
 #include "clang/Tooling/CommonOptionsParser.h"
@@ -32,7 +31,6 @@
 #include "clang/Tooling/Tooling.h"
 #include "llvm/Support/CommandLine.h"
 
-using clang::HeaderSearchOptions;
 using clang::tooling::CommonOptionsParser;
 using std::set;
 using std::stack;
@@ -45,8 +43,10 @@ class IncludeFinderPPCallbacks : public clang::PPCallbacks {
  public:
   IncludeFinderPPCallbacks(clang::SourceManager* source_manager,
                            string* main_source_file,
-                           set<string>* source_file_paths,
-                           const HeaderSearchOptions* header_search_options);
+                           set<string>* source_file_paths)
+      : source_manager_(source_manager),
+        main_source_file_(main_source_file),
+        source_file_paths_(source_file_paths) {}
   void FileChanged(clang::SourceLocation /*loc*/,
                    clang::PPCallbacks::FileChangeReason reason,
                    clang::SrcMgr::CharacteristicKind /*file_type*/,
@@ -64,52 +64,15 @@ class IncludeFinderPPCallbacks : public clang::PPCallbacks {
   void EndOfMainFile() override;
 
  private:
-  string DoubleSlashSystemHeaders(const string& search_path,
-                                  const string& relative_path) const;
-
   clang::SourceManager* const source_manager_;
   string* const main_source_file_;
   set<string>* const source_file_paths_;
-  set<string> system_header_prefixes_;
   // The path of the file that was last referenced by an inclusion directive,
   // normalized for includes that are relative to a different source file.
   string last_inclusion_directive_;
   // The stack of currently parsed files. top() gives the current file.
   stack<string> current_files_;
 };
-
-IncludeFinderPPCallbacks::IncludeFinderPPCallbacks(
-    clang::SourceManager* source_manager,
-    string* main_source_file,
-    set<string>* source_file_paths,
-    const HeaderSearchOptions* header_search_options)
-      : source_manager_(source_manager),
-        main_source_file_(main_source_file),
-        source_file_paths_(source_file_paths) {
-  // In practice this list seems to be empty, but add it anyway just in case.
-  for (const auto& prefix : header_search_options->SystemHeaderPrefixes) {
-    system_header_prefixes_.insert(prefix.Prefix);
-  }
-
-  // This list contains all the include directories of different type.  We add
-  // all system headers to the set - excluding the Quoted and Angled groups
-  // which are from -iquote and -I flags.
-  for (const auto& entry : header_search_options->UserEntries) {
-    switch (entry.Group) {
-      case clang::frontend::System:
-      case clang::frontend::ExternCSystem:
-      case clang::frontend::CSystem:
-      case clang::frontend::CXXSystem:
-      case clang::frontend::ObjCSystem:
-      case clang::frontend::ObjCXXSystem:
-      case clang::frontend::After:
-        system_header_prefixes_.insert(entry.Path);
-        break;
-      default:
-        break;
-    }
-  }
-}
 
 void IncludeFinderPPCallbacks::FileChanged(
     clang::SourceLocation /*loc*/,
@@ -172,28 +135,19 @@ void IncludeFinderPPCallbacks::InclusionDirective(
 
     // Otherwise we take the literal path as we stored it for the current
     // file, and append the relative path.
-    last_inclusion_directive_ =
-        DoubleSlashSystemHeaders(parent, relative_path.str());
+    last_inclusion_directive_ = parent + "/" + relative_path.str();
   } else if (!search_path.empty()) {
-    last_inclusion_directive_ =
-        DoubleSlashSystemHeaders(search_path.str(), relative_path.str());
+    // We want to be able to extract the search path relative to which the
+    // include statement is defined. Therefore if search_path is an absolute
+    // path (indicating it is most likely a system header) we use "//" as a
+    // separator between the search path and the relative path.
+    last_inclusion_directive_ = search_path.str() +
+        (llvm::sys::path::is_absolute(search_path) ? "//" : "/") +
+        relative_path.str();
   } else {
     last_inclusion_directive_ = file_name.str();
   }
   AddFile(last_inclusion_directive_);
-}
-
-string IncludeFinderPPCallbacks::DoubleSlashSystemHeaders(
-    const string& search_path,
-    const string& relative_path) const {
-  // We want to be able to extract the search path relative to which the
-  // include statement is defined. Therefore if search_path is a system header
-  // we use "//" as a separator between the search path and the relative path.
-  const bool is_system_header =
-      system_header_prefixes_.find(search_path) !=
-      system_header_prefixes_.end();
-
-  return search_path + (is_system_header ? "//" : "/") + relative_path;
 }
 
 void IncludeFinderPPCallbacks::EndOfMainFile() {
@@ -236,8 +190,7 @@ void CompilationIndexerAction::Preprocess() {
   preprocessor.addPPCallbacks(llvm::make_unique<IncludeFinderPPCallbacks>(
       &getCompilerInstance().getSourceManager(),
       &main_source_file_,
-      &source_file_paths_,
-      &getCompilerInstance().getHeaderSearchOpts()));
+      &source_file_paths_));
   preprocessor.getDiagnostics().setIgnoreAllWarnings(true);
   preprocessor.SetSuppressIncludeNotFoundError(true);
   preprocessor.EnterMainSourceFile();
@@ -249,7 +202,7 @@ void CompilationIndexerAction::Preprocess() {
 
 void CompilationIndexerAction::EndSourceFileAction() {
   std::ofstream out(main_source_file_ + ".filepaths");
-  for (const string& path : source_file_paths_) {
+  for (string path : source_file_paths_) {
     out << path << std::endl;
   }
 }

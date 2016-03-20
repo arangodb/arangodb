@@ -36,7 +36,6 @@ from utils import tools
 import auth
 import isolated_format
 import isolateserver
-import run_isolated
 
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -180,7 +179,7 @@ def namedtuple_to_dict(value):
 
 
 def task_request_to_raw_request(task_request):
-  """Returns the json-compatible dict expected by the server for new request.
+  """Returns the json dict expected by the Swarming server for new request.
 
   This is for the v1 client Swarming API.
   """
@@ -503,7 +502,7 @@ def retrieve_results(
     <result dict> on success.
     None on failure.
   """
-  assert timeout is None or isinstance(timeout, float), timeout
+  assert isinstance(timeout, float), timeout
   result_url = '%s/_ah/api/swarming/v1/task/%s/result' % (base_url, task_id)
   output_url = '%s/_ah/api/swarming/v1/task/%s/stdout' % (base_url, task_id)
   started = now()
@@ -954,9 +953,11 @@ def process_trigger_options(parser, options, args):
 
 def add_collect_options(parser):
   parser.server_group.add_option(
-      '-t', '--timeout', type='float',
-      help='Timeout to wait for result, set to 0 for no timeout; default to no '
-           'wait')
+      '-t', '--timeout',
+      type='float',
+      default=80*60.,
+      help='Timeout to wait for result, set to 0 for no timeout; default: '
+           '%default s')
   parser.group_logging.add_option(
       '--decorate', action='store_true', help='Decorate output')
   parser.group_logging.add_option(
@@ -1051,7 +1052,7 @@ def CMDbots(parser, args):
 
     # If the user requested to filter on dimensions, ensure the bot has all the
     # dimensions requested.
-    dimensions = {i['key']: i.get('value') for i in bot['dimensions']}
+    dimensions = {i['key']: i['value'] for i in bot['dimensions']}
     for key, value in options.dimensions:
       if key not in dimensions:
         break
@@ -1094,19 +1095,11 @@ def CMDcollect(parser, args):
     options.json = unicode(os.path.abspath(options.json))
     try:
       with fs.open(options.json, 'rb') as f:
-        data = json.load(f)
-    except (IOError, ValueError):
-      parser.error('Failed to open %s' % options.json)
-    try:
-      tasks = sorted(
-          data['tasks'].itervalues(), key=lambda x: x['shard_index'])
-      args = [t['task_id'] for t in tasks]
-    except (KeyError, TypeError):
-      parser.error('Failed to process %s' % options.json)
-    if options.timeout is None:
-      options.timeout = (
-          data['request']['properties']['execution_timeout_secs'] +
-          data['request']['expiration_secs'] + 10.)
+        tasks = sorted(
+            json.load(f)['tasks'].itervalues(), key=lambda x: x['shard_index'])
+        args = [t['task_id'] for t in tasks]
+    except (KeyError, IOError, TypeError, ValueError):
+      parser.error('Failed to parse %s' % options.json)
   else:
     valid = frozenset('0123456789abcdef')
     if any(not valid.issuperset(task_id) for task_id in args):
@@ -1305,10 +1298,6 @@ def CMDrun(parser, args):
     t['task_id']
     for t in sorted(tasks.itervalues(), key=lambda x: x['shard_index'])
   ]
-  if options.timeout is None:
-    options.timeout = (
-        task_request.properties.execution_timeout_secs +
-        task_request.expiration_secs + 10.)
   try:
     return collect(
         options.swarming,
@@ -1334,9 +1323,6 @@ def CMDreproduce(parser, args):
   You can pass further additional arguments to the target command by passing
   them after --.
   """
-  parser.add_option(
-      '--output-dir', metavar='DIR', default='',
-      help='Directory that will have results stored into')
   options, args = parser.parse_args(args)
   extra_args = []
   if not args:
@@ -1384,12 +1370,6 @@ def CMDreproduce(parser, args):
       command = bundle.command
       if bundle.relative_cwd:
         workdir = os.path.join(workdir, bundle.relative_cwd)
-      command.extend(properties.get('extra_args') or [])
-    # https://github.com/luci/luci-py/blob/master/appengine/swarming/doc/Magic-Values.md
-    new_command = run_isolated.process_command(command, options.output_dir)
-    if not options.output_dir and new_command != command:
-      parser.error('The task has outputs, you must use --output-dir')
-    command = new_command
   else:
     command = properties['command']
   try:
@@ -1454,7 +1434,6 @@ def CMDtrigger(parser, args):
         data = {
           'base_task_name': options.task_name,
           'tasks': tasks,
-          'request': task_request_to_raw_request(task_request),
         }
         tools.write_json(unicode(options.dump_json), data, True)
         print('To collect results, use:')

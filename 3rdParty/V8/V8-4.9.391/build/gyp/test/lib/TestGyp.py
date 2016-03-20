@@ -215,27 +215,6 @@ class TestGypBase(TestCommon.TestCommon):
         destination = source.replace(source_dir, dest_dir)
         shutil.copy2(source, destination)
 
-    # The gyp tests are run with HOME pointing to |dest_dir| to provide an
-    # hermetic environment. Symlink login.keychain and the 'Provisioning
-    # Profiles' folder to allow codesign to access to the data required for
-    # signing binaries.
-    if sys.platform == 'darwin':
-      old_keychain = GetDefaultKeychainPath()
-      old_provisioning_profiles = os.path.join(
-          os.environ['HOME'], 'Library', 'MobileDevice',
-          'Provisioning Profiles')
-
-      new_keychain = os.path.join(dest_dir, 'Library', 'Keychains')
-      MakeDirs(new_keychain)
-      os.symlink(old_keychain, os.path.join(new_keychain, 'login.keychain'))
-
-      if os.path.exists(old_provisioning_profiles):
-        new_provisioning_profiles = os.path.join(
-            dest_dir, 'Library', 'MobileDevice')
-        MakeDirs(new_provisioning_profiles)
-        os.symlink(old_provisioning_profiles,
-            os.path.join(new_provisioning_profiles, 'Provisioning Profiles'))
-
   def initialize_build_tool(self):
     """
     Initializes the .build_tool attribute.
@@ -629,23 +608,6 @@ def ConvertToCygpath(path):
     path = p.communicate()[0].strip()
   return path
 
-
-def MakeDirs(new_dir):
-  """A wrapper around os.makedirs() that emulates "mkdir -p"."""
-  try:
-    os.makedirs(new_dir)
-  except OSError as e:
-    if e.errno != errno.EEXIST:
-      raise
-
-def GetDefaultKeychainPath():
-  """Get the keychain path, for used before updating HOME."""
-  assert sys.platform == 'darwin'
-  # Format is:
-  # $ security default-keychain
-  #     "/Some/Path/To/default.keychain"
-  path = subprocess.check_output(['security', 'default-keychain']).strip()
-  return path[1:-1]
 
 def FindMSBuildInstallation(msvs_version = 'auto'):
   """Returns path to MSBuild for msvs_version or latest available.
@@ -1048,8 +1010,7 @@ class TestGypXcode(TestGypBase):
         if not TestCmd.is_List(expected):
           expected = expected.split('\n')
         actual = [a for a in actual
-                    if 'No recorder, buildTask: <Xcode3BuildTask:' not in a and
-                       'Beginning test session' not in a]
+                    if 'No recorder, buildTask: <Xcode3BuildTask:' not in a]
       return match(actual, expected)
     kw['match'] = match_filter_xcode
 

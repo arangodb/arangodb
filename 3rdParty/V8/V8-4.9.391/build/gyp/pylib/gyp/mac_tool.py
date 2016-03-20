@@ -62,12 +62,9 @@ class MacTool(object):
     elif extension == '.storyboard':
       return self._CopyXIBFile(source, dest)
     elif extension == '.strings':
-      self._CopyStringsFile(source, dest)
+      self._CopyStringsFile(source, dest, convert_to_binary)
     else:
       shutil.copy(source, dest)
-
-    if extension in ('.plist', '.strings') and convert_to_binary == 'True':
-      self._ConvertToBinary(dest)
 
   def _CopyXIBFile(self, source, dest):
     """Compiles a XIB file with ibtool into a binary plist in the bundle."""
@@ -79,26 +76,8 @@ class MacTool(object):
     if os.path.relpath(dest):
       dest = os.path.join(base, dest)
 
-    args = ['xcrun', 'ibtool', '--errors', '--warnings', '--notices']
-
-    if os.environ['XCODE_VERSION_ACTUAL'] > '0700':
-      args.extend(['--auto-activate-custom-fonts'])
-      if 'IPHONEOS_DEPLOYMENT_TARGET' in os.environ:
-        args.extend([
-            '--target-device', 'iphone', '--target-device', 'ipad',
-            '--minimum-deployment-target',
-            os.environ['IPHONEOS_DEPLOYMENT_TARGET'],
-        ])
-      else:
-        args.extend([
-            '--target-device', 'mac',
-            '--minimum-deployment-target',
-            os.environ['MACOSX_DEPLOYMENT_TARGET'],
-        ])
-
-    args.extend(['--output-format', 'human-readable-text', '--compile', dest,
-        source])
-
+    args = ['xcrun', 'ibtool', '--errors', '--warnings', '--notices',
+        '--output-format', 'human-readable-text', '--compile', dest, source]
     ibtool_section_re = re.compile(r'/\*.*\*/')
     ibtool_re = re.compile(r'.*note:.*is clipping its content')
     ibtoolout = subprocess.Popen(args, stdout=subprocess.PIPE)
@@ -117,7 +96,7 @@ class MacTool(object):
     subprocess.check_call([
         'xcrun', 'plutil', '-convert', 'binary1', '-o', dest, dest])
 
-  def _CopyStringsFile(self, source, dest):
+  def _CopyStringsFile(self, source, dest, convert_to_binary):
     """Copies a .strings file using iconv to reconvert the input into UTF-16."""
     input_code = self._DetectInputEncoding(source) or "UTF-8"
 
@@ -136,6 +115,9 @@ class MacTool(object):
     fp = open(dest, 'wb')
     fp.write(s.decode(input_code).encode('UTF-16'))
     fp.close()
+
+    if convert_to_binary == 'True':
+      self._ConvertToBinary(dest)
 
   def _DetectInputEncoding(self, file_name):
     """Reads the first few bytes from file_name and tries to guess the text
@@ -368,25 +350,49 @@ class MacTool(object):
       self._MergePlist(merged_plist, plist)
     plistlib.writePlist(merged_plist, output)
 
-  def ExecCodeSignBundle(self, key, entitlements, provisioning):
+  def ExecCodeSignBundle(self, key, resource_rules, entitlements, provisioning):
     """Code sign a bundle.
 
     This function tries to code sign an iOS bundle, following the same
     algorithm as Xcode:
-      1. pick the provisioning profile that best match the bundle identifier,
+      1. copy ResourceRules.plist from the user or the SDK into the bundle,
+      2. pick the provisioning profile that best match the bundle identifier,
          and copy it into the bundle as embedded.mobileprovision,
-      2. copy Entitlements.plist from user or SDK next to the bundle,
-      3. code sign the bundle.
+      3. copy Entitlements.plist from user or SDK next to the bundle,
+      4. code sign the bundle.
     """
+    resource_rules_path = self._InstallResourceRules(resource_rules)
     substitutions, overrides = self._InstallProvisioningProfile(
         provisioning, self._GetCFBundleIdentifier())
     entitlements_path = self._InstallEntitlements(
         entitlements, substitutions, overrides)
     subprocess.check_call([
-        'codesign', '--force', '--sign', key, '--entitlements',
-        entitlements_path, '--timestamp=none', os.path.join(
+        'codesign', '--force', '--sign', key, '--resource-rules',
+        resource_rules_path, '--entitlements', entitlements_path,
+        os.path.join(
             os.environ['TARGET_BUILD_DIR'],
             os.environ['FULL_PRODUCT_NAME'])])
+
+  def _InstallResourceRules(self, resource_rules):
+    """Installs ResourceRules.plist from user or SDK into the bundle.
+
+    Args:
+      resource_rules: string, optional, path to the ResourceRules.plist file
+        to use, default to "${SDKROOT}/ResourceRules.plist"
+
+    Returns:
+      Path to the copy of ResourceRules.plist into the bundle.
+    """
+    source_path = resource_rules
+    target_path = os.path.join(
+        os.environ['BUILT_PRODUCTS_DIR'],
+        os.environ['CONTENTS_FOLDER_PATH'],
+        'ResourceRules.plist')
+    if not source_path:
+      source_path = os.path.join(
+          os.environ['SDKROOT'], 'ResourceRules.plist')
+    shutil.copy2(source_path, target_path)
+    return target_path
 
   def _InstallProvisioningProfile(self, profile, bundle_identifier):
     """Installs embedded.mobileprovision into the bundle.

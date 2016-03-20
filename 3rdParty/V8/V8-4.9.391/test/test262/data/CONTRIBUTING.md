@@ -10,7 +10,7 @@ Take a look at these examples:
 - `Array.prototype.find` use with `Proxy`: `test/Array/prototype/find/Array.prototype.find_callable-Proxy-1.js`
 - `arguments` implements an `iterator` interface: `test/language/arguments-object/iterator-interface.js`
 
-**Note** The project is currently transitioning from a naming system based on specification section numbers. There remains a substantial number of tests that conform to this outdated convention; contributors should ignore that approach when introducing new tests and instead encode this information using the [id](#id) frontmatter tag.
+**Note** The project is currently transitioning from a naming system based on specification section numbers. There remains a substantial number of tests that conform to this outdated convention; contributors should ignore that approach when introducing new tests and instead encode this information using the [es5id](#es5id) or [es6id](#es6id) frontmatter tags.
 
 ## Test Case Style
 
@@ -45,7 +45,6 @@ Test262 supports the following tags:
  - [**negative**](#negative)
  - [**es5id**](#es5id)
  - [**es6id**](#es6id)
- - [**esid**](#esid)
  - [**includes**](#includes)
  - [**timeout**](#timeout)
  - [**author**](#author)
@@ -81,21 +80,14 @@ For best practices on how to use the negative tag please see Handling Errors and
 #### es5id
 **es5id**: [es5-test-id]
 
-This tag identifies the section number from the portion of the ECMAScript 5.1 standard that is tested by this test.  It was automatically generated for tests that were originally written for the ES5 version of the test suite and are now part of the ES6 version.
+This tag identifies the portion of the ECMAScript 5.1 standard that is tested by this test.  It was automatically generated for tests that were originally written for the ES5 version of the test suite and are now part of the ES6 version.
 
 When writing a new test for ES6, it is only necessary to include this tag when the test covers a part of the ES5 spec that is incorporated into ES6. All other tests should specify the `es6id` (see below) instead.
 
 #### es6id
 **es6id**: [es6-test-id]
 
-This tag identifies the section number from the portion of the ECMAScript 6 standard that is tested by this test.
-
-#### esid
-**esid**: [spec-id]
-
-This tag identifies the hash ID from the portion of the ECMAScript draft which is most recent to the date the test was added. It represents the anchors on the generated HTML version of the specs. E.g.: `esid: sec-typedarray-length`. This tag might be used to replace a `es6id` or further.
-
-When writing a new test for a Stage 3+ spec not yet published on the draft, the `pending` value can be used while a hash ID is not available.
+This tag identifies the portion of the ECMAScript 6 standard that is tested by this test.
 
 #### includes
 **includes**: [file-list]

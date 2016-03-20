@@ -295,10 +295,7 @@ class RunIsolatedTest(unittest.TestCase):
     expected = ['state.json', isolated_hash]
     out, err, returncode = self._run(self._cmd_args(isolated_hash))
     self.assertEqual('', out)
-    self.assertIn(
-        '<The .isolated doesn\'t declare any command to run!>\n'
-        '<Check your .isolate for missing \'command\' variable>\n',
-        err)
+    self.assertIn('No command to run\n', err)
     self.assertEqual(1, returncode)
     actual = list_files_tree(self.cache)
     self.assertEqual(sorted(expected), actual)

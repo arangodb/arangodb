@@ -3,14 +3,8 @@
 
 /*---
 info: >
-    [...]
-    5. Let rejectResult be Call(promiseCapability.[[Reject]], undefined, «r»).
-    [...]
-
-    25.4.1.3.1 Promise Reject Functions
-    [...]
-    6. Return RejectPromise(promise, reason).
-es6id: 25.4.4.4
+   Promise.reject
+es6id: S25.4.4.4_A2.1_T1
 author: Sam Mikes
 description: Promise.reject creates a new settled promise
 ---*/

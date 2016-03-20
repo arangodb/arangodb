@@ -22,10 +22,10 @@ very clear example, read http://www.di-mgt.com.au/rsa_alg.html#pkcs1schemes
 At least 8 bytes of random padding is used when encrypting a message. This makes
 these methods much more secure than the ones in the ``rsa`` module.
 
-WARNING: this module leaks information when decryption fails. The exceptions
-that are raised contain the Python traceback information, which can be used to
-deduce where in the process the failure occurred. DO NOT PASS SUCH INFORMATION
-to your users.
+WARNING: this module leaks information when decryption or verification fails.
+The exceptions that are raised contain the Python traceback information, which
+can be used to deduce where in the process the failure occurred. DO NOT PASS
+SUCH INFORMATION to your users.
 '''
 
 import hashlib
@@ -288,23 +288,37 @@ def verify(message, signature, pub_key):
     :param pub_key: the :py:class:`rsa.PublicKey` of the person signing the message.
     :raise VerificationError: when the signature doesn't match the message.
 
+    .. warning::
+
+        Never display the stack trace of a
+        :py:class:`rsa.pkcs1.VerificationError` exception. It shows where in
+        the code the exception occurred, and thus leaks information about the
+        key. It's only a tiny bit of information, but every bit makes cracking
+        the keys easier.
+
     '''
     
-    keylength = common.byte_size(pub_key.n)
+    blocksize = common.byte_size(pub_key.n)
     encrypted = transform.bytes2int(signature)
     decrypted = core.decrypt_int(encrypted, pub_key.e, pub_key.n)
-    clearsig = transform.int2bytes(decrypted, keylength)
+    clearsig = transform.int2bytes(decrypted, blocksize)
+
+    # If we can't find the signature  marker, verification failed.
+    if clearsig[0:2] != b('\x00\x01'):
+        raise VerificationError('Verification failed')
     
-    # Get the hash method
-    method_name = _find_method_hash(clearsig)
+    # Find the 00 separator between the padding and the payload
+    try:
+        sep_idx = clearsig.index(b('\x00'), 2)
+    except ValueError:
+        raise VerificationError('Verification failed')
+    
+    # Get the hash and the hash method
+    (method_name, signature_hash) = _find_method_hash(clearsig[sep_idx+1:])
     message_hash = _hash(message, method_name)
 
-    # Reconstruct the expected padded hash
-    cleartext = HASH_ASN1[method_name] + message_hash
-    expected = _pad_for_signing(cleartext, keylength)
-
-    # Compare with the signed one
-    if expected != clearsig:
+    # Compare the real hash to the hash in the signature
+    if message_hash != signature_hash:
         raise VerificationError('Verification failed')
 
     return True
@@ -337,20 +351,24 @@ def _hash(message, method_name):
     return hasher.digest()
 
 
-def _find_method_hash(clearsig):
-    '''Finds the hash method.
+def _find_method_hash(method_hash):
+    '''Finds the hash method and the hash itself.
     
-    :param clearsig: full padded ASN1 and hash.
+    :param method_hash: ASN1 code for the hash method concatenated with the
+        hash itself.
     
-    :return: the used hash method.
+    :return: tuple (method, hash) where ``method`` is the used hash method, and
+        ``hash`` is the hash itself.
     
     :raise VerificationFailed: when the hash method cannot be found
 
     '''
 
     for (hashname, asn1code) in HASH_ASN1.items():
-        if asn1code in clearsig:
-            return hashname
+        if not method_hash.startswith(asn1code):
+            continue
+        
+        return (hashname, method_hash[len(asn1code):])
     
     raise VerificationError('Verification failed')
 

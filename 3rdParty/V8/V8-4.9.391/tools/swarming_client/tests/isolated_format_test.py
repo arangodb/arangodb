@@ -184,15 +184,6 @@ class TestIsolated(auto_stub.TestCase):
     with self.assertRaises(isolated_format.IsolatedError):
       isolated_format.load_isolated(json.dumps(data), isolateserver_mock.ALGO)
 
-  def test_load_isolated_bad_abs(self):
-    for i in ('/a', 'a/..', 'a/', '\\\\a'):
-      data = {
-        u'files': {i: {u'l': u'somewhere'}},
-        u'version': isolated_format.ISOLATED_FILE_VERSION,
-      }
-      with self.assertRaises(isolated_format.IsolatedError):
-        isolated_format.load_isolated(json.dumps(data), isolateserver_mock.ALGO)
-
   def test_load_isolated_os_only(self):
     # Tolerate 'os' on older version.
     data = {

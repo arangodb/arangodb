@@ -9,8 +9,8 @@ class BooleanDecoder(decoder.AbstractSimpleDecoder):
     def valueDecoder(self, fullSubstrate, substrate, asn1Spec, tagSet, length,
                      state, decodeFun, substrateFun):
         head, tail = substrate[:length], substrate[length:]
-        if not head or length != 1:
-            raise error.PyAsn1Error('Not single-octet Boolean payload')
+        if not head:
+            raise error.PyAsn1Error('Empty substrate')
         byte = oct2int(head[0])
         # CER/DER specifies encoding of TRUE as 0xFF and FALSE as 0x0, while
         # BER allows any non-zero value as TRUE; cf. sections 8.2.2. and 11.1 
@@ -20,7 +20,7 @@ class BooleanDecoder(decoder.AbstractSimpleDecoder):
         elif byte == 0x00:
             value = 0
         else:
-            raise error.PyAsn1Error('Unexpected Boolean payload: %s' % byte)
+            raise error.PyAsn1Error('Boolean CER violation: %s' % byte)
         return self._createComponent(asn1Spec, tagSet, value), tail
 
 tagMap = decoder.tagMap.copy()

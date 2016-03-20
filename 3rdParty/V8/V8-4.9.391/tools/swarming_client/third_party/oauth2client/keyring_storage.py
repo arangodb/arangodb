@@ -1,4 +1,4 @@
-# Copyright 2014 Google Inc. All rights reserved.
+# Copyright (C) 2012 Google Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,98 +17,93 @@
 A Storage for Credentials that uses the keyring module.
 """
 
-import threading
+__author__ = 'jcgregorio@google.com (Joe Gregorio)'
 
 import keyring
+import threading
 
-from oauth2client.client import Credentials
-from oauth2client.client import Storage as BaseStorage
-
-
-__author__ = 'jcgregorio@google.com (Joe Gregorio)'
+from client import Storage as BaseStorage
+from client import Credentials
 
 
 class Storage(BaseStorage):
-    """Store and retrieve a single credential to and from the keyring.
+  """Store and retrieve a single credential to and from the keyring.
 
-    To use this module you must have the keyring module installed. See
-    <http://pypi.python.org/pypi/keyring/>. This is an optional module and is
-    not installed with oauth2client by default because it does not work on all
-    the platforms that oauth2client supports, such as Google App Engine.
+  To use this module you must have the keyring module installed. See
+  <http://pypi.python.org/pypi/keyring/>. This is an optional module and is not
+  installed with oauth2client by default because it does not work on all the
+  platforms that oauth2client supports, such as Google App Engine.
 
-    The keyring module <http://pypi.python.org/pypi/keyring/> is a
-    cross-platform library for access the keyring capabilities of the local
-    system. The user will be prompted for their keyring password when this
-    module is used, and the manner in which the user is prompted will vary per
-    platform.
+  The keyring module <http://pypi.python.org/pypi/keyring/> is a cross-platform
+  library for access the keyring capabilities of the local system. The user will
+  be prompted for their keyring password when this module is used, and the
+  manner in which the user is prompted will vary per platform.
 
-    Usage::
+  Usage:
+    from oauth2client.keyring_storage import Storage
 
-        from oauth2client.keyring_storage import Storage
+    s = Storage('name_of_application', 'user1')
+    credentials = s.get()
 
-        s = Storage('name_of_application', 'user1')
-        credentials = s.get()
+  """
 
+  def __init__(self, service_name, user_name):
+    """Constructor.
+
+    Args:
+      service_name: string, The name of the service under which the credentials
+        are stored.
+      user_name: string, The name of the user to store credentials for.
     """
+    self._service_name = service_name
+    self._user_name = user_name
+    self._lock = threading.Lock()
 
-    def __init__(self, service_name, user_name):
-        """Constructor.
+  def acquire_lock(self):
+    """Acquires any lock necessary to access this Storage.
 
-        Args:
-            service_name: string, The name of the service under which the
-                          credentials are stored.
-            user_name: string, The name of the user to store credentials for.
-        """
-        self._service_name = service_name
-        self._user_name = user_name
-        self._lock = threading.Lock()
+    This lock is not reentrant."""
+    self._lock.acquire()
 
-    def acquire_lock(self):
-        """Acquires any lock necessary to access this Storage.
+  def release_lock(self):
+    """Release the Storage lock.
 
-        This lock is not reentrant.
-        """
-        self._lock.acquire()
+    Trying to release a lock that isn't held will result in a
+    RuntimeError.
+    """
+    self._lock.release()
 
-    def release_lock(self):
-        """Release the Storage lock.
+  def locked_get(self):
+    """Retrieve Credential from file.
 
-        Trying to release a lock that isn't held will result in a
-        RuntimeError.
-        """
-        self._lock.release()
+    Returns:
+      oauth2client.client.Credentials
+    """
+    credentials = None
+    content = keyring.get_password(self._service_name, self._user_name)
 
-    def locked_get(self):
-        """Retrieve Credential from file.
+    if content is not None:
+      try:
+        credentials = Credentials.new_from_json(content)
+        credentials.set_store(self)
+      except ValueError:
+        pass
 
-        Returns:
-            oauth2client.client.Credentials
-        """
-        credentials = None
-        content = keyring.get_password(self._service_name, self._user_name)
+    return credentials
 
-        if content is not None:
-            try:
-                credentials = Credentials.new_from_json(content)
-                credentials.set_store(self)
-            except ValueError:
-                pass
+  def locked_put(self, credentials):
+    """Write Credentials to file.
 
-        return credentials
+    Args:
+      credentials: Credentials, the credentials to store.
+    """
+    keyring.set_password(self._service_name, self._user_name,
+                         credentials.to_json())
 
-    def locked_put(self, credentials):
-        """Write Credentials to file.
+  def locked_delete(self):
+    """Delete Credentials file.
 
-        Args:
-            credentials: Credentials, the credentials to store.
-        """
-        keyring.set_password(self._service_name, self._user_name,
-                             credentials.to_json())
-
-    def locked_delete(self):
-        """Delete Credentials file.
-
-        Args:
-            credentials: Credentials, the credentials to store.
-        """
-        keyring.set_password(self._service_name, self._user_name, '')
+    Args:
+      credentials: Credentials, the credentials to store.
+    """
+    keyring.set_password(self._service_name, self._user_name, '')

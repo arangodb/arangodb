@@ -114,17 +114,13 @@ class IntegerEncoder(AbstractItemEncoder):
 class BitStringEncoder(AbstractItemEncoder):
     def encodeValue(self, encodeFun, value, defMode, maxChunkSize):
         if not maxChunkSize or len(value) <= maxChunkSize*8:
-            out_len = (len(value) + 7) // 8
-            out_list = out_len * [0]
-            j = 7
-            i = -1
-            for val in value:
-                j += 1
-                if j == 8:
-                    i += 1
-                    j = 0
-                out_list[i] = out_list[i] | val << (7-j)
-            return int2oct(7-j) + ints2octs(out_list), 0
+            r = {}; l = len(value); p = 0; j = 7
+            while p < l:
+                i, j = divmod(p, 8)
+                r[i] = r.get(i,0) | value[p]<<(7-j)
+                p = p + 1
+            keys = list(r); keys.sort()
+            return int2oct(7-j) + ints2octs([r[k] for k in keys]), 0
         else:
             pos = 0; substrate = null
             while 1:
@@ -160,98 +156,47 @@ class ObjectIdentifierEncoder(AbstractItemEncoder):
     precomputedValues = {
         (1, 3, 6, 1, 2): (43, 6, 1, 2),        
         (1, 3, 6, 1, 4): (43, 6, 1, 4)
-    }
+        }
     def encodeValue(self, encodeFun, value, defMode, maxChunkSize):    
         oid = value.asTuple()
         if oid[:5] in self.precomputedValues:
             octets = self.precomputedValues[oid[:5]]
-            oid = oid[5:]
+            index = 5
         else:
             if len(oid) < 2:
                 raise error.PyAsn1Error('Short OID %s' % (value,))
 
-            octets = ()
-
             # Build the first twos
-            if oid[0] == 0 and 0 <= oid[1] <= 39:
-                oid = (oid[1],) + oid[2:]
-            elif oid[0] == 1 and 0 <= oid[1] <= 39:
-                oid = (oid[1] + 40,) + oid[2:]
-            elif oid[0] == 2:
-                oid = (oid[1] + 80,) + oid[2:]
-            else:
+            if oid[0] > 6 or oid[1] > 39 or oid[0] == 6 and oid[1] > 15:
                 raise error.PyAsn1Error(
-                    'Impossible initial arcs %s at %s' % (oid[:2], value)
+                    'Initial sub-ID overflow %s in OID %s' % (oid[:2], value)
                     )
+            octets = (oid[0] * 40 + oid[1],)
+            index = 2
 
-        # Cycle through subIds
-        for subId in oid:
-            if subId > -1 and subId < 128:
+        # Cycle through subids
+        for subid in oid[index:]:
+            if subid > -1 and subid < 128:
                 # Optimize for the common case
-                octets = octets + (subId & 0x7f,)
-            elif subId < 0:
+                octets = octets + (subid & 0x7f,)
+            elif subid < 0 or subid > 0xFFFFFFFF:
                 raise error.PyAsn1Error(
-                    'Negative OID arc %s at %s' % (subId, value)
-                )
+                    'SubId overflow %s in %s' % (subid, value)
+                    )
             else:
                 # Pack large Sub-Object IDs
-                res = (subId & 0x7f,)
-                subId = subId >> 7
-                while subId > 0:
-                    res = (0x80 | (subId & 0x7f),) + res
-                    subId = subId >> 7 
+                res = (subid & 0x7f,)
+                subid = subid >> 7
+                while subid > 0:
+                    res = (0x80 | (subid & 0x7f),) + res
+                    subid = subid >> 7 
                 # Add packed Sub-Object ID to resulted Object ID
                 octets += res
-
+                
         return ints2octs(octets), 0
 
 class RealEncoder(AbstractItemEncoder):
     supportIndefLenMode = 0
-    binEncBase = 2 # set to None to choose encoding base automatically 
-    def _dropFloatingPoint(self, m, encbase, e):
-        ms, es = 1, 1
-        if m < 0:
-            ms = -1  # mantissa sign
-        if e < 0:
-            es = -1  # exponenta sign 
-        m *= ms 
-        if encbase == 8:
-            m = m*2**(abs(e) % 3 * es)
-            e = abs(e) // 3 * es
-        elif encbase == 16:
-            m = m*2**(abs(e) % 4 * es)
-            e = abs(e) // 4 * es
-
-        while 1:
-            if int(m) != m:
-                m *= encbase
-                e -= 1
-                continue
-            break
-        return ms, int(m), encbase, e
-
-    def _chooseEncBase(self, value):
-        m, b, e = value
-        base = [2, 8, 16]
-        if value.binEncBase in base:
-            return self._dropFloatingPoint(m, value.binEncBase, e)
-        elif self.binEncBase in base:
-            return self._dropFloatingPoint(m, self.binEncBase, e)
-        # auto choosing base 2/8/16 
-        mantissa = [m, m, m]
-        exponenta = [e, e, e]
-        encbase = 2 
-        e = float('inf')
-        for i in range(3):
-            sign, mantissa[i], base[i], exponenta[i] = \
-                self._dropFloatingPoint(mantissa[i], base[i], exponenta[i])
-            if abs(exponenta[i]) < abs(e) or \
-               (abs(exponenta[i]) == abs(e) and mantissa[i] < m):
-                e = exponenta[i]
-                m = int(mantissa[i])
-                encbase = base[i]
-        return sign, m, encbase, e
-
     def encodeValue(self, encodeFun, value, defMode, maxChunkSize):
         if value.isPlusInfinity():
             return int2oct(0x40), 0
@@ -263,43 +208,22 @@ class RealEncoder(AbstractItemEncoder):
         if b == 10:
             return str2octs('\x03%dE%s%d' % (m, e == 0 and '+' or '', e)), 0
         elif b == 2:
-            fo = 0x80 # binary encoding
-            ms, m, encbase, e = self._chooseEncBase(value)
-            if ms < 0: # mantissa sign
-                fo = fo | 0x40 # sign bit
-            # exponenta & mantissa normalization
-            if encbase == 2:
-                while m & 0x1 == 0:
-                    m >>= 1
-                    e += 1
-            elif encbase == 8:
-                while m & 0x7 == 0:
-                    m >>= 3
-                    e += 1
-                fo |= 0x10
-            else: # encbase = 16
-                while m & 0xf == 0:
-                    m >>= 4
-                    e += 1
-                fo |= 0x20
-            sf = 0 # scale factor
-            while m & 0x1 == 0:
+            fo = 0x80                 # binary enoding
+            if m < 0:
+                fo = fo | 0x40  # sign bit
+                m = -m
+            while int(m) != m: # drop floating point
+                m *= 2
+                e -= 1
+            while m & 0x1 == 0: # mantissa normalization
                 m >>= 1
-                sf += 1
-            if sf > 3:
-                raise error.PyAsn1Error('Scale factor overflow') # bug if raised
-            fo |= sf << 2
+                e += 1
             eo = null
-            if e == 0 or e == -1:
-                eo = int2oct(e&0xff)
-            else: 
-                while e not in (0, -1):
-                    eo = int2oct(e&0xff) + eo
-                    e >>= 8
-                if e == 0 and eo and oct2int(eo[0]) & 0x80:
-                    eo = int2oct(0) + eo
-                if e == -1 and eo and not (oct2int(eo[0]) & 0x80):
-                    eo = int2oct(0xff) + eo
+            while e not in (0, -1):
+                eo = int2oct(e&0xff) + eo
+                e >>= 8
+            if e == 0 and eo and oct2int(eo[0]) & 0x80:
+                eo = int2oct(0) + eo
             n = len(eo)
             if n > 0xff:
                 raise error.PyAsn1Error('Real exponent overflow')
@@ -311,7 +235,7 @@ class RealEncoder(AbstractItemEncoder):
                 fo |= 2
             else:
                 fo |= 3
-                eo = int2oct(n&0xff) + eo
+                eo = int2oct(n//0xff+1) + eo
             po = null
             while m:
                 po = int2oct(m&0xff) + po
@@ -384,7 +308,6 @@ tagMap = {
     char.UniversalString.tagSet: OctetStringEncoder(),
     char.BMPString.tagSet: OctetStringEncoder(),
     # useful types
-    useful.ObjectDescriptor.tagSet: OctetStringEncoder(),
     useful.GeneralizedTime.tagSet: OctetStringEncoder(),
     useful.UTCTime.tagSet: OctetStringEncoder()        
     }
@@ -400,15 +323,12 @@ typeMap = {
     }
 
 class Encoder:
-    supportIndefLength = True
     def __init__(self, tagMap, typeMap={}):
         self.__tagMap = tagMap
         self.__typeMap = typeMap
 
-    def __call__(self, value, defMode=True, maxChunkSize=0):
-        if not defMode and not self.supportIndefLength:
-            raise error.PyAsn1Error('Indefinite length encoding not supported by this codec')
-        debug.logger & debug.flagEncoder and debug.logger('encoder called in %sdef mode, chunk size %s for type %s, value:\n%s' % (not defMode and 'in' or '', maxChunkSize, value.prettyPrintType(), value.prettyPrint()))
+    def __call__(self, value, defMode=1, maxChunkSize=0):
+        debug.logger & debug.flagEncoder and debug.logger('encoder called in %sdef mode, chunk size %s for type %s, value:\n%s' % (not defMode and 'in' or '', maxChunkSize, value.__class__.__name__, value.prettyPrint()))
         tagSet = value.getTagSet()
         if len(tagSet) > 1:
             concreteEncoder = explicitlyTaggedItemEncoder
@@ -423,7 +343,7 @@ class Encoder:
                     concreteEncoder = self.__tagMap[tagSet]
                 else:
                     raise Error('No encoder for %s' % (value,))
-        debug.logger & debug.flagEncoder and debug.logger('using value codec %s chosen by %s' % (concreteEncoder.__class__.__name__, tagSet))
+        debug.logger & debug.flagEncoder and debug.logger('using value codec %s chosen by %r' % (concreteEncoder.__class__.__name__, tagSet))
         substrate = concreteEncoder.encode(
             self, value, defMode, maxChunkSize
             )

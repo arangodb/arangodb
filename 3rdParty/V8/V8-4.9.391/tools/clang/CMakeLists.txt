@@ -28,20 +28,18 @@ link_directories("${CMAKE_SOURCE_DIR}/lib"
                  "${CMAKE_BINARY_DIR}/lib"
                  "${CMAKE_BINARY_DIR}/tools/clang/lib")
 
-# Tests for all enabled tools can be run by building this target.
-add_custom_target(cr-check-all COMMAND ${CMAKE_CTEST_COMMAND} -V)
-
 # cr_add_test(
 #   name
 #   testprog
 #   arguments...
 #   )
 function(cr_add_test name testprog)
-  add_custom_target(
-    ${name} COMMAND ${testprog} ${ARGN}
-    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+  add_test(NAME ${name} COMMAND ${testprog} ${ARGN})
   add_dependencies(cr-check-all ${name})
 endfunction(cr_add_test)
+
+# Tests for all enabled tools can be run by building this target.
+add_custom_target(cr-check-all COMMAND ${CMAKE_CTEST_COMMAND} -V)
 
 function(cr_install)
   install(${ARGN} COMPONENT chrome-tools OPTIONAL)

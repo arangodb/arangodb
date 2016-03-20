@@ -1070,7 +1070,6 @@
       }],
       ['OS=="solaris"', {
         'defines': [ '__C99FEATURES__=1' ],  # isinf() etc.
-        'cflags': ['-m64']
       }],
       ['OS=="freebsd" or OS=="openbsd"', {
         'cflags': [ '-I/usr/local/include' ],

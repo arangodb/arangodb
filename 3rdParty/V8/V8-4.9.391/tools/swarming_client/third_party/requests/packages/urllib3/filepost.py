@@ -1,5 +1,11 @@
-from __future__ import absolute_import
+# urllib3/filepost.py
+# Copyright 2008-2013 Andrey Petrov and contributors (see CONTRIBUTORS.txt)
+#
+# This module is part of urllib3 and is released under
+# the MIT License: http://www.opensource.org/licenses/mit-license.php
+
 import codecs
+import mimetypes
 
 from uuid import uuid4
 from io import BytesIO
@@ -32,23 +38,24 @@ def iter_field_objects(fields):
         i = iter(fields)
 
     for field in i:
-        if isinstance(field, RequestField):
-            yield field
-        else:
-            yield RequestField.from_tuples(*field)
+      if isinstance(field, RequestField):
+        yield field
+      else:
+        yield RequestField.from_tuples(*field)
 
 
 def iter_fields(fields):
     """
-    .. deprecated:: 1.6
-
     Iterate over fields.
 
-    The addition of :class:`~urllib3.fields.RequestField` makes this function
-    obsolete. Instead, use :func:`iter_field_objects`, which returns
-    :class:`~urllib3.fields.RequestField` objects.
+    .. deprecated ::
+
+      The addition of `~urllib3.fields.RequestField` makes this function
+      obsolete. Instead, use :func:`iter_field_objects`, which returns
+      `~urllib3.fields.RequestField` objects, instead.
 
     Supports list of (k, v) tuples and dicts.
+
     """
     if isinstance(fields, dict):
         return ((k, v) for k, v in six.iteritems(fields))

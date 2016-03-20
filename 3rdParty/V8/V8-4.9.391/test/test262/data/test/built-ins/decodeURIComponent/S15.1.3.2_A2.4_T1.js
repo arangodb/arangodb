@@ -8,6 +8,7 @@ info: >
     0xDFFF), return UTF8(B1, B2, B3)
 es5id: 15.1.3.2_A2.4_T1
 description: Complex tests, use RFC 3629
+includes: [Test262Error.js]
 ---*/
 
 var errorCount = 0;

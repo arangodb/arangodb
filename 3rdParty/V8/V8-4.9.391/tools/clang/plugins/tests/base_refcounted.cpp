@@ -4,7 +4,7 @@
 
 #include "base_refcounted.h"
 
-#include <stddef.h>
+#include <cstddef>
 
 namespace {
 

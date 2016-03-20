@@ -25,21 +25,6 @@ class C {
 
   // Not a constant even though it has static storage duration.
   static const char* m_currentEvent;
-
-  static int Function();
-
-  static void FunctionWithConstant() {
-    const int kFunctionConstant = 4;
-    const int kFunctionConstantFromExpression = 4 + 6;
-    const int kFunctionConstantFromOtherConsts =
-        kFunctionConstant + kFunctionConstantFromExpression;
-    // These don't do the right thing right now, but names like this don't
-    // exist in blink (hopefully).
-    const int should_be_renamed_to_a_const = 9 - 2;
-    const int should_also_be_renamed_to_a_const =
-        kFunctionConstant + kFunctionConstantFromOtherConsts;
-    const int not_compile_time_const = kFunctionConstant + Function();
-  }
 };
 
 void F() {

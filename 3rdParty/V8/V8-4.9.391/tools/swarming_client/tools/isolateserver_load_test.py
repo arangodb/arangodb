@@ -8,7 +8,7 @@
 Generates an histogram with the latencies to download a just uploaded file.
 
 Note that it only looks at uploading and downloading and do not test
-preupload, which is datastore read bound.
+/content-gs/contains, which is datastore read bound.
 """
 
 import functools

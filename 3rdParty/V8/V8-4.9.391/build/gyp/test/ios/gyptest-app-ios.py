@@ -55,12 +55,6 @@ if sys.platform == 'darwin':
   test.built_file_must_exist(strings_file)
   CheckFileBinaryPropertyList(strings_file)
 
-  extra_plist_file = test.built_file_path(
-      'Test App Gyp.app/English.lproj/LanguageMap.plist',
-      chdir='app-bundle')
-  test.built_file_must_exist(extra_plist_file)
-  CheckFileBinaryPropertyList(extra_plist_file)
-
   test.built_file_must_exist(
       'Test App Gyp.app/English.lproj/MainMenu.nib',
       chdir='app-bundle')

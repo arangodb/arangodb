@@ -9,6 +9,7 @@ info: >
 
     9. Let newObj be Call(trap, handler, «target, argArray, newTarget »).
     10. ReturnIfAbrupt(newObj).
+includes: [Test262Error.js]
 ---*/
 
 function Target() {}

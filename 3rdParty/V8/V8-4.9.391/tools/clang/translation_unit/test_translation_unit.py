@@ -15,10 +15,11 @@ import subprocess
 import sys
 
 
-def _GenerateCompileCommands(template_path, test_files_dir):
+def _GenerateCompileCommands(files):
   """Returns a JSON string containing a compilation database for the input."""
-  with open(template_path) as fh:
-    return fh.read().replace('$test_files_dir', test_files_dir)
+  return json.dumps([{'directory': '.',
+                      'command': 'clang++ -fsyntax-only -std=c++11 -c %s' % f,
+                      'file': f} for f in files], indent=2)
 
 
 def _NumberOfTestsToString(tests):
@@ -28,7 +29,7 @@ def _NumberOfTestsToString(tests):
 
 # Before running this test script, please build the translation_unit clang tool
 # first. This is explained here:
-# https://chromium.googlesource.com/chromium/src/+/master/docs/clang_tool_refactoring.md
+# https://code.google.com/p/chromium/wiki/ClangToolRefactoring
 def main():
   tools_clang_directory = os.path.dirname(os.path.dirname(
       os.path.realpath(__file__)))
@@ -37,13 +38,11 @@ def main():
       tools_clang_directory, 'translation_unit', 'test_files')
   compile_database = os.path.join(test_directory_for_tool,
                                   'compile_commands.json')
-  compile_database_template = compile_database + '.template'
   source_files = glob.glob(os.path.join(test_directory_for_tool, '*.cc'))
 
   # Generate a temporary compilation database to run the tool over.
   with open(compile_database, 'w') as f:
-    f.write(_GenerateCompileCommands(compile_database_template,
-                                     test_directory_for_tool))
+    f.write(_GenerateCompileCommands(source_files))
 
   args = ['python',
           os.path.join(tools_clang_scripts_directory, 'run_tool.py'),
@@ -69,9 +68,13 @@ def main():
       actual_output = f.readlines()
     has_same_filepaths = True
     for expected_line, actual_line in zip(expected_output, actual_output):
-      if '//' in actual_line:
-        actual_line = '//' + actual_line.split('//')[1]
-
+      if '//' in actual_output:
+        if actual_output.split('//')[1] != expected_output:
+          sys.stdout.write('expected: %s' % expected_output)
+          sys.stdout.write('actual: %s' % actual_output.split('//')[1])
+          break
+        else:
+          continue
       if ntpath.basename(expected_line) != ntpath.basename(actual_line):
         sys.stdout.write('expected: %s' % ntpath.basename(expected_line))
         sys.stdout.write('actual: %s' % ntpath.basename(actual_line))

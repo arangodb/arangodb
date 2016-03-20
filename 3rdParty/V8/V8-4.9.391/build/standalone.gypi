@@ -44,7 +44,7 @@
     'v8_deprecation_warnings': 1,
     'v8_imminent_deprecation_warnings': 1,
     'msvs_multi_core_compile%': '1',
-    'mac_deployment_target%': '10.8',
+    'mac_deployment_target%': '10.5',
     'release_extra_cflags%': '',
     'variables': {
       'variables': {
@@ -475,6 +475,7 @@
               '-Wall',
               '-Werror',
               '-Wextra',
+              '-Wshorten-64-to-32',
             ],
             'cflags+': [
               # Clang considers the `register` keyword as deprecated, but
@@ -707,7 +708,7 @@
           }],
           [ 'clang==1 and (v8_target_arch=="x64" or v8_target_arch=="arm64" \
             or v8_target_arch=="mips64el")', {
-            'cflags': [],
+            'cflags': [ '-Wshorten-64-to-32' ],
           }],
           [ 'host_arch=="ppc64" and OS!="aix"', {
             'cflags': [ '-mminimal-toc' ],
@@ -977,7 +978,7 @@
             'conditions': [
               ['v8_target_arch=="x64" or v8_target_arch=="arm64" \
                 or v8_target_arch=="mips64el"', {
-                'xcode_settings': {'WARNING_CFLAGS': []},
+                'xcode_settings': {'WARNING_CFLAGS': ['-Wshorten-64-to-32']},
               }],
             ],
           }],

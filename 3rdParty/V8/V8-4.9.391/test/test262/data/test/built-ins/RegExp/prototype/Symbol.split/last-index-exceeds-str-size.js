@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-esid: sec-regexp.prototype-@@split
+es7id: 21.2.5.11
 description: The `lastIndex` property is clamped to the string size.
 info: >
   RegExp.prototype [ @@split ] ( string, limit )

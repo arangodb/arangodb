@@ -1,7 +1,6 @@
 # DER encoder
 from pyasn1.type import univ
 from pyasn1.codec.cer import encoder
-from pyasn1 import error
 
 class SetOfEncoder(encoder.SetOfEncoder):
     def _cmpSetComponents(self, c1, c2):
@@ -13,20 +12,17 @@ class SetOfEncoder(encoder.SetOfEncoder):
 
 tagMap = encoder.tagMap.copy()
 tagMap.update({
-    # Overload CER encoders with BER ones (a bit hackerish XXX)
+    # Overload CER encodrs with BER ones (a bit hackerish XXX)
     univ.BitString.tagSet: encoder.encoder.BitStringEncoder(),
     univ.OctetString.tagSet: encoder.encoder.OctetStringEncoder(),
     # Set & SetOf have same tags
     univ.SetOf().tagSet: SetOfEncoder()
-})
+    })
 
 typeMap = encoder.typeMap
 
 class Encoder(encoder.Encoder):
-    supportIndefLength = False
-    def __call__(self, client, defMode=True, maxChunkSize=0):
-        if not defMode:
-            raise error.PyAsn1Error('DER forbids indefinite length mode')
+    def __call__(self, client, defMode=1, maxChunkSize=0):
         return encoder.Encoder.__call__(self, client, defMode, maxChunkSize)
-
+        
 encode = Encoder(tagMap, typeMap)

@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2005-2016, International Business Machines
+*   Copyright (C) 2005-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -2524,7 +2524,6 @@ ucstrTextExtract(UText *ut,
             ut->chunkLength         = si;
             ut->nativeIndexingLimit = si;
             strLength               = si;
-            limit32                 = si;
             break;
         }
         U_ASSERT(di>=0); /* to ensure di never exceeds INT32_MAX, which must not happen logically */
@@ -2546,21 +2545,16 @@ ucstrTextExtract(UText *ut,
     // If the limit index points to a lead surrogate of a pair,
     //   add the corresponding trail surrogate to the destination.
     if (si>0 && U16_IS_LEAD(s[si-1]) &&
-            ((si<strLength || strLength<0)  && U16_IS_TRAIL(s[si])))
+        ((si<strLength || strLength<0)  && U16_IS_TRAIL(s[si])))
     {
         if (di<destCapacity) {
             // store only if there is space in the output buffer.
-            dest[di++] = s[si];
+            dest[di++] = s[si++];
         }
-        si++;
     }
 
     // Put iteration position at the point just following the extracted text
-    if (si <= ut->chunkNativeLimit) {
-        ut->chunkOffset = si;
-    } else {
-        ucstrTextAccess(ut, si, TRUE);
-    }
+    ut->chunkOffset = uprv_min(strLength, start32 + destCapacity);
 
     // Add a terminating NUL if space in the buffer permits,
     // and set the error status as required.

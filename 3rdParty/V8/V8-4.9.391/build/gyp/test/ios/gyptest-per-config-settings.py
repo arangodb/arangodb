@@ -15,7 +15,11 @@ import struct
 import subprocess
 import sys
 import tempfile
-import TestMac
+
+if sys.platform == 'darwin':
+  print "This test is currently disabled: https://crbug.com/483696."
+  sys.exit(0)
+
 
 def CheckFileType(file, expected):
   proc = subprocess.Popen(['lipo', '-info', file], stdout=subprocess.PIPE)
@@ -63,13 +67,8 @@ def ParseEntitlements(data):
     return None
   return data[8:]
 
-def GetXcodeVersionValue(type):
-  args = ['xcodebuild', '-version', '-sdk', 'iphoneos', type]
-  job = subprocess.Popen(args, stdout=subprocess.PIPE)
-  return job.communicate()[0].strip()
-
-def GetMachineBuild():
-  args = ['sw_vers', '-buildVersion']
+def GetProductVersion():
+  args = ['xcodebuild','-version','-sdk','iphoneos','ProductVersion']
   job = subprocess.Popen(args, stdout=subprocess.PIPE)
   return job.communicate()[0].strip()
 
@@ -99,78 +98,45 @@ if sys.platform == 'darwin':
   test.run_gyp('test-device.gyp', chdir='app-bundle')
 
   test_configs = ['Default-iphoneos', 'Default']
+  # TODO(justincohen): Disabling 'Default-iphoneos' for xcode until bots are
+  # configured with signing certs.
+  if test.format == 'xcode':
+    test_configs.remove('Default-iphoneos')
+
   for configuration in test_configs:
     test.set_configuration(configuration)
     test.build('test-device.gyp', 'test_app', chdir='app-bundle')
-    result_file = test.built_file_path('Test App Gyp.app/Test App Gyp',
+    result_file = test.built_file_path('Test App Gyp.bundle/Test App Gyp',
                                        chdir='app-bundle')
     test.must_exist(result_file)
-    info_plist = test.built_file_path('Test App Gyp.app/Info.plist',
-                                      chdir='app-bundle')
-    plist = plistlib.readPlist(info_plist)
-    xcode_version = TestMac.Xcode.Version()
-    if xcode_version >= '0720':
-      if len(plist) != 23:
-        print 'plist should have 23 entries, but it has %s' % len(plist)
-        test.fail_test()
 
-    # Values that will hopefully never change.
-    CheckPlistvalue(plist, 'CFBundleDevelopmentRegion', 'English')
-    CheckPlistvalue(plist, 'CFBundleExecutable', 'Test App Gyp')
-    CheckPlistvalue(plist, 'CFBundleIdentifier', 'com.google.Test App Gyp')
-    CheckPlistvalue(plist, 'CFBundleInfoDictionaryVersion', '6.0')
-    CheckPlistvalue(plist, 'CFBundleName', 'Test App Gyp')
-    CheckPlistvalue(plist, 'CFBundlePackageType', 'APPL')
-    CheckPlistvalue(plist, 'CFBundleShortVersionString', '1.0')
-    CheckPlistvalue(plist, 'CFBundleSignature', 'ause')
-    CheckPlistvalue(plist, 'CFBundleVersion', '1')
-    CheckPlistvalue(plist, 'NSMainNibFile', 'MainMenu')
-    CheckPlistvalue(plist, 'NSPrincipalClass', 'NSApplication')
+    info_plist = test.built_file_path('Test App Gyp.bundle/Info.plist',
+                                      chdir='app-bundle')
+
+    # plistlib doesn't support binary plists, but that's what Xcode creates.
+    if test.format == 'xcode':
+      ConvertBinaryPlistToXML(info_plist)
+    plist = plistlib.readPlist(info_plist)
+
     CheckPlistvalue(plist, 'UIDeviceFamily', [1, 2])
 
-    # Values that get pulled from xcodebuild.
-    machine_build = GetMachineBuild()
-    platform_version = GetXcodeVersionValue('ProductVersion')
-    sdk_build = GetXcodeVersionValue('ProductBuildVersion')
-    xcode_build = TestMac.Xcode.Build()
-
-    # Xcode keeps changing what gets included in executable plists, and it
-    # changes between device and simuator builds.  Allow the strictest tests for
-    # Xcode 7.2 and above.
-    if xcode_version >= '0720':
-      CheckPlistvalue(plist, 'BuildMachineOSBuild', machine_build)
-      CheckPlistvalue(plist, 'DTCompiler', 'com.apple.compilers.llvm.clang.1_0')
-      CheckPlistvalue(plist, 'DTPlatformVersion', platform_version)
-      CheckPlistvalue(plist, 'DTSDKBuild', sdk_build)
-      CheckPlistvalue(plist, 'DTXcode', xcode_version)
-      CheckPlistvalue(plist, 'DTXcodeBuild', xcode_build)
-      CheckPlistvalue(plist, 'MinimumOSVersion', '8.0')
-
-
     if configuration == 'Default-iphoneos':
-      platform_name = 'iphoneos'
       CheckFileType(result_file, 'armv7')
+      CheckPlistvalue(plist, 'DTPlatformVersion', GetProductVersion())
       CheckPlistvalue(plist, 'CFBundleSupportedPlatforms', ['iPhoneOS'])
-      # Apple keeps changing their mind.
-      if xcode_version >= '0720':
-        CheckPlistvalue(plist, 'DTPlatformBuild', sdk_build)
+      CheckPlistvalue(plist, 'DTPlatformName', 'iphoneos')
     else:
-      platform_name = 'iphonesimulator'
       CheckFileType(result_file, 'i386')
+      CheckPlistNotSet(plist, 'DTPlatformVersion')
       CheckPlistvalue(plist, 'CFBundleSupportedPlatforms', ['iPhoneSimulator'])
-      if xcode_version >= '0720':
-        CheckPlistvalue(plist, 'DTPlatformBuild', '')
-
-    CheckPlistvalue(plist, 'DTPlatformName', platform_name)
-    CheckPlistvalue(plist, 'DTSDKName', platform_name + platform_version)
-
+      CheckPlistvalue(plist, 'DTPlatformName', 'iphonesimulator')
 
     if HasCerts() and configuration == 'Default-iphoneos':
       test.build('test-device.gyp', 'sig_test', chdir='app-bundle')
-      result_file = test.built_file_path('sigtest.app/sigtest',
+      result_file = test.built_file_path('sig_test.bundle/sig_test',
                                          chdir='app-bundle')
       CheckSignature(result_file)
-      info_plist = test.built_file_path('sigtest.app/Info.plist',
+      info_plist = test.built_file_path('sig_test.bundle/Info.plist',
                                         chdir='app-bundle')
 
       plist = plistlib.readPlist(info_plist)

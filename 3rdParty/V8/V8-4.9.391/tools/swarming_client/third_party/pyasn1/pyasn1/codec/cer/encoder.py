@@ -1,9 +1,7 @@
 # CER encoder
 from pyasn1.type import univ
-from pyasn1.type import useful
 from pyasn1.codec.ber import encoder
-from pyasn1.compat.octets import int2oct, str2octs, null
-from pyasn1 import error
+from pyasn1.compat.octets import int2oct, null
 
 class BooleanEncoder(encoder.IntegerEncoder):
     def encodeValue(self, encodeFun, client, defMode, maxChunkSize):
@@ -17,56 +15,18 @@ class BitStringEncoder(encoder.BitStringEncoder):
     def encodeValue(self, encodeFun, client, defMode, maxChunkSize):
         return encoder.BitStringEncoder.encodeValue(
             self, encodeFun, client, defMode, 1000
-        )
+            )
 
 class OctetStringEncoder(encoder.OctetStringEncoder):
     def encodeValue(self, encodeFun, client, defMode, maxChunkSize):
         return encoder.OctetStringEncoder.encodeValue(
             self, encodeFun, client, defMode, 1000
-        )
+            )
 
-class RealEncoder(encoder.RealEncoder):
-    def _chooseEncBase(self, value):
-        m, b, e = value
-        return self._dropFloatingPoint(m, b, e)
-
+# specialized RealEncoder here
 # specialized GeneralStringEncoder here
-
-class GeneralizedTimeEncoder(OctetStringEncoder):
-    zchar = str2octs('Z')
-    pluschar = str2octs('+')
-    minuschar = str2octs('-')
-    zero = str2octs('0')
-    def encodeValue(self, encodeFun, client, defMode, maxChunkSize):
-        octets = client.asOctets()
-# This breaks too many existing data items
-#        if '.' not in octets:
-#            raise error.PyAsn1Error('Format must include fraction of second: %r' % octets)
-        if len(octets) < 15:
-            raise error.PyAsn1Error('Bad UTC time length: %r' % octets)
-        if self.pluschar in octets or self.minuschar in octets:
-            raise error.PyAsn1Error('Must be UTC time: %r' % octets)
-        if octets[-1] != self.zchar[0]:
-            raise error.PyAsn1Error('Missing timezone specifier: %r' % octets)
-        return encoder.OctetStringEncoder.encodeValue(
-            self, encodeFun, client, defMode, 1000
-        )
-
-class UTCTimeEncoder(encoder.OctetStringEncoder):
-    zchar = str2octs('Z')
-    pluschar = str2octs('+')
-    minuschar = str2octs('-')
-    def encodeValue(self, encodeFun, client, defMode, maxChunkSize):
-        octets = client.asOctets()
-        if self.pluschar in octets or self.minuschar in octets:
-            raise error.PyAsn1Error('Must be UTC time: %r' % octets)
-        if octets and octets[-1] != self.zchar[0]:
-            client = client.clone(octets + self.zchar)
-        if len(client) != 13:
-            raise error.PyAsn1Error('Bad UTC time length: %r' % client)
-        return encoder.OctetStringEncoder.encodeValue(
-            self, encodeFun, client, defMode, 1000
-        )
+# specialized GeneralizedTimeEncoder here
+# specialized UTCTimeEncoder here
 
 class SetOfEncoder(encoder.SequenceOfEncoder):
     def encodeValue(self, encodeFun, client, defMode, maxChunkSize):
@@ -109,20 +69,17 @@ tagMap.update({
     univ.Boolean.tagSet: BooleanEncoder(),
     univ.BitString.tagSet: BitStringEncoder(),
     univ.OctetString.tagSet: OctetStringEncoder(),
-    univ.Real.tagSet: RealEncoder(),
-    useful.GeneralizedTime.tagSet: GeneralizedTimeEncoder(),
-    useful.UTCTime.tagSet: UTCTimeEncoder(),
     univ.SetOf().tagSet: SetOfEncoder()  # conflcts with Set
-})
+    })
 
 typeMap = encoder.typeMap.copy()
 typeMap.update({
     univ.Set.typeId: SetOfEncoder(),
     univ.SetOf.typeId: SetOfEncoder()
-})
+    })
 
 class Encoder(encoder.Encoder):
-    def __call__(self, client, defMode=False, maxChunkSize=0):
+    def __call__(self, client, defMode=0, maxChunkSize=0):
         return encoder.Encoder.__call__(self, client, defMode, maxChunkSize)
 
 encode = Encoder(tagMap, typeMap)

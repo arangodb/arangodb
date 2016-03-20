@@ -67,9 +67,6 @@ config("icu_code") {
       # complain about it.
       "-Wno-deprecated-declarations",
       "-Wno-unused-function",
-
-      # fread is used in putil.cpp without checking the return value.
-      "-Wno-unused-result",
     ]
   }
   if (is_clang) {
@@ -541,9 +538,10 @@ if (is_android) {
 # TODO(GYP) support use_system_icu.
 if (icu_use_data_file) {
   if (is_ios) {
-    bundle_data("icudata") {
-      sources = [ "source/data/in/icudtl.dat" ]
-      outputs = [ "{{bundle_resources_dir}}/{{source_file_part}}" ]
+    group("icudata") {
+      # TODO(GYP): Provide an empty group so that this target does not
+      # unconditionally fail. The dat file needs to be bundled separately. In
+      # the longer term, need to figure out how to use system ICU
     }
   } else {
     copy("icudata") {

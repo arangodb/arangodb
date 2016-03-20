@@ -406,16 +406,6 @@ def save_isolated(isolated, data):
   return []
 
 
-def split_path(path):
-  """Splits a path and return a list with each element."""
-  out = []
-  while path:
-    path, rest = os.path.split(path)
-    if rest:
-      out.append(rest)
-  return out
-
-
 def load_isolated(content, algo):
   """Verifies the .isolated file is valid and loads this object with the json
   data.
@@ -482,15 +472,6 @@ def load_isolated(content, algo):
       for subkey, subvalue in value.iteritems():
         if not isinstance(subkey, basestring):
           raise IsolatedError('Expected string, got %r' % subkey)
-        if os.path.isabs(subkey) or subkey.startswith('\\\\'):
-          # Disallow '\\\\', it could UNC on Windows but disallow this
-          # everywhere.
-          raise IsolatedError('File path can\'t be absolute: %r' % subkey)
-        if subkey.endswith(('/', '\\')):
-          raise IsolatedError(
-              'File path can\'t end with \'%s\': %r' % (subkey[-1], subkey))
-        if '..' in split_path(subkey):
-          raise IsolatedError('File path can\'t reference parent: %r' % subkey)
         if not isinstance(subvalue, dict):
           raise IsolatedError('Expected dict, got %r' % subvalue)
         for subsubkey, subsubvalue in subvalue.iteritems():

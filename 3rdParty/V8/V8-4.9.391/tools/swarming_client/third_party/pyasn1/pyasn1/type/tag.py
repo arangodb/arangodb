@@ -24,9 +24,6 @@ class Tag:
         self.uniq = (tagClass, tagId)
         self.__hashedUniqTag = hash(self.uniq)
 
-    def __str__(self):
-        return '[%s:%s:%s]' % self.__tag
-
     def __repr__(self):
         return '%s(tagClass=%s, tagFormat=%s, tagId=%s)' % (
             (self.__class__.__name__,) + self.__tag
@@ -65,14 +62,11 @@ class TagSet:
             _uniq = _uniq + t.uniq
         self.uniq = _uniq
         self.__lenOfSuperTags = len(superTags)
-
-    def __str__(self):
-        return self.__superTags and '+'.join([str(x) for x in self.__superTags]) or '[untagged]'
- 
+        
     def __repr__(self):
         return '%s(%s)' % (
             self.__class__.__name__,
-            '(), ' + ', '.join([repr(x) for x in self.__superTags])
+            ', '.join([repr(x) for x in self.__superTags])
             )
 
     def __add__(self, superTag):

@@ -145,7 +145,10 @@ def run_command(command, cwd, tmp_dir, hard_timeout, grace_period):
   if sys.platform == 'darwin':
     env['TMPDIR'] = tmp_dir.encode('ascii')
   elif sys.platform == 'win32':
-    env['TEMP'] = tmp_dir.encode('ascii')
+    # Temporarily disable this behavior on Windows while investigating
+    # https://crbug.com/533552.
+    # env['TEMP'] = tmp_dir.encode('ascii')
+    pass
   else:
     env['TMP'] = tmp_dir.encode('ascii')
   exit_code = None
@@ -195,15 +198,6 @@ def run_command(command, cwd, tmp_dir, hard_timeout, grace_period):
     except OSError:
       # This is not considered to be an internal error. The executable simply
       # does not exit.
-      sys.stderr.write(
-          '<The executable does not exist or a dependent library is missing>\n'
-          '<Check for missing .so/.dll in the .isolate or GN file>\n'
-          '<Command: %s>\n' % command)
-      if os.environ.get('SWARMING_TASK_ID'):
-        # Give an additional hint when running as a swarming task.
-        sys.stderr.write(
-            '<See the task\'s page for commands to help diagnose this issue '
-            'by reproducing the task locally>\n')
       exit_code = 1
   logging.info(
       'Command finished with exit code %d (%s)',
@@ -280,23 +274,12 @@ def map_and_run(
   out_dir = make_temp_dir(prefix + u'out', root_dir)
   tmp_dir = make_temp_dir(prefix + u'tmp', root_dir)
   try:
-    try:
-      bundle = isolateserver.fetch_isolated(
-          isolated_hash=isolated_hash,
-          storage=storage,
-          cache=cache,
-          outdir=run_dir,
-          require_command=True)
-    except isolateserver.IsolatedErrorNoCommand:
-      # Handle this as a task failure, not an internal failure.
-      sys.stderr.write(
-          '<The .isolated doesn\'t declare any command to run!>\n'
-          '<Check your .isolate for missing \'command\' variable>\n')
-      if os.environ.get('SWARMING_TASK_ID'):
-        # Give an additional hint when running as a swarming task.
-        sys.stderr.write('<This occurs at the \'isolate\' step>\n')
-      result['exit_code'] = 1
-      return result
+    bundle = isolateserver.fetch_isolated(
+        isolated_hash=isolated_hash,
+        storage=storage,
+        cache=cache,
+        outdir=run_dir,
+        require_command=True)
 
     change_tree_read_only(run_dir, bundle.read_only)
     cwd = os.path.normpath(os.path.join(run_dir, bundle.relative_cwd))
@@ -397,17 +380,6 @@ def run_tha_test(
   Returns:
     Process exit code that should be used.
   """
-  if result_json:
-    # Write a json output file right away in case we get killed.
-    result = {
-      'exit_code': None,
-      'had_hard_timeout': False,
-      'internal_failure': 'Was terminated before completion',
-      'outputs_ref': None,
-      'version': 2,
-    }
-    tools.write_json(result_json, result, dense=True)
-
   # run_isolated exit code. Depends on if result_json is used or not.
   result = map_and_run(
       isolated_hash, storage, cache, leak_temp_dir, root_dir, hard_timeout,
@@ -448,9 +420,9 @@ def main(args):
       help='dump output metadata to json file. When used, run_isolated returns '
            'non-zero only on internal failure')
   parser.add_option(
-      '--hard-timeout', type='float', help='Enforce hard timeout in execution')
+      '--hard-timeout', type='int', help='Enforce hard timeout in execution')
   parser.add_option(
-      '--grace-period', type='float',
+      '--grace-period', type='int',
       help='Grace period between SIGTERM and SIGKILL')
   data_group = optparse.OptionGroup(parser, 'Data source')
   data_group.add_option(

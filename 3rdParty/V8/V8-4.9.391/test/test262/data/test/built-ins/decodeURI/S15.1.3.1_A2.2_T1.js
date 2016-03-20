@@ -5,6 +5,7 @@
 info: If B1 = 0xxxxxxxx ([0x00 - 0x7F]), without [uriReserved, #], return B1
 es5id: 15.1.3.1_A2.2_T1
 description: Complex tests, use RFC 3629
+includes: [Test262Error.js]
 ---*/
 
 var errorCount = 0;

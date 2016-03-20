@@ -71,16 +71,14 @@ class VisualStudioVersion(object):
   def SetupScript(self, target_arch):
     """Returns a command (with arguments) to be used to set up the
     environment."""
-    # If WindowsSDKDir is set and SetEnv.Cmd exists then we are using the
-    # depot_tools build tools and should run SetEnv.Cmd to set up the
-    # environment. The check for WindowsSDKDir alone is not sufficient because
-    # this is set by running vcvarsall.bat.
+    # Check if we are running in the SDK command line environment and use
+    # the setup script from the SDK if so. |target_arch| should be either
+    # 'x86' or 'x64'.
     assert target_arch in ('x86', 'x64')
     sdk_dir = os.environ.get('WindowsSDKDir')
-    if sdk_dir:
-      setup_path = os.path.normpath(os.path.join(sdk_dir, 'Bin/SetEnv.Cmd'))
-    if self.sdk_based and sdk_dir and os.path.exists(setup_path):
-      return [setup_path, '/' + target_arch]
+    if self.sdk_based and sdk_dir:
+      return [os.path.normpath(os.path.join(sdk_dir, 'Bin/SetEnv.Cmd')),
+              '/' + target_arch]
     else:
       # We don't use VC/vcvarsall.bat for x86 because vcvarsall calls
       # vcvars32, which it can only find if VS??COMNTOOLS is set, which it

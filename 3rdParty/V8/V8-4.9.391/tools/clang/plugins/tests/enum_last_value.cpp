@@ -12,7 +12,7 @@ enum BadOne {
 };
 
 // We warn when xxx_LAST constants aren't last.
-enum BadTwo : unsigned {
+enum BadTwo {
   BAD_TWO_INVALID,
   BAD_TWO_RED,
   BAD_TWO_GREEN,
@@ -30,7 +30,7 @@ enum GoodOne {
 };
 
 // We don't warn when xxx_LAST constants are last.
-enum GoodTwo : unsigned {
+enum GoodTwo {
   GOOD_TWO_INVALID,
   GOOD_TWO_RED,
   GOOD_TWO_GREEN,

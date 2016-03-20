@@ -656,7 +656,6 @@ class NinjaWriter(object):
         for var in special_locals:
           if '${%s}' % var in argument:
             needed_variables.add(var)
-      needed_variables = sorted(needed_variables)
 
       def cygwin_munge(path):
         # pylint: disable=cell-var-from-loop
@@ -730,7 +729,6 @@ class NinjaWriter(object):
           # WriteNewNinjaRule uses unique_name for creating an rsp file on win.
           extra_bindings.append(('unique_name',
               hashlib.md5(outputs[0]).hexdigest()))
-
         self.ninja.build(outputs, rule_name, self.GypPathToNinja(source),
                          implicit=inputs,
                          order_only=prebuild,
@@ -767,20 +765,15 @@ class NinjaWriter(object):
   def WriteMacBundleResources(self, resources, bundle_depends):
     """Writes ninja edges for 'mac_bundle_resources'."""
     xcassets = []
-
-    extra_env = self.xcode_settings.GetPerTargetSettings()
-    env = self.GetSortedXcodeEnv(additional_settings=extra_env)
-    env = self.ComputeExportEnvString(env)
-    isBinary = self.xcode_settings.IsBinaryOutputFormat(self.config_name)
-
     for output, res in gyp.xcode_emulation.GetMacBundleResources(
         generator_default_variables['PRODUCT_DIR'],
         self.xcode_settings, map(self.GypPathToNinja, resources)):
       output = self.ExpandSpecial(output)
       if os.path.splitext(output)[-1] != '.xcassets':
+        isBinary = self.xcode_settings.IsBinaryOutputFormat(self.config_name)
         self.ninja.build(output, 'mac_tool', res,
                          variables=[('mactool_cmd', 'copy-bundle-resource'), \
-                                    ('env', env), ('binary', isBinary)])
+                                    ('binary', isBinary)])
         bundle_depends.append(output)
       else:
         xcassets.append(res)
@@ -1267,11 +1260,10 @@ class NinjaWriter(object):
 
 
     if len(solibs):
-      extra_bindings.append(('solibs',
-          gyp.common.EncodePOSIXShellList(sorted(solibs))))
+      extra_bindings.append(('solibs', gyp.common.EncodePOSIXShellList(solibs)))
 
     ninja_file.build(output, command + command_suffix, link_deps,
-                     implicit=sorted(implicit_deps),
+                     implicit=list(implicit_deps),
                      order_only=list(order_deps),
                      variables=extra_bindings)
     return linked_binary
@@ -1918,7 +1910,7 @@ def GenerateOutputForConfig(target_list, target_dicts, data, params,
               configs, generator_flags)
     cl_paths = gyp.msvs_emulation.GenerateEnvironmentFiles(
         toplevel_build, generator_flags, shared_system_includes, OpenOutput)
-    for arch, path in sorted(cl_paths.iteritems()):
+    for arch, path in cl_paths.iteritems():
       if clang_cl:
         # If we have selected clang-cl, use that instead.
         path = clang_cl
@@ -2354,7 +2346,7 @@ def GenerateOutputForConfig(target_list, target_dicts, data, params,
     # able to run actions and build libraries by their short name.
     master_ninja.newline()
     master_ninja.comment('Short names for targets.')
-    for short_name in sorted(target_short_names):
+    for short_name in target_short_names:
       master_ninja.build(short_name, 'phony', [x.FinalOutput() for x in
                                                target_short_names[short_name]])
 
@@ -2370,7 +2362,7 @@ def GenerateOutputForConfig(target_list, target_dicts, data, params,
 
   if all_outputs:
     master_ninja.newline()
-    master_ninja.build('all', 'phony', sorted(all_outputs))
+    master_ninja.build('all', 'phony', list(all_outputs))
     master_ninja.default(generator_flags.get('default_target', 'all'))
 
   master_ninja_file.close()

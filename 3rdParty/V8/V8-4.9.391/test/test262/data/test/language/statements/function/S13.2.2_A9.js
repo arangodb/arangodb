@@ -7,6 +7,7 @@ info: >
     this.any_Function is called before it is declared
 es5id: 13.2.2_A9
 description: Calling a function as a constructor
+includes: [Test262Error.js]
 ---*/
 
 function FACTORY(){

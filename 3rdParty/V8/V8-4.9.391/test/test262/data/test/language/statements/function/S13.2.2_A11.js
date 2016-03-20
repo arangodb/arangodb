@@ -9,6 +9,7 @@ es5id: 13.2.2_A11
 description: >
     Calling a function as a constructor after it has been declared
     with "function func()"
+includes: [Test262Error.js]
 ---*/
 
 function FACTORY(){

@@ -230,10 +230,6 @@ void FindBadConstructsConsumer::CheckCtorDtorWeight(
   if (record->getIdentifier() == NULL)
     return;
 
-  // Skip records that derive from ignored base classes.
-  if (HasIgnoredBases(record))
-    return;
-
   // Count the number of templated base classes as a feature of whether the
   // destructor can be inlined.
   int templated_base_classes = 0;
@@ -292,7 +288,7 @@ void FindBadConstructsConsumer::CheckCtorDtorWeight(
         // The current check is buggy. An implicit copy constructor does not
         // have an inline body, so this check never fires for classes with a
         // user-declared out-of-line constructor.
-        if (it->hasInlineBody() && options_.check_implicit_copy_ctors) {
+        if (it->hasInlineBody()) {
           if (it->isCopyConstructor() &&
               !record->hasUserDeclaredCopyConstructor()) {
             // In general, implicit constructors are generated on demand.  But

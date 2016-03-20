@@ -156,7 +156,7 @@ class PublicKey(AbstractKey):
 
         from pyasn1.codec.der import decoder
         from rsa.asn1 import AsnPubKey
-        
+
         (priv, _) = decoder.decode(keyfile, asn1Spec=AsnPubKey())
         return cls(n=int(priv['modulus']), e=int(priv['publicExponent']))
 
@@ -203,10 +203,10 @@ class PublicKey(AbstractKey):
     @classmethod
     def load_pkcs1_openssl_pem(cls, keyfile):
         '''Loads a PKCS#1.5 PEM-encoded public key file from OpenSSL.
-        
+
         These files can be recognised in that they start with BEGIN PUBLIC KEY
         rather than BEGIN RSA PUBLIC KEY.
-        
+
         The contents of the file before the "-----BEGIN PUBLIC KEY-----" and
         after the "-----END PUBLIC KEY-----" lines is ignored.
 
@@ -226,19 +226,19 @@ class PublicKey(AbstractKey):
             key, from OpenSSL.
         @return: a PublicKey object
         '''
-    
+
         from rsa.asn1 import OpenSSLPubKey
         from pyasn1.codec.der import decoder
         from pyasn1.type import univ
-        
+
         (keyinfo, _) = decoder.decode(keyfile, asn1Spec=OpenSSLPubKey())
-        
+
         if keyinfo['header']['oid'] != univ.ObjectIdentifier('1.2.840.113549.1.1.1'):
             raise TypeError("This is not a DER-encoded OpenSSL-compatible public key")
-                
+
         return cls._load_pkcs1_der(keyinfo['key'][1:])
-        
-        
+
+
 
 
 class PrivateKey(AbstractKey):
@@ -352,16 +352,16 @@ class PrivateKey(AbstractKey):
         # ASN.1 contents of DER encoded private key:
         #
         # RSAPrivateKey ::= SEQUENCE {
-        #     version           Version, 
+        #     version           Version,
         #     modulus           INTEGER,  -- n
         #     publicExponent    INTEGER,  -- e
         #     privateExponent   INTEGER,  -- d
         #     prime1            INTEGER,  -- p
         #     prime2            INTEGER,  -- q
         #     exponent1         INTEGER,  -- d mod (p-1)
-        #     exponent2         INTEGER,  -- d mod (q-1) 
+        #     exponent2         INTEGER,  -- d mod (q-1)
         #     coefficient       INTEGER,  -- (inverse of q) mod p
-        #     otherPrimeInfos   OtherPrimeInfos OPTIONAL 
+        #     otherPrimeInfos   OtherPrimeInfos OPTIONAL
         # }
 
         if priv[0] != 0:
@@ -432,7 +432,7 @@ class PrivateKey(AbstractKey):
 
 def find_p_q(nbits, getprime_func=rsa.prime.getprime, accurate=True):
     ''''Returns a tuple of two different primes of nbits bits each.
-    
+
     The resulting p * q has exacty 2 * nbits bits, and the returned p and q
     will not be equal.
 
@@ -458,9 +458,9 @@ def find_p_q(nbits, getprime_func=rsa.prime.getprime, accurate=True):
     True
     >>> common.bit_size(p * q) > 240
     True
-    
+
     '''
-    
+
     total_bits = nbits * 2
 
     # Make sure that p and q aren't too close or the factoring programs can
@@ -468,7 +468,7 @@ def find_p_q(nbits, getprime_func=rsa.prime.getprime, accurate=True):
     shift = nbits // 16
     pbits = nbits + shift
     qbits = nbits - shift
-    
+
     # Choose the two initial primes
     log.debug('find_p_q(%i): Finding p', nbits)
     p = getprime_func(pbits)
@@ -477,7 +477,7 @@ def find_p_q(nbits, getprime_func=rsa.prime.getprime, accurate=True):
 
     def is_acceptable(p, q):
         '''Returns True iff p and q are acceptable:
-            
+
             - p and q differ
             - (p * q) has the right nr of bits (when accurate=True)
         '''
@@ -534,7 +534,7 @@ def gen_keys(nbits, getprime_func, accurate=True):
     '''Generate RSA keys of nbits bits. Returns (p, q, e, d).
 
     Note: this can take a long time, depending on the key size.
-    
+
     :param nbits: the total number of bits in ``p`` and ``q``. Both ``p`` and
         ``q`` will use ``nbits/2`` bits.
     :param getprime_func: either :py:func:`rsa.prime.getprime` or a function
@@ -565,7 +565,7 @@ def newkeys(nbits, accurate=True, poolsize=1):
 
     The ``poolsize`` parameter was added in *Python-RSA 3.1* and requires
     Python 2.6 or newer.
-    
+
     '''
 
     if nbits < 16:
@@ -584,7 +584,7 @@ def newkeys(nbits, accurate=True, poolsize=1):
 
     # Generate the key components
     (p, q, e, d) = gen_keys(nbits, getprime_func)
-    
+
     # Create the key objects
     n = p * q
 
@@ -597,7 +597,7 @@ __all__ = ['PublicKey', 'PrivateKey', 'newkeys']
 
 if __name__ == '__main__':
     import doctest
-    
+
     try:
         for count in range(100):
             (failures, tests) = doctest.testmod()

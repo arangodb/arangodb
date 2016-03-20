@@ -1,7 +1,5 @@
 ## Test262 is the official ECMAScript (ECMA-262) conformance suite.
 
-Test262 tests conformance to the continually maintained draft future ECMAScript standard found at http://tc39.github.io/ecma262/ , together with any Stage 3 or later TC39 proposals. It is maintained by Gorkem Yakin (@goyakin) with significant contributions from many in the ECMAScript community.
-
 ### Contributing to Test262
 > See [CONTRIBUTING.md](./CONTRIBUTING.md)
 

@@ -9,6 +9,7 @@ info: >
 
     9. Let booleanTrapResult be ToBoolean(Call(trap, handler, «target, V»)).
     10. ReturnIfAbrupt(booleanTrapResult).
+includes: [Test262Error.js]
 ---*/
 
 var p = new Proxy({}, {

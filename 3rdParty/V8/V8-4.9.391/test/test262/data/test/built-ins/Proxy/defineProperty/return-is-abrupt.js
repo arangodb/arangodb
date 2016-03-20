@@ -12,6 +12,7 @@ info: >
     descObj»)).
     11. ReturnIfAbrupt(booleanTrapResult).
     ...
+includes: [Test262Error.js]
 ---*/
 
 var p = new Proxy({}, {

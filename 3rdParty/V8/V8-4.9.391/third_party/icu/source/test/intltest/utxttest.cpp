@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT:
- * Copyright (c) 2005-2016, International Business Machines Corporation and
+ * Copyright (c) 2005-2014, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 /************************************************************************
@@ -16,8 +16,6 @@
 #include "unicode/utf8.h"
 #include "unicode/ustring.h"
 #include "unicode/uchriter.h"
-#include "cmemory.h"
-#include "cstr.h"
 #include "utxttest.h"
 
 static UBool  gFailed = FALSE;
@@ -63,8 +61,6 @@ UTextTest::runIndexedTest(int32_t index, UBool exec,
             if (exec) Ticket10562();  break;
         case 6: name = "Ticket10983";
             if (exec) Ticket10983();  break;
-        case 7: name = "Ticket12130";
-            if (exec) Ticket12130(); break;
         default: name = "";          break;
     }
 }
@@ -1504,80 +1500,4 @@ void UTextTest::Ticket10983() {
     TEST_ASSERT(status == U_INVALID_STATE_ERROR);
 
     utext_close(ut);
-}
-
-// Ticket 12130 - extract on a UText wrapping a null terminated UChar * string
-//                leaves the iteration position set incorrectly when the
-//                actual string length is not yet known.
-//
-//                The test text needs to be long enough that UText defers getting the length.
-
-void UTextTest::Ticket12130() {
-    UErrorCode status = U_ZERO_ERROR;
-    
-    const char *text8 =
-        "Fundamentally, computers just deal with numbers. They store letters and other characters "
-        "by assigning a number for each one. Before Unicode was invented, there were hundreds "
-        "of different encoding systems for assigning these numbers. No single encoding could "
-        "contain enough characters: for example, the European Union alone requires several "
-        "different encodings to cover all its languages. Even for a single language like "
-        "English no single encoding was adequate for all the letters, punctuation, and technical "
-        "symbols in common use.";
-
-    UnicodeString str(text8);
-    const UChar *ustr = str.getTerminatedBuffer();
-    UText ut = UTEXT_INITIALIZER;
-    utext_openUChars(&ut, ustr, -1, &status);
-    UChar extractBuffer[50];
-
-    for (int32_t startIdx = 0; startIdx<str.length(); ++startIdx) {
-        int32_t endIdx = startIdx + 20;
-
-        u_memset(extractBuffer, 0, UPRV_LENGTHOF(extractBuffer));
-        utext_extract(&ut, startIdx, endIdx, extractBuffer, UPRV_LENGTHOF(extractBuffer), &status);
-        if (U_FAILURE(status)) {
-            errln("%s:%d %s", __FILE__, __LINE__, u_errorName(status));
-            return;
-        }
-        int64_t ni  = utext_getNativeIndex(&ut);
-        int64_t expectedni = startIdx + 20;
-        if (expectedni > str.length()) {
-            expectedni = str.length();
-        }
-        if (expectedni != ni) {
-            errln("%s:%d utext_getNativeIndex() expected %d, got %d", __FILE__, __LINE__, expectedni, ni);
-        }
-        if (0 != str.tempSubString(startIdx, 20).compare(extractBuffer)) { 
-            errln("%s:%d utext_extract() failed. expected \"%s\", got \"%s\"",
-                    __FILE__, __LINE__, CStr(str.tempSubString(startIdx, 20))(), CStr(UnicodeString(extractBuffer))());
-        }
-    }
-    utext_close(&ut);
-
-    // Similar utext extract, this time with the string length provided to the UText in advance,
-    // and a buffer of larger than required capacity.
-   
-    utext_openUChars(&ut, ustr, str.length(), &status);
-    for (int32_t startIdx = 0; startIdx<str.length(); ++startIdx) {
-        int32_t endIdx = startIdx + 20;
-        u_memset(extractBuffer, 0, UPRV_LENGTHOF(extractBuffer));
-        utext_extract(&ut, startIdx, endIdx, extractBuffer, UPRV_LENGTHOF(extractBuffer), &status);
-        if (U_FAILURE(status)) {
-            errln("%s:%d %s", __FILE__, __LINE__, u_errorName(status));
-            return;
-        }
-        int64_t ni  = utext_getNativeIndex(&ut);
-        int64_t expectedni = startIdx + 20;
-        if (expectedni > str.length()) {
-            expectedni = str.length();
-        }
-        if (expectedni != ni) {
-            errln("%s:%d utext_getNativeIndex() expected %d, got %d", __FILE__, __LINE__, expectedni, ni);
-        }
-        if (0 != str.tempSubString(startIdx, 20).compare(extractBuffer)) { 
-            errln("%s:%d utext_extract() failed. expected \"%s\", got \"%s\"",
-                    __FILE__, __LINE__, CStr(str.tempSubString(startIdx, 20))(), CStr(UnicodeString(extractBuffer))());
-        }
-    }
-    utext_close(&ut);
 }

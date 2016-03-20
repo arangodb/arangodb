@@ -325,11 +325,19 @@ void BlinkGCPluginConsumer::HandleTranslationUnit(ASTContext& context) {
     }
   }
 
-  for (const auto& record : visitor.record_decls())
-    CheckRecord(cache_.Lookup(record));
+  for (CollectVisitor::RecordVector::iterator it =
+           visitor.record_decls().begin();
+       it != visitor.record_decls().end();
+       ++it) {
+    CheckRecord(cache_.Lookup(*it));
+  }
 
-  for (const auto& method : visitor.trace_decls())
-    CheckTracingMethod(method);
+  for (CollectVisitor::MethodVector::iterator it =
+           visitor.trace_decls().begin();
+       it != visitor.trace_decls().end();
+       ++it) {
+    CheckTracingMethod(*it);
+  }
 
   if (json_) {
     json_->CloseList();
@@ -393,9 +401,12 @@ void BlinkGCPluginConsumer::CheckClass(RecordInfo* info) {
 
   // Check consistency of stack-allocated hierarchies.
   if (info->IsStackAllocated()) {
-    for (auto& base : info->GetBases())
-      if (!base.second.info()->IsStackAllocated())
-        ReportDerivesNonStackAllocated(info, &base.second);
+    for (RecordInfo::Bases::iterator it = info->GetBases().begin();
+         it != info->GetBases().end();
+         ++it) {
+      if (!it->second.info()->IsStackAllocated())
+        ReportDerivesNonStackAllocated(info, &it->second);
+    }
   }
 
   if (CXXMethodDecl* trace = info->GetTraceMethod()) {
@@ -416,7 +427,7 @@ void BlinkGCPluginConsumer::CheckClass(RecordInfo* info) {
   {
     CheckFieldsVisitor visitor(options_);
     if (visitor.ContainsInvalidFields(info))
-      ReportClassContainsInvalidFields(info, visitor.invalid_fields());
+      ReportClassContainsInvalidFields(info, &visitor.invalid_fields());
   }
 
   if (info->IsGCDerived()) {
@@ -431,7 +442,7 @@ void BlinkGCPluginConsumer::CheckClass(RecordInfo* info) {
     {
       CheckGCRootsVisitor visitor;
       if (visitor.ContainsGCRoots(info))
-        ReportClassContainsGCRoots(info, visitor.gc_roots());
+        ReportClassContainsGCRoots(info, &visitor.gc_roots());
     }
 
     if (info->NeedsFinalization())
@@ -634,7 +645,7 @@ void BlinkGCPluginConsumer::CheckFinalization(RecordInfo* info) {
       visitor.TraverseCXXMethodDecl(dtor);
       if (!visitor.finalized_fields().empty()) {
         ReportFinalizerAccessesFinalizedFields(
-            dtor, visitor.finalized_fields());
+            dtor, &visitor.finalized_fields());
       }
     }
     return;
@@ -651,13 +662,19 @@ void BlinkGCPluginConsumer::CheckFinalization(RecordInfo* info) {
   if (dtor && dtor->isUserProvided())
     NoteUserDeclaredDestructor(dtor);
 
-  for (auto& base : info->GetBases())
-    if (base.second.info()->NeedsFinalization())
-      NoteBaseRequiresFinalization(&base.second);
+  for (RecordInfo::Bases::iterator it = info->GetBases().begin();
+       it != info->GetBases().end();
+       ++it) {
+    if (it->second.info()->NeedsFinalization())
+      NoteBaseRequiresFinalization(&it->second);
+  }
 
-  for (auto& field : info->GetFields())
-    if (field.second.edge()->NeedsFinalization())
-      NoteField(&field.second, diag_field_requires_finalization_note_);
+  for (RecordInfo::Fields::iterator it = info->GetFields().begin();
+       it != info->GetFields().end();
+       ++it) {
+    if (it->second.edge()->NeedsFinalization())
+      NoteField(&it->second, diag_field_requires_finalization_note_);
+  }
 }
 
 void BlinkGCPluginConsumer::CheckUnneededFinalization(RecordInfo* info) {
@@ -671,14 +688,18 @@ bool BlinkGCPluginConsumer::HasNonEmptyFinalizer(RecordInfo* info) {
     if (!dtor->hasBody() || !EmptyStmtVisitor::isEmpty(dtor->getBody()))
       return true;
   }
-  for (auto& base : info->GetBases())
-    if (HasNonEmptyFinalizer(base.second.info()))
+  for (RecordInfo::Bases::iterator it = info->GetBases().begin();
+       it != info->GetBases().end();
+       ++it) {
+    if (HasNonEmptyFinalizer(it->second.info()))
       return true;
-
-  for (auto& field : info->GetFields())
-    if (field.second.edge()->NeedsFinalization())
+  }
+  for (RecordInfo::Fields::iterator it = info->GetFields().begin();
+       it != info->GetFields().end();
+       ++it) {
+    if (it->second.edge()->NeedsFinalization())
       return true;
-
+  }
   return false;
 }
 
@@ -722,9 +743,13 @@ void BlinkGCPluginConsumer::CheckTraceMethod(
     Config::TraceMethodType trace_type) {
   // A trace method must not override any non-virtual trace methods.
   if (trace_type == Config::TRACE_METHOD) {
-    for (auto& base : parent->GetBases())
-      if (CXXMethodDecl* other = base.second.info()->InheritsNonVirtualTrace())
+    for (RecordInfo::Bases::iterator it = parent->GetBases().begin();
+         it != parent->GetBases().end();
+         ++it) {
+      RecordInfo* base = it->second.info();
+      if (CXXMethodDecl* other = base->InheritsNonVirtualTrace())
         ReportOverriddenNonVirtualTrace(parent, trace, other);
+    }
   }
 
   CheckTraceVisitor visitor(trace, parent, &cache_);
@@ -736,12 +761,17 @@ void BlinkGCPluginConsumer::CheckTraceMethod(
   if (visitor.delegates_to_traceimpl())
     return;
 
-  for (auto& base : parent->GetBases())
-    if (!base.second.IsProperlyTraced())
-      ReportBaseRequiresTracing(parent, trace, base.first);
+  for (RecordInfo::Bases::iterator it = parent->GetBases().begin();
+       it != parent->GetBases().end();
+       ++it) {
+    if (!it->second.IsProperlyTraced())
+      ReportBaseRequiresTracing(parent, trace, it->first);
+  }
 
-  for (auto& field : parent->GetFields()) {
-    if (!field.second.IsProperlyTraced()) {
+  for (RecordInfo::Fields::iterator it = parent->GetFields().begin();
+       it != parent->GetFields().end();
+       ++it) {
+    if (!it->second.IsProperlyTraced()) {
       // Discontinue once an untraced-field error is found.
       ReportFieldsRequireTracing(parent, trace);
       break;
@@ -821,17 +851,25 @@ void BlinkGCPluginConsumer::DumpClass(RecordInfo* info) {
 
   DumpEdgeVisitor visitor(json_);
 
-  for (auto& base : info->GetBases())
+  RecordInfo::Bases& bases = info->GetBases();
+  for (RecordInfo::Bases::iterator it = bases.begin();
+       it != bases.end();
+       ++it) {
     visitor.DumpEdge(info,
-                     base.second.info(),
+                     it->second.info(),
                      "<super>",
                      Edge::kStrong,
-                     GetLocString(base.second.spec().getLocStart()));
+                     GetLocString(it->second.spec().getLocStart()));
+  }
 
-  for (auto& field : info->GetFields())
+  RecordInfo::Fields& fields = info->GetFields();
+  for (RecordInfo::Fields::iterator it = fields.begin();
+       it != fields.end();
+       ++it) {
     visitor.DumpField(info,
-                      &field.second,
-                      GetLocString(field.second.field()->getLocStart()));
+                      &it->second,
+                      GetLocString(it->second.field()->getLocStart()));
+  }
 }
 
 DiagnosticsEngine::Level BlinkGCPluginConsumer::getErrorLevel() {
@@ -876,8 +914,9 @@ bool BlinkGCPluginConsumer::InIgnoredDirectory(RecordInfo* info) {
 #if defined(LLVM_ON_WIN32)
   std::replace(filename.begin(), filename.end(), '\\', '/');
 #endif
-  for (const auto& dir : options_.ignored_directories)
-    if (filename.find(dir) != std::string::npos)
+  std::vector<std::string>::iterator it = options_.ignored_directories.begin();
+  for (; it != options_.ignored_directories.end(); ++it)
+    if (filename.find(*it) != std::string::npos)
       return true;
   return false;
 }
@@ -934,13 +973,19 @@ void BlinkGCPluginConsumer::ReportClassRequiresTraceMethod(RecordInfo* info) {
                    diag_class_requires_trace_method_)
       << info->record();
 
-  for (auto& base : info->GetBases())
-    if (base.second.NeedsTracing().IsNeeded())
-      NoteBaseRequiresTracing(&base.second);
+  for (RecordInfo::Bases::iterator it = info->GetBases().begin();
+       it != info->GetBases().end();
+       ++it) {
+    if (it->second.NeedsTracing().IsNeeded())
+      NoteBaseRequiresTracing(&it->second);
+  }
 
-  for (auto& field : info->GetFields())
-    if (!field.second.IsProperlyTraced())
-      NoteFieldRequiresTracing(info, field.first);
+  for (RecordInfo::Fields::iterator it = info->GetFields().begin();
+       it != info->GetFields().end();
+       ++it) {
+    if (!it->second.IsProperlyTraced())
+      NoteFieldRequiresTracing(info, it->first);
+  }
 }
 
 void BlinkGCPluginConsumer::ReportBaseRequiresTracing(
@@ -956,65 +1001,71 @@ void BlinkGCPluginConsumer::ReportFieldsRequireTracing(
     CXXMethodDecl* trace) {
   ReportDiagnostic(trace->getLocStart(), diag_fields_require_tracing_)
       << info->record();
-  for (auto& field : info->GetFields())
-    if (!field.second.IsProperlyTraced())
-      NoteFieldRequiresTracing(info, field.first);
+  for (RecordInfo::Fields::iterator it = info->GetFields().begin();
+       it != info->GetFields().end();
+       ++it) {
+    if (!it->second.IsProperlyTraced())
+      NoteFieldRequiresTracing(info, it->first);
+  }
 }
 
 void BlinkGCPluginConsumer::ReportClassContainsInvalidFields(
     RecordInfo* info,
-    const CheckFieldsVisitor::Errors& errors) {
+    CheckFieldsVisitor::Errors* errors) {
   bool only_warnings = options_.warn_raw_ptr;
-  for (auto& error : errors)
-    if (!CheckFieldsVisitor::IsWarning(error.second))
+  for (CheckFieldsVisitor::Errors::iterator it = errors->begin();
+       only_warnings && it != errors->end();
+       ++it) {
+    if (!CheckFieldsVisitor::IsWarning(it->second))
       only_warnings = false;
-
+  }
   ReportDiagnostic(info->record()->getLocStart(),
                    only_warnings ?
                    diag_class_contains_invalid_fields_warning_ :
                    diag_class_contains_invalid_fields_)
       << info->record();
 
-  for (auto& error : errors) {
-    unsigned note;
-    if (CheckFieldsVisitor::IsRawPtrError(error.second)) {
-      note = diag_raw_ptr_to_gc_managed_class_note_;
-    } else if (CheckFieldsVisitor::IsReferencePtrError(error.second)) {
-      note = diag_reference_ptr_to_gc_managed_class_note_;
-    } else if (error.second == CheckFieldsVisitor::kRefPtrToGCManaged) {
-      note = diag_ref_ptr_to_gc_managed_class_note_;
-    } else if (error.second == CheckFieldsVisitor::kOwnPtrToGCManaged) {
-      note = diag_own_ptr_to_gc_managed_class_note_;
-    } else if (error.second == CheckFieldsVisitor::kMemberToGCUnmanaged) {
-      note = diag_member_to_gc_unmanaged_class_note_;
-    } else if (error.second == CheckFieldsVisitor::kMemberInUnmanaged) {
-      note = diag_member_in_unmanaged_class_note_;
-    } else if (error.second == CheckFieldsVisitor::kPtrFromHeapToStack) {
-      note = diag_stack_allocated_field_note_;
-    } else if (error.second == CheckFieldsVisitor::kGCDerivedPartObject) {
-      note = diag_part_object_to_gc_derived_class_note_;
+  for (CheckFieldsVisitor::Errors::iterator it = errors->begin();
+       it != errors->end();
+       ++it) {
+    unsigned error;
+    if (CheckFieldsVisitor::IsRawPtrError(it->second)) {
+      error = diag_raw_ptr_to_gc_managed_class_note_;
+    } else if (CheckFieldsVisitor::IsReferencePtrError(it->second)) {
+      error = diag_reference_ptr_to_gc_managed_class_note_;
+    } else if (it->second == CheckFieldsVisitor::kRefPtrToGCManaged) {
+      error = diag_ref_ptr_to_gc_managed_class_note_;
+    } else if (it->second == CheckFieldsVisitor::kOwnPtrToGCManaged) {
+      error = diag_own_ptr_to_gc_managed_class_note_;
+    } else if (it->second == CheckFieldsVisitor::kMemberToGCUnmanaged) {
+      error = diag_member_to_gc_unmanaged_class_note_;
+    } else if (it->second == CheckFieldsVisitor::kMemberInUnmanaged) {
+      error = diag_member_in_unmanaged_class_note_;
+    } else if (it->second == CheckFieldsVisitor::kPtrFromHeapToStack) {
+      error = diag_stack_allocated_field_note_;
+    } else if (it->second == CheckFieldsVisitor::kGCDerivedPartObject) {
+      error = diag_part_object_to_gc_derived_class_note_;
     } else {
       assert(false && "Unknown field error");
     }
-    NoteField(error.first, note);
+    NoteField(it->first, error);
   }
 }
 
 void BlinkGCPluginConsumer::ReportClassContainsGCRoots(
     RecordInfo* info,
-    const CheckGCRootsVisitor::Errors& errors) {
-  for (auto& error : errors) {
-    FieldPoint* point = nullptr;
-    for (FieldPoint* path : error) {
-      if (!point) {
-        point = path;
-        ReportDiagnostic(info->record()->getLocStart(),
-                         diag_class_contains_gc_root_)
-            << info->record() << point->field();
-        continue;
-      }
+    CheckGCRootsVisitor::Errors* errors) {
+  for (CheckGCRootsVisitor::Errors::iterator it = errors->begin();
+       it != errors->end();
+       ++it) {
+    CheckGCRootsVisitor::RootPath::iterator path = it->begin();
+    FieldPoint* point = *path;
+    ReportDiagnostic(info->record()->getLocStart(),
+                     diag_class_contains_gc_root_)
+        << info->record() << point->field();
+    while (++path != it->end()) {
       NotePartObjectContainsGCRoot(point);
-      point = path;
+      point = *path;
     }
     NoteFieldContainsGCRoot(point);
   }
@@ -1022,18 +1073,20 @@ void BlinkGCPluginConsumer::ReportClassContainsGCRoots(
 
 void BlinkGCPluginConsumer::ReportFinalizerAccessesFinalizedFields(
     CXXMethodDecl* dtor,
-    const CheckFinalizerVisitor::Errors& errors) {
-  for (auto& error : errors) {
-    bool as_eagerly_finalized = error.as_eagerly_finalized;
+    CheckFinalizerVisitor::Errors* fields) {
+  for (CheckFinalizerVisitor::Errors::iterator it = fields->begin();
+       it != fields->end();
+       ++it) {
+    bool as_eagerly_finalized = it->as_eagerly_finalized;
     unsigned diag_error = as_eagerly_finalized ?
                           diag_finalizer_eagerly_finalized_field_ :
                           diag_finalizer_accesses_finalized_field_;
     unsigned diag_note = as_eagerly_finalized ?
                          diag_eagerly_finalized_field_note_ :
                          diag_finalized_field_note_;
-    ReportDiagnostic(error.member->getLocStart(), diag_error)
-        << dtor << error.field->field();
-    NoteField(error.field, diag_note);
+    ReportDiagnostic(it->member->getLocStart(), diag_error)
+        << dtor << it->field->field();
+    NoteField(it->field, diag_note);
   }
 }
 

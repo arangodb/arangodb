@@ -233,26 +233,13 @@ def CreateWrapper(target_list, target_dicts, data, params):
   # Tell Xcode to look everywhere for headers.
   sources_target['configurations'] = {'Default': { 'include_dirs': [ depth ] } }
 
-  # Put excluded files into the sources target so they can be opened in Xcode.
-  skip_excluded_files = \
-      not generator_flags.get('xcode_ninja_list_excluded_files', True)
-
   sources = []
   for target, target_dict in target_dicts.iteritems():
     base = os.path.dirname(target)
     files = target_dict.get('sources', []) + \
             target_dict.get('mac_bundle_resources', [])
-
-    if not skip_excluded_files:
-      files.extend(target_dict.get('sources_excluded', []) +
-                   target_dict.get('mac_bundle_resources_excluded', []))
-
     for action in target_dict.get('actions', []):
       files.extend(action.get('inputs', []))
-
-      if not skip_excluded_files:
-        files.extend(action.get('inputs_excluded', []))
-
     # Remove files starting with $. These are mostly intermediate files for the
     # build system.
     files = [ file for file in files if not file.startswith('$')]

@@ -12,7 +12,6 @@ import sys
 import threading
 import urllib2
 import urlparse
-import zlib
 
 ALGO = hashlib.sha1
 
@@ -36,7 +35,9 @@ class FakeSigner(object):
     return json.loads(a.groups()[0])
 
 
-class MockHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+class IsolateServerHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+  """An extremely minimal implementation of the isolate server API v1.0."""
+
   def _json(self, data):
     """Sends a JSON response."""
     self.send_response(200)
@@ -63,14 +64,26 @@ class MockHandler(BaseHTTPServer.BaseHTTPRequestHandler):
       self.rfile.read(chunk)
       size -= chunk
 
-  def log_message(self, fmt, *args):
-    logging.info(
-        '%s - - [%s] %s', self.address_string(), self.log_date_time_string(),
-        fmt % args)
+  def do_GET(self):
+    logging.info('GET %s', self.path)
+    if self.path in ('/on/load', '/on/quit'):
+      self._octet_stream('')
+    elif self.path == '/auth/api/v1/server/oauth_config':
+      self._json({
+          'client_id': 'c',
+          'client_not_so_secret': 's',
+          'primary_url': self.server.url})
+    elif self.path == '/auth/api/v1/accounts/self':
+      self._json({'identity': 'user:joe', 'xsrf_token': 'foo'})
+    elif self.path.startswith('/_ah/api/isolateservice/v1/retrieve'):
+      namespace, h = self.path[len(
+          '/_ah/api/isolateservice/v1/retrieve'):].split('/', 1)
+      self._octet_stream(self.server.contents[namespace][h])
+    else:
+      raise NotImplementedError(self.path)
 
-
-class IsolateServerHandler(MockHandler):
-  """An extremely minimal implementation of the isolate server API v1.0."""
+  ### Utility Functions Adapted from endpoint_handlers_api
+  # TODO(cmassaro): inherit these directly?
 
   def _should_push_to_gs(self, isolated, size):
     max_memcache = 500 * 1024
@@ -80,7 +93,7 @@ class IsolateServerHandler(MockHandler):
     return size >= min_direct_gs
 
   def _generate_signed_url(self, digest, namespace='default'):
-    return '%s/FAKE_GCS/%s/%s' % (self.server.url, namespace, digest)
+    return '%s/content-gs/%s/%s' % (self.server.url, namespace, digest)
 
   def _generate_ticket(self, entry_dict):
     embedded = dict(
@@ -106,22 +119,7 @@ class IsolateServerHandler(MockHandler):
 
   ### Mocked HTTP Methods
 
-  def do_GET(self):
-    logging.info('GET %s', self.path)
-    if self.path in ('/on/load', '/on/quit'):
-      self._octet_stream('')
-    elif self.path == '/auth/api/v1/server/oauth_config':
-      self._json({
-          'client_id': 'c',
-          'client_not_so_secret': 's',
-          'primary_url': self.server.url})
-    elif self.path == '/auth/api/v1/accounts/self':
-      self._json({'identity': 'user:joe', 'xsrf_token': 'foo'})
-    else:
-      raise NotImplementedError(self.path)
-
   def do_POST(self):
-    logging.info('POST %s', self.path)
     body = self._read_body()
     if self.path.startswith('/_ah/api/isolateservice/v1/preupload'):
       response = {'items': []}
@@ -158,10 +156,7 @@ class IsolateServerHandler(MockHandler):
     elif self.path.startswith('/_ah/api/isolateservice/v1/retrieve'):
       request = json.loads(body)
       namespace = request['namespace']['namespace']
-      data = self.server.contents[namespace].get(request['digest'])
-      if data is None:
-        logging.error(
-            'Failed to retrieve %s / %s', namespace, request['digest'])
+      data = self.server.contents[namespace][request['digest']]
       self._json({'content': data})
     elif self.path.startswith('/_ah/api/isolateservice/v1/server_details'):
       self._json({'server_version': 'such a good version'})
@@ -174,27 +169,48 @@ class IsolateServerHandler(MockHandler):
       self._drop_body()
     else:
       body = self._read_body()
-    if self.path.startswith('/FAKE_GCS/'):
-      namespace, h = self.path[len('/FAKE_GCS/'):].split('/', 1)
+    if self.path.startswith('/content-gs/'):
+      namespace, h = self.path[len('/content-gs/'):].split('/', 1)
       self.server.contents.setdefault(namespace, {})[h] = body
       self._octet_stream('')
     else:
       raise NotImplementedError(self.path)
 
+  def log_message(self, fmt, *args):
+    logging.info(
+        '%s - - [%s] %s', self.address_string(), self.log_date_time_string(),
+        fmt % args)
 
-class MockServer(object):
-  _HANDLER_CLS = None
 
+class MockIsolateServer(object):
   def __init__(self):
     self._closed = False
     self._server = BaseHTTPServer.HTTPServer(
-        ('127.0.0.1', 0), self._HANDLER_CLS)
+        ('127.0.0.1', 0), IsolateServerHandler)
+    self._server.contents = {}
+    self._server.discard_content = False
     self._server.url = self.url = 'http://localhost:%d' % (
         self._server.server_port)
     self._thread = threading.Thread(target=self._run, name='httpd')
     self._thread.daemon = True
     self._thread.start()
     logging.info('%s', self.url)
+
+  def discard_content(self):
+    """Stops saving content in memory. Used to test large files."""
+    self._server.discard_content = True
+
+  @property
+  def contents(self):
+    return self._server.contents
+
+  def add_content(self, namespace, content):
+    assert not self._server.discard_content
+    h = hash_content(content)
+    logging.info('add_content(%s, %s)', namespace, h)
+    self._server.contents.setdefault(namespace, {})[h] = base64.b64encode(
+        content)
+    return h
 
   def close(self):
     self.close_start()
@@ -212,36 +228,3 @@ class MockServer(object):
   def _run(self):
     while not self._closed:
       self._server.handle_request()
-
-
-class MockIsolateServer(MockServer):
-  _HANDLER_CLS = IsolateServerHandler
-
-  def __init__(self):
-    super(MockIsolateServer, self).__init__()
-    self._server.contents = {}
-    self._server.discard_content = False
-
-  def discard_content(self):
-    """Stops saving content in memory. Used to test large files."""
-    self._server.discard_content = True
-
-  @property
-  def contents(self):
-    return self._server.contents
-
-  def add_content_compressed(self, namespace, content):
-    assert not self._server.discard_content
-    h = hash_content(content)
-    logging.info('add_content_compressed(%s, %s)', namespace, h)
-    self._server.contents.setdefault(namespace, {})[h] = base64.b64encode(
-        zlib.compress(content))
-    return h
-
-  def add_content(self, namespace, content):
-    assert not self._server.discard_content
-    h = hash_content(content)
-    logging.info('add_content(%s, %s)', namespace, h)
-    self._server.contents.setdefault(namespace, {})[h] = base64.b64encode(
-        content)
-    return h

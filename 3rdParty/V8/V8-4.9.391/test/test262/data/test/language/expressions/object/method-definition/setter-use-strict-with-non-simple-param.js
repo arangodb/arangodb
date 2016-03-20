@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-esid: sec-method-definitions-static-semantics-early-errors
+es7id: 14.3.1
 description: >
   A SyntaxError is thrown if a setter method contains a non-simple parameter list and a UseStrict directive.
 info: >

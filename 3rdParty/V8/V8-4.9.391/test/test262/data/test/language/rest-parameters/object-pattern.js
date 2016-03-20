@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-esid: sec-destructuring-binding-patterns
+es7id: 13.3.3
 description: >
   The rest parameter can be a binding pattern.
 info: >

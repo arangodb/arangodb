@@ -14,7 +14,7 @@ run_tool.py <tool> <path/to/compiledb> --all
 If you only want to run the tool across just chrome/browser and content/browser:
 run_tool.py <tool> <path/to/compiledb> chrome/browser content/browser
 
-Please see https://chromium.googlesource.com/chromium/src/+/master/docs/clang_tool_refactoring.md for more
+Please see https://code.google.com/p/chromium/wiki/ClangToolRefactoring for more
 information, which documents the entire automated refactoring flow in Chromium.
 
 Why use this tool:
@@ -42,7 +42,6 @@ import collections
 import functools
 import json
 import multiprocessing
-import os
 import os.path
 import subprocess
 import sys
@@ -316,13 +315,6 @@ def main():
       nargs='*',
       help='optional paths to filter what files the tool is run on')
   args = parser.parse_args()
-
-  os.environ['PATH'] = '%s%s%s' % (
-      os.path.abspath(os.path.join(
-          os.path.dirname(__file__),
-          '../../../third_party/llvm-build/Release+Asserts/bin')),
-      os.pathsep,
-      os.environ['PATH'])
 
   if args.generate_compdb:
     _GenerateCompileDatabase(args.compile_database)

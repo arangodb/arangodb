@@ -322,15 +322,3 @@ This directory contains the source code of ICU 54.1 for C/C++.
    - patches/xlit_badcast.patch  ; speculative
    - upstream bug (yet to be resolved)
      http://bugs.icu-project.org/trac/ticket/11937
-
-24. Fix a UText bug found in uregex_open fuzzer.
-   - patches/utext.patch
-   - upstream bug (fixed in trunk in Jan, 2016. Will be in 57 release)
-     http://bugs.icu-project.org/trac/ticket/12130
-
-25. Fix a bug in regex compiler.
-  - patches/regexcmp.patch
-  - upstream bug
-    http://bugs.icu-project.org/trac/ticket/12138
-
-

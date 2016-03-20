@@ -698,10 +698,7 @@ class RequestsLibEngine(object):
     Will be caught while reading a streaming response in HttpResponse.read and
     transformed to TimeoutError.
     """
-    return (
-        socket.timeout, ssl.SSLError, requests.Timeout,
-        requests.packages.urllib3.exceptions.ProtocolError,
-        requests.packages.urllib3.exceptions.TimeoutError)
+    return (socket.timeout, ssl.SSLError, requests.Timeout)
 
   def __init__(self):
     super(RequestsLibEngine, self).__init__()

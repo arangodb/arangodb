@@ -25,10 +25,8 @@ int Function(int interesting_number) {
 
 }  // namespace blink
 
-using blink::frame_count;
-
 int F() {
   // Make sure variables qualified with a namespace name are still rewritten
   // correctly.
-  return frame_count + blink::frame_count;
+  return blink::frame_count;
 }

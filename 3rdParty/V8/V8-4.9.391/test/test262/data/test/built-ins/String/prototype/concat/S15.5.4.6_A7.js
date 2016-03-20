@@ -5,6 +5,8 @@
 info: String.prototype.concat can't be used as constructor
 es5id: 15.5.4.6_A7
 description: Checking if creating the String.prototype.concat object fails
+includes:
+    - Test262Error.js
 ---*/
 
 var __FACTORY = String.prototype.concat;

@@ -5,6 +5,8 @@
 info: String.prototype.replace can't be used as constructor
 es5id: 15.5.4.11_A7
 description: Checking if creating the String.prototype.replace object fails
+includes:
+    - Test262Error.js
 ---*/
 
 var __FACTORY = String.prototype.replace;

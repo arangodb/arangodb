@@ -22,19 +22,7 @@ class NamedValues:
             self.valToNameIdx[val] = name
             self.namedValues = self.namedValues + ((name, val),)
             automaticVal = automaticVal + 1
-
-    def __repr__(self):
-        return '%s(%s)' % (self.__class__.__name__, ', '.join([repr(x) for x in self.namedValues]))
-
     def __str__(self): return str(self.namedValues)
-
-    def __eq__(self, other): return tuple(self) == tuple(other)
-    def __ne__(self, other): return tuple(self) != tuple(other)
-    def __lt__(self, other): return tuple(self) < tuple(other)
-    def __le__(self, other): return tuple(self) <= tuple(other)
-    def __gt__(self, other): return tuple(self) > tuple(other)
-    def __ge__(self, other): return tuple(self) >= tuple(other)
-    def __hash__(self): return hash(tuple(self))
     
     def getName(self, value):
         if value in self.valToNameIdx:

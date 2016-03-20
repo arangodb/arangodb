@@ -1,9 +1,11 @@
---- a/__init__.py
-+++ b/__init__.py
-@@ -1079,65 +1079,6 @@ SCHEME_TO_CONNECTION = {
+diff --git a/third_party/httplib2/__init__.py b/third_party/httplib2/__init__.py
+index 9780d4e..9859f9f 100644
+--- a/third_party/httplib2/__init__.py
++++ b/third_party/httplib2/__init__.py
+@@ -1064,63 +1064,6 @@ SCHEME_TO_CONNECTION = {
      'https': HTTPSConnectionWithTimeout
  }
- 
+
 -# Use a different connection object for Google App Engine
 -try:
 -    try:
@@ -22,9 +24,7 @@
 -    def _new_fixed_fetch(validate_certificate):
 -        def fixed_fetch(url, payload=None, method="GET", headers={},
 -                        allow_truncated=False, follow_redirects=True,
--                        deadline=None):
--            if deadline is None:
--                deadline = socket.getdefaulttimeout() or 5
+-                        deadline=5):
 -            return fetch(url, payload=payload, method=method, headers=headers,
 -                         allow_truncated=allow_truncated,
 -                         follow_redirects=follow_redirects, deadline=deadline,
@@ -63,6 +63,6 @@
 -except (ImportError, AttributeError):
 -    pass
 -
- 
+
  class Http(object):
      """An HTTP client that handles:

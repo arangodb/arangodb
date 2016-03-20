@@ -8,6 +8,7 @@ info: >
     if Result.type is returned  then Result.value is returned too
 es5id: 13.2.1_A7_T4
 description: Returning boolean. Declaring a function with "function __func()"
+includes: [Test262Error.js]
 ---*/
 
 function __func(){
