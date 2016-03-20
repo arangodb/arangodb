@@ -475,7 +475,6 @@
               '-Wall',
               '-Werror',
               '-Wextra',
-              '-Wshorten-64-to-32',
             ],
             'cflags+': [
               # Clang considers the `register` keyword as deprecated, but
@@ -705,10 +704,6 @@
               # Don't warn about unrecognized command line option.
               '-Wno-gnu-zero-variadic-macro-arguments',
             ],
-          }],
-          [ 'clang==1 and (v8_target_arch=="x64" or v8_target_arch=="arm64" \
-            or v8_target_arch=="mips64el")', {
-            'cflags': [ '-Wshorten-64-to-32' ],
           }],
           [ 'host_arch=="ppc64" and OS!="aix"', {
             'cflags': [ '-mminimal-toc' ],
@@ -975,12 +970,6 @@
               'GCC_VERSION': 'com.apple.compilers.llvm.clang.1_0',
               'CLANG_CXX_LANGUAGE_STANDARD': 'gnu++0x',  # -std=gnu++0x
             },
-            'conditions': [
-              ['v8_target_arch=="x64" or v8_target_arch=="arm64" \
-                or v8_target_arch=="mips64el"', {
-                'xcode_settings': {'WARNING_CFLAGS': ['-Wshorten-64-to-32']},
-              }],
-            ],
           }],
         ],
         'target_conditions': [
