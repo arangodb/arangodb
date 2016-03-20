@@ -363,7 +363,10 @@ endif ()
 
 if (NOT WINDOWS)
   set(SYS_LIBS ${SYS_LIBS} resolv)
-  set(SYS_LIBS ${SYS_LIBS} rt)
+
+  if (NOT DARWIN)
+    set(SYS_LIBS ${SYS_LIBS} rt)
+  endif ()
 endif ()
 
 ################################################################################
