@@ -362,7 +362,8 @@ endif ()
 ################################################################################
 
 if (NOT WINDOWS)
-  set(NET_LIBS ${NET_LIBS} resolv)
+  set(SYS_LIBS ${SYS_LIBS} resolv)
+  set(SYS_LIBS ${SYS_LIBS} rt)
 endif ()
 
 ################################################################################
@@ -711,7 +712,7 @@ list(INSERT SYSTEM_LIBRARIES 0
   ${BASE_LIBS}
   ${CMAKE_THREAD_LIBS_INIT}
   ${CMAKE_DL_LIBS}
-  ${NET_LIBS}
+  ${SYS_LIBS}
 )
 
 add_subdirectory(lib)
