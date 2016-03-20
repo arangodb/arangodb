@@ -1682,7 +1682,7 @@ function startInstanceSingleServer(instanceInfo, protocol, options,
     args = _.extend(args, addArgs);
   }
 
-  instanceInfo.pid = executeExternal(ARANGOD_BIN, toArgv(args), options, testname);
+  instanceInfo.pid = executeValgrind(ARANGOD_BIN, toArgv(args), options, testname);
 
   return true;
 }
