@@ -319,8 +319,17 @@ elseif (WIN32)
   set(V8_LIBRARY_RELEASE "${V8_DIR}/build/Release")
 
   set(V8_LIBS
-    debug "${V8_LIBRARY_DEBUG}/lib/v8_base.lib"
-    optimized "${V8_LIBRARY_RELEASE}/lib/v8_base.lib"
+    debug "${V8_LIBRARY_DEBUG}/lib/v8_base_0.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/v8_base_0.lib"
+
+    debug "${V8_LIBRARY_DEBUG}/lib/v8_base_1.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/v8_base_1.lib"
+
+    debug "${V8_LIBRARY_DEBUG}/lib/v8_base_2.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/v8_base_2.lib"
+
+    debug "${V8_LIBRARY_DEBUG}/lib/v8_base_3.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/v8_base_3.lib"
 
     debug "${V8_LIBRARY_DEBUG}/lib/v8_libbase.lib"
     optimized "${V8_LIBRARY_RELEASE}/lib/v8_libbase.lib"
