@@ -13,8 +13,7 @@ tar xzf 3rdParty.tar.gz
 echo
 echo "$0: setup make-system"
 
-mkdir build
-ln -s build/bin bin
+test -d build || mkdir build
 
 echo
 echo "$0: configuring ArangoDB"
