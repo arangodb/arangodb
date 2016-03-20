@@ -2225,11 +2225,11 @@ testFuncs.arangosh = function(options) {
         yaml.safeDump(rc);
     }
 
-    ret.ArangoshExitCodeTest.testArangoshebang['status'] = failSuccess;
-    ret.ArangoshExitCodeTest.testArangoshebang['duration'] = deltaTime3;
-
     print("Status: " + ((successSuccess) ? "SUCCESS" : "FAIL") + "\n");
   }
+
+  ret.ArangoshExitCodeTest.testArangoshebang['status'] = shebangSuccess;
+  ret.ArangoshExitCodeTest.testArangoshebang['duration'] = deltaTime3;
 
   // return result
   ret.ArangoshExitCodeTest.status = failSuccess && successSuccess && shebangSuccess;
