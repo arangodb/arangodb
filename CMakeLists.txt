@@ -21,6 +21,7 @@ if (APPLE)
 endif ()
 
 option(VERBOSE OFF)
+set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9")
 
 project(ArangoDB)
 
