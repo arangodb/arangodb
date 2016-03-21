@@ -377,6 +377,9 @@ void AnyServer::beginShutdown () {
 
 #ifdef TRI_HAVE_FORK
 
+static void ignoreHup(int) {
+}
+
 int AnyServer::startupSupervisor () {
   static time_t const MIN_TIME_ALIVE_IN_SEC = 30;
 
@@ -417,6 +420,11 @@ int AnyServer::startupSupervisor () {
 
       // parent
       if (0 < pid) {
+#ifndef _WIN32
+    // ignore SIGHUP
+    signal(SIGHUP, ignoreHup);
+#endif
+
         _applicationServer->setupLogging(false, true, true);
         TRI_SetProcessTitle("arangodb [supervisor]");
         LOG_DEBUG("supervisor mode: within parent");
