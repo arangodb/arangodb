@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "json-utilities.h"
-#include "Basics/associative.h"
 #include "Basics/fasthash.h"
 #include "Basics/hashes.h"
 #include "Basics/StringBuffer.h"
@@ -401,74 +400,6 @@ TRI_json_t* TRI_SortArrayJson(TRI_json_t* array) {
   }
 
   return array;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if a JSON struct has duplicate attribute names
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_HasDuplicateKeyJson(TRI_json_t const* object) {
-  if (object && object->_type == TRI_JSON_OBJECT) {
-    size_t const n = TRI_LengthVector(&object->_value._objects);
-    bool const hasMultipleElements = (n > 2);
-
-    // if we don't have attributes, we do not need to check for duplicates
-    // if we only have one attribute, we don't need to check for duplicates in
-    // the array, but we need to recursively validate the array values (if
-    // array value itself is an array)
-    if (n > 0) {
-      TRI_associative_pointer_t hash;
-      size_t i;
-
-      if (hasMultipleElements) {
-        TRI_InitAssociativePointer(&hash, TRI_UNKNOWN_MEM_ZONE,
-                                   &TRI_HashStringKeyAssociativePointer,
-                                   &TRI_HashStringKeyAssociativePointer,
-                                   &TRI_EqualStringKeyAssociativePointer, 0);
-      }
-
-      for (i = 0; i < n; i += 2) {
-        auto key = static_cast<TRI_json_t const*>(
-            TRI_AtVector(&object->_value._objects, i));
-
-        if (!TRI_IsStringJson(key)) {
-          continue;
-        }
-
-        auto value = static_cast<TRI_json_t const*>(
-            TRI_AtVector(&object->_value._objects, i + 1));
-
-        // recursively check sub-array elements
-        if (value->_type == TRI_JSON_OBJECT && TRI_HasDuplicateKeyJson(value)) {
-          // duplicate found in sub-array
-          if (hasMultipleElements) {
-            TRI_DestroyAssociativePointer(&hash);
-          }
-
-          return true;
-        }
-
-        if (hasMultipleElements) {
-          void* previous = TRI_InsertKeyAssociativePointer(
-              &hash, key->_value._string.data, key->_value._string.data, false);
-
-          if (previous != nullptr) {
-            // duplicate found
-            TRI_DestroyAssociativePointer(&hash);
-
-            return true;
-          }
-        }
-      }
-
-      if (hasMultipleElements) {
-        TRI_DestroyAssociativePointer(&hash);
-      }
-    }
-  }
-
-  // no duplicate found
-  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
