@@ -27,6 +27,7 @@
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Utils/CollectionExport.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/StandaloneTransactionContext.h"
 #include "Utils/TransactionContext.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
@@ -124,6 +125,8 @@ void JsonCursor::dump(arangodb::basics::StringBuffer& buffer) {
   // if the specified batch size does not get out of hand
   // otherwise specifying a very high batch size would make the allocation fail
   // in every case, even if there were much less documents in the collection
+  auto transactionContext = std::make_shared<StandaloneTransactionContext>(_vocbase);
+
   if (n <= 50000) {
     int res = buffer.reserve(n * 48);
 
@@ -148,7 +151,7 @@ void JsonCursor::dump(arangodb::basics::StringBuffer& buffer) {
 
     arangodb::basics::VPackStringBufferAdapter bufferAdapter(
         buffer.stringBuffer());
-    VPackDumper dumper(&bufferAdapter);
+    VPackDumper dumper(&bufferAdapter, transactionContext->getVPackOptions());
     try {
       dumper.dump(row);
     } catch (...) {
