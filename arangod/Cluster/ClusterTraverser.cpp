@@ -300,7 +300,7 @@ bool ClusterTraverser::vertexMatchesCondition(
     std::vector<arangodb::traverser::TraverserExpression*> const& exp) {
   for (auto const& e : exp) {
     if (!e->isEdgeAccess) {
-      if (v.isNone() || !e->matchesCheck(v)) {
+      if (v.isNone() || !e->matchesCheck(_trx, v)) {
         ++_filteredPaths;
         return false;
       }

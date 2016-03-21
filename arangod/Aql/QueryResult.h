@@ -46,7 +46,6 @@ struct QueryResult {
 
     bindParameters = other.bindParameters;
     collectionNames = other.collectionNames;
-
   }
 
   QueryResult(int code, std::string const& details)
@@ -61,8 +60,7 @@ struct QueryResult {
 
   QueryResult() : QueryResult(TRI_ERROR_NO_ERROR) {}
 
-  virtual ~QueryResult() {
-  }
+  virtual ~QueryResult() {}
 
   int code;
   bool cached;
