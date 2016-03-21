@@ -405,6 +405,13 @@ class EdgeCollectionInfo {
 
   std::string _indexId;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Temporary builder for index search values
+  ///        NOTE: Single search builder is NOT thread-save
+  //////////////////////////////////////////////////////////////////////////////
+
+  VPackBuilder _searchBuilder;
+
   WeightCalculatorFunction _weighter;
 
  public:

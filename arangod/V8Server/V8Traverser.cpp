@@ -83,12 +83,11 @@ EdgeCollectionInfo::EdgeCollectionInfo(arangodb::Transaction* trx,
 
 std::shared_ptr<OperationCursor> EdgeCollectionInfo::getEdges(
     TRI_edge_direction_e direction, std::string const& vertexId) {
-#warning Make this thread safe s.t. we only need 2 builders.
-  VPackBuilder searchBuilder;
-  EdgeIndex::buildSearchValue(direction, vertexId, searchBuilder);
+  _searchBuilder.clear();
+  EdgeIndex::buildSearchValue(direction, vertexId, _searchBuilder);
   return _trx->indexScan(_collectionName,
                          arangodb::Transaction::CursorType::INDEX, _indexId,
-                         searchBuilder.slice(), 0, UINT64_MAX, 1000, false);
+                         _searchBuilder.slice(), 0, UINT64_MAX, 1000, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -494,6 +493,9 @@ std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch(
   ArangoDBPathFinder pathFinder(forwardExpander, backwardExpander,
                                 opts.bidirectional);
   std::unique_ptr<ArangoDBPathFinder::Path> path;
+  // New trx api is not thread safe. Two threads only give little performance
+  // gain. Maybe reactivate this in the future (MVCC).
+  opts.multiThreaded = false;
   if (opts.multiThreaded) {
     path.reset(pathFinder.shortestPathTwoThreads(opts.start, opts.end));
   } else {
