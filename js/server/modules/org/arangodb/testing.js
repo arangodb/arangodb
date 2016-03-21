@@ -1737,7 +1737,7 @@ testFuncs.arangosh = function(options) {
   var deltaTime3 = 0;
   
   if (!options.skipShebang && platform.substr(0, 3) !== "win") {
-    var shebangFile = fs.join(fs.getTempPath(), "testshebang.js");
+    var shebangFile = fs.getTempFile();
     var ARANGOSH_BIN = fs.makeAbsolute(fs.join("bin", "arangosh"));
 
     print("Starting arangosh via shebang script:" + shebangFile);
@@ -1745,7 +1745,7 @@ testFuncs.arangosh = function(options) {
              "#!" + ARANGOSH_BIN + " --javascript.execute \n" +
              "print('hello world');\n");
 
-    executeExternal("sh", ["-c", "chmod a+x " + shebangFile]);
+    executeExternalAndWait("sh", ["-c", "chmod a+x " + shebangFile]);
 
     const startTime3 = time();
     rc = executeExternalAndWait("sh", ["-c", shebangFile]);
@@ -1764,6 +1764,8 @@ testFuncs.arangosh = function(options) {
 
     ret.ArangoshExitCodeTest.testArangoshebang['status'] = failSuccess;
     ret.ArangoshExitCodeTest.testArangoshebang['duration'] = deltaTime3;
+
+    fs.remove(shebangFile);
 
     print("Status: " + ((successSuccess) ? "SUCCESS" : "FAIL") + "\n");
   }
