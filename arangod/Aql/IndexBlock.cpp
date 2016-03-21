@@ -321,18 +321,20 @@ std::shared_ptr<arangodb::OperationCursor> IndexBlock::createCursor() {
   IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
   auto outVariable = node->outVariable();
   auto ast = node->_plan->getAst();
+  
+  AstNode const* conditionNode = nullptr;
+  if (_condition != nullptr) {
+    TRI_ASSERT(_indexes.size() == _condition->numMembers());
+    TRI_ASSERT(_condition->numMembers() > _currentIndex);
 
-  if (_condition == nullptr) {
-    return ast->query()->trx()->indexScanForCondition(
-        _collection->getName(), _indexes[_currentIndex], ast, nullptr,
-        outVariable, UINT64_MAX, TRI_DEFAULT_BATCH_SIZE, node->_reverse);
+    conditionNode = _condition->getMember(_currentIndex);
   }
-
-  TRI_ASSERT(_indexes.size() == _condition->numMembers());
+  
+  TRI_ASSERT(_indexes.size() > _currentIndex);
 
   return ast->query()->trx()->indexScanForCondition(
           _collection->getName(), _indexes[_currentIndex], ast,
-          _condition->getMember(_currentIndex), outVariable, UINT64_MAX,
+          conditionNode, outVariable, UINT64_MAX,
           TRI_DEFAULT_BATCH_SIZE, node->_reverse);
   DEBUG_END_BLOCK();
 }
