@@ -29,6 +29,23 @@ Overview
  9. <collection>.exists now throws an error if there is a revision
     conflict
 
+10. replacing an edge in an edge collection now requires the specification
+    of both the `_from` and `_to` attributes. In 2.8 it was not required
+    to specify `_from` and `_to` when replacing an edge.
+
+11. /_api/collection/figures will not return the following result attributes:
+    - shapefiles.count
+    - shapes.fileSize
+    - shapes.count
+    - shapes.size
+    - attributes.count
+    - attributes.size
+
+12. the `checksum` attribute returned by GET /_api/collection/<collection>/figures
+    now is returned as a string value. It was returned as a number value in previous
+    versions. Additionally the checksum calculation algorithm was changed in 3.0,
+    so 3.0 will create different checksums than previous versions for the same data.
+
 ### New capabilities:
 
  1. Babies for document queries.
