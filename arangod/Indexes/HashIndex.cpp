@@ -835,19 +835,7 @@ IndexIterator* HashIndex::iteratorForCondition(
   if (needNormalize) {
     VPackBuilder expandedSearchValues;
     expandInSearchValues(searchValues.slice(), expandedSearchValues);
-    VPackSlice expandedSlice = expandedSearchValues.slice();
-    std::vector<IndexIterator*> iterators;
-    try {
-      for (auto const& val : VPackArrayIterator(expandedSlice)) {
-        iterators.emplace_back(iteratorForSlice(trx, nullptr, val, false));
-      }
-    } catch (...) {
-      for (auto& it : iterators) {
-        delete it;
-      }
-      throw;
-    }
-    return new MultiIndexIterator(iterators);
+    return iteratorForSlice(trx, nullptr, expandedSearchValues.slice(), false);
   }
   return iteratorForSlice(trx, nullptr, searchValues.slice(), false);
 }

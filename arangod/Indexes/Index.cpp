@@ -605,73 +605,83 @@ bool Index::canUseConditionPart(arangodb::aql::AstNode const* access,
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Transform the list of search slices to search values.
+///        Always expects a list of lists as input.
+///        Outer list represents the single lookups, inner list represents the
+///        index field values.
 ///        This will multiply all IN entries and simply return all other
 ///        entries.
+///        Example: Index on (a, b)
+///        Input: [ [{=: 1}, {in: 2,3}], [{=:2}, {=:3}]
+///        Result: [ [{=: 1}, {=: 2}],[{=:1}, {=:3}], [{=:2}, {=:3}]]
 //////////////////////////////////////////////////////////////////////////////
 
 void Index::expandInSearchValues(VPackSlice const base,
                                  VPackBuilder& result) const {
   TRI_ASSERT(base.isArray());
 
-  VPackArrayBuilder listGuard(&result); 
-  bool usesIn = false;
-  for (auto const& it : VPackArrayIterator(base)) {
-    if (it.hasKey(TRI_SLICE_KEY_IN)) {
-      usesIn = true;
-      break;
-    }
-  }
-  if (!usesIn) {
-    // Shortcut, no multiply
-    // Just copy over base
-    result.add(base);
-    return;
-  }
+  VPackArrayBuilder baseGuard(&result); 
+  for (auto const& oneLookup: VPackArrayIterator(base)) {
+    TRI_ASSERT(oneLookup.isArray());
 
-  std::unordered_map<size_t, std::vector<VPackSlice>> elements;
-  for (VPackValueLength i = 0; i < base.length(); ++i) {
-    VPackSlice current = base.at(i);
-    if (current.hasKey(TRI_SLICE_KEY_IN)) {
-      std::unordered_set<VPackSlice> tmp;
-      TRI_ASSERT(current.get(TRI_SLICE_KEY_IN).isArray());
-      for (auto const& el : VPackArrayIterator(current.get(TRI_SLICE_KEY_IN))) {
-        tmp.emplace(el);
-      }
-      auto& vector = elements[i];
-      vector.insert(vector.end(), tmp.begin(), tmp.end());
-    }
-  }
-  // If there is an entry in elements for one depth it was an in,
-  // all of them are now unique so we simply have to multiply
-  
-  size_t n = static_cast<size_t>(base.length());
-  size_t level = 0;
-  std::vector<size_t> positions;
-  positions.resize(n);
-  bool done = false;
-  while (!done) {
-    VPackArrayBuilder guard(&result);
-    for (size_t i = 0; i < n; ++i)  {
-      auto list = elements.find(i);
-      if (list == elements.end()) {
-        // Insert
-        result.add(base.at(i));
-      } else {
-        VPackObjectBuilder objGuard(&result);
-        result.add(TRI_SLICE_KEY_EQUAL, list->second.at(positions[i]));
-      }
-    }
-    while (true) {
-      auto list = elements.find(level);
-      if (list != elements.end() && ++positions[level] < list->second.size()) {
-        level = 0;
-        // abort inner iteration
+    bool usesIn = false;
+    for (auto const& it : VPackArrayIterator(oneLookup)) {
+      if (it.hasKey(TRI_SLICE_KEY_IN)) {
+        usesIn = true;
         break;
       }
-      positions[level] = 0;
-      if (++level >= n) {
-        done = true;
-        break;
+    }
+    if (!usesIn) {
+      // Shortcut, no multiply
+      // Just copy over base
+      result.add(oneLookup);
+      return;
+    }
+
+    std::unordered_map<size_t, std::vector<VPackSlice>> elements;
+    size_t n = static_cast<size_t>(oneLookup.length());
+    for (VPackValueLength i = 0; i < n; ++i) {
+      VPackSlice current = oneLookup.at(i);
+      if (current.hasKey(TRI_SLICE_KEY_IN)) {
+        std::unordered_set<VPackSlice> tmp;
+        TRI_ASSERT(current.get(TRI_SLICE_KEY_IN).isArray());
+        for (auto const& el : VPackArrayIterator(current.get(TRI_SLICE_KEY_IN))) {
+          tmp.emplace(el);
+        }
+        auto& vector = elements[i];
+        vector.insert(vector.end(), tmp.begin(), tmp.end());
+      }
+    }
+    // If there is an entry in elements for one depth it was an in,
+    // all of them are now unique so we simply have to multiply
+    
+    size_t level = 0;
+    std::vector<size_t> positions;
+    positions.resize(n);
+    bool done = false;
+    while (!done) {
+      VPackArrayBuilder guard(&result);
+      for (size_t i = 0; i < n; ++i)  {
+        auto list = elements.find(i);
+        if (list == elements.end()) {
+          // Insert
+          result.add(oneLookup.at(i));
+        } else {
+          VPackObjectBuilder objGuard(&result);
+          result.add(TRI_SLICE_KEY_EQUAL, list->second.at(positions[i]));
+        }
+      }
+      while (true) {
+        auto list = elements.find(level);
+        if (list != elements.end() && ++positions[level] < list->second.size()) {
+          level = 0;
+          // abort inner iteration
+          break;
+        }
+        positions[level] = 0;
+        if (++level >= n) {
+          done = true;
+          break;
+        }
       }
     }
   }

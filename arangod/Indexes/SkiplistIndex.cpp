@@ -827,6 +827,7 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
     arangodb::aql::Ast* ast, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool reverse) const {
   VPackBuilder searchValues;
+  searchValues.openArray();
   bool needNormalize = false;
   if (node == nullptr) {
     // We only use this index for sort. Empty searchValue
@@ -969,6 +970,7 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
       }
     }
   }
+  searchValues.close();
   if (needNormalize) {
     VPackBuilder expandedSearchValues;
     expandInSearchValues(searchValues.slice(), expandedSearchValues);
@@ -991,7 +993,10 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
     }
     return new MultiIndexIterator(iterators);
   }
-  return lookup(trx, searchValues.slice(), reverse);
+  VPackSlice searchSlice = searchValues.slice();
+  TRI_ASSERT(searchSlice.length() == 1);
+  searchSlice = searchSlice.at(0);
+  return lookup(trx, searchSlice, reverse);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
