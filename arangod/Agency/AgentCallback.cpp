@@ -13,7 +13,10 @@ void AgentCallback::shutdown() {
   _agent = 0;
 }
 
+#include <iostream>
 bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
+
+  std::cout << "I WAS FUCKING CALLED " << std::endl;
   
   if (res->status == CL_COMM_RECEIVED) {
     id_t agent_id;

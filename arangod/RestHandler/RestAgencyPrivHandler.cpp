@@ -75,7 +75,7 @@ inline HttpHandler::status_t RestAgencyPrivHandler::reportMethodNotAllowed () {
   generateError(HttpResponse::METHOD_NOT_ALLOWED,405);
   return HttpHandler::status_t(HANDLER_DONE);
 }
-
+#include <iostream>
 HttpHandler::status_t RestAgencyPrivHandler::execute() {
   try {
     VPackBuilder result;
@@ -90,8 +90,9 @@ HttpHandler::status_t RestAgencyPrivHandler::execute() {
       id_t id; // leaderId for appendEntries, cadidateId for requestVote
       index_t prevLogIndex, leaderCommit;
     	if (_request->suffix()[0] == "appendEntries") {  // appendEntries
-        if (_request->requestType() != HttpRequest::HTTP_REQUEST_POST)
+        if (_request->requestType() != HttpRequest::HTTP_REQUEST_POST) {
           return reportMethodNotAllowed();
+        }
         if (readValue("term", term) &&
             readValue("leaderId", id) &&
             readValue("prevLogIndex", prevLogIndex) &&
@@ -101,6 +102,7 @@ HttpHandler::status_t RestAgencyPrivHandler::execute() {
             term, id, prevLogIndex, prevLogTerm, leaderCommit,
             _request->toVelocyPack(&opts));
           if (ret.success) {
+            std::cout << ret.success << std::endl;
             result.add("term", VPackValue(ret.term));
             result.add("success", VPackValue(ret.success));
           } else {
@@ -137,6 +139,7 @@ HttpHandler::status_t RestAgencyPrivHandler::execute() {
       }
     }
     result.close();
+            std::cout << result.toJson() << std::endl;
     VPackSlice s = result.slice();
     generateResult(s);
   } catch (...) {

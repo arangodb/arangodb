@@ -72,13 +72,13 @@ enum AGENT_FAILURE {
 template<class T>
 inline std::ostream& operator<< (std::ostream& l, std::vector<T> const& v) {
   for (auto const& i : v)
-    l << i << "|";
+    l << i << ",";
   return l;
 }
 template<typename T>
 inline std::ostream& operator<< (std::ostream& os, std::list<T> const& l) {
   for (auto const& i : l)
-    os << i << "|";
+    os << i << ",";
   return os;
 }
 
@@ -98,20 +98,11 @@ struct AgentConfiguration {
     append_entries_retry_interval(appent_i), end_points(end_p), notify(n) {
     end_point_persist = end_points[id]; 
   }
-    inline size_t size() const {return end_points.size();}
-/*  inline std::string constituen toString() const {
-    std::stringstream out;
-    out << "Configuration\n";
-    out << "  " << "id (" << id << ") min_ping(" << min_ping << ") max_ping(" << max_ping << ")\n";
-    out << "  " << "endpoints(" << end_points << ")";
-    return out.str();
-    }*/
-  friend std::ostream& operator<< (std::ostream& out, AgentConfiguration const& c) {
-    out << "Configuration\n";
-    out << "  " << "id (" << c.id << ") min_ping(" << c.min_ping
-        << ") max_ping(" << c.max_ping << ")\n";
-    out << "  endpoints(" << c.end_points << ")";
-    return out;
+  inline size_t size() const {return end_points.size();}
+  friend std::ostream& operator<<(std::ostream& o, AgentConfiguration const& c) {
+    o << "id(" << c.id << ") min_ping(" << c.min_ping
+      << ") max_ping(" << c.max_ping << ") endpoints(" << c.end_points << ")";
+    return o;
   }
   inline std::string const toString() const {
     std::stringstream s;

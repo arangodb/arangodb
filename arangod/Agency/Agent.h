@@ -75,7 +75,7 @@ public:
   /**
    * @brief Start thread
    */
-  void start ();
+  bool start ();
   
   /**
    * @brief Verbose print of myself
@@ -96,6 +96,7 @@ public:
    * @brief Leader ID
    */
   id_t leaderID () const;
+  bool leading () const;
 
   bool lead ();
 
@@ -129,7 +130,7 @@ public:
    * @brief 1. Deal with appendEntries to slaves.
    *        2. Report success of write processes. 
    */
-  void run () override final;
+  void run ();
   void beginShutdown () override;
 
   /**
@@ -161,6 +162,11 @@ public:
    * @brief Last log entry
    */
   log_t const& lastLog () const;
+
+  friend std::ostream& operator<< (std::ostream& o, Agent const& a) {
+    o << a.config();
+    return o;
+  }
 
 private:
 

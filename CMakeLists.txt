@@ -10,18 +10,8 @@ if (POLICY CMP0037)
   cmake_policy(SET CMP0037 NEW)
 endif ()
 
-if (APPLE)
-  if (NOT DEFINED CMAKE_C_COMPILER)
-    set(CMAKE_C_COMPILER /usr/bin/clang)
-  endif ()
-
-  if (NOT DEFINED CMAKE_CXX_COMPILER)
-    set(CMAKE_CXX_COMPILER /usr/bin/clang++)
-  endif ()
-endif ()
-
 option(VERBOSE OFF)
-set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9" CACHE STRING "deployment target for MacOSX")
+#set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9" CACHE STRING "deployment target for MacOSX")
 
 project(ArangoDB)
 

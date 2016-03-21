@@ -49,9 +49,13 @@ Agent::~Agent () {
 //  shutdown();
 }
 
-void Agent::start() {
+bool Agent::start() {
   _constituent.start();
+  std::cout << "constituent started" << std::endl;
   _spear_head.start();
+  std::cout << "spear_head started" << std::endl;
+  Thread::start();
+  return true;
 }
 
 term_t Agent::term () const {
@@ -65,30 +69,22 @@ inline size_t Agent::size() const {
 priv_rpc_ret_t Agent::requestVote(term_t t, id_t id, index_t lastLogIndex,
                                   index_t lastLogTerm, query_t const& query) {
 
-  if (query != nullptr) {
-    if (query->slice().isArray() || query->slice().isObject()) {
+  if (query != nullptr) { // record new endpoints
+    if (query->slice().hasKey("endpoints") && 
+        query->slice().get("endpoints").isArray()) {
       size_t j = 0;
-      for (auto const& i : VPackObjectIterator(query->slice())) {
-        std::string const key(i.key.copyString());
-        std::string const value(i.value.copyString());
-        if (key == "endpoint")
-          _config.end_points[j] = value;
-        ++j;
+      for (auto const& i : VPackArrayIterator(query->slice().get("endpoints"))) {
+        _config.end_points[j++] = i.copyString();
       }
     }
-    LOG(WARN) << _config;
   }
     
-  return priv_rpc_ret_t(
-    _constituent.vote(id, t, lastLogIndex, lastLogTerm), this->term());
+  return priv_rpc_ret_t(  // vote
+    _constituent.vote(t, id, lastLogIndex, lastLogTerm), this->term());
 }
 
 config_t const& Agent::config () const {
   return _config;
-}
-
-void Agent::print (arangodb::LoggerStream& logger) const {
-  //logger << _config;
 }
 
 void Agent::report(status_t status) {
@@ -97,6 +93,10 @@ void Agent::report(status_t status) {
 
 id_t Agent::leaderID () const {
   return _constituent.leaderID();
+}
+
+bool Agent::leading() const {
+  return _constituent.leading();
 }
 
 void Agent::catchUpReadDB() {}; // TODO
@@ -149,6 +149,8 @@ void Agent::reportIn (id_t id, index_t index) {
 priv_rpc_ret_t Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
   term_t prevTerm, index_t leaderCommitIndex, query_t const& queries) {
 
+  //std::cout << queries->toJson() << std::endl;
+/*
   // Update commit index
   _last_commit_index = leaderCommitIndex;
 
@@ -163,7 +165,7 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t 
   //  _state.log (queries->slice()[i  ].toString(),
   //              queries->slice()[i+1].getUInt(), term, leaderId);
   //}
-  
+  */
   return priv_rpc_ret_t(true, this->term());
 }
 
@@ -182,29 +184,34 @@ append_entries_t Agent::sendAppendEntriesRPC (
 
   // Body
   Builder builder;
+  builder.add(VPackValue(VPackValueType::Array));
   for (size_t i = 0; i < entries.size(); ++i) {
+    builder.add (VPackValue(VPackValueType::Object));
     builder.add ("index", Value(std::to_string(entries.indices[i])));
     builder.add ("query", Builder(*_state[entries.indices[i]].entry).slice());
+    builder.close();
   }
   builder.close();
+  std::cout << builder.toJson() << std::endl;
 
-  // Send 
+  // Send
+  std::cout << _config.end_points[slave_id] << path.str() << std::endl;
   arangodb::ClusterComm::instance()->asyncRequest
     ("1", 1, _config.end_points[slave_id],
-     rest::HttpRequest::HTTP_REQUEST_GET,
+     rest::HttpRequest::HTTP_REQUEST_POST,
      path.str(), std::make_shared<std::string>(builder.toString()), headerFields,
      std::make_shared<AgentCallback>(this),
-     1.0, true);
+     0, true);
 
   return append_entries_t(this->term(), true);
   
 }
 
 bool Agent::load () {
+  
   LOG(INFO) << "Loading persistent state.";
   if (!_state.load())
     LOG(FATAL) << "Failed to load persistent state on statup.";
-
   return true;
 }
 
@@ -239,18 +246,25 @@ read_ret_t Agent::read (query_t const& query) const {
 
 void Agent::run() {
 
+  LOG(WARN) << " +++++++++++++++++++++++ Starting thread Agent";
+  
   CONDITION_LOCKER(guard, _cv);
   
   while (!this->isStopping()) {
-    
-    _cv.wait(100000);
+
+    LOG(WARN) << "Running thread Agent";
+
+    if (leading())
+      _cv.wait(10000000);
+    else
+      _cv.wait();
 
     std::vector<collect_ret_t> work(size());
     
     // Collect all unacknowledged
     for (size_t i = 0; i < size(); ++i) {
       if (i != id()) {
-        work[i] = _state.collectFrom(_confirmed[i]);
+        work[i] = _state.collectFrom(_confirmed[i]+1);
       }
     }
     
@@ -265,6 +279,7 @@ void Agent::run() {
     catchUpReadDB();
     
   }
+
 }
 
 void Agent::beginShutdown() {
@@ -279,6 +294,7 @@ void Agent::beginShutdown() {
 
 bool Agent::lead () {
   rebuildDBs();
+  _cv.signal();
   return true;
 }
 

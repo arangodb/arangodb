@@ -96,7 +96,7 @@ std::vector<index_t> State::log (
       buf->append ((char const*)i.begin(), i.byteSize()); 
       idx[j] = _log.back().index+1;
       _log.push_back(log_t(idx[j], term, lid, buf)); // log to RAM
-      save(i, idx[j], term);                         // log to disk
+//      save(i, idx[j], term);                         // log to disk
       ++j;
     }
   }

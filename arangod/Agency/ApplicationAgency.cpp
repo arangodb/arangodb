@@ -35,7 +35,7 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 ApplicationAgency::ApplicationAgency()
-  : ApplicationFeature("agency"), _size(1), _min_election_timeout(.5),
+  : ApplicationFeature("agency"), _size(1), _min_election_timeout(0.5),
 	  _max_election_timeout(2.0), _election_call_rate_mul(2.5),
     _append_entries_retry_interval(1.0),
     _agent_id(std::numeric_limits<uint32_t>::max()) {
@@ -69,9 +69,9 @@ void ApplicationAgency::setupOptions(
 }
 
 
-
+#include <iostream>
 bool ApplicationAgency::prepare() {
-  
+
   if (_disabled) {
     return true;
   }
@@ -98,9 +98,7 @@ bool ApplicationAgency::prepare() {
   }
   
   _agency_endpoints.resize(_size);
-  std::iter_swap(_agency_endpoints.begin(),
-                 _agency_endpoints.begin() + _agent_id);
-  
+
   _agent = std::unique_ptr<agent_t>(
     new agent_t(arangodb::consensus::config_t(
                   _agent_id, _min_election_timeout, _max_election_timeout,
