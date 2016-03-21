@@ -1,0 +1,62 @@
+diff --git a/source/data/mappings/gb18030.ucm b/source/data/mappings/gb18030.ucm
+index f8f0cb0..f5c7324 100644
+--- a/source/data/mappings/gb18030.ucm
++++ b/source/data/mappings/gb18030.ucm
+@@ -29584,7 +29584,7 @@ CHARMAP
+ <UE5E2> \xA3\x9D |0
+ <UE5E3> \xA3\x9E |0
+ <UE5E4> \xA3\x9F |0
+-<UE5E5> \xA3\xA0 |0
++<U3000> \xA3\xA0 |3
+ <UE5E6> \xA4\x40 |0
+ <UE5E7> \xA4\x41 |0
+ <UE5E8> \xA4\x42 |0
+diff --git a/source/data/mappings/windows-936-2000.ucm b/source/data/mappings/windows-936-2000.ucm
+index 6cfafab..66c9a31 100644
+--- a/source/data/mappings/windows-936-2000.ucm
++++ b/source/data/mappings/windows-936-2000.ucm
+@@ -37,7 +37,8 @@
+ 
+ # build an extension-only (delta) .cnv file
+ # requires the base .cnv file at runtime
+-<icu:base>                    "ibm-1386_P100-2001"
++# Chromium: we don't want ibm-1386
++#<icu:base>                    "ibm-1386_P100-2001"
+ 
+ # The following was the generated state table.
+ # This does not account for unassigned characters
+@@ -259,6 +260,7 @@ CHARMAP
+ <U01DA> \xA8\xB7 |0
+ <U01DB> \xA8\xB8 |1
+ <U01DC> \xA8\xB8 |0
++<U01F9> \xA8\xBF |0
+ <U0251> \xA8\xBB |0
+ <U0261> \xA8\xC0 |0
+ <U02C7> \xA1\xA6 |0
+@@ -380,6 +382,9 @@ CHARMAP
+ <U044E> \xA7\xF0 |0
+ <U044F> \xA7\xF1 |0
+ <U0451> \xA7\xD7 |0
++# U1E3F will be round-tripped and UE7C7 will be dropped 
++# once https://www.w3.org/Bugs/Public/show_bug.cgi?id=28740#c3 is resolved.
++<U1E3F> \xA8\xBC |1
+ <U2010> \xA9\x5C |0
+ <U2013> \xA8\x43 |0
+ <U2014> \xA1\xAA |0
+@@ -23435,7 +23440,7 @@ CHARMAP
+ <UE5E2> \xA3\x9D |0
+ <UE5E3> \xA3\x9E |0
+ <UE5E4> \xA3\x9F |0
+-<UE5E5> \xA3\xA0 |0
++<U3000> \xA3\xA0 |3
+ <UE5E6> \xA4\x40 |0
+ <UE5E7> \xA4\x41 |0
+ <UE5E8> \xA4\x42 |0
+@@ -23918,7 +23923,6 @@ CHARMAP
+ <UE7C5> \xA8\x9F |0
+ <UE7C6> \xA8\xA0 |0
+ <UE7C7> \xA8\xBC |0
+-<UE7C8> \xA8\xBF |0
+ <UE7C9> \xA8\xC1 |0
+ <UE7CA> \xA8\xC2 |0
+ <UE7CB> \xA8\xC3 |0

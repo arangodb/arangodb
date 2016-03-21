@@ -1,0 +1,22 @@
+<html>
+  <head>
+    <script language="JavaScript" src="importList.js"></script>
+  </head>
+
+  <body>
+    
+    <form name="foo">
+      <textarea rows="25" cols="50" name="testList"></textarea><br>
+      <script language="javascript">
+if (include)
+{
+  document.write('<input type="checkbox" name="clear_all" checked>');
+  document.write('&nbsp;Clear all selections before import.<br>');
+}
+      </script>
+      <input type="button" value="Import" onclick="doImport();">
+      <input type="button" value="Cancel" onclick="window.close();">
+    </form>
+
+  </body>
+</html>

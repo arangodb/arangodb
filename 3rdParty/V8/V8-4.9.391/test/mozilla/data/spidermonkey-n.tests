@@ -1,0 +1,90 @@
+# Obsolete SpiderMonkey tests
+#
+# invalidated by bug 10278
+#
+js1_2/function/function-001-n.js
+js1_3/Script/function-001-n.js
+js1_3/regress/function-001-n.js
+#
+# WONTFIX bug 119719
+#
+js1_5/Regress/regress-119719.js
+#
+# Spidermonkey now defaults lineNumber and fileName
+# to the location and file where the exception occured.
+# exclude original test which assumes the defaults are
+# 0 and ''
+#
+js1_5/extensions/regress-50447.js
+#
+# Invalid bug
+#
+e4x/Regress/regress-278112.js
+#
+# behavior changed to match MSIE/Opera/etc
+# see bug 309840
+#
+js1_5/Regress/regress-173067.js
+#
+# per comment in bug, this test is obsolete
+# for spidermonkey and rhino.
+#
+ecma_3/Statements/regress-121744.js
+#
+# remove version dependent tests
+# see bug 325921
+#
+js1_2/Array/array_split_1.js
+js1_2/Array/tostring_1.js
+js1_2/Array/tostring_2.js
+js1_2/Objects/toString-001.js
+js1_2/String/concat.js
+js1_2/function/Function_object.js
+js1_2/function/Number.js
+js1_2/function/String.js
+js1_2/function/function-001-n.js
+js1_2/function/length.js
+js1_2/function/regexparg-2-n.js
+js1_2/function/tostring-1.js
+js1_2/function/tostring-2.js
+js1_2/operator/equality.js
+js1_2/regexp/RegExp_lastIndex.js
+js1_2/regexp/string_split.js
+js1_2/version120/boolean-001.js
+js1_2/version120/regress-99663.js
+js1_3/Script/delete-001.js
+js1_3/Script/function-001-n.js
+js1_3/regress/delete-001.js
+js1_3/regress/function-001-n.js
+#
+# tests not yet implemented
+#
+e4x/TypeConversion/10.5.1.js
+e4x/TypeConversion/10.5.js
+e4x/TypeConversion/10.6.1.js
+e4x/TypeConversion/10.6.js
+e4x/Types/9.1.1.10.js
+e4x/Types/9.1.1.11.js
+e4x/Types/9.1.1.12.js
+e4x/Types/9.1.1.13.js
+e4x/Types/9.1.1.4.js
+e4x/Types/9.1.1.5.js
+e4x/Types/9.1.1.7.js
+e4x/Types/9.1.1.8.js
+e4x/Types/9.2.1.10.js
+e4x/Types/9.2.1.3.js
+e4x/Types/9.2.1.4.js
+e4x/Types/9.2.1.5.js
+e4x/Types/9.2.1.6.js
+e4x/Types/9.2.1.7.js
+e4x/XML/13.4.4.1.js
+ecma_2/RegExp/exec-001.js
+ecma_2/String/replace-001.js
+#
+# pre ecma warnings are doa
+#
+js1_5/Regress/regress-106244.js
+#
+# do not ignore unicode formatting chars/trunk - bug 274152
+#
+ecma_3/Unicode/uc-001.js

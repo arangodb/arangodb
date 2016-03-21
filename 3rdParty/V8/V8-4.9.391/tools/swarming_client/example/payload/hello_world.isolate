@@ -1,0 +1,49 @@
+# Copyright 2012 The Swarming Authors. All rights reserved.
+# Use of this source code is governed under the Apache License, Version 2.0 that
+# can be found in the LICENSE file.
+{
+  'variables': {
+    'files': [
+      'hello_world.py',
+    ],
+  },
+  #
+  'conditions': [
+    ['OS=="Ubuntu"', {
+      'variables': {
+        'command': [
+          'python',
+          'hello_world.py',
+          'Ubuntu',
+        ],
+      },
+    }],
+    ['OS=="Mac"', {
+      'variables': {
+        'command': [
+          'python',
+          'hello_world.py',
+          'OSX',
+        ],
+      },
+    }],
+    ['OS=="Yours"', {
+      'variables': {
+        'command': [
+          'python',
+          'hello_world.py',
+          'your OS is the best',
+        ],
+      },
+    }],
+    ['OS=="Windows"', {
+      'variables': {
+        'command': [
+          'python',
+          'hello_world.py',
+          'Windows',
+        ],
+      },
+    }],
+  ],
+}

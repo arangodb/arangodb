@@ -1,7 +1,0 @@
-# created by tools/tclZIC.tcl - do not edit
-
-set TZData(:Africa/Luanda) {
-    {-9223372036854775808 3176 0 LMT}
-    {-2461452776 3124 0 AOT}
-    {-1849395124 3600 0 WAT}
-}
