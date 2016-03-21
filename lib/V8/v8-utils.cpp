@@ -150,7 +150,7 @@ static void CreateErrorObject(v8::Isolate* isolate, int errorNumber,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
-                               bool execute, bool useGlobalContext) {
+                               bool stripShebang, bool execute, bool useGlobalContext) {
   v8::HandleScope handleScope(isolate);
 
   size_t length;
@@ -162,17 +162,34 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
     return false;
   }
 
+  // detect shebang
+  size_t bangOffset = 0;
+  if (stripShebang) {
+    if (strncmp(content, "#!", 2) == 0) {
+      // shebang
+      char const* endOfBang = strchr(content, '\n');
+      if (endOfBang != nullptr) {
+        bangOffset = size_t(endOfBang - content + 1);
+        TRI_ASSERT(bangOffset <= length);
+        length -= bangOffset;
+      }
+    }
+  }
+
   if (useGlobalContext) {
     char const* prologue = "(function() { ";
     char const* epilogue = "/* end-of-file */ })()";
 
     char* contentWrapper = TRI_Concatenate3String(TRI_UNKNOWN_MEM_ZONE,
-                                                  prologue, content, epilogue);
+                                                  prologue, content + bangOffset, epilogue);
 
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
 
     length += strlen(prologue) + strlen(epilogue);
     content = contentWrapper;
+
+    // shebang already handled here
+    bangOffset = 0;
   }
 
   if (content == nullptr) {
@@ -182,7 +199,7 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
   }
 
   v8::Handle<v8::String> name = TRI_V8_STRING(filename);
-  v8::Handle<v8::String> source = TRI_V8_PAIR_STRING(content, (int)length);
+  v8::Handle<v8::String> source = TRI_V8_PAIR_STRING(content + bangOffset, (int)length);
 
   TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
 
@@ -225,7 +242,7 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool LoadJavaScriptDirectory(v8::Isolate* isolate, char const* path,
-                                    bool execute, bool useGlobalContext) {
+                                    bool stripShebang, bool execute, bool useGlobalContext) {
   v8::HandleScope scope(isolate);
   bool result;
 
@@ -246,7 +263,7 @@ static bool LoadJavaScriptDirectory(v8::Isolate* isolate, char const* path,
 
     full = TRI_Concatenate2File(path, filename.c_str());
 
-    ok = LoadJavaScriptFile(isolate, full, execute, useGlobalContext);
+    ok = LoadJavaScriptFile(isolate, full, stripShebang, execute, useGlobalContext);
     TRI_FreeString(TRI_CORE_MEM_ZONE, full);
 
     result = result && ok;
@@ -744,7 +761,21 @@ static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
         endpoint = endpoint + ":443";
       }
       endpoint = "ssl://" + endpoint;
-    } else if (!url.empty() && url[0] == '/') {
+    }
+    else if (url.substr(0, 6) == "srv://") {
+      size_t found = url.find('/', 6);
+
+      relative = "/";
+      if (found != std::string::npos) {
+        relative.append(url.substr(found + 1));
+        endpoint = url.substr(6, found - 6);
+      }
+      else {
+        endpoint = url.substr(6);
+      }
+      endpoint = "srv://" + endpoint;
+    }
+    else if (! url.empty() && url[0] == '/') {
       // relative URL. prefix it with last endpoint
       relative = url;
       url = lastEndpoint + url;
@@ -3814,8 +3845,8 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ExecuteGlobalJavaScriptFile(v8::Isolate* isolate,
-                                     char const* filename) {
-  return LoadJavaScriptFile(isolate, filename, true, false);
+                                     char const* filename, bool stripShebang) {
+  return LoadJavaScriptFile(isolate, filename, stripShebang, true, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3824,7 +3855,7 @@ bool TRI_ExecuteGlobalJavaScriptFile(v8::Isolate* isolate,
 
 bool TRI_ExecuteGlobalJavaScriptDirectory(v8::Isolate* isolate,
                                           char const* path) {
-  return LoadJavaScriptDirectory(isolate, path, true, false);
+  return LoadJavaScriptDirectory(isolate, path, false, true, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3833,15 +3864,16 @@ bool TRI_ExecuteGlobalJavaScriptDirectory(v8::Isolate* isolate,
 
 bool TRI_ExecuteLocalJavaScriptDirectory(v8::Isolate* isolate,
                                          char const* path) {
-  return LoadJavaScriptDirectory(isolate, path, true, true);
+  return LoadJavaScriptDirectory(isolate, path, false, true, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ParseJavaScriptFile(v8::Isolate* isolate, char const* filename) {
-  return LoadJavaScriptFile(isolate, filename, false, false);
+bool TRI_ParseJavaScriptFile(v8::Isolate* isolate, char const* filename,
+                             bool stripShebang) {
+  return LoadJavaScriptFile(isolate, filename, stripShebang, false, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

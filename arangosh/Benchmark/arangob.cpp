@@ -28,7 +28,7 @@
 #include "ApplicationFeatures/LoggerFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
-#include "Benchmark/ArangobFeature.h"
+#include "Benchmark/BenchFeature.h"
 #include "ProgramOptions2/ProgramOptions.h"
 #include "Rest/InitializeRest.h"
 
@@ -56,8 +56,8 @@ int main(int argc, char* argv[]) {
   server.addFeature(new TempFeature(&server, "arangob"));
   server.addFeature(new ConfigFeature(&server, "arangob"));
   server.addFeature(new ClientFeature(&server));
-  server.addFeature(new ArangobFeature(&server, &ret));
-  server.addFeature(new ShutdownFeature(&server, "ArangobFeature"));
+  server.addFeature(new BenchFeature(&server, &ret));
+  server.addFeature(new ShutdownFeature(&server, "Bench"));
 
   server.run(argc, argv);
 

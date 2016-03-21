@@ -32,6 +32,7 @@
 #endif
 #include "Rest/EndpointIpV4.h"
 #include "Rest/EndpointIpV6.h"
+#include "Rest/EndpointSrv.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -40,8 +41,7 @@ using namespace arangodb::rest;
 /// @brief create an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-Endpoint::Endpoint(Endpoint::EndpointType type,
-                   Endpoint::DomainType domainType,
+Endpoint::Endpoint(Endpoint::EndpointType type, Endpoint::DomainType domainType,
                    Endpoint::EncryptionType encryption,
                    std::string const& specification, int listenBacklog)
     : _connected(false),
@@ -94,25 +94,18 @@ std::string Endpoint::getUnifiedForm(std::string const& specification) {
     return "";
   }
 #endif
-  else if (!StringUtils::isPrefix(copy, "ssl://") &&
-           !StringUtils::isPrefix(copy, "tcp://")) {
+  else if (StringUtils::isPrefix(copy, "srv://")) {
+    return copy;
+  } else if (!StringUtils::isPrefix(copy, "ssl://") &&
+             !StringUtils::isPrefix(copy, "tcp://")) {
     // invalid type
     return "";
   }
 
-  size_t found;
-  /*
-  // turn "localhost" into "127.0.0.1"
-  // technically this is not always correct, but circumvents obvious problems
-  // when the configuration contains both "127.0.0.1" and "localhost" endpoints
-  found = copy.find("localhost");
-  if (found != string::npos && found >= 6 && found < 10) {
-    copy = copy.replace(found, strlen("localhost"), "127.0.0.1");
-  }
-  */
-
   // tcp/ip or ssl
+  size_t found;
   std::string temp = copy.substr(6, copy.length());  // strip tcp:// or ssl://
+
   if (temp[0] == '[') {
     // ipv6
     found = temp.find("]:", 1);
@@ -221,6 +214,18 @@ Endpoint* Endpoint::factory(const Endpoint::EndpointType type,
   }
 #endif
 
+  else if (StringUtils::isPrefix(domainType, "srv://")) {
+    if (type != ENDPOINT_CLIENT) {
+      return nullptr;
+    }
+
+#ifndef _WIN32
+    return new EndpointSrv(specification.substr(6));
+#else
+    return nullptr;
+#endif
+  }
+
   else if (!StringUtils::isPrefix(domainType, "tcp://")) {
     // invalid type
     return nullptr;
@@ -307,7 +312,8 @@ bool Endpoint::setSocketFlags(TRI_socket_t s) {
   bool ok = TRI_SetNonBlockingSocket(s);
 
   if (!ok) {
-    LOG(ERR) << "cannot switch to non-blocking: " << errno << " (" << strerror(errno) << ")";
+    LOG(ERR) << "cannot switch to non-blocking: " << errno << " ("
+             << strerror(errno) << ")";
 
     return false;
   }
@@ -316,7 +322,8 @@ bool Endpoint::setSocketFlags(TRI_socket_t s) {
   ok = TRI_SetCloseOnExecSocket(s);
 
   if (!ok) {
-    LOG(ERR) << "cannot set close-on-exit: " << errno << " (" << strerror(errno) << ")";
+    LOG(ERR) << "cannot set close-on-exit: " << errno << " (" << strerror(errno)
+             << ")";
 
     return false;
   }

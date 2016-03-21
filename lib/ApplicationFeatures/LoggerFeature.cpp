@@ -30,7 +30,7 @@ using namespace arangodb;
 using namespace arangodb::options;
 
 LoggerFeature::LoggerFeature(application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "LoggerFeature"),
+    : ApplicationFeature(server, "Logger"),
       _output(),
       _levels(),
       _useLocalTime(false),
@@ -50,6 +50,12 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer* server)
 void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
 
+  options->addSection(
+      Section("", "Global configuration", "global options", false, false));
+
+  options->addOption("--log", "the global or topic-specific log level",
+                     new VectorParameter<StringParameter>(&_levels));
+
   options->addSection("log", "Configure the logging");
 
   options->addOption("--log.output,-o", "log destination(s)",
@@ -68,9 +74,6 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addHiddenOption(
       "--log.prefix", "adds a prefix in case multiple instances are running",
       new StringParameter(&_prefix));
-
-  options->addOption("--log", "the global or topic-specific log level",
-                     new VectorParameter<StringParameter>(&_levels));
 
   options->addHiddenOption("--log.file",
                            "shortcut for '--log.output file://<filename>'",

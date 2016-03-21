@@ -6,15 +6,14 @@ echo "$0: loading precompiled libraries"
 
 wget \
   -O 3rdParty.tar.gz \
-  "https://www.arangodb.com/support-files/travisCI/precompiled-libraries-4.3.61.tar.gz"
+  "https://www.arangodb.com/support-files/travisCI/precompiled-libraries-4.9.391.tar.gz"
 
 tar xzf 3rdParty.tar.gz
 
 echo
 echo "$0: setup make-system"
 
-mkdir build
-ln -s build/bin bin
+test -d build || mkdir build
 
 echo
 echo "$0: configuring ArangoDB"

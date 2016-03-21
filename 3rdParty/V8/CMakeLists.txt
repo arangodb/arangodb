@@ -11,7 +11,7 @@ if (POLICY CMP0048)
 endif ()
 
 project(V8)
-set(V8_VERSION 4.3.61)
+set(V8_VERSION 4.9.391)
 
 # create target directory
 
@@ -33,12 +33,17 @@ endif()
 
 # detect 32bit or 64bit
 
-if ("${BITS}" STREQUAL "64")
-  set(V8_PROC_ARCH "x64")
+if ("${CMAKE_TARGET_ARCHITECTURES}" STREQUAL "armv7")
+  set(V8_PROC_ARCH "arm")
+  list(APPEND V8_GYP_ARGS -Darm_version=7 -Darm_fpu=default -Darm_float_abi=default)
 else ()
-  message(ERROR "#### WILLY FIX ME ####")
-  set(V8_PROC_ARCH "ia32")
-endif () # TODO: ARM? Win32?
+  if ("${BITS}" STREQUAL "64")
+    set(V8_PROC_ARCH "x64")
+  else ()
+    set(V8_PROC_ARCH "ia32")
+  endif ()
+endif()
+
 
 # target architecture
 
@@ -76,7 +81,7 @@ set(V8_VERSION
 )
 
 set(V8_INCLUDE_DIR
-  ${V8_DIR}/include
+  ${V8_DIR}/include;${V8_DIR}
   CACHE INTERNAL
   "${PROJECT_NAME}: include path"
 )
@@ -119,7 +124,7 @@ if (${CMAKE_GENERATOR} MATCHES "Ninja")
   # Gyp wants to use its own clang if we don't set this:
   list(APPEND V8_GYP_ARGS
     -Dclang=0)
-#    -Dv8_use_snapshot=true
+
   list(APPEND V8_GYP_ARGS
     -I${V8_DIR}/build/standalone.gypi
     --depth=.
@@ -131,6 +136,7 @@ if (${CMAKE_GENERATOR} MATCHES "Ninja")
   )
 
   set(NINJA_BUILD_DIR "${V8_TARGET_DIR}/${NINJA_TARGET}")
+
   ExternalProject_Add(v8_build
     SOURCE_DIR
       "${V8_DIR}"
@@ -176,7 +182,7 @@ elseif (WIN32)
   endif()
 
   # try to find 2015 in 'Visual Studio 14 2015 Win64'
-  if (${CMAKE_GENERATOR} MATCHES "2013") 
+  if (${CMAKE_GENERATOR} MATCHES "2015") 
     list(APPEND V8_GYP_ARGS "-G msvs_version=2015")
   endif()
 
@@ -298,8 +304,12 @@ elseif (WIN32)
   set(ICU_LIBRARY_RELEASE "${V8_DIR}/build/Release")
 
   set(ICU_LIBS
-    debug "${ICU_LIBRARY_DEBUG}/lib/icui18n.lib;${ICU_LIBRARY_DEBUG}/lib/icuuc.lib"
-    optimized "${ICU_LIBRARY_RELEASE}/lib/icui18n.lib;${ICU_LIBRARY_RELEASE}/lib/icuuc.lib"
+    debug "${ICU_LIBRARY_DEBUG}/lib/icui18n.lib"
+    optimized "${ICU_LIBRARY_RELEASE}/lib/icui18n.lib"
+
+    debug "${ICU_LIBRARY_DEBUG}/lib/icuuc.lib"
+    optimized "${ICU_LIBRARY_RELEASE}/lib/icuuc.lib"
+
     CACHE INTERNAL
     "ICU: Libraries"
     FORCE
@@ -309,8 +319,27 @@ elseif (WIN32)
   set(V8_LIBRARY_RELEASE "${V8_DIR}/build/Release")
 
   set(V8_LIBS
-    debug "${V8_LIBRARY_DEBUG}/lib/v8_base.lib;${V8_LIBRARY_DEBUG}/lib/v8_libbase.lib;${V8_LIBRARY_DEBUG}/lib/v8_libplatform.lib;${V8_LIBRARY_DEBUG}/lib/v8_nosnapshot.lib"
-    optimized "${V8_LIBRARY_RELEASE}/lib/v8_base.lib;${V8_LIBRARY_RELEASE}/lib/v8_libbase.lib;${V8_LIBRARY_RELEASE}/lib/v8_libplatform.lib;${V8_LIBRARY_RELEASE}/lib/v8_nosnapshot.lib"
+    debug "${V8_LIBRARY_DEBUG}/lib/v8_base_0.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/v8_base_0.lib"
+
+    debug "${V8_LIBRARY_DEBUG}/lib/v8_base_1.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/v8_base_1.lib"
+
+    debug "${V8_LIBRARY_DEBUG}/lib/v8_base_2.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/v8_base_2.lib"
+
+    debug "${V8_LIBRARY_DEBUG}/lib/v8_base_3.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/v8_base_3.lib"
+
+    debug "${V8_LIBRARY_DEBUG}/lib/v8_libbase.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/v8_libbase.lib"
+
+    debug "${V8_LIBRARY_DEBUG}/lib/v8_libplatform.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/v8_libplatform.lib"
+
+    debug "${V8_LIBRARY_DEBUG}/lib/v8_nosnapshot.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/v8_nosnapshot.lib"
+
     CACHE INTERNAL
     "${PROJECT_NAME}: Libraries"
   )
@@ -322,6 +351,10 @@ else ()
 ################################################################################
 
   option(USE_DEBUG_V8 "compile V8 in DEBUG mode" OFF)
+
+  set(V8_CFLAGS   "")
+  set(V8_CXXFLAGS "")
+  set(V8_LDFLAGS "")
 
   if (USE_DEBUG_V8)
     set(V8_TARGET_ARCH "${V8_PROC_ARCH}.debug")
@@ -353,6 +386,7 @@ else ()
   list(APPEND V8_GYP_ARGS
     -Ibuild/standalone.gypi
     -Dv8_use_snapshot=true
+    -Dmac_deployment_target=${CMAKE_OSX_DEPLOYMENT_TARGET}
     --depth=.
     -Dstandalone_static_library=1
     -Dlinux_use_bundled_gold=0
@@ -361,6 +395,11 @@ else ()
     -Dwerror=
   )
 
+  if (APPLE AND CMAKE_COMPILER_IS_CLANG)
+    set(V8_CXXFLAGS "${V8_CXXFLAGS} -stdlib=libc++")
+    set(V8_LDFLAGS  "${V8_LDFLAGS} -stdlib=libc++")
+  endif ()
+
   set(V8_COMPILE_ARGS
     -C ${V8_TARGET_DIR}
     -f Makefile.${V8_TARGET_ARCH}
@@ -368,11 +407,10 @@ else ()
     builddir=${V8_TARGET_DIR}/${V8_TARGET_ARCH}
     CC=${CMAKE_C_COMPILER}
     CXX=${CMAKE_CXX_COMPILER}
+    CFLAGS=${V8_CFLAGS}
+    CXXFLAGS=${V8_CXXFLAGS}
+    LDFLAGS=${V8_LDFLAGS}
   )
-
-  if (APPLE AND CMAKE_COMPILER_IS_CLANG)
-    list(APPEND V8_COMPILE_ARGS CXXFLAGS=-stdlib=libc++ LDFLAGS=-stdlib=libc++)
-  endif ()
 
   list(APPEND V8_COMPILE_ARGS icui18n icuuc icudata)
   list(APPEND V8_COMPILE_ARGS v8)

@@ -375,19 +375,25 @@ Module._resolveDbModule = function (request) {
   if (request.charAt(0) !== '/') {
     request = '/' + request;
   }
+
   var dbModule = Module._dbCache[request];
-  if (!dbModule && internal.db._modules !== undefined) {
+
+  if (!dbModule && internal.db !== undefined && internal.db._modules !== undefined) {
     dbModule = internal.db._modules.firstExample({path: request});
+
     if (!dbModule) {
       // try again, but prefix module with '/db' as some modules seem
       // to have been saved with that prefix...
       dbModule = internal.db._modules.firstExample({path: '/db:' + request});
+
       if (!dbModule) {
         return null;
       }
     }
+
     Module._dbCache[request] = dbModule;
   }
+
   return dbModule;
 };
 

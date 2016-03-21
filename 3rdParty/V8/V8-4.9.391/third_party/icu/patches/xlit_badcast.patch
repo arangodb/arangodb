@@ -1,0 +1,13 @@
+diff --git a/source/i18n/rbt_pars.cpp b/source/i18n/rbt_pars.cpp
+index 7e3678b..4cc0a6e 100644
+--- a/source/i18n/rbt_pars.cpp
++++ b/source/i18n/rbt_pars.cpp
+@@ -1102,7 +1102,7 @@ void TransliteratorParser::parseRules(const UnicodeString& rule,
+ 
+             for (int32_t j = 0; j < data->variablesLength; j++) {
+                 data->variables[j] =
+-                    ((UnicodeSet*)variablesVector.elementAt(j));
++                    ((UnicodeFunctor*)variablesVector.elementAt(j));
+             }
+             
+             data->variableNames.removeAll();

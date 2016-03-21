@@ -17,19 +17,17 @@ if (GO_FOUND)
     set (ETCD_BUILD_COMMAND ./build)
   endif ()
 
-  ExternalProject_Add(etcd_build
-    SOURCE_DIR
-      ${CMAKE_CURRENT_SOURCE_DIR}/etcd
+  ExternalProject_Add(etcd
     CONFIGURE_COMMAND
       ""
+    URL
+      "${CMAKE_CURRENT_SOURCE_DIR}/etcd"
     BUILD_IN_SOURCE
-      TRUE
+      1
     BUILD_COMMAND
       "${ETCD_BUILD_COMMAND}"
     INSTALL_COMMAND
-      "cp"
-        ${CMAKE_CURRENT_SOURCE_DIR}/etcd/bin/etcd
-        ${CMAKE_BINARY_DIR}/bin/etcd-arango
+      cp bin/etcd ${CMAKE_BINARY_DIR}/bin/etcd-arango
   )
 endif ()
 
@@ -74,14 +72,22 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/OpenSSL)
 option(USE_PRECOMPILED_V8 "use a precompiled V8" OFF)
 
 if (USE_PRECOMPILED_V8)
-  set(V8_DIR ${CMAKE_CURRENT_SOURCE_DIR}/V8-4.3.61)
+  set(V8_VERSION
+    "V8-4.9.391"
+    CACHE INTERNAL
+    "${PROJECT_NAME}: Version"
+    FORCE
+  )
+
+  set(V8_DIR ${PROJECT_SOURCE_DIR}/build/3rdParty/V8/v8)
+  set(V8_SRC_DIR ${PROJECT_SOURCE_DIR}/3rdParty/V8/${V8_VERSION})
 
   set(V8_PROC_ARCH "x64")
   set(V8_TARGET_ARCH "${V8_PROC_ARCH}.release")
 
-  set(V8_TARGET_DIR "${V8_DIR}/out")
-  set(V8_BIN_DIR "${V8_TARGET_DIR}/${V8_TARGET_ARCH}/obj.target/tools/gyp")
-  set(ICU_BIN_DIR "${V8_TARGET_DIR}/${V8_TARGET_ARCH}/obj.target/third_party/icu")
+  set(V8_TARGET_DIR "${V8_DIR}/${V8_TARGET_ARCH}/obj.target")
+  set(V8_BIN_DIR "${V8_TARGET_DIR}/tools/gyp")
+  set(ICU_BIN_DIR "${V8_TARGET_DIR}//third_party/icu")
 
   set(ICU_VERSION
     "54.1"
@@ -91,7 +97,7 @@ if (USE_PRECOMPILED_V8)
   )
 
   set(ICU_INCLUDE_DIR
-    ${V8_DIR}/third_party/icu/source/common;${V8_DIR}/third_party/icu/source/i18n;${V8_DIR}/third_party/icu/source/io
+    ${V8_SRC_DIR}/third_party/icu/source/common;${V8_SRC_DIR}/third_party/icu/source/i18n;${V8_SRC_DIR}/third_party/icu/source/io
     CACHE INTERNAL
     "ICU: include path"
     FORCE
@@ -105,15 +111,8 @@ if (USE_PRECOMPILED_V8)
     FORCE
   )
 
-  set(V8_VERSION
-    ${V8_VERSION}
-    CACHE INTERNAL
-    "${PROJECT_NAME}: Version"
-    FORCE
-  )
-
   set(V8_INCLUDE_DIR
-    ${V8_DIR}/include
+    ${V8_SRC_DIR};${V8_SRC_DIR}/include
     CACHE INTERNAL
     "${PROJECT_NAME}: include path"
     FORCE

@@ -18,7 +18,18 @@ void completionHook (char const* prefix, linenoiseCompletions* lc) {
   }
 }
 
-int main () {
+int main (int argc, char** argv) {
+  linenoiseInstallWindowChangeHandler();
+
+  while(argc > 1) {
+    argc--;
+    argv++;
+    if (!strcmp(*argv, "--keycodes")) {
+      linenoisePrintKeyCodes();
+      exit(0);
+    }
+  }
+
   const char* file = "./history";
 
   linenoiseHistoryLoad(file);
@@ -26,13 +37,21 @@ int main () {
 
   printf("starting...\n");
 
-  char const* prompt = "linenoise> ";
+  char const* prompt = "\x1b[1;32mlinenoise\x1b[0m> ";
 
   while (1) {
     char* result = linenoise(prompt);
 
     if (result == NULL) {
       break;
+    } else if (!strncmp(result, "/history", 8)) {
+      /* Display the current history. */
+      for (int index = 0; ; ++index) {
+        char* hist = linenoiseHistoryLine(index);
+        if (hist == NULL) break;
+        printf("%4d: %s\n", index, hist);
+        free(hist);
+       }
     }
     if (*result == '\0') {
       free(result);
@@ -43,7 +62,7 @@ int main () {
     linenoiseHistoryAdd(result);
     free(result);
   }
-    
+
   linenoiseHistorySave(file);
   linenoiseHistoryFree();
 }

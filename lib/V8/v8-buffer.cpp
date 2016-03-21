@@ -760,11 +760,6 @@ bool V8Buffer::hasInstance(v8::Isolate* isolate, v8::Handle<v8::Value> val) {
     return true;
   }
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  TRI_GET_GLOBAL(FastBufferConstructor, v8::Function);
-  TRI_ASSERT(!FastBufferConstructor.IsEmpty());
-#endif
-
   return strcmp(*v8::String::Utf8Value(obj->GetConstructorName()), "Buffer") ==
          0;
 }
@@ -1550,59 +1545,6 @@ static void JS_ByteLength(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief makeFastBuffer
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_MakeFastBuffer(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  v8::Isolate* isolate = args.GetIsolate();
-  v8::HandleScope scope(isolate);
-
-  if (!V8Buffer::hasInstance(isolate, args[0])) {
-    TRI_V8_THROW_EXCEPTION_USAGE(
-        "makeFastBuffer(<buffer>, <fastBuffer>, <offset>, <length>");
-  }
-
-  V8Buffer* buffer = V8Buffer::unwrap(args[0]->ToObject());
-  v8::Local<v8::Object> fast_buffer = args[1]->ToObject();
-  ;
-  uint32_t offset = args[2]->Uint32Value();
-  uint32_t length = args[3]->Uint32Value();
-
-  if (offset > buffer->_length) {
-    TRI_V8_THROW_RANGE_ERROR("<offset> out of range");
-  }
-
-  if (offset + length > buffer->_length) {
-    TRI_V8_THROW_RANGE_ERROR("<length> out of range");
-  }
-
-  // Check for wraparound. Safe because offset and length are unsigned.
-  if (offset + length < offset) {
-    TRI_V8_THROW_RANGE_ERROR("<offset> or <length> out of range");
-  }
-
-  fast_buffer->SetIndexedPropertiesToExternalArrayData(
-      buffer->_data + offset, v8::kExternalUnsignedByteArray, length);
-
-  TRI_V8_RETURN_UNDEFINED();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief setFastBufferConstructor
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_SetFastBufferConstructor(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  v8::Isolate* isolate = args.GetIsolate();
-  TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
-  if (args[0]->IsFunction()) {
-    v8::Handle<v8::Function> fn = args[0].As<v8::Function>();
-    v8g->FastBufferConstructor.Reset(isolate, fn);
-  }
-  TRI_V8_RETURN_UNDEFINED();
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief selects an indexed attribute from the buffer
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1612,6 +1554,19 @@ static void MapGetIndexedBuffer(
   v8::HandleScope scope(isolate);
 
   v8::Handle<v8::Object> self = args.Holder();
+
+  if (self->InternalFieldCount() == 0) {
+    // seems object has become a FastBuffer already
+    if (self->Has(TRI_V8_ASCII_STRING("parent"))) {
+      v8::Handle<v8::Value> parent = self->Get(TRI_V8_ASCII_STRING("parent"));
+      if (!parent->IsObject()) {
+        TRI_V8_RETURN(v8::Handle<v8::Value>());
+      }
+      self = parent->ToObject();
+      // fallthrough intentional
+    }
+  }
+
   V8Buffer* buffer = V8Buffer::unwrap(self);
 
   if (buffer == nullptr || idx >= buffer->_length) {
@@ -1633,6 +1588,19 @@ static void MapSetIndexedBuffer(
   v8::HandleScope scope(isolate);
 
   v8::Handle<v8::Object> self = args.Holder();
+  
+  if (self->InternalFieldCount() == 0) {
+    // seems object has become a FastBuffer already
+    if (self->Has(TRI_V8_ASCII_STRING("parent"))) {
+      v8::Handle<v8::Value> parent = self->Get(TRI_V8_ASCII_STRING("parent"));
+      if (!parent->IsObject()) {
+        TRI_V8_RETURN(v8::Handle<v8::Value>());
+      }
+      self = parent->ToObject();
+      // fallthrough intentional
+    }
+  }
+
   V8Buffer* buffer = V8Buffer::unwrap(self);
 
   if (buffer == nullptr || idx >= buffer->_length) {
@@ -1729,16 +1697,11 @@ void TRI_InitV8Buffer(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
 
   TRI_V8_AddMethod(isolate, ft, TRI_V8_ASCII_STRING("byteLength"),
                    JS_ByteLength);
-  TRI_V8_AddMethod(isolate, ft, TRI_V8_ASCII_STRING("makeFastBuffer"),
-                   JS_MakeFastBuffer);
 
   // create the exports
   v8::Handle<v8::Object> exports = v8::Object::New(isolate);
 
   TRI_V8_AddMethod(isolate, exports, TRI_V8_ASCII_STRING("SlowBuffer"), ft);
-  TRI_V8_AddMethod(isolate, exports,
-                   TRI_V8_ASCII_STRING("setFastBufferConstructor"),
-                   JS_SetFastBufferConstructor);
   TRI_AddGlobalVariableVocbase(
       isolate, context, TRI_V8_ASCII_STRING("EXPORTS_SLOW_BUFFER"), exports);
 

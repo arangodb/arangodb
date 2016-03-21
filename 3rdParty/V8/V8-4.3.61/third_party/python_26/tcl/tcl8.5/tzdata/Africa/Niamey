@@ -1,8 +1,0 @@
-# created by tools/tclZIC.tcl - do not edit
-
-set TZData(:Africa/Niamey) {
-    {-9223372036854775808 508 0 LMT}
-    {-1830384508 -3600 0 WAT}
-    {-1131231600 0 0 GMT}
-    {-315619200 3600 0 WAT}
-}

@@ -1,8 +1,0 @@
-/usr/bin/cpantest
-/usr/lib/perl5/vendor_perl/5.10/Test/Reporter.pm
-/usr/lib/perl5/vendor_perl/5.10/Test/Reporter/Transport.pm
-/usr/lib/perl5/vendor_perl/5.10/Test/Reporter/Transport/File.pm
-/usr/lib/perl5/vendor_perl/5.10/Test/Reporter/Transport/HTTPGateway.pm
-/usr/lib/perl5/vendor_perl/5.10/Test/Reporter/Transport/Mail/Send.pm
-/usr/lib/perl5/vendor_perl/5.10/Test/Reporter/Transport/Net/SMTP.pm
-/usr/lib/perl5/vendor_perl/5.10/Test/Reporter/Transport/Net/SMTP/TLS.pm

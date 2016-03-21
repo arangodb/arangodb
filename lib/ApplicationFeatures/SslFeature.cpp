@@ -31,7 +31,7 @@ using namespace arangodb;
 using namespace arangodb::options;
 
 SslFeature::SslFeature(application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "SslFeature"),
+    : ApplicationFeature(server, "Ssl"),
       _cafile(),
       _keyfile(),
       _sessionCache(false),
@@ -41,7 +41,7 @@ SslFeature::SslFeature(application_features::ApplicationServer* server)
           (long)(SSL_OP_TLS_ROLLBACK_BUG | SSL_OP_CIPHER_SERVER_PREFERENCE)) {
   setOptional(true);
   requiresElevatedPrivileges(true);
-  startsAfter("LoggerFeature");
+  startsAfter("Logger");
 }
 
 void SslFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
