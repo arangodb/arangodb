@@ -84,7 +84,7 @@ struct BasicOptions {
   BasicOptions(arangodb::Transaction* trx)
       : _trx(trx), useEdgeFilter(false), useVertexFilter(false) {}
 
-  ~BasicOptions() {
+  virtual ~BasicOptions() {
     // properly clean up the mess
     for (auto& it : _edgeFilter) {
       delete it.second;
