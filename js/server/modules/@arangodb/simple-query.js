@@ -321,7 +321,7 @@ SimpleQueryFulltext.prototype.execute = function () {
 
   var documents = require("internal").db._query({ query, bindVars }).toArray();
 
-  this._execution = new GeneralArrayCursor(documents.documents);
+  this._execution = new GeneralArrayCursor(documents);
   this._countQuery = documents.length - this._skip;
   this._countTotal = documents.length;
 };
