@@ -1,3 +1,9 @@
+v2.7.8 (XXXX-XX-XX)
+-------------------
+
+* fixed issue #1781: ArangoDB startup time increased tremendously
+
+
 v2.7.7 (2016-02-24)
 -------------------
 
