@@ -644,8 +644,16 @@ void Index::expandInSearchValues(VPackSlice const base,
       VPackSlice current = oneLookup.at(i);
       if (current.hasKey(TRI_SLICE_KEY_IN)) {
         std::unordered_set<VPackSlice> tmp;
-        TRI_ASSERT(current.get(TRI_SLICE_KEY_IN).isArray());
-        for (auto const& el : VPackArrayIterator(current.get(TRI_SLICE_KEY_IN))) {
+        VPackSlice inList = current.get(TRI_SLICE_KEY_IN);
+        TRI_ASSERT(inList.isArray());
+        if (inList.length() == 0) {
+          // Empty Array. short circuit, no matches possible
+          result.clear();
+          result.openArray();
+          result.close();
+          return;
+        }
+        for (auto const& el : VPackArrayIterator(inList)) {
           tmp.emplace(el);
         }
         auto& vector = elements[i];
