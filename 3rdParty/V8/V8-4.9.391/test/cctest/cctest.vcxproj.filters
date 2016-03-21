@@ -1,0 +1,461 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="$(OutDir)obj">
+      <UniqueIdentifier>{7BD4F48B-77B4-AB58-9E24-A7302D190D1C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="$(OutDir)obj\global_intermediate">
+      <UniqueIdentifier>{14CEDE64-16A7-96A9-EF19-5C5D6085FF18}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="compiler">
+      <UniqueIdentifier>{041FFD28-E4BD-ABC0-5AF7-A6D1560FAC0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="interpreter">
+      <UniqueIdentifier>{694D9E0F-41D8-0500-2528-3D8B481ACC9F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="interpreter">
+      <UniqueIdentifier>{694D9E0F-41D8-0500-2528-3D8B481ACC9F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="heap">
+      <UniqueIdentifier>{7CED2756-64ED-26C7-9576-5881BF99323C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="heap">
+      <UniqueIdentifier>{7CED2756-64ED-26C7-9576-5881BF99323C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="heap">
+      <UniqueIdentifier>{7CED2756-64ED-26C7-9576-5881BF99323C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="heap">
+      <UniqueIdentifier>{7CED2756-64ED-26C7-9576-5881BF99323C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="heap">
+      <UniqueIdentifier>{7CED2756-64ED-26C7-9576-5881BF99323C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="heap">
+      <UniqueIdentifier>{7CED2756-64ED-26C7-9576-5881BF99323C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="heap">
+      <UniqueIdentifier>{7CED2756-64ED-26C7-9576-5881BF99323C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="heap">
+      <UniqueIdentifier>{7CED2756-64ED-26C7-9576-5881BF99323C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="heap">
+      <UniqueIdentifier>{7CED2756-64ED-26C7-9576-5881BF99323C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="wasm">
+      <UniqueIdentifier>{5506238B-2B52-A9BB-7176-969D8E3A5159}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="wasm">
+      <UniqueIdentifier>{5506238B-2B52-A9BB-7176-969D8E3A5159}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="wasm">
+      <UniqueIdentifier>{5506238B-2B52-A9BB-7176-969D8E3A5159}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="wasm">
+      <UniqueIdentifier>{5506238B-2B52-A9BB-7176-969D8E3A5159}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="wasm">
+      <UniqueIdentifier>{5506238B-2B52-A9BB-7176-969D8E3A5159}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="$(OutDir)obj\global_intermediate\resources.cc">
+      <Filter>$(OutDir)obj\global_intermediate</Filter>
+    </ClCompile>
+    <ClInclude Include="compiler\c-signature.h">
+      <Filter>compiler</Filter>
+    </ClInclude>
+    <ClCompile Include="compiler\codegen-tester.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClInclude Include="compiler\codegen-tester.h">
+      <Filter>compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="compiler\function-tester.h">
+      <Filter>compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="compiler\graph-builder-tester.h">
+      <Filter>compiler</Filter>
+    </ClInclude>
+    <ClCompile Include="compiler\test-basic-block-profiler.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="compiler\test-branch-combine.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="compiler\test-changes-lowering.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="compiler\test-code-stub-assembler.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="compiler\test-gap-resolver.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="compiler\test-graph-visualizer.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="compiler\test-instruction.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="compiler\test-js-context-specialization.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="compiler\test-js-constant-cache.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="compiler\test-js-typed-lowering.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="compiler\test-jump-threading.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="compiler\test-linkage.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="compiler\test-loop-assignment-analysis.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="compiler\test-loop-analysis.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="compiler\test-machine-operator-reducer.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="compiler\test-multiple-return.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="compiler\test-node.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="compiler\test-operator.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="compiler\test-osr.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="compiler\test-pipeline.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="compiler\test-representation-change.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="compiler\test-run-bytecode-graph-builder.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="compiler\test-run-deopt.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="compiler\test-run-inlining.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="compiler\test-run-intrinsics.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="compiler\test-run-jsbranches.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="compiler\test-run-jscalls.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="compiler\test-run-jsexceptions.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="compiler\test-run-jsobjects.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="compiler\test-run-jsops.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="compiler\test-run-machops.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="compiler\test-run-native-calls.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="compiler\test-run-properties.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="compiler\test-run-stackcheck.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="compiler\test-run-stubs.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="compiler\test-run-variables.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="compiler\test-simplified-lowering.cc">
+      <Filter>compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="cctest.cc"/>
+    <ClCompile Include="expression-type-collector.cc"/>
+    <ClInclude Include="expression-type-collector.h"/>
+    <ClCompile Include="interpreter\test-bytecode-generator.cc">
+      <Filter>interpreter</Filter>
+    </ClCompile>
+    <ClCompile Include="interpreter\test-interpreter.cc">
+      <Filter>interpreter</Filter>
+    </ClCompile>
+    <ClCompile Include="gay-fixed.cc"/>
+    <ClCompile Include="gay-precision.cc"/>
+    <ClCompile Include="gay-shortest.cc"/>
+    <ClInclude Include="heap\heap-tester.h">
+      <Filter>heap</Filter>
+    </ClInclude>
+    <ClCompile Include="heap\test-alloc.cc">
+      <Filter>heap</Filter>
+    </ClCompile>
+    <ClCompile Include="heap\test-compaction.cc">
+      <Filter>heap</Filter>
+    </ClCompile>
+    <ClCompile Include="heap\test-heap.cc">
+      <Filter>heap</Filter>
+    </ClCompile>
+    <ClCompile Include="heap\test-incremental-marking.cc">
+      <Filter>heap</Filter>
+    </ClCompile>
+    <ClCompile Include="heap\test-lab.cc">
+      <Filter>heap</Filter>
+    </ClCompile>
+    <ClCompile Include="heap\test-mark-compact.cc">
+      <Filter>heap</Filter>
+    </ClCompile>
+    <ClCompile Include="heap\test-spaces.cc">
+      <Filter>heap</Filter>
+    </ClCompile>
+    <ClInclude Include="heap\utils-inl.h">
+      <Filter>heap</Filter>
+    </ClInclude>
+    <ClCompile Include="print-extension.cc"/>
+    <ClCompile Include="profiler-extension.cc"/>
+    <ClCompile Include="test-accessors.cc"/>
+    <ClCompile Include="test-api.cc"/>
+    <ClInclude Include="test-api.h"/>
+    <ClCompile Include="test-api-accessors.cc"/>
+    <ClCompile Include="test-api-interceptors.cc"/>
+    <ClCompile Include="test-api-fast-accessor-builder.cc"/>
+    <ClCompile Include="test-array-list.cc"/>
+    <ClCompile Include="test-ast.cc"/>
+    <ClCompile Include="test-ast-expression-visitor.cc"/>
+    <ClCompile Include="test-asm-validator.cc"/>
+    <ClCompile Include="test-atomicops.cc"/>
+    <ClCompile Include="test-bignum.cc"/>
+    <ClCompile Include="test-bignum-dtoa.cc"/>
+    <ClCompile Include="test-bit-vector.cc"/>
+    <ClCompile Include="test-circular-queue.cc"/>
+    <ClCompile Include="test-compiler.cc"/>
+    <ClCompile Include="test-constantpool.cc"/>
+    <ClCompile Include="test-conversions.cc"/>
+    <ClCompile Include="test-cpu-profiler.cc"/>
+    <ClCompile Include="test-date.cc"/>
+    <ClCompile Include="test-debug.cc"/>
+    <ClCompile Include="test-decls.cc"/>
+    <ClCompile Include="test-deoptimization.cc"/>
+    <ClCompile Include="test-dictionary.cc"/>
+    <ClCompile Include="test-diy-fp.cc"/>
+    <ClCompile Include="test-double.cc"/>
+    <ClCompile Include="test-dtoa.cc"/>
+    <ClCompile Include="test-elements-kind.cc"/>
+    <ClCompile Include="test-fast-dtoa.cc"/>
+    <ClCompile Include="test-feedback-vector.cc"/>
+    <ClCompile Include="test-field-type-tracking.cc"/>
+    <ClCompile Include="test-fixed-dtoa.cc"/>
+    <ClCompile Include="test-flags.cc"/>
+    <ClCompile Include="test-func-name-inference.cc"/>
+    <ClCompile Include="test-gc-tracer.cc"/>
+    <ClCompile Include="test-global-handles.cc"/>
+    <ClCompile Include="test-global-object.cc"/>
+    <ClCompile Include="test-hashing.cc"/>
+    <ClCompile Include="test-hashmap.cc"/>
+    <ClCompile Include="test-heap-profiler.cc"/>
+    <ClCompile Include="test-hydrogen-types.cc"/>
+    <ClCompile Include="test-identity-map.cc"/>
+    <ClCompile Include="test-inobject-slack-tracking.cc"/>
+    <ClCompile Include="test-list.cc"/>
+    <ClCompile Include="test-liveedit.cc"/>
+    <ClCompile Include="test-lockers.cc"/>
+    <ClCompile Include="test-log.cc"/>
+    <ClCompile Include="test-microtask-delivery.cc"/>
+    <ClCompile Include="test-mementos.cc"/>
+    <ClCompile Include="test-object-observe.cc"/>
+    <ClCompile Include="test-parsing.cc"/>
+    <ClCompile Include="test-platform.cc"/>
+    <ClCompile Include="test-profile-generator.cc"/>
+    <ClCompile Include="test-random-number-generator.cc"/>
+    <ClCompile Include="test-receiver-check-hidden-prototype.cc"/>
+    <ClCompile Include="test-regexp.cc"/>
+    <ClCompile Include="test-reloc-info.cc"/>
+    <ClCompile Include="test-representation.cc"/>
+    <ClCompile Include="test-sampler-api.cc"/>
+    <ClCompile Include="test-serialize.cc"/>
+    <ClCompile Include="test-simd.cc"/>
+    <ClCompile Include="test-slots-buffer.cc"/>
+    <ClCompile Include="test-strings.cc"/>
+    <ClCompile Include="test-symbols.cc"/>
+    <ClCompile Include="test-strtod.cc"/>
+    <ClCompile Include="test-thread-termination.cc"/>
+    <ClCompile Include="test-threads.cc"/>
+    <ClCompile Include="test-trace-event.cc"/>
+    <ClCompile Include="test-transitions.cc"/>
+    <ClCompile Include="test-typedarrays.cc"/>
+    <ClCompile Include="test-types.cc"/>
+    <ClCompile Include="test-typing-reset.cc"/>
+    <ClCompile Include="test-unbound-queue.cc"/>
+    <ClCompile Include="test-unboxed-doubles.cc"/>
+    <ClCompile Include="test-unique.cc"/>
+    <ClCompile Include="test-unscopables-hidden-prototype.cc"/>
+    <ClCompile Include="test-utils.cc"/>
+    <ClCompile Include="test-version.cc"/>
+    <ClCompile Include="test-weakmaps.cc"/>
+    <ClCompile Include="test-weaksets.cc"/>
+    <ClCompile Include="trace-extension.cc"/>
+    <ClCompile Include="wasm\test-run-wasm.cc">
+      <Filter>wasm</Filter>
+    </ClCompile>
+    <ClCompile Include="wasm\test-run-wasm-js.cc">
+      <Filter>wasm</Filter>
+    </ClCompile>
+    <ClCompile Include="wasm\test-run-wasm-module.cc">
+      <Filter>wasm</Filter>
+    </ClCompile>
+    <ClInclude Include="wasm\test-signatures.h">
+      <Filter>wasm</Filter>
+    </ClInclude>
+    <ClInclude Include="wasm\wasm-run-utils.h">
+      <Filter>wasm</Filter>
+    </ClInclude>
+    <ClCompile Include="test-assembler-ia32.cc"/>
+    <ClCompile Include="test-code-stubs.cc"/>
+    <ClCompile Include="test-code-stubs-ia32.cc"/>
+    <ClCompile Include="test-disasm-ia32.cc"/>
+    <ClCompile Include="test-macro-assembler-ia32.cc"/>
+    <ClCompile Include="test-log-stack-tracer.cc"/>
+    <ClCompile Include="test-platform-win32.cc"/>
+    <None Include="cctest.gyp"/>
+  </ItemGroup>
+</Project>

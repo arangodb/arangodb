@@ -1,0 +1,152 @@
+# Obsolete SpiderMonkey tests
+#
+# invalidated by bug 10278
+#
+js1_2/function/function-001-n.js
+js1_3/Script/function-001-n.js
+js1_3/regress/function-001-n.js
+#
+# WONTFIX bug 119719
+#
+js1_5/Regress/regress-119719.js
+#
+# Spidermonkey now defaults lineNumber and fileName
+# to the location and file where the exception occured.
+# exclude original test which assumes the defaults are
+# 0 and ''
+#
+js1_5/extensions/regress-50447.js
+#
+# Invalid bug
+#
+e4x/Regress/regress-278112.js
+#
+# behavior changed to match MSIE/Opera/etc
+# see bug 309840
+#
+js1_5/Regress/regress-173067.js
+#
+# per comment in bug, this test is obsolete
+# for spidermonkey and rhino.
+#
+ecma_3/Statements/regress-121744.js
+#
+# remove version dependent tests
+# see bug 325921
+#
+js1_2/Array/array_split_1.js
+js1_2/Array/tostring_1.js
+js1_2/Array/tostring_2.js
+js1_2/Objects/toString-001.js
+js1_2/String/concat.js
+js1_2/function/Function_object.js
+js1_2/function/Number.js
+js1_2/function/String.js
+js1_2/function/function-001-n.js
+js1_2/function/length.js
+js1_2/function/regexparg-2-n.js
+js1_2/function/tostring-1.js
+js1_2/function/tostring-2.js
+js1_2/operator/equality.js
+js1_2/regexp/RegExp_lastIndex.js
+js1_2/regexp/string_split.js
+js1_2/version120/boolean-001.js
+js1_2/version120/regress-99663.js
+js1_3/Script/delete-001.js
+js1_3/Script/function-001-n.js
+js1_3/regress/delete-001.js
+js1_3/regress/function-001-n.js
+#
+# tests not yet implemented
+#
+e4x/TypeConversion/10.5.1.js
+e4x/TypeConversion/10.5.js
+e4x/TypeConversion/10.6.1.js
+e4x/TypeConversion/10.6.js
+e4x/Types/9.1.1.10.js
+e4x/Types/9.1.1.11.js
+e4x/Types/9.1.1.12.js
+e4x/Types/9.1.1.13.js
+e4x/Types/9.1.1.4.js
+e4x/Types/9.1.1.5.js
+e4x/Types/9.1.1.7.js
+e4x/Types/9.1.1.8.js
+e4x/Types/9.2.1.10.js
+e4x/Types/9.2.1.3.js
+e4x/Types/9.2.1.4.js
+e4x/Types/9.2.1.5.js
+e4x/Types/9.2.1.6.js
+e4x/Types/9.2.1.7.js
+e4x/XML/13.4.4.1.js
+ecma_2/RegExp/exec-001.js
+ecma_2/String/replace-001.js
+#
+# pre ecma warnings are doa
+#
+js1_5/Regress/regress-106244.js
+#
+# do not ignore unicode formatting chars/trunk - bug 274152
+#
+ecma_3/Unicode/uc-001.js
+#
+# import/export removed in Gecko 1.9.1/SpiderMonkey 1.8.1 - bug 447713
+e4x/Regress/regress-361451.js
+ecma_2/Exceptions/lexical-010.js
+ecma_2/Exceptions/lexical-022.js
+ecma/LexicalConventions/7.4.3-3-n.js
+js1_5/decompilation/regress-349484.js
+js1_5/extensions/regress-355622.js
+js1_5/extensions/regress-418730.js
+js1_5/GetSet/regress-353264.js
+js1_5/Regress/regress-249211.js
+js1_5/Regress/regress-350692.js
+js1_5/Regress/regress-354924.js
+js1_5/Regress/regress-362583.js
+js1_7/extensions/regress-353214-01.js
+js1_7/lexical/regress-346642-03.js
+js1_5/extensions/regress-432075.js
+js1_5/extensions/regress-421621.js
+# bug 408002
+js1_5/Regress/regress-320119.js
+# bug 380469
+js1_7/geniter/regress-347739.js
+js1_7/geniter/regress-349012-01.js
+js1_7/geniter/regress-349331.js
+js1_7/iterable/regress-340526-02.js
+# bug 443074
+e4x/decompilation/regress-373678.js
+js1_5/decompilation/regress-351336.js
+js1_5/decompilation/regress-351626.js
+js1_5/decompilation/regress-354878.js
+js1_5/decompilation/regress-373678.js
+js1_5/extensions/regress-352281.js
+js1_7/decompilation/regress-346642-01.js
+js1_7/decompilation/regress-349605.js
+# decompilation change in spidermonkey 1.8.1
+js1_7/decompilation/regress-351070-01.js
+js1_8/decompilation/regress-443074.js
+js1_8/genexps/regress-380237-03.js
+js1_8/genexps/regress-380237-04.js
+# decompilation change in spidermonkey 1.8.1 (bug 460501)
+js1_7/decompilation/regress-352026.js
+# https://bugzilla.mozilla.org/show_bug.cgi?id=458851#c7
+js1_5/extensions/regress-437288-01.js
+js1_5/decompilation/regress-437288-02.js
+# more decompilation changes, bug 461233
+js1_7/block/regress-352609.js
+js1_7/decompilation/regress-349602.js
+js1_7/decompilation/regress-350991.js
+js1_7/decompilation/regress-352011.js
+js1_7/decompilation/regress-352022.js
+js1_7/extensions/regress-353249.js
+js1_7/regress/regress-420399.js
+#
+js1_7/decompilation/regress-371802.js
+# bug 446026
+js1_8/regress/regress-442333-01.js
+js1_6/Array/regress-320887.js
+# bug 452498 upvar2
+js1_7/regress/regress-350387.js
+# bug 457618
+js1_7/decompilation/regress-349634.js
+js1_7/extensions/regress-353214-02.js

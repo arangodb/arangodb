@@ -1,0 +1,11 @@
+Need to clobber after ICU52 roll.
+Landmines test.
+Activating MSVS 2013.
+Revert activation of MSVS 2013.
+Activating MSVS 2013 again.
+Clobber after ICU roll.
+Moar clobbering...
+Remove build/android.gypi
+Cleanup after windows ninja switch attempt.
+Switching to pinned msvs toolchain.
+Clobbering to hopefully resolve problem with mksnapshot

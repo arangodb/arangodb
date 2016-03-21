@@ -25,6 +25,7 @@
 #define ARANGOD_V8_SERVER_APPLICATION_V8_H 1
 
 #include "ApplicationServer/ApplicationFeature.h"
+#include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Basics/ConditionVariable.h"
 #include "V8/JSLoader.h"
 
@@ -137,27 +138,6 @@ class GlobalContextMethods {
   static char const* CodeCollectGarbage;
   static char const* CodeBootstrapCoordinator;
   static char const* CodeWarmupExports;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief a buffer allocator used for V8
-////////////////////////////////////////////////////////////////////////////////
-
-class BufferAllocator : public v8::ArrayBuffer::Allocator {
- public:
-  virtual void* Allocate(size_t length) {
-    void* data = AllocateUninitialized(length);
-    if (data != nullptr) {
-      memset(data, 0, length);
-    }
-    return data;
-  }
-  virtual void* AllocateUninitialized(size_t length) { return malloc(length); }
-  virtual void Free(void* data, size_t) {
-    if (data != nullptr) {
-      free(data);
-    }
-  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -402,7 +382,7 @@ class ApplicationV8 : public rest::ApplicationFeature {
   /// @brief a buffer allocator for V8
   //////////////////////////////////////////////////////////////////////////////
 
-  BufferAllocator _bufferAllocator;
+  ArrayBufferAllocator _bufferAllocator;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief path to the directory containing the startup scripts
@@ -484,6 +464,12 @@ class ApplicationV8 : public rest::ApplicationFeature {
   //////////////////////////////////////////////////////////////////////////////
 
   V8Context** _contexts;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief V8 array buffer allocator instance
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::unique_ptr<v8::ArrayBuffer::Allocator> _allocator;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief V8 contexts queue lock

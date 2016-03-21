@@ -37,7 +37,6 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
       VocbaseTempl(),
 
       BufferTempl(),
-      FastBufferConstructor(),
 
       BufferConstant(),
       DeleteConstant(),

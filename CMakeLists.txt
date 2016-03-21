@@ -21,6 +21,7 @@ if (APPLE)
 endif ()
 
 option(VERBOSE OFF)
+set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9" CACHE STRING "deployment target for MacOSX")
 
 project(ArangoDB CXX C ASM)
 
@@ -382,7 +383,11 @@ endif ()
 ################################################################################
 
 if (NOT WINDOWS)
-  set(NET_LIBS ${NET_LIBS} resolv)
+  set(SYS_LIBS ${SYS_LIBS} resolv)
+
+  if (NOT DARWIN)
+    set(SYS_LIBS ${SYS_LIBS} rt)
+  endif ()
 endif ()
 
 ################################################################################
@@ -731,7 +736,7 @@ list(INSERT SYSTEM_LIBRARIES 0
   ${BASE_LIBS}
   ${CMAKE_THREAD_LIBS_INIT}
   ${CMAKE_DL_LIBS}
-  ${NET_LIBS}
+  ${SYS_LIBS}
 )
 
 add_subdirectory(lib)

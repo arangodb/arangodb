@@ -84,6 +84,7 @@ const optionsDocumentation = [
   '   - `skipSsl`: omit the ssl_server rspec tests.',
   '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
   '   - `skipNondeterministic`: if set, nondeterministic tests are skipped.',
+  '   - `skipShebang`: if set, the shebang tests are skipped.',
   '',
   '   - `onlyNightly`: execute only the nightly tests',
   '   - `loopEternal`: to loop one test over and over.',
@@ -111,8 +112,8 @@ const optionsDocumentation = [
   '',
   '   - `valgrind`: if set the programs are run with the valgrind',
   '     memory checker; should point to the valgrind executable',
-  '   - `valgrindXmlFileBase`: string to prepend to the xml report name',
-  '   - `valgrindArgs`: list of commandline parameters to add to valgrind',
+  '   - `valgrindFileBase`: string to prepend to the report filename',
+  '   - `valgrindArgs`: commandline parameters to add to valgrind',
   '   - valgrindHosts  - configure which clustercomponents to run using valgrind',
   '        Coordinator - flag to run Coordinator with valgrind',
   '        DBServer    - flag to run DBServers with valgrind',
@@ -155,13 +156,14 @@ const optionsDefaults = {
   "skipNightly": true,
   "skipNondeterministic": false,
   "skipRanges": false,
+  "skipShebang": false,
   "skipSsl": false,
   "skipTimeCritical": false,
   "test": undefined,
   "username": "root",
   "valgrind": false,
-  "valgrindXmlFileBase": "",
-  "valgrindArgs": [],
+  "valgrindFileBase": "",
+  "valgrindArgs": {},
   "valgrindHosts": false,
   "writeXmlReport": true
 };
@@ -181,6 +183,7 @@ const testPort = require("internal").testPort;
 const time = require("internal").time;
 const toArgv = require("internal").toArgv;
 const wait = require("internal").wait;
+const platform = require("internal").platform;
 
 const Planner = require("@arangodb/cluster").Planner;
 const Kickstarter = require("@arangodb/cluster").Kickstarter;
@@ -465,7 +468,7 @@ function checkInstanceAliveSingleServer(instanceInfo, options) {
       ((res.signal === 11) ||
         (res.signal === 6) ||
         // Windows sometimes has random numbers in signal...
-        (require("internal").platform.substr(0, 3) === 'win')
+        (platform.substr(0, 3) === 'win')
       )
     ) {
       const storeArangodPath = "/var/tmp/arangod_" + instanceInfo.pid.pid;
@@ -480,7 +483,7 @@ function checkInstanceAliveSingleServer(instanceInfo, options) {
       res.gdbHint = "Run debugger with 'gdb " +
         storeArangodPath + " " + corePath;
 
-      if (require("internal").platform.substr(0, 3) === 'win') {
+      if (platform.substr(0, 3) === 'win') {
         // Windows: wait for procdump to do its job...
         statusExternal(instanceInfo.monitor, true);
         analyzeCoreDumpWindows(instanceInfo);
@@ -522,7 +525,7 @@ function checkInstanceAliveAgency(instanceInfo, options) {
         ((res.signal === 11) ||
           (res.signal === 6) ||
           // Windows sometimes has random numbers in signal...
-          (require("internal").platform.substr(0, 3) === 'win')
+          (platform.substr(0, 3) === 'win')
         )
       ) {
         const storeArangodPath = "/var/tmp/arangod_" + instanceInfo.pids[i].pid;
@@ -537,7 +540,7 @@ function checkInstanceAliveAgency(instanceInfo, options) {
         res.gdbHint = "Run debugger with 'gdb " +
           storeArangodPath + " " + corePath;
 
-        if (require("internal").platform.substr(0, 3) === 'win') {
+        if (platform.substr(0, 3) === 'win') {
           // Windows: wait for procdump to do its job...
           statusExternal(instanceInfo.monitor, true);
           analyzeCoreDumpWindows(instanceInfo);
@@ -597,7 +600,7 @@ function checkInstanceAliveCluster(instanceInfo, options) {
               storeArangodPath +
               " /var/tmp/core*" + checkpid.pid + "*'";
 
-            if (require("internal").platform.substr(0, 3) === 'win') {
+            if (platform.substr(0, 3) === 'win') {
               // Windows: wait for procdump to do its job...
               checkRemoteInstance(instanceInfo.monitor, true, options);
               analyzeCoreDumpWindows(instanceInfo);
@@ -976,12 +979,70 @@ function runStressTest(options, command, testname) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a command, possible with valgrind
+////////////////////////////////////////////////////////////////////////////////
+
+function executeValgrind(cmd, args, options, valgrindTest) {
+  if (valgrindTest && options.valgrind) {
+    let valgrindOpts = {};
+
+    if (options.valgrindArgs) {
+      valgrindOpts = options.valgrindArgs;
+    }
+
+    let testfn = options.valgrindFileBase;
+
+    if (testfn.length > 0) {
+      testfn += '_';
+    }
+
+    testfn += valgrindTest;
+
+    if (valgrindOpts.xml === "yes") {
+      valgrindOpts["xml-file"] = testfn + '.%p.xml';
+    }
+
+    valgrindOpts["log-file"] = testfn + '.%p.valgrind.log';
+
+    args = toArgv(valgrindOpts, true).concat([cmd]).concat(args);
+    cmd = options.valgrind;
+  }
+
+  return executeExternal(cmd, args);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a command and wait for result
 ////////////////////////////////////////////////////////////////////////////////
 
-function executeAndWait(cmd, args, options) {
+function executeAndWait(cmd, args, options, valgrindTest) {
   if (options.extremeVerbosity) {
     print("executeAndWait: cmd =", cmd, "args =", args);
+  }
+
+  if (valgrindTest && options.valgrind) {
+    let valgrindOpts = {};
+
+    if (options.valgrindArgs) {
+      valgrindOpts = options.valgrindArgs;
+    }
+
+    let testfn = options.valgrindFileBase;
+
+    if (testfn.length > 0) {
+      testfn += '_';
+    }
+
+    testfn += valgrindTest;
+
+    if (valgrindOpts.xml === "yes") {
+      valgrindOpts["xml-file"] = testfn + '.%p.xml';
+    }
+
+    valgrindOpts["log-file"] = testfn + '.%p.valgrind.log';
+
+    args = toArgv(valgrindOpts, true).concat([cmd]).concat(args);
+    cmd = options.valgrind;
   }
 
   const startTime = time();
@@ -1278,7 +1339,7 @@ function shutdownInstance(instanceInfo, options) {
               serverCrashed = true;
               break;
             }
-            if (require("internal").platform.substr(0, 3) === 'win') {
+            if (platform.substr(0, 3) === 'win') {
               // Windows: wait for procdump to do its job...
               statusExternal(instanceInfo.monitor, true);
             }
@@ -1352,7 +1413,7 @@ function shutdownInstance(instanceInfo, options) {
             serverCrashed = true;
             break;
           }
-          if (require("internal").platform.substr(0, 3) === 'win') {
+          if (platform.substr(0, 3) === 'win') {
             // Windows: wait for procdump to do its job...
             statusExternal(instanceInfo.monitor, true);
           }
@@ -1462,7 +1523,7 @@ function startInstanceCluster(instanceInfo, protocol, options,
   if (options.valgrind) {
     runInValgrind = options.valgrind;
 
-    testfn = options.valgrindXmlFileBase;
+    testfn = options.valgrindFileBase;
 
     if (testfn.length > 0) {
       testfn += '_';
@@ -1537,27 +1598,6 @@ function startInstanceCluster(instanceInfo, protocol, options,
   return true;
 }
 
-function valgrindArgsSingleServer(options, testname, run) {
-  let valgrindOpts = {};
-
-  if (options.valgrindArgs) {
-    valgrindOpts = options.valgrindArgs;
-  }
-
-  let testfn = options.valgrindXmlFileBase;
-
-  if (testfn.length > 0) {
-    testfn += '_';
-  }
-
-  testfn += testname;
-
-  valgrindOpts["xml-file"] = testfn + '.%p.xml';
-  valgrindOpts["log-file"] = testfn + '.%p.valgrind.log';
-
-  return toArgv(valgrindOpts, true).concat([run]);
-}
-
 function startInstanceAgency(instanceInfo, protocol, options,
   addArgs, testname, appDir, tmpDataDir) {
   const N = options.agencySize;
@@ -1611,14 +1651,7 @@ function startInstanceAgency(instanceInfo, protocol, options,
 
   instanceInfo.pids = [];
   for (let i = 0; i < N; i++) {
-    if (options.valgrind) {
-      const valgrindArgs = valgrindArgsSingleServer(options, testname, ARANGOD_BIN);
-      const newargs = valgrindArgs.concat(toArgv(argss[i]));
-
-      instanceInfo.pids[i] = executeExternal(options.valgrind, newargs);
-    } else {
-      instanceInfo.pids[i] = executeExternal(ARANGOD_BIN, toArgv(argss[i]));
-    }
+    instanceInfo.pids[i] = executeValgrind(ARANGOD_BIN, toArgv(argss[i]), options, testname);
   }
 
   return true;
@@ -1650,14 +1683,7 @@ function startInstanceSingleServer(instanceInfo, protocol, options,
     args = _.extend(args, addArgs);
   }
 
-  if (options.valgrind) {
-    const valgrindArgs = valgrindArgsSingleServer(options, testname, ARANGOD_BIN);
-    const newargs = valgrindArgs.concat(toArgv(args));
-
-    instanceInfo.pid = executeExternal(options.valgrind, newargs);
-  } else {
-    instanceInfo.pid = executeExternal(ARANGOD_BIN, toArgv(args));
-  }
+  instanceInfo.pid = executeValgrind(ARANGOD_BIN, toArgv(args), options, testname);
 
   return true;
 }
@@ -1735,7 +1761,7 @@ function startInstance(protocol, options, addArgs, testname, tmpDir) {
 
   print("up and running in " + (time() - startTime) + " seconds");
 
-  if (!options.cluster && (require("internal").platform.substr(0, 3) === 'win')) {
+  if (!options.cluster && (platform.substr(0, 3) === 'win')) {
     const procdumpArgs = [
       '-accepteula',
       '-e',
@@ -1812,8 +1838,7 @@ function rubyTests(options, ssl) {
   if (options.ruby === "") {
     command = options.rspec;
     rspec = undefined;
-  }
-  else {
+  } else {
     command = options.ruby;
     rspec = options.rspec;
   }
@@ -1863,7 +1888,7 @@ function rubyTests(options, ssl) {
           "--out", fs.join("out", "UnitTests", te + ".json"),
           "--require", tmpname,
           fs.join("UnitTests", "HttpInterface", te)
-               ];
+        ];
 
         if (rspec !== undefined) {
           args = [rspec].concat(args);
@@ -2155,13 +2180,13 @@ let testFuncs = {
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.arangosh = function(options) {
-  let failed = 0;
   let args = makeArgsArangosh(options);
 
   let ret = {
     "ArangoshExitCodeTest": {
       "testArangoshExitCodeFail": {},
       "testArangoshExitCodeSuccess": {},
+      "testArangoshebang": {},
       "total": 2,
       "duration": 0.0
     }
@@ -2180,7 +2205,6 @@ testFuncs.arangosh = function(options) {
     ret.ArangoshExitCodeTest.testArangoshExitCodeFail['message'] =
       "didn't get expected return code (1): \n" +
       yaml.safeDump(rc);
-    ++failed;
   }
 
   ret.ArangoshExitCodeTest.testArangoshExitCodeFail['status'] = failSuccess;
@@ -2201,17 +2225,48 @@ testFuncs.arangosh = function(options) {
     ret.ArangoshExitCodeTest.testArangoshExitCodeFail['message'] =
       "didn't get expected return code (0): \n" +
       yaml.safeDump(rc);
-
-    ++failed;
   }
 
   ret.ArangoshExitCodeTest.testArangoshExitCodeSuccess['status'] = failSuccess;
   ret.ArangoshExitCodeTest.testArangoshExitCodeSuccess['duration'] = deltaTime2;
   print("Status: " + ((successSuccess) ? "SUCCESS" : "FAIL") + "\n");
 
+  // test shebang execution with arangosh
+  var shebangSuccess = true;
+  var deltaTime3 = 0;
+
+  if (!options.skipShebang && platform.substr(0, 3) !== "win") {
+    var shebangFile = fs.join(fs.getTempPath(), "testshebang.js");
+
+    print("Starting arangosh via shebang script: " + shebangFile);
+    fs.write(shebangFile,
+      "#!" + fs.makeAbsolute(ARANGOSH_BIN) + " --javascript.execute \n" +
+      "print('hello world');\n");
+
+    executeExternalAndWait("sh", ["-c", "chmod a+x " + shebangFile]);
+
+    const startTime3 = time();
+    rc = executeExternalAndWait("sh", ["-c", shebangFile]);
+    deltaTime3 = time() - startTime3;
+    print(rc);
+
+    shebangSuccess = (rc.hasOwnProperty('exit') && rc.exit === 0);
+
+    if (!shebangSuccess) {
+      ret.ArangoshExitCodeTest.testArangoshebang['message'] =
+        "didn't get expected return code (0): \n" +
+        yaml.safeDump(rc);
+    }
+
+    print("Status: " + ((successSuccess) ? "SUCCESS" : "FAIL") + "\n");
+  }
+
+  ret.ArangoshExitCodeTest.testArangoshebang['status'] = shebangSuccess;
+  ret.ArangoshExitCodeTest.testArangoshebang['duration'] = deltaTime3;
+
   // return result
-  ret.ArangoshExitCodeTest.status = failSuccess && successSuccess;
-  ret.ArangoshExitCodeTest.duration = deltaTime + deltaTime2;
+  ret.ArangoshExitCodeTest.status = failSuccess && successSuccess && shebangSuccess;
+  ret.ArangoshExitCodeTest.duration = deltaTime + deltaTime2 + deltaTime3;
   return ret;
 };
 
@@ -2623,26 +2678,16 @@ testFuncs.boost = function(options) {
   if (!options.skipBoost) {
     const run = fs.join(UNITTESTS_DIR, "basics_suite");
 
-    if (options.valgrind) {
-      const valgrindArgs = valgrindArgsSingleServer(options, "basics", run);
-      const newargs = valgrindArgs.concat(args);
-
-      results.basics = executeAndWait(options.valgrind, newargs, options);
-    } else {
-      results.basics = executeAndWait(run, args, options);
+    if (fs.exists(run)) {
+      results.basics = executeAndWait(run, args, options, "basics");
     }
   }
 
   if (!options.skipGeo) {
     const run = fs.join(UNITTESTS_DIR, "geo_suite");
 
-    if (options.valgrind) {
-      const valgrindArgs = valgrindArgsSingleServer(options, "geo_suite", run);
-      const newargs = valgrindArgs.concat(args);
-
-      results.geo_suite = executeAndWait(options.valgrind, newargs, options);
-    } else {
-      results.geo_suite = executeAndWait(run, args, options);
+    if (fs.exists(run)) {
+      results.geo_suite = executeAndWait(run, args, options, "geo_suite");
     }
   }
 
@@ -2696,14 +2741,7 @@ testFuncs.config = function(options) {
 
     const run = fs.join(BIN_DIR, test);
 
-    if (options.valgrind) {
-      const valgrindArgs = valgrindArgsSingleServer(options, test, run);
-      const newargs = valgrindArgs.concat(toArgv(args));
-
-      results.absolut[test] = executeAndWait(options.valgrind, newargs, options);
-    } else {
-      results.absolut[test] = executeAndWait(run, toArgv(args), options);
-    }
+    results.absolut[test] = executeAndWait(run, toArgv(args), options, test);
 
     if (!results.absolut[test].status) {
       results.absolut.status = false;
@@ -2730,17 +2768,7 @@ testFuncs.config = function(options) {
 
     const run = fs.join(BIN_DIR, test);
 
-    if (options.valgrind) {
-      const valgrindArgs = valgrindArgsSingleServer(options, test, run);
-      const newargs = valgrindArgs.concat(toArgv(args));
-
-      results.relative[test] = executeAndWait(options.valgrind, newargs, options);
-    } else {
-      results.relative[test] = executeAndWait(run, toArgv(args), options);
-    }
-
-    results.relative[test] = executeAndWait(fs.join(BIN_DIR, test),
-      toArgv(args), options);
+    results.relative[test] = executeAndWait(run, toArgv(args), options, test);
 
     if (!results.relative[test].status) {
       results.relative.status = false;
@@ -2766,14 +2794,7 @@ testFuncs.dfdb = function(options) {
 
   let results = {};
 
-  if (options.valgrind) {
-    const valgrindArgs = valgrindArgsSingleServer(options, "dfdb", ARANGOD_BIN);
-    const newargs = valgrindArgs.concat(args);
-
-    results.dfdb = executeAndWait(options.valgrind, newargs, options);
-  } else {
-    results.dfdb = executeAndWait(ARANGOD_BIN, args, options);
-  }
+  results.dfdb = executeAndWait(ARANGOD_BIN, args, options, "dfdb");
 
   return results;
 };
@@ -3829,14 +3850,7 @@ testFuncs.upgrade = function(options) {
 
   const argv = toArgv(args).concat(["--upgrade"]);
 
-  if (options.valgrind) {
-    const valgrindArgs = valgrindArgsSingleServer(options, "upgrade", ARANGOD_BIN);
-    const newargs = valgrindArgs.concat(argv);
-
-    result.upgrade.first = executeAndWait(options.valgrind, newargs, options);
-  } else {
-    result.upgrade.first = executeAndWait(ARANGOD_BIN, argv, options);
-  }
+  result.upgrade.first = executeAndWait(ARANGOD_BIN, argv, options, "upgrade");
 
   if (result.upgrade.first !== 0 && !options.force) {
     print("not removing " + tmpDataDir);
@@ -3845,14 +3859,7 @@ testFuncs.upgrade = function(options) {
 
   ++result.upgrade.total;
 
-  if (options.valgrind) {
-    const valgrindArgs = valgrindArgsSingleServer(options, "upgrade", ARANGOD_BIN);
-    const newargs = valgrindArgs.concat(argv);
-
-    result.upgrade.second = executeAndWait(options.valgrind, newargs, options);
-  } else {
-    result.upgrade.second = executeAndWait(ARANGOD_BIN, argv, options);
-  }
+  result.upgrade.second = executeAndWait(ARANGOD_BIN, argv, options, "upgrade");
 
   cleanupDirectories.push(tmpDataDir);
 

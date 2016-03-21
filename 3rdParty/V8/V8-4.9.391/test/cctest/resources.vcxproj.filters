@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\tools">
+      <UniqueIdentifier>{A0946190-5491-4D66-7E51-19400E36F078}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\tools\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\tools">
+      <UniqueIdentifier>{A0946190-5491-4D66-7E51-19400E36F078}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\tools\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\tools">
+      <UniqueIdentifier>{A0946190-5491-4D66-7E51-19400E36F078}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\tools\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\tools">
+      <UniqueIdentifier>{A0946190-5491-4D66-7E51-19400E36F078}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\tools\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\tools">
+      <UniqueIdentifier>{A0946190-5491-4D66-7E51-19400E36F078}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\tools\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\tools">
+      <UniqueIdentifier>{A0946190-5491-4D66-7E51-19400E36F078}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\tools\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\tools">
+      <UniqueIdentifier>{A0946190-5491-4D66-7E51-19400E36F078}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\tools\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\tools">
+      <UniqueIdentifier>{A0946190-5491-4D66-7E51-19400E36F078}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\tools\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="cctest.gyp"/>
+    <None Include="..\..\tools\js2c.py">
+      <Filter>..\..\tools\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\tools\splaytree.js">
+      <Filter>..\..\tools\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\tools\codemap.js">
+      <Filter>..\..\tools\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\tools\csvparser.js">
+      <Filter>..\..\tools\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\tools\consarray.js">
+      <Filter>..\..\tools\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\tools\profile.js">
+      <Filter>..\..\tools\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\tools\profile_view.js">
+      <Filter>..\..\tools\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\tools\logreader.js">
+      <Filter>..\..\tools\_excluded_files</Filter>
+    </None>
+    <None Include="log-eq-of-logging-and-traversal.js">
+      <Filter>_excluded_files</Filter>
+    </None>
+  </ItemGroup>
+</Project>

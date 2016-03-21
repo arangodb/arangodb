@@ -11,7 +11,7 @@ if (POLICY CMP0048)
 endif ()
 
 project(V8)
-set(V8_VERSION 4.3.61)
+set(V8_VERSION 4.9.391)
 
 # create target directory
 
@@ -81,7 +81,7 @@ set(V8_VERSION
 )
 
 set(V8_INCLUDE_DIR
-  ${V8_DIR}/include
+  ${V8_DIR}/include;${V8_DIR}
   CACHE INTERNAL
   "${PROJECT_NAME}: include path"
 )
@@ -319,8 +319,17 @@ elseif (WIN32)
   set(V8_LIBRARY_RELEASE "${V8_DIR}/build/Release")
 
   set(V8_LIBS
-    debug "${V8_LIBRARY_DEBUG}/lib/v8_base.lib"
-    optimized "${V8_LIBRARY_RELEASE}/lib/v8_base.lib"
+    debug "${V8_LIBRARY_DEBUG}/lib/v8_base_0.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/v8_base_0.lib"
+
+    debug "${V8_LIBRARY_DEBUG}/lib/v8_base_1.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/v8_base_1.lib"
+
+    debug "${V8_LIBRARY_DEBUG}/lib/v8_base_2.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/v8_base_2.lib"
+
+    debug "${V8_LIBRARY_DEBUG}/lib/v8_base_3.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/v8_base_3.lib"
 
     debug "${V8_LIBRARY_DEBUG}/lib/v8_libbase.lib"
     optimized "${V8_LIBRARY_RELEASE}/lib/v8_libbase.lib"
@@ -377,6 +386,7 @@ else ()
   list(APPEND V8_GYP_ARGS
     -Ibuild/standalone.gypi
     -Dv8_use_snapshot=true
+    -Dmac_deployment_target=${CMAKE_OSX_DEPLOYMENT_TARGET}
     --depth=.
     -Dstandalone_static_library=1
     -Dlinux_use_bundled_gold=0

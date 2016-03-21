@@ -1,0 +1,797 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\tools">
+      <UniqueIdentifier>{A0946190-5491-4D66-7E51-19400E36F078}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\tools\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js">
+      <UniqueIdentifier>{AFF4C650-55EE-4B49-D17B-E3562B397D81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js">
+      <UniqueIdentifier>{AFF4C650-55EE-4B49-D17B-E3562B397D81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js">
+      <UniqueIdentifier>{AFF4C650-55EE-4B49-D17B-E3562B397D81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js">
+      <UniqueIdentifier>{AFF4C650-55EE-4B49-D17B-E3562B397D81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js">
+      <UniqueIdentifier>{AFF4C650-55EE-4B49-D17B-E3562B397D81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js">
+      <UniqueIdentifier>{AFF4C650-55EE-4B49-D17B-E3562B397D81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js">
+      <UniqueIdentifier>{AFF4C650-55EE-4B49-D17B-E3562B397D81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js">
+      <UniqueIdentifier>{AFF4C650-55EE-4B49-D17B-E3562B397D81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js">
+      <UniqueIdentifier>{AFF4C650-55EE-4B49-D17B-E3562B397D81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\third_party">
+      <UniqueIdentifier>{D6C6CEA7-AAD0-03AD-2394-AC6FCBF8A498}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\third_party\fdlibm">
+      <UniqueIdentifier>{C0D3D882-761B-F6F5-57DE-392A9C6C7858}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\third_party\fdlibm\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js">
+      <UniqueIdentifier>{AFF4C650-55EE-4B49-D17B-E3562B397D81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js">
+      <UniqueIdentifier>{AFF4C650-55EE-4B49-D17B-E3562B397D81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js">
+      <UniqueIdentifier>{AFF4C650-55EE-4B49-D17B-E3562B397D81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js">
+      <UniqueIdentifier>{AFF4C650-55EE-4B49-D17B-E3562B397D81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js">
+      <UniqueIdentifier>{AFF4C650-55EE-4B49-D17B-E3562B397D81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js">
+      <UniqueIdentifier>{AFF4C650-55EE-4B49-D17B-E3562B397D81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js">
+      <UniqueIdentifier>{AFF4C650-55EE-4B49-D17B-E3562B397D81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js">
+      <UniqueIdentifier>{AFF4C650-55EE-4B49-D17B-E3562B397D81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js">
+      <UniqueIdentifier>{AFF4C650-55EE-4B49-D17B-E3562B397D81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js">
+      <UniqueIdentifier>{AFF4C650-55EE-4B49-D17B-E3562B397D81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js">
+      <UniqueIdentifier>{AFF4C650-55EE-4B49-D17B-E3562B397D81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js">
+      <UniqueIdentifier>{AFF4C650-55EE-4B49-D17B-E3562B397D81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js">
+      <UniqueIdentifier>{AFF4C650-55EE-4B49-D17B-E3562B397D81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js">
+      <UniqueIdentifier>{AFF4C650-55EE-4B49-D17B-E3562B397D81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js">
+      <UniqueIdentifier>{AFF4C650-55EE-4B49-D17B-E3562B397D81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js">
+      <UniqueIdentifier>{AFF4C650-55EE-4B49-D17B-E3562B397D81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\debug">
+      <UniqueIdentifier>{FBAE646B-1E91-2C58-956B-A42D67D8DA0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\debug\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\debug">
+      <UniqueIdentifier>{FBAE646B-1E91-2C58-956B-A42D67D8DA0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\debug\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\debug">
+      <UniqueIdentifier>{FBAE646B-1E91-2C58-956B-A42D67D8DA0E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\debug\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js">
+      <UniqueIdentifier>{AFF4C650-55EE-4B49-D17B-E3562B397D81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js">
+      <UniqueIdentifier>{AFF4C650-55EE-4B49-D17B-E3562B397D81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js">
+      <UniqueIdentifier>{AFF4C650-55EE-4B49-D17B-E3562B397D81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js">
+      <UniqueIdentifier>{AFF4C650-55EE-4B49-D17B-E3562B397D81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js">
+      <UniqueIdentifier>{AFF4C650-55EE-4B49-D17B-E3562B397D81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js">
+      <UniqueIdentifier>{AFF4C650-55EE-4B49-D17B-E3562B397D81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js">
+      <UniqueIdentifier>{AFF4C650-55EE-4B49-D17B-E3562B397D81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js">
+      <UniqueIdentifier>{AFF4C650-55EE-4B49-D17B-E3562B397D81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js">
+      <UniqueIdentifier>{AFF4C650-55EE-4B49-D17B-E3562B397D81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js">
+      <UniqueIdentifier>{AFF4C650-55EE-4B49-D17B-E3562B397D81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src">
+      <UniqueIdentifier>{8CDEE807-BC53-E450-C8B8-4DEBB66742D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js">
+      <UniqueIdentifier>{AFF4C650-55EE-4B49-D17B-E3562B397D81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\src\js\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\test">
+      <UniqueIdentifier>{5763B17F-46DA-9ED7-179F-9C9F273B791C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\test\cctest">
+      <UniqueIdentifier>{5139F913-200E-7CD3-AFC7-BE6AC5481F29}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\test\cctest\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..">
+      <UniqueIdentifier>{739DB09A-CC57-A953-A6CF-F64FA08E4FA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\test">
+      <UniqueIdentifier>{5763B17F-46DA-9ED7-179F-9C9F273B791C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\test\cctest">
+      <UniqueIdentifier>{5139F913-200E-7CD3-AFC7-BE6AC5481F29}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="..\..\test\cctest\_excluded_files">
+      <UniqueIdentifier>{158E591E-B6EA-0C85-8F5A-18EAFA09B4CE}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="v8.gyp"/>
+    <None Include="..\..\tools\js2c.py">
+      <Filter>..\..\tools\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\js\macros.py">
+      <Filter>..\..\src\js\_excluded_files</Filter>
+    </None>
+    <ClInclude Include="..\..\src\messages.h">
+      <Filter>..\..\src\_excluded_files</Filter>
+    </ClInclude>
+    <None Include="..\..\src\js\prologue.js">
+      <Filter>..\..\src\js\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\js\runtime.js">
+      <Filter>..\..\src\js\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\js\v8natives.js">
+      <Filter>..\..\src\js\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\js\symbol.js">
+      <Filter>..\..\src\js\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\js\array.js">
+      <Filter>..\..\src\js\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\js\string.js">
+      <Filter>..\..\src\js\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\js\uri.js">
+      <Filter>..\..\src\js\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\js\math.js">
+      <Filter>..\..\src\js\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\third_party\fdlibm\fdlibm.js">
+      <Filter>..\..\src\third_party\fdlibm\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\js\regexp.js">
+      <Filter>..\..\src\js\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\js\arraybuffer.js">
+      <Filter>..\..\src\js\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\js\typedarray.js">
+      <Filter>..\..\src\js\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\js\iterator-prototype.js">
+      <Filter>..\..\src\js\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\js\generator.js">
+      <Filter>..\..\src\js\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\js\object-observe.js">
+      <Filter>..\..\src\js\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\js\collection.js">
+      <Filter>..\..\src\js\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\js\weak-collection.js">
+      <Filter>..\..\src\js\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\js\collection-iterator.js">
+      <Filter>..\..\src\js\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\js\promise.js">
+      <Filter>..\..\src\js\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\js\messages.js">
+      <Filter>..\..\src\js\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\js\json.js">
+      <Filter>..\..\src\js\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\js\array-iterator.js">
+      <Filter>..\..\src\js\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\js\string-iterator.js">
+      <Filter>..\..\src\js\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\js\templates.js">
+      <Filter>..\..\src\js\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\js\spread.js">
+      <Filter>..\..\src\js\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\debug\mirrors.js">
+      <Filter>..\..\src\debug\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\debug\debug.js">
+      <Filter>..\..\src\debug\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\debug\liveedit.js">
+      <Filter>..\..\src\debug\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\js\i18n.js">
+      <Filter>..\..\src\js\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\js\proxy.js">
+      <Filter>..\..\src\js\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\js\harmony-atomics.js">
+      <Filter>..\..\src\js\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\js\harmony-regexp.js">
+      <Filter>..\..\src\js\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\js\harmony-reflect.js">
+      <Filter>..\..\src\js\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\js\harmony-object-observe.js">
+      <Filter>..\..\src\js\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\js\harmony-sharedarraybuffer.js">
+      <Filter>..\..\src\js\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\js\harmony-simd.js">
+      <Filter>..\..\src\js\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\js\harmony-species.js">
+      <Filter>..\..\src\js\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\js\harmony-unicode-regexps.js">
+      <Filter>..\..\src\js\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\src\js\promise-extra.js">
+      <Filter>..\..\src\js\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\test\cctest\test-extra.js">
+      <Filter>..\..\test\cctest\_excluded_files</Filter>
+    </None>
+    <None Include="..\..\test\cctest\test-experimental-extra.js">
+      <Filter>..\..\test\cctest\_excluded_files</Filter>
+    </None>
+  </ItemGroup>
+</Project>

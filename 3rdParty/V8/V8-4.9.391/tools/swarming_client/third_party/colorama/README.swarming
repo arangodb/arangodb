@@ -1,0 +1,13 @@
+Name: colorama
+URL: http://code.google.com/p/colorama
+Version: 5a3100113a3a (0.2.7)
+Revision: 5a3100113a3a
+
+Description:
+Provides a simple cross-platform API to print colored terminal text from Python
+applications.
+
+Additional changes:
+- Kept colorama/ but removed colorama/tests/.
+- Copied LICENSE.txt and README.txt.
+- Converted all the files to LF EOL style.
