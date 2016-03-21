@@ -310,10 +310,6 @@ describe ArangoDB do
         doc.parsed_response['figures']['dead']['count'].should eq(0)
         doc.parsed_response['figures']['alive']['count'].should be_kind_of(Integer)
         doc.parsed_response['figures']['alive']['count'].should eq(0)
-        doc.parsed_response['figures']['shapes']['count'].should be_kind_of(Integer)
-        doc.parsed_response['figures']['shapes']['count'].should eq(0)
-        doc.parsed_response['figures']['attributes']['count'].should be_kind_of(Integer)
-        doc.parsed_response['figures']['attributes']['count'].should >= 0
         doc.parsed_response['figures']['datafiles']['count'].should be_kind_of(Integer)
         doc.parsed_response['figures']['datafiles']['fileSize'].should be_kind_of(Integer)
         doc.parsed_response['figures']['datafiles']['count'].should eq(0)
@@ -323,12 +319,9 @@ describe ArangoDB do
         doc.parsed_response['figures']['compactors']['count'].should be_kind_of(Integer)
         doc.parsed_response['figures']['compactors']['fileSize'].should be_kind_of(Integer)
         doc.parsed_response['figures']['compactors']['count'].should eq(0)
-        doc.parsed_response['figures']['shapefiles']['count'].should be_kind_of(Integer)
-        doc.parsed_response['figures']['shapefiles']['fileSize'].should be_kind_of(Integer)
-        doc.parsed_response['figures']['shapefiles']['count'].should eq(0)
         doc.parsed_response['journalSize'].should be_kind_of(Integer)
               
-        # create a few documents, this should increase counts and number of shapes
+        # create a few documents, this should increase counts
         (0...10).each{|i|
           body = "{ \"test\" : " + i.to_s + " }"
           doc = ArangoDB.log_post("#{prefix}-get-collection-figures", "/_api/document/?collection=" + @cn, :body => body)
@@ -349,12 +342,10 @@ describe ArangoDB do
         doc.parsed_response['figures']['dead']['count'].should eq(0)
         doc.parsed_response['figures']['alive']['count'].should be_kind_of(Integer)
         doc.parsed_response['figures']['alive']['count'].should eq(10)
-        doc.parsed_response['figures']['shapes']['count'].should be_kind_of(Integer)
-        doc.parsed_response['figures']['shapes']['count'].should eq(1)
         doc.parsed_response['figures']['datafiles']['count'].should eq(0)
         doc.parsed_response['figures']['journals']['count'].should eq(1)
 
-        # create a few different documents, this should increase counts and number of shapes
+        # create a few different documents, this should increase counts
         (0...10).each{|i|
           body = "{ \"test" + i.to_s + "\" : 1 }"
           doc = ArangoDB.log_post("#{prefix}-get-collection-figures", "/_api/document/?collection=" + @cn, :body => body)
@@ -375,8 +366,6 @@ describe ArangoDB do
         doc.parsed_response['figures']['dead']['count'].should eq(0)
         doc.parsed_response['figures']['alive']['count'].should be_kind_of(Integer)
         doc.parsed_response['figures']['alive']['count'].should eq(20)
-        doc.parsed_response['figures']['shapes']['count'].should be_kind_of(Integer)
-        doc.parsed_response['figures']['shapes']['count'].should eq(11)
         doc.parsed_response['figures']['datafiles']['count'].should eq(0)
         doc.parsed_response['figures']['journals']['count'].should eq(1)
         
@@ -401,8 +390,6 @@ describe ArangoDB do
         doc.parsed_response['figures']['dead']['count'].should eq(2)
         doc.parsed_response['figures']['alive']['count'].should be_kind_of(Integer)
         doc.parsed_response['figures']['alive']['count'].should eq(18)
-        doc.parsed_response['figures']['shapes']['count'].should be_kind_of(Integer)
-        doc.parsed_response['figures']['shapes']['count'].should eq(11)
         doc.parsed_response['figures']['datafiles']['count'].should eq(0)
         doc.parsed_response['figures']['journals']['count'].should eq(1)
       end

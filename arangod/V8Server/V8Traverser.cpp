@@ -46,22 +46,22 @@ static OperationResult FetchDocumentById(arangodb::Transaction* trx,
                                          std::string const& id,
                                          VPackBuilder& builder,
                                          OperationOptions& options) {
-    std::vector<std::string> parts =
-            arangodb::basics::StringUtils::split(id, "/");
-      TRI_ASSERT(parts.size() == 2);
-      trx->addCollectionAtRuntime(parts[0]);
-      builder.clear();
-      builder.openObject();
-      builder.add(VPackValue(TRI_VOC_ATTRIBUTE_KEY));
-      builder.add(VPackValue(parts[1]));
-      builder.close();
+  std::vector<std::string> parts =
+          arangodb::basics::StringUtils::split(id, "/");
+  TRI_ASSERT(parts.size() == 2);
+  trx->addCollectionAtRuntime(parts[0]);
+  builder.clear();
+  builder.openObject();
+  builder.add(VPackValue(TRI_VOC_ATTRIBUTE_KEY));
+  builder.add(VPackValue(parts[1]));
+  builder.close();
 
-      OperationResult opRes = trx->document(parts[0], builder.slice(), options);
+  OperationResult opRes = trx->document(parts[0], builder.slice(), options);
 
-      if (opRes.failed() && opRes.code != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
-        THROW_ARANGO_EXCEPTION(opRes.code);
-      }
-      return opRes;
+  if (opRes.failed() && opRes.code != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+    THROW_ARANGO_EXCEPTION(opRes.code);
+  }
+  return opRes;
 }
 
 EdgeCollectionInfo::EdgeCollectionInfo(arangodb::Transaction* trx,
@@ -83,12 +83,11 @@ EdgeCollectionInfo::EdgeCollectionInfo(arangodb::Transaction* trx,
 
 std::shared_ptr<OperationCursor> EdgeCollectionInfo::getEdges(
     TRI_edge_direction_e direction, std::string const& vertexId) {
-#warning Make this thread safe s.t. we only need 2 builders.
-  VPackBuilder searchBuilder;
-  EdgeIndex::buildSearchValue(direction, vertexId, searchBuilder);
+  _searchBuilder.clear();
+  EdgeIndex::buildSearchValue(direction, vertexId, _searchBuilder);
   return _trx->indexScan(_collectionName,
                          arangodb::Transaction::CursorType::INDEX, _indexId,
-                         searchBuilder.slice(), 0, UINT64_MAX, 1000, false);
+                         _searchBuilder.slice(), 0, UINT64_MAX, 1000, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -163,8 +162,7 @@ class MultiCollectionEdgeExpander {
           if (cand == candidates.end()) {
             // Add weight
             result.emplace_back(new ArangoDBPathFinder::Step(
-                t, s, currentWeight,
-                edge.get(TRI_VOC_ATTRIBUTE_ID).copyString()));
+                t, s, currentWeight, edgeCollection->trx()->extractIdString(edge)));
             candidates.emplace(t, result.size() - 1);
           } else {
             // Compare weight
@@ -232,8 +230,7 @@ class SimpleEdgeExpander {
       if (cand == candidates.end()) {
         // Add weight
         result.emplace_back(new ArangoDBPathFinder::Step(
-#warning The third parameter has to be replaced by _id content. We need to extract the internal attribute here. Waiting for JAN
-            t, s, currentWeight, edge.get(TRI_VOC_ATTRIBUTE_ID).copyString()));
+            t, s, currentWeight, _edgeCollection->trx()->extractIdString(edge)));
         candidates.emplace(t, result.size() - 1);
       } else {
         // Compare weight
@@ -496,6 +493,9 @@ std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch(
   ArangoDBPathFinder pathFinder(forwardExpander, backwardExpander,
                                 opts.bidirectional);
   std::unique_ptr<ArangoDBPathFinder::Path> path;
+  // New trx api is not thread safe. Two threads only give little performance
+  // gain. Maybe reactivate this in the future (MVCC).
+  opts.multiThreaded = false;
   if (opts.multiThreaded) {
     path.reset(pathFinder.shortestPathTwoThreads(opts.start, opts.end));
   } else {
@@ -851,7 +851,7 @@ bool DepthFirstTraverser::edgeMatchesConditions(VPackSlice e, size_t depth) {
     for (auto const& exp : it->second) {
       TRI_ASSERT(exp != nullptr);
 
-      if (exp->isEdgeAccess && !exp->matchesCheck(e)) {
+      if (exp->isEdgeAccess && !exp->matchesCheck(_trx, e)) {
         ++_filteredPaths;
         return false;
       }
@@ -893,7 +893,7 @@ bool DepthFirstTraverser::vertexMatchesConditions(std::string const& v,
             vertex = it->second;
           }
         }
-        if (!exp->matchesCheck(VPackSlice(vertex->data()))) {
+        if (!exp->matchesCheck(_trx, VPackSlice(vertex->data()))) {
           ++_filteredPaths;
           return false;
         }
@@ -944,7 +944,7 @@ void DepthFirstTraverser::setStartVertex(
             vertex = result.buffer;
             _vertices.emplace(v, vertex);
           }
-          if (!exp->matchesCheck(VPackSlice(vertex->data()))) {
+          if (!exp->matchesCheck(_trx, VPackSlice(vertex->data()))) {
             ++_filteredPaths;
             _done = true;
             return;
@@ -965,7 +965,7 @@ TraversalPath* DepthFirstTraverser::next() {
     _enumerator->prune();
   }
   TRI_ASSERT(!_pruneNext);
-  const EnumeratedPath<std::string, std::string>& path = _enumerator->next();
+  EnumeratedPath<std::string, std::string> const& path = _enumerator->next();
   size_t countEdges = path.edges.size();
   if (countEdges == 0) {
     _done = true;

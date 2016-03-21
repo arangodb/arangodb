@@ -29,12 +29,13 @@
 #include "Aql/AstNode.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
-#include "VocBase/DocumentAccessor.h"
-#include "VocBase/edge-collection.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
+class TransactionContext;
+
 namespace velocypack {
+class Builder;
 class Slice;
 }
 namespace traverser {
@@ -81,7 +82,7 @@ class TraverserExpression {
   bool isEdgeAccess;
   arangodb::aql::AstNodeType comparisonType;
   arangodb::aql::AstNode const* varAccess;
-  std::unique_ptr<arangodb::basics::Json> compareTo;
+  std::unique_ptr<arangodb::velocypack::Builder> compareTo;
 
   TraverserExpression(bool pisEdgeAccess,
                       arangodb::aql::AstNodeType pcomparisonType,
@@ -104,15 +105,7 @@ class TraverserExpression {
 
   void toJson(arangodb::basics::Json& json, TRI_memory_zone_t* zone) const;
 
-  bool matchesCheck(TRI_doc_mptr_t& element,
-                    TRI_document_collection_t* collection,
-                    CollectionNameResolver const* resolver) const;
-
-  bool matchesCheck(TRI_json_t const* element) const;
-
-  bool matchesCheck(arangodb::velocypack::Slice const& element) const;
-
-  bool matchesCheck(DocumentAccessor& accessor) const;
+  bool matchesCheck(arangodb::Transaction*, arangodb::velocypack::Slice const& element) const;
 
  protected:
   TraverserExpression()
@@ -122,7 +115,7 @@ class TraverserExpression {
         compareTo(nullptr) {}
 
  private:
-  bool recursiveCheck(arangodb::aql::AstNode const*, DocumentAccessor&) const;
+  bool recursiveCheck(arangodb::aql::AstNode const*, arangodb::velocypack::Slice&) const;
 
   // Required when creating this expression without AST
   std::vector<std::unique_ptr<arangodb::aql::AstNode const>> _nodeRegister;

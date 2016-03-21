@@ -138,6 +138,7 @@ void TraversalBlock::freeCaches() {
 }
 
 int TraversalBlock::initialize() {
+  DEBUG_BEGIN_BLOCK();
   int res = ExecutionBlock::initialize();
   auto varInfo = getPlanNode()->getRegisterPlan()->varInfo;
 
@@ -161,9 +162,11 @@ int TraversalBlock::initialize() {
   }
 
   return res;
+  DEBUG_END_BLOCK();
 }
 
 void TraversalBlock::executeExpressions() {
+  DEBUG_BEGIN_BLOCK();
   AqlItemBlock* cur = _buffer.front();
   for (auto& map : *_expressions) {
     for (size_t i = 0; i < map.second.size(); ++i) {
@@ -177,16 +180,28 @@ void TraversalBlock::executeExpressions() {
                                              _inRegs[i], mustDestroy);
 
         AqlValueGuard guard(a, mustDestroy);
-        // TODO FIX setting compareTo value!!
-//      it->compareTo.reset(new Json(a.toJson(_trx, myCollection, true)));
-#warning FIX setting compareTo value        
+        
+        AqlValueMaterializer materializer(_trx);
+        VPackSlice slice = materializer.slice(a);
+
+        VPackBuilder* builder = new VPackBuilder;
+        try {
+          builder->add(slice);
+        } catch (...) {
+          delete builder;
+          throw;
+        }
+
+        it->compareTo.reset(builder);
       }
     }
   }
   throwIfKilled();  // check if we were aborted
+  DEBUG_END_BLOCK();
 }
 
 void TraversalBlock::executeFilterExpressions() {
+  DEBUG_BEGIN_BLOCK();
   if (!_expressions->empty()) {
     if (_hasV8Expression) {
       bool const isRunningInCluster =
@@ -236,6 +251,7 @@ void TraversalBlock::executeFilterExpressions() {
       }
     }
   }
+  DEBUG_END_BLOCK();
 }
 
 int TraversalBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
@@ -247,6 +263,7 @@ int TraversalBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TraversalBlock::morePaths(size_t hint) {
+  DEBUG_BEGIN_BLOCK();
   freeCaches();
   _posInPaths = 0;
   if (!_traverser->hasMore()) {
@@ -288,6 +305,7 @@ bool TraversalBlock::morePaths(size_t hint) {
   _engine->_stats.filtered += _traverser->getAndResetFilteredPaths();
   // This is only save as long as _vertices is still build
   return !_vertices.empty();
+  DEBUG_END_BLOCK();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -295,12 +313,14 @@ bool TraversalBlock::morePaths(size_t hint) {
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t TraversalBlock::skipPaths(size_t hint) {
+  DEBUG_BEGIN_BLOCK();
   freeCaches();
   _posInPaths = 0;
   if (!_traverser->hasMore()) {
     return 0;
   }
   return _traverser->skip(hint);
+  DEBUG_END_BLOCK();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -308,6 +328,7 @@ size_t TraversalBlock::skipPaths(size_t hint) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TraversalBlock::initializePaths(AqlItemBlock const* items) {
+  DEBUG_BEGIN_BLOCK();
   if (!_vertices.empty()) {
     // No Initialization required.
     return;
@@ -335,7 +356,7 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items) {
       catch (...) {
         // _id or _key not present... ignore this error and fall through
       }
-    } else if (in.slice().isString()) {
+    } else if (in.isString()) {
       _vertexId = in.slice().copyString();
       _traverser->setStartVertex(_vertexId);
     } else {
@@ -345,6 +366,7 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items) {
                                            "allowed");
     }
   }
+  DEBUG_END_BLOCK();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -353,6 +375,7 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items) {
 
 AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
                                       size_t atMost) {
+  DEBUG_BEGIN_BLOCK();
   if (_done) {
     return nullptr;
   }
@@ -446,6 +469,7 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
   return res.release();
+  DEBUG_END_BLOCK();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -453,6 +477,7 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t TraversalBlock::skipSome(size_t atLeast, size_t atMost) {
+  DEBUG_BEGIN_BLOCK();
   size_t skipped = 0;
 
   if (_done) {
@@ -492,4 +517,5 @@ size_t TraversalBlock::skipSome(size_t atLeast, size_t atMost) {
   _posInPaths += atMost;
   // Skip the next atMost many paths.
   return atMost;
+  DEBUG_END_BLOCK();
 }

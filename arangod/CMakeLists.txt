@@ -249,7 +249,6 @@ add_executable(${BIN_ARANGOD}
   V8Server/v8-vocindex.cpp
   VocBase/DatafileStatistics.cpp
   VocBase/Ditch.cpp
-  VocBase/DocumentAccessor.cpp
   VocBase/ExampleMatcher.cpp
   VocBase/Graphs.cpp
   VocBase/KeyGenerator.cpp
@@ -260,7 +259,6 @@ add_executable(${BIN_ARANGOD}
   VocBase/compactor.cpp
   VocBase/datafile.cpp
   VocBase/document-collection.cpp
-  VocBase/edge-collection.cpp
   VocBase/MasterPointers.cpp
   VocBase/replication-applier.cpp
   VocBase/replication-common.cpp

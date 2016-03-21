@@ -28,7 +28,6 @@
 #include "Basics/AssocMulti.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
-#include "VocBase/edge-collection.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
@@ -158,14 +157,6 @@ class EdgeIndex final : public Index {
 
   int remove(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
              bool) override final;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief looks up edges using the index, restarting at the edge pointed at
-  /// by next
-  //////////////////////////////////////////////////////////////////////////////
-
-  void lookup(arangodb::Transaction*, TRI_edge_index_iterator_t const*,
-              std::vector<TRI_doc_mptr_t>&, TRI_doc_mptr_t*&, size_t);
 
   int batchInsert(arangodb::Transaction*,
                   std::vector<TRI_doc_mptr_t const*> const*,

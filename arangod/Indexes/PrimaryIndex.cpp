@@ -114,7 +114,9 @@ TRI_doc_mptr_t* AnyIndexIterator::next() {
 }
 
 void AnyIndexIterator::reset() {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  _step = 0;
+  _total = 0;
+  _position = _initial;
 }
 
 

@@ -47,6 +47,7 @@ SortBlock::~SortBlock() {}
 int SortBlock::initialize() { return ExecutionBlock::initialize(); }
 
 int SortBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
+  DEBUG_BEGIN_BLOCK();  
   int res = ExecutionBlock::initializeCursor(items, pos);
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -66,9 +67,11 @@ int SortBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   _pos = 0;
 
   return TRI_ERROR_NO_ERROR;
+  DEBUG_END_BLOCK();  
 }
 
 void SortBlock::doSorting() {
+  DEBUG_BEGIN_BLOCK();  
   // coords[i][j] is the <j>th row of the <i>th block
   std::vector<std::pair<size_t, size_t>> coords;
 
@@ -221,6 +224,7 @@ void SortBlock::doSorting() {
   for (auto& x : newbuffer) {
     delete x;
   }
+  DEBUG_END_BLOCK();  
 }
 
 bool SortBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,

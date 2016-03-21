@@ -30,7 +30,6 @@
 #include "Basics/MutexLocker.h"
 
 #include <deque>
-#include <functional>
 #include <stack>
 #include <thread>
 

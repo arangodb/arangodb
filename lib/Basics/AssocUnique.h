@@ -258,7 +258,7 @@ class AssocUnique {
   //////////////////////////////////////////////////////////////////////////////
 
   bool checkResize(UserData* userData, Bucket& b, uint64_t expected) {
-    if (2 * (b._nrAlloc + expected) < 3 * b._nrUsed) {
+    if (2 * b._nrAlloc < 3 * (b._nrUsed + expected)) {
       try {
         resizeInternal(userData, b, 2 * (b._nrAlloc + expected) + 1, false);
       } catch (...) {

@@ -110,8 +110,8 @@ describe ArangoDB do
         id2 = doc.parsed_response['_id']
 
         # create edge
-        cmd = "/_api/edge?collection=#{@ce}&from=#{id1}&to=#{id2}"
-        body = "{}"
+        cmd = "/_api/document?collection=#{@ce}"
+        body = "{\"_from\":\"#{id1}\",\"_to\":\"#{id2}\"}"
         doc = ArangoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
 
         doc.code.should eq(201)
@@ -123,7 +123,7 @@ describe ArangoDB do
         id3 = doc.parsed_response['_id']
 
         # check edge
-        cmd = "/_api/edge/#{id3}"
+        cmd = "/_api/document/#{id3}"
         doc = ArangoDB.log_get("#{prefix}-read-edge", cmd)
 
         doc.code.should eq(200)
@@ -133,8 +133,8 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         
         # create another edge
-        cmd = "/_api/edge?collection=#{@ce}&from=#{id1}&to=#{id2}"
-        body = "{ \"e\" : 1 }"
+        cmd = "/_api/document?collection=#{@ce}"
+        body = "{ \"e\" : 1, \"_from\" : \"#{id1}\", \"_to\": \"#{id2}\" }"
         doc = ArangoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
 
         doc.code.should eq(201)
@@ -144,7 +144,7 @@ describe ArangoDB do
         id4 = doc.parsed_response['_id']
 
         # check edge
-        cmd = "/_api/edge/#{id4}"
+        cmd = "/_api/document/#{id4}"
         doc = ArangoDB.log_get("#{prefix}-read-edge", cmd)
 
         doc.code.should eq(200)
@@ -161,8 +161,8 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
         # create third edge
-        cmd = "/_api/edge?collection=#{@ce}&from=#{id2}&to=#{id1}"
-        body = "{ \"e\" : 2 }"
+        cmd = "/_api/document?collection=#{@ce}"
+        body = "{ \"e\" : 2, \"_from\" : \"#{id2}\", \"_to\" : \"#{id1}\" }"
         doc = ArangoDB.log_post("#{prefix}-create-edge", cmd, :body => body)
 
         doc.code.should eq(201)
@@ -174,7 +174,7 @@ describe ArangoDB do
         id5 = doc.parsed_response['_id']
 
         # check edge
-        cmd = "/_api/edge/#{id5}"
+        cmd = "/_api/document/#{id5}"
         doc = ArangoDB.log_get("#{prefix}-read-edge", cmd)
 
         doc.code.should eq(200)

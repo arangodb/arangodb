@@ -267,7 +267,7 @@ class Transaction {
   /// @brief add a collection to the transaction for read, at runtime
   //////////////////////////////////////////////////////////////////////////////
 
-  void addCollectionAtRuntime(TRI_voc_cid_t cid) {
+  void addCollectionAtRuntime(TRI_voc_cid_t cid, std::string const& collectionName) {
     auto collection = this->trxCollection(cid);
 
     if (collection == nullptr) {
@@ -281,8 +281,8 @@ class Transaction {
       collection = this->trxCollection(cid);
 
       if (collection == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "collection is a nullptr");
+        THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
+                                      collectionName.c_str());
       }
     }
   }
@@ -482,6 +482,14 @@ class Transaction {
   int setupState() { return _setupState; }
   
   TRI_document_collection_t* documentCollection(TRI_voc_cid_t) const;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get the index by its identifier. Will either throw or
+  ///        return a valid index. nullptr is impossible.
+  //////////////////////////////////////////////////////////////////////////////
+
+  arangodb::Index* getIndexByIdentifier(std::string const& collectionName,
+                                        std::string const& indexId);
 
  private:
   
@@ -568,7 +576,7 @@ class Transaction {
   
   OperationResult countCoordinator(std::string const& collectionName);
   OperationResult countLocal(std::string const& collectionName);
-
+  
  protected:
 
   //////////////////////////////////////////////////////////////////////////////
@@ -645,14 +653,6 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   std::vector<arangodb::Index*> indexesForCollection(std::string const&) const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get the index by it's identifier. Will either throw or
-  ///        return a valid index. nullptr is impossible.
-  //////////////////////////////////////////////////////////////////////////////
-
-  arangodb::Index* getIndexByIdentifier(std::string const& collectionName,
-                                        std::string const& indexId);
 
  private:
 

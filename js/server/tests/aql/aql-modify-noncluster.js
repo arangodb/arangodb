@@ -3675,7 +3675,7 @@ function ahuacatlUpdateSuite () {
       db._drop("UnitTestsAhuacatlEdge");
       var edge = db._createEdgeCollection("UnitTestsAhuacatlEdge"); 
 
-      assertQueryError(errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, "FOR i IN 1..50 UPSERT { foo: 1 } INSERT { foo: 'bar'} UPDATE { } INTO @@cn", { "@cn": edge.name() });
+      assertQueryError(errors.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code, "FOR i IN 1..50 UPSERT { foo: 1 } INSERT { foo: 'bar'} UPDATE { } INTO @@cn", { "@cn": edge.name() });
       assertEqual(0, edge.count());
 
       db._drop("UnitTestsAhuacatlEdge");
@@ -3689,7 +3689,7 @@ function ahuacatlUpdateSuite () {
       db._drop("UnitTestsAhuacatlEdge");
       var edge = db._createEdgeCollection("UnitTestsAhuacatlEdge"); 
 
-      assertQueryError(errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, "FOR i IN 1..50 UPSERT { foo: 1 } INSERT { _to: CONCAT('UnitTestsAhuacatlUpdate1/', TO_STRING(i)) } UPDATE { } INTO @@cn", { "@cn": edge.name() });
+      assertQueryError(errors.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code, "FOR i IN 1..50 UPSERT { foo: 1 } INSERT { _to: CONCAT('UnitTestsAhuacatlUpdate1/', TO_STRING(i)) } UPDATE { } INTO @@cn", { "@cn": edge.name() });
       assertEqual(0, edge.count());
 
       db._drop("UnitTestsAhuacatlEdge");
@@ -3703,7 +3703,7 @@ function ahuacatlUpdateSuite () {
       db._drop("UnitTestsAhuacatlEdge");
       var edge = db._createEdgeCollection("UnitTestsAhuacatlEdge"); 
 
-      assertQueryError(errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, "FOR i IN 1..50 UPSERT { foo: 1 } INSERT { _from: CONCAT('UnitTestsAhuacatlUpdate1/', TO_STRING(i)) } UPDATE { } INTO @@cn", { "@cn": edge.name() });
+      assertQueryError(errors.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code, "FOR i IN 1..50 UPSERT { foo: 1 } INSERT { _from: CONCAT('UnitTestsAhuacatlUpdate1/', TO_STRING(i)) } UPDATE { } INTO @@cn", { "@cn": edge.name() });
       assertEqual(0, edge.count());
 
       db._drop("UnitTestsAhuacatlEdge");

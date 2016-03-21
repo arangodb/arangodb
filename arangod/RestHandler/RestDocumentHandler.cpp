@@ -517,9 +517,9 @@ bool RestDocumentHandler::deleteDocument() {
   }
 
   // extract the revision if single document case
-  bool isValidRevision = false;
   TRI_voc_rid_t revision = 0;
   if (suffix.size() == 2) {
+    bool isValidRevision = false;
     revision = extractRevision("if-match", nullptr, isValidRevision);
     if (!isValidRevision) {
       generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,

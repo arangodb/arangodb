@@ -659,12 +659,7 @@ static void RegisterCollectionInTransaction(
     arangodb::AqlTransaction* trx, std::string const& collectionName,
     TRI_voc_cid_t& cid) {
   cid = trx->resolver()->getCollectionIdLocal(collectionName);
-
-  if (cid == 0) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
-                                  collectionName.c_str());
-  }
-  trx->addCollectionAtRuntime(cid);
+  trx->addCollectionAtRuntime(cid, collectionName);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -868,7 +863,7 @@ static AqlValue VertexIdsToAqlValueVPack(arangodb::aql::Query* query,
 static arangodb::Index* getGeoIndex(arangodb::AqlTransaction* trx,
                                     TRI_voc_cid_t const& cid,
                                     std::string const& colName) {
-  trx->addCollectionAtRuntime(cid);
+  trx->addCollectionAtRuntime(cid, colName);
 
   auto document = trx->documentCollection(cid);
 
@@ -2281,7 +2276,7 @@ AqlValue Functions::Neighbors(arangodb::aql::Query* query,
   TRI_voc_cid_t eCid = trx->resolver()->getCollectionIdLocal(eColName);
 
   // ensure the collection is loaded
-  trx->addCollectionAtRuntime(eCid);
+  trx->addCollectionAtRuntime(eCid, eColName);
 
   // Function to return constant distance
   auto wc = [](VPackSlice) -> double { return 1; };
@@ -3432,11 +3427,7 @@ AqlValue Functions::CollectionCount(
 
   auto resolver = trx->resolver();
   TRI_voc_cid_t cid = resolver->getCollectionIdLocal(colName);
-  if (cid == 0) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-  }
-
-  trx->addCollectionAtRuntime(cid);
+  trx->addCollectionAtRuntime(cid, colName);
   auto document = trx->documentCollection(cid);
 
   if (document == nullptr) {
@@ -3877,7 +3868,7 @@ AqlValue Functions::Fulltext(arangodb::aql::Query* query,
 
   auto resolver = trx->resolver();
   TRI_voc_cid_t cid = resolver->getCollectionIdLocal(colName);
-  trx->addCollectionAtRuntime(cid);
+  trx->addCollectionAtRuntime(cid, colName);
 
   auto document = trx->documentCollection(cid);
 

@@ -19,6 +19,9 @@ Overview
  5. Query-parameters "policy" and "rev" withdrawn in replace()/update()
 
  6. /_api/edge withdrawn
+    use /_api/document instead
+    Attributes `_from` and `_to` for edges must be passed inside the
+    document body and not as URL parameters `from` and `to`
 
  7. <collection>.BY_EXAMPLE_HASH , <collection>.BY_EXAMPLE_SKIPLIST,
     <collection>.BY_CONDITION_SKIPLIST deleted.
@@ -28,6 +31,23 @@ Overview
 
  9. <collection>.exists now throws an error if there is a revision
     conflict
+
+10. replacing an edge in an edge collection now requires the specification
+    of both the `_from` and `_to` attributes. In 2.8 it was not required
+    to specify `_from` and `_to` when replacing an edge.
+
+11. /_api/collection/figures will not return the following result attributes:
+    - shapefiles.count
+    - shapes.fileSize
+    - shapes.count
+    - shapes.size
+    - attributes.count
+    - attributes.size
+
+12. the `checksum` attribute returned by GET /_api/collection/<collection>/figures
+    now is returned as a string value. It was returned as a number value in previous
+    versions. Additionally the checksum calculation algorithm was changed in 3.0,
+    so 3.0 will create different checksums than previous versions for the same data.
 
 ### New capabilities:
 

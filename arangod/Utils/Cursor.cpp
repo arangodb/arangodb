@@ -27,6 +27,7 @@
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Utils/CollectionExport.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/StandaloneTransactionContext.h"
 #include "Utils/TransactionContext.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
@@ -124,6 +125,8 @@ void JsonCursor::dump(arangodb::basics::StringBuffer& buffer) {
   // if the specified batch size does not get out of hand
   // otherwise specifying a very high batch size would make the allocation fail
   // in every case, even if there were much less documents in the collection
+  auto transactionContext = std::make_shared<StandaloneTransactionContext>(_vocbase);
+
   if (n <= 50000) {
     int res = buffer.reserve(n * 48);
 
@@ -148,7 +151,7 @@ void JsonCursor::dump(arangodb::basics::StringBuffer& buffer) {
 
     arangodb::basics::VPackStringBufferAdapter bufferAdapter(
         buffer.stringBuffer());
-    VPackDumper dumper(&bufferAdapter);
+    VPackDumper dumper(&bufferAdapter, transactionContext->getVPackOptions());
     try {
       dumper.dump(row);
     } catch (...) {
@@ -277,17 +280,13 @@ static bool IncludeAttribute(
 ////////////////////////////////////////////////////////////////////////////////
 
 void ExportCursor::dump(arangodb::basics::StringBuffer& buffer) {
-  auto resolver = std::make_unique<CollectionNameResolver>(_vocbase);
-  std::unique_ptr<VPackCustomTypeHandler> customTypeHandler(TransactionContext::createCustomTypeHandler(_vocbase, resolver.get()));
+  auto transactionContext = std::make_shared<StandaloneTransactionContext>(_vocbase);
+  VPackOptions* options = transactionContext->getVPackOptions();
 
   TRI_ASSERT(_ex != nullptr);
   auto const restrictionType = _ex->_restrictions.type;
 
   buffer.appendText("\"result\":[");
-
-  // copy original options
-  VPackOptions options = VPackOptions::Defaults;
-  options.customTypeHandler = customTypeHandler.get(); 
 
   VPackBuilder result;
 
@@ -318,18 +317,24 @@ void ExportCursor::dump(arangodb::basics::StringBuffer& buffer) {
           continue;
         }
         // If we get here we need this entry in the final result
-        result.add(key, entry.value);
+        if (entry.value.isCustom()) {
+          result.add(key, VPackValue(options->customTypeHandler->toString(entry.value, options, slice)));
+        } else {
+          result.add(key, entry.value);
+        }
       }
-      // append the internal attributes
     }
 
     arangodb::basics::VPackStringBufferAdapter bufferAdapter(buffer.stringBuffer());
 
     try {
-      VPackDumper dumper(&bufferAdapter, &options);
+      VPackDumper dumper(&bufferAdapter, options);
       dumper.dump(result.slice());
+    } catch (arangodb::basics::Exception const& ex) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(ex.code(), ex.what());
+    } catch (std::exception const& ex) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ex.what());
     } catch (...) {
-      /// TODO correct error Handling!
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
   }

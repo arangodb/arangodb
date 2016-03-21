@@ -86,6 +86,7 @@ arangodb::aql::AstNode* IndexBlock::makeUnique(
 }
 
 void IndexBlock::executeExpressions() {
+  DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(_condition != nullptr);
 
   // The following are needed to evaluate expressions with local data from
@@ -114,9 +115,11 @@ void IndexBlock::executeExpressions() {
         ->getMember(toReplace->andMember)
         ->changeMember(toReplace->operatorMember, evaluatedNode);
   }
+  DEBUG_END_BLOCK();
 }
 
 int IndexBlock::initialize() {
+  DEBUG_BEGIN_BLOCK();
   int res = ExecutionBlock::initialize();
 
   cleanupNonConstExpressions();
@@ -203,6 +206,7 @@ int IndexBlock::initialize() {
   }
 
   return res;
+  DEBUG_END_BLOCK();
 }
 
 // init the ranges for reading, this should be called once per new incoming
@@ -222,6 +226,7 @@ int IndexBlock::initialize() {
 // _pos to evaluate the variable bounds.
 
 bool IndexBlock::initIndexes() {
+  DEBUG_BEGIN_BLOCK();
   // We start with a different context. Return documents found in the previous
   // context again.
   _alreadyReturned.clear();
@@ -304,6 +309,7 @@ bool IndexBlock::initIndexes() {
     }
   }
   return true;
+  DEBUG_END_BLOCK();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -311,22 +317,26 @@ bool IndexBlock::initIndexes() {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<arangodb::OperationCursor> IndexBlock::createCursor() {
+  DEBUG_BEGIN_BLOCK();
   IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
   auto outVariable = node->outVariable();
   auto ast = node->_plan->getAst();
+  
+  AstNode const* conditionNode = nullptr;
+  if (_condition != nullptr) {
+    TRI_ASSERT(_indexes.size() == _condition->numMembers());
+    TRI_ASSERT(_condition->numMembers() > _currentIndex);
 
-  if (_condition == nullptr) {
-    return ast->query()->trx()->indexScanForCondition(
-        _collection->getName(), _indexes[_currentIndex], ast, nullptr,
-        outVariable, UINT64_MAX, TRI_DEFAULT_BATCH_SIZE, node->_reverse);
+    conditionNode = _condition->getMember(_currentIndex);
   }
-
-  TRI_ASSERT(_indexes.size() == _condition->numMembers());
+  
+  TRI_ASSERT(_indexes.size() > _currentIndex);
 
   return ast->query()->trx()->indexScanForCondition(
           _collection->getName(), _indexes[_currentIndex], ast,
-          _condition->getMember(_currentIndex), outVariable, UINT64_MAX,
+          conditionNode, outVariable, UINT64_MAX,
           TRI_DEFAULT_BATCH_SIZE, node->_reverse);
+  DEBUG_END_BLOCK();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -334,6 +344,7 @@ std::shared_ptr<arangodb::OperationCursor> IndexBlock::createCursor() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void IndexBlock::startNextCursor() {
+  DEBUG_BEGIN_BLOCK();
 
   IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
   if (node->_reverse) {
@@ -347,11 +358,13 @@ void IndexBlock::startNextCursor() {
   } else {
     _cursor = nullptr;
   }
+  DEBUG_END_BLOCK();
 }
 
 // this is called every time everything in _documents has been passed on
 
 bool IndexBlock::readIndex(size_t atMost) {
+  DEBUG_BEGIN_BLOCK();
   // this is called every time we want more in _documents.
   // For the primary key index, this only reads the index once, and never
   // again (although there might be multiple calls to this function).
@@ -416,9 +429,11 @@ bool IndexBlock::readIndex(size_t atMost) {
   }
   _posInDocs = 0;
   return (!_documents.empty());
+  DEBUG_END_BLOCK();
 }
 
 int IndexBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
+  DEBUG_BEGIN_BLOCK();
   int res = ExecutionBlock::initializeCursor(items, pos);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -428,6 +443,7 @@ int IndexBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   _posInDocs = 0;
 
   return TRI_ERROR_NO_ERROR;
+  DEBUG_END_BLOCK();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -435,6 +451,7 @@ int IndexBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
+  DEBUG_BEGIN_BLOCK();
   if (_done) {
     return nullptr;
   }
@@ -528,6 +545,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
   return res.release();
+  DEBUG_END_BLOCK();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -535,6 +553,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t IndexBlock::skipSome(size_t atLeast, size_t atMost) {
+  DEBUG_BEGIN_BLOCK();
   if (_done) {
     return 0;
   }
@@ -589,6 +608,7 @@ size_t IndexBlock::skipSome(size_t atLeast, size_t atMost) {
   }
 
   return skipped;
+  DEBUG_END_BLOCK();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

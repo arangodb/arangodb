@@ -159,10 +159,10 @@ SimpleQueryRange.prototype.execute = function () {
   };
 
   if (this._type === 0) {
-    query += "FILTER doc.@attribute >= @left && doc.attribute < @right ";
+    query += "FILTER doc.@attribute >= @left && doc.@attribute < @right ";
   }
   else if (this._type === 1) {
-    query += "FILTER doc.@attribute >= @left && doc.attribute <= @right ";
+    query += "FILTER doc.@attribute >= @left && doc.@attribute <= @right ";
   }
   else {
     throw "unknown type";
@@ -321,7 +321,7 @@ SimpleQueryFulltext.prototype.execute = function () {
 
   var documents = require("internal").db._query({ query, bindVars }).toArray();
 
-  this._execution = new GeneralArrayCursor(documents.documents);
+  this._execution = new GeneralArrayCursor(documents);
   this._countQuery = documents.length - this._skip;
   this._countTotal = documents.length;
 };

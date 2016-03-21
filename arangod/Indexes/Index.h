@@ -107,6 +107,9 @@ struct TRI_index_element_t {
     void* space = TRI_Allocate(
         TRI_UNKNOWN_MEM_ZONE,
         sizeof(TRI_doc_mptr_t*) + (sizeof(TRI_vpack_sub_t) * numSubs), false);
+    if (space == nullptr) {
+      return nullptr;
+    }
     // FIXME: catch nullptr case?
     return new (space) TRI_index_element_t();
   }

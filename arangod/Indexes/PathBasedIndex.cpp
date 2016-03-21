@@ -23,6 +23,7 @@
 
 #include "PathBasedIndex.h"
 #include "Aql/AstNode.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
 
 #include <velocypack/Iterator.h>
@@ -212,7 +213,7 @@ std::vector<VPackSlice> PathBasedIndex::buildIndexValue(
     TRI_ASSERT(!_paths[i].empty());
 
     VPackSlice slice = documentSlice.get(_paths[i]);
-    if (slice.isNone()) {
+    if (slice.isNone() || slice.isNull()) {
       // attribute not found
       if (_sparse) {
         // if sparse we do not have to index, this is indicated by result
@@ -220,10 +221,11 @@ std::vector<VPackSlice> PathBasedIndex::buildIndexValue(
         result.clear();
         break;
       }
-      slice.set(reinterpret_cast<uint8_t const*>("\0x18"));   
-        // null, note that this will be copied later!
+      // null, note that this will be copied later!
+      result.emplace_back(arangodb::basics::VelocyPackHelper::NullValue());
+    } else {
+      result.emplace_back(slice);
     }
-    result.push_back(slice);
   }
   return result;
 }

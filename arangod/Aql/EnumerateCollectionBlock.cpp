@@ -63,6 +63,7 @@ void EnumerateCollectionBlock::initializeDocuments() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool EnumerateCollectionBlock::skipDocuments(size_t toSkip, size_t& skipped) {
+  DEBUG_BEGIN_BLOCK();  
   throwIfKilled();  // check if we were aborted
   uint64_t skippedHere = 0;
 
@@ -85,6 +86,7 @@ bool EnumerateCollectionBlock::skipDocuments(size_t toSkip, size_t& skipped) {
   }
   // _scanner might have more elements
   return true;
+  DEBUG_END_BLOCK();  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -92,6 +94,7 @@ bool EnumerateCollectionBlock::skipDocuments(size_t toSkip, size_t& skipped) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool EnumerateCollectionBlock::moreDocuments(size_t hint) {
+  DEBUG_BEGIN_BLOCK();  
   if (hint < DefaultBatchSize) {
     hint = DefaultBatchSize;
   }
@@ -118,26 +121,33 @@ bool EnumerateCollectionBlock::moreDocuments(size_t hint) {
   _posInDocuments = 0;
 
   return true;
+  DEBUG_END_BLOCK();  
 }
 
 int EnumerateCollectionBlock::initialize() {
+  DEBUG_BEGIN_BLOCK();  
   auto ep = static_cast<EnumerateCollectionNode const*>(_exeNode);
   _mustStoreResult = ep->isVarUsedLater(ep->_outVariable);
 
   return ExecutionBlock::initialize();
+  DEBUG_END_BLOCK();  
 }
 
 int EnumerateCollectionBlock::initializeCursor(AqlItemBlock* items,
                                                size_t pos) {
+  DEBUG_BEGIN_BLOCK();  
   int res = ExecutionBlock::initializeCursor(items, pos);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
+  DEBUG_BEGIN_BLOCK();  
   initializeDocuments();
+  DEBUG_END_BLOCK();  
 
   return TRI_ERROR_NO_ERROR;
+  DEBUG_END_BLOCK();  
 }
 
 ////////////////////////////////////////////////////////////////////////////////

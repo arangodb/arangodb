@@ -25,7 +25,6 @@
 #define ARANGOD_V8_SERVER_V8_TRAVERSER_H 1
 
 #include "Utils/ExplicitTransaction.h"
-#include "VocBase/edge-collection.h"
 #include "VocBase/ExampleMatcher.h"
 #include "VocBase/Traverser.h"
 
@@ -81,10 +80,10 @@ struct BasicOptions {
   std::unordered_map<std::string, arangodb::ExampleMatcher*> _edgeFilter;
   std::unordered_map<std::string, arangodb::ExampleMatcher*> _vertexFilter;
 
-  BasicOptions(arangodb::Transaction* trx)
+  explicit BasicOptions(arangodb::Transaction* trx)
       : _trx(trx), useEdgeFilter(false), useVertexFilter(false) {}
 
-  ~BasicOptions() {
+  virtual ~BasicOptions() {
     // properly clean up the mess
     for (auto& it : _edgeFilter) {
       delete it.second;
@@ -133,7 +132,7 @@ struct NeighborsOptions : BasicOptions {
   uint64_t minDepth;
   uint64_t maxDepth;
 
-  NeighborsOptions(arangodb::Transaction* trx)
+  explicit NeighborsOptions(arangodb::Transaction* trx)
       : BasicOptions(trx), direction(TRI_EDGE_OUT), minDepth(1), maxDepth(1) {}
 
   bool matchesVertex(std::string const&, std::string const&,
@@ -154,7 +153,7 @@ struct ShortestPathOptions : BasicOptions {
   bool multiThreaded;
   std::string end;
 
-  ShortestPathOptions(arangodb::Transaction* trx)
+  explicit ShortestPathOptions(arangodb::Transaction* trx)
       : BasicOptions(trx),
         direction("outbound"),
         useWeight(false),
@@ -406,6 +405,13 @@ class EdgeCollectionInfo {
 
   std::string _indexId;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Temporary builder for index search values
+  ///        NOTE: Single search builder is NOT thread-save
+  //////////////////////////////////////////////////////////////////////////////
+
+  VPackBuilder _searchBuilder;
+
   WeightCalculatorFunction _weighter;
 
  public:
@@ -421,6 +427,8 @@ class EdgeCollectionInfo {
       TRI_edge_direction_e direction, std::string const&);
 
   double weightEdge(arangodb::velocypack::Slice const);
+  
+  arangodb::Transaction* trx() const { return _trx; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Return name of the wrapped collection

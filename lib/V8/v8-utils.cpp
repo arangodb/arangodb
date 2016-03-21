@@ -1546,15 +1546,12 @@ static void JS_ZipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Handle<v8::Array> files = v8::Handle<v8::Array>::Cast(args[2]);
 
   int res = TRI_ERROR_NO_ERROR;
-  TRI_vector_string_t filenames;
-  TRI_InitVectorString(&filenames, TRI_UNKNOWN_MEM_ZONE);
+  std::vector<std::string> filenames;
 
   for (uint32_t i = 0; i < files->Length(); ++i) {
     v8::Handle<v8::Value> file = files->Get(i);
     if (file->IsString()) {
-      std::string fname = TRI_ObjectToString(file);
-      TRI_PushBackVectorString(
-          &filenames, TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, fname.c_str()));
+      filenames.emplace_back(TRI_ObjectToString(file));
     } else {
       res = TRI_ERROR_BAD_PARAMETER;
       break;
@@ -1562,8 +1559,6 @@ static void JS_ZipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_DestroyVectorString(&filenames);
-
     TRI_V8_THROW_EXCEPTION_USAGE(
         "zipFile(<filename>, <chdir>, <files>, <password>)");
   }
@@ -1575,8 +1570,7 @@ static void JS_ZipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
     p = password.c_str();
   }
 
-  res = TRI_ZipFile(filename.c_str(), dir.c_str(), &filenames, p);
-  TRI_DestroyVectorString(&filenames);
+  res = TRI_ZipFile(filename.c_str(), dir.c_str(), filenames, p);
 
   if (res == TRI_ERROR_NO_ERROR) {
     TRI_V8_RETURN_TRUE();

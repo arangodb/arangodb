@@ -39,7 +39,7 @@ struct OperationResult {
   }
 
   explicit OperationResult(int code) 
-      : customTypeHandler(), code(code), wasSynchronous(false) { 
+      : buffer(nullptr), customTypeHandler(), code(code), wasSynchronous(false) { 
     buffer = std::make_shared<VPackBuffer<uint8_t>>();
     if (code != TRI_ERROR_NO_ERROR) {
       errorMessage = TRI_errno_string(code);

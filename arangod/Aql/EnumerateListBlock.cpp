@@ -57,6 +57,7 @@ EnumerateListBlock::~EnumerateListBlock() {}
 int EnumerateListBlock::initialize() { return ExecutionBlock::initialize(); }
 
 int EnumerateListBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
+  DEBUG_BEGIN_BLOCK();  
   int res = ExecutionBlock::initializeCursor(items, pos);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -69,9 +70,11 @@ int EnumerateListBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   _seen = 0;       // the sum of the sizes of the blocks in the _inVariable
 
   return TRI_ERROR_NO_ERROR;
+  DEBUG_END_BLOCK();  
 }
 
 AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
+  DEBUG_BEGIN_BLOCK();  
   if (_done) {
     return nullptr;
   }
@@ -169,9 +172,11 @@ AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
   return res.release();
+  DEBUG_END_BLOCK();  
 }
 
 size_t EnumerateListBlock::skipSome(size_t atLeast, size_t atMost) {
+  DEBUG_BEGIN_BLOCK();  
   if (_done) {
     return 0;
   }
@@ -227,6 +232,7 @@ size_t EnumerateListBlock::skipSome(size_t atLeast, size_t atMost) {
     }
   }
   return skipped;
+  DEBUG_END_BLOCK();  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -234,6 +240,7 @@ size_t EnumerateListBlock::skipSome(size_t atLeast, size_t atMost) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue EnumerateListBlock::getAqlValue(AqlValue const& inVarReg, bool& mustDestroy) {
+  DEBUG_BEGIN_BLOCK();  
   TRI_IF_FAILURE("EnumerateListBlock::getAqlValue") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -251,6 +258,7 @@ AqlValue EnumerateListBlock::getAqlValue(AqlValue const& inVarReg, bool& mustDes
   }
 
   return inVarReg.at(_index++, mustDestroy, true);
+  DEBUG_END_BLOCK();  
 }
 
 void EnumerateListBlock::throwArrayExpectedException() {
