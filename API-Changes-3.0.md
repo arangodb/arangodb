@@ -19,6 +19,9 @@ Overview
  5. Query-parameters "policy" and "rev" withdrawn in replace()/update()
 
  6. /_api/edge withdrawn
+    use /_api/document instead
+    Attributes `_from` and `_to` for edges must be passed inside the
+    document body and not as URL parameters `from` and `to`
 
  7. <collection>.BY_EXAMPLE_HASH , <collection>.BY_EXAMPLE_SKIPLIST,
     <collection>.BY_CONDITION_SKIPLIST deleted.
