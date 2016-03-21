@@ -2362,6 +2362,10 @@ static void JS_QueryNeighbors(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
+  for (auto const& it : vertexCollectionNames) {
+    opts.addCollectionRestriction(it);
+  }
+
   std::unordered_set<std::string> neighbors;
 
   if (opts.useEdgeFilter) {
