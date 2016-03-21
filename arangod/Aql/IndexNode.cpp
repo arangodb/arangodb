@@ -57,10 +57,12 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
 
   nodes.add(VPackValue("indexes"));
   {
-#warning Old Implementation did use AqlIndex -> toVelocyPack, that contained unique, sparse, selectivity etc.
     VPackArrayBuilder guard(&nodes);
     for (auto& index : _indexes) {
-      nodes.add(VPackValue(index));
+      arangodb::Index* idx = trx()->getIndexByIdentifier(_collection->name, index);
+      nodes.openObject();
+      idx->toVelocyPack(nodes, false);
+      nodes.close();
     }
   }
   nodes.add(VPackValue("condition"));
@@ -108,12 +110,8 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::basics::Json const& json)
 
   for (size_t i = 0; i < length; ++i) {
     auto entry = TRI_LookupArrayJson(indexes, i);
-    if (!TRI_IsStringJson(entry)) {
-      std::string msg = "The attribute index id is not a string.";
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
-    }
-    _indexes.emplace_back(
-        std::string(entry->_value._string.data, entry->_value._string.length - 1));
+    std::string iid  = JsonHelper::checkAndGetStringValue(entry, "id");
+    _indexes.emplace_back(iid);
   }
 
   TRI_json_t const* condition =

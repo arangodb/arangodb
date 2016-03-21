@@ -1408,25 +1408,36 @@ AqlValue Expression::executeSimpleExpressionArithmetic(
 
   VPackBuilder builder;
   mustDestroy = true; // builder = dynamic data
+  double result;
 
   switch (node->type) {
     case NODE_TYPE_OPERATOR_BINARY_PLUS:
-      builder.add(VPackValue(l + r));
-      return AqlValue(builder);
+      result = l + r;
+      break;
     case NODE_TYPE_OPERATOR_BINARY_MINUS:
-      builder.add(VPackValue(l - r));
-      return AqlValue(builder);
+      result = l - r;
+      break;
     case NODE_TYPE_OPERATOR_BINARY_TIMES:
-      builder.add(VPackValue(l * r));
-      return AqlValue(builder);
+      result = l * r;
+      break;
     case NODE_TYPE_OPERATOR_BINARY_DIV:
-      builder.add(VPackValue(l / r));
-      return AqlValue(builder);
+      result = l / r;
+      break;
     case NODE_TYPE_OPERATOR_BINARY_MOD:
-      builder.add(VPackValue(fmod(l, r)));
-      return AqlValue(builder);
+      result = fmod(l, r);
+      break;
     default:
       mustDestroy = false;
       return AqlValue(VelocyPackHelper::NullValue());
   }
+      
+  if (std::isnan(result) || !std::isfinite(result) || result == HUGE_VAL || result == -HUGE_VAL) {
+    // convert NaN, +inf & -inf to 0
+    mustDestroy = false;
+    builder.add(VPackValue(0.0));
+    return AqlValue(builder); 
+  }
+
+  builder.add(VPackValue(result));
+  return AqlValue(builder);
 }

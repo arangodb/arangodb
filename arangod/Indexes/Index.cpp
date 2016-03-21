@@ -360,6 +360,7 @@ std::shared_ptr<VPackBuilder> Index::toVelocyPack(bool withFigures) const {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a VelocyPack representation of the index
 /// base functionality (called from derived classes)
+/// note: needs an already-opened object as its input!
 ////////////////////////////////////////////////////////////////////////////////
 
 void Index::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
