@@ -180,9 +180,19 @@ void TraversalBlock::executeExpressions() {
                                              _inRegs[i], mustDestroy);
 
         AqlValueGuard guard(a, mustDestroy);
-        // TODO FIX setting compareTo value!!
-//      it->compareTo.reset(new Json(a.toJson(_trx, myCollection, true)));
-#warning FIX setting compareTo value        
+        
+        AqlValueMaterializer materializer(_trx);
+        VPackSlice slice = materializer.slice(a);
+
+        VPackBuilder* builder = new VPackBuilder;
+        try {
+          builder->add(slice);
+        } catch (...) {
+          delete builder;
+          throw;
+        }
+
+        it->compareTo.reset(builder);
       }
     }
   }

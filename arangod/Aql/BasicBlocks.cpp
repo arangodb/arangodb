@@ -36,6 +36,7 @@ using Json = arangodb::basics::Json;
 ////////////////////////////////////////////////////////////////////////////////
 
 int SingletonBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
+  DEBUG_BEGIN_BLOCK();  
   // Create a deep copy of the register values given to us:
   deleteInputVariables();
 
@@ -61,6 +62,7 @@ int SingletonBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 
   _done = false;
   return TRI_ERROR_NO_ERROR;
+  DEBUG_END_BLOCK();  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -332,6 +334,7 @@ int LimitBlock::initialize() {
 }
 
 int LimitBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
+  DEBUG_BEGIN_BLOCK();  
   int res = ExecutionBlock::initializeCursor(items, pos);
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -339,6 +342,7 @@ int LimitBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   _state = 0;
   _count = 0;
   return TRI_ERROR_NO_ERROR;
+  DEBUG_END_BLOCK();  
 }
 
 int LimitBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
@@ -503,8 +507,10 @@ RegisterId ReturnBlock::returnInheritedResults() {
 ////////////////////////////////////////////////////////////////////////////////
 
 int NoResultsBlock::initializeCursor(AqlItemBlock*, size_t) {
+  DEBUG_BEGIN_BLOCK();  
   _done = true;
   return TRI_ERROR_NO_ERROR;
+  DEBUG_END_BLOCK();  
 }
 
 int NoResultsBlock::getOrSkipSome(size_t,  // atLeast
