@@ -37,8 +37,6 @@
 #include "velocypack/Builder.h"
 #include "velocypack/velocypack-aliases.h"
 
-#include <functional>
-
 struct TRI_document_collection_t;
 class TRI_replication_applier_t;
 struct TRI_server_t;

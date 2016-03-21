@@ -34,8 +34,6 @@
 #include "Wal/Logfile.h"
 #include "Wal/Marker.h"
 
-#include <functional>
-
 namespace arangodb {
 namespace wal {
 

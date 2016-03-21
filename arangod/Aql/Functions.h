@@ -28,8 +28,6 @@
 #include "Aql/AqlValue.h"
 #include "Utils/AqlTransaction.h"
 
-#include <functional>
-
 namespace arangodb {
 namespace aql {
 

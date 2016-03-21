@@ -32,7 +32,6 @@
 
 #include <velocypack/Slice.h>
 
-#include <functional>
 #include <iosfwd>
 
 namespace arangodb {
