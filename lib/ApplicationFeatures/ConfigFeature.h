@@ -34,9 +34,11 @@ class ConfigFeature final : public application_features::ApplicationFeature {
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void loadOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
 
  public:
   std::string _file;
+  bool _version;
 
  private:
   std::string _progname;

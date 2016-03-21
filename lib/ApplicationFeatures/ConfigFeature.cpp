@@ -22,21 +22,26 @@
 
 #include "ApplicationFeatures/ConfigFeature.h"
 
+#include <iostream>
+
 #include "Logger/Logger.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
+#include "Rest/Version.h"
 #include "ProgramOptions2/IniFileParser.h"
 #include "ProgramOptions2/ProgramOptions.h"
 #include "ProgramOptions2/Section.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
+using namespace arangodb::rest;
 using namespace arangodb::options;
 
 ConfigFeature::ConfigFeature(application_features::ApplicationServer* server,
                              std::string const& progname)
     : ApplicationFeature(server, "Config"),
       _file(""),
+      _version(false),
       _progname(progname) {
   setOptional(false);
   requiresElevatedPrivileges(false);
@@ -51,6 +56,9 @@ void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--configuration,-c", "the configuration file or 'none'",
                      new StringParameter(&_file));
+
+  options->addOption("--version", "reports the version and exists",
+                     new BooleanParameter(&_version, false));
 }
 
 void ConfigFeature::loadOptions(std::shared_ptr<ProgramOptions> options) {
@@ -133,5 +141,13 @@ void ConfigFeature::loadOptions(std::shared_ptr<ProgramOptions> options) {
     if (!parser.parse(filename)) {
       exit(EXIT_FAILURE);
     }
+  }
+}
+
+void ConfigFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
+  if (_version) {
+    std::cout << Version::getServerVersion() << "\n\n"
+              << Version::getDetailed() << std::endl;
+    exit(EXIT_SUCCESS);
   }
 }
