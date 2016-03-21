@@ -356,7 +356,7 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items) {
       catch (...) {
         // _id or _key not present... ignore this error and fall through
       }
-    } else if (in.slice().isString()) {
+    } else if (in.isString()) {
       _vertexId = in.slice().copyString();
       _traverser->setStartVertex(_vertexId);
     } else {
