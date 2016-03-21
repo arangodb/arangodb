@@ -28,20 +28,15 @@
 #include "ApplicationFeatures/LoggerFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
+#include "Basics/ArangoGlobalContext.h"
 #include "Restore/RestoreFeature.h"
 #include "ProgramOptions2/ProgramOptions.h"
-#include "Rest/InitializeRest.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief main
-////////////////////////////////////////////////////////////////////////////////
-
 int main(int argc, char* argv[]) {
-  ADB_WindowsEntryFunction();
-  TRIAGENS_REST_INITIALIZE();
+  ArangoGlobalContext context(argc, argv);
 
   std::shared_ptr<options::ProgramOptions> options(new options::ProgramOptions(
       argv[0], "Usage: arangorestore [<options>]", "For more information use:"));
@@ -59,8 +54,5 @@ int main(int argc, char* argv[]) {
 
   server.run(argc, argv);
 
-  TRIAGENS_REST_SHUTDOWN;
-  ADB_WindowsExitFunction(ret, nullptr);
-
-  return ret;
+  return context.exit(ret);
 }

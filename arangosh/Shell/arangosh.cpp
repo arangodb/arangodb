@@ -31,24 +31,18 @@
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
-#include "Basics/files.h"
+#include "Basics/ArangoGlobalContext.h"
 #include "ProgramOptions2/ProgramOptions.h"
-#include "Rest/InitializeRest.h"
 #include "Shell/ShellFeature.h"
 #include "Shell/V8ShellFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief main
-////////////////////////////////////////////////////////////////////////////////
-
 int main(int argc, char* argv[]) {
-  ADB_WindowsEntryFunction();
-  TRIAGENS_REST_INITIALIZE();
+  ArangoGlobalContext context(argc, argv);
 
-  std::string name = TRI_BinaryName(argv[0]);
+  std::string name = context.binaryName();
 
   std::shared_ptr<options::ProgramOptions> options(new options::ProgramOptions(
       argv[0], "Usage: " + name + " [<options>]", "For more information use:"));
@@ -70,8 +64,5 @@ int main(int argc, char* argv[]) {
 
   server.run(argc, argv);
 
-  TRIAGENS_REST_SHUTDOWN;
-  ADB_WindowsExitFunction(ret, nullptr);
-
-  return ret;
+  return context.exit(ret);
 }
