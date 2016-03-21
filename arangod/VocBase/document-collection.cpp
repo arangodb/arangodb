@@ -4006,7 +4006,8 @@ int TRI_document_collection_t::insertSecondaryIndexes(
     // in case of no-memory, return immediately
     if (res == TRI_ERROR_OUT_OF_MEMORY) {
       return res;
-    } else if (res != TRI_ERROR_NO_ERROR) {
+    } 
+    if (res != TRI_ERROR_NO_ERROR) {
       if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED ||
           result == TRI_ERROR_NO_ERROR) {
         // "prefer" unique constraint violated

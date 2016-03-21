@@ -112,8 +112,14 @@ v8::Handle<v8::Value> TRI_VPackToV8(v8::Isolate* isolate,
       return v8::Null(isolate);
     case VPackValueType::Bool:
       return v8::Boolean::New(isolate, slice.getBool());
-    case VPackValueType::Double:
+    case VPackValueType::Double: {
+      // convert NaN, +inf & -inf to null
+      double value = slice.getDouble();
+      if (std::isnan(value) || !std::isfinite(value) || value == HUGE_VAL || value == -HUGE_VAL) {
+        return v8::Null(isolate);
+      }
       return v8::Number::New(isolate, slice.getDouble());
+    }
     case VPackValueType::Int:
       return v8::Number::New(isolate, static_cast<double>(slice.getInt()));
     case VPackValueType::UInt:
