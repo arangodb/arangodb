@@ -254,7 +254,7 @@ struct TRI_df_marker_t {
   uint64_t _typeAndTick; // 8 bytes
  
  public:
-  TRI_df_marker_t() {}
+  TRI_df_marker_t() : _size(0), _crc(0), _typeAndTick(0) {}
   ~TRI_df_marker_t() {}
 
   inline off_t offsetOfSize() const {
