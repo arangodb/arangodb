@@ -849,7 +849,7 @@ bool DepthFirstTraverser::edgeMatchesConditions(VPackSlice e, size_t depth) {
     for (auto const& exp : it->second) {
       TRI_ASSERT(exp != nullptr);
 
-      if (exp->isEdgeAccess && !exp->matchesCheck(e)) {
+      if (exp->isEdgeAccess && !exp->matchesCheck(_trx, e)) {
         ++_filteredPaths;
         return false;
       }
@@ -891,7 +891,7 @@ bool DepthFirstTraverser::vertexMatchesConditions(std::string const& v,
             vertex = it->second;
           }
         }
-        if (!exp->matchesCheck(VPackSlice(vertex->data()))) {
+        if (!exp->matchesCheck(_trx, VPackSlice(vertex->data()))) {
           ++_filteredPaths;
           return false;
         }
@@ -942,7 +942,7 @@ void DepthFirstTraverser::setStartVertex(
             vertex = result.buffer;
             _vertices.emplace(v, vertex);
           }
-          if (!exp->matchesCheck(VPackSlice(vertex->data()))) {
+          if (!exp->matchesCheck(_trx, VPackSlice(vertex->data()))) {
             ++_filteredPaths;
             _done = true;
             return;

@@ -121,7 +121,7 @@ bool RestEdgesHandler::getEdgesForVertex(
       if (!expressions.empty()) {
         for (auto& exp : expressions) {
           if (exp->isEdgeAccess &&
-              !exp->matchesCheck(edge)) {
+              !exp->matchesCheck(&trx, edge)) {
             ++filtered;
             add = false;
             break;

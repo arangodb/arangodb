@@ -29,6 +29,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/VPackStringBufferAdapter.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/Traverser.h"
 
 #include <velocypack/Builder.h>
@@ -395,12 +396,16 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
           result.add(VPackValue("documents"));
           std::vector<std::string> filteredIds;
 
+#warning TODO: fixme
+          // just needed to build the result
+          SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), collectionName, TRI_TRANSACTION_READ);
+
           result.openArray();
           for (auto const& tmp : VPackArrayIterator(qResult)) {
             if (!tmp.isNone()) {
               bool add = true;
               for (auto& e : expressions) {
-                if (!e->isEdgeAccess && !e->matchesCheck(tmp)) {
+                if (!e->isEdgeAccess && !e->matchesCheck(&trx, tmp)) {
                   add = false;
                   std::string _id =
                       arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
