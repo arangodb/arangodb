@@ -2236,7 +2236,7 @@ testFuncs.arangosh = function(options) {
   var deltaTime3 = 0;
 
   if (!options.skipShebang && platform.substr(0, 3) !== "win") {
-    var shebangFile = fs.join(fs.getTempPath(), "testshebang.js");
+    var shebangFile = fs.getTempFile();
 
     print("Starting arangosh via shebang script: " + shebangFile);
     fs.write(shebangFile,
@@ -2257,6 +2257,8 @@ testFuncs.arangosh = function(options) {
         "didn't get expected return code (0): \n" +
         yaml.safeDump(rc);
     }
+
+    fs.remove(shebangFile);
 
     print("Status: " + ((successSuccess) ? "SUCCESS" : "FAIL") + "\n");
   }

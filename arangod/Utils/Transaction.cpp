@@ -810,12 +810,12 @@ OperationResult Transaction::anyLocal(std::string const& collectionName,
 //////////////////////////////////////////////////////////////////////////////
 
 void Transaction::addCollectionAtRuntime(std::string const& collectionName) {
-
   auto cid = resolver()->getCollectionId(collectionName);
   if (cid == 0) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
+                                  collectionName.c_str());
   }
-  addCollectionAtRuntime(cid);
+  addCollectionAtRuntime(cid, collectionName);
 }
 
 //////////////////////////////////////////////////////////////////////////////

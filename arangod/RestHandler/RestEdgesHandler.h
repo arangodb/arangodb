@@ -25,9 +25,9 @@
 #define ARANGOD_REST_HANDLER_REST_EDGES_HANDLER_H 1
 
 #include "Basics/Common.h"
-#include "Basics/JsonHelper.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
-#include "VocBase/edge-collection.h"
+
+#include <velocypack/Builder.h>
 
 namespace arangodb {
 class SingleCollectionTransaction;
@@ -73,7 +73,7 @@ class RestEdgesHandler : public RestVocbaseBaseHandler {
       std::string const& id,
       std::vector<traverser::TraverserExpression*> const& expressions,
       TRI_edge_direction_e direction, SingleCollectionTransaction& trx,
-      arangodb::basics::Json& result, size_t& scannedIndex, size_t& filtered);
+      arangodb::velocypack::Builder&, size_t& scannedIndex, size_t& filtered);
 };
 }
 
