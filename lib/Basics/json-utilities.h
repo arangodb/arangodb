@@ -44,12 +44,6 @@ int TRI_CompareValuesJson(TRI_json_t const*, TRI_json_t const*,
                           bool useUTF8 = true);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check if two json values are the same
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_CheckSameValueJson(TRI_json_t const*, TRI_json_t const*);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief uniquify a sorted json list into a new array
 ///
 /// it is a prerequisite that the input list is already sorted.
@@ -70,12 +64,6 @@ TRI_json_t* TRI_SortArrayJson(TRI_json_t*);
 
 TRI_json_t* TRI_MergeJson(TRI_memory_zone_t*, TRI_json_t const*,
                           TRI_json_t const*, bool, bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compute a hash value for a JSON document.
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t TRI_HashJson(TRI_json_t const* json);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compute a hash value for a JSON document, using fasthash64.
