@@ -187,29 +187,48 @@ int GeoIndex2::remove(arangodb::Transaction*, TRI_doc_mptr_t const* doc, bool) {
 
   double latitude;
   double longitude;
+  bool ok = true;
 
   if (_variant == INDEX_GEO_INDIVIDUAL_LAT_LON) {
     VPackSlice lat = slice.get(_latitude);
     VPackSlice lon = slice.get(_longitude);
-    TRI_ASSERT(lat.isNumber());
-    latitude = lat.getNumericValue<double>();
-    TRI_ASSERT(lon.isNumber());
-    longitude = lon.getNumericValue<double>();
+    if (!lat.isNumber()) {
+      ok = false;
+    } else {
+      latitude = lat.getNumericValue<double>();
+    }
+    if (!lon.isNumber()) {
+      ok = false;
+    } else {
+      longitude = lon.getNumericValue<double>();
+    }
   } else {
     VPackSlice loc = slice.get(_location);
-    TRI_ASSERT(loc.isArray());
-    TRI_ASSERT(loc.length() >= 2);
-    VPackSlice first = loc.at(0);
-    TRI_ASSERT(first.isNumber());
-    VPackSlice second = loc.at(1);
-    TRI_ASSERT(second.isNumber());
-    if (_geoJson) {
-      longitude = first.getNumericValue<double>();
-      latitude = second.getNumericValue<double>();
+    if (!loc.isArray() || loc.length() < 2) {
+      ok = false;
     } else {
-      latitude = first.getNumericValue<double>();
-      longitude = second.getNumericValue<double>();
+      VPackSlice first = loc.at(0);
+      if (!first.isNumber()) {
+        ok = false;
+      }
+      VPackSlice second = loc.at(1);
+      if (!second.isNumber()) {
+        ok = false;
+      }
+      if (ok) {
+        if (_geoJson) {
+          longitude = first.getNumericValue<double>();
+          latitude = second.getNumericValue<double>();
+        } else {
+          latitude = first.getNumericValue<double>();
+          longitude = second.getNumericValue<double>();
+        }
+      }
     }
+  }
+
+  if (!ok) {
+    return TRI_ERROR_NO_ERROR;
   }
 
   GeoCoordinate gc;

@@ -389,13 +389,6 @@ class EdgeCollectionInfo {
 
   std::string _indexId;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief VPackBuilder to build edge index search value in place.
-  ///        Reused for every request.
-  //////////////////////////////////////////////////////////////////////////////
-
-  arangodb::velocypack::Builder _searchBuilder;
-
   WeightCalculatorFunction _weighter;
 
  public:
@@ -425,12 +418,12 @@ class EdgeCollectionInfo {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch(
-    std::vector<EdgeCollectionInfo*>& collectionInfos,
+    std::vector<EdgeCollectionInfo*> const& collectionInfos,
     arangodb::traverser::ShortestPathOptions& opts);
 
 std::unique_ptr<ArangoDBConstDistancePathFinder::Path>
 TRI_RunSimpleShortestPathSearch(
-    std::vector<EdgeCollectionInfo*>& collectionInfos,
+    std::vector<EdgeCollectionInfo*> const& collectionInfos,
     arangodb::Transaction*,
     arangodb::traverser::ShortestPathOptions& opts);
 
