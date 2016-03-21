@@ -46,22 +46,22 @@ static OperationResult FetchDocumentById(arangodb::Transaction* trx,
                                          std::string const& id,
                                          VPackBuilder& builder,
                                          OperationOptions& options) {
-    std::vector<std::string> parts =
-            arangodb::basics::StringUtils::split(id, "/");
-      TRI_ASSERT(parts.size() == 2);
-      trx->addCollectionAtRuntime(parts[0]);
-      builder.clear();
-      builder.openObject();
-      builder.add(VPackValue(TRI_VOC_ATTRIBUTE_KEY));
-      builder.add(VPackValue(parts[1]));
-      builder.close();
+  std::vector<std::string> parts =
+          arangodb::basics::StringUtils::split(id, "/");
+  TRI_ASSERT(parts.size() == 2);
+  trx->addCollectionAtRuntime(parts[0]);
+  builder.clear();
+  builder.openObject();
+  builder.add(VPackValue(TRI_VOC_ATTRIBUTE_KEY));
+  builder.add(VPackValue(parts[1]));
+  builder.close();
 
-      OperationResult opRes = trx->document(parts[0], builder.slice(), options);
+  OperationResult opRes = trx->document(parts[0], builder.slice(), options);
 
-      if (opRes.failed() && opRes.code != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
-        THROW_ARANGO_EXCEPTION(opRes.code);
-      }
-      return opRes;
+  if (opRes.failed() && opRes.code != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+    THROW_ARANGO_EXCEPTION(opRes.code);
+  }
+  return opRes;
 }
 
 EdgeCollectionInfo::EdgeCollectionInfo(arangodb::Transaction* trx,
@@ -163,8 +163,7 @@ class MultiCollectionEdgeExpander {
           if (cand == candidates.end()) {
             // Add weight
             result.emplace_back(new ArangoDBPathFinder::Step(
-                t, s, currentWeight,
-                edge.get(TRI_VOC_ATTRIBUTE_ID).copyString()));
+                t, s, currentWeight, edgeCollection->trx()->extractIdString(edge)));
             candidates.emplace(t, result.size() - 1);
           } else {
             // Compare weight
@@ -232,8 +231,7 @@ class SimpleEdgeExpander {
       if (cand == candidates.end()) {
         // Add weight
         result.emplace_back(new ArangoDBPathFinder::Step(
-#warning The third parameter has to be replaced by _id content. We need to extract the internal attribute here. Waiting for JAN
-            t, s, currentWeight, edge.get(TRI_VOC_ATTRIBUTE_ID).copyString()));
+            t, s, currentWeight, _edgeCollection->trx()->extractIdString(edge)));
         candidates.emplace(t, result.size() - 1);
       } else {
         // Compare weight
@@ -965,7 +963,7 @@ TraversalPath* DepthFirstTraverser::next() {
     _enumerator->prune();
   }
   TRI_ASSERT(!_pruneNext);
-  const EnumeratedPath<std::string, std::string>& path = _enumerator->next();
+  EnumeratedPath<std::string, std::string> const& path = _enumerator->next();
   size_t countEdges = path.edges.size();
   if (countEdges == 0) {
     _done = true;

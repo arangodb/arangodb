@@ -421,6 +421,8 @@ class EdgeCollectionInfo {
       TRI_edge_direction_e direction, std::string const&);
 
   double weightEdge(arangodb::velocypack::Slice const);
+  
+  arangodb::Transaction* trx() const { return _trx; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Return name of the wrapped collection
