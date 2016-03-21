@@ -30,11 +30,13 @@
 #include "Aql/Variable.h"
 #include "V8/v8-globals.h"
 
-struct TRI_json_t;
-
 namespace arangodb {
 namespace basics {
 class StringBuffer;
+}
+
+namespace velocypack {
+class Builder;
 }
 
 namespace aql {
@@ -68,7 +70,7 @@ class Executor {
   /// @brief executes an expression directly
   //////////////////////////////////////////////////////////////////////////////
 
-  struct TRI_json_t* executeExpression(Query*, AstNode const*);
+  int executeExpression(Query*, AstNode const*, arangodb::velocypack::Builder&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a reference to a built-in function

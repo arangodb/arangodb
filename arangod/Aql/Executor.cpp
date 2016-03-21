@@ -32,6 +32,11 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
+#include "V8/v8-vpack.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
 
@@ -556,7 +561,8 @@ V8Expression* Executor::generateExpression(AstNode const* node) {
 /// values for constant expressions
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* Executor::executeExpression(Query* query, AstNode const* node) {
+int Executor::executeExpression(Query* query, AstNode const* node, 
+                                VPackBuilder& builder) {
   ISOLATE;
 
   _constantRegisters.clear();
@@ -599,10 +605,11 @@ TRI_json_t* Executor::executeExpression(Query* query, AstNode const* node) {
 
   if (result->IsUndefined()) {
     // undefined => null
-    return TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE);
-  }
-
-  return TRI_ObjectToJson(isolate, result);
+    builder.add(VPackValue(VPackValueType::Null));
+    return TRI_ERROR_NO_ERROR;
+  } 
+  
+  return TRI_V8ToVPack(isolate, builder, result, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

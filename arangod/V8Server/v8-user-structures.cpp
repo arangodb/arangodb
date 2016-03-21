@@ -287,7 +287,7 @@ class KeySpace {
         auto it = _hash.find(key);
         if (it != _hash.end()) {
           delete (*it).second;
-          (*it).second = nullptr;
+          _hash.erase(it);
         }
       }
 

@@ -2208,27 +2208,18 @@ AstNode* Ast::executeConstExpression(AstNode const* node) {
   ISOLATE;
   v8::HandleScope scope(isolate);  // do not delete this!
 
-  TRI_json_t* result = _query->executor()->executeExpression(_query, node);
+  VPackBuilder builder;
+
+  int res = _query->executor()->executeExpression(_query, node, builder);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
 
   // context is not left here, but later
   // this allows re-using the same context for multiple expressions
 
-  if (result == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  AstNode* value = nullptr;
-  try {
-    value = nodeFromJson(result, true);
-  } catch (...) {
-  }
-
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, result);
-
-  if (value == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
+  AstNode* value = nodeFromVPack(builder.slice(), true);
   return value;
 }
 
