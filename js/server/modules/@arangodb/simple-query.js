@@ -159,10 +159,10 @@ SimpleQueryRange.prototype.execute = function () {
   };
 
   if (this._type === 0) {
-    query += "FILTER doc.@attribute >= @left && doc.attribute < @right ";
+    query += "FILTER doc.@attribute >= @left && doc.@attribute < @right ";
   }
   else if (this._type === 1) {
-    query += "FILTER doc.@attribute >= @left && doc.attribute <= @right ";
+    query += "FILTER doc.@attribute >= @left && doc.@attribute <= @right ";
   }
   else {
     throw "unknown type";
