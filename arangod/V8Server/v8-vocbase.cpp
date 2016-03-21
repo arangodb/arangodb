@@ -2082,9 +2082,9 @@ static void JS_QueryShortestPath(
 
   if (opts.useEdgeFilter) {
     std::string errorMessage;
-    for (auto const& it : edgeCollectionInfos) {
+    for (auto const& it : edgeCollectionNames) {
       try {
-        opts.addEdgeFilter(isolate, edgeExample, it->getName(), errorMessage);
+        opts.addEdgeFilter(isolate, edgeExample, it, errorMessage);
       } catch (Exception& e) {
         // ELEMENT not found is expected, if there is no shape of this type in
         // this collection

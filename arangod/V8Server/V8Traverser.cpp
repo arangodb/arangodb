@@ -68,23 +68,13 @@ EdgeCollectionInfo::EdgeCollectionInfo(arangodb::Transaction* trx,
                                        std::string const& collectionName,
                                        WeightCalculatorFunction weighter)
     : _trx(trx), _collectionName(collectionName), _weighter(weighter) {
-  TRI_voc_cid_t cid = trx->resolver()->getCollectionIdLocal(collectionName);
 
-  if (cid == 0) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
-                                  collectionName.c_str());
-  }
-  trx->addCollectionAtRuntime(cid);
+  trx->addCollectionAtRuntime(collectionName);
 
   if (!trx->isEdgeCollection(collectionName)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
   }
-
-  TRI_document_collection_t* documentCollection = trx->documentCollection(cid);
-  arangodb::EdgeIndex* edgeIndex = documentCollection->edgeIndex();
-  TRI_ASSERT(edgeIndex !=
-             nullptr);  // Checked because collection is edge Collection.
-  _indexId = arangodb::basics::StringUtils::itoa(edgeIndex->id());
+  _indexId = trx->edgeIndexHandle(collectionName);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -93,11 +83,12 @@ EdgeCollectionInfo::EdgeCollectionInfo(arangodb::Transaction* trx,
 
 std::shared_ptr<OperationCursor> EdgeCollectionInfo::getEdges(
     TRI_edge_direction_e direction, std::string const& vertexId) {
-  _searchBuilder.clear();
-  EdgeIndex::buildSearchValue(direction, vertexId, _searchBuilder);
+#warning Make this thread safe s.t. we only need 2 builders.
+  VPackBuilder searchBuilder;
+  EdgeIndex::buildSearchValue(direction, vertexId, searchBuilder);
   return _trx->indexScan(_collectionName,
                          arangodb::Transaction::CursorType::INDEX, _indexId,
-                         _searchBuilder.slice(), 0, UINT64_MAX, 1000, false);
+                         searchBuilder.slice(), 0, UINT64_MAX, 1000, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -450,7 +441,7 @@ void NeighborsOptions::addCollectionRestriction(TRI_voc_cid_t cid) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch(
-    std::vector<EdgeCollectionInfo*>& collectionInfos,
+    std::vector<EdgeCollectionInfo*> const& collectionInfos,
     ShortestPathOptions& opts) {
   TRI_edge_direction_e forward;
   TRI_edge_direction_e backward;
@@ -494,7 +485,7 @@ std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch(
 
 std::unique_ptr<ArangoDBConstDistancePathFinder::Path>
 TRI_RunSimpleShortestPathSearch(
-    std::vector<EdgeCollectionInfo*>& collectionInfos,
+    std::vector<EdgeCollectionInfo*> const& collectionInfos,
     arangodb::Transaction* trx,
     ShortestPathOptions& opts) {
   TRI_edge_direction_e forward;
