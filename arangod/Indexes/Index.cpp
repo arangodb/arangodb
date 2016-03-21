@@ -638,6 +638,7 @@ void Index::expandInSearchValues(VPackSlice const base,
     }
 
     std::unordered_map<size_t, std::vector<VPackSlice>> elements;
+    arangodb::basics::VelocyPackHelper::VPackLess<true> sorter;
     size_t n = static_cast<size_t>(oneLookup.length());
     for (VPackValueLength i = 0; i < n; ++i) {
       VPackSlice current = oneLookup.at(i);
@@ -649,6 +650,7 @@ void Index::expandInSearchValues(VPackSlice const base,
         }
         auto& vector = elements[i];
         vector.insert(vector.end(), tmp.begin(), tmp.end());
+        std::sort(vector.begin(), vector.end(), sorter);
       }
     }
     // If there is an entry in elements for one depth it was an in,
