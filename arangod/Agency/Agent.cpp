@@ -76,7 +76,7 @@ priv_rpc_ret_t Agent::requestVote(term_t t, id_t id, index_t lastLogIndex,
         ++j;
       }
     }
-    //LOG(WARN) << _config;
+    LOG(WARN) << _config;
   }
     
   return priv_rpc_ret_t(
@@ -213,16 +213,13 @@ write_ret_t Agent::write (query_t const& query)  {
   if (_constituent.leading()) {                    // Leading 
     MUTEX_LOCKER(mutexLocker, _confirmedLock);
     std::vector<bool> applied = _spear_head.apply(query); // Apply to spearhead
-
     std::vector<index_t> indices = 
       _state.log (query, applied, term(), id()); // Append to log w/ indicies
-
     for (size_t i = 0; i < applied.size(); ++i) {
       if (applied[i]) {
         _confirmed[id()] = indices[i];           // Confirm myself
       }
     }
-    
     _cv.signal();                                // Wake up run
     return write_ret_t(true,id(),applied,indices); // Indices to wait for to rest
   } else {                                       // Leading else redirect

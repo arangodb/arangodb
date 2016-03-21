@@ -99,13 +99,13 @@ inline HttpHandler::status_t RestAgencyHandler::handleWrite () {
           errors++;
         }
       }
-      body.close();
-      if (errors == ret.indices.size()) { // epic fail
+/*      if (errors == ret.indices.size()) { // epic fail
         _response->setResponseCode(HttpResponse::PRECONDITION_FAILED);
       } else if (errors == 0) {// full success
       } else { // 
         _response->setResponseCode(HttpResponse::PRECONDITION_FAILED); 
-      }
+        }*/
+      body.close();
       generateResult(body.slice());
     } else {
       generateError(HttpResponse::TEMPORARY_REDIRECT,307);
