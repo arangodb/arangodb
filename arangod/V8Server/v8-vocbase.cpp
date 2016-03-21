@@ -1961,7 +1961,30 @@ static void JS_QueryShortestPath(
   }
   std::string const targetVertex = TRI_ObjectToString(args[3]);
 
-  traverser::ShortestPathOptions opts;
+  auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
+
+  int res = TRI_ERROR_NO_ERROR;
+  std::vector<std::string> readCollections;
+  std::vector<std::string> writeCollections;
+
+  for (auto const& it : edgeCollectionNames) {
+    readCollections.emplace_back(it);
+  }
+  for (auto const& it : vertexCollectionNames) {
+    readCollections.emplace_back(it);
+  }
+
+  // Start the transaction
+  std::unique_ptr<ExplicitTransaction> trx;
+
+  try {
+    trx.reset(BeginTransaction(transactionContext, readCollections,
+                               writeCollections));
+  } catch (Exception& e) {
+    TRI_V8_THROW_EXCEPTION(e.code());
+  }
+
+  traverser::ShortestPathOptions opts(trx.get());
 
   bool includeData = false;
   v8::Handle<v8::Object> edgeExample;
@@ -2034,28 +2057,7 @@ static void JS_QueryShortestPath(
     }
   }
 
-  auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
 
-  int res = TRI_ERROR_NO_ERROR;
-  std::vector<std::string> readCollections;
-  std::vector<std::string> writeCollections;
-
-  for (auto const& it : edgeCollectionNames) {
-    readCollections.emplace_back(it);
-  }
-  for (auto const& it : vertexCollectionNames) {
-    readCollections.emplace_back(it);
-  }
-
-  // Start the transaction and order ditches
-  std::unique_ptr<ExplicitTransaction> trx;
-
-  try {
-    trx.reset(BeginTransaction(transactionContext, readCollections,
-                               writeCollections));
-  } catch (Exception& e) {
-    TRI_V8_THROW_EXCEPTION(e.code());
-  }
 
   std::vector<EdgeCollectionInfo*> edgeCollectionInfos;
 
@@ -2253,7 +2255,30 @@ static void JS_QueryNeighbors(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_TYPE_ERROR("expecting string ID for <startVertex>");
   }
 
-  traverser::NeighborsOptions opts;
+  std::vector<std::string> readCollections;
+  std::vector<std::string> writeCollections;
+
+  auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
+
+  int res = TRI_ERROR_NO_ERROR;
+
+  for (auto const& it : edgeCollectionNames) {
+    readCollections.emplace_back(it);
+  }
+  for (auto const& it : vertexCollectionNames) {
+    readCollections.emplace_back(it);
+  }
+
+  std::unique_ptr<ExplicitTransaction> trx;
+
+  try {
+    trx.reset(BeginTransaction(transactionContext, readCollections,
+                               writeCollections));
+  } catch (Exception& e) {
+    TRI_V8_THROW_EXCEPTION(e.code());
+  }
+
+  traverser::NeighborsOptions opts(trx.get());
   bool includeData = false;
   v8::Handle<v8::Value> edgeExample;
   v8::Handle<v8::Value> vertexExample;
@@ -2317,28 +2342,7 @@ static void JS_QueryNeighbors(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  std::vector<std::string> readCollections;
-  std::vector<std::string> writeCollections;
 
-  auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
-
-  int res = TRI_ERROR_NO_ERROR;
-
-  for (auto const& it : edgeCollectionNames) {
-    readCollections.emplace_back(it);
-  }
-  for (auto const& it : vertexCollectionNames) {
-    readCollections.emplace_back(it);
-  }
-
-  std::unique_ptr<ExplicitTransaction> trx;
-
-  try {
-    trx.reset(BeginTransaction(transactionContext, readCollections,
-                               writeCollections));
-  } catch (Exception& e) {
-    TRI_V8_THROW_EXCEPTION(e.code());
-  }
 
   std::vector<EdgeCollectionInfo*> edgeCollectionInfos;
 

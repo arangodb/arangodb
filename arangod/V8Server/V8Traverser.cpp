@@ -293,37 +293,21 @@ void BasicOptions::addVertexFilter(v8::Isolate* isolate,
 /// @brief Checks if a vertex matches to given examples
 ////////////////////////////////////////////////////////////////////////////////
 
-bool BasicOptions::matchesVertex(std::string const& v) const {
+bool BasicOptions::matchesVertex(std::string const& collectionName,
+                                 std::string const& key,
+                                 VPackSlice vertex) const {
   if (!useVertexFilter) {
     // Nothing to do
     return true;
   }
-
-#warning We need to find a solution for this. cid => matcher, is not available any more
-  return true;
-  /*
-  auto it = _vertexFilter.find(v.cid);
+  auto it = _vertexFilter.find(collectionName);
 
   if (it == _vertexFilter.end()) {
     // This collection does not have any object of this shape.
     // Short circuit.
     return false;
   }
-
-  OperationOptions options;
-  VPackSlice slice;
-#warning fill slice from v.key
-#warning pass trx into this function!
-//  OperationResult opRes = trx->document(it->second.col, slice, options);
-  OperationResult opRes(TRI_ERROR_INTERNAL);
-#warning fill vertex
-
-  if (!opRes.successful()) {
-    return false;
-  }
-
-  return it->second.matcher->matches(opRes.slice());
-  */
+  return it->second->matches(vertex);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -378,51 +362,79 @@ bool BasicOptions::matchesEdge(VPackSlice edge) const {
     return true;
   }
 
-#warning We need to find a solution for this. cid => matcher, is not available any more
-  return true;
-  /*
-  auto it = _edgeFilter.find(e.cid);
-
+  auto id = _trx->extractIdString(edge);
+  std::vector<std::string> parts = arangodb::basics::StringUtils::split(id, "/");
+  TRI_ASSERT(parts.size() == 2); // We have a real ID
+  auto it = _edgeFilter.find(parts[0]);
+  
   if (it == _edgeFilter.end()) {
     // This collection does not have any object that can match.
     // Short circuit.
     return false;
   }
 
-  return it->second->matches(VPackSlice(edge->vpack()));
-  */
+  return it->second->matches(edge);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Checks if a vertex matches to given examples
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ShortestPathOptions::matchesVertex(std::string const& v) const {
+bool ShortestPathOptions::matchesVertex(std::string const& collectionName,
+                                        std::string const& key,
+                                        VPackSlice vertex) const {
+  std::string v = collectionName + "/" + key;
   if (start == v || end == v) {
     return true;
   }
 
-  return BasicOptions::matchesVertex(v);
+  return BasicOptions::matchesVertex(collectionName, key, vertex);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Checks if a vertex matches to given examples
 ////////////////////////////////////////////////////////////////////////////////
 
-bool NeighborsOptions::matchesVertex(std::string const& v) const {
+bool NeighborsOptions::matchesVertex(std::string const& collectionName,
+                                     std::string const& key,
+                                     VPackSlice vertex) const {
   // If there are explicitly marked collections check them.
   if (!_explicitCollections.empty()) {
-#warning find a solution for this.VertexId
-    return false;
     // If the current collection is not stored the result is invalid
-    /*
-    if (_explicitCollections.find(v.cid) == _explicitCollections.end()) {
+    if (_explicitCollections.find(collectionName) == _explicitCollections.end()) {
       return false;
     }
-    */
   }
-  return BasicOptions::matchesVertex(v);
+  return BasicOptions::matchesVertex(collectionName, key, vertex);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Checks if a vertex matches to given examples. Also fetches the vertex.
+////////////////////////////////////////////////////////////////////////////////
+
+bool NeighborsOptions::matchesVertex(std::string const& id) const {
+  std::vector<std::string> parts =
+      arangodb::basics::StringUtils::split(id, "/");
+  TRI_ASSERT(parts.size() == 2);
+  // If there are explicitly marked collections check them.
+  if (!_explicitCollections.empty()) {
+    // If the current collection is not stored the result is invalid
+    if (_explicitCollections.find(parts[0]) == _explicitCollections.end()) {
+      return false;
+    }
+  }
+  VPackBuilder tmp;
+  tmp.openObject();
+  tmp.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(parts[1]));
+  tmp.close();
+  OperationOptions opOpts;
+  OperationResult opRes = _trx->document(parts[0], tmp.slice(), opOpts);
+  if (opRes.failed()) {
+    return false;
+  }
+  return BasicOptions::matchesVertex(parts[0], parts[1], opRes.slice());
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Inserts one explicitly allowed collection. As soon as one is
@@ -432,8 +444,8 @@ bool NeighborsOptions::matchesVertex(std::string const& v) const {
 /// collection all are implicitly allowed.
 ////////////////////////////////////////////////////////////////////////////////
 
-void NeighborsOptions::addCollectionRestriction(TRI_voc_cid_t cid) {
-  _explicitCollections.emplace(cid);
+void NeighborsOptions::addCollectionRestriction(std::string const& collectionName) {
+  _explicitCollections.emplace(collectionName);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -461,7 +473,20 @@ std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch(
                                -> bool { return opts.matchesEdge(edge); };
 
   auto vertexFilterClosure =
-      [&opts](std::string const& v) -> bool { return opts.matchesVertex(v); };
+      [&opts](std::string const& v) -> bool {
+#warning This closure needs to be optimized
+        std::vector<std::string> parts = arangodb::basics::StringUtils::split(v, "/");
+        VPackBuilder tmp;
+        tmp.openObject();
+        tmp.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(parts[1]));
+        tmp.close();
+        OperationOptions opOpts;
+        OperationResult opRes = opts.trx()->document(parts[0], tmp.slice(), opOpts);
+        if (opRes.failed()) {
+          return false;
+        }
+        return opts.matchesVertex(parts[0], parts[1], opRes.slice());
+      };
 
   MultiCollectionEdgeExpander forwardExpander(
       forward, collectionInfos, edgeFilterClosure, vertexFilterClosure);

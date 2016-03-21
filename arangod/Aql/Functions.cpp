@@ -2158,7 +2158,7 @@ AqlValue Functions::Neighbors(arangodb::aql::Query* query,
                               VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "NEIGHBORS", 4, 6);
 
-  arangodb::traverser::NeighborsOptions opts;
+  arangodb::traverser::NeighborsOptions opts(trx);
 
   AqlValue vertexCol = ExtractFunctionParameterValue(trx, parameters, 0);
 

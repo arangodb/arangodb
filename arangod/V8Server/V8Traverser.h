@@ -74,11 +74,15 @@ namespace traverser {
 // A collection of shared options used in several functions.
 // Should not be used directly, use specialization instead.
 struct BasicOptions {
+
+  arangodb::Transaction* _trx;
+
  protected:
   std::unordered_map<std::string, arangodb::ExampleMatcher*> _edgeFilter;
   std::unordered_map<std::string, arangodb::ExampleMatcher*> _vertexFilter;
 
-  BasicOptions() : useEdgeFilter(false), useVertexFilter(false) {}
+  BasicOptions(arangodb::Transaction* trx)
+      : _trx(trx), useEdgeFilter(false), useVertexFilter(false) {}
 
   ~BasicOptions() {
     // properly clean up the mess
@@ -95,6 +99,11 @@ struct BasicOptions {
   bool useEdgeFilter;
   bool useVertexFilter;
 
+
+ public:
+
+  arangodb::Transaction* trx() { return _trx; }
+
   void addEdgeFilter(v8::Isolate* isolate, v8::Handle<v8::Value> const& example,
                      std::string const&,
                      std::string& errorMessage);
@@ -108,25 +117,31 @@ struct BasicOptions {
                        std::string const&,
                        std::string& errorMessage);
 
-  bool matchesEdge(arangodb::velocypack::Slice edge) const;
+  bool matchesEdge(arangodb::velocypack::Slice) const;
 
-  bool matchesVertex(std::string const& v) const;
+  virtual bool matchesVertex(std::string const&, std::string const&,
+                             arangodb::velocypack::Slice) const;
+
 };
 
 struct NeighborsOptions : BasicOptions {
  private:
-  std::unordered_set<TRI_voc_cid_t> _explicitCollections;
+  std::unordered_set<std::string> _explicitCollections;
 
  public:
   TRI_edge_direction_e direction;
   uint64_t minDepth;
   uint64_t maxDepth;
 
-  NeighborsOptions() : direction(TRI_EDGE_OUT), minDepth(1), maxDepth(1) {}
+  NeighborsOptions(arangodb::Transaction* trx)
+      : BasicOptions(trx), direction(TRI_EDGE_OUT), minDepth(1), maxDepth(1) {}
+
+  bool matchesVertex(std::string const&, std::string const&,
+                     arangodb::velocypack::Slice) const override;
 
   bool matchesVertex(std::string const&) const;
 
-  void addCollectionRestriction(TRI_voc_cid_t cid);
+  void addCollectionRestriction(std::string const&);
 };
 
 struct ShortestPathOptions : BasicOptions {
@@ -139,15 +154,17 @@ struct ShortestPathOptions : BasicOptions {
   bool multiThreaded;
   std::string end;
 
-  ShortestPathOptions()
-      : direction("outbound"),
+  ShortestPathOptions(arangodb::Transaction* trx)
+      : BasicOptions(trx),
+        direction("outbound"),
         useWeight(false),
         weightAttribute(""),
         defaultWeight(1),
         bidirectional(true),
         multiThreaded(true) {}
 
-  bool matchesVertex(std::string const&) const;
+  bool matchesVertex(std::string const&, std::string const&,
+                     arangodb::velocypack::Slice) const override;
 };
 
 class SingleServerTraversalPath : public TraversalPath {
