@@ -1,6 +1,8 @@
 v2.8.6 (2016-03-XX)
 -------------------
 
+* fixed issue #1781: ArangoDB startup time increased tremendously
+
 * fixed issue #1783: SIGHUP should rotate the log
 
 
