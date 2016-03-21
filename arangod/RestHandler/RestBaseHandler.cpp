@@ -42,33 +42,6 @@ void RestBaseHandler::handleError(Exception const& ex) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates a result from JSON
-/// TODO: remove
-////////////////////////////////////////////////////////////////////////////////
-
-void RestBaseHandler::generateResult(TRI_json_t const* json) {
-  generateResult(HttpResponse::OK, json);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates a result from JSON
-/// TODO: remove
-////////////////////////////////////////////////////////////////////////////////
-
-void RestBaseHandler::generateResult(HttpResponse::HttpResponseCode code,
-                                     TRI_json_t const* json) {
-  createResponse(code);
-  _response->setContentType("application/json; charset=utf-8");
-
-  int res = TRI_StringifyJson(_response->body().stringBuffer(), json);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                  "cannot generate output");
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a result from VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 

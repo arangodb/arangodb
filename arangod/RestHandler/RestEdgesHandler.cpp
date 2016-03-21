@@ -214,7 +214,10 @@ bool RestEdgesHandler::readEdges(
     
     resultDocument.set("error", arangodb::basics::Json(false));
     resultDocument.set("code", arangodb::basics::Json(200));
-    generateResult(resultDocument.json());
+
+    VPackBuilder tmp;
+    arangodb::basics::JsonHelper::toVelocyPack(resultDocument.json(), tmp);
+    generateResult(tmp.slice());
 
     return true;
   }

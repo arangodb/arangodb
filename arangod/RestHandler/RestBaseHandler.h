@@ -28,8 +28,6 @@
 #include "HttpServer/HttpHandler.h"
 #include "Rest/HttpResponse.h"
 
-struct TRI_json_t;
-
 namespace arangodb {
 namespace velocypack {
 class Slice;
@@ -47,23 +45,9 @@ class RestBaseHandler : public rest::HttpHandler {
   void handleError(basics::Exception const&);
 
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief generates a result from JSON
-  //////////////////////////////////////////////////////////////////////////////
-
-  virtual void generateResult(TRI_json_t const* json);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief generates a result from JSON
-  /// TODO: remove
-  //////////////////////////////////////////////////////////////////////////////
-
-  virtual void generateResult(rest::HttpResponse::HttpResponseCode,
-                              TRI_json_t const*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates a result from VelocyPack
-  /// TODO: remove
   //////////////////////////////////////////////////////////////////////////////
 
   virtual void generateResult(arangodb::velocypack::Slice const& slice);

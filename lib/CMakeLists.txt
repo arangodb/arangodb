@@ -180,7 +180,6 @@ add_library(${LIB_ARANGO} STATIC
   Basics/VelocyPackHelper.cpp
   Basics/WorkMonitor.cpp
   Basics/application-exit.cpp
-  Basics/associative.cpp
   Basics/conversions.cpp
   Basics/csv.cpp
   Basics/debugging.cpp
