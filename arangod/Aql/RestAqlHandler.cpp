@@ -142,7 +142,8 @@ void RestAqlHandler::createQueryFromVelocyPack() {
     return;
   }
 
-  sendResponse(arangodb::rest::HttpResponse::ACCEPTED, answerBody.slice());
+  sendResponse(arangodb::rest::HttpResponse::ACCEPTED, answerBody.slice(),
+               query->trx()->transactionContext().get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -182,32 +183,36 @@ void RestAqlHandler::parseQuery() {
 
   // Now prepare the answer:
   VPackBuilder answerBuilder;
+  auto transactionContext = query->trx()->transactionContext();
   try {
-    VPackObjectBuilder guard(&answerBuilder);
-    answerBuilder.add("parsed", VPackValue(true));
-    answerBuilder.add(VPackValue("collections"));
     {
-      VPackArrayBuilder arrGuard(&answerBuilder);
-      for (auto const& c : res.collectionNames) {
-        answerBuilder.add(VPackValue(c));
+      VPackObjectBuilder guard(&answerBuilder);
+      answerBuilder.add("parsed", VPackValue(true));
+      answerBuilder.add(VPackValue("collections"));
+      {
+        VPackArrayBuilder arrGuard(&answerBuilder);
+        for (auto const& c : res.collectionNames) {
+          answerBuilder.add(VPackValue(c));
+        }
       }
-    }
 
-    answerBuilder.add(VPackValue("parameters"));
-    {
-      VPackArrayBuilder arrGuard(&answerBuilder);
-      for (auto const& p : res.bindParameters) {
-        answerBuilder.add(VPackValue(p));
+      answerBuilder.add(VPackValue("parameters"));
+      {
+        VPackArrayBuilder arrGuard(&answerBuilder);
+        for (auto const& p : res.bindParameters) {
+          answerBuilder.add(VPackValue(p));
+        }
       }
+      answerBuilder.add(VPackValue("ast"));
+      answerBuilder.add(res.result->slice());
+      res.result = nullptr;
     }
-    answerBuilder.add(VPackValue("ast"));
-    answerBuilder.add(res.result->slice());
-    res.result = nullptr;
+    sendResponse(arangodb::rest::HttpResponse::OK, answerBuilder.slice(),
+                 transactionContext.get());
   } catch (...) {
     generateError(HttpResponse::BAD, TRI_ERROR_OUT_OF_MEMORY,
                   "out of memory");
   }
-  sendResponse(arangodb::rest::HttpResponse::OK, answerBuilder.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -251,21 +256,24 @@ void RestAqlHandler::explainQuery() {
   // Now prepare the answer:
   VPackBuilder answerBuilder;
   try {
-    VPackObjectBuilder guard(&answerBuilder);
-    if (res.result != nullptr) {
-      if (query->allPlans()) {
-        answerBuilder.add(VPackValue("plans"));
-      } else {
-        answerBuilder.add(VPackValue("plan"));
+    {
+      VPackObjectBuilder guard(&answerBuilder);
+      if (res.result != nullptr) {
+        if (query->allPlans()) {
+          answerBuilder.add(VPackValue("plans"));
+        } else {
+          answerBuilder.add(VPackValue("plan"));
+        }
+        answerBuilder.add(res.result->slice());
+        res.result = nullptr;
       }
-      answerBuilder.add(res.result->slice());
-      res.result = nullptr;
     }
+    sendResponse(arangodb::rest::HttpResponse::OK, answerBuilder.slice(),
+                 query->trx()->transactionContext().get());
   } catch (...) {
     generateError(HttpResponse::BAD, TRI_ERROR_OUT_OF_MEMORY,
                   "out of memory");
   }
-  sendResponse(arangodb::rest::HttpResponse::OK, answerBuilder.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -683,171 +691,175 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
   }
 
   VPackBuilder answerBuilder;
+  auto transactionContext = query->trx()->transactionContext();
   try {
-    VPackObjectBuilder guard(&answerBuilder);
-    if (operation == "lock") {
-      // Mark current thread as potentially blocking:
-      auto currentThread = arangodb::rest::DispatcherThread::current();
+    {
+      VPackObjectBuilder guard(&answerBuilder);
+      if (operation == "lock") {
+        // Mark current thread as potentially blocking:
+        auto currentThread = arangodb::rest::DispatcherThread::current();
 
-      if (currentThread != nullptr) {
-        currentThread->block();
-      }
-      int res = TRI_ERROR_INTERNAL;
-      try {
-        res = query->trx()->lockCollections();
-      } catch (...) {
-        LOG(ERR) << "lock lead to an exception";
+        if (currentThread != nullptr) {
+          currentThread->block();
+        }
+        int res = TRI_ERROR_INTERNAL;
+        try {
+          res = query->trx()->lockCollections();
+        } catch (...) {
+          LOG(ERR) << "lock lead to an exception";
+          if (currentThread != nullptr) {
+            currentThread->unblock();
+          }
+          generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                        "lock lead to an exception");
+          return;
+        }
         if (currentThread != nullptr) {
           currentThread->unblock();
         }
-        generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
-                      "lock lead to an exception");
-        return;
-      }
-      if (currentThread != nullptr) {
-        currentThread->unblock();
-      }
-      answerBuilder.add("error", VPackValue(res != TRI_ERROR_NO_ERROR));
-      answerBuilder.add("code", VPackValue(res));
-    } else if (operation == "getSome") {
-      auto atLeast =
-          VelocyPackHelper::getNumericValue<size_t>(querySlice, "atLeast", 1);
-      auto atMost = VelocyPackHelper::getNumericValue<size_t>(
-          querySlice, "atMost", ExecutionBlock::DefaultBatchSize);
-      std::unique_ptr<AqlItemBlock> items;
-      if (shardId.empty()) {
-        items.reset(query->engine()->getSome(atLeast, atMost));
-      } else {
-        auto block = static_cast<BlockWithClients*>(query->engine()->root());
-        if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
-            block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+        answerBuilder.add("error", VPackValue(res != TRI_ERROR_NO_ERROR));
+        answerBuilder.add("code", VPackValue(res));
+      } else if (operation == "getSome") {
+        auto atLeast =
+            VelocyPackHelper::getNumericValue<size_t>(querySlice, "atLeast", 1);
+        auto atMost = VelocyPackHelper::getNumericValue<size_t>(
+            querySlice, "atMost", ExecutionBlock::DefaultBatchSize);
+        std::unique_ptr<AqlItemBlock> items;
+        if (shardId.empty()) {
+          items.reset(query->engine()->getSome(atLeast, atMost));
+        } else {
+          auto block = static_cast<BlockWithClients*>(query->engine()->root());
+          if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
+              block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+          }
+          items.reset(block->getSomeForShard(atLeast, atMost, shardId));
         }
-        items.reset(block->getSomeForShard(atLeast, atMost, shardId));
-      }
-      if (items.get() == nullptr) {
-        answerBuilder.add("exhausted", VPackValue(true));
+        if (items.get() == nullptr) {
+          answerBuilder.add("exhausted", VPackValue(true));
+          answerBuilder.add("error", VPackValue(false));
+          answerBuilder.add(VPackValue("stats"));
+          query->getStats(answerBuilder);
+        } else {
+          try {
+            items->toVelocyPack(query->trx(), answerBuilder);
+            answerBuilder.add(VPackValue("stats"));
+            query->getStats(answerBuilder);
+          } catch (...) {
+            LOG(ERR) << "cannot transform AqlItemBlock to VelocyPack";
+            generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                          "cannot transform AqlItemBlock to VelocyPack");
+            return;
+          }
+        }
+      } else if (operation == "skipSome") {
+        auto atLeast =
+            VelocyPackHelper::getNumericValue<size_t>(querySlice, "atLeast", 1);
+        auto atMost = VelocyPackHelper::getNumericValue<size_t>(
+            querySlice, "atMost", ExecutionBlock::DefaultBatchSize);
+        size_t skipped;
+        try {
+          if (shardId.empty()) {
+            skipped = query->engine()->skipSome(atLeast, atMost);
+          } else {
+            auto block = static_cast<BlockWithClients*>(query->engine()->root());
+            if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
+                block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+            }
+            skipped = block->skipSomeForShard(atLeast, atMost, shardId);
+          }
+        } catch (...) {
+          LOG(ERR) << "skipSome lead to an exception";
+          generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                        "skipSome lead to an exception");
+          return;
+        }
+        answerBuilder.add("skipped", VPackValue(static_cast<double>(skipped)));
         answerBuilder.add("error", VPackValue(false));
         answerBuilder.add(VPackValue("stats"));
         query->getStats(answerBuilder);
-      } else {
+      } else if (operation == "skip") {
+        auto number =
+            VelocyPackHelper::getNumericValue<size_t>(querySlice, "number", 1);
         try {
-          items->toVelocyPack(query->trx(), answerBuilder);
+          bool exhausted;
+          if (shardId.empty()) {
+            exhausted = query->engine()->skip(number);
+          } else {
+            auto block = static_cast<BlockWithClients*>(query->engine()->root());
+            if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
+                block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+            }
+            exhausted = block->skipForShard(number, shardId);
+          }
+          answerBuilder.add("exhausted", VPackValue(exhausted));
+          answerBuilder.add("error", VPackValue(false));
           answerBuilder.add(VPackValue("stats"));
           query->getStats(answerBuilder);
         } catch (...) {
-          LOG(ERR) << "cannot transform AqlItemBlock to VelocyPack";
+          LOG(ERR) << "skip lead to an exception";
           generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
-                        "cannot transform AqlItemBlock to VelocyPack");
+                        "skip lead to an exception");
           return;
         }
-      }
-    } else if (operation == "skipSome") {
-      auto atLeast =
-          VelocyPackHelper::getNumericValue<size_t>(querySlice, "atLeast", 1);
-      auto atMost = VelocyPackHelper::getNumericValue<size_t>(
-          querySlice, "atMost", ExecutionBlock::DefaultBatchSize);
-      size_t skipped;
-      try {
-        if (shardId.empty()) {
-          skipped = query->engine()->skipSome(atLeast, atMost);
-        } else {
-          auto block = static_cast<BlockWithClients*>(query->engine()->root());
-          if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
-              block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      } else if (operation == "initializeCursor") {
+        auto pos =
+            VelocyPackHelper::getNumericValue<size_t>(querySlice, "pos", 0);
+        std::unique_ptr<AqlItemBlock> items;
+        int res;
+        try {
+          if (VelocyPackHelper::getBooleanValue(querySlice, "exhausted", true)) {
+            res = query->engine()->initializeCursor(nullptr, 0);
+          } else {
+            items.reset(new AqlItemBlock(querySlice.get("items")));
+            res = query->engine()->initializeCursor(items.get(), pos);
           }
-          skipped = block->skipSomeForShard(atLeast, atMost, shardId);
+        } catch (...) {
+          LOG(ERR) << "initializeCursor lead to an exception";
+          generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                        "initializeCursor lead to an exception");
+          return;
         }
-      } catch (...) {
-        LOG(ERR) << "skipSome lead to an exception";
-        generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
-                      "skipSome lead to an exception");
-        return;
-      }
-      answerBuilder.add("skipped", VPackValue(static_cast<double>(skipped)));
-      answerBuilder.add("error", VPackValue(false));
-      answerBuilder.add(VPackValue("stats"));
-      query->getStats(answerBuilder);
-    } else if (operation == "skip") {
-      auto number =
-          VelocyPackHelper::getNumericValue<size_t>(querySlice, "number", 1);
-      try {
-        bool exhausted;
-        if (shardId.empty()) {
-          exhausted = query->engine()->skip(number);
-        } else {
-          auto block = static_cast<BlockWithClients*>(query->engine()->root());
-          if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
-              block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-          }
-          exhausted = block->skipForShard(number, shardId);
-        }
-        answerBuilder.add("exhausted", VPackValue(exhausted));
-        answerBuilder.add("error", VPackValue(false));
+        answerBuilder.add("error", VPackValue(res != TRI_ERROR_NO_ERROR));
+        answerBuilder.add("code", VPackValue(static_cast<double>(res)));
         answerBuilder.add(VPackValue("stats"));
         query->getStats(answerBuilder);
-      } catch (...) {
-        LOG(ERR) << "skip lead to an exception";
-        generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
-                      "skip lead to an exception");
-        return;
-      }
-    } else if (operation == "initializeCursor") {
-      auto pos =
-          VelocyPackHelper::getNumericValue<size_t>(querySlice, "pos", 0);
-      std::unique_ptr<AqlItemBlock> items;
-      int res;
-      try {
-        if (VelocyPackHelper::getBooleanValue(querySlice, "exhausted", true)) {
-          res = query->engine()->initializeCursor(nullptr, 0);
-        } else {
-          items.reset(new AqlItemBlock(querySlice.get("items")));
-          res = query->engine()->initializeCursor(items.get(), pos);
+      } else if (operation == "shutdown") {
+        int res = TRI_ERROR_INTERNAL;
+        int errorCode = VelocyPackHelper::getNumericValue<int>(
+            querySlice, "code", TRI_ERROR_INTERNAL);
+        try {
+          res =
+              query->engine()->shutdown(errorCode);  // pass errorCode to shutdown
+
+          // return statistics
+          answerBuilder.add(VPackValue("stats"));
+          query->getStats(answerBuilder);
+
+          // return warnings if present
+          query->addWarningsToVelocyPackObject(answerBuilder);
+
+          // delete the query from the registry
+          _queryRegistry->destroy(_vocbase, _qId, errorCode);
+          _qId = 0;
+        } catch (...) {
+          LOG(ERR) << "shutdown lead to an exception";
+          generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                        "shutdown lead to an exception");
+          return;
         }
-      } catch (...) {
-        LOG(ERR) << "initializeCursor lead to an exception";
-        generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
-                      "initializeCursor lead to an exception");
+        answerBuilder.add("error", VPackValue(res != TRI_ERROR_NO_ERROR));
+        answerBuilder.add("code", VPackValue(res));
+      } else {
+        LOG(ERR) << "Unknown operation!";
+        generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
         return;
       }
-      answerBuilder.add("error", VPackValue(res != TRI_ERROR_NO_ERROR));
-      answerBuilder.add("code", VPackValue(static_cast<double>(res)));
-      answerBuilder.add(VPackValue("stats"));
-      query->getStats(answerBuilder);
-    } else if (operation == "shutdown") {
-      int res = TRI_ERROR_INTERNAL;
-      int errorCode = VelocyPackHelper::getNumericValue<int>(
-          querySlice, "code", TRI_ERROR_INTERNAL);
-      try {
-        res =
-            query->engine()->shutdown(errorCode);  // pass errorCode to shutdown
-
-        // return statistics
-        answerBuilder.add(VPackValue("stats"));
-        query->getStats(answerBuilder);
-
-        // return warnings if present
-        query->addWarningsToVelocyPackObject(answerBuilder);
-
-        // delete the query from the registry
-        _queryRegistry->destroy(_vocbase, _qId, errorCode);
-        _qId = 0;
-      } catch (...) {
-        LOG(ERR) << "shutdown lead to an exception";
-        generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
-                      "shutdown lead to an exception");
-        return;
-      }
-      answerBuilder.add("error", VPackValue(res != TRI_ERROR_NO_ERROR));
-      answerBuilder.add("code", VPackValue(res));
-    } else {
-      LOG(ERR) << "Unknown operation!";
-      generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
-      return;
     }
-    sendResponse(arangodb::rest::HttpResponse::OK, answerBuilder.slice());
+    sendResponse(arangodb::rest::HttpResponse::OK, answerBuilder.slice(),
+                 transactionContext.get());
   } catch (...) {
     LOG(ERR) << "OUT OF MEMORY when handling query.";
     generateError(HttpResponse::BAD, TRI_ERROR_OUT_OF_MEMORY);
@@ -890,12 +902,13 @@ std::shared_ptr<VPackBuilder> RestAqlHandler::parseVelocyPackBody() {
 //////////////////////////////////////////////////////////////////////////////
 
 void RestAqlHandler::sendResponse(arangodb::rest::HttpResponse::HttpResponseCode const code,
-                                 VPackSlice const slice) {
+                                 VPackSlice const slice,
+                                 TransactionContext* transactionContext) {
   createResponse(code);
   _response->setContentType("application/json; charset=utf-8");
   arangodb::basics::VPackStringBufferAdapter buffer(
       _response->body().stringBuffer());
-  VPackDumper dumper(&buffer);
+  VPackDumper dumper(&buffer, transactionContext->getVPackOptions());
   try {
     dumper.dump(slice);
   } catch (...) {

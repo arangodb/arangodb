@@ -1143,8 +1143,9 @@ void Query::getStats(VPackBuilder& builder) {
   if (_engine) {
     _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
     _engine->_stats.toVelocyPack(builder);
+  } else {
+    ExecutionStats::toVelocyPackStatic(builder);
   }
-  ExecutionStats::toVelocyPackStatic(builder);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

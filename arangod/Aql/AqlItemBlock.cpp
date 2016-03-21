@@ -96,7 +96,7 @@ AqlItemBlock::AqlItemBlock(VPackSlice const slice) {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                            "data must contain only numbers");
           }
-          int64_t n = data.getNumericValue<int64_t>();
+          int64_t n = dataEntry.getNumericValue<int64_t>();
           if (n == 0) {
             // empty, do nothing here
           } else if (n == -1) {
@@ -542,12 +542,10 @@ void AqlItemBlock::toVelocyPack(arangodb::AqlTransaction* trx,
   raw.close();
   data.close();
 
-  result.openObject();
   result.add("nrItems", VPackValue(_nrItems));
   result.add("nrRegs", VPackValue(_nrRegs));
   result.add("data", data.slice());
   result.add("raw", raw.slice());
   result.add("error", VPackValue(false));
   result.add("exhausted", VPackValue(false));
-  result.close();
 }

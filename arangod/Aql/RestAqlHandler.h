@@ -134,7 +134,8 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void sendResponse(arangodb::rest::HttpResponse::HttpResponseCode const,
-                    arangodb::velocypack::Slice const);
+                    arangodb::velocypack::Slice const,
+                    TransactionContext*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handle for useQuery
