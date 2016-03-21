@@ -30,7 +30,6 @@
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/edge-collection.h"
 #include "VocBase/transaction.h"
 
 #include <velocypack/Iterator.h>
@@ -425,55 +424,6 @@ int EdgeIndex::batchInsert(arangodb::Transaction* trx,
       numThreads);
 
   return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up edges using the index, restarting at the edge pointed at
-/// by next
-////////////////////////////////////////////////////////////////////////////////
-
-void EdgeIndex::lookup(arangodb::Transaction* trx,
-                       TRI_edge_index_iterator_t const* edgeIndexIterator,
-                       std::vector<TRI_doc_mptr_t>& result,
-                       TRI_doc_mptr_t*& next, size_t batchSize) {
-  auto callback =
-      [&result](TRI_doc_mptr_t* data) -> void { result.emplace_back(*(data)); };
-
-  std::vector<TRI_doc_mptr_t*>* found = nullptr;
-  if (next == nullptr) {
-    VPackSlice edge = edgeIndexIterator->_edge;
-    if (edgeIndexIterator->_direction == TRI_EDGE_OUT) {
-      found = _edgesFrom->lookupByKey(trx, &edge, batchSize);
-    } else if (edgeIndexIterator->_direction == TRI_EDGE_IN) {
-      found = _edgesTo->lookupByKey(trx, &edge, batchSize);
-    } else {
-      TRI_ASSERT(false);
-    }
-    if (found != nullptr && found->size() != 0) {
-      next = found->back();
-    }
-  } else {
-    if (edgeIndexIterator->_direction == TRI_EDGE_OUT) {
-      found = _edgesFrom->lookupByKeyContinue(trx, next, batchSize);
-    } else if (edgeIndexIterator->_direction == TRI_EDGE_IN) {
-      found = _edgesTo->lookupByKeyContinue(trx, next, batchSize);
-    } else {
-      TRI_ASSERT(false);
-    }
-    if (found != nullptr && found->size() != 0) {
-      next = found->back();
-    } else {
-      next = nullptr;
-    }
-  }
-
-  if (found != nullptr) {
-    for (auto& v : *found) {
-      callback(v);
-    }
-
-    delete found;
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

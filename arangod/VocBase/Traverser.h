@@ -30,7 +30,6 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
 #include "VocBase/DocumentAccessor.h"
-#include "VocBase/edge-collection.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
