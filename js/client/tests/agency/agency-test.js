@@ -128,16 +128,22 @@ function agencyTestSuite () {
     testPrecondition : function () {
       writeAndCheck([[{"a":12}]]);
       assertEqual(readAndCheck([["a"]]), [{a:12}]);
-      writeAndCheck([[{"a":13},{"a":12}]]);
-      assertEqual(readAndCheck([["a"]]), [{a:13}]);
+      //writeAndCheck([[{"a":13},{"a":12}]]);
+      //assertEqual(readAndCheck([["a"]]), [{a:13}]);
       var res = writeAgency([[{"a":14},{"a":12}]]);
-      assertEqual(res.statusCode, 412);
-  //    assertEqual(res.bodyParsed, {error:true, successes:[]});
-      writeAndCheck([[{a:{op:"delete"}}]]);
+      //assertEqual(res.statusCode, 412);
+      //writeAndCheck([[{a:{op:"delete"}}]]);
+    },
+
+
+    testMultiPart : function () {
+        writeAndCheck([[{"a":{"b":{"c":[1,2,3]},"e":12},"d":false}]]);
+        assertEqual(readAndCheck(["a/e",[ "d","a/b"]]), [12,{a:{b:{c:[1,2,3]},d:false}}]);
     }
 
   };
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite

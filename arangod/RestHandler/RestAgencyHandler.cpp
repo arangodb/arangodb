@@ -79,7 +79,15 @@ inline HttpHandler::status_t RestAgencyHandler::redirect (id_t leader_id) {
 inline HttpHandler::status_t RestAgencyHandler::handleWrite () {
   arangodb::velocypack::Options options; // TODO: User not wait. 
   if (_request->requestType() == HttpRequest::HTTP_REQUEST_POST) {
-    write_ret_t ret = _agent->write (_request->toVelocyPack(&options));
+    query_t query;
+    try {
+      query = _request->toVelocyPack(&options);
+    } catch (std::exception const& e) {
+      LOG(FATAL) << e.what();
+      generateError(HttpResponse::UNPROCESSABLE_ENTITY,422);
+      return HttpHandler::status_t(HANDLER_DONE);
+    }
+    write_ret_t ret = _agent->write (query);
     size_t errors = 0;
     if (ret.accepted) {
       Builder body;
@@ -111,7 +119,15 @@ inline HttpHandler::status_t RestAgencyHandler::handleWrite () {
 inline HttpHandler::status_t RestAgencyHandler::handleRead () {
   arangodb::velocypack::Options options;
   if (_request->requestType() == HttpRequest::HTTP_REQUEST_POST) {
-    read_ret_t ret = _agent->read (_request->toVelocyPack(&options));
+    query_t query;
+    try {
+      query = _request->toVelocyPack(&options);
+    } catch (std::exception const& e) {
+      LOG(FATAL) << e.what();
+      generateError(HttpResponse::UNPROCESSABLE_ENTITY,422);
+      return HttpHandler::status_t(HANDLER_DONE);
+    }
+    read_ret_t ret = _agent->read (query);
     if (ret.accepted) {
       generateResult(ret.result->slice());
     } else {
