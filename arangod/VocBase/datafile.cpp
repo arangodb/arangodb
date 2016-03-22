@@ -1230,10 +1230,6 @@ char const* TRI_NameMarkerDatafile(TRI_df_marker_t const* marker) {
       return "commit remote transaction";
     case TRI_DF_MARKER_ABORT_REMOTE_TRANSACTION:
       return "abort remote transaction";
-    case TRI_DOC_MARKER_KEY_DOCUMENT:
-      return "document (df)";
-    case TRI_DOC_MARKER_KEY_EDGE:
-      return "edge (df)";
 
     default:
       return "unused/unknown";

@@ -142,9 +142,6 @@ enum TRI_df_marker_type_t : uint8_t {
   TRI_DF_MARKER_COMMIT_REMOTE_TRANSACTION = 201,
   TRI_DF_MARKER_ABORT_REMOTE_TRANSACTION = 202,
 
-  TRI_DOC_MARKER_KEY_DOCUMENT = 210,  // new marker with key values
-  TRI_DOC_MARKER_KEY_EDGE = 211,      // new marker with key values
-
   TRI_DF_MARKER_MAX  // again, this is not a real
                      // marker, but we use it for
                      // bounds checking
