@@ -249,6 +249,9 @@ class Transaction {
 
   std::string extractIdString(VPackSlice const);
 
+  static std::string extractIdString(CollectionNameResolver const*, 
+                                     VPackSlice const&, VPackSlice const&);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief read any (random) document
   //////////////////////////////////////////////////////////////////////////////

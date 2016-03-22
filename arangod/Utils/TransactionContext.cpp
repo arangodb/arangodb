@@ -23,6 +23,7 @@
 
 #include "TransactionContext.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/Transaction.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/document-collection.h"
@@ -44,59 +45,13 @@ struct CustomTypeHandler : public VPackCustomTypeHandler {
 
   void dump(VPackSlice const& value, VPackDumper* dumper,
             VPackSlice const& base) override final {
-    if (value.head() != 0xf3) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "invalid custom type");
-    }
 
-    // _id
-    if (!base.isObject()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "invalid value type");
-    }
-  
-    uint64_t cid = DatafileHelper::ReadNumber<uint64_t>(value.begin() + 1, sizeof(uint64_t));
-    char buffer[512];  // This is enough for collection name + _key
-    size_t len = resolver->getCollectionName(&buffer[0], cid);
-    buffer[len] = '/';
-    VPackSlice key = base.get(TRI_VOC_ATTRIBUTE_KEY);
-
-    VPackValueLength keyLength;
-    char const* p = key.getString(keyLength);
-    if (p == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "invalid _key value");
-    }
-    memcpy(&buffer[len + 1], p, keyLength);
-    dumper->appendString(&buffer[0], len + 1 + keyLength);
+    dumper->appendString(toString(value, nullptr, base));
   }
   
   std::string toString(VPackSlice const& value, VPackOptions const* options,
                        VPackSlice const& base) override final {
-    if (value.head() != 0xf3) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "invalid custom type");
-    }
-
-    // _id
-    if (!base.isObject()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "invalid value type");
-    }
-    
-    uint64_t cid = DatafileHelper::ReadNumber<uint64_t>(value.begin() + 1, sizeof(uint64_t));
-    std::string result(resolver->getCollectionName(cid));
-    result.push_back('/');
-    VPackSlice key = base.get(TRI_VOC_ATTRIBUTE_KEY);
-
-    VPackValueLength keyLength;
-    char const* p = key.getString(keyLength);
-    if (p == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "invalid _key value");
-    }
-    result.append(p, keyLength);
-    return result;
+    return Transaction::extractIdString(resolver, value, base);
   }
 
   TRI_vocbase_t* vocbase;

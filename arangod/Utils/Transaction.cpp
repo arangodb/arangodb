@@ -561,29 +561,46 @@ std::string Transaction::extractKey(VPackSlice const slice) {
 //////////////////////////////////////////////////////////////////////////////
 
 std::string Transaction::extractIdString(VPackSlice const slice) {
-  if (!slice.isObject()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  return extractIdString(resolver(), slice, VPackSlice());
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief extract the _id attribute from a slice, and convert it into a 
+/// string, static method
+//////////////////////////////////////////////////////////////////////////////
+
+std::string Transaction::extractIdString(CollectionNameResolver const* resolver,
+                                         VPackSlice const& slice,
+                                         VPackSlice const& base) {
+  VPackSlice id = slice;
+  if (slice.isObject()) {
+    // extract id attribute from object
+    id = slice.get(TRI_VOC_ATTRIBUTE_ID);
   }
-      
-  VPackSlice const id = slice.get(TRI_VOC_ATTRIBUTE_ID);
   if (id.isString()) {
-    // _id is already a string
+    // already a string...
     return id.copyString();
   }
-
   if (!id.isCustom() || id.head() != 0xf3) {
     // invalid type for _id
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
-  VPackSlice const key = slice.get(TRI_VOC_ATTRIBUTE_KEY);
+  // we now need to extract the _key attribute
+  VPackSlice key;
+  if (slice.isObject()) {
+    key = slice.get(TRI_VOC_ATTRIBUTE_KEY);
+  } else if (base.isObject()) {
+    key = base.get(TRI_VOC_ATTRIBUTE_KEY);
+  }
+
   if (!key.isString()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   
   uint64_t cid = DatafileHelper::ReadNumber<uint64_t>(id.begin() + 1, sizeof(uint64_t));
   char buffer[512];  // This is enough for collection name + _key
-  size_t len = resolver()->getCollectionName(&buffer[0], cid);
+  size_t len = resolver->getCollectionName(&buffer[0], cid);
   buffer[len] = '/';
 
   VPackValueLength keyLength;
