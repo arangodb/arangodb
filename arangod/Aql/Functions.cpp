@@ -3860,7 +3860,7 @@ AqlValue Functions::Fulltext(arangodb::aql::Query* query,
 
   if (document == nullptr) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                                  "'%s'", collectionName.c_str());
+                                  "", collectionName.c_str());
   }
 
   arangodb::Index* index = nullptr;
@@ -3881,6 +3881,7 @@ AqlValue Functions::Fulltext(arangodb::aql::Query* query,
   }
 
   if (index == nullptr) {
+    // fiddle collection name into error message
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FULLTEXT_INDEX_MISSING,
                                   collectionName.c_str());
   }
