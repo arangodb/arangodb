@@ -1129,6 +1129,28 @@ void ClusterCommThread::run() {
         }
       }
 
+      if (op->result.single) {
+        // For single requests this is it, either it worked and is ready
+        // or there was an error (timeout or other). If there is a callback,
+        // we have to call it now:
+        if (nullptr != op->callback.get()) {
+          if (op->result.status == CL_COMM_SENDING) {
+            op->result.status = CL_COMM_SENT;
+          }
+          if ((*op->callback.get())(&op->result)) {
+            // This is fully processed, so let's remove it from the queue:
+            CONDITION_LOCKER(locker, cc->somethingToSend);
+            auto i = cc->toSendByOpID.find(op->result.operationID);
+            TRI_ASSERT(i != cc->toSendByOpID.end());
+            auto q = i->second;
+            cc->toSendByOpID.erase(i);
+            cc->toSend.erase(q);
+            delete op;
+            continue;   // do not move to the received queue but forget it
+          }
+        }
+      }
+
       cc->moveFromSendToReceived(op->result.operationID);
       // Potentially it was dropped in the meantime, then we forget about it.
     }
