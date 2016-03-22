@@ -274,7 +274,7 @@ bool RestEdgesHandler::readEdges(
   resultBuilder.close();
 
   // and generate a response
-  generateResult(HttpResponse::HttpResponseCode::OK, resultBuilder.slice());
+  generateResult(HttpResponse::HttpResponseCode::OK, resultBuilder.slice(), trx.transactionContext());
 
   return true;
 }
