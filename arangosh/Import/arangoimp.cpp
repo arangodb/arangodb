@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ClientFeature.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/LoggerFeature.h"
+#include "ApplicationFeatures/RandomFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "Basics/ArangoGlobalContext.h"
@@ -45,12 +46,13 @@ int main(int argc, char* argv[]) {
 
   int ret;
 
-  server.addFeature(new LoggerFeature(&server));
-  server.addFeature(new TempFeature(&server, "arangoimp"));
-  server.addFeature(new ConfigFeature(&server, "arangoimp"));
   server.addFeature(new ClientFeature(&server));
+  server.addFeature(new ConfigFeature(&server, "arangoimp"));
   server.addFeature(new ImportFeature(&server, &ret));
+  server.addFeature(new LoggerFeature(&server));
+  server.addFeature(new RandomFeature(&server));
   server.addFeature(new ShutdownFeature(&server, "Import"));
+  server.addFeature(new TempFeature(&server, "arangoimp"));
 
   server.run(argc, argv);
 

@@ -25,11 +25,12 @@
 #define LIB_BASICS_SKIP_LIST_H 1
 
 #include "Basics/Common.h"
-#include "Basics/JsonHelper.h"
-#include "Basics/random.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include "Basics/JsonHelper.h"
+#include "Basics/RandomGenerator.h"
 
 // We will probably never see more than 2^48 documents in a skip list
 #define TRI_SKIPLIST_MAX_HEIGHT 48
@@ -688,7 +689,8 @@ class SkipList {
     int height = 1;
     int count;
     while (true) {  // will be left by return when the right height is found
-      uint32_t r = TRI_UInt32Random();
+      uint32_t r = RandomGenerator::interval(UINT32_MAX);
+
       for (count = 32; count > 0; count--) {
         if (0 != (r & 1UL) || height == TRI_SKIPLIST_MAX_HEIGHT) {
           return height;

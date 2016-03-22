@@ -43,32 +43,10 @@
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-static std::string DeprecatedParameter;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Hidden Options
-////////////////////////////////////////////////////////////////////////////////
-
-namespace {
-std::string const OPTIONS_HIDDEN = "Hidden Options";
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Command Line Options
-////////////////////////////////////////////////////////////////////////////////
-
-namespace {
-std::string const OPTIONS_CMDLINE = "General Options";
-}
-
 ApplicationServer::ApplicationServer(std::string const& name,
                                      std::string const& title,
                                      std::string const& version)
-    : _options(),
-      _description(),
-      _descriptionFile(),
-      _arguments(),
-      _features(),
+    : _features(),
       _exitOnParentDeath(false),
       _watchParent(0),
       _stopping(0),
@@ -91,19 +69,11 @@ ApplicationServer::ApplicationServer(std::string const& name,
       _logThreadId(false),
       _logLineNumber(false),
       _logLocalTime(false),
-      _logContentFilter(),
-#ifdef _WIN32
-      _randomGenerator(5),
-#else
-      _randomGenerator(3),
-#endif
       _finishedCondition() {
   _logLevel.push_back("info");
 }
 
 ApplicationServer::~ApplicationServer() {
-  Random::shutdown();
-
   for (auto& it : _features) {
     delete it;
   }
@@ -145,111 +115,13 @@ std::string const& ApplicationServer::getName() const { return _name; }
 
 void ApplicationServer::setupLogging(bool threaded, bool daemon,
                                      bool backgrounded) {
-  Logger::shutdown(false);
-  Logger::initialize(threaded);
+  LOGGER_FEATURE->stop();
 
-  if (_options.has("log.thread")) {
-    _logThreadId = true;
-  }
+  LOGGER_FEATURE->setThreaded(threaded);
+  LOGGER_FEATURE->setDaemon(daemon);
+  LOGGER_FEATURE->prepare();
 
-  if (_options.has("log.line-number")) {
-    _logLineNumber = true;
-  }
-
-  if (_options.has("log.use-local-time")) {
-    _logLocalTime = true;
-  }
-
-  Logger::setUseLocalTime(_logLocalTime);
-  Logger::setShowLineNumber(_logLineNumber);
-  Logger::setOutputPrefix(_logPrefix);
-  Logger::setShowThreadIdentifier(_logThreadId);
-
-  std::vector<std::string> levels;
-  std::vector<std::string> outputs;
-
-  // map deprecated option "log.requests-files" to "log.output"
-  if (!_logRequestsFile.empty()) {
-    std::string const& filename = _logRequestsFile;
-    std::string definition;
-
-    if (filename == "+" || filename == "-") {
-      definition = filename;
-    } else if (daemon) {
-      definition = "file://" + filename + ".daemon";
-    } else {
-      definition = "file://" + filename;
-    }
-
-    levels.push_back("requests=info");
-    outputs.push_back("requests=" + definition);
-  }
-
-// map deprecated option "log.facility" to "log.output"
-#ifdef ARANGODB_ENABLE_SYSLOG
-  if (!_logFacility.empty()) {
-    outputs.push_back("syslog://" + _logFacility + "/" + _logApplicationName);
-  }
-#endif
-
-  if (_options.has("log.performance")) {
-    levels.push_back("requests=trace");
-  }
-
-  // map "log.file" to "log.output"
-  if (!_logFile.empty()) {
-    std::string const& filename = _logFile;
-    std::string definition;
-
-    if (filename == "+" || filename == "-") {
-      definition = filename;
-    } else if (daemon) {
-      definition = "file://" + filename + ".daemon";
-    } else {
-      definition = "file://" + filename;
-    }
-
-    outputs.push_back(definition);
-  }
-
-  // additional log file in case of tty
-  bool ttyLogger = false;
-
-  if (!backgrounded && isatty(STDIN_FILENO) != 0 && !_logTty.empty()) {
-    bool ttyOut = (_logTty == "+" || _logTty == "-");
-
-    if (!ttyOut) {
-      LOG(ERR) << "'log.tty' must either be '+' or '-', ignoring value '"
-               << _logTty << "'";
-    } else {
-      bool regularOut = false;
-
-      for (auto const& definition : _logOutput) {
-        regularOut = regularOut || definition == "+" || definition == "-";
-      }
-
-      for (auto const& definition : outputs) {
-        regularOut = regularOut || definition == "+" || definition == "-";
-      }
-
-      if (!regularOut) {
-        outputs.push_back(_logTty);
-        ttyLogger = true;
-      }
-    }
-  }
-
-  // create all output definitions
-  levels.insert(levels.end(), _logLevel.begin(), _logLevel.end());
-  outputs.insert(outputs.end(), _logOutput.begin(), _logOutput.end());
-
-  Logger::setLogLevel(levels);
-
-  std::unordered_set<std::string> filenames;
-
-  for (auto const& definition : outputs) {
-    Logger::addAppender(definition, !ttyLogger, _logContentFilter, filenames);
-  }
+  LOGGER_FEATURE->start();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -271,7 +143,7 @@ std::vector<std::string> ApplicationServer::programArguments() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationServer::parse(int argc, char* argv[]) {
-  std::map<std::string, ProgramOptionsDescription> none;
+  std::shared_ptr<options::ProgramOptions> none;
 
   return parse(argc, argv, none);
 }
@@ -282,7 +154,8 @@ bool ApplicationServer::parse(int argc, char* argv[]) {
 
 bool ApplicationServer::parse(
     int argc, char* argv[],
-    std::map<std::string, ProgramOptionsDescription> opts) {
+    std::shared_ptr<options::ProgramOptions> opts) {
+
   // .............................................................................
   // setup the options
   // .............................................................................
@@ -392,34 +265,7 @@ bool ApplicationServer::parse(
   // select random generate
   // .............................................................................
 
-  try {
-    switch (_randomGenerator) {
-      case 1: {
-        Random::selectVersion(Random::RAND_MERSENNE);
-        break;
-      }
-      case 2: {
-        Random::selectVersion(Random::RAND_RANDOM);
-        break;
-      }
-      case 3: {
-        Random::selectVersion(Random::RAND_URANDOM);
-        break;
-      }
-      case 4: {
-        Random::selectVersion(Random::RAND_COMBINED);
-        break;
-      }
-      case 5: {
-        Random::selectVersion(Random::RAND_WIN32);
-        break;
-      }
-      default: { break; }
-    }
-  } catch (...) {
-    LOG(FATAL) << "cannot select random generator, giving up";
-    FATAL_ERROR_EXIT();
-  }
+  RANDOM_FEATURE.start();
 
   return true;
 }
@@ -731,83 +577,11 @@ void ApplicationServer::dropPrivilegesPermanently() {
 #endif
 }
 
-void ApplicationServer::setupOptions(
-    std::map<std::string, ProgramOptionsDescription>& options) {
-  // .............................................................................
-  // command line options
-  // .............................................................................
-
-  options["General Options:help-default"]("version,v",
-                                          "print version string and exit")(
-      "help,h", "produce a usage message and exit")(
-      "configuration,c", &_configFile, "read configuration file");
-
-#if defined(ARANGODB_HAVE_SETUID) || defined(ARANGODB_HAVE_SETGID)
-
-  options["General Options:help-admin"]
-#ifdef ARANGODB_HAVE_GETPPID
-      ("exit-on-parent-death", &_exitOnParentDeath, "exit if parent dies")
-#endif
-          ("watch-process", &_watchParent,
-           "exit if process with given PID dies");
-
-#endif
-
-  // .............................................................................
-  // logger options
-  // .............................................................................
-
-  // clang-format off
-
-  options["Logging Options:help-default:help-log"]
-    ("log.file", &_logFile, "log to file")
-    ("log.level,l", &_logLevel, "log level")
-    ("log.output,o", &_logOutput, "log output")
-  ;
-
-  options["Logging Options:help-log"]
-    ("log.application", &_logApplicationName, "application name for syslog")
-    ("log.content-filter", &_logContentFilter,
-       "only log message containing the specified string (case-sensitive)")
-    ("log.line-number", "always log file and line number")
-    ("log.prefix", &_logPrefix, "prefix log")
-    ("log.thread", "log the thread identifier")
-    ("log.use-local-time", "use local dates and times in log messages")
-    ("log.tty", &_logTty, "additional log file if started on tty")
-  ;
-
-  options["Hidden Options"]
-    ("log", &_logLevel, "log level")
-#ifdef ARANGODB_HAVE_SETUID
-    ("uid", &_uid, "switch to user-id after reading config files")
-#endif
-#ifdef ARANGODB_HAVE_SETGID
-    ("gid", &_gid, "switch to group-id after reading config files")
-#endif
-  ;
-
-  options["Hidden Options"]
-    ("log.performance", "log performance indicators (deprecated)")
-    ("log.requests-file", &_logRequestsFile, "log requests to file (deprecated)")
-    ("log.facility", &_logFacility, "facility name for syslog (deprecated)")
-  ;
-
-  // clang-format on
-
-  // .............................................................................
-  // application server options
-  // .............................................................................
-
-  options["Server Options:help-admin"](
-      "random.generator", &_randomGenerator,
-      "1 = mersenne, 2 = random, 3 = urandom, 4 = combined")
-#ifdef ARANGODB_HAVE_SETUID
-      ("server.uid", &_uid, "switch to user-id after reading config files")
-#endif
-#ifdef ARANGODB_HAVE_SETGID
-          ("server.gid", &_gid, "switch to group-id after reading config files")
-#endif
-              ;
+void ApplicationServer::setupOptions(std::shared_ptr<options::ProgramOptions> options) {
+  ARANGOD_FEATURE.collectOptions(options);
+  CONFIG_FEATURE.collectOptions(options);
+  LOGGER_FEATURE.collectOptions(options);
+  RANDOM_FEATURE.collectOptions(options);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

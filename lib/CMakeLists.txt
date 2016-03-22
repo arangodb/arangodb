@@ -140,10 +140,12 @@ add_library(${LIB_ARANGO} STATIC
   ApplicationFeatures/DatabaseFeature.cpp
   ApplicationFeatures/LanguageFeature.cpp
   ApplicationFeatures/LoggerFeature.cpp
+  ApplicationFeatures/RandomFeature.cpp
   ApplicationFeatures/ShutdownFeature.cpp
   ApplicationFeatures/SslFeature.cpp
   ApplicationFeatures/TempFeature.cpp
   ApplicationFeatures/V8PlatformFeature.cpp
+  Basics/ArangoGlobalContext.cpp
   Basics/AttributeNameParser.cpp
   Basics/Barrier.cpp
   Basics/ConditionLocker.cpp
@@ -164,6 +166,7 @@ add_library(${LIB_ARANGO} STATIC
   Basics/StringUtils.cpp
   Basics/Thread.cpp
   Basics/ThreadPool.cpp
+  Basics/UniformCharacter.cpp
   Basics/Utf8Helper.cpp
   Basics/VPackStringBufferAdapter.cpp
   Basics/VelocyPackHelper.cpp
@@ -185,7 +188,6 @@ add_library(${LIB_ARANGO} STATIC
   Basics/mimetypes.cpp
   Basics/prime-numbers.cpp
   Basics/process-utils.cpp
-  Basics/random.cpp
   Basics/socket-utils.cpp
   Basics/ssl-helper.cpp
   Basics/structures.cpp
@@ -197,7 +199,13 @@ add_library(${LIB_ARANGO} STATIC
   Basics/voc-errors.cpp
   Basics/voc-mimetypes.cpp
   JsonParser/json-parser.cpp
+  Logger/LogAppender.cpp
+  Logger/LogAppenderFile.cpp
+  Logger/LogAppenderSyslog.cpp
+  Logger/LogThread.cpp
+  Logger/LogTopic.cpp
   Logger/Logger.cpp
+  Logger/LoggerStream.cpp
   ProgramOptions/program-options.cpp
   Rest/Endpoint.cpp
   Rest/EndpointIp.cpp

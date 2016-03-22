@@ -32,18 +32,19 @@
 #include <iostream>
 
 #include "Basics/Exceptions.h"
-#include "Basics/files.h"
 #include "Basics/FileUtils.h"
-#include "Logger/Logger.h"
 #include "Basics/Nonce.h"
-#include "Basics/process-utils.h"
 #include "Basics/ProgramOptions.h"
 #include "Basics/RandomGenerator.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
+#include "Basics/UniformCharacter.h"
+#include "Basics/Utf8Helper.h"
+#include "Basics/files.h"
+#include "Basics/process-utils.h"
 #include "Basics/tri-strings.h"
 #include "Basics/tri-zip.h"
-#include "Basics/Utf8Helper.h"
+#include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/SslInterface.h"
 #include "Rest/Version.h"
@@ -67,10 +68,10 @@ using namespace arangodb::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace {
-static Random::UniformCharacter JSAlphaNumGenerator(
+static UniformCharacter JSAlphaNumGenerator(
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
-static Random::UniformCharacter JSNumGenerator("0123456789");
-static Random::UniformCharacter JSSaltGenerator(
+static UniformCharacter JSNumGenerator("0123456789");
+static UniformCharacter JSSaltGenerator(
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*(){}"
     "[]:;<>,.?/|");
 }

@@ -41,7 +41,7 @@
 #include "Basics/json.h"
 #include "Basics/locks.h"
 #include "Basics/memory-map.h"
-#include "Basics/random.h"
+#include "Basics/RandomGenerator.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "Utils/CursorRepository.h"
@@ -117,14 +117,7 @@ static int GenerateServerId(void) {
   uint32_t value1, value2;
 
   // save two uint32_t values
-  value1 = TRI_UInt32Random();
-  value2 = TRI_UInt32Random();
-
-  // use the lower 6 bytes only
-  randomValue = (((uint64_t)value1) << 32) | ((uint64_t)value2);
-  randomValue &= SERVER_ID_MASK;
-
-  ServerId = (TRI_server_id_t)randomValue;
+  ServerID = RandomGenerator::interval(0ULL, SERVER_ID_MASK);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1218,7 +1211,7 @@ int TRI_InitServer(
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitServerGlobals() {
-  ServerIdentifier = TRI_UInt16Random();
+  ServerIdentifier = RangomGenerator::interval(UINT16_MIN, UINT16_MAX);
   PageSize = (size_t)getpagesize();
 
   memset(&ServerId, 0, sizeof(TRI_server_id_t));

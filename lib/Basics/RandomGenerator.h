@@ -26,155 +26,90 @@
 
 #include "Basics/Common.h"
 
-#ifdef _WIN32
-#include <Wincrypt.h>
-#endif
+#include "Basics/Exceptions.h"
+#include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
 
 namespace arangodb {
-namespace basics {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collection of random functions and classes
-////////////////////////////////////////////////////////////////////////////////
-
-namespace Random {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief type of the random generator
-////////////////////////////////////////////////////////////////////////////////
-
-enum random_e {
-  RAND_MERSENNE = 1,
-  RAND_RANDOM = 2,
-  RAND_URANDOM = 3,
-  RAND_COMBINED = 4,
-  RAND_WIN32 = 5  // uses the built in cryptographic services offered and
-                  // recommended by microsoft (e.g. CryptGenKey(...) )
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @ingroup Utilities
-/// @brief randomize random
-////////////////////////////////////////////////////////////////////////////////
-
-void seed();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @ingroup Utilities
-/// @brief selects random generator
-////////////////////////////////////////////////////////////////////////////////
-
-random_e selectVersion(random_e);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @ingroup Utilities
-/// @brief returns random generator version
-////////////////////////////////////////////////////////////////////////////////
-
-random_e currentVersion();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @ingroup Utilities
-/// @brief static destructor for all allocated rngs. frees file descriptors
-////////////////////////////////////////////////////////////////////////////////
-
-void shutdown();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @ingroup Utilities
-/// @brief returns true if random generator might block
-////////////////////////////////////////////////////////////////////////////////
-
-bool isBlocking();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @ingroup Utilities
-/// @brief interval inclusive both margins
-////////////////////////////////////////////////////////////////////////////////
-
-int32_t interval(int32_t left, int32_t right);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @ingroup Utilities
-/// @brief interval inclusive both margins
-////////////////////////////////////////////////////////////////////////////////
-
-uint32_t interval(uint32_t left, uint32_t right);
 
 // -----------------------------------------------------------------------------
-// uniform integer generator
+// RandomDevice
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @ingroup Utilities
-/// @brief constructor, the range includes both left and right
-////////////////////////////////////////////////////////////////////////////////
-
-class UniformInteger {
- private:
-  UniformInteger(UniformInteger const&);
-  UniformInteger& operator=(UniformInteger const&);
+class RandomDevice {
+  RandomDevice(RandomDevice const&) = delete;
+  RandomDevice& operator=(RandomDevice const&) = delete;
 
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief constructor, the range includes both margins
-  //////////////////////////////////////////////////////////////////////////////
-
-  UniformInteger(int32_t left, int32_t right) : left(left), right(right) {}
+  RandomDevice() {}
+  virtual ~RandomDevice() {}
 
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns a random integer between left and right inclusive
-  //////////////////////////////////////////////////////////////////////////////
+  virtual uint32_t random() = 0;
 
-  int32_t random();
+ public:
+  int32_t interval(int32_t left, int32_t right);
+  uint32_t interval(uint32_t left, uint32_t right);
+
+ public:
+  static unsigned long seed();
 
  private:
-  int32_t left;
-  int32_t right;
+  int32_t random(int32_t left, int32_t right);
+  int32_t power2(int32_t left, uint32_t right);
+  int32_t other(int32_t left, uint32_t right);
 };
 
 // -----------------------------------------------------------------------------
-// uniform character generator
+// RandomGenerator
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @ingroup Utilities
-/// @brief uniform character string
-////////////////////////////////////////////////////////////////////////////////
-
-class UniformCharacter {
- private:
-  UniformCharacter(UniformCharacter const&);
-  UniformCharacter& operator=(UniformCharacter const&);
+class RandomGenerator {
+  RandomGenerator(RandomGenerator const&) = delete;
+  RandomGenerator& operator=(RandomGenerator const&) = delete;
 
  public:
-  explicit UniformCharacter(size_t length);
-
-  explicit UniformCharacter(std::string const& characters);
-
-  UniformCharacter(size_t length, std::string const& characters);
+  enum class RandomType {
+    MERSENNE = 1,
+    RANDOM = 2,
+    URANDOM = 3,
+    COMBINED = 4,
+    WIN32 = 5  // uses the built in cryptographic services offered and
+               // recommended by microsoft (e.g. CryptGenKey(...) )
+  };
 
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns a random string of fixed length
-  //////////////////////////////////////////////////////////////////////////////
+  static void initialize(RandomType);
+  static void shutdown();
 
-  std::string random();
+  template <typename T>
+  static T interval(T left, T right) {
+    MUTEX_LOCKER(locker, _lock);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns a random string of given length
-  //////////////////////////////////////////////////////////////////////////////
+    if (_device == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "random generator not initialized");
+    }
 
-  std::string random(size_t length);
+    return _device->interval(left, right);
+  }
+
+  template <typename T>
+  static T interval(T right) {
+    MUTEX_LOCKER(locker, _lock);
+
+    if (_device == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "random generator not initialized");
+    }
+
+    return _device->interval(static_cast<T>(0), right);
+  }
 
  private:
-  size_t length;
-  std::string const characters;
-  UniformInteger generator;
+  static Mutex _lock;
+  static std::unique_ptr<RandomDevice> _device;
 };
-}
-}
 }
 
 #endif

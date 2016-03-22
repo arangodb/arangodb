@@ -26,7 +26,6 @@
 
 #include "ApplicationFeatures/ClientFeature.h"
 #include "Basics/StringUtils.h"
-#include "Basics/random.h"
 #include "Benchmark/BenchmarkCounter.h"
 #include "Benchmark/BenchmarkOperation.h"
 #include "Benchmark/BenchmarkThread.h"
@@ -71,6 +70,7 @@ BenchFeature::BenchFeature(application_features::ApplicationServer* server,
   setOptional(false);
   startsAfter("Client");
   startsAfter("Config");
+  startsAfter("Random");
   startsAfter("Logger");
 }
 

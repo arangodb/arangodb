@@ -28,6 +28,7 @@
 #include "ApplicationFeatures/ConsoleFeature.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/LoggerFeature.h"
+#include "ApplicationFeatures/RandomFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
@@ -51,16 +52,17 @@ int main(int argc, char* argv[]) {
 
   int ret;
 
-  server.addFeature(new ConfigFeature(&server, name));
-  server.addFeature(new TempFeature(&server, name));
-  server.addFeature(new LoggerFeature(&server));
-  server.addFeature(new LanguageFeature(&server));
   server.addFeature(new ClientFeature(&server));
+  server.addFeature(new ConfigFeature(&server, name));
   server.addFeature(new ConsoleFeature(&server));
-  server.addFeature(new V8PlatformFeature(&server));
-  server.addFeature(new V8ShellFeature(&server, name));
+  server.addFeature(new LanguageFeature(&server));
+  server.addFeature(new LoggerFeature(&server));
+  server.addFeature(new RandomFeature(&server));
   server.addFeature(new ShellFeature(&server, &ret));
   server.addFeature(new ShutdownFeature(&server, "Shell"));
+  server.addFeature(new TempFeature(&server, name));
+  server.addFeature(new V8PlatformFeature(&server));
+  server.addFeature(new V8ShellFeature(&server, name));
 
   server.run(argc, argv);
 

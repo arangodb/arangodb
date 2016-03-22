@@ -1313,7 +1313,7 @@ bool ApplicationV8::prepareV8Instance(size_t i, bool useActions) {
 
   // some random delay value to add as an initial garbage collection offset
   // this avoids collecting all contexts at the very same time
-  double const randomWait = fmod(static_cast<double>(TRI_UInt32Random()), 15.0);
+  double const randomWait = static_cast<double>(RandomGenerator::intervall(0, 14))
 
   // initialize garbage collection for context
   context->_numExecutions = 0;

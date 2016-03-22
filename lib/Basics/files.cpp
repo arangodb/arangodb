@@ -37,14 +37,14 @@
 
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/RandomGenerator.h"
+#include "Basics/StringBuffer.h"
+#include "Basics/Thread.h"
 #include "Basics/conversions.h"
 #include "Basics/hashes.h"
 #include "Basics/locks.h"
-#include "Logger/Logger.h"
-#include "Basics/random.h"
-#include "Basics/StringBuffer.h"
-#include "Basics/Thread.h"
 #include "Basics/tri-strings.h"
+#include "Logger/Logger.h"
 
 #ifdef _WIN32
 #include <tchar.h>
@@ -2216,7 +2216,7 @@ int TRI_GetTempName(char const* directory, char** result, bool const createFile,
 
     pid = Thread::currentProcessId();
 
-    number = TRI_StringUInt32(TRI_UInt32Random());
+    number = TRI_StringUInt32(RandomGenerator::interval(UINT32_MAX));
     pidString = TRI_StringUInt32(pid);
     tempName = TRI_Concatenate4String("tmp-", pidString, "-", number);
     TRI_Free(TRI_CORE_MEM_ZONE, number);

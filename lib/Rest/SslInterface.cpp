@@ -29,9 +29,10 @@
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
 
-#include "Basics/RandomGenerator.h"
+#include "Basics/UniformCharacter.h"
 #include "Basics/StringUtils.h"
 
+using namespace arangodb;
 using namespace arangodb::basics;
 
 // -----------------------------------------------------------------------------
@@ -39,7 +40,7 @@ using namespace arangodb::basics;
 // -----------------------------------------------------------------------------
 
 namespace {
-static Random::UniformCharacter SaltGenerator(
+static UniformCharacter SaltGenerator(
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*(){}"
     "[]:;<>,.?/|");
 }

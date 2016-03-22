@@ -42,7 +42,6 @@
 #include "Basics/locks.h"
 #include "Basics/mimetypes.h"
 #include "Basics/process-utils.h"
-#include "Basics/random.h"
 #include "Basics/Thread.h"
 #include "Rest/Version.h"
 
@@ -153,17 +152,12 @@ void InitializeRest() {
   TRI_InitializeError();
   TRI_InitializeFiles();
   TRI_InitializeMimetypes();
-  Logger::initialize(false);
   TRI_InitializeHashes();
-  TRI_InitializeRandom();
   TRI_InitializeProcess();
 
   // use the rng so the linker does not remove it from the executable
   // we might need it later because .so files might refer to the symbols
-  Random::random_e v = Random::selectVersion(Random::RAND_MERSENNE);
-  Random::UniformInteger random(0, INT32_MAX);
-  random.random();
-  Random::selectVersion(v);
+  RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
 
 #ifdef TRI_BROKEN_CXA_GUARD
   pthread_cond_t cond;
@@ -188,10 +182,10 @@ void ShutdownRest() {
   EVP_cleanup();
   CRYPTO_cleanup_all_ex_data();
 
+  RandomGenerator::shutdown();
+
   TRI_ShutdownProcess();
-  TRI_ShutdownRandom();
   TRI_ShutdownHashes();
-  Logger::shutdown(true);
   TRI_ShutdownMimetypes();
   TRI_ShutdownFiles();
   TRI_ShutdownError();

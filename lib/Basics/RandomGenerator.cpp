@@ -23,62 +23,162 @@
 
 #include "RandomGenerator.h"
 
-#include "Logger/Logger.h"
-#include "Basics/Exceptions.h"
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
-#include "Basics/Thread.h"
-
 #include <random>
 #include <chrono>
+
+#ifdef _WIN32
+#include <Wincrypt.h>
+#endif
+
+#include "Logger/Logger.h"
+#include "Basics/Exceptions.h"
+#include "Basics/Thread.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 
 // -----------------------------------------------------------------------------
-// random helper functions
+// RandomDevice
 // -----------------------------------------------------------------------------
 
-namespace {
+unsigned long RandomDevice::seed() {
+  unsigned long s = (unsigned long)time(0);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief random version
-////////////////////////////////////////////////////////////////////////////////
+  struct timeval tv;
+  int result = gettimeofday(&tv, 0);
 
-Random::random_e random_version = Random::RAND_MERSENNE;
+  s ^= static_cast<unsigned long>(tv.tv_sec);
+  s ^= static_cast<unsigned long>(tv.tv_usec);
+  s ^= static_cast<unsigned long>(result);
+  s ^= static_cast<unsigned long>(Thread::currentProcessId());
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief random lock
-////////////////////////////////////////////////////////////////////////////////
+  return s;
+}
 
-Mutex RandomLock;
+int32_t RandomDevice::interval(int32_t left, int32_t right) {
+  return random(left, right);
+}
+
+uint32_t RandomDevice::interval(uint32_t left, uint32_t right) {
+  int32_t l = left + INT32_MIN;
+  int32_t r = right + INT32_MIN;
+
+  return static_cast<uint32_t>(random(l, r) - INT32_MIN);
+}
+
+int32_t RandomDevice::random(int32_t left, int32_t right) {
+  if (left >= right) {
+    return left;
+  }
+
+  if (left == INT32_MIN && right == INT32_MAX) {
+    return static_cast<int32_t>(random());
+  }
+
+  uint32_t range = static_cast<uint32_t>(right - left + 1);
+
+  switch (range) {
+    case 0x00000002:
+      return power2(left, 0x00000002 - 1);
+    case 0x00000004:
+      return power2(left, 0x00000004 - 1);
+    case 0x00000008:
+      return power2(left, 0x00000008 - 1);
+    case 0x00000010:
+      return power2(left, 0x00000010 - 1);
+    case 0x00000020:
+      return power2(left, 0x00000020 - 1);
+    case 0x00000040:
+      return power2(left, 0x00000040 - 1);
+    case 0x00000080:
+      return power2(left, 0x00000080 - 1);
+    case 0x00000100:
+      return power2(left, 0x00000100 - 1);
+    case 0x00000200:
+      return power2(left, 0x00000200 - 1);
+    case 0x00000400:
+      return power2(left, 0x00000400 - 1);
+    case 0x00000800:
+      return power2(left, 0x00000800 - 1);
+    case 0x00001000:
+      return power2(left, 0x00001000 - 1);
+    case 0x00002000:
+      return power2(left, 0x00002000 - 1);
+    case 0x00004000:
+      return power2(left, 0x00004000 - 1);
+    case 0x00008000:
+      return power2(left, 0x00008000 - 1);
+    case 0x00010000:
+      return power2(left, 0x00010000 - 1);
+    case 0x00020000:
+      return power2(left, 0x00020000 - 1);
+    case 0x00040000:
+      return power2(left, 0x00040000 - 1);
+    case 0x00080000:
+      return power2(left, 0x00080000 - 1);
+    case 0x00100000:
+      return power2(left, 0x00100000 - 1);
+    case 0x00200000:
+      return power2(left, 0x00200000 - 1);
+    case 0x00400000:
+      return power2(left, 0x00400000 - 1);
+    case 0x00800000:
+      return power2(left, 0x00800000 - 1);
+    case 0x01000000:
+      return power2(left, 0x01000000 - 1);
+    case 0x02000000:
+      return power2(left, 0x02000000 - 1);
+    case 0x04000000:
+      return power2(left, 0x04000000 - 1);
+    case 0x08000000:
+      return power2(left, 0x08000000 - 1);
+    case 0x10000000:
+      return power2(left, 0x10000000 - 1);
+    case 0x20000000:
+      return power2(left, 0x20000000 - 1);
+    case 0x40000000:
+      return power2(left, 0x40000000 - 1);
+    case 0x80000000:
+      return power2(left, 0x80000000 - 1);
+  }
+
+  return other(left, range);
+}
+
+int32_t RandomDevice::power2(int32_t left, uint32_t mask) {
+  return left + static_cast<int32_t>(random() & mask);
+}
+
+int32_t RandomDevice::other(int32_t left, uint32_t range) {
+  uint32_t g = UINT32_MAX - UINT32_MAX % range;
+  uint32_t r = random();
+  int count = 0;
+  static int const MAX_COUNT = 20;
+
+  TRI_ASSERT(g > 0);
+
+  while (r >= g) {
+    if (++count >= MAX_COUNT) {
+      LOG(ERR) << "cannot generate small random number after " << count
+               << " tries";
+      r %= g;
+      continue;
+    }
+
+    LOG(TRACE) << "random number too large, trying again";
+    r = random();
+  }
+
+  r %= range;
+
+  return left + static_cast<int32_t>(r);
 }
 
 // -----------------------------------------------------------------------------
-// random device
+// RandomDeviceDirect
 // -----------------------------------------------------------------------------
 
-namespace RandomHelper {
-class RandomDevice {
- public:
-  virtual ~RandomDevice() {}
-  virtual uint32_t random() = 0;
-
-  static unsigned long getSeed() {
-    unsigned long seed = (unsigned long)time(0);
-
-    struct timeval tv;
-    int result = gettimeofday(&tv, 0);
-
-    seed ^= static_cast<unsigned long>(tv.tv_sec);
-    seed ^= static_cast<unsigned long>(tv.tv_usec);
-    seed ^= static_cast<unsigned long>(result);
-    seed ^= static_cast<unsigned long>(Thread::currentProcessId());
-
-    return seed;
-  };
-};
-
+namespace {
 template <int N>
 class RandomDeviceDirect : public RandomDevice {
  public:
@@ -117,9 +217,11 @@ class RandomDeviceDirect : public RandomDevice {
       ssize_t r = TRI_READ(fd, ptr, (TRI_read_t)n);
 
       if (r == 0) {
-        LOG(FATAL) << "read on random device failed: nothing read"; FATAL_ERROR_EXIT();
+        LOG(FATAL) << "read on random device failed: nothing read";
+        FATAL_ERROR_EXIT();
       } else if (r < 0) {
-        LOG(FATAL) << "read on random device failed: " << strerror(errno); FATAL_ERROR_EXIT();
+        LOG(FATAL) << "read on random device failed: " << strerror(errno);
+        FATAL_ERROR_EXIT();
       }
 
       ptr += r;
@@ -134,7 +236,13 @@ class RandomDeviceDirect : public RandomDevice {
   uint32_t buffer[N];
   size_t pos;
 };
+}
 
+// -----------------------------------------------------------------------------
+// RandomDeviceCombined
+// -----------------------------------------------------------------------------
+
+namespace {
 template <int N>
 class RandomDeviceCombined : public RandomDevice {
  public:
@@ -147,13 +255,8 @@ class RandomDeviceCombined : public RandomDevice {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
     }
 
-    // ..............................................................................
     // Set the random number generator file to be non-blocking (not for windows)
-    // ..............................................................................
     {
-#ifdef _WIN32
-      std::abort();
-#else
       long flags = fcntl(fd, F_GETFL, 0);
       bool ok = (flags >= 0);
       if (ok) {
@@ -165,8 +268,8 @@ class RandomDeviceCombined : public RandomDevice {
                             "' to non-blocking");
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
       }
-#endif
     }
+
     fillBuffer();
   }
 
@@ -193,12 +296,15 @@ class RandomDeviceCombined : public RandomDevice {
       ssize_t r = TRI_READ(fd, ptr, (TRI_read_t)n);
 
       if (r == 0) {
-        LOG(FATAL) << "read on random device failed: nothing read"; FATAL_ERROR_EXIT();
+        LOG(FATAL) << "read on random device failed: nothing read";
+        FATAL_ERROR_EXIT();
       } else if (errno == EWOULDBLOCK || errno == EAGAIN) {
-        LOG(INFO) << "not enough entropy (got " << (sizeof(buffer) - n) << "), switching to pseudo-random";
+        LOG(INFO) << "not enough entropy (got " << (sizeof(buffer) - n)
+                  << "), switching to pseudo-random";
         break;
       } else if (r < 0) {
-        LOG(FATAL) << "read on random device failed: " << strerror(errno); FATAL_ERROR_EXIT();
+        LOG(FATAL) << "read on random device failed: " << strerror(errno);
+        FATAL_ERROR_EXIT();
       }
 
       ptr += r;
@@ -211,7 +317,7 @@ class RandomDeviceCombined : public RandomDevice {
 
     if (0 < n) {
       std::mt19937 engine;
-      unsigned long seed = RandomDevice::getSeed();
+      unsigned long seed = RandomDevice::seed();
       engine.seed((uint32_t)(rseed ^ (uint32_t)seed));
 
       while (0 < n) {
@@ -230,15 +336,32 @@ class RandomDeviceCombined : public RandomDevice {
 
   uint32_t rseed;
 };
+}
 
+// -----------------------------------------------------------------------------
+// RandomDeviceMersenne
+// -----------------------------------------------------------------------------
+
+class RandomDeviceMersenne : public RandomDevice {
+ public:
+  RandomDeviceMersenne()
+      : engine(static_cast<unsigned int>(
+            std::chrono::system_clock::now().time_since_epoch().count())) {}
+
+  uint32_t random() { return engine(); }
+
+  std::mt19937 engine;
+};
+
+// -----------------------------------------------------------------------------
+// RandomDeviceWin32
+// -----------------------------------------------------------------------------
+
+#ifdef _WIN32
+
+namespace {
 template <int N>
 class RandomDeviceWin32 : public RandomDevice {
-#ifndef _WIN32
- public:
-  RandomDeviceWin32() { TRI_ASSERT(false); }
-  ~RandomDeviceWin32() {}
-  uint32_t random() { return 0; }
-#else
  public:
   RandomDeviceWin32() : cryptoHandle(0), pos(0) {
     BOOL result;
@@ -248,6 +371,7 @@ class RandomDeviceWin32 : public RandomDevice {
       std::string message("cannot create cryptographic windows handle");
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
     }
+
     fillBuffer();
   }
 
@@ -273,7 +397,8 @@ class RandomDeviceWin32 : public RandomDevice {
     // fill the buffer with random characters
     int result = CryptGenRandom(cryptoHandle, n, ptr);
     if (result == 0) {
-      LOG(FATAL) << "read on random device failed: nothing read"; FATAL_ERROR_EXIT();
+      LOG(FATAL) << "read on random device failed: nothing read";
+      FATAL_ERROR_EXIT();
     }
     pos = 0;
   }
@@ -282,355 +407,59 @@ class RandomDeviceWin32 : public RandomDevice {
   HCRYPTPROV cryptoHandle;
   uint32_t buffer[N];
   size_t pos;
+};
+}
+
 #endif
-};
-
-std::unique_ptr<RandomDevice> randomDevice;
-std::unique_ptr<RandomDevice> urandomDevice;
-std::unique_ptr<RandomDevice> combinedDevice;
-std::unique_ptr<RandomDevice> win32Device;
-}
 
 // -----------------------------------------------------------------------------
-// uniform generator
+// RandomGenerator
 // -----------------------------------------------------------------------------
 
-namespace RandomHelper {
-class UniformGenerator {
- private:
-  UniformGenerator(UniformGenerator const&);
-  UniformGenerator& operator=(UniformGenerator const&);
+Mutex RandomGenerator::_lock;
+std::unique_ptr<RandomDevice> RandomGenerator::_device(nullptr);
 
- public:
-  explicit UniformGenerator(RandomDevice* device) : device(device) {}
+void RandomGenerator::initialize(RandomType type) {
+  MUTEX_LOCKER(guard, _lock);
 
-  virtual ~UniformGenerator() {}
-
-  int32_t random(int32_t left, int32_t right) {
-    if (left >= right) {
-      return left;
-    }
-
-    if (left == INT32_MIN && right == INT32_MAX) {
-      return static_cast<int32_t>(device->random());
-    }
-
-    uint32_t range = static_cast<uint32_t>(right - left + 1);
-
-    switch (range) {
-      case 0x00000002:
-        return power2(left, 0x00000002 - 1);
-      case 0x00000004:
-        return power2(left, 0x00000004 - 1);
-      case 0x00000008:
-        return power2(left, 0x00000008 - 1);
-      case 0x00000010:
-        return power2(left, 0x00000010 - 1);
-      case 0x00000020:
-        return power2(left, 0x00000020 - 1);
-      case 0x00000040:
-        return power2(left, 0x00000040 - 1);
-      case 0x00000080:
-        return power2(left, 0x00000080 - 1);
-      case 0x00000100:
-        return power2(left, 0x00000100 - 1);
-      case 0x00000200:
-        return power2(left, 0x00000200 - 1);
-      case 0x00000400:
-        return power2(left, 0x00000400 - 1);
-      case 0x00000800:
-        return power2(left, 0x00000800 - 1);
-      case 0x00001000:
-        return power2(left, 0x00001000 - 1);
-      case 0x00002000:
-        return power2(left, 0x00002000 - 1);
-      case 0x00004000:
-        return power2(left, 0x00004000 - 1);
-      case 0x00008000:
-        return power2(left, 0x00008000 - 1);
-      case 0x00010000:
-        return power2(left, 0x00010000 - 1);
-      case 0x00020000:
-        return power2(left, 0x00020000 - 1);
-      case 0x00040000:
-        return power2(left, 0x00040000 - 1);
-      case 0x00080000:
-        return power2(left, 0x00080000 - 1);
-      case 0x00100000:
-        return power2(left, 0x00100000 - 1);
-      case 0x00200000:
-        return power2(left, 0x00200000 - 1);
-      case 0x00400000:
-        return power2(left, 0x00400000 - 1);
-      case 0x00800000:
-        return power2(left, 0x00800000 - 1);
-      case 0x01000000:
-        return power2(left, 0x01000000 - 1);
-      case 0x02000000:
-        return power2(left, 0x02000000 - 1);
-      case 0x04000000:
-        return power2(left, 0x04000000 - 1);
-      case 0x08000000:
-        return power2(left, 0x08000000 - 1);
-      case 0x10000000:
-        return power2(left, 0x10000000 - 1);
-      case 0x20000000:
-        return power2(left, 0x20000000 - 1);
-      case 0x40000000:
-        return power2(left, 0x40000000 - 1);
-      case 0x80000000:
-        return power2(left, 0x80000000 - 1);
-    }
-
-    return other(left, range);
-  }
-
- private:
-  int32_t power2(int32_t left, uint32_t mask) {
-    return left + static_cast<int32_t>(device->random() & mask);
-  }
-
-  int32_t other(int32_t left, uint32_t range) {
-    uint32_t g = UINT32_MAX - UINT32_MAX % range;
-    uint32_t r = device->random();
-    int count = 0;
-    static int const MAX_COUNT = 20;
-
-    TRI_ASSERT(g > 0);
-
-    while (r >= g) {
-      if (++count >= MAX_COUNT) {
-        LOG(ERR) << "cannot generate small random number after " << count << " tries";
-        r %= g;
-        continue;
-      }
-
-      LOG(DEBUG) << "random number too large, trying again";
-      r = device->random();
-    }
-
-    r %= range;
-
-    return left + static_cast<int32_t>(r);
-  }
-
- private:
-  RandomDevice* device;
-};
-}
-
-// -----------------------------------------------------------------------------
-// random helper class
-// -----------------------------------------------------------------------------
-
-namespace arangodb {
-namespace basics {
-namespace Random {
-
-// -----------------------------------------------------------------------------
-// implementation
-// -----------------------------------------------------------------------------
-
-struct UniformIntegerImpl {
-  virtual ~UniformIntegerImpl() {}
-  virtual int32_t random(int32_t left, int32_t right) = 0;
-};
-
-// MERSENNE
-struct UniformIntegerMersenne : public UniformIntegerImpl {
-  UniformIntegerMersenne()
-      : engine(static_cast<unsigned int>(
-            std::chrono::system_clock::now().time_since_epoch().count())) {}
-
-  int32_t random(int32_t left, int32_t right) {
-    int64_t const range = (int64_t)right - (int64_t)left + 1LL;
-    TRI_ASSERT(range > 0);
-
-    uint32_t result = engine();
-    result = (int32_t)(std::abs((int64_t)result % range) + (int64_t)left);
-
-    return result;
-  }
-
-  std::mt19937 engine;
-};
-
-// RANDOM DEVICE
-struct UniformIntegerRandom : public UniformIntegerImpl,
-                              private RandomHelper::UniformGenerator {
-  explicit UniformIntegerRandom(RandomHelper::RandomDevice* device)
-      : RandomHelper::UniformGenerator(device) {}
-
-  int32_t random(int32_t left, int32_t right) {
-    return RandomHelper::UniformGenerator::random(left, right);
-  }
-};
-
-// RANDOM DEVICE
-struct UniformIntegerWin32 : public UniformIntegerImpl,
-                             private RandomHelper::UniformGenerator {
-  explicit UniformIntegerWin32(RandomHelper::RandomDevice* device)
-      : RandomHelper::UniformGenerator(device) {}
-
-  int32_t random(int32_t left, int32_t right) {
-    return RandomHelper::UniformGenerator::random(left, right);
-  }
-};
-
-// current implementation (see version at the top of the file)
-std::unique_ptr<UniformIntegerImpl> uniformInteger(new UniformIntegerMersenne);
-
-// -----------------------------------------------------------------------------
-// uniform integer generator
-// -----------------------------------------------------------------------------
-
-int32_t UniformInteger::random() {
-  MUTEX_LOCKER(mutexLocker, RandomLock);
-
-  if (uniformInteger == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "unknown random generator");
-  }
-
-  return uniformInteger->random(left, right);
-}
-
-// -----------------------------------------------------------------------------
-// uniform character generator
-// -----------------------------------------------------------------------------
-
-UniformCharacter::UniformCharacter(size_t length)
-    : length(length),
-      characters(
-          "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"),
-      generator(0, (int32_t)characters.size() - 1) {}
-
-UniformCharacter::UniformCharacter(std::string const& characters)
-    : length(1),
-      characters(characters),
-      generator(0, (int32_t)characters.size() - 1) {}
-
-UniformCharacter::UniformCharacter(size_t length, std::string const& characters)
-    : length(length),
-      characters(characters),
-      generator(0, (int32_t)characters.size() - 1) {}
-
-std::string UniformCharacter::random() { return random(length); }
-
-std::string UniformCharacter::random(size_t length) {
-  std::string buffer;
-  buffer.reserve(length);
-
-  for (size_t i = 0; i < length; ++i) {
-    size_t r = generator.random();
-
-    buffer.push_back(characters[r]);
-  }
-
-  return buffer;
-}
-
-// -----------------------------------------------------------------------------
-// public methods
-// -----------------------------------------------------------------------------
-
-random_e selectVersion(random_e newVersion) {
-  MUTEX_LOCKER(mutexLocker, RandomLock);
-
-  random_e oldVersion = random_version;
-  random_version = newVersion;
-
-  switch (random_version) {
-    case RAND_MERSENNE: {
-      uniformInteger.reset(new UniformIntegerMersenne);
+  switch (type) {
+    case RandomType::MERSENNE: {
+      _device.reset(new RandomDeviceMersenne());
       break;
     }
 
-    case RAND_RANDOM: {
-      if (RandomHelper::randomDevice == nullptr) {
-        RandomHelper::randomDevice.reset(
-            new RandomHelper::RandomDeviceDirect<1024>("/dev/random"));
-      }
-
-      uniformInteger.reset(
-          new UniformIntegerRandom(RandomHelper::randomDevice.get()));
-
+#ifndef _WIN32
+    case RandomType::RANDOM: {
+      _device.reset(new RandomDeviceDirect<1024>("/dev/random"));
       break;
     }
 
-    case RAND_URANDOM: {
-      if (RandomHelper::urandomDevice == nullptr) {
-        RandomHelper::urandomDevice.reset(
-            new RandomHelper::RandomDeviceDirect<1024>("/dev/urandom"));
-      }
-
-      uniformInteger.reset(
-          new UniformIntegerRandom(RandomHelper::urandomDevice.get()));
-
+    case RandomType::URANDOM: {
+      _device.reset(new RandomDeviceDirect<1024>("/dev/urandom"));
       break;
     }
 
-    case RAND_COMBINED: {
-      if (RandomHelper::combinedDevice == nullptr) {
-        RandomHelper::combinedDevice.reset(
-            new RandomHelper::RandomDeviceCombined<600>("/dev/random"));
-      }
+#endif
 
-      uniformInteger.reset(
-          new UniformIntegerRandom(RandomHelper::combinedDevice.get()));
-
+    case RandomType::COMBINED: {
+      _device.reset(new RandomDeviceCombined<600>("/dev/random"));
       break;
     }
 
-    case RAND_WIN32: {
-      if (RandomHelper::win32Device == nullptr) {
-        RandomHelper::win32Device.reset(
-            new RandomHelper::RandomDeviceWin32<1024>());
-      }
-      uniformInteger.reset(
-          new UniformIntegerWin32(RandomHelper::win32Device.get()));
+#ifdef _WIN32
+    case RandomType::WIN32: {
+      _device.reset(new RandomDeviceWin32<1024>());
       break;
     }
+#endif
 
     default: {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "unknown random generator");
     }
   }
-
-  return oldVersion;
 }
 
-random_e currentVersion() { return random_version; }
-
-void shutdown() {}
-
-bool isBlocking() { return random_version == RAND_RANDOM; }
-
-int32_t interval(int32_t left, int32_t right) {
-  MUTEX_LOCKER(mutexLocker, RandomLock);
-
-  if (uniformInteger == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "unknown random generator");
-  }
-
-  return uniformInteger->random(left, right);
-}
-
-uint32_t interval(uint32_t left, uint32_t right) {
-  MUTEX_LOCKER(mutexLocker, RandomLock);
-
-  if (uniformInteger == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "unknown random generator");
-  }
-
-  int32_t l = left + INT32_MIN;
-  int32_t r = right + INT32_MIN;
-
-  return uniformInteger->random(l, r) - INT32_MIN;
-}
-}
-}
+void RandomGenerator::shutdown() {
+  _device.reset(nullptr);
 }

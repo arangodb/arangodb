@@ -72,9 +72,6 @@ static SERVICE_STATUS_HANDLE ServiceStatus;
 // So we have a valid minidump area during startup:
 static std::string miniDumpFilename = "c:\\arangodpanic.dmp";
 
-void TRI_GlobalEntryFunction();
-void TRI_GlobalExitFunction(int, void*);
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief installs arangod as service with command-line
 ////////////////////////////////////////////////////////////////////////////////
@@ -506,60 +503,6 @@ LONG CALLBACK unhandledExceptionHandler(EXCEPTION_POINTERS* e) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief global entry function
-///
-/// TODO can we share this between the binaries
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_GlobalEntryFunction() {
-  int maxOpenFiles = 2048;  // upper hard limit for windows
-  int res = 0;
-
-  // Uncomment this to call this for extended debug information.
-  // If you familiar with Valgrind ... then this is not like that, however
-  // you do get some similar functionality.
-
-  // res = initializeWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0);
-
-  res = initializeWindows(TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER, 0);
-
-  if (res != 0) {
-    _exit(EXIT_FAILURE);
-  }
-
-  res = initializeWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO,
-                          (char const*)(&maxOpenFiles));
-
-  if (res != 0) {
-    _exit(EXIT_FAILURE);
-  }
-
-  res = initializeWindows(TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL, 0);
-
-  if (res != 0) {
-    _exit(EXIT_FAILURE);
-  }
-
-  TRI_Application_Exit_SetExit(TRI_GlobalExitFunction);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief global exit function
-///
-/// TODO can we share this between the binaries
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_GlobalExitFunction(int exitCode, void* data) {
-  int res = finalizeWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
-
-  if (res != 0) {
-    exit(EXIT_FAILURE);
-  }
-
-  exit(exitCode);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief starts server as service
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -574,6 +517,7 @@ class WindowsArangoServer : public ArangoServer {
   /// @brief wrap ArangoDB server so we can properly emmit a status once we're
   ///        really up and running.
   //////////////////////////////////////////////////////////////////////////////
+
   virtual void startupProgress() override final {
     SetServiceStatus(SERVICE_START_PENDING, NO_ERROR, _progress++, 20000);
   }
@@ -582,6 +526,7 @@ class WindowsArangoServer : public ArangoServer {
   /// @brief wrap ArangoDB server so we can properly emmit a status once we're
   ///        really up and running.
   //////////////////////////////////////////////////////////////////////////////
+
   virtual void startupFinished() override final {
     // startup finished - signalize we're running.
     SetServiceStatus(SERVICE_RUNNING, NO_ERROR, 0, 0);
@@ -640,7 +585,7 @@ bool TRI_ParseMoreArgs(int argc, char* argv[]) {
   SetUnhandledExceptionFilter(unhandledExceptionHandler);
 
 #if 0
-  /// this is slower than valgrind: 
+  /// this even is slower than valgrind: 
   _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF | _CRTDBG_CHECK_ALWAYS_DF );
 #endif
 

@@ -27,17 +27,18 @@
 #define LIB_BASICS_ASSOC_UNIQUE_H 1
 
 #include "Basics/Common.h"
-#include "Basics/gcd.h"
-#include "Basics/JsonHelper.h"
-#include "Logger/Logger.h"
-#include "Basics/memory-map.h"
-#include "Basics/MutexLocker.h"
-#include "Basics/prime-numbers.h"
-#include "Basics/random.h"
 
 #include <thread>
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include "Basics/JsonHelper.h"
+#include "Basics/MutexLocker.h"
+#include "Basics/RandomGenerator.h"
+#include "Basics/gcd.h"
+#include "Basics/memory-map.h"
+#include "Basics/prime-numbers.h"
+#include "Logger/Logger.h"
 
 namespace arangodb {
 namespace basics {
@@ -998,12 +999,12 @@ class AssocUnique {
 
       // find a co-prime for total
       while (true) {
-        step = TRI_UInt32Random() % total;
+        step = RandomGenerator::interval(UINT32_MAX) % total;
         if (step > 10 &&
             arangodb::basics::binaryGcd<uint64_t>(total, step) == 1) {
           uint64_t initialPositionNr = 0;
           while (initialPositionNr == 0) {
-            initialPositionNr = TRI_UInt32Random() % total;
+            initialPositionNr = RandomGenerator::interval(UINT32_MAX) % total;
           }
           for (size_t i = 0; i < _buckets.size(); ++i) {
             if (initialPositionNr < _buckets[i]._nrAlloc) {

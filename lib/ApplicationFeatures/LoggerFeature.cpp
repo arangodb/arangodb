@@ -22,11 +22,14 @@
 
 #include "ApplicationFeatures/LoggerFeature.h"
 
+#include "Basics/StringUtils.h"
+#include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions2/ProgramOptions.h"
 #include "ProgramOptions2/Section.h"
 
 using namespace arangodb;
+using namespace arangodb::basics;
 using namespace arangodb::options;
 
 LoggerFeature::LoggerFeature(application_features::ApplicationServer* server)
@@ -97,7 +100,6 @@ void LoggerFeature::loadOptions(
 
   // for debugging purpose, we set the log levels NOW
   // this might be overwritten latter
-  Logger::initialize(false);
   Logger::setLogLevel(_levels);
 }
 
@@ -109,8 +111,6 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
     if (_file == "+" || _file == "-") {
       definition = _file;
-    } else if (_daemon) {
-      definition = "file://" + _file + ".daemon";
     } else {
       definition = "file://" + _file;
     }
@@ -120,10 +120,6 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   if (_performance) {
     _levels.push_back("requests=trace");
-  }
-
-  if (!_backgrounded && isatty(STDIN_FILENO) != 0) {
-    _output.push_back("*");
   }
 }
 
@@ -142,16 +138,22 @@ void LoggerFeature::prepare() {
   Logger::setShowLineNumber(_lineNumber);
   Logger::setShowThreadIdentifier(_thread);
   Logger::setOutputPrefix(_prefix);
+
+  for (auto definition : _output) {
+    if (_daemon && StringUtils::isPrefix(definition, "file://")) {
+      definition += ".daemon";
+    }
+
+    LogAppender::addAppender(definition);
+  }
+
+  LogAppender::addTtyAppender(_backgrounded);
 }
 
 void LoggerFeature::start() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
 
-  if (_threaded) {
-    Logger::flush();
-    Logger::shutdown(false);
-    Logger::initialize(_threaded);
-  }
+  Logger::initialize(_threaded);
 }
 
 void LoggerFeature::stop() {

@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ClientFeature.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/LoggerFeature.h"
+#include "ApplicationFeatures/RandomFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Dump/DumpFeature.h"
@@ -44,10 +45,11 @@ int main(int argc, char* argv[]) {
 
   int ret;
 
-  server.addFeature(new LoggerFeature(&server));
-  server.addFeature(new ConfigFeature(&server, "arangodump"));
   server.addFeature(new ClientFeature(&server));
+  server.addFeature(new ConfigFeature(&server, "arangodump"));
   server.addFeature(new DumpFeature(&server, &ret));
+  server.addFeature(new LoggerFeature(&server));
+  server.addFeature(new RandomFeature(&server));
   server.addFeature(new ShutdownFeature(&server, "Dump"));
 
   server.run(argc, argv);

@@ -29,7 +29,7 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/json.h"
 #include "Logger/Logger.h"
-#include "Basics/random.h"
+#include "Basics/RandomGenerator.h"
 #include "Cluster/ServerState.h"
 #include "Rest/Endpoint.h"
 #include "Rest/HttpRequest.h"
@@ -1138,7 +1138,7 @@ void AgencyComm::increaseVersionRepeated(std::string const& key) {
     if (ok) {
       return;
     }
-    uint32_t val = 300 + TRI_UInt32Random() % 400;
+    uint32_t val = 300 + RandomGenerator::interval(0, 399);
     LOG(INFO) << "Could not increase " << key << " in agency, retrying in " << val << "!";
     usleep(val * 1000);
   }

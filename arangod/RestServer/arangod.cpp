@@ -23,7 +23,7 @@
 
 #include "Basics/Common.h"
 
-#include "Rest/InitializeRest.h"
+#include "Basics/ArangoGlobalContext.h"
 #include "RestServer/ArangoServer.h"
 #include <signal.h>
 
@@ -45,13 +45,9 @@ ArangoServer* ArangoInstance = nullptr;
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
-extern void TRI_GlobalEntryFunction();
-extern void TRI_GlobalExitFunction(int, void*);
 extern bool TRI_ParseMoreArgs(int argc, char* argv[]);
 extern void TRI_StartService(int argc, char* argv[]);
 #else
-void TRI_GlobalEntryFunction() {}
-void TRI_GlobalExitFunction(int exitCode, void* data) {}
 bool TRI_ParseMoreArgs(int argc, char* argv[]) { return false; }
 void TRI_StartService(int argc, char* argv[]) {}
 #endif
@@ -71,11 +67,15 @@ static void AbortHandler(int signum) {
 #endif
 }
 
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an application server
 ////////////////////////////////////////////////////////////////////////////////
 
 int main(int argc, char* argv[]) {
+  ArangoGlobalContext context(argc, argv);
+
   int res = EXIT_SUCCESS;
 
   // Note: NEVER start threads or create global objects in here. The server
@@ -90,9 +90,6 @@ int main(int argc, char* argv[]) {
   bool const startAsService = TRI_ParseMoreArgs(argc, argv);
 
   // initialize sub-systems
-  TRI_GlobalEntryFunction();
-  TRIAGENS_REST_INITIALIZE();
-
   if (startAsService) {
     TRI_StartService(argc, argv);
   } else {
@@ -111,12 +108,10 @@ int main(int argc, char* argv[]) {
       std::cerr << "Caught an exception during shutdown" << std::endl;
 #endif
     }
+
     ArangoInstance = nullptr;
   }
 
   // shutdown sub-systems
-  TRIAGENS_REST_SHUTDOWN;
-  TRI_GlobalExitFunction(res, nullptr);
-
-  return res;
+  return context.exit(res);
 }
