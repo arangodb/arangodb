@@ -122,32 +122,6 @@ bool Index::supportsSortCondition(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get an iterator for the index
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::IndexIterator* Index::getIterator(
-    arangodb::Transaction* trx, arangodb::IndexIteratorContext* context,
-    arangodb::aql::Ast* ast, arangodb::aql::AstNode const* condition,
-    arangodb::aql::Variable const* reference, bool reverse) const {
-  TRI_ASSERT(hasInternals());
-  return getInternals()->iteratorForCondition(trx, context, ast, condition,
-                                              reference, reverse);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief specialize the condition for the index
-/// this will remove all nodes from the condition that the index cannot
-/// handle
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::aql::AstNode* Index::specializeCondition(
-    arangodb::aql::AstNode* node,
-    arangodb::aql::Variable const* reference) const {
-  TRI_ASSERT(hasInternals());
-  return getInternals()->specializeCondition(node, reference);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief append the index to an output stream
 ////////////////////////////////////////////////////////////////////////////////
 

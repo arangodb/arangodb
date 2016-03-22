@@ -181,26 +181,6 @@ struct Index {
                              arangodb::aql::Variable const*, size_t,
                              double&) const;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get an iterator for the index
-  //////////////////////////////////////////////////////////////////////////////
-
-  arangodb::IndexIterator* getIterator(arangodb::Transaction*,
-                                       arangodb::IndexIteratorContext*,
-                                       arangodb::aql::Ast*,
-                                       arangodb::aql::AstNode const*,
-                                       arangodb::aql::Variable const*,
-                                       bool) const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief specialize the condition for the index
-  /// this will remove all nodes from the condition that the index cannot
-  /// handle
-  //////////////////////////////////////////////////////////////////////////////
-
-  arangodb::aql::AstNode* specializeCondition(
-      arangodb::aql::AstNode*, arangodb::aql::Variable const*) const;
-
  public:
   TRI_idx_iid_t const id;
   arangodb::Index::IndexType type;
