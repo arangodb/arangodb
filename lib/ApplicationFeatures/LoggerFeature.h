@@ -47,6 +47,7 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   bool _lineNumber;
   bool _thread;
   bool _performance;
+  bool _keepLogRotate;
 
  private:
   bool _daemon;

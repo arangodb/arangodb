@@ -27,6 +27,7 @@
 
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -60,8 +61,12 @@ void LogAppenderFile::reopen() {
                         S_IRUSR | S_IWUSR | S_IRGRP);
 
     if (fd < 0) {
-      TRI_RenameFile(backup.c_str(), filename.c_str());
+      FileUtils::rename(backup, filename);
       continue;
+    }
+
+    if (!Logger::_keepLogRotate) {
+      FileUtils::remove(backup);
     }
 
     _fds[pos].first = fd;

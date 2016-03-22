@@ -42,6 +42,7 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer* server)
       _lineNumber(false),
       _thread(false),
       _performance(false),
+      _keepLogRotate(false),
       _daemon(false),
       _backgrounded(false),
       _threaded(false) {
@@ -92,6 +93,10 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addHiddenOption("--log.performance",
                            "shortcut for '--log.level requests=trace'",
                            new BooleanParameter(&_performance));
+
+  options->addHiddenOption("--log.keep-logrotate",
+                           "keep the old log file after receiving a sighup",
+                           new BooleanParameter(&_keepLogRotate));
 }
 
 void LoggerFeature::loadOptions(
@@ -138,6 +143,7 @@ void LoggerFeature::prepare() {
   Logger::setShowLineNumber(_lineNumber);
   Logger::setShowThreadIdentifier(_thread);
   Logger::setOutputPrefix(_prefix);
+  Logger::setKeepLogrotate(_keepLogRotate);
 
   for (auto definition : _output) {
     if (_daemon && StringUtils::isPrefix(definition, "file://")) {

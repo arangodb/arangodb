@@ -44,6 +44,7 @@ bool Logger::_showLineNumber(false);
 bool Logger::_showThreadIdentifier(false);
 bool Logger::_threaded(false);
 bool Logger::_useLocalTime(false);
+bool Logger::_keepLogRotate(false);
 std::string Logger::_outputPrefix("");
 
 std::unique_ptr<LogThread> Logger::_loggingThread(nullptr);
@@ -167,6 +168,16 @@ void Logger::setUseLocalTime(bool show) {
   }
 
   _useLocalTime = show;
+}
+
+// NOTE: this function should not be called if the logging is active.
+void Logger::setKeepLogrotate(bool keep) {
+  if (_active) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "cannot change keep log rotate if logging is active");
+  }
+
+  _keepLogRotate = keep;
 }
 
 std::string const& Logger::translateLogLevel(LogLevel level) {

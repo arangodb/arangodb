@@ -1,0 +1,22 @@
+  // helper function to prevent duplicate output filenames
+  auto hasAppender = [&existingAppenders](std::string const& filename) {
+    if (existingAppenders.find(filename) != existingAppenders.end()) {
+      return true;
+    }
+    // treat stderr and stdout as one output filename
+    if (filename == "-" &&
+        existingAppenders.find("+") != existingAppenders.end()) {
+      return true;
+    }
+    if (filename == "+" &&
+        existingAppenders.find("-") != existingAppenders.end()) {
+      return true;
+    }
+    return false;
+  };
+
+  if (hasAppender(filename)) {
+    // already have an appender for the same output
+    return nullptr;
+  }
+

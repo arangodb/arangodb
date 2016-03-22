@@ -124,6 +124,7 @@ class Logger {
 
   friend class LoggerStream;
   friend class LogThread;
+  friend class LogAppenderFile;
 
  public:
   static LogTopic COLLECTOR;
@@ -180,6 +181,7 @@ class Logger {
   static void setShowLineNumber(bool);
   static void setShowThreadIdentifier(bool);
   static void setUseLocalTime(bool);
+  static void setKeepLogrotate(bool);
 
   static std::string const& translateLogLevel(LogLevel);
 
@@ -213,6 +215,7 @@ class Logger {
   static bool _showThreadIdentifier;
   static bool _threaded;
   static bool _useLocalTime;
+  static bool _keepLogRotate;
   static std::string _outputPrefix;
 
   static std::unique_ptr<LogThread> _loggingThread;
