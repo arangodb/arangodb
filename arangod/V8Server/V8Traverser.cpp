@@ -918,8 +918,9 @@ void DepthFirstTraverser::_defInternalFunctions() {
   };
 }
 
-void DepthFirstTraverser::setStartVertex(
-    std::string const& v) {
+void DepthFirstTraverser::setStartVertex(std::string const& v) {
+  _pruneNext = false;
+
   TRI_ASSERT(_expressions != nullptr);
 
   auto it = _expressions->find(0);
