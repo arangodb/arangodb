@@ -39,24 +39,6 @@ class Slice;
 class Transaction;
 }
 
-struct EdgeInfo {
-  TRI_voc_cid_t cid;
-  TRI_doc_mptr_t mptr;
-
-  EdgeInfo(TRI_voc_cid_t pcid, TRI_doc_mptr_t& pmptr)
-      : cid(pcid), mptr(pmptr) {}
-
-  bool operator==(EdgeInfo const& other) const {
-    if (cid == other.cid && mptr.getHash() == other.mptr.getHash()) {
-      // We have to look into the key now. The only source of truth.
-      char const* l = TRI_EXTRACT_MARKER_KEY(&mptr);
-      char const* r = TRI_EXTRACT_MARKER_KEY(&other.mptr);
-      return strcmp(l, r) == 0;
-    }
-    return false;
-  }
-};
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief typedef the template instantiation of the PathFinder
 ////////////////////////////////////////////////////////////////////////////////
