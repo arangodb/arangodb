@@ -508,7 +508,7 @@ TRI_doc_collection_info_t* TRI_document_collection_t::figures() {
 
   info->_sizeIndexes += static_cast<int64_t>(_masterPointers.memory());
 
-  for (auto& idx : allIndexes()) {
+  for (auto const& idx : allIndexes()) {
     info->_sizeIndexes += idx->memory();
     info->_numberIndexes++;
   }
@@ -575,7 +575,7 @@ arangodb::Index* TRI_document_collection_t::removeIndex(TRI_idx_iid_t iid) {
 /// @brief get all indexes of the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<arangodb::Index*> TRI_document_collection_t::allIndexes() const {
+std::vector<arangodb::Index*> const& TRI_document_collection_t::allIndexes() const {
   return _indexes;
 }
 

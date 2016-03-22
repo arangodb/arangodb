@@ -33,6 +33,9 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/PrimaryIndex.h"
+#include "Indexes/EdgeIndex.h"
+#include "Indexes/HashIndex.h"
+#include "Indexes/SkiplistIndex.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/TransactionContext.h"
@@ -307,7 +310,7 @@ static bool sortOrs(arangodb::aql::Ast* ast,
 
 
 static std::pair<bool, bool> findIndexHandleForAndNode(
-    std::vector<Index*> indexes, arangodb::aql::AstNode* node,
+    std::vector<std::shared_ptr<Index>> indexes, arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference,
     arangodb::aql::SortCondition const* sortCondition,
     size_t itemsInCollection,
@@ -350,7 +353,7 @@ static std::pair<bool, bool> findIndexHandleForAndNode(
       // general be supported by an index. for this, a sort condition must not
       // be empty, must consist only of attribute access, and all attributes
       // must be sorted in the direction
-      if (indexSupportsSort(idx, reference, sortCondition, itemsInIndex,
+      if (indexSupportsSort(idx.get(), reference, sortCondition, itemsInIndex,
                             sortCost)) {
         supportsSort = true;
       }
@@ -378,7 +381,7 @@ static std::pair<bool, bool> findIndexHandleForAndNode(
 
     double const totalCost = filterCost + sortCost;
     if (bestIndex == nullptr || totalCost < bestCost) {
-      bestIndex = idx;
+      bestIndex = idx.get();
       bestCost = totalCost;
       bestSupportsFilter = supportsFilter;
       bestSupportsSort = supportsSort;
@@ -879,7 +882,7 @@ std::string Transaction::edgeIndexHandle(std::string const& collectionName) {
   if (!isEdgeCollection(collectionName)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
   }
-  std::vector<Index*> indexes = indexesForCollection(collectionName); 
+  auto indexes = indexesForCollection(collectionName); 
   for (auto idx : indexes) {
     if (idx->type() == Index::TRI_IDX_TYPE_EDGE_INDEX) {
       return arangodb::basics::StringUtils::itoa(idx->id());
@@ -2021,7 +2024,7 @@ std::pair<bool, bool> Transaction::getBestIndexHandlesForFilterCondition(
   // We can only start after DNF transformation
   TRI_ASSERT(root->type ==
              arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_OR);
-  std::vector<Index*> indexes = indexesForCollection(collectionName);
+  auto indexes = indexesForCollection(collectionName);
 
   bool canUseForFilter = (root->numMembers() > 0);
   bool canUseForSort = false;
@@ -2129,7 +2132,7 @@ std::pair<bool, bool> Transaction::getIndexForSortCondition(
     double bestCost = 0.0;
     Index const* bestIndex = nullptr;
 
-    std::vector<Index*> indexes = indexesForCollection(collectionName);
+    auto indexes = indexesForCollection(collectionName);
 
     for (auto const& idx : indexes) {
       if (idx->sparse()) {
@@ -2138,11 +2141,11 @@ std::pair<bool, bool> Transaction::getIndexForSortCondition(
         continue;
       }
       double sortCost = 0.0;
-      if (indexSupportsSort(idx, reference, sortCondition, itemsInIndex,
+      if (indexSupportsSort(idx.get(), reference, sortCondition, itemsInIndex,
                             sortCost)) {
         if (bestIndex == nullptr || sortCost < bestCost) {
           bestCost = sortCost;
-          bestIndex = idx;
+          bestIndex = idx.get();
         }
       }
     }
@@ -2207,7 +2210,7 @@ std::shared_ptr<OperationCursor> Transaction::indexScanForCondition(
 
 arangodb::Index* Transaction::getIndexByIdentifier(
     std::string const& collectionName, std::string const& indexHandle) {
-  TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
+  TRI_voc_cid_t cid = resolver()->getCollectionId(collectionName);
 
   if (cid == 0) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
@@ -2489,17 +2492,95 @@ int Transaction::unlock(TRI_transaction_collection_t* trxCollection,
   return TRI_UnlockCollectionTransaction(trxCollection, type, _nestingLevel);
 }
 
-std::vector<Index*> Transaction::indexesForCollection(
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get list of indexes for a collection
+////////////////////////////////////////////////////////////////////////////////
+
+std::vector<std::shared_ptr<Index>> Transaction::indexesForCollection(
     std::string const& collectionName) const {
-  TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
+
+  auto ss = ServerState::instance();
+  if (ss->isCoordinator()) {
+    return indexesForCollectionCoordinator(collectionName);
+  }
+  // For a DBserver we use the local case.
+
+  TRI_voc_cid_t cid = resolver()->getCollectionId(collectionName);
 
   if (cid == 0) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
                                   collectionName.c_str());
   }
+
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
 
-  return document->allIndexes();
+  // Wrap fake shared pointers around the raw pointers:
+  std::shared_ptr<Index> dummy;
+  auto const& intermediate = document->allIndexes();
+  std::vector<std::shared_ptr<Index>> result;
+  result.reserve(intermediate.size());
+  for (auto* p : intermediate) {
+    result.emplace_back(dummy, p);
+  }
+  return result;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Get all indexes for a collection name, coordinator case
+//////////////////////////////////////////////////////////////////////////////
+
+std::vector<std::shared_ptr<Index>> Transaction::indexesForCollectionCoordinator(std::string const& name) const {
+
+  std::vector<std::shared_ptr<Index>> indexes;
+
+  auto clusterInfo = arangodb::ClusterInfo::instance();
+  auto collectionInfo =
+      clusterInfo->getCollection(std::string(_vocbase->_name), name);
+
+  if (collectionInfo.get() == nullptr || (*collectionInfo).empty()) {
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_INTERNAL,
+                                  "collection not found '%s' in database '%s'",
+                                  name.c_str(), _vocbase->_name);
+  }
+
+  TRI_json_t const* json = (*collectionInfo).getIndexes();
+  auto indexBuilder = arangodb::basics::JsonHelper::toVelocyPack(json);
+  VPackSlice const slice = indexBuilder->slice();
+
+  if (slice.isArray()) {
+    size_t const n = static_cast<size_t>(slice.length());
+    indexes.reserve(n);
+
+    for (auto const& v : VPackArrayIterator(slice)) {
+      if (!v.isObject()) {
+        continue;
+      }
+      VPackSlice const type = v.get("type");
+
+      if (!type.isString()) {
+        // no "type" attribute. this is invalid
+        continue;
+      }
+      std::string typeString = type.copyString();
+      arangodb::Index::IndexType indexType 
+          = arangodb::Index::type(typeString.c_str());
+
+      std::shared_ptr<arangodb::Index> idx;
+      if (indexType == arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+        idx.reset(new arangodb::PrimaryIndex(v));
+      } else if (indexType  == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
+        idx.reset(new arangodb::EdgeIndex(v));
+      } else if (indexType  == arangodb::Index::TRI_IDX_TYPE_HASH_INDEX) {
+        idx.reset(new arangodb::HashIndex(v));
+      } else if (indexType  == arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
+        idx.reset(new arangodb::SkiplistIndex(v));
+      }
+      if (idx != nullptr) {
+        indexes.push_back(idx);
+      }
+    }
+  }
+  return indexes;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
