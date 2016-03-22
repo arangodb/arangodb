@@ -600,7 +600,7 @@ std::string Transaction::extractIdString(CollectionNameResolver const* resolver,
   
   uint64_t cid = DatafileHelper::ReadNumber<uint64_t>(id.begin() + 1, sizeof(uint64_t));
   char buffer[512];  // This is enough for collection name + _key
-  size_t len = resolver->getCollectionName(&buffer[0], cid);
+  size_t len = resolver->getCollectionNameCluster(&buffer[0], cid);
   buffer[len] = '/';
 
   VPackValueLength keyLength;
