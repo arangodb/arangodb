@@ -45,14 +45,6 @@ void RestBaseHandler::handleError(Exception const& ex) {
 /// @brief generates a result from VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestBaseHandler::generateResult(VPackSlice const& slice) {
-  generateResult(HttpResponse::OK, slice);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates a result from VelocyPack
-////////////////////////////////////////////////////////////////////////////////
-
 void RestBaseHandler::generateResult(HttpResponse::HttpResponseCode code,
                                      VPackSlice const& slice) {
   createResponse(code);

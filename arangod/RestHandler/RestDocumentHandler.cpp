@@ -313,7 +313,7 @@ bool RestDocumentHandler::readAllDocuments() {
   }
 
   // generate response
-  generateResult(VPackSlice(opRes.buffer->data()));
+  generateResult(HttpResponse::HttpResponseCode::OK, VPackSlice(opRes.buffer->data()));
   return true;
 }
 

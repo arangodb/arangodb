@@ -30,7 +30,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
-
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
@@ -66,8 +65,7 @@ HttpHandler::status_t RestVersionHandler::execute() {
       result.close();
     }
     result.close();
-    VPackSlice s = result.slice();
-    generateResult(s);
+    generateResult(HttpResponse::HttpResponseCode::OK, result.slice());
   } catch (...) {
     // Ignore this error
   }

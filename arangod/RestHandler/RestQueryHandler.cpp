@@ -111,9 +111,8 @@ bool RestQueryHandler::readQueryProperties() {
     result.add("maxQueryStringLength",
                VPackValue(queryList->maxQueryStringLength()));
     result.close();
-    VPackSlice slice = result.slice();
 
-    generateResult(slice);
+    generateResult(HttpResponse::HttpResponseCode::OK, result.slice());
   } catch (Exception const& err) {
     handleError(err);
   } catch (std::exception const& ex) {
@@ -150,9 +149,8 @@ bool RestQueryHandler::readQuery(bool slow) {
       result.close();
     }
     result.close();
-    VPackSlice s = result.slice();
-
-    generateResult(s);
+    
+    generateResult(HttpResponse::HttpResponseCode::OK, result.slice());
   } catch (Exception const& err) {
     handleError(err);
   } catch (std::exception const& ex) {
@@ -205,8 +203,8 @@ bool RestQueryHandler::deleteQuerySlow() {
   result.add("error", VPackValue(false));
   result.add("code", VPackValue(HttpResponse::OK));
   result.close();
-  VPackSlice slice = result.slice();
-  generateResult(slice);
+    
+  generateResult(HttpResponse::HttpResponseCode::OK, result.slice());
 
   return true;
 }
@@ -224,8 +222,8 @@ bool RestQueryHandler::deleteQuery(std::string const& name) {
     result.add("error", VPackValue(false));
     result.add("code", VPackValue(HttpResponse::OK));
     result.close();
-    VPackSlice slice = result.slice();
-    generateResult(slice);
+  
+    generateResult(HttpResponse::HttpResponseCode::OK, result.slice());
   } else {
     generateError(HttpResponse::BAD, res, "cannot kill query '" + name + "'");
   }
@@ -397,8 +395,7 @@ bool RestQueryHandler::parseQuery() {
       }
     }
 
-    VPackSlice slice = result.slice();
-    generateResult(slice);
+    generateResult(HttpResponse::HttpResponseCode::OK, result.slice());
   } catch (Exception const& err) {
     handleError(err);
   } catch (std::exception const& ex) {
