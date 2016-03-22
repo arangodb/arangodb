@@ -1,6 +1,13 @@
 v2.8.6 (2016-03-XX)
 -------------------
 
+* added missing reset of traversal state for nested traversals.
+  The state of nested traversals (a traversal in an AQL query that was
+  located in a repeatedly executed subquery or inside another FOR loop)
+  was not reset properly, so that multiple invocations of the same nested
+  traversal with different start vertices led to the nested traversal
+  always using the start vertex provided on the first invocation.
+
 * fixed issue #1781: ArangoDB startup time increased tremendously
 
 * fixed issue #1783: SIGHUP should rotate the log

@@ -933,8 +933,13 @@ void DepthFirstTraverser::_defInternalFunctions () {
   };
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Reset the traverser to use another start vertex
+////////////////////////////////////////////////////////////////////////////////
+
 void DepthFirstTraverser::setStartVertex (triagens::arango::traverser::VertexId const& v) {
   TRI_ASSERT(_expressions != nullptr);
+  _pruneNext = false;
 
   auto it = _expressions->find(0);
   if (it != _expressions->end()) {
