@@ -29,7 +29,10 @@
 #include "Rest/HttpResponse.h"
 
 namespace arangodb {
+class TransactionContext;
+
 namespace velocypack {
+struct Options;
 class Slice;
 }
 
@@ -52,12 +55,14 @@ class RestBaseHandler : public rest::HttpHandler {
 
   void generateResult(rest::HttpResponse::HttpResponseCode,
                       arangodb::velocypack::Slice const& slice);
-
+  
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief generates a cancel message
+  /// @brief generates a result from VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void generateCanceled();
+  void generateResult(rest::HttpResponse::HttpResponseCode,
+                      arangodb::velocypack::Slice const& slice,
+                      std::shared_ptr<arangodb::TransactionContext> context);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates an error
@@ -72,10 +77,23 @@ class RestBaseHandler : public rest::HttpHandler {
   void generateError(rest::HttpResponse::HttpResponseCode, int, std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief generates an OUT_OF_MEMORY error
+  /// @brief generates an out of memory error
   //////////////////////////////////////////////////////////////////////////////
 
   void generateOOMError();
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief generates a canceled message
+  //////////////////////////////////////////////////////////////////////////////
+
+  void generateCanceled();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief dumps the response as JSON into the response string buffer
+  //////////////////////////////////////////////////////////////////////////////
+
+  void dumpResponse(arangodb::velocypack::Slice const& slice,
+                    arangodb::velocypack::Options const* options);
 };
 }
 
