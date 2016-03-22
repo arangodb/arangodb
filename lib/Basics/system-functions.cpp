@@ -33,7 +33,7 @@ void* memrchr(void const* block, int c, size_t size) {
   unsigned char const* p = static_cast<unsigned char const*>(block);
 
   if (size) {
-    for (p += size - 1; size; p--, size--)
+    for (p += size - 1; size; p--, size--) {
       if (*p == c) {
         return (void*)p;
       }
