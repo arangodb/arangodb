@@ -128,7 +128,7 @@ static void EdgesQuery(TRI_edge_direction_e direction,
       if (obj->Has(TRI_V8_ASCII_STRING(TRI_VOC_ATTRIBUTE_ID))) {
         builder->add(VPackValue(TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING(TRI_VOC_ATTRIBUTE_ID)))));
       } else {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "object does not have _id attribute"); 
+        builder->add(VPackValue(""));
       }
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid value type. expecting string or object value");
