@@ -133,7 +133,7 @@ void RestJobHandler::putJobMethod() {
         json.close();
 
         VPackSlice slice(json.start());
-        generateResult(slice);
+        generateResult(HttpResponse::HttpResponseCode::OK, slice);
       } catch (...) {
         // Ignore the error
       }
@@ -229,7 +229,7 @@ void RestJobHandler::getJobByType(std::string const& type) {
       result.add(VPackValue(std::to_string(ids[i])));
     }
     result.close();
-    generateResult(result.slice());
+    generateResult(HttpResponse::HttpResponseCode::OK, result.slice());
   } catch (...) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -279,7 +279,7 @@ void RestJobHandler::deleteJob() {
     json.add("result", VPackValue(true));
     json.close();
     VPackSlice slice(json.start());
-    generateResult(slice);
+    generateResult(HttpResponse::HttpResponseCode::OK, slice);
   } catch (...) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
   }

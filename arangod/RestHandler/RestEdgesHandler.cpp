@@ -217,7 +217,7 @@ bool RestEdgesHandler::readEdges(
 
     VPackBuilder tmp;
     arangodb::basics::JsonHelper::toVelocyPack(resultDocument.json(), tmp);
-    generateResult(tmp.slice());
+    generateResult(HttpResponse::HttpResponseCode::OK, tmp.slice());
 
     return true;
   }
@@ -274,7 +274,7 @@ bool RestEdgesHandler::readEdges(
   resultBuilder.close();
 
   // and generate a response
-  generateResult(resultBuilder.slice());
+  generateResult(HttpResponse::HttpResponseCode::OK, resultBuilder.slice(), trx.transactionContext());
 
   return true;
 }
@@ -410,7 +410,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   resultBuilder.close(); 
 
   // and generate a response
-  generateResult(resultBuilder.slice());
+  generateResult(HttpResponse::HttpResponseCode::OK, resultBuilder.slice());
 
   return true;
 }

@@ -439,8 +439,7 @@ void RestReplicationHandler::handleCommandLoggerState() {
 
     builder.close();  // base
 
-    VPackSlice slice = builder.slice();
-    generateResult(slice);
+    generateResult(HttpResponse::HttpResponseCode::OK, builder.slice());
   } catch (...) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -466,7 +465,7 @@ void RestReplicationHandler::handleCommandLoggerTickRanges() {
     }
 
     b.close();
-    generateResult(b.slice());
+    generateResult(HttpResponse::HttpResponseCode::OK, b.slice());
   } catch (...) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     return;
@@ -502,7 +501,7 @@ void RestReplicationHandler::handleCommandLoggerFirstTick() {
       b.add("firstTick", VPackValue(tickString));
     }
     b.close();
-    generateResult(b.slice());
+    generateResult(HttpResponse::HttpResponseCode::OK, b.slice());
   } catch (...) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -546,8 +545,7 @@ void RestReplicationHandler::handleCommandBatch() {
       b.add(VPackValue(VPackValueType::Object));
       b.add("id", VPackValue(std::to_string(id)));
       b.close();
-      VPackSlice s = b.slice();
-      generateResult(s);
+      generateResult(HttpResponse::HttpResponseCode::OK, b.slice());
     } catch (...) {
       generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     }
@@ -650,8 +648,7 @@ void RestReplicationHandler::handleCommandBarrier() {
       std::string const idString(std::to_string(id));
       b.add("id", VPackValue(idString));
       b.close();
-      VPackSlice s = b.slice();
-      generateResult(s);
+      generateResult(HttpResponse::HttpResponseCode::OK, b.slice());
     } catch (...) {
       generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     }
@@ -716,8 +713,7 @@ void RestReplicationHandler::handleCommandBarrier() {
         b.add(VPackValue(std::to_string(it)));
       }
       b.close();
-      VPackSlice s = b.slice();
-      generateResult(s);
+      generateResult(HttpResponse::HttpResponseCode::OK, b.slice());
     } catch (...) {
       generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     }
@@ -1111,7 +1107,7 @@ void RestReplicationHandler::handleCommandInventory() {
     builder.add("tick", VPackValue(tickString));
     builder.close();  // Toplevel
 
-    generateResult(builder.slice());
+    generateResult(HttpResponse::HttpResponseCode::OK, builder.slice());
   } catch (std::bad_alloc&) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     return;
@@ -1359,8 +1355,7 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
       result.add(VPackValue(VPackValueType::Object));
       result.add("result", VPackValue(true));
       result.close();
-      VPackSlice s = result.slice();
-      generateResult(s);
+      generateResult(HttpResponse::HttpResponseCode::OK, result.slice());
     } catch (...) {
       generateOOMError();
     }
@@ -1410,8 +1405,7 @@ void RestReplicationHandler::handleCommandRestoreIndexes() {
       result.openObject();
       result.add("result", VPackValue(true));
       result.close();
-      VPackSlice s = result.slice();
-      generateResult(s);
+      generateResult(HttpResponse::HttpResponseCode::OK, result.slice());
     } catch (...) {
       generateOOMError();
     }
@@ -2182,8 +2176,7 @@ void RestReplicationHandler::handleCommandRestoreData() {
       result.add(VPackValue(VPackValueType::Object));
       result.add("result", VPackValue(true));
       result.close();
-      VPackSlice s = result.slice();
-      generateResult(s);
+      generateResult(HttpResponse::HttpResponseCode::OK, result.slice());
     } catch (...) {
       generateOOMError();
     }
@@ -2442,7 +2435,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
     result.openObject();
     result.add("result", VPackValue(true));
     result.close();
-    generateResult(result.slice());
+    generateResult(HttpResponse::HttpResponseCode::OK, result.slice());
   } catch (...) {
     generateOOMError();
   }
@@ -2519,8 +2512,7 @@ void RestReplicationHandler::handleCommandCreateKeys() {
     result.add("id", VPackValue(idString));
     result.add("count", VPackValue(count));
     result.close();
-    VPackSlice s = result.slice();
-    generateResult(s);
+    generateResult(HttpResponse::HttpResponseCode::OK, result.slice());
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (...) {
@@ -2605,8 +2597,7 @@ void RestReplicationHandler::handleCommandGetKeys() {
       b.close();
 
       collectionKeys->release();
-      VPackSlice s = b.slice();
-      generateResult(s);
+      generateResult(HttpResponse::HttpResponseCode::OK, b.slice());
     } catch (...) {
       collectionKeys->release();
       throw;
@@ -2718,7 +2709,7 @@ void RestReplicationHandler::handleCommandFetchKeys() {
 
       collectionKeys->release();
 
-      generateResult(resultBuilder.slice());
+      generateResult(HttpResponse::HttpResponseCode::OK, resultBuilder.slice());
     } catch (...) {
       collectionKeys->release();
       throw;
@@ -3090,7 +3081,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   try {
     std::shared_ptr<VPackBuilder> result =
         _vocbase->_replicationApplier->toVelocyPack();
-    generateResult(result->slice());
+    generateResult(HttpResponse::HttpResponseCode::OK, result->slice());
   } catch (...) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     return;
@@ -3214,8 +3205,7 @@ void RestReplicationHandler::handleCommandSync() {
     }
 
     result.close();  // base
-    VPackSlice s = result.slice();
-    generateResult(s);
+    generateResult(HttpResponse::HttpResponseCode::OK, result.slice());
   } catch (...) {
     generateOOMError();
   }
@@ -3232,8 +3222,7 @@ void RestReplicationHandler::handleCommandServerId() {
     std::string const serverId = StringUtils::itoa(TRI_GetIdServer());
     result.add("serverId", VPackValue(serverId));
     result.close();
-    VPackSlice s = result.slice();
-    generateResult(s);
+    generateResult(HttpResponse::HttpResponseCode::OK, result.slice());
   } catch (...) {
     generateOOMError();
   }
@@ -3254,7 +3243,7 @@ void RestReplicationHandler::handleCommandApplierGetConfig() {
   }
   try {
     std::shared_ptr<VPackBuilder> configBuilder = config.toVelocyPack(false);
-    generateResult(configBuilder->slice());
+    generateResult(HttpResponse::HttpResponseCode::OK, configBuilder->slice());
   } catch (...) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -3447,7 +3436,7 @@ void RestReplicationHandler::handleCommandApplierGetState() {
   try {
     std::shared_ptr<VPackBuilder> result =
         _vocbase->_replicationApplier->toVelocyPack();
-    generateResult(result->slice());
+    generateResult(HttpResponse::HttpResponseCode::OK, result->slice());
   } catch (...) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     return;
