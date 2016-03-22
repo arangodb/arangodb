@@ -619,7 +619,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
     AqlItemBlock* value = nullptr;
     auto resultBuilder = std::make_shared<VPackBuilder>();
     try {
-      VPackArrayBuilder guard(resultBuilder.get());
+      resultBuilder->openArray();
       // this is the RegisterId our results can be found in
       auto const resultRegister = _engine->resultRegister();
 
@@ -639,6 +639,10 @@ QueryResult Query::execute(QueryRegistry* registry) {
           delete value;
           value = nullptr;
         }
+        
+        // must close result array here because it must be passed as a closed array
+        // to the query cache
+        resultBuilder->close();
 
         if (_warnings.empty()) {
           // finally store the generated result in the query cache
@@ -666,6 +670,9 @@ QueryResult Query::execute(QueryRegistry* registry) {
           delete value;
           value = nullptr;
         }
+        
+        // must close result array
+        resultBuilder->close();
       }
     } catch (...) {
       delete value;

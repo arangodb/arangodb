@@ -782,6 +782,12 @@ function update_graph_edge (req, res, g, isPatch) {
     }
 
     var shallow = json._shallowCopy;
+    if (json.hasOwnProperty('_from')) {
+      shallow._from = json._from;
+    }
+    if (json.hasOwnProperty('_to')) {
+      shallow._to = json._to;
+    }
     shallow.$label = e._properties.$label;
 
     var id2 = null;

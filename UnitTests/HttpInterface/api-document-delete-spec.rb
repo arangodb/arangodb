@@ -37,10 +37,10 @@ describe ArangoDB do
         cmd = "/_api/document/123456"
         doc = ArangoDB.log_delete("#{prefix}-bad-handle", cmd)
 
-        doc.code.should eq(400)
+        doc.code.should eq(404)
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['errorNum'].should eq(400)
-        doc.parsed_response['code'].should eq(400)
+        doc.parsed_response['errorNum'].should eq(1203) # collection not found
+        doc.parsed_response['code'].should eq(404)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
       end
 

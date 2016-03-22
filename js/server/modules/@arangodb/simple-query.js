@@ -205,7 +205,7 @@ SimpleQueryNear.prototype.execute = function () {
     "@collection": this._collection.name(), 
     latitude: this._latitude, 
     longitude: this._longitude, 
-    limit: this._limit 
+    limit: parseInt(this._limit + this._skip, 10)
   };
   
   var mustSort = false;
