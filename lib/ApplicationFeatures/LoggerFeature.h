@@ -48,6 +48,7 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   bool _thread;
   bool _performance;
   bool _keepLogRotate;
+  bool _foregroundTty;
 
  private:
   bool _daemon;

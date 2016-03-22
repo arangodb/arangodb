@@ -43,6 +43,7 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer* server)
       _thread(false),
       _performance(false),
       _keepLogRotate(false),
+      _foregroundTty(true),
       _daemon(false),
       _backgrounded(false),
       _threaded(false) {
@@ -97,6 +98,10 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addHiddenOption("--log.keep-logrotate",
                            "keep the old log file after receiving a sighup",
                            new BooleanParameter(&_keepLogRotate));
+
+  options->addHiddenOption("--log.foreground-tty",
+                           "also log to tty if not backgrounded",
+                           new BooleanParameter(&_foregroundTty));
 }
 
 void LoggerFeature::loadOptions(
@@ -153,7 +158,7 @@ void LoggerFeature::prepare() {
     LogAppender::addAppender(definition);
   }
 
-  if (!_backgrounded) {
+  if (!_backgrounded && _foregroundTty) {
     LogAppender::addTtyAppender();
   }
 }
