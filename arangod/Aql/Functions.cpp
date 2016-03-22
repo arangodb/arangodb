@@ -850,13 +850,14 @@ static AqlValue VertexIdsToAqlValueVPack(arangodb::aql::Query* query,
 
 static arangodb::Index* getGeoIndex(arangodb::AqlTransaction* trx,
                                     TRI_voc_cid_t const& cid,
-                                    std::string const& colName) {
-  trx->addCollectionAtRuntime(cid, colName);
+                                    std::string const& collectionName) {
+  trx->addCollectionAtRuntime(cid, collectionName);
 
   auto document = trx->documentCollection(cid);
 
   if (document == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                                  "'%s'", collectionName.c_str());
   }
 
   arangodb::Index* index = nullptr;
@@ -871,7 +872,7 @@ static arangodb::Index* getGeoIndex(arangodb::AqlTransaction* trx,
 
   if (index == nullptr) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_GEO_INDEX_MISSING,
-                                  colName.c_str());
+                                  collectionName.c_str());
   }
 
   trx->orderDitch(cid);
@@ -2318,7 +2319,7 @@ AqlValue Functions::Near(arangodb::aql::Query* query,
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
   }
 
-  std::string const colName(collectionValue.slice().copyString());
+  std::string const collectionName(collectionValue.slice().copyString());
 
   AqlValue latitude = ExtractFunctionParameterValue(trx, parameters, 1);
   AqlValue longitude = ExtractFunctionParameterValue(trx, parameters, 2);
@@ -2357,8 +2358,8 @@ AqlValue Functions::Near(arangodb::aql::Query* query,
     }
   }
 
-  TRI_voc_cid_t cid = trx->resolver()->getCollectionIdLocal(colName);
-  arangodb::Index* index = getGeoIndex(trx, cid, colName);
+  TRI_voc_cid_t cid = trx->resolver()->getCollectionIdLocal(collectionName);
+  arangodb::Index* index = getGeoIndex(trx, cid, collectionName);
 
   TRI_ASSERT(index != nullptr);
 
@@ -2384,7 +2385,7 @@ AqlValue Functions::Within(arangodb::aql::Query* query,
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "WITHIN");
   }
 
-  std::string const colName(collectionValue.slice().copyString());
+  std::string const collectionName(collectionValue.slice().copyString());
 
   AqlValue latitudeValue = ExtractFunctionParameterValue(trx, parameters, 1);
   AqlValue longitudeValue = ExtractFunctionParameterValue(trx, parameters, 2);
@@ -2410,8 +2411,8 @@ AqlValue Functions::Within(arangodb::aql::Query* query,
     }
   }
 
-  TRI_voc_cid_t cid = trx->resolver()->getCollectionIdLocal(colName);
-  arangodb::Index* index = getGeoIndex(trx, cid, colName);
+  TRI_voc_cid_t cid = trx->resolver()->getCollectionIdLocal(collectionName);
+  arangodb::Index* index = getGeoIndex(trx, cid, collectionName);
 
   TRI_ASSERT(index != nullptr);
 
@@ -3407,15 +3408,16 @@ AqlValue Functions::CollectionCount(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "COLLECTION_COUNT");
   }
 
-  std::string const colName(element.slice().copyString());
+  std::string const collectionName(element.slice().copyString());
 
   auto resolver = trx->resolver();
-  TRI_voc_cid_t cid = resolver->getCollectionIdLocal(colName);
-  trx->addCollectionAtRuntime(cid, colName);
+  TRI_voc_cid_t cid = resolver->getCollectionIdLocal(collectionName);
+  trx->addCollectionAtRuntime(cid, collectionName);
   auto document = trx->documentCollection(cid);
 
   if (document == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                                  "'%s'", collectionName.c_str());
   }
 
   TransactionBuilderLeaser builder(trx);
@@ -3815,7 +3817,7 @@ AqlValue Functions::Fulltext(arangodb::aql::Query* query,
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
   }
 
-  std::string const colName(collection.slice().copyString());
+  std::string const collectionName(collection.slice().copyString());
 
   AqlValue attribute = ExtractFunctionParameterValue(trx, parameters, 1);
 
@@ -3851,13 +3853,14 @@ AqlValue Functions::Fulltext(arangodb::aql::Query* query,
   }
 
   auto resolver = trx->resolver();
-  TRI_voc_cid_t cid = resolver->getCollectionIdLocal(colName);
-  trx->addCollectionAtRuntime(cid, colName);
+  TRI_voc_cid_t cid = resolver->getCollectionIdLocal(collectionName);
+  trx->addCollectionAtRuntime(cid, collectionName);
 
   auto document = trx->documentCollection(cid);
 
   if (document == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                                  "'%s'", collectionName.c_str());
   }
 
   arangodb::Index* index = nullptr;
@@ -3879,7 +3882,7 @@ AqlValue Functions::Fulltext(arangodb::aql::Query* query,
 
   if (index == nullptr) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FULLTEXT_INDEX_MISSING,
-                                  colName.c_str());
+                                  collectionName.c_str());
   }
 
   trx->orderDitch(cid);
@@ -3943,7 +3946,7 @@ AqlValue Functions::IsSameCollection(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "IS_SAME_COLLECTION");
   }
 
-  std::string const colName(first.slice().copyString());
+  std::string const collectionName(first.slice().copyString());
 
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 1);
   std::string identifier;
@@ -3964,7 +3967,7 @@ AqlValue Functions::IsSameCollection(
     size_t pos = identifier.find('/');
 
     if (pos != std::string::npos) {
-      bool const isSame = (colName == identifier.substr(0, pos));
+      bool const isSame = (collectionName == identifier.substr(0, pos));
       return AqlValue(isSame);
     }
 

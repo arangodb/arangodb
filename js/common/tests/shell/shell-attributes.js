@@ -91,16 +91,11 @@ function AttributesSuite () {
 
       var d1 = c.save(doc);
       var d2 = c.document(d1._id);
-      delete d1.error;
 
-      var i;
-      for (i in d2) {
-        if (d2.hasOwnProperty(i)) {
-          assertTrue(i !== "");
-        }
-      }
-
-      assertEqual(d1, d2);
+      assertTrue(d2.hasOwnProperty(""));
+      assertEqual(d1._key, d2._key);
+      assertEqual(d1._rev, d2._rev);
+      assertEqual(d1._id, d2._id);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -114,13 +109,7 @@ function AttributesSuite () {
       var docs = c.toArray();
       assertEqual(1, docs.length);
       var d = docs[0];
-
-      var i;
-      for (i in d) {
-        if (d.hasOwnProperty(i)) {
-          assertTrue(i !== "");
-        }
-      }
+      assertTrue(d.hasOwnProperty(""));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -197,11 +186,14 @@ function AttributesSuite () {
       assertEqual(d1._rev, d2._rev);
       assertFalse(d2._test);
       assertEqual("bang", d2._boom);
-      assertFalse(d2.hasOwnProperty("_from"));
-      assertFalse(d2.hasOwnProperty("_to"));
 
       // user specified _rev value must have been ignored
       assertTrue(d1._rev !== "99");
+      
+      assertTrue(d2.hasOwnProperty("_from"));
+      assertEqual("33", d2._from);
+      assertTrue(d2.hasOwnProperty("_to"));
+      assertEqual("99", d2._to);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

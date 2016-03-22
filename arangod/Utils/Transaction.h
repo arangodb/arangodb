@@ -288,6 +288,7 @@ class Transaction {
                                       collectionName.c_str());
       }
     }
+    TRI_ASSERT(collection != nullptr);
   }
 
   //////////////////////////////////////////////////////////////////////////////
