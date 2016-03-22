@@ -652,9 +652,17 @@ class Transaction {
   /// @brief Get all indexes for a collection name
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<arangodb::Index*> indexesForCollection(std::string const&) const;
+  std::vector<std::shared_ptr<arangodb::Index>> indexesForCollection(
+      std::string const&) const;
 
  private:
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Get all indexes for a collection name, coordinator case
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::vector<std::shared_ptr<arangodb::Index>> indexesForCollectionCoordinator(
+      std::string const&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief register an error for the transaction
