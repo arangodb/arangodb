@@ -280,7 +280,6 @@ ArangoCollection.prototype._help = function () {
   internal.print(helpArangoCollection);
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the name of a collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -978,7 +977,7 @@ ArangoCollection.prototype.insert = function (from, to, data, options) {
     data._from = from;
     data._to = to;
 
-    url = "/_api/collection/" + encodeURIComponent(this.name());
+    url = "/_api/document/" + encodeURIComponent(this.name());
   }
 
   if (options === undefined) {
@@ -1212,6 +1211,8 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
       id = id._key;
     }
     url = this._documenturl(id);
+  } else {
+    url = this._documenturl(id);
   }
 
   url = this._appendSyncParameter(url, waitForSync);
@@ -1286,7 +1287,6 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
     }
 
   } else {
-
     // set default value for keepNull
     var keepNullValue = ((typeof keepNull === "undefined") ? true : keepNull);
     params = "?keepNull=" + (keepNullValue ? "true" : "false");
@@ -1296,7 +1296,6 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
     }
 
     options = {};
-
   }
 
   var url;
@@ -1320,6 +1319,8 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
     } else if (id.hasOwnProperty("_key")) {
       id = id._key;
     }
+    url = this._documenturl(id) + params;
+  } else {
     url = this._documenturl(id) + params;
   }
 
