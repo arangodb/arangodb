@@ -966,6 +966,13 @@ ArangoCollection.prototype.insert = function (from, to, data, options) {
         errorMessage : internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.message
       });
     }
+    if (data === undefined || data === null || typeof data !== 'object') {
+      throw new ArangoError({
+        errorNum : internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
+        errorMessage : internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.message
+      });
+    }
+
     if (typeof from === 'object' && from.hasOwnProperty("_id")) {
       from = from._id;
     }
