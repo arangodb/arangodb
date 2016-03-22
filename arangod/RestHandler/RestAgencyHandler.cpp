@@ -142,8 +142,6 @@ inline HttpHandler::status_t RestAgencyHandler::handleRead () {
   return HttpHandler::status_t(HANDLER_DONE);
 }
 
-#include <sstream>
-std::stringstream s; 
 HttpHandler::status_t RestAgencyHandler::handleTest() {
   Builder body;
   body.add(VPackValue(VPackValueType::Object));
@@ -151,6 +149,16 @@ HttpHandler::status_t RestAgencyHandler::handleTest() {
   body.add("term", Value(_agent->term()));
   body.add("leaderId", Value(_agent->leaderID()));
   body.add("configuration", Value(_agent->config().toString()));
+  body.close();
+  generateResult(body.slice());
+  return HttpHandler::status_t(HANDLER_DONE);
+}
+
+HttpHandler::status_t RestAgencyHandler::handleState() {
+  Builder body;
+  body.add(VPackValue(VPackValueType::Array));
+  for (auto const& i: _agent->state().get())
+    body.add(i);
   body.close();
   generateResult(body.slice());
   return HttpHandler::status_t(HANDLER_DONE);
@@ -177,6 +185,11 @@ HttpHandler::status_t RestAgencyHandler::execute() {
           return reportMethodNotAllowed();
         }
         return handleTest();
+    	} else if (_request->suffix()[0] == "state") {
+        if (_request->requestType() != HttpRequest::HTTP_REQUEST_GET) {
+          return reportMethodNotAllowed();
+        }
+        return handleState();
     	} else {
         return reportUnknownMethod();
     	}

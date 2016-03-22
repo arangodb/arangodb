@@ -98,13 +98,11 @@ HttpHandler::status_t RestAgencyPrivHandler::execute() {
             readValue("prevLogIndex", prevLogIndex) &&
             readValue("prevLogTerm", prevLogTerm) && 
             readValue("leaderCommit", leaderCommit)) { // found all values
-          priv_rpc_ret_t ret = _agent->recvAppendEntriesRPC(
+          bool ret = _agent->recvAppendEntriesRPC(
             term, id, prevLogIndex, prevLogTerm, leaderCommit,
             _request->toVelocyPack(&opts));
-          if (ret.success) {
-            std::cout << ret.success << std::endl;
-            result.add("term", VPackValue(ret.term));
-            result.add("success", VPackValue(ret.success));
+          if (ret) { // TODO: more verbose
+            result.add("success", VPackValue(ret));
           } else {
             // Should neve get here
             TRI_ASSERT(false);
@@ -139,7 +137,6 @@ HttpHandler::status_t RestAgencyPrivHandler::execute() {
       }
     }
     result.close();
-            std::cout << result.toJson() << std::endl;
     VPackSlice s = result.slice();
     generateResult(s);
   } catch (...) {

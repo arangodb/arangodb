@@ -35,9 +35,12 @@ using namespace arangodb::velocypack;
 using namespace arangodb::rest;
 
 State::State(std::string const& end_point) : _end_point(end_point), _dbs_checked(false) {
-  if (!_log.size())
-    _log.push_back(log_t(index_t(0), term_t(0), id_t(0),
-                         std::make_shared<Buffer<uint8_t>>()));
+  std::shared_ptr<Buffer<uint8_t>> buf = std::make_shared<Buffer<uint8_t>>();
+  arangodb::velocypack::Slice tmp("\x00a",&Options::Defaults);
+  buf->append(reinterpret_cast<char const*>(tmp.begin()), tmp.byteSize());
+  if (!_log.size()) {
+    _log.push_back(log_t(index_t(0), term_t(0), id_t(0), buf));
+  }
 }
 
 State::~State() {}
@@ -86,6 +89,7 @@ bool State::save (arangodb::velocypack::Slice const& slice, index_t index,
 //Leader
 std::vector<index_t> State::log (
   query_t const& query, std::vector<bool> const& appl, term_t term, id_t lid) {
+  // TODO: Check array
   std::vector<index_t> idx(appl.size());
   std::vector<bool> good = appl;
   size_t j = 0;
@@ -93,10 +97,10 @@ std::vector<index_t> State::log (
   for (auto const& i : VPackArrayIterator(query->slice()))  {
     if (good[j]) {
       std::shared_ptr<Buffer<uint8_t>> buf = std::make_shared<Buffer<uint8_t>>();
-      buf->append ((char const*)i.begin(), i.byteSize()); 
+      buf->append ((char const*)i[0].begin(), i[0].byteSize()); 
       idx[j] = _log.back().index+1;
       _log.push_back(log_t(idx[j], term, lid, buf)); // log to RAM
-//      save(i, idx[j], term);                         // log to disk
+      // save(i, idx[j], term);                         // log to disk
       ++j;
     }
   }
@@ -104,13 +108,33 @@ std::vector<index_t> State::log (
 }
 
 //Follower
-void State::log (query_t const& query, index_t index, term_t term, id_t lid) {
-  MUTEX_LOCKER(mutexLocker, _logLock);
-  std::shared_ptr<Buffer<uint8_t>> buf = std::make_shared<Buffer<uint8_t>>();
-  buf->append ((char const*)query->slice().begin(), query->slice().byteSize());
-  _log.push_back(log_t(index, term, lid, buf));
-  //save (builder);
+#include <iostream>
+bool State::log (query_t const& queries, term_t term, id_t leaderId,
+                 index_t prevLogIndex, term_t prevLogTerm) { // TODO: Throw exc
+  if (queries->slice().type() != VPackValueType::Array) {
+    return false;
+  }
+  MUTEX_LOCKER(mutexLocker, _logLock); // log entries must stay in order
+  for (auto const& i : VPackArrayIterator(queries->slice())) {
+    std::shared_ptr<Buffer<uint8_t>> buf = std::make_shared<Buffer<uint8_t>>();
+    buf->append ((char const*)i.get("query").begin(), i.get("query").byteSize()); 
+    //_log.push_back(log_t(i.get("index").getUInt(), term, leaderId, buf));
+    //save (builder);
+  }
+  return true;
 }
+
+std::vector<arangodb::velocypack::Slice> State::get (index_t start, index_t end) const {
+  std::vector<arangodb::velocypack::Slice> queries;
+  MUTEX_LOCKER(mutexLocker, _logLock);
+  if (end == std::numeric_limits<uint64_t>::max())
+    end = _log.size() - 1;
+  for (size_t i = start; i <= end; ++i) {// TODO:: Check bounds
+    queries.push_back(arangodb::velocypack::Slice(_log[i].entry->data()));
+  }
+  return queries;
+}
+
 
 bool State::findit (index_t index, term_t term) {
   MUTEX_LOCKER(mutexLocker, _logLock);

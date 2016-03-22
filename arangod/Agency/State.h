@@ -73,9 +73,9 @@ public:
   std::vector<index_t> log (query_t const& query, std::vector<bool> const& indices, term_t term, id_t lid);
 
   /**
-   * @brief Log entry follower
+   * @brief Log entries (followers)
    */
-  void log (query_t const& query, index_t, term_t term, id_t lid);
+  bool log (query_t const& queries, term_t term, id_t leaderId, index_t prevLogIndex, term_t prevLogTerm);
 
   /**
    * @brief Find entry at index with term
@@ -86,6 +86,9 @@ public:
    * @brief Collect all from index on
    */
   collect_ret_t collectFrom (index_t index);
+
+  std::vector<arangodb::velocypack::Slice> get (
+    index_t = 0, index_t = std::numeric_limits<uint64_t>::max()) const;
 
   /**
    * @brief log entry at index i
@@ -106,6 +109,13 @@ public:
    * @brief Load persisted data from above or start with empty log
    */
   bool load ();
+
+  friend std::ostream& operator<< (std::ostream& os, State const& s) {
+    for (auto const& i : s._log)
+      LOG(INFO) << "index(" << i.index <<") term(" << i.term << ") leader: ("
+                << i.leaderId << ") query(" << arangodb::velocypack::Slice(i.entry->data()).toJson() << ")";
+    return os;
+  }
 
 private:
   

@@ -377,6 +377,19 @@ std::vector<bool> Store::apply (query_t const& query) {
   return applied;
 }
 
+std::vector<bool> Store::apply (
+  std::vector<arangodb::velocypack::Slice> const& queries) {    
+  std::vector<bool> applied;
+  MUTEX_LOCKER(storeLocker, _storeLock);
+  std::cout << queries.size() << std::endl;
+  for (auto const& i : queries) {
+    std::cout << i.toJson() << std::endl; 
+    applied.push_back(applies(i)); break; // no precond
+  }
+  _cv.signal();                                // Wake up run
+  return applied;
+}
+
 bool Store::check (arangodb::velocypack::Slice const& slice) const {
   if (slice.type() != VPackValueType::Object) {
     LOG(WARN) << "Cannot check precondition: " << slice.toJson();

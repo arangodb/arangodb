@@ -49,6 +49,10 @@ Agent::~Agent () {
 //  shutdown();
 }
 
+State const& Agent::state() const {
+  return _state;
+}
+
 bool Agent::start() {
   _constituent.start();
   std::cout << "constituent started" << std::endl;
@@ -99,8 +103,6 @@ bool Agent::leading() const {
   return _constituent.leading();
 }
 
-void Agent::catchUpReadDB() {}; // TODO
-
 bool Agent::waitFor (index_t index, duration_t timeout) {
 
   if (size() == 1) // single host agency
@@ -110,9 +112,9 @@ bool Agent::waitFor (index_t index, duration_t timeout) {
   auto start = std::chrono::system_clock::now();
   
   while (true) {
-    
+
     _rest_cv.wait();
-    
+
     // shutting down
     if (this->isStopping()) {      
       return false;
@@ -121,7 +123,7 @@ bool Agent::waitFor (index_t index, duration_t timeout) {
     if (std::chrono::system_clock::now() - start > timeout) {
       return false;
     }
-    if (_last_commit_index > index) {
+    if (_last_commit_index >= index) {
       return true;
     }
   }
@@ -131,42 +133,40 @@ bool Agent::waitFor (index_t index, duration_t timeout) {
 
 void Agent::reportIn (id_t id, index_t index) {
   MUTEX_LOCKER(mutexLocker, _confirmedLock);
+
   if (index > _confirmed[id])      // progress this follower?
     _confirmed[id] = index;
 
   if(index > _last_commit_index) { // progress last commit?
     size_t n = 0;
     for (size_t i = 0; i < size(); ++i) {
-      n += (_confirmed[i]>index);
+      n += (_confirmed[i]>=index);
     }
-    if (n>size()/2) {              // enough confirms?
+
+    if (n>size()/2) { // catch up read database and commit index
+      _read_db.apply(_state.get(_last_commit_index+1, index));
       _last_commit_index = index;
     }
   }
+
   _rest_cv.broadcast();            // wake up REST handlers
 }
 
-priv_rpc_ret_t Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
+bool Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
   term_t prevTerm, index_t leaderCommitIndex, query_t const& queries) {
-
-  //std::cout << queries->toJson() << std::endl;
-/*
-  // Update commit index
+  //Update commit index
   _last_commit_index = leaderCommitIndex;
 
   // Sanity
   if (this->term() > term)
     throw LOWER_TERM_APPEND_ENTRIES_RPC; // (§5.1)
   if (!_state.findit(prevIndex, prevTerm))
-    throw NO_MATCHING_PREVLOG; // (§5.3)
+    throw NO_MATCHING_PREVLOG;           // (§5.3)
   
   // Delete conflits and append (§5.3)
-  //for (size_t i = 0; i < queries->slice().length()/2; i+=2) {
-  //  _state.log (queries->slice()[i  ].toString(),
-  //              queries->slice()[i+1].getUInt(), term, leaderId);
-  //}
-  */
-  return priv_rpc_ret_t(true, this->term());
+  _state.log (queries, term, leaderId, prevIndex, prevTerm);
+  
+  return true;
 }
 
 append_entries_t Agent::sendAppendEntriesRPC (
@@ -185,22 +185,22 @@ append_entries_t Agent::sendAppendEntriesRPC (
   // Body
   Builder builder;
   builder.add(VPackValue(VPackValueType::Array));
+  index_t last;
   for (size_t i = 0; i < entries.size(); ++i) {
     builder.add (VPackValue(VPackValueType::Object));
     builder.add ("index", Value(std::to_string(entries.indices[i])));
     builder.add ("query", Builder(*_state[entries.indices[i]].entry).slice());
     builder.close();
+    last = entries.indices[i];
   }
   builder.close();
-  std::cout << builder.toJson() << std::endl;
 
   // Send
-  std::cout << _config.end_points[slave_id] << path.str() << std::endl;
   arangodb::ClusterComm::instance()->asyncRequest
     ("1", 1, _config.end_points[slave_id],
      rest::HttpRequest::HTTP_REQUEST_POST,
      path.str(), std::make_shared<std::string>(builder.toString()), headerFields,
-     std::make_shared<AgentCallback>(this),
+     std::make_shared<AgentCallback>(this, slave_id, last),
      0, true);
 
   return append_entries_t(this->term(), true);
@@ -246,13 +246,9 @@ read_ret_t Agent::read (query_t const& query) const {
 
 void Agent::run() {
 
-  LOG(WARN) << " +++++++++++++++++++++++ Starting thread Agent";
-  
   CONDITION_LOCKER(guard, _cv);
   
   while (!this->isStopping()) {
-
-    LOG(WARN) << "Running thread Agent";
 
     if (leading())
       _cv.wait(10000000);
@@ -275,9 +271,6 @@ void Agent::run() {
       }
     }
     
-    // catch up read db
-    catchUpReadDB();
-    
   }
 
 }
@@ -285,11 +278,8 @@ void Agent::run() {
 void Agent::beginShutdown() {
   Thread::beginShutdown();
   _constituent.beginShutdown();
-  // Stop callbacks
-  //_agent_callback.shutdown();
-  // wake up all blocked rest handlers
   CONDITION_LOCKER(guard, _cv);
-  //guard.broadcast();
+  guard.broadcast();
 }
 
 bool Agent::lead () {

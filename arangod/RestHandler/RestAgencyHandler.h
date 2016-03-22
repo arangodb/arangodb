@@ -53,7 +53,8 @@ class RestAgencyHandler : public arangodb::RestBaseHandler {
   status_t handleWrite() ;
   status_t handleTest();
   status_t reportMethodNotAllowed(); 
-
+  status_t handleState();
+  
   consensus::Agent* _agent;
 
 };

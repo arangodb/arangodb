@@ -215,7 +215,7 @@ void Constituent::callElection() {
     }
 	}
   
-  std::this_thread::sleep_for(sleepFor(0.25*_agent->config().min_ping, .5*_agent->config().min_ping)); // Wait timeout
+  std::this_thread::sleep_for(sleepFor(.5*_agent->config().min_ping, .8*_agent->config().min_ping)); // Wait timeout
   
 	for (size_t i = 0; i < _agent->config().end_points.size(); ++i) { // Collect votes
     if (i != _id && end_point(i) != "") {

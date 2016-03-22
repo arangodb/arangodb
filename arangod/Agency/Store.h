@@ -183,6 +183,9 @@ public:
   /// @brief Apply entry in query 
   std::vector<bool> apply (query_t const& query);
 
+  /// @brief Apply entry in query 
+  std::vector<bool> apply (std::vector<Slice> const& query);
+
   /// @brief Read specified query from store
   query_t read (query_t const& query) const;
   
