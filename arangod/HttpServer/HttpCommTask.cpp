@@ -340,6 +340,8 @@ bool HttpCommTask::processRead() {
           TRI_invalidatesocket(&_commSocket);
 
           // might delete this
+          // note that as we closed the socket above, the response will not make it to
+          // the client! will result in a "Empty reply from server" error in curl etc.
           handleResponse(&response);
 
           return false;
