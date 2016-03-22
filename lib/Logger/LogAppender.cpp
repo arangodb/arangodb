@@ -143,7 +143,7 @@ std::shared_ptr<LogAppender> LogAppender::buildAppender(
   } else if (StringUtils::isPrefix(output, "file://")) {
     filename = output.substr(7);
   } else {
-    LOG(ERR) << "unknown logger output '" << output << "'";
+    LOG(ERR) << "unknown output definition '" << output << "'";
     return nullptr;
   }
 
