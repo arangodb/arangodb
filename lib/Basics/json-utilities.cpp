@@ -128,12 +128,65 @@ static int TypeWeight(TRI_json_t const* value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief uniquify a sorted json list into a new array
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_json_t* UniquifyArrayJson(TRI_json_t const* array) {
+  TRI_ASSERT(array != nullptr);
+  TRI_ASSERT(array->_type == TRI_JSON_ARRAY);
+
+  // create result array
+  std::unique_ptr<TRI_json_t> result(TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE));
+
+  if (result == nullptr) {
+    return nullptr;
+  }
+
+  size_t const n = TRI_LengthVector(&array->_value._objects);
+
+  TRI_json_t const* last = nullptr;
+  for (size_t i = 0; i < n; ++i) {
+    auto p = static_cast<TRI_json_t const*>(
+        TRI_AtVector(&array->_value._objects, i));
+
+    // don't push value if it is the same as the last value
+    if (last == nullptr || TRI_CompareValuesJson(p, last, false) != 0) {
+      TRI_PushBackArrayJson(TRI_UNKNOWN_MEM_ZONE, result.get(), p);
+
+      // remember last element
+      last = p;
+    }
+  }
+
+  return result.release();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief callback function used for json value sorting
 ////////////////////////////////////////////////////////////////////////////////
 
 static int CompareJson(void const* lhs, void const* rhs) {
   return TRI_CompareValuesJson(static_cast<TRI_json_t const*>(lhs),
                                static_cast<TRI_json_t const*>(rhs), true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sorts a json array in place
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_json_t* SortArrayJson(TRI_json_t* array) {
+  TRI_ASSERT(array != nullptr);
+  TRI_ASSERT(array->_type == TRI_JSON_ARRAY);
+
+  size_t const n = TRI_LengthVector(&array->_value._objects);
+
+  if (n > 1) {
+    // only sort if more than one value in array
+    qsort(TRI_BeginVector(&array->_value._objects), n, sizeof(TRI_json_t),
+          &CompareJson);
+  }
+
+  return array;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -180,10 +233,10 @@ static TRI_json_t* GetMergedKeyArray(TRI_json_t const* lhs,
   }
 
   // sort the key array in place
-  TRI_SortArrayJson(keys.get());
+  SortArrayJson(keys.get());
 
   // array is now sorted
-  return TRI_UniquifyArrayJson(keys.get());
+  return UniquifyArrayJson(keys.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -339,59 +392,6 @@ int TRI_CompareValuesJson(TRI_json_t const* lhs, TRI_json_t const* rhs,
   }
 
   return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief uniquify a sorted json list into a new array
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t* TRI_UniquifyArrayJson(TRI_json_t const* array) {
-  TRI_ASSERT(array != nullptr);
-  TRI_ASSERT(array->_type == TRI_JSON_ARRAY);
-
-  // create result array
-  std::unique_ptr<TRI_json_t> result(TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE));
-
-  if (result == nullptr) {
-    return nullptr;
-  }
-
-  size_t const n = TRI_LengthVector(&array->_value._objects);
-
-  TRI_json_t const* last = nullptr;
-  for (size_t i = 0; i < n; ++i) {
-    auto p = static_cast<TRI_json_t const*>(
-        TRI_AtVector(&array->_value._objects, i));
-
-    // don't push value if it is the same as the last value
-    if (last == nullptr || TRI_CompareValuesJson(p, last, false) != 0) {
-      TRI_PushBackArrayJson(TRI_UNKNOWN_MEM_ZONE, result.get(), p);
-
-      // remember last element
-      last = p;
-    }
-  }
-
-  return result.release();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sorts a json array in place
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t* TRI_SortArrayJson(TRI_json_t* array) {
-  TRI_ASSERT(array != nullptr);
-  TRI_ASSERT(array->_type == TRI_JSON_ARRAY);
-
-  size_t const n = TRI_LengthVector(&array->_value._objects);
-
-  if (n > 1) {
-    // only sort if more than one value in array
-    qsort(TRI_BeginVector(&array->_value._objects), n, sizeof(TRI_json_t),
-          &CompareJson);
-  }
-
-  return array;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
