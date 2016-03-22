@@ -538,13 +538,6 @@ static void RequestEdges(VPackSlice const& vertexSlice,
     return;
   }
 
-  std::vector<std::string> parts =
-      arangodb::basics::StringUtils::split(vertexId, "/");
-  if (parts.size() != 2) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
-                                   vertexId);
-  }
-
   VPackBuilder searchValueBuilder;
   EdgeIndex::buildSearchValue(direction, vertexId, searchValueBuilder);
   VPackSlice search = searchValueBuilder.slice();
@@ -2821,12 +2814,8 @@ AqlValue Functions::Edges(arangodb::aql::Query* query,
     
   if (vertexSlice.isArray()) {
     for (auto const& v : VPackArrayIterator(vertexSlice)) {
-      try {
-        RequestEdges(v, trx, collectionName, indexId, direction,
-                     matcher.get(), includeVertices, *builder.get());
-      } catch (...) {
-        // Errors in Array are simply ignored
-      }
+      RequestEdges(v, trx, collectionName, indexId, direction,
+                   matcher.get(), includeVertices, *builder.get());
     }
   } else {
     RequestEdges(vertexSlice, trx, collectionName, indexId, direction,
