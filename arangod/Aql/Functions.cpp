@@ -545,11 +545,6 @@ static void RequestEdges(VPackSlice const& vertexSlice,
                                    vertexId);
   }
 
-  if (trx->getCollectionType(parts[0]) == TRI_COL_TYPE_UNKNOWN) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
-                                  parts[0].c_str());
-  }
-
   VPackBuilder searchValueBuilder;
   EdgeIndex::buildSearchValue(direction, vertexId, searchValueBuilder);
   VPackSlice search = searchValueBuilder.slice();
