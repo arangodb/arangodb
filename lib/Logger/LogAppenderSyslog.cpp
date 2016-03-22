@@ -41,10 +41,19 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
+bool LogAppenderSyslog::_opened(false);
+
+void LogAppenderSyslog::close() {
+  if (_opened) {
+    _opened = false;
+    ::closelog();
+  }
+}
+
 LogAppenderSyslog::LogAppenderSyslog(std::string const& facility,
                                      std::string const& name,
                                      std::string const& filter)
-    : LogAppender(filter), _opened(false) {
+    : LogAppender(filter) {
   // no logging
   std::string sysname = name.empty() ? "[arangod]" : name;
 
@@ -67,14 +76,11 @@ LogAppenderSyslog::LogAppenderSyslog(std::string const& facility,
   }
 
   // and open logging, openlog does not have a return value...
-  {
-    MUTEX_LOCKER(guard, _lock);
-    ::openlog(sysname.c_str(), LOG_CONS | LOG_PID, value);
-    _opened = true;
-  }
+  ::openlog(sysname.c_str(), LOG_CONS | LOG_PID, value);
+  _opened = true;
 }
 
-void LogAppenderSyslog::logMessage(LogLevel level, std::string const& message,
+bool LogAppenderSyslog::logMessage(LogLevel level, std::string const& message,
                                    size_t offset) {
   int priority = LOG_ERR;
 
@@ -100,23 +106,12 @@ void LogAppenderSyslog::logMessage(LogLevel level, std::string const& message,
       break;
   }
 
-  {
-    MUTEX_LOCKER(mutexLocker, _lock);
-    if (_opened) {
-      ::syslog(priority, "%s", message.c_str() + offset);
-    }
-  }
-}
-
-void LogAppenderSyslog::reopenLog() {}
-
-void LogAppenderSyslog::closeLog() {
-  MUTEX_LOCKER(mutexLocker, _lock);
-
   if (_opened) {
-    _opened = false;
-    ::closelog();
+    ::syslog(priority, "%s", message.c_str() + offset);
   }
+
+  // not logging to TTY
+  return false;
 }
 
 std::string LogAppenderSyslog::details() {

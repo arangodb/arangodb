@@ -29,12 +29,15 @@
 #include "Basics/shell-colors.h"
 #include "Logger/LogAppenderFile.h"
 #include "Logger/LogAppenderSyslog.h"
+#include "Logger/LogAppenderTty.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 
 arangodb::Mutex LogAppender::_appendersLock;
+
+std::unique_ptr<LogAppender> LogAppender::_ttyAppender(nullptr);
 
 std::map<size_t, std::vector<std::shared_ptr<LogAppender>>>
     LogAppender::_topics2appenders;
@@ -89,13 +92,18 @@ void LogAppender::addAppender(std::string const& definition,
   _topics2appenders[n].emplace_back(appender);
 }
 
-void LogAppender::addTtyAppender(bool backgrounded) {
-#warning TODO
-}
+void LogAppender::addTtyAppender() { _ttyAppender.reset(new LogAppenderTty()); }
 
 std::shared_ptr<LogAppender> LogAppender::buildAppender(
     std::string const& output, std::string const& contentFilter) {
   auto key = make_pair(output, contentFilter);
+
+#ifdef ARANGODB_ENABLE_SYSLOG
+  if (StringUtils::isPrefix(output, "syslog://")) {
+    key = std::make_pair("syslog://", "");
+  }
+#endif
+
   auto it = _definition2appenders.find(key);
 
   if (it != _definition2appenders.end()) {
@@ -157,9 +165,10 @@ void LogAppender::log(LogMessage* message) {
   size_t topicId = message->_topicId;
   std::string const& m = message->_message;
   size_t offset = message->_offset;
+  bool shownStd = false;
 
   // output to appender
-  auto output = [&level, &m, &offset](size_t n) -> bool {
+  auto output = [&level, &m, &offset, &shownStd](size_t n) -> bool {
     auto const& it = _topics2appenders.find(n);
     bool shown = false;
 
@@ -168,7 +177,8 @@ void LogAppender::log(LogMessage* message) {
 
       for (auto const& appender : appenders) {
         if (appender->checkContent(m)) {
-          appender->logMessage(level, m, offset);
+          bool s = appender->logMessage(level, m, offset);
+          shownStd |= s;
         }
 
         shown = true;
@@ -190,6 +200,11 @@ void LogAppender::log(LogMessage* message) {
     shown = output(LogTopic::MAX_LOG_TOPICS);
   }
 
+  if (_ttyAppender != nullptr && !shownStd) {
+    _ttyAppender->logMessage(level, m, offset);
+    shown = true;
+  }
+
   if (!shown) {
     writeStderr(level, m);
   }
@@ -209,67 +224,17 @@ void LogAppender::writeStderr(LogLevel level, std::string const& msg) {
 
 void LogAppender::shutdown() {
   MUTEX_LOCKER(guard, _appendersLock);
+
+  LogAppenderSyslog::close();
+  LogAppenderFile::close();
+
   _topics2appenders.clear();
   _definition2appenders.clear();
+  _ttyAppender.reset(nullptr);
 }
 
+void LogAppender::reopen() {
+  MUTEX_LOCKER(guard, _appendersLock);
 
-
-
-#if 0
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reopens all log appenders
-////////////////////////////////////////////////////////////////////////////////
-
-void Logger::reopen() {
-  MUTEX_LOCKER(guard, AppendersLock);
-
-  for (auto& it : Appenders) {
-    for (std::unique_ptr<LogAppender>& appender : it.second) {
-      try {
-        appender->reopenLog();
-      } catch (...) {
-        // silently catch this error (we shouldn't try to log an error about a
-        // logging error as this will get us into trouble with mutexes etc.)
-      }
-    }
-  }
+  LogAppenderFile::reopen();
 }
-
-  {
-    MUTEX_LOCKER(guard, AppendersLock);
-    Appenders.clear();
-  }
-
-
-
-
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief creates a new tty appender
-  //////////////////////////////////////////////////////////////////////////////
-
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief reopens all log appenders
-  //////////////////////////////////////////////////////////////////////////////
-
-  static void reopen();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief tries to flush the logging
-  //////////////////////////////////////////////////////////////////////////////
-
-  static void flush();
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief list of active LogAppender
-////////////////////////////////////////////////////////////////////////////////
-
-
-#endif

@@ -31,21 +31,19 @@ namespace arangodb {
 
 class LogAppenderSyslog : public LogAppender {
  public:
+  static void close();
+
+ public:
   LogAppenderSyslog(std::string const& facility, std::string const& name,
                     std::string const& filter);
-  ~LogAppenderSyslog() { closeLog(); };
 
-  void logMessage(LogLevel, std::string const& message,
+  bool logMessage(LogLevel, std::string const& message,
                   size_t offset) override final;
-
-  void reopenLog() override final;
-  void closeLog() override final;
 
   std::string details() override final;
 
  private:
-  arangodb::Mutex _lock;
-  bool _opened;
+  static bool _opened;
 };
 
 #else

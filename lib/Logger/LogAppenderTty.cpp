@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,40 +21,10 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ArangoGlobalContext.h"
-
-#include "Basics/files.h"
-#include "Logger/LogAppender.h"
-#include "Rest/InitializeRest.h"
+#include "Logger/LogAppenderTty.h"
 
 using namespace arangodb;
 
-#ifndef _WIN32
-static void ReopenLog(int) { LogAppender::reopen(); }
-#endif
-
-ArangoGlobalContext::ArangoGlobalContext(int argc, char* argv[])
-    : _binaryName(TRI_BinaryName(argv[0])), _ret(EXIT_FAILURE) {
-  ADB_WindowsEntryFunction();
-  TRIAGENS_REST_INITIALIZE();
-}
-
-ArangoGlobalContext::~ArangoGlobalContext() {
-#ifndef _WIN32
-  signal(SIGHUP, SIG_IGN);
-#endif
-
-  TRIAGENS_REST_SHUTDOWN;
-  ADB_WindowsExitFunction(_ret, nullptr);
-}
-
-int ArangoGlobalContext::exit(int ret) {
-  _ret = ret;
-  return _ret;
-}
-
-void ArangoGlobalContext::installHup() {
-#ifndef _WIN32
-  signal(SIGHUP, ReopenLog);
-#endif
+LogAppenderTty::LogAppenderTty()
+  : LogAppenderFile("-", "") {
 }

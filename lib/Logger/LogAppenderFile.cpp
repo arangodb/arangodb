@@ -31,41 +31,113 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-LogAppenderFile::LogAppenderFile(std::string const& filename,
-                                 std::string const& filter)
-    : LogAppender(filter), _filename(filename), _fd(-1) {
-  // logging to stdout
-  if (_filename == "+") {
-    _fd.store(STDOUT_FILENO);
-  }
+std::vector<std::pair<int, std::string>> LogAppenderFile::_fds = {
+    {STDOUT_FILENO, "-"}, {STDERR_FILENO, "+"}};
 
-  // logging to stderr
-  else if (_filename == "-") {
-    _fd.store(STDERR_FILENO);
-  }
+void LogAppenderFile::reopen() {
+  for (size_t pos = 2; pos < _fds.size(); ++pos) {
+    int old = _fds[pos].first;
+    std::string const& filename = _fds[pos].second;
 
-  // logging to file
-  else {
+    if (filename.empty()) {
+      continue;
+    }
+
+    if (old <= STDERR_FILENO) {
+      continue;
+    }
+
+    // rename log file
+    std::string backup(filename);
+    backup.append(".old");
+
+    FileUtils::remove(backup);
+    FileUtils::rename(filename, backup);
+
+    // open new log file
     int fd = TRI_CREATE(filename.c_str(),
                         O_APPEND | O_CREAT | O_WRONLY | TRI_O_CLOEXEC,
                         S_IRUSR | S_IWUSR | S_IRGRP);
 
     if (fd < 0) {
-      std::cerr << "cannot write to file '" << filename << "'" << std::endl;
-
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_CANNOT_WRITE_FILE);
+      TRI_RenameFile(backup.c_str(), filename.c_str());
+      continue;
     }
 
-    _fd.store(fd);
+    _fds[pos].first = fd;
+
+    if (old > STDERR_FILENO) {
+      TRI_CLOSE(old);
+    }
   }
 }
 
-void LogAppenderFile::logMessage(LogLevel level, std::string const& message,
+void LogAppenderFile::close() {
+  for (size_t pos = 2; pos < _fds.size(); ++pos) {
+    int fd = _fds[pos].first;
+    _fds[pos].first = -1;
+
+    if (fd > STDERR_FILENO) {
+      TRI_CLOSE(fd);
+    }
+  }
+}
+
+LogAppenderFile::LogAppenderFile(std::string const& filename,
+                                 std::string const& filter)
+    : LogAppender(filter), _pos(-1) {
+  // logging to stdout
+  if (filename == "-") {
+    _pos = 0;
+  }
+
+  // logging to stderr
+  else if (filename == "+") {
+    _pos = 1;
+  }
+
+  // logging to a file
+  else {
+    size_t pos = 2;
+
+    for (; pos < _fds.size(); ++pos) {
+      if (_fds[pos].second == filename) {
+        break;
+      }
+    }
+
+    if (pos == _fds.size() || _fds[pos].first == -1) {
+      int fd = TRI_CREATE(filename.c_str(),
+                          O_APPEND | O_CREAT | O_WRONLY | TRI_O_CLOEXEC,
+                          S_IRUSR | S_IWUSR | S_IRGRP);
+
+      if (fd < 0) {
+        std::cerr << "cannot write to file '" << filename << "'" << std::endl;
+
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_CANNOT_WRITE_FILE);
+      }
+
+      if (pos == _fds.size()) {
+        _fds.emplace_back(make_pair(fd, filename));
+      } else {
+        _fds[pos].first = fd;
+      }
+
+      _pos = pos;
+    }
+  }
+}
+
+bool LogAppenderFile::logMessage(LogLevel level, std::string const& message,
                                  size_t offset) {
-  int fd = _fd.load();
+  if (_pos < 0) {
+    return false;
+  }
+
+  int fd = _fds[_pos].first;
 
   if (fd < 0) {
-    return;
+    return false;
   }
 
   size_t escapedLength;
@@ -77,59 +149,16 @@ void LogAppenderFile::logMessage(LogLevel level, std::string const& message,
     writeLogFile(fd, escaped, static_cast<ssize_t>(escapedLength));
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, escaped);
   }
-}
 
-void LogAppenderFile::reopenLog() {
-  if (_filename.empty()) {
-    return;
-  }
-
-  if (_fd <= STDERR_FILENO) {
-    return;
-  }
-
-  // rename log file
-  std::string backup(_filename);
-  backup.append(".old");
-
-  FileUtils::remove(backup);
-  FileUtils::rename(_filename, backup);
-
-  // open new log file
-  int fd = TRI_CREATE(_filename.c_str(),
-                      O_APPEND | O_CREAT | O_WRONLY | TRI_O_CLOEXEC,
-                      S_IRUSR | S_IWUSR | S_IRGRP);
-
-  if (fd < 0) {
-    TRI_RenameFile(backup.c_str(), _filename.c_str());
-    return;
-  }
-
-  int old = std::atomic_exchange(&_fd, fd);
-
-  if (old > STDERR_FILENO) {
-    TRI_CLOSE(old);
-  }
-}
-
-void LogAppenderFile::closeLog() {
-  int fd = _fd.exchange(-1);
-
-  if (fd > STDERR_FILENO) {
-    TRI_CLOSE(fd);
-  }
+  return isatty(fd);
 }
 
 std::string LogAppenderFile::details() {
-  if (_filename.empty()) {
-    return "";
-  }
-
-  int fd = _fd.load();
+  int fd = _fds[_pos].first;
 
   if (fd != STDOUT_FILENO && fd != STDERR_FILENO) {
     std::string buffer("More error details may be provided in the logfile '");
-    buffer.append(_filename);
+    buffer.append(_fds[_pos].second);
     buffer.append("'");
 
     return buffer;

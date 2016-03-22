@@ -40,6 +40,7 @@ using namespace arangodb::rest;
 
 int main(int argc, char* argv[]) {
   ArangoGlobalContext context(argc, argv);
+  context.installHup();
 
   std::shared_ptr<options::ProgramOptions> options(new options::ProgramOptions(
       argv[0], "Usage: arangob [<options>]", "For more information use:"));

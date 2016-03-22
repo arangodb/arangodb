@@ -29,14 +29,14 @@
 namespace arangodb {
 class LogAppenderFile : public LogAppender {
  public:
+  static void reopen();
+  static void close();
+
+ public:
   LogAppenderFile(std::string const& filename, std::string const& filter);
-  ~LogAppenderFile() { closeLog(); };
 
-  void logMessage(LogLevel, std::string const& message,
+  bool logMessage(LogLevel, std::string const& message,
                   size_t offset) override final;
-
-  void reopenLog() override final;
-  void closeLog() override final;
 
   std::string details() override final;
 
@@ -44,8 +44,10 @@ class LogAppenderFile : public LogAppender {
   void writeLogFile(int, char const*, ssize_t);
 
  private:
-  std::string _filename;
-  std::atomic<int> _fd;
+  static std::vector<std::pair<int, std::string>> _fds;
+
+ private:
+  ssize_t _pos;
 };
 }
 

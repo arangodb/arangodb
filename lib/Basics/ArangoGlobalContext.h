@@ -34,6 +34,7 @@ class ArangoGlobalContext {
  public:
   std::string binaryName() { return _binaryName; }
   int exit(int ret);
+  void installHup();
 
  private:
   std::string _binaryName;

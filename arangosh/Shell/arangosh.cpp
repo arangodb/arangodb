@@ -42,6 +42,7 @@ using namespace arangodb::application_features;
 
 int main(int argc, char* argv[]) {
   ArangoGlobalContext context(argc, argv);
+  context.installHup();
 
   std::string name = context.binaryName();
 

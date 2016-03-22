@@ -37,7 +37,7 @@ class LogAppender {
  public:
   static void addAppender(std::string const& definition,
                           std::string const& contentFilter = "");
-  static void addTtyAppender(bool backgrounded);
+  static void addTtyAppender();
 
   static std::shared_ptr<LogAppender> buildAppender(
       std::string const& definition, std::string const& contentFilter);
@@ -45,6 +45,7 @@ class LogAppender {
   static void log(LogMessage*);
   static void writeStderr(LogLevel, std::string const&);
 
+  static void reopen();
   static void shutdown();
 
  public:
@@ -52,11 +53,8 @@ class LogAppender {
   virtual ~LogAppender() {}
 
  public:
-  virtual void logMessage(LogLevel, std::string const& message,
+  virtual bool logMessage(LogLevel, std::string const& message,
                           size_t offset) = 0;
-
-  virtual void reopenLog() = 0;
-  virtual void closeLog() = 0;
 
   virtual std::string details() = 0;
 
@@ -71,6 +69,7 @@ class LogAppender {
 
  private:
   static Mutex _appendersLock;
+  static std::unique_ptr<LogAppender> _ttyAppender;
   static std::map<size_t, std::vector<std::shared_ptr<LogAppender>>>
       _topics2appenders;
   static std::map<std::pair<std::string, std::string>,

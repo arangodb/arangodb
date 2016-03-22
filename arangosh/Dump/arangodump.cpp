@@ -37,6 +37,7 @@ using namespace arangodb::application_features;
 
 int main(int argc, char* argv[]) {
   ArangoGlobalContext context(argc, argv);
+  context.installHup();
 
   std::shared_ptr<options::ProgramOptions> options(new options::ProgramOptions(
       argv[0], "Usage: arangodump [<options>]", "For more information use:"));
