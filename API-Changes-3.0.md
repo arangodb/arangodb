@@ -49,6 +49,10 @@ Overview
     versions. Additionally the checksum calculation algorithm was changed in 3.0,
     so 3.0 will create different checksums than previous versions for the same data.
 
+13. the HTTP API for modifying documents (/_api/document) does not return the `error`
+    attribute with a value of `false` in case an operation succeeds.
+
+
 ### New capabilities:
 
  1. Babies for document queries.

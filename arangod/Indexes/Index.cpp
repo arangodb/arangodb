@@ -664,7 +664,7 @@ void Index::expandInSearchValues(VPackSlice const base,
     // If there is an entry in elements for one depth it was an in,
     // all of them are now unique so we simply have to multiply
     
-    size_t level = 0;
+    size_t level = n - 1;
     std::vector<size_t> positions;
     positions.resize(n);
     bool done = false;
@@ -683,15 +683,16 @@ void Index::expandInSearchValues(VPackSlice const base,
       while (true) {
         auto list = elements.find(level);
         if (list != elements.end() && ++positions[level] < list->second.size()) {
-          level = 0;
+          level = n - 1;
           // abort inner iteration
           break;
         }
         positions[level] = 0;
-        if (++level >= n) {
+        if (level == 0) {
           done = true;
           break;
         }
+        --level;
       }
     }
   }

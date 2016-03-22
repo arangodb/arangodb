@@ -29,7 +29,10 @@
 #include "Rest/HttpResponse.h"
 
 namespace arangodb {
+class TransactionContext;
+
 namespace velocypack {
+struct Options;
 class Slice;
 }
 
@@ -50,39 +53,47 @@ class RestBaseHandler : public rest::HttpHandler {
   /// @brief generates a result from VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void generateResult(arangodb::velocypack::Slice const& slice);
-
+  void generateResult(rest::HttpResponse::HttpResponseCode,
+                      arangodb::velocypack::Slice const& slice);
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates a result from VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void generateResult(rest::HttpResponse::HttpResponseCode,
-                              arangodb::velocypack::Slice const& slice);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief generates a cancel message
-  //////////////////////////////////////////////////////////////////////////////
-
-  virtual void generateCanceled();
+  void generateResult(rest::HttpResponse::HttpResponseCode,
+                      arangodb::velocypack::Slice const& slice,
+                      std::shared_ptr<arangodb::TransactionContext> context);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates an error
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void generateError(rest::HttpResponse::HttpResponseCode, int);
+  void generateError(rest::HttpResponse::HttpResponseCode, int);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates an error
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void generateError(rest::HttpResponse::HttpResponseCode, int,
-                             std::string const&);
+  void generateError(rest::HttpResponse::HttpResponseCode, int, std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief generates an OUT_OF_MEMORY error
+  /// @brief generates an out of memory error
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void generateOOMError();
+  void generateOOMError();
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief generates a canceled message
+  //////////////////////////////////////////////////////////////////////////////
+
+  void generateCanceled();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief dumps the response as JSON into the response string buffer
+  //////////////////////////////////////////////////////////////////////////////
+
+  void dumpResponse(arangodb::velocypack::Slice const& slice,
+                    arangodb::velocypack::Options const* options);
 };
 }
 

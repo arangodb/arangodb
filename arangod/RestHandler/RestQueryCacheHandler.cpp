@@ -77,8 +77,7 @@ bool RestQueryCacheHandler::clearCache() {
     result.add("error", VPackValue(false));
     result.add("code", VPackValue(HttpResponse::OK));
     result.close();
-    VPackSlice slice = result.slice();
-    generateResult(slice);
+    generateResult(HttpResponse::HttpResponseCode::OK, result.slice());
   } catch (...) {
     // Ignore the error
   }
@@ -94,8 +93,7 @@ bool RestQueryCacheHandler::readProperties() {
     auto queryCache = arangodb::aql::QueryCache::instance();
 
     VPackBuilder result = queryCache->properties();
-    VPackSlice slice = result.slice();
-    generateResult(slice);
+    generateResult(HttpResponse::HttpResponseCode::OK, result.slice());
   } catch (Exception const& err) {
     handleError(err);
   } catch (std::exception const& ex) {

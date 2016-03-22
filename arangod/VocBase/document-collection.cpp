@@ -4085,7 +4085,13 @@ int TRI_document_collection_t::newObjectForInsert(
     uint8_t* p = builder.add(TRI_VOC_ATTRIBUTE_ID, 
         VPackValuePair(9ULL, VPackValueType::Custom));
     *p++ = 0xf3;  // custom type for _id
-    DatafileHelper::StoreNumber<uint64_t>(p, _info.id(), sizeof(uint64_t));
+    if (ServerState::instance()->isDBServer()) {
+      // db server in cluster
+      DatafileHelper::StoreNumber<uint64_t>(p, _info.planId(), sizeof(uint64_t));
+    } else {
+      // local server
+      DatafileHelper::StoreNumber<uint64_t>(p, _info.id(), sizeof(uint64_t));
+    }
     VPackSlice s = value.get(TRI_VOC_ATTRIBUTE_KEY);
     TRI_voc_tick_t const newRev = TRI_NewTickServer();
     if (s.isNone()) {
