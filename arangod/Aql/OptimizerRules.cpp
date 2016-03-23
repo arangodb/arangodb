@@ -40,6 +40,7 @@
 #include "Aql/types.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/json-utilities.h"
+#include "Utils/Transaction.h"
 
 using namespace arangodb::aql;
 using Json = arangodb::basics::Json;
@@ -1711,52 +1712,24 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       // now check if any of the collection's indexes covers it
 
       Variable const* outVariable = enumerateCollectionNode->outVariable();
-      auto const& indexes = enumerateCollectionNode->collection()->getIndexes();
-      arangodb::aql::Index const* bestIndex = nullptr;
-      double bestCost = 0.0;
-      size_t bestNumCovered = 0;
-
-      for (auto& index : indexes) {
-        if (!index->isSorted() || index->sparse) {
-          // can only use a sorted index
-          // cannot use a sparse index for sorting
-          continue;
-        }
-
-        size_t const numCovered =
-            sortCondition.coveredAttributes(outVariable, index->fields); 
-
-        if (numCovered == 0) {
-          continue;
-        }
-
-        double estimatedCost = 0.0;
-        if (!index->supportsSortCondition(
-                &sortCondition, 
-                outVariable,
-                enumerateCollectionNode->collection()->count(),
-                estimatedCost)) {
-          // should never happen
-          TRI_ASSERT(false);
-          continue;
-        }
- 
-        if (bestIndex == nullptr || estimatedCost < bestCost) {
-          bestIndex = index;
-          bestCost = estimatedCost;
-          bestNumCovered = numCovered;
-        }
-      }
-
-      if (bestIndex != nullptr) {
+      std::vector<arangodb::Transaction::IndexHandle> usedIndexes;
+      auto trx = _plan->getAst()->query()->trx();
+      size_t coveredAttributes = 0;
+      auto resultPair = trx->getIndexForSortCondition(
+          enumerateCollectionNode->collection()->getName(),
+          &sortCondition, outVariable, 
+          enumerateCollectionNode->collection()->count(),
+          usedIndexes, coveredAttributes);
+      if (resultPair.second) {
+        // If this bit is set, then usedIndexes has length exactly one
+        // and contains the best index found.
         auto condition = std::make_unique<Condition>(_plan->getAst());
         condition->normalize(_plan);
 
         std::unique_ptr<ExecutionNode> newNode(new IndexNode(
             _plan, _plan->nextId(), enumerateCollectionNode->vocbase(),
             enumerateCollectionNode->collection(), outVariable,
-            std::vector<std::string>{arangodb::basics::StringUtils::itoa(bestIndex->id)}, condition.get(),
-            sortCondition.isDescending()));
+            usedIndexes, condition.get(), sortCondition.isDescending()));
 
         condition.release();
 
@@ -1766,7 +1739,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         _plan->replaceNode(enumerateCollectionNode, n);
         _modified = true;
 
-        if (bestNumCovered == sortCondition.numAttributes()) {
+        if (coveredAttributes == sortCondition.numAttributes()) {
           // if the index covers the complete sort condition, we can also remove
           // the sort node
           _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
@@ -1795,12 +1768,11 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
     TRI_ASSERT(outVariable != nullptr);
 
     auto index = indexes[0];
-    std::string collectionName = indexNode->collection()->getName();
     arangodb::Transaction* trx = indexNode->trx();
     bool isSorted = false;
     bool isSparse = false;
     std::vector<std::vector<arangodb::basics::AttributeName>> fields =
-        trx->getIndexFeatures(collectionName, index, isSorted, isSparse);
+        trx->getIndexFeatures(index, isSorted, isSparse);
     if (indexes.size() != 1) {
       // can only use this index node if it uses exactly one index or multiple
       // indexes on exactly the same attributes

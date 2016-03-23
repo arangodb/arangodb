@@ -988,7 +988,7 @@ bool DepthFirstTraverser::EdgeGetter::nextCursor(std::string const& startVertex,
                                                  VPackValueLength*& last) {
   while (true) {
     std::string eColName;
-    std::string indexHandle;
+    arangodb::Transaction::IndexHandle indexHandle;
     if (last != nullptr) {
       // The cursor is empty clean up
       last = nullptr;

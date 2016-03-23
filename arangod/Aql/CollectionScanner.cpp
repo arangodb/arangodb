@@ -32,7 +32,8 @@ CollectionScanner::CollectionScanner(arangodb::AqlTransaction* trx,
     : _cursor(trx->indexScan(collection,
                              (readRandom ? Transaction::CursorType::ANY
                                          : Transaction::CursorType::ALL),
-                             "", VPackSlice(), 0, UINT64_MAX, 1000, false)) {
+                             Transaction::IndexHandle(), VPackSlice(), 0, 
+                             UINT64_MAX, 1000, false)) {
   TRI_ASSERT(_cursor->successful());
 }
 

@@ -521,7 +521,7 @@ static bool SortNumberList(arangodb::AqlTransaction* trx,
 static void RequestEdges(VPackSlice const& vertexSlice,
                          arangodb::AqlTransaction* trx,
                          std::string const& collectionName,
-                         std::string const& indexId,
+                         Transaction::IndexHandle const& indexId,
                          TRI_edge_direction_e direction,
                          arangodb::ExampleMatcher const* matcher,
                          bool includeVertices, VPackBuilder& result) {
@@ -2767,10 +2767,7 @@ AqlValue Functions::Edges(arangodb::aql::Query* query,
 
   std::unique_ptr<arangodb::ExampleMatcher> matcher;
 
-  TRI_document_collection_t* documentCollection = trx->documentCollection(cid);
-  arangodb::EdgeIndex* edgeIndex = documentCollection->edgeIndex();
-  TRI_ASSERT(edgeIndex != nullptr); // Checked because collection is edge Collection.
-  std::string indexId = arangodb::basics::StringUtils::itoa(edgeIndex->id());
+  Transaction::IndexHandle indexId = trx->edgeIndexHandle(collectionName);
 
   size_t const n = parameters.size();
   if (n > 3) {

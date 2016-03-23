@@ -55,16 +55,35 @@
 using namespace arangodb;
 
 //////////////////////////////////////////////////////////////////////////////
+/// @brief IndexHandle getter method
+//////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<arangodb::Index> Transaction::IndexHandle::getIndex() const {
+  return _index;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief IndexHandle toVelocyPack method passthrough
+//////////////////////////////////////////////////////////////////////////////
+
+void Transaction::IndexHandle::toVelocyPack(
+    arangodb::velocypack::Builder& builder,
+    bool withFigures) const {
+  _index->toVelocyPack(builder, withFigures);
+}
+
+//////////////////////////////////////////////////////////////////////////////
 /// @brief tests if the given index supports the sort condition
 //////////////////////////////////////////////////////////////////////////////
 
 static bool indexSupportsSort(Index const* idx, arangodb::aql::Variable const* reference,
                               arangodb::aql::SortCondition const* sortCondition,
                               size_t itemsInIndex,
-                              double& estimatedCost) {
+                              double& estimatedCost,
+                              size_t& coveredAttributes) {
   if (idx->isSorted() &&
       idx->supportsSortCondition(sortCondition, reference, itemsInIndex,
-                                 estimatedCost)) {
+                                 estimatedCost, coveredAttributes)) {
     // index supports the sort condition
     return true;
   }
@@ -84,10 +103,10 @@ static bool indexSupportsSort(Index const* idx, arangodb::aql::Variable const* r
 /// the usedIndexes vector may also be re-sorted
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool sortOrs(arangodb::aql::Ast* ast,
+bool Transaction::sortOrs(arangodb::aql::Ast* ast,
                     arangodb::aql::AstNode* root,
                     arangodb::aql::Variable const* variable,
-                    std::vector<std::string>& usedIndexes) {
+                    std::vector<arangodb::Transaction::IndexHandle>& usedIndexes) const {
   if (root == nullptr) {
     return true;
   }
@@ -106,7 +125,7 @@ static bool sortOrs(arangodb::aql::Ast* ast,
     return false;
   }
 
-  typedef std::pair<arangodb::aql::AstNode*, std::string> ConditionData;
+  typedef std::pair<arangodb::aql::AstNode*, arangodb::Transaction::IndexHandle> ConditionData;
   std::vector<ConditionData*> conditionData;
 
   auto cleanup = [&conditionData]() -> void {
@@ -307,20 +326,19 @@ static bool sortOrs(arangodb::aql::Ast* ast,
   return true;
 }
 
-
-
-static std::pair<bool, bool> findIndexHandleForAndNode(
+std::pair<bool, bool> Transaction::findIndexHandleForAndNode(
     std::vector<std::shared_ptr<Index>> indexes, arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference,
     arangodb::aql::SortCondition const* sortCondition,
     size_t itemsInCollection,
-    std::vector<std::string>& usedIndexes,
+    std::vector<Transaction::IndexHandle>& usedIndexes,
     arangodb::aql::AstNode*& specializedCondition,
-    bool& isSparse) {
-  Index const* bestIndex = nullptr;
+    bool& isSparse) const {
+  std::shared_ptr<Index> bestIndex;
   double bestCost = 0.0;
   bool bestSupportsFilter = false;
   bool bestSupportsSort = false;
+  size_t coveredAttributes = 0;
 
   for (auto const& idx : indexes) {
     double filterCost = 0.0;
@@ -354,7 +372,7 @@ static std::pair<bool, bool> findIndexHandleForAndNode(
       // be empty, must consist only of attribute access, and all attributes
       // must be sorted in the direction
       if (indexSupportsSort(idx.get(), reference, sortCondition, itemsInIndex,
-                            sortCost)) {
+                            sortCost, coveredAttributes)) {
         supportsSort = true;
       }
     }
@@ -381,7 +399,7 @@ static std::pair<bool, bool> findIndexHandleForAndNode(
 
     double const totalCost = filterCost + sortCost;
     if (bestIndex == nullptr || totalCost < bestCost) {
-      bestIndex = idx.get();
+      bestIndex = idx;
       bestCost = totalCost;
       bestSupportsFilter = supportsFilter;
       bestSupportsSort = supportsSort;
@@ -394,8 +412,7 @@ static std::pair<bool, bool> findIndexHandleForAndNode(
 
   specializedCondition = bestIndex->specializeCondition(node, reference);
 
-  usedIndexes.emplace_back(
-      arangodb::basics::StringUtils::itoa(bestIndex->id()));
+  usedIndexes.emplace_back(bestIndex);
   isSparse = bestIndex->sparse();
 
   return std::make_pair(bestSupportsFilter, bestSupportsSort);
@@ -793,8 +810,8 @@ OperationResult Transaction::anyLocal(std::string const& collectionName,
   resultBuilder.openArray();
 
   std::shared_ptr<OperationCursor> cursor =
-      indexScan(collectionName, Transaction::CursorType::ANY, "", {}, skip,
-                limit, 1000, false);
+      indexScan(collectionName, Transaction::CursorType::ANY, IndexHandle(), 
+                {}, skip, limit, 1000, false);
 
   auto result = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
   while (cursor->hasMore()) {
@@ -877,14 +894,14 @@ std::string Transaction::collectionName(TRI_voc_cid_t cid) {
 /// @brief return the edge index handle of collection
 //////////////////////////////////////////////////////////////////////////////
 
-std::string Transaction::edgeIndexHandle(std::string const& collectionName) {
+Transaction::IndexHandle Transaction::edgeIndexHandle(std::string const& collectionName) {
   if (!isEdgeCollection(collectionName)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
   }
   auto indexes = indexesForCollection(collectionName); 
   for (auto idx : indexes) {
     if (idx->type() == Index::TRI_IDX_TYPE_EDGE_INDEX) {
-      return arangodb::basics::StringUtils::itoa(idx->id());
+      return IndexHandle(idx);
     }
   }
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
@@ -1730,8 +1747,8 @@ OperationResult Transaction::allKeysLocal(std::string const& collectionName,
   resultBuilder.add("documents", VPackValue(VPackValueType::Array));
 
   std::shared_ptr<OperationCursor> cursor =
-      indexScan(collectionName, Transaction::CursorType::ALL, "", {}, 0,
-                UINT64_MAX, 1000, false);
+      indexScan(collectionName, Transaction::CursorType::ALL, IndexHandle(),
+                {}, 0, UINT64_MAX, 1000, false);
 
   auto result = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
   while (cursor->hasMore()) {
@@ -1819,8 +1836,8 @@ OperationResult Transaction::allLocal(std::string const& collectionName,
   resultBuilder.openArray();
 
   std::shared_ptr<OperationCursor> cursor =
-      indexScan(collectionName, Transaction::CursorType::ALL, "", {}, skip,
-                limit, 1000, false);
+      indexScan(collectionName, Transaction::CursorType::ALL, IndexHandle(),
+                {}, skip, limit, 1000, false);
 
   auto result = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
   while (cursor->hasMore()) {
@@ -2011,7 +2028,7 @@ std::pair<bool, bool> Transaction::getBestIndexHandlesForFilterCondition(
     arangodb::aql::Variable const* reference,
     arangodb::aql::SortCondition const* sortCondition,
     size_t itemsInCollection,
-    std::vector<std::string>& usedIndexes,
+    std::vector<IndexHandle>& usedIndexes,
     bool& isSorted) const {
   // We can only start after DNF transformation
   TRI_ASSERT(root->type ==
@@ -2071,19 +2088,13 @@ std::pair<bool, bool> Transaction::getBestIndexHandlesForFilterCondition(
 //////////////////////////////////////////////////////////////////////////////
 
 bool Transaction::supportsFilterCondition(
-    std::string const& collectionName, std::string const& indexHandle,
+    IndexHandle const& indexHandle,
     arangodb::aql::AstNode const* condition,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) {
-  if (ServerState::instance()->isCoordinator()) {
-    // The supportsFilterCondition is only available on DBServers and Single Server.
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
-  }
 
-  arangodb::Index* idx = getIndexByIdentifier(collectionName, indexHandle);
-
-  return idx->supportsFilterCondition(condition, reference, itemsInIndex,
-                                      estimatedItems, estimatedCost);
+  return indexHandle.getIndex()->supportsFilterCondition(
+      condition, reference, itemsInIndex, estimatedItems, estimatedCost);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -2093,16 +2104,10 @@ bool Transaction::supportsFilterCondition(
 //////////////////////////////////////////////////////////////////////////////
 
 std::vector<std::vector<arangodb::basics::AttributeName>>
-Transaction::getIndexFeatures(std::string const& collectionName,
-                              std::string const& indexHandle, bool& isSorted,
+Transaction::getIndexFeatures(IndexHandle const& indexHandle, bool& isSorted,
                               bool& isSparse) {
 
-  if (ServerState::instance()->isCoordinator()) {
-    // The index is sorted check is only available on DBServers and Single Server.
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
-  }
-
-  arangodb::Index* idx = getIndexByIdentifier(collectionName, indexHandle);
+  std::shared_ptr<arangodb::Index> idx = indexHandle.getIndex();
   isSorted = idx->isSorted();
   isSparse = idx->sparse();
   return idx->fields();
@@ -2115,14 +2120,16 @@ Transaction::getIndexFeatures(std::string const& collectionName,
 //////////////////////////////////////////////////////////////////////////////
 
 std::pair<bool, bool> Transaction::getIndexForSortCondition(
-    std::string const& collectionName, arangodb::aql::SortCondition const* sortCondition,
+    std::string const& collectionName,
+    arangodb::aql::SortCondition const* sortCondition,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
-    std::vector<std::string>& usedIndexes) const {
+    std::vector<IndexHandle>& usedIndexes,
+    size_t& coveredAttributes) const {
   // We do not have a condition. But we have a sort!
   if (!sortCondition->isEmpty() && sortCondition->isOnlyAttributeAccess() &&
       sortCondition->isUnidirectional()) {
     double bestCost = 0.0;
-    Index const* bestIndex = nullptr;
+    std::shared_ptr<Index> bestIndex;
 
     auto indexes = indexesForCollection(collectionName);
 
@@ -2133,17 +2140,19 @@ std::pair<bool, bool> Transaction::getIndexForSortCondition(
         continue;
       }
       double sortCost = 0.0;
+      size_t covered = 0;
       if (indexSupportsSort(idx.get(), reference, sortCondition, itemsInIndex,
-                            sortCost)) {
+                            sortCost, covered)) {
         if (bestIndex == nullptr || sortCost < bestCost) {
           bestCost = sortCost;
-          bestIndex = idx.get();
+          bestIndex = idx;
+          coveredAttributes = covered;
         }
       }
     }
 
     if (bestIndex != nullptr) {
-      usedIndexes.emplace_back(arangodb::basics::StringUtils::itoa(bestIndex->id()));
+      usedIndexes.emplace_back(bestIndex);
     }
 
     return std::make_pair(false, bestIndex != nullptr);
@@ -2162,7 +2171,7 @@ std::pair<bool, bool> Transaction::getIndexForSortCondition(
 //////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<OperationCursor> Transaction::indexScanForCondition(
-    std::string const& collectionName, std::string const& indexId,
+    std::string const& collectionName, IndexHandle const& indexId,
     arangodb::aql::Ast* ast, arangodb::aql::AstNode const* condition,
     arangodb::aql::Variable const* var, uint64_t limit, uint64_t batchSize,
     bool reverse) {
@@ -2173,8 +2182,6 @@ std::shared_ptr<OperationCursor> Transaction::indexScanForCondition(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
   }
 
-  arangodb::Index* idx = getIndexByIdentifier(collectionName, indexId);
-
   if (limit == 0) {
     // nothing to do
     return std::make_shared<OperationCursor>(TRI_ERROR_NO_ERROR);
@@ -2183,6 +2190,8 @@ std::shared_ptr<OperationCursor> Transaction::indexScanForCondition(
   // Now collect the Iterator
   IndexIteratorContext ctxt(_vocbase, resolver());
  
+  auto idx = indexId.getIndex();
+
   std::unique_ptr<IndexIterator> iterator(idx->iteratorForCondition(this, &ctxt, ast, condition, var, reverse));
 
   if (iterator == nullptr) {
@@ -2196,43 +2205,6 @@ std::shared_ptr<OperationCursor> Transaction::indexScanForCondition(
 }
 
 //////////////////////////////////////////////////////////////////////////////
-/// @brief get the index by it's identifier. Will either throw or
-///        return a valid index. nullptr is impossible.
-//////////////////////////////////////////////////////////////////////////////
-
-arangodb::Index* Transaction::getIndexByIdentifier(
-    std::string const& collectionName, std::string const& indexHandle) {
-  TRI_voc_cid_t cid = resolver()->getCollectionId(collectionName);
-
-  if (cid == 0) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-  }
-
-  TRI_document_collection_t* document = documentCollection(trxCollection(cid));
-
-  if (indexHandle.empty()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "The index id cannot be empty.");
-  }
-
-  if (!arangodb::Index::validateId(indexHandle.c_str())) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
-  }
-  TRI_idx_iid_t iid = arangodb::basics::StringUtils::uint64(indexHandle);
-  arangodb::Index* idx = document->lookupIndex(iid);
-
-  if (idx == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
-                                   "Could not find index '" + indexHandle +
-                                       "' in collection '" +
-                                       collectionName + "'.");
-  }
-  
-  // We have successfully found an index with the requested id.
-  return idx;
-}
-
-//////////////////////////////////////////////////////////////////////////////
 /// @brief factory for OperationCursor objects
 /// note: the caller must have read-locked the underlying collection when
 /// calling this method
@@ -2240,7 +2212,7 @@ arangodb::Index* Transaction::getIndexByIdentifier(
 
 std::shared_ptr<OperationCursor> Transaction::indexScan(
     std::string const& collectionName, CursorType cursorType,
-    std::string const& indexId, VPackSlice const search, uint64_t skip,
+    IndexHandle const& indexId, VPackSlice const search, uint64_t skip,
     uint64_t limit, uint64_t batchSize, bool reverse) {
 #warning TODO Who checks if indexId is valid and is used for this collection?
   // For now we assume indexId is the iid part of the index.
@@ -2270,7 +2242,7 @@ std::shared_ptr<OperationCursor> Transaction::indexScan(
       // We do not need search values
       TRI_ASSERT(search.isNone());
       // We do not need an index either
-      TRI_ASSERT(indexId.empty());
+      TRI_ASSERT(nullptr == indexId.getIndex());
 
       arangodb::PrimaryIndex* idx = document->primaryIndex();
 
@@ -2287,7 +2259,7 @@ std::shared_ptr<OperationCursor> Transaction::indexScan(
       // We do not need search values
       TRI_ASSERT(search.isNone());
       // We do not need an index either
-      TRI_ASSERT(indexId.empty());
+      TRI_ASSERT(nullptr == indexId.getIndex());
 
       arangodb::PrimaryIndex* idx = document->primaryIndex();
 
@@ -2301,11 +2273,11 @@ std::shared_ptr<OperationCursor> Transaction::indexScan(
       break;
     }
     case CursorType::INDEX: {
-      if (indexId.empty()) {
+      auto idx = indexId.getIndex();
+      if (nullptr == idx) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                        "The index id cannot be empty.");
       }
-      arangodb::Index* idx = getIndexByIdentifier(collectionName, indexId);
       // Normalize the search values
       VPackBuilder expander;
       idx->expandInSearchValues(search, expander);
@@ -2571,6 +2543,49 @@ std::vector<std::shared_ptr<Index>> Transaction::indexesForCollectionCoordinator
     }
   }
   return indexes;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief get the index by it's identifier. Will either throw or
+///        return a valid index. nullptr is impossible.
+//////////////////////////////////////////////////////////////////////////////
+
+Transaction::IndexHandle Transaction::getIndexByIdentifier(
+    std::string const& collectionName, std::string const& indexHandle) {
+
+  if (ServerState::instance()->isCoordinator()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  TRI_voc_cid_t cid = resolver()->getCollectionId(collectionName);
+
+  if (cid == 0) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
+
+  TRI_document_collection_t* document = documentCollection(trxCollection(cid));
+
+  if (indexHandle.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "The index id cannot be empty.");
+  }
+
+  if (!arangodb::Index::validateId(indexHandle.c_str())) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
+  }
+  TRI_idx_iid_t iid = arangodb::basics::StringUtils::uint64(indexHandle);
+  arangodb::Index* idx = document->lookupIndex(iid);
+
+  if (idx == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
+                                   "Could not find index '" + indexHandle +
+                                       "' in collection '" +
+                                       collectionName + "'.");
+  }
+  
+  // We have successfully found an index with the requested id.
+  std::shared_ptr<arangodb::Index> dummy;
+  return IndexHandle(std::shared_ptr<arangodb::Index>(dummy, idx));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

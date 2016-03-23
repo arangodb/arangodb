@@ -65,6 +65,28 @@ struct OperationCursor;
 class TransactionContext;
 
 class Transaction {
+ public:
+
+  class IndexHandle {
+    friend class Transaction;
+    std::shared_ptr<arangodb::Index> _index;
+   public:
+    IndexHandle() {
+    }
+    void toVelocyPack(arangodb::velocypack::Builder& builder,
+                      bool withFigures) const;
+    bool operator==(IndexHandle const& other) const {
+      return other._index.get() == _index.get();
+    }
+    bool operator!=(IndexHandle const& other) const {
+      return other._index.get() != _index.get();
+    }
+    IndexHandle(std::shared_ptr<arangodb::Index> idx) : _index(idx) {
+    }
+   private:
+    std::shared_ptr<arangodb::Index> getIndex() const;
+  };
+
   using VPackBuilder = arangodb::velocypack::Builder;
   using VPackSlice = arangodb::velocypack::Slice;
 
@@ -314,7 +336,7 @@ class Transaction {
   /// @brief return the edge index handle of collection
   //////////////////////////////////////////////////////////////////////////////
  
-  std::string edgeIndexHandle(std::string const&); 
+  IndexHandle edgeIndexHandle(std::string const&); 
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Iterate over all elements of the collection.
@@ -409,7 +431,7 @@ class Transaction {
   std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
       std::string const&, arangodb::aql::Ast*, arangodb::aql::AstNode*,
       arangodb::aql::Variable const*, arangodb::aql::SortCondition const*,
-      size_t, std::vector<std::string>&, bool&) const;
+      size_t, std::vector<IndexHandle>&, bool&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Checks if the index supports the filter condition.
@@ -417,7 +439,7 @@ class Transaction {
   /// calling this method
   //////////////////////////////////////////////////////////////////////////////
 
-  bool supportsFilterCondition(std::string const&, std::string const&,
+  bool supportsFilterCondition(IndexHandle const&,
                                arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
                                double&);
@@ -429,7 +451,7 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   std::vector<std::vector<arangodb::basics::AttributeName>> getIndexFeatures(
-      std::string const&, std::string const&, bool&, bool&);
+      IndexHandle const&, bool&, bool&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Gets the best fitting index for an AQL sort condition
@@ -440,7 +462,8 @@ class Transaction {
   std::pair<bool, bool> getIndexForSortCondition(
       std::string const&, arangodb::aql::SortCondition const*,
       arangodb::aql::Variable const*, size_t,
-      std::vector<std::string>&) const;
+      std::vector<IndexHandle>&,
+      size_t& coveredAttributes) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief factory for OperationCursor objects from AQL
@@ -449,7 +472,7 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   std::shared_ptr<OperationCursor> indexScanForCondition(
-      std::string const& collectionName, std::string const& indexId,
+      std::string const& collectionName, IndexHandle const& indexId,
       arangodb::aql::Ast*, arangodb::aql::AstNode const*,
       arangodb::aql::Variable const*, uint64_t, uint64_t, bool);
 
@@ -461,7 +484,7 @@ class Transaction {
 
   std::shared_ptr<OperationCursor> indexScan(std::string const& collectionName,
                                              CursorType cursorType,
-                                             std::string const& indexId,
+                                             IndexHandle const& indexId,
                                              VPackSlice const search,
                                              uint64_t skip, uint64_t limit,
                                              uint64_t batchSize, bool reverse);
@@ -486,16 +509,15 @@ class Transaction {
   
   TRI_document_collection_t* documentCollection(TRI_voc_cid_t) const;
   
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get the index by its identifier. Will either throw or
-  ///        return a valid index. nullptr is impossible.
-  //////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+/// @brief get the index by it's identifier. Will either throw or
+///        return a valid index. nullptr is impossible.
+//////////////////////////////////////////////////////////////////////////////
 
-  arangodb::Index* getIndexByIdentifier(std::string const& collectionName,
-                                        std::string const& indexId);
+  IndexHandle getIndexByIdentifier(
+    std::string const& collectionName, std::string const& indexHandle);
 
  private:
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief build a VPack object with _id, _key and _rev and possibly
   /// oldRef (if given), the result is added to the builder in the
@@ -659,6 +681,30 @@ class Transaction {
       std::string const&) const;
 
  private:
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief sort ORs for the same attribute so they are in ascending value
+  /// order. this will only work if the condition is for a single attribute
+  /// the usedIndexes vector may also be re-sorted
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool sortOrs(arangodb::aql::Ast* ast,
+               arangodb::aql::AstNode* root,
+               arangodb::aql::Variable const* variable,
+               std::vector<arangodb::Transaction::IndexHandle>& usedIndexes) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief findIndexHandleForAndNode
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::pair<bool, bool> findIndexHandleForAndNode(
+      std::vector<std::shared_ptr<Index>> indexes, arangodb::aql::AstNode* node,
+      arangodb::aql::Variable const* reference,
+      arangodb::aql::SortCondition const* sortCondition,
+      size_t itemsInCollection,
+      std::vector<Transaction::IndexHandle>& usedIndexes,
+      arangodb::aql::AstNode*& specializedCondition,
+      bool& isSparse) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Get all indexes for a collection name, coordinator case

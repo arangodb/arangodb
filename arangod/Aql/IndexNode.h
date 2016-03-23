@@ -32,9 +32,9 @@
 #include "Basics/JsonHelper.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
+#include "Utils/Transaction.h"
 
 namespace arangodb {
-class Transaction;
 
 namespace aql {
 struct Collection;
@@ -54,20 +54,8 @@ class IndexNode : public ExecutionNode {
  public:
   IndexNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
             Collection const* collection, Variable const* outVariable,
-            std::vector<std::string> const& indexes, Condition* condition,
-            bool reverse)
-      : ExecutionNode(plan, id),
-        _vocbase(vocbase),
-        _collection(collection),
-        _outVariable(outVariable),
-        _indexes(indexes),
-        _condition(condition),
-        _reverse(reverse) {
-    TRI_ASSERT(_vocbase != nullptr);
-    TRI_ASSERT(_collection != nullptr);
-    TRI_ASSERT(_outVariable != nullptr);
-    TRI_ASSERT(_condition != nullptr);
-  }
+            std::vector<Transaction::IndexHandle> const& indexes,
+            Condition* condition, bool reverse);
 
   IndexNode(ExecutionPlan*, arangodb::basics::Json const& base);
 
@@ -160,7 +148,7 @@ class IndexNode : public ExecutionNode {
   /// @brief getIndexes, hand out the indexes used
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<std::string> getIndexes() const { return _indexes; }
+  std::vector<Transaction::IndexHandle> const& getIndexes() const { return _indexes; }
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -185,7 +173,7 @@ class IndexNode : public ExecutionNode {
   /// @brief the index
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<std::string> _indexes;
+  std::vector<Transaction::IndexHandle> _indexes;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the index(es) condition

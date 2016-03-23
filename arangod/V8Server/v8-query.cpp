@@ -218,8 +218,8 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // We directly read the entire cursor. so batchsize == limit
   std::shared_ptr<OperationCursor> opCursor =
-      trx.indexScan(collectionName, Transaction::CursorType::ALL, "", {}, skip,
-                    limit, limit, false);
+      trx.indexScan(collectionName, Transaction::CursorType::ALL,
+                    Transaction::IndexHandle(), {}, skip, limit, limit, false);
 
   if (opCursor->failed()) {
     TRI_V8_THROW_EXCEPTION(opCursor->code);

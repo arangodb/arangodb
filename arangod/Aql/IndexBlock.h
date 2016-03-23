@@ -158,7 +158,7 @@ class IndexBlock : public ExecutionBlock {
   /// @brief _indexes holds all Indexes used in this block
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<std::string> _indexes;
+  std::vector<Transaction::IndexHandle> _indexes;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief _nonConstExpressions, list of all non const expressions, mapped

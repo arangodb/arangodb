@@ -114,11 +114,13 @@ bool Index::supportsSortCondition(
     arangodb::aql::SortCondition const* sortCondition,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     double& estimatedCost) const {
+  size_t coveredAttributes;
   if (!hasInternals()) {
     return false;
   }
   return getInternals()->supportsSortCondition(sortCondition, reference,
-                                               itemsInIndex, estimatedCost);
+                                               itemsInIndex, estimatedCost,
+                                               coveredAttributes);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

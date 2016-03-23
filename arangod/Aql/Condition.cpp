@@ -362,7 +362,8 @@ void Condition::andCombine(AstNode const* node) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::pair<bool, bool> Condition::findIndexes(
-    EnumerateCollectionNode const* node, std::vector<std::string>& usedIndexes,
+    EnumerateCollectionNode const* node,
+    std::vector<Transaction::IndexHandle>& usedIndexes,
     SortCondition const* sortCondition) {
   TRI_ASSERT(usedIndexes.empty());
   Variable const* reference = node->outVariable();
@@ -372,8 +373,10 @@ std::pair<bool, bool> Condition::findIndexes(
 
   size_t const itemsInIndex = node->collection()->count();
   if (_root == nullptr) {
+    size_t dummy;
     return trx->getIndexForSortCondition(collectionName, sortCondition,
-                                         reference, itemsInIndex, usedIndexes);
+                                         reference, itemsInIndex, usedIndexes,
+                                         dummy);
   }
 
   return trx->getBestIndexHandlesForFilterCondition(
