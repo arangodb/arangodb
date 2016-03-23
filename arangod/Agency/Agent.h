@@ -75,7 +75,7 @@ public:
   /**
    * @brief Start thread
    */
-  void start ();
+  bool start ();
   
   /**
    * @brief Verbose print of myself
@@ -96,6 +96,7 @@ public:
    * @brief Leader ID
    */
   id_t leaderID () const;
+  bool leading () const;
 
   bool lead ();
 
@@ -115,21 +116,20 @@ public:
    * @brief Received by followers to replicate log entries (§5.3);
    *        also used as heartbeat (§5.2).
    */
-  priv_rpc_ret_t recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
+  bool recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
     term_t prevTerm, index_t lastCommitIndex, query_t const& queries);
 
   /**
    * @brief Invoked by leader to replicate log entries (§5.3);
    *        also used as heartbeat (§5.2).
    */
-  append_entries_t sendAppendEntriesRPC (id_t slave_id,
-    collect_ret_t const& entries);
+  append_entries_t sendAppendEntriesRPC (id_t slave_id);
     
   /**
    * @brief 1. Deal with appendEntries to slaves.
    *        2. Report success of write processes. 
    */
-  void run () override final;
+  void run ();
   void beginShutdown () override;
 
   /**
@@ -148,11 +148,6 @@ public:
   size_t size() const;
 
   /**
-   * @brief Catch up read db to _last_commit_index
-   */
-  void catchUpReadDB();
-
-  /**
    * @brief Rebuild DBs by applying state log to empty DB
    */
   bool rebuildDBs();
@@ -161,6 +156,13 @@ public:
    * @brief Last log entry
    */
   log_t const& lastLog () const;
+
+  friend std::ostream& operator<< (std::ostream& o, Agent const& a) {
+    o << a.config();
+    return o;
+  }
+
+  State const& state() const;
 
 private:
 
@@ -172,7 +174,7 @@ private:
 
   arangodb::Mutex _uncommitedLock;
   
-  Store _spear_head;
+  Store _spearhead;
   Store _read_db;
   
   AgentCallback _agent_callback;
@@ -184,8 +186,7 @@ private:
   std::atomic<bool> _stopping;
 
   std::vector<index_t> _confirmed;
-  arangodb::Mutex _confirmedLock;          /**< @brief Mutex for modifying _confirmed */
-  arangodb::Mutex _dbLock;
+  arangodb::Mutex _ioLock;
   
 };
 

@@ -66,6 +66,14 @@ function agencyTestSuite () {
     return res;
   }
 
+  function writeAgencyRaw(list) {
+      var res = request({url: agencyServers[whoseTurn] + "/_api/agency/write", method: "POST",
+                         followRedirects: true, body: list,
+                         headers: {"Content-Type": "application/json"}});
+      res.bodyParsed = JSON.parse(res.body);
+      return res;
+  }
+
   function readAndCheck(list) {
       var res = readAgency(list);
       require ("internal").print(list,res);
@@ -131,7 +139,8 @@ function agencyTestSuite () {
       writeAndCheck([[{"a":13},{"a":12}]]);
       assertEqual(readAndCheck([["a"]]), [{a:13}]);
       var res = writeAgency([[{"a":14},{"a":12}]]);
-      //assertEqual(res.statusCode, 412);
+      assertEqual(res.statusCode, 412);
+      //assertEqual(res.bodyParsed, {error:true, successes:[]});
       writeAndCheck([[{a:{op:"delete"}}]]);
     },
 
@@ -149,47 +158,61 @@ function agencyTestSuite () {
     testOpNew : function () {
       writeAndCheck([[{"a/z":{"new":13}}]]);
       assertEqual(readAndCheck([["a/z"]]), [{"a":{"z":13}}]);
+      writeAndCheck([[{"a/z":{"new":["hello", "world", 1.06]}}]]);
+      assertEqual(readAndCheck([["a/z"]]), [{"a":{"z":["hello", "world", 1.06]}}]);
     },
 
     testOpPush : function () {
       writeAndCheck([[{"a/b/c":{"op":"push","new":"max"}}]]);
       assertEqual(readAndCheck([["a/b/c"]]), [{a:{b:{c:[1,2,3,"max"]}}}]);
-    },
-
-    testOpPushOnNoneScalar : function () {
+      writeAndCheck([[{"a/euler":{"op":"push","new":2.71828182845904523536}}]]);
+      assertEqual(readAndCheck([["a/euler"]]), [{a:{euler:[2.71828182845904523536]}}]);
       writeAndCheck([[{"a/euler":{"op":"set","new":2.71828182845904523536}}]]);
       assertEqual(readAndCheck([["a/euler"]]), [{a:{euler:2.71828182845904523536}}]);          
       writeAndCheck([[{"a/euler":{"op":"push","new":2.71828182845904523536}}]]);
       assertEqual(readAndCheck([["a/euler"]]), [{a:{euler:[2.71828182845904523536]}}]);
     },
 
-    testOpPrepend : function () {
-      writeAndCheck([[{"a/b/c":{"op":"prepend","new":3.141592653589793238462643383279502884}}]]);
-      assertEqual(readAndCheck([["a/b/c"]]), [{a:{b:{c:[3.141592653589793238462643383279502884,1,2,3,"max"]}}}]);
+    testOpRemove : function () {
+      writeAndCheck([[{"a/euler":{"op":"delete"}}]]);
+      assertEqual(readAndCheck([["a/euler"]]), [{}]);
     },
-
-    testOpPrependOnScalarValue : function () {
-      writeAndCheck([[{"a/e":{"op":"prepend","new":3.141592653589793238462643383279502884}}]]);
-      assertEqual(readAndCheck([["a/e"]]), [{a:{e:[3.141592653589793238462643383279502884]}}]);
+     
+    testOpPrepend : function () {
+      writeAndCheck([[{"a/b/c":{"op":"prepend","new":3.141592653589793}}]]);
+      assertEqual(readAndCheck([["a/b/c"]]), [{a:{b:{c:[3.141592653589793,1,2,3,"max"]}}}]);
+      writeAndCheck([[{"a/euler":{"op":"prepend","new":2.71828182845904523536}}]]);
+      assertEqual(readAndCheck([["a/euler"]]), [{a:{euler:[2.71828182845904523536]}}]);
+      writeAndCheck([[{"a/euler":{"op":"set","new":2.71828182845904523536}}]]);
+      assertEqual(readAndCheck([["a/euler"]]), [{a:{euler:2.71828182845904523536}}]);          
+      writeAndCheck([[{"a/euler":{"op":"prepend","new":2.71828182845904523536}}]]);
+      assertEqual(readAndCheck([["a/euler"]]), [{a:{euler:[2.71828182845904523536]}}]);
+      writeAndCheck([[{"a/euler":{"op":"prepend","new":1.25e-6}}]]);
+      assertEqual(readAndCheck([["a/euler"]]), [{a:{euler:[1.25e-6,2.71828182845904523536]}}]);
     },
 
     testOpShift : function () {
-      writeAndCheck([[{"a/e":{"op":"shift"}}]]);
-      assertEqual(readAndCheck([["a/e"]]), [{a:{e:[]}}]);
+      writeAndCheck([[{"a/f":{"op":"shift"}}]]); // none before
+      assertEqual(readAndCheck([["a/f"]]), [{a:{f:[]}}]);
+      writeAndCheck([[{"a/e":{"op":"shift"}}]]); // on empty array
+      assertEqual(readAndCheck([["a/f"]]), [{a:{f:[]}}]);
+      writeAndCheck([[{"a/b/c":{"op":"shift"}}]]); // on existing array
+      assertEqual(readAndCheck([["a/b/c"]]), [{a:{b:{c:[1,2,3,"max"]}}}]);        
+      writeAndCheck([[{"a/b/d":{"op":"shift"}}]]); // on existing scalar
+      assertEqual(readAndCheck([["a/b/d"]]), [{a:{b:{d:[]}}}]);        
     },
 
-    testOpShiftOnEmpty : function () {
-      writeAndCheck([[{"a/e":{"op":"shift"}}]]);
-      assertEqual(readAndCheck([["a/e"]]), [{a:{e:[]}}]);
-    },
-      
-    testOpShiftOnScalar : function () {
-      writeAndCheck([[{"a/euler":2.71828182845904523536}]]);
-      assertEqual(readAndCheck([["a/euler"]]), [{a:{euler:2.71828182845904523536}}]);          
-      writeAndCheck([[{"a/euler":{"op":"shift"}}]]);
-      assertEqual(readAndCheck([["a/euler"]]), [{a:{euler:[]}}]);
+    testOpPop : function () {
+      writeAndCheck([[{"a/f":{"op":"pop"}}]]); // none before
+      assertEqual(readAndCheck([["a/f"]]), [{a:{f:[]}}]);
+      writeAndCheck([[{"a/e":{"op":"pop"}}]]); // on empty array
+      assertEqual(readAndCheck([["a/f"]]), [{a:{f:[]}}]);
+      writeAndCheck([[{"a/b/c":{"op":"pop"}}]]); // on existing array
+      assertEqual(readAndCheck([["a/b/c"]]), [{a:{b:{c:[1,2,3]}}}]);        
+      writeAndCheck([[{"a/b/d":{"op":"pop"}}]]); // on existing scalar
+      assertEqual(readAndCheck([["a/b/d"]]), [{a:{b:{d:[]}}}]);        
     }
-      
+
   };
 }
 

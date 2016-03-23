@@ -75,7 +75,7 @@ inline HttpHandler::status_t RestAgencyPrivHandler::reportMethodNotAllowed () {
   generateError(HttpResponse::METHOD_NOT_ALLOWED,405);
   return HttpHandler::status_t(HANDLER_DONE);
 }
-
+#include <iostream>
 HttpHandler::status_t RestAgencyPrivHandler::execute() {
   try {
     VPackBuilder result;
@@ -90,19 +90,19 @@ HttpHandler::status_t RestAgencyPrivHandler::execute() {
       id_t id; // leaderId for appendEntries, cadidateId for requestVote
       index_t prevLogIndex, leaderCommit;
     	if (_request->suffix()[0] == "appendEntries") {  // appendEntries
-        if (_request->requestType() != HttpRequest::HTTP_REQUEST_POST)
+        if (_request->requestType() != HttpRequest::HTTP_REQUEST_POST) {
           return reportMethodNotAllowed();
+        }
         if (readValue("term", term) &&
             readValue("leaderId", id) &&
             readValue("prevLogIndex", prevLogIndex) &&
             readValue("prevLogTerm", prevLogTerm) && 
             readValue("leaderCommit", leaderCommit)) { // found all values
-          priv_rpc_ret_t ret = _agent->recvAppendEntriesRPC(
+          bool ret = _agent->recvAppendEntriesRPC(
             term, id, prevLogIndex, prevLogTerm, leaderCommit,
             _request->toVelocyPack(&opts));
-          if (ret.success) {
-            result.add("term", VPackValue(ret.term));
-            result.add("success", VPackValue(ret.success));
+          if (ret) { // TODO: more verbose
+            result.add("success", VPackValue(ret));
           } else {
             // Should neve get here
             TRI_ASSERT(false);

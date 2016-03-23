@@ -99,19 +99,20 @@ inline HttpHandler::status_t RestAgencyHandler::handleWrite () {
           errors++;
         }
       }
-/*      if (errors == ret.indices.size()) { // epic fail
-        _response->setResponseCode(HttpResponse::PRECONDITION_FAILED);
-      } else if (errors == 0) {// full success
-      } else { // 
-        _response->setResponseCode(HttpResponse::PRECONDITION_FAILED); 
-        }*/
       body.close();
-      generateResult(body.slice());
+      if (errors > 0) { // epic fail
+        generateResult(HttpResponse::PRECONDITION_FAILED,body.slice());
+      } else {// full success
+        generateResult(body.slice());
+      }
     } else {
+      //_response->setHeader("Location", _agent->config().end_points[ret.redirect]);
       generateError(HttpResponse::TEMPORARY_REDIRECT,307);
+      return HttpHandler::status_t(HANDLER_DONE);
     }
   } else {
     generateError(HttpResponse::METHOD_NOT_ALLOWED,405);
+    return HttpHandler::status_t(HANDLER_DONE);
   }
   return HttpHandler::status_t(HANDLER_DONE);
 }
@@ -132,19 +133,32 @@ inline HttpHandler::status_t RestAgencyHandler::handleRead () {
       generateResult(ret.result->slice());
     } else {
       generateError(HttpResponse::TEMPORARY_REDIRECT,307);
+      return HttpHandler::status_t(HANDLER_DONE);
     }
   } else {
     generateError(HttpResponse::METHOD_NOT_ALLOWED,405);
+    return HttpHandler::status_t(HANDLER_DONE);
   }
   return HttpHandler::status_t(HANDLER_DONE);
 }
 
-#include <sstream>
-std::stringstream s; 
 HttpHandler::status_t RestAgencyHandler::handleTest() {
   Builder body;
   body.add(VPackValue(VPackValueType::Object));
-  body.add("Configuration", Value(_agent->config().toString()));
+  body.add("id", Value(_agent->id()));
+  body.add("term", Value(_agent->term()));
+  body.add("leaderId", Value(_agent->leaderID()));
+  body.add("configuration", Value(_agent->config().toString()));
+  body.close();
+  generateResult(body.slice());
+  return HttpHandler::status_t(HANDLER_DONE);
+}
+
+HttpHandler::status_t RestAgencyHandler::handleState() {
+  Builder body;
+  body.add(VPackValue(VPackValueType::Array));
+  for (auto const& i: _agent->state().slices())
+    body.add(i);
   body.close();
   generateResult(body.slice());
   return HttpHandler::status_t(HANDLER_DONE);
@@ -171,6 +185,11 @@ HttpHandler::status_t RestAgencyHandler::execute() {
           return reportMethodNotAllowed();
         }
         return handleTest();
+    	} else if (_request->suffix()[0] == "state") {
+        if (_request->requestType() != HttpRequest::HTTP_REQUEST_GET) {
+          return reportMethodNotAllowed();
+        }
+        return handleState();
     	} else {
         return reportUnknownMethod();
     	}

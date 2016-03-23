@@ -35,7 +35,7 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 ApplicationAgency::ApplicationAgency()
-  : ApplicationFeature("agency"), _size(1), _min_election_timeout(.5),
+  : ApplicationFeature("agency"), _size(1), _min_election_timeout(0.5),
 	  _max_election_timeout(2.0), _election_call_rate_mul(2.5),
     _append_entries_retry_interval(1.0),
     _agent_id(std::numeric_limits<uint32_t>::max()) {
@@ -69,21 +69,32 @@ void ApplicationAgency::setupOptions(
 }
 
 
-
+#include <iostream>
 bool ApplicationAgency::prepare() {
-  
+
   if (_disabled) {
     return true;
   }
 
-  if (_size < 1)
-    LOG(FATAL) << "agency must have size greater 0";
+  if (_size < 1) {
+    LOG(FATAL) << "AGENCY: agency must have size greater 0";
+    return false;    
+  }
+  
 
-  if (_agent_id == std::numeric_limits<uint32_t>::max())
+  if (_size % 2 == 0) {
+    LOG(FATAL) << "AGENCY: agency must have odd number of members";
+    return false;
+  }
+  
+  if (_agent_id == std::numeric_limits<uint32_t>::max()) {
     LOG(FATAL) << "agency.id must be specified";
+    return false;
+  }
 
   if (_min_election_timeout <= 0.) {
     LOG(FATAL) << "agency.election-timeout-min must not be negative!";
+    return false;
   } else if (_min_election_timeout < .15) {
     LOG(WARN)  << "very short agency.election-timeout-min!";
   }
@@ -91,6 +102,7 @@ bool ApplicationAgency::prepare() {
   if (_max_election_timeout <= _min_election_timeout) {
     LOG(FATAL) << "agency.election-timeout-max must not be shorter than or"
                << "equal to agency.election-timeout-min.";
+    return false;
   }
   
   if (_max_election_timeout <= 2*_min_election_timeout) {
@@ -98,9 +110,7 @@ bool ApplicationAgency::prepare() {
   }
   
   _agency_endpoints.resize(_size);
-  std::iter_swap(_agency_endpoints.begin(),
-                 _agency_endpoints.begin() + _agent_id);
-  
+
   _agent = std::unique_ptr<agent_t>(
     new agent_t(arangodb::consensus::config_t(
                   _agent_id, _min_election_timeout, _max_election_timeout,
@@ -115,6 +125,7 @@ bool ApplicationAgency::start() {
   if (_disabled) {
     return true;
   }
+  
   _agent->start();
   return true;
 }

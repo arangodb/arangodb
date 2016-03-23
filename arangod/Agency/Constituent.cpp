@@ -45,7 +45,6 @@ void Constituent::configure(Agent* agent) {
   } else { 
     _votes.resize(size());
     _id = _agent->config().id;
-    LOG(WARN) << " +++ my id is " << _id << "agency size is " << size();
     if (_agent->config().notify) {// (notify everyone) 
       notifyAll();
     }
@@ -78,23 +77,26 @@ role_t Constituent::role () const {
 }
 
 void Constituent::follow (term_t term) {
-  if (_role > FOLLOWER)
-    LOG(WARN) << "Converted to follower in term " << _term ;
+  if (_role != FOLLOWER) {
+    LOG(WARN) << "Role change: Converted to follower in term " << _term ;
+  }
   _term = term;
   _votes.assign(_votes.size(),false); // void all votes
   _role = FOLLOWER;
 }
 
 void Constituent::lead () {
-  if (_role < LEADER)
-    LOG(WARN) << "Converted to leader in term " << _term ;
+  if (_role != LEADER) {
+    LOG(WARN) << "Role change: Converted to leader in term " << _term ;
+    _agent->lead(); // We need to rebuild spear_head and read_db;
+  }
   _role = LEADER;
-  _agent->lead(); // We need to rebuild spear_head and read_db;
+  _leader_id = _id;
 }
 
 void Constituent::candidate () {
   if (_role != CANDIDATE)
-    LOG(WARN) << "Converted to candidate in term " << _term ;
+    LOG(WARN) << "Role change: Converted to candidate in term " << _term ;
   _role = CANDIDATE;
 }
 
@@ -134,21 +136,21 @@ size_t Constituent::notifyAll () {
   
   path << "/_api/agency_priv/notifyAll?term=" << _term << "&agencyId=" << _id;
 
-  // Body contains endpoints
+  // Body contains endpoints list
   Builder body;
   body.add(VPackValue(VPackValueType::Object));
+  body.add("endpoints", VPackValue(VPackValueType::Array));
   for (auto const& i : end_points()) {
-    body.add("endpoint", Value(i));
+    body.add(Value(i));
   }
   body.close();
-  LOG(INFO) << body.toString();
-
+  body.close();
+  
   // Send request to all but myself
 	for (size_t i = 0; i < size(); ++i) {
     if (i != _id) {
       std::unique_ptr<std::map<std::string, std::string>> headerFields =
         std::make_unique<std::map<std::string, std::string> >();
-      LOG(INFO) << i << " notify " << end_point(i) << path.str() ;
       results[i] = arangodb::ClusterComm::instance()->asyncRequest(
         "1", 1, end_point(i), rest::HttpRequest::HTTP_REQUEST_POST, path.str(),
         std::make_shared<std::string>(body.toString()), headerFields, nullptr,
@@ -161,9 +163,6 @@ size_t Constituent::notifyAll () {
 
 bool Constituent::vote (
   term_t term, id_t leaderId, index_t prevLogIndex, term_t prevLogTerm) {
-
-  LOG(WARN) << "term (" << term << "," << _term << ")" ;
-  
  	if (leaderId == _id) {       // Won't vote for myself should never happen.
 		return false;        // TODO: Assertion?
 	} else {
@@ -172,7 +171,7 @@ bool Constituent::vote (
       _cast = true;      // Note that I voted this time around.
       _leader_id = leaderId;   // The guy I voted for I assume leader.
       if (_role>FOLLOWER)
-        follow (term);
+        follow (_term);
       _cv.signal();
 			return true;
 		} else {             // Myself running or leading
@@ -191,7 +190,7 @@ const constituency_t& Constituent::gossip () {
 }
 
 void Constituent::callElection() {
-
+  
   _votes[_id] = true; // vote for myself
   _cast = true;
   if(_role == CANDIDATE)
@@ -200,7 +199,7 @@ void Constituent::callElection() {
   std::string body;
 	std::vector<ClusterCommResult> results(_agent->config().end_points.size());
   std::stringstream path;
-
+  
   path << "/_api/agency_priv/requestVote?term=" << _term << "&candidateId=" << _id
        << "&prevLogIndex=" << _agent->lastLog().index << "&prevLogTerm="
        << _agent->lastLog().term;
@@ -213,12 +212,11 @@ void Constituent::callElection() {
         "1", 1, _agent->config().end_points[i], rest::HttpRequest::HTTP_REQUEST_GET,
         path.str(), std::make_shared<std::string>(body), headerFields, nullptr,
         _agent->config().min_ping, true);
-      LOG(INFO) << _agent->config().end_points[i];
     }
 	}
-
-  std::this_thread::sleep_for(sleepFor(0.0, .5*_agent->config().min_ping)); // Wait timeout
-
+  
+  std::this_thread::sleep_for(sleepFor(.5*_agent->config().min_ping, .8*_agent->config().min_ping)); // Wait timeout
+  
 	for (size_t i = 0; i < _agent->config().end_points.size(); ++i) { // Collect votes
     if (i != _id && end_point(i) != "") {
       ClusterCommResult res = arangodb::ClusterComm::instance()->
@@ -234,7 +232,6 @@ void Constituent::callElection() {
             for (auto const& it : VPackObjectIterator(body->slice())) {
               std::string const key(it.key.copyString());
               if (key == "term") {
-                LOG(WARN) << key << " " <<it.value.getUInt();
                 if (it.value.isUInt()) {
                   if (it.value.getUInt() > _term) { // follow?
                     follow(it.value.getUInt());
@@ -248,25 +245,23 @@ void Constituent::callElection() {
               }
             }
           }
-          LOG(WARN) << body->toJson();
         }
       } else { // Request failed
         _votes[i] = false;
       }
     }
   }
-
+  
   size_t yea = 0;
   for (size_t i = 0; i < size(); ++i) {
     if (_votes[i]){
       yea++;
     }    
   }
-  LOG(WARN) << "votes for me" << yea;
   if (yea > size()/2){
     lead();
   } else {
-    candidate();
+    follow(_term);
   }
 }
 
@@ -274,20 +269,16 @@ void Constituent::beginShutdown() {
   Thread::beginShutdown();
 }
 
+#include <iostream>
 void Constituent::run() {
-
+  
   // Always start off as follower
   while (!this->isStopping() && size() > 1) { 
     if (_role == FOLLOWER) {
-      bool cast;
-      {
-        CONDITION_LOCKER (guard, _cv);
-        _cast = false;                           // New round set not cast vote
-        _cv.wait(             // Sleep for random time
-          sleepFord(_agent->config().min_ping, _agent->config().max_ping)*1000000);
-        cast = _cast;
-      }
-      if (!cast) {
+      _cast = false;                           // New round set not cast vote
+      std::this_thread::sleep_for(             // Sleep for random time
+        sleepFor(_agent->config().min_ping, _agent->config().max_ping)); 
+      if (!_cast) {
         candidate();                           // Next round, we are running
       }
     } else {
@@ -295,6 +286,6 @@ void Constituent::run() {
     }
   }
 
-};
+}
 
 
