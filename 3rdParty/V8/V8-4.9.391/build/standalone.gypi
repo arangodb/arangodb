@@ -66,7 +66,7 @@
         },
         'host_arch%': '<(host_arch)',
         'target_arch%': '<(host_arch)',
-        'base_dir%': '<!(cd <(DEPTH) && python -c "import os; print os.getcwd()")',
+        'base_dir%': '<!(cd <(DEPTH) && ${PYTHON_EXECUTABLE} -c "import os; print os.getcwd()")',
 
         # Instrument for code coverage with gcov.
         'coverage%': 0,
@@ -421,7 +421,7 @@
         # (defines are passed via the command line, and build systems rebuild
         # things when their commandline changes). Nothing should ever read this
         # define.
-        'defines': ['CR_CLANG_REVISION=<!(python <(DEPTH)/tools/clang/scripts/update.py --print-revision)'],
+        'defines': ['CR_CLANG_REVISION=<!(${PYTHON_EXECUTABLE} <(DEPTH)/tools/clang/scripts/update.py --print-revision)'],
         'conditions': [
           ['host_clang==1', {
             'target_conditions': [
