@@ -228,7 +228,7 @@ int InitialSyncer::run(std::string& errorMsg, bool incremental) {
                  StringUtils::itoa(response->getHttpReturnCode()) + ": " +
                  response->getHttpReturnMessage();
     } else {
-      std::shared_ptr<VPackBuilder> builder;
+      auto builder = std::make_shared<VPackBuilder>();
       res = parseResponse(builder, response.get());
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -346,7 +346,7 @@ int InitialSyncer::sendStartBatch(std::string& errorMsg) {
     return TRI_ERROR_REPLICATION_MASTER_ERROR;
   } 
     
-  std::shared_ptr<VPackBuilder> builder;
+  auto builder = std::make_shared<VPackBuilder>();
   int res = parseResponse(builder, response.get());
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -495,7 +495,7 @@ int InitialSyncer::applyCollectionDump(
 
     TRI_ASSERT(q <= end);
 
-    std::shared_ptr<VPackBuilder> builder;
+    auto builder = std::make_shared<VPackBuilder>();
 
     try {
       VPackParser parser(builder);
@@ -923,7 +923,7 @@ int InitialSyncer::handleCollectionSync(
     this->sleep(static_cast<uint64_t>(sleepTime * 1000.0 * 1000.0));
   }
 
-  std::shared_ptr<VPackBuilder> builder;
+  auto builder = std::make_shared<VPackBuilder>();
   int res = parseResponse(builder, response.get());
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1148,7 +1148,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
     return TRI_ERROR_REPLICATION_MASTER_ERROR;
   }
 
-  std::shared_ptr<VPackBuilder> builder;
+  auto builder = std::make_shared<VPackBuilder>();
   int res = parseResponse(builder, response.get());
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1350,7 +1350,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
         return TRI_ERROR_REPLICATION_MASTER_ERROR;
       }
 
-      std::shared_ptr<VPackBuilder> builder;
+      auto builder = std::make_shared<VPackBuilder>();
       int res = parseResponse(builder, response.get());
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -1520,7 +1520,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
           return TRI_ERROR_REPLICATION_MASTER_ERROR;
         }
 
-        std::shared_ptr<VPackBuilder> builder;
+        auto builder = std::make_shared<VPackBuilder>();
         int res = parseResponse(builder, response.get());
 
         if (res != TRI_ERROR_NO_ERROR) {
