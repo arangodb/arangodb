@@ -1,4 +1,4 @@
-v2.8.6 (2016-03-XX)
+v2.8.6 (2016-03-23)
 -------------------
 
 * arangosh can now execute JavaScript script files that contain a shebang

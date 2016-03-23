@@ -1,11 +1,11 @@
-shell> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=789100081&chunkSize=400
+shell> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=787908832&chunkSize=400
 
 HTTP/1.1 200 OK
 content-type: application/x-arango-dump; charset=utf-8
 x-arango-replication-active: true
 x-arango-replication-checkmore: true
 x-arango-replication-frompresent: true
-x-arango-replication-lastincluded: 789624369
-x-arango-replication-lasttick: 793622065
+x-arango-replication-lastincluded: 788498656
+x-arango-replication-lasttick: 789285088
 
-"{\"tick\":\"789165617\",\"type\":2001,\"database\":\"112177\",\"cid\":\"788182577\"}\n{\"tick\":\"789296689\",\"type\":2000,\"database\":\"112177\",\"cid\":\"789231153\",\"collection\":{\"version\":5,\"type\":2,\"cid\":\"789231153\",\"indexBuckets\":8,\"deleted\":false,\"doCompact\":true,\"maximalSize\":1048576,\"name\":\"products\",\"isVolatile\":false,\"waitForSync\":false}}\n{\"tick\":\"789624369\",\"type\":2300,\"database\":\"112177\",\"cid\":\"789231153\",\"tid\":\"0\",\"key\":\"p1\",\"rev\":\"789558833\",\"data\":{\"_key\":\"p1\",\"_rev\":\"789558833\",\"name\":\"flux compensator\"}}\n"
+"{\"tick\":\"787974368\",\"type\":2001,\"database\":\"100576\",\"cid\":\"786073824\"}\n{\"tick\":\"788039904\",\"type\":2001,\"database\":\"100576\",\"cid\":\"787056864\"}\n{\"tick\":\"788170976\",\"type\":2000,\"database\":\"100576\",\"cid\":\"788105440\",\"collection\":{\"version\":5,\"type\":2,\"cid\":\"788105440\",\"indexBuckets\":8,\"deleted\":false,\"doCompact\":true,\"maximalSize\":1048576,\"name\":\"products\",\"isVolatile\":false,\"waitForSync\":false}}\n{\"tick\":\"788498656\",\"type\":2300,\"database\":\"100576\",\"cid\":\"788105440\",\"tid\":\"0\",\"key\":\"p1\",\"rev\":\"788433120\",\"data\":{\"_key\":\"p1\",\"_rev\":\"788433120\",\"name\":\"flux compensator\"}}\n"
