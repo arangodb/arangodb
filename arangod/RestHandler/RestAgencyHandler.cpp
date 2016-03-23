@@ -105,7 +105,7 @@ inline HttpHandler::status_t RestAgencyHandler::handleWrite () {
       if (errors > 0) { // Some/all requests failed
         generateResult(HttpResponse::PRECONDITION_FAILED,body.slice());
       } else {          // All good 
-        generateResult(body.slice());
+        generateResult(HttpResponse::OK, body.slice());
       }
     } else {            // Redirect to leader
       redirectRequest(ret.redirect);
@@ -130,7 +130,7 @@ inline HttpHandler::status_t RestAgencyHandler::handleRead () {
     read_ret_t ret = _agent->read (query);
 
     if (ret.accepted) { // I am leading
-      generateResult(ret.result->slice());
+      generateResult(HttpResponse::OK, ret.result->slice());
     } else {            // Redirect to leader
       redirectRequest(ret.redirect);
       return HttpHandler::status_t(HANDLER_DONE);
@@ -150,7 +150,7 @@ HttpHandler::status_t RestAgencyHandler::handleTest() {
   body.add("leaderId", Value(_agent->leaderID()));
   body.add("configuration", _agent->config().toBuilder()->slice());
   body.close();
-  generateResult(body.slice());
+  generateResult(HttpResponse::OK, body.slice());
   return HttpHandler::status_t(HANDLER_DONE);
 }
 
@@ -160,7 +160,7 @@ HttpHandler::status_t RestAgencyHandler::handleState() {
   for (auto const& i: _agent->state().slices())
     body.add(i);
   body.close();
-  generateResult(body.slice());
+  generateResult(HttpResponse::OK, body.slice());
   return HttpHandler::status_t(HANDLER_DONE);
 }
 
