@@ -1,4 +1,3 @@
-
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -90,8 +89,8 @@ inline HttpHandler::status_t RestAgencyHandler::handleWrite () {
       return HttpHandler::status_t(HANDLER_DONE);
     }
     write_ret_t ret = _agent->write (query);
-    size_t errors = 0;
     if (ret.accepted) { // We're leading and handling the request 
+      size_t errors = 0;
       Builder body;
       body.add(VPackValue(VPackValueType::Object));
       _agent->waitFor (ret.indices.back()); // Wait for confirmation
