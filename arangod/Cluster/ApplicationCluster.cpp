@@ -450,6 +450,10 @@ void ApplicationCluster::stop() {
     }
   }
 
+  while (_heartbeat->isRunning()) {
+    usleep(50000);
+  }
+
   // ClusterComm::cleanup();
   AgencyComm::cleanup();
 }
