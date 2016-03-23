@@ -167,8 +167,8 @@ bool Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
   if (queries->slice().length()) {
     LOG(INFO) << "AGENCY: Appending "<< queries->slice().length()
               << " entries to state machine.";
-  } else {
-    // heart-beat
+  } else { // heart-beat
+    LOG(INFO) << "AGENCY: Received heartbeat ";
   }
     
   if (_last_commit_index < leaderCommitIndex) {

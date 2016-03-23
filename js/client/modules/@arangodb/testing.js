@@ -312,7 +312,6 @@ function makeAuthorizationHeaders(options) {
     }
   };
 }
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts endpoints to URL
 ////////////////////////////////////////////////////////////////////////////////
@@ -1286,6 +1285,7 @@ function shutdownInstance(instanceInfo, options) {
     if (instanceInfo.exitStatus === undefined) {
       instanceInfo.exitStatus = [];
     }
+
     for (let i = 0; i < options.agencySize; i++) {
       if (instanceInfo.exitStatus[i] === undefined) {
         download(instanceInfo.urls[i] + "/_admin/shutdown", "",
@@ -3927,7 +3927,7 @@ testFuncs.agency = function(options) {
   options.agency = true;
   options.cluster = false;
   if (options.agencySize === undefined) {
-    options.agencySize = 3;
+    options.agencySize = 1;
   }
 
   let instanceInfo = startInstance("tcp", options, {}, "agency");
