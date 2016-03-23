@@ -235,7 +235,7 @@ function dumpTestSuite () {
       assertFalse(p.isVolatile);
       assertEqual(32, p.indexBuckets);
 
-      assertEqual(10, c.getIndexes().length); 
+      assertEqual(9, c.getIndexes().length); 
       assertEqual("primary", c.getIndexes()[0].type);
 
       assertEqual("hash", c.getIndexes()[1].type);
@@ -256,29 +256,25 @@ function dumpTestSuite () {
       assertEqual([ "a_la", "a_lo" ], c.getIndexes()[4].fields);
       assertFalse(c.getIndexes()[4].unique);
 
-      assertEqual("cap", c.getIndexes()[5].type);
-      assertEqual(1000, c.getIndexes()[5].size);
-      assertEqual(1048576, c.getIndexes()[5].byteSize);
+      assertEqual("hash", c.getIndexes()[5].type);
+      assertFalse(c.getIndexes()[5].unique);
+      assertFalse(c.getIndexes()[5].sparse);
+      assertEqual([ "a_h1", "a_h2" ], c.getIndexes()[5].fields);
 
-      assertEqual("hash", c.getIndexes()[6].type);
-      assertFalse(c.getIndexes()[6].unique);
+      assertEqual("skiplist", c.getIndexes()[6].type);
+      assertTrue(c.getIndexes()[6].unique);
       assertFalse(c.getIndexes()[6].sparse);
-      assertEqual([ "a_h1", "a_h2" ], c.getIndexes()[6].fields);
+      assertEqual([ "a_su" ], c.getIndexes()[6].fields);
 
-      assertEqual("skiplist", c.getIndexes()[7].type);
-      assertTrue(c.getIndexes()[7].unique);
-      assertFalse(c.getIndexes()[7].sparse);
-      assertEqual([ "a_su" ], c.getIndexes()[7].fields);
+      assertEqual("hash", c.getIndexes()[7].type);
+      assertFalse(c.getIndexes()[7].unique);
+      assertTrue(c.getIndexes()[7].sparse);
+      assertEqual([ "a_hs1", "a_hs2" ], c.getIndexes()[7].fields);
 
-      assertEqual("hash", c.getIndexes()[8].type);
+      assertEqual("skiplist", c.getIndexes()[8].type);
       assertFalse(c.getIndexes()[8].unique);
       assertTrue(c.getIndexes()[8].sparse);
-      assertEqual([ "a_hs1", "a_hs2" ], c.getIndexes()[8].fields);
-
-      assertEqual("skiplist", c.getIndexes()[9].type);
-      assertFalse(c.getIndexes()[9].unique);
-      assertTrue(c.getIndexes()[9].sparse);
-      assertEqual([ "a_ss1", "a_ss2" ], c.getIndexes()[9].fields);
+      assertEqual([ "a_ss1", "a_ss2" ], c.getIndexes()[8].fields);
 
       assertEqual(0, c.count());
     },
