@@ -1335,7 +1335,8 @@ function ahuacatlQueryGeneralPathsTestSuite() {
     testPathsWithDirectionAnyAndMaxLength1: function () {
       var actual, result = {}, i = 0, ed;
 
-      actual = getQueryResults("FOR p IN GRAPH_PATHS('bla3', {direction :'any', minLength :  1 , maxLength:  1}) SORT p.source._key, p.destination._key RETURN [p.source._key, p.destination._key, p.edges]");
+      actual = getQueryResults("FOR p IN GRAPH_PATHS('bla3', {direction :'any', minLength :  1 , maxLength:  1}) SORT p.source._key, p.destination._key, p.edges[0].what RETURN [p.source._key, p.destination._key, p.edges]");
+
       actual.forEach(function (p) {
         i++;
         ed = "";
@@ -1345,8 +1346,8 @@ function ahuacatlQueryGeneralPathsTestSuite() {
         result[i + ":" + p[0] + p[1]] = ed;
       });
 
-      assertEqual(result["1:v1v2"], "|v2->v1");
-      assertEqual(result["2:v1v2"], "|v1->v2");
+      assertEqual(result["1:v1v2"], "|v1->v2");
+      assertEqual(result["2:v1v2"], "|v2->v1");
       assertEqual(result["3:v1v5"], "|v1->v5");
       assertEqual(result["4:v2v1"], "|v1->v2");
       assertEqual(result["5:v2v1"], "|v2->v1");
