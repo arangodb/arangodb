@@ -1195,14 +1195,11 @@ TRI_fulltext_result_t* FindDocuments (index__t* const idx,
 
 static inline size_t CommonPrefixLength(std::string const& left,
                                         std::string const& right) {
-  const char* lhs = left.c_str();
-  const char* rhs = right.c_str();
-  char* p1;
-  char* p2;
+  char const* lhs = left.c_str();
+  char const* rhs = right.c_str();
   size_t length = 0;
 
-  for (p1 = (char*)lhs, p2 = (char*)rhs; *p1 && *p2 && *p1 == *p2;
-       ++p1, ++p2, ++length)
+  for (; *lhs && *rhs && *lhs == *rhs; ++lhs, ++rhs, ++length)
     ;
 
   return length;
@@ -1332,7 +1329,7 @@ bool TRI_InsertWordsFulltextIndex(TRI_fts_index_t* const ftx,
   paths[MAX_WORD_BYTES] = nullptr;
 
   // the words must be sorted so we can avoid duplicate words and use an
-  // optimisation
+  // optimization
   // for words with common prefixes (which will be adjacent in the sorted list
   // of words)
   // The default comparator (<) is exactly what we need here
@@ -1383,7 +1380,7 @@ bool TRI_InsertWordsFulltextIndex(TRI_fts_index_t* const ftx,
       // insert the
       // same word multiple times for the same document
       if (start > 0 && start == lastLength &&
-          start == tmp.length()) {
+          start == tmp.size()) {
         // duplicate word, skip it and continue with next word
         w++;
         continue;

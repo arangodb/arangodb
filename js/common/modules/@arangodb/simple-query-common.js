@@ -1047,7 +1047,9 @@ function SimpleQueryFulltext (collection, attribute, query, iid) {
   if (this._index === null) {
     var err = new ArangoError();
     err.errorNum = arangodb.ERROR_QUERY_FULLTEXT_INDEX_MISSING;
-    err.errorMessage = arangodb.errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING.message;
+    err.errorMessage = require("internal").sprintf(
+      arangodb.errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING.message,
+      collection.name());
     throw err;
   }
 }

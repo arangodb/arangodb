@@ -1949,6 +1949,7 @@ function DatabaseDocumentSuite () {
       var a2 = db._replace(a1, { a : 2 });
 
       assertEqual(a1._id, a2._id);
+      assertEqual(a1._key, a2._key);
       assertNotEqual(a1._rev, a2._rev);
 
       try {

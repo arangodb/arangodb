@@ -255,6 +255,10 @@ void TraversalBlock::executeFilterExpressions() {
 }
 
 int TraversalBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
+  _pos = 0;
+  _posInPaths = 0;
+  _usedConstant = false;
+  freeCaches();
   return ExecutionBlock::initializeCursor(items, pos);
 }
 

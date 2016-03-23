@@ -31,8 +31,6 @@
 var internal = require("internal");
 var arangosh = require("@arangodb/arangosh");
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
@@ -56,7 +54,6 @@ exports.ArangoDatabase = ArangoDatabase;
 ArangoCollection = require("@arangodb/arango-collection").ArangoCollection;
 var ArangoError = require("@arangodb").ArangoError;
 var ArangoStatement = require("@arangodb/arango-statement").ArangoStatement;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief index id regex
@@ -666,7 +663,7 @@ ArangoDatabase.prototype._remove = function (id, overwrite, waitForSync) {
 
   var url = this._documenturl(id) + params;
   url = this._appendSyncParameter(url, waitForSync);
-  url = this._appendBoolParameter(url, "ignoreRevs", true);
+  url = this._appendBoolParameter(url, "ignoreRevs", ignoreRevs);
   url = this._appendBoolParameter(url, "returnOld", options.returnOld);
 
   if (rev === null || ignoreRevs) {

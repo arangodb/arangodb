@@ -382,7 +382,15 @@ static void JS_ChecksumCollection(
 
     if (withData) {
       // with data
-      localHash += slice.hash(); 
+      for (auto const& it : VPackObjectIterator(slice)) {
+        // loop over all attributes, but exclude _rev, _id and _key
+        // _id is different for each collection anyway, _rev is covered by withRevisions, and _key
+        // was already handled before
+        std::string key(it.key.copyString());
+        if (key != TRI_VOC_ATTRIBUTE_ID && key != TRI_VOC_ATTRIBUTE_KEY && key != TRI_VOC_ATTRIBUTE_REV) {
+          localHash ^= it.value.hash(); 
+        }
+      }
     }
 
     hash ^= localHash;

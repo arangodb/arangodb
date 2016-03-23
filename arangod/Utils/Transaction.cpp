@@ -795,7 +795,8 @@ OperationResult Transaction::anyLocal(std::string const& collectionName,
   TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
 
   if (cid == 0) {
-    return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
+                                  collectionName.c_str());
   }
  
   orderDitch(cid); // will throw when it fails 
@@ -921,7 +922,8 @@ void Transaction::invokeOnAllElements(std::string const& collectionName,
   TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
 
   if (cid == 0) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
+                                  collectionName.c_str());
   }
   TRI_transaction_collection_t* trxCol = trxCollection(cid);
 
@@ -1030,7 +1032,8 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
   TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
 
   if (cid == 0) {
-    return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
+                                  collectionName.c_str());
   }
   
   // TODO: clean this up
@@ -1608,7 +1611,8 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
   TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
 
   if (cid == 0) {
-    return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
+                                  collectionName.c_str());
   }
 
   // TODO: clean this up
@@ -1731,7 +1735,8 @@ OperationResult Transaction::allKeysLocal(std::string const& collectionName,
   TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
 
   if (cid == 0) {
-    return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
+                                  collectionName.c_str());
   }
   
   orderDitch(cid); // will throw when it fails
@@ -1821,7 +1826,8 @@ OperationResult Transaction::allLocal(std::string const& collectionName,
   TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
 
   if (cid == 0) {
-    return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
+                                  collectionName.c_str());
   }
   
   orderDitch(cid); // will throw when it fails
@@ -1905,7 +1911,8 @@ OperationResult Transaction::truncateLocal(std::string const& collectionName,
   TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
 
   if (cid == 0) {
-    return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
+                                  collectionName.c_str());
   }
   
   orderDitch(cid); // will throw when it fails
@@ -1993,7 +2000,8 @@ OperationResult Transaction::countLocal(std::string const& collectionName) {
   TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
 
   if (cid == 0) {
-    return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
+                                  collectionName.c_str());
   }
   
   int res = lock(trxCollection(cid), TRI_TRANSACTION_READ);
@@ -2202,6 +2210,44 @@ std::shared_ptr<OperationCursor> Transaction::indexScanForCondition(
   return std::make_shared<OperationCursor>(
       transactionContext()->orderCustomTypeHandler(), iterator.release(), limit,
       batchSize);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief get the index by it's identifier. Will either throw or
+///        return a valid index. nullptr is impossible.
+//////////////////////////////////////////////////////////////////////////////
+
+arangodb::Index* Transaction::getIndexByIdentifier(
+    std::string const& collectionName, std::string const& indexHandle) {
+  TRI_voc_cid_t cid = resolver()->getCollectionId(collectionName);
+
+  if (cid == 0) {
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
+                                  collectionName.c_str());
+  }
+
+  TRI_document_collection_t* document = documentCollection(trxCollection(cid));
+
+  if (indexHandle.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "The index id cannot be empty.");
+  }
+
+  if (!arangodb::Index::validateId(indexHandle.c_str())) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
+  }
+  TRI_idx_iid_t iid = arangodb::basics::StringUtils::uint64(indexHandle);
+  arangodb::Index* idx = document->lookupIndex(iid);
+
+  if (idx == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
+                                   "Could not find index '" + indexHandle +
+                                       "' in collection '" +
+                                       collectionName + "'.");
+  }
+  
+  // We have successfully found an index with the requested id.
+  return idx;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -2471,7 +2517,8 @@ std::vector<std::shared_ptr<Index>> Transaction::indexesForCollection(
   TRI_voc_cid_t cid = resolver()->getCollectionId(collectionName);
 
   if (cid == 0) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
+                                  collectionName.c_str());
   }
 
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
