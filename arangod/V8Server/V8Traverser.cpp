@@ -853,7 +853,6 @@ bool DepthFirstTraverser::edgeMatchesConditions(VPackSlice e, size_t depth) {
       TRI_ASSERT(exp != nullptr);
 
       if (exp->isEdgeAccess && !exp->matchesCheck(_trx, e)) {
-        LOG(INFO) << "Edge Match Condition";
         ++_filteredPaths;
         return false;
       }
@@ -880,7 +879,6 @@ bool DepthFirstTraverser::vertexMatchesConditions(std::string const& v,
           vertex = fetchVertexData(v);
         }
         if (!exp->matchesCheck(_trx, VPackSlice(vertex->data()))) {
-          LOG(INFO) << "Vertex Match Condition";
           ++_filteredPaths;
           return false;
         }
@@ -952,7 +950,6 @@ void DepthFirstTraverser::setStartVertex(std::string const& v) {
             _vertices.emplace(v, vertex);
           }
           if (!exp->matchesCheck(_trx, VPackSlice(vertex->data()))) {
-            LOG(INFO) << "Start Vertex Match Condition";
             ++_filteredPaths;
             _done = true;
             return;
@@ -1027,8 +1024,6 @@ bool DepthFirstTraverser::EdgeGetter::nextCursor(std::string const& startVertex,
 void DepthFirstTraverser::EdgeGetter::nextEdge(
     std::string const& startVertex, size_t& eColIdx, VPackValueLength*& last,
     std::vector<std::string>& edges) {
-  auto cursor = _cursors.top();
-  auto opRes = _results.top();
   if (last == nullptr) {
     _posInCursor.push(0);
     last = &_posInCursor.top();
@@ -1036,6 +1031,8 @@ void DepthFirstTraverser::EdgeGetter::nextEdge(
     ++(*last);
   }
   while (true) {
+    auto cursor = _cursors.top();
+    auto opRes = _results.top();
     VPackSlice edge = opRes->slice();
     if (!edge.isArray() || edge.length() <= *last) {
       if (cursor->hasMore()) {
