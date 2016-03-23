@@ -805,24 +805,34 @@ void SingleServerTraversalPath::pathToVelocyPack(Transaction* trx,
   result.add(VPackValue("edges"));
   result.openArray();
   for (auto const& it : _path.edges) {
-    getDocumentByIdentifier(trx, it, result);
+    auto cached = _traverser->_edges.find(it);
+    // All edges are cached!!
+    TRI_ASSERT(cached != _traverser->_edges.end());
+    result.add(VPackSlice(cached->second->data()));
   }
   result.close();
   result.add(VPackValue("vertices"));
   result.openArray();
   for (auto const& it : _path.vertices) {
-    getDocumentByIdentifier(trx, it, result);
+    std::shared_ptr<VPackBuffer<uint8_t>> vertex =
+        _traverser->fetchVertexData(it);
+    result.add(VPackSlice(vertex->data()));
   }
   result.close();
   result.close();
 }
 
 void SingleServerTraversalPath::lastEdgeToVelocyPack(Transaction* trx, VPackBuilder& result) {
-  getDocumentByIdentifier(trx, _path.edges.back(), result);
+  auto cached = _traverser->_edges.find(_path.edges.back());
+  // All edges are cached!!
+  TRI_ASSERT(cached != _traverser->_edges.end());
+  result.add(VPackSlice(cached->second->data()));
 }
 
 void SingleServerTraversalPath::lastVertexToVelocyPack(Transaction* trx, VPackBuilder& result) {
-  getDocumentByIdentifier(trx, _path.vertices.back(), result);
+  std::shared_ptr<VPackBuffer<uint8_t>> vertex =
+      _traverser->fetchVertexData(_path.vertices.back());
+  result.add(VPackSlice(vertex->data()));
 }
 
 DepthFirstTraverser::DepthFirstTraverser(
@@ -843,6 +853,7 @@ bool DepthFirstTraverser::edgeMatchesConditions(VPackSlice e, size_t depth) {
       TRI_ASSERT(exp != nullptr);
 
       if (exp->isEdgeAccess && !exp->matchesCheck(_trx, e)) {
+        LOG(INFO) << "Edge Match Condition";
         ++_filteredPaths;
         return false;
       }
@@ -866,25 +877,10 @@ bool DepthFirstTraverser::vertexMatchesConditions(std::string const& v,
       if (!exp->isEdgeAccess) {
         if (fetchVertex) {
           fetchVertex = false;
-          auto it = _vertices.find(v);
-          if (it == _vertices.end()) {
-            OperationResult opRes =
-                FetchDocumentById(_trx, v, _builder, _operationOptions);
-            ++_readDocuments;
-            if (opRes.failed()) {
-              TRI_ASSERT(opRes.code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-              VPackBuilder tmp;
-              tmp.add(VPackValue(VPackValueType::Null));
-              vertex = tmp.steal();
-            } else {
-              vertex = opRes.buffer;
-            }
-              _vertices.emplace(v, vertex);
-          } else {
-            vertex = it->second;
-          }
+          vertex = fetchVertexData(v);
         }
         if (!exp->matchesCheck(_trx, VPackSlice(vertex->data()))) {
+          LOG(INFO) << "Vertex Match Condition";
           ++_filteredPaths;
           return false;
         }
@@ -892,6 +888,25 @@ bool DepthFirstTraverser::vertexMatchesConditions(std::string const& v,
     }
   }
   return true;
+}
+
+std::shared_ptr<VPackBuffer<uint8_t>> DepthFirstTraverser::fetchVertexData(
+    std::string const& id) {
+  auto it = _vertices.find(id);
+  if (it == _vertices.end()) {
+    OperationResult opRes =
+        FetchDocumentById(_trx, id, _builder, _operationOptions);
+    ++_readDocuments;
+    if (opRes.failed()) {
+      TRI_ASSERT(opRes.code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+      VPackBuilder tmp;
+      tmp.add(VPackValue(VPackValueType::Null));
+      return tmp.steal();
+    }
+    _vertices.emplace(id, opRes.buffer);
+    return opRes.buffer;
+  }
+  return it->second;
 }
 
 void DepthFirstTraverser::_defInternalFunctions() {
@@ -937,6 +952,7 @@ void DepthFirstTraverser::setStartVertex(std::string const& v) {
             _vertices.emplace(v, vertex);
           }
           if (!exp->matchesCheck(_trx, VPackSlice(vertex->data()))) {
+            LOG(INFO) << "Start Vertex Match Condition";
             ++_filteredPaths;
             _done = true;
             return;
@@ -965,7 +981,7 @@ TraversalPath* DepthFirstTraverser::next() {
     return nullptr;
   }
 
-  auto p = std::make_unique<SingleServerTraversalPath>(path);
+  auto p = std::make_unique<SingleServerTraversalPath>(path, this);
   if (countEdges >= _opts.maxDepth) {
     _pruneNext = true;
   }
@@ -1027,6 +1043,9 @@ void DepthFirstTraverser::EdgeGetter::nextEdge(
         cursor->getMore(opRes);
         TRI_ASSERT(last != nullptr);
         *last = 0;
+        edge = opRes->slice();
+        TRI_ASSERT(edge.isArray());
+        _traverser->_readDocuments += edge.length();
         continue;
       }
       eColIdx++;
@@ -1044,14 +1063,32 @@ void DepthFirstTraverser::EdgeGetter::nextEdge(
     }
     edge = edge.at(*last);
     if (!_traverser->edgeMatchesConditions(edge, edges.size())) {
-      ++_traverser->_filteredPaths;
       TRI_ASSERT(last != nullptr);
       (*last)++;
       continue;
     }
     std::string id = _trx->extractIdString(edge);
+    // test if edge is already on this path
+    auto found = std::find(edges.begin(), edges.end(), id);
+    if (found != edges.end()) {
+      // This edge is already on the path, next
+      TRI_ASSERT(last != nullptr);
+      (*last)++;
+      continue;
+    }
+
     VPackBuilder tmpBuilder = VPackBuilder::clone(edge);
     _traverser->_edges.emplace(id, tmpBuilder.steal());
+
+    std::string other;
+    _traverser->_getVertex(id, startVertex, 0, other);
+    if (!_traverser->vertexMatchesConditions(other, edges.size() + 1)) {
+      // Retry with the next element
+      TRI_ASSERT(last != nullptr);
+      (*last)++;
+      continue;
+    }
+
     edges.emplace_back(id);
     return;
   }
