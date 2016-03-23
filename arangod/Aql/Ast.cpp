@@ -1047,7 +1047,11 @@ AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs,
   size_t const nl = lhs->numMembers();
   size_t const nr = rhs->numMembers();
 
-  std::unordered_map<VPackSlice, AstNode const*> cache(nl + nr);
+  std::unordered_map<VPackSlice, AstNode const*,
+                     arangodb::basics::VelocyPackHelper::VPackHash,
+                     arangodb::basics::VelocyPackHelper::VPackEqual>
+      cache(nl + nr, arangodb::basics::VelocyPackHelper::VPackHash(),
+            arangodb::basics::VelocyPackHelper::VPackEqual());
 
   for (size_t i = 0; i < nl; ++i) {
     auto member = lhs->getMemberUnchecked(i);
@@ -1083,7 +1087,11 @@ AstNode* Ast::createNodeUnionizedArray(AstNode const* lhs, AstNode const* rhs) {
   size_t const nl = lhs->numMembers();
   size_t const nr = rhs->numMembers();
 
-  std::unordered_map<VPackSlice, AstNode const*> cache(nl + nr);
+  std::unordered_map<VPackSlice, AstNode const*,
+                     arangodb::basics::VelocyPackHelper::VPackHash,
+                     arangodb::basics::VelocyPackHelper::VPackEqual>
+      cache(nl + nr, arangodb::basics::VelocyPackHelper::VPackHash(),
+            arangodb::basics::VelocyPackHelper::VPackEqual());
 
   for (size_t i = 0; i < nl + nr; ++i) {
     AstNode* member;
@@ -2029,8 +2037,11 @@ AstNode const* Ast::deduplicateArray(AstNode const* node) {
   }
 
   // TODO: sort values in place first and compare two adjacent members each
-
-  std::unordered_map<VPackSlice, AstNode const*> cache(n);
+  std::unordered_map<VPackSlice, AstNode const*,
+                     arangodb::basics::VelocyPackHelper::VPackHash,
+                     arangodb::basics::VelocyPackHelper::VPackEqual>
+      cache(n, arangodb::basics::VelocyPackHelper::VPackHash(),
+            arangodb::basics::VelocyPackHelper::VPackEqual());
 
   for (size_t i = 0; i < n; ++i) {
     auto member = node->getMemberUnchecked(i);

@@ -120,12 +120,31 @@ v8::Handle<v8::Value> TRI_VPackToV8(v8::Isolate* isolate,
       }
       return v8::Number::New(isolate, slice.getDouble());
     }
-    case VPackValueType::Int:
+    case VPackValueType::Int: {
+      int64_t value = slice.getInt();
+      if (value >= -2147483648 && value <= 2147483647) {
+        // value is within bounds of an int32_t
+        return v8::Integer::New(isolate, static_cast<int32_t>(value));
+      }
+      if (value >= 0 && value <= 4294967295) {
+        // value is within bounds of a uint32_t
+        return v8::Integer::NewFromUnsigned(isolate, static_cast<uint32_t>(value));
+      }
+      // must use double to avoid truncation
       return v8::Number::New(isolate, static_cast<double>(slice.getInt()));
-    case VPackValueType::UInt:
+    }
+    case VPackValueType::UInt: {
+      uint64_t value = slice.getUInt();
+      if (value <= 4294967295) {
+        // value is within bounds of a uint32_t
+        return v8::Integer::NewFromUnsigned(isolate, static_cast<uint32_t>(value));
+      }
+      // must use double to avoid truncation
       return v8::Number::New(isolate, static_cast<double>(slice.getUInt()));
-    case VPackValueType::SmallInt:
-      return v8::Number::New(isolate, static_cast<double>(slice.getSmallInt()));
+    }
+    case VPackValueType::SmallInt: {
+      return v8::Integer::New(isolate, slice.getNumericValue<int32_t>());
+    }
     case VPackValueType::String:
       return ObjectVPackString(isolate, slice);
     case VPackValueType::Object:
@@ -208,6 +227,20 @@ static int V8ToVPack(BuilderContext& context,
     v8::Handle<v8::Boolean> booleanParameter = parameter->ToBoolean();
     AddValue(context, attributeName, inObject,
              VPackValue(booleanParameter->Value()));
+    return TRI_ERROR_NO_ERROR;
+  }
+  
+  if (parameter->IsInt32()) {
+    v8::Handle<v8::Int32> numberParameter = parameter->ToInt32();
+    AddValue(context, attributeName, inObject,
+             VPackValue(numberParameter->Value()));
+    return TRI_ERROR_NO_ERROR;
+  }
+  
+  if (parameter->IsUint32()) {
+    v8::Handle<v8::Uint32> numberParameter = parameter->ToUint32();
+    AddValue(context, attributeName, inObject,
+             VPackValue(numberParameter->Value()));
     return TRI_ERROR_NO_ERROR;
   }
 

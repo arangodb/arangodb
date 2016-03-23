@@ -213,7 +213,9 @@ class HashIndex final : public PathBasedIndex {
 
       for (size_t j = 0; j < _numFields; j++) {
         VPackSlice data = element->subObjects()[j].slice(element->document());
-        hash = data.hash(hash);
+        // must use normalized hash here, to normalize different representations 
+        // of arrays/objects/numbers
+        hash = data.normalizedHash(hash);
       }
 
       if (byKey) {

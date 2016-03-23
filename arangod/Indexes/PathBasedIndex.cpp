@@ -299,7 +299,13 @@ void PathBasedIndex::buildIndexValues(
     finishWithNones();
     return;
   }
-  std::unordered_set<VPackSlice> seen;
+
+  std::unordered_set<VPackSlice,
+                     arangodb::basics::VelocyPackHelper::VPackHash,
+                     arangodb::basics::VelocyPackHelper::VPackEqual>
+      seen(2, arangodb::basics::VelocyPackHelper::VPackHash(),
+              arangodb::basics::VelocyPackHelper::VPackEqual());
+
   auto moveOn = [&](VPackSlice something) -> void {
     auto it = seen.find(something);
     if (it != seen.end()) {
@@ -309,14 +315,13 @@ void PathBasedIndex::buildIndexValues(
       sliceStack.pop_back();
     }
   };
-  VPackSlice null("\x18");
   for (auto const& member : VPackArrayIterator(current)) {
     VPackSlice current2(member);
     bool doneNull = false;
     for (size_t i = _expanding[level]+1; i < n; i++) {
       if (!current2.isObject()) {
         if (!_sparse) {
-          moveOn(null);
+          moveOn(arangodb::basics::VelocyPackHelper::NullValue());
         }
         doneNull = true;
         break;
@@ -324,7 +329,7 @@ void PathBasedIndex::buildIndexValues(
       current2 = current2.get(_paths[level][i]);
       if (current2.isNone()) {
         if (!_sparse) {
-          moveOn(null);
+          moveOn(arangodb::basics::VelocyPackHelper::NullValue());
         }
         doneNull = true;
         break;

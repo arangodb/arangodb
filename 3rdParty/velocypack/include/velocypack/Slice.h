@@ -107,9 +107,15 @@ class Slice {
   // value of the head byte
   inline uint8_t head() const { return *_start; }
 
+  // hashes the binary representation of a value
   inline uint64_t hash(uint64_t seed = 0xdeadbeef) const {
     return fasthash64(start(), checkOverflow(byteSize()), seed);
   }
+
+  // hashes the value, normalizing different representations of
+  // arrays, objects and numbers. this function may produce different
+  // hash values than the binary hash() function
+  uint64_t normalizedHash(uint64_t seed = 0xdeadbeef) const;
 
   // check if slice is of the specified type
   inline bool isType(ValueType t) const { return type() == t; }
@@ -773,6 +779,7 @@ class Slice {
   static ValueType const TypeMap[256];
   static unsigned int const WidthMap[32];
   static unsigned int const FirstSubMap[32];
+  static char const* NullStr;
 };
 
 // a class for keeping Slice allocations in scope

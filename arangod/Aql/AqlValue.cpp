@@ -55,13 +55,17 @@ uint64_t AqlValue::hash(arangodb::AqlTransaction* trx) const {
     case VPACK_POINTER:  
     case VPACK_INLINE: 
     case VPACK_EXTERNAL: {
-      return slice().hash();
+      // we must use the slow hash function here, because a value may have 
+      // different representations in case its an array/object/number
+      return slice().normalizedHash();
     }
     case DOCVEC:
     case RANGE: { 
       VPackBuilder builder;
       toVelocyPack(trx, builder);
-      return builder.slice().hash();
+      // we must use the slow hash function here, because a value may have 
+      // different representations in case its an array/object/number
+      return builder.slice().normalizedHash();
     }
   }
 

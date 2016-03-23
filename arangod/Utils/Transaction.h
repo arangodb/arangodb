@@ -81,7 +81,7 @@ class Transaction {
     bool operator!=(IndexHandle const& other) const {
       return other._index.get() != _index.get();
     }
-    IndexHandle(std::shared_ptr<arangodb::Index> idx) : _index(idx) {
+    explicit IndexHandle(std::shared_ptr<arangodb::Index> idx) : _index(idx) {
     }
    private:
     std::shared_ptr<arangodb::Index> getIndex() const;
@@ -292,7 +292,7 @@ class Transaction {
   /// @brief add a collection to the transaction for read, at runtime
   //////////////////////////////////////////////////////////////////////////////
 
-  void addCollectionAtRuntime(TRI_voc_cid_t cid, std::string const& collectionName) {
+  TRI_voc_cid_t addCollectionAtRuntime(TRI_voc_cid_t cid, std::string const& collectionName) {
     auto collection = this->trxCollection(cid);
 
     if (collection == nullptr) {
@@ -311,13 +311,14 @@ class Transaction {
       }
     }
     TRI_ASSERT(collection != nullptr);
+    return cid;
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add a collection to the transaction for read, at runtime
   //////////////////////////////////////////////////////////////////////////////
 
-  void addCollectionAtRuntime(std::string const& collectionName);
+  TRI_voc_cid_t addCollectionAtRuntime(std::string const& collectionName);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the type of a collection
@@ -432,7 +433,7 @@ class Transaction {
   std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
       std::string const&, arangodb::aql::Ast*, arangodb::aql::AstNode*,
       arangodb::aql::Variable const*, arangodb::aql::SortCondition const*,
-      size_t, std::vector<IndexHandle>&, bool&) const;
+      size_t, std::vector<IndexHandle>&, bool&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Checks if the index supports the filter condition.
@@ -464,7 +465,7 @@ class Transaction {
       std::string const&, arangodb::aql::SortCondition const*,
       arangodb::aql::Variable const*, size_t,
       std::vector<IndexHandle>&,
-      size_t& coveredAttributes) const;
+      size_t& coveredAttributes);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief factory for OperationCursor objects from AQL
@@ -679,7 +680,7 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   std::vector<std::shared_ptr<arangodb::Index>> indexesForCollection(
-      std::string const&) const;
+      std::string const&);
 
  private:
 

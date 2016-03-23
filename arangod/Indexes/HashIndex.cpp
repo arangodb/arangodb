@@ -26,6 +26,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Basics/Exceptions.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
@@ -66,7 +67,9 @@ static uint64_t HashKey(void*,
     return hash;
   }
   for (size_t j = 0; j < key->length(); ++j) {
-    hash = (*key)[j].hash(hash);
+    // must use normalized hash here, to normalize different representations 
+    // of arrays/objects/numbers
+    hash = (*key)[j].normalizedHash(hash);
   }
 
   return hash;
@@ -87,7 +90,9 @@ static bool IsEqualKeyElement(void*,
     VPackSlice const leftVPack = (*left)[j];
     TRI_vpack_sub_t* rightSub = right->subObjects() + j;
     VPackSlice const rightVPack = rightSub->slice(right->document());
-    if (leftVPack != rightVPack) {
+
+    int res = arangodb::basics::VelocyPackHelper::compare(leftVPack, rightVPack, false);
+    if (res != 0) {
       return false;
     }
   }
