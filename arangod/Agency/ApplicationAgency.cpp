@@ -39,7 +39,6 @@ ApplicationAgency::ApplicationAgency()
 	  _max_election_timeout(2.0), _election_call_rate_mul(2.5),
     _append_entries_retry_interval(1.0),
     _agent_id(std::numeric_limits<uint32_t>::max()) {
-  
 }
 
 
