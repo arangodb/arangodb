@@ -1,6 +1,35 @@
 v2.8.6 (2016-03-XX)
 -------------------
 
+* arangosh can now execute JavaScript script files that contain a shebang
+  in the first line of the file. This allows executing script files directly.
+
+  Provided there is a script file `/path/to/script.js` with the shebang
+  `#!arangosh --javascript.execute`:
+
+      > cat /path/to/script.js
+      #!arangosh --javascript.execute 
+      print("hello from script.js");
+
+  If the script file is made executable
+
+      > chmod a+x /path/to/script.js
+
+  it can be invoked on the shell directly and use arangosh for its execution:
+      
+      > /path/to/script.js
+      hello from script.js
+  
+  This did not work in previous versions of ArangoDB, as the whole script contents
+  (including the shebang) were treated as JavaScript code. 
+  Now shebangs in script files will now be ignored for all files passed to arangosh's 
+  `--javascript.execute` parameter.
+  
+  The alternative way of executing a JavaScript file with arangosh still works:
+
+      > arangosh --javascript.execute /path/to/script.js
+      hello from script.js
+
 * added missing reset of traversal state for nested traversals.
   The state of nested traversals (a traversal in an AQL query that was
   located in a repeatedly executed subquery or inside another FOR loop)
@@ -16,7 +45,7 @@ v2.8.6 (2016-03-XX)
 v2.8.5 (2016-03-11)
 -------------------
 
-* Add OpenSSL handler for TLS V1.2 as sugested by kurtkincaid in #1771
+* Add OpenSSL handler for TLS V1.2 as suggested by kurtkincaid in #1771
 
 * fixed issue #1765 (The webinterface should display the correct query time)
   and #1770 (Display ACTUAL query time in aardvark's AQL editor)
