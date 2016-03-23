@@ -56,8 +56,8 @@ void Constituent::configure(Agent* agent) {
 }
 
 Constituent::Constituent() :
-  Thread("Constituent"), _term(0), _id(0), _gen(std::random_device()()),
-  _role(FOLLOWER), _leader_id(0), _agent(0) {}
+  Thread("Constituent"), _term(0), _leader_id(0), _id(0), _gen(std::random_device()()),
+  _role(FOLLOWER), _agent(0) {}
 
 Constituent::~Constituent() {
   shutdown();
@@ -77,22 +77,29 @@ term_t Constituent::term() const {
   return _term;
 }
 
+void Constituent::term(term_t t) {
+  if (t != _term) {
+    LOG(INFO) << "Updating term to " << t;
+  }
+  _term = t;
+}
+
 role_t Constituent::role () const {
   return _role;
 }
 
-void Constituent::follow (term_t term) {
+void Constituent::follow (term_t t) {
   if (_role != FOLLOWER) {
-    LOG(WARN) << "Role change: Converted to follower in term " << _term ;
+    LOG(INFO) << "Role change: Converted to follower in term " << t;
   }
-  _term = term;
+  this->term(t);
   _votes.assign(_votes.size(),false); // void all votes
   _role = FOLLOWER;
 }
 
 void Constituent::lead () {
   if (_role != LEADER) {
-    LOG(WARN) << "Role change: Converted to leader in term " << _term ;
+    LOG(INFO) << "Role change: Converted to leader in term " << _term ;
     _agent->lead(); // We need to rebuild spear_head and read_db;
   }
   _role = LEADER;
@@ -101,7 +108,7 @@ void Constituent::lead () {
 
 void Constituent::candidate () {
   if (_role != CANDIDATE)
-    LOG(WARN) << "Role change: Converted to candidate in term " << _term ;
+    LOG(INFO) << "Role change: Converted to candidate in term " << _term ;
   _role = CANDIDATE;
 }
 
@@ -171,7 +178,7 @@ bool Constituent::vote (
 		return false;        // TODO: Assertion?
 	} else {
 	  if (term > _term || (_term==term&&_leader_id==leaderId)) {
-      _term = term;
+      this->term(term);
       _cast = true;      // Note that I voted this time around.
       _leader_id = leaderId;   // The guy I voted for I assume leader.
       if (_role>FOLLOWER)

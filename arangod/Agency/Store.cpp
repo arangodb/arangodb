@@ -174,7 +174,7 @@ std::ostream& operator<< (std::ostream& o, std::map<S,T> const& d) {
 }
 
 Node& Node::root() {
-  Node *par = _parent, *tmp;
+  Node *par = _parent, *tmp = 0;
   while (par != 0) {
     tmp = par;
     par = par->_parent;
