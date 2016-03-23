@@ -729,6 +729,7 @@ class Slice {
   static ValueType const TypeMap[256];
   static unsigned int const WidthMap[32];
   static unsigned int const FirstSubMap[32];
+  static char const* NullStr;
 };
 
 // a class for keeping Slice allocations in scope

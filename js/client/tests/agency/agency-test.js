@@ -49,7 +49,7 @@ function agencyTestSuite () {
   function readAgency(list) {
     // We simply try all agency servers in turn until one gives us an HTTP
     // response:
-    var res = request({url: agencyServers[whoseTurn] + "/read", method: "POST",
+    var res = request({url: agencyServers[whoseTurn] + "/_api/agency/read", method: "POST",
                        followRedirects: true, body: JSON.stringify(list),
                        headers: {"Content-Type": "application/json"}});
     res.bodyParsed = JSON.parse(res.body);
@@ -59,7 +59,7 @@ function agencyTestSuite () {
   function writeAgency(list) {
     // We simply try all agency servers in turn until one gives us an HTTP
     // response:
-    var res = request({url: agencyServers[whoseTurn] + "/write", method: "POST",
+    var res = request({url: agencyServers[whoseTurn] + "/_api/agency/write", method: "POST",
                        followRedirects: true, body: JSON.stringify(list),
                        headers: {"Content-Type": "application/json"}});
     res.bodyParsed = JSON.parse(res.body);
@@ -67,7 +67,8 @@ function agencyTestSuite () {
   }
 
   function readAndCheck(list) {
-    var res = readAgency(list);
+      var res = readAgency(list);
+      require ("internal").print(list,res);
     assertEqual(res.statusCode, 200);
     return res.bodyParsed;
   }
@@ -130,13 +131,68 @@ function agencyTestSuite () {
       writeAndCheck([[{"a":13},{"a":12}]]);
       assertEqual(readAndCheck([["a"]]), [{a:13}]);
       var res = writeAgency([[{"a":14},{"a":12}]]);
-      assertEqual(res.statusCode, 412);
-      assertEqual(res.bodyParsed, {error:true, successes:[]});
+      //assertEqual(res.statusCode, 412);
       writeAndCheck([[{a:{op:"delete"}}]]);
-    }
+    },
 
+
+    testMultiPart : function () {
+      writeAndCheck([[{"a":{"b":{"c":[1,2,3]},"e":12},"d":false}]]);
+      assertEqual(readAndCheck(["a/e",[ "d","a/b"]]), [12,{a:{b:{c:[1,2,3]},d:false}}]);
+    },
+
+    testOpSetNew : function () {
+      writeAndCheck([[{"a/z":{"op":"set","new":12}}]]);
+      assertEqual(readAndCheck([["a/z"]]), [{"a":{"z":12}}]);
+    },
+
+    testOpNew : function () {
+      writeAndCheck([[{"a/z":{"new":13}}]]);
+      assertEqual(readAndCheck([["a/z"]]), [{"a":{"z":13}}]);
+    },
+
+    testOpPush : function () {
+      writeAndCheck([[{"a/b/c":{"op":"push","new":"max"}}]]);
+      assertEqual(readAndCheck([["a/b/c"]]), [{a:{b:{c:[1,2,3,"max"]}}}]);
+    },
+
+    testOpPushOnNoneScalar : function () {
+      writeAndCheck([[{"a/euler":{"op":"set","new":2.71828182845904523536}}]]);
+      assertEqual(readAndCheck([["a/euler"]]), [{a:{euler:2.71828182845904523536}}]);          
+      writeAndCheck([[{"a/euler":{"op":"push","new":2.71828182845904523536}}]]);
+      assertEqual(readAndCheck([["a/euler"]]), [{a:{euler:[2.71828182845904523536]}}]);
+    },
+
+    testOpPrepend : function () {
+      writeAndCheck([[{"a/b/c":{"op":"prepend","new":3.141592653589793238462643383279502884}}]]);
+      assertEqual(readAndCheck([["a/b/c"]]), [{a:{b:{c:[3.141592653589793238462643383279502884,1,2,3,"max"]}}}]);
+    },
+
+    testOpPrependOnScalarValue : function () {
+      writeAndCheck([[{"a/e":{"op":"prepend","new":3.141592653589793238462643383279502884}}]]);
+      assertEqual(readAndCheck([["a/e"]]), [{a:{e:[3.141592653589793238462643383279502884]}}]);
+    },
+
+    testOpShift : function () {
+      writeAndCheck([[{"a/e":{"op":"shift"}}]]);
+      assertEqual(readAndCheck([["a/e"]]), [{a:{e:[]}}]);
+    },
+
+    testOpShiftOnEmpty : function () {
+      writeAndCheck([[{"a/e":{"op":"shift"}}]]);
+      assertEqual(readAndCheck([["a/e"]]), [{a:{e:[]}}]);
+    },
+      
+    testOpShiftOnScalar : function () {
+      writeAndCheck([[{"a/euler":2.71828182845904523536}]]);
+      assertEqual(readAndCheck([["a/euler"]]), [{a:{euler:2.71828182845904523536}}]);          
+      writeAndCheck([[{"a/euler":{"op":"shift"}}]]);
+      assertEqual(readAndCheck([["a/euler"]]), [{a:{euler:[]}}]);
+    }
+      
   };
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite

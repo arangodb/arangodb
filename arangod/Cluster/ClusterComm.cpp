@@ -234,6 +234,9 @@ ClusterCommResult const ClusterComm::asyncRequest(
     std::unique_ptr<std::map<std::string, std::string>>& headerFields,
     std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
     bool singleRequest) {
+
+  TRI_ASSERT(headerFields.get() != nullptr);
+
   auto op = std::make_unique<ClusterCommOperation>();
   op->result.clientTransactionID = clientTransactionID;
   op->result.coordTransactionID = coordTransactionID;

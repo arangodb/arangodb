@@ -68,6 +68,12 @@ add_executable(${BIN_ARANGOD}
   ${ProductVersionFiles}
   Actions/RestActionHandler.cpp
   Actions/actions.cpp
+  Agency/Agent.cpp
+  Agency/ApplicationAgency.cpp
+  Agency/Constituent.cpp
+  Agency/State.cpp
+  Agency/Store.cpp
+  Agency/AgentCallback.cpp
   ApplicationServer/ApplicationFeature.cpp
   ApplicationServer/ApplicationServer.cpp
   Aql/Aggregator.cpp
@@ -183,6 +189,8 @@ add_executable(${BIN_ARANGOD}
   Replication/InitialSyncer.cpp
   Replication/Syncer.cpp
   RestHandler/RestAdminLogHandler.cpp
+  RestHandler/RestAgencyHandler.cpp
+  RestHandler/RestAgencyPrivHandler.cpp
   RestHandler/RestBaseHandler.cpp
   RestHandler/RestBatchHandler.cpp
   RestHandler/RestCursorHandler.cpp

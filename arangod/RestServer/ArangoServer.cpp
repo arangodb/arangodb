@@ -37,6 +37,7 @@
 
 #include "Actions/RestActionHandler.h"
 #include "Actions/actions.h"
+#include "Agency/ApplicationAgency.h"
 #include "ApplicationServer/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryCache.h"
@@ -66,6 +67,8 @@
 #include "Rest/OperationMode.h"
 #include "Rest/Version.h"
 #include "RestHandler/RestAdminLogHandler.h"
+#include "RestHandler/RestAgencyHandler.h"
+#include "RestHandler/RestAgencyPrivHandler.h"
 #include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestCursorHandler.h"
 #include "RestHandler/RestDebugHandler.h"
@@ -713,6 +716,16 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
       "/_msg/please-upgrade",
       RestHandlerCreator<RestPleaseUpgradeHandler>::createNoData);
 
+  // add "/agency" handler
+  factory->addPrefixHandler(RestVocbaseBaseHandler::AGENCY_PATH,
+      RestHandlerCreator<RestAgencyHandler>::createData<consensus::Agent*>,
+      _applicationAgency->agent());
+
+  // add "/agency" handler
+  factory->addPrefixHandler(RestVocbaseBaseHandler::AGENCY_PRIV_PATH,
+      RestHandlerCreator<RestAgencyPrivHandler>::createData<consensus::Agent*>,
+      _applicationAgency->agent());
+
   // add "/batch" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::BATCH_PATH,
                             RestHandlerCreator<RestBatchHandler>::createNoData);
@@ -1088,6 +1101,14 @@ void ArangoServer::buildApplicationServer() {
   _applicationCluster =
       new ApplicationCluster(_server, _applicationDispatcher, _applicationV8);
   _applicationServer->addFeature(_applicationCluster);
+
+  // .............................................................................
+  // agency options
+  // .............................................................................
+
+  _applicationAgency =
+      new ApplicationAgency();
+  _applicationServer->addFeature(_applicationAgency);
 
   // .............................................................................
   // server options
@@ -1840,11 +1861,14 @@ void ArangoServer::waitForHeartbeat() {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief runs the server
 ////////////////////////////////////////////////////////////////////////////////
-
 int ArangoServer::runServer(TRI_vocbase_t* vocbase) {
   // disabled maintenance mode
   waitForHeartbeat();
   HttpHandlerFactory::setMaintenance(false);
+
+  LOG(WARN) << "LOADING PERSISTENT AGENCY STATE";
+  if(_applicationAgency->agent()!=nullptr)
+    _applicationAgency->agent()->load();
 
   // just wait until we are signalled
   _applicationServer->wait();
