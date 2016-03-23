@@ -909,7 +909,7 @@ int ContinuousSyncer::applyLog(SimpleHttpResult* response,
 
     processedMarkers++;
 
-    std::shared_ptr<VPackBuilder> builder;
+    auto builder = std::make_shared<VPackBuilder>();
 
     try {
       VPackParser parser(builder);
@@ -1242,7 +1242,7 @@ int ContinuousSyncer::fetchMasterState(std::string& errorMsg,
     startTick = toTick;
   }
   
-  std::shared_ptr<VPackBuilder> builder;
+  auto builder = std::make_shared<VPackBuilder>();
   int res = parseResponse(builder, response.get());
 
   if (res != TRI_ERROR_NO_ERROR) {
