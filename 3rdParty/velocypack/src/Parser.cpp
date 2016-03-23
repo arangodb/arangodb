@@ -106,11 +106,16 @@ int Parser::skipWhiteSpace(char const* err) {
     }
   }
   size_t remaining = _size - _pos;
-  size_t count = JSONSkipWhiteSpace(_start + _pos, remaining);
-  _pos += count;
-  if (count < remaining) {
-    return static_cast<int>(_start[_pos]);
+  if (remaining >= 16) {
+    size_t count = JSONSkipWhiteSpace(_start + _pos, remaining - 15);
+    _pos += count;
   }
+  do {
+    if (!isWhiteSpace(_start[_pos])) {
+      return static_cast<int>(_start[_pos]);
+    }
+    _pos++;
+  } while (_pos < _size);
   throw Exception(Exception::ParseError, err);
 }
 
@@ -228,14 +233,19 @@ void Parser::parseString() {
 
   while (true) {
     size_t remainder = _size - _pos;
-    if (remainder >= 16 + 16) {
+    if (remainder >= 16) {
       _b->reserveSpace(remainder);
       size_t count;
+      // Note that the SSE4.2 accelerated string copying functions might
+      // peek up to 15 bytes over the given end, because they use 128bit
+      // registers. Therefore, we have to subtract 15 from remainder
+      // to be on the safe side. Further bytes will be processed below.
       if (options->validateUtf8Strings) {
         count = JSONStringCopyCheckUtf8(_b->_start + _b->_pos, _start + _pos,
-                                        remainder);
+                                        remainder - 15);
       } else {
-        count = JSONStringCopy(_b->_start + _b->_pos, _start + _pos, remainder);
+        count = JSONStringCopy(_b->_start + _b->_pos, _start + _pos,
+                               remainder - 15);
       }
       _pos += count;
       _b->_pos += count;
