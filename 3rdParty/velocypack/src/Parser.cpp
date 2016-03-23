@@ -228,7 +228,7 @@ void Parser::parseString() {
 
   while (true) {
     size_t remainder = _size - _pos;
-    if (remainder >= 16) {
+    if (remainder >= 16 + 16) {
       _b->reserveSpace(remainder);
       size_t count;
       if (options->validateUtf8Strings) {
