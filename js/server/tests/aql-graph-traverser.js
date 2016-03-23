@@ -2063,13 +2063,13 @@ function subQuerySuite () {
       assertEqual(current[1]._id, vertex.B2);
       assertEqual(current[2]._id, vertex.B3);
 
-      var current = actual[1];
+      current = actual[1];
       // All should be connected to C!
       assertEqual(current[0]._id, vertex.C1);
       assertEqual(current[1]._id, vertex.C2);
       assertEqual(current[2]._id, vertex.C3);
 
-      var current = actual[2];
+      current = actual[2];
       // All should be connected to D!
       assertEqual(current[0]._id, vertex.D1);
       assertEqual(current[1]._id, vertex.D2);
