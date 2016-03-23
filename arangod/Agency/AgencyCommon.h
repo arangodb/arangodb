@@ -82,16 +82,27 @@ inline std::ostream& operator<< (std::ostream& os, std::list<T> const& l) {
   return os;
 }
 
+
+struct  constituent_t {                               // Constituent type
+  id_t id;
+  std::string endpoint;
+};
+
+typedef std::vector<constituent_t>    constituency_t; // Constituency type
+typedef uint32_t                      state_t;        // State type
+typedef std::chrono::duration<double> duration_t;     // Duration type
+
+using query_t = std::shared_ptr<arangodb::velocypack::Builder>;
+
 struct AgentConfiguration {               
   id_t id;
   float min_ping;
   float max_ping;
-  float election_timeout;
   float append_entries_retry_interval;
   std::vector<std::string> end_points;
   std::string end_point_persist;
   bool notify;
-  AgentConfiguration () : min_ping(.15), max_ping(.3) {};
+  AgentConfiguration () : id(0), min_ping(.15), max_ping(.3), notify(false) {};
   AgentConfiguration (uint32_t i, float min_p, float max_p, float appent_i,
                       std::vector<std::string> const& end_p, bool n = false) :
     id(i), min_ping(min_p), max_ping(max_p),
@@ -109,23 +120,25 @@ struct AgentConfiguration {
     s << *this;
     return s.str();
   }
+  query_t const toBuilder () const {
+    query_t ret = std::make_shared<arangodb::velocypack::Builder>();
+    ret->openObject();
+    ret->add("endpoints", VPackValue(VPackValueType::Array));
+    for (auto const& i : end_points)
+      ret->add(VPackValue(i));
+    ret->close();
+    ret->add("id",VPackValue(id));
+    ret->add("min_ping",VPackValue(min_ping));
+    ret->add("max_ping",VPackValue(max_ping));
+    ret->close();
+    return ret;
+  }
 };
 typedef AgentConfiguration config_t;
 
-struct  constituent_t {                               // Constituent type
-  id_t id;
-  std::string endpoint;
-};
-
-typedef std::vector<constituent_t>    constituency_t; // Constituency type
-typedef uint32_t                      state_t;        // State type
-typedef std::chrono::duration<double> duration_t;     // Duration type
-
-using query_t = std::shared_ptr<arangodb::velocypack::Builder>;
-
 struct vote_ret_t {
   query_t result;
-  vote_ret_t (query_t res) : result(res) {}
+  explicit vote_ret_t (query_t res) : result(res) {}
 };
 
 struct read_ret_t {

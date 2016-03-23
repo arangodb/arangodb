@@ -4,7 +4,7 @@
 using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
 
-AgentCallback::AgentCallback() : _agent(0) {}
+AgentCallback::AgentCallback() : _agent(0), _last(0), _slave_id(0) {}
 
 AgentCallback::AgentCallback(Agent* agent, id_t slave_id, index_t last) :
   _agent(agent), _last(last), _slave_id(slave_id) {}

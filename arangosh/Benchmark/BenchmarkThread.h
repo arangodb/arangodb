@@ -81,7 +81,7 @@ class BenchmarkThread : public arangodb::Thread {
   /// @brief the thread program
   //////////////////////////////////////////////////////////////////////////////
 
-  void run() {
+  void run() override {
     try {
       _httpClient = _client->createHttpClient();
     } catch (...) {

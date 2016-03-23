@@ -96,7 +96,7 @@ class Exception : public virtual std::exception {
   ~Exception() throw();
 
  public:
-  char const* what() const throw();
+  char const* what() const throw() override;
   std::string message() const throw();
   int code() const throw();
   void addToMessage(std::string const&);

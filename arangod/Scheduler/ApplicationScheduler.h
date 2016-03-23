@@ -80,17 +80,17 @@ class ApplicationScheduler : public ApplicationFeature {
   void disableControlCHandler();
 
  public:
-  void setupOptions(std::map<std::string, basics::ProgramOptionsDescription>&);
+  void setupOptions(std::map<std::string, basics::ProgramOptionsDescription>&) override;
 
-  bool afterOptionParsing(basics::ProgramOptions&);
+  bool afterOptionParsing(basics::ProgramOptions&) override;
 
-  bool prepare();
+  bool prepare() override ;
 
-  bool start();
+  bool start() override;
 
-  bool open();
+  bool open() override;
 
-  void stop();
+  void stop() override;
 
  private:
   //////////////////////////////////////////////////////////////////////////////
