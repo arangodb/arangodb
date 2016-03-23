@@ -361,6 +361,8 @@
 /// - 1477: @LIT{this operation is only valid on a DBserver in a cluster}
 ///   Will be raised if there is an attempt to run a DBserver-only operation on
 ///   a different type of node.
+/// - 1478: @LIT{A cluster backend which was required for the operation could not be reached}
+///   Will be raised if a required db server can't be reached.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -2126,6 +2128,7 @@ void TRI_InitializeErrorMessages ();
 ///
 /// A cluster backend which was required for the operation could not be reached
 ///
+/// Will be raised if a required db server can't be reached.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE                             (1478)
