@@ -377,8 +377,7 @@ std::vector<bool> Store::apply (query_t const& query) {
   return applied;
 }
 
-std::vector<bool> Store::apply (
-  std::vector<VPackSlice> const& queries) {    
+std::vector<bool> Store::apply( std::vector<VPackSlice> const& queries) {
   std::vector<bool> applied;
   MUTEX_LOCKER(storeLocker, _storeLock);
   for (auto const& i : queries) {

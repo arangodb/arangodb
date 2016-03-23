@@ -189,6 +189,9 @@ public:
   /// @brief Read specified query from store
   query_t read (query_t const& query) const;
   
+  /// @brief Begin shutdown of thread
+  void beginShutdown () override;
+
 private:
   /// @brief Read individual entry specified in slice into builder
   bool read  (arangodb::velocypack::Slice const&,
@@ -199,9 +202,6 @@ private:
 
   /// @brief Clear entries, whose time to live has expired
   void clearTimeTable ();
-
-  /// @brief Begin shutdown of thread
-  void beginShutdown () override;
 
   /// @brief Run thread
   void run () override final;

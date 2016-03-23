@@ -157,7 +157,7 @@ HttpHandler::status_t RestAgencyHandler::handleTest() {
 HttpHandler::status_t RestAgencyHandler::handleState() {
   Builder body;
   body.add(VPackValue(VPackValueType::Array));
-  for (auto const& i: _agent->state().get())
+  for (auto const& i: _agent->state().slices())
     body.add(i);
   body.close();
   generateResult(body.slice());

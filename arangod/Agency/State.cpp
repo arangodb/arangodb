@@ -139,6 +139,16 @@ std::vector<log_t> State::get (index_t start, index_t end) const {
   return entries;
 }
 
+std::vector<VPackSlice> State::slices (index_t start, index_t end) const {
+  std::vector<VPackSlice> slices;
+  MUTEX_LOCKER(mutexLocker, _logLock);
+  if (end == std::numeric_limits<uint64_t>::max())
+    end = _log.size() - 1;
+  for (size_t i = start; i <= end; ++i) {// TODO:: Check bounds
+    slices.push_back(VPackSlice(_log[i].entry->data()));
+  }
+  return slices;
+}
 
 bool State::findit (index_t index, term_t term) {
   MUTEX_LOCKER(mutexLocker, _logLock);

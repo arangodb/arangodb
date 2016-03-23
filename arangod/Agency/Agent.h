@@ -123,8 +123,7 @@ public:
    * @brief Invoked by leader to replicate log entries (§5.3);
    *        also used as heartbeat (§5.2).
    */
-  append_entries_t sendAppendEntriesRPC (id_t slave_id,
-    collect_ret_t const& entries);
+  append_entries_t sendAppendEntriesRPC (id_t slave_id);
     
   /**
    * @brief 1. Deal with appendEntries to slaves.

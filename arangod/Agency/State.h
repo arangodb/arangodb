@@ -52,62 +52,54 @@ class State {
   
 public:
   
-  /**
-   * @brief Default constructor
-   */
+
+  /// @brief Default constructor
   State (std::string const& end_point = "tcp://localhost:8529");
   
-  /**
-   * @brief Default Destructor
-   */
+
+  /// @brief Default Destructor
   virtual ~State();
   
-  /**
-   * @brief Append log entry
-   */
+
+  /// @brief Append log entry
   void append (query_t const& query);
 
-  /**
-   * @brief Log entries (leader)
-   */
+
+  /// @brief Log entries (leader)
   std::vector<index_t> log (query_t const& query, std::vector<bool> const& indices, term_t term, id_t lid);
 
-  /**
-   * @brief Log entries (followers)
-   */
+
+  /// @brief Log entries (followers)
   bool log (query_t const& queries, term_t term, id_t leaderId, index_t prevLogIndex, term_t prevLogTerm);
 
-  /**
-   * @brief Find entry at index with term
-   */
+
+  /// @brief Find entry at index with term
   bool findit (index_t index, term_t term);
 
-  /**
-   * @brief Collect all from index on
-   */
+
+  /// @brief Collect all from index on
   collect_ret_t collectFrom (index_t index);
 
   std::vector<log_t> get (
     index_t = 0, index_t = std::numeric_limits<uint64_t>::max()) const;
 
-  /**
-   * @brief log entry at index i
-   */
+  std::vector<VPackSlice> slices (
+    index_t = 0, index_t = std::numeric_limits<uint64_t>::max()) const;
+
+
+  /// @brief log entry at index i
   log_t const& operator[](index_t) const;
 
-  /**
-   * @brief last log entry
-   */
+
+  /// @brief last log entry
   log_t const& lastLog () const;
 
-  /**
-   * @brief Set endpoint
-   */
+
+  /// @brief Set endpoint
   bool setEndPoint (std::string const&);
 
-  /**
-   * @brief Load persisted data from above or start with empty log
-   */
+
+  /// @brief Load persisted data from above or start with empty log
   bool load ();
 
   friend std::ostream& operator<< (std::ostream& os, State const& s) {
@@ -120,9 +112,8 @@ public:
 
 private:
   
-  /**
-   * @brief Save currentTerm, votedFor, log entries
-   */
+
+  /// @brief Save currentTerm, votedFor, log entries
   bool save (arangodb::velocypack::Slice const&, index_t, term_t,
              double timeout = 0.0);
 
@@ -133,8 +124,8 @@ private:
   bool createCollection(std::string const& name);
 
   mutable arangodb::Mutex _logLock; /**< @brief Mutex for modifying _log */
-  std::vector<log_t> _log;          /**< @brief  State entries */
-  std::string _end_point;            /**< @brief persistence end point */
+  std::vector<log_t> _log;        /**< @brief  State entries */
+  std::string _end_point;         /**< @brief persistence end point */
   bool _dbs_checked;
   
 };

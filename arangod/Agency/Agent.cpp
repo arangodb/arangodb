@@ -148,7 +148,7 @@ void Agent::reportIn (id_t id, index_t index) {
       LOG(INFO) << "AGENCY: Critical mass for commiting " << _last_commit_index+1
                 << " through " << index << " to read db";
       
-      _read_db.apply(_state.get(_last_commit_index+1, index));
+      _read_db.apply(_state.slices(_last_commit_index+1, index));
       _last_commit_index = index;
     }
   }
@@ -166,7 +166,7 @@ bool Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
   }
   if (queries->slice().length()) {
     LOG(INFO) << "AGENCY: Appending "<< queries->slice().length()
-              << "entries to state machine.";
+              << " entries to state machine.";
   } else {
     // heart-beat
   }
@@ -196,14 +196,14 @@ bool Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
 append_entries_t Agent::sendAppendEntriesRPC (
   id_t slave_id/*, collect_ret_t const& entries*/) {
 
-  index_t last_confirmed = _confirmed[_slave_id];
-  std::vector<VPackSlice> unconfirmed = _state.get(last_confirmed+1);
+  index_t last_confirmed = _confirmed[slave_id];
+  std::vector<log_t> unconfirmed = _state.get(last_confirmed);
   
   // RPC path
   std::stringstream path;
   path << "/_api/agency_priv/appendEntries?term=" << term() << "&leaderId="
-       << id() << "&prevLogIndex=" << entries.prev_log_index << "&prevLogTerm="
-       << entries.prev_log_term << "&leaderCommit=" << _last_commit_index;
+       << id() << "&prevLogIndex=" << unconfirmed[0].index << "&prevLogTerm="
+       << unconfirmed[0].index << "&leaderCommit=" << _last_commit_index;
 
   // Headers
 	std::unique_ptr<std::map<std::string, std::string>> headerFields =
@@ -212,20 +212,19 @@ append_entries_t Agent::sendAppendEntriesRPC (
   // Body
   Builder builder;
   builder.add(VPackValue(VPackValueType::Array));
-  index_t j = last_confirmed+1;
-  for (auto const& i : unconfirmed) {
+  index_t last = unconfirmed[0].index;
+  for (size_t i = 1; i < unconfirmed.size(); ++i) {
     builder.add (VPackValue(VPackValueType::Object));
-    builder.add ("index", j);
-    builder.add ("query", i);
+    builder.add ("index", VPackValue(unconfirmed[i].index));
+    builder.add ("query", VPackSlice(unconfirmed[i].entry->data()));
     builder.close();
-    ++last;
+    last = unconfirmed[i].index;
   }
   builder.close();
-  std::cout << builder.toJson() << std::endl;
 
   // Send
   LOG(INFO) << "AGENCY: Appending " << unconfirmed.size() << " entries up to index "
-            << j << " to follower " << slave_id; 
+            << last << " to follower " << slave_id; 
   arangodb::ClusterComm::instance()->asyncRequest
     ("1", 1, _config.end_points[slave_id],
      rest::HttpRequest::HTTP_REQUEST_POST,
@@ -279,29 +278,17 @@ void Agent::run() {
   CONDITION_LOCKER(guard, _cv);
   
   while (!this->isStopping()) {
-
     if (leading())
       _cv.wait(10000000);
     else
       _cv.wait();
-
     std::vector<collect_ret_t> work(size());
-    
     // Collect all unacknowledged
     for (size_t i = 0; i < size(); ++i) {
       if (i != id()) {
-        sendAppendEntriesRPC(i)
-          //work[i] = _state.collectFrom(_confirmed[i]+1);
+        sendAppendEntriesRPC(i);
       }
     }
-    
-    // (re-)attempt RPCs
-    /*for (size_t j = 0; j < size(); ++j) {
-      if (j != id() && work[j].size()) {
-        sendAppendEntriesRPC(j, work[j]);
-      }
-      }*/
-    
   }
 
 }
@@ -322,6 +309,8 @@ bool Agent::lead () {
 
 bool Agent::rebuildDBs() {
   MUTEX_LOCKER(mutexLocker, _ioLock);
+  _spearhead.apply(_state.slices());
+  _read_db.apply(_state.slices());
   return true;
 }
 
