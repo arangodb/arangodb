@@ -22,12 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Store.h"
+#include "Basics/ConditionLocker.h"
+#include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
-
-#include <Basics/ConditionLocker.h>
 
 #include <iostream>
 
@@ -65,8 +65,9 @@ Node::Node (std::string const& name, Node* parent) :
 Node::~Node() {}
 
 Slice Node::slice() const {
-  return (_value.size()==0) ?
-    Slice("\x00a",&Options::Defaults):Slice(_value.data());
+  return (_value.size()==0) ? 
+    arangodb::basics::VelocyPackHelper::EmptyObjectValue() :
+    Slice(_value.data());
 }
 
 std::string const& Node::name() const {return _name;}
@@ -175,7 +176,7 @@ std::ostream& operator<< (std::ostream& o, std::map<S,T> const& d) {
 
 Node& Node::root() {
   Node *par = _parent, *tmp;
-  while (par != 0) {
+  while (par != nullptr) {
     tmp = par;
     par = par->_parent;
   }

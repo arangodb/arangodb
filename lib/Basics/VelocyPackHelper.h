@@ -229,6 +229,7 @@ class VelocyPackHelper {
   static arangodb::velocypack::Slice FalseValue();
   static arangodb::velocypack::Slice BooleanValue(bool);
   static arangodb::velocypack::Slice EmptyArrayValue();
+  static arangodb::velocypack::Slice EmptyObjectValue();
 };
 }
 }
