@@ -431,14 +431,16 @@ function ahuacatlQueryEdgesTestSuite () {
         var actual;
 
         var bindVars = {start: {_id: "v1"}}; // No collection
-        assertQueryError(errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, q, bindVars);
-
-        bindVars = {start: "UnitTestTheFuxx/v1"}; // Non existing collection
-        actual = getQueryResults(query, bindVars);
+        actual = getQueryResults(q, bindVars);
         assertEqual(actual, [ ]);
 
-        bindVars = {start: { id: "UnitTestTheFuxx/v1" } }; // No _id attribute
-        assertQueryError(errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, q, bindVars);
+        bindVars = {start: "UnitTestTheFuxx/v1"}; // Non existing collection
+        actual = getQueryResults(q, bindVars);
+        assertEqual(actual, [ ]);
+
+        bindVars = {start: { id: "UnitTestTheFuxx/v1"}};  // No _id attribute
+        actual = getQueryResults(q, bindVars);
+        assertEqual(actual, [ ]);
 
         bindVars = {start: [{ id: "UnitTestTheFuxx/v1" }] }; // Error in Array
         actual = getQueryResults(q, bindVars);
@@ -1250,7 +1252,6 @@ function ahuacatlQueryShortestPathTestSuite () {
       };
 
       var actual = getQueryResults("RETURN SHORTEST_PATH(@@v, @@e, '" + vn + "/H', '" + vn + "/A', 'inbound', " + JSON.stringify(config) + ").vertices", { "@v" : vn, "@e" : en }); 
-      // var actual = getQueryResults("FOR p IN SHORTEST_PATH(@@v, @@e, '" + vn + "/A', '" + vn + "/H', 'outbound', " + JSON.stringify(config) + ") RETURN p.vertex._key", { "@v" : vn, "@e" : en }); 
 
       assertEqual([[ vn + "/H", vn + "/G", vn + "/E", vn + "/D", vn + "/A" ]], actual);
     },

@@ -64,6 +64,59 @@ static OperationResult FetchDocumentById(arangodb::Transaction* trx,
   return opRes;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Local class to expand edges.
+///        Will be handed over to the path finder
+////////////////////////////////////////////////////////////////////////////////
+
+struct BasicExpander {
+ private:
+  std::vector<EdgeCollectionInfo*> const _colls;
+  arangodb::Transaction* _trx;
+  TRI_edge_direction_e _dir;
+  std::shared_ptr<OperationResult> _opRes;
+
+ public:
+  BasicExpander(std::vector<EdgeCollectionInfo*> const& colls,
+                arangodb::Transaction* trx, TRI_edge_direction_e dir)
+      : _colls(colls),
+        _trx(trx),
+        _dir(dir),
+        _opRes(std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR)){};
+
+  void operator()(std::string const& v, std::vector<std::string>& res_edges,
+                  std::vector<std::string>& neighbors) {
+    for (auto const& edgeCollection : _colls) {
+      TRI_ASSERT(edgeCollection != nullptr);
+      std::shared_ptr<OperationCursor> edgeCursor = edgeCollection->getEdges(_dir, v);
+      while (edgeCursor->hasMore()) {
+        edgeCursor->getMore(_opRes);
+        if (_opRes->failed()) {
+          THROW_ARANGO_EXCEPTION(_opRes->code);
+        }
+        VPackSlice edges = _opRes->slice();
+
+        for (auto const& edge : VPackArrayIterator(edges)) {
+          std::string edgeId = _trx->extractIdString(edge);
+          std::string from = edge.get(TRI_VOC_ATTRIBUTE_FROM).copyString();
+          if (from == v) {
+            std::string to = edge.get(TRI_VOC_ATTRIBUTE_TO).copyString();
+            if (to != v) {
+              res_edges.emplace_back(edgeId);
+              neighbors.emplace_back(to);
+            }
+          } else {
+            res_edges.emplace_back(edgeId);
+            neighbors.emplace_back(from);
+          }
+
+        }
+      }
+    }
+  }
+};
+
+
 EdgeCollectionInfo::EdgeCollectionInfo(arangodb::Transaction* trx,
                                        std::string const& collectionName,
                                        WeightCalculatorFunction weighter)
@@ -527,70 +580,8 @@ TRI_RunSimpleShortestPathSearch(
     backward = TRI_EDGE_ANY;
   }
 
-  auto fwExpander =
-      [&collectionInfos, forward, trx](std::string const& v, std::vector<std::string>& res_edges,
-                                  std::vector<std::string>& neighbors) {
-        for (auto const& edgeCollection : collectionInfos) {
-          TRI_ASSERT(edgeCollection != nullptr);
-          std::shared_ptr<OperationCursor> edgeCursor = edgeCollection->getEdges(forward, v);
-          auto opRes = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
-          while (edgeCursor->hasMore()) {
-            edgeCursor->getMore(opRes);
-            if (opRes->failed()) {
-              THROW_ARANGO_EXCEPTION(opRes->code);
-            }
-            VPackSlice edges = opRes->slice();
-
-            for (auto const& edge : VPackArrayIterator(edges)) {
-              std::string edgeId = trx->extractIdString(edge);
-              std::string from = edge.get(TRI_VOC_ATTRIBUTE_FROM).copyString();
-              if (from == v) {
-                std::string to = edge.get(TRI_VOC_ATTRIBUTE_TO).copyString();
-                if (to == v) {
-                  res_edges.emplace_back(edgeId);
-                  neighbors.emplace_back(to);
-                }
-              } else {
-                res_edges.emplace_back(edgeId);
-                neighbors.emplace_back(from);
-              }
-
-            }
-          }
-        }
-      };
-  auto bwExpander =
-      [&collectionInfos, backward, trx](std::string const& v, std::vector<std::string>& res_edges,
-                                   std::vector<std::string>& neighbors) {
-        auto opRes = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
-        for (auto const& edgeCollection : collectionInfos) {
-          TRI_ASSERT(edgeCollection != nullptr);
-          std::shared_ptr<OperationCursor> edgeCursor = edgeCollection->getEdges(backward, v);
-          while (edgeCursor->hasMore()) {
-            edgeCursor->getMore(opRes);
-            if (opRes->failed()) {
-              THROW_ARANGO_EXCEPTION(opRes->code);
-            }
-            VPackSlice edges = opRes->slice();
-
-            for (auto const& edge : VPackArrayIterator(edges)) {
-              std::string edgeId = trx->extractIdString(edge);
-              std::string from = edge.get(TRI_VOC_ATTRIBUTE_FROM).copyString();
-              if (from == v) {
-                std::string to = edge.get(TRI_VOC_ATTRIBUTE_TO).copyString();
-                if (to == v) {
-                  res_edges.emplace_back(edgeId);
-                  neighbors.emplace_back(to);
-                }
-              } else {
-                res_edges.emplace_back(edgeId);
-                neighbors.emplace_back(from);
-              }
-
-            }
-          }
-        }
-      };
+  auto fwExpander = BasicExpander(collectionInfos, trx, forward);
+  auto bwExpander = BasicExpander(collectionInfos, trx, backward);
 
   ArangoDBConstDistancePathFinder pathFinder(fwExpander, bwExpander);
   auto path = std::make_unique<ArangoDBConstDistancePathFinder::Path>();
