@@ -1930,6 +1930,157 @@ function multiEdgeDirectionSuite () {
   };
 }
 
+function subQuerySuite () {
+  const gn = "UnitTestGraph";
+
+  return {
+
+    /**
+     * Graph under Test:
+     *
+     * A -> B -> [B1, B2, B3, B4, B5]
+     *   \> C -> [C1, C2, C3, C4, C5]
+     *   \> D -> [D1, D2, D3, D4, D5]
+     *
+     */
+
+    setUp: function () {
+      cleanup();
+      vc = db._create(vn, {numberOfShards: 4});
+      ec = db._createEdgeCollection(en, {numberOfShards: 4});
+
+      try {
+        gm._drop(gn);
+      } catch (e) {
+        // It is expected that this graph does not exist.
+      }
+
+      gm._create(gn, [gm._relation(en, vn, vn)]);
+
+      vertex.A = vc.save({_key: "A"})._id;
+      vertex.B = vc.save({_key: "B"})._id;
+      vertex.C = vc.save({_key: "C"})._id;
+      vertex.D = vc.save({_key: "D"})._id;
+
+      vertex.B1 = vc.save({_key: "B1", value: 1})._id;
+      vertex.B2 = vc.save({_key: "B2", value: 2})._id;
+      vertex.B3 = vc.save({_key: "B3", value: 3})._id;
+      vertex.B4 = vc.save({_key: "B4", value: 4})._id;
+      vertex.B5 = vc.save({_key: "B5", value: 5})._id;
+
+      vertex.C1 = vc.save({_key: "C1", value: 1})._id;
+      vertex.C2 = vc.save({_key: "C2", value: 2})._id;
+      vertex.C3 = vc.save({_key: "C3", value: 3})._id;
+      vertex.C4 = vc.save({_key: "C4", value: 4})._id;
+      vertex.C5 = vc.save({_key: "C5", value: 5})._id;
+
+      vertex.D1 = vc.save({_key: "D1", value: 1})._id;
+      vertex.D2 = vc.save({_key: "D2", value: 2})._id;
+      vertex.D3 = vc.save({_key: "D3", value: 3})._id;
+      vertex.D4 = vc.save({_key: "D4", value: 4})._id;
+      vertex.D5 = vc.save({_key: "D5", value: 5})._id;
+
+      ec.save(vertex.A, vertex.B, {});
+      ec.save(vertex.A, vertex.C, {});
+      ec.save(vertex.A, vertex.D, {});
+
+      ec.save(vertex.B, vertex.B1, {});
+      ec.save(vertex.B, vertex.B2, {});
+      ec.save(vertex.B, vertex.B3, {});
+      ec.save(vertex.B, vertex.B4, {});
+      ec.save(vertex.B, vertex.B5, {});
+
+      ec.save(vertex.C, vertex.C1, {});
+      ec.save(vertex.C, vertex.C2, {});
+      ec.save(vertex.C, vertex.C3, {});
+      ec.save(vertex.C, vertex.C4, {});
+      ec.save(vertex.C, vertex.C5, {});
+
+      ec.save(vertex.D, vertex.D1, {});
+      ec.save(vertex.D, vertex.D2, {});
+      ec.save(vertex.D, vertex.D3, {});
+      ec.save(vertex.D, vertex.D4, {});
+      ec.save(vertex.D, vertex.D5, {});
+    },
+
+    tearDown: function () {
+      try {
+        gm._drop(gn);
+      } catch (e) {
+        // Just in case the test leaves an invalid state.
+      }
+      cleanup();
+    },
+
+
+    // The test is that the traversal in subquery has more then LIMIT many
+    // results. In case of a bug the cursor of the traversal is reused for the second
+    // iteration as well and does not reset.
+    testSubQueryFixedStart: function () {
+      var q = `FOR v IN OUTBOUND "${vertex.A}" ${en}
+               SORT v._key
+               LET sub = (
+                 FOR t IN OUTBOUND "${vertex.B}" ${en}
+                   SORT t.value
+                   LIMIT 3
+                   RETURN t
+               )
+               RETURN sub`;
+      var actual = db._query(q).toArray();
+      assertEqual(actual.length, 3); // On the top level we find 3 results
+      for (var i = 0; i < actual.length; ++i) {
+        var current = actual[i];
+        assertEqual(current.length, 3); // Check for limit
+        // All should be connected to B!
+        assertEqual(current[0]._id, vertex.B1);
+        assertEqual(current[1]._id, vertex.B2);
+        assertEqual(current[2]._id, vertex.B3);
+      }
+
+    },
+
+    // The test is that the traversal in subquery has more then LIMIT many
+    // results. In case of a bug the cursor of the traversal is reused for the second
+    // iteration as well and does not reset.
+    testSubQueryDynamicStart: function () {
+      var q = `FOR v IN OUTBOUND "${vertex.A}" ${en}
+               SORT v._key
+               LET sub = (
+                 FOR t IN OUTBOUND v ${en}
+                   SORT t.value
+                   LIMIT 3
+                   RETURN t
+               )
+               RETURN sub`;
+      var actual = db._query(q).toArray();
+      assertEqual(actual.length, 3); // On the top level we find 3 results
+      for (var i = 0; i < actual.length; ++i) {
+        assertEqual(actual[i].length, 3); // Check for limit
+      }
+      var current = actual[0];
+      // All should be connected to B!
+      assertEqual(current[0]._id, vertex.B1);
+      assertEqual(current[1]._id, vertex.B2);
+      assertEqual(current[2]._id, vertex.B3);
+
+      var current = actual[1];
+      // All should be connected to C!
+      assertEqual(current[0]._id, vertex.C1);
+      assertEqual(current[1]._id, vertex.C2);
+      assertEqual(current[2]._id, vertex.C3);
+
+      var current = actual[2];
+      // All should be connected to D!
+      assertEqual(current[0]._id, vertex.D1);
+      assertEqual(current[1]._id, vertex.D2);
+      assertEqual(current[2]._id, vertex.D3);
+    },
+
+
+
+  };
+}
+
 jsunity.run(namedGraphSuite);
 jsunity.run(multiCollectionGraphSuite);
 jsunity.run(multiEdgeCollectionGraphSuite);
@@ -1938,5 +2089,6 @@ jsunity.run(complexInternaSuite);
 jsunity.run(complexFilteringSuite);
 jsunity.run(brokenGraphSuite);
 jsunity.run(multiEdgeDirectionSuite);
+jsunity.run(subQuerySuite);
 
 return jsunity.done();
