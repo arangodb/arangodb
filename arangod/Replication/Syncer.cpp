@@ -206,7 +206,7 @@ int Syncer::sendCreateBarrier(std::string& errorMsg, TRI_voc_tick_t minTick) {
                ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
                ": " + response->getHttpReturnMessage();
   } else {
-    std::shared_ptr<VPackBuilder> builder;
+    auto builder = std::make_shared<VPackBuilder>();
     res = parseResponse(builder, response.get());
 
     if (res == TRI_ERROR_NO_ERROR) {
@@ -642,7 +642,7 @@ int Syncer::getMasterState(std::string& errorMsg) {
   }
 
   
-  std::shared_ptr<VPackBuilder> builder;
+  auto builder = std::make_shared<VPackBuilder>();
   int res = parseResponse(builder, response.get());
 
   if (res == TRI_ERROR_NO_ERROR) {

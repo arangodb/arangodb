@@ -50,6 +50,10 @@ typedef arangodb::basics::ConstDistanceFinder<
 namespace arangodb {
 namespace traverser {
 
+// Forward declaration
+
+class DepthFirstTraverser;
+
 // A collection of shared options used in several functions.
 // Should not be used directly, use specialization instead.
 struct BasicOptions {
@@ -146,11 +150,13 @@ struct ShortestPathOptions : BasicOptions {
                      arangodb::velocypack::Slice) const override;
 };
 
+
 class SingleServerTraversalPath : public TraversalPath {
  public:
   explicit SingleServerTraversalPath(
-      arangodb::basics::EnumeratedPath<std::string, std::string> const& path)
-      : _path(path) {}
+      arangodb::basics::EnumeratedPath<std::string, std::string> const& path,
+      DepthFirstTraverser* traverser)
+      : _traverser(traverser), _path(path) {}
 
   ~SingleServerTraversalPath() {}
 
@@ -168,6 +174,8 @@ class SingleServerTraversalPath : public TraversalPath {
   void getDocumentByIdentifier(Transaction*, std::string const&,
                                arangodb::velocypack::Builder&);
 
+  DepthFirstTraverser* _traverser;
+
   arangodb::basics::EnumeratedPath<std::string, std::string> _path;
 
   arangodb::velocypack::Builder _searchBuilder;
@@ -175,6 +183,8 @@ class SingleServerTraversalPath : public TraversalPath {
 };
 
 class DepthFirstTraverser : public Traverser {
+
+  friend class SingleServerTraversalPath;
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -348,6 +358,9 @@ class DepthFirstTraverser : public Traverser {
   bool edgeMatchesConditions(arangodb::velocypack::Slice, size_t);
 
   bool vertexMatchesConditions(std::string const&, size_t);
+
+  std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> fetchVertexData(
+      std::string const&);
 };
 }
 }

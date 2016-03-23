@@ -243,7 +243,7 @@ bool TraverserExpression::matchesCheck(arangodb::Transaction* trx,
   VPackSlice result = arangodb::basics::VelocyPackHelper::NullValue();
   // perform recursive check. this may modify value
   if (recursiveCheck(varAccess, value)) {
-    result = element;
+    result = value;
   }
 
   TRI_ASSERT(compareTo != nullptr);

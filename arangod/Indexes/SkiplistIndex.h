@@ -61,7 +61,6 @@ class SkiplistIterator : public IndexIterator {
                                          TRI_index_element_t> Node;
 
  private:
-  SkiplistIndex const* _index;
   bool _reverse;
   Node* _cursor;
 
@@ -69,10 +68,9 @@ class SkiplistIterator : public IndexIterator {
   Node* _rightEndPoint;  // Interval right border, first excluded element
 
  public:
-  SkiplistIterator(SkiplistIndex const* idx, bool reverse, Node* left,
+  SkiplistIterator(bool reverse, Node* left,
                    Node* right)
-      : _index(idx),
-        _reverse(reverse),
+      : _reverse(reverse),
         _leftEndPoint(left),
         _rightEndPoint(right) {
     reset(); // Initializes the cursor
