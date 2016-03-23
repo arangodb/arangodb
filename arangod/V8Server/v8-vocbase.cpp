@@ -3354,50 +3354,6 @@ static void JS_ListEndpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief parse vertex handle from a v8 value (string | object)
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_ParseVertex(v8::FunctionCallbackInfo<v8::Value> const& args,
-                    CollectionNameResolver const* resolver, TRI_voc_cid_t& cid,
-                    std::unique_ptr<char[]>& key,
-                    v8::Handle<v8::Value> const val) {
-  v8::Isolate* isolate = args.GetIsolate();
-  v8::HandleScope scope(isolate);
-
-  TRI_ASSERT(key.get() == nullptr);
-
-  // reset everything
-  std::string collectionName;
-  TRI_voc_rid_t rid = 0;
-
-  // try to extract the collection name, key, and revision from the object
-  // passed
-  if (!ExtractDocumentHandle(isolate, val, collectionName, key, rid)) {
-    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
-  }
-
-  // we have at least a key, we also might have a collection name
-  TRI_ASSERT(key.get() != nullptr);
-
-  if (collectionName.empty()) {
-    // we do not know the collection
-    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
-  }
-
-  if (ServerState::instance()->isDBServer()) {
-    cid = resolver->getCollectionIdCluster(collectionName);
-  } else {
-    cid = resolver->getCollectionIdLocal(collectionName);
-  }
-
-  if (cid == 0) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the private WRP_VOCBASE_COL_TYPE value
 ////////////////////////////////////////////////////////////////////////////////
 
