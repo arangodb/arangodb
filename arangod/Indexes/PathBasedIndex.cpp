@@ -308,17 +308,17 @@ void PathBasedIndex::buildIndexValues(
 
   auto moveOn = [&](VPackSlice something) -> void {
     auto it = seen.find(something);
-    if (it != seen.end()) {
+    if (it == seen.end()) {
       seen.insert(something);
       sliceStack.push_back(something);
-      buildIndexValues(document, level+1, toInsert, sliceStack);
+      buildIndexValues(document, level + 1, toInsert, sliceStack);
       sliceStack.pop_back();
     }
   };
   for (auto const& member : VPackArrayIterator(current)) {
     VPackSlice current2(member);
     bool doneNull = false;
-    for (size_t i = _expanding[level]+1; i < n; i++) {
+    for (size_t i = _expanding[level] + 1; i < n; i++) {
       if (!current2.isObject()) {
         if (!_sparse) {
           moveOn(arangodb::basics::VelocyPackHelper::NullValue());
