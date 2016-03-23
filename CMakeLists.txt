@@ -10,18 +10,8 @@ if (POLICY CMP0037)
   cmake_policy(SET CMP0037 NEW)
 endif ()
 
-if (APPLE)
-  if (NOT DEFINED CMAKE_C_COMPILER)
-    set(CMAKE_C_COMPILER /usr/bin/clang)
-  endif ()
-
-  if (NOT DEFINED CMAKE_CXX_COMPILER)
-    set(CMAKE_CXX_COMPILER /usr/bin/clang++)
-  endif ()
-endif ()
-
 option(VERBOSE OFF)
-set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9" CACHE STRING "deployment target for MacOSX")
+#set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9" CACHE STRING "deployment target for MacOSX")
 
 project(ArangoDB CXX C ASM)
 
@@ -744,3 +734,15 @@ add_subdirectory(arangosh)
 add_subdirectory(arangod)
 add_subdirectory(UnitTests)
 add_subdirectory(Documentation)
+
+add_dependencies(arangob zlibstatic v8_build)
+add_dependencies(arangod ev zlibstatic v8_build)
+add_dependencies(arangodump zlibstatic v8_build)
+add_dependencies(arangoimp zlibstatic v8_build)
+add_dependencies(arangorestore zlibstatic v8_build)
+add_dependencies(arangosh zlibstatic v8_build)
+#if (USE_MAINTAINER_MODE)
+#  add_dependencies(basics_suite v8_build)
+#  add_dependencies(geo_suite v8_build)
+#endif()
+
