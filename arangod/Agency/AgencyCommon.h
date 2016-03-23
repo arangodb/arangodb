@@ -98,12 +98,11 @@ struct AgentConfiguration {
   id_t id;
   float min_ping;
   float max_ping;
-  float election_timeout;
   float append_entries_retry_interval;
   std::vector<std::string> end_points;
   std::string end_point_persist;
   bool notify;
-  AgentConfiguration () : min_ping(.15), max_ping(.3) {};
+  AgentConfiguration () : id(0), min_ping(.15), max_ping(.3), notify(false) {};
   AgentConfiguration (uint32_t i, float min_p, float max_p, float appent_i,
                       std::vector<std::string> const& end_p, bool n = false) :
     id(i), min_ping(min_p), max_ping(max_p),
@@ -139,7 +138,7 @@ typedef AgentConfiguration config_t;
 
 struct vote_ret_t {
   query_t result;
-  vote_ret_t (query_t res) : result(res) {}
+  explicit vote_ret_t (query_t res) : result(res) {}
 };
 
 struct read_ret_t {

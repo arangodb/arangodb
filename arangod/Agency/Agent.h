@@ -45,7 +45,7 @@ public:
   /**
    * @brief Construct with program options
    */
-  Agent (config_t const&);
+  explicit Agent (config_t const&);
 
   /**
    * @brief Clean up
