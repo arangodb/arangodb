@@ -54,7 +54,7 @@ public:
   
 
   /// @brief Default constructor
-  State (std::string const& end_point = "tcp://localhost:8529");
+  explicit State (std::string const& end_point = "tcp://localhost:8529");
   
 
   /// @brief Default Destructor

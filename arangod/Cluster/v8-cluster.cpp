@@ -1787,6 +1787,7 @@ static void Return_PrepareClusterCommResultForJS(
       // boring:
 
       // The headers:
+      TRI_ASSERT(res.result != nullptr);
       v8::Handle<v8::Object> h = v8::Object::New(isolate);
       for (auto const& i : res.result->getHeaderFields()) {
         h->Set(TRI_V8_STD_STRING(i.first), TRI_V8_STD_STRING(i.second));
@@ -1835,6 +1836,7 @@ static void Return_PrepareClusterCommResultForJS(
       v8::Handle<v8::Object> h = v8::Object::New(isolate);
       TRI_GET_GLOBAL_STRING(StatusKey);
       r->Set(StatusKey, TRI_V8_ASCII_STRING("RECEIVED"));
+      TRI_ASSERT(res.answer != nullptr);
       std::map<std::string, std::string> headers = res.answer->headers();
       std::map<std::string, std::string>::iterator i;
       for (i = headers.begin(); i != headers.end(); ++i) {

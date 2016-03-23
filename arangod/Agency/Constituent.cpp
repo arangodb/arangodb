@@ -42,8 +42,12 @@ void Constituent::configure(Agent* agent) {
   _agent = agent;
   if (size() == 1) {
     _role = LEADER;
-  } else { 
-    _votes.resize(size());
+  } else {
+    try {
+      _votes.resize(size());
+    } catch (std::exception const& e) {
+      LOG(FATAL) << "Cannot resize votes vector to " << size();
+    }
     _id = _agent->config().id;
     if (_agent->config().notify) {// (notify everyone) 
       notifyAll();
@@ -51,8 +55,9 @@ void Constituent::configure(Agent* agent) {
   }
 }
 
-Constituent::Constituent() : Thread("Constituent"), _term(0), _id(0),
-  _gen(std::random_device()()), _role(FOLLOWER), _agent(0) {}
+Constituent::Constituent() :
+  Thread("Constituent"), _term(0), _id(0), _gen(std::random_device()()),
+  _role(FOLLOWER), _leader_id(0), _agent(0) {}
 
 Constituent::~Constituent() {
   shutdown();
@@ -131,7 +136,6 @@ std::vector<std::string> const& Constituent::end_points() const {
 size_t Constituent::notifyAll () {
 
   // Last process notifies everyone 
-	std::vector<ClusterCommResult> results(_agent->config().end_points.size());
   std::stringstream path;
   
   path << "/_api/agency_priv/notifyAll?term=" << _term << "&agencyId=" << _id;
@@ -151,7 +155,7 @@ size_t Constituent::notifyAll () {
     if (i != _id) {
       std::unique_ptr<std::map<std::string, std::string>> headerFields =
         std::make_unique<std::map<std::string, std::string> >();
-      results[i] = arangodb::ClusterComm::instance()->asyncRequest(
+      arangodb::ClusterComm::instance()->asyncRequest(
         "1", 1, end_point(i), rest::HttpRequest::HTTP_REQUEST_POST, path.str(),
         std::make_shared<std::string>(body.toString()), headerFields, nullptr,
         0.0, true);
@@ -190,8 +194,12 @@ const constituency_t& Constituent::gossip () {
 }
 
 void Constituent::callElection() {
-  
-  _votes[_id] = true; // vote for myself
+
+  try {
+    _votes.at(_id) = true; // vote for myself
+  } catch (std::out_of_range const& oor) {
+    LOG(FATAL) << "_votes vector is not properly sized!";
+  }
   _cast = true;
   if(_role == CANDIDATE)
     _term++;            // raise my term

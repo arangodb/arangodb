@@ -854,6 +854,7 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
 
 std::string ClusterComm::processAnswer(std::string& coordinatorHeader,
                                        arangodb::rest::HttpRequest* answer) {
+  TRI_ASSERT(answer != nullptr);
   // First take apart the header to get the operaitonID:
   OperationID operationID;
   size_t start = 0;
@@ -881,6 +882,7 @@ std::string ClusterComm::processAnswer(std::string& coordinatorHeader,
     ClusterComm::IndexIterator i;
     i = receivedByOpID.find(operationID);
     if (i != receivedByOpID.end()) {
+      TRI_ASSERT(answer != nullptr);
       ClusterCommOperation* op = *(i->second);
       op->result.answer.reset(answer);
       op->result.answer_code = rest::HttpResponse::responseCode(
@@ -904,6 +906,7 @@ std::string ClusterComm::processAnswer(std::string& coordinatorHeader,
 
       i = toSendByOpID.find(operationID);
       if (i != toSendByOpID.end()) {
+        TRI_ASSERT(answer != nullptr);
         ClusterCommOperation* op = *(i->second);
         op->result.answer.reset(answer);
         op->result.answer_code = rest::HttpResponse::responseCode(

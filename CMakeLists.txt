@@ -11,7 +11,7 @@ if (POLICY CMP0037)
 endif ()
 
 option(VERBOSE OFF)
-#set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9" CACHE STRING "deployment target for MacOSX")
+set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9" CACHE STRING "deployment target for MacOSX")
 
 project(ArangoDB CXX C ASM)
 
@@ -663,7 +663,7 @@ if (USE_MAINTAINER_MODE)
       OUTPUT
         ${CMAKE_SOURCE_DIR}/${m}
       COMMAND
-        ./utils/generateErrorfile.sh ./${ERRORS_DAT} ./${m}
+        PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE} ./utils/generateErrorfile.sh ./${ERRORS_DAT} ./${m}
       DEPENDS
         ${CMAKE_SOURCE_DIR}/${ERRORS_DAT}
       WORKING_DIRECTORY
