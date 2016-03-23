@@ -145,7 +145,6 @@ inline HttpHandler::status_t RestAgencyHandler::handleRead () {
 HttpHandler::status_t RestAgencyHandler::handleTest() {
   Builder body;
   body.add(VPackValue(VPackValueType::Object));
-  body.add("id", Value(_agent->id()));
   body.add("term", Value(_agent->term()));
   body.add("leaderId", Value(_agent->leaderID()));
   body.add("configuration", _agent->config().toBuilder()->slice());
