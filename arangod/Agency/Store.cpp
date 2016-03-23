@@ -26,7 +26,6 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
-#include <velocypack/Hexdump.h>
 
 #include <Basics/ConditionLocker.h>
 
