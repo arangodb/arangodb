@@ -454,7 +454,7 @@ SkiplistIterator* SkiplistIndex::lookup(arangodb::Transaction* trx,
 
   // Check if the interval is valid and not empty
   if (intervalValid(leftBorder, rightBorder)) {
-    auto iterator = std::make_unique<SkiplistIterator>(this, reverse, leftBorder, rightBorder);
+    auto iterator = std::make_unique<SkiplistIterator>(reverse, leftBorder, rightBorder);
     if (iterator == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
@@ -462,7 +462,7 @@ SkiplistIterator* SkiplistIndex::lookup(arangodb::Transaction* trx,
   }
 
   // Creates an empty iterator
-  auto iterator = std::make_unique<SkiplistIterator>(this, reverse, nullptr, nullptr);
+  auto iterator = std::make_unique<SkiplistIterator>(reverse, nullptr, nullptr);
   if (iterator == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
