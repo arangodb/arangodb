@@ -129,7 +129,7 @@ public:
    * @brief 1. Deal with appendEntries to slaves.
    *        2. Report success of write processes. 
    */
-  void run ();
+  void run () override;
   void beginShutdown () override;
 
   /**
