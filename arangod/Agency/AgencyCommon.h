@@ -121,7 +121,7 @@ struct AgentConfiguration {
     s << *this;
     return s.str();
   }
-  query_t toBuilder () {
+  query_t const toBuilder () const {
     query_t ret = std::make_shared<arangodb::velocypack::Builder>();
     ret->openObject();
     ret->add("endpoints", VPackValue(VPackValueType::Array));
