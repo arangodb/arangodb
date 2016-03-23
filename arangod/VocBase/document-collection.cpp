@@ -4109,6 +4109,9 @@ int TRI_document_collection_t::newObjectForInsert(
     TRI_voc_tick_t const newRev = TRI_NewTickServer();
     if (s.isNone()) {
       std::string keyString = _keyGenerator->generate(newRev);
+      if (keyString.empty()) {
+        return TRI_ERROR_ARANGO_OUT_OF_KEYS;
+      }
       uint8_t* where = builder.add(TRI_VOC_ATTRIBUTE_KEY,
                                    VPackValue(keyString));
       s = VPackSlice(where);  // point to newly built value, the string

@@ -343,7 +343,7 @@ function GraphBasicsSuite() {
 
       graph.addEdge(v1, v2, "my-edge");
 
-      graph.replaceEdge("my-edge", { weight: 2 });
+      graph.replaceEdge("my-edge", { _from: v1, _to: v2, weight: 2 });
       edge = graph.getEdge("my-edge");
 
       assertEqual(2, edge.getProperty("weight"));
