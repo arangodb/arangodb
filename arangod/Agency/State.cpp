@@ -22,8 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "State.h"
+#include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/Buffer.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <chrono>
@@ -36,8 +38,8 @@ using namespace arangodb::rest;
 
 State::State(std::string const& end_point) : _end_point(end_point), _dbs_checked(false) {
   std::shared_ptr<Buffer<uint8_t>> buf = std::make_shared<Buffer<uint8_t>>();
-  arangodb::velocypack::Slice tmp("\x00a",&Options::Defaults);
-  buf->append(reinterpret_cast<char const*>(tmp.begin()), tmp.byteSize());
+  VPackSlice value = arangodb::basics::VelocyPackHelper::EmptyObjectValue();
+  buf->append(value.startAs<char const>(), value.byteSize());
   if (!_log.size()) {
     _log.push_back(log_t(index_t(0), term_t(0), id_t(0), buf));
   }

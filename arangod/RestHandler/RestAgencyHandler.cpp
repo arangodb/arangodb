@@ -103,7 +103,7 @@ inline HttpHandler::status_t RestAgencyHandler::handleWrite () {
       if (errors > 0) { // epic fail
         generateResult(HttpResponse::PRECONDITION_FAILED,body.slice());
       } else {// full success
-        generateResult(body.slice());
+        generateResult(HttpResponse::OK, body.slice());
       }
     } else {
       //_response->setHeader("Location", _agent->config().end_points[ret.redirect]);
@@ -130,7 +130,7 @@ inline HttpHandler::status_t RestAgencyHandler::handleRead () {
     }
     read_ret_t ret = _agent->read (query);
     if (ret.accepted) {
-      generateResult(ret.result->slice());
+      generateResult(HttpResponse::OK, ret.result->slice());
     } else {
       generateError(HttpResponse::TEMPORARY_REDIRECT,307);
       return HttpHandler::status_t(HANDLER_DONE);
@@ -150,7 +150,7 @@ HttpHandler::status_t RestAgencyHandler::handleTest() {
   body.add("leaderId", Value(_agent->leaderID()));
   body.add("configuration", Value(_agent->config().toString()));
   body.close();
-  generateResult(body.slice());
+  generateResult(HttpResponse::OK, body.slice());
   return HttpHandler::status_t(HANDLER_DONE);
 }
 
@@ -160,7 +160,7 @@ HttpHandler::status_t RestAgencyHandler::handleState() {
   for (auto const& i: _agent->state().slices())
     body.add(i);
   body.close();
-  generateResult(body.slice());
+  generateResult(HttpResponse::OK, body.slice());
   return HttpHandler::status_t(HANDLER_DONE);
 }
 

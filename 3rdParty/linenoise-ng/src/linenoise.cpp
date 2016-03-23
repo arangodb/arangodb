@@ -251,7 +251,7 @@ static void copyString32to8(char* dst, size_t dstLen, const char32_t* src) {
 }
 
 static void copyString32(char32_t* dst, const char32_t* src, size_t len) {
-  while (*src && 1 < len) {
+  while (0 < len && *src) {
     *dst++ = *src++;
     --len;
   }
@@ -1963,7 +1963,7 @@ int InputBuffer::completeLine(PromptBase& pi) {
     int tailIndex = startIndex + longestCommonPrefix;
     memcpy(&displayText[tailIndex], &buf32[pos],
            sizeof(char32_t) * (displayLength - tailIndex + 1));
-    copyString32(buf32, displayText.get(), buflen + 1);
+    copyString32(buf32, displayText.get(), displayLength);
     pos = startIndex + longestCommonPrefix;
     len = displayLength;
     refreshLine(pi);
@@ -2303,7 +2303,7 @@ int InputBuffer::incrementalHistorySearch(PromptBase& pi, int startChar) {
           --dp.searchTextLen;
           dp.searchText[dp.searchTextLen] = 0;
           copyString32(tempUnicode.get(), dp.searchText.get(),
-                       dp.searchTextLen + 1);
+                       dp.searchTextLen);
           dp.updateSearchText(tempUnicode.get());
         } else {
           beep();
@@ -2318,7 +2318,7 @@ int InputBuffer::incrementalHistorySearch(PromptBase& pi, int startChar) {
           unique_ptr<char32_t[]> tempUnicode(
               new char32_t[dp.searchTextLen + 2]);
           copyString32(tempUnicode.get(), dp.searchText.get(),
-                       dp.searchTextLen + 2);
+                       dp.searchTextLen);
           tempUnicode[dp.searchTextLen] = c;
           tempUnicode[dp.searchTextLen + 1] = 0;
           dp.updateSearchText(tempUnicode.get());
@@ -2395,7 +2395,7 @@ int InputBuffer::incrementalHistorySearch(PromptBase& pi, int startChar) {
   Utf32String tempUnicode(pb.promptBytes + 1);
 
   copyString32(tempUnicode.get(), &pi.promptText[pi.promptLastLinePosition],
-               pb.promptBytes + 1);
+               pb.promptBytes - pi.promptLastLinePosition);
   tempUnicode.initFromBuffer();
   pb.promptText = tempUnicode;
   pb.promptExtraLines = 0;
