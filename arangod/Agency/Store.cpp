@@ -88,7 +88,7 @@ Node& Node::operator= (Node const& node) { // Assign node
   return *this;
 }
 
-bool Node::operator== (arangodb::velocypack::Slice const& rhs) const {
+bool Node::operator== (VPackSlice const& rhs) const {
   return rhs.equals(slice());
 }
 
@@ -195,7 +195,7 @@ bool Node::addTimeToLive (long millis) {
   return true;
 }
 
-bool Node::applies (arangodb::velocypack::Slice const& slice) {
+bool Node::applies (VPackSlice const& slice) {
 
   if (slice.type() == ValueType::Object) {
 
@@ -378,19 +378,16 @@ std::vector<bool> Store::apply (query_t const& query) {
 }
 
 std::vector<bool> Store::apply (
-  std::vector<arangodb::velocypack::Slice> const& queries) {    
+  std::vector<VPackSlice> const& queries) {    
   std::vector<bool> applied;
   MUTEX_LOCKER(storeLocker, _storeLock);
-  std::cout << queries.size() << std::endl;
   for (auto const& i : queries) {
-    std::cout << i.toJson() << std::endl; 
-    applied.push_back(applies(i)); break; // no precond
+    applied.push_back(applies(i)); // no precond
   }
-  _cv.signal();                                // Wake up run
   return applied;
 }
 
-bool Store::check (arangodb::velocypack::Slice const& slice) const {
+bool Store::check (VPackSlice const& slice) const {
   if (slice.type() != VPackValueType::Object) {
     LOG(WARN) << "Cannot check precondition: " << slice.toJson();
     return false;
@@ -451,7 +448,7 @@ query_t Store::read (query_t const& queries) const { // list of list of paths
   return result;
 }
 
-bool Store::read (arangodb::velocypack::Slice const& query, Builder& ret) const {
+bool Store::read (VPackSlice const& query, Builder& ret) const {
 
   // Collect all paths
   std::list<std::string> query_strs;

@@ -116,23 +116,27 @@ bool State::log (query_t const& queries, term_t term, id_t leaderId,
   }
   MUTEX_LOCKER(mutexLocker, _logLock); // log entries must stay in order
   for (auto const& i : VPackArrayIterator(queries->slice())) {
-    std::shared_ptr<Buffer<uint8_t>> buf = std::make_shared<Buffer<uint8_t>>();
-    buf->append ((char const*)i.get("query").begin(), i.get("query").byteSize()); 
-    //_log.push_back(log_t(i.get("index").getUInt(), term, leaderId, buf));
+    try {
+      std::shared_ptr<Buffer<uint8_t>> buf = std::make_shared<Buffer<uint8_t>>();
+      buf->append ((char const*)i.get("query").begin(), i.get("query").byteSize());
+      _log.push_back(log_t(i.get("index").getUInt(), term, leaderId, buf));
+    } catch (std::exception const& e) {
+      std::cout << e.what() << std::endl;
+    }
     //save (builder);
   }
   return true;
 }
 
-std::vector<arangodb::velocypack::Slice> State::get (index_t start, index_t end) const {
-  std::vector<arangodb::velocypack::Slice> queries;
+std::vector<log_t> State::get (index_t start, index_t end) const {
+  std::vector<log_t> entries;
   MUTEX_LOCKER(mutexLocker, _logLock);
   if (end == std::numeric_limits<uint64_t>::max())
     end = _log.size() - 1;
   for (size_t i = start; i <= end; ++i) {// TODO:: Check bounds
-    queries.push_back(arangodb::velocypack::Slice(_log[i].entry->data()));
+    entries.push_back(_log[i]);
   }
-  return queries;
+  return entries;
 }
 
 

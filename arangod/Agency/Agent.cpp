@@ -35,9 +35,10 @@ using namespace arangodb::velocypack;
 namespace arangodb {
 namespace consensus {
 
-Agent::Agent () : Thread ("Agent"), _stopping(false) {}
+Agent::Agent () : Thread ("Agent"), _last_commit_index(0), _stopping(false) {}
 
-Agent::Agent (config_t const& config) : Thread ("Agent"), _config(config) {
+Agent::Agent (config_t const& config) :
+  Thread ("Agent"), _config(config), _last_commit_index(0) {
   _state.setEndPoint(_config.end_points[this->id()]);
   _constituent.configure(this);
   _confirmed.resize(size(),0);
@@ -46,7 +47,7 @@ Agent::Agent (config_t const& config) : Thread ("Agent"), _config(config) {
 id_t Agent::id() const { return _config.id;}
 
 Agent::~Agent () {
-//  shutdown();
+  shutdown();
 }
 
 State const& Agent::state() const {
@@ -54,10 +55,10 @@ State const& Agent::state() const {
 }
 
 bool Agent::start() {
+  LOG(INFO) << "AGENCY: Starting constituent thread.";
   _constituent.start();
-  std::cout << "constituent started" << std::endl;
-  _spear_head.start();
-  std::cout << "spear_head started" << std::endl;
+  LOG(INFO) << "AGENCY: Starting spearhead thread.";
+  _spearhead.start();
   Thread::start();
   return true;
 }
@@ -132,7 +133,7 @@ bool Agent::waitFor (index_t index, duration_t timeout) {
 }
 
 void Agent::reportIn (id_t id, index_t index) {
-  MUTEX_LOCKER(mutexLocker, _confirmedLock);
+  MUTEX_LOCKER(mutexLocker, _ioLock);
 
   if (index > _confirmed[id])      // progress this follower?
     _confirmed[id] = index;
@@ -144,34 +145,60 @@ void Agent::reportIn (id_t id, index_t index) {
     }
 
     if (n>size()/2) { // catch up read database and commit index
+      LOG(INFO) << "AGENCY: Critical mass for commiting " << _last_commit_index+1
+                << " through " << index << " to read db";
+      
       _read_db.apply(_state.get(_last_commit_index+1, index));
       _last_commit_index = index;
     }
   }
-
+  
   _rest_cv.broadcast();            // wake up REST handlers
 }
 
 bool Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
   term_t prevTerm, index_t leaderCommitIndex, query_t const& queries) {
   //Update commit index
-  _last_commit_index = leaderCommitIndex;
 
+  if (queries->slice().type() != VPackValueType::Array) {
+    LOG(WARN) << "AGENCY: Received malformed entries for appending. Discarting!";  
+    return false;
+  }
+  if (queries->slice().length()) {
+    LOG(INFO) << "AGENCY: Appending "<< queries->slice().length()
+              << "entries to state machine.";
+  } else {
+    // heart-beat
+  }
+    
+  if (_last_commit_index < leaderCommitIndex) {
+    LOG(INFO) <<  "Updating last commited index to " << leaderCommitIndex;
+  }
+  _last_commit_index = leaderCommitIndex;
+  
   // Sanity
-  if (this->term() > term)
-    throw LOWER_TERM_APPEND_ENTRIES_RPC; // (§5.1)
-  if (!_state.findit(prevIndex, prevTerm))
-    throw NO_MATCHING_PREVLOG;           // (§5.3)
+  if (this->term() > term) {                 // (§5.1)
+    LOG(WARN) << "AGENCY: I have a higher term than RPC caller.";
+    throw LOWER_TERM_APPEND_ENTRIES_RPC; 
+  }
+  if (!_state.findit(prevIndex, prevTerm)) { // (§5.3)
+    LOG(WARN)
+      << "AGENCY: I have no matching set of prevLogIndex/prevLogTerm "
+      << "in my own state machine. This is trouble!";
+    throw NO_MATCHING_PREVLOG;           
+  }
   
   // Delete conflits and append (§5.3)
-  _state.log (queries, term, leaderId, prevIndex, prevTerm);
-  
-  return true;
+  return _state.log (queries, term, leaderId, prevIndex, prevTerm);
+
 }
 
 append_entries_t Agent::sendAppendEntriesRPC (
-  id_t slave_id, collect_ret_t const& entries) {
+  id_t slave_id/*, collect_ret_t const& entries*/) {
 
+  index_t last_confirmed = _confirmed[_slave_id];
+  std::vector<VPackSlice> unconfirmed = _state.get(last_confirmed+1);
+  
   // RPC path
   std::stringstream path;
   path << "/_api/agency_priv/appendEntries?term=" << term() << "&leaderId="
@@ -185,21 +212,24 @@ append_entries_t Agent::sendAppendEntriesRPC (
   // Body
   Builder builder;
   builder.add(VPackValue(VPackValueType::Array));
-  index_t last;
-  for (size_t i = 0; i < entries.size(); ++i) {
+  index_t j = last_confirmed+1;
+  for (auto const& i : unconfirmed) {
     builder.add (VPackValue(VPackValueType::Object));
-    builder.add ("index", Value(std::to_string(entries.indices[i])));
-    builder.add ("query", Builder(*_state[entries.indices[i]].entry).slice());
+    builder.add ("index", j);
+    builder.add ("query", i);
     builder.close();
-    last = entries.indices[i];
+    ++last;
   }
   builder.close();
+  std::cout << builder.toJson() << std::endl;
 
   // Send
+  LOG(INFO) << "AGENCY: Appending " << unconfirmed.size() << " entries up to index "
+            << j << " to follower " << slave_id; 
   arangodb::ClusterComm::instance()->asyncRequest
     ("1", 1, _config.end_points[slave_id],
      rest::HttpRequest::HTTP_REQUEST_POST,
-     path.str(), std::make_shared<std::string>(builder.toString()), headerFields,
+     path.str(), std::make_shared<std::string>(builder.toJson()), headerFields,
      std::make_shared<AgentCallback>(this, slave_id, last),
      0, true);
 
@@ -209,17 +239,17 @@ append_entries_t Agent::sendAppendEntriesRPC (
 
 bool Agent::load () {
   
-  LOG(INFO) << "Loading persistent state.";
+  LOG(INFO) << "AGENCY: Loading persistent state.";
   if (!_state.load())
-    LOG(FATAL) << "Failed to load persistent state on statup.";
+    LOG(FATAL) << "AGENCY: Failed to load persistent state on statup.";
   return true;
 }
 
 write_ret_t Agent::write (query_t const& query)  {
 
   if (_constituent.leading()) {                    // Leading 
-    MUTEX_LOCKER(mutexLocker, _confirmedLock);
-    std::vector<bool> applied = _spear_head.apply(query); // Apply to spearhead
+    MUTEX_LOCKER(mutexLocker, _ioLock);
+    std::vector<bool> applied = _spearhead.apply(query); // Apply to spearhead
     std::vector<index_t> indices = 
       _state.log (query, applied, term(), id()); // Append to log w/ indicies
     for (size_t i = 0; i < applied.size(); ++i) {
@@ -237,8 +267,8 @@ write_ret_t Agent::write (query_t const& query)  {
 read_ret_t Agent::read (query_t const& query) const {
   if (_constituent.leading()) {     // We are leading
     auto result = (_config.size() == 1) ?
-      _spear_head.read(query) : _read_db.read (query);
-    return read_ret_t(true,_constituent.leaderID(),result);//(query); //TODO:
+      _spearhead.read(query) : _read_db.read (query);
+    return read_ret_t(true,_constituent.leaderID(),result);
   } else {                          // We redirect
     return read_ret_t(false,_constituent.leaderID());
   }
@@ -260,16 +290,17 @@ void Agent::run() {
     // Collect all unacknowledged
     for (size_t i = 0; i < size(); ++i) {
       if (i != id()) {
-        work[i] = _state.collectFrom(_confirmed[i]+1);
+        sendAppendEntriesRPC(i)
+          //work[i] = _state.collectFrom(_confirmed[i]+1);
       }
     }
     
     // (re-)attempt RPCs
-    for (size_t j = 0; j < size(); ++j) {
+    /*for (size_t j = 0; j < size(); ++j) {
       if (j != id() && work[j].size()) {
         sendAppendEntriesRPC(j, work[j]);
       }
-    }
+      }*/
     
   }
 
@@ -278,6 +309,7 @@ void Agent::run() {
 void Agent::beginShutdown() {
   Thread::beginShutdown();
   _constituent.beginShutdown();
+  _spearhead.beginShutdown();
   CONDITION_LOCKER(guard, _cv);
   guard.broadcast();
 }
@@ -289,7 +321,7 @@ bool Agent::lead () {
 }
 
 bool Agent::rebuildDBs() {
-  MUTEX_LOCKER(mutexLocker, _dbLock);
+  MUTEX_LOCKER(mutexLocker, _ioLock);
   return true;
 }
 

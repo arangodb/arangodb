@@ -175,7 +175,7 @@ private:
 
   arangodb::Mutex _uncommitedLock;
   
-  Store _spear_head;
+  Store _spearhead;
   Store _read_db;
   
   AgentCallback _agent_callback;
@@ -187,8 +187,7 @@ private:
   std::atomic<bool> _stopping;
 
   std::vector<index_t> _confirmed;
-  arangodb::Mutex _confirmedLock;          /**< @brief Mutex for modifying _confirmed */
-  arangodb::Mutex _dbLock;
+  arangodb::Mutex _ioLock;
   
 };
 

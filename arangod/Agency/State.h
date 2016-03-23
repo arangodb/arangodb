@@ -87,7 +87,7 @@ public:
    */
   collect_ret_t collectFrom (index_t index);
 
-  std::vector<arangodb::velocypack::Slice> get (
+  std::vector<log_t> get (
     index_t = 0, index_t = std::numeric_limits<uint64_t>::max()) const;
 
   /**
@@ -113,7 +113,8 @@ public:
   friend std::ostream& operator<< (std::ostream& os, State const& s) {
     for (auto const& i : s._log)
       LOG(INFO) << "index(" << i.index <<") term(" << i.term << ") leader: ("
-                << i.leaderId << ") query(" << arangodb::velocypack::Slice(i.entry->data()).toJson() << ")";
+                << i.leaderId << ") query("
+                << VPackSlice(i.entry->data()).toJson() << ")";
     return os;
   }
 
