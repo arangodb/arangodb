@@ -42,8 +42,12 @@ void Constituent::configure(Agent* agent) {
   _agent = agent;
   if (size() == 1) {
     _role = LEADER;
-  } else { 
-    _votes.resize(size());
+  } else {
+    try {
+      _votes.resize(size());
+    } catch (std::exception const& e) {
+      LOG(FATAL) << "Cannot resize votes vector to " << size();
+    }
     _id = _agent->config().id;
     if (_agent->config().notify) {// (notify everyone) 
       notifyAll();
@@ -190,8 +194,12 @@ const constituency_t& Constituent::gossip () {
 }
 
 void Constituent::callElection() {
-  
-  _votes[_id] = true; // vote for myself
+
+  try {
+    _votes.at(_id) = true; // vote for myself
+  } catch (std::out_of_range const& oor) {
+    LOG(FATAL) << "_votes vector is not properly sized!";
+  }
   _cast = true;
   if(_role == CANDIDATE)
     _term++;            // raise my term

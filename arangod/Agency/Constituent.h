@@ -84,7 +84,7 @@ public:
   /**
    * @brief My daily business
    */
-  void run();
+  void run() override final;
 
   /**
    * @brief Who is leading

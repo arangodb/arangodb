@@ -148,7 +148,7 @@ HttpHandler::status_t RestAgencyHandler::handleTest() {
   body.add("id", Value(_agent->id()));
   body.add("term", Value(_agent->term()));
   body.add("leaderId", Value(_agent->leaderID()));
-  body.add("configuration", Value(_agent->config().toString()));
+  body.add("configuration", _agent->config().toBuilder());
   body.close();
   generateResult(body.slice());
   return HttpHandler::status_t(HANDLER_DONE);

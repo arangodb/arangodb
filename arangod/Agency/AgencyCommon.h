@@ -82,6 +82,18 @@ inline std::ostream& operator<< (std::ostream& os, std::list<T> const& l) {
   return os;
 }
 
+
+struct  constituent_t {                               // Constituent type
+  id_t id;
+  std::string endpoint;
+};
+
+typedef std::vector<constituent_t>    constituency_t; // Constituency type
+typedef uint32_t                      state_t;        // State type
+typedef std::chrono::duration<double> duration_t;     // Duration type
+
+using query_t = std::shared_ptr<arangodb::velocypack::Builder>;
+
 struct AgentConfiguration {               
   id_t id;
   float min_ping;
@@ -109,19 +121,21 @@ struct AgentConfiguration {
     s << *this;
     return s.str();
   }
+  query_t toBuilder () {
+    query_t ret = std::make_shared<arangodb::velocypack::Builder>();
+    ret->openObject();
+    ret->add("endpoints", VPackValue(VPackValueType::Array));
+    for (auto const& i : end_points)
+      ret->add(VPackValue(i));
+    ret->close();
+    ret->add("id",VPackValue(id));
+    ret->add("min_ping",VPackValue(min_ping));
+    ret->add("max_ping",VPackValue(max_ping));
+    ret->close();
+    return ret;
+  }
 };
 typedef AgentConfiguration config_t;
-
-struct  constituent_t {                               // Constituent type
-  id_t id;
-  std::string endpoint;
-};
-
-typedef std::vector<constituent_t>    constituency_t; // Constituency type
-typedef uint32_t                      state_t;        // State type
-typedef std::chrono::duration<double> duration_t;     // Duration type
-
-using query_t = std::shared_ptr<arangodb::velocypack::Builder>;
 
 struct vote_ret_t {
   query_t result;

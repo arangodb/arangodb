@@ -54,7 +54,7 @@ using namespace arangodb::velocypack;
 class StoreException : public std::exception {
 public:
   StoreException(std::string const& message) : _message(message) {}
-  virtual char const* what() const noexcept { return _message.c_str(); }
+  virtual char const* what() const noexcept override final { return _message.c_str(); }
 private:
   std::string _message;
 };

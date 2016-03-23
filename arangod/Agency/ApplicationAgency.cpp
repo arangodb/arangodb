@@ -71,8 +71,7 @@ void ApplicationAgency::setupOptions(
 
 bool ApplicationAgency::prepare() {
 
-  _disabled = _agency_endpoints.empty() || 
-    _agent_id == std::numeric_limits<uint32_t>::max();
+  _disabled = (_agent_id == std::numeric_limits<uint32_t>::max());
 
   if (_disabled) {
     return true;
