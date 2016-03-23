@@ -218,8 +218,8 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // We directly read the entire cursor. so batchsize == limit
   std::shared_ptr<OperationCursor> opCursor =
-      trx.indexScan(collectionName, Transaction::CursorType::ALL, "", {}, skip,
-                    limit, limit, false);
+      trx.indexScan(collectionName, Transaction::CursorType::ALL,
+                    Transaction::IndexHandle(), {}, skip, limit, limit, false);
 
   if (opCursor->failed()) {
     TRI_V8_THROW_EXCEPTION(opCursor->code);
@@ -382,7 +382,15 @@ static void JS_ChecksumCollection(
 
     if (withData) {
       // with data
-      localHash += slice.hash(); 
+      for (auto const& it : VPackObjectIterator(slice)) {
+        // loop over all attributes, but exclude _rev, _id and _key
+        // _id is different for each collection anyway, _rev is covered by withRevisions, and _key
+        // was already handled before
+        std::string key(it.key.copyString());
+        if (key != TRI_VOC_ATTRIBUTE_ID && key != TRI_VOC_ATTRIBUTE_KEY && key != TRI_VOC_ATTRIBUTE_REV) {
+          localHash ^= it.value.hash(); 
+        }
+      }
     }
 
     hash ^= localHash;

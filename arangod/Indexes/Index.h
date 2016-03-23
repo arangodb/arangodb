@@ -368,7 +368,7 @@ class Index {
 
   virtual bool supportsSortCondition(arangodb::aql::SortCondition const*,
                                      arangodb::aql::Variable const*, size_t,
-                                     double&) const;
+                                     double&, size_t&) const;
 
   virtual IndexIterator* iteratorForCondition(arangodb::Transaction*,
                                               IndexIteratorContext*,

@@ -791,15 +791,14 @@ bool SkiplistIndex::supportsFilterCondition(
 bool SkiplistIndex::supportsSortCondition(
     arangodb::aql::SortCondition const* sortCondition,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
-    double& estimatedCost) const {
+    double& estimatedCost, size_t& coveredAttributes) const {
   TRI_ASSERT(sortCondition != nullptr);
 
   if (!_sparse) {
     // only non-sparse indexes can be used for sorting
     if (!_useExpansion && sortCondition->isUnidirectional() &&
         sortCondition->isOnlyAttributeAccess()) {
-      size_t const coveredAttributes =
-          sortCondition->coveredAttributes(reference, _fields);
+      coveredAttributes = sortCondition->coveredAttributes(reference, _fields);
 
       if (coveredAttributes >= sortCondition->numAttributes()) {
         // sort is fully covered by index. no additional sort costs!
@@ -813,6 +812,7 @@ bool SkiplistIndex::supportsSortCondition(
     }
   }
 
+  coveredAttributes = 0;
   // by default no sort conditions are supported
   if (itemsInIndex > 0) {
     estimatedCost = itemsInIndex * std::log2(static_cast<double>(itemsInIndex));

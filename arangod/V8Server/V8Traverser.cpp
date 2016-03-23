@@ -918,8 +918,9 @@ void DepthFirstTraverser::_defInternalFunctions() {
   };
 }
 
-void DepthFirstTraverser::setStartVertex(
-    std::string const& v) {
+void DepthFirstTraverser::setStartVertex(std::string const& v) {
+  _pruneNext = false;
+
   TRI_ASSERT(_expressions != nullptr);
 
   auto it = _expressions->find(0);
@@ -988,7 +989,7 @@ bool DepthFirstTraverser::EdgeGetter::nextCursor(std::string const& startVertex,
                                                  VPackValueLength*& last) {
   while (true) {
     std::string eColName;
-    std::string indexHandle;
+    arangodb::Transaction::IndexHandle indexHandle;
     if (last != nullptr) {
       // The cursor is empty clean up
       last = nullptr;

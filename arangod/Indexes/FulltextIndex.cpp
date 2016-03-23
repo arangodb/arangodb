@@ -40,7 +40,8 @@ using namespace arangodb;
 
 static void ExtractWords(std::vector<std::string>& words,
                          VPackSlice const value,
-                         size_t minWordLength) {
+                         size_t minWordLength,
+                         int level) {
   if (value.isString()) {
     // extract the string value for the indexed attribute
     std::string text = value.copyString();
@@ -50,13 +51,13 @@ static void ExtractWords(std::vector<std::string>& words,
         words, text, minWordLength, TRI_FULLTEXT_MAX_WORD_LENGTH, true);
     // We don't care for the result. If the result is false, words stays
     // unchanged and is not indexed
-  } else if (value.isArray()) {
+  } else if (value.isArray() && level == 0) {
     for (auto const& v : VPackArrayIterator(value)) {
-      ExtractWords(words, v, minWordLength);
+      ExtractWords(words, v, minWordLength, level + 1);
     }
-  } else if (value.isObject()) {
+  } else if (value.isObject() && level == 0) {
     for (auto const& v : VPackObjectIterator(value)) {
-      ExtractWords(words, v.value, minWordLength);
+      ExtractWords(words, v.value, minWordLength, level + 1);
     }
   }
 }
@@ -109,7 +110,7 @@ int FulltextIndex::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
   int res = TRI_ERROR_NO_ERROR;
 
   std::vector<std::string> words = wordlist(doc);
-
+   
   if (words.empty()) {
     // TODO: distinguish the cases "empty wordlist" and "out of memory"
     // LOG(WARN) << "could not build wordlist";
@@ -158,12 +159,12 @@ std::vector<std::string> FulltextIndex::wordlist(
     VPackSlice const slice(document->vpack());
     VPackSlice const value = slice.get(_attr);
 
-    if (!value.isString() || value.isArray()) {
+    if (!value.isString() && !value.isArray() && !value.isObject()) {
       // Invalid Input
       return words;
     }
 
-    ExtractWords(words, value, _minWordLength);
+    ExtractWords(words, value, _minWordLength, 0);
   } catch (...) {
     // Backwards compatibility
     // The pre-vpack impl. did just ignore all errors and returned nulltpr

@@ -163,7 +163,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
         break;
       }
 
-      std::vector<std::string> usedIndexes;
+      std::vector<Transaction::IndexHandle> usedIndexes;
       auto canUseIndex =
           condition->findIndexes(node, usedIndexes, sortCondition.get());
 

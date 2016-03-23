@@ -88,10 +88,9 @@ bool RestEdgesHandler::getEdgesForVertex(
   
   trx.orderDitch(trx.cid()); // will throw when it fails
     
-  std::string const collectionName = trx.resolver()->getCollectionName(trx.cid());
-
-  arangodb::EdgeIndex* edgeIndex = trx.documentCollection()->edgeIndex();
-  std::string indexId = arangodb::basics::StringUtils::itoa(edgeIndex->id());
+  std::string const collectionName 
+      = trx.resolver()->getCollectionName(trx.cid());
+  Transaction::IndexHandle indexId = trx.edgeIndexHandle(collectionName);
   
   VPackBuilder searchValueBuilder;
   EdgeIndex::buildSearchValue(direction, id, searchValueBuilder);

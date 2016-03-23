@@ -71,7 +71,7 @@ arangodb::aql::AstNode* IndexBlock::makeUnique(
     auto trx = ast->query()->trx();
     bool isSorted = false;
     bool isSparse = false;
-    auto unused = trx->getIndexFeatures(_collection->getName(), _indexes[_currentIndex], isSorted, isSparse);
+    auto unused = trx->getIndexFeatures(_indexes[_currentIndex], isSorted, isSparse);
     if (isSparse) {
       // the index is sorted. we need to use SORTED_UNIQUE to get the
       // result back in index order

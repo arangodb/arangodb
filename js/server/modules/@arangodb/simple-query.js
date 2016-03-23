@@ -313,7 +313,7 @@ SimpleQueryFulltext.prototype.execute = function () {
     "@collection": this._collection.name(), 
     attribute: this._attribute, 
     query: this._query, 
-    limit: limit 
+    limit: parseInt(this._limit + this._skip, 10)
   };
 
   var query = "FOR doc IN FULLTEXT(@@collection, @attribute, @query, @limit) " + 

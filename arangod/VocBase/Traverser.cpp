@@ -106,7 +106,7 @@ bool arangodb::traverser::TraverserOptions::getCollection(
 
 bool arangodb::traverser::TraverserOptions::getCollectionAndSearchValue(
     size_t index, std::string const& vertexId, std::string& name,
-    std::string& indexHandle, VPackBuilder& builder) {
+    Transaction::IndexHandle& indexHandle, VPackBuilder& builder) {
   if (index >= _collections.size()) {
     // No more collections stop now
     return false;

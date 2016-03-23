@@ -475,8 +475,10 @@ bool Index::supportsFilterCondition(arangodb::aql::AstNode const*,
 bool Index::supportsSortCondition(arangodb::aql::SortCondition const*,
                                   arangodb::aql::Variable const*,
                                   size_t itemsInIndex,
-                                  double& estimatedCost) const {
+                                  double& estimatedCost,
+                                  size_t& coveredAttributes) const {
   // by default, no sort conditions are supported
+  coveredAttributes = 0;
   if (itemsInIndex > 0) {
     estimatedCost = itemsInIndex * std::log2(itemsInIndex);
   } else {

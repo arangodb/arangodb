@@ -144,7 +144,7 @@ struct TRI_document_collection_t : public TRI_collection_t {
 
   void addIndex(arangodb::Index*);
   arangodb::Index* removeIndex(TRI_idx_iid_t);
-  std::vector<arangodb::Index*> allIndexes() const;
+  std::vector<arangodb::Index*> const& allIndexes() const;
   arangodb::Index* lookupIndex(TRI_idx_iid_t) const;
   arangodb::PrimaryIndex* primaryIndex();
   arangodb::EdgeIndex* edgeIndex();

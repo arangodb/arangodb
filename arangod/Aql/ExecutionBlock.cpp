@@ -186,35 +186,6 @@ void ExecutionBlock::returnBlock(AqlItemBlock*& block) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief resolve a collection name and return success or failure
-/// this is used for parsing _from, _to and _id values
-////////////////////////////////////////////////////////////////////////////////
-
-int ExecutionBlock::resolve(std::string const& input) const {
-  DEBUG_BEGIN_BLOCK();  
-  char const* handle = input.c_str();
-  char const* p = strchr(handle, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR);
-  if (p == nullptr || *p == '\0') {
-    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
-  }
-
-  TRI_voc_cid_t cid = 0;
-  if (*handle >= '0' && *handle <= '9') {
-    cid = arangodb::basics::StringUtils::uint64(handle, p - handle);
-  } else {
-    std::string const name(handle, p - handle);
-    cid = _trx->resolver()->getCollectionIdCluster(name);
-  }
-
-  if (cid == 0) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-  }
-
-  return TRI_ERROR_NO_ERROR;
-  DEBUG_END_BLOCK();  
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief copy register data from one block (src) into another (dst)
 /// register values are cloned
 ////////////////////////////////////////////////////////////////////////////////

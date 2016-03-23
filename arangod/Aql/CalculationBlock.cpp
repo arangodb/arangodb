@@ -113,6 +113,7 @@ void CalculationBlock::executeExpression(AqlItemBlock* result) {
   DEBUG_BEGIN_BLOCK();
   bool const hasCondition = (static_cast<CalculationNode const*>(_exeNode)
                                  ->_conditionVariable != nullptr);
+  TRI_ASSERT(!hasCondition); // currently not implemented
 
   size_t const n = result->size();
 

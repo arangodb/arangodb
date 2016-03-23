@@ -28,6 +28,7 @@
 #include "Aql/AstNode.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/JsonHelper.h"
+#include "Utils/Transaction.h"
 
 namespace arangodb {
 namespace aql {
@@ -297,7 +298,7 @@ class Condition {
   //////////////////////////////////////////////////////////////////////////////
 
   std::pair<bool, bool> findIndexes(EnumerateCollectionNode const*,
-                                    std::vector<std::string>&,
+                                    std::vector<Transaction::IndexHandle>&,
                                     SortCondition const*);
 
   //////////////////////////////////////////////////////////////////////////////

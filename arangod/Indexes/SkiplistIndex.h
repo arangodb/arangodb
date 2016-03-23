@@ -175,7 +175,7 @@ class SkiplistIndex final : public PathBasedIndex {
 
   bool supportsSortCondition(arangodb::aql::SortCondition const*,
                              arangodb::aql::Variable const*, size_t,
-                             double&) const override;
+                             double&, size_t&) const override;
 
   IndexIterator* iteratorForCondition(arangodb::Transaction*,
                                       IndexIteratorContext*,

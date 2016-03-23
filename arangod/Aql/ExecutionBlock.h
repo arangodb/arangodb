@@ -32,7 +32,7 @@
 #if 0
 
 #define DEBUG_BEGIN_BLOCK() try { //
-#define DEBUG_END_BLOCK() } catch (...) { LOG(WARN) << "exception caught in " << __FILE__ << ":" << __LINE__; throw; } //
+#define DEBUG_END_BLOCK() } catch (arangodb::basics::Exception const& ex) { LOG(WARN) << "arango exception caught in " << __FILE__ << ":" << __LINE__ << ":" << ex.what(); throw; } catch (std::exception const& ex) { LOG(WARN) << "std exception caught in " << __FILE__ << ":" << __LINE__ << ": " << ex.what(); throw; } catch (...) { LOG(WARN) << "exception caught in " << __FILE__ << ":" << __LINE__; throw; } //
 
 #else
 
@@ -180,13 +180,6 @@ class ExecutionBlock {
   //////////////////////////////////////////////////////////////////////////////
 
   void returnBlock(AqlItemBlock*&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief resolve a collection name and return success or failure
-  /// this is used for parsing _from, _to and _id values
-  //////////////////////////////////////////////////////////////////////////////
-
-  int resolve(std::string const&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief copy register data from one block (src) into another (dst)
