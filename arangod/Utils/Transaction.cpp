@@ -2213,44 +2213,6 @@ std::shared_ptr<OperationCursor> Transaction::indexScanForCondition(
 }
 
 //////////////////////////////////////////////////////////////////////////////
-/// @brief get the index by it's identifier. Will either throw or
-///        return a valid index. nullptr is impossible.
-//////////////////////////////////////////////////////////////////////////////
-
-arangodb::Index* Transaction::getIndexByIdentifier(
-    std::string const& collectionName, std::string const& indexHandle) {
-  TRI_voc_cid_t cid = resolver()->getCollectionId(collectionName);
-
-  if (cid == 0) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
-                                  collectionName.c_str());
-  }
-
-  TRI_document_collection_t* document = documentCollection(trxCollection(cid));
-
-  if (indexHandle.empty()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "The index id cannot be empty.");
-  }
-
-  if (!arangodb::Index::validateId(indexHandle.c_str())) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
-  }
-  TRI_idx_iid_t iid = arangodb::basics::StringUtils::uint64(indexHandle);
-  arangodb::Index* idx = document->lookupIndex(iid);
-
-  if (idx == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
-                                   "Could not find index '" + indexHandle +
-                                       "' in collection '" +
-                                       collectionName + "'.");
-  }
-  
-  // We have successfully found an index with the requested id.
-  return idx;
-}
-
-//////////////////////////////////////////////////////////////////////////////
 /// @brief factory for OperationCursor objects
 /// note: the caller must have read-locked the underlying collection when
 /// calling this method
