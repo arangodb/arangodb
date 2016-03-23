@@ -130,7 +130,7 @@ public:
    *        2. Report success of write processes. 
    */
   void run () override final;
-  void beginShutdown () override;
+  void beginShutdown () override final;
 
   /**
    * @brief Report appended entries from AgentCallback
