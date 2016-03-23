@@ -183,7 +183,7 @@ bool VelocyPackHelper::AttributeSorter::operator()(std::string const& l,
 }
 
 size_t VelocyPackHelper::VPackHash::operator()(VPackSlice const& slice) const {
-  return slice.hash();
+  return slice.normalizedHash();
 };
 
 bool VelocyPackHelper::VPackEqual::operator()(VPackSlice const& lhs, VPackSlice const& rhs) const {

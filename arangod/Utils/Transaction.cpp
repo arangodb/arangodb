@@ -847,13 +847,14 @@ OperationResult Transaction::anyLocal(std::string const& collectionName,
 /// @brief add a collection to the transaction for read, at runtime
 //////////////////////////////////////////////////////////////////////////////
 
-void Transaction::addCollectionAtRuntime(std::string const& collectionName) {
-  auto cid = resolver()->getCollectionId(collectionName);
+TRI_voc_cid_t Transaction::addCollectionAtRuntime(std::string const& collectionName) {
+  auto cid = resolver()->getCollectionIdLocal(collectionName);
+
   if (cid == 0) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
                                   collectionName.c_str());
   }
-  addCollectionAtRuntime(cid, collectionName);
+  return addCollectionAtRuntime(cid, collectionName);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -918,15 +919,9 @@ void Transaction::invokeOnAllElements(std::string const& collectionName,
   if (ServerState::instance()->isCoordinator()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
-
-  TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
-
-  if (cid == 0) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
-                                  collectionName.c_str());
-  }
+  
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   TRI_transaction_collection_t* trxCol = trxCollection(cid);
-
   TRI_document_collection_t* document = documentCollection(trxCol);
 
   orderDitch(cid); // will throw when it fails
@@ -1029,14 +1024,7 @@ OperationResult Transaction::documentCoordinator(std::string const& collectionNa
 OperationResult Transaction::documentLocal(std::string const& collectionName,
                                            VPackSlice const value,
                                            OperationOptions& options) {
-  TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
-
-  if (cid == 0) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
-                                  collectionName.c_str());
-  }
-  
-  // TODO: clean this up
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
 
   orderDitch(cid); // will throw when it fails
@@ -1189,12 +1177,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
                                          VPackSlice const value,
                                          OperationOptions& options) {
  
-  TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
-
-  if (cid == 0) {
-    return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-  }
-
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
 
   VPackBuilder resultBuilder;
@@ -1435,13 +1418,7 @@ OperationResult Transaction::modifyLocal(
     OperationOptions& options,
     TRI_voc_document_operation_e operation) {
 
-  TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
-
-  if (cid == 0) {
-    return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-  }
-  
-  // TODO: clean this up
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
 
   // Update/replace are a read and a write, let's get the write lock already
@@ -1608,14 +1585,7 @@ OperationResult Transaction::removeCoordinator(std::string const& collectionName
 OperationResult Transaction::removeLocal(std::string const& collectionName,
                                          VPackSlice const value,
                                          OperationOptions& options) {
-  TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
-
-  if (cid == 0) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
-                                  collectionName.c_str());
-  }
-
-  // TODO: clean this up
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
  
   VPackBuilder resultBuilder;
@@ -1732,12 +1702,7 @@ OperationResult Transaction::allKeysLocal(std::string const& collectionName,
                                           std::string const& type,
                                           std::string const& prefix,
                                           OperationOptions& options) {
-  TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
-
-  if (cid == 0) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
-                                  collectionName.c_str());
-  }
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   
   orderDitch(cid); // will throw when it fails
   
@@ -1823,12 +1788,7 @@ OperationResult Transaction::allCoordinator(std::string const& collectionName,
 OperationResult Transaction::allLocal(std::string const& collectionName,
                                       uint64_t skip, uint64_t limit,
                                       OperationOptions& options) {
-  TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
-
-  if (cid == 0) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
-                                  collectionName.c_str());
-  }
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   
   orderDitch(cid); // will throw when it fails
   
@@ -1908,12 +1868,7 @@ OperationResult Transaction::truncateCoordinator(std::string const& collectionNa
 
 OperationResult Transaction::truncateLocal(std::string const& collectionName,
                                            OperationOptions& options) {
-  TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
-
-  if (cid == 0) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
-                                  collectionName.c_str());
-  }
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   
   orderDitch(cid); // will throw when it fails
   
@@ -1997,19 +1952,14 @@ OperationResult Transaction::countCoordinator(std::string const& collectionName)
 //////////////////////////////////////////////////////////////////////////////
 
 OperationResult Transaction::countLocal(std::string const& collectionName) {
-  TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
-
-  if (cid == 0) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
-                                  collectionName.c_str());
-  }
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   
   int res = lock(trxCollection(cid), TRI_TRANSACTION_READ);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return OperationResult(res);
   }
-  
+ 
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
 
   VPackBuilder resultBuilder;
@@ -2037,7 +1987,7 @@ std::pair<bool, bool> Transaction::getBestIndexHandlesForFilterCondition(
     arangodb::aql::SortCondition const* sortCondition,
     size_t itemsInCollection,
     std::vector<IndexHandle>& usedIndexes,
-    bool& isSorted) const {
+    bool& isSorted) {
   // We can only start after DNF transformation
   TRI_ASSERT(root->type ==
              arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_OR);
@@ -2132,7 +2082,7 @@ std::pair<bool, bool> Transaction::getIndexForSortCondition(
     arangodb::aql::SortCondition const* sortCondition,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     std::vector<IndexHandle>& usedIndexes,
-    size_t& coveredAttributes) const {
+    size_t& coveredAttributes) {
   // We do not have a condition. But we have a sort!
   if (!sortCondition->isEmpty() && sortCondition->isOnlyAttributeAccess() &&
       sortCondition->isUnidirectional()) {
@@ -2230,17 +2180,12 @@ std::shared_ptr<OperationCursor> Transaction::indexScan(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
   }
 
-  TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
-
-  if (cid == 0) {
-    return std::make_shared<OperationCursor>(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-  }
-
   if (limit == 0) {
     // nothing to do
     return std::make_shared<OperationCursor>(TRI_ERROR_NO_ERROR);
   }
 
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
 
   std::unique_ptr<IndexIterator> iterator;
@@ -2315,6 +2260,7 @@ std::shared_ptr<OperationCursor> Transaction::indexScan(
 TRI_document_collection_t* Transaction::documentCollection(
       TRI_transaction_collection_t const* trxCollection) const {
   TRI_ASSERT(_trx != nullptr);
+  TRI_ASSERT(trxCollection != nullptr);
   TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
   TRI_ASSERT(trxCollection->_collection != nullptr);
   TRI_ASSERT(trxCollection->_collection->_collection != nullptr);
@@ -2468,7 +2414,7 @@ int Transaction::unlock(TRI_transaction_collection_t* trxCollection,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::vector<std::shared_ptr<Index>> Transaction::indexesForCollection(
-    std::string const& collectionName) const {
+    std::string const& collectionName) {
 
   auto ss = ServerState::instance();
   if (ss->isCoordinator()) {
@@ -2476,13 +2422,7 @@ std::vector<std::shared_ptr<Index>> Transaction::indexesForCollection(
   }
   // For a DBserver we use the local case.
 
-  TRI_voc_cid_t cid = resolver()->getCollectionId(collectionName);
-
-  if (cid == 0) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
-                                  collectionName.c_str());
-  }
-
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
 
   // Wrap fake shared pointers around the raw pointers:
@@ -2566,12 +2506,7 @@ Transaction::IndexHandle Transaction::getIndexByIdentifier(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
-  TRI_voc_cid_t cid = resolver()->getCollectionId(collectionName);
-
-  if (cid == 0) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-  }
-
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
 
   if (indexHandle.empty()) {

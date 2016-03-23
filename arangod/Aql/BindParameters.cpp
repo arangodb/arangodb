@@ -40,6 +40,8 @@ uint64_t BindParameters::hash() const {
   if (_builder == nullptr) {
     return 0xdeadbeef;
   }
+  // we can get away with the fast hash function here, as we're only using the
+  // hash for quickly checking whether we've seen the same set of parameters
   return _builder->slice().hash();
 }
 

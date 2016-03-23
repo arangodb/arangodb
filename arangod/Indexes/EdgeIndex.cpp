@@ -46,10 +46,12 @@ static uint64_t HashElementKey(void*, VPackSlice const* key) {
   TRI_ASSERT(key != nullptr);
   uint64_t hash = 0x87654321;
   if (!key->isString()) {
-    // Illegal Edge entry, key has to be string.
+    // Illegal edge entry, key has to be string.
     TRI_ASSERT(false);
     return hash;
   }
+  // we can get away with the fast hash function here, as edge
+  // index values are restricted to strings
   return key->hash(hash);
 }
 
@@ -71,6 +73,8 @@ static uint64_t HashElementEdgeFrom(void*, TRI_doc_mptr_t const* mptr,
     VPackSlice tmp(mptr->vpack());
     tmp = tmp.get(TRI_VOC_ATTRIBUTE_FROM);
     TRI_ASSERT(tmp.isString());
+    // we can get away with the fast hash function here, as edge
+    // index values are restricted to strings
     hash = tmp.hash(hash);
   }
   return hash;
@@ -95,6 +99,8 @@ static uint64_t HashElementEdgeTo(void*, TRI_doc_mptr_t const* mptr,
     TRI_ASSERT(tmp.isObject());
     tmp = tmp.get(TRI_VOC_ATTRIBUTE_TO);
     TRI_ASSERT(tmp.isString());
+    // we can get away with the fast hash function here, as edge
+    // index values are restricted to strings
     hash = tmp.hash(hash);
   }
   return hash;

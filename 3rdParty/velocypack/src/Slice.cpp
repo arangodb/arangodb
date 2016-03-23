@@ -275,6 +275,38 @@ std::string Slice::toString(Options const* options) const {
 }
 
 std::string Slice::hexType() const { return HexDump::toHex(head()); }
+  
+uint64_t Slice::normalizedHash(uint64_t seed) const {
+  uint64_t value;
+
+  if (isNumber()) {
+    // upcast integer values to double
+    double v = getNumericValue<double>();
+    value = fasthash64(&v, sizeof(v), seed);
+  } else if (isArray()) {
+    // normalize arrays by hashing array length and iterating
+    // over all array members
+    uint64_t const n = length() ^ 0xba5bedf00d;
+    value = fasthash64(&n, sizeof(n), seed);
+    for (auto const& it : ArrayIterator(*this)) {
+      value ^= it.normalizedHash(value);
+    }
+  } else if (isObject()) {
+    // normalize objects by hashing object length and iterating
+    // over all object members
+    uint64_t const n = length() ^ 0xf00ba44ba5;
+    value = fasthash64(&n, sizeof(n), seed);
+    for (auto const& it : ObjectIterator(*this)) {
+      value ^= it.key.normalizedHash(value);
+      value ^= it.value.normalizedHash(value);
+    }
+  } else {
+    // fall back to regular hash function
+    value = hash(seed);
+  }
+
+  return value;
+}
 
 // look for the specified attribute inside an Object
 // returns a Slice(ValueType::None) if not found

@@ -2424,10 +2424,21 @@ bool TRI_DropIndexDocumentCollection(TRI_document_collection_t* document,
 
 static int NamesByAttributeNames(
     std::vector<std::string> const& attributes,
-    std::vector<std::vector<arangodb::basics::AttributeName>>& names) {
+    std::vector<std::vector<arangodb::basics::AttributeName>>& names,
+    bool isHashIndex) {
   names.reserve(attributes.size());
 
-  for (auto const& name : attributes) {
+  // copy attributes, because we may need to sort them
+  std::vector<std::string> copy = attributes;
+
+  if (isHashIndex) {
+    // for a hash index, an index on ["a", "b"] is the same as an index on ["b", "a"].
+    // by sorting index attributes we can make sure the above the index variants are
+    // normalized and will be treated the same
+    std::sort(copy.begin(), copy.end());
+  }
+
+  for (auto const& name : copy) {
     std::vector<arangodb::basics::AttributeName> attrNameList;
     TRI_ParseAttributeString(name, attrNameList);
     TRI_ASSERT(!attrNameList.empty());
@@ -2736,7 +2747,7 @@ static arangodb::Index* CreateHashIndexDocumentCollection(
   created = false;
   std::vector<std::vector<arangodb::basics::AttributeName>> fields;
 
-  int res = NamesByAttributeNames(attributes, fields);
+  int res = NamesByAttributeNames(attributes, fields, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return nullptr;
@@ -2816,7 +2827,7 @@ arangodb::Index* TRI_LookupHashIndexDocumentCollection(
     std::vector<std::string> const& attributes, int sparsity, bool unique) {
   std::vector<std::vector<arangodb::basics::AttributeName>> fields;
 
-  int res = NamesByAttributeNames(attributes, fields);
+  int res = NamesByAttributeNames(attributes, fields, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return nullptr;
@@ -2865,7 +2876,7 @@ static arangodb::Index* CreateSkiplistIndexDocumentCollection(
   created = false;
   std::vector<std::vector<arangodb::basics::AttributeName>> fields;
 
-  int res = NamesByAttributeNames(attributes, fields);
+  int res = NamesByAttributeNames(attributes, fields, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return nullptr;
@@ -2945,7 +2956,7 @@ arangodb::Index* TRI_LookupSkiplistIndexDocumentCollection(
     std::vector<std::string> const& attributes, int sparsity, bool unique) {
   std::vector<std::vector<arangodb::basics::AttributeName>> fields;
 
-  int res = NamesByAttributeNames(attributes, fields);
+  int res = NamesByAttributeNames(attributes, fields, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return nullptr;
@@ -3274,6 +3285,8 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const slice,
     newSlice = builder->slice();
   } else {
     newSlice = slice;
+    // we can get away with the fast hash function here, as key values are 
+    // restricted to strings
     hash = slice.get(TRI_VOC_ATTRIBUTE_KEY).hash();
   }
 
@@ -4109,6 +4122,8 @@ int TRI_document_collection_t::newObjectForInsert(
       }
       builder.add(TRI_VOC_ATTRIBUTE_KEY, s);
     }
+    // we can get away with the fast hash function here, as key values are 
+    // restricted to strings
     hash = s.hash();
     std::string rev = std::to_string(newRev);
     builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(rev));

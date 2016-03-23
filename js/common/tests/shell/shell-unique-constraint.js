@@ -108,7 +108,6 @@ function UniqueConstraintSuite() {
       assertEqual(true, idx.unique);
       assertEqual(["a","b"].sort(), idx.fields.sort());
       assertEqual(false, idx.isNewlyCreated);
-
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -139,70 +138,10 @@ function UniqueConstraintSuite() {
       collection.save({ a : null, b : 1 });
       collection.save({ c : 1 });
       collection.save({ c : 1 });
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: documents
-////////////////////////////////////////////////////////////////////////////////
-
-    testReadDocuments : function () {
-      var idx = collection.ensureUniqueConstraint("a", "b", { sparse: true });
-      var fun = function(d) { return d._id; };
-
-      assertEqual("hash", idx.type);
-      assertEqual(true, idx.unique);
-      assertEqual(["a","b"].sort(), idx.fields.sort());
-      assertEqual(true, idx.isNewlyCreated);
-
-      var d1 = collection.save({ a : 1, b : 1 })._id;
-      collection.save({ a : 2, b : 1 });
-      collection.save({ a : 3, b : 1 });
-      collection.save({ a : 4, b : 1 });
-      collection.save({ a : 4, b : 2 });
-
-      collection.save({ a : 1 });
-      collection.save({ a : 1 });
-      collection.save({ a : null, b : 1 });
-      collection.save({ a : null, b : 1 });
-      collection.save({ c : 1 });
-      collection.save({ c : 1 });
-
-      var s = collection.byExampleHash(idx.id, { a : 1, b : 1 });
-      assertEqual(1, s.count());
-      assertEqual([d1], s.toArray().map(fun));
-
-      s = collection.byExampleHash(idx.id, { a : 1, b : 1 });
-      assertEqual(1, s.count());
-      assertEqual([d1], s.toArray().map(fun));
-
-      s = collection.byExampleHash(idx.id, { a : 1, b : "foo" });
-      assertEqual(0, s.count());
-      assertEqual([ ], s.toArray().map(fun));
-
-      try {
-        collection.byExampleHash(idx.id, { a : 1 }).toArray();
-      }
-      catch (err1) {
-        assertEqual(ERRORS.ERROR_ARANGO_NO_INDEX.code, err1.errorNum);
-      }
-
-      try {
-        collection.byExampleHash(idx.id, { a : null }).toArray();
-      }
-      catch (err2) {
-        assertEqual(ERRORS.ERROR_ARANGO_NO_INDEX.code, err2.errorNum);
-      }
-
-      try {
-        collection.byExampleHash(idx.id, { c : 1 }).toArray();
-      }
-      catch (err3) {
-        assertEqual(ERRORS.ERROR_ARANGO_NO_INDEX.code, err3.errorNum);
-      }
     }
+
   };
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites

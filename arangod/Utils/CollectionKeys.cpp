@@ -168,6 +168,8 @@ std::tuple<std::string, std::string, uint64_t> CollectionKeys::hashChunk(
     VPackSlice current(reinterpret_cast<char const*>(_markers->at(i)) + offset);
     TRI_ASSERT(current.isObject());
 
+    // we can get away with the fast hash function here, as key values are 
+    // restricted to strings
     hash ^= current.get(TRI_VOC_ATTRIBUTE_KEY).hash();
     hash ^= current.get(TRI_VOC_ATTRIBUTE_REV).hash();
   }

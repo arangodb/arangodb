@@ -38,6 +38,7 @@
 using namespace arangodb;
 
 static inline uint64_t HashKey(void* userData, uint8_t const* key) {
+  // can use fast hash-function here, as index values are restricted to strings
   return VPackSlice(key).hash();
 }
 
@@ -367,6 +368,7 @@ int PrimaryIndex::resize(arangodb::Transaction* trx, size_t targetSize) {
 
 uint64_t PrimaryIndex::calculateHash(arangodb::Transaction* trx,
                                      VPackSlice const& slice) {
+  // can use fast hash-function here, as index values are restricted to strings
   return slice.hash();
 }
 

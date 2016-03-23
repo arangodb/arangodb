@@ -645,8 +645,14 @@ void Index::expandInSearchValues(VPackSlice const base,
     for (VPackValueLength i = 0; i < n; ++i) {
       VPackSlice current = oneLookup.at(i);
       if (current.hasKey(TRI_SLICE_KEY_IN)) {
-        std::unordered_set<VPackSlice> tmp;
         VPackSlice inList = current.get(TRI_SLICE_KEY_IN);
+
+        std::unordered_set<VPackSlice, 
+                           arangodb::basics::VelocyPackHelper::VPackHash, 
+                           arangodb::basics::VelocyPackHelper::VPackEqual> 
+          tmp(inList.length(), arangodb::basics::VelocyPackHelper::VPackHash(), 
+              arangodb::basics::VelocyPackHelper::VPackEqual());
+
         TRI_ASSERT(inList.isArray());
         if (inList.length() == 0) {
           // Empty Array. short circuit, no matches possible
