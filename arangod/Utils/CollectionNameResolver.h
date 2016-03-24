@@ -26,7 +26,6 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadLocker.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterInfo.h"
@@ -250,30 +249,6 @@ class CollectionNameResolver {
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief look up a collection name for a collection id, this implements
-  /// some magic in the cluster case: a DBserver in a cluster will automatically
-  /// translate the local collection ID into a cluster wide collection name.
-  ///
-  /// the name is copied into <buffer>. the caller is responsible for allocating
-  /// a big-enough buffer (that is, at least 64 bytes). no NUL byte is appended
-  /// to the buffer. the length of the collection name is returned.
-  /// TODO: remove this
-  //////////////////////////////////////////////////////////////////////////////
-
-  void getCollectionName(TRI_voc_cid_t cid,
-                         arangodb::basics::StringBuffer& buffer) const {
-    auto const& it = _resolvedIds.find(cid);
-
-    if (it != _resolvedIds.end()) {
-      buffer.appendText((*it).second.c_str(), (*it).second.size());
-      return;
-    }
-
-    std::string name(getCollectionName(cid));
-    buffer.appendText(name.c_str(), name.size());
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a cluster-wide collection name for a cluster-wide
   /// collection id
   //////////////////////////////////////////////////////////////////////////////
@@ -336,37 +311,6 @@ class CollectionNameResolver {
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief look up a cluster-wide collection name for a cluster-wide
-  /// collection id
-  /// TODO: remove this
-  //////////////////////////////////////////////////////////////////////////////
-
-  void getCollectionNameCluster(TRI_voc_cid_t cid,
-                                arangodb::basics::StringBuffer& buffer) const {
-    if (!ServerState::instance()->isRunningInCluster()) {
-      return getCollectionName(cid, buffer);
-    }
-
-    int tries = 0;
-
-    while (tries++ < 2) {
-      std::shared_ptr<CollectionInfo> ci =
-          ClusterInfo::instance()->getCollection(
-              _vocbase->_name, arangodb::basics::StringUtils::itoa(cid));
-      std::string name = ci->name();
-
-      if (name.empty()) {
-        ClusterInfo::instance()->flush();
-        continue;
-      }
-      buffer.appendText(name);
-      return;
-    }
-
-    buffer.appendText("_unknown");
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief return collection name if given string is either the name or
   /// a string with the (numerical) collection id, this returns the cluster
   /// wide collection name in the DBserver case
@@ -382,6 +326,7 @@ class CollectionNameResolver {
   }
 
  private:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief vocbase base pointer
   //////////////////////////////////////////////////////////////////////////////

@@ -294,7 +294,7 @@ int DumpFeature::dumpCollection(int fd, std::string const& cid,
   uint64_t chunkSize = _chunkSize;
 
   std::string const baseUrl = "/_api/replication/dump?collection=" + cid +
-                              "&ticks=false&translateIds=true&flush=false";
+                              "&ticks=false&flush=false";
 
   uint64_t fromTick = _tickStart;
 
@@ -668,7 +668,7 @@ int DumpFeature::dumpShard(int fd, std::string const& DBserver,
   std::string const baseUrl = "/_api/replication/dump?DBserver=" + DBserver +
                               "&collection=" + name + "&chunkSize=" +
                               StringUtils::itoa(_chunkSize) +
-                              "&ticks=false&translateIds=true";
+                              "&ticks=false";
 
   uint64_t fromTick = 0;
   uint64_t maxTick = UINT64_MAX;

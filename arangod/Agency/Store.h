@@ -53,8 +53,8 @@ using namespace arangodb::velocypack;
 
 class StoreException : public std::exception {
 public:
-  StoreException(std::string const& message) : _message(message) {}
-  virtual char const* what() const noexcept { return _message.c_str(); }
+  explicit StoreException(std::string const& message) : _message(message) {}
+  virtual char const* what() const noexcept override final { return _message.c_str(); }
 private:
   std::string _message;
 };
@@ -72,7 +72,7 @@ public:
   typedef std::map<TimePoint, std::shared_ptr<Node>> TimeTable;
   
   /// @brief Construct with name
-  Node (std::string const& name);
+  explicit Node (std::string const& name);
 
   /// @brief Construct with name and introduce to tree under parent
   Node (std::string const& name, Node* parent);
@@ -175,7 +175,7 @@ class Store : public Node, public arangodb::Thread {
 public:
 
   /// @brief Construct with name
-  Store (std::string const& name = "root");
+  explicit Store (std::string const& name = "root");
 
   /// @brief Destruct
   virtual ~Store ();

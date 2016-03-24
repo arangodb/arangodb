@@ -343,7 +343,8 @@ static void ExistsVocbaseVPack(
   std::string collectionName;
 
   int res;
-  { VPackObjectBuilder guard(&builder);
+  { 
+    VPackObjectBuilder guard(&builder);
     res = ParseDocumentOrDocumentHandle(
       isolate, vocbase, transactionContext->getResolver(), col,
       collectionName, builder, true, args[0]);
@@ -511,7 +512,8 @@ static void DocumentVocbase(
   VPackBuilder builder;
   std::string collectionName;
 
-  { VPackObjectBuilder guard(&builder);
+  { 
+    VPackObjectBuilder guard(&builder);
     int res = ParseDocumentOrDocumentHandle(
         isolate, vocbase, transactionContext->getResolver(), col,
         collectionName, builder, true, args[0]);
@@ -744,7 +746,8 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackBuilder builder;
   std::string collectionName;
 
-  { VPackObjectBuilder guard(&builder);
+  { 
+    VPackObjectBuilder guard(&builder);
     int res = ParseDocumentOrDocumentHandle(
         isolate, vocbase, transactionContext->getResolver(), col, collectionName, builder,
         !options.ignoreRevs, args[0]);

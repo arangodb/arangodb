@@ -1911,12 +1911,12 @@ int RestReplicationHandler::applyCollectionDumpMarker(
   if (type == REPLICATION_MARKER_DOCUMENT) {
     // {"type":2400,"key":"230274209405676","data":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
 
-    TRI_ASSERT(!slice.isNone());
     TRI_ASSERT(slice.isObject());
 
     OperationOptions options;
     options.silent = true;
     options.ignoreRevs = true;
+    options.isRestore = true;
 
     try {
       OperationResult opRes = trx.insert(collectionName, slice, options);
@@ -2008,8 +2008,13 @@ static int restoreDataParser(char const* ptr, char const* pos,
 
     if (attributeName == "type") {
       if (pair.value.isNumber()) {
-        type = static_cast<TRI_replication_operation_e>(
-            pair.value.getNumericValue<int>());
+        int v = pair.value.getNumericValue<int>();
+        if (v == 2301) {
+          // pre-3.0 type for edges
+          type = REPLICATION_MARKER_DOCUMENT;
+        } else {
+          type = static_cast<TRI_replication_operation_e>(v);
+        }
       }
     }
 
@@ -2025,6 +2030,11 @@ static int restoreDataParser(char const* ptr, char const* pos,
         } 
       }
     }
+  }
+  
+  if (type == REPLICATION_MARKER_DOCUMENT && !doc.isObject()) {
+    errorMsg = "got document marker without contents";
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
   if (key.empty()) {
@@ -2048,6 +2058,7 @@ int RestReplicationHandler::processRestoreDataBatch(
                                  collectionName;
 
   VPackBuilder builder;
+  VPackBuilder oldBuilder;
 
   char const* ptr = _request->body();
   char const* end = ptr + _request->bodySize();
@@ -2074,16 +2085,13 @@ int RestReplicationHandler::processRestoreDataBatch(
         return res;
       }
 
-      builder.clear();
-
-      builder.openObject();
-      builder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
-      builder.close();
-
-      VPackSlice const old = builder.slice();
+      oldBuilder.clear();
+      oldBuilder.openObject();
+      oldBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+      oldBuilder.close();
 
       res = applyCollectionDumpMarker(trx, resolver, collectionName, type,
-                                      old, doc, errorMsg);
+                                      oldBuilder.slice(), doc, errorMsg);
 
       if (res != TRI_ERROR_NO_ERROR && !force) {
         return res;

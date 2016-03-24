@@ -45,7 +45,9 @@ SingleCollectionTransaction::SingleCollectionTransaction(
         _accessType(accessType) {
 
   // add the (sole) collection
-  this->addCollection(cid, _accessType);
+  if (setupState() == TRI_ERROR_NO_ERROR) {
+    this->addCollection(cid, _accessType);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -133,7 +135,10 @@ bool SingleCollectionTransaction::hasDitch() const {
 /// @brief get the underlying collection's name
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string SingleCollectionTransaction::name() const { 
+std::string SingleCollectionTransaction::name() { 
+  this->trxCollection(); // will ensure we have the _trxCollection object set
+  TRI_ASSERT(_trxCollection != nullptr);
+  TRI_ASSERT(_trxCollection->_collection != nullptr);
   return _trxCollection->_collection->_name; 
 }
 

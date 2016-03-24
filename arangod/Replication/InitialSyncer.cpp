@@ -1248,6 +1248,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
     OperationOptions options;
     options.silent = true;
     options.ignoreRevs = true;
+    options.isRestore = true;
 
     SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->_cid, TRI_TRANSACTION_WRITE);
   

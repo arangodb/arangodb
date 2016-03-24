@@ -141,11 +141,10 @@ KeyGenerator* KeyGenerator::factory(VPackSlice const& options) {
       VPackSlice const incrementSlice = options.get("increment");
 
       if (incrementSlice.isNumber()) {
-        if (incrementSlice.isDouble()) {
-          if (incrementSlice.getDouble() <= 0.0) {
-            // negative or 0 increment is not allowed
-            return nullptr;
-          }
+        double v = incrementSlice.getNumericValue<double>();
+        if (v <= 0.0) {
+          // negative or 0 increment is not allowed
+          return nullptr;
         }
 
         increment = incrementSlice.getNumericValue<uint64_t>();
@@ -158,12 +157,12 @@ KeyGenerator* KeyGenerator::factory(VPackSlice const& options) {
       VPackSlice const offsetSlice = options.get("offset");
 
       if (offsetSlice.isNumber()) {
-        if (offsetSlice.isDouble()) {
-          if (offsetSlice.getDouble() < 0.0) {
-            // negative or 0 offset is not allowed
-            return nullptr;
-          }
+        double v = offsetSlice.getNumericValue<double>();
+        if (v < 0.0) {
+          // negative or 0 offset is not allowed
+          return nullptr;
         }
+
         offset = offsetSlice.getNumericValue<uint64_t>();
 
         if (offset >= UINT64_MAX) {

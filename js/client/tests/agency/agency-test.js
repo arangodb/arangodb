@@ -66,13 +66,13 @@ function agencyTestSuite () {
     return res;
   }
 
-  function writeAgencyRaw(list) {
+/*  function writeAgencyRaw(list) {
       var res = request({url: agencyServers[whoseTurn] + "/_api/agency/write", method: "POST",
                          followRedirects: true, body: list,
                          headers: {"Content-Type": "application/json"}});
       res.bodyParsed = JSON.parse(res.body);
       return res;
-  }
+  }*/
 
   function readAndCheck(list) {
       var res = readAgency(list);

@@ -84,7 +84,7 @@ public:
   /**
    * @brief My daily business
    */
-  void run() override;
+  void run() override final;
 
   /**
    * @brief Who is leading
@@ -104,6 +104,9 @@ public:
   void beginShutdown () override;
 
 private:
+
+  /// @brief set term to new term
+  void term (term_t);
   
   std::vector<std::string> const& end_points() const;
   std::string const& end_point(id_t) const;
@@ -140,6 +143,8 @@ private:
    */
   duration_t sleepFor(double, double);
   double sleepFord(double, double);
+
+  
 
   // mission critical
   term_t  _term;         /**< @brief term number */

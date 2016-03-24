@@ -93,12 +93,12 @@ class ApplicationAgency : virtual public arangodb::rest::ApplicationFeature {
  public:
 
   void setupOptions(std::map<std::string,
-         arangodb::basics::ProgramOptionsDescription>&) override;
+                    arangodb::basics::ProgramOptionsDescription>&) override final;
 
-  bool prepare() override;
-  bool start() override;
-  bool open() override;
-  void close() override;
+  bool prepare() override final;
+  bool start() override final;
+  bool open() override final;
+  void close() override final;
 
   agent_t* agent() const;
   

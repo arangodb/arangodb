@@ -547,6 +547,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
               OperationOptions options;
               options.silent = true;
               options.recoveryMarker = envelope;
+              options.isRestore = true;
 
               // try an insert first
               OperationResult opRes = trx->insert(collectionName, VPackSlice(ptr), options);

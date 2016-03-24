@@ -51,13 +51,13 @@ class EndpointIpV4 final : public EndpointIp {
   /// @brief get endpoint domain
   //////////////////////////////////////////////////////////////////////////////
 
-  int getDomain() const { return AF_INET; }
+  int getDomain() const override { return AF_INET; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get host string for HTTP requests
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string getHostString() const {
+  std::string getHostString() const override{
     return getHost() + ':' + arangodb::basics::StringUtils::itoa(getPort());
   }
 };

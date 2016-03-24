@@ -215,8 +215,6 @@ unsigned int const Slice::FirstSubMap[32] = {
     8,  // 0x12, object with unsorted index table
     0};
 
-static char const* NullStr = "0x18";
-
 // creates a Slice from Json and adds it to a scope
 Slice Slice::fromJson(SliceScope& scope, std::string const& json,
                       Options const* options) {
@@ -297,10 +295,11 @@ uint64_t Slice::normalizedHash(uint64_t seed) const {
     // normalize objects by hashing object length and iterating
     // over all object members
     uint64_t const n = length() ^ 0xf00ba44ba5;
-    value = fasthash64(&n, sizeof(n), seed);
+    uint64_t seed2 = fasthash64(&n, sizeof(n), seed);
+    value = seed2;
     for (auto const& it : ObjectIterator(*this)) {
-      value ^= it.key.normalizedHash(value);
-      value ^= it.value.normalizedHash(value);
+      value ^= it.key.normalizedHash(seed2);
+      value ^= it.value.normalizedHash(seed2);
     }
   } else {
     // fall back to regular hash function

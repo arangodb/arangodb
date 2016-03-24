@@ -505,7 +505,7 @@ static int DumpCollection(TRI_replication_dump_t* dump,
         // found a non-data marker...
 
         // check if we can abort searching
-        if (foundTick >= dataMax || (foundTick >= e._tickMax && i == (n - 1))) {
+        if (foundTick >= dataMax || (foundTick > e._tickMax && i == (n - 1))) {
           // fetched the last available marker
           hasMore = false;
           goto NEXT_DF;
