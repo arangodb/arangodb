@@ -99,7 +99,7 @@ class SingleCollectionTransaction : public Transaction {
   /// @brief get the underlying collection's name
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string name() const;
+  std::string name();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief explicitly lock the underlying collection for read access

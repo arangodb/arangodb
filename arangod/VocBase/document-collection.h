@@ -237,7 +237,8 @@ struct TRI_document_collection_t : public TRI_collection_t {
       arangodb::Transaction* trx,
       arangodb::velocypack::Slice const& value,
       uint64_t& hash,
-      arangodb::velocypack::Builder& builder);
+      arangodb::velocypack::Builder& builder,
+      bool isRestore);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief new object for Replace

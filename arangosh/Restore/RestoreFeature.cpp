@@ -185,6 +185,7 @@ int RestoreFeature::tryCreateDatabase(ClientFeature* client,
   builder.add("passwd", VPackValue(client->password()));
   builder.close();
   builder.close();
+  builder.close();
 
   std::string const body = builder.slice().toJson();
 

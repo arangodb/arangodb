@@ -36,7 +36,7 @@ struct OperationOptions {
   OperationOptions() 
       : recoveryMarker(nullptr), waitForSync(false), keepNull(true),
         mergeObjects(true), silent(false), ignoreRevs(true),
-        returnOld(false), returnNew(false) {}
+        returnOld(false), returnNew(false), isRestore(false) {}
 
   // original marker, set by the recovery procedure only!
   arangodb::wal::Marker* recoveryMarker;
@@ -61,6 +61,10 @@ struct OperationOptions {
 
   // returnNew: for insert, replace and update return complete new value
   bool returnNew;
+
+  // for insert operations: use _key value even when this is normally prohibited for the end user
+  // this option is there to ensure _key values once set can be restored by replicated and arangorestore
+  bool isRestore;
 };
 
 }

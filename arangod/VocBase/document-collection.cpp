@@ -3278,7 +3278,7 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const slice,
   VPackSlice newSlice;
   int res = TRI_ERROR_NO_ERROR;
   if (options.recoveryMarker == nullptr) {
-    res = newObjectForInsert(trx, slice, hash, *builder.get());
+    res = newObjectForInsert(trx, slice, hash, *builder.get(), options.isRestore);
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
@@ -4089,7 +4089,8 @@ int TRI_document_collection_t::newObjectForInsert(
     Transaction* trx,
     VPackSlice const& value,
     uint64_t& hash,
-    VPackBuilder& builder) {
+    VPackBuilder& builder,
+    bool isRestore) {
   // insert
   { 
     VPackObjectBuilder guard(&builder);
@@ -4119,7 +4120,7 @@ int TRI_document_collection_t::newObjectForInsert(
       return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
     } else {
       std::string keyString = s.copyString();
-      int res = _keyGenerator->validate(keyString, false);
+      int res = _keyGenerator->validate(keyString, isRestore);
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
       }
