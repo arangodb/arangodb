@@ -44,7 +44,7 @@ class ExplicitTransaction : public Transaction {
   ExplicitTransaction(std::shared_ptr<V8TransactionContext> transactionContext,
                       std::vector<std::string> const& readCollections,
                       std::vector<std::string> const& writeCollections,
-                      double lockTimeout, bool waitForSync, bool embed,
+                      double lockTimeout, bool waitForSync,
                       bool allowImplicitCollections)
       : Transaction(transactionContext, 0) {
     this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);

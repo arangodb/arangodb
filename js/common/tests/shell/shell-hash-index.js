@@ -30,8 +30,6 @@
 
 var jsunity = require("jsunity");
 var internal = require("internal");
-var errors = internal.errors;
-var testHelper = require("@arangodb/test-helper").Helper;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: Creation
@@ -41,22 +39,6 @@ function HashIndexSuite() {
   'use strict';
   var cn = "UnitTestsCollectionHash";
   var collection = null;
-
-  var sorter = function (l, r) {
-    var i;
-    if (l.length !== r.length) {
-      return l.length - r.length < 0 ? -1 : 1;
-    }
-
-    // length is equal
-    for (i = 0; i < l.length; ++i) {
-      if (l[i] !== r[i]) {
-        return l[i] < r[i] ? -1 : 1;
-      }
-    }
-
-    return 0;
-  };
 
   return {
 

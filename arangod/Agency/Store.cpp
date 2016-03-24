@@ -452,7 +452,7 @@ bool Store::read (VPackSlice const& query, Builder& ret) const {
     return false;
   }
   query_strs.sort();     // sort paths
-
+  
   // Remove double ranges (inclusion / identity)
   for (auto i = query_strs.begin(), j = i; i != query_strs.end(); ++i) {
     if (i!=j && i->compare(0,j->size(),*j)==0) {
@@ -463,7 +463,7 @@ bool Store::read (VPackSlice const& query, Builder& ret) const {
   }
   auto cut = std::remove_if(query_strs.begin(), query_strs.end(), Empty());
   query_strs.erase (cut,query_strs.end());
-
+  
   // Create response tree 
   Node copy("copy");
   for (auto i = query_strs.begin(); i != query_strs.end(); ++i) {
@@ -471,7 +471,7 @@ bool Store::read (VPackSlice const& query, Builder& ret) const {
       copy(*i) = (*this)(*i);
     } catch (StoreException const&) {}
   }
-
+  
   // Assemble builder from response tree
   if (query.type() == VPackValueType::String &&
       copy(*query_strs.begin()).type() == LEAF) {

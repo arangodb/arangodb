@@ -139,13 +139,13 @@ void Agent::reportIn (id_t id, index_t index) {
 
   if (index > _confirmed[id])      // progress this follower?
     _confirmed[id] = index;
-
+  
   if(index > _last_commit_index) { // progress last commit?
     size_t n = 0;
     for (size_t i = 0; i < size(); ++i) {
       n += (_confirmed[i]>=index);
     }
-
+    
     if (n>size()/2) { // catch up read database and commit index
       LOG_TOPIC(INFO, Logger::AGENCY) << "Critical mass for commiting " <<
         _last_commit_index+1 << " through " << index << " to read db";
@@ -195,8 +195,7 @@ bool Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
 
 }
 
-append_entries_t Agent::sendAppendEntriesRPC (
-  id_t slave_id/*, collect_ret_t const& entries*/) {
+append_entries_t Agent::sendAppendEntriesRPC (id_t slave_id) {
 
   index_t last_confirmed = _confirmed[slave_id];
   std::vector<log_t> unconfirmed = _state.get(last_confirmed);
@@ -224,6 +223,9 @@ append_entries_t Agent::sendAppendEntriesRPC (
   }
   builder.close();
 
+  LOG_TOPIC(WARN,Logger::AGENCY) << _config.end_points[slave_id] << path.str();
+  LOG_TOPIC(WARN,Logger::AGENCY) << builder.slice().toJson(); 
+  
   // Send
   if (unconfirmed.size() > 1) {
     LOG_TOPIC(INFO, Logger::AGENCY) << "Appending " << unconfirmed.size() << " entries up to index "

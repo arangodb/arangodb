@@ -1640,7 +1640,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
     return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
   }
     
-  if (!parameters.isObject() || !indexes.isObject()) {
+  if (!parameters.isObject() || !indexes.isArray()) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
