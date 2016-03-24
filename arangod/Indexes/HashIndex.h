@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/AssocMulti.h"
 #include "Basics/AssocUnique.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Indexes/PathBasedIndex.h"
 #include "Indexes/IndexIterator.h"
 #include "VocBase/vocbase.h"
@@ -252,7 +253,8 @@ class HashIndex final : public PathBasedIndex {
         VPackSlice leftData = leftSub->slice(left->document());
         VPackSlice rightData = rightSub->slice(right->document());
 
-        if (leftData != rightData) {
+        int res = arangodb::basics::VelocyPackHelper::compare(leftData, rightData, false);
+        if (res != 0) {
           return false;
         }
       }
