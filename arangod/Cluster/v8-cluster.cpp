@@ -1745,10 +1745,7 @@ static void Return_PrepareClusterCommResultForJS(
   TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
 
   v8::Handle<v8::Object> r = v8::Object::New(isolate);
-  if (res.invalid) {
-    TRI_GET_GLOBAL_STRING(ErrorMessageKey);
-    r->Set(ErrorMessageKey, TRI_V8_ASCII_STRING("out of memory"));
-  } else if (res.dropped) {
+  if (res.dropped) {
     TRI_GET_GLOBAL_STRING(ErrorMessageKey);
     r->Set(ErrorMessageKey, TRI_V8_ASCII_STRING("operation was dropped"));
   } else {
@@ -1830,8 +1827,13 @@ static void Return_PrepareClusterCommResultForJS(
       TRI_GET_GLOBAL_STRING(ErrorMessageKey);
       r->Set(ErrorMessageKey,
              TRI_V8_ASCII_STRING("request dropped whilst waiting for answer"));
-    } else {  // Everything is OK
-      TRI_ASSERT(res.status == CL_COMM_RECEIVED);
+    } else if (res.status == CL_COMM_BACKEND_UNAVAILABLE) {
+      TRI_GET_GLOBAL_STRING(StatusKey);
+      r->Set(StatusKey, TRI_V8_ASCII_STRING("BACKEND_UNAVAILABLE"));
+      TRI_GET_GLOBAL_STRING(ErrorMessageKey);
+      r->Set(ErrorMessageKey,
+             TRI_V8_ASCII_STRING("required backend was not available"));
+    } else if (res.status == CL_COMM_RECEIVED) {  // Everything is OK
       // The headers:
       v8::Handle<v8::Object> h = v8::Object::New(isolate);
       TRI_GET_GLOBAL_STRING(StatusKey);
@@ -1850,6 +1852,9 @@ static void Return_PrepareClusterCommResultForJS(
                TRI_V8_PAIR_STRING(res.answer->body(),
                                   (int)res.answer->bodySize()));
       }
+    } else {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "unknown ClusterComm result status");
     }
   }
 
@@ -1901,7 +1906,7 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
       clientTransactionID, coordTransactionID, destination, reqType, path, body,
       headerFields, 0, timeout, singleRequest);
 
-  if (res.invalid) {
+  if (res.status == CL_COMM_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "couldn't queue async request");
   }
