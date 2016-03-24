@@ -53,17 +53,8 @@
 ///   Will be raised when a request is canceled by the user.
 /// - 22: @LIT{intentional debug error}
 ///   Will be raised intentionally during debugging.
-/// - 23: @LIT{internal error with attribute ID in shaper}
-///   Will be raised if an attribute ID is not found in the shaper but should
-///   have been.
-/// - 24: @LIT{internal error if a legend could not be created}
-///   Will be raised if the legend generator was only given access to the shape
-///   and some sids are in the data object (inhomogeneous lists).
 /// - 25: @LIT{IP address is invalid}
 ///   Will be raised when the structure of an IP address is invalid.
-/// - 26: @LIT{internal error if a legend for a marker does not yet exist in the same WAL file}
-///   Will be raised internally, then fixed internally, and never come out to
-///   the user.
 /// - 27: @LIT{file exists}
 ///   Will be raised when a file already exists.
 /// - 28: @LIT{locked}
@@ -173,8 +164,6 @@
 ///   Will be raised when a cross-collection is requested.
 /// - 1214: @LIT{illegal index handle}
 ///   Will be raised when a index handle is corrupt.
-/// - 1215: @LIT{cap constraint already defined}
-///   Will be raised when a cap constraint was already defined.
 /// - 1216: @LIT{document too large}
 ///   Will be raised when the document cannot fit into any datafile because of
 ///   it is too large.
@@ -877,28 +866,6 @@ void TRI_InitializeErrorMessages ();
 #define TRI_ERROR_DEBUG                                                   (22)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 23: ERROR_AID_NOT_FOUND
-///
-/// internal error with attribute ID in shaper
-///
-/// Will be raised if an attribute ID is not found in the shaper but should
-/// have been.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_AID_NOT_FOUND                                           (23)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 24: ERROR_LEGEND_INCOMPLETE
-///
-/// internal error if a legend could not be created
-///
-/// Will be raised if the legend generator was only given access to the shape
-/// and some sids are in the data object (inhomogeneous lists).
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_LEGEND_INCOMPLETE                                       (24)
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief 25: ERROR_IP_ADDRESS_INVALID
 ///
 /// IP address is invalid
@@ -907,18 +874,6 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_IP_ADDRESS_INVALID                                      (25)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 26: ERROR_LEGEND_NOT_IN_WAL_FILE
-///
-/// internal error if a legend for a marker does not yet exist in the same WAL
-/// file
-///
-/// Will be raised internally, then fixed internally, and never come out to the
-/// user.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_LEGEND_NOT_IN_WAL_FILE                                  (26)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 27: ERROR_FILE_EXISTS
@@ -1399,16 +1354,6 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_INDEX_HANDLE_BAD                                 (1214)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1215: ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED
-///
-/// cap constraint already defined
-///
-/// Will be raised when a cap constraint was already defined.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED                   (1215)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1216: ERROR_ARANGO_DOCUMENT_TOO_LARGE
