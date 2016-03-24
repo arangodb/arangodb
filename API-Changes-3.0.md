@@ -52,6 +52,12 @@ Overview
 13. the HTTP API for modifying documents (/_api/document) does not return the `error`
     attribute with a value of `false` in case an operation succeeds.
 
+14. calling either collection.edges(), collection.outEdges(), collection.inEdges()
+    with an array of edge ids will now make the edge ids unique before returning the
+    connected edges. This is probably desired anyway, as results will be returned only
+    once per distinct input edge id. However, it may break client applications that 
+    rely on the old behavior.
+
 
 ### New capabilities:
 

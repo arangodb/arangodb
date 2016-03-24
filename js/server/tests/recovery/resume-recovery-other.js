@@ -86,7 +86,6 @@ function recoverySuite () {
     
     testResumeRecoveryOther : function () {
       var c = db._collection("UnitTestsRecovery"), i, j, doc;
-      var idx = c.getIndexes()[1];
         
       assertEqual(50001, c.count());
 
@@ -94,7 +93,7 @@ function recoverySuite () {
         doc = c.document("test" + i);
         assertEqual("test" + i, doc.value1);
         assertEqual(i + 1, doc.value2);
-        assertEqual(1, c.byExampleSkiplist(idx.id, { value2: i + 1 }).toArray().length);
+        assertEqual(1, c.byExample({ value2: i + 1 }).toArray().length);
       }
 
       for (j = 0; j < 4; ++j) {
@@ -103,7 +102,7 @@ function recoverySuite () {
           assertEqual("test" + i, doc.value1);
           assertEqual("abc" + i, doc.value2);
         
-          assertEqual(4, c.byExampleSkiplist(idx.id, { value2: "abc" + i }).toArray().length);
+          assertEqual(4, c.byExample({ value2: "abc" + i }).toArray().length);
         }
       }
     }

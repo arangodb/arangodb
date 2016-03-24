@@ -1571,7 +1571,6 @@ int TRI_CreateDatabaseServer(TRI_server_t* server, TRI_voc_tick_t databaseId,
       try {
         builder.openObject();
         builder.add("database", VPackValue(databaseId));
-        builder.add("data", VPackValue(VPackValueType::Object));
 
         // name not yet in use
         defaults->toVelocyPack(builder);
@@ -1677,7 +1676,6 @@ int TRI_CreateDatabaseServer(TRI_server_t* server, TRI_voc_tick_t databaseId,
 
   // write marker into log
   if (writeMarker) {
-    builder.close(); // close inner
     builder.close();
     res = WriteCreateMarker(databaseId, builder.slice());
   }

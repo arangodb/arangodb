@@ -3312,7 +3312,6 @@ const recoveryTests = [
   "indexes-sparse-skiplist",
   "indexes-geo",
   "edges",
-  "cap-constraint",
   "indexes",
   "many-inserts",
   "many-updates",

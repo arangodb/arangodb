@@ -41,7 +41,6 @@ function runSetup () {
 
   c.ensureHashIndex("value1");
   c.ensureSkiplist("value2");
-  c.ensureCapConstraint(5000);
 
   for (i = 0; i < 1000; ++i) {
     c.save({ _key: "test" + i, value1: i, value2: "test" + (i % 10) });
@@ -88,25 +87,19 @@ function recoverySuite () {
         return 0;
       });
 
-      assertEqual(4, idx.length);
+      assertEqual(3, idx.length);
 
       assertEqual("primary", idx[0].type);
       assertEqual("hash", idx[1].type);
       assertFalse(idx[1].unique);
       assertFalse(idx[1].sparse);
       assertEqual([ "value1" ], idx[1].fields);
-      var hash = idx[1];
       
       assertEqual("skiplist", idx[2].type);
       assertFalse(idx[2].unique);
       assertFalse(idx[2].sparse);
       assertEqual([ "value2" ], idx[2].fields);
-      var skip = idx[2];
       
-      assertEqual("cap", idx[3].type);
-      assertEqual(5000, idx[3].size);
-      assertEqual(0, idx[3].byteSize);
-
       for (i = 0; i < 1000; ++i) {
         var doc = c.document("test" + i);
         assertEqual(i, doc.value1); 
@@ -114,13 +107,13 @@ function recoverySuite () {
       }
 
       for (i = 0; i < 1000; ++i) {
-        docs = c.byExampleHash(hash.id, { value1: i }).toArray();
+        docs = c.byExample({ value1: i }).toArray();
         assertEqual(1, docs.length);
         assertEqual("test" + i, docs[0]._key);
       }
 
       for (i = 0; i < 1000; ++i) {
-        docs = c.byExampleSkiplist(skip.id, { value2: "test" + (i % 10) }).toArray();
+        docs = c.byExample({ value2: "test" + (i % 10) }).toArray();
         assertEqual(100, docs.length);
       }
 
