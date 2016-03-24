@@ -64,13 +64,6 @@ var sortedKeys = function (col) {
   return keys;
 };
 
-var assertOrder = function (keys, col) {
-  'use strict';
-  assertEqual(keys.length, col.count());
-  assertEqual(keys, col.first(keys.length).map(function (doc) { return doc._key; }));
-};
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -1379,44 +1372,6 @@ function transactionOperationsSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: trx with insert operation
-////////////////////////////////////////////////////////////////////////////////
-
-    testInsertWithCap : function () {
-      c1 = db._create(cn1);
-      c1.ensureCapConstraint(3);
-      c1.save({ _key: "foo" });
-      c1.save({ _key: "bar" });
-
-      var obj = {
-        collections : {
-          write: [ cn1 ]
-        },
-        action : function () {
-          c1.save({ _key: "baz" });
-          c1.save({ _key: "bam" });
-      
-          assertEqual(3, c1.count());
-          assertEqual([ "bam", "bar", "baz" ], sortedKeys(c1));
-          
-          c1.save({ _key: "zap" });
-          assertEqual(3, c1.count());
-          assertEqual([ "bam", "baz", "zap" ], sortedKeys(c1));
-
-          c1.save({ _key: "abc" });
-          assertEqual(3, c1.count());
-          assertEqual([ "abc", "bam", "zap" ], sortedKeys(c1));
-
-          return true;
-        }
-      };
-
-      TRANSACTION(obj);
-      assertEqual(3, c1.count());
-      assertEqual([ "abc", "bam", "zap" ], sortedKeys(c1));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test: trx with replace operation
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2301,7 +2256,6 @@ function transactionRollbackSuite () {
       c1.save({ _key: "foo" });
       c1.save({ _key: "bar" });
       c1.save({ _key: "meow" });
-      assertOrder(["foo", "bar", "meow"], c1);
 
       var obj = {
         collections : {
@@ -2312,8 +2266,6 @@ function transactionRollbackSuite () {
           c1.save({ _key: "tim" });
           c1.save({ _key: "tam" });
       
-          assertOrder(["foo", "bar", "meow", "tom", "tim", "tam"], c1);
-
           assertEqual(6, c1.count());
           throw "rollback";
         }
@@ -2328,7 +2280,6 @@ function transactionRollbackSuite () {
 
       assertEqual(3, c1.count());
       assertEqual([ "bar", "foo", "meow" ], sortedKeys(c1));
-      assertOrder(["foo", "bar", "meow"], c1);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2358,21 +2309,6 @@ function transactionRollbackSuite () {
       
           assertEqual(8, c1.count());
 
-          var docs;
-          docs = c1.byExampleHash(hash.id, { value: "foo" }).toArray();
-          assertEqual(2, docs.length);
-          docs = c1.byExampleSkiplist(skip.id, { value: "foo" }).toArray();
-          assertEqual(2, docs.length);
-          docs = c1.byExampleHash(hash.id, { value: "bar" }).toArray();
-          assertEqual(2, docs.length);
-          docs = c1.byExampleSkiplist(skip.id, { value: "bar" }).toArray();
-          assertEqual(2, docs.length);
-      
-          docs = c1.byExampleHash(hash.id, { value: "tim" }).toArray();
-          assertEqual(1, docs.length);
-          docs = c1.byExampleSkiplist(skip.id, { value: "tim" }).toArray();
-          assertEqual(1, docs.length);
- 
           good = true;
           throw "rollback";
         }
@@ -2387,33 +2323,6 @@ function transactionRollbackSuite () {
       assertEqual(true, good);
 
       assertEqual(3, c1.count());
-      
-      var docs;
-      docs = c1.byExampleHash(hash.id, { value: "foo" }).toArray();
-      assertEqual(1, docs.length);
-      assertEqual("foo", docs[0]._key);
-      assertEqual(1, docs[0].a);
-      
-      docs = c1.byExampleHash(hash.id, { value: "bar" }).toArray();
-      assertEqual(1, docs.length);
-      assertEqual("bar", docs[0]._key);
-      assertEqual(1, docs[0].a);
-
-      docs = c1.byExampleHash(hash.id, { value: "tim" }).toArray();
-      assertEqual(0, docs.length);
-
-      docs = c1.byExampleSkiplist(skip.id, { value: "foo" }).toArray();
-      assertEqual(1, docs.length);
-      assertEqual("foo", docs[0]._key);
-      assertEqual(1, docs[0].a);
-      
-      docs = c1.byExampleSkiplist(skip.id, { value: "bar" }).toArray();
-      assertEqual(1, docs.length);
-      assertEqual("bar", docs[0]._key);
-      assertEqual(1, docs[0].a);
-
-      docs = c1.byExampleSkiplist(skip.id, { value: "tim" }).toArray();
-      assertEqual(0, docs.length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2425,7 +2334,6 @@ function transactionRollbackSuite () {
       c1.save({ _key: "foo" });
       c1.save({ _key: "bar" });
       c1.save({ _key: "meow" });
-      assertOrder(["foo", "bar", "meow"], c1);
 
       var obj = {
         collections : {
@@ -2435,24 +2343,15 @@ function transactionRollbackSuite () {
           c1.save({ _key: "tom" });
           c1.save({ _key: "tim" });
           c1.save({ _key: "tam" });
-          assertOrder(["foo", "bar", "meow", "tom", "tim", "tam"], c1);
 
           c1.update("tom", { });
-          assertOrder(["foo", "bar", "meow", "tim", "tam", "tom"], c1);
           c1.update("tim", { });
-          assertOrder(["foo", "bar", "meow", "tam", "tom", "tim"], c1);
           c1.update("tam", { });
-          assertOrder(["foo", "bar", "meow", "tom", "tim", "tam"], c1);
           c1.update("bar", { });
-          assertOrder(["foo", "meow", "tom", "tim", "tam", "bar"], c1);
           c1.remove("foo");
-          assertOrder(["meow", "tom", "tim", "tam", "bar"], c1);
           c1.remove("bar");
-          assertOrder(["meow", "tom", "tim", "tam"], c1);
           c1.remove("meow");
-          assertOrder(["tom", "tim", "tam"], c1);
           c1.remove("tom");
-          assertOrder(["tim", "tam"], c1);
 
           assertEqual(2, c1.count());
           throw "rollback";
@@ -2585,38 +2484,7 @@ function transactionRollbackSuite () {
 
           assertEqual(3, c1.count());
 
-          var docs;
-          docs = c1.byExampleHash(hash.id, { value: "foo" }).toArray();
-          assertEqual(1, docs.length);
-          assertEqual(2, docs[0].a);
-          assertEqual("foo", docs[0]._key);
-          docs = c1.byExampleSkiplist(skip.id, { value: "foo" }).toArray();
-          assertEqual(1, docs.length);
-          assertEqual(2, docs[0].a);
-          assertEqual("foo", docs[0]._key);
-          
-          docs = c1.byExampleHash(hash.id, { value: "bar" }).toArray();
-          assertEqual(1, docs.length);
-          assertEqual(2, docs[0].a);
-          assertEqual("bar", docs[0]._key);
-          docs = c1.byExampleSkiplist(skip.id, { value: "bar" }).toArray();
-          assertEqual(1, docs.length);
-          assertEqual(2, docs[0].a);
-          assertEqual("bar", docs[0]._key);
-
-          docs = c1.byExampleHash(hash.id, { value: "troet" }).toArray();
-          assertEqual(1, docs.length);
-          assertEqual("meow", docs[0]._key);
-          docs = c1.byExampleSkiplist(skip.id, { value: "troet" }).toArray();
-          assertEqual(1, docs.length);
-          assertEqual("meow", docs[0]._key);
-
-          docs = c1.byExampleHash(hash.id, { value: "meow" }).toArray();
-          assertEqual(0, docs.length);
-          docs = c1.byExampleSkiplist(skip.id, { value: "meow" }).toArray();
-          assertEqual(0, docs.length);
           good = true;
-
           throw "rollback";
         }
       };
@@ -2630,35 +2498,6 @@ function transactionRollbackSuite () {
 
       assertEqual(true, good);
       assertEqual(3, c1.count());
-      
-      var docs;
-      docs = c1.byExampleHash(hash.id, { value: "foo" }).toArray();
-      assertEqual(1, docs.length);
-      assertEqual("foo", docs[0]._key);
-      assertEqual(1, docs[0].a);
-      docs = c1.byExampleSkiplist(skip.id, { value: "foo" }).toArray();
-      assertEqual(1, docs.length);
-      assertEqual("foo", docs[0]._key);
-      assertEqual(1, docs[0].a);
-      
-      docs = c1.byExampleHash(hash.id, { value: "bar" }).toArray();
-      assertEqual(1, docs.length);
-      assertEqual("bar", docs[0]._key);
-      assertEqual(1, docs[0].a);
-      docs = c1.byExampleSkiplist(skip.id, { value: "bar" }).toArray();
-      assertEqual(1, docs.length);
-      assertEqual("bar", docs[0]._key);
-      assertEqual(1, docs[0].a);
-
-      docs = c1.byExampleHash(hash.id, { value: "meow" }).toArray();
-      assertEqual(1, docs.length);
-      docs = c1.byExampleSkiplist(skip.id, { value: "meow" }).toArray();
-      assertEqual(1, docs.length);
-
-      docs = c1.byExampleHash(hash.id, { value: "troet" }).toArray();
-      assertEqual(0, docs.length);
-      docs = c1.byExampleSkiplist(skip.id, { value: "troet" }).toArray();
-      assertEqual(0, docs.length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2756,16 +2595,6 @@ function transactionRollbackSuite () {
       
           assertEqual(0, c1.count());
 
-          var docs;
-          docs = c1.byExampleHash(hash.id, { value: "foo" }).toArray();
-          assertEqual(0, docs.length);
-          docs = c1.byExampleSkiplist(skip.id, { value: "foo" }).toArray();
-          assertEqual(0, docs.length);
-          docs = c1.byExampleHash(hash.id, { value: "bar" }).toArray();
-          assertEqual(0, docs.length);
-          docs = c1.byExampleSkiplist(skip.id, { value: "bar" }).toArray();
-          assertEqual(0, docs.length);
-
           good = true;
 
           throw "rollback";
@@ -2781,27 +2610,6 @@ function transactionRollbackSuite () {
 
       assertEqual(true, good);
       assertEqual(3, c1.count());
-      
-      var docs;
-      docs = c1.byExampleHash(hash.id, { value: "foo" }).toArray();
-      assertEqual(1, docs.length);
-      assertEqual("foo", docs[0]._key);
-      assertEqual(1, docs[0].a);
-      
-      docs = c1.byExampleHash(hash.id, { value: "bar" }).toArray();
-      assertEqual(1, docs.length);
-      assertEqual("bar", docs[0]._key);
-      assertEqual(1, docs[0].a);
-
-      docs = c1.byExampleSkiplist(skip.id, { value: "foo" }).toArray();
-      assertEqual(1, docs.length);
-      assertEqual("foo", docs[0]._key);
-      assertEqual(1, docs[0].a);
-      
-      docs = c1.byExampleSkiplist(skip.id, { value: "bar" }).toArray();
-      assertEqual(1, docs.length);
-      assertEqual("bar", docs[0]._key);
-      assertEqual(1, docs[0].a);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2831,25 +2639,6 @@ function transactionRollbackSuite () {
           c1.save({ _key: "foo2", value: "foo", a: 2 });
           c1.save({ _key: "bar2", value: "bar", a: 2 });
           assertEqual(2, c1.count());
-      
-          var docs;
-          docs = c1.byExampleHash(hash.id, { value: "foo" }).toArray();
-          assertEqual(1, docs.length);
-          assertEqual(2, docs[0].a);
-          assertEqual("foo2", docs[0]._key);
-          docs = c1.byExampleSkiplist(skip.id, { value: "foo" }).toArray();
-          assertEqual(1, docs.length);
-          assertEqual(2, docs[0].a);
-          assertEqual("foo2", docs[0]._key);
-
-          docs = c1.byExampleHash(hash.id, { value: "bar" }).toArray();
-          assertEqual(1, docs.length);
-          assertEqual(2, docs[0].a);
-          assertEqual("bar2", docs[0]._key);
-          docs = c1.byExampleSkiplist(skip.id, { value: "bar" }).toArray();
-          assertEqual(1, docs.length);
-          assertEqual(2, docs[0].a);
-          assertEqual("bar2", docs[0]._key);
 
           good = true;
 
@@ -2866,27 +2655,6 @@ function transactionRollbackSuite () {
 
       assertEqual(true, good);
       assertEqual(3, c1.count());
-      
-      var docs;
-      docs = c1.byExampleHash(hash.id, { value: "foo" }).toArray();
-      assertEqual(1, docs.length);
-      assertEqual("foo", docs[0]._key);
-      assertEqual(1, docs[0].a);
-      
-      docs = c1.byExampleHash(hash.id, { value: "bar" }).toArray();
-      assertEqual(1, docs.length);
-      assertEqual("bar", docs[0]._key);
-      assertEqual(1, docs[0].a);
-
-      docs = c1.byExampleSkiplist(skip.id, { value: "foo" }).toArray();
-      assertEqual(1, docs.length);
-      assertEqual("foo", docs[0]._key);
-      assertEqual(1, docs[0].a);
-      
-      docs = c1.byExampleSkiplist(skip.id, { value: "bar" }).toArray();
-      assertEqual(1, docs.length);
-      assertEqual("bar", docs[0]._key);
-      assertEqual(1, docs[0].a);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3020,292 +2788,6 @@ function transactionRollbackSuite () {
       assertEqual(d1._rev, c1.toArray()[0]._rev);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: rollback inserts with cap constraint
-////////////////////////////////////////////////////////////////////////////////
-
-    testRollbackInsertCapConstraint1 : function () {
-      c1 = db._create(cn1);
-      c1.ensureCapConstraint(2);
-      c1.save({ _key: "foo" });
-      c1.save({ _key: "bar" });
-
-      var obj = {
-        collections : {
-          write: [ cn1 ]
-        },
-        action : function () {
-          c1.save({ _key: "tom" });
-
-          assertEqual(2, c1.count()); // bar, tom
-          assertEqual([ "bar", "tom" ], sortedKeys(c1));
-
-          throw "rollback";
-        }
-      };
-
-      try {
-        TRANSACTION(obj);
-        fail();
-      }
-      catch (err) {
-      }
-
-      assertEqual(2, c1.count());
-      assertEqual([ "bar", "foo" ], sortedKeys(c1));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: rollback inserts with cap constraint
-////////////////////////////////////////////////////////////////////////////////
-
-    testRollbackInsertCapConstraint2 : function () {
-      c1 = db._create(cn1);
-      c1.ensureCapConstraint(2);
-      c1.save({ _key: "foo" });
-      c1.save({ _key: "bar" });
-      c1.replace("bar", { a : 1 });
-
-      var obj = {
-        collections : {
-          write: [ cn1 ]
-        },
-        action : function () {
-          c1.save({ _key: "tom" });
-          c1.save({ _key: "tim" });
-
-          assertEqual(2, c1.count()); // tom, tim
-          assertEqual([ "tim", "tom" ], sortedKeys(c1));
-
-          throw "rollback";
-        }
-      };
-
-      try {
-        TRANSACTION(obj);
-        fail();
-      }
-      catch (err) {
-      }
-
-      assertEqual(2, c1.count());
-      assertEqual([ "bar", "foo" ], sortedKeys(c1));
-      
-      c1.save({ _key: "baz" });
-      assertEqual(2, c1.count());
-      assertEqual([ "bar", "baz" ], sortedKeys(c1));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: rollback inserts with cap constraint
-////////////////////////////////////////////////////////////////////////////////
-
-    testRollbackInsertCapConstraint3 : function () {
-      c1 = db._create(cn1);
-      c1.ensureCapConstraint(2);
-      c1.save({ _key: "foo" });
-      c1.save({ _key: "bar" });
-
-      var obj = {
-        collections : {
-          write: [ cn1 ]
-        },
-        action : function () {
-          c1.save({ _key: "tom" });
-          c1.save({ _key: "tim" });
-          c1.save({ _key: "tum" });
-          assertEqual(2, c1.count()); // tim, tum
-          assertEqual([ "tim", "tum" ], sortedKeys(c1));
-
-          throw "rollback";
-        }
-      };
-
-      try {
-        TRANSACTION(obj);
-        fail();
-      }
-      catch (err) {
-      }
-
-      assertEqual(2, c1.count());
-      assertEqual([ "bar", "foo" ], sortedKeys(c1));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: rollback inserts with cap constraint
-////////////////////////////////////////////////////////////////////////////////
-
-    testRollbackInsertCapConstraint4 : function () {
-      c1 = db._create(cn1);
-      c1.ensureCapConstraint(2);
-      c1.save({ _key: "foo" });
-      c1.save({ _key: "bar" });
-
-      var obj = {
-        collections : {
-          write: [ cn1 ]
-        },
-        action : function () {
-          c1.save({ _key: "tom" });
-          c1.save({ _key: "tim" });
-          c1.save({ _key: "tum" });
-          c1.save({ _key: "tam" });
-          c1.save({ _key: "tem" });
-          assertEqual(2, c1.count()); // tim, tum
-          assertEqual([ "tam", "tem" ], sortedKeys(c1));
-
-          c1.remove("tem");
-          assertEqual(1, c1.count()); // tim, tum
-          assertEqual([ "tam" ], sortedKeys(c1));
-
-          throw "rollback";
-        }
-      };
-
-      try {
-        TRANSACTION(obj);
-        fail();
-      }
-      catch (err) {
-      }
-
-      assertEqual(2, c1.count());
-      assertEqual([ "bar", "foo" ], sortedKeys(c1));
-      
-      c1.save({ _key: "baz" });
-      assertEqual(2, c1.count());
-      assertEqual([ "bar", "baz" ], sortedKeys(c1));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: rollback inserts with cap constraint
-////////////////////////////////////////////////////////////////////////////////
-
-    testRollbackInsertCapConstraint5 : function () {
-      c1 = db._create(cn1);
-      c1.ensureCapConstraint(3);
-      c1.save({ _key: "1" });
-      c1.save({ _key: "2" });
-      c1.save({ _key: "3" });
-
-      var obj = {
-        collections : {
-          write: [ cn1 ]
-        },
-        action : function () {
-          c1.save({ _key: "4" });
-          c1.save({ _key: "5" });
-          assertEqual(3, c1.count()); 
-          assertEqual([ "3", "4", "5" ], sortedKeys(c1));
-
-          throw "rollback";
-        }
-      };
-
-      try {
-        TRANSACTION(obj);
-        fail();
-      }
-      catch (err) {
-      }
-
-      c1.save({ _key: "4" });
-      assertEqual(3, c1.count());
-      assertEqual([ "2", "3", "4" ], sortedKeys(c1));
-      
-      c1.save({ _key: "5" });
-      assertEqual(3, c1.count()); 
-      assertEqual([ "3", "4", "5" ], sortedKeys(c1));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: rollback inserts with cap constraint
-////////////////////////////////////////////////////////////////////////////////
-
-    testRollbackInsertCapConstraint6 : function () {
-      c1 = db._create(cn1);
-      c1.ensureCapConstraint(3);
-      c1.save({ _key: "foo" });
-      c1.save({ _key: "bar" });
-
-      var obj = {
-        collections : {
-          write: [ cn1 ]
-        },
-        action : function () {
-          c1.save({ _key: "tom" });
-          c1.save({ _key: "tim" });
-          c1.save({ _key: "tum" });
-          assertEqual(3, c1.count()); // tom, tim, tum
-          assertEqual([ "tim", "tom", "tum" ], sortedKeys(c1));
-          c1.replace("tum", { a : 1 });
-
-          throw "rollback";
-        }
-      };
-
-      try {
-        TRANSACTION(obj);
-        fail();
-      }
-      catch (err) {
-      }
-
-      assertEqual(2, c1.count());
-      assertEqual([ "bar", "foo" ], sortedKeys(c1));
-
-      c1.save({ _key: "test" });
-      assertEqual(3, c1.count());
-      assertEqual([ "bar", "foo", "test" ], sortedKeys(c1));
-      
-      c1.save({ _key: "abc" });
-      assertEqual(3, c1.count());
-      assertEqual([ "abc", "bar", "test" ], sortedKeys(c1));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: rollback inserts with cap constraint
-////////////////////////////////////////////////////////////////////////////////
-
-    testRollbackUpdateCapConstraint6 : function () {
-      c1 = db._create(cn1);
-      c1.ensureCapConstraint(3);
-      c1.save({ _key: "foo" });
-      c1.save({ _key: "bar" });
-      c1.save({ _key: "baz" });
-
-      var obj = {
-        collections : {
-          write: [ cn1 ]
-        },
-        action : function () {
-          c1.replace("baz", { a : 1 });
-          c1.replace("bar", { a : 1 });
-          c1.replace("foo", { a : 1 });
-          
-          assertEqual(3, c1.count());
-          c1.save({ _key: "tim" });
-          assertEqual([ "bar", "foo", "tim" ], sortedKeys(c1));
-
-          throw "rollback";
-        }
-      };
-
-      try {
-        TRANSACTION(obj);
-        fail();
-      }
-      catch (err) {
-      }
-
-      assertEqual(3, c1.count());
-      assertEqual([ "bar", "baz", "foo" ], sortedKeys(c1));
-
-      c1.save({ _key: "test" });
-      assertEqual(3, c1.count());
-      assertEqual([ "bar", "baz", "test" ], sortedKeys(c1));
-    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: rollback a mixed workload
@@ -4032,25 +3514,6 @@ function transactionConstraintsSuite () {
       assertEqual(10, c.count());
       assertEqual(9, c.document("test9").value1);
       assertEqual(9, c.document("test9").value2);
-        
-      var doc;
-      for (i = 0; i < 10; ++i) {
-        doc = c.byExampleHash(idx1.id, { value1: i }).toArray();
-        assertEqual(1, doc.length);
-        doc = doc[0];
-        assertEqual("test" + i, doc._key);
-        assertEqual(i, doc.value1);
-        assertEqual(i, doc.value2);
-      }
-      
-      for (i = 0; i < 10; ++i) {
-        doc = c.byExampleHash(idx2.id, { value2: i }).toArray();
-        assertEqual(1, doc.length);
-        doc = doc[0];
-        assertEqual("test" + i, doc._key);
-        assertEqual(i, doc.value1);
-        assertEqual(i, doc.value2);
-      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4079,25 +3542,6 @@ function transactionConstraintsSuite () {
       assertEqual(10, c.count());
       assertEqual(9, c.document("test9").value1);
       assertEqual(9, c.document("test9").value2);
-      
-      var doc;
-      for (i = 0; i < 10; ++i) {
-        doc = c.byExampleHash(idx1.id, { value1: i }).toArray();
-        assertEqual(1, doc.length);
-        doc = doc[0];
-        assertEqual("test" + i, doc._key);
-        assertEqual(i, doc.value1);
-        assertEqual(i, doc.value2);
-      }
-      
-      for (i = 0; i < 10; ++i) {
-        doc = c.byExampleHash(idx2.id, { value2: i }).toArray();
-        assertEqual(1, doc.length);
-        doc = doc[0];
-        assertEqual("test" + i, doc._key);
-        assertEqual(i, doc.value1);
-        assertEqual(i, doc.value2);
-      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4126,25 +3570,6 @@ function transactionConstraintsSuite () {
       assertEqual(10, c.count());
       assertEqual(9, c.document("test9").value1);
       assertEqual(9, c.document("test9").value2);
-        
-      var doc;
-      for (i = 0; i < 10; ++i) {
-        doc = c.byExampleSkiplist(idx1.id, { value1: i }).toArray();
-        assertEqual(1, doc.length);
-        doc = doc[0];
-        assertEqual("test" + i, doc._key);
-        assertEqual(i, doc.value1);
-        assertEqual(i, doc.value2);
-      }
-      
-      for (i = 0; i < 10; ++i) {
-        doc = c.byExampleSkiplist(idx2.id, { value2: i }).toArray();
-        assertEqual(1, doc.length);
-        doc = doc[0];
-        assertEqual("test" + i, doc._key);
-        assertEqual(i, doc.value1);
-        assertEqual(i, doc.value2);
-      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4173,25 +3598,6 @@ function transactionConstraintsSuite () {
       assertEqual(10, c.count());
       assertEqual(9, c.document("test9").value1);
       assertEqual(9, c.document("test9").value2);
-      
-      var doc;
-      for (i = 0; i < 10; ++i) {
-        doc = c.byExampleSkiplist(idx1.id, { value1: i }).toArray();
-        assertEqual(1, doc.length);
-        doc = doc[0];
-        assertEqual("test" + i, doc._key);
-        assertEqual(i, doc.value1);
-        assertEqual(i, doc.value2);
-      }
-      
-      for (i = 0; i < 10; ++i) {
-        doc = c.byExampleSkiplist(idx2.id, { value2: i }).toArray();
-        assertEqual(1, doc.length);
-        doc = doc[0];
-        assertEqual("test" + i, doc._key);
-        assertEqual(i, doc.value1);
-        assertEqual(i, doc.value2);
-      }
     }
 
   };
