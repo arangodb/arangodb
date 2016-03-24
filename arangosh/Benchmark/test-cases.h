@@ -611,16 +611,12 @@ struct EdgeCrudTest : public BenchmarkOperation {
     size_t const mod = globalCounter % 4;
 
     if (mod == 0) {
-      return std::string("/_api/edge?collection=" + ARANGOB->collection() +
-                         "&from=" + ARANGOB->collection() + "%2Ftestfrom" +
-                         StringUtils::itoa(globalCounter) + "&to=" +
-                         ARANGOB->collection() + "%2Ftestto" +
-                         StringUtils::itoa(globalCounter));
+      return std::string("/_api/document?collection=" + ARANGOB->collection());
     } else {
       size_t keyId = (size_t)(globalCounter / 4);
       std::string const key = "testkey" + StringUtils::itoa(keyId);
 
-      return std::string("/_api/edge/" + ARANGOB->collection() + "/" + key);
+      return std::string("/_api/document/" + ARANGOB->collection() + "/" + key);
     }
   }
 
@@ -665,6 +661,19 @@ struct EdgeCrudTest : public BenchmarkOperation {
       std::string const key = "testkey" + StringUtils::itoa(keyId);
       TRI_AppendStringStringBuffer(buffer, key.c_str());
       TRI_AppendStringStringBuffer(buffer, "\"");
+
+      if (mod == 0) {
+        // append edge information
+        TRI_AppendStringStringBuffer(buffer, ",\"_from\":\"");
+        TRI_AppendStringStringBuffer(buffer, ARANGOB->collection().c_str());
+        TRI_AppendStringStringBuffer(buffer, "/testfrom");
+        TRI_AppendUInt64StringBuffer(buffer, globalCounter);
+        TRI_AppendStringStringBuffer(buffer, "\",\"_to\":\"");
+        TRI_AppendStringStringBuffer(buffer, ARANGOB->collection().c_str());
+        TRI_AppendStringStringBuffer(buffer, "/testto");
+        TRI_AppendUInt64StringBuffer(buffer, globalCounter);
+        TRI_AppendStringStringBuffer(buffer, "\"");
+      }
 
       for (uint64_t i = 1; i <= n; ++i) {
         TRI_AppendStringStringBuffer(buffer, ",\"value");
