@@ -211,6 +211,7 @@ endif ()
 # need c++11
 set(CMAKE_CXX_STANDARD 11)
 include(CheckCXX11Features)
+include(Boost)
 
 # need threads
 find_package(Threads REQUIRED)
@@ -577,8 +578,8 @@ endif ()
 ## BOOST
 ################################################################################
 
-include_directories(${BOOST_INCLUDE_DIR})
-add_definitions(-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\")
+include_directories(${Boost_INCLUDE_DIR})
+add_definitions(-DARANGODB_BOOST_VERSION=\"${Boost_VERSION}\")
 
 ################################################################################
 ## ICU
@@ -712,7 +713,9 @@ list(INSERT SYSTEM_LIBRARIES 0
 add_subdirectory(lib)
 add_subdirectory(arangosh)
 add_subdirectory(arangod)
-add_subdirectory(UnitTests)
+if (USE_BOOST_UNITTESTS)
+  add_subdirectory(UnitTests)
+endif()
 add_subdirectory(Documentation)
 
 add_dependencies(arangob zlibstatic v8_build)
