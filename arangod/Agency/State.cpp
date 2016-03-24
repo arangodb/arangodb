@@ -179,20 +179,6 @@ log_t const& State::lastLog() const {
   return _log.back();
 }
 
-collect_ret_t State::collectFrom (index_t index) {
-  // Collect all from index on
-  MUTEX_LOCKER(mutexLocker, _logLock);
-  std::vector<index_t> work;
-  id_t prev_log_term;
-  index_t prev_log_index;
-  prev_log_term = _log[index-1].term;
-  prev_log_index = _log[index-1].index;
-  for (index_t i = index; i < _log.size(); ++i) {
-    work.push_back(_log[i].index);
-  }
-  return collect_ret_t(prev_log_index, prev_log_term, work);
-}
-
 bool State::setEndPoint (std::string const& end_point) {
   _end_point = end_point;
   _dbs_checked = false;

@@ -1,4 +1,3 @@
-
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -70,12 +69,14 @@ inline HttpHandler::status_t RestAgencyHandler::reportUnknownMethod () {
   return HttpHandler::status_t(HANDLER_DONE);
 }
 
-inline HttpHandler::status_t RestAgencyHandler::redirect (id_t leader_id) {
-  LOG(WARN) << "Redirecting request to " << leader_id;
-  generateError(HttpResponse::NOT_FOUND,404);
-  return HttpHandler::status_t(HANDLER_DONE);
+void RestAgencyHandler::redirectRequest (id_t leaderId) {
+  std::string rendpoint = _agent->config().end_points.at(leaderId);
+  rendpoint = rendpoint.substr(6,rendpoint.size()-6);
+  rendpoint = std::string("http://" + rendpoint + _request->requestPath());
+  createResponse(HttpResponse::TEMPORARY_REDIRECT);
+  _response->setHeader("Location", rendpoint);
 }
-#include <iostream>
+
 inline HttpHandler::status_t RestAgencyHandler::handleWrite () {
   arangodb::velocypack::Options options; // TODO: User not wait. 
   if (_request->requestType() == HttpRequest::HTTP_REQUEST_POST) {
@@ -88,11 +89,11 @@ inline HttpHandler::status_t RestAgencyHandler::handleWrite () {
       return HttpHandler::status_t(HANDLER_DONE);
     }
     write_ret_t ret = _agent->write (query);
-    size_t errors = 0;
-    if (ret.accepted) {
+    if (ret.accepted) { // We're leading and handling the request 
+      size_t errors = 0;
       Builder body;
       body.add(VPackValue(VPackValueType::Object));
-      _agent->waitFor (ret.indices.back()); // Wait for confirmation (last entry is enough)
+      _agent->waitFor (ret.indices.back()); // Wait for confirmation
       for (size_t i = 0; i < ret.indices.size(); ++i) {
         body.add(std::to_string(i), Value(ret.indices[i]));
         if (ret.indices[i] == 0) {
@@ -100,19 +101,16 @@ inline HttpHandler::status_t RestAgencyHandler::handleWrite () {
         }
       }
       body.close();
-      if (errors > 0) { // epic fail
+      if (errors > 0) { // Some/all requests failed
         generateResult(HttpResponse::PRECONDITION_FAILED,body.slice());
-      } else {// full success
+      } else {          // All good 
         generateResult(body.slice());
       }
-    } else {
-      //_response->setHeader("Location", _agent->config().end_points[ret.redirect]);
-      generateError(HttpResponse::TEMPORARY_REDIRECT,307);
-      return HttpHandler::status_t(HANDLER_DONE);
+    } else {            // Redirect to leader
+      redirectRequest(ret.redirect);
     }
-  } else {
+  } else {              // Unknown method
     generateError(HttpResponse::METHOD_NOT_ALLOWED,405);
-    return HttpHandler::status_t(HANDLER_DONE);
   }
   return HttpHandler::status_t(HANDLER_DONE);
 }
@@ -124,15 +122,16 @@ inline HttpHandler::status_t RestAgencyHandler::handleRead () {
     try {
       query = _request->toVelocyPack(&options);
     } catch (std::exception const& e) {
-      LOG(FATAL) << e.what();
-      generateError(HttpResponse::UNPROCESSABLE_ENTITY,422);
+      LOG(WARN) << e.what();
+      generateError(HttpResponse::BAD,400);
       return HttpHandler::status_t(HANDLER_DONE);
     }
     read_ret_t ret = _agent->read (query);
-    if (ret.accepted) {
+
+    if (ret.accepted) { // I am leading
       generateResult(ret.result->slice());
-    } else {
-      generateError(HttpResponse::TEMPORARY_REDIRECT,307);
+    } else {            // Redirect to leader
+      redirectRequest(ret.redirect);
       return HttpHandler::status_t(HANDLER_DONE);
     }
   } else {
@@ -145,10 +144,9 @@ inline HttpHandler::status_t RestAgencyHandler::handleRead () {
 HttpHandler::status_t RestAgencyHandler::handleTest() {
   Builder body;
   body.add(VPackValue(VPackValueType::Object));
-  body.add("id", Value(_agent->id()));
   body.add("term", Value(_agent->term()));
   body.add("leaderId", Value(_agent->leaderID()));
-  body.add("configuration", Value(_agent->config().toString()));
+  body.add("configuration", _agent->config().toBuilder()->slice());
   body.close();
   generateResult(body.slice());
   return HttpHandler::status_t(HANDLER_DONE);

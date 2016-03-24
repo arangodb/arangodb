@@ -93,12 +93,12 @@ class ApplicationAgency : virtual public arangodb::rest::ApplicationFeature {
  public:
 
   void setupOptions(std::map<std::string,
-         arangodb::basics::ProgramOptionsDescription>&);
+                    arangodb::basics::ProgramOptionsDescription>&) override final;
 
-  bool prepare();
-  bool start();
-  bool open();
-  void close();
+  bool prepare() override final;
+  bool start() override final;
+  bool open() override final;
+  void close() override final;
 
   agent_t* agent() const;
   
@@ -108,7 +108,6 @@ class ApplicationAgency : virtual public arangodb::rest::ApplicationFeature {
   double   _min_election_timeout; /**< @brief: min election timeout */
   double   _max_election_timeout; /**< @brief: max election timeout */
   double   _election_call_rate_mul; /**< @brief: */
-  double   _append_entries_retry_interval;
   bool     _notify;
                /**< @brief interval between retry to slaves*/
   std::vector<std::string> _agency_endpoints; /**< @brief agency adresses */

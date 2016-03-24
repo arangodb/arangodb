@@ -35,11 +35,9 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 ApplicationAgency::ApplicationAgency()
-  : ApplicationFeature("agency"), _size(1), _min_election_timeout(0.5),
-	  _max_election_timeout(2.0), _election_call_rate_mul(2.5),
-    _append_entries_retry_interval(1.0),
+  : ApplicationFeature("agency"), _size(1), _min_election_timeout(0.1),
+	  _max_election_timeout(1.0), _election_call_rate_mul(0.85),
     _agent_id(std::numeric_limits<uint32_t>::max()) {
-  
 }
 
 
@@ -62,17 +60,13 @@ void ApplicationAgency::setupOptions(
     ("agency.election_call_rate_mul [au]", &_election_call_rate_mul,
      "Multiplier (<1.0) defining how long the election timeout is with respect "
      "to the minumum election timeout")
-    ("agency.append_entries_retry_interval [s]", &_append_entries_retry_interval,
-     "Interval at which appendEntries are attempted on unresponsive slaves"
-     "in seconds")
     ("agency.notify", &_notify, "Notify others [beta :)]");
 }
 
 
 bool ApplicationAgency::prepare() {
 
-  _disabled = _agency_endpoints.empty() || 
-    _agent_id == std::numeric_limits<uint32_t>::max();
+  _disabled = (_agent_id == std::numeric_limits<uint32_t>::max());
 
   if (_disabled) {
     return true;
@@ -116,7 +110,7 @@ bool ApplicationAgency::prepare() {
   _agent = std::unique_ptr<agent_t>(
     new agent_t(arangodb::consensus::config_t(
                   _agent_id, _min_election_timeout, _max_election_timeout,
-                  _append_entries_retry_interval, _agency_endpoints, _notify)));
+                  _agency_endpoints, _notify)));
   
   return true;
   

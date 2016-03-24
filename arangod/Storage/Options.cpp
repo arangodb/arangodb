@@ -69,7 +69,7 @@ struct CustomTypeHandlerImpl : public VPackCustomTypeHandler {
       : resolver(resolver) {}
 
   void toJson(VPackSlice const& value, VPackDumper* dumper,
-              VPackSlice const& base) {
+              VPackSlice const& base) override {
     if (value.head() == 0xf0) {
       // _id
       if (!base.isObject()) {
@@ -110,7 +110,7 @@ struct CustomTypeHandlerImpl : public VPackCustomTypeHandler {
     throw "unknown type!";
   }
 
-  VPackValueLength byteSize(VPackSlice const& value) {
+  VPackValueLength byteSize(VPackSlice const& value) override {
     if (value.head() == 0xf0) {
       // _id
       return 1 + 8;  // 0xf0 + 8 bytes for collection id

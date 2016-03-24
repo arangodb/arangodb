@@ -92,10 +92,6 @@ config_t const& Agent::config () const {
   return _config;
 }
 
-void Agent::report(status_t status) {
-  //_status = status;
-}
-
 id_t Agent::leaderID () const {
   return _constituent.leaderID();
 }
@@ -167,8 +163,8 @@ bool Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
   if (queries->slice().length()) {
     LOG(INFO) << "AGENCY: Appending "<< queries->slice().length()
               << " entries to state machine.";
-  } else { // heart-beat
-    LOG(INFO) << "AGENCY: Received heartbeat ";
+  } else { 
+    // heart-beat
   }
     
   if (_last_commit_index < leaderCommitIndex) {
@@ -223,8 +219,10 @@ append_entries_t Agent::sendAppendEntriesRPC (
   builder.close();
 
   // Send
-  LOG(INFO) << "AGENCY: Appending " << unconfirmed.size() << " entries up to index "
-            << last << " to follower " << slave_id; 
+  if (unconfirmed.size() > 1) {
+    LOG(INFO) << "AGENCY: Appending " << unconfirmed.size() << " entries up to index "
+              << last << " to follower " << slave_id;
+  }
   arangodb::ClusterComm::instance()->asyncRequest
     ("1", 1, _config.end_points[slave_id],
      rest::HttpRequest::HTTP_REQUEST_POST,

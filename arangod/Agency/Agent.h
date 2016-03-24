@@ -45,7 +45,7 @@ public:
   /**
    * @brief Construct with program options
    */
-  Agent (config_t const&);
+  explicit Agent (config_t const&);
 
   /**
    * @brief Clean up
@@ -88,11 +88,6 @@ public:
   bool fitness () const;
   
   /**
-   * @brief 
-   */
-  void report (status_t);
-  
-  /**
    * @brief Leader ID
    */
   id_t leaderID () const;
@@ -129,8 +124,8 @@ public:
    * @brief 1. Deal with appendEntries to slaves.
    *        2. Report success of write processes. 
    */
-  void run ();
-  void beginShutdown () override;
+  void run () override final;
+  void beginShutdown () override final;
 
   /**
    * @brief Report appended entries from AgentCallback

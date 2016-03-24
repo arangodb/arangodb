@@ -46,7 +46,7 @@ class RestBaseHandler : public rest::HttpHandler {
   explicit RestBaseHandler(rest::HttpRequest* request);
 
  public:
-  void handleError(basics::Exception const&);
+  void handleError(basics::Exception const&) override;
 
  public:
   //////////////////////////////////////////////////////////////////////////////

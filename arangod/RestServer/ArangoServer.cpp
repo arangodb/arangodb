@@ -380,6 +380,7 @@ ArangoServer::ArangoServer(int argc, char** argv)
       _applicationDispatcher(nullptr),
       _applicationEndpointServer(nullptr),
       _applicationCluster(nullptr),
+      _applicationAgency(nullptr),
       _jobManager(nullptr),
       _applicationV8(nullptr),
       _authenticateSystemOnly(false),

@@ -42,8 +42,12 @@ void Constituent::configure(Agent* agent) {
   _agent = agent;
   if (size() == 1) {
     _role = LEADER;
-  } else { 
-    _votes.resize(size());
+  } else {
+    try {
+      _votes.resize(size());
+    } catch (std::exception const& e) {
+      LOG(FATAL) << "Cannot resize votes vector to " << size();
+    }
     _id = _agent->config().id;
     if (_agent->config().notify) {// (notify everyone) 
       notifyAll();
@@ -51,8 +55,9 @@ void Constituent::configure(Agent* agent) {
   }
 }
 
-Constituent::Constituent() : Thread("Constituent"), _term(0), _id(0),
-  _gen(std::random_device()()), _role(FOLLOWER), _agent(0) {}
+Constituent::Constituent() :
+  Thread("Constituent"), _term(0), _leader_id(0), _id(0), _gen(std::random_device()()),
+  _role(FOLLOWER), _agent(0) {}
 
 Constituent::~Constituent() {
   shutdown();
@@ -72,22 +77,29 @@ term_t Constituent::term() const {
   return _term;
 }
 
+void Constituent::term(term_t t) {
+  if (t != _term) {
+    LOG(INFO) << "Updating term to " << t;
+  }
+  _term = t;
+}
+
 role_t Constituent::role () const {
   return _role;
 }
 
-void Constituent::follow (term_t term) {
+void Constituent::follow (term_t t) {
   if (_role != FOLLOWER) {
-    LOG(WARN) << "Role change: Converted to follower in term " << _term ;
+    LOG(INFO) << "Role change: Converted to follower in term " << t;
   }
-  _term = term;
+  this->term(t);
   _votes.assign(_votes.size(),false); // void all votes
   _role = FOLLOWER;
 }
 
 void Constituent::lead () {
   if (_role != LEADER) {
-    LOG(WARN) << "Role change: Converted to leader in term " << _term ;
+    LOG(INFO) << "Role change: Converted to leader in term " << _term ;
     _agent->lead(); // We need to rebuild spear_head and read_db;
   }
   _role = LEADER;
@@ -96,7 +108,7 @@ void Constituent::lead () {
 
 void Constituent::candidate () {
   if (_role != CANDIDATE)
-    LOG(WARN) << "Role change: Converted to candidate in term " << _term ;
+    LOG(INFO) << "Role change: Converted to candidate in term " << _term ;
   _role = CANDIDATE;
 }
 
@@ -131,7 +143,6 @@ std::vector<std::string> const& Constituent::end_points() const {
 size_t Constituent::notifyAll () {
 
   // Last process notifies everyone 
-	std::vector<ClusterCommResult> results(_agent->config().end_points.size());
   std::stringstream path;
   
   path << "/_api/agency_priv/notifyAll?term=" << _term << "&agencyId=" << _id;
@@ -151,7 +162,7 @@ size_t Constituent::notifyAll () {
     if (i != _id) {
       std::unique_ptr<std::map<std::string, std::string>> headerFields =
         std::make_unique<std::map<std::string, std::string> >();
-      results[i] = arangodb::ClusterComm::instance()->asyncRequest(
+      arangodb::ClusterComm::instance()->asyncRequest(
         "1", 1, end_point(i), rest::HttpRequest::HTTP_REQUEST_POST, path.str(),
         std::make_shared<std::string>(body.toString()), headerFields, nullptr,
         0.0, true);
@@ -167,7 +178,7 @@ bool Constituent::vote (
 		return false;        // TODO: Assertion?
 	} else {
 	  if (term > _term || (_term==term&&_leader_id==leaderId)) {
-      _term = term;
+      this->term(term);
       _cast = true;      // Note that I voted this time around.
       _leader_id = leaderId;   // The guy I voted for I assume leader.
       if (_role>FOLLOWER)
@@ -190,8 +201,12 @@ const constituency_t& Constituent::gossip () {
 }
 
 void Constituent::callElection() {
-  
-  _votes[_id] = true; // vote for myself
+
+  try {
+    _votes.at(_id) = true; // vote for myself
+  } catch (std::out_of_range const& oor) {
+    LOG(FATAL) << "_votes vector is not properly sized!";
+  }
   _cast = true;
   if(_role == CANDIDATE)
     _term++;            // raise my term
