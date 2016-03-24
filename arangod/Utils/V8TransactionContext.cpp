@@ -44,11 +44,25 @@ V8TransactionContext::V8TransactionContext(TRI_vocbase_t* vocbase, bool embeddab
       _embeddable(embeddable) {
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the context
-////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+/// @brief order a custom type handler for the collection
+//////////////////////////////////////////////////////////////////////////////
 
-V8TransactionContext::~V8TransactionContext() {
+std::shared_ptr<VPackCustomTypeHandler> V8TransactionContext::orderCustomTypeHandler() {
+  if (_customTypeHandler == nullptr) {
+    V8TransactionContext* main = _sharedTransactionContext->_mainScope;
+    
+    if (main != nullptr && main != this && !main->isGlobal()) {
+      _customTypeHandler = main->orderCustomTypeHandler();
+    } else {
+      _customTypeHandler.reset(TransactionContext::createCustomTypeHandler(_vocbase, getResolver()));
+    }
+    _options.customTypeHandler = _customTypeHandler.get();
+  }
+
+  TRI_ASSERT(_customTypeHandler != nullptr);
+  TRI_ASSERT(_options.customTypeHandler != nullptr);
+  return _customTypeHandler;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -59,18 +73,14 @@ CollectionNameResolver const* V8TransactionContext::getResolver() {
   if (_resolver == nullptr) {
     V8TransactionContext* main = _sharedTransactionContext->_mainScope;
 
-    if (main != nullptr) {
-      if (main->_resolver == nullptr) {
-        main->createResolver();
-      }
-
-      _resolver = main->_resolver;
-    }
-    else {
-      createResolver();
+    if (main != nullptr && main != this && !main->isGlobal()) {
+      _resolver = main->getResolver();
+    } else {
+      TRI_ASSERT(_resolver == nullptr);
+      _resolver = createResolver();
     }
   }
-
+  
   TRI_ASSERT(_resolver != nullptr);
   return _resolver;
 }
