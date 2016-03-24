@@ -90,7 +90,6 @@ static int CompareKeyElement(VPackSlice const* left,
                              size_t rightPosition) {
   TRI_ASSERT(nullptr != left);
   TRI_ASSERT(nullptr != right);
-
   auto rightSubobjects = right->subObjects();
   return arangodb::basics::VelocyPackHelper::compare(*left,
       rightSubobjects[rightPosition].slice(right->document()), true);
@@ -109,9 +108,9 @@ static int CompareElementElement(TRI_index_element_t const* left,
 
   auto leftSubobjects = left->subObjects();
   auto rightSubobjects = right->subObjects();
-  return arangodb::basics::VelocyPackHelper::compare(
-      leftSubobjects[leftPosition].slice(left->document()),
-      rightSubobjects[rightPosition].slice(right->document()), true);
+  VPackSlice l = leftSubobjects[leftPosition].slice(left->document());
+  VPackSlice r = rightSubobjects[rightPosition].slice(right->document());
+  return arangodb::basics::VelocyPackHelper::compare(l, r, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -392,13 +391,9 @@ SkiplistIterator* SkiplistIndex::lookup(arangodb::Transaction* trx,
         leftSearch.close();
         VPackSlice search = leftSearch.slice();
         leftBorder = _skiplistIndex->rightKeyLookup(&search);
-        if (leftBorder == _skiplistIndex->startNode()) {
-          leftBorder = nullptr;
-        } else {
-          // leftBorder is identical or smaller than search, skip it.
-          // It is guaranteed that the next element is greater than search
-          leftBorder = leftBorder->nextNode();
-        }
+        // leftBorder is identical or smaller than search, skip it.
+        // It is guaranteed that the next element is greater than search
+        leftBorder = leftBorder->nextNode();
       } else {
         // No lower bound set default to (null <= x)
         leftSearch.close();
