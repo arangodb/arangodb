@@ -198,8 +198,8 @@ bool Node::applies (VPackSlice const& slice) {
           return _parent->removeChild(_name);
         } else if (oper == "set") { //
           if (!slice.hasKey("new")) {
-            LOG(WARN) << "Operator set without new value";
-            LOG(WARN) << slice.toJson();
+            LOG_TOPIC(WARN, Logger::AGENCY) << "Operator set without new value";
+            LOG_TOPIC(WARN, Logger::AGENCY) << slice.toJson();
             return false;
           }
           if (slice.hasKey("ttl")) {
@@ -209,8 +209,9 @@ bool Node::applies (VPackSlice const& slice) {
           return true;
         } else if (oper == "increment") { // Increment
           if (!(self.isInt() || self.isUInt())) {
-            LOG(WARN) << "Element to increment must be integral type: We are "
-                      << slice.toJson();
+            LOG_TOPIC(WARN, Logger::AGENCY)
+              << "Element to increment must be integral type: We are "
+              << slice.toJson();
             return false;
           }
           Builder tmp;
@@ -220,8 +221,9 @@ bool Node::applies (VPackSlice const& slice) {
           return true;
         } else if (oper == "decrement") { // Decrement
           if (!(self.isInt() || self.isUInt())) {
-            LOG(WARN) << "Element to decrement must be integral type. We are "
-                      << slice.toJson();
+            LOG_TOPIC(WARN, Logger::AGENCY)
+              << "Element to decrement must be integral type. We are "
+              << slice.toJson();
             return false;
           }
           Builder tmp;
@@ -231,7 +233,8 @@ bool Node::applies (VPackSlice const& slice) {
           return true;
         } else if (oper == "push") { // Push
           if (!slice.hasKey("new")) {
-            LOG(WARN) << "Operator push without new value: " << slice.toJson();
+            LOG_TOPIC(WARN, Logger::AGENCY)
+              << "Operator push without new value: " << slice.toJson();
             return false;
           }
           Builder tmp;
@@ -261,8 +264,8 @@ bool Node::applies (VPackSlice const& slice) {
           return true;
         } else if (oper == "prepend") { // Prepend
           if (!slice.hasKey("new")) {
-            LOG(WARN) << "Operator prepend without new value: "
-                      << slice.toJson();
+            LOG_TOPIC(WARN, Logger::AGENCY)
+              << "Operator prepend without new value: " << slice.toJson();
             return false;
           }
           Builder tmp;
@@ -293,7 +296,7 @@ bool Node::applies (VPackSlice const& slice) {
           *this = tmp.slice();
           return true;
         } else {
-          LOG(WARN) << "Unknown operation " << oper;
+          LOG_TOPIC(WARN, Logger::AGENCY) << "Unknown operation " << oper;
           return false;
         }
       } else if (slice.hasKey("new")) { // new without set
@@ -348,12 +351,13 @@ std::vector<bool> Store::apply (query_t const& query) {
       if (check(i[1])) {
         applied.push_back(applies(i[0]));      // precondition
       } else {
-        LOG(WARN) << "Precondition failed!";
+        LOG_TOPIC(WARN, Logger::AGENCY) << "Precondition failed!";
         applied.push_back(false);
       }
       break;
     default:                                   // wrong
-      LOG(FATAL) << "We can only handle log entry with or without precondition!";
+      LOG_TOPIC(ERR, Logger::AGENCY)
+        << "We can only handle log entry with or without precondition!";
       applied.push_back(false);
       break;
     }
@@ -374,7 +378,8 @@ std::vector<bool> Store::apply( std::vector<VPackSlice> const& queries) {
 
 bool Store::check (VPackSlice const& slice) const {
   if (slice.type() != VPackValueType::Object) {
-    LOG(WARN) << "Cannot check precondition: " << slice.toJson();
+    LOG_TOPIC(WARN, Logger::AGENCY) << "Cannot check precondition: "
+                                    << slice.toJson();
     return false;
   }
   for (auto const& precond : VPackObjectIterator(slice)) {
@@ -428,7 +433,7 @@ query_t Store::read (query_t const& queries) const { // list of list of paths
     } 
     result->close();
   } else {
-    LOG(FATAL) << "Read queries to stores must be arrays";
+    LOG_TOPIC(ERR, Logger::AGENCY) << "Read queries to stores must be arrays";
   }
   return result;
 }
@@ -446,7 +451,7 @@ bool Store::read (VPackSlice const& query, Builder& ret) const {
     return false;
   }
   query_strs.sort();     // sort paths
-
+  
   // Remove double ranges (inclusion / identity)
   for (auto i = query_strs.begin(), j = i; i != query_strs.end(); ++i) {
     if (i!=j && i->compare(0,j->size(),*j)==0) {
@@ -457,7 +462,7 @@ bool Store::read (VPackSlice const& query, Builder& ret) const {
   }
   auto cut = std::remove_if(query_strs.begin(), query_strs.end(), Empty());
   query_strs.erase (cut,query_strs.end());
-
+  
   // Create response tree 
   Node copy("copy");
   for (auto i = query_strs.begin(); i != query_strs.end(); ++i) {
@@ -465,7 +470,7 @@ bool Store::read (VPackSlice const& query, Builder& ret) const {
       copy(*i) = (*this)(*i);
     } catch (StoreException const&) {}
   }
-
+  
   // Assemble builder from response tree
   if (query.type() == VPackValueType::String &&
       copy(*query_strs.begin()).type() == LEAF) {

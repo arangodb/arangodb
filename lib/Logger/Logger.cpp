@@ -725,7 +725,7 @@ class LogThread : public Thread {
   ~LogThread() { shutdown(); }
 
  public:
-  void run();
+  void run() override;
 };
 
 void LogThread::run() {
@@ -788,6 +788,7 @@ LoggerStream::~LoggerStream() {
 /// @brief predefined topics
 ////////////////////////////////////////////////////////////////////////////////
 
+LogTopic Logger::AGENCY("agency", LogLevel::INFO);
 LogTopic Logger::COLLECTOR("collector");
 LogTopic Logger::COMPACTOR("compactor");
 LogTopic Logger::CONFIG("config");

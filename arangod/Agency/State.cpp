@@ -64,7 +64,7 @@ bool State::save (arangodb::velocypack::Slice const& slice, index_t index,
       body.add("request",slice[1]);
     } else {
       body.close();
-      LOG(FATAL) << "Empty or more than two part log?";
+      LOG_TOPIC(ERR, Logger::AGENCY) << "Empty or more than two part log?";
       return false;
     }
     body.close();
@@ -75,7 +75,7 @@ bool State::save (arangodb::velocypack::Slice const& slice, index_t index,
         body.toJson(), headerFields, 0.0);
     
     if (res->status != CL_COMM_SENT) {
-      //LOG(WARN) << res->errorMessage;
+      //LOG_TOPIC(WARN, Logger::AGENCY) << res->errorMessage;
     }
     
     return (res->status == CL_COMM_SENT); // TODO: More verbose result
@@ -150,25 +150,6 @@ std::vector<VPackSlice> State::slices (index_t start, index_t end) const {
   return slices;
 }
 
-bool State::findit (index_t index, term_t term) {
-  MUTEX_LOCKER(mutexLocker, _logLock);
-  auto i = std::begin(_log);
-  while (i != std::end(_log)) { // Find entry matching index and term
-    if ((*i).index == index) {
-      if ((*i).term == term) {
-        return true;
-      } else if ((*i).term < term) {
-        // If an existing entry conflicts with a new one (same index
-        // but different terms), delete the existing entry and all that
-        // follow it (§5.3)
-        _log.erase(i, _log.end()); 
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
 log_t const& State::operator[](index_t index) const {
   MUTEX_LOCKER(mutexLocker, _logLock);
   return _log[index];
@@ -203,7 +184,7 @@ bool State::checkDB (std::string const& name) {
         "", headerFields, 1.0);
     
     if(res->result->wasHttpError()) {
-      LOG(WARN) << "Creating collection " << name;
+      LOG_TOPIC(WARN, Logger::AGENCY) << "Creating collection " << name;
       return createCollection(name);
     } 
   }
@@ -244,14 +225,14 @@ bool State::loadCollection (std::string const& name) {
     // Check success
 
     if(res->result->wasHttpError()) {
-      LOG(WARN) << "ERROR";
-      LOG(WARN) << res->endpoint;
+      LOG_TOPIC(WARN, Logger::AGENCY) << "ERROR";
+      LOG_TOPIC(WARN, Logger::AGENCY) << res->endpoint;
     } else {
       std::shared_ptr<Builder> body = res->result->getBodyVelocyPack();
     }
-    //LOG(WARN) << body->toJson();
+    //LOG_TOPIC(WARN, Logger::AGENCY) << body->toJson();
 /*    for (auto const& i : VPackArrayIterator(body->slice()))
-      LOG(WARN) << typeid(i).name();*/
+      LOG_TOPIC(WARN, Logger::AGENCY) << typeid(i).name();*/
 
     return true;
   } else {

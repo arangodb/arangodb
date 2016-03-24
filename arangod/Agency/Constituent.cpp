@@ -46,7 +46,7 @@ void Constituent::configure(Agent* agent) {
     try {
       _votes.resize(size());
     } catch (std::exception const& e) {
-      LOG(FATAL) << "Cannot resize votes vector to " << size();
+      LOG_TOPIC(ERR, Logger::AGENCY) << "Cannot resize votes vector to " << size();
     }
     _id = _agent->config().id;
     if (_agent->config().notify) {// (notify everyone) 
@@ -79,7 +79,7 @@ term_t Constituent::term() const {
 
 void Constituent::term(term_t t) {
   if (t != _term) {
-    LOG(INFO) << "Updating term to " << t;
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Updating term to " << t;
   }
   _term = t;
 }
@@ -90,7 +90,7 @@ role_t Constituent::role () const {
 
 void Constituent::follow (term_t t) {
   if (_role != FOLLOWER) {
-    LOG(INFO) << "Role change: Converted to follower in term " << t;
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Role change: Converted to follower in term " << t;
   }
   this->term(t);
   _votes.assign(_votes.size(),false); // void all votes
@@ -99,7 +99,7 @@ void Constituent::follow (term_t t) {
 
 void Constituent::lead () {
   if (_role != LEADER) {
-    LOG(INFO) << "Role change: Converted to leader in term " << _term ;
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Role change: Converted to leader in term " << _term ;
     _agent->lead(); // We need to rebuild spear_head and read_db;
   }
   _role = LEADER;
@@ -108,7 +108,7 @@ void Constituent::lead () {
 
 void Constituent::candidate () {
   if (_role != CANDIDATE)
-    LOG(INFO) << "Role change: Converted to candidate in term " << _term ;
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Role change: Converted to candidate in term " << _term ;
   _role = CANDIDATE;
 }
 
@@ -205,7 +205,7 @@ void Constituent::callElection() {
   try {
     _votes.at(_id) = true; // vote for myself
   } catch (std::out_of_range const& oor) {
-    LOG(FATAL) << "_votes vector is not properly sized!";
+    LOG_TOPIC(ERR, Logger::AGENCY) << "_votes vector is not properly sized!";
   }
   _cast = true;
   if(_role == CANDIDATE)
@@ -218,7 +218,7 @@ void Constituent::callElection() {
   path << "/_api/agency_priv/requestVote?term=" << _term << "&candidateId=" << _id
        << "&prevLogIndex=" << _agent->lastLog().index << "&prevLogTerm="
        << _agent->lastLog().term;
-  
+
 	for (size_t i = 0; i < _agent->config().end_points.size(); ++i) { // Ask everyone for their vote
     if (i != _id && end_point(i) != "") {
       std::unique_ptr<std::map<std::string, std::string>> headerFields =

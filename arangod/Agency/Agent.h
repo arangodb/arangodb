@@ -37,127 +37,92 @@ class Agent : public arangodb::Thread {
   
 public:
   
-  /**
-   * @brief Default ctor
-   */
+  /// @brief Default ctor
   Agent ();
   
-  /**
-   * @brief Construct with program options
-   */
+  /// @brief Construct with program options
   explicit Agent (config_t const&);
 
-  /**
-   * @brief Clean up
-   */
+  /// @brief Clean up
   virtual ~Agent();
   
-  /**
-   * @brief Get current term
-   */
+  /// @brief Get current term
   term_t term() const;
   
-  /**
-   * @brief Get current term
-   */
+  /// @brief Get current term
   id_t id() const;
   
-  /**
-   * @brief Vote request
-   */
+  /// @brief Vote request
   priv_rpc_ret_t requestVote(term_t , id_t, index_t, index_t, query_t const&);
   
-  /**
-   * @brief Provide configuration
-   */
+  /// @brief Provide configuration
   config_t const& config () const;
   
-  /**
-   * @brief Start thread
-   */
+  /// @brief Start thread
   bool start ();
   
-  /**
-   * @brief Verbose print of myself
-   */ 
+  /// @brief Verbose print of myself
+  //// 
   void print (arangodb::LoggerStream&) const;
   
-  /**
-   * @brief Are we fit to run?
-   */
+  /// @brief Are we fit to run?
   bool fitness () const;
   
-  /**
-   * @brief Leader ID
-   */
+  /// @brief Leader ID
   id_t leaderID () const;
   bool leading () const;
 
+  /// @brief Pick up leadership tasks
   bool lead ();
 
+  /// @brief Load persistent state
   bool load ();
 
-  /**
-   * @brief Attempt write
-   */
+  /// @brief Attempt write
   write_ret_t write (query_t const&);
   
-  /**
-   * @brief Read from agency
-   */
+  /// @brief Read from agency
   read_ret_t read (query_t const&) const;
   
-  /**
-   * @brief Received by followers to replicate log entries (§5.3);
-   *        also used as heartbeat (§5.2).
-   */
+  /// @brief Received by followers to replicate log entries (§5.3);
+  ///        also used as heartbeat (§5.2).
   bool recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
     term_t prevTerm, index_t lastCommitIndex, query_t const& queries);
 
-  /**
-   * @brief Invoked by leader to replicate log entries (§5.3);
-   *        also used as heartbeat (§5.2).
-   */
+  /// @brief Invoked by leader to replicate log entries (§5.3);
+  ///        also used as heartbeat (§5.2).
   append_entries_t sendAppendEntriesRPC (id_t slave_id);
     
-  /**
-   * @brief 1. Deal with appendEntries to slaves.
-   *        2. Report success of write processes. 
-   */
+  /// @brief 1. Deal with appendEntries to slaves.
+  ///        2. Report success of write processes. 
   void run () override final;
+
+  /// @brief Start orderly shutdown of threads
   void beginShutdown () override final;
 
-  /**
-   * @brief Report appended entries from AgentCallback
-   */
+  /// @brief Report appended entries from AgentCallback
   void reportIn (id_t id, index_t idx);
   
-  /**
-   * @brief Wait for slaves to confirm appended entries
-   */
+  /// @brief Wait for slaves to confirm appended entries
   bool waitFor (index_t last_entry, duration_t timeout = duration_t(2.0));
 
-  /**
-   * @brief Convencience size of agency
-   */
+  /// @brief Convencience size of agency
   size_t size() const;
 
-  /**
-   * @brief Rebuild DBs by applying state log to empty DB
-   */
+  /// @brief Rebuild DBs by applying state log to empty DB
   bool rebuildDBs();
 
-  /**
-   * @brief Last log entry
-   */
+  /// @brief Last log entry
   log_t const& lastLog () const;
 
+  /// @brief Pipe configuration to ostream
   friend std::ostream& operator<< (std::ostream& o, Agent const& a) {
     o << a.config();
     return o;
   }
 
-  State const& state() const;
+  /// @brief State machine
+  State const& state () const;
 
 private:
 
@@ -165,22 +130,17 @@ private:
   State       _state;       /**< @brief Log replica              */
   config_t    _config;      /**< @brief Command line arguments   */
 
-  std::atomic<index_t> _last_commit_index;
+  std::atomic<index_t> _last_commit_index; /**< @brief Last commit index */
 
-  arangodb::Mutex _uncommitedLock;
+  arangodb::Mutex _uncommitedLock; /**< @brief  */
   
-  Store _spearhead;
-  Store _read_db;
+  Store _spearhead; /**< @brief Spearhead key value store */
+  Store _read_db;   /**< @brief Read key value store */
   
-  AgentCallback _agent_callback;
+  arangodb::basics::ConditionVariable _cv;      /**< @brief Internal callbacks */
+  arangodb::basics::ConditionVariable _rest_cv; /**< @brief Rest handler */
 
-  arangodb::basics::ConditionVariable _cv;      // agency callbacks
-  arangodb::basics::ConditionVariable _rest_cv; // rest handler
-
-
-  std::atomic<bool> _stopping;
-
-  std::vector<index_t> _confirmed;
+  std::vector<index_t> _confirmed; 
   arangodb::Mutex _ioLock;
   
 };

@@ -78,10 +78,10 @@ public:
 
 
   std::vector<log_t> get (
-    index_t = 0, index_t = (std::numeric_limits<uint64_t>::max())) const;
+    index_t = 0, index_t = (std::numeric_limits<uint64_t>::max)()) const;
 
   std::vector<VPackSlice> slices (
-    index_t = 0, index_t = (std::numeric_limits<uint64_t>::max())) const;
+    index_t = 0, index_t = (std::numeric_limits<uint64_t>::max)()) const;
 
 
   /// @brief log entry at index i
@@ -99,11 +99,13 @@ public:
   /// @brief Load persisted data from above or start with empty log
   bool load ();
 
+  /// @brief Pipe to ostream
   friend std::ostream& operator<< (std::ostream& os, State const& s) {
     for (auto const& i : s._log)
-      LOG(INFO) << "index(" << i.index <<") term(" << i.term << ") leader: ("
-                << i.leaderId << ") query("
-                << VPackSlice(i.entry->data()).toJson() << ")";
+      LOG_TOPIC(INFO, Logger::AGENCY)
+        << "index(" << i.index <<") term(" << i.term << ") leader: ("
+        << i.leaderId << ") query(" << VPackSlice(i.entry->data()).toJson()
+        << ")";
     return os;
   }
 
