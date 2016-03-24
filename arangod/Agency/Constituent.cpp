@@ -46,7 +46,7 @@ void Constituent::configure(Agent* agent) {
     try {
       _votes.resize(size());
     } catch (std::exception const& e) {
-      LOG(FATAL) << "Cannot resize votes vector to " << size();
+      LOG_TOPIC(ERR, Logger::AGENCY) << "Cannot resize votes vector to " << size();
     }
     _id = _agent->config().id;
     if (_agent->config().notify) {// (notify everyone) 
@@ -205,7 +205,7 @@ void Constituent::callElection() {
   try {
     _votes.at(_id) = true; // vote for myself
   } catch (std::out_of_range const& oor) {
-    LOG(FATAL) << "_votes vector is not properly sized!";
+    LOG_TOPIC(ERR, Logger::AGENCY) << "_votes vector is not properly sized!";
   }
   _cast = true;
   if(_role == CANDIDATE)

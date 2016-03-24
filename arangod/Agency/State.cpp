@@ -64,7 +64,7 @@ bool State::save (arangodb::velocypack::Slice const& slice, index_t index,
       body.add("request",slice[1]);
     } else {
       body.close();
-      LOG(FATAL) << "Empty or more than two part log?";
+      LOG_TOPIC(ERR, Logger::AGENCY) << "Empty or more than two part log?";
       return false;
     }
     body.close();

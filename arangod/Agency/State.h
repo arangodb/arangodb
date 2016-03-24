@@ -99,11 +99,13 @@ public:
   /// @brief Load persisted data from above or start with empty log
   bool load ();
 
+  /// @brief Pipe to ostream
   friend std::ostream& operator<< (std::ostream& os, State const& s) {
     for (auto const& i : s._log)
-      LOG(INFO) << "index(" << i.index <<") term(" << i.term << ") leader: ("
-                << i.leaderId << ") query("
-                << VPackSlice(i.entry->data()).toJson() << ")";
+      LOG_TOPIC(INFO, Logger::AGENCY)
+        << "index(" << i.index <<") term(" << i.term << ") leader: ("
+        << i.leaderId << ") query(" << VPackSlice(i.entry->data()).toJson()
+        << ")";
     return os;
   }
 
