@@ -152,7 +152,7 @@ bool VelocysCommTask::handleEvent(EventToken token, EventType revents) {
   return result;
 }
 
-bool VelocysCommTask::fillReadBuffer() {
+bool VelocysCommTask::fillVelocyStream() {
   if (nullptr == _ssl) {
     _clientClosed = true;
     return false;

@@ -49,9 +49,11 @@ SocketTask::SocketTask(TRI_socket_t socket, double keepAliveTimeout)
       _commSocket(socket),
       _keepAliveTimeout(keepAliveTimeout),
       _writeBuffer(nullptr),
+      _writeBufferVstream(nullptr),
       _writeBufferStatistics(nullptr),
       _writeLength(0),
       _readBuffer(nullptr),
+      _readBufferVstream(nullptr),
       _clientClosed(false),
       _tid(0) {
   _readBuffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE);
@@ -176,7 +178,7 @@ bool SocketTask::fillVelocyStream() {
 
   if (myerrno == EINTR) {
     // read interrupted by signal
-    return fillReadBuffer();
+    return fillVelocyStream();
   }
 
   if (myerrno != EWOULDBLOCK && myerrno != EAGAIN) {

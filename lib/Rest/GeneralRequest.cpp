@@ -1408,7 +1408,7 @@ std::string GeneralRequest::translateMethod(RequestType method) {
     return "VSTREAM_PUT";
   }
 
-  LOG(WARN) << "illegal http request method encountered in switch";
+  LOG(WARN) << "illegal request method encountered in switch";
   return "UNKNOWN";
 }
 

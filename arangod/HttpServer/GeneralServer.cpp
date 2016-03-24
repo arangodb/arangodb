@@ -201,14 +201,14 @@ void GeneralServer::handleConnected(TRI_socket_t s, ConnectionInfo const& info, 
 //     ssize_t n;
 //     _scheduler->registerTask(task, &n);
 // =======
-  try {
-    MUTEX_LOCKER(mutexLocker, _commTasksLock);
-    _commTasks.emplace(task);
-  } catch (...) {
-    // destroy the task to prevent a leak
-    deleteTask(task);
-    throw;
-  }
+    try {
+      MUTEX_LOCKER(mutexLocker, _commTasksLock);
+      _commTasks.emplace(task);
+    } catch (...) {
+      // destroy the task to prevent a leak
+      deleteTask(task);
+      throw;
+    }
 // >>>>>>> upstream/devel:arangod/HttpServer/HttpServer.cpp
 
   } else{

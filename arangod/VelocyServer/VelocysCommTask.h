@@ -72,7 +72,7 @@ private:
 
   
 
-  bool fillReadBuffer() override;
+  bool fillVelocyStream() override;
 
 
   bool handleWrite() override;

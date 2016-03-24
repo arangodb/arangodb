@@ -101,6 +101,7 @@ int TRI_readsocket(TRI_socket_t s, void* buffer, size_t numBytesToRead,
 #else
   res = read(s.fileDescriptor, buffer, numBytesToRead);
 #endif
+   LOG(INFO) << "Here is the wohiiii - string received - 1 ";
   return res;
 }
 
@@ -109,13 +110,15 @@ int TRI_readsocket(TRI_socket_t s, arangodb::velocypack::Builder* buffer, size_t
                    int flags) {
   int res;
   char buf[numBytesToRead];
+  // const char *buf;
   #ifdef _WIN32
     res = recv(s.fileHandle, (char*)(buf), (int)(numBytesToRead), flags);
   #else
-    res = read(s.fileDescriptor, (void *)buf, numBytesToRead);
+    res = read(s.fileDescriptor, buf, numBytesToRead);
   #endif
     // We need to figure out a way to send VelocyPack's over socket so instead of (char*) or (void*),
     // replace it with velocypack format, i.e; arangodb::velocypack::Builder.
+    LOG(INFO) << "Here is the velocystream received - 1";
     buffer->add(Value(buf));
   return res;
 }
@@ -130,6 +133,8 @@ int TRI_writesocket(TRI_socket_t s, const void* buffer, size_t numBytesToWrite,
 #else
   res = (int)write(s.fileDescriptor, buffer, numBytesToWrite);
 #endif
+     LOG(INFO) << "Here is the string written";
+
   return res;
 }
 
@@ -146,6 +151,7 @@ int TRI_writesocket(TRI_socket_t s, arangodb::velocypack::Builder* buffer, size_
 #else
   res = (int)write(s.fileDescriptor, (void *)buf, numBytesToWrite);
 #endif
+  LOG(INFO) << "Here is the velocystream written";
   return res;
 }
 
