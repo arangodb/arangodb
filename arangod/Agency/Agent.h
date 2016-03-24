@@ -88,11 +88,6 @@ public:
   bool fitness () const;
   
   /**
-   * @brief 
-   */
-  void report (status_t);
-  
-  /**
    * @brief Leader ID
    */
   id_t leaderID () const;

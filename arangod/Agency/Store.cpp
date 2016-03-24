@@ -160,19 +160,6 @@ Node& Node::operator ()(std::string const& path) {
   return this->operator()(pv);
 }
 
-std::ostream& operator<< (
-  std::ostream& o, std::chrono::system_clock::time_point const& t) {
-  std::time_t tmp = std::chrono::system_clock::to_time_t(t);
-  o << std::ctime(&tmp);
-  return o;
-}
-template<class S, class T>
-std::ostream& operator<< (std::ostream& o, std::map<S,T> const& d) {
-  for (auto const& i : d)
-    o << i.first << ":" << i.second << std::endl;
-  return o;
-}
-
 Node& Node::root() {
   Node *par = _parent, *tmp = 0;
   while (par != 0) {

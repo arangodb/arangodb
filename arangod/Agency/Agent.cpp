@@ -92,10 +92,6 @@ config_t const& Agent::config () const {
   return _config;
 }
 
-void Agent::report(status_t status) {
-  //_status = status;
-}
-
 id_t Agent::leaderID () const {
   return _constituent.leaderID();
 }
