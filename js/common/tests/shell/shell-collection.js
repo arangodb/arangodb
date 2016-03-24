@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTypeOf, assertNotEqual, assertTrue, assertFalse, assertNull, assertUndefined, fail */
+/*global assertEqual, assertTypeOf, assertNotEqual, assertTrue, assertFalse, assertUndefined, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the collection interface
@@ -36,7 +36,6 @@ var internal = require("internal");
 var ArangoCollection = arangodb.ArangoCollection;
 var db = arangodb.db;
 var ERRORS = arangodb.errors;
-var testHelper = require("@arangodb/test-helper").Helper;
 
 var compareStringIds = function (l, r) {
   var i;
