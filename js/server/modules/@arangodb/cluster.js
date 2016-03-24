@@ -779,7 +779,6 @@ function createLocalCollections (plannedCollections, planVersion, takeOverRespon
                   }
 
                   if (takeOverResponsibility && !didWrite) {
-                    console.info("HMMMM WRITE");
                     writeLocked({ part: "Current" },
                         takeOver,
                         [ database, shard, collInfo, error ]);
