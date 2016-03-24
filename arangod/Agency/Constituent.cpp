@@ -218,7 +218,7 @@ void Constituent::callElection() {
   path << "/_api/agency_priv/requestVote?term=" << _term << "&candidateId=" << _id
        << "&prevLogIndex=" << _agent->lastLog().index << "&prevLogTerm="
        << _agent->lastLog().term;
-  
+
 	for (size_t i = 0; i < _agent->config().end_points.size(); ++i) { // Ask everyone for their vote
     if (i != _id && end_point(i) != "") {
       std::unique_ptr<std::map<std::string, std::string>> headerFields =

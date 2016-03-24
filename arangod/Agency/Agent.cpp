@@ -145,7 +145,6 @@ void Agent::reportIn (id_t id, index_t index) {
     for (size_t i = 0; i < size(); ++i) {
       n += (_confirmed[i]>=index);
     }
-    
     if (n>size()/2) { // catch up read database and commit index
       LOG_TOPIC(INFO, Logger::AGENCY) << "Critical mass for commiting " <<
         _last_commit_index+1 << " through " << index << " to read db";
@@ -154,7 +153,7 @@ void Agent::reportIn (id_t id, index_t index) {
       _last_commit_index = index;
     }
   }
-  
+
   _rest_cv.broadcast();            // wake up REST handlers
 }
 
@@ -163,7 +162,8 @@ bool Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
   //Update commit index
 
   if (queries->slice().type() != VPackValueType::Array) {
-    LOG_TOPIC(WARN, Logger::AGENCY) << "Received malformed entries for appending. Discarting!";  
+    LOG_TOPIC(WARN, Logger::AGENCY)
+      << "Received malformed entries for appending. Discarting!";  
     return false;
   }
   if (queries->slice().length()) {
@@ -183,28 +183,24 @@ bool Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
     LOG_TOPIC(WARN, Logger::AGENCY) << "I have a higher term than RPC caller.";
     throw LOWER_TERM_APPEND_ENTRIES_RPC; 
   }
-  if (!_state.findit(prevIndex, prevTerm)) { // (§5.3)
-    LOG_TOPIC(WARN, Logger::AGENCY)
-      << "No matching set of prevLogIndex/prevLogTerm "
-      << "in my own state machine. This is trouble!";
-    throw NO_MATCHING_PREVLOG;           
-  }
   
   // Delete conflits and append (§5.3)
-  return _state.log (queries, term, leaderId, prevIndex, prevTerm);
+  _state.log (queries, term, leaderId, prevIndex, prevTerm);
+  return true;
 
 }
 
+#include <iostream>
 append_entries_t Agent::sendAppendEntriesRPC (id_t slave_id) {
 
   index_t last_confirmed = _confirmed[slave_id];
   std::vector<log_t> unconfirmed = _state.get(last_confirmed);
-  
+
   // RPC path
   std::stringstream path;
   path << "/_api/agency_priv/appendEntries?term=" << term() << "&leaderId="
        << id() << "&prevLogIndex=" << unconfirmed[0].index << "&prevLogTerm="
-       << unconfirmed[0].index << "&leaderCommit=" << _last_commit_index;
+       << unconfirmed[0].term << "&leaderCommit=" << _last_commit_index;
 
   // Headers
 	std::unique_ptr<std::map<std::string, std::string>> headerFields =
@@ -212,8 +208,8 @@ append_entries_t Agent::sendAppendEntriesRPC (id_t slave_id) {
 
   // Body
   Builder builder;
-  builder.add(VPackValue(VPackValueType::Array));
   index_t last = unconfirmed[0].index;
+  builder.add(VPackValue(VPackValueType::Array));
   for (size_t i = 1; i < unconfirmed.size(); ++i) {
     builder.add (VPackValue(VPackValueType::Object));
     builder.add ("index", VPackValue(unconfirmed[i].index));
@@ -223,14 +219,13 @@ append_entries_t Agent::sendAppendEntriesRPC (id_t slave_id) {
   }
   builder.close();
 
-  LOG_TOPIC(WARN,Logger::AGENCY) << _config.end_points[slave_id] << path.str();
-  LOG_TOPIC(WARN,Logger::AGENCY) << builder.slice().toJson(); 
-  
-  // Send
+  // Send request
   if (unconfirmed.size() > 1) {
-    LOG_TOPIC(INFO, Logger::AGENCY) << "Appending " << unconfirmed.size() << " entries up to index "
-              << last << " to follower " << slave_id;
+    LOG_TOPIC(INFO, Logger::AGENCY)
+      << "Appending " << unconfirmed.size()-1 << " entries up to index " << last
+      << " to follower " << slave_id;
   }
+
   arangodb::ClusterComm::instance()->asyncRequest
     ("1", 1, _config.end_points[slave_id],
      rest::HttpRequest::HTTP_REQUEST_POST,
@@ -285,7 +280,7 @@ void Agent::run() {
   
   while (!this->isStopping()) {
     if (leading())
-      _cv.wait(10000000);
+      _cv.wait(1000000);
     else
       _cv.wait();
     std::vector<collect_ret_t> work(size());
