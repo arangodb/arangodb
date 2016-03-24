@@ -18,7 +18,6 @@ if (USE_BOOST_UNITTESTS)
     Basics/json-test.cpp
     Basics/json-utilities-test.cpp
     Basics/hashes-test.cpp
-    Basics/associative-pointer-test.cpp
     Basics/associative-multi-pointer-test.cpp
     Basics/associative-multi-pointer-nohashcache-test.cpp
     Basics/skiplist-test.cpp
