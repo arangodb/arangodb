@@ -57,7 +57,6 @@ start() {
                 --cluster.my-role $ROLE \
                 --log.file cluster/$PORT.log \
                 --log.requests-file cluster/$PORT.req \
-                --log.level TRACE \
                 --server.disable-statistics true \
                 --server.foxx-queues false \
                 --javascript.startup-directory ./js \
