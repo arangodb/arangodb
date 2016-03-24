@@ -28,21 +28,20 @@
 #include "Aql/QueryList.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/conversions.h"
-#include "Basics/json-utilities.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/tri-strings.h"
 #include "Basics/Utf8Helper.h"
-#include "Cluster/AgencyComm.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
-#include "Indexes/Index.h"
 #include "HttpServer/ApplicationEndpointServer.h"
 #include "RestServer/ConsoleThread.h"
 #include "RestServer/VocbaseContext.h"
 #include "Rest/Version.h"
+#include "Utils/ExplicitTransaction.h"
+#include "Utils/V8TransactionContext.h"
 #include "V8/JSLoader.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
@@ -339,11 +338,11 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_PARAMETER(actionError);
   }
 
-  auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, false);
+  auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, embed);
 
   // start actual transaction
   ExplicitTransaction trx(transactionContext, readCollections, writeCollections,
-                          lockTimeout, waitForSync, embed,
+                          lockTimeout, waitForSync,
                           allowImplicitCollections);
 
   int res = trx.begin();
@@ -1756,13 +1755,12 @@ static ExplicitTransaction* BeginTransaction(
   // IHHF isCoordinator
   double lockTimeout =
       (double)(TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT / 1000000ULL);
-  bool embed = true;
   bool waitForSync = false;
 
   // Start Transaction to collect all parts of the path
   auto trx = std::make_unique<ExplicitTransaction>(
       transactionContext, readCollections, writeCollections, lockTimeout, waitForSync,
-      embed, true);
+      true);
 
   int res = trx->begin();
   if (res != TRI_ERROR_NO_ERROR) {

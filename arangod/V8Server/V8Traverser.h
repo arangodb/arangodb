@@ -24,7 +24,6 @@
 #ifndef ARANGOD_V8_SERVER_V8_TRAVERSER_H
 #define ARANGOD_V8_SERVER_V8_TRAVERSER_H 1
 
-#include "Utils/ExplicitTransaction.h"
 #include "VocBase/ExampleMatcher.h"
 #include "VocBase/Traverser.h"
 
