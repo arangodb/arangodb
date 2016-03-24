@@ -942,7 +942,7 @@ void ClusterInfo::loadCurrentCollections() {
       _currentCollections.swap(newCollections);
       _shardIds.swap(newShardIds);
       _currentCollectionsProt.version++;  // such that others notice our change
-      _currentCollectionsProt.isValid = true;  // will never be reset to false
+      _currentCollectionsProt.isValid = true;
     }
     return;
   }
@@ -2486,6 +2486,14 @@ std::vector<ServerID> ClusterInfo::getCurrentCoordinators() {
 
   // note that the result will be empty if we get here
   return result;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief invalidate current
+//////////////////////////////////////////////////////////////////////////////
+void ClusterInfo::invalidateCurrent() {
+  WRITE_LOCKER(writeLocker, _currentCollectionsProt.lock);
+  _currentCollectionsProt.isValid = false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
