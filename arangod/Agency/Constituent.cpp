@@ -47,6 +47,7 @@ void Constituent::configure(Agent* agent) {
       _votes.resize(size());
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::AGENCY) << "Cannot resize votes vector to " << size();
+      LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
     }
     _id = _agent->config().id;
     if (_agent->config().notify) {// (notify everyone) 
@@ -158,7 +159,7 @@ size_t Constituent::notifyAll () {
   body.close();
   
   // Send request to all but myself
-	for (size_t i = 0; i < size(); ++i) {
+	for (id_t i = 0; i < size(); ++i) {
     if (i != _id) {
       std::unique_ptr<std::map<std::string, std::string>> headerFields =
         std::make_unique<std::map<std::string, std::string> >();
@@ -204,8 +205,9 @@ void Constituent::callElection() {
 
   try {
     _votes.at(_id) = true; // vote for myself
-  } catch (std::out_of_range const& oor) {
+  } catch (std::out_of_range const& e) {
     LOG_TOPIC(ERR, Logger::AGENCY) << "_votes vector is not properly sized!";
+    LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
   }
   _cast = true;
   if(_role == CANDIDATE)
@@ -219,7 +221,7 @@ void Constituent::callElection() {
        << "&prevLogIndex=" << _agent->lastLog().index << "&prevLogTerm="
        << _agent->lastLog().term;
 
-	for (size_t i = 0; i < _agent->config().end_points.size(); ++i) { // Ask everyone for their vote
+	for (id_t i = 0; i < _agent->config().end_points.size(); ++i) { // Ask everyone for their vote
     if (i != _id && end_point(i) != "") {
       std::unique_ptr<std::map<std::string, std::string>> headerFields =
         std::make_unique<std::map<std::string, std::string> >();
@@ -232,7 +234,7 @@ void Constituent::callElection() {
   
   std::this_thread::sleep_for(sleepFor(.5*_agent->config().min_ping, .8*_agent->config().min_ping)); // Wait timeout
   
-	for (size_t i = 0; i < _agent->config().end_points.size(); ++i) { // Collect votes
+	for (id_t i = 0; i < _agent->config().end_points.size(); ++i) { // Collect votes
     if (i != _id && end_point(i) != "") {
       ClusterCommResult res = arangodb::ClusterComm::instance()->
 	      enquire(results[i].operationID);

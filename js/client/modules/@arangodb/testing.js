@@ -1598,6 +1598,14 @@ function startInstanceCluster(instanceInfo, protocol, options,
   return true;
 }
 
+function wait2(ms){
+   var start = new Date().getTime();
+   var end = start;
+   while(end < start + ms) {
+     end = new Date().getTime();
+  }
+}
+
 function startInstanceAgency(instanceInfo, protocol, options,
   addArgs, testname, appDir, tmpDataDir) {
   const N = options.agencySize;
@@ -1644,6 +1652,9 @@ function startInstanceAgency(instanceInfo, protocol, options,
         l.push("--agency.endpoint");
         l.push(endpoints[j]);
       }
+      l.push("--agency.notify")
+      l.push("true")
+      
       args["flatCommands"] = l;
     }
     argss.push(args);
@@ -3947,7 +3958,7 @@ testFuncs.agency = function(options) {
   options.agency = true;
   options.cluster = false;
   if (options.agencySize === undefined) {
-    options.agencySize = 3;
+    options.agencySize = 1;
   }
 
   let instanceInfo = startInstance("tcp", options, {}, "agency");

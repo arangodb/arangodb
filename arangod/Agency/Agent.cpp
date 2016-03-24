@@ -280,7 +280,7 @@ void Agent::run() {
   
   while (!this->isStopping()) {
     if (leading())
-      _cv.wait(1000000);
+      _cv.wait(250000);
     else
       _cv.wait();
     std::vector<collect_ret_t> work(size());
