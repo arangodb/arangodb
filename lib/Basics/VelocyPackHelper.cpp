@@ -206,6 +206,9 @@ bool VelocyPackHelper::VPackEqual::operator()(VPackSlice const& lhs, VPackSlice 
 
 static int TypeWeight(VPackSlice const& slice) {
   switch (slice.type()) {
+    case VPackValueType::None:
+    case VPackValueType::Null:
+      return 0;
     case VPackValueType::Bool:
       return 1;
     case VPackValueType::Double:
@@ -221,8 +224,6 @@ static int TypeWeight(VPackSlice const& slice) {
       return 4;
     case VPackValueType::Object:
       return 5;
-    case VPackValueType::None:
-      return 6;
     default:
       // All other values have equal weight
       return 0;
