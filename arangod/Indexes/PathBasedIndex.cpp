@@ -248,11 +248,11 @@ void PathBasedIndex::buildIndexValues(
 
   if (_expanding[level] == -1) {   // the trivial, non-expanding case
     VPackSlice slice = document.get(_paths[level]);
-    if (slice.isNone()) {
+    if (slice.isNone() || slice.isNull()) {
       if (_sparse) {
         return;
       }
-      slice.set(reinterpret_cast<uint8_t const*>("\0x18"));   // null
+      slice = arangodb::basics::VelocyPackHelper::NullValue();
     }
     sliceStack.push_back(slice);
     buildIndexValues(document, level+1, toInsert, sliceStack);
@@ -267,7 +267,7 @@ void PathBasedIndex::buildIndexValues(
   // with None values to be able to use the index for a prefix match.
 
   auto finishWithNones = [&]() -> void {
-    if (level > 0 && !_allowPartialIndex) {
+    if (!_allowPartialIndex || level == 0) {
       return;
     }
     // Trivial case to bottom out with None types.
