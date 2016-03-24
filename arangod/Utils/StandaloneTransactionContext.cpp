@@ -35,11 +35,18 @@ StandaloneTransactionContext::StandaloneTransactionContext(TRI_vocbase_t* vocbas
     : TransactionContext(vocbase) {
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the context
-////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+/// @brief order a custom type handler for the collection
+//////////////////////////////////////////////////////////////////////////////
 
-StandaloneTransactionContext::~StandaloneTransactionContext() {
+std::shared_ptr<VPackCustomTypeHandler> StandaloneTransactionContext::orderCustomTypeHandler() {
+  if (_customTypeHandler == nullptr) {
+    _customTypeHandler.reset(TransactionContext::createCustomTypeHandler(_vocbase, getResolver()));
+    _options.customTypeHandler = _customTypeHandler.get();
+  }
+
+  TRI_ASSERT(_customTypeHandler != nullptr);
+  return _customTypeHandler;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -47,6 +54,9 @@ StandaloneTransactionContext::~StandaloneTransactionContext() {
 ////////////////////////////////////////////////////////////////////////////////
 
 CollectionNameResolver const* StandaloneTransactionContext::getResolver() {
+  if (_resolver == nullptr) {
+    createResolver();
+  }
   TRI_ASSERT(_resolver != nullptr);
   return _resolver;
 }
@@ -64,12 +74,6 @@ TRI_transaction_t* StandaloneTransactionContext::getParentTransaction() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 int StandaloneTransactionContext::registerTransaction(TRI_transaction_t* trx) {
-  if (_resolver == nullptr) {
-    createResolver();
-  }
-
-  TRI_ASSERT(_resolver != nullptr);
-
   return TRI_ERROR_NO_ERROR;
 }
 

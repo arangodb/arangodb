@@ -346,13 +346,13 @@ static void JS_ChecksumCollection(
   TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(col);
 
   bool withRevisions = false;
+  bool withData = false;
+
   if (args.Length() > 0) {
     withRevisions = TRI_ObjectToBoolean(args[0]);
-  }
-
-  bool withData = false;
-  if (args.Length() > 1) {
-    withData = TRI_ObjectToBoolean(args[1]);
+    if (args.Length() > 1) {
+      withData = TRI_ObjectToBoolean(args[1]);
+    }
   }
 
   SingleCollectionTransaction trx(V8TransactionContext::Create(col->_vocbase, true),
@@ -387,8 +387,11 @@ static void JS_ChecksumCollection(
         // _id is different for each collection anyway, _rev is covered by withRevisions, and _key
         // was already handled before
         std::string key(it.key.copyString());
-        if (key != TRI_VOC_ATTRIBUTE_ID && key != TRI_VOC_ATTRIBUTE_KEY && key != TRI_VOC_ATTRIBUTE_REV) {
-          localHash ^= it.value.hash(); 
+        if (key != TRI_VOC_ATTRIBUTE_ID && 
+            key != TRI_VOC_ATTRIBUTE_KEY && 
+            key != TRI_VOC_ATTRIBUTE_REV) {
+          localHash += it.key.hash() ^ 0xba5befd00d; 
+          localHash ^= it.value.hash() ^ 0xf00ba44ba5; 
         }
       }
     }

@@ -54,7 +54,7 @@ class RestAgencyHandler : public arangodb::RestBaseHandler {
   status_t reportMethodNotAllowed(); 
   status_t handleState();
 
-  void     redirectRequest (id_t leaderId);
+  void     redirectRequest (arangodb::consensus::id_t leaderId);
   consensus::Agent* _agent;
 
 };

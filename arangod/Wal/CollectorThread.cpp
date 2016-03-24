@@ -642,12 +642,11 @@ void CollectorThread::processCollectionMarker(
     TRI_document_collection_t* document, CollectorCache* cache,
     CollectorOperation const& operation) {
   auto const* walMarker = reinterpret_cast<TRI_df_marker_t const*>(operation.walPosition);
-  auto const* marker = reinterpret_cast<TRI_df_marker_t const*>(operation.datafilePosition);
+  TRI_ASSERT(walMarker != nullptr);
+  TRI_ASSERT(reinterpret_cast<TRI_df_marker_t const*>(operation.datafilePosition));
   TRI_voc_size_t const datafileMarkerSize = operation.datafileMarkerSize;
   TRI_voc_fid_t const fid = operation.datafileId;
 
-  TRI_ASSERT(walMarker != nullptr);
-  TRI_ASSERT(marker != nullptr);
 
   TRI_df_marker_type_t const type = walMarker->getType();
 

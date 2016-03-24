@@ -91,8 +91,8 @@ TransactionContext::~TransactionContext() {
 
   if (_ownsResolver) {
     delete _resolver;
-    _resolver = nullptr;
   }
+  _resolver = nullptr;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -104,23 +104,6 @@ VPackCustomTypeHandler* TransactionContext::createCustomTypeHandler(TRI_vocbase_
   return new CustomTypeHandler(vocbase, resolver);
 }
   
-//////////////////////////////////////////////////////////////////////////////
-/// @brief order a document ditch for the collection
-//////////////////////////////////////////////////////////////////////////////
-
-std::shared_ptr<VPackCustomTypeHandler> TransactionContext::orderCustomTypeHandler() {
-  if (_customTypeHandler == nullptr) {
-    if (!hasResolver()) {
-      createResolver();
-    }
-    _customTypeHandler.reset(TransactionContext::createCustomTypeHandler(_vocbase, getResolver()));
-    _options.customTypeHandler = _customTypeHandler.get();
-  }
-
-  TRI_ASSERT(_customTypeHandler != nullptr);
-  return _customTypeHandler;
-}
-
 //////////////////////////////////////////////////////////////////////////////
 /// @brief order a document ditch for the collection
 //////////////////////////////////////////////////////////////////////////////
@@ -208,10 +191,11 @@ VPackOptions* TransactionContext::getVPackOptions() {
 /// @brief create a resolver
 ////////////////////////////////////////////////////////////////////////////////
     
-void TransactionContext::createResolver() {
+CollectionNameResolver const* TransactionContext::createResolver() {
   TRI_ASSERT(_resolver == nullptr);
   _resolver = new CollectionNameResolver(_vocbase);
   _ownsResolver = true;
+  return _resolver;
 }
 
 //////////////////////////////////////////////////////////////////////////////

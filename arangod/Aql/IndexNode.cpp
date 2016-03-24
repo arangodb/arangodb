@@ -26,7 +26,6 @@
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/Index.h"
 #include "Utils/Transaction.h"
 
 using namespace arangodb::aql;

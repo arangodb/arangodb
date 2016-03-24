@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global fail, assertEqual, assertNotNull, assertNull, assertTrue, assertMatch,
+/*global assertEqual, assertNotNull, assertNull, assertTrue, assertMatch,
   assertFalse */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2099,7 +2099,6 @@ function SimpleQuerySparseRangeSuite () {
   var collection = null;
   var age = function(d) { return d.age; };
   var ageSort = function(l, r) { if (l !== r) { if (l < r) { return -1; } return 1; } return 0; };
-  var errors = require("@arangodb").errors;
 
   return {
 
@@ -2235,7 +2234,6 @@ function SimpleQueryUniqueSparseRangeSuite () {
   var collection = null;
   var age = function(d) { return d.age; };
   var ageSort = function(l, r) { if (l !== r) { if (l < r) { return -1; } return 1; } return 0; };
-  var errors = require("@arangodb").errors;
 
   return {
 

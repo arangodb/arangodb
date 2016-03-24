@@ -78,6 +78,13 @@ static VPackBuilder EmptyArrayBuilder;
 
 static VPackBuilder EmptyObjectBuilder;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief "constant" global object for illegal slices
+///        Are used in Array Indexes to distinguish NULL and not existent.
+////////////////////////////////////////////////////////////////////////////////
+
+static VPackBuilder IllegalBuilder; 
+
 
 // attribute exclude handler for skipping over system attributes
 struct SystemAttributeExcludeHandler : public VPackAttributeExcludeHandler {
@@ -141,6 +148,9 @@ void VelocyPackHelper::initialize() {
   // Object value (empty)
   EmptyObjectBuilder.openArray();
   EmptyObjectBuilder.close();
+
+  // Illegal value
+  IllegalBuilder.add(VPackValue(VPackValueType::MinKey));
 }
   
 void VelocyPackHelper::disableAssemblerFunctions() {
@@ -172,6 +182,10 @@ arangodb::velocypack::Slice VelocyPackHelper::EmptyArrayValue() {
 
 arangodb::velocypack::Slice VelocyPackHelper::EmptyObjectValue() {
   return EmptyObjectBuilder.slice(); 
+}
+
+arangodb::velocypack::Slice VelocyPackHelper::IllegalValue() {
+  return IllegalBuilder.slice(); 
 }
   
 ////////////////////////////////////////////////////////////////////////////////
@@ -206,6 +220,11 @@ bool VelocyPackHelper::VPackEqual::operator()(VPackSlice const& lhs, VPackSlice 
 
 static int TypeWeight(VPackSlice const& slice) {
   switch (slice.type()) {
+    case VPackValueType::MinKey:
+      return -1;
+    case VPackValueType::None:
+    case VPackValueType::Null:
+      return 0;
     case VPackValueType::Bool:
       return 1;
     case VPackValueType::Double:
@@ -221,8 +240,6 @@ static int TypeWeight(VPackSlice const& slice) {
       return 4;
     case VPackValueType::Object:
       return 5;
-    case VPackValueType::None:
-      return 6;
     default:
       // All other values have equal weight
       return 0;
@@ -483,6 +500,8 @@ int VelocyPackHelper::compare(VPackSlice const& lhs, VPackSlice const& rhs,
   }
 
   switch (lhs.type()) {
+    case VPackValueType::MinKey:
+      return 0; // illegal is illegal
     case VPackValueType::None:
     case VPackValueType::Null:
       return 0;  // null == null;

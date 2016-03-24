@@ -27,7 +27,7 @@
 #include "Aql/TraversalNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Ast.h"
-#include "Aql/Index.h"
+#include "Indexes/Index.h"
 
 #include <cmath>
 
@@ -591,6 +591,7 @@ double TraversalNode::estimateCost(size_t& nrItems) const {
   size_t incoming = 0;
   double depCost = _dependencies.at(0)->getCost(incoming);
   double expectedEdgesPerDepth = 0.0;
+  auto trx = _plan->getAst()->query()->trx();
   auto collections = _plan->getAst()->query()->collections();
 
   TRI_ASSERT(collections != nullptr);
@@ -605,8 +606,9 @@ double TraversalNode::estimateCost(size_t& nrItems) const {
 
     TRI_ASSERT(collection != nullptr);
 
-    for (auto const& index : collection->getIndexes()) {
-      if (index->type == arangodb::Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
+    auto indexes = trx->indexesForCollection(collection->name);
+    for (auto const& index : indexes) {
+      if (index->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
         // We can only use Edge Index
         if (index->hasSelectivityEstimate()) {
           expectedEdgesPerDepth += 1 / index->selectivityEstimate();

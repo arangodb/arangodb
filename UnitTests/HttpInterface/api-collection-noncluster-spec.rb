@@ -60,7 +60,7 @@ describe ArangoDB do
         r2.should_not eq(r1);
         c2 = doc.parsed_response['checksum']
         c2.should be_kind_of(String)
-        c2.should_not eq(0);
+        c2.should_not eq("0");
         c2.should_not eq(c1);
 
         # create another document
@@ -80,7 +80,7 @@ describe ArangoDB do
         r3.should_not eq(r2);
         c3 = doc.parsed_response['checksum']
         c3.should be_kind_of(String)
-        c3.should_not eq(0);
+        c3.should_not eq("0");
         c3.should_not eq(c1);
         c3.should_not eq(c2);
         
@@ -96,7 +96,7 @@ describe ArangoDB do
         r4.should eq(r3);
         c4 = doc.parsed_response['checksum']
         c4.should be_kind_of(String)
-        c4.should_not eq(0);
+        c4.should_not eq("0");
         c4.should_not eq(c1);
         c4.should_not eq(c2);
         c4.should_not eq(c3);

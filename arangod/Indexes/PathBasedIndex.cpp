@@ -266,14 +266,15 @@ void PathBasedIndex::buildIndexValues(
   // anything goes wrong with this attribute path, we have to bottom out
   // with None values to be able to use the index for a prefix match.
 
+  // Trivial case to bottom out with Illegal types.
+  VPackSlice illegalSlice = arangodb::basics::VelocyPackHelper::IllegalValue();
+
   auto finishWithNones = [&]() -> void {
     if (!_allowPartialIndex || level == 0) {
       return;
     }
-    // Trivial case to bottom out with None types.
-    VPackSlice noneSlice;
     for (size_t i = level; i < _paths.size(); i++) {
-      sliceStack.push_back(noneSlice);
+      sliceStack.push_back(illegalSlice);
     }
     toInsert.push_back(sliceStack);
     for (size_t i = level; i < _paths.size(); i++) {

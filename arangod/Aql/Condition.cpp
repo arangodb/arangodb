@@ -25,7 +25,6 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/Index.h"
 #include "Aql/SortCondition.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"

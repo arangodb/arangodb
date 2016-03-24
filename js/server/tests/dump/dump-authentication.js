@@ -99,18 +99,6 @@ function dumpTestSuite () {
         assertEqual("this is a test", doc.value2);
         assertEqual("test" + i, doc.value3);
       }
-
-      doc = c.first();
-      assertEqual("test0", doc._key);
-      assertEqual(0, doc.value1);
-      assertEqual("this is a test", doc.value2);
-      assertEqual("test0", doc.value3);
-      
-      doc = c.last();
-      assertEqual("test99999", doc._key);
-      assertEqual(99999, doc.value1);
-      assertEqual("this is a test", doc.value2);
-      assertEqual("test99999", doc.value3);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -130,29 +118,14 @@ function dumpTestSuite () {
       assertEqual("edge", c.getIndexes()[1].type);
       assertEqual(10, c.count());
 
-      var doc;
-      var i;
-
       // test all documents
-      for (i = 0; i < 10; ++i) {
-        doc = c.document("test" + i);
+      for (var i = 0; i < 10; ++i) {
+        var doc = c.document("test" + i);
         assertEqual("test" + i, doc._key);
         assertEqual("UnitTestsDumpMany/test" + i, doc._from);
         assertEqual("UnitTestsDumpMany/test" + (i + 1), doc._to);
         assertEqual(i + "->" + (i + 1), doc.what);
       }
-
-      doc = c.first();
-      assertEqual("test0", doc._key);
-      assertEqual("UnitTestsDumpMany/test0", doc._from);
-      assertEqual("UnitTestsDumpMany/test1", doc._to);
-      assertEqual("0->1", doc.what);
-      
-      doc = c.last();
-      assertEqual("test9", doc._key);
-      assertEqual("UnitTestsDumpMany/test9", doc._from);
-      assertEqual("UnitTestsDumpMany/test10", doc._to);
-      assertEqual("9->10", doc.what);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -171,23 +144,6 @@ function dumpTestSuite () {
       assertEqual(1, c.getIndexes().length); // just primary index
       assertEqual("primary", c.getIndexes()[0].type);
       assertEqual(3, c.count());
-
-      var doc;
-
-      doc = c.first();
-      assertEqual("three", doc._key);
-      assertEqual(3, doc.value);
-      assertEqual(123, doc.value2);
-
-      doc = c.first(2)[1];
-      assertEqual("two", doc._key);
-      assertEqual(2, doc.value);
-      assertEqual(456, doc.value2);
-
-      doc = c.first(3)[2];
-      assertEqual("one", doc._key);
-      assertEqual(1, doc.value);
-      assertEqual(789, doc.value2);
     }
 
   };
