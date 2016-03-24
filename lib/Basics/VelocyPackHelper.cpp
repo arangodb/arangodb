@@ -221,6 +221,8 @@ static int TypeWeight(VPackSlice const& slice) {
       return 4;
     case VPackValueType::Object:
       return 5;
+    case VPackValueType::None:
+      return 6;
     default:
       // All other values have equal weight
       return 0;
