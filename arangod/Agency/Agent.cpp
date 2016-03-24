@@ -35,7 +35,7 @@ using namespace arangodb::velocypack;
 namespace arangodb {
 namespace consensus {
 
-Agent::Agent () : Thread ("Agent"), _last_commit_index(0), _stopping(false) {}
+Agent::Agent () : Thread ("Agent"), _last_commit_index(0) {}
 
 Agent::Agent (config_t const& config) :
   Thread ("Agent"), _config(config), _last_commit_index(0) {
@@ -50,16 +50,22 @@ Agent::~Agent () {
   shutdown();
 }
 
-State const& Agent::state() const {
+State const& Agent::state () const {
   return _state;
 }
 
+/// @brief Start all agency threads
 bool Agent::start() {
-  LOG(INFO) << "AGENCY: Starting constituent thread.";
+
+  LOG_TOPIC(INFO, Logger::AGENCY) << "Starting constituent personality.";
   _constituent.start();
-  LOG(INFO) << "AGENCY: Starting spearhead thread.";
+  
+  LOG_TOPIC(INFO, Logger::AGENCY) << "Starting spearhead worker.";
   _spearhead.start();
+
+  LOG_TOPIC(INFO, Logger::AGENCY) << "Starting agency comm worker.";
   Thread::start();
+  
   return true;
 }
 
@@ -141,8 +147,8 @@ void Agent::reportIn (id_t id, index_t index) {
     }
 
     if (n>size()/2) { // catch up read database and commit index
-      LOG(INFO) << "AGENCY: Critical mass for commiting " << _last_commit_index+1
-                << " through " << index << " to read db";
+      LOG_TOPIC(INFO, Logger::AGENCY) << "Critical mass for commiting " <<
+        _last_commit_index+1 << " through " << index << " to read db";
       
       _read_db.apply(_state.slices(_last_commit_index+1, index));
       _last_commit_index = index;
@@ -157,29 +163,29 @@ bool Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
   //Update commit index
 
   if (queries->slice().type() != VPackValueType::Array) {
-    LOG(WARN) << "AGENCY: Received malformed entries for appending. Discarting!";  
+    LOG_TOPIC(WARN, Logger::AGENCY) << "Received malformed entries for appending. Discarting!";  
     return false;
   }
   if (queries->slice().length()) {
-    LOG(INFO) << "AGENCY: Appending "<< queries->slice().length()
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Appending "<< queries->slice().length()
               << " entries to state machine.";
   } else { 
     // heart-beat
   }
     
   if (_last_commit_index < leaderCommitIndex) {
-    LOG(INFO) <<  "Updating last commited index to " << leaderCommitIndex;
+    LOG_TOPIC(INFO, Logger::AGENCY) <<  "Updating last commited index to " << leaderCommitIndex;
   }
   _last_commit_index = leaderCommitIndex;
   
   // Sanity
   if (this->term() > term) {                 // (§5.1)
-    LOG(WARN) << "AGENCY: I have a higher term than RPC caller.";
+    LOG_TOPIC(WARN, Logger::AGENCY) << "I have a higher term than RPC caller.";
     throw LOWER_TERM_APPEND_ENTRIES_RPC; 
   }
   if (!_state.findit(prevIndex, prevTerm)) { // (§5.3)
-    LOG(WARN)
-      << "AGENCY: I have no matching set of prevLogIndex/prevLogTerm "
+    LOG_TOPIC(WARN, Logger::AGENCY)
+      << "No matching set of prevLogIndex/prevLogTerm "
       << "in my own state machine. This is trouble!";
     throw NO_MATCHING_PREVLOG;           
   }
@@ -220,7 +226,7 @@ append_entries_t Agent::sendAppendEntriesRPC (
 
   // Send
   if (unconfirmed.size() > 1) {
-    LOG(INFO) << "AGENCY: Appending " << unconfirmed.size() << " entries up to index "
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Appending " << unconfirmed.size() << " entries up to index "
               << last << " to follower " << slave_id;
   }
   arangodb::ClusterComm::instance()->asyncRequest
@@ -236,9 +242,9 @@ append_entries_t Agent::sendAppendEntriesRPC (
 
 bool Agent::load () {
   
-  LOG(INFO) << "AGENCY: Loading persistent state.";
+  LOG_TOPIC(INFO, Logger::AGENCY) << "Loading persistent state.";
   if (!_state.load())
-    LOG(FATAL) << "AGENCY: Failed to load persistent state on statup.";
+    LOG(FATAL) << "Failed to load persistent state on statup.";
   return true;
 }
 

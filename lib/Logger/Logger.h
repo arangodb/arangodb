@@ -271,6 +271,7 @@ class Logger {
   /// @brief predefined topics
   //////////////////////////////////////////////////////////////////////////////
 
+  static LogTopic AGENCY;
   static LogTopic COLLECTOR;
   static LogTopic COMPACTOR;
   static LogTopic CONFIG;

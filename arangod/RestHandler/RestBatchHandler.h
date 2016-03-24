@@ -72,7 +72,7 @@ class RestBatchHandler : public RestVocbaseBaseHandler {
   ~RestBatchHandler();
 
  public:
-  HttpHandler::status_t execute();
+  HttpHandler::status_t execute() override;
 
  private:
   //////////////////////////////////////////////////////////////////////////////

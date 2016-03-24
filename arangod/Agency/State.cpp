@@ -75,7 +75,7 @@ bool State::save (arangodb::velocypack::Slice const& slice, index_t index,
         body.toJson(), headerFields, 0.0);
     
     if (res->status != CL_COMM_SENT) {
-      //LOG(WARN) << res->errorMessage;
+      //LOG_TOPIC(WARN, Logger::AGENCY) << res->errorMessage;
     }
     
     return (res->status == CL_COMM_SENT); // TODO: More verbose result
@@ -203,7 +203,7 @@ bool State::checkDB (std::string const& name) {
         "", headerFields, 1.0);
     
     if(res->result->wasHttpError()) {
-      LOG(WARN) << "Creating collection " << name;
+      LOG_TOPIC(WARN, Logger::AGENCY) << "Creating collection " << name;
       return createCollection(name);
     } 
   }
@@ -244,14 +244,14 @@ bool State::loadCollection (std::string const& name) {
     // Check success
 
     if(res->result->wasHttpError()) {
-      LOG(WARN) << "ERROR";
-      LOG(WARN) << res->endpoint;
+      LOG_TOPIC(WARN, Logger::AGENCY) << "ERROR";
+      LOG_TOPIC(WARN, Logger::AGENCY) << res->endpoint;
     } else {
       std::shared_ptr<Builder> body = res->result->getBodyVelocyPack();
     }
-    //LOG(WARN) << body->toJson();
+    //LOG_TOPIC(WARN, Logger::AGENCY) << body->toJson();
 /*    for (auto const& i : VPackArrayIterator(body->slice()))
-      LOG(WARN) << typeid(i).name();*/
+      LOG_TOPIC(WARN, Logger::AGENCY) << typeid(i).name();*/
 
     return true;
   } else {

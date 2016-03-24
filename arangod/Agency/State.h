@@ -78,10 +78,10 @@ public:
 
 
   std::vector<log_t> get (
-    index_t = 0, index_t = (std::numeric_limits<uint64_t>::max())) const;
+    index_t = 0, index_t = (std::numeric_limits<uint64_t>::max)()) const;
 
   std::vector<VPackSlice> slices (
-    index_t = 0, index_t = (std::numeric_limits<uint64_t>::max())) const;
+    index_t = 0, index_t = (std::numeric_limits<uint64_t>::max)()) const;
 
 
   /// @brief log entry at index i

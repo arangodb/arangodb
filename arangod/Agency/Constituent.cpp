@@ -79,7 +79,7 @@ term_t Constituent::term() const {
 
 void Constituent::term(term_t t) {
   if (t != _term) {
-    LOG(INFO) << "Updating term to " << t;
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Updating term to " << t;
   }
   _term = t;
 }
@@ -90,7 +90,7 @@ role_t Constituent::role () const {
 
 void Constituent::follow (term_t t) {
   if (_role != FOLLOWER) {
-    LOG(INFO) << "Role change: Converted to follower in term " << t;
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Role change: Converted to follower in term " << t;
   }
   this->term(t);
   _votes.assign(_votes.size(),false); // void all votes
@@ -99,7 +99,7 @@ void Constituent::follow (term_t t) {
 
 void Constituent::lead () {
   if (_role != LEADER) {
-    LOG(INFO) << "Role change: Converted to leader in term " << _term ;
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Role change: Converted to leader in term " << _term ;
     _agent->lead(); // We need to rebuild spear_head and read_db;
   }
   _role = LEADER;
@@ -108,7 +108,7 @@ void Constituent::lead () {
 
 void Constituent::candidate () {
   if (_role != CANDIDATE)
-    LOG(INFO) << "Role change: Converted to candidate in term " << _term ;
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Role change: Converted to candidate in term " << _term ;
   _role = CANDIDATE;
 }
 
