@@ -38,24 +38,24 @@ struct VersionTest : public BenchmarkOperation {
 
   ~VersionTest() {}
 
-  bool setUp(SimpleHttpClient* client) { return true; }
+  bool setUp(SimpleHttpClient* client) override { return true; }
 
-  void tearDown() {}
+  void tearDown() override {}
 
   std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) {
+                  size_t const globalCounter) override {
     return _url;
   }
 
   HttpRequest::HttpRequestType type(int const threadNumber,
                                     size_t const threadCounter,
-                                    size_t const globalCounter) {
+                                    size_t const globalCounter) override {
     return HttpRequest::HTTP_REQUEST_GET;
   }
 
   char const* payload(size_t* length, int const threadNumber,
                       size_t const threadCounter, size_t const globalCounter,
-                      bool* mustFree) {
+                      bool* mustFree) override {
     static char const* payload = "";
 
     *mustFree = false;
@@ -71,15 +71,15 @@ struct DocumentCrudAppendTest : public BenchmarkOperation {
 
   ~DocumentCrudAppendTest() {}
 
-  bool setUp(SimpleHttpClient* client) {
+  bool setUp(SimpleHttpClient* client) override {
     return DeleteCollection(client, ARANGOB->collection()) &&
            CreateCollection(client, ARANGOB->collection(), 2);
   }
 
-  void tearDown() {}
+  void tearDown() override {}
 
   std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) {
+                  size_t const globalCounter) override {
     size_t const mod = globalCounter % 4;
 
     if (mod == 0) {
@@ -94,7 +94,7 @@ struct DocumentCrudAppendTest : public BenchmarkOperation {
 
   HttpRequest::HttpRequestType type(int const threadNumber,
                                     size_t const threadCounter,
-                                    size_t const globalCounter) {
+                                    size_t const globalCounter) override {
     size_t const mod = globalCounter % 4;
 
     if (mod == 0) {
@@ -113,7 +113,7 @@ struct DocumentCrudAppendTest : public BenchmarkOperation {
 
   char const* payload(size_t* length, int const threadNumber,
                       size_t const threadCounter, size_t const globalCounter,
-                      bool* mustFree) {
+                      bool* mustFree) override {
     size_t const mod = globalCounter % 4;
 
     if (mod == 0 || mod == 2) {
@@ -162,15 +162,15 @@ struct DocumentCrudWriteReadTest : public BenchmarkOperation {
 
   ~DocumentCrudWriteReadTest() {}
 
-  bool setUp(SimpleHttpClient* client) {
+  bool setUp(SimpleHttpClient* client) override {
     return DeleteCollection(client, ARANGOB->collection()) &&
            CreateCollection(client, ARANGOB->collection(), 2);
   }
 
-  void tearDown() {}
+  void tearDown() override {}
 
   std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) {
+                  size_t const globalCounter) override {
     size_t const mod = globalCounter % 2;
 
     if (mod == 0) {
@@ -185,7 +185,7 @@ struct DocumentCrudWriteReadTest : public BenchmarkOperation {
 
   HttpRequest::HttpRequestType type(int const threadNumber,
                                     size_t const threadCounter,
-                                    size_t const globalCounter) {
+                                    size_t const globalCounter) override {
     size_t const mod = globalCounter % 2;
 
     if (mod == 0) {
@@ -197,7 +197,7 @@ struct DocumentCrudWriteReadTest : public BenchmarkOperation {
 
   char const* payload(size_t* length, int const threadNumber,
                       size_t const threadCounter, size_t const globalCounter,
-                      bool* mustFree) {
+                      bool* mustFree) override {
     size_t const mod = globalCounter % 2;
 
     if (mod == 0) {
@@ -243,15 +243,15 @@ struct ShapesTest : public BenchmarkOperation {
 
   ~ShapesTest() {}
 
-  bool setUp(SimpleHttpClient* client) {
+  bool setUp(SimpleHttpClient* client) override {
     return DeleteCollection(client, ARANGOB->collection()) &&
            CreateCollection(client, ARANGOB->collection(), 2);
   }
 
-  void tearDown() {}
+  void tearDown() override {}
 
   std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) {
+                  size_t const globalCounter) override {
     size_t const mod = globalCounter % 3;
 
     if (mod == 0) {
@@ -266,7 +266,7 @@ struct ShapesTest : public BenchmarkOperation {
 
   HttpRequest::HttpRequestType type(int const threadNumber,
                                     size_t const threadCounter,
-                                    size_t const globalCounter) {
+                                    size_t const globalCounter) override {
     size_t const mod = globalCounter % 3;
 
     if (mod == 0) {
@@ -280,7 +280,7 @@ struct ShapesTest : public BenchmarkOperation {
 
   char const* payload(size_t* length, int const threadNumber,
                       size_t const threadCounter, size_t const globalCounter,
-                      bool* mustFree) {
+                      bool* mustFree) override {
     size_t const mod = globalCounter % 3;
 
     if (mod == 0) {
@@ -329,15 +329,15 @@ struct ShapesAppendTest : public BenchmarkOperation {
 
   ~ShapesAppendTest() {}
 
-  bool setUp(SimpleHttpClient* client) {
+  bool setUp(SimpleHttpClient* client) override {
     return DeleteCollection(client, ARANGOB->collection()) &&
            CreateCollection(client, ARANGOB->collection(), 2);
   }
 
-  void tearDown() {}
+  void tearDown() override {}
 
   std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) {
+                  size_t const globalCounter) override {
     size_t const mod = globalCounter % 2;
 
     if (mod == 0) {
@@ -352,7 +352,7 @@ struct ShapesAppendTest : public BenchmarkOperation {
 
   HttpRequest::HttpRequestType type(int const threadNumber,
                                     size_t const threadCounter,
-                                    size_t const globalCounter) {
+                                    size_t const globalCounter) override {
     size_t const mod = globalCounter % 2;
 
     if (mod == 0) {
@@ -363,7 +363,7 @@ struct ShapesAppendTest : public BenchmarkOperation {
 
   char const* payload(size_t* length, int const threadNumber,
                       size_t const threadCounter, size_t const globalCounter,
-                      bool* mustFree) {
+                      bool* mustFree) override {
     size_t const mod = globalCounter % 2;
 
     if (mod == 0) {
@@ -414,15 +414,15 @@ struct RandomShapesTest : public BenchmarkOperation {
 
   ~RandomShapesTest() {}
 
-  bool setUp(SimpleHttpClient* client) {
+  bool setUp(SimpleHttpClient* client) override {
     return DeleteCollection(client, ARANGOB->collection()) &&
            CreateCollection(client, ARANGOB->collection(), 2);
   }
 
-  void tearDown() {}
+  void tearDown() override {}
 
   std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) {
+                  size_t const globalCounter) override {
     size_t const mod = globalCounter % 3;
 
     if (mod == 0) {
@@ -438,7 +438,7 @@ struct RandomShapesTest : public BenchmarkOperation {
 
   HttpRequest::HttpRequestType type(int const threadNumber,
                                     size_t const threadCounter,
-                                    size_t const globalCounter) {
+                                    size_t const globalCounter) override {
     size_t const mod = globalCounter % 3;
 
     if (mod == 0) {
@@ -452,7 +452,7 @@ struct RandomShapesTest : public BenchmarkOperation {
 
   char const* payload(size_t* length, int const threadNumber,
                       size_t const threadCounter, size_t const globalCounter,
-                      bool* mustFree) {
+                      bool* mustFree) override {
     size_t const mod = globalCounter % 3;
 
     if (mod == 0) {
@@ -506,15 +506,15 @@ struct DocumentCrudTest : public BenchmarkOperation {
 
   ~DocumentCrudTest() {}
 
-  bool setUp(SimpleHttpClient* client) {
+  bool setUp(SimpleHttpClient* client) override {
     return DeleteCollection(client, ARANGOB->collection()) &&
            CreateCollection(client, ARANGOB->collection(), 2);
   }
 
-  void tearDown() {}
+  void tearDown() override {}
 
   std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) {
+                  size_t const globalCounter) override {
     size_t const mod = globalCounter % 5;
 
     if (mod == 0) {
@@ -529,7 +529,7 @@ struct DocumentCrudTest : public BenchmarkOperation {
 
   HttpRequest::HttpRequestType type(int const threadNumber,
                                     size_t const threadCounter,
-                                    size_t const globalCounter) {
+                                    size_t const globalCounter) override {
     size_t const mod = globalCounter % 5;
 
     if (mod == 0) {
@@ -550,7 +550,7 @@ struct DocumentCrudTest : public BenchmarkOperation {
 
   char const* payload(size_t* length, int const threadNumber,
                       size_t const threadCounter, size_t const globalCounter,
-                      bool* mustFree) {
+                      bool* mustFree) override {
     size_t const mod = globalCounter % 5;
 
     if (mod == 0 || mod == 2) {
@@ -599,15 +599,15 @@ struct EdgeCrudTest : public BenchmarkOperation {
 
   ~EdgeCrudTest() {}
 
-  bool setUp(SimpleHttpClient* client) {
+  bool setUp(SimpleHttpClient* client) override {
     return DeleteCollection(client, ARANGOB->collection()) &&
            CreateCollection(client, ARANGOB->collection(), 3);
   }
 
-  void tearDown() {}
+  void tearDown() override {}
 
   std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) {
+                  size_t const globalCounter) override {
     size_t const mod = globalCounter % 4;
 
     if (mod == 0) {
@@ -626,7 +626,7 @@ struct EdgeCrudTest : public BenchmarkOperation {
 
   HttpRequest::HttpRequestType type(int const threadNumber,
                                     size_t const threadCounter,
-                                    size_t const globalCounter) {
+                                    size_t const globalCounter) override {
     size_t const mod = globalCounter % 4;
 
     if (mod == 0) {
@@ -651,7 +651,7 @@ struct EdgeCrudTest : public BenchmarkOperation {
 
   char const* payload(size_t* length, int const threadNumber,
                       size_t const threadCounter, size_t const globalCounter,
-                      bool* mustFree) {
+                      bool* mustFree) override {
     size_t const mod = globalCounter % 4;
 
     if (mod == 0 || mod == 2) {
@@ -700,16 +700,16 @@ struct SkiplistTest : public BenchmarkOperation {
 
   ~SkiplistTest() {}
 
-  bool setUp(SimpleHttpClient* client) {
+  bool setUp(SimpleHttpClient* client) override {
     return DeleteCollection(client, ARANGOB->collection()) &&
            CreateCollection(client, ARANGOB->collection(), 2) &&
            CreateIndex(client, ARANGOB->collection(), "skiplist", "[\"value\"]");
   }
 
-  void tearDown() {}
+  void tearDown() override {}
 
   std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) {
+                  size_t const globalCounter) override {
     size_t const mod = globalCounter % 4;
 
     if (mod == 0) {
@@ -724,7 +724,7 @@ struct SkiplistTest : public BenchmarkOperation {
 
   HttpRequest::HttpRequestType type(int const threadNumber,
                                     size_t const threadCounter,
-                                    size_t const globalCounter) {
+                                    size_t const globalCounter) override {
     size_t const mod = globalCounter % 4;
 
     if (mod == 0) {
@@ -743,7 +743,7 @@ struct SkiplistTest : public BenchmarkOperation {
 
   char const* payload(size_t* length, int const threadNumber,
                       size_t const threadCounter, size_t const globalCounter,
-                      bool* mustFree) {
+                      bool* mustFree) override {
     size_t const mod = globalCounter % 4;
 
     if (mod == 0 || mod == 2) {
@@ -783,16 +783,16 @@ struct HashTest : public BenchmarkOperation {
 
   ~HashTest() {}
 
-  bool setUp(SimpleHttpClient* client) {
+  bool setUp(SimpleHttpClient* client) override {
     return DeleteCollection(client, ARANGOB->collection()) &&
            CreateCollection(client, ARANGOB->collection(), 2) &&
            CreateIndex(client, ARANGOB->collection(), "hash", "[\"value\"]");
   }
 
-  void tearDown() {}
+  void tearDown() override {}
 
   std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) {
+                  size_t const globalCounter) override {
     size_t const mod = globalCounter % 4;
 
     if (mod == 0) {
@@ -807,7 +807,7 @@ struct HashTest : public BenchmarkOperation {
 
   HttpRequest::HttpRequestType type(int const threadNumber,
                                     size_t const threadCounter,
-                                    size_t const globalCounter) {
+                                    size_t const globalCounter) override {
     size_t const mod = globalCounter % 4;
 
     if (mod == 0) {
@@ -826,7 +826,7 @@ struct HashTest : public BenchmarkOperation {
 
   char const* payload(size_t* length, int const threadNumber,
                       size_t const threadCounter, size_t const globalCounter,
-                      bool* mustFree) {
+                      bool* mustFree) override {
     size_t const mod = globalCounter % 4;
 
     if (mod == 0 || mod == 2) {
@@ -881,27 +881,27 @@ struct DocumentImportTest : public BenchmarkOperation {
 
   ~DocumentImportTest() { TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, _buffer); }
 
-  bool setUp(SimpleHttpClient* client) {
+  bool setUp(SimpleHttpClient* client) override {
     return DeleteCollection(client, ARANGOB->collection()) &&
            CreateCollection(client, ARANGOB->collection(), 2);
   }
 
-  void tearDown() {}
+  void tearDown() override {}
 
   std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) {
+                  size_t const globalCounter) override {
     return _url;
   }
 
   HttpRequest::HttpRequestType type(int const threadNumber,
                                     size_t const threadCounter,
-                                    size_t const globalCounter) {
+                                    size_t const globalCounter) override {
     return HttpRequest::HTTP_REQUEST_POST;
   }
 
   char const* payload(size_t* length, int const threadNumber,
                       size_t const threadCounter, size_t const globalCounter,
-                      bool* mustFree) {
+                      bool* mustFree) override {
     *mustFree = false;
     *length = _length;
     return (char const*)_buffer->_buffer;
@@ -941,27 +941,27 @@ struct DocumentCreationTest : public BenchmarkOperation {
     TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, _buffer);
   }
 
-  bool setUp(SimpleHttpClient* client) {
+  bool setUp(SimpleHttpClient* client) override {
     return DeleteCollection(client, ARANGOB->collection()) &&
            CreateCollection(client, ARANGOB->collection(), 2);
   }
 
-  void tearDown() {}
+  void tearDown() override {}
 
   std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) {
+                  size_t const globalCounter) override {
     return _url;
   }
 
   HttpRequest::HttpRequestType type(int const threadNumber,
                                     size_t const threadCounter,
-                                    size_t const globalCounter) {
+                                    size_t const globalCounter) override {
     return HttpRequest::HTTP_REQUEST_POST;
   }
 
   char const* payload(size_t* length, int const threadNumber,
                       size_t const threadCounter, size_t const globalCounter,
-                      bool* mustFree) {
+                      bool* mustFree) override {
     *mustFree = false;
     *length = _length;
     return (char const*)_buffer->_buffer;
@@ -981,24 +981,24 @@ struct CollectionCreationTest : public BenchmarkOperation {
 
   ~CollectionCreationTest() {}
 
-  bool setUp(SimpleHttpClient* client) { return true; }
+  bool setUp(SimpleHttpClient* client) override { return true; }
 
-  void tearDown() {}
+  void tearDown() override {}
 
   std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) {
+                  size_t const globalCounter) override {
     return _url;
   }
 
   HttpRequest::HttpRequestType type(int const threadNumber,
                                     size_t const threadCounter,
-                                    size_t const globalCounter) {
+                                    size_t const globalCounter) override {
     return HttpRequest::HTTP_REQUEST_POST;
   }
 
   char const* payload(size_t* length, int const threadNumber,
                       size_t const threadCounter, size_t const globalCounter,
-                      bool* mustFree) {
+                      bool* mustFree) override {
     TRI_string_buffer_t* buffer;
     char* data;
 
@@ -1033,7 +1033,7 @@ struct TransactionAqlTest : public BenchmarkOperation {
 
   ~TransactionAqlTest() {}
 
-  bool setUp(SimpleHttpClient* client) {
+  bool setUp(SimpleHttpClient* client) override {
     _c1 = std::string(ARANGOB->collection() + "1");
     _c2 = std::string(ARANGOB->collection() + "2");
     _c3 = std::string(ARANGOB->collection() + "3");
@@ -1043,22 +1043,22 @@ struct TransactionAqlTest : public BenchmarkOperation {
            CreateCollection(client, _c2, 2) && CreateCollection(client, _c3, 2);
   }
 
-  void tearDown() {}
+  void tearDown() override {}
 
   std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) {
+                  size_t const globalCounter) override {
     return std::string("/_api/cursor");
   }
 
   HttpRequest::HttpRequestType type(int const threadNumber,
                                     size_t const threadCounter,
-                                    size_t const globalCounter) {
+                                    size_t const globalCounter) override {
     return HttpRequest::HTTP_REQUEST_POST;
   }
 
   char const* payload(size_t* length, int const threadNumber,
                       size_t const threadCounter, size_t const globalCounter,
-                      bool* mustFree) {
+                      bool* mustFree) override {
     size_t const mod = globalCounter % 8;
     TRI_string_buffer_t* buffer;
     buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
@@ -1127,27 +1127,27 @@ struct TransactionCountTest : public BenchmarkOperation {
 
   ~TransactionCountTest() {}
 
-  bool setUp(SimpleHttpClient* client) {
+  bool setUp(SimpleHttpClient* client) override {
     return DeleteCollection(client, ARANGOB->collection()) &&
            CreateCollection(client, ARANGOB->collection(), 2);
   }
 
-  void tearDown() {}
+  void tearDown() override {}
 
   std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) {
+                  size_t const globalCounter) override {
     return std::string("/_api/transaction");
   }
 
   HttpRequest::HttpRequestType type(int const threadNumber,
                                     size_t const threadCounter,
-                                    size_t const globalCounter) {
+                                    size_t const globalCounter) override {
     return HttpRequest::HTTP_REQUEST_POST;
   }
 
   char const* payload(size_t* length, int const threadNumber,
                       size_t const threadCounter, size_t const globalCounter,
-                      bool* mustFree) {
+                      bool* mustFree) override {
     TRI_string_buffer_t* buffer;
     buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
 
@@ -1177,7 +1177,7 @@ struct TransactionDeadlockTest : public BenchmarkOperation {
 
   ~TransactionDeadlockTest() {}
 
-  bool setUp(SimpleHttpClient* client) {
+  bool setUp(SimpleHttpClient* client) override {
     _c1 = std::string(ARANGOB->collection() + "1");
     _c2 = std::string(ARANGOB->collection() + "2");
 
@@ -1187,22 +1187,22 @@ struct TransactionDeadlockTest : public BenchmarkOperation {
            CreateDocument(client, _c2, "{ \"_key\": \"sum\", \"count\": 0 }");
   }
 
-  void tearDown() {}
+  void tearDown() override {}
 
   std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) {
+                  size_t const globalCounter) override {
     return std::string("/_api/transaction");
   }
 
   HttpRequest::HttpRequestType type(int const threadNumber,
                                     size_t const threadCounter,
-                                    size_t const globalCounter) {
+                                    size_t const globalCounter) override {
     return HttpRequest::HTTP_REQUEST_POST;
   }
 
   char const* payload(size_t* length, int const threadNumber,
                       size_t const threadCounter, size_t const globalCounter,
-                      bool* mustFree) {
+                      bool* mustFree) override {
     size_t const mod = globalCounter % 2;
     TRI_string_buffer_t* buffer;
     buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
@@ -1246,7 +1246,7 @@ struct TransactionMultiTest : public BenchmarkOperation {
 
   ~TransactionMultiTest() {}
 
-  bool setUp(SimpleHttpClient* client) {
+  bool setUp(SimpleHttpClient* client) override {
     _c1 = std::string(ARANGOB->collection() + "1");
     _c2 = std::string(ARANGOB->collection() + "2");
 
@@ -1256,22 +1256,22 @@ struct TransactionMultiTest : public BenchmarkOperation {
            CreateDocument(client, _c2, "{ \"_key\": \"sum\", \"count\": 0 }");
   }
 
-  void tearDown() {}
+  void tearDown() override {}
 
   std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) {
+                  size_t const globalCounter) override {
     return std::string("/_api/transaction");
   }
 
   HttpRequest::HttpRequestType type(int const threadNumber,
                                     size_t const threadCounter,
-                                    size_t const globalCounter) {
+                                    size_t const globalCounter) override {
     return HttpRequest::HTTP_REQUEST_POST;
   }
 
   char const* payload(size_t* length, int const threadNumber,
                       size_t const threadCounter, size_t const globalCounter,
-                      bool* mustFree) {
+                      bool* mustFree) override {
     size_t const mod = globalCounter % 2;
     TRI_string_buffer_t* buffer;
     buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
@@ -1330,7 +1330,7 @@ struct TransactionMultiCollectionTest : public BenchmarkOperation {
 
   ~TransactionMultiCollectionTest() {}
 
-  bool setUp(SimpleHttpClient* client) {
+  bool setUp(SimpleHttpClient* client) override {
     _c1 = std::string(ARANGOB->collection() + "1");
     _c2 = std::string(ARANGOB->collection() + "2");
 
@@ -1338,22 +1338,22 @@ struct TransactionMultiCollectionTest : public BenchmarkOperation {
            CreateCollection(client, _c1, 2) && CreateCollection(client, _c2, 2);
   }
 
-  void tearDown() {}
+  void tearDown() override {}
 
   std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) {
+                  size_t const globalCounter) override {
     return std::string("/_api/transaction");
   }
 
   HttpRequest::HttpRequestType type(int const threadNumber,
                                     size_t const threadCounter,
-                                    size_t const globalCounter) {
+                                    size_t const globalCounter) override {
     return HttpRequest::HTTP_REQUEST_POST;
   }
 
   char const* payload(size_t* length, int const threadNumber,
                       size_t const threadCounter, size_t const globalCounter,
-                      bool* mustFree) {
+                      bool* mustFree) override {
     TRI_string_buffer_t* buffer;
     buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
 
@@ -1406,27 +1406,27 @@ struct AqlInsertTest : public BenchmarkOperation {
 
   ~AqlInsertTest() {}
 
-  bool setUp(SimpleHttpClient* client) {
+  bool setUp(SimpleHttpClient* client) override {
     return DeleteCollection(client, ARANGOB->collection()) &&
            CreateCollection(client, ARANGOB->collection(), 2);
   }
 
-  void tearDown() {}
+  void tearDown() override {}
 
   std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) {
+                  size_t const globalCounter) override {
     return std::string("/_api/cursor");
   }
 
   HttpRequest::HttpRequestType type(int const threadNumber,
                                     size_t const threadCounter,
-                                    size_t const globalCounter) {
+                                    size_t const globalCounter) override {
     return HttpRequest::HTTP_REQUEST_POST;
   }
 
   char const* payload(size_t* length, int const threadNumber,
                       size_t const threadCounter, size_t const globalCounter,
-                      bool* mustFree) {
+                      bool* mustFree) override {
     TRI_string_buffer_t* buffer;
     buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
 
@@ -1460,27 +1460,27 @@ struct AqlV8Test : public BenchmarkOperation {
 
   ~AqlV8Test() {}
 
-  bool setUp(SimpleHttpClient* client) {
+  bool setUp(SimpleHttpClient* client) override {
     return DeleteCollection(client, ARANGOB->collection()) &&
            CreateCollection(client, ARANGOB->collection(), 2);
   }
 
-  void tearDown() {}
+  void tearDown() override {}
 
   std::string url(int const threadNumber, size_t const threadCounter,
-                  size_t const globalCounter) {
+                  size_t const globalCounter) override {
     return std::string("/_api/cursor");
   }
 
   HttpRequest::HttpRequestType type(int const threadNumber,
                                     size_t const threadCounter,
-                                    size_t const globalCounter) {
+                                    size_t const globalCounter) override {
     return HttpRequest::HTTP_REQUEST_POST;
   }
 
   char const* payload(size_t* length, int const threadNumber,
                       size_t const threadCounter, size_t const globalCounter,
-                      bool* mustFree) {
+                      bool* mustFree) override {
     TRI_string_buffer_t* buffer;
     buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
 

@@ -52,19 +52,21 @@ RestAgencyHandler::RestAgencyHandler(HttpRequest* request, Agent* agent)
 bool RestAgencyHandler::isDirect() const { return false; }
 
 inline HttpHandler::status_t RestAgencyHandler::reportErrorEmptyRequest () {
-  LOG(WARN) << "Empty request to public agency interface.";
+  LOG_TOPIC(WARN, Logger::AGENCY) << "Empty request to public agency interface.";
   generateError(HttpResponse::NOT_FOUND,404);
   return HttpHandler::status_t(HANDLER_DONE);
 }
 
 inline HttpHandler::status_t RestAgencyHandler::reportTooManySuffices () {
-  LOG(WARN) << "Too many suffixes. Agency public interface takes one path.";
+  LOG_TOPIC(WARN, Logger::AGENCY)
+    << "Too many suffixes. Agency public interface takes one path.";
   generateError(HttpResponse::NOT_FOUND,404);
   return HttpHandler::status_t(HANDLER_DONE);
 }
 
 inline HttpHandler::status_t RestAgencyHandler::reportUnknownMethod () {
-  LOG(WARN) << "Too many suffixes. Agency public interface takes one path.";
+  LOG_TOPIC(WARN, Logger::AGENCY)
+    << "Public REST interface has no method " << _request->suffix()[0];
   generateError(HttpResponse::NOT_FOUND,404);
   return HttpHandler::status_t(HANDLER_DONE);
 }
@@ -80,27 +82,48 @@ void RestAgencyHandler::redirectRequest (id_t leaderId) {
 inline HttpHandler::status_t RestAgencyHandler::handleWrite () {
   arangodb::velocypack::Options options; // TODO: User not wait. 
   if (_request->requestType() == HttpRequest::HTTP_REQUEST_POST) {
+
     query_t query;
+
     try {
       query = _request->toVelocyPack(&options);
     } catch (std::exception const& e) {
-      LOG(FATAL) << e.what();
+      LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
       generateError(HttpResponse::UNPROCESSABLE_ENTITY,422);
       return HttpHandler::status_t(HANDLER_DONE);
     }
+
     write_ret_t ret = _agent->write (query);
-    if (ret.accepted) { // We're leading and handling the request 
+    
+    if (ret.accepted) { // We're leading and handling the request
+
+      std::string call_mode (_request->header("x-arangodb-agency-mode"));
       size_t errors = 0;
       Builder body;
-      body.add(VPackValue(VPackValueType::Object));
-      _agent->waitFor (ret.indices.back()); // Wait for confirmation
-      for (size_t i = 0; i < ret.indices.size(); ++i) {
-        body.add(std::to_string(i), Value(ret.indices[i]));
-        if (ret.indices[i] == 0) {
-          errors++;
+      body.openObject();
+      
+      if (call_mode!="noWait") {
+
+        // Note success/error
+        body.add("results", VPackValue(VPackValueType::Array));
+        for (auto const& index : ret.indices) {
+          body.add(VPackValue(index));
         }
+        body.close();
+
+        // Wait for commit of highest except if it is 0?
+        if (call_mode=="waitForCommitted") {
+          index_t max_index =
+            *std::max_element(ret.indices.begin(),ret.indices.end());
+          if (max_index>0) {
+            _agent->waitFor (max_index);
+          }
+        }
+        
       }
+      
       body.close();
+      
       if (errors > 0) { // Some/all requests failed
         generateResult(HttpResponse::PRECONDITION_FAILED,body.slice());
       } else {          // All good 
@@ -122,7 +145,7 @@ inline HttpHandler::status_t RestAgencyHandler::handleRead () {
     try {
       query = _request->toVelocyPack(&options);
     } catch (std::exception const& e) {
-      LOG(WARN) << e.what();
+      LOG_TOPIC(WARN, Logger::AGENCY) << e.what();
       generateError(HttpResponse::BAD,400);
       return HttpHandler::status_t(HANDLER_DONE);
     }
