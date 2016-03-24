@@ -281,7 +281,7 @@ function AttributesSuite () {
       catch (err) {
         if (err && err.errorNum) {
           // we're on the server
-          assertEqual(ERRORS.ERROR_ARANGO_SHAPER_FAILED.code, err.errorNum);
+          assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
         }
         else {
           // we're on the client, and the JS engine just throws a generic type error
