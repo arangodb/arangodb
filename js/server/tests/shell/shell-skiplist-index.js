@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global fail, assertEqual, assertNotEqual  */
+/*global assertEqual, assertNotEqual  */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the skip-list index
@@ -30,7 +30,6 @@
 
 var jsunity = require("jsunity");
 var internal = require("internal");
-var errors = internal.errors;
 
 
 ////////////////////////////////////////////////////////////////////////////////

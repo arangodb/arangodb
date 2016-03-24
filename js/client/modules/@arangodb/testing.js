@@ -1598,14 +1598,6 @@ function startInstanceCluster(instanceInfo, protocol, options,
   return true;
 }
 
-function wait2(ms){
-   var start = new Date().getTime();
-   var end = start;
-   while(end < start + ms) {
-     end = new Date().getTime();
-  }
-}
-
 function startInstanceAgency(instanceInfo, protocol, options,
   addArgs, testname, appDir, tmpDataDir) {
   const N = options.agencySize;
@@ -1652,8 +1644,8 @@ function startInstanceAgency(instanceInfo, protocol, options,
         l.push("--agency.endpoint");
         l.push(endpoints[j]);
       }
-      l.push("--agency.notify")
-      l.push("true")
+      l.push("--agency.notify");
+      l.push("true");
       
       args["flatCommands"] = l;
     }

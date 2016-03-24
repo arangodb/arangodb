@@ -102,14 +102,14 @@ function arrayHashIndexSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertAndReadArrayCombinedUnique : function () {
-      var idx = collection.ensureHashIndex("a[*]", "b[*]", {unique: true}).id;
+      collection.ensureHashIndex("a[*]", "b[*]", {unique: true});
 
-      var id = collection.save({a: [1, 2], b: ["a", "b"]})._id;
+      collection.save({a: [1, 2], b: ["a", "b"]});
 
       // It should be possible to insert arbitarary null values
       
       // This should be insertable
-      var id1 = collection.save({a: ["duplicate", null, "duplicate"], b: ["duplicate", null, "duplicate"]})._id;
+      collection.save({a: ["duplicate", null, "duplicate"], b: ["duplicate", null, "duplicate"]});
 
       try {
         // This should not be insertable we have the one before
@@ -125,9 +125,9 @@ function arrayHashIndexSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertAndReadArrayUnique : function () {
-      var idx = collection.ensureUniqueConstraint("a[*]").id;
+      collection.ensureUniqueConstraint("a[*]");
 
-      var id = collection.save({a: [1, 2]})._id;
+      collection.save({a: [1, 2]});
 
       try {
         collection.save({a: [1, 4]});
@@ -143,9 +143,9 @@ function arrayHashIndexSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertAndReadArrayIdenticalElementsUnique : function () {
-      var idx = collection.ensureUniqueConstraint("a[*]").id;
+      collection.ensureUniqueConstraint("a[*]");
 
-      var id = collection.save({a: [1, 2, 1, 3, 1]})._id;
+      collection.save({a: [1, 2, 1, 3, 1]});
 
       try {
         collection.save({a: [4, 1]});
@@ -227,9 +227,9 @@ function arraySkiplistIndexSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertAndReadArrayUnique : function () {
-      var idx = collection.ensureUniqueSkiplist("a[*]").id;
+      collection.ensureUniqueSkiplist("a[*]");
 
-      var id = collection.save({a: [1, 2]})._id;
+      collection.save({a: [1, 2]});
 
       try {
         collection.save({a: [1, 4]});
@@ -245,9 +245,9 @@ function arraySkiplistIndexSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertAndReadArrayIdenticalElementsUnique : function () {
-      var idx = collection.ensureUniqueSkiplist("a[*]").id;
+      collection.ensureUniqueSkiplist("a[*]");
 
-      var id = collection.save({a: [1, 2, 1, 3, 1]})._id;
+      collection.save({a: [1, 2, 1, 3, 1]});
 
       try {
         collection.save({a: [4, 1]});

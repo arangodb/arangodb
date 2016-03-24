@@ -2292,8 +2292,8 @@ function transactionRollbackSuite () {
       c1.save({ _key: "bar", value: "bar", a: 1 });
       c1.save({ _key: "meow", value: "meow" });
 
-      var hash = c1.ensureHashIndex("value");
-      var skip = c1.ensureSkiplist("value");
+      c1.ensureHashIndex("value");
+      c1.ensureSkiplist("value");
       var good = false;
      
       var obj = {
@@ -2469,8 +2469,8 @@ function transactionRollbackSuite () {
       c1.save({ _key: "bar", value: "bar", a: 1 });
       c1.save({ _key: "meow", value: "meow" });
 
-      var hash = c1.ensureHashIndex("value");
-      var skip = c1.ensureSkiplist("value");
+      c1.ensureHashIndex("value");
+      c1.ensureSkiplist("value");
       var good = false;
      
       var obj = {
@@ -2580,8 +2580,8 @@ function transactionRollbackSuite () {
       c1.save({ _key: "bar", value: "bar", a: 1 });
       c1.save({ _key: "meow", value: "meow" });
 
-      var hash = c1.ensureHashIndex("value");
-      var skip = c1.ensureSkiplist("value");
+      c1.ensureHashIndex("value");
+      c1.ensureSkiplist("value");
       var good = false;
      
       var obj = {
@@ -2622,8 +2622,8 @@ function transactionRollbackSuite () {
       c1.save({ _key: "bar", value: "bar", a: 1 });
       c1.save({ _key: "meow", value: "meow" });
 
-      var hash = c1.ensureHashIndex("value");
-      var skip = c1.ensureSkiplist("value");
+      c1.ensureHashIndex("value");
+      c1.ensureSkiplist("value");
       var good = false;
      
       var obj = {
@@ -3494,8 +3494,8 @@ function transactionConstraintsSuite () {
 
     testMultiHashConstraintInsert1 : function () {
       c = db._create(cn);
-      var idx1 = c.ensureUniqueConstraint("value1");
-      var idx2 = c.ensureUniqueConstraint("value2");
+      c.ensureUniqueConstraint("value1");
+      c.ensureUniqueConstraint("value2");
 
       var i;
       for (i = 0; i < 10; ++i) {
@@ -3522,8 +3522,8 @@ function transactionConstraintsSuite () {
 
     testMultiHashConstraintInsert2 : function () {
       c = db._create(cn);
-      var idx1 = c.ensureUniqueConstraint("value1");
-      var idx2 = c.ensureUniqueConstraint("value2");
+      c.ensureUniqueConstraint("value1");
+      c.ensureUniqueConstraint("value2");
 
       var i;
       for (i = 0; i < 10; ++i) {
@@ -3550,8 +3550,8 @@ function transactionConstraintsSuite () {
 
     testMultiSkipConstraintInsert1 : function () {
       c = db._create(cn);
-      var idx1 = c.ensureUniqueSkiplist("value1");
-      var idx2 = c.ensureUniqueSkiplist("value2");
+      c.ensureUniqueSkiplist("value1");
+      c.ensureUniqueSkiplist("value2");
 
       var i;
       for (i = 0; i < 10; ++i) {
@@ -3578,8 +3578,8 @@ function transactionConstraintsSuite () {
 
     testMultiSkipConstraintInsert2 : function () {
       c = db._create(cn);
-      var idx1 = c.ensureUniqueSkiplist("value1");
-      var idx2 = c.ensureUniqueSkiplist("value2");
+      c.ensureUniqueSkiplist("value1");
+      c.ensureUniqueSkiplist("value2");
 
       var i;
       for (i = 0; i < 10; ++i) {

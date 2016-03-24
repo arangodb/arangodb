@@ -801,18 +801,18 @@ function createLocalCollections (plannedCollections, planVersion, takeOverRespon
         }
       }
     }
-  }
+  };
 
   if (takeOverResponsibility) {
     // mop: if this is a complete takeover we need a global lock because
     // otherwise the coordinator might fetch results which are only partly
     // migrated
     var fakeLock = (lockInfo, cb, args) => {
-      if (!lockInfo || lockInfo.part != 'Current') {
+      if (!lockInfo || lockInfo.part !== 'Current') {
         throw new Error("Invalid lockInfo " + JSON.stringify(lockInfo));
       }
       return cb(...args);
-    }
+    };
     writeLocked({ part: "Current" }, migrate, [fakeLock]);
   } else {
     migrate(writeLocked);
