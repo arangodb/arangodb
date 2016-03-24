@@ -96,7 +96,7 @@ function DocumentShapedJsonSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(internal.errors.ERROR_ARANGO_SHAPER_FAILED.code, err.errorNum);
+        assertEqual(internal.errors.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
 
@@ -110,7 +110,7 @@ function DocumentShapedJsonSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(internal.errors.ERROR_ARANGO_SHAPER_FAILED.code, err.errorNum);
+        assertEqual(internal.errors.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
 
