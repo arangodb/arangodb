@@ -45,7 +45,7 @@ size_t JSONSkipWhiteSpaceC(uint8_t const* ptr, size_t limit) {
   return JSONSkipWhiteSpaceInline(ptr, limit);
 }
 
-#if defined(__SSE4_2__) && !defined(NO_SSE42)
+#if defined(__SSE4_2__) && ASM_OPTIMIZATIONS == 1
 
 #include <cpuid.h>
 #include <x86intrin.h>
