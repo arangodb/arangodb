@@ -37,7 +37,6 @@ using namespace arangodb::rest;
 ApplicationAgency::ApplicationAgency()
   : ApplicationFeature("agency"), _size(1), _min_election_timeout(0.1),
 	  _max_election_timeout(1.0), _election_call_rate_mul(0.85),
-    _append_entries_retry_interval(1.0), _notify(true),
     _agent_id(std::numeric_limits<uint32_t>::max()) {
 }
 
@@ -61,9 +60,6 @@ void ApplicationAgency::setupOptions(
     ("agency.election_call_rate_mul [au]", &_election_call_rate_mul,
      "Multiplier (<1.0) defining how long the election timeout is with respect "
      "to the minumum election timeout")
-    ("agency.append_entries_retry_interval [s]", &_append_entries_retry_interval,
-     "Interval at which appendEntries are attempted on unresponsive slaves"
-     "in seconds")
     ("agency.notify", &_notify, "Notify others [beta :)]");
 }
 
@@ -77,36 +73,36 @@ bool ApplicationAgency::prepare() {
   }
 
   if (_size < 1) {
-    LOG(FATAL) << "AGENCY: agency must have size greater 0";
+    LOG_TOPIC(ERR, Logger::AGENCY) << "AGENCY: agency must have size greater 0";
     return false;    
   }
   
 
   if (_size % 2 == 0) {
-    LOG(FATAL) << "AGENCY: agency must have odd number of members";
+    LOG_TOPIC(ERR, Logger::AGENCY) << "AGENCY: agency must have odd number of members";
     return false;
   }
   
   if (_agent_id == std::numeric_limits<uint32_t>::max()) {
-    LOG(FATAL) << "agency.id must be specified";
+    LOG_TOPIC(ERR, Logger::AGENCY) << "agency.id must be specified";
     return false;
   }
 
   if (_min_election_timeout <= 0.) {
-    LOG(FATAL) << "agency.election-timeout-min must not be negative!";
+    LOG_TOPIC(ERR, Logger::AGENCY) << "agency.election-timeout-min must not be negative!";
     return false;
   } else if (_min_election_timeout < .15) {
     LOG(WARN)  << "very short agency.election-timeout-min!";
   }
   
   if (_max_election_timeout <= _min_election_timeout) {
-    LOG(FATAL) << "agency.election-timeout-max must not be shorter than or"
+    LOG_TOPIC(ERR, Logger::AGENCY) << "agency.election-timeout-max must not be shorter than or"
                << "equal to agency.election-timeout-min.";
     return false;
   }
   
   if (_max_election_timeout <= 2*_min_election_timeout) {
-    LOG(WARN)  << "agency.election-timeout-max should probably be chosen longer!";
+    LOG_TOPIC(WARN, Logger::AGENCY)  << "agency.election-timeout-max should probably be chosen longer!";
   }
   
   _agency_endpoints.resize(_size);
@@ -114,7 +110,7 @@ bool ApplicationAgency::prepare() {
   _agent = std::unique_ptr<agent_t>(
     new agent_t(arangodb::consensus::config_t(
                   _agent_id, _min_election_timeout, _max_election_timeout,
-                  _append_entries_retry_interval, _agency_endpoints, _notify)));
+                  _agency_endpoints, _notify)));
   
   return true;
   

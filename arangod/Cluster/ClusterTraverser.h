@@ -140,7 +140,6 @@ class ClusterTraversalPath : public TraversalPath {
 
   void lastVertexToVelocyPack(Transaction*,
                               arangodb::velocypack::Builder&) override;
-
   arangodb::basics::Json* pathToJson(Transaction*, CollectionNameResolver*) override;
 
   arangodb::basics::Json* lastEdgeToJson(Transaction*, CollectionNameResolver*) override;

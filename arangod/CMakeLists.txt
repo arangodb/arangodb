@@ -108,7 +108,6 @@ add_executable(${BIN_ARANGOD}
   Aql/Function.cpp
   Aql/Functions.cpp
   Aql/Graphs.cpp
-  Aql/Index.cpp
   Aql/IndexBlock.cpp
   Aql/IndexNode.cpp
   Aql/ModificationBlocks.cpp

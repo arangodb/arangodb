@@ -93,7 +93,6 @@ struct ClusterCommResult {
                  // is dropped whilst in state CL_COMM_SENDING
                  // it is then actually dropped when it has
                  // been sent
-  bool invalid;  // can only explicitly be set
   bool single;   // operation only needs a single round trip (and no request/
                  // response in the opposite direction
 
@@ -111,7 +110,6 @@ struct ClusterCommResult {
 
   ClusterCommResult()
       : dropped(false),
-        invalid(false),
         single(false),
         answer_code(rest::HttpResponse::PROCESSING) {}
 
