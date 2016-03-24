@@ -662,7 +662,7 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUnique5 : function () {
-      var expected = [ { "the fox" : "jumped" }, { "the fox" : "jumped over" }, { "over" : "the dog", "the fox" : "jumped" } ];
+      var expected = [ { "over" : "the dog", "the fox" : "jumped" }, { "the fox" : "jumped" }, { "the fox" : "jumped over" } ];
 
       var actual = getQueryResults("FOR i IN UNIQUE([ { \"the fox\" : \"jumped\" }, { \"the fox\" : \"jumped over\" }, { \"the fox\" : \"jumped\", \"over\" : \"the dog\" }, { \"over\" : \"the dog\", \"the fox\" : \"jumped\" } ]) SORT i RETURN i");
       assertEqual(expected, actual);
