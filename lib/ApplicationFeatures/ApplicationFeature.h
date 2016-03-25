@@ -27,6 +27,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
+#include "Logger/Logger.h"
 
 namespace arangodb {
 namespace application_features {
@@ -154,7 +155,10 @@ class ApplicationFeature {
 
   // abort program execution because of invalid parameters
   // TODO: add default implementation
-  void abortInvalidParameters() { std::abort(); }
+  void abortInvalidParameters() {
+    LOG(FATAL) << "invalid parameters, refusing to start program";
+    FATAL_ERROR_EXIT();
+  }
 
  private:
   // pointer to application server

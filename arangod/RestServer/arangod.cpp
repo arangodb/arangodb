@@ -82,7 +82,6 @@ int main(int argc, char* argv[]) {
   int ret= EXIT_FAILURE;
 
   server.addFeature(new ConfigFeature(&server, name));
-  server.addFeature(new DaemonFeature(&server));
   //  server.addFeature(new DispatcherFeature(&server));
   //  server.addFeature(new HttpServerFeature(&server));
   server.addFeature(new LanguageFeature(&server));
@@ -96,6 +95,10 @@ int main(int argc, char* argv[]) {
   server.addFeature(new V8PlatformFeature(&server));
   // server.addFeature(new VocbaseFeature(&server));
   // server.addFeature(new WalFeature(&server));
+
+#ifdef TRI_HAVE_FORK
+  server.addFeature(new DaemonFeature(&server));
+#endif
 
   server.run(argc, argv);
 

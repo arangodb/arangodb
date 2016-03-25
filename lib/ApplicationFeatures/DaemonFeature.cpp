@@ -27,15 +27,52 @@
 
 #include "Basics/FileUtils.h"
 #include "Logger/Logger.h"
+#include "ProgramOptions/ProgramOptions.h"
+#include "ProgramOptions/Section.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
+using namespace arangodb::options;
 
 DaemonFeature::DaemonFeature(application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "Daemon") {}
+    : ApplicationFeature(server, "Daemon"),
+      _daemon(false),
+      _pidFile(""),
+      _workingDirectory("") {}
+
+void DaemonFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
+
+  options->addSection(
+      Section("", "Global configuration", "global options", false, false));
+
+  options->addOption("--daemon", "background the server, running it as daemon",
+                     new BooleanParameter(&_daemon, false));
+
+  options->addOption("--pid-file", "pid-file in daemon mode",
+                     new StringParameter(&_pidFile));
+
+  options->addOption("--working-directory", "working directory in daemon mode",
+                     new StringParameter(&_workingDirectory));
+}
+
+void DaemonFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
+
+  if (_daemon) {
+    if (_pidFile.empty()) {
+      LOG(ERR) << "need --pid-file in --daemon mode";
+      abortInvalidParameters();
+    }
+  }
+}
 
 void DaemonFeature::daemonize() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::daemonize";
+
+  if (!_daemon) {
+    return;
+  }
 
   LOG_TOPIC(INFO, Logger::STARTUP) << "starting up in daemon mode";
 
@@ -91,21 +128,12 @@ void DaemonFeature::checkPidFile() {
 
         LOG_TOPIC(DEBUG, Logger::STARTUP) << "found old pid: " << oldPid;
 
-#ifdef TRI_HAVE_FORK
         int r = kill(oldPid, 0);
-#else
-        int r = 0;  // TODO for windows use TerminateProcess
-#endif
 
-        if (r == 0) {
+        if (r == 0 || errno == EPERM) {
           LOG(FATAL) << "pid-file '" << _pidFile
                      << "' exists and process with pid " << oldPid
-                     << " is still running";
-          FATAL_ERROR_EXIT();
-        } else if (errno == EPERM) {
-          LOG(FATAL) << "pid-file '" << _pidFile
-                     << "' exists and process with pid " << oldPid
-                     << " is still running";
+                     << " is still running, refusing to start twice";
           FATAL_ERROR_EXIT();
         } else if (errno == ESRCH) {
           LOG_TOPIC(ERR, Logger::STARTUP) << "pid-file '" << _pidFile

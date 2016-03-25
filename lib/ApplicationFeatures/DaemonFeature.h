@@ -33,6 +33,8 @@ class DaemonFeature final : public application_features::ApplicationFeature {
   explicit DaemonFeature(application_features::ApplicationServer* server);
 
  public:
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void daemonize() override final;
   void stop() override final;
 
@@ -42,6 +44,7 @@ class DaemonFeature final : public application_features::ApplicationFeature {
   void writePidFile(int);
 
  public:
+  bool _daemon;
   std::string _pidFile;
   std::string _workingDirectory;
 
