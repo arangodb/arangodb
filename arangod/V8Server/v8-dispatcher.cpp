@@ -33,7 +33,7 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
-#include "V8Server/ApplicationV8.h"
+// #include "V8Server/ApplicationV8.h"
 #include "V8Server/V8PeriodicTask.h"
 #include "V8Server/V8QueueJob.h"
 #include "V8Server/V8TimerTask.h"
@@ -328,6 +328,8 @@ void TRI_InitV8Dispatcher(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   // .............................................................................
 
   // we need a scheduler and a dispatcher to define periodic tasks
+#warning TODO
+#if 0
   GlobalScheduler = scheduler->scheduler();
   GlobalDispatcher = dispatcher->dispatcher();
 
@@ -343,4 +345,5 @@ void TRI_InitV8Dispatcher(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   } else {
     LOG(ERR) << "cannot initialize tasks, scheduler or dispatcher unknown";
   }
+#endif
 }

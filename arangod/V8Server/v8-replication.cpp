@@ -42,6 +42,8 @@ using namespace arangodb::rest;
 
 static void JS_StateLoggerReplication(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
+#warning TODO
+#if 0
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -69,6 +71,7 @@ static void JS_StateLoggerReplication(
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -77,6 +80,8 @@ static void JS_StateLoggerReplication(
 
 static void JS_TickRangesLoggerReplication(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
+#warning TODO
+#if 0
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -99,6 +104,7 @@ static void JS_TickRangesLoggerReplication(
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -107,6 +113,8 @@ static void JS_TickRangesLoggerReplication(
 
 static void JS_FirstTickLoggerReplication(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
+#warning TODO
+#if 0
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -130,6 +138,7 @@ static void JS_FirstTickLoggerReplication(
 
   TRI_V8_RETURN(V8TickId(isolate, tick));
   TRI_V8_TRY_CATCH_END
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

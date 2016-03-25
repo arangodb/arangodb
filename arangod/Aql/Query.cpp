@@ -275,7 +275,8 @@ Query::~Query() {
       ctx->unregisterTransaction();
     }
 
-    _applicationV8->exitContext(_context);
+#warning TODO
+    // _applicationV8->exitContext(_context);
     _context = nullptr;
   }
 
@@ -1157,7 +1158,8 @@ char* Query::registerEscapedString(char const* p, size_t length,
 void Query::enterContext() {
   if (!_contextOwnedByExterior) {
     if (_context == nullptr) {
-      _context = _applicationV8->enterContext(_vocbase, false);
+#warning TODO
+      // _context = _applicationV8->enterContext(_vocbase, false);
 
       if (_context == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -1196,7 +1198,8 @@ void Query::exitContext() {
         ctx->unregisterTransaction();
       }
 
-      _applicationV8->exitContext(_context);
+#warning TODO
+      // _applicationV8->exitContext(_context);
       _context = nullptr;
     }
     TRI_ASSERT(_context == nullptr);

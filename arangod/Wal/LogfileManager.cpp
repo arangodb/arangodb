@@ -195,6 +195,8 @@ void LogfileManager::initialize(std::string* path, TRI_server_t* server) {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
+#warning TODO
+#if 0
 void LogfileManager::setupOptions(
     std::map<std::string, arangodb::basics::ProgramOptionsDescription>&
         options) {
@@ -226,6 +228,7 @@ void LogfileManager::setupOptions(
       "wal.throttle-wait", &_maxThrottleWait,
       "maximum wait time per operation when write-throttled (in milliseconds)");
 }
+#endif
 
 bool LogfileManager::prepare() {
   static bool Prepared = false;

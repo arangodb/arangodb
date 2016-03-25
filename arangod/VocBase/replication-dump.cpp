@@ -1394,6 +1394,8 @@ int TRI_DumpLogReplication(
     std::unordered_set<TRI_voc_tid_t> const& transactionIds,
     TRI_voc_tick_t firstRegularTick, TRI_voc_tick_t tickMin,
     TRI_voc_tick_t tickMax, bool outputAsArray) {
+#warning TODO
+#if 0
   LOG(TRACE) << "dumping log, tick range " << tickMin << " - " << tickMax;
 
   // ask the logfile manager which datafiles qualify
@@ -1518,6 +1520,7 @@ int TRI_DumpLogReplication(
   }
 
   return res;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1527,6 +1530,8 @@ int TRI_DumpLogReplication(
 int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
                                              TRI_voc_tick_t tickMin,
                                              TRI_voc_tick_t tickMax) {
+#warning TODO
+#if 0
   LOG(TRACE) << "determining transactions, tick range " << tickMin << " - " << tickMax;
 
   std::unordered_map<TRI_voc_tid_t, TRI_voc_tick_t> transactions;
@@ -1649,4 +1654,5 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t* dump,
   arangodb::wal::LogfileManager::instance()->returnLogfiles(logfiles);
 
   return res;
+#endif
 }

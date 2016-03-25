@@ -36,7 +36,7 @@
 #include "Basics/hashes.h"
 #include "Basics/json.h"
 #include "Basics/memory-map.h"
-#include "Basics/random.h"
+#include "Basics/RandomGenerator.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/document-collection.h"
@@ -703,7 +703,7 @@ static std::string GetCollectionDirectory(char const* path, char const* name,
   std::string filename("collection-");
   filename.append(std::to_string(cid));
   filename.push_back('-');
-  filename.append(std::to_string(TRI_UInt32Random()));
+  filename.append(std::to_string(RandomGenerator::interval(UINT32_MAX)));
 
   return arangodb::basics::FileUtils::buildFilename(path, filename);
 }

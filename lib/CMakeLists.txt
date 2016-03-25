@@ -137,6 +137,7 @@ add_library(${LIB_ARANGO} STATIC
   ApplicationFeatures/ClientFeature.cpp
   ApplicationFeatures/ConfigFeature.cpp
   ApplicationFeatures/ConsoleFeature.cpp
+  ApplicationFeatures/DaemonFeature.cpp
   ApplicationFeatures/DatabaseFeature.cpp
   ApplicationFeatures/LanguageFeature.cpp
   ApplicationFeatures/LoggerFeature.cpp
@@ -157,8 +158,6 @@ add_library(${LIB_ARANGO} STATIC
   Basics/Mutex.cpp
   Basics/MutexLocker.cpp
   Basics/Nonce.cpp
-  Basics/ProgramOptions.cpp
-  Basics/ProgramOptionsDescription.cpp
   Basics/RandomGenerator.cpp
   Basics/ReadWriteLock.cpp
   Basics/ReadWriteLockCPP11.cpp
@@ -207,7 +206,6 @@ add_library(${LIB_ARANGO} STATIC
   Logger/LogTopic.cpp
   Logger/Logger.cpp
   Logger/LoggerStream.cpp
-  ProgramOptions/program-options.cpp
   Rest/Endpoint.cpp
   Rest/EndpointIp.cpp
   Rest/EndpointIpV4.cpp

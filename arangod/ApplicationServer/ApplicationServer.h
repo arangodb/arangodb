@@ -29,17 +29,12 @@
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/LoggerFeature.h"
 #include "ApplicationFeatures/SslFeature.h"
-#include "Basics/ProgramOptions.h"
 #include "Basics/ConditionVariable.h"
 
 namespace arangodb {
 extern ConfigFeature CONFIG_FEATURE;
 extern LoggerFeature LOGGER_FEATURE;
 extern SslFeature SSL_FEATURE;
-
-namespace basics {
-class ProgramOptionsDescription;
-}
 
 #if 0
   options["Hidden Options"]
@@ -116,7 +111,7 @@ class ApplicationServer {
   /// @brief returns the command line options
   //////////////////////////////////////////////////////////////////////////////
 
-  basics::ProgramOptions& programOptions();
+  // TODO basics::ProgramOptions& programOptions();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the command line arguments
@@ -129,14 +124,6 @@ class ApplicationServer {
   //////////////////////////////////////////////////////////////////////////////
 
   bool parse(int argc, char* argv[]);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief parses the arguments
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool parse(
-      int argc, char* argv[],
-      std::map<std::string, arangodb::basics::ProgramOptionsDescription>);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief prepares the server
@@ -205,6 +192,9 @@ class ApplicationServer {
   //////////////////////////////////////////////////////////////////////////////
 
   bool readConfigurationFile();
+
+ public:
+  std::shared_ptr<options::ProgramOptions> _options;
 
  private:
   //////////////////////////////////////////////////////////////////////////////

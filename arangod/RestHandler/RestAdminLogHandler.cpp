@@ -137,6 +137,8 @@ HttpHandler::status_t RestAdminLogHandler::execute() {
       StringUtils::tolower(_request->value("search", search));
 
   // generate result
+#warning TODO
+#if 0
   std::vector<LogBuffer> entries = Logger::bufferedEntries(ul, start, useUpto);
   std::vector<LogBuffer> clean;
 
@@ -253,5 +255,6 @@ HttpHandler::status_t RestAdminLogHandler::execute() {
     // So ignore again
   }
 
+#endif
   return status_t(HANDLER_DONE);
 }

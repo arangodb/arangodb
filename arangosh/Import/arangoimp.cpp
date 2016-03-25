@@ -31,7 +31,7 @@
 #include "ApplicationFeatures/TempFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Import/ImportFeature.h"
-#include "ProgramOptions2/ProgramOptions.h"
+#include "ProgramOptions/ProgramOptions.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;

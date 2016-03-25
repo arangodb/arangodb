@@ -486,6 +486,8 @@ bool CollectorThread::hasQueuedOperations(TRI_voc_cid_t cid) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int CollectorThread::collectLogfiles(bool& worked) {
+#warning TODO
+#if 0
   // always init result variable
   worked = false;
 
@@ -542,6 +544,7 @@ int CollectorThread::collectLogfiles(bool& worked) {
 
     return TRI_ERROR_INTERNAL;
   }
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -549,6 +552,8 @@ int CollectorThread::collectLogfiles(bool& worked) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int CollectorThread::processQueuedOperations(bool& worked) {
+#warning TODO
+#if 0
   // always init result variable
   worked = false;
 
@@ -660,6 +665,7 @@ int CollectorThread::processQueuedOperations(bool& worked) {
   worked = true;
 
   return TRI_ERROR_NO_ERROR;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -880,6 +886,8 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int CollectorThread::collect(Logfile* logfile) {
+#warning TODO
+#if 0
   TRI_ASSERT(logfile != nullptr);
 
   LOG(TRACE) << "collecting logfile " << logfile->id();
@@ -1010,6 +1018,7 @@ int CollectorThread::collect(Logfile* logfile) {
   }
 
   return TRI_ERROR_NO_ERROR;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1306,6 +1315,8 @@ int CollectorThread::executeTransferMarkers(TRI_document_collection_t* document,
 
 int CollectorThread::queueOperations(arangodb::wal::Logfile* logfile,
                                      CollectorCache*& cache) {
+#warning TODO
+#if 0
   TRI_voc_cid_t cid = cache->collectionId;
   uint64_t maxNumPendingOperations = _logfileManager->throttleWhenPending();
 
@@ -1356,6 +1367,7 @@ int CollectorThread::queueOperations(arangodb::wal::Logfile* logfile,
   cache = nullptr;
 
   return TRI_ERROR_NO_ERROR;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

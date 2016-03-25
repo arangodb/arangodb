@@ -113,11 +113,8 @@ static TRI_server_id_t ServerId;
 ////////////////////////////////////////////////////////////////////////////////
 
 static int GenerateServerId(void) {
-  uint64_t randomValue = 0ULL;  // init for our friend Valgrind
-  uint32_t value1, value2;
-
-  // save two uint32_t values
-  ServerID = RandomGenerator::interval(0ULL, SERVER_ID_MASK);
+#warning TODO
+  // ServerID = RandomGenerator::interval(SERVER_ID_MASK);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -325,6 +322,8 @@ static int CreateBaseApplicationDirectory(char const* basePath,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int CreateApplicationDirectory(char const* name, char const* basePath) {
+#warning TODO
+#if 0
   if (basePath == nullptr || strlen(basePath) == 0) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -361,6 +360,7 @@ static int CreateApplicationDirectory(char const* name, char const* basePath) {
   }
 
   return res;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -911,6 +911,8 @@ static int InitDatabases(TRI_server_t* server, bool checkVersion,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int WriteCreateMarker(TRI_voc_tick_t id, VPackSlice const& slice) {
+#warning TODO
+#if 0
   int res = TRI_ERROR_NO_ERROR;
 
   try {
@@ -935,6 +937,7 @@ static int WriteCreateMarker(TRI_voc_tick_t id, VPackSlice const& slice) {
   }
 
   return res;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -942,6 +945,8 @@ static int WriteCreateMarker(TRI_voc_tick_t id, VPackSlice const& slice) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int WriteDropMarker(TRI_voc_tick_t id) {
+#warning TODO
+#if 0
   int res = TRI_ERROR_NO_ERROR;
 
   try {
@@ -966,6 +971,7 @@ static int WriteDropMarker(TRI_voc_tick_t id) {
   }
 
   return res;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1211,7 +1217,7 @@ int TRI_InitServer(
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitServerGlobals() {
-  ServerIdentifier = RangomGenerator::interval(UINT16_MIN, UINT16_MAX);
+  ServerIdentifier = RandomGenerator::interval(UINT16_MAX);
   PageSize = (size_t)getpagesize();
 
   memset(&ServerId, 0, sizeof(TRI_server_id_t));
@@ -1557,6 +1563,8 @@ int TRI_CreateDatabaseServer(TRI_server_t* server, TRI_voc_tick_t databaseId,
                              char const* name,
                              TRI_vocbase_defaults_t const* defaults,
                              TRI_vocbase_t** database, bool writeMarker) {
+#warning TODO
+#if 0
   if (!TRI_IsAllowedNameVocBase(false, name)) {
     return TRI_ERROR_ARANGO_DATABASE_NAME_INVALID;
   }
@@ -1702,6 +1710,7 @@ int TRI_CreateDatabaseServer(TRI_server_t* server, TRI_voc_tick_t databaseId,
   *database = vocbase;
 
   return res;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1798,6 +1807,8 @@ int TRI_DropByIdCoordinatorDatabaseServer(TRI_server_t* server,
 
 int TRI_DropDatabaseServer(TRI_server_t* server, char const* name,
                            bool removeAppsDirectory, bool writeMarker) {
+#warning TODO
+#if 0
   if (TRI_EqualString(name, TRI_VOC_SYSTEM_DATABASE)) {
     // prevent deletion of system database
     return TRI_ERROR_FORBIDDEN;
@@ -1858,6 +1869,7 @@ int TRI_DropDatabaseServer(TRI_server_t* server, char const* name,
     }
   }
   return res;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

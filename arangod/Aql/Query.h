@@ -24,22 +24,23 @@
 #ifndef ARANGOD_AQL_QUERY_H
 #define ARANGOD_AQL_QUERY_H 1
 
-#include "Basics/Common.h"
-#include "Basics/JsonHelper.h"
 #include "Aql/BindParameters.h"
 #include "Aql/Collections.h"
+#include "Aql/Graphs.h"
 #include "Aql/QueryResultV8.h"
 #include "Aql/ShortStringStorage.h"
-#include "Aql/Graphs.h"
 #include "Aql/types.h"
+#include "Basics/Common.h"
+#include "Basics/JsonHelper.h"
 #include "Utils/AqlTransaction.h"
+#include "V8Server/V8Context.h"
 #include "VocBase/voc-types.h"
-#include "V8Server/ApplicationV8.h"
 
 struct TRI_json_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class ApplicationV8;
 class TransactionContext;
 
 namespace velocypack {
@@ -130,12 +131,11 @@ class Query {
   Query* clone(QueryPart, bool);
 
  public:
- 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the start timestamp of the query
   //////////////////////////////////////////////////////////////////////////////
 
-  double startTime () const { return _startTime; }
+  double startTime() const { return _startTime; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the query is killed
@@ -420,17 +420,18 @@ class Query {
   /// @brief get a description of the query's current state
   ////////////////////////////////////////////////////////////////////////////////
 
-  std::string getStateString () const;
+  std::string getStateString() const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get a shared builder for in-place VelocyPack construction
   ////////////////////////////////////////////////////////////////////////////////
-  
-  std::shared_ptr<arangodb::velocypack::Builder> getSharedBuilder ();
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
+  std::shared_ptr<arangodb::velocypack::Builder> getSharedBuilder();
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                   private
+  // methods
+  // -----------------------------------------------------------------------------
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief look up a graph in the _graphs collection
@@ -439,7 +440,6 @@ class Query {
   Graph const* lookupGraphByName(std::string const& name);
 
  private:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initializes the query
   //////////////////////////////////////////////////////////////////////////////
@@ -542,7 +542,7 @@ class Query {
   /// @brief the currently used V8 context
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::ApplicationV8::V8Context* _context;
+  V8Context* _context;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief warnings collected during execution
@@ -656,7 +656,7 @@ class Query {
   //////////////////////////////////////////////////////////////////////////////
 
   std::vector<std::pair<int, std::string>> _warnings;
- 
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief query start time
   //////////////////////////////////////////////////////////////////////////////

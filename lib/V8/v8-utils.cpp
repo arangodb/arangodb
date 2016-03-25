@@ -34,7 +34,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Nonce.h"
-#include "Basics/ProgramOptions.h"
 #include "Basics/RandomGenerator.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
@@ -277,6 +276,8 @@ static void JS_Options(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("options()");
   }
 
+#warning TODO
+  #if 0
   auto json = arangodb::basics::ProgramOptions::getJson();
 
   if (json != nullptr) {
@@ -287,6 +288,7 @@ static void JS_Options(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     TRI_V8_RETURN(result);
   }
+#endif
 
   TRI_V8_RETURN(v8::Object::New(isolate));
   TRI_V8_TRY_CATCH_END
@@ -531,6 +533,8 @@ static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (!url.empty() && url[0] == '/') {
     // a relative url. now make this an absolute URL if possible
+#warning TODO
+#if 0
     auto json = arangodb::basics::ProgramOptions::getJson();
 
     if (json != nullptr) {
@@ -577,6 +581,7 @@ static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
         }
       }
     }
+#endif
   }
 
   std::string lastEndpoint = GetEndpointFromUrl(url);

@@ -118,8 +118,11 @@ class LogfileManager : public rest::ApplicationFeature {
   static void initialize(std::string*, TRI_server_t*);
 
  public:
+#warning TODO
+  /*
   void setupOptions(
       std::map<std::string, arangodb::basics::ProgramOptionsDescription>&) override final;
+  */
 
   bool prepare() override final;
 

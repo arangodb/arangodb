@@ -42,14 +42,14 @@ std::string const& ApplicationFeature::getName() const { return _name; }
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationFeature::setupOptions(
-    std::map<std::string, basics::ProgramOptionsDescription>&) {}
+    std::shared_ptr<options::ProgramOptions>) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief callback after options parsing and config file reading,
 /// before dropping privileges
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationFeature::afterOptionParsing(basics::ProgramOptions&) {
+bool ApplicationFeature::afterOptionParsing(std::shared_ptr<options::ProgramOptions>) {
   return true;
 }
 

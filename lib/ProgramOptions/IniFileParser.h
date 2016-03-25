@@ -29,7 +29,7 @@
 #include <iostream>
 #include <regex>
 
-#include "ProgramOptions2/ProgramOptions.h"
+#include "ProgramOptions/ProgramOptions.h"
 
 namespace arangodb {
 namespace options {

@@ -37,7 +37,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
-#include "HttpServer/ApplicationEndpointServer.h"
+// #include "HttpServer/ApplicationEndpointServer.h"
 #include "RestServer/ConsoleThread.h"
 #include "RestServer/VocbaseContext.h"
 #include "Rest/Version.h"
@@ -394,6 +394,8 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_PropertiesWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
+#warning TODO
+#if 0
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -461,6 +463,7 @@ static void JS_PropertiesWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -468,6 +471,8 @@ static void JS_PropertiesWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
+#warning TODO
+#if 0
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -523,6 +528,7 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -564,12 +570,15 @@ static void JS_WaitCollectorWal(
     timeout = TRI_ObjectToDouble(args[1]);
   }
 
+#warning TODO
+#if 0
   int res = arangodb::wal::LogfileManager::instance()->waitForCollectorQueue(
       col->_cid, timeout);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
+#endif
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
@@ -581,6 +590,8 @@ static void JS_WaitCollectorWal(
 
 static void JS_TransactionsWal(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
+#warning TODO
+#if 0
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -616,6 +627,7 @@ static void JS_TransactionsWal(
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3544,6 +3556,8 @@ static void JS_ListEndpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
 
+#warning TODO
+#if 0
   auto const& endpoints = s->getEndpoints();
 
   v8::Handle<v8::Array> result = v8::Array::New(isolate);
@@ -3565,6 +3579,7 @@ static void JS_ListEndpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_V8_RETURN(result);
+#endif
   TRI_V8_TRY_CATCH_END
 }
 

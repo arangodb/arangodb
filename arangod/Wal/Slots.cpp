@@ -27,7 +27,7 @@
 #include "Logger/Logger.h"
 #include "VocBase/datafile.h"
 #include "VocBase/server.h"
-#include "Wal/LogfileManager.h"
+// #include "Wal/LogfileManager.h"
 
 using namespace arangodb::wal;
 
@@ -77,6 +77,8 @@ void Slots::statistics(Slot::TickType& lastTick, Slot::TickType& lastDataTick,
 ////////////////////////////////////////////////////////////////////////////////
 
 int Slots::flush(bool waitForSync) {
+#warning TODO
+#if 0
   Slot::TickType lastTick = 0;
   bool worked;
 
@@ -101,6 +103,7 @@ int Slots::flush(bool waitForSync) {
   }
 
   return res;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -117,6 +120,8 @@ Slot::TickType Slots::lastCommittedTick() {
 ////////////////////////////////////////////////////////////////////////////////
 
 SlotInfo Slots::nextUnused(uint32_t size) {
+#warning TODO
+#if 0
   // we need to use the aligned size for writing
   uint32_t alignedSize = TRI_DF_ALIGN_BLOCK(size);
   int iterations = 0;
@@ -225,6 +230,7 @@ SlotInfo Slots::nextUnused(uint32_t size) {
   }
 
   return SlotInfo(TRI_ERROR_ARANGO_NO_JOURNAL);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -237,6 +243,8 @@ SlotInfo Slots::nextUnused(uint32_t size) {
 SlotInfo Slots::nextUnused(uint32_t size, TRI_voc_cid_t cid,
                            TRI_shape_sid_t sid, uint32_t legendOffset,
                            void*& oldLegend) {
+#warning TODO
+#if 0
   // legendOffset 0 means no legend included
   // we need to use the aligned size for writing
   uint32_t alignedSize = TRI_DF_ALIGN_BLOCK(size);
@@ -361,6 +369,7 @@ SlotInfo Slots::nextUnused(uint32_t size, TRI_voc_cid_t cid,
   }
 
   return SlotInfo(TRI_ERROR_ARANGO_NO_JOURNAL);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -368,6 +377,8 @@ SlotInfo Slots::nextUnused(uint32_t size, TRI_voc_cid_t cid,
 ////////////////////////////////////////////////////////////////////////////////
 
 void Slots::returnUsed(SlotInfo& slotInfo, bool waitForSync) {
+#warning TODO
+#if 0
   TRI_ASSERT(slotInfo.slot != nullptr);
   Slot::TickType tick = slotInfo.slot->tick();
 
@@ -384,6 +395,7 @@ void Slots::returnUsed(SlotInfo& slotInfo, bool waitForSync) {
   if (waitForSync) {
     waitForTick(tick);
   }
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -391,6 +403,8 @@ void Slots::returnUsed(SlotInfo& slotInfo, bool waitForSync) {
 ////////////////////////////////////////////////////////////////////////////////
 
 SyncRegion Slots::getSyncRegion() {
+#warning TODO
+#if 0
   bool sealRequested = false;
   SyncRegion region;
 
@@ -464,6 +478,7 @@ SyncRegion Slots::getSyncRegion() {
   }
 
   return region;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -560,6 +575,8 @@ void Slots::getActiveTickRange(Logfile* logfile, TRI_voc_tick_t& tickMin,
 ////////////////////////////////////////////////////////////////////////////////
 
 int Slots::closeLogfile(Slot::TickType& lastCommittedTick, bool& worked) {
+#warning TODO
+#if 0
   int iterations = 0;
   bool hasWaited = false;
   worked = false;
@@ -668,6 +685,7 @@ int Slots::closeLogfile(Slot::TickType& lastCommittedTick, bool& worked) {
   }
 
   return TRI_ERROR_ARANGO_NO_JOURNAL;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -758,6 +776,8 @@ bool Slots::waitForTick(Slot::TickType tick) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Slots::newLogfile(uint32_t size, Logfile::StatusType& status) {
+#warning TODO
+#if 0
   TRI_ASSERT(size > 0);
 
   status = Logfile::StatusType::UNKNOWN;
@@ -770,4 +790,5 @@ int Slots::newLogfile(uint32_t size, Logfile::StatusType& status) {
   }
 
   return res;
+#endif
 }

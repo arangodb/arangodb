@@ -28,9 +28,9 @@
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Rest/Version.h"
-#include "ProgramOptions2/IniFileParser.h"
-#include "ProgramOptions2/ProgramOptions.h"
-#include "ProgramOptions2/Section.h"
+#include "ProgramOptions/IniFileParser.h"
+#include "ProgramOptions/ProgramOptions.h"
+#include "ProgramOptions/Section.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -125,22 +125,22 @@ void ConfigFeature::loadOptions(std::shared_ptr<ProgramOptions> options) {
     }
   }
 
+  std::string local = filename + ".local";
+
+  LOG_TOPIC(DEBUG, Logger::CONFIG) << "checking override '" << local << "'";
+
+  if (FileUtils::exists(local)) {
+    LOG_TOPIC(DEBUG, Logger::CONFIG) << "loading '" << local << "'";
+
+    if (!parser.parse(local)) {
+      exit(EXIT_FAILURE);
+    }
+  }
+
   LOG_TOPIC(DEBUG, Logger::CONFIG) << "loading '" << filename << "'";
 
   if (!parser.parse(filename)) {
     exit(EXIT_FAILURE);
-  }
-
-  filename = filename + ".local";
-
-  LOG_TOPIC(DEBUG, Logger::CONFIG) << "checking override '" << filename << "'";
-
-  if (FileUtils::exists(filename)) {
-    LOG_TOPIC(DEBUG, Logger::CONFIG) << "loading '" << filename << "'";
-
-    if (!parser.parse(filename)) {
-      exit(EXIT_FAILURE);
-    }
   }
 }
 

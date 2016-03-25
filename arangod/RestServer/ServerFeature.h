@@ -20,45 +20,21 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_LOGGER_FEATURE_H
-#define APPLICATION_FEATURES_LOGGER_FEATURE_H 1
+#ifndef REST_SERVER_SERVER_FEATURE_H
+#define REST_SERVER_SERVER_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
-class LoggerFeature final : public application_features::ApplicationFeature {
+class ServerFeature final : public application_features::ApplicationFeature {
  public:
-  explicit LoggerFeature(application_features::ApplicationServer* server);
+  ServerFeature(application_features::ApplicationServer* server, int*);
 
  public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void loadOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void prepare() override;
   void start() override;
-  void stop() override;
-
- public:
-  void setBackgrounded(bool backgrounded) { _backgrounded = backgrounded; }
-  void setThreaded(bool threaded) { _threaded = threaded; }
-  void setDaemon(bool daemon) { _daemon = daemon; }
 
  private:
-  std::vector<std::string> _output;
-  std::vector<std::string> _levels;
-  bool _useLocalTime;
-  std::string _prefix;
-  std::string _file;
-  bool _lineNumber;
-  bool _thread;
-  bool _performance;
-  bool _keepLogRotate;
-  bool _foregroundTty;
-
- private:
-  bool _daemon;
-  bool _backgrounded;
-  bool _threaded;
+  int* _result;
 };
 }
 

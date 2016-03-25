@@ -41,7 +41,7 @@
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
-#include "V8Server/ApplicationV8.h"
+// #include "V8Server/ApplicationV8.h"
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
@@ -89,6 +89,8 @@ class v8_action_t : public TRI_action_t {
 
   TRI_action_result_t execute(TRI_vocbase_t* vocbase, HttpRequest* request,
                               Mutex* dataLock, void** data) override {
+#warning TODO
+#if 0
     TRI_action_result_t result;
 
     // allow use datase execution in rest calls
@@ -170,6 +172,7 @@ class v8_action_t : public TRI_action_t {
     GlobalV8Dealer->exitContext(context);
 
     return result;
+#endif
   }
 
   bool cancel(Mutex* dataLock, void** data) override {
@@ -862,10 +865,13 @@ static void JS_ExecuteGlobalContextFunction(
   std::string const def = *utf8def;
 
   // and pass it to the V8 contexts
+#warning TODO
+#if 0
   if (!GlobalV8Dealer->addGlobalContextMethod(def)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "invalid action definition");
   }
+#endif
 
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END

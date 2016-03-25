@@ -75,9 +75,10 @@ class ApplicationEndpointServer : public ApplicationFeature {
 
   void setBasePath(std::string const& basePath) { _basePath = basePath; }
 
-  void setupOptions(std::map<std::string, basics::ProgramOptionsDescription>&) override final;
+#warning TODO
+  // void setupOptions(std::map<std::string, basics::ProgramOptionsDescription>&) override final;
 
-  bool afterOptionParsing(basics::ProgramOptions&) override final;
+  // bool afterOptionParsing(basics::ProgramOptions&) override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return a list of all endpoints

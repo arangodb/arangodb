@@ -25,8 +25,8 @@
 #include "Basics/StringUtils.h"
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
-#include "ProgramOptions2/ProgramOptions.h"
-#include "ProgramOptions2/Section.h"
+#include "ProgramOptions/ProgramOptions.h"
+#include "ProgramOptions/Section.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

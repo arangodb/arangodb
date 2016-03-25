@@ -1315,6 +1315,8 @@ int RecoverState::replayLogfiles() {
 ////////////////////////////////////////////////////////////////////////////////
 
 int RecoverState::abortOpenTransactions() {
+#warning TODO
+#if 0
   if (failedTransactions.empty()) {
     // nothing to do
     return TRI_ERROR_NO_ERROR;
@@ -1352,6 +1354,7 @@ int RecoverState::abortOpenTransactions() {
   }
 
   return res;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

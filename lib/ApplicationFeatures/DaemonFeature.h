@@ -20,26 +20,34 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationFeatures/ShutdownFeature.h"
+#ifndef APPLICATION_FEATURES_DAEMON_FEATURE_H
+#define APPLICATION_FEATURES_DAEMON_FEATURE_H 1
 
-#include "Logger/Logger.h"
-#include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 
-using namespace arangodb;
-using namespace arangodb::options;
+#include "Basics/process-utils.h"
 
-ShutdownFeature::ShutdownFeature(
-    application_features::ApplicationServer* server, std::string const& feature)
-    : ApplicationFeature(server, "Shutdown") {
-  setOptional(false);
-  requiresElevatedPrivileges(false);
-  startsAfter("Logger");
-  startsAfter(feature);
+namespace arangodb {
+class DaemonFeature final : public application_features::ApplicationFeature {
+ public:
+  explicit DaemonFeature(application_features::ApplicationServer* server);
+
+ public:
+  void daemonize() override final;
+  void stop() override final;
+
+ private:
+  void checkPidFile();
+  int forkProcess();
+  void writePidFile(int);
+
+ public:
+  std::string _pidFile;
+  std::string _workingDirectory;
+
+ private:
+  std::string _current;
+};
 }
 
-void ShutdownFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
-  server()->beginShutdown();
-}
+#endif

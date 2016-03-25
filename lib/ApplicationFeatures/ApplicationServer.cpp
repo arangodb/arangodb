@@ -23,7 +23,7 @@
 #include "ApplicationServer.h"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "ProgramOptions2/ArgumentParser.h"
+#include "ProgramOptions/ArgumentParser.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb::application_features;
@@ -133,6 +133,9 @@ void ApplicationServer::run(int argc, char* argv[]) {
 
   // setup and validate all feature dependencies
   setupDependencies(true);
+
+  // allows process control
+  daemonize();
 
   // now the features will actually do some preparation work
   // in the preparation phase, the features must not start any threads
@@ -307,6 +310,19 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
   }
 
   _orderedFeatures = features;
+}
+
+void ApplicationServer::daemonize() {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "";
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::daemonize";
+  LOG_TOPIC(TRACE, Logger::STARTUP)
+      << "------------------------------------------------";
+
+  for (auto it = _orderedFeatures.begin(); it != _orderedFeatures.end(); ++it) {
+    if ((*it)->isEnabled()) {
+      (*it)->daemonize();
+    }
+  }
 }
 
 void ApplicationServer::prepare() {

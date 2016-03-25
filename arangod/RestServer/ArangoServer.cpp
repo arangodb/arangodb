@@ -44,8 +44,8 @@
 #include "Basics/FileUtils.h"
 #include "Logger/Logger.h"
 #include "Basics/Nonce.h"
-#include "Basics/ProgramOptions.h"
-#include "Basics/ProgramOptionsDescription.h"
+// #include "Basics/ProgramOptions.h"
+// #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/RandomGenerator.h"
 #include "Basics/ThreadPool.h"
 #include "Basics/Utf8Helper.h"
@@ -108,184 +108,6 @@ bool ALLOW_USE_DATABASE_IN_REST_ACTIONS;
 bool IGNORE_DATAFILE_ERRORS;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief writes a pid file
-////////////////////////////////////////////////////////////////////////////////
-
-static void WritePidFile(std::string const& pidFile, int pid) {
-  std::ofstream out(pidFile.c_str(), std::ios::trunc);
-
-  if (!out) {
-    LOG(FATAL) << "cannot write pid-file '" << pidFile << "'";
-    FATAL_ERROR_EXIT();
-  }
-
-  out << pid;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks a pid file
-////////////////////////////////////////////////////////////////////////////////
-
-static void CheckPidFile(std::string const& pidFile) {
-  // check if the pid-file exists
-  if (!pidFile.empty()) {
-    if (FileUtils::isDirectory(pidFile)) {
-      LOG(FATAL) << "pid-file '" << pidFile << "' is a directory";
-      FATAL_ERROR_EXIT();
-    } else if (FileUtils::exists(pidFile) && FileUtils::size(pidFile) > 0) {
-      LOG(INFO) << "pid-file '" << pidFile
-                << "' already exists, verifying pid";
-
-      std::ifstream f(pidFile.c_str());
-
-      // file can be opened
-      if (f) {
-        TRI_pid_t oldPid;
-
-        f >> oldPid;
-
-        if (oldPid == 0) {
-          LOG(FATAL) << "pid-file '" << pidFile << "' is unreadable";
-          FATAL_ERROR_EXIT();
-        }
-
-        LOG(DEBUG) << "found old pid: " << oldPid;
-
-#ifdef TRI_HAVE_FORK
-        int r = kill(oldPid, 0);
-#else
-        int r = 0;  // TODO for windows use TerminateProcess
-#endif
-
-        if (r == 0) {
-          LOG(FATAL) << "pid-file '" << pidFile
-                     << "' exists and process with pid " << oldPid
-                     << " is still running";
-          FATAL_ERROR_EXIT();
-        } else if (errno == EPERM) {
-          LOG(FATAL) << "pid-file '" << pidFile
-                     << "' exists and process with pid " << oldPid
-                     << " is still running";
-          FATAL_ERROR_EXIT();
-        } else if (errno == ESRCH) {
-          LOG(ERR) << "pid-file '" << pidFile
-                   << " exists, but no process with pid " << oldPid
-                   << " exists";
-
-          if (!FileUtils::remove(pidFile)) {
-            LOG(FATAL) << "pid-file '" << pidFile
-                       << "' exists, no process with pid " << oldPid
-                       << " exists, but pid-file cannot be removed";
-            FATAL_ERROR_EXIT();
-          }
-
-          LOG(INFO) << "removed stale pid-file '" << pidFile << "'";
-        } else {
-          LOG(FATAL) << "pid-file '" << pidFile << "' exists and kill "
-                     << oldPid << " failed";
-          FATAL_ERROR_EXIT();
-        }
-      }
-
-      // failed to open file
-      else {
-        LOG(FATAL) << "pid-file '" << pidFile
-                   << "' exists, but cannot be opened";
-        FATAL_ERROR_EXIT();
-      }
-    }
-
-    LOG(DEBUG) << "using pid-file '" << pidFile << "'";
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief forks a new process
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_HAVE_FORK
-
-static int ForkProcess(std::string const& workingDirectory,
-                       std::string& current) {
-  // fork off the parent process
-  TRI_pid_t pid = fork();
-
-  if (pid < 0) {
-    LOG(FATAL) << "cannot fork";
-    FATAL_ERROR_EXIT();
-  }
-
-  // Upon successful completion, fork() shall return 0 to the child process and
-  // shall return the process ID of the child process to the parent process.
-
-  // if we got a good PID, then we can exit the parent process
-  if (pid > 0) {
-    LOG(DEBUG) << "started child process with pid " << pid;
-    return pid;
-  }
-
-  // change the file mode mask
-  umask(0);
-
-  // create a new SID for the child process
-  TRI_pid_t sid = setsid();
-
-  if (sid < 0) {
-    LOG(FATAL) << "cannot create sid";
-    FATAL_ERROR_EXIT();
-  }
-
-  // store current working directory
-  int err = 0;
-  current = FileUtils::currentDirectory(&err);
-
-  if (err != 0) {
-    LOG(FATAL) << "cannot get current directory";
-    FATAL_ERROR_EXIT();
-  }
-
-  // change the current working directory
-  if (!workingDirectory.empty()) {
-    if (!FileUtils::changeDirectory(workingDirectory)) {
-      LOG(FATAL) << "cannot change into working directory '"
-                 << workingDirectory << "'";
-      FATAL_ERROR_EXIT();
-    } else {
-      LOG(INFO) << "changed working directory for child process to '"
-                << workingDirectory << "'";
-    }
-  }
-
-  // we're a daemon so there won't be a terminal attached
-  // close the standard file descriptors and re-open them mapped to /dev/null
-  int fd = open("/dev/null", O_RDWR | O_CREAT, 0644);
-
-  if (fd < 0) {
-    LOG(FATAL) << "cannot open /dev/null";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (dup2(fd, STDIN_FILENO) < 0) {
-    LOG(FATAL) << "cannot re-map stdin to /dev/null";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (dup2(fd, STDOUT_FILENO) < 0) {
-    LOG(FATAL) << "cannot re-map stdout to /dev/null";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (dup2(fd, STDERR_FILENO) < 0) {
-    LOG(FATAL) << "cannot re-map stderr to /dev/null";
-    FATAL_ERROR_EXIT();
-  }
-
-  close(fd);
-
-  return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief waits for the supervisor process with pid to return its exit status
 /// waits for at most 10 seconds. if the supervisor has not returned until then,
 /// we assume a successful start
@@ -342,34 +164,14 @@ int WaitForSupervisor(int pid) {
   return EXIT_SUCCESS;
 }
 
-#else
-
-// .............................................................................
-// TODO: use windows API CreateProcess & CreateThread to minic fork()
-// .............................................................................
-
-static int ForkProcess(std::string const& workingDirectory,
-                       std::string& current) {
-  // fork off the parent process
-  TRI_pid_t pid = -1;  // fork();
-
-  if (pid < 0) {
-    LOG(FATAL) << "cannot fork";
-    FATAL_ERROR_EXIT();
-  }
-
-  return 0;
-}
-
-#endif
-
 ArangoServer::ArangoServer(int argc, char** argv)
     : _mode(ServerMode::MODE_STANDALONE),
       _daemonMode(false),
       _supervisorMode(false),
       _pidFile(""),
       _workingDirectory(""),
-      _applicationServer(nullptr),
+#warning TODO
+      // _applicationServer(nullptr),
       _argc(argc),
       _argv(argv),
       _tempPath(),
@@ -431,7 +233,8 @@ ArangoServer::~ArangoServer() {
 
   Nonce::destroy();
 
-  delete _applicationServer;
+#warning TODO
+  // delete _applicationServer;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -439,6 +242,8 @@ ArangoServer::~ArangoServer() {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::start() {
+#warning TODO
+#if 0
   if (_applicationServer == nullptr) {
     buildApplicationServer();
   }
@@ -466,6 +271,7 @@ int ArangoServer::start() {
 
     return res;
   }
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -473,9 +279,12 @@ int ArangoServer::start() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoServer::beginShutdown() {
+#warning TODO
+#if 0
   if (_applicationServer != nullptr) {
     _applicationServer->beginShutdown();
   }
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -489,8 +298,11 @@ int ArangoServer::startupSupervisor() {
 
   LOG(INFO) << "starting up in supervisor mode";
 
-  CheckPidFile(_pidFile);
+#warning TODO
+  // CheckPidFile(_pidFile);
 
+#warning TODO
+#if 0
   _applicationServer->setupLogging(false, true, false);
 
   std::string current;
@@ -633,6 +445,7 @@ int ArangoServer::startupSupervisor() {
   }
 
   return result;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -640,40 +453,7 @@ int ArangoServer::startupSupervisor() {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::startupDaemon() {
-  LOG(INFO) << "starting up in daemon mode";
-
-  CheckPidFile(_pidFile);
-
-  _applicationServer->setupLogging(false, true, false);
-
-  std::string current;
-  int result = ForkProcess(_workingDirectory, current);
-
-  // main process
-  if (result != 0) {
-    TRI_SetProcessTitle("arangodb [daemon]");
-    WritePidFile(_pidFile, result);
-
-    // issue #549: this is used as the exit code
-    result = 0;
-  }
-
-  // child process
-  else {
-    setMode(ServerMode::MODE_SERVICE);
-    _applicationServer->setupLogging(true, false, true);
-    LOG(DEBUG) << "daemon mode: within child";
-
-    // and startup server
-    result = startupServer();
-
-    // remove pid file
-    if (!FileUtils::remove(_pidFile)) {
-      LOG(DEBUG) << "cannot remove pid file '" << _pidFile << "'";
-    }
-  }
-
-  return result;
+#warning MOVED
 }
 
 #else
@@ -738,9 +518,12 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
                             RestHandlerCreator<RestEdgesHandler>::createNoData);
 
   // add "/export" handler
+#warning TODO
+#if 0
   factory->addPrefixHandler(
       RestVocbaseBaseHandler::EXPORT_PATH,
       RestHandlerCreator<RestExportHandler>::createNoData);
+#endif
 
   // add "/import" handler
   factory->addPrefixHandler(
@@ -748,9 +531,12 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
       RestHandlerCreator<RestImportHandler>::createNoData);
 
   // add "/replication" handler
+#warning TODO
+#if 0
   factory->addPrefixHandler(
       RestVocbaseBaseHandler::REPLICATION_PATH,
       RestHandlerCreator<RestReplicationHandler>::createNoData);
+#endif
 
   // add "/simple/all" handler
   factory->addPrefixHandler(
@@ -779,10 +565,13 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
       RestHandlerCreator<RestUploadHandler>::createNoData);
 
   // add "/shard-comm" handler
+#warning TODO
+#if 0
   factory->addPrefixHandler(
       "/_api/shard-comm",
       RestHandlerCreator<RestShardHandler>::createData<Dispatcher*>,
       _applicationDispatcher->dispatcher());
+#endif
 
   // add "/aql" handler
   factory->addPrefixHandler(
@@ -835,10 +624,13 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
                             nullptr);
 #endif
 
+#warning TODO
+#if 0
   factory->addPrefixHandler(
       "/_admin/shutdown",
       RestHandlerCreator<arangodb::RestShutdownHandler>::createData<void*>,
       static_cast<void*>(_applicationServer));
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -938,6 +730,8 @@ static bool SetRequestContext(arangodb::rest::HttpRequest* request,
 }
 
 void ArangoServer::buildApplicationServer() {
+#warning TODO
+#if 0
   _applicationServer =
       new ApplicationServer("arangod", "[<options>] <database-directory>",
                             rest::Version::getDetailed());
@@ -956,24 +750,6 @@ void ArangoServer::buildApplicationServer() {
 
   // and add the feature to the application server
   _applicationServer->addFeature(wal::LogfileManager::instance());
-
-  // .............................................................................
-  // dispatcher
-  // .............................................................................
-
-  _applicationDispatcher = new ApplicationDispatcher();
-  _applicationServer->addFeature(_applicationDispatcher);
-
-  // .............................................................................
-  // multi-threading scheduler
-  // .............................................................................
-
-  _applicationScheduler = new ApplicationScheduler(_applicationServer);
-
-  _applicationScheduler->allowMultiScheduler(true);
-  _applicationDispatcher->setApplicationScheduler(_applicationScheduler);
-
-  _applicationServer->addFeature(_applicationScheduler);
 
   // ...........................................................................
   // create QueryRegistry
@@ -1337,9 +1113,12 @@ void ArangoServer::buildApplicationServer() {
       _indexThreads = 128;
     }
   }
+#endif
 }
 
 int ArangoServer::startupServer() {
+#warning TODO
+#if 0
   TRI_InitializeStatistics();
 
   OperationMode::server_operation_mode_e mode =
@@ -1731,6 +1510,7 @@ int ArangoServer::startupServer() {
   ShutdownWorkMonitor();
 
   return res;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1842,6 +1622,8 @@ void ArangoServer::waitForHeartbeat() {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::runServer(TRI_vocbase_t* vocbase) {
+#warning TODO
+#if 0
   // disabled maintenance mode
   waitForHeartbeat();
   HttpHandlerFactory::setMaintenance(false);
@@ -1850,6 +1632,7 @@ int ArangoServer::runServer(TRI_vocbase_t* vocbase) {
   _applicationServer->wait();
 
   return EXIT_SUCCESS;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1857,6 +1640,8 @@ int ArangoServer::runServer(TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::runConsole(TRI_vocbase_t* vocbase) {
+#warning TODO
+#if 0
   ConsoleThread console(_applicationServer, _applicationV8, vocbase);
   console.start();
 
@@ -1893,6 +1678,7 @@ int ArangoServer::runConsole(TRI_vocbase_t* vocbase) {
   }
 
   return EXIT_SUCCESS;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1900,6 +1686,8 @@ int ArangoServer::runConsole(TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::runUnitTests(TRI_vocbase_t* vocbase) {
+#warning TODO
+#if 0
   ApplicationV8::V8Context* context =
       _applicationV8->enterContext(vocbase, true);
 
@@ -1952,6 +1740,7 @@ int ArangoServer::runUnitTests(TRI_vocbase_t* vocbase) {
   _applicationV8->exitContext(context);
 
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1959,6 +1748,8 @@ int ArangoServer::runUnitTests(TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::runScript(TRI_vocbase_t* vocbase) {
+#warning TODO
+#if 0
   bool ok = false;
   ApplicationV8::V8Context* context =
       _applicationV8->enterContext(vocbase, true);
@@ -2039,6 +1830,7 @@ int ArangoServer::runScript(TRI_vocbase_t* vocbase) {
 
   _applicationV8->exitContext(context);
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2094,6 +1886,8 @@ void ArangoServer::openDatabases(bool checkVersion, bool performUpgrade,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoServer::closeDatabases() {
+#warning TODO
+#if 0
   TRI_ASSERT(_server != nullptr);
 
   TRI_CleanupActions();
@@ -2108,4 +1902,5 @@ void ArangoServer::closeDatabases() {
   TRI_StopServer(_server);
 
   LOG(INFO) << "ArangoDB has been shut down";
+#endif
 }

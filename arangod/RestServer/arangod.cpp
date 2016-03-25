@@ -23,20 +23,31 @@
 
 #include "Basics/Common.h"
 
+#include "ApplicationFeatures/ConfigFeature.h"
+#include "ApplicationFeatures/DaemonFeature.h"
+#include "ApplicationFeatures/LanguageFeature.h"
+#include "ApplicationFeatures/LoggerFeature.h"
+#include "ApplicationFeatures/RandomFeature.h"
+#include "ApplicationFeatures/SslFeature.h"
+#include "ApplicationFeatures/TempFeature.h"
+#include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Basics/ArangoGlobalContext.h"
-#include "RestServer/ArangoServer.h"
-#include <signal.h>
+#include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/ServerFeature.h"
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include <iostream>
 #endif
 
 using namespace arangodb;
-using namespace arangodb::rest;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
+
+namespace arangodb {
+  class ArangoServer;
+}
 
 ArangoServer* ArangoInstance = nullptr;
 
@@ -53,28 +64,45 @@ void TRI_StartService(int argc, char* argv[]) {}
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief handle fatal SIGNALs; print backtrace,
-///        and rethrow signal for coredumps.
-////////////////////////////////////////////////////////////////////////////////
-
-static void AbortHandler(int signum) {
-  TRI_PrintBacktrace();
-#ifdef _WIN32
-  exit(255 + signum);
-#else
-  signal(signum, SIG_DFL);
-  kill(getpid(), signum);
-#endif
-}
-
-
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an application server
 ////////////////////////////////////////////////////////////////////////////////
 
 int main(int argc, char* argv[]) {
   ArangoGlobalContext context(argc, argv);
+  context.installSegv();
+  context.maskAllSignals();
+
+  std::string name = context.binaryName();
+
+  std::shared_ptr<options::ProgramOptions> options(new options::ProgramOptions(
+      argv[0], "Usage: " + name + " [<options>]", "For more information use:"));
+
+  application_features::ApplicationServer server(options);
+
+  int ret= EXIT_FAILURE;
+
+  server.addFeature(new ConfigFeature(&server, name));
+  server.addFeature(new DaemonFeature(&server));
+  //  server.addFeature(new DispatcherFeature(&server));
+  //  server.addFeature(new HttpServerFeature(&server));
+  server.addFeature(new LanguageFeature(&server));
+  server.addFeature(new LoggerFeature(&server));
+  server.addFeature(new RandomFeature(&server));
+  // server.addFeature(new SchedulerFeature(&server));
+  server.addFeature(new ServerFeature(&server, &ret));
+  server.addFeature(new SslFeature(&server));
+  server.addFeature(new TempFeature(&server, name));
+  // server.addFeature(new V8DealerFeature(&server));
+  server.addFeature(new V8PlatformFeature(&server));
+  // server.addFeature(new VocbaseFeature(&server));
+  // server.addFeature(new WalFeature(&server));
+
+  server.run(argc, argv);
+
+  return context.exit(ret);
+
+#warning TODO
+#if 0
 
   int res = EXIT_SUCCESS;
 
@@ -84,7 +112,6 @@ int main(int argc, char* argv[]) {
   //
   //       Any startup handling MUST be done inside "startupServer".
 
-  signal(SIGSEGV, AbortHandler);
 
   // windows only
   bool const startAsService = TRI_ParseMoreArgs(argc, argv);
@@ -113,5 +140,7 @@ int main(int argc, char* argv[]) {
   }
 
   // shutdown sub-systems
-  return context.exit(res);
+  return context.exit(ret);
+#endif
+
 }

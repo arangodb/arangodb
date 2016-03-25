@@ -30,8 +30,8 @@
 
 #include "Basics/levenshtein.h"
 #include "Basics/terminal-utils.h"
-#include "ProgramOptions2/Option.h"
-#include "ProgramOptions2/Section.h"
+#include "ProgramOptions/Option.h"
+#include "ProgramOptions/Section.h"
 
 #define ARANGODB_PROGRAM_OPTIONS_PROGNAME "#progname#"
 

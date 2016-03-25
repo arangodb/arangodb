@@ -25,7 +25,7 @@
 #define ARANGOD_REST_SERVER_CONSOLE_THREAD_H 1
 
 #include "Basics/Thread.h"
-#include "V8Server/ApplicationV8.h"
+#include "V8Server/V8Context.h"
 
 struct TRI_vocbase_t;
 
@@ -111,7 +111,7 @@ class ConsoleThread : public Thread {
   /// @brief currently used V8 context
   //////////////////////////////////////////////////////////////////////////////
 
-  ApplicationV8::V8Context* _context;
+  V8Context* _context;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief vocbase

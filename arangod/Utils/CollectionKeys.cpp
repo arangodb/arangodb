@@ -82,6 +82,8 @@ CollectionKeys::~CollectionKeys() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void CollectionKeys::create(TRI_voc_tick_t maxTick) {
+#warning TODO
+#if 0
   arangodb::wal::LogfileManager::instance()->waitForCollectorQueue(
       _document->_info.id(), 30.0);
 
@@ -157,6 +159,7 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
 
               return res < 0;
             });
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

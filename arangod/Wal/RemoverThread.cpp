@@ -55,6 +55,8 @@ void RemoverThread::beginShutdown() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RemoverThread::run() {
+#warning TODO
+#if 0
   int64_t iterations = 0;
 
   while (!isStopping()) {
@@ -84,4 +86,5 @@ void RemoverThread::run() {
       }
     }
   }
+#endif
 }

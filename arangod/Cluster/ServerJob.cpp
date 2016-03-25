@@ -29,7 +29,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Dispatcher/DispatcherQueue.h"
 #include "V8/v8-utils.h"
-#include "V8Server/ApplicationV8.h"
+// #include "V8Server/ApplicationV8.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
@@ -90,6 +90,8 @@ void ServerJob::cleanup(DispatcherQueue* queue) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ServerJob::execute() {
+#warning TODO
+#if 0
   // default to system database
   TRI_vocbase_t* const vocbase = TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
 
@@ -130,4 +132,5 @@ bool ServerJob::execute() {
   _applicationV8->exitContext(context);
 
   return ok;
+#endif
 }

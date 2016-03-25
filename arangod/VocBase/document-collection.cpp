@@ -2879,6 +2879,8 @@ int TRI_FillIndexesDocumentCollection(arangodb::Transaction* trx,
 TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
                                                       TRI_vocbase_col_t* col,
                                                       bool ignoreErrors) {
+#warning TODO
+#if 0
   char const* path = col->pathc_str();
 
   // first open the document collection
@@ -2980,6 +2982,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
   LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::DURATION(TRI_microtime() - start) << " s, open-document-collection { collection: " << vocbase->_name << "/" << document->_info.name() << " }";
 
   return document;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3445,6 +3448,8 @@ bool TRI_IsFullyCollectedDocumentCollection(
 
 int TRI_SaveIndex(TRI_document_collection_t* document, arangodb::Index* idx,
                   bool writeMarker) {
+#warning TODO
+#if 0
   // convert into JSON
   std::shared_ptr<VPackBuilder> builder;
   try {
@@ -3507,6 +3512,7 @@ int TRI_SaveIndex(TRI_document_collection_t* document, arangodb::Index* idx,
 
   // TODO: what to do here?
   return res;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3538,6 +3544,8 @@ std::vector<std::shared_ptr<VPackBuilder>> TRI_IndexesDocumentCollection(
 
 bool TRI_DropIndexDocumentCollection(TRI_document_collection_t* document,
                                      TRI_idx_iid_t iid, bool writeMarker) {
+#warning TODO
+#if 0
   if (iid == 0) {
     // invalid index id or primary index
     return true;
@@ -3590,6 +3598,7 @@ bool TRI_DropIndexDocumentCollection(TRI_document_collection_t* document,
   }
 
   return false;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4849,10 +4858,13 @@ int TRI_RemoveShapedJsonDocumentCollection(
     }
   }
 
+#warning TODO
+#if 0
   if (markerTick > 0) {
     // need to wait for tick, outside the lock
     arangodb::wal::LogfileManager::instance()->slots()->waitForTick(markerTick);
   }
+#endif
 
   return res;
 }
@@ -4993,10 +5005,13 @@ int TRI_InsertShapedJsonDocumentCollection(
     }
   }
 
+#warning TODO
+#if 0
   if (markerTick > 0) {
     // need to wait for tick, outside the lock
     arangodb::wal::LogfileManager::instance()->slots()->waitForTick(markerTick);
   }
+#endif
 
   return res;
 }
@@ -5101,10 +5116,13 @@ int TRI_UpdateShapedJsonDocumentCollection(
     TRI_ASSERT(mptr->_rid > 0);
   }
 
+#warning TODO
+#if 0
   if (markerTick > 0) {
     // need to wait for tick, outside the lock
     arangodb::wal::LogfileManager::instance()->slots()->waitForTick(markerTick);
   }
+#endif
 
   return res;
 }
@@ -5182,10 +5200,13 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const* slice,
     }
   }
 
+#warning TODO
+#if 0
   if (markerTick > 0) {
     // need to wait for tick, outside the lock
     arangodb::wal::LogfileManager::instance()->slots()->waitForTick(markerTick);
   }
+#endif
 
   return res;
 }
@@ -5273,10 +5294,13 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
     }
   }
 
+#warning TODO
+#if 0
   if (markerTick > 0) {
     // need to wait for tick, outside the lock
     arangodb::wal::LogfileManager::instance()->slots()->waitForTick(markerTick);
   }
+#endif
 
   return res;
 }

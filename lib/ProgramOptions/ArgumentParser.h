@@ -25,7 +25,7 @@
 
 #include "Basics/Common.h"
 
-#include "ProgramOptions2/ProgramOptions.h"
+#include "ProgramOptions/ProgramOptions.h"
 
 namespace arangodb {
 namespace options {

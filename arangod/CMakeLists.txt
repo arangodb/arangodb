@@ -66,10 +66,8 @@ endif ()
 add_executable(${BIN_ARANGOD}
   ${ARANGO_MSVC}
   ${ProductVersionFiles}
-  Actions/RestActionHandler.cpp
+  # TODO   Actions/RestActionHandler.cpp
   Actions/actions.cpp
-  ApplicationServer/ApplicationFeature.cpp
-  ApplicationServer/ApplicationServer.cpp
   Aql/Aggregator.cpp
   Aql/AqlItemBlock.cpp
   Aql/AqlItemBlockManager.cpp
@@ -134,7 +132,7 @@ add_executable(${BIN_ARANGOD}
   Aql/grammar.cpp
   Aql/tokens.cpp
   Cluster/AgencyComm.cpp
-  Cluster/ApplicationCluster.cpp
+  # TODO Cluster/ApplicationCluster.cpp
   Cluster/ClusterComm.cpp
   Cluster/ClusterInfo.cpp
   Cluster/ClusterMethods.cpp
@@ -144,7 +142,7 @@ add_executable(${BIN_ARANGOD}
   Cluster/ServerJob.cpp
   Cluster/ServerState.cpp
   Cluster/v8-cluster.cpp
-  Dispatcher/ApplicationDispatcher.cpp
+  # TODO   Dispatcher/ApplicationDispatcher.cpp
   Dispatcher/Dispatcher.cpp
   Dispatcher/DispatcherQueue.cpp
   Dispatcher/DispatcherThread.cpp
@@ -156,7 +154,7 @@ add_executable(${BIN_ARANGOD}
   FulltextIndex/fulltext-result.cpp
   FulltextIndex/fulltext-wordlist.cpp
   GeoIndex/GeoIndex.cpp
-  HttpServer/ApplicationEndpointServer.cpp
+  # TODO HttpServer/ApplicationEndpointServer.cpp
   HttpServer/AsyncJobManager.cpp
   HttpServer/HttpCommTask.cpp
   HttpServer/HttpHandler.cpp
@@ -190,14 +188,14 @@ add_executable(${BIN_ARANGOD}
   RestHandler/RestDocumentHandler.cpp
   RestHandler/RestEdgeHandler.cpp
   RestHandler/RestEdgesHandler.cpp
-  RestHandler/RestExportHandler.cpp
+  # TODO RestHandler/RestExportHandler.cpp
   RestHandler/RestImportHandler.cpp
   RestHandler/RestJobHandler.cpp
   RestHandler/RestPleaseUpgradeHandler.cpp
   RestHandler/RestQueryCacheHandler.cpp
   RestHandler/RestQueryHandler.cpp
-  RestHandler/RestReplicationHandler.cpp
-  RestHandler/RestShutdownHandler.cpp
+  # TODO RestHandler/RestReplicationHandler.cpp
+  # TODO RestHandler/RestShutdownHandler.cpp
   RestHandler/RestSimpleHandler.cpp
   RestHandler/RestSimpleQueryHandler.cpp
   RestHandler/RestUploadHandler.cpp
@@ -206,9 +204,10 @@ add_executable(${BIN_ARANGOD}
   RestHandler/WorkMonitorHandler.cpp
   RestServer/ArangoServer.cpp
   RestServer/ConsoleThread.cpp
+  RestServer/ServerFeature.cpp
   RestServer/VocbaseContext.cpp
   RestServer/arangod.cpp
-  Scheduler/ApplicationScheduler.cpp
+  # TODO Scheduler/ApplicationScheduler.cpp
   Scheduler/ListenTask.cpp
   Scheduler/PeriodicTask.cpp
   Scheduler/Scheduler.cpp
@@ -234,7 +233,7 @@ add_executable(${BIN_ARANGOD}
   Utils/TransactionContext.cpp
   Utils/V8TransactionContext.cpp
   Utils/WorkMonitorArangod.cpp
-  V8Server/ApplicationV8.cpp
+  # TODO  V8Server/ApplicationV8.cpp
   V8Server/V8Job.cpp
   V8Server/V8PeriodicTask.cpp
   V8Server/V8QueueJob.cpp
@@ -284,7 +283,7 @@ add_executable(${BIN_ARANGOD}
   Wal/AllocatorThread.cpp
   Wal/CollectorThread.cpp
   Wal/Logfile.cpp
-  Wal/LogfileManager.cpp
+  # TODO Wal/LogfileManager.cpp
   Wal/Marker.cpp
   Wal/RecoverState.cpp
   Wal/RemoverThread.cpp

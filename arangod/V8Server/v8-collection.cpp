@@ -2209,6 +2209,8 @@ static void JS_PlanIdVocbaseCol(
 
 static void JS_PropertiesVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
+#warning TODO
+#if 0
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   TRI_GET_GLOBALS();
@@ -2457,6 +2459,7 @@ static void JS_PropertiesVocbaseCol(
   ReleaseCollection(collection);
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

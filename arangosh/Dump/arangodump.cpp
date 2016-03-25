@@ -30,7 +30,7 @@
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Dump/DumpFeature.h"
-#include "ProgramOptions2/ProgramOptions.h"
+#include "ProgramOptions/ProgramOptions.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;

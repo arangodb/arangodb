@@ -105,6 +105,9 @@ class ApplicationFeature {
   // `abortInvalidParameters()`
   virtual void validateOptions(std::shared_ptr<options::ProgramOptions>);
 
+  // allows process control
+  virtual void daemonize();
+
   // preparation phase for feature in the preparation phase, the features must
   // not start any threads. furthermore, they must not write any files under
   // elevated privileges if they want other features to access them, or if they

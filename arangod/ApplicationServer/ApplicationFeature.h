@@ -60,15 +60,14 @@ class ApplicationFeature {
   /// @brief sets up the options
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void setupOptions(
-      std::map<std::string, basics::ProgramOptionsDescription>&);
+  virtual void setupOptions(std::shared_ptr<options::ProgramOptions>);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief callback after options parsing and config file reading,
   /// before dropping privileges
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual bool afterOptionParsing(basics::ProgramOptions&);
+  virtual bool afterOptionParsing(std::shared_ptr<options::ProgramOptions>);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief prepares the feature

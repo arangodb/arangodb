@@ -24,7 +24,7 @@
 #define ARANGODB_PROGRAM_OPTIONS_OPTION_H 1
 
 #include "Basics/Common.h"
-#include "ProgramOptions2/Parameters.h"
+#include "ProgramOptions/Parameters.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>

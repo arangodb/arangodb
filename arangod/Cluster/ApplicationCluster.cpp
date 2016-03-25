@@ -34,7 +34,7 @@
 #include "Cluster/ClusterComm.h"
 #include "Dispatcher/ApplicationDispatcher.h"
 #include "SimpleHttpClient/ConnectionManager.h"
-#include "V8Server/ApplicationV8.h"
+// #include "V8Server/ApplicationV8.h"
 #include "VocBase/server.h"
 
 using namespace arangodb;
@@ -76,6 +76,8 @@ ApplicationCluster::~ApplicationCluster() {
   delete cm;
 }
 
+#warning TODO
+#if 0
 void ApplicationCluster::setupOptions(
     std::map<std::string, basics::ProgramOptionsDescription>& options) {
   options["Cluster options:help-cluster"]("cluster.agency-endpoint",
@@ -104,6 +106,7 @@ void ApplicationCluster::setupOptions(
       "cluster.disable-dispatcher-kickstarter", &_disableDispatcherKickstarter,
       "disable the kickstarter functionality");
 }
+#endif
 
 bool ApplicationCluster::prepare() {
   // set authentication data

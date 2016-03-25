@@ -20,26 +20,26 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationFeatures/ShutdownFeature.h"
+#include "ServerFeature.h"
 
 #include "Logger/Logger.h"
-#include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 
 using namespace arangodb;
-using namespace arangodb::options;
+using namespace arangodb::application_features;
 
-ShutdownFeature::ShutdownFeature(
-    application_features::ApplicationServer* server, std::string const& feature)
-    : ApplicationFeature(server, "Shutdown") {
-  setOptional(false);
-  requiresElevatedPrivileges(false);
-  startsAfter("Logger");
-  startsAfter(feature);
-}
+ServerFeature::ServerFeature(application_features::ApplicationServer* server,
+                             int* res)
+    : ApplicationFeature(server, "Server"), _result(res) {}
 
-void ShutdownFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
+void ServerFeature::start() {
+  while (true) {
+    LOG(INFO) << "info";
 
-  server()->beginShutdown();
+    sleep(10);
+  }
+#warning TODO
+#if 0
+  ArangoInstance = new ArangoServer(argc, argv);
+  res = ArangoInstance->start();
+#endif
 }

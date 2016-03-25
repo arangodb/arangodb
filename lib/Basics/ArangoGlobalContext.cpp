@@ -32,13 +32,28 @@ using namespace arangodb;
 static void ReopenLog(int) { LogAppender::reopen(); }
 #endif
 
+static void AbortHandler(int signum) {
+  TRI_PrintBacktrace();
+#ifdef _WIN32
+  exit(255 + signum);
+#else
+  signal(signum, SIG_DFL);
+  kill(getpid(), signum);
+#endif
+}
+
+ArangoGlobalContext* ArangoGlobalContext::CONTEXT = nullptr;
+
 ArangoGlobalContext::ArangoGlobalContext(int argc, char* argv[])
     : _binaryName(TRI_BinaryName(argv[0])), _ret(EXIT_FAILURE) {
   ADB_WindowsEntryFunction();
   TRIAGENS_REST_INITIALIZE();
+  CONTEXT = this;
 }
 
 ArangoGlobalContext::~ArangoGlobalContext() {
+  CONTEXT = nullptr;
+
 #ifndef _WIN32
   signal(SIGHUP, SIG_IGN);
 #endif
@@ -55,5 +70,17 @@ int ArangoGlobalContext::exit(int ret) {
 void ArangoGlobalContext::installHup() {
 #ifndef _WIN32
   signal(SIGHUP, ReopenLog);
+#endif
+}
+
+void ArangoGlobalContext::installSegv() {
+  signal(SIGSEGV, AbortHandler);
+}
+
+void ArangoGlobalContext::maskAllSignals() {
+#ifdef TRI_HAVE_POSIX_THREADS
+  sigset_t all;
+  sigfillset(&all);
+  pthread_sigmask(SIG_SETMASK, &all, 0);
 #endif
 }

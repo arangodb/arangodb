@@ -27,7 +27,7 @@
 #include "Dispatcher/DispatcherQueue.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
-#include "V8Server/ApplicationV8.h"
+// #include "V8Server/ApplicationV8.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
@@ -60,6 +60,8 @@ V8QueueJob::~V8QueueJob() {}
 size_t V8QueueJob::queue() const { return _queue; }
 
 void V8QueueJob::work() {
+#warning TODO
+#if 0
   if (_canceled) {
     return;
   }
@@ -117,6 +119,7 @@ void V8QueueJob::work() {
   }
 
   _v8Dealer->exitContext(context);
+#endif
 }
 
 bool V8QueueJob::cancel() {

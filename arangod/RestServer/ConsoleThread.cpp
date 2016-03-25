@@ -77,6 +77,8 @@ ConsoleThread::~ConsoleThread() { shutdown(); }
 ////////////////////////////////////////////////////////////////////////////////
 
 void ConsoleThread::run() {
+#warning TODO
+#if 0
   usleep(100 * 1000);
 
   // enter V8 context
@@ -96,6 +98,7 @@ void ConsoleThread::run() {
   // exit context
   _applicationV8->exitContext(_context);
   _applicationServer->beginShutdown();
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

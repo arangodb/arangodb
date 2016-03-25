@@ -28,6 +28,9 @@
 namespace arangodb {
 class ArangoGlobalContext {
  public:
+  static ArangoGlobalContext* CONTEXT;
+
+ public:
   ArangoGlobalContext(int argc, char* argv[]);
   ~ArangoGlobalContext();
 
@@ -35,6 +38,8 @@ class ArangoGlobalContext {
   std::string binaryName() { return _binaryName; }
   int exit(int ret);
   void installHup();
+  void installSegv();
+  void maskAllSignals();
 
  private:
   std::string _binaryName;

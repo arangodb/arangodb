@@ -66,7 +66,8 @@ class ApplicationCluster : public rest::ApplicationFeature {
   inline bool enabled() const { return _enableCluster; }
 
  public:
-  void setupOptions(std::map<std::string, basics::ProgramOptionsDescription>&) override final;
+#warning TODO
+  // void setupOptions(std::map<std::string, basics::ProgramOptionsDescription>&) override final;
 
   bool prepare() override final;
 

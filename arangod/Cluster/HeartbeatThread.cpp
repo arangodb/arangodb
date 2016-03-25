@@ -35,7 +35,7 @@
 #include "Dispatcher/ApplicationDispatcher.h"
 #include "Dispatcher/Dispatcher.h"
 #include "Dispatcher/Job.h"
-#include "V8Server/ApplicationV8.h"
+// #include "V8Server/ApplicationV8.h"
 #include "V8/v8-globals.h"
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/auth.h"
@@ -595,6 +595,8 @@ bool HeartbeatThread::handlePlanChangeDBServer(uint64_t currentPlanVersion) {
   std::unique_ptr<arangodb::rest::Job> job(
       new ServerJob(this, _server, _applicationV8));
 
+#warning TODO
+#if 0
   if (_dispatcher->dispatcher()->addJob(job) == TRI_ERROR_NO_ERROR) {
     ++_numDispatchedJobs;
     _versionThatTriggeredLastJob = currentPlanVersion;
@@ -602,6 +604,7 @@ bool HeartbeatThread::handlePlanChangeDBServer(uint64_t currentPlanVersion) {
     LOG(TRACE) << "scheduled plan update handler";
     return true;
   }
+#endif
 
   LOG(ERR) << "could not schedule plan update handler";
 

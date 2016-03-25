@@ -26,8 +26,6 @@
 
 #include "Basics/Common.h"
 
-#include "Basics/ProgramOptions.h"
-
 namespace arangodb {
 namespace rest {
 
@@ -45,10 +43,12 @@ class OperationMode {
   } server_operation_mode_e;
 
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the server operation mode
-  //////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return the server operation mode
+//////////////////////////////////////////////////////////////////////////////
 
+#warning TODO
+#if 0
   static server_operation_mode_e determineMode(
       const arangodb::basics::ProgramOptions& options) {
     if (options.has("console")) {
@@ -61,6 +61,7 @@ class OperationMode {
       return MODE_SERVER;
     }
   }
+#endif
 };
 }
 }

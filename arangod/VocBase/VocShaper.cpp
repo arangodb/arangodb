@@ -486,6 +486,8 @@ TRI_shape_aid_t VocShaper::lookupAttributeByName(char const* name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_shape_aid_t VocShaper::findOrCreateAttributeByName(char const* name) {
+#warning TODO
+#if 0
   // check if the attribute exists
   TRI_shape_aid_t aid = lookupAttributeByName(name);
 
@@ -577,6 +579,7 @@ TRI_shape_aid_t VocShaper::findOrCreateAttributeByName(char const* name) {
             << TRI_errno_string(res);
 
   return 0;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -588,6 +591,8 @@ TRI_shape_aid_t VocShaper::findOrCreateAttributeByName(char const* name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_shape_t const* VocShaper::findShape(TRI_shape_t* shape, bool create) {
+#warning TODO
+#if 0
   TRI_shape_t const* found = Shaper::lookupBasicShape(shape);
 
   if (found == nullptr) {
@@ -707,6 +712,7 @@ TRI_shape_t const* VocShaper::findShape(TRI_shape_t* shape, bool create) {
   // must not free the shape here, as the caller is going to free it...
 
   return nullptr;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
