@@ -44,7 +44,7 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer* server)
       _performance(false),
       _keepLogRotate(false),
       _foregroundTty(true),
-      _daemon(false),
+      _supervisor(false),
       _backgrounded(false),
       _threaded(false) {
   _levels.push_back("info");
@@ -151,8 +151,8 @@ void LoggerFeature::prepare() {
   Logger::setKeepLogrotate(_keepLogRotate);
 
   for (auto definition : _output) {
-    if (_daemon && StringUtils::isPrefix(definition, "file://")) {
-      definition += ".daemon";
+    if (_supervisor && StringUtils::isPrefix(definition, "file://")) {
+      definition += ".supervisor";
     }
 
     LogAppender::addAppender(definition);

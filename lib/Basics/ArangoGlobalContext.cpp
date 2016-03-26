@@ -84,3 +84,11 @@ void ArangoGlobalContext::maskAllSignals() {
   pthread_sigmask(SIG_SETMASK, &all, 0);
 #endif
 }
+
+void ArangoGlobalContext::unmaskStandardSignals() {
+#ifdef TRI_HAVE_POSIX_THREADS
+  sigset_t all;
+  sigfillset(&all);
+  pthread_sigmask(SIG_UNBLOCK, &all, 0);
+#endif
+}

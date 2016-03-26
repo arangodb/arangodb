@@ -58,7 +58,7 @@ LogTopic Logger::PERFORMANCE("performance", LogLevel::FATAL);  // suppress
 LogTopic Logger::QUERIES("queries", LogLevel::INFO);
 LogTopic Logger::REPLICATION("replication", LogLevel::INFO);
 LogTopic Logger::REQUESTS("requests", LogLevel::FATAL);  // suppress
-LogTopic Logger::STARTUP("startup", LogLevel::WARN);
+LogTopic Logger::STARTUP("startup", LogLevel::INFO);
 LogTopic Logger::THREADS("threads", LogLevel::WARN);
 LogTopic Logger::V8("v8", LogLevel::WARN);
 

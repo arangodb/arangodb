@@ -91,6 +91,8 @@ if (MSVC)
   )
 else ()
   set(LIB_ARANGO_POSIX
+    ApplicationFeatures/DaemonFeature.cpp
+    ApplicationFeatures/SupervisorFeature.cpp
     Basics/locks-posix.cpp
     Basics/memory-map-posix.cpp
     Basics/terminal-utils-posix.cpp
@@ -137,7 +139,6 @@ add_library(${LIB_ARANGO} STATIC
   ApplicationFeatures/ClientFeature.cpp
   ApplicationFeatures/ConfigFeature.cpp
   ApplicationFeatures/ConsoleFeature.cpp
-  ApplicationFeatures/DaemonFeature.cpp
   ApplicationFeatures/DatabaseFeature.cpp
   ApplicationFeatures/LanguageFeature.cpp
   ApplicationFeatures/LoggerFeature.cpp

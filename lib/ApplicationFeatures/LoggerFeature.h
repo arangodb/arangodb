@@ -41,7 +41,7 @@ class LoggerFeature final : public application_features::ApplicationFeature {
  public:
   void setBackgrounded(bool backgrounded) { _backgrounded = backgrounded; }
   void setThreaded(bool threaded) { _threaded = threaded; }
-  void setDaemon(bool daemon) { _daemon = daemon; }
+  void setSupervisor(bool supervisor) { _supervisor = supervisor; }
 
  private:
   std::vector<std::string> _output;
@@ -56,7 +56,7 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   bool _foregroundTty;
 
  private:
-  bool _daemon;
+  bool _supervisor;
   bool _backgrounded;
   bool _threaded;
 };

@@ -20,32 +20,33 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef BASICS_ARANGO_GLOBAL_CONTEXT_H
-#define BASICS_ARANGO_GLOBAL_CONTEXT_H 1
+#ifndef APPLICATION_FEATURES_SUPERVISOR_FEATURE_H
+#define APPLICATION_FEATURES_SUPERVISOR_FEATURE_H 1
 
-#include "Basics/Common.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
-class ArangoGlobalContext {
+class SupervisorFeature final : public application_features::ApplicationFeature {
  public:
-  static ArangoGlobalContext* CONTEXT;
+  explicit SupervisorFeature(application_features::ApplicationServer* server);
 
  public:
-  ArangoGlobalContext(int argc, char* argv[]);
-  ~ArangoGlobalContext();
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void daemonize() override final;
 
  public:
-  std::string binaryName() { return _binaryName; }
-  int exit(int ret);
-  void installHup();
-  void installSegv();
-  void maskAllSignals();
-  void unmaskStandardSignals();
+  void supervisorStart(std::vector<std::string> const& features) {
+    _supervisorStart = features;
+  }
 
  private:
-  std::string _binaryName;
-  int _ret;
+  bool _supervisor;
+
+ private:
+  TRI_pid_t _clientPid;
+  std::vector<std::string> _supervisorStart;
 };
-}
+};
 
 #endif

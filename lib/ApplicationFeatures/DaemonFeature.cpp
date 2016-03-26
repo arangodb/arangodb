@@ -25,12 +25,14 @@
 #include <iostream>
 #include <fstream>
 
+#include "ApplicationFeatures/LoggerFeature.h"
 #include "Basics/FileUtils.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
 using namespace arangodb;
+using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
@@ -64,6 +66,13 @@ void DaemonFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       LOG(ERR) << "need --pid-file in --daemon mode";
       abortInvalidParameters();
     }
+
+    LoggerFeature* logger = dynamic_cast<LoggerFeature*>(
+        ApplicationServer::lookupFeature("Logger"));
+
+    if (logger != nullptr) {
+      logger->setBackgrounded(true);
+    }
   }
 }
 
@@ -79,13 +88,16 @@ void DaemonFeature::daemonize() {
   _pidFile = "MYPID";
   checkPidFile();
 
-  int result = forkProcess();
+  int pid = forkProcess();
 
   // main process
-  if (result != 0) {
+  if (pid != 0) {
     TRI_SetProcessTitle("arangodb [daemon]");
-    writePidFile(result);
-    exit(EXIT_SUCCESS);
+    writePidFile(pid);
+
+    int result = waitForChildProcess(pid);
+
+    exit(result);
   }
 
   // child process
@@ -257,4 +269,55 @@ void DaemonFeature::writePidFile(int pid) {
   }
 
   out << pid;
+}
+
+int DaemonFeature::waitForChildProcess(int pid) {
+  if (!isatty(STDIN_FILENO)) {
+    // during system boot, we don't have a tty, and we don't want to delay
+    // the boot process
+    return EXIT_SUCCESS;
+  }
+
+  // in case a tty is present, this is probably a manual invocation of the start
+  // procedure
+  double const end = TRI_microtime() + 10.0;
+
+  while (TRI_microtime() < end) {
+    int status;
+    int res = waitpid(pid, &status, WNOHANG);
+
+    if (res == -1) {
+      // error in waitpid. don't know what to do
+      break;
+    }
+
+    if (res != 0 && WIFEXITED(status)) {
+      // give information about supervisor exit code
+      if (WEXITSTATUS(status) == 0) {
+        // exit code 0
+        return EXIT_SUCCESS;
+      } else if (WIFSIGNALED(status)) {
+        switch (WTERMSIG(status)) {
+          case 2:
+          case 9:
+          case 15:
+            // terminated normally
+            return EXIT_SUCCESS;
+          default:
+            break;
+        }
+      }
+
+      // failure!
+      LOG(ERR)
+          << "unable to start arangod. please check the logfiles for errors";
+      return EXIT_FAILURE;
+    }
+
+    // sleep a while and retry
+    usleep(500 * 1000);
+  }
+
+  // enough time has elapsed... we now abort our loop
+  return EXIT_SUCCESS;
 }

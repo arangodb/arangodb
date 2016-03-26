@@ -38,10 +38,14 @@ class DaemonFeature final : public application_features::ApplicationFeature {
   void daemonize() override final;
   void stop() override final;
 
+ public:
+  void setDaemon(bool value) { _daemon = value; }
+
  private:
   void checkPidFile();
   int forkProcess();
   void writePidFile(int);
+  int waitForChildProcess(int);
 
  public:
   bool _daemon;

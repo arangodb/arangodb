@@ -29,6 +29,7 @@
 #include "ApplicationFeatures/LoggerFeature.h"
 #include "ApplicationFeatures/RandomFeature.h"
 #include "ApplicationFeatures/SslFeature.h"
+#include "ApplicationFeatures/SupervisorFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Basics/ArangoGlobalContext.h"
@@ -46,7 +47,7 @@ using namespace arangodb;
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace arangodb {
-  class ArangoServer;
+class ArangoServer;
 }
 
 ArangoServer* ArangoInstance = nullptr;
@@ -79,13 +80,12 @@ int main(int argc, char* argv[]) {
 
   application_features::ApplicationServer server(options);
 
-  int ret= EXIT_FAILURE;
+  int ret = EXIT_FAILURE;
 
   server.addFeature(new ConfigFeature(&server, name));
   //  server.addFeature(new DispatcherFeature(&server));
   //  server.addFeature(new HttpServerFeature(&server));
   server.addFeature(new LanguageFeature(&server));
-  server.addFeature(new LoggerFeature(&server));
   server.addFeature(new RandomFeature(&server));
   // server.addFeature(new SchedulerFeature(&server));
   server.addFeature(new ServerFeature(&server, &ret));
@@ -96,13 +96,27 @@ int main(int argc, char* argv[]) {
   // server.addFeature(new VocbaseFeature(&server));
   // server.addFeature(new WalFeature(&server));
 
+  std::unique_ptr<LoggerFeature> logger =
+      std::make_unique<LoggerFeature>(&server);
+  logger->setThreaded(true);
+  server.addFeature(logger.release());
+
 #ifdef TRI_HAVE_FORK
   server.addFeature(new DaemonFeature(&server));
+
+  {
+    std::unique_ptr<SupervisorFeature> supervisor =
+        std::make_unique<SupervisorFeature>(&server);
+    supervisor->supervisorStart({"Logger"});
+    server.addFeature(supervisor.release());
+  }
 #endif
 
   server.run(argc, argv);
 
   return context.exit(ret);
+}
+
 
 #warning TODO
 #if 0
@@ -145,5 +159,3 @@ int main(int argc, char* argv[]) {
   // shutdown sub-systems
   return context.exit(ret);
 #endif
-
-}
