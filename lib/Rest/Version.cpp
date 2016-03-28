@@ -79,7 +79,7 @@ void Version::initialize() {
   Values["maintainer-mode"] = "false";
 #endif
 
-#ifdef TRI_HAVE_TCMALLOC
+#ifdef ARANGODB_HAVE_TCMALLOC
   Values["tcmalloc"] = "true";
 #else
   Values["tcmalloc"] = "false";

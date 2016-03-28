@@ -367,6 +367,14 @@ endif ()
 
 if (USE_TCMALLOC)
   find_package(tcmalloc)
+
+  if (TCMALLOC_FOUND)
+    add_definitions("-DARANGODB_HAVE_TCMALLOC=1")
+    set(SYS_LIBS ${SYS_LIBS} ${TCMALLOC_tcmalloc_LIBRARY})
+    message(STATUS "Found TCMALLOC")
+  else ()
+    message(STATUS "Missing TCMALLOC")
+  endif ()
 endif ()
 
 ################################################################################
