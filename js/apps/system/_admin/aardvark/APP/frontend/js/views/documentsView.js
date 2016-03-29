@@ -950,7 +950,6 @@
     },
 
     renderPaginationElements: function () {
-      console.log("hello");
       this.renderPagination();
       var total = $('#totalDocuments');
       if (total.length === 0) {
@@ -960,7 +959,6 @@
         total = $('#totalDocuments');
       }
       if (this.type === 'document') {
-        console.log(numeral(this.collection.getTotal()).format('0,0') + " document(s)");
         total.html(numeral(this.collection.getTotal()).format('0,0') + " document(s)");
       }
       if (this.type === 'edge') {
