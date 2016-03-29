@@ -453,19 +453,6 @@ bool AgencyCommLocker::updateVersion(AgencyComm& comm) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs an agency communication object
-////////////////////////////////////////////////////////////////////////////////
-
-AgencyComm::AgencyComm(bool addNewEndpoints)
-    : _addNewEndpoints(addNewEndpoints) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys an agency communication object
-////////////////////////////////////////////////////////////////////////////////
-
-AgencyComm::~AgencyComm() {}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief cleans up all connections
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1763,17 +1750,14 @@ bool AgencyComm::sendWithFailover(
       endpoint = endpoint.substr(0, delim);
 
       if (!AgencyComm::hasEndpoint(endpoint)) {
-        // redirection to an unknown endpoint
-        if (_addNewEndpoints) {
-          AgencyComm::addEndpoint(endpoint, true);
+        AgencyComm::addEndpoint(endpoint, true);
 
-          LOG(INFO) << "adding agency-endpoint '" << endpoint << "'";
+        LOG(INFO) << "adding agency-endpoint '" << endpoint << "'";
 
-          // re-check the new endpoint
-          if (AgencyComm::hasEndpoint(endpoint)) {
-            ++numEndpoints;
-            continue;
-          }
+        // re-check the new endpoint
+        if (AgencyComm::hasEndpoint(endpoint)) {
+          ++numEndpoints;
+          continue;
         }
 
         LOG(ERR) << "found redirection to unknown endpoint '" << endpoint << "'. Will not follow!";
