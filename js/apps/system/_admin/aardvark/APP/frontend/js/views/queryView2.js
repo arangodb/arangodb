@@ -1223,6 +1223,11 @@
       });
 
       $('#outputEditorWrapper' + counter + ' #copy2aqlEditor').bind('click', function() {
+
+        if (!$('#toggleQueries1').is(':visible')) {
+          self.toggleQueries();
+        }
+
         var aql = ace.edit("sentQueryEditor" + counter).getValue();
         var bindParam = JSON.parse(ace.edit("sentBindParamEditor" + counter).getValue());
         self.aqlEditor.setValue(aql);
