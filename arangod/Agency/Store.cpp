@@ -210,23 +210,25 @@ bool Node::applies (VPackSlice const& slice) {
           return true;
         } else if (oper == "increment") { // Increment
           Builder tmp;
+          tmp.openObject();
           try {
-            tmp.add(Value(self.isInt() ? int64_t(self.getInt()+1) :
-                          uint64_t(self.getUInt()+1)));
+            tmp.add("tmp", Value(self.getInt()+1));
           } catch (std::exception const& e) {
-            tmp.add(Value(1));
+            tmp.add("tmp",Value(1));
           }
-          *this = tmp.slice();
+          tmp.close();
+          *this = tmp.slice().get("tmp");
           return true;
         } else if (oper == "decrement") { // Decrement
           Builder tmp;
+          tmp.openObject();
           try {
-            tmp.add(Value(self.isInt() ? int64_t(self.getInt()-1) :
-                          uint64_t(self.getUInt()-1)));
+            tmp.add("tmp", Value(self.getInt()-1));
           } catch (std::exception const& e) {
-            tmp.add(Value(-1));
+            tmp.add("tmp",Value(-1));
           }
-          *this = tmp.slice();
+          tmp.close();
+          *this = tmp.slice().get("tmp");
           return true;
         } else if (oper == "push") { // Push
           if (!slice.hasKey("new")) {

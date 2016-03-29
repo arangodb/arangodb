@@ -211,6 +211,22 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["a/b/c"]]), [{a:{b:{c:[1,2,3]}}}]);        
       writeAndCheck([[{"a/b/d":{"op":"pop"}}]]); // on existing scalar
       assertEqual(readAndCheck([["a/b/d"]]), [{a:{b:{d:[]}}}]);        
+    },
+
+    testOpIncrement : function () {
+      writeAndCheck([[{"version":{"op":"delete"}}]]);
+      writeAndCheck([[{"version":{"op":"increment"}}]]); // none before
+      assertEqual(readAndCheck([["version"]]), [{version:1}]);
+      writeAndCheck([[{"version":{"op":"increment"}}]]); // int before
+      assertEqual(readAndCheck([["version"]]), [{version:2}]);
+    },
+
+    testOpPop : function () {
+      writeAndCheck([[{"version":{"op":"delete"}}]]);
+      writeAndCheck([[{"version":{"op":"decrement"}}]]); // none before
+      assertEqual(readAndCheck([["version"]]), [{version:-1}]);
+      writeAndCheck([[{"version":{"op":"decrement"}}]]); // int before
+      assertEqual(readAndCheck([["version"]]), [{version:-2}]);
     }
 
   };
