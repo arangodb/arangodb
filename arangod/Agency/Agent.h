@@ -104,7 +104,7 @@ public:
   void reportIn (id_t id, index_t idx);
   
   /// @brief Wait for slaves to confirm appended entries
-  bool waitFor (index_t last_entry, duration_t timeout = duration_t(2.0));
+  bool waitFor (index_t last_entry, duration_t timeout = duration_t(2000));
 
   /// @brief Convencience size of agency
   size_t size() const;
