@@ -546,18 +546,38 @@
       self.deselect(self.aqlEditor);
     },
 
-    showSpotlight: function() {
+    showSpotlight: function(type) {
+      
+      var callback, cancelCallback;
 
-      var callback = function(string) {
-        this.aqlEditor.insert(string);
-        $('#aqlEditor .ace_text-input').focus();
-      }.bind(this);
+      if (type === undefined || type.type === 'click') {
+        type = 'aql';
+      }
 
-      var cancelCallback = function() {
-        $('#aqlEditor .ace_text-input').focus();
-      };
+      if (type === 'aql') {
+        callback = function(string) {
+          this.aqlEditor.insert(string);
+          $('#aqlEditor .ace_text-input').focus();
+        }.bind(this);
 
-      window.spotlightView.show(callback, cancelCallback);
+        cancelCallback = function() {
+          $('#aqlEditor .ace_text-input').focus();
+        };
+      }
+      else {
+        var focused = $(':focus');
+        callback = function(string) {
+          var old = $(focused).val();
+          $(focused).val(old + string);
+          $(focused).focus();
+        }.bind(this);
+
+        cancelCallback = function() {
+          $(focused).focus();
+        };
+      }
+
+      window.spotlightView.show(callback, cancelCallback, type);
     },
 
     resize: function() {
@@ -660,6 +680,10 @@
         if ((e.ctrlKey || e.metaKey) && e.keyCode === 13) {
           e.preventDefault();
           this.executeQuery();
+        }
+        if ((e.ctrlKey || e.metaKey) && e.keyCode === 32) {
+          e.preventDefault();
+          this.showSpotlight('bind');
         }
       }
     },
@@ -831,10 +855,18 @@
       });
 
       this.aqlEditor.commands.addCommand({
+        name: "togglecomment",
+        bindKey: {win: "Ctrl-Shift-C", linux: "Ctrl-Shift-C", mac: "Command-Shift-C"},
+        exec: function (editor) {
+          editor.toggleCommentLines();
+        },
+        multiSelectAction: "forEach"
+      });
+
+      this.aqlEditor.commands.addCommand({
         name: "showSpotlight",
         bindKey: {win: "Ctrl-Space", mac: "Ctrl-Space", linux: "Ctrl-Space"},
         exec: function() {
-
           self.showSpotlight();
         }
       });
