@@ -209,28 +209,36 @@ bool Node::applies (VPackSlice const& slice) {
           *this = slice.get("new");
           return true;
         } else if (oper == "increment") { // Increment
-          if (!(self.isInt() || self.isUInt())) {
+/*          if (!(self.isInt() || self.isUInt())) {
             LOG_TOPIC(WARN, Logger::AGENCY)
               << "Element to increment must be integral type: We are "
-              << slice.toJson();
+              << self.toJson();
+            return false;
+            }*/
+          try {
+            Builder tmp;
+            tmp.add(Value(self.isInt() ? int64_t(self.getInt()+1) :
+                          uint64_t(self.getUInt()+1)));
+            *this = tmp.slice();
+          } catch (std::exception const& e) {
             return false;
           }
-          Builder tmp;
-          tmp.add(Value(self.isInt() ? int64_t(self.getInt()+1) :
-                        uint64_t(self.getUInt()+1)));
-          *this = tmp.slice();
           return true;
         } else if (oper == "decrement") { // Decrement
-          if (!(self.isInt() || self.isUInt())) {
+/*          if (!(self.isInt() || self.isUInt())) {
             LOG_TOPIC(WARN, Logger::AGENCY)
               << "Element to decrement must be integral type. We are "
-              << slice.toJson();
+              << self.toJson();
+            return false;
+            }*/
+          try {
+            Builder tmp;
+            tmp.add(Value(self.isInt() ? int64_t(self.getInt()-1) :
+                          uint64_t(self.getUInt()-1)));
+            *this = tmp.slice();
+          } catch (std::exception const& e) {
             return false;
           }
-          Builder tmp;
-          tmp.add(Value(self.isInt() ? int64_t(self.getInt()-1) :
-                        uint64_t(self.getUInt()-1)));
-          *this = tmp.slice();
           return true;
         } else if (oper == "push") { // Push
           if (!slice.hasKey("new")) {
