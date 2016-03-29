@@ -370,7 +370,6 @@ struct AqlValue final {
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief compare function for two values
-  /// TODO: implement
   //////////////////////////////////////////////////////////////////////////////
 
   static int Compare(arangodb::AqlTransaction*, 
@@ -392,6 +391,11 @@ struct AqlValue final {
   //////////////////////////////////////////////////////////////////////////////
   
   void initFromSlice(arangodb::velocypack::Slice const& slice) {
+    if (slice.isExternal()) {
+      _data.pointer = VPackSlice(slice.getExternal()).start();
+      setType(AqlValueType::VPACK_POINTER);
+      return;
+    }
     arangodb::velocypack::ValueLength length = slice.byteSize();
     if (length < sizeof(_data.internal)) {
       // Use internal
