@@ -221,7 +221,7 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["version"]]), [{version:2}]);
     },
 
-    testOpPop : function () {
+    testOpDecrement : function () {
       writeAndCheck([[{"version":{"op":"delete"}}]]);
       writeAndCheck([[{"version":{"op":"decrement"}}]]); // none before
       assertEqual(readAndCheck([["version"]]), [{version:-1}]);
