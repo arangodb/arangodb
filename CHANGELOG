@@ -1,3 +1,9 @@
+v2.8.7 (XXXX-XX-XX)
+-------------------
+
+* javadoc-style comments in Foxx services are no longer interpreted as
+  Foxx comments outside of controller/script/exports files (#1748)
+
 v2.8.6 (2016-03-23)
 -------------------
 
