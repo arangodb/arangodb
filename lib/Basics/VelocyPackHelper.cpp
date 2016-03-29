@@ -305,9 +305,12 @@ std::string VelocyPackHelper::getStringValue(VPackSlice const& slice,
 /// or it is not a string
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string VelocyPackHelper::getStringValue(VPackSlice const& slice,
+std::string VelocyPackHelper::getStringValue(VPackSlice slice,
                                              char const* name,
                                              std::string const& defaultValue) {
+  if (slice.isExternal()) {
+    slice = VPackSlice(slice.getExternal());
+  }
   TRI_ASSERT(slice.isObject());
   if (!slice.hasKey(name)) {
     return defaultValue;

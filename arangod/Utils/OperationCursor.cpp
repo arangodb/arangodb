@@ -77,15 +77,11 @@ void OperationCursor::getMore(std::shared_ptr<OperationResult>& opRes,
     while (batchSize > 0 && _limit > 0 && (mptr = _indexIterator->next()) != nullptr) {
       --batchSize;
       --_limit;
-#if 0    
       if (useExternals) {
         builder.add(VPackValue(mptr->vpack(), VPackValueType::External));
       } else {
-#endif      
-      builder.add(VPackSlice(mptr->vpack()));
-#if 0      
+        builder.add(VPackSlice(mptr->vpack()));
       }
-#endif    
     }
     if (batchSize > 0 || _limit == 0) {
       // Iterator empty, there is no more

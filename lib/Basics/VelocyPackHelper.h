@@ -172,7 +172,7 @@ class VelocyPackHelper {
   /// or it is not a string
   //////////////////////////////////////////////////////////////////////////////
 
-  static std::string getStringValue(VPackSlice const&, char const*,
+  static std::string getStringValue(VPackSlice, char const*,
                                     std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////

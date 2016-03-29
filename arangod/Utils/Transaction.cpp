@@ -2232,12 +2232,13 @@ std::shared_ptr<OperationCursor> Transaction::indexScan(
                                        "The index id cannot be empty.");
       }
       // Normalize the search values
-      VPackBuilder expander;
-      idx->expandInSearchValues(search, expander);
+      // VPackBuilder expander;
+      // idx->expandInSearchValues(search, expander);
 
       // Now collect the Iterator
       IndexIteratorContext ctxt(_vocbase, resolver());
-      iterator.reset(idx->iteratorForSlice(this, &ctxt, expander.slice(), reverse));
+      // iterator.reset(idx->iteratorForSlice(this, &ctxt, expander.slice(), reverse));
+      iterator.reset(idx->iteratorForSlice(this, &ctxt, search, reverse));
     }
   }
   if (iterator == nullptr) {
