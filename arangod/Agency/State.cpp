@@ -131,7 +131,7 @@ bool State::log (query_t const& queries, term_t term, id_t leaderId,
 std::vector<log_t> State::get (index_t start, index_t end) const {
   std::vector<log_t> entries;
   MUTEX_LOCKER(mutexLocker, _logLock);
-  if (end == std::numeric_limits<uint64_t>::max())
+  if (end == (std::numeric_limits<uint64_t>::max)())
     end = _log.size() - 1;
   for (size_t i = start; i <= end; ++i) {// TODO:: Check bounds
     entries.push_back(_log[i]);
@@ -142,7 +142,7 @@ std::vector<log_t> State::get (index_t start, index_t end) const {
 std::vector<VPackSlice> State::slices (index_t start, index_t end) const {
   std::vector<VPackSlice> slices;
   MUTEX_LOCKER(mutexLocker, _logLock);
-  if (end == std::numeric_limits<uint64_t>::max())
+  if (end == (std::numeric_limits<uint64_t>::max)())
     end = _log.size() - 1;
   for (size_t i = start; i <= end; ++i) {// TODO:: Check bounds
     slices.push_back(VPackSlice(_log[i].entry->data()));
