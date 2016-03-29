@@ -66,7 +66,7 @@
       "click #querySpotlight": "showSpotlight",
       "click #deleteQuery": "selectAndDeleteQueryFromTable",
       "click #explQuery": "selectAndExplainQueryFromTable",
-      "keyup #arangoBindParamTable input": "updateBindParams",
+      "keydown #arangoBindParamTable input": "updateBindParams",
       "change #arangoBindParamTable input": "updateBindParams",
       "click #arangoMyQueriesTable tbody tr" : "showQueryPreview",
       "dblclick #arangoMyQueriesTable tbody tr" : "selectQueryFromTable",
@@ -657,7 +657,8 @@
 
       //fire execute if return was pressed
       if (e) {
-        if (e.ctrlKey && e.keyCode === 13) {
+        if ((e.ctrlKey || e.metaKey) && e.keyCode === 13) {
+          e.preventDefault();
           this.executeQuery();
         }
       }
@@ -1362,7 +1363,6 @@
               }
             }
             catch (e) {
-              console.log(e);
               arangoHelper.arangoError("Query", "Something went wrong.");
               self.removeOutputEditor(counter);
             }
