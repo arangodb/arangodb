@@ -77,9 +77,13 @@ public:
   bool findit (index_t index, term_t term);
 
 
+  /// @brief Get complete log entries bound by lower and upper bounds.
+  ///        Default: [first, last]
   std::vector<log_t> get (
     index_t = 0, index_t = (std::numeric_limits<uint64_t>::max)()) const;
 
+  /// @brief Get complete logged commands by lower and upper bounds.
+  ///        Default: [first, last]
   std::vector<VPackSlice> slices (
     index_t = 0, index_t = (std::numeric_limits<uint64_t>::max)()) const;
 
@@ -116,16 +120,22 @@ private:
   bool save (arangodb::velocypack::Slice const&, index_t, term_t,
              double timeout = 0.0);
 
+  /// @brief Load collection from persistent store
   bool loadCollection (std::string const& name);
 
-  bool checkDBs();
-  bool checkDB(std::string const& name);
+  /// @brief Check database 
+  bool checkCollections();
+
+  /// @brief Check collection sanity
+  bool checkCollection(std::string const& name);
+
+  /// @brief Create collection
   bool createCollection(std::string const& name);
 
-  mutable arangodb::Mutex _logLock; /**< @brief Mutex for modifying _log */
-  std::vector<log_t> _log;        /**< @brief  State entries */
-  std::string _end_point;         /**< @brief persistence end point */
-  bool _dbs_checked;
+  mutable arangodb::Mutex _logLock;  /**< @brief Mutex for modifying _log */
+  std::vector<log_t> _log;           /**< @brief  State entries */
+  std::string _end_point;            /**< @brief persistence end point */
+  bool _collections_checked;                 /**< @brief Collections checked */
   
 };
 

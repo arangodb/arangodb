@@ -34,7 +34,7 @@ using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
 using namespace arangodb::rest;
 
-State::State(std::string const& end_point) : _end_point(end_point), _dbs_checked(false) {
+State::State(std::string const& end_point) : _end_point(end_point), _collections_checked(false) {
   std::shared_ptr<Buffer<uint8_t>> buf = std::make_shared<Buffer<uint8_t>>();
   arangodb::velocypack::Slice tmp("\x00a",&Options::Defaults);
   buf->append(reinterpret_cast<char const*>(tmp.begin()), tmp.byteSize());
@@ -48,7 +48,7 @@ State::~State() {}
 bool State::save (arangodb::velocypack::Slice const& slice, index_t index,
                   term_t term, double timeout) {
 
-  if (checkDBs()) {
+  if (checkCollections()) {
 
     static std::string const path = "/_api/document?collection=log";
     std::map<std::string, std::string> headerFields;
@@ -162,19 +162,19 @@ log_t const& State::lastLog() const {
 
 bool State::setEndPoint (std::string const& end_point) {
   _end_point = end_point;
-  _dbs_checked = false;
+  _collections_checked = false;
   return true;
 };
 
-bool State::checkDBs() {
-  if (!_dbs_checked) {
-    _dbs_checked = checkDB("log") && checkDB("election");
+bool State::checkCollections() {
+  if (!_collections_checked) {
+    _collections_checked = checkCollection("log") && checkCollection("election");
   }
-  return _dbs_checked;
+  return _collections_checked;
 }
 
-bool State::checkDB (std::string const& name) {
-  if (!_dbs_checked) {
+bool State::checkCollection (std::string const& name) {
+  if (!_collections_checked) {
     std::stringstream path;
     path << "/_api/collection/" << name << "/properties";
     std::map<std::string, std::string> headerFields;
@@ -212,7 +212,7 @@ bool State::load () {
 
 bool State::loadCollection (std::string const& name) {
 
-  if (checkDBs()) {
+  if (checkCollections()) {
 
     std::stringstream path;
     path << "/_api/document?collection=" << name;

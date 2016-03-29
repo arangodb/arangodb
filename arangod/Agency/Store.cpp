@@ -99,6 +99,8 @@ bool Node::remove (std::string const& path) {
     Node& parent = (*this)(pv);
     return parent.removeChild(key);
   } catch (StoreException const& e) {
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Failed to delete key " << key;
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << e.what();
     return false;
   }
 }

@@ -69,11 +69,6 @@ duration_t Constituent::sleepFor (double min_t, double max_t) {
   return duration_t(dis(_gen));
 }
 
-double Constituent::sleepFord (double min_t, double max_t) {
-  dist_t dis(min_t, max_t);
-  return dis(_gen);
-}
-
 term_t Constituent::term() const {
   return _term;
 }
