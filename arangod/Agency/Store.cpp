@@ -168,7 +168,6 @@ Node& Node::root() {
     tmp = par;
     par = par->_parent;
   }
-  std::cout << par << std::endl;
   return *tmp;
 }
 
@@ -333,7 +332,7 @@ void Node::toBuilder (Builder& builder) const {
       builder.add(slice());
     }
   } catch (std::exception const& e) {
-    std::cout << e.what() << std::endl;
+    LOG(FATAL) << e.what();
   }
   
 }

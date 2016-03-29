@@ -121,7 +121,7 @@ bool State::log (query_t const& queries, term_t term, id_t leaderId,
       buf->append ((char const*)i.get("query").begin(), i.get("query").byteSize());
       _log.push_back(log_t(i.get("index").getUInt(), term, leaderId, buf));
     } catch (std::exception const& e) {
-      std::cout << e.what() << std::endl;
+      LOG(FATAL) << e.what();
     }
     //save (builder);
   }
