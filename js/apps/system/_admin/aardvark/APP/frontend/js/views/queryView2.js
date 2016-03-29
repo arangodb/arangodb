@@ -295,7 +295,6 @@
         this.toggleQueries();
       }
 
-      $('.aqlEditorWrapper').first().width($(window).width() * 0.66);
       this.aqlEditor.setValue(this.getCustomQueryValueByName(name));
       this.fillBindParamTable(this.getCustomQueryParameterByName(name));
       this.updateBindParams();
@@ -657,8 +656,10 @@
       this.setCachedQuery(this.aqlEditor.getValue(), JSON.stringify(this.bindParamTableObj));
 
       //fire execute if return was pressed
-      if (e.ctrlKey && e.keyCode === 13) {
-        this.executeQuery();
+      if (e) {
+        if (e.ctrlKey && e.keyCode === 13) {
+          this.executeQuery();
+        }
       }
     },
 
