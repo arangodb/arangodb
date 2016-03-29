@@ -505,6 +505,7 @@ namespace triagens {
 /// - 2: SSLv23
 /// - 3: SSLv3
 /// - 4: TLSv1
+/// - 5: TLSv1.2 (recommended)
 ///
 /// The default *value* is 4 (i.e. TLSv1).
 ///

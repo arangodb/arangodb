@@ -224,7 +224,7 @@ void ApplicationEndpointServer::setupOptions (map<string, ProgramOptionsDescript
   options["SSL Options:help-ssl"]
     ("server.keyfile", &_httpsKeyfile, "keyfile for SSL connections")
     ("server.cafile", &_cafile, "file containing the CA certificates of clients")
-    ("server.ssl-protocol", &_sslProtocol, "1 = SSLv2, 2 = SSLv23, 3 = SSLv3, 4 = TLSv1")
+    ("server.ssl-protocol", &_sslProtocol, "1 = SSLv2, 2 = SSLv23, 3 = SSLv3, 4 = TLSv1, 5 = TLSV1.2 (recommended)")
     ("server.ssl-cache", &_sslCache, "use SSL session caching")
     ("server.ssl-options", &_sslOptions, "SSL options, see OpenSSL documentation")
     ("server.ssl-cipher-list", &_sslCipherList, "SSL cipher list, see OpenSSL documentation")
