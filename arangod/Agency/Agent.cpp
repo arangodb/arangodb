@@ -283,9 +283,9 @@ void Agent::run() {
       _cv.wait(250000);
     else
       _cv.wait();
-    std::vector<collect_ret_t> work(size());
+
     // Collect all unacknowledged
-    for (size_t i = 0; i < size(); ++i) {
+    for (id_t i = 0; i < size(); ++i) {
       if (i != id()) {
         sendAppendEntriesRPC(i);
       }
