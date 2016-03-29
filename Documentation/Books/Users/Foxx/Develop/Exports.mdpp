@@ -27,7 +27,7 @@ The file **doodads.js** in the app's base path could look like this:
 
 ```js
 var Foxx = require('org/arangodb/foxx');
-class Doodad extends Foxx.Model {}
+var Doodad = Foxx.Model.extend({});
 var doodadRepo = new Foxx.Repository(
     applicationContext.collection('doodads'),
     {model: Doodad}

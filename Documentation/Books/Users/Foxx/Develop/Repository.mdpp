@@ -5,9 +5,9 @@ A repository is a gateway to the database. It gets data from the database, updat
 ```javascript
 var Foxx = require("org/arangodb/foxx");
 
-class TodosRepository extends Foxx.Repository {
+var TodosRepository = Foxx.Repository.extend({
     // ...
-}
+});
 
 exports.repository = TodosRepository;
 ```
@@ -70,12 +70,11 @@ Making a simple query in the repository and using it from the controller:
 // in the repository
 var Foxx = require("org/arangodb/foxx");
 
-class TodosRepository extends Foxx.Repository {
-    // ...
+var TodosRepository = Foxx.Repository.extend({
+    getPendingItems: Foxx.createQuery(
+        'FOR todo IN my_todos FILTER todo.completed == false RETURN todo'
+    )
 });
-TodosRepository.prototype.getPendingItems = Foxx.createQuery(
-    'FOR todo IN my_todos FILTER todo.completed == false RETURN todo'
-);
 
 // in the controller
 ctrl.get("/", function(req, res) {
@@ -153,16 +152,15 @@ The syntax for defining indexes is the same used in [*collection.ensureIndex*](.
 
 ```js
 var Foxx = require('org/arangodb/foxx');
-class FulltextRepository extends Foxx.Repository {
-    // ...
-}
-FulltextRepository.prototype.indexes = [
-    {
-        type: 'fulltext',
-        fields: ['text'],
-        minLength: 3
-    }
-];
+var FulltextRepository = Foxx.Repository.extend({
+    indexes: [
+        {
+            type: 'fulltext',
+            fields: ['text'],
+            minLength: 3
+        }
+    ]
+});
 ```
 
 !SECTION Methods of a Repository
