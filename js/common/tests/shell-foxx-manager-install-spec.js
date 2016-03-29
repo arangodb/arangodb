@@ -372,4 +372,24 @@ describe("Foxx Manager install", function() {
       expect(e).toBeUndefined();
     }
   });
+
+  it("jsdoc comments in required modules", function() {
+    var mount = "/unittest/jsdoc";
+    try {
+      FoxxManager.uninstall(mount, {force: true});
+    } catch (e) {
+      expect(e).toBeUndefined();
+    }
+    try {
+      FoxxManager.install(fs.join(basePath, "jsdoc-deps"), mount);
+    } catch (e) {
+      expect(true).toBeFalsy("Failed to install app with jsdoc deps.");
+      expect(e).toBeUndefined();
+    }
+    try {
+      FoxxManager.uninstall(mount, {force: true});
+    } catch (e) {
+      expect(e).toBeUndefined();
+    }
+  });
 });

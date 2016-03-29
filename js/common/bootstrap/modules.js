@@ -126,7 +126,6 @@ function Module(id, parent, cache) {
 
   if (parent) {
     this.root = parent.root;
-    this.preprocess = parent.preprocess;
     Object.keys(parent.context).forEach(function (key) {
       if (!hasOwnProperty(this.context, key)) {
         this.context[key] = parent.context[key];
