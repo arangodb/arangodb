@@ -376,9 +376,12 @@ void AnyServer::beginShutdown () {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_HAVE_FORK
-
-static void ignoreHup(int) {
+TRI_pid_t childPid = 0;
+#ifndef _WIN32
+static void forwardHup(int sig) {
+  kill(childPid, sig);
 }
+#endif
 
 int AnyServer::startupSupervisor () {
   static time_t const MIN_TIME_ALIVE_IN_SEC = 30;
@@ -412,17 +415,18 @@ int AnyServer::startupSupervisor () {
     while (! done) {
 
       // fork of the server
-      TRI_pid_t pid = fork();
+       childPid = fork();
+       LOG_INFO("starting up in supervisor mode %d", childPid);
 
-      if (pid < 0) {
+      if (childPid < 0) {
         TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
       }
 
       // parent
-      if (0 < pid) {
+      if (0 < childPid) {
 #ifndef _WIN32
     // ignore SIGHUP
-    signal(SIGHUP, ignoreHup);
+    signal(SIGHUP, forwardHup);
 #endif
 
         _applicationServer->setupLogging(false, true, true);
@@ -430,21 +434,21 @@ int AnyServer::startupSupervisor () {
         LOG_DEBUG("supervisor mode: within parent");
 
         int status;
-        waitpid(pid, &status, 0);
+        waitpid(childPid, &status, 0);
         bool horrible = true;
 
         if (WIFEXITED(status)) {
 
           // give information about cause of death
           if (WEXITSTATUS(status) == 0) {
-            LOG_INFO("child %d died of natural causes", (int) pid);
+            LOG_INFO("child %d died of natural causes", (int) childPid);
             done = true;
             horrible = false;
           }
           else {
             t = time(0) - startTime;
 
-            LOG_ERROR("child %d died a horrible death, exit status %d", (int) pid, (int) WEXITSTATUS(status));
+            LOG_ERROR("child %d died a horrible death, exit status %d", (int) childPid, (int) WEXITSTATUS(status));
 
             if (t < MIN_TIME_ALIVE_IN_SEC) {
               LOG_ERROR("child only survived for %d seconds, this will not work - please fix the error first", (int) t);
@@ -460,7 +464,7 @@ int AnyServer::startupSupervisor () {
             case 2:
             case 9:
             case 15:
-              LOG_INFO("child %d died of natural causes, exit status %d", (int) pid, (int) WTERMSIG(status));
+              LOG_INFO("child %d died of natural causes, exit status %d", (int) childPid, (int) WTERMSIG(status));
               done = true;
               horrible = false;
               break;
@@ -468,7 +472,7 @@ int AnyServer::startupSupervisor () {
             default:
               t = time(0) - startTime;
 
-              LOG_ERROR("child %d died a horrible death, signal %d", (int) pid, (int) WTERMSIG(status));
+              LOG_ERROR("child %d died a horrible death, signal %d", (int) childPid, (int) WTERMSIG(status));
 
               if (t < MIN_TIME_ALIVE_IN_SEC) {
                 LOG_ERROR("child only survived for %d seconds, this will not work - please fix the error first", (int) t);
@@ -476,7 +480,7 @@ int AnyServer::startupSupervisor () {
 
 #ifdef WCOREDUMP
                 if (WCOREDUMP(status)) {
-                  LOG_WARNING("child process %d produced a core dump", (int) pid);
+                  LOG_WARNING("child process %d produced a core dump", (int) childPid);
                 }
 #endif
               }
@@ -488,7 +492,7 @@ int AnyServer::startupSupervisor () {
           }
         }
         else {
-          LOG_ERROR("child %d died a horrible death, unknown cause", (int) pid);
+          LOG_ERROR("child %d died a horrible death, unknown cause", (int) childPid);
           done = false;
         }
 
