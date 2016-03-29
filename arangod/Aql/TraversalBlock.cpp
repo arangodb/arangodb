@@ -263,6 +263,10 @@ void TraversalBlock::executeFilterExpressions () {
 
 int TraversalBlock::initializeCursor (AqlItemBlock* items, 
                                       size_t pos) {
+  _pos = 0;
+  _posInPaths = 0;
+  _usedConstant = false;
+  freeCaches();
   return ExecutionBlock::initializeCursor(items, pos);
 }
 
@@ -409,7 +413,7 @@ AqlItemBlock* TraversalBlock::getSome (size_t, // atLeast,
     _pos = 0;           // this is in the first block
     executeFilterExpressions();
   }
-
+    
   // If we get here, we do have _buffer.front()
   AqlItemBlock* cur = _buffer.front();
   size_t const curRegs = cur->getNrRegs();
@@ -446,7 +450,7 @@ AqlItemBlock* TraversalBlock::getSome (size_t, // atLeast,
   // std::unique_ptr<AqlItemBlock> res(new AqlItemBlock(toSend, nrRegs));
   // automatically freed if we throw
   TRI_ASSERT(curRegs <= res->getNrRegs());
-  
+    
   // only copy 1st row of registers inherited from previous frame(s)
   inheritRegisters(cur, res.get(), _pos);
 
