@@ -168,7 +168,6 @@ Node& Node::root() {
     tmp = par;
     par = par->_parent;
   }
-  std::cout << par << std::endl;
   return *tmp;
 }
 
@@ -210,28 +209,26 @@ bool Node::applies (VPackSlice const& slice) {
           *this = slice.get("new");
           return true;
         } else if (oper == "increment") { // Increment
-          if (!(self.isInt() || self.isUInt())) {
-            LOG_TOPIC(WARN, Logger::AGENCY)
-              << "Element to increment must be integral type: We are "
-              << slice.toJson();
-            return false;
-          }
           Builder tmp;
-          tmp.add(Value(self.isInt() ? int64_t(self.getInt()+1) :
-                        uint64_t(self.getUInt()+1)));
-          *this = tmp.slice();
+          tmp.openObject();
+          try {
+            tmp.add("tmp", Value(self.getInt()+1));
+          } catch (std::exception const& e) {
+            tmp.add("tmp",Value(1));
+          }
+          tmp.close();
+          *this = tmp.slice().get("tmp");
           return true;
         } else if (oper == "decrement") { // Decrement
-          if (!(self.isInt() || self.isUInt())) {
-            LOG_TOPIC(WARN, Logger::AGENCY)
-              << "Element to decrement must be integral type. We are "
-              << slice.toJson();
-            return false;
-          }
           Builder tmp;
-          tmp.add(Value(self.isInt() ? int64_t(self.getInt()-1) :
-                        uint64_t(self.getUInt()-1)));
-          *this = tmp.slice();
+          tmp.openObject();
+          try {
+            tmp.add("tmp", Value(self.getInt()-1));
+          } catch (std::exception const& e) {
+            tmp.add("tmp",Value(-1));
+          }
+          tmp.close();
+          *this = tmp.slice().get("tmp");
           return true;
         } else if (oper == "push") { // Push
           if (!slice.hasKey("new")) {
@@ -333,7 +330,7 @@ void Node::toBuilder (Builder& builder) const {
       builder.add(slice());
     }
   } catch (std::exception const& e) {
-    std::cout << e.what() << std::endl;
+    LOG(FATAL) << e.what();
   }
   
 }
