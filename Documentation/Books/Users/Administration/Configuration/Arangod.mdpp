@@ -245,8 +245,11 @@ The following variants are available:
 - 2: SSLv23
 - 3: SSLv3
 - 4: TLSv1
+- 5: TLSv1.2 (recommended)
 
-The default *value* is 4 (i.e. TLSv1).
+The default *value* is 4 (i.e. TLSv1). If available, set it to 5
+(i.e. TLSv1.2), because lower protocol versions are known to be vulnerable
+to POODLE attack variants.
 
 **Note**: this option is only relevant if at least one SSL endpoint is used.
 
