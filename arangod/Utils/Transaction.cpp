@@ -98,6 +98,29 @@ static bool indexSupportsSort(Index const* idx, arangodb::aql::Variable const* r
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Return an Operation Result that parses the error information returned
+///        by the DBServer.
+///        If information is not parseable it will return INTERNAL_ERROR
+////////////////////////////////////////////////////////////////////////////////
+
+static OperationResult DBServerResponseBad(std::string const& resultBody) {
+  // The body contains more information so we parse it.
+  VPackParser parser;
+  try {
+    parser.parse(resultBody);
+    std::shared_ptr<VPackBuilder> bui = parser.steal();
+    VPackSlice res = bui->slice();
+    return OperationResult(
+        arangodb::basics::VelocyPackHelper::getNumericValue<uint64_t>(
+            res, "errorNum", TRI_ERROR_INTERNAL),
+        arangodb::basics::VelocyPackHelper::getStringValue(
+            res, "errorMessage", "JSON sent to DBserver was bad"));
+  } catch (...) {
+    return OperationResult(TRI_ERROR_INTERNAL, "JSON sent to DBserver was bad");
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief sort ORs for the same attribute so they are in ascending value
 /// order. this will only work if the condition is for a single attribute
 /// the usedIndexes vector may also be re-sorted
@@ -1147,8 +1170,7 @@ OperationResult Transaction::insertCoordinator(std::string const& collectionName
         auto buf = bui->steal();
         return OperationResult(buf, nullptr, "", TRI_ERROR_NO_ERROR, 
             responseCode == arangodb::rest::HttpResponse::CREATED);
-      }
-      catch (VPackException& e) {
+      } catch (VPackException& e) {
         std::string message = "JSON from DBserver not parseable: "
                               + resultBody + ":" + e.what();
         return OperationResult(TRI_ERROR_INTERNAL, message);
@@ -1156,8 +1178,7 @@ OperationResult Transaction::insertCoordinator(std::string const& collectionName
     } else if (responseCode == arangodb::rest::HttpResponse::PRECONDITION_FAILED) {
       return OperationResult(TRI_ERROR_ARANGO_CONFLICT);
     } else if (responseCode == arangodb::rest::HttpResponse::BAD) {
-      return OperationResult(TRI_ERROR_INTERNAL,
-                             "JSON sent to DBserver was bad");
+      return DBServerResponseBad(resultBody);
     } else if (responseCode == arangodb::rest::HttpResponse::NOT_FOUND) {
       return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     } else {
@@ -1307,10 +1328,9 @@ OperationResult Transaction::updateCoordinator(std::string const& collectionName
         return OperationResult(TRI_ERROR_INTERNAL, message);
       }
     } else if (responseCode == arangodb::rest::HttpResponse::BAD) {
-      return OperationResult(TRI_ERROR_INTERNAL,
-                             "JSON sent to DBserver was bad");
+      return DBServerResponseBad(resultBody);
     } else if (responseCode == arangodb::rest::HttpResponse::NOT_FOUND) {
-      return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     } else {
       return OperationResult(TRI_ERROR_INTERNAL);
     }
@@ -1395,10 +1415,9 @@ OperationResult Transaction::replaceCoordinator(std::string const& collectionNam
         return OperationResult(TRI_ERROR_INTERNAL, message);
       }
     } else if (responseCode == arangodb::rest::HttpResponse::BAD) {
-      return OperationResult(TRI_ERROR_INTERNAL,
-                             "JSON sent to DBserver was bad");
+      return DBServerResponseBad(resultBody);
     } else if (responseCode == arangodb::rest::HttpResponse::NOT_FOUND) {
-      return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     } else {
       return OperationResult(TRI_ERROR_INTERNAL);
     }
@@ -1565,8 +1584,7 @@ OperationResult Transaction::removeCoordinator(std::string const& collectionName
         return OperationResult(TRI_ERROR_INTERNAL, message);
       }
     } else if (responseCode == arangodb::rest::HttpResponse::BAD) {
-      return OperationResult(TRI_ERROR_INTERNAL,
-                             "JSON sent to DBserver was bad");
+      return DBServerResponseBad(resultBody);
     } else if (responseCode == arangodb::rest::HttpResponse::NOT_FOUND) {
       return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     } else {

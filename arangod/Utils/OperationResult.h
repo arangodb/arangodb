@@ -80,7 +80,7 @@ struct OperationResult {
 
   // TODO: add a slice that points to either buffer or raw data
   std::shared_ptr<VPackBuffer<uint8_t>> buffer;
-  // TODO: add a shared pointer to the transaction context
+
   std::shared_ptr<VPackCustomTypeHandler> customTypeHandler;
   std::string errorMessage;
   int code;

@@ -1373,7 +1373,7 @@ int modifyDocumentOnCoordinator(
   // Some stuff to prepare cluster-internal requests:
   std::string revstr;
   if (rev != 0) {
-    revstr = "&rev=" + StringUtils::itoa(rev);
+    headers->emplace("if-match", StringUtils::itoa(rev));
   }
   arangodb::rest::HttpRequest::HttpRequestType reqType;
   if (isPatch) {
@@ -1416,7 +1416,8 @@ int modifyDocumentOnCoordinator(
     // Now we have to distinguish whether we still have to go the slow way:
     responseCode = static_cast<arangodb::rest::HttpResponse::HttpResponseCode>(
         res->result->getHttpReturnCode());
-    if (responseCode < arangodb::rest::HttpResponse::BAD) {
+    if (responseCode < arangodb::rest::HttpResponse::BAD ||
+        responseCode == arangodb::rest::HttpResponse::PRECONDITION_FAILED) {
       // OK, we are done, let's report:
       resultHeaders = res->result->getHeaderFields();
       resultBody.assign(res->result->getBody().c_str(),
