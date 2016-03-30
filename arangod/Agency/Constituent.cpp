@@ -203,14 +203,8 @@ void Constituent::callElection() {
     LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
   }
   _cast = true;
-<<<<<<< HEAD
   if(_role == CANDIDATE)
     this->term(_term+1);            // raise my term
-=======
-  if(_role == CANDIDATE){
-    this->term(_term+1); // raise my term if turned candidate
-  }
->>>>>>> 0e49485c73a4da1a638cc4082d0d23e4d77a027d
   
   std::string body;
   std::vector<ClusterCommResult> results(_agent->config().end_points.size());
