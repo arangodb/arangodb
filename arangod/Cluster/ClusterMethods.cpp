@@ -187,7 +187,7 @@ bool shardKeysChanged(std::string const& dbname, std::string const& collname,
       n = nullValue;
     }
 
-    if (! n.equals(o)) {
+    if (arangodb::basics::VelocyPackHelper::compare(n, o, false) != 0) {
       return true;
     }
   }
