@@ -659,7 +659,7 @@ int deleteDocumentOnCoordinator(
   // Some stuff to prepare cluster-intern requests:
   std::string revstr;
   if (rev != 0) {
-    revstr = "&rev=" + StringUtils::itoa(rev);
+    headers->emplace("if-match", StringUtils::itoa(rev));
   }
 
   if (usesDefaultShardingAttributes) {
@@ -825,7 +825,7 @@ int getDocumentOnCoordinator(
   // Some stuff to prepare cluster-intern requests:
   std::string revstr;
   if (rev != 0) {
-    revstr = "?rev=" + StringUtils::itoa(rev);
+    headers->emplace("if-match", StringUtils::itoa(rev));
   }
   arangodb::rest::HttpRequest::HttpRequestType reqType;
   if (generateDocument) {
