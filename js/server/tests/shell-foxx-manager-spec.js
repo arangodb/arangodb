@@ -1,9 +1,7 @@
 /*global describe, beforeEach, afterEach, it, expect*/
 'use strict';
 
-var _ = require("underscore");
 var FoxxManager = require("org/arangodb/foxx/manager");
-var arangodb = require("org/arangodb");
 var fs = require("fs");
 var internal = require('internal');
 var basePath = fs.makeAbsolute(fs.join(internal.startupPath, "common", "test-data", "apps"));
