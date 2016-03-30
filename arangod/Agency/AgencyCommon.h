@@ -173,7 +173,6 @@ struct log_t {
   id_t         leaderId;
   buffer_t     entry;
   milliseconds timestamp;
-
   log_t (index_t idx, term_t t, id_t lid, buffer_t const& e) :
     index(idx), term(t), leaderId(lid), entry(e), timestamp (
       duration_cast<milliseconds>(system_clock::now().time_since_epoch())) {}

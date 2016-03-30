@@ -33,6 +33,7 @@
 #include <velocypack/vpack.h>
 
 #include <cstdint>
+#include <deque>
 #include <functional>
 
 
@@ -101,7 +102,7 @@ public:
 
 
   /// @brief Load persisted data from above or start with empty log
-  bool load ();
+  bool loadCollections ();
 
   /// @brief Pipe to ostream
   friend std::ostream& operator<< (std::ostream& os, State const& s) {
@@ -117,25 +118,29 @@ private:
   
 
   /// @brief Save currentTerm, votedFor, log entries
-  bool save (arangodb::velocypack::Slice const&, index_t, term_t,
-             double timeout = 0.0);
+  bool persist (index_t index, term_t term, id_t lid,
+                arangodb::velocypack::Slice const& entry);
 
   /// @brief Load collection from persistent store
   bool loadCollection (std::string const& name);
 
-  /// @brief Check database 
+  /// @brief Check collections
   bool checkCollections();
 
   /// @brief Check collection sanity
   bool checkCollection(std::string const& name);
 
+  /// @brief Create collections
+  bool createCollections();
+
   /// @brief Create collection
   bool createCollection(std::string const& name);
 
   mutable arangodb::Mutex _logLock;  /**< @brief Mutex for modifying _log */
-  std::vector<log_t> _log;           /**< @brief  State entries */
+  std::deque<log_t> _log;           /**< @brief  State entries */
   std::string _end_point;            /**< @brief persistence end point */
   bool _collections_checked;                 /**< @brief Collections checked */
+  bool _collections_loaded;
   
 };
 
