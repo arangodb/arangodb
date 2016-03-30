@@ -1044,6 +1044,10 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
     options = {};
   }
 
+  if (ignoreRevs) {
+    delete id._rev;
+  }
+
   var url;
 
   var body = "";

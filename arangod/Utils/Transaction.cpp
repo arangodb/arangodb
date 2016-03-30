@@ -1180,6 +1180,8 @@ OperationResult Transaction::insertCoordinator(std::string const& collectionName
       return DBServerResponseBad(resultBody);
     } else if (responseCode == arangodb::rest::HttpResponse::NOT_FOUND) {
       return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    } else if (responseCode == arangodb::rest::HttpResponse::CONFLICT) {
+      return OperationResult(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
     } else {
       return OperationResult(TRI_ERROR_INTERNAL);
     }
@@ -1559,7 +1561,10 @@ OperationResult Transaction::removeCoordinator(std::string const& collectionName
   if (key.empty()) {
     return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   }
-  TRI_voc_rid_t expectedRevision = TRI_ExtractRevisionId(value);
+  TRI_voc_rid_t expectedRevision = 0;
+  if (!options.ignoreRevs) {
+    expectedRevision = TRI_ExtractRevisionId(value);
+  }
 
   int res = arangodb::deleteDocumentOnCoordinator(
       _vocbase->_name, collectionName, key, expectedRevision,
