@@ -2,7 +2,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2015-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,31 +21,42 @@
 /// @author Alan Plum
 ////////////////////////////////////////////////////////////////////////////////
 
-const crypto = require('@arangodb/crypto');
+const arangodb = require('@arangodb');
+const NOT_FOUND = arangodb.errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code;
+const db = arangodb.db;
 
-module.exports = function jwtStorage(cfg) {
-  if (typeof cfg === 'string') {
-    cfg = {secret: cfg};
+
+module.exports = function collectionStorage(cfg) {
+  if (typeof cfg === 'string' || cfg.isArangoCollection) {
+    cfg = {collection: cfg};
   }
   if (!cfg) {
     cfg = {};
   }
-  const expiry = (cfg.expiry || 60) * 60 * 1000;
+  const collection = (
+    typeof cfg.collection === 'string'
+    ? db._collection(cfg.collection)
+    : cfg.collection
+  );
   return {
     fromClient(sid) {
-      const session = crypto.jwtDecode(cfg.secret, sid, cfg.verify === false);
-      if (session.exp < Date.now()) {
-        return null;
+      try {
+        return collection.document(sid);
+      } catch (e) {
+        if (e.isArangoError && e.errorNum === NOT_FOUND) {
+          return null;
+        }
+        throw e;
       }
-      return session.payload;
     },
-    forClient(payload) {
-      const session = {
-        payload: payload,
-        exp: Date.now() + expiry,
-        iat: Date.now()
-      };
-      return crypto.jwtEncode(cfg.secret, session, cfg.algorithm);
+    forClient(session) {
+      const key = session._key;
+      if (!key) {
+        const meta = collection.save(session);
+        return meta._key;
+      }
+      collection.replace(key, session);
+      return key;
     },
     new() {
       return {};
