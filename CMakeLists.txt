@@ -679,7 +679,7 @@ if (USE_MAINTAINER_MODE)
       OUTPUT
         ${CMAKE_SOURCE_DIR}/${m}
       COMMAND
-        ./utils/generateMimetypes.sh ./${MIMETYPES_DAT} ./${m}
+        PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE} ./utils/generateMimetypes.sh ./${MIMETYPES_DAT} ./${m}
       DEPENDS
         ${CMAKE_SOURCE_DIR}/${MIMETYPES_DAT}
       WORKING_DIRECTORY
