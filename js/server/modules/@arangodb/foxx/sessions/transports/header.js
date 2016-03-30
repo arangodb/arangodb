@@ -2,7 +2,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2015-2016 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,16 +21,19 @@
 /// @author Alan Plum
 ////////////////////////////////////////////////////////////////////////////////
 
-module.exports = function headerTransport(name) {
-  if (!name) {
-    name = 'X-Session-Id';
+module.exports = function headerTransport(cfg) {
+  if (!cfg) {
+    cfg = 'X-Session-Id';
+  }
+  if (typeof cfg === 'string') {
+    cfg = {name: cfg};
   }
   return {
     get(req) {
-      return req.headers[name.toLowerCase()];
+      return req.headers[cfg.name.toLowerCase()];
     },
     set(res, value) {
-      res.set(name, value);
+      res.set(cfg.name, value);
     }
   };
 };
