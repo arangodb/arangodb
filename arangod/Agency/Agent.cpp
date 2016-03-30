@@ -242,6 +242,7 @@ bool Agent::load () {
   LOG_TOPIC(INFO, Logger::AGENCY) << "Loading persistent state.";
   if (!_state.loadCollections())
     LOG(FATAL) << "Failed to load persistent state on statup.";
+  _spearhead.apply(_state.slices(_last_commit_index+1));
   return true;
 }
 
