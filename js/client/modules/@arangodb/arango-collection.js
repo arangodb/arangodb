@@ -199,30 +199,21 @@ ArangoCollection.prototype._indexurl = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype._edgesQuery = function (vertex, direction) {
-  // if vertex is a list, iterator and concat
-  if (vertex instanceof Array) {
-    var edges = [];
-    var i;
-
-    for (i = 0;  i < vertex.length;  ++i) {
-      var e = this._edgesQuery(vertex[i], direction);
-
-      edges.push.apply(edges, e);
+  if (!(vertex instanceof Array)) {
+    vertex = [vertex];
+  }
+  vertex = vertex.map(function (v) {
+    if (v.hasOwnProperty("_id")) {
+      return v._id;
     }
-
-    return edges;
-  }
-
-  if (vertex.hasOwnProperty("_id")) {
-    vertex = vertex._id;
-  }
+    return v;
+  });
 
   // get the edges
   var url = "/_api/edges/" + encodeURIComponent(this.name())
-            + "?vertex=" + encodeURIComponent(vertex)
-            + (direction ? "&direction=" + direction : "");
+            + (direction ? "?direction=" + direction : "");
 
-  var requestResult = this._database._connection.GET(this._prefixurl(url));
+  var requestResult = this._database._connection.POST(this._prefixurl(url), JSON.stringify(vertex));
 
   arangosh.checkRequestResult(requestResult);
 

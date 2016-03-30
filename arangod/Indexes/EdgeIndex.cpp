@@ -348,6 +348,61 @@ void EdgeIndex::buildSearchValue(TRI_edge_direction_e dir,
   builder.close();
 }
 
+void EdgeIndex::buildSearchValueFromArray(TRI_edge_direction_e dir,
+                                          VPackSlice const ids,
+                                          VPackBuilder& builder) {
+  TRI_ASSERT(ids.isArray());
+  builder.openArray();
+  switch (dir) {
+    case TRI_EDGE_OUT:
+      builder.openArray();
+      for (auto const& id : VPackArrayIterator(ids)) {
+        if (id.isString()) {
+          builder.openObject();
+          builder.add(TRI_SLICE_KEY_EQUAL, id);
+          builder.close();
+        }
+      }
+      builder.close();
+      builder.add(VPackValue(VPackValueType::Null));
+      break;
+    case TRI_EDGE_IN:
+      builder.add(VPackValue(VPackValueType::Null));
+      builder.openArray();
+      for (auto const& id : VPackArrayIterator(ids)) {
+        if (id.isString()) {
+          builder.openObject();
+          builder.add(TRI_SLICE_KEY_EQUAL, id);
+          builder.close();
+        }
+      }
+      builder.close();
+      break;
+    case TRI_EDGE_ANY:
+      builder.openArray();
+      for (auto const& id : VPackArrayIterator(ids)) {
+        if (id.isString()) {
+          builder.openObject();
+          builder.add(TRI_SLICE_KEY_EQUAL, id);
+          builder.close();
+        }
+      }
+      builder.close();
+      builder.openArray();
+      for (auto const& id : VPackArrayIterator(ids)) {
+        if (id.isString()) {
+          builder.openObject();
+          builder.add(TRI_SLICE_KEY_EQUAL, id);
+          builder.close();
+        }
+      }
+      builder.close();
+  }
+  builder.close();
+}
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a selectivity estimate for the index
 ////////////////////////////////////////////////////////////////////////////////

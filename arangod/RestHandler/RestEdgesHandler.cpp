@@ -80,6 +80,63 @@ HttpHandler::status_t RestEdgesHandler::execute() {
   return status_t(HANDLER_DONE);
 }
 
+bool RestEdgesHandler::getEdgesForVertexList(
+    VPackSlice const ids,
+    std::vector<traverser::TraverserExpression*> const& expressions,
+    TRI_edge_direction_e direction, SingleCollectionTransaction& trx,
+    VPackBuilder& result, size_t& scannedIndex, size_t& filtered) {
+  TRI_ASSERT(ids.isArray());
+  trx.orderDitch(trx.cid()); // will throw when it fails
+    
+  std::string const collectionName 
+      = trx.resolver()->getCollectionName(trx.cid());
+  Transaction::IndexHandle indexId = trx.edgeIndexHandle(collectionName);
+  
+  VPackBuilder searchValueBuilder;
+  EdgeIndex::buildSearchValueFromArray(direction, ids, searchValueBuilder);
+  VPackSlice search = searchValueBuilder.slice();
+  
+  std::shared_ptr<OperationCursor> cursor = trx.indexScan(
+      collectionName, arangodb::Transaction::CursorType::INDEX, indexId,
+      search, 0, UINT64_MAX, 1000, false);
+  if (cursor->failed()) {
+    THROW_ARANGO_EXCEPTION(cursor->code);
+  }
+  
+  auto opRes = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
+  while (cursor->hasMore()) {
+    cursor->getMore(opRes);
+    if (opRes->failed()) {
+      THROW_ARANGO_EXCEPTION(opRes->code);
+    }
+    VPackSlice edges = opRes->slice();
+    TRI_ASSERT(edges.isArray());
+
+    // generate result
+    scannedIndex += edges.length();
+
+    for (auto const& edge : VPackArrayIterator(edges)) {
+      bool add = true;
+      if (!expressions.empty()) {
+        for (auto& exp : expressions) {
+          if (exp->isEdgeAccess &&
+              !exp->matchesCheck(&trx, edge)) {
+            ++filtered;
+            add = false;
+            break;
+          }
+        }
+      }
+
+      if (add) {
+        result.add(edge);
+      }
+    }
+  }
+
+  return true;
+}
+
 bool RestEdgesHandler::getEdgesForVertex(
     std::string const& id,
     std::vector<traverser::TraverserExpression*> const& expressions,
@@ -202,7 +259,6 @@ bool RestEdgesHandler::readEdges(
     std::string contentType;
     arangodb::basics::Json resultDocument(arangodb::basics::Json::Object, 3);
 
-#warning TODO: use vpack
     int res = getFilteredEdgesOnCoordinator(
         _vocbase->_name, collectionName, vertexString, direction, expressions,
         responseCode, contentType, resultDocument);
@@ -382,16 +438,13 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   resultBuilder.add(VPackValue("edges")); // only key 
   resultBuilder.openArray();
 
-  for (auto const& vertexSlice : VPackArrayIterator(body)) {
-    if (vertexSlice.isString()) {
-      std::string vertex = vertexSlice.copyString();
-      bool ok = getEdgesForVertex(vertex, expressions, direction, trx,
+  bool ok = getEdgesForVertexList(body, expressions, direction, trx,
                                   resultBuilder, scannedIndex, filtered);
-      if (!ok) {
-        // Ignore the error
-      }
-    }
+
+  if (!ok) {
+    // Ignore the error
   }
+
   resultBuilder.close();
 
   res = trx.finish(res);
@@ -409,7 +462,8 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   resultBuilder.close(); 
 
   // and generate a response
-  generateResult(HttpResponse::HttpResponseCode::OK, resultBuilder.slice());
+  generateResult(HttpResponse::HttpResponseCode::OK, resultBuilder.slice(),
+                 trx.transactionContext());
 
   return true;
 }

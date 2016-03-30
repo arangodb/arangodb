@@ -74,6 +74,16 @@ class RestEdgesHandler : public RestVocbaseBaseHandler {
       std::vector<traverser::TraverserExpression*> const& expressions,
       TRI_edge_direction_e direction, SingleCollectionTransaction& trx,
       arangodb::velocypack::Builder&, size_t& scannedIndex, size_t& filtered);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get all edges for a list of vertices. Independent from the request
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool getEdgesForVertexList(
+      arangodb::velocypack::Slice const ids,
+      std::vector<traverser::TraverserExpression*> const& expressions,
+      TRI_edge_direction_e direction, SingleCollectionTransaction& trx,
+      arangodb::velocypack::Builder&, size_t& scannedIndex, size_t& filtered);
 };
 }
 
