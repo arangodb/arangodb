@@ -145,7 +145,7 @@ size_t Constituent::notifyAll () {
 
   // Body contains endpoints list
   Builder body;
-  body.add(VPackValue(VPackValueType::Object));
+  body.openObject();
   body.add("endpoints", VPackValue(VPackValueType::Array));
   for (auto const& i : end_points()) {
     body.add(Value(i));
@@ -154,7 +154,7 @@ size_t Constituent::notifyAll () {
   body.close();
   
   // Send request to all but myself
-	for (id_t i = 0; i < size(); ++i) {
+  for (id_t i = 0; i < size(); ++i) {
     if (i != _id) {
       std::unique_ptr<std::map<std::string, std::string>> headerFields =
         std::make_unique<std::map<std::string, std::string> >();
@@ -163,7 +163,7 @@ size_t Constituent::notifyAll () {
         std::make_shared<std::string>(body.toString()), headerFields, nullptr,
         0.0, true);
     }
-	}
+  }
   
   return size()-1;
 }
@@ -203,18 +203,24 @@ void Constituent::callElection() {
     LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
   }
   _cast = true;
+<<<<<<< HEAD
   if(_role == CANDIDATE)
     this->term(_term+1);            // raise my term
+=======
+  if(_role == CANDIDATE){
+    this->term(_term+1); // raise my term if turned candidate
+  }
+>>>>>>> 0e49485c73a4da1a638cc4082d0d23e4d77a027d
   
   std::string body;
-	std::vector<ClusterCommResult> results(_agent->config().end_points.size());
+  std::vector<ClusterCommResult> results(_agent->config().end_points.size());
   std::stringstream path;
   
   path << "/_api/agency_priv/requestVote?term=" << _term << "&candidateId=" << _id
        << "&prevLogIndex=" << _agent->lastLog().index << "&prevLogTerm="
        << _agent->lastLog().term;
 
-	for (id_t i = 0; i < _agent->config().end_points.size(); ++i) { // Ask everyone for their vote
+  for (id_t i = 0; i < _agent->config().end_points.size(); ++i) { // Ask everyone for their vote
     if (i != _id && end_point(i) != "") {
       std::unique_ptr<std::map<std::string, std::string>> headerFields =
         std::make_unique<std::map<std::string, std::string> >();
@@ -223,14 +229,14 @@ void Constituent::callElection() {
         path.str(), std::make_shared<std::string>(body), headerFields, nullptr,
         _agent->config().min_ping, true);
     }
-	}
+  }
   
   std::this_thread::sleep_for(sleepFor(.5*_agent->config().min_ping, .8*_agent->config().min_ping)); // Wait timeout
   
-	for (id_t i = 0; i < _agent->config().end_points.size(); ++i) { // Collect votes
+  for (id_t i = 0; i < _agent->config().end_points.size(); ++i) { // Collect votes
     if (i != _id && end_point(i) != "") {
       ClusterCommResult res = arangodb::ClusterComm::instance()->
-	      enquire(results[i].operationID);
+        enquire(results[i].operationID);
       
       if (res.status == CL_COMM_SENT) { // Request successfully sent 
         res = arangodb::ClusterComm::instance()->wait("1", 1, results[i].operationID, "1");

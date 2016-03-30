@@ -168,7 +168,6 @@ protected:
   
 };
 
-
 /// @brief Key value tree 
 class Store : public Node, public arangodb::Thread {
   

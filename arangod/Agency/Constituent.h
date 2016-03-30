@@ -137,7 +137,7 @@ private:
   std::vector<bool>    _votes;        /**< @brief My list of votes cast in my favour*/
   Agent*               _agent;        /**< @brief My boss */
   id_t                 _voted_for;
-  
+
   arangodb::basics::ConditionVariable _cv;      // agency callbacks
 
 };
