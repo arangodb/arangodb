@@ -110,7 +110,7 @@
       this.aqlBuiltinFunctionsArray = this.aqlBuiltinFunctions.split('|');
     },
 
-    show: function(callbackSuccess, callbackCancel) {
+    show: function(callbackSuccess, callbackCancel, type) {
 
       this.callbackSuccess = callbackSuccess;
       this.callbackCancel = callbackCancel;
@@ -133,53 +133,89 @@
       $(this.el).html(this.template.render({}));
       $(this.el).show();
 
-      this.typeahead = $('#spotlight .typeahead').typeahead(
-        {
-          hint: true,
-          highlight: true,
-          minLength: 1
-        },
-        {
-          name: 'Functions',
-          source: this.substringMatcher(this.aqlBuiltinFunctionsArray),
-          limit: this.displayLimit,
-          templates: {
-            header: genHeader("Functions", "fa-code", "aql")
+      if (type === 'aql') {
+        this.typeahead = $('#spotlight .typeahead').typeahead(
+          {
+            hint: true,
+            highlight: true,
+            minLength: 1
+          },
+          {
+            name: 'Functions',
+            source: this.substringMatcher(this.aqlBuiltinFunctionsArray),
+            limit: this.displayLimit,
+            templates: {
+              header: genHeader("Functions", "fa-code", "aql")
+            }
+          },
+          {
+            name: 'Keywords',
+            source: this.substringMatcher(this.aqlKeywordsArray),
+            limit: this.displayLimit,
+            templates: {
+              header: genHeader("Keywords", "fa-code", "aql")
+            }
+          },
+          {
+            name: 'Documents',
+            source: this.substringMatcher(this.collections.doc),
+            limit: this.displayLimit,
+            templates: {
+              header: genHeader("Documents", "fa-file-text-o", "Collection")
+            }
+          },
+          {
+            name: 'Edges',
+            source: this.substringMatcher(this.collections.edge),
+            limit: this.displayLimit,
+            templates: {
+              header: genHeader("Edges", "fa-share-alt", "Collection")
+            }
+          },
+          {
+            name: 'System',
+            limit: this.displayLimit,
+            source: this.substringMatcher(this.collections.system),
+            templates: {
+              header: genHeader("System", "fa-cogs", "Collection")
+            }
           }
-        },
-        {
-          name: 'Keywords',
-          source: this.substringMatcher(this.aqlKeywordsArray),
-          limit: this.displayLimit,
-          templates: {
-            header: genHeader("Keywords", "fa-code", "aql")
+        );
+      }
+      else {
+        this.typeahead = $('#spotlight .typeahead').typeahead(
+          {
+            hint: true,
+            highlight: true,
+            minLength: 1
+          },
+          {
+            name: 'Documents',
+            source: this.substringMatcher(this.collections.doc),
+            limit: this.displayLimit,
+            templates: {
+              header: genHeader("Documents", "fa-file-text-o", "Collection")
+            }
+          },
+          {
+            name: 'Edges',
+            source: this.substringMatcher(this.collections.edge),
+            limit: this.displayLimit,
+            templates: {
+              header: genHeader("Edges", "fa-share-alt", "Collection")
+            }
+          },
+          {
+            name: 'System',
+            limit: this.displayLimit,
+            source: this.substringMatcher(this.collections.system),
+            templates: {
+              header: genHeader("System", "fa-cogs", "Collection")
+            }
           }
-        },
-        {
-          name: 'Documents',
-          source: this.substringMatcher(this.collections.doc),
-          limit: this.displayLimit,
-          templates: {
-            header: genHeader("Documents", "fa-file-text-o", "Collection")
-          }
-        },
-        {
-          name: 'Edges',
-          source: this.substringMatcher(this.collections.edge),
-          limit: this.displayLimit,
-          templates: {
-            header: genHeader("Edges", "fa-share-alt", "Collection")
-          }
-        },
-        {
-          name: 'System',
-          limit: this.displayLimit,
-          source: this.substringMatcher(this.collections.system),
-          templates: {
-            header: genHeader("System", "fa-cogs", "Collection")
-          }
-        }
-      );
+        );
+      }
+      
 
       $('#spotlight .typeahead').focus();
     },

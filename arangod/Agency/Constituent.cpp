@@ -66,7 +66,7 @@ Constituent::~Constituent() {
 
 duration_t Constituent::sleepFor (double min_t, double max_t) {
   dist_t dis(min_t, max_t);
-  return duration_t(dis(_gen));
+  return duration_t((long)std::round(dis(_gen)*1000.0));
 }
 
 term_t Constituent::term() const {

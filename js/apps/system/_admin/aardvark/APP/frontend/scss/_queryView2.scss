@@ -18,8 +18,10 @@
   }
 
   #arangoMyQueriesTable {
-    tr {
-      cursor: copy;
+    tbody {
+      tr {
+        cursor: copy;
+      }
     }
   }
 

@@ -899,6 +899,14 @@
 
     render: function() {
       $(this.el).html(this.template.render({}));
+
+      if (this.type === 2) {
+        this.type = "document";
+      }
+      else if (this.type === 3) {
+        this.type = "edge";
+      }
+
       this.tableView.setElement($(this.table)).drawLoading();
 
       this.collectionContext = this.collectionsStore.getPosition(

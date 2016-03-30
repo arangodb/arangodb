@@ -90,7 +90,7 @@ struct  constituent_t {                               // Constituent type
 
 typedef std::vector<constituent_t>    constituency_t; // Constituency type
 typedef uint32_t                      state_t;        // State type
-typedef std::chrono::duration<double> duration_t;     // Duration type
+typedef std::chrono::duration<long,std::ratio<1,1000>> duration_t;     // Duration type
 
 using query_t = std::shared_ptr<arangodb::velocypack::Builder>;
 
@@ -173,7 +173,6 @@ struct log_t {
   id_t         leaderId;
   buffer_t     entry;
   milliseconds timestamp;
-
   log_t (index_t idx, term_t t, id_t lid, buffer_t const& e) :
     index(idx), term(t), leaderId(lid), entry(e), timestamp (
       duration_cast<milliseconds>(system_clock::now().time_since_epoch())) {}
