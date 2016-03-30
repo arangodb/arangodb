@@ -1023,8 +1023,7 @@ OperationResult Transaction::documentCoordinator(std::string const& collectionNa
         auto buf = bui->steal();
         return OperationResult(buf, nullptr, "", 
             responseCode == arangodb::rest::HttpResponse::OK ?
-            TRI_ERROR_NO_ERROR : TRI_ERROR_ARANGO_CONFLICT, 
-            TRI_ERROR_NO_ERROR);
+            TRI_ERROR_NO_ERROR : TRI_ERROR_ARANGO_CONFLICT, false);
       }
       catch (VPackException& e) {
         std::string message = "JSON from DBserver not parseable: "
@@ -1576,7 +1575,12 @@ OperationResult Transaction::removeCoordinator(std::string const& collectionName
         parser.parse(resultBody);
         auto bui = parser.steal();
         auto buf = bui->steal();
-        return OperationResult(buf, nullptr, "", TRI_ERROR_NO_ERROR, true);
+        return OperationResult(
+            buf, nullptr, "",
+            responseCode == arangodb::rest::HttpResponse::PRECONDITION_FAILED
+                ? TRI_ERROR_ARANGO_CONFLICT
+                : TRI_ERROR_NO_ERROR,
+            responseCode != arangodb::rest::HttpResponse::ACCEPTED);
       }
       catch (VPackException& e) {
         std::string message = "JSON from DBserver not parseable: "
