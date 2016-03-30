@@ -183,8 +183,14 @@ HttpHandler::status_t RestAgencyHandler::handleConfig() {
 HttpHandler::status_t RestAgencyHandler::handleState() {
   Builder body;
   body.add(VPackValue(VPackValueType::Array));
-  for (auto const& i: _agent->state().slices())
-    body.add(i);
+  for (auto const& i: _agent->state().get()) {
+    body.add(VPackValue(VPackValueType::Object));
+    body.add("index", VPackValue(i.index));
+    body.add("term", VPackValue(i.term));
+    body.add("leader", VPackValue(i.leaderId));
+    body.add("query", VPackSlice(i.entry->data()));
+    body.close();
+  }
   body.close();
   generateResult(body.slice());
   return HttpHandler::status_t(HANDLER_DONE);
