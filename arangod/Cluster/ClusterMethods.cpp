@@ -657,7 +657,6 @@ int deleteDocumentOnCoordinator(
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   // Some stuff to prepare cluster-intern requests:
-  std::string revstr;
   if (rev != 0) {
     headers->emplace("if-match", StringUtils::itoa(rev));
   }
@@ -674,7 +673,7 @@ int deleteDocumentOnCoordinator(
         arangodb::rest::HttpRequest::HTTP_REQUEST_DELETE,
         "/_db/" + dbname + "/_api/document/" + StringUtils::urlEncode(shardID) +
             "/" + StringUtils::urlEncode(key) + "?waitForSync=" +
-            (waitForSync ? "true" : "false") + revstr,
+            (waitForSync ? "true" : "false"),
         "", *headers, 60.0);
     
     int error = handleGeneralCommErrors(res.get());
@@ -701,7 +700,7 @@ int deleteDocumentOnCoordinator(
                      "/_db/" + StringUtils::urlEncode(dbname) +
                          "/_api/document/" + StringUtils::urlEncode(p.first) +
                          "/" + StringUtils::urlEncode(key) + "?waitForSync=" +
-                         (waitForSync ? "true" : "false") + revstr,
+                         (waitForSync ? "true" : "false"),
                      std::shared_ptr<std::string const>(), headersCopy, nullptr,
                      60.0);
   }
