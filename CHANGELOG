@@ -1,5 +1,6 @@
 v2.8.7 (XXXX-XX-XX)
 -------------------
+* fix removal of temporary directories on arangosh exit
 
 * javadoc-style comments in Foxx services are no longer interpreted as
   Foxx comments outside of controller/script/exports files (#1748)

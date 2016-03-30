@@ -169,12 +169,13 @@ ArangoClient::ArangoClient (char const* appName)
   TRI_SetApplicationName(appName);
   std::string p = TRI_GetTempPath();
 
-  if (p.empty()) {
+  if (!p.empty()) {
     _tempPath = p;
   }
 }
 
 ArangoClient::~ArangoClient () {
+  TRI_RemoveEmptyDirectory(_tempPath.c_str());
   delete _endpointServer;
 }
 
