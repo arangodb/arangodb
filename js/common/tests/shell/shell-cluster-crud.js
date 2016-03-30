@@ -730,6 +730,7 @@ function ClusterCrudDeleteSuite () {
     // remove a non-existing revision
     old = c.save({ "a" : 1, "b" : "2", "c" : true, "d" : "test" });
     doc = c.update(old._key, { "foo" : "bar" });
+    assertTrue(old._rev != doc._rev);
 
     try {
       c.remove(old);
@@ -1049,7 +1050,12 @@ function ClusterCrudExistsSuite () {
     doc = c.update(old._key, { "a" : 1, "b" : "2", "c" : false });
     assertTrue(c.exists(old._id));
     assertTrue(c.exists(old._key));
-    assertFalse(c.exists(old));
+    try {
+      c.exists(old);
+      fail();
+    } catch (e) {
+      assertEqual(e.errorNum, ERRORS.ERROR_ARANGO_CONFLICT.code);
+    }
 
     // fetch after deletion
     c.remove(doc);
