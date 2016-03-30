@@ -3437,10 +3437,10 @@ int TRI_document_collection_t::update(Transaction* trx,
  
       if (ServerState::instance()->isDBServer()) {
         // Need to check that no sharding keys have changed:
-        if (arangodb::shardKeysChanged(_vocbase->_name,
-                                       _info.name(),
-                                       VPackSlice(oldHeader->vpack()),
-                                       builder->slice(), false)) {
+        if (arangodb::shardKeysChanged(
+                _vocbase->_name,
+                trx->resolver()->getCollectionNameCluster(_info.planId()),
+                VPackSlice(oldHeader->vpack()), builder->slice(), false)) {
           return TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES;
         }
       }
@@ -3566,10 +3566,10 @@ int TRI_document_collection_t::replace(Transaction* trx,
 
     if (ServerState::instance()->isDBServer()) {
       // Need to check that no sharding keys have changed:
-      if (arangodb::shardKeysChanged(_vocbase->_name,
-                                     _info.name(),
-                                     VPackSlice(oldHeader->vpack()),
-                                     builder->slice(), false)) {
+      if (arangodb::shardKeysChanged(
+              _vocbase->_name,
+              trx->resolver()->getCollectionNameCluster(_info.planId()),
+              VPackSlice(oldHeader->vpack()), builder->slice(), false)) {
         return TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES;
       }
     }
