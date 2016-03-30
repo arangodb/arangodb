@@ -54,11 +54,11 @@ std::vector<std::string> split(const std::string& value, char separator) {
   return result;
 }
 
-Node::Node (std::string const& name) : _parent(nullptr), _name(name) {
+Node::Node (std::string const& name) : _parent(nullptr), _node_name(name) {
   _value.clear();
 }
 Node::Node (std::string const& name, Node* parent) :
-  _parent(parent), _name(name) {
+  _parent(parent), _node_name(name) {
   _value.clear();
 }
 
@@ -69,7 +69,7 @@ Slice Node::slice() const {
     Slice("\x00a",&Options::Defaults):Slice(_value.data());
 }
 
-std::string const& Node::name() const {return _name;}
+std::string const& Node::name() const {return _node_name;}
 
 Node& Node::operator= (Slice const& slice) { // Assign value (become leaf)
   _children.clear();
@@ -79,7 +79,7 @@ Node& Node::operator= (Slice const& slice) { // Assign value (become leaf)
 }
 
 Node& Node::operator= (Node const& node) { // Assign node
-  _name = node._name;
+  _node_name = node._node_name;
   _type = node._type;
   _value = node._value;
   _children = node._children;
@@ -107,7 +107,7 @@ bool Node::remove (std::string const& path) {
 
 bool Node::remove () {
   Node& parent = *_parent;
-  return parent.removeChild(_name);
+  return parent.removeChild(_node_name);
 }
 
 bool Node::removeChild (std::string const& key) {
@@ -178,7 +178,7 @@ ValueType Node::valueType() const {
 bool Node::addTimeToLive (long millis) {
   root()._time_table[
     std::chrono::system_clock::now() + std::chrono::milliseconds(millis)] =
-    _parent->_children[_name];
+    _parent->_children[_node_name];
   return true;
 }
 
@@ -196,7 +196,7 @@ bool Node::applies (VPackSlice const& slice) {
         oper = oper.substr(1,oper.length()-2);
         Slice const& self = this->slice();
         if (oper == "delete") {
-          return _parent->removeChild(_name);
+          return _parent->removeChild(_node_name);
         } else if (oper == "set") { //
           if (!slice.hasKey("new")) {
             LOG_TOPIC(WARN, Logger::AGENCY) << "Operator set without new value";
@@ -489,6 +489,8 @@ bool Store::read (VPackSlice const& query, Builder& ret) const {
 
 void Store::beginShutdown() {
   Thread::beginShutdown();
+  CONDITION_LOCKER(guard, _cv);
+  guard.broadcast();
 }
 
 void Store::clearTimeTable () {
@@ -500,6 +502,11 @@ void Store::clearTimeTable () {
       break;
     }
   }
+}
+
+bool Store::start () {
+  Thread::start();
+  return true;
 }
 
 void Store::run() {

@@ -54,21 +54,20 @@ bool State::persist (index_t index, term_t term, id_t lid,
   
   Builder body;
   body.add(VPackValue(VPackValueType::Object));
-  body.add("_key",Value(std::to_string(index)));
-  body.add("term",Value(term));
+  body.add("_key", Value(std::to_string(index)));
+  body.add("term", Value(term));
   body.add("leader", Value((uint32_t)lid));
-  body.add("request",entry[0]);
+  body.add("request", entry[0]);
   body.close();
   
   std::unique_ptr<arangodb::ClusterCommResult> res = 
     arangodb::ClusterComm::instance()->syncRequest (
       "1", 1, _end_point, HttpRequest::HTTP_REQUEST_POST, path,
       body.toJson(), headerFields, 0.0);
-
   
   if (res->status != CL_COMM_SENT) {
-    LOG_TOPIC(WARN, Logger::AGENCY) << res->status << ": " << CL_COMM_SENT << ", " << res->errorMessage;
-    LOG_TOPIC(WARN, Logger::AGENCY) << res->result->getBodyVelocyPack()->toJson();
+    LOG_TOPIC(ERR, Logger::AGENCY) << res->status << ": " << CL_COMM_SENT << ", " << res->errorMessage;
+    LOG_TOPIC(ERR, Logger::AGENCY) << res->result->getBodyVelocyPack()->toJson();
   }
   
   return (res->status == CL_COMM_SENT); // TODO: More verbose result
@@ -97,7 +96,7 @@ std::vector<index_t> State::log (
       buf->append ((char const*)i[0].begin(), i[0].byteSize()); 
       idx[j] = _log.back().index+1;
       _log.push_back(log_t(idx[j], term, lid, buf)); // log to RAM
-      persist(idx[j], term, lid, i);                    // log to disk
+      persist(idx[j], term, lid, i);                 // log to disk
       ++j;
     }
   }
@@ -106,7 +105,7 @@ std::vector<index_t> State::log (
 
 //Follower
 #include <iostream>
-bool State::log (query_t const& queries, term_t term, id_t leaderId,
+bool State::log (query_t const& queries, term_t term, id_t lid,
                  index_t prevLogIndex, term_t prevLogTerm) { // TODO: Throw exc
   if (queries->slice().type() != VPackValueType::Array) {
     return false;
@@ -116,7 +115,7 @@ bool State::log (query_t const& queries, term_t term, id_t leaderId,
     try {
       std::shared_ptr<Buffer<uint8_t>> buf = std::make_shared<Buffer<uint8_t>>();
       buf->append ((char const*)i.get("query").begin(), i.get("query").byteSize());
-      _log.push_back(log_t(i.get("index").getUInt(), term, leaderId, buf));
+      _log.push_back(log_t(i.get("index").getUInt(), term, lid, buf));
     } catch (std::exception const& e) {
       LOG(FATAL) << e.what();
     }
