@@ -140,6 +140,13 @@ module.exports = class SyntheticRequest {
 
   // idiosyncratic
 
+  params(name) {
+    if (hasOwnProperty(this.pathParams, name)) {
+      return this.pathParams[name];
+    }
+    return this.queryParams[name];
+  }
+
   cookie(name, opts) {
     if (typeof opts === 'string') {
       opts = {secret: opts};
@@ -203,11 +210,7 @@ function extractServer(req, trustProxy) {
       port = match[2] ? Number(match[2]) : secure ? 443 : 80;
     }
   }
-  return {
-    protocol: protocol,
-    hostname: hostname,
-    port: port
-  };
+  return {protocol, hostname, port};
 }
 
 
@@ -226,9 +229,5 @@ function extractClient(req, trustProxy) {
       ip = tokens[0];
     }
   }
-  return {
-    ips: ips,
-    ip: ip,
-    port: port
-  };
+  return {ips, ip, port};
 }
