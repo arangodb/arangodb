@@ -1586,7 +1586,7 @@ OperationResult Transaction::removeCoordinator(std::string const& collectionName
     } else if (responseCode == arangodb::rest::HttpResponse::BAD) {
       return DBServerResponseBad(resultBody);
     } else if (responseCode == arangodb::rest::HttpResponse::NOT_FOUND) {
-      return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     } else {
       return OperationResult(TRI_ERROR_INTERNAL);
     }
