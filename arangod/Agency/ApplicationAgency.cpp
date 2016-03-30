@@ -89,6 +89,12 @@ bool ApplicationAgency::prepare() {
     return false;
   }
 
+  if (_agent_id >= _size) {
+    LOG_TOPIC(ERR, Logger::AGENCY) << "agency.id must not be larger than or "
+                                   << "equal to agency.size";
+    return false;
+  }
+
   if (_min_election_timeout <= 0.) {
     LOG_TOPIC(ERR, Logger::AGENCY)
       << "agency.election-timeout-min must not be negative!";

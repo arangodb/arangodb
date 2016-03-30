@@ -1867,7 +1867,7 @@ int ArangoServer::runServer(TRI_vocbase_t* vocbase) {
   waitForHeartbeat();
   HttpHandlerFactory::setMaintenance(false);
 
-  LOG(WARN) << "LOADING PERSISTENT AGENCY STATE";
+  // Loading ageny's persistent state
   if(_applicationAgency->agent()!=nullptr)
     _applicationAgency->agent()->load();
 

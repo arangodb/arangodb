@@ -121,6 +121,9 @@ public:
     return o;
   }
 
+  /// @brief Persist term
+  void persist (term_t, id_t);
+
   /// @brief State machine
   State const& state () const;
 

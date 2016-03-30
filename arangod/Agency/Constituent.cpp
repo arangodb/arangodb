@@ -74,10 +74,10 @@ term_t Constituent::term() const {
 }
 
 void Constituent::term(term_t t) {
-  if (t != _term) {
+  if (_term != t) {
     LOG_TOPIC(INFO, Logger::AGENCY) << "Updating term to " << t;
+    _agent->persist(_term = t, _leader_id);
   }
-  _term = t;
 }
 
 role_t Constituent::role () const {
@@ -169,22 +169,20 @@ size_t Constituent::notifyAll () {
 }
 
 bool Constituent::vote (
-  term_t term, id_t leaderId, index_t prevLogIndex, term_t prevLogTerm) {
- 	if (leaderId == _id) {       // Won't vote for myself should never happen.
-		return false;        // TODO: Assertion?
-	} else {
-	  if (term > _term || (_term==term&&_leader_id==leaderId)) {
-      this->term(term);
-      _cast = true;      // Note that I voted this time around.
-      _leader_id = leaderId;   // The guy I voted for I assume leader.
-      if (_role>FOLLOWER)
-        follow (_term);
-      _cv.signal();
-			return true;
-		} else {             // Myself running or leading
-			return false;
-		}
-	}
+  term_t term, id_t id, index_t prevLogIndex, term_t prevLogTerm) {
+  if (term > _term || (_term==term&&_leader_id==id)) {
+    this->term(term);
+    _cast = true;      // Note that I voted this time around.
+    _voted_for = id;   // The guy I voted for I assume leader.
+    _leader_id = id;
+    if (_role>FOLLOWER)
+      follow (_term);
+    _agent->persist(_term,_voted_for);
+    _cv.signal();
+    return true;
+  } else {             // Myself running or leading
+    return false;
+  }
 }
 
 void Constituent::gossip (const constituency_t& constituency) {
@@ -206,7 +204,7 @@ void Constituent::callElection() {
   }
   _cast = true;
   if(_role == CANDIDATE)
-    _term++;            // raise my term
+    this->term(_term+1);            // raise my term
   
   std::string body;
 	std::vector<ClusterCommResult> results(_agent->config().end_points.size());

@@ -115,7 +115,8 @@ public:
   }
 
 private:
-  
+
+  bool snapshot ();
 
   /// @brief Save currentTerm, votedFor, log entries
   bool persist (index_t index, term_t term, id_t lid,

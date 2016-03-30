@@ -62,6 +62,7 @@ bool Agent::start() {
   
   LOG_TOPIC(INFO, Logger::AGENCY) << "Starting spearhead worker.";
   _spearhead.start();
+  _read_db.start();
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Starting agency comm worker.";
   Thread::start();
@@ -104,6 +105,9 @@ id_t Agent::leaderID () const {
 
 bool Agent::leading() const {
   return _constituent.leading();
+}
+
+void Agent::persist(term_t t, id_t i) {
 }
 
 bool Agent::waitFor (index_t index, duration_t timeout) {
@@ -299,6 +303,7 @@ void Agent::beginShutdown() {
   Thread::beginShutdown();
   _constituent.beginShutdown();
   _spearhead.beginShutdown();
+  _read_db.beginShutdown();
   CONDITION_LOCKER(guard, _cv);
   guard.broadcast();
 }

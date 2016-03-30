@@ -27,6 +27,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include <chrono>
+#include <iomanip>
 #include <sstream>
 #include <thread>
 
@@ -54,7 +55,9 @@ bool State::persist (index_t index, term_t term, id_t lid,
   
   Builder body;
   body.add(VPackValue(VPackValueType::Object));
-  body.add("_key",Value(std::to_string(index)));
+  std::stringstream index_str;
+  index_str << std::setw(20) << std::setfill('0') << index;
+  body.add("_key",Value(index_str.str()));
   body.add("term",Value(term));
   body.add("leader", Value((uint32_t)lid));
   body.add("request",entry[0]);
@@ -210,11 +213,10 @@ bool State::loadCollections () {
   return true;
 }
 
-#include <thread>
-#include <chrono>
+
 
 bool State::loadCollection (std::string const& name) {
-
+  
   if (checkCollections()) {
 
     // Path
