@@ -112,6 +112,9 @@ inline HttpHandler::status_t RestAgencyHandler::handleWrite () {
         body.add("results", VPackValue(VPackValueType::Array));
         for (auto const& index : ret.indices) {
           body.add(VPackValue(index));
+          if (index == 0) {
+            errors++;
+          }
         }
         body.close();
 
@@ -157,7 +160,11 @@ inline HttpHandler::status_t RestAgencyHandler::handleRead () {
     read_ret_t ret = _agent->read (query);
 
     if (ret.accepted) { // I am leading
-      generateResult(ret.result->slice());
+      if (ret.success.size() == 1 && !ret.success.at(0)) {
+        generateResult(HttpResponse::I_AM_A_TEAPOT, ret.result->slice());
+      } else {
+        generateResult(ret.result->slice());
+      }
     } else {            // Redirect to leader
       redirectRequest(ret.redirect);
       return HttpHandler::status_t(HANDLER_DONE);
