@@ -150,7 +150,8 @@ static void CreateErrorObject(v8::Isolate* isolate, int errorNumber,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
-                               bool stripShebang, bool execute, bool useGlobalContext) {
+                               bool stripShebang, bool execute,
+                               bool useGlobalContext) {
   v8::HandleScope handleScope(isolate);
 
   size_t length;
@@ -180,8 +181,8 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
     char const* prologue = "(function() { ";
     char const* epilogue = "/* end-of-file */ })()";
 
-    char* contentWrapper = TRI_Concatenate3String(TRI_UNKNOWN_MEM_ZONE,
-                                                  prologue, content + bangOffset, epilogue);
+    char* contentWrapper = TRI_Concatenate3String(
+        TRI_UNKNOWN_MEM_ZONE, prologue, content + bangOffset, epilogue);
 
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
 
@@ -199,7 +200,8 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
   }
 
   v8::Handle<v8::String> name = TRI_V8_STRING(filename);
-  v8::Handle<v8::String> source = TRI_V8_PAIR_STRING(content + bangOffset, (int)length);
+  v8::Handle<v8::String> source =
+      TRI_V8_PAIR_STRING(content + bangOffset, (int)length);
 
   TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
 
@@ -242,7 +244,8 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool LoadJavaScriptDirectory(v8::Isolate* isolate, char const* path,
-                                    bool stripShebang, bool execute, bool useGlobalContext) {
+                                    bool stripShebang, bool execute,
+                                    bool useGlobalContext) {
   v8::HandleScope scope(isolate);
   bool result;
 
@@ -263,7 +266,8 @@ static bool LoadJavaScriptDirectory(v8::Isolate* isolate, char const* path,
 
     full = TRI_Concatenate2File(path, filename.c_str());
 
-    ok = LoadJavaScriptFile(isolate, full, stripShebang, execute, useGlobalContext);
+    ok = LoadJavaScriptFile(isolate, full, stripShebang, execute,
+                            useGlobalContext);
     TRI_FreeString(TRI_CORE_MEM_ZONE, full);
 
     result = result && ok;
@@ -623,7 +627,7 @@ static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   double timeout = 10.0;
   bool returnBodyAsBuffer = false;
   bool followRedirects = true;
-  HttpRequest::HttpRequestType method = HttpRequest::HTTP_REQUEST_GET;
+  GeneralRequest::RequestType method = GeneralRequest::RequestType::GET;
   bool returnBodyOnError = false;
   int maxRedirects = 5;
 
@@ -695,8 +699,8 @@ static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
           options->Get(TRI_V8_ASCII_STRING("maxRedirects")));
     }
 
-    if (!body.empty() && (method == HttpRequest::HTTP_REQUEST_GET ||
-                          method == HttpRequest::HTTP_REQUEST_HEAD)) {
+    if (!body.empty() && (method == GeneralRequest::RequestType::GET ||
+                          method == GeneralRequest::RequestType::HEAD)) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
           "should not provide a body value for this request method");
@@ -761,21 +765,18 @@ static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
         endpoint = endpoint + ":443";
       }
       endpoint = "ssl://" + endpoint;
-    }
-    else if (url.substr(0, 6) == "srv://") {
+    } else if (url.substr(0, 6) == "srv://") {
       size_t found = url.find('/', 6);
 
       relative = "/";
       if (found != std::string::npos) {
         relative.append(url.substr(found + 1));
         endpoint = url.substr(6, found - 6);
-      }
-      else {
+      } else {
         endpoint = url.substr(6);
       }
       endpoint = "srv://" + endpoint;
-    }
-    else if (! url.empty() && url[0] == '/') {
+    } else if (!url.empty() && url[0] == '/') {
       // relative URL. prefix it with last endpoint
       relative = url;
       url = lastEndpoint + url;
@@ -3834,8 +3835,8 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
 /// @brief reads a file into the current context
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExecuteGlobalJavaScriptFile(v8::Isolate* isolate,
-                                     char const* filename, bool stripShebang) {
+bool TRI_ExecuteGlobalJavaScriptFile(v8::Isolate* isolate, char const* filename,
+                                     bool stripShebang) {
   return LoadJavaScriptFile(isolate, filename, stripShebang, true, false);
 }
 
@@ -3913,8 +3914,7 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(
           return scope.Escape<v8::Value>(v8::Undefined(isolate));
         }
       }
-    }
-    else {
+    } else {
       LOG(ERR) << "no output function defined in Javascript context";
     }
   }

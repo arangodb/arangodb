@@ -53,9 +53,9 @@ RestSimpleHandler::RestSimpleHandler(
 
 HttpHandler::status_t RestSimpleHandler::execute() {
   // extract the request type
-  HttpRequest::HttpRequestType type = _request->requestType();
+  auto const type = _request->requestType();
 
-  if (type == HttpRequest::HTTP_REQUEST_PUT) {
+  if (type == GeneralRequest::RequestType::PUT) {
     bool parsingSuccess = true;
     std::shared_ptr<VPackBuilder> parsedBody =
         parseVelocyPackBody(&VPackOptions::Defaults, parsingSuccess);
@@ -72,14 +72,11 @@ HttpHandler::status_t RestSimpleHandler::execute() {
       return status_t(HANDLER_DONE);
     }
 
-    char const* prefix = _request->requestPath();
+    std::string const& prefix = _request->requestPath();
 
-    if (strcmp(prefix, RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH.c_str()) ==
-        0) {
+    if (prefix == RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH) {
       removeByKeys(body);
-    } else if (strcmp(prefix,
-                      RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH.c_str()) ==
-               0) {
+    } else if (prefix == RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH) {
       lookupByKeys(body);
     } else {
       generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR,

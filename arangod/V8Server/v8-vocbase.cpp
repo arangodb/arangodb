@@ -1474,7 +1474,7 @@ static void JS_QueriesCurrentAql(
 
     for (auto q : queries) {
       auto const&& timeString = TRI_StringTimeStamp(q.started);
-      auto const& queryState = q.queryState.substr(8, q.queryState.size()-9);
+      auto const& queryState = q.queryState.substr(8, q.queryState.size() - 9);
 
       v8::Handle<v8::Object> obj = v8::Object::New(isolate);
       obj->Set(TRI_V8_ASCII_STRING("id"), V8TickId(isolate, q.id));
@@ -1527,7 +1527,7 @@ static void JS_QueriesSlowAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     for (auto q : queries) {
       auto const&& timeString = TRI_StringTimeStamp(q.started);
-      auto const& queryState = q.queryState.substr(8, q.queryState.size()-9);
+      auto const& queryState = q.queryState.substr(8, q.queryState.size() - 9);
 
       v8::Handle<v8::Object> obj = v8::Object::New(isolate);
       obj->Set(TRI_V8_ASCII_STRING("id"), V8TickId(isolate, q.id));
@@ -2825,8 +2825,7 @@ static void ListDatabasesCoordinator(
         std::map<std::string, std::string> headers;
         headers["Authentication"] = TRI_ObjectToString(args[2]);
         auto res = cc->syncRequest(
-            "", 0, "server:" + sid,
-            arangodb::rest::HttpRequest::HTTP_REQUEST_GET,
+            "", 0, "server:" + sid, arangodb::GeneralRequest::RequestType::GET,
             "/_api/database/user", std::string(""), headers, 0.0);
 
         if (res->status == CL_COMM_SENT) {
@@ -3147,7 +3146,8 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_ASSERT(database != nullptr);
 
-  database->_deadlockDetector.enabled(!arangodb::ServerState::instance()->isRunningInCluster());
+  database->_deadlockDetector.enabled(
+      !arangodb::ServerState::instance()->isRunningInCluster());
 
   // copy users into context
   if (args.Length() >= 3 && args[2]->IsArray()) {
@@ -3327,22 +3327,12 @@ static void JS_ListEndpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
 
-  auto const& endpoints = s->getEndpoints();
-
   v8::Handle<v8::Array> result = v8::Array::New(isolate);
   uint32_t j = 0;
 
-  std::map<std::string, std::vector<std::string>>::const_iterator it;
-  for (it = endpoints.begin(); it != endpoints.end(); ++it) {
-    v8::Handle<v8::Array> dbNames = v8::Array::New(isolate);
-
-    for (uint32_t i = 0; i < (*it).second.size(); ++i) {
-      dbNames->Set(i, TRI_V8_STD_STRING((*it).second.at(i)));
-    }
-
+  for (auto const& it : s->getEndpoints()) {
     v8::Handle<v8::Object> item = v8::Object::New(isolate);
-    item->Set(TRI_V8_ASCII_STRING("endpoint"), TRI_V8_STD_STRING((*it).first));
-    item->Set(TRI_V8_ASCII_STRING("databases"), dbNames);
+    item->Set(TRI_V8_ASCII_STRING("endpoint"), TRI_V8_STD_STRING(it));
 
     result->Set(j++, item);
   }

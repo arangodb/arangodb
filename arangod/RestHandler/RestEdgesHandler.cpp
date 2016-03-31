@@ -42,37 +42,31 @@ RestEdgesHandler::RestEdgesHandler(HttpRequest* request)
 
 HttpHandler::status_t RestEdgesHandler::execute() {
   // extract the sub-request type
-  HttpRequest::HttpRequestType type = _request->requestType();
+  auto const type = _request->requestType();
 
   // execute one of the CRUD methods
   try {
     switch (type) {
-      case HttpRequest::HTTP_REQUEST_GET: {
+      case GeneralRequest::RequestType::GET: {
         std::vector<traverser::TraverserExpression*> empty;
         readEdges(empty);
         break;
       }
-      case HttpRequest::HTTP_REQUEST_PUT:
+      case GeneralRequest::RequestType::PUT:
         readFilteredEdges();
         break;
-      case HttpRequest::HTTP_REQUEST_POST:
+      case GeneralRequest::RequestType::POST:
         readEdgesForMultipleVertices();
         break;
-      case HttpRequest::HTTP_REQUEST_HEAD:
-      case HttpRequest::HTTP_REQUEST_DELETE:
-      case HttpRequest::HTTP_REQUEST_ILLEGAL:
-      default: {
+      default:
         generateNotImplemented("ILLEGAL " + EDGES_PATH);
         break;
-      }
     }
   } catch (arangodb::basics::Exception const& ex) {
     generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
-  }
-  catch (std::exception const& ex) {
+  } catch (std::exception const& ex) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
-  }
-  catch (...) {
+  } catch (...) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL);
   }
 
@@ -224,9 +218,9 @@ bool RestEdgesHandler::readEdges(
   }
 
   bool found;
-  char const* dir = _request->value("direction", found);
+  std::string dir = _request->value("direction", found);
 
-  if (!found || *dir == '\0') {
+  if (!found || dir.empty()) {
     dir = "any";
   }
 
@@ -245,9 +239,9 @@ bool RestEdgesHandler::readEdges(
     return false;
   }
 
-  char const* startVertex = _request->value("vertex", found);
+  std::string const& startVertex = _request->value("vertex", found);
 
-  if (!found || *startVertex == '\0') {
+  if (!found || startVertex.empty()) {
     generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
                   "illegal document handle");
     return false;
@@ -380,13 +374,12 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   }
 
   bool found;
-  char const* dir = _request->value("direction", found);
+  std::string dirString = _request->value("direction", found);
 
-  if (!found || *dir == '\0') {
-    dir = "any";
+  if (!found || dirString.empty()) {
+    dirString = "any";
   }
 
-  std::string dirString(dir);
   TRI_edge_direction_e direction;
 
   if (dirString == "any") {

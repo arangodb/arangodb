@@ -23,10 +23,6 @@
 
 #include "ArangoServer.h"
 
-#ifdef TRI_HAVE_SYS_WAIT_H
-#include <sys/wait.h>
-#endif
-
 #ifdef TRI_HAVE_SYS_PRCTL_H
 #include <sys/prctl.h>
 #endif
@@ -37,6 +33,7 @@
 
 #include "Actions/RestActionHandler.h"
 #include "Actions/actions.h"
+#include "Agency/Agent.h"
 #include "Agency/ApplicationAgency.h"
 #include "ApplicationServer/ApplicationServer.h"
 #include "Aql/Query.h"
@@ -135,8 +132,7 @@ static void CheckPidFile(std::string const& pidFile) {
       LOG(FATAL) << "pid-file '" << pidFile << "' is a directory";
       FATAL_ERROR_EXIT();
     } else if (FileUtils::exists(pidFile) && FileUtils::size(pidFile) > 0) {
-      LOG(INFO) << "pid-file '" << pidFile
-                << "' already exists, verifying pid";
+      LOG(INFO) << "pid-file '" << pidFile << "' already exists, verifying pid";
 
       std::ifstream f(pidFile.c_str());
 
@@ -153,7 +149,7 @@ static void CheckPidFile(std::string const& pidFile) {
 
         LOG(DEBUG) << "found old pid: " << oldPid;
 
-#ifdef TRI_HAVE_FORK
+#ifdef ARANGODB_HAVE_FORK
         int r = kill(oldPid, 0);
 #else
         int r = 0;  // TODO for windows use TerminateProcess
@@ -205,7 +201,7 @@ static void CheckPidFile(std::string const& pidFile) {
 /// @brief forks a new process
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_HAVE_FORK
+#ifdef ARANGODB_HAVE_FORK
 
 static int ForkProcess(std::string const& workingDirectory,
                        std::string& current) {
@@ -249,8 +245,8 @@ static int ForkProcess(std::string const& workingDirectory,
   // change the current working directory
   if (!workingDirectory.empty()) {
     if (!FileUtils::changeDirectory(workingDirectory)) {
-      LOG(FATAL) << "cannot change into working directory '"
-                 << workingDirectory << "'";
+      LOG(FATAL) << "cannot change into working directory '" << workingDirectory
+                 << "'";
       FATAL_ERROR_EXIT();
     } else {
       LOG(INFO) << "changed working directory for child process to '"
@@ -485,7 +481,7 @@ void ArangoServer::beginShutdown() {
 /// @brief starts a supervisor
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_HAVE_FORK
+#ifdef ARANGODB_HAVE_FORK
 
 int ArangoServer::startupSupervisor() {
   static time_t const MIN_TIME_ALIVE_IN_SEC = 30;
@@ -717,12 +713,14 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
       RestHandlerCreator<RestPleaseUpgradeHandler>::createNoData);
 
   // add "/agency" handler
-  factory->addPrefixHandler(RestVocbaseBaseHandler::AGENCY_PATH,
+  factory->addPrefixHandler(
+      RestVocbaseBaseHandler::AGENCY_PATH,
       RestHandlerCreator<RestAgencyHandler>::createData<consensus::Agent*>,
       _applicationAgency->agent());
 
   // add "/agency" handler
-  factory->addPrefixHandler(RestVocbaseBaseHandler::AGENCY_PRIV_PATH,
+  factory->addPrefixHandler(
+      RestVocbaseBaseHandler::AGENCY_PRIV_PATH,
       RestHandlerCreator<RestAgencyPrivHandler>::createData<consensus::Agent*>,
       _applicationAgency->agent());
 
@@ -856,54 +854,16 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
 /// reference-counter is increased by one
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_vocbase_t* LookupDatabaseFromRequest(
-    arangodb::rest::HttpRequest* request, TRI_server_t* server) {
-  // get the request endpoint
-  ConnectionInfo const& ci = request->connectionInfo();
-  std::string const& endpoint = ci.endpoint;
-
-  // get the databases mapped to the endpoint
-  ApplicationEndpointServer* s = static_cast<ApplicationEndpointServer*>(
-      server->_applicationEndpointServer);
-  std::vector<std::string> const& databases = s->getEndpointMapping(endpoint);
-
+static TRI_vocbase_t* LookupDatabaseFromRequest(arangodb::HttpRequest* request,
+                                                TRI_server_t* server) {
   // get database name from request
   std::string dbName = request->databaseName();
 
-  if (databases.empty()) {
-    // no databases defined. this means all databases are accessible via the
-    // endpoint
-
-    if (dbName.empty()) {
-      // if no databases was specified in the request, use system database name
-      // as a fallback
-      dbName = TRI_VOC_SYSTEM_DATABASE;
-      request->setDatabaseName(dbName);
-    }
-  } else {
-    // only some databases are allowed for this endpoint
-    if (dbName.empty()) {
-      // no specific database requested, so use first mapped database
-      TRI_ASSERT(!databases.empty());
-
-      dbName = databases[0];
-      request->setDatabaseName(dbName);
-    } else {
-      bool found = false;
-
-      for (size_t i = 0; i < databases.size(); ++i) {
-        if (dbName == databases[i]) {
-          request->setDatabaseName(dbName);
-          found = true;
-          break;
-        }
-      }
-
-      // requested database not found
-      if (!found) {
-        return nullptr;
-      }
-    }
+  if (dbName.empty()) {
+    // if no databases was specified in the request, use system database name
+    // as a fallback
+    dbName = TRI_VOC_SYSTEM_DATABASE;
+    request->setDatabaseName(dbName);
   }
 
   if (ServerState::instance()->isCoordinator()) {
@@ -917,8 +877,7 @@ static TRI_vocbase_t* LookupDatabaseFromRequest(
 /// @brief add the context to a request
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool SetRequestContext(arangodb::rest::HttpRequest* request,
-                              void* data) {
+static bool SetRequestContext(arangodb::HttpRequest* request, void* data) {
   TRI_server_t* server = static_cast<TRI_server_t*>(data);
   TRI_vocbase_t* vocbase = LookupDatabaseFromRequest(request, server);
 
@@ -1102,8 +1061,7 @@ void ArangoServer::buildApplicationServer() {
   // agency options
   // .............................................................................
 
-  _applicationAgency =
-      new ApplicationAgency();
+  _applicationAgency = new ApplicationAgency();
   _applicationServer->addFeature(_applicationAgency);
 
   // .............................................................................
@@ -1119,7 +1077,7 @@ void ArangoServer::buildApplicationServer() {
       "use HTTP authentication only for requests to /_api and /_admin")(
       "server.disable-authentication", &_disableAuthentication,
       "disable authentication for ALL client requests")
-#ifdef TRI_HAVE_LINUX_SOCKETS
+#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
       ("server.disable-authentication-unix-sockets",
        &_disableAuthenticationUnixSockets,
        "disable authentication for requests via UNIX domain sockets")
@@ -1807,7 +1765,7 @@ void ArangoServer::runStartupChecks() {
           LOG(FATAL)
               << "possibly incompatible CPU alignment settings found in '"
               << filename << "'. this may cause arangod to abort with "
-                                     "SIGBUS. please set the value in '"
+                             "SIGBUS. please set the value in '"
               << filename << "' to 2";
           FATAL_ERROR_EXIT();
         }
@@ -1992,8 +1950,8 @@ int ArangoServer::runScript(TRI_vocbase_t* vocbase) {
     {
       v8::Context::Scope contextScope(localContext);
       for (size_t i = 0; i < _scriptFile.size(); ++i) {
-        bool r =
-            TRI_ExecuteGlobalJavaScriptFile(isolate, _scriptFile[i].c_str(), true);
+        bool r = TRI_ExecuteGlobalJavaScriptFile(isolate,
+                                                 _scriptFile[i].c_str(), true);
 
         if (!r) {
           LOG(FATAL) << "cannot load script '" << _scriptFile[i]

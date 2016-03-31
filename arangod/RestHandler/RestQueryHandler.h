@@ -36,7 +36,7 @@ class ApplicationV8;
 
 class RestQueryHandler : public RestVocbaseBaseHandler {
  public:
-  RestQueryHandler(rest::HttpRequest*, ApplicationV8*);
+  RestQueryHandler(HttpRequest*, ApplicationV8*);
 
  public:
   bool isDirect() const override;

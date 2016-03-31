@@ -23,54 +23,49 @@
 
 #include "Endpoint.h"
 
-#include "Logger/Logger.h"
-#include "Basics/socket-utils.h"
 #include "Basics/StringUtils.h"
+#include "Basics/socket-utils.h"
+#include "Endpoint/EndpointIpV4.h"
+#include "Endpoint/EndpointIpV6.h"
+#include "Endpoint/EndpointSrv.h"
+#include "Logger/Logger.h"
 
-#if TRI_HAVE_LINUX_SOCKETS
-#include "Rest/EndpointUnixDomain.h"
+#if ARANGODB_HAVE_DOMAIN_SOCKETS
+#include "Endpoint/EndpointUnixDomain.h"
 #endif
-#include "Rest/EndpointIpV4.h"
-#include "Rest/EndpointIpV6.h"
-#include "Rest/EndpointSrv.h"
 
+using namespace arangodb;
 using namespace arangodb::basics;
-using namespace arangodb::rest;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create an endpoint
-////////////////////////////////////////////////////////////////////////////////
-
-Endpoint::Endpoint(Endpoint::EndpointType type, Endpoint::DomainType domainType,
-                   Endpoint::EncryptionType encryption,
+Endpoint::Endpoint(DomainType domainType, EndpointType type,
+                   TransportType transport, EncryptionType encryption,
                    std::string const& specification, int listenBacklog)
-    : _connected(false),
+    : _domainType(domainType),
       _type(type),
-      _domainType(domainType),
+      _transport(transport),
       _encryption(encryption),
       _specification(specification),
-      _listenBacklog(listenBacklog) {
+      _listenBacklog(listenBacklog),
+      _connected(false) {
   TRI_invalidatesocket(&_socket);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy an endpoint
-////////////////////////////////////////////////////////////////////////////////
-
-Endpoint::~Endpoint() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the endpoint specification in a unified form
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string Endpoint::getUnifiedForm(std::string const& specification) {
+std::string Endpoint::unifiedForm(std::string const& specification) {
+  static std::string illegal;
+
   if (specification.size() < 7) {
-    return "";
+    return illegal;
   }
 
-  std::string copy = specification;
+  TransportType protocol = TransportType::HTTP;
+
+  std::string prefix = "http+";
+  std::string copy = StringUtils::tolower(specification);
   StringUtils::trimInPlace(copy);
-  copy = StringUtils::tolower(copy);
 
   if (specification[specification.size() - 1] == '/') {
     // address ends with a slash => remove
@@ -78,31 +73,41 @@ std::string Endpoint::getUnifiedForm(std::string const& specification) {
   }
 
   // read protocol from string
-  if (StringUtils::isPrefix(copy, "http@")) {
+  if (StringUtils::isPrefix(copy, "http+")) {
+    protocol = TransportType::HTTP;
+    prefix = "http+";
     copy = copy.substr(5);
   }
 
-#if TRI_HAVE_LINUX_SOCKETS
-  if (StringUtils::isPrefix(copy, "unix://")) {
-    // unix socket
-    return copy;
-  }
-#else
-  // no unix socket for windows
-  if (StringUtils::isPrefix(copy, "unix://")) {
-    // unix socket
-    return "";
-  }
-#endif
-  else if (StringUtils::isPrefix(copy, "srv://")) {
-    return copy;
-  } else if (!StringUtils::isPrefix(copy, "ssl://") &&
-             !StringUtils::isPrefix(copy, "tcp://")) {
-    // invalid type
-    return "";
+  if (StringUtils::isPrefix(copy, "vpp+")) {
+    protocol = TransportType::VPP;
+    prefix = "vsp+";
+    copy = copy.substr(4);
   }
 
-  // tcp/ip or ssl
+  if (StringUtils::isPrefix(copy, "unix://")) {
+#if ARANGODB_HAVE_DOMAIN_SOCKETS
+    return prefix + copy;
+#else
+    // no unix socket for windows
+    return illegal;
+#endif
+  }
+
+  if (StringUtils::isPrefix(copy, "srv://")) {
+#ifndef _WIN32
+    return prefix + copy;
+#else
+    return illegal;
+#endif
+  }
+
+  if (!StringUtils::isPrefix(copy, "ssl://") &&
+      !StringUtils::isPrefix(copy, "tcp://")) {
+    return illegal;
+  }
+
+  // handle tcp or ssl
   size_t found;
   std::string temp = copy.substr(6, copy.length());  // strip tcp:// or ssl://
 
@@ -111,17 +116,23 @@ std::string Endpoint::getUnifiedForm(std::string const& specification) {
     found = temp.find("]:", 1);
     if (found != std::string::npos && found > 2 && found + 2 < temp.size()) {
       // hostname and port (e.g. [address]:port)
-      return copy;
+      return prefix + copy;
     }
 
     found = temp.find("]", 1);
     if (found != std::string::npos && found > 2 && found + 1 == temp.size()) {
       // hostname only (e.g. [address])
-      return copy + ":" + StringUtils::itoa(EndpointIp::_defaultPort);
+      if (protocol == TransportType::VPP) {
+        return prefix + copy + ":" +
+               StringUtils::itoa(EndpointIp::_defaultPortVpp);
+      } else {
+        return prefix + copy + ":" +
+               StringUtils::itoa(EndpointIp::_defaultPortHttp);
+      }
     }
 
     // invalid address specification
-    return "";
+    return illegal;
   }
 
   // ipv4
@@ -129,19 +140,17 @@ std::string Endpoint::getUnifiedForm(std::string const& specification) {
 
   if (found != std::string::npos && found + 1 < temp.size()) {
     // hostname and port
-    return copy;
+    return prefix + copy;
   }
 
   // hostname only
-  return copy + ":" + StringUtils::itoa(EndpointIp::_defaultPort);
-}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a client endpoint object from a string value
-////////////////////////////////////////////////////////////////////////////////
-
-Endpoint* Endpoint::clientFactory(std::string const& specification) {
-  return Endpoint::factory(ENDPOINT_CLIENT, specification, 0, false);
+  if (protocol == TransportType::HTTP) {
+    return prefix + copy + ":" + StringUtils::itoa(EndpointIp::_defaultPortHttp);
+  } else {
+    return prefix + copy + ":" +
+           StringUtils::itoa(EndpointIp::_defaultPortVpp);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -150,8 +159,16 @@ Endpoint* Endpoint::clientFactory(std::string const& specification) {
 
 Endpoint* Endpoint::serverFactory(std::string const& specification,
                                   int listenBacklog, bool reuseAddress) {
-  return Endpoint::factory(ENDPOINT_SERVER, specification, listenBacklog,
+  return Endpoint::factory(EndpointType::SERVER, specification, listenBacklog,
                            reuseAddress);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a client endpoint object from a string value
+////////////////////////////////////////////////////////////////////////////////
+
+Endpoint* Endpoint::clientFactory(std::string const& specification) {
+  return Endpoint::factory(EndpointType::CLIENT, specification, 0, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -165,92 +182,99 @@ Endpoint* Endpoint::factory(const Endpoint::EndpointType type,
     return nullptr;
   }
 
-  if (listenBacklog > 0 && type == ENDPOINT_CLIENT) {
+  if (listenBacklog > 0 && type == EndpointType::CLIENT) {
     // backlog is only allowed for server endpoints
     TRI_ASSERT(false);
   }
 
-  if (listenBacklog == 0 && type == ENDPOINT_SERVER) {
+  if (listenBacklog == 0 && type == EndpointType::SERVER) {
     // use some default value
     listenBacklog = 10;
   }
 
-  std::string copy = specification;
-  if (specification[specification.size() - 1] == '/') {
-    // address ends with a slash => remove
-    copy = copy.substr(0, copy.size() - 1);
-  }
+  std::string copy = unifiedForm(specification);
+  std::string prefix = "http";
+  TransportType protocol = TransportType::HTTP;
 
-  // read protocol from string
-  size_t found = copy.find('@');
-  if (found != std::string::npos) {
-    std::string protoString = StringUtils::tolower(copy.substr(0, found));
-    if (protoString == "http") {
-      copy = copy.substr(strlen("http@"));
-    } else {
-      // invalid protocol
-      return nullptr;
-    }
-  }
-
-  EncryptionType encryption = ENCRYPTION_NONE;
-  std::string domainType = StringUtils::tolower(copy.substr(0, 7));
-
-  if (StringUtils::isPrefix(domainType, "ssl://")) {
-    // ssl
-    encryption = ENCRYPTION_SSL;
-  }
-#if TRI_HAVE_LINUX_SOCKETS
-  else if (StringUtils::isPrefix(domainType, "unix://")) {
-    // unix socket
-    return new EndpointUnixDomain(type, specification, listenBacklog,
-                                  copy.substr(strlen("unix://")));
-  }
-#else
-  // no unix socket for windows
-  else if (StringUtils::isPrefix(domainType, "unix://")) {
-    // unix socket
+  if (StringUtils::isPrefix(copy, "http+")) {
+    protocol = TransportType::HTTP;
+    prefix = "http+";
+    copy = copy.substr(5);
+  } else if (StringUtils::isPrefix(copy, "vpp+")) {
+    protocol = TransportType::VPP;
+    prefix = "vpp+";
+    copy = copy.substr(4);
+  } else {
+    // invalid protocol
     return nullptr;
   }
-#endif
 
-  else if (StringUtils::isPrefix(domainType, "srv://")) {
-    if (type != ENDPOINT_CLIENT) {
+  EncryptionType encryption = EncryptionType::NONE;
+
+  if (StringUtils::isPrefix(copy, "unix://")) {
+#if ARANGODB_HAVE_DOMAIN_SOCKETS
+    if (protocol != TransportType::HTTP) {
+      return nullptr;
+    }
+
+    return new EndpointUnixDomain(type, listenBacklog, copy.substr(7));
+#else
+    // no unix socket for windows
+    return nullptr;
+#endif
+  }
+
+  if (StringUtils::isPrefix(copy, "srv://")) {
+    if (type != EndpointType::CLIENT) {
+      return nullptr;
+    }
+
+    if (protocol != TransportType::HTTP) {
       return nullptr;
     }
 
 #ifndef _WIN32
-    return new EndpointSrv(specification.substr(6));
+    return new EndpointSrv(copy.substr(6));
 #else
     return nullptr;
 #endif
   }
 
-  else if (!StringUtils::isPrefix(domainType, "tcp://")) {
+  if (StringUtils::isPrefix(copy, "ssl://")) {
+    encryption = EncryptionType::SSL;
+  } else if (!StringUtils::isPrefix(copy, "tcp://")) {
     // invalid type
     return nullptr;
   }
 
-  // tcp/ip or ssl
-  copy = copy.substr(strlen("tcp://"), copy.length());
+  // tcp or ssl
+  copy = copy.substr(6);
+  uint16_t defaultPort = (protocol == TransportType::HTTP)
+                             ? EndpointIp::_defaultPortHttp
+                             : EndpointIp::_defaultPortVpp;
+
+  size_t found;
 
   if (copy[0] == '[') {
-    // ipv6
     found = copy.find("]:", 1);
+
+    // hostname and port (e.g. [address]:port)
     if (found != std::string::npos && found > 2 && found + 2 < copy.size()) {
-      // hostname and port (e.g. [address]:port)
       uint16_t port = (uint16_t)StringUtils::uint32(copy.substr(found + 2));
-      std::string portStr = copy.substr(1, found - 1);
-      return new EndpointIpV6(type, encryption, specification, listenBacklog,
-                              reuseAddress, portStr, port);
+      std::string host = copy.substr(1, found - 1);
+
+      return new EndpointIpV6(type, protocol, encryption, listenBacklog,
+                              reuseAddress, host, port);
     }
 
     found = copy.find("]", 1);
+
+    // hostname only (e.g. [address])
     if (found != std::string::npos && found > 2 && found + 1 == copy.size()) {
-      // hostname only (e.g. [address])
-      std::string portStr = copy.substr(1, found - 1);
-      return new EndpointIpV6(type, encryption, specification, listenBacklog,
-                              reuseAddress, portStr, EndpointIp::_defaultPort);
+      std::string host = copy.substr(1, found - 1);
+
+      return new EndpointIpV6(type, protocol, encryption, listenBacklog,
+                              reuseAddress, host, defaultPort);
     }
 
     // invalid address specification
@@ -260,17 +284,34 @@ Endpoint* Endpoint::factory(const Endpoint::EndpointType type,
   // ipv4
   found = copy.find(':');
 
+  // hostname and port
   if (found != std::string::npos && found + 1 < copy.size()) {
-    // hostname and port
     uint16_t port = (uint16_t)StringUtils::uint32(copy.substr(found + 1));
-    std::string portStr = copy.substr(0, found);
-    return new EndpointIpV4(type, encryption, specification, listenBacklog,
-                            reuseAddress, portStr, port);
+    std::string host = copy.substr(0, found);
+
+    return new EndpointIpV4(type, protocol, encryption, listenBacklog,
+                            reuseAddress, host, port);
   }
 
   // hostname only
-  return new EndpointIpV4(type, encryption, specification, listenBacklog,
-                          reuseAddress, copy, EndpointIp::_defaultPort);
+  return new EndpointIpV4(type, protocol, encryption, listenBacklog,
+                          reuseAddress, copy, defaultPort);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the default endpoint (http/vstream)
+////////////////////////////////////////////////////////////////////////////////
+
+std::string const Endpoint::defaultEndpoint(TransportType type) {
+  switch (type) {
+    case TransportType::HTTP:
+      return "http+tcp://" + std::string(EndpointIp::_defaultHost) + ":" +
+             StringUtils::itoa(EndpointIp::_defaultPortHttp);
+
+    case TransportType::VPP:
+      return "vpp+tcp://" + std::string(EndpointIp::_defaultHost) + ":" +
+             StringUtils::itoa(EndpointIp::_defaultPortVpp);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -278,16 +319,7 @@ Endpoint* Endpoint::factory(const Endpoint::EndpointType type,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Endpoint::operator==(Endpoint const& that) const {
-  return getSpecification() == that.getSpecification();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the default endpoint
-////////////////////////////////////////////////////////////////////////////////
-
-std::string const Endpoint::getDefaultEndpoint() {
-  return "tcp://" + EndpointIp::_defaultHost + ":" +
-         StringUtils::itoa(EndpointIp::_defaultPort);
+  return specification() == that.specification();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -303,7 +335,7 @@ bool Endpoint::setTimeout(TRI_socket_t s, double timeout) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Endpoint::setSocketFlags(TRI_socket_t s) {
-  if (_encryption == ENCRYPTION_SSL && _type == ENDPOINT_CLIENT) {
+  if (_encryption == EncryptionType::SSL && _type == EndpointType::CLIENT) {
     // SSL client endpoints are not set to non-blocking
     return true;
   }

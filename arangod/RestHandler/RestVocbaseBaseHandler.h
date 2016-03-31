@@ -24,9 +24,9 @@
 #ifndef ARANGOD_REST_HANDLER_REST_VOCBASE_BASE_HANDLER_H
 #define ARANGOD_REST_HANDLER_REST_VOCBASE_BASE_HANDLER_H 1
 
-#include "Basics/Common.h"
-#include "Rest/HttpResponse.h"
 #include "RestHandler/RestBaseHandler.h"
+
+#include "Rest/HttpResponse.h"
 #include "RestServer/VocbaseContext.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/vocbase.h"
@@ -126,7 +126,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   static std::string const UPLOAD_PATH;
 
  public:
-  explicit RestVocbaseBaseHandler(rest::HttpRequest*);
+  explicit RestVocbaseBaseHandler(HttpRequest*);
 
   ~RestVocbaseBaseHandler();
 

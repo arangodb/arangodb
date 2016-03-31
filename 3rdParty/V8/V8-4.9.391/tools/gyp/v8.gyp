@@ -1471,7 +1471,7 @@
           'variables': {
             'gyp_generators': '<!(echo $GYP_GENERATORS)',
           },
-          'msvs_disabled_warnings': [4351, 4355, 4800],
+          'msvs_disabled_warnings': [4312, 4351, 4355, 4800],
           # When building Official, the .lib is too large and exceeds the 2G
           # limit. This breaks it into multiple pieces to avoid the limit.
           # See http://crbug.com/485155.
@@ -1723,6 +1723,7 @@
           ]},
         ],
         ['OS=="solaris"', {
+            'defines': ['_GLIBCXX_USE_C99_MATH'],
             'link_settings': {
               'libraries': [
                 '-lnsl -lrt',
@@ -1772,7 +1773,7 @@
                 '../../src/base/platform/platform-win32.cc',
                 '../../src/base/win32-headers.h',
               ],
-              'msvs_disabled_warnings': [4351, 4355, 4800],
+              'msvs_disabled_warnings': [4312, 4351, 4355, 4800],
               'link_settings':  {
                 'libraries': [ '-lwinmm.lib', '-lws2_32.lib' ],
               },
@@ -1946,6 +1947,7 @@
         {
           'action_name': 'js2c',
           'inputs': [
+	    '<(PYTHON_EXECUTABLE)',
             '../../tools/js2c.py',
             '<@(library_files)',
             '<@(i18n_library_files)'
@@ -1963,6 +1965,7 @@
         {
           'action_name': 'js2c_bin',
           'inputs': [
+	    '<(PYTHON_EXECUTABLE)',
             '../../tools/js2c.py',
             '<@(library_files)',
             '<@(i18n_library_files)'

@@ -89,8 +89,8 @@ HttpHandler::status_t RestAgencyPrivHandler::execute() {
       term_t term, prevLogTerm;
       id_t id; // leaderId for appendEntries, cadidateId for requestVote
       index_t prevLogIndex, leaderCommit;
-    	if (_request->suffix()[0] == "appendEntries") {  // appendEntries
-        if (_request->requestType() != HttpRequest::HTTP_REQUEST_POST) {
+        if (_request->suffix()[0] == "appendEntries") {  // appendEntries
+        if (_request->requestType() != GeneralRequest::RequestType::POST) {
           return reportMethodNotAllowed();
         }
         if (readValue("term", term) &&
@@ -110,7 +110,7 @@ HttpHandler::status_t RestAgencyPrivHandler::execute() {
         } else {
           return reportBadQuery(); // bad query
         }
-    	} else if (_request->suffix()[0] == "requestVote") { // requestVote
+        } else if (_request->suffix()[0] == "requestVote") { // requestVote
         if (readValue("term", term) &&
             readValue("candidateId", id) &&
             readValue("prevLogIndex", prevLogIndex) &&
@@ -121,7 +121,7 @@ HttpHandler::status_t RestAgencyPrivHandler::execute() {
           result.add("voteGranted", VPackValue(ret.success));
         }
       } else if (_request->suffix()[0] == "notifyAll") { // notify
-        if (_request->requestType() != HttpRequest::HTTP_REQUEST_POST)
+        if (_request->requestType() != GeneralRequest::RequestType::POST)
           return reportMethodNotAllowed();
         if (readValue("term", term) && readValue("agencyId", id)) {
           priv_rpc_ret_t ret = _agent->requestVote (

@@ -27,16 +27,17 @@
 #define ARANGOD_HTTP_SERVER_HTTP_SERVER_H 1
 
 #include "Basics/Mutex.h"
+#include "Endpoint/ConnectionInfo.h"
 #include "HttpServer/HttpHandler.h"
-#include "Rest/ConnectionInfo.h"
 #include "Scheduler/TaskManager.h"
 
 namespace arangodb {
+class EndpointList;
+
 namespace rest {
 
 class AsyncJobManager;
 class Dispatcher;
-class EndpointList;
 class HttpServerJob;
 class HttpCommTask;
 class HttpHandlerFactory;
@@ -84,7 +85,7 @@ class HttpServer : protected TaskManager {
   //////////////////////////////////////////////////////////////////////////////
 
   virtual Endpoint::EncryptionType encryptionType() const {
-    return Endpoint::ENCRYPTION_NONE;
+    return Endpoint::EncryptionType::NONE;
   }
 
   //////////////////////////////////////////////////////////////////////////////

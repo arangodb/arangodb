@@ -46,11 +46,11 @@ bool RestJobHandler::isDirect() const { return true; }
 
 HttpHandler::status_t RestJobHandler::execute() {
   // extract the sub-request type
-  HttpRequest::HttpRequestType type = _request->requestType();
+  auto const type = _request->requestType();
 
-  if (type == HttpRequest::HTTP_REQUEST_GET) {
+  if (type == GeneralRequest::RequestType::GET) {
     getJob();
-  } else if (type == HttpRequest::HTTP_REQUEST_PUT) {
+  } else if (type == GeneralRequest::RequestType::PUT) {
     std::vector<std::string> const& suffix = _request->suffix();
 
     if (suffix.size() == 1) {
@@ -60,7 +60,7 @@ HttpHandler::status_t RestJobHandler::execute() {
     } else {
       generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     }
-  } else if (type == HttpRequest::HTTP_REQUEST_DELETE) {
+  } else if (type == GeneralRequest::RequestType::DELETE) {
     deleteJob();
   } else {
     generateError(HttpResponse::METHOD_NOT_ALLOWED,
@@ -200,7 +200,7 @@ void RestJobHandler::getJobByType(std::string const& type) {
 
   // extract "count" parameter
   bool found;
-  char const* value = _request->value("count", found);
+  std::string const& value = _request->value("count", found);
 
   if (found) {
     count = (size_t)StringUtils::uint64(value);
@@ -253,7 +253,7 @@ void RestJobHandler::deleteJob() {
     _jobManager->deleteJobResults();
   } else if (value == "expired") {
     bool found;
-    char const* value = _request->value("stamp", found);
+    std::string const& value = _request->value("stamp", found);
 
     if (!found) {
       generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);

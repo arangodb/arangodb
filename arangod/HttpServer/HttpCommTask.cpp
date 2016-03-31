@@ -67,8 +67,8 @@ HttpCommTask::HttpCommTask(HttpServer* server, TRI_socket_t socket,
       _newRequest(true),
       _isChunked(false),
       _request(nullptr),
-      _httpVersion(HttpRequest::HTTP_UNKNOWN),
-      _requestType(HttpRequest::HTTP_REQUEST_ILLEGAL),
+      _httpVersion(GeneralRequest::ProtocolVersion::UNKNOWN),
+      _requestType(GeneralRequest::RequestType::ILLEGAL),
       _fullUrl(),
       _origin(),
       _startPosition(0),
@@ -145,8 +145,8 @@ bool HttpCommTask::processRead() {
 
       _newRequest = false;
       _startPosition = _readPosition;
-      _httpVersion = HttpRequest::HTTP_UNKNOWN;
-      _requestType = HttpRequest::HTTP_REQUEST_ILLEGAL;
+      _httpVersion = GeneralRequest::ProtocolVersion::UNKNOWN;
+      _requestType = GeneralRequest::RequestType::ILLEGAL;
       _fullUrl = "";
       _denyCredentials = false;
       _acceptDeflate = false;
@@ -224,10 +224,10 @@ bool HttpCommTask::processRead() {
       _request->setClientTaskId(_taskId);
 
       // check HTTP protocol version
-      _httpVersion = _request->httpVersion();
+      _httpVersion = _request->protocolVersion();
 
-      if (_httpVersion != HttpRequest::HTTP_1_0 &&
-          _httpVersion != HttpRequest::HTTP_1_1) {
+      if (_httpVersion != GeneralRequest::ProtocolVersion::HTTP_1_0 &&
+          _httpVersion != GeneralRequest::ProtocolVersion::HTTP_1_1) {
         HttpResponse response(HttpResponse::HTTP_VERSION_NOT_SUPPORTED,
                               getCompatibility());
 
@@ -266,8 +266,7 @@ bool HttpCommTask::processRead() {
       _bodyLength = 0;
 
       // keep track of the original value of the "origin" request header (if
-      // any)
-      // we need this value to handle CORS requests
+      // any), we need this value to handle CORS requests
       _origin = _request->header("origin");
 
       if (!_origin.empty()) {
@@ -289,21 +288,21 @@ bool HttpCommTask::processRead() {
 
       // handle different HTTP methods
       switch (_requestType) {
-        case HttpRequest::HTTP_REQUEST_GET:
-        case HttpRequest::HTTP_REQUEST_DELETE:
-        case HttpRequest::HTTP_REQUEST_HEAD:
-        case HttpRequest::HTTP_REQUEST_OPTIONS:
-        case HttpRequest::HTTP_REQUEST_POST:
-        case HttpRequest::HTTP_REQUEST_PUT:
-        case HttpRequest::HTTP_REQUEST_PATCH: {
+        case GeneralRequest::RequestType::GET:
+        case GeneralRequest::RequestType::DELETE:
+        case GeneralRequest::RequestType::HEAD:
+        case GeneralRequest::RequestType::OPTIONS:
+        case GeneralRequest::RequestType::POST:
+        case GeneralRequest::RequestType::PUT:
+        case GeneralRequest::RequestType::PATCH: {
           // technically, sending a body for an HTTP DELETE request is not
           // forbidden, but it is not explicitly supported
           bool const expectContentLength =
-              (_requestType == HttpRequest::HTTP_REQUEST_POST ||
-               _requestType == HttpRequest::HTTP_REQUEST_PUT ||
-               _requestType == HttpRequest::HTTP_REQUEST_PATCH ||
-               _requestType == HttpRequest::HTTP_REQUEST_OPTIONS ||
-               _requestType == HttpRequest::HTTP_REQUEST_DELETE);
+              (_requestType == GeneralRequest::RequestType::POST ||
+               _requestType == GeneralRequest::RequestType::PUT ||
+               _requestType == GeneralRequest::RequestType::PATCH ||
+               _requestType == GeneralRequest::RequestType::OPTIONS ||
+               _requestType == GeneralRequest::RequestType::DELETE);
 
           if (!checkContentLength(expectContentLength)) {
             return false;
@@ -436,7 +435,7 @@ bool HttpCommTask::processRead() {
                                          _bodyLength);
 
   bool const isOptionsRequest =
-      (_requestType == HttpRequest::HTTP_REQUEST_OPTIONS);
+      (_requestType == GeneralRequest::RequestType::OPTIONS);
   resetState(false);
 
   // .............................................................................
@@ -617,7 +616,7 @@ void HttpCommTask::addResponse(HttpResponse* response) {
 
   size_t const responseBodyLength = response->bodySize();
 
-  if (_requestType == HttpRequest::HTTP_REQUEST_HEAD) {
+  if (_requestType == GeneralRequest::RequestType::HEAD) {
     // clear body if this is an HTTP HEAD request
     // HEAD must not return a body
     response->headResponse(responseBodyLength);
@@ -640,7 +639,7 @@ void HttpCommTask::addResponse(HttpResponse* response) {
   response->writeHeader(buffer.get());
 
   // write body
-  if (_requestType != HttpRequest::HTTP_REQUEST_HEAD) {
+  if (_requestType != GeneralRequest::RequestType::HEAD) {
     if (_isChunked) {
       if (0 != responseBodyLength) {
         buffer->appendHex(response->body().length());
@@ -800,7 +799,7 @@ void HttpCommTask::processCorsOptions(uint32_t compatibility) {
 void HttpCommTask::processRequest(uint32_t compatibility) {
   // check for deflate
   bool found;
-  std::string const acceptEncoding = _request->header("accept-encoding", found);
+  std::string const& acceptEncoding = _request->header("accept-encoding", found);
 
   if (found) {
     if (acceptEncoding.find("deflate") != std::string::npos) {
@@ -816,7 +815,7 @@ void HttpCommTask::processRequest(uint32_t compatibility) {
       << "\"";
 
   // check for an async request
-  std::string const asyncExecution = _request->header("x-arango-async", found);
+  std::string const& asyncExecution = _request->header("x-arango-async", found);
 
   // create handler, this will take over the request
   WorkItem::uptr<HttpHandler> handler(
@@ -834,21 +833,12 @@ void HttpCommTask::processRequest(uint32_t compatibility) {
   }
 
   if (_request != nullptr) {
-    char const* body = "";
-    size_t bodySize = 0;
+    std::string body = _request->body();
 
-    if (_request != nullptr) {
-      bodySize = _request->bodySize();
-
-      if (bodySize != 0) {
-        body = _request->body();
-      }
-    }
-
-    if (bodySize != 0) {
+    if (!body.empty()) {
       LOG_TOPIC(DEBUG, Logger::REQUESTS)
           << "\"http-request-body\",\"" << (void*)this << "\",\""
-          << (StringUtils::escapeUnicode(std::string(body, bodySize))) << "\"";
+          << (StringUtils::escapeUnicode(body)) << "\"";
     }
   }
 
@@ -975,7 +965,7 @@ int32_t HttpCommTask::getCompatibility() const {
     return _request->compatibility();
   }
 
-  return HttpRequest::MinCompatibility;
+  return GeneralRequest::MIN_COMPATIBILITY;
 }
 
 bool HttpCommTask::setup(Scheduler* scheduler, EventLoop loop) {

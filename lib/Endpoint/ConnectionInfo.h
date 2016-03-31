@@ -19,25 +19,54 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_PLEASE_UPGRADE_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_PLEASE_UPGRADE_HANDLER_H 1
+#ifndef LIB_REST_CONNECTION_INFO_H
+#define LIB_REST_CONNECTION_INFO_H 1
 
-#include "HttpServer/HttpHandler.h"
+#include "Basics/Common.h"
+
+#include "Basics/StringUtils.h"
+#include "Endpoint/Endpoint.h"
 
 namespace arangodb {
-class RestPleaseUpgradeHandler : public rest::HttpHandler {
+
+struct ConnectionInfo {
  public:
-  explicit RestPleaseUpgradeHandler(HttpRequest*);
+  ConnectionInfo()
+      : serverPort(0),
+        clientPort(0),
+        serverAddress(),
+        clientAddress(),
+        endpoint(),
+        endpointType(Endpoint::DomainType::UNKNOWN),
+        sslContext(nullptr) {}
 
  public:
-  bool isDirect() const override;
+  std::string portType() const {
+    switch (endpointType) {
+      case Endpoint::DomainType::UNIX:
+        return "unix";
+      case Endpoint::DomainType::IPV4:
+      case Endpoint::DomainType::IPV6:
+        return "tcp/ip";
+      default:
+        return "unknown";
+    }
+  }
 
-  status_t execute() override;
+  int serverPort;
+  int clientPort;
 
-  void handleError(const basics::Exception&) override;
+  std::string serverAddress;
+  std::string clientAddress;
+  std::string endpoint;
+  Endpoint::DomainType endpointType;
+
+  void* sslContext;
 };
+
 }
 
 #endif
