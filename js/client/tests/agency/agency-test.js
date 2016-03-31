@@ -153,18 +153,18 @@ function agencyTestSuite () {
       writeAndCheck([[{a:{op:"delete"}}]]);
       // fail precond oldEmpty
       res = writeAgency([[{"a":14},{"a":{"oldEmpty":false}}]]); 
-      assertEqual(res.statusCode, 412)
+      assertEqual(res.statusCode, 412);
       assertEqual(res.bodyParsed, {"results":[0]}); 
       writeAndCheck([[{"a":14},{"a":{"oldEmpty":true}}]]); // precond oldEmpty
       writeAndCheck([[{"a":14},{"a":{"old":14}}]]);        // precond old
       // fail precond old
       res = writeAgency([[{"a":14},{"a":{"old":13}}]]); 
-      assertEqual(res.statusCode, 412)
+      assertEqual(res.statusCode, 412);
       assertEqual(res.bodyParsed, {"results":[0]}); 
       writeAndCheck([[{"a":14},{"a":{"isArray":false}}]]); // precond isArray
       // fail precond isArray
       res = writeAgency([[{"a":14},{"a":{"isArray":true}}]]); 
-      assertEqual(res.statusCode, 412)
+      assertEqual(res.statusCode, 412);
       assertEqual(res.bodyParsed, {"results":[0]}); 
     },
 
