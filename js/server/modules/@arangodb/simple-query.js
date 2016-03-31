@@ -209,29 +209,99 @@ SimpleQueryNear.prototype.execute = function () {
   };
   
   var mustSort = false;
-  if (require("@arangodb/cluster").isCoordinator()) {
+  var documents = [];
+  var cluster = require("@arangodb/cluster");
+  if (cluster.isCoordinator()) {
     if (this._distance === null || this._distance === undefined) {
       this._distance = "_distance";
     }
     mustSort = true;
-  }
 
-  var query;
-  if (typeof this._distance === 'string') {
-    query = "FOR doc IN NEAR(@@collection, @latitude, @longitude, @limit, @distance) ";
-    bindVars.distance = this._distance;
-  }
-  else {
-    query = "FOR doc IN NEAR(@@collection, @latitude, @longitude, @limit) ";
-  }
+    var dbName = require("internal").db._name();
+    var shards = cluster.shardList(dbName, this._collection.name());
+    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+    var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
+    var _limit = 0;
+    if (this._limit > 0) {
+      if (this._skip >= 0) {
+        _limit = this._skip + this._limit;
+      }
+    }
 
-  if (mustSort) {
-    query += "SORT doc.@distance ";
+    var attribute;
+    if (this._distance !== null) {
+      attribute = this._distance;
+    }
+    else {
+      // use a pseudo-attribute for distance (we need this for sorting)
+      attribute = "$distance";
+    }
+
+    var self = this;
+    shards.forEach(function (shard) {
+      ArangoClusterComm.asyncRequest("put",
+                                     "shard:" + shard,
+                                     dbName,
+                                     "/_api/simple/near",
+                                     JSON.stringify({
+                                       collection: shard,
+                                       latitude: self._latitude,
+                                       longitude: self._longitude,
+                                       distance: attribute,
+                                       geo: rewriteIndex(self._index),
+                                       skip: 0,
+                                       limit: _limit || undefined,
+                                       batchSize: 100000000
+                                     }),
+                                     { },
+                                     options);
+    });
+
+    result = cluster.wait(coord, shards);
+
+    result.forEach(function(part) {
+      var body = JSON.parse(part.body);
+      documents = documents.concat(body.result);
+    });
+
+    if (shards.length > 1) {
+      documents.sort(function (l, r) {
+        if (l[attribute] === r[attribute]) {
+          return 0;
+        }
+        return (l[attribute] < r[attribute] ? -1 : 1);
+      });
+    }
+
+    if (this._limit > 0) {
+      documents = documents.slice(0, this._skip + this._limit);
+    }
+
+    if (this._distance === null) {
+      n = documents.length;
+      for (i = 0; i < n; ++i) {
+        delete documents[i][attribute];
+      }
+    }
+  } else {
+
+    var query;
+    if (typeof this._distance === 'string') {
+      query = "FOR doc IN NEAR(@@collection, @latitude, @longitude, @limit, @distance) ";
+      bindVars.distance = this._distance;
+    }
+    else {
+      query = "FOR doc IN NEAR(@@collection, @latitude, @longitude, @limit) ";
+    }
+
+    if (mustSort) {
+      query += "SORT doc.@distance ";
+    }
+
+    query += limitString(this._skip, this._limit) + " RETURN doc";
+
+    documents = require("internal").db._query({ query, bindVars }).toArray();
   }
-
-  query += limitString(this._skip, this._limit) + " RETURN doc";
-
-  var documents = require("internal").db._query({ query, bindVars }).toArray();
 
   this._execution = new GeneralArrayCursor(documents);
   this._countQuery = documents.length - this._skip;
@@ -258,37 +328,110 @@ SimpleQueryWithin.prototype.execute = function () {
     throw err;
   }
   
-  var bindVars = { 
-    "@collection": this._collection.name(), 
-    latitude: this._latitude, 
-    longitude: this._longitude, 
-    radius: this._radius 
-  };
-  
+ 
   var mustSort = false;
-  if (require("@arangodb/cluster").isCoordinator()) {
+
+  var cluster = require("@arangodb/cluster");
+
+  var documents = [];
+  if (cluster.isCoordinator()) {
     if (this._distance === null || this._distance === undefined) {
       this._distance = "_distance";
     }
     mustSort = true;
-  }
 
-  var query;
-  if (typeof this._distance === 'string') {
-    query = "FOR doc IN WITHIN(@@collection, @latitude, @longitude, @radius, @distance) ";
-    bindVars.distance = this._distance;
-  }
-  else {
-    query = "FOR doc IN WITHIN(@@collection, @latitude, @longitude, @radius) ";
-  }
+    var dbName = require("internal").db._name();
+    var shards = cluster.shardList(dbName, this._collection.name());
+    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+    var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
+    var _limit = 0;
+    if (this._limit > 0) {
+      if (this._skip >= 0) {
+        _limit = this._skip + this._limit;
+      }
+    }
 
-  if (mustSort) {
-    query += "SORT doc.@distance ";
+    var attribute;
+    if (this._distance !== null) {
+      attribute = this._distance;
+    }
+    else {
+      // use a pseudo-attribute for distance (we need this for sorting)
+      attribute = "$distance";
+    }
+
+    var self = this;
+    shards.forEach(function (shard) {
+      ArangoClusterComm.asyncRequest("put",
+                                     "shard:" + shard,
+                                     dbName,
+                                     "/_api/simple/within",
+                                     JSON.stringify({
+                                       collection: shard,
+                                       latitude: self._latitude,
+                                       longitude: self._longitude,
+                                       distance: attribute,
+                                       radius: self._radius,
+                                       geo: rewriteIndex(self._index),
+                                       skip: 0,
+                                       limit: _limit || undefined,
+                                       batchSize: 100000000
+                                     }),
+                                     { },
+                                     options);
+    });
+
+    result = cluster.wait(coord, shards);
+
+    result.forEach(function(part) {
+      var body = JSON.parse(part.body);
+      documents = documents.concat(body.result);
+    });
+
+    if (shards.length > 1) {
+      documents.sort(function (l, r) {
+        if (l[attribute] === r[attribute]) {
+          return 0;
+        }
+        return (l[attribute] < r[attribute] ? -1 : 1);
+      });
+    }
+
+    if (this._limit > 0) {
+      documents = documents.slice(0, this._skip + this._limit);
+    }
+
+    if (this._distance === null) {
+      n = documents.length;
+      for (i = 0; i < n; ++i) {
+        delete documents[i][attribute];
+      }
+    }
+  } else {
+    var bindVars = { 
+      "@collection": this._collection.name(), 
+      latitude: this._latitude, 
+      longitude: this._longitude, 
+      radius: this._radius 
+    };
+ 
+    var query;
+    if (typeof this._distance === 'string') {
+      query = "FOR doc IN WITHIN(@@collection, @latitude, @longitude, @radius, @distance) ";
+      bindVars.distance = this._distance;
+    }
+    else {
+      query = "FOR doc IN WITHIN(@@collection, @latitude, @longitude, @radius) ";
+    }
+
+    if (mustSort) {
+      query += "SORT doc.@distance ";
+    }
+
+    query += limitString(this._skip, this._limit) + " RETURN doc";
+
+    documents = require("internal").db._query({ query, bindVars }).toArray();
   }
-
-  query += limitString(this._skip, this._limit) + " RETURN doc";
-
-  var documents = require("internal").db._query({ query, bindVars }).toArray();
 
   this._execution = new GeneralArrayCursor(documents);
   this._countQuery = documents.length - this._skip;
@@ -354,7 +497,6 @@ SimpleQueryFulltext.prototype.execute = function () {
     if (this._limit > 0) {
       documents = documents.slice(0, this._skip + this._limit);
     }
-
   }
   else {
     var bindVars = { 

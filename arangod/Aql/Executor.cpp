@@ -330,9 +330,9 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
 
     // geo functions
     {"NEAR", Function("NEAR", "AQL_NEAR", "hs,n,n|nz,s", true, false, true,
-                      false, true, &Functions::Near, NotInCluster)},
+                      false, true, &Functions::Near, NotInCoordinator)},
     {"WITHIN", Function("WITHIN", "AQL_WITHIN", "hs,n,n,n|s", true, false, true,
-                        false, true, &Functions::Within, NotInCluster)},
+                        false, true, &Functions::Within, NotInCoordinator)},
     {"WITHIN_RECTANGLE",
      Function("WITHIN_RECTANGLE", "AQL_WITHIN_RECTANGLE", "hs,d,d,d,d", true,
               false, true, false, true)},
