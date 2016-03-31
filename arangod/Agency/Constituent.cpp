@@ -185,6 +185,10 @@ bool Constituent::vote (
   }
 }
 
+void Constituent::update (term_t t, id_t i) {
+  
+}
+
 void Constituent::gossip (const constituency_t& constituency) {
   // TODO: Replace lame notification by gossip protocol
 }

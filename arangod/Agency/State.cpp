@@ -56,9 +56,9 @@ bool State::persist(index_t index, term_t term, id_t lid,
 
   Builder body;
   body.add(VPackValue(VPackValueType::Object));
-  std::stringstream index_str;
-  index_str << std::setw(20) << std::setfill('0') << index;
-  body.add("_key", Value(index_str.str()));
+  std::ostringstream i_str;
+  i_str << std::setw(20) << std::setfill('0') << index;
+  body.add("_key", Value(i_str.str()));
   body.add("term", Value(term));
   body.add("leader", Value((uint32_t)lid));
   body.add("request", entry[0]);
@@ -79,10 +79,14 @@ bool State::persist(index_t index, term_t term, id_t lid,
   return (res->status == CL_COMM_SENT);  // TODO: More verbose result
 }
 
-// Leader
-std::vector<index_t> State::log(query_t const& query,
-                                std::vector<bool> const& appl, term_t term,
-                                id_t lid) {
+bool State::persist (term_t t, id_t i) {
+  
+  return true;  
+}
+
+//Leader
+std::vector<index_t> State::log (
+  query_t const& query, std::vector<bool> const& appl, term_t term, id_t lid) {
   if (!checkCollections()) {
     createCollections();
   }

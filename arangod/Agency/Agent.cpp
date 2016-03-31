@@ -57,13 +57,6 @@ State const& Agent::state () const {
 /// @brief Start all agency threads
 bool Agent::start() {
 
-  LOG_TOPIC(INFO, Logger::AGENCY) << "Starting constituent personality.";
-  _constituent.start();
-  
-  LOG_TOPIC(INFO, Logger::AGENCY) << "Starting spearhead worker.";
-  _spearhead.start();
-  _read_db.start();
-
   LOG_TOPIC(INFO, Logger::AGENCY) << "Starting agency comm worker.";
   Thread::start();
 
@@ -108,6 +101,7 @@ bool Agent::leading() const {
 }
 
 void Agent::persist(term_t t, id_t i) {
+//  _state.persist(t, i);
 }
 
 bool Agent::waitFor (index_t index, duration_t timeout) {
@@ -242,11 +236,23 @@ append_entries_t Agent::sendAppendEntriesRPC (id_t slave_id) {
 }
 
 bool Agent::load () {
-  
   LOG_TOPIC(INFO, Logger::AGENCY) << "Loading persistent state.";
-  if (!_state.loadCollections())
+  if (!_state.loadCollections()) {
     LOG(FATAL) << "Failed to load persistent state on statup.";
+  }
+
+  LOG_TOPIC(INFO, Logger::AGENCY) << "Reassembling spearhead and read stores.";
+  _read_db.apply(_state.slices());
   _spearhead.apply(_state.slices(_last_commit_index+1));
+
+  LOG_TOPIC(INFO, Logger::AGENCY) << "Starting spearhead worker.";
+  _spearhead.start(this);
+  _read_db.start(this);
+
+  LOG_TOPIC(INFO, Logger::AGENCY) << "Starting constituent personality.";
+  _constituent.update(0,0);
+  _constituent.start();
+  
   return true;
 }
 
@@ -271,11 +277,12 @@ write_ret_t Agent::write (query_t const& query)  {
 
 read_ret_t Agent::read (query_t const& query) const {
   if (_constituent.leading()) {     // We are leading
-    auto result = (_config.size() == 1) ?
-      _spearhead.read(query) : _read_db.read (query);
-    return read_ret_t(true,_constituent.leaderID(),result);
+    query_t result = std::make_shared<arangodb::velocypack::Builder>();
+    std::vector<bool> success= (_config.size() == 1) ?
+      _spearhead.read(query, result) : _read_db.read (query, result);
+    return read_ret_t(true, _constituent.leaderID(), success, result);
   } else {                          // We redirect
-    return read_ret_t(false,_constituent.leaderID());
+    return read_ret_t(false, _constituent.leaderID());
   }
 }
 

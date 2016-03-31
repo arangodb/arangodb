@@ -94,6 +94,9 @@ public:
   /// @brief Orderly shutdown of thread
   void beginShutdown () override;
 
+  /// @brief Update with persisted term and voted_for
+  void update (term_t, id_t);
+  
 private:
 
   /// @brief set term to new term

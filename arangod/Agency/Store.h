@@ -168,6 +168,8 @@ protected:
   
 };
 
+class Agent;
+
 /// @brief Key value tree 
 class Store : public Node, public arangodb::Thread {
   
@@ -186,13 +188,15 @@ public:
   std::vector<bool> apply (std::vector<Slice> const& query);
 
   /// @brief Read specified query from store
-  query_t read (query_t const& query) const;
+  std::vector<bool> read (query_t const& query, query_t& result) const;
   
   /// @brief Begin shutdown of thread
   void beginShutdown () override final;
 
   /// @brief Start thread
   bool start ();
+
+  bool start (Agent*);
 
   /// @brief Set name
   void name (std::string const& name);
@@ -216,6 +220,8 @@ private:
 
   /// @brief Read/Write mutex on database
   mutable arangodb::Mutex _storeLock;
+
+  Agent* _agent;
   
 };
 
