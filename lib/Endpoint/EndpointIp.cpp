@@ -101,7 +101,8 @@ EndpointIp::EndpointIp(DomainType domainType, EndpointType type,
       _host(host),
       _port(port),
       _reuseAddress(reuseAddress) {
-  TRI_ASSERT(domainType == DOMAIN_IPV4 || domainType == Endpoint::DOMAIN_IPV6);
+  TRI_ASSERT(domainType == Endpoint::DomainType::IPV4 || 
+	     domainType == Endpoint::DomainType::IPV4);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
