@@ -168,6 +168,8 @@ protected:
   
 };
 
+class Agent;
+
 /// @brief Key value tree 
 class Store : public Node, public arangodb::Thread {
   
@@ -194,6 +196,8 @@ public:
   /// @brief Start thread
   bool start ();
 
+  bool start (Agent*);
+
   /// @brief Set name
   void name (std::string const& name);
 
@@ -216,6 +220,8 @@ private:
 
   /// @brief Read/Write mutex on database
   mutable arangodb::Mutex _storeLock;
+
+  Agent* _agent;
   
 };
 

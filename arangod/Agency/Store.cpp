@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Store.h"
+#include "Agent.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Iterator.h>
@@ -64,14 +65,14 @@ Node::Node (std::string const& name, Node* parent) :
 
 Node::~Node() {}
 
-Slice Node::slice() const {
+VPackSlice Node::slice() const {
   return (_value.size()==0) ?
-    Slice("\x00a",&Options::Defaults):Slice(_value.data());
+    VPackSlice("\x00a",&Options::Defaults):VPackSlice(_value.data());
 }
 
 std::string const& Node::name() const {return _node_name;}
 
-Node& Node::operator= (Slice const& slice) { // Assign value (become leaf)
+Node& Node::operator= (VPackSlice const& slice) { // Assign value (become leaf)
   _children.clear();
   _value.reset();
   _value.append(reinterpret_cast<char const*>(slice.begin()), slice.byteSize());
@@ -193,7 +194,7 @@ bool Node::applies (VPackSlice const& slice) {
       if (slice.hasKey("op")) {
         
         std::string oper = slice.get("op").copyString();
-        Slice const& self = this->slice();
+        VPackSlice const& self = this->slice();
         if (oper == "delete") {
           return _parent->removeChild(_node_name);
         } else if (oper == "set") { //
@@ -508,10 +509,11 @@ void Store::beginShutdown() {
 
 void Store::clearTimeTable () {
   for (auto it = _time_table.cbegin(); it != _time_table.cend() ;) {
+    // Remove expired from front 
     if (it->first < std::chrono::system_clock::now()) {
-      
       it->second->remove();
       _time_table.erase(it++);
+      
     } else {
       break;
     }
@@ -521,6 +523,11 @@ void Store::clearTimeTable () {
 bool Store::start () {
   Thread::start();
   return true;
+}
+
+bool Store::start (Agent* agent) {
+  _agent = agent;
+  return start();
 }
 
 void Store::run() {

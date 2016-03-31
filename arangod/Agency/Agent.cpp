@@ -246,8 +246,8 @@ bool Agent::load () {
   _spearhead.apply(_state.slices(_last_commit_index+1));
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Starting spearhead worker.";
-  _spearhead.start();
-  _read_db.start();
+  _spearhead.start(this);
+  _read_db.start(this);
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Starting constituent personality.";
   _constituent.update(0,0);
