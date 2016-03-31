@@ -124,9 +124,6 @@ class Agent : public arangodb::Thread {
   void persist (term_t, id_t);
 
   /// @brief State machine
-  State const& state () const;
-
-  /// @brief State machine
   State const& state() const;
 
  private:

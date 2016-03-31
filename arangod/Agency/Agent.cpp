@@ -57,16 +57,6 @@ State const& Agent::state () const {
 /// @brief Start all agency threads
 bool Agent::start() {
 
-<<<<<<< HEAD
-  LOG_TOPIC(INFO, Logger::AGENCY) << "Starting constituent personality.";
-  _constituent.start();
-  
-  LOG_TOPIC(INFO, Logger::AGENCY) << "Starting spearhead worker.";
-  _spearhead.start();
-  _read_db.start();
-
-=======
->>>>>>> a0edfe2b8da61850f506d453eadb088e2d79b506
   LOG_TOPIC(INFO, Logger::AGENCY) << "Starting agency comm worker.";
   Thread::start();
 
@@ -111,10 +101,7 @@ bool Agent::leading() const {
 }
 
 void Agent::persist(term_t t, id_t i) {
-<<<<<<< HEAD
-=======
 //  _state.persist(t, i);
->>>>>>> a0edfe2b8da61850f506d453eadb088e2d79b506
 }
 
 bool Agent::waitFor (index_t index, duration_t timeout) {
