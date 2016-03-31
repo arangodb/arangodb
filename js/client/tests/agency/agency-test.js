@@ -186,7 +186,7 @@ function agencyTestSuite () {
                   [12,{a:{b:{c:[1,2,3]},d:false}}]);
     },
 
-    testOpSetNew : function (done) {
+    testOpSetNew : function () {
       writeAndCheck([[{"a/z":{"op":"set","new":12}}]]);
       assertEqual(readAndCheck([["a/z"]]), [{"a":{"z":12}}]);
       writeAndCheck([[{"a/y":{"op":"set","new":12, "ttl": 1}}]]);
