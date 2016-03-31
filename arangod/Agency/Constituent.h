@@ -38,120 +38,97 @@ namespace consensus {
 
 class Agent;
 
-/**
- * @brief Raft leader election
- */
+/// @brief RAFT leader election
 class Constituent : public arangodb::Thread {
   
 public:
 
+  /// @brief Distribution type
   typedef std::uniform_real_distribution<double> dist_t; 
-  
+
+  /// @brief Default ctor
   Constituent();
   
-  /**
-   * @brief Clean up and exit election
-   */
+  /// @brief Clean up and exit election
   virtual ~Constituent();
-  
+
+  /// @brief Configure with agent's configuration
   void configure(Agent*);
 
+  /// @brief Current term
   term_t term() const;
-  
-  void runForLeaderShip (bool b);
-  
+
+  /// @brief Get current role
   role_t role() const;
   
-  /**
-   * @brief Gossip protocol: listen
-   */
+  /// @brief Gossip protocol: listen
   void gossip(constituency_t const&);
   
-  /**
-   * @brief Gossip protocol: talk
-   */
+  /// @brief Gossip protocol: talk
   const constituency_t& gossip();
 
+  /// @brief Are we leading?
   bool leading() const;
+
+  /// @brief Are we following?
   bool following() const;
+
+  /// @brief Are we running for leadership?
   bool running() const;
 
-  /**
-   * @brief Called by REST handler
-   */
+  /// @brief Called by REST handler
   bool vote(term_t, id_t, index_t, term_t);
 
-  /**
-   * @brief My daily business
-   */
+  /// @brief My daily business
   void run() override final;
 
-  /**
-   * @brief Who is leading
-   */
+  /// @brief Who is leading
   id_t leaderID () const;
 
-  /**
-   * @brief Become follower
-   */
+  /// @brief Become follower
   void follow(term_t);
 
-  /**
-   * @brief Agency size
-   */
+  /// @brief Agency size
   size_t size() const;
 
+  /// @brief Orderly shutdown of thread
   void beginShutdown () override;
 
 private:
 
   /// @brief set term to new term
   void term (term_t);
-  
+
+  /// @brief Agency endpoints
   std::vector<std::string> const& end_points() const;
+
+  /// @brief Endpoint of agent with id
   std::string const& end_point(id_t) const;
 
-  /**
-   * @brief Run for leadership
-   */
+  /// @brief Run for leadership
   void candidate();
 
-  /**
-   * @brief Become leader
-   */
+  /// @brief Become leader
   void lead();
 
-  /**
-   * @brief Call for vote (by leader or candidates after timeout)
-   */
+  /// @brief Call for vote (by leader or candidates after timeout)
   void callElection();
   
-  /**
-   * @brief Count my votes
-   */
+  /// @brief Count my votes
   void countVotes();
 
-  /**
-   * @brief Notify everyone, that we are good to go.
-   *        This is the task of the last process starting up.
-   *        Will be taken care of by gossip
-   */
+  /// @brief Notify everyone, that we are good to go.
+  ///        This is the task of the last process starting up.
+  ///        Will be taken care of by gossip
   size_t notifyAll();
   
-  /**
-   * @brief Sleep for how long
-   */
+  /// @brief Sleep for how long
   duration_t sleepFor(double, double);
-  double sleepFord(double, double);
 
-  
-
-  // mission critical
-  term_t  _term;         /**< @brief term number */
+  term_t               _term;         /**< @brief term number */
   std::atomic<bool>    _cast;         /**< @brief cast a vote this term */
   std::atomic<state_t> _state;        /**< @brief State (follower, candidate, leader)*/
 
-  // just critical
   id_t                 _leader_id;    /**< @brief Current leader */
   id_t                 _id;           /**< @brief My own id */
   constituency_t       _constituency; /**< @brief List of consituents */
@@ -159,7 +136,8 @@ private:
   role_t               _role;         /**< @brief My role */
   std::vector<bool>    _votes;        /**< @brief My list of votes cast in my favour*/
   Agent*               _agent;        /**< @brief My boss */
-  
+  id_t                 _voted_for;
+
   arangodb::basics::ConditionVariable _cv;      // agency callbacks
 
 };

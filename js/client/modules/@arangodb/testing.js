@@ -313,7 +313,6 @@ function makeAuthorizationHeaders(options) {
     }
   };
 }
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts endpoints to URL
 ////////////////////////////////////////////////////////////////////////////////
@@ -1287,6 +1286,7 @@ function shutdownInstance(instanceInfo, options) {
     if (instanceInfo.exitStatus === undefined) {
       instanceInfo.exitStatus = [];
     }
+
     for (let i = 0; i < options.agencySize; i++) {
       if (instanceInfo.exitStatus[i] === undefined) {
         download(instanceInfo.urls[i] + "/_admin/shutdown", "",

@@ -50,7 +50,7 @@ class RestAgencyHandler : public arangodb::RestBaseHandler {
   status_t reportUnknownMethod() ; 
   status_t handleRead() ;
   status_t handleWrite() ;
-  status_t handleTest();
+  status_t handleConfig();
   status_t reportMethodNotAllowed(); 
   status_t handleState();
 

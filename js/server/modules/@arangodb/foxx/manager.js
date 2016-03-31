@@ -866,8 +866,9 @@ function _scanFoxx(mount, options, activateDevelopment) {
       if (old === null) {
         throw new Error(`Could not find app for mountpoint "${mount}"`);
       }
-      var manifest = app.toJSON().manifest;
-      utils.getStorage().update(old, {manifest: manifest});
+      var data = _.extend({}, old);
+      data.manifest = app.toJSON().manifest;
+      utils.getStorage().replace(old, data);
     }
   }
   return app;

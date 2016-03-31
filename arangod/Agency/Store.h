@@ -126,7 +126,7 @@ public:
       par = par->_parent;
       os << "  ";
     }
-    os << n._name << " : ";
+    os << n._node_name << " : ";
     if (n.type() == NODE) {
       os << std::endl;
       for (auto const& i : n._children)
@@ -164,10 +164,9 @@ protected:
   std::chrono::system_clock::time_point _ttl;
   
   NodeType _type;
-  std::string _name;
+  std::string _node_name;
   
 };
-
 
 /// @brief Key value tree 
 class Store : public Node, public arangodb::Thread {
@@ -190,7 +189,13 @@ public:
   query_t read (query_t const& query) const;
   
   /// @brief Begin shutdown of thread
-  void beginShutdown () override;
+  void beginShutdown () override final;
+
+  /// @brief Start thread
+  bool start ();
+
+  /// @brief Set name
+  void name (std::string const& name);
 
 private:
   /// @brief Read individual entry specified in slice into builder

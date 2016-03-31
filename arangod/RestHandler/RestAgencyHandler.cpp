@@ -89,7 +89,11 @@ inline HttpHandler::status_t RestAgencyHandler::handleWrite () {
       query = _request->toVelocyPack(&options);
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
-      generateError(HttpResponse::UNPROCESSABLE_ENTITY,422);
+      Builder body;
+      body.openObject();
+      body.add("message", VPackValue(e.what()));
+      body.close();
+      generateResult(HttpResponse::BAD,body.slice());
       return HttpHandler::status_t(HANDLER_DONE);
     }
 
@@ -164,7 +168,7 @@ inline HttpHandler::status_t RestAgencyHandler::handleRead () {
   return HttpHandler::status_t(HANDLER_DONE);
 }
 
-HttpHandler::status_t RestAgencyHandler::handleTest() {
+HttpHandler::status_t RestAgencyHandler::handleConfig() {
   Builder body;
   body.add(VPackValue(VPackValueType::Object));
   body.add("term", Value(_agent->term()));
@@ -178,8 +182,14 @@ HttpHandler::status_t RestAgencyHandler::handleTest() {
 HttpHandler::status_t RestAgencyHandler::handleState() {
   Builder body;
   body.add(VPackValue(VPackValueType::Array));
-  for (auto const& i: _agent->state().slices())
-    body.add(i);
+  for (auto const& i: _agent->state().get()) {
+    body.add(VPackValue(VPackValueType::Object));
+    body.add("index", VPackValue(i.index));
+    body.add("term", VPackValue(i.term));
+    body.add("leader", VPackValue(i.leaderId));
+    body.add("query", VPackSlice(i.entry->data()));
+    body.close();
+  }
   body.close();
   generateResult(HttpResponse::OK, body.slice());
   return HttpHandler::status_t(HANDLER_DONE);
@@ -205,7 +215,7 @@ HttpHandler::status_t RestAgencyHandler::execute() {
         if (_request->requestType() != HttpRequest::HTTP_REQUEST_GET) {
           return reportMethodNotAllowed();
         }
-        return handleTest();
+        return handleConfig();
     	} else if (_request->suffix()[0] == "state") {
         if (_request->requestType() != HttpRequest::HTTP_REQUEST_GET) {
           return reportMethodNotAllowed();

@@ -178,6 +178,17 @@
 
       this.history[this.server] = {};
     },
+		
+		cleanupHistory: function(f) {
+			// clean up too big history data
+			if (this.history[this.server].hasOwnProperty(f)) {
+	      if (this.history[this.server][f].length > this.defaultTimeFrame / this.interval) {
+			    while (this.history[this.server][f].length > this.defaultTimeFrame / this.interval) {
+	          this.history[this.server][f].shift();
+	        }
+			  }
+			}
+		},
 
     updateCharts: function () {
       var self = this;
@@ -235,8 +246,6 @@
         return [borderLeft, borderRight];
       }
       return [t - this.defaultTimeFrame, t];
-
-
     },
 
     updateLineChart: function (figure, isDetailChart) {
@@ -306,6 +315,12 @@
       });
 
       g.updateOptions(opts);
+			
+			//clean up history
+			if (this.history[this.server].hasOwnProperty(figure)) {
+				this.cleanupHistory(figure);
+			}
+
     },
 
     mergeDygraphHistory: function (newData, i) {
@@ -344,13 +359,13 @@
           self.history[self.server][f].push(valueList);
         }
       });
-    },
+		},
 
     cutOffHistory: function (f, cutoff) {
-      var self = this;
+      var self = this, v;
 
       while (self.history[self.server][f].length !== 0) {
-        var v = self.history[self.server][f][0][0];
+        v = self.history[self.server][f][0][0];
 
         if (v >= cutoff) {
           break;

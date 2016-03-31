@@ -10494,23 +10494,26 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       jsoneditor: {
         name: "AQL editor",
         content: [{
-          label: "Submit",
-          letter: "Ctrl + Return"
+          label: "Execute Query",
+          letter: "Ctrl/Cmd + Return"
         },{
           label: "Explain Query",
-          letter: "Ctrl + Shift + E"
+          letter: "Ctrl/Cmd + Shift + Return"
         },{
           label: "Save Query",
-          letter: "Ctrl + Shift + S"
+          letter: "Ctrl/Cmd + Shift + S"
+        },{
+          label: "Open search",
+          letter: "Ctrl + Space"
         },{
           label: "Toggle comments",
-          letter: "Ctrl + Shift + C"
+          letter: "Ctrl/Cmd + Shift + C"
         },{
           label: "Undo",
-          letter: "Ctrl + Z"
+          letter: "Ctrl/Cmd + Z"
         },{
           label: "Redo",
-          letter: "Ctrl + Shift + Z"
+          letter: "Ctrl/Cmd + Shift + Z"
         }]
       },
       doceditor: {
@@ -10520,7 +10523,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
           letter: "Ctrl + Insert"
         },{
           label: "Save",
-          letter: "Ctrl + Return, CMD + Return"
+          letter: "Ctrl + Return, Cmd + Return"
         },{
           label: "Append",
           letter: "Ctrl + Shift + Insert"
@@ -21045,6 +21048,17 @@ window.ArangoUsers = Backbone.Collection.extend({
 
       this.history[this.server] = {};
     },
+		
+		cleanupHistory: function(f) {
+			// clean up too big history data
+			if (this.history[this.server].hasOwnProperty(f)) {
+	      if (this.history[this.server][f].length > this.defaultTimeFrame / this.interval) {
+			    while (this.history[this.server][f].length > this.defaultTimeFrame / this.interval) {
+	          this.history[this.server][f].shift();
+	        }
+			  }
+			}
+		},
 
     updateCharts: function () {
       var self = this;
@@ -21102,8 +21116,6 @@ window.ArangoUsers = Backbone.Collection.extend({
         return [borderLeft, borderRight];
       }
       return [t - this.defaultTimeFrame, t];
-
-
     },
 
     updateLineChart: function (figure, isDetailChart) {
@@ -21173,6 +21185,12 @@ window.ArangoUsers = Backbone.Collection.extend({
       });
 
       g.updateOptions(opts);
+			
+			//clean up history
+			if (this.history[this.server].hasOwnProperty(figure)) {
+				this.cleanupHistory(figure);
+			}
+
     },
 
     mergeDygraphHistory: function (newData, i) {
@@ -21211,13 +21229,13 @@ window.ArangoUsers = Backbone.Collection.extend({
           self.history[self.server][f].push(valueList);
         }
       });
-    },
+		},
 
     cutOffHistory: function (f, cutoff) {
-      var self = this;
+      var self = this, v;
 
       while (self.history[self.server][f].length !== 0) {
-        var v = self.history[self.server][f][0][0];
+        v = self.history[self.server][f][0][0];
 
         if (v >= cutoff) {
           break;
@@ -23442,6 +23460,14 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     render: function() {
       $(this.el).html(this.template.render({}));
+
+      if (this.type === 2) {
+        this.type = "document";
+      }
+      else if (this.type === 3) {
+        this.type = "edge";
+      }
+
       this.tableView.setElement($(this.table)).drawLoading();
 
       this.collectionContext = this.collectionsStore.getPosition(
@@ -27649,10 +27675,10 @@ window.ArangoUsers = Backbone.Collection.extend({
       "click #querySpotlight": "showSpotlight",
       "click #deleteQuery": "selectAndDeleteQueryFromTable",
       "click #explQuery": "selectAndExplainQueryFromTable",
-      "keyup #arangoBindParamTable input": "updateBindParams",
+      "keydown #arangoBindParamTable input": "updateBindParams",
       "change #arangoBindParamTable input": "updateBindParams",
-      "click #arangoMyQueriesTable tr" : "showQueryPreview",
-      "dblclick #arangoMyQueriesTable tr" : "selectQueryFromTable",
+      "click #arangoMyQueriesTable tbody tr" : "showQueryPreview",
+      "dblclick #arangoMyQueriesTable tbody tr" : "selectQueryFromTable",
       "click #arangoMyQueriesTable #copyQuery" : "selectQueryFromTable",
       'click #closeQueryModal': 'closeExportDialog',
       'click #confirmQueryImport': 'importCustomQueries',
@@ -27878,7 +27904,6 @@ window.ArangoUsers = Backbone.Collection.extend({
         this.toggleQueries();
       }
 
-      $('.aqlEditorWrapper').first().width($(window).width() * 0.66);
       this.aqlEditor.setValue(this.getCustomQueryValueByName(name));
       this.fillBindParamTable(this.getCustomQueryParameterByName(name));
       this.updateBindParams();
@@ -28130,18 +28155,38 @@ window.ArangoUsers = Backbone.Collection.extend({
       self.deselect(self.aqlEditor);
     },
 
-    showSpotlight: function() {
+    showSpotlight: function(type) {
+      
+      var callback, cancelCallback;
 
-      var callback = function(string) {
-        this.aqlEditor.insert(string);
-        $('#aqlEditor .ace_text-input').focus();
-      }.bind(this);
+      if (type === undefined || type.type === 'click') {
+        type = 'aql';
+      }
 
-      var cancelCallback = function() {
-        $('#aqlEditor .ace_text-input').focus();
-      };
+      if (type === 'aql') {
+        callback = function(string) {
+          this.aqlEditor.insert(string);
+          $('#aqlEditor .ace_text-input').focus();
+        }.bind(this);
 
-      window.spotlightView.show(callback, cancelCallback);
+        cancelCallback = function() {
+          $('#aqlEditor .ace_text-input').focus();
+        };
+      }
+      else {
+        var focused = $(':focus');
+        callback = function(string) {
+          var old = $(focused).val();
+          $(focused).val(old + string);
+          $(focused).focus();
+        }.bind(this);
+
+        cancelCallback = function() {
+          $(focused).focus();
+        };
+      }
+
+      window.spotlightView.show(callback, cancelCallback, type);
     },
 
     resize: function() {
@@ -28240,8 +28285,15 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.setCachedQuery(this.aqlEditor.getValue(), JSON.stringify(this.bindParamTableObj));
 
       //fire execute if return was pressed
-      if (e.ctrlKey && e.keyCode === 13) {
-        this.executeQuery();
+      if (e) {
+        if ((e.ctrlKey || e.metaKey) && e.keyCode === 13) {
+          e.preventDefault();
+          this.executeQuery();
+        }
+        if ((e.ctrlKey || e.metaKey) && e.keyCode === 32) {
+          e.preventDefault();
+          this.showSpotlight('bind');
+        }
       }
     },
 
@@ -28412,10 +28464,18 @@ window.ArangoUsers = Backbone.Collection.extend({
       });
 
       this.aqlEditor.commands.addCommand({
+        name: "togglecomment",
+        bindKey: {win: "Ctrl-Shift-C", linux: "Ctrl-Shift-C", mac: "Command-Shift-C"},
+        exec: function (editor) {
+          editor.toggleCommentLines();
+        },
+        multiSelectAction: "forEach"
+      });
+
+      this.aqlEditor.commands.addCommand({
         name: "showSpotlight",
         bindKey: {win: "Ctrl-Space", mac: "Ctrl-Space", linux: "Ctrl-Space"},
         exec: function() {
-
           self.showSpotlight();
         }
       });
@@ -28805,6 +28865,11 @@ window.ArangoUsers = Backbone.Collection.extend({
       });
 
       $('#outputEditorWrapper' + counter + ' #copy2aqlEditor').bind('click', function() {
+
+        if (!$('#toggleQueries1').is(':visible')) {
+          self.toggleQueries();
+        }
+
         var aql = ace.edit("sentQueryEditor" + counter).getValue();
         var bindParam = JSON.parse(ace.edit("sentBindParamEditor" + counter).getValue());
         self.aqlEditor.setValue(aql);
@@ -28939,7 +29004,6 @@ window.ArangoUsers = Backbone.Collection.extend({
               }
             }
             catch (e) {
-              console.log(e);
               arangoHelper.arangoError("Query", "Something went wrong.");
               self.removeOutputEditor(counter);
             }
@@ -29314,7 +29378,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.aqlBuiltinFunctionsArray = this.aqlBuiltinFunctions.split('|');
     },
 
-    show: function(callbackSuccess, callbackCancel) {
+    show: function(callbackSuccess, callbackCancel, type) {
 
       this.callbackSuccess = callbackSuccess;
       this.callbackCancel = callbackCancel;
@@ -29337,53 +29401,89 @@ window.ArangoUsers = Backbone.Collection.extend({
       $(this.el).html(this.template.render({}));
       $(this.el).show();
 
-      this.typeahead = $('#spotlight .typeahead').typeahead(
-        {
-          hint: true,
-          highlight: true,
-          minLength: 1
-        },
-        {
-          name: 'Functions',
-          source: this.substringMatcher(this.aqlBuiltinFunctionsArray),
-          limit: this.displayLimit,
-          templates: {
-            header: genHeader("Functions", "fa-code", "aql")
+      if (type === 'aql') {
+        this.typeahead = $('#spotlight .typeahead').typeahead(
+          {
+            hint: true,
+            highlight: true,
+            minLength: 1
+          },
+          {
+            name: 'Functions',
+            source: this.substringMatcher(this.aqlBuiltinFunctionsArray),
+            limit: this.displayLimit,
+            templates: {
+              header: genHeader("Functions", "fa-code", "aql")
+            }
+          },
+          {
+            name: 'Keywords',
+            source: this.substringMatcher(this.aqlKeywordsArray),
+            limit: this.displayLimit,
+            templates: {
+              header: genHeader("Keywords", "fa-code", "aql")
+            }
+          },
+          {
+            name: 'Documents',
+            source: this.substringMatcher(this.collections.doc),
+            limit: this.displayLimit,
+            templates: {
+              header: genHeader("Documents", "fa-file-text-o", "Collection")
+            }
+          },
+          {
+            name: 'Edges',
+            source: this.substringMatcher(this.collections.edge),
+            limit: this.displayLimit,
+            templates: {
+              header: genHeader("Edges", "fa-share-alt", "Collection")
+            }
+          },
+          {
+            name: 'System',
+            limit: this.displayLimit,
+            source: this.substringMatcher(this.collections.system),
+            templates: {
+              header: genHeader("System", "fa-cogs", "Collection")
+            }
           }
-        },
-        {
-          name: 'Keywords',
-          source: this.substringMatcher(this.aqlKeywordsArray),
-          limit: this.displayLimit,
-          templates: {
-            header: genHeader("Keywords", "fa-code", "aql")
+        );
+      }
+      else {
+        this.typeahead = $('#spotlight .typeahead').typeahead(
+          {
+            hint: true,
+            highlight: true,
+            minLength: 1
+          },
+          {
+            name: 'Documents',
+            source: this.substringMatcher(this.collections.doc),
+            limit: this.displayLimit,
+            templates: {
+              header: genHeader("Documents", "fa-file-text-o", "Collection")
+            }
+          },
+          {
+            name: 'Edges',
+            source: this.substringMatcher(this.collections.edge),
+            limit: this.displayLimit,
+            templates: {
+              header: genHeader("Edges", "fa-share-alt", "Collection")
+            }
+          },
+          {
+            name: 'System',
+            limit: this.displayLimit,
+            source: this.substringMatcher(this.collections.system),
+            templates: {
+              header: genHeader("System", "fa-cogs", "Collection")
+            }
           }
-        },
-        {
-          name: 'Documents',
-          source: this.substringMatcher(this.collections.doc),
-          limit: this.displayLimit,
-          templates: {
-            header: genHeader("Documents", "fa-file-text-o", "Collection")
-          }
-        },
-        {
-          name: 'Edges',
-          source: this.substringMatcher(this.collections.edge),
-          limit: this.displayLimit,
-          templates: {
-            header: genHeader("Edges", "fa-share-alt", "Collection")
-          }
-        },
-        {
-          name: 'System',
-          limit: this.displayLimit,
-          source: this.substringMatcher(this.collections.system),
-          templates: {
-            header: genHeader("System", "fa-cogs", "Collection")
-          }
-        }
-      );
+        );
+      }
+      
 
       $('#spotlight .typeahead').focus();
     },
