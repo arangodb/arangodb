@@ -237,13 +237,13 @@ append_entries_t Agent::sendAppendEntriesRPC (id_t slave_id) {
 
 bool Agent::load () {
   LOG_TOPIC(INFO, Logger::AGENCY) << "Loading persistent state.";
-  if (!_state.loadCollections()) {
+  /*  if (!_state.loadCollections()) {
     LOG(FATAL) << "Failed to load persistent state on statup.";
   }
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Reassembling spearhead and read stores.";
   _read_db.apply(_state.slices());
-  _spearhead.apply(_state.slices(_last_commit_index+1));
+  _spearhead.apply(_state.slices(_last_commit_index+1));*/
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Starting spearhead worker.";
   _spearhead.start();
