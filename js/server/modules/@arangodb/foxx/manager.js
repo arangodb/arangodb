@@ -281,7 +281,7 @@ function routes(mount) {
 
 function checkMountedSystemApps(dbname) {
   var i, mount;
-  var collection = utils.getStorage();
+  //var collection = utils.getStorage();
   for (i = 0; i < usedSystemMountPoints.length; ++i) {
     mount = usedSystemMountPoints[i];
     delete appCache[dbname][mount];
@@ -907,7 +907,7 @@ function rescanFoxx(mount) {
     [ mount ] );
 
   var old = lookupApp(mount);
-  var collection = utils.getStorage();
+  //var collection = utils.getStorage();
   initCache();
   _scanFoxx(
     mount,
@@ -1497,7 +1497,7 @@ function syncWithFolder(options) {
   appCache = appCache || {};
   appCache[dbname] = {};
   var folders = fs.listTree(FoxxService._appPath).filter(filterAppRoots);
-  var collection = utils.getStorage();
+//  var collection = utils.getStorage();
   return folders.map(function (folder) {
     var mount = transformPathToMount(folder);
     _scanFoxx(mount, options);
