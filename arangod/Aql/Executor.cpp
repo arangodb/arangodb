@@ -48,6 +48,15 @@ static ExecutionCondition const NotInCluster =
     [] { return !arangodb::ServerState::instance()->isRunningInCluster(); };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief determines if code is executed on coordinator or not
+////////////////////////////////////////////////////////////////////////////////
+
+static ExecutionCondition const NotInCoordinator = [] {
+  return !arangodb::ServerState::instance()->isRunningInCluster() ||
+         !arangodb::ServerState::instance()->isCoordinator();
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief internal functions used in execution
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -333,7 +342,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
     // fulltext functions
     {"FULLTEXT",
      Function("FULLTEXT", "AQL_FULLTEXT", "hs,s,s|n", true, false, true, false,
-              true, &Functions::Fulltext, NotInCluster)},
+              true, &Functions::Fulltext, NotInCoordinator)},
 
     // graph functions
     {"PATHS", Function("PATHS", "AQL_PATHS", "c,h|s,ba", true, false, true,

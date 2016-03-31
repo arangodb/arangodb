@@ -309,17 +309,66 @@ SimpleQueryFulltext.prototype.execute = function () {
     limit = this._limit;
   }
 
-  var bindVars = { 
-    "@collection": this._collection.name(), 
-    attribute: this._attribute, 
-    query: this._query, 
-    limit: parseInt(this._limit + this._skip, 10)
-  };
+  var documents = [];
+  var cluster = require("@arangodb/cluster");
 
-  var query = "FOR doc IN FULLTEXT(@@collection, @attribute, @query, @limit) " + 
-    limitString(this._skip, this._limit) + " RETURN doc";
+  if (cluster.isCoordinator()) {
+    var dbName = require("internal").db._name();
+    var shards = cluster.shardList(dbName, this._collection.name());
+    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+    var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
+    var _limit = 0;
+    if (this._limit > 0) {
+      if (this._skip >= 0) {
+        _limit = this._skip + this._limit;
+      }
+    }
 
-  var documents = require("internal").db._query({ query, bindVars }).toArray();
+    var self = this;
+    shards.forEach(function (shard) {
+      ArangoClusterComm.asyncRequest("put",
+                                     "shard:" + shard,
+                                     dbName,
+                                     "/_api/simple/fulltext",
+                                     JSON.stringify({
+                                       collection: shard,
+                                       attribute: self._attribute,
+                                       query: self._query,
+                                       index: rewriteIndex(self._index),
+                                       skip: 0,
+                                       limit: _limit || undefined,
+                                       batchSize: 100000000
+                                     }),
+                                     { },
+                                     options);
+    });
+
+    result = cluster.wait(coord, shards);
+
+    result.forEach(function(part) {
+      var body = JSON.parse(part.body);
+
+      documents = documents.concat(body.result);
+    });
+
+    if (this._limit > 0) {
+      documents = documents.slice(0, this._skip + this._limit);
+    }
+
+  }
+  else {
+    var bindVars = { 
+      "@collection": this._collection.name(), 
+      attribute: this._attribute, 
+      query: this._query, 
+      limit: parseInt(this._limit + this._skip, 10)
+    };
+
+    var query = "FOR doc IN FULLTEXT(@@collection, @attribute, @query, @limit) " + 
+      limitString(this._skip, this._limit) + " RETURN doc";
+
+    documents = require("internal").db._query({ query, bindVars }).toArray();
+  }
 
   this._execution = new GeneralArrayCursor(documents);
   this._countQuery = documents.length - this._skip;
