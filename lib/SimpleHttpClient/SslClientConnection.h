@@ -50,11 +50,10 @@ class SslClientConnection final : public GeneralClientConnection {
   /// @brief creates a new client connection
   //////////////////////////////////////////////////////////////////////////////
 
-  SslClientConnection(arangodb::rest::Endpoint* endpoint, double, double,
-                      size_t, uint32_t);
+  SslClientConnection(Endpoint* endpoint, double, double, size_t, uint32_t);
 
-  SslClientConnection(std::unique_ptr<arangodb::rest::Endpoint>& endpoint,
-                      double, double, size_t, uint32_t);
+  SslClientConnection(std::unique_ptr<Endpoint>& endpoint, double, double,
+                      size_t, uint32_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroys a client connection

@@ -27,40 +27,25 @@
 #include "Basics/Common.h"
 
 namespace arangodb {
+class HttpRequest;
+
 namespace rest {
 class HttpHandler;
-class HttpRequest;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creator function
-////////////////////////////////////////////////////////////////////////////////
 
 template <typename H>
 class RestHandlerCreator : public H {
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief create with void pointer data
-  //////////////////////////////////////////////////////////////////////////////
-
-  static rest::HttpHandler* create(rest::HttpRequest* request, void* data) {
+  static rest::HttpHandler* create(HttpRequest* request, void* data) {
     return new H(request, data);
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief create with data
-  //////////////////////////////////////////////////////////////////////////////
-
   template <typename D>
-  static rest::HttpHandler* createData(rest::HttpRequest* request, void* data) {
+  static rest::HttpHandler* createData(HttpRequest* request, void* data) {
     return new H(request, (D)data);
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief create without data
-  //////////////////////////////////////////////////////////////////////////////
-
-  static rest::HttpHandler* createNoData(rest::HttpRequest* request, void*) {
+  static rest::HttpHandler* createNoData(HttpRequest* request, void*) {
     return new H(request);
   }
 };

@@ -40,11 +40,11 @@ using namespace arangodb::aql;
 using Json = arangodb::basics::Json;
 using JsonHelper = arangodb::basics::JsonHelper;
 
-RestAqlHandler::RestAqlHandler(arangodb::rest::HttpRequest* request,
+RestAqlHandler::RestAqlHandler(arangodb::HttpRequest* request,
                                std::pair<ApplicationV8*, QueryRegistry*>* pair)
     : RestVocbaseBaseHandler(request),
       _applicationV8(pair->first),
-      _context(static_cast<VocbaseContext*>(request->getRequestContext())),
+      _context(static_cast<VocbaseContext*>(request->requestContext())),
       _vocbase(_context->getVocbase()),
       _queryRegistry(pair->second),
       _qId(0) {
@@ -103,7 +103,8 @@ void RestAqlHandler::createQueryFromJson() {
   // Now the query is ready to go, store it in the registry and return:
   double ttl = 3600.0;
   bool found;
-  char const* ttlstring = _request->header("ttl", found);
+  std::string const& ttlstring = _request->header("ttl", found);
+
   if (found) {
     ttl = arangodb::basics::StringUtils::doubleDecimal(ttlstring);
   }
@@ -298,7 +299,8 @@ void RestAqlHandler::createQueryFromString() {
   // Now the query is ready to go, store it in the registry and return:
   double ttl = 3600.0;
   bool found;
-  char const* ttlstring = _request->header("ttl", found);
+  std::string const& ttlstring = _request->header("ttl", found);
+
   if (found) {
     ttl = arangodb::basics::StringUtils::doubleDecimal(ttlstring);
   }
@@ -443,8 +445,9 @@ void RestAqlHandler::getInfoQuery(std::string const& operation,
 
   bool found;
   std::string shardId;
-  char const* shardIdCharP = _request->header("shard-id", found);
-  if (found && shardIdCharP != nullptr) {
+  std::string const& shardIdCharP = _request->header("shard-id", found);
+
+  if (found && !shardIdCharP.empty()) {
     shardId = shardIdCharP;
   }
 
@@ -547,11 +550,11 @@ arangodb::rest::HttpHandler::status_t RestAqlHandler::execute() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   // extract the sub-request type
-  HttpRequest::HttpRequestType type = _request->requestType();
+  GeneralRequest::RequestType type = _request->requestType();
 
   // execute one of the CRUD methods
   switch (type) {
-    case HttpRequest::HTTP_REQUEST_POST: {
+    case GeneralRequest::RequestType::POST: {
       if (suffix.size() != 1) {
         generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       } else if (suffix[0] == "instantiate") {
@@ -568,7 +571,7 @@ arangodb::rest::HttpHandler::status_t RestAqlHandler::execute() {
       }
       break;
     }
-    case HttpRequest::HTTP_REQUEST_PUT: {
+    case GeneralRequest::RequestType::PUT: {
       if (suffix.size() != 2) {
         LOG(ERR) << "unknown PUT API";
         generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
@@ -577,7 +580,7 @@ arangodb::rest::HttpHandler::status_t RestAqlHandler::execute() {
       }
       break;
     }
-    case HttpRequest::HTTP_REQUEST_GET: {
+    case GeneralRequest::RequestType::GET: {
       if (suffix.size() != 2) {
         LOG(ERR) << "Unknown GET API";
         generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
@@ -586,11 +589,14 @@ arangodb::rest::HttpHandler::status_t RestAqlHandler::execute() {
       }
       break;
     }
-    case HttpRequest::HTTP_REQUEST_DELETE:
-    case HttpRequest::HTTP_REQUEST_HEAD:
-    case HttpRequest::HTTP_REQUEST_PATCH:
-    case HttpRequest::HTTP_REQUEST_OPTIONS:
-    case HttpRequest::HTTP_REQUEST_ILLEGAL: {
+    case GeneralRequest::RequestType::DELETE:
+    case GeneralRequest::RequestType::HEAD:
+    case GeneralRequest::RequestType::PATCH:
+    case GeneralRequest::RequestType::OPTIONS:
+    case GeneralRequest::RequestType::VSTREAM_CRED:
+    case GeneralRequest::RequestType::VSTREAM_REGISTER:
+    case GeneralRequest::RequestType::VSTREAM_STATUS:
+    case GeneralRequest::RequestType::ILLEGAL: {
       generateError(HttpResponse::METHOD_NOT_ALLOWED, TRI_ERROR_NOT_IMPLEMENTED,
                     "illegal method for /_api/aql");
       break;
@@ -653,8 +659,9 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
                                     arangodb::basics::Json const& queryJson) {
   bool found;
   std::string shardId;
-  char const* shardIdCharP = _request->header("shard-id", found);
-  if (found && shardIdCharP != nullptr) {
+  std::string const& shardIdCharP = _request->header("shard-id", found);
+
+  if (found && !shardIdCharP.empty()) {
     shardId = shardIdCharP;
   }
 

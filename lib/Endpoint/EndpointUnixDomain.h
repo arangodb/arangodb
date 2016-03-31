@@ -24,30 +24,22 @@
 #ifndef LIB_REST_ENDPOINT_UNIX_DOMAIN_H
 #define LIB_REST_ENDPOINT_UNIX_DOMAIN_H 1
 
-#include "Basics/Common.h"
+#include "Endpoint/Endpoint.h"
 
-#ifdef TRI_HAVE_LINUX_SOCKETS
+#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
+
 #include <arpa/inet.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
 #include <sys/un.h>
-#include <sys/socket.h>
-#include <netdb.h>
 #include <sys/file.h>
 
-#include "Rest/Endpoint.h"
-
 namespace arangodb {
-namespace rest {
-
 class EndpointUnixDomain final : public Endpoint {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates an endpoint
   //////////////////////////////////////////////////////////////////////////////
 
-  EndpointUnixDomain(const EndpointType, std::string const&, int,
-                     std::string const&);
+  EndpointUnixDomain(EndpointType, int, std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroys an endpoint
@@ -74,38 +66,14 @@ class EndpointUnixDomain final : public Endpoint {
 
   bool initIncoming(TRI_socket_t) override;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get endpoint domain
-  //////////////////////////////////////////////////////////////////////////////
-
-  int getDomain() const override { return AF_UNIX; }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get port
-  //////////////////////////////////////////////////////////////////////////////
-
-  int getPort() const override { return 0; }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get host name
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::string getHost() const override { return "localhost"; }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get host string for HTTP requests
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::string getHostString() const override { return "localhost"; }
+  int domain() const override { return AF_UNIX; }
+  int port() const override { return 0; }
+  std::string host() const override { return "localhost"; }
+  std::string hostAndPort() const override { return "localhost"; }
 
  private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief socket file
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::string _path;
+  std::string const _path;
 };
-}
 }
 
 #endif

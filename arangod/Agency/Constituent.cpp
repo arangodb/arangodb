@@ -159,7 +159,7 @@ size_t Constituent::notifyAll () {
       std::unique_ptr<std::map<std::string, std::string>> headerFields =
         std::make_unique<std::map<std::string, std::string> >();
       arangodb::ClusterComm::instance()->asyncRequest(
-        "1", 1, end_point(i), rest::HttpRequest::HTTP_REQUEST_POST, path.str(),
+        "1", 1, end_point(i), GeneralRequest::RequestType::POST, path.str(),
         std::make_shared<std::string>(body.toString()), headerFields, nullptr,
         0.0, true);
     }
@@ -219,7 +219,7 @@ void Constituent::callElection() {
       std::unique_ptr<std::map<std::string, std::string>> headerFields =
         std::make_unique<std::map<std::string, std::string> >();
       results[i] = arangodb::ClusterComm::instance()->asyncRequest(
-        "1", 1, _agent->config().end_points[i], rest::HttpRequest::HTTP_REQUEST_GET,
+        "1", 1, _agent->config().end_points[i], GeneralRequest::RequestType::GET,
         path.str(), std::make_shared<std::string>(body), headerFields, nullptr,
         _agent->config().min_ping, true);
     }

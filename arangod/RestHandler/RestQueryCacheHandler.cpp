@@ -37,27 +37,21 @@ bool RestQueryCacheHandler::isDirect() const { return false; }
 
 HttpHandler::status_t RestQueryCacheHandler::execute() {
   // extract the sub-request type
-  HttpRequest::HttpRequestType type = _request->requestType();
+  auto const type = _request->requestType();
 
   switch (type) {
-    case HttpRequest::HTTP_REQUEST_DELETE:
+    case GeneralRequest::RequestType::DELETE:
       clearCache();
       break;
-    case HttpRequest::HTTP_REQUEST_GET:
+    case GeneralRequest::RequestType::GET:
       readProperties();
       break;
-    case HttpRequest::HTTP_REQUEST_PUT:
+    case GeneralRequest::RequestType::PUT:
       replaceProperties();
       break;
-
-    case HttpRequest::HTTP_REQUEST_POST:
-    case HttpRequest::HTTP_REQUEST_HEAD:
-    case HttpRequest::HTTP_REQUEST_PATCH:
-    case HttpRequest::HTTP_REQUEST_ILLEGAL:
-    default: {
+    default:
       generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);
       break;
-    }
   }
 
   // this handler is done

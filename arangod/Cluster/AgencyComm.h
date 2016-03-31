@@ -33,12 +33,10 @@
 #include <list>
 
 namespace arangodb {
+class Endpoint;
+
 namespace httpclient {
 class GeneralClientConnection;
-}
-
-namespace rest {
-class Endpoint;
 }
 
 namespace velocypack {
@@ -53,7 +51,7 @@ struct AgencyEndpoint {
   /// @brief creates an agency endpoint
   //////////////////////////////////////////////////////////////////////////////
 
-  AgencyEndpoint(arangodb::rest::Endpoint*,
+  AgencyEndpoint(Endpoint*,
                  arangodb::httpclient::GeneralClientConnection*);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -66,7 +64,7 @@ struct AgencyEndpoint {
   /// @brief the endpoint
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::rest::Endpoint* _endpoint;
+  Endpoint* _endpoint;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the connection
@@ -530,7 +528,7 @@ class AgencyComm {
   /// @brief sends an HTTP request to the agency, handling failover
   //////////////////////////////////////////////////////////////////////////////
 
-  bool sendWithFailover(arangodb::rest::HttpRequest::HttpRequestType, double,
+  bool sendWithFailover(arangodb::GeneralRequest::RequestType, double,
                         AgencyCommResult&, std::string const&,
                         std::string const&, bool);
 
@@ -539,7 +537,7 @@ class AgencyComm {
   //////////////////////////////////////////////////////////////////////////////
 
   bool send(arangodb::httpclient::GeneralClientConnection*,
-            arangodb::rest::HttpRequest::HttpRequestType, double,
+            arangodb::GeneralRequest::RequestType, double,
             AgencyCommResult&, std::string const&, std::string const&);
   
   //////////////////////////////////////////////////////////////////////////////

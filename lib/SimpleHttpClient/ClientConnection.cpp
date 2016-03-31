@@ -23,13 +23,6 @@
 
 #include "ClientConnection.h"
 
-#ifdef TRI_HAVE_LINUX_SOCKETS
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <netdb.h>
-#include <sys/socket.h>
-#endif
-
 #ifdef TRI_HAVE_WINSOCK2_H
 #include <WinSock2.h>
 #include <WS2tcpip.h>
@@ -51,9 +44,9 @@
 #include <poll.h>
 #endif
 
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
-using namespace arangodb::rest;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new client connection

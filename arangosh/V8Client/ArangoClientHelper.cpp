@@ -25,8 +25,9 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Basics/VelocyPackHelper.h"
 #include "ApplicationFeatures/ClientFeature.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Rest/HttpResponse.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -34,7 +35,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
-using namespace arangodb::rest;
 
 ArangoClientHelper::ArangoClientHelper() : _httpClient(nullptr) {}
 
@@ -93,7 +93,7 @@ std::string ArangoClientHelper::getHttpErrorMessage(SimpleHttpResult* result,
 // fetch the version from the server
 std::string ArangoClientHelper::getArangoVersion(int* err) {
   std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
-      HttpRequest::HTTP_REQUEST_GET, "/_api/version", nullptr, 0));
+      GeneralRequest::RequestType::GET, "/_api/version", nullptr, 0));
 
   if (response == nullptr || !response->isComplete()) {
     return "";
@@ -101,7 +101,7 @@ std::string ArangoClientHelper::getArangoVersion(int* err) {
 
   std::string version;
 
-  if (response->getHttpReturnCode() == HttpResponse::OK) {
+  if (response->getHttpReturnCode() == rest::HttpResponse::OK) {
     // default value
     version = "arango";
 
@@ -139,7 +139,7 @@ std::string ArangoClientHelper::getArangoVersion(int* err) {
 // check if server is a coordinator of a cluster
 bool ArangoClientHelper::getArangoIsCluster(int* err) {
   std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
-      HttpRequest::HTTP_REQUEST_GET, "/_admin/server/role", "", 0));
+      GeneralRequest::RequestType::GET, "/_admin/server/role", "", 0));
 
   if (response == nullptr || !response->isComplete()) {
     return false;
@@ -147,7 +147,7 @@ bool ArangoClientHelper::getArangoIsCluster(int* err) {
 
   std::string role = "UNDEFINED";
 
-  if (response->getHttpReturnCode() == HttpResponse::OK) {
+  if (response->getHttpReturnCode() == rest::HttpResponse::OK) {
     try {
       std::shared_ptr<VPackBuilder> parsedBody = response->getBodyVelocyPack();
       VPackSlice const body = parsedBody->slice();

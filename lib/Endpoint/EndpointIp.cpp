@@ -27,10 +27,12 @@
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 
-#include "Rest/Endpoint.h"
+#include "Endpoint/Endpoint.h"
 
+using namespace arangodb;
 using namespace arangodb::basics;
-using namespace arangodb::rest;
+
+#warning TODO move to system or os file
 
 #ifdef _WIN32
 #define STR_ERROR()                                                  \
@@ -42,29 +44,60 @@ using namespace arangodb::rest;
 #define STR_ERROR() strerror(errno)
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set port if none specified
-////////////////////////////////////////////////////////////////////////////////
+static std::string buildSpecification(Endpoint::DomainType domainType,
+                                      Endpoint::TransportType transport,
+                                      Endpoint::EncryptionType encryption,
+                                      std::string const& host,
+                                      uint16_t const port) {
+  std::string specification;
 
-uint16_t const EndpointIp::_defaultPort = 8529;
+  switch (transport) {
+    case Endpoint::TransportType::HTTP:
+      specification = "http+";
+      break;
+    case Endpoint::TransportType::VPP:
+      specification = "vpp+";
+      break;
+  }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief default host if none specified
-////////////////////////////////////////////////////////////////////////////////
+  switch (encryption) {
+    case Endpoint::EncryptionType::NONE:
+      specification += "tcp://";
+      break;
+    case Endpoint::EncryptionType::SSL:
+      specification += "ssl://";
+      break;
+  }
 
-std::string const EndpointIp::_defaultHost = "127.0.0.1";
+  switch (domainType) {
+    case Endpoint::DomainType::IPV4:
+      specification += host + ":" + StringUtils::itoa(port);
+      break;
+
+    case Endpoint::DomainType::IPV6:
+      specification += "[" + host + "]" + ":" + StringUtils::itoa(port);
+      break;
+
+    default:
+      TRI_ASSERT(false);
+      break;
+  }
+
+  return specification;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an IP socket endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-EndpointIp::EndpointIp(const Endpoint::EndpointType type,
-                       const Endpoint::DomainType domainType,
-                       const Endpoint::EncryptionType encryption,
-                       std::string const& specification, int listenBacklog,
-                       bool reuseAddress, std::string const& host,
-                       uint16_t const port)
-    : Endpoint(type, domainType, encryption, specification, listenBacklog),
+EndpointIp::EndpointIp(DomainType domainType, EndpointType type,
+                       TransportType transport, EncryptionType encryption,
+                       int listenBacklog, bool reuseAddress,
+                       std::string const& host, uint16_t const port)
+    : Endpoint(
+          domainType, type, transport, encryption,
+          buildSpecification(domainType, transport, encryption, host, port),
+          listenBacklog),
       _host(host),
       _port(port),
       _reuseAddress(reuseAddress) {
@@ -116,7 +149,7 @@ TRI_socket_t EndpointIp::connectSocket(const struct addrinfo* aip,
     return listenSocket;
   }
 
-  if (_type == ENDPOINT_SERVER) {
+  if (_type == EndpointType::SERVER) {
 #ifdef _WIN32
     int excl = 1;
     if (TRI_setsockopt(listenSocket, SOL_SOCKET, SO_EXCLUSIVEADDRUSE,
@@ -182,7 +215,7 @@ TRI_socket_t EndpointIp::connectSocket(const struct addrinfo* aip,
       TRI_invalidatesocket(&listenSocket);
       return listenSocket;
     }
-  } else if (_type == ENDPOINT_CLIENT) {
+  } else if (_type == EndpointType::CLIENT) {
     // connect to endpoint, executed for client endpoints only
 
     // set timeout
@@ -211,7 +244,7 @@ TRI_socket_t EndpointIp::connectSocket(const struct addrinfo* aip,
     return listenSocket;
   }
 
-  if (_type == ENDPOINT_CLIENT) {
+  if (_type == EndpointType::CLIENT) {
     setTimeout(listenSocket, requestTimeout);
   }
 
@@ -313,7 +346,7 @@ TRI_socket_t EndpointIp::connect(double connectTimeout, double requestTimeout) {
   TRI_ASSERT(!_connected);
 
   memset(&hints, 0, sizeof(struct addrinfo));
-  hints.ai_family = getDomain();  // Allow IPv4 or IPv6
+  hints.ai_family = domain();  // Allow IPv4 or IPv6
   hints.ai_flags = TRI_CONNECT_AI_FLAGS;
   hints.ai_socktype = SOCK_STREAM;
 

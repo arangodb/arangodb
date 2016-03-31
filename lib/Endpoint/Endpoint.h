@@ -27,56 +27,41 @@
 #include "Basics/socket-utils.h"
 #include "Basics/Common.h"
 
-#ifdef TRI_HAVE_LINUX_SOCKETS
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <sys/un.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <sys/file.h>
-#endif
-
 #ifdef TRI_HAVE_WINSOCK2_H
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #endif
 
 namespace arangodb {
-namespace rest {
+
 class Endpoint {
  public:
-  enum EndpointType { ENDPOINT_SERVER, ENDPOINT_CLIENT };
-
-  enum DomainType {
-    DOMAIN_UNKNOWN = 0,
-    DOMAIN_UNIX,
-    DOMAIN_IPV4,
-    DOMAIN_IPV6,
-    DOMAIN_SRV
-  };
-
-  enum EncryptionType { ENCRYPTION_NONE = 0, ENCRYPTION_SSL };
+  enum class TransportType { HTTP, VPP };
+  enum class EndpointType { SERVER, CLIENT };
+  enum class EncryptionType { NONE = 0, SSL };
+  enum class DomainType { UNKNOWN = 0, UNIX, IPV4, IPV6, SRV };
 
  protected:
-  Endpoint(EndpointType, DomainType, EncryptionType, std::string const&, int);
+  Endpoint(DomainType, EndpointType, TransportType, EncryptionType,
+           std::string const&, int);
 
  public:
-  virtual ~Endpoint();
+  virtual ~Endpoint() {}
 
  public:
-  static std::string getUnifiedForm(std::string const&);
+  static std::string unifiedForm(std::string const&);
   static Endpoint* serverFactory(std::string const&, int, bool reuseAddress);
   static Endpoint* clientFactory(std::string const&);
   static Endpoint* factory(const EndpointType type, std::string const&, int,
                            bool);
-  static std::string const getDefaultEndpoint();
+  static std::string const defaultEndpoint(TransportType);
 
  public:
   bool operator==(Endpoint const&) const;
-  EndpointType getType() const { return _type; }
-  EncryptionType getEncryption() const { return _encryption; }
-  std::string getSpecification() const { return _specification; }
+  TransportType transport() const { return _transport; }
+  EndpointType type() const { return _type; }
+  EncryptionType encryption() const { return _encryption; }
+  std::string specification() const { return _specification; }
 
  public:
   virtual TRI_socket_t connect(double, double) = 0;
@@ -87,24 +72,27 @@ class Endpoint {
   virtual bool isConnected() const { return _connected; }
   virtual bool setSocketFlags(TRI_socket_t);
   virtual DomainType getDomainType() const { return _domainType; }
-  virtual int getDomain() const = 0;
-  virtual int getPort() const = 0;
-  virtual std::string getHost() const = 0;
-  virtual std::string getHostString() const = 0;
+
+  virtual int domain() const = 0;
+  virtual int port() const = 0;
+  virtual std::string host() const = 0;
+  virtual std::string hostAndPort() const = 0;
 
  public:
   std::string _errorMessage;
 
  protected:
-  bool _connected;
-  TRI_socket_t _socket;
-  EndpointType _type;
   DomainType _domainType;
+  EndpointType _type;
+  TransportType _transport;
   EncryptionType _encryption;
   std::string _specification;
   int _listenBacklog;
+
+  bool _connected;
+  TRI_socket_t _socket;
 };
-}
+
 }
 
 #endif

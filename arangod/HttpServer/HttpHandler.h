@@ -34,10 +34,11 @@
 #include "Statistics/StatisticsAgent.h"
 
 namespace arangodb {
+class HttpRequest;
+
 namespace rest {
 class Dispatcher;
 class HttpHandlerFactory;
-class HttpRequest;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief abstract class for http handlers

@@ -26,12 +26,11 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+class Endpoint;
+
 namespace httpclient {
 class GeneralClientConnection;
 class SimpleHttpClient;
-}
-namespace rest {
-class Endpoint;
 }
 
 class ClientFeature final : public application_features::ApplicationFeature {

@@ -34,12 +34,11 @@
 #include <resolv.h>
 
 #include "Basics/StringUtils.h"
+#include "Endpoint/EndpointIp.h"
 #include "Logger/Logger.h"
-#include "Rest/EndpointIp.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
-using namespace arangodb::rest;
 
 #if PACKETSZ > 1024
 #define MAXPACKET PACKETSZ
@@ -178,8 +177,8 @@ std::vector<SrvRecord> srvRecords(std::string specification) { return {}; }
 #endif
 
 EndpointSrv::EndpointSrv(std::string const& specification)
-    : Endpoint(ENDPOINT_CLIENT, DOMAIN_SRV, ENCRYPTION_NONE, specification, 0) {
-}
+    : Endpoint(DomainType::SRV, EndpointType::CLIENT, TransportType::HTTP,
+               EncryptionType::NONE, specification, 0) {}
 
 EndpointSrv::~EndpointSrv() {}
 
@@ -222,33 +221,33 @@ void EndpointSrv::disconnect() {
 
 bool EndpointSrv::initIncoming(TRI_socket_t) { return false; }
 
-int EndpointSrv::getDomain() const {
+int EndpointSrv::domain() const {
   if (_endpoint != nullptr) {
-    return _endpoint->getDomain();
+    return _endpoint->domain();
   }
 
   return -1;
 }
 
-int EndpointSrv::getPort() const {
+int EndpointSrv::port() const {
   if (_endpoint != nullptr) {
-    return _endpoint->getPort();
+    return _endpoint->port();
   }
 
   return -1;
 }
 
-std::string EndpointSrv::getHost() const {
+std::string EndpointSrv::host() const {
   if (_endpoint != nullptr) {
-    return _endpoint->getHost();
+    return _endpoint->host();
   }
 
   return "";
 }
 
-std::string EndpointSrv::getHostString() const {
+std::string EndpointSrv::hostAndPort() const {
   if (_endpoint != nullptr) {
-    return _endpoint->getHostString();
+    return _endpoint->hostAndPort();
   }
 
   return "";

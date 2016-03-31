@@ -207,8 +207,8 @@ append_entries_t Agent::sendAppendEntriesRPC (id_t slave_id) {
        << unconfirmed[0].term << "&leaderCommit=" << _last_commit_index;
 
   // Headers
-	std::unique_ptr<std::map<std::string, std::string>> headerFields =
-	  std::make_unique<std::map<std::string, std::string> >();
+        std::unique_ptr<std::map<std::string, std::string>> headerFields =
+          std::make_unique<std::map<std::string, std::string> >();
 
   // Body
   Builder builder;
@@ -232,7 +232,7 @@ append_entries_t Agent::sendAppendEntriesRPC (id_t slave_id) {
 
   arangodb::ClusterComm::instance()->asyncRequest
     ("1", 1, _config.end_points[slave_id],
-     rest::HttpRequest::HTTP_REQUEST_POST,
+     GeneralRequest::RequestType::POST,
      path.str(), std::make_shared<std::string>(builder.toJson()), headerFields,
      std::make_shared<AgentCallback>(this, slave_id, last),
      0, true);

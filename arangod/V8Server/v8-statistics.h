@@ -25,11 +25,8 @@
 #define ARANGOD_V8_SERVER_V8_STATISTICS_H 1
 
 #include "Basics/Common.h"
-#include "V8/v8-globals.h"
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initializes the statistics functions
-////////////////////////////////////////////////////////////////////////////////
+#include "V8/v8-globals.h"
 
 void TRI_InitV8Statistics(v8::Isolate* isolate, v8::Handle<v8::Context>);
 

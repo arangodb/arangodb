@@ -140,11 +140,12 @@ bool ApplicationEndpointServer::buildServers() {
   _servers.push_back(server);
 
   // ssl endpoints
-  if (_endpointList.has(Endpoint::ENCRYPTION_SSL)) {
+  if (_endpointList.hasSsl()) {
     // check the ssl context
     if (_sslContext == nullptr) {
       LOG(INFO) << "please use the --server.keyfile option";
-      LOG(FATAL) << "no ssl context is known, cannot create https server"; FATAL_ERROR_EXIT();
+      LOG(FATAL) << "no ssl context is known, cannot create https server";
+      FATAL_ERROR_EXIT();
     }
 
     // https
@@ -203,11 +204,15 @@ bool ApplicationEndpointServer::afterOptionParsing(ProgramOptions& options) {
   }
 
   if (_backlogSize <= 0) {
-    LOG(FATAL) << "invalid value for --server.backlog-size. expecting a positive value"; FATAL_ERROR_EXIT();
+    LOG(FATAL) << "invalid value for --server.backlog-size. expecting a "
+                  "positive value";
+    FATAL_ERROR_EXIT();
   }
 
   if (_backlogSize > SOMAXCONN) {
-    LOG(WARN) << "value for --server.backlog-size exceeds default system header SOMAXCONN value " << SOMAXCONN << ". trying to use " << SOMAXCONN << " anyway";
+    LOG(WARN) << "value for --server.backlog-size exceeds default system "
+                 "header SOMAXCONN value "
+              << SOMAXCONN << ". trying to use " << SOMAXCONN << " anyway";
   }
 
   if (!_httpPort.empty()) {
@@ -220,16 +225,19 @@ bool ApplicationEndpointServer::afterOptionParsing(ProgramOptions& options) {
   // add & validate endpoints
   for (std::vector<std::string>::const_iterator i = _endpoints.begin();
        i != _endpoints.end(); ++i) {
-    bool ok = _endpointList.add((*i), std::vector<std::string>(), _backlogSize,
-                                _reuseAddress);
+    bool ok = _endpointList.add((*i), _backlogSize, _reuseAddress);
 
     if (!ok) {
-      LOG(FATAL) << "invalid endpoint '" << (*i) << "'"; FATAL_ERROR_EXIT();
+      LOG(FATAL) << "invalid endpoint '" << (*i) << "'";
+      FATAL_ERROR_EXIT();
     }
   }
 
-  if (_defaultApiCompatibility < HttpRequest::MinCompatibility) {
-    LOG(FATAL) << "invalid value for --server.default-api-compatibility. minimum allowed value is " << HttpRequest::MinCompatibility; FATAL_ERROR_EXIT();
+  if (_defaultApiCompatibility < GeneralRequest::MIN_COMPATIBILITY) {
+    LOG(FATAL) << "invalid value for --server.default-api-compatibility. "
+                  "minimum allowed value is "
+               << GeneralRequest::MIN_COMPATIBILITY;
+    FATAL_ERROR_EXIT();
   }
 
   // and return
@@ -237,101 +245,26 @@ bool ApplicationEndpointServer::afterOptionParsing(ProgramOptions& options) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the name of the endpoints file
-////////////////////////////////////////////////////////////////////////////////
-
-std::string ApplicationEndpointServer::getEndpointsFilename() const {
-  return _basePath + TRI_DIR_SEPARATOR_CHAR + "ENDPOINTS";
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return a list of all endpoints
 ////////////////////////////////////////////////////////////////////////////////
 
-std::map<std::string, std::vector<std::string>>
-ApplicationEndpointServer::getEndpoints() {
-  return _endpointList.getAll();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief restores the endpoint list
-////////////////////////////////////////////////////////////////////////////////
-
-bool ApplicationEndpointServer::loadEndpoints() {
-  std::string const filename = getEndpointsFilename();
-
-  if (!FileUtils::exists(filename)) {
-    return false;
-  }
-
-  LOG(TRACE) << "loading endpoint list from file '" << filename << "'";
-
-  std::shared_ptr<VPackBuilder> builder;
-  try {
-    builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
-  } catch (...) {
-    // Silently fail
-    return false;
-  }
-  VPackSlice const slice = builder->slice();
-
-  if (!slice.isObject()) {
-    LOG(WARN) << "error loading ENDPOINTS file '" << filename << "'";
-    return false;
-  }
-
-  std::map<std::string, std::vector<std::string>> endpoints;
-
-  for (auto const& it : VPackObjectIterator(slice)) {
-    if (!it.key.isString() || !it.value.isArray()) {
-      return false;
-    }
-    std::string const endpoint = it.key.copyString();
-
-    std::vector<std::string> dbNames;
-    for (VPackSlice const& d : VPackArrayIterator(it.value)) {
-      if (!d.isString()) {
-        return false;
-      }
-
-      std::string const dbName = d.copyString();
-      dbNames.emplace_back(dbName);
-    }
-
-    endpoints[endpoint] = dbNames;
-  }
-
-  for (auto& it : endpoints) {
-    bool ok =
-        _endpointList.add(it.first, it.second, _backlogSize, _reuseAddress);
-
-    if (!ok) {
-      return false;
-    }
-  }
-
-  return true;
+std::vector<std::string> ApplicationEndpointServer::getEndpoints() {
+  return _endpointList.all();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the list of databases for an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<std::string> const& ApplicationEndpointServer::getEndpointMapping(
-    std::string const& endpoint) {
-  return _endpointList.getMapping(endpoint);
-}
-
 bool ApplicationEndpointServer::prepare() {
   if (_disabled) {
     return true;
   }
 
-  loadEndpoints();
-
   if (_endpointList.empty()) {
     LOG(INFO) << "please use the '--server.endpoint' option";
-    LOG(FATAL) << "no endpoints have been specified, giving up"; FATAL_ERROR_EXIT();
+    LOG(FATAL) << "no endpoints have been specified, giving up";
+    FATAL_ERROR_EXIT();
   }
 
   // dump all endpoints for user information
@@ -341,7 +274,8 @@ bool ApplicationEndpointServer::prepare() {
       new HttpHandlerFactory(_authenticationRealm, _defaultApiCompatibility,
                              _allowMethodOverride, _setContext, _contextData);
 
-  LOG(DEBUG) << "using default API compatibility: " << (long int)_defaultApiCompatibility;
+  LOG(DEBUG) << "using default API compatibility: "
+             << (long int)_defaultApiCompatibility;
 
   return true;
 }
@@ -391,14 +325,17 @@ bool ApplicationEndpointServer::createSslContext() {
 
   // validate protocol
   if (_sslProtocol <= SSL_UNKNOWN || _sslProtocol >= SSL_LAST) {
-    LOG(ERR) << "invalid SSL protocol version specified. Please use a valid value for --server.ssl-protocol.";
+    LOG(ERR) << "invalid SSL protocol version specified. Please use a valid "
+                "value for --server.ssl-protocol.";
     return false;
   }
 
-  LOG(DEBUG) << "using SSL protocol version '" << protocolName((protocol_e)_sslProtocol) << "'";
+  LOG(DEBUG) << "using SSL protocol version '"
+             << protocolName((protocol_e)_sslProtocol) << "'";
 
   if (!FileUtils::exists(_httpsKeyfile)) {
-    LOG(FATAL) << "unable to find SSL keyfile '" << _httpsKeyfile << "'"; FATAL_ERROR_EXIT();
+    LOG(FATAL) << "unable to find SSL keyfile '" << _httpsKeyfile << "'";
+    FATAL_ERROR_EXIT();
   }
 
   // create context
@@ -425,7 +362,8 @@ bool ApplicationEndpointServer::createSslContext() {
   if (!_sslCipherList.empty()) {
     if (SSL_CTX_set_cipher_list(_sslContext, _sslCipherList.c_str()) != 1) {
       LOG(ERR) << "SSL error: " << lastSSLError();
-      LOG(FATAL) << "cannot set SSL cipher list '" << _sslCipherList << "'"; FATAL_ERROR_EXIT();
+      LOG(FATAL) << "cannot set SSL cipher list '" << _sslCipherList << "'";
+      FATAL_ERROR_EXIT();
     } else {
       LOG(INFO) << "using SSL cipher-list '" << _sslCipherList << "'";
     }
@@ -441,7 +379,8 @@ bool ApplicationEndpointServer::createSslContext() {
 
   if (res != 1) {
     LOG(ERR) << "SSL error: " << lastSSLError();
-    LOG(FATAL) << "cannot set SSL session id context '" << _rctx << "'"; FATAL_ERROR_EXIT();
+    LOG(FATAL) << "cannot set SSL session id context '" << _rctx << "'";
+    FATAL_ERROR_EXIT();
   }
 
   // check CA
@@ -452,7 +391,8 @@ bool ApplicationEndpointServer::createSslContext() {
 
     if (res == 0) {
       LOG(ERR) << "SSL error: " << lastSSLError();
-      LOG(FATAL) << "cannot load CA certificates from '" << _cafile << "'"; FATAL_ERROR_EXIT();
+      LOG(FATAL) << "cannot load CA certificates from '" << _cafile << "'";
+      FATAL_ERROR_EXIT();
     }
 
     STACK_OF(X509_NAME) * certNames;
@@ -461,7 +401,8 @@ bool ApplicationEndpointServer::createSslContext() {
 
     if (certNames == nullptr) {
       LOG(ERR) << "ssl error: " << lastSSLError();
-      LOG(FATAL) << "cannot load CA certificates from '" << _cafile << "'"; FATAL_ERROR_EXIT();
+      LOG(FATAL) << "cannot load CA certificates from '" << _cafile << "'";
+      FATAL_ERROR_EXIT();
     }
 
     if (Logger::logLevel() == arangodb::LogLevel::TRACE) {
