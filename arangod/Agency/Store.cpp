@@ -84,7 +84,6 @@ Node& Node::operator= (Node const& node) { // Assign node
   _type = node._type;
   _value = node._value;
   _children = node._children;
-  _ttl = node._ttl;
   return *this;
 }
 

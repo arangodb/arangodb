@@ -149,7 +149,6 @@ protected:
   Children _children;
   TimeTable _time_table;
   Buffer<uint8_t> _value;
-  std::chrono::system_clock::time_point _ttl;
   
   NodeType _type;
   std::string _node_name;
