@@ -1363,7 +1363,9 @@ int RemoteBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
     builder.add("error", VPackValue(false));
     builder.add("pos", VPackValue(pos));
     builder.add(VPackValue("items"));
+    builder.openObject();
     items->toVelocyPack(_engine->getQuery()->trx(), builder);
+    builder.close();
   }
 
   builder.close();
