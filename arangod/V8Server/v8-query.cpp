@@ -118,8 +118,6 @@ static void EdgesQuery(TRI_edge_direction_e direction,
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(collection);
-  
   auto addOne = [](v8::Isolate* isolate, VPackBuilder* builder, v8::Handle<v8::Value> const val) {
     if (val->IsString() || val->IsStringObject()) {
       builder->add(VPackValue(TRI_ObjectToString(val)));

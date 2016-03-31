@@ -45,6 +45,8 @@ namespace traverser {
 class TraverserExpression;
 }
 
+struct OperationOptions;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief merge headers of a DB server response into the current response
 ////////////////////////////////////////////////////////////////////////////////
@@ -101,8 +103,8 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
 ////////////////////////////////////////////////////////////////////////////////
 
 int createDocumentOnCoordinator(
-    std::string const& dbname, std::string const& collname, bool waitForSync,
-    arangodb::velocypack::Slice const& slice,
+    std::string const& dbname, std::string const& collname,
+    OperationOptions const& options, arangodb::velocypack::Slice const& slice,
     std::map<std::string, std::string> const& headers,
     arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
     std::map<std::string, std::string>& resultHeaders, std::string& resultBody);
@@ -112,8 +114,8 @@ int createDocumentOnCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 int createDocumentOnCoordinator(
-    std::string const& dbname, std::string const& collname, bool waitForSync,
-    std::unique_ptr<TRI_json_t>& json,
+    std::string const& dbname, std::string const& collname,
+    OperationOptions const& options, std::unique_ptr<TRI_json_t>& json,
     std::map<std::string, std::string> const& headers,
     arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
     std::map<std::string, std::string>& resultHeaders, std::string& resultBody);
@@ -124,7 +126,8 @@ int createDocumentOnCoordinator(
 
 int deleteDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
-    std::string const& key, TRI_voc_rid_t const rev, bool waitForSync,
+    std::string const& key, TRI_voc_rid_t const rev,
+    OperationOptions const& options,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
     arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
     std::map<std::string, std::string>& resultHeaders, std::string& resultBody);
@@ -194,9 +197,7 @@ int getFilteredEdgesOnCoordinator(
 int modifyDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
     std::string const& key, TRI_voc_rid_t const rev,
-    bool waitForSync, bool isPatch,
-    bool keepNull,      // only counts for isPatch == true
-    bool mergeObjects,  // only counts for isPatch == true
+    OperationOptions const& options, bool isPatch,
     arangodb::velocypack::Slice const& slice,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
     arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
@@ -209,21 +210,9 @@ int modifyDocumentOnCoordinator(
 int modifyDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
     std::string const& key, TRI_voc_rid_t const rev,
-    bool waitForSync, bool isPatch,
-    bool keepNull,      // only counts for isPatch == true
-    bool mergeObjects,  // only counts for isPatch == true
+    OperationOptions const& options, bool isPatch,
     std::unique_ptr<TRI_json_t>& json,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
-    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
-    std::map<std::string, std::string>& resultHeaders, std::string& resultBody);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an edge in a coordinator
-////////////////////////////////////////////////////////////////////////////////
-
-int createEdgeOnCoordinator(
-    std::string const& dbname, std::string const& collname, bool waitForSync,
-    std::unique_ptr<TRI_json_t>& json, char const* from, char const* to,
     arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
     std::map<std::string, std::string>& resultHeaders, std::string& resultBody);
 

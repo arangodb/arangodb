@@ -514,16 +514,16 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
 ////////////////////////////////////////////////////////////////////////////////
 
 int createDocumentOnCoordinator(
-    std::string const& dbname, std::string const& collname, bool waitForSync,
-    VPackSlice const& slice, std::map<std::string, std::string> const& headers,
+    std::string const& dbname, std::string const& collname,
+    arangodb::OperationOptions const& options, VPackSlice const& slice,
+    std::map<std::string, std::string> const& headers,
     arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
     std::map<std::string, std::string>& resultHeaders,
     std::string& resultBody) {
   std::unique_ptr<TRI_json_t> json(
       arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
-  return createDocumentOnCoordinator(dbname, collname, waitForSync, json,
-                                     headers, responseCode, resultHeaders,
-                                     resultBody);
+  return createDocumentOnCoordinator(dbname, collname, options, json, headers,
+                                     responseCode, resultHeaders, resultBody);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -531,7 +531,7 @@ int createDocumentOnCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 int createDocumentOnCoordinator(
-    std::string const& dbname, std::string const& collname, bool waitForSync,
+    std::string const& dbname, std::string const& collname, arangodb::OperationOptions const& options,
     std::unique_ptr<TRI_json_t>& json,
     std::map<std::string, std::string> const& headers,
     arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
@@ -600,9 +600,11 @@ int createDocumentOnCoordinator(
       arangodb::rest::HttpRequest::HTTP_REQUEST_POST,
       "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document?collection=" +
           StringUtils::urlEncode(shardID) + "&waitForSync=" +
-          (waitForSync ? "true" : "false"),
+          (options.waitForSync ? "true" : "false") + "&returnNew=" +
+          (options.returnNew ? "true" : "false") + "&returnOld=" +
+            (options.returnOld ? "true" : "false"),
       body, headers, 60.0);
-  
+
   int commError = handleGeneralCommErrors(res.get());
   if (commError != TRI_ERROR_NO_ERROR) {
     return commError;
@@ -621,7 +623,8 @@ int createDocumentOnCoordinator(
 
 int deleteDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
-    std::string const& key, TRI_voc_rid_t const rev, bool waitForSync,
+    std::string const& key, TRI_voc_rid_t const rev,
+    arangodb::OperationOptions const& options,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
     arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
     std::map<std::string, std::string>& resultHeaders,
@@ -673,9 +676,10 @@ int deleteDocumentOnCoordinator(
         arangodb::rest::HttpRequest::HTTP_REQUEST_DELETE,
         "/_db/" + dbname + "/_api/document/" + StringUtils::urlEncode(shardID) +
             "/" + StringUtils::urlEncode(key) + "?waitForSync=" +
-            (waitForSync ? "true" : "false"),
+            (options.waitForSync ? "true" : "false") + "&returnOld=" +
+            (options.returnOld ? "true" : "false"),
         "", *headers, 60.0);
-    
+
     int error = handleGeneralCommErrors(res.get());
     if (error != TRI_ERROR_NO_ERROR) {
       return error;
@@ -700,7 +704,8 @@ int deleteDocumentOnCoordinator(
                      "/_db/" + StringUtils::urlEncode(dbname) +
                          "/_api/document/" + StringUtils::urlEncode(p.first) +
                          "/" + StringUtils::urlEncode(key) + "?waitForSync=" +
-                         (waitForSync ? "true" : "false"),
+                         (options.waitForSync ? "true" : "false") +
+                         "&returnOld=" + (options.returnOld ? "true" : "false"),
                      std::shared_ptr<std::string const>(), headersCopy, nullptr,
                      60.0);
   }
@@ -1295,9 +1300,7 @@ int getFilteredEdgesOnCoordinator(
 int modifyDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
     std::string const& key, TRI_voc_rid_t const rev,
-    bool waitForSync, bool isPatch,
-    bool keepNull,      // only counts for isPatch == true
-    bool mergeObjects,  // only counts for isPatch == true
+    arangodb::OperationOptions const& options, bool isPatch,
     VPackSlice const& slice,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
     arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
@@ -1305,9 +1308,9 @@ int modifyDocumentOnCoordinator(
     std::string& resultBody) {
   std::unique_ptr<TRI_json_t> json(
       arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
-  return modifyDocumentOnCoordinator(
-      dbname, collname, key, rev, waitForSync, isPatch, keepNull,
-      mergeObjects, json, headers, responseCode, resultHeaders, resultBody);
+  return modifyDocumentOnCoordinator(dbname, collname, key, rev, options,
+                                     isPatch, json, headers, responseCode,
+                                     resultHeaders, resultBody);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1317,9 +1320,7 @@ int modifyDocumentOnCoordinator(
 int modifyDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
     std::string const& key, TRI_voc_rid_t const rev,
-    bool waitForSync, bool isPatch,
-    bool keepNull,      // only counts for isPatch == true
-    bool mergeObjects,  // only counts for isPatch == true
+    arangodb::OperationOptions const& options, bool isPatch,
     std::unique_ptr<TRI_json_t>& json,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
     arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
@@ -1371,22 +1372,29 @@ int modifyDocumentOnCoordinator(
 
   // Some stuff to prepare cluster-internal requests:
   std::string revstr;
-  if (rev != 0) {
+  if (!options.ignoreRevs && rev != 0) {
     headers->emplace("if-match", StringUtils::itoa(rev));
   }
   arangodb::rest::HttpRequest::HttpRequestType reqType;
   if (isPatch) {
     reqType = arangodb::rest::HttpRequest::HTTP_REQUEST_PATCH;
-    if (!keepNull) {
+    if (!options.keepNull) {
       revstr += "&keepNull=false";
     }
-    if (mergeObjects) {
+    if (options.mergeObjects) {
       revstr += "&mergeObjects=true";
     } else {
       revstr += "&mergeObjects=false";
     }
   } else {
     reqType = arangodb::rest::HttpRequest::HTTP_REQUEST_PUT;
+  }
+  if (options.returnNew) {
+    revstr += "&returnNew=true";
+  }
+
+  if (options.returnOld) {
+    revstr += "&returnOld=true";
   }
 
   auto body = std::make_shared<std::string const>(
@@ -1404,7 +1412,7 @@ int modifyDocumentOnCoordinator(
         "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document/" +
             StringUtils::urlEncode(shardID) + "/" +
             StringUtils::urlEncode(key) + "?waitForSync=" +
-            (waitForSync ? "true" : "false") + revstr,
+            (options.waitForSync ? "true" : "false") + revstr,
         *(body.get()), *headers, 60.0);
     
     int error = handleGeneralCommErrors(res.get());
@@ -1435,7 +1443,7 @@ int modifyDocumentOnCoordinator(
                      "/_db/" + StringUtils::urlEncode(dbname) +
                          "/_api/document/" + StringUtils::urlEncode(p.first) +
                          "/" + StringUtils::urlEncode(key) + "?waitForSync=" +
-                         (waitForSync ? "true" : "false") + revstr,
+                         (options.waitForSync ? "true" : "false") + revstr,
                      body, headersCopy, nullptr, 60.0);
   }
   // Now listen to the results:
@@ -1460,89 +1468,6 @@ int modifyDocumentOnCoordinator(
   }
   return TRI_ERROR_NO_ERROR;  // the cluster operation was OK, however,
                               // the DBserver could have reported an error.
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an edge in a coordinator
-////////////////////////////////////////////////////////////////////////////////
-
-int createEdgeOnCoordinator(
-    std::string const& dbname, std::string const& collname, bool waitForSync,
-    std::unique_ptr<TRI_json_t>& json, char const* from, char const* to,
-    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
-    std::map<std::string, std::string>& resultHeaders,
-    std::string& resultBody) {
-  // Set a few variables needed for our work:
-  ClusterInfo* ci = ClusterInfo::instance();
-  ClusterComm* cc = ClusterComm::instance();
-
-  // First determine the collection ID from the name:
-  std::shared_ptr<CollectionInfo> collinfo =
-      ci->getCollection(dbname, collname);
-  if (collinfo->empty()) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-  }
-  std::string collid = StringUtils::itoa(collinfo->id());
-
-  // Sort out the _key attribute:
-  // The user is allowed to specify _key, provided that _key is the one
-  // and only sharding attribute, because in this case we can delegate
-  // the responsibility to make _key attributes unique to the responsible
-  // shard. Otherwise, we ensure uniqueness here and now by taking a
-  // cluster-wide unique number. Note that we only know the sharding
-  // attributes a bit further down the line when we have determined
-  // the responsible shard.
-  TRI_json_t* subjson = TRI_LookupObjectJson(json.get(), "_key");
-  bool userSpecifiedKey = false;
-  std::string _key;
-  if (subjson == nullptr) {
-    // The user did not specify a key, let's create one:
-    uint64_t uid = ci->uniqid();
-    _key = arangodb::basics::StringUtils::itoa(uid);
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json.get(), "_key",
-                          TRI_CreateStringReferenceJson(
-                              TRI_UNKNOWN_MEM_ZONE, _key.c_str(), _key.size()));
-  } else {
-    userSpecifiedKey = true;
-  }
-
-  // Now find the responsible shard:
-  bool usesDefaultShardingAttributes;
-  ShardID shardID;
-  int error = ci->getResponsibleShard(collid, json.get(), true, shardID,
-                                      usesDefaultShardingAttributes);
-  if (error == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
-    return TRI_ERROR_CLUSTER_SHARD_GONE;
-  }
-
-  // Now perform the above mentioned check:
-  if (userSpecifiedKey && !usesDefaultShardingAttributes) {
-    return TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY;
-  }
-
-  std::string body = JsonHelper::toString(json.get());
-
-  // Send a synchronous request to that shard using ClusterComm:
-  std::map<std::string, std::string> headers;
-  auto res = cc->syncRequest(
-      "", TRI_NewTickServer(), "shard:" + shardID,
-      arangodb::rest::HttpRequest::HTTP_REQUEST_POST,
-      "/_db/" + dbname + "/_api/edge?collection=" +
-          StringUtils::urlEncode(shardID) + "&waitForSync=" +
-          (waitForSync ? "true" : "false") + "&from=" +
-          StringUtils::urlEncode(from) + "&to=" + StringUtils::urlEncode(to),
-      body, headers, 60.0);
-
-  int commError = handleGeneralCommErrors(res.get());
-  if (commError != TRI_ERROR_NO_ERROR) {
-    return commError;
-  }
-  responseCode = static_cast<arangodb::rest::HttpResponse::HttpResponseCode>(
-      res->result->getHttpReturnCode());
-  resultHeaders = res->result->getHeaderFields();
-  resultBody.assign(res->result->getBody().c_str(),
-                    res->result->getBody().length());
-  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
