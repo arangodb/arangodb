@@ -14,7 +14,7 @@ AQL supports the following functions to operate on array values:
 
 *Examples*
   
-      FLATTEN([ 1, 2, [ 3, 4 ], 5, [ 6, 7 ], [ 8, [ 9, 10 ] ])
+      FLATTEN([ 1, 2, [ 3, 4 ], 5, [ 6, 7 ], [ 8, [ 9, 10 ] ] ])
 
   will produce:
 
@@ -22,7 +22,7 @@ AQL supports the following functions to operate on array values:
 
   To fully flatten the array, use a *depth* of 2:
       
-      FLATTEN([ 1, 2, [ 3, 4 ], 5, [ 6, 7 ], [ 8, [ 9, 10 ] ], 2)
+      FLATTEN([ 1, 2, [ 3, 4 ], 5, [ 6, 7 ], [ 8, [ 9, 10 ] ] ], 2)
 
   This will produce:
       
