@@ -112,6 +112,9 @@ inline HttpHandler::status_t RestAgencyHandler::handleWrite () {
         body.add("results", VPackValue(VPackValueType::Array));
         for (auto const& index : ret.indices) {
           body.add(VPackValue(index));
+          if (index == 0) {
+            errors++;
+          }
         }
         body.close();
 
