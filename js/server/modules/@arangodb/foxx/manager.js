@@ -285,11 +285,18 @@ function checkMountedSystemApps(dbname) {
   for (i = 0; i < usedSystemMountPoints.length; ++i) {
     mount = usedSystemMountPoints[i];
     delete appCache[dbname][mount];
-    var definition = collection.firstExample({mount: mount});
-    if (definition !== null) {
-      collection.remove(definition._key);
-    }
-    _scanFoxx(mount, {});
+    db._executeTransaction({
+      collections: {
+        write: collection.name()
+      },
+      action() {
+        var definition = collection.firstExample({mount: mount});
+        if (definition !== null) {
+          collection.remove(definition._key);
+        }
+        _scanFoxx(mount, {});
+      }
+    });
     executeAppScript('setup', lookupApp(mount));
   }
 }
@@ -886,7 +893,15 @@ function scanFoxx(mount, options) {
     [ [ 'Mount path', 'string' ] ],
     [ mount ] );
   initCache();
-  var app = _scanFoxx(mount, options);
+  var app;
+  db._executeTransaction({
+    collections: {
+      write: collection.name()
+    },
+    action() {
+      app = _scanFoxx(mount, options);
+    }
+  });
   reloadRouting();
   return app.simpleJSON();
 }
