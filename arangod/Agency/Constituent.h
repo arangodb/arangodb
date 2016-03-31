@@ -94,6 +94,9 @@ public:
   /// @brief Orderly shutdown of thread
   void beginShutdown () override;
 
+  /// @brief Update with persisted term and voted_for
+  void update (term_t, id_t);
+  
 private:
 
   /// @brief set term to new term
@@ -136,7 +139,8 @@ private:
   role_t               _role;         /**< @brief My role */
   std::vector<bool>    _votes;        /**< @brief My list of votes cast in my favour*/
   Agent*               _agent;        /**< @brief My boss */
-  
+  id_t                 _voted_for;
+
   arangodb::basics::ConditionVariable _cv;      // agency callbacks
 
 };

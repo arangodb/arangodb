@@ -6751,7 +6751,7 @@ toolbar {
     max-width: 85%;
     min-width: 20%;
     width: 70%; }
-  .inputEditorWrapper #arangoMyQueriesTable tr {
+  .inputEditorWrapper #arangoMyQueriesTable tbody tr {
     cursor: copy; }
   .inputEditorWrapper .bindParamEditorWrapper,
   .inputEditorWrapper .aqlEditorWrapper {

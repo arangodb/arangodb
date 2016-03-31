@@ -54,11 +54,11 @@ std::vector<std::string> split(const std::string& value, char separator) {
   return result;
 }
 
-Node::Node (std::string const& name) : _parent(nullptr), _name(name) {
+Node::Node (std::string const& name) : _parent(nullptr), _node_name(name) {
   _value.clear();
 }
 Node::Node (std::string const& name, Node* parent) :
-  _parent(parent), _name(name) {
+  _parent(parent), _node_name(name) {
   _value.clear();
 }
 
@@ -69,7 +69,7 @@ Slice Node::slice() const {
     Slice("\x00a",&Options::Defaults):Slice(_value.data());
 }
 
-std::string const& Node::name() const {return _name;}
+std::string const& Node::name() const {return _node_name;}
 
 Node& Node::operator= (Slice const& slice) { // Assign value (become leaf)
   _children.clear();
@@ -79,7 +79,7 @@ Node& Node::operator= (Slice const& slice) { // Assign value (become leaf)
 }
 
 Node& Node::operator= (Node const& node) { // Assign node
-  _name = node._name;
+  _node_name = node._node_name;
   _type = node._type;
   _value = node._value;
   _children = node._children;
@@ -107,7 +107,7 @@ bool Node::remove (std::string const& path) {
 
 bool Node::remove () {
   Node& parent = *_parent;
-  return parent.removeChild(_name);
+  return parent.removeChild(_node_name);
 }
 
 bool Node::removeChild (std::string const& key) {
@@ -178,25 +178,24 @@ ValueType Node::valueType() const {
 bool Node::addTimeToLive (long millis) {
   root()._time_table[
     std::chrono::system_clock::now() + std::chrono::milliseconds(millis)] =
-    _parent->_children[_name];
+    _parent->_children[_node_name];
   return true;
 }
 
 bool Node::applies (VPackSlice const& slice) {
 
   if (slice.type() == ValueType::Object) {
-
+    
     for (auto const& i : VPackObjectIterator(slice)) {
-      std::string key = i.key.toString();
-      key = key.substr(1,key.length()-2);
 
+      std::string key = i.key.copyString();
+      
       if (slice.hasKey("op")) {
         
-        std::string oper = slice.get("op").toString();
-        oper = oper.substr(1,oper.length()-2);
+        std::string oper = slice.get("op").copyString();
         Slice const& self = this->slice();
         if (oper == "delete") {
-          return _parent->removeChild(_name);
+          return _parent->removeChild(_node_name);
         } else if (oper == "set") { //
           if (!slice.hasKey("new")) {
             LOG_TOPIC(WARN, Logger::AGENCY) << "Operator set without new value";
@@ -204,33 +203,40 @@ bool Node::applies (VPackSlice const& slice) {
             return false;
           }
           if (slice.hasKey("ttl")) {
-            addTimeToLive ((long)slice.get("ttl").getDouble()*1000);
+            VPackSlice ttl_v = slice.get("ttl");
+            if (ttl_v.isNumber()) {
+              long ttl = 1000l * (ttl_v.isDouble()) ?
+                static_cast<long>(slice.get("ttl").getDouble()):
+                slice.get("ttl").getInt();
+              addTimeToLive (ttl);
+            } else {
+              LOG_TOPIC(WARN, Logger::AGENCY) <<
+                "Non-number value assigned to ttl: " << ttl_v.toJson();
+            }
           }
           *this = slice.get("new");
           return true;
         } else if (oper == "increment") { // Increment
-          if (!(self.isInt() || self.isUInt())) {
-            LOG_TOPIC(WARN, Logger::AGENCY)
-              << "Element to increment must be integral type: We are "
-              << slice.toJson();
-            return false;
-          }
           Builder tmp;
-          tmp.add(Value(self.isInt() ? int64_t(self.getInt()+1) :
-                        uint64_t(self.getUInt()+1)));
-          *this = tmp.slice();
+          tmp.openObject();
+          try {
+            tmp.add("tmp", Value(self.getInt()+1));
+          } catch (std::exception const& e) {
+            tmp.add("tmp",Value(1));
+          }
+          tmp.close();
+          *this = tmp.slice().get("tmp");
           return true;
         } else if (oper == "decrement") { // Decrement
-          if (!(self.isInt() || self.isUInt())) {
-            LOG_TOPIC(WARN, Logger::AGENCY)
-              << "Element to decrement must be integral type. We are "
-              << slice.toJson();
-            return false;
-          }
           Builder tmp;
-          tmp.add(Value(self.isInt() ? int64_t(self.getInt()-1) :
-                        uint64_t(self.getUInt()-1)));
-          *this = tmp.slice();
+          tmp.openObject();
+          try {
+            tmp.add("tmp", Value(self.getInt()-1));
+          } catch (std::exception const& e) {
+            tmp.add("tmp",Value(-1));
+          }
+          tmp.close();
+          *this = tmp.slice().get("tmp");
           return true;
         } else if (oper == "push") { // Push
           if (!slice.hasKey("new")) {
@@ -384,11 +390,10 @@ bool Store::check (VPackSlice const& slice) const {
     return false;
   }
   for (auto const& precond : VPackObjectIterator(slice)) {
-    std::string path = precond.key.toString();
-    path = path.substr(1,path.size()-2);
-
+    std::string path = precond.key.copyString();
     bool found = false;
     Node node ("precond");
+    
     try {
       node = (*this)(path);
       found = true;
@@ -424,23 +429,25 @@ bool Store::check (VPackSlice const& slice) const {
   return true;
 }
 
-query_t Store::read (query_t const& queries) const { // list of list of paths
+std::vector<bool> Store::read (query_t const& queries, query_t& result) const { // list of list of paths
+  std::vector<bool> success;
   MUTEX_LOCKER(storeLocker, _storeLock);
-  query_t result = std::make_shared<arangodb::velocypack::Builder>();
   if (queries->slice().type() == VPackValueType::Array) {
     result->add(VPackValue(VPackValueType::Array)); // top node array
     for (auto const& query : VPackArrayIterator(queries->slice())) {
-      read (query, *result);
+      success.push_back(read (query, *result));
     } 
     result->close();
   } else {
     LOG_TOPIC(ERR, Logger::AGENCY) << "Read queries to stores must be arrays";
   }
-  return result;
+  return success;
 }
 
 bool Store::read (VPackSlice const& query, Builder& ret) const {
 
+  bool success = true;
+  
   // Collect all paths
   std::list<std::string> query_strs;
   if (query.type() == VPackValueType::Array) {
@@ -469,7 +476,10 @@ bool Store::read (VPackSlice const& query, Builder& ret) const {
   for (auto i = query_strs.begin(); i != query_strs.end(); ++i) {
     try {
       copy(*i) = (*this)(*i);
-    } catch (StoreException const&) {}
+    } catch (StoreException const& e) {
+      if (query.type() == VPackValueType::String)
+        success = false;
+    }
   }
   
   // Assemble builder from response tree
@@ -485,23 +495,31 @@ bool Store::read (VPackSlice const& query, Builder& ret) const {
     }
   }
   
-  return true;
+  return success;
   
 }
 
 void Store::beginShutdown() {
   Thread::beginShutdown();
+  CONDITION_LOCKER(guard, _cv);
+  guard.broadcast();
 }
 
 void Store::clearTimeTable () {
   for (auto it = _time_table.cbegin(); it != _time_table.cend() ;) {
     if (it->first < std::chrono::system_clock::now()) {
+      
       it->second->remove();
       _time_table.erase(it++);
     } else {
       break;
     }
   }
+}
+
+bool Store::start () {
+  Thread::start();
+  return true;
 }
 
 void Store::run() {

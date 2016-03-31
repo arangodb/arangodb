@@ -90,7 +90,7 @@ struct  constituent_t {                               // Constituent type
 
 typedef std::vector<constituent_t>    constituency_t; // Constituency type
 typedef uint32_t                      state_t;        // State type
-typedef std::chrono::duration<double> duration_t;     // Duration type
+typedef std::chrono::duration<long,std::ratio<1,1000>> duration_t;     // Duration type
 
 using query_t = std::shared_ptr<arangodb::velocypack::Builder>;
 
@@ -142,9 +142,11 @@ struct vote_ret_t {
 struct read_ret_t {
   bool accepted;  // Query processed
   id_t redirect;  // Otherwise redirect to
+  std::vector<bool> success;
   query_t result; // Result
-  read_ret_t (bool a, id_t id, query_t res = nullptr) :
-    accepted(a), redirect(id), result(res) {}
+  read_ret_t (bool a, id_t id, std::vector<bool> suc = std::vector<bool>(),
+              query_t res = nullptr) :
+    accepted(a), redirect(id), success(suc), result(res) {}
 };
 
 typedef uint64_t index_t;
@@ -173,7 +175,6 @@ struct log_t {
   id_t         leaderId;
   buffer_t     entry;
   milliseconds timestamp;
-
   log_t (index_t idx, term_t t, id_t lid, buffer_t const& e) :
     index(idx), term(t), leaderId(lid), entry(e), timestamp (
       duration_cast<milliseconds>(system_clock::now().time_since_epoch())) {}
