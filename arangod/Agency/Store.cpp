@@ -84,7 +84,6 @@ Node& Node::operator= (Node const& node) { // Assign node
   _type = node._type;
   _value = node._value;
   _children = node._children;
-  _ttl = node._ttl;
   return *this;
 }
 
@@ -345,6 +344,23 @@ void Node::toBuilder (Builder& builder) const {
   
 }
 
+std::ostream& Node::print (std::ostream& o) const {
+  Node const* par = _parent;
+  while (par != 0) {
+      par = par->_parent;
+      o << "  ";
+  }
+  o << _node_name << " : ";
+  if (type() == NODE) {
+    o << std::endl;
+    for (auto const& i : _children)
+      o << *(i.second);
+  } else {
+    o << ((slice().type() == ValueType::None) ? "NONE" : slice().toJson()) << std::endl;
+  }
+  return o;
+}
+
 Store::Store (std::string const& name) : Node(name), Thread(name) {}
 
 Store::~Store () {}
@@ -360,7 +376,7 @@ std::vector<bool> Store::apply (query_t const& query) {
       if (check(i[1])) {
         applied.push_back(applies(i[0]));      // precondition
       } else {
-        LOG_TOPIC(WARN, Logger::AGENCY) << "Precondition failed!";
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Precondition failed!";
         applied.push_back(false);
       }
       break;
@@ -537,5 +553,6 @@ void Store::run() {
     clearTimeTable();
   }
 }
+
 
 
