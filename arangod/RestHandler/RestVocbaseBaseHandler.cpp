@@ -129,7 +129,7 @@ std::string const RestVocbaseBaseHandler::UPLOAD_PATH = "/_api/upload";
 
 RestVocbaseBaseHandler::RestVocbaseBaseHandler(HttpRequest* request)
     : RestBaseHandler(request),
-      _context(static_cast<VocbaseContext*>(request->getRequestContext())),
+      _context(static_cast<VocbaseContext*>(request->requestContext())),
       _vocbase(_context->getVocbase()),
       _nolockHeaderSet(nullptr) {}
 
@@ -193,7 +193,7 @@ void RestVocbaseBaseHandler::generateDeleted(
 bool RestVocbaseBaseHandler::checkCreateCollection(std::string const& name,
                                                    TRI_col_type_e type) {
   bool found;
-  char const* valueStr = _request->value("createCollection", found);
+  std::string const& valueStr = _request->value("createCollection", found);
 
   if (!found) {
     // "createCollection" parameter not specified
@@ -599,11 +599,11 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header,
                                                       bool& isValid) {
   isValid = true;
   bool found;
-  char const* etag = _request->header(header, found);
+  std::string const& etag = _request->header(header, found);
 
   if (found) {
-    char const* s = etag;
-    char const* e = etag + strlen(etag);
+    char const* s = etag.c_str();
+    char const* e = s + etag.size();
 
     while (s < e && (s[0] == ' ' || s[0] == '\t')) {
       ++s;
@@ -635,13 +635,13 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header,
   }
 
   if (parameter != nullptr) {
-    etag = _request->value(parameter, found);
+    std::string const& etag2 = _request->value(parameter, found);
 
     if (found) {
       TRI_voc_rid_t rid = 0;
 
       try {
-        rid = StringUtils::uint64_check(etag);
+        rid = StringUtils::uint64_check(etag2);
         isValid = true;
       }
       catch (...) {
@@ -662,10 +662,10 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header,
 bool RestVocbaseBaseHandler::extractBooleanParameter(char const* name,
                                                      bool def) const {
   bool found;
-  char const* forceStr = _request->value(name, found);
+  std::string const& value = _request->value(name, found);
 
   if (found) {
-    return StringUtils::boolean(forceStr);
+    return StringUtils::boolean(value);
   }
 
   return def;
@@ -699,7 +699,7 @@ void RestVocbaseBaseHandler::prepareExecute() {
   RestBaseHandler::prepareExecute();
 
   bool found;
-  char const* shardId = _request->header("x-arango-nolock", found);
+  std::string const& shardId = _request->header("x-arango-nolock", found);
 
   if (found) {
     _nolockHeaderSet = new std::unordered_set<std::string>();

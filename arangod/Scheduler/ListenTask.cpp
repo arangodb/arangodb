@@ -26,21 +26,11 @@
 
 #include <errno.h>
 
-#ifdef TRI_HAVE_LINUX_SOCKETS
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <netdb.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#endif
-
 #ifdef TRI_HAVE_WINSOCK2_H
 #include "Basics/win-utils.h"
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #endif
-
-#include <sys/types.h>
 
 #include "Logger/Logger.h"
 #include "Basics/MutexLocker.h"
@@ -212,7 +202,7 @@ bool ListenTask::handleEvent(EventToken token, EventType revents) {
       info.clientAddress = std::string(host);
       info.clientPort = ntohs(addr->sin_port);
     } else {
-      if (type == Endpoint::DOMAIN_IPV4) {
+      if (type == Endpoint::DomainType::IPV4) {
         char buf[INET_ADDRSTRLEN + 1];
         char const* p =
             inet_ntop(AF_INET, &addr->sin_addr, buf, sizeof(buf) - 1);
@@ -223,7 +213,7 @@ bool ListenTask::handleEvent(EventToken token, EventType revents) {
         }
 
         info.clientPort = ntohs(addr->sin_port);
-      } else if (type == Endpoint::DOMAIN_IPV6) {
+      } else if (type == Endpoint::DomainType::IPV6) {
         char buf[INET6_ADDRSTRLEN + 1];
         char const* p =
             inet_ntop(AF_INET6, &addrmem.sin6_addr, buf, sizeof(buf) - 1);
@@ -238,7 +228,7 @@ bool ListenTask::handleEvent(EventToken token, EventType revents) {
     }
 
     // set server address and port
-    if (type == Endpoint::DOMAIN_IPV4) {
+    if (type == Endpoint::DomainType::IPV4) {
       char buf[INET_ADDRSTRLEN + 1];
       char const* p =
           inet_ntop(AF_INET, &addr_out->sin_addr, buf, sizeof(buf) - 1);
@@ -249,7 +239,7 @@ bool ListenTask::handleEvent(EventToken token, EventType revents) {
       }
 
       info.serverPort = ntohs(addr_out->sin_port);
-    } else if (type == Endpoint::DOMAIN_IPV6) {
+    } else if (type == Endpoint::DomainType::IPV6) {
       char buf[INET6_ADDRSTRLEN + 1];
       char const* p =
           inet_ntop(AF_INET6, &addr_out_mem.sin6_addr, buf, sizeof(buf) - 1);
@@ -261,12 +251,12 @@ bool ListenTask::handleEvent(EventToken token, EventType revents) {
 
       info.serverPort = ntohs(addr_out_mem.sin6_port);
     } else {
-      info.serverAddress = _endpoint->getHost();
-      info.serverPort = _endpoint->getPort();
+      info.serverAddress = _endpoint->host();
+      info.serverPort = _endpoint->port();
     }
 
     // set the endpoint
-    info.endpoint = _endpoint->getSpecification();
+    info.endpoint = _endpoint->specification();
     info.endpointType = _endpoint->getDomainType();
 
     return handleConnected(connectionSocket, info);

@@ -673,6 +673,8 @@
         ],
       },  # target_defaults
     }],  # OS=="mac"
+    ['OS=="solaris"', {'defines': ['_GLIBCXX_USE_C99_MATH']}],
+    ['OS=="solaris"', {'target_defaults': {'cflags': ['-m64'], 'ldflags': ['-march=x86-64', '-m64']}}],
     ['OS=="linux" or OS=="freebsd" or OS=="openbsd" or OS=="solaris" \
        or OS=="netbsd" or OS=="aix"', {
       'target_defaults': {
@@ -861,7 +863,7 @@
             'EnableFunctionLevelLinking': 'true',
             'RuntimeTypeInfo': 'false',
             'WarningLevel': '3',
-            'WarnAsError': 'true',
+            'WarnAsError': 'false',
             'DebugInformationFormat': '3',
             'Detect64BitPortabilityProblems': 'false',
             'conditions': [

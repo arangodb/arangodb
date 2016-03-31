@@ -31,7 +31,7 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestShardHandler::RestShardHandler(arangodb::rest::HttpRequest* request,
+RestShardHandler::RestShardHandler(arangodb::HttpRequest* request,
                                    Dispatcher* data)
     : RestBaseHandler(request), _dispatcher(data) {
   TRI_ASSERT(_dispatcher != nullptr);
@@ -41,7 +41,7 @@ bool RestShardHandler::isDirect() const { return true; }
 
 arangodb::rest::HttpHandler::status_t RestShardHandler::execute() {
   bool found;
-  char const* _coordinator = _request->header("x-arango-coordinator", found);
+  std::string const& _coordinator = _request->header("x-arango-coordinator", found);
 
   if (!found) {
     generateError(arangodb::rest::HttpResponse::BAD,

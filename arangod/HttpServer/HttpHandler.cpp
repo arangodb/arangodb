@@ -24,10 +24,11 @@
 #include "HttpHandler.h"
 
 #include "Basics/StringUtils.h"
-#include "Logger/Logger.h"
 #include "Dispatcher/Dispatcher.h"
+#include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
@@ -62,7 +63,7 @@ HttpHandler::~HttpHandler() {
 
 size_t HttpHandler::queue() const {
   bool found;
-  char const* queue = _request->header("x-arango-queue", found);
+  std::string const& queue = _request->header("x-arango-queue", found);
 
   if (found) {
     uint32_t n = StringUtils::uint32(queue);
@@ -179,7 +180,7 @@ HttpHandler::status_t HttpHandler::executeFull() {
 
   if (status._status != HANDLER_ASYNC && _response == nullptr) {
     _response = new HttpResponse(HttpResponse::SERVER_ERROR,
-                                 HttpRequest::MinCompatibility);
+                                 GeneralRequest::MIN_COMPATIBILITY);
   }
 
   requestStatisticsAgentSetRequestEnd();
@@ -241,7 +242,7 @@ void HttpHandler::createResponse(HttpResponse::HttpResponseCode code) {
   if (_request != nullptr) {
     apiCompatibility = _request->compatibility();
   } else {
-    apiCompatibility = HttpRequest::MinCompatibility;
+    apiCompatibility = GeneralRequest::MIN_COMPATIBILITY;
   }
 
   // create a "standard" (standalone) Http response

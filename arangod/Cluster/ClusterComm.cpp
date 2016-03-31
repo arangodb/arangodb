@@ -229,7 +229,7 @@ OperationID ClusterComm::getOperationID() { return TRI_NewTickServer(); }
 ClusterCommResult const ClusterComm::asyncRequest(
     ClientTransactionID const clientTransactionID,
     CoordTransactionID const coordTransactionID, std::string const& destination,
-    arangodb::rest::HttpRequest::HttpRequestType reqtype,
+    arangodb::GeneralRequest::RequestType reqtype,
     std::string const& path, std::shared_ptr<std::string const> body,
     std::unique_ptr<std::map<std::string, std::string>>& headerFields,
     std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
@@ -356,7 +356,7 @@ ClusterCommResult const ClusterComm::asyncRequest(
 std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
     ClientTransactionID const& clientTransactionID,
     CoordTransactionID const coordTransactionID, std::string const& destination,
-    arangodb::rest::HttpRequest::HttpRequestType reqtype,
+    arangodb::GeneralRequest::RequestType reqtype,
     std::string const& path, std::string const& body,
     std::map<std::string, std::string> const& headerFields,
     ClusterCommTimeout timeout) {
@@ -410,7 +410,7 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
     }
   } else {
     LOG(DEBUG) << "sending "
-               << arangodb::rest::HttpRequest::translateMethod(reqtype)
+               << arangodb::HttpRequest::translateMethod(reqtype)
                << " request to DB server '" << res->serverID
                << "': " << body;
     // LOCKING-DEBUG
@@ -832,7 +832,7 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
   // We add this result to the operation struct without acquiring
   // a lock, since we know that only we do such a thing:
   std::unique_ptr<httpclient::SimpleHttpResult> result(
-      client->request(rest::HttpRequest::HTTP_REQUEST_PUT, "/_api/shard-comm",
+      client->request(GeneralRequest::RequestType::PUT, "/_api/shard-comm",
                       body, len, headers));
   if (result.get() == nullptr || !result->isComplete()) {
     cm->brokenConnection(connection);
@@ -853,7 +853,7 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ClusterComm::processAnswer(std::string& coordinatorHeader,
-                                       arangodb::rest::HttpRequest* answer) {
+                                       arangodb::HttpRequest* answer) {
   TRI_ASSERT(answer != nullptr);
   // First take apart the header to get the operaitonID:
   OperationID operationID;
@@ -1078,7 +1078,7 @@ void ClusterCommThread::run() {
         } else {
           if (nullptr != op->body.get()) {
             LOG(DEBUG) << "sending "
-                       << arangodb::rest::HttpRequest::translateMethod(
+                       << arangodb::HttpRequest::translateMethod(
                               op->reqtype)
                               .c_str()
                        << " request to DB server '"
@@ -1086,7 +1086,7 @@ void ClusterCommThread::run() {
                        << "': " << op->body->c_str();
           } else {
             LOG(DEBUG) << "sending "
-                       << arangodb::rest::HttpRequest::translateMethod(
+                       << arangodb::HttpRequest::translateMethod(
                               op->reqtype)
                               .c_str()
                        << " request to DB server '"

@@ -40,30 +40,28 @@ RestDocumentHandler::RestDocumentHandler(HttpRequest* request)
 
 HttpHandler::status_t RestDocumentHandler::execute() {
   // extract the sub-request type
-  HttpRequest::HttpRequestType type = _request->requestType();
+  auto const type = _request->requestType();
 
   // execute one of the CRUD methods
   switch (type) {
-    case HttpRequest::HTTP_REQUEST_DELETE:
+    case GeneralRequest::RequestType::DELETE:
       deleteDocument();
       break;
-    case HttpRequest::HTTP_REQUEST_GET:
+    case GeneralRequest::RequestType::GET:
       readDocument();
       break;
-    case HttpRequest::HTTP_REQUEST_HEAD:
+    case GeneralRequest::RequestType::HEAD:
       checkDocument();
       break;
-    case HttpRequest::HTTP_REQUEST_POST:
+    case GeneralRequest::RequestType::POST:
       createDocument();
       break;
-    case HttpRequest::HTTP_REQUEST_PUT:
+    case GeneralRequest::RequestType::PUT:
       replaceDocument();
       break;
-    case HttpRequest::HTTP_REQUEST_PATCH:
+    case GeneralRequest::RequestType::PATCH:
       updateDocument();
       break;
-
-    case HttpRequest::HTTP_REQUEST_ILLEGAL:
     default: {
       generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);
       break;

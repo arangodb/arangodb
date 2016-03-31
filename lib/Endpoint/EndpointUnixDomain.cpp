@@ -23,27 +23,24 @@
 
 #include "EndpointUnixDomain.h"
 
-#include "Basics/Common.h"
+#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
+
 #include "Basics/FileUtils.h"
+#include "Endpoint/Endpoint.h"
 #include "Logger/Logger.h"
 
-#include "Rest/Endpoint.h"
-
+using namespace arangodb;
 using namespace arangodb::basics;
-using namespace arangodb::rest;
-
-#ifdef TRI_HAVE_LINUX_SOCKETS
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a Unix socket endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-EndpointUnixDomain::EndpointUnixDomain(const Endpoint::EndpointType type,
-                                       std::string const& specification,
+EndpointUnixDomain::EndpointUnixDomain(EndpointType type,
                                        int listenBacklog,
                                        std::string const& path)
-    : Endpoint(type, DOMAIN_UNIX, ENCRYPTION_NONE, specification,
-               listenBacklog),
+    : Endpoint(DomainType::UNIX, type, TransportType::HTTP,
+               EncryptionType::NONE, "http+unix://" + path, listenBacklog),
       _path(path) {}
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -70,7 +67,7 @@ TRI_socket_t EndpointUnixDomain::connect(double connectTimeout,
   TRI_ASSERT(!TRI_isvalidsocket(_socket));
   TRI_ASSERT(!_connected);
 
-  if (_type == ENDPOINT_SERVER && FileUtils::exists(_path)) {
+  if (_type == EndpointType::SERVER && FileUtils::exists(_path)) {
     // socket file already exists
     LOG(WARN) << "socket file '" << _path << "' already exists.";
 
@@ -79,7 +76,8 @@ TRI_socket_t EndpointUnixDomain::connect(double connectTimeout,
     if (FileUtils::remove(_path, &error)) {
       LOG(WARN) << "deleted previously existing socket file '" << _path << "'";
     } else {
-      LOG(ERR) << "unable to delete previously existing socket file '" << _path << "'";
+      LOG(ERR) << "unable to delete previously existing socket file '" << _path
+               << "'";
 
       return listenSocket;
     }
@@ -87,7 +85,8 @@ TRI_socket_t EndpointUnixDomain::connect(double connectTimeout,
 
   listenSocket = TRI_socket(AF_UNIX, SOCK_STREAM, 0);
   if (!TRI_isvalidsocket(listenSocket)) {
-    LOG(ERR) << "socket() failed with " << errno << " (" << strerror(errno) << ")";
+    LOG(ERR) << "socket() failed with " << errno << " (" << strerror(errno)
+             << ")";
     return listenSocket;
   }
 
@@ -97,12 +96,13 @@ TRI_socket_t EndpointUnixDomain::connect(double connectTimeout,
   address.sun_family = AF_UNIX;
   snprintf(address.sun_path, 100, "%s", _path.c_str());
 
-  if (_type == ENDPOINT_SERVER) {
+  if (_type == EndpointType::SERVER) {
     int result =
         TRI_bind(listenSocket, (struct sockaddr*)&address, SUN_LEN(&address));
     if (result != 0) {
       // bind error
-      LOG(ERR) << "bind() failed with " << errno << " (" << strerror(errno) << ")";
+      LOG(ERR) << "bind() failed with " << errno << " (" << strerror(errno)
+               << ")";
       TRI_CLOSE_SOCKET(listenSocket);
       TRI_invalidatesocket(&listenSocket);
       return listenSocket;
@@ -113,14 +113,15 @@ TRI_socket_t EndpointUnixDomain::connect(double connectTimeout,
     result = TRI_listen(listenSocket, _listenBacklog);
 
     if (result < 0) {
-      LOG(ERR) << "listen() failed with " << errno << " (" << strerror(errno) << ")";
+      LOG(ERR) << "listen() failed with " << errno << " (" << strerror(errno)
+               << ")";
       TRI_CLOSE_SOCKET(listenSocket);
       TRI_invalidatesocket(&listenSocket);
       return listenSocket;
     }
   }
 
-  else if (_type == ENDPOINT_CLIENT) {
+  else if (_type == EndpointType::CLIENT) {
     // connect to endpoint, executed for client endpoints only
 
     // set timeout
@@ -140,7 +141,7 @@ TRI_socket_t EndpointUnixDomain::connect(double connectTimeout,
     return listenSocket;
   }
 
-  if (_type == ENDPOINT_CLIENT) {
+  if (_type == EndpointType::CLIENT) {
     setTimeout(listenSocket, requestTimeout);
   }
 
@@ -163,7 +164,7 @@ void EndpointUnixDomain::disconnect() {
 
     TRI_invalidatesocket(&_socket);
 
-    if (_type == ENDPOINT_SERVER) {
+    if (_type == EndpointType::SERVER) {
       int error = 0;
       if (!FileUtils::remove(_path, &error)) {
         LOG(TRACE) << "unable to remove socket file '" << _path << "'";

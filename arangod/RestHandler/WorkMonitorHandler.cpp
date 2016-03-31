@@ -32,7 +32,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-using arangodb::rest::HttpRequest;
+using arangodb::HttpRequest;
 using arangodb::rest::HttpHandler;
 
 WorkMonitorHandler::WorkMonitorHandler(HttpRequest* request)
@@ -43,9 +43,9 @@ bool WorkMonitorHandler::isDirect() const { return true; }
 HttpHandler::status_t WorkMonitorHandler::execute() {
   auto suffix = _request->suffix();
   size_t const len = suffix.size();
-  HttpRequest::HttpRequestType type = _request->requestType();
+  auto const type = _request->requestType();
 
-  if (type == HttpRequest::HTTP_REQUEST_GET) {
+  if (type == GeneralRequest::RequestType::GET) {
     if (len != 0) {
       generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "expecting GET /_admin/work-monitor");
@@ -56,7 +56,7 @@ HttpHandler::status_t WorkMonitorHandler::execute() {
     return status_t(HANDLER_ASYNC);
   }
 
-  if (type == HttpRequest::HTTP_REQUEST_DELETE) {
+  if (type == GeneralRequest::RequestType::DELETE) {
     if (len != 1) {
       generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "expecting DELETE /_admin/work-monitor/<id>");

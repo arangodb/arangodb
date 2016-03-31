@@ -26,14 +26,9 @@
 #include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief version request handler
-////////////////////////////////////////////////////////////////////////////////
-
 class WorkMonitorHandler : public arangodb::RestBaseHandler {
  public:
-  explicit WorkMonitorHandler(arangodb::rest::HttpRequest*);
+  explicit WorkMonitorHandler(HttpRequest*);
 
  public:
   bool isDirect() const override;

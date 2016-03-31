@@ -23,22 +23,24 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterInfo.h"
-#include "Basics/json.h"
-#include "Logger/Logger.h"
-#include "Basics/json-utilities.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Basics/JsonHelper.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/json-utilities.h"
+#include "Basics/json.h"
 #include "Cluster/ServerState.h"
+#include "Logger/Logger.h"
+#include "Rest/HttpResponse.h"
 #include "VocBase/document-collection.h"
-
-#include <velocypack/Iterator.h>
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #ifdef _WIN32
 // turn off warnings about too long type name for debug symbols blabla in MSVC

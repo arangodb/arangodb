@@ -18,59 +18,30 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Achim Brandt
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_REST_CONNECTION_INFO_H
-#define LIB_REST_CONNECTION_INFO_H 1
+#ifndef LIB_REST_ENDPOINT_IP_V4_H
+#define LIB_REST_ENDPOINT_IP_V4_H 1
 
 #include "Basics/Common.h"
-
 #include "Basics/StringUtils.h"
-#include "Rest/Endpoint.h"
+#include "Endpoint/EndpointIp.h"
 
 namespace arangodb {
-namespace rest {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief connection info
-////////////////////////////////////////////////////////////////////////////////
-
-struct ConnectionInfo {
+class EndpointIpV4 final : public EndpointIp {
  public:
-  ConnectionInfo()
-      : serverPort(0),
-        clientPort(0),
-        serverAddress(),
-        clientAddress(),
-        endpoint(),
-        endpointType(Endpoint::DOMAIN_UNKNOWN),
-        sslContext(nullptr) {}
+  EndpointIpV4(EndpointType, TransportType, EncryptionType, int, bool,
+               std::string const&, uint16_t);
 
  public:
-  std::string portType() const {
-    if (endpointType == Endpoint::DOMAIN_UNIX) {
-      return "unix";
-    }
-    if (endpointType == Endpoint::DOMAIN_IPV4 ||
-        endpointType == Endpoint::DOMAIN_IPV6) {
-      return "tcp/ip";
-    }
-    return "unknown";
+  int domain() const override { return AF_INET; }
+
+  std::string hostAndPort() const override {
+    return host() + ':' + arangodb::basics::StringUtils::itoa(port());
   }
-
-  int serverPort;
-  int clientPort;
-
-  std::string serverAddress;
-  std::string clientAddress;
-  std::string endpoint;
-  Endpoint::DomainType endpointType;
-
-  void* sslContext;
 };
-}
 }
 
 #endif

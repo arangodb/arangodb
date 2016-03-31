@@ -37,7 +37,8 @@
           'U_STATIC_IMPLEMENTATION',
         ],
       }],
-      ['(OS=="linux" or OS=="freebsd" or OS=="openbsd" or OS=="solaris" \
+      ['OS=="solaris"', {'defines': ['_GLIBCXX_USE_C99_MATH'], 'cflags': ['-m64']}],
+      ['(OS=="linux" or OS=="freebsd" or OS=="openbsd" or OS!="solaris" \
          or OS=="netbsd" or OS=="mac" or OS=="android" or OS=="qnx") and \
         (target_arch=="arm" or target_arch=="ia32" or \
          target_arch=="mipsel")', {

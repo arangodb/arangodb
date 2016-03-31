@@ -31,7 +31,7 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestShutdownHandler::RestShutdownHandler(arangodb::rest::HttpRequest* request,
+RestShutdownHandler::RestShutdownHandler(arangodb::HttpRequest* request,
                                          void* applicationServer)
     : RestBaseHandler(request),
       _applicationServer(

@@ -43,7 +43,7 @@ namespace aql {
 
 class RestAqlHandler : public RestVocbaseBaseHandler {
  public:
-  RestAqlHandler(rest::HttpRequest* request,
+  RestAqlHandler(HttpRequest* request,
                  std::pair<ApplicationV8*, QueryRegistry*>* pair);
 
  public:

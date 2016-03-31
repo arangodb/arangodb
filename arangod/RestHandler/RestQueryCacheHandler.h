@@ -35,7 +35,7 @@ namespace arangodb {
 
 class RestQueryCacheHandler : public RestVocbaseBaseHandler {
  public:
-  explicit RestQueryCacheHandler(rest::HttpRequest*);
+  explicit RestQueryCacheHandler(HttpRequest*);
 
  public:
   bool isDirect() const override;

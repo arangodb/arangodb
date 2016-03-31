@@ -53,19 +53,19 @@ RestCursorHandler::RestCursorHandler(
 
 HttpHandler::status_t RestCursorHandler::execute() {
   // extract the sub-request type
-  HttpRequest::HttpRequestType type = _request->requestType();
+  auto const type = _request->requestType();
 
-  if (type == HttpRequest::HTTP_REQUEST_POST) {
+  if (type == GeneralRequest::RequestType::POST) {
     createCursor();
     return status_t(HANDLER_DONE);
   }
 
-  if (type == HttpRequest::HTTP_REQUEST_PUT) {
+  if (type == GeneralRequest::RequestType::PUT) {
     modifyCursor();
     return status_t(HANDLER_DONE);
   }
 
-  if (type == HttpRequest::HTTP_REQUEST_DELETE) {
+  if (type == GeneralRequest::RequestType::DELETE) {
     deleteCursor();
     return status_t(HANDLER_DONE);
   }

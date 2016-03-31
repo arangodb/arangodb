@@ -42,7 +42,7 @@ class Slice;
 
 class RestBaseHandler : public rest::HttpHandler {
  public:
-  explicit RestBaseHandler(rest::HttpRequest* request);
+  explicit RestBaseHandler(HttpRequest* request);
 
  public:
   void handleError(basics::Exception const&) override;

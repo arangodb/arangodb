@@ -22,16 +22,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-statistics.h"
+
 #include "Basics/Exceptions.h"
-#include "Basics/process-utils.h"
 #include "Basics/StringUtils.h"
+#include "Basics/process-utils.h"
+#include "Rest/GeneralRequest.h"
 #include "Statistics/statistics.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 
+using namespace arangodb;
 using namespace arangodb::basics;
-using namespace arangodb::rest;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a distribution vector
@@ -184,43 +186,47 @@ static void JS_HttpStatistics(v8::FunctionCallbackInfo<v8::Value> const& args) {
   result->Set(
       TRI_V8_ASCII_STRING("requestsGet"),
       v8::Number::New(
-          isolate,
-          (double)methodRequests[(int)HttpRequest::HTTP_REQUEST_GET]._count));
-  result->Set(
-      TRI_V8_ASCII_STRING("requestsHead"),
-      v8::Number::New(
-          isolate,
-          (double)methodRequests[(int)HttpRequest::HTTP_REQUEST_HEAD]._count));
-  result->Set(
-      TRI_V8_ASCII_STRING("requestsPost"),
-      v8::Number::New(
-          isolate,
-          (double)methodRequests[(int)HttpRequest::HTTP_REQUEST_POST]._count));
+          isolate, (double)methodRequests[(int)GeneralRequest::RequestType::GET]
+                       ._count));
+  result->Set(TRI_V8_ASCII_STRING("requestsHead"),
+              v8::Number::New(
+                  isolate,
+                  (double)methodRequests[(int)GeneralRequest::RequestType::HEAD]
+                      ._count));
+  result->Set(TRI_V8_ASCII_STRING("requestsPost"),
+              v8::Number::New(
+                  isolate,
+                  (double)methodRequests[(int)GeneralRequest::RequestType::POST]
+                      ._count));
   result->Set(
       TRI_V8_ASCII_STRING("requestsPut"),
       v8::Number::New(
-          isolate,
-          (double)methodRequests[(int)HttpRequest::HTTP_REQUEST_PUT]._count));
+          isolate, (double)methodRequests[(int)GeneralRequest::RequestType::PUT]
+                       ._count));
   result->Set(
       TRI_V8_ASCII_STRING("requestsPatch"),
       v8::Number::New(
           isolate,
-          (double)methodRequests[(int)HttpRequest::HTTP_REQUEST_PATCH]._count));
+          (double)methodRequests[(int)GeneralRequest::RequestType::PATCH]
+              ._count));
   result->Set(
       TRI_V8_ASCII_STRING("requestsDelete"),
       v8::Number::New(
-          isolate, (double)methodRequests[(int)HttpRequest::HTTP_REQUEST_DELETE]
-                       ._count));
-  result->Set(TRI_V8_ASCII_STRING("requestsOptions"),
-              v8::Number::New(
-                  isolate,
-                  (double)methodRequests[(int)HttpRequest::HTTP_REQUEST_OPTIONS]
-                      ._count));
-  result->Set(TRI_V8_ASCII_STRING("requestsOther"),
-              v8::Number::New(
-                  isolate,
-                  (double)methodRequests[(int)HttpRequest::HTTP_REQUEST_ILLEGAL]
-                      ._count));
+          isolate,
+          (double)methodRequests[(int)GeneralRequest::RequestType::DELETE]
+              ._count));
+  result->Set(
+      TRI_V8_ASCII_STRING("requestsOptions"),
+      v8::Number::New(
+          isolate,
+          (double)methodRequests[(int)GeneralRequest::RequestType::OPTIONS]
+              ._count));
+  result->Set(
+      TRI_V8_ASCII_STRING("requestsOther"),
+      v8::Number::New(
+          isolate,
+          (double)methodRequests[(int)GeneralRequest::RequestType::ILLEGAL]
+              ._count));
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END

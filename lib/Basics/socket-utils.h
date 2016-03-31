@@ -26,16 +26,6 @@
 
 #include "Basics/Common.h"
 
-#ifdef TRI_HAVE_LINUX_SOCKETS
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <sys/un.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <sys/file.h>
-#endif
-
 #ifdef TRI_HAVE_WINSOCK2_H
 #include <WinSock2.h>
 #include <WS2tcpip.h>

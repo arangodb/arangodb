@@ -92,13 +92,13 @@ class ConnectionManager {
   struct SingleServerConnection {
     ServerConnections* _connections;
     GeneralClientConnection* _connection;
-    arangodb::rest::Endpoint* _endpoint;
+    Endpoint* _endpoint;
     std::string const _endpointSpecification;
     time_t _lastUsed;
 
     SingleServerConnection(ServerConnections* manager,
                            GeneralClientConnection* connection,
-                           arangodb::rest::Endpoint* endpoint,
+                           Endpoint* endpoint,
                            std::string const& endpointSpecification)
         : _connections(manager),
           _connection(connection),

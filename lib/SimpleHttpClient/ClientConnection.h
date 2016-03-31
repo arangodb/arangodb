@@ -46,9 +46,8 @@ class ClientConnection final : public GeneralClientConnection {
   /// @brief creates a new client connection
   //////////////////////////////////////////////////////////////////////////////
 
-  ClientConnection(arangodb::rest::Endpoint* endpoint, double, double, size_t);
-  ClientConnection(std::unique_ptr<arangodb::rest::Endpoint>& endpoint, double,
-                   double, size_t);
+  ClientConnection(Endpoint* endpoint, double, double, size_t);
+  ClientConnection(std::unique_ptr<Endpoint>& endpoint, double, double, size_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroys a client connection
