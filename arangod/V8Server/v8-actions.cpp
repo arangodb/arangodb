@@ -439,7 +439,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
       req->ForceSet(RequestTypeKey, OptionsConstant);
       break;
     }
-    case GeneralRequest::RequestType::DELETE: {
+    case GeneralRequest::RequestType::DELETE_REQ: {
       TRI_GET_GLOBAL_STRING(DeleteConstant);
       req->ForceSet(RequestTypeKey, DeleteConstant);
       break;

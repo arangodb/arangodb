@@ -289,7 +289,7 @@ bool HttpCommTask::processRead() {
       // handle different HTTP methods
       switch (_requestType) {
         case GeneralRequest::RequestType::GET:
-        case GeneralRequest::RequestType::DELETE:
+        case GeneralRequest::RequestType::DELETE_REQ:
         case GeneralRequest::RequestType::HEAD:
         case GeneralRequest::RequestType::OPTIONS:
         case GeneralRequest::RequestType::POST:
@@ -302,7 +302,7 @@ bool HttpCommTask::processRead() {
                _requestType == GeneralRequest::RequestType::PUT ||
                _requestType == GeneralRequest::RequestType::PATCH ||
                _requestType == GeneralRequest::RequestType::OPTIONS ||
-               _requestType == GeneralRequest::RequestType::DELETE);
+               _requestType == GeneralRequest::RequestType::DELETE_REQ);
 
           if (!checkContentLength(expectContentLength)) {
             return false;

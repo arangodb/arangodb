@@ -1246,7 +1246,7 @@ AgencyCommResult AgencyComm::removeValues(std::string const& key,
 
   AgencyCommResult result;
 
-  sendWithFailover(arangodb::GeneralRequest::RequestType::DELETE,
+  sendWithFailover(arangodb::GeneralRequest::RequestType::DELETE_REQ,
                    _globalConnectionOptions._requestTimeout, result, url, "",
                    false);
 
@@ -1823,7 +1823,7 @@ bool AgencyComm::send(arangodb::httpclient::GeneralClientConnection* connection,
 
   if (method == arangodb::GeneralRequest::RequestType::GET ||
       method == arangodb::GeneralRequest::RequestType::HEAD ||
-      method == arangodb::GeneralRequest::RequestType::DELETE) {
+      method == arangodb::GeneralRequest::RequestType::DELETE_REQ) {
     TRI_ASSERT(body.empty());
   }
 

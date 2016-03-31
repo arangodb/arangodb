@@ -48,7 +48,7 @@ HttpHandler::status_t RestDocumentHandler::execute() {
 
   // execute one of the CRUD methods
   switch (type) {
-    case GeneralRequest::RequestType::DELETE:
+    case GeneralRequest::RequestType::DELETE_REQ:
       deleteDocument();
       break;
     case GeneralRequest::RequestType::GET:

@@ -40,7 +40,7 @@ HttpHandler::status_t RestQueryCacheHandler::execute() {
   auto const type = _request->requestType();
 
   switch (type) {
-    case GeneralRequest::RequestType::DELETE:
+    case GeneralRequest::RequestType::DELETE_REQ:
       clearCache();
       break;
     case GeneralRequest::RequestType::GET:

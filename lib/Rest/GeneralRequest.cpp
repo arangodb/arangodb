@@ -48,11 +48,13 @@ std::string GeneralRequest::translateVersion(ProtocolVersion version) {
     case ProtocolVersion::UNKNOWN:
       return "HTTP/1.0";
   }
+
+  return "UNKNOWN"; // in order please MSVC
 }
 
 std::string GeneralRequest::translateMethod(RequestType method) {
   switch (method) {
-    case RequestType::DELETE:
+    case RequestType::DELETE_REQ:
       return "DELETE";
 
     case RequestType::GET:
@@ -86,6 +88,8 @@ std::string GeneralRequest::translateMethod(RequestType method) {
       LOG(WARN) << "illegal http request method encountered in switch";
       return "UNKNOWN";
   }
+
+  return "UNKNOWN"; // in order please MSVC
 }
 
 GeneralRequest::RequestType GeneralRequest::translateMethod(
@@ -93,7 +97,7 @@ GeneralRequest::RequestType GeneralRequest::translateMethod(
   std::string const methodString = StringUtils::toupper(method);
 
   if (methodString == "DELETE") {
-    return RequestType::DELETE;
+    return RequestType::DELETE_REQ;
   } else if (methodString == "GET") {
     return RequestType::GET;
   } else if (methodString == "HEAD") {
@@ -153,7 +157,7 @@ GeneralRequest::RequestType GeneralRequest::findRequestType(char const* ptr,
     case 6:
       if (ptr[0] == 'd' && ptr[1] == 'e' && ptr[2] == 'l' && ptr[3] == 'e' &&
           ptr[4] == 't' && ptr[5] == 'e') {
-        return RequestType::DELETE;
+        return RequestType::DELETE_REQ;
       }
       break;
 

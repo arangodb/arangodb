@@ -65,7 +65,7 @@ HttpHandler::status_t RestCursorHandler::execute() {
     return status_t(HANDLER_DONE);
   }
 
-  if (type == GeneralRequest::RequestType::DELETE) {
+  if (type == GeneralRequest::RequestType::DELETE_REQ) {
     deleteCursor();
     return status_t(HANDLER_DONE);
   }

@@ -59,7 +59,7 @@ HttpHandler::status_t RestQueryHandler::execute() {
   // execute one of the CRUD methods
   try {
     switch (type) {
-      case GeneralRequest::RequestType::DELETE:
+      case GeneralRequest::RequestType::DELETE_REQ:
         deleteQuery();
         break;
       case GeneralRequest::RequestType::GET:

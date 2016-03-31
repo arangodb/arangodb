@@ -52,7 +52,7 @@ class GeneralRequest {
   // VSTREAM_STATUS: Returns STATUS code and message for a given
   // request
   enum class RequestType {
-    DELETE = 0,
+    DELETE_REQ = 0, // windows redefines DELETE
     GET,
     HEAD,
     OPTIONS,

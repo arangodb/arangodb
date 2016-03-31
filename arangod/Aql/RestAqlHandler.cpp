@@ -589,7 +589,7 @@ arangodb::rest::HttpHandler::status_t RestAqlHandler::execute() {
       }
       break;
     }
-    case GeneralRequest::RequestType::DELETE:
+    case GeneralRequest::RequestType::DELETE_REQ:
     case GeneralRequest::RequestType::HEAD:
     case GeneralRequest::RequestType::PATCH:
     case GeneralRequest::RequestType::OPTIONS:

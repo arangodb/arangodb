@@ -422,7 +422,7 @@ int InitialSyncer::sendFinishBatch() {
     setProgress(progress);
 
     std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
-        GeneralRequest::RequestType::DELETE, url, nullptr, 0));
+        GeneralRequest::RequestType::DELETE_REQ, url, nullptr, 0));
 
     if (response == nullptr || !response->isComplete()) {
       return TRI_ERROR_REPLICATION_NO_RESPONSE;
@@ -953,7 +953,7 @@ int InitialSyncer::handleCollectionSync(
 
     // now delete the keys we ordered
     std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
-        GeneralRequest::RequestType::DELETE, url, nullptr, 0));
+        GeneralRequest::RequestType::DELETE_REQ, url, nullptr, 0));
   };
 
   TRI_DEFER(shutdown());

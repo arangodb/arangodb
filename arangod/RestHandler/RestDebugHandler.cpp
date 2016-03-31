@@ -56,7 +56,7 @@ HttpHandler::status_t RestDebugHandler::execute() {
 
   // execute one of the CRUD methods
   switch (type) {
-    case GeneralRequest::RequestType::DELETE:
+    case GeneralRequest::RequestType::DELETE_REQ:
       if (len == 1) {
         TRI_ClearFailurePointsDebugging();
       } else {

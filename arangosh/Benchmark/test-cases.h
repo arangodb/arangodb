@@ -274,7 +274,7 @@ struct ShapesTest : public BenchmarkOperation {
     } else if (mod == 1) {
       return GeneralRequest::RequestType::GET;
     } else {
-      return GeneralRequest::RequestType::DELETE;
+      return GeneralRequest::RequestType::DELETE_REQ;
     }
   }
 
@@ -446,7 +446,7 @@ struct RandomShapesTest : public BenchmarkOperation {
     } else if (mod == 1) {
       return GeneralRequest::RequestType::GET;
     } else {
-      return GeneralRequest::RequestType::DELETE;
+      return GeneralRequest::RequestType::DELETE_REQ;
     }
   }
 
@@ -541,7 +541,7 @@ struct DocumentCrudTest : public BenchmarkOperation {
     } else if (mod == 3) {
       return GeneralRequest::RequestType::GET;
     } else if (mod == 4) {
-      return GeneralRequest::RequestType::DELETE;
+      return GeneralRequest::RequestType::DELETE_REQ;
     } else {
       TRI_ASSERT(false);
       return GeneralRequest::RequestType::GET;
@@ -640,7 +640,7 @@ struct EdgeCrudTest : public BenchmarkOperation {
     }
     /*
     else if (mod == 4) {
-      return GeneralRequest::RequestType::DELETE;
+      return GeneralRequest::RequestType::DELETE_REQ;
     }
     */
     else {
@@ -1522,7 +1522,7 @@ static bool DeleteCollection(SimpleHttpClient* client,
   std::map<std::string, std::string> headerFields;
   SimpleHttpResult* result = nullptr;
 
-  result = client->request(GeneralRequest::RequestType::DELETE,
+  result = client->request(GeneralRequest::RequestType::DELETE_REQ,
                            "/_api/collection/" + name, "", 0, headerFields);
 
   bool failed = true;

@@ -56,7 +56,7 @@ HttpHandler::status_t WorkMonitorHandler::execute() {
     return status_t(HANDLER_ASYNC);
   }
 
-  if (type == GeneralRequest::RequestType::DELETE) {
+  if (type == GeneralRequest::RequestType::DELETE_REQ) {
     if (len != 1) {
       generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "expecting DELETE /_admin/work-monitor/<id>");

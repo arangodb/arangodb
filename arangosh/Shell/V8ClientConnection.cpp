@@ -1267,10 +1267,10 @@ v8::Handle<v8::Value> V8ClientConnection::deleteData(
     v8::Isolate* isolate, std::string const& location,
     std::map<std::string, std::string> const& headerFields, bool raw) {
   if (raw) {
-    return requestDataRaw(isolate, GeneralRequest::RequestType::DELETE, location,
+    return requestDataRaw(isolate, GeneralRequest::RequestType::DELETE_REQ, location,
                           "", headerFields);
   }
-  return requestData(isolate, GeneralRequest::RequestType::DELETE, location, "",
+  return requestData(isolate, GeneralRequest::RequestType::DELETE_REQ, location, "",
                      headerFields);
 }
 

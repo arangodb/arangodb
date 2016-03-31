@@ -135,7 +135,7 @@ HttpHandler::status_t RestReplicationHandler::execute() {
       if (type != GeneralRequest::RequestType::GET &&
           type != GeneralRequest::RequestType::POST &&
           type != GeneralRequest::RequestType::PUT &&
-          type != GeneralRequest::RequestType::DELETE) {
+          type != GeneralRequest::RequestType::DELETE_REQ) {
         goto BAD_CALL;
       }
 
@@ -149,7 +149,7 @@ HttpHandler::status_t RestReplicationHandler::execute() {
         handleCommandGetKeys();
       } else if (type == GeneralRequest::RequestType::PUT) {
         handleCommandFetchKeys();
-      } else if (type == GeneralRequest::RequestType::DELETE) {
+      } else if (type == GeneralRequest::RequestType::DELETE_REQ) {
         handleCommandRemoveKeys();
       }
     } else if (command == "dump") {
@@ -239,7 +239,7 @@ HttpHandler::status_t RestReplicationHandler::execute() {
 
       handleCommandApplierStop();
     } else if (command == "applier-state") {
-      if (type == GeneralRequest::RequestType::DELETE) {
+      if (type == GeneralRequest::RequestType::DELETE_REQ) {
         handleCommandApplierDeleteState();
       } else {
         if (type != GeneralRequest::RequestType::GET) {
@@ -592,7 +592,7 @@ void RestReplicationHandler::handleCommandBatch() {
     return;
   }
 
-  if (type == GeneralRequest::RequestType::DELETE && len >= 2) {
+  if (type == GeneralRequest::RequestType::DELETE_REQ && len >= 2) {
     // delete an existing blocker
     TRI_voc_tick_t id = (TRI_voc_tick_t)StringUtils::uint64(suffix[1]);
 
@@ -706,7 +706,7 @@ void RestReplicationHandler::handleCommandBarrier() {
     return;
   }
 
-  if (type == GeneralRequest::RequestType::DELETE && len >= 2) {
+  if (type == GeneralRequest::RequestType::DELETE_REQ && len >= 2) {
     // delete an existing barrier
     TRI_voc_tick_t id = StringUtils::uint64(suffix[1]);
 

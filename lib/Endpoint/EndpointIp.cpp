@@ -32,8 +32,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-#warning TODO move to system or os file
-
 #ifdef _WIN32
 #define STR_ERROR()                                                  \
   windowsErrorBuf;                                                   \
@@ -41,6 +39,7 @@ using namespace arangodb::basics;
                 windowsErrorBuf, sizeof(windowsErrorBuf), NULL);     \
   errno = GetLastError();
 #else
+#warning TODO move to system or os file
 #define STR_ERROR() strerror(errno)
 #endif
 
@@ -101,7 +100,7 @@ EndpointIp::EndpointIp(DomainType domainType, EndpointType type,
       _host(host),
       _port(port),
       _reuseAddress(reuseAddress) {
-  TRI_ASSERT(domainType == DOMAIN_IPV4 || domainType == Endpoint::DOMAIN_IPV6);
+  TRI_ASSERT(domainType == DomainType::IPV4 || domainType == DomainType::IPV6);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -274,7 +273,7 @@ TRI_socket_t EndpointIp::connect(double connectTimeout, double requestTimeout) {
   TRI_ASSERT(!_connected);
 
   memset(&hints, 0, sizeof(struct addrinfo));
-  hints.ai_family = getDomain();  // Allow IPv4 or IPv6
+  hints.ai_family = domain();  // Allow IPv4 or IPv6
   hints.ai_flags = TRI_CONNECT_AI_FLAGS;
   hints.ai_socktype = SOCK_STREAM;
 

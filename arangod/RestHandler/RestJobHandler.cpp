@@ -60,7 +60,7 @@ HttpHandler::status_t RestJobHandler::execute() {
     } else {
       generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     }
-  } else if (type == GeneralRequest::RequestType::DELETE) {
+  } else if (type == GeneralRequest::RequestType::DELETE_REQ) {
     deleteJob();
   } else {
     generateError(HttpResponse::METHOD_NOT_ALLOWED,

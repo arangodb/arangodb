@@ -705,7 +705,7 @@ int deleteDocumentOnCoordinator(
     // Send a synchronous request to that shard using ClusterComm:
     auto res = cc->syncRequest(
         "", TRI_NewTickServer(), "shard:" + shardID,
-        arangodb::GeneralRequest::RequestType::DELETE,
+        arangodb::GeneralRequest::RequestType::DELETE_REQ,
         "/_db/" + dbname + "/_api/document/" + StringUtils::urlEncode(shardID) +
             "/" + StringUtils::urlEncode(key) + "?waitForSync=" +
             (waitForSync ? "true" : "false") + revstr + policystr,
@@ -731,7 +731,7 @@ int deleteDocumentOnCoordinator(
     std::unique_ptr<std::map<std::string, std::string>> headersCopy(
         new std::map<std::string, std::string>(*headers));
     cc->asyncRequest("", coordTransactionID, "shard:" + p.first,
-                     arangodb::GeneralRequest::RequestType::DELETE,
+                     arangodb::GeneralRequest::RequestType::DELETE_REQ,
                      "/_db/" + StringUtils::urlEncode(dbname) +
                          "/_api/document/" + StringUtils::urlEncode(p.first) +
                          "/" + StringUtils::urlEncode(key) + "?waitForSync=" +
