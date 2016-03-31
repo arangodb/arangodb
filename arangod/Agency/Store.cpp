@@ -429,23 +429,25 @@ bool Store::check (VPackSlice const& slice) const {
   return true;
 }
 
-query_t Store::read (query_t const& queries) const { // list of list of paths
+std::vector<bool> Store::read (query_t const& queries, query_t& result) const { // list of list of paths
+  std::vector<bool> success;
   MUTEX_LOCKER(storeLocker, _storeLock);
-  query_t result = std::make_shared<arangodb::velocypack::Builder>();
   if (queries->slice().type() == VPackValueType::Array) {
     result->add(VPackValue(VPackValueType::Array)); // top node array
     for (auto const& query : VPackArrayIterator(queries->slice())) {
-      read (query, *result);
+      success.push_back(read (query, *result));
     } 
     result->close();
   } else {
     LOG_TOPIC(ERR, Logger::AGENCY) << "Read queries to stores must be arrays";
   }
-  return result;
+  return success;
 }
 
 bool Store::read (VPackSlice const& query, Builder& ret) const {
 
+  bool success = true;
+  
   // Collect all paths
   std::list<std::string> query_strs;
   if (query.type() == VPackValueType::Array) {
@@ -474,7 +476,10 @@ bool Store::read (VPackSlice const& query, Builder& ret) const {
   for (auto i = query_strs.begin(); i != query_strs.end(); ++i) {
     try {
       copy(*i) = (*this)(*i);
-    } catch (StoreException const&) {}
+    } catch (StoreException const& e) {
+      if (query.type() == VPackValueType::String)
+        success = false;
+    }
   }
   
   // Assemble builder from response tree
@@ -490,7 +495,7 @@ bool Store::read (VPackSlice const& query, Builder& ret) const {
     }
   }
   
-  return true;
+  return success;
   
 }
 
@@ -503,6 +508,7 @@ void Store::beginShutdown() {
 void Store::clearTimeTable () {
   for (auto it = _time_table.cbegin(); it != _time_table.cend() ;) {
     if (it->first < std::chrono::system_clock::now()) {
+      
       it->second->remove();
       _time_table.erase(it++);
     } else {

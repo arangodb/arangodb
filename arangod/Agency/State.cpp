@@ -76,6 +76,7 @@ bool State::persist (index_t index, term_t term, id_t lid,
 
 bool State::persist (term_t t, id_t i) {
   
+  return true;  
 }
 
 //Leader

@@ -143,6 +143,7 @@ inline HttpHandler::status_t RestAgencyHandler::handleWrite () {
   return HttpHandler::status_t(HANDLER_DONE);
 }
 
+#include <iostream>
 inline HttpHandler::status_t RestAgencyHandler::handleRead () {
   arangodb::velocypack::Options options;
   if (_request->requestType() == HttpRequest::HTTP_REQUEST_POST) {
@@ -157,7 +158,13 @@ inline HttpHandler::status_t RestAgencyHandler::handleRead () {
     read_ret_t ret = _agent->read (query);
 
     if (ret.accepted) { // I am leading
-      generateResult(ret.result->slice());
+      std::cout << ret.success.size() << std::endl;
+      std::cout << ret.success.at(0) << std::endl;
+      if (ret.success.size() == 1 && !ret.success.at(0)) {
+        generateResult(HttpResponse::I_AM_A_TEAPOT, ret.result->slice());
+      } else {
+        generateResult(ret.result->slice());
+      }
     } else {            // Redirect to leader
       redirectRequest(ret.redirect);
       return HttpHandler::status_t(HANDLER_DONE);

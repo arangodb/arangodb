@@ -277,11 +277,12 @@ write_ret_t Agent::write (query_t const& query)  {
 
 read_ret_t Agent::read (query_t const& query) const {
   if (_constituent.leading()) {     // We are leading
-    auto result = (_config.size() == 1) ?
-      _spearhead.read(query) : _read_db.read (query);
-    return read_ret_t(true,_constituent.leaderID(),result);
+    query_t result = std::make_shared<arangodb::velocypack::Builder>();
+    std::vector<bool> success= (_config.size() == 1) ?
+      _spearhead.read(query, result) : _read_db.read (query, result);
+    return read_ret_t(true, _constituent.leaderID(), success, result);
   } else {                          // We redirect
-    return read_ret_t(false,_constituent.leaderID());
+    return read_ret_t(false, _constituent.leaderID());
   }
 }
 

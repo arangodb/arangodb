@@ -186,7 +186,7 @@ public:
   std::vector<bool> apply (std::vector<Slice> const& query);
 
   /// @brief Read specified query from store
-  query_t read (query_t const& query) const;
+  std::vector<bool> read (query_t const& query, query_t& result) const;
   
   /// @brief Begin shutdown of thread
   void beginShutdown () override final;
