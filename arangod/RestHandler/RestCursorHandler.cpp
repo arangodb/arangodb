@@ -53,19 +53,19 @@ RestCursorHandler::RestCursorHandler(
 
 HttpHandler::status_t RestCursorHandler::execute() {
   // extract the sub-request type
-  HttpRequest::HttpRequestType type = _request->requestType();
+  auto const type = _request->requestType();
 
-  if (type == HttpRequest::HTTP_REQUEST_POST) {
+  if (type == GeneralRequest::RequestType::POST) {
     createCursor();
     return status_t(HANDLER_DONE);
   }
 
-  if (type == HttpRequest::HTTP_REQUEST_PUT) {
+  if (type == GeneralRequest::RequestType::PUT) {
     modifyCursor();
     return status_t(HANDLER_DONE);
   }
 
-  if (type == HttpRequest::HTTP_REQUEST_DELETE) {
+  if (type == GeneralRequest::RequestType::DELETE_REQ) {
     deleteCursor();
     return status_t(HANDLER_DONE);
   }
@@ -149,13 +149,14 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
       try {
         VPackObjectBuilder b(&result);
         result.add(VPackValue("result"));
-        int res = arangodb::basics::JsonHelper::toVelocyPack(queryResult.json, result);
+        int res = arangodb::basics::JsonHelper::toVelocyPack(queryResult.json,
+                                                             result);
         if (res != TRI_ERROR_NO_ERROR) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
         }
         result.add("hasMore", VPackValue(false));
-        if (arangodb::basics::VelocyPackHelper::getBooleanValue(options, "count",
-                                                                false)) {
+        if (arangodb::basics::VelocyPackHelper::getBooleanValue(
+                options, "count", false)) {
           result.add("count", VPackValue(n));
         }
         result.add("cached", VPackValue(queryResult.cached));
@@ -190,7 +191,8 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
 
     // steal the query JSON, cursor will take over the ownership
     auto j = queryResult.json;
-    std::shared_ptr<VPackBuilder> builder = arangodb::basics::JsonHelper::toVelocyPack(j);
+    std::shared_ptr<VPackBuilder> builder =
+        arangodb::basics::JsonHelper::toVelocyPack(j);
     {
       // Temporarily validate that transformation actually worked.
       // Can be removed again as soon as queryResult returns VPack
@@ -346,7 +348,8 @@ std::shared_ptr<VPackBuilder> RestCursorHandler::buildExtra(
     }
     if (queryResult.profile != nullptr) {
       extra->add(VPackValue("profile"));
-      int res = arangodb::basics::JsonHelper::toVelocyPack(queryResult.profile, *extra);
+      int res = arangodb::basics::JsonHelper::toVelocyPack(queryResult.profile,
+                                                           *extra);
       if (res != TRI_ERROR_NO_ERROR) {
         return nullptr;
       }
@@ -357,7 +360,8 @@ std::shared_ptr<VPackBuilder> RestCursorHandler::buildExtra(
       extra->close();
     } else {
       extra->add(VPackValue("warnings"));
-      int res = arangodb::basics::JsonHelper::toVelocyPack(queryResult.warnings, *extra);
+      int res = arangodb::basics::JsonHelper::toVelocyPack(queryResult.warnings,
+                                                           *extra);
       if (res != TRI_ERROR_NO_ERROR) {
         return nullptr;
       }

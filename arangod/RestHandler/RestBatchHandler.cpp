@@ -44,10 +44,10 @@ RestBatchHandler::~RestBatchHandler() {}
 
 HttpHandler::status_t RestBatchHandler::execute() {
   // extract the request type
-  const HttpRequest::HttpRequestType type = _request->requestType();
+  auto const type = _request->requestType();
 
-  if (type != HttpRequest::HTTP_REQUEST_POST &&
-      type != HttpRequest::HTTP_REQUEST_PUT) {
+  if (type != GeneralRequest::RequestType::POST &&
+      type != GeneralRequest::RequestType::PUT) {
     generateError(HttpResponse::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return status_t(HttpHandler::HANDLER_DONE);
@@ -67,15 +67,16 @@ HttpHandler::status_t RestBatchHandler::execute() {
   size_t errors = 0;
 
   // get authorization header. we will inject this into the subparts
-  std::string authorization = _request->header("authorization");
+  std::string const& authorization = _request->header("authorization");
 
   // create the response
   createResponse(HttpResponse::OK);
   _response->setContentType(_request->header("content-type"));
 
   // setup some auxiliary structures to parse the multipart message
-  MultipartMessage message(boundary.c_str(), boundary.size(), _request->body(),
-                           _request->body() + _request->bodySize());
+  std::string const& bodyStr = _request->body();
+  MultipartMessage message(boundary.c_str(), boundary.size(), bodyStr.c_str(),
+                           bodyStr.c_str() + bodyStr.size());
 
   SearchHelper helper;
   helper.message = &message;
@@ -141,17 +142,18 @@ HttpHandler::status_t RestBatchHandler::execute() {
 
     // inject the request context from the framing (batch) request
     // the "false" means the context is not responsible for resource handling
-    request->setRequestContext(_request->getRequestContext(), false);
+    request->setRequestContext(_request->requestContext(), false);
     request->setDatabaseName(_request->databaseName());
 
     if (bodyLength > 0) {
-      LOG(TRACE) << "part body is '" << std::string(bodyStart, bodyLength) << "'";
+      LOG(TRACE) << "part body is '" << std::string(bodyStart, bodyLength)
+                 << "'";
       request->setBody(bodyStart, bodyLength);
     }
 
     if (authorization.size()) {
       // inject Authorization header of multipart message into part message
-      request->setHeader("authorization", 13, authorization.c_str());
+      request->setHeader("authorization", authorization);
     }
 
     HttpHandler* handler = _server->createHandler(request);
@@ -195,8 +197,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
 
       // append the boundary for this subpart
       _response->body().appendText(boundary + "\r\nContent-Type: ");
-      _response->body().appendText(
-          arangodb::rest::HttpRequest::BatchContentType);
+      _response->body().appendText(HttpRequest::BATCH_CONTENT_TYPE);
 
       // append content-id if it is present
       if (helper.contentId != 0) {
@@ -242,8 +243,9 @@ HttpHandler::status_t RestBatchHandler::execute() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestBatchHandler::getBoundaryBody(std::string* result) {
-  char const* p = _request->body();
-  char const* e = p + _request->bodySize();
+  std::string const& bodyStr = _request->body();
+  char const* p = bodyStr.c_str();
+  char const* e = p + bodyStr.size();
 
   // skip whitespace
   while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n') {
@@ -282,13 +284,14 @@ bool RestBatchHandler::getBoundaryBody(std::string* result) {
 
 bool RestBatchHandler::getBoundaryHeader(std::string* result) {
   // extract content type
-  std::string contentType = StringUtils::trim(_request->header("content-type"));
+  std::string const contentType =
+      StringUtils::trim(_request->header("content-type"));
 
   // content type is expect to contain a boundary like this:
   // "Content-Type: multipart/form-data; boundary=<boundary goes here>"
   std::vector<std::string> parts = StringUtils::split(contentType, ';');
 
-  if (parts.size() != 2 || parts[0] != HttpRequest::MultiPartContentType) {
+  if (parts.size() != 2 || parts[0] != HttpRequest::MULTI_PART_CONTENT_TYPE) {
     // content-type is not formatted as expected
     return false;
   }
@@ -452,10 +455,12 @@ bool RestBatchHandler::extractPart(SearchHelper* helper) {
         std::string value(colon, eol - colon);
         StringUtils::trimInPlace(value);
 
-        if (arangodb::rest::HttpRequest::BatchContentType == value) {
+        if (HttpRequest::BATCH_CONTENT_TYPE == value) {
           hasTypeHeader = true;
         } else {
-          LOG(WARN) << "unexpected content-type '" << value << "' for multipart-message. expected: '" << arangodb::rest::HttpRequest::BatchContentType << "'";
+          LOG(WARN) << "unexpected content-type '" << value
+                    << "' for multipart-message. expected: '"
+                    << HttpRequest::BATCH_CONTENT_TYPE << "'";
         }
       } else if ("content-id" == key) {
         helper->contentId = colon;

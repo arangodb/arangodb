@@ -24,10 +24,9 @@
 #ifndef ARANGODB_REST_ENDPOINT_SRV_H
 #define ARANGODB_REST_ENDPOINT_SRV_H 1
 
-#include "Rest/Endpoint.h"
+#include "Endpoint/Endpoint.h"
 
 namespace arangodb {
-namespace rest {
 class EndpointSrv final : public Endpoint {
  public:
   explicit EndpointSrv(std::string const&);
@@ -39,15 +38,14 @@ class EndpointSrv final : public Endpoint {
   TRI_socket_t connect(double, double) override;
   void disconnect() override;
   bool initIncoming(TRI_socket_t) override;
-  int getDomain() const override;
-  int getPort() const override;
-  std::string getHost() const override;
-  std::string getHostString() const override;
+  int domain() const override;
+  int port() const override;
+  std::string host() const override;
+  std::string hostAndPort() const override;
 
  private:
   std::unique_ptr<Endpoint> _endpoint;
 };
-}
 }
 
 #endif

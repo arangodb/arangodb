@@ -142,9 +142,11 @@ struct vote_ret_t {
 struct read_ret_t {
   bool accepted;  // Query processed
   id_t redirect;  // Otherwise redirect to
+  std::vector<bool> success;
   query_t result; // Result
-  read_ret_t (bool a, id_t id, query_t res = nullptr) :
-    accepted(a), redirect(id), result(res) {}
+  read_ret_t (bool a, id_t id, std::vector<bool> suc = std::vector<bool>(),
+              query_t res = nullptr) :
+    accepted(a), redirect(id), success(suc), result(res) {}
 };
 
 typedef uint64_t index_t;

@@ -28,14 +28,9 @@
 #include "Basics/Common.h"
 
 #include "Basics/StringUtils.h"
-#include "Rest/Endpoint.h"
+#include "Endpoint/Endpoint.h"
 
 namespace arangodb {
-namespace rest {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief connection info
-////////////////////////////////////////////////////////////////////////////////
 
 struct ConnectionInfo {
  public:
@@ -45,18 +40,20 @@ struct ConnectionInfo {
         serverAddress(),
         clientAddress(),
         endpoint(),
-        endpointType(Endpoint::DOMAIN_UNKNOWN),
+        endpointType(Endpoint::DomainType::UNKNOWN),
         sslContext(nullptr) {}
 
  public:
   std::string portType() const {
-    if (endpointType == Endpoint::DOMAIN_UNIX) {
-      return "unix";
-    } else if (endpointType == Endpoint::DOMAIN_IPV4 ||
-               endpointType == Endpoint::DOMAIN_IPV6) {
-      return "tcp/ip";
+    switch (endpointType) {
+      case Endpoint::DomainType::UNIX:
+        return "unix";
+      case Endpoint::DomainType::IPV4:
+      case Endpoint::DomainType::IPV6:
+        return "tcp/ip";
+      default:
+        return "unknown";
     }
-    return "unknown";
   }
 
   int serverPort;
@@ -69,7 +66,7 @@ struct ConnectionInfo {
 
   void* sslContext;
 };
-}
+
 }
 
 #endif

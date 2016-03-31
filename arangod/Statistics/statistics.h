@@ -44,7 +44,7 @@ struct TRI_request_statistics_t {
         _writeEnd(0.0),
         _receivedBytes(0.0),
         _sentBytes(0.0),
-        _requestType(arangodb::rest::HttpRequest::HTTP_REQUEST_ILLEGAL),
+        _requestType(arangodb::GeneralRequest::RequestType::ILLEGAL),
         _async(false),
         _tooLarge(false),
         _executeError(false),
@@ -61,7 +61,7 @@ struct TRI_request_statistics_t {
     _writeEnd = 0.0;
     _receivedBytes = 0.0;
     _sentBytes = 0.0;
-    _requestType = arangodb::rest::HttpRequest::HTTP_REQUEST_ILLEGAL;
+    _requestType = arangodb::GeneralRequest::RequestType::ILLEGAL;
     _async = false;
     _tooLarge = false;
     _executeError = false;
@@ -80,7 +80,7 @@ struct TRI_request_statistics_t {
   double _receivedBytes;
   double _sentBytes;
 
-  arangodb::rest::HttpRequest::HttpRequestType _requestType;
+  arangodb::GeneralRequest::RequestType _requestType;
 
   bool _async;
   bool _tooLarge;

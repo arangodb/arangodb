@@ -18,25 +18,28 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_PLEASE_UPGRADE_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_PLEASE_UPGRADE_HANDLER_H 1
+#ifndef LIB_REST_ENDPOINT_IP_V6_H
+#define LIB_REST_ENDPOINT_IP_V6_H 1
 
-#include "HttpServer/HttpHandler.h"
+#include "Endpoint/EndpointIp.h"
+
+#include "Basics/StringUtils.h"
 
 namespace arangodb {
-class RestPleaseUpgradeHandler : public rest::HttpHandler {
+class EndpointIpV6 final : public EndpointIp {
  public:
-  explicit RestPleaseUpgradeHandler(HttpRequest*);
+  EndpointIpV6(EndpointType, TransportType, EncryptionType, int, bool,
+               std::string const&, uint16_t);
 
  public:
-  bool isDirect() const override;
+  int domain() const override { return AF_INET6; }
 
-  status_t execute() override;
-
-  void handleError(const basics::Exception&) override;
+  std::string hostAndPort() const override {
+    return '[' + host() + "]:" + arangodb::basics::StringUtils::itoa(port());
+  }
 };
 }
 

@@ -33,30 +33,26 @@ namespace arangodb {
 /// @brief REST handler for outside calls to agency (write & read)
 ////////////////////////////////////////////////////////////////////////////////
 
-class RestAgencyHandler : public arangodb::RestBaseHandler {
+class RestAgencyHandler : public RestBaseHandler {
  public:
-
-  explicit RestAgencyHandler(arangodb::rest::HttpRequest*,
-		  arangodb::consensus::Agent*);
+  explicit RestAgencyHandler(HttpRequest*, consensus::Agent*);
 
   bool isDirect() const override;
 
   status_t execute() override;
 
  private:
-
-  status_t reportErrorEmptyRequest() ;
-  status_t reportTooManySuffices() ;
-  status_t reportUnknownMethod() ; 
-  status_t handleRead() ;
-  status_t handleWrite() ;
+  status_t reportErrorEmptyRequest();
+  status_t reportTooManySuffices();
+  status_t reportUnknownMethod();
+  status_t handleRead();
+  status_t handleWrite();
   status_t handleConfig();
-  status_t reportMethodNotAllowed(); 
+  status_t reportMethodNotAllowed();
   status_t handleState();
 
-  void     redirectRequest (arangodb::consensus::id_t leaderId);
+  void redirectRequest(arangodb::consensus::id_t leaderId);
   consensus::Agent* _agent;
-
 };
 }
 

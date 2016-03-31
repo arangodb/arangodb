@@ -49,36 +49,31 @@ RestQueryHandler::RestQueryHandler(HttpRequest* request,
     : RestVocbaseBaseHandler(request), _applicationV8(applicationV8) {}
 
 bool RestQueryHandler::isDirect() const {
-  return _request->requestType() != HttpRequest::HTTP_REQUEST_POST;
+  return _request->requestType() != GeneralRequest::RequestType::POST;
 }
 
 HttpHandler::status_t RestQueryHandler::execute() {
   // extract the sub-request type
-  HttpRequest::HttpRequestType type = _request->requestType();
+  auto const type = _request->requestType();
 
   // execute one of the CRUD methods
   try {
     switch (type) {
-      case HttpRequest::HTTP_REQUEST_DELETE:
+      case GeneralRequest::RequestType::DELETE_REQ:
         deleteQuery();
         break;
-      case HttpRequest::HTTP_REQUEST_GET:
+      case GeneralRequest::RequestType::GET:
         readQuery();
         break;
-      case HttpRequest::HTTP_REQUEST_PUT:
+      case GeneralRequest::RequestType::PUT:
         replaceProperties();
         break;
-      case HttpRequest::HTTP_REQUEST_POST:
+      case GeneralRequest::RequestType::POST:
         parseQuery();
         break;
-
-      case HttpRequest::HTTP_REQUEST_HEAD:
-      case HttpRequest::HTTP_REQUEST_PATCH:
-      case HttpRequest::HTTP_REQUEST_ILLEGAL:
-      default: {
+      default:
         generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);
         break;
-      }
     }
   } catch (Exception const& err) {
     handleError(err);

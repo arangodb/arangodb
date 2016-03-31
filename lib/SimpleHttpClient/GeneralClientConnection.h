@@ -25,8 +25,9 @@
 #define LIB_SIMPLE_HTTP_CLIENT_GENERAL_CLIENT_CONNECTION_H 1
 
 #include "Basics/Common.h"
+
 #include "Basics/StringBuffer.h"
-#include "Rest/Endpoint.h"
+#include "Endpoint/Endpoint.h"
 
 namespace arangodb {
 namespace httpclient {
@@ -52,10 +53,10 @@ class GeneralClientConnection {
   /// @brief creates a new client connection
   //////////////////////////////////////////////////////////////////////////////
 
-  GeneralClientConnection(arangodb::rest::Endpoint* endpoint, double, double,
+  GeneralClientConnection(Endpoint* endpoint, double, double,
                           size_t);
 
-  GeneralClientConnection(std::unique_ptr<arangodb::rest::Endpoint>& endpoint,
+  GeneralClientConnection(std::unique_ptr<Endpoint>& endpoint,
                           double, double, size_t);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -69,25 +70,25 @@ class GeneralClientConnection {
   /// @brief create a new connection from an endpoint
   //////////////////////////////////////////////////////////////////////////////
 
-  static GeneralClientConnection* factory(arangodb::rest::Endpoint*, double,
+  static GeneralClientConnection* factory(Endpoint*, double,
                                           double, size_t, uint32_t);
 
   static GeneralClientConnection* factory(
-      std::unique_ptr<arangodb::rest::Endpoint>&, double, double, size_t,
+      std::unique_ptr<Endpoint>&, double, double, size_t,
       uint32_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the endpoint
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::rest::Endpoint const* getEndpoint() const { return _endpoint; }
+  Endpoint const* getEndpoint() const { return _endpoint; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a string representation of the connection endpoint
   //////////////////////////////////////////////////////////////////////////////
 
   std::string getEndpointSpecification() const {
-    return _endpoint->getSpecification();
+    return _endpoint->specification();
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -200,7 +201,7 @@ class GeneralClientConnection {
   /// @brief endpoint to connect to
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::rest::Endpoint* _endpoint;
+  Endpoint* _endpoint;
   bool _freeEndpointOnDestruction;
 
   //////////////////////////////////////////////////////////////////////////////

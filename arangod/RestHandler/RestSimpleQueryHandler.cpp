@@ -42,13 +42,12 @@ RestSimpleQueryHandler::RestSimpleQueryHandler(
 
 HttpHandler::status_t RestSimpleQueryHandler::execute() {
   // extract the sub-request type
-  HttpRequest::HttpRequestType type = _request->requestType();
+  auto const type = _request->requestType();
 
-  if (type == HttpRequest::HTTP_REQUEST_PUT) {
-    char const* prefix = _request->requestPath();
+  if (type == GeneralRequest::RequestType::PUT) {
+    std::string const& prefix = _request->requestPath();
 
-    if (strcmp(prefix, RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH.c_str()) ==
-        0) {
+    if (prefix == RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH) {
       // all query
       allDocuments();
       return status_t(HANDLER_DONE);

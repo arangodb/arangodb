@@ -27,10 +27,6 @@
 
 #include "Basics/Common.h"
 
-#ifdef TRI_HAVE_LINUX_SOCKETS
-#include <netdb.h>
-#endif
-
 #ifdef TRI_HAVE_WINSOCK2_H
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -40,8 +36,8 @@
 
 #include "Basics/Mutex.h"
 #include "Basics/socket-utils.h"
-#include "Rest/ConnectionInfo.h"
-#include "Rest/Endpoint.h"
+#include "Endpoint/ConnectionInfo.h"
+#include "Endpoint/Endpoint.h"
 
 namespace arangodb {
 namespace rest {

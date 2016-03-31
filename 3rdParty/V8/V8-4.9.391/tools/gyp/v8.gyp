@@ -1471,7 +1471,7 @@
           'variables': {
             'gyp_generators': '<!(echo $GYP_GENERATORS)',
           },
-          'msvs_disabled_warnings': [4351, 4355, 4800],
+          'msvs_disabled_warnings': [4312, 4351, 4355, 4800],
           # When building Official, the .lib is too large and exceeds the 2G
           # limit. This breaks it into multiple pieces to avoid the limit.
           # See http://crbug.com/485155.
@@ -1723,6 +1723,7 @@
           ]},
         ],
         ['OS=="solaris"', {
+            'defines': ['_GLIBCXX_USE_C99_MATH'],
             'link_settings': {
               'libraries': [
                 '-lnsl -lrt',
@@ -1772,7 +1773,7 @@
                 '../../src/base/platform/platform-win32.cc',
                 '../../src/base/win32-headers.h',
               ],
-              'msvs_disabled_warnings': [4351, 4355, 4800],
+              'msvs_disabled_warnings': [4312, 4351, 4355, 4800],
               'link_settings':  {
                 'libraries': [ '-lwinmm.lib', '-lws2_32.lib' ],
               },
@@ -1839,14 +1840,14 @@
                       '<(PRODUCT_DIR)/natives_blob_host.bin',
                     ],
                     'action': [
-                      '$(PYTHON_EXECUTABLE)', '<@(_inputs)', '<(PRODUCT_DIR)/natives_blob_host.bin'
+                      '<(PYTHON_EXECUTABLE)', '<@(_inputs)', '<(PRODUCT_DIR)/natives_blob_host.bin'
                     ],
                   }, {
                     'outputs': [
                       '<(PRODUCT_DIR)/natives_blob.bin',
                     ],
                     'action': [
-                      '$(PYTHON_EXECUTABLE)', '<@(_inputs)', '<(PRODUCT_DIR)/natives_blob.bin'
+                      '<(PYTHON_EXECUTABLE)', '<@(_inputs)', '<(PRODUCT_DIR)/natives_blob.bin'
                     ],
                   }],
                 ],
@@ -1855,7 +1856,7 @@
                   '<(PRODUCT_DIR)/natives_blob.bin',
                 ],
                 'action': [
-                  '$(PYTHON_EXECUTABLE)', '<@(_inputs)', '<(PRODUCT_DIR)/natives_blob.bin'
+                  '<(PYTHON_EXECUTABLE)', '<@(_inputs)', '<(PRODUCT_DIR)/natives_blob.bin'
                 ],
               }],
             ],
@@ -1946,13 +1947,14 @@
         {
           'action_name': 'js2c',
           'inputs': [
+	    '<(PYTHON_EXECUTABLE)',
             '../../tools/js2c.py',
             '<@(library_files)',
             '<@(i18n_library_files)'
           ],
           'outputs': ['<(SHARED_INTERMEDIATE_DIR)/libraries.cc'],
           'action': [
-            '$(PYTHON_EXECUTABLE)',
+            '<(PYTHON_EXECUTABLE)',
             '../../tools/js2c.py',
             '<(SHARED_INTERMEDIATE_DIR)/libraries.cc',
             'CORE',
@@ -1963,13 +1965,14 @@
         {
           'action_name': 'js2c_bin',
           'inputs': [
+	    '<(PYTHON_EXECUTABLE)',
             '../../tools/js2c.py',
             '<@(library_files)',
             '<@(i18n_library_files)'
           ],
           'outputs': ['<@(libraries_bin_file)'],
           'action': [
-            '$(PYTHON_EXECUTABLE)',
+            '<(PYTHON_EXECUTABLE)',
             '../../tools/js2c.py',
             '<(SHARED_INTERMEDIATE_DIR)/libraries.cc',
             'CORE',
@@ -1987,7 +1990,7 @@
           ],
           'outputs': ['<(SHARED_INTERMEDIATE_DIR)/experimental-libraries.cc'],
           'action': [
-            '$(PYTHON_EXECUTABLE)',
+            '<(PYTHON_EXECUTABLE)',
             '../../tools/js2c.py',
             '<(SHARED_INTERMEDIATE_DIR)/experimental-libraries.cc',
             'EXPERIMENTAL',
@@ -2002,7 +2005,7 @@
           ],
           'outputs': ['<@(libraries_experimental_bin_file)'],
           'action': [
-            '$(PYTHON_EXECUTABLE)',
+            '<(PYTHON_EXECUTABLE)',
             '../../tools/js2c.py',
             '<(SHARED_INTERMEDIATE_DIR)/experimental-libraries.cc',
             'EXPERIMENTAL',
@@ -2019,7 +2022,7 @@
           ],
           'outputs': ['<(SHARED_INTERMEDIATE_DIR)/extras-libraries.cc'],
           'action': [
-            '$(PYTHON_EXECUTABLE)',
+            '<(PYTHON_EXECUTABLE)',
             '../../tools/js2c.py',
             '<(SHARED_INTERMEDIATE_DIR)/extras-libraries.cc',
             'EXTRAS',
@@ -2034,7 +2037,7 @@
           ],
           'outputs': ['<@(libraries_extras_bin_file)'],
           'action': [
-            '$(PYTHON_EXECUTABLE)',
+            '<(PYTHON_EXECUTABLE)',
             '../../tools/js2c.py',
             '<(SHARED_INTERMEDIATE_DIR)/extras-libraries.cc',
             'EXTRAS',
@@ -2053,7 +2056,7 @@
             '<(SHARED_INTERMEDIATE_DIR)/experimental-extras-libraries.cc',
           ],
           'action': [
-            '$(PYTHON_EXECUTABLE)',
+            '<(PYTHON_EXECUTABLE)',
             '../../tools/js2c.py',
             '<(SHARED_INTERMEDIATE_DIR)/experimental-extras-libraries.cc',
             'EXPERIMENTAL_EXTRAS',
@@ -2068,7 +2071,7 @@
           ],
           'outputs': ['<@(libraries_experimental_extras_bin_file)'],
           'action': [
-            '$(PYTHON_EXECUTABLE)',
+            '<(PYTHON_EXECUTABLE)',
             '../../tools/js2c.py',
             '<(SHARED_INTERMEDIATE_DIR)/experimental-extras-libraries.cc',
             'EXPERIMENTAL_EXTRAS',
@@ -2099,7 +2102,7 @@
               '<(SHARED_INTERMEDIATE_DIR)/debug-support.cc',
             ],
             'action': [
-              '$(PYTHON_EXECUTABLE)',
+              '<(PYTHON_EXECUTABLE)',
               '../../tools/gen-postmortem-metadata.py',
               '<@(_outputs)',
               '<@(heapobject_files)'

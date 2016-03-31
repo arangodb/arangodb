@@ -25,8 +25,8 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 
+using namespace arangodb;
 using namespace arangodb::httpclient;
-using namespace arangodb::rest;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global options for connections

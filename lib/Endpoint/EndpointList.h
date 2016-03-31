@@ -18,25 +18,41 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_PLEASE_UPGRADE_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_PLEASE_UPGRADE_HANDLER_H 1
+#ifndef LIB_REST_ENDPOINT_LIST_H
+#define LIB_REST_ENDPOINT_LIST_H 1
 
-#include "HttpServer/HttpHandler.h"
+#include "Basics/Common.h"
+
+#include "Endpoint/Endpoint.h"
 
 namespace arangodb {
-class RestPleaseUpgradeHandler : public rest::HttpHandler {
+
+class EndpointList {
  public:
-  explicit RestPleaseUpgradeHandler(HttpRequest*);
+  EndpointList();
+  ~EndpointList();
 
  public:
-  bool isDirect() const override;
+  static std::string encryptionName(Endpoint::EncryptionType);
 
-  status_t execute() override;
+ public:
+  bool empty() const { return _endpoints.empty(); }
+  bool add(std::string const&, int, bool);
+  bool remove(std::string const&, Endpoint**);
+  std::vector<std::string> all() const;
+  std::map<std::string, Endpoint*> matching(Endpoint::TransportType,
+                                            Endpoint::EncryptionType) const;
+  bool hasSsl() const;
+  void dump() const;
 
-  void handleError(const basics::Exception&) override;
+ private:
+  std::map<std::string, Endpoint*> getByPrefix(std::string const&) const;
+
+ private:
+  std::map<std::string, Endpoint*> _endpoints;
 };
 }
 

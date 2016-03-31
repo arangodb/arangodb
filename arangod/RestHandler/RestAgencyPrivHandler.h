@@ -36,19 +36,18 @@ namespace arangodb {
 
 class RestAgencyPrivHandler : public arangodb::RestBaseHandler {
  public:
-
-  explicit RestAgencyPrivHandler(arangodb::rest::HttpRequest*,
-		  arangodb::consensus::Agent*);
+  explicit RestAgencyPrivHandler(HttpRequest*, consensus::Agent*);
 
   bool isDirect() const override;
 
   status_t execute() override;
 
  private:
-
-  template<class T> inline bool readValue (char const* name, T& val) const {
+  template <class T>
+  inline bool readValue(char const* name, T& val) const {
     bool found = true;
-    std::string val_str(_request->value(name, found));
+    std::string const& val_str = _request->value(name, found);
+
     if (!found) {
       LOG(WARN) << "Mandatory query string " << name << "missing.";
       return false;
@@ -56,22 +55,20 @@ class RestAgencyPrivHandler : public arangodb::RestBaseHandler {
       try {
         val = std::stol(val_str);
       } catch (std::invalid_argument const&) {
-        LOG(WARN) << "Value for query string " << name <<
-          "cannot be converted to integral type";
+        LOG(WARN) << "Value for query string " << name
+                  << "cannot be converted to integral type";
         return false;
       }
     }
     return true;
   }
 
-
-  status_t reportErrorEmptyRequest() ;
-  status_t reportTooManySuffices() ;
-  status_t reportBadQuery(); 
-  status_t reportMethodNotAllowed(); 
+  status_t reportErrorEmptyRequest();
+  status_t reportTooManySuffices();
+  status_t reportBadQuery();
+  status_t reportMethodNotAllowed();
 
   consensus::Agent* _agent;
-
 };
 }
 

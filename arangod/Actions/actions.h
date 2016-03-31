@@ -30,9 +30,10 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class HttpRequest;
+
 namespace rest {
 class HttpResponse;
-class HttpRequest;
 }
 }
 
@@ -75,7 +76,7 @@ class TRI_action_t {
   virtual ~TRI_action_t() {}
 
   virtual TRI_action_result_t execute(TRI_vocbase_t*,
-                                      arangodb::rest::HttpRequest*,
+                                      arangodb::HttpRequest*,
                                       arangodb::Mutex* dataLock,
                                       void** data) = 0;
 
@@ -101,7 +102,7 @@ TRI_action_t* TRI_DefineActionVocBase(std::string const& name,
 /// @brief looks up an action
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_action_t* TRI_LookupActionVocBase(arangodb::rest::HttpRequest* request);
+TRI_action_t* TRI_LookupActionVocBase(arangodb::HttpRequest* request);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes all defined actions

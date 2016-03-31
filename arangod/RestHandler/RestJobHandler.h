@@ -40,7 +40,7 @@ class Dispatcher;
 
 class RestJobHandler : public RestBaseHandler {
  public:
-  RestJobHandler(rest::HttpRequest* request,
+  RestJobHandler(HttpRequest* request,
                  std::pair<rest::Dispatcher*, rest::AsyncJobManager*>*);
 
  public:

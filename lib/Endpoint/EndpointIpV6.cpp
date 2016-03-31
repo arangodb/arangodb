@@ -21,27 +21,15 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "EndpointIpV4.h"
+#include "EndpointIpV6.h"
 
-#include "Rest/Endpoint.h"
+#include "Endpoint/Endpoint.h"
 
-using namespace arangodb::basics;
-using namespace arangodb::rest;
+using namespace arangodb;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an IPv4 socket endpoint
-////////////////////////////////////////////////////////////////////////////////
-
-EndpointIpV4::EndpointIpV4(const Endpoint::EndpointType type,
-                           const Endpoint::EncryptionType encryption,
-                           std::string const& specification, int listenBacklog,
+EndpointIpV6::EndpointIpV6(EndpointType type, TransportType transport,
+                           EncryptionType encryption, int listenBacklog,
                            bool reuseAddress, std::string const& host,
                            uint16_t const port)
-    : EndpointIp(type, DOMAIN_IPV4, encryption, specification, listenBacklog,
+    : EndpointIp(DomainType::IPV6, type, transport, encryption, listenBacklog,
                  reuseAddress, host, port) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys an IPv4 socket endpoint
-////////////////////////////////////////////////////////////////////////////////
-
-EndpointIpV4::~EndpointIpV4() {}

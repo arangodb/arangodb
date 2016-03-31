@@ -36,9 +36,9 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
-using namespace arangodb::rest;
 using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -418,7 +418,8 @@ void ImportHelper::reportProgress(int64_t totalLength, int64_t totalRead,
     double pct = 100.0 * ((double)totalRead / (double)totalLength);
 
     if (pct >= nextProgress && totalLength >= 1024) {
-      LOG(INFO) << "processed " << totalRead << " bytes (" << (int) nextProgress << "%) of input file";
+      LOG(INFO) << "processed " << totalRead << " bytes (" << (int)nextProgress
+                << "%) of input file";
       nextProgress = (double)((int)(pct + ProgressStep));
     }
   }
@@ -623,7 +624,7 @@ void ImportHelper::sendCsvBuffer() {
                   StringUtils::itoa(_rowOffset) + "&details=true&onDuplicate=" +
                   StringUtils::urlEncode(_onDuplicateAction));
   std::unique_ptr<SimpleHttpResult> result(_client->request(
-      HttpRequest::HTTP_REQUEST_POST, url, _outputBuffer.c_str(),
+      GeneralRequest::RequestType::POST, url, _outputBuffer.c_str(),
       _outputBuffer.length(), headerFields));
 
   handleResult(result.get());
@@ -649,7 +650,7 @@ void ImportHelper::sendJsonBuffer(char const* str, size_t len, bool isObject) {
 
   std::map<std::string, std::string> headerFields;
   std::unique_ptr<SimpleHttpResult> result(_client->request(
-      HttpRequest::HTTP_REQUEST_POST, url, str, len, headerFields));
+      GeneralRequest::RequestType::POST, url, str, len, headerFields));
 
   handleResult(result.get());
 }
