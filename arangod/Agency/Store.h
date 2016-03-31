@@ -61,6 +61,11 @@ private:
 
 enum NODE_EXCEPTION {PATH_NOT_FOUND};
 
+class Node;
+
+typedef std::chrono::system_clock::time_point TimePoint;
+typedef std::map<TimePoint, std::shared_ptr<Node>> TimeTable;
+
 /// @brief Simple tree implementation
 class Node {
   
@@ -68,8 +73,6 @@ public:
 
   typedef std::vector<std::string> PathType;
   typedef std::map<std::string, std::shared_ptr<Node>> Children;
-  typedef std::chrono::system_clock::time_point TimePoint;
-  typedef std::map<TimePoint, std::shared_ptr<Node>> TimeTable;
   
   /// @brief Construct with name
   explicit Node (std::string const& name);
@@ -120,22 +123,7 @@ public:
   Node& root();
 
   /// @brief Dump to ostream
-  friend std::ostream& operator<<(std::ostream& os, const Node& n) {
-    Node const* par = n._parent;
-    while (par != 0) {
-      par = par->_parent;
-      os << "  ";
-    }
-    os << n._node_name << " : ";
-    if (n.type() == NODE) {
-      os << std::endl;
-      for (auto const& i : n._children)
-        os << *(i.second);
-    } else {
-      os << ((n.slice().type() == ValueType::None) ? "NONE" : n.slice().toJson()) << std::endl;
-    }
-    return os;
-  }
+  std::ostream& print (std::ostream&) const;
 
   /// #brief Get path of this node
   std::string path (); 
@@ -168,6 +156,10 @@ protected:
   
 };
 
+inline std::ostream& operator<< (std::ostream& o, Node const& n) {
+  return n.print(o);
+}
+
 class Agent;
 
 /// @brief Key value tree 
@@ -196,6 +188,7 @@ public:
   /// @brief Start thread
   bool start ();
 
+  /// @brief Start thread with access to agent
   bool start (Agent*);
 
   /// @brief Set name

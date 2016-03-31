@@ -95,6 +95,8 @@ class ApplicationAgency : virtual public arangodb::rest::ApplicationFeature {
   void setupOptions(std::map<std::string,
                     arangodb::basics::ProgramOptionsDescription>&) override final;
 
+  virtual bool afterOptionParsing (arangodb::basics::ProgramOptions &) override final;
+
   bool prepare() override final;
   bool start() override final;
   bool open() override final;

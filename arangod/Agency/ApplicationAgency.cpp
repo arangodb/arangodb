@@ -35,7 +35,7 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 ApplicationAgency::ApplicationAgency()
-  : ApplicationFeature("agency"), _size(1), _min_election_timeout(0.1),
+  : ApplicationFeature("agency"), _size(1), _min_election_timeout(0.15),
 	  _max_election_timeout(1.0), _election_call_rate_mul(0.85), _notify(false),
     _agent_id((std::numeric_limits<uint32_t>::max)()) {
 }
@@ -61,8 +61,15 @@ void ApplicationAgency::setupOptions(
      "Multiplier (<1.0) defining how long the election timeout is with respect "
      "to the minumum election timeout")
     ("agency.notify", &_notify, "Notify others");
+
+  
 }
 
+
+bool ApplicationAgency::afterOptionParsing (ProgramOptions& opts)  {
+//  LOG_TOPIC(WARN, Logger::AGENCY) << "Server endpoint " << opts.has("server.endpoint");
+  return true;
+}
 
 bool ApplicationAgency::prepare() {
 
