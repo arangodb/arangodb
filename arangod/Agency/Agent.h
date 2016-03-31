@@ -104,7 +104,7 @@ public:
   void reportIn (id_t id, index_t idx);
   
   /// @brief Wait for slaves to confirm appended entries
-  bool waitFor (index_t last_entry, duration_t timeout = duration_t(2.0));
+  bool waitFor (index_t last_entry, duration_t timeout = duration_t(2000));
 
   /// @brief Convencience size of agency
   size_t size() const;
@@ -120,6 +120,9 @@ public:
     o << a.config();
     return o;
   }
+
+  /// @brief Persist term
+  void persist (term_t, id_t);
 
   /// @brief State machine
   State const& state () const;
@@ -140,8 +143,8 @@ private:
   arangodb::basics::ConditionVariable _cv;      /**< @brief Internal callbacks */
   arangodb::basics::ConditionVariable _rest_cv; /**< @brief Rest handler */
 
-  std::vector<index_t> _confirmed; 
-  arangodb::Mutex _ioLock;
+  std::vector<index_t> _confirmed; /**< @brief Confirmed log index of each slave */
+  arangodb::Mutex _ioLock; /**< @brief Read/Write lock */
   
 };
 

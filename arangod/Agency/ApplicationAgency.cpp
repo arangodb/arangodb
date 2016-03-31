@@ -60,7 +60,7 @@ void ApplicationAgency::setupOptions(
     ("agency.election_call_rate_mul [au]", &_election_call_rate_mul,
      "Multiplier (<1.0) defining how long the election timeout is with respect "
      "to the minumum election timeout")
-    ("agency.notify", &_notify, "Notify others [beta :)]");
+    ("agency.notify", &_notify, "Notify others");
 }
 
 
@@ -86,6 +86,12 @@ bool ApplicationAgency::prepare() {
   
   if (_agent_id == (std::numeric_limits<uint32_t>::max)()) {
     LOG_TOPIC(ERR, Logger::AGENCY) << "agency.id must be specified";
+    return false;
+  }
+
+  if (_agent_id >= _size) {
+    LOG_TOPIC(ERR, Logger::AGENCY) << "agency.id must not be larger than or "
+                                   << "equal to agency.size";
     return false;
   }
 

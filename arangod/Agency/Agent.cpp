@@ -62,10 +62,11 @@ bool Agent::start() {
   
   LOG_TOPIC(INFO, Logger::AGENCY) << "Starting spearhead worker.";
   _spearhead.start();
+  _read_db.start();
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Starting agency comm worker.";
   Thread::start();
-  
+
   return true;
 }
 
@@ -104,6 +105,9 @@ id_t Agent::leaderID () const {
 
 bool Agent::leading() const {
   return _constituent.leading();
+}
+
+void Agent::persist(term_t t, id_t i) {
 }
 
 bool Agent::waitFor (index_t index, duration_t timeout) {
@@ -240,8 +244,9 @@ append_entries_t Agent::sendAppendEntriesRPC (id_t slave_id) {
 bool Agent::load () {
   
   LOG_TOPIC(INFO, Logger::AGENCY) << "Loading persistent state.";
-  if (!_state.load())
+  if (!_state.loadCollections())
     LOG(FATAL) << "Failed to load persistent state on statup.";
+  _spearhead.apply(_state.slices(_last_commit_index+1));
   return true;
 }
 
@@ -283,9 +288,9 @@ void Agent::run() {
       _cv.wait(250000);
     else
       _cv.wait();
-    std::vector<collect_ret_t> work(size());
+
     // Collect all unacknowledged
-    for (size_t i = 0; i < size(); ++i) {
+    for (id_t i = 0; i < size(); ++i) {
       if (i != id()) {
         sendAppendEntriesRPC(i);
       }
@@ -298,6 +303,7 @@ void Agent::beginShutdown() {
   Thread::beginShutdown();
   _constituent.beginShutdown();
   _spearhead.beginShutdown();
+  _read_db.beginShutdown();
   CONDITION_LOCKER(guard, _cv);
   guard.broadcast();
 }

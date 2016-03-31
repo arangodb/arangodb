@@ -54,11 +54,11 @@ std::vector<std::string> split(const std::string& value, char separator) {
   return result;
 }
 
-Node::Node (std::string const& name) : _parent(nullptr), _name(name) {
+Node::Node (std::string const& name) : _parent(nullptr), _node_name(name) {
   _value.clear();
 }
 Node::Node (std::string const& name, Node* parent) :
-  _parent(parent), _name(name) {
+  _parent(parent), _node_name(name) {
   _value.clear();
 }
 
@@ -70,7 +70,7 @@ Slice Node::slice() const {
     Slice(_value.data());
 }
 
-std::string const& Node::name() const {return _name;}
+std::string const& Node::name() const {return _node_name;}
 
 Node& Node::operator= (Slice const& slice) { // Assign value (become leaf)
   _children.clear();
@@ -80,7 +80,7 @@ Node& Node::operator= (Slice const& slice) { // Assign value (become leaf)
 }
 
 Node& Node::operator= (Node const& node) { // Assign node
-  _name = node._name;
+  _node_name = node._node_name;
   _type = node._type;
   _value = node._value;
   _children = node._children;
@@ -100,13 +100,15 @@ bool Node::remove (std::string const& path) {
     Node& parent = (*this)(pv);
     return parent.removeChild(key);
   } catch (StoreException const& e) {
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Failed to delete key " << key;
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << e.what();
     return false;
   }
 }
 
 bool Node::remove () {
   Node& parent = *_parent;
-  return parent.removeChild(_name);
+  return parent.removeChild(_node_name);
 }
 
 bool Node::removeChild (std::string const& key) {
@@ -167,7 +169,6 @@ Node& Node::root() {
     tmp = par;
     par = par->_parent;
   }
-  std::cout << par << std::endl;
   return *tmp;
 }
 
@@ -178,7 +179,7 @@ ValueType Node::valueType() const {
 bool Node::addTimeToLive (long millis) {
   root()._time_table[
     std::chrono::system_clock::now() + std::chrono::milliseconds(millis)] =
-    _parent->_children[_name];
+    _parent->_children[_node_name];
   return true;
 }
 
@@ -196,7 +197,7 @@ bool Node::applies (VPackSlice const& slice) {
         oper = oper.substr(1,oper.length()-2);
         Slice const& self = this->slice();
         if (oper == "delete") {
-          return _parent->removeChild(_name);
+          return _parent->removeChild(_node_name);
         } else if (oper == "set") { //
           if (!slice.hasKey("new")) {
             LOG_TOPIC(WARN, Logger::AGENCY) << "Operator set without new value";
@@ -209,28 +210,26 @@ bool Node::applies (VPackSlice const& slice) {
           *this = slice.get("new");
           return true;
         } else if (oper == "increment") { // Increment
-          if (!(self.isInt() || self.isUInt())) {
-            LOG_TOPIC(WARN, Logger::AGENCY)
-              << "Element to increment must be integral type: We are "
-              << slice.toJson();
-            return false;
-          }
           Builder tmp;
-          tmp.add(Value(self.isInt() ? int64_t(self.getInt()+1) :
-                        uint64_t(self.getUInt()+1)));
-          *this = tmp.slice();
+          tmp.openObject();
+          try {
+            tmp.add("tmp", Value(self.getInt()+1));
+          } catch (std::exception const& e) {
+            tmp.add("tmp",Value(1));
+          }
+          tmp.close();
+          *this = tmp.slice().get("tmp");
           return true;
         } else if (oper == "decrement") { // Decrement
-          if (!(self.isInt() || self.isUInt())) {
-            LOG_TOPIC(WARN, Logger::AGENCY)
-              << "Element to decrement must be integral type. We are "
-              << slice.toJson();
-            return false;
-          }
           Builder tmp;
-          tmp.add(Value(self.isInt() ? int64_t(self.getInt()-1) :
-                        uint64_t(self.getUInt()-1)));
-          *this = tmp.slice();
+          tmp.openObject();
+          try {
+            tmp.add("tmp", Value(self.getInt()-1));
+          } catch (std::exception const& e) {
+            tmp.add("tmp",Value(-1));
+          }
+          tmp.close();
+          *this = tmp.slice().get("tmp");
           return true;
         } else if (oper == "push") { // Push
           if (!slice.hasKey("new")) {
@@ -332,7 +331,7 @@ void Node::toBuilder (Builder& builder) const {
       builder.add(slice());
     }
   } catch (std::exception const& e) {
-    std::cout << e.what() << std::endl;
+    LOG(FATAL) << e.what();
   }
   
 }
@@ -491,6 +490,8 @@ bool Store::read (VPackSlice const& query, Builder& ret) const {
 
 void Store::beginShutdown() {
   Thread::beginShutdown();
+  CONDITION_LOCKER(guard, _cv);
+  guard.broadcast();
 }
 
 void Store::clearTimeTable () {
@@ -502,6 +503,11 @@ void Store::clearTimeTable () {
       break;
     }
   }
+}
+
+bool Store::start () {
+  Thread::start();
+  return true;
 }
 
 void Store::run() {

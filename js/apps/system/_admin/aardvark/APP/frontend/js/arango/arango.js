@@ -144,23 +144,26 @@
       jsoneditor: {
         name: "AQL editor",
         content: [{
-          label: "Submit",
-          letter: "Ctrl + Return"
+          label: "Execute Query",
+          letter: "Ctrl/Cmd + Return"
         },{
           label: "Explain Query",
-          letter: "Ctrl + Shift + E"
+          letter: "Ctrl/Cmd + Shift + Return"
         },{
           label: "Save Query",
-          letter: "Ctrl + Shift + S"
+          letter: "Ctrl/Cmd + Shift + S"
+        },{
+          label: "Open search",
+          letter: "Ctrl + Space"
         },{
           label: "Toggle comments",
-          letter: "Ctrl + Shift + C"
+          letter: "Ctrl/Cmd + Shift + C"
         },{
           label: "Undo",
-          letter: "Ctrl + Z"
+          letter: "Ctrl/Cmd + Z"
         },{
           label: "Redo",
-          letter: "Ctrl + Shift + Z"
+          letter: "Ctrl/Cmd + Shift + Z"
         }]
       },
       doceditor: {
@@ -170,7 +173,7 @@
           letter: "Ctrl + Insert"
         },{
           label: "Save",
-          letter: "Ctrl + Return, CMD + Return"
+          letter: "Ctrl + Return, Cmd + Return"
         },{
           label: "Append",
           letter: "Ctrl + Shift + Insert"
