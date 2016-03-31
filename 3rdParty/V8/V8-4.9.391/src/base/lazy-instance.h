@@ -97,7 +97,9 @@ struct StaticallyAllocatedInstanceTrait {
     char x[sizeof(T)];
   };
 
+#ifndef __INTEL_COMPILER
   STATIC_ASSERT(V8_ALIGNOF(StorageType) >= V8_ALIGNOF(T));
+#endif
 
   static T* MutableInstance(StorageType* storage) {
     return reinterpret_cast<T*>(storage);
