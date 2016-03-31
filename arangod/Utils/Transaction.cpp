@@ -1156,8 +1156,8 @@ OperationResult Transaction::insertCoordinator(std::string const& collectionName
   std::string resultBody;
 
   int res = arangodb::createDocumentOnCoordinator(
-      _vocbase->_name, collectionName, options.waitForSync,
-      value, headers, responseCode, resultHeaders, resultBody);
+      _vocbase->_name, collectionName, options, value, headers, responseCode,
+      resultHeaders, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
     if (responseCode == arangodb::rest::HttpResponse::ACCEPTED ||
@@ -1304,10 +1304,9 @@ OperationResult Transaction::updateCoordinator(std::string const& collectionName
       = options.ignoreRevs ? 0 : TRI_ExtractRevisionId(newValue);
 
   int res = arangodb::modifyDocumentOnCoordinator(
-      _vocbase->_name, collectionName, key, expectedRevision,
-      options.waitForSync, true /* isPatch */,
-      options.keepNull, options.mergeObjects, newValue,
-      headers, responseCode, resultHeaders, resultBody);
+      _vocbase->_name, collectionName, key, expectedRevision, options,
+      true /* isPatch */, newValue, headers, responseCode, resultHeaders,
+      resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
     if (responseCode == arangodb::rest::HttpResponse::ACCEPTED ||
@@ -1391,10 +1390,9 @@ OperationResult Transaction::replaceCoordinator(std::string const& collectionNam
       = options.ignoreRevs ? 0 : TRI_ExtractRevisionId(newValue);
 
   int res = arangodb::modifyDocumentOnCoordinator(
-      _vocbase->_name, collectionName, key, expectedRevision,
-      options.waitForSync, false /* isPatch */,
-      false /* keepNull */, false /* mergeObjects */, newValue,
-      headers, responseCode, resultHeaders, resultBody);
+      _vocbase->_name, collectionName, key, expectedRevision, options,
+      false /* isPatch */, newValue, headers, responseCode, resultHeaders,
+      resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
     if (responseCode == arangodb::rest::HttpResponse::ACCEPTED ||
@@ -1567,9 +1565,8 @@ OperationResult Transaction::removeCoordinator(std::string const& collectionName
   }
 
   int res = arangodb::deleteDocumentOnCoordinator(
-      _vocbase->_name, collectionName, key, expectedRevision,
-      options.waitForSync,
-      headers, responseCode, resultHeaders, resultBody);
+      _vocbase->_name, collectionName, key, expectedRevision, options, headers,
+      responseCode, resultHeaders, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
     if (responseCode == arangodb::rest::HttpResponse::OK ||
