@@ -203,14 +203,11 @@ bool Node::applies (VPackSlice const& slice) {
             return false;
           }
           if (slice.hasKey("ttl")) {
-            long ttl = -1;
             VPackSlice ttl_v = slice.get("ttl");
             if (ttl_v.isNumber()) {
-              if (ttl_v.isDouble()) {
-                ttl = 1000l*static_cast<long>(slice.get("ttl").getDouble());
-              } else {
-                ttl = 1000l*slice.get("ttl").getInt();
-              }
+              long ttl = 1000l * (ttl_v.isDouble()) ?
+                static_cast<long>(slice.get("ttl").getDouble()):
+                slice.get("ttl").getInt();
               addTimeToLive (ttl);
             } else {
               LOG_TOPIC(WARN, Logger::AGENCY) <<
