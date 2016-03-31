@@ -77,6 +77,10 @@ bool State::persist (index_t index, term_t term, id_t lid,
   
 }
 
+bool State::persist (term_t t, id_t i) {
+  
+}
+
 //Leader
 std::vector<index_t> State::log (
   query_t const& query, std::vector<bool> const& appl, term_t term, id_t lid) {

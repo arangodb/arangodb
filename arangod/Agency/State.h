@@ -114,6 +114,9 @@ public:
     return os;
   }
 
+  // @brief Persist term/leaderid
+  bool persist (term_t, id_t);
+  
 private:
 
   bool snapshot ();

@@ -185,15 +185,14 @@ bool Node::addTimeToLive (long millis) {
 bool Node::applies (VPackSlice const& slice) {
 
   if (slice.type() == ValueType::Object) {
-
+    
     for (auto const& i : VPackObjectIterator(slice)) {
-      std::string key = i.key.toString();
-      key = key.substr(1,key.length()-2);
 
+      std::string key = i.key.copyString();
+      
       if (slice.hasKey("op")) {
         
-        std::string oper = slice.get("op").toString();
-        oper = oper.substr(1,oper.length()-2);
+        std::string oper = slice.get("op").copyString();
         Slice const& self = this->slice();
         if (oper == "delete") {
           return _parent->removeChild(_node_name);
@@ -204,7 +203,19 @@ bool Node::applies (VPackSlice const& slice) {
             return false;
           }
           if (slice.hasKey("ttl")) {
-            addTimeToLive ((long)slice.get("ttl").getDouble()*1000);
+            long ttl = -1;
+            VPackSlice ttl_v = slice.get("ttl");
+            if (ttl_v.isNumber()) {
+              if (ttl_v.isDouble()) {
+                ttl = 1000l*static_cast<long>(slice.get("ttl").getDouble());
+              } else {
+                ttl = 1000l*slice.get("ttl").getInt();
+              }
+              addTimeToLive (ttl);
+            } else {
+              LOG_TOPIC(WARN, Logger::AGENCY) <<
+                "Non-number value assigned to ttl: " << ttl_v.toJson();
+            }
           }
           *this = slice.get("new");
           return true;
@@ -382,11 +393,10 @@ bool Store::check (VPackSlice const& slice) const {
     return false;
   }
   for (auto const& precond : VPackObjectIterator(slice)) {
-    std::string path = precond.key.toString();
-    path = path.substr(1,path.size()-2);
-
+    std::string path = precond.key.copyString();
     bool found = false;
     Node node ("precond");
+    
     try {
       node = (*this)(path);
       found = true;
