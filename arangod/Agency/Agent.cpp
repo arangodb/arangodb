@@ -57,12 +57,6 @@ State const& Agent::state () const {
 /// @brief Start all agency threads
 bool Agent::start() {
 
-  LOG_TOPIC(INFO, Logger::AGENCY) << "Starting constituent personality.";
-  _constituent.start();
-  
-  LOG_TOPIC(INFO, Logger::AGENCY) << "Starting spearhead worker.";
-  _spearhead.start();
-
   LOG_TOPIC(INFO, Logger::AGENCY) << "Starting agency comm worker.";
   Thread::start();
 
@@ -104,6 +98,10 @@ id_t Agent::leaderID () const {
 
 bool Agent::leading() const {
   return _constituent.leading();
+}
+
+void Agent::persist(term_t t, id_t i) {
+//  _state.persist(t, i);
 }
 
 bool Agent::waitFor (index_t index, duration_t timeout) {
@@ -238,11 +236,23 @@ append_entries_t Agent::sendAppendEntriesRPC (id_t slave_id) {
 }
 
 bool Agent::load () {
-  
   LOG_TOPIC(INFO, Logger::AGENCY) << "Loading persistent state.";
-  if (!_state.loadCollections())
+  if (!_state.loadCollections()) {
     LOG(FATAL) << "Failed to load persistent state on statup.";
+  }
+
+  LOG_TOPIC(INFO, Logger::AGENCY) << "Reassembling spearhead and read stores.";
+  _read_db.apply(_state.slices());
   _spearhead.apply(_state.slices(_last_commit_index+1));
+
+  LOG_TOPIC(INFO, Logger::AGENCY) << "Starting spearhead worker.";
+  _spearhead.start();
+  _read_db.start();
+
+  LOG_TOPIC(INFO, Logger::AGENCY) << "Starting constituent personality.";
+  _constituent.update(0,0);
+  _constituent.start();
+  
   return true;
 }
 
@@ -299,6 +309,7 @@ void Agent::beginShutdown() {
   Thread::beginShutdown();
   _constituent.beginShutdown();
   _spearhead.beginShutdown();
+  _read_db.beginShutdown();
   CONDITION_LOCKER(guard, _cv);
   guard.broadcast();
 }
