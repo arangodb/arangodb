@@ -93,7 +93,7 @@ HttpHandler::status_t RestAgencyHandler::handleStores () {
     body.close();
     generateResult(body.slice());
   } else {
-    generateError(HttpResponse::BAD,400);
+    generateError(GeneralResponse::ResponseCode::BAD,400);
   }
   return HttpHandler::status_t(HANDLER_DONE);
 }
