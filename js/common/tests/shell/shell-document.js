@@ -2342,6 +2342,7 @@ function DatabaseDocumentSuiteReturnStuff () {
 /// @brief test new features from 3.0
 ////////////////////////////////////////////////////////////////////////////////
 
+/* Not Functional in arangosh connected to coordinator.
     testNewFeatures : function () {
       if (! require("@arangodb/cluster").isCluster()) {
         var x = collection.insert({Hallo: 12}, { silent: true });
@@ -2364,6 +2365,7 @@ function DatabaseDocumentSuiteReturnStuff () {
         assertEqual(true, y);
       }
     }
+*/
   };
 }
 
