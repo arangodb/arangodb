@@ -30,6 +30,8 @@
 
 #include <Basics/ConditionLocker.h>
 
+#include <ctime>
+#include <iomanip>
 #include <iostream>
 
 using namespace arangodb::consensus;
@@ -72,6 +74,21 @@ VPackSlice Node::slice() const {
 
 std::string const& Node::name() const {return _node_name;}
 
+std::string Node::uri() const {
+  Node *par = _parent;
+  std::stringstream path;
+  std::deque<std::string> names;
+  names.push_front(name());
+  while (par != 0) {
+    names.push_front(par->name());
+    par = par->_parent;
+  }
+  for (size_t i = 1; i < names.size(); ++i) {
+    path << "/" << names.at(i);
+  }
+  return path.str();
+}
+
 Node& Node::operator= (VPackSlice const& slice) { // Assign value (become leaf)
   _children.clear();
   _value.reset();
@@ -81,7 +98,6 @@ Node& Node::operator= (VPackSlice const& slice) { // Assign value (become leaf)
 
 Node& Node::operator= (Node const& node) { // Assign node
   _node_name = node._node_name;
-  _type = node._type;
   _value = node._value;
   _children = node._children;
   return *this;
@@ -176,9 +192,20 @@ ValueType Node::valueType() const {
 }
 
 bool Node::addTimeToLive (long millis) {
-  root()._time_table[
-    std::chrono::system_clock::now() + std::chrono::milliseconds(millis)] =
+  auto tkey = std::chrono::system_clock::now() +
+    std::chrono::milliseconds(millis);
+  root()._time_table[tkey] =
     _parent->_children[_node_name];
+  root()._table_time[_parent->_children[_node_name]] = tkey;
+  return true;
+}
+
+bool Node::removeTimeToLive () {
+  auto it = root()._table_time.find(_parent->_children[_node_name]);
+  if (it != root()._table_time.end()) {
+    root()._time_table.erase(root()._time_table.find(it->second));
+    root()._table_time.erase(it);
+  }
   return true;
 }
 
@@ -195,6 +222,7 @@ bool Node::applies (VPackSlice const& slice) {
         std::string oper = slice.get("op").copyString();
         VPackSlice const& self = this->slice();
         if (oper == "delete") {
+          removeTimeToLive();
           return _parent->removeChild(_node_name);
         } else if (oper == "set") { //
           if (!slice.hasKey("new")) {
@@ -202,6 +230,7 @@ bool Node::applies (VPackSlice const& slice) {
             LOG_TOPIC(WARN, Logger::AGENCY) << slice.toJson();
             return false;
           }
+          removeTimeToLive();
           if (slice.hasKey("ttl")) {
             VPackSlice ttl_v = slice.get("ttl");
             if (ttl_v.isNumber()) {
@@ -222,22 +251,24 @@ bool Node::applies (VPackSlice const& slice) {
           tmp.openObject();
           try {
             tmp.add("tmp", Value(self.getInt()+1));
-          } catch (std::exception const& e) {
+          } catch (std::exception const&) {
             tmp.add("tmp",Value(1));
           }
           tmp.close();
           *this = tmp.slice().get("tmp");
+          removeTimeToLive();
           return true;
         } else if (oper == "decrement") { // Decrement
           Builder tmp;
           tmp.openObject();
           try {
             tmp.add("tmp", Value(self.getInt()-1));
-          } catch (std::exception const& e) {
+          } catch (std::exception const&) {
             tmp.add("tmp",Value(-1));
           }
           tmp.close();
           *this = tmp.slice().get("tmp");
+          removeTimeToLive();
           return true;
         } else if (oper == "push") { // Push
           if (!slice.hasKey("new")) {
@@ -254,6 +285,7 @@ bool Node::applies (VPackSlice const& slice) {
           tmp.add(slice.get("new"));
           tmp.close();
           *this = tmp.slice();
+          removeTimeToLive();
           return true;
         } else if (oper == "pop") { // Pop
           Builder tmp;
@@ -269,6 +301,7 @@ bool Node::applies (VPackSlice const& slice) {
           }
           tmp.close();
           *this = tmp.slice();
+          removeTimeToLive();
           return true;
         } else if (oper == "prepend") { // Prepend
           if (!slice.hasKey("new")) {
@@ -285,6 +318,7 @@ bool Node::applies (VPackSlice const& slice) {
           }
           tmp.close();
           *this = tmp.slice();
+          removeTimeToLive();
           return true;
         } else if (oper == "shift") { // Shift
           Builder tmp;
@@ -302,6 +336,7 @@ bool Node::applies (VPackSlice const& slice) {
           } 
           tmp.close();
           *this = tmp.slice();
+          removeTimeToLive();
           return true;
         } else {
           LOG_TOPIC(WARN, Logger::AGENCY) << "Unknown operation " << oper;
@@ -309,6 +344,7 @@ bool Node::applies (VPackSlice const& slice) {
         }
       } else if (slice.hasKey("new")) { // new without set
         *this = slice.get("new");
+        removeTimeToLive();
         return true;
       } else if (key.find('/')!=std::string::npos) {
         (*this)(key).applies(i.value);
@@ -322,6 +358,7 @@ bool Node::applies (VPackSlice const& slice) {
     }
   } else {
     *this = slice;
+    removeTimeToLive();
   }
   return true;
 }
@@ -357,6 +394,16 @@ std::ostream& Node::print (std::ostream& o) const {
       o << *(i.second);
   } else {
     o << ((slice().type() == ValueType::None) ? "NONE" : slice().toJson()) << std::endl;
+  }
+  if (_time_table.size()) {
+    for (auto const& i : _time_table) {
+      o << i.second.get() << std::endl;
+    }
+  }
+  if (_table_time.size()) {
+    for (auto const& i : _table_time) {
+      o << i.first.get() << std::endl;
+    }
   }
   return o;
 }
@@ -494,7 +541,7 @@ bool Store::read (VPackSlice const& query, Builder& ret) const {
   for (auto i = query_strs.begin(); i != query_strs.end(); ++i) {
     try {
       copy(*i) = (*this)(*i);
-    } catch (StoreException const& e) {
+    } catch (StoreException const&) {
       if (query.type() == VPackValueType::String)
         success = false;
     }
@@ -524,14 +571,49 @@ void Store::beginShutdown() {
 }
 
 void Store::clearTimeTable () {
-  for (auto it = _time_table.cbegin(); it != _time_table.cend() ;) {
-    // Remove expired from front 
+//    std::vector<std::shared_ptr<Node>> deleted;
+  for (auto it = _time_table.cbegin(); it != _time_table.cend(); ++it) {
     if (it->first < std::chrono::system_clock::now()) {
-      it->second->remove();
-      _time_table.erase(it++);
-      
+      query_t tmp = std::make_shared<Builder>();
+      tmp->openArray(); tmp->openArray(); tmp->openObject();
+      tmp->add(it->second->uri(), VPackValue(VPackValueType::Object));
+      tmp->add("op",VPackValue("delete"));
+      tmp->close(); tmp->close(); tmp->close(); tmp->close();
+      _agent->write(tmp);
     } else {
       break;
+    }
+  }
+      
+/*  for (size_t i = 0; i < deleted; ++i) {
+    try {
+    _table_time.erase(_table_time.find(_time_table.cbegin()->second));
+    _time_table.erase(_time_table.cbegin());
+    } catch (std::exception const& e) {
+      std::cout << e.what() << std::endl;
+      }*/
+}
+
+
+void Store::dumpToBuilder (Builder& builder) const {
+  MUTEX_LOCKER(storeLocker, _storeLock);
+  toBuilder(builder);
+  {
+    VPackObjectBuilder guard(&builder);
+    for (auto const& i : _time_table) {
+      auto in_time_t = std::chrono::system_clock::to_time_t(i.first);
+      std::string ts = ctime(&in_time_t);
+      ts.resize(ts.size()-1);
+      builder.add(ts, VPackValue((size_t)i.second.get()));
+    }
+  }
+  {
+    VPackObjectBuilder guard(&builder);
+    for (auto const& i : _table_time) {
+      auto in_time_t = std::chrono::system_clock::to_time_t(i.second);
+      std::string ts = ctime(&in_time_t);
+      ts.resize(ts.size()-1);
+      builder.add(std::to_string((size_t)i.first.get()), VPackValue(ts));
     }
   }
 }
@@ -553,6 +635,3 @@ void Store::run() {
     clearTimeTable();
   }
 }
-
-
-

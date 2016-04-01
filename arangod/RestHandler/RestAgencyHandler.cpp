@@ -80,8 +80,26 @@ void RestAgencyHandler::redirectRequest(id_t leaderId) {
   _response->setHeaderNC(location, rendpoint);
 }
 
-inline HttpHandler::status_t RestAgencyHandler::handleWrite() {
-  arangodb::velocypack::Options options;  // TODO: User not wait.
+HttpHandler::status_t RestAgencyHandler::handleStores () {
+  if (_request->requestType() == GeneralRequest::RequestType::GET) {
+    Builder body;
+    body.openObject();
+    body.add("spearhead", VPackValue(VPackValueType::Array));
+    _agent->spearhead().dumpToBuilder(body);
+    body.close();
+    body.add("read_db", VPackValue(VPackValueType::Array));
+    _agent->readDB().dumpToBuilder(body);
+    body.close();
+    body.close();
+    generateResult(body.slice());
+  } else {
+    generateError(GeneralResponse::ResponseCode::BAD,400);
+  }
+  return HttpHandler::status_t(HANDLER_DONE);
+}
+
+HttpHandler::status_t RestAgencyHandler::handleWrite () {
+  arangodb::velocypack::Options options; // TODO: User not wait. 
   if (_request->requestType() == GeneralRequest::RequestType::POST) {
     query_t query;
 
@@ -228,6 +246,8 @@ HttpHandler::status_t RestAgencyHandler::execute() {
           return reportMethodNotAllowed();
         }
         return handleState();
+      } else if (_request->suffix()[0] == "stores") {
+        return handleStores();
       } else {
         return reportUnknownMethod();
       }

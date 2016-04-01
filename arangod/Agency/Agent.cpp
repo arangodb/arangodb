@@ -238,7 +238,7 @@ append_entries_t Agent::sendAppendEntriesRPC (id_t slave_id) {
 bool Agent::load () {
   LOG_TOPIC(INFO, Logger::AGENCY) << "Loading persistent state.";
   if (!_state.loadCollections()) {
-    LOG(FATAL) << "Failed to load persistent state on statup.";
+    LOG_TOPIC(WARN, Logger::AGENCY) << "Failed to load persistent state on statup.";
   }
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Reassembling spearhead and read stores.";
@@ -332,5 +332,12 @@ log_t const& Agent::lastLog() const {
   return _state.lastLog();
 }
 
+Store const& Agent::spearhead () const {
+  return _spearhead;
+}
+
+Store const& Agent::readDB () const {
+  return _read_db;
+}
 
 }}
