@@ -133,14 +133,13 @@ bool RestEdgesHandler::getEdgesForVertexList(
 
 bool RestEdgesHandler::getEdgesForVertex(
     std::string const& id,
+    std::string const& collectionName,
     std::vector<traverser::TraverserExpression*> const& expressions,
     TRI_edge_direction_e direction, SingleCollectionTransaction& trx,
     VPackBuilder& result, size_t& scannedIndex, size_t& filtered) {
   
   trx.orderDitch(trx.cid()); // will throw when it fails
     
-  std::string const collectionName 
-      = trx.resolver()->getCollectionName(trx.cid());
   Transaction::IndexHandle indexId = trx.edgeIndexHandle(collectionName);
   
   VPackBuilder searchValueBuilder;
@@ -285,11 +284,6 @@ bool RestEdgesHandler::readEdges(
     return false;
   }
 
-  // If we are a DBserver, we want to use the cluster-wide collection
-  // name for error reporting:
-  if (ServerState::instance()->isDBServer()) {
-    collectionName = trx.resolver()->getCollectionName(trx.cid());
-  }
 
   size_t filtered = 0;
   size_t scannedIndex = 0;
@@ -299,8 +293,10 @@ bool RestEdgesHandler::readEdges(
   // build edges
   resultBuilder.add(VPackValue("edges")); // only key 
   resultBuilder.openArray();
-  bool ok = getEdgesForVertex(startVertex, expressions, direction, trx,
-                              resultBuilder, scannedIndex, filtered);
+  // NOTE: collecitonName is the shard-name in DBServer case
+  bool ok =
+      getEdgesForVertex(startVertex, collectionName, expressions, direction,
+                        trx, resultBuilder, scannedIndex, filtered);
   resultBuilder.close();
 
   res = trx.finish(res);
@@ -310,6 +306,11 @@ bool RestEdgesHandler::readEdges(
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
+    if (ServerState::instance()->isDBServer()) {
+    // If we are a DBserver, we want to use the cluster-wide collection
+    // name for error reporting:
+      collectionName = trx.resolver()->getCollectionName(trx.cid());
+    }
     generateTransactionError(collectionName, res, "");
     return false;
   }
@@ -349,6 +350,9 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
       parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
 
   if (!parseSuccess) {
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expected POST " + EDGES_PATH +
+                      "/<collection-identifier>?direction=<direction>");
     // A body is required
     return false;
   }
@@ -394,11 +398,34 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
     return false;
   }
 
+  std::vector<traverser::TraverserExpression*> const expressions;
   if (ServerState::instance()->isCoordinator()) {
-    // This API is only for internal use on DB servers and is not (yet) allowed
-    // to
-    // be executed on the coordinator
-    return false;
+    arangodb::rest::HttpResponse::HttpResponseCode responseCode;
+    std::string contentType;
+    arangodb::basics::Json resultDocument(arangodb::basics::Json::Object, 3);
+
+    for (auto const& it : VPackArrayIterator(body)) {
+      if (it.isString()) {
+        std::string vertexString(it.copyString());
+
+        int res = getFilteredEdgesOnCoordinator(
+            _vocbase->_name, collectionName, vertexString, direction, expressions,
+            responseCode, contentType, resultDocument);
+        if (res != TRI_ERROR_NO_ERROR) {
+          generateError(responseCode, res);
+          return false;
+        }
+      }
+    }
+    
+    resultDocument.set("error", arangodb::basics::Json(false));
+    resultDocument.set("code", arangodb::basics::Json(200));
+
+    VPackBuilder tmp;
+    arangodb::basics::JsonHelper::toVelocyPack(resultDocument.json(), tmp);
+    generateResult(HttpResponse::HttpResponseCode::OK, tmp.slice());
+
+    return true;
   }
 
   // find and load collection given by name or identifier
@@ -423,7 +450,6 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
 
   size_t filtered = 0;
   size_t scannedIndex = 0;
-  std::vector<traverser::TraverserExpression*> const expressions;
 
   VPackBuilder resultBuilder;
   resultBuilder.openObject();

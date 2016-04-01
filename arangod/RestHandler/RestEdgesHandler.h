@@ -70,7 +70,7 @@ class RestEdgesHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   bool getEdgesForVertex(
-      std::string const& id,
+      std::string const& id, std::string const& collectionName,
       std::vector<traverser::TraverserExpression*> const& expressions,
       TRI_edge_direction_e direction, SingleCollectionTransaction& trx,
       arangodb::velocypack::Builder&, size_t& scannedIndex, size_t& filtered);
