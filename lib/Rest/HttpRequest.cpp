@@ -78,16 +78,17 @@ int32_t HttpRequest::compatibility() {
 
   char const* a = apiVersion.c_str();
   char const* p = a;
+  char const* e = a + apiVersion.size();
 
   // read major version
   uint32_t major = 0;
 
-  while (*p >= '0' && *p <= '9') {
+  while (p < e && *p >= '0' && *p <= '9') {
     major = major * 10 + (*p - '0');
     ++p;
   }
 
-  if (p != a && (*p == '.' || *p == '-' || *p == '\0')) {
+  if (p != a && (*p == '.' || *p == '-' || p == e)) {
     if (major >= 10000) {
       // version specified as "10400"
       if (*p == '\0') {
@@ -110,12 +111,12 @@ int32_t HttpRequest::compatibility() {
     // read minor version
     uint32_t minor = 0;
 
-    while (*p >= '0' && *p <= '9') {
+    while (p < e && *p >= '0' && *p <= '9') {
       minor = minor * 10 + (*p - '0');
       ++p;
     }
 
-    if (p != a && (*p == '.' || *p == '-' || *p == '\0')) {
+    if (p != a && (*p == '.' || *p == '-' || p == e)) {
       result = (int32_t)(minor * 100L + major * 10000L);
     }
   }
