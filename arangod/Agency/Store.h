@@ -158,7 +158,6 @@ protected:
   TableTime _table_time;
   Buffer<uint8_t> _value;
   
-  NodeType _type;
   std::string _node_name;
   
 };
@@ -200,6 +199,9 @@ public:
 
   /// @brief Set name
   void name (std::string const& name);
+
+  /// @brief Dump everything to builder
+  void dumpToBuilder (Builder&) const;
 
 private:
   /// @brief Read individual entry specified in slice into builder

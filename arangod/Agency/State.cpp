@@ -217,12 +217,11 @@ bool State::createCollection(std::string const& name) {
 }
 
 bool State::loadCollections() {
-  loadCollection("log");
-  return true;
+  return loadCollection("log");
 }
 
 bool State::loadCollection(std::string const& name) {
-  if (checkCollections()) {
+  if (checkCollection(name)) {
     // Path
     std::string path("/_api/cursor");
 
@@ -255,10 +254,11 @@ bool State::loadCollection(std::string const& name) {
         }
       }
     }
-
     return true;
-
   } else {
+    LOG_TOPIC (INFO, Logger::AGENCY) << "Couldn't find persisted log";
+    createCollections();
+
     return false;
   }
 }

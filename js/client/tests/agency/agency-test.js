@@ -193,6 +193,11 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["a/y"]]), [{"a":{"y":12}}]);
       sleep(1100);
       assertEqual(readAndCheck([["a/y"]]), [{}]);
+      writeAndCheck([[{"a/y":{"op":"set","new":12, "ttl": 1}}]]);
+      writeAndCheck([[{"a/y":{"op":"set","new":12}}]]);
+      assertEqual(readAndCheck([["a/y"]]), [{"a":{"y":12}}]);
+      sleep(1100);
+      assertEqual(readAndCheck([["a/y"]]), [{"a":{"y":12}}]);
     },
 
     testOpNew : function () {
