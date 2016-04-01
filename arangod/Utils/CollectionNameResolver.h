@@ -83,7 +83,13 @@ class CollectionNameResolver {
     }
     if (name[0] >= '0' && name[0] <= '9') {
       // name is a numeric id
-      return (TRI_voc_cid_t)arangodb::basics::StringUtils::uint64(name);
+      TRI_voc_cid_t cid = (TRI_voc_cid_t)arangodb::basics::StringUtils::uint64(name);
+      // Now validate the cid
+      TRI_col_type_t type = getCollectionTypeCluster(getCollectionNameCluster(cid));
+      if (type == TRI_COL_TYPE_UNKNOWN) {
+        return 0;
+      }
+      return cid;
     }
 
     // We have to look up the collection info:

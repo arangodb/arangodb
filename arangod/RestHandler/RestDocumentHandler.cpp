@@ -64,7 +64,6 @@ HttpHandler::status_t RestDocumentHandler::execute() {
       break;
     default: {
       generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);
-      break;
     }
   }
 
@@ -562,7 +561,12 @@ bool RestDocumentHandler::deleteDocument() {
     }
     search = builder.slice();
   } else {
-    builderPtr = _request->toVelocyPack(transactionContext->getVPackOptions());
+    try {
+      builderPtr = _request->toVelocyPack(transactionContext->getVPackOptions());
+    } catch (...) {
+      // If an error occurs here the body is not parsable. Fail with bad parameter
+      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "Request body not parseable");
+    }
     search = builderPtr->slice();
   }
 
