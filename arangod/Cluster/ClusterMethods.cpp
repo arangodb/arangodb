@@ -1430,7 +1430,8 @@ int modifyDocumentOnCoordinator(
     responseCode = static_cast<arangodb::rest::HttpResponse::HttpResponseCode>(
         res->result->getHttpReturnCode());
     if (responseCode < arangodb::rest::HttpResponse::BAD ||
-        responseCode == arangodb::rest::HttpResponse::PRECONDITION_FAILED) {
+        responseCode == arangodb::rest::HttpResponse::PRECONDITION_FAILED ||
+        responseCode == arangodb::rest::HttpResponse::CONFLICT) {
       // OK, we are done, let's report:
       resultHeaders = res->result->getHeaderFields();
       resultBody.assign(res->result->getBody().c_str(),
