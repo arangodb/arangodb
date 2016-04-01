@@ -221,11 +221,10 @@ SimpleQueryNear.prototype.execute = function () {
     var shards = cluster.shardList(dbName, this._collection.name());
     var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
     var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
+
     var _limit = 0;
     if (this._limit > 0) {
-      if (this._skip >= 0) {
-        _limit = this._skip + this._limit;
-      }
+      _limit = parseInt(this._skip + this._limit, 10);
     }
 
     var attribute;
@@ -273,8 +272,10 @@ SimpleQueryNear.prototype.execute = function () {
       });
     }
 
-    if (this._limit > 0) {
-      documents = documents.slice(0, this._skip + this._limit);
+    if (_limit > 0) {
+      documents = documents.slice(this._skip, _limit);
+    } else if (this._skip > 0) {
+      documents = documents.slice(this._skip);
     }
 
     if (this._distance === null) {
@@ -344,11 +345,10 @@ SimpleQueryWithin.prototype.execute = function () {
     var shards = cluster.shardList(dbName, this._collection.name());
     var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
     var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
+
     var _limit = 0;
     if (this._limit > 0) {
-      if (this._skip >= 0) {
-        _limit = this._skip + this._limit;
-      }
+      _limit = parseInt(this._skip + this._limit, 10);
     }
 
     var attribute;
@@ -397,8 +397,10 @@ SimpleQueryWithin.prototype.execute = function () {
       });
     }
 
-    if (this._limit > 0) {
-      documents = documents.slice(0, this._skip + this._limit);
+    if (_limit > 0) {
+      documents = documents.slice(this._skip, _limit);
+    } else if (this._skip > 0) {
+      documents = documents.slice(this._skip);
     }
 
     if (this._distance === null) {
@@ -462,9 +464,7 @@ SimpleQueryFulltext.prototype.execute = function () {
     var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
     var _limit = 0;
     if (this._limit > 0) {
-      if (this._skip >= 0) {
-        _limit = this._skip + this._limit;
-      }
+      _limit = parseInt(this._skip + this._limit, 10);
     }
 
     var self = this;
@@ -494,8 +494,10 @@ SimpleQueryFulltext.prototype.execute = function () {
       documents = documents.concat(body.result);
     });
 
-    if (this._limit > 0) {
-      documents = documents.slice(0, this._skip + this._limit);
+    if (_limit > 0) {
+      documents = documents.slice(this._skip, _limit);
+    } else if (this._skip > 0) {
+      documents = documents.slice(this._skip);
     }
   }
   else {
