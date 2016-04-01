@@ -332,5 +332,12 @@ log_t const& Agent::lastLog() const {
   return _state.lastLog();
 }
 
+Store const& Agent::spearhead () const {
+  return _spearhead;
+}
+
+Store const& Agent::readDB () const {
+  return _read_db;
+}
 
 }}

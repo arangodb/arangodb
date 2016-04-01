@@ -45,6 +45,7 @@ class RestAgencyHandler : public RestBaseHandler {
   status_t reportErrorEmptyRequest();
   status_t reportTooManySuffices();
   status_t reportUnknownMethod();
+  status_t handleStores();
   status_t handleRead();
   status_t handleWrite();
   status_t handleConfig();

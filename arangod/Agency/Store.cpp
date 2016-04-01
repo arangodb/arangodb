@@ -30,6 +30,8 @@
 
 #include <Basics/ConditionLocker.h>
 
+#include <ctime>
+#include <iomanip>
 #include <iostream>
 
 using namespace arangodb::consensus;
@@ -96,7 +98,6 @@ Node& Node::operator= (VPackSlice const& slice) { // Assign value (become leaf)
 
 Node& Node::operator= (Node const& node) { // Assign node
   _node_name = node._node_name;
-  _type = node._type;
   _value = node._value;
   _children = node._children;
   return *this;
@@ -394,6 +395,16 @@ std::ostream& Node::print (std::ostream& o) const {
   } else {
     o << ((slice().type() == ValueType::None) ? "NONE" : slice().toJson()) << std::endl;
   }
+  if (_time_table.size()) {
+    for (auto const& i : _time_table) {
+      o << i.second.get() << std::endl;
+    }
+  }
+  if (_table_time.size()) {
+    for (auto const& i : _table_time) {
+      o << i.first.get() << std::endl;
+    }
+  }
   return o;
 }
 
@@ -560,9 +571,8 @@ void Store::beginShutdown() {
 }
 
 void Store::clearTimeTable () {
-  size_t deleted = 0;
+//    std::vector<std::shared_ptr<Node>> deleted;
   for (auto it = _time_table.cbegin(); it != _time_table.cend(); ++it) {
-    // Remove expired from front 
     if (it->first < std::chrono::system_clock::now()) {
       query_t tmp = std::make_shared<Builder>();
       tmp->openArray(); tmp->openArray(); tmp->openObject();
@@ -570,18 +580,42 @@ void Store::clearTimeTable () {
       tmp->add("op",VPackValue("delete"));
       tmp->close(); tmp->close(); tmp->close(); tmp->close();
       _agent->write(tmp);
-      it->second->remove();
-      deleted++;
-//      _time_table.erase(it++);
     } else {
       break;
     }
   }
-  for (size_t i = 0; i < deleted; ++i) {
+      
+/*  for (size_t i = 0; i < deleted; ++i) {
+    try {
     _table_time.erase(_table_time.find(_time_table.cbegin()->second));
     _time_table.erase(_time_table.cbegin());
+    } catch (std::exception const& e) {
+      std::cout << e.what() << std::endl;
+      }*/
+}
+
+
+void Store::dumpToBuilder (Builder& builder) const {
+  MUTEX_LOCKER(storeLocker, _storeLock);
+  toBuilder(builder);
+  {
+    VPackObjectBuilder guard(&builder);
+    for (auto const& i : _time_table) {
+      auto in_time_t = std::chrono::system_clock::to_time_t(i.first);
+      std::stringstream ss;
+      ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X");
+      builder.add(ss.str(), VPackValue((size_t)i.second.get()));
+    }
   }
-    
+  {
+    VPackObjectBuilder guard(&builder);
+    for (auto const& i : _table_time) {
+      auto in_time_t = std::chrono::system_clock::to_time_t(i.second);
+      std::stringstream ss;
+      ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X");
+      builder.add(std::to_string((size_t)i.first.get()), VPackValue(ss.str()));
+    }
+  }
 }
 
 bool Store::start () {
@@ -601,6 +635,3 @@ void Store::run() {
     clearTimeTable();
   }
 }
-
-
-

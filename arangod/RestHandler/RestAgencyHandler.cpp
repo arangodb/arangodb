@@ -79,7 +79,25 @@ void RestAgencyHandler::redirectRequest (id_t leaderId) {
   _response->setHeader("Location", rendpoint);
 }
 
-inline HttpHandler::status_t RestAgencyHandler::handleWrite () {
+HttpHandler::status_t RestAgencyHandler::handleStores () {
+  if (_request->requestType() == GeneralRequest::RequestType::GET) {
+    Builder body;
+    body.openObject();
+    body.add("spearhead", VPackValue(VPackValueType::Array));
+    _agent->spearhead().dumpToBuilder(body);
+    body.close();
+    body.add("read_db", VPackValue(VPackValueType::Array));
+    _agent->readDB().dumpToBuilder(body);
+    body.close();
+    body.close();
+    generateResult(body.slice());
+  } else {
+    generateError(HttpResponse::BAD,400);
+  }
+  return HttpHandler::status_t(HANDLER_DONE);
+}
+
+HttpHandler::status_t RestAgencyHandler::handleWrite () {
   arangodb::velocypack::Options options; // TODO: User not wait. 
   if (_request->requestType() == GeneralRequest::RequestType::POST) {
 
@@ -215,7 +233,7 @@ HttpHandler::status_t RestAgencyHandler::execute() {
     } else if (_request->suffix().size() > 1) {   // path size >= 2
       return reportTooManySuffices();
     } else {
-        if (_request->suffix()[0] == "write") {
+      if (_request->suffix()[0] == "write") {
         return handleWrite();
       } else if (_request->suffix()[0] == "read") {
         return handleRead();
@@ -224,14 +242,16 @@ HttpHandler::status_t RestAgencyHandler::execute() {
           return reportMethodNotAllowed();
         }
         return handleConfig();
-        } else if (_request->suffix()[0] == "state") {
+      } else if (_request->suffix()[0] == "state") {
         if (_request->requestType() != GeneralRequest::RequestType::GET) {
           return reportMethodNotAllowed();
         }
         return handleState();
-        } else {
+      } else if (_request->suffix()[0] == "stores") {
+        return handleStores();
+      } else {
         return reportUnknownMethod();
-        }
+      }
     }
   } catch (...) {
     // Ignore this error
