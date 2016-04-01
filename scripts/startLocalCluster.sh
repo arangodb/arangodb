@@ -65,8 +65,8 @@ start() {
                 --server.endpoint tcp://127.0.0.1:$PORT \
                 --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
                 --cluster.my-role $ROLE \
-                --log.level TRACE \
                 --log.file cluster/$PORT.log \
+                --log.level TRACE \
                 --log.requests-file cluster/$PORT.req \
                 --server.disable-statistics true \
                 --server.foxx-queues false \

@@ -78,36 +78,36 @@ AgencyOperation::AgencyOperation(
 //////////////////////////////////////////////////////////////////////////////
 /// @brief returns to full operation formatted as a vpack slice
 //////////////////////////////////////////////////////////////////////////////
-VPackSlice AgencyOperation::vPackSlice() {
-  VPackBuilder builder;
+std::shared_ptr<VPackBuilder> AgencyOperation::toVelocyPack() {
+  auto builder = std::make_shared<VPackBuilder>();
   {
-    VPackArrayBuilder operation(&builder);
+    VPackArrayBuilder operation(builder.get());
     {
-      VPackObjectBuilder keyVPack(&builder);
-      builder.add(VPackValue(_key));
+      VPackObjectBuilder keyVPack(builder.get());
+      builder->add(VPackValue(_key));
       {
-        VPackObjectBuilder valueOperation(&builder);
-        builder.add("op", VPackValue(_opType.toString()));
+        VPackObjectBuilder valueOperation(builder.get());
+        builder->add("op", VPackValue(_opType.toString()));
         if (_opType.type == AgencyOperationType::VALUE) {
-          builder.add("new", _value);
+          builder->add("new", _value);
           if (_ttl > 0) {
-            builder.add("ttl", VPackValue(_ttl));
+            builder->add("ttl", VPackValue(_ttl));
           }
         }
       }
     }
     if (_precondition.type != AgencyOperationPrecondition::NONE) {
-      VPackObjectBuilder precondition(&builder);
-      builder.add(VPackValue(_key));
+      VPackObjectBuilder precondition(builder.get());
+      builder->add(VPackValue(_key));
       {
-        VPackObjectBuilder preconditionDefinition(&builder);
+        VPackObjectBuilder preconditionDefinition(builder.get());
         {
           switch(_precondition.type) {
             case AgencyOperationPrecondition::EMPTY:
-              builder.add("oldEmpty", VPackValue(_precondition.empty));
+              builder->add("oldEmpty", VPackValue(_precondition.empty));
               break;
             case AgencyOperationPrecondition::VALUE:
-              builder.add("old", _precondition.value);
+              builder->add("old", _precondition.value);
               break;
             // mop: useless compiler warning :S
             case AgencyOperationPrecondition::NONE:
@@ -117,7 +117,7 @@ VPackSlice AgencyOperation::vPackSlice() {
       }
     }
   }
-  return builder.slice();
+  return builder;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -129,7 +129,8 @@ std::string AgencyTransaction::toJson() const {
     VPackArrayBuilder transaction(&builder);
     {
       for (AgencyOperation operation: operations) {
-        builder.add(operation.vPackSlice());
+        auto opBuilder = operation.toVelocyPack();
+        builder.add(opBuilder->slice());
       }
     }
   }
@@ -369,7 +370,7 @@ bool AgencyCommResult::parse(std::string const& stripKeyPrefix, bool withDirs) {
   } catch (...) {
     return false;
   }
-
+  
   VPackSlice slice = parsedBody->slice();
 
   if (!slice.isObject()) {
@@ -445,7 +446,9 @@ AgencyCommLocker::AgencyCommLocker(std::string const& key,
 /// @brief destroys an agency comm locker
 ////////////////////////////////////////////////////////////////////////////////
 
-AgencyCommLocker::~AgencyCommLocker() { unlock(); }
+AgencyCommLocker::~AgencyCommLocker() {
+  unlock();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unlocks the lock
@@ -665,7 +668,7 @@ bool AgencyComm::tryInitializeStructure() {
         VPackObjectBuilder d(&builder);
         addEmptyVPackObject("_system", builder);
       }
-      builder.add("Version", VPackValue("\"1\""));
+      builder.add("Version", VPackValue("1"));
       addEmptyVPackObject("ShardsCopied", builder);
       addEmptyVPackObject("NewServers", builder);
       addEmptyVPackObject("Coordinators", builder);
@@ -689,7 +692,7 @@ bool AgencyComm::tryInitializeStructure() {
       }
       builder.add("Lock", VPackValue("\"UNLOCKED\""));
       addEmptyVPackObject("DBServers", builder);
-      builder.add("Version", VPackValue("\"1\""));
+      builder.add("Version", VPackValue("1"));
       builder.add(VPackValue("Collections"));
       {
         VPackObjectBuilder d(&builder);
@@ -1160,7 +1163,14 @@ AgencyCommResult AgencyComm::createDirectory(std::string const& key) {
   {
     VPackObjectBuilder dir(&builder);
   }
-  return setValue(key, builder.slice(), 0.0);
+  
+  AgencyCommResult result;
+  AgencyOperation operation(key, AgencyValueOperationType::SET, builder.slice());
+  AgencyTransaction transaction(operation);
+
+  sendTransactionWithFailover(result, transaction);
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1172,7 +1182,14 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
   VPackBuilder builder;
   builder.add(VPackValue(value));
   
-  return setValue(key, builder.slice(), 0.0);
+  AgencyCommResult result;
+  AgencyOperation operation(key, AgencyValueOperationType::SET, builder.slice());
+  operation._ttl = static_cast<uint64_t>(ttl);
+  AgencyTransaction transaction(operation);
+
+  sendTransactionWithFailover(result, transaction);
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1182,10 +1199,13 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
 AgencyCommResult AgencyComm::setValue(std::string const& key,
                                       arangodb::velocypack::Slice const& slice,
                                       double ttl) {
+  // mop: old etcd didn't support writing a json structure.
+  // have to encode the structure as a json
+  VPackBuilder builder;
+  builder.add(VPackValue(slice.toJson()));
 
-  LOG(DEBUG) << "Got slice " << slice.toJson();
   AgencyCommResult result;
-  AgencyOperation operation(key, AgencyValueOperationType::SET, slice);
+  AgencyOperation operation(key, AgencyValueOperationType::SET, builder.slice());
   operation._ttl = static_cast<uint64_t>(ttl);
   AgencyTransaction transaction(operation);
 
@@ -1203,6 +1223,69 @@ bool AgencyComm::exists(std::string const& key) {
 
   return result.successful();  
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update a version number in the agency
+////////////////////////////////////////////////////////////////////////////////
+
+bool AgencyComm::increaseVersion(std::string const& key) {
+  // fetch existing version number
+  AgencyCommResult result = getValues(key, false);
+  
+  if (!result.successful()) {
+    if (result.httpCode() != (int)arangodb::rest::HttpResponse::NOT_FOUND) {
+      return false;
+    }
+
+    // no version key found, now set it
+    VPackBuilder builder;
+    try {
+      builder.add(VPackValue(1));
+    } catch (...) {
+      LOG(ERR) << "Couldn't add value to builder";
+      return false;
+    }
+
+    result.clear();
+    result = casValue(key, builder.slice(), false, 0.0, 0.0);
+
+    return result.successful();
+  }
+
+  // found a version
+  result.parse("", false);
+  auto it = result._values.begin();
+
+  if (it == result._values.end()) {
+    return false;
+  }
+
+  VPackSlice const versionSlice = it->second._vpack->slice();
+  uint64_t version =
+      arangodb::basics::VelocyPackHelper::stringUInt64(versionSlice);
+  VPackBuilder oldBuilder;
+  try {
+    if (versionSlice.isString()) {
+      oldBuilder.add(VPackValue(std::to_string(version)));
+    } else {
+      oldBuilder.add(VPackValue(version));
+    }
+  } catch (...) {
+    return false;
+  }
+  VPackBuilder newBuilder;
+  try {
+    newBuilder.add(VPackValue(version + 1));
+  } catch (...) {
+    return false;
+  }
+  result.clear();
+
+  result = casValue(key, oldBuilder.slice(), newBuilder.slice(), 0.0, 0.0);
+
+  return result.successful();
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief increment a key
@@ -1251,9 +1334,7 @@ AgencyCommResult AgencyComm::getValues(std::string const& key, bool recursive) {
     parsedBody = VPackParser::fromJson(body.c_str());
     VPackSlice agencyResult = parsedBody->slice();
 
-    LOG(TRACE) << "Returned slice is: " << agencyResult.toJson();
-    
-    VPackSlice firstResult;
+    VPackSlice resultNode;
     if (!agencyResult.isArray()) {
       result._statusCode = 500;
       return result;
@@ -1263,12 +1344,9 @@ AgencyCommResult AgencyComm::getValues(std::string const& key, bool recursive) {
       result._statusCode = 500;
       return result;
     }
-
-    firstResult = agencyResult.at(0);
-    LOG(TRACE) << "Returned slice is junge: " << firstResult;
+    resultNode = agencyResult.at(0);
     
     std::function<void (std::string const&, VPackSlice, VPackBuilder&, int)> fakeEtcdNode = [&] (std::string const& key, VPackSlice node, VPackBuilder& builder, int level) {
-      LOG(TRACE) << "In fake etcd. key: " << key << ". slice: " << node.toJson();
       VPackObjectBuilder nodeValue(&builder);
       builder.add("key", VPackValue(key));
       builder.add("modifiedIndex", VPackValue(1));
@@ -1276,13 +1354,12 @@ AgencyCommResult AgencyComm::getValues(std::string const& key, bool recursive) {
       if (node.isObject()) {
         builder.add("dir", VPackValue(true));
 
-        if (recursive || level < 2) {
+        if (node.length() > 0 && (recursive || level < 2)) {
           builder.add(VPackValue("nodes"));
           VPackArrayBuilder objectStructure(&builder);
           for (auto const& it : VPackObjectIterator(node)) {
-            std::string subKey(it.key.copyString());
-            subKey = key + subKey.substr(key.size());
-            LOG(TRACE) << "key: " << key << ". newKey: " << subKey;
+            std::string subKey;
+            subKey = key + "/" + it.key.copyString();
             fakeEtcdNode(subKey, it.value, builder, level + 1);
           }
         }
@@ -1298,18 +1375,48 @@ AgencyCommResult AgencyComm::getValues(std::string const& key, bool recursive) {
       VPackObjectBuilder nodeRoot(&builder);
       builder.add("action", VPackValue("get"));
       builder.add(VPackValue("node"));
-      LOG(TRACE) << "Entering fake etcd: " << firstResult.toJson();
 
-      fakeEtcdNode(AgencyComm::prefix().substr(0, -1), firstResult, builder, 0);
+      const std::string fullKey = AgencyComm::prefix() + key;
+      // mop: need to remove all parents... key requested: /arango/hans/mann/wurst.
+      // instead of just the result of wurst we will get the full tree
+      // but only if there is something inside this object
+      if (resultNode.isObject() && resultNode.length() > 0) {
+        std::size_t currentKeyStart = 1;
+        std::size_t found = fullKey.find_first_of("/", 1);
+        std::string currentKey;
+        while (found != std::string::npos) {
+          currentKey = fullKey.substr(currentKeyStart, found - currentKeyStart);
+
+          if (!resultNode.isObject() || !resultNode.hasKey(currentKey)) {
+            LOG(TRACE) << "Structure unexpected";
+            result.clear();
+            return result;
+          }
+          resultNode = resultNode.get(currentKey);
+
+          currentKeyStart = found + 1;
+          found = fullKey.find_first_of("/", found + 1);
+        }
+        currentKey = fullKey.substr(currentKeyStart, found - currentKeyStart);
+
+        if (!resultNode.isObject() || !resultNode.hasKey(currentKey)) {
+          result.clear();
+          return result;
+        }
+        resultNode = resultNode.get(currentKey);
+      }
+      
+      fakeEtcdNode(AgencyComm::prefix() + key, resultNode, builder, 0);
     }
-
+    
+    result._body.clear();
     VPackSlice s = builder.slice();
     
     VPackOptions dumperOptions;
     VPackStringSink sink(&result._body);
     VPackDumper::dump(s, &sink, &dumperOptions);
 
-    LOG(DEBUG) << "Created fake etcd node" << result._body;
+    LOG(TRACE) << "Created fake etcd node" << result._body;
     result._statusCode = 200;
   } catch(std::exception &e) {
     LOG(ERR) << "Error transforming result. " << e.what();
@@ -1349,7 +1456,10 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
                                       double timeout) {
   AgencyCommResult result;
   
-  AgencyOperation operation(key, AgencyValueOperationType::SET, json);
+  VPackBuilder newBuilder;
+  newBuilder.add(VPackValue(json.toJson()));
+
+  AgencyOperation operation(key, AgencyValueOperationType::SET, newBuilder.slice());
   operation._precondition.type = AgencyOperationPrecondition::EMPTY;
   operation._precondition.empty = !prevExist;
   if (ttl >= 0.0) {
@@ -1382,10 +1492,16 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
                                       VPackSlice const& newJson, double ttl,
                                       double timeout) {
   AgencyCommResult result;
+
+  VPackBuilder newBuilder;
+  newBuilder.add(VPackValue(newJson.toJson()));
   
-  AgencyOperation operation(key, AgencyValueOperationType::SET, newJson);
+  VPackBuilder oldBuilder;
+  oldBuilder.add(VPackValue(oldJson.toJson()));
+  
+  AgencyOperation operation(key, AgencyValueOperationType::SET, newBuilder.slice());
   operation._precondition.type = AgencyOperationPrecondition::VALUE;
-  operation._precondition.value = oldJson;
+  operation._precondition.value = oldBuilder.slice();
   if (ttl >= 0.0) {
     operation._ttl = static_cast<uint64_t>(ttl);
   }
@@ -1412,27 +1528,10 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
 AgencyCommResult AgencyComm::watchValue(std::string const& key,
                                         uint64_t waitIndex, double timeout,
                                         bool recursive) {
-  throw new std::runtime_error("TODO watchValue");
-  /*
-  std::string url(buildUrl(key) + "?wait=true");
+  AgencyCommResult result = getValues(key, recursive);
 
-  if (waitIndex > 0) {
-    url += "&waitIndex=" + arangodb::basics::StringUtils::itoa(waitIndex);
-  }
-
-  if (recursive) {
-    url += "&recursive=true";
-  }
-
-  AgencyCommResult result;
-
-  sendWithFailover(
-      arangodb::rest::HttpRequest::HTTP_REQUEST_GET,
-      timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout,
-      result, url, "", true);
-
+  usleep(1000);
   return result;
-  */
 }
 
 ////////////////////////////////////////////////////////////////////////////////

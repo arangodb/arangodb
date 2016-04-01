@@ -189,7 +189,7 @@ struct AgencyOperation {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns to full operation formatted as a vpack slice
   //////////////////////////////////////////////////////////////////////////////
-  VPackSlice vPackSlice();
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack();
   uint32_t _ttl = 0;
   VPackSlice _oldValue;
   AgencyOperationPrecondition _precondition;
@@ -466,10 +466,7 @@ class AgencyComm {
   /// @brief update a version number in the agency
   //////////////////////////////////////////////////////////////////////////////
 
-  inline bool increaseVersion(std::string const& key) {
-    auto result = increment(key);
-    return result.successful();
-  };
+  bool increaseVersion(std::string const& key);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief update a version number in the agency, retry until it works
