@@ -22,6 +22,8 @@
 
 #include "ServerFeature.h"
 
+#include "Basics/ArangoGlobalContext.h"
+#include "Basics/process-utils.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb;
@@ -29,17 +31,25 @@ using namespace arangodb::application_features;
 
 ServerFeature::ServerFeature(application_features::ApplicationServer* server,
                              int* res)
-    : ApplicationFeature(server, "Server"), _result(res) {}
+    : ApplicationFeature(server, "Server"), _result(res) {
+  setOptional(false);
+  requiresElevatedPrivileges(false);
+  startsAfter("Scheduler");
+}
 
 void ServerFeature::start() {
-  while (true) {
-    LOG(INFO) << "info";
-
-    sleep(10);
-  }
 #warning TODO
 #if 0
   ArangoInstance = new ArangoServer(argc, argv);
   res = ArangoInstance->start();
 #endif
+}
+
+void ServerFeature::beginShutdown() {
+  std::string msg = ArangoGlobalContext::CONTEXT->binaryName() + " [shutting down]";
+  TRI_SetProcessTitle(msg.c_str());
+}
+
+void ServerFeature::stop() {
+  *_result = EXIT_SUCCESS;
 }

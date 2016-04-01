@@ -94,6 +94,10 @@
 #include <sys/time.h>
 #endif
 
+#ifdef TRI_HAVE_SYS_PRCTL_H
+#include <sys/prctl.h>
+#endif
+
 // .............................................................................
 // The problem we have for visual studio is that if we include WinSock2.h here
 // it may conflict later in some other source file. The conflict arises when

@@ -47,8 +47,6 @@ using namespace arangodb::rest;
 /// @brief scheduler singleton
 ////////////////////////////////////////////////////////////////////////////////
 
-std::unique_ptr<Scheduler> Scheduler::SCHEDULER;
-
 Scheduler::Scheduler(size_t nrThreads)
     : nrThreads(nrThreads),
       threads(0),
@@ -71,8 +69,6 @@ Scheduler::Scheduler(size_t nrThreads)
 
   // setup signal handlers
   initializeSignalHandlers();
-
-  SCHEDULER.reset(this);
 }
 
 Scheduler::~Scheduler() {}
@@ -118,14 +114,6 @@ bool Scheduler::start(ConditionVariable* cv) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Scheduler::isStarted() {
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief opens the scheduler for business
-////////////////////////////////////////////////////////////////////////////////
-
-bool Scheduler::open() {
   return true;
 }
 

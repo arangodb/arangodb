@@ -109,6 +109,10 @@ void DaemonFeature::daemonize() {
 void DaemonFeature::stop() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
 
+  if (!_daemon) {
+    return;
+  }
+
   // remove pid file
   if (!FileUtils::remove(_pidFile)) {
     LOG(ERR) << "cannot remove pid file '" << _pidFile << "'";

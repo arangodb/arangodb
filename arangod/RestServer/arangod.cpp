@@ -35,10 +35,7 @@
 #include "Basics/ArangoGlobalContext.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/ServerFeature.h"
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#include <iostream>
-#endif
+#include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb;
 
@@ -56,12 +53,14 @@ ArangoServer* ArangoInstance = nullptr;
 /// @brief Hooks for OS-Specific functions
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0 
 #ifdef _WIN32
 extern bool TRI_ParseMoreArgs(int argc, char* argv[]);
 extern void TRI_StartService(int argc, char* argv[]);
 #else
 bool TRI_ParseMoreArgs(int argc, char* argv[]) { return false; }
 void TRI_StartService(int argc, char* argv[]) {}
+#endif
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -87,7 +86,7 @@ int main(int argc, char* argv[]) {
   //  server.addFeature(new HttpServerFeature(&server));
   server.addFeature(new LanguageFeature(&server));
   server.addFeature(new RandomFeature(&server));
-  // server.addFeature(new SchedulerFeature(&server));
+  server.addFeature(new SchedulerFeature(&server));
   server.addFeature(new ServerFeature(&server, &ret));
   server.addFeature(new SslFeature(&server));
   server.addFeature(new TempFeature(&server, name));

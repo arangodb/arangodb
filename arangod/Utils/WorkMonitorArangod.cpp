@@ -28,10 +28,11 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Aql/QueryList.h"
-#include "Logger/Logger.h"
 #include "Basics/StringBuffer.h"
 #include "HttpServer/HttpHandler.h"
+#include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/Task.h"
 #include "VocBase/vocbase.h"
 
@@ -171,11 +172,11 @@ void WorkMonitor::sendWorkOverview(uint64_t taskId, std::string const& data) {
   auto answer = std::make_unique<TaskData>();
 
   answer->_taskId = taskId;
-  answer->_loop = Scheduler::SCHEDULER->lookupLoopById(taskId);
+  answer->_loop = SchedulerFeature::SCHEDULER->lookupLoopById(taskId);
   answer->_type = TaskData::TASK_DATA_RESPONSE;
   answer->_response.reset(response.release());
 
-  Scheduler::SCHEDULER->signalTask(answer);
+  SchedulerFeature::SCHEDULER->signalTask(answer);
 }
 
 HandlerWorkStack::HandlerWorkStack(HttpHandler* handler) : _handler(handler) {

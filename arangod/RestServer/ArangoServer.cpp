@@ -27,10 +27,6 @@
 #include <sys/wait.h>
 #endif
 
-#ifdef TRI_HAVE_SYS_PRCTL_H
-#include <sys/prctl.h>
-#endif
-
 #include <v8.h>
 #include <iostream>
 #include <fstream>
@@ -57,7 +53,7 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/RestShardHandler.h"
-#include "Dispatcher/ApplicationDispatcher.h"
+// #include "Dispatcher/ApplicationDispatcher.h"
 #include "Dispatcher/Dispatcher.h"
 #include "HttpServer/ApplicationEndpointServer.h"
 #include "HttpServer/AsyncJobManager.h"
@@ -118,8 +114,6 @@ ArangoServer::ArangoServer(int argc, char** argv)
       _argc(argc),
       _argv(argv),
       _tempPath(),
-      _applicationScheduler(nullptr),
-      _applicationDispatcher(nullptr),
       _applicationEndpointServer(nullptr),
       _applicationCluster(nullptr),
       _jobManager(nullptr),
@@ -127,8 +121,6 @@ ArangoServer::ArangoServer(int argc, char** argv)
       _authenticateSystemOnly(false),
       _disableAuthentication(false),
       _disableAuthenticationUnixSockets(false),
-      _dispatcherThreads(8),
-      _dispatcherQueueSize(16384),
       _v8Contexts(8),
       _indexThreads(2),
       _databasePath(),
@@ -335,8 +327,7 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
 #if 0
   factory->addPrefixHandler(
       "/_api/shard-comm",
-      RestHandlerCreator<RestShardHandler>::createData<Dispatcher*>,
-      _applicationDispatcher->dispatcher());
+      RestHandlerCreator<RestShardHandler>::createNoData);
 #endif
 
   // add "/aql" handler
@@ -528,11 +519,6 @@ void ArangoServer::buildApplicationServer() {
   // V8 engine
   // .............................................................................
 
-  _applicationV8 = new ApplicationV8(
-      _server, _queryRegistry, _applicationScheduler, _applicationDispatcher);
-
-  _applicationServer->addFeature(_applicationV8);
-
   // .............................................................................
   // define server options
   // .............................................................................
@@ -628,7 +614,7 @@ void ArangoServer::buildApplicationServer() {
   // .............................................................................
 
   _applicationCluster =
-      new ApplicationCluster(_server, _applicationDispatcher, _applicationV8);
+      new ApplicationCluster(_server);
   _applicationServer->addFeature(_applicationCluster);
 
   // .............................................................................
@@ -653,8 +639,7 @@ void ArangoServer::buildApplicationServer() {
            "start with replication applier turned off")(
               "server.allow-use-database", &ALLOW_USE_DATABASE_IN_REST_ACTIONS,
               "allow change of database in REST actions, only needed for "
-              "unittests")("server.threads", &_dispatcherThreads,
-                           "number of threads for basic operations")(
+              "unittests")(
               "server.additional-threads", &_additionalThreads,
               "number of threads in additional queues")(
               "server.hide-product-header", &HttpResponse::HideProductHeader,
@@ -676,10 +661,6 @@ void ArangoServer::buildApplicationServer() {
       "number of V8 contexts that are created for executing JavaScript "
       "actions");
 
-  additional["Server Options:help-admin"](
-      "scheduler.maximal-queue-size", &_dispatcherQueueSize,
-      "maximum size of queue for asynchronous operations");
-
   // .............................................................................
   // endpoint server
   // .............................................................................
@@ -687,7 +668,7 @@ void ArangoServer::buildApplicationServer() {
   _jobManager = new AsyncJobManager(ClusterCommRestCallback);
 
   _applicationEndpointServer = new ApplicationEndpointServer(
-      _applicationServer, _applicationScheduler, _applicationDispatcher,
+      _applicationServer,
       _jobManager, "arangodb", &SetRequestContext, (void*)_server);
   _applicationServer->addFeature(_applicationEndpointServer);
 
@@ -793,10 +774,6 @@ void ArangoServer::buildApplicationServer() {
   // disable certain options in unittest or script mode
   OperationMode::server_operation_mode_e mode =
       OperationMode::determineMode(_applicationServer->programOptions());
-
-  if (mode == OperationMode::MODE_CONSOLE) {
-    _applicationScheduler->disableControlCHandler();
-  }
 
   if (mode == OperationMode::MODE_SCRIPT ||
       mode == OperationMode::MODE_UNITTESTS) {
@@ -1001,20 +978,12 @@ int ArangoServer::startupServer() {
     }
   }
 
-  _applicationV8->setVocbase(vocbase);
-  _applicationV8->setConcurrency(_v8Contexts);
-  _applicationV8->defineDouble("DISPATCHER_THREADS", _dispatcherThreads);
-  _applicationV8->defineDouble("V8_CONTEXTS", _v8Contexts);
-
   // .............................................................................
   // prepare everything
   // .............................................................................
 
   if (!startServer) {
-    _applicationScheduler->disable();
-    _applicationDispatcher->disable();
     _applicationEndpointServer->disable();
-    _applicationV8->disableActions();
   }
 
   // prepare scheduler and dispatcher
@@ -1022,45 +991,12 @@ int ArangoServer::startupServer() {
 
   auto const role = ServerState::instance()->getRole();
 
-  // now we can create the queues
-  if (startServer) {
-    _applicationDispatcher->buildStandardQueue(_dispatcherThreads,
-                                               (int)_dispatcherQueueSize);
-
-    if (role == ServerState::ROLE_COORDINATOR ||
-        role == ServerState::ROLE_PRIMARY ||
-        role == ServerState::ROLE_SECONDARY) {
-      _applicationDispatcher->buildAQLQueue(_dispatcherThreads,
-                                            (int)_dispatcherQueueSize);
-    }
-
-    for (size_t i = 0; i < _additionalThreads.size(); ++i) {
-      int n = _additionalThreads[i];
-
-      if (n < 1) {
-        n = 1;
-      }
-
-      _additionalThreads[i] = n;
-
-      _applicationDispatcher->buildExtraQueue(i + 1, n,
-                                              (int)_dispatcherQueueSize);
-    }
-  }
-
   // and finish prepare
   _applicationServer->prepare2();
 
   // run version check (will exit!)
   if (checkVersion) {
     _applicationV8->versionCheck();
-  }
-
-  _applicationV8->upgradeDatabase(skipUpgrade, performUpgrade);
-
-  // setup the V8 actions
-  if (startServer) {
-    _applicationV8->prepareServer();
   }
 
   _pairForAqlHandler = new std::pair<ApplicationV8*, aql::QueryRegistry*>(

@@ -26,16 +26,17 @@
 
 #include "Basics/MutexLocker.h"
 #include "Basics/WorkMonitor.h"
-#include "Logger/Logger.h"
 #include "Dispatcher/Dispatcher.h"
 #include "HttpServer/AsyncJobManager.h"
 #include "HttpServer/HttpCommTask.h"
 #include "HttpServer/HttpHandler.h"
 #include "HttpServer/HttpListenTask.h"
 #include "HttpServer/HttpServerJob.h"
+#include "Logger/Logger.h"
 #include "Rest/EndpointList.h"
 #include "Scheduler/ListenTask.h"
 #include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -49,11 +50,11 @@ int HttpServer::sendChunk(uint64_t taskId, std::string const& data) {
   std::unique_ptr<TaskData> taskData(new TaskData());
 
   taskData->_taskId = taskId;
-  taskData->_loop = Scheduler::SCHEDULER->lookupLoopById(taskId);
+  taskData->_loop = SchedulerFeature::SCHEDULER->lookupLoopById(taskId);
   taskData->_type = TaskData::TASK_DATA_CHUNK;
   taskData->_data = data;
 
-  Scheduler::SCHEDULER->signalTask(taskData);
+  SchedulerFeature::SCHEDULER->signalTask(taskData);
 
   return TRI_ERROR_NO_ERROR;
 }

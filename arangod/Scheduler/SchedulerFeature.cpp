@@ -1,147 +1,173 @@
-#ifdef _WIN32
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Dr. Frank Celler
+////////////////////////////////////////////////////////////////////////////////
 
+#include "SchedulerFeature.h"
+
+#ifdef _WIN32
 #include <windows.h>
 #include <stdio.h>
-
-class ControlCTask;
-bool static CtrlHandler(DWORD eventType);
-static ControlCTask* localControlCTask;
-
 #endif
 
-#ifdef _WIN32
+#include "Logger/LogAppender.h"
+#include "ProgramOptions/ProgramOptions.h"
+#include "ProgramOptions/Section.h"
+#include "RestServer/ServerFeature.h"
+#include "Scheduler/SchedulerLibev.h"
+#include "Scheduler/SignalTask.h"
 
-class ControlCTask : public SignalTask {
- public:
-  explicit ControlCTask(ApplicationServer* server)
-      : Task("Control-C"), SignalTask(), _server(server), _seen(0) {
-    localControlCTask = this;
-    int result = SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, true);
+using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::options;
+using namespace arangodb::rest;
 
-    if (result == 0) {
-      LOG(WARN) << "unable to install control-c handler";
-    }
-  }
+Scheduler* SchedulerFeature::SCHEDULER = nullptr;
 
- public:
-  bool handleSignal() { return true; }
+SchedulerFeature::SchedulerFeature(
+    application_features::ApplicationServer* server)
+    : ApplicationFeature(server, "Scheduler"),
+      _nrSchedulerThreads(2),
+      _backend(0),
+      _showBackends(false),
+      _scheduler(nullptr),
+      _enableControlCHandler(true) {
+  setOptional(false);
+  requiresElevatedPrivileges(false);
+  startsAfter("Logger");
+}
 
- public:
-  ApplicationServer* _server;
-  uint32_t _seen;
-};
+void SchedulerFeature::collectOptions(
+    std::shared_ptr<options::ProgramOptions> options) {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
 
-#else
+  options->addSection(Section("scheduler", "Configure the I/O scheduler",
+                              "scheduler options", false, false));
 
-class ControlCTask : public SignalTask {
- public:
-  explicit ControlCTask(ApplicationServer* server)
-      : Task("Control-C"), SignalTask(), _server(server), _seen(0) {
-    addSignal(SIGINT);
-    addSignal(SIGTERM);
-    addSignal(SIGQUIT);
-  }
+  options->addOption("--scheduler.threads",
+                     "number of threads for I/O scheduler",
+                     new UInt64Parameter(&_nrSchedulerThreads));
 
- public:
-  bool handleSignal() override {
-    std::string msg = _server->getName() + " [shutting down]";
+  std::unordered_set<uint64_t> backends = {0, 1, 2, 3, 4};
 
-    TRI_SetProcessTitle(msg.c_str());
-
-    if (_seen == 0) {
-      LOG(INFO) << "control-c received, beginning shut down sequence";
-      _server->beginShutdown();
-    } else {
-      LOG(ERR) << "control-c received (again!), terminating";
-      _exit(1);
-      // TRI_EXIT_FUNCTION(EXIT_FAILURE,0);
-    }
-
-    ++_seen;
-
-    return true;
-  }
-
- private:
-  ApplicationServer* _server;
-  uint32_t _seen;
-};
-
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief handles hangup
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef _WIN32
-
-class HangupTask : public SignalTask {
- public:
-  HangupTask() : Task("Hangup"), SignalTask() {}
-
- public:
-  bool handleSignal() {
-    LOG(INFO) << "hangup received, about to reopen logfile";
-    Logger::reopen();
-    LOG(INFO) << "hangup received, reopened logfile";
-    return true;
-  }
-};
-
-#else
-
-class HangupTask : public SignalTask {
- public:
-  HangupTask() : Task("Hangup"), SignalTask() { addSignal(SIGHUP); }
-
- public:
-  bool handleSignal() override {
-    LOG(INFO) << "hangup received, about to reopen logfile";
-    Logger::reopen();
-    LOG(INFO) << "hangup received, reopened logfile";
-    return true;
-  }
-};
-
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief handles sigusr1 signals
-////////////////////////////////////////////////////////////////////////////////
-
-class Sigusr1Task : public SignalTask {
- public:
-  explicit Sigusr1Task(ApplicationScheduler* scheduler)
-      : Task("Sigusr1"), SignalTask(), _scheduler(scheduler) {
 #ifndef _WIN32
-    addSignal(SIGUSR1);
+  options->addHiddenOption(
+      "--scheduler.backend", "1: select, 2: poll, 4: epoll",
+      new DiscreteValuesParameter<UInt64Parameter>(&_backend, backends));
 #endif
+
+  options->addHiddenOption(
+      "--scheduler.show-backend", "show available backends",
+      new BooleanParameter(&_showBackends, false));
+}
+
+void SchedulerFeature::validateOptions(
+    std::shared_ptr<options::ProgramOptions>) {
+  if (_showBackends) {
+    std::cout << "available io backends are: "
+              << SchedulerLibev::availableBackends() << std::endl;
+    exit(EXIT_SUCCESS);
   }
 
- public:
-  bool handleSignal() override {
-    Scheduler* scheduler = this->_scheduler->scheduler();
+  if (_nrSchedulerThreads == 0) {
+    LOG(ERR) << "need at least one I/O thread";
+    abortInvalidParameters();
+  }
+}
 
-    if (scheduler != nullptr) {
-      bool isActive = scheduler->isActive();
+#ifdef TRI_HAVE_GETRLIMIT
+template <typename T>
+static std::string StringifyLimitValue(T value) {
+  auto max = std::numeric_limits<decltype(value)>::max();
+  if (value == max || value == max / 2) {
+    return "unlimited";
+  }
+  return std::to_string(value);
+}
+#endif
 
-      LOG(INFO) << "sigusr1 received - setting active flag to " << (!isActive);
+void SchedulerFeature::prepare() {
+}
 
-      scheduler->setActive(!isActive);
+void SchedulerFeature::start() {
+#ifdef TRI_HAVE_GETRLIMIT
+  struct rlimit rlim;
+  int res = getrlimit(RLIMIT_NOFILE, &rlim);
+
+  if (res == 0) {
+    LOG(INFO) << "file-descriptors (nofiles) hard limit is "
+              << StringifyLimitValue(rlim.rlim_max) << ", soft limit is "
+              << StringifyLimitValue(rlim.rlim_cur);
+  }
+#endif
+
+  buildScheduler();
+  buildControlCHandler();
+
+  bool ok = _scheduler->start(nullptr);
+
+  if (!ok) {
+    LOG(FATAL) << "the scheduler cannot be started";
+    FATAL_ERROR_EXIT();
+  }
+
+  while (!_scheduler->isStarted()) {
+    LOG_TOPIC(DEBUG, Logger::STARTUP) << "waiting for scheduler to start";
+    usleep(500 * 1000);
+  }
+
+  LOG_TOPIC(DEBUG, Logger::STARTUP) << "scheduler has started";
+}
+
+void SchedulerFeature::stop() {
+  static size_t const MAX_TRIES = 10;
+
+  if (_scheduler != nullptr) {
+    // remove all helper tasks
+    for (auto& task : _tasks) {
+      _scheduler->destroyTask(task);
     }
 
-    return true;
-  }
+    _tasks.clear();
 
- private:
-  ApplicationScheduler* _scheduler;
-};
+    // shutdown the scheduler
+    _scheduler->beginShutdown();
+
+    for (size_t count = 0; count < MAX_TRIES && _scheduler->isRunning();
+         ++count) {
+      LOG_TOPIC(TRACE, Logger::STARTUP) << "waiting for scheduler to stop";
+      usleep(100000);
+    }
+
+    _scheduler->shutdown();
+
+    // delete the scheduler
+    delete _scheduler;
+    _scheduler = nullptr;
+    SCHEDULER = nullptr;
+  }
+}
 
 #ifdef _WIN32
-
 bool CtrlHandler(DWORD eventType) {
-  ControlCTask* ccTask = localControlCTask;
-  // string msg = ccTask->_server->getName() + " [shutting down]";
   bool shutdown = false;
   std::string shutdownMessage;
 
@@ -180,18 +206,23 @@ bool CtrlHandler(DWORD eventType) {
       shutdown = false;
       break;
     }
-
-  }  // end of switch statement
+  }
 
   if (shutdown == false) {
     LOG(ERR) << "Invalid CTRL HANDLER event received - ignoring event";
     return true;
   }
 
-  if (ccTask->_seen == 0) {
+  static bool seen = false;
+
+  if (!seen) {
     LOG(INFO) << "" << shutdownMessage << ", beginning shut down sequence";
-    ccTask->_server->beginShutdown();
-    ++ccTask->_seen;
+
+    if (Scheduler::SCHEDULER != nullptr) {
+      Scheduler::SCHEDULER->server()->beginShutdown();
+    }
+
+    seen = true;
     return true;
   }
 
@@ -204,20 +235,124 @@ bool CtrlHandler(DWORD eventType) {
   return true;
 }
 
-#endif
-    
-#ifdef TRI_HAVE_GETRLIMIT
+#else
 
-template<typename T>
-static std::string StringifyLimitValue(T value) {
-  auto max = std::numeric_limits<decltype(value)>::max();
-  if (value == max || value == max / 2) {
-    return "unlimited";
+class ControlCTask : public SignalTask {
+ public:
+  explicit ControlCTask(application_features::ApplicationServer* server)
+      : Task("Control-C"), SignalTask(), _server(server), _seen(0) {
+    addSignal(SIGINT);
+    addSignal(SIGTERM);
+    addSignal(SIGQUIT);
   }
-  return std::to_string(value);
+
+ public:
+  bool handleSignal() override {
+    if (_seen == 0) {
+      LOG(INFO) << "control-c received, beginning shut down sequence";
+      _server->beginShutdown();
+    } else {
+      LOG(FATAL) << "control-c received (again!), terminating";
+      FATAL_ERROR_EXIT();
+    }
+
+    ++_seen;
+
+    return true;
+  }
+
+ private:
+  application_features::ApplicationServer* _server;
+  uint32_t _seen;
+};
+
+class HangupTask : public SignalTask {
+ public:
+  HangupTask() : Task("Hangup"), SignalTask() { addSignal(SIGHUP); }
+
+ public:
+  bool handleSignal() override {
+    LOG(INFO) << "hangup received, about to reopen logfile";
+    LogAppender::reopen();
+    LOG(INFO) << "hangup received, reopened logfile";
+    return true;
+  }
+};
+
+#endif
+
+void SchedulerFeature::buildScheduler() {
+  if (_scheduler != nullptr) {
+    LOG(FATAL) << "a scheduler has already been created";
+    FATAL_ERROR_EXIT();
+  }
+
+  _scheduler = new SchedulerLibev(_nrSchedulerThreads, _backend);
 }
 
+void SchedulerFeature::buildControlCHandler() {
+  if (_scheduler == nullptr) {
+    LOG(FATAL) << "no scheduler is known, cannot create control-c handler";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (_enableControlCHandler) {
+#ifdef WIN32
+    int result = SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, true);
+
+    if (result == 0) {
+      LOG(WARN) << "unable to install control-c handler";
+    }
+#else
+    Task* controlC = new ControlCTask(server());
+
+    int res = _scheduler->registerTask(controlC);
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      _tasks.emplace_back(controlC);
+    }
 #endif
+  }
+
+// hangup handler
+#ifndef WIN32
+  Task* hangup = new HangupTask();
+
+  int res = _scheduler->registerTask(hangup);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    _tasks.emplace_back(hangup);
+  }
+#endif
+}
+
+#warning TODO
+#if 0
+
+
+if (mode == OperationMode::MODE_CONSOLE) {
+    _applicationScheduler->disableControlCHandler();
+  }
+
+
+  if (!startServer) {
+    _applicationScheduler->disable();
+  }
+
+
+  options->addOption("--server.threads", "number of threads for basic operations",
+                     new UInt64Parameter(&_nrStandardThreads));
+
+
+
+
+
+
+
+
+
+
+================================================================================
 
 void ApplicationScheduler::setProcessorAffinity(
     std::vector<size_t> const& cores) {
@@ -268,19 +403,11 @@ void ApplicationScheduler::setupOptions(
 #else
       ("scheduler.backend", &_backend, "1: select, 2: poll, 4: epoll")
 #endif
-      ("scheduler.report-interval", &_reportInterval,
-       "scheduler report interval")
 #ifdef TRI_HAVE_GETRLIMIT
           ("server.descriptors-minimum", &_descriptorMinimum,
            "minimum number of file descriptors needed to start")
 #endif
               ;
-
-  if (_multiSchedulerAllowed) {
-    options["Server Options:help-admin"]("scheduler.threads",
-                                         &_nrSchedulerThreads,
-                                         "number of threads for I/O scheduler");
-  }
 }
 
 bool ApplicationScheduler::afterOptionParsing(
@@ -298,146 +425,6 @@ bool ApplicationScheduler::afterOptionParsing(
   return true;
 }
 
-bool ApplicationScheduler::prepare() {
-  if (_disabled) {
-    return true;
-  }
-
-  buildScheduler();
-
-  return true;
-}
-
-bool ApplicationScheduler::start() {
-  if (_disabled) {
-    return true;
-  }
-
-  buildSchedulerReporter();
-  buildControlCHandler();
-
-#ifdef TRI_HAVE_GETRLIMIT
-  struct rlimit rlim;
-  int res = getrlimit(RLIMIT_NOFILE, &rlim);
-
-  if (res == 0) {
-    LOG(INFO) << "file-descriptors (nofiles) hard limit is " << StringifyLimitValue(rlim.rlim_max) 
-              << ", soft limit is " << StringifyLimitValue(rlim.rlim_cur);
-  }
-#endif
-
-  bool ok = _scheduler->start(nullptr);
-
-  if (!ok) {
-    LOG(FATAL) << "the scheduler cannot be started"; FATAL_ERROR_EXIT();
-  }
-
-  while (!_scheduler->isStarted()) {
-    LOG(DEBUG) << "waiting for scheduler to start";
-    usleep(500 * 1000);
-  }
-
-  return true;
-}
-
-bool ApplicationScheduler::open() {
-  if (_disabled) {
-    return true;
-  }
-
-  if (_scheduler != nullptr) {
-    return _scheduler->open();
-  }
-
-  return false;
-}
-
-void ApplicationScheduler::stop() {
-  if (_disabled) {
-    return;
-  }
-
-  if (_scheduler != nullptr) {
-    static size_t const MAX_TRIES = 10;
-
-    // remove all helper tasks
-    for (auto& task : _tasks) {
-      _scheduler->destroyTask(task);
-    }
-
-    _tasks.clear();
-
-    // shutdown the scheduler
-    _scheduler->beginShutdown();
-
-    for (size_t count = 0; count < MAX_TRIES && _scheduler->isRunning();
-         ++count) {
-      LOG(TRACE) << "waiting for scheduler to stop";
-      usleep(100000);
-    }
-
-    _scheduler->shutdown();
-
-    // delete the scheduler
-    delete _scheduler;
-    _scheduler = nullptr;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief builds the scheduler
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationScheduler::buildScheduler() {
-  if (_scheduler != nullptr) {
-    LOG(FATAL) << "a scheduler has already been created"; FATAL_ERROR_EXIT();
-  }
-
-  _scheduler = new SchedulerLibev(_nrSchedulerThreads, _backend);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief quits on control-c signal
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationScheduler::buildControlCHandler() {
-  if (_scheduler == nullptr) {
-    LOG(FATAL) << "no scheduler is known, cannot create control-c handler"; FATAL_ERROR_EXIT();
-  }
-
-  if (!_disableControlCHandler) {
-    // control C handler
-    Task* controlC = new ControlCTask(_applicationServer);
-
-    int res = _scheduler->registerTask(controlC);
-
-    if (res == TRI_ERROR_NO_ERROR) {
-      _tasks.emplace_back(controlC);
-    }
-  }
-
-  // hangup handler
-  Task* hangup = new HangupTask();
-
-  int res = _scheduler->registerTask(hangup);
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    _tasks.emplace_back(hangup);
-  }
-
-  // sigusr handler
-  Task* sigusr = new Sigusr1Task(this);
-
-  res = _scheduler->registerTask(sigusr);
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    _tasks.emplace_back(sigusr);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adjusts the file descriptor limits
-////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationScheduler::adjustFileDescriptors() {
 #ifdef TRI_HAVE_GETRLIMIT
@@ -503,3 +490,5 @@ void ApplicationScheduler::adjustFileDescriptors() {
 
 #endif
 }
+
+#endif

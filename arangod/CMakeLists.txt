@@ -211,6 +211,7 @@ add_executable(${BIN_ARANGOD}
   Scheduler/ListenTask.cpp
   Scheduler/PeriodicTask.cpp
   Scheduler/Scheduler.cpp
+  Scheduler/SchedulerFeature.cpp
   Scheduler/SchedulerLibev.cpp
   Scheduler/SchedulerThread.cpp
   Scheduler/SignalTask.cpp

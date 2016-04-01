@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,23 +21,47 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef REST_SERVER_SERVER_FEATURE_H
-#define REST_SERVER_SERVER_FEATURE_H 1
+#ifndef ARANGOD_SCHEDULER_SCHEDULER_FEATURE_H
+#define ARANGOD_SCHEDULER_SCHEDULER_FEATURE_H 1
+
+#include "Basics/Common.h"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationServer/ApplicationFeature.h"
 
 namespace arangodb {
-class ServerFeature final : public application_features::ApplicationFeature {
+namespace rest {
+class Scheduler;
+class Task;
+}
+
+class SchedulerFeature final : public application_features::ApplicationFeature {
  public:
-  ServerFeature(application_features::ApplicationServer* server, int*);
+  static rest::Scheduler* SCHEDULER;
 
  public:
+  explicit SchedulerFeature(application_features::ApplicationServer* server);
+
+ public:
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void prepare() override;
   void start() override;
-  void beginShutdown() override;
   void stop() override;
 
  private:
-  int* _result;
+  void buildScheduler();
+  void buildControlCHandler();
+
+ private:
+  uint64_t _nrSchedulerThreads;
+  uint64_t _backend;
+  bool _showBackends;
+
+ private:
+  rest::Scheduler* _scheduler;
+  std::vector<rest::Task*> _tasks;
+  bool _enableControlCHandler;
 };
 }
 
