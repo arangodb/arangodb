@@ -390,7 +390,8 @@ bool AgencyCommLocker::fetchVersion(AgencyComm& comm) {
 
   AgencyCommResult result = comm.getValues(_key + "/Version", false);
   if (!result.successful()) {
-    if (result.httpCode() != (int)arangodb::rest::HttpResponse::NOT_FOUND) {
+    if (result.httpCode() !=
+        (int)arangodb::GeneralResponse::ResponseCode::NOT_FOUND) {
       return false;
     }
 
@@ -691,7 +692,8 @@ bool AgencyComm::initFromVPackSlice(std::string key, VPackSlice s) {
         // mop: forbidden will be thrown if directory already exists
         // need ability to recover in a case where the agency was half
         // initialized
-        if (result.httpCode() != arangodb::rest::HttpResponse::FORBIDDEN) {
+        if (result.httpCode() !=
+            (int)arangodb::GeneralResponse::ResponseCode::FORBIDDEN) {
           ret = false;
           return ret;
         }
@@ -1072,7 +1074,8 @@ bool AgencyComm::increaseVersion(std::string const& key) {
   AgencyCommResult result = getValues(key, false);
 
   if (!result.successful()) {
-    if (result.httpCode() != (int)arangodb::rest::HttpResponse::NOT_FOUND) {
+    if (result.httpCode() !=
+        (int)arangodb::GeneralResponse::ResponseCode::NOT_FOUND) {
       return false;
     }
 
@@ -1407,7 +1410,8 @@ AgencyCommResult AgencyComm::uniqid(std::string const& key, uint64_t count,
     result.clear();
     result = getValues(key, false);
 
-    if (result.httpCode() == (int)arangodb::rest::HttpResponse::NOT_FOUND) {
+    if (result.httpCode() ==
+        (int)arangodb::GeneralResponse::ResponseCode::NOT_FOUND) {
       try {
         VPackBuilder builder;
         builder.add(VPackValue(0));
@@ -1511,7 +1515,8 @@ bool AgencyComm::lock(std::string const& key, double ttl, double timeout,
         casValue(key + "/Lock", oldSlice, slice, ttl, timeout);
 
     if (!result.successful() &&
-        result.httpCode() == (int)arangodb::rest::HttpResponse::NOT_FOUND) {
+        result.httpCode() ==
+            (int)arangodb::GeneralResponse::ResponseCode::NOT_FOUND) {
       // key does not yet exist. create it now
       result = casValue(key + "/Lock", slice, false, ttl, timeout);
     }
@@ -1689,10 +1694,11 @@ std::string AgencyComm::buildUrl() const {
 /// @brief sends an HTTP request to the agency, handling failover
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AgencyComm::sendWithFailover(
-    arangodb::GeneralRequest::RequestType method, double const timeout,
-    AgencyCommResult& result, std::string const& url, std::string const& body,
-    bool isWatch) {
+bool AgencyComm::sendWithFailover(arangodb::GeneralRequest::RequestType method,
+                                  double const timeout,
+                                  AgencyCommResult& result,
+                                  std::string const& url,
+                                  std::string const& body, bool isWatch) {
   size_t numEndpoints;
 
   {
@@ -1729,7 +1735,7 @@ bool AgencyComm::sendWithFailover(
     }
 
     if (result._statusCode ==
-        (int)arangodb::rest::HttpResponse::TEMPORARY_REDIRECT) {
+        (int)arangodb::GeneralResponse::ResponseCode::TEMPORARY_REDIRECT) {
       // sometimes the agency will return a 307 (temporary redirect)
       // in this case we have to pick it up and use the new location returned
 
@@ -1832,8 +1838,7 @@ bool AgencyComm::send(arangodb::httpclient::GeneralClientConnection* connection,
   result._connected = false;
   result._statusCode = 0;
 
-  LOG(TRACE) << "sending "
-             << arangodb::HttpRequest::translateMethod(method)
+  LOG(TRACE) << "sending " << arangodb::HttpRequest::translateMethod(method)
              << " request to agency at endpoint '"
              << connection->getEndpoint()->specification() << "', url '" << url
              << "': " << body;
@@ -1873,7 +1878,7 @@ bool AgencyComm::send(arangodb::httpclient::GeneralClientConnection* connection,
   result._connected = true;
 
   if (response->getHttpReturnCode() ==
-      (int)arangodb::rest::HttpResponse::TEMPORARY_REDIRECT) {
+      (int)arangodb::GeneralResponse::ResponseCode::TEMPORARY_REDIRECT) {
     // temporary redirect. now save location header
 
     bool found = false;

@@ -59,7 +59,7 @@ class RestBaseHandler : public rest::HttpHandler {
   /// @brief generates a result from JSON
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void generateResult(rest::HttpResponse::HttpResponseCode,
+  virtual void generateResult(GeneralResponse::ResponseCode,
                               TRI_json_t const*);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -72,7 +72,7 @@ class RestBaseHandler : public rest::HttpHandler {
   /// @brief generates a result from VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void generateResult(rest::HttpResponse::HttpResponseCode,
+  virtual void generateResult(GeneralResponse::ResponseCode,
                               arangodb::velocypack::Slice const& slice);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -85,13 +85,13 @@ class RestBaseHandler : public rest::HttpHandler {
   /// @brief generates an error
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void generateError(rest::HttpResponse::HttpResponseCode, int);
+  virtual void generateError(GeneralResponse::ResponseCode, int);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates an error
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void generateError(rest::HttpResponse::HttpResponseCode, int,
+  virtual void generateError(GeneralResponse::ResponseCode, int,
                              std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////

@@ -47,7 +47,8 @@ HttpHandler::status_t WorkMonitorHandler::execute() {
 
   if (type == GeneralRequest::RequestType::GET) {
     if (len != 0) {
-      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+      generateError(GeneralResponse::ResponseCode::BAD,
+                    TRI_ERROR_HTTP_BAD_PARAMETER,
                     "expecting GET /_admin/work-monitor");
       return status_t(HANDLER_DONE);
     }
@@ -58,7 +59,8 @@ HttpHandler::status_t WorkMonitorHandler::execute() {
 
   if (type == GeneralRequest::RequestType::DELETE_REQ) {
     if (len != 1) {
-      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+      generateError(GeneralResponse::ResponseCode::BAD,
+                    TRI_ERROR_HTTP_BAD_PARAMETER,
                     "expecting DELETE /_admin/work-monitor/<id>");
 
       return status_t(HANDLER_DONE);
@@ -74,11 +76,11 @@ HttpHandler::status_t WorkMonitorHandler::execute() {
 
     VPackSlice s(b.start());
 
-    generateResult(HttpResponse::OK, s);
+    generateResult(GeneralResponse::ResponseCode::OK, s);
     return status_t(HANDLER_DONE);
   }
 
-  generateError(HttpResponse::BAD, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
-                "expecting GET or DELETE");
+  generateError(GeneralResponse::ResponseCode::BAD,
+                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED, "expecting GET or DELETE");
   return status_t(HANDLER_DONE);
 }

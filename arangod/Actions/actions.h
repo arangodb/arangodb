@@ -31,10 +31,7 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 class HttpRequest;
-
-namespace rest {
 class HttpResponse;
-}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -57,7 +54,7 @@ class TRI_action_result_t {
   bool isValid;
   bool canceled;
 
-  arangodb::rest::HttpResponse* response;
+  arangodb::HttpResponse* response;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

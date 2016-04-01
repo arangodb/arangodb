@@ -94,7 +94,7 @@ class VocbaseContext : public arangodb::RequestContext {
   /// @brief checks the authentication
   //////////////////////////////////////////////////////////////////////////////
 
-  rest::HttpResponse::HttpResponseCode authenticate() override final;
+  GeneralResponse::ResponseCode authenticate() override final;
 
  public:
   ////////////////////////////////////////////////////////////////////////////////

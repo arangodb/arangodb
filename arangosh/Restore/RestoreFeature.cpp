@@ -48,8 +48,8 @@ using namespace arangodb::httpclient;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
-RestoreFeature::RestoreFeature(
-    application_features::ApplicationServer* server, int* result)
+RestoreFeature::RestoreFeature(application_features::ApplicationServer* server,
+                               int* result)
     : ApplicationFeature(server, "Restore"),
       _collections(),
       _chunkSize(1024 * 1024 * 8),
@@ -175,7 +175,7 @@ void RestoreFeature::prepare() {
 }
 
 int RestoreFeature::tryCreateDatabase(ClientFeature* client,
-                                            std::string const& name) {
+                                      std::string const& name) {
   arangodb::basics::Json json(arangodb::basics::Json::Object);
   json("name", arangodb::basics::Json(name));
 
@@ -199,11 +199,12 @@ int RestoreFeature::tryCreateDatabase(ClientFeature* client,
 
   auto returnCode = response->getHttpReturnCode();
 
-  if (returnCode == HttpResponse::OK || returnCode == HttpResponse::CREATED) {
+  if (returnCode == (int)GeneralResponse::ResponseCode::OK ||
+      returnCode == (int)GeneralResponse::ResponseCode::CREATED) {
     // all ok
     return TRI_ERROR_NO_ERROR;
-  } else if (returnCode == HttpResponse::UNAUTHORIZED ||
-             returnCode == HttpResponse::FORBIDDEN) {
+  } else if (returnCode == (int)GeneralResponse::ResponseCode::UNAUTHORIZED ||
+             returnCode == (int)GeneralResponse::ResponseCode::FORBIDDEN) {
     // invalid authorization
     _httpClient->setErrorMessage(getHttpErrorMessage(response.get(), nullptr),
                                  false);
@@ -217,8 +218,8 @@ int RestoreFeature::tryCreateDatabase(ClientFeature* client,
 }
 
 int RestoreFeature::sendRestoreCollection(VPackSlice const& slice,
-                                                std::string const& name,
-                                                std::string& errorMsg) {
+                                          std::string const& name,
+                                          std::string& errorMsg) {
   std::string url =
       "/_api/replication/restore-collection"
       "?overwrite=" +
@@ -265,7 +266,7 @@ int RestoreFeature::sendRestoreCollection(VPackSlice const& slice,
 }
 
 int RestoreFeature::sendRestoreIndexes(VPackSlice const& slice,
-                                             std::string& errorMsg) {
+                                       std::string& errorMsg) {
   std::string const url = "/_api/replication/restore-indexes?force=" +
                           std::string(_force ? "true" : "false");
   std::string const body = slice.toJson();
@@ -295,8 +296,8 @@ int RestoreFeature::sendRestoreIndexes(VPackSlice const& slice,
 }
 
 int RestoreFeature::sendRestoreData(std::string const& cname,
-                                          char const* buffer, size_t bufferSize,
-                                          std::string& errorMsg) {
+                                    char const* buffer, size_t bufferSize,
+                                    std::string& errorMsg) {
   std::string const url = "/_api/replication/restore-data?collection=" +
                           StringUtils::urlEncode(cname) + "&recycleIds=" +
                           (_recycleIds ? "true" : "false") + "&force=" +

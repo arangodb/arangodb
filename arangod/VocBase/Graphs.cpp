@@ -21,11 +21,14 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/JsonHelper.h"
+#include "Graphs.h"
+
 #include "Aql/Graphs.h"
-#include "VocBase/Graphs.h"
-#include "Utils/transactions.h"
+#include "Basics/JsonHelper.h"
 #include "Cluster/ClusterMethods.h"
+#include "Utils/transactions.h"
+
+using namespace arangodb;
 using namespace arangodb::basics;
 
 std::string const graphs = "_graphs";
@@ -37,7 +40,7 @@ std::string const graphs = "_graphs";
 arangodb::aql::Graph* arangodb::lookupGraphByName(TRI_vocbase_t* vocbase,
                                                   std::string const& name) {
   if (ServerState::instance()->isCoordinator()) {
-    arangodb::rest::HttpResponse::HttpResponseCode responseCode;
+    GeneralResponse::ResponseCode responseCode;
     auto headers = std::make_unique<std::map<std::string, std::string>>();
     std::map<std::string, std::string> resultHeaders;
     std::string resultBody;

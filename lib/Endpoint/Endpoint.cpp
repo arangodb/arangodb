@@ -312,6 +312,8 @@ std::string const Endpoint::defaultEndpoint(TransportType type) {
       return "vpp+tcp://" + std::string(EndpointIp::_defaultHost) + ":" +
              StringUtils::itoa(EndpointIp::_defaultPortVpp);
   }
+
+  return ""; // silence GCC
 }
 
 ////////////////////////////////////////////////////////////////////////////////

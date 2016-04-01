@@ -46,17 +46,19 @@ bool RestAdminLogHandler::isDirect() const { return true; }
 HttpHandler::status_t RestAdminLogHandler::execute() {
   // "/log" can only be called for the _system database
   if (_request->databaseName() != "_system") {
-    generateError(HttpResponse::FORBIDDEN,
+    generateError(GeneralResponse::ResponseCode::FORBIDDEN,
                   TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
     return status_t(HANDLER_DONE);
   }
 
   // check the maximal log level to report
   bool found1;
-  std::string const& upto = StringUtils::tolower(_request->value("upto", found1));
+  std::string const& upto =
+      StringUtils::tolower(_request->value("upto", found1));
 
   bool found2;
-  std::string const& lvl = StringUtils::tolower(_request->value("level", found2));
+  std::string const& lvl =
+      StringUtils::tolower(_request->value("level", found2));
 
   LogLevel ul = LogLevel::INFO;
   bool useUpto = true;
@@ -85,7 +87,8 @@ HttpHandler::status_t RestAdminLogHandler::execute() {
     } else if (logLevel == "trace" || logLevel == "5") {
       ul = LogLevel::TRACE;
     } else {
-      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+      generateError(GeneralResponse::ResponseCode::BAD,
+                    TRI_ERROR_HTTP_BAD_PARAMETER,
                     std::string("unknown '") + (found2 ? "level" : "upto") +
                         "' log level: '" + logLevel + "'");
       return status_t(HANDLER_DONE);
