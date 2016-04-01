@@ -65,6 +65,7 @@ class Node;
 
 typedef std::chrono::system_clock::time_point TimePoint;
 typedef std::map<TimePoint, std::shared_ptr<Node>> TimeTable;
+typedef std::map<std::shared_ptr<Node>, TimePoint> TableTime;
 
 /// @brief Simple tree implementation
 class Node {
@@ -85,6 +86,9 @@ public:
 
   /// @brief Get name 
   std::string const& name() const;
+
+  /// @brief Get full path
+  std::string uri() const;
 
   /// @brief Apply rhs to this node (deep copy of rhs)
   Node& operator= (Node const& node);
@@ -144,10 +148,14 @@ protected:
 
   /// @brief Add time to live entry
   virtual bool addTimeToLive (long millis);
+
+  /// @brief Remove time to live entry
+  virtual bool removeTimeToLive ();
   
   Node* _parent;
   Children _children;
   TimeTable _time_table;
+  TableTime _table_time;
   Buffer<uint8_t> _value;
   
   NodeType _type;
