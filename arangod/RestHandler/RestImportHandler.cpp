@@ -55,8 +55,7 @@ HttpHandler::status_t RestImportHandler::execute() {
   _onDuplicateAction = DUPLICATE_ERROR;
 
   bool found;
-
-  std::string const duplicateType = _request->value("onDuplicate", found);
+  std::string const& duplicateType = _request->value("onDuplicate", found);
 
   if (found) {
     if (duplicateType == "update") {
@@ -69,12 +68,12 @@ HttpHandler::status_t RestImportHandler::execute() {
   }
 
   // extract the sub-request type
-  HttpRequest::HttpRequestType type = _request->requestType();
+  auto const type = _request->requestType();
 
   switch (type) {
-    case HttpRequest::HTTP_REQUEST_POST: {
+    case GeneralRequest::RequestType::POST: {
       // extract the import type
-      std::string const documentType = _request->value("type", found);
+      std::string const& documentType = _request->value("type", found);
 
       if (found && (documentType == "documents" || documentType == "array" ||
                     documentType == "list" || documentType == "auto")) {
@@ -102,7 +101,7 @@ HttpHandler::status_t RestImportHandler::execute() {
 TRI_col_type_e RestImportHandler::getCollectionType() {
   // extract the collection type from the request
   bool found;
-  std::string const collectionType =
+  std::string const& collectionType =
       _request->value("createCollectionType", found);
 
   if (found && !collectionType.empty() && collectionType == "edge") {
@@ -118,7 +117,7 @@ TRI_col_type_e RestImportHandler::getCollectionType() {
 
 bool RestImportHandler::extractOverwrite() const {
   bool found;
-  char const* overwrite = _request->value("overwrite", found);
+  std::string const& overwrite = _request->value("overwrite", found);
 
   if (found) {
     return StringUtils::boolean(overwrite);
@@ -133,7 +132,7 @@ bool RestImportHandler::extractOverwrite() const {
 
 bool RestImportHandler::extractComplete() const {
   bool found;
-  char const* forceStr = _request->value("complete", found);
+  std::string const& forceStr = _request->value("complete", found);
 
   if (found) {
     return StringUtils::boolean(forceStr);
@@ -376,7 +375,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
   // extract the collection name
   bool found;
-  std::string const collection = _request->value("collection", found);
+  std::string const& collection = _request->value("collection", found);
 
   if (!found || collection.empty()) {
     generateError(HttpResponse::BAD,
@@ -402,8 +401,9 @@ bool RestImportHandler::createFromJson(std::string const& type) {
     linewise = true;
 
     // auto detect import type by peeking at first character
-    char const* ptr = _request->body();
-    char const* end = ptr + _request->bodySize();
+    std::string const& body = _request->body();
+    char const* ptr = body.c_str();
+    char const* end = ptr + body.size();
 
     while (ptr < end) {
       char const c = *ptr;
@@ -450,8 +450,9 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
   if (linewise) {
     // each line is a separate JSON document
-    char const* ptr = _request->body();
-    char const* end = ptr + _request->bodySize();
+    std::string const& body = _request->body();
+    char const* ptr = body.c_str();
+    char const* end = ptr + body.size();
     size_t i = 0;
 
     while (ptr < end) {
@@ -528,9 +529,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
     // the entire request body is one JSON document
     std::shared_ptr<VPackBuilder> parsedDocuments;
     try {
-      parsedDocuments = VPackParser::fromJson(
-          reinterpret_cast<uint8_t const*>(_request->body()),
-          _request->bodySize());
+      parsedDocuments = VPackParser::fromJson(_request->body());
     } catch (VPackException const&) {
       generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "expecting a JSON array in the request");
@@ -603,7 +602,7 @@ bool RestImportHandler::createFromKeyValueList() {
 
   // extract the collection name
   bool found;
-  std::string const collection = _request->value("collection", found);
+  std::string const& collection = _request->value("collection", found);
 
   if (!found || collection.empty()) {
     generateError(HttpResponse::BAD,
@@ -620,12 +619,14 @@ bool RestImportHandler::createFromKeyValueList() {
   // read line number (optional)
   int64_t lineNumber = 0;
   std::string const& lineNumValue = _request->value("line", found);
+
   if (found) {
     lineNumber = StringUtils::int64(lineNumValue);
   }
 
-  char const* current = _request->body();
-  char const* bodyEnd = current + _request->bodySize();
+  std::string const& bodyStr = _request->body();
+  char const* current = bodyStr.c_str();    
+  char const* bodyEnd = current + bodyStr.size();
 
   // process header
   char const* next = strchr(current, '\n');
@@ -810,7 +811,7 @@ void RestImportHandler::generateDocumentsCreated(
     json.add("ignored", VPackValue(result._numIgnored));
 
     bool found;
-    char const* detailsStr = _request->value("details", found);
+    std::string const& detailsStr = _request->value("details", found);
 
     // include failure details?
     if (found && StringUtils::boolean(detailsStr)) {

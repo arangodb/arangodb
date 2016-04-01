@@ -103,9 +103,9 @@ class v8_action_t : public TRI_action_t {
     ssize_t forceContext = -1;
     bool found;
 
-    char const* c = request->header("x-arango-v8-context", found);
+    std::string const& c = request->header("x-arango-v8-context", found);
 
-    if (found && c != nullptr) {
+    if (found && !c.empty()) {
       forceContext = StringUtils::int32(c);
     }
 
@@ -126,7 +126,8 @@ class v8_action_t : public TRI_action_t {
           _callbacks.find(context->isolate);
 
       if (i == _callbacks.end()) {
-        LOG(WARN) << "no callback function for JavaScript action '" << _url << "'";
+        LOG(WARN) << "no callback function for JavaScript action '" << _url
+                  << "'";
 
         GlobalV8Dealer->exitContext(context);
 
@@ -397,7 +398,8 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   // copy header fields
   v8::Handle<v8::Object> headerFields = v8::Object::New(isolate);
 
-  std::map<std::string, std::string> const& headers = request->headers();
+  std::map<std::string, std::string> headers = request->headers();
+  headers["content-length"] = StringUtils::itoa(request->contentLength());
   std::map<std::string, std::string>::const_iterator iter = headers.begin();
 
   for (; iter != headers.end(); ++iter) {
@@ -412,48 +414,42 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
 
   // copy request type
   switch (request->requestType()) {
-    case HttpRequest::HTTP_REQUEST_POST: {
+    case GeneralRequest::RequestType::POST: {
       TRI_GET_GLOBAL_STRING(PostConstant);
       req->ForceSet(RequestTypeKey, PostConstant);
-      req->ForceSet(
-          RequestBodyKey,
-          TRI_V8_PAIR_STRING(request->body(), (int)request->bodySize()));
+      req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(request->body()));
       break;
     }
 
-    case HttpRequest::HTTP_REQUEST_PUT: {
+    case GeneralRequest::RequestType::PUT: {
       TRI_GET_GLOBAL_STRING(PutConstant);
       req->ForceSet(RequestTypeKey, PutConstant);
-      req->ForceSet(
-          RequestBodyKey,
-          TRI_V8_PAIR_STRING(request->body(), (int)request->bodySize()));
+      req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(request->body()));
       break;
     }
 
-    case HttpRequest::HTTP_REQUEST_PATCH: {
+    case GeneralRequest::RequestType::PATCH: {
       TRI_GET_GLOBAL_STRING(PatchConstant);
       req->ForceSet(RequestTypeKey, PatchConstant);
-      req->ForceSet(
-          RequestBodyKey,
-          TRI_V8_PAIR_STRING(request->body(), (int)request->bodySize()));
+      req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(request->body()));
       break;
     }
-    case HttpRequest::HTTP_REQUEST_OPTIONS: {
+    case GeneralRequest::RequestType::OPTIONS: {
       TRI_GET_GLOBAL_STRING(OptionsConstant);
       req->ForceSet(RequestTypeKey, OptionsConstant);
       break;
     }
-    case HttpRequest::HTTP_REQUEST_DELETE: {
+    case GeneralRequest::RequestType::DELETE_REQ: {
       TRI_GET_GLOBAL_STRING(DeleteConstant);
       req->ForceSet(RequestTypeKey, DeleteConstant);
       break;
     }
-    case HttpRequest::HTTP_REQUEST_HEAD: {
+    case GeneralRequest::RequestType::HEAD: {
       TRI_GET_GLOBAL_STRING(HeadConstant);
       req->ForceSet(RequestTypeKey, HeadConstant);
       break;
     }
-    case HttpRequest::HTTP_REQUEST_GET: {
+    case GeneralRequest::RequestType::GET: {
       default:
         TRI_GET_GLOBAL_STRING(GetConstant);
         req->ForceSet(RequestTypeKey, GetConstant);
@@ -472,18 +468,18 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   }
 
   // copy request array parameter (a[]=1&a[]=2&...)
-  std::map<std::string, std::vector<char const*>*> arrayValues =
+  std::map<std::string, std::vector<std::string>> arrayValues =
       request->arrayValues();
 
   for (auto& arrayValue : arrayValues) {
     std::string const& k = arrayValue.first;
-    std::vector<char const*>* v = arrayValue.second;
+    std::vector<std::string> const& v = arrayValue.second;
 
     v8::Handle<v8::Array> list =
-        v8::Array::New(isolate, static_cast<int>(v->size()));
+        v8::Array::New(isolate, static_cast<int>(v.size()));
 
-    for (size_t i = 0; i < v->size(); ++i) {
-      list->Set((uint32_t)i, TRI_V8_ASCII_STRING(v->at(i)));
+    for (size_t i = 0; i < v.size(); ++i) {
+      list->Set((uint32_t)i, TRI_V8_STD_STRING(v[i]));
     }
 
     valuesObject->ForceSet(TRI_V8_STD_STRING(k), list);
@@ -911,11 +907,12 @@ static void JS_RawRequestBody(v8::FunctionCallbackInfo<v8::Value> const& args) {
     v8::Handle<v8::Value> property = obj->Get(TRI_V8_ASCII_STRING("internals"));
     if (property->IsExternal()) {
       v8::Handle<v8::External> e = v8::Handle<v8::External>::Cast(property);
-      auto request = static_cast<arangodb::rest::HttpRequest*>(e->Value());
+      auto request = static_cast<arangodb::HttpRequest*>(e->Value());
 
       if (request != nullptr) {
+        std::string bodyStr = request->body();
         V8Buffer* buffer =
-            V8Buffer::New(isolate, request->body(), request->bodySize());
+            V8Buffer::New(isolate, bodyStr.c_str(), bodyStr.size());
 
         TRI_V8_RETURN(buffer->_handle);
       }
@@ -946,10 +943,11 @@ static void JS_RequestParts(v8::FunctionCallbackInfo<v8::Value> const& args) {
     v8::Handle<v8::Value> property = obj->Get(TRI_V8_ASCII_STRING("internals"));
     if (property->IsExternal()) {
       v8::Handle<v8::External> e = v8::Handle<v8::External>::Cast(property);
-      auto request = static_cast<arangodb::rest::HttpRequest*>(e->Value());
+      auto request = static_cast<arangodb::HttpRequest*>(e->Value());
 
-      char const* beg = request->body();
-      char const* end = beg + request->bodySize();
+      std::string const& bodyStr = request->body();
+      char const* beg = bodyStr.c_str();
+      char const* end = beg + bodyStr.size();
 
       while (beg < end && (*beg == '\r' || *beg == '\n' || *beg == ' ')) {
         ++beg;
@@ -1272,7 +1270,7 @@ void TRI_InitV8Actions(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 static bool clusterSendToAllServers(
     std::string const& dbname,
     std::string const& path,  // Note: Has to be properly encoded!
-    arangodb::rest::HttpRequest::HttpRequestType const& method,
+    arangodb::GeneralRequest::RequestType const& method,
     std::string const& body) {
   ClusterInfo* ci = ClusterInfo::instance();
   ClusterComm* cc = ClusterComm::instance();
@@ -1370,7 +1368,7 @@ static void JS_DebugSetFailAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (ServerState::instance()->isCoordinator()) {
     int res = clusterSendToAllServers(
         dbname, "_admin/debug/failat/" + StringUtils::urlEncode(point),
-        arangodb::rest::HttpRequest::HttpRequestType::HTTP_REQUEST_PUT, "");
+        arangodb::GeneralRequest::RequestType::PUT, "");
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
@@ -1414,7 +1412,7 @@ static void JS_DebugRemoveFailAt(
   if (ServerState::instance()->isCoordinator()) {
     int res = clusterSendToAllServers(
         dbname, "_admin/debug/failat/" + StringUtils::urlEncode(point),
-        arangodb::rest::HttpRequest::HttpRequestType::HTTP_REQUEST_DELETE, "");
+        arangodb::GeneralRequest::RequestType::DELETE_REQ, "");
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
@@ -1457,7 +1455,7 @@ static void JS_DebugClearFailAt(
 
     int res = clusterSendToAllServers(
         dbname, "_admin/debug/failat",
-        arangodb::rest::HttpRequest::HttpRequestType::HTTP_REQUEST_DELETE, "");
+        arangodb::GeneralRequest::RequestType::DELETE_REQ, "");
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }

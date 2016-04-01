@@ -63,8 +63,9 @@ bool RestEdgeHandler::createDocument() {
 
   // extract the from
   bool found;
-  char const* from = _request->value("from", found);
-  if (!found || *from == '\0') {
+  std::string const& from = _request->value("from", found);
+
+  if (!found || from.empty()) {
     generateError(
         HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
         "'from' is missing, expecting " + EDGE_PATH +
@@ -73,9 +74,9 @@ bool RestEdgeHandler::createDocument() {
   }
 
   // extract the to
-  char const* to = _request->value("to", found);
+  std::string const& to = _request->value("to", found);
 
-  if (!found || *to == '\0') {
+  if (!found || to.empty()) {
     generateError(
         HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
         "'to' is missing, expecting " + EDGE_PATH +
@@ -84,7 +85,7 @@ bool RestEdgeHandler::createDocument() {
   }
 
   // extract the cid
-  std::string const collection = _request->value("collection", found);
+  std::string const& collection = _request->value("collection", found);
 
   if (!found || collection.empty()) {
     generateError(HttpResponse::BAD,
@@ -114,7 +115,8 @@ bool RestEdgeHandler::createDocument() {
 
     if (ServerState::instance()->isCoordinator()) {
       // json will be freed inside!
-      return createDocumentCoordinator(collection, waitForSync, body, from, to);
+      return createDocumentCoordinator(collection, waitForSync, body,
+                                       from.c_str(), to.c_str());
     }
 
     if (!checkCreateCollection(collection, getCollectionType())) {

@@ -23,7 +23,7 @@ LD_RPATH=       -R'$$'ORIGIN
 LD_RPATH_PRE=   -R
 
 ## Compiler switch to embed a library name
-LD_SONAME = -h $(notdir $(MIDDLE_SO_TARGET))
+LD_SONAME = -Wl,-h,$(notdir $(MIDDLE_SO_TARGET))
 
 ## Shared library options
 LD_SOOPTIONS= -Wl,-Bsymbolic

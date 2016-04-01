@@ -20,36 +20,37 @@
 ///
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
-#include "Cluster/AgencyComm.h"
-#include "Basics/JsonHelper.h"
-#include "Basics/ReadLocker.h"
-#include "Basics/StringUtils.h"
-#include "Basics/StringBuffer.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Basics/WriteLocker.h"
-#include "Basics/json.h"
-#include "Logger/Logger.h"
-#include "Basics/random.h"
-#include "Cluster/ServerState.h"
-#include "Rest/Endpoint.h"
-#include "Rest/HttpRequest.h"
-#include "SimpleHttpClient/GeneralClientConnection.h"
-#include "SimpleHttpClient/SimpleHttpClient.h"
-#include <velocypack/Iterator.h>
-#include "SimpleHttpClient/SimpleHttpResult.h"
 
+#include "AgencyComm.h"
+
+#include <velocypack/Iterator.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Sink.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Basics/JsonHelper.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/StringBuffer.h"
+#include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Basics/WriteLocker.h"
+#include "Basics/json.h"
+#include "Basics/random.h"
+#include "Cluster/ServerState.h"
+#include "Endpoint/Endpoint.h"
+#include "Logger/Logger.h"
+#include "Rest/HttpRequest.h"
+#include "Rest/HttpResponse.h"
+#include "SimpleHttpClient/GeneralClientConnection.h"
+#include "SimpleHttpClient/SimpleHttpClient.h"
+#include "SimpleHttpClient/SimpleHttpResult.h"
+
 using namespace arangodb;
 
-void addEmptyVPackObject(std::string const& name, VPackBuilder &builder) {
+void addEmptyVPackObject(std::string const& name, VPackBuilder& builder) {
   builder.add(VPackValue(name));
-  {
-    VPackObjectBuilder c(&builder);
-  }
+  { VPackObjectBuilder c(&builder); }
 }
   
 //////////////////////////////////////////////////////////////////////////////
@@ -142,7 +143,7 @@ std::string AgencyTransaction::toJson() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 AgencyEndpoint::AgencyEndpoint(
-    arangodb::rest::Endpoint* endpoint,
+    Endpoint* endpoint,
     arangodb::httpclient::GeneralClientConnection* connection)
     : _endpoint(endpoint), _connection(connection), _busy(false) {}
 
@@ -579,13 +580,13 @@ void AgencyComm::cleanup() {
 
 bool AgencyComm::tryConnect() {
   {
-    std::string endpointsStr { getUniqueEndpointsString() };
+    std::string endpointsStr{getUniqueEndpointsString()};
 
     WRITE_LOCKER(writeLocker, AgencyComm::_globalLock);
     if (_globalEndpoints.size() == 0) {
       return false;
     }
-    
+
     // mop: not sure if a timeout makes sense here
     while (true) {
       LOG(INFO) << "Trying to find an active agency. Checking " << endpointsStr;
@@ -688,7 +689,8 @@ bool AgencyComm::tryInitializeStructure() {
       builder.add(VPackValue("Databases"));
       {
         VPackObjectBuilder d(&builder);
-        builder.add("_system", VPackValue("{\"name\":\"_system\", \"id\":\"1\"}"));
+        builder.add("_system",
+                    VPackValue("{\"name\":\"_system\", \"id\":\"1\"}"));
       }
       builder.add("Lock", VPackValue("\"UNLOCKED\""));
       addEmptyVPackObject("DBServers", builder);
@@ -715,7 +717,8 @@ bool AgencyComm::tryInitializeStructure() {
       builder.add(VPackValue("Databases"));
       {
         VPackObjectBuilder d(&builder);
-        builder.add("_system", VPackValue("{\"name\":\"_system\", \"id\":\"1\"}"));
+        builder.add("_system",
+                    VPackValue("{\"name\":\"_system\", \"id\":\"1\"}"));
       }
       addEmptyVPackObject("DBServers", builder);
       builder.add("Lock", VPackValue("\"UNLOCKED\""));
@@ -744,11 +747,11 @@ bool AgencyComm::tryInitializeStructure() {
       return true;
     }
   } catch (std::exception const& e) {
-      LOG(FATAL) << "Fatal error initializing agency " << e.what();
-      FATAL_ERROR_EXIT();
+    LOG(FATAL) << "Fatal error initializing agency " << e.what();
+    FATAL_ERROR_EXIT();
   } catch (...) {
-      LOG(FATAL) << "Fatal error initializing agency";
-      FATAL_ERROR_EXIT();
+    LOG(FATAL) << "Fatal error initializing agency";
+    FATAL_ERROR_EXIT();
   }
 }
 
@@ -790,7 +793,7 @@ bool AgencyComm::initFromVPackSlice(std::string key, VPackSlice s) {
 //////////////////////////////////////////////////////////////////////////////
 bool AgencyComm::hasInitializedStructure() {
   AgencyCommResult result = getValues("InitDone", false);
-  
+
   if (!result.successful()) {
     return false;
   }
@@ -848,7 +851,8 @@ void AgencyComm::disconnect() {
 
 bool AgencyComm::addEndpoint(std::string const& endpointSpecification,
                              bool toFront) {
-  LOG(TRACE) << "adding global agency-endpoint '" << endpointSpecification << "'";
+  LOG(TRACE) << "adding global agency-endpoint '" << endpointSpecification
+             << "'";
 
   {
     WRITE_LOCKER(writeLocker, AgencyComm::_globalLock);
@@ -861,8 +865,7 @@ bool AgencyComm::addEndpoint(std::string const& endpointSpecification,
 
       TRI_ASSERT(agencyEndpoint != nullptr);
 
-      if (agencyEndpoint->_endpoint->getSpecification() ==
-          endpointSpecification) {
+      if (agencyEndpoint->_endpoint->specification() == endpointSpecification) {
         // a duplicate. just ignore
         return false;
       }
@@ -905,8 +908,7 @@ bool AgencyComm::hasEndpoint(std::string const& endpointSpecification) {
     while (it != _globalEndpoints.end()) {
       AgencyEndpoint const* agencyEndpoint = (*it);
 
-      if (agencyEndpoint->_endpoint->getSpecification() ==
-          endpointSpecification) {
+      if (agencyEndpoint->_endpoint->specification() == endpointSpecification) {
         return true;
       }
 
@@ -937,7 +939,7 @@ std::vector<std::string> AgencyComm::getEndpoints() {
 
       TRI_ASSERT(agencyEndpoint != nullptr);
 
-      result.push_back(agencyEndpoint->_endpoint->getSpecification());
+      result.push_back(agencyEndpoint->_endpoint->specification());
       ++it;
     }
   }
@@ -957,17 +959,15 @@ std::string AgencyComm::getUniqueEndpointsString() {
     READ_LOCKER(readLocker, AgencyComm::_globalLock);
 
     std::list<AgencyEndpoint*> uniqueEndpoints{
-      AgencyComm::_globalEndpoints.begin(),
-      AgencyComm::_globalEndpoints.end()
-    };
+        AgencyComm::_globalEndpoints.begin(),
+        AgencyComm::_globalEndpoints.end()};
 
-    uniqueEndpoints.unique([] (AgencyEndpoint *a, AgencyEndpoint *b) {
-        return a->_endpoint->getSpecification() == b->_endpoint->getSpecification();
+    uniqueEndpoints.unique([](AgencyEndpoint* a, AgencyEndpoint* b) {
+      return a->_endpoint->specification() == b->_endpoint->specification();
     });
 
-    std::list<AgencyEndpoint*>::const_iterator it =
-        uniqueEndpoints.begin();
-    
+    std::list<AgencyEndpoint*>::const_iterator it = uniqueEndpoints.begin();
+
     while (it != uniqueEndpoints.end()) {
       if (!result.empty()) {
         result += ", ";
@@ -977,7 +977,7 @@ std::string AgencyComm::getUniqueEndpointsString() {
 
       TRI_ASSERT(agencyEndpoint != nullptr);
 
-      result.append(agencyEndpoint->_endpoint->getSpecification());
+      result.append(agencyEndpoint->_endpoint->specification());
       ++it;
     }
   }
@@ -1008,7 +1008,7 @@ std::string AgencyComm::getEndpointsString() {
 
       TRI_ASSERT(agencyEndpoint != nullptr);
 
-      result.append(agencyEndpoint->_endpoint->getSpecification());
+      result.append(agencyEndpoint->_endpoint->specification());
       ++it;
     }
   }
@@ -1068,8 +1068,8 @@ std::string AgencyComm::generateStamp() {
 
 AgencyEndpoint* AgencyComm::createAgencyEndpoint(
     std::string const& endpointSpecification) {
-  std::unique_ptr<arangodb::rest::Endpoint> endpoint(
-      arangodb::rest::Endpoint::clientFactory(endpointSpecification));
+  std::unique_ptr<Endpoint> endpoint(
+      Endpoint::clientFactory(endpointSpecification));
 
   if (endpoint == nullptr) {
     // could not create endpoint...
@@ -1126,7 +1126,7 @@ AgencyCommResult AgencyComm::sendServerState(double ttl) {
 std::string AgencyComm::getVersion() {
   AgencyCommResult result;
 
-  sendWithFailover(arangodb::rest::HttpRequest::HTTP_REQUEST_GET,
+  sendWithFailover(arangodb::GeneralRequest::RequestType::GET,
                    _globalConnectionOptions._requestTimeout, result, "version",
                    "", false);
 
@@ -1135,23 +1135,6 @@ std::string AgencyComm::getVersion() {
   }
 
   return "";
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief update a version number in the agency, retry until it works
-////////////////////////////////////////////////////////////////////////////////
-
-void AgencyComm::increaseVersionRepeated(std::string const& key) {
-  bool ok = false;
-  while (!ok) {
-    ok = increaseVersion(key);
-    if (ok) {
-      return;
-    }
-    uint32_t val = 300 + TRI_UInt32Random() % 400;
-    LOG(INFO) << "Could not increase " << key << " in agency, retrying in " << val << "!";
-    usleep(val * 1000);
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1286,6 +1269,23 @@ bool AgencyComm::increaseVersion(std::string const& key) {
   return result.successful();
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update a version number in the agency, retry until it works
+////////////////////////////////////////////////////////////////////////////////
+
+void AgencyComm::increaseVersionRepeated(std::string const& key) {
+  bool ok = false;
+  while (!ok) {
+    ok = increaseVersion(key);
+    if (ok) {
+      return;
+    }
+    uint32_t val = 300 + TRI_UInt32Random() % 400;
+    LOG(INFO) << "Could not increase " << key << " in agency, retrying in "
+              << val << "!";
+    usleep(val * 1000);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief increment a key
@@ -1319,7 +1319,7 @@ AgencyCommResult AgencyComm::getValues(std::string const& key, bool recursive) {
     builder.add(VPackValue(AgencyComm::prefix() + key));
   }
 
-  sendWithFailover(arangodb::rest::HttpRequest::HTTP_REQUEST_POST,
+  sendWithFailover(arangodb::GeneralRequest::RequestType::POST,
                    _globalConnectionOptions._requestTimeout, result, url,
                    builder.toJson(), false);
 
@@ -1473,7 +1473,7 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
   AgencyTransaction transaction(operation);
 
   sendWithFailover(
-      arangodb::rest::HttpRequest::HTTP_REQUEST_POST,
+      arangodb::GeneralRequest::RequestType::POST,
       timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout,
       result, url,
       transaction.toJson(),
@@ -1513,7 +1513,7 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
   AgencyTransaction transaction(operation);
 
   sendWithFailover(
-      arangodb::rest::HttpRequest::HTTP_REQUEST_POST,
+      arangodb::GeneralRequest::RequestType::POST,
       timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout,
       result, url,
       transaction.toJson(),
@@ -1785,7 +1785,7 @@ AgencyEndpoint* AgencyComm::popEndpoint(std::string const& endpoint) {
         TRI_ASSERT(agencyEndpoint != nullptr);
 
         if (!endpoint.empty() &&
-            agencyEndpoint->_endpoint->getSpecification() != endpoint) {
+            agencyEndpoint->_endpoint->specification() != endpoint) {
           // we're looking for a different endpoint
           ++it;
           continue;
@@ -1871,7 +1871,7 @@ bool AgencyComm::sendTransactionWithFailover(
 
   url += "/write";
 
-  return sendWithFailover(arangodb::rest::HttpRequest::HTTP_REQUEST_POST,
+  return sendWithFailover(arangodb::GeneralRequest::RequestType::POST,
                    _globalConnectionOptions._requestTimeout, result, url,
                    transaction.toJson(), false);
 }
@@ -1881,7 +1881,7 @@ bool AgencyComm::sendTransactionWithFailover(
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::sendWithFailover(
-    arangodb::rest::HttpRequest::HttpRequestType method, double const timeout,
+    arangodb::GeneralRequest::RequestType method, double const timeout,
     AgencyCommResult& result, std::string const& url, std::string const& body,
     bool isWatch) {
   size_t numEndpoints;
@@ -1963,7 +1963,8 @@ bool AgencyComm::sendWithFailover(
           continue;
         }
 
-        LOG(ERR) << "found redirection to unknown endpoint '" << endpoint << "'. Will not follow!";
+        LOG(ERR) << "found redirection to unknown endpoint '" << endpoint
+                 << "'. Will not follow!";
 
         // this is an error
         return false;
@@ -2003,14 +2004,14 @@ bool AgencyComm::sendWithFailover(
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::send(arangodb::httpclient::GeneralClientConnection* connection,
-                      arangodb::rest::HttpRequest::HttpRequestType method,
+                      arangodb::GeneralRequest::RequestType method,
                       double timeout, AgencyCommResult& result,
                       std::string const& url, std::string const& body) {
   TRI_ASSERT(connection != nullptr);
 
-  if (method == arangodb::rest::HttpRequest::HTTP_REQUEST_GET ||
-      method == arangodb::rest::HttpRequest::HTTP_REQUEST_HEAD ||
-      method == arangodb::rest::HttpRequest::HTTP_REQUEST_DELETE) {
+  if (method == arangodb::GeneralRequest::RequestType::GET ||
+      method == arangodb::GeneralRequest::RequestType::HEAD ||
+      method == arangodb::GeneralRequest::RequestType::DELETE_REQ) {
     TRI_ASSERT(body.empty());
   }
 
@@ -2019,7 +2020,11 @@ bool AgencyComm::send(arangodb::httpclient::GeneralClientConnection* connection,
   result._connected = false;
   result._statusCode = 0;
 
-  LOG(TRACE) << "sending " << arangodb::rest::HttpRequest::translateMethod(method) << " request to agency at endpoint '" << connection->getEndpoint()->getSpecification() << "', url '" << url << "': " << body;
+  LOG(TRACE) << "sending "
+             << arangodb::HttpRequest::translateMethod(method)
+             << " request to agency at endpoint '"
+             << connection->getEndpoint()->specification() << "', url '" << url
+             << "': " << body;
 
   arangodb::httpclient::SimpleHttpClient client(connection, timeout, false);
 
@@ -2027,7 +2032,7 @@ bool AgencyComm::send(arangodb::httpclient::GeneralClientConnection* connection,
 
   // set up headers
   std::map<std::string, std::string> headers;
-  if (method == arangodb::rest::HttpRequest::HTTP_REQUEST_POST) {
+  if (method == arangodb::GeneralRequest::RequestType::POST) {
     // the agency needs this content-type for the body
     headers["content-type"] = "application/json";
   }
@@ -2084,7 +2089,9 @@ bool AgencyComm::send(arangodb::httpclient::GeneralClientConnection* connection,
     result._index = arangodb::basics::StringUtils::uint64(lastIndex);
   }
 
-  LOG(TRACE) << "request to agency returned status code " << result._statusCode << ", message: '" << result._message << "', body: '" << result._body << "'";
+  LOG(TRACE) << "request to agency returned status code " << result._statusCode
+             << ", message: '" << result._message << "', body: '"
+             << result._body << "'";
 
   if (result.successful()) {
     return true;

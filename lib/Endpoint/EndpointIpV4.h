@@ -26,42 +26,22 @@
 
 #include "Basics/Common.h"
 #include "Basics/StringUtils.h"
-#include "Rest/EndpointIp.h"
+#include "Endpoint/EndpointIp.h"
 
 namespace arangodb {
-namespace rest {
 
 class EndpointIpV4 final : public EndpointIp {
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief creates an endpoint
-  //////////////////////////////////////////////////////////////////////////////
-
-  EndpointIpV4(const EndpointType, const EncryptionType, std::string const&,
-               int, bool, std::string const&, uint16_t const);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief destroys an endpoint
-  //////////////////////////////////////////////////////////////////////////////
-
-  ~EndpointIpV4();
+  EndpointIpV4(EndpointType, TransportType, EncryptionType, int, bool,
+               std::string const&, uint16_t);
 
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get endpoint domain
-  //////////////////////////////////////////////////////////////////////////////
+  int domain() const override { return AF_INET; }
 
-  int getDomain() const override { return AF_INET; }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get host string for HTTP requests
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::string getHostString() const override{
-    return getHost() + ':' + arangodb::basics::StringUtils::itoa(getPort());
+  std::string hostAndPort() const override {
+    return host() + ':' + arangodb::basics::StringUtils::itoa(port());
   }
 };
-}
 }
 
 #endif

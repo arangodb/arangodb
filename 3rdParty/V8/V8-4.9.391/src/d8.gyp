@@ -54,7 +54,8 @@
         [ 'want_separate_host_toolset==1', {
           'toolsets': [ '<(v8_toolset_for_d8)', ],
         }],
-        ['(OS=="linux" or OS=="mac" or OS=="freebsd" or OS=="netbsd" \
+        ['OS=="solaris"', {'defines': ['_GLIBCXX_USE_C99_MATH'], 'ldflags': ['-march=x86-64', '-m64']}],
+	['(OS=="linux" or OS=="mac" or OS=="freebsd" or OS=="netbsd" \
            or OS=="openbsd" or OS=="solaris" or OS=="android" \
            or OS=="qnx" or OS=="aix")', {
              'sources': [ 'd8-posix.cc', ]
@@ -130,7 +131,7 @@
             '<(SHARED_INTERMEDIATE_DIR)/d8-js.cc',
           ],
           'action': [
-            'python',
+            '<(PYTHON_EXECUTABLE)',
             '../tools/js2c.py',
             '<@(_outputs)',
             'D8',

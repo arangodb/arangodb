@@ -25,15 +25,17 @@
 #define ARANGOD_CLUSTER_CLUSTER_COMM_H 1
 
 #include "Basics/Common.h"
+
 #include "Basics/ConditionVariable.h"
-#include "Logger/Logger.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Thread.h"
-#include "Rest/HttpRequest.h"
-#include "SimpleHttpClient/SimpleHttpResult.h"
-#include "VocBase/voc-types.h"
 #include "Cluster/AgencyComm.h"
+#include "Logger/Logger.h"
+#include "Rest/HttpRequest.h"
+#include "Rest/HttpResponse.h"
+#include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Utils/Transaction.h"
+#include "VocBase/voc-types.h"
 
 namespace arangodb {
 
@@ -104,7 +106,7 @@ struct ClusterCommResult {
   std::shared_ptr<httpclient::SimpleHttpResult> result;
   // the field answer is != nullptr if status is == CL_COMM_RECEIVED
   // answer_code is valid iff answer is != 0
-  std::shared_ptr<rest::HttpRequest> answer;
+  std::shared_ptr<HttpRequest> answer;
   rest::HttpResponse::HttpResponseCode answer_code;
 
   ClusterCommResult()
@@ -157,7 +159,7 @@ typedef double ClusterCommTimeout;
 
 struct ClusterCommOperation {
   ClusterCommResult result;
-  rest::HttpRequest::HttpRequestType reqtype;
+  GeneralRequest::RequestType reqtype;
   std::string path;
   std::shared_ptr<std::string const> body;
   std::unique_ptr<std::map<std::string, std::string>> headerFields;
@@ -247,7 +249,7 @@ class ClusterComm {
       ClientTransactionID const clientTransactionID,
       CoordTransactionID const coordTransactionID,
       std::string const& destination,
-      rest::HttpRequest::HttpRequestType reqtype, std::string const& path,
+      GeneralRequest::RequestType reqtype, std::string const& path,
       std::shared_ptr<std::string const> body,
       std::unique_ptr<std::map<std::string, std::string>>& headerFields,
       std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
@@ -261,7 +263,7 @@ class ClusterComm {
       ClientTransactionID const& clientTransactionID,
       CoordTransactionID const coordTransactionID,
       std::string const& destination,
-      rest::HttpRequest::HttpRequestType reqtype, std::string const& path,
+      GeneralRequest::RequestType reqtype, std::string const& path,
       std::string const& body,
       std::map<std::string, std::string> const& headerFields,
       ClusterCommTimeout timeout);
@@ -295,7 +297,7 @@ class ClusterComm {
   //////////////////////////////////////////////////////////////////////////////
 
   std::string processAnswer(std::string& coordinatorHeader,
-                            rest::HttpRequest* answer);
+                            HttpRequest* answer);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief send an answer HTTP request to a coordinator

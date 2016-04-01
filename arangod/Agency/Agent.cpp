@@ -226,7 +226,7 @@ append_entries_t Agent::sendAppendEntriesRPC (id_t slave_id) {
 
   arangodb::ClusterComm::instance()->asyncRequest
     ("1", 1, _config.end_points[slave_id],
-     rest::HttpRequest::HTTP_REQUEST_POST,
+     arangodb::GeneralRequest::RequestType::POST,
      path.str(), std::make_shared<std::string>(builder.toJson()), headerFields,
      std::make_shared<AgentCallback>(this, slave_id, last),
      0, true);
@@ -238,7 +238,7 @@ append_entries_t Agent::sendAppendEntriesRPC (id_t slave_id) {
 bool Agent::load () {
   LOG_TOPIC(INFO, Logger::AGENCY) << "Loading persistent state.";
   if (!_state.loadCollections()) {
-    LOG(FATAL) << "Failed to load persistent state on statup.";
+    LOG_TOPIC(WARN, Logger::AGENCY) << "Failed to load persistent state on statup.";
   }
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Reassembling spearhead and read stores.";
@@ -246,8 +246,8 @@ bool Agent::load () {
   _spearhead.apply(_state.slices(_last_commit_index+1));
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Starting spearhead worker.";
-  _spearhead.start();
-  _read_db.start();
+  _spearhead.start(this);
+  _read_db.start(this);
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Starting constituent personality.";
   _constituent.update(0,0);
@@ -332,5 +332,12 @@ log_t const& Agent::lastLog() const {
   return _state.lastLog();
 }
 
+Store const& Agent::spearhead () const {
+  return _spearhead;
+}
+
+Store const& Agent::readDB () const {
+  return _read_db;
+}
 
 }}

@@ -24,10 +24,10 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ConsoleFeature.h"
+#include "Endpoint/Endpoint.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions2/ProgramOptions.h"
 #include "ProgramOptions2/Section.h"
-#include "Rest/Endpoint.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 
@@ -35,14 +35,13 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::httpclient;
 using namespace arangodb::options;
-using namespace arangodb::rest;
 
 ClientFeature::ClientFeature(application_features::ApplicationServer* server,
                              double connectionTimeout, double requestTimeout)
     : ApplicationFeature(server, "Client"),
       _databaseName("_system"),
       _authentication(true),
-      _endpoint(Endpoint::getDefaultEndpoint()),
+      _endpoint(Endpoint::defaultEndpoint(Endpoint::TransportType::HTTP)),
       _username("root"),
       _password(""),
       _connectionTimeout(connectionTimeout),

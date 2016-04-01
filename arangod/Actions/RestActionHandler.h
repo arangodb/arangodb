@@ -24,9 +24,9 @@
 #ifndef ARANGOD_ACTIONS_REST_ACTION_HANDLER_H
 #define ARANGOD_ACTIONS_REST_ACTION_HANDLER_H 1
 
-#include "Basics/Common.h"
-#include "Actions/actions.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
+
+#include "Actions/actions.h"
 
 class TRI_action_t;
 
@@ -47,7 +47,7 @@ class RestActionHandler : public RestVocbaseBaseHandler {
   };
 
  public:
-  RestActionHandler(rest::HttpRequest*, action_options_t*);
+  RestActionHandler(HttpRequest*, action_options_t*);
 
  public:
   bool isDirect() const override;

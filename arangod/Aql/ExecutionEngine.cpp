@@ -520,7 +520,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         new std::map<std::string, std::string>());
     (*headers)["X-Arango-Nolock"] = shardId;  // Prevent locking
     auto res = cc->asyncRequest("", coordTransactionID, "shard:" + shardId,
-                                arangodb::rest::HttpRequest::HTTP_REQUEST_POST,
+                                arangodb::GeneralRequest::RequestType::POST,
                                 url, body, headers, nullptr, 30.0);
   }
 
@@ -950,7 +950,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
           std::map<std::string, std::string> headers;
           auto res =
               cc->syncRequest("", coordTransactionID, "shard:" + shardId,
-                              arangodb::rest::HttpRequest::HTTP_REQUEST_PUT,
+                              arangodb::GeneralRequest::RequestType::PUT,
                               url, "{}", headers, 30.0);
           if (res->status != CL_COMM_SENT) {
             std::string message("could not lock all shards");
@@ -988,7 +988,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
             std::map<std::string, std::string> headers;
             auto res =
                 cc->syncRequest("", coordTransactionID, "shard:" + shardId,
-                                arangodb::rest::HttpRequest::HTTP_REQUEST_PUT,
+                                arangodb::GeneralRequest::RequestType::PUT,
                                 url, "{\"code\": 0}", headers, 120.0);
             // Ignore result, we need to try to remove all.
             // However, log the incident if we have an errorMessage.

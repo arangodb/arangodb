@@ -31,10 +31,11 @@
 #include "Rest/HttpResponse.h"
 
 namespace arangodb {
-namespace rest {
-struct ConnectionInfo;
-class HttpHandler;
 class HttpRequest;
+struct ConnectionInfo;
+
+namespace rest {
+class HttpHandler;
 class HttpResponse;
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -28,9 +28,10 @@
 #include "Scheduler/ListenTask.h"
 
 namespace arangodb {
+class Endpoint;
+
 namespace rest {
 class HttpServer;
-class Endpoint;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief task used to establish connections

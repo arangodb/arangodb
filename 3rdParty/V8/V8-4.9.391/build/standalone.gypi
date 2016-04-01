@@ -66,7 +66,7 @@
         },
         'host_arch%': '<(host_arch)',
         'target_arch%': '<(host_arch)',
-        'base_dir%': '<!(cd <(DEPTH) && ${PYTHON_EXECUTABLE} -c "import os; print os.getcwd()")',
+        'base_dir%': '<!(cd <(DEPTH) && <(PYTHON_EXECUTABLE) -c "import os; print os.getcwd()")',
 
         # Instrument for code coverage with gcov.
         'coverage%': 0,
@@ -421,7 +421,7 @@
         # (defines are passed via the command line, and build systems rebuild
         # things when their commandline changes). Nothing should ever read this
         # define.
-        'defines': ['CR_CLANG_REVISION=<!(${PYTHON_EXECUTABLE} <(DEPTH)/tools/clang/scripts/update.py --print-revision)'],
+        'defines': ['CR_CLANG_REVISION=<!(<(PYTHON_EXECUTABLE) <(DEPTH)/tools/clang/scripts/update.py --print-revision)'],
         'conditions': [
           ['host_clang==1', {
             'target_conditions': [
@@ -673,6 +673,8 @@
         ],
       },  # target_defaults
     }],  # OS=="mac"
+    ['OS=="solaris"', {'defines': ['_GLIBCXX_USE_C99_MATH']}],
+    ['OS=="solaris"', {'target_defaults': {'cflags': ['-m64'], 'ldflags': ['-march=x86-64', '-m64']}}],
     ['OS=="linux" or OS=="freebsd" or OS=="openbsd" or OS=="solaris" \
        or OS=="netbsd" or OS=="aix"', {
       'target_defaults': {
@@ -861,7 +863,7 @@
             'EnableFunctionLevelLinking': 'true',
             'RuntimeTypeInfo': 'false',
             'WarningLevel': '3',
-            'WarnAsError': 'true',
+            'WarnAsError': 'false',
             'DebugInformationFormat': '3',
             'Detect64BitPortabilityProblems': 'false',
             'conditions': [

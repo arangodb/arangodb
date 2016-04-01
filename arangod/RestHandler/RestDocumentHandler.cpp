@@ -44,30 +44,28 @@ RestDocumentHandler::RestDocumentHandler(HttpRequest* request)
 
 HttpHandler::status_t RestDocumentHandler::execute() {
   // extract the sub-request type
-  HttpRequest::HttpRequestType type = _request->requestType();
+  auto const type = _request->requestType();
 
   // execute one of the CRUD methods
   switch (type) {
-    case HttpRequest::HTTP_REQUEST_DELETE:
+    case GeneralRequest::RequestType::DELETE_REQ:
       deleteDocument();
       break;
-    case HttpRequest::HTTP_REQUEST_GET:
+    case GeneralRequest::RequestType::GET:
       readDocument();
       break;
-    case HttpRequest::HTTP_REQUEST_HEAD:
+    case GeneralRequest::RequestType::HEAD:
       checkDocument();
       break;
-    case HttpRequest::HTTP_REQUEST_POST:
+    case GeneralRequest::RequestType::POST:
       createDocument();
       break;
-    case HttpRequest::HTTP_REQUEST_PUT:
+    case GeneralRequest::RequestType::PUT:
       replaceDocument();
       break;
-    case HttpRequest::HTTP_REQUEST_PATCH:
+    case GeneralRequest::RequestType::PATCH:
       updateDocument();
       break;
-
-    case HttpRequest::HTTP_REQUEST_ILLEGAL:
     default: {
       generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);
       break;
@@ -94,9 +92,9 @@ bool RestDocumentHandler::createDocument() {
 
   // extract the cid
   bool found;
-  char const* collection = _request->value("collection", found);
+  std::string const& collection = _request->value("collection", found);
 
-  if (!found || *collection == '\0') {
+  if (!found || collection.empty()) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting " + DOCUMENT_PATH +
@@ -124,7 +122,7 @@ bool RestDocumentHandler::createDocument() {
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    return createDocumentCoordinator(collection, waitForSync, body);
+    return createDocumentCoordinator(collection.c_str(), waitForSync, body);
   }
 
   if (!checkCreateCollection(collection, getCollectionType())) {
@@ -356,7 +354,8 @@ bool RestDocumentHandler::getDocumentCoordinator(std::string const& collname,
 
   TRI_voc_rid_t rev = 0;
   bool found;
-  char const* revstr = _request->value("rev", found);
+  std::string const& revstr = _request->value("rev", found);
+
   if (found) {
     rev = StringUtils::uint64(revstr);
   }
@@ -390,7 +389,7 @@ bool RestDocumentHandler::getDocumentCoordinator(std::string const& collname,
 
 bool RestDocumentHandler::readAllDocuments() {
   bool found;
-  std::string collection = _request->value("collection", found);
+  std::string const& collection = _request->value("collection", found);
   std::string returnType = _request->value("type", found);
 
   if (returnType.empty()) {
@@ -626,8 +625,9 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     bool nullMeansRemove;
     bool mergeObjects;
     bool found;
-    char const* valueStr = _request->value("keepNull", found);
-    if (!found || StringUtils::boolean(valueStr)) {
+    std::string const& valueStr1 = _request->value("keepNull", found);
+
+    if (!found || StringUtils::boolean(valueStr1)) {
       // default: null values are saved as Null
       nullMeansRemove = false;
     } else {
@@ -635,8 +635,9 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
       nullMeansRemove = true;
     }
 
-    valueStr = _request->value("mergeObjects", found);
-    if (!found || StringUtils::boolean(valueStr)) {
+    std::string const& valueStr2 = _request->value("mergeObjects", found);
+
+    if (!found || StringUtils::boolean(valueStr2)) {
       // the default is true
       mergeObjects = true;
     } else {
@@ -802,11 +803,14 @@ bool RestDocumentHandler::modifyDocumentCoordinator(
   std::string resultBody;
 
   bool keepNull = true;
-  if (!strcmp(_request->value("keepNull"), "false")) {
+
+  if (_request->value("keepNull") == "false") {
     keepNull = false;
   }
+
   bool mergeObjects = true;
-  if (TRI_EqualString(_request->value("mergeObjects"), "false")) {
+
+  if (_request->value("mergeObjects") == "false") {
     mergeObjects = false;
   }
 

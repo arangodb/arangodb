@@ -25,8 +25,8 @@
 #include "SimpleHttpClient/ClientConnection.h"
 #include "SimpleHttpClient/SslClientConnection.h"
 
+using namespace arangodb;
 using namespace arangodb::basics;
-using namespace arangodb::rest;
 using namespace arangodb::httpclient;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -75,10 +75,10 @@ GeneralClientConnection::~GeneralClientConnection() {
 GeneralClientConnection* GeneralClientConnection::factory(
     Endpoint* endpoint, double requestTimeout, double connectTimeout,
     size_t numRetries, uint32_t sslProtocol) {
-  if (endpoint->getEncryption() == Endpoint::ENCRYPTION_NONE) {
+  if (endpoint->encryption() == Endpoint::EncryptionType::NONE) {
     return new ClientConnection(endpoint, requestTimeout, connectTimeout,
                                 numRetries);
-  } else if (endpoint->getEncryption() == Endpoint::ENCRYPTION_SSL) {
+  } else if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
     return new SslClientConnection(endpoint, requestTimeout, connectTimeout,
                                    numRetries, sslProtocol);
   }
@@ -89,10 +89,10 @@ GeneralClientConnection* GeneralClientConnection::factory(
 GeneralClientConnection* GeneralClientConnection::factory(
     std::unique_ptr<Endpoint>& endpoint, double requestTimeout, double connectTimeout,
     size_t numRetries, uint32_t sslProtocol) {
-  if (endpoint->getEncryption() == Endpoint::ENCRYPTION_NONE) {
+  if (endpoint->encryption() == Endpoint::EncryptionType::NONE) {
     return new ClientConnection(endpoint, requestTimeout, connectTimeout,
                                 numRetries);
-  } else if (endpoint->getEncryption() == Endpoint::ENCRYPTION_SSL) {
+  } else if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
     return new SslClientConnection(endpoint, requestTimeout, connectTimeout,
                                    numRetries, sslProtocol);
   }

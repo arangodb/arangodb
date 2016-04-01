@@ -74,10 +74,10 @@ term_t Constituent::term() const {
 }
 
 void Constituent::term(term_t t) {
-  if (t != _term) {
+  if (_term != t) {
     LOG_TOPIC(INFO, Logger::AGENCY) << "Updating term to " << t;
+    _agent->persist(_term = t, _leader_id);
   }
-  _term = t;
 }
 
 role_t Constituent::role () const {
@@ -159,7 +159,7 @@ size_t Constituent::notifyAll () {
       std::unique_ptr<std::map<std::string, std::string>> headerFields =
         std::make_unique<std::map<std::string, std::string> >();
       arangodb::ClusterComm::instance()->asyncRequest(
-        "1", 1, end_point(i), rest::HttpRequest::HTTP_REQUEST_POST, path.str(),
+        "1", 1, end_point(i), GeneralRequest::RequestType::POST, path.str(),
         std::make_shared<std::string>(body.toString()), headerFields, nullptr,
         0.0, true);
     }
@@ -173,11 +173,11 @@ bool Constituent::vote (
   if (term > _term || (_term==term&&_leader_id==id)) {
     this->term(term);
     _cast = true;      // Note that I voted this time around.
-    _leader_id = id;   // The guy I voted for I assume leader.
-    _voted_for = id;
-    if (_role>FOLLOWER) {
+    _voted_for = id;   // The guy I voted for I assume leader.
+    _leader_id = id;
+    if (_role>FOLLOWER)
       follow (_term);
-    }
+    _agent->persist(_term,_voted_for);
     _cv.signal();
     return true;
   } else {             // Myself running or leading
@@ -207,9 +207,8 @@ void Constituent::callElection() {
     LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
   }
   _cast = true;
-  if(_role == CANDIDATE){
-    this->term(_term+1); // raise my term if turned candidate
-  }
+  if(_role == CANDIDATE)
+    this->term(_term+1);            // raise my term
   
   std::string body;
   std::vector<ClusterCommResult> results(_agent->config().end_points.size());
@@ -224,7 +223,7 @@ void Constituent::callElection() {
       std::unique_ptr<std::map<std::string, std::string>> headerFields =
         std::make_unique<std::map<std::string, std::string> >();
       results[i] = arangodb::ClusterComm::instance()->asyncRequest(
-        "1", 1, _agent->config().end_points[i], rest::HttpRequest::HTTP_REQUEST_GET,
+        "1", 1, _agent->config().end_points[i], GeneralRequest::RequestType::GET,
         path.str(), std::make_shared<std::string>(body), headerFields, nullptr,
         _agent->config().min_ping, true);
     }

@@ -23,446 +23,77 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HttpRequest.h"
-#include "Basics/conversions.h"
-#include "Logger/Logger.h"
-#include "Basics/StringBuffer.h"
-#include "Basics/StringUtils.h"
-#include "Basics/tri-strings.h"
-#include "Basics/Utf8Helper.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Basics/conversions.h"
+#include "Logger/Logger.h"
+#include "Basics/StringBuffer.h"
+#include "Basics/StringUtils.h"
+#include "Basics/tri-strings.h"
+
+using namespace arangodb;
 using namespace arangodb::basics;
-using namespace arangodb::rest;
 
-static char const* EMPTY_STR = "";
-
-int32_t const HttpRequest::MinCompatibility = 10300L;
-
-std::string const HttpRequest::BatchContentType =
+std::string const HttpRequest::BATCH_CONTENT_TYPE =
     "application/x-arango-batchpart";
 
-std::string const HttpRequest::MultiPartContentType = "multipart/form-data";
+std::string const HttpRequest::MULTI_PART_CONTENT_TYPE = "multipart/form-data";
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief http request constructor
-////////////////////////////////////////////////////////////////////////////////
-
-HttpRequest::HttpRequest(ConnectionInfo const& info, char const* header,
-                         size_t length, int32_t defaultApiCompatibility,
+HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo,
+                         char const* header, size_t length,
+                         int32_t defaultApiCompatibility,
                          bool allowMethodOverride)
-    : _requestPath(EMPTY_STR),
-      _headers(5),
-      _values(10),
-      _arrayValues(1),
-      _cookies(1),
+    : GeneralRequest(connectionInfo, defaultApiCompatibility),
+
       _contentLength(0),
-      _body(nullptr),
-      _bodySize(0),
-      _freeables(),
-      _connectionInfo(info),
-      _type(HTTP_REQUEST_ILLEGAL),
-      _prefix(),
-      _suffix(),
-      _version(HTTP_UNKNOWN),
-      _databaseName(),
-      _user(),
-      _requestContext(nullptr),
-      _defaultApiCompatibility(defaultApiCompatibility),
-      _isRequestContextOwner(false),
-      _allowMethodOverride(allowMethodOverride),
-      _clientTaskId(0) {
-  // copy request - we will destroy/rearrange the content to compute the
-  // headers and values in-place
-
-  char* request = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, header, length);
-
-  if (request != nullptr) {
-    _freeables.emplace_back(request);
-
-    parseHeader(request, length);
+      _header(nullptr),
+      _allowMethodOverride(allowMethodOverride) {
+  if (0 < length) {
+    _header = new char[length + 1];
+    memcpy(_header, header, length);
+    _header[length] = 0;
+    parseHeader(length);
   }
 }
 
 HttpRequest::~HttpRequest() {
-  basics::Dictionary<std::vector<char const*>*>::KeyValue const* begin;
-  basics::Dictionary<std::vector<char const*>*>::KeyValue const* end;
-  for (_arrayValues.range(begin, end); begin < end; ++begin) {
-    char const* key = begin->_key;
-
-    if (key == nullptr) {
-      continue;
-    }
-
-    std::vector<char const*>* v = begin->_value;
-    delete v;
-  }
-
-  for (auto& it : _freeables) {
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, it);
-  }
-
-  if (_requestContext != nullptr && _isRequestContextOwner) {
-    // only delete if we are the owner of the context
-    delete _requestContext;
+  if (_header != nullptr) {
+    delete[] _header;
   }
 }
-
-char const* HttpRequest::requestPath() const { return _requestPath; }
-
-void HttpRequest::write(TRI_string_buffer_t* buffer) const {
-  std::string&& method = translateMethod(_type);
-
-  TRI_AppendString2StringBuffer(buffer, method.c_str(), method.size());
-  TRI_AppendCharStringBuffer(buffer, ' ');
-
-  // do NOT url-encode the path, we need to distingush between
-  // "/document/a/b" and "/document/a%2fb"
-
-  TRI_AppendStringStringBuffer(buffer, _requestPath);
-
-  // generate the request parameters
-  basics::Dictionary<char const*>::KeyValue const* begin;
-  basics::Dictionary<char const*>::KeyValue const* end;
-
-  bool first = true;
-
-  for (_values.range(begin, end); begin < end; ++begin) {
-    char const* key = begin->_key;
-
-    if (key == nullptr) {
-      continue;
-    }
-
-    if (first) {
-      TRI_AppendCharStringBuffer(buffer, '?');
-      first = false;
-    } else {
-      TRI_AppendCharStringBuffer(buffer, '&');
-    }
-
-    char const* value = begin->_value;
-
-    TRI_AppendUrlEncodedStringStringBuffer(buffer, key);
-    TRI_AppendCharStringBuffer(buffer, '=');
-    TRI_AppendUrlEncodedStringStringBuffer(buffer, value);
-  }
-
-  TRI_AppendString2StringBuffer(buffer, " HTTP/1.1\r\n", 11);
-
-  // generate the header fields
-  for (_headers.range(begin, end); begin < end; ++begin) {
-    char const* key = begin->_key;
-
-    if (key == nullptr) {
-      continue;
-    }
-
-    size_t const keyLength = strlen(key);
-
-    if (keyLength == 14 && memcmp(key, "content-length", keyLength) == 0) {
-      continue;
-    }
-
-    TRI_AppendString2StringBuffer(buffer, key, keyLength);
-    TRI_AppendString2StringBuffer(buffer, ": ", 2);
-
-    char const* value = begin->_value;
-    TRI_AppendStringStringBuffer(buffer, value);
-    TRI_AppendString2StringBuffer(buffer, "\r\n", 2);
-  }
-
-  first = true;
-  for (_cookies.range(begin, end); begin < end; ++begin) {
-    char const* key = begin->_key;
-
-    if (key == nullptr) {
-      continue;
-    }
-
-    if (first) {
-      first = false;
-      TRI_AppendString2StringBuffer(buffer, "Cookie: ", 8);
-    } else {
-      TRI_AppendString2StringBuffer(buffer, "; ", 2);
-    }
-
-    size_t const keyLength = strlen(key);
-    TRI_AppendString2StringBuffer(buffer, key, keyLength);
-    TRI_AppendString2StringBuffer(buffer, "=", 2);
-
-    char const* value = begin->_value;
-    TRI_AppendUrlEncodedStringStringBuffer(buffer, value);
-  }
-
-  TRI_AppendString2StringBuffer(buffer, "content-length: ", 16);
-  TRI_AppendInt64StringBuffer(buffer, _contentLength);
-  TRI_AppendString2StringBuffer(buffer, "\r\n\r\n", 4);
-
-  if (_body != nullptr && 0 < _bodySize) {
-    TRI_AppendString2StringBuffer(buffer, _body, _bodySize);
-  }
-}
-
-int64_t HttpRequest::contentLength() const { return _contentLength; }
-
-char const* HttpRequest::header(char const* key) const {
-  Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key);
-
-  if (kv == nullptr) {
-    return EMPTY_STR;
-  } else {
-    return kv->_value;
-  }
-}
-
-char const* HttpRequest::header(char const* key, bool& found) const {
-  Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key);
-
-  if (kv == nullptr) {
-    found = false;
-    return EMPTY_STR;
-  } else {
-    found = true;
-    return kv->_value;
-  }
-}
-
-std::map<std::string, std::string> HttpRequest::headers() const {
-  basics::Dictionary<char const*>::KeyValue const* begin;
-  basics::Dictionary<char const*>::KeyValue const* end;
-
-  std::map<std::string, std::string> result;
-
-  for (_headers.range(begin, end); begin < end; ++begin) {
-    char const* key = begin->_key;
-
-    if (key == nullptr) {
-      continue;
-    }
-
-    result[key] = begin->_value;
-  }
-
-  result["content-length"] = StringUtils::itoa(_contentLength);
-
-  return result;
-}
-
-char const* HttpRequest::value(char const* key) const {
-  Dictionary<char const*>::KeyValue const* kv = _values.lookup(key);
-
-  if (kv == nullptr) {
-    return EMPTY_STR;
-  } else {
-    return kv->_value;
-  }
-}
-
-char const* HttpRequest::value(char const* key, bool& found) const {
-  Dictionary<char const*>::KeyValue const* kv = _values.lookup(key);
-
-  if (kv == nullptr) {
-    found = false;
-    return EMPTY_STR;
-  } else {
-    found = true;
-    return kv->_value;
-  }
-}
-
-std::map<std::string, std::string> HttpRequest::values() const {
-  basics::Dictionary<char const*>::KeyValue const* begin;
-  basics::Dictionary<char const*>::KeyValue const* end;
-
-  std::map<std::string, std::string> result;
-
-  for (_values.range(begin, end); begin < end; ++begin) {
-    char const* key = begin->_key;
-
-    if (key == nullptr) {
-      continue;
-    }
-
-    result[key] = begin->_value;
-  }
-
-  return result;
-}
-
-std::map<std::string, std::vector<char const*>*> HttpRequest::arrayValues()
-    const {
-  basics::Dictionary<std::vector<char const*>*>::KeyValue const* begin;
-  basics::Dictionary<std::vector<char const*>*>::KeyValue const* end;
-
-  std::map<std::string, std::vector<char const*>*> result;
-
-  for (_arrayValues.range(begin, end); begin < end; ++begin) {
-    char const* key = begin->_key;
-
-    if (key == nullptr) {
-      continue;
-    }
-
-    result[key] = begin->_value;
-  }
-
-  return result;
-}
-
-char const* HttpRequest::cookieValue(char const* key) const {
-  Dictionary<char const*>::KeyValue const* kv = _cookies.lookup(key);
-
-  if (kv == nullptr) {
-    return EMPTY_STR;
-  } else {
-    return kv->_value;
-  }
-}
-
-char const* HttpRequest::cookieValue(char const* key, bool& found) const {
-  Dictionary<char const*>::KeyValue const* kv = _cookies.lookup(key);
-
-  if (kv == nullptr) {
-    found = false;
-    return EMPTY_STR;
-  } else {
-    found = true;
-    return kv->_value;
-  }
-}
-
-std::map<std::string, std::string> HttpRequest::cookieValues() const {
-  basics::Dictionary<char const*>::KeyValue const* begin;
-  basics::Dictionary<char const*>::KeyValue const* end;
-
-  std::map<std::string, std::string> result;
-
-  for (_cookies.range(begin, end); begin < end; ++begin) {
-    char const* key = begin->_key;
-
-    if (key == nullptr) {
-      continue;
-    }
-
-    result[key] = begin->_value;
-  }
-
-  return result;
-}
-
-char const* HttpRequest::body() const {
-  return _body == nullptr ? EMPTY_STR : _body;
-}
-
-size_t HttpRequest::bodySize() const { return _bodySize; }
-
-int HttpRequest::setBody(char const* newBody, size_t length) {
-  _body = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, newBody, length);
-
-  if (_body == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  _freeables.push_back(_body);
-
-  _contentLength = (int64_t)length;
-  _bodySize = length;
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets a header field
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpRequest::setHeader(char const* key, size_t keyLength,
-                            char const* value) {
-  if (keyLength == 14 &&
-      memcmp(key, "content-length", keyLength) ==
-          0) {  // 14 = strlen("content-length")
-    _contentLength = StringUtils::int64(value);
-  } else if (keyLength == 6 &&
-             memcmp(key, "cookie", keyLength) == 0) {  // 6 = strlen("cookie")
-    parseCookies(value);
-  } else {
-    if (_allowMethodOverride && keyLength >= 13 && *key == 'x' &&
-        *(key + 1) == '-') {
-      // handle x-... headers
-
-      // override HTTP method?
-      if ((keyLength == 13 && memcmp(key, "x-http-method", keyLength) == 0) ||
-          (keyLength == 17 &&
-           memcmp(key, "x-method-override", keyLength) == 0) ||
-          (keyLength == 22 &&
-           memcmp(key, "x-http-method-override", keyLength) == 0)) {
-        std::string overriddenType(value);
-        StringUtils::tolowerInPlace(&overriddenType);
-
-        _type = getRequestType(overriddenType.c_str(), overriddenType.size());
-
-        // don't insert this header!!
-        return;
-      }
-    }
-
-    _headers.insert(key, keyLength, value);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the request body as VPackBuilder
-////////////////////////////////////////////////////////////////////////////////
-
-std::shared_ptr<VPackBuilder> HttpRequest::toVelocyPack(
-    VPackOptions const* options) {
-  VPackParser parser(options);
-  parser.parse(body());
-  return parser.steal();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the request body as TRI_json_t*
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t* HttpRequest::toJson(char** errmsg) {
-  return TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, body(), errmsg);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief determine version compatibility
-////////////////////////////////////////////////////////////////////////////////
 
 int32_t HttpRequest::compatibility() {
   int32_t result = _defaultApiCompatibility;
 
   bool found;
-  char const* apiVersion = header("x-arango-version", found);
+  std::string const& apiVersion = header("x-arango-version", found);
 
   if (!found) {
     return result;
   }
 
-  char const* p = apiVersion;
+  char const* a = apiVersion.c_str();
+  char const* p = a;
 
   // read major version
   while (*p >= '0' && *p <= '9') {
     ++p;
   }
 
-  if ((*p == '.' || *p == '-' || *p == '\0') && p != apiVersion) {
-    int32_t major = TRI_Int32String2(apiVersion, (p - apiVersion));
+  if ((*p == '.' || *p == '-' || *p == '\0') && p != a) {
+    int32_t major = TRI_Int32String2(a, (p - a));
 
     if (major >= 10000) {
       // version specified as "10400"
       if (*p == '\0') {
         result = major;
 
-        if (result < MinCompatibility) {
-          result = MinCompatibility;
+        if (result < MIN_COMPATIBILITY) {
+          result = MIN_COMPATIBILITY;
         } else {
           // set patch-level to 0
           result /= 100L;
@@ -473,162 +104,29 @@ int32_t HttpRequest::compatibility() {
       }
     }
 
-    apiVersion = ++p;
+    a = ++p;
 
     // read minor version
     while (*p >= '0' && *p <= '9') {
       ++p;
     }
 
-    if ((*p == '.' || *p == '-' || *p == '\0') && p != apiVersion) {
-      int32_t minor = TRI_Int32String2(apiVersion, (p - apiVersion));
+    if ((*p == '.' || *p == '-' || *p == '\0') && p != a) {
+      int32_t minor = TRI_Int32String2(a, (p - a));
 
       result = (int32_t)(minor * 100L + major * 10000L);
     }
   }
 
-  if (result < MinCompatibility) {
-    // minimum value
-    result = MinCompatibility;
+  if (result < MIN_COMPATIBILITY) {
+    result = MIN_COMPATIBILITY;
   }
 
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the protocol
-////////////////////////////////////////////////////////////////////////////////
-
-std::string const& HttpRequest::protocol() const { return _protocol; }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the connection info
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpRequest::setProtocol(std::string const& protocol) {
-  _protocol = protocol;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the connection info
-////////////////////////////////////////////////////////////////////////////////
-
-ConnectionInfo const& HttpRequest::connectionInfo() const {
-  return _connectionInfo;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the connection info
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpRequest::setConnectionInfo(ConnectionInfo const& info) {
-  _connectionInfo = info;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the http request type
-////////////////////////////////////////////////////////////////////////////////
-
-HttpRequest::HttpRequestType HttpRequest::requestType() const { return _type; }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the http request type
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpRequest::setRequestType(HttpRequestType newType) { _type = newType; }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the database name
-////////////////////////////////////////////////////////////////////////////////
-
-std::string const& HttpRequest::databaseName() const { return _databaseName; }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the authenticated user
-////////////////////////////////////////////////////////////////////////////////
-
-std::string const& HttpRequest::user() const { return _user; }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the authenticated user
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpRequest::setUser(std::string const& user) { _user = user; }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the path of the request
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpRequest::setRequestPath(char const* path) { _requestPath = path; }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the client task id
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t HttpRequest::clientTaskId() const { return _clientTaskId; }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the client task id
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpRequest::setClientTaskId(uint64_t id) { _clientTaskId = id; }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief determine the header type
-////////////////////////////////////////////////////////////////////////////////
-
-HttpRequest::HttpRequestType HttpRequest::getRequestType(char const* ptr,
-                                                         size_t const length) {
-  switch (length) {
-    case 3:
-      if (ptr[0] == 'g' && ptr[1] == 'e' && ptr[2] == 't') {
-        return HTTP_REQUEST_GET;
-      }
-      if (ptr[0] == 'p' && ptr[1] == 'u' && ptr[2] == 't') {
-        return HTTP_REQUEST_PUT;
-      }
-      break;
-
-    case 4:
-      if (ptr[0] == 'p' && ptr[1] == 'o' && ptr[2] == 's' && ptr[3] == 't') {
-        return HTTP_REQUEST_POST;
-      }
-      if (ptr[0] == 'h' && ptr[1] == 'e' && ptr[2] == 'a' && ptr[3] == 'd') {
-        return HTTP_REQUEST_HEAD;
-      }
-      break;
-
-    case 5:
-      if (ptr[0] == 'p' && ptr[1] == 'a' && ptr[2] == 't' && ptr[3] == 'c' &&
-          ptr[4] == 'h') {
-        return HTTP_REQUEST_PATCH;
-      }
-      break;
-
-    case 6:
-      if (ptr[0] == 'd' && ptr[1] == 'e' && ptr[2] == 'l' && ptr[3] == 'e' &&
-          ptr[4] == 't' && ptr[5] == 'e') {
-        return HTTP_REQUEST_DELETE;
-      }
-      break;
-
-    case 7:
-      if (ptr[0] == 'o' && ptr[1] == 'p' && ptr[2] == 't' && ptr[3] == 'i' &&
-          ptr[4] == 'o' && ptr[5] == 'n' && ptr[6] == 's') {
-        return HTTP_REQUEST_OPTIONS;
-      }
-      break;
-  }
-
-  return HTTP_REQUEST_ILLEGAL;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parses the http header
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpRequest::parseHeader(char* ptr, size_t length) {
-  char* start = ptr;
+void HttpRequest::parseHeader(size_t length) {
+  char* start = _header;
   char* end = start + length;
   size_t const versionLength = strlen("http/1.x");
 
@@ -722,11 +220,11 @@ void HttpRequest::parseHeader(char* ptr, size_t length) {
                     (e[3] == 'p' || e[3] == 'P') && e[4] == '/' &&
                     e[5] == '1' && e[6] == '.') {
                   if (e[7] == '1') {
-                    _version = HTTP_1_1;
+                    _version = ProtocolVersion::HTTP_1_1;
                   } else if (e[7] == '0') {
-                    _version = HTTP_1_0;
+                    _version = ProtocolVersion::HTTP_1_0;
                   } else {
-                    _version = HTTP_UNKNOWN;
+                    _version = ProtocolVersion::UNKNOWN;
                   }
 
                   e += versionLength;
@@ -750,10 +248,10 @@ void HttpRequest::parseHeader(char* ptr, size_t length) {
         }
 
         // check the key
-        _type = getRequestType(keyBegin, keyEnd - keyBegin);
+        _type = findRequestType(keyBegin, keyEnd - keyBegin);
 
         // extract the path and decode the url and parameters
-        if (_type != HTTP_REQUEST_ILLEGAL) {
+        if (_type != RequestType::ILLEGAL) {
           char* pathBegin = valueBegin;
           char* pathEnd = nullptr;
 
@@ -854,7 +352,7 @@ void HttpRequest::parseHeader(char* ptr, size_t length) {
         }
 
         // check the key
-        _type = getRequestType(keyBegin, keyEnd - keyBegin);
+        _type = findRequestType(keyBegin, keyEnd - keyBegin);
       }
     }
 
@@ -960,24 +458,6 @@ void HttpRequest::parseHeader(char* ptr, size_t length) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the full url
-/// this will create a copy of the characters in the range, so the original
-/// range can be modified afterwards
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpRequest::setFullUrl(char const* begin, char const* end) {
-  TRI_ASSERT(begin != nullptr);
-  TRI_ASSERT(end != nullptr);
-  TRI_ASSERT(begin <= end);
-
-  _fullUrl = std::string(begin, end - begin);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the header values
-////////////////////////////////////////////////////////////////////////////////
-
 void HttpRequest::setValues(char* buffer, char* end) {
   char* keyBegin = nullptr;
   char* key = nullptr;
@@ -1021,7 +501,8 @@ void HttpRequest::setValues(char* buffer, char* end) {
         *(key - 2) = '\0';
         setArrayValue(keyBegin, key - keyBegin - 2, valueBegin);
       } else {
-        _values.insert(keyBegin, key - keyBegin, valueBegin);
+        std::string keyStr(keyBegin, key - keyBegin);
+        _values[keyStr] = valueBegin;
       }
 
       keyBegin = key = buffer + 1;
@@ -1080,171 +561,51 @@ void HttpRequest::setValues(char* buffer, char* end) {
       *(key - 2) = '\0';
       setArrayValue(keyBegin, key - keyBegin - 2, valueBegin);
     } else {
-      _values.insert(keyBegin, key - keyBegin, valueBegin);
+      std::string keyStr(keyBegin, key - keyBegin);
+      _values[keyStr] = valueBegin;
     }
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the prefix path of the request
-////////////////////////////////////////////////////////////////////////////////
-
-char const* HttpRequest::prefix() const { return _prefix.c_str(); }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the path of the request
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpRequest::setPrefix(char const* path) { _prefix = path; }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns all suffix parts
-////////////////////////////////////////////////////////////////////////////////
-
-std::vector<std::string> const& HttpRequest::suffix() const { return _suffix; }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a suffix part
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpRequest::addSuffix(std::string const& part) {
-  std::string decoded = StringUtils::urlDecode(part);
-  size_t tmpLength = 0;
-  char* utf8_nfc = TRI_normalize_utf8_to_NFC(
-      TRI_UNKNOWN_MEM_ZONE, decoded.c_str(), decoded.length(), &tmpLength);
-  if (utf8_nfc) {
-    _suffix.emplace_back(utf8_nfc);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, utf8_nfc);
+void HttpRequest::setHeader(char const* key, size_t keyLength,
+                            char const* value) {
+  if (keyLength == 14 &&
+      memcmp(key, "content-length", keyLength) ==
+          0) {  // 14 = strlen("content-length")
+    _contentLength = StringUtils::int64(value);
+  } else if (keyLength == 6 &&
+             memcmp(key, "cookie", keyLength) == 0) {  // 6 = strlen("cookie")
+    parseCookies(value);
   } else {
-    _suffix.emplace_back(decoded);
-  }
-}
+    if (_allowMethodOverride && keyLength >= 13 && *key == 'x' &&
+        *(key + 1) == '-') {
+      // handle x-... headers
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set the request context
-////////////////////////////////////////////////////////////////////////////////
+      // override HTTP method?
+      if ((keyLength == 13 && memcmp(key, "x-http-method", keyLength) == 0) ||
+          (keyLength == 17 &&
+           memcmp(key, "x-method-override", keyLength) == 0) ||
+          (keyLength == 22 &&
+           memcmp(key, "x-http-method-override", keyLength) == 0)) {
+        std::string overriddenType(value);
+        StringUtils::tolowerInPlace(&overriddenType);
 
-void HttpRequest::setRequestContext(RequestContext* requestContext,
-                                    bool isRequestContextOwner) {
-  if (_requestContext) {
-    // if we have a shared context, we should not have got here
-    TRI_ASSERT(isRequestContextOwner);
+        _type = findRequestType(overriddenType.c_str(), overriddenType.size());
 
-    // delete any previous context
-    TRI_ASSERT(false);
-    delete _requestContext;
-  }
-
-  _requestContext = requestContext;
-  _isRequestContextOwner = isRequestContextOwner;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief translate the HTTP protocol version
-////////////////////////////////////////////////////////////////////////////////
-
-std::string HttpRequest::translateVersion(HttpVersion version) {
-  switch (version) {
-    case HTTP_1_1: {
-      return "HTTP/1.1";
+        // don't insert this header!!
+        return;
+      }
     }
-    case HTTP_1_0:
-    case HTTP_UNKNOWN:
-    default: { return "HTTP/1.0"; }
+
+    std::string keyStr(key, keyLength);
+    _headers[keyStr] = value;
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief translate an enum value into an HTTP method string
-////////////////////////////////////////////////////////////////////////////////
-
-std::string HttpRequest::translateMethod(HttpRequestType method) {
-  if (method == HTTP_REQUEST_DELETE) {
-    return "DELETE";
-  } else if (method == HTTP_REQUEST_GET) {
-    return "GET";
-  } else if (method == HTTP_REQUEST_HEAD) {
-    return "HEAD";
-  } else if (method == HTTP_REQUEST_OPTIONS) {
-    return "OPTIONS";
-  } else if (method == HTTP_REQUEST_PATCH) {
-    return "PATCH";
-  } else if (method == HTTP_REQUEST_POST) {
-    return "POST";
-  } else if (method == HTTP_REQUEST_PUT) {
-    return "PUT";
-  }
-
-  LOG(WARN) << "illegal http request method encountered in switch";
-  return "UNKNOWN";
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief translate an HTTP method string into an enum value
-////////////////////////////////////////////////////////////////////////////////
-
-HttpRequest::HttpRequestType HttpRequest::translateMethod(
-    std::string const& method) {
-  std::string const methodString = StringUtils::toupper(method);
-
-  if (methodString == "DELETE") {
-    return HTTP_REQUEST_DELETE;
-  } else if (methodString == "GET") {
-    return HTTP_REQUEST_GET;
-  } else if (methodString == "HEAD") {
-    return HTTP_REQUEST_HEAD;
-  } else if (methodString == "OPTIONS") {
-    return HTTP_REQUEST_OPTIONS;
-  } else if (methodString == "PATCH") {
-    return HTTP_REQUEST_PATCH;
-  } else if (methodString == "POST") {
-    return HTTP_REQUEST_POST;
-  } else if (methodString == "PUT") {
-    return HTTP_REQUEST_PUT;
-  }
-
-  return HTTP_REQUEST_ILLEGAL;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief append the request method string to a string buffer
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpRequest::appendMethod(HttpRequestType method, StringBuffer* buffer) {
-  buffer->appendText(translateMethod(method));
-  buffer->appendChar(' ');
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set array value
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpRequest::setArrayValue(char* key, size_t length, char const* value) {
-  Dictionary<std::vector<char const*>*>::KeyValue const* kv =
-      _arrayValues.lookup(key);
-  std::vector<char const*>* v = nullptr;
-
-  if (kv == nullptr) {
-    v = new std::vector<char const*>;
-    _arrayValues.insert(key, length, v);
-  } else {
-    v = kv->_value;
-  }
-
-  v->push_back(value);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set cookie
-////////////////////////////////////////////////////////////////////////////////
 
 void HttpRequest::setCookie(char* key, size_t length, char const* value) {
-  _cookies.insert(key, length, value);
+  std::string keyStr(key, length);
+  _cookies[keyStr] = value;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parse value of a cookie header field
-////////////////////////////////////////////////////////////////////////////////
 
 void HttpRequest::parseCookies(char const* buffer) {
   char* keyBegin = nullptr;
@@ -1343,4 +704,49 @@ void HttpRequest::parseCookies(char const* buffer) {
 
     setCookie(keyBegin, key - keyBegin, valueBegin);
   }
+}
+
+std::string const& HttpRequest::cookieValue(std::string const& key) const {
+  static std::string EMPTY_STR = "";
+  
+  auto it = _cookies.find(key);
+
+  if (it == _cookies.end()) {
+    return EMPTY_STR;
+  }
+
+  return it->second;
+}
+
+std::string const& HttpRequest::cookieValue(std::string const& key, bool& found) const {
+  static std::string EMPTY_STR = "";
+  
+  auto it = _cookies.find(key);
+
+  if (it == _cookies.end()) {
+    found = false;
+    return EMPTY_STR;
+  }
+
+  found = true;
+  return it->second;
+}
+
+std::string const& HttpRequest::body() const {
+  return _body;
+}
+
+void HttpRequest::setBody(char const* body, size_t length) {
+  _body = std::string(body, length);
+}
+
+std::shared_ptr<VPackBuilder> HttpRequest::toVelocyPack(
+    VPackOptions const* options) {
+  VPackParser parser(options);
+  parser.parse(body());
+  return parser.steal();
+}
+
+TRI_json_t* HttpRequest::toJson(char** errmsg) {
+  return TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, body().c_str(), errmsg);
 }

@@ -37,6 +37,7 @@ struct TRI_vocbase_t;
 class TRI_vocbase_col_t;
 
 namespace arangodb {
+class Endpoint;
 
 namespace velocypack {
 class Slice;
@@ -45,10 +46,6 @@ class Slice;
 namespace httpclient {
 class GeneralClientConnection;
 class SimpleHttpClient;
-}
-
-namespace rest {
-class Endpoint;
 }
 
 class Transaction;
@@ -219,7 +216,7 @@ class Syncer {
   /// @brief the endpoint (master) we're connected to
   //////////////////////////////////////////////////////////////////////////////
 
-  rest::Endpoint* _endpoint;
+  Endpoint* _endpoint;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the connection to the master

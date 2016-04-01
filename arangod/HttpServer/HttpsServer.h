@@ -63,7 +63,7 @@ class HttpsServer : public HttpServer {
   char const* protocol() const override { return "https"; }
 
   Endpoint::EncryptionType encryptionType() const override {
-    return Endpoint::ENCRYPTION_SSL;
+    return Endpoint::EncryptionType::SSL;
   }
 
   HttpCommTask* createCommTask(TRI_socket_t, const ConnectionInfo&) override;

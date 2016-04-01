@@ -79,9 +79,27 @@ void RestAgencyHandler::redirectRequest (id_t leaderId) {
   _response->setHeader("Location", rendpoint);
 }
 
-inline HttpHandler::status_t RestAgencyHandler::handleWrite () {
+HttpHandler::status_t RestAgencyHandler::handleStores () {
+  if (_request->requestType() == GeneralRequest::RequestType::GET) {
+    Builder body;
+    body.openObject();
+    body.add("spearhead", VPackValue(VPackValueType::Array));
+    _agent->spearhead().dumpToBuilder(body);
+    body.close();
+    body.add("read_db", VPackValue(VPackValueType::Array));
+    _agent->readDB().dumpToBuilder(body);
+    body.close();
+    body.close();
+    generateResult(body.slice());
+  } else {
+    generateError(HttpResponse::BAD,400);
+  }
+  return HttpHandler::status_t(HANDLER_DONE);
+}
+
+HttpHandler::status_t RestAgencyHandler::handleWrite () {
   arangodb::velocypack::Options options; // TODO: User not wait. 
-  if (_request->requestType() == HttpRequest::HTTP_REQUEST_POST) {
+  if (_request->requestType() == GeneralRequest::RequestType::POST) {
 
     query_t query;
 
@@ -101,7 +119,7 @@ inline HttpHandler::status_t RestAgencyHandler::handleWrite () {
     
     if (ret.accepted) { // We're leading and handling the request
 
-      std::string call_mode (_request->header("x-arangodb-agency-mode"));
+      std::string const& call_mode =_request->header("x-arangodb-agency-mode");
       size_t errors = 0;
       Builder body;
       body.openObject();
@@ -146,10 +164,9 @@ inline HttpHandler::status_t RestAgencyHandler::handleWrite () {
   return HttpHandler::status_t(HANDLER_DONE);
 }
 
-#include <iostream>
 inline HttpHandler::status_t RestAgencyHandler::handleRead () {
   arangodb::velocypack::Options options;
-  if (_request->requestType() == HttpRequest::HTTP_REQUEST_POST) {
+  if (_request->requestType() == GeneralRequest::RequestType::POST) {
     query_t query;
     try {
       query = _request->toVelocyPack(&options);
@@ -161,8 +178,6 @@ inline HttpHandler::status_t RestAgencyHandler::handleRead () {
     read_ret_t ret = _agent->read (query);
 
     if (ret.accepted) { // I am leading
-      std::cout << ret.success.size() << std::endl;
-      std::cout << ret.success.at(0) << std::endl;
       if (ret.success.size() == 1 && !ret.success.at(0)) {
         generateResult(HttpResponse::I_AM_A_TEAPOT, ret.result->slice());
       } else {
@@ -218,23 +233,25 @@ HttpHandler::status_t RestAgencyHandler::execute() {
     } else if (_request->suffix().size() > 1) {   // path size >= 2
       return reportTooManySuffices();
     } else {
-    	if (_request->suffix()[0] == "write") {
+      if (_request->suffix()[0] == "write") {
         return handleWrite();
       } else if (_request->suffix()[0] == "read") {
         return handleRead();
       } else if (_request->suffix()[0] == "config") {
-        if (_request->requestType() != HttpRequest::HTTP_REQUEST_GET) {
+        if (_request->requestType() != GeneralRequest::RequestType::GET) {
           return reportMethodNotAllowed();
         }
         return handleConfig();
-    	} else if (_request->suffix()[0] == "state") {
-        if (_request->requestType() != HttpRequest::HTTP_REQUEST_GET) {
+      } else if (_request->suffix()[0] == "state") {
+        if (_request->requestType() != GeneralRequest::RequestType::GET) {
           return reportMethodNotAllowed();
         }
         return handleState();
-    	} else {
+      } else if (_request->suffix()[0] == "stores") {
+        return handleStores();
+      } else {
         return reportUnknownMethod();
-    	}
+      }
     }
   } catch (...) {
     // Ignore this error
