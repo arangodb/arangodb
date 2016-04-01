@@ -193,7 +193,7 @@ class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   /// @brief create a new HTTP response
   //////////////////////////////////////////////////////////////////////////////
 
-  void createResponse(HttpResponse::HttpResponseCode);
+  void createResponse(GeneralResponse::ResponseCode);
 
  protected:
   //////////////////////////////////////////////////////////////////////////////

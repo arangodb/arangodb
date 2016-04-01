@@ -100,7 +100,8 @@ void V8ShellFeature::start() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
 
   _console = dynamic_cast<ConsoleFeature*>(server()->feature("Console"));
-  auto platform = dynamic_cast<V8PlatformFeature*>(server()->feature("V8Platform"));
+  auto platform =
+      dynamic_cast<V8PlatformFeature*>(server()->feature("V8Platform"));
 
   v8::Isolate::CreateParams createParams;
   createParams.array_buffer_allocator = platform->arrayBufferAllocator();
@@ -196,7 +197,8 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
 
     if (v8connection != nullptr) {
       if (v8connection->isConnected() &&
-          v8connection->lastHttpReturnCode() == HttpResponse::OK) {
+          v8connection->lastHttpReturnCode() ==
+              (int)GeneralResponse::ResponseCode::OK) {
         std::ostringstream is;
 
         is << "Connected to ArangoDB '" << v8connection->endpointSpecification()

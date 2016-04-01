@@ -133,7 +133,7 @@ class v8_action_t : public TRI_action_t {
 
         result.isValid = true;
         result.response =
-            new HttpResponse(HttpResponse::NOT_FOUND, request->compatibility());
+            new HttpResponse(GeneralResponse::ResponseCode::NOT_FOUND, request->compatibility());
 
         return result;
       }
@@ -518,12 +518,12 @@ static HttpResponse* ResponseV8ToCpp(v8::Isolate* isolate,
                                      TRI_v8_global_t const* v8g,
                                      v8::Handle<v8::Object> const res,
                                      uint32_t compatibility) {
-  HttpResponse::HttpResponseCode code = HttpResponse::OK;
+  GeneralResponse::ResponseCode code = GeneralResponse::ResponseCode::OK;
 
   TRI_GET_GLOBAL_STRING(ResponseCodeKey);
   if (res->Has(ResponseCodeKey)) {
     // Windows has issues with converting from a double to an enumeration type
-    code = (HttpResponse::HttpResponseCode)(
+    code = (GeneralResponse::ResponseCode)(
         (int)(TRI_ObjectToDouble(res->Get(ResponseCodeKey))));
   }
 
@@ -563,16 +563,20 @@ static HttpResponse* ResponseV8ToCpp(v8::Isolate* isolate,
         std::string name = TRI_ObjectToString(transformator);
 
         // check available transformations
+        static std::string const contentEncoding = "content-encoding";
+
         if (name == "base64encode") {
           // base64-encode the result
           out = StringUtils::encodeBase64(out);
           // set the correct content-encoding header
-          response->setHeader("content-encoding", "base64");
+          static std::string const base64 = "base64";
+          response->setHeaderNC(contentEncoding, base64);
         } else if (name == "base64decode") {
           // base64-decode the result
           out = StringUtils::decodeBase64(out);
           // set the correct content-encoding header
-          response->setHeader("content-encoding", "binary");
+          static std::string const binary = "binary";
+          response->setHeaderNC(contentEncoding, binary);
         }
       }
 
@@ -609,7 +613,7 @@ static HttpResponse* ResponseV8ToCpp(v8::Isolate* isolate,
                         TRI_last_error();
 
       response->body().appendText(msg.c_str(), msg.size());
-      response->setResponseCode(HttpResponse::SERVER_ERROR);
+      response->setResponseCode(GeneralResponse::ResponseCode::SERVER_ERROR);
     }
   }
 
@@ -733,7 +737,7 @@ static TRI_action_result_t ExecuteActionVocbase(
     result.canceled = false;
 
     HttpResponse* response =
-        new HttpResponse(HttpResponse::SERVER_ERROR, request->compatibility());
+        new HttpResponse(GeneralResponse::ResponseCode::SERVER_ERROR, request->compatibility());
     if (errorMessage.empty()) {
       errorMessage = TRI_errno_string(errorCode);
     }
@@ -747,7 +751,7 @@ static TRI_action_result_t ExecuteActionVocbase(
 
   else if (tryCatch.HasCaught()) {
     if (tryCatch.CanContinue()) {
-      HttpResponse* response = new HttpResponse(HttpResponse::SERVER_ERROR,
+      HttpResponse* response = new HttpResponse(GeneralResponse::ResponseCode::SERVER_ERROR,
                                                 request->compatibility());
       response->body().appendText(TRI_StringifyV8Exception(isolate, &tryCatch));
 

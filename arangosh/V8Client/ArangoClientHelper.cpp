@@ -101,7 +101,7 @@ std::string ArangoClientHelper::getArangoVersion(int* err) {
 
   std::string version;
 
-  if (response->getHttpReturnCode() == rest::HttpResponse::OK) {
+  if (response->getHttpReturnCode() == (int) GeneralResponse::ResponseCode::OK) {
     // default value
     version = "arango";
 
@@ -147,7 +147,7 @@ bool ArangoClientHelper::getArangoIsCluster(int* err) {
 
   std::string role = "UNDEFINED";
 
-  if (response->getHttpReturnCode() == rest::HttpResponse::OK) {
+  if (response->getHttpReturnCode() == (int) GeneralResponse::ResponseCode::OK) {
     try {
       std::shared_ptr<VPackBuilder> parsedBody = response->getBodyVelocyPack();
       VPackSlice const body = parsedBody->slice();

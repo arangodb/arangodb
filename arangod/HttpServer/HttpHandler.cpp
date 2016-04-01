@@ -179,7 +179,7 @@ HttpHandler::status_t HttpHandler::executeFull() {
   }
 
   if (status._status != HANDLER_ASYNC && _response == nullptr) {
-    _response = new HttpResponse(HttpResponse::SERVER_ERROR,
+    _response = new HttpResponse(GeneralResponse::ResponseCode::SERVER_ERROR,
                                  GeneralRequest::MIN_COMPATIBILITY);
   }
 
@@ -230,7 +230,7 @@ HttpResponse* HttpHandler::stealResponse() {
 /// @brief create a new HTTP response
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpHandler::createResponse(HttpResponse::HttpResponseCode code) {
+void HttpHandler::createResponse(GeneralResponse::ResponseCode code) {
   // avoid having multiple responses. this would be a memleak
   if (_response != nullptr) {
     delete _response;
