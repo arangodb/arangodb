@@ -566,6 +566,7 @@ bool RestDocumentHandler::deleteDocument() {
     } catch (...) {
       // If an error occurs here the body is not parsable. Fail with bad parameter
       generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "Request body not parseable");
+      return false;
     }
     search = builderPtr->slice();
   }
