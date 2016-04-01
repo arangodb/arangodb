@@ -598,7 +598,7 @@ void Store::clearTimeTable () {
 void Store::dumpToBuilder (Builder& builder) const {
   MUTEX_LOCKER(storeLocker, _storeLock);
   toBuilder(builder);
-  {
+/*  {
     VPackObjectBuilder guard(&builder);
     for (auto const& i : _time_table) {
       auto in_time_t = std::chrono::system_clock::to_time_t(i.first);
@@ -615,7 +615,7 @@ void Store::dumpToBuilder (Builder& builder) const {
       ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X");
       builder.add(std::to_string((size_t)i.first.get()), VPackValue(ss.str()));
     }
-  }
+    }*/
 }
 
 bool Store::start () {
