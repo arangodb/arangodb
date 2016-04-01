@@ -1377,6 +1377,13 @@
           },
           error: function (resp) {
             try {
+
+              if (resp.statusText === 'Gone') {
+                arangoHelper.arangoNotification("Query", "Query execution aborted.");
+                self.removeOutputEditor(counter);
+                return;
+              }
+
               var error = JSON.parse(resp.responseText);
               if (error.errorMessage) {
                 if (error.errorMessage.match(/\d+:\d+/g) !== null) {
@@ -1395,7 +1402,8 @@
               }
             }
             catch (e) {
-              arangoHelper.arangoError("Query", "Something went wrong.");
+              arangoHelper.arangoError("Query", "Successfully aborted.");
+              console.log(e);
               self.removeOutputEditor(counter);
             }
 
