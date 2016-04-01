@@ -532,7 +532,7 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(409)
         doc.parsed_response['errorNum'].should eq(1210)
 
-        ArangoDB.delete("/_api/document/#{@cn}/#{@did}")
+        ArangoDB.delete("/_api/document/#{@cn}/#{@key}")
       end
     end
 
