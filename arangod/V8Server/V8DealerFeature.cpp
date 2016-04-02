@@ -28,6 +28,7 @@
 #include "Basics/RandomGenerator.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WorkMonitor.h"
+#include "Cluster/v8-cluster.h"
 #include "Dispatcher/DispatcherThread.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -423,21 +424,19 @@ void V8DealerFeature::collectGarbage() {
 }
 
 void V8DealerFeature::loadJavascript(TRI_vocbase_t* vocbase) {
-  std::vector<std::thread> threads;
-  _ok = true;
+  if (1 < _nrContexts) {
+    std::vector<std::thread> threads;
 
-  for (size_t i = 0; i < _nrContexts; ++i) {
-    threads.push_back(std::thread(&V8DealerFeature::loadJavascriptFilesInThread,
-                                  this, vocbase, i));
-  }
+    for (size_t i = 0; i < _nrContexts; ++i) {
+      threads.push_back(
+          std::thread(&V8DealerFeature::loadJavascriptFiles, this, vocbase, i));
+    }
 
-  for (size_t i = 0; i < _nrContexts; ++i) {
-    threads[i].join();
-  }
-
-  if (!_ok) {
-    LOG(FATAL) << "cannot initialize V8 contexts, giving up";
-    FATAL_ERROR_EXIT();
+    for (size_t i = 0; i < _nrContexts; ++i) {
+      threads[i].join();
+    }
+  } else {
+    loadJavascriptFiles(vocbase, 0);
   }
 }
 
@@ -457,6 +456,11 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
   // this is for TESTING / DEBUGGING only
   if (forceContext != -1) {
     size_t id = (size_t)forceContext;
+
+    if (id >= _nrContexts) {
+      LOG(ERR) << "internal error, not enough contexts";
+      return nullptr;
+    }
 
     while (!_stopping) {
       {
@@ -712,6 +716,8 @@ void V8DealerFeature::updateContexts(
 
     localContext->Exit();
     V8DealerFeature::DEALER->exitContext(context);
+
+    LOG(TRACE) << "updated V8 context #" << i;
   }
 }
 
@@ -811,6 +817,7 @@ void V8DealerFeature::initializeContext(size_t i) {
     {
       v8::Context::Scope contextScope(localContext);
 
+      TRI_CreateV8Globals(isolate);
       context->_context.Reset(context->_isolate, localContext);
 
       if (context->_context.IsEmpty()) {
@@ -829,9 +836,10 @@ void V8DealerFeature::initializeContext(size_t i) {
 #endif
       TRI_InitV8UserStructures(isolate, localContext);
 
+      TRI_InitV8Cluster(isolate, localContext);
+
 #warning TODO
 #if 0
-      TRI_InitV8Cluster(isolate, localContext);
       if (_dispatcher->dispatcher() != nullptr) {
         // don't initialize dispatcher if there is no scheduler (server started
         // with --no-server option)
@@ -906,7 +914,7 @@ void V8DealerFeature::initializeContext(size_t i) {
   _freeContexts.emplace_back(context);
 }
 
-bool V8DealerFeature::loadJavascriptFiles(TRI_vocbase_t* vocbase, size_t i) {
+void V8DealerFeature::loadJavascriptFiles(TRI_vocbase_t* vocbase, size_t i) {
   V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase, true, i);
   v8::HandleScope scope(context->_isolate);
   auto localContext =
@@ -941,13 +949,8 @@ bool V8DealerFeature::loadJavascriptFiles(TRI_vocbase_t* vocbase, size_t i) {
 
   localContext->Exit();
   V8DealerFeature::DEALER->exitContext(context);
-}
 
-void V8DealerFeature::loadJavascriptFilesInThread(TRI_vocbase_t* vocbase,
-                                                  size_t i) {
-  if (!loadJavascriptFiles(vocbase, i)) {
-    _ok = false;
-  }
+  LOG(TRACE) << "loaded Javascript files for V8 context #" << i;
 }
 
 void V8DealerFeature::shutdownV8Instance(size_t i) {

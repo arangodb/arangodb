@@ -1666,6 +1666,7 @@ void TRI_InitV8Buffer(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   TRI_ASSERT(unbase64('\r') == -2);
 
   TRI_v8_global_t* v8g = TRI_GetV8Globals(isolate);
+
   // .............................................................................
   // generate the general SlowBuffer template
   // .............................................................................

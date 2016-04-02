@@ -3705,7 +3705,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   v8::HandleScope scope(isolate);
 
   // check the isolate
-  TRI_v8_global_t* v8g = TRI_CreateV8Globals(isolate);
+  TRI_GET_GLOBALS();
 
   TRI_ASSERT(v8g->_transactionContext == nullptr);
   v8g->_transactionContext = new V8TransactionContext(true);

@@ -74,8 +74,7 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
  private:
   V8Context* pickFreeContextForGc();
   void initializeContext(size_t);
-  bool loadJavascriptFiles(TRI_vocbase_t*, size_t);
-  void loadJavascriptFilesInThread(TRI_vocbase_t*, size_t);
+  void loadJavascriptFiles(TRI_vocbase_t*, size_t);
   void shutdownV8Instance(size_t);
 
  private:
