@@ -142,8 +142,8 @@ add_executable(${BIN_ARANGOD}
   Cluster/ServerJob.cpp
   Cluster/ServerState.cpp
   Cluster/v8-cluster.cpp
-  # TODO   Dispatcher/ApplicationDispatcher.cpp
   Dispatcher/Dispatcher.cpp
+  Dispatcher/DispatcherFeature.cpp
   Dispatcher/DispatcherQueue.cpp
   Dispatcher/DispatcherThread.cpp
   Dispatcher/Job.cpp
@@ -154,7 +154,6 @@ add_executable(${BIN_ARANGOD}
   FulltextIndex/fulltext-result.cpp
   FulltextIndex/fulltext-wordlist.cpp
   GeoIndex/GeoIndex.cpp
-  # TODO HttpServer/ApplicationEndpointServer.cpp
   HttpServer/AsyncJobManager.cpp
   HttpServer/HttpCommTask.cpp
   HttpServer/HttpHandler.cpp
@@ -204,10 +203,11 @@ add_executable(${BIN_ARANGOD}
   RestHandler/WorkMonitorHandler.cpp
   RestServer/ArangoServer.cpp
   RestServer/ConsoleThread.cpp
+  RestServer/DatabaseFeature.cpp
+  RestServer/EndpointFeature.cpp
   RestServer/ServerFeature.cpp
   RestServer/VocbaseContext.cpp
   RestServer/arangod.cpp
-  # TODO Scheduler/ApplicationScheduler.cpp
   Scheduler/ListenTask.cpp
   Scheduler/PeriodicTask.cpp
   Scheduler/Scheduler.cpp
@@ -234,7 +234,8 @@ add_executable(${BIN_ARANGOD}
   Utils/TransactionContext.cpp
   Utils/V8TransactionContext.cpp
   Utils/WorkMonitorArangod.cpp
-  # TODO  V8Server/ApplicationV8.cpp
+  V8Server/V8Context.cpp
+  V8Server/V8DealerFeature.cpp
   V8Server/V8Job.cpp
   V8Server/V8PeriodicTask.cpp
   V8Server/V8QueueJob.cpp
@@ -284,7 +285,7 @@ add_executable(${BIN_ARANGOD}
   Wal/AllocatorThread.cpp
   Wal/CollectorThread.cpp
   Wal/Logfile.cpp
-  # TODO Wal/LogfileManager.cpp
+  Wal/LogfileManager.cpp
   Wal/Marker.cpp
   Wal/RecoverState.cpp
   Wal/RemoverThread.cpp

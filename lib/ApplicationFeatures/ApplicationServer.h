@@ -53,14 +53,14 @@ class ApplicationFeature;
 //
 // Validates the feature's options. This method will only be called for enabled
 // features. Help is handled before any `validateOptions` of a feature is
-// called. There is no defined order in which the features are traversed.
+// called. The `validateOptions` methods are called in a order that obeys the
+// `startsAfter `conditions.
 //
 // `daemonize`
 //
 // In this phase process control (like putting the process into the background
 // will be handled). This method will only be called for enabled features.
-//
-// The `prepare` methods are called in a order that obeys the `startsAfter`
+// The `daemonize` methods are called in a order that obeys the `startsAfter`
 // conditions.
 //
 // `prepare`
@@ -69,10 +69,8 @@ class ApplicationFeature;
 // in the preparation phase, the features must not start any threads
 // furthermore, they must not write any files under elevated privileges
 // if they want other features to access them, or if they want to access
-// these files with dropped privileges.
-//
-// The `prepare` methods are called in a order that obeys the `startsAfter`
-// conditions.
+// these files with dropped privileges. The `prepare` methods are called in a
+// order that obeys the `startsAfter` conditions.
 //
 // `start`
 //

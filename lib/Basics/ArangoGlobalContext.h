@@ -41,6 +41,7 @@ class ArangoGlobalContext {
   void installSegv();
   void maskAllSignals();
   void unmaskStandardSignals();
+  void runStartupChecks();
 
  private:
   std::string _binaryName;

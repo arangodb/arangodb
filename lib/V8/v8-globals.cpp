@@ -121,8 +121,6 @@ TRI_v8_global_s::TRI_v8_global_s(v8::Isolate* isolate)
       _server(nullptr),
       _vocbase(nullptr),
       _activeExternals(0),
-      _applicationV8(nullptr),
-      _loader(nullptr),
       _canceled(false),
       _allowUseDatabase(true) {
   v8::HandleScope scope(isolate);

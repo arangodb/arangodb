@@ -41,12 +41,11 @@ using Json = arangodb::basics::Json;
 using JsonHelper = arangodb::basics::JsonHelper;
 
 RestAqlHandler::RestAqlHandler(arangodb::rest::HttpRequest* request,
-                               std::pair<ApplicationV8*, QueryRegistry*>* pair)
+                               QueryRegistry* queryRegistery)
     : RestVocbaseBaseHandler(request),
-      _applicationV8(pair->first),
       _context(static_cast<VocbaseContext*>(request->getRequestContext())),
       _vocbase(_context->getVocbase()),
-      _queryRegistry(pair->second),
+      _queryRegistry(queryRegistery),
       _qId(0) {
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_queryRegistry != nullptr);
@@ -88,7 +87,7 @@ void RestAqlHandler::createQueryFromJson() {
   std::string const part =
       JsonHelper::getStringValue(queryJson.json(), "part", "");
 
-  auto query = new Query(_applicationV8, false, _vocbase, plan, options.steal(),
+  auto query = new Query(false, _vocbase, plan, options.steal(),
                          (part == "main" ? PART_MAIN : PART_DEPENDENT));
   QueryResult res = query->prepare(_queryRegistry);
   if (res.code != TRI_ERROR_NO_ERROR) {
@@ -156,7 +155,7 @@ void RestAqlHandler::parseQuery() {
     return;
   }
 
-  auto query = new Query(_applicationV8, false, _vocbase, queryString.c_str(),
+  auto query = new Query(false, _vocbase, queryString.c_str(),
                          queryString.size(), nullptr, nullptr, PART_MAIN);
   QueryResult res = query->parse();
   if (res.code != TRI_ERROR_NO_ERROR) {
@@ -217,7 +216,7 @@ void RestAqlHandler::explainQuery() {
   arangodb::basics::Json options;
   options = queryJson.get("options").copy();  // cannot throw
 
-  auto query = new Query(_applicationV8, false, _vocbase, queryString.c_str(),
+  auto query = new Query(false, _vocbase, queryString.c_str(),
                          queryString.size(), parameters.steal(),
                          options.steal(), PART_MAIN);
   QueryResult res = query->explain();
@@ -283,7 +282,7 @@ void RestAqlHandler::createQueryFromString() {
   options = queryJson.get("options").copy();  // cannot throw
 
   auto query =
-      new Query(_applicationV8, false, _vocbase, queryString.c_str(),
+      new Query(false, _vocbase, queryString.c_str(),
                 queryString.size(), parameters.steal(), options.steal(),
                 (part == "main" ? PART_MAIN : PART_DEPENDENT));
   QueryResult res = query->prepare(_queryRegistry);

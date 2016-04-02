@@ -40,7 +40,6 @@ struct TRI_json_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
-class ApplicationV8;
 class TransactionContext;
 
 namespace velocypack {
@@ -114,11 +113,11 @@ class Query {
   Query& operator=(Query const&) = delete;
 
  public:
-  Query(arangodb::ApplicationV8*, bool, TRI_vocbase_t*, char const*, size_t,
-        struct TRI_json_t*, struct TRI_json_t*, QueryPart);
+  Query(bool, TRI_vocbase_t*, char const*, size_t, struct TRI_json_t*,
+        struct TRI_json_t*, QueryPart);
 
-  Query(arangodb::ApplicationV8*, bool, TRI_vocbase_t*,
-        arangodb::basics::Json queryStruct, struct TRI_json_t*, QueryPart);
+  Query(bool, TRI_vocbase_t*, arangodb::basics::Json queryStruct,
+        struct TRI_json_t*, QueryPart);
 
   ~Query();
 
@@ -512,13 +511,6 @@ class Query {
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_voc_tick_t _id;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief application v8 used in the query, we need this for V8 context
-  /// access
-  //////////////////////////////////////////////////////////////////////////////
-
-  arangodb::ApplicationV8* _applicationV8;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief all nodes created in the AST - will be used for freeing them later

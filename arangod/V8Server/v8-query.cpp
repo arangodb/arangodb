@@ -401,7 +401,6 @@ static TRI_index_operator_t* SetupExampleSkiplist(
                                    builder, shaper, l);
   }
   return nullptr;
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2072,8 +2071,8 @@ static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
       "FOR doc IN @@collection FILTER doc._key IN @keys RETURN doc");
 
   TRI_GET_GLOBALS();
-  arangodb::aql::Query query(v8g->_applicationV8, true, col->_vocbase,
-                             aql.c_str(), aql.size(), bindVars.steal(), nullptr,
+  arangodb::aql::Query query(true, col->_vocbase, aql.c_str(), aql.size(),
+                             bindVars.steal(), nullptr,
                              arangodb::aql::PART_MAIN);
 
   auto queryResult = query.executeV8(
@@ -2124,8 +2123,8 @@ static void JS_RemoveByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
       "true }");
 
   TRI_GET_GLOBALS();
-  arangodb::aql::Query query(v8g->_applicationV8, true, col->_vocbase,
-                             aql.c_str(), aql.size(), bindVars.steal(), nullptr,
+  arangodb::aql::Query query(true, col->_vocbase, aql.c_str(), aql.size(),
+                             bindVars.steal(), nullptr,
                              arangodb::aql::PART_MAIN);
 
   auto queryResult = query.executeV8(

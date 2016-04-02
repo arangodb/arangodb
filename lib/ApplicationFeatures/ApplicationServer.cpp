@@ -125,7 +125,6 @@ void ApplicationServer::run(int argc, char* argv[]) {
   _options->seal();
 
   // validate options of all features
-  // in this phase, all features are stil order-independent
   validateOptions();
 
   // enable automatic features
@@ -232,9 +231,11 @@ void ApplicationServer::validateOptions() {
   LOG_TOPIC(TRACE, Logger::STARTUP)
       << "------------------------------------------------";
 
-  apply([this](ApplicationFeature* feature) {
-    feature->validateOptions(_options);
-  }, true);
+  for (auto it = _orderedFeatures.begin(); it != _orderedFeatures.end(); ++it) {
+    if ((*it)->isEnabled()) {
+      (*it)->validateOptions(_options);
+    }
+  }
 }
 
 void ApplicationServer::enableAutomaticFeatures() {

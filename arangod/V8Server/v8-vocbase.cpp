@@ -27,37 +27,37 @@
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
 #include "Aql/QueryRegistry.h"
-#include "Basics/conversions.h"
-#include "Basics/json-utilities.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/conversions.h"
+#include "Basics/json-utilities.h"
 #include "Cluster/AgencyComm.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
-// #include "HttpServer/ApplicationEndpointServer.h"
+#include "Rest/Version.h"
 #include "RestServer/ConsoleThread.h"
 #include "RestServer/VocbaseContext.h"
-#include "Rest/Version.h"
-#include "Utils/transactions.h"
 #include "Utils/V8ResolverGuard.h"
+#include "Utils/transactions.h"
 #include "V8/JSLoader.h"
+#include "V8/V8LineEditor.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
-#include "V8/V8LineEditor.h"
+#include "V8Server/V8DealerFeature.h"
+#include "V8Server/V8Traverser.h"
 #include "V8Server/v8-collection.h"
 #include "V8Server/v8-replication.h"
 #include "V8Server/v8-statistics.h"
 #include "V8Server/v8-voccursor.h"
 #include "V8Server/v8-vocindex.h"
 #include "V8Server/v8-wrapshapedjson.h"
-#include "V8Server/V8Traverser.h"
-#include "VocBase/auth.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/VocShaper.h"
+#include "VocBase/auth.h"
 #include "Wal/LogfileManager.h"
 
 #include <unicode/timezone.h>
@@ -1005,10 +1005,9 @@ static void JS_ParseAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string const&& queryString = TRI_ObjectToString(args[0]);
 
-  TRI_GET_GLOBALS();
-  arangodb::aql::Query query(v8g->_applicationV8, true, vocbase,
-                             queryString.c_str(), queryString.size(), nullptr,
-                             nullptr, arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query(true, vocbase, queryString.c_str(),
+                             queryString.size(), nullptr, nullptr,
+                             arangodb::aql::PART_MAIN);
 
   auto parseResult = query.parse();
 
@@ -1136,11 +1135,9 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // bind parameters will be freed by the query later
-  TRI_GET_GLOBALS();
-  arangodb::aql::Query query(v8g->_applicationV8, true, vocbase,
-                             queryString.c_str(), queryString.size(),
-                             parameters.release(), options.release(),
-                             arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query(true, vocbase, queryString.c_str(),
+                             queryString.size(), parameters.release(),
+                             options.release(), arangodb::aql::PART_MAIN);
 
   auto queryResult = query.explain();
 
@@ -1222,7 +1219,7 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  arangodb::aql::Query query(v8g->_applicationV8, true, vocbase,
+  arangodb::aql::Query query(true, vocbase,
                              Json(TRI_UNKNOWN_MEM_ZONE, queryjson.release()),
                              options.get(), arangodb::aql::PART_MAIN);
 
@@ -1317,10 +1314,9 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // bind parameters will be freed by the query later
   TRI_GET_GLOBALS();
-  arangodb::aql::Query query(v8g->_applicationV8, true, vocbase,
-                             queryString.c_str(), queryString.size(),
-                             parameters.get(), options.get(),
-                             arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query(true, vocbase, queryString.c_str(),
+                             queryString.size(), parameters.get(),
+                             options.get(), arangodb::aql::PART_MAIN);
 
   options.release();
   parameters.release();
@@ -1469,7 +1465,7 @@ static void JS_QueriesCurrentAql(
 
     for (auto q : queries) {
       auto const&& timeString = TRI_StringTimeStamp(q.started);
-      auto const& queryState = q.queryState.substr(8, q.queryState.size()-9);
+      auto const& queryState = q.queryState.substr(8, q.queryState.size() - 9);
 
       v8::Handle<v8::Object> obj = v8::Object::New(isolate);
       obj->Set(TRI_V8_ASCII_STRING("id"), V8TickId(isolate, q.id));
@@ -1522,7 +1518,7 @@ static void JS_QueriesSlowAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     for (auto q : queries) {
       auto const&& timeString = TRI_StringTimeStamp(q.started);
-      auto const& queryState = q.queryState.substr(8, q.queryState.size()-9);
+      auto const& queryState = q.queryState.substr(8, q.queryState.size() - 9);
 
       v8::Handle<v8::Object> obj = v8::Object::New(isolate);
       obj->Set(TRI_V8_ASCII_STRING("id"), V8TickId(isolate, q.id));
@@ -3256,8 +3252,9 @@ static void CreateDatabaseCoordinator(
   bool allowUseDatabase = v8g->_allowUseDatabase;
   v8g->_allowUseDatabase = true;
 
-  v8g->_loader->executeGlobalScript(isolate, isolate->GetCurrentContext(),
-                                    "server/bootstrap/coordinator-database.js");
+  V8DealerFeature::DEALER->startupLoader()->executeGlobalScript(
+      isolate, isolate->GetCurrentContext(),
+      "server/bootstrap/coordinator-database.js");
 
   v8g->_allowUseDatabase = allowUseDatabase;
 
@@ -3376,7 +3373,8 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_ASSERT(database != nullptr);
 
-  database->_deadlockDetector.enabled(!arangodb::ServerState::instance()->isRunningInCluster());
+  database->_deadlockDetector.enabled(
+      !arangodb::ServerState::instance()->isRunningInCluster());
 
   // copy users into context
   if (args.Length() >= 3 && args[2]->IsArray()) {
@@ -3397,8 +3395,9 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8g->_vocbase = database;
 
   // initalise database
-  v8g->_loader->executeGlobalScript(isolate, isolate->GetCurrentContext(),
-                                    "server/bootstrap/local-database.js");
+  V8DealerFeature::DEALER->startupLoader()->executeGlobalScript(
+      isolate, isolate->GetCurrentContext(),
+      "server/bootstrap/local-database.js");
 
   // and switch back
   v8g->_vocbase = orig;
@@ -3532,6 +3531,8 @@ static void JS_ListEndpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
+#warning TODO
+#if 0
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("db._listEndpoints()");
   }
@@ -3556,8 +3557,6 @@ static void JS_ListEndpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
 
-#warning TODO
-#if 0
   auto const& endpoints = s->getEndpoints();
 
   v8::Handle<v8::Array> result = v8::Array::New(isolate);
@@ -3699,12 +3698,10 @@ void TRI_V8ReloadRouting(v8::Isolate* isolate) {
 /// @brief creates a TRI_vocbase_t global context
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8VocBridge(v8::Isolate* isolate,
-                         arangodb::ApplicationV8* applicationV8,
-                         v8::Handle<v8::Context> context,
+void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                          arangodb::aql::QueryRegistry* queryRegistry,
                          TRI_server_t* server, TRI_vocbase_t* vocbase,
-                         JSLoader* loader, size_t threadNumber) {
+                         size_t threadNumber) {
   v8::HandleScope scope(isolate);
 
   // check the isolate
@@ -3722,12 +3719,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate,
 
   // register the database
   v8g->_vocbase = vocbase;
-
-  // register the startup loader
-  v8g->_loader = loader;
-
-  // register the context dealer
-  v8g->_applicationV8 = applicationV8;
 
   v8::Handle<v8::ObjectTemplate> ArangoNS;
   v8::Handle<v8::ObjectTemplate> rt;
@@ -3772,8 +3763,8 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate,
 
   TRI_InitV8indexArangoDB(isolate, ArangoNS);
 
-  TRI_InitV8collection(context, server, vocbase, loader, threadNumber, v8g,
-                       isolate, ArangoNS);
+  TRI_InitV8collection(context, server, vocbase, threadNumber, v8g, isolate,
+                       ArangoNS);
 
   v8g->VocbaseTempl.Reset(isolate, ArangoNS);
   TRI_AddGlobalFunctionVocbase(isolate, context,
@@ -3839,7 +3830,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate,
                                TRI_V8_ASCII_STRING("CPP_NEIGHBORS"),
                                JS_QueryNeighbors, true);
 
-  TRI_InitV8Replication(isolate, context, server, vocbase, loader, threadNumber,
+  TRI_InitV8Replication(isolate, context, server, vocbase, threadNumber,
                         v8g);
 
   TRI_AddGlobalFunctionVocbase(isolate, context,

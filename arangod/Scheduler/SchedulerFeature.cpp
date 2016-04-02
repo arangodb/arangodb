@@ -50,7 +50,7 @@ SchedulerFeature::SchedulerFeature(
       _showBackends(false),
       _scheduler(nullptr),
       _enableControlCHandler(true) {
-  setOptional(false);
+  setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Logger");
 }
@@ -74,13 +74,15 @@ void SchedulerFeature::collectOptions(
       new DiscreteValuesParameter<UInt64Parameter>(&_backend, backends));
 #endif
 
-  options->addHiddenOption(
-      "--scheduler.show-backend", "show available backends",
-      new BooleanParameter(&_showBackends, false));
+  options->addHiddenOption("--scheduler.show-backends",
+                           "show available backends",
+                           new BooleanParameter(&_showBackends, false));
 }
 
 void SchedulerFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions>) {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
+
   if (_showBackends) {
     std::cout << "available io backends are: "
               << SchedulerLibev::availableBackends() << std::endl;
@@ -104,10 +106,9 @@ static std::string StringifyLimitValue(T value) {
 }
 #endif
 
-void SchedulerFeature::prepare() {
-}
-
 void SchedulerFeature::start() {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
+
 #ifdef TRI_HAVE_GETRLIMIT
   struct rlimit rlim;
   int res = getrlimit(RLIMIT_NOFILE, &rlim);
@@ -138,9 +139,14 @@ void SchedulerFeature::start() {
 }
 
 void SchedulerFeature::stop() {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
+
   static size_t const MAX_TRIES = 10;
 
   if (_scheduler != nullptr) {
+    // unregister all tasks
+    _scheduler->unregisterUserTasks();
+
     // remove all helper tasks
     for (auto& task : _tasks) {
       _scheduler->destroyTask(task);
@@ -282,12 +288,8 @@ class HangupTask : public SignalTask {
 #endif
 
 void SchedulerFeature::buildScheduler() {
-  if (_scheduler != nullptr) {
-    LOG(FATAL) << "a scheduler has already been created";
-    FATAL_ERROR_EXIT();
-  }
-
   _scheduler = new SchedulerLibev(_nrSchedulerThreads, _backend);
+  SCHEDULER = _scheduler;
 }
 
 void SchedulerFeature::buildControlCHandler() {
@@ -338,17 +340,6 @@ if (mode == OperationMode::MODE_CONSOLE) {
   if (!startServer) {
     _applicationScheduler->disable();
   }
-
-
-  options->addOption("--server.threads", "number of threads for basic operations",
-                     new UInt64Parameter(&_nrStandardThreads));
-
-
-
-
-
-
-
 
 
 

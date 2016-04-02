@@ -25,14 +25,25 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
+struct TRI_vocbase_t;
+struct TRI_server_t;
+
 namespace arangodb {
+namespace basics {
+class ThreadPool;
+}
+
 class DatabaseFeature final : public application_features::ApplicationFeature {
  public:
-  explicit DatabaseFeature(application_features::ApplicationServer* server,
-                           uint64_t maximalJournalSize);
+  explicit DatabaseFeature(application_features::ApplicationServer* server);
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void start() override;
+
+ public:
+  TRI_vocbase_t* vocbase() const { return _vocbase; }
 
  private:
   std::string _directory;
@@ -40,6 +51,20 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   bool _queryTracking;
   std::string _queryCacheMode;
   uint64_t _queryCacheEntries;
+  bool _checkVersion;
+  uint64_t _indexThreads;
+  bool _defaultWaitForSync;
+  bool _forceSyncProperties;
+
+ private:
+  void checkVersion();
+  void openDatabases(bool, bool, bool);
+
+ private:
+  TRI_vocbase_t* _vocbase;
+  TRI_server_t* _server;
+  std::string _databasePath;
+  std::unique_ptr<basics::ThreadPool> _indexPool;
 };
 }
 

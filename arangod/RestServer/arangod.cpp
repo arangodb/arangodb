@@ -28,14 +28,19 @@
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/LoggerFeature.h"
 #include "ApplicationFeatures/RandomFeature.h"
+#include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/SslFeature.h"
 #include "ApplicationFeatures/SupervisorFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Dispatcher/DispatcherFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/DatabaseFeature.h"
+#include "RestServer/EndpointFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb;
 
@@ -53,6 +58,7 @@ ArangoServer* ArangoInstance = nullptr;
 /// @brief Hooks for OS-Specific functions
 ////////////////////////////////////////////////////////////////////////////////
 
+#warning TODO
 #if 0 
 #ifdef _WIN32
 extern bool TRI_ParseMoreArgs(int argc, char* argv[]);
@@ -71,6 +77,7 @@ int main(int argc, char* argv[]) {
   ArangoGlobalContext context(argc, argv);
   context.installSegv();
   context.maskAllSignals();
+  context.runStartupChecks();
 
   std::string name = context.binaryName();
 
@@ -82,23 +89,28 @@ int main(int argc, char* argv[]) {
   int ret = EXIT_FAILURE;
 
   server.addFeature(new ConfigFeature(&server, name));
-  //  server.addFeature(new DispatcherFeature(&server));
-  //  server.addFeature(new HttpServerFeature(&server));
+  server.addFeature(new DatabaseFeature(&server));
+  server.addFeature(new DispatcherFeature(&server));
+  server.addFeature(new EndpointFeature(&server));
   server.addFeature(new LanguageFeature(&server));
   server.addFeature(new RandomFeature(&server));
   server.addFeature(new SchedulerFeature(&server));
-  server.addFeature(new ServerFeature(&server, &ret));
+  server.addFeature(new ServerFeature(&server, "arangod", &ret));
   server.addFeature(new SslFeature(&server));
   server.addFeature(new TempFeature(&server, name));
-  // server.addFeature(new V8DealerFeature(&server));
+  server.addFeature(new V8DealerFeature(&server));
   server.addFeature(new V8PlatformFeature(&server));
   // server.addFeature(new VocbaseFeature(&server));
-  // server.addFeature(new WalFeature(&server));
 
   std::unique_ptr<LoggerFeature> logger =
       std::make_unique<LoggerFeature>(&server);
   logger->setThreaded(true);
   server.addFeature(logger.release());
+
+  std::unique_ptr<ShutdownFeature> shutdown =
+    std::make_unique<ShutdownFeature>(&server, "Server");
+  shutdown->disable();
+  server.addFeature(shutdown.release());
 
 #ifdef TRI_HAVE_FORK
   server.addFeature(new DaemonFeature(&server));

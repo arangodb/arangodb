@@ -25,7 +25,6 @@
 
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
-#include "Logger/Logger.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
@@ -33,6 +32,9 @@
 #include "Basics/files.h"
 #include "Basics/hashes.h"
 #include "Basics/memory-map.h"
+#include "Logger/Logger.h"
+#include "ProgramOptions/ProgramOptions.h"
+#include "ProgramOptions/Section.h"
 #include "VocBase/server.h"
 #include "Wal/AllocatorThread.h"
 #include "Wal/CollectorThread.h"
@@ -42,7 +44,9 @@
 #include "Wal/SynchronizerThread.h"
 
 using namespace arangodb::basics;
+using namespace arangodb::options;
 using namespace arangodb::wal;
+using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the logfile manager singleton
@@ -100,8 +104,7 @@ static inline uint32_t MaxSlots() { return 1024 * 1024 * 16; }
 ////////////////////////////////////////////////////////////////////////////////
 
 LogfileManager::LogfileManager(TRI_server_t* server, std::string* databasePath)
-    : ApplicationFeature("logfile-manager"),
-      _server(server),
+    : _server(server),
       _databasePath(databasePath),
       _directory(),
       _recoverState(nullptr),
@@ -195,40 +198,70 @@ void LogfileManager::initialize(std::string* path, TRI_server_t* server) {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-#warning TODO
-#if 0
-void LogfileManager::setupOptions(
-    std::map<std::string, arangodb::basics::ProgramOptionsDescription>&
-        options) {
-  options["Write-ahead log options:help-wal"](
-      "wal.allow-oversize-entries", &_allowOversizeEntries,
-      "allow entries that are bigger than --wal.logfile-size")(
-      "wal.directory", &_directory, "logfile directory")(
-      "wal.historic-logfiles", &_historicLogfiles,
-      "maximum number of historic logfiles to keep after collection")(
-      "wal.ignore-logfile-errors", &_ignoreLogfileErrors,
+void LogfileManager::collectOptions(std::shared_ptr<ProgramOptions> options) {
+  options->addSection(
+      Section("wal", "Configure the WAL", "wal options", false, false));
+
+  options->addHiddenOption(
+      "--wal.allow-oversize-entries",
+      "allow entries that are bigger than '--wal.logfile-size'",
+      new BooleanParameter(&_allowOversizeEntries));
+
+  options->addOption("--wal.directory", "logfile directory",
+                     new StringParameter(&_directory));
+
+  options->addHiddenOption(
+      "--wal.historic-logfiles",
+      "maximum number of historic logfiles to keep after collection",
+      new UInt32Parameter(&_historicLogfiles));
+
+  options->addHiddenOption(
+      "--wal.ignore-logfile-errors",
       "ignore logfile errors. this will read recoverable data from corrupted "
-      "logfiles but ignore any unrecoverable data")(
-      "wal.ignore-recovery-errors", &_ignoreRecoveryErrors,
-      "continue recovery even if re-applying operations fails")(
-      "wal.logfile-size", &_filesize, "size of each logfile (in bytes)")(
-      "wal.open-logfiles", &_maxOpenLogfiles,
-      "maximum number of parallel open logfiles")(
-      "wal.reserve-logfiles", &_reserveLogfiles,
-      "maximum number of reserve logfiles to maintain")(
-      "wal.slots", &_numberOfSlots, "number of logfile slots to use")(
-      "wal.suppress-shape-information", &_suppressShapeInformation,
+      "logfiles but ignore any unrecoverable data",
+      new BooleanParameter(&_ignoreLogfileErrors));
+
+  options->addHiddenOption(
+      "--wal.ignore-recovery-errors",
+      "continue recovery even if re-applying operations fails",
+      new BooleanParameter(&_ignoreRecoveryErrors));
+
+  options->addOption("--wal.logfile-size", "size of each logfile (in bytes)",
+                     new UInt32Parameter(&_filesize));
+
+  options->addOption("--wal.open-logfiles",
+                     "maximum number of parallel open logfiles",
+                     new UInt32Parameter(&_maxOpenLogfiles));
+
+  options->addOption("--wal.reserve-logfiles",
+                     "maximum number of reserve logfiles to maintain",
+                     new UInt32Parameter(&_reserveLogfiles));
+
+  options->addHiddenOption("--wal.slots", "number of logfile slots to use",
+                           new UInt32Parameter(&_numberOfSlots));
+
+  options->addHiddenOption(
+      "--wal.suppress-shape-information",
       "do not write shape information for markers (saves a lot of disk space, "
-      "but effectively disables using the write-ahead log for replication)")(
-      "wal.sync-interval", &_syncInterval,
-      "interval for automatic, non-requested disk syncs (in milliseconds)")(
-      "wal.throttle-when-pending", &_throttleWhenPending,
+      "but effectively disables using the write-ahead log for replication)",
+      new BooleanParameter(&_suppressShapeInformation));
+
+  options->addOption(
+      "--wal.sync-interval",
+      "interval for automatic, non-requested disk syncs (in milliseconds)",
+      new UInt64Parameter(&_syncInterval));
+
+  options->addHiddenOption(
+      "--wal.throttle-when-pending",
       "throttle writes when at least this many operations are waiting for "
-      "collection (set to 0 to deactivate write-throttling)")(
-      "wal.throttle-wait", &_maxThrottleWait,
-      "maximum wait time per operation when write-throttled (in milliseconds)");
+      "collection (set to 0 to deactivate write-throttling)",
+      new UInt64Parameter(&_throttleWhenPending));
+
+  options->addHiddenOption(
+      "--wal.throttle-wait",
+      "maximum wait time per operation when write-throttled (in milliseconds)",
+      new UInt64Parameter(&_maxThrottleWait));
 }
-#endif
 
 bool LogfileManager::prepare() {
   static bool Prepared = false;
@@ -251,11 +284,9 @@ bool LogfileManager::prepare() {
                                               systemErrorStr);
 
       if (res) {
-        LOG(INFO) << "created database directory '" << _directory
-                  << "'.";
+        LOG(INFO) << "created database directory '" << _directory << "'.";
       } else {
-        LOG(FATAL) << "unable to create database directory: "
-                   << systemErrorStr;
+        LOG(FATAL) << "unable to create database directory: " << systemErrorStr;
         FATAL_ERROR_EXIT();
       }
     }
@@ -508,8 +539,6 @@ bool LogfileManager::open() {
 
   return true;
 }
-
-void LogfileManager::close() {}
 
 void LogfileManager::stop() {
   if (!_startCalled) {
@@ -2188,9 +2217,8 @@ int LogfileManager::inspectLogfiles() {
 
     if (logfile != nullptr) {
       std::string const logfileName = logfile->filename();
-      LOG(DEBUG) << "logfile " << logfile->id() << ", filename '"
-                 << logfileName << "', status "
-                 << logfile->statusText();
+      LOG(DEBUG) << "logfile " << logfile->id() << ", filename '" << logfileName
+                 << "', status " << logfile->statusText();
     }
   }
 #endif

@@ -139,7 +139,6 @@ add_library(${LIB_ARANGO} STATIC
   ApplicationFeatures/ClientFeature.cpp
   ApplicationFeatures/ConfigFeature.cpp
   ApplicationFeatures/ConsoleFeature.cpp
-  ApplicationFeatures/DatabaseFeature.cpp
   ApplicationFeatures/LanguageFeature.cpp
   ApplicationFeatures/LoggerFeature.cpp
   ApplicationFeatures/RandomFeature.cpp

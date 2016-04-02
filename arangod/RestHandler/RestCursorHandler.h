@@ -43,7 +43,6 @@ class Query;
 class QueryRegistry;
 }
 
-class ApplicationV8;
 class Cursor;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -54,7 +53,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
  public:
   RestCursorHandler(
       rest::HttpRequest*,
-      std::pair<arangodb::ApplicationV8*, arangodb::aql::QueryRegistry*>*);
+      arangodb::aql::QueryRegistry*);
 
  public:
   virtual status_t execute() override;
@@ -135,12 +134,6 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   void deleteCursor();
 
  private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief _applicationV8
-  //////////////////////////////////////////////////////////////////////////////
-
-  arangodb::ApplicationV8* _applicationV8;
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief our query registry
   //////////////////////////////////////////////////////////////////////////////

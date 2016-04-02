@@ -42,7 +42,6 @@
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/V8TransactionContext.h"
 #include "V8/v8-conv.h"
-#include "V8Server/ApplicationV8.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/Graphs.h"
 
@@ -166,12 +165,10 @@ bool Query::DoDisableQueryTracking = false;
 /// @brief creates a query
 ////////////////////////////////////////////////////////////////////////////////
 
-Query::Query(arangodb::ApplicationV8* applicationV8,
-             bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
+Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
              char const* queryString, size_t queryLength,
              TRI_json_t* bindParameters, TRI_json_t* options, QueryPart part)
     : _id(0),
-      _applicationV8(applicationV8),
       _vocbase(vocbase),
       _executor(nullptr),
       _context(nullptr),
@@ -207,12 +204,10 @@ Query::Query(arangodb::ApplicationV8* applicationV8,
 /// @brief creates a query from Json
 ////////////////////////////////////////////////////////////////////////////////
 
-Query::Query(arangodb::ApplicationV8* applicationV8,
-             bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
+Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
              arangodb::basics::Json queryStruct, TRI_json_t* options,
              QueryPart part)
     : _id(0),
-      _applicationV8(applicationV8),
       _vocbase(vocbase),
       _executor(nullptr),
       _context(nullptr),
@@ -315,8 +310,8 @@ Query* Query::clone(QueryPart part, bool withPlan) {
 
   std::unique_ptr<Query> clone;
 
-  clone.reset(new Query(_applicationV8, false, _vocbase, _queryString,
-                        _queryLength, nullptr, options.get(), part));
+  clone.reset(new Query(false, _vocbase, _queryString, _queryLength, nullptr,
+                        options.get(), part));
   options.release();
 
   if (_plan != nullptr) {

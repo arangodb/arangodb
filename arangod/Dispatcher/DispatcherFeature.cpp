@@ -23,25 +23,33 @@
 
 #include "DispatcherFeature.h"
 
+#include "Dispatcher/Dispatcher.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
+using namespace arangodb::rest;
+
+Dispatcher* DispatcherFeature::DISPATCHER = nullptr;
 
 DispatcherFeature::DispatcherFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Dispatcher"),
       _nrStandardThreads(8),
       _nrAqlThreads(0),
-      _queueSize(16384) {
-  setOptional(false);
+      _queueSize(16384),
+      _startAqlQueue(false) {
+  setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Logger");
+  startsAfter("Scheduler");
 }
 
-void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+void DispatcherFeature::collectOptions(
+    std::shared_ptr<ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
 
   options->addSection(
@@ -56,11 +64,13 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                            new UInt64Parameter(&_nrAqlThreads));
 
   options->addHiddenOption("--server.maximal-queue-size",
-                     "maximum queue length for asynchronous operations",
-                     new UInt64Parameter(&_queueSize)));
+                           "maximum queue length for asynchronous operations",
+                           new UInt64Parameter(&_queueSize));
 }
 
-void ConfigFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
+void DispatcherFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
+
   if (_nrStandardThreads == 0) {
     LOG(ERR) << "need at least one server thread";
     abortInvalidParameters();
@@ -69,22 +79,66 @@ void ConfigFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   if (_nrAqlThreads == 0) {
     _nrAqlThreads = _nrStandardThreads;
   }
+
+  if (_queueSize <= 128) {
+    LOG(FATAL) << "invalid value for `--server.maximal-queue-size', need at least 128";
+    FATAL_ERROR_EXIT();
+  }
 }
 
 void DispatcherFeature::start() {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
+
   buildDispatcher();
   buildStandardQueue();
-  buildAqlQueue();
+
+  if (_startAqlQueue) {
+    buildAqlQueue();
+  }
+}
+
+void DispatcherFeature::stop() {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
+
+  _dispatcher->beginShutdown();
+  _dispatcher->shutdown();
+}
+
+void DispatcherFeature::buildDispatcher() {
+  _dispatcher = new Dispatcher(SchedulerFeature::SCHEDULER);
+  DISPATCHER = _dispatcher;
+}
+
+void DispatcherFeature::buildStandardQueue() {
+  LOG_TOPIC(DEBUG, Logger::STARTUP) << "setting up a standard queue with "
+                                    << _nrStandardThreads << " threads";
+
+  _dispatcher->addStandardQueue(_nrStandardThreads, _queueSize);
+}
+
+void DispatcherFeature::buildAqlQueue() {
+  LOG_TOPIC(DEBUG, Logger::STARTUP) << "setting up the AQL standard queue with "
+                                    << _nrAqlThreads << " threads";
+
+  _dispatcher->addAQLQueue(_nrAqlThreads, _queueSize);
+}
+
+void DispatcherFeature::setProcessorAffinity(std::vector<size_t> const& cores) {
+#ifdef TRI_HAVE_THREAD_AFFINITY
+  _dispatcher->setProcessorAffinity(Dispatcher::STANDARD_QUEUE, cores);
+#endif
 }
 
 
 
 
+
+
+#warning TODO
+#if 0
+
 // now we can create the queues
 if (startServer) {
-  _applicationDispatcher->buildStandardQueue(_dispatcherThreads,
-                                             (int)_dispatcherQueueSize);
-
   if (role == ServerState::ROLE_COORDINATOR ||
       role == ServerState::ROLE_PRIMARY ||
       role == ServerState::ROLE_SECONDARY) {
@@ -103,55 +157,4 @@ if (startServer) {
 == == == == == == == == == == == == == == == == == == == == == == == == == == ==
     == == == == == == == == == == == == ==
 
-    void DispatcherFeature::start() {}
-
-void DispatcherFeature::stop() {
-  _dispatcher->beginShutdown();
-  _dispatcher->shutdown();
-}
-
-void ApplicationDispatcher::buildDispatcher(Scheduler* scheduler) {
-  if (_dispatcher != nullptr) {
-    LOG(FATAL) << "a dispatcher has already been created";
-    FATAL_ERROR_EXIT();
-  }
-
-  _dispatcher = new Dispatcher(scheduler);
-}
-
-void ApplicationDispatcher::buildStandardQueue(size_t nrThreads,
-                                               size_t maxSize) {
-  if (_dispatcher == nullptr) {
-    LOG(FATAL) << "no dispatcher is known, cannot create dispatcher queue";
-    FATAL_ERROR_EXIT();
-  }
-
-  LOG(TRACE) << "setting up a standard queue with " << nrThreads << " threads";
-
-  TRI_ASSERT(_dispatcher != nullptr);
-  _dispatcher->addStandardQueue(nrThreads, maxSize);
-
-  _nrStandardThreads = nrThreads;
-}
-
-void ApplicationDispatcher::buildAQLQueue(size_t nrThreads, size_t maxSize) {
-  if (_dispatcher == nullptr) {
-    LOG(FATAL) << "no dispatcher is known, cannot create dispatcher queue";
-    FATAL_ERROR_EXIT();
-  }
-
-  LOG(TRACE) << "setting up the AQL standard queue with " << nrThreads
-             << " threads";
-
-  TRI_ASSERT(_dispatcher != nullptr);
-  _dispatcher->addAQLQueue(nrThreads, maxSize);
-
-  _nrAQLThreads = nrThreads;
-}
-
-void ApplicationDispatcher::setProcessorAffinity(
-    std::vector<size_t> const& cores) {
-#ifdef TRI_HAVE_THREAD_AFFINITY
-  _dispatcher->setProcessorAffinity(Dispatcher::STANDARD_QUEUE, cores);
 #endif
-}

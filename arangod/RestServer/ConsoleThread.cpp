@@ -106,7 +106,7 @@ void ConsoleThread::run() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ConsoleThread::inner() {
-  v8::Isolate* isolate = _context->isolate;
+  v8::Isolate* isolate = _context->_isolate;
   v8::HandleScope globalScope(isolate);
 
   // run the shell

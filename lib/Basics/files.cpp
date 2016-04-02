@@ -1267,6 +1267,8 @@ int TRI_VerifyLockFile(char const* filename) {
     TRI_CLOSE(fd);
     return TRI_ERROR_NO_ERROR;
   }
+
+#ifdef TRU_HAVE_SETLK
   struct flock lock;
 
   lock.l_start = 0;
@@ -1290,6 +1292,7 @@ int TRI_VerifyLockFile(char const* filename) {
   TRI_CLOSE(fd);
 
   LOG(WARN) << "fcntl on lockfile '" << filename << "' failed: " << TRI_errno_string(canLock);
+#endif
 
   return TRI_ERROR_ARANGO_DATADIR_LOCKED;
 }

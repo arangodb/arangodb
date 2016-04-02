@@ -40,7 +40,14 @@ DaemonFeature::DaemonFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Daemon"),
       _daemon(false),
       _pidFile(""),
-      _workingDirectory("") {}
+      _workingDirectory(".") {
+  setOptional(true);
+  requiresElevatedPrivileges(false);
+
+#ifndef _WIN32
+  _workingDirectory = "/var/tmp";
+#endif
+}
 
 void DaemonFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
@@ -48,14 +55,16 @@ void DaemonFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection(
       Section("", "Global configuration", "global options", false, false));
 
-  options->addOption("--daemon", "background the server, running it as daemon",
-                     new BooleanParameter(&_daemon, false));
+  options->addHiddenOption("--daemon",
+                           "background the server, running it as daemon",
+                           new BooleanParameter(&_daemon, false));
 
-  options->addOption("--pid-file", "pid-file in daemon mode",
-                     new StringParameter(&_pidFile));
+  options->addHiddenOption("--pid-file", "pid-file in daemon mode",
+                           new StringParameter(&_pidFile));
 
-  options->addOption("--working-directory", "working directory in daemon mode",
-                     new StringParameter(&_workingDirectory));
+  options->addHiddenOption("--working-directory",
+                           "working directory in daemon mode",
+                           new StringParameter(&_workingDirectory));
 }
 
 void DaemonFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -72,6 +81,22 @@ void DaemonFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
     if (logger != nullptr) {
       logger->setBackgrounded(true);
+    }
+
+    // make the pid filename absolute
+    int err = 0;
+    std::string currentDir = FileUtils::currentDirectory(&err);
+
+    char* absoluteFile =
+        TRI_GetAbsolutePath(_pidFile.c_str(), currentDir.c_str());
+
+    if (absoluteFile != nullptr) {
+      _pidFile = std::string(absoluteFile);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, absoluteFile);
+      LOG(DEBUG) << "using absolute pid file '" << _pidFile << "'";
+    } else {
+      LOG(FATAL) << "cannot determine absolute path";
+      FATAL_ERROR_EXIT();
     }
   }
 }

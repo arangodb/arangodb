@@ -28,7 +28,6 @@
 #include "Basics/StringUtils.h"
 // #include "Dispatcher/ApplicationDispatcher.h"
 #include "Dispatcher/Dispatcher.h"
-#include "Scheduler/ApplicationScheduler.h"
 #include "Scheduler/Scheduler.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"

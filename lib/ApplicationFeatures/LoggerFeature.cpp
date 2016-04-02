@@ -60,7 +60,7 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addHiddenOption("--log", "the global or topic-specific log level",
                            new VectorParameter<StringParameter>(&_levels));
-  
+
   options->addSection("log", "Configure the logging");
 
   options->addOption("--log.output,-o", "log destination(s)",
@@ -69,12 +69,13 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--log.level,-l", "the global or topic-specific log level",
                      new VectorParameter<StringParameter>(&_levels));
 
-  options->addOption("--log.use-local-time",
-                     "use local timezone instead of UTC",
-                     new BooleanParameter(&_useLocalTime));
+  options->addHiddenOption("--log.use-local-time",
+                           "use local timezone instead of UTC",
+                           new BooleanParameter(&_useLocalTime));
 
-  options->addOption("--log.prefix", "prefix log message with this string",
-                     new StringParameter(&_prefix));
+  options->addHiddenOption("--log.prefix",
+                           "prefix log message with this string",
+                           new StringParameter(&_prefix));
 
   options->addHiddenOption(
       "--log.prefix", "adds a prefix in case multiple instances are running",

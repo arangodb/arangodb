@@ -81,9 +81,8 @@ void TRI_V8ReloadRouting(v8::Isolate* isolate);
 /// @brief creates a TRI_vocbase_t global context
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8VocBridge(v8::Isolate* isolate, arangodb::ApplicationV8*,
-                         v8::Handle<v8::Context>, arangodb::aql::QueryRegistry*,
-                         TRI_server_t*, TRI_vocbase_t*, arangodb::JSLoader*,
-                         size_t);
+void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context>,
+                         arangodb::aql::QueryRegistry*, TRI_server_t*,
+                         TRI_vocbase_t*, size_t);
 
 #endif

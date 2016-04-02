@@ -25,6 +25,8 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
+#include <openssl/ssl.h>
+
 namespace arangodb {
 class SslFeature final : public application_features::ApplicationFeature {
  public:
@@ -32,14 +34,26 @@ class SslFeature final : public application_features::ApplicationFeature {
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void prepare() override;
+  void stop() override;
+
+ public:
+  SSL_CTX* sslContext() const { return _sslContext; }
 
  public:
   std::string _cafile;
   std::string _keyfile;
   bool _sessionCache;
-  std::string _chiperList;
+  std::string _cipherList;
   uint64_t _protocol;
   uint64_t _options;
+
+ private:
+  void createSslContext();
+
+ private:
+  SSL_CTX* _sslContext;
+  std::string _rctx;
 };
 }
 

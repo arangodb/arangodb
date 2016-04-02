@@ -61,4 +61,8 @@ void TempFeature::start() {
   if (!_path.empty()) {
     TRI_SetUserTempPath((char*)_path.c_str());
   }
+
+  // must be used after drop privileges and be called to set it to avoid raise
+  // conditions
+  TRI_GetTempPath();
 }

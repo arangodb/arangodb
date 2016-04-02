@@ -21,8 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_SCHEDULER_SCHEDULER_FEATURE_H
-#define ARANGOD_SCHEDULER_SCHEDULER_FEATURE_H 1
+#ifndef ARANGOD_DISPATCHER_DISPATCHER_FEATURE_H
+#define ARANGOD_DISPATCHER_DISPATCHER_FEATURE_H 1
 
 #include "Basics/Common.h"
 
@@ -31,16 +31,16 @@
 
 namespace arangodb {
 namespace rest {
-class Scheduler;
-class Task;
+class Dispatcher;
 }
 
-class SchedulerFeature final : public application_features::ApplicationFeature {
+class DispatcherFeature final
+    : public application_features::ApplicationFeature {
  public:
-  static rest::Scheduler* SCHEDULER;
+  static rest::Dispatcher* DISPATCHER;
 
  public:
-  explicit SchedulerFeature(application_features::ApplicationServer* server);
+  explicit DispatcherFeature(application_features::ApplicationServer* server);
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
@@ -48,19 +48,22 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   void start() override;
   void stop() override;
 
- private:
-  void buildScheduler();
-  void buildControlCHandler();
+ public:
+  void buildStandardQueue(size_t nrThreads, size_t maxSize);
+  void buildAQLQueue(size_t nrThreads, size_t maxSize);
+  void setProcessorAffinity(std::vector<size_t> const& cores);
 
  private:
-  uint64_t _nrSchedulerThreads;
-  uint64_t _backend;
-  bool _showBackends;
+  void buildDispatcher();
+  void buildStandardQueue();
+  void buildAqlQueue();
 
  private:
-  rest::Scheduler* _scheduler;
-  std::vector<rest::Task*> _tasks;
-  bool _enableControlCHandler;
+  rest::Dispatcher* _dispatcher;
+  uint64_t _nrStandardThreads;
+  uint64_t _nrAqlThreads;
+  uint64_t _queueSize;
+  bool _startAqlQueue;
 };
 }
 

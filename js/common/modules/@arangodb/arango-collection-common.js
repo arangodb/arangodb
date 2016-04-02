@@ -47,8 +47,6 @@ var SimpleQueryWithin = simple.SimpleQueryWithin;
 var SimpleQueryWithinRectangle = simple.SimpleQueryWithinRectangle;
 var SimpleQueryFulltext = simple.SimpleQueryFulltext;
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection is corrupted
 ////////////////////////////////////////////////////////////////////////////////
@@ -402,7 +400,6 @@ ArangoCollection.prototype.iterate = function (iterator, options) {
   }
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock documentsCollectionRemoveByExample
 ////////////////////////////////////////////////////////////////////////////////
@@ -426,5 +423,3 @@ ArangoCollection.prototype.replaceByExample = function (example, newValue, waitF
 ArangoCollection.prototype.updateByExample = function (example, newValue, keepNull, waitForSync, limit) {
   throw "cannot call abstract updateExample function";
 };
-
-

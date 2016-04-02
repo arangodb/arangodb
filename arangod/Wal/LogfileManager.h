@@ -28,7 +28,6 @@
 
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
-#include "ApplicationServer/ApplicationFeature.h"
 #include "VocBase/voc-types.h"
 #include "Wal/Logfile.h"
 #include "Wal/Marker.h"
@@ -37,6 +36,10 @@
 struct TRI_server_t;
 
 namespace arangodb {
+namespace options {
+class ProgramOptions;
+}
+
 namespace wal {
 
 class AllocatorThread;
@@ -75,24 +78,17 @@ struct LogfileManagerState {
 struct LogfileBarrier {
   LogfileBarrier() = delete;
 
-  LogfileBarrier(TRI_voc_tick_t id, double expires, TRI_voc_tick_t minTick) 
-    : id(id), expires(expires), minTick(minTick) {
-  }
+  LogfileBarrier(TRI_voc_tick_t id, double expires, TRI_voc_tick_t minTick)
+      : id(id), expires(expires), minTick(minTick) {}
 
   TRI_voc_tick_t const id;
   double expires;
   TRI_voc_tick_t minTick;
 };
 
-class LogfileManager : public rest::ApplicationFeature {
+class LogfileManager {
   friend class AllocatorThread;
   friend class CollectorThread;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief LogfileManager
-  //////////////////////////////////////////////////////////////////////////////
-
- private:
   LogfileManager(LogfileManager const&) = delete;
   LogfileManager& operator=(LogfileManager const&) = delete;
 
@@ -118,21 +114,11 @@ class LogfileManager : public rest::ApplicationFeature {
   static void initialize(std::string*, TRI_server_t*);
 
  public:
-#warning TODO
-  /*
-  void setupOptions(
-      std::map<std::string, arangodb::basics::ProgramOptionsDescription>&) override final;
-  */
-
-  bool prepare() override final;
-
-  bool open() override final;
-
-  bool start() override final;
-
-  void close() override final;
-
-  void stop() override final;
+  void collectOptions(std::shared_ptr<options::ProgramOptions> options);
+  bool prepare();
+  bool open();
+  bool start();
+  void stop();
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -484,7 +470,7 @@ class LogfileManager : public rest::ApplicationFeature {
   //////////////////////////////////////////////////////////////////////////////
 
   void collectLogfileBarriers();
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a list of all logfile barrier ids
   //////////////////////////////////////////////////////////////////////////////
@@ -989,13 +975,13 @@ class LogfileManager : public rest::ApplicationFeature {
   //////////////////////////////////////////////////////////////////////////////
 
   volatile sig_atomic_t _shutdown;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief a lock protecting _barriers
   //////////////////////////////////////////////////////////////////////////////
 
   basics::ReadWriteLock _barriersLock;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief barriers that prevent WAL logfiles from being collected
   //////////////////////////////////////////////////////////////////////////////

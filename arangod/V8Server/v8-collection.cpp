@@ -899,7 +899,8 @@ static void ReplaceVocbaseCol(bool useCollection,
       TRI_V8_THROW_EXCEPTION_MEMORY();
     }
 
-    if (shardKeysChanged(col->_dbName, cidString, old, builder.slice(), false)) {
+    if (shardKeysChanged(col->_dbName, cidString, old, builder.slice(),
+                         false)) {
       TRI_V8_THROW_EXCEPTION(
           TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
     }
@@ -1201,7 +1202,8 @@ static void InsertVocbaseVPack(
     TRI_V8_RETURN_TRUE();
   }
 
-  std::string key = TRI_EXTRACT_MARKER_KEY(&trx, &mptr);  // PROTECTED by trx here
+  std::string key =
+      TRI_EXTRACT_MARKER_KEY(&trx, &mptr);  // PROTECTED by trx here
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   TRI_GET_GLOBAL_STRING(_IdKey);
@@ -2209,8 +2211,6 @@ static void JS_PlanIdVocbaseCol(
 
 static void JS_PropertiesVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
-#warning TODO
-#if 0
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   TRI_GET_GLOBALS();
@@ -2312,9 +2312,11 @@ static void JS_PropertiesVocbaseCol(
       VPackSlice const slice(keyOpts->data());
       result->Set(KeyOptionsKey, TRI_VPackToV8(isolate, slice)->ToObject());
     }
-    result->Set(TRI_V8_ASCII_STRING("replicationFactor"),
+    result->Set(
+        TRI_V8_ASCII_STRING("replicationFactor"),
         v8::Number::New(isolate, static_cast<double>(c->replicationFactor())));
-    result->Set(TRI_V8_ASCII_STRING("replicationQuorum"),
+    result->Set(
+        TRI_V8_ASCII_STRING("replicationQuorum"),
         v8::Number::New(isolate, static_cast<double>(c->replicationQuorum())));
 
     TRI_V8_RETURN(result);
@@ -2417,7 +2419,8 @@ static void JS_PropertiesVocbaseCol(
 
       if (res != TRI_ERROR_NO_ERROR) {
         // TODO: what to do here
-        LOG(WARN) << "could not save collection change marker in log: " << TRI_errno_string(res);
+        LOG(WARN) << "could not save collection change marker in log: "
+                  << TRI_errno_string(res);
       }
 
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
@@ -2459,7 +2462,6 @@ static void JS_PropertiesVocbaseCol(
   ReleaseCollection(collection);
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4028,9 +4030,8 @@ static void JS_DatafileScanVocbaseCol(
 // .............................................................................
 
 void TRI_InitV8collection(v8::Handle<v8::Context> context, TRI_server_t* server,
-                          TRI_vocbase_t* vocbase, JSLoader* loader,
-                          size_t const threadNumber, TRI_v8_global_t* v8g,
-                          v8::Isolate* isolate,
+                          TRI_vocbase_t* vocbase, size_t const threadNumber,
+                          TRI_v8_global_t* v8g, v8::Isolate* isolate,
                           v8::Handle<v8::ObjectTemplate> ArangoDBNS) {
   TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_changeMode"),
                        JS_ChangeOperationModeVocbase);

@@ -58,10 +58,11 @@ void V8PlatformFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
 
-  options->addSection("javascript", "Configure the Javascript engine");
+  options->addSection(Section("javascript", "Configure the Javascript engine",
+                              "javascript options", false, false));
 
-  options->addOption("--javascript.v8-options", "options to pass to v8",
-                     new StringParameter(&_v8options));
+  options->addHiddenOption("--javascript.v8-options", "options to pass to v8",
+                           new StringParameter(&_v8options));
 }
 
 void V8PlatformFeature::start() {
@@ -71,6 +72,7 @@ void V8PlatformFeature::start() {
 
   // explicit option --javascript.v8-options used
   if (!_v8options.empty()) {
+    LOG(INFO) << "using V8 options '" << _v8options << "'";
     v8::V8::SetFlagsFromString(_v8options.c_str(), (int)_v8options.size());
   }
 

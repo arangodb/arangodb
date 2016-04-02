@@ -21,46 +21,45 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_SCHEDULER_SCHEDULER_FEATURE_H
-#define ARANGOD_SCHEDULER_SCHEDULER_FEATURE_H 1
+#ifndef ARANGOD_HTTP_SERVER_ENDPOINT_FEATURE_H
+#define ARANGOD_HTTP_SERVER_ENDPOINT_FEATURE_H 1
 
 #include "Basics/Common.h"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationServer/ApplicationFeature.h"
+#include "Rest/EndpointList.h"
 
 namespace arangodb {
 namespace rest {
-class Scheduler;
-class Task;
+class HttpServer;
+class HttpsServer;
 }
 
-class SchedulerFeature final : public application_features::ApplicationFeature {
+class EndpointFeature final : public application_features::ApplicationFeature {
  public:
-  static rest::Scheduler* SCHEDULER;
-
- public:
-  explicit SchedulerFeature(application_features::ApplicationServer* server);
+  explicit EndpointFeature(application_features::ApplicationServer* server);
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void prepare() override;
   void start() override;
   void stop() override;
 
  private:
-  void buildScheduler();
-  void buildControlCHandler();
+  void buildEndpointLists();
+  void buildServers();
 
  private:
-  uint64_t _nrSchedulerThreads;
-  uint64_t _backend;
-  bool _showBackends;
+  std::vector<std::string> _endpoints;
+  bool _reuseAddress;
+  uint64_t _backlogSize;
+  double _keepAliveTimeout;
 
  private:
-  rest::Scheduler* _scheduler;
-  std::vector<rest::Task*> _tasks;
-  bool _enableControlCHandler;
+  rest::EndpointList _endpointList;
+  std::vector<rest::HttpServer*> _servers;
 };
 }
 

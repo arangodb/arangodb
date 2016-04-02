@@ -26,9 +26,9 @@
 
 #include "Basics/Common.h"
 
-#include "Basics/Mutex.h"
-
 #include <v8.h>
+
+#include "Basics/Mutex.h"
 
 namespace arangodb {
 class GlobalContextMethods {
@@ -112,7 +112,7 @@ class V8Context {
   size_t _id;
 
   v8::Persistent<v8::Context> _context;
-  v8::Isolate* isolate = nullptr;
+  v8::Isolate* _isolate = nullptr;
   v8::Locker* _locker = nullptr;
   size_t _numExecutions;
   double _lastGcStamp;
@@ -123,10 +123,7 @@ class V8Context {
 
  public:
   bool addGlobalContextMethod(std::string const&);
-
-  // Caller must hold the _contextCondition.
   void handleGlobalContextMethods();
-
   void handleCancelationCleanup();
 };
 }

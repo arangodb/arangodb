@@ -1,0 +1,102 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Dr. Frank Celler
+////////////////////////////////////////////////////////////////////////////////
+
+#ifndef APPLICATION_FEATURES_V8_DEALER_FEATURE_H
+#define APPLICATION_FEATURES_V8_DEALER_FEATURE_H 1
+
+#include "ApplicationFeatures/ApplicationFeature.h"
+
+#include "Basics/ConditionVariable.h"
+#include "V8/JSLoader.h"
+
+struct TRI_vocbase_t;
+
+namespace arangodb {
+class Thread;
+class V8Context;
+
+class V8DealerFeature final : public application_features::ApplicationFeature {
+ public:
+  static V8DealerFeature* DEALER;
+
+ public:
+  explicit V8DealerFeature(application_features::ApplicationServer* server);
+
+ public:
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void start() override;
+  void stop() override;
+
+ private:
+  double _gcFrequency;
+  uint64_t _gcInterval;
+  std::string _appPath;
+  std::string _startupPath;
+  uint64_t _nrContexts;
+  bool _frontendVersionCheck;
+
+ public:
+  JSLoader* startupLoader() { return &_startupLoader; };
+  bool addGlobalContextMethod(std::string const&);
+  void collectGarbage();
+
+  void loadJavascript(TRI_vocbase_t*);
+  void startGarbageCollection();
+
+  V8Context* enterContext(TRI_vocbase_t*, bool useDatabase,
+                          ssize_t forceContext = -1);
+  void exitContext(V8Context*);
+
+  void updateContexts(
+      std::function<void(v8::Isolate*, v8::Handle<v8::Context>, size_t)>,
+      TRI_vocbase_t*);
+
+ private:
+  V8Context* pickFreeContextForGc();
+  void initializeContext(size_t);
+  bool loadJavascriptFiles(TRI_vocbase_t*, size_t);
+  void loadJavascriptFilesInThread(TRI_vocbase_t*, size_t);
+  void shutdownV8Instance(size_t);
+
+ private:
+  bool _useActions;
+  std::atomic<bool> _ok;
+
+  Thread* _gcThread;
+  std::atomic<bool> _stopping;
+  std::atomic<bool> _gcFinished;
+
+  V8Context** _contexts;
+  basics::ConditionVariable _contextCondition;
+  std::vector<V8Context*> _freeContexts;
+  std::vector<V8Context*> _dirtyContexts;
+  std::unordered_set<V8Context*> _busyContexts;
+
+  JSLoader _startupLoader;
+
+  std::map<std::string, bool> _definedBooleans;
+  std::map<std::string, double> _definedDoubles;
+};
+}
+
+#endif

@@ -36,7 +36,7 @@ using namespace arangodb::options;
 SupervisorFeature::SupervisorFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Supervisor"), _supervisor(false) {
-  setOptional(false);
+  setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Daemon");
 }
@@ -48,9 +48,9 @@ void SupervisorFeature::collectOptions(
   options->addSection(
       Section("", "Global configuration", "global options", false, false));
 
-  options->addOption("--supervisor",
-                     "background the server, starts a supervisor",
-                     new BooleanParameter(&_supervisor, false));
+  options->addHiddenOption("--supervisor",
+                           "background the server, starts a supervisor",
+                           new BooleanParameter(&_supervisor, false));
 }
 
 void SupervisorFeature::validateOptions(

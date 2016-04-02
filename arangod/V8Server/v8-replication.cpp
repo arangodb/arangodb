@@ -42,8 +42,6 @@ using namespace arangodb::rest;
 
 static void JS_StateLoggerReplication(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
-#warning TODO
-#if 0
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -61,7 +59,8 @@ static void JS_StateLoggerReplication(
   result->Set(TRI_V8_ASCII_STRING("state"), state);
 
   v8::Handle<v8::Object> server = v8::Object::New(isolate);
-  server->Set(TRI_V8_ASCII_STRING("version"), TRI_V8_ASCII_STRING(ARANGODB_VERSION));
+  server->Set(TRI_V8_ASCII_STRING("version"),
+              TRI_V8_ASCII_STRING(ARANGODB_VERSION));
   server->Set(TRI_V8_ASCII_STRING("serverId"),
               TRI_V8_STD_STRING(StringUtils::itoa(TRI_GetIdServer())));
   result->Set(TRI_V8_ASCII_STRING("server"), server);
@@ -71,7 +70,6 @@ static void JS_StateLoggerReplication(
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -80,8 +78,6 @@ static void JS_StateLoggerReplication(
 
 static void JS_TickRangesLoggerReplication(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
-#warning TODO
-#if 0
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -104,7 +100,6 @@ static void JS_TickRangesLoggerReplication(
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -113,8 +108,6 @@ static void JS_TickRangesLoggerReplication(
 
 static void JS_FirstTickLoggerReplication(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
-#warning TODO
-#if 0
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -138,7 +131,6 @@ static void JS_FirstTickLoggerReplication(
 
   TRI_V8_RETURN(V8TickId(isolate, tick));
   TRI_V8_TRY_CATCH_END
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -305,10 +297,11 @@ static void JS_SynchronizeReplication(
           TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING("incremental")));
     }
   }
- 
+
   bool keepBarrier = false;
   if (object->Has(TRI_V8_ASCII_STRING("keepBarrier"))) {
-    keepBarrier = TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING("keepBarrier")));
+    keepBarrier =
+        TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING("keepBarrier")));
   }
 
   std::string shardFollower;
@@ -555,7 +548,7 @@ static void JS_ConfigureApplierReplication(
             object->Get(TRI_V8_ASCII_STRING("requireFromPresent")));
       }
     }
-    
+
     if (object->Has(TRI_V8_ASCII_STRING("incremental"))) {
       if (object->Get(TRI_V8_ASCII_STRING("incremental"))->IsBoolean()) {
         config._incremental = TRI_ObjectToBoolean(
@@ -713,7 +706,8 @@ static void JS_StartApplierReplication(
     barrierId = TRI_ObjectToUInt64(args[1], true);
   }
 
-  int res = vocbase->_replicationApplier->start(initialTick, useTick, barrierId);
+  int res =
+      vocbase->_replicationApplier->start(initialTick, useTick, barrierId);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot start replication applier");
@@ -828,8 +822,7 @@ static void JS_ForgetApplierReplication(
 void TRI_InitV8Replication(v8::Isolate* isolate,
                            v8::Handle<v8::Context> context,
                            TRI_server_t* server, TRI_vocbase_t* vocbase,
-                           JSLoader* loader, size_t threadNumber,
-                           TRI_v8_global_t* v8g) {
+                           size_t threadNumber, TRI_v8_global_t* v8g) {
   // replication functions. not intended to be used by end users
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("REPLICATION_LOGGER_STATE"),

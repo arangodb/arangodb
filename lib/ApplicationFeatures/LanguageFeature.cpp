@@ -65,4 +65,16 @@ void LanguageFeature::prepare() {
     LOG(FATAL) << msg;
     FATAL_ERROR_EXIT();
   }
+
+  std::string languageName;
+
+  if (Utf8Helper::DefaultUtf8Helper.getCollatorCountry() != "") {
+    languageName =
+        std::string(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() + "_" +
+                    Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
+  } else {
+    languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
+  }
+
+  LOG(INFO) << "using default language '" << languageName << "'";
 }
