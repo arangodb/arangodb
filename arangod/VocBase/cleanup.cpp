@@ -55,8 +55,6 @@ static int const CLEANUP_INDEX_ITERATIONS = 5;
 
 static void CleanupDocumentCollection(TRI_vocbase_col_t* collection,
                                       TRI_document_collection_t* document) {
-#warning TODO
-#if 0
   // unload operations can normally only be executed when a collection is fully
   // garbage collected
   bool unloadChecked = false;
@@ -207,7 +205,6 @@ static void CleanupDocumentCollection(TRI_vocbase_col_t* collection,
 
     // next iteration
   }
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

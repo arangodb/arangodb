@@ -28,7 +28,6 @@
 #include "Basics/RandomGenerator.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WorkMonitor.h"
-#include "Cluster/v8-cluster.h"
 #include "Dispatcher/DispatcherThread.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -40,7 +39,6 @@
 #include "V8/v8-utils.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/v8-actions.h"
-#include "V8Server/v8-query.h"
 #include "V8Server/v8-user-structures.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
@@ -551,7 +549,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
 
   // when we get here, we should have a context and an isolate
   TRI_ASSERT(context != nullptr);
-  TRI_ASSERT(context->isolate != nullptr);
+  TRI_ASSERT(context->_isolate != nullptr);
   auto isolate = context->_isolate;
 
   TRI_ASSERT(context->_locker == nullptr);
@@ -830,13 +828,7 @@ void V8DealerFeature::initializeContext(size_t i) {
       globalObj->Set(TRI_V8_ASCII_STRING("global"), globalObj);
       globalObj->Set(TRI_V8_ASCII_STRING("root"), globalObj);
 
-#warning TODO
-#if 0
-      TRI_InitV8Queries(isolate, localContext);
-#endif
       TRI_InitV8UserStructures(isolate, localContext);
-
-      TRI_InitV8Cluster(isolate, localContext);
 
 #warning TODO
 #if 0

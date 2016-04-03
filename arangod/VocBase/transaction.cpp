@@ -623,8 +623,6 @@ static int ReleaseCollections(TRI_transaction_t* trx, int nestingLevel) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int WriteBeginMarker(TRI_transaction_t* trx) {
-#warning TODO
-#if 0
   if (!NeedWriteMarker(trx, true)) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -657,7 +655,6 @@ static int WriteBeginMarker(TRI_transaction_t* trx) {
   }
 
   return res;
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -665,8 +662,6 @@ static int WriteBeginMarker(TRI_transaction_t* trx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int WriteAbortMarker(TRI_transaction_t* trx) {
-#warning TODO
-#if 0
   if (!NeedWriteMarker(trx, false)) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -695,7 +690,6 @@ static int WriteAbortMarker(TRI_transaction_t* trx) {
   }
 
   return res;
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -703,8 +697,6 @@ static int WriteAbortMarker(TRI_transaction_t* trx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int WriteCommitMarker(TRI_transaction_t* trx) {
-#warning TODO
-#if 0
   if (!NeedWriteMarker(trx, false)) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -729,7 +721,6 @@ static int WriteCommitMarker(TRI_transaction_t* trx) {
   }
 
   return res;
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -796,8 +787,6 @@ TRI_transaction_t* TRI_CreateTransaction(TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeTransaction(TRI_transaction_t* trx) {
-#warning TODO
-#if 0
   TRI_ASSERT(trx != nullptr);
 
   if (trx->_status == TRI_TRANSACTION_RUNNING) {
@@ -825,7 +814,6 @@ void TRI_FreeTransaction(TRI_transaction_t* trx) {
   TRI_DestroyVectorPointer(&trx->_collections);
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, trx);
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1081,8 +1069,6 @@ bool TRI_IsContainedCollectionTransaction(TRI_transaction_t* trx,
 int TRI_AddOperationTransaction(TRI_transaction_t* trx,
                                 arangodb::wal::DocumentOperation& operation,
                                 bool& waitForSync) {
-#warning TODO
-#if 0
   TRI_ASSERT(operation.header != nullptr);
 
   bool const isSingleOperationTransaction = IsSingleOperationTransaction(trx);
@@ -1271,7 +1257,6 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
   TRI_IF_FAILURE("TransactionOperationAtEnd") { return TRI_ERROR_DEBUG; }
 
   return TRI_ERROR_NO_ERROR;
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1280,8 +1265,6 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
 
 int TRI_BeginTransaction(TRI_transaction_t* trx, TRI_transaction_hint_t hints,
                          int nestingLevel) {
-#warning TODO
-#if 0
   LOG_TRX(trx, nestingLevel) << "beginning " << (trx->_type == TRI_TRANSACTION_READ ? "read" : "write") << " transaction";
 
   if (nestingLevel == 0) {
@@ -1343,7 +1326,6 @@ int TRI_BeginTransaction(TRI_transaction_t* trx, TRI_transaction_hint_t hints,
   }
 
   return res;
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

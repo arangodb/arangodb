@@ -41,7 +41,8 @@
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
-// #include "V8Server/ApplicationV8.h"
+#include "V8Server/V8Context.h"
+#include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
@@ -53,12 +54,6 @@ using namespace arangodb::rest;
 static TRI_action_result_t ExecuteActionVocbase(
     TRI_vocbase_t* vocbase, v8::Isolate* isolate, TRI_action_t const* action,
     v8::Handle<v8::Function> callback, HttpRequest* request);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief global V8 dealer
-////////////////////////////////////////////////////////////////////////////////
-
-static ApplicationV8* GlobalV8Dealer = nullptr;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief action description for V8
@@ -89,8 +84,6 @@ class v8_action_t : public TRI_action_t {
 
   TRI_action_result_t execute(TRI_vocbase_t* vocbase, HttpRequest* request,
                               Mutex* dataLock, void** data) override {
-#warning TODO
-#if 0
     TRI_action_result_t result;
 
     // allow use datase execution in rest calls
@@ -112,7 +105,7 @@ class v8_action_t : public TRI_action_t {
     }
 
     // get a V8 context
-    ApplicationV8::V8Context* context = GlobalV8Dealer->enterContext(
+    V8Context* context = V8DealerFeature::DEALER->enterContext(
         vocbase, allowUseDatabaseInRestActions, forceContext);
 
     // note: the context might be 0 in case of shut-down
@@ -125,12 +118,12 @@ class v8_action_t : public TRI_action_t {
 
     {
       std::map<v8::Isolate*, v8::Persistent<v8::Function>>::iterator i =
-          _callbacks.find(context->isolate);
+          _callbacks.find(context->_isolate);
 
       if (i == _callbacks.end()) {
         LOG(WARN) << "no callback function for JavaScript action '" << _url << "'";
 
-        GlobalV8Dealer->exitContext(context);
+        V8DealerFeature::DEALER->exitContext(context);
 
         result.isValid = true;
         result.response =
@@ -146,19 +139,19 @@ class v8_action_t : public TRI_action_t {
         if (*data != 0) {
           result.canceled = true;
 
-          GlobalV8Dealer->exitContext(context);
+          V8DealerFeature::DEALER->exitContext(context);
 
           return result;
         }
 
-        *data = (void*)context->isolate;
+        *data = (void*)context->_isolate;
       }
-      v8::HandleScope scope(context->isolate);
+      v8::HandleScope scope(context->_isolate);
       auto localFunction =
-          v8::Local<v8::Function>::New(context->isolate, i->second);
+          v8::Local<v8::Function>::New(context->_isolate, i->second);
 
       try {
-        result = ExecuteActionVocbase(vocbase, context->isolate, this,
+        result = ExecuteActionVocbase(vocbase, context->_isolate, this,
                                       localFunction, request);
       } catch (...) {
         result.isValid = false;
@@ -169,10 +162,9 @@ class v8_action_t : public TRI_action_t {
         *data = 0;
       }
     }
-    GlobalV8Dealer->exitContext(context);
+    V8DealerFeature::DEALER->exitContext(context);
 
     return result;
-#endif
   }
 
   bool cancel(Mutex* dataLock, void** data) override {
@@ -865,13 +857,10 @@ static void JS_ExecuteGlobalContextFunction(
   std::string const def = *utf8def;
 
   // and pass it to the V8 contexts
-#warning TODO
-#if 0
-  if (!GlobalV8Dealer->addGlobalContextMethod(def)) {
+  if (!V8DealerFeature::DEALER->addGlobalContextMethod(def)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "invalid action definition");
   }
-#endif
 
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
@@ -1232,10 +1221,8 @@ static void JS_AccessSid(v8::FunctionCallbackInfo<v8::Value> const& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitV8Actions(v8::Isolate* isolate, v8::Handle<v8::Context> context,
-                       TRI_vocbase_t* vocbase, ApplicationV8* applicationV8) {
+                       TRI_vocbase_t* vocbase) {
   v8::HandleScope scope(isolate);
-
-  GlobalV8Dealer = applicationV8;
 
   // .............................................................................
   // create the global functions

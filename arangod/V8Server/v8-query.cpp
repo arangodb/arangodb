@@ -2178,7 +2178,9 @@ void TRI_InitV8Queries(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
 
   TRI_GET_GLOBALS();
   TRI_ASSERT(v8g != nullptr);
+
   TRI_GET_GLOBAL(VocbaseColTempl, v8::ObjectTemplate);
+  TRI_ASSERT(!VocbaseColTempl.IsEmpty());
 
   // .............................................................................
   // generate the TRI_vocbase_col_t template

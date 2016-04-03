@@ -394,8 +394,6 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_PropertiesWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
-#warning TODO
-#if 0
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -463,7 +461,6 @@ static void JS_PropertiesWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -471,8 +468,6 @@ static void JS_PropertiesWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
-#warning TODO
-#if 0
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -528,7 +523,6 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -570,15 +564,12 @@ static void JS_WaitCollectorWal(
     timeout = TRI_ObjectToDouble(args[1]);
   }
 
-#warning TODO
-#if 0
   int res = arangodb::wal::LogfileManager::instance()->waitForCollectorQueue(
       col->_cid, timeout);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-#endif
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
@@ -590,8 +581,6 @@ static void JS_WaitCollectorWal(
 
 static void JS_TransactionsWal(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
-#warning TODO
-#if 0
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -603,6 +592,7 @@ static void JS_TransactionsWal(
   result->ForceSet(
       TRI_V8_ASCII_STRING("runningTransactions"),
       v8::Number::New(isolate, static_cast<double>(std::get<0>(info))));
+
   // lastCollectedId
   {
     auto value = std::get<1>(info);
@@ -614,6 +604,7 @@ static void JS_TransactionsWal(
                        V8TickId(isolate, static_cast<TRI_voc_tick_t>(value)));
     }
   }
+
   // lastSealedId
   {
     auto value = std::get<2>(info);
@@ -627,7 +618,6 @@ static void JS_TransactionsWal(
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3636,9 +3626,8 @@ int32_t TRI_GetVocBaseColType() { return WRP_VOCBASE_COL_TYPE; }
 /// @brief run version check
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_UpgradeDatabase(TRI_vocbase_t* vocbase, JSLoader* startupLoader,
+bool TRI_UpgradeDatabase(TRI_vocbase_t* vocbase,
                          v8::Handle<v8::Context> context) {
-  TRI_ASSERT(startupLoader != nullptr);
   auto isolate = context->GetIsolate();
 
   v8::HandleScope scope(isolate);
@@ -3646,6 +3635,7 @@ bool TRI_UpgradeDatabase(TRI_vocbase_t* vocbase, JSLoader* startupLoader,
   TRI_vocbase_t* orig = v8g->_vocbase;
   v8g->_vocbase = vocbase;
 
+  auto startupLoader = V8DealerFeature::DEALER->startupLoader();
   v8::Handle<v8::Value> result = startupLoader->executeGlobalScript(
       isolate, isolate->GetCurrentContext(), "server/upgrade-database.js");
   bool ok = TRI_ObjectToBoolean(result);
@@ -3663,16 +3653,15 @@ bool TRI_UpgradeDatabase(TRI_vocbase_t* vocbase, JSLoader* startupLoader,
 /// @brief run upgrade check
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CheckDatabaseVersion(TRI_vocbase_t* vocbase, JSLoader* startupLoader,
+int TRI_CheckDatabaseVersion(TRI_vocbase_t* vocbase,
                              v8::Handle<v8::Context> context) {
-  TRI_ASSERT(startupLoader != nullptr);
-
   auto isolate = context->GetIsolate();
   v8::HandleScope scope(isolate);
   TRI_GET_GLOBALS();
   TRI_vocbase_t* orig = v8g->_vocbase;
   v8g->_vocbase = vocbase;
 
+  auto startupLoader = V8DealerFeature::DEALER->startupLoader();
   v8::Handle<v8::Value> result = startupLoader->executeGlobalScript(
       isolate, isolate->GetCurrentContext(), "server/check-version.js");
   int code = (int)TRI_ObjectToInt64(result);

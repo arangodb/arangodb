@@ -60,15 +60,13 @@ int32_t TRI_GetVocBaseColType();
 /// @brief run version check
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_UpgradeDatabase(TRI_vocbase_t*, arangodb::JSLoader*,
-                         v8::Handle<v8::Context>);
+bool TRI_UpgradeDatabase(TRI_vocbase_t*, v8::Handle<v8::Context>);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run upgrade check
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_CheckDatabaseVersion(TRI_vocbase_t* vocbase,
-                             arangodb::JSLoader* startupLoader,
                              v8::Handle<v8::Context> context);
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Query.h"
+
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
@@ -42,8 +43,9 @@
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/V8TransactionContext.h"
 #include "V8/v8-conv.h"
-#include "VocBase/vocbase.h"
+#include "V8Server/V8DealerFeature.h"
 #include "VocBase/Graphs.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -270,8 +272,7 @@ Query::~Query() {
       ctx->unregisterTransaction();
     }
 
-#warning TODO
-    // _applicationV8->exitContext(_context);
+    V8DealerFeature::DEALER->exitContext(_context);
     _context = nullptr;
   }
 
@@ -1153,8 +1154,7 @@ char* Query::registerEscapedString(char const* p, size_t length,
 void Query::enterContext() {
   if (!_contextOwnedByExterior) {
     if (_context == nullptr) {
-#warning TODO
-      // _context = _applicationV8->enterContext(_vocbase, false);
+      _context = V8DealerFeature::DEALER->enterContext(_vocbase, false);
 
       if (_context == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -1193,8 +1193,7 @@ void Query::exitContext() {
         ctx->unregisterTransaction();
       }
 
-#warning TODO
-      // _applicationV8->exitContext(_context);
+      V8DealerFeature::DEALER->exitContext(_context);
       _context = nullptr;
     }
     TRI_ASSERT(_context == nullptr);

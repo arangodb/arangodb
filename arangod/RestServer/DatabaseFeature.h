@@ -33,6 +33,10 @@ namespace basics {
 class ThreadPool;
 }
 
+namespace aql {
+class QueryRegistry;
+}
+
 class DatabaseFeature final : public application_features::ApplicationFeature {
  public:
   explicit DatabaseFeature(application_features::ApplicationServer* server);
@@ -52,19 +56,26 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   std::string _queryCacheMode;
   uint64_t _queryCacheEntries;
   bool _checkVersion;
+  bool _upgrade;
+  bool _skipUpgrade;
   uint64_t _indexThreads;
   bool _defaultWaitForSync;
   bool _forceSyncProperties;
 
  private:
   void checkVersion();
-  void openDatabases(bool, bool, bool);
+  void openDatabases();
+  void upgradeDatabase();
+  void updateContexts();
+  void shutdownCompactor();
 
  private:
   TRI_vocbase_t* _vocbase;
   TRI_server_t* _server;
+  aql::QueryRegistry* _queryRegistry;
   std::string _databasePath;
   std::unique_ptr<basics::ThreadPool> _indexPool;
+  bool _replicationApplier;
 };
 }
 

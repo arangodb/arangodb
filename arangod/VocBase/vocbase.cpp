@@ -197,8 +197,6 @@ static bool EqualKeyCollectionName(TRI_associative_pointer_t* array,
 
 static int WriteDropCollectionMarker(TRI_vocbase_t* vocbase,
                                      TRI_voc_cid_t collectionId) {
-#warning TODO
-#if 0
   int res = TRI_ERROR_NO_ERROR;
 
   try {
@@ -222,7 +220,6 @@ static int WriteDropCollectionMarker(TRI_vocbase_t* vocbase,
   }
 
   return res;
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1744,8 +1741,6 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase(
 TRI_vocbase_col_t* TRI_CreateCollectionVocBase(
     TRI_vocbase_t* vocbase, arangodb::VocbaseCollectionInfo& parameters,
     TRI_voc_cid_t cid, bool writeMarker) {
-#warning TODO
-#if 0
   // check that the name does not contain any strange characters
   if (!TRI_IsAllowedNameCollection(parameters.isSystem(),
                                    parameters.namec_str())) {
@@ -1802,7 +1797,6 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase(
 
   // TODO: what to do here?
   return collection;
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1890,8 +1884,6 @@ int TRI_UnloadCollectionVocBase(TRI_vocbase_t* vocbase,
 
 int TRI_DropCollectionVocBase(TRI_vocbase_t* vocbase,
                               TRI_vocbase_col_t* collection, bool writeMarker) {
-#warning TODO
-#if 0
   TRI_ASSERT(collection != nullptr);
 
   if (!collection->_canDrop &&
@@ -1932,7 +1924,6 @@ int TRI_DropCollectionVocBase(TRI_vocbase_t* vocbase,
     TRI_ASSERT(state == DROP_AGAIN);
     usleep(COLLECTION_STATUS_POLL_INTERVAL);
   }
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1943,8 +1934,6 @@ int TRI_RenameCollectionVocBase(TRI_vocbase_t* vocbase,
                                 TRI_vocbase_col_t* collection,
                                 char const* newName, bool doOverride,
                                 bool writeMarker) {
-#warning TODO
-#if 0
   if (!collection->_canRename) {
     return TRI_set_errno(TRI_ERROR_FORBIDDEN);
   }
@@ -2017,7 +2006,6 @@ int TRI_RenameCollectionVocBase(TRI_vocbase_t* vocbase,
   }
 
   return res;
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

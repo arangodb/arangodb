@@ -54,7 +54,6 @@
 #include "Cluster/RestShardHandler.h"
 // #include "Dispatcher/ApplicationDispatcher.h"
 #include "Dispatcher/Dispatcher.h"
-#include "HttpServer/ApplicationEndpointServer.h"
 #include "HttpServer/AsyncJobManager.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "Rest/InitializeRest.h"
@@ -216,17 +215,6 @@ void ArangoServer::buildApplicationServer() {
 #warning TODO
 #if 0
 
-  // ...........................................................................
-  // create QueryRegistry
-  // ...........................................................................
-
-  _queryRegistry = new aql::QueryRegistry();
-  _server->_queryRegistry = _queryRegistry;
-
-  // .............................................................................
-  // V8 engine
-  // .............................................................................
-
   // .............................................................................
   // define server options
   // .............................................................................
@@ -237,14 +225,12 @@ void ArangoServer::buildApplicationServer() {
   additional["General Options:help-default"](
       "console",
       "do not start as server, start a JavaScript emergency console instead")(
-      "upgrade", "perform a database upgrade")(
 
   // .............................................................................
   // set language of default collator
   // .............................................................................
 
   // other options
-  additional["Hidden Options"]("no-upgrade", "skip a database upgrade")(
       "start-service", "used to start as windows service")(
       "no-server", "do not start the server, if console is requested")(
       "use-thread-affinity", &_threadAffinity,
@@ -267,24 +253,14 @@ void ArangoServer::buildApplicationServer() {
   // database options
   // .............................................................................
 
-  additional["Database Options:help-admin"](
-      "database.directory", &_databasePath, "path to the database directory")(
-      "database.maximal-journal-size", &_defaultMaximalSize,
-      "default maximal journal size, can be overwritten when creating a "
-      "collection")("database.wait-for-sync", &_defaultWaitForSync,
-                    "default wait-for-sync behavior, can be overwritten when "
-                    "creating a collection")(
-      "database.force-sync-properties", &_forceSyncProperties,
-      "force syncing of collection properties to disk, will use waitForSync "
-      "value of collection when turned off")(
+
+  (
       "database.ignore-datafile-errors", &_ignoreDatafileErrors,
-      "load collections even if datafiles may contain errors")(
-      "database.disable-query-tracking", &_disableQueryTracking,
-      "turn off AQL query tracking by default")(
-      "database.query-cache-mode", &_queryCacheMode,
-      "mode for the AQL query cache (on, off, demand)")(
-      "database.query-cache-max-results", &_queryCacheMaxResults,
-      "maximum number of results in query cache per database")(
+      "load collections even if datafiles may contain errors")
+
+  (
+
+  (
       "database.throw-collection-not-loaded-error",
       &_throwCollectionNotLoadedError,
       "throw an error when accessing a collection that is still loading");

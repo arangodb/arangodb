@@ -23,13 +23,16 @@
 #include "DatabaseFeature.h"
 
 #include "ApplicationFeatures/LoggerFeature.h"
+#include "Aql/QueryRegistry.h"
 #include "Basics/StringUtils.h"
 #include "Basics/ThreadPool.h"
+#include "Cluster/v8-cluster.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
+#include "V8Server/v8-query.h"
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/server.h"
@@ -49,11 +52,14 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
       _queryCacheMode("off"),
       _queryCacheEntries(128),
       _checkVersion(false),
+      _upgrade(false),
+      _skipUpgrade(false),
       _indexThreads(2),
       _defaultWaitForSync(false),
       _forceSyncProperties(true),
       _vocbase(nullptr),
-      _server(nullptr) {
+      _server(nullptr),
+      _replicationApplier(true) {
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Language");
@@ -92,6 +98,12 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                            "checks the versions of the database and exit",
                            new BooleanParameter(&_checkVersion, false));
 
+  options->addOption("--database.upgrade", "perform a database upgrade",
+                     new BooleanParameter(&_upgrade));
+
+  options->addHiddenOption("--database.skip-upgrade", "skip a database upgrade",
+                           new BooleanParameter(&_skipUpgrade));
+
   options->addHiddenOption(
       "--database.index-threads",
       "threads to start for parallel background index creation",
@@ -114,9 +126,9 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
 void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (_directory.empty()) {
-    LOG(FATAL) << "no database path has been supplied, giving up, please use "
-                  "the '--database.directory' option";
-    FATAL_ERROR_EXIT();
+    LOG(ERR) << "no database path has been supplied, giving up, please use "
+                "the '--database.directory' option";
+    abortInvalidParameters();
   }
 
   // strip trailing separators
@@ -128,10 +140,26 @@ void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   if (_maximalJournalSize < TRI_JOURNAL_MINIMAL_SIZE) {
-    LOG(FATAL) << "invalid value for '--database.maximal-journal-size'. "
-                  "expected at least "
-               << TRI_JOURNAL_MINIMAL_SIZE;
-    FATAL_ERROR_EXIT();
+    LOG(ERR) << "invalid value for '--database.maximal-journal-size'. "
+                "expected at least "
+             << TRI_JOURNAL_MINIMAL_SIZE;
+    abortInvalidParameters();
+  }
+
+  if (_checkVersion && _upgrade) {
+    LOG(ERR) << "cannot specify both '--database.check-version' and "
+                "'--database.upgrade'";
+    abortInvalidParameters();
+  }
+
+  if (_checkVersion || _upgrade) {
+    _replicationApplier = false;
+  }
+
+  if (_upgrade && _skipUpgrade) {
+    LOG(ERR) << "cannot specify both '--database.upgrade' and "
+                "'--database.skip-upgrade'";
+    abortInvalidParameters();
   }
 
   if (_checkVersion) {
@@ -155,31 +183,14 @@ void DatabaseFeature::start() {
   TRI_InitServerGlobals();
   _server = new TRI_server_t();
 
-  // initialize the server's write ahead log
+  // create the query registery
+  _queryRegistry = new aql::QueryRegistry();
+  _server->_queryRegistry = _queryRegistry;
+
+  // start the WAL manager (but do not open it yet)
+  LOG(TRACE) << "starting WAL logfile manager";
+
   wal::LogfileManager::initialize(&_databasePath, _server);
-
-  // check the version and exit
-  if (_checkVersion) {
-    checkVersion();
-  }
-
-#if 0
-  // special treatment for the write-ahead log
-  // the log must exist before all other server operations can start
-  LOG(TRACE) << "starting WAL logfile manager";
-
-  if (!wal::LogfileManager::instance()->prepare() ||
-      !wal::LogfileManager::instance()->start()) {
-    // unable to initialize & start WAL logfile manager
-    LOG(FATAL) << "unable to start WAL logfile manager";
-    FATAL_ERROR_EXIT();
-  }
-
-#endif
-}
-
-void DatabaseFeature::checkVersion() {
-  LOG(TRACE) << "starting WAL logfile manager";
 
   if (!wal::LogfileManager::instance()->prepare() ||
       !wal::LogfileManager::instance()->start()) {
@@ -191,12 +202,22 @@ void DatabaseFeature::checkVersion() {
   KeyGenerator::Initialize();
 
   // open all databases
-  bool const iterateMarkersOnOpen =
-      !wal::LogfileManager::instance()->hasFoundLastTick();
+  openDatabases();
 
-  openDatabases(true, false, iterateMarkersOnOpen);
+  // fetch the system database and update the contexts
+  updateContexts();
 
-  // fetch the system database
+  // check the version and exit
+  if (_checkVersion) {
+    checkVersion();
+    FATAL_ERROR_EXIT();
+  }
+
+  // upgrade the database
+  upgradeDatabase();
+}
+
+void DatabaseFeature::updateContexts() {
   _vocbase = TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
 
   if (_vocbase == nullptr) {
@@ -205,23 +226,46 @@ void DatabaseFeature::checkVersion() {
     FATAL_ERROR_EXIT();
   }
 
-#warning TODO fixe queryregistry / _startupLoader
-  LOG(WARN) << "HERE";
-  {
-    aql::QueryRegistry* queryRegistry = nullptr;
-    auto server = _server;
-    auto vocbase = _vocbase;
+  auto queryRegistry = _queryRegistry;
+  auto server = _server;
+  auto vocbase = _vocbase;
 
-    V8DealerFeature::DEALER->updateContexts(
-        [&queryRegistry, &server, &vocbase](
-            v8::Isolate* isolate, v8::Handle<v8::Context> context, size_t i) {
-          TRI_InitV8VocBridge(isolate, context, queryRegistry, server,
-                              vocbase, i);
-        }, vocbase);
-  }
+  V8DealerFeature::DEALER->updateContexts(
+      [&queryRegistry, &server, &vocbase](
+          v8::Isolate* isolate, v8::Handle<v8::Context> context, size_t i) {
+        TRI_InitV8VocBridge(isolate, context, queryRegistry, server, vocbase,
+                            i);
+        TRI_InitV8Queries(isolate, context);
+        TRI_InitV8Cluster(isolate, context);
+      },
+      vocbase);
 
   V8DealerFeature::DEALER->loadJavascript(_vocbase);
+}
 
+void DatabaseFeature::shutdownCompactor() {
+  auto unuser = _server->_databasesProtector.use();
+  auto theLists = _server->_databasesLists.load();
+
+  for (auto& p : theLists->_databases) {
+    TRI_vocbase_t* vocbase = p.second;
+
+    vocbase->_state = 2;
+
+    int res = TRI_ERROR_NO_ERROR;
+
+    res |= TRI_StopCompactorVocBase(vocbase);
+    vocbase->_state = 3;
+    res |= TRI_JoinThread(&vocbase->_cleanup);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG(ERR) << "unable to join database threads for database '"
+               << vocbase->_name << "'";
+    }
+  }
+}
+
+void DatabaseFeature::checkVersion() {
   // run version check
   int result = 1;
   LOG(TRACE) << "starting version check";
@@ -234,33 +278,36 @@ void DatabaseFeature::checkVersion() {
     auto localContext =
         v8::Local<v8::Context>::New(context->_isolate, context->_context);
     localContext->Enter();
-    v8::Context::Scope contextScope(localContext);
-    auto startupLoader = V8DealerFeature::DEALER->startupLoader();
 
-    // run upgrade script
-    LOG(DEBUG) << "running database version check";
+    {
+      v8::Context::Scope contextScope(localContext);
 
-    // can do this without a lock as this is the startup
-    auto unuser = _server->_databasesProtector.use();
-    auto theLists = _server->_databasesLists.load();
+      // run version-check script
+      LOG(DEBUG) << "running database version check";
 
-    for (auto& p : theLists->_databases) {
-      TRI_vocbase_t* vocbase = p.second;
+      // can do this without a lock as this is the startup
+      auto unuser = _server->_databasesProtector.use();
+      auto theLists = _server->_databasesLists.load();
 
-      // special check script to be run just once in first thread (not in all)
-      // but for all databases
+      for (auto& p : theLists->_databases) {
+        TRI_vocbase_t* vocbase = p.second;
 
-      int status =
-          TRI_CheckDatabaseVersion(vocbase, startupLoader, localContext);
+        // special check script to be run just once in first thread (not in all)
+        // but for all databases
 
-      if (status < 0) {
-        LOG(FATAL) << "Database version check failed for '" << vocbase->_name
-                   << "'. Please inspect the logs from any errors";
-        FATAL_ERROR_EXIT();
-      } else if (status == 3) {
-        result = 3;
-      } else if (status == 2 && result == 1) {
-        result = 2;
+        int status = TRI_CheckDatabaseVersion(vocbase, localContext);
+
+        LOG(DEBUG) << "version check return status " << status;
+
+        if (status < 0) {
+          LOG(FATAL) << "Database version check failed for '" << vocbase->_name
+                     << "'. Please inspect the logs from any errors";
+          FATAL_ERROR_EXIT();
+        } else if (status == 3) {
+          result = 3;
+        } else if (status == 2 && result == 1) {
+          result = 2;
+        }
       }
     }
 
@@ -271,27 +318,7 @@ void DatabaseFeature::checkVersion() {
   }
 
   // regular shutdown... wait for all threads to finish
-  {
-    auto unuser = _server->_databasesProtector.use();
-    auto theLists = _server->_databasesLists.load();
-
-    for (auto& p : theLists->_databases) {
-      TRI_vocbase_t* vocbase = p.second;
-
-      vocbase->_state = 2;
-
-      int res = TRI_ERROR_NO_ERROR;
-
-      res |= TRI_StopCompactorVocBase(vocbase);
-      vocbase->_state = 3;
-      res |= TRI_JoinThread(&vocbase->_cleanup);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        LOG(ERR) << "unable to join database threads for database '"
-                 << vocbase->_name << "'";
-      }
-    }
-  }
+  shutdownCompactor();
 
   if (result == 1) {
     TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);
@@ -300,8 +327,90 @@ void DatabaseFeature::checkVersion() {
   }
 }
 
-void DatabaseFeature::openDatabases(bool checkVersion, bool performUpgrade,
-                                    bool iterateMarkersOnOpen) {
+void DatabaseFeature::upgradeDatabase() {
+  LOG(TRACE) << "starting database init/upgrade";
+
+  // enter context and isolate
+  {
+    V8Context* context =
+        V8DealerFeature::DEALER->enterContext(_vocbase, true, 0);
+    v8::HandleScope scope(context->_isolate);
+    auto localContext =
+        v8::Local<v8::Context>::New(context->_isolate, context->_context);
+    localContext->Enter();
+
+    {
+      v8::Context::Scope contextScope(localContext);
+
+      // run upgrade script
+      if (!_skipUpgrade) {
+        LOG(DEBUG) << "running database init/upgrade";
+
+        auto unuser(_server->_databasesProtector.use());
+        auto theLists = _server->_databasesLists.load();
+
+        for (auto& p : theLists->_databases) {
+          TRI_vocbase_t* vocbase = p.second;
+
+          // special check script to be run just once in first thread (not in
+          // all) but for all databases
+          v8::HandleScope scope(context->_isolate);
+
+          v8::Handle<v8::Object> args = v8::Object::New(context->_isolate);
+          args->Set(TRI_V8_ASCII_STRING2(context->_isolate, "upgrade"),
+                    v8::Boolean::New(context->_isolate, _upgrade));
+
+          localContext->Global()->Set(
+              TRI_V8_ASCII_STRING2(context->_isolate, "UPGRADE_ARGS"), args);
+
+          bool ok = TRI_UpgradeDatabase(vocbase, localContext);
+
+          if (!ok) {
+            if (localContext->Global()->Has(TRI_V8_ASCII_STRING2(
+                    context->_isolate, "UPGRADE_STARTED"))) {
+              localContext->Exit();
+              if (_upgrade) {
+                LOG(FATAL) << "Database '" << vocbase->_name
+                           << "' upgrade failed. Please inspect the logs from "
+                              "the upgrade procedure";
+                FATAL_ERROR_EXIT();
+              } else {
+                LOG(FATAL)
+                    << "Database '" << vocbase->_name
+                    << "' needs upgrade. Please start the server with the "
+                       "--upgrade option";
+                FATAL_ERROR_EXIT();
+              }
+            } else {
+              LOG(FATAL) << "JavaScript error during server start";
+              FATAL_ERROR_EXIT();
+            }
+
+            LOG(DEBUG) << "database '" << vocbase->_name
+                       << "' init/upgrade done";
+          }
+        }
+      }
+    }
+
+    // finally leave the context. otherwise v8 will crash with assertion failure
+    // when we delete
+    // the context locker below
+    localContext->Exit();
+    V8DealerFeature::DEALER->exitContext(context);
+  }
+
+  if (_upgrade) {
+    LOG(INFO) << "database upgrade passed";
+    shutdownCompactor();
+    TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);
+  }
+
+  // and return from the context
+  LOG(TRACE) << "finished database init/upgrade";
+}
+
+void DatabaseFeature::openDatabases() {
   TRI_vocbase_defaults_t defaults;
 
   // override with command-line options
@@ -323,22 +432,24 @@ void DatabaseFeature::openDatabases(bool checkVersion, bool performUpgrade,
     _indexPool.reset(new ThreadPool(_indexThreads, "IndexBuilder"));
   }
 
-#warning appPathm  and _disableReplicationApplier
-  bool _disableReplicationApplier = false;
+#warning appPathm
 
-  int res = TRI_InitServer(_server, _indexPool.get(), _databasePath.c_str(),
-                           nullptr, &defaults, _disableReplicationApplier,
-                           iterateMarkersOnOpen);
+  bool const iterateMarkersOnOpen =
+      !wal::LogfileManager::instance()->hasFoundLastTick();
+
+  int res =
+      TRI_InitServer(_server, _indexPool.get(), _databasePath.c_str(), nullptr,
+                     &defaults, !_replicationApplier, iterateMarkersOnOpen);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG(FATAL) << "cannot create server instance: out of memory";
     FATAL_ERROR_EXIT();
   }
 
-  res = TRI_StartServer(_server, checkVersion, performUpgrade);
+  res = TRI_StartServer(_server, _checkVersion, _upgrade);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    if (checkVersion && res == TRI_ERROR_ARANGO_EMPTY_DATADIR) {
+    if (_checkVersion && res == TRI_ERROR_ARANGO_EMPTY_DATADIR) {
       TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);
     }
 
@@ -367,11 +478,6 @@ void DatabaseFeature::openDatabases(bool checkVersion, bool performUpgrade,
   }
 
   // skip an upgrade even if VERSION is missing
-  bool skipUpgrade = false;
-
-  if (_applicationServer->programOptions().has("no-upgrade")) {
-    skipUpgrade = true;
-  }
 
   // .............................................................................
   // prepare the various parts of the Arango server
@@ -383,7 +489,7 @@ void DatabaseFeature::openDatabases(bool checkVersion, bool performUpgrade,
   bool const iterateMarkersOnOpen =
       !wal::LogfileManager::instance()->hasFoundLastTick();
 
-  openDatabases(checkVersion, performUpgrade, iterateMarkersOnOpen);
+  openDatabases(checkVersion, performUpgraden, iterateMarkersOnOpen);
 
   if (!checkVersion) {
     if (!wal::LogfileManager::instance()->open()) {
