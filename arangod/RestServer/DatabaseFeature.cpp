@@ -67,6 +67,7 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
   startsAfter("Random");
   startsAfter("Temp");
   startsAfter("V8Dealer");
+  startsAfter("WorkMonitor");
 }
 
 void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -215,6 +216,17 @@ void DatabaseFeature::start() {
 
   // upgrade the database
   upgradeDatabase();
+}
+
+void DatabaseFeature::stop() {
+  // clear the query registery
+  _server->_queryRegistry = nullptr;
+
+  delete _queryRegistry;
+  _queryRegistry = nullptr;
+
+  // close all databases
+  closeDatabases();
 }
 
 void DatabaseFeature::updateContexts() {
@@ -460,6 +472,29 @@ void DatabaseFeature::openDatabases() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << "found system database";
 }
 
+void DatabaseFeature::closeDatabases() {
+  TRI_ASSERT(_server != nullptr);
+
+// cleanup actions
+#warning TODO
+#if 0
+  TRI_CleanupActions();
+#endif
+
+  // stop the replication appliers so all replication transactions can end
+  if (_replicationApplier) {
+    TRI_StopReplicationAppliersServer(_server);
+  }
+
+  // enforce logfile manager shutdown so we are sure no one else will
+  // write to the logs
+  wal::LogfileManager::instance()->stop();
+
+  TRI_StopServer(_server);
+
+  LOG(INFO) << "ArangoDB has been shut down";
+}
+
 #if 0
 
   // and add the feature to the application server
@@ -473,7 +508,7 @@ void DatabaseFeature::openDatabases() {
     // --upgrade disables all replication appliers
     _disableReplicationApplier = true;
     if (_applicationCluster != nullptr) {
-      _applicationCluster->disable();
+      _applicationCluster->disable(); // TODO
     }
   }
 
@@ -509,36 +544,5 @@ void DatabaseFeature::openDatabases() {
   }
 
   TRI_ASSERT(vocbase != nullptr);
-
- 
-
-
-
-
-
-
-
-
-
-
-void ArangoServer::closeDatabases() {
-#warning TODO
-#if 0
-  TRI_ASSERT(_server != nullptr);
-
-  TRI_CleanupActions();
-
-  // stop the replication appliers so all replication transactions can end
-  TRI_StopReplicationAppliersServer(_server);
-
-  // enforce logfile manager shutdown so we are sure no one else will
-  // write to the logs
-  wal::LogfileManager::instance()->stop();
-
-  TRI_StopServer(_server);
-
-  LOG(INFO) << "ArangoDB has been shut down";
-#endif
-}
 
 #endif

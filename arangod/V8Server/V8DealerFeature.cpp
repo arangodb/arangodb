@@ -94,6 +94,7 @@ V8DealerFeature::V8DealerFeature(
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("V8Platform");
+  startsAfter("WorkMonitor");
 }
 
 void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -199,21 +200,23 @@ void V8DealerFeature::start() {
 
 void V8DealerFeature::stop() {
   _stopping = true;
-  _contextCondition.broadcast();
 
   // wait for all contexts to finish
-  CONDITION_LOCKER(guard, _contextCondition);
+  {
+    CONDITION_LOCKER(guard, _contextCondition);
+    guard.broadcast();
 
-  for (size_t n = 0; n < 10 * 5; ++n) {
-    if (_busyContexts.empty()) {
-      LOG(DEBUG) << "no busy V8 contexts";
-      break;
+    for (size_t n = 0; n < 10 * 5; ++n) {
+      if (_busyContexts.empty()) {
+        LOG(DEBUG) << "no busy V8 contexts";
+        break;
+      }
+
+      LOG(DEBUG) << "waiting for busy V8 contexts (" << _busyContexts.size()
+                 << ") to finish ";
+
+      guard.wait(100000);
     }
-
-    LOG(DEBUG) << "waiting for " << _busyContexts.size()
-               << " busy V8 contexts to finish";
-
-    guard.wait(100000);
   }
 
   // send all busy contexts a termate signal
@@ -239,18 +242,17 @@ void V8DealerFeature::stop() {
     }
   }
 
-  LOG(DEBUG) << "Waiting for GC Thread to finish action";
-
-  // wait until garbage collector thread is done
-  while (!_gcFinished) {
-    usleep(10000);
-  }
-
-  LOG(DEBUG) << "Commanding GC Thread to terminate";
-
   // stop GC thread
   if (_gcThread != nullptr) {
+    LOG(DEBUG) << "Waiting for GC Thread to finish action";
     _gcThread->beginShutdown();
+
+    // wait until garbage collector thread is done
+    while (!_gcFinished) {
+      usleep(10000);
+    }
+
+    LOG(DEBUG) << "Commanding GC Thread to terminate";
   }
 
   // shutdown all instances
@@ -692,6 +694,7 @@ void V8DealerFeature::exitContext(V8Context* context) {
     }
   } else {
     CONDITION_LOCKER(guard, _contextCondition);
+    _busyContexts.erase(context);
     _freeContexts.emplace_back(context);
   }
 }

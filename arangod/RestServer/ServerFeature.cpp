@@ -74,6 +74,7 @@ ServerFeature::ServerFeature(application_features::ApplicationServer* server,
   startsAfter("Database");
   startsAfter("Dispatcher");
   startsAfter("Scheduler");
+  startsAfter("WorkMonitor");
 }
 
 void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

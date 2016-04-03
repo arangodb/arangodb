@@ -43,6 +43,7 @@ DaemonFeature::DaemonFeature(application_features::ApplicationServer* server)
       _workingDirectory(".") {
   setOptional(true);
   requiresElevatedPrivileges(false);
+  startsAfter("WorkMonitor");
 
 #ifndef _WIN32
   _workingDirectory = "/var/tmp";

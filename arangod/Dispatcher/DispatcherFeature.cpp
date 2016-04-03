@@ -46,6 +46,7 @@ DispatcherFeature::DispatcherFeature(
   requiresElevatedPrivileges(false);
   startsAfter("Logger");
   startsAfter("Scheduler");
+  startsAfter("WorkMonitor");
 }
 
 void DispatcherFeature::collectOptions(

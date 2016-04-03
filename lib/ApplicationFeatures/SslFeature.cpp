@@ -46,7 +46,7 @@ SslFeature::SslFeature(application_features::ApplicationServer* server)
           (long)(SSL_OP_TLS_ROLLBACK_BUG | SSL_OP_CIPHER_SERVER_PREFERENCE)),
       _sslContext(nullptr) {
   setOptional(true);
-  requiresElevatedPrivileges(true);
+  requiresElevatedPrivileges(false);
   startsAfter("Logger");
 }
 

@@ -50,6 +50,7 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer* server)
   _levels.push_back("info");
   setOptional(false);
   requiresElevatedPrivileges(false);
+  startsAfter("WorkMonitor");
 }
 
 void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

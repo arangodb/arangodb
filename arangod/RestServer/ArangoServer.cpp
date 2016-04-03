@@ -156,7 +156,6 @@ int ArangoServer::start() {
   } else if (_daemonMode) {
     return startupDaemon();
   } else {
-    InitializeWorkMonitor();
     _applicationServer->setupLogging(true, false, false);
 
     if (!_pidFile.empty()) {
@@ -533,28 +532,14 @@ int ArangoServer::startupServer() {
     res = runServer(vocbase);
   }
 
-  // stop the replication appliers so all replication transactions can end
-  TRI_StopReplicationAppliersServer(_server);
 
   _applicationServer->stop();
-
-  _server->_queryRegistry = nullptr;
-
-  delete _queryRegistry;
-  _queryRegistry = nullptr;
-  delete _pairForAqlHandler;
-  _pairForAqlHandler = nullptr;
-  delete _pairForJobHandler;
-  _pairForJobHandler = nullptr;
-
-  closeDatabases();
 
   if (mode == OperationMode::MODE_CONSOLE) {
     std::cout << std::endl << TRI_BYE_MESSAGE << std::endl;
   }
 
   TRI_ShutdownStatistics();
-  ShutdownWorkMonitor();
 
   return res;
 #endif

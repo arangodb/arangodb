@@ -53,6 +53,7 @@ SchedulerFeature::SchedulerFeature(
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Logger");
+  startsAfter("WorkMonitor");
 }
 
 void SchedulerFeature::collectOptions(

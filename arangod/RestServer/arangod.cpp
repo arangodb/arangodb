@@ -33,6 +33,7 @@
 #include "ApplicationFeatures/SupervisorFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
+#include "ApplicationFeatures/WorkMonitorFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Dispatcher/DispatcherFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -100,7 +101,7 @@ int main(int argc, char* argv[]) {
   server.addFeature(new TempFeature(&server, name));
   server.addFeature(new V8DealerFeature(&server));
   server.addFeature(new V8PlatformFeature(&server));
-  // server.addFeature(new VocbaseFeature(&server));
+  server.addFeature(new WorkMonitorFeature(&server));
 
   std::unique_ptr<LoggerFeature> logger =
       std::make_unique<LoggerFeature>(&server);

@@ -45,6 +45,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
   void start() override;
+  void stop() override;
 
  public:
   TRI_vocbase_t* vocbase() const { return _vocbase; }
@@ -65,6 +66,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
  private:
   void checkVersion();
   void openDatabases();
+  void closeDatabases();
   void upgradeDatabase();
   void updateContexts();
   void shutdownCompactor();
