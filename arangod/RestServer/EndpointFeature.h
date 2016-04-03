@@ -28,7 +28,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationServer/ApplicationFeature.h"
-#include "Rest/EndpointList.h"
+#include "Endpoint/EndpointList.h"
 
 namespace arangodb {
 namespace rest {
@@ -58,7 +58,7 @@ class EndpointFeature final : public application_features::ApplicationFeature {
   double _keepAliveTimeout;
 
  private:
-  rest::EndpointList _endpointList;
+  EndpointList _endpointList;
   std::vector<rest::HttpServer*> _servers;
 };
 }

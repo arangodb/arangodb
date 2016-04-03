@@ -52,7 +52,7 @@ class Cursor;
 class RestCursorHandler : public RestVocbaseBaseHandler {
  public:
   RestCursorHandler(
-      rest::HttpRequest*,
+      HttpRequest*,
       arangodb::aql::QueryRegistry*);
 
  public:

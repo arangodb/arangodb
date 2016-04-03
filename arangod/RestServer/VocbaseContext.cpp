@@ -22,11 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "VocbaseContext.h"
-#include "Logger/Logger.h"
+
 #include "Basics/MutexLocker.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
-#include "Rest/ConnectionInfo.h"
+#include "Endpoint/ConnectionInfo.h"
+#include "Logger/Logger.h"
 #include "VocBase/auth.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
@@ -158,7 +159,7 @@ bool VocbaseContext::useClusterAuthentication() const {
   }
 
   if (ServerState::instance()->isCoordinator(role)) {
-    std::string s(_request->requestPath());
+    std::string const& s = _request->requestPath();
 
     if (s == "/_api/shard-comm" || s == "/_admin/shutdown") {
       return true;
@@ -172,9 +173,11 @@ bool VocbaseContext::useClusterAuthentication() const {
 /// @brief return authentication realm
 ////////////////////////////////////////////////////////////////////////////////
 
-char const* VocbaseContext::getRealm() const {
+std::string VocbaseContext::realm() const {
+  static std::string EMPTY = "";
+
   if (_vocbase == nullptr) {
-    return nullptr;
+    return EMPTY;
   }
 
   return _vocbase->_name;
@@ -184,46 +187,46 @@ char const* VocbaseContext::getRealm() const {
 /// @brief checks the authentication
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
+GeneralResponse::ResponseCode VocbaseContext::authenticate() {
   TRI_ASSERT(_vocbase != nullptr);
 
   if (!_vocbase->_settings.requireAuthentication) {
     // no authentication required at all
-    return HttpResponse::OK;
+    return GeneralResponse::ResponseCode::OK;
   }
 
-#ifdef TRI_HAVE_LINUX_SOCKETS
+#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
   // check if we need to run authentication for this type of
   // endpoint
   ConnectionInfo const& ci = _request->connectionInfo();
 
-  if (ci.endpointType == Endpoint::DOMAIN_UNIX &&
+  if (ci.endpointType == Endpoint::DomainType::UNIX &&
       !_vocbase->_settings.requireAuthenticationUnixSockets) {
     // no authentication required for unix socket domain connections
-    return HttpResponse::OK;
+    return GeneralResponse::ResponseCode::OK;
   }
 #endif
 
-  char const* path = _request->requestPath();
+  std::string const& path = _request->requestPath();
 
   if (_vocbase->_settings.authenticateSystemOnly) {
     // authentication required, but only for /_api, /_admin etc.
 
-    if (path != nullptr) {
+    if (!path.empty()) {
       // check if path starts with /_
-      if (*path != '/') {
-        return HttpResponse::OK;
+      if (path[0] != '/') {
+        return GeneralResponse::ResponseCode::OK;
       }
-      if (*path != '\0' && *(path + 1) != '_') {
-        return HttpResponse::OK;
+
+      if (path[0] != '\0' && path[1] != '_') {
+        return GeneralResponse::ResponseCode::OK;
       }
     }
   }
 
-  if (TRI_IsPrefixString(path, "/_open/") ||
-      TRI_IsPrefixString(path, "/_admin/aardvark/") ||
-      TRI_EqualString(path, "/")) {
-    return HttpResponse::OK;
+  if (StringUtils::isPrefix(path, "/_open/") ||
+      StringUtils::isPrefix(path, "/_admin/aardvark/") || path == "/") {
+    return GeneralResponse::ResponseCode::OK;
   }
 
   // .............................................................................
@@ -238,7 +241,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
   strncat(cn + 11, _vocbase->_name, sizeof(cn) - 12);
 
   // extract the sid
-  char const* sid = _request->cookieValue(cn, found);
+  std::string const& sid = _request->cookieValue(cn, found);
 
   if (found) {
     MUTEX_LOCKER(mutexLocker, SidLock);
@@ -259,25 +262,25 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
         if (lastAccess + (ServerSessionTtl * 1000.0) < now) {
           // session has expired
           sids.erase(sid);
-          return HttpResponse::UNAUTHORIZED;
+          return GeneralResponse::ResponseCode::UNAUTHORIZED;
         }
 
         (*it2).second.second = now;
-        return HttpResponse::OK;
+        return GeneralResponse::ResponseCode::OK;
       }
     }
 
     // no cookie found. fall-through to regular HTTP authentication
   }
 
-  char const* auth = _request->header("authorization", found);
+  std::string const& authStr = _request->header("authorization", found);
 
-  if (!found || !TRI_CaseEqualString(auth, "basic ", 6)) {
-    return HttpResponse::UNAUTHORIZED;
+  if (!found || !TRI_CaseEqualString(authStr.c_str(), "basic ", 6)) {
+    return GeneralResponse::ResponseCode::UNAUTHORIZED;
   }
 
   // skip over "basic "
-  auth += 6;
+  char const* auth = authStr.c_str() + 6;
 
   while (*auth == ' ') {
     ++auth;
@@ -287,22 +290,23 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
     std::string const expected = ServerState::instance()->getAuthentication();
 
     if (expected.substr(6) != std::string(auth)) {
-      return HttpResponse::UNAUTHORIZED;
+      return GeneralResponse::ResponseCode::UNAUTHORIZED;
     }
 
     std::string const up = StringUtils::decodeBase64(auth);
     std::string::size_type n = up.find(':', 0);
 
     if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
-      LOG(TRACE) << "invalid authentication data found, cannot extract username/password";
+      LOG(TRACE) << "invalid authentication data found, cannot extract "
+                    "username/password";
 
-      return HttpResponse::BAD;
+      return GeneralResponse::ResponseCode::BAD;
     }
 
     std::string const username = up.substr(0, n);
     _request->setUser(username);
 
-    return HttpResponse::OK;
+    return GeneralResponse::ResponseCode::OK;
   }
 
   // look up the info in the cache first
@@ -322,8 +326,9 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
     std::string::size_type n = up.find(':', 0);
 
     if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
-      LOG(TRACE) << "invalid authentication data found, cannot extract username/password";
-      return HttpResponse::BAD;
+      LOG(TRACE) << "invalid authentication data found, cannot extract "
+                    "username/password";
+      return GeneralResponse::ResponseCode::BAD;
     }
 
     username = up.substr(0, n);
@@ -334,7 +339,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
                                         up.substr(n + 1).c_str(), &mustChange);
 
     if (!res) {
-      return HttpResponse::UNAUTHORIZED;
+      return GeneralResponse::ResponseCode::UNAUTHORIZED;
     }
   }
 
@@ -342,14 +347,14 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
   _request->setUser(username);
 
   if (mustChange) {
-    if ((_request->requestType() == HttpRequest::HTTP_REQUEST_PUT ||
-         _request->requestType() == HttpRequest::HTTP_REQUEST_PATCH) &&
-        TRI_EqualString(_request->requestPath(), "/_api/user/", 11)) {
-      return HttpResponse::OK;
+    if ((_request->requestType() == GeneralRequest::RequestType::PUT ||
+         _request->requestType() == GeneralRequest::RequestType::PATCH) &&
+        StringUtils::isPrefix(_request->requestPath(), "/_api/user/")) {
+      return GeneralResponse::ResponseCode::OK;
     }
 
-    return HttpResponse::FORBIDDEN;
+    return GeneralResponse::ResponseCode::FORBIDDEN;
   }
 
-  return HttpResponse::OK;
+  return GeneralResponse::ResponseCode::OK;
 }

@@ -37,27 +37,21 @@ bool RestQueryCacheHandler::isDirect() const { return false; }
 
 HttpHandler::status_t RestQueryCacheHandler::execute() {
   // extract the sub-request type
-  HttpRequest::HttpRequestType type = _request->requestType();
+  auto const type = _request->requestType();
 
   switch (type) {
-    case HttpRequest::HTTP_REQUEST_DELETE:
+    case GeneralRequest::RequestType::DELETE_REQ:
       clearCache();
       break;
-    case HttpRequest::HTTP_REQUEST_GET:
+    case GeneralRequest::RequestType::GET:
       readProperties();
       break;
-    case HttpRequest::HTTP_REQUEST_PUT:
+    case GeneralRequest::RequestType::PUT:
       replaceProperties();
       break;
-
-    case HttpRequest::HTTP_REQUEST_POST:
-    case HttpRequest::HTTP_REQUEST_HEAD:
-    case HttpRequest::HTTP_REQUEST_PATCH:
-    case HttpRequest::HTTP_REQUEST_ILLEGAL:
-    default: {
+    default:
       generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);
       break;
-    }
   }
 
   // this handler is done
@@ -75,7 +69,7 @@ bool RestQueryCacheHandler::clearCache() {
     VPackBuilder result;
     result.add(VPackValue(VPackValueType::Object));
     result.add("error", VPackValue(false));
-    result.add("code", VPackValue(HttpResponse::OK));
+    result.add("code", VPackValue((int) GeneralResponse::ResponseCode::OK));
     result.close();
     VPackSlice slice = result.slice();
     generateResult(slice);
@@ -118,7 +112,8 @@ bool RestQueryCacheHandler::replaceProperties() {
   auto const& suffix = _request->suffix();
 
   if (suffix.size() != 1 || suffix[0] != "properties") {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::ResponseCode::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/query-cache/properties");
     return true;
   }
@@ -134,8 +129,8 @@ bool RestQueryCacheHandler::replaceProperties() {
   VPackSlice body = parsedBody.get()->slice();
 
   if (!body.isObject()) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expecting a JSON-Object body");
+    generateError(GeneralResponse::ResponseCode::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER, "expecting a JSON-Object body");
     return true;
   }
 

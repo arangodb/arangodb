@@ -513,8 +513,8 @@ void TRI_InitializeStatistics() {
   // initialize counters for all HTTP request types
   TRI_MethodRequestsStatistics.clear();
 
-  for (int i = 0;
-       i < ((int)arangodb::rest::HttpRequest::HTTP_REQUEST_ILLEGAL) + 1; ++i) {
+  for (int i = 0; i < ((int)arangodb::GeneralRequest::RequestType::ILLEGAL) + 1;
+       ++i) {
     StatisticsCounter c;
     TRI_MethodRequestsStatistics.emplace_back(c);
   }

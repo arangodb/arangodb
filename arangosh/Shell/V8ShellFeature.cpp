@@ -23,6 +23,7 @@
 #include "V8ShellFeature.h"
 
 #include "ApplicationFeatures/ClientFeature.h"
+#include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
@@ -99,8 +100,12 @@ void V8ShellFeature::start() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
 
   _console = dynamic_cast<ConsoleFeature*>(server()->feature("Console"));
+  auto platform =
+      dynamic_cast<V8PlatformFeature*>(server()->feature("V8Platform"));
 
-  _isolate = v8::Isolate::New();
+  v8::Isolate::CreateParams createParams;
+  createParams.array_buffer_allocator = platform->arrayBufferAllocator();
+  _isolate = v8::Isolate::New(createParams);
 
   v8::Locker locker{_isolate};
 
@@ -192,7 +197,8 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
 
     if (v8connection != nullptr) {
       if (v8connection->isConnected() &&
-          v8connection->lastHttpReturnCode() == HttpResponse::OK) {
+          v8connection->lastHttpReturnCode() ==
+              (int)GeneralResponse::ResponseCode::OK) {
         std::ostringstream is;
 
         is << "Connected to ArangoDB '" << v8connection->endpointSpecification()
@@ -445,7 +451,7 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
       current->ForceSet(TRI_V8_ASCII_STRING2(_isolate, "__dirname"),
                         TRI_V8_STD_STRING2(_isolate, dirname));
 
-      ok = TRI_ExecuteGlobalJavaScriptFile(_isolate, file.c_str());
+      ok = TRI_ExecuteGlobalJavaScriptFile(_isolate, file.c_str(), true);
 
       // restore old values for __dirname and __filename
       if (oldFilename.IsEmpty() || oldFilename->IsUndefined()) {
@@ -468,7 +474,7 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
         ok = false;
       }
     } else {
-      ok = TRI_ParseJavaScriptFile(_isolate, file.c_str());
+      ok = TRI_ParseJavaScriptFile(_isolate, file.c_str(), true);
     }
   }
 

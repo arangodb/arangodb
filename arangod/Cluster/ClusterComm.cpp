@@ -41,7 +41,7 @@ using namespace arangodb;
 ////////////////////////////////////////////////////////////////////////////////
 
 void arangodb::ClusterCommRestCallback(std::string& coordinator,
-                                       arangodb::rest::HttpResponse* response) {
+                                       arangodb::HttpResponse* response) {
   ClusterComm::instance()->asyncAnswer(coordinator, response);
 }
 
@@ -229,11 +229,14 @@ OperationID ClusterComm::getOperationID() { return TRI_NewTickServer(); }
 ClusterCommResult const ClusterComm::asyncRequest(
     ClientTransactionID const clientTransactionID,
     CoordTransactionID const coordTransactionID, std::string const& destination,
-    arangodb::rest::HttpRequest::HttpRequestType reqtype,
+    arangodb::GeneralRequest::RequestType reqtype,
     std::string const& path, std::shared_ptr<std::string const> body,
     std::unique_ptr<std::map<std::string, std::string>>& headerFields,
     std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
     bool singleRequest) {
+
+  TRI_ASSERT(headerFields.get() != nullptr);
+
   auto op = std::make_unique<ClusterCommOperation>();
   op->result.clientTransactionID = clientTransactionID;
   op->result.coordTransactionID = coordTransactionID;
@@ -353,7 +356,7 @@ ClusterCommResult const ClusterComm::asyncRequest(
 std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
     ClientTransactionID const& clientTransactionID,
     CoordTransactionID const coordTransactionID, std::string const& destination,
-    arangodb::rest::HttpRequest::HttpRequestType reqtype,
+    arangodb::GeneralRequest::RequestType reqtype,
     std::string const& path, std::string const& body,
     std::map<std::string, std::string> const& headerFields,
     ClusterCommTimeout timeout) {
@@ -407,7 +410,7 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
     }
   } else {
     LOG(DEBUG) << "sending "
-               << arangodb::rest::HttpRequest::translateMethod(reqtype)
+               << arangodb::HttpRequest::translateMethod(reqtype)
                << " request to DB server '" << res->serverID
                << "': " << body;
     // LOCKING-DEBUG
@@ -773,7 +776,7 @@ void ClusterComm::drop(ClientTransactionID const& clientTransactionID,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
-                              arangodb::rest::HttpResponse* responseToSend) {
+                              arangodb::HttpResponse* responseToSend) {
   // First take apart the header to get the coordinatorID:
   ServerID coordinatorID;
   size_t start = 0;
@@ -829,7 +832,7 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
   // We add this result to the operation struct without acquiring
   // a lock, since we know that only we do such a thing:
   std::unique_ptr<httpclient::SimpleHttpResult> result(
-      client->request(rest::HttpRequest::HTTP_REQUEST_PUT, "/_api/shard-comm",
+      client->request(GeneralRequest::RequestType::PUT, "/_api/shard-comm",
                       body, len, headers));
   if (result.get() == nullptr || !result->isComplete()) {
     cm->brokenConnection(connection);
@@ -850,7 +853,8 @@ void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ClusterComm::processAnswer(std::string& coordinatorHeader,
-                                       arangodb::rest::HttpRequest* answer) {
+                                       arangodb::HttpRequest* answer) {
+  TRI_ASSERT(answer != nullptr);
   // First take apart the header to get the operaitonID:
   OperationID operationID;
   size_t start = 0;
@@ -878,9 +882,10 @@ std::string ClusterComm::processAnswer(std::string& coordinatorHeader,
     ClusterComm::IndexIterator i;
     i = receivedByOpID.find(operationID);
     if (i != receivedByOpID.end()) {
+      TRI_ASSERT(answer != nullptr);
       ClusterCommOperation* op = *(i->second);
       op->result.answer.reset(answer);
-      op->result.answer_code = rest::HttpResponse::responseCode(
+      op->result.answer_code = GeneralResponse::responseCode(
           answer->header("x-arango-response-code"));
       op->result.status = CL_COMM_RECEIVED;
       // Do we have to do a callback?
@@ -901,9 +906,10 @@ std::string ClusterComm::processAnswer(std::string& coordinatorHeader,
 
       i = toSendByOpID.find(operationID);
       if (i != toSendByOpID.end()) {
+        TRI_ASSERT(answer != nullptr);
         ClusterCommOperation* op = *(i->second);
         op->result.answer.reset(answer);
-        op->result.answer_code = rest::HttpResponse::responseCode(
+        op->result.answer_code = GeneralResponse::responseCode(
             answer->header("x-arango-response-code"));
         op->result.status = CL_COMM_RECEIVED;
         if (nullptr != op->callback) {
@@ -1072,7 +1078,7 @@ void ClusterCommThread::run() {
         } else {
           if (nullptr != op->body.get()) {
             LOG(DEBUG) << "sending "
-                       << arangodb::rest::HttpRequest::translateMethod(
+                       << arangodb::HttpRequest::translateMethod(
                               op->reqtype)
                               .c_str()
                        << " request to DB server '"
@@ -1080,7 +1086,7 @@ void ClusterCommThread::run() {
                        << "': " << op->body->c_str();
           } else {
             LOG(DEBUG) << "sending "
-                       << arangodb::rest::HttpRequest::translateMethod(
+                       << arangodb::HttpRequest::translateMethod(
                               op->reqtype)
                               .c_str()
                        << " request to DB server '"
@@ -1122,6 +1128,28 @@ void ClusterCommThread::run() {
               op->result.errorMessage += arangodb::basics::StringUtils::itoa(
                   op->result.result->getHttpReturnCode());
             }
+          }
+        }
+      }
+
+      if (op->result.single) {
+        // For single requests this is it, either it worked and is ready
+        // or there was an error (timeout or other). If there is a callback,
+        // we have to call it now:
+        if (nullptr != op->callback.get()) {
+          if (op->result.status == CL_COMM_SENDING) {
+            op->result.status = CL_COMM_SENT;
+          }
+          if ((*op->callback.get())(&op->result)) {
+            // This is fully processed, so let's remove it from the queue:
+            CONDITION_LOCKER(locker, cc->somethingToSend);
+            auto i = cc->toSendByOpID.find(op->result.operationID);
+            TRI_ASSERT(i != cc->toSendByOpID.end());
+            auto q = i->second;
+            cc->toSendByOpID.erase(i);
+            cc->toSend.erase(q);
+            delete op;
+            continue;   // do not move to the received queue but forget it
           }
         }
       }

@@ -28,7 +28,6 @@
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
-class ApplicationV8;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document request handler
@@ -36,7 +35,7 @@ class ApplicationV8;
 
 class RestQueryHandler : public RestVocbaseBaseHandler {
  public:
-  RestQueryHandler(rest::HttpRequest*, ApplicationV8*);
+  RestQueryHandler(HttpRequest*);
 
  public:
   bool isDirect() const override;
@@ -91,13 +90,6 @@ class RestQueryHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   bool parseQuery();
-
- private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief application V8
-  //////////////////////////////////////////////////////////////////////////////
-
-  ApplicationV8* _applicationV8;
 };
 }
 

@@ -24,21 +24,22 @@
 
 #include "Cluster/ClusterInfo.h"
 
-#include "Basics/json.h"
-#include "Logger/Logger.h"
-#include "Basics/json-utilities.h"
+#include <velocypack/Iterator.h>
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Basics/JsonHelper.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/json-utilities.h"
+#include "Basics/json.h"
+#include "Logger/Logger.h"
+#include "Rest/HttpResponse.h"
 #include "VocBase/document-collection.h"
-
-#include <velocypack/Iterator.h>
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #ifdef _WIN32
 // turn off warnings about too long type name for debug symbols blabla in MSVC
@@ -520,15 +521,20 @@ void ClusterInfo::loadPlannedDatabases() {
     return;
   }
 
-  LOG(DEBUG) << "Error while loading " << prefixPlannedDatabases << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage() << " body: " << result.body();
+  LOG(DEBUG) << "Error while loading " << prefixPlannedDatabases
+             << " httpCode: " << result.httpCode()
+             << " errorCode: " << result.errorCode()
+             << " errorMessage: " << result.errorMessage()
+             << " body: " << result.body();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a list of current databases
 ////////////////////////////////////////////////////////////////////////////////
 
-void ClusterInfo::clearCurrentDatabases(std::unordered_map<
-    DatabaseID, std::unordered_map<ServerID, TRI_json_t*>>& databases) {
+void ClusterInfo::clearCurrentDatabases(
+    std::unordered_map<DatabaseID, std::unordered_map<ServerID, TRI_json_t*>>&
+        databases) {
   auto it = databases.begin();
   while (it != databases.end()) {
     auto it2 = (*it).second.begin();
@@ -632,7 +638,11 @@ void ClusterInfo::loadCurrentDatabases() {
     return;
   }
 
-  LOG(DEBUG) << "Error while loading " << prefixCurrentDatabases << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage() << " body: " << result.body();
+  LOG(DEBUG) << "Error while loading " << prefixCurrentDatabases
+             << " httpCode: " << result.httpCode()
+             << " errorCode: " << result.errorCode()
+             << " errorMessage: " << result.errorMessage()
+             << " body: " << result.body();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -744,7 +754,11 @@ void ClusterInfo::loadPlannedCollections() {
     return;
   }
 
-  LOG(ERR) << "Error while loading " << prefixPlannedCollections << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage() << " body: " << result.body();
+  LOG(ERR) << "Error while loading " << prefixPlannedCollections
+           << " httpCode: " << result.httpCode()
+           << " errorCode: " << result.errorCode()
+           << " errorMessage: " << result.errorMessage()
+           << " body: " << result.body();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -888,7 +902,8 @@ void ClusterInfo::loadCurrentCollections() {
 
       if (parts.size() != 3) {
         // invalid entry
-        LOG(WARN) << "found invalid collection key in current in agency: '" << key << "'";
+        LOG(WARN) << "found invalid collection key in current in agency: '"
+                  << key << "'";
         continue;
       }
 
@@ -942,12 +957,16 @@ void ClusterInfo::loadCurrentCollections() {
       _currentCollections.swap(newCollections);
       _shardIds.swap(newShardIds);
       _currentCollectionsProt.version++;  // such that others notice our change
-      _currentCollectionsProt.isValid = true;  // will never be reset to false
+      _currentCollectionsProt.isValid = true;
     }
     return;
   }
 
-  LOG(DEBUG) << "Error while loading " << prefixCurrentCollections << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage() << " body: " << result.body();
+  LOG(DEBUG) << "Error while loading " << prefixCurrentCollections
+             << " httpCode: " << result.httpCode()
+             << " errorCode: " << result.errorCode()
+             << " errorMessage: " << result.errorMessage()
+             << " body: " << result.body();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1021,7 +1040,7 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
     res = ac.casValue("Plan/Databases/" + name, slice, false, 0.0, realTimeout);
     if (!res.successful()) {
       if (res._statusCode ==
-          arangodb::rest::HttpResponse::PRECONDITION_FAILED) {
+          (int)arangodb::GeneralResponse::ResponseCode::PRECONDITION_FAILED) {
         return setErrormsg(TRI_ERROR_ARANGO_DUPLICATE_NAME, errorMsg);
       }
 
@@ -1128,7 +1147,7 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
 
     res = ac.removeValues("Plan/Databases/" + name, false);
     if (!res.successful()) {
-      if (res.httpCode() == (int)rest::HttpResponse::NOT_FOUND) {
+      if (res.httpCode() == (int)GeneralResponse::ResponseCode::NOT_FOUND) {
         return setErrormsg(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
       }
 
@@ -1140,7 +1159,7 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
     res = ac.removeValues("Plan/Collections/" + name, true);
 
     if (!res.successful() &&
-        res.httpCode() != (int)rest::HttpResponse::NOT_FOUND) {
+        res.httpCode() != (int)GeneralResponse::ResponseCode::NOT_FOUND) {
       return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN,
                          errorMsg);
     }
@@ -1329,7 +1348,7 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
     res = ac.removeValues(
         "Plan/Collections/" + databaseName + "/" + collectionID, false);
     if (!res.successful()) {
-      if (res._statusCode == rest::HttpResponse::NOT_FOUND) {
+      if (res._statusCode == (int) GeneralResponse::ResponseCode::NOT_FOUND) {
         return setErrormsg(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, errorMsg);
       }
       return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN,
@@ -1434,10 +1453,8 @@ int ClusterInfo::setCollectionPropertiesCoordinator(
         std::string key = entry.key.copyString();
         // Copy all values except the following
         // They are overwritten later
-        if (key != "doCompact" &&
-            key != "journalSize" &&
-            key != "waitForSync" &&
-            key != "indexBuckets") {
+        if (key != "doCompact" && key != "journalSize" &&
+            key != "waitForSync" && key != "indexBuckets") {
           copy.add(key, entry.value);
         }
       }
@@ -1706,7 +1723,7 @@ int ClusterInfo::ensureIndexCoordinator(
             }
             newBuilder.add("id", VPackValue(idString));
           }
-          newBuilder.close(); // the array
+          newBuilder.close();  // the array
         } else {
           // Plain copy everything else
           newBuilder.add(key, entry.value);
@@ -2061,7 +2078,11 @@ void ClusterInfo::loadServers() {
     return;
   }
 
-  LOG(DEBUG) << "Error while loading " << prefixServers << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage() << " body: " << result.body();
+  LOG(DEBUG) << "Error while loading " << prefixServers
+             << " httpCode: " << result.httpCode()
+             << " errorCode: " << result.errorCode()
+             << " errorMessage: " << result.errorMessage()
+             << " body: " << result.body();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2185,7 +2206,11 @@ void ClusterInfo::loadCurrentCoordinators() {
     return;
   }
 
-  LOG(DEBUG) << "Error while loading " << prefixCurrentCoordinators << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage() << " body: " << result.body();
+  LOG(DEBUG) << "Error while loading " << prefixCurrentCoordinators
+             << " httpCode: " << result.httpCode()
+             << " errorCode: " << result.errorCode()
+             << " errorMessage: " << result.errorMessage()
+             << " body: " << result.body();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2238,7 +2263,11 @@ void ClusterInfo::loadCurrentDBServers() {
     return;
   }
 
-  LOG(DEBUG) << "Error while loading " << prefixCurrentDBServers << " httpCode: " << result.httpCode() << " errorCode: " << result.errorCode() << " errorMessage: " << result.errorMessage() << " body: " << result.body();
+  LOG(DEBUG) << "Error while loading " << prefixCurrentDBServers
+             << " httpCode: " << result.httpCode()
+             << " errorCode: " << result.errorCode()
+             << " errorMessage: " << result.errorMessage()
+             << " body: " << result.body();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2432,7 +2461,7 @@ int ClusterInfo::getResponsibleShard(CollectionID const& collectionID,
         auto it2 = _shardKeys.find(collectionID);
         if (it2 != _shardKeys.end()) {
           shardKeysPtr = it2->second;
-          shardKeys.reset(new char const* [shardKeysPtr->size()]);
+          shardKeys.reset(new char const*[shardKeysPtr->size()]);
           size_t i;
           for (i = 0; i < shardKeysPtr->size(); ++i) {
             shardKeys[i] = shardKeysPtr->at(i).c_str();
@@ -2506,6 +2535,14 @@ std::vector<ServerID> ClusterInfo::getCurrentCoordinators() {
   return result;
 }
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief invalidate current
+//////////////////////////////////////////////////////////////////////////////
+void ClusterInfo::invalidateCurrent() {
+  WRITE_LOCKER(writeLocker, _currentCollectionsProt.lock);
+  _currentCollectionsProt.isValid = false;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get information about current followers of a shard.
 ////////////////////////////////////////////////////////////////////////////////
@@ -2523,9 +2560,7 @@ std::shared_ptr<std::vector<ServerID> const> FollowerInfo::get() {
 /// there).
 ////////////////////////////////////////////////////////////////////////////////
 
-VPackBuilder newShardEntry (VPackSlice oldValue,
-                            ServerID const& sid,
-                            bool add) {
+VPackBuilder newShardEntry(VPackSlice oldValue, ServerID const& sid, bool add) {
   VPackBuilder newValue;
   VPackSlice servers;
   {
@@ -2569,7 +2604,6 @@ VPackBuilder newShardEntry (VPackSlice oldValue,
   return newValue;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a follower to a shard, this is only done by the server side
 /// of the "get-in-sync" capabilities. This reports to the agency under
@@ -2581,7 +2615,7 @@ void FollowerInfo::add(ServerID const& sid) {
   // Fully copy the vector:
   auto v = std::make_shared<std::vector<ServerID>>(*_followers);
   v->push_back(sid);  // add a single entry
-  _followers = v;   // will cast to std::vector<ServerID> const
+  _followers = v;     // will cast to std::vector<ServerID> const
   // Now tell the agency, path is
   //   Current/Collections/<dbName>/<collectionID>/<shardID>
   std::string path = "Current/Collections/";
@@ -2601,8 +2635,8 @@ void FollowerInfo::add(ServerID const& sid) {
         if (it != res._values.end() && it->first == path) {
           VPackSlice oldValue = it->second._vpack->slice();
           auto newValue = newShardEntry(oldValue, sid, true);
-          AgencyCommResult res2 = ac.casValue(path, oldValue, newValue.slice(),
-              0, 0);
+          AgencyCommResult res2 =
+              ac.casValue(path, oldValue, newValue.slice(), 0, 0);
           if (res2.successful()) {
             success = true;
             break;  //
@@ -2610,23 +2644,21 @@ void FollowerInfo::add(ServerID const& sid) {
             LOG(WARN) << "FollowerInfo::add, could not cas key " << path;
           }
         } else {
-          LOG(ERR) << "FollowerInfo::add, did not find key " << path 
+          LOG(ERR) << "FollowerInfo::add, did not find key " << path
                    << " in agency.";
         }
       } else {
-        LOG(ERR) << "FollowerInfo::add, could not parse " << path 
+        LOG(ERR) << "FollowerInfo::add, could not parse " << path
                  << " in agency.";
       }
     } else {
-      LOG(ERR) << "FollowerInfo::add, could not read " << path
-               << " in agency.";
+      LOG(ERR) << "FollowerInfo::add, could not read " << path << " in agency.";
     }
     usleep(500000);
   } while (TRI_microtime() < startTime + 30);
-  if (! success) {
+  if (!success) {
     LOG(ERR) << "FollowerInfo::add, timeout in agency operation for key "
              << path;
-
   }
 }
 
@@ -2667,8 +2699,8 @@ void FollowerInfo::remove(ServerID const& sid) {
         if (it != res._values.end() && it->first == path) {
           VPackSlice oldValue = it->second._vpack->slice();
           auto newValue = newShardEntry(oldValue, sid, false);
-          AgencyCommResult res2 = ac.casValue(path, oldValue, newValue.slice(),
-              0, 0);
+          AgencyCommResult res2 =
+              ac.casValue(path, oldValue, newValue.slice(), 0, 0);
           if (res2.successful()) {
             success = true;
             break;  //
@@ -2676,11 +2708,11 @@ void FollowerInfo::remove(ServerID const& sid) {
             LOG(WARN) << "FollowerInfo::remove, could not cas key " << path;
           }
         } else {
-          LOG(ERR) << "FollowerInfo::remove, did not find key " << path 
+          LOG(ERR) << "FollowerInfo::remove, did not find key " << path
                    << " in agency.";
         }
       } else {
-        LOG(ERR) << "FollowerInfo::remove, could not parse " << path 
+        LOG(ERR) << "FollowerInfo::remove, could not parse " << path
                  << " in agency.";
       }
     } else {
@@ -2689,10 +2721,8 @@ void FollowerInfo::remove(ServerID const& sid) {
     }
     usleep(500000);
   } while (TRI_microtime() < startTime + 30);
-  if (! success) {
+  if (!success) {
     LOG(ERR) << "FollowerInfo::remove, timeout in agency operation for key "
              << path;
-
   }
 }
-

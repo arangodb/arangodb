@@ -66,8 +66,16 @@ endif ()
 add_executable(${BIN_ARANGOD}
   ${ARANGO_MSVC}
   ${ProductVersionFiles}
-  # TODO   Actions/RestActionHandler.cpp
+  Actions/RestActionHandler.cpp
   Actions/actions.cpp
+  Agency/Agent.cpp
+  # Agency/ApplicationAgency.cpp
+  Agency/Constituent.cpp
+  Agency/State.cpp
+  Agency/Store.cpp
+  Agency/AgentCallback.cpp
+  ApplicationServer/ApplicationFeature.cpp
+  ApplicationServer/ApplicationServer.cpp
   Aql/Aggregator.cpp
   Aql/AqlItemBlock.cpp
   Aql/AqlItemBlockManager.cpp
@@ -180,6 +188,8 @@ add_executable(${BIN_ARANGOD}
   Replication/InitialSyncer.cpp
   Replication/Syncer.cpp
   RestHandler/RestAdminLogHandler.cpp
+  RestHandler/RestAgencyHandler.cpp
+  RestHandler/RestAgencyPrivHandler.cpp
   RestHandler/RestBaseHandler.cpp
   RestHandler/RestBatchHandler.cpp
   RestHandler/RestCursorHandler.cpp
@@ -187,14 +197,14 @@ add_executable(${BIN_ARANGOD}
   RestHandler/RestDocumentHandler.cpp
   RestHandler/RestEdgeHandler.cpp
   RestHandler/RestEdgesHandler.cpp
-  # TODO RestHandler/RestExportHandler.cpp
+  RestHandler/RestExportHandler.cpp
   RestHandler/RestImportHandler.cpp
   RestHandler/RestJobHandler.cpp
   RestHandler/RestPleaseUpgradeHandler.cpp
   RestHandler/RestQueryCacheHandler.cpp
   RestHandler/RestQueryHandler.cpp
-  # TODO RestHandler/RestReplicationHandler.cpp
-  # TODO RestHandler/RestShutdownHandler.cpp
+  RestHandler/RestReplicationHandler.cpp
+  RestHandler/RestShutdownHandler.cpp
   RestHandler/RestSimpleHandler.cpp
   RestHandler/RestSimpleQueryHandler.cpp
   RestHandler/RestUploadHandler.cpp

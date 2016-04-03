@@ -37,38 +37,32 @@ RestEdgesHandler::RestEdgesHandler(HttpRequest* request)
 
 HttpHandler::status_t RestEdgesHandler::execute() {
   // extract the sub-request type
-  HttpRequest::HttpRequestType type = _request->requestType();
+  auto const type = _request->requestType();
 
   // execute one of the CRUD methods
   try {
     switch (type) {
-      case HttpRequest::HTTP_REQUEST_GET: {
+      case GeneralRequest::RequestType::GET: {
         std::vector<traverser::TraverserExpression*> empty;
         readEdges(empty);
         break;
       }
-      case HttpRequest::HTTP_REQUEST_PUT:
+      case GeneralRequest::RequestType::PUT:
         readFilteredEdges();
         break;
-      case HttpRequest::HTTP_REQUEST_POST:
+      case GeneralRequest::RequestType::POST:
         readEdgesForMultipleVertices();
         break;
-      case HttpRequest::HTTP_REQUEST_HEAD:
-      case HttpRequest::HTTP_REQUEST_DELETE:
-      case HttpRequest::HTTP_REQUEST_ILLEGAL:
-      default: {
+      default:
         generateNotImplemented("ILLEGAL " + EDGES_PATH);
         break;
-      }
     }
   } catch (arangodb::basics::Exception const& ex) {
-    generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
-  }
-  catch (std::exception const& ex) {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
-  }
-  catch (...) {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL);
+    generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
+  } catch (...) {
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL);
   }
 
   // this handler is done
@@ -136,7 +130,7 @@ bool RestEdgesHandler::readEdges(
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 1) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expected GET " + EDGES_PATH +
                       "/<collection-identifier>?vertex=<vertex-handle>&"
                       "direction=<direction>");
@@ -147,18 +141,18 @@ bool RestEdgesHandler::readEdges(
   CollectionNameResolver resolver(_vocbase);
   TRI_col_type_t colType = resolver.getCollectionTypeCluster(collectionName);
   if (colType == TRI_COL_TYPE_UNKNOWN) {
-    generateError(HttpResponse::NOT_FOUND,
+    generateError(GeneralResponse::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     return false;
   } else if (colType != TRI_COL_TYPE_EDGE) {
-    generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
     return false;
   }
 
   bool found;
-  char const* dir = _request->value("direction", found);
+  std::string dir = _request->value("direction", found);
 
-  if (!found || *dir == '\0') {
+  if (!found || dir.empty()) {
     dir = "any";
   }
 
@@ -172,22 +166,22 @@ bool RestEdgesHandler::readEdges(
   } else if (dirString == "in" || dirString == "inbound") {
     direction = TRI_EDGE_IN;
   } else {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "<direction> must by any, in, or out, not: " + dirString);
     return false;
   }
 
-  char const* startVertex = _request->value("vertex", found);
+  std::string const& startVertex = _request->value("vertex", found);
 
-  if (!found || *startVertex == '\0') {
-    generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
+  if (!found || startVertex.empty()) {
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
                   "illegal document handle");
     return false;
   }
 
   if (ServerState::instance()->isCoordinator()) {
     std::string vertexString(startVertex);
-    arangodb::rest::HttpResponse::HttpResponseCode responseCode;
+    GeneralResponse::ResponseCode responseCode;
     std::string contentType;
     arangodb::basics::Json resultDocument(arangodb::basics::Json::Object, 3);
     int res = getFilteredEdgesOnCoordinator(
@@ -268,7 +262,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 1) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expected POST " + EDGES_PATH +
                       "/<collection-identifier>?direction=<direction>");
     return false;
@@ -286,7 +280,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   VPackSlice body = parsedBody->slice();
 
   if (!body.isArray()) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "Expected an array of vertex _id's in body parameter");
     return false;
   }
@@ -296,22 +290,21 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   TRI_col_type_t colType = resolver.getCollectionTypeCluster(collectionName);
 
   if (colType == TRI_COL_TYPE_UNKNOWN) {
-    generateError(HttpResponse::NOT_FOUND,
+    generateError(GeneralResponse::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     return false;
   } else if (colType != TRI_COL_TYPE_EDGE) {
-    generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
     return false;
   }
 
   bool found;
-  char const* dir = _request->value("direction", found);
+  std::string dirString = _request->value("direction", found);
 
-  if (!found || *dir == '\0') {
-    dir = "any";
+  if (!found || dirString.empty()) {
+    dirString = "any";
   }
 
-  std::string dirString(dir);
   TRI_edge_direction_e direction;
 
   if (dirString == "any") {
@@ -321,7 +314,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   } else if (dirString == "in" || dirString == "inbound") {
     direction = TRI_EDGE_IN;
   } else {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "<direction> must by any, in, or out, not: " + dirString);
     return false;
   }
@@ -421,7 +414,7 @@ bool RestEdgesHandler::readFilteredEdges() {
 
   if (!body.isArray()) {
     generateError(
-        HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
         "Expected an array of traverser expressions as body parameter");
     return false;
   }

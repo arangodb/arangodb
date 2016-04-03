@@ -23,17 +23,6 @@
 
 #include "socket-utils.h"
 
-#ifdef TRI_HAVE_LINUX_SOCKETS
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <sys/resource.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#endif
-
 #include "Logger/Logger.h"
 
 ////////////////////////////////////////////////////////////////////////////////

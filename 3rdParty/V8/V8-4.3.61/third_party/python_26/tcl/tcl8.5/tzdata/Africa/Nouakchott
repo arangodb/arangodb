@@ -1,8 +1,0 @@
-# created by tools/tclZIC.tcl - do not edit
-
-set TZData(:Africa/Nouakchott) {
-    {-9223372036854775808 -3828 0 LMT}
-    {-1830380172 0 0 GMT}
-    {-1131235200 -3600 0 WAT}
-    {-286930800 0 0 GMT}
-}

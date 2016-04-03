@@ -130,7 +130,7 @@ void WorkMonitor::vpackHandler(VPackBuilder* b, WorkDescription* desc) {
   b->add("method",
          VPackValue(HttpRequest::translateMethod(request->requestType())));
   b->add("url", VPackValue(request->fullUrl()));
-  b->add("httpVersion", VPackValue(request->httpVersion()));
+  b->add("httpVersion", VPackValue((int) request->protocolVersion()));
   b->add("database", VPackValue(request->databaseName()));
   b->add("user", VPackValue(request->user()));
   b->add("taskId", VPackValue(request->clientTaskId()));
@@ -162,8 +162,8 @@ void WorkMonitor::vpackHandler(VPackBuilder* b, WorkDescription* desc) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void WorkMonitor::sendWorkOverview(uint64_t taskId, std::string const& data) {
-  auto response = std::make_unique<HttpResponse>(HttpResponse::OK,
-                                                 HttpRequest::MinCompatibility);
+  auto response = std::make_unique<HttpResponse>(GeneralResponse::ResponseCode::OK,
+                                                 GeneralRequest::MIN_COMPATIBILITY);
 
   response->setContentType("application/json; charset=utf-8");
   TRI_AppendString2StringBuffer(response->body().stringBuffer(), data.c_str(),

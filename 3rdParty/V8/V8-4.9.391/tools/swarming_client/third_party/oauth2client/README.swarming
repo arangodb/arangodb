@@ -1,0 +1,12 @@
+Name: oauth2client
+Short Name: oauth2client
+URL: https://code.google.com/p/google-api-python-client/
+Version: 1.2
+Revision: 51e5d1578633
+License: Apache License, Version 2.0
+
+Description:
+The oauth2client is a client library for OAuth 2.0.
+
+Local Modifications:
+Packaging code stripped, server side code stripped.

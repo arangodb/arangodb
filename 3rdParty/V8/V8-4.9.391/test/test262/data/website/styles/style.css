@@ -1,0 +1,590 @@
+﻿/* CSS Document */
+
+body
+{
+    background-color: #fff;
+    font-family: Tahoma, Arial, Helvetica, sans-serif;
+    font-size: 1em;
+    color: #333;
+    margin-top: 20px;
+}
+
+a
+{
+    text-decoration: none;
+    color: #0000FF;
+    cursor: hand;
+}
+
+.wrapper, .content-container
+{
+    width: 800px;
+    max-width: 800px;
+    margin: 0px auto;
+}
+
+.mainHeader
+{
+    display:block;
+    height:50px;
+}
+
+.mainHeader p
+{
+    color: black;
+    margin: 0;
+    font-size: 2em;
+}
+
+#ECMAscript
+{
+    color: #f2a612;
+}
+
+#ecmaSCRIPT
+{
+    color: #868686;
+}
+
+#ecmascriptbacklink
+{
+    display: inline-block;
+    float: right;
+    margin-top: 1.5em;
+    font-size: 0.4em;
+    font-weight: bold;
+}
+
+.navBar
+{
+    height: 60px;
+    font-size: 1.3em;
+    background-color: #868686;
+    padding: 0;
+    margin: 0;
+    width: 800px;
+    margin-bottom : 20px;
+}
+
+.navBar ul
+{
+    list-style: none;
+    display: block;
+    margin: 0;
+    padding: 0;
+}
+
+.navBar li
+{
+    float: left;
+    margin: 0;
+}
+
+.navBar li a
+{
+    height: 60px;
+    /*display: block; */
+    float: left;
+    line-height: 60px;
+    padding-left: 20px;
+    padding-right: 20px;
+    /*    min-width: 160px; */
+    color: #fff;
+    text-decoration: none;
+    text-align: center;
+}
+
+.navBar a:visited
+{
+    text-decoration: none;
+    color: #fff;
+}
+
+.navBar a:hover
+{
+    text-decoration: none;
+    color: #f5be51;
+    background-color: #666;
+}
+
+.navBar li a.selected
+{
+    background-color: #434343;
+    color: #f5be51;
+}
+
+
+p.headers
+{
+    color: #f2a612;
+    margin: 0;
+    font-size: 2em;
+}
+
+p.content
+{
+    font-size: 0.9em;
+    color: #444;
+    margin-top: 5px;
+}
+
+li.content
+{
+    font-size: 0.9em;
+    color: #444;
+}
+
+.footer
+{
+    font-size: 0.7em;
+    border-top: 1px solid #f2a612;
+    padding: 5px;
+    text-align: left;
+    margin-top: 15px;
+}
+
+.footer a, #footer a:visited, #footer a:active
+{
+    color: #0000FF;
+    text-decoration: none;
+}
+
+.footer div.links
+{
+    float: left;
+}
+
+.footer div.copyright
+{
+    float: right;
+}
+
+/* Progress Bar Styles - Begin */
+/* progress bar container */
+
+.progressBarHolder
+{
+    text-align: left;
+    height: 25px;
+    margin-bottom: 5px;
+    position: relative;
+}
+
+#progressbar
+{
+    border: 1px solid #F93;
+    position: relative;
+    color: black; 
+    text-align: left;
+    width: 458px;
+    height: 23px;
+    margin-bottom: 5px;
+    float: left;
+    padding: 1px;
+}
+/* color bar */
+#progressbar div.progress
+{
+    height: 100%;
+    overflow: hidden;
+    background-image: url(../images/progressbarbg.png);
+    background-repeat: repeat-x;
+}
+/* text on bar */
+#progressbar div.progress .text
+{
+}
+/* text off bar */
+#progressbar .text
+{
+    width: 100%;
+    position: absolute;
+    height: 100%;
+    text-align: center;
+    top: 3px;
+    vertical-align: middle;
+    font-size: 0.8em;
+    left: 0;
+    z-index: 999;
+}
+/* Progress Bar Styles - End */
+
+.progressBarButtons
+{
+    display: inline;
+    float: left;
+    margin-left: 20px;
+}
+
+.progressBarButtons img
+{
+    cursor: pointer;
+}
+
+.progressBarButtons img.disabled
+{
+    cursor: not-allowed;
+}
+
+/*ToDo: to be deleted*/
+.ProgressBarCounter
+{}
+
+.resultsHeader
+{
+    text-align: left;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    font-size: 1em;
+}
+
+.resultsHeader .separator
+{
+    color: #999;
+}
+
+.pass, .passedCases
+{
+    color: #36a812;
+}
+
+.fail, .failedCases
+{
+    color: #ff0000;
+}
+
+.resultsTableHolder
+{
+    text-align: left;
+    font-size: 0.8em;
+    height: 300px;
+    border: 1px solid #CCC;
+    overflow: auto;
+    margin-bottom: 20px;
+}
+
+.reportTableHolder
+{
+    height: auto;
+}
+
+.reportTblHeader
+{
+    padding: 5px;
+    border-bottom: 1px dotted #999;    
+    background-image: url(../images/tblreportheaderbg.png);
+    background-repeat: repeat-x;
+    color: #444;
+}
+
+.resultsTableHolder a, a:visited
+{
+    color: #0000FF;
+    text-decoration: none;
+}
+
+.resultsTableHolder td
+{
+    padding: 5px;
+    border-bottom: 1px dotted #999;
+}
+
+.resultsTableHolder tr.alternate td
+{
+    padding: 5px;
+    border-bottom: 1px dotted #999;
+    background-color: #f2f2f2;
+}
+
+.resultsTableHolder td.tblHeader
+{
+    padding: 5px;
+    border-bottom: 1px dotted #999;
+    background-image: url(../images/tblheaderbg.png);
+    background-repeat: repeat-x;
+    color: #fff;
+}
+
+.resultsTableHolder td.tblSectionHeader
+{
+    padding: 5px;
+    border-bottom: 1px dotted #999;    
+    background-image: url(images/tblsectionheader.png);
+    background-repeat: repeat-x;
+    color: #f2a612;
+}
+
+.reportRed
+{
+    background-color: #f85050;
+    color: #fff;
+}
+
+.reportGreen
+{
+    background-color: #63be00;
+    color: #fff;
+}
+
+.reportLightGreen
+{
+    background-color: #63be7b;
+    color: #fff;
+}
+
+.reportYellow
+{
+    background-color: #f7ba44;
+    color: #fff;
+}
+
+.downloadLinks, #nextActivity
+{
+    font-size: 0.8em;
+}
+
+/* New Styles - End */
+.content-container { color: #444;} 
+.content-home, .content-dev, .content-tests, .content-results, .content-results-detailed, .content-browsers { display: none; }
+.nav-link { cursor: pointer;} 
+.table-logger { overflow: scroll; }
+#resultsTableHolder { overflow: auto; }
+.log-row{ width: 100%; }
+.log-row-leftcol { width: 104px; font-weight: bold; }
+.log-row-midcol { font-weight: bold; padding-right: 10px; }
+.log-row-rightcol { color: #ff0000;font-weight: bold; }
+.result-fail{ color: #ff0000;font-weight: bold}
+.result-pass{ color: #008000;font-weight: bold}
+
+.chaptername
+{
+    font-weight: bold; 
+    color: #ffffff;
+    background-color: #6699CC;
+}
+
+#resultTable
+{
+    overflow: scroll;
+    height: 460px;
+}
+
+.sectionName
+{}
+
+.results-detailed-data-table
+{
+    border: 0px;
+    border-style: solid;
+    width: 100%;
+}
+
+.results-detailed-data-table td
+{}
+
+.sectionId
+{}
+
+.detailedResult
+{
+    font-weight: bold;
+}
+
+#resultDetailTable
+{
+    width: 100%;
+    height: 450px;
+    overflow: scroll;
+}
+
+.passedTestCases
+{
+  color: #008000;
+}
+
+.failedTestCases
+{
+   color: #ff0000;
+}
+
+.content-results-subSections
+{}
+
+.results-SubSections-data-table
+{
+    border-collapse: collapse;
+    width: 700px; 
+}
+
+.results-SubSections-data-table .alignBottom
+{
+    vertical-align: bottom;
+}
+.results-SubSections-data-table td
+{
+    border: 1px solid #000000;
+    padding: 3px;
+    vertical-align: middle;
+}
+
+.link1
+{}
+
+.link2
+{}
+
+.reportNav
+{}
+
+.crumbContainer, .setBlack, .setBlue{
+    margin-bottom: 0px;
+    font-size: 0.85em;
+}
+
+.setBlack
+{
+    color: #000000;
+}
+
+.setBlue
+{
+    color: #0000FF;
+}
+
+.backlink
+{
+    float: right;
+    text-align: right;
+}
+
+.crumbs
+{
+    width: 680px;
+    float: left;
+}
+
+.downloadLinks a
+{
+      cursor: pointer;
+}
+
+.loading
+{
+    min-height: 300px;
+    background: url(../images/spinner.gif) no-repeat center center;
+}
+
+/* <Loading Indicator> */
+.indicatorContainer
+{
+    display: none;
+}
+
+.busy .indicatorContainer
+{
+    display: block;
+}
+
+.disabledBackground
+{
+    width: 98%;
+    min-height: 97%;
+    opacity: 0.1;
+    filter: alpha(opacity=10);
+    background-color: #ffffff;
+    position: absolute;
+}
+
+#loadingIndicator
+{
+    bottom: 50%;
+    display: block;
+    position: fixed;
+    right: 50%;
+}
+
+#loadingIndicator img
+{
+    vertical-align: middle;
+}
+
+#loadingIndicator div
+{
+    background-color: #ECECEB;
+    border: 1px solid gray;
+    left: 50%;
+    padding: 8px;   
+    top: 50%;
+    z-index: 100;
+}
+
+#loadingIndicator span
+{
+    padding: 10px;
+}
+/* </Loading Indicator> */
+
+
+/* <Chapter Selection> */
+div#chapterSelector {
+    text-align: left;
+    font-size: 0.8em;
+    height: 150px;
+    border: 1px solid #CCC;
+    overflow: auto;
+    margin-bottom: 20px;
+}
+
+div#chapterSelector tr.selectedChapter {
+    font-weight:bold;
+}
+
+div#chapterSelector img {
+    cursor:pointer;
+}
+
+tr.loading, tr.waiting {
+    color:#999;
+}
+
+#chapterSelector .loading {
+    min-height:0;
+    background-position:2px center;
+}
+#chapterSelector tr.loading td.chapterName {
+    padding-left:20px;
+}
+
+/* </Chapter Selection> */
+
+
+.hide
+{
+    display: none;
+}
+
+#report table
+{    
+    font-family: Tahoma, Arial, Helvetica, sans-serif;
+    font-size: 1em;
+    color: #333;    
+}
+
+#resultMessage
+{
+    position: relative; 
+    top: 50%;
+    text-align: center;
+    width: 99%
+}
+
+.targetTestSuiteVersion, .targetTestSuiteDate
+{
+    font-weight: bold;
+}
+.projectSection
+{
+    border-top:1px none #444;
+    border-top-color: #444;
+    border-top-style:solid;
+}

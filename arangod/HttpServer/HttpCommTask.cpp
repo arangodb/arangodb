@@ -67,8 +67,8 @@ HttpCommTask::HttpCommTask(HttpServer* server, TRI_socket_t socket,
       _newRequest(true),
       _isChunked(false),
       _request(nullptr),
-      _httpVersion(HttpRequest::HTTP_UNKNOWN),
-      _requestType(HttpRequest::HTTP_REQUEST_ILLEGAL),
+      _httpVersion(GeneralRequest::ProtocolVersion::UNKNOWN),
+      _requestType(GeneralRequest::RequestType::ILLEGAL),
       _fullUrl(),
       _origin(),
       _startPosition(0),
@@ -145,8 +145,8 @@ bool HttpCommTask::processRead() {
 
       _newRequest = false;
       _startPosition = _readPosition;
-      _httpVersion = HttpRequest::HTTP_UNKNOWN;
-      _requestType = HttpRequest::HTTP_REQUEST_ILLEGAL;
+      _httpVersion = GeneralRequest::ProtocolVersion::UNKNOWN;
+      _requestType = GeneralRequest::RequestType::ILLEGAL;
       _fullUrl = "";
       _denyCredentials = false;
       _acceptDeflate = false;
@@ -181,8 +181,9 @@ bool HttpCommTask::processRead() {
                 << ", request header size is " << headerLength;
 
       // header is too large
-      HttpResponse response(HttpResponse::REQUEST_HEADER_FIELDS_TOO_LARGE,
-                            getCompatibility());
+      HttpResponse response(
+          GeneralResponse::ResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE,
+          getCompatibility());
 
       // we need to close the connection, because there is no way we
       // know what to remove and then continue
@@ -211,7 +212,8 @@ bool HttpCommTask::processRead() {
         LOG(ERR) << "cannot generate request";
 
         // internal server error
-        HttpResponse response(HttpResponse::SERVER_ERROR, getCompatibility());
+        HttpResponse response(GeneralResponse::ResponseCode::SERVER_ERROR,
+                              getCompatibility());
 
         // we need to close the connection, because there is no way we
         // know how to remove the body and then continue
@@ -224,12 +226,13 @@ bool HttpCommTask::processRead() {
       _request->setClientTaskId(_taskId);
 
       // check HTTP protocol version
-      _httpVersion = _request->httpVersion();
+      _httpVersion = _request->protocolVersion();
 
-      if (_httpVersion != HttpRequest::HTTP_1_0 &&
-          _httpVersion != HttpRequest::HTTP_1_1) {
-        HttpResponse response(HttpResponse::HTTP_VERSION_NOT_SUPPORTED,
-                              getCompatibility());
+      if (_httpVersion != GeneralRequest::ProtocolVersion::HTTP_1_0 &&
+          _httpVersion != GeneralRequest::ProtocolVersion::HTTP_1_1) {
+        HttpResponse response(
+            GeneralResponse::ResponseCode::HTTP_VERSION_NOT_SUPPORTED,
+            getCompatibility());
 
         // we need to close the connection, because there is no way we
         // know what to remove and then continue
@@ -243,8 +246,9 @@ bool HttpCommTask::processRead() {
       _fullUrl = _request->fullUrl();
 
       if (_fullUrl.size() > 16384) {
-        HttpResponse response(HttpResponse::REQUEST_URI_TOO_LONG,
-                              getCompatibility());
+        HttpResponse response(
+            GeneralResponse::ResponseCode::REQUEST_URI_TOO_LONG,
+            getCompatibility());
 
         // we need to close the connection, because there is no way we
         // know what to remove and then continue
@@ -266,8 +270,7 @@ bool HttpCommTask::processRead() {
       _bodyLength = 0;
 
       // keep track of the original value of the "origin" request header (if
-      // any)
-      // we need this value to handle CORS requests
+      // any), we need this value to handle CORS requests
       _origin = _request->header("origin");
 
       if (!_origin.empty()) {
@@ -289,21 +292,21 @@ bool HttpCommTask::processRead() {
 
       // handle different HTTP methods
       switch (_requestType) {
-        case HttpRequest::HTTP_REQUEST_GET:
-        case HttpRequest::HTTP_REQUEST_DELETE:
-        case HttpRequest::HTTP_REQUEST_HEAD:
-        case HttpRequest::HTTP_REQUEST_OPTIONS:
-        case HttpRequest::HTTP_REQUEST_POST:
-        case HttpRequest::HTTP_REQUEST_PUT:
-        case HttpRequest::HTTP_REQUEST_PATCH: {
+        case GeneralRequest::RequestType::GET:
+        case GeneralRequest::RequestType::DELETE_REQ:
+        case GeneralRequest::RequestType::HEAD:
+        case GeneralRequest::RequestType::OPTIONS:
+        case GeneralRequest::RequestType::POST:
+        case GeneralRequest::RequestType::PUT:
+        case GeneralRequest::RequestType::PATCH: {
           // technically, sending a body for an HTTP DELETE request is not
           // forbidden, but it is not explicitly supported
           bool const expectContentLength =
-              (_requestType == HttpRequest::HTTP_REQUEST_POST ||
-               _requestType == HttpRequest::HTTP_REQUEST_PUT ||
-               _requestType == HttpRequest::HTTP_REQUEST_PATCH ||
-               _requestType == HttpRequest::HTTP_REQUEST_OPTIONS ||
-               _requestType == HttpRequest::HTTP_REQUEST_DELETE);
+              (_requestType == GeneralRequest::RequestType::POST ||
+               _requestType == GeneralRequest::RequestType::PUT ||
+               _requestType == GeneralRequest::RequestType::PATCH ||
+               _requestType == GeneralRequest::RequestType::OPTIONS ||
+               _requestType == GeneralRequest::RequestType::DELETE_REQ);
 
           if (!checkContentLength(expectContentLength)) {
             return false;
@@ -328,8 +331,9 @@ bool HttpCommTask::processRead() {
                     << "'";
 
           // bad request, method not allowed
-          HttpResponse response(HttpResponse::METHOD_NOT_ALLOWED,
-                                getCompatibility());
+          HttpResponse response(
+              GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
+              getCompatibility());
 
           // we need to close the connection, because there is no way we
           // know what to remove and then continue
@@ -357,8 +361,9 @@ bool HttpCommTask::processRead() {
         // server is inactive and will intentionally respond with HTTP 503
         LOG(TRACE) << "cannot serve request - server is inactive";
 
-        HttpResponse response(HttpResponse::SERVICE_UNAVAILABLE,
-                              getCompatibility());
+        HttpResponse response(
+            GeneralResponse::ResponseCode::SERVICE_UNAVAILABLE,
+            getCompatibility());
 
         // we need to close the connection, because there is no way we
         // know what to remove and then continue
@@ -434,7 +439,7 @@ bool HttpCommTask::processRead() {
                                          _bodyLength);
 
   bool const isOptionsRequest =
-      (_requestType == HttpRequest::HTTP_REQUEST_OPTIONS);
+      (_requestType == GeneralRequest::RequestType::OPTIONS);
   resetState(false);
 
   // .............................................................................
@@ -470,12 +475,12 @@ bool HttpCommTask::processRead() {
 
   auto const compatibility = _request->compatibility();
 
-  HttpResponse::HttpResponseCode authResult =
+  GeneralResponse::ResponseCode authResult =
       _server->handlerFactory()->authenticateRequest(_request);
 
   // authenticated or an OPTIONS request. OPTIONS requests currently go
   // unauthenticated
-  if (authResult == HttpResponse::OK || isOptionsRequest) {
+  if (authResult == GeneralResponse::ResponseCode::OK || isOptionsRequest) {
     // handle HTTP OPTIONS requests directly
     if (isOptionsRequest) {
       processCorsOptions(compatibility);
@@ -485,7 +490,7 @@ bool HttpCommTask::processRead() {
   }
 
   // not found
-  else if (authResult == HttpResponse::NOT_FOUND) {
+  else if (authResult == GeneralResponse::ResponseCode::NOT_FOUND) {
     HttpResponse response(authResult, compatibility);
     response.setContentType("application/json; charset=utf-8");
 
@@ -503,7 +508,7 @@ bool HttpCommTask::processRead() {
   }
 
   // forbidden
-  else if (authResult == HttpResponse::FORBIDDEN) {
+  else if (authResult == GeneralResponse::ResponseCode::FORBIDDEN) {
     HttpResponse response(authResult, compatibility);
     response.setContentType("application/json; charset=utf-8");
 
@@ -521,14 +526,16 @@ bool HttpCommTask::processRead() {
 
   // not authenticated
   else {
-    HttpResponse response(HttpResponse::UNAUTHORIZED, compatibility);
-    std::string const realm =
-        "basic realm=\"" +
-        _server->handlerFactory()->authenticationRealm(_request) + "\"";
+    HttpResponse response(GeneralResponse::ResponseCode::UNAUTHORIZED,
+                          compatibility);
+    static std::string const wwwAuthenticate = "www-authenticate";
 
     if (sendWwwAuthenticateHeader()) {
-      response.setHeader(TRI_CHAR_LENGTH_PAIR("www-authenticate"),
-                         realm.c_str());
+      std::string const realm =
+          "basic realm=\"" +
+          _server->handlerFactory()->authenticationRealm(_request) + "\"";
+
+      response.setHeaderNC(wwwAuthenticate, realm);
     }
 
     clearRequest();
@@ -593,29 +600,36 @@ void HttpCommTask::addResponse(HttpResponse* response) {
     // access-control-allow-origin header now
     LOG(TRACE) << "handling CORS response";
 
-    response->setHeader(TRI_CHAR_LENGTH_PAIR("access-control-expose-headers"),
-                        "etag, content-encoding, content-length, location, "
-                        "server, x-arango-errors, x-arango-async-id");
+    static std::string const accessControl = "access-control-expose-headers";
+    static std::string const exposedHeaders =
+        "etag, content-encoding, content-length, location, "
+        "server, x-arango-errors, x-arango-async-id";
+
+    response->setHeaderNC(accessControl, exposedHeaders);
 
     // send back original value of "Origin" header
-    response->setHeader(TRI_CHAR_LENGTH_PAIR("access-control-allow-origin"),
-                        _origin);
+    static std::string const accessOrigin = "access-control-allow-origin";
+
+    response->setHeaderNC(accessOrigin, _origin);
 
     // send back "Access-Control-Allow-Credentials" header
-    response->setHeader(
-        TRI_CHAR_LENGTH_PAIR("access-control-allow-credentials"),
-        (_denyCredentials ? "false" : "true"));
+    static std::string const accessCredentials =
+        "access-control-allow-credentials";
+
+    response->setHeaderNC(accessCredentials,
+                          (_denyCredentials ? "false" : "true"));
   }
   // CORS request handling EOF
 
   // set "connection" header
   // keep-alive is the default
-  response->setHeader(TRI_CHAR_LENGTH_PAIR("connection"),
-                      (_closeRequested ? "Close" : "Keep-Alive"));
+  static std::string const connection = "connection";
+
+  response->setHeaderNC(connection, (_closeRequested ? "Close" : "Keep-Alive"));
 
   size_t const responseBodyLength = response->bodySize();
 
-  if (_requestType == HttpRequest::HTTP_REQUEST_HEAD) {
+  if (_requestType == GeneralRequest::RequestType::HEAD) {
     // clear body if this is an HTTP HEAD request
     // HEAD must not return a body
     response->headResponse(responseBodyLength);
@@ -638,7 +652,7 @@ void HttpCommTask::addResponse(HttpResponse* response) {
   response->writeHeader(buffer.get());
 
   // write body
-  if (_requestType != HttpRequest::HTTP_REQUEST_HEAD) {
+  if (_requestType != GeneralRequest::RequestType::HEAD) {
     if (_isChunked) {
       if (0 != responseBodyLength) {
         buffer->appendHex(response->body().length());
@@ -690,7 +704,8 @@ bool HttpCommTask::checkContentLength(bool expectContentLength) {
 
   if (bodyLength < 0) {
     // bad request, body length is < 0. this is a client error
-    HttpResponse response(HttpResponse::LENGTH_REQUIRED, getCompatibility());
+    HttpResponse response(GeneralResponse::ResponseCode::LENGTH_REQUIRED,
+                          getCompatibility());
 
     resetState(true);
     handleResponse(&response);
@@ -711,8 +726,9 @@ bool HttpCommTask::checkContentLength(bool expectContentLength) {
               << ", request body size is " << bodyLength;
 
     // request entity too large
-    HttpResponse response(HttpResponse::REQUEST_ENTITY_TOO_LARGE,
-                          getCompatibility());
+    HttpResponse response(
+        GeneralResponse::ResponseCode::REQUEST_ENTITY_TOO_LARGE,
+        getCompatibility());
 
     resetState(true);
     handleResponse(&response);
@@ -758,9 +774,10 @@ void HttpCommTask::fillWriteBuffer() {
 void HttpCommTask::processCorsOptions(uint32_t compatibility) {
   std::string const allowedMethods = "DELETE, GET, HEAD, PATCH, POST, PUT";
 
-  HttpResponse response(HttpResponse::OK, compatibility);
+  HttpResponse response(GeneralResponse::ResponseCode::OK, compatibility);
 
-  response.setHeader(TRI_CHAR_LENGTH_PAIR("allow"), allowedMethods);
+  static std::string const allow = "allow";
+  response.setHeaderNC(allow, allowedMethods);
 
   if (!_origin.empty()) {
     LOG(TRACE) << "got CORS preflight request";
@@ -769,22 +786,26 @@ void HttpCommTask::processCorsOptions(uint32_t compatibility) {
 
     // send back which HTTP methods are allowed for the resource
     // we'll allow all
-    response.setHeader(TRI_CHAR_LENGTH_PAIR("access-control-allow-methods"),
-                       allowedMethods);
+    static std::string const accessControl = "access-control-allow-methods";
+    response.setHeaderNC(accessControl, allowedMethods);
 
     if (!allowHeaders.empty()) {
       // allow all extra headers the client requested
       // we don't verify them here. the worst that can happen is that the client
       // sends some broken headers and then later cannot access the data on the
       // server. that's a client problem.
-      response.setHeader(TRI_CHAR_LENGTH_PAIR("access-control-allow-headers"),
-                         allowHeaders);
+      static std::string const accessControl = "access-control-allow-headers";
+      response.setHeaderNC(accessControl, allowHeaders);
+
       LOG(TRACE) << "client requested validation of the following headers: "
                  << allowHeaders;
     }
 
     // set caching time (hard-coded value)
-    response.setHeader(TRI_CHAR_LENGTH_PAIR("access-control-max-age"), "1800");
+    static std::string const accessAge = "access-control-max-age";
+    static std::string const maxAge = "1800";
+
+    response.setHeaderNC(accessAge, maxAge);
   }
 
   clearRequest();
@@ -798,7 +819,8 @@ void HttpCommTask::processCorsOptions(uint32_t compatibility) {
 void HttpCommTask::processRequest(uint32_t compatibility) {
   // check for deflate
   bool found;
-  std::string const acceptEncoding = _request->header("accept-encoding", found);
+  std::string const& acceptEncoding =
+      _request->header("accept-encoding", found);
 
   if (found) {
     if (acceptEncoding.find("deflate") != std::string::npos) {
@@ -814,7 +836,7 @@ void HttpCommTask::processRequest(uint32_t compatibility) {
       << "\"";
 
   // check for an async request
-  std::string const asyncExecution = _request->header("x-arango-async", found);
+  std::string const& asyncExecution = _request->header("x-arango-async", found);
 
   // create handler, this will take over the request
   WorkItem::uptr<HttpHandler> handler(
@@ -823,7 +845,8 @@ void HttpCommTask::processRequest(uint32_t compatibility) {
   if (handler == nullptr) {
     LOG(TRACE) << "no handler is known, giving up";
 
-    HttpResponse response(HttpResponse::NOT_FOUND, compatibility);
+    HttpResponse response(GeneralResponse::ResponseCode::NOT_FOUND,
+                          compatibility);
 
     clearRequest();
     handleResponse(&response);
@@ -832,21 +855,12 @@ void HttpCommTask::processRequest(uint32_t compatibility) {
   }
 
   if (_request != nullptr) {
-    char const* body = "";
-    size_t bodySize = 0;
+    std::string body = _request->body();
 
-    if (_request != nullptr) {
-      bodySize = _request->bodySize();
-
-      if (bodySize != 0) {
-        body = _request->body();
-      }
-    }
-
-    if (bodySize != 0) {
+    if (!body.empty()) {
       LOG_TOPIC(DEBUG, Logger::REQUESTS)
           << "\"http-request-body\",\"" << (void*)this << "\",\""
-          << (StringUtils::escapeUnicode(std::string(body, bodySize))) << "\"";
+          << (StringUtils::escapeUnicode(body)) << "\"";
     }
   }
 
@@ -872,12 +886,13 @@ void HttpCommTask::processRequest(uint32_t compatibility) {
     }
 
     if (ok) {
-      HttpResponse response(HttpResponse::ACCEPTED, compatibility);
+      HttpResponse response(GeneralResponse::ResponseCode::ACCEPTED,
+                            compatibility);
 
       if (jobId > 0) {
         // return the job id we just created
-        response.setHeader(TRI_CHAR_LENGTH_PAIR("x-arango-async-id"),
-                           StringUtils::itoa(jobId));
+        static std::string const xArango = "x-arango-async-id";
+        response.setHeaderNC(xArango, StringUtils::itoa(jobId));
       }
 
       handleResponse(&response);
@@ -892,7 +907,8 @@ void HttpCommTask::processRequest(uint32_t compatibility) {
   }
 
   if (!ok) {
-    HttpResponse response(HttpResponse::SERVER_ERROR, compatibility);
+    HttpResponse response(GeneralResponse::ResponseCode::SERVER_ERROR,
+                          compatibility);
     handleResponse(&response);
   }
 }
@@ -973,7 +989,7 @@ int32_t HttpCommTask::getCompatibility() const {
     return _request->compatibility();
   }
 
-  return HttpRequest::MinCompatibility;
+  return GeneralRequest::MIN_COMPATIBILITY;
 }
 
 bool HttpCommTask::setup(Scheduler* scheduler, EventLoop loop) {

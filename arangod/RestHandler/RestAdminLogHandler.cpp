@@ -34,7 +34,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAdminLogHandler::RestAdminLogHandler(rest::HttpRequest* request)
+RestAdminLogHandler::RestAdminLogHandler(HttpRequest* request)
     : RestBaseHandler(request) {}
 
 bool RestAdminLogHandler::isDirect() const { return true; }
@@ -46,17 +46,19 @@ bool RestAdminLogHandler::isDirect() const { return true; }
 HttpHandler::status_t RestAdminLogHandler::execute() {
   // "/log" can only be called for the _system database
   if (_request->databaseName() != "_system") {
-    generateError(HttpResponse::FORBIDDEN,
+    generateError(GeneralResponse::ResponseCode::FORBIDDEN,
                   TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
     return status_t(HANDLER_DONE);
   }
 
   // check the maximal log level to report
   bool found1;
-  std::string upto = StringUtils::tolower(_request->value("upto", found1));
+  std::string const& upto =
+      StringUtils::tolower(_request->value("upto", found1));
 
   bool found2;
-  std::string lvl = StringUtils::tolower(_request->value("level", found2));
+  std::string const& lvl =
+      StringUtils::tolower(_request->value("level", found2));
 
   LogLevel ul = LogLevel::INFO;
   bool useUpto = true;
@@ -85,7 +87,8 @@ HttpHandler::status_t RestAdminLogHandler::execute() {
     } else if (logLevel == "trace" || logLevel == "5") {
       ul = LogLevel::TRACE;
     } else {
-      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+      generateError(GeneralResponse::ResponseCode::BAD,
+                    TRI_ERROR_HTTP_BAD_PARAMETER,
                     std::string("unknown '") + (found2 ? "level" : "upto") +
                         "' log level: '" + logLevel + "'");
       return status_t(HANDLER_DONE);
@@ -96,7 +99,7 @@ HttpHandler::status_t RestAdminLogHandler::execute() {
   uint64_t start = 0;
 
   bool found;
-  std::string s = _request->value("start", found);
+  std::string const& s = _request->value("start", found);
 
   if (found) {
     start = StringUtils::uint64(s);
@@ -104,25 +107,22 @@ HttpHandler::status_t RestAdminLogHandler::execute() {
 
   // check the offset
   int64_t offset = 0;
-
-  s = _request->value("offset", found);
+  std::string const& o = _request->value("offset", found);
 
   if (found) {
-    offset = StringUtils::int64(s);
+    offset = StringUtils::int64(o);
   }
 
   // check the size
   uint64_t size = (uint64_t)-1;
-
-  s = _request->value("size", found);
+  std::string const& si = _request->value("size", found);
 
   if (found) {
-    size = StringUtils::uint64(s);
+    size = StringUtils::uint64(si);
   }
 
   // check the sort direction
   bool sortAscending = true;
-
   std::string sortdir = StringUtils::tolower(_request->value("sort", found));
 
   if (found) {

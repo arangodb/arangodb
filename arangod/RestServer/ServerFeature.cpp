@@ -98,10 +98,10 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
 
-  if (_defaultApiCompatibility < HttpRequest::MinCompatibility) {
+  if (_defaultApiCompatibility < HttpRequest::MIN_COMPATIBILITY) {
     LOG(FATAL) << "invalid value for --server.default-api-compatibility. "
                   "minimum allowed value is "
-               << HttpRequest::MinCompatibility;
+               << HttpRequest::MIN_COMPATIBILITY;
     FATAL_ERROR_EXIT();
   }
 
@@ -153,8 +153,7 @@ static TRI_vocbase_t* LookupDatabaseFromRequest(HttpRequest* request,
   return TRI_UseDatabaseServer(server, dbName.c_str());
 }
 
-static bool SetRequestContext(arangodb::rest::HttpRequest* request,
-                              void* data) {
+static bool SetRequestContext(HttpRequest* request, void* data) {
   TRI_server_t* server = static_cast<TRI_server_t*>(data);
   TRI_vocbase_t* vocbase = LookupDatabaseFromRequest(request, server);
 
@@ -337,7 +336,6 @@ void ServerFeature::defineHandlers() {
       (void*)&httpOptions);
 #endif
 }
-
 
 #if 0
 

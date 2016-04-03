@@ -41,7 +41,7 @@ class LogThread : public Thread {
   ~LogThread() { shutdown(); }
 
  public:
-  void run();
+  void run() override;
 
  private:
   static boost::lockfree::queue<LogMessage*> _messages;

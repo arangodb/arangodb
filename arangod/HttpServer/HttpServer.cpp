@@ -27,13 +27,13 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/WorkMonitor.h"
 #include "Dispatcher/Dispatcher.h"
+#include "Endpoint/EndpointList.h"
 #include "HttpServer/AsyncJobManager.h"
 #include "HttpServer/HttpCommTask.h"
 #include "HttpServer/HttpHandler.h"
 #include "HttpServer/HttpListenTask.h"
 #include "HttpServer/HttpServerJob.h"
 #include "Logger/Logger.h"
-#include "Rest/EndpointList.h"
 #include "Scheduler/ListenTask.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -103,7 +103,8 @@ void HttpServer::setEndpointList(EndpointList const* list) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpServer::startListening() {
-  auto endpoints = _endpointList->getByPrefix(encryptionType());
+  auto endpoints =
+      _endpointList->matching(Endpoint::TransportType::HTTP, encryptionType());
 
   for (auto&& i : endpoints) {
     LOG(TRACE) << "trying to bind to endpoint '" << i.first << "' for requests";
@@ -113,7 +114,10 @@ void HttpServer::startListening() {
     if (ok) {
       LOG(DEBUG) << "bound to endpoint '" << i.first << "'";
     } else {
-      LOG(FATAL) << "failed to bind to endpoint '" << i.first << "'. Please check whether another instance is already running or review your endpoints configuration."; FATAL_ERROR_EXIT();
+      LOG(FATAL) << "failed to bind to endpoint '" << i.first
+                 << "'. Please check whether another instance is already "
+                    "running or review your endpoints configuration.";
+      FATAL_ERROR_EXIT();
     }
   }
 }
@@ -200,12 +204,8 @@ bool HttpServer::handleRequestAsync(WorkItem::uptr<HttpHandler>& handler,
                                     uint64_t* jobId) {
   // extract the coordinator flag
   bool found;
-  char const* hdr =
-      handler->getRequest()->header("x-arango-coordinator", found);
-
-  if (!found) {
-    hdr = nullptr;
-  }
+  std::string const& hdrStr = handler->getRequest()->header("x-arango-coordinator", found);
+  char const* hdr = found ? hdrStr.c_str() : nullptr;
 
   // execute the handler using the dispatcher
   std::unique_ptr<Job> job =
@@ -223,7 +223,8 @@ bool HttpServer::handleRequestAsync(WorkItem::uptr<HttpHandler>& handler,
   // could not add job to job queue
   if (res != TRI_ERROR_NO_ERROR) {
     job->requestStatisticsAgentSetExecuteError();
-    LOG(WARN) << "unable to add job to the job queue: " << TRI_errno_string(res);
+    LOG(WARN) << "unable to add job to the job queue: "
+              << TRI_errno_string(res);
     // todo send info to async work manager?
     return false;
   }
@@ -249,7 +250,8 @@ bool HttpServer::handleRequest(HttpCommTask* task,
   // use a dispatcher queue, handler belongs to the job
   std::unique_ptr<Job> job = std::make_unique<HttpServerJob>(this, handler);
 
-  LOG(TRACE) << "HttpCommTask " << (void*)task << " created HttpServerJob " << (void*)job.get();
+  LOG(TRACE) << "HttpCommTask " << (void*)task << " created HttpServerJob "
+             << (void*)job.get();
 
   // add the job to the dispatcher
   int res = _dispatcher->addJob(job);

@@ -1,6 +1,0 @@
-# created by tools/tclZIC.tcl - do not edit
-
-set TZData(:Indian/Mayotte) {
-    {-9223372036854775808 10856 0 LMT}
-    {-1846292456 10800 0 EAT}
-}

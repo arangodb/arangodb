@@ -33,6 +33,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Rest/OperationMode.h"
 #include "VocBase/vocbase.h"
+#include "Agency/Agent.h"
 
 struct TRI_server_t;
 
@@ -42,6 +43,7 @@ class ThreadPool;
 }
 
 namespace rest {
+class ApplicationAgency;
 class ApplicationDispatcher;
 class ApplicationEndpointServer;
 class ApplicationScheduler;
@@ -244,6 +246,12 @@ class ArangoServer {
   //////////////////////////////////////////////////////////////////////////////
 
   arangodb::ApplicationCluster* _applicationCluster;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief cluster application feature
+  //////////////////////////////////////////////////////////////////////////////
+
+  rest::ApplicationAgency* _applicationAgency;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief asynchronous job manager

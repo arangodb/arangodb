@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<esSpec name="ECMA-402" version="1">
+  <sec id="6" name="Identification of Locales, Time Zones, and Currencies">
+    <sec id="6.1" name="Case Sensitivity and Case Mapping">
+    </sec>
+    <sec id="6.2" name="Language Tags">
+      <sec id="6.2.1" name="Unicode Locale Extension Sequences">
+      </sec>
+      <sec id="6.2.2" name="IsStructurallyValidLanguageTag (locale)">
+      </sec>
+      <sec id="6.2.3" name="CanonicalizeLanguageTag (locale)">
+      </sec>
+      <sec id="6.2.4" name="DefaultLocale ()">
+      </sec>
+    </sec>
+    <sec id="6.3" name="Currency Codes">
+      <sec id="6.3.1" name="IsWellFormedCurrencyCode (currency)">
+      </sec>
+    </sec>
+    <sec id="6.4" name="Time Zone Names">
+    </sec>
+  </sec>
+  <sec id="7" name="Requirements for Standard Built-in ECMAScript Objects">
+  </sec>
+  <sec id="8" name="The Intl Object">
+    <sec id="8.1" name="Properties of the Intl Object">
+    </sec>
+  </sec>
+  <sec id="9" name="Locale and Parameter Negotiation">
+    <sec id="9.1" name="Internal Properties of Service Constructors">
+    </sec>
+    <sec id="9.2" name="Abstract Operations">
+      <sec id="9.2.1" name="CanonicalizeLocaleList (locales)">
+      </sec>
+      <sec id="9.2.2" name="BestAvailableLocale (availableLocales, locale)">
+      </sec>
+      <sec id="9.2.3" name="LookupMatcher (availableLocales, requestedLocales)">
+      </sec>
+      <sec id="9.2.4" name="BestFitMatcher (availableLocales, requestedLocales)">
+      </sec>
+      <sec id="9.2.5" name="ResolveLocale (availableLocales, requestedLocales, options, relevantExtensionKeys, localeData)">
+      </sec>
+      <sec id="9.2.6" name="LookupSupportedLocales (availableLocales, requestedLocales)">
+      </sec>
+      <sec id="9.2.7" name="BestFitSupportedLocales (availableLocales, requestedLocales)">
+      </sec>
+      <sec id="9.2.8" name="SupportedLocales (availableLocales, requestedLocales, options)">
+      </sec>
+      <sec id="9.2.9" name="GetOption (options, property, type, values, fallback)">
+      </sec>
+      <sec id="9.2.10" name="GetNumberOption (options, property, minimum, maximum, fallback)">
+      </sec>
+    </sec>
+  </sec>
+  <sec id="10" name="Collator Objects">
+    <sec id="10.1" name="The Intl.Collator Constructor">
+      <sec id="10.1.1" name="Initializing an Object as a Collator">
+      </sec>
+      <sec id="10.1.2" name="The Intl.Collator Constructor Called as a Function">
+      </sec>
+      <sec id="10.1.3" name="The Intl.Collator Constructor Used in a new Expression">
+      </sec>
+    </sec>
+    <sec id="10.2" name="Properties of the Intl.Collator Constructor">
+      <sec id="10.2.1" name="Intl.Collator.prototype">
+      </sec>
+      <sec id="10.2.2" name="Intl.Collator.supportedLocalesOf (locales [, options])">
+      </sec>
+      <sec id="10.2.3" name="Internal Properties">
+      </sec>
+    </sec>
+    <sec id="10.3" name="Properties of the Intl.Collator Prototype Object">
+      <sec id="10.3.1" name="Intl.Collator.prototype.constructor">
+      </sec>
+      <sec id="10.3.2" name="Intl.Collator.prototype.compare">
+      </sec>
+      <sec id="10.3.3" name="Intl.Collator.prototype.resolvedOptions ()">
+      </sec>
+    </sec>
+    <sec id="10.4" name="Properties of Intl.Collator Instances">
+    </sec>
+  </sec>
+  <sec id="11" name="NumberFormat Objects">
+    <sec id="11.1" name="The Intl.NumberFormat Constructor">
+      <sec id="11.1.1" name="Initializing an Object as a NumberFormat">
+      </sec>
+      <sec id="11.1.2" name="The Intl.NumberFormat Constructor Called as a Function">
+      </sec>
+      <sec id="11.1.3" name="The Intl.NumberFormat Constructor Used in a new Expression">
+      </sec>
+    </sec>
+    <sec id="11.2" name="Properties of the Intl.NumberFormat Constructor">
+      <sec id="11.2.1" name="Intl.NumberFormat.prototype">
+      </sec>
+      <sec id="11.2.2" name="Intl.NumberFormat.supportedLocalesOf (locales [, options])">
+      </sec>
+      <sec id="11.2.3" name="Internal Properties">
+      </sec>
+    </sec>
+    <sec id="11.3" name="Properties of the Intl.NumberFormat Prototype Object">
+      <sec id="11.3.1" name="Intl.NumberFormat.prototype.constructor">
+      </sec>
+      <sec id="11.3.2" name="Intl.NumberFormat.prototype.compare">
+      </sec>
+      <sec id="11.3.3" name="Intl.NumberFormat.prototype.resolvedOptions ()">
+      </sec>
+    </sec>
+    <sec id="11.4" name="Properties of Intl.NumberFormat Instances">
+    </sec>
+  </sec>
+  <sec id="12" name="DateTimeFormat Objects">
+    <sec id="12.1" name="The Intl.DateTimeFormat Constructor">
+      <sec id="12.1.1" name="Initializing an Object as a DateTimeFormat">
+      </sec>
+      <sec id="12.1.2" name="The Intl.DateTimeFormat Constructor Called as a Function">
+      </sec>
+      <sec id="12.1.3" name="The Intl.DateTimeFormat Constructor Used in a new Expression">
+      </sec>
+    </sec>
+    <sec id="12.2" name="Properties of the Intl.DateTimeFormat Constructor">
+      <sec id="12.2.1" name="Intl.DateTimeFormat.prototype">
+      </sec>
+      <sec id="12.2.2" name="Intl.DateTimeFormat.supportedLocalesOf (locales [, options])">
+      </sec>
+      <sec id="12.2.3" name="Internal Properties">
+      </sec>
+    </sec>
+    <sec id="12.3" name="Properties of the Intl.DateTimeFormat Prototype Object">
+      <sec id="12.3.1" name="Intl.DateTimeFormat.prototype.constructor">
+      </sec>
+      <sec id="12.3.2" name="Intl.DateTimeFormat.prototype.compare">
+      </sec>
+      <sec id="12.3.3" name="Intl.DateTimeFormat.prototype.resolvedOptions ()">
+      </sec>
+    </sec>
+    <sec id="12.4" name="Properties of Intl.DateTimeFormat Instances">
+    </sec>
+  </sec>
+  <sec id="13" name="Locale Sensitive Functions of the ECMAScript Language Specification">
+    <sec id="13.1" name="Properties of the String Prototype Object">
+      <sec id="13.1.1" name="String.prototype.localeCompare (that [, locales [, options]])">
+      </sec>
+    </sec>
+    <sec id="13.2" name="Properties of the Number Prototype Object">
+      <sec id="13.2.1" name="Number.prototype.toLocaleString ([locales [, options]])">
+      </sec>
+    </sec>
+    <sec id="13.3" name="Properties of the Date Prototype Object">
+      <sec id="13.3.1" name="Date.prototype.toLocaleString ([locales [, options]])">
+      </sec>
+      <sec id="13.3.2" name="Date.prototype.toLocaleDateString ([locales [, options]])">
+      </sec>
+      <sec id="13.3.3" name="Date.prototype.toLocaleTimeString ([locales [, options]])">
+      </sec>
+    </sec>
+  </sec>
+</esSpec>
+

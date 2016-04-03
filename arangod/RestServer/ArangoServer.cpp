@@ -23,16 +23,14 @@
 
 #include "ArangoServer.h"
 
-#ifdef TRI_HAVE_SYS_WAIT_H
-#include <sys/wait.h>
-#endif
-
 #include <v8.h>
 #include <iostream>
 #include <fstream>
 
 #include "Actions/RestActionHandler.h"
 #include "Actions/actions.h"
+#include "Agency/Agent.h"
+#include "Agency/ApplicationAgency.h"
 #include "ApplicationServer/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryCache.h"
@@ -60,6 +58,8 @@
 #include "Rest/OperationMode.h"
 #include "Rest/Version.h"
 #include "RestHandler/RestAdminLogHandler.h"
+#include "RestHandler/RestAgencyHandler.h"
+#include "RestHandler/RestAgencyPrivHandler.h"
 #include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestCursorHandler.h"
 #include "RestHandler/RestDebugHandler.h"
@@ -105,6 +105,7 @@ ArangoServer::ArangoServer(int argc, char** argv)
       _tempPath(),
       _applicationEndpointServer(nullptr),
       _applicationCluster(nullptr),
+      _applicationAgency(nullptr),
       _jobManager(nullptr),
       _applicationV8(nullptr),
       _authenticateSystemOnly(false),
@@ -273,6 +274,13 @@ void ArangoServer::buildApplicationServer() {
   _applicationServer->addFeature(_applicationCluster);
 
   // .............................................................................
+  // agency options
+  // .............................................................................
+
+  _applicationAgency = new ApplicationAgency();
+  _applicationServer->addFeature(_applicationAgency);
+
+  // .............................................................................
   // server options
   // .............................................................................
 
@@ -285,7 +293,7 @@ void ArangoServer::buildApplicationServer() {
       "use HTTP authentication only for requests to /_api and /_admin")(
       "server.disable-authentication", &_disableAuthentication,
       "disable authentication for ALL client requests")
-#ifdef TRI_HAVE_LINUX_SOCKETS
+#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
       ("server.disable-authentication-unix-sockets",
        &_disableAuthenticationUnixSockets,
        "disable authentication for requests via UNIX domain sockets")
@@ -297,7 +305,7 @@ void ArangoServer::buildApplicationServer() {
               "unittests")(
               "server.additional-threads", &_additionalThreads,
               "number of threads in additional queues")(
-              "server.hide-product-header", &HttpResponse::HideProductHeader,
+              "server.hide-product-header", &HttpResponse::HIDE_PRODUCT_HEADER,
               "do not expose \"Server: ArangoDB\" header in HTTP responses")(
               "server.foxx-queues", &_foxxQueues, "enable Foxx queues")(
               "server.foxx-queues-poll-interval", &_foxxQueuesPollInterval,
@@ -568,11 +576,14 @@ void ArangoServer::waitForHeartbeat() {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief runs the server
 ////////////////////////////////////////////////////////////////////////////////
-
 int ArangoServer::runServer(TRI_vocbase_t* vocbase) {
 #warning TODO
 #if 0
   waitForHeartbeat();
+
+  // Loading ageny's persistent state
+  if(_applicationAgency->agent()!=nullptr)
+    _applicationAgency->agent()->load();
 
   // just wait until we are signalled
   _applicationServer->wait();
@@ -709,8 +720,8 @@ int ArangoServer::runScript(TRI_vocbase_t* vocbase) {
     {
       v8::Context::Scope contextScope(localContext);
       for (size_t i = 0; i < _scriptFile.size(); ++i) {
-        bool r =
-            TRI_ExecuteGlobalJavaScriptFile(isolate, _scriptFile[i].c_str());
+        bool r = TRI_ExecuteGlobalJavaScriptFile(isolate,
+                                                 _scriptFile[i].c_str(), true);
 
         if (!r) {
           LOG(FATAL) << "cannot load script '" << _scriptFile[i]

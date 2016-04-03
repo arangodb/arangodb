@@ -261,6 +261,8 @@ void HeartbeatThread::runCoordinator() {
 
   // last value of plan which we have noticed:
   uint64_t lastPlanVersionNoticed = 0;
+  // last value of current which we have noticed:
+  uint64_t lastCurrentVersionNoticed = 0;
 
   // value of Sync/Commands/my-id at startup
   uint64_t lastCommandIndex = getLastCommandIndex();
@@ -361,6 +363,28 @@ void HeartbeatThread::runCoordinator() {
         }
       }
     }
+
+    result = _agency.getValues("Current/Version", false);
+    if (result.successful()) {
+      result.parse("", false);
+
+      std::map<std::string, AgencyCommResultEntry>::iterator it =
+          result._values.begin();
+
+      if (it != result._values.end()) {
+        // there is a plan version
+        uint64_t currentVersion =
+            arangodb::basics::VelocyPackHelper::stringUInt64(
+                it->second._vpack->slice());
+        
+        if (currentVersion > lastCurrentVersionNoticed) {
+          lastCurrentVersionNoticed = currentVersion;
+
+          ClusterInfo::instance()->invalidateCurrent();
+        }
+      }
+    }
+
 
     if (shouldSleep) {
       double remain = interval - (TRI_microtime() - start);

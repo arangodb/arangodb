@@ -126,12 +126,12 @@ class ClusterTraversalPath : public TraversalPath {
       const arangodb::basics::EnumeratedPath<std::string, std::string>& path)
       : _path(path), _traverser(traverser) {}
 
-  arangodb::basics::Json* pathToJson(Transaction*, CollectionNameResolver*);
+  arangodb::basics::Json* pathToJson(Transaction*, CollectionNameResolver*) override ;
 
-  arangodb::basics::Json* lastEdgeToJson(Transaction*, CollectionNameResolver*);
+  arangodb::basics::Json* lastEdgeToJson(Transaction*, CollectionNameResolver*) override;
 
   arangodb::basics::Json* lastVertexToJson(Transaction*,
-                                           CollectionNameResolver*);
+                                           CollectionNameResolver*) override;
 
  private:
   arangodb::basics::EnumeratedPath<std::string, std::string> _path;

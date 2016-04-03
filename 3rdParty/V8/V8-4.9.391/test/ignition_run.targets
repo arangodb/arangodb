@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <PropertyPageSchema Include="$(MSBuildThisFileDirectory)$(MSBuildThisFileName).xml"/>
+    <AvailableItemName Include="isolate">
+      <Targets>_isolate</Targets>
+    </AvailableItemName>
+  </ItemGroup>
+  <UsingTask AssemblyName="Microsoft.Build.Tasks.v4.0" TaskFactory="XamlTaskFactory" TaskName="isolate">
+    <Task>$(MSBuildThisFileDirectory)$(MSBuildThisFileName).xml</Task>
+  </UsingTask>
+  <Target AfterTargets="$(isolateAfterTargets)" BeforeTargets="$(isolateBeforeTargets)" Condition="'@(isolate)' != ''" DependsOnTargets="$(isolateDependsOn);ComputeisolateOutput" Inputs="%(isolate.Identity);%(isolate.AdditionalDependencies);$(MSBuildProjectFile)" Name="_isolate" Outputs="%(isolate.Outputs)">
+    <ItemGroup Condition="'@(SelectedFiles)' != ''">
+      <isolate Condition="'%(Identity)' != '@(SelectedFiles)'" Remove="@(isolate)"/>
+    </ItemGroup>
+    <ItemGroup>
+      <isolate_inputs Include="%(isolate.AdditionalDependencies)"/>
+    </ItemGroup>
+    <ItemGroup>
+      <isolate_tlog Condition="'%(isolate.Outputs)' != '' and '%(isolate.ExcludedFromBuild)' != 'true'" Include="%(isolate.Outputs)">
+        <Source>@(isolate, &apos;|&apos;)</Source>
+        <Inputs>@(isolate_inputs -&gt; &apos;%(Fullpath)&apos;, &apos;;&apos;)</Inputs>
+      </isolate_tlog>
+    </ItemGroup>
+    <Message Importance="High" Text="%(isolate.ExecutionDescription)"/>
+    <WriteLinesToFile Condition="'@(isolate_tlog)' != '' and '%(isolate_tlog.ExcludedFromBuild)' != 'true'" File="$(IntDir)$(ProjectName).write.1.tlog" Lines="^%(isolate_tlog.Source);@(isolate_tlog-&gt;'%(Fullpath)')"/>
+    <WriteLinesToFile Condition="'@(isolate_tlog)' != '' and '%(isolate_tlog.ExcludedFromBuild)' != 'true'" File="$(IntDir)$(ProjectName).read.1.tlog" Lines="^%(isolate_tlog.Source);%(isolate_tlog.Inputs)"/>
+    <isolate AdditionalOptions="%(isolate.AdditionalOptions)" CommandLineTemplate="%(isolate.CommandLineTemplate)" Condition="'@(isolate)' != '' and '%(isolate.ExcludedFromBuild)' != 'true'" EchoOff="true" Inputs="%(isolate.Identity)" StandardErrorImportance="High" StandardOutputImportance="High"/>
+  </Target>
+  <PropertyGroup>
+    <ComputeLinkInputsTargets>$(ComputeLinkInputsTargets);ComputeisolateOutput;</ComputeLinkInputsTargets>
+    <ComputeLibInputsTargets>$(ComputeLibInputsTargets);ComputeisolateOutput;</ComputeLibInputsTargets>
+  </PropertyGroup>
+  <Target Condition="'@(isolate)' != ''" Name="ComputeisolateOutput">
+    <ItemGroup>
+      <isolateDirsToMake Condition="'@(isolate)' != '' and '%(isolate.ExcludedFromBuild)' != 'true'" Include="%(isolate.Outputs)"/>
+      <Link Condition="'%(Extension)'=='.obj' or '%(Extension)'=='.res' or '%(Extension)'=='.rsc' or '%(Extension)'=='.lib'" Include="%(isolateDirsToMake.Identity)"/>
+      <Lib Condition="'%(Extension)'=='.obj' or '%(Extension)'=='.res' or '%(Extension)'=='.rsc' or '%(Extension)'=='.lib'" Include="%(isolateDirsToMake.Identity)"/>
+      <ImpLib Condition="'%(Extension)'=='.obj' or '%(Extension)'=='.res' or '%(Extension)'=='.rsc' or '%(Extension)'=='.lib'" Include="%(isolateDirsToMake.Identity)"/>
+    </ItemGroup>
+    <MakeDir Directories="@(isolateDirsToMake-&gt;'%(RootDir)%(Directory)')"/>
+  </Target>
+</Project>

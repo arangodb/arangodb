@@ -34,10 +34,11 @@
 #include <deque>
 
 namespace arangodb {
-namespace rest {
-class HttpCommTask;
 class HttpRequest;
 class HttpResponse;
+
+namespace rest {
+class HttpCommTask;
 class HttpServer;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -267,13 +268,13 @@ class HttpCommTask : public SocketTask, public RequestStatisticsAgent {
   /// @brief http version number used
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpRequest::HttpVersion _httpVersion;
+  GeneralRequest::ProtocolVersion _httpVersion;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief type of request (GET, POST, ...)
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpRequest::HttpRequestType _requestType;
+  GeneralRequest::RequestType _requestType;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief value of requested URL

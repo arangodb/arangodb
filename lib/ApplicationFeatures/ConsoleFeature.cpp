@@ -314,7 +314,7 @@ void ConsoleFeature::printLine(std::string const& s) {
     return;
   }
 
-  if (true) {
+  if (!_cygwinShell) {
     std::vector<std::string> lines = StringUtils::split(s, '\n', '\0');
 
     for (auto& line : lines) {

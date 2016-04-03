@@ -35,7 +35,7 @@ namespace arangodb {
 
 class RestEdgeHandler : public RestDocumentHandler {
  public:
-  explicit RestEdgeHandler(rest::HttpRequest*);
+  explicit RestEdgeHandler(HttpRequest*);
 
  protected:
   //////////////////////////////////////////////////////////////////////////////

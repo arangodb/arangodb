@@ -67,12 +67,12 @@ struct SearchHelper {
 
 class RestBatchHandler : public RestVocbaseBaseHandler {
  public:
-  explicit RestBatchHandler(rest::HttpRequest*);
+  explicit RestBatchHandler(HttpRequest*);
 
   ~RestBatchHandler();
 
  public:
-  HttpHandler::status_t execute();
+  HttpHandler::status_t execute() override;
 
  private:
   //////////////////////////////////////////////////////////////////////////////

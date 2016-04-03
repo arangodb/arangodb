@@ -1,8 +1,0 @@
-# created by tools/tclZIC.tcl - do not edit
-
-set TZData(:Africa/Mogadishu) {
-    {-9223372036854775808 10888 0 LMT}
-    {-2403572488 10800 0 EAT}
-    {-1230778800 9000 0 BEAT}
-    {-410236200 10800 0 EAT}
-}

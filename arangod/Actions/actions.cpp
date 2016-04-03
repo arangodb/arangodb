@@ -111,7 +111,7 @@ TRI_action_t* TRI_DefineActionVocBase(std::string const& name,
 /// @brief looks up an action
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_action_t* TRI_LookupActionVocBase(arangodb::rest::HttpRequest* request) {
+TRI_action_t* TRI_LookupActionVocBase(arangodb::HttpRequest* request) {
   // check if we know a callback
   std::vector<std::string> suffix = request->suffix();
 

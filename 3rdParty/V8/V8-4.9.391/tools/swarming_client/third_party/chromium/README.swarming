@@ -1,0 +1,11 @@
+Name: natsort.py
+URL: Was part of the Chromium Commit Queue code that was deleted on 2014-02-05.
+Author: Marc-Antoine Ruel
+Revision: N/A
+License: BSD
+
+Description:
+Native (human) sorting.
+
+Local Modifications:
+None.

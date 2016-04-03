@@ -135,8 +135,7 @@ void EndpointFeature::stop() {
 void EndpointFeature::buildEndpointLists() {
   for (std::vector<std::string>::const_iterator i = _endpoints.begin();
        i != _endpoints.end(); ++i) {
-    bool ok = _endpointList.add((*i), std::vector<std::string>(), _backlogSize,
-                                _reuseAddress);
+    bool ok = _endpointList.add((*i), _backlogSize, _reuseAddress);
 
     if (!ok) {
       LOG(FATAL) << "invalid endpoint '" << (*i) << "'";
@@ -166,7 +165,7 @@ void EndpointFeature::buildServers() {
   _servers.push_back(httpServer);
 
   // ssl endpoints
-  if (_endpointList.has(Endpoint::ENCRYPTION_SSL)) {
+  if (_endpointList.hasSsl()) {
     SslFeature* ssl = dynamic_cast<SslFeature*>(
         application_features::ApplicationServer::lookupFeature("Ssl"));
 

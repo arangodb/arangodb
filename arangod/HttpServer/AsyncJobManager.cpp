@@ -22,12 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AsyncJobManager.h"
+
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
-#include "Logger/Logger.h"
 #include "HttpServer/HttpHandler.h"
 #include "HttpServer/HttpServerJob.h"
+#include "Logger/Logger.h"
+#include "Rest/HttpResponse.h"
 
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 

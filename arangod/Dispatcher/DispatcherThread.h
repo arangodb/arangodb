@@ -53,9 +53,9 @@ class DispatcherThread : public Thread {
   ~DispatcherThread() {shutdown();}
 
  protected:
-  void run();
+  void run() override;
 
-  void addStatus(arangodb::velocypack::Builder* b);
+  void addStatus(arangodb::velocypack::Builder* b) override;
 
  public:
   //////////////////////////////////////////////////////////////////////////////

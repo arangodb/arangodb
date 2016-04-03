@@ -49,6 +49,7 @@ std::string Logger::_outputPrefix("");
 
 std::unique_ptr<LogThread> Logger::_loggingThread(nullptr);
 
+LogTopic Logger::AGENCY("agency", LogLevel::INFO);
 LogTopic Logger::COLLECTOR("collector");
 LogTopic Logger::COMPACTOR("compactor");
 LogTopic Logger::CONFIG("config");

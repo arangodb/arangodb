@@ -34,10 +34,11 @@
 #include "Statistics/StatisticsAgent.h"
 
 namespace arangodb {
+class HttpRequest;
+
 namespace rest {
 class Dispatcher;
 class HttpHandlerFactory;
-class HttpRequest;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief abstract class for http handlers
@@ -192,7 +193,7 @@ class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   /// @brief create a new HTTP response
   //////////////////////////////////////////////////////////////////////////////
 
-  void createResponse(HttpResponse::HttpResponseCode);
+  void createResponse(GeneralResponse::ResponseCode);
 
  protected:
   //////////////////////////////////////////////////////////////////////////////

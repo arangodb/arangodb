@@ -23,10 +23,12 @@
 
 #include "HttpHandlerFactory.h"
 
-#include "Logger/Logger.h"
 #include "HttpServer/HttpHandler.h"
+#include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
+#include "Rest/RequestContext.h"
 
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
@@ -42,13 +44,13 @@ class MaintenanceHandler : public HttpHandler {
   bool isDirect() const override { return true; };
 
   status_t execute() override {
-    createResponse(HttpResponse::SERVICE_UNAVAILABLE);
+    createResponse(GeneralResponse::ResponseCode::SERVICE_UNAVAILABLE);
 
     return status_t(HANDLER_DONE);
   };
 
   void handleError(const Exception& error) override {
-    createResponse(HttpResponse::SERVICE_UNAVAILABLE);
+    createResponse(GeneralResponse::ResponseCode::SERVICE_UNAVAILABLE);
   };
 };
 }
@@ -125,16 +127,16 @@ void HttpHandlerFactory::setMaintenance(bool value) {
 /// wrapper method that will consider disabled authentication etc.
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse::HttpResponseCode HttpHandlerFactory::authenticateRequest(
+GeneralResponse::ResponseCode HttpHandlerFactory::authenticateRequest(
     HttpRequest* request) {
-  auto context = request->getRequestContext();
+  auto context = request->requestContext();
 
   if (context == nullptr) {
     if (!setRequestContext(request)) {
-      return HttpResponse::NOT_FOUND;
+      return GeneralResponse::ResponseCode::NOT_FOUND;
     }
 
-    context = request->getRequestContext();
+    context = request->requestContext();
   }
 
   TRI_ASSERT(context != nullptr);
@@ -156,12 +158,12 @@ bool HttpHandlerFactory::setRequestContext(HttpRequest* request) {
 
 std::string HttpHandlerFactory::authenticationRealm(
     HttpRequest* request) const {
-  auto context = request->getRequestContext();
+  auto context = request->requestContext();
 
   if (context != nullptr) {
-    auto realm = context->getRealm();
+    auto realm = context->realm();
 
-    if (realm != nullptr) {
+    if (! realm.empty()) {
       return _authenticationRealm + "/" + std::string(realm);
     }
   }
@@ -189,21 +191,24 @@ HttpRequest* HttpHandlerFactory::createRequest(ConnectionInfo const& info,
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
+  static std::string const ROOT_PATH = "/";
+
   if (MaintenanceMode) {
     return new MaintenanceHandler(request);
   }
 
   std::unordered_map<std::string, create_fptr> const& ii = _constructors;
-  std::string path = request->requestPath();
+  std::string const& path = request->requestPath();
+  std::string const* modifiedPath = &path;
+  std::string prefix;
+
   auto i = ii.find(path);
-  void* data = nullptr;
 
   // no direct match, check prefix matches
   if (i == ii.end()) {
     LOG(TRACE) << "no direct handler found, trying prefixes";
 
     // find longest match
-    std::string prefix;
     size_t const pathLength = path.size();
 
     for (auto const& p : _prefixes) {
@@ -238,8 +243,8 @@ HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
           request->addSuffix(path.substr(l));
         }
 
-        path = "/";
-        request->setPrefix(path.c_str());
+        modifiedPath = &ROOT_PATH;
+        request->setPrefix(ROOT_PATH);
       }
     }
 
@@ -259,14 +264,16 @@ HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
         request->addSuffix(path.substr(l));
       }
 
-      path = prefix;
-      request->setPrefix(path.c_str());
+      modifiedPath = &prefix;
+      request->setPrefix(prefix);
 
-      i = ii.find(path);
+      i = ii.find(prefix);
     }
   }
 
   // no match
+  void* data = nullptr;
+
   if (i == ii.end()) {
     if (_notFound != nullptr) {
       HttpHandler* notFoundHandler = _notFound(request, data);
@@ -281,14 +288,14 @@ HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
 
   // look up data
   {
-    auto const& it = _datas.find(path);
+    auto const& it = _datas.find(*modifiedPath);
 
     if (it != _datas.end()) {
       data = (*it).second;
     }
   }
 
-  LOG(TRACE) << "found handler for path '" << path << "'";
+  LOG(TRACE) << "found handler for path '" << *modifiedPath << "'";
   HttpHandler* handler = i->second(request, data);
 
   handler->setServer(this);

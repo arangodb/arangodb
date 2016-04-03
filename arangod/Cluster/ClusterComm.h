@@ -25,15 +25,17 @@
 #define ARANGOD_CLUSTER_CLUSTER_COMM_H 1
 
 #include "Basics/Common.h"
+
 #include "Basics/ConditionVariable.h"
-#include "Logger/Logger.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Thread.h"
-#include "Rest/HttpRequest.h"
-#include "SimpleHttpClient/SimpleHttpResult.h"
-#include "VocBase/voc-types.h"
 #include "Cluster/AgencyComm.h"
+#include "Logger/Logger.h"
+#include "Rest/HttpRequest.h"
+#include "Rest/HttpResponse.h"
+#include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Utils/Transaction.h"
+#include "VocBase/voc-types.h"
 
 namespace arangodb {
 
@@ -92,7 +94,6 @@ struct ClusterCommResult {
                  // is dropped whilst in state CL_COMM_SENDING
                  // it is then actually dropped when it has
                  // been sent
-  bool invalid;  // can only explicitly be set
   bool single;   // operation only needs a single round trip (and no request/
                  // response in the opposite direction
 
@@ -105,14 +106,13 @@ struct ClusterCommResult {
   std::shared_ptr<httpclient::SimpleHttpResult> result;
   // the field answer is != nullptr if status is == CL_COMM_RECEIVED
   // answer_code is valid iff answer is != 0
-  std::shared_ptr<rest::HttpRequest> answer;
-  rest::HttpResponse::HttpResponseCode answer_code;
+  std::shared_ptr<HttpRequest> answer;
+  GeneralResponse::ResponseCode answer_code;
 
   ClusterCommResult()
       : dropped(false),
-        invalid(false),
         single(false),
-        answer_code(rest::HttpResponse::PROCESSING) {}
+        answer_code(GeneralResponse::ResponseCode::PROCESSING) {}
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief routine to set the destination
@@ -159,7 +159,7 @@ typedef double ClusterCommTimeout;
 
 struct ClusterCommOperation {
   ClusterCommResult result;
-  rest::HttpRequest::HttpRequestType reqtype;
+  GeneralRequest::RequestType reqtype;
   std::string path;
   std::shared_ptr<std::string const> body;
   std::unique_ptr<std::map<std::string, std::string>> headerFields;
@@ -172,7 +172,7 @@ struct ClusterCommOperation {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterCommRestCallback(std::string& coordinator,
-                             rest::HttpResponse* response);
+                             HttpResponse* response);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the class for the cluster communications library
@@ -249,7 +249,7 @@ class ClusterComm {
       ClientTransactionID const clientTransactionID,
       CoordTransactionID const coordTransactionID,
       std::string const& destination,
-      rest::HttpRequest::HttpRequestType reqtype, std::string const& path,
+      GeneralRequest::RequestType reqtype, std::string const& path,
       std::shared_ptr<std::string const> body,
       std::unique_ptr<std::map<std::string, std::string>>& headerFields,
       std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
@@ -263,7 +263,7 @@ class ClusterComm {
       ClientTransactionID const& clientTransactionID,
       CoordTransactionID const coordTransactionID,
       std::string const& destination,
-      rest::HttpRequest::HttpRequestType reqtype, std::string const& path,
+      GeneralRequest::RequestType reqtype, std::string const& path,
       std::string const& body,
       std::map<std::string, std::string> const& headerFields,
       ClusterCommTimeout timeout);
@@ -297,14 +297,14 @@ class ClusterComm {
   //////////////////////////////////////////////////////////////////////////////
 
   std::string processAnswer(std::string& coordinatorHeader,
-                            rest::HttpRequest* answer);
+                            HttpRequest* answer);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief send an answer HTTP request to a coordinator
   //////////////////////////////////////////////////////////////////////////////
 
   void asyncAnswer(std::string& coordinatorHeader,
-                   rest::HttpResponse* responseToSend);
+                   HttpResponse* responseToSend);
 
  private:
   //////////////////////////////////////////////////////////////////////////////

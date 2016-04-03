@@ -29,13 +29,14 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
+using namespace arangodb::application_features;
 using namespace arangodb::rest;
 
-RestShutdownHandler::RestShutdownHandler(arangodb::rest::HttpRequest* request,
+RestShutdownHandler::RestShutdownHandler(HttpRequest* request,
                                          void* applicationServer)
     : RestBaseHandler(request),
       _applicationServer(
-          static_cast<arangodb::rest::ApplicationServer*>(applicationServer)) {}
+          static_cast<ApplicationServer*>(applicationServer)) {}
 
 bool RestShutdownHandler::isDirect() const { return true; }
 

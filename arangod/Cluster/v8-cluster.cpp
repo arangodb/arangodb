@@ -1636,8 +1636,8 @@ static void JS_GetClusterAuthentication(
 
 static void PrepareClusterCommRequest(
     v8::FunctionCallbackInfo<v8::Value> const& args,
-    arangodb::rest::HttpRequest::HttpRequestType& reqType,
-    std::string& destination, std::string& path, std::string& body,
+    arangodb::GeneralRequest::RequestType& reqType, std::string& destination,
+    std::string& path, std::string& body,
     std::map<std::string, std::string>& headerFields,
     ClientTransactionID& clientTransactionID,
     CoordTransactionID& coordTransactionID, double& timeout,
@@ -1647,13 +1647,13 @@ static void PrepareClusterCommRequest(
 
   TRI_ASSERT(args.Length() >= 4);
 
-  reqType = arangodb::rest::HttpRequest::HTTP_REQUEST_GET;
+  reqType = arangodb::GeneralRequest::RequestType::GET;
   if (args[0]->IsString()) {
     TRI_Utf8ValueNFC UTF8(TRI_UNKNOWN_MEM_ZONE, args[0]);
     std::string methstring = *UTF8;
-    reqType = arangodb::rest::HttpRequest::translateMethod(methstring);
-    if (reqType == arangodb::rest::HttpRequest::HTTP_REQUEST_ILLEGAL) {
-      reqType = arangodb::rest::HttpRequest::HTTP_REQUEST_GET;
+    reqType = arangodb::HttpRequest::translateMethod(methstring);
+    if (reqType == arangodb::GeneralRequest::RequestType::ILLEGAL) {
+      reqType = arangodb::GeneralRequest::RequestType::GET;
     }
   }
 
@@ -1745,10 +1745,7 @@ static void Return_PrepareClusterCommResultForJS(
   TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
 
   v8::Handle<v8::Object> r = v8::Object::New(isolate);
-  if (res.invalid) {
-    TRI_GET_GLOBAL_STRING(ErrorMessageKey);
-    r->Set(ErrorMessageKey, TRI_V8_ASCII_STRING("out of memory"));
-  } else if (res.dropped) {
+  if (res.dropped) {
     TRI_GET_GLOBAL_STRING(ErrorMessageKey);
     r->Set(ErrorMessageKey, TRI_V8_ASCII_STRING("operation was dropped"));
   } else {
@@ -1787,6 +1784,7 @@ static void Return_PrepareClusterCommResultForJS(
       // boring:
 
       // The headers:
+      TRI_ASSERT(res.result != nullptr);
       v8::Handle<v8::Object> h = v8::Object::New(isolate);
       for (auto const& i : res.result->getHeaderFields()) {
         h->Set(TRI_V8_STD_STRING(i.first), TRI_V8_STD_STRING(i.second));
@@ -1829,13 +1827,21 @@ static void Return_PrepareClusterCommResultForJS(
       TRI_GET_GLOBAL_STRING(ErrorMessageKey);
       r->Set(ErrorMessageKey,
              TRI_V8_ASCII_STRING("request dropped whilst waiting for answer"));
-    } else {  // Everything is OK
-      TRI_ASSERT(res.status == CL_COMM_RECEIVED);
+    } else if (res.status == CL_COMM_BACKEND_UNAVAILABLE) {
+      TRI_GET_GLOBAL_STRING(StatusKey);
+      r->Set(StatusKey, TRI_V8_ASCII_STRING("BACKEND_UNAVAILABLE"));
+      TRI_GET_GLOBAL_STRING(ErrorMessageKey);
+      r->Set(ErrorMessageKey,
+             TRI_V8_ASCII_STRING("required backend was not available"));
+    } else if (res.status == CL_COMM_RECEIVED) {  // Everything is OK
       // The headers:
       v8::Handle<v8::Object> h = v8::Object::New(isolate);
       TRI_GET_GLOBAL_STRING(StatusKey);
       r->Set(StatusKey, TRI_V8_ASCII_STRING("RECEIVED"));
+      TRI_ASSERT(res.answer != nullptr);
       std::map<std::string, std::string> headers = res.answer->headers();
+      headers["content-length"] =
+          StringUtils::itoa(res.answer->contentLength());
       std::map<std::string, std::string>::iterator i;
       for (i = headers.begin(); i != headers.end(); ++i) {
         h->Set(TRI_V8_STD_STRING(i->first), TRI_V8_STD_STRING(i->second));
@@ -1843,11 +1849,14 @@ static void Return_PrepareClusterCommResultForJS(
       r->Set(TRI_V8_ASCII_STRING("headers"), h);
 
       // The body:
-      if (nullptr != res.answer->body()) {
-        r->Set(TRI_V8_ASCII_STRING("body"),
-               TRI_V8_PAIR_STRING(res.answer->body(),
-                                  (int)res.answer->bodySize()));
+      std::string const& body = res.answer->body();
+
+      if (!body.empty()) {
+        r->Set(TRI_V8_ASCII_STRING("body"), TRI_V8_STD_STRING(body));
       }
+    } else {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "unknown ClusterComm result status");
     }
   }
 
@@ -1880,7 +1889,7 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "clustercomm object not found");
   }
 
-  arangodb::rest::HttpRequest::HttpRequestType reqType;
+  arangodb::GeneralRequest::RequestType reqType;
   std::string destination;
   std::string path;
   auto body = std::make_shared<std::string>();
@@ -1899,7 +1908,7 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
       clientTransactionID, coordTransactionID, destination, reqType, path, body,
       headerFields, 0, timeout, singleRequest);
 
-  if (res.invalid) {
+  if (res.status == CL_COMM_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "couldn't queue async request");
   }
@@ -1943,7 +1952,7 @@ static void JS_SyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "clustercomm object not found");
   }
 
-  arangodb::rest::HttpRequest::HttpRequestType reqType;
+  arangodb::GeneralRequest::RequestType reqType;
   std::string destination;
   std::string path;
   std::string body;

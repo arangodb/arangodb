@@ -1,0 +1,14 @@
+Name: requests
+Short Name: requests
+URL: https://github.com/kennethreitz/requests.git
+Version: 2.0.0
+Revision: 4401620111bee0a7319bf1cb4bd0852f7c854bf6
+License: Apache License, Version 2.0
+
+Description:
+Python HTTP for Humans.
+
+Local Modifications:
+- Packaging code stripped.
+- Removed charade.
+- Applied SWARMING.diff

@@ -33,8 +33,8 @@
 #include "Basics/files.h"
 #include "Basics/terminal-utils.h"
 #include "Basics/tri-strings.h"
+#include "Endpoint/Endpoint.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "Rest/Endpoint.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/InitializeRest.h"
 #include "Rest/SslInterface.h"
@@ -48,8 +48,8 @@ using namespace arangodb::httpclient;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
-RestoreFeature::RestoreFeature(
-    application_features::ApplicationServer* server, int* result)
+RestoreFeature::RestoreFeature(application_features::ApplicationServer* server,
+                               int* result)
     : ApplicationFeature(server, "Restore"),
       _collections(),
       _chunkSize(1024 * 1024 * 8),
@@ -175,7 +175,7 @@ void RestoreFeature::prepare() {
 }
 
 int RestoreFeature::tryCreateDatabase(ClientFeature* client,
-                                            std::string const& name) {
+                                      std::string const& name) {
   arangodb::basics::Json json(arangodb::basics::Json::Object);
   json("name", arangodb::basics::Json(name));
 
@@ -190,7 +190,7 @@ int RestoreFeature::tryCreateDatabase(ClientFeature* client,
   std::string const body(arangodb::basics::JsonHelper::toString(json.json()));
 
   std::unique_ptr<SimpleHttpResult> response(
-      _httpClient->request(HttpRequest::HTTP_REQUEST_POST, "/_api/database",
+      _httpClient->request(GeneralRequest::RequestType::POST, "/_api/database",
                            body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
@@ -199,11 +199,12 @@ int RestoreFeature::tryCreateDatabase(ClientFeature* client,
 
   auto returnCode = response->getHttpReturnCode();
 
-  if (returnCode == HttpResponse::OK || returnCode == HttpResponse::CREATED) {
+  if (returnCode == (int)GeneralResponse::ResponseCode::OK ||
+      returnCode == (int)GeneralResponse::ResponseCode::CREATED) {
     // all ok
     return TRI_ERROR_NO_ERROR;
-  } else if (returnCode == HttpResponse::UNAUTHORIZED ||
-             returnCode == HttpResponse::FORBIDDEN) {
+  } else if (returnCode == (int)GeneralResponse::ResponseCode::UNAUTHORIZED ||
+             returnCode == (int)GeneralResponse::ResponseCode::FORBIDDEN) {
     // invalid authorization
     _httpClient->setErrorMessage(getHttpErrorMessage(response.get(), nullptr),
                                  false);
@@ -217,8 +218,8 @@ int RestoreFeature::tryCreateDatabase(ClientFeature* client,
 }
 
 int RestoreFeature::sendRestoreCollection(VPackSlice const& slice,
-                                                std::string const& name,
-                                                std::string& errorMsg) {
+                                          std::string const& name,
+                                          std::string& errorMsg) {
   std::string url =
       "/_api/replication/restore-collection"
       "?overwrite=" +
@@ -241,7 +242,7 @@ int RestoreFeature::sendRestoreCollection(VPackSlice const& slice,
   std::string const body = slice.toJson();
 
   std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
-      HttpRequest::HTTP_REQUEST_PUT, url, body.c_str(), body.size()));
+      GeneralRequest::RequestType::PUT, url, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg =
@@ -265,13 +266,13 @@ int RestoreFeature::sendRestoreCollection(VPackSlice const& slice,
 }
 
 int RestoreFeature::sendRestoreIndexes(VPackSlice const& slice,
-                                             std::string& errorMsg) {
+                                       std::string& errorMsg) {
   std::string const url = "/_api/replication/restore-indexes?force=" +
                           std::string(_force ? "true" : "false");
   std::string const body = slice.toJson();
 
   std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
-      HttpRequest::HTTP_REQUEST_PUT, url, body.c_str(), body.size()));
+      GeneralRequest::RequestType::PUT, url, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg =
@@ -295,15 +296,15 @@ int RestoreFeature::sendRestoreIndexes(VPackSlice const& slice,
 }
 
 int RestoreFeature::sendRestoreData(std::string const& cname,
-                                          char const* buffer, size_t bufferSize,
-                                          std::string& errorMsg) {
+                                    char const* buffer, size_t bufferSize,
+                                    std::string& errorMsg) {
   std::string const url = "/_api/replication/restore-data?collection=" +
                           StringUtils::urlEncode(cname) + "&recycleIds=" +
                           (_recycleIds ? "true" : "false") + "&force=" +
                           (_force ? "true" : "false");
 
   std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
-      HttpRequest::HTTP_REQUEST_PUT, url, buffer, bufferSize));
+      GeneralRequest::RequestType::PUT, url, buffer, bufferSize));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg =

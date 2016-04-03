@@ -1,0 +1,320 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<esSpec name="ECMA-262" version="5">
+  <sec id="7" name="Lexical Conventions">
+    <sec id="7.0" name="Introduction"/>
+    <sec id="7.1" name="Unicode Format-Control Characters"/>
+    <sec id="7.2" name="White Space"/>
+    <sec id="7.3" name="Line Terminators"/>
+    <sec id="7.4" name="Comments"/>
+    <sec id="7.5" name="Tokens"/>
+    <sec id="7.6" name="Identifier Names and Identifiers">
+      <sec id="7.6.1" name="Reserved Words"/>
+    </sec>
+    <sec id="7.7" name="Punctuators"/>
+    <sec id="7.8" name="Literals">
+      <sec id="7.8.1" name="Null Literals"/>>
+      <sec id="7.8.2" name="Boolean Literals"/>
+      <sec id="7.8.3" name="Numeric Literals"/>
+      <sec id="7.8.4" name="String Literals"/>
+      <sec id="7.8.5" name="Regular Expression Literals"/>
+    </sec>
+    <sec id="7.9" name="Automatic Semicolon Insertion">
+      <sec id="7.9.1" name="Rules of Automatic Semicolon Insertion"/>
+      <sec id="7.9.2" name="Examples of Automatic Semicolon Insertion"/>
+    </sec>
+  </sec>
+  <sec id="8" name="Types">
+    <sec id="8.0" name="Introduction"/>
+    <sec id="8.1" name="The Undefined Type"/>
+    <sec id="8.2" name="The Null Type"/>
+    <sec id="8.3" name="The Boolean Type"/>
+    <sec id="8.4" name="The String Type"/>
+    <sec id="8.5" name="The Number Type"/>
+    <sec id="8.6" name="The Object Type">
+      <sec id="8.6.1" name="Property Attributes"/>
+      <sec id="8.6.2" name="Object Internal Properties and Methods"/>
+    </sec>
+    <sec id="8.7" name="The Reference Specification Type">
+      <sec id="8.7.1" name="GetValue (V)"/>
+      <sec id="8.7.2" name="PutValue (V, W)"/>
+    </sec>
+    <sec id="8.8" name="The List Specification Type"/>
+    <sec id="8.9" name="The Completion Specification Type"/>
+    <sec id="8.10" name="The Property Descriptor and Property Identifier Specification Types">
+      <sec id="8.10.1" name="IsAccessorDescriptor ( Desc )"/>
+      <sec id="8.10.2" name="IsDataDescriptor ( Desc )"/>
+      <sec id="8.10.3" name="IsGenericDescriptor ( Desc )"/>
+      <sec id="8.10.4" name="FromPropertyDescriptor ( Desc )"/>
+      <sec id="8.10.5" name="ToPropertyDescriptor ( Obj )"/>
+    </sec>
+    <sec id="8.11" name="The Lexical Environment and Environment Record Specification Types"/>
+    <sec id="8.12" name="Algorithms for Object Internal Methods">
+      <sec id="8.12.1" name="[[GetOwnProperty]] (P)"/>
+      <sec id="8.12.2" name="[[GetProperty]] (P)"/>
+      <sec id="8.12.3" name="[[Get]] (P)"/>
+      <sec id="8.12.4" name="[[CanPut]] (P)"/>
+      <sec id="8.12.5" name="[[Put]] ( P, V, Throw )"/>
+      <sec id="8.12.6" name="[[HasProperty]] (P)"/>
+      <sec id="8.12.7" name="[[Delete]] (P, Throw)"/>
+      <sec id="8.12.8" name="[[DefaultValue]] (hint)"/>
+      <sec id="8.12.9" name="[[DefineOwnProperty]] (P, Desc, Throw)"/>
+    </sec>
+  </sec>
+  <sec id="9" name="Type Conversion and Testing">
+    <sec id="9.0" name="Introduction"/>
+    <sec id="9.1" name="ToPrimitive"/>
+    <sec id="9.2" name="ToBoolean"/>
+    <sec id="9.3" name="ToNumber">
+      <sec id="9.3.1" name="ToNumber Applied to the String Type"/>
+    </sec>
+    <sec id="9.4" name="ToInteger"/>
+    <sec id="9.5" name="ToInt32: (Signed 32 Bit Integer)"/>
+    <sec id="9.6" name="ToUint32: (Unsigned 32 Bit Integer)"/>
+    <sec id="9.7" name="ToUint16: (Unsigned 16 Bit Integer)"/>
+    <sec id="9.8" name="ToString">
+      <sec id="9.8.1" name="ToString Applied to the Number Type"/>
+    </sec>
+    <sec id="9.9" name="ToObject"/>
+    <sec id="9.10" name="CheckObjectCoercible"/>
+    <sec id="9.11" name="IsCallable"/>
+    <sec id="9.12" name="The SameValue Algorithm"/>
+  </sec>
+  <sec id="10" name="Executable Code and Execution Contexts">
+    <sec id="10.0" name="Introduction"/>
+    <sec id="10.1" name="Types of Executable Code">
+      <sec id="10.1.1" name="Strict Mode Code"/>
+    </sec>
+    <sec id="10.2" name="Lexical Environments">
+      <sec id="10.2.1" name="Environment Records"/>
+      <sec id="10.2.2" name="Lexical Environment Operations"/>
+      <sec id="10.2.3" name="The Global Environment"/>
+    </sec>
+    <sec id="10.3" name="Execution Contexts">
+      <sec id="10.3.1" name="Identifier Resolution"/>
+    </sec>
+    <sec id="10.4" name="Establishing an Execution Context">
+      <sec id="10.4.1" name="Entering Global Code"/>
+      <sec id="10.4.2" name="Entering Eval Code"/>
+      <sec id="10.4.3" name="Entering Function Code"/>
+    </sec>
+    <sec id="10.5" name="Declaration Binding Instantiation"/>
+    <sec id="10.6" name="Arguments Object"/>
+  </sec>
+  <sec id="11" name="Expressions">
+      <sec id="11.0" name="Introduction"/>
+      <sec id="11.1" name="Primary Expressions">
+        <sec id="11.1.1" name="The this Keyword"/>
+        <sec id="11.1.2" name="Identifier Reference"/>
+        <sec id="11.1.3" name="Literal Reference"/>
+        <sec id="11.1.4" name="Array Initialiser"/>
+        <sec id="11.1.5" name="Object Initialiser"/>
+        <sec id="11.1.6" name="The Grouping Operator"/>
+      </sec>
+      <sec id="11.2" name="Left-Hand-Side Expressions">
+        <sec id="11.2.1" name="Property Accessors"/>
+        <sec id="11.2.2" name="The new Operator"/>
+        <sec id="11.2.3" name="Function Calls"/>
+        <sec id="11.2.4" name="Argument Lists"/>
+        <sec id="11.2.5" name="Function Expressions"/>
+      </sec>
+      <sec id="11.3" name="Postfix Expressions">
+        <sec id="11.3.1" name="Postfix Increment Operator"/>
+        <sec id="11.3.2" name="Postfix Decrement Operator"/>
+      </sec>
+      <sec id="11.4" name="Unary Operators">
+        <sec id="11.4.1" name="The delete Operator"/>
+        <sec id="11.4.2" name="The void Operator"/>
+        <sec id="11.4.3" name="The typeof Operator"/>
+        <sec id="11.4.4" name="Prefix Increment Operator"/>
+        <sec id="11.4.5" name="Prefix Decrement Operator"/>
+        <sec id="11.4.6" name="Unary + Operator"/>
+        <sec id="11.4.7" name="Unary - Operator"/>
+        <sec id="11.4.8" name="Bitwise NOT Operator ( ~ )"/>
+        <sec id="11.4.9" name="Logical NOT Operator ( ! )"/>
+      </sec>
+      <sec id="11.5" name="Multiplicative Operators">
+        <sec id="11.5.1" name="Applying the * Operator"/>
+        <sec id="11.5.2" name="Applying the / Operator"/>
+        <sec id="11.5.3" name="Applying the % Operator"/>
+      </sec>
+      <sec id="11.6" name="Additive Operators">
+        <sec id="11.6.1" name="The Addition operator ( + )"/>
+        <sec id="11.6.2" name="The Subtraction Operator ( - )"/>
+        <sec id="11.6.3" name="Applying the Additive Operators to Numbers"/>
+      </sec>
+      <sec id="11.7" name="Bitwise Shift Operators">
+        <sec id="11.7.1" name="The Left Shift Operator"/>
+        <sec id="11.7.2" name="The Signed Right Shift Operator ( >> )"/>
+        <sec id="11.7.3" name="The Unsigned Right Shift Operator ( >>> )"/>
+      </sec>
+      <sec id="11.8" name="Relational Operators">
+        <sec id="11.8.1" name="The Less-than Operator"/>
+        <sec id="11.8.2" name="The Greater-than Operator"/>
+        <sec id="11.8.3" name="The Less-than-or-equal Operator"/>
+        <sec id="11.8.4" name="The Greater-than-or-equal Operator"/>
+        <sec id="11.8.5" name="The Abstract Relational Comparison Algorithm"/>
+        <sec id="11.8.6" name="The instanceof operator"/>
+        <sec id="11.8.7" name="The in operator"/>
+      </sec>
+      <sec id="11.9" name="Equality Operators">
+          <sec id="11.9.1" name="The Equals Operator ( == )"/>
+          <sec id="11.9.2" name="The Does-not-equals Operator ( != )"/>
+          <sec id="11.9.3" name="The Abstract Equality Comparison Algorithm"/>
+          <sec id="11.9.4" name="The Strict Equals Operator ( === )"/>
+          <sec id="11.9.5" name="The Strict Does-not-equal Operator ( !== )"/>
+          <sec id="11.9.6" name="The Strict Equality Comparison Algorithm"/>
+      </sec>
+      <sec id="11.10" name="Binary Bitwise Operators"/>
+      <sec id="11.11" name="Binary Logical Operators"/>
+      <sec id="11.12" name="Conditional Operator ( ? : )"/>
+      <sec id="11.13" name="Assignment Operators">
+      <sec id="11.13.1" name="Simple Assignment ( = )"/>
+        <sec id="11.13.2" name="Compound Assignment ( op= )"/>
+      </sec>
+      <sec id="11.14" name="Comma Operator ( , )"/>
+    </sec>
+    <sec id="12" name="Statements">
+      <sec id="12.0" name="Introduction"/>
+      <sec id="12.1" name="Block"/>
+      <sec id="12.2" name="Variable Statement">
+      <sec id="12.2.1" name="Strict Mode Restrictions"/>
+      </sec>
+      <sec id="12.3" name="Empty Statement"/>
+      <sec id="12.4" name="Expression Statement"/>
+      <sec id="12.5" name="The if Statement"/>
+      <sec id="12.6" name="Iteration Statements">
+        <sec id="12.6.1" name="The do-while Statement"/>
+        <sec id="12.6.2" name="The while Statement"/>
+        <sec id="12.6.3" name="The for Statement"/>
+        <sec id="12.6.4" name="The for-in Statement"/>
+      </sec>
+      <sec id="12.7" name="The continue Statement"/>
+      <sec id="12.8" name="The break Statement"/>
+      <sec id="12.9" name="The return Statement"/>
+      <sec id="12.10" name="The with Statement">
+        <sec id="12.10.1" name="Strict Mode Restrictions"/>
+      </sec>
+      <sec id="12.11" name="The switch Statement"/>
+      <sec id="12.12" name="Labelled Statements"/>
+      <sec id="12.13" name="The throw Statement"/>
+      <sec id="12.14" name="The try Statement">
+        <sec id="12.14.1" name="Strict Mode Restrictions">
+        </sec>
+        <sec id="12.15" name="The debugger statement"/>
+      </sec>
+    </sec>
+    <sec id="13" name="Function Definition">
+      <sec id="13.0" name="Introduction"/>
+      <sec id="13.1" name="Strict Mode Restrictions"/>
+      <sec id="13.2" name="Creating Function Objects">
+        <sec id="13.2.1" name="[[Call]]"/>
+        <sec id="13.2.2" name="[[Construct]]"/>
+        <sec id="13.2.3" name="The [[ThrowTypeError]] Function Object"/>
+      </sec>
+    </sec>
+    <sec id="14" name="Program">
+      <sec id="14.0" name="Introduction"/>
+      <sec id="14.1" name="Directive Prologues and the Use Strict Directive"/>
+    </sec>
+    <sec id="15" name="Standard Built-in ECMAScript Objects">
+      <sec id="15.0" name="Introduction"/>
+      <sec id="15.1" name="The Global Object">
+        <sec id="15.1.1" name="Value Properties of the Global Object"/>
+        <sec id="15.1.2" name="Function Properties of the Global Object"/>
+        <sec id="15.1.3" name="URI Handling Function Properties"/>
+        <sec id="15.1.4" name="Constructor Properties of the Global Object"/>
+        <sec id="15.1.5" name="Other Properties of the Global Object"/>
+      </sec>
+      <sec id="15.2" name="Object Objects">
+        <sec id="15.2.1" name="The Object Constructor Called as a Function"/>
+        <sec id="15.2.2" name="The Object Constructor"/>
+        <sec id="15.2.3" name="Properties of the Object Constructor"/>
+        <sec id="15.2.4" name="Properties of the Object Prototype Object"/>
+        <sec id="15.2.5" name="Properties of Object Instances"/>
+      </sec>
+      <sec id="15.3" name="Function Objects">
+        <sec id="15.3.1" name="The Function Constructor Called as a Function"/>
+        <sec id="15.3.2" name="The Function Constructor"/>
+        <sec id="15.3.3" name="Properties of the Function Constructor"/>
+        <sec id="15.3.4" name="Properties of the Function Prototype Object"/>
+        <sec id="15.3.5" name="Properties of Function Instances"/>
+      </sec>
+      <sec id="15.4" name="Array Objects">
+        <sec id="15.4.1" name="The Array Constructor Called as a Function"/>
+        <sec id="15.4.2" name="The Array Constructor"/>
+        <sec id="15.4.3" name="Properties of the Array Constructor"/>
+        <sec id="15.4.4" name="Properties of the Array Prototype Object"/>
+        <sec id="15.4.5" name="Properties of Array Instances"/>
+      </sec>
+      <sec id="15.5" name="String Objects">
+        <sec id="15.5.1" name="The String Constructor Called as a Function"/>
+        <sec id="15.5.2" name="The String Constructor"/>
+        <sec id="15.5.3" name="Properties of the String Constructor"/>
+        <sec id="15.5.4" name="Properties of the String Prototype Object"/>
+        <sec id="15.5.5" name="Properties of String Instances"/>
+      </sec>
+      <sec id="15.6" name="Boolean Objects">
+        <sec id="15.6.1" name="The Boolean Constructor Called as a Function"/>
+        <sec id="15.6.2" name="The Boolean Constructor"/>
+        <sec id="15.6.3" name="Properties of the Boolean Constructor"/>
+        <sec id="15.6.4" name="Properties of the Boolean Prototype Object"/>
+        <sec id="15.6.5" name="Properties of Boolean Instances"/>
+      </sec>
+      <sec id="15.7" name="Number Objects">
+        <sec id="15.7.1" name="The Number Constructor Called as a Function"/>
+        <sec id="15.7.2" name="The Number Constructor"/>
+        <sec id="15.7.3" name="Properties of the Number Constructor"/>
+        <sec id="15.7.4" name="Properties of the Number Prototype Object"/>
+        <sec id="15.7.5" name="Properties of Number Instances"/>
+      </sec>
+      <sec id="15.8" name="The Math Object">
+        <sec id="15.8.1" name="Value Properties of the Math Object"/>
+        <sec id="15.8.2" name="Function Properties of the Math Object"/>
+      </sec>
+      <sec id="15.9" name="Date Objects">
+        <sec id="15.9.1" name="Overview of Date Objects and Definitions of Abstract Operators"/>
+        <sec id="15.9.2" name="The Date Constructor Called as a Function"/>
+        <sec id="15.9.3" name="The Date Constructor"/>
+        <sec id="15.9.4" name="Properties of the Date Constructor"/>
+        <sec id="15.9.5" name="Properties of the Date Prototype Object"/>
+        <sec id="15.9.6" name="Properties of Date Instances"/>
+      </sec>
+      <sec id="15.10" name="RegExp (Regular Expression) Objects">
+        <sec id="15.10.1" name="Patterns"/>
+        <sec id="15.10.2" name="Pattern Semantics"/>
+        <sec id="15.10.3" name="The RegExp Constructor Called as a Function"/>
+        <sec id="15.10.4" name="The RegExp Constructor"/>
+        <sec id="15.10.5" name="Properties of the RegExp Constructor"/>
+        <sec id="15.10.6" name="Properties of the RegExp Prototype Object"/>
+        <sec id="15.10.7" name="Properties of RegExp Instances"/>
+      </sec>
+      <sec id="15.11" name="Error Objects">
+        <sec id="15.11.1" name="The Error Constructor Called as a Function"/>
+        <sec id="15.11.2" name="The Error Constructor"/>
+        <sec id="15.11.3" name="Properties of the Error Constructor"/>
+        <sec id="15.11.4" name="Properties of the Error Prototype Object"/>
+        <sec id="15.11.5" name="Properties of Error Instances"/>
+        <sec id="15.11.6" name="Native Error Types Used in This Standard"/>
+        <sec id="15.11.7" name="NativeError Object Structure"/>
+      </sec>
+      <sec id="15.12" name="The JSON Object">
+        <sec id="15.12.1" name="The JSON Grammar"/>
+        <sec id="15.12.2" name="parse ( text [ , reviver ] )"/>
+        <sec id="15.12.3" name="stringify ( value [ , replacer [ , space ] ] )"/>
+      </sec>
+  </sec>
+  <sec id="B" name="Annex B (informative) Compatibility">
+    <sec id="B.1" name="Additional Syntax">
+      <sec id="B.1.1" name="Numeric Literals"/>
+      <sec id="B.1.2" name="String Literals"/>
+    </sec>
+    <sec id="B.2" name="Additional Properties">
+      <sec id="B.2.1" name="escape"/>
+      <sec id="B.2.2" name="unescape"/>
+      <sec id="B.2.3" name="String.prototype.substr"/>
+      <sec id="B.2.4" name="Date.prototype.getYear"/>
+      <sec id="B.2.5" name="Date.prototype.setYear"/>
+      <sec id="B.2.6" name="Date.prototype.toGMTString"/>
+    </sec>
+  </sec>
+ </esSpec>

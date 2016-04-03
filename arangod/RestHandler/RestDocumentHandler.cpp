@@ -44,30 +44,28 @@ RestDocumentHandler::RestDocumentHandler(HttpRequest* request)
 
 HttpHandler::status_t RestDocumentHandler::execute() {
   // extract the sub-request type
-  HttpRequest::HttpRequestType type = _request->requestType();
+  auto const type = _request->requestType();
 
   // execute one of the CRUD methods
   switch (type) {
-    case HttpRequest::HTTP_REQUEST_DELETE:
+    case GeneralRequest::RequestType::DELETE_REQ:
       deleteDocument();
       break;
-    case HttpRequest::HTTP_REQUEST_GET:
+    case GeneralRequest::RequestType::GET:
       readDocument();
       break;
-    case HttpRequest::HTTP_REQUEST_HEAD:
+    case GeneralRequest::RequestType::HEAD:
       checkDocument();
       break;
-    case HttpRequest::HTTP_REQUEST_POST:
+    case GeneralRequest::RequestType::POST:
       createDocument();
       break;
-    case HttpRequest::HTTP_REQUEST_PUT:
+    case GeneralRequest::RequestType::PUT:
       replaceDocument();
       break;
-    case HttpRequest::HTTP_REQUEST_PATCH:
+    case GeneralRequest::RequestType::PATCH:
       updateDocument();
       break;
-
-    case HttpRequest::HTTP_REQUEST_ILLEGAL:
     default: {
       generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);
       break;
@@ -86,7 +84,8 @@ bool RestDocumentHandler::createDocument() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (!suffix.empty()) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+    generateError(GeneralResponse::ResponseCode::BAD,
+                  TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                   "superfluous suffix, expecting " + DOCUMENT_PATH +
                       "?collection=<identifier>");
     return false;
@@ -94,10 +93,10 @@ bool RestDocumentHandler::createDocument() {
 
   // extract the cid
   bool found;
-  char const* collection = _request->value("collection", found);
+  std::string const& collection = _request->value("collection", found);
 
-  if (!found || *collection == '\0') {
-    generateError(HttpResponse::BAD,
+  if (!found || collection.empty()) {
+    generateError(GeneralResponse::ResponseCode::BAD,
                   TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting " + DOCUMENT_PATH +
                       "?collection=<identifier>");
@@ -124,7 +123,7 @@ bool RestDocumentHandler::createDocument() {
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    return createDocumentCoordinator(collection, waitForSync, body);
+    return createDocumentCoordinator(collection.c_str(), waitForSync, body);
   }
 
   if (!checkCreateCollection(collection, getCollectionType())) {
@@ -149,7 +148,8 @@ bool RestDocumentHandler::createDocument() {
   if (trx.documentCollection()->_info.type() != TRI_COL_TYPE_DOCUMENT) {
     // check if we are inserting with the DOCUMENT handler into a non-DOCUMENT
     // collection
-    generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
+    generateError(GeneralResponse::ResponseCode::BAD,
+                  TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
     return false;
   }
 
@@ -181,7 +181,7 @@ bool RestDocumentHandler::createDocumentCoordinator(
     char const* collection, bool waitForSync, VPackSlice const& document) {
   std::string const& dbname = _request->databaseName();
   std::string const collname(collection);
-  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
+  GeneralResponse::ResponseCode responseCode;
   std::map<std::string, std::string> headers =
       arangodb::getForwardableRequestHeaders(_request);
   std::map<std::string, std::string> resultHeaders;
@@ -201,7 +201,7 @@ bool RestDocumentHandler::createDocumentCoordinator(
   createResponse(responseCode);
   arangodb::mergeResponseHeaders(_response, resultHeaders);
   _response->body().appendText(resultBody.c_str(), resultBody.size());
-  return responseCode >= arangodb::rest::HttpResponse::BAD;
+  return responseCode >= GeneralResponse::ResponseCode::BAD;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -218,7 +218,8 @@ bool RestDocumentHandler::readDocument() {
       return readAllDocuments();
 
     case 1:
-      generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
+      generateError(GeneralResponse::ResponseCode::BAD,
+                    TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
                     "expecting GET /_api/document/<document-handle>");
       return false;
 
@@ -226,7 +227,8 @@ bool RestDocumentHandler::readDocument() {
       return readSingleDocument(true);
 
     default:
-      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+      generateError(GeneralResponse::ResponseCode::BAD,
+                    TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                     "expecting GET /_api/document/<document-handle> or GET "
                     "/_api/document?collection=<collection-name>");
       return false;
@@ -249,16 +251,16 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   TRI_voc_rid_t const ifNoneRid =
       extractRevision("if-none-match", 0, isValidRevision);
   if (!isValidRevision) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid revision number");
+    generateError(GeneralResponse::ResponseCode::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER, "invalid revision number");
     return false;
   }
 
   TRI_voc_rid_t const ifRid =
       extractRevision("if-match", "rev", isValidRevision);
   if (!isValidRevision) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid revision number");
+    generateError(GeneralResponse::ResponseCode::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER, "invalid revision number");
     return false;
   }
 
@@ -347,7 +349,7 @@ bool RestDocumentHandler::getDocumentCoordinator(std::string const& collname,
                                                  std::string const& key,
                                                  bool generateBody) {
   std::string const& dbname = _request->databaseName();
-  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
+  GeneralResponse::ResponseCode responseCode;
   std::unique_ptr<std::map<std::string, std::string>> headers(
       new std::map<std::string, std::string>(
           arangodb::getForwardableRequestHeaders(_request)));
@@ -356,7 +358,8 @@ bool RestDocumentHandler::getDocumentCoordinator(std::string const& collname,
 
   TRI_voc_rid_t rev = 0;
   bool found;
-  char const* revstr = _request->value("rev", found);
+  std::string const& revstr = _request->value("rev", found);
+
   if (found) {
     rev = StringUtils::uint64(revstr);
   }
@@ -381,7 +384,7 @@ bool RestDocumentHandler::getDocumentCoordinator(std::string const& collname,
   } else {
     _response->body().appendText(resultBody.c_str(), resultBody.size());
   }
-  return responseCode >= arangodb::rest::HttpResponse::BAD;
+  return responseCode >= GeneralResponse::ResponseCode::BAD;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -390,7 +393,7 @@ bool RestDocumentHandler::getDocumentCoordinator(std::string const& collname,
 
 bool RestDocumentHandler::readAllDocuments() {
   bool found;
-  std::string collection = _request->value("collection", found);
+  std::string const& collection = _request->value("collection", found);
   std::string returnType = _request->value("type", found);
 
   if (returnType.empty()) {
@@ -483,7 +486,7 @@ bool RestDocumentHandler::getAllDocumentsCoordinator(
     std::string const& collname, std::string const& returnType) {
   std::string const& dbname = _request->databaseName();
 
-  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
+  GeneralResponse::ResponseCode responseCode;
   std::string contentType;
   std::string resultBody;
 
@@ -498,7 +501,7 @@ bool RestDocumentHandler::getAllDocumentsCoordinator(
   createResponse(responseCode);
   _response->setContentType(contentType);
   _response->body().appendText(resultBody.c_str(), resultBody.size());
-  return responseCode >= arangodb::rest::HttpResponse::BAD;
+  return responseCode >= GeneralResponse::ResponseCode::BAD;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -509,7 +512,8 @@ bool RestDocumentHandler::checkDocument() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 2) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::ResponseCode::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting URI /_api/document/<document-handle>");
     return false;
   }
@@ -541,7 +545,8 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     msg.append(isPatch ? "PATCH" : "PUT");
     msg.append(" /_api/document/<document-handle>");
 
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, msg);
+    generateError(GeneralResponse::ResponseCode::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER, msg);
     return false;
   }
 
@@ -570,8 +575,8 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   TRI_voc_rid_t const revision =
       extractRevision("if-match", "rev", isValidRevision);
   if (!isValidRevision) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid revision number");
+    generateError(GeneralResponse::ResponseCode::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER, "invalid revision number");
     return false;
   }
 
@@ -626,8 +631,9 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     bool nullMeansRemove;
     bool mergeObjects;
     bool found;
-    char const* valueStr = _request->value("keepNull", found);
-    if (!found || StringUtils::boolean(valueStr)) {
+    std::string const& valueStr1 = _request->value("keepNull", found);
+
+    if (!found || StringUtils::boolean(valueStr1)) {
       // default: null values are saved as Null
       nullMeansRemove = false;
     } else {
@@ -635,8 +641,9 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
       nullMeansRemove = true;
     }
 
-    valueStr = _request->value("mergeObjects", found);
-    if (!found || StringUtils::boolean(valueStr)) {
+    std::string const& valueStr2 = _request->value("mergeObjects", found);
+
+    if (!found || StringUtils::boolean(valueStr2)) {
       // the default is true
       mergeObjects = true;
     } else {
@@ -797,16 +804,19 @@ bool RestDocumentHandler::modifyDocumentCoordinator(
   std::unique_ptr<std::map<std::string, std::string>> headers(
       new std::map<std::string, std::string>(
           arangodb::getForwardableRequestHeaders(_request)));
-  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
+  GeneralResponse::ResponseCode responseCode;
   std::map<std::string, std::string> resultHeaders;
   std::string resultBody;
 
   bool keepNull = true;
-  if (!strcmp(_request->value("keepNull"), "false")) {
+
+  if (_request->value("keepNull") == "false") {
     keepNull = false;
   }
+
   bool mergeObjects = true;
-  if (TRI_EqualString(_request->value("mergeObjects"), "false")) {
+
+  if (_request->value("mergeObjects") == "false") {
     mergeObjects = false;
   }
 
@@ -824,7 +834,7 @@ bool RestDocumentHandler::modifyDocumentCoordinator(
   createResponse(responseCode);
   arangodb::mergeResponseHeaders(_response, resultHeaders);
   _response->body().appendText(resultBody.c_str(), resultBody.size());
-  return responseCode >= arangodb::rest::HttpResponse::BAD;
+  return responseCode >= GeneralResponse::ResponseCode::BAD;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -835,7 +845,8 @@ bool RestDocumentHandler::deleteDocument() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 2) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::ResponseCode::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /_api/document/<document-handle>");
     return false;
   }
@@ -849,8 +860,8 @@ bool RestDocumentHandler::deleteDocument() {
   TRI_voc_rid_t const revision =
       extractRevision("if-match", "rev", isValidRevision);
   if (!isValidRevision) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid revision number");
+    generateError(GeneralResponse::ResponseCode::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER, "invalid revision number");
     return false;
   }
 
@@ -859,7 +870,8 @@ bool RestDocumentHandler::deleteDocument() {
   bool const waitForSync = extractWaitForSync();
 
   if (policy == TRI_DOC_UPDATE_ILLEGAL) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::ResponseCode::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
                   "policy must be 'error' or 'last'");
     return false;
   }
@@ -922,7 +934,7 @@ bool RestDocumentHandler::deleteDocumentCoordinator(
     std::string const& collname, std::string const& key,
     TRI_voc_rid_t const rev, TRI_doc_update_policy_e policy, bool waitForSync) {
   std::string const& dbname = _request->databaseName();
-  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
+  GeneralResponse::ResponseCode responseCode;
   std::unique_ptr<std::map<std::string, std::string>> headers(
       new std::map<std::string, std::string>(
           arangodb::getForwardableRequestHeaders(_request)));
@@ -942,5 +954,5 @@ bool RestDocumentHandler::deleteDocumentCoordinator(
   createResponse(responseCode);
   arangodb::mergeResponseHeaders(_response, resultHeaders);
   _response->body().appendText(resultBody.c_str(), resultBody.size());
-  return responseCode >= arangodb::rest::HttpResponse::BAD;
+  return responseCode >= GeneralResponse::ResponseCode::BAD;
 }

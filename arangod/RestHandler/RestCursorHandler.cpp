@@ -51,24 +51,24 @@ RestCursorHandler::RestCursorHandler(
 
 HttpHandler::status_t RestCursorHandler::execute() {
   // extract the sub-request type
-  HttpRequest::HttpRequestType type = _request->requestType();
+  auto const type = _request->requestType();
 
-  if (type == HttpRequest::HTTP_REQUEST_POST) {
+  if (type == GeneralRequest::RequestType::POST) {
     createCursor();
     return status_t(HANDLER_DONE);
   }
 
-  if (type == HttpRequest::HTTP_REQUEST_PUT) {
+  if (type == GeneralRequest::RequestType::PUT) {
     modifyCursor();
     return status_t(HANDLER_DONE);
   }
 
-  if (type == HttpRequest::HTTP_REQUEST_DELETE) {
+  if (type == GeneralRequest::RequestType::DELETE_REQ) {
     deleteCursor();
     return status_t(HANDLER_DONE);
   }
 
-  generateError(HttpResponse::METHOD_NOT_ALLOWED,
+  generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return status_t(HANDLER_DONE);
 }
@@ -82,19 +82,19 @@ bool RestCursorHandler::cancel() { return cancelQuery(); }
 
 void RestCursorHandler::processQuery(VPackSlice const& slice) {
   if (!slice.isObject()) {
-    generateError(HttpResponse::BAD, TRI_ERROR_QUERY_EMPTY);
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
     return;
   }
   VPackSlice const querySlice = slice.get("query");
   if (!querySlice.isString()) {
-    generateError(HttpResponse::BAD, TRI_ERROR_QUERY_EMPTY);
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
     return;
   }
 
   VPackSlice const bindVars = slice.get("bindVars");
   if (!bindVars.isNone()) {
     if (!bindVars.isObject() && !bindVars.isNull()) {
-      generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR,
+      generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                     "expecting object for <bindVars>");
       return;
     }
@@ -129,7 +129,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
   TRI_ASSERT(TRI_IsArrayJson(queryResult.json));
 
   {
-    createResponse(HttpResponse::CREATED);
+    createResponse(GeneralResponse::ResponseCode::CREATED);
     _response->setContentType("application/json; charset=utf-8");
 
     std::shared_ptr<VPackBuilder> extra = buildExtra(queryResult);
@@ -147,13 +147,14 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
       try {
         VPackObjectBuilder b(&result);
         result.add(VPackValue("result"));
-        int res = arangodb::basics::JsonHelper::toVelocyPack(queryResult.json, result);
+        int res = arangodb::basics::JsonHelper::toVelocyPack(queryResult.json,
+                                                             result);
         if (res != TRI_ERROR_NO_ERROR) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
         }
         result.add("hasMore", VPackValue(false));
-        if (arangodb::basics::VelocyPackHelper::getBooleanValue(options, "count",
-                                                                false)) {
+        if (arangodb::basics::VelocyPackHelper::getBooleanValue(
+                options, "count", false)) {
           result.add("count", VPackValue(n));
         }
         result.add("cached", VPackValue(queryResult.cached));
@@ -164,7 +165,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
           result.add("extra", extra->slice());
         }
         result.add("error", VPackValue(false));
-        result.add("code", VPackValue(_response->responseCode()));
+        result.add("code", VPackValue((int) _response->responseCode()));
       } catch (...) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
@@ -188,7 +189,8 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
 
     // steal the query JSON, cursor will take over the ownership
     auto j = queryResult.json;
-    std::shared_ptr<VPackBuilder> builder = arangodb::basics::JsonHelper::toVelocyPack(j);
+    std::shared_ptr<VPackBuilder> builder =
+        arangodb::basics::JsonHelper::toVelocyPack(j);
     {
       // Temporarily validate that transformation actually worked.
       // Can be removed again as soon as queryResult returns VPack
@@ -344,7 +346,8 @@ std::shared_ptr<VPackBuilder> RestCursorHandler::buildExtra(
     }
     if (queryResult.profile != nullptr) {
       extra->add(VPackValue("profile"));
-      int res = arangodb::basics::JsonHelper::toVelocyPack(queryResult.profile, *extra);
+      int res = arangodb::basics::JsonHelper::toVelocyPack(queryResult.profile,
+                                                           *extra);
       if (res != TRI_ERROR_NO_ERROR) {
         return nullptr;
       }
@@ -355,7 +358,8 @@ std::shared_ptr<VPackBuilder> RestCursorHandler::buildExtra(
       extra->close();
     } else {
       extra->add(VPackValue("warnings"));
-      int res = arangodb::basics::JsonHelper::toVelocyPack(queryResult.warnings, *extra);
+      int res = arangodb::basics::JsonHelper::toVelocyPack(queryResult.warnings,
+                                                           *extra);
       if (res != TRI_ERROR_NO_ERROR) {
         return nullptr;
       }
@@ -374,8 +378,8 @@ void RestCursorHandler::createCursor() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 0) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expecting POST /_api/cursor");
+    generateError(GeneralResponse::ResponseCode::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER, "expecting POST /_api/cursor");
     return;
   }
 
@@ -393,16 +397,20 @@ void RestCursorHandler::createCursor() {
     processQuery(body);
   } catch (arangodb::basics::Exception const& ex) {
     unregisterQuery();
-    generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
+    generateError(GeneralResponse::responseCode(ex.code()), ex.code(),
+                  ex.what());
   } catch (std::bad_alloc const&) {
     unregisterQuery();
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_OUT_OF_MEMORY);
   } catch (std::exception const& ex) {
     unregisterQuery();
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
     unregisterQuery();
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL);
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_INTERNAL);
   }
 }
 
@@ -414,7 +422,8 @@ void RestCursorHandler::modifyCursor() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 1) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::ResponseCode::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/cursor/<cursor-id>");
     return;
   }
@@ -432,17 +441,17 @@ void RestCursorHandler::modifyCursor() {
 
   if (cursor == nullptr) {
     if (busy) {
-      generateError(HttpResponse::responseCode(TRI_ERROR_CURSOR_BUSY),
+      generateError(GeneralResponse::responseCode(TRI_ERROR_CURSOR_BUSY),
                     TRI_ERROR_CURSOR_BUSY);
     } else {
-      generateError(HttpResponse::responseCode(TRI_ERROR_CURSOR_NOT_FOUND),
+      generateError(GeneralResponse::responseCode(TRI_ERROR_CURSOR_NOT_FOUND),
                     TRI_ERROR_CURSOR_NOT_FOUND);
     }
     return;
   }
 
   try {
-    createResponse(HttpResponse::OK);
+    createResponse(GeneralResponse::ResponseCode::OK);
     _response->setContentType("application/json; charset=utf-8");
 
     _response->body().appendChar('{');
@@ -456,11 +465,13 @@ void RestCursorHandler::modifyCursor() {
   } catch (arangodb::basics::Exception const& ex) {
     cursors->release(cursor);
 
-    generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
+    generateError(GeneralResponse::responseCode(ex.code()), ex.code(),
+                  ex.what());
   } catch (...) {
     cursors->release(cursor);
 
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL);
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_INTERNAL);
   }
 }
 
@@ -472,7 +483,8 @@ void RestCursorHandler::deleteCursor() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 1) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::ResponseCode::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /_api/cursor/<cursor-id>");
     return;
   }
@@ -488,11 +500,12 @@ void RestCursorHandler::deleteCursor() {
   bool found = cursors->remove(cursorId);
 
   if (!found) {
-    generateError(HttpResponse::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND);
+    generateError(GeneralResponse::ResponseCode::NOT_FOUND,
+                  TRI_ERROR_CURSOR_NOT_FOUND);
     return;
   }
 
-  createResponse(HttpResponse::ACCEPTED);
+  createResponse(GeneralResponse::ResponseCode::ACCEPTED);
   _response->setContentType("application/json; charset=utf-8");
 
   arangodb::basics::Json json(arangodb::basics::Json::Object);

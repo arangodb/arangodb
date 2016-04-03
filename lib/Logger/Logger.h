@@ -127,6 +127,7 @@ class Logger {
   friend class LogAppenderFile;
 
  public:
+  static LogTopic AGENCY;
   static LogTopic COLLECTOR;
   static LogTopic COMPACTOR;
   static LogTopic CONFIG;

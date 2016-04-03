@@ -41,7 +41,7 @@ class ApplicationV8;
 class RestSimpleQueryHandler : public RestCursorHandler {
  public:
   RestSimpleQueryHandler(
-      rest::HttpRequest*,
+      HttpRequest*,
       arangodb::aql::QueryRegistry*);
 
  public:

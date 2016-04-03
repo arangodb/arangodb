@@ -1,9 +1,0 @@
-# created by tools/tclZIC.tcl - do not edit
-
-set TZData(:Pacific/Saipan) {
-    {-9223372036854775808 -51420 0 LMT}
-    {-3944626980 34980 0 LMT}
-    {-2177487780 32400 0 MPT}
-    {-7981200 36000 0 MPT}
-    {977493600 36000 0 ChST}
-}

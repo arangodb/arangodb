@@ -1,7 +1,0 @@
-# created by tools/tclZIC.tcl - do not edit
-
-set TZData(:Africa/Porto-Novo) {
-    {-9223372036854775808 628 0 LMT}
-    {-1830384628 0 0 GMT}
-    {-1131235200 3600 0 WAT}
-}

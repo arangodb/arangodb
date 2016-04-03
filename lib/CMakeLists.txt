@@ -97,8 +97,8 @@ else ()
     Basics/memory-map-posix.cpp
     Basics/terminal-utils-posix.cpp
     Basics/threads-posix.cpp
-    Rest/EndpointUnixDomain.cpp
-    Rest/EndpointSrv.cpp
+    Endpoint/EndpointUnixDomain.cpp
+    Endpoint/EndpointSrv.cpp
   )
 endif ()
 
@@ -198,6 +198,11 @@ add_library(${LIB_ARANGO} STATIC
   Basics/vector.cpp
   Basics/voc-errors.cpp
   Basics/voc-mimetypes.cpp
+  Endpoint/Endpoint.cpp
+  Endpoint/EndpointIp.cpp
+  Endpoint/EndpointIpV4.cpp
+  Endpoint/EndpointIpV6.cpp
+  Endpoint/EndpointList.cpp
   JsonParser/json-parser.cpp
   Logger/LogAppender.cpp
   Logger/LogAppenderFile.cpp
@@ -207,25 +212,22 @@ add_library(${LIB_ARANGO} STATIC
   Logger/LogTopic.cpp
   Logger/Logger.cpp
   Logger/LoggerStream.cpp
-  Rest/Endpoint.cpp
-  Rest/EndpointIp.cpp
-  Rest/EndpointIpV4.cpp
-  Rest/EndpointIpV6.cpp
-  Rest/EndpointList.cpp
+  Rest/GeneralRequest.cpp
+  Rest/GeneralResponse.cpp
   Rest/HttpRequest.cpp
   Rest/HttpResponse.cpp
   Rest/InitializeRest.cpp
   Rest/SslInterface.cpp
   Rest/Version.cpp
+  SimpleHttpClient/ClientConnection.cpp
+  SimpleHttpClient/ConnectionManager.cpp
+  SimpleHttpClient/GeneralClientConnection.cpp
   Utilities/LineEditor.cpp
   Utilities/ScriptLoader.cpp
   Utilities/ShellBase.cpp
   Zip/ioapi.cpp
   Zip/unzip.cpp
   Zip/zip.cpp
-  SimpleHttpClient/GeneralClientConnection.cpp
-  SimpleHttpClient/ClientConnection.cpp
-  SimpleHttpClient/ConnectionManager.cpp
   SimpleHttpClient/SslClientConnection.cpp
   SimpleHttpClient/SimpleHttpClient.cpp
   SimpleHttpClient/SimpleHttpResult.cpp

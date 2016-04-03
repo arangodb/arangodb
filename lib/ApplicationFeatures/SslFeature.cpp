@@ -74,7 +74,7 @@ void SslFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption(
       "--ssl.protocol",
-      "ssl protocol (1 = SSLv2, 2 = SSLv23, 3 = SSLv3, 4 = TLSv1)",
+      "ssl protocol (1 = SSLv2, 2 = SSLv23, 3 = SSLv3, 4 = TLSv1, 5 = TLSV1.2 (recommended)",
       new UInt64Parameter(&_protocol));
 
   options->addHiddenOption(

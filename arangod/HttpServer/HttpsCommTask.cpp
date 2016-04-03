@@ -33,6 +33,7 @@
 #include "HttpServer/HttpsServer.h"
 #include "Scheduler/Scheduler.h"
 
+using namespace arangodb;
 using namespace arangodb::rest;
 
 ////////////////////////////////////////////////////////////////////////////////

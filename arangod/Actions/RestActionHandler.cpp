@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestActionHandler.h"
+
 #include "Actions/actions.h"
 #include "Basics/StringUtils.h"
 #include "Rest/HttpRequest.h"
@@ -47,7 +48,7 @@ HttpHandler::status_t RestActionHandler::execute() {
 
   // check the request path
   if (_request->databaseName() == "_system") {
-    if (TRI_IsPrefixString(_request->requestPath(), "/_admin/aardvark")) {
+    if (StringUtils::isPrefix(_request->requestPath(), "/_admin/aardvark")) {
       requestStatisticsAgentSetIgnore();
     }
   }
@@ -60,17 +61,17 @@ HttpHandler::status_t RestActionHandler::execute() {
   // execute
   else {
     // extract the sub-request type
-    HttpRequest::HttpRequestType type = _request->requestType();
+    GeneralRequest::RequestType type = _request->requestType();
 
     // execute one of the HTTP methods
     switch (type) {
-      case HttpRequest::HTTP_REQUEST_GET:
-      case HttpRequest::HTTP_REQUEST_POST:
-      case HttpRequest::HTTP_REQUEST_PUT:
-      case HttpRequest::HTTP_REQUEST_DELETE:
-      case HttpRequest::HTTP_REQUEST_HEAD:
-      case HttpRequest::HTTP_REQUEST_OPTIONS:
-      case HttpRequest::HTTP_REQUEST_PATCH: {
+      case GeneralRequest::RequestType::GET:
+      case GeneralRequest::RequestType::POST:
+      case GeneralRequest::RequestType::PUT:
+      case GeneralRequest::RequestType::DELETE_REQ:
+      case GeneralRequest::RequestType::HEAD:
+      case GeneralRequest::RequestType::OPTIONS:
+      case GeneralRequest::RequestType::PATCH: {
         result = executeAction();
         break;
       }

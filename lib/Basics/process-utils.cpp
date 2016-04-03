@@ -41,11 +41,6 @@
 #include <mach/vm_map.h>
 #endif
 
-#ifdef TRI_HAVE_LINUX_SOCKETS
-#include <sys/types.h>
-#include <sys/wait.h>
-#endif
-
 #ifdef _WIN32
 #include <Psapi.h>
 #include <TlHelp32.h>

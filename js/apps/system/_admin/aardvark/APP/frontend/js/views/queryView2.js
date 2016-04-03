@@ -66,10 +66,10 @@
       "click #querySpotlight": "showSpotlight",
       "click #deleteQuery": "selectAndDeleteQueryFromTable",
       "click #explQuery": "selectAndExplainQueryFromTable",
-      "keyup #arangoBindParamTable input": "updateBindParams",
+      "keydown #arangoBindParamTable input": "updateBindParams",
       "change #arangoBindParamTable input": "updateBindParams",
-      "click #arangoMyQueriesTable tr" : "showQueryPreview",
-      "dblclick #arangoMyQueriesTable tr" : "selectQueryFromTable",
+      "click #arangoMyQueriesTable tbody tr" : "showQueryPreview",
+      "dblclick #arangoMyQueriesTable tbody tr" : "selectQueryFromTable",
       "click #arangoMyQueriesTable #copyQuery" : "selectQueryFromTable",
       'click #closeQueryModal': 'closeExportDialog',
       'click #confirmQueryImport': 'importCustomQueries',
@@ -295,7 +295,6 @@
         this.toggleQueries();
       }
 
-      $('.aqlEditorWrapper').first().width($(window).width() * 0.66);
       this.aqlEditor.setValue(this.getCustomQueryValueByName(name));
       this.fillBindParamTable(this.getCustomQueryParameterByName(name));
       this.updateBindParams();
@@ -547,18 +546,38 @@
       self.deselect(self.aqlEditor);
     },
 
-    showSpotlight: function() {
+    showSpotlight: function(type) {
+      
+      var callback, cancelCallback;
 
-      var callback = function(string) {
-        this.aqlEditor.insert(string);
-        $('#aqlEditor .ace_text-input').focus();
-      }.bind(this);
+      if (type === undefined || type.type === 'click') {
+        type = 'aql';
+      }
 
-      var cancelCallback = function() {
-        $('#aqlEditor .ace_text-input').focus();
-      };
+      if (type === 'aql') {
+        callback = function(string) {
+          this.aqlEditor.insert(string);
+          $('#aqlEditor .ace_text-input').focus();
+        }.bind(this);
 
-      window.spotlightView.show(callback, cancelCallback);
+        cancelCallback = function() {
+          $('#aqlEditor .ace_text-input').focus();
+        };
+      }
+      else {
+        var focused = $(':focus');
+        callback = function(string) {
+          var old = $(focused).val();
+          $(focused).val(old + string);
+          $(focused).focus();
+        }.bind(this);
+
+        cancelCallback = function() {
+          $(focused).focus();
+        };
+      }
+
+      window.spotlightView.show(callback, cancelCallback, type);
     },
 
     resize: function() {
@@ -657,8 +676,15 @@
       this.setCachedQuery(this.aqlEditor.getValue(), JSON.stringify(this.bindParamTableObj));
 
       //fire execute if return was pressed
-      if (e.ctrlKey && e.keyCode === 13) {
-        this.executeQuery();
+      if (e) {
+        if ((e.ctrlKey || e.metaKey) && e.keyCode === 13) {
+          e.preventDefault();
+          this.executeQuery();
+        }
+        if ((e.ctrlKey || e.metaKey) && e.keyCode === 32) {
+          e.preventDefault();
+          this.showSpotlight('bind');
+        }
       }
     },
 
@@ -829,10 +855,18 @@
       });
 
       this.aqlEditor.commands.addCommand({
+        name: "togglecomment",
+        bindKey: {win: "Ctrl-Shift-C", linux: "Ctrl-Shift-C", mac: "Command-Shift-C"},
+        exec: function (editor) {
+          editor.toggleCommentLines();
+        },
+        multiSelectAction: "forEach"
+      });
+
+      this.aqlEditor.commands.addCommand({
         name: "showSpotlight",
         bindKey: {win: "Ctrl-Space", mac: "Ctrl-Space", linux: "Ctrl-Space"},
         exec: function() {
-
           self.showSpotlight();
         }
       });
@@ -1222,6 +1256,11 @@
       });
 
       $('#outputEditorWrapper' + counter + ' #copy2aqlEditor').bind('click', function() {
+
+        if (!$('#toggleQueries1').is(':visible')) {
+          self.toggleQueries();
+        }
+
         var aql = ace.edit("sentQueryEditor" + counter).getValue();
         var bindParam = JSON.parse(ace.edit("sentBindParamEditor" + counter).getValue());
         self.aqlEditor.setValue(aql);
@@ -1338,6 +1377,13 @@
           },
           error: function (resp) {
             try {
+
+              if (resp.statusText === 'Gone') {
+                arangoHelper.arangoNotification("Query", "Query execution aborted.");
+                self.removeOutputEditor(counter);
+                return;
+              }
+
               var error = JSON.parse(resp.responseText);
               if (error.errorMessage) {
                 if (error.errorMessage.match(/\d+:\d+/g) !== null) {
@@ -1356,8 +1402,8 @@
               }
             }
             catch (e) {
+              arangoHelper.arangoError("Query", "Successfully aborted.");
               console.log(e);
-              arangoHelper.arangoError("Query", "Something went wrong.");
               self.removeOutputEditor(counter);
             }
 

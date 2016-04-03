@@ -1,0 +1,11 @@
+This is a copy of the mozilla test-suite for usage on the
+v8-buildbots. The revision has been fetched from Mozilla's CVS
+repository as of 2008-09-02. The copy can be extracted by cvs with the
+following command:
+
+cvs -d :pserver:anonymous@cvs-mirror.mozilla.org:/cvsroot co -D 2008-09-02 mozilla/js/tests
+
+This copy only resides here to allow for svn access to the tests.
+
+The license for the mozilla-tests are the Mozilla Public License Version 1.1
+or alternatively either of GPL 2.0 or LGPL 2.1.

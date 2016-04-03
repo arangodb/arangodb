@@ -541,9 +541,9 @@ function handleDatabaseChanges (plan) {
 /// @brief create collections if they exist in the plan but not locally
 ////////////////////////////////////////////////////////////////////////////////
 
-function createLocalCollections (plannedCollections, planVersion) {
+function createLocalCollections (plannedCollections, planVersion, takeOverResponsibility) {
   var ourselves = global.ArangoServerState.id();
-
+  
   var createCollectionAgency = function (database, shard, collInfo, error) {
     var payload = { error: error.error,
                     errorNum: error.errorNum,
@@ -551,36 +551,40 @@ function createLocalCollections (plannedCollections, planVersion) {
                     indexes: collInfo.indexes,
                     servers: [ ourselves ],
                     planVersion: planVersion };
+
     global.ArangoAgency.set("Current/Collections/" + database + "/" + 
                             collInfo.planId + "/" + shard,
                             payload);
   };
+  
+  var takeOver = createCollectionAgency;
+
 
   var db = require("internal").db;
   db._useDatabase("_system");
-  var localDatabases = getLocalDatabases();
-  var database;
-  var i;
 
-  // iterate over all matching databases
-  for (database in plannedCollections) {
-    if (plannedCollections.hasOwnProperty(database)) {
-      if (localDatabases.hasOwnProperty(database)) {
-        // save old database name
-        var previousDatabase = db._name();
-        // switch into other database
-        db._useDatabase(database);
+  var migrate = writeLocked => {
+    var localDatabases = getLocalDatabases();
+    var database;
+    var i;
 
-        try {
-          // iterate over collections of database
-          var localCollections = getLocalCollections();
+    // iterate over all matching databases
+    for (database in plannedCollections) {
+      if (plannedCollections.hasOwnProperty(database)) {
+        if (localDatabases.hasOwnProperty(database)) {
+          // save old database name
+          var previousDatabase = db._name();
+          // switch into other database
+          db._useDatabase(database);
 
-          var collections = plannedCollections[database];
-          var collection;
+          try {
+            // iterate over collections of database
+            var localCollections = getLocalCollections();
 
-          // diff the collections
-          for (collection in collections) {
-            if (collections.hasOwnProperty(collection)) {
+            var collections = plannedCollections[database];
+
+            // diff the collections
+            Object.keys(collections).forEach(function(collection) {
               var collInfo = collections[collection];
               var shards = collInfo.shards;
               var shard;
@@ -592,19 +596,20 @@ function createLocalCollections (plannedCollections, planVersion) {
 
               for (shard in shards) {
                 if (shards.hasOwnProperty(shard)) {
+                  var didWrite = false;
                   if (shards[shard][0] === ourselves) {
                     // found a shard we are responsible for
 
                     var error = { error: false, errorNum: 0,
-                                  errorMessage: "no error" };
+                      errorMessage: "no error" };
 
                     if (! localCollections.hasOwnProperty(shard)) {
                       // must create this shard
                       console.info("creating local shard '%s/%s' for central '%s/%s'",
-                                   database,
-                                   shard,
-                                   database,
-                                   collInfo.planId);
+                          database,
+                          shard,
+                          database,
+                          collInfo.planId);
 
                       try {
                         if (collInfo.type === ArangoCollection.TYPE_EDGE) {
@@ -616,46 +621,48 @@ function createLocalCollections (plannedCollections, planVersion) {
                       }
                       catch (err2) {
                         error = { error: true, errorNum: err2.errorNum,
-                                  errorMessage: err2.errorMessage };
+                          errorMessage: err2.errorMessage };
                         console.error("creating local shard '%s/%s' for central '%s/%s' failed: %s",
-                                      database,
-                                      shard,
-                                      database,
-                                      collInfo.planId,
-                                      JSON.stringify(err2));
+                            database,
+                            shard,
+                            database,
+                            collInfo.planId,
+                            JSON.stringify(err2));
                       }
 
                       writeLocked({ part: "Current" },
-                                  createCollectionAgency,
-                                  [ database, shard, collInfo, error ]);
+                          createCollectionAgency,
+                          [ database, shard, collInfo, error ]);
+                      didWrite = true;
                     }
                     else {
                       if (localCollections[shard].status !== collInfo.status) {
                         console.info("detected status change for local shard '%s/%s'",
-                                     database,
-                                     shard);
+                            database,
+                            shard);
 
                         if (collInfo.status === ArangoCollection.STATUS_UNLOADED) {
                           console.info("unloading local shard '%s/%s'",
-                                       database,
-                                       shard);
+                              database,
+                              shard);
                           db._collection(shard).unload();
                         }
                         else if (collInfo.status === ArangoCollection.STATUS_LOADED) {
                           console.info("loading local shard '%s/%s'",
-                                       database,
-                                       shard);
+                              database,
+                              shard);
                           db._collection(shard).load();
                         }
                         writeLocked({ part: "Current" },
-                                    createCollectionAgency,
-                                    [ database, shard, collInfo, error ]);
+                            createCollectionAgency,
+                            [ database, shard, collInfo, error ]);
+                        didWrite = true;
                       }
 
                       // collection exists, now compare collection properties
                       var properties = { };
                       var cmp = [ "journalSize", "waitForSync", "doCompact",
-                                  "indexBuckets" ];
+                      "indexBuckets" ];
                       for (i = 0; i < cmp.length; ++i) {
                         var p = cmp[i];
                         if (localCollections[shard][p] !== collInfo[p]) {
@@ -666,25 +673,31 @@ function createLocalCollections (plannedCollections, planVersion) {
 
                       if (Object.keys(properties).length > 0) {
                         console.info("updating properties for local shard '%s/%s'",
-                                     database,
-                                     shard);
+                            database,
+                            shard);
 
                         try {
                           db._collection(shard).properties(properties);
                         }
                         catch (err3) {
                           error = { error: true, errorNum: err3.errorNum,
-                                    errorMessage: err3.errorMessage };
+                            errorMessage: err3.errorMessage };
                         }
                         writeLocked({ part: "Current" },
-                                    createCollectionAgency,
-                                    [ database, shard, collInfo, error ]);
+                            createCollectionAgency,
+                            [ database, shard, collInfo, error ]);
+                        didWrite = true;
                       }
                     }
 
                     if (error.error) {
+                      if (takeOverResponsibility && !didWrite) {
+                        writeLocked({ part: "Current" },
+                            takeOver,
+                            [ database, shard, collInfo, error ]);
+                      }
                       continue;  // No point to look for properties and
-                                 // indices, if the creation has not worked
+                      // indices, if the creation has not worked
                     }
 
                     var indexes = getIndexMap(shard);
@@ -700,9 +713,9 @@ function createLocalCollections (plannedCollections, planVersion) {
                         if (index.type !== "primary" && index.type !== "edge" &&
                             ! indexes.hasOwnProperty(index.id)) {
                           console.info("creating index '%s/%s': %s",
-                                       database,
-                                       shard,
-                                       JSON.stringify(index));
+                              database,
+                              shard,
+                              JSON.stringify(index));
 
                           try {
                             arangodb.db._collection(shard).ensureIndex(index);
@@ -720,8 +733,9 @@ function createLocalCollections (plannedCollections, planVersion) {
                         }
                         if (changed) {
                           writeLocked({ part: "Current" },
-                                      createCollectionAgency,
-                                      [ database, shard, collInfo, error ]);
+                              createCollectionAgency,
+                              [ database, shard, collInfo, error ]);
+                          didWrite = true;
                         }
                       }
 
@@ -745,9 +759,9 @@ function createLocalCollections (plannedCollections, planVersion) {
                               index = indexes[idx];
 
                               console.info("dropping index '%s/%s': %s",
-                                            database,
-                                            shard,
-                                            JSON.stringify(index));
+                                  database,
+                                  shard,
+                                  JSON.stringify(index));
 
                               arangodb.db._collection(shard).dropIndex(index);
 
@@ -759,27 +773,49 @@ function createLocalCollections (plannedCollections, planVersion) {
                       }
                       if (changed2) {
                         writeLocked({ part: "Current" },
-                                    createCollectionAgency,
-                                    [ database, shard, collInfo, error ]);
+                            createCollectionAgency,
+                            [ database, shard, collInfo, error ]);
+                        didWrite = true;
                       }
                     }
 
+                    if (takeOverResponsibility && !didWrite) {
+                      writeLocked({ part: "Current" },
+                          takeOver,
+                          [ database, shard, collInfo, error ]);
+                    }
                   }
                 }
               }
               collInfo.id = save[0];
               collInfo.name = save[1];
-            }
-          }
-        }
-        catch (err) {
-          // always return to previous database
-          db._useDatabase(previousDatabase);
-          throw err;
-        }
 
+            });
+          }
+          catch (err) {
+            // always return to previous database
+            db._useDatabase(previousDatabase);
+            throw err;
+          }
+
+        }
       }
     }
+  };
+
+  if (takeOverResponsibility) {
+    // mop: if this is a complete takeover we need a global lock because
+    // otherwise the coordinator might fetch results which are only partly
+    // migrated
+    var fakeLock = (lockInfo, cb, args) => {
+      if (!lockInfo || lockInfo.part !== 'Current') {
+        throw new Error("Invalid lockInfo " + JSON.stringify(lockInfo));
+      }
+      return cb(...args);
+    };
+    writeLocked({ part: "Current" }, migrate, [fakeLock]);
+  } else {
+    migrate(writeLocked);
   }
 }
 
@@ -1062,20 +1098,20 @@ function synchronizeLocalFollowerCollections (plannedCollections) {
 /// @brief handle collection changes
 ////////////////////////////////////////////////////////////////////////////////
 
-function handleCollectionChanges (plan) {
+function handleCollectionChanges (plan, takeOverResponsibility) {
   var plannedCollections = getByPrefix3d(plan, "Plan/Collections/");
 
   var ok = true;
 
   try {
-    createLocalCollections(plannedCollections, plan["Plan/Version"]);
+    createLocalCollections(plannedCollections, plan["Plan/Version"], takeOverResponsibility);
     dropLocalCollections(plannedCollections);
     cleanupCurrentCollections(plannedCollections);
     synchronizeLocalFollowerCollections(plannedCollections);
   }
   catch (err) {
     console.error("Caught error in handleCollectionChanges: " + 
-                  JSON.stringify(err));
+                  JSON.stringify(err), JSON.stringify(err.stack));
     ok = false; 
   }
   return ok;
@@ -1183,8 +1219,11 @@ function handleChanges (plan, current) {
     }
     else { // role === "SECONDARY"
       if (plan.hasOwnProperty("Plan/DBServers/"+myId)) {
-        // Ooops! We are now a primary!
         changed = ArangoServerState.redetermineRole();
+        if (!changed) {
+          // mop: oops...changing role has failed. retry next time.
+          return false;
+        }
       }
       else {
         var found = null;
@@ -1219,7 +1258,7 @@ function handleChanges (plan, current) {
   if (role === "PRIMARY" || role === "COORDINATOR") {
     // Note: This is only ever called for DBservers (primary and secondary),
     // we keep the coordinator case here just in case...
-    success = handleCollectionChanges(plan, current);
+    success = handleCollectionChanges(plan, changed);
   }
   else {
     success = setupReplication();

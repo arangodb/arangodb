@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>EcmaScript SIMD benchmarks</title>
+</head>
+<body>
+  <div id="logs">Running benchmarks...<br><br></div>
+  <!-- Polyfill -->
+  <script src="../ecmascript_simd.js"></script>
+  <script src="base.js"></script>
+  <script src="kernel-template.js"></script>
+  <!-- Keep synced with run.js -->
+  <script src='averageFloat32x4.js'></script>
+  <script src='averageFloat32x4LoadFromInt8Array.js'></script>
+  <script src='averageFloat32x4LoadX.js'></script>
+  <script src='averageFloat32x4LoadXY.js'></script>
+  <script src='averageFloat32x4LoadXYZ.js'></script>
+  <script src='averageFloat64x2.js'></script>
+  <script src='averageFloat64x2Load.js'></script>
+  <script src='averageInt32x4Load.js'></script>
+  <script src='mandelbrot.js'></script>
+  <script src='matrix-multiplication.js'></script>
+  <script src='transform.js'></script>
+  <script src='shiftrows.js'></script>
+  <script src='aobench.js'></script>
+  <script src='transpose4x4.js'></script>
+  <script src='inverse4x4.js'></script>
+  <script src='sinx4.js'></script>
+  <script src='memset.js'></script>
+  <script src='memcpy.js'></script>
+  <!-- Execute -->
+  <script src="run_browser.js"></script>
+</body>
+</html>

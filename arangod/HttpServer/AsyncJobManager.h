@@ -28,10 +28,11 @@
 #include "Basics/ReadWriteLock.h"
 
 namespace arangodb {
+class HttpResponse;
+
 namespace rest {
 class AsyncCallbackContext;
 class HttpServerJob;
-class HttpResponse;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief AsyncJobResult

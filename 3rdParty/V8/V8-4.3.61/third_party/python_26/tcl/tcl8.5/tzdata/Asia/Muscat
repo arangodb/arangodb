@@ -1,6 +1,0 @@
-# created by tools/tclZIC.tcl - do not edit
-
-set TZData(:Asia/Muscat) {
-    {-9223372036854775808 14060 0 LMT}
-    {-1577937260 14400 0 GST}
-}

@@ -39,7 +39,7 @@ namespace arangodb {
 /// @brief ArangoDB VocbaseContext
 ////////////////////////////////////////////////////////////////////////////////
 
-class VocbaseContext : public arangodb::rest::RequestContext {
+class VocbaseContext : public arangodb::RequestContext {
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief defines a sid
@@ -67,7 +67,7 @@ class VocbaseContext : public arangodb::rest::RequestContext {
   static double accessSid(std::string const& database, std::string const& sid);
 
  public:
-  VocbaseContext(rest::HttpRequest*, TRI_server_t*, TRI_vocbase_t*);
+  VocbaseContext(HttpRequest*, TRI_server_t*, TRI_vocbase_t*);
 
   ~VocbaseContext();
 
@@ -88,13 +88,13 @@ class VocbaseContext : public arangodb::rest::RequestContext {
   /// @brief return authentication realm
   //////////////////////////////////////////////////////////////////////////////
 
-  char const* getRealm() const;
+  std::string realm() const override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief checks the authentication
   //////////////////////////////////////////////////////////////////////////////
 
-  rest::HttpResponse::HttpResponseCode authenticate();
+  GeneralResponse::ResponseCode authenticate() override final;
 
  public:
   ////////////////////////////////////////////////////////////////////////////////

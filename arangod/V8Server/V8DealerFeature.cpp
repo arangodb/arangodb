@@ -24,6 +24,7 @@
 
 #include <thread>
 
+#include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/RandomGenerator.h"
 #include "Basics/StringUtils.h"
@@ -786,7 +787,14 @@ V8Context* V8DealerFeature::pickFreeContextForGc() {
 void V8DealerFeature::initializeContext(size_t i) {
   CONDITION_LOCKER(guard, _contextCondition);
 
-  v8::Isolate* isolate = v8::Isolate::New();
+  V8PlatformFeature* v8platform = dynamic_cast<V8PlatformFeature*>(
+      application_features::ApplicationServer::lookupFeature("V8Platform"));
+  TRI_ASSERT(v8platform != nullptr);
+
+  v8::Isolate::CreateParams createParams;
+  createParams.array_buffer_allocator = v8platform->arrayBufferAllocator();
+  v8::Isolate* isolate = v8::Isolate::New(createParams);
+
   V8Context* context = _contexts[i] = new V8Context();
 
   if (context == nullptr) {

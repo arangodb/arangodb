@@ -31,11 +31,12 @@
 #include "Rest/HttpResponse.h"
 
 namespace arangodb {
-namespace rest {
-struct ConnectionInfo;
-class HttpHandler;
 class HttpRequest;
 class HttpResponse;
+struct ConnectionInfo;
+
+namespace rest {
+class HttpHandler;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handler factory
@@ -110,7 +111,7 @@ class HttpHandlerFactory {
   /// @brief authenticates a new request, wrapper method
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpResponse::HttpResponseCode authenticateRequest(HttpRequest*);
+  GeneralResponse::ResponseCode authenticateRequest(HttpRequest*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set request context, wrapper method

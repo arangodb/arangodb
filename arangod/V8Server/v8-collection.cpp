@@ -322,7 +322,7 @@ static void DocumentVocbaseColCoordinator(
     TRI_V8_THROW_EXCEPTION(error);
   }
 
-  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
+  arangodb::GeneralResponse::ResponseCode responseCode;
   std::unique_ptr<std::map<std::string, std::string>> headers(
       new std::map<std::string, std::string>());
   std::map<std::string, std::string> resultHeaders;
@@ -354,7 +354,7 @@ static void DocumentVocbaseColCoordinator(
   }
   VPackSlice slice = builder.slice();
 
-  if (responseCode >= arangodb::rest::HttpResponse::BAD) {
+  if ((int)responseCode >= (int)arangodb::GeneralResponse::ResponseCode::BAD) {
     if (!slice.isObject()) {
       if (generateDocument) {
         TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -695,7 +695,7 @@ static void ModifyVocbaseColCoordinator(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
-  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
+  arangodb::GeneralResponse::ResponseCode responseCode;
   std::unique_ptr<std::map<std::string, std::string>> headers(
       new std::map<std::string, std::string>());
   std::map<std::string, std::string> resultHeaders;
@@ -714,7 +714,7 @@ static void ModifyVocbaseColCoordinator(
   // 400/404
   std::shared_ptr<VPackBuilder> resBuilder = VPackParser::fromJson(resultBody);
   VPackSlice resSlice = resBuilder->slice();
-  if (responseCode >= arangodb::rest::HttpResponse::BAD) {
+  if ((int)responseCode >= (int)arangodb::GeneralResponse::ResponseCode::BAD) {
     if (!resSlice.isObject()) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
@@ -1466,7 +1466,7 @@ static void RemoveVocbaseColCoordinator(
     TRI_V8_THROW_EXCEPTION(error);
   }
 
-  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
+  arangodb::GeneralResponse::ResponseCode responseCode;
   std::map<std::string, std::string> resultHeaders;
   std::string resultBody;
   std::unique_ptr<std::map<std::string, std::string>> headers(
@@ -1482,7 +1482,7 @@ static void RemoveVocbaseColCoordinator(
   // report what the DBserver told us: this could now be 200/202 or
   // 404/412
   TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str());
-  if (responseCode >= arangodb::rest::HttpResponse::BAD) {
+  if ((int)responseCode >= (int)arangodb::GeneralResponse::ResponseCode::BAD) {
     if (!TRI_IsObjectJson(json)) {
       if (nullptr != json) {
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -2746,7 +2746,7 @@ static void InsertVocbaseColCoordinator(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
-  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
+  arangodb::GeneralResponse::ResponseCode responseCode;
   std::map<std::string, std::string> headers;
   std::map<std::string, std::string> resultHeaders;
   std::string resultBody;
@@ -2761,7 +2761,7 @@ static void InsertVocbaseColCoordinator(
   // report what the DBserver told us: this could now be 201/202 or
   // 400/404
   json.reset(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str()));
-  if (responseCode >= arangodb::rest::HttpResponse::BAD) {
+  if ((int)responseCode >= (int)arangodb::GeneralResponse::ResponseCode::BAD) {
     if (!TRI_IsObjectJson(json.get())) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
@@ -3022,7 +3022,7 @@ static void InsertEdgeColCoordinator(
     options.waitForSync = ExtractWaitForSync(args, 4 + argOffset);
   }
 
-  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
+  arangodb::GeneralResponse::ResponseCode responseCode;
   std::map<std::string, std::string> resultHeaders;
   std::string resultBody;
 
@@ -3036,7 +3036,7 @@ static void InsertEdgeColCoordinator(
   // report what the DBserver told us: this could now be 201/202 or
   // 400/404
   json.reset(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str()));
-  if (responseCode >= arangodb::rest::HttpResponse::BAD) {
+  if ((int)responseCode >= (int)arangodb::GeneralResponse::ResponseCode::BAD) {
     if (!TRI_IsObjectJson(json.get())) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }

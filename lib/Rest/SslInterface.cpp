@@ -32,6 +32,12 @@
 #include "Basics/UniformCharacter.h"
 #include "Basics/StringUtils.h"
 
+#ifdef OPENSSL_NO_SSL2 // OpenSSL > 1.1.0 deprecates RAND_pseudo_bytes
+#define RAND_BYTES RAND_bytes
+#else
+#define RAND_BYTES RAND_pseudo_bytes
+#endif
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -276,7 +282,7 @@ bool verifyHMAC(char const* challenge, size_t challengeLength,
 }
 
 int sslRand(uint64_t* value) {
-  if (!RAND_pseudo_bytes((unsigned char*)value, sizeof(uint64_t))) {
+  if (!RAND_BYTES((unsigned char*)value, sizeof(uint64_t))) {
     return 1;
   }
 
@@ -284,7 +290,7 @@ int sslRand(uint64_t* value) {
 }
 
 int sslRand(int64_t* value) {
-  if (!RAND_pseudo_bytes((unsigned char*)value, sizeof(int64_t))) {
+  if (!RAND_BYTES((unsigned char*)value, sizeof(int64_t))) {
     return 1;
   }
 
@@ -292,7 +298,7 @@ int sslRand(int64_t* value) {
 }
 
 int sslRand(int32_t* value) {
-  if (!RAND_pseudo_bytes((unsigned char*)value, sizeof(int32_t))) {
+  if (!RAND_BYTES((unsigned char*)value, sizeof(int32_t))) {
     return 1;
   }
 

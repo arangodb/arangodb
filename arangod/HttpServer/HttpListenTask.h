@@ -28,9 +28,10 @@
 #include "Scheduler/ListenTask.h"
 
 namespace arangodb {
+class Endpoint;
+
 namespace rest {
 class HttpServer;
-class Endpoint;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief task used to establish connections
@@ -48,7 +49,7 @@ class HttpListenTask : public ListenTask {
   HttpListenTask(HttpServer* server, Endpoint* endpoint);
 
  protected:
-  bool handleConnected(TRI_socket_t s, ConnectionInfo const& info);
+  bool handleConnected(TRI_socket_t s, ConnectionInfo const& info) override ;
 
  private:
   //////////////////////////////////////////////////////////////////////////////

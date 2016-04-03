@@ -10,17 +10,8 @@ if (POLICY CMP0037)
   cmake_policy(SET CMP0037 NEW)
 endif ()
 
-if (APPLE)
-  if (NOT DEFINED CMAKE_C_COMPILER)
-    set(CMAKE_C_COMPILER /usr/bin/clang)
-  endif ()
-
-  if (NOT DEFINED CMAKE_CXX_COMPILER)
-    set(CMAKE_CXX_COMPILER /usr/bin/clang++)
-  endif ()
-endif ()
-
 option(VERBOSE OFF)
+set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9" CACHE STRING "deployment target for MacOSX")
 
 project(ArangoDB)
 
@@ -184,11 +175,11 @@ if (WINDOWS)
   set(BASE_C_FLAGS   ""                         CACHE STRING "base C flags")
   set(BASE_CXX_FLAGS "/GR /EHsc"                CACHE STRING "base C++flags")
 else ()
-  set(BASE_FLAGS     ""                   CACHE STRING "base flags")
-  set(BASE_C_FLAGS   "${CMAKE_C_FLAGS}"   CACHE STRING "base C flags")
-  set(BASE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" CACHE STRING "base C++ flags")
-  set(BASE_LD_FLAGS  "$ENV{LDFLAGS}"      CACHE STRING "base linker flags")
-  set(BASE_LIBS      "$ENV{LIBS}"         CACHE STRING "base libraries")
+  set(BASE_FLAGS     ""                                  CACHE STRING "base flags")
+  set(BASE_C_FLAGS   "${CMAKE_C_FLAGS}   $ENV{CFLAGS}"   CACHE STRING "base C flags")
+  set(BASE_CXX_FLAGS "${CMAKE_CXX_FLAGS} $ENV{CXXFLAGS}" CACHE STRING "base C++ flags")
+  set(BASE_LD_FLAGS                     "$ENV{LDFLAGS}"  CACHE STRING "base linker flags")
+  set(BASE_LIBS                         "$ENV{LIBS}"     CACHE STRING "base libraries")
 endif ()
 
 if (SOLARIS)
@@ -220,6 +211,7 @@ endif ()
 # need c++11
 set(CMAKE_CXX_STANDARD 11)
 include(CheckCXX11Features)
+include(Boost)
 
 # need threads
 find_package(Threads REQUIRED)
@@ -234,7 +226,7 @@ if (MSVC)
   set(MSVC_LIBS crypt32.lib;WINMM.LIB;Ws2_32.lib;getopt;regex)
 
   set(CMAKE_EXE_LINKER_FLAGS
-    "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE /LTCG /SAFESEH:NO /MACHINE:x64 /ignore:4099 ${BASE_LD_FLAGS}"
+    "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE /SAFESEH:NO /MACHINE:x64 /ignore:4099 ${BASE_LD_FLAGS}"
   )
 else ()
   set(CMAKE_EXE_LINKER_FLAGS
@@ -362,7 +354,11 @@ endif ()
 ################################################################################
 
 if (NOT WINDOWS)
-  set(NET_LIBS ${NET_LIBS} resolv)
+  set(SYS_LIBS ${SYS_LIBS} resolv)
+
+  if (NOT DARWIN)
+    set(SYS_LIBS ${SYS_LIBS} rt)
+  endif ()
 endif ()
 
 ################################################################################
@@ -417,13 +413,13 @@ elseif (MSVC)
     message(STATUS "Compiler type MSVC: ${CMAKE_CXX_COMPILER}")
   endif ()
 
-  set(CMAKE_C_FLAGS                "-g"                                CACHE INTERNAL "default C++ compiler flags")
+  set(CMAKE_C_FLAGS                "/MTd"                              CACHE INTERNAL "default C++ compiler flags")
   set(CMAKE_C_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1" CACHE INTERNAL "C++ debug flags")
   set(CMAKE_C_FLAGS_MINSIZEREL     "/MT /O1 /Ob1 /D NDEBUG"            CACHE INTERNAL "C++ minimal size flags")
   set(CMAKE_C_FLAGS_RELEASE        "/MT /O2 /Ob2 /D NDEBUG"            CACHE INTERNAL "C++ release flags")
   set(CMAKE_C_FLAGS_RELWITHDEBINFO "/MT /Zi /O2 /Ob1 /D NDEBUG"        CACHE INTERNAL "C++ release with debug info flags")
 
-  set(CMAKE_CXX_FLAGS                "-g"                                CACHE INTERNAL "default C++ compiler flags")
+  set(CMAKE_CXX_FLAGS                "/MTd"                              CACHE INTERNAL "default C++ compiler flags")
   set(CMAKE_CXX_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1" CACHE INTERNAL "C++ debug flags")
   set(CMAKE_CXX_FLAGS_MINSIZEREL     "/MT /O1 /Ob1 /D NDEBUG"            CACHE INTERNAL "C++ minimal size flags")
   set(CMAKE_CXX_FLAGS_RELEASE        "/MT /O2 /Ob2 /D NDEBUG"            CACHE INTERNAL "C++ release flags")
@@ -452,13 +448,13 @@ if (VERBOSE)
   message(STATUS)
 endif ()
 
-set(CMAKE_C_FLAGS                "${BASE_FLAGS} ${BASE_C_FLAGS}")
+set(CMAKE_C_FLAGS                "${BASE_FLAGS} ${BASE_C_FLAGS} ${CMAKE_C_FLAGS}")
 set(CMAKE_C_FLAGS_DEBUG          "${BASE_FLAGS} ${BASE_C_FLAGS} ${CMAKE_C_FLAGS_DEBUG}")
 set(CMAKE_C_FLAGS_RELEASE        "${BASE_FLAGS} ${BASE_C_FLAGS} ${CMAKE_C_FLAGS_RELEASE}")
 set(CMAKE_C_FLAGS_RELWITHDEBINFO "${BASE_FLAGS} ${BASE_C_FLAGS} ${CMAKE_C_FLAGS_RELWITHDEBINFO}")
 set(CMAKE_C_FLAGS_MINSIZEREL     "${BASE_FLAGS} ${BASE_C_FLAGS} ${CMAKE_C_FLAGS_MINSIZEREL}")
 
-set(CMAKE_CXX_FLAGS                "${BASE_FLAGS} ${BASE_CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS                "${BASE_FLAGS} ${BASE_CXX_FLAGS} ${CMAKE_CXX_FLAGS}")
 set(CMAKE_CXX_FLAGS_DEBUG          "${BASE_FLAGS} ${BASE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_DEBUG}")
 set(CMAKE_CXX_FLAGS_RELEASE        "${BASE_FLAGS} ${BASE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_RELEASE}")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${BASE_FLAGS} ${BASE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
@@ -582,8 +578,8 @@ endif ()
 ## BOOST
 ################################################################################
 
-include_directories(${BOOST_INCLUDE_DIR})
-add_definitions(-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\")
+include_directories(${Boost_INCLUDE_DIR})
+add_definitions(-DARANGODB_BOOST_VERSION=\"${Boost_VERSION}\")
 
 ################################################################################
 ## ICU
@@ -648,7 +644,7 @@ if (USE_MAINTAINER_MODE)
       OUTPUT
         ${CMAKE_SOURCE_DIR}/${m}
       COMMAND
-        ./utils/generateErrorfile.sh ./${ERRORS_DAT} ./${m}
+        PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE} ./utils/generateErrorfile.sh ./${ERRORS_DAT} ./${m}
       DEPENDS
         ${CMAKE_SOURCE_DIR}/${ERRORS_DAT}
       WORKING_DIRECTORY
@@ -683,7 +679,7 @@ if (USE_MAINTAINER_MODE)
       OUTPUT
         ${CMAKE_SOURCE_DIR}/${m}
       COMMAND
-        ./utils/generateMimetypes.sh ./${MIMETYPES_DAT} ./${m}
+        PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE} ./utils/generateMimetypes.sh ./${MIMETYPES_DAT} ./${m}
       DEPENDS
         ${CMAKE_SOURCE_DIR}/${MIMETYPES_DAT}
       WORKING_DIRECTORY
@@ -711,11 +707,25 @@ list(INSERT SYSTEM_LIBRARIES 0
   ${BASE_LIBS}
   ${CMAKE_THREAD_LIBS_INIT}
   ${CMAKE_DL_LIBS}
-  ${NET_LIBS}
+  ${SYS_LIBS}
 )
 
 add_subdirectory(lib)
 add_subdirectory(arangosh)
 add_subdirectory(arangod)
-add_subdirectory(UnitTests)
+if (USE_BOOST_UNITTESTS)
+  add_subdirectory(UnitTests)
+endif()
 add_subdirectory(Documentation)
+
+add_dependencies(arangob zlibstatic v8_build)
+add_dependencies(arangod ev zlibstatic v8_build)
+add_dependencies(arangodump zlibstatic v8_build)
+add_dependencies(arangoimp zlibstatic v8_build)
+add_dependencies(arangorestore zlibstatic v8_build)
+add_dependencies(arangosh zlibstatic v8_build)
+#if (USE_MAINTAINER_MODE)
+#  add_dependencies(basics_suite v8_build)
+#  add_dependencies(geo_suite v8_build)
+#endif()
+

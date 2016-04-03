@@ -36,7 +36,6 @@
 #define TRI_WITHIN_COMMON 1
 #include "Basics/operating-system.h"
 #include "Basics/application-exit.h"
-
 #undef TRI_WITHIN_COMMON
 
 #include <assert.h>
@@ -83,8 +82,18 @@
 #include <strings.h>
 #endif
 
-#include <sys/stat.h>
-#include <sys/types.h>
+#ifdef TRI_HAVE_NETDB_H
+#include <netdb.h>
+#endif
+
+#ifdef TRI_HAVE_NETINET_STAR_H
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#endif
+
+#ifdef TRI_HAVE_ARPA_INET_H
+#include <arpa/inet.h>
+#endif
 
 #ifdef TRI_HAVE_SYS_RESOURCE_H
 #include <sys/resource.h>
@@ -97,6 +106,20 @@
 #ifdef TRI_HAVE_SYS_PRCTL_H
 #include <sys/prctl.h>
 #endif
+
+#ifdef TRI_HAVE_SYS_SOCKET_H
+#include <sys/socket.h>
+#endif
+
+#ifdef TRI_HAVE_SYS_TYPES_H
+#include <sys/types.h>
+#endif
+
+#ifdef TRI_HAVE_SYS_WAIT_H
+#include <sys/wait.h>
+#endif
+
+#include <sys/stat.h>
 
 // .............................................................................
 // The problem we have for visual studio is that if we include WinSock2.h here

@@ -41,20 +41,19 @@ RestSimpleQueryHandler::RestSimpleQueryHandler(
 
 HttpHandler::status_t RestSimpleQueryHandler::execute() {
   // extract the sub-request type
-  HttpRequest::HttpRequestType type = _request->requestType();
+  auto const type = _request->requestType();
 
-  if (type == HttpRequest::HTTP_REQUEST_PUT) {
-    char const* prefix = _request->requestPath();
+  if (type == GeneralRequest::RequestType::PUT) {
+    std::string const& prefix = _request->requestPath();
 
-    if (strcmp(prefix, RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH.c_str()) ==
-        0) {
+    if (prefix == RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH) {
       // all query
       allDocuments();
       return status_t(HANDLER_DONE);
     }
   }
 
-  generateError(HttpResponse::METHOD_NOT_ALLOWED,
+  generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return status_t(HANDLER_DONE);
 }
@@ -78,7 +77,7 @@ void RestSimpleQueryHandler::allDocuments() {
     VPackSlice const value = body.get("collection");
 
     if (!value.isString()) {
-      generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR,
+      generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                     "expecting string for <collection>");
       return;
     }
@@ -145,12 +144,12 @@ void RestSimpleQueryHandler::allDocuments() {
     // now run the actual query and handle the result
     processQuery(s);
   } catch (arangodb::basics::Exception const& ex) {
-    generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
+    generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
   } catch (std::bad_alloc const&) {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
   } catch (std::exception const& ex) {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL);
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL);
   }
 }

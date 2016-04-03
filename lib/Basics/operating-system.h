@@ -76,10 +76,12 @@
 /// @brief available include files
 ////////////////////////////////////////////////////////////////////////////////
 
+#define TRI_HAVE_ARPA_INET_H 1
 #define TRI_HAVE_DIRENT_H 1
-#define TRI_HAVE_FORK 1
 #define TRI_HAVE_GETRLIMIT 1
 #define TRI_HAVE_LIMITS_H 1
+#define TRI_HAVE_NETDB_H 1
+#define TRI_HAVE_NETINET_STAR_H 1
 #define TRI_HAVE_POLL_H 1
 #define TRI_HAVE_SCHED_H 1
 #define TRI_HAVE_SIGNAL_H 1
@@ -87,6 +89,7 @@
 #define TRI_HAVE_SYS_FILE_H 1
 #define TRI_HAVE_SYS_IOCTL_H 1
 #define TRI_HAVE_SYS_RESOURCE_H 1
+#define TRI_HAVE_SYS_SOCKET_H 1
 #define TRI_HAVE_SYS_TIME_H 1
 #define TRI_HAVE_SYS_TYPES_H 1
 #define TRI_HAVE_SYS_WAIT_H 1
@@ -99,6 +102,7 @@
 
 #undef TRI_HAVE_GETLINE /* TODO(fc) remove when we are using the new ProgramOptions */
 
+#define ARANGODB_HAVE_FORK 1
 #define ARANGODB_HAVE_GETGRGID 1
 #define ARANGODB_HAVE_GETGRNAM 1
 #define ARANGODB_HAVE_GETPPID 1
@@ -123,8 +127,8 @@
 
 #define TRI_HAVE_POSIX 1
 
+#define ARANGODB_HAVE_DOMAIN_SOCKETS 1
 #define TRI_HAVE_LINUX_PROC 1
-#define TRI_HAVE_LINUX_SOCKETS 1
 #define TRI_HAVE_POSIX_MMAP 1
 #define TRI_HAVE_POSIX_PWD_GRP 1
 #define TRI_HAVE_POSIX_SPIN 1
@@ -219,16 +223,20 @@
 /// @brief available include files
 ////////////////////////////////////////////////////////////////////////////////
 
+#define TRI_HAVE_ARPA_INET_H 1
 #define TRI_HAVE_DIRENT_H 1
 #define TRI_HAVE_DLFCN_H 1
-#define TRI_HAVE_FORK 1
 #define TRI_HAVE_GETRLIMIT 1
+#define TRI_HAVE_NETDB_H 1
+#define TRI_HAVE_NETINET_STAR_H 1
 #define TRI_HAVE_POLL_H 1
 #define TRI_HAVE_SCHED_H 1
 #define TRI_HAVE_SIGNAL_H 1
 #define TRI_HAVE_STDBOOL_H 1
+#define TRI_HAVE_SYS_FILE_H 1
 #define TRI_HAVE_SYS_IOCTL_H 1
 #define TRI_HAVE_SYS_RESOURCE_H 1
+#define TRI_HAVE_SYS_SOCKET_H 1
 #define TRI_HAVE_SYS_TIME_H 1
 #define TRI_HAVE_SYS_TYPES_H 1
 #define TRI_HAVE_SYS_WAIT_H 1
@@ -239,6 +247,7 @@
 /// @brief available functions
 ////////////////////////////////////////////////////////////////////////////////
 
+#define ARANGODB_HAVE_FORK 1
 #define ARANGODB_HAVE_GETGRGID 1
 #define ARANGODB_HAVE_GETGRNAM 1
 #undef TRI_HAVE_GETLINE
@@ -264,7 +273,7 @@
 
 #define TRI_HAVE_POSIX 1
 
-#define TRI_HAVE_LINUX_SOCKETS 1
+#define ARANGODB_HAVE_DOMAIN_SOCKETS 1
 #define TRI_HAVE_MACH 1
 #define TRI_HAVE_MACOS_MEM_STATS 1
 #define TRI_HAVE_POSIX_MMAP 1
@@ -399,7 +408,7 @@
 
 #define TRI_HAVE_DIRENT_H 1
 #define TRI_HAVE_DLFCN_H 1
-#define TRI_HAVE_FORK 1
+#define ARANGODB_HAVE_FORK 1
 #define TRI_HAVE_GETRLIMIT 1
 #define TRI_HAVE_LIMITS_H 1
 #define TRI_HAVE_POLL_H 1
@@ -449,7 +458,7 @@
 #define TRI_GCC_THREAD_LOCAL_STORAGE 1
 
 #define TRI_HAVE_LINUX_PROC 1
-#define TRI_HAVE_LINUX_SOCKETS 1
+#define ARANGODB_HAVE_DOMAIN_SOCKETS 1
 #define TRI_HAVE_POSIX_MMAP 1
 #define TRI_HAVE_POSIX_PWD_GRP 1
 #define TRI_HAVE_POSIX_THREADS 1
@@ -568,29 +577,32 @@
 /// @brief available include files
 ////////////////////////////////////////////////////////////////////////////////
 
+#define TRI_HAVE_ARPA_INET_H 1
 #define TRI_HAVE_DIRENT_H 1
 #define TRI_HAVE_DLFCN_H 1
-#define TRI_HAVE_FORK 1
 #define TRI_HAVE_GETRLIMIT 1
+#define TRI_HAVE_NETDB_H 1
+#define TRI_HAVE_NETINET_STAR_H 1
 #define TRI_HAVE_POLL_H 1
 #define TRI_HAVE_SCHED_H 1
 #define TRI_HAVE_SIGNAL_H 1
 #define TRI_HAVE_STDBOOL_H 1
-#define TRI_HAVE_TERMIOS_H 1
-#define TRI_HAVE_UNISTD_H 1
-
 #define TRI_HAVE_SYS_FILE_H 1
 #define TRI_HAVE_SYS_IOCTL_H 1
 #define TRI_HAVE_SYS_PRCTL_H 1
 #define TRI_HAVE_SYS_RESOURCE_H 1
+#define TRI_HAVE_SYS_SOCKET_H 1
 #define TRI_HAVE_SYS_TIME_H 1
 #define TRI_HAVE_SYS_TYPES_H 1
 #define TRI_HAVE_SYS_WAIT_H 1
+#define TRI_HAVE_TERMIOS_H 1
+#define TRI_HAVE_UNISTD_H 1
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief available functions
 ////////////////////////////////////////////////////////////////////////////////
 
+#define ARANGODB_HAVE_FORK 1
 #define ARANGODB_HAVE_GETGRGID 1
 #define ARANGODB_HAVE_GETGRNAM 1
 #define TRI_HAVE_GETLINE 1
@@ -618,7 +630,7 @@
 #define TRI_HAVE_POSIX 1
 
 #define TRI_HAVE_LINUX_PROC 1
-#define TRI_HAVE_LINUX_SOCKETS 1
+#define ARANGODB_HAVE_DOMAIN_SOCKETS 1
 #define TRI_HAVE_POSIX_MMAP 1
 #define TRI_HAVE_POSIX_PWD_GRP 1
 #define TRI_HAVE_POSIX_THREADS 1

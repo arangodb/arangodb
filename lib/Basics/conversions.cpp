@@ -23,6 +23,10 @@
 
 #include "conversions.h"
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#warning this files should be replaces by StringUtils and Co
+#endif
+
 #include "Basics/tri-strings.h"
 
 static char const* const HEX = "0123456789ABCDEF";
@@ -573,71 +577,6 @@ size_t TRI_StringUInt64InPlace(uint64_t attr, char* buffer) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert to string from int8
-////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-char* TRI_StringInt8 (int8_t attr) {
-  char buffer[5];
-  size_t len = TRI_StringInt8InPlace(attr, (char*) &buffer);
-
-  return TRI_DuplicateString(buffer, len);
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert to string from uint8
-////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-char* TRI_StringUInt8 (uint8_t attr) {
-  char buffer[4];
-  size_t len = TRI_StringUInt8InPlace(attr, (char*) &buffer);
-
-  return TRI_DuplicateString(buffer, len);
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert to string from int16
-////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-char* TRI_StringInt16 (int16_t attr) {
-  char buffer[7];
-  size_t len = TRI_StringInt16InPlace(attr, (char*) &buffer);
-
-  return TRI_DuplicateString(buffer, len);
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert to string from uint16
-////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-char* TRI_StringUInt16 (uint16_t attr) {
-  char buffer[6];
-  size_t len = TRI_StringUInt16InPlace(attr, (char*) &buffer);
-
-  return TRI_DuplicateString(buffer, len);
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert to string from int32
-////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-char* TRI_StringInt32 (int32_t attr) {
-  char buffer[12];
-  size_t len = TRI_StringInt32InPlace(attr, (char*) &buffer);
-
-  return TRI_DuplicateString(buffer, len);
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief convert to string from uint32
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -647,19 +586,6 @@ char* TRI_StringUInt32(uint32_t attr) {
 
   return TRI_DuplicateString(buffer, len);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert to string from int64
-////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-char* TRI_StringInt64 (int64_t attr) {
-  char buffer[22];
-  size_t len = TRI_StringInt64InPlace(attr, (char*) &buffer);
-
-  return TRI_DuplicateString(buffer, len);
-}
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert to string from uint64
@@ -775,32 +701,6 @@ size_t TRI_StringUInt64HexInPlace(uint64_t attr, char* buffer) {
 
   return (p - buffer);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert to hex string from uint32
-////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-char* TRI_StringUInt32Hex (uint32_t attr) {
-  char buffer[9];
-  size_t len = TRI_StringUInt32HexInPlace(attr, (char*) &buffer);
-
-  return TRI_DuplicateString(buffer, len);
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert to hex string from uint64
-////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-char* TRI_StringUInt64Hex (uint64_t attr) {
-  char buffer[17];
-  size_t len = TRI_StringUInt64HexInPlace(attr, (char*) &buffer);
-
-  return TRI_DuplicateString(buffer, len);
-}
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert to octal string from uint32, using the specified buffer.
@@ -932,32 +832,6 @@ size_t TRI_StringUInt64OctalInPlace(uint64_t attr, char* buffer) {
 
   return (p - buffer);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert to octal string from uint32
-////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-char* TRI_StringUInt32Octal (uint32_t attr) {
-  char buffer[9];
-  size_t len = TRI_StringUInt32OctalInPlace(attr, (char*) &buffer);
-
-  return TRI_DuplicateString(buffer, len);
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert to octal string from uint64
-////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-char* TRI_StringUInt64Octal (uint64_t attr) {
-  char buffer[17];
-  size_t len = TRI_StringUInt64OctalInPlace(attr, (char*) &buffer);
-
-  return TRI_DuplicateString(buffer, len);
-}
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a time stamp to a string

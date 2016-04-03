@@ -54,7 +54,7 @@ HttpHandler::status_t RestVersionHandler::execute() {
     result.add("version", VPackValue(ARANGODB_VERSION));
 
     bool found;
-    char const* detailsStr = _request->value("details", found);
+    std::string const& detailsStr = _request->value("details", found);
 
     if (found && StringUtils::boolean(detailsStr)) {
       result.add("details", VPackValue(VPackValueType::Object));

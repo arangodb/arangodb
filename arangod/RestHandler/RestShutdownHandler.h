@@ -24,10 +24,10 @@
 #ifndef ARANGOD_REST_HANDLER_REST_SHUTDOWN_HANDLER_H
 #define ARANGOD_REST_HANDLER_REST_SHUTDOWN_HANDLER_H 1
 
-#include "Basics/Common.h"
-#include "ApplicationServer/ApplicationServer.h"
-#include "Rest/HttpResponse.h"
 #include "RestHandler/RestBaseHandler.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Rest/HttpResponse.h"
 
 namespace arangodb {
 
@@ -37,7 +37,7 @@ namespace arangodb {
 
 class RestShutdownHandler : public RestBaseHandler {
  public:
-  RestShutdownHandler(rest::HttpRequest*, void* applicationServer);
+  RestShutdownHandler(HttpRequest*, void* applicationServer);
 
  public:
   bool isDirect() const override;
@@ -53,7 +53,7 @@ class RestShutdownHandler : public RestBaseHandler {
   /// @brief application server
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::rest::ApplicationServer* _applicationServer;
+  application_features::ApplicationServer* _applicationServer;
 };
 }
 
