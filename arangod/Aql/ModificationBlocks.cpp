@@ -622,11 +622,20 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
         AqlValue const& insertDoc = res->getValueReference(i, insertRegisterId);
 
         if (insertDoc.isObject()) {
-          OperationResult opRes = _trx->insert(_collection->name, insertDoc.slice(), options);
-          errorCode = opRes.code; 
+          VPackSlice toInsert = insertDoc.slice();
+          LOG(INFO) << _isDBServer << " t " << !_usesDefaultSharding << " f " << toInsert.hasKey(TRI_VOC_ATTRIBUTE_KEY);
 
-          if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
-            result->setValue(dstRow, _outRegNew, AqlValue(opRes.slice().get("new")));
+          if (_isDBServer && !_usesDefaultSharding &&
+              toInsert.hasKey(TRI_VOC_ATTRIBUTE_KEY)) {
+            errorCode = TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY;
+          } else {
+
+            OperationResult opRes = _trx->insert(_collection->name, toInsert, options);
+            errorCode = opRes.code; 
+
+            if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
+              result->setValue(dstRow, _outRegNew, AqlValue(opRes.slice().get("new")));
+            }
           }
         } else {
           errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
