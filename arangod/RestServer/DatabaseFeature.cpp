@@ -214,6 +214,12 @@ void DatabaseFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
+  // otherwise openthe log file for writing
+  if (!wal::LogfileManager::instance()->open()) {
+    LOG(FATAL) << "Unable to finish WAL recovery procedure";
+    FATAL_ERROR_EXIT();
+  }
+
   // upgrade the database
   upgradeDatabase();
 }
@@ -527,10 +533,6 @@ void DatabaseFeature::closeDatabases() {
   openDatabases(checkVersion, performUpgraden, iterateMarkersOnOpen);
 
   if (!checkVersion) {
-    if (!wal::LogfileManager::instance()->open()) {
-      LOG(FATAL) << "Unable to finish WAL recovery procedure";
-      FATAL_ERROR_EXIT();
-    }
   }
 
   // fetch the system database

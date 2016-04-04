@@ -460,6 +460,93 @@ void RandomGenerator::initialize(RandomType type) {
   }
 }
 
-void RandomGenerator::shutdown() {
-  _device.reset(nullptr);
+void RandomGenerator::shutdown() { _device.reset(nullptr); }
+
+int16_t RandomGenerator::interval(int16_t left, int16_t right) {
+  return static_cast<int16_t>(interval(static_cast<int32_t>(left), static_cast<int32_t>(right)));
+}
+
+int32_t RandomGenerator::interval(int32_t left, int32_t right) {
+  MUTEX_LOCKER(locker, _lock);
+
+  if (_device == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "random generator not initialized");
+  }
+
+  return _device->interval(left, right);
+}
+
+int64_t RandomGenerator::interval(int64_t left, int64_t right) {
+  if (left >= right) {
+    return left;
+  }
+
+  if (left == INT64_MIN && right == INT64_MAX) {
+    uint64_t r1 = interval(UINT32_MAX);
+    uint64_t r2 = interval(UINT32_MAX);
+
+    return static_cast<int64_t>((r1 << 32) | r2);
+  }
+
+  uint64_t high = static_cast<uint64_t>(right);
+  uint64_t low = static_cast<uint64_t>(-left);
+
+  if (left < 0) {
+    uint64_t d = high + low;
+    uint64_t dRandom = interval(d);
+
+    if (dRandom < low) {
+      return -1 - static_cast<int64_t>(dRandom);
+    }
+    else {
+      return static_cast<int64_t>(dRandom - low);
+    }
+  }
+  else {
+    uint64_t d = high - low;
+    return static_cast<int64_t>(interval(d)) + low;
+  }
+}
+
+uint16_t RandomGenerator::interval(uint16_t right) {
+  return static_cast<uint16_t>(static_cast<uint32_t>(right));
+}
+
+uint32_t RandomGenerator::interval(uint32_t right) {
+  MUTEX_LOCKER(locker, _lock);
+
+  if (_device == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "random generator not initialized");
+  }
+
+  return _device->interval(static_cast<uint32_t>(0), right);
+}
+
+uint64_t RandomGenerator::interval(uint64_t right) {
+  if (right == 0) {
+    return 0;
+  }
+
+  if (right == UINT64_MAX) {
+    uint64_t r1 = interval(UINT32_MAX);
+    uint64_t r2 = interval(UINT32_MAX);
+
+    return (r1 << 32) | r2;
+  }
+
+  uint32_t high = static_cast<uint32_t>(right >> 32);
+  uint32_t highMax = (static_cast<uint64_t>(high)) << 32;
+  uint64_t highRandom = (static_cast<uint64_t>(interval(high))) << 32;
+
+  if (highRandom == highMax) {
+    uint32_t low = static_cast<uint32_t>(right - highMax);
+    uint64_t lowRandom = static_cast<uint64_t>(interval(low));
+    return highRandom | lowRandom;
+  }
+  else {
+    uint64_t lowRandom = static_cast<uint64_t>(interval(UINT32_MAX));
+    return highRandom | lowRandom;
+  }
 }

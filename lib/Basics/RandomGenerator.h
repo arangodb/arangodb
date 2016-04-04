@@ -82,29 +82,13 @@ class RandomGenerator {
   static void initialize(RandomType);
   static void shutdown();
 
-  template <typename T>
-  static T interval(T left, T right) {
-    MUTEX_LOCKER(locker, _lock);
+  static int16_t interval(int16_t, int16_t);
+  static int32_t interval(int32_t, int32_t);
+  static int64_t interval(int64_t, int64_t);
 
-    if (_device == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "random generator not initialized");
-    }
-
-    return _device->interval(left, right);
-  }
-
-  template <typename T>
-  static T interval(T right) {
-    MUTEX_LOCKER(locker, _lock);
-
-    if (_device == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "random generator not initialized");
-    }
-
-    return _device->interval(static_cast<T>(0), right);
-  }
+  static uint16_t interval(uint16_t);
+  static uint32_t interval(uint32_t);
+  static uint64_t interval(uint64_t);
 
  private:
   static Mutex _lock;

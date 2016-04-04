@@ -113,7 +113,7 @@ int main(int argc, char* argv[]) {
   shutdown->disable();
   server.addFeature(shutdown.release());
 
-#ifdef TRI_HAVE_FORK
+#ifdef ARANGODB_HAVE_FORK
   server.addFeature(new DaemonFeature(&server));
 
   {

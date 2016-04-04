@@ -131,8 +131,6 @@ void SynchronizerThread::run() {
 ////////////////////////////////////////////////////////////////////////////////
 
 int SynchronizerThread::doSync(bool& checkMore) {
-#warning TODO
-#if 0
   checkMore = false;
 
   // get region to sync
@@ -155,8 +153,8 @@ int SynchronizerThread::doSync(bool& checkMore) {
 
   bool result = TRI_MSync(fd, region.mem, region.mem + region.size);
 
-  LOG(TRACE) << "syncing logfile " << id << ", region " << region.mem << " - "
-             << (region.mem + region.size) << ", length: " << region.size
+  LOG(TRACE) << "syncing logfile " << id << ", region " << (void*) region.mem << " - "
+             << (void*)(region.mem + region.size) << ", length: " << region.size
              << ", wfs: " << (region.waitForSync ? "true" : "false");
 
   if (!result) {
@@ -200,7 +198,6 @@ int SynchronizerThread::doSync(bool& checkMore) {
 
   _logfileManager->slots()->returnSyncRegion(region);
   return TRI_ERROR_NO_ERROR;
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -208,13 +205,10 @@ int SynchronizerThread::doSync(bool& checkMore) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int SynchronizerThread::getLogfileDescriptor(Logfile::IdType id) {
-#warning TODO
-#if 0
   if (id != _logfileCache.id || _logfileCache.id == 0) {
     _logfileCache.id = id;
     _logfileCache.fd = _logfileManager->getLogfileDescriptor(id);
   }
 
   return _logfileCache.fd;
-#endif
 }

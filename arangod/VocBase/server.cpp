@@ -113,8 +113,9 @@ static TRI_server_id_t ServerId;
 ////////////////////////////////////////////////////////////////////////////////
 
 static int GenerateServerId(void) {
-#warning TODO
-  // ServerID = RandomGenerator::interval(SERVER_ID_MASK);
+  do {
+    ServerId = RandomGenerator::interval(SERVER_ID_MASK);
+  } while (ServerId == 0);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1206,9 +1207,8 @@ int TRI_InitServer(TRI_server_t* server,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitServerGlobals() {
-  ServerIdentifier = RandomGenerator::interval(UINT16_MAX);
+  ServerIdentifier = RandomGenerator::interval((uint16_t) UINT16_MAX);
   PageSize = (size_t)getpagesize();
-
   memset(&ServerId, 0, sizeof(TRI_server_id_t));
 }
 

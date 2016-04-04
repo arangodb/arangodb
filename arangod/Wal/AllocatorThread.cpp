@@ -92,10 +92,7 @@ void AllocatorThread::signal(uint32_t markerSize) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int AllocatorThread::createReserveLogfile(uint32_t size) {
-#warning TODO
-#if 0
   return _logfileManager->createReserveLogfile(size);
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -103,8 +100,6 @@ int AllocatorThread::createReserveLogfile(uint32_t size) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void AllocatorThread::run() {
-#warning TODO
-#if 0
   while (!isStopping()) {
     uint32_t requestedSize = 0;
 
@@ -160,5 +155,4 @@ void AllocatorThread::run() {
       guard.wait(Interval);
     }
   }
-#endif
 }
