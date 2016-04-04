@@ -567,6 +567,7 @@ function checkInstanceAliveAgency(instanceInfo, options) {
 function checkRemoteInstance(pid, wait, options) {
   const debug = options.debug || false;
   const p = JSON.stringify(pid);
+  
   const res = JSON.parse(arango.PUT("/_admin/execute",
     `return require("internal").statusExternal(${p}, ${wait});`));
 
@@ -579,43 +580,39 @@ function checkRemoteInstance(pid, wait, options) {
 
 function checkInstanceAliveCluster(instanceInfo, options) {
   let clusterFit = true;
+  
+  for (let pid in instanceInfo.pids) {
+    if (instanceInfo.pids.hasOwnProperty(pid)) {
+      const checkpid = instanceInfo.pids[pid];
+      const ress = checkRemoteInstance(checkpid, false, options);
 
-  for (let part in instanceInfo.kickstarter.runInfo) {
-    if (instanceInfo.kickstarter.runInfo[part].hasOwnProperty("pids")) {
-      for (let pid in instanceInfo.kickstarter.runInfo[part].pids) {
-        if (instanceInfo.kickstarter.runInfo[part].pids.hasOwnProperty(pid)) {
-          const checkpid = instanceInfo.kickstarter.runInfo[part].pids[pid];
-          const ress = checkRemoteInstance(checkpid, false, options);
+      if (ress.hasOwnProperty('signal') &&
+          ((ress.signal === 11) || (ress.signal === 6))) {
+        const storeArangodPath = "/var/tmp/arangod_" + checkpid.pid;
 
-          if (ress.hasOwnProperty('signal') &&
-            ((ress.signal === 11) || (ress.signal === 6))) {
-            const storeArangodPath = "/var/tmp/arangod_" + checkpid.pid;
+        print("Core dump written; copying arangod to " +
+            storeArangodPath + " for later analysis.");
 
-            print("Core dump written; copying arangod to " +
-              storeArangodPath + " for later analysis.");
+        ress.gdbHint = "Run debugger with 'gdb " +
+          storeArangodPath +
+          " /var/tmp/core*" + checkpid.pid + "*'";
 
-            ress.gdbHint = "Run debugger with 'gdb " +
-              storeArangodPath +
-              " /var/tmp/core*" + checkpid.pid + "*'";
-
-            if (platform.substr(0, 3) === 'win') {
-              // Windows: wait for procdump to do its job...
-              checkRemoteInstance(instanceInfo.monitor, true, options);
-              analyzeCoreDumpWindows(instanceInfo);
-            } else {
-              fs.copyFile("bin/arangod", storeArangodPath);
-              analyzeCoreDump(instanceInfo, options, storeArangodPath, checkpid.pid);
-            }
-
-            instanceInfo.exitStatus = ress;
-            clusterFit = false;
-          }
+        if (platform.substr(0, 3) === 'win') {
+          // Windows: wait for procdump to do its job...
+          checkRemoteInstance(instanceInfo.monitor, true, options);
+          analyzeCoreDumpWindows(instanceInfo);
+        } else {
+          fs.copyFile("bin/arangod", storeArangodPath);
+          analyzeCoreDump(instanceInfo, options, storeArangodPath, checkpid.pid);
         }
+
+        instanceInfo.exitStatus = ress;
+        clusterFit = false;
       }
     }
   }
 
-  if (clusterFit && instanceInfo.kickstarter.isHealthy()) {
+  if (clusterFit) {
     return true;
   } else {
     print("marking crashy");
@@ -1245,41 +1242,86 @@ function shutdownInstance(instanceInfo, options) {
   }
 
   if (options.cluster) {
-    let rc = instanceInfo.kickstarter.shutdown();
-
-    if (!options.skipLogAnalysis) {
-      instanceInfo.importantLogLines = readImportantLogLines(instanceInfo.tmpDataDir);
+    if (instanceInfo.exitStatus === undefined) {
+      instanceInfo.exitStatus = [];
     }
+    // mop: currently it seems killing the agency first renders the other servers unusable :S
+    for (let i=instanceInfo.pids.length - 1;i>=0;i--) {
+      if (instanceInfo.exitStatus[i] === undefined) {
+        print(instanceInfo.urls[i] + "/_admin/shutdown");
+        download(instanceInfo.urls[i] + "/_admin/shutdown", "",
+          makeAuthorizationHeaders(options));
 
-    if (options.cleanup) {
-      instanceInfo.kickstarter.cleanup();
-    }
+        print("Waiting for server with pid " + instanceInfo.pids[i].pid + " to shut down");
 
-    if (rc.error && rc.results !== undefined) {
-      for (let i = 0; i < rc.results.length; ++i) {
-        if (rc.results[i].hasOwnProperty('isStartServers') &&
-          (rc.results[i].isStartServers === true)) {
-          for (let serverState in rc.results[i].serverStates) {
-            if (rc.results[i].serverStates.hasOwnProperty(serverState)) {
-              if ((rc.results[i].serverStates[serverState].status === "NOT-FOUND") ||
-                (rc.results[i].serverStates[serverState].hasOwnProperty('signal'))) {
-                print("Server " + serverState + " shut down with:\n" +
-                  yaml.safeDump(rc.results[i].serverStates[serverState]));
+        let count = 0;
+        let bar = "[";
 
-                if (!serverCrashed) {
-                  print("marking run as crashy");
-                  serverCrashed = true;
-                }
-              }
+        let timeout = 600;
+
+        if (options.sanitizer) {
+          timeout *= 2;
+        }
+
+        if (instanceInfo.exitStatus === undefined) {
+          instanceInfo.exitStatus = [];
+        }
+        while (true) {
+          instanceInfo.exitStatus[i] = statusExternal(instanceInfo.pids[i], false);
+
+          if (instanceInfo.exitStatus[i].status === "RUNNING") {
+            ++count;
+
+            if (options.valgrind) {
+              wait(1);
+              continue;
             }
+
+            if (count % 10 === 0) {
+              bar = bar + "#";
+            }
+
+            if (count > 600) {
+              print("forcefully terminating " + yaml.safeDump(instanceInfo.pids[i]) +
+                " after " + timeout + "s grace period; marking crashy.");
+              serverCrashed = true;
+              killExternal(instanceInfo.pids[i]);
+              break;
+            } else {
+              wait(1);
+            }
+          } else if (instanceInfo.exitStatus[i].status !== "TERMINATED") {
+            if (instanceInfo.exitStatus[i].hasOwnProperty('signal')) {
+              print("Server shut down with : " +
+                yaml.safeDump(instanceInfo.exitStatus[i]) +
+                " marking build as crashy.");
+
+              serverCrashed = true;
+              break;
+            }
+            if (platform.substr(0, 3) === 'win') {
+              // Windows: wait for procdump to do its job...
+              statusExternal(instanceInfo.monitor, true);
+            }
+          } else {
+            print("Server shutdown: Success.");
+            break; // Success.
           }
         }
+
+        if (count > 10) {
+          print("long Server shutdown: " + bar + ']');
+        }
+      } else {
+        print("Server already dead, doing nothing.");
+      }
+
+      if (!options.skipLogAnalysis) {
+        instanceInfo.importantLogLines =
+          readImportantLogLines(instanceInfo.tmpDataDir);
       }
     }
-
-    killExternal(instanceInfo.dispatcherPid);
   }
-
   // agency mode
   else if (options.agency) {
     if (instanceInfo.exitStatus === undefined) {
@@ -1496,103 +1538,97 @@ function startDispatcher(instanceInfo) {
 
 function startInstanceCluster(instanceInfo, protocol, options,
   addArgs, testname, appDir, tmpDataDir) {
-  startDispatcher(instanceInfo, options);
+  instanceInfo.urls = [];
+  let clusterArgs = options._extraArgs || {};
+  
+  let makeArgs = function(name, args) {
+    args = args || options.extraArgs;
 
-  const clusterNodes = options.clusterNodes;
+    let appDir = fs.join(tmpDataDir, name + '-apps');
+    fs.makeDirectoryRecursive(appDir);
+    
+    let tmpDir = fs.join(tmpDataDir, name + '-tmp');
+    fs.makeDirectoryRecursive(tmpDir);
+  
+    let subArgs = makeArgsArangod(options, appDir);
+    subArgs = _.extend(subArgs, args);
 
-  let extraArgs = makeArgsArangod(options, appDir);
-  extraArgs = _.extend(extraArgs, options.extraArgs);
+    return [subArgs, testname + '-' + 'agency', appDir, tmpDir];
+  }
+  options.agencySize = 1;
+  startInstanceAgency(instanceInfo, protocol, options, ...makeArgs('agency', clusterArgs));
+  
+  let agencyEndpoint = instanceInfo.endpoints[0];
+  let i;
+  for (i=0;i<options.clusterNodes;i++) {
+    let endpoint = protocol + "://127.0.0.1:" + findFreePort();
+    let primaryArgs = _.clone(options.extraArgs);
+    primaryArgs['server.endpoint'] = endpoint;
+    primaryArgs['cluster.my-address'] = endpoint;
+    primaryArgs['cluster.my-local-info'] = endpoint;
+    primaryArgs['cluster.my-role'] = 'PRIMARY';
+    primaryArgs['cluster.agency-endpoint'] = agencyEndpoint;
 
-  if (addArgs !== undefined) {
-    extraArgs = _.extend(extraArgs, addArgs);
+    startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('dbserver' + i, primaryArgs));
+    instanceInfo.endpoints.push(instanceInfo.endpoint);
+    instanceInfo.ports.push(instanceInfo.port);
+    instanceInfo.pids.push(instanceInfo.pid);
+    instanceInfo.urls.push(instanceInfo.url);
+  }
+  
+  let endpoint = protocol + "://127.0.0.1:" + findFreePort();
+  let coordinatorArgs = _.clone(options.extraArgs);
+  coordinatorArgs['server.endpoint'] = endpoint;
+  coordinatorArgs['cluster.my-address'] = endpoint;
+  coordinatorArgs['cluster.my-local-info'] = endpoint;
+  coordinatorArgs['cluster.my-role'] = 'COORDINATOR';
+  coordinatorArgs['cluster.agency-endpoint'] = agencyEndpoint;
+
+  startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('coordinator', coordinatorArgs));
+  
+  instanceInfo.endpoints.push(instanceInfo.endpoint);
+  instanceInfo.ports.push(instanceInfo.port);
+  instanceInfo.pids.push(instanceInfo.pid);
+  instanceInfo.urls.push(instanceInfo.url);
+  delete instanceInfo.endpoint;
+  delete instanceInfo.port;
+  delete instanceInfo.pid;
+  delete instanceInfo.url;
+
+  let notYetUp = instanceInfo.endpoints.slice();
+  while (notYetUp.length > 0) {
+    notYetUp = notYetUp.filter(notYet => {
+      let url = endpointToURL(notYet);
+      const reply = download(url + "/_api/version", "", makeAuthorizationHeaders(options));
+      return reply.code != 200;
+    });
+    wait(0.5);
   }
 
-  const dispatcher = {
-    "endpoint": "tcp://127.0.0.1:",
-    "arangodExtraArgs": toArgv(extraArgs),
-    "username": "root",
-    "password": ""
-  };
+  let coordinatorUrl = endpointToURL(instanceInfo.endpoints[instanceInfo.endpoints.length - 1]);
+  let response;
+  let httpOptions = makeAuthorizationHeaders(options);
+  httpOptions.method = 'POST';
+  httpOptions.returnBodyOnError = true;
+  
+  response = download(coordinatorUrl + '/_admin/cluster/bootstrapDbServers', '{"isRelaunch":false}', httpOptions);
 
-  print("Temporary cluster data and logs are in", tmpDataDir);
-
-  let runInValgrind = "";
-  let testfn = "";
-
-  if (options.valgrind) {
-    runInValgrind = options.valgrind;
-
-    testfn = options.valgrindFileBase;
-
-    if (testfn.length > 0) {
-      testfn += '_';
-    }
-
-    testfn += "cluster";
+  while (response.code != 200) {
+    console.log('bootstrap dbservers failed');
+    wait(1);
+  }
+  
+  response = download(coordinatorUrl + '/_admin/cluster/upgradeClusterDatabase', '{"isRelaunch":false}', httpOptions);
+  if (response.code != 200) {
+    throw new Error('Upgrading DB failed');
+  }
+  
+  response = download(coordinatorUrl + '/_admin/cluster/bootstrapCoordinator', '{"isRelaunch":false}', httpOptions);
+  if (response.code != 200) {
+    throw new Error('bootstraping coordinator failed');
   }
 
-  let valgrindHosts = '';
-
-  if (options.valgrindHosts) {
-    if (options.valgrindHosts.Coordinator === true) {
-      valgrindHosts += 'Coordinator';
-    }
-
-    if (options.valgrindHosts.DBServer === true) {
-      valgrindHosts += 'DBserver';
-    }
-  }
-
-  let valgrindOpts = {};
-
-  if (options.valgrindArgs) {
-    valgrindOpts = options.valgrindArgs;
-  }
-
-  let plan = new Planner({
-    "numberOfDBservers": clusterNodes,
-    "numberOfCoordinators": 1,
-    "dispatchers": {
-      "me": dispatcher
-    },
-    "dataPath": tmpDataDir,
-    "logPath": tmpDataDir,
-    "useSSLonCoordinators": protocol === "ssl",
-    "valgrind": runInValgrind,
-    "valgrindOpts": toArgv(valgrindOpts, true),
-    "valgrindXmlFileBase": testfn,
-    "valgrindTestname": testname,
-    "valgrindHosts": valgrindHosts,
-    "extremeVerbosity": options.extremeVerbosity
-  });
-
-  instanceInfo.kickstarter = new Kickstarter(plan.getPlan());
-
-  let rc = instanceInfo.kickstarter.launch();
-
-  if (rc.error) {
-    print("Cluster startup failed: " + rc.errorMessage);
-    return false;
-  }
-
-  let runInfo = instanceInfo.kickstarter.runInfo;
-  let j = runInfo.length - 1;
-
-  while (j > 0 && runInfo[j].isStartServers === undefined) {
-    --j;
-  }
-
-  if ((runInfo.length === 0) || (runInfo[0].error === true)) {
-    let error = new Error();
-    error.errorMessage = yaml.safeDump(runInfo);
-    throw error;
-  }
-
-  let roles = runInfo[j].roles;
-  let endpoints = runInfo[j].endpoints;
-  let pos = roles.indexOf("COORDINATOR");
-
-  instanceInfo.endpoint = endpoints[pos];
+  arango.reconnect(endpoint, "_system", 'root', '');
 
   return true;
 }
@@ -1661,16 +1697,23 @@ function startInstanceAgency(instanceInfo, protocol, options,
 
 function startInstanceSingleServer(instanceInfo, protocol, options,
   addArgs, testname, appDir, tmpDataDir) {
-  const port = findFreePort();
+  let args = makeArgsArangod(options, appDir);
+  
+  let endpoint;
+  let port;
+  if (!addArgs["server.endpoint"]) {
+    port = findFreePort();
+    endpoint = protocol + "://127.0.0.1:" + port;
+  } else {
+    endpoint = addArgs["server.endpoint"];
+    port = endpoint.split(":").pop();
+  }
   instanceInfo.port = port;
-
-  const endpoint = protocol + "://127.0.0.1:" + port;
   instanceInfo.endpoint = endpoint;
 
   let td = fs.join(tmpDataDir, "data");
   fs.makeDirectoryRecursive(td);
 
-  let args = makeArgsArangod(options, appDir);
   args["server.endpoint"] = endpoint;
   args["database.directory"] = td;
   args["log.file"] = fs.join(tmpDataDir, "log");
@@ -1684,7 +1727,6 @@ function startInstanceSingleServer(instanceInfo, protocol, options,
   if (addArgs !== undefined) {
     args = _.extend(args, addArgs);
   }
-
   instanceInfo.pid = executeValgrind(ARANGOD_BIN, toArgv(args), options, testname);
 
   return true;

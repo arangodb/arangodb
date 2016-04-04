@@ -32,53 +32,97 @@
 #include <velocypack/velocypack-aliases.h> 
 
 #include <chrono>
+#include <iomanip>
 #include <thread>
 
 using namespace arangodb::consensus;
 using namespace arangodb::rest;
 using namespace arangodb::velocypack;
 
+#include <iostream>
+// Configure with agent's configuration
 void Constituent::configure(Agent* agent) {
+
   _agent = agent;
+
   if (size() == 1) {
     _role = LEADER;
   } else {
     try {
       _votes.resize(size());
     } catch (std::exception const& e) {
-      LOG_TOPIC(ERR, Logger::AGENCY) << "Cannot resize votes vector to " << size();
+      LOG_TOPIC(ERR, Logger::AGENCY) <<
+        "Cannot resize votes vector to " << size();
       LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
     }
+    
     _id = _agent->config().id;
     if (_agent->config().notify) {// (notify everyone) 
       notifyAll();
     }
+    std::cout<< __FILE__ << __LINE__ << std::endl;
   }
+  
 }
 
+// Default ctor
 Constituent::Constituent() :
   Thread("Constituent"), _term(0), _leader_id(0), _id(0), _gen(std::random_device()()),
   _role(FOLLOWER), _agent(0) {}
 
+// Shutdown if not already
 Constituent::~Constituent() {
   shutdown();
 }
 
+// Random sleep times in election process
 duration_t Constituent::sleepFor (double min_t, double max_t) {
   dist_t dis(min_t, max_t);
   return duration_t((long)std::round(dis(_gen)*1000.0));
 }
 
+// Get my term
 term_t Constituent::term() const {
   return _term;
 }
 
+// Update my term
 void Constituent::term(term_t t) {
+
   if (_term != t) {
+
+    _term  = t;
+
     LOG_TOPIC(INFO, Logger::AGENCY) << "Updating term to " << t;
-    _agent->persist(_term = t, _leader_id);
+
+    static std::string const path = "/_api/document?collection=election";
+    std::map<std::string, std::string> headerFields;
+    
+    Builder body;
+    body.add(VPackValue(VPackValueType::Object));
+    std::ostringstream i_str;
+    i_str << std::setw(20) << std::setfill('0') << _term;
+    body.add("_key", Value(i_str.str()));
+    body.add("term", Value(_term));
+    body.add("voted_for", Value((uint32_t)_voted_for));
+    body.close();
+    
+    std::unique_ptr<arangodb::ClusterCommResult> res =
+      arangodb::ClusterComm::instance()->syncRequest(
+        "1", 1, _agent->config().end_point, GeneralRequest::RequestType::POST,
+        path, body.toJson(), headerFields, 0.0);
+    
+    if (res->status != CL_COMM_SENT) {
+      LOG_TOPIC(ERR, Logger::AGENCY) << res->status << ": " << CL_COMM_SENT
+                                     << ", " << res->errorMessage;
+      LOG_TOPIC(ERR, Logger::AGENCY)
+        << res->result->getBodyVelocyPack()->toJson();
+    }
+    
   }
+  
 }
+
 
 role_t Constituent::role () const {
   return _role;
@@ -286,6 +330,34 @@ void Constituent::beginShutdown() {
 #include <iostream>
 void Constituent::run() {
   
+  // Path
+  std::string path("/_api/cursor");
+  
+  // Body
+  Builder tmp;
+  tmp.openObject();
+  std::string query ("FOR l IN election SORT l._key DESC LIMIT 1 RETURN l");
+  tmp.add("query", VPackValue(query));
+  tmp.close();
+  
+  // Request
+  std::map<std::string, std::string> headerFields;
+  std::unique_ptr<arangodb::ClusterCommResult> res =
+    arangodb::ClusterComm::instance()->syncRequest(
+      "1", 1, _agent->config().end_point, GeneralRequest::RequestType::POST, path,
+      tmp.toJson(), headerFields, 1.0);
+  
+  // If success rebuild state deque
+  if (res->status == CL_COMM_SENT) {
+    std::shared_ptr<Builder> body = res->result->getBodyVelocyPack();
+    if (body->slice().hasKey("result")) {
+      for (auto const& i : VPackArrayIterator(body->slice().get("result"))) {
+        _term = i.get("term").getUInt();
+        _voted_for = i.get("voted_for").getUInt();
+      }
+    }
+  }
+  
   // Always start off as follower
   while (!this->isStopping() && size() > 1) { 
     if (_role == FOLLOWER) {
@@ -299,7 +371,7 @@ void Constituent::run() {
       callElection();                          // Run for office
     }
   }
-
+  
 }
 
 

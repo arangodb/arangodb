@@ -26,6 +26,8 @@
 
 #include "Basics/Common.h"
 
+#include "HttpServer/ApplicationEndpointServer.h"
+
 #include "ApplicationServer/ApplicationFeature.h"
 #include "Agency/Agent.h"
 
@@ -49,7 +51,7 @@ class ApplicationAgency : virtual public arangodb::rest::ApplicationFeature {
   
  public:
 
-  ApplicationAgency();
+  ApplicationAgency(ApplicationEndpointServer*);
 
 
   ~ApplicationAgency();
@@ -57,45 +59,30 @@ class ApplicationAgency : virtual public arangodb::rest::ApplicationFeature {
   
  public:
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief builds the dispatcher queue
-  //////////////////////////////////////////////////////////////////////////////
-
   void buildStandardQueue(size_t nrThreads, size_t maxSize);
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief builds the additional AQL dispatcher queue
-  //////////////////////////////////////////////////////////////////////////////
-
   void buildAQLQueue(size_t nrThreads, size_t maxSize);
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief builds an additional dispatcher queue
-  //////////////////////////////////////////////////////////////////////////////
-
   void buildExtraQueue(size_t name, size_t nrThreads, size_t maxSize);
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the number of used threads
-  //////////////////////////////////////////////////////////////////////////////
-
   size_t size();
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief sets the processor affinity
-  //////////////////////////////////////////////////////////////////////////////
-
   void setProcessorAffinity(std::vector<size_t> const& cores);
 
+  /// @brief stop feature
   void stop () override;
 
   
  public:
 
+  /// @brief setup options
   void setupOptions(std::map<std::string,
                     arangodb::basics::ProgramOptionsDescription>&) override final;
-
-  virtual bool afterOptionParsing (arangodb::basics::ProgramOptions &) override final;
 
   bool prepare() override final;
   bool start() override final;
@@ -115,6 +102,8 @@ class ApplicationAgency : virtual public arangodb::rest::ApplicationFeature {
   std::vector<std::string> _agency_endpoints; /**< @brief agency adresses */
   std::unique_ptr<agent_t> _agent;
   uint32_t _agent_id;
+
+  ApplicationEndpointServer* _endpointServer;
 
 };
 }
