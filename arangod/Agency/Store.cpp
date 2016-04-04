@@ -637,10 +637,6 @@ void Store::clearTimeTable () {
       break;
     }
   }
-<<<<<<< HEAD
-=======
-
->>>>>>> 5caf02768c711fe1d811bb58d5451f86ac38b02f
 }
 
 
