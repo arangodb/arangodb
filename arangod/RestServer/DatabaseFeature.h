@@ -73,8 +73,8 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
 
  private:
   TRI_vocbase_t* _vocbase;
-  TRI_server_t* _server;
-  aql::QueryRegistry* _queryRegistry;
+  std::unique_ptr<TRI_server_t> _server;
+  std::unique_ptr<aql::QueryRegistry> _queryRegistry;
   std::string _databasePath;
   std::unique_ptr<basics::ThreadPool> _indexPool;
   bool _replicationApplier;

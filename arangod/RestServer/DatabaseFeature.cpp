@@ -182,16 +182,16 @@ void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 void DatabaseFeature::start() {
   // create the server
   TRI_InitServerGlobals();
-  _server = new TRI_server_t();
+  _server.reset(new TRI_server_t());
 
   // create the query registery
-  _queryRegistry = new aql::QueryRegistry();
-  _server->_queryRegistry = _queryRegistry;
+  _queryRegistry.reset(new aql::QueryRegistry());
+  _server->_queryRegistry = _queryRegistry.get();
 
   // start the WAL manager (but do not open it yet)
   LOG(TRACE) << "starting WAL logfile manager";
 
-  wal::LogfileManager::initialize(&_databasePath, _server);
+  wal::LogfileManager::initialize(&_databasePath, _server.get());
 
   if (!wal::LogfileManager::instance()->prepare() ||
       !wal::LogfileManager::instance()->start()) {
@@ -228,15 +228,17 @@ void DatabaseFeature::stop() {
   // clear the query registery
   _server->_queryRegistry = nullptr;
 
-  delete _queryRegistry;
-  _queryRegistry = nullptr;
-
   // close all databases
   closeDatabases();
+
+  // delete the server
+  TRI_StopServer(_server.get());
+
+  LOG(INFO) << "ArangoDB has been shut down";
 }
 
 void DatabaseFeature::updateContexts() {
-  _vocbase = TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
+  _vocbase = TRI_UseDatabaseServer(_server.get(), TRI_VOC_SYSTEM_DATABASE);
 
   if (_vocbase == nullptr) {
     LOG(FATAL)
@@ -244,8 +246,8 @@ void DatabaseFeature::updateContexts() {
     FATAL_ERROR_EXIT();
   }
 
-  auto queryRegistry = _queryRegistry;
-  auto server = _server;
+  auto queryRegistry = _queryRegistry.get();
+  auto server = _server.get();
   auto vocbase = _vocbase;
 
   V8DealerFeature::DEALER->updateContexts(
@@ -456,7 +458,7 @@ void DatabaseFeature::openDatabases() {
       !wal::LogfileManager::instance()->hasFoundLastTick();
 
   int res =
-      TRI_InitServer(_server, _indexPool.get(), _databasePath.c_str(), nullptr,
+    TRI_InitServer(_server.get(), _indexPool.get(), _databasePath.c_str(), nullptr,
                      &defaults, !_replicationApplier, iterateMarkersOnOpen);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -464,7 +466,7 @@ void DatabaseFeature::openDatabases() {
     FATAL_ERROR_EXIT();
   }
 
-  res = TRI_StartServer(_server, _checkVersion, _upgrade);
+  res = TRI_StartServer(_server.get(), _checkVersion, _upgrade);
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (_checkVersion && res == TRI_ERROR_ARANGO_EMPTY_DATADIR) {
@@ -489,16 +491,12 @@ void DatabaseFeature::closeDatabases() {
 
   // stop the replication appliers so all replication transactions can end
   if (_replicationApplier) {
-    TRI_StopReplicationAppliersServer(_server);
+    TRI_StopReplicationAppliersServer(_server.get());
   }
 
   // enforce logfile manager shutdown so we are sure no one else will
   // write to the logs
   wal::LogfileManager::instance()->stop();
-
-  TRI_StopServer(_server);
-
-  LOG(INFO) << "ArangoDB has been shut down";
 }
 
 #if 0
