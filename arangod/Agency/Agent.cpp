@@ -37,43 +37,51 @@ namespace consensus {
 
 Agent::Agent () : Thread ("Agent"), _last_commit_index(0) {}
 
+/// @brief Agent configuration
 Agent::Agent (config_t const& config) :
   Thread ("Agent"), _config(config), _last_commit_index(0) {
-  _state.setEndPoint(_config.end_points[this->id()]);
+  _state.setEndPoint(_config.end_point);
   _constituent.configure(this);
-  _confirmed.resize(size(),0);
+  _confirmed.resize(size(),0); // agency's size and reset to 0
 }
 
-id_t Agent::id() const { return _config.id;}
+/// @brief This agent's id
+id_t Agent::id() const {
+  return _config.id;
+}
 
+/// @brief Shutdown
 Agent::~Agent () {
   shutdown();
 }
 
+/// @brief State machine
 State const& Agent::state () const {
   return _state;
 }
 
-/// @brief Start all agency threads
+/// @brief Start all agent thread
 bool Agent::start() {
-
   LOG_TOPIC(INFO, Logger::AGENCY) << "Starting agency comm worker.";
   Thread::start();
-
   return true;
 }
 
+/// @brief This agent's term
 term_t Agent::term () const {
   return _constituent.term();
 }
 
+/// @brief Agency size
 inline size_t Agent::size() const {
   return _config.size();
 }
 
+/// @brief Handle vote request
 priv_rpc_ret_t Agent::requestVote(term_t t, id_t id, index_t lastLogIndex,
                                   index_t lastLogTerm, query_t const& query) {
 
+  /// Are we receiving new endpoints
   if (query != nullptr) { // record new endpoints
     if (query->slice().hasKey("endpoints") && 
         query->slice().get("endpoints").isArray()) {
@@ -83,27 +91,34 @@ priv_rpc_ret_t Agent::requestVote(term_t t, id_t id, index_t lastLogIndex,
       }
     }
   }
-    
-  return priv_rpc_ret_t(  // vote
+
+  /// Constituent handles this
+  return priv_rpc_ret_t( 
     _constituent.vote(t, id, lastLogIndex, lastLogTerm), this->term());
+  
 }
 
+/// @brief Get configuration
 config_t const& Agent::config () const {
   return _config;
 }
 
+/// @brief Leader's id
 id_t Agent::leaderID () const {
   return _constituent.leaderID();
 }
 
+/// @brief Are we leading?
 bool Agent::leading() const {
   return _constituent.leading();
 }
 
+/// @brief Persist term and id we vote for
 void Agent::persist(term_t t, id_t i) {
 //  _state.persist(t, i);
 }
 
+/// @brief Waits here for confirmation of log's commits up to index
 bool Agent::waitFor (index_t index, duration_t timeout) {
 
   if (size() == 1) // single host agency
@@ -111,7 +126,8 @@ bool Agent::waitFor (index_t index, duration_t timeout) {
     
   CONDITION_LOCKER(guard, _rest_cv);
   auto start = std::chrono::system_clock::now();
-  
+
+  // Wait until woken up through AgentCallback 
   while (true) {
 
     _rest_cv.wait();
@@ -124,6 +140,7 @@ bool Agent::waitFor (index_t index, duration_t timeout) {
     if (std::chrono::system_clock::now() - start > timeout) {
       return false;
     }
+    /// success?
     if (_last_commit_index >= index) {
       return true;
     }
@@ -132,6 +149,7 @@ bool Agent::waitFor (index_t index, duration_t timeout) {
   TRI_ASSERT(false);
 }
 
+/// @brief AgentCallback reports id of follower and its highest processed index
 void Agent::reportIn (id_t id, index_t index) {
   MUTEX_LOCKER(mutexLocker, _ioLock);
 
@@ -155,6 +173,7 @@ void Agent::reportIn (id_t id, index_t index) {
   _rest_cv.broadcast();            // wake up REST handlers
 }
 
+/// @brief Append entries for followers
 bool Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
   term_t prevTerm, index_t leaderCommitIndex, query_t const& queries) {
   //Update commit index
@@ -189,9 +208,9 @@ bool Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
 }
 
 #include <iostream>
-append_entries_t Agent::sendAppendEntriesRPC (id_t slave_id) {
+append_entries_t Agent::sendAppendEntriesRPC (id_t follower_id) {
 
-  index_t last_confirmed = _confirmed[slave_id];
+  index_t last_confirmed = _confirmed[follower_id];
   std::vector<log_t> unconfirmed = _state.get(last_confirmed);
 
   // RPC path
@@ -221,14 +240,14 @@ append_entries_t Agent::sendAppendEntriesRPC (id_t slave_id) {
   if (unconfirmed.size() > 1) {
     LOG_TOPIC(INFO, Logger::AGENCY)
       << "Appending " << unconfirmed.size()-1 << " entries up to index " << last
-      << " to follower " << slave_id;
+      << " to follower " << follower_id;
   }
 
   arangodb::ClusterComm::instance()->asyncRequest
-    ("1", 1, _config.end_points[slave_id],
+    ("1", 1, _config.end_points[follower_id],
      arangodb::GeneralRequest::RequestType::POST,
      path.str(), std::make_shared<std::string>(builder.toJson()), headerFields,
-     std::make_shared<AgentCallback>(this, slave_id, last),
+     std::make_shared<AgentCallback>(this, follower_id, last),
      0, true);
 
   return append_entries_t(this->term(), true);

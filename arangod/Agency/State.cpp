@@ -129,10 +129,11 @@ bool State::log(query_t const& queries, term_t term, id_t lid,
       buf->append((char const*)i.get("query").begin(),
                   i.get("query").byteSize());
       _log.push_back(log_t(i.get("index").getUInt(), term, lid, buf));
+      persist(i.get("index").getUInt(), term, lid, i.get("query")); // log to disk
     } catch (std::exception const& e) {
       LOG(FATAL) << e.what();
     }
-    // save (builder);
+    
   }
   return true;
 }
@@ -261,4 +262,15 @@ bool State::loadCollection(std::string const& name) {
 
     return false;
   }
+}
+
+bool State::compact () {
+
+  // get read db at lastcommit % n == 0
+  // save read db with key 10
+  // update offset in logs
+  // delete
+
+  return true;
+  
 }

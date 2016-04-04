@@ -1063,13 +1063,6 @@ void ArangoServer::buildApplicationServer() {
   _applicationServer->addFeature(_applicationCluster);
 
   // .............................................................................
-  // agency options
-  // .............................................................................
-
-  _applicationAgency = new ApplicationAgency();
-  _applicationServer->addFeature(_applicationAgency);
-
-  // .............................................................................
   // server options
   // .............................................................................
 
@@ -1128,6 +1121,13 @@ void ArangoServer::buildApplicationServer() {
       _applicationServer, _applicationScheduler, _applicationDispatcher,
       _jobManager, "arangodb", &SetRequestContext, (void*)_server);
   _applicationServer->addFeature(_applicationEndpointServer);
+
+  // .............................................................................
+  // agency options
+  // .............................................................................
+
+  _applicationAgency = new ApplicationAgency(_applicationEndpointServer);
+  _applicationServer->addFeature(_applicationAgency);
 
   // .............................................................................
   // parse the command line options - exit if there is a parse error
