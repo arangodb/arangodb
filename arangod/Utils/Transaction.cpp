@@ -2484,6 +2484,64 @@ std::vector<std::shared_ptr<Index>> Transaction::indexesForCollection(
 /// @brief Get all indexes for a collection name, coordinator case
 //////////////////////////////////////////////////////////////////////////////
 
+std::shared_ptr<Index> Transaction::indexForCollectionCoordinator(
+    std::string const& name, std::string const& id) const {
+  auto clusterInfo = arangodb::ClusterInfo::instance();
+  auto collectionInfo =
+      clusterInfo->getCollection(std::string(_vocbase->_name), name);
+
+  if (collectionInfo.get() == nullptr || (*collectionInfo).empty()) {
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_INTERNAL,
+                                  "collection not found '%s' in database '%s'",
+                                  name.c_str(), _vocbase->_name);
+  }
+
+  TRI_json_t const* json = (*collectionInfo).getIndexes();
+  auto indexBuilder = arangodb::basics::JsonHelper::toVelocyPack(json);
+  VPackSlice const slice = indexBuilder->slice();
+
+  if (slice.isArray()) {
+    for (auto const& v : VPackArrayIterator(slice)) {
+      if (!v.isObject()) {
+        continue;
+      }
+      VPackSlice const idSlice = v.get("id");
+      if (!idSlice.isString()) {
+        // No id attribute. It is invalid.
+        continue;
+      }
+      std::string idxId = idSlice.copyString();
+      if (idxId == id) {
+        // We found the index we looked for
+        VPackSlice const type = v.get("type");
+        if (!type.isString()) {
+          // no "type" attribute. this is invalid.
+          break;
+        }
+        std::string typeString = type.copyString();
+        arangodb::Index::IndexType indexType 
+            = arangodb::Index::type(typeString.c_str());
+        std::shared_ptr<arangodb::Index> idx;
+        if (indexType == arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+          idx.reset(new arangodb::PrimaryIndex(v));
+        } else if (indexType  == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
+          idx.reset(new arangodb::EdgeIndex(v));
+        } else if (indexType  == arangodb::Index::TRI_IDX_TYPE_HASH_INDEX) {
+          idx.reset(new arangodb::HashIndex(v));
+        } else if (indexType  == arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
+          idx.reset(new arangodb::SkiplistIndex(v));
+        }
+        return idx;
+      }
+    }
+  }
+  return nullptr;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Get all indexes for a collection name, coordinator case
+//////////////////////////////////////////////////////////////////////////////
+
 std::vector<std::shared_ptr<Index>> Transaction::indexesForCollectionCoordinator(std::string const& name) const {
 
   std::vector<std::shared_ptr<Index>> indexes;
@@ -2498,7 +2556,7 @@ std::vector<std::shared_ptr<Index>> Transaction::indexesForCollectionCoordinator
                                   name.c_str(), _vocbase->_name);
   }
 
-  TRI_json_t const* json = (*collectionInfo).getIndexes();
+  TRI_json_t const* json = collectionInfo->getIndexes();
   auto indexBuilder = arangodb::basics::JsonHelper::toVelocyPack(json);
   VPackSlice const slice = indexBuilder->slice();
 
@@ -2547,7 +2605,27 @@ Transaction::IndexHandle Transaction::getIndexByIdentifier(
     std::string const& collectionName, std::string const& indexHandle) {
 
   if (ServerState::instance()->isCoordinator()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    if (indexHandle.empty()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "The index id cannot be empty.");
+    }
+
+    if (!arangodb::Index::validateId(indexHandle.c_str())) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
+    }
+
+    std::shared_ptr<Index> idx =
+        indexForCollectionCoordinator(collectionName, indexHandle);
+
+    if (idx == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
+                                     "Could not find index '" + indexHandle +
+                                         "' in collection '" +
+                                         collectionName + "'.");
+    }
+
+    // We have successfully found an index with the requested id.
+    return IndexHandle(idx);
   }
 
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
