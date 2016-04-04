@@ -32,12 +32,14 @@
 #include <velocypack/velocypack-aliases.h> 
 
 #include <chrono>
+#include <iomanip>
 #include <thread>
 
 using namespace arangodb::consensus;
 using namespace arangodb::rest;
 using namespace arangodb::velocypack;
 
+#include <iostream>
 // Configure with agent's configuration
 void Constituent::configure(Agent* agent) {
 
@@ -55,10 +57,10 @@ void Constituent::configure(Agent* agent) {
     }
     
     _id = _agent->config().id;
-
     if (_agent->config().notify) {// (notify everyone) 
       notifyAll();
     }
+    std::cout<< __FILE__ << __LINE__ << std::endl;
   }
   
 }
@@ -89,8 +91,9 @@ void Constituent::term(term_t t) {
 
   if (_term != t) {
 
-    LOG_TOPIC(INFO, Logger::AGENCY) << "Updating term to "
-                                    << t << "and persisting";
+    _term  = t;
+
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Updating term to " << t;
 
     static std::string const path = "/_api/document?collection=election";
     std::map<std::string, std::string> headerFields;
@@ -98,8 +101,9 @@ void Constituent::term(term_t t) {
     Builder body;
     body.add(VPackValue(VPackValueType::Object));
     std::ostringstream i_str;
-    i_str << std::setw(20) << std::setfill('0') << index;
-    body.add("term", Value(term));
+    i_str << std::setw(20) << std::setfill('0') << _term;
+    body.add("_key", Value(i_str.str()));
+    body.add("term", Value(_term));
     body.add("voted_for", Value((uint32_t)_voted_for));
     body.close();
     
@@ -326,6 +330,34 @@ void Constituent::beginShutdown() {
 #include <iostream>
 void Constituent::run() {
   
+  // Path
+  std::string path("/_api/cursor");
+  
+  // Body
+  Builder tmp;
+  tmp.openObject();
+  std::string query ("FOR l IN election SORT l._key DESC LIMIT 1 RETURN l");
+  tmp.add("query", VPackValue(query));
+  tmp.close();
+  
+  // Request
+  std::map<std::string, std::string> headerFields;
+  std::unique_ptr<arangodb::ClusterCommResult> res =
+    arangodb::ClusterComm::instance()->syncRequest(
+      "1", 1, _agent->config().end_point, GeneralRequest::RequestType::POST, path,
+      tmp.toJson(), headerFields, 1.0);
+  
+  // If success rebuild state deque
+  if (res->status == CL_COMM_SENT) {
+    std::shared_ptr<Builder> body = res->result->getBodyVelocyPack();
+    if (body->slice().hasKey("result")) {
+      for (auto const& i : VPackArrayIterator(body->slice().get("result"))) {
+        _term = i.get("term").getUInt();
+        _voted_for = i.get("voted_for").getUInt();
+      }
+    }
+  }
+  
   // Always start off as follower
   while (!this->isStopping() && size() > 1) { 
     if (_role == FOLLOWER) {
@@ -339,7 +371,7 @@ void Constituent::run() {
       callElection();                          // Run for office
     }
   }
-
+  
 }
 
 
