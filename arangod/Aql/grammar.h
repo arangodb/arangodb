@@ -120,7 +120,7 @@ extern int Aqldebug;
 
 union YYSTYPE
 {
-#line 19 "Aql/grammar.y" /* yacc.c:1915  */
+#line 19 "Aql/grammar.y" /* yacc.c:1909  */
 
   arangodb::aql::AstNode*  node;
   struct {
@@ -130,7 +130,7 @@ union YYSTYPE
   bool                     boolval;
   int64_t                  intval;
 
-#line 134 "Aql/grammar.hpp" /* yacc.c:1915  */
+#line 134 "Aql/grammar.hpp" /* yacc.c:1909  */
 };
 
 typedef union YYSTYPE YYSTYPE;

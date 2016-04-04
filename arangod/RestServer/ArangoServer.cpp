@@ -1088,7 +1088,7 @@ void ArangoServer::buildApplicationServer() {
                            "number of threads for basic operations")(
               "server.additional-threads", &_additionalThreads,
               "number of threads in additional queues")(
-              "server.hide-product-header", &HttpResponse::HideProductHeader,
+              "server.hide-product-header", &HttpResponse::HIDE_PRODUCT_HEADER,
               "do not expose \"Server: ArangoDB\" header in HTTP responses")(
               "server.foxx-queues", &_foxxQueues, "enable Foxx queues")(
               "server.foxx-queues-poll-interval", &_foxxQueuesPollInterval,

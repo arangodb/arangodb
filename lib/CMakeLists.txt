@@ -205,6 +205,7 @@ add_library(${LIB_ARANGO} STATIC
   Logger/Logger.cpp
   ProgramOptions/program-options.cpp
   Rest/GeneralRequest.cpp
+  Rest/GeneralResponse.cpp
   Rest/HttpRequest.cpp
   Rest/HttpResponse.cpp
   Rest/InitializeRest.cpp

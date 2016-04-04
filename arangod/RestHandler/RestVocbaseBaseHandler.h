@@ -155,20 +155,20 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   /// @brief generates a HTTP 201 or 202 response
   //////////////////////////////////////////////////////////////////////////////
 
-  void generate20x(rest::HttpResponse::HttpResponseCode, std::string const&,
+  void generate20x(GeneralResponse::ResponseCode, std::string const&,
                    TRI_voc_key_t, TRI_voc_rid_t, TRI_col_type_e);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates ok message without content
   //////////////////////////////////////////////////////////////////////////////
 
-  void generateOk() { createResponse(rest::HttpResponse::NO_CONTENT); }
+  void generateOk() { createResponse(GeneralResponse::ResponseCode::NO_CONTENT); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates ok message with no body but with certain status code
   //////////////////////////////////////////////////////////////////////////////
 
-  void generateOk(rest::HttpResponse::HttpResponseCode code) {
+  void generateOk(GeneralResponse::ResponseCode code) {
     createResponse(code);
   }
 
@@ -180,11 +180,11 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
                      TRI_voc_cid_t cid, TRI_doc_mptr_copy_t const& mptr) {
     TRI_ASSERT(mptr.getDataPtr() != nullptr);  // PROTECTED by trx here
 
-    rest::HttpResponse::HttpResponseCode statusCode;
+    GeneralResponse::ResponseCode statusCode;
     if (trx.synchronous()) {
-      statusCode = rest::HttpResponse::CREATED;
+      statusCode = GeneralResponse::ResponseCode::CREATED;
     } else {
-      statusCode = rest::HttpResponse::ACCEPTED;
+      statusCode = GeneralResponse::ResponseCode::ACCEPTED;
     }
 
     TRI_col_type_e type = trx.documentCollection()->_info.type();
@@ -200,11 +200,11 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   void generateDeleted(arangodb::SingleCollectionWriteTransaction<1>& trx,
                        TRI_voc_cid_t cid, TRI_voc_key_t key,
                        TRI_voc_rid_t rid) {
-    rest::HttpResponse::HttpResponseCode statusCode;
+    GeneralResponse::ResponseCode statusCode;
     if (trx.synchronous()) {
-      statusCode = rest::HttpResponse::OK;
+      statusCode = GeneralResponse::ResponseCode::OK;
     } else {
-      statusCode = rest::HttpResponse::ACCEPTED;
+      statusCode = GeneralResponse::ResponseCode::ACCEPTED;
     }
 
     TRI_col_type_e type = trx.documentCollection()->_info.type();
@@ -238,7 +238,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   void generateDocumentNotFound(std::string const& collectionName,
                                 TRI_voc_key_t key) {
-    generateError(rest::HttpResponse::NOT_FOUND,
+    generateError(GeneralResponse::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
 

@@ -25,18 +25,23 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Endpoint/Endpoint.h"
+
 #include <boost/test/unit_test.hpp>
 
-#include "Rest/Endpoint.h"
-#include "Rest/EndpointUnixDomain.h"
-#include "Rest/EndpointIp.h"
-#include "Rest/EndpointIpV4.h"
-#include "Rest/EndpointIpV6.h"
+#include "Endpoint/EndpointUnixDomain.h"
+#include "Endpoint/EndpointIp.h"
+#include "Endpoint/EndpointIpV4.h"
+#include "Endpoint/EndpointIpV6.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
-using namespace arangodb::rest;
 using namespace std;
+
+// sory, but boost is broken
+BOOST_TEST_DONT_PRINT_LOG_VALUE(arangodb::Endpoint::DomainType)
+BOOST_TEST_DONT_PRINT_LOG_VALUE(arangodb::Endpoint::EncryptionType)
+BOOST_TEST_DONT_PRINT_LOG_VALUE(arangodb::Endpoint::EndpointType)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            macros
@@ -44,20 +49,18 @@ using namespace std;
 
 #define DELETE_ENDPOINT(e) if (e != 0) delete e;
 
-#define FEATURE_NAME(name) get ## name
-  
 #define FACTORY_NAME(name) name ## Factory  
 
-#define FACTORY(name, specification) Endpoint::FACTORY_NAME(name)(specification)
+#define FACTORY(name, specification) arangodb::Endpoint::FACTORY_NAME(name)(specification)
 
 #define CHECK_ENDPOINT_FEATURE(type, specification, feature, expected) \
   e = FACTORY(type, specification); \
-  BOOST_CHECK_EQUAL(expected, e->FEATURE_NAME(feature)()); \
+  BOOST_CHECK_EQUAL((expected), (e->feature())); \
   DELETE_ENDPOINT(e);
 
 #define CHECK_ENDPOINT_SERVER_FEATURE(type, specification, feature, expected) \
-  e = Endpoint::serverFactory(specification, 1, true); \
-  BOOST_CHECK_EQUAL(expected, e->FEATURE_NAME(feature)()); \
+  e = arangodb::Endpoint::serverFactory(specification, 1, true); \
+  BOOST_CHECK_EQUAL((expected), (e->feature())); \
   DELETE_ENDPOINT(e);
 
 // -----------------------------------------------------------------------------
@@ -91,28 +94,28 @@ BOOST_FIXTURE_TEST_SUITE (EndpointTest, EndpointSetup)
 BOOST_AUTO_TEST_CASE (EndpointInvalid) {
   Endpoint* e = 0;
 
-  BOOST_CHECK_EQUAL(e, Endpoint::clientFactory(""));
-  BOOST_CHECK_EQUAL(e, Endpoint::clientFactory("@"));
+  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory(""));
+  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("@"));
 
-  BOOST_CHECK_EQUAL(e, Endpoint::clientFactory("http://"));
-  BOOST_CHECK_EQUAL(e, Endpoint::clientFactory("ssl://"));
-  BOOST_CHECK_EQUAL(e, Endpoint::clientFactory("unix://"));
+  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("http://"));
+  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("ssl://"));
+  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("unix://"));
 
-  BOOST_CHECK_EQUAL(e, Endpoint::clientFactory("fish://127.0.0.1:8529"));
-  BOOST_CHECK_EQUAL(e, Endpoint::clientFactory("http://127.0.0.1:8529"));
-  BOOST_CHECK_EQUAL(e, Endpoint::clientFactory("https://127.0.0.1:8529"));
+  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("fish://127.0.0.1:8529"));
+  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("http://127.0.0.1:8529"));
+  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("https://127.0.0.1:8529"));
   
-  BOOST_CHECK_EQUAL(e, Endpoint::clientFactory("tcp//127.0.0.1:8529"));
-  BOOST_CHECK_EQUAL(e, Endpoint::clientFactory("tcp:127.0.0.1:8529"));
-  BOOST_CHECK_EQUAL(e, Endpoint::clientFactory("ssl:localhost"));
-  BOOST_CHECK_EQUAL(e, Endpoint::clientFactory("ssl//:localhost"));
-  BOOST_CHECK_EQUAL(e, Endpoint::clientFactory("unix///tmp/socket"));
-  BOOST_CHECK_EQUAL(e, Endpoint::clientFactory("unix:tmp/socket"));
+  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("tcp//127.0.0.1:8529"));
+  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("tcp:127.0.0.1:8529"));
+  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("ssl:localhost"));
+  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("ssl//:localhost"));
+  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("unix///tmp/socket"));
+  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("unix:tmp/socket"));
   
-  BOOST_CHECK_EQUAL(e, Endpoint::clientFactory("fish@tcp://127.0.0.1:8529"));
-  BOOST_CHECK_EQUAL(e, Endpoint::clientFactory("ssl@tcp://127.0.0.1:8529"));
-  BOOST_CHECK_EQUAL(e, Endpoint::clientFactory("https@tcp://127.0.0.1:8529"));
-  BOOST_CHECK_EQUAL(e, Endpoint::clientFactory("https@tcp://127.0.0.1:"));
+  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("fish@tcp://127.0.0.1:8529"));
+  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("ssl@tcp://127.0.0.1:8529"));
+  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("https@tcp://127.0.0.1:8529"));
+  BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("https@tcp://127.0.0.1:"));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -122,13 +125,13 @@ BOOST_AUTO_TEST_CASE (EndpointInvalid) {
 BOOST_AUTO_TEST_CASE (EndpointSpecification) {
   Endpoint* e;
 
-  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", Specification, "tcp://127.0.0.1");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost", Specification, "tcp://localhost");
-  CHECK_ENDPOINT_FEATURE(client, "SSL://127.0.0.5", Specification, "SSL://127.0.0.5");
-  CHECK_ENDPOINT_FEATURE(client, "httP@ssl://localhost:4635", Specification, "httP@ssl://localhost:4635");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", specification, "tcp://127.0.0.1");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost", specification, "tcp://localhost");
+  CHECK_ENDPOINT_FEATURE(client, "SSL://127.0.0.5", specification, "SSL://127.0.0.5");
+  CHECK_ENDPOINT_FEATURE(client, "httP@ssl://localhost:4635", specification, "httP@ssl://localhost:4635");
 
-  CHECK_ENDPOINT_SERVER_FEATURE(server, "unix:///path/to/socket", Specification, "unix:///path/to/socket");
-  CHECK_ENDPOINT_SERVER_FEATURE(server, "htTp@UNIx:///a/b/c/d/e/f.s", Specification, "htTp@UNIx:///a/b/c/d/e/f.s");
+  CHECK_ENDPOINT_SERVER_FEATURE(server, "unix:///path/to/socket", specification, "unix:///path/to/socket");
+  CHECK_ENDPOINT_SERVER_FEATURE(server, "htTp@UNIx:///a/b/c/d/e/f.s", specification, "htTp@UNIx:///a/b/c/d/e/f.s");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -138,17 +141,17 @@ BOOST_AUTO_TEST_CASE (EndpointSpecification) {
 BOOST_AUTO_TEST_CASE (EndpointTypes) {
   Endpoint* e;
 
-  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", Type, Endpoint::ENDPOINT_CLIENT);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost", Type, Endpoint::ENDPOINT_CLIENT);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1", Type, Endpoint::ENDPOINT_CLIENT);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost", Type, Endpoint::ENDPOINT_CLIENT);
-  CHECK_ENDPOINT_FEATURE(client, "unix:///path/to/socket", Type, Endpoint::ENDPOINT_CLIENT);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", type, arangodb::Endpoint::EndpointType::CLIENT);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost", type, arangodb::Endpoint::EndpointType::CLIENT);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1", type, arangodb::Endpoint::EndpointType::CLIENT);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost", type, arangodb::Endpoint::EndpointType::CLIENT);
+  CHECK_ENDPOINT_FEATURE(client, "unix:///path/to/socket", type, arangodb::Endpoint::EndpointType::CLIENT);
 
-  CHECK_ENDPOINT_SERVER_FEATURE(server, "tcp://127.0.0.1", Type, Endpoint::ENDPOINT_SERVER);
-  CHECK_ENDPOINT_SERVER_FEATURE(server, "tcp://localhost", Type, Endpoint::ENDPOINT_SERVER);
-  CHECK_ENDPOINT_SERVER_FEATURE(server, "ssl://127.0.0.1", Type, Endpoint::ENDPOINT_SERVER);
-  CHECK_ENDPOINT_SERVER_FEATURE(server, "ssl://localhost", Type, Endpoint::ENDPOINT_SERVER);
-  CHECK_ENDPOINT_SERVER_FEATURE(server, "unix:///path/to/socket", Type, Endpoint::ENDPOINT_SERVER);
+  CHECK_ENDPOINT_SERVER_FEATURE(server, "tcp://127.0.0.1", type, arangodb::Endpoint::EndpointType::SERVER);
+  CHECK_ENDPOINT_SERVER_FEATURE(server, "tcp://localhost", type, arangodb::Endpoint::EndpointType::SERVER);
+  CHECK_ENDPOINT_SERVER_FEATURE(server, "ssl://127.0.0.1", type, arangodb::Endpoint::EndpointType::SERVER);
+  CHECK_ENDPOINT_SERVER_FEATURE(server, "ssl://localhost", type, arangodb::Endpoint::EndpointType::SERVER);
+  CHECK_ENDPOINT_SERVER_FEATURE(server, "unix:///path/to/socket", type, arangodb::Endpoint::EndpointType::SERVER);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -158,36 +161,36 @@ BOOST_AUTO_TEST_CASE (EndpointTypes) {
 BOOST_AUTO_TEST_CASE (EndpointDomains) {
   Endpoint* e;
 
-  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", Domain, AF_INET);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://192.168.173.13", Domain, AF_INET);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost", Domain, AF_INET);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org", Domain, AF_INET);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1:8529", Domain, AF_INET);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost:8529", Domain, AF_INET);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org:8529", Domain, AF_INET);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]", Domain, AF_INET6);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]", Domain, AF_INET6);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]:8529", Domain, AF_INET6);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]:8529", Domain, AF_INET6);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529", Domain, AF_INET6);
-  CHECK_ENDPOINT_FEATURE(client, "http@tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529", Domain, AF_INET6);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1", Domain, AF_INET);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://192.168.173.13", Domain, AF_INET);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost", Domain, AF_INET);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org", Domain, AF_INET);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1:8529", Domain, AF_INET);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:8529", Domain, AF_INET);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org:8529", Domain, AF_INET);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]", Domain, AF_INET6);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]", Domain, AF_INET6);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]:8529", Domain, AF_INET6);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]:8529", Domain, AF_INET6);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529", Domain, AF_INET6);
-  CHECK_ENDPOINT_FEATURE(client, "http@ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529", Domain, AF_INET6);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", domain, AF_INET);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://192.168.173.13", domain, AF_INET);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost", domain, AF_INET);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org", domain, AF_INET);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1:8529", domain, AF_INET);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost:8529", domain, AF_INET);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org:8529", domain, AF_INET);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]", domain, AF_INET6);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]", domain, AF_INET6);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]:8529", domain, AF_INET6);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]:8529", domain, AF_INET6);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529", domain, AF_INET6);
+  CHECK_ENDPOINT_FEATURE(client, "http@tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529", domain, AF_INET6);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1", domain, AF_INET);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://192.168.173.13", domain, AF_INET);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost", domain, AF_INET);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org", domain, AF_INET);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1:8529", domain, AF_INET);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:8529", domain, AF_INET);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org:8529", domain, AF_INET);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]", domain, AF_INET6);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]", domain, AF_INET6);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]:8529", domain, AF_INET6);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]:8529", domain, AF_INET6);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529", domain, AF_INET6);
+  CHECK_ENDPOINT_FEATURE(client, "http@ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529", domain, AF_INET6);
   
-  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket", Domain, AF_UNIX);
-  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket/arango.sock", Domain, AF_UNIX);
-  CHECK_ENDPOINT_FEATURE(client, "http@unix:///tmp/socket/arango.sock", Domain, AF_UNIX);
+  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket", domain, AF_UNIX);
+  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket/arango.sock", domain, AF_UNIX);
+  CHECK_ENDPOINT_FEATURE(client, "http@unix:///tmp/socket/arango.sock", domain, AF_UNIX);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -197,44 +200,44 @@ BOOST_AUTO_TEST_CASE (EndpointDomains) {
 BOOST_AUTO_TEST_CASE (EndpointDomainTypes) {
   Endpoint* e;
 
-  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", DomainType, Endpoint::DOMAIN_IPV4);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost", DomainType, Endpoint::DOMAIN_IPV4);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org", DomainType, Endpoint::DOMAIN_IPV4);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1:8529", DomainType, Endpoint::DOMAIN_IPV4);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost:8529", DomainType, Endpoint::DOMAIN_IPV4);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org:8529", DomainType, Endpoint::DOMAIN_IPV4);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]", DomainType, Endpoint::DOMAIN_IPV6);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]", DomainType, Endpoint::DOMAIN_IPV6);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]:8529", DomainType, Endpoint::DOMAIN_IPV6);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]:8529", DomainType, Endpoint::DOMAIN_IPV6);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529", DomainType, Endpoint::DOMAIN_IPV6);
-  CHECK_ENDPOINT_FEATURE(client, "TCP://127.0.0.1", DomainType, Endpoint::DOMAIN_IPV4);
-  CHECK_ENDPOINT_FEATURE(client, "Tcp://127.0.0.1", DomainType, Endpoint::DOMAIN_IPV4);
-  CHECK_ENDPOINT_FEATURE(client, "tCP://127.0.0.1", DomainType, Endpoint::DOMAIN_IPV4);
-  CHECK_ENDPOINT_FEATURE(client, "http@tcp://127.0.0.1", DomainType, Endpoint::DOMAIN_IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", domainType, arangodb::Endpoint::DomainType::IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost", domainType, arangodb::Endpoint::DomainType::IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org", domainType, arangodb::Endpoint::DomainType::IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1:8529", domainType, arangodb::Endpoint::DomainType::IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost:8529", domainType, arangodb::Endpoint::DomainType::IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org:8529", domainType, arangodb::Endpoint::DomainType::IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]", domainType, arangodb::Endpoint::DomainType::IPV6);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]", domainType, arangodb::Endpoint::DomainType::IPV6);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]:8529", domainType, arangodb::Endpoint::DomainType::IPV6);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]:8529", domainType, arangodb::Endpoint::DomainType::IPV6);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529", domainType, arangodb::Endpoint::DomainType::IPV6);
+  CHECK_ENDPOINT_FEATURE(client, "TCP://127.0.0.1", domainType, arangodb::Endpoint::DomainType::IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "Tcp://127.0.0.1", domainType, arangodb::Endpoint::DomainType::IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "tCP://127.0.0.1", domainType, arangodb::Endpoint::DomainType::IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "http@tcp://127.0.0.1", domainType, arangodb::Endpoint::DomainType::IPV4);
   
-  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1", DomainType, Endpoint::DOMAIN_IPV4);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost", DomainType, Endpoint::DOMAIN_IPV4);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org", DomainType, Endpoint::DOMAIN_IPV4);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1:8529", DomainType, Endpoint::DOMAIN_IPV4);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:8529", DomainType, Endpoint::DOMAIN_IPV4);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org:8529", DomainType, Endpoint::DOMAIN_IPV4);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]", DomainType, Endpoint::DOMAIN_IPV6);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]", DomainType, Endpoint::DOMAIN_IPV6);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]:8529", DomainType, Endpoint::DOMAIN_IPV6);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]:8529", DomainType, Endpoint::DOMAIN_IPV6);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529", DomainType, Endpoint::DOMAIN_IPV6);
-  CHECK_ENDPOINT_FEATURE(client, "SSL://127.0.0.1", DomainType, Endpoint::DOMAIN_IPV4);
-  CHECK_ENDPOINT_FEATURE(client, "Ssl://127.0.0.1", DomainType, Endpoint::DOMAIN_IPV4);
-  CHECK_ENDPOINT_FEATURE(client, "sSL://127.0.0.1", DomainType, Endpoint::DOMAIN_IPV4);
-  CHECK_ENDPOINT_FEATURE(client, "http@ssl://127.0.0.1", DomainType, Endpoint::DOMAIN_IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1", domainType, arangodb::Endpoint::DomainType::IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost", domainType, arangodb::Endpoint::DomainType::IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org", domainType, arangodb::Endpoint::DomainType::IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1:8529", domainType, arangodb::Endpoint::DomainType::IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:8529", domainType, arangodb::Endpoint::DomainType::IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org:8529", domainType, arangodb::Endpoint::DomainType::IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]", domainType, arangodb::Endpoint::DomainType::IPV6);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]", domainType, arangodb::Endpoint::DomainType::IPV6);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]:8529", domainType, arangodb::Endpoint::DomainType::IPV6);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]:8529", domainType, arangodb::Endpoint::DomainType::IPV6);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529", domainType, arangodb::Endpoint::DomainType::IPV6);
+  CHECK_ENDPOINT_FEATURE(client, "SSL://127.0.0.1", domainType, arangodb::Endpoint::DomainType::IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "Ssl://127.0.0.1", domainType, arangodb::Endpoint::DomainType::IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "sSL://127.0.0.1", domainType, arangodb::Endpoint::DomainType::IPV4);
+  CHECK_ENDPOINT_FEATURE(client, "http@ssl://127.0.0.1", domainType, arangodb::Endpoint::DomainType::IPV4);
   
-  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket", DomainType, Endpoint::DOMAIN_UNIX);
-  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket/arango.sock", DomainType, Endpoint::DOMAIN_UNIX);
-  CHECK_ENDPOINT_FEATURE(client, "UNIX:///tmp/socket", DomainType, Endpoint::DOMAIN_UNIX);
-  CHECK_ENDPOINT_FEATURE(client, "Unix:///tmp/socket", DomainType, Endpoint::DOMAIN_UNIX);
-  CHECK_ENDPOINT_FEATURE(client, "uNIX:///tmp/socket", DomainType, Endpoint::DOMAIN_UNIX);
-  CHECK_ENDPOINT_FEATURE(client, "http@unix:///tmp/socket", DomainType, Endpoint::DOMAIN_UNIX);
+  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket", domainType, arangodb::Endpoint::DomainType::UNIX);
+  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket/arango.sock", domainType, arangodb::Endpoint::DomainType::UNIX);
+  CHECK_ENDPOINT_FEATURE(client, "UNIX:///tmp/socket", domainType, arangodb::Endpoint::DomainType::UNIX);
+  CHECK_ENDPOINT_FEATURE(client, "Unix:///tmp/socket", domainType, arangodb::Endpoint::DomainType::UNIX);
+  CHECK_ENDPOINT_FEATURE(client, "uNIX:///tmp/socket", domainType, arangodb::Endpoint::DomainType::UNIX);
+  CHECK_ENDPOINT_FEATURE(client, "http@unix:///tmp/socket", domainType, arangodb::Endpoint::DomainType::UNIX);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -244,69 +247,69 @@ BOOST_AUTO_TEST_CASE (EndpointDomainTypes) {
 BOOST_AUTO_TEST_CASE (EndpointPorts) {
   Endpoint* e;
 
-  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", Port, EndpointIp::_defaultPort);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost", Port, EndpointIp::_defaultPort);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org", Port, EndpointIp::_defaultPort); 
-  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1:8529", Port, 8529);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1:8532", Port, 8532);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1:80", Port, 80);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1:443", Port, 443);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1:65535", Port, 65535);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost:8529", Port, 8529);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost:8532", Port, 8532);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost:80", Port, 80);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost:443", Port, 443);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost:65535", Port, 65535);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org:8529", Port, 8529);
-  CHECK_ENDPOINT_FEATURE(client, "http@tcp://www.arangodb.org:8529", Port, 8529);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]", Port, EndpointIp::_defaultPort);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]", Port, EndpointIp::_defaultPort);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]:8529", Port, 8529);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]:8532", Port, 8532);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]:80", Port, 80);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]:443", Port, 443);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]:65535", Port, 65535);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]:8529", Port, 8529);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]:8532", Port, 8532);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]:80", Port, 80);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]:443", Port, 443);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]:65535", Port, 65535);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:666", Port, 666);
-  CHECK_ENDPOINT_FEATURE(client, "http@tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:666", Port, 666);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", port, EndpointIp::_defaultPortHttp);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost", port, EndpointIp::_defaultPortHttp);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org", port, EndpointIp::_defaultPortHttp); 
+  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1:8529", port, 8529);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1:8532", port, 8532);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1:80", port, 80);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1:443", port, 443);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1:65535", port, 65535);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost:8529", port, 8529);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost:8532", port, 8532);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost:80", port, 80);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost:443", port, 443);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost:65535", port, 65535);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org:8529", port, 8529);
+  CHECK_ENDPOINT_FEATURE(client, "http@tcp://www.arangodb.org:8529", port, 8529);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]", port, EndpointIp::_defaultPortHttp);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]", port, EndpointIp::_defaultPortHttp);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]:8529", port, 8529);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]:8532", port, 8532);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]:80", port, 80);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]:443", port, 443);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]:65535", port, 65535);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]:8529", port, 8529);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]:8532", port, 8532);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]:80", port, 80);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]:443", port, 443);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]:65535", port, 65535);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:666", port, 666);
+  CHECK_ENDPOINT_FEATURE(client, "http@tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:666", port, 666);
   
-  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1", Port, EndpointIp::_defaultPort);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost", Port, EndpointIp::_defaultPort);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org", Port, EndpointIp::_defaultPort);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1:8529", Port, 8529);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1:8532", Port, 8532);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1:80", Port, 80);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1:443", Port, 443);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1:65535", Port, 65535);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:8529", Port, 8529);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:8532", Port, 8532);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:80", Port, 80);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:443", Port, 443);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:65535", Port, 65535);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org:8529", Port, 8529);
-  CHECK_ENDPOINT_FEATURE(client, "http@ssl://www.arangodb.org:8529", Port, 8529);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]", Port, EndpointIp::_defaultPort);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]", Port, EndpointIp::_defaultPort);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]:8529", Port, 8529);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]:8532", Port, 8532);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]:80", Port, 80);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]:443", Port, 443);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]:65535", Port, 65535);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]:8529", Port, 8529);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]:8532", Port, 8532);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]:80", Port, 80);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]:443", Port, 443);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]:65535", Port, 65535);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:666", Port, 666);
-  CHECK_ENDPOINT_FEATURE(client, "http@ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:666", Port, 666);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1", port, EndpointIp::_defaultPortHttp);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost", port, EndpointIp::_defaultPortHttp);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org", port, EndpointIp::_defaultPortHttp);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1:8529", port, 8529);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1:8532", port, 8532);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1:80", port, 80);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1:443", port, 443);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1:65535", port, 65535);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:8529", port, 8529);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:8532", port, 8532);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:80", port, 80);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:443", port, 443);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:65535", port, 65535);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org:8529", port, 8529);
+  CHECK_ENDPOINT_FEATURE(client, "http@ssl://www.arangodb.org:8529", port, 8529);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]", port, EndpointIp::_defaultPortHttp);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]", port, EndpointIp::_defaultPortHttp);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]:8529", port, 8529);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]:8532", port, 8532);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]:80", port, 80);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]:443", port, 443);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]:65535", port, 65535);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]:8529", port, 8529);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]:8532", port, 8532);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]:80", port, 80);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]:443", port, 443);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]:65535", port, 65535);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:666", port, 666);
+  CHECK_ENDPOINT_FEATURE(client, "http@ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:666", port, 666);
   
-  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket", Port, 0);
-  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket/arango.sock", Port, 0);
-  CHECK_ENDPOINT_FEATURE(client, "http@unix:///tmp/socket/arango.sock", Port, 0);
+  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket", port, 0);
+  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket/arango.sock", port, 0);
+  CHECK_ENDPOINT_FEATURE(client, "http@unix:///tmp/socket/arango.sock", port, 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -316,41 +319,41 @@ BOOST_AUTO_TEST_CASE (EndpointPorts) {
 BOOST_AUTO_TEST_CASE (EndpointEncryption) {
   Endpoint* e;
 
-  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", Encryption, Endpoint::ENCRYPTION_NONE);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost", Encryption, Endpoint::ENCRYPTION_NONE);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org", Encryption, Endpoint::ENCRYPTION_NONE);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1:8529", Encryption, Endpoint::ENCRYPTION_NONE);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost:8529", Encryption, Endpoint::ENCRYPTION_NONE);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org:8529", Encryption, Endpoint::ENCRYPTION_NONE);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]", Encryption, Endpoint::ENCRYPTION_NONE);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]", Encryption, Endpoint::ENCRYPTION_NONE);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]:8529", Encryption, Endpoint::ENCRYPTION_NONE);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]:8529", Encryption, Endpoint::ENCRYPTION_NONE);
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:666", Encryption, Endpoint::ENCRYPTION_NONE);
-  CHECK_ENDPOINT_FEATURE(client, "http@tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:666", Encryption, Endpoint::ENCRYPTION_NONE);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", encryption, arangodb::Endpoint::EncryptionType::NONE);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost", encryption, arangodb::Endpoint::EncryptionType::NONE);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org", encryption, arangodb::Endpoint::EncryptionType::NONE);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1:8529", encryption, arangodb::Endpoint::EncryptionType::NONE);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost:8529", encryption, arangodb::Endpoint::EncryptionType::NONE);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org:8529", encryption, arangodb::Endpoint::EncryptionType::NONE);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]", encryption, arangodb::Endpoint::EncryptionType::NONE);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]", encryption, arangodb::Endpoint::EncryptionType::NONE);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]:8529", encryption, arangodb::Endpoint::EncryptionType::NONE);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]:8529", encryption, arangodb::Endpoint::EncryptionType::NONE);
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:666", encryption, arangodb::Endpoint::EncryptionType::NONE);
+  CHECK_ENDPOINT_FEATURE(client, "http@tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:666", encryption, arangodb::Endpoint::EncryptionType::NONE);
   
-  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1", Encryption, Endpoint::ENCRYPTION_SSL);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost", Encryption, Endpoint::ENCRYPTION_SSL);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org", Encryption, Endpoint::ENCRYPTION_SSL);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1:8529", Encryption, Endpoint::ENCRYPTION_SSL);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:8529", Encryption, Endpoint::ENCRYPTION_SSL);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org:8529", Encryption, Endpoint::ENCRYPTION_SSL);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]", Encryption, Endpoint::ENCRYPTION_SSL);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]", Encryption, Endpoint::ENCRYPTION_SSL);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]:8529", Encryption, Endpoint::ENCRYPTION_SSL);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:666", Encryption, Endpoint::ENCRYPTION_SSL);
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]:8529", Encryption, Endpoint::ENCRYPTION_SSL);
-  CHECK_ENDPOINT_FEATURE(client, "SSL://[::]:8529", Encryption, Endpoint::ENCRYPTION_SSL);
-  CHECK_ENDPOINT_FEATURE(client, "Ssl://[::]:8529", Encryption, Endpoint::ENCRYPTION_SSL);
-  CHECK_ENDPOINT_FEATURE(client, "sSL://[::]:8529", Encryption, Endpoint::ENCRYPTION_SSL);
-  CHECK_ENDPOINT_FEATURE(client, "http@ssl://[::]:8529", Encryption, Endpoint::ENCRYPTION_SSL);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1", encryption, arangodb::Endpoint::EncryptionType::SSL);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost", encryption, arangodb::Endpoint::EncryptionType::SSL);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org", encryption, arangodb::Endpoint::EncryptionType::SSL);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1:8529", encryption, arangodb::Endpoint::EncryptionType::SSL);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:8529", encryption, arangodb::Endpoint::EncryptionType::SSL);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org:8529", encryption, arangodb::Endpoint::EncryptionType::SSL);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]", encryption, arangodb::Endpoint::EncryptionType::SSL);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]", encryption, arangodb::Endpoint::EncryptionType::SSL);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]:8529", encryption, arangodb::Endpoint::EncryptionType::SSL);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:666", encryption, arangodb::Endpoint::EncryptionType::SSL);
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]:8529", encryption, arangodb::Endpoint::EncryptionType::SSL);
+  CHECK_ENDPOINT_FEATURE(client, "SSL://[::]:8529", encryption, arangodb::Endpoint::EncryptionType::SSL);
+  CHECK_ENDPOINT_FEATURE(client, "Ssl://[::]:8529", encryption, arangodb::Endpoint::EncryptionType::SSL);
+  CHECK_ENDPOINT_FEATURE(client, "sSL://[::]:8529", encryption, arangodb::Endpoint::EncryptionType::SSL);
+  CHECK_ENDPOINT_FEATURE(client, "http@ssl://[::]:8529", encryption, arangodb::Endpoint::EncryptionType::SSL);
   
-  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket", Encryption, Endpoint::ENCRYPTION_NONE);
-  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket/arango.sock", Encryption, Endpoint::ENCRYPTION_NONE);
-  CHECK_ENDPOINT_FEATURE(client, "UNIX:///tmp/socket/arango.sock", Encryption, Endpoint::ENCRYPTION_NONE);
-  CHECK_ENDPOINT_FEATURE(client, "Unix:///tmp/socket/arango.sock", Encryption, Endpoint::ENCRYPTION_NONE);
-  CHECK_ENDPOINT_FEATURE(client, "uNIX:///tmp/socket/arango.sock", Encryption, Endpoint::ENCRYPTION_NONE);
-  CHECK_ENDPOINT_FEATURE(client, "http@unix:///tmp/socket/arango.sock", Encryption, Endpoint::ENCRYPTION_NONE);
+  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket", encryption, arangodb::Endpoint::EncryptionType::NONE);
+  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket/arango.sock", encryption, arangodb::Endpoint::EncryptionType::NONE);
+  CHECK_ENDPOINT_FEATURE(client, "UNIX:///tmp/socket/arango.sock", encryption, arangodb::Endpoint::EncryptionType::NONE);
+  CHECK_ENDPOINT_FEATURE(client, "Unix:///tmp/socket/arango.sock", encryption, arangodb::Endpoint::EncryptionType::NONE);
+  CHECK_ENDPOINT_FEATURE(client, "uNIX:///tmp/socket/arango.sock", encryption, arangodb::Endpoint::EncryptionType::NONE);
+  CHECK_ENDPOINT_FEATURE(client, "http@unix:///tmp/socket/arango.sock", encryption, arangodb::Endpoint::EncryptionType::NONE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -360,43 +363,43 @@ BOOST_AUTO_TEST_CASE (EndpointEncryption) {
 BOOST_AUTO_TEST_CASE (EndpointHost) {
   Endpoint* e;
 
-  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", Host, "127.0.0.1");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost", Host, "localhost");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org", Host, "www.arangodb.org");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://arangodb.org", Host, "arangodb.org");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://DE.triagens.ArangoDB.org", Host, "DE.triagens.ArangoDB.org");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://192.168.173.13:8529", Host, "192.168.173.13");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1:8529", Host, "127.0.0.1");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost:8529", Host, "localhost");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org:8529", Host, "www.arangodb.org");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://arangodb.org:8529", Host, "arangodb.org");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]", Host, "127.0.0.1");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]", Host, "::");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]:8529", Host, "127.0.0.1");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]:8529", Host, "::");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]", Host, "2001:0db8:0000:0000:0000:ff00:0042:8329");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529", Host, "2001:0db8:0000:0000:0000:ff00:0042:8329");
-  CHECK_ENDPOINT_FEATURE(client, "http@tcp://[::]:8529", Host, "::");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", host, "127.0.0.1");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost", host, "localhost");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org", host, "www.arangodb.org");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://arangodb.org", host, "arangodb.org");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://DE.triagens.ArangoDB.org", host, "DE.triagens.ArangoDB.org");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://192.168.173.13:8529", host, "192.168.173.13");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1:8529", host, "127.0.0.1");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost:8529", host, "localhost");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org:8529", host, "www.arangodb.org");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://arangodb.org:8529", host, "arangodb.org");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]", host, "127.0.0.1");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]", host, "::");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]:8529", host, "127.0.0.1");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]:8529", host, "::");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]", host, "2001:0db8:0000:0000:0000:ff00:0042:8329");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529", host, "2001:0db8:0000:0000:0000:ff00:0042:8329");
+  CHECK_ENDPOINT_FEATURE(client, "http@tcp://[::]:8529", host, "::");
   
-  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1", Host, "127.0.0.1");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost", Host, "localhost");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org", Host, "www.arangodb.org");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://arangodb.org", Host, "arangodb.org");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://DE.triagens.ArangoDB.org", Host, "DE.triagens.ArangoDB.org");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://192.168.173.13:8529", Host, "192.168.173.13");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:8529", Host, "localhost");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org:8529", Host, "www.arangodb.org");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]", Host, "127.0.0.1");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]", Host, "::");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]:8529", Host, "127.0.0.1");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]:8529", Host, "::");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]", Host, "2001:0db8:0000:0000:0000:ff00:0042:8329");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529", Host, "2001:0db8:0000:0000:0000:ff00:0042:8329");
-  CHECK_ENDPOINT_FEATURE(client, "http@ssl://[::]:8529", Host, "::");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1", host, "127.0.0.1");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost", host, "localhost");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org", host, "www.arangodb.org");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://arangodb.org", host, "arangodb.org");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://DE.triagens.ArangoDB.org", host, "DE.triagens.ArangoDB.org");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://192.168.173.13:8529", host, "192.168.173.13");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:8529", host, "localhost");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org:8529", host, "www.arangodb.org");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]", host, "127.0.0.1");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]", host, "::");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]:8529", host, "127.0.0.1");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]:8529", host, "::");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]", host, "2001:0db8:0000:0000:0000:ff00:0042:8329");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529", host, "2001:0db8:0000:0000:0000:ff00:0042:8329");
+  CHECK_ENDPOINT_FEATURE(client, "http@ssl://[::]:8529", host, "::");
   
-  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket", Host, "localhost");
-  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket/arango.sock", Host, "localhost");
-  CHECK_ENDPOINT_FEATURE(client, "http@unix:///tmp/socket/arango.sock", Host, "localhost");
+  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket", host, "localhost");
+  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket/arango.sock", host, "localhost");
+  CHECK_ENDPOINT_FEATURE(client, "http@unix:///tmp/socket/arango.sock", host, "localhost");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -406,57 +409,57 @@ BOOST_AUTO_TEST_CASE (EndpointHost) {
 BOOST_AUTO_TEST_CASE (EndpointHostString) {
   Endpoint* e;
 
-  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", HostString, "127.0.0.1:8529");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost", HostString, "localhost:8529");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org", HostString, "www.arangodb.org:8529");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://arangodb.org", HostString, "arangodb.org:8529");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://DE.triagens.ArangoDB.org", HostString, "DE.triagens.ArangoDB.org:8529");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://192.168.173.13:8529", HostString, "192.168.173.13:8529");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://192.168.173.13:678", HostString, "192.168.173.13:678");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1:8529", HostString, "127.0.0.1:8529");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1:44", HostString, "127.0.0.1:44");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost:8529", HostString, "localhost:8529");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost:65535", HostString, "localhost:65535");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org:8529", HostString, "www.arangodb.org:8529");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://arangodb.org:8529", HostString, "arangodb.org:8529");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]", HostString, "[127.0.0.1]:8529");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]", HostString, "[::]:8529");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]:8529", HostString, "[127.0.0.1]:8529");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]:80", HostString, "[127.0.0.1]:80");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]:555", HostString, "[127.0.0.1]:555");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]:65535", HostString, "[127.0.0.1]:65535");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]:8529", HostString, "[::]:8529");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]:80", HostString, "[::]:80");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]:8080", HostString, "[::]:8080");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]", HostString, "[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529", HostString, "[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:777", HostString, "[2001:0db8:0000:0000:0000:ff00:0042:8329]:777");
-  CHECK_ENDPOINT_FEATURE(client, "http@tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:777", HostString, "[2001:0db8:0000:0000:0000:ff00:0042:8329]:777");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", hostAndPort, "127.0.0.1:8529");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost", hostAndPort, "localhost:8529");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org", hostAndPort, "www.arangodb.org:8529");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://arangodb.org", hostAndPort, "arangodb.org:8529");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://DE.triagens.ArangoDB.org", hostAndPort, "DE.triagens.ArangoDB.org:8529");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://192.168.173.13:8529", hostAndPort, "192.168.173.13:8529");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://192.168.173.13:678", hostAndPort, "192.168.173.13:678");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1:8529", hostAndPort, "127.0.0.1:8529");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1:44", hostAndPort, "127.0.0.1:44");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost:8529", hostAndPort, "localhost:8529");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost:65535", hostAndPort, "localhost:65535");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org:8529", hostAndPort, "www.arangodb.org:8529");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://arangodb.org:8529", hostAndPort, "arangodb.org:8529");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]", hostAndPort, "[127.0.0.1]:8529");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]", hostAndPort, "[::]:8529");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]:8529", hostAndPort, "[127.0.0.1]:8529");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]:80", hostAndPort, "[127.0.0.1]:80");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]:555", hostAndPort, "[127.0.0.1]:555");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[127.0.0.1]:65535", hostAndPort, "[127.0.0.1]:65535");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]:8529", hostAndPort, "[::]:8529");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]:80", hostAndPort, "[::]:80");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[::]:8080", hostAndPort, "[::]:8080");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]", hostAndPort, "[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529", hostAndPort, "[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:777", hostAndPort, "[2001:0db8:0000:0000:0000:ff00:0042:8329]:777");
+  CHECK_ENDPOINT_FEATURE(client, "http@tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:777", hostAndPort, "[2001:0db8:0000:0000:0000:ff00:0042:8329]:777");
   
-  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1", HostString, "127.0.0.1:8529");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost", HostString, "localhost:8529");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org", HostString, "www.arangodb.org:8529");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://arangodb.org", HostString, "arangodb.org:8529");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://DE.triagens.ArangoDB.org", HostString, "DE.triagens.ArangoDB.org:8529");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://192.168.173.13:8529", HostString, "192.168.173.13:8529");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://192.168.173.13:1234", HostString, "192.168.173.13:1234");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:8529", HostString, "localhost:8529");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:5", HostString, "localhost:5");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org:8529", HostString, "www.arangodb.org:8529");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org:12345", HostString, "www.arangodb.org:12345");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]", HostString, "[127.0.0.1]:8529");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]", HostString, "[::]:8529");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]:8529", HostString, "[127.0.0.1]:8529");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]:32768", HostString, "[127.0.0.1]:32768");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]:8529", HostString, "[::]:8529");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]", HostString, "[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529", HostString, "[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:994", HostString, "[2001:0db8:0000:0000:0000:ff00:0042:8329]:994");
-  CHECK_ENDPOINT_FEATURE(client, "http@ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:994", HostString, "[2001:0db8:0000:0000:0000:ff00:0042:8329]:994");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1", hostAndPort, "127.0.0.1:8529");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost", hostAndPort, "localhost:8529");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org", hostAndPort, "www.arangodb.org:8529");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://arangodb.org", hostAndPort, "arangodb.org:8529");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://DE.triagens.ArangoDB.org", hostAndPort, "DE.triagens.ArangoDB.org:8529");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://192.168.173.13:8529", hostAndPort, "192.168.173.13:8529");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://192.168.173.13:1234", hostAndPort, "192.168.173.13:1234");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:8529", hostAndPort, "localhost:8529");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:5", hostAndPort, "localhost:5");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org:8529", hostAndPort, "www.arangodb.org:8529");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org:12345", hostAndPort, "www.arangodb.org:12345");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]", hostAndPort, "[127.0.0.1]:8529");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]", hostAndPort, "[::]:8529");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]:8529", hostAndPort, "[127.0.0.1]:8529");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]:32768", hostAndPort, "[127.0.0.1]:32768");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[::]:8529", hostAndPort, "[::]:8529");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]", hostAndPort, "[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529", hostAndPort, "[2001:0db8:0000:0000:0000:ff00:0042:8329]:8529");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:994", hostAndPort, "[2001:0db8:0000:0000:0000:ff00:0042:8329]:994");
+  CHECK_ENDPOINT_FEATURE(client, "http@ssl://[2001:0db8:0000:0000:0000:ff00:0042:8329]:994", hostAndPort, "[2001:0db8:0000:0000:0000:ff00:0042:8329]:994");
   
-  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket", HostString, "localhost");
-  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket/arango.sock", HostString, "localhost");
-  CHECK_ENDPOINT_FEATURE(client, "http@unix:///tmp/socket/arango.sock", HostString, "localhost");
+  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket", hostAndPort, "localhost");
+  CHECK_ENDPOINT_FEATURE(client, "unix:///tmp/socket/arango.sock", hostAndPort, "localhost");
+  CHECK_ENDPOINT_FEATURE(client, "http@unix:///tmp/socket/arango.sock", hostAndPort, "localhost");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -466,7 +469,7 @@ BOOST_AUTO_TEST_CASE (EndpointHostString) {
 BOOST_AUTO_TEST_CASE (EndpointIsConnectedServer1) {
   Endpoint* e;
 
-  e = Endpoint::serverFactory("tcp://127.0.0.1", 1, true);
+  e = arangodb::Endpoint::serverFactory("tcp://127.0.0.1", 1, true);
   BOOST_CHECK_EQUAL(false, e->isConnected());
   DELETE_ENDPOINT(e);
 }
@@ -478,7 +481,7 @@ BOOST_AUTO_TEST_CASE (EndpointIsConnectedServer1) {
 BOOST_AUTO_TEST_CASE (EndpointIsConnectedServer2) {
   Endpoint* e;
 
-  e = Endpoint::serverFactory("ssl://127.0.0.1", 1, true);
+  e = arangodb::Endpoint::serverFactory("ssl://127.0.0.1", 1, true);
   BOOST_CHECK_EQUAL(false, e->isConnected());
   DELETE_ENDPOINT(e);
 }
@@ -490,7 +493,7 @@ BOOST_AUTO_TEST_CASE (EndpointIsConnectedServer2) {
 BOOST_AUTO_TEST_CASE (EndpointIsConnectedServer3) {
   Endpoint* e;
 
-  e = Endpoint::serverFactory("unix:///tmp/socket", 1, true);
+  e = arangodb::Endpoint::serverFactory("unix:///tmp/socket", 1, true);
   BOOST_CHECK_EQUAL(false, e->isConnected());
   DELETE_ENDPOINT(e);
 }
@@ -502,7 +505,7 @@ BOOST_AUTO_TEST_CASE (EndpointIsConnectedServer3) {
 BOOST_AUTO_TEST_CASE (EndpointIsConnectedClient1) {
   Endpoint* e;
 
-  e = Endpoint::clientFactory("tcp://127.0.0.1");
+  e = arangodb::Endpoint::clientFactory("tcp://127.0.0.1");
   BOOST_CHECK_EQUAL(false, e->isConnected());
   DELETE_ENDPOINT(e);
 }
@@ -514,7 +517,7 @@ BOOST_AUTO_TEST_CASE (EndpointIsConnectedClient1) {
 BOOST_AUTO_TEST_CASE (EndpointIsConnectedClient2) {
   Endpoint* e;
 
-  e = Endpoint::clientFactory("ssl://127.0.0.1");
+  e = arangodb::Endpoint::clientFactory("ssl://127.0.0.1");
   BOOST_CHECK_EQUAL(false, e->isConnected());
   DELETE_ENDPOINT(e);
 }
@@ -526,7 +529,7 @@ BOOST_AUTO_TEST_CASE (EndpointIsConnectedClient2) {
 BOOST_AUTO_TEST_CASE (EndpointIsConnectedClient3) {
   Endpoint* e;
 
-  e = Endpoint::clientFactory("unix:///tmp/socket");
+  e = arangodb::Endpoint::clientFactory("unix:///tmp/socket");
   BOOST_CHECK_EQUAL(false, e->isConnected());
   DELETE_ENDPOINT(e);
 }
@@ -538,15 +541,15 @@ BOOST_AUTO_TEST_CASE (EndpointIsConnectedClient3) {
 BOOST_AUTO_TEST_CASE (EndpointServerTcpIpv4WithPort) {
   Endpoint* e;
 
-  e = Endpoint::serverFactory("tcp://127.0.0.1:667", 1, true);
-  BOOST_CHECK_EQUAL("tcp://127.0.0.1:667", e->getSpecification());
-  BOOST_CHECK_EQUAL(Endpoint::ENDPOINT_SERVER, e->getType());
-  BOOST_CHECK_EQUAL(Endpoint::DOMAIN_IPV4, e->getDomainType());
-  BOOST_CHECK_EQUAL(Endpoint::ENCRYPTION_NONE, e->getEncryption());
-  BOOST_CHECK_EQUAL(AF_INET, e->getDomain());
-  BOOST_CHECK_EQUAL("127.0.0.1", e->getHost());
-  BOOST_CHECK_EQUAL(667, e->getPort());
-  BOOST_CHECK_EQUAL("127.0.0.1:667", e->getHostString());
+  e = arangodb::Endpoint::serverFactory("tcp://127.0.0.1:667", 1, true);
+  BOOST_CHECK_EQUAL("tcp://127.0.0.1:667", e->specification());
+  BOOST_CHECK_EQUAL(arangodb::Endpoint::EndpointType::SERVER, e->type());
+  BOOST_CHECK_EQUAL(arangodb::Endpoint::DomainType::IPV4, e->domainType());
+  BOOST_CHECK_EQUAL(arangodb::Endpoint::EncryptionType::NONE, e->encryption());
+  BOOST_CHECK_EQUAL(AF_INET, e->domain());
+  BOOST_CHECK_EQUAL("127.0.0.1", e->host());
+  BOOST_CHECK_EQUAL(667, e->port());
+  BOOST_CHECK_EQUAL("127.0.0.1:667", e->hostAndPort());
   BOOST_CHECK_EQUAL(false, e->isConnected());
   DELETE_ENDPOINT(e);
 }
@@ -558,15 +561,15 @@ BOOST_AUTO_TEST_CASE (EndpointServerTcpIpv4WithPort) {
 BOOST_AUTO_TEST_CASE (EndpointServerUnix) {
   Endpoint* e;
 
-  e = Endpoint::serverFactory("unix:///path/to/arango.sock", 1, true);
-  BOOST_CHECK_EQUAL("unix:///path/to/arango.sock", e->getSpecification());
-  BOOST_CHECK_EQUAL(Endpoint::ENDPOINT_SERVER, e->getType());
-  BOOST_CHECK_EQUAL(Endpoint::DOMAIN_UNIX, e->getDomainType());
-  BOOST_CHECK_EQUAL(Endpoint::ENCRYPTION_NONE, e->getEncryption());
-  BOOST_CHECK_EQUAL(AF_UNIX, e->getDomain());
-  BOOST_CHECK_EQUAL("localhost", e->getHost());
-  BOOST_CHECK_EQUAL(0, e->getPort());
-  BOOST_CHECK_EQUAL("localhost", e->getHostString());
+  e = arangodb::Endpoint::serverFactory("unix:///path/to/arango.sock", 1, true);
+  BOOST_CHECK_EQUAL("unix:///path/to/arango.sock", e->specification());
+  BOOST_CHECK_EQUAL(arangodb::Endpoint::EndpointType::SERVER, e->type());
+  BOOST_CHECK_EQUAL(arangodb::Endpoint::DomainType::UNIX, e->domainType());
+  BOOST_CHECK_EQUAL(arangodb::Endpoint::EncryptionType::NONE, e->encryption());
+  BOOST_CHECK_EQUAL(AF_UNIX, e->domain());
+  BOOST_CHECK_EQUAL("localhost", e->host());
+  BOOST_CHECK_EQUAL(0, e->port());
+  BOOST_CHECK_EQUAL("localhost", e->hostAndPort());
   BOOST_CHECK_EQUAL(false, e->isConnected());
   DELETE_ENDPOINT(e);
 }
@@ -578,15 +581,15 @@ BOOST_AUTO_TEST_CASE (EndpointServerUnix) {
 BOOST_AUTO_TEST_CASE (EndpointClientSslIpV6WithPortHttp) {
   Endpoint* e;
 
-  e = Endpoint::clientFactory("http@SSL://[0001:0002:0003:0004:0005:0006:0007:0008]:43425");
-  BOOST_CHECK_EQUAL("http@SSL://[0001:0002:0003:0004:0005:0006:0007:0008]:43425", e->getSpecification());
-  BOOST_CHECK_EQUAL(Endpoint::ENDPOINT_CLIENT, e->getType());
-  BOOST_CHECK_EQUAL(Endpoint::DOMAIN_IPV6, e->getDomainType());
-  BOOST_CHECK_EQUAL(Endpoint::ENCRYPTION_SSL, e->getEncryption());
-  BOOST_CHECK_EQUAL(AF_INET6, e->getDomain());
-  BOOST_CHECK_EQUAL("0001:0002:0003:0004:0005:0006:0007:0008", e->getHost());
-  BOOST_CHECK_EQUAL(43425, e->getPort());
-  BOOST_CHECK_EQUAL("[0001:0002:0003:0004:0005:0006:0007:0008]:43425", e->getHostString());
+  e = arangodb::Endpoint::clientFactory("http@SSL://[0001:0002:0003:0004:0005:0006:0007:0008]:43425");
+  BOOST_CHECK_EQUAL("http@SSL://[0001:0002:0003:0004:0005:0006:0007:0008]:43425", e->specification());
+  BOOST_CHECK_EQUAL(arangodb::Endpoint::EndpointType::CLIENT, e->type());
+  BOOST_CHECK_EQUAL(arangodb::Endpoint::DomainType::IPV6, e->domainType());
+  BOOST_CHECK_EQUAL(arangodb::Endpoint::EncryptionType::SSL, e->encryption());
+  BOOST_CHECK_EQUAL(AF_INET6, e->domain());
+  BOOST_CHECK_EQUAL("0001:0002:0003:0004:0005:0006:0007:0008", e->host());
+  BOOST_CHECK_EQUAL(43425, e->port());
+  BOOST_CHECK_EQUAL("[0001:0002:0003:0004:0005:0006:0007:0008]:43425", e->hostAndPort());
   BOOST_CHECK_EQUAL(false, e->isConnected());
   DELETE_ENDPOINT(e);
 }
@@ -598,15 +601,15 @@ BOOST_AUTO_TEST_CASE (EndpointClientSslIpV6WithPortHttp) {
 BOOST_AUTO_TEST_CASE (EndpointClientTcpIpv6WithoutPort) {
   Endpoint* e;
 
-  e = Endpoint::clientFactory("tcp://[::]");
-  BOOST_CHECK_EQUAL("tcp://[::]", e->getSpecification());
-  BOOST_CHECK_EQUAL(Endpoint::ENDPOINT_CLIENT, e->getType());
-  BOOST_CHECK_EQUAL(Endpoint::DOMAIN_IPV6, e->getDomainType());
-  BOOST_CHECK_EQUAL(Endpoint::ENCRYPTION_NONE, e->getEncryption());
-  BOOST_CHECK_EQUAL(AF_INET6, e->getDomain());
-  BOOST_CHECK_EQUAL("::", e->getHost());
-  BOOST_CHECK_EQUAL(8529, e->getPort());
-  BOOST_CHECK_EQUAL("[::]:8529", e->getHostString());
+  e = arangodb::Endpoint::clientFactory("tcp://[::]");
+  BOOST_CHECK_EQUAL("tcp://[::]", e->specification());
+  BOOST_CHECK_EQUAL(arangodb::Endpoint::EndpointType::CLIENT, e->type());
+  BOOST_CHECK_EQUAL(arangodb::Endpoint::DomainType::IPV6, e->domainType());
+  BOOST_CHECK_EQUAL(arangodb::Endpoint::EncryptionType::NONE, e->encryption());
+  BOOST_CHECK_EQUAL(AF_INET6, e->domain());
+  BOOST_CHECK_EQUAL("::", e->host());
+  BOOST_CHECK_EQUAL(8529, e->port());
+  BOOST_CHECK_EQUAL("[::]:8529", e->hostAndPort());
   BOOST_CHECK_EQUAL(false, e->isConnected());
   DELETE_ENDPOINT(e);
 }

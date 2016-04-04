@@ -23,6 +23,7 @@
 
 #include "Endpoint.h"
 
+#include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/socket-utils.h"
 #include "Endpoint/EndpointIpV4.h"
@@ -311,7 +312,13 @@ std::string const Endpoint::defaultEndpoint(TransportType type) {
     case TransportType::VPP:
       return "vpp+tcp://" + std::string(EndpointIp::_defaultHost) + ":" +
              StringUtils::itoa(EndpointIp::_defaultPortVpp);
+
+    default: {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid transport type");
+    }
   }
+
+  return ""; // silence GCC
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -361,4 +368,61 @@ bool Endpoint::setSocketFlags(TRI_socket_t s) {
   }
 
   return true;
+}
+
+std::ostream& operator<<(std::ostream& stream, arangodb::Endpoint::TransportType type) {
+  switch (type) {
+    case arangodb::Endpoint::TransportType::HTTP: 
+      stream << "http";
+      break;
+    case arangodb::Endpoint::TransportType::VPP: 
+      stream << "vsp";
+      break;
+  }
+  return stream;
+}
+
+std::ostream& operator<<(std::ostream& stream, arangodb::Endpoint::EndpointType type) {
+  switch (type) {
+    case arangodb::Endpoint::EndpointType::SERVER:
+      stream << "server";
+      break;
+    case arangodb::Endpoint::EndpointType::CLIENT:
+      stream << "client";
+      break;
+  }
+  return stream;
+}
+
+std::ostream& operator<<(std::ostream& stream, arangodb::Endpoint::EncryptionType type) {
+  switch (type) {
+    case arangodb::Endpoint::EncryptionType::NONE:
+      stream << "none";
+      break;
+    case arangodb::Endpoint::EncryptionType::SSL:
+      stream << "ssl";
+      break;
+  }
+  return stream;
+}
+
+std::ostream& operator<<(std::ostream& stream, arangodb::Endpoint::DomainType type) {
+  switch (type) {
+    case arangodb::Endpoint::DomainType::UNIX:
+      stream << "unix";
+      break;
+    case arangodb::Endpoint::DomainType::IPV4:
+      stream << "ipv4";
+      break;
+    case arangodb::Endpoint::DomainType::IPV6:
+      stream << "ipv6";
+      break;
+    case arangodb::Endpoint::DomainType::SRV:
+      stream << "srv";
+      break;
+    case arangodb::Endpoint::DomainType::UNKNOWN:
+      stream << "unknown";
+      break;
+  }
+  return stream;
 }
