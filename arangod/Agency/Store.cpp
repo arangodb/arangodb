@@ -435,6 +435,7 @@ void Node::toBuilder (Builder& builder) const {
   
 }
 
+// Print internals to ostream
 std::ostream& Node::print (std::ostream& o) const {
   Node const* par = _parent;
   while (par != 0) {
@@ -462,10 +463,13 @@ std::ostream& Node::print (std::ostream& o) const {
   return o;
 }
 
+// Create with name
 Store::Store (std::string const& name) : Node(name), Thread(name) {}
 
+// Default ctor
 Store::~Store () {}
 
+// Apply queries multiple queries to store
 std::vector<bool> Store::apply (query_t const& query) {    
   std::vector<bool> applied;
   MUTEX_LOCKER(storeLocker, _storeLock);
@@ -493,6 +497,7 @@ std::vector<bool> Store::apply (query_t const& query) {
   return applied;
 }
 
+// Apply external 
 std::vector<bool> Store::apply( std::vector<VPackSlice> const& queries) {
   std::vector<bool> applied;
   MUTEX_LOCKER(storeLocker, _storeLock);
@@ -502,6 +507,7 @@ std::vector<bool> Store::apply( std::vector<VPackSlice> const& queries) {
   return applied;
 }
 
+// Check precondition
 bool Store::check (VPackSlice const& slice) const {
   if (slice.type() != VPackValueType::Object) {
     LOG_TOPIC(WARN, Logger::AGENCY) << "Cannot check precondition: "
@@ -548,6 +554,7 @@ bool Store::check (VPackSlice const& slice) const {
   return true;
 }
 
+// Read queries into result
 std::vector<bool> Store::read (query_t const& queries, query_t& result) const { // list of list of paths
   std::vector<bool> success;
   MUTEX_LOCKER(storeLocker, _storeLock);
@@ -563,6 +570,7 @@ std::vector<bool> Store::read (query_t const& queries, query_t& result) const { 
   return success;
 }
 
+// read single query into ret
 bool Store::read (VPackSlice const& query, Builder& ret) const {
 
   bool success = true;
@@ -611,6 +619,7 @@ void Store::beginShutdown() {
   guard.broadcast();
 }
 
+// TTL clear values from store
 void Store::clearTimeTable () {
   for (auto it = _time_table.cbegin(); it != _time_table.cend(); ++it) {
     if (it->first < std::chrono::system_clock::now()) {
@@ -626,7 +635,7 @@ void Store::clearTimeTable () {
   }
 }
 
-
+// Dump internal data to builder
 void Store::dumpToBuilder (Builder& builder) const {
   MUTEX_LOCKER(storeLocker, _storeLock);
   toBuilder(builder);
