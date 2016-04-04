@@ -2622,6 +2622,8 @@ void RestReplicationHandler::handleCommandGetKeys() {
     }
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
+  } catch (std::exception const&) {
+    res = TRI_ERROR_INTERNAL;
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
   }
@@ -2637,7 +2639,7 @@ void RestReplicationHandler::handleCommandGetKeys() {
 
 void RestReplicationHandler::handleCommandFetchKeys() {
   std::vector<std::string> const& suffix = _request->suffix();
-
+  
   if (suffix.size() != 2) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/replication/keys/<keys-id>");
@@ -2701,13 +2703,9 @@ void RestReplicationHandler::handleCommandFetchKeys() {
     }
 
     try {
-      auto resolver = std::make_unique<CollectionNameResolver>(_vocbase);
-      std::unique_ptr<VPackCustomTypeHandler> customTypeHandler(TransactionContext::createCustomTypeHandler(_vocbase, resolver.get()));
+      std::shared_ptr<TransactionContext> transactionContext = StandaloneTransactionContext::Create(_vocbase);
 
-      VPackOptions options;
-      options.customTypeHandler = customTypeHandler.get();
-
-      VPackBuilder resultBuilder(&options);
+      VPackBuilder resultBuilder(transactionContext->getVPackOptions());
       resultBuilder.openArray();
 
       if (keys) {
@@ -2717,6 +2715,7 @@ void RestReplicationHandler::handleCommandFetchKeys() {
         std::shared_ptr<VPackBuilder> parsedIds =
             parseVelocyPackBody(&VPackOptions::Defaults, success);
         if (!success) {
+          // error already created
           collectionKeys->release();
           return;
         }
@@ -2727,20 +2726,22 @@ void RestReplicationHandler::handleCommandFetchKeys() {
 
       collectionKeys->release();
 
-      generateResult(HttpResponse::HttpResponseCode::OK, resultBuilder.slice());
+      generateResult(HttpResponse::HttpResponseCode::OK, resultBuilder.slice(), transactionContext);
+      return;
     } catch (...) {
       collectionKeys->release();
       throw;
     }
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
+  } catch (std::exception const&) {
+    res = TRI_ERROR_INTERNAL;
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
   }
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::responseCode(res), res);
-  }
+  TRI_ASSERT(res != TRI_ERROR_NO_ERROR);
+  generateError(HttpResponse::responseCode(res), res);
 }
 
 void RestReplicationHandler::handleCommandRemoveKeys() {
@@ -2936,7 +2937,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   std::shared_ptr<VPackBuilder> parsedBody =
       parseVelocyPackBody(&VPackOptions::Defaults, success);
   if (!success) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
+    // error already created
     return;
   }
   VPackSlice const body = parsedBody->slice();
@@ -3114,7 +3115,7 @@ void RestReplicationHandler::handleCommandSync() {
   std::shared_ptr<VPackBuilder> parsedBody =
       parseVelocyPackBody(&VPackOptions::Defaults, success);
   if (!success) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
+    // error already created
     return;
   }
   VPackSlice const body = parsedBody->slice();
@@ -3280,7 +3281,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
       parseVelocyPackBody(&VPackOptions::Defaults, success);
 
   if (!success) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
+    // error already created
     return;
   }
   VPackSlice const body = parsedBody->slice();
@@ -3488,7 +3489,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
   std::shared_ptr<VPackBuilder> parsedBody =
       parseVelocyPackBody(&VPackOptions::Defaults, success);
   if (!success) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
+    // error already created
     return;
   }
   VPackSlice const body = parsedBody->slice();
