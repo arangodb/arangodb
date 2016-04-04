@@ -144,9 +144,6 @@ class TraversalPath {
   virtual void pathToVelocyPack(Transaction*,
                                 arangodb::velocypack::Builder&) = 0;
 
-  virtual arangodb::basics::Json* pathToJson(Transaction*,
-                                             CollectionNameResolver*) { return nullptr;}
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Builds only the last edge on the path as VelocyPack
   //////////////////////////////////////////////////////////////////////////////
@@ -154,8 +151,6 @@ class TraversalPath {
   virtual void lastEdgeToVelocyPack(Transaction*,
                                     arangodb::velocypack::Builder&) = 0;
 
-  virtual arangodb::basics::Json* lastEdgeToJson(Transaction*,
-                                                 CollectionNameResolver*) { return nullptr;}
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Builds only the last vertex as VelocyPack
@@ -163,9 +158,6 @@ class TraversalPath {
 
   virtual void lastVertexToVelocyPack(Transaction*,
                                       arangodb::velocypack::Builder&) = 0;
-
-  virtual arangodb::basics::Json* lastVertexToJson(Transaction*,
-                                                   CollectionNameResolver*) { return nullptr;}
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Gets the amount of read documents

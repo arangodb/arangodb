@@ -34,6 +34,7 @@
 #include "VocBase/Traverser.h"
 #include "VocBase/server.h"
 
+#include <velocypack/Buffer.h>
 #include <velocypack/Helpers.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -970,7 +971,7 @@ int getFilteredDocumentsOnCoordinator(
     std::vector<traverser::TraverserExpression*> const& expressions,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
     std::unordered_set<std::string>& documentIds,
-    std::unordered_map<std::string, TRI_json_t*>& result) {
+    std::unordered_map<std::string, std::shared_ptr<VPackBuffer<uint8_t>>>& result) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   ClusterComm* cc = ClusterComm::instance();
@@ -1045,8 +1046,9 @@ int getFilteredDocumentsOnCoordinator(
         try {
           TRI_json_t* element = TRI_LookupArrayJson(documents, k);
           std::string id = arangodb::basics::JsonHelper::checkAndGetStringValue(
-              element, "_id");
-          result.emplace(id, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, element));
+              element, TRI_VOC_ATTRIBUTE_ID);
+          auto tmpBuilder = basics::JsonHelper::toVelocyPack(element);
+          result.emplace(id, tmpBuilder->steal());
           documentIds.erase(id);
         } catch (...) {
           // Ignore this error.

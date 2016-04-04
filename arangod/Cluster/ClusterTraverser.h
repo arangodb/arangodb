@@ -35,10 +35,12 @@ namespace traverser {
 class ClusterTraversalPath;
 
 class ClusterTraverser : public Traverser {
+  friend class ClusterTraversalPath;
+
  public:
   ClusterTraverser(
       std::vector<std::string> edgeCollections, TraverserOptions& opts,
-      std::string dbname, CollectionNameResolver const* resolver,
+      std::string dbname, Transaction* trx,
       std::unordered_map<size_t, std::vector<TraverserExpression*>> const*
           expressions)
       : Traverser(opts, expressions),
@@ -46,7 +48,7 @@ class ClusterTraverser : public Traverser {
         _dbname(dbname),
         _vertexGetter(this),
         _edgeGetter(this),
-        _resolver(resolver) {}
+        _trx(trx) {}
 
   ~ClusterTraverser() {
   }
@@ -55,11 +57,10 @@ class ClusterTraverser : public Traverser {
 
   TraversalPath* next() override;
 
-  arangodb::basics::Json* edgeToJson(std::string const&) const;
-
-  arangodb::basics::Json* vertexToJson(std::string const&) const;
-
  private:
+
+  void fetchVertices(std::unordered_set<std::string>&, size_t);
+
   bool vertexMatchesCondition(arangodb::velocypack::Slice const&,
                               std::vector<TraverserExpression*> const&);
 
@@ -108,15 +109,9 @@ class ClusterTraverser : public Traverser {
 
   EdgeGetter _edgeGetter;
 
-  CollectionNameResolver const* _resolver;
-
   arangodb::velocypack::Builder _builder;
 
-#warning INITIALIZE
   arangodb::Transaction* _trx;
-
-#warning INITIALIZE
-  arangodb::OperationOptions _operationOptions;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief internal cursor to enumerate the paths of a graph
@@ -140,12 +135,6 @@ class ClusterTraversalPath : public TraversalPath {
 
   void lastVertexToVelocyPack(Transaction*,
                               arangodb::velocypack::Builder&) override;
-  arangodb::basics::Json* pathToJson(Transaction*, CollectionNameResolver*) override;
-
-  arangodb::basics::Json* lastEdgeToJson(Transaction*, CollectionNameResolver*) override;
-
-  arangodb::basics::Json* lastVertexToJson(Transaction*,
-                                           CollectionNameResolver*) override;
 
  private:
   arangodb::basics::EnumeratedPath<std::string, std::string> _path;

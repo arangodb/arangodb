@@ -37,6 +37,8 @@ struct TRI_json_t;
 
 namespace arangodb {
 namespace velocypack {
+template <typename T>
+class Buffer;
 class Builder;
 class Slice;
 }
@@ -156,7 +158,7 @@ int getFilteredDocumentsOnCoordinator(
     std::vector<traverser::TraverserExpression*> const& expressions,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
     std::unordered_set<std::string>& documentIds,
-    std::unordered_map<std::string, TRI_json_t*>& result);
+    std::unordered_map<std::string, std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>& result);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get all documents in a coordinator

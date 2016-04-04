@@ -88,7 +88,7 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
     _traverser.reset(new arangodb::traverser::ClusterTraverser(
         ep->edgeColls(), opts,
         std::string(_trx->vocbase()->_name, strlen(_trx->vocbase()->_name)),
-        _resolver, _expressions));
+        _trx, _expressions));
   } else {
     _traverser.reset(
         new arangodb::traverser::DepthFirstTraverser(opts, _trx, _expressions));
