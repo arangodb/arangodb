@@ -570,10 +570,9 @@ bool Store::read (VPackSlice const& query, Builder& ret) const {
   // Collect all paths
   std::list<std::string> query_strs;
   if (query.type() == VPackValueType::Array) {
-    for (auto const& sub_query : VPackArrayIterator(query))
+    for (auto const& sub_query : VPackArrayIterator(query)) {
       query_strs.push_back(sub_query.copyString());
-  } else if (query.type() == VPackValueType::String) {
-    query_strs.push_back(query.copyString());
+    }
   } else {
     return false;
   }
@@ -596,23 +595,11 @@ bool Store::read (VPackSlice const& query, Builder& ret) const {
     try {
       copy(*i) = (*this)(*i);
     } catch (StoreException const&) {
-      if (query.type() == VPackValueType::String)
-        success = false;
+      copy(*i) = VPackSlice("\x00a",&Options::Defaults);
     }
   }
   
-  // Assemble builder from response tree
-  if (query.type() == VPackValueType::String &&
-      copy(*query_strs.begin()).type() == LEAF) {
-    ret.add(copy(*query_strs.begin()).slice());
-  } else {
-    if (copy.type() == LEAF && copy.valueType() == VPackValueType::Null) {
-      ret.add(VPackValue(VPackValueType::Object));
-      ret.close();
-    } else {
-      copy.toBuilder(ret);
-    }
-  }
+  copy.toBuilder(ret);
   
   return success;
   
