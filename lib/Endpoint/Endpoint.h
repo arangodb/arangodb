@@ -32,6 +32,8 @@
 #include <WS2tcpip.h>
 #endif
 
+#include <ostream>
+
 namespace arangodb {
 
 class Endpoint {
@@ -94,5 +96,10 @@ class Endpoint {
 };
 
 }
+
+std::ostream& operator<<(std::ostream&, arangodb::Endpoint::TransportType);
+std::ostream& operator<<(std::ostream&, arangodb::Endpoint::EndpointType);
+std::ostream& operator<<(std::ostream&, arangodb::Endpoint::EncryptionType);
+std::ostream& operator<<(std::ostream&, arangodb::Endpoint::DomainType);
 
 #endif
