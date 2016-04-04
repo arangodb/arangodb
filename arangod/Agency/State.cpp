@@ -244,14 +244,17 @@ bool State::loadCollection(std::string const& name) {
     if (res->status == CL_COMM_SENT) {
       std::shared_ptr<Builder> body = res->result->getBodyVelocyPack();
       if (body->slice().hasKey("result")) {
-        for (auto const& i : VPackArrayIterator(body->slice().get("result"))) {
-          buffer_t tmp =
+        VPackSlice result = body->slice().get("result");
+        if (result.type() == VPackValueType::Array) {
+          for (auto const& i : VPackArrayIterator(result)) {
+            buffer_t tmp =
               std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
-          tmp->append((char const*)i.get("request").begin(),
-                      i.get("request").byteSize());
-          _log.push_back(log_t(std::stoi(i.get("_key").copyString()),
-                               i.get("term").getUInt(),
-                               i.get("leader").getUInt(), tmp));
+            tmp->append((char const*)i.get("request").begin(),
+                        i.get("request").byteSize());
+            _log.push_back(log_t(std::stoi(i.get("_key").copyString()),
+                                 i.get("term").getUInt(),
+                                 i.get("leader").getUInt(), tmp));
+          }
         }
       }
     }
