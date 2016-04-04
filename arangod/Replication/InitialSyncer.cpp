@@ -530,24 +530,25 @@ int InitialSyncer::applyCollectionDump(
         }
       }
 
-      else if (attributeName == "key") {
-        if (it.value.isString()) {
-          key = it.value.copyString();
-        }
-      }
-
-      else if (attributeName == "rev") {
-        if (it.value.isString()) {
-          rev = it.value.copyString();
-        }
-      }
-
       else if (attributeName == "data") {
         if (it.value.isObject()) {
           doc = it.value;
         }
       }
     }
+      
+    if (!doc.isNone()) {
+      VPackSlice value = doc.get(TRI_VOC_ATTRIBUTE_KEY);
+      if (value.isString()) {
+        key = value.copyString();
+      }
+      
+      value = doc.get(TRI_VOC_ATTRIBUTE_REV);
+      
+      if (value.isString()) {
+        rev = value.copyString();
+      }
+    } 
 
     // key must not be empty, but doc can be empty
     if (key.empty()) {
@@ -1007,6 +1008,9 @@ int InitialSyncer::handleCollectionSync(
     res = handleSyncKeys(col, id.copyString(), cid, collectionName, maxTick, errorMsg);
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
+  } catch (std::exception const& ex) {
+    errorMsg = ex.what();
+    res = TRI_ERROR_INTERNAL;
   } catch (...) {
     res = TRI_ERROR_INTERNAL;
   }
@@ -1167,6 +1171,11 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
+  
+  OperationOptions options;
+  options.silent = true;
+  options.ignoreRevs = true;
+  options.isRestore = true;
 
   VPackBuilder keyBuilder;
   size_t const n = slice.length();
@@ -1174,10 +1183,6 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
   // remove all keys that are below first remote key or beyond last remote key
   if (n > 0) {
     // first chunk
-    OperationOptions options;
-    options.silent = true;
-    options.ignoreRevs = true;
-
     SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->_cid, TRI_TRANSACTION_WRITE);
   
     int res = trx.begin();
@@ -1198,7 +1203,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
     for (size_t i = 0; i < markers.size(); ++i) {
       VPackSlice const k(reinterpret_cast<char const*>(markers[i]) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
      
-      if (k.copyString().compare(lowKey) >= 0) { 
+      if (k.get(TRI_VOC_ATTRIBUTE_KEY).copyString().compare(lowKey) >= 0) { 
         break;
       }
 
@@ -1222,7 +1227,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
     for (size_t i = markers.size(); i >= 1; --i) {
       VPackSlice const k(reinterpret_cast<char const*>(markers[i - 1]) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
 
-      if (k.copyString().compare(highKey) <= 0) { 
+      if (k.get(TRI_VOC_ATTRIBUTE_KEY).copyString().compare(highKey) <= 0) { 
         break;
       }
       
@@ -1236,7 +1241,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
 
     trx.commit();
   }
-
+    
   size_t nextStart = 0;
 
   // now process each chunk
@@ -1245,11 +1250,6 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
       return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
     }
     
-    OperationOptions options;
-    options.silent = true;
-    options.ignoreRevs = true;
-    options.isRestore = true;
-
     SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), col->_cid, TRI_TRANSACTION_WRITE);
   
     int res = trx.begin();
@@ -1315,7 +1315,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
         match = false;
       }
     }
-
+  
     if (match) {
       // match
       nextStart = localTo + 1;
@@ -1371,9 +1371,6 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
         return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
       }
 
-      size_t const n = slice.length();
-      TRI_ASSERT(n > 0);
-
       // delete all keys at start of the range
       while (nextStart < markers.size()) {
         VPackSlice const keySlice(reinterpret_cast<char const*>(markers[nextStart]) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
@@ -1397,6 +1394,9 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
 
       toFetch.clear();
 
+      size_t const n = slice.length();
+      TRI_ASSERT(n > 0);
+  
       for (size_t i = 0; i < n; ++i) {
         VPackSlice const pair = slice.at(i);
 
@@ -1410,7 +1410,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
 
         // key
         VPackSlice const keySlice = pair.at(0);
-
+        
         if (!keySlice.isString()) {
           errorMsg = "got invalid response from master at " +
                      _masterInfo._endpoint +
@@ -1425,12 +1425,14 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
           toFetch.emplace_back(i);
           continue;
         }
+          
+        std::string const keyString = keySlice.copyString();
 
         while (nextStart < markers.size()) {
           VPackSlice const localKeySlice(reinterpret_cast<char const*>(markers[nextStart]) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
           std::string const localKey(localKeySlice.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
 
-          int res = localKey.compare(keySlice.copyString());
+          int res = localKey.compare(keyString);
 
           if (res < 0) {
             // we have a local key that is not present remotely
@@ -1452,7 +1454,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
         if (mptr == nullptr) {
           // key not found locally
           toFetch.emplace_back(i);
-        } else if (std::to_string(mptr->revisionId()) != chunk.at(1).copyString()) {
+        } else if (std::to_string(mptr->revisionId()) != pair.at(1).copyString()) {
           // key found, but revision id differs
           toFetch.emplace_back(i);
           ++nextStart;
@@ -1487,7 +1489,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
           keysBuilder.add(VPackValue(it));
         }
         keysBuilder.close();
-
+  
         std::string url = baseUrl + "/" + keysId + "?type=docs&chunk=" +
                           std::to_string(currentChunkId) + "&chunkSize=" +
                           std::to_string(chunkSize);
