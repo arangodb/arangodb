@@ -32,6 +32,8 @@
 #include <WS2tcpip.h>
 #endif
 
+#include <ostream>
+
 namespace arangodb {
 
 class Endpoint {
@@ -71,7 +73,7 @@ class Endpoint {
   virtual bool setTimeout(TRI_socket_t, double);
   virtual bool isConnected() const { return _connected; }
   virtual bool setSocketFlags(TRI_socket_t);
-  virtual DomainType getDomainType() const { return _domainType; }
+  virtual DomainType domainType() const { return _domainType; }
 
   virtual int domain() const = 0;
   virtual int port() const = 0;
@@ -94,5 +96,10 @@ class Endpoint {
 };
 
 }
+
+std::ostream& operator<<(std::ostream&, arangodb::Endpoint::TransportType);
+std::ostream& operator<<(std::ostream&, arangodb::Endpoint::EndpointType);
+std::ostream& operator<<(std::ostream&, arangodb::Endpoint::EncryptionType);
+std::ostream& operator<<(std::ostream&, arangodb::Endpoint::DomainType);
 
 #endif

@@ -194,7 +194,7 @@ bool ListenTask::handleEvent(EventToken token, EventType revents) {
     // set client address and port
     ConnectionInfo info;
 
-    Endpoint::DomainType type = _endpoint->getDomainType();
+    Endpoint::DomainType type = _endpoint->domainType();
     char host[NI_MAXHOST], serv[NI_MAXSERV];
 
     if (getnameinfo((sockaddr*)addr, len, host, sizeof(host), serv,
@@ -257,7 +257,7 @@ bool ListenTask::handleEvent(EventToken token, EventType revents) {
 
     // set the endpoint
     info.endpoint = _endpoint->specification();
-    info.endpointType = _endpoint->getDomainType();
+    info.endpointType = _endpoint->domainType();
 
     return handleConnected(connectionSocket, info);
   }
