@@ -71,7 +71,6 @@ typedef std::map<std::shared_ptr<Node>, TimePoint> TableTime;
 class Node {
   
 public:
-
   // @brief Slash-segemented path 
   typedef std::vector<std::string> PathType;
 

@@ -625,10 +625,6 @@ void Store::beginShutdown() {
 }
 
 void Store::clearTimeTable () {
-<<<<<<< HEAD
-=======
-
->>>>>>> 5caf02768c711fe1d811bb58d5451f86ac38b02f
   for (auto it = _time_table.cbegin(); it != _time_table.cend(); ++it) {
     if (it->first < std::chrono::system_clock::now()) {
       query_t tmp = std::make_shared<Builder>();
@@ -641,10 +637,6 @@ void Store::clearTimeTable () {
       break;
     }
   }
-<<<<<<< HEAD
-=======
-
->>>>>>> 5caf02768c711fe1d811bb58d5451f86ac38b02f
 }
 
 
