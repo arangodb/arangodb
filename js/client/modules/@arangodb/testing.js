@@ -1554,7 +1554,7 @@ function startInstanceCluster(instanceInfo, protocol, options,
     subArgs = _.extend(subArgs, args);
 
     return [subArgs, testname + '-' + 'agency', appDir, tmpDir];
-  }
+  };
   options.agencySize = 1;
   startInstanceAgency(instanceInfo, protocol, options, ...makeArgs('agency', clusterArgs));
   
