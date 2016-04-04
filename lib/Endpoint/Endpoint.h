@@ -24,13 +24,16 @@
 #ifndef LIB_REST_ENDPOINT_H
 #define LIB_REST_ENDPOINT_H 1
 
-#include "Basics/socket-utils.h"
 #include "Basics/Common.h"
+
+#include "Basics/socket-utils.h"
 
 #ifdef TRI_HAVE_WINSOCK2_H
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #endif
+
+#include <ostream>
 
 namespace arangodb {
 
@@ -92,7 +95,11 @@ class Endpoint {
   bool _connected;
   TRI_socket_t _socket;
 };
-
 }
+
+std::ostream& operator<<(std::ostream&, arangodb::Endpoint::TransportType);
+std::ostream& operator<<(std::ostream&, arangodb::Endpoint::EndpointType);
+std::ostream& operator<<(std::ostream&, arangodb::Endpoint::EncryptionType);
+std::ostream& operator<<(std::ostream&, arangodb::Endpoint::DomainType);
 
 #endif

@@ -140,6 +140,8 @@ private:
   /// @brief Create collection
   bool createCollection(std::string const& name);
 
+  bool compact ();
+
   mutable arangodb::Mutex _logLock;  /**< @brief Mutex for modifying _log */
   std::deque<log_t> _log;           /**< @brief  State entries */
   std::string _end_point;            /**< @brief persistence end point */

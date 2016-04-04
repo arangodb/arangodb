@@ -34,10 +34,11 @@ using namespace std;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-ApplicationAgency::ApplicationAgency()
+ApplicationAgency::ApplicationAgency(ApplicationEndpointServer* aes)
   : ApplicationFeature("agency"), _size(1), _min_election_timeout(0.15),
 	  _max_election_timeout(1.0), _election_call_rate_mul(0.85), _notify(false),
-    _agent_id((std::numeric_limits<uint32_t>::max)()) {
+    _agent_id((std::numeric_limits<uint32_t>::max)()), _endpointServer(aes) {
+  LOG_TOPIC(INFO, Logger::AGENCY) << aes->getEndpoints().size();
 }
 
 
@@ -66,42 +67,53 @@ void ApplicationAgency::setupOptions(
 }
 
 
-bool ApplicationAgency::afterOptionParsing (ProgramOptions& opts)  {
-//  LOG_TOPIC(WARN, Logger::AGENCY) << "Server endpoint " << opts.has("server.endpoint");
-  return true;
-}
-
 bool ApplicationAgency::prepare() {
 
   _disabled = (_agent_id == (std::numeric_limits<uint32_t>::max)());
 
+  // Disabled?
   if (_disabled) {
     return true;
   }
 
+  // TODO: Port this to new options handling
+  std::string endpoint, port = "8529";
+  if (_endpointServer->getEndpoints().size()) {
+    endpoint = _endpointServer->getEndpoints().at(0);
+    size_t pos = endpoint.find(':',10);
+    if (pos != std::string::npos) {
+      port = endpoint.substr(pos+1,endpoint.size()-pos);
+    }
+  }
+  endpoint = std::string ("tcp://localhost:" + port);
+
+  // Agency size
   if (_size < 1) {
     LOG_TOPIC(ERR, Logger::AGENCY) << "AGENCY: agency must have size greater 0";
     return false;    
   }
   
-
+  // Size needs to be odd
   if (_size % 2 == 0) {
     LOG_TOPIC(ERR, Logger::AGENCY)
       << "AGENCY: agency must have odd number of members";
     return false;
   }
-  
+
+  // Id specified?
   if (_agent_id == (std::numeric_limits<uint32_t>::max)()) {
     LOG_TOPIC(ERR, Logger::AGENCY) << "agency.id must be specified";
     return false;
   }
 
+  // Id out of range
   if (_agent_id >= _size) {
     LOG_TOPIC(ERR, Logger::AGENCY) << "agency.id must not be larger than or "
                                    << "equal to agency.size";
     return false;
   }
 
+  // Timeouts sanity
   if (_min_election_timeout <= 0.) {
     LOG_TOPIC(ERR, Logger::AGENCY)
       << "agency.election-timeout-min must not be negative!";
@@ -110,14 +122,12 @@ bool ApplicationAgency::prepare() {
     LOG_TOPIC(WARN, Logger::AGENCY)
       << "very short agency.election-timeout-min!";
   }
-  
   if (_max_election_timeout <= _min_election_timeout) {
     LOG_TOPIC(ERR, Logger::AGENCY)
       << "agency.election-timeout-max must not be shorter than or"
       << "equal to agency.election-timeout-min.";
     return false;
   }
-  
   if (_max_election_timeout <= 2*_min_election_timeout) {
     LOG_TOPIC(WARN, Logger::AGENCY)
       << "agency.election-timeout-max should probably be chosen longer!";
@@ -128,7 +138,7 @@ bool ApplicationAgency::prepare() {
   _agent = std::unique_ptr<agent_t>(
     new agent_t(arangodb::consensus::config_t(
                   _agent_id, _min_election_timeout, _max_election_timeout,
-                  _agency_endpoints, _notify)));
+                  endpoint, _agency_endpoints, _notify)));
   
   return true;
   
