@@ -393,7 +393,6 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
           result.add(VPackValue("documents"));
           std::vector<std::string> filteredIds;
 
-#warning TODO: fixme
           // just needed to build the result
           SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase), collectionName, TRI_TRANSACTION_READ);
 
@@ -404,9 +403,7 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
               for (auto& e : expressions) {
                 if (!e->isEdgeAccess && !e->matchesCheck(&trx, tmp)) {
                   add = false;
-                  std::string _id =
-                      arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
-                          tmp, "_id");
+                  std::string _id = trx.extractIdString(tmp);
                   filteredIds.emplace_back(_id);
                   break;
                 }
