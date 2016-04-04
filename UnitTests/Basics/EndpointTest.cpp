@@ -25,9 +25,10 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Endpoint/Endpoint.h"
+
 #include <boost/test/unit_test.hpp>
 
-#include "Endpoint/Endpoint.h"
 #include "Endpoint/EndpointUnixDomain.h"
 #include "Endpoint/EndpointIp.h"
 #include "Endpoint/EndpointIpV4.h"
@@ -36,6 +37,11 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace std;
+
+// sory, but boost is broken
+BOOST_TEST_DONT_PRINT_LOG_VALUE(arangodb::Endpoint::DomainType)
+BOOST_TEST_DONT_PRINT_LOG_VALUE(arangodb::Endpoint::EncryptionType)
+BOOST_TEST_DONT_PRINT_LOG_VALUE(arangodb::Endpoint::EndpointType)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            macros

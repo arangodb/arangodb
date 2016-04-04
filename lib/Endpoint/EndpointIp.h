@@ -37,9 +37,9 @@ class EndpointIp : public Endpoint {
   ~EndpointIp();
 
  public:
-  static uint16_t const _defaultPortHttp = 8529;
-  static uint16_t const _defaultPortVpp = 8530;
-  constexpr static char const* _defaultHost = "127.0.0.1";
+  static uint16_t const _defaultPortHttp;
+  static uint16_t const _defaultPortVpp;
+  static char const* _defaultHost;
 
  private:
   //////////////////////////////////////////////////////////////////////////////
