@@ -200,80 +200,7 @@ void V8DealerFeature::start() {
 }
 
 void V8DealerFeature::stop() {
-  _stopping = true;
-
-  // wait for all contexts to finish
-  {
-    CONDITION_LOCKER(guard, _contextCondition);
-    guard.broadcast();
-
-    for (size_t n = 0; n < 10 * 5; ++n) {
-      if (_busyContexts.empty()) {
-        LOG(DEBUG) << "no busy V8 contexts";
-        break;
-      }
-
-      LOG(DEBUG) << "waiting for busy V8 contexts (" << _busyContexts.size()
-                 << ") to finish ";
-
-      guard.wait(100000);
-    }
-  }
-
-  // send all busy contexts a termate signal
-  {
-    CONDITION_LOCKER(guard, _contextCondition);
-
-    for (auto& it : _busyContexts) {
-      LOG(WARN) << "sending termination signal to V8 context";
-      v8::V8::TerminateExecution(it->_isolate);
-    }
-  }
-
-  // wait for one minute
-  {
-    CONDITION_LOCKER(guard, _contextCondition);
-
-    for (size_t n = 0; n < 10 * 60; ++n) {
-      if (_busyContexts.empty()) {
-        break;
-      }
-
-      guard.wait(100000);
-    }
-  }
-
-  // stop GC thread
-  if (_gcThread != nullptr) {
-    LOG(DEBUG) << "Waiting for GC Thread to finish action";
-    _gcThread->beginShutdown();
-
-    // wait until garbage collector thread is done
-    while (!_gcFinished) {
-      usleep(10000);
-    }
-
-    LOG(DEBUG) << "Commanding GC Thread to terminate";
-  }
-
-  // shutdown all instances
-  {
-    CONDITION_LOCKER(guard, _contextCondition);
-
-    for (size_t i = 0; i < _nrContexts; ++i) {
-      shutdownV8Instance(i);
-    }
-
-    delete[] _contexts;
-  }
-
-  LOG(DEBUG) << "Shutting down V8";
-
-  // delete GC thread after all action threads have been stopped
-  if (_gcThread != nullptr) {
-    delete _gcThread;
-  }
-
+  shutdownContexts();
   DEALER = nullptr;
 }
 
@@ -720,6 +647,82 @@ void V8DealerFeature::updateContexts(
     V8DealerFeature::DEALER->exitContext(context);
 
     LOG(TRACE) << "updated V8 context #" << i;
+  }
+}
+
+void V8DealerFeature::shutdownContexts() {
+  _stopping = true;
+
+  // wait for all contexts to finish
+  {
+    CONDITION_LOCKER(guard, _contextCondition);
+    guard.broadcast();
+
+    for (size_t n = 0; n < 10 * 5; ++n) {
+      if (_busyContexts.empty()) {
+        LOG(DEBUG) << "no busy V8 contexts";
+        break;
+      }
+
+      LOG(DEBUG) << "waiting for busy V8 contexts (" << _busyContexts.size()
+                 << ") to finish ";
+
+      guard.wait(100000);
+    }
+  }
+
+  // send all busy contexts a termate signal
+  {
+    CONDITION_LOCKER(guard, _contextCondition);
+
+    for (auto& it : _busyContexts) {
+      LOG(WARN) << "sending termination signal to V8 context";
+      v8::V8::TerminateExecution(it->_isolate);
+    }
+  }
+
+  // wait for one minute
+  {
+    CONDITION_LOCKER(guard, _contextCondition);
+
+    for (size_t n = 0; n < 10 * 60; ++n) {
+      if (_busyContexts.empty()) {
+        break;
+      }
+
+      guard.wait(100000);
+    }
+  }
+
+  // stop GC thread
+  if (_gcThread != nullptr) {
+    LOG(DEBUG) << "Waiting for GC Thread to finish action";
+    _gcThread->beginShutdown();
+
+    // wait until garbage collector thread is done
+    while (!_gcFinished) {
+      usleep(10000);
+    }
+
+    LOG(DEBUG) << "Commanding GC Thread to terminate";
+  }
+
+  // shutdown all instances
+  {
+    CONDITION_LOCKER(guard, _contextCondition);
+
+    for (size_t i = 0; i < _nrContexts; ++i) {
+      shutdownV8Instance(i);
+    }
+
+    delete[] _contexts;
+  }
+
+  LOG(DEBUG) << "Shutting down V8";
+
+  // delete GC thread after all action threads have been stopped
+  if (_gcThread != nullptr) {
+    delete _gcThread;
   }
 }
 

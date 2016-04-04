@@ -71,6 +71,8 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
       std::function<void(v8::Isolate*, v8::Handle<v8::Context>, size_t)>,
       TRI_vocbase_t*);
 
+  void shutdownContexts();
+
  private:
   V8Context* pickFreeContextForGc();
   void initializeContext(size_t);

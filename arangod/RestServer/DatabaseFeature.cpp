@@ -225,6 +225,10 @@ void DatabaseFeature::start() {
 }
 
 void DatabaseFeature::stop() {
+#warning TODO: we can get rid of this once V8DealerFeature is started AFTER the DatabaseFeature
+  // get rid of references in V8
+  V8DealerFeature::DEALER->shutdownContexts();
+  
   // clear the query registery
   _server->_queryRegistry = nullptr;
 
