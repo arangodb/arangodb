@@ -745,7 +745,7 @@ function runThere(options, instanceInfo, file) {
     }
 
     httpOptions.returnBodyOnError = true;
-
+    
     const reply = download(instanceInfo.url + "/_admin/execute?returnAsJSON=true",
       testCode,
       httpOptions);
@@ -828,7 +828,6 @@ function performTests(options, testList, testname) {
         }
 
         print("\n" + Date() + " arangod: Trying", te, "...");
-
         let reply = runThere(options, instanceInfo, te);
 
         if (reply.hasOwnProperty('status')) {
@@ -1780,7 +1779,7 @@ function startInstance(protocol, options, addArgs, testname, tmpDir) {
     instanceInfo.url = url;
   } else {
     instanceInfo.urls = instanceInfo.endpoints.map(endpointToURL);
-    url = instanceInfo.urls[0];
+    url = instanceInfo.urls[instanceInfo.urls.length - 1];
     instanceInfo.url = url;
   }
 
