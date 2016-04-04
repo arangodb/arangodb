@@ -602,18 +602,18 @@ void Store::dumpToBuilder (Builder& builder) const {
     VPackObjectBuilder guard(&builder);
     for (auto const& i : _time_table) {
       auto in_time_t = std::chrono::system_clock::to_time_t(i.first);
-      std::stringstream ss;
-      ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X");
-      builder.add(ss.str(), VPackValue((size_t)i.second.get()));
+      std::string ts = ctime(&in_time_t);
+      ts.resize(ts.size()-1);
+      builder.add(ts, VPackValue((size_t)i.second.get()));
     }
   }
   {
     VPackObjectBuilder guard(&builder);
     for (auto const& i : _table_time) {
       auto in_time_t = std::chrono::system_clock::to_time_t(i.second);
-      std::stringstream ss;
-      ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d %X");
-      builder.add(std::to_string((size_t)i.first.get()), VPackValue(ss.str()));
+      std::string ts = ctime(&in_time_t);
+      ts.resize(ts.size()-1);
+      builder.add(std::to_string((size_t)i.first.get()), VPackValue(ts));
     }
   }
 }
