@@ -38,47 +38,87 @@ using namespace arangodb::consensus;
 using namespace arangodb::rest;
 using namespace arangodb::velocypack;
 
+// Configure with agent's configuration
 void Constituent::configure(Agent* agent) {
+
   _agent = agent;
+
   if (size() == 1) {
     _role = LEADER;
   } else {
     try {
       _votes.resize(size());
     } catch (std::exception const& e) {
-      LOG_TOPIC(ERR, Logger::AGENCY) << "Cannot resize votes vector to " << size();
+      LOG_TOPIC(ERR, Logger::AGENCY) <<
+        "Cannot resize votes vector to " << size();
       LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
     }
+    
     _id = _agent->config().id;
+
     if (_agent->config().notify) {// (notify everyone) 
       notifyAll();
     }
   }
+  
 }
 
+// Default ctor
 Constituent::Constituent() :
   Thread("Constituent"), _term(0), _leader_id(0), _id(0), _gen(std::random_device()()),
   _role(FOLLOWER), _agent(0) {}
 
+// Shutdown if not already
 Constituent::~Constituent() {
   shutdown();
 }
 
+// Random sleep times in election process
 duration_t Constituent::sleepFor (double min_t, double max_t) {
   dist_t dis(min_t, max_t);
   return duration_t((long)std::round(dis(_gen)*1000.0));
 }
 
+// Get my term
 term_t Constituent::term() const {
   return _term;
 }
 
+// Update my term
 void Constituent::term(term_t t) {
+
   if (_term != t) {
-    LOG_TOPIC(INFO, Logger::AGENCY) << "Updating term to " << t;
-    _agent->persist(_term = t, _leader_id);
+
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Updating term to "
+                                    << t << "and persisting";
+
+    static std::string const path = "/_api/document?collection=election";
+    std::map<std::string, std::string> headerFields;
+    
+    Builder body;
+    body.add(VPackValue(VPackValueType::Object));
+    std::ostringstream i_str;
+    i_str << std::setw(20) << std::setfill('0') << index;
+    body.add("term", Value(term));
+    body.add("voted_for", Value((uint32_t)_voted_for));
+    body.close();
+    
+    std::unique_ptr<arangodb::ClusterCommResult> res =
+      arangodb::ClusterComm::instance()->syncRequest(
+        "1", 1, _agent->config().end_point, GeneralRequest::RequestType::POST,
+        path, body.toJson(), headerFields, 0.0);
+    
+    if (res->status != CL_COMM_SENT) {
+      LOG_TOPIC(ERR, Logger::AGENCY) << res->status << ": " << CL_COMM_SENT
+                                     << ", " << res->errorMessage;
+      LOG_TOPIC(ERR, Logger::AGENCY)
+        << res->result->getBodyVelocyPack()->toJson();
+    }
+    
   }
+  
 }
+
 
 role_t Constituent::role () const {
   return _role;
