@@ -71,8 +71,10 @@ typedef std::map<std::shared_ptr<Node>, TimePoint> TableTime;
 class Node {
   
 public:
-  
+  // @brief Slash-segemented path 
   typedef std::vector<std::string> PathType;
+
+  // @brief Child nodes
   typedef std::map<std::string, std::shared_ptr<Node>> Children;
   
   /// @brief Construct with name
@@ -117,16 +119,16 @@ public:
   /// @brief Get node specified by path string  
   Node const& operator ()(std::string const& path) const;
 
-  /// @brief Remove node with absolute path
+  /// @brief Remove node at absolut path
   bool remove (std::string const& path);
 
-  /// @brief Remove child 
+  /// @brief Remove child by name
   bool removeChild (std::string const& key);
 
-  /// @brief Remove this node
+  /// @brief Remove this node and below from tree
   bool remove();
 
-  /// @brief Root node
+  /// @brief Get root node
   Node& root();
 
   /// @brief Dump to ostream

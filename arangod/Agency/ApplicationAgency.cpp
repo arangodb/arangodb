@@ -38,17 +38,13 @@ ApplicationAgency::ApplicationAgency(ApplicationEndpointServer* aes)
   : ApplicationFeature("agency"), _size(1), _min_election_timeout(0.15),
 	  _max_election_timeout(1.0), _election_call_rate_mul(0.85), _notify(false),
     _agent_id((std::numeric_limits<uint32_t>::max)()), _endpointServer(aes) {
-  LOG_TOPIC(INFO, Logger::AGENCY) << aes->getEndpoints().size();
 }
 
 
 ApplicationAgency::~ApplicationAgency() {}
 
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the processor affinity
-////////////////////////////////////////////////////////////////////////////////
-
 void ApplicationAgency::setupOptions(
     std::map<std::string, ProgramOptionsDescription>& options) {
   options["Agency Options:help-agency"]("agency.size", &_size, "Agency size")
@@ -66,7 +62,7 @@ void ApplicationAgency::setupOptions(
   
 }
 
-
+/// @brief prepare agency with command line options
 bool ApplicationAgency::prepare() {
 
   _disabled = (_agent_id == (std::numeric_limits<uint32_t>::max)());
@@ -144,7 +140,7 @@ bool ApplicationAgency::prepare() {
   
 }
 
-
+/// @brief Start agency threads
 bool ApplicationAgency::start() {
   if (_disabled) {
     return true;

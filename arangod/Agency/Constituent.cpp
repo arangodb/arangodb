@@ -39,7 +39,6 @@ using namespace arangodb::consensus;
 using namespace arangodb::rest;
 using namespace arangodb::velocypack;
 
-#include <iostream>
 // Configure with agent's configuration
 void Constituent::configure(Agent* agent) {
 
@@ -60,7 +59,6 @@ void Constituent::configure(Agent* agent) {
     if (_agent->config().notify) {// (notify everyone) 
       notifyAll();
     }
-    std::cout<< __FILE__ << __LINE__ << std::endl;
   }
   
 }
@@ -123,11 +121,12 @@ void Constituent::term(term_t t) {
   
 }
 
-
+/// @brief My role
 role_t Constituent::role () const {
   return _role;
 }
 
+/// @brief Become follower in term 
 void Constituent::follow (term_t t) {
   if (_role != FOLLOWER) {
     LOG_TOPIC(INFO, Logger::AGENCY) << "Role change: Converted to follower in term " << t;
@@ -137,6 +136,7 @@ void Constituent::follow (term_t t) {
   _role = FOLLOWER;
 }
 
+/// @brief Become leader
 void Constituent::lead () {
   if (_role != LEADER) {
     LOG_TOPIC(INFO, Logger::AGENCY) << "Role change: Converted to leader in term " << _term ;
@@ -146,40 +146,49 @@ void Constituent::lead () {
   _leader_id = _id;
 }
 
+/// @brief Become follower
 void Constituent::candidate () {
   if (_role != CANDIDATE)
     LOG_TOPIC(INFO, Logger::AGENCY) << "Role change: Converted to candidate in term " << _term ;
   _role = CANDIDATE;
 }
 
+/// @brief Leading?
 bool Constituent::leading () const {
   return _role == LEADER;
 }
 
+/// @brief Following?
 bool Constituent::following () const {
   return _role == FOLLOWER;
 }
 
+/// @brief Runnig as candidate?
 bool Constituent::running () const {
   return _role == CANDIDATE;
 }
 
+/// @brief Get current leader's id
 id_t Constituent::leaderID ()  const {
   return _leader_id;
 }
 
+/// @brief Agency size
 size_t Constituent::size() const {
   return _agent->config().size();
 }
 
+/// @brief Get endpoint to an id 
 std::string const& Constituent::end_point(id_t id) const {
   return _agent->config().end_points[id];
 }
 
+/// @brief Get all endpoints
 std::vector<std::string> const& Constituent::end_points() const {
   return _agent->config().end_points;
 }
 
+/// @brief Notify peers of updated endpoints
 size_t Constituent::notifyAll () {
 
   // Last process notifies everyone 
@@ -212,6 +221,7 @@ size_t Constituent::notifyAll () {
   return size()-1;
 }
 
+/// @brief Vote
 bool Constituent::vote (
   term_t term, id_t id, index_t prevLogIndex, term_t prevLogTerm) {
   if (term > _term || (_term==term&&_leader_id==id)) {
@@ -229,19 +239,18 @@ bool Constituent::vote (
   }
 }
 
-void Constituent::update (term_t t, id_t i) {
-  
-}
-
+/// @brief Implementation of a gossip protocol
 void Constituent::gossip (const constituency_t& constituency) {
   // TODO: Replace lame notification by gossip protocol
 }
 
+/// @brief Implementation of a gossip protocol
 const constituency_t& Constituent::gossip () {
   // TODO: Replace lame notification by gossip protocol
   return _constituency;
 }
 
+/// @brief Call to election
 void Constituent::callElection() {
 
   try {
@@ -262,7 +271,8 @@ void Constituent::callElection() {
        << "&prevLogIndex=" << _agent->lastLog().index << "&prevLogTerm="
        << _agent->lastLog().term;
 
-  for (id_t i = 0; i < _agent->config().end_points.size(); ++i) { // Ask everyone for their vote
+  // Ask everyone for their vote
+  for (id_t i = 0; i < _agent->config().end_points.size(); ++i) { 
     if (i != _id && end_point(i) != "") {
       std::unique_ptr<std::map<std::string, std::string>> headerFields =
         std::make_unique<std::map<std::string, std::string> >();
@@ -272,35 +282,35 @@ void Constituent::callElection() {
         _agent->config().min_ping, true);
     }
   }
-  
-  std::this_thread::sleep_for(sleepFor(.5*_agent->config().min_ping, .8*_agent->config().min_ping)); // Wait timeout
-  
-  for (id_t i = 0; i < _agent->config().end_points.size(); ++i) { // Collect votes
+
+  // Wait randomized timeout
+  std::this_thread::sleep_for(
+    sleepFor(.5*_agent->config().min_ping,
+             .8*_agent->config().min_ping));
+
+  // Collect votes
+  for (id_t i = 0; i < _agent->config().end_points.size(); ++i) { 
     if (i != _id && end_point(i) != "") {
       ClusterCommResult res = arangodb::ClusterComm::instance()->
         enquire(results[i].operationID);
       
       if (res.status == CL_COMM_SENT) { // Request successfully sent 
-        res = arangodb::ClusterComm::instance()->wait("1", 1, results[i].operationID, "1");
+        res = arangodb::ClusterComm::instance()->wait(
+          "1", 1, results[i].operationID, "1");
         std::shared_ptr<Builder > body = res.result->getBodyVelocyPack();
-        if (body->isEmpty()) {
+        if (body->isEmpty()) {                                     // body empty
           continue;
         } else {
-          if (body->slice().isArray() || body->slice().isObject()) {
-            for (auto const& it : VPackObjectIterator(body->slice())) {
-              std::string const key(it.key.copyString());
-              if (key == "term") {
-                if (it.value.isUInt()) {
-                  if (it.value.getUInt() > _term) { // follow?
-                    follow(it.value.getUInt());
-                    break;
-                  }
-                }
-              } else if (key == "voteGranted") {
-                if (it.value.isBool()) {
-                  _votes[i] = it.value.getBool();
-                }
+          if (body->slice().isObject()) {                          // body 
+            VPackSlice slc = body->slice();
+            if (slc.hasKey("term") && slc.hasKey("voteGranted")) { // OK
+              term_t t = slc.get("term").getUInt();
+              if (t > _term) {                                     // follow?
+                follow(t);
+                break;
               }
+              _votes[i] = slc.get("voteGranted").getBool();        // Get vote
+            } else {
             }
           }
         }
@@ -309,13 +319,16 @@ void Constituent::callElection() {
       }
     }
   }
-  
+
+  // Count votes
   size_t yea = 0;
   for (size_t i = 0; i < size(); ++i) {
     if (_votes[i]){
       yea++;
     }    
   }
+
+  // Evaluate election results
   if (yea > size()/2){
     lead();
   } else {
@@ -327,7 +340,6 @@ void Constituent::beginShutdown() {
   Thread::beginShutdown();
 }
 
-#include <iostream>
 void Constituent::run() {
   
   // Path
@@ -351,9 +363,12 @@ void Constituent::run() {
   if (res->status == CL_COMM_SENT) {
     std::shared_ptr<Builder> body = res->result->getBodyVelocyPack();
     if (body->slice().hasKey("result")) {
-      for (auto const& i : VPackArrayIterator(body->slice().get("result"))) {
-        _term = i.get("term").getUInt();
-        _voted_for = i.get("voted_for").getUInt();
+      Slice result = body->slice().get("result");
+      if (result.type() == VPackValueType::Array) {
+        for (auto const& i : VPackArrayIterator(result)) {
+          _term = i.get("term").getUInt();
+          _voted_for = i.get("voted_for").getUInt();
+        }
       }
     }
   }

@@ -43,6 +43,7 @@ struct Empty {
   bool operator()(const std::string& s) { return s.empty(); }
 };
 
+/// @brief Split strings by separator
 std::vector<std::string> split(const std::string& value, char separator) {
   std::vector<std::string> result;
   std::string::size_type p = (value.find(separator) == 0) ? 1:0;
@@ -57,14 +58,18 @@ std::vector<std::string> split(const std::string& value, char separator) {
   return result;
 }
 
+// Construct with node name
 Node::Node (std::string const& name) : _parent(nullptr), _node_name(name) {
   _value.clear();
 }
+
+// Construct with node name in tree structure
 Node::Node (std::string const& name, Node* parent) :
   _parent(parent), _node_name(name) {
   _value.clear();
 }
 
+// Default dtor
 Node::~Node() {}
 
 VPackSlice Node::slice() const {
@@ -632,6 +637,10 @@ void Store::clearTimeTable () {
       break;
     }
   }
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5caf02768c711fe1d811bb58d5451f86ac38b02f
 }
 
 

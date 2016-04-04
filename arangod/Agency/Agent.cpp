@@ -270,7 +270,6 @@ bool Agent::load () {
   _read_db.start(this);
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Starting constituent personality.";
-  _constituent.update(0,0);
   _constituent.start();
   
   return true;
