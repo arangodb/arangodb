@@ -243,25 +243,25 @@ static int LoadConfiguration(TRI_vocbase_t* vocbase,
   value = slice.get("connectionRetryWaitTime");
 
   if (value.isNumber()) {
-    config->_connectionRetryWaitTime = value.getNumber<uint64_t>() * 1000 * 1000;
+    config->_connectionRetryWaitTime = static_cast<uint64_t>(value.getNumber<double>() * 1000.0 * 1000.0);
   }
 
   value = slice.get("initialSyncMaxWaitTime");
 
   if (value.isNumber()) {
-    config->_initialSyncMaxWaitTime = value.getNumber<uint64_t>() * 1000 * 1000;
+    config->_initialSyncMaxWaitTime = static_cast<uint64_t>(value.getNumber<double>() * 1000.0 * 1000.0);
   }
 
   value = slice.get("idleMinWaitTime");
 
   if (value.isNumber()) {
-    config->_idleMinWaitTime = value.getNumber<uint64_t>() * 1000 * 1000;
+    config->_idleMinWaitTime = static_cast<uint64_t>(value.getNumber<double>() * 1000.0 * 1000.0);
   }
 
   value = slice.get("idleMaxWaitTime");
 
   if (value.isNumber()) {
-    config->_idleMaxWaitTime = value.getNumber<uint64_t>() * 1000 * 1000;
+    config->_idleMaxWaitTime = static_cast<uint64_t>(value.getNumber<double>() * 1000.0 * 1000.0);
   }
 
   value = slice.get("autoResyncRetries");
@@ -379,13 +379,13 @@ static void VPackState(VPackBuilder& builder,
 
   // lastError
   builder.add("lastError", VPackValue(VPackValueType::Object));
+  builder.add("errorNum", VPackValue(state->_lastError._code));
 
   if (state->_lastError._code > 0) {
     builder.add("time", VPackValue(state->_lastError._time));
     if (state->_lastError._msg != nullptr) {
       builder.add("errorMessage", VPackValue(state->_lastError._msg));
     }
-    builder.add("errorNum", VPackValue(state->_lastError._code));
   }
   builder.close(); // lastError
 

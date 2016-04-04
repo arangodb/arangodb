@@ -35,6 +35,7 @@
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "HttpServer/HttpServer.h"
+#include "Rest/GeneralRequest.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 #include "RestServer/VocbaseContext.h"
@@ -1269,7 +1270,7 @@ void TRI_InitV8Actions(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 static bool clusterSendToAllServers(
     std::string const& dbname,
     std::string const& path,  // Note: Has to be properly encoded!
-    arangodb::rest::HttpRequest::HttpRequestType const& method,
+    arangodb::GeneralRequest::RequestType const& method,
     std::string const& body) {
   ClusterInfo* ci = ClusterInfo::instance();
   ClusterComm* cc = ClusterComm::instance();
@@ -1367,7 +1368,7 @@ static void JS_DebugSetFailAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (ServerState::instance()->isCoordinator()) {
     int res = clusterSendToAllServers(
         dbname, "_admin/debug/failat/" + StringUtils::urlEncode(point),
-        arangodb::rest::HttpRequest::HttpRequestType::HTTP_REQUEST_PUT, "");
+        arangodb::GeneralRequest::RequestType::PUT, "");
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
@@ -1411,7 +1412,7 @@ static void JS_DebugRemoveFailAt(
   if (ServerState::instance()->isCoordinator()) {
     int res = clusterSendToAllServers(
         dbname, "_admin/debug/failat/" + StringUtils::urlEncode(point),
-        arangodb::rest::HttpRequest::HttpRequestType::HTTP_REQUEST_DELETE, "");
+        arangodb::GeneralRequest::RequestType::DELETE, "");
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
@@ -1454,7 +1455,7 @@ static void JS_DebugClearFailAt(
 
     int res = clusterSendToAllServers(
         dbname, "_admin/debug/failat",
-        arangodb::rest::HttpRequest::HttpRequestType::HTTP_REQUEST_DELETE, "");
+        arangodb::GeneralRequest::RequestType::DELETE, "");
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }

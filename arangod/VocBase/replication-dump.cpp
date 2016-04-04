@@ -666,7 +666,7 @@ int TRI_DumpLogReplication(
         if (type <= TRI_DF_MARKER_MIN || type >= TRI_DF_MARKER_MAX) {
           break;
         }
-
+        
         // handle special markers
         if (type == TRI_DF_MARKER_PROLOGUE) {
           lastDatabaseId = DatafileHelper::DatabaseId(marker);
@@ -675,6 +675,21 @@ int TRI_DumpLogReplication(
         else if (type == TRI_DF_MARKER_HEADER || type == TRI_DF_MARKER_FOOTER) {
           lastDatabaseId = 0;
           lastCollectionId = 0;
+        }
+        else if (type == TRI_DF_MARKER_VPACK_CREATE_COLLECTION) {
+          // fill collection name cache
+          TRI_voc_tick_t databaseId = DatafileHelper::DatabaseId(marker);
+          TRI_ASSERT(databaseId != 0);
+          TRI_voc_cid_t collectionId = DatafileHelper::CollectionId(marker);
+          TRI_ASSERT(collectionId != 0);
+  
+          if (dump->_vocbase->_id == databaseId) {
+            VPackSlice slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(type));
+            VPackSlice name = slice.get("name");
+            if (name.isString()) {
+              dump->_collectionNames[collectionId] = std::move(name.copyString());
+            }
+          }
         }
 
         ptr += DatafileHelper::AlignedMarkerSize<size_t>(marker);
@@ -695,10 +710,10 @@ int TRI_DumpLogReplication(
             break;
           }
         }
- 
+        
         TRI_voc_tick_t databaseId;
         TRI_voc_cid_t collectionId;
-               
+ 
         if (type == TRI_DF_MARKER_VPACK_DOCUMENT || type == TRI_DF_MARKER_VPACK_REMOVE) {
           databaseId = lastDatabaseId;
           collectionId = lastCollectionId;
