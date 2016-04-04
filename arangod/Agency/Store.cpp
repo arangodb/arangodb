@@ -43,6 +43,7 @@ struct Empty {
   bool operator()(const std::string& s) { return s.empty(); }
 };
 
+/// @brief Split strings by separator
 std::vector<std::string> split(const std::string& value, char separator) {
   std::vector<std::string> result;
   std::string::size_type p = (value.find(separator) == 0) ? 1:0;
@@ -57,14 +58,18 @@ std::vector<std::string> split(const std::string& value, char separator) {
   return result;
 }
 
+// Construct with node name
 Node::Node (std::string const& name) : _parent(nullptr), _node_name(name) {
   _value.clear();
 }
+
+// Construct with node name in tree structure
 Node::Node (std::string const& name, Node* parent) :
   _parent(parent), _node_name(name) {
   _value.clear();
 }
 
+// Default dtor
 Node::~Node() {}
 
 VPackSlice Node::slice() const {
@@ -571,7 +576,7 @@ void Store::beginShutdown() {
 }
 
 void Store::clearTimeTable () {
-//    std::vector<std::shared_ptr<Node>> deleted;
+
   for (auto it = _time_table.cbegin(); it != _time_table.cend(); ++it) {
     if (it->first < std::chrono::system_clock::now()) {
       query_t tmp = std::make_shared<Builder>();
@@ -584,14 +589,7 @@ void Store::clearTimeTable () {
       break;
     }
   }
-      
-/*  for (size_t i = 0; i < deleted; ++i) {
-    try {
-    _table_time.erase(_table_time.find(_time_table.cbegin()->second));
-    _time_table.erase(_time_table.cbegin());
-    } catch (std::exception const& e) {
-      std::cout << e.what() << std::endl;
-      }*/
+
 }
 
 
