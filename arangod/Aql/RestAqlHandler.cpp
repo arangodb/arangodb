@@ -867,6 +867,9 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
     }
     sendResponse(arangodb::rest::HttpResponse::OK, answerBuilder.slice(),
                  transactionContext.get());
+  } catch (arangodb::basics::Exception const& e) {
+    generateError(HttpResponse::BAD, e.code());
+    return;
   } catch (...) {
     LOG(ERR) << "OUT OF MEMORY when handling query.";
     generateError(HttpResponse::BAD, TRI_ERROR_OUT_OF_MEMORY);
