@@ -381,14 +381,16 @@ describe ArangoDB do
             document.should have_key("tick") 
             document.should have_key("type") 
             document.should have_key("cid") 
-            document.should have_key("collection") 
+            document.should have_key("cname") 
+            document.should have_key("data") 
 
             document["tick"].should match(/^\d+$/)
             document["tick"].to_i.should >= fromTick.to_i
             document["type"].should eq(2000) 
             document["cid"].should eq(cid) 
+            document["cname"].should eq("UnitTestsReplication") 
 
-            c = document["collection"]
+            c = document["data"]
             c.should have_key("version")
             c["type"].should eq(2)
             c["cid"].should eq(cid)
@@ -425,6 +427,7 @@ describe ArangoDB do
         body = "{ \"_key\" : \"test\", \"test\" : false }"
         doc = ArangoDB.log_post("#{prefix}-follow-collection", cmd, :body => body) 
         doc.code.should eq(201)
+        rev = doc.parsed_response["_rev"]
         
         # delete document 
         cmd = "/_api/document/UnitTestsReplication/test"
@@ -463,14 +466,16 @@ describe ArangoDB do
               document.should have_key("tick") 
               document.should have_key("type") 
               document.should have_key("cid") 
-              document.should have_key("collection") 
+              document.should have_key("cname") 
+              document.should have_key("data") 
 
               document["tick"].should match(/^\d+$/)
               document["tick"].to_i.should >= fromTick.to_i
               document["type"].should eq(2000) 
               document["cid"].should eq(cid) 
+              document["cname"].should eq("UnitTestsReplication") 
 
-              c = document["collection"]
+              c = document["data"]
               c.should have_key("version")
               c["type"].should eq(2)
               c["cid"].should eq(cid)
@@ -490,21 +495,14 @@ describe ArangoDB do
             document.should have_key("tick") 
             document.should have_key("type") 
             document.should have_key("cid") 
-            document.should have_key("key") 
-            document.should have_key("rev") 
             
             document["tick"].should match(/^\d+$/)
             document["tick"].to_i.should >= fromTick.to_i
             document["type"].should eq(2300) 
             document["cid"].should eq(cid) 
-            document["key"].should eq("test") 
-            rev = document["rev"]
-
-            rev.should match(/^\d+$/)
-            rev.should_not eq("0")
-            
             document["data"]["_key"].should eq("test") 
-            document["data"]["_rev"].should eq(rev)
+            document["data"]["_rev"].should match(/^\d+$/)
+            document["data"]["_rev"].should_not eq("0")
             document["data"]["test"].should eq(false)
               
             i = i + 1
@@ -513,16 +511,14 @@ describe ArangoDB do
             document.should have_key("tick") 
             document.should have_key("type") 
             document.should have_key("cid") 
-            document.should have_key("key") 
-            document.should have_key("rev") 
 
             document["tick"].should match(/^\d+$/)
             document["tick"].to_i.should >= fromTick.to_i
             document["type"].should eq(2302) 
             document["cid"].should eq(cid) 
-            document["key"].should eq("test") 
-            document["rev"].should match(/^\d+$/)
-            document["rev"].should_not eq(rev)
+            document["data"]["_key"].should eq("test") 
+            document["data"]["_rev"].should match(/^\d+$/)
+            document["data"]["_rev"].should_not eq(rev)
               
             i = i + 1
           elsif i == 3 and document["type"] == 2001 and document["cid"] == cid
@@ -698,11 +694,6 @@ describe ArangoDB do
         cid = ArangoDB.create_collection("UnitTestsReplication", false)
         cid2 = ArangoDB.create_collection("UnitTestsReplication2", false)
 
-        # create indexes for first collection
-        body = "{ \"type\" : \"cap\", \"size\" : 9991 }"
-        doc = ArangoDB.log_post("#{prefix}-inventory2", "/_api/index?collection=UnitTestsReplication", :body => body)
-        doc.code.should eq(201)
-        
         body = "{ \"type\" : \"hash\", \"unique\" : false, \"fields\" : [ \"a\", \"b\" ] }"
         doc = ArangoDB.log_post("#{prefix}-inventory2", "/_api/index?collection=UnitTestsReplication", :body => body)
         doc.code.should eq(201)
@@ -721,10 +712,6 @@ describe ArangoDB do
         doc.code.should eq(201)
         
         body = "{ \"type\" : \"fulltext\", \"minLength\" : 8, \"fields\" : [ \"ff\" ] }"
-        doc = ArangoDB.log_post("#{prefix}-inventory2", "/_api/index?collection=UnitTestsReplication2", :body => body)
-        doc.code.should eq(201)
-        
-        body = "{ \"type\" : \"cap\", \"byteSize\" : 1048576 }"
         doc = ArangoDB.log_post("#{prefix}-inventory2", "/_api/index?collection=UnitTestsReplication2", :body => body)
         doc.code.should eq(201)
         
@@ -770,21 +757,15 @@ describe ArangoDB do
         parameters["waitForSync"].should eq(false)
 
         indexes = c['indexes']
-        indexes.length.should eq(3)
+        indexes.length.should eq(2)
         
         idx = indexes[0]
-        idx["id"].should match(/^\d+$/)
-        idx["type"].should eq("cap")
-        idx["size"].should eq(9991)
-        idx["byteSize"].should eq(0)
-        
-        idx = indexes[1]
         idx["id"].should match(/^\d+$/)
         idx["type"].should eq("hash")
         idx["unique"].should eq(false)
         idx["fields"].should eq([ "a", "b" ])
         
-        idx = indexes[2]
+        idx = indexes[1]
         idx["id"].should match(/^\d+$/)
         idx["type"].should eq("skiplist")
         idx["unique"].should eq(false)
@@ -810,7 +791,7 @@ describe ArangoDB do
         parameters["waitForSync"].should eq(false)
         
         indexes = c['indexes']
-        indexes.length.should eq(4)
+        indexes.length.should eq(3)
         
         idx = indexes[0]
         idx["id"].should match(/^\d+$/)
@@ -830,12 +811,6 @@ describe ArangoDB do
         idx["unique"].should eq(false)
         idx["minLength"].should eq(8)
         idx["fields"].should eq([ "ff" ])
-
-        idx = indexes[3]
-        idx["id"].should match(/^\d+$/)
-        idx["type"].should eq("cap")
-        idx["size"].should eq(0)
-        idx["byteSize"].should eq(1048576)
       end
 
 ################################################################################
@@ -889,8 +864,6 @@ describe ArangoDB do
 
           doc = JSON.parse(part)
           doc['type'].should eq(2300)
-          doc['key'].should eq("test" + i.to_s)
-          doc['rev'].should match(/^\d+$/)
           doc['data']['_key'].should eq("test" + i.to_s)
           doc['data']['_rev'].should match(/^\d+$/)
           doc['data']['test'].should eq(i)
@@ -935,8 +908,6 @@ describe ArangoDB do
 
           doc = JSON.parse(part)
           doc['type'].should eq(2300)
-          doc['key'].should eq("test" + i.to_s)
-          doc['rev'].should match(/^\d+$/)
           doc['data']['_key'].should eq("test" + i.to_s)
           doc['data']['_rev'].should match(/^\d+$/)
           doc['data']['test'].should eq(i)
@@ -954,8 +925,8 @@ describe ArangoDB do
         cid2 = ArangoDB.create_collection("UnitTestsReplication2", false, 3)
 
         (0...100).each{|i|
-          body = "{ \"_key\" : \"test" + i.to_s + "\", \"test1\" : " + i.to_s + ", \"test2\" : false, \"test3\" : [ ], \"test4\" : { } }"
-          doc = ArangoDB.post("/_api/edge?collection=UnitTestsReplication2&from=UnitTestsReplication/foo&to=UnitTestsReplication/bar", :body => body)
+          body = "{ \"_key\" : \"test" + i.to_s + "\", \"_from\" : \"UnitTestsReplication/foo\", \"_to\" : \"UnitTestsReplication/bar\", \"test1\" : " + i.to_s + ", \"test2\" : false, \"test3\" : [ ], \"test4\" : { } }"
+          doc = ArangoDB.post("/_api/document?collection=UnitTestsReplication2", :body => body)
           doc.code.should eq(202)
         }
 
@@ -982,9 +953,7 @@ describe ArangoDB do
           part = body.slice(0, position)
 
           document = JSON.parse(part)
-          document['type'].should eq(2301)
-          document['key'].should eq("test" + i.to_s)
-          document['rev'].should match(/^\d+$/)
+          document['type'].should eq(2300)
           document['data']['_key'].should eq("test" + i.to_s)
           document['data']['_rev'].should match(/^\d+$/)
           document['data']['_from'].should eq("UnitTestsReplication/foo")
@@ -1006,8 +975,8 @@ describe ArangoDB do
         cid2 = ArangoDB.create_collection("UnitTestsReplication2", false, 3)
 
         (0...100).each{|i|
-          body = "{ \"_key\" : \"test" + i.to_s + "\", \"test1\" : " + i.to_s + ", \"test2\" : false, \"test3\" : [ ], \"test4\" : { } }"
-          doc = ArangoDB.post("/_api/edge?collection=UnitTestsReplication2&from=UnitTestsReplication/foo&to=UnitTestsReplication/bar", :body => body)
+          body = "{ \"_key\" : \"test" + i.to_s + "\", \"_from\" : \"UnitTestsReplication/foo\", \"_to\" : \"UnitTestsReplication/bar\", \"test1\" : " + i.to_s + ", \"test2\" : false, \"test3\" : [ ], \"test4\" : { } }"
+          doc = ArangoDB.post("/_api/document?collection=UnitTestsReplication2", :body => body)
           doc.code.should eq(202)
         }
 
@@ -1034,9 +1003,7 @@ describe ArangoDB do
           part = body.slice(0, position)
 
           document = JSON.parse(part)
-          document['type'].should eq(2301)
-          document['key'].should eq("test" + i.to_s)
-          document['rev'].should match(/^\d+$/)
+          document['type'].should eq(2300)
           document['data']['_key'].should eq("test" + i.to_s)
           document['data']['_rev'].should match(/^\d+$/)
           document['data']['_from'].should eq("UnitTestsReplication/foo")
@@ -1092,7 +1059,7 @@ describe ArangoDB do
           document = JSON.parse(part)
 
           document['type'].should eq(2302)
-          document['key'].should eq("test" + i.floor.to_s)
+          document['data']['_key'].should eq("test" + i.floor.to_s)
 
           body = body.slice(position + 1, body.length)
           i = i + 1
@@ -1140,8 +1107,8 @@ describe ArangoDB do
 
           document['type'].should eq(2302)
           # truncate order is undefined
-          document['key'].should match(/^test\d+$/)
-          document['rev'].should match(/^\d+$/)
+          document['data']['_key'].should match(/^test\d+$/)
+          document['data']['_rev'].should match(/^\d+$/)
 
           body = body.slice(position + 1, body.length)
           i = i + 1
@@ -1184,10 +1151,7 @@ describe ArangoDB do
 
           body = doc.response.body
           document = JSON.parse(body)
-
           document['type'].should eq(2300)
-          document['key'].should eq("test" + i.to_s)
-          document['rev'].should match(/^\d+$/)
           document['data']['_key'].should eq("test" + i.to_s)
           document['data']['_rev'].should match(/^\d+$/)
           document['data']['test'].should eq(i)
