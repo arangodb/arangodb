@@ -184,8 +184,8 @@ const toArgv = require("internal").toArgv;
 const wait = require("internal").wait;
 const platform = require("internal").platform;
 
-const Planner = require("@arangodb/cluster").Planner;
-const Kickstarter = require("@arangodb/cluster").Kickstarter;
+//const Planner = require("@arangodb/cluster").Planner;
+//const Kickstarter = require("@arangodb/cluster").Kickstarter;
 
 let cleanupDirectories = [];
 let serverCrashed = false;
@@ -1485,6 +1485,7 @@ function shutdownInstance(instanceInfo, options) {
 /// @brief starts a dispatcher
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
 function startDispatcher(instanceInfo) {
   let args = {};
 
@@ -1529,7 +1530,7 @@ function startDispatcher(instanceInfo) {
 
   print("Dispatcher is ready");
 }
-
+*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts an instance
 ///
@@ -1600,7 +1601,7 @@ function startInstanceCluster(instanceInfo, protocol, options,
     notYetUp = notYetUp.filter(notYet => {
       let url = endpointToURL(notYet);
       const reply = download(url + "/_api/version", "", makeAuthorizationHeaders(options));
-      return reply.code != 200;
+      return reply.code !== 200;
     });
     wait(0.5);
   }
@@ -1613,18 +1614,18 @@ function startInstanceCluster(instanceInfo, protocol, options,
   
   response = download(coordinatorUrl + '/_admin/cluster/bootstrapDbServers', '{"isRelaunch":false}', httpOptions);
 
-  while (response.code != 200) {
+  while (response.code !== 200) {
     console.log('bootstrap dbservers failed');
     wait(1);
   }
   
   response = download(coordinatorUrl + '/_admin/cluster/upgradeClusterDatabase', '{"isRelaunch":false}', httpOptions);
-  if (response.code != 200) {
+  if (response.code !== 200) {
     throw new Error('Upgrading DB failed');
   }
   
   response = download(coordinatorUrl + '/_admin/cluster/bootstrapCoordinator', '{"isRelaunch":false}', httpOptions);
-  if (response.code != 200) {
+  if (response.code !== 200) {
     throw new Error('bootstraping coordinator failed');
   }
 
