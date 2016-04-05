@@ -317,8 +317,8 @@ describe('babies collection document', function() {
       // Check header error codes
       let headers = req.headers;
       expect(headers).to.have.property(errorHeader);
-      let errorCodes = headers[errorHeader];
-      expect(errorCodes).to.have.propery(uniqueCode);
+      let errorCodes = JSON.parse(headers[errorHeader]);
+      expect(errorCodes).to.have.property(uniqueCode);
       expect(errorCodes[uniqueCode], 1);
 
       expect(collection.count()).to.equal(2);
@@ -345,10 +345,10 @@ describe('babies collection document', function() {
       expect(collection.count()).to.equal(3);
 
       // Check header error codes
-      headers = req1.headers;
+      headers = req.headers;
       expect(headers).to.have.property(errorHeader);
-      errorCodes = headers[errorHeader];
-      expect(errorCodes).to.have.propery(uniqueCode);
+      errorCodes = JSON.parse(headers[errorHeader]);
+      expect(errorCodes).to.have.property(uniqueCode);
       expect(errorCodes[uniqueCode], 1);
 
     });
@@ -387,8 +387,8 @@ describe('babies collection document', function() {
         // Check header error codes
         let headers = req.headers;
         expect(headers).to.have.property(errorHeader);
-        let errorCodes = headers[errorHeader];
-        expect(errorCodes).to.have.propery(keyBadCode);
+        let errorCodes = JSON.parse(headers[errorHeader]);
+        expect(errorCodes).to.have.property(keyBadCode);
         expect(errorCodes[keyBadCode], 1);
 
 
@@ -671,8 +671,8 @@ describe('babies collection document', function() {
         // Check header error codes
         let headers = req1.headers;
         expect(headers).to.have.property(errorHeader);
-        let errorCodes = headers[errorHeader];
-        expect(errorCodes).to.have.propery(invalidCode);
+        let errorCodes = JSON.parse(headers[errorHeader]);
+        expect(errorCodes).to.have.property(invalidCode);
         expect(errorCodes[invalidCode], 1);
       });
 
@@ -726,11 +726,11 @@ describe('babies collection document', function() {
       // Check header error codes
       let headers = req1.headers;
       expect(headers).to.have.property(errorHeader);
-      let errorCodes = headers[errorHeader];
-      expect(errorCodes).to.have.propery(invalidCode);
+      let errorCodes = JSON.parse(headers[errorHeader]);
+      expect(errorCodes).to.have.property(invalidCode);
       expect(errorCodes[invalidCode], 2);
 
-      expect(errorCodes).to.have.propery(uniqueCode);
+      expect(errorCodes).to.have.property(uniqueCode);
       expect(errorCodes[uniqueCode], 2);
     });
 
