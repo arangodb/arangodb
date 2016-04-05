@@ -351,6 +351,7 @@ int Syncer::applyCollectionDumpMarker(
     OperationOptions options;
     options.silent = true;
     options.ignoreRevs = true;
+    options.isRestore = true;
 
     try {
       // try insert first

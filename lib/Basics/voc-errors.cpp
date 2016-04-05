@@ -99,6 +99,7 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_ARANGO_WRITE_THROTTLE_TIMEOUT, "write-throttling timeout");
   REG_ERROR(ERROR_ARANGO_COLLECTION_TYPE_MISMATCH, "collection type mismatch");
   REG_ERROR(ERROR_ARANGO_COLLECTION_NOT_LOADED, "collection not loaded");
+  REG_ERROR(ERROR_ARANGO_DOCUMENT_REV_BAD, "illegal document revision");
   REG_ERROR(ERROR_ARANGO_DATAFILE_FULL, "datafile full");
   REG_ERROR(ERROR_ARANGO_EMPTY_DATADIR, "server database directory is empty");
   REG_ERROR(ERROR_REPLICATION_NO_RESPONSE, "no response");

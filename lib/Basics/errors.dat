@@ -123,6 +123,7 @@ ERROR_ARANGO_INDEX_CREATION_FAILED,1235,"index creation failed","Will be raised 
 ERROR_ARANGO_WRITE_THROTTLE_TIMEOUT,1236,"write-throttling timeout","Will be raised when the server is write-throttled and a write operation has waited too long for the server to process queued operations."
 ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,1237,"collection type mismatch","Will be raised when a collection has a different type from what has been expected."
 ERROR_ARANGO_COLLECTION_NOT_LOADED,1238,"collection not loaded","Will be raised when a collection is accessed that is not yet loaded."
+ERROR_ARANGO_DOCUMENT_REV_BAD,1239,"illegal document revision","Will be raised when a document revision is corrupt or is missing where needed."
 
 ################################################################################
 ## ArangoDB storage errors
