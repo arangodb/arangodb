@@ -108,18 +108,19 @@ id_t Agent::leaderID () const {
   return _constituent.leaderID();
 }
 
-//  Are we leading?
+// Are we leading?
 bool Agent::leading() const {
   return _constituent.leading();
 }
 
-//  Persist term and id we vote for
+// Persist term and id we vote for
 void Agent::persist(term_t t, id_t i) {
 //  _state.persist(t, i);
 }
 
-//  Waits here for confirmation of log's commits up to index
-bool Agent::waitFor (index_t index, duration_t timeout) {
+// Waits here for confirmation of log's commits up to index.
+// Timeout in seconds
+bool Agent::waitFor (index_t index, double timeout) {
 
   if (size() == 1) // single host agency
     return true;
@@ -130,16 +131,16 @@ bool Agent::waitFor (index_t index, duration_t timeout) {
   // Wait until woken up through AgentCallback 
   while (true) {
 
-    _rest_cv.wait();
-
+    // timeout
+    if (_rest_cv.wait(static_cast<uint64_t>(1.0e6*timeout))) {
+      return false;
+    }
+    
     // shutting down
     if (this->isStopping()) {      
       return false;
     }
-    // timeout?
-    if (std::chrono::system_clock::now() - start > timeout) {
-      return false;
-    }
+
     /// success?
     if (_last_commit_index >= index) {
       return true;

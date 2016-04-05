@@ -72,13 +72,18 @@ Node::Node (std::string const& name, Node* parent) :
 // Default dtor
 Node::~Node() {}
 
+// Get slice from buffer pointer
 VPackSlice Node::slice() const {
   return (_value.size()==0) ?
     VPackSlice("\x00a",&Options::Defaults):VPackSlice(_value.data());
 }
 
-std::string const& Node::name() const {return _node_name;}
+// Get name of this node
+std::string const& Node::name() const {
+  return _node_name;
+}
 
+// Get full path of this node
 std::string Node::uri() const {
   Node *par = _parent;
   std::stringstream path;
@@ -94,6 +99,7 @@ std::string Node::uri() const {
   return path.str();
 }
 
+// Assignment of rhs slice
 Node& Node::operator= (VPackSlice const& slice) { // Assign value (become leaf)
   _children.clear();
   _value.reset();
@@ -106,6 +112,7 @@ Node& Node::operator= (VPackSlice const& slice) { // Assign value (become leaf)
   return *this;
 }
 
+// Assignment of rhs node
 Node& Node::operator= (Node const& node) { // Assign node
   _node_name = node._node_name;
   _value = node._value;
@@ -118,10 +125,12 @@ Node& Node::operator= (Node const& node) { // Assign node
   return *this;
 }
 
+// Comparison with slice
 bool Node::operator== (VPackSlice const& rhs) const {
   return rhs.equals(slice());
 }
 
+// Remove absolute path from store
 bool Node::remove (std::string const& path) {
   std::vector<std::string> pv = split(path, '/');
   std::string key(pv.back());
@@ -136,11 +145,13 @@ bool Node::remove (std::string const& path) {
   }
 }
 
+// Remove this node from store
 bool Node::remove () {
   Node& parent = *_parent;
   return parent.removeChild(_node_name);
 }
 
+// Remove child by name
 bool Node::removeChild (std::string const& key) {
   auto found = _children.find(key);
   if (found == _children.end())
@@ -150,12 +161,17 @@ bool Node::removeChild (std::string const& key) {
   return true;
 }
 
-NodeType Node::type() const {return _children.size() ? NODE : LEAF;}
+// Node type
+NodeType Node::type() const {
+  return _children.size() ? NODE : LEAF;
+}
 
-Node& Node::operator [](std::string name) {
+// Get child by name
+Node& Node::operator [](std::string const& name) {
   return *_children[name];
 }
 
+// 
 Node& Node::operator ()(std::vector<std::string>& pv) {
   if (pv.size()) {
     std::string const key = pv[0];
@@ -194,6 +210,15 @@ Node& Node::operator ()(std::string const& path) {
 }
 
 Node& Node::root() {
+  Node *par = _parent, *tmp = 0;
+  while (par != 0) {
+    tmp = par;
+    par = par->_parent;
+  }
+  return *tmp;
+}
+
+Node const& Node::root() const {
   Node *par = _parent, *tmp = 0;
   while (par != 0) {
     tmp = par;

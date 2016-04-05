@@ -105,9 +105,9 @@ public:
   NodeType type() const;
 
   /// @brief Get child specified by name
-  Node& operator [](std::string name);
+  Node& operator [](std::string const& name);
   /// @brief Get child specified by name
-  Node const& operator [](std::string name) const;
+  Node const& operator [](std::string const& name) const;
 
   /// @brief Get node specified by path vector  
   Node& operator ()(std::vector<std::string>& pv);

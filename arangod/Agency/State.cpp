@@ -138,11 +138,12 @@ bool State::log(query_t const& queries, term_t term, id_t lid,
   return true;
 }
 
+// Get log entries from indices "start" to "end"
 std::vector<log_t> State::get(index_t start, index_t end) const {
   std::vector<log_t> entries;
   MUTEX_LOCKER(mutexLocker, _logLock);
   if (end == (std::numeric_limits<uint64_t>::max)()) end = _log.size() - 1;
-  for (size_t i = start; i <= end; ++i) {  // TODO:: Check bounds
+  for (size_t i = start; i <= end; ++i) {  
     entries.push_back(_log[i]);
   }
   return entries;
