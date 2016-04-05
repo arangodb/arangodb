@@ -3649,7 +3649,19 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
                                       VPackSlice& prevRev,
                                       TRI_doc_mptr_t& previous) {
   // create remove marker
-  TRI_voc_rid_t revisionId = TRI_NewTickServer();
+  TRI_voc_rid_t revisionId = 0;
+  if (options.isRestore) {
+    VPackSlice oldRev = TRI_ExtractRevisionIdAsSlice(slice);
+    if (!oldRev.isString()) {
+      return TRI_ERROR_ARANGO_DOCUMENT_REV_BAD;
+    }
+    VPackValueLength length;
+    char const* p = oldRev.getString(length);
+    revisionId = arangodb::basics::StringUtils::uint64(p, length);
+  } else {
+    revisionId = TRI_NewTickServer();
+  }
+  
   TransactionBuilderLeaser builder(trx);
   newObjectForRemove(
       trx, slice, std::to_string(revisionId), *builder.get());
