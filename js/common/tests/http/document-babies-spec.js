@@ -34,6 +34,11 @@ const db = arangodb.db;
 const wait = require("internal").wait;
 const extend = require('lodash').extend;
 
+const errorHeader = "x-arango-error-codes";
+const uniqueCode = ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code;
+const invalidCode = ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code;
+const keyBadCode = ERRORS.ERROR_ARANGO_DOCUMENT_KEY_BAD.code;
+
 let endpoint = {};
 
 describe('babies collection document', function() {
@@ -290,38 +295,62 @@ describe('babies collection document', function() {
       }]);
 
       let l = [{
-        _key: "b"
+        _key: "b" // new
       }, {
-        _key: "a"
+        _key: "a" // already there
       }];
 
       let req = request.post("/_api/document/" + cn, extend(endpoint, {
         body: JSON.stringify(l)
       }));
 
-      expect(req.statusCode).to.equal(409);
+      expect(req.statusCode).to.equal(202);
 
       let b = JSON.parse(req.rawBody);
 
-      expect(b.errorNum).to.equal(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code);
-      expect(collection.count()).to.equal(1);
+      expect(b).to.be.an("array");
+      expect(b.length).to.equal(2);
+      expect(b[0]._key).to.equal("b");
+      expect(b[1].error).to.be.true;
+      expect(b[1].errorNum).to.equal(uniqueCode);
+
+      // Check header error codes
+      let headers = req.headers;
+      expect(headers).to.have.property(errorHeader);
+      let errorCodes = headers[errorHeader];
+      expect(errorCodes).to.have.propery(uniqueCode);
+      expect(errorCodes[uniqueCode], 1);
+
+      expect(collection.count()).to.equal(2);
 
       l = [{
-        _key: "a"
+        _key: "a" // already there
       }, {
-        _key: "b"
+        _key: "c" // new
       }];
 
       req = request.post("/_api/document/" + cn, extend(endpoint, {
         body: JSON.stringify(l)
       }));
 
-      expect(req.statusCode).to.equal(409);
+      expect(req.statusCode).to.equal(202);
 
       b = JSON.parse(req.rawBody);
 
-      expect(b.errorNum).to.equal(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code);
-      expect(collection.count()).to.equal(1);
+      expect(b).to.be.an("array");
+      expect(b.length).to.equal(2);
+      expect(b[0].error).to.be.true;
+      expect(b[0].errorNum).to.equal(uniqueCode);
+      expect(b[1]._key).to.equal("c");
+      expect(collection.count()).to.equal(3);
+
+      // Check header error codes
+      headers = req1.headers;
+      expect(headers).to.have.property(errorHeader);
+      errorCodes = headers[errorHeader];
+      expect(errorCodes).to.have.propery(uniqueCode);
+      expect(errorCodes[uniqueCode], 1);
+
     });
 
     it('insert error bad key', function() {
@@ -334,17 +363,39 @@ describe('babies collection document', function() {
           _key: "a"
         }, {
           _key: k
+        }, {
+          _key: "b"
         }];
 
         let req = request.post("/_api/document/" + cn, extend(endpoint, {
           body: JSON.stringify(m)
         }));
 
-        expect(req.statusCode).to.equal(400);
+        expect(req.statusCode).to.equal(202);
 
         let b = JSON.parse(req.rawBody);
+        expect(b).to.be.an("array");
+        expect(b.length).to.equal(3);
+        // The first and the last should work
+        expect(b[0]._key).to.equal("a");
+        expect(b[2]._key).to.equal("b");
 
-        expect(b.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_KEY_BAD.code);
+        // The second should fail
+        expect(b[1].error).to.be.true;
+        expect(b[1].errorNum).to.equal(keyBadCode);
+
+        // Check header error codes
+        let headers = req.headers;
+        expect(headers).to.have.property(errorHeader);
+        let errorCodes = headers[errorHeader];
+        expect(errorCodes).to.have.propery(keyBadCode);
+        expect(errorCodes[keyBadCode], 1);
+
+
+        expect(collection.count()).to.equal(2);
+
+        collection.remove("a");
+        collection.remove("b");
       });
 
       expect(collection.count()).to.equal(0);
@@ -608,37 +659,81 @@ describe('babies collection document', function() {
           body: JSON.stringify([x])
         }));
 
-        expect(req1.statusCode).to.equal(400);
+        expect(req1.statusCode).to.equal(202);
 
         let b = JSON.parse(req1.rawBody);
+        expect(b).to.be.an("array");
+        expect(b.length).to.equal(1);
 
-        expect(b.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code);
+        expect(b[0].errorNum).to.equal(invalidCode);
+        expect(b[0].error).to.be.true;
+
+        // Check header error codes
+        let headers = req1.headers;
+        expect(headers).to.have.property(errorHeader);
+        let errorCodes = headers[errorHeader];
+        expect(errorCodes).to.have.propery(invalidCode);
+        expect(errorCodes[invalidCode], 1);
       });
 
-      values1.forEach(function(x) {
-        let req1 = request.put("/_api/document/" + cn, extend(endpoint, {
-          body: JSON.stringify([x])
-        }));
-
-        expect(req1.statusCode).to.equal(400);
-
-        let b = JSON.parse(req1.rawBody);
-
-        expect(b.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code);
-      });
-
-      values1.forEach(function(x) {
-        let req1 = request.patch("/_api/document/" + cn, extend(endpoint, {
-          body: JSON.stringify([x])
-        }));
-
-        expect(req1.statusCode).to.equal(400);
-
-        let b = JSON.parse(req1.rawBody);
-
-        expect(b.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code);
-      });
     });
+
+    it('multiple errors', function() {
+      collection.save({_key: "a"});
+
+      let req1 = request.post("/_api/document/" + cn, extend(endpoint, {
+        body: JSON.stringify([{
+          _key: "b" // valid
+        }, 
+        true, // type invalid
+        {
+          _key: "a" // unique violated
+        }, {
+          _key: "c" // valid
+        }, {
+          _key: "b" // unique violated
+        }, [
+          // type invalid
+        ], {
+          _key: "d" // valid
+        } ])
+      }));
+
+      expect(req1.statusCode).to.equal(202);
+
+      let b = JSON.parse(req1.rawBody);
+      expect(b).to.be.an("array");
+      expect(b.length).to.equal(7);
+      // Check the valid ones
+      expect(b[0]._key).to.equal("b");
+      expect(b[3]._key).to.equal("c");
+      expect(b[6]._key).to.equal("d");
+
+      // Check type invalid
+      expect(b[1].error).to.be.true;
+      expect(b[1].errorNum).to.equal(invalidCode);
+      expect(b[5].error).to.be.true;
+      expect(b[5].errorNum).to.equal(invalidCode);
+
+      // Check unique violated 
+      expect(b[2].error).to.be.true;
+      expect(b[2].errorNum).to.equal(uniqueCode);
+      expect(b[4].error).to.be.true;
+      expect(b[4].errorNum).to.equal(uniqueCode);
+
+      expect(collection.count()).to.equal(4);
+
+      // Check header error codes
+      let headers = req1.headers;
+      expect(headers).to.have.property(errorHeader);
+      let errorCodes = headers[errorHeader];
+      expect(errorCodes).to.have.propery(invalidCode);
+      expect(errorCodes[invalidCode], 2);
+
+      expect(errorCodes).to.have.propery(uniqueCode);
+      expect(errorCodes[uniqueCode], 2);
+    });
+
   });
 
   describe('old and new', function() {
