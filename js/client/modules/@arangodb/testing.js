@@ -744,13 +744,6 @@ function performTests(options, testList, testname) {
   shutdownInstance(instanceInfo, options);
   print("done.");
 
-  if ((!options.skipLogAnalysis) &&
-    instanceInfo.hasOwnProperty('importantLogLines') &&
-    Object.keys(instanceInfo.importantLogLines).length > 0) {
-    print("Found messages in the server logs: \n" +
-      yaml.safeDump(instanceInfo.importantLogLines));
-  }
-
   return results;
 }
 
@@ -1090,6 +1083,85 @@ function runArangoBenchmark(options, instanceInfo, cmds) {
   return executeAndWait(ARANGOB_BIN, toArgv(args), options);
 }
 
+function shutdownArangod(arangod, options) {
+  if (options.valgrind) {
+    waitOnServerForGC(arangod, options, 60);
+  }
+  if (arangod.exitStatus === undefined) {
+    print(arangod.url + "/_admin/shutdown");
+    download(arangod.url + "/_admin/shutdown", "",
+        makeAuthorizationHeaders(options));
+
+    print("Waiting for server with pid " + arangod.pid + " to shut down");
+
+    let count = 0;
+    let bar = "[";
+
+    let timeout = 600;
+
+    if (options.sanitizer) {
+      timeout *= 2;
+    }
+
+    while (true) {
+      arangod.exitStatus = statusExternal(arangod.pid, false);
+
+      if (arangod.exitStatus.status === "RUNNING") {
+        ++count;
+
+        if (options.valgrind) {
+          wait(1);
+          continue;
+        }
+
+        if (count % 10 === 0) {
+          bar = bar + "#";
+        }
+
+        if (count > 600) {
+          print("forcefully terminating " + yaml.safeDump(arangod.pid) +
+              " after " + timeout + "s grace period; marking crashy.");
+          serverCrashed = true;
+          killExternal(arangod.pid);
+          break;
+        } else {
+          wait(1);
+        }
+      } else if (arangod.exitStatus.status !== "TERMINATED") {
+        if (arangod.exitStatus.hasOwnProperty('signal')) {
+          print("Server shut down with : " +
+              yaml.safeDump(arangod.exitStatus) +
+              " marking build as crashy.");
+
+          serverCrashed = true;
+          break;
+        }
+        if (platform.substr(0, 3) === 'win') {
+          // Windows: wait for procdump to do its job...
+          statusExternal(arangod.monitor, true);
+        }
+      } else {
+        print("Server shutdown: Success.");
+        break; // Success.
+      }
+    }
+
+    if (count > 10) {
+      print("long Server shutdown: " + bar + ']');
+    }
+  } else {
+    print("Server already dead, doing nothing.");
+  }
+
+  if (!options.skipLogAnalysis) {
+    let errorEntries = readImportantLogLines(arangod.rootDir);
+    if (Object.keys(errorEntries).length > 0) {
+      print("Found messages in the server logs: \n" +
+        yaml.safeDump(errorEntries));
+    }
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shuts down an instance
 ////////////////////////////////////////////////////////////////////////////////
@@ -1101,79 +1173,7 @@ function shutdownInstance(instanceInfo, options) {
     print("Server already dead, doing nothing. This shouldn't happen?");
   }
   instanceInfo.arangods.reverse().forEach(arangod => {
-    if (options.valgrind) {
-      waitOnServerForGC(arangod, options, 60);
-    }
-    if (arangod.exitStatus === undefined) {
-      print(arangod.url + "/_admin/shutdown");
-      download(arangod.url + "/_admin/shutdown", "",
-          makeAuthorizationHeaders(options));
-
-      print("Waiting for server with pid " + arangod.pid + " to shut down");
-
-      let count = 0;
-      let bar = "[";
-
-      let timeout = 600;
-
-      if (options.sanitizer) {
-        timeout *= 2;
-      }
-
-      while (true) {
-        arangod.exitStatus = statusExternal(arangod.pid, false);
-
-        if (arangod.exitStatus.status === "RUNNING") {
-          ++count;
-
-          if (options.valgrind) {
-            wait(1);
-            continue;
-          }
-
-          if (count % 10 === 0) {
-            bar = bar + "#";
-          }
-
-          if (count > 600) {
-            print("forcefully terminating " + yaml.safeDump(arangod.pid) +
-                " after " + timeout + "s grace period; marking crashy.");
-            serverCrashed = true;
-            killExternal(arangod.pid);
-            break;
-          } else {
-            wait(1);
-          }
-        } else if (arangod.exitStatus.status !== "TERMINATED") {
-          if (arangod.exitStatus.hasOwnProperty('signal')) {
-            print("Server shut down with : " +
-                yaml.safeDump(arangod.exitStatus) +
-                " marking build as crashy.");
-
-            serverCrashed = true;
-            break;
-          }
-          if (platform.substr(0, 3) === 'win') {
-            // Windows: wait for procdump to do its job...
-            statusExternal(arangod.monitor, true);
-          }
-        } else {
-          print("Server shutdown: Success.");
-          break; // Success.
-        }
-      }
-
-      if (count > 10) {
-        print("long Server shutdown: " + bar + ']');
-      }
-    } else {
-      print("Server already dead, doing nothing.");
-    }
-
-    if (!options.skipLogAnalysis) {
-      arangod.importantLogLines =
-        readImportantLogLines(arangod.rootDir);
-    }
+    shutdownArangod(arangod, options);
   });
   cleanupDirectories.push(instanceInfo.rootDir);
 }
@@ -1562,15 +1562,7 @@ function rubyTests(options, ssl) {
 
   fs.remove(tmpname);
   shutdownInstance(instanceInfo, options);
-
   print("done.");
-
-  if ((!options.skipLogAnalysis) &&
-    instanceInfo.hasOwnProperty('importantLogLines') &&
-    Object.keys(instanceInfo.importantLogLines).length > 0) {
-    print("Found messages in the server logs: \n" +
-      yaml.safeDump(instanceInfo.importantLogLines));
-  }
 
   return result;
 }
@@ -2063,13 +2055,6 @@ testFuncs.arangob = function(options) {
   shutdownInstance(instanceInfo, options);
   print("done.");
 
-  if ((!options.skipLogAnalysis) &&
-    instanceInfo.hasOwnProperty('importantLogLines') &&
-    Object.keys(instanceInfo.importantLogLines).length > 0) {
-    print("Found messages in the server logs: \n" +
-      yaml.safeDump(instanceInfo.importantLogLines));
-  }
-
   return results;
 };
 
@@ -2112,13 +2097,6 @@ testFuncs.authentication = function(options) {
   print("Shutting down...");
   shutdownInstance(instanceInfo, options);
   print("done.");
-
-  if ((!options.skipLogAnalysis) &&
-    instanceInfo.hasOwnProperty('importantLogLines') &&
-    Object.keys(instanceInfo.importantLogLines).length > 0) {
-    print("Found messages in the server logs: \n" +
-      yaml.safeDump(instanceInfo.importantLogLines));
-  }
 
   return results;
 };
@@ -2263,14 +2241,6 @@ testFuncs.authentication_parameters = function(options) {
 
     print("Shutting down " + authTestNames[test] + " test...");
     shutdownInstance(instanceInfo, options);
-
-    if ((!options.skipLogAnalysis) &&
-      instanceInfo.hasOwnProperty('importantLogLines') &&
-      (instanceInfo.importantLogLines.length > 0)) {
-      print("Found messages in the server logs: \n" +
-        yaml.safeDump(instanceInfo.importantLogLines));
-    }
-
     print("done with " + authTestNames[test] + " test.");
   }
 
@@ -2480,13 +2450,6 @@ testFuncs.dump = function(options) {
   shutdownInstance(instanceInfo, options);
   print("done.");
 
-  if ((!options.skipLogAnalysis) &&
-    instanceInfo.hasOwnProperty('importantLogLines') &&
-    Object.keys(instanceInfo.importantLogLines).length > 0) {
-    print("Found messages in the server logs: \n" +
-      yaml.safeDump(instanceInfo.importantLogLines));
-  }
-
   return results;
 };
 
@@ -2584,13 +2547,6 @@ testFuncs.dump_authentication = function(options) {
   shutdownInstance(instanceInfo, options);
   print("done.");
 
-  if ((!options.skipLogAnalysis) &&
-    instanceInfo.hasOwnProperty('importantLogLines') &&
-    Object.keys(instanceInfo.importantLogLines).length > 0) {
-    print("Found messages in the server logs: \n" +
-      yaml.safeDump(instanceInfo.importantLogLines));
-  }
-
   return results;
 };
 
@@ -2627,13 +2583,6 @@ testFuncs.foxx_manager = function(options) {
   print("Shutting down...");
   shutdownInstance(instanceInfo, options);
   print("done.");
-
-  if ((!options.skipLogAnalysis) &&
-    instanceInfo.hasOwnProperty('importantLogLines') &&
-    Object.keys(instanceInfo.importantLogLines).length > 0) {
-    print("Found messages in the server logs: \n" +
-      yaml.safeDump(instanceInfo.importantLogLines));
-  }
 
   return results;
 };
@@ -2807,14 +2756,6 @@ testFuncs.importing = function(options) {
   print("Shutting down...");
   shutdownInstance(instanceInfo, options);
   print("done.");
-
-  if ((!options.skipLogAnalysis) &&
-    instanceInfo.hasOwnProperty('importantLogLines') &&
-    Object.keys(instanceInfo.importantLogLines).length > 0) {
-
-    print("Found messages in the server logs: \n" +
-      yaml.safeDump(instanceInfo.importantLogLines));
-  }
 
   return result;
 };
@@ -3201,13 +3142,6 @@ testFuncs.shell_client = function(options) {
   shutdownInstance(instanceInfo, options);
   print("done.");
 
-  if ((!options.skipLogAnalysis) &&
-    instanceInfo.hasOwnProperty('importantLogLines') &&
-    Object.keys(instanceInfo.importantLogLines).length > 0) {
-    print("Found messages in the server logs: \n" +
-      yaml.safeDump(instanceInfo.importantLogLines));
-  }
-
   return results;
 };
 
@@ -3326,13 +3260,6 @@ testFuncs.single_client = function(options) {
 
     print("done.");
 
-    if ((!options.skipLogAnalysis) &&
-      instanceInfo.hasOwnProperty('importantLogLines') &&
-      Object.keys(instanceInfo.importantLogLines).length > 0) {
-      print("Found messages in the server logs: \n" +
-        yaml.safeDump(instanceInfo.importantLogLines));
-    }
-
     return result;
   } else {
     findTests();
@@ -3387,13 +3314,6 @@ testFuncs.single_server = function(options) {
   shutdownInstance(instanceInfo, options);
 
   print("done.");
-
-  if ((!options.skipLogAnalysis) &&
-    instanceInfo.hasOwnProperty('importantLogLines') &&
-    Object.keys(instanceInfo.importantLogLines).length > 0) {
-    print("Found messages in the server logs: \n" +
-      yaml.safeDump(instanceInfo.importantLogLines));
-  }
 
   return result;
 };
@@ -3610,13 +3530,6 @@ testFuncs.agency = function(options) {
   print("Shutting down...");
   shutdownInstance(instanceInfo, options);
   print("done.");
-
-  if ((!options.skipLogAnalysis) &&
-    instanceInfo.hasOwnProperty('importantLogLines') &&
-    Object.keys(instanceInfo.importantLogLines).length > 0) {
-    print("Found messages in the server logs: \n" +
-      yaml.safeDump(instanceInfo.importantLogLines));
-  }
 
   return results;
 };
