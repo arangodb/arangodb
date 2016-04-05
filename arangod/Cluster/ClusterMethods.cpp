@@ -1357,7 +1357,7 @@ int modifyDocumentOnCoordinator(
   //     attribute, however, if there is any other sharding attribute,
   //     it is possible that the user has changed the values in any of
   //     them, in that case we will get a "not found" or a "sharding
-  //     attributes changed answer" in the fast path. In the latter case
+  //     attributes changed answer" in the fast path. In the first case
   //     we have to delegate to the slow path.
   //   isPatch == true     (this is an "update" operation)
   //     In this case we might or might not have all sharding attributes
