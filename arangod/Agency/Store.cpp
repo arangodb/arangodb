@@ -234,17 +234,22 @@ ValueType Node::valueType() const {
 bool Node::addTimeToLive (long millis) {
   auto tkey = std::chrono::system_clock::now() +
     std::chrono::milliseconds(millis);
-  root()._time_table[tkey] =
-    _parent->_children[_node_name];
-  root()._table_time[_parent->_children[_node_name]] = tkey;
+  root()._time_table.insert(
+    std::pair<TimePoint,std::shared_ptr<Node>>(
+      tkey, _parent->_children[_node_name]));
+  _ttl = tkey;
+//  root()._table_time[_parent->_children[_node_name]] = tkey;
   return true;
 }
 
 bool Node::removeTimeToLive () {
-  auto it = root()._table_time.find(_parent->_children[_node_name]);
-  if (it != root()._table_time.end()) {
-    root()._time_table.erase(root()._time_table.find(it->second));
-    root()._table_time.erase(it);
+  if (_ttl != std::chrono::system_clock::time_point()) {
+    auto ret = root()._time_table.equal_range(_ttl);
+    for (auto it = ret.first; it!=ret.second; ++it) {
+      if (it->second = _parent->_children[_node_name]) {
+        root()._time_table.erase(it);
+      }
+    }
   }
   return true;
 }
@@ -473,18 +478,22 @@ std::ostream& Node::print (std::ostream& o) const {
     for (auto const& i : _children)
       o << *(i.second);
   } else {
-    o << ((slice().type() == ValueType::None) ? "NONE" : slice().toJson()) << std::endl;
+    o << ((slice().type() == ValueType::None) ? "NONE" : slice().toJson());
+    if (_ttl != std::chrono::system_clock::time_point()) {
+      o << " ttl! ";
+    }
+    o << std::endl;
   }
   if (_time_table.size()) {
     for (auto const& i : _time_table) {
       o << i.second.get() << std::endl;
     }
   }
-  if (_table_time.size()) {
+/*  if (_table_time.size()) {
     for (auto const& i : _table_time) {
       o << i.first.get() << std::endl;
     }
-  }
+    }*/
   return o;
 }
 
@@ -675,7 +684,7 @@ void Store::dumpToBuilder (Builder& builder) const {
       builder.add(ts, VPackValue((size_t)i.second.get()));
     }
   }
-  {
+/*  {
     VPackObjectBuilder guard(&builder);
     for (auto const& i : _table_time) {
       auto in_time_t = std::chrono::system_clock::to_time_t(i.second);
@@ -683,7 +692,7 @@ void Store::dumpToBuilder (Builder& builder) const {
       ts.resize(ts.size()-1);
       builder.add(std::to_string((size_t)i.first.get()), VPackValue(ts));
     }
-  }
+    }*/
 }
 
 bool Store::start () {

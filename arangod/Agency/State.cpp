@@ -119,7 +119,7 @@ bool State::log(query_t const& queries, term_t term, id_t lid,
       _log.push_back(log_t(i.get("index").getUInt(), term, lid, buf));
       persist(i.get("index").getUInt(), term, lid, i.get("query")); // log to disk
     } catch (std::exception const& e) {
-      LOG(FATAL) << e.what();
+      LOG(ERR) << e.what();
     }
   
   }

@@ -64,8 +64,7 @@ enum NODE_EXCEPTION {PATH_NOT_FOUND};
 class Node;
 
 typedef std::chrono::system_clock::time_point TimePoint;
-typedef std::map<TimePoint, std::shared_ptr<Node>> TimeTable;
-typedef std::map<std::shared_ptr<Node>, TimePoint> TableTime;
+typedef std::multimap<TimePoint, std::shared_ptr<Node>> TimeTable;
 
 /// @brief Simple tree implementation
 class Node {
@@ -169,7 +168,7 @@ protected:
   Node* _parent;
   Children _children;
   TimeTable _time_table;
-  TableTime _table_time;
+  TimePoint _ttl;
   Buffer<uint8_t> _value;
   std::vector<std::string> _observers;
   std::string _node_name;
