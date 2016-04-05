@@ -61,7 +61,7 @@ bool State::persist(index_t index, term_t term, id_t lid,
   body.add("_key", Value(i_str.str()));
   body.add("term", Value(term));
   body.add("leader", Value((uint32_t)lid));
-  body.add("request", entry[0]);
+  body.add("request", entry);
   body.close();
 
   std::unique_ptr<arangodb::ClusterCommResult> res =
@@ -77,11 +77,6 @@ bool State::persist(index_t index, term_t term, id_t lid,
   }
 
   return (res->status == CL_COMM_SENT);  // TODO: More verbose result
-}
-
-bool State::persist (term_t t, id_t i) {
-  
-  return true;  
 }
 
 //Leader
@@ -107,7 +102,7 @@ std::vector<index_t> State::log (
       buf->append((char const*)i[0].begin(), i[0].byteSize());
       idx[j] = _log.back().index + 1;
       _log.push_back(log_t(idx[j], term, lid, buf));  // log to RAM
-      persist(idx[j], term, lid, i);                  // log to disk
+      persist(idx[j], term, lid, i[0]);                  // log to disk
       ++j;
     }
   }
@@ -133,7 +128,7 @@ bool State::log(query_t const& queries, term_t term, id_t lid,
     } catch (std::exception const& e) {
       LOG(FATAL) << e.what();
     }
-    
+  
   }
   return true;
 }
@@ -266,6 +261,14 @@ bool State::loadCollection(std::string const& name) {
 
     return false;
   }
+}
+
+bool State::find (index_t prevIndex, term_t prevTerm) {
+  MUTEX_LOCKER(mutexLocker, _logLock);
+  if (prevIndex > _log.size()) {
+    return false;
+  }
+  return _log.at(prevIndex).term == prevTerm;
 }
 
 bool State::compact () {

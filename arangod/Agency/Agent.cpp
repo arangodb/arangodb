@@ -184,26 +184,42 @@ bool Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
       << "Received malformed entries for appending. Discarting!";  
     return false;
   }
+
+  MUTEX_LOCKER(mutexLocker, _ioLock);
+
+  index_t last_commit_index = _last_commit_index;
+  // 1. Reply false if term < currentTerm (§5.1)
+  if (this->term() > term) {
+    LOG_TOPIC(WARN, Logger::AGENCY) << "I have a higher term than RPC caller.";
+    return false;
+  }
+
+  // 2. Reply false if log doesn’t contain an entry at prevLogIndex
+  //    whose term matches prevLogTerm (§5.3)
+  if (!_state.find(prevIndex,prevTerm)) {
+    LOG_TOPIC(WARN, Logger::AGENCY)
+      << "Unable to find matching entry to previous entry (index,term) = ("
+      << prevIndex << "," << prevTerm << ")";
+    //return false;
+  }
+
+  // 3. If an existing entry conflicts with a new one (same index
+  //    but different terms), delete the existing entry and all that
+  //    follow it (§5.3)
+  // 4. Append any new entries not already in the log
   if (queries->slice().length()) {
     LOG_TOPIC(INFO, Logger::AGENCY) << "Appending "<< queries->slice().length()
-              << " entries to state machine.";
+                                    << " entries to state machine.";
+    bool success = _state.log (queries, term, leaderId, prevIndex, prevTerm);
   } else { 
     // heart-beat
   }
-    
-  if (_last_commit_index < leaderCommitIndex) {
-    LOG_TOPIC(INFO, Logger::AGENCY) <<  "Updating last commited index to " << leaderCommitIndex;
-  }
-  _last_commit_index = leaderCommitIndex;
   
-  // Sanity
-  if (this->term() > term) {                 // (§5.1)
-    LOG_TOPIC(WARN, Logger::AGENCY) << "I have a higher term than RPC caller.";
-    throw LOWER_TERM_APPEND_ENTRIES_RPC; 
-  }
-  
-  // Delete conflits and append (§5.3)
-  _state.log (queries, term, leaderId, prevIndex, prevTerm);
+  // appendEntries 5. If leaderCommit > commitIndex, set commitIndex =
+  //min(leaderCommit, index of last new entry)
+  if (leaderCommitIndex > last_commit_index)
+  _last_commit_index = std::min(leaderCommitIndex,last_commit_index);
+
   return true;
 
 }

@@ -103,7 +103,7 @@ class Agent : public arangodb::Thread {
   void reportIn(id_t id, index_t idx);
 
   /// @brief Wait for slaves to confirm appended entries
-  bool waitFor(index_t last_entry, duration_t timeout = duration_t(2000));
+  bool waitFor(index_t last_entry, double timeout = 2.0);
 
   /// @brief Convencience size of agency
   size_t size() const;

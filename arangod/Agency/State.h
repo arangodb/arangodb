@@ -75,7 +75,7 @@ public:
 
 
   /// @brief Find entry at index with term
-  bool findit (index_t index, term_t term);
+  bool find (index_t index, term_t term);
 
 
   /// @brief Get complete log entries bound by lower and upper bounds.
@@ -114,9 +114,6 @@ public:
     return os;
   }
 
-  // @brief Persist term/leaderid
-  bool persist (term_t, id_t);
-  
 private:
 
   bool snapshot ();

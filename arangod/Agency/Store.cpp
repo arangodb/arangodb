@@ -209,7 +209,7 @@ Node& Node::operator ()(std::string const& path) {
   return this->operator()(pv);
 }
 
-Node& Node::root() {
+Node const& Node::root() const {
   Node *par = _parent, *tmp = 0;
   while (par != 0) {
     tmp = par;
@@ -218,7 +218,7 @@ Node& Node::root() {
   return *tmp;
 }
 
-Node const& Node::root() const {
+Node& Node::root() {
   Node *par = _parent, *tmp = 0;
   while (par != 0) {
     tmp = par;
@@ -645,19 +645,21 @@ void Store::beginShutdown() {
 }
 
 // TTL clear values from store
-void Store::clearTimeTable () {
+query_t Store::clearTimeTable () const {
+  query_t tmp = std::make_shared<Builder>();
+  tmp->openArray(); 
   for (auto it = _time_table.cbegin(); it != _time_table.cend(); ++it) {
     if (it->first < std::chrono::system_clock::now()) {
-      query_t tmp = std::make_shared<Builder>();
-      tmp->openArray(); tmp->openArray(); tmp->openObject();
+      tmp->openArray(); tmp->openObject();
       tmp->add(it->second->uri(), VPackValue(VPackValueType::Object));
       tmp->add("op",VPackValue("delete"));
-      tmp->close(); tmp->close(); tmp->close(); tmp->close();
-      _agent->write(tmp);
+      tmp->close(); tmp->close(); tmp->close();
     } else {
       break;
     }
   }
+  tmp->close();
+  return tmp;
 }
 
 // Dump internal data to builder
@@ -698,6 +700,7 @@ void Store::run() {
   CONDITION_LOCKER(guard, _cv);
   while (!this->isStopping()) { // Check timetable and remove overage entries
     _cv.wait(100000);           // better wait to next known time point
-    clearTimeTable();
+    auto toclear = clearTimeTable();
+    _agent->write(toclear);
   }
 }

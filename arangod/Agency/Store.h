@@ -129,6 +129,9 @@ public:
   bool remove();
 
   /// @brief Get root node
+  Node const& root() const;
+
+  /// @brief Get root node
   Node& root();
 
   /// @brief Dump to ostream
@@ -223,7 +226,7 @@ private:
   bool check (arangodb::velocypack::Slice const&) const;
 
   /// @brief Clear entries, whose time to live has expired
-  void clearTimeTable ();
+  query_t clearTimeTable () const;
 
   /// @brief Run thread
   void run () override final;
