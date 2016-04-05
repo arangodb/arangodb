@@ -78,12 +78,15 @@
 /// synchronization for collections that have a default *waitForSync* value
 /// of *true*.
 ///
-/// The body of the response contains a JSON array with the information
-/// about the handle and the revision of the replaced documents. The
-/// attribute *_id* contains the known *document-handle* of each updated
-/// document, *_key* contains the key which uniquely identifies a
-/// document in a given collection, and the attribute *_rev* contains
-/// the new document revision.
+/// The body of the response contains a JSON array of the same length
+/// as the input array with the information about the handle and the
+/// revision of the updated documents. In each entry, the attribute
+/// *_id* contains the known *document-handle* of each updated document,
+/// *_key* contains the key which uniquely identifies a document in a
+/// given collection, and the attribute *_rev* contains the new document
+/// revision. In case of an error or violated precondition, an error
+/// object with the attribute *error* set to *true* and the attribute
+/// *errorCode* set to the error code is built.
 ///
 /// If the query parameter *returnOld* is *true*, then, for each
 /// generated document, the complete previous revision of the document
@@ -93,8 +96,13 @@
 /// generated document, the complete new document is returned under
 /// the *new* attribute in the result.
 ///
-/// If any of the document does not exist, then a *HTTP 404* is returned
-/// and the body of the response contains an error document.
+/// Note that if any precondition is violated or an error occurred with
+/// some of the documents, the return code is still 201 or 202, but
+/// the additional HTTP header *X-Arango-Error-Codes* is set, which
+/// contains a map of the error codes that occurred together with their
+/// multiplicities, as in: *1200:17,1205:10* which means that in 17
+/// cases the error 1200 "revision conflict" and in 10 cases the error
+/// 1205 "illegal document handle" has happened.
 ///
 /// @RESTRETURNCODES
 ///
@@ -112,13 +120,7 @@
 /// an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
-/// is returned if the collection or a document was not found.
-///
-/// @RESTRETURNCODE{412}
-/// is returned if the precondition was violated. The response will
-/// also contain the found documents' current revisions in the *_rev*
-/// attributes. Additionally, the attributes *_id* and *_key* will be
-/// returned.
+/// is returned if the collection was not found.
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////

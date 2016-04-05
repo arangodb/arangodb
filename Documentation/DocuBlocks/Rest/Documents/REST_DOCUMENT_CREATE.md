@@ -29,8 +29,11 @@
 ///
 /// The body can be an array of documents, in which case all
 /// documents in the array are inserted with the same semantics as for a
-/// single document. The operation either succeeds for all documents or
-/// fails without adding a single document.
+/// single document. The result body will contain a JSON array of the
+/// same length as the input array, and each entry contains the result
+/// of the operation for the corresponding input. In case of an error
+/// the entry is a document with attributes *error* set to *true* and
+/// errorCode set to the error code that has happened.
 /// 
 /// Possibly given *_id* and *_rev* attributes in the body are always ignored,
 /// the URL part or the query parameter collection respectively counts.
@@ -88,10 +91,16 @@
 /// The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{409}
-/// is returned if a document with the same qualifiers in an indexed
-/// attribute conflicts with an already existing document and thus
-/// violating that uniq constraint. The response body contains an error
-/// document in this case.
+/// is returned in the single document case if a document with the
+/// same qualifiers in an indexed attribute conflicts with an already
+/// existing document and thus violates that unique constraint. The
+/// response body contains an error document in this case. In the array
+/// case only 201 or 202 is returned, but if an error occurred, the
+/// additional HTTP header *X-Arango-Error-Codes* is set, which
+/// contains a map of the error codes that occurred together with their
+/// multiplicities, as in: *1205:10,1210:17* which means that in 10
+/// cases the error 1205 "illegal document handle" and in 17 cases the
+/// error 1210 "unique constraint violated" has happened.
 ///
 /// @EXAMPLES
 ///

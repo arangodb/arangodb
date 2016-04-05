@@ -36,11 +36,15 @@
 /// precondition that the actual revision of the removed document in the
 /// collection is the specified one.
 ///
-/// The body of the response contains a JSON object with the information
-/// about the handle and the revision. The attribute *_id* contains the
-/// known *document-handle* of the removed document, *_key* contains the
-/// key which uniquely identifies a document in a given collection, and
-/// the attribute *_rev* contains the document revision.
+/// The body of the response is an array of the same length as the input
+/// array. For each input selector, the output contains a JSON object
+/// with the information about the outcome of the operation. If no error
+/// occurred, an object is built in which the attribute *_id* contains
+/// the known *document-handle* of the removed document, *_key* contains
+/// the key which uniquely identifies a document in a given collection,
+/// and the attribute *_rev* contains the document revision. In case of
+/// an error, an object with the attribute *error* set to *true* and
+/// *errorCode* set to the error code is built.
 ///
 /// If the *waitForSync* parameter is not specified or set to *false*,
 /// then the collection's default *waitForSync* behavior is applied.
@@ -52,25 +56,25 @@
 /// the complete previous revision of the document
 /// is returned under the *old* attribute in the result.
 ///
+/// Note that if any precondition is violated or an error occurred with
+/// some of the documents, the return code is still 200 or 202, but
+/// the additional HTTP header *X-Arango-Error-Codes* is set, which
+/// contains a map of the error codes that occurred together with their
+/// multiplicities, as in: *1200:17,1205:10* which means that in 17
+/// cases the error 1200 "revision conflict" and in 10 cases the error
+/// 1205 "illegal document handle" has happened.
+///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// is returned if the document was removed successfully and
-/// *waitForSync* was *true*.
+/// is returned if *waitForSync* was *true*.
 ///
 /// @RESTRETURNCODE{202}
-/// is returned if the document was removed successfully and
-/// *waitForSync* was *false*.
+/// is returned if *waitForSync* was *false*.
 ///
 /// @RESTRETURNCODE{404}
-/// is returned if the collection or the document was not found.
+/// is returned if the collection was not found.
 /// The response body contains an error document in this case.
-///
-/// @RESTRETURNCODE{412}
-/// is returned if a *_rev* attribute is given and the found document
-/// has a different revision. The response will also contain the found
-/// document's current revision in the *_rev* attribute. Additionally,
-/// the attributes *_id* and *_key* will be returned.
 ///
 /// @EXAMPLES
 ///
