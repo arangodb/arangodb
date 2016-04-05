@@ -126,7 +126,6 @@ bool Agent::waitFor (index_t index, double timeout) {
     return true;
     
   CONDITION_LOCKER(guard, _rest_cv);
-  auto start = std::chrono::system_clock::now();
 
   // Wait until woken up through AgentCallback 
   while (true) {
@@ -171,6 +170,7 @@ void Agent::reportIn (id_t id, index_t index) {
     }
   }
 
+  CONDITION_LOCKER(guard, _rest_cv);
   _rest_cv.broadcast();            // wake up REST handlers
 }
 
@@ -210,7 +210,7 @@ bool Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
   if (queries->slice().length()) {
     LOG_TOPIC(INFO, Logger::AGENCY) << "Appending "<< queries->slice().length()
                                     << " entries to state machine.";
-    bool success = _state.log (queries, term, leaderId, prevIndex, prevTerm);
+    /* bool success = */_state.log (queries, term, leaderId, prevIndex, prevTerm);
   } else { 
     // heart-beat
   }
