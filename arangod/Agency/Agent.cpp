@@ -230,9 +230,13 @@ append_entries_t Agent::sendAppendEntriesRPC (id_t follower_id) {
   index_t last_confirmed = _confirmed[follower_id];
   std::vector<log_t> unconfirmed = _state.get(last_confirmed);
 
+  MUTEX_LOCKER(mutexLocker, _ioLock);
+
+  term_t t = this->term();
+
   // RPC path
   std::stringstream path;
-  path << "/_api/agency_priv/appendEntries?term=" << term() << "&leaderId="
+  path << "/_api/agency_priv/appendEntries?term=" << t << "&leaderId="
        << id() << "&prevLogIndex=" << unconfirmed[0].index << "&prevLogTerm="
        << unconfirmed[0].term << "&leaderCommit=" << _last_commit_index;
 
@@ -267,7 +271,7 @@ append_entries_t Agent::sendAppendEntriesRPC (id_t follower_id) {
      std::make_shared<AgentCallback>(this, follower_id, last),
      0, true);
 
-  return append_entries_t(this->term(), true);
+  return append_entries_t(t, true);
   
 }
 

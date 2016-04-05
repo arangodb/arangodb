@@ -82,18 +82,11 @@ bool State::persist(index_t index, term_t term, id_t lid,
 //Leader
 std::vector<index_t> State::log (
   query_t const& query, std::vector<bool> const& appl, term_t term, id_t lid) {
-  if (!checkCollections()) {
-    createCollections();
-  }
-  if (!_collections_loaded) {
-    loadCollections();
-    _collections_loaded = true;
-  }
 
-  // TODO: Check array
   std::vector<index_t> idx(appl.size());
   std::vector<bool> good = appl;
   size_t j = 0;
+  
   MUTEX_LOCKER(mutexLocker, _logLock);  // log entries must stay in order
   for (auto const& i : VPackArrayIterator(query->slice())) {
     if (good[j]) {
