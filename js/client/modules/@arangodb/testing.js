@@ -970,12 +970,7 @@ function executeAndWait(cmd, args, options, valgrindTest) {
 
 function runInArangosh(options, instanceInfo, file, addArgs) {
   let args = makeArgsArangosh(options);
-  if (instanceInfo.endpoint !== undefined) {
-    args["server.endpoint"] = instanceInfo.endpoint;
-  }
-  if (instanceInfo.urls !== undefined) {
-    args["flatCommands"] = instanceInfo.urls;
-  }
+  args["server.endpoint"] = instanceInfo.endpoint;
   args["javascript.unit-tests"] = fs.join(TOP_DIR, file);
 
   if (addArgs !== undefined) {
@@ -3570,7 +3565,7 @@ testFuncs.agency = function(options) {
   let continueTesting = true;
 
   for (let i = 0; i < testsCases.agency.length; i++) {
-    const te = testsCases.agency[i];
+    let te = testsCases.agency[i];
 
     if (filterTestcaseByOptions(te, options, filtered)) {
       if (!continueTesting) {
@@ -3586,9 +3581,14 @@ testFuncs.agency = function(options) {
         break;
       }
 
+      let agencyServers = instanceInfo.arangods.map(arangod => {
+        return arangod.url;
+      });
+      
+
       print("\narangosh: Trying", te, "...");
 
-      const reply = runInArangosh(options, instanceInfo, te);
+      const reply = runInArangosh(options, instanceInfo, te, {"flatCommands": agencyServers.join(' ')});
       results[te] = reply;
 
       if (reply.status !== true) {

@@ -42,7 +42,6 @@ function agencyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
   
   var agencyServers = ARGUMENTS;
-  console.log(Array.prototype.slice.call(ARGUMENTS));
   var whoseTurn = 0;    // used to do round robin on agencyServers
 
   var request = require("@arangodb/request");
