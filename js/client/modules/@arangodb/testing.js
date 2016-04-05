@@ -3898,7 +3898,7 @@ function unitTest(cases, options) {
   if (globalStatus && !serverCrashed) {
     cleanupDBDirectories(options);
   } else {
-    print("since some tests weren't successfully, not cleaning up: \n" +
+    print("not cleaning up as some tests weren't successful:\n" +
       yaml.safeDump(cleanupDirectories));
   }
 
