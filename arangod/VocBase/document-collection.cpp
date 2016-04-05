@@ -3653,11 +3653,12 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
   if (options.isRestore) {
     VPackSlice oldRev = TRI_ExtractRevisionIdAsSlice(slice);
     if (!oldRev.isString()) {
-      return TRI_ERROR_ARANGO_DOCUMENT_REV_BAD;
+      revisionId = TRI_NewTickServer();
+    } else {
+      VPackValueLength length;
+      char const* p = oldRev.getString(length);
+      revisionId = arangodb::basics::StringUtils::uint64(p, length);
     }
-    VPackValueLength length;
-    char const* p = oldRev.getString(length);
-    revisionId = arangodb::basics::StringUtils::uint64(p, length);
   } else {
     revisionId = TRI_NewTickServer();
   }
