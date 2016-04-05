@@ -3381,7 +3381,18 @@ int TRI_document_collection_t::update(Transaction* trx,
   mptr->setDataPtr(nullptr);
   prevRev = VPackSlice();
 
-  TRI_voc_rid_t revisionId = TRI_NewTickServer();
+  TRI_voc_rid_t revisionId = 0;
+  if (options.isRestore) {
+    VPackSlice oldRev = TRI_ExtractRevisionIdAsSlice(newSlice);
+    if (!oldRev.isString()) {
+      return TRI_ERROR_ARANGO_DOCUMENT_REV_BAD;
+    }
+    VPackValueLength length;
+    char const* p = oldRev.getString(length);
+    revisionId = arangodb::basics::StringUtils::uint64(p, length);
+  } else {
+    revisionId = TRI_NewTickServer();
+  }
   
   TRI_voc_tick_t markerTick = 0;
   int res;
@@ -3518,7 +3529,18 @@ int TRI_document_collection_t::replace(Transaction* trx,
   TRI_ASSERT(mptr != nullptr);
   mptr->setDataPtr(nullptr);
 
-  TRI_voc_rid_t revisionId = TRI_NewTickServer();
+  TRI_voc_rid_t revisionId = 0;
+  if (options.isRestore) {
+    VPackSlice oldRev = TRI_ExtractRevisionIdAsSlice(newSlice);
+    if (!oldRev.isString()) {
+      return TRI_ERROR_ARANGO_DOCUMENT_REV_BAD;
+    }
+    VPackValueLength length;
+    char const* p = oldRev.getString(length);
+    revisionId = arangodb::basics::StringUtils::uint64(p, length);
+  } else {
+    revisionId = TRI_NewTickServer();
+  }
   
   TRI_voc_tick_t markerTick = 0;
   int res;
@@ -4107,8 +4129,20 @@ int TRI_document_collection_t::newObjectForInsert(
       DatafileHelper::StoreNumber<uint64_t>(p, _info.id(), sizeof(uint64_t));
     }
     VPackSlice s = value.get(TRI_VOC_ATTRIBUTE_KEY);
-    TRI_voc_tick_t const newRev = TRI_NewTickServer();
+    TRI_voc_rid_t newRev = 0;
+    std::string newRevSt;
+    if (isRestore) {
+      VPackSlice oldRev = TRI_ExtractRevisionIdAsSlice(value);
+      if (!oldRev.isString()) {
+        return TRI_ERROR_ARANGO_DOCUMENT_REV_BAD;
+      }
+      newRevSt = oldRev.copyString();
+    } else {
+      newRev = TRI_NewTickServer();
+      newRevSt = std::to_string(newRev);
+    }
     if (s.isNone()) {
+      TRI_ASSERT(!isRestore);   // need key in case of restore
       std::string keyString = _keyGenerator->generate(newRev);
       if (keyString.empty()) {
         return TRI_ERROR_ARANGO_OUT_OF_KEYS;
@@ -4129,8 +4163,7 @@ int TRI_document_collection_t::newObjectForInsert(
     // we can get away with the fast hash function here, as key values are 
     // restricted to strings
     hash = s.hash();
-    std::string rev = std::to_string(newRev);
-    builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(rev));
+    builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(newRevSt));
   }
   return TRI_ERROR_NO_ERROR;
 } 

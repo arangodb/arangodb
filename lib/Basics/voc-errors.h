@@ -219,6 +219,9 @@
 ///   expected.
 /// - 1238: @LIT{collection not loaded}
 ///   Will be raised when a collection is accessed that is not yet loaded.
+/// - 1239: @LIT{illegal document revision}
+///   Will be raised when a document revision is corrupt or is missing where
+///   needed.
 /// - 1300: @LIT{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1301: @LIT{server database directory is empty}
@@ -1585,6 +1588,17 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED                            (1238)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1239: ERROR_ARANGO_DOCUMENT_REV_BAD
+///
+/// illegal document revision
+///
+/// Will be raised when a document revision is corrupt or is missing where
+/// needed.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_DOCUMENT_REV_BAD                                 (1239)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL
