@@ -1061,11 +1061,11 @@ function runArangoDumpRestore(options, instanceInfo, which, database) {
   let exe;
 
   if (which === "dump") {
-    args["output-directory"] = fs.join(instanceInfo.tmpDataDir, "dump");
+    args["output-directory"] = fs.join(instanceInfo.rootDir, "dump");
     exe = ARANGODUMP_BIN;
   } else {
     args["create-database"] = "true";
-    args["input-directory"] = fs.join(instanceInfo.tmpDataDir, "dump");
+    args["input-directory"] = fs.join(instanceInfo.rootDir, "dump");
     exe = ARANGORESTORE_BIN;
   }
 
