@@ -144,7 +144,6 @@ bool Node::operator== (VPackSlice const& rhs) const {
 
 // Remove this node from store
 bool Node::remove () {
-  removeTimeToLive();
   Node& parent = *_parent;
   return parent.removeChild(_node_name);
 }
