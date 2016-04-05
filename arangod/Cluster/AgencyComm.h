@@ -127,6 +127,8 @@ struct AgencyOperationType {
             return "push";
           case AgencyValueOperationType::PREPEND:
             return "prepend";
+          default:
+            return "unknown_operation_type";
         }
         break;
       case SIMPLE:
@@ -141,7 +143,11 @@ struct AgencyOperationType {
             return "pop";
           case AgencySimpleOperationType::SHIFT:
             return "shift";
+          default:
+            return "unknown_operation_type";
         }
+      default:
+        return "unknown_operation_type";
     }
   }
 };
