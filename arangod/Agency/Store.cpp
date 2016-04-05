@@ -164,17 +164,12 @@ NodeType Node::type() const {
   return _children.size() ? NODE : LEAF;
 }
 
-// Get child by name
-Node& Node::operator [](std::string const& name) {
-  return *_children[name];
-}
-
-// 
+// lh-value at path vector
 Node& Node::operator ()(std::vector<std::string> const& pv) {
   if (pv.size()) {
     std::string const key = pv.at(0);
     if (_children.find(key) == _children.end()) {
-      _children[key] = std::make_shared<Node>(pv[0], this);
+      _children[key] = std::make_shared<Node>(key, this);
     }
     auto pvc(pv);
     pvc.erase(pvc.begin());
@@ -184,12 +179,13 @@ Node& Node::operator ()(std::vector<std::string> const& pv) {
   }
 }
 
+// rh-value at path vector
 Node const& Node::operator ()(std::vector<std::string> const& pv) const {
   if (pv.size()) {
     std::string const key = pv.at(0);
     if (_children.find(key) == _children.end()) {
-      throw StoreException(std::string("Node ") + key +
-                           std::string(" not found"));
+      throw StoreException(
+        std::string("Node ") + key + std::string(" not found"));
     }
     const Node& child = *_children.at(key);
     auto pvc(pv);
@@ -199,17 +195,20 @@ Node const& Node::operator ()(std::vector<std::string> const& pv) const {
     return *this;
   }
 }
-  
-Node const& Node::operator ()(std::string const& path) const {
-  PathType pv = split(path,'/');
-  return this->operator()(pv);
-}
 
+// lh-value at path
 Node& Node::operator ()(std::string const& path) {
   PathType pv = split(path,'/');
   return this->operator()(pv);
 }
 
+// rh-value at path
+Node const& Node::operator ()(std::string const& path) const {
+  PathType pv = split(path,'/');
+  return this->operator()(pv);
+}
+
+// lh-store 
 Node const& Node::root() const {
   Node *par = _parent, *tmp = 0;
   while (par != 0) {
@@ -219,6 +218,7 @@ Node const& Node::root() const {
   return *tmp;
 }
 
+// rh-store
 Node& Node::root() {
   Node *par = _parent, *tmp = 0;
   while (par != 0) {
@@ -228,10 +228,12 @@ Node& Node::root() {
   return *tmp;
 }
 
+// velocypack value type of this node
 ValueType Node::valueType() const {
   return slice().type();
 }
 
+// file time to live entry for this node to now + millis
 bool Node::addTimeToLive (long millis) {
   auto tkey = std::chrono::system_clock::now() +
     std::chrono::milliseconds(millis);
@@ -242,6 +244,7 @@ bool Node::addTimeToLive (long millis) {
   return true;
 }
 
+// remove time to live entry for this node
 bool Node::removeTimeToLive () {
   if (_ttl != std::chrono::system_clock::time_point()) {
     auto ret = root()._time_table.equal_range(_ttl);
@@ -254,6 +257,7 @@ bool Node::removeTimeToLive () {
   return true;
 }
 
+// Add observing url for this node
 bool Node::addObserver (std::string const& uri) {
   auto it = std::find(_observers.begin(), _observers.end(), uri);
   if (it==_observers.end()) {

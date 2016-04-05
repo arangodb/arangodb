@@ -103,11 +103,6 @@ public:
   /// @brief Type of this node (LEAF / NODE)
   NodeType type() const;
 
-  /// @brief Get child specified by name
-  Node& operator [](std::string const& name);
-  /// @brief Get child specified by name
-  Node const& operator [](std::string const& name) const;
-
   /// @brief Get node specified by path vector  
   Node& operator ()(std::vector<std::string> const& pv);
   /// @brief Get node specified by path vector  
@@ -117,9 +112,6 @@ public:
   Node& operator ()(std::string const& path);
   /// @brief Get node specified by path string  
   Node const& operator ()(std::string const& path) const;
-
-  /// @brief Remove node at absolut path
-  //bool remove (std::string const& path);
 
   /// @brief Remove child by name
   bool removeChild (std::string const& key);
