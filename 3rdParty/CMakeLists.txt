@@ -7,31 +7,6 @@
 include(ExternalProject)
 
 ################################################################################
-## ETCD
-################################################################################
-
-if (GO_FOUND)
-  if (MSVC)
-    set (ETCD_BUILD_COMMAND build.bat)
-  else ()
-    set (ETCD_BUILD_COMMAND ./build)
-  endif ()
-
-  ExternalProject_Add(etcd
-    CONFIGURE_COMMAND
-      ""
-    URL
-      "${CMAKE_CURRENT_SOURCE_DIR}/etcd"
-    BUILD_IN_SOURCE
-      1
-    BUILD_COMMAND
-      "${ETCD_BUILD_COMMAND}"
-    INSTALL_COMMAND
-      cp bin/etcd ${CMAKE_BINARY_DIR}/bin/etcd-arango
-  )
-endif ()
-
-################################################################################
 ## GETOPT
 ################################################################################
 

@@ -207,7 +207,6 @@ let ARANGOIMP_BIN;
 let ARANGORESTORE_BIN;
 let ARANGOSH_BIN;
 let CONFIG_RELATIVE_DIR;
-let ETCD_ARANGO_BIN;
 let JS_DIR;
 let LOGS_DIR;
 let PEM_FILE;
@@ -3742,7 +3741,6 @@ function unitTest(cases, options) {
   ARANGORESTORE_BIN = fs.join(BIN_DIR, "arangorestore");
   ARANGOSH_BIN = fs.join(BIN_DIR, "arangosh");
   CONFIG_RELATIVE_DIR = fs.join(TOP_DIR, "etc", "relative");
-  ETCD_ARANGO_BIN = fs.join(BIN_DIR, "etcd-arango");
   JS_DIR = fs.join(TOP_DIR, "js");
   LOGS_DIR = fs.join(TOP_DIR, "logs");
   PEM_FILE = fs.join(TOP_DIR, "UnitTests", "server.pem");

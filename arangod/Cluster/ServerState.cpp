@@ -49,7 +49,6 @@ ServerState::ServerState()
     : _id(),
       _dataPath(),
       _logPath(),
-      _agentPath(),
       _arangodPath(),
       _dbserverConfig(),
       _coordinatorConfig(),
@@ -640,24 +639,6 @@ std::string ServerState::getLogPath() {
 void ServerState::setLogPath(std::string const& value) {
   WRITE_LOCKER(writeLocker, _lock);
   _logPath = value;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the agent path
-////////////////////////////////////////////////////////////////////////////////
-
-std::string ServerState::getAgentPath() {
-  READ_LOCKER(readLocker, _lock);
-  return _agentPath;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the data path
-////////////////////////////////////////////////////////////////////////////////
-
-void ServerState::setAgentPath(std::string const& value) {
-  WRITE_LOCKER(writeLocker, _lock);
-  _agentPath = value;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

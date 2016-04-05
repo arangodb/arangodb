@@ -72,19 +72,15 @@ file = /logs/arangodb.log
 # file = @LOCALSTATEDIR@/log/arangodb/arangod.log
 
 [cluster]
-disable-dispatcher-kickstarter = yes
-disable-dispatcher-frontend = yes
 # We don't follow LHFS for docker, since the directories will be mounted
 # flat to the top of the container:
 data-path = /lib/cluster
 log-path = /log/cluster
-agent-path = @LIBEXECDIR@/arangodb/etcd-arango@PROGRAM_SUFFIX@
 arangod-path = @SBINDIR@/arangod@PROGRAM_SUFFIX@
 dbserver-config = @SYSCONFDIR@/arangod-docker.conf
 coordinator-config = @SYSCONFDIR@/arangod-docker.conf
 # data-path = @LOCALSTATEDIR@/lib/arangodb/cluster
 # log-path = @LOCALSTATEDIR@/log/arangodb/cluster
-# agent-path = @LIBEXECDIR@/arangodb/etcd-arango@PROGRAM_SUFFIX@
 # arangod-path = @SBINDIR@/arangod@PROGRAM_SUFFIX@
 # dbserver-config = @SYSCONFDIR@/arangod.conf
 # coordinator-config = @SYSCONFDIR@/arangod.conf

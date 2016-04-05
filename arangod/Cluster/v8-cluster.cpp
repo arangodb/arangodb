@@ -1308,24 +1308,6 @@ static void JS_LogPathServerState(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the agent path
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_AgentPathServerState(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("agentPath()");
-  }
-
-  std::string const path = ServerState::instance()->getAgentPath();
-  TRI_V8_RETURN_STD_STRING(path);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the arangod path
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2230,8 +2212,6 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
                        JS_DataPathServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("logPath"),
                        JS_LogPathServerState);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("agentPath"),
-                       JS_AgentPathServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("arangodPath"),
                        JS_ArangodPathServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("javaScriptPath"),

@@ -138,12 +138,6 @@ find_package(BISON)
 find_package(PythonInterp 2 REQUIRED)
 get_filename_component(PYTHON_EXECUTABLE ${PYTHON_EXECUTABLE} REALPATH)
 
-find_package(Go 1.2)
-
-if (NOT GO_FOUND)
-  message(STATUS "Go version >=1.2 not found. etcd will not be built.")
-endif ()
-
 ################################################################################
 ## ARCHITECTURE
 ################################################################################

@@ -156,13 +156,6 @@ endif ()
 ## INSTALL
 ################################################################################
 
-if (NOT WINDOWS)
-  install(
-    PROGRAMS ${PROJECT_BINARY_DIR}/bin/etcd-arango
-    DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}
-  )
-endif ()
-
 # Global macros ----------------------------------------------------------------
 macro (generate_root_config name)
   FILE(READ ${PROJECT_SOURCE_DIR}/etc/arangodb/${name}.conf.in FileContent)
@@ -368,24 +361,6 @@ if (MSVC)
   set(CPACK_NSIS_HELP_LINK           ${ARANGODB_HELP_LINK})
   set(CPACK_NSIS_URL_INFO_ABOUT      ${ARANGODB_URL_INFO_ABOUT})
   set(CPACK_NSIS_CONTACT             ${ARANGODB_CONTACT})
-
-  # etcd
-  if (CMAKE_CL_64)
-    install(PROGRAMS WindowsLibraries/64/bin/etcd-arango.exe
-            DESTINATION ${ARANGODB_INSTALL_SBIN})
-
-    install(FILES WindowsLibraries/64/icudtl.dat
-            DESTINATION share/arangodb
-            RENAME icudt54l.dat)
-  else ()
-    install(PROGRAMS WindowsLibraries/32/bin/etcd-arango.exe
-            DESTINATION ${ARANGODB_INSTALL_SBIN})
-
-    install(FILES WindowsLibraries/32/icudtl.dat
-            DESTINATION share/arangodb
-            RENAME icudt54l.dat)
-  endif ()
-
 endif ()
 
 configure_file("${CMAKE_SOURCE_DIR}/CMakeCPackOptions.cmake.in"

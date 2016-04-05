@@ -44,7 +44,6 @@ echo Database has its data in ${DBDIR}
 echo Logfile is in ${LOGFILE}
 $VG bin/arangod \
     --configuration none \
-    --cluster.agent-path bin${PS}etcd-arango${EXT} \
     --cluster.arangod-path bin${PS}arangod \
     --cluster.coordinator-config etc${PS}relative${PS}arangod-coordinator.conf \
     --cluster.dbserver-config etc${PS}relative${PS}arangod-dbserver.conf \

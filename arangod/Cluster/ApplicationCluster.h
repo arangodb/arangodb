@@ -180,16 +180,6 @@ class ApplicationCluster : public rest::ApplicationFeature {
   std::string _logPath;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief agent path for the cluster
-  ///
-  /// @CMDOPT{\--cluster.agent-path @CA{path}}
-  ///
-  /// The path to agent executable.
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::string _agentPath;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief arangod path for the cluster
   ///
   /// @CMDOPT{\--cluster.arangod-path @CA{path}}

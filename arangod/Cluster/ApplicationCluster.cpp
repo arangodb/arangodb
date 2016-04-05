@@ -58,7 +58,6 @@ ApplicationCluster::ApplicationCluster(
       _password(),
       _dataPath(),
       _logPath(),
-      _agentPath(),
       _arangodPath(),
       _dbserverConfig(),
       _coordinatorConfig(),
@@ -91,7 +90,6 @@ void ApplicationCluster::setupOptions(
       "password used for cluster-internal communication")(
       "cluster.data-path", &_dataPath, "path to cluster database directory")(
       "cluster.log-path", &_logPath, "path to log directory for the cluster")(
-      "cluster.agent-path", &_agentPath, "path to the agent for the cluster")(
       "cluster.arangod-path", &_arangodPath,
       "path to the arangod for the cluster")(
       "cluster.dbserver-config", &_dbserverConfig,
@@ -109,7 +107,6 @@ bool ApplicationCluster::prepare() {
 
   ServerState::instance()->setDataPath(_dataPath);
   ServerState::instance()->setLogPath(_logPath);
-  ServerState::instance()->setAgentPath(_agentPath);
   ServerState::instance()->setArangodPath(_arangodPath);
   ServerState::instance()->setDBserverConfig(_dbserverConfig);
   ServerState::instance()->setCoordinatorConfig(_coordinatorConfig);
