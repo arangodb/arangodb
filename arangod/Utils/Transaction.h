@@ -527,6 +527,7 @@ class Transaction {
       std::string const&);
 
  private:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief build a VPack object with _id, _key and _rev and possibly
   /// oldRef (if given), the result is added to the builder in the
@@ -707,6 +708,13 @@ class Transaction {
       std::vector<Transaction::IndexHandle>& usedIndexes,
       arangodb::aql::AstNode*& specializedCondition,
       bool& isSparse) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Get one index by id for a collection name, coordinator case
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::shared_ptr<arangodb::Index> indexForCollectionCoordinator(
+      std::string const&, std::string const&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Get all indexes for a collection name, coordinator case
