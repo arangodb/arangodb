@@ -43,7 +43,7 @@ var endpointToURL = function (endpoint) {
     return "http://" + endpoint;
   }
   return "http" + endpoint.substr(pos);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a unique identifier
