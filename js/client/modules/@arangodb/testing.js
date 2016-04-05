@@ -446,57 +446,61 @@ function analyzeCoreDumpWindows(instanceInfo) {
   executeExternalAndWait("cdb", args);
 }
 
+function checkArangoAlive(arangod, options) {
+  if (arangod.hasOwnProperty('exitStatus')) {
+    return false;
+  }
+
+  const res = statusExternal(arangod.pid, false);
+  const ret = res.status === "RUNNING";
+
+  if (!ret) {
+    print("ArangoD with PID " + arangod.pid + " gone:");
+    print(arangod);
+
+    if (res.hasOwnProperty('signal') &&
+        ((res.signal === 11) ||
+         (res.signal === 6) ||
+         // Windows sometimes has random numbers in signal...
+         (platform.substr(0, 3) === 'win')
+        )
+       ) {
+      const storeArangodPath = "/var/tmp/arangod_" + arangod.pid;
+
+      print("Core dump written; copying arangod to " +
+          arangod.tmpDataDir + " for later analysis.");
+
+      let corePath = (options.coreDirectory === "") ?
+        "core" :
+        options.coreDirectory + "/core*" + arangod.pid + "*'";
+
+      res.gdbHint = "Run debugger with 'gdb " +
+        storeArangodPath + " " + corePath;
+
+      if (platform.substr(0, 3) === 'win') {
+        // Windows: wait for procdump to do its job...
+        statusExternal(arangod.monitor, true);
+        analyzeCoreDumpWindows(arangod);
+      } else {
+        fs.copyFile("bin/arangod", storeArangodPath);
+        analyzeCoreDump(arangod, options, storeArangodPath, arangod.pid);
+      }
+    }
+
+    arangod.exitStatus = res;
+  }
+
+  if (!ret) {
+    print("marking crashy");
+    serverCrashed = true;
+  }
+
+  return ret;
+}
+
 function checkInstanceAlive(instanceInfo, options) {
   return instanceInfo.arangods.reduce((previous, arangod) => {
-    if (arangod.hasOwnProperty('exitStatus')) {
-      return false;
-    }
-    
-    const res = statusExternal(arangod.pid, false);
-    const ret = res.status === "RUNNING";
-
-    if (!ret) {
-      print("ArangoD with PID " + arangod.pid + " gone:");
-      print(arangod);
-
-      if (res.hasOwnProperty('signal') &&
-          ((res.signal === 11) ||
-           (res.signal === 6) ||
-           // Windows sometimes has random numbers in signal...
-           (platform.substr(0, 3) === 'win')
-          )
-         ) {
-        const storeArangodPath = "/var/tmp/arangod_" + arangod.pid;
-
-        print("Core dump written; copying arangod to " +
-            arangod.tmpDataDir + " for later analysis.");
-
-        let corePath = (options.coreDirectory === "") ?
-          "core" :
-          options.coreDirectory + "/core*" + arangod.pid + "*'";
-
-        res.gdbHint = "Run debugger with 'gdb " +
-          storeArangodPath + " " + corePath;
-
-        if (platform.substr(0, 3) === 'win') {
-          // Windows: wait for procdump to do its job...
-          statusExternal(arangod.monitor, true);
-          analyzeCoreDumpWindows(arangod);
-        } else {
-          fs.copyFile("bin/arangod", storeArangodPath);
-          analyzeCoreDump(arangod, options, storeArangodPath, arangod.pid);
-        }
-      }
-
-      arangod.exitStatus = res;
-    }
-
-    if (!ret) {
-      print("marking crashy");
-      serverCrashed = true;
-    }
-
-    return ret && previous;
+    return previous && checkArangoAlive(arangod, options);
   }, true);
 }
 
@@ -1306,7 +1310,7 @@ function startArango(protocol, options, addArgs, name, rootDir) {
     ++count;
 
     if (count % 60 === 0) {
-      if (!checkInstanceAlive(instanceInfo, options)) {
+      if (!checkArangoAlive(instanceInfo, options)) {
         throw new Error("startup failed! bailing out!");
       }
     }
