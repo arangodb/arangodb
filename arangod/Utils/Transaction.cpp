@@ -121,6 +121,26 @@ static OperationResult DBServerResponseBad(std::string const& resultBody) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Insert an errror reported instead of the new document
+////////////////////////////////////////////////////////////////////////////////
+
+static void createBabiesError(VPackBuilder& builder,
+                              std::unordered_map<int, size_t>& countErrorCodes,
+                              int errorCode) {
+  builder.openObject();
+  builder.add("error", VPackValue(true));
+  builder.add("errorNum", VPackValue(errorCode));
+  builder.close();
+
+  auto it = countErrorCodes.find(errorCode);
+  if (it == countErrorCodes.end()) {
+    countErrorCodes.emplace(errorCode, 1);
+  } else {
+    it->second++;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief sort ORs for the same attribute so they are in ascending value
 /// order. this will only work if the condition is for a single attribute
 /// the usedIndexes vector may also be re-sorted
@@ -1234,20 +1254,23 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
   };
 
   int res = TRI_ERROR_NO_ERROR;
+  std::unordered_map<int, size_t> countErrorCodes;
   if (value.isArray()) {
     VPackArrayBuilder b(&resultBuilder);
     for (auto const& s : VPackArrayIterator(value)) {
       res = workForOneDocument(s);
       if (res != TRI_ERROR_NO_ERROR) {
-        break;
+        createBabiesError(resultBuilder, countErrorCodes, res);
       }
     }
+    // With babies the reporting is handled somewhere else.
+    res = TRI_ERROR_NO_ERROR;
   } else {
     res = workForOneDocument(value);
   }
 
   return OperationResult(resultBuilder.steal(), nullptr, "", res,
-                         options.waitForSync); 
+                         options.waitForSync, countErrorCodes);
 }
   
 //////////////////////////////////////////////////////////////////////////////
