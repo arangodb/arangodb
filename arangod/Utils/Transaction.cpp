@@ -1709,12 +1709,7 @@ OperationResult Transaction::allKeys(std::string const& collectionName,
   } else if (type == "id") {
     prefix = realCollName + "/";
   } else {
-    // default return type: paths to documents
-    if (isEdgeCollection(collectionName)) {
-      prefix = std::string("/_db/") + _vocbase->_name + "/_api/edge/" + realCollName + "/";
-    } else {
-      prefix = std::string("/_db/") + _vocbase->_name + "/_api/document/" + realCollName + "/";
-    }
+    prefix = std::string("/_db/") + _vocbase->_name + "/_api/document/" + realCollName + "/";
   }
   
   OperationOptions optionsCopy = options;
