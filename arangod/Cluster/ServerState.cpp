@@ -53,8 +53,6 @@ ServerState::ServerState()
       _arangodPath(),
       _dbserverConfig(),
       _coordinatorConfig(),
-      _disableDispatcherFrontend(),
-      _disableDispatcherKickstarter(),
       _address(),
       _authentication(),
       _lock(),
@@ -732,42 +730,6 @@ std::string ServerState::getCoordinatorConfig() {
 void ServerState::setCoordinatorConfig(std::string const& value) {
   WRITE_LOCKER(writeLocker, _lock);
   _coordinatorConfig = value;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the disable dispatcher frontend flag
-////////////////////////////////////////////////////////////////////////////////
-
-bool ServerState::getDisableDispatcherFrontend() {
-  READ_LOCKER(readLocker, _lock);
-  return _disableDispatcherFrontend;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the disable dispatcher frontend flag
-////////////////////////////////////////////////////////////////////////////////
-
-void ServerState::setDisableDispatcherFrontend(bool value) {
-  WRITE_LOCKER(writeLocker, _lock);
-  _disableDispatcherFrontend = value;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the disable dispatcher kickstarter flag
-////////////////////////////////////////////////////////////////////////////////
-
-bool ServerState::getDisableDispatcherKickstarter() {
-  READ_LOCKER(readLocker, _lock);
-  return _disableDispatcherKickstarter;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the disable dispatcher kickstarter flag
-////////////////////////////////////////////////////////////////////////////////
-
-void ServerState::setDisableDispatcherKickstarter(bool value) {
-  WRITE_LOCKER(writeLocker, _lock);
-  _disableDispatcherKickstarter = value;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

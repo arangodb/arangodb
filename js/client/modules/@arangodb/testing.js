@@ -184,9 +184,6 @@ const toArgv = require("internal").toArgv;
 const wait = require("internal").wait;
 const platform = require("internal").platform;
 
-//const Planner = require("@arangodb/cluster").Planner;
-//const Kickstarter = require("@arangodb/cluster").Kickstarter;
-
 let cleanupDirectories = [];
 let serverCrashed = false;
 

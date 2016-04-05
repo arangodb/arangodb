@@ -32,7 +32,12 @@ var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
 var db = arangodb.db;
 var graph = require("@arangodb/general-graph");
-var cluster = require("@arangodb/cluster");
+var cluster;
+if (isOnServer) {
+  cluster = require("@arangodb/cluster");
+} else {
+  cluster = {};
+}
 var ERRORS = arangodb.errors;
 
 var _ = require("lodash");

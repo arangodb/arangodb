@@ -220,35 +220,6 @@ class ApplicationCluster : public rest::ApplicationFeature {
   std::string _coordinatorConfig;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief disable the dispatcher frontend
-  ///
-  /// @CMDOPT{\--server.disable-dispatcher-interface @CA{flag}}
-  ///
-  /// If @LIT{true} the server can be used as dispatcher for a cluster. If you
-  /// enable this option, you should secure access to the dispatcher with a
-  /// password.
-  ///
-  /// The default is @LIT{true}.
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool _disableDispatcherFrontend;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief disable the dispatcher kickstarter
-  ///
-  /// @CMDOPT{\--server.disable-dispatcher-kickstarter @CA{flag}}
-  ///
-  /// If @LIT{true} the server can be used as kickstarter to start processes for
-  /// a
-  /// cluster. If you enable this option, you should secure access to the
-  /// dispatcher with a password.
-  ///
-  /// The default is @LIT{true}.
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool _disableDispatcherKickstarter;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the cluster feature is enabled
   //////////////////////////////////////////////////////////////////////////////
 

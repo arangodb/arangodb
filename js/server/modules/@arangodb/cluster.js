@@ -32,11 +32,18 @@ var console = require("console");
 var arangodb = require("@arangodb");
 var ArangoCollection = arangodb.ArangoCollection;
 var ArangoError = arangodb.ArangoError;
-var PortFinder = require("@arangodb/cluster/planner").PortFinder;
-var Planner = require("@arangodb/cluster/planner").Planner;
-var Kickstarter = require("@arangodb/cluster/kickstarter").Kickstarter;
-var endpointToURL = require("@arangodb/cluster/planner").endpointToURL;
 var request = require("@arangodb/request").request;
+
+var endpointToURL = function (endpoint) {
+  if (endpoint.substr(0,6) === "ssl://") {
+    return "https://" + endpoint.substr(6);
+  }
+  var pos = endpoint.indexOf("://");
+  if (pos === -1) {
+    return "http://" + endpoint;
+  }
+  return "http" + endpoint.substr(pos);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a unique identifier
@@ -1438,22 +1445,6 @@ var handlePlanChange = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief dispatcherFrontendDisabled
-////////////////////////////////////////////////////////////////////////////////
-
-var dispatcherFrontendDisabled = function () {
-  return global.ArangoServerState.disableDispatcherFrontend();
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dispatcherKickstarterDisabled
-////////////////////////////////////////////////////////////////////////////////
-
-var dispatcherKickstarterDisabled = function () {
-  return global.ArangoServerState.disableDispatcherKickstarter();
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief coordinatorId
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1519,8 +1510,6 @@ var bootstrapDbServers = function (isRelaunch) {
 
 exports.bootstrapDbServers            = bootstrapDbServers;
 exports.coordinatorId                 = coordinatorId;
-exports.dispatcherFrontendDisabled    = dispatcherFrontendDisabled;
-exports.dispatcherKickstarterDisabled = dispatcherKickstarterDisabled;
 exports.handlePlanChange              = handlePlanChange;
 exports.isCluster                     = isCluster;
 exports.isCoordinator                 = isCoordinator;
@@ -1529,9 +1518,4 @@ exports.role                          = role;
 exports.shardList                     = shardList;
 exports.status                        = status;
 exports.wait                          = waitForDistributedResponse;
-
-exports.Kickstarter = Kickstarter;
-exports.Planner = Planner;
-exports.PortFinder = PortFinder;
-
 
