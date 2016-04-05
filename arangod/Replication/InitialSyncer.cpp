@@ -480,6 +480,8 @@ int InitialSyncer::applyCollectionDump(
 
   // buffer must end with a NUL byte
   TRI_ASSERT(*end == '\0');
+    
+  auto builder = std::make_shared<VPackBuilder>();
 
   while (p < end) {
     char const* q = strchr(p, '\n');
@@ -495,9 +497,8 @@ int InitialSyncer::applyCollectionDump(
 
     TRI_ASSERT(q <= end);
 
-    auto builder = std::make_shared<VPackBuilder>();
-
     try {
+      builder->clear();
       VPackParser parser(builder);
       parser.parse(p, static_cast<size_t>(q - p));
     }
@@ -594,7 +595,7 @@ int InitialSyncer::handleCollectionDump(
     appendix = "&flush=false";
   } else {
     // only flush WAL once
-    appendix = "&flush=true&flushWait=2";
+    appendix = "&flush=true&flushWait=5";
     _hasFlushed = true;
   }
 
@@ -618,11 +619,12 @@ int InitialSyncer::handleCollectionDump(
     std::string url = baseUrl + "&from=" + StringUtils::itoa(fromTick);
 
     if (maxTick > 0) {
-      url += "&to=" + StringUtils::itoa(maxTick);
+      url += "&to=" + StringUtils::itoa(maxTick + 1);
     }
 
     url += "&serverId=" + _localServerIdString;
     url += "&chunkSize=" + StringUtils::itoa(chunkSize);
+    url += "&includeSystem=" + std::string(_includeSystem ? "true" : "false");
 
     std::string const typeString =
         (col->_type == TRI_COL_TYPE_EDGE
@@ -1079,7 +1081,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
     trx.invokeOnAllElements(trx.name(), [this, &markers, &iterations](TRI_doc_mptr_t const* mptr) {
       markers.emplace_back(mptr->getMarkerPtr());
       
-      if (++iterations % 100000 == 0) {
+      if (++iterations % 10000 == 0) {
         if (checkAborted()) {
           return false;
         }
@@ -1106,9 +1108,23 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
           VPackSlice const l(reinterpret_cast<char const*>(lhs) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
           VPackSlice const r(reinterpret_cast<char const*>(rhs) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
 
-          std::string lkey(l.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
-          std::string rkey(r.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
-          return (lkey < rkey);
+          VPackValueLength lLength, rLength;
+          char const* lKey = l.get(TRI_VOC_ATTRIBUTE_KEY).getString(lLength);
+          char const* rKey = r.get(TRI_VOC_ATTRIBUTE_KEY).getString(rLength);
+
+          size_t const length = (lLength < rLength ? lLength : rLength);
+          int res = memcmp(lKey, rKey, length);
+
+          if (res < 0) {
+            // left is smaller than right
+            return true;
+          }
+          if (res == 0 && lLength < rLength) {
+            // left is equal to right, but of shorter length
+            return true;
+          }
+
+          return false;
         });
   }
 
@@ -1203,13 +1219,15 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
     for (size_t i = 0; i < markers.size(); ++i) {
       VPackSlice const k(reinterpret_cast<char const*>(markers[i]) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
      
-      if (k.get(TRI_VOC_ATTRIBUTE_KEY).copyString().compare(lowKey) >= 0) { 
+      std::string const key(k.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
+
+      if (key.compare(lowKey) >= 0) { 
         break;
       }
 
       keyBuilder.clear();
       keyBuilder.openObject();
-      keyBuilder.add(TRI_VOC_ATTRIBUTE_KEY, k);
+      keyBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
       keyBuilder.close();
 
       trx.remove(collectionName, keyBuilder.slice(), options);
@@ -1227,13 +1245,15 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
     for (size_t i = markers.size(); i >= 1; --i) {
       VPackSlice const k(reinterpret_cast<char const*>(markers[i - 1]) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
 
-      if (k.get(TRI_VOC_ATTRIBUTE_KEY).copyString().compare(highKey) <= 0) { 
+      std::string const key(k.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
+
+      if (key.compare(highKey) <= 0) { 
         break;
       }
       
       keyBuilder.clear();
       keyBuilder.openObject();
-      keyBuilder.add(TRI_VOC_ATTRIBUTE_KEY, k);
+      keyBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
       keyBuilder.close();
 
       trx.remove(collectionName, keyBuilder.slice(), options);
@@ -1294,11 +1314,13 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
 
+    std::string const lowString = lowSlice.copyString();
+    std::string const highString = highSlice.copyString();
+
     size_t localFrom;
     size_t localTo;
     bool match =
-        FindRange(markers, lowSlice.copyString(), highSlice.copyString(),
-                  localFrom, localTo);
+        FindRange(markers, lowString, highString, localFrom, localTo);
 
     if (match) {
       // now must hash the range
@@ -1371,14 +1393,13 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
         return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
       }
 
+
       // delete all keys at start of the range
       while (nextStart < markers.size()) {
         VPackSlice const keySlice(reinterpret_cast<char const*>(markers[nextStart]) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
         std::string const localKey(keySlice.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
 
-        int res = localKey.compare(lowSlice.copyString());
-
-        if (res < 0) {
+        if (localKey.compare(lowString) < 0) {
           // we have a local key that is not present remotely
           keyBuilder.clear();
           keyBuilder.openObject();
@@ -1434,7 +1455,7 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
 
           int res = localKey.compare(keyString);
 
-          if (res < 0) {
+          if (res != 0) {
             // we have a local key that is not present remotely
             keyBuilder.clear();
             keyBuilder.openObject();
@@ -1443,8 +1464,8 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
 
             trx.remove(collectionName, keyBuilder.slice(), options);
             ++nextStart;
-          } else if (res >= 0) {
-            // key matches or key too high
+          } else {
+            // key match
             break;
           }
         }
@@ -1466,13 +1487,13 @@ int InitialSyncer::handleSyncKeys(TRI_vocbase_col_t* col,
 
       // calculate next starting point
       if (!markers.empty()) {
-        BinarySearch(markers, highSlice.copyString(), nextStart);
+        BinarySearch(markers, highString, nextStart);
 
         while (nextStart < markers.size()) {
           VPackSlice const localKeySlice(reinterpret_cast<char const*>(markers[nextStart]) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
           std::string const localKey(localKeySlice.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
           
-          int res = localKey.compare(highSlice.copyString());
+          int res = localKey.compare(highString);
 
           if (res <= 0) {
             ++nextStart;

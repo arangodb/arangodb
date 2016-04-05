@@ -3118,6 +3118,7 @@ void RestReplicationHandler::handleCommandSync() {
     // error already created
     return;
   }
+  
   VPackSlice const body = parsedBody->slice();
 
   std::string const endpoint =
@@ -3184,8 +3185,14 @@ void RestReplicationHandler::handleCommandSync() {
 
   try {
     res = syncer.run(errorMsg, incremental);
+  } catch (arangodb::basics::Exception const& ex) {
+    res = ex.code();
+    errorMsg = ex.message();
+  } catch (std::exception const& ex) {
+    res = TRI_ERROR_INTERNAL;
+    errorMsg = ex.what();
   } catch (...) {
-    errorMsg = "caught an exception";
+    errorMsg = "caught unknown exception";
     res = TRI_ERROR_INTERNAL;
   }
 
@@ -3193,22 +3200,19 @@ void RestReplicationHandler::handleCommandSync() {
     generateError(HttpResponse::responseCode(res), res, errorMsg);
     return;
   }
+
   try {
     VPackBuilder result;
     result.add(VPackValue(VPackValueType::Object));
 
     result.add("collections", VPackValue(VPackValueType::Array));
 
-    std::map<TRI_voc_cid_t, std::string>::const_iterator it;
-    std::map<TRI_voc_cid_t, std::string> const& c =
-        syncer.getProcessedCollections();
-
-    for (it = c.begin(); it != c.end(); ++it) {
-      std::string const cidString = StringUtils::itoa((*it).first);
+    for (auto const& it : syncer.getProcessedCollections()) {
+      std::string const cidString = StringUtils::itoa(it.first);
       // Insert a collection
       result.add(VPackValue(VPackValueType::Object));
       result.add("id", VPackValue(cidString));
-      result.add("name", VPackValue((*it).second));
+      result.add("name", VPackValue(it.second));
       result.close();  // one collection
     }
 
@@ -3224,8 +3228,14 @@ void RestReplicationHandler::handleCommandSync() {
 
     result.close();  // base
     generateResult(HttpResponse::HttpResponseCode::OK, result.slice());
+  } catch (arangodb::basics::Exception const& ex) {
+    generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.message());
+  } catch (std::exception const& ex) {
+    int res = TRI_ERROR_INTERNAL;
+    generateError(HttpResponse::responseCode(res), res, ex.what());
   } catch (...) {
-    generateOOMError();
+    int res = TRI_ERROR_INTERNAL;
+    generateError(HttpResponse::responseCode(res), res);
   }
 }
 

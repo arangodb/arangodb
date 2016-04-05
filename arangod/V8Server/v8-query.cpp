@@ -380,17 +380,25 @@ static void JS_ChecksumCollection(
 
     if (withData) {
       // with data
+      uint64_t const n = slice.length() ^ 0xf00ba44ba5;
+      uint64_t seed = fasthash64(&n, sizeof(n), 0xdeadf054);
+
       for (auto const& it : VPackObjectIterator(slice)) {
         // loop over all attributes, but exclude _rev, _id and _key
         // _id is different for each collection anyway, _rev is covered by withRevisions, and _key
         // was already handled before
-        std::string key(it.key.copyString());
-        if (key != TRI_VOC_ATTRIBUTE_ID && 
-            key != TRI_VOC_ATTRIBUTE_KEY && 
-            key != TRI_VOC_ATTRIBUTE_REV) {
-          localHash += it.key.hash() ^ 0xba5befd00d; 
-          localHash ^= it.value.hash() ^ 0xf00ba44ba5; 
+        VPackValueLength keyLength;
+        char const* key = it.key.getString(keyLength);
+        if (keyLength > 1 && 
+            key[0] == '_' &&
+            ((keyLength == 3 && memcmp(key, TRI_VOC_ATTRIBUTE_ID, 3) == 0) ||
+             (keyLength == 4 && (memcmp(key, TRI_VOC_ATTRIBUTE_KEY, 4) == 0 || memcmp(key, TRI_VOC_ATTRIBUTE_REV, 4) == 0)))) {
+          // exclude attribute
+          continue;
         }
+
+        localHash ^= it.key.hash(seed) ^ 0xba5befd00d; 
+        localHash ^= it.value.normalizedHash(seed) ^ 0xf00ba44ba5; 
       }
     }
 

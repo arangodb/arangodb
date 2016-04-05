@@ -1461,6 +1461,7 @@ OperationResult Transaction::modifyLocal(
   // Update/replace are a read and a write, let's get the write lock already
   // for the read operation:
   int res = lock(trxCollection(cid), TRI_TRANSACTION_WRITE);
+
   if (res != TRI_ERROR_NO_ERROR) {
     return OperationResult(res);
   }
@@ -2397,20 +2398,6 @@ int Transaction::addCollection(std::string const& name, TRI_transaction_type_e t
 /// @brief test if a collection is already locked
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Transaction::isLocked(TRI_transaction_collection_t const* trxCollection,
-                TRI_transaction_type_e type) {
-  if (_trx == nullptr || getStatus() != TRI_TRANSACTION_RUNNING) {
-    return false;
-  }
-
-  return TRI_IsLockedCollectionTransaction(trxCollection, type,
-                                           _nestingLevel);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test if a collection is already locked
-////////////////////////////////////////////////////////////////////////////////
-
 bool Transaction::isLocked(TRI_document_collection_t* document,
                 TRI_transaction_type_e type) {
   if (_trx == nullptr || getStatus() != TRI_TRANSACTION_RUNNING) {
@@ -2419,7 +2406,8 @@ bool Transaction::isLocked(TRI_document_collection_t* document,
 
   TRI_transaction_collection_t* trxCollection =
       TRI_GetCollectionTransaction(_trx, document->_info.id(), type);
-  return isLocked(trxCollection, type);
+  TRI_ASSERT(trxCollection != nullptr);
+  return TRI_IsLockedCollectionTransaction(trxCollection, type, _nestingLevel);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

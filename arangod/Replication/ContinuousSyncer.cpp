@@ -502,8 +502,16 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
     }
   }
 
+  // extract "data"
+  VPackSlice const doc = slice.get("data");
+
+  if (!doc.isObject()) {
+    errorMsg = "invalid document format";
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+
   // extract "key"
-  VPackSlice const key = slice.get("key");
+  VPackSlice const key = doc.get(TRI_VOC_ATTRIBUTE_KEY);
 
   if (!key.isString()) {
     errorMsg = "invalid document key format";
@@ -511,7 +519,7 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
   }
 
   // extract "rev"
-  VPackSlice const rev = slice.get("rev");
+  VPackSlice const rev = doc.get(TRI_VOC_ATTRIBUTE_REV);
   
   if (!rev.isString()) {
     errorMsg = "invalid document revision format";
@@ -525,9 +533,6 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
   builder.close();
 
   VPackSlice const old = builder.slice();
-
-  // extract "data"
-  VPackSlice const doc = slice.get("data");
 
   // extract "tid"
   std::string const transactionId = VelocyPackHelper::getStringValue(slice, "tid", "");
@@ -554,6 +559,7 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
       return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION;
     }
 
+    trx->addCollectionAtRuntime(cid, "", TRI_TRANSACTION_WRITE); 
     int res = applyCollectionDumpMarker(*trx, trx->name(cid), type, old, doc, errorMsg);
 
     if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
