@@ -1063,7 +1063,7 @@ var bindEdgeCollections = function(self, edgeCollections) {
           }
         }
       );
-      return old_save(from, to, data);
+      return old_save(data);
     };
 
     // remove
