@@ -88,6 +88,7 @@ ApplicationEndpointServer::ApplicationEndpointServer(
       _sslCache(false),
       _sslOptions(
           (long)(SSL_OP_TLS_ROLLBACK_BUG | SSL_OP_CIPHER_SERVER_PREFERENCE)),
+      _sslEcdhCurve("prime256v1"),
       _sslCipherList(""),
       _sslContext(nullptr),
       _rctx() {
@@ -191,6 +192,8 @@ void ApplicationEndpointServer::setupOptions(
       "server.ssl-cache", &_sslCache, "use SSL session caching")(
       "server.ssl-options", &_sslOptions,
       "SSL options, see OpenSSL documentation")(
+      "server.ssl-ecdh-curve", &_sslEcdhCurve,
+      "SSL ECDH Curve, see the output of \"openssl ecparam -list_curves\"")(
       "server.ssl-cipher-list", &_sslCipherList,
       "SSL cipher list, see OpenSSL documentation");
 }
@@ -368,6 +371,28 @@ bool ApplicationEndpointServer::createSslContext() {
       LOG(INFO) << "using SSL cipher-list '" << _sslCipherList << "'";
     }
   }
+
+#if OPENSSL_VERSION_NUMBER >= 0x0090800fL
+  int sslEcdhNid;
+  EC_KEY  *ecdhKey;
+  sslEcdhNid = OBJ_sn2nid(_sslEcdhCurve.c_str());
+  
+  if (sslEcdhNid == 0) {
+    LOG(ERR) << "SSL error: " << lastSSLError() <<" Unknown curve name: " << _sslEcdhCurve;
+      FATAL_ERROR_EXIT();
+  }
+
+  // https://www.openssl.org/docs/manmaster/apps/ecparam.html
+  ecdhKey = EC_KEY_new_by_curve_name(sslEcdhNid);
+  if (ecdhKey == nullptr) {
+    LOG(ERR) << "SSL error: " << lastSSLError() <<" Unable to create curve by name: " << _sslEcdhCurve;
+      FATAL_ERROR_EXIT();
+  }
+
+  SSL_CTX_set_tmp_ecdh(_sslContext, ecdhKey);
+  SSL_CTX_set_options(_sslContext, SSL_OP_SINGLE_ECDH_USE);
+  EC_KEY_free(ecdhKey);
+#endif
 
   // set ssl context
   Random::UniformCharacter r(
