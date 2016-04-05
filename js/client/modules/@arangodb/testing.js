@@ -1191,8 +1191,6 @@ function shutdownInstance(instanceInfo, options) {
 
 function startInstanceCluster(instanceInfo, protocol, options,
   addArgs, name, rootDir) {
-  let clusterArgs = options._extraArgs || {};
-  
   let makeArgs = function(name, args) {
     args = args || options.extraArgs;
     
@@ -1342,8 +1340,6 @@ function startInstanceAgency(instanceInfo, protocol, options,
   addArgs, testname, rootDir) {
 
   const N = options.agencySize;
-  const ports = [];
-  
   for (let i = 0; i < N; i++) {
     let instanceArgs = _.clone(addArgs);
     instanceArgs["agency.id"] = String(i);
