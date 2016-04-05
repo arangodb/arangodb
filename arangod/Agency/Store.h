@@ -109,9 +109,9 @@ public:
   Node const& operator [](std::string const& name) const;
 
   /// @brief Get node specified by path vector  
-  Node& operator ()(std::vector<std::string>& pv);
+  Node& operator ()(std::vector<std::string> const& pv);
   /// @brief Get node specified by path vector  
-  Node const& operator ()(std::vector<std::string>& pv) const;
+  Node const& operator ()(std::vector<std::string> const& pv) const;
   
   /// @brief Get node specified by path string  
   Node& operator ()(std::string const& path);

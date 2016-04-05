@@ -101,6 +101,7 @@ std::string Node::uri() const {
 
 // Assignment of rhs slice
 Node& Node::operator= (VPackSlice const& slice) { // Assign value (become leaf)
+  removeTimeToLive();
   _children.clear();
   _value.reset();
   _value.append(reinterpret_cast<char const*>(slice.begin()), slice.byteSize());
@@ -114,6 +115,7 @@ Node& Node::operator= (VPackSlice const& slice) { // Assign value (become leaf)
 
 // Assignment of rhs node
 Node& Node::operator= (Node const& node) { // Assign node
+  removeTimeToLive();
   _node_name = node._node_name;
   _value = node._value;
   _children = node._children;
@@ -154,10 +156,11 @@ bool Node::remove () {
 // Remove child by name
 bool Node::removeChild (std::string const& key) {
   auto found = _children.find(key);
-  if (found == _children.end())
+  if (found == _children.end()) {
     return false;
-  else
-    _children.erase(found);
+  }
+  found->second->removeTimeToLive();
+  _children.erase(found);
   return true;
 }
 
@@ -172,28 +175,31 @@ Node& Node::operator [](std::string const& name) {
 }
 
 // 
-Node& Node::operator ()(std::vector<std::string>& pv) {
+Node& Node::operator ()(std::vector<std::string> const& pv) {
   if (pv.size()) {
-    std::string const key = pv[0];
+    std::string const key = pv.at(0);
     if (_children.find(key) == _children.end()) {
       _children[key] = std::make_shared<Node>(pv[0], this);
     }
-    pv.erase(pv.begin());
-    return (*_children[key])(pv);
+    auto pvc(pv);
+    pvc.erase(pvc.begin());
+    return (*_children[key])(pvc);
   } else {
     return *this;
   }
 }
 
-Node const& Node::operator ()(std::vector<std::string>& pv) const {
+Node const& Node::operator ()(std::vector<std::string> const& pv) const {
   if (pv.size()) {
-    std::string const key = pv[0];
-    pv.erase(pv.begin());
+    std::string const key = pv.at(0);
     if (_children.find(key) == _children.end()) {
-      throw StoreException("Not found");
+      throw StoreException(std::string("Node ") + key +
+                           std::string(" not found"));
     }
     const Node& child = *_children.at(key);
-    return child(pv);
+    auto pvc(pv);
+    pvc.erase(pvc.begin());
+    return child(pvc);
   } else {
     return *this;
   }
@@ -238,7 +244,6 @@ bool Node::addTimeToLive (long millis) {
     std::pair<TimePoint,std::shared_ptr<Node>>(
       tkey, _parent->_children[_node_name]));
   _ttl = tkey;
-//  root()._table_time[_parent->_children[_node_name]] = tkey;
   return true;
 }
 
@@ -306,7 +311,6 @@ bool Node::applies (VPackSlice const& slice) {
         std::string oper = slice.get("op").copyString();
         VPackSlice const& self = this->slice();
         if (oper == "delete") {
-          removeTimeToLive();
           return _parent->removeChild(_node_name);
         } else if (oper == "set") { //
           if (!slice.hasKey("new")) {
@@ -314,7 +318,7 @@ bool Node::applies (VPackSlice const& slice) {
             LOG_TOPIC(WARN, Logger::AGENCY) << slice.toJson();
             return false;
           }
-          removeTimeToLive();
+          *this = slice.get("new");
           if (slice.hasKey("ttl")) {
             VPackSlice ttl_v = slice.get("ttl");
             if (ttl_v.isNumber()) {
@@ -328,7 +332,6 @@ bool Node::applies (VPackSlice const& slice) {
                 "Non-number value assigned to ttl: " << ttl_v.toJson();
             }
           }
-          *this = slice.get("new");
           return true;
         } else if (oper == "increment") { // Increment
           Builder tmp;
@@ -340,7 +343,6 @@ bool Node::applies (VPackSlice const& slice) {
           }
           tmp.close();
           *this = tmp.slice().get("tmp");
-          removeTimeToLive();
           return true;
         } else if (oper == "decrement") { // Decrement
           Builder tmp;
@@ -352,7 +354,6 @@ bool Node::applies (VPackSlice const& slice) {
           }
           tmp.close();
           *this = tmp.slice().get("tmp");
-          removeTimeToLive();
           return true;
         } else if (oper == "push") { // Push
           if (!slice.hasKey("new")) {
@@ -369,23 +370,23 @@ bool Node::applies (VPackSlice const& slice) {
           tmp.add(slice.get("new"));
           tmp.close();
           *this = tmp.slice();
-          removeTimeToLive();
           return true;
         } else if (oper == "pop") { // Pop
           Builder tmp;
           tmp.openArray();
           if (self.isArray()) {
             VPackArrayIterator it(self);
-            size_t j = it.size()-1;
-            for (auto old : it) {
-              tmp.add(old);
-              if (--j==0)
-                break;
+            if (it.size()>1) {
+              size_t j = it.size()-1;
+              for (auto old : it) {
+                tmp.add(old);
+                if (--j==0)
+                  break;
+              }
             }
           }
           tmp.close();
           *this = tmp.slice();
-          removeTimeToLive();
           return true;
         } else if (oper == "prepend") { // Prepend
           if (!slice.hasKey("new")) {
@@ -402,7 +403,6 @@ bool Node::applies (VPackSlice const& slice) {
           }
           tmp.close();
           *this = tmp.slice();
-          removeTimeToLive();
           return true;
         } else if (oper == "shift") { // Shift
           Builder tmp;
@@ -420,7 +420,6 @@ bool Node::applies (VPackSlice const& slice) {
           } 
           tmp.close();
           *this = tmp.slice();
-          removeTimeToLive();
           return true;
         } else {
           LOG_TOPIC(WARN, Logger::AGENCY) << "Unknown operation " << oper;
@@ -428,7 +427,6 @@ bool Node::applies (VPackSlice const& slice) {
         }
       } else if (slice.hasKey("new")) { // new without set
         *this = slice.get("new");
-        removeTimeToLive();
         return true;
       } else if (key.find('/')!=std::string::npos) {
         (*this)(key).applies(i.value);
@@ -442,7 +440,6 @@ bool Node::applies (VPackSlice const& slice) {
     }
   } else {
     *this = slice;
-    removeTimeToLive();
   }
   return true;
 }
