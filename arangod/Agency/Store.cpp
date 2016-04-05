@@ -100,7 +100,12 @@ std::string Node::uri() const {
 }
 
 // Assignment of rhs slice
-Node& Node::operator= (VPackSlice const& slice) { // Assign value (become leaf)
+Node& Node::operator= (VPackSlice const& slice) {
+  // 1. remove any existing time to live entry
+  // 2. clear children map
+  // 3. copy from rhs to buffer pointer
+  // 4. inform all observers here and above
+  // Must not copy _parent, _ttl, _observers
   removeTimeToLive();
   _children.clear();
   _value.reset();
@@ -114,11 +119,16 @@ Node& Node::operator= (VPackSlice const& slice) { // Assign value (become leaf)
 }
 
 // Assignment of rhs node
-Node& Node::operator= (Node const& node) { // Assign node
+Node& Node::operator= (Node const& rhs) {
+  // 1. remove any existing time to live entry
+  // 2. clear children map
+  // 3. copy from rhs to buffer pointer
+  // 4. inform all observers here and above
+  // Must not copy rhs's _parent, _ttl, _observers
   removeTimeToLive();
-  _node_name = node._node_name;
-  _value = node._value;
-  _children = node._children;
+  _node_name = rhs._node_name;
+  _value = rhs._value;
+  _children = rhs._children;
   Node *par = _parent;
   while (par != 0) {
     _parent->notifyObservers();
@@ -132,23 +142,9 @@ bool Node::operator== (VPackSlice const& rhs) const {
   return rhs.equals(slice());
 }
 
-// Remove absolute path from store
-bool Node::remove (std::string const& path) {
-  std::vector<std::string> pv = split(path, '/');
-  std::string key(pv.back());
-  pv.pop_back();
-  try {
-    Node& parent = (*this)(pv);
-    return parent.removeChild(key);
-  } catch (StoreException const& e) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Failed to delete key " << key;
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << e.what();
-    return false;
-  }
-}
-
 // Remove this node from store
 bool Node::remove () {
+  removeTimeToLive();
   Node& parent = *_parent;
   return parent.removeChild(_node_name);
 }

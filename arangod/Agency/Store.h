@@ -119,7 +119,7 @@ public:
   Node const& operator ()(std::string const& path) const;
 
   /// @brief Remove node at absolut path
-  bool remove (std::string const& path);
+  //bool remove (std::string const& path);
 
   /// @brief Remove child by name
   bool removeChild (std::string const& key);
