@@ -137,6 +137,7 @@ public:
   /// @brief Apply single slice
   bool applies (arangodb::velocypack::Slice const&);
 
+  /// @brief handle "op" keys in write json
   template<Operation Oper>
   bool handle (arangodb::velocypack::Slice const&);
 

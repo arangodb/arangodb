@@ -423,6 +423,7 @@ template<> bool Node::handle<SHIFT> (VPackSlice const& slice) {
 }
 
 template<> bool Node::handle<OBSERVE> (VPackSlice const& slice) {
+  // Add entries to existing node
   return true;
 }
 
