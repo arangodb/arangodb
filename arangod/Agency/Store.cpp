@@ -422,12 +422,12 @@ template<> bool Node::handle<SHIFT> (VPackSlice const& slice) {
   return true;
 }
 
-template<> bool Node::handle<OBSERVE> () {
-  
+template<> bool Node::handle<OBSERVE> (VPackSlice const& slice) {
+  return true;
 }
 
-template<> bool Node::handle<UNOBSERVE> () {
-  
+template<> bool Node::handle<UNOBSERVE> (VPackSlice const& slice) {
+  return true;
 }
 
 }}

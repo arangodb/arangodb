@@ -237,7 +237,7 @@ private:
   /// @brief My own agent
   Agent* _agent;
 
-  std::multimap
+  std::multimap <std::string,std::string> _observers;
   
 };
 
