@@ -99,6 +99,12 @@ module.exports = function sessionMiddleware(cfg) {
               transport.set(req, sid);
             }
           }
+        } else if (payload) {
+          for (const transport of transports.reverse()) {
+            if (typeof transport.clear === 'function') {
+              transport.clear(req);
+            }
+          }
         }
       };
     }

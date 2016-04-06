@@ -39,6 +39,9 @@ module.exports = function cookieTransport(cfg) {
     },
     set(res, value) {
       res.cookie(cfg.name, value, Object.assign({}, opts, {ttl}));
+    },
+    clear(res) {
+      res.cookie(cfg.name, '', Object.assign({}, opts, {ttl: -1 * 60 * 60 * 24}));
     }
   };
 };
