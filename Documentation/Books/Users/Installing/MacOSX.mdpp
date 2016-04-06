@@ -43,7 +43,11 @@ Then remove the LaunchAgent:
 
 **Note**: If the latest ArangoDB Version is not shown in homebrew, you also need to update homebrew:
 
-    brew update 
+    brew update
+
+!SubSection Known issues
+- Performance - the LLVM delivered as of Mac OS X El Capitan builds slow binaries. Use GCC instead
+- the Commandline argument parsing doesn't accept blanks in filenames; the CLI version below does.
 
 !SECTION Apple's App Store
 
