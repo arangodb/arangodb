@@ -730,7 +730,7 @@ function ClusterCrudDeleteSuite () {
     // remove a non-existing revision
     old = c.save({ "a" : 1, "b" : "2", "c" : true, "d" : "test" });
     doc = c.update(old._key, { "foo" : "bar" });
-    assertTrue(old._rev != doc._rev);
+    assertTrue(old._rev !== doc._rev);
 
     try {
       c.remove(old);
