@@ -82,18 +82,12 @@ module.exports = class FoxxService {
       );
     }
 
+    this.thumbnail = null;
     if (this.manifest.thumbnail) {
       const thumb = path.resolve(this.root, this.path, this.manifest.thumbnail);
-      try {
-        this.thumbnail = fs.read64(thumb);
-      } catch (e) {
-        this.thumbnail = null;
-        console.warnLines(
-          `Cannot read thumbnail "${thumb}" for app "${data.mount}": ${e.stack}`
-        );
+      if (fs.exists(thumb)) {
+        this.thumbnail = thumb;
       }
-    } else {
-      this.thumbnail = null;
     }
 
     const range = this.manifest.engines && this.manifest.engines.arangodb;
@@ -259,7 +253,11 @@ module.exports = class FoxxService {
       result.description = this.manifest.description;
     }
     if (this.thumbnail) {
-      result.thumbnail = this.thumbnail;
+      try {
+        result.thumbnail = fs.read64(this.thumbnail);
+      } catch (e) {
+        // noop
+      }
     }
     return result;
   }
