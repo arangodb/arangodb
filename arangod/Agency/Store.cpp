@@ -526,7 +526,8 @@ std::vector<bool> Store::apply (query_t const& query) {
       break;
     }
   }
-  _cv.signal();                                // Wake up run
+
+  _cv.signal();
 
   return applied;
 }
@@ -618,9 +619,9 @@ bool Store::read (VPackSlice const& query, Builder& ret) const {
   } else {
     return false;
   }
-  query_strs.sort();     // sort paths
   
   // Remove double ranges (inclusion / identity)
+  query_strs.sort();     // sort paths
   for (auto i = query_strs.begin(), j = i; i != query_strs.end(); ++i) {
     if (i!=j && i->compare(0,j->size(),*j)==0) {
       *i="";
@@ -712,7 +713,13 @@ bool Store::start (Agent* agent) {
 void Store::run() {
   CONDITION_LOCKER(guard, _cv);
   while (!this->isStopping()) { // Check timetable and remove overage entries
-    _cv.wait(100000);           // better wait to next known time point
+    if (!_time_table.empty()) {
+      auto t = std::chrono::duration_cast<std::chrono::microseconds>(
+        _time_table.begin()->first - std::chrono::system_clock::now());
+      _cv.wait(t.count());
+    } else {
+      _cv.wait();           // better wait to next known time point
+    }
     auto toclear = clearTimeTable();
     _agent->write(toclear);
   }

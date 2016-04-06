@@ -223,7 +223,7 @@ private:
   void run () override final;
 
   /// @brief Condition variable guarding removal of expired entries
-  arangodb::basics::ConditionVariable _cv;
+  mutable arangodb::basics::ConditionVariable _cv;
 
   /// @brief Read/Write mutex on database
   mutable arangodb::Mutex _storeLock;
