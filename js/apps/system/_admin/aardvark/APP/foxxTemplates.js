@@ -1,13 +1,10 @@
-/*global applicationContext*/
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief A Foxx.Controller to generate new FoxxApps
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2014 triagens GmbH, Cologne, Germany
+/// Copyright 2010-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,44 +18,41 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Michael Hackstein
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+/// @author Alan Plum
 ////////////////////////////////////////////////////////////////////////////////
-(function() {
-  "use strict";
 
-  var FoxxController = require("@arangodb/foxx").Controller,
-      UnauthorizedError = require("http-errors").Unauthorized,
-      internal = require("internal"),
-      Configuration = require("./models/configuration").Model,
-      controller = new FoxxController(applicationContext),
-      db = require("internal").db,
-      FoxxManager = require("@arangodb/foxx/manager");
+const joi = require('joi');
+const httperr = require('http-errors');
+const internal = require('internal');
+const FoxxManager = require('@arangodb/foxx/manager');
+const createRouter = require('@arangodb/foxx/router');
 
-  controller.activateSessions({
-    autoCreateSession: false,
-    cookie: {name: "arango_sid_" + db._name()}
-  });
 
-  controller.allRoutes
-  .errorResponse(UnauthorizedError, 401, "unauthorized")
-  .onlyIf(function (req, res) {
-    if (!internal.options()["server.disable-authentication"] && (!req.session || !req.session.get('uid'))) {
-      throw new UnauthorizedError();
-    }
-  });
+const router = createRouter();
+module.exports = router;
 
-  controller.get("/devMode", function(req, res) {
-    res.json(false);
-  });
+router.use((req, res, next) => {
+  if (!internal.options()['server.disable-authentication'] && !req.user) {
+    throw new httperr.Unauthorized();
+  }
+  next();
+});
 
-  controller.post("/generate", function(req, res) {
-    var conf = req.params("configuration");
-    res.json(FoxxManager.install("EMPTY", "/todo", conf));
-  }).bodyParam("configuration", {
-    description: "The configuration for the template.",
-    type: Configuration
-  });
-}());
+router.get('/devMode', (req, res) => res.json(false));
+
+router.post('/generate', (req, res) => res.json(
+  FoxxManager.install('EMPTY', '/todo', req.body)
+))
+.body(joi.object({
+  applicationContext: joi.string().optional(),
+  path: joi.string().optional(),
+  name: joi.string().required(),
+  collectionNames: joi.array().required(),
+  authenticated: joi.boolean().required(),
+  author: joi.string().required(),
+  description: joi.string().required(),
+  license: joi.string().required()
+}), 'The configuration for the template.');

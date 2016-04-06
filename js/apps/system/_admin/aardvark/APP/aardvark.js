@@ -1,14 +1,10 @@
-/*jshint globalstrict: true */
-/*global applicationContext*/
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief A Foxx.Controller to show all Foxx Applications
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2013 triagens GmbH, Cologne, Germany
+/// Copyright 2010-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,150 +18,117 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Michael Hackstein
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+/// @author Alan Plum
 ////////////////////////////////////////////////////////////////////////////////
 
-"use strict";
+const underscore = require('lodash');
+const cluster = require('@arangodb/cluster');
+const joi = require('joi');
+const httperr = require('http-errors');
+const contentDisposition = require('content-disposition');
+const internal = require('internal');
+const db = require('@arangodb').db;
+const notifications = require('@arangodb/configuration').notifications;
+const createRouter = require('@arangodb/foxx/router');
+const NOT_FOUND = require('@arangodb').errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code;
 
-var Foxx = require("@arangodb/foxx");
-var publicController = new Foxx.Controller(applicationContext);
-var controller = new Foxx.Controller(applicationContext);
-var underscore = require("lodash");
-var cluster = require("@arangodb/cluster");
-var joi = require("joi");
-var util = require("util");
-var internal = require("internal");
-var contentDisposition = require('content-disposition');
-var notifications = require("@arangodb/configuration").notifications;
-var db = require("@arangodb").db;
-var foxxInstallKey = joi.string().required().description(
-  "The _key attribute, where the information of this Foxx-Install is stored."
-);
+const router = createRouter();
+module.exports = router;
 
-var foxxes = new (require("./lib/foxxes").Foxxes)();
-var FoxxManager = require("@arangodb/foxx/manager");
-var UnauthorizedError = require("http-errors").Unauthorized;
-
-publicController.activateSessions({
-  autoCreateSession: false,
-  cookie: {name: "arango_sid_" + db._name()}
-});
-
-publicController.get("/whoAmI", function(req, res) {
-  var uid = req.session && req.session.get("uid");
-  var user = null;
-  if (uid) {
-    var users = Foxx.getExports("_system/users").userStorage;
+router.get('/whoAmI', function(req, res) {
+  let user = null;
+  if (internal.options()['server.disable-authentication']) {
+    user = false;
+  } else if (req.session && req.session.uid) {
     try {
-      user = users.get(uid).get("user");
+      const doc = db._users.document(req.session.uid);
+      user = doc.user;
     } catch (e) {
-      if (!(e instanceof users.errors.UserNotFound)) {
+      if (!e.isArangoError || e.errorNum !== NOT_FOUND) {
         throw e;
       }
-      req.session.setUser(null);
+      req.session.uid = null;
     }
-  } else if (internal.options()["server.disable-authentication"]) {
-    user = false;
   }
-  res.json({user: user});
+  res.json({user});
 });
 
-publicController.destroySession("/logout", function (req, res) {
+router.post('/logout', function (req, res) {
+  req.session.uid = null;
   res.json({success: true});
 });
 
-publicController.post("/login", function (req, res) {
-  if (req.session) {
-    req.session.set({uid: null, userDate: null});
-  } else {
-    req.session = publicController.sessions.getSessionStorage().create();
+router.post('/login', function (req, res) {
+  if (!req.session) {
+    req.session = module.context.sessions.new();
   }
-  var users = Foxx.getExports("_system/users").userStorage;
-  var credentials = req.parameters.credentials;
-  var user = users.resolve(credentials.get("username"));
-  if (!user) throw new UnauthorizedError();
-  var auth = Foxx.getExports("_system/simple-auth").auth;
-  var valid = auth.verifyPassword(user.get("authData").simple, credentials.get("password"));
-  if (!valid) throw new UnauthorizedError();
-  req.session.setUser(user);
-  req.session.save();
-  res.json({
-    user: user.get("user")
-  });
-}).bodyParam("credentials", {
-  type: Foxx.Model.extend({
-    username: joi.string().required(),
-    password: joi.string().required()
-  }),
-  description: "Login credentials."
-});
 
-publicController.get("/unauthorized", function() {
-  throw new UnauthorizedError();
-});
+  const doc = db._users.firstExample({user: req.body.username});
+  const valid = module.context.auth.verify(
+    doc ? doc.authData.simple : null,
+    req.body.password
+  );
 
-publicController.get("/index.html", function(req, res) {
-  var prefix = '/_db/' + encodeURIComponent(req.database) + applicationContext.mount;
-
-  res.status(302);
-  res.set("Location", prefix + "/standalone.html");
-});
-
-controller.activateSessions({
-  autoCreateSession: false,
-  cookie: {name: "arango_sid_" + db._name()}
-});
-
-controller.allRoutes
-.errorResponse(UnauthorizedError, 401, "unauthorized")
-.onlyIf(function (req, res) {
-  if (!internal.options()["server.disable-authentication"] && (!req.session || !req.session.get('uid'))) {
-    throw new UnauthorizedError();
+  if (!valid) {
+    throw new httperr.Unauthorized();
   }
+
+  const user = doc.user;
+  req.session.uid = doc._key;
+  res.json({user});
+})
+.body({
+  username: joi.string().required(),
+  password: joi.string().required().allow('')
+}, 'Login credentials.');
+
+router.get('/unauthorized', function() {
+  throw new httperr.Unauthorized();
 });
 
-controller.apiDocumentation('/api', {
-  swaggerJson(req, res) {
-    var filename = applicationContext.fileName('api-docs.json');
-    res.sendFile(filename, {lastModified: true});
+router.get('/index.html', function(req, res) {
+  res.redirect(req.makeAbsolute('standalone.html'));
+});
+
+const authRouter = createRouter();
+router.use(authRouter);
+
+authRouter.use((req, res, next) => {
+  if (!internal.options()['server.disable-authentication'] && !req.user) {
+    throw new httperr.Unauthorized();
   }
+  next();
 });
 
-/** Is version check allowed
- *
- * Check if version check is allowed
- */
-controller.get("shouldCheckVersion", function(req, res) {
+authRouter.get('/api/*', module.context.createSwaggerHandler(
+  (req) => ({
+    appPath: req.queryParams.mount,
+    swaggerJson(req, res) {
+      res.sendFile(module.context.fileName('api-docs.json'), {lastModified: true});
+    }
+  })
+));
+
+authRouter.get('shouldCheckVersion', function(req, res) {
   var versions = notifications.versions();
+  res.json(Boolean(versions && versions.enableVersionNotification));
+})
+.summary('Is version check allowed')
+.description('Check if version check is allowed.');
 
-  if (!versions || versions.enableVersionNotification === false) {
-    res.json(false);
-  } else {
-    res.json(true);
-  }
-});
-
-/** Disable version check
- *
- * Disable the version check in web interface
- */
-controller.post("disableVersionCheck", function(req, res) {
+authRouter.post('disableVersionCheck', function(req, res) {
   notifications.setVersions({
     enableVersionNotification: false
   });
-  res.json("ok");
-});
+  res.json('ok');
+})
+.summary('Disable version check')
+.description('Disable the version check in web interface');
 
-/** Explains a query
- *
- * Explains a query in a more user-friendly way than the query
- * _api/explain
- *
- */
-controller.post("/query/explain", function(req, res) {
+authRouter.post('/query/explain', function(req, res) {
 
   var explain, query = req.body().query,
   bindVars = req.body().bindVars;
@@ -173,39 +136,35 @@ controller.post("/query/explain", function(req, res) {
   if (query.length > 0) {
     try {
       if (bindVars) {
-        explain = require("@arangodb/aql/explainer").explain({
+        explain = require('@arangodb/aql/explainer').explain({
           query: query,
           bindVars: bindVars
         }, {colors: false}, false, bindVars);
       }
       else {
-        explain = require("@arangodb/aql/explainer").explain(query, {colors: false}, false);
+        explain = require('@arangodb/aql/explainer').explain(query, {colors: false}, false);
       }
     }
     catch (e) {
       explain = JSON.stringify(e);
-    } 
+    }
   }
 
 
   res.json({msg: explain});
 
-}).summary("Explains a query")
-  .notes("This function gives useful query information");
+})
+.summary('Explains a query')
+.description('Explains a query in a more user-friendly way than the query_api/explain');
 
 
-/** Download stored queries
- *
- * Download and export all queries from the given username.
- *
- */
-controller.post("/query/upload/:user", function(req, res) {
-  var user = req.params("user");
-  var queries, userColl, queriesToSave;
+authRouter.post('/query/upload/:user', function(req, res) {
+  var user = req.params('user');
+  var queries, doc, queriesToSave;
 
   queries = req.body();
-  userColl = db._users.byExample({"user": user}).toArray()[0];
-  queriesToSave = userColl.userData.queries || [ ];
+  doc = db._users.byExample({'user': user}).toArray()[0];
+  queriesToSave = doc.userData.queries || [ ];
 
   underscore.each(queries, function(newq) {
     var found = false, i;
@@ -216,7 +175,7 @@ controller.post("/query/upload/:user", function(req, res) {
         break;
       }
     }
-    if (! found) {
+    if (!found) {
       queriesToSave.push(newq);
     }
   });
@@ -227,23 +186,18 @@ controller.post("/query/upload/:user", function(req, res) {
     }
   };
 
-  var result = db._users.update(userColl, toUpdate, true);
+  var result = db._users.update(doc, toUpdate, true);
   res.json(result);
-}).summary("Upload user queries")
-  .notes("This function uploads all given user queries");
+})
+.summary('Upload user queries')
+.description('This function uploads all given user queries');
 
-/** Download stored queries
- *
- * Download and export all queries from the given username.
- *
- */
+authRouter.get('/query/download/:user', function(req, res) {
+  var user = req.params('user');
+  var result = db._users.byExample({'user': user}).toArray()[0];
 
-controller.get("/query/download/:user", function(req, res) {
-  var user = req.params("user");
-  var result = db._users.byExample({"user": user}).toArray()[0];
-
-  res.set("Content-Type", "application/json");
-  res.set("Content-Disposition", contentDisposition('queries.json'));
+  res.set('Content-Type', 'application/json');
+  res.set('Content-Disposition', contentDisposition('queries.json'));
 
   if (result === null || result === undefined) {
     res.json([]);
@@ -252,20 +206,15 @@ controller.get("/query/download/:user", function(req, res) {
     res.json(result.userData.queries || []);
   }
 
-}).summary("Download all user queries")
-  .notes("This function downloads all user queries from the given user");
+})
+.summary('Download stored queries')
+.description('Download and export all queries from the given username.');
 
-/** Download a query result
- *
- * Download and export all queries from the given username.
- *
- */
-
-controller.get("/query/result/download/:query", function(req, res) {
-  var query = req.params("query"),
+authRouter.get('/query/result/download/:query', function(req, res) {
+  var query = req.params('query'),
   parsedQuery;
 
-  var internal = require("internal");
+  var internal = require('internal');
   query = internal.base64Decode(query);
   try {
     parsedQuery = JSON.parse(query);
@@ -274,31 +223,26 @@ controller.get("/query/result/download/:query", function(req, res) {
   }
 
   var result = db._query(parsedQuery.query, parsedQuery.bindVars).toArray();
-  res.set("Content-Type", "application/json");
-  res.set("Content-Disposition", contentDisposition('results.json'));
+  res.set('Content-Type', 'application/json');
+  res.set('Content-Disposition', contentDisposition('results.json'));
   res.json(result);
 
-}).summary("Download the result of a query")
-  .notes("This function downloads the result of a user query.");
+})
+.summary('Download the result of a query')
+.description('This function downloads the result of a user query.');
 
- /** Create sample graphs
- *
- * Create one of the given sample graphs.
- *
- */
-
-controller.post("/graph-examples/create/:name", function(req, res) {
-  var name = req.params("name"), g,
-  examples = require("@arangodb/graph-examples/example-graph.js");
+authRouter.post('/graph-examples/create/:name', function(req, res) {
+  var name = req.params('name'), g,
+  examples = require('@arangodb/graph-examples/example-graph.js');
 
   if (name === 'knows_graph') {
-    g = examples.loadGraph("knows_graph");
+    g = examples.loadGraph('knows_graph');
   }
   else if (name === 'social') {
-    g = examples.loadGraph("social");
+    g = examples.loadGraph('social');
   }
   else if (name === 'routeplanner') {
-    g = examples.loadGraph("routeplanner");
+    g = examples.loadGraph('routeplanner');
   }
 
   if (typeof g === 'object') {
@@ -308,16 +252,11 @@ controller.post("/graph-examples/create/:name", function(req, res) {
     res.json({error: true});
   }
 
-}).summary("Create a sample graph")
-  .notes("This function executes the internal scripts to create one example graph.");
+})
+.summary('Create sample graphs')
+.description('Create one of the given sample graphs.');
 
- /** Store job id's in db
- *
- * Create a new job id entry in a specific system database with a given id.
- *
- */
-
-controller.post("/job", function(req, res) {
+authRouter.post('/job', function(req, res) {
 
   if (req.body().id && req.body().collection && req.body().type && req.body().desc) {
 
@@ -336,34 +275,22 @@ controller.post("/job", function(req, res) {
     res.json(false);
   }
 
-}).summary("Store job id of a running job")
-  .notes("This function stores a job id into a system collection.");
+})
+.summary('Store job id of a running job')
+.description('Create a new job id entry in a specific system database with a given id.');
 
- /** Delete all jobs
- *
- * Delete an existing job id entry in a specific system database with a given id.
- *
- */
-
-controller.del("/job/", function(req, res) {
-
+authRouter.delete('/job/', function(req, res) {
   db._frontend.removeByExample({
     model: 'job'
   }, true);
   res.json(true);
+})
+.summary('Delete all jobs')
+.description('Delete all jobs in a specific system database with a given id.');
 
-}).summary("Store job id of a running job")
-  .notes("This function stores a job id into a system collection.");
+authRouter.delete('/job/:id', function(req, res) {
 
- /** Delete a job id
- *
- * Delete an existing job id entry in a specific system database with a given id.
- *
- */
-
-controller.del("/job/:id", function(req, res) {
-
-  var id = req.params("id");
+  var id = req.params('id');
 
   if (id) {
     db._frontend.removeByExample({
@@ -375,27 +302,15 @@ controller.del("/job/:id", function(req, res) {
     res.json(false);
   }
 
-}).summary("Store job id of a running job")
-  .notes("This function stores a job id into a system collection.");
+})
+.summary('Delete a job id')
+.description('Delete an existing job id entry in a specific system database with a given id.');
 
- /** Return all job id's
- *
- * Return all job id's which are stored in a system database.
- *
- */
-
-controller.get("/job", function(req, res) {
+authRouter.get('/job', function(req, res) {
 
   var result = db._frontend.all().toArray();
   res.json(result);
 
-}).summary("Return all job ids.")
-  .notes("This function returns the job ids of all currently running jobs.");
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
-
-/// Local Variables:
-/// mode: outline-minor
-/// outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
-/// End:
+})
+.summary('Return all job ids.')
+.description('This function returns the job ids of all currently running jobs.');
