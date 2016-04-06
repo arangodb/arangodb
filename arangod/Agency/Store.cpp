@@ -75,7 +75,7 @@ Node::~Node() {}
 // Get slice from buffer pointer
 VPackSlice Node::slice() const {
   return (_value.size()==0) ?
-    VPackSlice("\x00a",&Options::Defaults):VPackSlice(_value.data());
+    VPackSlice("\x00",&Options::Defaults):VPackSlice(_value.data());
 }
 
 // Get name of this node
@@ -456,7 +456,9 @@ void Node::toBuilder (Builder& builder) const {
         child.second->toBuilder(builder);
       }
     } else {
-      builder.add(slice());
+      if (!slice().isNone()) {
+        builder.add(slice());
+      }
     }
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
@@ -638,7 +640,8 @@ bool Store::read (VPackSlice const& query, Builder& ret) const {
       copy(*i) = VPackSlice("\x00a",&Options::Defaults);
     }
   }
-  
+
+  std::cout << copy << std::endl;
   copy.toBuilder(ret);
   
   return success;
@@ -682,15 +685,6 @@ void Store::dumpToBuilder (Builder& builder) const {
       builder.add(ts, VPackValue((size_t)i.second.get()));
     }
   }
-/*  {
-    VPackObjectBuilder guard(&builder);
-    for (auto const& i : _table_time) {
-      auto in_time_t = std::chrono::system_clock::to_time_t(i.second);
-      std::string ts = ctime(&in_time_t);
-      ts.resize(ts.size()-1);
-      builder.add(std::to_string((size_t)i.first.get()), VPackValue(ts));
-    }
-    }*/
 }
 
 bool Store::start () {
