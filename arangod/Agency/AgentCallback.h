@@ -37,6 +37,7 @@ class AgentCallback : public arangodb::ClusterCommCallback {
 public:
   
   AgentCallback();
+
   explicit AgentCallback(Agent* agent, id_t slave_id, index_t last);
 
   virtual bool operator()(arangodb::ClusterCommResult*) override final;

@@ -43,6 +43,7 @@ struct Empty {
   bool operator()(const std::string& s) { return s.empty(); }
 };
 
+/// @brief Split strings by separator
 std::vector<std::string> split(const std::string& value, char separator) {
   std::vector<std::string> result;
   std::string::size_type p = (value.find(separator) == 0) ? 1:0;
@@ -57,14 +58,18 @@ std::vector<std::string> split(const std::string& value, char separator) {
   return result;
 }
 
+// Construct with node name
 Node::Node (std::string const& name) : _parent(nullptr), _node_name(name) {
   _value.clear();
 }
+
+// Construct with node name in tree structure
 Node::Node (std::string const& name, Node* parent) :
   _parent(parent), _node_name(name) {
   _value.clear();
 }
 
+// Default dtor
 Node::~Node() {}
 
 VPackSlice Node::slice() const {
@@ -93,6 +98,11 @@ Node& Node::operator= (VPackSlice const& slice) { // Assign value (become leaf)
   _children.clear();
   _value.reset();
   _value.append(reinterpret_cast<char const*>(slice.begin()), slice.byteSize());
+  Node *par = _parent;
+  while (par != 0) {
+    _parent->notifyObservers();
+    par = par->_parent;
+  }
   return *this;
 }
 
@@ -100,6 +110,11 @@ Node& Node::operator= (Node const& node) { // Assign node
   _node_name = node._node_name;
   _value = node._value;
   _children = node._children;
+  Node *par = _parent;
+  while (par != 0) {
+    _parent->notifyObservers();
+    par = par->_parent;
+  }
   return *this;
 }
 
@@ -207,6 +222,45 @@ bool Node::removeTimeToLive () {
     root()._table_time.erase(it);
   }
   return true;
+}
+
+bool Node::addObserver (std::string const& uri) {
+  auto it = std::find(_observers.begin(), _observers.end(), uri);
+  if (it==_observers.end()) {
+    _observers.push_back(uri);
+    return true;
+  }
+  return false;
+}
+
+void Node::notifyObservers () const {
+  
+  for (auto const& i : _observers) {
+
+    Builder body;
+    toBuilder(body);
+    body.close();
+
+    size_t spos = i.find('/',7);
+    if (spos==std::string::npos) {
+      LOG_TOPIC(WARN, Logger::AGENCY) << "Invalid URI " << i;
+      continue;
+    }
+
+    std::string endpoint = i.substr(0,spos-1);
+    std::string path = i.substr(spos);
+    
+    std::unique_ptr<std::map<std::string, std::string>> headerFields =
+      std::make_unique<std::map<std::string, std::string> >();
+    
+    ClusterCommResult res =
+      arangodb::ClusterComm::instance()->asyncRequest(
+        "1", 1, endpoint, GeneralRequest::RequestType::POST, path,
+        std::make_shared<std::string>(body.toString()), headerFields, nullptr,
+        0.0, true);
+    
+  }
+  
 }
 
 bool Node::applies (VPackSlice const& slice) {
@@ -571,7 +625,6 @@ void Store::beginShutdown() {
 }
 
 void Store::clearTimeTable () {
-//    std::vector<std::shared_ptr<Node>> deleted;
   for (auto it = _time_table.cbegin(); it != _time_table.cend(); ++it) {
     if (it->first < std::chrono::system_clock::now()) {
       query_t tmp = std::make_shared<Builder>();
@@ -584,14 +637,6 @@ void Store::clearTimeTable () {
       break;
     }
   }
-      
-/*  for (size_t i = 0; i < deleted; ++i) {
-    try {
-    _table_time.erase(_table_time.find(_time_table.cbegin()->second));
-    _time_table.erase(_time_table.cbegin());
-    } catch (std::exception const& e) {
-      std::cout << e.what() << std::endl;
-      }*/
 }
 
 

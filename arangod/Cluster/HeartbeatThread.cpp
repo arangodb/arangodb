@@ -181,15 +181,9 @@ void HeartbeatThread::runDBServer() {
       // get the current version of the Plan, or watch for a change:
       AgencyCommResult result;
       result.clear();
-
-      if (agencyIndex != 0) {
-        // If a job is scheduled and is still running, the timeout is at most
-        // 0.1s, otherwise we wait up to the remainder of the interval:
-        result =
-            _agency.watchValue("Plan/Version", agencyIndex + 1, timeout, false);
-      } else {
-        result = _agency.getValues("Plan/Version", false);
-      }
+      
+      result =
+          _agency.watchValue("Plan/Version", agencyIndex + 1, timeout, false);
 
       if (result.successful()) {
         agencyIndex = result.index();
@@ -297,7 +291,7 @@ void HeartbeatThread::runCoordinator() {
     }
 
     bool shouldSleep = true;
-
+    
     // get the current version of the Plan
     AgencyCommResult result = _agency.getValues("Plan/Version", false);
 

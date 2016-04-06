@@ -43,6 +43,10 @@ using namespace arangodb::basics;
 #define STR_ERROR() strerror(errno)
 #endif
 
+uint16_t const EndpointIp::_defaultPortHttp = 8529;
+uint16_t const EndpointIp::_defaultPortVpp = 8530;
+char const* EndpointIp::_defaultHost = "127.0.0.1";
+
 static std::string buildSpecification(Endpoint::DomainType domainType,
                                       Endpoint::TransportType transport,
                                       Endpoint::EncryptionType encryption,

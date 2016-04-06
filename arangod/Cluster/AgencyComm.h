@@ -29,6 +29,9 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/json.h"
 #include "Rest/HttpRequest.h"
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+#include <type_traits>
 
 #include <list>
 
@@ -90,6 +93,134 @@ struct AgencyCommResultEntry {
   uint64_t _index;
   std::shared_ptr<arangodb::velocypack::Builder> _vpack;
   bool _isDir;
+};
+
+enum class AgencyValueOperationType {
+  SET,
+  PUSH,
+  PREPEND
+};
+
+enum class AgencySimpleOperationType {
+  INCREMENT,
+  DECREMENT,
+  DELETE,
+  POP,
+  SHIFT
+};
+
+struct AgencyOperationType {
+  enum {VALUE, SIMPLE} type;
+  union {
+    AgencyValueOperationType value;
+    AgencySimpleOperationType simple;
+  };
+
+  // mop: hmmm...explicit implementation...maybe use to_string?
+  std::string toString() {
+    switch(type) {
+      case VALUE:
+        switch(value) {
+          case AgencyValueOperationType::SET:
+            return "set";
+          case AgencyValueOperationType::PUSH:
+            return "push";
+          case AgencyValueOperationType::PREPEND:
+            return "prepend";
+          default:
+            return "unknown_operation_type";
+        }
+        break;
+      case SIMPLE:
+        switch(simple) {
+          case AgencySimpleOperationType::INCREMENT:
+            return "increment";
+          case AgencySimpleOperationType::DECREMENT:
+            return "decrement";
+          case AgencySimpleOperationType::DELETE:
+            return "delete";
+          case AgencySimpleOperationType::POP:
+            return "pop";
+          case AgencySimpleOperationType::SHIFT:
+            return "shift";
+          default:
+            return "unknown_operation_type";
+        }
+      default:
+        return "unknown_operation_type";
+    }
+  }
+};
+
+struct AgencyOperationPrecondition {
+  AgencyOperationPrecondition() : type(NONE) {}
+  AgencyOperationPrecondition(AgencyOperationPrecondition const& other) {
+    type = other.type;
+    switch(type) {
+      case NONE:
+        break;
+      case EMPTY:
+        empty = other.empty;
+        break;
+      case VALUE:
+        value = other.value;
+        break;
+    }
+  }
+
+  enum {NONE, EMPTY, VALUE} type;
+  union {
+    bool empty;
+    VPackSlice value;
+  };
+};
+
+struct AgencyOperation {
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief constructs an operation
+  //////////////////////////////////////////////////////////////////////////////
+  AgencyOperation(std::string const& key, AgencySimpleOperationType opType);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief constructs an operation with value
+  //////////////////////////////////////////////////////////////////////////////
+  AgencyOperation(
+      std::string const& key,
+      AgencyValueOperationType opType,
+      VPackSlice value
+  );
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief returns to full operation formatted as a vpack slice
+  //////////////////////////////////////////////////////////////////////////////
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack();
+  uint32_t _ttl = 0;
+  VPackSlice _oldValue;
+  AgencyOperationPrecondition _precondition;
+  
+private:
+  std::string const _key;
+  AgencyOperationType _opType;
+  VPackSlice _value;
+};
+
+struct AgencyTransaction {
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief vector of operations
+  //////////////////////////////////////////////////////////////////////////////
+  std::vector<AgencyOperation> operations;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief converts the transaction to json
+  //////////////////////////////////////////////////////////////////////////////
+  std::string toJson() const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief shortcut to create a transaction with one operation
+  //////////////////////////////////////////////////////////////////////////////
+  AgencyTransaction(AgencyOperation operation) {
+    operations.push_back(operation);
+  }
 };
 
 struct AgencyCommResult {
@@ -252,18 +383,6 @@ class AgencyComm {
 
  public:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief creates a communication channel
-  //////////////////////////////////////////////////////////////////////////////
-
-  AgencyComm(bool = true);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief destroys a communication channel
-  //////////////////////////////////////////////////////////////////////////////
-
-  ~AgencyComm();
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief cleans up all connections
   //////////////////////////////////////////////////////////////////////////////
 
@@ -351,7 +470,7 @@ class AgencyComm {
   /// @brief update a version number in the agency
   //////////////////////////////////////////////////////////////////////////////
 
-  bool increaseVersion(std::string const&);
+  bool increaseVersion(std::string const& key);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief update a version number in the agency, retry until it works
@@ -390,6 +509,12 @@ class AgencyComm {
   //////////////////////////////////////////////////////////////////////////////
 
   AgencyCommResult getValues(std::string const&, bool);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief increment a value
+  //////////////////////////////////////////////////////////////////////////////
+
+  AgencyCommResult increment(std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief removes one or multiple values from the back end
@@ -452,41 +577,7 @@ class AgencyComm {
 
   bool unlockWrite(std::string const&, double);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief encode a key for etcd
-  ///
-  /// We need the following properties: The encoding of a concatenation
-  /// of two strings is the concatenation of the two encodings. Thus the
-  /// empty string is encoded to the empty string.
-  ///
-  /// Here is an overview of where encoded keys and where decoded keys are
-  /// used. The user gives normal, decoded keys. On the way "into" etcd,
-  /// keys are encoded only in buildURL. This means in particular that all
-  /// arguments to methods that take keys all get decoded, normal keys.
-  /// AgencyCommLockers also completely work with unencoded keys.
-  ///
-  /// On the way out, the JSON answers of etcd of course contain encoded
-  /// keys and the response is only stored as a big string containing JSON.
-  /// Therefore things stored in AgencyCommResult have encoded keys.
-  /// We parse the JSON and when we recursively work on it in processJsonNode
-  /// we decode the key when we see it.
-  //////////////////////////////////////////////////////////////////////////////
-
-  static std::string encodeKey(std::string const&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief decode a key for etcd
-  //////////////////////////////////////////////////////////////////////////////
-
-  static std::string decodeKey(std::string const&);
-
  private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief create a query parameter for a TTL value
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::string ttlParam(double, bool);
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief acquire a lock
   //////////////////////////////////////////////////////////////////////////////
@@ -513,25 +604,33 @@ class AgencyComm {
   void requeueEndpoint(AgencyEndpoint*, bool);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief construct a URL
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::string buildUrl(std::string const&) const;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief construct a URL, without a key
   //////////////////////////////////////////////////////////////////////////////
 
   std::string buildUrl() const;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief sends a write HTTP request to the agency, handling failover
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool sendWithFailover(
+      arangodb::GeneralRequest::RequestType,
+      double,
+      AgencyCommResult&,
+      std::string const&,
+      std::string const&,
+      bool
+  );
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief sends an HTTP request to the agency, handling failover
+  /// @brief sends a write HTTP request to the agency, handling failover
   //////////////////////////////////////////////////////////////////////////////
 
-  bool sendWithFailover(arangodb::GeneralRequest::RequestType, double,
-                        AgencyCommResult&, std::string const&,
-                        std::string const&, bool);
-
+  bool sendTransactionWithFailover(
+      AgencyCommResult&,
+      AgencyTransaction const&
+  );
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sends data to the URL
   //////////////////////////////////////////////////////////////////////////////
@@ -569,13 +668,6 @@ class AgencyComm {
   //////////////////////////////////////////////////////////////////////////////
 
   bool hasInitializedStructure();
-
- private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief automatically add unknown endpoints if redirected to by agency?
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool _addNewEndpoints;
 
  private:
   //////////////////////////////////////////////////////////////////////////////

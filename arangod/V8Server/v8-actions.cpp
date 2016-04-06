@@ -35,6 +35,7 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
 #include "HttpServer/HttpServer.h"
+#include "Rest/GeneralRequest.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 #include "RestServer/VocbaseContext.h"

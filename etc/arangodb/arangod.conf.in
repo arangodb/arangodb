@@ -59,11 +59,8 @@ level = info
 file = @LOCALSTATEDIR@/log/arangodb/arangod.log
 
 [cluster]
-disable-dispatcher-kickstarter = yes
-disable-dispatcher-frontend = yes
 data-path = @LOCALSTATEDIR@/lib/arangodb/cluster
 log-path = @LOCALSTATEDIR@/log/arangodb/cluster
-agent-path = @LIBEXECDIR@/arangodb/etcd-arango@PROGRAM_SUFFIX@
 arangod-path = @SBINDIR@/arangod@PROGRAM_SUFFIX@
 dbserver-config = @SYSCONFDIR@/arangod.conf
 coordinator-config = @SYSCONFDIR@/arangod.conf

@@ -37,43 +37,51 @@ namespace consensus {
 
 Agent::Agent () : Thread ("Agent"), _last_commit_index(0) {}
 
+//  Agent configuration
 Agent::Agent (config_t const& config) :
   Thread ("Agent"), _config(config), _last_commit_index(0) {
-  _state.setEndPoint(_config.end_points[this->id()]);
+  _state.setEndPoint(_config.end_point);
   _constituent.configure(this);
-  _confirmed.resize(size(),0);
+  _confirmed.resize(size(),0); // agency's size and reset to 0
 }
 
-id_t Agent::id() const { return _config.id;}
+//  This agent's id
+id_t Agent::id() const {
+  return _config.id;
+}
 
+//  Shutdown
 Agent::~Agent () {
   shutdown();
 }
 
+//  State machine
 State const& Agent::state () const {
   return _state;
 }
 
-/// @brief Start all agency threads
+//  Start all agent thread
 bool Agent::start() {
-
   LOG_TOPIC(INFO, Logger::AGENCY) << "Starting agency comm worker.";
   Thread::start();
-
   return true;
 }
 
+//  This agent's term
 term_t Agent::term () const {
   return _constituent.term();
 }
 
+//  Agency size
 inline size_t Agent::size() const {
   return _config.size();
 }
 
+//  Handle vote request
 priv_rpc_ret_t Agent::requestVote(term_t t, id_t id, index_t lastLogIndex,
                                   index_t lastLogTerm, query_t const& query) {
 
+  /// Are we receiving new endpoints
   if (query != nullptr) { // record new endpoints
     if (query->slice().hasKey("endpoints") && 
         query->slice().get("endpoints").isArray()) {
@@ -83,27 +91,34 @@ priv_rpc_ret_t Agent::requestVote(term_t t, id_t id, index_t lastLogIndex,
       }
     }
   }
-    
-  return priv_rpc_ret_t(  // vote
+
+  /// Constituent handles this
+  return priv_rpc_ret_t( 
     _constituent.vote(t, id, lastLogIndex, lastLogTerm), this->term());
+  
 }
 
+//  Get configuration
 config_t const& Agent::config () const {
   return _config;
 }
 
+//  Leader's id
 id_t Agent::leaderID () const {
   return _constituent.leaderID();
 }
 
+//  Are we leading?
 bool Agent::leading() const {
   return _constituent.leading();
 }
 
+//  Persist term and id we vote for
 void Agent::persist(term_t t, id_t i) {
 //  _state.persist(t, i);
 }
 
+//  Waits here for confirmation of log's commits up to index
 bool Agent::waitFor (index_t index, duration_t timeout) {
 
   if (size() == 1) // single host agency
@@ -111,7 +126,8 @@ bool Agent::waitFor (index_t index, duration_t timeout) {
     
   CONDITION_LOCKER(guard, _rest_cv);
   auto start = std::chrono::system_clock::now();
-  
+
+  // Wait until woken up through AgentCallback 
   while (true) {
 
     _rest_cv.wait();
@@ -124,6 +140,7 @@ bool Agent::waitFor (index_t index, duration_t timeout) {
     if (std::chrono::system_clock::now() - start > timeout) {
       return false;
     }
+    /// success?
     if (_last_commit_index >= index) {
       return true;
     }
@@ -132,6 +149,7 @@ bool Agent::waitFor (index_t index, duration_t timeout) {
   TRI_ASSERT(false);
 }
 
+//  AgentCallback reports id of follower and its highest processed index
 void Agent::reportIn (id_t id, index_t index) {
   MUTEX_LOCKER(mutexLocker, _ioLock);
 
@@ -155,6 +173,7 @@ void Agent::reportIn (id_t id, index_t index) {
   _rest_cv.broadcast();            // wake up REST handlers
 }
 
+//  Followers' append entries
 bool Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
   term_t prevTerm, index_t leaderCommitIndex, query_t const& queries) {
   //Update commit index
@@ -188,10 +207,10 @@ bool Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
 
 }
 
-#include <iostream>
-append_entries_t Agent::sendAppendEntriesRPC (id_t slave_id) {
+// Leader's append entries
+append_entries_t Agent::sendAppendEntriesRPC (id_t follower_id) {
 
-  index_t last_confirmed = _confirmed[slave_id];
+  index_t last_confirmed = _confirmed[follower_id];
   std::vector<log_t> unconfirmed = _state.get(last_confirmed);
 
   // RPC path
@@ -221,20 +240,21 @@ append_entries_t Agent::sendAppendEntriesRPC (id_t slave_id) {
   if (unconfirmed.size() > 1) {
     LOG_TOPIC(INFO, Logger::AGENCY)
       << "Appending " << unconfirmed.size()-1 << " entries up to index " << last
-      << " to follower " << slave_id;
+      << " to follower " << follower_id;
   }
 
   arangodb::ClusterComm::instance()->asyncRequest
-    ("1", 1, _config.end_points[slave_id],
+    ("1", 1, _config.end_points[follower_id],
      arangodb::GeneralRequest::RequestType::POST,
      path.str(), std::make_shared<std::string>(builder.toJson()), headerFields,
-     std::make_shared<AgentCallback>(this, slave_id, last),
+     std::make_shared<AgentCallback>(this, follower_id, last),
      0, true);
 
   return append_entries_t(this->term(), true);
   
 }
 
+// @brief load persisten state
 bool Agent::load () {
   LOG_TOPIC(INFO, Logger::AGENCY) << "Loading persistent state.";
   if (!_state.loadCollections()) {
@@ -250,51 +270,54 @@ bool Agent::load () {
   _read_db.start(this);
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Starting constituent personality.";
-  _constituent.update(0,0);
   _constituent.start();
   
   return true;
 }
 
+// Write new entries to replicated state and store
 write_ret_t Agent::write (query_t const& query)  {
 
-  if (_constituent.leading()) {                    // Leading 
+  if (_constituent.leading()) {                    // Only working as leader
     MUTEX_LOCKER(mutexLocker, _ioLock);
     std::vector<bool> applied = _spearhead.apply(query); // Apply to spearhead
     std::vector<index_t> indices = 
-      _state.log (query, applied, term(), id()); // Append to log w/ indicies
+      _state.log (query, applied, term(), id());   // Append to log w/ indicies
     for (size_t i = 0; i < applied.size(); ++i) {
       if (applied[i]) {
-        _confirmed[id()] = indices[i];           // Confirm myself
+        _confirmed[id()] = indices[i];             // Confirm myself
       }
     }
-    _cv.signal();                                // Wake up run
+    _cv.signal();                                  // Wake up run
     return write_ret_t(true,id(),applied,indices); // Indices to wait for to rest
-  } else {                                       // Leading else redirect
+  } else {                                         // Else we redirect
     return write_ret_t(false,_constituent.leaderID());
   }
 }
 
+// Read from store
 read_ret_t Agent::read (query_t const& query) const {
-  if (_constituent.leading()) {     // We are leading
+  if (_constituent.leading()) {     // Only working as leaer
     query_t result = std::make_shared<arangodb::velocypack::Builder>();
     std::vector<bool> success= (_config.size() == 1) ?
       _spearhead.read(query, result) : _read_db.read (query, result);
     return read_ret_t(true, _constituent.leaderID(), success, result);
-  } else {                          // We redirect
+  } else {                          // Else We redirect
     return read_ret_t(false, _constituent.leaderID());
   }
 }
 
+// Repeated append entries
 void Agent::run() {
 
   CONDITION_LOCKER(guard, _cv);
   
   while (!this->isStopping()) {
+
     if (leading())
-      _cv.wait(250000);
+      _cv.wait(250000); // Only if leading
     else
-      _cv.wait();
+      _cv.wait();       // Just sit there doing nothing
 
     // Collect all unacknowledged
     for (id_t i = 0; i < size(); ++i) {
@@ -306,21 +329,36 @@ void Agent::run() {
 
 }
 
+// Orderly shutdown
 void Agent::beginShutdown() {
+
+  // Personal hygiene
   Thread::beginShutdown();
+
+  // Stop constituent and key value stores
   _constituent.beginShutdown();
   _spearhead.beginShutdown();
   _read_db.beginShutdown();
+
+  // Wake up all waiting REST handler (waitFor)
   CONDITION_LOCKER(guard, _cv);
   guard.broadcast();
+
 }
 
+// Becoming leader 
 bool Agent::lead () {
+
+  // Key value stores
   rebuildDBs();
+
+  // Wake up run
   _cv.signal();
+  
   return true;
 }
 
+// Rebuild key value stores
 bool Agent::rebuildDBs() {
   MUTEX_LOCKER(mutexLocker, _ioLock);
   _spearhead.apply(_state.slices());
@@ -328,14 +366,17 @@ bool Agent::rebuildDBs() {
   return true;
 }
 
+// Last log entry
 log_t const& Agent::lastLog() const {
   return _state.lastLog();
 }
 
+// Get spearhead
 Store const& Agent::spearhead () const {
   return _spearhead;
 }
 
+// Get readdb
 Store const& Agent::readDB () const {
   return _read_db;
 }

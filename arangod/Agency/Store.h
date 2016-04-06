@@ -71,8 +71,10 @@ typedef std::map<std::shared_ptr<Node>, TimePoint> TableTime;
 class Node {
   
 public:
-
+  // @brief Slash-segemented path 
   typedef std::vector<std::string> PathType;
+
+  // @brief Child nodes
   typedef std::map<std::string, std::shared_ptr<Node>> Children;
   
   /// @brief Construct with name
@@ -80,10 +82,10 @@ public:
 
   /// @brief Construct with name and introduce to tree under parent
   Node (std::string const& name, Node* parent);
-
+  
   /// @brief Default dtor
   virtual ~Node ();
-
+  
   /// @brief Get name 
   std::string const& name() const;
 
@@ -104,26 +106,29 @@ public:
 
   /// @brief Get child specified by name
   Node& operator [](std::string name);
+  /// @brief Get child specified by name
   Node const& operator [](std::string name) const;
 
   /// @brief Get node specified by path vector  
   Node& operator ()(std::vector<std::string>& pv);
+  /// @brief Get node specified by path vector  
   Node const& operator ()(std::vector<std::string>& pv) const;
   
   /// @brief Get node specified by path string  
   Node& operator ()(std::string const& path);
+  /// @brief Get node specified by path string  
   Node const& operator ()(std::string const& path) const;
 
-  /// @brief Remove node with absolute path
+  /// @brief Remove node at absolut path
   bool remove (std::string const& path);
 
-  /// @brief Remove child 
+  /// @brief Remove child by name
   bool removeChild (std::string const& key);
 
-  /// @brief Remove this node
+  /// @brief Remove this node and below from tree
   bool remove();
 
-  /// @brief Root node
+  /// @brief Get root node
   Node& root();
 
   /// @brief Dump to ostream
@@ -144,6 +149,12 @@ public:
   /// @brief Get value type  
   ValueType valueType () const;
 
+  /// @brief Add observer for this node
+  bool addObserver (std::string const&);
+  
+  /// @brief Add observer for this node
+  void notifyObservers () const;
+
 protected:
 
   /// @brief Add time to live entry
@@ -157,7 +168,7 @@ protected:
   TimeTable _time_table;
   TableTime _table_time;
   Buffer<uint8_t> _value;
-  
+  std::vector<std::string> _observers;
   std::string _node_name;
   
 };
