@@ -26,6 +26,7 @@
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
 #include "Basics/files.h"
+#include "Basics/hashes.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Basics/Utf8Helper.h"
@@ -695,6 +696,23 @@ double VelocyPackHelper::toDouble(VPackSlice const& slice, bool& failed) {
 
   failed = true;
   return 0.0;
+}
+
+uint64_t VelocyPackHelper::hashByAttributes(
+    VPackSlice slice, std::vector<std::string> const& attributes,
+    bool docComplete, int& error) {
+  error = TRI_ERROR_NO_ERROR;
+  uint64_t hash = TRI_FnvHashBlockInitial();
+  if (slice.isObject()) {
+    for (auto const& attr: attributes) {
+      VPackSlice sub = slice.get(attr);
+      if (sub.isNone() && !docComplete) {
+        error = TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN;
+      }
+      sub.normalizedHash(hash);
+    }
+  }
+  return hash;
 }
 
 arangodb::LoggerStream& operator<< (arangodb::LoggerStream& logger,
