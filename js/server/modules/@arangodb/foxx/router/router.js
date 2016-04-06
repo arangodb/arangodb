@@ -47,6 +47,15 @@ const Router = module.exports = class Router extends SwaggerContext {
         }
         path += '*';
       }
+      {
+        const n = path.length - 1;
+        if (path.charAt(n) === '/') {
+          path = path.slice(0, n);
+        }
+        if (path.charAt(0) !== '/') {
+          path = `/${path}`;
+        }
+      }
       const child = {
         path: path,
         _pathParams: new Map(),
