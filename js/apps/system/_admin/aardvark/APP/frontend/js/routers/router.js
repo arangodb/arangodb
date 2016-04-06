@@ -6,8 +6,13 @@
   "use strict";
 
   window.Router = Backbone.Router.extend({
+
+    toUpdate: [],
+    dbServers: [],
+    isCluster: false,
+
     routes: {
-      "": "dashboard",
+      "": "cluster",
       "dashboard": "dashboard",
       "collections": "collections",
       "new": "newCollection",
@@ -26,6 +31,7 @@
       "graph/:name": "showGraph",
       "userManagement": "userManagement",
       "userProfile": "userProfile",
+      "cluster": "cluster",
       "logs": "logs",
       "test": "test"
     },
@@ -93,6 +99,19 @@
 
         this.arangoCollectionsStore = new window.arangoCollections();
         this.arangoDocumentStore = new window.arangoDocument();
+
+        //Cluster 
+        this.coordinatorCollection = new window.ClusterCoordinators();
+        this.coordinatorCollection.fetch({
+          error: function() {
+            self.isCluster = false;
+          },
+          success: function() {
+            self.isCluster = true;
+            self.fetchDBS();
+          }
+        });
+
         arangoHelper.setDocumentStore(this.arangoDocumentStore);
 
         this.arangoCollectionsStore.fetch();
@@ -128,6 +147,34 @@
         self.handleResize();
       });
 
+    },
+
+    cluster: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.cluster.bind(this));
+        return;
+      }
+      this.clusterView = new window.ClusterView({
+        coordinators: this.coordinatorCollection,
+        dbServers: this.dbServers
+      });
+      this.clusterView.render();
+    },
+
+    addAuth: function (xhr) {
+      var u = this.clusterPlan.get("user");
+      if (!u) {
+        xhr.abort();
+        if (!this.isCheckingUser) {
+          this.requestAuth();
+        }
+        return;
+      }
+      var user = u.name;
+      var pass = u.passwd;
+      var token = user.concat(":", pass);
+      xhr.setRequestHeader('Authorization', "Basic " + btoa(token));
     },
 
     logs: function (initialized) {
@@ -505,7 +552,32 @@
         });
       }
       this.userManagementView.render(true);
+    },
+    
+    fetchDBS: function() {
+      var self = this;
+
+      this.coordinatorCollection.each(function(coordinator) {
+        self.dbServers.push(
+          new window.ClusterServers([], {
+            host: coordinator.get('address') 
+          })
+        );
+      });           
+      _.each(this.dbServers, function(dbservers) {
+        dbservers.fetch();
+      });
+    },
+
+    getNewRoute: function(host) {
+      return "http://" + host;
+    },
+
+    registerForUpdate: function(o) {
+      this.toUpdate.push(o);
+      o.updateUrl();
     }
+
   });
 
 }());

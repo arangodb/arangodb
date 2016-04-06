@@ -42,6 +42,7 @@
     },
 
     template: templateEngine.createTemplate("navigationView.ejs"),
+    templateSub: templateEngine.createTemplate("subNavigationView.ejs"),
 
     render: function () {
       var self = this;
@@ -49,6 +50,12 @@
       $(this.el).html(this.template.render({
         currentDB: this.currentDB
       }));
+
+      //HEIKO
+      $("#subNavigationBar").html(this.templateSub.render({
+      }));
+      
+      //HEIKO REMOVE
       this.dbSelectionView.render($("#dbSelect"));
       this.notificationView.render($("#notificationBar"));
 

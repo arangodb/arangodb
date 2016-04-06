@@ -30,6 +30,7 @@
             "frontend/css/ansi.css",
             "frontend/css/highlightjs.css",
             "frontend/css/jsoneditor.css",
+            "frontend/css/grids-responsive-min.css",
             "frontend/ttf/arangofont/style.css"
           ]
         },

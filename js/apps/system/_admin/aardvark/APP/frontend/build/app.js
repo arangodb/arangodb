@@ -16905,6 +16905,86 @@ window.Users = Backbone.Model.extend({
 
 });
 
+/*global window, Backbone */
+(function() {
+  "use strict";
+
+  window.ClusterCoordinator = Backbone.Model.extend({
+
+    defaults: {
+      "name": "",
+      "status": "ok",
+      "address": "",
+      "protocol": ""
+    },
+
+    idAttribute: "name",
+    /*
+    url: "/_admin/aardvark/cluster/Coordinators";
+
+    updateUrl: function() {
+      this.url = window.getNewRoute("Coordinators");
+    },
+    */
+    forList: function() {
+      return {
+        name: this.get("name"),
+        status: this.get("status"),
+        url: this.get("url")
+      };
+    }
+
+  });
+}());
+
+/*global window, Backbone */
+(function() {
+  "use strict";
+
+  window.ClusterServer = Backbone.Model.extend({
+    defaults: {
+      name: "",
+      address: "",
+      role: "",
+      status: "ok"
+    },
+
+    idAttribute: "name",
+    /*
+    url: "/_admin/aardvark/cluster/DBServers";
+
+    updateUrl: function() {
+      this.url = window.getNewRoute("DBServers");
+    },
+    */
+    forList: function() {
+      return {
+        name: this.get("name"),
+        address: this.get("address"),
+        status: this.get("status")
+      };
+    }
+
+  });
+}());
+
+
+/*global window, Backbone */
+(function() {
+  "use strict";
+
+  window.Coordinator = Backbone.Model.extend({
+
+    defaults: {
+      address: "",
+      protocol: "",
+      name: "",
+      status: ""
+    }
+
+  });
+}());
+
 /*global Backbone, window */
 
 (function() {
@@ -17154,7 +17234,6 @@ window.Users = Backbone.Model.extend({
   });
 }());
 
-
 /*global window, Backbone */
 (function() {
   "use strict";
@@ -17229,6 +17308,45 @@ window.Users = Backbone.Model.extend({
       number: "",
       status: "",
       type: ""
+    }
+
+  });
+}());
+
+/*global window, Backbone, console */
+(function() {
+  "use strict";
+
+  window.AutomaticRetryCollection = Backbone.Collection.extend({
+
+    _retryCount: 0,
+
+
+    checkRetries: function() {
+      var self = this;
+      this.updateUrl();
+      if (this._retryCount > 10) {
+        window.setTimeout(function() {
+          self._retryCount = 0;
+        }, 10000);
+        window.App.clusterUnreachable();
+        return false;
+      }
+      return true;
+    },
+
+    successFullTry: function() {
+      this._retryCount = 0;
+    },
+
+    failureTry: function(retry, ignore, err) {
+      if (err.status === 401) {
+        window.App.requestAuth();
+      } else {
+        window.App.clusterPlan.rotateCoordinator();
+        this._retryCount++;
+        retry();
+      }
     }
 
   });
@@ -17320,6 +17438,38 @@ window.Users = Backbone.Model.extend({
 
   });
 }());
+
+/*global Backbone, window */
+window.ClusterStatisticsCollection = Backbone.Collection.extend({
+  model: window.Statistics,
+
+  url: "/_admin/statistics",
+
+  updateUrl: function() {
+    this.url = window.App.getNewRoute(this.host) + this.url;
+  },
+
+  initialize: function(models, options) {
+    this.host = options.host;
+    window.App.registerForUpdate(this);
+  },
+
+  // The callback has to be invokeable for each result individually
+  // TODO RE-ADD Auth
+  /*
+  fetch: function(callback, errCB) {
+    this.forEach(function (m) {
+      m.fetch({
+        beforeSend: window.App.addAuth.bind(window.App),
+        error: function() {
+          errCB(m);
+        }
+      }).done(function() {
+        callback(m);
+      });
+    });
+  }*/
+});
 
 /*jshint browser: true */
 /*jshint unused: false */
@@ -18592,6 +18742,262 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 });
 
+/*global window, Backbone, console */
+(function() {
+  "use strict";
+  window.ClusterCoordinators = window.AutomaticRetryCollection.extend({
+    model: window.ClusterCoordinator,
+
+    url: "/_admin/aardvark/cluster/Coordinators",
+
+    updateUrl: function() {
+      this.url = window.App.getNewRoute("Coordinators");
+    },
+
+    initialize: function() {
+      //window.App.registerForUpdate(this);
+    },
+
+    statusClass: function(s) {
+      switch (s) {
+        case "ok":
+          return "success";
+        case "warning":
+          return "warning";
+        case "critical":
+          return "danger";
+        case "missing":
+          return "inactive";
+        default:
+          return "danger";
+      }
+    },
+
+    getStatuses: function(cb, nextStep) {
+      if(!this.checkRetries()) {
+        return;
+      }
+      var self = this;
+      this.fetch({
+        beforeSend: window.App.addAuth.bind(window.App),
+        error: self.failureTry.bind(self, self.getStatuses.bind(self, cb, nextStep))
+      }).done(function() {
+        self.successFullTry();
+        self.forEach(function(m) {
+          cb(self.statusClass(m.get("status")), m.get("address"));
+        });
+        nextStep();
+      });
+    },
+
+    byAddress: function (res, callback) {
+      if(!this.checkRetries()) {
+        return;
+      }
+      var self = this;
+      this.fetch({
+        beforeSend: window.App.addAuth.bind(window.App),
+        error: self.failureTry.bind(self, self.byAddress.bind(self, res, callback))
+      }).done(function() {
+        self.successFullTry();
+        res = res || {};
+        self.forEach(function(m) {
+          var addr = m.get("address");
+          addr = addr.split(":")[0];
+          res[addr] = res[addr] || {};
+          res[addr].coords = res[addr].coords || [];
+          res[addr].coords.push(m);
+        });
+        callback(res);
+      });
+    },
+
+    checkConnection: function(callback) {
+      var self = this;
+      if(!this.checkRetries()) {
+        return;
+      }
+      this.fetch({
+        beforeSend: window.App.addAuth.bind(window.App),
+        error: self.failureTry.bind(self, self.checkConnection.bind(self, callback))
+      }).done(function() {
+        self.successFullTry();
+        callback();
+      });
+    }
+
+  });
+}());
+
+
+
+/*global window, Backbone, _, console */
+(function() {
+
+  "use strict";
+
+  window.ClusterServers = window.AutomaticRetryCollection.extend({
+
+    model: window.ClusterServer,
+    host: '',
+
+    url: "/_admin/aardvark/cluster/DBServers",
+
+    updateUrl: function() {
+      //this.url = window.App.getNewRoute("DBServers");
+      this.url = window.App.getNewRoute(this.host) + this.url;
+    },
+
+    initialize: function(models, options) {
+      this.host = options.host;
+      window.App.registerForUpdate(this);
+    },
+
+    statusClass: function(s) {
+      switch (s) {
+        case "ok":
+          return "success";
+        case "warning":
+          return "warning";
+        case "critical":
+          return "danger";
+        case "missing":
+          return "inactive";
+        default:
+          return "danger";
+      }
+    },
+
+    getStatuses: function(cb) {
+      if(!this.checkRetries()) {
+        return;
+      }
+      var self = this,
+        completed = function() {
+          self.successFullTry();
+          self._retryCount = 0;
+          self.forEach(function(m) {
+            cb(self.statusClass(m.get("status")), m.get("address"));
+          });
+        };
+      // This is the first function called in
+      // Each update loop
+      this.fetch({
+        beforeSend: window.App.addAuth.bind(window.App),
+        error: self.failureTry.bind(self, self.getStatuses.bind(self, cb))
+      }).done(completed);
+    },
+
+    byAddress: function (res, callback) {
+      if(!this.checkRetries()) {
+        return;
+      }
+      var self = this;
+      this.fetch({
+        beforeSend: window.App.addAuth.bind(window.App),
+        error: self.failureTry.bind(self, self.byAddress.bind(self, res, callback))
+      }).done(function() {
+        self.successFullTry();
+        res = res || {};
+        self.forEach(function(m) {
+          var addr = m.get("address");
+          addr = addr.split(":")[0];
+          res[addr] = res[addr] || {};
+          res[addr].dbs = res[addr].dbs || [];
+          res[addr].dbs.push(m);
+        });
+        callback(res);
+      });
+    },
+
+    getList: function(callback) {
+      throw "Do not use";
+      /*
+      var self = this;
+      this.fetch({
+        beforeSend: window.App.addAuth.bind(window.App),
+        error: self.failureTry.bind(self, self.getList.bind(self, callback))
+      }).done(function() {
+        self.successFullTry();
+        var res = [];
+        _.each(self.where({role: "primary"}), function(m) {
+          var e = {};
+          e.primary = m.forList();
+          if (m.get("secondary")) {
+            e.secondary = self.get(m.get("secondary")).forList();
+          }
+          res.push(e);
+        });
+        callback(res);
+      });
+      */
+    },
+
+    getOverview: function() {
+      throw "Do not use DbServer.getOverview";
+      /*
+      this.fetch({
+        async: false,
+        beforeSend: window.App.addAuth.bind(window.App)
+      });
+      var res = {
+        plan: 0,
+        having: 0,
+        status: "ok"
+      },
+      self = this,
+      updateStatus = function(to) {
+        if (res.status === "critical") {
+          return;
+        }
+        res.status = to;
+      };
+      _.each(this.where({role: "primary"}), function(m) {
+        res.plan++;
+        switch (m.get("status")) {
+          case "ok":
+            res.having++;
+            break;
+          case "warning":
+            res.having++;
+            updateStatus("warning");
+            break;
+          case "critical":
+            var bkp = self.get(m.get("secondary"));
+            if (!bkp || bkp.get("status") === "critical") {
+              updateStatus("critical");
+            } else {
+              if (bkp.get("status") === "ok") {
+                res.having++;
+                updateStatus("warning");
+              }
+            }
+            break;
+          default:
+            console.debug("Undefined server state occurred. This is still in development");
+        }
+      });
+      return res;
+      */
+    }
+  });
+
+}());
+
+
+/*jshint browser: true */
+/*jshint unused: false */
+/*global window, Backbone, $ */
+(function() {
+  "use strict";
+  window.CoordinatorCollection = Backbone.Collection.extend({
+    model: window.Coordinator,
+
+    url: "/_admin/aardvark/cluster/Coordinators"
+
+  });
+}());
+
 /*jshint browser: true */
 /*jshint unused: false */
 /*global window, Backbone, $ */
@@ -19550,6 +19956,520 @@ window.ArangoUsers = Backbone.Collection.extend({
         ]
       )
    */
+}());
+
+/*jshint browser: true */
+/*jshint unused: false */
+/*global arangoHelper, Backbone, templateEngine, $, window, _, nv, d3 */
+(function () {
+  "use strict";
+
+  window.ClusterView = Backbone.View.extend({
+
+    el: '#content',
+    template: templateEngine.createTemplate("clusterView.ejs"),
+
+    events: {
+    },
+
+    historyInit: false,
+    interval: 3000,
+    maxValues: 100,
+    knownServers: [],
+    chartData: {},
+    charts: {},
+    nvcharts: [],
+    startHistory: {},
+    startHistoryAccumulated: {},
+
+    initialize: function () {
+      var self = this;
+
+      if (window.App.isCluster) {
+        this.dbServers = this.options.dbServers;
+        this.coordinators = this.options.coordinators;
+        this.updateServerTime();
+
+        //start polling with interval
+        window.setInterval(function() {
+          var callback = function(data) {
+            self.rerenderValues(data);
+            self.rerenderGraphs(data);
+          };
+
+          // now fetch the statistics history
+          self.getCoordStatHistory(callback);
+        }, this.interval);
+      }
+    },
+
+    render: function () {
+      this.$el.html(this.template.render({}));
+      this.initValues();
+      this.getServerStatistics();
+
+      this.initGraphs();
+    },
+
+    updateServerTime: function() {
+      this.serverTime = new Date().getTime();
+    },
+
+    getServerStatistics: function() {
+      var self = this;
+
+      this.data = undefined;
+
+      var coord = this.coordinators.first();
+
+      this.statCollectCoord = new window.ClusterStatisticsCollection([],
+        {host: coord.get('address')}
+      );
+      this.statCollectDBS = new window.ClusterStatisticsCollection([],
+        {host: coord.get('address')}
+      );
+
+      // create statistics collector for DB servers
+      var dbsmodels = [];
+      _.each(this.dbServers, function(dbs) {
+        dbs.each(function(model) {
+          dbsmodels.push(model);
+        });
+      });
+
+      _.each(dbsmodels, function (dbserver) {
+        if (dbserver.get("status") !== "ok") {
+          return;
+        }
+
+        if (self.knownServers.indexOf(dbserver.id) === -1) {
+          self.knownServers.push(dbserver.id);
+        }
+
+        var stat = new window.Statistics({name: dbserver.id});
+        stat.url = coord.get("protocol") + "://"
+        + coord.get("address")
+        + "/_admin/clusterStatistics?DBserver="
+        + dbserver.get("name");
+
+        self.statCollectDBS.add(stat);
+      });
+
+      // create statistics collector for coordinator
+      this.coordinators.forEach(function (coordinator) {
+        if (coordinator.get("status") !== "ok") {return;}
+
+        if (self.knownServers.indexOf(coordinator.id) === -1) {
+          self.knownServers.push(coordinator.id);
+        }
+
+        var stat = new window.Statistics({name: coordinator.id});
+
+        stat.url = coordinator.get("protocol") + "://"
+        + coordinator.get("address")
+        + "/_admin/statistics";
+
+        self.statCollectCoord.add(stat);
+      });
+
+      // first load history callback
+      var callback = function(data) {
+        self.rerenderValues(data);
+        self.rerenderGraphs(data);
+      };
+
+      // now fetch the statistics history
+      self.getCoordStatHistory(callback);
+      
+      this.updateValues();
+    },
+    
+    rerenderValues: function(data) {
+      //Connections
+      this.renderValue('#clusterConnections', Math.round(data.clientConnectionsCurrent));
+      this.renderValue('#clusterConnectionsAvg', Math.round(data.clientConnections15M));
+
+      //RAM
+      var totalMem = data.physicalMemory;
+      var usedMem = data.residentSizeCurrent;
+      this.renderValue('#clusterRam', [usedMem, totalMem]);
+    },
+
+    renderValue: function(id, value) {
+      if (typeof value === 'number') {
+        $(id).html(value);
+      }
+      else if ($.isArray(value)) {
+        var a = value[0], b = value[1];
+
+        var percent = 1 / (b/a) * 100;
+        $(id).html(percent.toFixed(1) + ' %');
+      }
+    },
+
+    updateValues: function() {
+      this.renderValue('#clusterNodes', this.statCollectCoord.size());
+      this.renderValue('#clusterRam', [1024, 4096]);
+    },
+
+    initValues: function() {
+
+      var values = [
+        "#clusterNodes",
+        "#clusterRam",
+        "#clusterConnections",
+        "#clusterConnectionsAvg",
+      ];
+
+      _.each(values, function(id) {
+        $(id).html('<i class="fa fa-spin fa-circle-o-notch" style="color: rgba(0, 0, 0, 0.64);"></i>'); 
+      });
+    },
+
+    graphData: {
+      data: {
+        sent: [],
+        received: []
+      },
+      http: [],
+      average: []
+    },
+
+    checkArraySizes: function() {
+      var self = this;
+
+      _.each(self.chartsOptions, function(val1, key1) {
+        _.each(val1.options, function(val2, key2) {
+            console.log(self.chartsOptions[key1].options[key2].values.length);
+          if (val2.values.length === self.maxValues) {
+            self.chartsOptions[key1].options[key2].values.shift();
+          }
+        });
+      });
+    },
+
+    formatDataForGraph: function(data) {
+      var self = this;
+
+      if (!self.historyInit) {
+        _.each(data.times, function(time, key) {
+
+          //DATA
+          self.chartsOptions[0].options[0].values.push({x:time, y: data.bytesSentPerSecond[key]});
+          self.chartsOptions[0].options[1].values.push({x:time, y: data.bytesReceivedPerSecond[key]});
+
+          //HTTP
+          self.chartsOptions[1].options[0].values.push({x:time, y: self.calcTotalHttp(data.http, key)});
+
+          //AVERAGE
+          self.chartsOptions[2].options[0].values.push({x:time, y: data.avgRequestTime[key]});
+        });
+        self.historyInit = true;
+      }
+      else {
+        self.checkArraySizes();
+
+        //DATA
+        self.chartsOptions[0].options[0].values.push({
+          x: data.times[data.times.length - 1],
+          y: data.bytesSentPerSecond[data.bytesSentPerSecond.length - 1]
+        });
+        self.chartsOptions[0].options[1].values.push({
+          x: data.times[data.times.length - 1],
+          y: data.bytesReceivedPerSecond[data.bytesReceivedPerSecond.length - 1]
+        });
+        //HTTP
+        self.chartsOptions[1].options[0].values.push({
+          x: data.times[data.times.length - 1],
+          y: self.calcTotalHttp(data.http, data.bytesSentPerSecond.length - 1)
+        });
+        //AVERAGE
+        self.chartsOptions[2].options[0].values.push({
+          x: data.times[data.times.length - 1],
+          y: data.avgRequestTime[data.bytesSentPerSecond.length - 1]
+        });
+
+
+      }
+    },
+
+    chartsOptions: [
+      {
+        id: "#clusterData",
+        count: 2,
+        options: [
+          {
+            area: true,
+            values: [],
+            key: "Bytes out",
+            color: 'rgb(23,190,207)',
+            strokeWidth: 2,
+            fillOpacity: 0.1
+          },
+          {
+            area: true,
+            values: [],
+            key: "Bytes in",
+            color: "rgb(188, 189, 34)",
+            strokeWidth: 2,
+            fillOpacity: 0.1
+          }
+        ]
+      },
+      {
+        id: "#clusterHttp",
+        options: [{
+          area: true,
+          values: [],
+          key: "Bytes",
+          color: "rgb(0, 166, 90)",
+          fillOpacity: 0.1
+        }]
+      },
+      {
+        id: "#clusterAverage",
+        data: [],
+        options: [{
+          area: true,
+          values: [],
+          key: "Bytes",
+          color: "rgb(243, 156, 18)",
+          fillOpacity: 0.1
+        }]
+      }
+    ],
+
+    initGraphs: function() {
+      var self = this;
+
+      _.each(self.chartsOptions, function(c) {
+        nv.addGraph(function() {
+          self.charts[c.id] = nv.models.stackedAreaChart()
+          .options({
+            transitionDuration: 300,
+            useInteractiveGuideline: true,
+            showControls: false,
+            noData: 'Fetching data...'
+          });
+
+          self.charts[c.id].xAxis
+          .axisLabel("")
+          .tickFormat(function(d) {
+            var x = new Date(d * 1000);
+            return (x.getHours() < 10 ? '0' : '') + x.getHours() + ":" +  
+              (x.getMinutes() < 10 ? '0' : '') + x.getMinutes() + ":" + 
+              (x.getSeconds() < 10 ? '0' : '') + x.getSeconds();
+          })
+          .staggerLabels(false);
+
+          // TODO UPDATE SINGLE VALUES AFTER UPDATE
+          self.charts[c.id].yAxis
+          .axisLabel('')
+          .tickFormat(function(d) { //TODO 1k bytes sizes
+            if (d === null) {
+              return 'N/A';
+            }
+            return d3.format(',.2f')(d);
+          });
+
+          var data, lines = self.returnGraphOptions(c.id);
+          if (lines.length > 0) {
+            _.each(lines, function (val, key) {
+              c.options[key].values = val;
+            });
+          }
+          else {
+            c.options[0].values = [];
+          }
+          data = c.options;
+
+          self.chartData[c.id] = d3.select(c.id).append('svg')
+          .datum(data)
+          .transition().duration(1000)
+          .call(self.charts[c.id])
+          .each('start', function() {
+            window.setTimeout(function() {
+              d3.selectAll(c.id + ' *').each(function() {
+                if (this.__transition__) {
+                  this.__transition__.duration = 1;
+                }
+              });
+            }, 0);
+          });
+
+          nv.utils.windowResize(self.charts[c.id].update);
+          self.nvcharts.push(self.charts[c.id]);
+          
+          return self.charts[c.id];
+        });
+      });
+    },
+
+    returnGraphOptions: function(id) {
+      var arr = []; 
+      if (id === '#clusterData') {
+        //arr =  [this.graphData.data.sent, this.graphData.data.received];
+        arr = [
+          this.chartsOptions[0].options[0].values,
+          this.chartsOptions[0].options[1].values
+        ];
+      }
+      else if (id === '#clusterHttp') {
+        arr = [this.chartsOptions[1].options[0].values];
+      }
+      else if (id === '#clusterAverage') {
+        arr = [this.chartsOptions[2].options[0].values];
+      }
+      else {
+        arr = [];
+      }
+
+      return arr;
+    },
+
+    rerenderGraphs: function(input) {
+      var self = this, data, lines;
+      this.formatDataForGraph(input);
+
+      _.each(self.chartsOptions, function(c) {
+        lines = self.returnGraphOptions(c.id);
+
+        if (lines.length > 0) {
+          _.each(lines, function (val, key) {
+            c.options[key].values = val;
+          });
+        }
+        else {
+          c.options[0].values = [];
+        }
+        data = c.options;
+
+        //update nvd3 chart
+        if (data[0].values.length > 0) {
+          if (self.historyInit) {
+            if (self.charts[c.id]) {
+              self.charts[c.id].update();
+            }
+          }
+        }
+        
+      });
+    },
+
+    calcTotalHttp: function(object, pos) {
+      var sum = 0;
+      _.each(object, function(totalHttp) {
+        sum += totalHttp[pos];
+      });
+      return sum;
+    },
+
+    getCoordStatHistory: function(callback) {
+      var self = this, promises = [], historyUrl;
+
+      var merged = {
+        http: {}
+      };
+
+      var getHistory = function(url) {
+        return $.get(url, {count: self.statCollectCoord.size()}, null, 'json');
+      };
+
+      var mergeHistory = function(data) {
+
+
+        var onetime = ['times'];
+        var values = [
+          'physicalMemory',
+          'residentSizeCurrent',
+          'clientConnections15M',
+          'clientConnectionsCurrent'
+        ];
+        var http = [
+          'optionsPerSecond',
+          'putsPerSecond',
+          'headsPerSecond',
+          'postsPerSecond',
+          'getsPerSecond',
+          'deletesPerSecond',
+          'othersPerSecond',
+          'patchesPerSecond'
+        ];
+        var arrays = [
+          'bytesSentPerSecond',
+          'bytesReceivedPerSecond',
+          'avgRequestTime'
+        ];
+
+        var counter = 0, counter2;
+
+        _.each(data, function(stat) {
+          if (typeof stat === 'object') {
+            if (counter === 0) {
+              //one time value
+              _.each(onetime, function(value) {
+                merged[value] = stat[value];
+              });
+
+              //values
+              _.each(values, function(value) {
+                merged[value] = stat[value];
+              });
+
+              //http requests arrays
+              _.each(http, function(value) {
+                merged.http[value] = stat[value];
+              });
+
+              //arrays
+              _.each(arrays, function(value) {
+                merged[value] = stat[value];
+              });
+
+            }
+            else {
+              //values
+              _.each(values, function(value) {
+                merged[value] = merged[value] + stat[value];
+              });
+              //http requests arrays
+              _.each(http, function(value) {
+                  counter2 = 0;
+                  _.each(stat[value], function(x) {
+                    merged.http[value][counter] = merged.http[value][counter] + x;
+                    counter2++;
+                  });
+              });
+              _.each(arrays, function(value) {
+                counter2 = 0;
+                _.each(stat[value], function(x) {
+                  merged[value][counter] = merged[value][counter] + x;
+                  counter2++;
+                });
+              });
+            }
+          counter++;
+          }
+        });
+      };
+
+      this.statCollectCoord.each(function(coord) {
+        historyUrl = coord.url + '/short';
+        promises.push(getHistory(historyUrl));
+      });
+
+      $.when.apply($, promises).done(function() {
+        //wait until all data is here
+        var arr = [];
+        _.each(promises, function(stat) {
+          arr.push(stat.responseJSON);
+        });
+        mergeHistory(arr);
+        callback(merged);
+      });
+    }
+
+  });
 }());
 
 /*jshint browser: true */
@@ -25814,6 +26734,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     template: templateEngine.createTemplate("navigationView.ejs"),
+    templateSub: templateEngine.createTemplate("subNavigationView.ejs"),
 
     render: function () {
       var self = this;
@@ -25821,6 +26742,12 @@ window.ArangoUsers = Backbone.Collection.extend({
       $(this.el).html(this.template.render({
         currentDB: this.currentDB
       }));
+
+      //HEIKO
+      $("#subNavigationBar").html(this.templateSub.render({
+      }));
+      
+      //HEIKO REMOVE
       this.dbSelectionView.render($("#dbSelect"));
       this.notificationView.render($("#notificationBar"));
 
@@ -28402,11 +29329,11 @@ window.ArangoUsers = Backbone.Collection.extend({
       //init aql editor
       this.aqlEditor = ace.edit("aqlEditor");
       this.aqlEditor.getSession().setMode("ace/mode/aql");
-      this.aqlEditor.setFontSize("13px");
+      this.aqlEditor.setFontSize("10pt");
 
       this.bindParamAceEditor = ace.edit("bindParamAceEditor");
       this.bindParamAceEditor.getSession().setMode("ace/mode/json");
-      this.bindParamAceEditor.setFontSize("13px");
+      this.bindParamAceEditor.setFontSize("10pt");
 
       this.bindParamAceEditor.getSession().on('change', function() {
         try {
@@ -28986,6 +29913,13 @@ window.ArangoUsers = Backbone.Collection.extend({
           },
           error: function (resp) {
             try {
+
+              if (resp.statusText === 'Gone') {
+                arangoHelper.arangoNotification("Query", "Query execution aborted.");
+                self.removeOutputEditor(counter);
+                return;
+              }
+
               var error = JSON.parse(resp.responseText);
               if (error.errorMessage) {
                 if (error.errorMessage.match(/\d+:\d+/g) !== null) {
@@ -29004,7 +29938,8 @@ window.ArangoUsers = Backbone.Collection.extend({
               }
             }
             catch (e) {
-              arangoHelper.arangoError("Query", "Something went wrong.");
+              arangoHelper.arangoError("Query", "Successfully aborted.");
+              console.log(e);
               self.removeOutputEditor(counter);
             }
 
@@ -29264,6 +30199,593 @@ window.ArangoUsers = Backbone.Collection.extend({
     }
 
   });
+}());
+
+/*global window, $, Backbone, templateEngine, alert, _, d3, Dygraph, document */
+
+(function() {
+  "use strict";
+
+  window.ShowClusterView = Backbone.View.extend({
+    detailEl: '#modalPlaceholder',
+    el: "#content",
+    defaultFrame: 20 * 60 * 1000,
+    template: templateEngine.createTemplate("showCluster.ejs"),
+    modal: templateEngine.createTemplate("waitModal.ejs"),
+    detailTemplate: templateEngine.createTemplate("detailView.ejs"),
+
+    events: {
+      "change #selectDB"                : "updateCollections",
+      "change #selectCol"               : "updateShards",
+      "click .dbserver.success"         : "dashboard",
+      "click .coordinator.success"      : "dashboard"
+    },
+
+    replaceSVGs: function() {
+      $(".svgToReplace").each(function() {
+        var img = $(this);
+        var id = img.attr("id");
+        var src = img.attr("src");
+        $.get(src, function(d) {
+          var svg = $(d).find("svg");
+          svg.attr("id", id)
+          .attr("class", "icon")
+          .removeAttr("xmlns:a");
+          img.replaceWith(svg);
+        }, "xml");
+      });
+    },
+
+    updateServerTime: function() {
+      this.serverTime = new Date().getTime();
+    },
+
+    setShowAll: function() {
+      this.graphShowAll = true;
+    },
+
+    resetShowAll: function() {
+      this.graphShowAll = false;
+      this.renderLineChart();
+    },
+
+
+    initialize: function() {
+      this.interval = 10000;
+      this.isUpdating = false;
+      this.timer = null;
+      this.knownServers = [];
+      this.graph = undefined;
+      this.graphShowAll = false;
+      this.updateServerTime();
+      this.dygraphConfig = this.options.dygraphConfig;
+      this.dbservers = new window.ClusterServers([], {
+        interval: this.interval
+      });
+      this.coordinators = new window.ClusterCoordinators([], {
+        interval: this.interval
+      });
+      this.documentStore =  new window.arangoDocuments();
+      this.statisticsDescription = new window.StatisticsDescription();
+      this.statisticsDescription.fetch({
+        async: false
+      });
+      this.dbs = new window.ClusterDatabases([], {
+        interval: this.interval
+      });
+      this.cols = new window.ClusterCollections();
+      this.shards = new window.ClusterShards();
+      this.startUpdating();
+    },
+
+    listByAddress: function(callback) {
+      var byAddress = {};
+      var self = this;
+      this.dbservers.byAddress(byAddress, function(res) {
+        self.coordinators.byAddress(res, callback);
+      });
+    },
+
+    updateCollections: function() {
+      var self = this;
+      var selCol = $("#selectCol");
+      var dbName = $("#selectDB").find(":selected").attr("id");
+      if (!dbName) {
+        return;
+      }
+      var colName = selCol.find(":selected").attr("id");
+      selCol.html("");
+      this.cols.getList(dbName, function(list) {
+        _.each(_.pluck(list, "name"), function(c) {
+          selCol.append("<option id=\"" + c + "\">" + c + "</option>");
+        });
+        var colToSel = $("#" + colName, selCol);
+        if (colToSel.length === 1) {
+          colToSel.prop("selected", true);
+        }
+        self.updateShards();
+      });
+    },
+
+    updateShards: function() {
+      var dbName = $("#selectDB").find(":selected").attr("id");
+      var colName = $("#selectCol").find(":selected").attr("id");
+      this.shards.getList(dbName, colName, function(list) {
+        $(".shardCounter").html("0");
+        _.each(list, function(s) {
+          $("#" + s.server + "Shards").html(s.shards.length);
+        });
+      });
+    },
+
+    updateServerStatus: function(nextStep) {
+      var self = this;
+      var callBack = function(cls, stat, serv) {
+        var id = serv,
+          type, icon;
+        id = id.replace(/\./g,'-');
+        id = id.replace(/\:/g,'_');
+        icon = $("#id" + id);
+        if (icon.length < 1) {
+          // callback after view was unrendered
+          return;
+        }
+        type = icon.attr("class").split(/\s+/)[1];
+        icon.attr("class", cls + " " + type + " " + stat);
+        if (cls === "coordinator") {
+          if (stat === "success") {
+            $(".button-gui", icon.closest(".tile")).toggleClass("button-gui-disabled", false);
+          } else {
+            $(".button-gui", icon.closest(".tile")).toggleClass("button-gui-disabled", true);
+          }
+
+        }
+      };
+      this.coordinators.getStatuses(callBack.bind(this, "coordinator"), function() {
+        self.dbservers.getStatuses(callBack.bind(self, "dbserver"));
+        nextStep();
+      });
+    },
+
+    updateDBDetailList: function() {
+      var self = this;
+      var selDB = $("#selectDB");
+      var dbName = selDB.find(":selected").attr("id");
+      selDB.html("");
+      this.dbs.getList(function(dbList) {
+        _.each(_.pluck(dbList, "name"), function(c) {
+          selDB.append("<option id=\"" + c + "\">" + c + "</option>");
+        });
+        var dbToSel = $("#" + dbName, selDB);
+        if (dbToSel.length === 1) {
+          dbToSel.prop("selected", true);
+        }
+        self.updateCollections();
+      });
+    },
+
+    rerender : function() {
+      var self = this;
+      this.updateServerStatus(function() {
+        self.getServerStatistics(function() {
+          self.updateServerTime();
+          self.data = self.generatePieData();
+          self.renderPieChart(self.data);
+          self.renderLineChart();
+          self.updateDBDetailList();
+        });
+      });
+    },
+
+    render: function() {
+      this.knownServers = [];
+      delete this.hist;
+      var self = this;
+      this.listByAddress(function(byAddress) {
+        if (Object.keys(byAddress).length === 1) {
+          self.type = "testPlan";
+        } else {
+          self.type = "other";
+        }
+        self.updateDBDetailList();
+        self.dbs.getList(function(dbList) {
+          $(self.el).html(self.template.render({
+            dbs: _.pluck(dbList, "name"),
+            byAddress: byAddress,
+            type: self.type
+          }));
+          $(self.el).append(self.modal.render({}));
+          self.replaceSVGs();
+          /* this.loadHistory(); */
+          self.getServerStatistics(function() {
+            self.data = self.generatePieData();
+            self.renderPieChart(self.data);
+            self.renderLineChart();
+            self.updateDBDetailList();
+            self.startUpdating();
+          });
+        });
+      });
+    },
+
+    generatePieData: function() {
+      var pieData = [];
+      var self = this;
+
+      this.data.forEach(function(m) {
+        pieData.push({key: m.get("name"), value: m.get("system").virtualSize,
+          time: self.serverTime});
+      });
+
+      return pieData;
+    },
+
+    /*
+     loadHistory : function() {
+       this.hist = {};
+
+       var self = this;
+       var coord = this.coordinators.findWhere({
+         status: "ok"
+       });
+
+       var endpoint = coord.get("protocol")
+       + "://"
+       + coord.get("address");
+
+       this.dbservers.forEach(function (dbserver) {
+         if (dbserver.get("status") !== "ok") {return;}
+
+         if (self.knownServers.indexOf(dbserver.id) === -1) {
+           self.knownServers.push(dbserver.id);
+         }
+
+         var server = {
+           raw: dbserver.get("address"),
+           isDBServer: true,
+           target: encodeURIComponent(dbserver.get("name")),
+           endpoint: endpoint,
+           addAuth: window.App.addAuth.bind(window.App)
+         };
+       });
+
+       this.coordinators.forEach(function (coordinator) {
+         if (coordinator.get("status") !== "ok") {return;}
+
+         if (self.knownServers.indexOf(coordinator.id) === -1) {
+           self.knownServers.push(coordinator.id);
+         }
+
+         var server = {
+           raw: coordinator.get("address"),
+           isDBServer: false,
+           target: encodeURIComponent(coordinator.get("name")),
+           endpoint: coordinator.get("protocol") + "://" + coordinator.get("address"),
+           addAuth: window.App.addAuth.bind(window.App)
+         };
+       });
+     },
+     */
+
+    addStatisticsItem: function(name, time, requests, snap) {
+      var self = this;
+
+      if (! self.hasOwnProperty('hist')) {
+        self.hist = {};
+      }
+
+      if (! self.hist.hasOwnProperty(name)) {
+        self.hist[name] = [];
+      }
+
+      var h = self.hist[name];
+      var l = h.length;
+
+      if (0 === l) {
+        h.push({
+          time: time,
+          snap: snap,
+          requests: requests,
+          requestsPerSecond: 0
+        });
+      }
+      else {
+        var lt = h[l - 1].time;
+        var tt = h[l - 1].requests;
+
+        if (tt < requests) {
+          var dt = time - lt;
+          var ps = 0;
+
+          if (dt > 0) {
+            ps = (requests - tt) / dt;
+          }
+
+          h.push({
+            time: time,
+            snap: snap,
+            requests: requests,
+            requestsPerSecond: ps
+          });
+        }
+        /*
+        else {
+          h.times.push({
+            time: time,
+            snap: snap,
+            requests: requests,
+            requestsPerSecond: 0
+          });
+        }
+        */
+      }
+    },
+
+    getServerStatistics: function(nextStep) {
+      var self = this;
+      var snap = Math.round(self.serverTime / 1000);
+
+      this.data = undefined;
+
+      var statCollect = new window.ClusterStatisticsCollection();
+      var coord = this.coordinators.first();
+
+      // create statistics collector for DB servers
+      this.dbservers.forEach(function (dbserver) {
+        if (dbserver.get("status") !== "ok") {return;}
+
+        if (self.knownServers.indexOf(dbserver.id) === -1) {
+          self.knownServers.push(dbserver.id);
+        }
+
+        var stat = new window.Statistics({name: dbserver.id});
+
+        stat.url = coord.get("protocol") + "://"
+        + coord.get("address")
+        + "/_admin/clusterStatistics?DBserver="
+        + dbserver.get("name");
+
+        statCollect.add(stat);
+      });
+
+      // create statistics collector for coordinator
+      this.coordinators.forEach(function (coordinator) {
+        if (coordinator.get("status") !== "ok") {return;}
+
+        if (self.knownServers.indexOf(coordinator.id) === -1) {
+          self.knownServers.push(coordinator.id);
+        }
+
+        var stat = new window.Statistics({name: coordinator.id});
+
+        stat.url = coordinator.get("protocol") + "://"
+        + coordinator.get("address")
+        + "/_admin/statistics";
+
+        statCollect.add(stat);
+      });
+
+      var cbCounter = statCollect.size();
+
+      this.data = [];
+
+      var successCB = function(m) {
+        cbCounter--;
+        var time = m.get("time");
+        var name = m.get("name");
+        var requests = m.get("http").requestsTotal;
+
+        self.addStatisticsItem(name, time, requests, snap);
+        self.data.push(m);
+        if (cbCounter === 0) {
+          nextStep();
+        }
+      };
+      var errCB = function() {
+        cbCounter--;
+        if (cbCounter === 0) {
+          nextStep();
+        }
+      };
+      // now fetch the statistics
+      statCollect.fetch(successCB, errCB);
+    },
+
+    renderPieChart: function(dataset) {
+      var w = $("#clusterGraphs svg").width();
+      var h = $("#clusterGraphs svg").height();
+      var radius = Math.min(w, h) / 2; //change 2 to 1.4. It's hilarious.
+      // var color = d3.scale.category20();
+      var color = this.dygraphConfig.colors;
+
+      var arc = d3.svg.arc() //each datapoint will create one later.
+      .outerRadius(radius - 20)
+      .innerRadius(0);
+      var pie = d3.layout.pie()
+      .sort(function (d) {
+        return d.value;
+      })
+      .value(function (d) {
+        return d.value;
+      });
+      d3.select("#clusterGraphs").select("svg").remove();
+      var pieChartSvg = d3.select("#clusterGraphs").append("svg")
+      // .attr("width", w)
+      // .attr("height", h)
+      .attr("class", "clusterChart")
+      .append("g") //someone to transform. Groups data.
+      .attr("transform", "translate(" + w / 2 + "," + ((h / 2) - 10) + ")");
+
+    var arc2 = d3.svg.arc()
+    .outerRadius(radius-2)
+    .innerRadius(radius-2);
+    var slices = pieChartSvg.selectAll(".arc")
+    .data(pie(dataset))
+    .enter().append("g")
+    .attr("class", "slice");
+        slices.append("path")
+    .attr("d", arc)
+    .style("fill", function (item, i) {
+      return color[i % color.length];
+    })
+    .style("stroke", function (item, i) {
+      return color[i % color.length];
+    });
+        slices.append("text")
+    .attr("transform", function(d) { return "translate(" + arc.centroid(d) + ")"; })
+    // .attr("dy", "0.35em")
+    .style("text-anchor", "middle")
+    .text(function(d) {
+      var v = d.data.value / 1024 / 1024 / 1024;
+      return v.toFixed(2); });
+
+    slices.append("text")
+    .attr("transform", function(d) { return "translate(" + arc2.centroid(d) + ")"; })
+    // .attr("dy", "1em")
+    .style("text-anchor", "middle")
+    .text(function(d) { return d.data.key; });
+  },
+
+  renderLineChart: function() {
+    var self = this;
+
+    var interval = 60 * 20;
+    var data = [];
+    var hash = [];
+    var t = Math.round(new Date().getTime() / 1000) - interval;
+    var ks = self.knownServers;
+    var f = function() {
+      return null;
+    };
+
+    var d, h, i, j, tt, snap;
+
+    for (i = 0;  i < ks.length;  ++i) {
+      h = self.hist[ks[i]];
+
+      if (h) {
+        for (j = 0;  j < h.length;  ++j) {
+          snap = h[j].snap;
+
+          if (snap < t) {
+            continue;
+          }
+
+          if (! hash.hasOwnProperty(snap)) {
+            tt = new Date(snap * 1000);
+
+            d = hash[snap] = [ tt ].concat(ks.map(f));
+          }
+          else {
+            d = hash[snap];
+          }
+
+          d[i + 1] = h[j].requestsPerSecond;
+        }
+      }
+    }
+
+    data = [];
+
+    Object.keys(hash).sort().forEach(function (m) {
+      data.push(hash[m]);
+    });
+
+    var options = this.dygraphConfig.getDefaultConfig('clusterRequestsPerSecond');
+    options.labelsDiv = $("#lineGraphLegend")[0];
+    options.labels = [ "datetime" ].concat(ks);
+
+    self.graph = new Dygraph(
+      document.getElementById('lineGraph'),
+      data,
+      options
+    );
+  },
+
+  stopUpdating: function () {
+    window.clearTimeout(this.timer);
+    delete this.graph;
+    this.isUpdating = false;
+  },
+
+  startUpdating: function () {
+    if (this.isUpdating) {
+      return;
+    }
+
+    this.isUpdating = true;
+
+    var self = this;
+
+    this.timer = window.setInterval(function() {
+      self.rerender();
+    }, this.interval);
+  },
+
+
+  dashboard: function(e) {
+    this.stopUpdating();
+
+    var tar = $(e.currentTarget);
+    var serv = {};
+    var cur;
+    var coord;
+
+    var ip_port = tar.attr("id");
+    ip_port = ip_port.replace(/\-/g,'.');
+    ip_port = ip_port.replace(/\_/g,':');
+    ip_port = ip_port.substr(2);
+
+    serv.raw = ip_port;
+    serv.isDBServer = tar.hasClass("dbserver");
+
+    if (serv.isDBServer) {
+      cur = this.dbservers.findWhere({
+        address: serv.raw
+      });
+      coord = this.coordinators.findWhere({
+        status: "ok"
+      });
+      serv.endpoint = coord.get("protocol")
+      + "://"
+      + coord.get("address");
+    }
+    else {
+      cur = this.coordinators.findWhere({
+        address: serv.raw
+      });
+      serv.endpoint = cur.get("protocol")
+      + "://"
+      + cur.get("address");
+    }
+
+    serv.target = encodeURIComponent(cur.get("name"));
+    window.App.serverToShow = serv;
+    window.App.dashboard();
+  },
+
+  getCurrentSize: function (div) {
+    if (div.substr(0,1) !== "#") {
+      div = "#" + div;
+    }
+    var height, width;
+    $(div).attr("style", "");
+    height = $(div).height();
+    width = $(div).width();
+    return {
+      height: height,
+      width: width
+    };
+  },
+
+  resize: function () {
+    var dimensions;
+    if (this.graph) {
+      dimensions = this.getCurrentSize(this.graph.maindiv_.id);
+      this.graph.resize(dimensions.width, dimensions.height);
+    }
+  }
+});
 }());
 
 /*jshint browser: true */
@@ -31182,8 +32704,13 @@ window.ArangoUsers = Backbone.Collection.extend({
   "use strict";
 
   window.Router = Backbone.Router.extend({
+
+    toUpdate: [],
+    dbServers: [],
+    isCluster: false,
+
     routes: {
-      "": "dashboard",
+      "": "cluster",
       "dashboard": "dashboard",
       "collections": "collections",
       "new": "newCollection",
@@ -31202,6 +32729,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       "graph/:name": "showGraph",
       "userManagement": "userManagement",
       "userProfile": "userProfile",
+      "cluster": "cluster",
       "logs": "logs",
       "test": "test"
     },
@@ -31269,6 +32797,19 @@ window.ArangoUsers = Backbone.Collection.extend({
 
         this.arangoCollectionsStore = new window.arangoCollections();
         this.arangoDocumentStore = new window.arangoDocument();
+
+        //Cluster 
+        this.coordinatorCollection = new window.ClusterCoordinators();
+        this.coordinatorCollection.fetch({
+          error: function() {
+            self.isCluster = false;
+          },
+          success: function() {
+            self.isCluster = true;
+            self.fetchDBS();
+          }
+        });
+
         arangoHelper.setDocumentStore(this.arangoDocumentStore);
 
         this.arangoCollectionsStore.fetch();
@@ -31304,6 +32845,34 @@ window.ArangoUsers = Backbone.Collection.extend({
         self.handleResize();
       });
 
+    },
+
+    cluster: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.cluster.bind(this));
+        return;
+      }
+      this.clusterView = new window.ClusterView({
+        coordinators: this.coordinatorCollection,
+        dbServers: this.dbServers
+      });
+      this.clusterView.render();
+    },
+
+    addAuth: function (xhr) {
+      var u = this.clusterPlan.get("user");
+      if (!u) {
+        xhr.abort();
+        if (!this.isCheckingUser) {
+          this.requestAuth();
+        }
+        return;
+      }
+      var user = u.name;
+      var pass = u.passwd;
+      var token = user.concat(":", pass);
+      xhr.setRequestHeader('Authorization', "Basic " + btoa(token));
     },
 
     logs: function (initialized) {
@@ -31681,7 +33250,32 @@ window.ArangoUsers = Backbone.Collection.extend({
         });
       }
       this.userManagementView.render(true);
+    },
+    
+    fetchDBS: function() {
+      var self = this;
+
+      this.coordinatorCollection.each(function(coordinator) {
+        self.dbServers.push(
+          new window.ClusterServers([], {
+            host: coordinator.get('address') 
+          })
+        );
+      });           
+      _.each(this.dbServers, function(dbservers) {
+        dbservers.fetch();
+      });
+    },
+
+    getNewRoute: function(host) {
+      return "http://" + host;
+    },
+
+    registerForUpdate: function(o) {
+      this.toUpdate.push(o);
+      o.updateUrl();
     }
+
   });
 
 }());

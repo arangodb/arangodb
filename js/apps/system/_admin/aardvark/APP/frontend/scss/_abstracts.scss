@@ -22,10 +22,9 @@
 }
 
 %fixedbar {
-  background-color: $c-lightgreen-2-transp-bg;
+  //background-color: $c-lightgreen-2-transp-bg;
   color: $c-white;
   left: 0;
-  position: fixed;
   right: 0;
   width: 100%;
   z-index: 1000;
@@ -64,6 +63,15 @@
   &:hover,
   &:focus {
     background-color: $c-positive-hover;
+  }
+}
+
+%info {
+  background-color: $c-info;
+
+  &:hover,
+  &:focus {
+    background-color: $c-info-hover;
   }
 }
 

@@ -1,12 +1,25 @@
+html {
+  height: 100%;
+}
+
 body {
-  background: $c-lightgreen-2-bg !important;
+  //background: $c-lightgreen-2-bg !important;
+  background: none;
   color: $c-body-color;
   display: block;
-  font-family: 'Open Sans', sans-serif !important;
+  font-family: 'Lato', sans-serif !important;
   font-size: 14px;
   font-weight: 400;
+  height: 100%;
   line-height: 20px;
   margin: 0;
+
+  > .bodyWrapper {
+    background-image: linear-gradient(to bottom, #e9eae1 0%, #fafbfc 100%);
+    height: 100%;
+    margin: 0 auto -42px;
+    min-height: 100%;
+  }
 }
 
 

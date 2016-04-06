@@ -1,0 +1,72 @@
+.subnavmenu {
+
+  background-color: $c-white;
+  height: auto;
+
+  ul {
+
+    list-style: none;
+    margin: 0;
+
+    &.left {
+      float: left;
+      width: 120px;
+
+      li {
+        float: left;
+        padding: 0 10px 0 0;
+      }
+    }
+
+    &.right {
+      float: right;
+      width: 80%;
+
+      li {
+        float: right;
+        padding: 0 0 0 40px;
+      }
+    }
+
+    li {
+      font-size: 9pt;
+      line-height: 30px;
+      margin-bottom: 5px;
+      margin-top: 5px;
+
+      &.active {
+        a {
+          color: rgba(51, 51, 51, .6);
+        }
+      }
+
+      a {
+        color: $c-black;
+        text-transform: uppercase;
+      }
+
+    }
+  }
+
+  .health-info,
+  .db-info,
+  .db-state,
+  .health-state {
+    font-weight: 600;
+  }
+
+  .health-info,
+  .db-info,
+  .db-icon {
+    color: rgba(0, 0, 0, .64);
+  }
+
+  .health-state {
+    color: $c-positive;
+  }
+
+  .health-icon {
+    color: $c-positive;
+  }
+
+}

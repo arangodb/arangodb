@@ -1,8 +1,6 @@
 .footer {
-  bottom: 0;
   font-size: 14px;
   left: 0;
-  position: fixed;
   right: 0;
   text-align: center;
   z-index: 1000;
@@ -10,6 +8,9 @@
 
 footer.footer {
   @extend %fixedbar;
+  //background-color: $c-white-transp;
+  //background-color: rgba(219, 226, 230, 1);
+  //border-top: 1px solid $c-navbar-border;
   bottom: 0;
   height: 40px;
 

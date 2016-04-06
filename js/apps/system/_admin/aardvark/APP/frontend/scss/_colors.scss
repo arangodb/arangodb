@@ -8,7 +8,8 @@ $c-lightgreen-2-transp-bg: rgba(245, 248, 240, .95);
 
 $c-pong-green: rgb(140, 219, 139);
 
-$c-positive: #8aa051;
+//$c-positive: #8aa051;
+$c-positive: rgb(125, 188, 66);
 $c-positive-hover: #788f3d;
 
 $c-table-odd-color: rgba(104, 103, 102, .05);
@@ -39,6 +40,8 @@ $c-header-btn-border: #fff;
 
 $c-black: #000;
 $c-white: #fff;
+$c-white-transp: rgba(255, 255, 255, .85);
+$c-yellow: #ff0;
 
 $c-c2grey: #c2c2c2;
 
@@ -70,6 +73,7 @@ $c-odd: #d9d9d9;
 $c-even: #fff;
 
 $c-navbar-spacer: #a0a0a0;
+$c-navbar-border: rgba(140,138,137,.25);
 $c-navbar-spacer-shadow: #c8c8c8;
 
 $c-btn-inverse: #736b68;
@@ -91,6 +95,9 @@ $c-invalid-red: rgba(234, 23, 23, .6);
 
 $c-info-blue: #5bc0de;
 $c-blue: #00f;
+
+$c-info: #5bc0de;
+$c-info-hover: #5bc0de;
 
 $c-cluster-button-green: #617e2b;
 $c-cluster-button-green-hover: #8ba142;

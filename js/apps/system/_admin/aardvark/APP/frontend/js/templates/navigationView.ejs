@@ -1,13 +1,18 @@
 <script id="navigationView.ejs" type="text/template">
   <ul class="navlist arango-collection-ul" id="arangoCollectionUl">
+    <li class="collections-menu"><a id="cluster" class="tab" href="#collections">Cluster</a></li>
+    <li class="collections-menu"><a id="nodes" class="tab" href="#collections">Nodes</a></li>
+    <li class="navbar-spacer big"></li>
     <li id="dbSelect" class="dropdown databases-menu"></li>
     <li class="collections-menu"><a id="collections" class="tab" href="#collections">Collections</a></li>
-    <li class="demo-menu"><a id="demo" class="tab" href="#demo">Demo</a></li>
+    <li class="query-menu"><a id="query" class="tab" href="#query">Queries</a></li>
     <li class="graph-menu"><a id="graph" class="tab" href="#graph">Graphs</a></li>
     <li class="applications-menu">
       <a id="applications" class="tab" href="#applications">Services</a>
     </li>
-    <li class="query-menu"><a id="query" class="tab" href="#query">AQL Editor</a></li>
+    <li class="users-menu"><a id="users" class="tab" href="#manage">Users</a></li>
+    <li class="query-menu"><a id="settings" class="tab" href="#settings"><i class="fa fa-cog"></i></a></li>
+    <!--
     <li class="navbar-spacer big"></li>
     <li class="dropdown tools-menu" id="toolsDropdown">
       <a href="#" class="tab" id="tools">Tools <b class="caret"></b></a>
@@ -52,6 +57,7 @@
         <li class="dropdown-item"><a href="https://www.arangodb.com" target="_blank">ArangoDB.com</a></li>
       </ul>
     </li>
+  -->
   </ul>
 
   <select id="arangoCollectionSelect" class="arango-collection-select">
