@@ -33,22 +33,31 @@ module.exports = function jwtStorage(cfg) {
   const expiry = (cfg.expiry || 60) * 60 * 1000;
   return {
     fromClient(sid) {
-      const session = crypto.jwtDecode(cfg.secret, sid, cfg.verify === false);
-      if (session.exp < Date.now()) {
+      const token = crypto.jwtDecode(cfg.secret, sid, cfg.verify === false);
+      if (token.exp < Date.now()) {
         return null;
       }
-      return session.payload;
-    },
-    forClient(payload) {
-      const session = {
-        payload: payload,
-        exp: Date.now() + expiry,
-        iat: Date.now()
+      return {
+        uid: token.uid,
+        created: token.iat,
+        data: token.payload
       };
-      return crypto.jwtEncode(cfg.secret, session, cfg.algorithm);
+    },
+    forClient(session) {
+      const token = {
+        uid: session.uid,
+        iat: session.created,
+        payload: session.data,
+        exp: Date.now() + expiry
+      };
+      return crypto.jwtEncode(cfg.secret, token, cfg.algorithm);
     },
     new() {
-      return {};
+      return {
+        uid: null,
+        created: Date.now(),
+        data: null
+      };
     }
   };
 };

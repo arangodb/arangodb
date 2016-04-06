@@ -1,3 +1,4 @@
+/*global aqlQuery */
 'use strict';
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -33,15 +34,37 @@ module.exports = function collectionStorage(cfg) {
   if (!cfg) {
     cfg = {};
   }
+  const pruneExpired = Boolean(cfg.pruneExpired);
+  const expiry = (cfg.expiry || 60) * 60 * 1000;
   const collection = (
     typeof cfg.collection === 'string'
     ? db._collection(cfg.collection)
     : cfg.collection
   );
   return {
+    prune() {
+      return db._query(aqlQuery`
+        FOR session IN ${collection}
+        FILTER session.expires < DATE_NOW()
+        REMOVE session IN ${collection}
+        RETURN OLD._key
+      `).toArray();
+    },
     fromClient(sid) {
       try {
-        return collection.document(sid);
+        const session = collection.document(sid);
+        if (session.expires < Date.now()) {
+          if (pruneExpired) {
+            collection.remove(session);
+          }
+          return null;
+        }
+        return {
+          _key: session._key,
+          uid: session.uid,
+          created: session.created,
+          data: session.data
+        };
       } catch (e) {
         if (e.isArangoError && e.errorNum === NOT_FOUND) {
           return null;
@@ -50,16 +73,28 @@ module.exports = function collectionStorage(cfg) {
       }
     },
     forClient(session) {
-      const key = session._key;
-      if (!key) {
-        const meta = collection.save(session);
+      if (!session) {
+        return null;
+      }
+      const payload = {
+        uid: session.uid,
+        created: session.created,
+        expires: Date.now() + expiry,
+        data: session.data
+      };
+      if (!session._key) {
+        const meta = collection.save(payload);
         return meta._key;
       }
-      collection.replace(key, session);
-      return key;
+      collection.replace(session._key, payload);
+      return session._key;
     },
     new() {
-      return {};
+      return {
+        uid: null,
+        created: Date.now(),
+        data: null
+      };
     }
   };
 };
