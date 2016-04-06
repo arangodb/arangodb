@@ -67,7 +67,7 @@ module.exports = function sessionMiddleware(cfg) {
   return {
     config: {
       storage: storage,
-      transports: transports
+      transport: transports
     },
     register() {
       return function (req, res, next) {
