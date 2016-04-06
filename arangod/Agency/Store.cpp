@@ -75,7 +75,7 @@ Node::~Node() {}
 // Get slice from buffer pointer
 VPackSlice Node::slice() const {
   return (_value.size()==0) ?
-    VPackSlice("\x00",&Options::Defaults):VPackSlice(_value.data());
+    VPackSlice("\x00a",&Options::Defaults):VPackSlice(_value.data());
 }
 
 // Get name of this node
@@ -447,7 +447,6 @@ bool Node::applies (VPackSlice const& slice) {
 }
 
 void Node::toBuilder (Builder& builder) const {
-  
   try {
     if (type()==NODE) {
       VPackObjectBuilder guard(&builder);
@@ -460,6 +459,7 @@ void Node::toBuilder (Builder& builder) const {
         builder.add(slice());
       }
     }
+    
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
   }
@@ -481,7 +481,7 @@ std::ostream& Node::print (std::ostream& o) const {
     for (auto const& i : _children)
       o << *(i.second);
   } else {
-    o << ((slice().type() == ValueType::None) ? "NONE" : slice().toJson());
+    o << ((slice().isNone()) ? "NONE" : slice().toJson());
     if (_ttl != std::chrono::system_clock::time_point()) {
       o << " ttl! ";
     }
@@ -633,15 +633,27 @@ bool Store::read (VPackSlice const& query, Builder& ret) const {
   
   // Create response tree 
   Node copy("copy");
-  for (auto i = query_strs.begin(); i != query_strs.end(); ++i) {
+  for (auto const path :  query_strs) {
     try {
-      copy(*i) = (*this)(*i);
+      copy(path) = (*this)(path);
     } catch (StoreException const&) {
-      copy(*i) = VPackSlice("\x00a",&Options::Defaults);
+      std::vector<std::string> pv = split(path,'/');
+      while (!pv.empty()) {
+        std::string end = pv.back();
+        pv.pop_back();
+        copy(pv).removeChild(end);
+        try {
+          (*this)(pv);
+          break;
+        } catch(...) {}
+      }
+      if (copy(pv).type() == LEAF && copy(pv).slice().isNone()) {
+        copy(pv) = VPackSlice("\x00a",&Options::Defaults);
+      }
     }
   }
 
-  std::cout << copy << std::endl;
+  // Into result builder
   copy.toBuilder(ret);
   
   return success;
