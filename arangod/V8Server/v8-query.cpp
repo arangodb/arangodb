@@ -368,7 +368,7 @@ static void JS_ChecksumCollection(
   TRI_document_collection_t* document = trx.documentCollection();
   std::string const revisionId = std::to_string(document->_info.revision());
   uint64_t hash = 0;
-
+        
   trx.invokeOnAllElements(col->_name, [&hash, &withData, &withRevisions](TRI_doc_mptr_t const* mptr) {
     VPackSlice const slice(mptr->vpack());
 
@@ -398,10 +398,10 @@ static void JS_ChecksumCollection(
         }
 
         localHash ^= it.key.hash(seed) ^ 0xba5befd00d; 
-        localHash ^= it.value.normalizedHash(seed) ^ 0xf00ba44ba5; 
+        localHash += it.value.normalizedHash(seed) ^ 0xd4129f526421; 
       }
     }
-
+    
     hash ^= localHash;
     return true;
   });
@@ -413,7 +413,7 @@ static void JS_ChecksumCollection(
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   result->Set(TRI_V8_ASCII_STRING("checksum"), TRI_V8_STD_STRING(hashString));
   result->Set(TRI_V8_ASCII_STRING("revision"), TRI_V8_STD_STRING(revisionId));
-
+    
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
