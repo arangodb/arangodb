@@ -297,6 +297,8 @@ void Node::notifyObservers () const {
   
 }
 
+
+// Apply slice to this node
 bool Node::applies (VPackSlice const& slice) {
 
   if (slice.type() == ValueType::Object) {
@@ -312,6 +314,7 @@ bool Node::applies (VPackSlice const& slice) {
         if (oper == "delete") {
           return _parent->removeChild(_node_name);
         } else if (oper == "set") { //
+          
           if (!slice.hasKey("new")) {
             LOG_TOPIC(WARN, Logger::AGENCY) << "Operator set without new value";
             LOG_TOPIC(WARN, Logger::AGENCY) << slice.toJson();
@@ -456,7 +459,7 @@ void Node::toBuilder (Builder& builder) const {
       builder.add(slice());
     }
   } catch (std::exception const& e) {
-    LOG(FATAL) << e.what();
+    LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
   }
   
 }
@@ -468,7 +471,9 @@ std::ostream& Node::print (std::ostream& o) const {
       par = par->_parent;
       o << "  ";
   }
+
   o << _node_name << " : ";
+
   if (type() == NODE) {
     o << std::endl;
     for (auto const& i : _children)
@@ -480,16 +485,13 @@ std::ostream& Node::print (std::ostream& o) const {
     }
     o << std::endl;
   }
+
   if (_time_table.size()) {
     for (auto const& i : _time_table) {
       o << i.second.get() << std::endl;
     }
   }
-/*  if (_table_time.size()) {
-    for (auto const& i : _table_time) {
-      o << i.first.get() << std::endl;
-    }
-    }*/
+
   return o;
 }
 
@@ -540,8 +542,8 @@ std::vector<bool> Store::apply( std::vector<VPackSlice> const& queries) {
 // Check precondition
 bool Store::check (VPackSlice const& slice) const {
   if (slice.type() != VPackValueType::Object) {
-    LOG_TOPIC(WARN, Logger::AGENCY) << "Cannot check precondition: "
-                                    << slice.toJson();
+    LOG_TOPIC(WARN, Logger::AGENCY)
+      << "Cannot check precondition: " << slice.toJson();
     return false;
   }
   for (auto const& precond : VPackObjectIterator(slice)) {
@@ -585,7 +587,7 @@ bool Store::check (VPackSlice const& slice) const {
 }
 
 // Read queries into result
-std::vector<bool> Store::read (query_t const& queries, query_t& result) const { // list of list of paths
+std::vector<bool> Store::read (query_t const& queries, query_t& result) const { 
   std::vector<bool> success;
   MUTEX_LOCKER(storeLocker, _storeLock);
   if (queries->slice().type() == VPackValueType::Array) {

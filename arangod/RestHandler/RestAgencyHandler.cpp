@@ -67,17 +67,21 @@ inline HttpHandler::status_t RestAgencyHandler::reportTooManySuffices() {
 inline HttpHandler::status_t RestAgencyHandler::reportUnknownMethod() {
   LOG_TOPIC(WARN, Logger::AGENCY) << "Public REST interface has no method "
                                   << _request->suffix()[0];
-  generateError(GeneralResponse::ResponseCode::NOT_FOUND, 404);
+  generateError(GeneralResponse::ResponseCode::NOT_FOUND, 405);
   return HttpHandler::status_t(HANDLER_DONE);
 }
 
 void RestAgencyHandler::redirectRequest(id_t leaderId) {
-  std::string rendpoint = _agent->config().end_points.at(leaderId);
-  rendpoint = rendpoint.substr(6, rendpoint.size() - 6);
-  rendpoint = std::string("http://" + rendpoint + _request->requestPath());
+
+  std::shared_ptr<Endpoint> ep (
+    Endpoint::clientFactory (_agent->config().end_points.at(leaderId)));
+  std::stringstream url;
+  url << ep->transport() << "://" << ep->hostAndPort()
+      << _request->requestPath();
+  
   createResponse(GeneralResponse::ResponseCode::TEMPORARY_REDIRECT);
   static std::string const location = "location";
-  _response->setHeaderNC(location, rendpoint);
+  _response->setHeaderNC(location, url.str());
 }
 
 HttpHandler::status_t RestAgencyHandler::handleStores () {
