@@ -1422,8 +1422,6 @@ printShell.limitString = 80;
 /// @brief flatten
 ////////////////////////////////////////////////////////////////////////////////
 
-var hasOwnProperty = Function.prototype.call.bind(Object.prototype.hasOwnProperty);
-
 exports.flatten = function(obj, seen) {
   if (!obj || (typeof obj !== 'object' && typeof obj !== 'function')) {
     return obj;
