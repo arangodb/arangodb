@@ -3517,17 +3517,20 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
-  // find and load collection given by name or identifier
-  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
-                                          shard.copyString(), TRI_TRANSACTION_WRITE);
-  int res = trx.begin();
-  if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
-                  "could not start transaction");
+  auto col = TRI_LookupCollectionByNameVocBase(_vocbase, shard.copyString().c_str());
+  if (col == nullptr) {
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                  "did not find collection");
     return;
   }
 
-  TRI_document_collection_t* docColl = trx.documentCollection();
+  TRI_document_collection_t* docColl = col->_collection;
+  if (docColl == nullptr) {
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED,
+                  "collection not loaded");
+    return;
+  }
+
   TRI_ASSERT(docColl != nullptr);
   docColl->followers()->add(followerId.copyString());
 
