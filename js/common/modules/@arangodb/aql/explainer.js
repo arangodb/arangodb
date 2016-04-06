@@ -370,8 +370,16 @@ function processQuery (query, explain) {
     maxSiteLen = 0,
     maxIdLen = String("Id").length,
     maxEstimateLen = String("Est.").length,
-    plan = explain.plan,
+    plan = explain.plan;
+
+
+  var isOnServer = (typeof ArangoClusterComm === "object");
+  var cluster;
+  if (isOnServer) {
     cluster = require("@arangodb/cluster");
+  } else {
+    cluster = {};
+  }
   
   var recursiveWalk = function (n, level) {
     n.forEach(function(node) {

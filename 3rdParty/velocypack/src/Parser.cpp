@@ -106,11 +106,16 @@ int Parser::skipWhiteSpace(char const* err) {
     }
   }
   size_t remaining = _size - _pos;
-  size_t count = JSONSkipWhiteSpace(_start + _pos, remaining);
-  _pos += count;
-  if (count < remaining) {
-    return static_cast<int>(_start[_pos]);
+  if (remaining >= 16) {
+    size_t count = JSONSkipWhiteSpace(_start + _pos, remaining - 15);
+    _pos += count;
   }
+  do {
+    if (!isWhiteSpace(_start[_pos])) {
+      return static_cast<int>(_start[_pos]);
+    }
+    _pos++;
+  } while (_pos < _size);
   throw Exception(Exception::ParseError, err);
 }
 
@@ -231,11 +236,16 @@ void Parser::parseString() {
     if (remainder >= 16) {
       _b->reserveSpace(remainder);
       size_t count;
+      // Note that the SSE4.2 accelerated string copying functions might
+      // peek up to 15 bytes over the given end, because they use 128bit
+      // registers. Therefore, we have to subtract 15 from remainder
+      // to be on the safe side. Further bytes will be processed below.
       if (options->validateUtf8Strings) {
         count = JSONStringCopyCheckUtf8(_b->_start + _b->_pos, _start + _pos,
-                                        remainder);
+                                        remainder - 15);
       } else {
-        count = JSONStringCopy(_b->_start + _b->_pos, _start + _pos, remainder);
+        count = JSONStringCopy(_b->_start + _b->_pos, _start + _pos,
+                               remainder - 15);
       }
       _pos += count;
       _b->_pos += count;
@@ -478,14 +488,14 @@ void Parser::parseObject() {
     } else {
       parseString();
       if (options->attributeExcludeHandler->shouldExclude(
-              Slice(_b->_start + lastPos, options), _nesting)) {
+              Slice(_b->_start + lastPos), _nesting)) {
         excludeAttribute = true;
       }
     }
 
     if (!excludeAttribute && options->attributeTranslator != nullptr) {
       // check if a translation for the attribute name exists
-      Slice key(_b->_start + lastPos, options);
+      Slice key(_b->_start + lastPos);
 
       if (key.isString()) {
         ValueLength keyLength;
@@ -498,7 +508,7 @@ void Parser::parseObject() {
           // and simply overwrite the existing key with the numeric translation
           // id
           _b->_pos = lastPos;
-          _b->addUInt(Slice(translated, options).getUInt());
+          _b->addUInt(Slice(translated).getUInt());
         }
       }
     }
