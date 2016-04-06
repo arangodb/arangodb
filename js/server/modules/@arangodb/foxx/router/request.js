@@ -141,7 +141,7 @@ module.exports = class SyntheticRequest {
   // idiosyncratic
 
   params(name) {
-    if (hasOwnProperty(this.pathParams, name)) {
+    if (hasOwnProperty.call(this.pathParams, name)) {
       return this.pathParams[name];
     }
     return this.queryParams[name];
