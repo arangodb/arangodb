@@ -199,6 +199,11 @@ module.exports = class FoxxService {
               body.exception = String(err);
               body.stacktrace = err.stack;
             }
+            if (error.extra) {
+              Object.keys(error.extra).forEach(function (key) {
+                body[key] = error.extra[key];
+              });
+            }
             res.responseCode = error.statusCode;
             res.contentType = 'application/json';
             res.body = JSON.stringify(body);
