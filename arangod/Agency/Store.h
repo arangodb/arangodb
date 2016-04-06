@@ -64,8 +64,7 @@ enum NODE_EXCEPTION {PATH_NOT_FOUND};
 class Node;
 
 typedef std::chrono::system_clock::time_point TimePoint;
-typedef std::map<TimePoint, std::shared_ptr<Node>> TimeTable;
-typedef std::map<std::shared_ptr<Node>, TimePoint> TableTime;
+typedef std::multimap<TimePoint, std::shared_ptr<Node>> TimeTable;
 
 /// @brief Simple tree implementation
 class Node {
@@ -104,29 +103,24 @@ public:
   /// @brief Type of this node (LEAF / NODE)
   NodeType type() const;
 
-  /// @brief Get child specified by name
-  Node& operator [](std::string name);
-  /// @brief Get child specified by name
-  Node const& operator [](std::string name) const;
-
   /// @brief Get node specified by path vector  
-  Node& operator ()(std::vector<std::string>& pv);
+  Node& operator ()(std::vector<std::string> const& pv);
   /// @brief Get node specified by path vector  
-  Node const& operator ()(std::vector<std::string>& pv) const;
+  Node const& operator ()(std::vector<std::string> const& pv) const;
   
   /// @brief Get node specified by path string  
   Node& operator ()(std::string const& path);
   /// @brief Get node specified by path string  
   Node const& operator ()(std::string const& path) const;
 
-  /// @brief Remove node at absolut path
-  bool remove (std::string const& path);
-
   /// @brief Remove child by name
   bool removeChild (std::string const& key);
 
   /// @brief Remove this node and below from tree
   bool remove();
+
+  /// @brief Get root node
+  Node const& root() const;
 
   /// @brief Get root node
   Node& root();
@@ -166,7 +160,7 @@ protected:
   Node* _parent;
   Children _children;
   TimeTable _time_table;
-  TableTime _table_time;
+  TimePoint _ttl;
   Buffer<uint8_t> _value;
   std::vector<std::string> _observers;
   std::string _node_name;
@@ -223,13 +217,13 @@ private:
   bool check (arangodb::velocypack::Slice const&) const;
 
   /// @brief Clear entries, whose time to live has expired
-  void clearTimeTable ();
+  query_t clearTimeTable () const;
 
   /// @brief Run thread
   void run () override final;
 
   /// @brief Condition variable guarding removal of expired entries
-  arangodb::basics::ConditionVariable _cv;
+  mutable arangodb::basics::ConditionVariable _cv;
 
   /// @brief Read/Write mutex on database
   mutable arangodb::Mutex _storeLock;

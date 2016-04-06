@@ -108,38 +108,38 @@ id_t Agent::leaderID () const {
   return _constituent.leaderID();
 }
 
-//  Are we leading?
+// Are we leading?
 bool Agent::leading() const {
   return _constituent.leading();
 }
 
-//  Persist term and id we vote for
+// Persist term and id we vote for
 void Agent::persist(term_t t, id_t i) {
 //  _state.persist(t, i);
 }
 
-//  Waits here for confirmation of log's commits up to index
-bool Agent::waitFor (index_t index, duration_t timeout) {
+// Waits here for confirmation of log's commits up to index.
+// Timeout in seconds
+bool Agent::waitFor (index_t index, double timeout) {
 
   if (size() == 1) // single host agency
     return true;
     
   CONDITION_LOCKER(guard, _rest_cv);
-  auto start = std::chrono::system_clock::now();
 
   // Wait until woken up through AgentCallback 
   while (true) {
 
-    _rest_cv.wait();
-
+    // timeout
+    if (_rest_cv.wait(static_cast<uint64_t>(1.0e6*timeout))) {
+      return false;
+    }
+    
     // shutting down
     if (this->isStopping()) {      
       return false;
     }
-    // timeout?
-    if (std::chrono::system_clock::now() - start > timeout) {
-      return false;
-    }
+
     /// success?
     if (_last_commit_index >= index) {
       return true;
@@ -170,6 +170,7 @@ void Agent::reportIn (id_t id, index_t index) {
     }
   }
 
+  CONDITION_LOCKER(guard, _rest_cv);
   _rest_cv.broadcast();            // wake up REST handlers
 }
 
@@ -183,26 +184,42 @@ bool Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
       << "Received malformed entries for appending. Discarting!";  
     return false;
   }
+
+  MUTEX_LOCKER(mutexLocker, _ioLock);
+
+  index_t last_commit_index = _last_commit_index;
+  // 1. Reply false if term < currentTerm (§5.1)
+  if (this->term() > term) {
+    LOG_TOPIC(WARN, Logger::AGENCY) << "I have a higher term than RPC caller.";
+    return false;
+  }
+
+  // 2. Reply false if log doesn’t contain an entry at prevLogIndex
+  //    whose term matches prevLogTerm (§5.3)
+  if (!_state.find(prevIndex,prevTerm)) {
+    LOG_TOPIC(WARN, Logger::AGENCY)
+      << "Unable to find matching entry to previous entry (index,term) = ("
+      << prevIndex << "," << prevTerm << ")";
+    //return false;
+  }
+
+  // 3. If an existing entry conflicts with a new one (same index
+  //    but different terms), delete the existing entry and all that
+  //    follow it (§5.3)
+  // 4. Append any new entries not already in the log
   if (queries->slice().length()) {
     LOG_TOPIC(INFO, Logger::AGENCY) << "Appending "<< queries->slice().length()
-              << " entries to state machine.";
+                                    << " entries to state machine.";
+    /* bool success = */_state.log (queries, term, leaderId, prevIndex, prevTerm);
   } else { 
     // heart-beat
   }
-    
-  if (_last_commit_index < leaderCommitIndex) {
-    LOG_TOPIC(INFO, Logger::AGENCY) <<  "Updating last commited index to " << leaderCommitIndex;
-  }
-  _last_commit_index = leaderCommitIndex;
   
-  // Sanity
-  if (this->term() > term) {                 // (§5.1)
-    LOG_TOPIC(WARN, Logger::AGENCY) << "I have a higher term than RPC caller.";
-    throw LOWER_TERM_APPEND_ENTRIES_RPC; 
-  }
-  
-  // Delete conflits and append (§5.3)
-  _state.log (queries, term, leaderId, prevIndex, prevTerm);
+  // appendEntries 5. If leaderCommit > commitIndex, set commitIndex =
+  //min(leaderCommit, index of last new entry)
+  if (leaderCommitIndex > last_commit_index)
+  _last_commit_index = std::min(leaderCommitIndex,last_commit_index);
+
   return true;
 
 }
@@ -213,9 +230,13 @@ append_entries_t Agent::sendAppendEntriesRPC (id_t follower_id) {
   index_t last_confirmed = _confirmed[follower_id];
   std::vector<log_t> unconfirmed = _state.get(last_confirmed);
 
+  MUTEX_LOCKER(mutexLocker, _ioLock);
+
+  term_t t = this->term();
+
   // RPC path
   std::stringstream path;
-  path << "/_api/agency_priv/appendEntries?term=" << term() << "&leaderId="
+  path << "/_api/agency_priv/appendEntries?term=" << t << "&leaderId="
        << id() << "&prevLogIndex=" << unconfirmed[0].index << "&prevLogTerm="
        << unconfirmed[0].term << "&leaderCommit=" << _last_commit_index;
 
@@ -250,7 +271,7 @@ append_entries_t Agent::sendAppendEntriesRPC (id_t follower_id) {
      std::make_shared<AgentCallback>(this, follower_id, last),
      0, true);
 
-  return append_entries_t(this->term(), true);
+  return append_entries_t(t, true);
   
 }
 

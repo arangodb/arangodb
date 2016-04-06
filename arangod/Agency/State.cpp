@@ -61,7 +61,7 @@ bool State::persist(index_t index, term_t term, id_t lid,
   body.add("_key", Value(i_str.str()));
   body.add("term", Value(term));
   body.add("leader", Value((uint32_t)lid));
-  body.add("request", entry[0]);
+  body.add("request", entry);
   body.close();
 
   std::unique_ptr<arangodb::ClusterCommResult> res =
@@ -79,26 +79,14 @@ bool State::persist(index_t index, term_t term, id_t lid,
   return (res->status == CL_COMM_SENT);  // TODO: More verbose result
 }
 
-bool State::persist (term_t t, id_t i) {
-  
-  return true;  
-}
-
 //Leader
 std::vector<index_t> State::log (
   query_t const& query, std::vector<bool> const& appl, term_t term, id_t lid) {
-  if (!checkCollections()) {
-    createCollections();
-  }
-  if (!_collections_loaded) {
-    loadCollections();
-    _collections_loaded = true;
-  }
 
-  // TODO: Check array
   std::vector<index_t> idx(appl.size());
   std::vector<bool> good = appl;
   size_t j = 0;
+  
   MUTEX_LOCKER(mutexLocker, _logLock);  // log entries must stay in order
   for (auto const& i : VPackArrayIterator(query->slice())) {
     if (good[j]) {
@@ -107,7 +95,7 @@ std::vector<index_t> State::log (
       buf->append((char const*)i[0].begin(), i[0].byteSize());
       idx[j] = _log.back().index + 1;
       _log.push_back(log_t(idx[j], term, lid, buf));  // log to RAM
-      persist(idx[j], term, lid, i);                  // log to disk
+      persist(idx[j], term, lid, i[0]);                  // log to disk
       ++j;
     }
   }
@@ -131,18 +119,19 @@ bool State::log(query_t const& queries, term_t term, id_t lid,
       _log.push_back(log_t(i.get("index").getUInt(), term, lid, buf));
       persist(i.get("index").getUInt(), term, lid, i.get("query")); // log to disk
     } catch (std::exception const& e) {
-      LOG(FATAL) << e.what();
+      LOG(ERR) << e.what();
     }
-    
+  
   }
   return true;
 }
 
+// Get log entries from indices "start" to "end"
 std::vector<log_t> State::get(index_t start, index_t end) const {
   std::vector<log_t> entries;
   MUTEX_LOCKER(mutexLocker, _logLock);
   if (end == (std::numeric_limits<uint64_t>::max)()) end = _log.size() - 1;
-  for (size_t i = start; i <= end; ++i) {  // TODO:: Check bounds
+  for (size_t i = start; i <= end; ++i) {  
     entries.push_back(_log[i]);
   }
   return entries;
@@ -265,6 +254,14 @@ bool State::loadCollection(std::string const& name) {
 
     return false;
   }
+}
+
+bool State::find (index_t prevIndex, term_t prevTerm) {
+  MUTEX_LOCKER(mutexLocker, _logLock);
+  if (prevIndex > _log.size()) {
+    return false;
+  }
+  return _log.at(prevIndex).term == prevTerm;
 }
 
 bool State::compact () {
