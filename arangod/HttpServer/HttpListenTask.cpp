@@ -26,6 +26,7 @@
 
 #include "HttpServer/HttpServer.h"
 
+using namespace arangodb;
 using namespace arangodb::rest;
 
 ////////////////////////////////////////////////////////////////////////////////

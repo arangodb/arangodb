@@ -86,7 +86,7 @@ void RestAqlHandler::createQueryFromVelocyPack() {
   VPackSlice plan = querySlice.get("plan");
   if (plan.isNone()) {
     LOG(ERR) << "Invalid VelocyPack: \"plan\" attribute missing.";
-    generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "body must be an object with attribute \"plan\"");
     return;
   }
@@ -103,7 +103,7 @@ void RestAqlHandler::createQueryFromVelocyPack() {
   if (res.code != TRI_ERROR_NO_ERROR) {
     LOG(ERR) << "failed to instantiate the query: " << res.details;
 
-    generateError(HttpResponse::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN,
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN,
                   res.details);
     delete query;
     return;
@@ -126,7 +126,7 @@ void RestAqlHandler::createQueryFromVelocyPack() {
   } catch (...) {
     LOG(ERR) << "could not keep query in registry";
 
-    generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "could not keep query in registry");
     delete query;
     return;
@@ -139,11 +139,11 @@ void RestAqlHandler::createQueryFromVelocyPack() {
     answerBody.add("ttl", VPackValue(ttl));
   } catch (...) {
     LOG(ERR) << "could not keep query in registry";
-    generateError(HttpResponse::BAD, TRI_ERROR_OUT_OF_MEMORY);
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_OUT_OF_MEMORY);
     return;
   }
 
-  sendResponse(arangodb::rest::HttpResponse::ACCEPTED, answerBody.slice(),
+  sendResponse(GeneralResponse::ResponseCode::ACCEPTED, answerBody.slice(),
                query->trx()->transactionContext().get());
 }
 
@@ -167,7 +167,7 @@ void RestAqlHandler::parseQuery() {
       VelocyPackHelper::getStringValue(querySlice, "query", "");
   if (queryString.empty()) {
     LOG(ERR) << "body must be an object with attribute \"query\"";
-    generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "body must be an object with attribute \"query\"");
     return;
   }
@@ -177,7 +177,7 @@ void RestAqlHandler::parseQuery() {
   QueryResult res = query->parse();
   if (res.code != TRI_ERROR_NO_ERROR) {
     LOG(ERR) << "failed to instantiate the Query: " << res.details;
-    generateError(HttpResponse::BAD, res.code, res.details);
+    generateError(GeneralResponse::ResponseCode::BAD, res.code, res.details);
     delete query;
     return;
   }
@@ -208,10 +208,10 @@ void RestAqlHandler::parseQuery() {
       answerBuilder.add(res.result->slice());
       res.result = nullptr;
     }
-    sendResponse(arangodb::rest::HttpResponse::OK, answerBuilder.slice(),
+    sendResponse(GeneralResponse::ResponseCode::OK, answerBuilder.slice(),
                  transactionContext.get());
   } catch (...) {
-    generateError(HttpResponse::BAD, TRI_ERROR_OUT_OF_MEMORY,
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_OUT_OF_MEMORY,
                   "out of memory");
   }
 }
@@ -235,7 +235,7 @@ void RestAqlHandler::explainQuery() {
       VelocyPackHelper::getStringValue(querySlice, "query", "");
   if (queryString.empty()) {
     LOG(ERR) << "body must be an object with attribute \"query\"";
-    generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "body must be an object with attribute \"query\"");
     return;
   }
@@ -244,13 +244,12 @@ void RestAqlHandler::explainQuery() {
 
   auto options = std::make_shared<VPackBuilder>(VPackBuilder::clone(querySlice.get("options")));
 
-  auto query = new Query(_applicationV8, false, _vocbase, queryString.c_str(),
+  auto query = std::make_unique<Query>(_applicationV8, false, _vocbase, queryString.c_str(),
                          queryString.size(), bindVars, options, PART_MAIN);
   QueryResult res = query->explain();
   if (res.code != TRI_ERROR_NO_ERROR) {
     LOG(ERR) << "failed to instantiate the Query: " << res.details;
-    generateError(HttpResponse::BAD, res.code, res.details);
-    delete query;
+    generateError(GeneralResponse::ResponseCode::BAD, res.code, res.details);
     return;
   }
 
@@ -269,10 +268,10 @@ void RestAqlHandler::explainQuery() {
         res.result = nullptr;
       }
     }
-    sendResponse(arangodb::rest::HttpResponse::OK, answerBuilder.slice(),
+    sendResponse(GeneralResponse::ResponseCode::OK, answerBuilder.slice(),
                  query->trx()->transactionContext().get());
   } catch (...) {
-    generateError(HttpResponse::BAD, TRI_ERROR_OUT_OF_MEMORY,
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_OUT_OF_MEMORY,
                   "out of memory");
   }
 }
@@ -297,7 +296,7 @@ void RestAqlHandler::createQueryFromString() {
       VelocyPackHelper::getStringValue(querySlice, "query", "");
   if (queryString.empty()) {
     LOG(ERR) << "body must be an object with attribute \"query\"";
-    generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "body must be an object with attribute \"query\"");
     return;
   }
@@ -306,7 +305,7 @@ void RestAqlHandler::createQueryFromString() {
       VelocyPackHelper::getStringValue(querySlice, "part", "");
   if (part.empty()) {
     LOG(ERR) << "body must be an object with attribute \"part\"";
-    generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "body must be an object with attribute \"part\"");
     return;
   }
@@ -323,7 +322,7 @@ void RestAqlHandler::createQueryFromString() {
   QueryResult res = query->prepare(_queryRegistry);
   if (res.code != TRI_ERROR_NO_ERROR) {
     LOG(ERR) << "failed to instantiate the Query: " << res.details;
-    generateError(HttpResponse::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN,
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN,
                   res.details);
     delete query;
     return;
@@ -343,13 +342,13 @@ void RestAqlHandler::createQueryFromString() {
     _queryRegistry->insert(_qId, query, ttl);
   } catch (...) {
     LOG(ERR) << "could not keep query in registry";
-    generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "could not keep query in registry");
     delete query;
     return;
   }
 
-  createResponse(arangodb::rest::HttpResponse::ACCEPTED);
+  createResponse(GeneralResponse::ResponseCode::ACCEPTED);
   _response->setContentType("application/json; charset=utf-8");
   arangodb::basics::Json answerBody(arangodb::basics::Json::Object, 2);
   answerBody("queryId",
@@ -438,19 +437,19 @@ void RestAqlHandler::useQuery(std::string const& operation,
     }
   } catch (arangodb::basics::Exception const& ex) {
     _queryRegistry->close(_vocbase, _qId);
-    generateError(HttpResponse::SERVER_ERROR, ex.code(), ex.message());
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, ex.code(), ex.message());
   } catch (std::exception const& ex) {
     _queryRegistry->close(_vocbase, _qId);
 
     LOG(ERR) << "failed during use of Query: " << ex.what();
 
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                   ex.what());
   } catch (...) {
     _queryRegistry->close(_vocbase, _qId);
     LOG(ERR) << "failed during use of Query: Unknown exception occurred";
 
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                   "an unknown exception occurred");
   }
 }
@@ -538,32 +537,32 @@ void RestAqlHandler::getInfoQuery(std::string const& operation,
     } else {
       _queryRegistry->close(_vocbase, _qId);
       LOG(ERR) << "referenced query not found";
-      generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+      generateError(GeneralResponse::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       return;
     }
   } catch (arangodb::basics::Exception const& ex) {
     _queryRegistry->close(_vocbase, _qId);
     LOG(ERR) << "failed during use of query: " << ex.message();
-    generateError(HttpResponse::SERVER_ERROR, ex.code(), ex.message());
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, ex.code(), ex.message());
   } catch (std::exception const& ex) {
     _queryRegistry->close(_vocbase, _qId);
 
     LOG(ERR) << "failed during use of query: " << ex.what();
 
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                   ex.what());
   } catch (...) {
     _queryRegistry->close(_vocbase, _qId);
 
     LOG(ERR) << "failed during use of query: Unknown exception occurred";
 
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                   "an unknown exception occurred");
   }
 
   _queryRegistry->close(_vocbase, _qId);
 
-  createResponse(arangodb::rest::HttpResponse::OK);
+  createResponse(GeneralResponse::ResponseCode::OK);
   _response->setContentType("application/json; charset=utf-8");
   answerBody("error", arangodb::basics::Json(false));
   _response->body().appendText(answerBody.toString());
@@ -588,7 +587,7 @@ arangodb::rest::HttpHandler::status_t RestAqlHandler::execute() {
   switch (type) {
     case GeneralRequest::RequestType::POST: {
       if (suffix.size() != 1) {
-        generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+        generateError(GeneralResponse::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       } else if (suffix[0] == "instantiate") {
         createQueryFromVelocyPack();
       } else if (suffix[0] == "parse") {
@@ -599,14 +598,14 @@ arangodb::rest::HttpHandler::status_t RestAqlHandler::execute() {
         createQueryFromString();
       } else {
         LOG(ERR) << "Unknown API";
-        generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+        generateError(GeneralResponse::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       }
       break;
     }
     case GeneralRequest::RequestType::PUT: {
       if (suffix.size() != 2) {
         LOG(ERR) << "unknown PUT API";
-        generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+        generateError(GeneralResponse::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       } else {
         useQuery(suffix[0], suffix[1]);
       }
@@ -615,13 +614,13 @@ arangodb::rest::HttpHandler::status_t RestAqlHandler::execute() {
     case GeneralRequest::RequestType::GET: {
       if (suffix.size() != 2) {
         LOG(ERR) << "Unknown GET API";
-        generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+        generateError(GeneralResponse::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       } else {
         getInfoQuery(suffix[0], suffix[1]);
       }
       break;
     }
-    case GeneralRequest::RequestType::DELETE:
+    case GeneralRequest::RequestType::DELETE_REQ:
     case GeneralRequest::RequestType::HEAD:
     case GeneralRequest::RequestType::PATCH:
     case GeneralRequest::RequestType::OPTIONS:
@@ -629,7 +628,7 @@ arangodb::rest::HttpHandler::status_t RestAqlHandler::execute() {
     case GeneralRequest::RequestType::VSTREAM_REGISTER:
     case GeneralRequest::RequestType::VSTREAM_STATUS:
     case GeneralRequest::RequestType::ILLEGAL: {
-      generateError(HttpResponse::METHOD_NOT_ALLOWED, TRI_ERROR_NOT_IMPLEMENTED,
+      generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_NOT_IMPLEMENTED,
                     "illegal method for /_api/aql");
       break;
     }
@@ -674,7 +673,7 @@ bool RestAqlHandler::findQuery(std::string const& idString, Query*& query) {
 
   if (query == nullptr) {
     _qId = 0;
-    generateError(HttpResponse::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND);
+    generateError(GeneralResponse::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND);
     return true;
   }
 
@@ -717,7 +716,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
           if (currentThread != nullptr) {
             currentThread->unblock();
           }
-          generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+          generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                         "lock lead to an exception");
           return;
         }
@@ -754,7 +753,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
             query->getStats(answerBuilder);
           } catch (...) {
             LOG(ERR) << "cannot transform AqlItemBlock to VelocyPack";
-            generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+            generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                           "cannot transform AqlItemBlock to VelocyPack");
             return;
           }
@@ -778,7 +777,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
           }
         } catch (...) {
           LOG(ERR) << "skipSome lead to an exception";
-          generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+          generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                         "skipSome lead to an exception");
           return;
         }
@@ -807,7 +806,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
           query->getStats(answerBuilder);
         } catch (...) {
           LOG(ERR) << "skip lead to an exception";
-          generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+          generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                         "skip lead to an exception");
           return;
         }
@@ -825,7 +824,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
           }
         } catch (...) {
           LOG(ERR) << "initializeCursor lead to an exception";
-          generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+          generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                         "initializeCursor lead to an exception");
           return;
         }
@@ -853,7 +852,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
           _qId = 0;
         } catch (...) {
           LOG(ERR) << "shutdown lead to an exception";
-          generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+          generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                         "shutdown lead to an exception");
           return;
         }
@@ -861,18 +860,18 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
         answerBuilder.add("code", VPackValue(res));
       } else {
         LOG(ERR) << "Unknown operation!";
-        generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+        generateError(GeneralResponse::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
         return;
       }
     }
-    sendResponse(arangodb::rest::HttpResponse::OK, answerBuilder.slice(),
+    sendResponse(GeneralResponse::ResponseCode::OK, answerBuilder.slice(),
                  transactionContext.get());
   } catch (arangodb::basics::Exception const& e) {
-    generateError(HttpResponse::BAD, e.code());
+    generateError(GeneralResponse::ResponseCode::BAD, e.code());
     return;
   } catch (...) {
     LOG(ERR) << "OUT OF MEMORY when handling query.";
-    generateError(HttpResponse::BAD, TRI_ERROR_OUT_OF_MEMORY);
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_OUT_OF_MEMORY);
     return;
   }
 }
@@ -886,21 +885,21 @@ std::shared_ptr<VPackBuilder> RestAqlHandler::parseVelocyPackBody() {
     std::shared_ptr<VPackBuilder> body = _request->toVelocyPack(&VPackOptions::Defaults);
     if (body == nullptr) {
       LOG(ERR) << "cannot parse json object";
-      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON,
+      generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON,
                     "cannot parse json object");
     }
     VPackSlice tmp = body->slice();
     if (!tmp.isObject()) {
       // Validate the input has correct format.
       LOG(ERR) << "body of request must be a VelocyPack object";
-      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+      generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "body of request must be a VelcoyPack object");
       return nullptr;
     }
     return body;
   } catch (...) {
     LOG(ERR) << "cannot parse json object";
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON,
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON,
                   "cannot parse json object");
   }
   return nullptr;
@@ -911,9 +910,9 @@ std::shared_ptr<VPackBuilder> RestAqlHandler::parseVelocyPackBody() {
 /// @brief Send slice as result with the given response type.
 //////////////////////////////////////////////////////////////////////////////
 
-void RestAqlHandler::sendResponse(arangodb::rest::HttpResponse::HttpResponseCode const code,
-                                 VPackSlice const slice,
-                                 TransactionContext* transactionContext) {
+void RestAqlHandler::sendResponse(GeneralResponse::ResponseCode code,
+                                  VPackSlice const slice,
+                                  arangodb::TransactionContext* transactionContext) {
   createResponse(code);
   _response->setContentType("application/json; charset=utf-8");
   arangodb::basics::VPackStringBufferAdapter buffer(
@@ -922,7 +921,7 @@ void RestAqlHandler::sendResponse(arangodb::rest::HttpResponse::HttpResponseCode
   try {
     dumper.dump(slice);
   } catch (...) {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL,
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                   "cannot generate output");
   }
 

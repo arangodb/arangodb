@@ -78,15 +78,17 @@ int32_t HttpRequest::compatibility() {
 
   char const* a = apiVersion.c_str();
   char const* p = a;
+  char const* e = a + apiVersion.size();
 
   // read major version
-  while (*p >= '0' && *p <= '9') {
+  uint32_t major = 0;
+
+  while (p < e && *p >= '0' && *p <= '9') {
+    major = major * 10 + (*p - '0');
     ++p;
   }
 
-  if ((*p == '.' || *p == '-' || *p == '\0') && p != a) {
-    int32_t major = TRI_Int32String2(a, (p - a));
-
+  if (p != a && (*p == '.' || *p == '-' || p == e)) {
     if (major >= 10000) {
       // version specified as "10400"
       if (*p == '\0') {
@@ -107,13 +109,14 @@ int32_t HttpRequest::compatibility() {
     a = ++p;
 
     // read minor version
-    while (*p >= '0' && *p <= '9') {
+    uint32_t minor = 0;
+
+    while (p < e && *p >= '0' && *p <= '9') {
+      minor = minor * 10 + (*p - '0');
       ++p;
     }
 
-    if ((*p == '.' || *p == '-' || *p == '\0') && p != a) {
-      int32_t minor = TRI_Int32String2(a, (p - a));
-
+    if (p != a && (*p == '.' || *p == '-' || p == e)) {
       result = (int32_t)(minor * 100L + major * 10000L);
     }
   }

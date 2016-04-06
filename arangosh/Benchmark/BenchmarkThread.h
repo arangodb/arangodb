@@ -71,7 +71,7 @@ class BenchmarkThread : public arangodb::Thread {
         _time(0.0),
         _verbose(verbose) {
     _errorHeader =
-        basics::StringUtils::tolower(rest::HttpResponse::BatchErrorHeader);
+        basics::StringUtils::tolower(HttpResponse::BATCH_ERROR_HEADER);
   }
 
   ~BenchmarkThread() { shutdown(); }

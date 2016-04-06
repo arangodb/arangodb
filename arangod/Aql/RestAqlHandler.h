@@ -133,7 +133,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   /// @brief Send slice as result with the given response type.
   //////////////////////////////////////////////////////////////////////////////
 
-  void sendResponse(arangodb::rest::HttpResponse::HttpResponseCode const,
+  void sendResponse(GeneralResponse::ResponseCode,
                     arangodb::velocypack::Slice const,
                     TransactionContext*);
 

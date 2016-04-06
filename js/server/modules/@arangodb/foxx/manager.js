@@ -281,15 +281,11 @@ function routes(mount) {
 
 function checkMountedSystemApps(dbname) {
   var i, mount;
-  var collection = utils.getStorage();
+  //var collection = utils.getStorage();
   for (i = 0; i < usedSystemMountPoints.length; ++i) {
     mount = usedSystemMountPoints[i];
     delete appCache[dbname][mount];
-    var definition = collection.firstExample({mount: mount});
-    if (definition !== null) {
-      collection.remove(definition._key);
-    }
-    _scanFoxx(mount, {});
+    _scanFoxx(mount, {replace: true});
     executeAppScript('setup', lookupApp(mount));
   }
 }
@@ -855,21 +851,28 @@ function _scanFoxx(mount, options, activateDevelopment) {
   delete appCache[dbname][mount];
   var app = createApp(mount, options, activateDevelopment);
   if (!options.__clusterDistribution) {
-    try {
-      utils.getStorage().save(app.toJSON());
-    }
-    catch (err) {
-      if (!options.replace || err.errorNum !== errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code) {
-        throw err;
+    db._executeTransaction({
+      collections: {
+        write: utils.getStorage().name()
+      },
+      action() {
+        try {
+          utils.getStorage().save(app.toJSON());
+        }
+        catch (err) {
+          if (!options.replace || err.errorNum !== errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code) {
+            throw err;
+          }
+          var old = utils.getStorage().firstExample({ mount: mount });
+          if (old === null) {
+            throw new Error(`Could not find app for mountpoint "${mount}"`);
+          }
+          var data = _.extend({}, old);
+          data.manifest = app.toJSON().manifest;
+          utils.getStorage().replace(old, data);
+        }
       }
-      var old = utils.getStorage().firstExample({ mount: mount });
-      if (old === null) {
-        throw new Error(`Could not find app for mountpoint "${mount}"`);
-      }
-      var data = _.extend({}, old);
-      data.manifest = app.toJSON().manifest;
-      utils.getStorage().replace(old, data);
-    }
+    });
   }
   return app;
 }
@@ -904,20 +907,13 @@ function rescanFoxx(mount) {
     [ mount ] );
 
   var old = lookupApp(mount);
-  var collection = utils.getStorage();
+  //var collection = utils.getStorage();
   initCache();
-  db._executeTransaction({
-    collections: {
-      write: collection.name()
-    },
-    action() {
-      var definition = collection.firstExample({mount: mount});
-      if (definition !== null) {
-        collection.remove(definition._key);
-      }
-      _scanFoxx(mount, old.options, old.isDevelopment);
-    }
-  });
+  _scanFoxx(
+    mount,
+    _.extend({}, old.options, {replace: true}),
+    old.isDevelopment
+  );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -992,14 +988,7 @@ function _install(appInfo, mount, options, runSetup) {
   initCache();
   _buildAppInPath(appInfo, targetPath, options);
   try {
-    db._executeTransaction({
-      collections: {
-        write: collection.name()
-      },
-      action() {
-        app = _scanFoxx(mount, options);
-      }
-    });
+    app = _scanFoxx(mount, options);
     if (runSetup) {
       executeAppScript('setup', lookupApp(mount));
     }
@@ -1508,18 +1497,10 @@ function syncWithFolder(options) {
   appCache = appCache || {};
   appCache[dbname] = {};
   var folders = fs.listTree(FoxxService._appPath).filter(filterAppRoots);
-  var collection = utils.getStorage();
+//  var collection = utils.getStorage();
   return folders.map(function (folder) {
-    var mount;
-    db._executeTransaction({
-      collections: {
-        write: collection.name()
-      },
-      action() {
-        mount = transformPathToMount(folder);
-        _scanFoxx(mount, options);
-      }
-    });
+    var mount = transformPathToMount(folder);
+    _scanFoxx(mount, options);
     return mount;
   });
 }

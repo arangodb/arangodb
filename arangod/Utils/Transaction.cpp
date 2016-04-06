@@ -1019,7 +1019,7 @@ OperationResult Transaction::documentCoordinator(std::string const& collectionNa
   }
 
   auto headers = std::make_unique<std::map<std::string, std::string>>();
-  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
+  GeneralResponse::ResponseCode responseCode;
   std::map<std::string, std::string> resultHeaders;
   std::string resultBody;
 
@@ -1034,15 +1034,15 @@ OperationResult Transaction::documentCoordinator(std::string const& collectionNa
       responseCode, resultHeaders, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    if (responseCode == arangodb::rest::HttpResponse::OK ||
-        responseCode == arangodb::rest::HttpResponse::PRECONDITION_FAILED) {
+    if (responseCode == GeneralResponse::ResponseCode::OK ||
+        responseCode == GeneralResponse::ResponseCode::PRECONDITION_FAILED) {
       VPackParser parser;
       try {
         parser.parse(resultBody);
         auto bui = parser.steal();
         auto buf = bui->steal();
         return OperationResult(buf, nullptr, "", 
-            responseCode == arangodb::rest::HttpResponse::OK ?
+            responseCode == GeneralResponse::ResponseCode::OK ?
             TRI_ERROR_NO_ERROR : TRI_ERROR_ARANGO_CONFLICT, false);
       }
       catch (VPackException& e) {
@@ -1050,7 +1050,7 @@ OperationResult Transaction::documentCoordinator(std::string const& collectionNa
                               + resultBody + ":" + e.what();
         return OperationResult(TRI_ERROR_INTERNAL, message);
       }
-    } else if (responseCode == arangodb::rest::HttpResponse::NOT_FOUND) {
+    } else if (responseCode == GeneralResponse::ResponseCode::NOT_FOUND) {
       return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     } else {
       return OperationResult(TRI_ERROR_INTERNAL);
@@ -1171,7 +1171,7 @@ OperationResult Transaction::insertCoordinator(std::string const& collectionName
   }
 
   std::map<std::string, std::string> headers;
-  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
+  GeneralResponse::ResponseCode responseCode;
   std::map<std::string, std::string> resultHeaders;
   std::string resultBody;
 
@@ -1180,27 +1180,27 @@ OperationResult Transaction::insertCoordinator(std::string const& collectionName
       resultHeaders, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    if (responseCode == arangodb::rest::HttpResponse::ACCEPTED ||
-        responseCode == arangodb::rest::HttpResponse::CREATED) {
+    if (responseCode == GeneralResponse::ResponseCode::ACCEPTED ||
+        responseCode == GeneralResponse::ResponseCode::CREATED) {
       VPackParser parser;
       try {
         parser.parse(resultBody);
         auto bui = parser.steal();
         auto buf = bui->steal();
         return OperationResult(buf, nullptr, "", TRI_ERROR_NO_ERROR, 
-            responseCode == arangodb::rest::HttpResponse::CREATED);
+            responseCode == GeneralResponse::ResponseCode::CREATED);
       } catch (VPackException& e) {
         std::string message = "JSON from DBserver not parseable: "
                               + resultBody + ":" + e.what();
         return OperationResult(TRI_ERROR_INTERNAL, message);
       }
-    } else if (responseCode == arangodb::rest::HttpResponse::PRECONDITION_FAILED) {
+    } else if (responseCode == GeneralResponse::ResponseCode::PRECONDITION_FAILED) {
       return OperationResult(TRI_ERROR_ARANGO_CONFLICT);
-    } else if (responseCode == arangodb::rest::HttpResponse::BAD) {
+    } else if (responseCode == GeneralResponse::ResponseCode::BAD) {
       return DBServerResponseBad(resultBody);
-    } else if (responseCode == arangodb::rest::HttpResponse::NOT_FOUND) {
+    } else if (responseCode == GeneralResponse::ResponseCode::NOT_FOUND) {
       return OperationResult(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-    } else if (responseCode == arangodb::rest::HttpResponse::CONFLICT) {
+    } else if (responseCode == GeneralResponse::ResponseCode::CONFLICT) {
       return OperationResult(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
     } else {
       return OperationResult(TRI_ERROR_INTERNAL);
@@ -1315,7 +1315,7 @@ OperationResult Transaction::updateCoordinator(std::string const& collectionName
   }
   
   auto headers = std::make_unique<std::map<std::string, std::string>>();
-  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
+  GeneralResponse::ResponseCode responseCode;
   std::map<std::string, std::string> resultHeaders;
   std::string resultBody;
 
@@ -1334,16 +1334,16 @@ OperationResult Transaction::updateCoordinator(std::string const& collectionName
   if (res == TRI_ERROR_NO_ERROR) {
     int errorCode = TRI_ERROR_NO_ERROR;
     switch (responseCode) {
-      case arangodb::rest::HttpResponse::CONFLICT:
+      case GeneralResponse::ResponseCode::CONFLICT:
         errorCode = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
         // Fall through
-      case arangodb::rest::HttpResponse::PRECONDITION_FAILED:
+      case GeneralResponse::ResponseCode::PRECONDITION_FAILED:
         if (errorCode == TRI_ERROR_NO_ERROR) {
           errorCode = TRI_ERROR_ARANGO_CONFLICT;
         }
         // Fall through
-      case arangodb::rest::HttpResponse::ACCEPTED:
-      case arangodb::rest::HttpResponse::CREATED:
+      case GeneralResponse::ResponseCode::ACCEPTED:
+      case GeneralResponse::ResponseCode::CREATED:
         {
           VPackParser parser;
           try {
@@ -1352,7 +1352,7 @@ OperationResult Transaction::updateCoordinator(std::string const& collectionName
             auto buf = bui->steal();
             return OperationResult(
                 buf, nullptr, "", errorCode,
-                responseCode == arangodb::rest::HttpResponse::CREATED);
+                responseCode == GeneralResponse::ResponseCode::CREATED);
           }
           catch (VPackException& e) {
             std::string message = "JSON from DBserver not parseable: "
@@ -1360,9 +1360,9 @@ OperationResult Transaction::updateCoordinator(std::string const& collectionName
             return OperationResult(TRI_ERROR_INTERNAL, message);
           }
         }
-      case arangodb::rest::HttpResponse::BAD:
+      case GeneralResponse::ResponseCode::BAD:
         return DBServerResponseBad(resultBody);
-      case arangodb::rest::HttpResponse::NOT_FOUND:
+      case GeneralResponse::ResponseCode::NOT_FOUND:
         return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
       default:
         return OperationResult(TRI_ERROR_INTERNAL);
@@ -1411,7 +1411,7 @@ OperationResult Transaction::replaceCoordinator(std::string const& collectionNam
   }
 
   auto headers = std::make_unique<std::map<std::string, std::string>>();
-  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
+  GeneralResponse::ResponseCode responseCode;
   std::map<std::string, std::string> resultHeaders;
   std::string resultBody;
 
@@ -1430,15 +1430,15 @@ OperationResult Transaction::replaceCoordinator(std::string const& collectionNam
   if (res == TRI_ERROR_NO_ERROR) {
     int errorCode = TRI_ERROR_NO_ERROR;
     switch (responseCode) {
-      case arangodb::rest::HttpResponse::CONFLICT:
+      case GeneralResponse::ResponseCode::CONFLICT:
         errorCode = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
-      case arangodb::rest::HttpResponse::PRECONDITION_FAILED:
+      case GeneralResponse::ResponseCode::PRECONDITION_FAILED:
         if (errorCode == TRI_ERROR_NO_ERROR) {
           errorCode = TRI_ERROR_ARANGO_CONFLICT;
         }
         // Fall through
-      case arangodb::rest::HttpResponse::ACCEPTED:
-      case arangodb::rest::HttpResponse::CREATED:
+      case GeneralResponse::ResponseCode::ACCEPTED:
+      case GeneralResponse::ResponseCode::CREATED:
         {
           VPackParser parser;
           try {
@@ -1447,7 +1447,7 @@ OperationResult Transaction::replaceCoordinator(std::string const& collectionNam
             auto buf = bui->steal();
             return OperationResult(
                 buf, nullptr, "", errorCode,
-                responseCode == arangodb::rest::HttpResponse::CREATED);
+                responseCode == GeneralResponse::ResponseCode::CREATED);
           }
           catch (VPackException& e) {
             std::string message = "JSON from DBserver not parseable: "
@@ -1455,9 +1455,9 @@ OperationResult Transaction::replaceCoordinator(std::string const& collectionNam
             return OperationResult(TRI_ERROR_INTERNAL, message);
           }
         }
-      case arangodb::rest::HttpResponse::BAD:
+      case GeneralResponse::ResponseCode::BAD:
         return DBServerResponseBad(resultBody);
-      case arangodb::rest::HttpResponse::NOT_FOUND:
+      case GeneralResponse::ResponseCode::NOT_FOUND:
         return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
       default:
         return OperationResult(TRI_ERROR_INTERNAL);
@@ -1594,7 +1594,7 @@ OperationResult Transaction::removeCoordinator(std::string const& collectionName
   }
   
   auto headers = std::make_unique<std::map<std::string, std::string>>();
-  arangodb::rest::HttpResponse::HttpResponseCode responseCode;
+  GeneralResponse::ResponseCode responseCode;
   std::map<std::string, std::string> resultHeaders;
   std::string resultBody;
 
@@ -1612,9 +1612,9 @@ OperationResult Transaction::removeCoordinator(std::string const& collectionName
       responseCode, resultHeaders, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    if (responseCode == arangodb::rest::HttpResponse::OK ||
-        responseCode == arangodb::rest::HttpResponse::ACCEPTED ||
-        responseCode == arangodb::rest::HttpResponse::PRECONDITION_FAILED) {
+    if (responseCode == GeneralResponse::ResponseCode::OK ||
+        responseCode == GeneralResponse::ResponseCode::ACCEPTED ||
+        responseCode == GeneralResponse::ResponseCode::PRECONDITION_FAILED) {
       VPackParser parser;
       try {
         parser.parse(resultBody);
@@ -1622,19 +1622,19 @@ OperationResult Transaction::removeCoordinator(std::string const& collectionName
         auto buf = bui->steal();
         return OperationResult(
             buf, nullptr, "",
-            responseCode == arangodb::rest::HttpResponse::PRECONDITION_FAILED
+            responseCode == GeneralResponse::ResponseCode::PRECONDITION_FAILED
                 ? TRI_ERROR_ARANGO_CONFLICT
                 : TRI_ERROR_NO_ERROR,
-            responseCode != arangodb::rest::HttpResponse::ACCEPTED);
+            responseCode != GeneralResponse::ResponseCode::ACCEPTED);
       }
       catch (VPackException& e) {
         std::string message = "JSON from DBserver not parseable: "
                               + resultBody + ":" + e.what();
         return OperationResult(TRI_ERROR_INTERNAL, message);
       }
-    } else if (responseCode == arangodb::rest::HttpResponse::BAD) {
+    } else if (responseCode == GeneralResponse::ResponseCode::BAD) {
       return DBServerResponseBad(resultBody);
-    } else if (responseCode == arangodb::rest::HttpResponse::NOT_FOUND) {
+    } else if (responseCode == GeneralResponse::ResponseCode::NOT_FOUND) {
       return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     } else {
       return OperationResult(TRI_ERROR_INTERNAL);

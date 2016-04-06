@@ -1035,6 +1035,15 @@ var bindEdgeCollections = function(self, edgeCollections) {
     // save
     var old_save = wrap.save;
     wrap.save = function(from, to, data) {
+      if (typeof from === 'object' && to === undefined) {
+        data = from;
+        from = data._from;
+        to = data._to;
+      } else if (typeof from === 'string' && typeof to === 'string' && typeof data === 'object') {
+        data._from = from;
+        data._to = to;
+      }
+
       if (typeof from !== 'string' || 
           from.indexOf('/') === -1 ||
           typeof to !== 'string' ||

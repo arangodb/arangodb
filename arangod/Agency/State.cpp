@@ -58,9 +58,9 @@ bool State::persist(index_t index, term_t term, id_t lid,
 
   Builder body;
   body.add(VPackValue(VPackValueType::Object));
-  std::stringstream index_str;
-  index_str << std::setw(20) << std::setfill('0') << index;
-  body.add("_key", Value(index_str.str()));
+  std::ostringstream i_str;
+  i_str << std::setw(20) << std::setfill('0') << index;
+  body.add("_key", Value(i_str.str()));
   body.add("term", Value(term));
   body.add("leader", Value((uint32_t)lid));
   body.add("request", entry[0]);
@@ -81,10 +81,14 @@ bool State::persist(index_t index, term_t term, id_t lid,
   return (res->status == CL_COMM_SENT);  // TODO: More verbose result
 }
 
-// Leader
-std::vector<index_t> State::log(query_t const& query,
-                                std::vector<bool> const& appl, term_t term,
-                                id_t lid) {
+bool State::persist (term_t t, id_t i) {
+  
+  return true;  
+}
+
+//Leader
+std::vector<index_t> State::log (
+  query_t const& query, std::vector<bool> const& appl, term_t term, id_t lid) {
   if (!checkCollections()) {
     createCollections();
   }
@@ -127,10 +131,11 @@ bool State::log(query_t const& queries, term_t term, id_t lid,
       buf->append((char const*)i.get("query").begin(),
                   i.get("query").byteSize());
       _log.push_back(log_t(i.get("index").getUInt(), term, lid, buf));
+      persist(i.get("index").getUInt(), term, lid, i.get("query")); // log to disk
     } catch (std::exception const& e) {
       LOG(FATAL) << e.what();
     }
-    // save (builder);
+    
   }
   return true;
 }
@@ -215,12 +220,11 @@ bool State::createCollection(std::string const& name) {
 }
 
 bool State::loadCollections() {
-  loadCollection("log");
-  return true;
+  return loadCollection("log");
 }
 
 bool State::loadCollection(std::string const& name) {
-  if (checkCollections()) {
+  if (checkCollection(name)) {
     // Path
     std::string path("/_api/cursor");
 
@@ -242,21 +246,36 @@ bool State::loadCollection(std::string const& name) {
     if (res->status == CL_COMM_SENT) {
       std::shared_ptr<Builder> body = res->result->getBodyVelocyPack();
       if (body->slice().hasKey("result")) {
-        for (auto const& i : VPackArrayIterator(body->slice().get("result"))) {
-          buffer_t tmp =
+        VPackSlice result = body->slice().get("result");
+        if (result.type() == VPackValueType::Array) {
+          for (auto const& i : VPackArrayIterator(result)) {
+            buffer_t tmp =
               std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
-          tmp->append((char const*)i.get("request").begin(),
-                      i.get("request").byteSize());
-          _log.push_back(log_t(std::stoi(i.get("_key").copyString()),
-                               i.get("term").getUInt(),
-                               i.get("leader").getUInt(), tmp));
+            tmp->append((char const*)i.get("request").begin(),
+                        i.get("request").byteSize());
+            _log.push_back(log_t(std::stoi(i.get("_key").copyString()),
+                                 i.get("term").getUInt(),
+                                 i.get("leader").getUInt(), tmp));
+          }
         }
       }
     }
-
     return true;
-
   } else {
+    LOG_TOPIC (INFO, Logger::AGENCY) << "Couldn't find persisted log";
+    createCollections();
+
     return false;
   }
+}
+
+bool State::compact () {
+
+  // get read db at lastcommit % n == 0
+  // save read db with key 10
+  // update offset in logs
+  // delete
+
+  return true;
+  
 }

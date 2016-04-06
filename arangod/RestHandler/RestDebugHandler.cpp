@@ -56,7 +56,7 @@ HttpHandler::status_t RestDebugHandler::execute() {
 
   // execute one of the CRUD methods
   switch (type) {
-    case GeneralRequest::RequestType::DELETE:
+    case GeneralRequest::RequestType::DELETE_REQ:
       if (len == 1) {
         TRI_ClearFailurePointsDebugging();
       } else {
@@ -77,7 +77,7 @@ HttpHandler::status_t RestDebugHandler::execute() {
   try {
     VPackBuilder result;
     result.add(VPackValue(true));
-    generateResult(HttpResponse::HttpResponseCode::OK, result.slice());
+    generateResult(GeneralResponse::ResponseCode::OK, result.slice());
   } catch (...) {
     // Ignore this error
   }

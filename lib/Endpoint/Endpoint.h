@@ -24,8 +24,9 @@
 #ifndef LIB_REST_ENDPOINT_H
 #define LIB_REST_ENDPOINT_H 1
 
-#include "Basics/socket-utils.h"
 #include "Basics/Common.h"
+
+#include "Basics/socket-utils.h"
 
 #ifdef TRI_HAVE_WINSOCK2_H
 #include <WinSock2.h>
@@ -94,7 +95,6 @@ class Endpoint {
   bool _connected;
   TRI_socket_t _socket;
 };
-
 }
 
 std::ostream& operator<<(std::ostream&, arangodb::Endpoint::TransportType);

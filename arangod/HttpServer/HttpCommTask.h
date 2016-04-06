@@ -35,10 +35,10 @@
 
 namespace arangodb {
 class HttpRequest;
+class HttpResponse;
 
 namespace rest {
 class HttpCommTask;
-class HttpResponse;
 class HttpServer;
 
 ////////////////////////////////////////////////////////////////////////////////

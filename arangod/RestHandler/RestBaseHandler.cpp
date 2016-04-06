@@ -40,14 +40,14 @@ using namespace arangodb::rest;
 RestBaseHandler::RestBaseHandler(HttpRequest* request) : HttpHandler(request) {}
 
 void RestBaseHandler::handleError(Exception const& ex) {
-  generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
+  generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a result from VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestBaseHandler::generateResult(HttpResponse::HttpResponseCode code,
+void RestBaseHandler::generateResult(GeneralResponse::ResponseCode code,
                                      VPackSlice const& slice) {
   createResponse(code);
   _response->setContentType("application/json; charset=utf-8");
@@ -59,7 +59,7 @@ void RestBaseHandler::generateResult(HttpResponse::HttpResponseCode code,
 /// @brief generates a result from VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestBaseHandler::generateResult(HttpResponse::HttpResponseCode code,
+void RestBaseHandler::generateResult(GeneralResponse::ResponseCode code,
                                      VPackSlice const& slice,
                                      std::shared_ptr<TransactionContext> context) {
   createResponse(code);
@@ -72,7 +72,7 @@ void RestBaseHandler::generateResult(HttpResponse::HttpResponseCode code,
 /// @brief generates an error
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestBaseHandler::generateError(HttpResponse::HttpResponseCode code,
+void RestBaseHandler::generateError(GeneralResponse::ResponseCode code,
                                     int errorCode) {
   char const* message = TRI_errno_string(errorCode);
 
@@ -87,7 +87,7 @@ void RestBaseHandler::generateError(HttpResponse::HttpResponseCode code,
 /// @brief generates an error
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestBaseHandler::generateError(HttpResponse::HttpResponseCode code,
+void RestBaseHandler::generateError(GeneralResponse::ResponseCode code,
                                     int errorCode, std::string const& message) {
   createResponse(code);
   _response->setContentType("application/json; charset=utf-8");
@@ -102,7 +102,7 @@ void RestBaseHandler::generateError(HttpResponse::HttpResponseCode code,
     } else {
       builder.add("errorMessage", VPackValue(message));
     }
-    builder.add("code", VPackValue(code));
+    builder.add("code", VPackValue(static_cast<int>(code)));
     builder.add("errorNum", VPackValue(errorCode));
     builder.close();
 
@@ -117,7 +117,7 @@ void RestBaseHandler::generateError(HttpResponse::HttpResponseCode code,
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestBaseHandler::generateOOMError() {
-  generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+  generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -125,7 +125,7 @@ void RestBaseHandler::generateOOMError() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestBaseHandler::generateCanceled() {
-  return generateError(HttpResponse::GONE, TRI_ERROR_REQUEST_CANCELED);
+  return generateError(GeneralResponse::ResponseCode::GONE, TRI_ERROR_REQUEST_CANCELED);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -140,9 +140,9 @@ void RestBaseHandler::dumpResponse(VPackSlice const& slice,
   try {
     dumper.dump(slice);
   } catch (std::exception const& ex) {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL,
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                   "cannot generate output");
   }
 }

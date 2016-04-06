@@ -39,8 +39,6 @@
 
 //using namespace arangodb::velocypack;
 
-class Slice {};
-
 namespace arangodb {
 namespace consensus {
 
@@ -114,6 +112,9 @@ public:
     return os;
   }
 
+  // @brief Persist term/leaderid
+  bool persist (term_t, id_t);
+  
 private:
 
   bool snapshot ();
@@ -136,6 +137,8 @@ private:
 
   /// @brief Create collection
   bool createCollection(std::string const& name);
+
+  bool compact ();
 
   mutable arangodb::Mutex _logLock;  /**< @brief Mutex for modifying _log */
   std::deque<log_t> _log;           /**< @brief  State entries */

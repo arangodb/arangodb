@@ -112,7 +112,7 @@ void ClusterTraverser::EdgeGetter::operator()(std::string const& startVertex,
     TRI_ASSERT(_traverser->_iteratorCache.size() == result.size());
     // We have to request the next level
     arangodb::basics::Json resultEdges(arangodb::basics::Json::Object);
-    arangodb::rest::HttpResponse::HttpResponseCode responseCode;
+    arangodb::GeneralResponse::ResponseCode responseCode;
     std::string contentType;
     std::vector<TraverserExpression*> expEdges;
     auto found = _traverser->_expressions->find(depth);
@@ -215,8 +215,7 @@ void ClusterTraverser::setStartVertex(std::string const& id) {
   if (it == _vertices.end()) {
     std::unordered_set<std::string> vertexToFetch;
     vertexToFetch.emplace(id);
-    fetchVertices(vertexToFetch, 0);
-
+    fetchVertices(vertexToFetch, 0); // this inserts the vertex
     it = _vertices.find(id);
     if (it == _vertices.end()) {
       // We can stop here. The start vertex does not match condition.

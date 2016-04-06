@@ -43,7 +43,7 @@ class RequestContext {
  public:
   virtual rest::RequestUser* requestUser() { return nullptr; }
   virtual std::string realm() const = 0;
-  virtual rest::HttpResponse::HttpResponseCode authenticate() = 0;
+  virtual GeneralResponse::ResponseCode authenticate() = 0;
 
  protected:
   HttpRequest* _request;
