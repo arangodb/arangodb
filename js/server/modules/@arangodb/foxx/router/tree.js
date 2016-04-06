@@ -88,11 +88,11 @@ module.exports = class Tree {
     }
   }
 
-  resolve(req) {
-    const method = req.requestType;
+  resolve(rawReq) {
+    const method = rawReq.requestType;
     let error;
 
-    for (const route of this.findRoutes(req.suffix)) {
+    for (const route of this.findRoutes(rawReq.suffix)) {
       const endpoint = route[route.length - 1].endpoint;
 
       try {
@@ -208,6 +208,7 @@ function dispatch(route, req, res) {
   let queryParams = _.clone(req.queryParams);
 
   {
+    let basePath = [];
     let responses = res._responses;
     for (const item of route) {
       const context = (
@@ -215,6 +216,10 @@ function dispatch(route, req, res) {
         ? (item.router.router || item.router)
         : (item.middleware || item.endpoint)
       );
+      item.path = basePath.concat(item.path);
+      if (item.router) {
+        basePath = item.path;
+      }
       item._responses = union(responses, context._responses);
       responses = item._responses;
     }
@@ -270,7 +275,7 @@ function dispatch(route, req, res) {
     req.path = '/' + item.path.join('/');
     req.suffix = item.suffix.join('/');
     if (req.suffix) {
-      req.path = joinPath(req.path, req.suffix.join('/'));
+      req.path = joinPath(req.path, req.suffix);
     }
     res._responses = item._responses;
     req.reverse = function (routeName, params, suffix) {
