@@ -77,9 +77,10 @@ HttpHandler::status_t PathHandler::execute() {
     }
     url += defaultFile;
 
-    createResponse(HttpResponse::MOVED_PERMANENTLY);
+    createResponse(GeneralResponse::ResponseCode::MOVED_PERMANENTLY);
 
-    _response->setHeader(TRI_CHAR_LENGTH_PAIR("location"), url);
+    static std::string const location = "location";
+    _response->setHeaderNC(location, url);
     _response->setContentType("text/html");
 
     _response->body().appendText(
@@ -100,7 +101,7 @@ HttpHandler::status_t PathHandler::execute() {
     if (next == ".") {
       LOG(WARN) << "file '" << name << "' contains '.'";
 
-      createResponse(HttpResponse::FORBIDDEN);
+      createResponse(GeneralResponse::ResponseCode::FORBIDDEN);
       _response->body().appendText("path contains '.'");
       return status_t(HANDLER_DONE);
     }
@@ -108,7 +109,7 @@ HttpHandler::status_t PathHandler::execute() {
     if (next == "..") {
       LOG(WARN) << "file '" << name << "' contains '..'";
 
-      createResponse(HttpResponse::FORBIDDEN);
+      createResponse(GeneralResponse::ResponseCode::FORBIDDEN);
       _response->body().appendText("path contains '..'");
       return status_t(HANDLER_DONE);
     }
@@ -118,7 +119,7 @@ HttpHandler::status_t PathHandler::execute() {
     if (sc != std::string::npos) {
       LOG(WARN) << "file '" << name << "' contains illegal character";
 
-      createResponse(HttpResponse::FORBIDDEN);
+      createResponse(GeneralResponse::ResponseCode::FORBIDDEN);
       _response->body().appendText("path contains illegal character '" +
                                    std::string(1, next[sc]) + "'");
       return status_t(HANDLER_DONE);
@@ -128,7 +129,7 @@ HttpHandler::status_t PathHandler::execute() {
       if (!FileUtils::isDirectory(path)) {
         LOG(WARN) << "file '" << name << "' not found";
 
-        createResponse(HttpResponse::NOT_FOUND);
+        createResponse(GeneralResponse::ResponseCode::NOT_FOUND);
         _response->body().appendText("file not found");
         return status_t(HANDLER_DONE);
       }
@@ -140,7 +141,7 @@ HttpHandler::status_t PathHandler::execute() {
     if (!allowSymbolicLink && FileUtils::isSymbolicLink(name)) {
       LOG(WARN) << "file '" << name << "' contains symbolic link";
 
-      createResponse(HttpResponse::FORBIDDEN);
+      createResponse(GeneralResponse::ResponseCode::FORBIDDEN);
       _response->body().appendText("symbolic links are not allowed");
       return status_t(HANDLER_DONE);
     }
@@ -149,19 +150,19 @@ HttpHandler::status_t PathHandler::execute() {
   if (!FileUtils::isRegularFile(name)) {
     LOG(WARN) << "file '" << name << "' not found";
 
-    createResponse(HttpResponse::NOT_FOUND);
+    createResponse(GeneralResponse::ResponseCode::NOT_FOUND);
     _response->body().appendText("file not found");
     return status_t(HANDLER_DONE);
   }
 
-  createResponse(HttpResponse::OK);
+  createResponse(GeneralResponse::ResponseCode::OK);
 
   try {
     FileUtils::slurp(name, _response->body());
   } catch (...) {
     LOG(WARN) << "file '" << name << "' not readable";
 
-    createResponse(HttpResponse::NOT_FOUND);
+    createResponse(GeneralResponse::ResponseCode::NOT_FOUND);
     _response->body().appendText("file not readable");
     return status_t(HANDLER_DONE);
   }
@@ -170,7 +171,8 @@ HttpHandler::status_t PathHandler::execute() {
   if (cacheMaxAge > 0 &&
       _request->requestType() == GeneralRequest::RequestType::GET) {
     // yes, then set a pro-caching header
-    _response->setHeader(TRI_CHAR_LENGTH_PAIR("cache-control"), maxAgeHeader);
+    static std::string const cacheControl = "cache-control";
+    _response->setHeaderNC(cacheControl, maxAgeHeader);
   }
 
   std::string::size_type d = last.find_last_of('.');
@@ -200,7 +202,7 @@ HttpHandler::status_t PathHandler::execute() {
 }
 
 void PathHandler::handleError(const Exception&) {
-  createResponse(HttpResponse::SERVER_ERROR);
+  createResponse(GeneralResponse::ResponseCode::SERVER_ERROR);
 }
 }
 }

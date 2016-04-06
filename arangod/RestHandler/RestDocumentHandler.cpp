@@ -44,7 +44,7 @@ HttpHandler::status_t RestDocumentHandler::execute() {
 
   // execute one of the CRUD methods
   switch (type) {
-    case GeneralRequest::RequestType::DELETE:
+    case GeneralRequest::RequestType::DELETE_REQ:
       deleteDocument();
       break;
     case GeneralRequest::RequestType::GET:
@@ -79,7 +79,7 @@ bool RestDocumentHandler::createDocument() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() > 1) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                   "superfluous suffix, expecting " + DOCUMENT_PATH +
                       "?collection=<identifier>");
     return false;
@@ -95,7 +95,7 @@ bool RestDocumentHandler::createDocument() {
   }
 
   if (!found || collectionName.empty()) {
-    generateError(HttpResponse::BAD,
+    generateError(GeneralResponse::ResponseCode::BAD,
                   TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting " + DOCUMENT_PATH +
                       "/<collectionname> or query parameter 'collection'");
@@ -182,7 +182,7 @@ bool RestDocumentHandler::readDocument() {
       return readSingleDocument(true);
 
     default:
-      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+      generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                     "expecting GET /_api/document/<document-handle> or GET "
                     "/_api/document?collection=<collection-name>");
       return false;
@@ -205,7 +205,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   TRI_voc_rid_t const ifNoneRid =
       extractRevision("if-none-match", nullptr, isValidRevision);
   if (!isValidRevision) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid revision number");
     return false;
   }
@@ -213,7 +213,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   TRI_voc_rid_t const ifRid =
       extractRevision("if-match", nullptr, isValidRevision);
   if (!isValidRevision) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid revision number");
     return false;
   }
@@ -321,7 +321,7 @@ bool RestDocumentHandler::readAllDocuments() {
   }
 
   // generate response
-  generateResult(HttpResponse::HttpResponseCode::OK, VPackSlice(opRes.buffer->data()));
+  generateResult(GeneralResponse::ResponseCode::OK, VPackSlice(opRes.buffer->data()));
   return true;
 }
 
@@ -333,7 +333,7 @@ bool RestDocumentHandler::checkDocument() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 2) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting URI /_api/document/<document-handle>");
     return false;
   }
@@ -372,7 +372,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     msg.append(isPatch ? "PATCH" : "PUT");
     msg.append(" /_api/document/<collectionname> or /_api/document/<document-handle> or /_api/document and query parameter 'collection'");
 
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, msg);
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, msg);
     return false;
   }
 
@@ -391,7 +391,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     }
     if (!found) {
       std::string msg("collection must be given in URL path or query parameter 'collection' must be specified");
-      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, msg);
+      generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, msg);
       return false;
     }
   } else {
@@ -428,7 +428,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     bool isValidRevision;
     revision = extractRevision("if-match", nullptr, isValidRevision);
     if (!isValidRevision) {
-      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+      generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "invalid revision number");
       return false;
     }
@@ -511,7 +511,7 @@ bool RestDocumentHandler::deleteDocument() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() < 1 || suffix.size() > 2) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /_api/document/<document-handle> or "
                   "/_api/document/<collection> with a BODY");
     return false;
@@ -530,7 +530,7 @@ bool RestDocumentHandler::deleteDocument() {
     bool isValidRevision = false;
     revision = extractRevision("if-match", nullptr, isValidRevision);
     if (!isValidRevision) {
-      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+      generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "invalid revision number");
       return false;
     }
@@ -576,7 +576,7 @@ bool RestDocumentHandler::deleteDocument() {
       builderPtr = _request->toVelocyPack(transactionContext->getVPackOptions());
     } catch (...) {
       // If an error occurs here the body is not parsable. Fail with bad parameter
-      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "Request body not parseable");
+      generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "Request body not parseable");
       return false;
     }
     search = builderPtr->slice();
@@ -610,7 +610,7 @@ bool RestDocumentHandler::readManyDocuments() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 1) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/document/<collection> with a BODY");
     return false;
   }

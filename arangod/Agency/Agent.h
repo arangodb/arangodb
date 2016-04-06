@@ -126,6 +126,12 @@ class Agent : public arangodb::Thread {
   /// @brief State machine
   State const& state() const;
 
+  /// @brief Get read store
+  Store const& readDB() const;
+
+  /// @brief Get spearhead store
+  Store const& spearhead() const; 
+
  private:
   Constituent _constituent; /**< @brief Leader election delegate */
   State _state;             /**< @brief Log replica              */

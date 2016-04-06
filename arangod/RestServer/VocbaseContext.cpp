@@ -187,12 +187,12 @@ std::string VocbaseContext::realm() const {
 /// @brief checks the authentication
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
+GeneralResponse::ResponseCode VocbaseContext::authenticate() {
   TRI_ASSERT(_vocbase != nullptr);
 
   if (!_vocbase->_settings.requireAuthentication) {
     // no authentication required at all
-    return HttpResponse::OK;
+    return GeneralResponse::ResponseCode::OK;
   }
 
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
@@ -203,7 +203,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
   if (ci.endpointType == Endpoint::DomainType::UNIX &&
       !_vocbase->_settings.requireAuthenticationUnixSockets) {
     // no authentication required for unix socket domain connections
-    return HttpResponse::OK;
+    return GeneralResponse::ResponseCode::OK;
   }
 #endif
 
@@ -215,18 +215,18 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
     if (!path.empty()) {
       // check if path starts with /_
       if (path[0] != '/') {
-        return HttpResponse::OK;
+        return GeneralResponse::ResponseCode::OK;
       }
 
       if (path[0] != '\0' && path[1] != '_') {
-        return HttpResponse::OK;
+        return GeneralResponse::ResponseCode::OK;
       }
     }
   }
 
   if (StringUtils::isPrefix(path, "/_open/") ||
       StringUtils::isPrefix(path, "/_admin/aardvark/") || path == "/") {
-    return HttpResponse::OK;
+    return GeneralResponse::ResponseCode::OK;
   }
 
   // .............................................................................
@@ -262,11 +262,11 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
         if (lastAccess + (ServerSessionTtl * 1000.0) < now) {
           // session has expired
           sids.erase(sid);
-          return HttpResponse::UNAUTHORIZED;
+          return GeneralResponse::ResponseCode::UNAUTHORIZED;
         }
 
         (*it2).second.second = now;
-        return HttpResponse::OK;
+        return GeneralResponse::ResponseCode::OK;
       }
     }
 
@@ -276,7 +276,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
   std::string const& authStr = _request->header("authorization", found);
 
   if (!found || !TRI_CaseEqualString(authStr.c_str(), "basic ", 6)) {
-    return HttpResponse::UNAUTHORIZED;
+    return GeneralResponse::ResponseCode::UNAUTHORIZED;
   }
 
   // skip over "basic "
@@ -290,7 +290,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
     std::string const expected = ServerState::instance()->getAuthentication();
 
     if (expected.substr(6) != std::string(auth)) {
-      return HttpResponse::UNAUTHORIZED;
+      return GeneralResponse::ResponseCode::UNAUTHORIZED;
     }
 
     std::string const up = StringUtils::decodeBase64(auth);
@@ -300,13 +300,13 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
       LOG(TRACE) << "invalid authentication data found, cannot extract "
                     "username/password";
 
-      return HttpResponse::BAD;
+      return GeneralResponse::ResponseCode::BAD;
     }
 
     std::string const username = up.substr(0, n);
     _request->setUser(username);
 
-    return HttpResponse::OK;
+    return GeneralResponse::ResponseCode::OK;
   }
 
   // look up the info in the cache first
@@ -321,7 +321,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
     if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
       LOG(TRACE) << "invalid authentication data found, cannot extract "
                     "username/password";
-      return HttpResponse::BAD;
+      return GeneralResponse::ResponseCode::BAD;
     }
 
     username = up.substr(0, n);
@@ -332,7 +332,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
                                         up.substr(n + 1).c_str(), &mustChange);
 
     if (!res) {
-      return HttpResponse::UNAUTHORIZED;
+      return GeneralResponse::ResponseCode::UNAUTHORIZED;
     }
   }
 
@@ -343,11 +343,11 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
     if ((_request->requestType() == GeneralRequest::RequestType::PUT ||
          _request->requestType() == GeneralRequest::RequestType::PATCH) &&
         StringUtils::isPrefix(_request->requestPath(), "/_api/user/")) {
-      return HttpResponse::OK;
+      return GeneralResponse::ResponseCode::OK;
     }
 
-    return HttpResponse::FORBIDDEN;
+    return GeneralResponse::ResponseCode::FORBIDDEN;
   }
 
-  return HttpResponse::OK;
+  return GeneralResponse::ResponseCode::OK;
 }

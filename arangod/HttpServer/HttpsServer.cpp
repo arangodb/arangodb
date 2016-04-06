@@ -25,6 +25,7 @@
 
 #include "HttpServer/HttpsCommTask.h"
 
+using namespace arangodb;
 using namespace arangodb::rest;
 
 ////////////////////////////////////////////////////////////////////////////////

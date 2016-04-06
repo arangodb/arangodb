@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestActionHandler.h"
+
 #include "Actions/actions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
@@ -68,7 +69,7 @@ HttpHandler::status_t RestActionHandler::execute() {
       case GeneralRequest::RequestType::GET:
       case GeneralRequest::RequestType::POST:
       case GeneralRequest::RequestType::PUT:
-      case GeneralRequest::RequestType::DELETE:
+      case GeneralRequest::RequestType::DELETE_REQ:
       case GeneralRequest::RequestType::HEAD:
       case GeneralRequest::RequestType::OPTIONS:
       case GeneralRequest::RequestType::PATCH: {

@@ -41,7 +41,7 @@ using namespace arangodb;
 ////////////////////////////////////////////////////////////////////////////////
 
 void arangodb::ClusterCommRestCallback(std::string& coordinator,
-                                       arangodb::rest::HttpResponse* response) {
+                                       arangodb::HttpResponse* response) {
   ClusterComm::instance()->asyncAnswer(coordinator, response);
 }
 
@@ -776,7 +776,7 @@ void ClusterComm::drop(ClientTransactionID const& clientTransactionID,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
-                              arangodb::rest::HttpResponse* responseToSend) {
+                              arangodb::HttpResponse* responseToSend) {
   // First take apart the header to get the coordinatorID:
   ServerID coordinatorID;
   size_t start = 0;
@@ -885,7 +885,7 @@ std::string ClusterComm::processAnswer(std::string& coordinatorHeader,
       TRI_ASSERT(answer != nullptr);
       ClusterCommOperation* op = *(i->second);
       op->result.answer.reset(answer);
-      op->result.answer_code = rest::HttpResponse::responseCode(
+      op->result.answer_code = GeneralResponse::responseCode(
           answer->header("x-arango-response-code"));
       op->result.status = CL_COMM_RECEIVED;
       // Do we have to do a callback?
@@ -909,7 +909,7 @@ std::string ClusterComm::processAnswer(std::string& coordinatorHeader,
         TRI_ASSERT(answer != nullptr);
         ClusterCommOperation* op = *(i->second);
         op->result.answer.reset(answer);
-        op->result.answer_code = rest::HttpResponse::responseCode(
+        op->result.answer_code = GeneralResponse::responseCode(
             answer->header("x-arango-response-code"));
         op->result.status = CL_COMM_RECEIVED;
         if (nullptr != op->callback) {

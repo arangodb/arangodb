@@ -44,7 +44,7 @@ HttpHandler::status_t RestUploadHandler::execute() {
   auto const type = _request->requestType();
 
   if (type != GeneralRequest::RequestType::POST) {
-    generateError(HttpResponse::METHOD_NOT_ALLOWED,
+    generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 
     return status_t(HttpHandler::HANDLER_DONE);
@@ -57,7 +57,8 @@ HttpHandler::status_t RestUploadHandler::execute() {
   if (TRI_GetTempName("uploads", &filename, false, systemError, errorMessage) !=
       TRI_ERROR_NO_ERROR) {
     errorMessage = "could not generate temp file: " + errorMessage;
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, errorMessage);
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_INTERNAL, errorMessage);
     return status_t(HttpHandler::HANDLER_FAILED);
   }
 
@@ -80,8 +81,8 @@ HttpHandler::status_t RestUploadHandler::execute() {
       if (!parseMultiPart(body, bodySize)) {
         TRI_Free(TRI_CORE_MEM_ZONE, relative);
         TRI_Free(TRI_CORE_MEM_ZONE, filename);
-        generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                      "invalid multipart request");
+        generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                      TRI_ERROR_INTERNAL, "invalid multipart request");
         return status_t(HttpHandler::HANDLER_FAILED);
       }
     }
@@ -93,8 +94,8 @@ HttpHandler::status_t RestUploadHandler::execute() {
   } catch (...) {
     TRI_Free(TRI_CORE_MEM_ZONE, relative);
     TRI_Free(TRI_CORE_MEM_ZONE, filename);
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                  "could not save file");
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_INTERNAL, "could not save file");
     return status_t(HttpHandler::HANDLER_FAILED);
   }
 
@@ -102,7 +103,7 @@ HttpHandler::status_t RestUploadHandler::execute() {
   TRI_Free(TRI_CORE_MEM_ZONE, relative);
 
   // create the response
-  createResponse(HttpResponse::CREATED);
+  createResponse(GeneralResponse::ResponseCode::CREATED);
   _response->setContentType("application/json; charset=utf-8");
 
   VPackBuilder b;
@@ -113,7 +114,7 @@ HttpHandler::status_t RestUploadHandler::execute() {
   b.close();
   VPackSlice s = b.slice();
 
-  generateResult(HttpResponse::CREATED, s);
+  generateResult(GeneralResponse::ResponseCode::CREATED, s);
   // success
   return status_t(HttpHandler::HANDLER_DONE);
 }

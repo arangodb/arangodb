@@ -45,7 +45,8 @@ RestExportHandler::RestExportHandler(HttpRequest* request)
 
 HttpHandler::status_t RestExportHandler::execute() {
   if (ServerState::instance()->isCoordinator()) {
-    generateError(HttpResponse::NOT_IMPLEMENTED, TRI_ERROR_CLUSTER_UNSUPPORTED,
+    generateError(GeneralResponse::ResponseCode::NOT_IMPLEMENTED,
+                  TRI_ERROR_CLUSTER_UNSUPPORTED,
                   "'/_api/export' is not yet supported in a cluster");
     return status_t(HANDLER_DONE);
   }
@@ -63,12 +64,12 @@ HttpHandler::status_t RestExportHandler::execute() {
     return status_t(HANDLER_DONE);
   }
 
-  if (type == GeneralRequest::RequestType::DELETE) {
+  if (type == GeneralRequest::RequestType::DELETE_REQ) {
     deleteCursor();
     return status_t(HANDLER_DONE);
   }
 
-  generateError(HttpResponse::METHOD_NOT_ALLOWED,
+  generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return status_t(HANDLER_DONE);
 }
@@ -177,8 +178,8 @@ void RestExportHandler::createCursor() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 0) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expecting POST /_api/export");
+    generateError(GeneralResponse::ResponseCode::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER, "expecting POST /_api/export");
     return;
   }
 
@@ -187,7 +188,7 @@ void RestExportHandler::createCursor() {
   std::string const& name = _request->value("collection", found);
 
   if (!found || name.empty()) {
-    generateError(HttpResponse::BAD,
+    generateError(GeneralResponse::ResponseCode::BAD,
                   TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting " + EXPORT_PATH +
                       "?collection=<identifier>");
@@ -208,7 +209,8 @@ void RestExportHandler::createCursor() {
 
     if (!body.isNone()) {
       if (!body.isObject()) {
-        generateError(HttpResponse::BAD, TRI_ERROR_QUERY_EMPTY);
+        generateError(GeneralResponse::ResponseCode::BAD,
+                      TRI_ERROR_QUERY_EMPTY);
         return;
       }
       optionsBuilder = buildOptions(body);
@@ -258,7 +260,7 @@ void RestExportHandler::createCursor() {
       bool count = arangodb::basics::VelocyPackHelper::getBooleanValue(
           options, "count", false);
 
-      createResponse(HttpResponse::CREATED);
+      createResponse(GeneralResponse::ResponseCode::CREATED);
       _response->setContentType("application/json; charset=utf-8");
 
       auto cursors =
@@ -285,9 +287,11 @@ void RestExportHandler::createCursor() {
       }
     }
   } catch (arangodb::basics::Exception const& ex) {
-    generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
+    generateError(GeneralResponse::responseCode(ex.code()), ex.code(),
+                  ex.what());
   } catch (...) {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL);
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_INTERNAL);
   }
 }
 
@@ -295,7 +299,8 @@ void RestExportHandler::modifyCursor() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 1) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::ResponseCode::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/export/<cursor-id>");
     return;
   }
@@ -313,17 +318,17 @@ void RestExportHandler::modifyCursor() {
 
   if (cursor == nullptr) {
     if (busy) {
-      generateError(HttpResponse::responseCode(TRI_ERROR_CURSOR_BUSY),
+      generateError(GeneralResponse::responseCode(TRI_ERROR_CURSOR_BUSY),
                     TRI_ERROR_CURSOR_BUSY);
     } else {
-      generateError(HttpResponse::responseCode(TRI_ERROR_CURSOR_NOT_FOUND),
+      generateError(GeneralResponse::responseCode(TRI_ERROR_CURSOR_NOT_FOUND),
                     TRI_ERROR_CURSOR_NOT_FOUND);
     }
     return;
   }
 
   try {
-    createResponse(HttpResponse::OK);
+    createResponse(GeneralResponse::ResponseCode::OK);
     _response->setContentType("application/json; charset=utf-8");
 
     _response->body().appendChar('{');
@@ -337,11 +342,13 @@ void RestExportHandler::modifyCursor() {
   } catch (arangodb::basics::Exception const& ex) {
     cursors->release(cursor);
 
-    generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
+    generateError(GeneralResponse::responseCode(ex.code()), ex.code(),
+                  ex.what());
   } catch (...) {
     cursors->release(cursor);
 
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL);
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_INTERNAL);
   }
 }
 
@@ -349,7 +356,8 @@ void RestExportHandler::deleteCursor() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 1) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::ResponseCode::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /_api/export/<cursor-id>");
     return;
   }
@@ -365,17 +373,18 @@ void RestExportHandler::deleteCursor() {
   bool found = cursors->remove(cursorId);
 
   if (!found) {
-    generateError(HttpResponse::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND);
+    generateError(GeneralResponse::ResponseCode::NOT_FOUND,
+                  TRI_ERROR_CURSOR_NOT_FOUND);
     return;
   }
 
-  createResponse(HttpResponse::ACCEPTED);
+  createResponse(GeneralResponse::ResponseCode::ACCEPTED);
   _response->setContentType("application/json; charset=utf-8");
   VPackBuilder result;
   result.openObject();
   result.add("id", VPackValue(id));
   result.add("error", VPackValue(false));
-  result.add("code", VPackValue(_response->responseCode()));
+  result.add("code", VPackValue((int)_response->responseCode()));
   result.close();
   VPackSlice s = result.slice();
   arangodb::basics::VPackStringBufferAdapter buffer(

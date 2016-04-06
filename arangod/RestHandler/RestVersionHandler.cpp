@@ -65,7 +65,7 @@ HttpHandler::status_t RestVersionHandler::execute() {
       result.close();
     }
     result.close();
-    generateResult(HttpResponse::HttpResponseCode::OK, result.slice());
+    generateResult(GeneralResponse::ResponseCode::OK, result.slice());
   } catch (...) {
     // Ignore this error
   }

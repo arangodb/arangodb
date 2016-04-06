@@ -164,13 +164,13 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   /// @brief generates ok message without content
   //////////////////////////////////////////////////////////////////////////////
 
-  void generateOk() { createResponse(rest::HttpResponse::NO_CONTENT); }
+  void generateOk() { createResponse(GeneralResponse::ResponseCode::NO_CONTENT); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates ok message with no body but with certain status code
   //////////////////////////////////////////////////////////////////////////////
 
-  void generateOk(rest::HttpResponse::HttpResponseCode code) {
+  void generateOk(GeneralResponse::ResponseCode code) {
     createResponse(code);
   }
 
@@ -196,7 +196,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   void generateDocumentNotFound(std::string const& /* collection name */,
                                 std::string const& /* document key */) {
-    generateError(rest::HttpResponse::NOT_FOUND, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+    generateError(GeneralResponse::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
 
   //////////////////////////////////////////////////////////////////////////////

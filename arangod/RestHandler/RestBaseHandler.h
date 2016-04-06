@@ -53,14 +53,14 @@ class RestBaseHandler : public rest::HttpHandler {
   /// @brief generates a result from VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void generateResult(rest::HttpResponse::HttpResponseCode,
+  void generateResult(GeneralResponse::ResponseCode,
                       arangodb::velocypack::Slice const& slice);
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates a result from VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  void generateResult(rest::HttpResponse::HttpResponseCode,
+  void generateResult(GeneralResponse::ResponseCode,
                       arangodb::velocypack::Slice const& slice,
                       std::shared_ptr<arangodb::TransactionContext> context);
 
@@ -68,13 +68,13 @@ class RestBaseHandler : public rest::HttpHandler {
   /// @brief generates an error
   //////////////////////////////////////////////////////////////////////////////
 
-  void generateError(rest::HttpResponse::HttpResponseCode, int);
+  void generateError(GeneralResponse::ResponseCode, int);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates an error
   //////////////////////////////////////////////////////////////////////////////
 
-  void generateError(rest::HttpResponse::HttpResponseCode, int, std::string const&);
+  void generateError(GeneralResponse::ResponseCode, int, std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates an out of memory error

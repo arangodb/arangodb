@@ -25,9 +25,10 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Endpoint/Endpoint.h"
+
 #include <boost/test/unit_test.hpp>
 
-#include "Endpoint/Endpoint.h"
 #include "Endpoint/EndpointUnixDomain.h"
 #include "Endpoint/EndpointIp.h"
 #include "Endpoint/EndpointIpV4.h"
@@ -36,6 +37,11 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace std;
+
+// sory, but boost is broken
+BOOST_TEST_DONT_PRINT_LOG_VALUE(arangodb::Endpoint::DomainType)
+BOOST_TEST_DONT_PRINT_LOG_VALUE(arangodb::Endpoint::EncryptionType)
+BOOST_TEST_DONT_PRINT_LOG_VALUE(arangodb::Endpoint::EndpointType)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            macros
@@ -86,7 +92,7 @@ BOOST_FIXTURE_TEST_SUITE (EndpointTest, EndpointSetup)
 ////////////////////////////////////////////////////////////////////////////////
 
 BOOST_AUTO_TEST_CASE (EndpointInvalid) {
-  Endpoint* e = 0;
+  Endpoint* e = nullptr;
 
   BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory(""));
   BOOST_CHECK_EQUAL(e, arangodb::Endpoint::clientFactory("@"));
@@ -119,13 +125,13 @@ BOOST_AUTO_TEST_CASE (EndpointInvalid) {
 BOOST_AUTO_TEST_CASE (EndpointSpecification) {
   Endpoint* e;
 
-  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", specification, "tcp://127.0.0.1");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost", specification, "tcp://localhost");
-  CHECK_ENDPOINT_FEATURE(client, "SSL://127.0.0.5", specification, "SSL://127.0.0.5");
-  CHECK_ENDPOINT_FEATURE(client, "httP@ssl://localhost:4635", specification, "httP@ssl://localhost:4635");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", specification, "http+tcp://127.0.0.1:8529");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://localhost", specification, "http+tcp://localhost:8529");
+  CHECK_ENDPOINT_FEATURE(client, "SSL://127.0.0.5", specification, "http+ssl://127.0.0.5:8529");
+  CHECK_ENDPOINT_FEATURE(client, "httP@ssl://localhost:4635", specification, "http+ssl://localhost:4635");
 
   CHECK_ENDPOINT_SERVER_FEATURE(server, "unix:///path/to/socket", specification, "unix:///path/to/socket");
-  CHECK_ENDPOINT_SERVER_FEATURE(server, "htTp@UNIx:///a/b/c/d/e/f.s", specification, "htTp@UNIx:///a/b/c/d/e/f.s");
+  CHECK_ENDPOINT_SERVER_FEATURE(server, "htTp@UNIx:///a/b/c/d/e/f.s", specification, "http+unix:///a/b/c/d/e/f.s");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -361,7 +367,7 @@ BOOST_AUTO_TEST_CASE (EndpointHost) {
   CHECK_ENDPOINT_FEATURE(client, "tcp://localhost", host, "localhost");
   CHECK_ENDPOINT_FEATURE(client, "tcp://www.arangodb.org", host, "www.arangodb.org");
   CHECK_ENDPOINT_FEATURE(client, "tcp://arangodb.org", host, "arangodb.org");
-  CHECK_ENDPOINT_FEATURE(client, "tcp://DE.triagens.ArangoDB.org", host, "DE.triagens.ArangoDB.org");
+  CHECK_ENDPOINT_FEATURE(client, "tcp://DE.triagens.ArangoDB.org", host, "de.triagens.arangodb.org");
   CHECK_ENDPOINT_FEATURE(client, "tcp://192.168.173.13:8529", host, "192.168.173.13");
   CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1:8529", host, "127.0.0.1");
   CHECK_ENDPOINT_FEATURE(client, "tcp://localhost:8529", host, "localhost");
@@ -379,7 +385,7 @@ BOOST_AUTO_TEST_CASE (EndpointHost) {
   CHECK_ENDPOINT_FEATURE(client, "ssl://localhost", host, "localhost");
   CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org", host, "www.arangodb.org");
   CHECK_ENDPOINT_FEATURE(client, "ssl://arangodb.org", host, "arangodb.org");
-  CHECK_ENDPOINT_FEATURE(client, "ssl://DE.triagens.ArangoDB.org", host, "DE.triagens.ArangoDB.org");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://DE.triagens.ArangoDB.org", host, "de.triagens.arangodb.org");
   CHECK_ENDPOINT_FEATURE(client, "ssl://192.168.173.13:8529", host, "192.168.173.13");
   CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:8529", host, "localhost");
   CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org:8529", host, "www.arangodb.org");

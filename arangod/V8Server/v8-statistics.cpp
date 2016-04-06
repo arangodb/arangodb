@@ -213,7 +213,7 @@ static void JS_HttpStatistics(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_ASCII_STRING("requestsDelete"),
       v8::Number::New(
           isolate,
-          (double)methodRequests[(int)GeneralRequest::RequestType::DELETE]
+          (double)methodRequests[(int)GeneralRequest::RequestType::DELETE_REQ]
               ._count));
   result->Set(
       TRI_V8_ASCII_STRING("requestsOptions"),

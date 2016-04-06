@@ -138,12 +138,6 @@ find_package(BISON)
 find_package(PythonInterp 2 REQUIRED)
 get_filename_component(PYTHON_EXECUTABLE ${PYTHON_EXECUTABLE} REALPATH)
 
-find_package(Go 1.2)
-
-if (NOT GO_FOUND)
-  message(STATUS "Go version >=1.2 not found. etcd will not be built.")
-endif ()
-
 ################################################################################
 ## ARCHITECTURE
 ################################################################################
@@ -441,13 +435,13 @@ elseif (MSVC)
     message(STATUS "Compiler type MSVC: ${CMAKE_CXX_COMPILER}")
   endif ()
 
-  set(CMAKE_C_FLAGS                "-g"                                CACHE INTERNAL "default C++ compiler flags")
+  set(CMAKE_C_FLAGS                "/MTd"                              CACHE INTERNAL "default C++ compiler flags")
   set(CMAKE_C_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1" CACHE INTERNAL "C++ debug flags")
   set(CMAKE_C_FLAGS_MINSIZEREL     "/MT /O1 /Ob1 /D NDEBUG"            CACHE INTERNAL "C++ minimal size flags")
   set(CMAKE_C_FLAGS_RELEASE        "/MT /O2 /Ob2 /D NDEBUG"            CACHE INTERNAL "C++ release flags")
   set(CMAKE_C_FLAGS_RELWITHDEBINFO "/MT /Zi /O2 /Ob1 /D NDEBUG"        CACHE INTERNAL "C++ release with debug info flags")
 
-  set(CMAKE_CXX_FLAGS                "-g"                                CACHE INTERNAL "default C++ compiler flags")
+  set(CMAKE_CXX_FLAGS                "/MTd"                              CACHE INTERNAL "default C++ compiler flags")
   set(CMAKE_CXX_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1" CACHE INTERNAL "C++ debug flags")
   set(CMAKE_CXX_FLAGS_MINSIZEREL     "/MT /O1 /Ob1 /D NDEBUG"            CACHE INTERNAL "C++ minimal size flags")
   set(CMAKE_CXX_FLAGS_RELEASE        "/MT /O2 /Ob2 /D NDEBUG"            CACHE INTERNAL "C++ release flags")

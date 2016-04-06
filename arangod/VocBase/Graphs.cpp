@@ -21,14 +21,15 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/JsonHelper.h"
+#include "Graphs.h"
+
 #include "Aql/Graphs.h"
 #include "Cluster/ClusterMethods.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/Graphs.h"
 
-using namespace arangodb::basics;
+using namespace arangodb;
 
 std::string const GRAPHS = "_graphs";
 
@@ -38,7 +39,6 @@ std::string const GRAPHS = "_graphs";
 
 arangodb::aql::Graph* arangodb::lookupGraphByName(TRI_vocbase_t* vocbase,
                                                   std::string const& name) {
-
   SingleCollectionTransaction trx(StandaloneTransactionContext::Create(vocbase),
                                           GRAPHS, TRI_TRANSACTION_READ);
 

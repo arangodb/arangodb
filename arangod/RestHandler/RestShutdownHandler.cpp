@@ -49,7 +49,7 @@ HttpHandler::status_t RestShutdownHandler::execute() {
   try {
     VPackBuilder result;
     result.add(VPackValue("OK"));
-    generateResult(HttpResponse::HttpResponseCode::OK, result.slice());
+    generateResult(GeneralResponse::ResponseCode::OK, result.slice());
   } catch (...) {
     // Ignore the error
   }

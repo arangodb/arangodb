@@ -111,11 +111,7 @@ publicController.get("/index.html", function(req, res) {
   var prefix = '/_db/' + encodeURIComponent(req.database) + applicationContext.mount;
 
   res.status(302);
-  res.set("Location", prefix + (
-    cluster.dispatcherFrontendDisabled()
-    ? "/standalone.html"
-    : "/cluster.html"
-  ));
+  res.set("Location", prefix + "/standalone.html");
 });
 
 controller.activateSessions({

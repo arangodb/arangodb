@@ -30,8 +30,8 @@ def SetEnvironmentAndGetRuntimeDllDirs():
   the output directory after gyp generation.
   """
   vs2013_runtime_dll_dirs = None
-  depot_tools_win_toolchain = \
-      bool(int(os.environ.get('DEPOT_TOOLS_WIN_TOOLCHAIN', '1')))
+  depot_tools_win_toolchain = 0
+  #    bool(int(os.environ.get('DEPOT_TOOLS_WIN_TOOLCHAIN', '1')))
   # When running on a non-Windows host, only do this if the SDK has explicitly
   # been downloaded before (in which case json_data_file will exist).
   if ((sys.platform in ('win32', 'cygwin') or os.path.exists(json_data_file))
@@ -208,8 +208,8 @@ def Update(force=False):
   if force == '--force' or os.path.exists(json_data_file):
     force = True
 
-  depot_tools_win_toolchain = \
-      bool(int(os.environ.get('DEPOT_TOOLS_WIN_TOOLCHAIN', '1')))
+  depot_tools_win_toolchain = 0
+  #    bool(int(os.environ.get('DEPOT_TOOLS_WIN_TOOLCHAIN', '1')))
   if ((sys.platform in ('win32', 'cygwin') or force) and
         depot_tools_win_toolchain):
     import find_depot_tools

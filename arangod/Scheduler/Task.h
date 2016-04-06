@@ -38,7 +38,6 @@ class Builder;
 
 namespace rest {
 class Scheduler;
-class HttpResponse;
 
 class TaskData : public RequestStatisticsAgent {
  public:

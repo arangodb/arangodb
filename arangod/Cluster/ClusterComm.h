@@ -107,12 +107,12 @@ struct ClusterCommResult {
   // the field answer is != nullptr if status is == CL_COMM_RECEIVED
   // answer_code is valid iff answer is != 0
   std::shared_ptr<HttpRequest> answer;
-  rest::HttpResponse::HttpResponseCode answer_code;
+  GeneralResponse::ResponseCode answer_code;
 
   ClusterCommResult()
       : dropped(false),
         single(false),
-        answer_code(rest::HttpResponse::PROCESSING) {}
+        answer_code(GeneralResponse::ResponseCode::PROCESSING) {}
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief routine to set the destination
@@ -172,7 +172,7 @@ struct ClusterCommOperation {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterCommRestCallback(std::string& coordinator,
-                             rest::HttpResponse* response);
+                             HttpResponse* response);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the class for the cluster communications library
@@ -304,7 +304,7 @@ class ClusterComm {
   //////////////////////////////////////////////////////////////////////////////
 
   void asyncAnswer(std::string& coordinatorHeader,
-                   rest::HttpResponse* responseToSend);
+                   HttpResponse* responseToSend);
 
  private:
   //////////////////////////////////////////////////////////////////////////////

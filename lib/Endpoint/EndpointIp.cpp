@@ -32,8 +32,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-#warning TODO move to system or os file
-
 #ifdef _WIN32
 #define STR_ERROR()                                                  \
   windowsErrorBuf;                                                   \
@@ -41,8 +39,13 @@ using namespace arangodb::basics;
                 windowsErrorBuf, sizeof(windowsErrorBuf), NULL);     \
   errno = GetLastError();
 #else
+#warning TODO move to system or os file
 #define STR_ERROR() strerror(errno)
 #endif
+
+uint16_t const EndpointIp::_defaultPortHttp = 8529;
+uint16_t const EndpointIp::_defaultPortVpp = 8530;
+char const* EndpointIp::_defaultHost = "127.0.0.1";
 
 static std::string buildSpecification(Endpoint::DomainType domainType,
                                       Endpoint::TransportType transport,
@@ -275,7 +278,7 @@ TRI_socket_t EndpointIp::connect(double connectTimeout, double requestTimeout) {
   TRI_ASSERT(!_connected);
 
   memset(&hints, 0, sizeof(struct addrinfo));
-  hints.ai_family = getDomain();  // Allow IPv4 or IPv6
+  hints.ai_family = domain();  // Allow IPv4 or IPv6
   hints.ai_flags = TRI_CONNECT_AI_FLAGS;
   hints.ai_socktype = SOCK_STREAM;
 

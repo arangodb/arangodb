@@ -36,10 +36,20 @@ fi
 
 rm -rf cluster
 mkdir cluster
-cd cluster
 echo Starting agency...
-../build/bin/etcd-arango --data-dir agency > agency.log 2>&1 &
-cd ..
+build/bin/arangod --agency.size 1 \
+  --server.endpoint tcp://127.0.0.1:4001 \
+  --agency.endpoint tcp://127.0.0.1:4001 \
+  --database.directory cluster/data4001 \
+  --agency.id 0 \
+  --log.file cluster/4001.log \
+  --log.requests-file cluster/4001.req \
+  --server.disable-statistics true \
+  --server.foxx-queues false \
+  --server.disable-authentication true \
+  --javascript.app-path ./js/apps \
+  --javascript.startup-directory ./js \
+  > cluster/4001.stdout 2>&1 &
 sleep 1
 
 start() {
@@ -59,6 +69,7 @@ start() {
                 --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
                 --cluster.my-role $ROLE \
                 --log.file cluster/$PORT.log \
+                --log.level TRACE \
                 --log.requests-file cluster/$PORT.req \
                 --server.disable-statistics true \
                 --server.foxx-queues false \

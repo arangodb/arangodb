@@ -282,7 +282,7 @@ void DumpFeature::endBatch(std::string DBserver) {
   _batchId = 0;
 
   std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
-      GeneralRequest::RequestType::DELETE, url + urlExt, nullptr, 0));
+      GeneralRequest::RequestType::DELETE_REQ, url + urlExt, nullptr, 0));
 
   // ignore any return value
 }

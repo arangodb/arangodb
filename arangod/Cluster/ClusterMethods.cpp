@@ -99,7 +99,7 @@ static std::shared_ptr<VPackBuilder> ExtractAnswer(
 /// @brief merge headers of a DB server response into the current response
 ////////////////////////////////////////////////////////////////////////////////
 
-void mergeResponseHeaders(HttpResponse* response,
+void mergeResponseHeaders(GeneralResponse* response,
                           std::map<std::string, std::string> const& headers) {
   std::map<std::string, std::string>::const_iterator it = headers.begin();
 
@@ -245,8 +245,8 @@ int usersOnCoordinator(std::string const& dbname, VPackBuilder& result,
     for (count = (int)shards->size(); count > 0; count--) {
       auto res = cc->wait("", coordTransactionID, 0, "", timeout);
       if (res.status == CL_COMM_RECEIVED) {
-        if (res.answer_code == arangodb::rest::HttpResponse::OK ||
-            res.answer_code == arangodb::rest::HttpResponse::CREATED) {
+        if (res.answer_code == arangodb::GeneralResponse::ResponseCode::OK ||
+            res.answer_code == arangodb::GeneralResponse::ResponseCode::CREATED) {
           std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
           VPackSlice answer = answerBuilder->slice();
 
@@ -316,7 +316,7 @@ int revisionOnCoordinator(std::string const& dbname,
   for (count = (int)shards->size(); count > 0; count--) {
     auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
-      if (res.answer_code == arangodb::rest::HttpResponse::OK) {
+      if (res.answer_code == arangodb::GeneralResponse::ResponseCode::OK) {
         std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
         VPackSlice answer = answerBuilder->slice();
 
@@ -393,7 +393,7 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
   for (count = (int)shards->size(); count > 0; count--) {
     auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
-      if (res.answer_code == arangodb::rest::HttpResponse::OK) {
+      if (res.answer_code == arangodb::GeneralResponse::ResponseCode::OK) {
         std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
         VPackSlice answer = answerBuilder->slice();
 
@@ -489,7 +489,7 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
   for (count = (int)shards->size(); count > 0; count--) {
     auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
-      if (res.answer_code == arangodb::rest::HttpResponse::OK) {
+      if (res.answer_code == arangodb::GeneralResponse::ResponseCode::OK) {
         std::shared_ptr<VPackBuilder> answerBuilder = ExtractAnswer(res);
         VPackSlice answer = answerBuilder->slice();
 
@@ -520,7 +520,7 @@ int createDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
     arangodb::OperationOptions const& options, VPackSlice const& slice,
     std::map<std::string, std::string> const& headers,
-    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
+    arangodb::GeneralResponse::ResponseCode& responseCode,
     std::map<std::string, std::string>& resultHeaders,
     std::string& resultBody) {
   std::unique_ptr<TRI_json_t> json(
@@ -537,7 +537,7 @@ int createDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname, arangodb::OperationOptions const& options,
     std::unique_ptr<TRI_json_t>& json,
     std::map<std::string, std::string> const& headers,
-    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
+    arangodb::GeneralResponse::ResponseCode& responseCode,
     std::map<std::string, std::string>& resultHeaders,
     std::string& resultBody) {
   // Set a few variables needed for our work:
@@ -612,7 +612,7 @@ int createDocumentOnCoordinator(
   if (commError != TRI_ERROR_NO_ERROR) {
     return commError;
   }
-  responseCode = static_cast<arangodb::rest::HttpResponse::HttpResponseCode>(
+  responseCode = static_cast<arangodb::GeneralResponse::ResponseCode>(
       res->result->getHttpReturnCode());
   resultHeaders = res->result->getHeaderFields();
   resultBody.assign(res->result->getBody().c_str(),
@@ -629,7 +629,7 @@ int deleteDocumentOnCoordinator(
     std::string const& key, TRI_voc_rid_t const rev,
     arangodb::OperationOptions const& options,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
-    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
+    arangodb::GeneralResponse::ResponseCode& responseCode,
     std::map<std::string, std::string>& resultHeaders,
     std::string& resultBody) {
   // Set a few variables needed for our work:
@@ -676,7 +676,7 @@ int deleteDocumentOnCoordinator(
     // Send a synchronous request to that shard using ClusterComm:
     auto res = cc->syncRequest(
         "", TRI_NewTickServer(), "shard:" + shardID,
-        arangodb::GeneralRequest::RequestType::DELETE,
+        arangodb::GeneralRequest::RequestType::DELETE_REQ,
         "/_db/" + dbname + "/_api/document/" + StringUtils::urlEncode(shardID) +
             "/" + StringUtils::urlEncode(key) + "?waitForSync=" +
             (options.waitForSync ? "true" : "false") + "&returnOld=" +
@@ -687,7 +687,7 @@ int deleteDocumentOnCoordinator(
     if (error != TRI_ERROR_NO_ERROR) {
       return error;
     }
-    responseCode = static_cast<arangodb::rest::HttpResponse::HttpResponseCode>(
+    responseCode = static_cast<arangodb::GeneralResponse::ResponseCode>(
         res->result->getHttpReturnCode());
     resultHeaders = res->result->getHeaderFields();
     resultBody.assign(res->result->getBody().c_str(),
@@ -703,7 +703,7 @@ int deleteDocumentOnCoordinator(
     std::unique_ptr<std::map<std::string, std::string>> headersCopy(
         new std::map<std::string, std::string>(*headers));
     cc->asyncRequest("", coordTransactionID, "shard:" + p.first,
-                     arangodb::GeneralRequest::RequestType::DELETE,
+                     arangodb::GeneralRequest::RequestType::DELETE_REQ,
                      "/_db/" + StringUtils::urlEncode(dbname) +
                          "/_api/document/" + StringUtils::urlEncode(p.first) +
                          "/" + StringUtils::urlEncode(key) + "?waitForSync=" +
@@ -718,7 +718,7 @@ int deleteDocumentOnCoordinator(
   for (count = (int)shards->size(); count > 0; count--) {
     auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
-      if (res.answer_code != arangodb::rest::HttpResponse::NOT_FOUND ||
+      if (res.answer_code != arangodb::GeneralResponse::ResponseCode::NOT_FOUND ||
           (nrok == 0 && count == 1)) {
         nrok++;
         responseCode = res.answer_code;
@@ -776,7 +776,7 @@ int truncateCollectionOnCoordinator(std::string const& dbname,
   for (count = (unsigned int)shards->size(); count > 0; count--) {
     auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
-      if (res.answer_code == arangodb::rest::HttpResponse::OK) {
+      if (res.answer_code == arangodb::GeneralResponse::ResponseCode::OK) {
         nrok++;
       }
     }
@@ -798,7 +798,7 @@ int getDocumentOnCoordinator(
     std::string const& key, TRI_voc_rid_t const rev,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
     bool generateDocument,
-    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
+    arangodb::GeneralResponse::ResponseCode& responseCode,
     std::map<std::string, std::string>& resultHeaders,
     std::string& resultBody) {
   // Set a few variables needed for our work:
@@ -860,7 +860,7 @@ int getDocumentOnCoordinator(
     if (error != TRI_ERROR_NO_ERROR) {
       return error;
     }
-    responseCode = static_cast<arangodb::rest::HttpResponse::HttpResponseCode>(
+    responseCode = static_cast<arangodb::GeneralResponse::ResponseCode>(
         res->result->getHttpReturnCode());
     resultHeaders = res->result->getHeaderFields();
     resultBody.assign(res->result->getBody().c_str(),
@@ -888,7 +888,7 @@ int getDocumentOnCoordinator(
   for (count = (int)shards->size(); count > 0; count--) {
     auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
-      if (res.answer_code != arangodb::rest::HttpResponse::NOT_FOUND ||
+      if (res.answer_code != arangodb::GeneralResponse::ResponseCode::NOT_FOUND ||
           (nrok == 0 && count == 1)) {
         nrok++;
         responseCode = res.answer_code;
@@ -1078,7 +1078,7 @@ int getFilteredDocumentsOnCoordinator(
 int getAllDocumentsOnCoordinator(
     std::string const& dbname, std::string const& collname,
     std::string const& returnType,
-    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
+    arangodb::GeneralResponse::ResponseCode& responseCode,
     std::string& contentType, std::string& resultBody) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
@@ -1106,7 +1106,7 @@ int getAllDocumentsOnCoordinator(
   }
   // Now listen to the results:
   int count;
-  responseCode = arangodb::rest::HttpResponse::OK;
+  responseCode = arangodb::GeneralResponse::ResponseCode::OK;
   contentType = "application/json; charset=utf-8";
 
   arangodb::basics::Json result(arangodb::basics::Json::Object);
@@ -1123,7 +1123,7 @@ int getAllDocumentsOnCoordinator(
     }
 
     if (res.status == CL_COMM_ERROR || res.status == CL_COMM_DROPPED ||
-        res.answer_code == arangodb::rest::HttpResponse::NOT_FOUND) {
+        res.answer_code == arangodb::GeneralResponse::ResponseCode::NOT_FOUND) {
       cc->drop("", coordTransactionID, 0, "");
       return TRI_ERROR_INTERNAL;
     }
@@ -1167,7 +1167,7 @@ int getAllDocumentsOnCoordinator(
 int getAllEdgesOnCoordinator(
     std::string const& dbname, std::string const& collname,
     std::string const& vertex, TRI_edge_direction_e const& direction,
-    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
+    arangodb::GeneralResponse::ResponseCode& responseCode,
     std::string& contentType, std::string& resultBody) {
   arangodb::basics::Json result(arangodb::basics::Json::Object);
   std::vector<traverser::TraverserExpression*> expTmp;
@@ -1182,7 +1182,7 @@ int getFilteredEdgesOnCoordinator(
     std::string const& dbname, std::string const& collname,
     std::string const& vertex, TRI_edge_direction_e const& direction,
     std::vector<traverser::TraverserExpression*> const& expressions,
-    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
+    arangodb::GeneralResponse::ResponseCode& responseCode,
     std::string& contentType, arangodb::basics::Json& result) {
   TRI_ASSERT(result.isObject());
   TRI_ASSERT(result.members() == 0);
@@ -1227,7 +1227,7 @@ int getFilteredEdgesOnCoordinator(
   }
   // Now listen to the results:
   int count;
-  responseCode = arangodb::rest::HttpResponse::OK;
+  responseCode = arangodb::GeneralResponse::ResponseCode::OK;
   contentType = "application/json; charset=utf-8";
   size_t filtered = 0;
   size_t scannedIndex = 0;
@@ -1311,7 +1311,7 @@ int modifyDocumentOnCoordinator(
     arangodb::OperationOptions const& options, bool isPatch,
     VPackSlice const& slice,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
-    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
+    arangodb::GeneralResponse::ResponseCode& responseCode,
     std::map<std::string, std::string>& resultHeaders,
     std::string& resultBody) {
   std::unique_ptr<TRI_json_t> json(
@@ -1331,7 +1331,7 @@ int modifyDocumentOnCoordinator(
     arangodb::OperationOptions const& options, bool isPatch,
     std::unique_ptr<TRI_json_t>& json,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
-    arangodb::rest::HttpResponse::HttpResponseCode& responseCode,
+    arangodb::GeneralResponse::ResponseCode& responseCode,
     std::map<std::string, std::string>& resultHeaders,
     std::string& resultBody) {
   // Set a few variables needed for our work:
@@ -1429,11 +1429,11 @@ int modifyDocumentOnCoordinator(
     }
 
     // Now we have to distinguish whether we still have to go the slow way:
-    responseCode = static_cast<arangodb::rest::HttpResponse::HttpResponseCode>(
+    responseCode = static_cast<arangodb::GeneralResponse::ResponseCode>(
         res->result->getHttpReturnCode());
-    if (responseCode < arangodb::rest::HttpResponse::BAD ||
-        responseCode == arangodb::rest::HttpResponse::PRECONDITION_FAILED ||
-        responseCode == arangodb::rest::HttpResponse::CONFLICT) {
+    if (responseCode < arangodb::GeneralResponse::ResponseCode::BAD ||
+        responseCode == arangodb::GeneralResponse::ResponseCode::PRECONDITION_FAILED ||
+        responseCode == arangodb::GeneralResponse::ResponseCode::CONFLICT) {
       // OK, we are done, let's report:
       resultHeaders = res->result->getHeaderFields();
       resultBody.assign(res->result->getBody().c_str(),
@@ -1461,7 +1461,7 @@ int modifyDocumentOnCoordinator(
   for (count = (int)shards->size(); count > 0; count--) {
     auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
-      if (res.answer_code != arangodb::rest::HttpResponse::NOT_FOUND ||
+      if (res.answer_code != arangodb::GeneralResponse::ResponseCode::NOT_FOUND ||
           (nrok == 0 && count == 1)) {
         nrok++;
         responseCode = res.answer_code;
@@ -1509,7 +1509,7 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector) {
   for (count = (int)DBservers.size(); count > 0; count--) {
     auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
-      if (res.answer_code == arangodb::rest::HttpResponse::OK) {
+      if (res.answer_code == arangodb::GeneralResponse::ResponseCode::OK) {
         nrok++;
       }
     }
