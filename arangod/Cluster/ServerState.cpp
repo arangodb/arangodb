@@ -325,15 +325,16 @@ bool ServerState::registerWithRole(ServerState::RoleEnum role) {
   const std::string planKey = "Plan/" + agencyKey + "/" + id;
   const std::string currentKey = "Current/" + agencyKey + "/" + id;
   
-  VPackSlice plan;
+  std::shared_ptr<VPackBuilder> builder;
   result = comm.getValues(planKey, false);
   if (!result.successful()) {
+    VPackSlice plan;
     // mop: hmm ... we are registered but not part of the Plan :O
     // create a plan for ourselves :)
-    VPackBuilder builder;
-    builder.add(VPackValue("none"));
+    builder = std::make_shared<VPackBuilder>();
+    builder->add(VPackValue("none"));
     
-    plan = builder.slice();
+    plan = builder->slice();
 
     comm.setValue(planKey, plan, 0.0);
     if (!result.successful()) {
@@ -346,12 +347,17 @@ bool ServerState::registerWithRole(ServerState::RoleEnum role) {
       result._values.begin();
     
     if (it != result._values.end()) {
-      plan = (*it).second._vpack->slice();
+      builder = (*it).second._vpack;
     }
+  }
+
+  if (!builder) {
+    LOG(ERR) << "Builder not set. Answer is not in correct format!";
+    return false;
   }
   
   result =
-      comm.setValue(currentKey, plan, 0.0);
+      comm.setValue(currentKey, builder->slice(), 0.0);
   
   if (!result.successful()) {
     LOG(ERR) << "Could not talk to agency! " << result.errorMessage();
