@@ -64,7 +64,6 @@ const legacyManifestFields = [
   'assets',
   'controllers',
   'exports',
-  'defaultDocument',
   'isSystem'
 ];
 
@@ -83,6 +82,7 @@ const manifestSchema = {
   thumbnail: joi.string().optional(),
   author: joi.string().allow('').default(''),
   contributors: joi.array().optional(),
+  defaultDocument: joi.string().allow('').optional(),
   repository: (
     joi.object().optional()
     .keys({
