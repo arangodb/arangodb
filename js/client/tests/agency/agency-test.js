@@ -175,15 +175,15 @@ function agencyTestSuite () {
 
     testDocument : function () {
       writeAndCheck([[{"a":{"b":{"c":[1,2,3]},"e":12},"d":false}]]);
-      assertEqual(readAndCheck(["a/e",[ "d","a/b"]]),
-                  [12,{a:{b:{c:[1,2,3]},d:false}}]);
+      assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
+                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
     },
 
     testTransaction : function () {
       writeAndCheck([[{"a":{"b":{"c":[1,2,4]},"e":12},"d":false}],
                      [{"a":{"b":{"c":[1,2,3]}}}]]);
-      assertEqual(readAndCheck(["a/e",[ "d","a/b"]]),
-                  [12,{a:{b:{c:[1,2,3]},d:false}}]);
+      assertEqual(readAndCheck([["a/e"],[ "d","a/b"]]),
+                  [{a:{e:12}},{a:{b:{c:[1,2,3]},d:false}}]);
     },
 
     testOpSetNew : function () {
@@ -192,7 +192,7 @@ function agencyTestSuite () {
       writeAndCheck([[{"a/y":{"op":"set","new":12, "ttl": 1}}]]);
       assertEqual(readAndCheck([["a/y"]]), [{"a":{"y":12}}]);
       sleep(1100);
-      assertEqual(readAndCheck([["a/y"]]), [{}]);
+      assertEqual(readAndCheck([["a/y"]]), [{a:{}}]);
       writeAndCheck([[{"a/y":{"op":"set","new":12, "ttl": 1}}]]);
       writeAndCheck([[{"a/y":{"op":"set","new":12}}]]);
       assertEqual(readAndCheck([["a/y"]]), [{"a":{"y":12}}]);
@@ -224,7 +224,7 @@ function agencyTestSuite () {
 
     testOpRemove : function () {
       writeAndCheck([[{"a/euler":{"op":"delete"}}]]);
-      assertEqual(readAndCheck([["a/euler"]]), [{}]);
+      assertEqual(readAndCheck([["a/euler"]]), [{a:{}}]);
     },
      
     testOpPrepend : function () {
