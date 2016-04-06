@@ -57,7 +57,7 @@ module.exports = function oauth2(cfg) {
     }
     delete endpoint.search;
     delete endpoint.query;
-    return {url: formatUrl(endpoint), body}
+    return {url: formatUrl(endpoint), body};
   }
 
   function getActiveUserUrl(access_token) {
