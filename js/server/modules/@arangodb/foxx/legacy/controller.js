@@ -28,7 +28,7 @@ const BaseMiddleware = require('@arangodb/foxx/legacy/base_middleware').BaseMidd
 const _ = require('lodash');
 const is = require('@arangodb/is');
 const internal = require('@arangodb/foxx/legacy/internals');
-const swagger = require('@arangodb/foxx/swagger');
+const swagger = require('@arangodb/foxx/legacy/swagger');
 
 
 var authControllerProps = {

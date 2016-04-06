@@ -1,12 +1,8 @@
 'use strict';
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Foxx Swagger integration
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2015 triAGENS GmbH, Cologne, Germany
+/// Copyright 2015-2016 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,10 +16,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Alan Plum
-/// @author Copyright 2015, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 var _ = require('lodash');
@@ -43,7 +38,7 @@ var jsonSchemaPrimitives = [
   'string'
 ];
 
-function createSwaggerRouteHandler(appPath, opts) {
+function createSwaggerRouteHandler(defaultAppPath, opts) {
   if (!opts) {
     opts = {};
   }
@@ -58,6 +53,7 @@ function createSwaggerRouteHandler(appPath, opts) {
         return;
       }
     }
+    var appPath = result ? result.appPath : (opts.appPath || defaultAppPath);
     var pathInfo = req.suffix.join('/');
     if (!pathInfo) {
       var params = Object.keys(req.parameters || {}).reduce(function (part, name) {
@@ -65,7 +61,7 @@ function createSwaggerRouteHandler(appPath, opts) {
       }, '?');
       params = params.slice(0, params.length - 1);
       res.status(302);
-      res.set('location', req.absoluteUrl(appPath + req.path(null, 'index.html') + params));
+      res.set('location', req.absoluteUrl(defaultAppPath + req.path(null, 'index.html') + params));
       return;
     }
     if (pathInfo === 'swagger.json') {
@@ -73,7 +69,10 @@ function createSwaggerRouteHandler(appPath, opts) {
       if (typeof swaggerJsonHandler === 'string') {
         pathInfo = swaggerJsonHandler;
       } else if (typeof swaggerJsonHandler === 'function') {
-        swaggerJsonHandler(req, res, {appPath: result ? result.appPath : (opts.appPath || appPath)});
+        var foxx = resolveFoxx(req, res, appPath);
+        if (typeof foxx !== 'undefined') {
+          swaggerJsonHandler(req, res, {appPath, foxx});
+        }
         return;
       }
     } else if (pathInfo === 'index.html') {
@@ -101,10 +100,9 @@ function swaggerPath(path, basePath) {
   return fs.safeJoin(basePath, path);
 }
 
-function swaggerJson(req, res, opts) {
-  var foxx;
+function resolveFoxx(req, res, appPath) {
   try {
-    foxx = FoxxManager.ensureRouted(opts.appPath);
+    return FoxxManager.ensureRouted(appPath);
   } catch (e) {
     if (e instanceof ArangoError && e.errorNum === errors.ERROR_APP_NOT_FOUND.code) {
       resultNotFound(req, res, 404, e.errorMessage);
@@ -112,10 +110,14 @@ function swaggerJson(req, res, opts) {
     }
     throw e;
   }
+}
+
+function swaggerJson(req, res, opts) {
+  let foxx = opts.foxx || resolveFoxx(req, res, opts.appPath);
   let docs = foxx.docs;
   if (!docs) {
-    var app = foxx.routes.foxxContext && foxx.routes.foxxContext.service;
-    var swagger = parseRoutes(opts.appPath, foxx.routes.routes, foxx.routes.models);
+    const app = foxx.routes.foxxContext && foxx.routes.foxxContext.service;
+    const swagger = parseRoutes(opts.appPath, foxx.routes.routes, foxx.routes.models);
     docs = {
       swagger: '2.0',
       info: {
