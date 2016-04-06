@@ -297,6 +297,140 @@ void Node::notifyObservers () const {
   
 }
 
+namespace arangodb {
+namespace consensus {
+template<> bool Node::handle<SET> (VPackSlice const& slice) {
+  if (!slice.hasKey("new")) {
+    LOG_TOPIC(WARN, Logger::AGENCY) << "Operator set without new value";
+    LOG_TOPIC(WARN, Logger::AGENCY) << slice.toJson();
+    return false;
+  }
+  *this = slice.get("new");
+  if (slice.hasKey("ttl")) {
+    VPackSlice ttl_v = slice.get("ttl");
+    if (ttl_v.isNumber()) {
+      long ttl = 1000l * (
+        (ttl_v.isDouble()) ?
+        static_cast<long>(slice.get("ttl").getDouble()):
+        slice.get("ttl").getInt());
+      addTimeToLive (ttl);
+    } else {
+      LOG_TOPIC(WARN, Logger::AGENCY) <<
+        "Non-number value assigned to ttl: " << ttl_v.toJson();
+    }
+  }
+  return true;
+}
+
+template<> bool Node::handle<INCREMENT> (VPackSlice const& slice) {
+  Builder tmp;
+  tmp.openObject();
+  try {
+    tmp.add("tmp", Value(this->slice().getInt()+1));
+  } catch (std::exception const&) {
+    tmp.add("tmp",Value(1));
+  }
+  tmp.close();
+  *this = tmp.slice().get("tmp");
+  return true;
+}
+
+template<> bool Node::handle<DECREMENT> (VPackSlice const& slice) {
+  Builder tmp;
+  tmp.openObject();
+  try {
+    tmp.add("tmp", Value(this->slice().getInt()-1));
+  } catch (std::exception const&) {
+    tmp.add("tmp",Value(-1));
+  }
+  tmp.close();
+  *this = tmp.slice().get("tmp");
+  return true;
+}
+
+template<> bool Node::handle<PUSH> (VPackSlice const& slice) {
+  if (!slice.hasKey("new")) {
+    LOG_TOPIC(WARN, Logger::AGENCY)
+      << "Operator push without new value: " << slice.toJson();
+    return false;
+  }
+  Builder tmp;
+  tmp.openArray();
+  if (this->slice().isArray()) {
+    for (auto const& old : VPackArrayIterator(this->slice()))
+      tmp.add(old);
+  }
+  tmp.add(slice.get("new"));
+  tmp.close();
+  *this = tmp.slice();
+  return true;
+}
+
+template<> bool Node::handle<POP> (VPackSlice const& slice) {
+  Builder tmp;
+  tmp.openArray();
+  if (this->slice().isArray()) {
+    VPackArrayIterator it(this->slice());
+    if (it.size()>1) {
+      size_t j = it.size()-1;
+      for (auto old : it) {
+        tmp.add(old);
+        if (--j==0)
+          break;
+      }
+    }
+  }
+  tmp.close();
+  *this = tmp.slice();
+  return true;
+}
+
+template<> bool Node::handle<PREPEND> (VPackSlice const& slice) {
+  if (!slice.hasKey("new")) {
+    LOG_TOPIC(WARN, Logger::AGENCY)
+      << "Operator prepend without new value: " << slice.toJson();
+    return false;
+  }
+  Builder tmp;
+  tmp.openArray();
+  tmp.add(slice.get("new"));
+  if (this->slice().isArray()) {
+    for (auto const& old : VPackArrayIterator(this->slice()))
+      tmp.add(old);
+  }
+  tmp.close();
+  *this = tmp.slice();
+  return true;
+}
+
+template<> bool Node::handle<SHIFT> (VPackSlice const& slice) {
+  Builder tmp;
+  tmp.openArray();
+  if (this->slice().isArray()) { // If a
+    VPackArrayIterator it(this->slice());
+    bool first = true;
+    for (auto old : it) {
+      if (first) {
+        first = false;
+      } else {
+        tmp.add(old);
+      }
+    }
+  } 
+  tmp.close();
+  *this = tmp.slice();
+  return true;
+}
+
+template<> bool Node::handle<OBSERVE> (VPackSlice const& slice) {
+  return true;
+}
+
+template<> bool Node::handle<UNOBSERVE> (VPackSlice const& slice) {
+  return true;
+}
+
+}}
 
 // Apply slice to this node
 bool Node::applies (VPackSlice const& slice) {
@@ -308,121 +442,23 @@ bool Node::applies (VPackSlice const& slice) {
       std::string key = i.key.copyString();
       
       if (slice.hasKey("op")) {
-        
         std::string oper = slice.get("op").copyString();
-        VPackSlice const& self = this->slice();
         if (oper == "delete") {
           return _parent->removeChild(_node_name);
         } else if (oper == "set") { //
-          
-          if (!slice.hasKey("new")) {
-            LOG_TOPIC(WARN, Logger::AGENCY) << "Operator set without new value";
-            LOG_TOPIC(WARN, Logger::AGENCY) << slice.toJson();
-            return false;
-          }
-          *this = slice.get("new");
-          if (slice.hasKey("ttl")) {
-            VPackSlice ttl_v = slice.get("ttl");
-            if (ttl_v.isNumber()) {
-              long ttl = 1000l * (
-                (ttl_v.isDouble()) ?
-                static_cast<long>(slice.get("ttl").getDouble()):
-                slice.get("ttl").getInt());
-                addTimeToLive (ttl);
-            } else {
-              LOG_TOPIC(WARN, Logger::AGENCY) <<
-                "Non-number value assigned to ttl: " << ttl_v.toJson();
-            }
-          }
-          return true;
+          return handle<SET>(slice);
         } else if (oper == "increment") { // Increment
-          Builder tmp;
-          tmp.openObject();
-          try {
-            tmp.add("tmp", Value(self.getInt()+1));
-          } catch (std::exception const&) {
-            tmp.add("tmp",Value(1));
-          }
-          tmp.close();
-          *this = tmp.slice().get("tmp");
-          return true;
+          return handle<INCREMENT>(slice);
         } else if (oper == "decrement") { // Decrement
-          Builder tmp;
-          tmp.openObject();
-          try {
-            tmp.add("tmp", Value(self.getInt()-1));
-          } catch (std::exception const&) {
-            tmp.add("tmp",Value(-1));
-          }
-          tmp.close();
-          *this = tmp.slice().get("tmp");
-          return true;
+          return handle<DECREMENT>(slice);
         } else if (oper == "push") { // Push
-          if (!slice.hasKey("new")) {
-            LOG_TOPIC(WARN, Logger::AGENCY)
-              << "Operator push without new value: " << slice.toJson();
-            return false;
-          }
-          Builder tmp;
-          tmp.openArray();
-          if (self.isArray()) {
-            for (auto const& old : VPackArrayIterator(self))
-              tmp.add(old);
-          }
-          tmp.add(slice.get("new"));
-          tmp.close();
-          *this = tmp.slice();
-          return true;
+          return handle<PUSH>(slice);
         } else if (oper == "pop") { // Pop
-          Builder tmp;
-          tmp.openArray();
-          if (self.isArray()) {
-            VPackArrayIterator it(self);
-            if (it.size()>1) {
-              size_t j = it.size()-1;
-              for (auto old : it) {
-                tmp.add(old);
-                if (--j==0)
-                  break;
-              }
-            }
-          }
-          tmp.close();
-          *this = tmp.slice();
-          return true;
+          return handle<POP>(slice);
         } else if (oper == "prepend") { // Prepend
-          if (!slice.hasKey("new")) {
-            LOG_TOPIC(WARN, Logger::AGENCY)
-              << "Operator prepend without new value: " << slice.toJson();
-            return false;
-          }
-          Builder tmp;
-          tmp.openArray();
-          tmp.add(slice.get("new"));
-          if (self.isArray()) {
-          for (auto const& old : VPackArrayIterator(self))
-            tmp.add(old);
-          }
-          tmp.close();
-          *this = tmp.slice();
-          return true;
+          return handle<PREPEND>(slice);
         } else if (oper == "shift") { // Shift
-          Builder tmp;
-          tmp.openArray();
-          if (self.isArray()) { // If a
-            VPackArrayIterator it(self);
-            bool first = true;
-            for (auto old : it) {
-              if (first) {
-                first = false;
-              } else {
-                tmp.add(old);
-              }
-            }
-          } 
-          tmp.close();
-          *this = tmp.slice();
-          return true;
+          return handle<SHIFT>(slice);
         } else {
           LOG_TOPIC(WARN, Logger::AGENCY) << "Unknown operation " << oper;
           return false;
@@ -661,6 +697,7 @@ bool Store::read (VPackSlice const& query, Builder& ret) const {
   
 }
 
+// Shutdown
 void Store::beginShutdown() {
   Thread::beginShutdown();
   CONDITION_LOCKER(guard, _cv);
@@ -668,7 +705,7 @@ void Store::beginShutdown() {
 }
 
 // TTL clear values from store
-query_t Store::clearTimeTable () const {
+query_t Store::clearExpired () const {
   query_t tmp = std::make_shared<Builder>();
   tmp->openArray(); 
   for (auto it = _time_table.cbegin(); it != _time_table.cend(); ++it) {
@@ -700,16 +737,19 @@ void Store::dumpToBuilder (Builder& builder) const {
   }
 }
 
+// Start thread
 bool Store::start () {
   Thread::start();
   return true;
 }
 
+// Start thread with agent
 bool Store::start (Agent* agent) {
   _agent = agent;
   return start();
 }
 
+// Work ttls and callbacks
 void Store::run() {
   CONDITION_LOCKER(guard, _cv);
   while (!this->isStopping()) { // Check timetable and remove overage entries
@@ -720,7 +760,7 @@ void Store::run() {
     } else {
       _cv.wait();           // better wait to next known time point
     }
-    auto toclear = clearTimeTable();
+    auto toclear = clearExpired();
     _agent->write(toclear);
   }
 }

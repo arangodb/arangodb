@@ -48,13 +48,16 @@ namespace arangodb {
 namespace consensus {
 
 enum NodeType {NODE, LEAF};
+enum Operation {SET, INCREMENT, DECREMENT, PUSH, POP,
+                PREPEND, SHIFT, OBSERVE, UNOBSERVE};
 
 using namespace arangodb::velocypack;
 
 class StoreException : public std::exception {
 public:
   explicit StoreException(std::string const& message) : _message(message) {}
-  virtual char const* what() const noexcept override final { return _message.c_str(); }
+  virtual char const* what() const noexcept override final {
+    return _message.c_str(); }
 private:
   std::string _message;
 };
@@ -134,6 +137,9 @@ public:
   /// @brief Apply single slice
   bool applies (arangodb::velocypack::Slice const&);
 
+  template<Operation Oper>
+  bool handle (arangodb::velocypack::Slice const&);
+
   /// @brief Create Builder representing this store
   void toBuilder (Builder&) const;
 
@@ -159,7 +165,7 @@ protected:
   
   Node* _parent;
   Children _children;
-  TimeTable _time_table;
+  std::multimap<TimePoint, std::shared_ptr<Node>> _time_table;
   TimePoint _ttl;
   Buffer<uint8_t> _value;
   std::vector<std::string> _observers;
@@ -217,7 +223,7 @@ private:
   bool check (arangodb::velocypack::Slice const&) const;
 
   /// @brief Clear entries, whose time to live has expired
-  query_t clearTimeTable () const;
+  query_t clearExpired () const;
 
   /// @brief Run thread
   void run () override final;
@@ -228,7 +234,10 @@ private:
   /// @brief Read/Write mutex on database
   mutable arangodb::Mutex _storeLock;
 
+  /// @brief My own agent
   Agent* _agent;
+
+  std::multimap <std::string,std::string> _observers;
   
 };
 
