@@ -964,7 +964,7 @@ int ContinuousSyncer::applyLog(SimpleHttpResult* response,
               ", offending marker: " + std::string(lineStart, lineLength);
         }
 
-        LOG_TOPIC(ERR, Logger::REPLICATION) << "replication applier error: " << errorMsg;
+        // LOG_TOPIC(ERR, Logger::REPLICATION) << "replication applier error: " << errorMsg;
 
         return res;
       }

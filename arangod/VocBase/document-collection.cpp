@@ -3832,7 +3832,7 @@ int TRI_document_collection_t::rollbackOperation(arangodb::Transaction* trx,
 
 arangodb::wal::Marker* TRI_document_collection_t::createVPackInsertMarker(
     Transaction* trx, VPackSlice const slice) {
-  return new arangodb::wal::CrudMarker(TRI_DF_MARKER_VPACK_DOCUMENT, trx->getInternals()->_id, slice);
+  return new arangodb::wal::CrudMarker(TRI_DF_MARKER_VPACK_DOCUMENT, TRI_MarkerIdTransaction(trx->getInternals()), slice);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3841,7 +3841,7 @@ arangodb::wal::Marker* TRI_document_collection_t::createVPackInsertMarker(
 
 arangodb::wal::Marker* TRI_document_collection_t::createVPackRemoveMarker(
     Transaction* trx, VPackSlice const slice) {
-  return new arangodb::wal::CrudMarker(TRI_DF_MARKER_VPACK_REMOVE, trx->getInternals()->_id, slice);
+  return new arangodb::wal::CrudMarker(TRI_DF_MARKER_VPACK_REMOVE, TRI_MarkerIdTransaction(trx->getInternals()), slice);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
