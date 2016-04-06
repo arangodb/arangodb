@@ -28,19 +28,17 @@ module.exports = function cookieTransport(cfg) {
   if (typeof cfg === 'string') {
     cfg = {name: cfg};
   }
-  const signed = cfg.secret ? {
+  const ttl = cfg.ttl;
+  const opts = cfg.secret ? {
     secret: cfg.secret,
     algorithm: cfg.algorithm
   } : undefined;
   return {
     get(req) {
-      return req.cookie(cfg.name, signed && {signed: signed});
+      return req.cookie(cfg.name, opts);
     },
     set(res, value) {
-      res.cookie(cfg.name, value, {
-        ttl: cfg.ttl,
-        signed: signed
-      });
+      res.cookie(cfg.name, value, Object.assign({}, opts, {ttl}));
     }
   };
 };
