@@ -292,12 +292,14 @@ class Transaction {
   /// @brief add a collection to the transaction for read, at runtime
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_voc_cid_t addCollectionAtRuntime(TRI_voc_cid_t cid, std::string const& collectionName) {
+  TRI_voc_cid_t addCollectionAtRuntime(TRI_voc_cid_t cid, 
+                                       std::string const& collectionName,
+                                       TRI_transaction_type_e type = TRI_TRANSACTION_READ) {
     auto collection = this->trxCollection(cid);
 
     if (collection == nullptr) {
       int res = TRI_AddCollectionTransaction(this->getInternals(), cid,
-                                             TRI_TRANSACTION_READ,
+                                             type,
                                              this->nestingLevel(), true, true);
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(res);
@@ -490,12 +492,6 @@ class Transaction {
                                              VPackSlice const search,
                                              uint64_t skip, uint64_t limit,
                                              uint64_t batchSize, bool reverse);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief test if a collection is already locked
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool isLocked(TRI_transaction_collection_t const*, TRI_transaction_type_e);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief test if a collection is already locked
