@@ -311,7 +311,7 @@ describe('babies collection document', function() {
       expect(b).to.be.an("array");
       expect(b.length).to.equal(2);
       expect(b[0]._key).to.equal("b");
-      expect(b[1].error).to.be.true;
+      expect(b[1].error).to.equal(true);
       expect(b[1].errorNum).to.equal(uniqueCode);
 
       // Check header error codes
@@ -339,7 +339,7 @@ describe('babies collection document', function() {
 
       expect(b).to.be.an("array");
       expect(b.length).to.equal(2);
-      expect(b[0].error).to.be.true;
+      expect(b[0].error).to.equal(true);
       expect(b[0].errorNum).to.equal(uniqueCode);
       expect(b[1]._key).to.equal("c");
       expect(collection.count()).to.equal(3);
@@ -381,7 +381,7 @@ describe('babies collection document', function() {
         expect(b[2]._key).to.equal("b");
 
         // The second should fail
-        expect(b[1].error).to.be.true;
+        expect(b[1].error).to.equal(true);
         expect(b[1].errorNum).to.equal(keyBadCode);
 
         // Check header error codes
@@ -666,7 +666,7 @@ describe('babies collection document', function() {
         expect(b.length).to.equal(1);
 
         expect(b[0].errorNum).to.equal(invalidCode);
-        expect(b[0].error).to.be.true;
+        expect(b[0].error).to.equal(true);
 
         // Check header error codes
         let headers = req1.headers;
@@ -710,15 +710,15 @@ describe('babies collection document', function() {
       expect(b[6]._key).to.equal("d");
 
       // Check type invalid
-      expect(b[1].error).to.be.true;
+      expect(b[1].error).to.equal(true);
       expect(b[1].errorNum).to.equal(invalidCode);
-      expect(b[5].error).to.be.true;
+      expect(b[5].error).to.equal(true);
       expect(b[5].errorNum).to.equal(invalidCode);
 
       // Check unique violated 
-      expect(b[2].error).to.be.true;
+      expect(b[2].error).to.equal(true);
       expect(b[2].errorNum).to.equal(uniqueCode);
-      expect(b[4].error).to.be.true;
+      expect(b[4].error).to.equal(true);
       expect(b[4].errorNum).to.equal(uniqueCode);
 
       expect(collection.count()).to.equal(4);
