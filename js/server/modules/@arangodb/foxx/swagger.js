@@ -21,7 +21,7 @@
 /// @author Alan Plum
 ////////////////////////////////////////////////////////////////////////////////
 
-const NotFound = require('httperr').NotFound;
+const NotFound = require('http-errors').NotFound;
 const fs = require('fs');
 const internal = require('internal');
 const errors = require('@arangodb').errors;
@@ -65,14 +65,13 @@ module.exports = function createSwaggerRouteHandler(foxxMount, opts) {
         swaggerRoot = result.swaggerRoot;
       }
     }
-    let path = req._raw.suffix.join('/');
+    let path = req.suffix;
     if (!path) {
       let params = Object.keys(req._raw.parameters || {}).reduce(function (part, name) {
         return part + encodeURIComponent(name) + '=' + encodeURIComponent(req._raw.parameters[name]) + '&';
       }, '?');
       params = params.slice(0, params.length - 1);
-      res.status(302);
-      res.set('location', req._raw.absoluteUrl(foxxMount + req._raw.path(null, 'index.html') + params));
+      res.redirect(req.makeAbsolute(req.path + '/index.html') + params);
       return;
     }
     if (path === 'swagger.json') {
