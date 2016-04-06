@@ -24,6 +24,9 @@
 const crypto = require('@arangodb/crypto');
 
 module.exports = function auth(cfg) {
+  if (typeof cfg === 'string') {
+    cfg = {method: cfg};
+  }
   if (!cfg) {
     cfg = {};
   }
