@@ -55,12 +55,23 @@ struct OperationResult {
 
   OperationResult(std::shared_ptr<VPackBuffer<uint8_t>> buffer,
                   std::shared_ptr<VPackCustomTypeHandler> handler,
-                  std::string const& message,
-                  int code,
-                  bool wasSynchronous)
-      : buffer(buffer), customTypeHandler(handler), errorMessage(message),
-        code(code), wasSynchronous(wasSynchronous) {
-  }
+                  std::string const& message, int code, bool wasSynchronous)
+      : buffer(buffer),
+        customTypeHandler(handler),
+        errorMessage(message),
+        code(code),
+        wasSynchronous(wasSynchronous) {}
+
+  OperationResult(std::shared_ptr<VPackBuffer<uint8_t>> buffer,
+                  std::shared_ptr<VPackCustomTypeHandler> handler,
+                  std::string const& message, int code, bool wasSynchronous,
+                  std::unordered_map<int, size_t> countErrorCodes)
+      : buffer(buffer),
+        customTypeHandler(handler),
+        errorMessage(message),
+        code(code),
+        wasSynchronous(wasSynchronous),
+        countErrorCodes(countErrorCodes) {}
 
   virtual ~OperationResult() {
   }
@@ -85,6 +96,11 @@ struct OperationResult {
   std::string errorMessage;
   int code;
   bool wasSynchronous;
+
+  // Executive summary for baby operations: reports all errors that did occur
+  // during these operations. Details are stored in the respective positions of
+  // the failed documents.
+  std::unordered_map<int, size_t> countErrorCodes;
 };
 
 }

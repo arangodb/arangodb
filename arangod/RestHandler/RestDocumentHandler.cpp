@@ -121,6 +121,7 @@ bool RestDocumentHandler::createDocument() {
   SingleCollectionTransaction trx(transactionContext,
                                   collectionName, TRI_TRANSACTION_WRITE);
   VPackSlice body = parsedBody->slice();
+  bool isMultiple = body.isArray();
   if (!body.isArray()) {
     trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
   }
@@ -150,6 +151,16 @@ bool RestDocumentHandler::createDocument() {
   }
 
   generateSaved(result, collectionName, TRI_col_type_e(trx.getCollectionType(collectionName)), transactionContext->getVPackOptions());
+
+  if (isMultiple && !result.countErrorCodes.empty()) {
+    VPackBuilder errorBuilder;
+    errorBuilder.openObject();
+    for (auto const& it : result.countErrorCodes) {
+      errorBuilder.add(basics::StringUtils::itoa(it.first), VPackValue(it.second));
+    }
+    errorBuilder.close();
+    _response->setHeader("x-arango-error-codes", errorBuilder.slice().toJson());
+  }
   return true;
 }
 

@@ -256,7 +256,7 @@ SimpleQueryNear.prototype.execute = function () {
                                      options);
     });
 
-    result = cluster.wait(coord, shards);
+    var result = cluster.wait(coord, shards);
 
     result.forEach(function(part) {
       var body = JSON.parse(part.body);
@@ -279,8 +279,8 @@ SimpleQueryNear.prototype.execute = function () {
     }
 
     if (this._distance === null) {
-      n = documents.length;
-      for (i = 0; i < n; ++i) {
+      var n = documents.length;
+      for (var i = 0; i < n; ++i) {
         delete documents[i][attribute];
       }
     }
@@ -381,7 +381,7 @@ SimpleQueryWithin.prototype.execute = function () {
                                      options);
     });
 
-    result = cluster.wait(coord, shards);
+    var result = cluster.wait(coord, shards);
 
     result.forEach(function(part) {
       var body = JSON.parse(part.body);
@@ -404,8 +404,8 @@ SimpleQueryWithin.prototype.execute = function () {
     }
 
     if (this._distance === null) {
-      n = documents.length;
-      for (i = 0; i < n; ++i) {
+      var n = documents.length;
+      for (var i = 0; i < n; ++i) {
         delete documents[i][attribute];
       }
     }
@@ -486,7 +486,7 @@ SimpleQueryFulltext.prototype.execute = function () {
                                      options);
     });
 
-    result = cluster.wait(coord, shards);
+    var result = cluster.wait(coord, shards);
 
     result.forEach(function(part) {
       var body = JSON.parse(part.body);

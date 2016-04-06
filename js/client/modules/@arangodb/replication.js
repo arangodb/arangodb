@@ -178,7 +178,6 @@ var waitForResult = function (config, id) {
     arangosh.checkRequestResult(jobResult);
     }
     catch (err) {
-      print("everythings ruined", jobResult);
       throw err;
     }
 

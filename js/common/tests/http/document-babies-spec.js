@@ -311,14 +311,14 @@ describe('babies collection document', function() {
       expect(b).to.be.an("array");
       expect(b.length).to.equal(2);
       expect(b[0]._key).to.equal("b");
-      expect(b[1].error).to.be.true;
+      expect(b[1].error).to.equal(true);
       expect(b[1].errorNum).to.equal(uniqueCode);
 
       // Check header error codes
       let headers = req.headers;
       expect(headers).to.have.property(errorHeader);
-      let errorCodes = headers[errorHeader];
-      expect(errorCodes).to.have.propery(uniqueCode);
+      let errorCodes = JSON.parse(headers[errorHeader]);
+      expect(errorCodes).to.have.property(uniqueCode);
       expect(errorCodes[uniqueCode], 1);
 
       expect(collection.count()).to.equal(2);
@@ -339,16 +339,16 @@ describe('babies collection document', function() {
 
       expect(b).to.be.an("array");
       expect(b.length).to.equal(2);
-      expect(b[0].error).to.be.true;
+      expect(b[0].error).to.equal(true);
       expect(b[0].errorNum).to.equal(uniqueCode);
       expect(b[1]._key).to.equal("c");
       expect(collection.count()).to.equal(3);
 
       // Check header error codes
-      headers = req1.headers;
+      headers = req.headers;
       expect(headers).to.have.property(errorHeader);
-      errorCodes = headers[errorHeader];
-      expect(errorCodes).to.have.propery(uniqueCode);
+      errorCodes = JSON.parse(headers[errorHeader]);
+      expect(errorCodes).to.have.property(uniqueCode);
       expect(errorCodes[uniqueCode], 1);
 
     });
@@ -381,14 +381,14 @@ describe('babies collection document', function() {
         expect(b[2]._key).to.equal("b");
 
         // The second should fail
-        expect(b[1].error).to.be.true;
+        expect(b[1].error).to.equal(true);
         expect(b[1].errorNum).to.equal(keyBadCode);
 
         // Check header error codes
         let headers = req.headers;
         expect(headers).to.have.property(errorHeader);
-        let errorCodes = headers[errorHeader];
-        expect(errorCodes).to.have.propery(keyBadCode);
+        let errorCodes = JSON.parse(headers[errorHeader]);
+        expect(errorCodes).to.have.property(keyBadCode);
         expect(errorCodes[keyBadCode], 1);
 
 
@@ -666,13 +666,13 @@ describe('babies collection document', function() {
         expect(b.length).to.equal(1);
 
         expect(b[0].errorNum).to.equal(invalidCode);
-        expect(b[0].error).to.be.true;
+        expect(b[0].error).to.equal(true);
 
         // Check header error codes
         let headers = req1.headers;
         expect(headers).to.have.property(errorHeader);
-        let errorCodes = headers[errorHeader];
-        expect(errorCodes).to.have.propery(invalidCode);
+        let errorCodes = JSON.parse(headers[errorHeader]);
+        expect(errorCodes).to.have.property(invalidCode);
         expect(errorCodes[invalidCode], 1);
       });
 
@@ -710,15 +710,15 @@ describe('babies collection document', function() {
       expect(b[6]._key).to.equal("d");
 
       // Check type invalid
-      expect(b[1].error).to.be.true;
+      expect(b[1].error).to.equal(true);
       expect(b[1].errorNum).to.equal(invalidCode);
-      expect(b[5].error).to.be.true;
+      expect(b[5].error).to.equal(true);
       expect(b[5].errorNum).to.equal(invalidCode);
 
       // Check unique violated 
-      expect(b[2].error).to.be.true;
+      expect(b[2].error).to.equal(true);
       expect(b[2].errorNum).to.equal(uniqueCode);
-      expect(b[4].error).to.be.true;
+      expect(b[4].error).to.equal(true);
       expect(b[4].errorNum).to.equal(uniqueCode);
 
       expect(collection.count()).to.equal(4);
@@ -726,11 +726,11 @@ describe('babies collection document', function() {
       // Check header error codes
       let headers = req1.headers;
       expect(headers).to.have.property(errorHeader);
-      let errorCodes = headers[errorHeader];
-      expect(errorCodes).to.have.propery(invalidCode);
+      let errorCodes = JSON.parse(headers[errorHeader]);
+      expect(errorCodes).to.have.property(invalidCode);
       expect(errorCodes[invalidCode], 2);
 
-      expect(errorCodes).to.have.propery(uniqueCode);
+      expect(errorCodes).to.have.property(uniqueCode);
       expect(errorCodes[uniqueCode], 2);
     });
 
