@@ -27,12 +27,17 @@ const path = require('path');
 const fs = require('fs');
 const internal = require('internal');
 const mimeTypes = require('mime-types');
+const createSwaggerHandler = require('@arangodb/foxx/swagger');
 
 
 module.exports = class FoxxContext {
   constructor(service) {
     this.service = service;
     this.argv = [];
+  }
+
+  createSwaggerHandler(opts) {
+    return createSwaggerHandler(this.mount, opts);
   }
 
   use(path, router, name) {
