@@ -64,22 +64,6 @@ function UniqueHashIndexFailuresSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: unique hash index insert Illegal Shape
-////////////////////////////////////////////////////////////////////////////////
-
-    testInsertIllegalShape : function () {
-      internal.debugSetFailAt("FillElementIllegalShape");
-      try {
-        collection.save({a: 1});
-        fail();
-      } catch (e) {
-        assertEqual(internal.errors.ERROR_INTERNAL.code, e.errorNum);
-      }
-      assertEqual(collection.count(), 0);
-      assertEqual(collection.firstExample({a: 1}), null);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test: unique hash index fill element oom
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -143,22 +127,6 @@ function HashIndexMultiFailuresSuite () {
     tearDown : function () {
       internal.debugClearFailAt();
       internal.db._drop(cn);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: hash index multi insert Illegal Shape
-////////////////////////////////////////////////////////////////////////////////
-
-    testInsertIllegalShape : function () {
-      internal.debugSetFailAt("FillElementIllegalShape");
-      try {
-        collection.save({a: 1});
-        fail();
-      } catch (e) {
-        assertEqual(internal.errors.ERROR_INTERNAL.code, e.errorNum);
-      }
-      assertEqual(collection.count(), 0);
-      assertEqual(collection.firstExample({a: 1}), null);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
