@@ -629,7 +629,7 @@ namespace triagens {
         }
 
         // end of header found
-        if (*ptr == '\r' || *ptr == '\0') {
+        if (*ptr == '\r' || *ptr == '\n' || *ptr == '\0') {
           size_t len = pos - ptr;
           _readBufferOffset += len + 1;
           ptr += len + 1;
