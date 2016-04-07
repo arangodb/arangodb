@@ -619,13 +619,20 @@ int createDocumentOnCoordinator(
      return TRI_ERROR_NO_ERROR;
    };
 
+   int res = TRI_ERROR_NO_ERROR;
    if (useMultiple) {
      VPackValueLength length = slice.length();
      for (VPackValueLength idx = 0; idx < length; ++idx) {
-       workOnOneNode(slice.at(idx), idx);
+       res = workOnOneNode(slice.at(idx), idx);
+       if (res != TRI_ERROR_NO_ERROR) {
+         return res;
+       }
      }
    } else {
-     workOnOneNode(slice, 0);
+     res = workOnOneNode(slice, 0);
+     if (res != TRI_ERROR_NO_ERROR) {
+       return res;
+     }
    }
  
    std::string const baseUrl =
