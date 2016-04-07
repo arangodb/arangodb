@@ -472,7 +472,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
                              EngineInfo const& info, Collection* collection,
                              QueryId& connectedId, std::string const& shardId,
                              TRI_json_t* jsonPlan) {
-#warning still Json inplace. Needs to be fixed
     // create a JSON representation of the plan
     Json result(Json::Object);
 
