@@ -1169,11 +1169,6 @@ OperationResult Transaction::insertCoordinator(std::string const& collectionName
                                                VPackSlice const value,
                                                OperationOptions& options) {
 
-  if (value.isArray()) {
-    // must provide a document object
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-  }
-
   std::map<std::string, std::string> headers;
   GeneralResponse::ResponseCode responseCode;
 
