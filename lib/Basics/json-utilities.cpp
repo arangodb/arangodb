@@ -26,6 +26,10 @@
 #include "Basics/hashes.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/VelocyPackHelper.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 static TRI_json_t* MergeRecursive(TRI_memory_zone_t* zone,
                                   TRI_json_t const* lhs, TRI_json_t const* rhs,
@@ -408,91 +412,6 @@ TRI_json_t* TRI_MergeJson(TRI_memory_zone_t* zone, TRI_json_t const* lhs,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief computes a FNV hash for strings with a length
-/// this function has an influence on how keys are distributed to shards
-/// change with caution!
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t HashBlock(uint64_t hash, char const* buffer, size_t length) {
-  uint64_t nMagicPrime = 0x00000100000001b3ULL;
-
-  for (size_t j = 0; j < length; ++j) {
-    hash ^= ((int8_t const*)buffer)[j];
-    hash *= nMagicPrime;
-  }
-  return hash;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compute a hash value for a JSON document, starting with a given
-/// initial hash value. Note that a NULL pointer for json hashes to the
-/// same value as a json pointer that points to a JSON value `null`.
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t HashJsonRecursive(uint64_t hash, TRI_json_t const* object) {
-  if (nullptr == object) {
-    return HashBlock(hash, "null", 4);  // strlen("null")
-  }
-
-  switch (object->_type) {
-    case TRI_JSON_UNUSED: {
-      return hash;
-    }
-
-    case TRI_JSON_NULL: {
-      return HashBlock(hash, "null", 4);  // strlen("null")
-    }
-
-    case TRI_JSON_BOOLEAN: {
-      if (object->_value._boolean) {
-        return HashBlock(hash, "true", 4);  // strlen("true")
-      } else {
-        return HashBlock(hash, "false", 5);  // strlen("true")
-      }
-    }
-
-    case TRI_JSON_NUMBER: {
-      return HashBlock(hash, (char const*)&(object->_value._number),
-                       sizeof(object->_value._number));
-    }
-
-    case TRI_JSON_STRING:
-    case TRI_JSON_STRING_REFERENCE: {
-      return HashBlock(hash, object->_value._string.data,
-                       object->_value._string.length);
-    }
-
-    case TRI_JSON_OBJECT: {
-      hash = HashBlock(hash, "array", 5);  // strlen("array")
-      size_t const n = TRI_LengthVector(&object->_value._objects);
-      uint64_t tmphash = hash;
-      for (size_t i = 0; i < n; i += 2) {
-        auto subjson = static_cast<TRI_json_t const*>(
-            TRI_AddressVector(&object->_value._objects, i));
-        TRI_ASSERT(TRI_IsStringJson(subjson));
-        tmphash ^= HashJsonRecursive(hash, subjson);
-        subjson = static_cast<TRI_json_t const*>(
-            TRI_AddressVector(&object->_value._objects, i + 1));
-        tmphash ^= HashJsonRecursive(hash, subjson);
-      }
-      return tmphash;
-    }
-
-    case TRI_JSON_ARRAY: {
-      hash = HashBlock(hash, "list", 4);  // strlen("list")
-      size_t const n = TRI_LengthVector(&object->_value._objects);
-      for (size_t i = 0; i < n; ++i) {
-        auto subjson = static_cast<TRI_json_t const*>(
-            TRI_AddressVector(&object->_value._objects, i));
-        hash = HashJsonRecursive(hash, subjson);
-      }
-      return hash;
-    }
-  }
-  return hash;  // never reached
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief compute a hash value for a JSON document depending on a list
 /// of attributes. This is used for sharding to map documents to shards.
 ///
@@ -515,90 +434,12 @@ uint64_t TRI_HashJsonByAttributes(TRI_json_t const* json,
   if (error != nullptr) {
     *error = TRI_ERROR_NO_ERROR;
   }
-  uint64_t hash = TRI_FnvHashBlockInitial();
-  if (TRI_IsObjectJson(json)) {
-    for (int i = 0; i < nrAttributes; i++) {
-      TRI_json_t const* subjson = TRI_LookupObjectJson(json, attributes[i]);
+  std::shared_ptr<VPackBuilder> transformed = arangodb::basics::JsonHelper::toVelocyPack(json);
+  std::vector<std::string> attr;
 
-      if (subjson == nullptr && !docComplete && error != nullptr) {
-        *error = TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN;
-      }
-      hash = HashJsonRecursive(hash, subjson);
-    }
+  for (int i = 0; i < nrAttributes; i++) {
+    attr.emplace_back(attributes[i]);
   }
-  return hash;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief workhorse for fasthash computing
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t FastHashJsonRecursive(uint64_t hash, TRI_json_t const* object) {
-  if (nullptr == object) {
-    return fasthash64(static_cast<const void*>("null"), 4, hash);
-  }
-
-  switch (object->_type) {
-    case TRI_JSON_UNUSED: {
-      return hash;
-    }
-
-    case TRI_JSON_NULL: {
-      return fasthash64(static_cast<const void*>("null"), 4, hash);
-    }
-
-    case TRI_JSON_BOOLEAN: {
-      if (object->_value._boolean) {
-        return fasthash64(static_cast<const void*>("true"), 4, hash);
-      }
-      return fasthash64(static_cast<const void*>("false"), 5, hash);
-    }
-
-    case TRI_JSON_NUMBER: {
-      return fasthash64(static_cast<const void*>(&object->_value._number),
-                        sizeof(object->_value._number), hash);
-    }
-
-    case TRI_JSON_STRING:
-    case TRI_JSON_STRING_REFERENCE: {
-      return fasthash64(static_cast<const void*>(object->_value._string.data),
-                        object->_value._string.length, hash);
-    }
-
-    case TRI_JSON_OBJECT: {
-      hash = fasthash64(static_cast<const void*>("object"), 6, hash);
-      size_t const n = TRI_LengthVector(&object->_value._objects);
-      for (size_t i = 0; i < n; i += 2) {
-        auto subjson = static_cast<TRI_json_t const*>(
-            TRI_AddressVector(&object->_value._objects, i));
-        TRI_ASSERT(TRI_IsStringJson(subjson));
-        hash = FastHashJsonRecursive(hash, subjson);
-        subjson = static_cast<TRI_json_t const*>(
-            TRI_AddressVector(&object->_value._objects, i + 1));
-        hash = FastHashJsonRecursive(hash, subjson);
-      }
-      return hash;
-    }
-
-    case TRI_JSON_ARRAY: {
-      hash = fasthash64(static_cast<const void*>("array"), 5, hash);
-      size_t const n = TRI_LengthVector(&object->_value._objects);
-      for (size_t i = 0; i < n; ++i) {
-        auto subjson = static_cast<TRI_json_t const*>(
-            TRI_AddressVector(&object->_value._objects, i));
-        hash = FastHashJsonRecursive(hash, subjson);
-      }
-    }
-  }
-
-  return hash;  // never reached
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compute a hash value for a JSON document, using fasthash64.
-/// This is slightly faster than the FNV-based hashing
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t TRI_FastHashJson(TRI_json_t const* json) {
-  return FastHashJsonRecursive(0x012345678, json);
+  return arangodb::basics::VelocyPackHelper::hashByAttributes(
+      transformed->slice(), attr, docComplete, *error);
 }
