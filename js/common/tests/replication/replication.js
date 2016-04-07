@@ -1362,7 +1362,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerTransactionWrite1 : function () {
-      var c = db._create(cn);
+      db._create(cn);
       var tick = getLastLogTick();
 
       var actual = db._executeTransaction({
@@ -1385,7 +1385,6 @@ function ReplicationLoggerSuite () {
 
     testLoggerTransactionWrite2 : function () {
       var c = db._create(cn);
-
       var tick = getLastLogTick();
 
       var actual = db._executeTransaction({
