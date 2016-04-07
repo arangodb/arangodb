@@ -1,6 +1,8 @@
 v2.8.7 (XXXX-XX-XX)
 -------------------
 
+* optimized primary=>secondary failover
+
 * fix detection of TRUE for whole documents
 
 * expose the User-Agent http header since github requires it. 
