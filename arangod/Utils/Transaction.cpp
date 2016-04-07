@@ -100,25 +100,29 @@ static bool indexSupportsSort(Index const* idx, arangodb::aql::Variable const* r
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Return an Operation Result that parses the error information returned
 ///        by the DBServer.
-///        If information is not parseable it will return INTERNAL_ERROR
 ////////////////////////////////////////////////////////////////////////////////
 
+static OperationResult DBServerResponseBad(std::shared_ptr<VPackBuilder> resultBody) {
+  VPackSlice res = resultBody->slice();
+  return OperationResult(
+      arangodb::basics::VelocyPackHelper::getNumericValue<uint64_t>(
+          res, "errorNum", TRI_ERROR_INTERNAL),
+      arangodb::basics::VelocyPackHelper::getStringValue(
+          res, "errorMessage", "JSON sent to DBserver was bad"));
+}
+
 static OperationResult DBServerResponseBad(std::string const& resultBody) {
+  // TODO DEPRECATED
   // The body contains more information so we parse it.
   VPackParser parser;
   try {
     parser.parse(resultBody);
-    std::shared_ptr<VPackBuilder> bui = parser.steal();
-    VPackSlice res = bui->slice();
-    return OperationResult(
-        arangodb::basics::VelocyPackHelper::getNumericValue<uint64_t>(
-            res, "errorNum", TRI_ERROR_INTERNAL),
-        arangodb::basics::VelocyPackHelper::getStringValue(
-            res, "errorMessage", "JSON sent to DBserver was bad"));
+    return DBServerResponseBad(parser.steal());
   } catch (...) {
     return OperationResult(TRI_ERROR_INTERNAL, "JSON sent to DBserver was bad");
   }
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Insert an errror reported instead of the new document
@@ -1172,28 +1176,18 @@ OperationResult Transaction::insertCoordinator(std::string const& collectionName
 
   std::map<std::string, std::string> headers;
   GeneralResponse::ResponseCode responseCode;
-  std::map<std::string, std::string> resultHeaders;
-  std::string resultBody;
+
+  std::unordered_map<int, size_t> errorCounter;
+  auto resultBody = std::make_shared<VPackBuilder>();
 
   int res = arangodb::createDocumentOnCoordinator(
       _vocbase->_name, collectionName, options, value, headers, responseCode,
-      resultHeaders, resultBody);
+      errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
     if (responseCode == GeneralResponse::ResponseCode::ACCEPTED ||
         responseCode == GeneralResponse::ResponseCode::CREATED) {
-      VPackParser parser;
-      try {
-        parser.parse(resultBody);
-        auto bui = parser.steal();
-        auto buf = bui->steal();
-        return OperationResult(buf, nullptr, "", TRI_ERROR_NO_ERROR, 
-            responseCode == GeneralResponse::ResponseCode::CREATED);
-      } catch (VPackException& e) {
-        std::string message = "JSON from DBserver not parseable: "
-                              + resultBody + ":" + e.what();
-        return OperationResult(TRI_ERROR_INTERNAL, message);
-      }
+      return OperationResult(resultBody->steal(), nullptr, "", TRI_ERROR_NO_ERROR, responseCode == GeneralResponse::ResponseCode::CREATED);
     } else if (responseCode == GeneralResponse::ResponseCode::PRECONDITION_FAILED) {
       return OperationResult(TRI_ERROR_ARANGO_CONFLICT);
     } else if (responseCode == GeneralResponse::ResponseCode::BAD) {

@@ -2398,6 +2398,86 @@ std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList(
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find the shard that is responsible for a document, which is given
+/// as a VelocyPackSlice.
+///
+/// There are two modes, one assumes that the document is given as a
+/// whole (`docComplete`==`true`), in this case, the non-existence of
+/// values for some of the sharding attributes is silently ignored
+/// and treated as if these values were `null`. In the second mode
+/// (`docComplete`==false) leads to an error which is reported by
+/// returning TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, which is the only
+/// error code that can be returned.
+///
+/// In either case, if the collection is found, the variable
+/// shardID is set to the ID of the responsible shard and the flag
+/// `usesDefaultShardingAttributes` is used set to `true` if and only if
+/// `_key` is the one and only sharding attribute.
+////////////////////////////////////////////////////////////////////////////////
+
+
+int ClusterInfo::getResponsibleShard(CollectionID const& collectionID,
+                                     VPackSlice slice, bool docComplete,
+                                     ShardID& shardID,
+                                     bool& usesDefaultShardingAttributes) {
+  // Note that currently we take the number of shards and the shardKeys
+  // from Plan, since they are immutable. Later we will have to switch
+  // this to Current, when we allow to add and remove shards.
+  if (!_plannedCollectionsProt.isValid) {
+    loadPlannedCollections();
+  }
+
+  int tries = 0;
+  std::shared_ptr<std::vector<std::string>> shardKeysPtr;
+  std::shared_ptr<std::vector<ShardID>> shards;
+  bool found = false;
+
+  while (true) {
+    {
+      // Get the sharding keys and the number of shards:
+      READ_LOCKER(readLocker, _plannedCollectionsProt.lock);
+      // _shards is a map-type <CollectionId, shared_ptr<vector<string>>>
+      auto it = _shards.find(collectionID);
+
+      if (it != _shards.end()) {
+        shards = it->second;
+        // _shardKeys is a map-type <CollectionID, shared_ptr<vector<string>>>
+        auto it2 = _shardKeys.find(collectionID);
+        if (it2 != _shardKeys.end()) {
+          shardKeysPtr = it2->second;
+          usesDefaultShardingAttributes =
+              shardKeysPtr->size() == 1 &&
+              shardKeysPtr->at(0) == TRI_VOC_ATTRIBUTE_KEY;
+          found = true;
+          break;  // all OK
+        }
+      }
+    }
+    if (++tries >= 2) {
+      break;
+    }
+    loadPlannedCollections();
+  }
+
+  if (!found) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+
+  int error = TRI_ERROR_NO_ERROR;
+  uint64_t hash = arangodb::basics::VelocyPackHelper::hashByAttributes(
+      slice, *shardKeysPtr, docComplete, error);
+  static char const* magicPhrase =
+      "Foxx you have stolen the goose, give she back again!";
+  static size_t const len = 52;
+  // To improve our hash function:
+  hash = TRI_FnvHashBlock(hash, magicPhrase, len);
+
+  shardID = shards->at(hash % shards->size());
+  return error;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find the shard that is responsible for a document, which is given
 /// as a TRI_json_t const*.
 ///
 /// There are two modes, one assumes that the document is given as a
