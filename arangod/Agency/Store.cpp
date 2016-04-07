@@ -110,11 +110,14 @@ Node& Node::operator= (VPackSlice const& slice) {
   _children.clear();
   _value.reset();
   _value.append(reinterpret_cast<char const*>(slice.begin()), slice.byteSize());
+/*
+  notifyObservers(uri());
   Node *par = _parent;
   while (par != 0) {
-    _parent->notifyObservers();
+    _parent->notifyObservers(uri());
     par = par->_parent;
   }
+*/
   return *this;
 }
 
@@ -129,11 +132,14 @@ Node& Node::operator= (Node const& rhs) {
   _node_name = rhs._node_name;
   _value = rhs._value;
   _children = rhs._children;
+  /*
+  notifyObservers(uri());
   Node *par = _parent;
   while (par != 0) {
-    _parent->notifyObservers();
+    _parent->notifyObservers(uri());
     par = par->_parent;
   }
+  */
   return *this;
 }
 
@@ -267,39 +273,56 @@ bool Node::addObserver (std::string const& uri) {
   return false;
 }
 
-void Node::notifyObservers () const {
-  
+void Node::notifyObservers (std::string const& origin) const {
+
   for (auto const& i : _observers) {
 
     Builder body;
-    toBuilder(body);
+    body.openObject();
+    body.add(uri(), VPackValue(VPackValueType::Object));
+    body.add("op",VPackValue("modified"));
     body.close();
-
-    size_t spos = i.find('/',7);
-    if (spos==std::string::npos) {
-      LOG_TOPIC(WARN, Logger::AGENCY) << "Invalid URI " << i;
-      continue;
+    body.close();
+    
+    std::stringstream endpoint;
+    std::string path = "/";
+    size_t pos = 7;
+    if (i.find("http://")==0) {
+      endpoint << "tcp://";
+    } else if (i.find("https://")==0) {
+      endpoint << "ssl://";
+      ++pos;
+    } else {
+      LOG_TOPIC(WARN,Logger::AGENCY) << "Malformed notification URL " << i;
+      return;
     }
 
-    std::string endpoint = i.substr(0,spos-1);
-    std::string path = i.substr(spos);
-    
+    size_t slash_p = i.find("/",pos);
+    if ((slash_p==std::string::npos)) {
+      endpoint << i.substr(pos);
+    } else {
+      endpoint << i.substr(pos,slash_p-pos);
+      path = i.substr(slash_p);
+    }
+
+    std::cout << endpoint.str() << path << std::endl;
+      
     std::unique_ptr<std::map<std::string, std::string>> headerFields =
       std::make_unique<std::map<std::string, std::string> >();
     
     ClusterCommResult res =
       arangodb::ClusterComm::instance()->asyncRequest(
-        "1", 1, endpoint, GeneralRequest::RequestType::POST, path,
+        "1", 1, endpoint.str(), GeneralRequest::RequestType::POST, path,
         std::make_shared<std::string>(body.toString()), headerFields, nullptr,
         0.0, true);
-    
+
   }
-  
+
 }
 
-inline bool Node::observedBy (std::string const& url) const {
-  auto ret = root()._observer_table.equal_range(url);
-  for (auto it = ret.first; it!=ret.second; ++it) {
+  inline bool Node::observedBy (std::string const& url) const {
+    auto ret = root()._observer_table.equal_range(url);
+    for (auto it = ret.first; it!=ret.second; ++it) {
     if (it->second == uri()) {
       return true;
     }
@@ -442,7 +465,6 @@ template<> bool Node::handle<OBSERVE> (VPackSlice const& slice) {
   
   // check if such entry exists
   if (!observedBy(url)) {
-    std::cout << uri() << " not yet observed by " << url << std::endl;
     root()._observer_table.insert(std::pair<std::string,std::string>(url,uri()));
     _observers.emplace(url);
     return true;

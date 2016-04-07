@@ -140,7 +140,7 @@ HttpHandler::status_t RestAgencyHandler::handleWrite () {
         body.close();
 
         // Wait for commit of highest except if it is 0?
-        if (call_mode == "waitForCommitted") {
+        if (!ret.indices.empty() && call_mode == "waitForCommitted") {
           index_t max_index =
               *std::max_element(ret.indices.begin(), ret.indices.end());
           if (max_index > 0) {

@@ -130,6 +130,11 @@ bool Agent::waitFor (index_t index, double timeout) {
   // Wait until woken up through AgentCallback 
   while (true) {
 
+    std::cout << _last_commit_index << std::endl;
+    /// success?
+    if (_last_commit_index >= index) {
+      return true;
+    }
     // timeout
     if (_rest_cv.wait(static_cast<uint64_t>(1.0e6*timeout))) {
       return false;
@@ -140,10 +145,6 @@ bool Agent::waitFor (index_t index, double timeout) {
       return false;
     }
 
-    /// success?
-    if (_last_commit_index >= index) {
-      return true;
-    }
   }
   // We should never get here
   TRI_ASSERT(false);
@@ -300,17 +301,25 @@ bool Agent::load () {
 write_ret_t Agent::write (query_t const& query)  {
 
   if (_constituent.leading()) {                    // Only working as leader
-    MUTEX_LOCKER(mutexLocker, _ioLock);
-    std::vector<bool> applied = _spearhead.apply(query); // Apply to spearhead
-    std::vector<index_t> indices = 
-      _state.log (query, applied, term(), id());   // Append to log w/ indicies
-    for (size_t i = 0; i < applied.size(); ++i) {
-      if (applied[i]) {
-        _confirmed[id()] = indices[i];             // Confirm myself
+
+    std::vector<bool> applied;
+    std::vector<index_t> indices;
+    index_t maxind = 0;
+
+    {
+      MUTEX_LOCKER(mutexLocker, _ioLock);
+      applied = _spearhead.apply(query);             // Apply to spearhead
+      indices = _state.log (query, applied, term(), id()); // Log w/ indicies
+      if (!indices.empty()) {
+        maxind = *std::max_element(indices.begin(), indices.end());
       }
+      _cv.signal();                                  // Wake up run
     }
-    _cv.signal();                                  // Wake up run
+
+    reportIn(0,maxind);
+    
     return write_ret_t(true,id(),applied,indices); // Indices to wait for to rest
+    
   } else {                                         // Else we redirect
     return write_ret_t(false,_constituent.leaderID());
   }
@@ -320,8 +329,7 @@ write_ret_t Agent::write (query_t const& query)  {
 read_ret_t Agent::read (query_t const& query) const {
   if (_constituent.leading()) {     // Only working as leaer
     query_t result = std::make_shared<arangodb::velocypack::Builder>();
-    std::vector<bool> success= (_config.size() == 1) ?
-      _spearhead.read(query, result) : _read_db.read (query, result);
+    std::vector<bool> success = _read_db.read (query, result);
     return read_ret_t(true, _constituent.leaderID(), success, result);
   } else {                          // Else We redirect
     return read_ret_t(false, _constituent.leaderID());

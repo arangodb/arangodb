@@ -154,7 +154,7 @@ public:
   bool addObserver (std::string const&);
   
   /// @brief Add observer for this node
-  void notifyObservers () const;
+  void notifyObservers (std::string const& origin) const;
 
   /// @brief Is this node being observed by url
   bool observedBy (std::string const& url) const;
