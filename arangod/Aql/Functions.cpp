@@ -2060,6 +2060,9 @@ AqlValue Functions::UnionDistinct(arangodb::aql::Query* query,
     }
 
     return AqlValue(builder.get());
+  } catch (arangodb::basics::Exception const&) {
+    // Rethrow arangodb Errors
+    throw;
   } catch (...) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }

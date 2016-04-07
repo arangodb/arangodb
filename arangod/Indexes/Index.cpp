@@ -677,6 +677,9 @@ void Index::expandInSearchValues(VPackSlice const base,
     positions.resize(n);
     bool done = false;
     while (!done) {
+      TRI_IF_FAILURE("Index::permutationIN")  {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
       VPackArrayBuilder guard(&result);
       for (size_t i = 0; i < n; ++i)  {
         auto list = elements.find(i);
