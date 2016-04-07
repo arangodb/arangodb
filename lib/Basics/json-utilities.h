@@ -64,6 +64,6 @@ uint64_t TRI_FastHashJson(TRI_json_t const* json);
 
 uint64_t TRI_HashJsonByAttributes(TRI_json_t const* json,
                                   char const* attributes[], int nrAttributes,
-                                  bool docComplete, int* error);
+                                  bool docComplete, int& error);
 
 #endif

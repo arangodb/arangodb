@@ -430,10 +430,8 @@ TRI_json_t* TRI_MergeJson(TRI_memory_zone_t* zone, TRI_json_t const* lhs,
 
 uint64_t TRI_HashJsonByAttributes(TRI_json_t const* json,
                                   char const* attributes[], int nrAttributes,
-                                  bool docComplete, int* error) {
-  if (error != nullptr) {
-    *error = TRI_ERROR_NO_ERROR;
-  }
+                                  bool docComplete, int& error) {
+  error = TRI_ERROR_NO_ERROR;
   std::shared_ptr<VPackBuilder> transformed = arangodb::basics::JsonHelper::toVelocyPack(json);
   std::vector<std::string> attr;
 
@@ -441,5 +439,5 @@ uint64_t TRI_HashJsonByAttributes(TRI_json_t const* json,
     attr.emplace_back(attributes[i]);
   }
   return arangodb::basics::VelocyPackHelper::hashByAttributes(
-      transformed->slice(), attr, docComplete, *error);
+      transformed->slice(), attr, docComplete, error);
 }

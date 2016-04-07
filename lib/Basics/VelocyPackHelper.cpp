@@ -706,10 +706,14 @@ uint64_t VelocyPackHelper::hashByAttributes(
   if (slice.isObject()) {
     for (auto const& attr: attributes) {
       VPackSlice sub = slice.get(attr);
-      if (sub.isNone() && !docComplete) {
-        error = TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN;
-      }
-      sub.normalizedHash(hash);
+      if (sub.isNone()) {
+        if (!docComplete) {
+          error = TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN;
+        } 
+        // Null is equal to None/not present
+        sub = NullBuilder.slice();
+      } 
+      hash = sub.normalizedHash(hash);
     }
   }
   return hash;
