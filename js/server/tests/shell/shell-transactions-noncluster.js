@@ -4144,10 +4144,7 @@ function transactionServerFailuresSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertServerFailuresEmpty : function () {
-      var failures = [ "InsertDocumentNoLegend",
-                       "InsertDocumentNoLegendExcept",
-                       "InsertDocumentNoMarker",
-                       "InsertDocumentNoMarkerExcept",
+      var failures = [ 
                        "InsertDocumentNoHeader",
                        "InsertDocumentNoHeaderExcept",
                        "InsertDocumentNoLock",
@@ -4170,7 +4167,7 @@ function transactionServerFailuresSuite () {
           fail();
         }
         catch (err) {
-          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum, f);
         }
 
         assertEqual(0, c.count());
@@ -4182,10 +4179,7 @@ function transactionServerFailuresSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertServerFailuresNonEmpty : function () {
-      var failures = [ "InsertDocumentNoLegend",
-                       "InsertDocumentNoLegendExcept",
-                       "InsertDocumentNoMarker",
-                       "InsertDocumentNoMarkerExcept",
+      var failures = [ 
                        "InsertDocumentNoHeader",
                        "InsertDocumentNoHeaderExcept",
                        "InsertDocumentNoLock",
@@ -4211,7 +4205,7 @@ function transactionServerFailuresSuite () {
           fail();
         }
         catch (err) {
-          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum, f);
         }
 
         assertEqual(1, c.count());
@@ -4224,10 +4218,7 @@ function transactionServerFailuresSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertServerFailuresConstraint : function () {
-      var failures = [ "InsertDocumentNoLegend",
-                       "InsertDocumentNoLegendExcept",
-                       "InsertDocumentNoMarker",
-                       "InsertDocumentNoMarkerExcept",
+      var failures = [ 
                        "InsertDocumentNoHeader",
                        "InsertDocumentNoHeaderExcept",
                        "InsertDocumentNoLock" ];
@@ -4247,7 +4238,7 @@ function transactionServerFailuresSuite () {
           fail();
         }
         catch (err) {
-          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum, f);
         }
 
         assertEqual(1, c.count());
@@ -4260,10 +4251,7 @@ function transactionServerFailuresSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertServerFailuresMulti : function () {
-      var failures = [ "InsertDocumentNoLegend",
-                       "InsertDocumentNoLegendExcept",
-                       "InsertDocumentNoMarker",
-                       "InsertDocumentNoMarkerExcept",
+      var failures = [ 
                        "InsertDocumentNoHeader",
                        "InsertDocumentNoHeaderExcept",
                        "InsertDocumentNoLock",
@@ -4295,10 +4283,10 @@ function transactionServerFailuresSuite () {
           });
         }
         catch (err) {
-          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum, f);
         }
 
-        assertEqual(0, c.count());
+        assertEqual(0, c.count(), f);
       });
     },
 
@@ -4421,8 +4409,7 @@ function transactionServerFailuresSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateServerFailuresNonEmpty : function () {
-      var failures = [ "UpdateDocumentNoLegend",
-                       "UpdateDocumentNoLegendExcept",
+      var failures = [ 
                        "UpdateDocumentNoMarker",
                        "UpdateDocumentNoMarkerExcept",
                        "UpdateDocumentNoLock",
@@ -4448,7 +4435,7 @@ function transactionServerFailuresSuite () {
           fail();
         }
         catch (err) {
-          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum, f);
         }
 
         assertEqual(1, c.count());
@@ -4462,8 +4449,7 @@ function transactionServerFailuresSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateServerFailuresMulti : function () {
-      var failures = [ "UpdateDocumentNoLegend",
-                       "UpdateDocumentNoLegendExcept",
+      var failures = [ 
                        "UpdateDocumentNoMarker",
                        "UpdateDocumentNoMarkerExcept",
                        "UpdateDocumentNoLock",
@@ -4500,12 +4486,12 @@ function transactionServerFailuresSuite () {
           });
         }
         catch (err) {
-          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum, f);
         }
 
         assertEqual(10, c.count());
         for (i = 0; i < 10; ++i) {
-          assertEqual(i, c.document("test" + i).a);
+          assertEqual(i, c.document("test" + i).a, f);
         }
       });
     },
@@ -4515,8 +4501,7 @@ function transactionServerFailuresSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateServerFailuresMultiUpdate : function () {
-      var failures = [ "UpdateDocumentNoLegend",
-                       "UpdateDocumentNoLegendExcept",
+      var failures = [ 
                        "UpdateDocumentNoMarker",
                        "UpdateDocumentNoMarkerExcept",
                        "UpdateDocumentNoLock",
@@ -4558,10 +4543,10 @@ function transactionServerFailuresSuite () {
           assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
         }
 
-        assertEqual(10, c.count());
+        assertEqual(10, c.count(), f);
         for (i = 0; i < 10; ++i) {
-          assertEqual(i, c.document("test" + i).a);
-          assertEqual(undefined, c.document("test" + i).b);
+          assertEqual(i, c.document("test" + i).a, f);
+          assertEqual(undefined, c.document("test" + i).b, f);
         }
       });
     },
@@ -4611,8 +4596,7 @@ function transactionServerFailuresSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMixedServerFailures : function () {
-      var failures = [ "UpdateDocumentNoLegend",
-                       "UpdateDocumentNoLegendExcept",
+      var failures = [ 
                        "UpdateDocumentNoMarker",
                        "UpdateDocumentNoMarkerExcept",
                        "UpdateDocumentNoLock",
@@ -4623,10 +4607,6 @@ function transactionServerFailuresSuite () {
                        "RemoveDocumentNoLock",
                        "RemoveDocumentNoOperation",
                        "RemoveDocumentNoOperationExcept",
-                       "InsertDocumentNoLegend",
-                       "InsertDocumentNoLegendExcept",
-                       "InsertDocumentNoMarker",
-                       "InsertDocumentNoMarkerExcept",
                        "InsertDocumentNoHeader",
                        "InsertDocumentNoHeaderExcept",
                        "InsertDocumentNoLock",
@@ -4674,13 +4654,13 @@ function transactionServerFailuresSuite () {
           });
         }
         catch (err) {
-          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum, f);
         }
 
         assertEqual(100, c.count());
         for (i = 0; i < 100; ++i) {
-          assertEqual(i, c.document("test" + i).a);
-          assertEqual(undefined, c.document("test" + i).b);
+          assertEqual(i, c.document("test" + i).a, f);
+          assertEqual(undefined, c.document("test" + i).b, f);
         }
       });
     },
@@ -4962,5 +4942,4 @@ jsunity.run(transactionCrossCollectionSuite);
 jsunity.run(transactionConstraintsSuite);
 
 return jsunity.done();
-
 
