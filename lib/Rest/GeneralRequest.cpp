@@ -273,6 +273,6 @@ std::string const& GeneralRequest::value(std::string const& key, bool& found) co
 void GeneralRequest::setArrayValue(char* key, size_t length, char const* value) {
   std::string keyStr(key, length);
 
-  _arrayValues[key].emplace_back(value);
+  _arrayValues[keyStr].emplace_back(value);
 }
 
