@@ -226,7 +226,7 @@ struct AgencyTransaction {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief shortcut to create a transaction with one operation
   //////////////////////////////////////////////////////////////////////////////
-  AgencyTransaction(AgencyOperation operation) {
+  explicit AgencyTransaction(AgencyOperation const& operation) {
     operations.push_back(operation);
   }
 };
