@@ -94,6 +94,7 @@ class ApplicationEndpointServer : public ApplicationFeature {
 
  private:
   bool createSslContext();
+  std::string stringifySslOptions(uint64_t opts) const;
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
