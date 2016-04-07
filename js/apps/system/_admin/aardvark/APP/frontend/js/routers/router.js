@@ -185,7 +185,7 @@
 
     },
 
-    document: function (colid, docid) {
+    document: function (colid) {
       if (!this.checkUser()) {
         return;
       }
@@ -195,7 +195,15 @@
         });
       }
       this.documentView.colid = colid;
-      this.documentView.docid = docid;
+
+      var doc = window.location.hash.split("/")[2];
+      var test = (doc.split("%").length - 1) % 3;
+
+      if (decodeURI(doc) !== doc && test !== 0) {
+        doc = decodeURIComponent(doc);
+      }
+      this.documentView.docid = doc;
+
       this.documentView.render();
       var type = arangoHelper.collectionApiType(colid);
       this.documentView.setType(type);

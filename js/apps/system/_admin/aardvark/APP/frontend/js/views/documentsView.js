@@ -603,7 +603,17 @@
       if (result !== false) {
         //$('#edgeCreateModal').modal('hide');
         window.modalView.hide();
-        window.location.hash = "collection/"+result;
+
+        var data, url;
+        data = result.split('/');
+
+        try {
+          url = "collection/" + data[0] + '/' + data[1];
+          decodeURI(url);
+        } catch (ex) {
+          url = "collection/" + data[0] + '/' + encodeURIComponent(data[1]);
+        }
+        window.location.hash = url;
       }
       //Error
       else {
@@ -624,7 +634,17 @@
       //Success
       if (result !== false) {
         window.modalView.hide();
-        window.location.hash = "collection/" + result;
+
+        var data, url;
+        data = result.split('/');
+
+        try {
+          url = "collection/" + data[0] + '/' + data[1];
+          decodeURI(url);
+        } catch (ex) {
+          url = "collection/" + data[0] + '/' + encodeURIComponent(data[1]);
+        }
+        window.location.hash = url;
       }
       else {
         arangoHelper.arangoError('Document error', 'Creation failed.');
@@ -866,7 +886,17 @@
 
     clicked: function (event) {
       var self = event.currentTarget;
-      window.App.navigate("collection/" + this.collection.collectionID + "/" + $(self).attr("id").substr(4), true);
+
+      var url, doc = $(self).attr("id").substr(4);
+
+      try {
+        url = "collection/" + this.collection.collectionID + '/' + doc;
+        decodeURI(doc);
+      } catch (ex) {
+        url = "collection/" + this.collection.collectionID + '/' + encodeURIComponent(doc);
+      }
+
+      window.location.hash = url;
     },
 
     drawTable: function() {
