@@ -220,7 +220,12 @@ int SkiplistIndex::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
                           bool) {
   std::vector<TRI_index_element_t*> elements;
 
-  int res = fillElement(elements, doc);
+  int res;
+  try {
+    res = fillElement(elements, doc);
+  } catch (...) {
+    res = TRI_ERROR_OUT_OF_MEMORY;
+  }
 
   if (res != TRI_ERROR_NO_ERROR) {
     for (auto& it : elements) {
@@ -239,11 +244,6 @@ int SkiplistIndex::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
   for (size_t i = 0; i < count; ++i) {
     res = _skiplistIndex->insert(elements[i]);
 
-    if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && !_unique) {
-      // We ignore unique_constraint violated if we are not unique
-      res = TRI_ERROR_NO_ERROR;
-    }
-
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_index_element_t::freeElement(elements[i]);
       // Note: this element is freed already
@@ -254,7 +254,11 @@ int SkiplistIndex::insert(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
         _skiplistIndex->remove(elements[j]);
         // No need to free elements[j] skiplist has taken over already
       }
-
+    
+      if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && !_unique) {
+        // We ignore unique_constraint violated if we are not unique
+        res = TRI_ERROR_NO_ERROR;
+      }
       break;
     }
   }
@@ -269,7 +273,12 @@ int SkiplistIndex::remove(arangodb::Transaction*, TRI_doc_mptr_t const* doc,
                           bool) {
   std::vector<TRI_index_element_t*> elements;
 
-  int res = fillElement(elements, doc);
+  int res;
+  try {
+    res = fillElement(elements, doc);
+  } catch (...) {
+    res = TRI_ERROR_OUT_OF_MEMORY;
+  }
 
   if (res != TRI_ERROR_NO_ERROR) {
     for (auto& it : elements) {
