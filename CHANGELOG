@@ -1,5 +1,6 @@
 v2.8.7 (XXXX-XX-XX)
 -------------------
+
 * fix removal of temporary directories on arangosh exit
 
 * javadoc-style comments in Foxx services are no longer interpreted as
@@ -7,6 +8,9 @@ v2.8.7 (XXXX-XX-XX)
 
 * removed remaining references to class syntax for Foxx Model and Repository
   from the documentation
+
+* added a safe-guard for corrupted master-pointer
+
 
 v2.8.6 (2016-03-23)
 -------------------

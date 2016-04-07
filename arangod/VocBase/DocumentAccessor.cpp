@@ -30,6 +30,7 @@
 #include "DocumentAccessor.h"
 #include "Basics/conversions.h"
 #include "Basics/Exceptions.h"
+#include "Basics/logging.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/VocShaper.h"
 
@@ -191,25 +192,30 @@ triagens::basics::Json DocumentAccessor::toJson () {
 
     // _id, _key, _rev
     char const* key = TRI_EXTRACT_MARKER_KEY(_mptr);
-    std::string id(_resolver->getCollectionName(_document->_info._cid));
-    id.push_back('/');
-    id.append(key);
-    json(TRI_VOC_ATTRIBUTE_ID, triagens::basics::Json(id));
-    json(TRI_VOC_ATTRIBUTE_REV, triagens::basics::Json(std::to_string(TRI_EXTRACT_MARKER_RID(_mptr))));
-    json(TRI_VOC_ATTRIBUTE_KEY, triagens::basics::Json(key));
+    if (key != nullptr) {
+      std::string id(_resolver->getCollectionName(_document->_info._cid));
+      id.push_back('/');
+      id.append(key);
+      json(TRI_VOC_ATTRIBUTE_ID, triagens::basics::Json(id));
+      json(TRI_VOC_ATTRIBUTE_REV, triagens::basics::Json(std::to_string(TRI_EXTRACT_MARKER_RID(_mptr))));
+      json(TRI_VOC_ATTRIBUTE_KEY, triagens::basics::Json(key));
       
-    if (TRI_IS_EDGE_MARKER(_mptr)) {
-      // _from
-      std::string from(_resolver->getCollectionNameCluster(TRI_EXTRACT_MARKER_FROM_CID(_mptr)));
-      from.push_back('/');
-      from.append(TRI_EXTRACT_MARKER_FROM_KEY(_mptr));
-      json(TRI_VOC_ATTRIBUTE_FROM, triagens::basics::Json(from));
+      if (TRI_IS_EDGE_MARKER(_mptr)) {
+        // _from
+        std::string from(_resolver->getCollectionNameCluster(TRI_EXTRACT_MARKER_FROM_CID(_mptr)));
+        from.push_back('/');
+        from.append(TRI_EXTRACT_MARKER_FROM_KEY(_mptr));
+        json(TRI_VOC_ATTRIBUTE_FROM, triagens::basics::Json(from));
         
-      // _to
-      std::string to(_resolver->getCollectionNameCluster(TRI_EXTRACT_MARKER_TO_CID(_mptr)));
-      to.push_back('/');
-      to.append(TRI_EXTRACT_MARKER_TO_KEY(_mptr));
-      json(TRI_VOC_ATTRIBUTE_TO, triagens::basics::Json(to));
+        // _to
+        std::string to(_resolver->getCollectionNameCluster(TRI_EXTRACT_MARKER_TO_CID(_mptr)));
+        to.push_back('/');
+        to.append(TRI_EXTRACT_MARKER_TO_KEY(_mptr));
+        json(TRI_VOC_ATTRIBUTE_TO, triagens::basics::Json(to));
+      }
+    }
+    else {
+      LOG_ERROR("found corrupted master pointer, ignoring entry");
     }
 
     return json;
