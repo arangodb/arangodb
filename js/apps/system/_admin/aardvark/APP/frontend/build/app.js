@@ -17813,7 +17813,7 @@ window.arangoDocument = Backbone.Collection.extend({
       cache: false,
       type: 'DELETE',
       contentType: "application/json",
-      url: "/_api/edge/" + colid + "/" + docid,
+      url: "/_api/edge/" + encodeURIComponent(colid) + "/" + encodeURIComponent(docid),
       success: function () {
         callback(false);
       },
@@ -17827,7 +17827,7 @@ window.arangoDocument = Backbone.Collection.extend({
       cache: false,
       type: 'DELETE',
       contentType: "application/json",
-      url: "/_api/document/" + colid + "/" + docid,
+      url: "/_api/document/" + encodeURIComponent(colid) + "/" + encodeURIComponent(docid),
       success: function () {
         callback(false);
       },
@@ -17918,7 +17918,7 @@ window.arangoDocument = Backbone.Collection.extend({
     $.ajax({
       cache: false,
       type: "GET",
-      url: "/_api/edge/" + colid +"/"+ docid,
+      url: "/_api/edge/" + encodeURIComponent(colid) +"/"+ encodeURIComponent(docid),
       contentType: "application/json",
       processData: false,
       success: function(data) {
@@ -17936,7 +17936,7 @@ window.arangoDocument = Backbone.Collection.extend({
     $.ajax({
       cache: false,
       type: "GET",
-      url: "/_api/document/" + colid +"/"+ docid,
+      url: "/_api/document/" + encodeURIComponent(colid) +"/"+ encodeURIComponent(docid),
       contentType: "application/json",
       processData: false,
       success: function(data) {
@@ -17952,7 +17952,7 @@ window.arangoDocument = Backbone.Collection.extend({
     $.ajax({
       cache: false,
       type: "PUT",
-      url: "/_api/edge/" + colid + "/" + docid,
+      url: "/_api/edge/" + encodeURIComponent(colid) + "/" + encodeURIComponent(docid),
       data: model,
       contentType: "application/json",
       processData: false,
@@ -17968,7 +17968,7 @@ window.arangoDocument = Backbone.Collection.extend({
     $.ajax({
       cache: false,
       type: "PUT",
-      url: "/_api/document/" + colid + "/" + docid,
+      url: "/_api/document/" + encodeURIComponent(colid) + "/" + encodeURIComponent(docid),
       data: model,
       contentType: "application/json",
       processData: false,
@@ -24066,6 +24066,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       var from = $('.modal-body #new-edge-from-attr').last().val();
       var to = $('.modal-body #new-edge-to').last().val();
       var key = $('.modal-body #new-edge-key-attr').last().val();
+      var url;
 
 
       var callback = function(error, data) {
@@ -24074,7 +24075,15 @@ window.ArangoUsers = Backbone.Collection.extend({
         }
         else {
           window.modalView.hide();
-          window.location.hash = "collection/" + data;
+          data = data.split('/');
+
+          try {
+            url = "collection/" + data[0] + '/' + data[1];
+            decodeURI(url);
+          } catch (ex) {
+            url = "collection/" + data[0] + '/' + encodeURIComponent(data[1]);
+          }
+          window.location.hash = url;
         }
       }.bind(this);
 
@@ -24089,6 +24098,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     addDocument: function() {
       var collid = window.location.hash.split("/")[1];
       var key = $('.modal-body #new-document-key-attr').last().val();
+      var url;
 
       var callback = function(error, data) {
         if (error) {
@@ -24096,7 +24106,16 @@ window.ArangoUsers = Backbone.Collection.extend({
         }
         else {
           window.modalView.hide();
-          window.location.hash = "collection/" + data;
+          data = data.split('/');
+
+          try {
+            url = "collection/" + data[0] + '/' + data[1];
+            decodeURI(url);
+          } catch (ex) {
+            url = "collection/" + data[0] + '/' + encodeURIComponent(data[1]);
+          }
+
+          window.location.hash = url;
         }
       }.bind(this);
 
@@ -24343,7 +24362,18 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     clicked: function (event) {
       var self = event.currentTarget;
-      window.App.navigate("collection/" + this.collection.collectionID + "/" + $(self).attr("id").substr(4), true);
+
+      var url, doc = $(self).attr("id").substr(4);
+
+      try {
+        url = "collection/" + this.collection.collectionID + '/' + doc;
+        decodeURI(doc);
+      } catch (ex) {
+        url = "collection/" + this.collection.collectionID + '/' + encodeURIComponent(doc);
+      }
+
+      //window.App.navigate(url, true);
+      window.location.hash = url;
     },
 
     drawTable: function() {
@@ -33003,7 +33033,17 @@ window.ArangoUsers = Backbone.Collection.extend({
         });
       }
       this.documentView.colid = colid;
-      this.documentView.docid = docid;
+
+      var doc = window.location.hash.split("/")[2];
+     
+      var test = (doc.split("%").length - 1) % 3;
+
+      if (decodeURI(doc) !== doc && test !== 0) {
+        doc = decodeURIComponent(doc);
+      }
+      this.documentView.docid = doc;
+
+
       this.documentView.render();
 
       var callback = function(error, type) {
