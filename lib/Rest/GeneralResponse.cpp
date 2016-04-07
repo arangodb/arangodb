@@ -455,8 +455,6 @@ void GeneralResponse::setHeader(std::string const& key,
 
 void GeneralResponse::setHeaderNC(std::string const& key,
                                   std::string const& value) {
-  std::string k = StringUtils::tolower(key);
-
   _headers[key] = value;
 }
 

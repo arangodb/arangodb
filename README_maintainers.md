@@ -3,8 +3,8 @@ ArangoDB Maintainers manual
 ===========================
 This file contains documentation about the build process, documentation generation means, unittests - put short - if you want to hack parts of arangod this could be interesting for you.
 
-Configure
-=========
+CMake
+=====
  * *--enable-relative* - relative mode so you can run without make install
  * *--enable-maintainer-mode* - generate lex/yacc files
  * *--with-backtrace* - add backtraces to native code asserts & exceptions
@@ -26,8 +26,8 @@ At runtime arangod needs to be started with these options:
     --javascript.v8-options="--gdbjit_dump"
     --javascript.v8-options="--gdbjit_full"
 
-Debugging the Make process
---------------------------
+Debugging the build process
+---------------------------
 If the compile goes wrong for no particular reason, appending 'verbose=' adds more output. For some reason V8 has VERBOSE=1 for the same effect.
 
 Runtime
@@ -53,7 +53,8 @@ A sample version to help working with the arangod rescue console may look like t
     };
     print = internal.print;
 
-__________________________________________________________________________________________________________
+HINT: You shouldn't lean on these variables in your foxx services.
+______________________________________________________________________________________________________
 
 JSLint
 ======
@@ -63,19 +64,19 @@ Make target
 -----------
 use
 
-    make gitjslint
+    ./utils/gitjslint.sh
 
 to lint your modified files.
 
-    make jslint
+    ./utils/jslint.sh
 
 to find out whether all of your files comply to jslint. This is required to make continuous integration work smoothly.
 
-if you want to add new files / patterns to this make target, edit js/Makefile.files
+if you want to add new files / patterns to this make target, edit the respective shell scripts.
 
 to be safe from committing non-linted stuff add **.git/hooks/pre-commit** with:
 
-    make gitjslint
+    ./utils/jslint.sh
 
 
 Use jslint standalone for your js file
@@ -83,15 +84,17 @@ Use jslint standalone for your js file
 If you want to search errors in your js file, jslint is very handy - like a compiler is for C/C++.
 You can invoke it like this:
 
-    bin/arangosh --jslint js/server/modules/@arangodb/testing.js
+    bin/arangosh --jslint js/client/modules/@arangodb/testing.js
 
-__________________________________________________________________________________________________________
+_____________________________________________________________________________________________________
 
 ArangoDB Unittesting Framework
 ==============================
 Dependencies
 ------------
- * Ruby, rspec, httparty, boost_test (compile time)
+* *Ruby*, *rspec*, *httparty* to install the required dependencies run:
+  cd UnitTests/HttpInterface; bundler
+* boost_test (compile time)
 
 
 Filename conventions
@@ -141,7 +144,7 @@ There are several major places where unittests live:
 
 
 HttpInterface - RSpec Client Tests
----------------------------------
+----------------------------------
 These tests work on the plain RESTfull interface of arangodb, and thus also test invalid HTTP-requests and so forth, plus check error handling in the server.
 
 
@@ -158,50 +161,14 @@ arangosh is similar, however, you can only run tests which are intended to be ra
 
     require("jsunity").runTest("js/client/tests/shell-client.js");
 
+mocha tests
+-----------
+All tests with -spec in their names are using the [mochajs.org](https://mochajs.org) framework.
+
+
 jasmine tests
 -------------
-
-Jasmine tests cover two important usecase:
-  - testing the UI components of aardvark
--spec
-
-aardvark
-
-
-
-Invocation methods
-==================
-
-Make-targets
-------------
-Most of the tests can be invoked via the main Makefile: (UnitTests/Makefile.unittests)
- - unittests
-  - unittests-brief
-  - unittests-verbose
- - unittests-recovery
- - unittests-config
- - unittests-boost
- - unittests-single
- - unittests-shell-server
- - unittests-shell-server-only
- - unittests-shell-server-aql
- - unittests-shell-client-readonly
- - unittests-shell-client
- - unittests-http-server
- - unittests-ssl-server
- - unittests-import
- - unittests-replication
-  - unittests-replication-server
-  - unittests-replication-http
-  - unittests-replication-data
- - unittests-upgrade
- - unittests-dfdb
- - unittests-foxx-manager
- - unittests-dump
- - unittests-arangob
- - unittests-authentication
- - unittests-authentication-parameters
-
+Jasmine tests cover testing the UI components of aardvark
 
 Javascript framework
 --------------------
@@ -225,7 +192,6 @@ Available choices include:
  - *all*:                (calls multiple) This target is utilized by most of the jenkins builds invoking unit tests.
  - *single_client*:      (see Running a single unittestsuite)
  - *single_server*:      (see Running a single unittestsuite)
- - *single_localserver*: (see Running a single unittestsuite)
  - many more -           call without arguments for more details.
 
 Passing Options
@@ -248,7 +214,7 @@ syntax --option value --sub:option value. Using Valgrind could look like this:
 
  - we specify the test to execute
  - we specify some arangod arguments via --extraargs which increase the server performance
- - we specify to run using valgrind (this is supported by all facilities
+ - we specify to run using valgrind (this is supported by all facilities)
  - we specify some valgrind commandline arguments
 
 Running a single unittestsuite
@@ -266,7 +232,7 @@ Testing a single rspec test:
     scripts/unittest http_server --test api-users-spec.rb
 
 **scripts/unittest** is mostly only a wrapper; The backend functionality lives in:
-**js/server/modules/@arangodb/testing.js**
+**js/client/modules/@arangodb/testing.js**
 
 Running foxx tests with a fake foxx Repo
 ----------------------------------------
@@ -291,8 +257,6 @@ arangod commandline arguments
 -----------------------------
 
     bin/arangod /tmp/dataUT --javascript.unit-tests="js/server/tests/aql-escaping.js" --no-server
-
-    make unittest
 
     js/common/modules/loadtestrunner.js
 
@@ -339,7 +303,7 @@ These commands for `-c` mean:
 
 If you don't specify them via -c you can also use them in an interactive manner.
 
-__________________________________________________________________________________________________________
+______________________________________________________________________________________________________
 
 Documentation
 =============
@@ -351,7 +315,7 @@ Dependencies to build documentation:
 
     https://pypi.python.org/pypi/setuptools
 
-    Download setuptools zip file, extract to any folder, use bundled python 2.6 to install:
+    Download setuptools zip file, extract to any folder to install:
 
         python ez_install.py
 
@@ -361,7 +325,7 @@ Dependencies to build documentation:
 
     https://github.com/triAGENS/markdown-pp/
 
-    Checkout the code with Git, use bundled python 2.6 to install:
+    Checkout the code with Git, use your system python to install:
 
         python setup.py install
 
@@ -389,8 +353,8 @@ Dependencies to build documentation:
 
 Generate users documentation
 ============================
-If you've edited REST-Documentation, first invoke `make swagger`.
 If you've edited examples, see below howto regenerate them.
+If you've edited REST-Documentation, first invoke `./utils/generateSwagger.sh`.
 Run the `make` command in `arangodb/Documentation/Books` to generate it.
 The documentation will be generated into `arangodb/Documentation/Books/books/Users` -
 use your favourite browser to read it.
@@ -441,24 +405,23 @@ Generate an ePub:
 
 Where to add new...
 -------------------
- - js/action/api/* - markdown comments in source with execution section
+ - Documentation/DocuBlocks/* - markdown comments with execution section
  - Documentation/Books/Users/SUMMARY.md - index of all sub documentations
- - Documentation/Scripts/generateSwaggerApi.py - list of all sections to be adjusted if
 
 generate
 --------
- - `./scripts/generateExamples --onlyThisOne geoIndexSelect` will only produce one example - *geoIndexSelect*
- - `./scripts/generateExamples --onlyThisOne 'MOD.*'` will only produce the examples matching that regex; Note that
+ - `./utils/generateExamples.sh --onlyThisOne geoIndexSelect` will only produce one example - *geoIndexSelect*
+ - `./utils/generateExamples.sh --onlyThisOne 'MOD.*'` will only produce the examples matching that regex; Note that
    examples with enumerations in their name may base on others in their series - so you should generate the whole group.
- - `./scripts/generateExamples --server.endpoint tcp://127.0.0.1:8529` will utilize an existing arangod instead of starting a new one.
+ - `./utils/generateExamples.sh --server.endpoint tcp://127.0.0.1:8529` will utilize an existing arangod instead of starting a new one.
    this does seriously cut down the execution time.
- - alternatively you can use generateExamples (i.e. on windows since the make target is not portable) like that:
-    `./scripts/generateExamples
-       --server.endpoint 'tcp://127.0.0.1:8529'
-       --withPython 3rdParty/V8-4.3.61/third_party/python_26/python26.exe
+ - you can use generateExamples like that:
+    `./utils/generateExamples.sh \
+       --server.endpoint 'tcp://127.0.0.1:8529' \
+       --withPython C:/tools/python2/python.exe \
        --onlyThisOne 'MOD.*'`
  - `./Documentation/Scripts/allExamples.sh` generates a file where you can inspect all examples for readability.
- - `make swagger` - on top level to generate the documentation interactively with the server; you may use
+ - `./utils/generateSwagger.sh` - on top level to generate the documentation interactively with the server; you may use
     [the swagger editor](https://github.com/swagger-api/swagger-editor) to revalidate whether
     *js/apps/system/_admin/aardvark/APP/api-docs.json* is accurate.
  - `cd Documentation/Books; make` - to generate the HTML documentation
@@ -480,18 +443,17 @@ Read / use the documentation
 
 arangod Example tool
 ====================
-`make example` picks examples from the source code documentation, executes them, and creates a transcript including their results.
-*Hint: Windows users may use ./scripts/generateExamples for this purpose*
+`./utils/generateExamples.sh` picks examples from the code documentation, executes them, and creates a transcript including their results.
 
 Here is how its details work:
-  - all ending with *.cpp*, *.js* and *.mdpp* are searched.
+  - all *Documentation/DocuBlocks/*.md* and *Documentation/Books/*.mdpp* are searched.
   - all lines inside of source code starting with '///' are matched, all lines in .mdpp files.
   - an example start is marked with *@EXAMPLE_ARANGOSH_OUTPUT* or *@EXAMPLE_ARANGOSH_RUN*
   - the example is named by the string provided in brackets after the above key
   - the output is written to `Documentation/Examples/<name>.generated`
   - examples end with *@END_EXAMPLE_[OUTPUT|RUN]*
-  - all code in between is executed as javascript in the **arangosh** while talking to a valid **arangod**. You may inspect the
-    generated js code in `/tmp/arangosh.examples.js`
+  - all code in between is executed as javascript in the **arangosh** while talking to a valid **arangod**.
+  You may inspect the generated js code in `/tmp/arangosh.examples.js`
 
 OUTPUT and RUN specifics
 ---------------------------
@@ -535,7 +497,7 @@ sortable naming scheme so they're executed in sequence. Using `<modulename>_<seq
 
 Swagger integration
 ===================
-`make swagger` scans the sourcecode, and generates swagger output.
+`./utils/generateSwagger.sh` scans the documentation, and generates swagger output.
 It scans for all documentationblocks containing `@RESTHEADER`.
 It is a prerequisite for integrating these blocks into the gitbook documentation.
 
