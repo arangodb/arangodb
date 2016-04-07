@@ -697,7 +697,8 @@ int createDocumentOnCoordinator(
          }
          resultMap.emplace(res.shardID, tmpBuilder);
        } else {
-         resultMap.emplace(res.shardID, res.result->getBodyVelocyPack());
+         resultMap.emplace(res.shardID,
+                           res.answer->toVelocyPack(&VPackOptions::Defaults));
          auto resultHeaders = res.answer->headers();
          auto codes = resultHeaders.find("X-Arango-Error-Codes");
          if (codes != resultHeaders.end()) {
