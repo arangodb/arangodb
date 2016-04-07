@@ -109,7 +109,8 @@ int createDocumentOnCoordinator(
     OperationOptions const& options, arangodb::velocypack::Slice const& slice,
     std::map<std::string, std::string> const& headers,
     arangodb::GeneralResponse::ResponseCode& responseCode,
-    std::map<std::string, std::string>& resultHeaders, std::string& resultBody);
+    std::unordered_map<int, size_t>& errorCounters,
+    std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a document in a coordinator

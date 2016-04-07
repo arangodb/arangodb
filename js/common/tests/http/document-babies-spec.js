@@ -34,7 +34,7 @@ const db = arangodb.db;
 const wait = require("internal").wait;
 const extend = require('lodash').extend;
 
-const errorHeader = "x-arango-error-codes";
+const errorHeader = "X-Arango-Error-Codes";
 const uniqueCode = ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code;
 const invalidCode = ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code;
 const keyBadCode = ERRORS.ERROR_ARANGO_DOCUMENT_KEY_BAD.code;

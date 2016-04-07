@@ -33,6 +33,8 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
+#include <velocypack/Slice.h>
+
 struct TRI_json_t;
 
 namespace arangodb {
@@ -791,6 +793,15 @@ class ClusterInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   std::shared_ptr<std::vector<ShardID>> getShardList(CollectionID const&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief find the shard that is responsible for a document
+  //////////////////////////////////////////////////////////////////////////////
+
+  int getResponsibleShard(CollectionID const&, arangodb::velocypack::Slice,
+                          bool docComplete, ShardID& shardID,
+                          bool& usesDefaultShardingAttributes);
+
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief find the shard that is responsible for a document
