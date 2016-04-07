@@ -48,7 +48,8 @@
       var self = this;
 
       $(this.el).html(this.template.render({
-        currentDB: this.currentDB
+        currentDB: this.currentDB,
+        isCluster: window.App.isCluster
       }));
 
       //HEIKO

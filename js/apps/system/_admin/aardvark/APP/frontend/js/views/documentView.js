@@ -173,6 +173,7 @@
 
     fillEditor: function() {
       var toFill = this.removeReadonlyKeys(this.collection.first().attributes);
+      $('.disabledBread').last().text(this.collection.first().get('_key'));
       this.editor.set(toFill);
       $('.ace_content').attr('font-size','11pt');
     },

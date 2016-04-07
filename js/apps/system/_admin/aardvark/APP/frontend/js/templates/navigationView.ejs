@@ -1,8 +1,10 @@
 <script id="navigationView.ejs" type="text/template">
   <ul class="navlist arango-collection-ul" id="arangoCollectionUl">
-    <li class="collections-menu"><a id="cluster" class="tab" href="#collections">Cluster</a></li>
-    <li class="collections-menu"><a id="nodes" class="tab" href="#collections">Nodes</a></li>
-    <li class="navbar-spacer big"></li>
+    <% if (isCluster) { %>
+      <li class="collections-menu"><a id="cluster" class="tab" href="#collections">Cluster</a></li>
+      <li class="collections-menu"><a id="nodes" class="tab" href="#collections">Nodes</a></li>
+      <li class="navbar-spacer big"></li>
+    <% } %>
     <li id="dbSelect" class="dropdown databases-menu"></li>
     <li class="collections-menu"><a id="collections" class="tab" href="#collections">Collections</a></li>
     <li class="query-menu"><a id="query" class="tab" href="#query">Queries</a></li>

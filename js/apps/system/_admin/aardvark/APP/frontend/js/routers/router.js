@@ -155,6 +155,12 @@
         this.waitForInit(this.cluster.bind(this));
         return;
       }
+      if (!this.isCluster) {
+        this.routes[""] = 'dashboard';
+        this.navigate("#dashboard", {trigger: true});
+        return;
+      }
+
       this.clusterView = new window.ClusterView({
         coordinators: this.coordinatorCollection,
         dbServers: this.dbServers
