@@ -116,7 +116,7 @@ static void mergeResults(
     VPackSlice arr = resultMap.find(pair.first)->second->slice();
     resultBody->add(arr.at(pair.second));
   }
-  resultBody->clear();
+  resultBody->close();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
