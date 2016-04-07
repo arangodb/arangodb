@@ -43,7 +43,10 @@ using JsonHelper = triagens::basics::JsonHelper;
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AqlValue::isTrue () const {
-  if (_type == JSON) {
+  if (_type == SHAPED) {
+    return true;
+  }
+  else if (_type == JSON) {
     TRI_ASSERT(_json != nullptr);
     TRI_json_t* json = _json->json();
     if (TRI_IsBooleanJson(json) && json->_value._boolean) {
