@@ -59,13 +59,13 @@ std::vector<std::string> split(const std::string& value, char separator) {
 }
 
 // Construct with node name
-Node::Node (std::string const& name) : _parent(nullptr), _node_name(name) {
+Node::Node (std::string const& name) : _node_name(name), _parent(nullptr) {
   _value.clear();
 }
 
 // Construct with node name in tree structure
 Node::Node (std::string const& name, Node* parent) :
-  _parent(parent), _node_name(name) {
+  _node_name(name), _parent(parent) {
   _value.clear();
 }
 
@@ -249,7 +249,7 @@ bool Node::removeTimeToLive () {
   if (_ttl != std::chrono::system_clock::time_point()) {
     auto ret = root()._time_table.equal_range(_ttl);
     for (auto it = ret.first; it!=ret.second; ++it) {
-      if (it->second = _parent->_children[_node_name]) {
+      if (it->second == _parent->_children[_node_name]) {
         root()._time_table.erase(it);
       }
     }
@@ -261,7 +261,7 @@ bool Node::removeTimeToLive () {
 bool Node::addObserver (std::string const& uri) {
   auto it = std::find(_observers.begin(), _observers.end(), uri);
   if (it==_observers.end()) {
-    _observers.push_back(uri);
+    _observers.emplace(uri);
     return true;
   }
   return false;
@@ -295,6 +295,15 @@ void Node::notifyObservers () const {
     
   }
   
+}
+
+inline bool Node::observedBy (std::string const& url) const {
+  auto ret = root()._observer_table.equal_range(url);
+  for (auto it = ret.first; it!=ret.second; ++it) {
+    if (it->second == uri()) {
+      return true;
+    }
+  }
 }
 
 namespace arangodb {
@@ -422,13 +431,45 @@ template<> bool Node::handle<SHIFT> (VPackSlice const& slice) {
   return true;
 }
 
+/// Add observer for this node
 template<> bool Node::handle<OBSERVE> (VPackSlice const& slice) {
-  // Add entries to existing node
-  return true;
+
+  if (!slice.hasKey("url"))
+    return false;
+  if (!slice.get("url").isString())
+    return false;
+  std::string url (slice.get("url").copyString());
+  
+  // check if such entry exists
+  if (!observedBy(url)) {
+    std::cout << uri() << " not yet observed by " << url << std::endl;
+    root()._observer_table.insert(std::pair<std::string,std::string>(url,uri()));
+    _observers.emplace(url);
+    return true;
+  }
+  
+  return false;
+
 }
 
 template<> bool Node::handle<UNOBSERVE> (VPackSlice const& slice) {
-  return true;
+
+  if (!slice.hasKey("url"))
+    return false;
+  if (!slice.get("url").isString())
+    return false;
+
+  auto ret = root()._observer_table.equal_range((slice.get("url").copyString()));
+  for (auto it = ret.first; it!=ret.second; ++it) {
+    if (it->second == uri()) {
+      LOG_TOPIC(INFO, Logger::AGENCY) << it->first << " " << it->second;
+      root()._observer_table.erase(it);
+      return true;
+    }
+  }
+
+  return false;
+  
 }
 
 }}
@@ -460,6 +501,10 @@ bool Node::applies (VPackSlice const& slice) {
           return handle<PREPEND>(slice);
         } else if (oper == "shift") { // Shift
           return handle<SHIFT>(slice);
+        } else if (oper == "observe") {
+          return handle<OBSERVE>(slice);
+        } else if (oper == "unobserve") {
+          return handle<UNOBSERVE>(slice);
         } else {
           LOG_TOPIC(WARN, Logger::AGENCY) << "Unknown operation " << oper;
           return false;
@@ -734,6 +779,12 @@ void Store::dumpToBuilder (Builder& builder) const {
       std::string ts = ctime(&in_time_t);
       ts.resize(ts.size()-1);
       builder.add(ts, VPackValue((size_t)i.second.get()));
+    }
+  }
+  {
+    VPackObjectBuilder guard(&builder);
+    for (auto const& i : _observer_table) {
+      builder.add(i.first, VPackValue(i.second));
     }
   }
 }

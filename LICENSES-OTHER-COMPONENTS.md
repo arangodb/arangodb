@@ -79,11 +79,6 @@
 * only used to generate code, not part of the distribution; for details about using Bison in this way see http://www.gnu.org/software/bison/manual/bison.html#Conditions
 * License: grammar.cpp [Special License](https://github.com/arangodb/arangodb/blob/devel/arangod/Aql/grammar.cpp#L20)
 
-### CoreOS etcd
-
-* Project Home: https://coreos.com/using-coreos/etcd/
-* License: [Apache 2 License](https://github.com/coreos/etcd/blob/master/LICENSE)
-
 ### Flex 2.5
 
 * Project Home: http://flex.sourceforge.net/

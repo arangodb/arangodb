@@ -156,6 +156,9 @@ public:
   /// @brief Add observer for this node
   void notifyObservers () const;
 
+  /// @brief Is this node being observed by url
+  bool observedBy (std::string const& url) const;
+
 protected:
 
   /// @brief Add time to live entry
@@ -163,14 +166,21 @@ protected:
 
   /// @brief Remove time to live entry
   virtual bool removeTimeToLive ();
-  
-  Node* _parent;
-  Children _children;
+
+  std::string _node_name;              /**< @brief my name */
+
+  Node* _parent;                       /**< @brief parent */
+  Children _children;                  /**< @brief child nodes */
+  TimePoint _ttl;                      /**< @brief my expiry */
+  Buffer<uint8_t> _value;              /**< @brief my value */
+
+  std::unordered_set<std::string> _observers; /**< @brief my observers */
+
+  /// @brief Table of expiries in tree (only used in root node)
   std::multimap<TimePoint, std::shared_ptr<Node>> _time_table;
-  TimePoint _ttl;
-  Buffer<uint8_t> _value;
-  std::vector<std::string> _observers;
-  std::string _node_name;
+
+  /// @brief Table of observers in tree (only used in root node)
+  std::multimap <std::string,std::string> _observer_table;
   
 };
 
@@ -238,8 +248,6 @@ private:
   /// @brief My own agent
   Agent* _agent;
 
-  std::multimap <std::string,std::string> _observers;
-  
 };
 
 }}
