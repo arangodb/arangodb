@@ -808,7 +808,8 @@ static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     SimpleHttpClient client(connection.get(), timeout, false);
     client.setSupportDeflate(false);
-    client.setExposeArangoDB(false);
+    // security by obscurity won't work. Github requires a useragent nowadays.
+    client.setExposeArangoDB(true);
 
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
