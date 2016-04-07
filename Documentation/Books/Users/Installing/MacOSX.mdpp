@@ -45,7 +45,8 @@ Then remove the LaunchAgent:
 
     brew update
 
-!SubSection Known issues
+***Known issues***
+
 - Performance - the LLVM delivered as of Mac OS X El Capitan builds slow binaries. Use GCC instead
 - the Commandline argument parsing doesn't accept blanks in filenames; the CLI version below does.
 

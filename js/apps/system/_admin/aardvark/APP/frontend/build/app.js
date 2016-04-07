@@ -7002,15 +7002,17 @@ function EdgeShaperControls(list, shaper) {
   this.applyLocalStorage = function(obj) {
     if (Storage !== "undefined") {
       try {
-        var toStore = JSON.parse(localStorage.getItem('graphSettings'));
-        var graphName = (window.location.hash).split("/")[1];
+        var toStore = JSON.parse(localStorage.getItem('graphSettings')),
+        graphName = (window.location.hash).split("/")[1],
+        dbName = (window.location.pathname).split('/')[2],
+        combinedGraphName = graphName + dbName;
 
         _.each(obj, function(value, key) {
           if (key !== undefined) {
-            if (!toStore[graphName].viewer.hasOwnProperty('edgeShaper')) {
-              toStore[graphName].viewer.edgeShaper = {};
+            if (!toStore[combinedGraphName].viewer.hasOwnProperty('edgeShaper')) {
+              toStore[combinedGraphName].viewer.edgeShaper = {};
             } 
-            toStore[graphName].viewer.edgeShaper[key] = value;
+            toStore[combinedGraphName].viewer.edgeShaper[key] = value;
           }
         });
 
@@ -8628,10 +8630,13 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     this.graphSettings = {};
 
     this.loadLocalStorage = function() {
-      var graphName = adapterConfig.graphName;
+      //graph name not enough, need to set db name also
+      var dbName = adapterConfig.baseUrl.split('/')[2],
+      combinedGraphName = adapterConfig.graphName + dbName;
+      
       if (localStorage.getItem('graphSettings') === null || localStorage.getItem('graphSettings')  === 'null') {
         var obj = {};
-        obj[graphName] = {
+        obj[combinedGraphName] = {
           viewer: viewerConfig,
           adapter: adapterConfig
         };
@@ -8642,16 +8647,16 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
           var settings = JSON.parse(localStorage.getItem('graphSettings'));
           this.graphSettings = settings;
 
-          if (settings[graphName].viewer !== undefined) {
-            viewerConfig = settings[graphName].viewer;  
+          if (settings[combinedGraphName].viewer !== undefined) {
+            viewerConfig = settings[combinedGraphName].viewer;  
           }
-          if (settings[graphName].adapter !== undefined) {
-            adapterConfig = settings[graphName].adapter;
+          if (settings[combinedGraphName].adapter !== undefined) {
+            adapterConfig = settings[combinedGraphName].adapter;
           }
         }
         catch (e) {
           console.log("Could not load graph settings, resetting graph settings.");
-          this.graphSettings[graphName] = {
+          this.graphSettings[combinedGraphName] = {
             viewer: viewerConfig,
             adapter: adapterConfig
           };
@@ -9597,12 +9602,14 @@ function NodeShaperControls(list, shaper) {
   this.applyLocalStorage = function(obj) {
     if (Storage !== "undefined") {
       try {
-        var toStore = JSON.parse(localStorage.getItem('graphSettings'));
-        var graphName = (window.location.hash).split("/")[1];
+        var toStore = JSON.parse(localStorage.getItem('graphSettings')),
+        graphName = (window.location.hash).split("/")[1],
+        dbName = (window.location.pathname).split('/')[2],
+        combinedGraphName = graphName + dbName;
 
         _.each(obj, function(value, key) {
           if (key !== undefined) {
-            toStore[graphName].viewer.nodeShaper[key] = value;
+            toStore[combinedGraphName].viewer.nodeShaper[key] = value;
           }
         });
 
@@ -21357,7 +21364,7 @@ window.arangoDocument = Backbone.Collection.extend({
         type: 'DELETE',
         async: false,
         contentType: "application/json",
-        url: "/_api/edge/" + colid + "/" + docid,
+        url: "/_api/edge/" + encodeURIComponent(colid) + "/" + encodeURIComponent(docid),
         success: function () {
           returnval = true;
         },
@@ -21379,7 +21386,7 @@ window.arangoDocument = Backbone.Collection.extend({
         type: 'DELETE',
         async: false,
         contentType: "application/json",
-        url: "/_api/document/" + colid + "/" + docid,
+        url: "/_api/document/" + encodeURIComponent(colid) + "/" + encodeURIComponent(docid),
         success: function () {
           returnval = true;
         },
@@ -21481,7 +21488,7 @@ window.arangoDocument = Backbone.Collection.extend({
       cache: false,
       type: "GET",
       async: false,
-      url: "/_api/edge/" + colid +"/"+ docid,
+      url: "/_api/edge/" + encodeURIComponent(colid) +"/"+ encodeURIComponent(docid),
       contentType: "application/json",
       processData: false,
       success: function(data) {
@@ -21501,7 +21508,7 @@ window.arangoDocument = Backbone.Collection.extend({
       cache: false,
       type: "GET",
       async: false,
-      url: "/_api/document/" + colid +"/"+ docid,
+      url: "/_api/document/" + encodeURIComponent(colid) +"/"+ encodeURIComponent(docid),
       contentType: "application/json",
       processData: false,
       success: function(data) {
@@ -21520,7 +21527,7 @@ window.arangoDocument = Backbone.Collection.extend({
       cache: false,
       type: "PUT",
       async: false,
-      url: "/_api/edge/" + colid + "/" + docid,
+      url: "/_api/edge/" + encodeURIComponent(colid) + "/" + encodeURIComponent(docid),
       data: model,
       contentType: "application/json",
       processData: false,
@@ -21539,7 +21546,7 @@ window.arangoDocument = Backbone.Collection.extend({
       cache: false,
       type: "PUT",
       async: false,
-      url: "/_api/document/" + colid + "/" + docid,
+      url: "/_api/document/" + encodeURIComponent(colid) + "/" + encodeURIComponent(docid),
       data: model,
       contentType: "application/json",
       processData: false,
@@ -25380,6 +25387,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     fillEditor: function() {
       var toFill = this.removeReadonlyKeys(this.collection.first().attributes);
+      $('.disabledBread').last().text(this.collection.first().get('_key'));
       this.editor.set(toFill);
       $('.ace_content').attr('font-size','11pt');
     },
@@ -26108,7 +26116,17 @@ window.ArangoUsers = Backbone.Collection.extend({
       if (result !== false) {
         //$('#edgeCreateModal').modal('hide');
         window.modalView.hide();
-        window.location.hash = "collection/"+result;
+
+        var data, url;
+        data = result.split('/');
+
+        try {
+          url = "collection/" + data[0] + '/' + data[1];
+          decodeURI(url);
+        } catch (ex) {
+          url = "collection/" + data[0] + '/' + encodeURIComponent(data[1]);
+        }
+        window.location.hash = url;
       }
       //Error
       else {
@@ -26129,7 +26147,17 @@ window.ArangoUsers = Backbone.Collection.extend({
       //Success
       if (result !== false) {
         window.modalView.hide();
-        window.location.hash = "collection/" + result;
+
+        var data, url;
+        data = result.split('/');
+
+        try {
+          url = "collection/" + data[0] + '/' + data[1];
+          decodeURI(url);
+        } catch (ex) {
+          url = "collection/" + data[0] + '/' + encodeURIComponent(data[1]);
+        }
+        window.location.hash = url;
       }
       else {
         arangoHelper.arangoError('Document error', 'Creation failed.');
@@ -26371,7 +26399,17 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     clicked: function (event) {
       var self = event.currentTarget;
-      window.App.navigate("collection/" + this.collection.collectionID + "/" + $(self).attr("id").substr(4), true);
+
+      var url, doc = $(self).attr("id").substr(4);
+
+      try {
+        url = "collection/" + this.collection.collectionID + '/' + doc;
+        decodeURI(doc);
+      } catch (ex) {
+        url = "collection/" + this.collection.collectionID + '/' + encodeURIComponent(doc);
+      }
+
+      window.location.hash = url;
     },
 
     drawTable: function() {
@@ -31584,7 +31622,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     },
 
-    document: function (colid, docid) {
+    document: function (colid) {
       if (!this.checkUser()) {
         return;
       }
@@ -31594,7 +31632,15 @@ window.ArangoUsers = Backbone.Collection.extend({
         });
       }
       this.documentView.colid = colid;
-      this.documentView.docid = docid;
+
+      var doc = window.location.hash.split("/")[2];
+      var test = (doc.split("%").length - 1) % 3;
+
+      if (decodeURI(doc) !== doc && test !== 0) {
+        doc = decodeURIComponent(doc);
+      }
+      this.documentView.docid = doc;
+
       this.documentView.render();
       var type = arangoHelper.collectionApiType(colid);
       this.documentView.setType(type);
