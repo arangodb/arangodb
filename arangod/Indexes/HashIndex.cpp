@@ -837,6 +837,10 @@ IndexIterator* HashIndex::iteratorForCondition(
   }
   searchValues.close();
 
+  TRI_IF_FAILURE("HashIndex::noIterator")  {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
   if (needNormalize) {
     VPackBuilder expandedSearchValues;
     expandInSearchValues(searchValues.slice(), expandedSearchValues);

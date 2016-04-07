@@ -205,7 +205,7 @@ function ahuacatlFailureSuite () {
 
     testReturnBlock : function () {
       internal.debugSetFailAt("ReturnBlock::getSome");
-      assertFailingQuery("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ 1, 2, 3, 4 ] RETURN q)) RETURN LENGTH(quarters)");
+      assertFailingQuery("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ 'jhaskdjhjkasdhkjahsd', 2, 3, 4 ] RETURN q)) RETURN 'kljhasdjkhaskjdhaskjdhasd'");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -536,7 +536,7 @@ function ahuacatlFailureSuite () {
 
     testIndexNodeSkiplist4 : function () {
       c.ensureSkiplist("value");
-      internal.debugSetFailAt("SkiplistIndex::permutationIN");
+      internal.debugSetFailAt("Index::permutationIN");
       assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value IN [1, 2] RETURN i");
     },
 
@@ -544,26 +544,6 @@ function ahuacatlFailureSuite () {
       c.ensureSkiplist("value[*]");
       internal.debugSetFailAt("SkiplistIndex::permutationArrayIN");
       assertFailingQuery("FOR i IN " + c.name() + " FILTER 1 IN i.value[*] RETURN i");
-    },
-
-    testIndexNodeSkiplist6 : function () {
-      c.ensureSkiplist("value");
-      internal.debugSetFailAt("SkiplistIndex::onlyRangeOperator");
-      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value < 4 RETURN i");
-      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value > 4 RETURN i");
-      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value < 4 && i.value >= 2 RETURN i");
-    },
-
-    testIndexNodeSkiplist7 : function () {
-      c.ensureSkiplist("value1", "value2");
-      internal.debugSetFailAt("SkiplistIndex::rangeOperatorNoTmp");
-      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value1 == 1 && i.value2 < 3 RETURN i");
-    },
-
-    testIndexNodeSkiplist8 : function () {
-      c.ensureSkiplist("value1", "value2");
-      internal.debugSetFailAt("SkiplistIndex::rangeOperatorTmp");
-      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value1 == 1 RETURN i");
     },
 
     testIndexNodeSkiplist9 : function () {
@@ -586,7 +566,7 @@ function ahuacatlFailureSuite () {
 
     testIndexNodeHashIndex3 : function () {
       c.ensureHashIndex("value");
-      internal.debugSetFailAt("HashIndex::permutationIN");
+      internal.debugSetFailAt("Index::permutationIN");
       assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value IN [1, 2] RETURN i");
     },
 

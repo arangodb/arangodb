@@ -966,6 +966,11 @@ IndexIterator* SkiplistIndex::iteratorForCondition(
     }
   }
   searchValues.close();
+
+  TRI_IF_FAILURE("SkiplistIndex::noIterator") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
   if (needNormalize) {
     VPackBuilder expandedSearchValues;
     expandInSearchValues(searchValues.slice(), expandedSearchValues);
@@ -1040,7 +1045,7 @@ arangodb::aql::AstNode* SkiplistIndex::specializeCondition(
     lastContainsEquality = containsEquality;
     std::unordered_set<int> operatorsFound;
     for (auto& it : nodes) {
-      // do not less duplicate or related operators pass
+      // do not let duplicate or related operators pass
       if (isDuplicateOperator(it, operatorsFound)) {
         continue;
       }
