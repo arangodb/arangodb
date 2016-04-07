@@ -620,6 +620,10 @@ int createDocumentOnCoordinator(
    };
 
    if (useMultiple) {
+     VPackValueLength length = slice.length();
+     for (VPackValueLength idx = 0; idx < length; ++idx) {
+       workOnOneNode(slice.at(idx), idx);
+     }
    } else {
      workOnOneNode(slice, 0);
    }
