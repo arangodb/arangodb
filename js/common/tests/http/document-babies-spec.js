@@ -34,7 +34,7 @@ const db = arangodb.db;
 const wait = require("internal").wait;
 const extend = require('lodash').extend;
 
-const errorHeader = "X-Arango-Error-Codes";
+const errorHeader = "x-arango-error-codes";
 const uniqueCode = ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code;
 const invalidCode = ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code;
 const keyBadCode = ERRORS.ERROR_ARANGO_DOCUMENT_KEY_BAD.code;
@@ -316,6 +316,7 @@ describe('babies collection document', function() {
 
       // Check header error codes
       let headers = req.headers;
+      require("internal").print(JSON.stringify(headers));
       expect(headers).to.have.property(errorHeader);
       let errorCodes = JSON.parse(headers[errorHeader]);
       expect(errorCodes).to.have.property(uniqueCode);
