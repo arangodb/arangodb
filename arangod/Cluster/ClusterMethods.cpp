@@ -96,6 +96,30 @@ static std::shared_ptr<VPackBuilder> ExtractAnswer(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief merge the baby-object results.
+///        The shard map contains the ordering of elements, the vector in this
+///        Map is expected to be sorted from front to back.
+///        The second map contains the answers for each shard.
+///        The builder in the third parameter will be cleared and will contain
+///        the resulting array. It is guaranteed that the resulting array indexes
+///        are equal to the original request ordering before it was destructured
+///        for babies.
+////////////////////////////////////////////////////////////////////////////////
+
+static void mergeResults(
+    std::vector<std::pair<ShardID, VPackValueLength>> const& reverseMapping,
+    std::unordered_map<ShardID, std::shared_ptr<VPackBuilder>> const& resultMap,
+    std::shared_ptr<VPackBuilder>& resultBody) {
+  resultBody->clear();
+  resultBody->openArray();
+  for (auto const& pair : reverseMapping) {
+    VPackSlice arr = resultMap.find(pair.first)->second->slice();
+    resultBody->add(arr.at(pair.second));
+  }
+  resultBody->clear();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief merge headers of a DB server response into the current response
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -545,9 +569,10 @@ int createDocumentOnCoordinator(
  
    std::string const collid = StringUtils::itoa(collinfo->id());
    std::unordered_map<ShardID, std::vector<VPackValueLength>> shardMap;
+  std::vector<std::pair<ShardID, VPackValueLength>> reverseMapping;
    bool useMultiple = slice.isArray();
- 
-   auto workOnOneNode = [&shardMap, &ci, &collid, &collinfo](
+
+   auto workOnOneNode = [&shardMap, &ci, &collid, &collinfo, &reverseMapping](
        VPackSlice const node, VPackValueLength const index) -> int {
      // Sort out the _key attribute:
      // The user is allowed to specify _key, provided that _key is the one
@@ -590,9 +615,10 @@ int createDocumentOnCoordinator(
      } else {
        it->second.emplace_back(index);
      }
+     reverseMapping.emplace_back(shardID, index);
      return TRI_ERROR_NO_ERROR;
    };
- 
+
    if (useMultiple) {
    } else {
      workOnOneNode(slice, 0);
@@ -659,7 +685,17 @@ int createDocumentOnCoordinator(
  
        int commError = handleGeneralCommErrors(&res);
        if (commError != TRI_ERROR_NO_ERROR) {
-         // TODO FILL resultMap with slice().length() many error objects.
+         auto tmpBuilder = std::make_shared<VPackBuilder>();
+         auto weSend = shardMap.find(res.shardID);
+         TRI_ASSERT(weSend != shardMap.end()); // We send sth there earlier.
+         size_t count = weSend->second.size();
+         for (size_t i = 0; i < count; ++i) {
+           tmpBuilder->openObject();
+           tmpBuilder->add("error", VPackValue(true));
+           tmpBuilder->add("errorNum", VPackValue(commError));
+           tmpBuilder->close();
+         }
+         resultMap.emplace(res.shardID, tmpBuilder);
        } else {
          resultMap.emplace(res.shardID, res.result->getBodyVelocyPack());
          auto resultHeaders = res.answer->headers();
@@ -681,7 +717,7 @@ int createDocumentOnCoordinator(
    }
    responseCode = (options.waitForSync ? GeneralResponse::ResponseCode::CREATED
                                        : GeneralResponse::ResponseCode::ACCEPTED);
- 
+   mergeResults(reverseMapping, resultMap, resultBody);
    return TRI_ERROR_NO_ERROR;  // the cluster operation was OK, however,
                                // the DBserver could have reported an error.
 }
