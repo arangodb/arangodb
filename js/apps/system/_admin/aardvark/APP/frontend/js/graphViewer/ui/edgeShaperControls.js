@@ -117,15 +117,17 @@ function EdgeShaperControls(list, shaper) {
   this.applyLocalStorage = function(obj) {
     if (Storage !== "undefined") {
       try {
-        var toStore = JSON.parse(localStorage.getItem('graphSettings'));
-        var graphName = (window.location.hash).split("/")[1];
+        var toStore = JSON.parse(localStorage.getItem('graphSettings')),
+        graphName = (window.location.hash).split("/")[1],
+        dbName = (window.location.pathname).split('/')[2],
+        combinedGraphName = graphName + dbName;
 
         _.each(obj, function(value, key) {
           if (key !== undefined) {
-            if (!toStore[graphName].viewer.hasOwnProperty('edgeShaper')) {
-              toStore[graphName].viewer.edgeShaper = {};
+            if (!toStore[combinedGraphName].viewer.hasOwnProperty('edgeShaper')) {
+              toStore[combinedGraphName].viewer.edgeShaper = {};
             } 
-            toStore[graphName].viewer.edgeShaper[key] = value;
+            toStore[combinedGraphName].viewer.edgeShaper[key] = value;
           }
         });
 
