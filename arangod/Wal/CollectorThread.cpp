@@ -1463,18 +1463,18 @@ char* CollectorThread::nextFreeMarkerPosition (TRI_document_collection_t* docume
         LOG_ERROR("cannot select journal: '%s'", TRI_last_error());
         goto leave;
       }
+    
+      // must rotate the existing journal. now update its stats
+      if (cache->lastFid > 0) {
+        auto& dfi = createDfi(cache, cache->lastFid);
+        document->_datafileStatistics.increaseUncollected(cache->lastFid, dfi.numberUncollected);
+        // and reset afterwards
+        dfi.numberUncollected = 0;
+      }
 
       // journal is full, close it and sync
       LOG_DEBUG("closing full journal '%s'", datafile->getName(datafile));
       TRI_CloseDatafileDocumentCollection(document, i, false);
-    }
-
-    // must rotate the existing journal. now update its stats
-    if (cache->lastFid > 0) {
-      auto& dfi = getDfi(cache, cache->lastFid);
-      document->_datafileStatistics.increaseUncollected(cache->lastFid, dfi.numberUncollected);
-      // and reset afterwards
-      dfi.numberUncollected = 0;
     }
 
     datafile = TRI_CreateDatafileDocumentCollection(document, tick, targetSize, false);
@@ -1493,6 +1493,9 @@ char* CollectorThread::nextFreeMarkerPosition (TRI_document_collection_t* docume
 
       THROW_ARANGO_EXCEPTION(res);
     }
+    
+    cache->lastDatafile = datafile;
+    cache->lastFid = datafile->_fid;
   } // next iteration
 
 leave:
