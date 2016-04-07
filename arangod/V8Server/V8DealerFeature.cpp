@@ -1015,7 +1015,7 @@ void V8DealerFeature::shutdownV8Instance(V8Context* context) {
 
   isolate->Dispose();
 
-  delete context;
-
   LOG(TRACE) << "closed V8 context #" << context->_id;
+
+  delete context;
 }
