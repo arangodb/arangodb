@@ -585,6 +585,7 @@
       var from = $('.modal-body #new-edge-from-attr').last().val();
       var to = $('.modal-body #new-edge-to').last().val();
       var key = $('.modal-body #new-edge-key-attr').last().val();
+      var url;
 
 
       var callback = function(error, data) {
@@ -593,7 +594,15 @@
         }
         else {
           window.modalView.hide();
-          window.location.hash = "collection/" + data;
+          data = data.split('/');
+
+          try {
+            url = "collection/" + data[0] + '/' + data[1];
+            decodeURI(url);
+          } catch (ex) {
+            url = "collection/" + data[0] + '/' + encodeURIComponent(data[1]);
+          }
+          window.location.hash = url;
         }
       }.bind(this);
 
@@ -608,6 +617,7 @@
     addDocument: function() {
       var collid = window.location.hash.split("/")[1];
       var key = $('.modal-body #new-document-key-attr').last().val();
+      var url;
 
       var callback = function(error, data) {
         if (error) {
@@ -615,7 +625,16 @@
         }
         else {
           window.modalView.hide();
-          window.location.hash = "collection/" + data;
+          data = data.split('/');
+
+          try {
+            url = "collection/" + data[0] + '/' + data[1];
+            decodeURI(url);
+          } catch (ex) {
+            url = "collection/" + data[0] + '/' + encodeURIComponent(data[1]);
+          }
+
+          window.location.hash = url;
         }
       }.bind(this);
 
@@ -862,7 +881,18 @@
 
     clicked: function (event) {
       var self = event.currentTarget;
-      window.App.navigate("collection/" + this.collection.collectionID + "/" + $(self).attr("id").substr(4), true);
+
+      var url, doc = $(self).attr("id").substr(4);
+
+      try {
+        url = "collection/" + this.collection.collectionID + '/' + doc;
+        decodeURI(doc);
+      } catch (ex) {
+        url = "collection/" + this.collection.collectionID + '/' + encodeURIComponent(doc);
+      }
+
+      //window.App.navigate(url, true);
+      window.location.hash = url;
     },
 
     drawTable: function() {
