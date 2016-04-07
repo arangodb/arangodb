@@ -1,5 +1,8 @@
 v2.8.7 (XXXX-XX-XX)
 -------------------
+
+* fixed potential race condition between compactor and collector threads
+
 * fix removal of temporary directories on arangosh exit
 
 * javadoc-style comments in Foxx services are no longer interpreted as
