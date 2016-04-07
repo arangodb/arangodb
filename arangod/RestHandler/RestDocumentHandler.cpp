@@ -573,6 +573,7 @@ bool RestDocumentHandler::deleteDocument() {
     search = builder.slice();
   } else {
     try {
+      TRI_ASSERT(_request != nullptr);
       builderPtr = _request->toVelocyPack(transactionContext->getVPackOptions());
     } catch (...) {
       // If an error occurs here the body is not parsable. Fail with bad parameter
@@ -636,6 +637,7 @@ bool RestDocumentHandler::readManyDocuments() {
     return false;
   }
 
+  TRI_ASSERT(_request != nullptr);
   auto builderPtr = _request->toVelocyPack(transactionContext->getVPackOptions());
   VPackSlice search = builderPtr->slice();
 

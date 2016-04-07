@@ -294,11 +294,13 @@ struct TRI_collection_t {
   TRI_collection_t(TRI_collection_t const&) = delete;
   TRI_collection_t& operator=(TRI_collection_t const&) = delete;
 
-  TRI_collection_t()
-      : _tickMax(0), _state(TRI_COL_STATE_WRITE), _lastError(0) {}
+  TRI_collection_t() = delete;
+  
+  explicit TRI_collection_t(TRI_vocbase_t* vocbase)
+      : _vocbase(vocbase), _tickMax(0), _state(TRI_COL_STATE_WRITE), _lastError(0) {}
 
-  explicit TRI_collection_t(arangodb::VocbaseCollectionInfo const& info)
-      : _info(info), _tickMax(0), _state(TRI_COL_STATE_WRITE), _lastError(0) {}
+  TRI_collection_t(TRI_vocbase_t* vocbase, arangodb::VocbaseCollectionInfo const& info)
+      : _info(info), _vocbase(vocbase), _tickMax(0), _state(TRI_COL_STATE_WRITE), _lastError(0) {}
 
   ~TRI_collection_t() = default;
 
