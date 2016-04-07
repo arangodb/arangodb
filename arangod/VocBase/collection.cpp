@@ -480,8 +480,6 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
     // .............................................................................
 
     if (extension == "db") {
-      TRI_col_header_marker_t* cm;
-
       // found a compaction file. now rename it back
       if (filetype == "compaction") {
         std::string relName = "datafile-" + qualifier + "." + extension;
@@ -530,11 +528,11 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
       all.emplace_back(datafile);
 
       // check the document header
-      char* ptr = datafile->_data;
+      char const* ptr = datafile->_data;
 
       // skip the datafile header
       ptr += DatafileHelper::AlignedSize<size_t>(sizeof(TRI_df_header_marker_t));
-      cm = (TRI_col_header_marker_t*)ptr;
+      TRI_col_header_marker_t const* cm = reinterpret_cast<TRI_col_header_marker_t const*>(ptr);
 
       if (cm->base.getType() != TRI_DF_MARKER_COL_HEADER) {
         LOG(ERR) << "collection header mismatch in file '" << filename

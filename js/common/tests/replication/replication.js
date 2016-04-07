@@ -52,6 +52,15 @@ function ReplicationLoggerSuite () {
   var getLogEntries = function (tick, type) {
     var result = [ ];
     waitForSync();
+  
+    var exclude = function(name) {
+      return (name.substr(0, 11) === '_statistics' || 
+              name === '_apps' ||
+              name === '_foxxlog' ||
+              name === '_jobs' ||
+              name === '_queues' ||
+              name === '_sessions');
+    };
 
     var entries = REPLICATION_LOGGER_LAST(tick, "9999999999999999999");
 
@@ -59,7 +68,7 @@ function ReplicationLoggerSuite () {
       var found = false;
       entries.forEach(function(e) {
         if (! found) {
-          if (e.type === 2300 && e.cname && e.cname.substr(0, 11) === '_statistics') {
+          if (e.type === 2300 && e.cname && exclude(e.cname)) {
             // exclude statistics markers here
             return;
           }
@@ -74,7 +83,7 @@ function ReplicationLoggerSuite () {
     }
     else {
       entries.forEach(function(e) {
-        if (e.type === 2300 && e.cname && e.cname.substr(0, 11) === '_statistics') {
+        if (e.type === 2300 && e.cname && exclude(e.cname)) {
           // exclude statistics markers here
           return;
         }

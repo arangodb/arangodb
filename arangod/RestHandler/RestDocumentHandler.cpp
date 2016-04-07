@@ -121,8 +121,8 @@ bool RestDocumentHandler::createDocument() {
   SingleCollectionTransaction trx(transactionContext,
                                   collectionName, TRI_TRANSACTION_WRITE);
   VPackSlice body = parsedBody->slice();
-  bool isMultiple = body.isArray();
-  if (!body.isArray()) {
+  bool const isMultiple = body.isArray();
+  if (!isMultiple) {
     trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
   }
 

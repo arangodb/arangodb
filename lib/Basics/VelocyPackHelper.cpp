@@ -147,7 +147,7 @@ void VelocyPackHelper::initialize() {
   EmptyArrayBuilder.openArray();
   EmptyArrayBuilder.close();
   // Object value (empty)
-  EmptyObjectBuilder.openArray();
+  EmptyObjectBuilder.openObject();
   EmptyObjectBuilder.close();
 
   // Illegal value
