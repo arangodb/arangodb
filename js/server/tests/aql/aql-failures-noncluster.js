@@ -205,7 +205,7 @@ function ahuacatlFailureSuite () {
 
     testReturnBlock : function () {
       internal.debugSetFailAt("ReturnBlock::getSome");
-      assertFailingQuery("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ 'jhaskdjhjkasdhkjahsd', 2, 3, 4 ] RETURN q)) RETURN 'kljhasdjkhaskjdhaskjdhasd'");
+      assertFailingQuery("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ 'jhaskdjhjkasdhkjahsd', 2, 3, 4 ] RETURN CONCAT('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', q))) RETURN LENGTH(quarters)");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -255,9 +255,10 @@ function ahuacatlFailureSuite () {
 
     testSortBlock5 : function () {
       internal.debugSetFailAt("SortBlock::doSortingNext2");
-      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i._key SORT key RETURN key");
-      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value SORT key RETURN key");
-      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value2 SORT key RETURN key");
+      // we need values that are >= 16 bytes long
+      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i._key SORT CONCAT('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', key) RETURN key");
+      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value SORT CONCAT('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', key) RETURN key");
+      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value2 SORT CONCAT('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', key) RETURN key");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -546,7 +547,7 @@ function ahuacatlFailureSuite () {
       assertFailingQuery("FOR i IN " + c.name() + " FILTER 1 IN i.value[*] RETURN i");
     },
 
-    testIndexNodeSkiplist9 : function () {
+    testIndexNodeSkiplist6 : function () {
       c.ensureSkiplist("value");
       internal.debugSetFailAt("SkiplistIndex::accessFitsIndex");
       assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 1 RETURN i");
