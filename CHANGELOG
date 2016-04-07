@@ -1,6 +1,12 @@
 v2.8.7 (XXXX-XX-XX)
 -------------------
 
+* fix detection of TRUE for whole documents
+
+* expose the User-Agent http header since github requires it. 
+
+* work with http servers that only send \n
+
 * fixed potential race condition between compactor and collector threads
 
 * fix removal of temporary directories on arangosh exit
