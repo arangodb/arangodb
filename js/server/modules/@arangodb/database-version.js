@@ -34,25 +34,23 @@ var fs = require("fs");
 var db = require("@arangodb").db;
 var console = require("console");
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logger
 ////////////////////////////////////////////////////////////////////////////////
 
 var logger = {
-  info: function (msg) {
+  info: function(msg) {
     console.log("In database '%s': %s", db._name(), msg);
   },
 
-  error: function (msg) {
+  error: function(msg) {
     console.error("In database '%s': %s", db._name(), msg);
   },
 
-  log: function (msg) {
+  log: function(msg) {
     this.info(msg);
   }
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief CURRENT_VERSION
@@ -116,14 +114,17 @@ exports.NO_VERSION_FILE = -4;
 
 exports.NO_SERVER_VERSION = -5;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks the version
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.databaseVersion = function () {
+exports.databaseVersion = function() {
   if (cluster.isCoordinator()) {
-    return { result: exports.IS_CLUSTER };
+    console.debug("skip on corrdinator");
+
+    return {
+      result: exports.IS_CLUSTER
+    };
   }
 
   // path to the VERSION file
@@ -133,25 +134,31 @@ exports.databaseVersion = function () {
   // VERSION file exists, read its contents
   if (fs.exists(versionFile)) {
     var versionInfo = fs.read(versionFile);
+    console.debug("found version file: " + versionInfo);
 
     if (versionInfo !== '') {
       var versionValues = JSON.parse(versionInfo);
 
-      if (versionValues && versionValues.version && ! isNaN(versionValues.version)) {
+      if (versionValues && versionValues.version && !isNaN(versionValues.version)) {
         lastVersion = parseFloat(versionValues.version);
-      }
-      else {
+      } else {
         logger.error("Cannot parse VERSION file '" + versionFile + "': '" + versionInfo + "'");
-        return { result: exports.CANNOT_PARSE_VERSION_FILE };
+        return {
+          result: exports.CANNOT_PARSE_VERSION_FILE
+        };
       }
-    }
-    else {
+    } else {
       logger.error("Cannot read VERSION file: '" + versionFile + "'");
-      return { result: exports.CANNOT_READ_VERSION_FILE };
+      return {
+        result: exports.CANNOT_READ_VERSION_FILE
+      };
     }
-  }
-  else {
-    return { result: exports.NO_VERSION_FILE };
+  } else {
+    console.debug("version file (" + versionFile + ") not found");
+
+    return {
+      result: exports.NO_VERSION_FILE
+    };
   }
 
   // extract server version
@@ -159,6 +166,9 @@ exports.databaseVersion = function () {
 
   // version match!
   if (Math.floor(lastVersion / 100) === Math.floor(currentVersion / 100)) {
+    console.debug("version match: last version " + lastVersion +
+      ", current version " + currentVersion);
+
     return {
       result: exports.VERSION_MATCH,
       serverVersion: currentVersion,
@@ -168,6 +178,9 @@ exports.databaseVersion = function () {
 
   // downgrade??
   if (lastVersion > currentVersion) {
+    console.debug("downgrade: last version " + lastVersion +
+      ", current version " + currentVersion);
+
     return {
       result: exports.DOWNGRADE_NEEDED,
       serverVersion: currentVersion,
@@ -177,12 +190,20 @@ exports.databaseVersion = function () {
 
   // upgrade
   if (lastVersion < currentVersion) {
+    console.debug("upgrade: last version " + lastVersion +
+      ", current version " + currentVersion);
+
     return {
       result: exports.UPGRADE_NEEDED,
       serverVersion: currentVersion,
       databaseVersion: lastVersion
     };
   }
+
+  console.error("should not happen: last version " + lastVersion +
+    ", current version " + currentVersion);
+
+  return {
+    result: exports.NO_VERSION_FILE
+  };
 };
-
-

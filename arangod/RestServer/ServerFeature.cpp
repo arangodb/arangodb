@@ -87,6 +87,51 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                            "default API compatibility version",
                            new Int32Parameter(&_defaultApiCompatibility));
 
+#warning TODO
+#if 0
+  additional["General Options:help-default"](
+      "console",
+      "do not start as server, start a JavaScript emergency console instead")(
+
+  // other options
+      "start-service", "used to start as windows service")(
+      "no-server", "do not start the server, if console is requested")(
+      "use-thread-affinity", &_threadAffinity,
+      "try to set thread affinity (0=disable, 1=disjunct, 2=overlap, "
+      "3=scheduler, 4=dispatcher)");
+
+  additional["Javascript Options:help-admin"](
+      "javascript.script", &_scriptFile,
+      "do not start as server, run script instead")(
+      "javascript.script-parameter", &_scriptParameters, "script parameter");
+
+  additional["Hidden Options"](
+      "javascript.unit-tests", &_unitTests,
+      "do not start as server, run unit tests instead");
+
+(
+              "server.hide-product-header", &HttpResponse::HIDE_PRODUCT_HEADER,
+              "do not expose \"Server: ArangoDB\" header in HTTP responses")
+
+              "server.session-timeout", &VocbaseContext::ServerSessionTtl,
+              "timeout of web interface server sessions (in seconds)");
+
+
+  additional["Server Options:help-admin"](
+      "server.authenticate-system-only", &_authenticateSystemOnly,
+      "use HTTP authentication only for requests to /_api and /_admin")
+
+    (
+      "server.disable-authentication", &_disableAuthentication,
+      "disable authentication for ALL client requests")
+
+#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
+      ("server.disable-authentication-unix-sockets",
+       &_disableAuthenticationUnixSockets,
+       "disable authentication for requests via UNIX domain sockets")
+#endif
+#endif
+
   options->addSection(
       Section("http", "HttpServer features", "http options", false, false));
 
@@ -117,6 +162,8 @@ void ServerFeature::prepare() {
 }
 
 void ServerFeature::start() {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
+
   DatabaseFeature* database = dynamic_cast<DatabaseFeature*>(
       application_features::ApplicationServer::lookupFeature("Database"));
 
@@ -124,6 +171,28 @@ void ServerFeature::start() {
 
   defineHandlers();
   HttpHandlerFactory::setMaintenance(false);
+
+#warning TODO
+#if 0
+  _jobManager = new AsyncJobManager(ClusterCommRestCallback);
+#endif
+
+#warning TODO
+#if 0
+  if (mode == OperationMode::MODE_CONSOLE) {
+    // one V8 instance is taken by the console
+    if (startServer) {
+      ++_v8Contexts;
+    }
+  } else if (mode == OperationMode::MODE_UNITTESTS ||
+             mode == OperationMode::MODE_SCRIPT) {
+    if (_v8Contexts == 1) {
+      // at least two to allow both the test-runner and the scheduler to use a
+      // V8 instance
+      _v8Contexts = 2;
+    }
+  }
+#endif
 }
 
 void ServerFeature::beginShutdown() {
@@ -338,6 +407,19 @@ void ServerFeature::defineHandlers() {
 }
 
 #if 0
+
+template <typename T>
+static std::string ToString(std::vector<T> const& v) {
+  std::string result = "";
+  std::string sep = "[";
+
+  for (auto const& e : v) {
+    result += sep + std::to_string(e);
+    sep = ",";
+  }
+
+  return result + "]";
+}
 
   // .............................................................................
   // try to figure out the thread affinity

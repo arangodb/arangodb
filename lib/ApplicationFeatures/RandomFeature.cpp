@@ -38,6 +38,7 @@ RandomFeature::RandomFeature(application_features::ApplicationServer* server)
       _randomGenerator((uint32_t) RandomGenerator::RandomType::MERSENNE) {
   setOptional(false);
   requiresElevatedPrivileges(false);
+  startsAfter("Logger");
 }
 
 void RandomFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

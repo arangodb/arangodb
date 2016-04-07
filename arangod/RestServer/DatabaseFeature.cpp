@@ -22,7 +22,6 @@
 
 #include "DatabaseFeature.h"
 
-#include "ApplicationFeatures/LoggerFeature.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/StringUtils.h"
 #include "Basics/ThreadPool.h"
@@ -30,7 +29,7 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "V8Server/V8Context.h"
+#include "Rest/Version.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-query.h"
 #include "V8Server/v8-vocbase.h"
@@ -44,6 +43,8 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+DatabaseFeature* DatabaseFeature::DATABASE = nullptr;
+
 DatabaseFeature::DatabaseFeature(ApplicationServer* server)
     : ApplicationFeature(server, "Database"),
       _directory(""),
@@ -51,22 +52,23 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
       _queryTracking(true),
       _queryCacheMode("off"),
       _queryCacheEntries(128),
-      _checkVersion(false),
       _upgrade(false),
       _skipUpgrade(false),
       _indexThreads(2),
       _defaultWaitForSync(false),
       _forceSyncProperties(true),
+      _ignoreDatafileErrors(false),
       _vocbase(nullptr),
       _server(nullptr),
-      _replicationApplier(true) {
+      _replicationApplier(true),
+      _disableCompactor(false),
+      _checkVersion(false) {
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Language");
   startsAfter("Logger");
   startsAfter("Random");
   startsAfter("Temp");
-  startsAfter("V8Dealer");
   startsAfter("WorkMonitor");
 }
 
@@ -95,10 +97,6 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                            "turned off",
                            new BooleanParameter(&_forceSyncProperties));
 
-  options->addHiddenOption("--database.check-version",
-                           "checks the versions of the database and exit",
-                           new BooleanParameter(&_checkVersion, false));
-
   options->addOption("--database.upgrade", "perform a database upgrade",
                      new BooleanParameter(&_upgrade));
 
@@ -110,11 +108,45 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "threads to start for parallel background index creation",
       new UInt64Parameter(&_indexThreads));
 
+#warning TODO
+#if 0
+  (
+      _ignoreDatafileErrors(false),
+      "database.ignore-datafile-errors", &_ignoreDatafileErrors,
+      "load collections even if datafiles may contain errors")
+
+  IGNORE_DATAFILE_ERRORS = _ignoreDatafileErrors;
+
+      _throwCollectionNotLoadedError(false),
+  (
+      "database.throw-collection-not-loaded-error",
+      &_throwCollectionNotLoadedError,
+      "throw an error when accessing a collection that is still loading");
+
+    ("server.disable-replication-applier", &_disableReplicationApplier,
+           "start with replication applier turned off")
+
+  TRI_SetThrowCollectionNotLoadedVocBase(_throwCollectionNotLoadedError);
+#endif
+
   options->addSection(
       Section("query", "Configure queries", "query options", false, false));
 
   options->addOption("--query.tracking", "wether to track queries",
                      new BooleanParameter(&_queryTracking));
+
+#warning TODO
+#if 0
+  // set global query tracking flag
+  arangodb::aql::Query::DisableQueryTracking(_disableQueryTracking);
+
+  // configure the query cache
+  {
+    std::pair<std::string, size_t> cacheProperties{_queryCacheMode,
+                                                   _queryCacheMaxResults};
+    arangodb::aql::QueryCache::instance()->setProperties(cacheProperties);
+  }
+#endif
 
   options->addOption("--query.cache-mode",
                      "mode for the AQL query cache (on, off, demand)",
@@ -126,6 +158,8 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
+
   if (_directory.empty()) {
     LOG(ERR) << "no database path has been supplied, giving up, please use "
                 "the '--database.directory' option";
@@ -147,15 +181,21 @@ void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     abortInvalidParameters();
   }
 
+#warning TODO
+#if 0
   if (_checkVersion && _upgrade) {
     LOG(ERR) << "cannot specify both '--database.check-version' and "
                 "'--database.upgrade'";
     abortInvalidParameters();
   }
+#endif
 
+#warning TODO
+#if 0
   if (_checkVersion || _upgrade) {
     _replicationApplier = false;
   }
+#endif
 
   if (_upgrade && _skipUpgrade) {
     LOG(ERR) << "cannot specify both '--database.upgrade' and "
@@ -163,23 +203,57 @@ void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     abortInvalidParameters();
   }
 
-  if (_checkVersion) {
-    ApplicationServer::lookupFeature("Daemon")->disable();
-    ApplicationServer::lookupFeature("Dispatcher")->disable();
-    ApplicationServer::lookupFeature("Endpoint")->disable();
-    ApplicationServer::lookupFeature("Scheduler")->disable();
-    ApplicationServer::lookupFeature("Ssl")->disable();
-    ApplicationServer::lookupFeature("Supervisor")->disable();
+#warning TODO
+#if 0
+  std::vector<std::string> arguments = _applicationServer->programArguments();
 
-    ApplicationServer::lookupFeature("Shutdown")->enable();
-
-    LoggerFeature* logger = dynamic_cast<LoggerFeature*>(
-        ApplicationServer::lookupFeature("Logger"));
-    logger->setThreaded(false);
+  if (1 < arguments.size()) {
+    LOG(FATAL) << "expected at most one database directory, got "
+               << arguments.size();
+    FATAL_ERROR_EXIT();
+  } else if (1 == arguments.size()) {
+    _databasePath = arguments[0];
   }
+
+  // disable certain options in unittest or script mode
+  OperationMode::server_operation_mode_e mode =
+      OperationMode::determineMode(_applicationServer->programOptions());
+
+  if (mode == OperationMode::MODE_SCRIPT ||
+      mode == OperationMode::MODE_UNITTESTS) {
+    // testing disables authentication
+    _disableAuthentication = true;
+  }
+
+  OperationMode::server_operation_mode_e mode =
+      OperationMode::determineMode(_applicationServer->programOptions());
+  if (mode != OperationMode::MODE_SERVER) {
+    LOG(FATAL) << "invalid mode. must not specify --console together with "
+                  "--daemon or --supervisor";
+    FATAL_ERROR_EXIT();
+  }
+
+  OperationMode::server_operation_mode_e mode =
+      OperationMode::determineMode(_applicationServer->programOptions());
+  bool startServer = true;
+
+  if (_applicationServer->programOptions().has("no-server")) {
+    startServer = false;
+    TRI_ENABLE_STATISTICS = false;
+    // --no-server disables all replication appliers
+    _disableReplicationApplier = true;
+  }
+#endif
 }
 
 void DatabaseFeature::start() {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
+
+  LOG(INFO) << "" << rest::Version::getVerboseVersionString();
+
+  // set singleton
+  DATABASE = this;
+
   // create the server
   TRI_InitServerGlobals();
   _server.reset(new TRI_server_t());
@@ -207,28 +281,11 @@ void DatabaseFeature::start() {
 
   // fetch the system database and update the contexts
   updateContexts();
-
-  // check the version and exit
-  if (_checkVersion) {
-    checkVersion();
-    FATAL_ERROR_EXIT();
-  }
-
-  // otherwise openthe log file for writing
-  if (!wal::LogfileManager::instance()->open()) {
-    LOG(FATAL) << "Unable to finish WAL recovery procedure";
-    FATAL_ERROR_EXIT();
-  }
-
-  // upgrade the database
-  upgradeDatabase();
 }
 
 void DatabaseFeature::stop() {
-#warning TODO: we can get rid of this once V8DealerFeature is started AFTER the DatabaseFeature
-  // get rid of references in V8
-  V8DealerFeature::DEALER->shutdownContexts();
-  
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
+
   // clear the query registery
   _server->_queryRegistry = nullptr;
 
@@ -237,6 +294,9 @@ void DatabaseFeature::stop() {
 
   // delete the server
   TRI_StopServer(_server.get());
+
+  // clear singleton
+  DATABASE = nullptr;
 
   LOG(INFO) << "ArangoDB has been shut down";
 }
@@ -254,17 +314,20 @@ void DatabaseFeature::updateContexts() {
   auto server = _server.get();
   auto vocbase = _vocbase;
 
-  V8DealerFeature::DEALER->updateContexts(
-      [&queryRegistry, &server, &vocbase](
-          v8::Isolate* isolate, v8::Handle<v8::Context> context, size_t i) {
-        TRI_InitV8VocBridge(isolate, context, queryRegistry, server, vocbase,
-                            i);
-        TRI_InitV8Queries(isolate, context);
-        TRI_InitV8Cluster(isolate, context);
-      },
-      vocbase);
+  V8DealerFeature* dealer = dynamic_cast<V8DealerFeature*>(
+      ApplicationServer::lookupFeature("V8Dealer"));
 
-  V8DealerFeature::DEALER->loadJavascript(_vocbase);
+  if (dealer != nullptr) {
+    dealer->defineContextUpdate(
+        [queryRegistry, server, vocbase](
+            v8::Isolate* isolate, v8::Handle<v8::Context> context, size_t i) {
+          TRI_InitV8VocBridge(isolate, context, queryRegistry, server, vocbase,
+                              i);
+          TRI_InitV8Queries(isolate, context);
+          TRI_InitV8Cluster(isolate, context);
+        },
+        vocbase);
+  }
 }
 
 void DatabaseFeature::shutdownCompactor() {
@@ -289,69 +352,9 @@ void DatabaseFeature::shutdownCompactor() {
   }
 }
 
-void DatabaseFeature::checkVersion() {
-  // run version check
-  int result = 1;
-  LOG(TRACE) << "starting version check";
-
-  // enter context and isolate
-  {
-    V8Context* context =
-        V8DealerFeature::DEALER->enterContext(_vocbase, true, 0);
-    v8::HandleScope scope(context->_isolate);
-    auto localContext =
-        v8::Local<v8::Context>::New(context->_isolate, context->_context);
-    localContext->Enter();
-
-    {
-      v8::Context::Scope contextScope(localContext);
-
-      // run version-check script
-      LOG(DEBUG) << "running database version check";
-
-      // can do this without a lock as this is the startup
-      auto unuser = _server->_databasesProtector.use();
-      auto theLists = _server->_databasesLists.load();
-
-      for (auto& p : theLists->_databases) {
-        TRI_vocbase_t* vocbase = p.second;
-
-        // special check script to be run just once in first thread (not in all)
-        // but for all databases
-
-        int status = TRI_CheckDatabaseVersion(vocbase, localContext);
-
-        LOG(DEBUG) << "version check return status " << status;
-
-        if (status < 0) {
-          LOG(FATAL) << "Database version check failed for '" << vocbase->_name
-                     << "'. Please inspect the logs from any errors";
-          FATAL_ERROR_EXIT();
-        } else if (status == 3) {
-          result = 3;
-        } else if (status == 2 && result == 1) {
-          result = 2;
-        }
-      }
-    }
-
-    // issue #391: when invoked with --upgrade, the server will not always shut
-    // down
-    localContext->Exit();
-    V8DealerFeature::DEALER->exitContext(context);
-  }
-
-  // regular shutdown... wait for all threads to finish
-  shutdownCompactor();
-
-  if (result == 1) {
-    TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);
-  } else {
-    TRI_EXIT_FUNCTION(result, nullptr);
-  }
-}
-
 void DatabaseFeature::upgradeDatabase() {
+#warning TODO
+#if 0
   LOG(TRACE) << "starting database init/upgrade";
 
   // enter context and isolate
@@ -432,6 +435,7 @@ void DatabaseFeature::upgradeDatabase() {
 
   // and return from the context
   LOG(TRACE) << "finished database init/upgrade";
+#endif
 }
 
 void DatabaseFeature::openDatabases() {
@@ -461,9 +465,9 @@ void DatabaseFeature::openDatabases() {
   bool const iterateMarkersOnOpen =
       !wal::LogfileManager::instance()->hasFoundLastTick();
 
-  int res =
-    TRI_InitServer(_server.get(), _indexPool.get(), _databasePath.c_str(), nullptr,
-                     &defaults, !_replicationApplier, iterateMarkersOnOpen);
+  int res = TRI_InitServer(
+      _server.get(), _indexPool.get(), _databasePath.c_str(), nullptr,
+      &defaults, !_replicationApplier, _disableCompactor, iterateMarkersOnOpen);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG(FATAL) << "cannot create server instance: out of memory";

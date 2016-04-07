@@ -67,9 +67,10 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
                           ssize_t forceContext = -1);
   void exitContext(V8Context*);
 
-  void updateContexts(
+  void defineContextUpdate(
       std::function<void(v8::Isolate*, v8::Handle<v8::Context>, size_t)>,
       TRI_vocbase_t*);
+  void applyContextUpdates();
 
   void shutdownContexts();
 
@@ -77,7 +78,7 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   V8Context* pickFreeContextForGc();
   void initializeContext(size_t);
   void loadJavascriptFiles(TRI_vocbase_t*, size_t);
-  void shutdownV8Instance(size_t);
+  void shutdownV8Instance(V8Context*);
 
  private:
   bool _useActions;
@@ -87,7 +88,7 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   std::atomic<bool> _stopping;
   std::atomic<bool> _gcFinished;
 
-  V8Context** _contexts;
+  std::vector<V8Context*> _contexts;
   basics::ConditionVariable _contextCondition;
   std::vector<V8Context*> _freeContexts;
   std::vector<V8Context*> _dirtyContexts;
@@ -97,6 +98,11 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
 
   std::map<std::string, bool> _definedBooleans;
   std::map<std::string, double> _definedDoubles;
+  std::map<std::string, std::string> _definedStrings;
+
+  std::vector<std::pair<
+      std::function<void(v8::Isolate*, v8::Handle<v8::Context>, size_t)>,
+      TRI_vocbase_t*>> _contextUpdates;
 };
 }
 

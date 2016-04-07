@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-actions.h"
+
+#include "Actions/ActionFeature.h"
 #include "Actions/actions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
@@ -30,11 +32,11 @@
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/json.h"
-#include "Logger/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
 #include "HttpServer/HttpServer.h"
+#include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 #include "RestServer/VocbaseContext.h"
@@ -87,8 +89,7 @@ class v8_action_t : public TRI_action_t {
     TRI_action_result_t result;
 
     // allow use datase execution in rest calls
-    extern bool ALLOW_USE_DATABASE_IN_REST_ACTIONS;
-    bool allowUseDatabaseInRestActions = ALLOW_USE_DATABASE_IN_REST_ACTIONS;
+    bool allowUseDatabaseInRestActions = ActionFeature::ACTION->allowUseDatabase();
 
     if (_allowUseDatabase) {
       allowUseDatabaseInRestActions = true;

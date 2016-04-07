@@ -39,6 +39,7 @@ SupervisorFeature::SupervisorFeature(
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Daemon");
+  startsAfter("Logger");
   startsAfter("WorkMonitor");
 }
 

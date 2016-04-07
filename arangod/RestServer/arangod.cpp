@@ -37,6 +37,7 @@
 #include "Basics/ArangoGlobalContext.h"
 #include "Dispatcher/DispatcherFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/CheckVersionFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/EndpointFeature.h"
 #include "RestServer/ServerFeature.h"
@@ -60,7 +61,7 @@ ArangoServer* ArangoInstance = nullptr;
 ////////////////////////////////////////////////////////////////////////////////
 
 #warning TODO
-#if 0 
+#if 0
 #ifdef _WIN32
 extern bool TRI_ParseMoreArgs(int argc, char* argv[]);
 extern void TRI_StartService(int argc, char* argv[]);
@@ -89,6 +90,7 @@ int main(int argc, char* argv[]) {
 
   int ret = EXIT_FAILURE;
 
+  server.addFeature(new CheckVersionFeature(&server, &ret));
   server.addFeature(new ConfigFeature(&server, name));
   server.addFeature(new DatabaseFeature(&server));
   server.addFeature(new DispatcherFeature(&server));
@@ -108,10 +110,13 @@ int main(int argc, char* argv[]) {
   logger->setThreaded(true);
   server.addFeature(logger.release());
 
+#warning todo
+#if 0
   std::unique_ptr<ShutdownFeature> shutdown =
     std::make_unique<ShutdownFeature>(&server, "Server");
   shutdown->disable();
   server.addFeature(shutdown.release());
+#endif
 
 #ifdef ARANGODB_HAVE_FORK
   server.addFeature(new DaemonFeature(&server));
@@ -128,7 +133,6 @@ int main(int argc, char* argv[]) {
 
   return context.exit(ret);
 }
-
 
 #warning TODO
 #if 0

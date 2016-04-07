@@ -66,6 +66,7 @@ endif ()
 add_executable(${BIN_ARANGOD}
   ${ARANGO_MSVC}
   ${ProductVersionFiles}
+  Actions/ActionFeature.cpp
   Actions/RestActionHandler.cpp
   Actions/actions.cpp
   Agency/Agent.cpp
@@ -211,8 +212,8 @@ add_executable(${BIN_ARANGOD}
   RestHandler/RestVersionHandler.cpp
   RestHandler/RestVocbaseBaseHandler.cpp
   RestHandler/WorkMonitorHandler.cpp
-  RestServer/ArangoServer.cpp
   RestServer/ConsoleThread.cpp
+  RestServer/CheckVersionFeature.cpp
   RestServer/DatabaseFeature.cpp
   RestServer/EndpointFeature.cpp
   RestServer/ServerFeature.cpp

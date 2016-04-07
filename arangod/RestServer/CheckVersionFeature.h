@@ -20,29 +20,32 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationFeatures/ShutdownFeature.h"
+#ifndef APPLICATION_FEATURES_CHECK_VERSION_FEATURE_H
+#define APPLICATION_FEATURES_CHECK_VERSION_FEATURE_H 1
 
-#include "Logger/Logger.h"
-#include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 
-using namespace arangodb;
-using namespace arangodb::options;
+namespace arangodb {
+class CheckVersionFeature final
+    : public application_features::ApplicationFeature {
+ public:
+  explicit CheckVersionFeature(application_features::ApplicationServer* server,
+                               int* result);
 
-ShutdownFeature::ShutdownFeature(
-    application_features::ApplicationServer* server, std::string const& feature)
-    : ApplicationFeature(server, "Shutdown") {
-  setOptional(true);
-  requiresElevatedPrivileges(false);
-  startsAfter("Logger");
+ private:
+  bool _checkVersion;
 
-  if (feature != "Logger") {
-    startsAfter(feature);
-  }
+ public:
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void start() override;
+
+ private:
+  void checkVersion();
+
+ private:
+  int* _result;
+};
 }
 
-void ShutdownFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
-  server()->beginShutdown();
-}
+#endif

@@ -82,7 +82,8 @@ void DispatcherFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   }
 
   if (_queueSize <= 128) {
-    LOG(FATAL) << "invalid value for `--server.maximal-queue-size', need at least 128";
+    LOG(FATAL)
+        << "invalid value for `--server.maximal-queue-size', need at least 128";
     FATAL_ERROR_EXIT();
   }
 }
@@ -96,6 +97,27 @@ void DispatcherFeature::start() {
   if (_startAqlQueue) {
     buildAqlQueue();
   }
+
+#warning TODO
+#if 0
+  // initialize V8
+  if (!_applicationServer->programOptions().has("javascript.v8-contexts")) {
+    // the option was added recently so it's not always set
+    // the behavior in older ArangoDB was to create one V8 context per
+    // dispatcher thread
+    _v8Contexts = _dispatcherThreads;
+  }
+#endif
+
+#warning TODO
+#if 0
+      if (_dispatcher->dispatcher() != nullptr) {
+        // don't initialize dispatcher if there is no scheduler (server started
+        // with --no-server option)
+        TRI_InitV8Dispatcher(isolate, localContext, _vocbase, _scheduler,
+                             _dispatcher, this);
+      }
+#endif
 }
 
 void DispatcherFeature::stop() {
@@ -129,11 +151,6 @@ void DispatcherFeature::setProcessorAffinity(std::vector<size_t> const& cores) {
   _dispatcher->setProcessorAffinity(Dispatcher::STANDARD_QUEUE, cores);
 #endif
 }
-
-
-
-
-
 
 #warning TODO
 #if 0

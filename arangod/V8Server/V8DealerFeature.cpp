@@ -32,6 +32,7 @@
 #include "Dispatcher/DispatcherThread.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Utils/V8TransactionContext.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
@@ -47,6 +48,7 @@
 #include "3rdParty/valgrind/valgrind.h"
 
 using namespace arangodb;
+using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
@@ -90,15 +92,17 @@ V8DealerFeature::V8DealerFeature(
       _ok(false),
       _gcThread(nullptr),
       _stopping(false),
-      _gcFinished(false),
-      _contexts(nullptr) {
+      _gcFinished(false) {
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("V8Platform");
   startsAfter("WorkMonitor");
+  startsAfter("Database");
 }
 
 void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
+
   options->addSection(Section("javascript", "Configure the Javascript engine",
                               "javascript options", false, false));
 
@@ -124,13 +128,6 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--javascript.v8-contexts",
       "number of V8 contexts that are created for executing JavaScript actions",
       new UInt64Parameter(&_nrContexts));
-
-  options->addSection(Section("frontend", "Configure the frontend",
-                              "frontend options", false, false));
-
-  options->addHiddenOption("--frontend.version-check",
-                           "alert the user if new versions are available",
-                           new BooleanParameter(&_frontendVersionCheck, false));
 }
 
 void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -143,8 +140,11 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
-  // remove trailing / from path
+  // remove trailing / from path and set path
   _startupPath = StringUtils::rTrim(_startupPath, TRI_DIR_SEPARATOR_STR);
+
+  _startupLoader.setDirectory(_startupPath);
+  ServerState::instance()->setJavaScriptPath(_startupPath);
 
   // dump paths
   {
@@ -165,22 +165,26 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
-  _startupLoader.setDirectory(_startupPath);
-  ServerState::instance()->setJavaScriptPath(_startupPath);
-
   // use a minimum of 1 second for GC
   if (_gcFrequency < 1) {
     _gcFrequency = 1;
   }
+
+  // set a minimum of V8 contexts
+  if (_nrContexts < 1) {
+    _nrContexts = 1;
+  }
 }
 
 void V8DealerFeature::start() {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
+
   DEALER = this;
 
   // setup instances
   {
     CONDITION_LOCKER(guard, _contextCondition);
-    _contexts = new V8Context*[_nrContexts];
+    _contexts.resize(_nrContexts, nullptr);
 
     _busyContexts.reserve(_nrContexts);
     _freeContexts.reserve(_nrContexts);
@@ -191,16 +195,24 @@ void V8DealerFeature::start() {
     initializeContext(i);
   }
 
-#warning TODO needs a database I assume
-#if 0
-  for (size_t i = 0; i < _nrContexts; ++i) {
-    prepareV8Server(i, _startupFile);
-  }
-#endif
+  applyContextUpdates();
+
+  DatabaseFeature* database = dynamic_cast<DatabaseFeature*>(
+      ApplicationServer::lookupFeature("Database"));
+
+  loadJavascript(database->vocbase());
 }
 
 void V8DealerFeature::stop() {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
+
   shutdownContexts();
+
+  // delete GC thread after all action threads have been stopped
+  if (_gcThread != nullptr) {
+    delete _gcThread;
+  }
+
   DEALER = nullptr;
 }
 
@@ -627,26 +639,32 @@ void V8DealerFeature::exitContext(V8Context* context) {
   }
 }
 
-void V8DealerFeature::updateContexts(
+void V8DealerFeature::defineContextUpdate(
     std::function<void(v8::Isolate*, v8::Handle<v8::Context>, size_t)> func,
     TRI_vocbase_t* vocbase) {
+  _contextUpdates.emplace_back(func, vocbase);
+}
+
+void V8DealerFeature::applyContextUpdates() {
   for (size_t i = 0; i < _nrContexts; ++i) {
-    V8Context* context =
-        V8DealerFeature::DEALER->enterContext(vocbase, true, 0);
-    v8::HandleScope scope(context->_isolate);
-    auto localContext =
-        v8::Local<v8::Context>::New(context->_isolate, context->_context);
-    localContext->Enter();
+    for (auto& p : _contextUpdates) {
+      V8Context* context =
+          V8DealerFeature::DEALER->enterContext(p.second, true, 0);
+      v8::HandleScope scope(context->_isolate);
+      auto localContext =
+          v8::Local<v8::Context>::New(context->_isolate, context->_context);
+      localContext->Enter();
 
-    {
-      v8::Context::Scope contextScope(localContext);
-      func(context->_isolate, localContext, i);
+      {
+        v8::Context::Scope contextScope(localContext);
+        p.first(context->_isolate, localContext, i);
+      }
+
+      localContext->Exit();
+      V8DealerFeature::DEALER->exitContext(context);
+
+      LOG(TRACE) << "updated V8 context #" << i;
     }
-
-    localContext->Exit();
-    V8DealerFeature::DEALER->exitContext(context);
-
-    LOG(TRACE) << "updated V8 context #" << i;
   }
 }
 
@@ -694,6 +712,11 @@ void V8DealerFeature::shutdownContexts() {
     }
   }
 
+  if (!_busyContexts.empty()) {
+    LOG(FATAL) << "cannot shutdown V8 contexts";
+    FATAL_ERROR_EXIT();
+  }
+
   // stop GC thread
   if (_gcThread != nullptr) {
     LOG(DEBUG) << "Waiting for GC Thread to finish action";
@@ -711,19 +734,14 @@ void V8DealerFeature::shutdownContexts() {
   {
     CONDITION_LOCKER(guard, _contextCondition);
 
-    for (size_t i = 0; i < _nrContexts; ++i) {
-      shutdownV8Instance(i);
+    for (auto context : _contexts) {
+      shutdownV8Instance(context);
     }
 
-    delete[] _contexts;
+    _contexts.clear();
   }
 
-  LOG(DEBUG) << "Shutting down V8";
-
-  // delete GC thread after all action threads have been stopped
-  if (_gcThread != nullptr) {
-    delete _gcThread;
-  }
+  LOG(DEBUG) << "V( contexts are shut down";
 }
 
 V8Context* V8DealerFeature::pickFreeContextForGc() {
@@ -842,31 +860,13 @@ void V8DealerFeature::initializeContext(size_t i) {
       globalObj->Set(TRI_V8_ASCII_STRING("global"), globalObj);
       globalObj->Set(TRI_V8_ASCII_STRING("root"), globalObj);
 
-      TRI_InitV8UserStructures(isolate, localContext);
-
-#warning TODO
-#if 0
-      if (_dispatcher->dispatcher() != nullptr) {
-        // don't initialize dispatcher if there is no scheduler (server started
-        // with --no-server option)
-        TRI_InitV8Dispatcher(isolate, localContext, _vocbase, _scheduler,
-                             _dispatcher, this);
-      }
-#endif
-
-#warning TODO
-#if 0
-      if (_useActions) {
-        TRI_InitV8Actions(isolate, localContext, _vocbase, this);
-      }
-#endif
-
       std::string modulesPath = _startupPath + TRI_DIR_SEPARATOR_STR +
                                 "server" + TRI_DIR_SEPARATOR_STR + "modules;" +
                                 _startupPath + TRI_DIR_SEPARATOR_STR +
                                 "common" + TRI_DIR_SEPARATOR_STR + "modules;" +
                                 _startupPath + TRI_DIR_SEPARATOR_STR + "node";
 
+      TRI_InitV8UserStructures(isolate, localContext);
       TRI_InitV8Buffer(isolate, localContext);
       TRI_InitV8Conversions(localContext);
       TRI_InitV8Utils(isolate, localContext, _startupPath, modulesPath);
@@ -879,9 +879,6 @@ void V8DealerFeature::initializeContext(size_t i) {
         TRI_AddGlobalVariableVocbase(isolate, localContext,
                                      TRI_V8_ASCII_STRING("APP_PATH"),
                                      TRI_V8_STD_STRING(_appPath));
-        TRI_AddGlobalVariableVocbase(
-            isolate, localContext, TRI_V8_ASCII_STRING("FE_VERSION_CHECK"),
-            v8::Boolean::New(isolate, _frontendVersionCheck));
 
         for (auto j : _definedBooleans) {
           localContext->Global()->ForceSet(TRI_V8_STD_STRING(j.first),
@@ -892,6 +889,12 @@ void V8DealerFeature::initializeContext(size_t i) {
         for (auto j : _definedDoubles) {
           localContext->Global()->ForceSet(TRI_V8_STD_STRING(j.first),
                                            v8::Number::New(isolate, j.second),
+                                           v8::ReadOnly);
+        }
+
+        for (auto j : _definedStrings) {
+          localContext->Global()->ForceSet(TRI_V8_STD_STRING(j.first),
+                                           TRI_V8_STD_STRING(j.second),
                                            v8::ReadOnly);
         }
       }
@@ -959,10 +962,8 @@ void V8DealerFeature::loadJavascriptFiles(TRI_vocbase_t* vocbase, size_t i) {
   LOG(TRACE) << "loaded Javascript files for V8 context #" << i;
 }
 
-void V8DealerFeature::shutdownV8Instance(size_t i) {
-  LOG(TRACE) << "shutting down V8 context #" << i;
-
-  V8Context* context = _contexts[i];
+void V8DealerFeature::shutdownV8Instance(V8Context* context) {
+  LOG(TRACE) << "shutting down V8 context #" << context->_id;
 
   auto isolate = context->_isolate;
   isolate->Enter();
@@ -1016,5 +1017,5 @@ void V8DealerFeature::shutdownV8Instance(size_t i) {
 
   delete context;
 
-  LOG(TRACE) << "closed V8 context #" << i;
+  LOG(TRACE) << "closed V8 context #" << context->_id;
 }

@@ -20,29 +20,25 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationFeatures/ShutdownFeature.h"
+#ifndef APPLICATION_FEATURES_ACTION_FEATURE_H
+#define APPLICATION_FEATURES_ACTION_FEATURE_H 1
 
-#include "Logger/Logger.h"
-#include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 
-using namespace arangodb;
-using namespace arangodb::options;
+namespace arangodb {
+class ActionFeature final : public application_features::ApplicationFeature {
+ public:
+  static ActionFeature* ACTION;
 
-ShutdownFeature::ShutdownFeature(
-    application_features::ApplicationServer* server, std::string const& feature)
-    : ApplicationFeature(server, "Shutdown") {
-  setOptional(true);
-  requiresElevatedPrivileges(false);
-  startsAfter("Logger");
+ public:
+  explicit ActionFeature(application_features::ApplicationServer* server);
 
-  if (feature != "Logger") {
-    startsAfter(feature);
-  }
+ public:
+  bool allowUseDatabase() { return _allowUseAction; }
+
+ private:
+  bool _allowUseAction;
+};
 }
 
-void ShutdownFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
-  server()->beginShutdown();
-}
+#endif

@@ -29,29 +29,30 @@
 
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
+#include "Basics/Exceptions.h"
+#include "Basics/FileUtils.h"
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/hashes.h"
 #include "Basics/locks.h"
-#include "Logger/Logger.h"
 #include "Basics/memory-map.h"
-#include "Basics/tri-strings.h"
 #include "Basics/threads.h"
-#include "Basics/Exceptions.h"
-#include "Basics/FileUtils.h"
+#include "Basics/tri-strings.h"
+#include "Logger/Logger.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Utils/CollectionKeysRepository.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/transactions.h"
+#include "V8Server/v8-user-structures.h"
+#include "VocBase/Ditch.h"
 #include "VocBase/auth.h"
 #include "VocBase/cleanup.h"
 #include "VocBase/compactor.h"
-#include "VocBase/Ditch.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/server.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase-defaults.h"
-#include "V8Server/v8-user-structures.h"
 #include "Wal/LogfileManager.h"
 
 #include <velocypack/Builder.h>
@@ -59,6 +60,7 @@
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
+using namespace arangodb;
 using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1022,7 +1024,7 @@ static int LoadCollectionVocBase(TRI_vocbase_t* vocbase,
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
     TRI_document_collection_t* document =
-        TRI_OpenDocumentCollection(vocbase, collection, IGNORE_DATAFILE_ERRORS);
+      TRI_OpenDocumentCollection(vocbase, collection, DatabaseFeature::DATABASE->ignoreDatafileErrors());
 
     // lock again the adjust the status
     TRI_EVENTUAL_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
@@ -1479,10 +1481,12 @@ void TRI_StartCompactorVocBase(TRI_vocbase_t* vocbase) {
 
   LOG(TRACE) << "starting compactor for database '" << vocbase->_name << "'";
   // start compactor thread
-  TRI_InitThread(&vocbase->_compactor);
-  TRI_StartThread(&vocbase->_compactor, nullptr, "Compactor",
-                  TRI_CompactorVocBase, vocbase);
-  vocbase->_hasCompactor = true;
+  if (!vocbase->_server->_disableCompactor) {
+    TRI_InitThread(&vocbase->_compactor);
+    TRI_StartThread(&vocbase->_compactor, nullptr, "Compactor",
+                    TRI_CompactorVocBase, vocbase);
+    vocbase->_hasCompactor = true;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2229,7 +2233,7 @@ TRI_voc_tick_t TRI_NextQueryIdVocBase(TRI_vocbase_t* vocbase) {
 /// @brief gets the "throw collection not loaded error"
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_GetThrowCollectionNotLoadedVocBase(TRI_vocbase_t* vocbase) {
+bool TRI_GetThrowCollectionNotLoadedVocBase() {
   return ThrowCollectionNotLoaded.load(std::memory_order_seq_cst);
 }
 
@@ -2237,8 +2241,7 @@ bool TRI_GetThrowCollectionNotLoadedVocBase(TRI_vocbase_t* vocbase) {
 /// @brief sets the "throw collection not loaded error"
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SetThrowCollectionNotLoadedVocBase(TRI_vocbase_t* vocbase,
-                                            bool value) {
+void TRI_SetThrowCollectionNotLoadedVocBase(bool value) {
   ThrowCollectionNotLoaded.store(value, std::memory_order_seq_cst);
 }
 

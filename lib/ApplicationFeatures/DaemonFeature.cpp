@@ -43,6 +43,7 @@ DaemonFeature::DaemonFeature(application_features::ApplicationServer* server)
       _workingDirectory(".") {
   setOptional(true);
   requiresElevatedPrivileges(false);
+  startsAfter("Logger");
   startsAfter("WorkMonitor");
 
 #ifndef _WIN32

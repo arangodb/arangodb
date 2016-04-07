@@ -1125,7 +1125,7 @@ int TRI_InitServer(TRI_server_t* server,
                    arangodb::basics::ThreadPool* indexPool,
                    char const* basePath, char const* appPath,
                    TRI_vocbase_defaults_t const* defaults, bool disableAppliers,
-                   bool iterateMarkersOnOpen) {
+                   bool disableCompactor, bool iterateMarkersOnOpen) {
   TRI_ASSERT(server != nullptr);
   TRI_ASSERT(basePath != nullptr);
 
@@ -1196,6 +1196,7 @@ int TRI_InitServer(TRI_server_t* server,
   // ...........................................................................
 
   server->_disableReplicationAppliers = disableAppliers;
+  server->_disableCompactor = disableCompactor;
 
   server->_initialized = true;
 
@@ -2170,7 +2171,10 @@ TRI_server_t::~TRI_server_t() {
     auto p = _databasesLists.load();
     delete p;
 
-    TRI_Free(TRI_CORE_MEM_ZONE, _appPath);
+    if (_appPath != nullptr) {
+      TRI_Free(TRI_CORE_MEM_ZONE, _appPath);
+    }
+    
     TRI_Free(TRI_CORE_MEM_ZONE, _serverIdFilename);
     TRI_Free(TRI_CORE_MEM_ZONE, _lockFilename);
     TRI_Free(TRI_CORE_MEM_ZONE, _databasePath);

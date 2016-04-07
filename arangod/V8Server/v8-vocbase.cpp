@@ -1661,18 +1661,11 @@ static void JS_ThrowCollectionNotLoaded(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
   if (args.Length() == 0) {
-    bool value = TRI_GetThrowCollectionNotLoadedVocBase(vocbase);
+    bool value = TRI_GetThrowCollectionNotLoadedVocBase();
     TRI_V8_RETURN(v8::Boolean::New(isolate, value));
   } else if (args.Length() == 1) {
-    TRI_SetThrowCollectionNotLoadedVocBase(vocbase,
-                                           TRI_ObjectToBoolean(args[0]));
+    TRI_SetThrowCollectionNotLoadedVocBase(TRI_ObjectToBoolean(args[0]));
   } else {
     TRI_V8_THROW_EXCEPTION_USAGE("THROW_COLLECTION_NOT_LOADED(<value>)");
   }

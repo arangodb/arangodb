@@ -20,29 +20,30 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationFeatures/ShutdownFeature.h"
-
-#include "Logger/Logger.h"
-#include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
+#include "ActionFeature.h"
 
 using namespace arangodb;
-using namespace arangodb::options;
 
-ShutdownFeature::ShutdownFeature(
-    application_features::ApplicationServer* server, std::string const& feature)
-    : ApplicationFeature(server, "Shutdown") {
-  setOptional(true);
-  requiresElevatedPrivileges(false);
-  startsAfter("Logger");
+ActionFeature* ActionFeature::ACTION = nullptr;
 
-  if (feature != "Logger") {
-    startsAfter(feature);
-  }
-}
 
-void ShutdownFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
+#warning TODO
+#if 0
+      if (_useActions) {
+        TRI_InitV8Actions(isolate, localContext, _vocbase, this);
+      }
 
-  server()->beginShutdown();
-}
+bool ALLOW_USE_DATABASE_IN_REST_ACTIONS;
+
+
+(
+              "server.allow-use-database", &ALLOW_USE_DATABASE_IN_REST_ACTIONS,
+              "allow change of database in REST actions, only needed for "
+              "unittests")
+
+
+#endif
+
+
+
+
