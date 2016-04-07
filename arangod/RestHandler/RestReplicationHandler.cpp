@@ -402,14 +402,14 @@ void RestReplicationHandler::handleCommandLoggerState() {
     VPackBuilder builder;
     builder.add(VPackValue(VPackValueType::Object));  // Base
 
-    arangodb::wal::LogfileManagerState const&& s =
+    arangodb::wal::LogfileManagerState const s =
         arangodb::wal::LogfileManager::instance()->state();
-    std::string const lastTickString(StringUtils::itoa(s.lastTick));
 
     // "state" part
     builder.add("state", VPackValue(VPackValueType::Object));
     builder.add("running", VPackValue(true));
-    builder.add("lastLogTick", VPackValue(lastTickString));
+    builder.add("lastLogTick", VPackValue(std::to_string(s.lastCommittedTick)));
+    builder.add("lastUncommittedLogTick", VPackValue(std::to_string(s.lastAssignedTick)));
     builder.add("totalEvents", VPackValue(s.numEvents));
     builder.add("time", VPackValue(s.timeString));
     builder.close();
@@ -813,7 +813,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
 
 void RestReplicationHandler::handleCommandLoggerFollow() {
   // determine start and end tick
-  arangodb::wal::LogfileManagerState state =
+  arangodb::wal::LogfileManagerState const state =
       arangodb::wal::LogfileManager::instance()->state();
   TRI_voc_tick_t tickStart = 0;
   TRI_voc_tick_t tickEnd = UINT64_MAX;
@@ -933,7 +933,7 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
 
     if (res == TRI_ERROR_NO_ERROR) {
       bool const checkMore = (dump._lastFoundTick > 0 &&
-                              dump._lastFoundTick != state.lastDataTick);
+                              dump._lastFoundTick != state.lastCommittedTick);
 
       // generate the result
       size_t const length = TRI_LengthStringBuffer(dump._buffer);
@@ -954,7 +954,7 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
                              StringUtils::itoa(dump._lastFoundTick));
 
       _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK,
-                             StringUtils::itoa(state.lastTick));
+                             StringUtils::itoa(state.lastCommittedTick));
 
       _response->setHeaderNC(TRI_REPLICATION_HEADER_ACTIVE, "true");
 
@@ -991,10 +991,10 @@ void RestReplicationHandler::handleCommandLoggerFollow() {
 
 void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
   // determine start and end tick
-  arangodb::wal::LogfileManagerState state =
+  arangodb::wal::LogfileManagerState const state =
       arangodb::wal::LogfileManager::instance()->state();
   TRI_voc_tick_t tickStart = 0;
-  TRI_voc_tick_t tickEnd = state.lastDataTick;
+  TRI_voc_tick_t tickEnd = state.lastCommittedTick;
 
   bool found;
   std::string const& value1 = _request->value("from", found);
@@ -1100,12 +1100,12 @@ void RestReplicationHandler::handleCommandInventory() {
     // "state"
     builder.add("state", VPackValue(VPackValueType::Object));
 
-    arangodb::wal::LogfileManagerState const&& s =
+    arangodb::wal::LogfileManagerState const s =
         arangodb::wal::LogfileManager::instance()->state();
 
     builder.add("running", VPackValue(true));
-    auto logTickString = std::to_string(s.lastTick);
-    builder.add("lastLogTick", VPackValue(logTickString));
+    builder.add("lastLogTick", VPackValue(std::to_string(s.lastCommittedTick)));
+    builder.add("lastUncommittedLogTick", VPackValue(std::to_string(s.lastAssignedTick)));
 
     builder.add("totalEvents", VPackValue(s.numEvents));
     builder.add("time", VPackValue(s.timeString));
@@ -3194,6 +3194,9 @@ void RestReplicationHandler::handleCommandSync() {
   config._password = password;
   config._includeSystem = includeSystem;
   config._verbose = verbose;
+        
+  // wait until all data in current logfile got synced
+  arangodb::wal::LogfileManager::instance()->waitForSync(5.0);
 
   InitialSyncer syncer(_vocbase, &config, restrictCollections, restrictType,
                        verbose);

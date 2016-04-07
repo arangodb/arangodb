@@ -939,6 +939,42 @@ int LogfileManager::flush(bool waitForSync, bool waitForCollector,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// wait until all changes to the current logfile are synced
+////////////////////////////////////////////////////////////////////////////////
+
+bool LogfileManager::waitForSync(double maxWait) {
+  TRI_ASSERT(!_inRecovery);
+
+  double const end = TRI_microtime() + maxWait;
+  TRI_voc_tick_t lastAssignedTick = 0;
+
+  while (true) {
+    // fill the state
+    LogfileManagerState state;
+    _slots->statistics(state.lastAssignedTick, state.lastCommittedTick, state.lastCommittedDataTick, state.numEvents);
+
+    if (lastAssignedTick == 0) {
+      // get last assigned tick only once
+      lastAssignedTick = state.lastAssignedTick;
+    }
+
+    // now compare last committed tick with first lastAssigned tick that we got
+    if (state.lastCommittedTick >= lastAssignedTick) {
+      // everything was already committed
+      return true;
+    }
+
+    // not everything was committed yet. wait a bit
+    usleep(10000);
+
+    if (TRI_microtime() >= end) {
+      // time's up!
+      return false;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief re-inserts a logfile back into the inventory only
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1656,7 +1692,7 @@ LogfileManagerState LogfileManager::state() {
   LogfileManagerState state;
 
   // now fill the state
-  _slots->statistics(state.lastTick, state.lastDataTick, state.numEvents);
+  _slots->statistics(state.lastAssignedTick, state.lastCommittedTick, state.lastCommittedDataTick, state.numEvents);
   state.timeString = getTimeString();
 
   return state;
