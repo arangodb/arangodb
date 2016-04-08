@@ -997,6 +997,9 @@ bool DepthFirstTraverser::EdgeGetter::nextCursor(std::string const& startVertex,
     if (last != nullptr) {
       // The cursor is empty clean up
       last = nullptr;
+      TRI_ASSERT(!_posInCursor.empty());
+      TRI_ASSERT(!_cursors.empty());
+      TRI_ASSERT(!_results.empty());
       _posInCursor.pop();
       _cursors.pop();
       _results.pop();
@@ -1031,8 +1034,11 @@ void DepthFirstTraverser::EdgeGetter::nextEdge(
     ++(*last);
   }
   while (true) {
+    TRI_ASSERT(!_cursors.empty());
     auto cursor = _cursors.top();
+    TRI_ASSERT(!_results.empty());
     auto opRes = _results.top();
+    TRI_ASSERT(opRes != nullptr);
     VPackSlice edge = opRes->slice();
     if (!edge.isArray() || edge.length() <= *last) {
       if (cursor->hasMore()) {
