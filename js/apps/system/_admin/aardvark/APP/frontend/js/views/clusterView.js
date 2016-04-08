@@ -14,7 +14,7 @@
 
     historyInit: false,
     initDone: false,
-    interval: 15000,
+    interval: 5000,
     maxValues: 100,
     knownServers: [],
     chartData: {},
@@ -33,7 +33,8 @@
 
         //start polling with interval
         window.setInterval(function() {
-          if (window.location.hash === '#cluster') {
+          if (window.location.hash === '#cluster' 
+              || window.location.hash === '#') {
             var callback = function(data) {
               self.rerenderValues(data);
               self.rerenderGraphs(data);
@@ -51,7 +52,6 @@
       //this.initValues();
 
       if (!this.initDone) {
-        console.log("asdasd");
         if (this.coordinators.first() !== undefined) {
           this.getServerStatistics();
         }
@@ -150,6 +150,9 @@
     },
     
     rerenderValues: function(data) {
+
+      // TODO cache value state like graph data
+
       //Connections
       this.renderValue('#clusterConnections', Math.round(data.clientConnectionsCurrent));
       this.renderValue('#clusterConnectionsAvg', Math.round(data.clientConnections15M));
@@ -158,6 +161,9 @@
       var totalMem = data.physicalMemory;
       var usedMem = data.residentSizeCurrent;
       this.renderValue('#clusterRam', [usedMem, totalMem]);
+
+      //NODES
+      this.renderValue('#clusterNodes', this.statCollectCoord.size());
     },
 
     renderValue: function(id, value) {
