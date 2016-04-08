@@ -375,11 +375,10 @@ bool ApplicationCluster::open() {
   AgencyComm comm;
   AgencyCommResult result;
 
-  bool success;
   do {
     AgencyCommLocker locker("Current", "WRITE");
 
-    success = locker.successful();
+    bool success = locker.successful();
     if (success) {
       VPackBuilder builder;
       try {

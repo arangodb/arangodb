@@ -220,7 +220,6 @@ ExecutionPlan* ExecutionPlan::clone(Query const& query) {
 
 arangodb::basics::Json ExecutionPlan::toJson(Ast* ast, TRI_memory_zone_t* zone,
                                              bool verbose) const {
-#warning Remove this
   // TODO
   VPackBuilder b;
   _root->toVelocyPack(b, verbose);

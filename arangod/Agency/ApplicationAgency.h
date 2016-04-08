@@ -51,8 +51,7 @@ class ApplicationAgency : virtual public arangodb::rest::ApplicationFeature {
   
  public:
 
-  ApplicationAgency(ApplicationEndpointServer*);
-
+  explicit ApplicationAgency(ApplicationEndpointServer*);
 
   ~ApplicationAgency();
 

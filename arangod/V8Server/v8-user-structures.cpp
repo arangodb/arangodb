@@ -562,6 +562,8 @@ class KeySpace {
       }
     }
 
+    TRI_ASSERT(dest != nullptr);
+
     if (!TRI_IsArrayJson(dest->json)) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }

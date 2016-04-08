@@ -49,9 +49,6 @@ class EndpointList {
   void dump() const;
 
  private:
-  std::map<std::string, Endpoint*> getByPrefix(std::string const&) const;
-
- private:
   std::map<std::string, Endpoint*> _endpoints;
 };
 }

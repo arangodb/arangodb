@@ -68,8 +68,9 @@ using namespace arangodb::basics;
 /// @brief create a document collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_document_collection_t::TRI_document_collection_t()
-    : _lock(),
+TRI_document_collection_t::TRI_document_collection_t(TRI_vocbase_t* vocbase)
+    : TRI_collection_t(vocbase),
+      _lock(),
       _nextCompactionStartIndex(0),
       _lastCompactionStatus(nullptr),
       _useSecondaryIndexes(true),
@@ -1209,7 +1210,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection(
   // first create the document collection
   TRI_document_collection_t* document;
   try {
-    document = new TRI_document_collection_t();
+    document = new TRI_document_collection_t(vocbase);
   } catch (std::exception&) {
     document = nullptr;
   }
@@ -1753,7 +1754,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
   // first open the document collection
   TRI_document_collection_t* document = nullptr;
   try {
-    document = new TRI_document_collection_t();
+    document = new TRI_document_collection_t(vocbase);
   } catch (std::exception&) {
   }
 
@@ -3707,7 +3708,7 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
     TRI_ASSERT(marker == nullptr);
 
     // get the header pointer of the previous revision
-    TRI_doc_mptr_t* oldHeader;
+    TRI_doc_mptr_t* oldHeader = nullptr;
     VPackSlice key;
     if (slice.isString()) {
       key = slice;
@@ -3720,6 +3721,7 @@ int TRI_document_collection_t::remove(arangodb::Transaction* trx,
       return res;
     }
 
+    TRI_ASSERT(oldHeader != nullptr);
     prevRev = oldHeader->revisionIdAsSlice();
     previous = *oldHeader;
 

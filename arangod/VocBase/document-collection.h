@@ -36,6 +36,8 @@
 #include "VocBase/voc-types.h"
 #include "Wal/Marker.h"
 
+struct TRI_vocbase_t;
+
 namespace arangodb {
 class EdgeIndex;
 class Index;
@@ -90,7 +92,7 @@ struct TRI_doc_collection_info_t {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_document_collection_t : public TRI_collection_t {
-  TRI_document_collection_t();
+  explicit TRI_document_collection_t(TRI_vocbase_t* vocbase);
 
   ~TRI_document_collection_t();
 

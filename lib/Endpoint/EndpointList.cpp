@@ -120,25 +120,6 @@ std::vector<std::string> EndpointList::all() const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return all endpoints with a certain prefix
-////////////////////////////////////////////////////////////////////////////////
-
-std::map<std::string, Endpoint*> EndpointList::getByPrefix(
-    std::string const& prefix) const {
-  std::map<std::string, Endpoint*> result;
-
-  for (auto& it : _endpoints) {
-    std::string const& key = it.first;
-
-    if (StringUtils::isPrefix(key, prefix)) {
-      result[key] = it.second;
-    }
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return all endpoints with a certain encryption type
 ////////////////////////////////////////////////////////////////////////////////
 

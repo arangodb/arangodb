@@ -828,7 +828,7 @@ TRI_collection_t* TRI_CreateCollection(
   // create collection structure
   if (collection == nullptr) {
     try {
-      TRI_collection_t* tmp = new TRI_collection_t(parameters);
+      TRI_collection_t* tmp = new TRI_collection_t(vocbase, parameters);
       collection = tmp;
     } catch (std::exception&) {
       collection = nullptr;

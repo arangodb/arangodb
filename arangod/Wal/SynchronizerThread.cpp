@@ -59,8 +59,10 @@ void SynchronizerThread::beginShutdown() {
 
 void SynchronizerThread::signalSync() {
   CONDITION_LOCKER(guard, _condition);
-  ++_waiting;
-  _condition.signal();
+  if (++_waiting == 1) {
+    // only signal once
+    _condition.signal();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
