@@ -264,16 +264,16 @@ bool Node::removeTimeToLive () {
 }
 
 // Add observing url for this node
-bool Node::addObserver (std::string const& uri) {
+/*bool Node::addObserver (std::string const& uri) {
   auto it = std::find(_observers.begin(), _observers.end(), uri);
   if (it==_observers.end()) {
     _observers.emplace(uri);
     return true;
   }
   return false;
-}
+  }*/
 
-void Node::notifyObservers (std::string const& origin) const {
+/*void Node::notifyObservers (std::string const& origin) const {
 
   for (auto const& i : _observers) {
 
@@ -316,7 +316,7 @@ void Node::notifyObservers (std::string const& origin) const {
 
   }
 
-}
+  }*/
 
 inline bool Node::observedBy (std::string const& url) const {
   auto ret = root()._observer_table.equal_range(url);
@@ -465,9 +465,9 @@ template<> bool Node::handle<OBSERVE> (VPackSlice const& slice) {
   
   // check if such entry exists
   if (!observedBy(url)) {
-    root()._observer_table.insert(std::pair<std::string,std::string>(url,uri));
-    root()._observed_table.insert(std::pair<std::string,std::string>(uri,url));
-    _observers.emplace(url);
+    root()._observer_table.emplace(std::pair<std::string,std::string>(url,uri));
+    root()._observed_table.emplace(std::pair<std::string,std::string>(uri,url));
+//    _observers.emplace(url);
     return true;
   }
   
@@ -710,16 +710,18 @@ std::vector<bool> Store::apply (
     tmp.add("term",VPackValue(0));
     tmp.add("index",VPackValue(0));
     auto ret = in.equal_range(url);
-/*    for (auto it = ret.first; it!=ret.second; ++it) {
-      tmp.add(url,VPackValue(VPackValueType::Object));
+    
+    for (auto it = ret.first; it!=ret.second; ++it) {
+      //tmp.add(url,VPackValue(VPackValueType::Object));
       tmp.add(it->second->key,VPackValue(VPackValueType::Object));
       tmp.add("op",VPackValue(it->second->oper));
+      //tmp.close();
       tmp.close();
-      tmp.close();
-      std::cout << tmp.toJson() << std::endl;
-      }*/
+      }
+    
     tmp.close();
-    std::cout << tmp.toJson() << std::endl;
+      std::cout << tmp.toJson() << std::endl;
+
   }
 
   return applied;
