@@ -166,9 +166,11 @@
 .documents-size {
   background-color: $c-white !important;
   border: 1px solid $c-grey;
-  border-radius: 2px;
+  border-radius: 0;
   box-shadow: none;
+  color: $c-black;
   float: right;
+  font-weight: 300;
   height: 28px;
   line-height: 18px;
   margin-left: 10px;

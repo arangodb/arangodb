@@ -13,7 +13,8 @@
     },
 
     historyInit: false,
-    interval: 3000,
+    initDone: false,
+    interval: 15000,
     maxValues: 100,
     knownServers: [],
     chartData: {},
@@ -32,23 +33,47 @@
 
         //start polling with interval
         window.setInterval(function() {
-          var callback = function(data) {
-            self.rerenderValues(data);
-            self.rerenderGraphs(data);
-          };
+          if (window.location.hash === '#cluster') {
+            var callback = function(data) {
+              self.rerenderValues(data);
+              self.rerenderGraphs(data);
+            };
 
-          // now fetch the statistics history
-          self.getCoordStatHistory(callback);
+            // now fetch the statistics history
+            self.getCoordStatHistory(callback);
+          }
         }, this.interval);
       }
     },
 
     render: function () {
       this.$el.html(this.template.render({}));
-      this.initValues();
-      this.getServerStatistics();
+      //this.initValues();
 
+      if (!this.initDone) {
+        console.log("asdasd");
+        if (this.coordinators.first() !== undefined) {
+          this.getServerStatistics();
+        }
+        else {
+          this.waitForCoordinators();
+        }
+        this.initDone = true;
+      }
       this.initGraphs();
+    },
+
+    waitForCoordinators: function() {
+      var self = this; 
+
+      window.setTimeout(function() {
+        if (self.coordinators) {
+          self.getServerStatistics();
+        }
+        else {
+          self.waitForCoordinators();
+        }
+      }, 500);
     },
 
     updateServerTime: function() {
@@ -180,8 +205,7 @@
 
       _.each(self.chartsOptions, function(val1, key1) {
         _.each(val1.options, function(val2, key2) {
-            console.log(self.chartsOptions[key1].options[key2].values.length);
-          if (val2.values.length === self.maxValues) {
+          if (val2.values.length > self.maxValues - 1) {
             self.chartsOptions[key1].options[key2].values.shift();
           }
         });

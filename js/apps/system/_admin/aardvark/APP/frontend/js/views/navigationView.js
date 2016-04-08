@@ -21,6 +21,8 @@
 
     initialize: function () {
 
+      var self = this;
+
       this.userCollection = this.options.userCollection;
       this.currentDB = this.options.currentDB;
       this.dbSelectionView = new window.DBSelectionView({
@@ -37,6 +39,10 @@
           currentDB: this.currentDB
       });
       this.handleKeyboardHotkeys();
+
+      Backbone.history.on("all", function () {
+        self.selectMenuItem();
+      });
     },
 
     handleSelectDatabase: function () {
@@ -71,19 +77,7 @@
       if (this.renderFirst) {
         this.renderFirst = false;
           
-        var select = ((window.location.hash).substr(1, (window.location.hash).length) + '-menu');
-        if (select.indexOf('/') === -1) {
-          this.selectMenuItem(select);
-        }
-        else {
-          //handle subview menus which do not have a main menu entry
-          if (select.split('/')[2] === 'documents') {
-            self.selectMenuItem(select.split('/')[2], true);
-          }
-          else if (select.split('/')[0] === 'collection') {
-            self.selectMenuItem(select.split('/')[0], true);
-          }
-        }
+        this.selectMenuItem();
 
         $('.arangodbLogo').on('click', function() {
           self.selectMenuItem();
@@ -163,12 +157,13 @@
       ],
       cluster: [
         {
-          name: 'Dashboard',
+          name: 'Logs',
           view: undefined
         },
         {
-          name: 'Logs',
-          view: undefined
+          name: 'Dashboard',
+          view: undefined,
+          active: true
         }
       ],
       query: [
@@ -253,6 +248,12 @@
     },
 
     selectMenuItem: function (menuItem, noMenuEntry) {
+
+      if (menuItem === undefined) {
+        menuItem = window.location.hash.split('/')[0];
+        menuItem = menuItem.substr(1, menuItem.length - 1);
+      }
+
       try {
         this.renderSubMenu(menuItem.split('-')[0]);
       }
@@ -266,6 +267,7 @@
         }
         else if (menuItem) {
           $('.' + menuItem).addClass('active');
+          $('.' + menuItem + '-menu').addClass('active');
         }
       }
       arangoHelper.hideArangoNotifications();

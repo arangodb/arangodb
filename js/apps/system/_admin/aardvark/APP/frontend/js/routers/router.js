@@ -28,7 +28,7 @@
       "applications/:mount": "applicationDetail",
       "graph": "graphManagement",
       "graph/:name": "showGraph",
-      "userManagement": "userManagement",
+      "users": "userManagement",
       "userProfile": "userProfile",
       "cluster": "cluster",
       "logs": "logs",
@@ -188,10 +188,12 @@
         return;
       }
 
-      this.clusterView = new window.ClusterView({
-        coordinators: this.coordinatorCollection,
-        dbServers: this.dbServers
-      });
+      if (!this.clusterView) {
+        this.clusterView = new window.ClusterView({
+          coordinators: this.coordinatorCollection,
+          dbServers: this.dbServers
+        });
+      }
       this.clusterView.render();
     },
 
