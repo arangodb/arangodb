@@ -1584,9 +1584,10 @@ OperationResult Transaction::removeCoordinator(std::string const& collectionName
   
   auto headers = std::make_unique<std::map<std::string, std::string>>();
   GeneralResponse::ResponseCode responseCode;
-  std::map<std::string, std::string> resultHeaders;
-  std::string resultBody;
+  std::unordered_map<int, size_t> errorCounter;
+  auto resultBody = std::make_shared<VPackBuilder>();
 
+  /*
   std::string key(Transaction::extractKey(value));
   if (key.empty()) {
     return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
@@ -1595,32 +1596,22 @@ OperationResult Transaction::removeCoordinator(std::string const& collectionName
   if (!options.ignoreRevs) {
     expectedRevision = TRI_ExtractRevisionId(value);
   }
+  */
 
   int res = arangodb::deleteDocumentOnCoordinator(
-      _vocbase->_name, collectionName, key, expectedRevision, options, headers,
-      responseCode, resultHeaders, resultBody);
+      _vocbase->_name, collectionName, value, options, headers,
+      responseCode, errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
     if (responseCode == GeneralResponse::ResponseCode::OK ||
         responseCode == GeneralResponse::ResponseCode::ACCEPTED ||
         responseCode == GeneralResponse::ResponseCode::PRECONDITION_FAILED) {
-      VPackParser parser;
-      try {
-        parser.parse(resultBody);
-        auto bui = parser.steal();
-        auto buf = bui->steal();
-        return OperationResult(
-            buf, nullptr, "",
-            responseCode == GeneralResponse::ResponseCode::PRECONDITION_FAILED
-                ? TRI_ERROR_ARANGO_CONFLICT
-                : TRI_ERROR_NO_ERROR,
-            responseCode != GeneralResponse::ResponseCode::ACCEPTED);
-      }
-      catch (VPackException& e) {
-        std::string message = "JSON from DBserver not parseable: "
-                              + resultBody + ":" + e.what();
-        return OperationResult(TRI_ERROR_INTERNAL, message);
-      }
+      return OperationResult(
+          resultBody->steal(), nullptr, "",
+          responseCode == GeneralResponse::ResponseCode::PRECONDITION_FAILED
+              ? TRI_ERROR_ARANGO_CONFLICT
+              : TRI_ERROR_NO_ERROR,
+          responseCode != GeneralResponse::ResponseCode::ACCEPTED);
     } else if (responseCode == GeneralResponse::ResponseCode::BAD) {
       return DBServerResponseBad(resultBody);
     } else if (responseCode == GeneralResponse::ResponseCode::NOT_FOUND) {
