@@ -967,7 +967,7 @@ int deleteDocumentOnCoordinator(
     for (auto const& it : shardMap) {
       if (!useMultiple) {
         TRI_ASSERT(it.second.size() == 1);
-        body->assign(slice.toJson());
+        body = std::make_shared<std::string>(std::move(slice.toJson()));
       } else {
         reqBuilder.clear();
         reqBuilder.openArray();
@@ -975,7 +975,7 @@ int deleteDocumentOnCoordinator(
           reqBuilder.add(slice.at(idx));
         }
         reqBuilder.close();
-        body->assign(reqBuilder.slice().toJson());
+        body = std::make_shared<std::string>(std::move(reqBuilder.slice().toJson()));
       }
       auto headersCopy =
           std::make_unique<std::map<std::string, std::string>>(*headers);
