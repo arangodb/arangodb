@@ -1039,8 +1039,11 @@ void DepthFirstTraverser::EdgeGetter::nextEdge(
     TRI_ASSERT(!_results.empty());
     auto opRes = _results.top();
     TRI_ASSERT(opRes != nullptr);
+    // note: we need to check *first* that there is actually something in the buffer
+    // before we access its internals. otherwise, the buffer contents are uninitialized
+    // and non-deterministic behavior will be the consequence
     VPackSlice edge = opRes->slice();
-    if (!edge.isArray() || edge.length() <= *last) {
+    if (opRes->buffer->empty() || !edge.isArray() || edge.length() <= *last) {
       if (cursor->hasMore()) {
         // Fetch next and try again
         cursor->getMore(opRes);
