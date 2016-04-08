@@ -53,10 +53,14 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
  public:
   TRI_vocbase_t* vocbase() const { return _vocbase; }
   TRI_server_t* server() const { return _server.get(); }
+
   bool ignoreDatafileErrors() const { return _ignoreDatafileErrors; }
+  bool isInitiallyEmpty() const { return _isInitiallyEmpty; }
+
   void disableReplicationApplier() { _replicationApplier = false; }
   void disableCompactor() { _disableCompactor = true; }
   void enableCheckVersion() { _checkVersion = true; }
+  void enableUpgrade() { _upgrade = true; }
 
  private:
   std::string _directory;
@@ -64,8 +68,6 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   bool _queryTracking;
   std::string _queryCacheMode;
   uint64_t _queryCacheEntries;
-  bool _upgrade;
-  bool _skipUpgrade;
   uint64_t _indexThreads;
   bool _defaultWaitForSync;
   bool _forceSyncProperties;
@@ -74,7 +76,6 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
  private:
   void openDatabases();
   void closeDatabases();
-  void upgradeDatabase();
   void updateContexts();
   void shutdownCompactor();
 
@@ -84,9 +85,11 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   std::unique_ptr<aql::QueryRegistry> _queryRegistry;
   std::string _databasePath;
   std::unique_ptr<basics::ThreadPool> _indexPool;
+  bool _isInitiallyEmpty;
   bool _replicationApplier;
   bool _disableCompactor;
   bool _checkVersion;
+  bool _upgrade;
 };
 }
 

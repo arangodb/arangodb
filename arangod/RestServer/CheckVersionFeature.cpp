@@ -37,10 +37,13 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-CheckVersionFeature::CheckVersionFeature(ApplicationServer* server, int* result)
-    : ApplicationFeature(server, "checkVersion"),
+CheckVersionFeature::CheckVersionFeature(
+    ApplicationServer* server, int* result,
+    std::vector<std::string> const& nonServerFeatures)
+    : ApplicationFeature(server, "CheckVersion"),
       _checkVersion(false),
-      _result(result) {
+      _result(result),
+      _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Database");
@@ -65,11 +68,7 @@ void CheckVersionFeature::validateOptions(
     return;
   }
 
-  std::vector<std::string> disable{"Daemon",    "Dispatcher", "Endpoint",
-                                   "Scheduler", "Shutdown",   "Ssl",
-                                   "Supervisor"};
-
-  for (auto name : disable) {
+  for (auto name : _nonServerFeatures) {
     auto feature = ApplicationServer::lookupFeature(name);
 
     if (feature != nullptr) {
@@ -94,7 +93,11 @@ void CheckVersionFeature::start() {
   }
 
   // check the version
-  checkVersion();
+  if (DatabaseFeature::DATABASE->isInitiallyEmpty()) {
+    *_result = EXIT_SUCCESS;
+  } else {
+    checkVersion();
+  }
 
   // and force shutdown
   server()->beginShutdown();

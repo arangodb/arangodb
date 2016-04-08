@@ -41,6 +41,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/EndpointFeature.h"
 #include "RestServer/ServerFeature.h"
+#include "RestServer/UpgradeFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "V8Server/V8DealerFeature.h"
 
@@ -88,9 +89,13 @@ int main(int argc, char* argv[]) {
 
   application_features::ApplicationServer server(options);
 
+  std::vector<std::string> nonServerFeatures = {
+      "Daemon",   "Dispatcher", "Endpoint",  "Scheduler",
+      "Shutdown", "Ssl",        "Supervisor"};
+
   int ret = EXIT_FAILURE;
 
-  server.addFeature(new CheckVersionFeature(&server, &ret));
+  server.addFeature(new CheckVersionFeature(&server, &ret, nonServerFeatures));
   server.addFeature(new ConfigFeature(&server, name));
   server.addFeature(new DatabaseFeature(&server));
   server.addFeature(new DispatcherFeature(&server));
@@ -101,6 +106,7 @@ int main(int argc, char* argv[]) {
   server.addFeature(new ServerFeature(&server, "arangod", &ret));
   server.addFeature(new SslFeature(&server));
   server.addFeature(new TempFeature(&server, name));
+  server.addFeature(new UpgradeFeature(&server, &ret, nonServerFeatures));
   server.addFeature(new V8DealerFeature(&server));
   server.addFeature(new V8PlatformFeature(&server));
   server.addFeature(new WorkMonitorFeature(&server));

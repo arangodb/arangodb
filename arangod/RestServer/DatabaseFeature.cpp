@@ -52,17 +52,17 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
       _queryTracking(true),
       _queryCacheMode("off"),
       _queryCacheEntries(128),
-      _upgrade(false),
-      _skipUpgrade(false),
       _indexThreads(2),
       _defaultWaitForSync(false),
       _forceSyncProperties(true),
       _ignoreDatafileErrors(false),
       _vocbase(nullptr),
       _server(nullptr),
+      _isInitiallyEmpty(false),
       _replicationApplier(true),
       _disableCompactor(false),
-      _checkVersion(false) {
+      _checkVersion(false),
+      _upgrade(false) {
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Language");
@@ -96,12 +96,6 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                            "will use waitForSync value of collection when "
                            "turned off",
                            new BooleanParameter(&_forceSyncProperties));
-
-  options->addOption("--database.upgrade", "perform a database upgrade",
-                     new BooleanParameter(&_upgrade));
-
-  options->addHiddenOption("--database.skip-upgrade", "skip a database upgrade",
-                           new BooleanParameter(&_skipUpgrade));
 
   options->addHiddenOption(
       "--database.index-threads",
@@ -197,12 +191,6 @@ void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 #endif
 
-  if (_upgrade && _skipUpgrade) {
-    LOG(ERR) << "cannot specify both '--database.upgrade' and "
-                "'--database.skip-upgrade'";
-    abortInvalidParameters();
-  }
-
 #warning TODO
 #if 0
   std::vector<std::string> arguments = _applicationServer->programArguments();
@@ -279,7 +267,12 @@ void DatabaseFeature::start() {
   // open all databases
   openDatabases();
 
-  // fetch the system database and update the contexts
+  if (_isInitiallyEmpty && _checkVersion) {
+    LOG(DEBUG) << "checking version on an empty database";
+    TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);
+  }
+
+  // update the contexts
   updateContexts();
 }
 
@@ -352,92 +345,6 @@ void DatabaseFeature::shutdownCompactor() {
   }
 }
 
-void DatabaseFeature::upgradeDatabase() {
-#warning TODO
-#if 0
-  LOG(TRACE) << "starting database init/upgrade";
-
-  // enter context and isolate
-  {
-    V8Context* context =
-        V8DealerFeature::DEALER->enterContext(_vocbase, true, 0);
-    v8::HandleScope scope(context->_isolate);
-    auto localContext =
-        v8::Local<v8::Context>::New(context->_isolate, context->_context);
-    localContext->Enter();
-
-    {
-      v8::Context::Scope contextScope(localContext);
-
-      // run upgrade script
-      if (!_skipUpgrade) {
-        LOG(DEBUG) << "running database init/upgrade";
-
-        auto unuser(_server->_databasesProtector.use());
-        auto theLists = _server->_databasesLists.load();
-
-        for (auto& p : theLists->_databases) {
-          TRI_vocbase_t* vocbase = p.second;
-
-          // special check script to be run just once in first thread (not in
-          // all) but for all databases
-          v8::HandleScope scope(context->_isolate);
-
-          v8::Handle<v8::Object> args = v8::Object::New(context->_isolate);
-          args->Set(TRI_V8_ASCII_STRING2(context->_isolate, "upgrade"),
-                    v8::Boolean::New(context->_isolate, _upgrade));
-
-          localContext->Global()->Set(
-              TRI_V8_ASCII_STRING2(context->_isolate, "UPGRADE_ARGS"), args);
-
-          bool ok = TRI_UpgradeDatabase(vocbase, localContext);
-
-          if (!ok) {
-            if (localContext->Global()->Has(TRI_V8_ASCII_STRING2(
-                    context->_isolate, "UPGRADE_STARTED"))) {
-              localContext->Exit();
-              if (_upgrade) {
-                LOG(FATAL) << "Database '" << vocbase->_name
-                           << "' upgrade failed. Please inspect the logs from "
-                              "the upgrade procedure";
-                FATAL_ERROR_EXIT();
-              } else {
-                LOG(FATAL)
-                    << "Database '" << vocbase->_name
-                    << "' needs upgrade. Please start the server with the "
-                       "--upgrade option";
-                FATAL_ERROR_EXIT();
-              }
-            } else {
-              LOG(FATAL) << "JavaScript error during server start";
-              FATAL_ERROR_EXIT();
-            }
-
-            LOG(DEBUG) << "database '" << vocbase->_name
-                       << "' init/upgrade done";
-          }
-        }
-      }
-    }
-
-    // finally leave the context. otherwise v8 will crash with assertion failure
-    // when we delete
-    // the context locker below
-    localContext->Exit();
-    V8DealerFeature::DEALER->exitContext(context);
-  }
-
-  if (_upgrade) {
-    LOG(INFO) << "database upgrade passed";
-    shutdownCompactor();
-    TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);
-  }
-
-  // and return from the context
-  LOG(TRACE) << "finished database init/upgrade";
-#endif
-}
-
 void DatabaseFeature::openDatabases() {
   TRI_vocbase_defaults_t defaults;
 
@@ -478,11 +385,11 @@ void DatabaseFeature::openDatabases() {
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (_checkVersion && res == TRI_ERROR_ARANGO_EMPTY_DATADIR) {
-      TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);
+      _isInitiallyEmpty = true;
+    } else {
+      LOG(FATAL) << "cannot start server: " << TRI_errno_string(res);
+      FATAL_ERROR_EXIT();
     }
-
-    LOG(FATAL) << "cannot start server: " << TRI_errno_string(res);
-    FATAL_ERROR_EXIT();
   }
 
   LOG_TOPIC(TRACE, Logger::STARTUP) << "found system database";

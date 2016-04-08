@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,18 +17,36 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Achim Brandt
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "LogLevel.h"
+#ifndef APPLICATION_FEATURES_UPGRADE_FEATURE_H
+#define APPLICATION_FEATURES_UPGRADE_FEATURE_H 1
 
-#include "Logger/Logger.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 
-using namespace arangodb;
+namespace arangodb {
+class UpgradeFeature final : public application_features::ApplicationFeature {
+ public:
+  UpgradeFeature(application_features::ApplicationServer* server, int* result,
+                 std::vector<std::string> const& nonServerFeatures);
 
-std::ostream& operator<<(std::ostream& stream, LogLevel level) {
-  stream << Logger::translateLogLevel(level);
-  return stream;
+ public:
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void start() override;
+
+ private:
+  bool _upgrade;
+  bool _upgradeCheck;
+
+ private:
+  void upgradeDatabase();
+
+ private:
+  int* _result;
+  std::vector<std::string> _nonServerFeatures;
+};
 }
 
+#endif

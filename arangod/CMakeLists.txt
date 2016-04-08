@@ -217,6 +217,7 @@ add_executable(${BIN_ARANGOD}
   RestServer/DatabaseFeature.cpp
   RestServer/EndpointFeature.cpp
   RestServer/ServerFeature.cpp
+  RestServer/UpgradeFeature.cpp
   RestServer/VocbaseContext.cpp
   RestServer/arangod.cpp
   Scheduler/ListenTask.cpp

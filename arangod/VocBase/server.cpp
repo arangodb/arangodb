@@ -1132,6 +1132,7 @@ int TRI_InitServer(TRI_server_t* server,
   server->_iterateMarkersOnOpen = iterateMarkersOnOpen;
   server->_hasCreatedSystemDatabase = false;
   server->_indexPool = indexPool;
+  server->_databaseManagerStarted = false;
 
   // ...........................................................................
   // set up paths and filenames
@@ -1379,6 +1380,7 @@ int TRI_StartServer(TRI_server_t* server, bool checkVersion,
   TRI_InitThread(&server->_databaseManager);
   TRI_StartThread(&server->_databaseManager, nullptr, "Databases",
                   DatabaseManager, server);
+  server->_databaseManagerStarted = true;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1433,7 +1435,12 @@ int TRI_StopServer(TRI_server_t* server) {
   ServerShutdown.store(true);
 
   // stop dbm thread
-  int res = TRI_JoinThread(&server->_databaseManager);
+  int res = TRI_ERROR_NO_ERROR;
+
+  if (server->_databaseManagerStarted) {
+    TRI_JoinThread(&server->_databaseManager);
+    server->_databaseManagerStarted = false;
+  }
 
   CloseDatabases(server);
 

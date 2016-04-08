@@ -741,7 +741,7 @@ void V8DealerFeature::shutdownContexts() {
     _contexts.clear();
   }
 
-  LOG(DEBUG) << "V( contexts are shut down";
+  LOG(DEBUG) << "V8 contexts are shut down";
 }
 
 V8Context* V8DealerFeature::pickFreeContextForGc() {

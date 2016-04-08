@@ -68,6 +68,7 @@ struct TRI_server_t {
   arangodb::Mutex _databasesMutex;
 
   TRI_thread_t _databaseManager;
+  bool _databaseManagerStarted;
 
   TRI_vocbase_defaults_t _defaults;
   arangodb::basics::ThreadPool* _indexPool;
