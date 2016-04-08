@@ -1258,7 +1258,9 @@ function CollectionDocumentSuiteReturnStuff() {
 ////////////////////////////////////////////////////////////////////////////////
 
 // TODO FIXME: reactivate this test!
-// jsunity.run(CollectionDocumentSuiteBabies);
+if (false) {
+  jsunity.run(CollectionDocumentSuiteBabies);
+}
 jsunity.run(CollectionDocumentSuiteReturnStuff);
 
 return jsunity.done();
