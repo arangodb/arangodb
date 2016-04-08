@@ -43,16 +43,36 @@ void RestBaseHandler::handleError(Exception const& ex) {
   generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
 }
 
+
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief checks if velocypack is expected as answer
+//////////////////////////////////////////////////////////////////////////////
+
+bool RestBaseHandler::returnVelocypack(){
+  auto accept = std::string(_request->header("accept"));
+  if (std::string::npos == accept.find("application/x-velocypack")) {
+    return false;
+  }
+  return true;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a result from VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestBaseHandler::generateResult(GeneralResponse::ResponseCode code,
                                      VPackSlice const& slice) {
-  createResponse(code);
-  _response->setContentType("application/json; charset=utf-8");
 
-  dumpResponse(slice, &VPackOptions::Defaults);
+  createResponse(code);
+
+  if(returnVelocypack()) {
+    _response->setContentType("application/x-velocypack");
+    _response->body().appendText(slice.startAs<const char>(),slice.byteSize());
+  } else {
+    _response->setContentType("application/json; charset=utf-8");
+    dumpResponse(slice, &VPackOptions::Defaults);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,9 +83,13 @@ void RestBaseHandler::generateResult(GeneralResponse::ResponseCode code,
                                      VPackSlice const& slice,
                                      std::shared_ptr<TransactionContext> context) {
   createResponse(code);
-  _response->setContentType("application/json; charset=utf-8");
-  
-  dumpResponse(slice, context->getVPackOptions());
+  if(returnVelocypack()) {
+    _response->setContentType("application/x-velocypack");
+    _response->body().appendText(slice.startAs<const char>(),slice.byteSize());
+  } else {
+    _response->setContentType("application/json; charset=utf-8");
+    dumpResponse(slice, context->getVPackOptions());
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
