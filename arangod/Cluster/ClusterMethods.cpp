@@ -677,6 +677,7 @@ int createDocumentOnCoordinator(
      }
  
      responseCode = res.answer_code;
+     TRI_ASSERT(res.answer != nullptr);
      auto parsedResult = res.answer->toVelocyPack(&VPackOptions::Defaults);
      resultBody.swap(parsedResult);
      return TRI_ERROR_NO_ERROR;
@@ -708,6 +709,7 @@ int createDocumentOnCoordinator(
          }
          resultMap.emplace(res.shardID, tmpBuilder);
        } else {
+         TRI_ASSERT(res.answer != nullptr);
          resultMap.emplace(res.shardID,
                            res.answer->toVelocyPack(&VPackOptions::Defaults));
          auto resultHeaders = res.answer->headers();
@@ -1250,7 +1252,7 @@ int getFilteredDocumentsOnCoordinator(
       size_t resCount = TRI_LengthArrayJson(documents);
       for (size_t k = 0; k < resCount; ++k) {
         try {
-          TRI_json_t* element = TRI_LookupArrayJson(documents, k);
+          TRI_json_t const* element = TRI_LookupArrayJson(documents, k);
           std::string id = arangodb::basics::JsonHelper::checkAndGetStringValue(
               element, TRI_VOC_ATTRIBUTE_ID);
           auto tmpBuilder = basics::JsonHelper::toVelocyPack(element);

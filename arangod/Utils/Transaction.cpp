@@ -2101,8 +2101,14 @@ bool Transaction::supportsFilterCondition(
     arangodb::aql::AstNode const* condition,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) {
+ 
+  auto idx = indexHandle.getIndex(); 
+  if (nullptr == idx) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "The index id cannot be empty.");
+  }
 
-  return indexHandle.getIndex()->supportsFilterCondition(
+  return idx->supportsFilterCondition(
       condition, reference, itemsInIndex, estimatedItems, estimatedCost);
 }
 
@@ -2115,8 +2121,13 @@ bool Transaction::supportsFilterCondition(
 std::vector<std::vector<arangodb::basics::AttributeName>>
 Transaction::getIndexFeatures(IndexHandle const& indexHandle, bool& isSorted,
                               bool& isSparse) {
+  
+  auto idx = indexHandle.getIndex(); 
+  if (nullptr == idx) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "The index id cannot be empty.");
+  }
 
-  std::shared_ptr<arangodb::Index> idx = indexHandle.getIndex();
   isSorted = idx->isSorted();
   isSparse = idx->sparse();
   return idx->fields();
@@ -2184,7 +2195,6 @@ std::shared_ptr<OperationCursor> Transaction::indexScanForCondition(
     arangodb::aql::Ast* ast, arangodb::aql::AstNode const* condition,
     arangodb::aql::Variable const* var, uint64_t limit, uint64_t batchSize,
     bool reverse) {
-#warning TODO Who checks if indexId is valid and is used for this collection?
 
   if (ServerState::instance()->isCoordinator()) {
     // The index scan is only available on DBServers and Single Server.
@@ -2200,6 +2210,10 @@ std::shared_ptr<OperationCursor> Transaction::indexScanForCondition(
   IndexIteratorContext ctxt(_vocbase, resolver());
  
   auto idx = indexId.getIndex();
+  if (nullptr == idx) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "The index id cannot be empty.");
+  }
 
   std::unique_ptr<IndexIterator> iterator(idx->iteratorForCondition(this, &ctxt, ast, condition, var, reverse));
 
@@ -2223,7 +2237,6 @@ std::shared_ptr<OperationCursor> Transaction::indexScan(
     std::string const& collectionName, CursorType cursorType,
     IndexHandle const& indexId, VPackSlice const search, uint64_t skip,
     uint64_t limit, uint64_t batchSize, bool reverse) {
-#warning TODO Who checks if indexId is valid and is used for this collection?
   // For now we assume indexId is the iid part of the index.
 
   if (ServerState::instance()->isCoordinator()) {

@@ -750,6 +750,3 @@ std::shared_ptr<VPackBuilder> HttpRequest::toVelocyPack(
   return parser.steal();
 }
 
-TRI_json_t* HttpRequest::toJson(char** errmsg) {
-  return TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, body().c_str(), errmsg);
-}

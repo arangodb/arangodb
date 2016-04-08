@@ -51,14 +51,15 @@ static void JS_StateLoggerReplication(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  arangodb::wal::LogfileManagerState s =
+  arangodb::wal::LogfileManagerState const s =
       arangodb::wal::LogfileManager::instance()->state();
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
   v8::Handle<v8::Object> state = v8::Object::New(isolate);
   state->Set(TRI_V8_ASCII_STRING("running"), v8::True(isolate));
-  state->Set(TRI_V8_ASCII_STRING("lastLogTick"), V8TickId(isolate, s.lastTick));
+  state->Set(TRI_V8_ASCII_STRING("lastLogTick"), V8TickId(isolate, s.lastCommittedTick));
+  state->Set(TRI_V8_ASCII_STRING("lastUncommittedLogTick"), V8TickId(isolate, s.lastAssignedTick));
   state->Set(TRI_V8_ASCII_STRING("totalEvents"),
              v8::Number::New(isolate, (double)s.numEvents));
   state->Set(TRI_V8_ASCII_STRING("time"), TRI_V8_STD_STRING(s.timeString));

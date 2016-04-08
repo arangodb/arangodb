@@ -68,11 +68,14 @@ Slots::~Slots() { delete[] _slots; }
 /// @brief get the statistics of the slots
 ////////////////////////////////////////////////////////////////////////////////
 
-void Slots::statistics(Slot::TickType& lastTick, Slot::TickType& lastDataTick,
+void Slots::statistics(Slot::TickType& lastAssignedTick, 
+                       Slot::TickType& lastCommittedTick,
+                       Slot::TickType& lastCommittedDataTick,
                        uint64_t& numEvents) {
   MUTEX_LOCKER(mutexLocker, _lock);
-  lastTick = _lastCommittedTick;
-  lastDataTick = _lastCommittedDataTick;
+  lastAssignedTick = _lastAssignedTick;
+  lastCommittedTick = _lastCommittedTick;
+  lastCommittedDataTick = _lastCommittedDataTick;
   numEvents = _numEvents;
 }
 

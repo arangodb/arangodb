@@ -398,7 +398,7 @@ static inline node_t** FollowersNodes(void* data) {
   uint8_t numAllocated = *head;
   uint8_t* keys = (uint8_t*)(head + 2);  // numAllocated + numEntries
 
-  return (node_t**)(uint8_t*)((keys + numAllocated) + Padding(numAllocated));
+  return reinterpret_cast<node_t**>(keys + numAllocated + Padding(numAllocated));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -424,7 +424,7 @@ static inline node_t** FollowersNodesPos(void* data, uint32_t numAllocated) {
   uint8_t* head = (uint8_t*)data;
   uint8_t* keys = (uint8_t*)(head + 2);  // numAllocated + numEntries
 
-  return (node_t**)(uint8_t*)((keys + numAllocated) + Padding(numAllocated));
+  return reinterpret_cast<node_t**>(keys + numAllocated + Padding(numAllocated));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

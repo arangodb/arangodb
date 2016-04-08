@@ -1666,6 +1666,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase(
   VPackBuilder builder;
   {
     VPackObjectBuilder b(&builder);
+    // note: cid may be modified by this function call
     collection =
         CreateCollection(vocbase, parameters, cid, writeMarker, builder);
   }

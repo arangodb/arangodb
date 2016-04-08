@@ -2620,6 +2620,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
 
       if (collection != nullptr && collection->_cid == 0) {
         delete collection;
+        collection = nullptr;
         TRI_V8_RETURN(v8::Handle<v8::Value>());
       }
     }

@@ -145,7 +145,6 @@ Ast::~Ast() {}
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* Ast::toJson(TRI_memory_zone_t* zone, bool verbose) const {
-#warning Deprecated
   TRI_json_t* json = TRI_CreateArrayJson(zone);
 
   if (json == nullptr) {

@@ -533,7 +533,7 @@ bool HttpCommTask::processRead() {
     static std::string const wwwAuthenticate = "www-authenticate";
 
     if (sendWwwAuthenticateHeader()) {
-      std::string const realm =
+      static std::string const realm =
           "basic realm=\"" +
           _server->handlerFactory()->authenticationRealm(_request) + "\"";
 
@@ -774,7 +774,7 @@ void HttpCommTask::fillWriteBuffer() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpCommTask::processCorsOptions(uint32_t compatibility) {
-  std::string const allowedMethods = "DELETE, GET, HEAD, PATCH, POST, PUT";
+  static std::string const allowedMethods = "DELETE, GET, HEAD, PATCH, POST, PUT";
 
   HttpResponse response(GeneralResponse::ResponseCode::OK, compatibility);
 
