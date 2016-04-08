@@ -75,7 +75,7 @@ class GeneralClientConnection {
 
   static GeneralClientConnection* factory(
       std::unique_ptr<Endpoint>&, double, double, size_t,
-      uint32_t);
+      uint64_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the endpoint

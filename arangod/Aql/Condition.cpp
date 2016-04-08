@@ -30,6 +30,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/json.h"
 #include "Basics/JsonHelper.h"
+#include "utils/Transaction.h"
 
 #ifdef _WIN32
 // turn off warnings about too long type name for debug symbols blabla in MSVC
@@ -37,6 +38,7 @@
 #pragma warning(disable : 4503)
 #endif
 
+using namespace arangodb;
 using namespace arangodb::aql;
 using CompareResult = ConditionPartCompareResult;
 
@@ -362,7 +364,7 @@ void Condition::andCombine(AstNode const* node) {
 
 std::pair<bool, bool> Condition::findIndexes(
     EnumerateCollectionNode const* node,
-    std::vector<Transaction::IndexHandle>& usedIndexes,
+    std::vector<arangodb::Transaction::IndexHandle>& usedIndexes,
     SortCondition const* sortCondition) {
   TRI_ASSERT(usedIndexes.empty());
   Variable const* reference = node->outVariable();
