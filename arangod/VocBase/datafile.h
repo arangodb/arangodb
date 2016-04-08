@@ -364,9 +364,6 @@ struct TRI_df_prologue_marker_t {
 
 struct TRI_df_footer_marker_t {
   TRI_df_marker_t base;  // 16 bytes
-
-  TRI_voc_size_t _maximalSize;  //  4 bytes
-  TRI_voc_size_t _totalSize;    //  4 bytes
 };
 
 ////////////////////////////////////////////////////////////////////////////////
