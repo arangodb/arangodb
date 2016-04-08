@@ -32,6 +32,7 @@
 #include <unordered_set>
 
 #include "velocypack/velocypack-common.h"
+#include "velocypack/Exception.h"
 #include "velocypack/Options.h"
 #include "velocypack/Slice.h"
 
@@ -49,6 +50,15 @@ struct TopLevelAttributeExcludeHandler final : AttributeExcludeHandler {
 
   std::unordered_set<std::string> attributes;
 };
+
+static inline Slice buildNullValue(char* dst, size_t length) {
+  if (length < 1) {
+    throw Exception(Exception::InternalError, "supplied buffer is too small");
+  }
+
+  *dst = 0x18;
+  return Slice(dst);
+}
 
 }  // namespace arangodb::velocypack
 }  // namespace arangodb

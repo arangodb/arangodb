@@ -28,11 +28,8 @@
 #include "VocBase/replication-applier.h"
 #include "VocBase/server.h"
 #include "VocBase/transaction.h"
-#include "VocBase/update-policy.h"
 
-struct TRI_json_t;
 class TRI_replication_applier_configuration_t;
-struct TRI_transaction_collection_s;
 struct TRI_vocbase_t;
 class TRI_vocbase_col_t;
 
@@ -46,6 +43,7 @@ class Slice;
 namespace httpclient {
 class GeneralClientConnection;
 class SimpleHttpClient;
+class SimpleHttpResult;
 }
 
 class Transaction;
@@ -70,6 +68,13 @@ class Syncer {
     usleep((useconds_t)time);
 #endif
   }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief parse a velocypack response
+  ////////////////////////////////////////////////////////////////////////////////
+
+  int parseResponse(std::shared_ptr<arangodb::velocypack::Builder>,
+                    arangodb::httpclient::SimpleHttpResult const*) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief request location rewriter (injects database name)
@@ -104,22 +109,10 @@ class Syncer {
   int sendRemoveBarrier();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief extract the collection id from JSON
-  //////////////////////////////////////////////////////////////////////////////
-
-  TRI_voc_cid_t getCid(struct TRI_json_t const*) const;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief extract the collection id from VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_voc_cid_t getCid(arangodb::velocypack::Slice const&) const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief extract the collection name from JSON
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::string getCName(struct TRI_json_t const*) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extract the collection name from VelocyPack
@@ -131,29 +124,24 @@ class Syncer {
   /// @brief apply a single marker from the collection dump
   //////////////////////////////////////////////////////////////////////////////
 
-  int applyCollectionDumpMarker(arangodb::Transaction*,
-                                struct TRI_transaction_collection_s*,
+  int applyCollectionDumpMarker(arangodb::Transaction&,
+                                std::string const&,
                                 TRI_replication_operation_e,
-                                const TRI_voc_key_t, const TRI_voc_rid_t,
-                                struct TRI_json_t const*, std::string&);
+                                arangodb::velocypack::Slice const&, 
+                                arangodb::velocypack::Slice const&, 
+                                std::string&);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief creates a collection, based on the JSON provided
+  /// @brief creates a collection, based on the VelocyPack provided
   //////////////////////////////////////////////////////////////////////////////
 
-  int createCollection(struct TRI_json_t const*, TRI_vocbase_col_t**);
+  int createCollection(arangodb::velocypack::Slice const&, TRI_vocbase_col_t**);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief drops a collection, based on the JSON provided
+  /// @brief drops a collection, based on the VelocyPack provided
   //////////////////////////////////////////////////////////////////////////////
 
-  int dropCollection(struct TRI_json_t const*, bool);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief creates an index, based on the JSON provided
-  //////////////////////////////////////////////////////////////////////////////
-
-  int createIndex(struct TRI_json_t const*);
+  int dropCollection(arangodb::velocypack::Slice const&, bool);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates an index, based on the VelocyPack provided
@@ -162,10 +150,10 @@ class Syncer {
   int createIndex(arangodb::velocypack::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief drops an index, based on the JSON provided
+  /// @brief drops an index, based on the VelocyPack provided
   //////////////////////////////////////////////////////////////////////////////
 
-  int dropIndex(struct TRI_json_t const*);
+  int dropIndex(arangodb::velocypack::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get master state
@@ -177,7 +165,7 @@ class Syncer {
   /// @brief handle the state response of the master
   //////////////////////////////////////////////////////////////////////////////
 
-  int handleStateResponse(struct TRI_json_t const*, std::string&);
+  int handleStateResponse(arangodb::velocypack::Slice const&, std::string&);
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -205,12 +193,6 @@ class Syncer {
     bool _active;
   }
   _masterInfo;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the update policy object (will be the same for all actions)
-  //////////////////////////////////////////////////////////////////////////////
-
-  TRI_doc_update_policy_t _policy;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the endpoint (master) we're connected to

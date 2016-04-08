@@ -26,9 +26,11 @@
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
+#include "Utils/TransactionContext.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
+#include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -38,39 +40,7 @@ using namespace arangodb::rest;
 RestBaseHandler::RestBaseHandler(HttpRequest* request) : HttpHandler(request) {}
 
 void RestBaseHandler::handleError(Exception const& ex) {
-  generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates a result from JSON
-////////////////////////////////////////////////////////////////////////////////
-void RestBaseHandler::generateResult(TRI_json_t const* json) {
-  generateResult(GeneralResponse::ResponseCode::OK, json);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates a result from JSON
-////////////////////////////////////////////////////////////////////////////////
-
-void RestBaseHandler::generateResult(GeneralResponse::ResponseCode code,
-                                     TRI_json_t const* json) {
-  createResponse(code);
-  _response->setContentType("application/json; charset=utf-8");
-
-  int res = TRI_StringifyJson(_response->body().stringBuffer(), json);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_INTERNAL, "cannot generate output");
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates a result from VelocyPack
-////////////////////////////////////////////////////////////////////////////////
-
-void RestBaseHandler::generateResult(VPackSlice const& slice) {
-  generateResult(GeneralResponse::ResponseCode::OK, slice);
+  generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,38 +52,20 @@ void RestBaseHandler::generateResult(GeneralResponse::ResponseCode code,
   createResponse(code);
   _response->setContentType("application/json; charset=utf-8");
 
-  VPackStringBufferAdapter buffer(_response->body().stringBuffer());
-
-  VPackDumper dumper(&buffer);
-  try {
-    dumper.dump(slice);
-  } catch (...) {
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_INTERNAL, "cannot generate output");
-  }
+  dumpResponse(slice, &VPackOptions::Defaults);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates a cancel message
+/// @brief generates a result from VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestBaseHandler::generateCanceled() {
-  VPackBuilder builder;
-  try {
-    builder.add(VPackValue(VPackValueType::Object));
-    builder.add("error", VPackValue(true));
-    builder.add("code",
-                VPackValue((int32_t)GeneralResponse::ResponseCode::GONE));
-    builder.add("errorNum", VPackValue((int32_t)TRI_ERROR_REQUEST_CANCELED));
-    builder.add("errorMessage", VPackValue("request canceled"));
-    builder.close();
-
-    VPackSlice slice(builder.start());
-    generateResult(GeneralResponse::ResponseCode::GONE, slice);
-  } catch (...) {
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_INTERNAL, "cannot generate output");
-  }
+void RestBaseHandler::generateResult(GeneralResponse::ResponseCode code,
+                                     VPackSlice const& slice,
+                                     std::shared_ptr<TransactionContext> context) {
+  createResponse(code);
+  _response->setContentType("application/json; charset=utf-8");
+  
+  dumpResponse(slice, context->getVPackOptions());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -124,7 +76,7 @@ void RestBaseHandler::generateError(GeneralResponse::ResponseCode code,
                                     int errorCode) {
   char const* message = TRI_errno_string(errorCode);
 
-  if (message) {
+  if (message != nullptr) {
     generateError(code, errorCode, std::string(message));
   } else {
     generateError(code, errorCode, std::string("unknown error"));
@@ -148,16 +100,13 @@ void RestBaseHandler::generateError(GeneralResponse::ResponseCode code,
       // prevent empty error messages
       builder.add("errorMessage", VPackValue(TRI_errno_string(errorCode)));
     } else {
-      builder.add("errorMessage",
-                  VPackValue(StringUtils::escapeUnicode(message)));
+      builder.add("errorMessage", VPackValue(message));
     }
-    builder.add("code", VPackValue((int)code));
+    builder.add("code", VPackValue(static_cast<int>(code)));
     builder.add("errorNum", VPackValue(errorCode));
     builder.close();
-    VPackSlice slice(builder.start());
-    VPackStringBufferAdapter buffer(_response->body().stringBuffer());
-    VPackDumper dumper(&buffer);
-    dumper.dump(slice);
+
+    dumpResponse(builder.slice(), &VPackOptions::Defaults);
   } catch (...) {
     // Building the error response failed
   }
@@ -168,6 +117,33 @@ void RestBaseHandler::generateError(GeneralResponse::ResponseCode code,
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestBaseHandler::generateOOMError() {
-  generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
-                TRI_ERROR_OUT_OF_MEMORY);
+  generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a cancel message
+////////////////////////////////////////////////////////////////////////////////
+
+void RestBaseHandler::generateCanceled() {
+  return generateError(GeneralResponse::ResponseCode::GONE, TRI_ERROR_REQUEST_CANCELED);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dumps the response as JSON into the response string buffer
+////////////////////////////////////////////////////////////////////////////////
+
+void RestBaseHandler::dumpResponse(VPackSlice const& slice,
+                                   VPackOptions const* options) {
+  VPackStringBufferAdapter buffer(_response->body().stringBuffer());
+
+  VPackDumper dumper(&buffer, options);
+  try {
+    dumper.dump(slice);
+  } catch (std::exception const& ex) {
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
+  } catch (...) {
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                  "cannot generate output");
+  }
+}
+

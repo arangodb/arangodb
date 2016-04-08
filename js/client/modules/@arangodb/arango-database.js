@@ -31,8 +31,6 @@
 var internal = require("internal");
 var arangosh = require("@arangodb/arangosh");
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
@@ -56,7 +54,6 @@ exports.ArangoDatabase = ArangoDatabase;
 ArangoCollection = require("@arangodb/arango-collection").ArangoCollection;
 var ArangoError = require("@arangodb").ArangoError;
 var ArangoStatement = require("@arangodb/arango-statement").ArangoStatement;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief index id regex
@@ -84,6 +81,21 @@ ArangoDatabase.prototype._appendSyncParameter = function (url, waitForSync) {
     }
     url += 'waitForSync=true';
   }
+  return url;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief append some boolean parameter to a URL
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._appendBoolParameter = function (url, name, val) {
+  if (url.indexOf('?') === -1) {
+    url += '?';
+  }
+  else {
+    url += '&';
+  }
+  url += name + (val ? '=true' : '=false');
   return url;
 };
 
@@ -534,12 +546,13 @@ ArangoDatabase.prototype._document = function (id) {
   var rev = null;
   var requestResult;
 
-  if (id.hasOwnProperty("_id")) {
+  if (typeof id === "object") {
     if (id.hasOwnProperty("_rev")) {
       rev = id._rev;
     }
-
-    id = id._id;
+    if (id.hasOwnProperty("_id")) {
+      id = id._id;
+    }
   }
 
   if (rev === null) {
@@ -550,10 +563,10 @@ ArangoDatabase.prototype._document = function (id) {
       {'if-match' : JSON.stringify(rev) });
   }
 
-  if (requestResult !== null
-      && requestResult.error === true
-      && requestResult.errorNum === internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code) {
-    throw new ArangoError(requestResult);
+  if (requestResult !== null && requestResult.error === true) {
+    if (requestResult.errorNum === internal.errors.ERROR_HTTP_PRECONDITION_FAILED.code) {
+      requestResult.errorNum = internal.errors.ERROR_ARANGO_CONFLICT.code;
+    }
   }
 
   arangosh.checkRequestResult(requestResult);
@@ -569,12 +582,13 @@ ArangoDatabase.prototype._exists = function (id) {
   var rev = null;
   var requestResult;
 
-  if (id.hasOwnProperty("_id")) {
+  if (typeof id === "object") {
     if (id.hasOwnProperty("_rev")) {
       rev = id._rev;
     }
-
-    id = id._id;
+    if (id.hasOwnProperty("_id")) {
+      id = id._id;
+    }
   }
 
   if (rev === null) {
@@ -585,12 +599,13 @@ ArangoDatabase.prototype._exists = function (id) {
       {'if-match' : JSON.stringify(rev) });
   }
 
-  if (requestResult !== null &&
-      requestResult.error === true &&
-      (requestResult.errorNum === internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code ||
-       requestResult.errorNum === internal.errors.ERROR_HTTP_NOT_FOUND.code ||
-       requestResult.errorNum === internal.errors.ERROR_HTTP_PRECONDITION_FAILED.code)) {
-    return false;
+  if (requestResult !== null && requestResult.error === true) {
+    if (requestResult.errorNum === internal.errors.ERROR_HTTP_NOT_FOUND.code) {
+      return false;
+    }
+    if (requestResult.errorNum === internal.errors.ERROR_HTTP_PRECONDITION_FAILED.code) {
+      requestResult.errorNum = internal.errors.ERROR_ARANGO_CONFLICT.code;
+    }
   }
 
   arangosh.checkRequestResult(requestResult);
@@ -606,38 +621,52 @@ ArangoDatabase.prototype._remove = function (id, overwrite, waitForSync) {
   var rev = null;
   var requestResult;
 
-  if (id.hasOwnProperty("_id")) {
+  if (typeof id === "object") {
+    if (Array.isArray(id)) {
+      throw new ArangoError({
+        error: true,
+        code: internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code,
+        errorNum: internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code,
+        errorMessage: internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.message
+      });
+    }
     if (id.hasOwnProperty("_rev")) {
       rev = id._rev;
     }
-
-    id = id._id;
+    if (id.hasOwnProperty("_id")) {
+      id = id._id;
+    }
   }
 
   var params = "";
+  var ignoreRevs = false;
+  var options;
 
   if (typeof overwrite === "object") {
     if (typeof waitForSync !== "undefined") {
       throw "too many arguments";
     }
     // we assume the caller uses new signature (id, data, options)
-    var options = overwrite;
+    options = overwrite;
     if (options.hasOwnProperty("overwrite") && options.overwrite) {
-      params += "?policy=last";
+      ignoreRevs = true;
     }
     if (options.hasOwnProperty("waitForSync") ) {
       waitForSync = options.waitForSync;
     }
   } else {
     if (overwrite) {
-      params += "?policy=last";
+      ignoreRevs = true;
     }
+    options = {};
   }
 
   var url = this._documenturl(id) + params;
   url = this._appendSyncParameter(url, waitForSync);
+  url = this._appendBoolParameter(url, "ignoreRevs", ignoreRevs);
+  url = this._appendBoolParameter(url, "returnOld", options.returnOld);
 
-  if (rev === null) {
+  if (rev === null || ignoreRevs) {
     requestResult = this._connection.DELETE(url);
   }
   else {
@@ -646,18 +675,14 @@ ArangoDatabase.prototype._remove = function (id, overwrite, waitForSync) {
   }
 
   if (requestResult !== null && requestResult.error === true) {
-    if (overwrite) {
-      if (requestResult.errorNum === internal.errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
-        return false;
-      }
+    if (requestResult.errorNum === internal.errors.ERROR_HTTP_PRECONDITION_FAILED.code) {
+      requestResult.errorNum = internal.errors.ERROR_ARANGO_CONFLICT.code;
     }
-
-    throw new ArangoError(requestResult);
   }
 
   arangosh.checkRequestResult(requestResult);
 
-  return true;
+  return options.silent ? true : requestResult;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -668,37 +693,52 @@ ArangoDatabase.prototype._replace = function (id, data, overwrite, waitForSync) 
   var rev = null;
   var requestResult;
 
-  if (id.hasOwnProperty("_id")) {
+  if (typeof id === "object") {
+    if (Array.isArray(id)) {
+      throw new ArangoError({
+        error: true,
+        code: internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
+        errorNum: internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
+        errorMessage: internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.message
+      });
+    }
     if (id.hasOwnProperty("_rev")) {
       rev = id._rev;
     }
-
-    id = id._id;
+    if (id.hasOwnProperty("_id")) {
+      id = id._id;
+    }
   }
 
   var params = "";
+  var ignoreRevs = false;
+  var options;
 
   if (typeof overwrite === "object") {
     if (typeof waitForSync !== "undefined") {
       throw "too many arguments";
     }
     // we assume the caller uses new signature (id, data, options)
-    var options = overwrite;
+    options = overwrite;
     if (options.hasOwnProperty("overwrite") && options.overwrite) {
-      params += "?policy=last";
+      ignoreRevs = true;
     }
     if (options.hasOwnProperty("waitForSync") ) {
      waitForSync = options.waitForSync;
     }
   } else {
     if (overwrite) {
-      params += "?policy=last";
+      ignoreRevs = true;
     }
+    options = {};
   }
   var url = this._documenturl(id) + params;
   url = this._appendSyncParameter(url, waitForSync);
+  url = this._appendBoolParameter(url, "ignoreRevs", true);
+  url = this._appendBoolParameter(url, "returnOld", options.returnOld);
+  url = this._appendBoolParameter(url, "returnNew", options.returnNew);
 
-  if (rev === null) {
+  if (rev === null || ignoreRevs) {
     requestResult = this._connection.PUT(url, JSON.stringify(data));
   }
   else {
@@ -707,12 +747,14 @@ ArangoDatabase.prototype._replace = function (id, data, overwrite, waitForSync) 
   }
 
   if (requestResult !== null && requestResult.error === true) {
-    throw new ArangoError(requestResult);
+    if (requestResult.errorNum === internal.errors.ERROR_HTTP_PRECONDITION_FAILED.code) {
+      requestResult.errorNum = internal.errors.ERROR_ARANGO_CONFLICT.code;
+    }
   }
 
   arangosh.checkRequestResult(requestResult);
 
-  return requestResult;
+  return options.silent ? true : requestResult;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -723,21 +765,32 @@ ArangoDatabase.prototype._update = function (id, data, overwrite, keepNull, wait
   var rev = null;
   var requestResult;
 
-  if (id.hasOwnProperty("_id")) {
+  if (typeof id === "object") {
+    if (Array.isArray(id)) {
+      throw new ArangoError({
+        error: true,
+        code: internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
+        errorNum: internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
+        errorMessage: internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.message
+      });
+    }
     if (id.hasOwnProperty("_rev")) {
       rev = id._rev;
     }
-
-    id = id._id;
+    if (id.hasOwnProperty("_id")) {
+      id = id._id;
+    }
   }
 
   var params = "";
+  var ignoreRevs = false;
+  var options;
   if (typeof overwrite === "object") {
     if (typeof keepNull !== "undefined") {
       throw "too many arguments";
     }
     // we assume the caller uses new signature (id, data, options)
-    var options = overwrite;
+    options = overwrite;
     if (! options.hasOwnProperty("keepNull")) {
       options.keepNull = true;
     }
@@ -748,7 +801,7 @@ ArangoDatabase.prototype._update = function (id, data, overwrite, keepNull, wait
     params += "&mergeObjects=" + options.mergeObjects;
 
     if (options.hasOwnProperty("overwrite") && options.overwrite) {
-      params += "&policy=last";
+      ignoreRevs = true;
     }
   } else {
     // set default value for keepNull
@@ -756,13 +809,17 @@ ArangoDatabase.prototype._update = function (id, data, overwrite, keepNull, wait
     params = "?keepNull=" + (keepNullValue ? "true" : "false");
 
     if (overwrite) {
-      params += "&policy=last";
+      ignoreRevs = true;
     }
+    options = {};
   }
   var url = this._documenturl(id) + params;
   url = this._appendSyncParameter(url, waitForSync);
+  url = this._appendBoolParameter(url, "ignoreRevs", true);
+  url = this._appendBoolParameter(url, "returnOld", options.returnOld);
+  url = this._appendBoolParameter(url, "returnNew", options.returnNew);
 
-  if (rev === null) {
+  if (rev === null || ignoreRevs) {
     requestResult = this._connection.PATCH(url, JSON.stringify(data));
   }
   else {
@@ -771,12 +828,14 @@ ArangoDatabase.prototype._update = function (id, data, overwrite, keepNull, wait
   }
 
   if (requestResult !== null && requestResult.error === true) {
-    throw new ArangoError(requestResult);
+    if (requestResult.errorNum === internal.errors.ERROR_HTTP_PRECONDITION_FAILED.code) {
+      requestResult.errorNum = internal.errors.ERROR_ARANGO_CONFLICT.code;
+    }
   }
 
   arangosh.checkRequestResult(requestResult);
 
-  return requestResult;
+  return options.silent ? true : requestResult;
 };
 
 

@@ -25,7 +25,6 @@
 #include "Basics/conversions.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
-#include "Utils/transactions.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/v8-voccursor.h"

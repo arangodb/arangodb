@@ -95,9 +95,9 @@ HttpHandler::status_t RestAgencyHandler::handleStores () {
     _agent->readDB().dumpToBuilder(body);
     body.close();
     body.close();
-    generateResult(body.slice());
+    generateResult(GeneralResponse::ResponseCode::OK, body.slice());
   } else {
-    generateError(GeneralResponse::ResponseCode::BAD,400);
+    generateError(GeneralResponse::ResponseCode::BAD, 400);
   }
   return HttpHandler::status_t(HANDLER_DONE);
 }
@@ -150,15 +150,13 @@ HttpHandler::status_t RestAgencyHandler::handleWrite () {
       }
 
       body.close();
-
-      if (errors > 0) {  // Some/all requests failed
-        generateResult(GeneralResponse::ResponseCode::PRECONDITION_FAILED,
-                       body.slice());
-      } else {  // All good
-        generateResult(body.slice());
+      
+      if (errors > 0) { // Some/all requests failed
+        generateResult(GeneralResponse::ResponseCode::PRECONDITION_FAILED, body.slice());
+      } else {          // All good 
+        generateResult(GeneralResponse::ResponseCode::OK, body.slice());
       }
-
-    } else {  // Redirect to leader
+    } else {            // Redirect to leader
       redirectRequest(ret.redirect);
     }
   } else {  // Unknown method
@@ -175,7 +173,7 @@ inline HttpHandler::status_t RestAgencyHandler::handleRead() {
       query = _request->toVelocyPack(&options);
     } catch (std::exception const& e) {
       LOG_TOPIC(WARN, Logger::AGENCY) << e.what();
-      generateError(GeneralResponse::ResponseCode::BAD,400);
+      generateError(GeneralResponse::ResponseCode::BAD, 400);
       return HttpHandler::status_t(HANDLER_DONE);
     }
     read_ret_t ret = _agent->read (query);
@@ -184,14 +182,14 @@ inline HttpHandler::status_t RestAgencyHandler::handleRead() {
       if (ret.success.size() == 1 && !ret.success.at(0)) {
         generateResult(GeneralResponse::ResponseCode::I_AM_A_TEAPOT, ret.result->slice());
       } else {
-        generateResult(ret.result->slice());
+        generateResult(GeneralResponse::ResponseCode::OK, ret.result->slice());
       }
     } else {            // Redirect to leader
       redirectRequest(ret.redirect);
       return HttpHandler::status_t(HANDLER_DONE);
     }
   } else {
-    generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,405);
+    generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED, 405);
     return HttpHandler::status_t(HANDLER_DONE);
   }
   return HttpHandler::status_t(HANDLER_DONE);
@@ -204,7 +202,7 @@ HttpHandler::status_t RestAgencyHandler::handleConfig() {
   body.add("leaderId", Value(_agent->leaderID()));
   body.add("configuration", _agent->config().toBuilder()->slice());
   body.close();
-  generateResult(body.slice());
+  generateResult(GeneralResponse::ResponseCode::OK, body.slice());
   return HttpHandler::status_t(HANDLER_DONE);
 }
 
@@ -220,7 +218,7 @@ HttpHandler::status_t RestAgencyHandler::handleState() {
     body.close();
   }
   body.close();
-  generateResult(body.slice());
+  generateResult(GeneralResponse::ResponseCode::OK, body.slice());
   return HttpHandler::status_t(HANDLER_DONE);
 }
 

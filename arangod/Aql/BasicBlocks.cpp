@@ -36,6 +36,7 @@ using Json = arangodb::basics::Json;
 ////////////////////////////////////////////////////////////////////////////////
 
 int SingletonBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
+  DEBUG_BEGIN_BLOCK();  
   // Create a deep copy of the register values given to us:
   deleteInputVariables();
 
@@ -61,6 +62,7 @@ int SingletonBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 
   _done = false;
   return TRI_ERROR_NO_ERROR;
+  DEBUG_END_BLOCK();  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -78,6 +80,7 @@ int SingletonBlock::shutdown(int errorCode) {
 int SingletonBlock::getOrSkipSome(size_t,  // atLeast,
                                   size_t atMost, bool skipping,
                                   AqlItemBlock*& result, size_t& skipped) {
+  DEBUG_BEGIN_BLOCK();  
   TRI_ASSERT(result == nullptr && skipped == 0);
 
   if (_done) {
@@ -111,10 +114,6 @@ int SingletonBlock::getOrSkipSome(size_t,  // atLeast,
             throw;
           }
           _inputRegisterValues->eraseValue(0, reg);
-          // if the latter throws, it does not matter, since we have
-          // already stolen the value
-          result->setDocumentCollection(
-              reg, _inputRegisterValues->getDocumentCollection(reg));
         }
       }
     } catch (...) {
@@ -130,6 +129,7 @@ int SingletonBlock::getOrSkipSome(size_t,  // atLeast,
 
   _done = true;
   return TRI_ERROR_NO_ERROR;
+  DEBUG_END_BLOCK();  
 }
 
 FilterBlock::FilterBlock(ExecutionEngine* engine, FilterNode const* en)
@@ -149,6 +149,7 @@ int FilterBlock::initialize() { return ExecutionBlock::initialize(); }
 ////////////////////////////////////////////////////////////////////////////////
 
 bool FilterBlock::getBlock(size_t atLeast, size_t atMost) {
+  DEBUG_BEGIN_BLOCK();  
   while (true) {  // will be left by break or return
     if (!ExecutionBlock::getBlock(atLeast, atMost)) {
       return false;
@@ -184,10 +185,12 @@ bool FilterBlock::getBlock(size_t atLeast, size_t atMost) {
   }
 
   return true;
+  DEBUG_END_BLOCK();  
 }
 
 int FilterBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
                                AqlItemBlock*& result, size_t& skipped) {
+  DEBUG_BEGIN_BLOCK();  
   TRI_ASSERT(result == nullptr && skipped == 0);
 
   if (_done) {
@@ -291,9 +294,11 @@ int FilterBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
     }
   }
   return TRI_ERROR_NO_ERROR;
+  DEBUG_END_BLOCK();  
 }
 
 bool FilterBlock::hasMore() {
+  DEBUG_BEGIN_BLOCK();  
   if (_done) {
     return false;
   }
@@ -316,6 +321,7 @@ bool FilterBlock::hasMore() {
   // in it.
 
   return true;
+  DEBUG_END_BLOCK();  
 }
 
 int LimitBlock::initialize() {
@@ -328,6 +334,7 @@ int LimitBlock::initialize() {
 }
 
 int LimitBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
+  DEBUG_BEGIN_BLOCK();  
   int res = ExecutionBlock::initializeCursor(items, pos);
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -335,10 +342,12 @@ int LimitBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   _state = 0;
   _count = 0;
   return TRI_ERROR_NO_ERROR;
+  DEBUG_END_BLOCK();  
 }
 
 int LimitBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
                               AqlItemBlock*& result, size_t& skipped) {
+  DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(result == nullptr && skipped == 0);
 
   if (_state == 2) {
@@ -416,9 +425,11 @@ int LimitBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
   }
 
   return TRI_ERROR_NO_ERROR;
+  DEBUG_END_BLOCK();
 }
 
 AqlItemBlock* ReturnBlock::getSome(size_t atLeast, size_t atMost) {
+  DEBUG_BEGIN_BLOCK();
   std::unique_ptr<AqlItemBlock> res(
       ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost));
 
@@ -466,11 +477,11 @@ AqlItemBlock* ReturnBlock::getSome(size_t atLeast, size_t atMost) {
     }
   }
 
-  stripped->setDocumentCollection(0, res->getDocumentCollection(registerId));
   delete res.get();
   res.release();
 
   return stripped.release();
+  DEBUG_END_BLOCK();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -480,6 +491,7 @@ AqlItemBlock* ReturnBlock::getSome(size_t atLeast, size_t atMost) {
 ////////////////////////////////////////////////////////////////////////////////
 
 RegisterId ReturnBlock::returnInheritedResults() {
+  DEBUG_BEGIN_BLOCK();
   _returnInheritedResults = true;
 
   auto ep = static_cast<ReturnNode const*>(getPlanNode());
@@ -487,6 +499,7 @@ RegisterId ReturnBlock::returnInheritedResults() {
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
 
   return it->second.registerId;
+  DEBUG_END_BLOCK();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -494,8 +507,10 @@ RegisterId ReturnBlock::returnInheritedResults() {
 ////////////////////////////////////////////////////////////////////////////////
 
 int NoResultsBlock::initializeCursor(AqlItemBlock*, size_t) {
+  DEBUG_BEGIN_BLOCK();  
   _done = true;
   return TRI_ERROR_NO_ERROR;
+  DEBUG_END_BLOCK();  
 }
 
 int NoResultsBlock::getOrSkipSome(size_t,  // atLeast

@@ -22,16 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestDocumentHandler.h"
-#include "Basics/conversions.h"
-#include "Basics/json-utilities.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Cluster/ServerState.h"
-#include "Cluster/ClusterInfo.h"
-#include "Cluster/ClusterComm.h"
-#include "Cluster/ClusterMethods.h"
 #include "Rest/HttpRequest.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 
@@ -68,7 +64,6 @@ HttpHandler::status_t RestDocumentHandler::execute() {
       break;
     default: {
       generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);
-      break;
     }
   }
 
@@ -83,125 +78,90 @@ HttpHandler::status_t RestDocumentHandler::execute() {
 bool RestDocumentHandler::createDocument() {
   std::vector<std::string> const& suffix = _request->suffix();
 
-  if (!suffix.empty()) {
-    generateError(GeneralResponse::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+  if (suffix.size() > 1) {
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                   "superfluous suffix, expecting " + DOCUMENT_PATH +
                       "?collection=<identifier>");
     return false;
   }
 
-  // extract the cid
   bool found;
-  std::string const& collection = _request->value("collection", found);
+  std::string collectionName;
+  if (suffix.size() == 1) {
+    collectionName = suffix[0];
+    found = true;
+  } else {
+    collectionName = _request->value("collection", found);
+  }
 
-  if (!found || collection.empty()) {
+  if (!found || collectionName.empty()) {
     generateError(GeneralResponse::ResponseCode::BAD,
                   TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting " + DOCUMENT_PATH +
-                      "?collection=<identifier>");
+                      "/<collectionname> or query parameter 'collection'");
     return false;
   }
 
-  bool const waitForSync = extractWaitForSync();
-
   bool parseSuccess = true;
-  VPackOptions options;
+  // copy default options
+  VPackOptions options = VPackOptions::Defaults;
   options.checkAttributeUniqueness = true;
   std::shared_ptr<VPackBuilder> parsedBody =
       parseVelocyPackBody(&options, parseSuccess);
   if (!parseSuccess) {
     return false;
   }
-
-  VPackSlice body = parsedBody->slice();
-
-  if (!body.isObject()) {
-    generateTransactionError(collection,
-                             TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-    return false;
-  }
-
-  if (ServerState::instance()->isCoordinator()) {
-    return createDocumentCoordinator(collection.c_str(), waitForSync, body);
-  }
-
-  if (!checkCreateCollection(collection, getCollectionType())) {
-    return false;
-  }
+  
+  arangodb::OperationOptions opOptions;
+  opOptions.waitForSync = extractBooleanParameter("waitForSync", false);
+  opOptions.returnNew = extractBooleanParameter("returnNew", false);
 
   // find and load collection given by name or identifier
-  SingleCollectionWriteTransaction<1> trx(new StandaloneTransactionContext(),
-                                          _vocbase, collection);
-
-  // .............................................................................
-  // inside write transaction
-  // .............................................................................
+  auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
+  SingleCollectionTransaction trx(transactionContext,
+                                  collectionName, TRI_TRANSACTION_WRITE);
+  VPackSlice body = parsedBody->slice();
+  bool const isMultiple = body.isArray();
+  if (!isMultiple) {
+    trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+  }
 
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res);
+    generateTransactionError(collectionName, res, "");
     return false;
   }
 
-  if (trx.documentCollection()->_info.type() != TRI_COL_TYPE_DOCUMENT) {
-    // check if we are inserting with the DOCUMENT handler into a non-DOCUMENT
-    // collection
-    generateError(GeneralResponse::ResponseCode::BAD,
-                  TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
+  arangodb::OperationResult result = trx.insert(collectionName, body, opOptions);
+
+  // Will commit if no error occured.
+  // or abort if an error occured.
+  // result stays valid!
+  res = trx.finish(result.code);
+
+  if (result.failed()) {
+    generateTransactionError(result);
     return false;
   }
-
-  TRI_voc_cid_t const cid = trx.cid();
-
-  TRI_doc_mptr_copy_t mptr;
-  res = trx.createDocument(&mptr, body, waitForSync);
-  res = trx.finish(res);
-
-  // .............................................................................
-  // outside write transaction
-  // .............................................................................
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res);
+    generateTransactionError(collectionName, res, "");
     return false;
   }
 
-  generateSaved(trx, cid, mptr);
+  generateSaved(result, collectionName, TRI_col_type_e(trx.getCollectionType(collectionName)), transactionContext->getVPackOptions());
 
+  if (isMultiple && !result.countErrorCodes.empty()) {
+    VPackBuilder errorBuilder;
+    errorBuilder.openObject();
+    for (auto const& it : result.countErrorCodes) {
+      errorBuilder.add(basics::StringUtils::itoa(it.first), VPackValue(it.second));
+    }
+    errorBuilder.close();
+    _response->setHeader("X-Arango-Error-Codes", errorBuilder.slice().toJson());
+  }
   return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a document, coordinator case in a cluster
-////////////////////////////////////////////////////////////////////////////////
-
-bool RestDocumentHandler::createDocumentCoordinator(
-    char const* collection, bool waitForSync, VPackSlice const& document) {
-  std::string const& dbname = _request->databaseName();
-  std::string const collname(collection);
-  GeneralResponse::ResponseCode responseCode;
-  std::map<std::string, std::string> headers =
-      arangodb::getForwardableRequestHeaders(_request);
-  std::map<std::string, std::string> resultHeaders;
-  std::string resultBody;
-
-  int res = arangodb::createDocumentOnCoordinator(
-      dbname, collname, waitForSync, document, headers, responseCode,
-      resultHeaders, resultBody);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res);
-    return false;
-  }
-
-  // Essentially return the response we got from the DBserver, be it
-  // OK or an error:
-  createResponse(responseCode);
-  arangodb::mergeResponseHeaders(_response, resultHeaders);
-  _response->body().appendText(resultBody.c_str(), resultBody.size());
-  return responseCode >= GeneralResponse::ResponseCode::BAD;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -215,20 +175,14 @@ bool RestDocumentHandler::readDocument() {
 
   switch (len) {
     case 0:
-      return readAllDocuments();
-
     case 1:
-      generateError(GeneralResponse::ResponseCode::BAD,
-                    TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
-                    "expecting GET /_api/document/<document-handle>");
-      return false;
+      return readAllDocuments();
 
     case 2:
       return readSingleDocument(true);
 
     default:
-      generateError(GeneralResponse::ResponseCode::BAD,
-                    TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+      generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                     "expecting GET /_api/document/<document-handle> or GET "
                     "/_api/document?collection=<collection-name>");
       return false;
@@ -249,142 +203,80 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   // check for an etag
   bool isValidRevision;
   TRI_voc_rid_t const ifNoneRid =
-      extractRevision("if-none-match", 0, isValidRevision);
+      extractRevision("if-none-match", nullptr, isValidRevision);
   if (!isValidRevision) {
-    generateError(GeneralResponse::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER, "invalid revision number");
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid revision number");
     return false;
   }
 
   TRI_voc_rid_t const ifRid =
-      extractRevision("if-match", "rev", isValidRevision);
+      extractRevision("if-match", nullptr, isValidRevision);
   if (!isValidRevision) {
-    generateError(GeneralResponse::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER, "invalid revision number");
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid revision number");
     return false;
   }
 
-  if (ServerState::instance()->isCoordinator()) {
-    return getDocumentCoordinator(collection, key, generateBody);
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder guard(&builder);
+    builder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+    if (ifRid != 0) {
+      builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(std::to_string(ifRid)));
+    }
   }
+  VPackSlice search = builder.slice();
 
   // find and load collection given by name or identifier
-  SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(),
-                                          _vocbase, collection);
+  auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
+  SingleCollectionTransaction trx(transactionContext,
+                                  collection, TRI_TRANSACTION_READ);
+  trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
 
-  // .............................................................................
+  // ...........................................................................
   // inside read transaction
-  // .............................................................................
+  // ...........................................................................
 
   int res = trx.begin();
-  if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res);
-    return false;
-  }
-
-  TRI_voc_cid_t const cid = trx.cid();
-  // If we are a DBserver, we want to use the cluster-wide collection
-  // name for error reporting:
-  std::string collectionName = collection;
-  if (ServerState::instance()->isDBServer()) {
-    collectionName = trx.resolver()->getCollectionName(cid);
-  }
-  TRI_doc_mptr_copy_t mptr;
-
-  res = trx.read(&mptr, key);
-
-  TRI_document_collection_t* document = trx.documentCollection();
-  TRI_ASSERT(document != nullptr);
-  auto shaper = document->getShaper();  // PROTECTED by trx here
-
-  res = trx.finish(res);
-
-  // .............................................................................
-  // outside read transaction
-  // .............................................................................
-
-  TRI_ASSERT(trx.hasDitch());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collectionName, res, (TRI_voc_key_t)key.c_str());
+    generateTransactionError(collection, res, "");
     return false;
   }
 
-  if (mptr.getDataPtr() == nullptr) {  // PROTECTED by trx here
-    generateDocumentNotFound(trx, cid, (TRI_voc_key_t)key.c_str());
+  OperationOptions options;
+  options.ignoreRevs = false;
+  OperationResult result = trx.document(collection, search, options);
+
+  res = trx.finish(result.code);
+
+  if (!result.successful()) {
+    if (result.code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+      generateDocumentNotFound(collection, key);
+      return false;
+    } else if (ifRid != 0 && result.code == TRI_ERROR_ARANGO_CONFLICT) {
+      generatePreconditionFailed(result.slice());
+    } else {
+      generateTransactionError(collection, res, key);
+    }
     return false;
   }
 
-  // generate result
-  TRI_voc_rid_t const rid = mptr._rid;
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collection, res, key);
+    return false;
+  }
 
-  if (ifNoneRid == 0) {
-    if (ifRid == 0 || ifRid == rid) {
-      generateDocument(trx, cid, mptr, shaper, generateBody);
-    } else {
-      generatePreconditionFailed(trx, cid, mptr, rid);
-    }
-  } else if (ifNoneRid == rid) {
-    if (ifRid == 0 || ifRid == rid) {
-      generateNotModified(rid);
-    } else {
-      generatePreconditionFailed(trx, cid, mptr, rid);
-    }
+  TRI_voc_rid_t const rid = TRI_ExtractRevisionId(result.slice());
+  if (ifNoneRid != 0 && ifNoneRid == rid) {
+    generateNotModified(rid);
   } else {
-    if (ifRid == 0 || ifRid == rid) {
-      generateDocument(trx, cid, mptr, shaper, generateBody);
-    } else {
-      generatePreconditionFailed(trx, cid, mptr, rid);
-    }
+    // copy default options
+    generateDocument(result.slice(), generateBody,
+                     transactionContext->getVPackOptions());
   }
-
   return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reads a single a document, coordinator case in a cluster
-////////////////////////////////////////////////////////////////////////////////
-
-bool RestDocumentHandler::getDocumentCoordinator(std::string const& collname,
-                                                 std::string const& key,
-                                                 bool generateBody) {
-  std::string const& dbname = _request->databaseName();
-  GeneralResponse::ResponseCode responseCode;
-  std::unique_ptr<std::map<std::string, std::string>> headers(
-      new std::map<std::string, std::string>(
-          arangodb::getForwardableRequestHeaders(_request)));
-  std::map<std::string, std::string> resultHeaders;
-  std::string resultBody;
-
-  TRI_voc_rid_t rev = 0;
-  bool found;
-  std::string const& revstr = _request->value("rev", found);
-
-  if (found) {
-    rev = StringUtils::uint64(revstr);
-  }
-
-  int error = arangodb::getDocumentOnCoordinator(
-      dbname, collname, key, rev, headers, generateBody, responseCode,
-      resultHeaders, resultBody);
-
-  if (error != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collname, error);
-    return false;
-  }
-  // Essentially return the response we got from the DBserver, be it
-  // OK or an error:
-  createResponse(responseCode);
-  arangodb::mergeResponseHeaders(_response, resultHeaders);
-
-  if (!generateBody) {
-    // a head request...
-    _response->headResponse(
-        (size_t)StringUtils::uint64(resultHeaders["content-length"]));
-  } else {
-    _response->body().appendText(resultBody.c_str(), resultBody.size());
-  }
-  return responseCode >= GeneralResponse::ResponseCode::BAD;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -393,115 +285,44 @@ bool RestDocumentHandler::getDocumentCoordinator(std::string const& collname,
 
 bool RestDocumentHandler::readAllDocuments() {
   bool found;
-  std::string const& collection = _request->value("collection", found);
+  std::string collectionName;
+
+  std::vector<std::string> const& suffix = _request->suffix();
+  if (suffix.size() == 1) {
+    collectionName = suffix[0];
+  } else {
+    collectionName = _request->value("collection", found);
+  }
   std::string returnType = _request->value("type", found);
 
   if (returnType.empty()) {
     returnType = "path";
   }
 
-  if (ServerState::instance()->isCoordinator()) {
-    return getAllDocumentsCoordinator(collection, returnType);
-  }
-
   // find and load collection given by name or identifier
-  SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(),
-                                          _vocbase, collection);
-
-  std::vector<std::string> ids;
-
-  // .............................................................................
-  // inside read transaction
-  // .............................................................................
+  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
+                                          collectionName, TRI_TRANSACTION_READ);
 
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res);
+    generateTransactionError(collectionName, res, "");
     return false;
   }
 
-  TRI_voc_cid_t const cid = trx.cid();
+  OperationOptions options;
+  OperationResult opRes = trx.allKeys(collectionName, returnType, options);
 
-  res = trx.read(ids);
-
-  TRI_col_type_e type = trx.documentCollection()->_info.type();
-
-  res = trx.finish(res);
-
-  // .............................................................................
-  // outside read transaction
-  // .............................................................................
+  res = trx.finish(opRes.code);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res);
+    generateTransactionError(collectionName, res, "");
     return false;
   }
 
-  std::string prefix;
-
-  if (returnType == "key") {
-    prefix = "";
-  } else if (returnType == "id") {
-    prefix = trx.resolver()->getCollectionName(cid) + "/";
-  } else {
-    // default return type: paths to documents
-    if (type == TRI_COL_TYPE_EDGE) {
-      prefix = "/_db/" + _request->databaseName() + EDGE_PATH + '/' +
-               trx.resolver()->getCollectionName(cid) + '/';
-    } else {
-      prefix = "/_db/" + _request->databaseName() + DOCUMENT_PATH + '/' +
-               trx.resolver()->getCollectionName(cid) + '/';
-    }
-  }
-
-  try {
-    // generate result
-    VPackBuilder result;
-    result.add(VPackValue(VPackValueType::Object));
-    result.add("documents", VPackValue(VPackValueType::Array));
-
-    for (auto const& id : ids) {
-      std::string v(prefix);
-      v.append(id);
-      result.add(VPackValue(v));
-    }
-    result.close();
-    result.close();
-
-    VPackSlice s = result.slice();
-    // and generate a response
-    generateResult(s);
-  } catch (...) {
-    // Ignore the error
-  }
+  // generate response
+  generateResult(GeneralResponse::ResponseCode::OK, VPackSlice(opRes.buffer->data()));
   return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reads a single a document, coordinator case in a cluster
-////////////////////////////////////////////////////////////////////////////////
-
-bool RestDocumentHandler::getAllDocumentsCoordinator(
-    std::string const& collname, std::string const& returnType) {
-  std::string const& dbname = _request->databaseName();
-
-  GeneralResponse::ResponseCode responseCode;
-  std::string contentType;
-  std::string resultBody;
-
-  int error = arangodb::getAllDocumentsOnCoordinator(
-      dbname, collname, returnType, responseCode, contentType, resultBody);
-
-  if (error != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collname, error);
-    return false;
-  }
-  // Return the response we got:
-  createResponse(responseCode);
-  _response->setContentType(contentType);
-  _response->body().appendText(resultBody.c_str(), resultBody.size());
-  return responseCode >= GeneralResponse::ResponseCode::BAD;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -512,8 +333,7 @@ bool RestDocumentHandler::checkDocument() {
   std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 2) {
-    generateError(GeneralResponse::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting URI /_api/document/<document-handle>");
     return false;
   }
@@ -525,7 +345,14 @@ bool RestDocumentHandler::checkDocument() {
 /// @brief was docuBlock REST_DOCUMENT_REPLACE
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::replaceDocument() { return modifyDocument(false); }
+bool RestDocumentHandler::replaceDocument() { 
+  bool found;
+  _request->value("onlyget", found);
+  if (found) {
+    return readManyDocuments();
+  }
+  return modifyDocument(false);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock REST_DOCUMENT_UPDATE
@@ -540,301 +367,140 @@ bool RestDocumentHandler::updateDocument() { return modifyDocument(true); }
 bool RestDocumentHandler::modifyDocument(bool isPatch) {
   std::vector<std::string> const& suffix = _request->suffix();
 
-  if (suffix.size() != 2) {
+  if (suffix.size() > 2) {
     std::string msg("expecting ");
     msg.append(isPatch ? "PATCH" : "PUT");
-    msg.append(" /_api/document/<document-handle>");
+    msg.append(" /_api/document/<collectionname> or /_api/document/<document-handle> or /_api/document and query parameter 'collection'");
 
-    generateError(GeneralResponse::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER, msg);
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, msg);
     return false;
   }
 
-  // split the document reference
-  std::string const& collection = suffix[0];
-  std::string const& key = suffix[1];
+  bool isArrayCase = suffix.size() <= 1;
+
+  std::string collectionName;
+  std::string key;
+
+  if (isArrayCase) {
+    bool found;
+    if (suffix.size() == 1) {
+      collectionName = suffix[0];
+      found = true;
+    } else {
+      collectionName = _request->value("collection", found);
+    }
+    if (!found) {
+      std::string msg("collection must be given in URL path or query parameter 'collection' must be specified");
+      generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, msg);
+      return false;
+    }
+  } else {
+    collectionName = suffix[0];
+    key = suffix[1];
+  }
 
   bool parseSuccess = true;
-  VPackOptions options;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&options, parseSuccess);
+      parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
   if (!parseSuccess) {
     return false;
   }
 
   VPackSlice body = parsedBody->slice();
 
-  if (!body.isObject()) {
-    generateTransactionError(collection,
-                             TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  if ((!isArrayCase && !body.isObject()) ||
+      (isArrayCase && !body.isArray())) {
+    generateTransactionError(collectionName,
+                             TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID, "");
     return false;
   }
 
-  // extract the revision
-  bool isValidRevision;
-  TRI_voc_rid_t const revision =
-      extractRevision("if-match", "rev", isValidRevision);
-  if (!isValidRevision) {
-    generateError(GeneralResponse::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER, "invalid revision number");
-    return false;
+  OperationOptions opOptions;
+  opOptions.ignoreRevs = extractBooleanParameter("ignoreRevs", true);
+  opOptions.waitForSync = extractBooleanParameter("waitForSync", false);
+  opOptions.returnNew = extractBooleanParameter("returnNew", false);
+  opOptions.returnOld = extractBooleanParameter("returnOld", false);
+
+  // extract the revision, if single document variant and header given:
+  std::shared_ptr<VPackBuilder> builder(nullptr);
+  if (!isArrayCase) {
+    TRI_voc_rid_t revision = 0;
+    bool isValidRevision;
+    revision = extractRevision("if-match", nullptr, isValidRevision);
+    if (!isValidRevision) {
+      generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "invalid revision number");
+      return false;
+    }
+    VPackSlice keyInBody = body.get(TRI_VOC_ATTRIBUTE_KEY);
+    if ((revision != 0 && TRI_ExtractRevisionId(body) != revision) ||
+        keyInBody.isNone() ||
+        (keyInBody.isString() && keyInBody.copyString() != key)) {
+      // We need to rewrite the document with the given revision and key:
+      builder = std::make_shared<VPackBuilder>();
+      {
+        VPackObjectBuilder guard(builder.get());
+        TRI_SanitizeObject(body, *builder);
+        builder->add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+        if (revision != 0) {
+          builder->add(TRI_VOC_ATTRIBUTE_REV,
+                       VPackValue(std::to_string(revision)));
+        }
+      }
+      body = builder->slice();
+    }
+    if (revision != 0) {
+      opOptions.ignoreRevs = false;
+    }
   }
-
-  // extract or chose the update policy
-  TRI_doc_update_policy_e const policy = extractUpdatePolicy();
-  bool const waitForSync = extractWaitForSync();
-
-  if (ServerState::instance()->isCoordinator()) {
-    return modifyDocumentCoordinator(collection, key, revision, policy,
-                                     waitForSync, isPatch, body);
-  }
-
-  TRI_doc_mptr_copy_t mptr;
 
   // find and load collection given by name or identifier
-  SingleCollectionWriteTransaction<1> trx(new StandaloneTransactionContext(),
-                                          _vocbase, collection);
+  auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
+  SingleCollectionTransaction trx(transactionContext,
+                                  collectionName, TRI_TRANSACTION_WRITE);
+  if (!isArrayCase) {
+    trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+  }
 
-  // .............................................................................
+  // ...........................................................................
   // inside write transaction
-  // .............................................................................
+  // ...........................................................................
 
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res);
+    generateTransactionError(collectionName, res, "");
     return false;
   }
 
-  TRI_voc_cid_t const cid = trx.cid();
-  // If we are a DBserver, we want to use the cluster-wide collection
-  // name for error reporting:
-  std::string collectionName = collection;
-  if (ServerState::instance()->isDBServer()) {
-    collectionName = trx.resolver()->getCollectionName(cid);
-  }
-
-  TRI_voc_rid_t rid = 0;
-  TRI_document_collection_t* document = trx.documentCollection();
-  TRI_ASSERT(document != nullptr);
-  auto shaper = document->getShaper();  // PROTECTED by trx here
-
-  std::string const&& cidString = StringUtils::itoa(document->_info.planId());
-
-  if (trx.orderDitch(trx.trxCollection()) == nullptr) {
-    generateTransactionError(collectionName, TRI_ERROR_OUT_OF_MEMORY);
-    return false;
-  }
-
+  OperationResult result(TRI_ERROR_NO_ERROR);
   if (isPatch) {
     // patching an existing document
-    bool nullMeansRemove;
-    bool mergeObjects;
-    bool found;
-    std::string const& valueStr1 = _request->value("keepNull", found);
-
-    if (!found || StringUtils::boolean(valueStr1)) {
-      // default: null values are saved as Null
-      nullMeansRemove = false;
-    } else {
-      // delete null attributes
-      nullMeansRemove = true;
-    }
-
-    std::string const& valueStr2 = _request->value("mergeObjects", found);
-
-    if (!found || StringUtils::boolean(valueStr2)) {
-      // the default is true
-      mergeObjects = true;
-    } else {
-      mergeObjects = false;
-    }
-
-    // read the existing document
-    TRI_doc_mptr_copy_t oldDocument;
-
-    // create a write lock that spans the initial read and the update
-    // otherwise the update is not atomic
-    trx.lockWrite();
-
-    // do not lock again
-    res = trx.read(&oldDocument, key);
-    if (res != TRI_ERROR_NO_ERROR) {
-      trx.abort();
-      generateTransactionError(collectionName, res, (TRI_voc_key_t)key.c_str(),
-                               rid);
-      return false;
-    }
-
-    if (oldDocument.getDataPtr() == nullptr) {  // PROTECTED by trx here
-      trx.abort();
-      generateTransactionError(collectionName,
-                               TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
-                               (TRI_voc_key_t)key.c_str(), rid);
-      return false;
-    }
-
-    TRI_shaped_json_t shapedJson;
-    TRI_EXTRACT_SHAPED_JSON_MARKER(
-        shapedJson, oldDocument.getDataPtr());  // PROTECTED by trx here
-    TRI_json_t* old = TRI_JsonShapedJson(shaper, &shapedJson);
-
-    if (old == nullptr) {
-      trx.abort();
-      generateTransactionError(collectionName, TRI_ERROR_OUT_OF_MEMORY);
-      return false;
-    }
-
-    std::unique_ptr<TRI_json_t> json(
-        arangodb::basics::VelocyPackHelper::velocyPackToJson(body));
-    if (ServerState::instance()->isDBServer()) {
-      // compare attributes in shardKeys
-      if (shardKeysChanged(_request->databaseName(), cidString, old, json.get(),
-                           true)) {
-        TRI_FreeJson(shaper->memoryZone(), old);
-
-        trx.abort();
-        generateTransactionError(
-            collectionName,
-            TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
-
-        return false;
-      }
-    }
-
-    TRI_json_t* patchedJson = TRI_MergeJson(
-        TRI_UNKNOWN_MEM_ZONE, old, json.get(), nullMeansRemove, mergeObjects);
-    TRI_FreeJson(shaper->memoryZone(), old);
-
-    if (patchedJson == nullptr) {
-      trx.abort();
-      generateTransactionError(collectionName, TRI_ERROR_OUT_OF_MEMORY);
-
-      return false;
-    }
-
-    // do not acquire an extra lock
-    res = trx.updateDocument(key, &mptr, patchedJson, policy, waitForSync,
-                             revision, &rid);
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, patchedJson);
+    opOptions.keepNull = extractBooleanParameter("keepNull", true);
+    opOptions.mergeObjects = extractBooleanParameter("mergeObjects", true);
+    result = trx.update(collectionName, body, opOptions);
   } else {
-    // replacing an existing document, using a lock
-
-    if (ServerState::instance()->isDBServer()) {
-      // compare attributes in shardKeys
-      // read the existing document
-      TRI_doc_mptr_copy_t oldDocument;
-
-      // do not lock again
-      trx.lockWrite();
-
-      res = trx.read(&oldDocument, key);
-      if (res != TRI_ERROR_NO_ERROR) {
-        trx.abort();
-        generateTransactionError(collectionName, res,
-                                 (TRI_voc_key_t)key.c_str(), rid);
-        return false;
-      }
-
-      if (oldDocument.getDataPtr() == nullptr) {  // PROTECTED by trx here
-        trx.abort();
-        generateTransactionError(collectionName,
-                                 TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
-                                 (TRI_voc_key_t)key.c_str(), rid);
-        return false;
-      }
-
-      TRI_shaped_json_t shapedJson;
-      TRI_EXTRACT_SHAPED_JSON_MARKER(
-          shapedJson, oldDocument.getDataPtr());  // PROTECTED by trx here
-      TRI_json_t* old = TRI_JsonShapedJson(shaper, &shapedJson);
-
-      std::unique_ptr<TRI_json_t> json(
-          arangodb::basics::VelocyPackHelper::velocyPackToJson(body));
-      if (shardKeysChanged(_request->databaseName(), cidString, old, json.get(),
-                           false)) {
-        TRI_FreeJson(shaper->memoryZone(), old);
-
-        trx.abort();
-        generateTransactionError(
-            collectionName,
-            TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
-
-        return false;
-      }
-
-      if (old != nullptr) {
-        TRI_FreeJson(shaper->memoryZone(), old);
-      }
-    }
-
-    std::unique_ptr<TRI_json_t> json(
-        arangodb::basics::VelocyPackHelper::velocyPackToJson(body));
-    res = trx.updateDocument(key, &mptr, json.get(), policy, waitForSync,
-                             revision, &rid);
+    result = trx.replace(collectionName, body, opOptions);
   }
 
-  res = trx.finish(res);
+  res = trx.finish(result.code);
 
-  // .............................................................................
+  // ...........................................................................
   // outside write transaction
-  // .............................................................................
+  // ...........................................................................
+
+  if (result.failed()) {
+    generateTransactionError(result);
+    return false;
+  }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collectionName, res, (TRI_voc_key_t)key.c_str(),
-                             rid);
-
+    generateTransactionError(collectionName, res, key, 0);
     return false;
   }
 
-  generateSaved(trx, cid, mptr);
-
+  generateSaved(result, collectionName, TRI_col_type_e(trx.getCollectionType(collectionName)), transactionContext->getVPackOptions());
   return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief modifies a document, coordinator case in a cluster
-////////////////////////////////////////////////////////////////////////////////
-
-bool RestDocumentHandler::modifyDocumentCoordinator(
-    std::string const& collname, std::string const& key,
-    TRI_voc_rid_t const rev, TRI_doc_update_policy_e policy, bool waitForSync,
-    bool isPatch, VPackSlice const& document) {
-  std::string const& dbname = _request->databaseName();
-  std::unique_ptr<std::map<std::string, std::string>> headers(
-      new std::map<std::string, std::string>(
-          arangodb::getForwardableRequestHeaders(_request)));
-  GeneralResponse::ResponseCode responseCode;
-  std::map<std::string, std::string> resultHeaders;
-  std::string resultBody;
-
-  bool keepNull = true;
-
-  if (_request->value("keepNull") == "false") {
-    keepNull = false;
-  }
-
-  bool mergeObjects = true;
-
-  if (_request->value("mergeObjects") == "false") {
-    mergeObjects = false;
-  }
-
-  int error = arangodb::modifyDocumentOnCoordinator(
-      dbname, collname, key, rev, policy, waitForSync, isPatch, keepNull,
-      mergeObjects, document, headers, responseCode, resultHeaders, resultBody);
-
-  if (error != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collname, error);
-    return false;
-  }
-
-  // Essentially return the response we got from the DBserver, be it
-  // OK or an error:
-  createResponse(responseCode);
-  arangodb::mergeResponseHeaders(_response, resultHeaders);
-  _response->body().appendText(resultBody.c_str(), resultBody.size());
-  return responseCode >= GeneralResponse::ResponseCode::BAD;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -844,115 +510,153 @@ bool RestDocumentHandler::modifyDocumentCoordinator(
 bool RestDocumentHandler::deleteDocument() {
   std::vector<std::string> const& suffix = _request->suffix();
 
-  if (suffix.size() != 2) {
-    generateError(GeneralResponse::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expecting DELETE /_api/document/<document-handle>");
+  if (suffix.size() < 1 || suffix.size() > 2) {
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expecting DELETE /_api/document/<document-handle> or "
+                  "/_api/document/<collection> with a BODY");
     return false;
   }
 
   // split the document reference
-  std::string const& collection = suffix[0];
-  std::string const& key = suffix[1];
-
-  // extract the revision
-  bool isValidRevision;
-  TRI_voc_rid_t const revision =
-      extractRevision("if-match", "rev", isValidRevision);
-  if (!isValidRevision) {
-    generateError(GeneralResponse::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER, "invalid revision number");
-    return false;
+  std::string const& collectionName = suffix[0];
+  std::string key;
+  if (suffix.size() == 2) {
+    key = suffix[1];
   }
 
-  // extract or choose the update policy
-  TRI_doc_update_policy_e const policy = extractUpdatePolicy();
-  bool const waitForSync = extractWaitForSync();
-
-  if (policy == TRI_DOC_UPDATE_ILLEGAL) {
-    generateError(GeneralResponse::ResponseCode::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "policy must be 'error' or 'last'");
-    return false;
+  // extract the revision if single document case
+  TRI_voc_rid_t revision = 0;
+  if (suffix.size() == 2) {
+    bool isValidRevision = false;
+    revision = extractRevision("if-match", nullptr, isValidRevision);
+    if (!isValidRevision) {
+      generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "invalid revision number");
+      return false;
+    }
   }
 
-  if (ServerState::instance()->isCoordinator()) {
-    return deleteDocumentCoordinator(collection, key, revision, policy,
-                                     waitForSync);
+  OperationOptions opOptions;
+  opOptions.returnOld = extractBooleanParameter("returnOld", false);
+  opOptions.ignoreRevs = extractBooleanParameter("ignoreRevs", false);
+
+  auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
+  SingleCollectionTransaction trx(transactionContext,
+                                  collectionName, TRI_TRANSACTION_WRITE);
+  if (suffix.size() == 2) {
+    trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
   }
 
-  SingleCollectionWriteTransaction<1> trx(new StandaloneTransactionContext(),
-                                          _vocbase, collection);
-
-  // .............................................................................
+  // ...........................................................................
   // inside write transaction
-  // .............................................................................
+  // ...........................................................................
 
   int res = trx.begin();
+
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res);
+    generateTransactionError(collectionName, res, "");
     return false;
   }
 
-  TRI_voc_cid_t const cid = trx.cid();
-  // If we are a DBserver, we want to use the cluster-wide collection
-  // name for error reporting:
-  std::string collectionName = collection;
-  if (ServerState::instance()->isDBServer()) {
-    collectionName = trx.resolver()->getCollectionName(cid);
-  }
+  VPackBuilder builder;
+  VPackSlice search;
+  std::shared_ptr<VPackBuilder> builderPtr;
 
-  TRI_voc_rid_t rid = 0;
-  res = trx.deleteDocument(key, policy, waitForSync, revision, &rid);
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    res = trx.commit();
+  if (suffix.size() == 2) {
+    {
+      VPackObjectBuilder guard(&builder);
+      builder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+      if (revision != 0) {
+        builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(std::to_string(revision)));
+      }
+    }
+    search = builder.slice();
   } else {
-    trx.abort();
+    try {
+      TRI_ASSERT(_request != nullptr);
+      builderPtr = _request->toVelocyPack(transactionContext->getVPackOptions());
+    } catch (...) {
+      // If an error occurs here the body is not parsable. Fail with bad parameter
+      generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "Request body not parseable");
+      return false;
+    }
+    search = builderPtr->slice();
   }
 
-  // .............................................................................
-  // outside write transaction
-  // .............................................................................
+  OperationResult result = trx.remove(collectionName, search, opOptions);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collectionName, res, (TRI_voc_key_t)key.c_str(),
-                             rid);
+  res = trx.finish(result.code);
+
+  if (!result.successful()) {
+    generateTransactionError(result);
     return false;
   }
 
-  generateDeleted(trx, cid, (TRI_voc_key_t)key.c_str(), rid);
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collectionName, res, key);
+    return false;
+  }
 
+  generateDeleted(result, collectionName,
+                  TRI_col_type_e(trx.getCollectionType(collectionName)),
+                  transactionContext->getVPackOptions());
   return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes a document, coordinator case in a cluster
+/// @brief was docuBlock REST_DOCUMENT_READ_MANY
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::deleteDocumentCoordinator(
-    std::string const& collname, std::string const& key,
-    TRI_voc_rid_t const rev, TRI_doc_update_policy_e policy, bool waitForSync) {
-  std::string const& dbname = _request->databaseName();
-  GeneralResponse::ResponseCode responseCode;
-  std::unique_ptr<std::map<std::string, std::string>> headers(
-      new std::map<std::string, std::string>(
-          arangodb::getForwardableRequestHeaders(_request)));
-  std::map<std::string, std::string> resultHeaders;
-  std::string resultBody;
+bool RestDocumentHandler::readManyDocuments() {
+  std::vector<std::string> const& suffix = _request->suffix();
 
-  int error = arangodb::deleteDocumentOnCoordinator(
-      dbname, collname, key, rev, policy, waitForSync, headers, responseCode,
-      resultHeaders, resultBody);
-
-  if (error != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collname, error);
+  if (suffix.size() != 1) {
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expecting PUT /_api/document/<collection> with a BODY");
     return false;
   }
-  // Essentially return the response we got from the DBserver, be it
-  // OK or an error:
-  createResponse(responseCode);
-  arangodb::mergeResponseHeaders(_response, resultHeaders);
-  _response->body().appendText(resultBody.c_str(), resultBody.size());
-  return responseCode >= GeneralResponse::ResponseCode::BAD;
+
+  // split the document reference
+  std::string const& collectionName = suffix[0];
+
+  OperationOptions opOptions;
+  opOptions.ignoreRevs = extractBooleanParameter("ignoreRevs", false);
+
+  auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
+  SingleCollectionTransaction trx(transactionContext,
+                                  collectionName, TRI_TRANSACTION_READ);
+
+  // ...........................................................................
+  // inside read transaction
+  // ...........................................................................
+
+  int res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collectionName, res, "");
+    return false;
+  }
+
+  TRI_ASSERT(_request != nullptr);
+  auto builderPtr = _request->toVelocyPack(transactionContext->getVPackOptions());
+  VPackSlice search = builderPtr->slice();
+
+  OperationResult result = trx.document(collectionName, search, opOptions);
+
+  res = trx.finish(result.code);
+
+  if (!result.successful()) {
+    generateTransactionError(result);
+    return false;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collectionName, res, "");
+    return false;
+  }
+
+  generateDocument(result.slice(), true,
+                   transactionContext->getVPackOptions());
+  return true;
 }
+

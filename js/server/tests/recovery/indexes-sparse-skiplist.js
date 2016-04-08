@@ -93,7 +93,7 @@ function recoverySuite () {
       assertTrue(idx.sparse);
       assertEqual([ "value" ], idx.fields);
       for (i = 0; i < 1000; ++i) {
-        assertEqual(1, c.byExampleSkiplist(idx.id, { value: i }).toArray().length);
+        assertEqual(1, c.byExample({ value: i }).toArray().length);
       }
 
       c = db._collection("UnitTestsRecovery2");
@@ -102,7 +102,7 @@ function recoverySuite () {
       assertTrue(idx.sparse);
       assertEqual([ "a.value" ], idx.fields);
       for (i = 0; i < 1000; ++i) {
-        assertEqual(1, c.byExampleSkiplist(idx.id, { "a.value" : i }).toArray().length);
+        assertEqual(1, c.byExample({ "a.value" : i }).toArray().length);
       }
 
       c = db._collection("UnitTestsRecovery3");
@@ -110,10 +110,10 @@ function recoverySuite () {
       assertFalse(idx.unique);
       assertTrue(idx.sparse);
       assertEqual([ "a", "b" ], idx.fields);
-      assertEqual(250, c.byExampleSkiplist(idx.id, { a: 1, b: 1 }).toArray().length);
-      assertEqual(250, c.byExampleSkiplist(idx.id, { a: 1, b: 2 }).toArray().length);
-      assertEqual(250, c.byExampleSkiplist(idx.id, { a: 2, b: 1 }).toArray().length);
-      assertEqual(250, c.byExampleSkiplist(idx.id, { a: 2, b: 2 }).toArray().length);
+      assertEqual(250, c.byExample({ a: 1, b: 1 }).toArray().length);
+      assertEqual(250, c.byExample({ a: 1, b: 2 }).toArray().length);
+      assertEqual(250, c.byExample({ a: 2, b: 1 }).toArray().length);
+      assertEqual(250, c.byExample({ a: 2, b: 2 }).toArray().length);
     }
         
   };

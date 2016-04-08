@@ -21,21 +21,190 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/VelocyPackHelper.h"
+#include "VelocyPackHelper.h"
 #include "Basics/conversions.h"
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
 #include "Basics/files.h"
+#include "Basics/hashes.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VPackStringBufferAdapter.h"
 
+#include <velocypack/AttributeTranslator.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Dumper.h>
+#include <velocypack/Options.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
+
+static std::unique_ptr<VPackAttributeTranslator> Translator;
+static std::unique_ptr<VPackAttributeExcludeHandler> ExcludeHandler;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief "constant" global object for NULL which can be shared by all
+/// expressions but must never be freed
+////////////////////////////////////////////////////////////////////////////////
+
+static VPackBuilder NullBuilder; 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief "constant" global object for TRUE which can be shared by all
+/// expressions but must never be freed
+////////////////////////////////////////////////////////////////////////////////
+
+static VPackBuilder TrueBuilder;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief "constant" global object for FALSE which can be shared by all
+/// expressions but must never be freed
+////////////////////////////////////////////////////////////////////////////////
+
+static VPackBuilder FalseBuilder;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief "constant" global object for empty ARRAYs which can be shared by all
+/// expressions but must never be freed
+////////////////////////////////////////////////////////////////////////////////
+
+static VPackBuilder EmptyArrayBuilder;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief "constant" global object for empty OBJECTs which can be shared by all
+/// expressions but must never be freed
+////////////////////////////////////////////////////////////////////////////////
+
+static VPackBuilder EmptyObjectBuilder;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief "constant" global object for illegal slices
+///        Are used in Array Indexes to distinguish NULL and not existent.
+////////////////////////////////////////////////////////////////////////////////
+
+static VPackBuilder IllegalBuilder; 
+
+
+// attribute exclude handler for skipping over system attributes
+struct SystemAttributeExcludeHandler : public VPackAttributeExcludeHandler {
+  bool shouldExclude(VPackSlice const& key, int nesting) override final {
+    VPackValueLength keyLength;
+    char const* p = key.getString(keyLength);
+
+    if (p == nullptr || *p != '_' || keyLength < 3 || keyLength > 5 || nesting > 0) {
+      // keep attribute
+      return true;
+    }
+
+    // exclude these attributes (but not _key!)
+    if ((keyLength == 3 && memcmp(p, "_id", keyLength) == 0) ||
+        (keyLength == 4 && memcmp(p, "_rev", keyLength) == 0) ||
+        (keyLength == 3 && memcmp(p, "_to", keyLength) == 0) ||
+        (keyLength == 5 && memcmp(p, "_from", keyLength) == 0)) {
+      return true;
+    }
+
+    // keep attribute
+    return false;
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief static initializer for all VPack values
+////////////////////////////////////////////////////////////////////////////////
+  
+void VelocyPackHelper::initialize() {
+  LOG(TRACE) << "initializing vpack";
+
+  // initialize attribute translator
+  Translator.reset(new VPackAttributeTranslator);
+
+  // these attribute names will be translated into short integer values
+  Translator->add("_key", 1);
+  Translator->add("_rev", 2);
+  Translator->add("_id", 3);
+  Translator->add("_from", 4);
+  Translator->add("_to", 5);
+
+  Translator->seal();
+
+  // set the attribute translator in the global options
+  VPackOptions::Defaults.attributeTranslator = Translator.get();
+  VPackSlice::attributeTranslator = Translator.get();
+  
+  // initialize exclude handler for system attributes
+  ExcludeHandler.reset(new SystemAttributeExcludeHandler);
+
+  // Null value
+  NullBuilder.add(VPackValue(VPackValueType::Null));
+  // True value
+  TrueBuilder.add(VPackValue(true));
+  // False value
+  FalseBuilder.add(VPackValue(false));
+  // Array value (empty)
+  EmptyArrayBuilder.openArray();
+  EmptyArrayBuilder.close();
+  // Object value (empty)
+  EmptyObjectBuilder.openObject();
+  EmptyObjectBuilder.close();
+
+  // Illegal value
+  IllegalBuilder.add(VPackValue(VPackValueType::MinKey));
+}
+  
+void VelocyPackHelper::disableAssemblerFunctions() {
+  arangodb::velocypack::disableAssemblerFunctions();
+}
+
+arangodb::velocypack::Slice VelocyPackHelper::NullValue() {
+  return NullBuilder.slice(); 
+}
+
+arangodb::velocypack::Slice VelocyPackHelper::TrueValue() {
+  return TrueBuilder.slice(); 
+}
+
+arangodb::velocypack::Slice VelocyPackHelper::FalseValue() {
+  return FalseBuilder.slice(); 
+}
+
+arangodb::velocypack::Slice VelocyPackHelper::BooleanValue(bool value) {
+  if (value) {
+    return TrueBuilder.slice();
+  }
+  return FalseBuilder.slice(); 
+}
+
+arangodb::velocypack::Slice VelocyPackHelper::EmptyArrayValue() {
+  return EmptyArrayBuilder.slice(); 
+}
+
+arangodb::velocypack::Slice VelocyPackHelper::EmptyObjectValue() {
+  return EmptyObjectBuilder.slice(); 
+}
+
+arangodb::velocypack::Slice VelocyPackHelper::IllegalValue() {
+  return IllegalBuilder.slice(); 
+}
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the (global) attribute exclude handler instance
+////////////////////////////////////////////////////////////////////////////////
+
+arangodb::velocypack::AttributeExcludeHandler* VelocyPackHelper::getExcludeHandler() {
+  return ExcludeHandler.get();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the (global) attribute translator instance
+////////////////////////////////////////////////////////////////////////////////
+
+arangodb::velocypack::AttributeTranslator* VelocyPackHelper::getTranslator() {
+  return Translator.get();
+}
+
 
 bool VelocyPackHelper::AttributeSorter::operator()(std::string const& l,
                                                    std::string const& r) const {
@@ -43,7 +212,7 @@ bool VelocyPackHelper::AttributeSorter::operator()(std::string const& l,
 }
 
 size_t VelocyPackHelper::VPackHash::operator()(VPackSlice const& slice) const {
-  return slice.hash();
+  return slice.normalizedHash();
 };
 
 bool VelocyPackHelper::VPackEqual::operator()(VPackSlice const& lhs, VPackSlice const& rhs) const {
@@ -52,6 +221,11 @@ bool VelocyPackHelper::VPackEqual::operator()(VPackSlice const& lhs, VPackSlice 
 
 static int TypeWeight(VPackSlice const& slice) {
   switch (slice.type()) {
+    case VPackValueType::MinKey:
+      return -1;
+    case VPackValueType::None:
+    case VPackValueType::Null:
+      return 0;
     case VPackValueType::Bool:
       return 1;
     case VPackValueType::Double:
@@ -60,6 +234,8 @@ static int TypeWeight(VPackSlice const& slice) {
     case VPackValueType::SmallInt:
       return 2;
     case VPackValueType::String:
+    case VPackValueType::Custom:
+      // custom type is used for id
       return 3;
     case VPackValueType::Array:
       return 4;
@@ -130,9 +306,12 @@ std::string VelocyPackHelper::getStringValue(VPackSlice const& slice,
 /// or it is not a string
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string VelocyPackHelper::getStringValue(VPackSlice const& slice,
+std::string VelocyPackHelper::getStringValue(VPackSlice slice,
                                              char const* name,
                                              std::string const& defaultValue) {
+  if (slice.isExternal()) {
+    slice = VPackSlice(slice.getExternal());
+  }
   TRI_ASSERT(slice.isObject());
   if (!slice.hasKey(name)) {
     return defaultValue;
@@ -154,8 +333,8 @@ uint64_t VelocyPackHelper::stringUInt64(VPackSlice const& slice) {
   return 0;
 }
 
-TRI_json_t* VelocyPackHelper::velocyPackToJson(VPackSlice const& slice) {
-  return JsonHelper::fromString(slice.toJson());
+TRI_json_t* VelocyPackHelper::velocyPackToJson(VPackSlice const& slice, VPackOptions const* options) {
+  return JsonHelper::fromString(slice.toJson(options));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -179,7 +358,7 @@ std::shared_ptr<VPackBuilder> VelocyPackHelper::velocyPackFromFile(
       throw;
     }
   }
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
 }
 
 static bool PrintVelocyPack(int fd, VPackSlice const& slice,
@@ -238,24 +417,19 @@ static bool PrintVelocyPack(int fd, VPackSlice const& slice,
 bool VelocyPackHelper::velocyPackToFile(char const* filename,
                                         VPackSlice const& slice,
                                         bool syncFile) {
-  char* tmp = TRI_Concatenate2String(filename, ".tmp");
-
-  if (tmp == nullptr) {
-    return false;
-  }
+  std::string const tmp = std::string(filename) + ".tmp";
 
   // remove a potentially existing temporary file
-  if (TRI_ExistsFile(tmp)) {
-    TRI_UnlinkFile(tmp);
+  if (TRI_ExistsFile(tmp.c_str())) {
+    TRI_UnlinkFile(tmp.c_str());
   }
 
-  int fd = TRI_CREATE(tmp, O_CREAT | O_TRUNC | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
+  int fd = TRI_CREATE(tmp.c_str(), O_CREAT | O_TRUNC | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
                       S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 
   if (fd < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     LOG(ERR) << "cannot create json file '" << tmp << "': " << TRI_LAST_ERROR_STR;
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
     return false;
   }
 
@@ -263,8 +437,7 @@ bool VelocyPackHelper::velocyPackToFile(char const* filename,
     TRI_CLOSE(fd);
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     LOG(ERR) << "cannot write to json file '" << tmp << "': " << TRI_LAST_ERROR_STR;
-    TRI_UnlinkFile(tmp);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
+    TRI_UnlinkFile(tmp.c_str());
     return false;
   }
 
@@ -275,8 +448,7 @@ bool VelocyPackHelper::velocyPackToFile(char const* filename,
       TRI_CLOSE(fd);
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
       LOG(ERR) << "cannot sync saved json '" << tmp << "': " << TRI_LAST_ERROR_STR;
-      TRI_UnlinkFile(tmp);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
+      TRI_UnlinkFile(tmp.c_str());
       return false;
     }
   }
@@ -286,29 +458,26 @@ bool VelocyPackHelper::velocyPackToFile(char const* filename,
   if (res < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     LOG(ERR) << "cannot close saved file '" << tmp << "': " << TRI_LAST_ERROR_STR;
-    TRI_UnlinkFile(tmp);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
+    TRI_UnlinkFile(tmp.c_str());
     return false;
   }
 
-  res = TRI_RenameFile(tmp, filename);
+  res = TRI_RenameFile(tmp.c_str(), filename);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
     LOG(ERR) << "cannot rename saved file '" << tmp << "' to '" << filename << "': " << TRI_LAST_ERROR_STR;
-    TRI_UnlinkFile(tmp);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
+    TRI_UnlinkFile(tmp.c_str());
 
     return false;
   }
-
-  TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
 
   return true;
 }
 
 int VelocyPackHelper::compare(VPackSlice const& lhs, VPackSlice const& rhs,
-                              bool useUTF8) {
+                              bool useUTF8, VPackOptions const* options,
+                              VPackSlice const* lhsBase, VPackSlice const* rhsBase) {
   {
     int lWeight = TypeWeight(lhs);
     int rWeight = TypeWeight(rhs);
@@ -335,6 +504,8 @@ int VelocyPackHelper::compare(VPackSlice const& lhs, VPackSlice const& rhs,
   }
 
   switch (lhs.type()) {
+    case VPackValueType::MinKey:
+      return 0; // illegal is illegal
     case VPackValueType::None:
     case VPackValueType::Null:
       return 0;  // null == null;
@@ -363,12 +534,41 @@ int VelocyPackHelper::compare(VPackSlice const& lhs, VPackSlice const& rhs,
       }
       return 1;
     }
+    case VPackValueType::Custom: 
     case VPackValueType::String: {
-      int res;
+      std::string lhsString;
       VPackValueLength nl;
+      char const* left;
+      if (lhs.isCustom()) {
+        if (lhsBase == nullptr || options == nullptr || options->customTypeHandler == nullptr) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         "Could not extract custom attribute.");
+        }
+        lhsString.assign(options->customTypeHandler->toString(lhs, options, *lhsBase));
+        left = lhsString.c_str();
+        nl = lhsString.size();
+      } else {
+        left = lhs.getString(nl);
+      }
+      TRI_ASSERT(left != nullptr);
+     
+      std::string rhsString; 
       VPackValueLength nr;
-      char const* left = lhs.getString(nl);
-      char const* right = rhs.getString(nr);
+      char const* right;
+      if (rhs.isCustom()) {
+        if (rhsBase == nullptr || options == nullptr || options->customTypeHandler == nullptr) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         "Could not extract custom attribute.");
+        }
+        rhsString.assign(options->customTypeHandler->toString(rhs, options, *rhsBase));
+        right = rhsString.c_str();
+        nr = rhsString.size();
+      } else {
+        right = rhs.getString(nr);
+      }
+      TRI_ASSERT(right != nullptr);
+
+      int res;
       if (useUTF8) {
         res = TRI_compare_utf8(left, nl, right, nr);
       } else {
@@ -377,7 +577,8 @@ int VelocyPackHelper::compare(VPackSlice const& lhs, VPackSlice const& rhs,
       }
       if (res < 0) {
         return -1;
-      } else if (res > 0) {
+      }
+      if (res > 0) {
         return 1;
       }
       // res == 0
@@ -401,7 +602,7 @@ int VelocyPackHelper::compare(VPackSlice const& lhs, VPackSlice const& rhs,
           rhsValue = rhs.at(i);
         }
 
-        int result = compare(lhsValue, rhsValue, useUTF8);
+        int result = compare(lhsValue, rhsValue, useUTF8, options, &lhs, &rhs);
         if (result != 0) {
           return result;
         }
@@ -422,7 +623,7 @@ int VelocyPackHelper::compare(VPackSlice const& lhs, VPackSlice const& rhs,
           rhsValue = rhs.get(key);
         }
 
-        int result = compare(lhsValue, rhsValue, useUTF8);
+        int result = compare(lhsValue, rhsValue, useUTF8, options, &lhs, &rhs);
         if (result != 0) {
           return result;
         }
@@ -459,9 +660,8 @@ double VelocyPackHelper::toDouble(VPackSlice const& slice, bool& failed) {
     case VPackValueType::UInt:
     case VPackValueType::SmallInt:
       return slice.getNumericValue<double>();
-    case VPackValueType::String:
-    {
-      std::string tmp = slice.copyString();
+    case VPackValueType::String: {
+      std::string tmp(slice.copyString());
       try {
         // try converting string to number
         return std::stod(tmp);
@@ -473,8 +673,7 @@ double VelocyPackHelper::toDouble(VPackSlice const& slice, bool& failed) {
       }
       break;
     }
-    case VPackValueType::Array:
-    {
+    case VPackValueType::Array: {
       VPackValueLength const n = slice.length();
 
       if (n == 0) {
@@ -499,6 +698,27 @@ double VelocyPackHelper::toDouble(VPackSlice const& slice, bool& failed) {
   return 0.0;
 }
 
+uint64_t VelocyPackHelper::hashByAttributes(
+    VPackSlice slice, std::vector<std::string> const& attributes,
+    bool docComplete, int& error) {
+  error = TRI_ERROR_NO_ERROR;
+  uint64_t hash = TRI_FnvHashBlockInitial();
+  if (slice.isObject()) {
+    for (auto const& attr: attributes) {
+      VPackSlice sub = slice.get(attr);
+      if (sub.isNone()) {
+        if (!docComplete) {
+          error = TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN;
+        } 
+        // Null is equal to None/not present
+        sub = NullBuilder.slice();
+      } 
+      hash = sub.normalizedHash(hash);
+    }
+  }
+  return hash;
+}
+
 arangodb::LoggerStream& operator<< (arangodb::LoggerStream& logger,
   VPackSlice const& slice) {
   size_t const cutoff = 100;
@@ -506,8 +726,7 @@ arangodb::LoggerStream& operator<< (arangodb::LoggerStream& logger,
   bool longer = sliceStr.size() > cutoff;
   if (longer) {
     logger << sliceStr.substr(cutoff) << "...";
-  }
-  else {
+  } else {
     logger << sliceStr;
   }
   return logger;

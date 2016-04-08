@@ -174,7 +174,12 @@ var waitForResult = function (config, id) {
     
   while (true) {
     const jobResult = db._connection.PUT("/_api/job/" + encodeURIComponent(id), "");
+    try {
     arangosh.checkRequestResult(jobResult);
+    }
+    catch (err) {
+      throw err;
+    }
 
     if (jobResult.code !== 204) {
       return jobResult;

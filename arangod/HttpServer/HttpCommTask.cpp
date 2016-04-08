@@ -344,6 +344,8 @@ bool HttpCommTask::processRead() {
           TRI_invalidatesocket(&_commSocket);
 
           // might delete this
+          // note that as we closed the socket above, the response will not make it to
+          // the client! will result in a "Empty reply from server" error in curl etc.
           handleResponse(&response);
 
           return false;
@@ -531,7 +533,7 @@ bool HttpCommTask::processRead() {
     static std::string const wwwAuthenticate = "www-authenticate";
 
     if (sendWwwAuthenticateHeader()) {
-      std::string const realm =
+      static std::string const realm =
           "basic realm=\"" +
           _server->handlerFactory()->authenticationRealm(_request) + "\"";
 
@@ -772,7 +774,7 @@ void HttpCommTask::fillWriteBuffer() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpCommTask::processCorsOptions(uint32_t compatibility) {
-  std::string const allowedMethods = "DELETE, GET, HEAD, PATCH, POST, PUT";
+  static std::string const allowedMethods = "DELETE, GET, HEAD, PATCH, POST, PUT";
 
   HttpResponse response(GeneralResponse::ResponseCode::OK, compatibility);
 

@@ -25,31 +25,70 @@
 #define ARANGOD_UTILS_TRANSACTION_H 1
 
 #include "Basics/Common.h"
-#include "Basics/AssocUnique.h"
 #include "Basics/Exceptions.h"
-#include "Basics/tri-strings.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Cluster/ServerState.h"
-#include "Utils/CollectionNameResolver.h"
-#include "Utils/DocumentHelper.h"
-#include "Utils/TransactionContext.h"
-#include "VocBase/collection.h"
-#include "VocBase/Ditch.h"
-#include "VocBase/document-collection.h"
-#include "VocBase/edge-collection.h"
-#include "VocBase/headers.h"
+#include "Utils/OperationOptions.h"
+#include "Utils/OperationResult.h"
 #include "VocBase/transaction.h"
-#include "VocBase/update-policy.h"
 #include "VocBase/vocbase.h"
-#include "VocBase/VocShaper.h"
 #include "VocBase/voc-types.h"
 
-#include <velocypack/Options.h>
+#include <velocypack/Slice.h>
+
+#define TRI_DEFAULT_BATCH_SIZE 1000
 
 namespace arangodb {
 
+namespace basics {
+struct AttributeName;
+}
+
+namespace velocypack {
+class Builder;
+}
+
+class Index;
+
+namespace aql {
+class Ast;
+struct AstNode;
+class SortCondition;
+struct Variable;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief forward declarations
+//////////////////////////////////////////////////////////////////////////////
+
+class CollectionNameResolver;
+class DocumentDitch;
+struct OperationCursor;
+class TransactionContext;
+
 class Transaction {
-  using VPackOptions = arangodb::velocypack::Options;
+ public:
+
+  class IndexHandle {
+    friend class Transaction;
+    std::shared_ptr<arangodb::Index> _index;
+   public:
+    IndexHandle() {
+    }
+    void toVelocyPack(arangodb::velocypack::Builder& builder,
+                      bool withFigures) const;
+    bool operator==(IndexHandle const& other) const {
+      return other._index.get() == _index.get();
+    }
+    bool operator!=(IndexHandle const& other) const {
+      return other._index.get() != _index.get();
+    }
+    explicit IndexHandle(std::shared_ptr<arangodb::Index> idx) : _index(idx) {
+    }
+   private:
+    std::shared_ptr<arangodb::Index> getIndex() const;
+  };
+
+  using VPackBuilder = arangodb::velocypack::Builder;
+  using VPackSlice = arangodb::velocypack::Slice;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Transaction
@@ -60,60 +99,35 @@ class Transaction {
   Transaction(Transaction const&) = delete;
   Transaction& operator=(Transaction const&) = delete;
 
- public:
+ protected:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  Transaction(TransactionContext* transactionContext, TRI_vocbase_t* vocbase,
-              TRI_voc_tid_t externalId)
-      : _externalId(externalId),
-        _setupState(TRI_ERROR_NO_ERROR),
-        _nestingLevel(0),
-        _errorData(),
-        _hints(0),
-        _timeout(0.0),
-        _waitForSync(false),
-        _allowImplicitCollections(true),
-        _isReal(true),
-        _trx(nullptr),
-        _vocbase(vocbase),
-        _transactionContext(transactionContext) {
-    TRI_ASSERT(_vocbase != nullptr);
-    TRI_ASSERT(_transactionContext != nullptr);
+  Transaction(std::shared_ptr<TransactionContext> transactionContext, 
+              TRI_voc_tid_t externalId);
 
-    if (ServerState::instance()->isCoordinator()) {
-      _isReal = false;
-    }
-
-    this->setupTransaction();
-  }
+ public:
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroy the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual ~Transaction() {
-    if (_trx == nullptr) {
-      return;
-    }
-
-    if (isEmbeddedTransaction()) {
-      _trx->_nestingLevel--;
-    } else {
-      if (getStatus() == TRI_TRANSACTION_RUNNING) {
-        // auto abort a running transaction
-        this->abort();
-      }
-
-      // free the data associated with the transaction
-      freeTransaction();
-    }
-
-    delete _transactionContext;
-  }
+  virtual ~Transaction();
 
  public:
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Type of cursor
+  //////////////////////////////////////////////////////////////////////////////
+
+  enum class CursorType {
+    ALL = 0,
+    ANY,
+    INDEX
+  };
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return database of transaction
   //////////////////////////////////////////////////////////////////////////////
@@ -125,6 +139,14 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   inline TRI_transaction_t* getInternals() const { return _trx; }
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return a pointer to the transaction context
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::shared_ptr<TransactionContext> transactionContext() const {
+    return _transactionContext;
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add a transaction hint
@@ -160,56 +182,27 @@ class Transaction {
   /// @brief return the names of all collections used in the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<std::string> collectionNames() {
-    std::vector<std::string> result;
-
-    for (size_t i = 0; i < _trx->_collections._length; ++i) {
-      auto trxCollection = static_cast<TRI_transaction_collection_t*>(
-          TRI_AtVectorPointer(&_trx->_collections, i));
-
-      if (trxCollection->_collection != nullptr) {
-        result.emplace_back(trxCollection->_collection->_name);
-      }
-    }
-
-    return result;
-  }
+  std::vector<std::string> collectionNames() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the collection name resolver
   //////////////////////////////////////////////////////////////////////////////
 
-  CollectionNameResolver const* resolver() const {
-    CollectionNameResolver const* r = this->_transactionContext->getResolver();
-    TRI_ASSERT(r != nullptr);
-    return r;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the vpack options
-  //////////////////////////////////////////////////////////////////////////////
-
-  VPackOptions const* vpackOptions() const {
-    VPackOptions const* o = this->_transactionContext->getVPackOptions();
-    TRI_ASSERT(o != nullptr);
-    return o;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return a copy of the vpack options
-  //////////////////////////////////////////////////////////////////////////////
-
-  VPackOptions copyVPackOptions() const {
-    VPackOptions const* o = this->_transactionContext->getVPackOptions();
-    TRI_ASSERT(o != nullptr);
-    return *o;
-  }
+  CollectionNameResolver const* resolver() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the transaction is embedded
   //////////////////////////////////////////////////////////////////////////////
 
   inline bool isEmbeddedTransaction() const { return (_nestingLevel > 0); }
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the transaction consists of a single operation only
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool isSingleOperationTransaction() const {
+    return TRI_IsSingleOperationTransaction(this->getInternals());
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the status of the transaction
@@ -226,450 +219,433 @@ class Transaction {
   int nestingLevel() const { return _nestingLevel; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief opens the declared collections of the transaction
-  //////////////////////////////////////////////////////////////////////////////
-
-  int openCollections() {
-    if (_trx == nullptr) {
-      return TRI_ERROR_TRANSACTION_INTERNAL;
-    }
-
-    if (_setupState != TRI_ERROR_NO_ERROR) {
-      return _setupState;
-    }
-
-    if (!_isReal) {
-      return TRI_ERROR_NO_ERROR;
-    }
-
-    int res = TRI_EnsureCollectionsTransaction(_trx, _nestingLevel);
-
-    return res;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief begin the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  int begin() {
-    if (_trx == nullptr) {
-      return TRI_ERROR_TRANSACTION_INTERNAL;
-    }
-
-    if (_setupState != TRI_ERROR_NO_ERROR) {
-      return _setupState;
-    }
-
-    if (!_isReal) {
-      if (_nestingLevel == 0) {
-        _trx->_status = TRI_TRANSACTION_RUNNING;
-      }
-      return TRI_ERROR_NO_ERROR;
-    }
-
-    int res = TRI_BeginTransaction(_trx, _hints, _nestingLevel);
-
-    return res;
-  }
+  int begin();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief commit / finish the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  int commit() {
-    if (_trx == nullptr || getStatus() != TRI_TRANSACTION_RUNNING) {
-      // transaction not created or not running
-      return TRI_ERROR_TRANSACTION_INTERNAL;
-    }
-
-    if (!_isReal) {
-      if (_nestingLevel == 0) {
-        _trx->_status = TRI_TRANSACTION_COMMITTED;
-      }
-      return TRI_ERROR_NO_ERROR;
-    }
-
-    int res = TRI_CommitTransaction(_trx, _nestingLevel);
-
-    return res;
-  }
+  int commit();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief abort the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  int abort() {
-    if (_trx == nullptr || getStatus() != TRI_TRANSACTION_RUNNING) {
-      // transaction not created or not running
-      return TRI_ERROR_TRANSACTION_INTERNAL;
-    }
-
-    if (!_isReal) {
-      if (_nestingLevel == 0) {
-        _trx->_status = TRI_TRANSACTION_ABORTED;
-      }
-
-      return TRI_ERROR_NO_ERROR;
-    }
-
-    int res = TRI_AbortTransaction(_trx, _nestingLevel);
-
-    return res;
-  }
+  int abort();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief finish a transaction (commit or abort), based on the previous state
   //////////////////////////////////////////////////////////////////////////////
 
-  int finish(int errorNum) {
-    int res;
-
-    if (errorNum == TRI_ERROR_NO_ERROR) {
-      // there was no previous error, so we'll commit
-      res = this->commit();
-    } else {
-      // there was a previous error, so we'll abort
-      this->abort();
-
-      // return original error number
-      res = errorNum;
-    }
-
-    return res;
-  }
+  int finish(int errorNum);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the transaction collection for a document collection
+  /// @brief return a collection name
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_transaction_collection_t* trxCollection(TRI_voc_cid_t cid) {
-    TRI_ASSERT(_trx != nullptr);
-    TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
-
-    return TRI_GetCollectionTransaction(_trx, cid, TRI_TRANSACTION_READ);
+  std::string name(TRI_voc_cid_t cid) const {
+    auto c = trxCollection(cid);
+    TRI_ASSERT(c != nullptr);
+    return c->_collection->_name;
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief order a ditch for a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::DocumentDitch* orderDitch(
-      TRI_transaction_collection_t* trxCollection) {
-    TRI_ASSERT(_trx != nullptr);
-    TRI_ASSERT(trxCollection != nullptr);
-    TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING ||
-               getStatus() == TRI_TRANSACTION_CREATED);
-    TRI_ASSERT(trxCollection->_collection != nullptr);
+  arangodb::DocumentDitch* orderDitch(TRI_voc_cid_t);
 
-    TRI_document_collection_t* document =
-        trxCollection->_collection->_collection;
-    TRI_ASSERT(document != nullptr);
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief extract the _key attribute from a slice
+  //////////////////////////////////////////////////////////////////////////////
 
-    if (trxCollection->_ditch == nullptr) {
-      trxCollection->_ditch =
-          document->ditches()->createDocumentDitch(true, __FILE__, __LINE__);
-    } else {
-      // tell everyone else this ditch is still in use,
-      // at least until the transaction is over
-      trxCollection->_ditch->setUsedByTransaction();
+  static std::string extractKey(VPackSlice const);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief extract the _id attribute from a slice, and convert it into a 
+  /// string
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::string extractIdString(VPackSlice const);
+
+  static std::string extractIdString(CollectionNameResolver const*, 
+                                     VPackSlice const&, VPackSlice const&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief read any (random) document
+  //////////////////////////////////////////////////////////////////////////////
+
+  OperationResult any(std::string const&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief read many documents, using skip and limit in arbitrary order
+  /// The result guarantees that all documents are contained exactly once
+  /// as long as the collection is not modified.
+  //////////////////////////////////////////////////////////////////////////////
+
+  OperationResult any(std::string const&, uint64_t, uint64_t);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief add a collection to the transaction for read, at runtime
+  //////////////////////////////////////////////////////////////////////////////
+
+  TRI_voc_cid_t addCollectionAtRuntime(TRI_voc_cid_t cid, 
+                                       std::string const& collectionName,
+                                       TRI_transaction_type_e type = TRI_TRANSACTION_READ) {
+    auto collection = this->trxCollection(cid);
+
+    if (collection == nullptr) {
+      int res = TRI_AddCollectionTransaction(this->getInternals(), cid,
+                                             type,
+                                             this->nestingLevel(), true, true);
+      if (res != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+      TRI_EnsureCollectionsTransaction(this->getInternals());
+      collection = this->trxCollection(cid);
+
+      if (collection == nullptr) {
+        THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
+                                      collectionName.c_str());
+      }
     }
-
-    return trxCollection->_ditch;
+    TRI_ASSERT(collection != nullptr);
+    return cid;
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief read all master pointers, using skip and limit and an internal
-  /// offset into the primary index. this can be used for incremental access to
-  /// the documents without restarting the index scan at the begin
+  /// @brief add a collection to the transaction for read, at runtime
   //////////////////////////////////////////////////////////////////////////////
 
-  int readIncremental(TRI_transaction_collection_t*,
-                      std::vector<TRI_doc_mptr_copy_t>&,
-                      arangodb::basics::BucketPosition&, uint64_t, uint64_t&,
-                      uint64_t, uint64_t&);
+  TRI_voc_cid_t addCollectionAtRuntime(std::string const& collectionName);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief read all master pointers, using skip and limit and an internal
-  /// offset into the primary index. this can be used for incremental access to
-  /// the documents without restarting the index scan at the begin
+  /// @brief return the type of a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  int readRandom(TRI_transaction_collection_t*,
-                 std::vector<TRI_doc_mptr_copy_t>&,
-                 arangodb::basics::BucketPosition&,
-                 arangodb::basics::BucketPosition&, uint64_t, uint64_t&,
-                 uint64_t&);
+  bool isEdgeCollection(std::string const& collectionName);
+  bool isDocumentCollection(std::string const& collectionName);
+  TRI_col_type_t getCollectionType(std::string const& collectionName);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief delete a single document
+  /// @brief return the name of a collection
+  //////////////////////////////////////////////////////////////////////////////
+ 
+  std::string collectionName(TRI_voc_cid_t cid); 
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return the edge index handle of collection
+  //////////////////////////////////////////////////////////////////////////////
+ 
+  IndexHandle edgeIndexHandle(std::string const&); 
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Iterate over all elements of the collection.
   //////////////////////////////////////////////////////////////////////////////
 
-  int remove(TRI_transaction_collection_t* trxCollection,
-             std::string const& key, TRI_voc_rid_t rid,
-             TRI_doc_update_policy_e policy, TRI_voc_rid_t expectedRevision,
-             TRI_voc_rid_t* actualRevision, bool forceSync) {
-    TRI_doc_update_policy_t updatePolicy(policy, expectedRevision,
-                                         actualRevision);
-
-    try {
-      return TRI_RemoveShapedJsonDocumentCollection(
-          this, trxCollection, (TRI_voc_key_t)key.c_str(), rid, nullptr,
-          &updatePolicy, !isLocked(trxCollection, TRI_TRANSACTION_WRITE),
-          forceSync);
-    } catch (arangodb::basics::Exception const& ex) {
-      return ex.code();
-    } catch (...) {
-      return TRI_ERROR_INTERNAL;
-    }
-  }
+  void invokeOnAllElements(std::string const& collectionName,
+                           std::function<bool(TRI_doc_mptr_t const*)>);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief create a single document, using JSON
+  /// @brief return one or multiple documents from a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  int create(TRI_transaction_collection_t* trxCollection,
-             TRI_doc_mptr_copy_t* mptr, TRI_json_t const* json,
-             void const* data, bool forceSync) {
-    TRI_ASSERT(json != nullptr);
-
-    TRI_voc_key_t key = nullptr;
-    int res = DocumentHelper::getKey(json, &key);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-
-    auto shaper = this->shaper(trxCollection);
-    TRI_memory_zone_t* zone = shaper->memoryZone();
-    TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(shaper, json, true);
-
-    if (shaped == nullptr) {
-      return TRI_ERROR_ARANGO_SHAPER_FAILED;
-    }
-
-    res = create(trxCollection, key, 0, mptr, shaped, data, forceSync);
-
-    TRI_FreeShapedJson(zone, shaped);
-
-    return res;
-  }
-
+  OperationResult document(std::string const& collectionName,
+                           VPackSlice const value,
+                           OperationOptions& options);
+  
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief create a single document, using VelocyPack
+  /// @brief create one or multiple documents in a collection
+  /// the single-document variant of this operation will either succeed or,
+  /// if it fails, clean up after itself
   //////////////////////////////////////////////////////////////////////////////
 
-  int create(TRI_transaction_collection_t* trxCollection,
-             TRI_doc_mptr_copy_t* mptr, VPackSlice const& slice,
-             void const* data, bool forceSync) {
-    std::unique_ptr<TRI_json_t> json(
-        arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
-
-    if (json == nullptr) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
-    return create(trxCollection, mptr, json.get(), data, forceSync);
-  }
-
+  OperationResult insert(std::string const& collectionName,
+                         VPackSlice const value,
+                         OperationOptions const& options);
+  
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief update a single document, using JSON
+  /// @brief update/patch one or multiple documents in a collection
+  /// the single-document variant of this operation will either succeed or,
+  /// if it fails, clean up after itself
   //////////////////////////////////////////////////////////////////////////////
 
-  int update(TRI_transaction_collection_t* trxCollection,
-             std::string const& key, TRI_voc_rid_t rid,
-             TRI_doc_mptr_copy_t* mptr, TRI_json_t const* json,
-             TRI_doc_update_policy_e policy, TRI_voc_rid_t expectedRevision,
-             TRI_voc_rid_t* actualRevision, bool forceSync) {
-    auto shaper = this->shaper(trxCollection);
-    TRI_memory_zone_t* zone = shaper->memoryZone();
-    TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(shaper, json, true);
-
-    if (shaped == nullptr) {
-      return TRI_ERROR_ARANGO_SHAPER_FAILED;
-    }
-
-    if (orderDitch(trxCollection) == nullptr) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
-    int res = update(trxCollection, key, rid, mptr, shaped, policy,
-                     expectedRevision, actualRevision, forceSync);
-
-    TRI_FreeShapedJson(zone, shaped);
-    return res;
-  }
-
+  OperationResult update(std::string const& collectionName,
+                         VPackSlice const updateValue,
+                         OperationOptions const& options);
+  
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief read a single document, identified by key
+  /// @brief replace one or multiple documents in a collection
+  /// the single-document variant of this operation will either succeed or,
+  /// if it fails, clean up after itself
   //////////////////////////////////////////////////////////////////////////////
 
-  int readSingle(TRI_transaction_collection_t* trxCollection,
-                 TRI_doc_mptr_copy_t* mptr, std::string const& key) {
-    TRI_ASSERT(mptr != nullptr);
+  OperationResult replace(std::string const& collectionName,
+                          VPackSlice const updateValue,
+                          OperationOptions const& options);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief remove one or multiple documents in a collection
+  /// the single-document variant of this operation will either succeed or,
+  /// if it fails, clean up after itself
+  //////////////////////////////////////////////////////////////////////////////
 
-    if (orderDitch(trxCollection) == nullptr) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
+  OperationResult remove(std::string const& collectionName,
+                         VPackSlice const value,
+                         OperationOptions const& options);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief fetches all document keys in a collection
+  //////////////////////////////////////////////////////////////////////////////
 
-    try {
-      return TRI_ReadShapedJsonDocumentCollection(
-          this, trxCollection, (TRI_voc_key_t)key.c_str(), mptr,
-          !isLocked(trxCollection, TRI_TRANSACTION_READ));
-    } catch (arangodb::basics::Exception const& ex) {
-      return ex.code();
-    } catch (...) {
-      return TRI_ERROR_INTERNAL;
-    }
-  }
+  OperationResult allKeys(std::string const& collectionName, 
+                          std::string const& type,
+                          OperationOptions const& options);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief fetches all documents in a collection
+  //////////////////////////////////////////////////////////////////////////////
+
+  OperationResult all(std::string const& collectionName,
+                      uint64_t skip, uint64_t limit,
+                      OperationOptions const& options);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief remove all documents in a collection
+  //////////////////////////////////////////////////////////////////////////////
+
+  OperationResult truncate(std::string const& collectionName,
+                           OperationOptions const& options);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief count the number of documents in a collection
+  //////////////////////////////////////////////////////////////////////////////
+
+  OperationResult count(std::string const& collectionName);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Gets the best fitting index for an AQL condition.
+  /// note: the caller must have read-locked the underlying collection when
+  /// calling this method
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
+      std::string const&, arangodb::aql::Ast*, arangodb::aql::AstNode*,
+      arangodb::aql::Variable const*, arangodb::aql::SortCondition const*,
+      size_t, std::vector<IndexHandle>&, bool&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Checks if the index supports the filter condition.
+  /// note: the caller must have read-locked the underlying collection when
+  /// calling this method
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool supportsFilterCondition(IndexHandle const&,
+                               arangodb::aql::AstNode const*,
+                               arangodb::aql::Variable const*, size_t, size_t&,
+                               double&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Get the index features:
+  ///        Returns the covered attributes, and sets the first bool value
+  ///        to isSorted and the second bool value to isSparse
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::vector<std::vector<arangodb::basics::AttributeName>> getIndexFeatures(
+      IndexHandle const&, bool&, bool&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Gets the best fitting index for an AQL sort condition
+  /// note: the caller must have read-locked the underlying collection when
+  /// calling this method
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::pair<bool, bool> getIndexForSortCondition(
+      std::string const&, arangodb::aql::SortCondition const*,
+      arangodb::aql::Variable const*, size_t,
+      std::vector<IndexHandle>&,
+      size_t& coveredAttributes);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief factory for OperationCursor objects from AQL
+  /// note: the caller must have read-locked the underlying collection when
+  /// calling this method
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::shared_ptr<OperationCursor> indexScanForCondition(
+      std::string const& collectionName, IndexHandle const& indexId,
+      arangodb::aql::Ast*, arangodb::aql::AstNode const*,
+      arangodb::aql::Variable const*, uint64_t, uint64_t, bool);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief factory for OperationCursor objects
+  /// note: the caller must have read-locked the underlying collection when
+  /// calling this method
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::shared_ptr<OperationCursor> indexScan(std::string const& collectionName,
+                                             CursorType cursorType,
+                                             IndexHandle const& indexId,
+                                             VPackSlice const search,
+                                             uint64_t skip, uint64_t limit,
+                                             uint64_t batchSize, bool reverse);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief test if a collection is already locked
   //////////////////////////////////////////////////////////////////////////////
 
-  bool isLocked(TRI_transaction_collection_t const* trxCollection,
-                TRI_transaction_type_e type) {
-    if (_trx == nullptr || getStatus() != TRI_TRANSACTION_RUNNING) {
-      return false;
-    }
-
-    return TRI_IsLockedCollectionTransaction(trxCollection, type,
-                                             _nestingLevel);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief test if a collection is already locked
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool isLocked(TRI_document_collection_t* document,
-                TRI_transaction_type_e type) {
-    if (_trx == nullptr || getStatus() != TRI_TRANSACTION_RUNNING) {
-      return false;
-    }
-
-    TRI_transaction_collection_t* trxCollection =
-        TRI_GetCollectionTransaction(_trx, document->_info.id(), type);
-    return isLocked(trxCollection, type);
-  }
+  bool isLocked(TRI_document_collection_t*, TRI_transaction_type_e);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the setup state
   //////////////////////////////////////////////////////////////////////////////
 
   int setupState() { return _setupState; }
+  
+  TRI_document_collection_t* documentCollection(TRI_voc_cid_t) const;
+  
+//////////////////////////////////////////////////////////////////////////////
+/// @brief get the index by it's identifier. Will either throw or
+///        return a valid index. nullptr is impossible.
+//////////////////////////////////////////////////////////////////////////////
 
+  IndexHandle getIndexByIdentifier(
+    std::string const& collectionName, std::string const& indexHandle);
+  
+//////////////////////////////////////////////////////////////////////////////
+/// @brief get all indexes for a collection name
+//////////////////////////////////////////////////////////////////////////////
+
+  std::vector<std::shared_ptr<arangodb::Index>> indexesForCollection(
+      std::string const&);
+
+ private:
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief build a VPack object with _id, _key and _rev and possibly
+  /// oldRef (if given), the result is added to the builder in the
+  /// argument as a single object.
+  //////////////////////////////////////////////////////////////////////////////
+
+  void buildDocumentIdentity(VPackBuilder& builder,
+                             TRI_voc_cid_t cid,
+                             std::string const& key,
+                             VPackSlice const rid,
+                             VPackSlice const oldRid,
+                             TRI_doc_mptr_t const* oldMptr,
+                             TRI_doc_mptr_t const* newMptr);
+
+  OperationResult documentCoordinator(std::string const& collectionName,
+                                      VPackSlice const value,
+                                      OperationOptions& options);
+
+  OperationResult documentLocal(std::string const& collectionName,
+                                VPackSlice const value,
+                                OperationOptions& options);
+
+  OperationResult insertCoordinator(std::string const& collectionName,
+                                    VPackSlice const value,
+                                    OperationOptions& options);
+
+  OperationResult insertLocal(std::string const& collectionName,
+                              VPackSlice const value,
+                              OperationOptions& options);
+  
+  OperationResult updateCoordinator(std::string const& collectionName,
+                                    VPackSlice const newValue,
+                                    OperationOptions& options);
+
+  OperationResult replaceCoordinator(std::string const& collectionName,
+                                     VPackSlice const newValue,
+                                     OperationOptions& options);
+
+  OperationResult modifyLocal(std::string const& collectionName,
+                              VPackSlice const newValue,
+                              OperationOptions& options,
+                              TRI_voc_document_operation_e operation);
+  
+  OperationResult removeCoordinator(std::string const& collectionName,
+                                    VPackSlice const value,
+                                    OperationOptions& options);
+  
+  OperationResult removeLocal(std::string const& collectionName,
+                              VPackSlice const value,
+                              OperationOptions& options);
+  
+  OperationResult allKeysCoordinator(std::string const& collectionName,
+                                     std::string const& type,
+                                     std::string const& prefix,
+                                     OperationOptions& options);
+  
+  OperationResult allKeysLocal(std::string const& collectionName,
+                               std::string const& type,
+                               std::string const& prefix,
+                               OperationOptions& options);
+
+  OperationResult allCoordinator(std::string const& collectionName,
+                                 uint64_t skip, uint64_t limit,
+                                 OperationOptions& options);
+  
+  OperationResult allLocal(std::string const& collectionName,
+                           uint64_t skip, uint64_t limit,
+                           OperationOptions& options);
+  
+  OperationResult anyCoordinator(std::string const& collectionName,
+                                 uint64_t skip, uint64_t limit);
+
+  OperationResult anyLocal(std::string const& collectionName, uint64_t skip,
+                           uint64_t limit);
+
+  OperationResult truncateCoordinator(std::string const& collectionName,
+                                      OperationOptions& options);
+  
+  OperationResult truncateLocal(std::string const& collectionName,
+                                OperationOptions& options);
+  
+  OperationResult countCoordinator(std::string const& collectionName);
+  OperationResult countLocal(std::string const& collectionName);
+  
  protected:
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return the transaction collection for a document collection
+  //////////////////////////////////////////////////////////////////////////////
+
+  TRI_transaction_collection_t* trxCollection(TRI_voc_cid_t cid) const;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the collection
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_document_collection_t* documentCollection(
-      TRI_transaction_collection_t const* trxCollection) const {
-    TRI_ASSERT(_trx != nullptr);
-    TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
-    TRI_ASSERT(trxCollection->_collection != nullptr);
-    TRI_ASSERT(trxCollection->_collection->_collection != nullptr);
-
-    return trxCollection->_collection->_collection;
-  }
-
+      TRI_transaction_collection_t const*) const;
+  
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief return a collection's shaper
+  /// @brief add a collection by id, with the name supplied
   //////////////////////////////////////////////////////////////////////////////
 
-  VocShaper* shaper(TRI_transaction_collection_t const* trxCollection) const {
-    TRI_ASSERT(_trx != nullptr);
-    TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
-    TRI_ASSERT(trxCollection->_collection != nullptr);
-    TRI_ASSERT(trxCollection->_collection->_collection != nullptr);
-
-    return trxCollection->_collection->_collection
-        ->getShaper();  // PROTECTED by trx in trxCollection
-  }
+  int addCollection(TRI_voc_cid_t, char const*, TRI_transaction_type_e);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add a collection by id, with the name supplied
   //////////////////////////////////////////////////////////////////////////////
 
-  int addCollection(TRI_voc_cid_t cid, char const* name,
-                    TRI_transaction_type_e type) {
-    int res = this->addCollection(cid, type);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      _errorData = std::string(name);
-    }
-
-    return res;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief add a collection by id, with the name supplied
-  //////////////////////////////////////////////////////////////////////////////
-
-  int addCollection(TRI_voc_cid_t cid, std::string const& name,
-                    TRI_transaction_type_e type) {
-    int res = this->addCollection(cid, type);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      _errorData = name;
-    }
-
-    return res;
-  }
+  int addCollection(TRI_voc_cid_t, std::string const&, TRI_transaction_type_e);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add a collection by id
   //////////////////////////////////////////////////////////////////////////////
 
-  int addCollection(TRI_voc_cid_t cid, TRI_transaction_type_e type) {
-    if (_trx == nullptr) {
-      return registerError(TRI_ERROR_INTERNAL);
-    }
-
-    if (cid == 0) {
-      // invalid cid
-      return registerError(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-    }
-
-    if (_setupState != TRI_ERROR_NO_ERROR) {
-      return _setupState;
-    }
-
-    const TRI_transaction_status_e status = getStatus();
-
-    if (status == TRI_TRANSACTION_COMMITTED ||
-        status == TRI_TRANSACTION_ABORTED) {
-      // transaction already finished?
-      return registerError(TRI_ERROR_TRANSACTION_INTERNAL);
-    }
-
-    int res;
-
-    if (this->isEmbeddedTransaction()) {
-      res = this->addCollectionEmbedded(cid, type);
-    } else {
-      res = this->addCollectionToplevel(cid, type);
-    }
-
-    return res;
-  }
-
+  int addCollection(TRI_voc_cid_t, TRI_transaction_type_e);
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add a collection by name
   //////////////////////////////////////////////////////////////////////////////
 
-  int addCollection(std::string const& name, TRI_transaction_type_e type) {
-    if (_setupState != TRI_ERROR_NO_ERROR) {
-      return _setupState;
-    }
-
-    if (!_isReal) {
-      return addCollection(this->resolver()->getCollectionIdCluster(name),
-                           name.c_str(), type);
-    }
-
-    return addCollection(this->resolver()->getCollectionId(name), name.c_str(),
-                         type);
-  }
+  int addCollection(std::string const&, TRI_transaction_type_e);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set the lock acquisition timeout
@@ -695,212 +671,54 @@ class Transaction {
   /// @brief read- or write-lock a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  int lock(TRI_transaction_collection_t* trxCollection,
-           TRI_transaction_type_e type) {
-    if (_trx == nullptr || getStatus() != TRI_TRANSACTION_RUNNING) {
-      return TRI_ERROR_TRANSACTION_INTERNAL;
-    }
-
-    return TRI_LockCollectionTransaction(trxCollection, type, _nestingLevel);
-  }
+  int lock(TRI_transaction_collection_t*, TRI_transaction_type_e);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief read- or write-unlock a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  int unlock(TRI_transaction_collection_t* trxCollection,
-             TRI_transaction_type_e type) {
-    if (_trx == nullptr || getStatus() != TRI_TRANSACTION_RUNNING) {
-      return TRI_ERROR_TRANSACTION_INTERNAL;
-    }
-
-    return TRI_UnlockCollectionTransaction(trxCollection, type, _nestingLevel);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief read any (random) document
-  //////////////////////////////////////////////////////////////////////////////
-
-  int readAny(TRI_transaction_collection_t*, TRI_doc_mptr_copy_t*);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief read all documents
-  //////////////////////////////////////////////////////////////////////////////
-
-  int readAll(TRI_transaction_collection_t*, std::vector<std::string>&, bool);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief read master pointers in order of insertion/update
-  //////////////////////////////////////////////////////////////////////////////
-
-  int readOrdered(TRI_transaction_collection_t* trxCollection,
-                  std::vector<TRI_doc_mptr_copy_t>& documents, int64_t offset,
-                  int64_t count) {
-    TRI_document_collection_t* document = documentCollection(trxCollection);
-
-    // READ-LOCK START
-    int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-
-    if (orderDitch(trxCollection) == nullptr) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
-    TRI_doc_mptr_t* doc;
-
-    if (offset >= 0) {
-      // read from front
-      doc =
-          document->_headersPtr->front();  // PROTECTED by trx in trxCollection
-      int64_t i = 0;
-
-      while (doc != nullptr && i < offset) {
-        doc = doc->_next;
-        ++i;
-      }
-
-      i = 0;
-      while (doc != nullptr && i < count) {
-        documents.emplace_back(*doc);
-        doc = doc->_next;
-        ++i;
-      }
-    } else {
-      // read from back
-      doc = document->_headersPtr->back();  // PROTECTED by trx in trxCollection
-      int64_t i = -1;
-
-      while (doc != nullptr && i > offset) {
-        doc = doc->_prev;
-        --i;
-      }
-
-      i = 0;
-      while (doc != nullptr && i < count) {
-        documents.emplace_back(*doc);
-        doc = doc->_prev;
-        ++i;
-      }
-    }
-
-    this->unlock(trxCollection, TRI_TRANSACTION_READ);
-    // READ-LOCK END
-
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief read all master pointers, using skip and limit
-  //////////////////////////////////////////////////////////////////////////////
-
-  int readSlice(TRI_transaction_collection_t*,
-                std::vector<TRI_doc_mptr_copy_t>&, int64_t, uint64_t,
-                uint64_t&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief read all master pointers
-  //////////////////////////////////////////////////////////////////////////////
-
-  int readSlice(TRI_transaction_collection_t*,
-                std::vector<TRI_doc_mptr_t const*>&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief create a single document, using shaped json
-  //////////////////////////////////////////////////////////////////////////////
-
-  inline int create(TRI_transaction_collection_t* trxCollection,
-                    const TRI_voc_key_t key, TRI_voc_rid_t rid,
-                    TRI_doc_mptr_copy_t* mptr, TRI_shaped_json_t const* shaped,
-                    void const* data, bool forceSync) {
-    bool lock = !isLocked(trxCollection, TRI_TRANSACTION_WRITE);
-
-    try {
-      return TRI_InsertShapedJsonDocumentCollection(
-          this, trxCollection, key, rid, nullptr, mptr, shaped,
-          static_cast<TRI_document_edge_t const*>(data), lock, forceSync,
-          false);
-    } catch (arangodb::basics::Exception const& ex) {
-      return ex.code();
-    } catch (...) {
-      return TRI_ERROR_INTERNAL;
-    }
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief update a single document, using shaped json
-  //////////////////////////////////////////////////////////////////////////////
-
-  inline int update(TRI_transaction_collection_t* const trxCollection,
-                    std::string const& key, TRI_voc_rid_t rid,
-                    TRI_doc_mptr_copy_t* mptr, TRI_shaped_json_t* const shaped,
-                    TRI_doc_update_policy_e policy,
-                    TRI_voc_rid_t expectedRevision,
-                    TRI_voc_rid_t* actualRevision, bool forceSync) {
-    TRI_doc_update_policy_t updatePolicy(policy, expectedRevision,
-                                         actualRevision);
-
-    if (orderDitch(trxCollection) == nullptr) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
-    try {
-      return TRI_UpdateShapedJsonDocumentCollection(
-          this, trxCollection, (const TRI_voc_key_t)key.c_str(), rid, nullptr,
-          mptr, shaped, &updatePolicy,
-          !isLocked(trxCollection, TRI_TRANSACTION_WRITE), forceSync);
-    } catch (arangodb::basics::Exception const& ex) {
-      return ex.code();
-    } catch (...) {
-      return TRI_ERROR_INTERNAL;
-    }
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief truncate a collection
-  //////////////////////////////////////////////////////////////////////////////
-
-  int removeAll(TRI_transaction_collection_t* const trxCollection,
-                bool forceSync) {
-    std::vector<std::string> ids;
-
-    if (orderDitch(trxCollection) == nullptr) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
-    TRI_ASSERT(isLocked(trxCollection, TRI_TRANSACTION_WRITE));
-
-    int res = readAll(trxCollection, ids, false);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-
-    try {
-      for (auto const& it : ids) {
-        res = TRI_RemoveShapedJsonDocumentCollection(
-            this, trxCollection, (TRI_voc_key_t)it.c_str(), 0,
-            nullptr,  // marker
-            nullptr,  // policy
-            false, forceSync);
-
-        if (res != TRI_ERROR_NO_ERROR) {
-          // halt on first error
-          break;
-        }
-      }
-    } catch (arangodb::basics::Exception const& ex) {
-      res = ex.code();
-    } catch (...) {
-      res = TRI_ERROR_INTERNAL;
-    }
-
-    return res;
-  }
+  int unlock(TRI_transaction_collection_t*, TRI_transaction_type_e);
 
  private:
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief sort ORs for the same attribute so they are in ascending value
+  /// order. this will only work if the condition is for a single attribute
+  /// the usedIndexes vector may also be re-sorted
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool sortOrs(arangodb::aql::Ast* ast,
+               arangodb::aql::AstNode* root,
+               arangodb::aql::Variable const* variable,
+               std::vector<arangodb::Transaction::IndexHandle>& usedIndexes) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief findIndexHandleForAndNode
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::pair<bool, bool> findIndexHandleForAndNode(
+      std::vector<std::shared_ptr<Index>> indexes, arangodb::aql::AstNode* node,
+      arangodb::aql::Variable const* reference,
+      arangodb::aql::SortCondition const* sortCondition,
+      size_t itemsInCollection,
+      std::vector<Transaction::IndexHandle>& usedIndexes,
+      arangodb::aql::AstNode*& specializedCondition,
+      bool& isSparse) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Get one index by id for a collection name, coordinator case
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::shared_ptr<arangodb::Index> indexForCollectionCoordinator(
+      std::string const&, std::string const&) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Get all indexes for a collection name, coordinator case
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::vector<std::shared_ptr<arangodb::Index>> indexesForCollectionCoordinator(
+      std::string const&) const;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief register an error for the transaction
   //////////////////////////////////////////////////////////////////////////////
@@ -921,42 +739,13 @@ class Transaction {
   /// @brief add a collection to an embedded transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  int addCollectionEmbedded(TRI_voc_cid_t cid, TRI_transaction_type_e type) {
-    TRI_ASSERT(_trx != nullptr);
-
-    int res = TRI_AddCollectionTransaction(_trx, cid, type, _nestingLevel,
-                                           false, _allowImplicitCollections);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return registerError(res);
-    }
-
-    return TRI_ERROR_NO_ERROR;
-  }
+  int addCollectionEmbedded(TRI_voc_cid_t, TRI_transaction_type_e);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add a collection to a top-level transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  int addCollectionToplevel(TRI_voc_cid_t cid, TRI_transaction_type_e type) {
-    TRI_ASSERT(_trx != nullptr);
-
-    int res;
-
-    if (getStatus() != TRI_TRANSACTION_CREATED) {
-      // transaction already started?
-      res = TRI_ERROR_TRANSACTION_INTERNAL;
-    } else {
-      res = TRI_AddCollectionTransaction(_trx, cid, type, _nestingLevel, false,
-                                         _allowImplicitCollections);
-    }
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      registerError(res);
-    }
-
-    return res;
-  }
+  int addCollectionToplevel(TRI_voc_cid_t, TRI_transaction_type_e);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initialize the transaction
@@ -964,73 +753,25 @@ class Transaction {
   /// transaction. if not, it will create a transaction of its own
   //////////////////////////////////////////////////////////////////////////////
 
-  int setupTransaction() {
-    // check in the context if we are running embedded
-    _trx = this->_transactionContext->getParentTransaction();
-
-    if (_trx != nullptr) {
-      // yes, we are embedded
-      _setupState = setupEmbedded();
-    } else {
-      // non-embedded
-      _setupState = setupToplevel();
-    }
-
-    // this may well be TRI_ERROR_NO_ERROR...
-    return _setupState;
-  }
+  int setupTransaction();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set up an embedded transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  int setupEmbedded() {
-    TRI_ASSERT(_nestingLevel == 0);
-
-    _nestingLevel = ++_trx->_nestingLevel;
-
-    if (!this->_transactionContext->isEmbeddable()) {
-      // we are embedded but this is disallowed...
-      return TRI_ERROR_TRANSACTION_NESTED;
-    }
-
-    return TRI_ERROR_NO_ERROR;
-  }
+  int setupEmbedded();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set up a top-level transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  int setupToplevel() {
-    TRI_ASSERT(_nestingLevel == 0);
-
-    // we are not embedded. now start our own transaction
-    _trx = TRI_CreateTransaction(_vocbase, _externalId, _timeout, _waitForSync);
-
-    if (_trx == nullptr) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
-    // register the transaction in the context
-    return this->_transactionContext->registerTransaction(_trx);
-  }
+  int setupToplevel();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief free transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  int freeTransaction() {
-    TRI_ASSERT(!isEmbeddedTransaction());
-
-    if (_trx != nullptr) {
-      this->_transactionContext->unregisterTransaction();
-
-      TRI_FreeTransaction(_trx);
-      _trx = nullptr;
-    }
-
-    return TRI_ERROR_NO_ERROR;
-  }
+  void freeTransaction();
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -1104,7 +845,7 @@ class Transaction {
   /// @brief the transaction context
   //////////////////////////////////////////////////////////////////////////////
 
-  TransactionContext* _transactionContext;
+  std::shared_ptr<TransactionContext> _transactionContext;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief makeNolockHeaders
@@ -1113,6 +854,20 @@ class Transaction {
  public:
   static thread_local std::unordered_set<std::string>* _makeNolockHeaders;
 };
+
+class TransactionBuilderLeaser {
+ public:
+  explicit TransactionBuilderLeaser(arangodb::Transaction*); 
+  explicit TransactionBuilderLeaser(arangodb::TransactionContext*); 
+  ~TransactionBuilderLeaser();
+  arangodb::velocypack::Builder* builder() const { return _builder; }
+  arangodb::velocypack::Builder* operator->() const { return _builder; }
+  arangodb::velocypack::Builder* get() const { return _builder; }
+ private:
+  arangodb::TransactionContext* _transactionContext;
+  arangodb::velocypack::Builder* _builder;
+};
+
 }
 
 #endif

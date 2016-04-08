@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 #include "V8/v8-globals.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/shaped-json.h"
 
 struct TRI_server_t;
 struct TRI_vocbase_t;
@@ -41,14 +40,6 @@ class ApplicationV8;
 class CollectionNameResolver;
 class JSLoader;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parse vertex handle from a v8 value (string | object)
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_ParseVertex(v8::FunctionCallbackInfo<v8::Value> const& args,
-                    arangodb::CollectionNameResolver const*, TRI_voc_cid_t&,
-                    std::unique_ptr<char[]>&, v8::Handle<v8::Value> const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the private WRP_VOCBASE_COL_TYPE value

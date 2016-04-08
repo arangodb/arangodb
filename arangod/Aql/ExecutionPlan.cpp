@@ -39,6 +39,12 @@
 #include "Aql/WalkerWorker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/JsonHelper.h"
+#include "Basics/tri-strings.h"
+#include "Basics/VelocyPackHelper.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/Options.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
 using namespace arangodb::basics;
@@ -95,48 +101,47 @@ ExecutionPlan* ExecutionPlan::instantiateFromAst(Ast* ast) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief process the list of collections in a JSON
+/// @brief process the list of collections in a VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-void ExecutionPlan::getCollectionsFromJson(Ast* ast,
-                                           arangodb::basics::Json const& json) {
+void ExecutionPlan::getCollectionsFromVelocyPack(Ast* ast,
+                                                 VPackSlice const slice) {
   TRI_ASSERT(ast != nullptr);
 
-  arangodb::basics::Json jsonCollections = json.get("collections");
+  VPackSlice collectionsSlice = slice.get("collections");
 
-  if (!jsonCollections.isArray()) {
+  if (!collectionsSlice.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
         "json node \"collections\" not found or not an array");
   }
 
-  auto const size = jsonCollections.size();
-
-  for (size_t i = 0; i < size; i++) {
-    arangodb::basics::Json oneJsonCollection =
-        jsonCollections.at(static_cast<int>(i));
-    auto typeStr = arangodb::basics::JsonHelper::checkAndGetStringValue(
-        oneJsonCollection.json(), "type");
-
+  for (auto const& collection : VPackArrayIterator(collectionsSlice)) {
+    auto typeStr = arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
+        collection, "type");
     ast->query()->collections()->add(
-        arangodb::basics::JsonHelper::checkAndGetStringValue(
-            oneJsonCollection.json(), "name"),
+        arangodb::basics::VelocyPackHelper::checkAndGetStringValue(collection,
+                                                                   "name"),
         TRI_GetTransactionTypeFromStr(
-            arangodb::basics::JsonHelper::checkAndGetStringValue(
-                oneJsonCollection.json(), "type").c_str()));
+            arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
+                collection, "type")
+                .c_str()));
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create an execution plan from JSON
+/// @brief create an execution plan from VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionPlan* ExecutionPlan::instantiateFromJson(
-    Ast* ast, arangodb::basics::Json const& json) {
+ExecutionPlan* ExecutionPlan::instantiateFromVelocyPack(
+    Ast* ast, VPackSlice const slice) {
   TRI_ASSERT(ast != nullptr);
 
   auto plan = std::make_unique<ExecutionPlan>(ast);
 
+  // TODO: in place slice => Json
+  Json json(TRI_UNKNOWN_MEM_ZONE,
+            arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
   plan->_root = plan->fromJson(json);
   plan->_varUsageComputed = true;
 
@@ -210,6 +215,7 @@ ExecutionPlan* ExecutionPlan::clone(Query const& query) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief export to JSON, returns an AUTOFREE Json object
+/// DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 arangodb::basics::Json ExecutionPlan::toJson(Ast* ast, TRI_memory_zone_t* zone,
@@ -243,13 +249,68 @@ arangodb::basics::Json ExecutionPlan::toJson(Ast* ast, TRI_memory_zone_t* zone,
   }
 
   result.set("collections", jsonCollectionList);
-  result.set("variables", ast->variables()->toJson(TRI_UNKNOWN_MEM_ZONE));
+
+  VPackBuilder tmpTwo;
+  ast->variables()->toVelocyPack(tmpTwo);
+  result.set("variables", arangodb::basics::VelocyPackHelper::velocyPackToJson(tmpTwo.slice()));
   size_t nrItems = 0;
   result.set("estimatedCost", arangodb::basics::Json(_root->getCost(nrItems)));
   result.set("estimatedNrItems",
              arangodb::basics::Json(static_cast<double>(nrItems)));
 
   return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief export to VelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<VPackBuilder> ExecutionPlan::toVelocyPack(Ast* ast, bool verbose) const {
+  auto builder = std::make_shared<VPackBuilder>();
+
+  toVelocyPack(*builder, ast, verbose);
+  return builder;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief export to VelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast, bool verbose) const {
+  // keeps top level of built object open
+  _root->toVelocyPack(builder, verbose, true);
+
+  TRI_ASSERT(!builder.isClosed());
+
+  // set up rules
+  builder.add(VPackValue("rules"));
+  builder.openArray();
+  for (auto const& r : Optimizer::translateRules(_appliedRules)) {
+    builder.add(VPackValue(r));
+  }
+  builder.close();
+  
+  // set up collections
+  builder.add(VPackValue("collections"));
+  builder.openArray();
+  for (auto const& c : *ast->query()->collections()->collections()) {
+    builder.openObject();
+    builder.add("name", VPackValue(c.first));
+    builder.add("type",
+                VPackValue(TRI_TransactionTypeGetStr(c.second->accessType)));
+    builder.close();
+  }
+  builder.close();
+
+  // set up variables
+  builder.add(VPackValue("variables"));
+  ast->variables()->toVelocyPack(builder);
+
+  size_t nrItems = 0;
+  builder.add("estimatedCost", VPackValue(_root->getCost(nrItems)));
+  builder.add("estimatedNrItems", VPackValue(nrItems));
+
+  builder.close();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -427,19 +488,19 @@ ModificationOptions ExecutionPlan::createModificationOptions(
       auto member = node->getMember(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
-        auto name = member->getStringValue();
+        std::string const name = member->getString();
         auto value = member->getMember(0);
 
         TRI_ASSERT(value->isConstant());
 
-        if (strcmp(name, "waitForSync") == 0) {
+        if (name == "waitForSync") {
           options.waitForSync = value->isTrue();
-        } else if (strcmp(name, "ignoreErrors") == 0) {
+        } else if (name == "ignoreErrors") {
           options.ignoreErrors = value->isTrue();
-        } else if (strcmp(name, "keepNull") == 0) {
+        } else if (name == "keepNull") {
           // nullMeansRemove is the opposite of keepNull
           options.nullMeansRemove = value->isFalse();
-        } else if (strcmp(name, "mergeObjects") == 0) {
+        } else if (name == "mergeObjects") {
           options.mergeObjects = value->isTrue();
         }
       }
@@ -496,15 +557,15 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
       auto member = node->getMember(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
-        auto name = member->getStringValue();
+        std::string const name = member->getString();
         auto value = member->getMember(0);
 
         TRI_ASSERT(value->isConstant());
 
-        if (strcmp(name, "method") == 0) {
+        if (name == "method") {
           if (value->isStringValue()) {
             options.method =
-                CollectOptions::methodFromString(value->getStringValue());
+                CollectOptions::methodFromString(value->getString());
           }
         }
       }
@@ -585,7 +646,7 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
   // peek at second operand
   if (expression->type == NODE_TYPE_COLLECTION) {
     // second operand is a collection
-    char const* collectionName = expression->getStringValue();
+    std::string const collectionName = expression->getString();
     auto collections = _ast->query()->collections();
     auto collection = collections->get(collectionName);
 
@@ -635,8 +696,7 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
     for (size_t i = 0; i < n; ++i) {
       auto member = start->getMember(i);
       if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
-          strncmp(member->getStringValue(), TRI_VOC_ATTRIBUTE_ID,
-                  member->getStringLength()) == 0) {
+          member->getString() == TRI_VOC_ATTRIBUTE_ID) {
         start = member->getMember(0);
         break;
       }
@@ -804,11 +864,10 @@ ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous,
       if (ascending->type == NODE_TYPE_VALUE) {
         if (ascending->value.type == VALUE_TYPE_STRING) {
           // special treatment for string values ASC/DESC
-          if (TRI_CaseEqualString(ascending->value.value._string, "ASC")) {
+          if (ascending->stringEquals("ASC", true)) {
             isAscending = true;
             handled = true;
-          } else if (TRI_CaseEqualString(ascending->value.value._string,
-                                         "DESC")) {
+          } else if (ascending->stringEquals("DESC", true)) {
             isAscending = false;
             handled = true;
           }
@@ -1176,7 +1235,7 @@ ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous,
   TRI_ASSERT(node->numMembers() == 4);
 
   auto options = createModificationOptions(node->getMember(0));
-  char const* collectionName = node->getMember(1)->getStringValue();
+  std::string const collectionName = node->getMember(1)->getString();
   auto collections = _ast->query()->collections();
   auto collection = collections->get(collectionName);
 
@@ -1220,7 +1279,7 @@ ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous,
   TRI_ASSERT(node->numMembers() == 4);
 
   auto options = createModificationOptions(node->getMember(0));
-  char const* collectionName = node->getMember(1)->getStringValue();
+  std::string const collectionName = node->getMember(1)->getString();
   auto collections = _ast->query()->collections();
   auto collection = collections->get(collectionName);
   auto expression = node->getMember(2);
@@ -1259,7 +1318,7 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate(ExecutionNode* previous,
   TRI_ASSERT(node->numMembers() == 6);
 
   auto options = createModificationOptions(node->getMember(0));
-  char const* collectionName = node->getMember(1)->getStringValue();
+  std::string const collectionName = node->getMember(1)->getString();
   auto collections = _ast->query()->collections();
   auto collection = collections->get(collectionName);
   auto docExpression = node->getMember(2);
@@ -1320,7 +1379,7 @@ ExecutionNode* ExecutionPlan::fromNodeReplace(ExecutionNode* previous,
   TRI_ASSERT(node->numMembers() == 6);
 
   auto options = createModificationOptions(node->getMember(0));
-  char const* collectionName = node->getMember(1)->getStringValue();
+  std::string const collectionName = node->getMember(1)->getString();
   auto collections = _ast->query()->collections();
   auto collection = collections->get(collectionName);
   auto docExpression = node->getMember(2);
@@ -1381,7 +1440,7 @@ ExecutionNode* ExecutionPlan::fromNodeUpsert(ExecutionNode* previous,
   TRI_ASSERT(node->numMembers() == 7);
 
   auto options = createModificationOptions(node->getMember(0));
-  char const* collectionName = node->getMember(1)->getStringValue();
+  std::string const collectionName = node->getMember(1)->getString();
   auto collections = _ast->query()->collections();
   auto collection = collections->get(collectionName);
   auto docExpression = node->getMember(2);

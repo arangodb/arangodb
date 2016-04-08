@@ -47,6 +47,7 @@ SortBlock::~SortBlock() {}
 int SortBlock::initialize() { return ExecutionBlock::initialize(); }
 
 int SortBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
+  DEBUG_BEGIN_BLOCK();  
   int res = ExecutionBlock::initializeCursor(items, pos);
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -66,9 +67,11 @@ int SortBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   _pos = 0;
 
   return TRI_ERROR_NO_ERROR;
+  DEBUG_END_BLOCK();  
 }
 
 void SortBlock::doSorting() {
+  DEBUG_BEGIN_BLOCK();  
   // coords[i][j] is the <j>th row of the <i>th block
   std::vector<std::pair<size_t, size_t>> coords;
 
@@ -92,14 +95,8 @@ void SortBlock::doSorting() {
     count++;
   }
 
-  std::vector<TRI_document_collection_t const*> colls;
-  for (RegisterId i = 0; i < _sortRegisters.size(); i++) {
-    colls.emplace_back(
-        _buffer.front()->getDocumentCollection(_sortRegisters[i].first));
-  }
-
   // comparison function
-  OurLessThan ourLessThan(_trx, _buffer, _sortRegisters, colls);
+  OurLessThan ourLessThan(_trx, _buffer, _sortRegisters);
 
   // sort coords
   if (_stable) {
@@ -215,10 +212,6 @@ void SortBlock::doSorting() {
         count++;
       }
       cache.clear();
-      for (RegisterId j = 0; j < nrregs; j++) {
-        next->setDocumentCollection(j,
-                                    _buffer.front()->getDocumentCollection(j));
-      }
     }
   } catch (...) {
     for (auto& x : newbuffer) {
@@ -231,23 +224,21 @@ void SortBlock::doSorting() {
   for (auto& x : newbuffer) {
     delete x;
   }
+  DEBUG_END_BLOCK();  
 }
 
 bool SortBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
-                                        std::pair<size_t, size_t> const& b) {
-  size_t i = 0;
+                                        std::pair<size_t, size_t> const& b) const {
   for (auto const& reg : _sortRegisters) {
     int cmp = AqlValue::Compare(
         _trx, _buffer[a.first]->getValueReference(a.second, reg.first),
-        _colls[i], _buffer[b.first]->getValueReference(b.second, reg.first),
-        _colls[i], true);
+        _buffer[b.first]->getValueReference(b.second, reg.first), true);
 
     if (cmp < 0) {
       return reg.second;
     } else if (cmp > 0) {
       return !reg.second;
     }
-    i++;
   }
 
   return false;

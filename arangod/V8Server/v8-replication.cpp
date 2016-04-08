@@ -22,15 +22,21 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-replication.h"
-
+#include "Basics/ReadLocker.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/Version.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
+#include "V8/v8-vpack.h"
 #include "V8Server/v8-vocbaseprivate.h"
 #include "VocBase/replication-dump.h"
 #include "Wal/LogfileManager.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -45,14 +51,15 @@ static void JS_StateLoggerReplication(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  arangodb::wal::LogfileManagerState s =
+  arangodb::wal::LogfileManagerState const s =
       arangodb::wal::LogfileManager::instance()->state();
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
   v8::Handle<v8::Object> state = v8::Object::New(isolate);
   state->Set(TRI_V8_ASCII_STRING("running"), v8::True(isolate));
-  state->Set(TRI_V8_ASCII_STRING("lastLogTick"), V8TickId(isolate, s.lastTick));
+  state->Set(TRI_V8_ASCII_STRING("lastLogTick"), V8TickId(isolate, s.lastCommittedTick));
+  state->Set(TRI_V8_ASCII_STRING("lastUncommittedLogTick"), V8TickId(isolate, s.lastAssignedTick));
   state->Set(TRI_V8_ASCII_STRING("totalEvents"),
              v8::Number::New(isolate, (double)s.numEvents));
   state->Set(TRI_V8_ASCII_STRING("time"), TRI_V8_STD_STRING(s.timeString));
@@ -151,8 +158,10 @@ static void JS_LastLoggerReplication(
     TRI_V8_THROW_EXCEPTION_USAGE(
         "REPLICATION_LOGGER_LAST(<fromTick>, <toTick>)");
   }
+    
+  auto transactionContext = std::make_shared<StandaloneTransactionContext>(vocbase);
 
-  TRI_replication_dump_t dump(vocbase, 0, true, 0);
+  TRI_replication_dump_t dump(transactionContext, 0, true, 0);
   TRI_voc_tick_t tickStart = TRI_ObjectToUInt64(args[0], true);
   TRI_voc_tick_t tickEnd = TRI_ObjectToUInt64(args[1], true);
 
@@ -163,15 +172,12 @@ static void JS_LastLoggerReplication(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  TRI_json_t* json =
-      TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, dump._buffer->_buffer);
+  VPackParser parser;
+  parser.parse(dump._buffer->_buffer);
+ 
+  std::shared_ptr<VPackBuilder> builder = parser.steal();
 
-  if (json == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
-  }
-
-  v8::Handle<v8::Value> result = TRI_ObjectJson(isolate, json);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder->slice());
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -407,13 +413,9 @@ static void JS_ConfigureApplierReplication(
       config.update(&vocbase->_replicationApplier->_configuration);
     }
 
-    std::unique_ptr<TRI_json_t> json(config.toJson());
+    std::shared_ptr<VPackBuilder> builder = config.toVelocyPack(true);
 
-    if (json == nullptr) {
-      TRI_V8_THROW_EXCEPTION_MEMORY();
-    }
-
-    v8::Handle<v8::Value> result = TRI_ObjectJson(isolate, json.get());
+    v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder->slice());
 
     TRI_V8_RETURN(result);
   }
@@ -655,13 +657,9 @@ static void JS_ConfigureApplierReplication(
       TRI_V8_THROW_EXCEPTION(res);
     }
 
-    std::unique_ptr<TRI_json_t> json(config.toJson());
+    std::shared_ptr<VPackBuilder> builder = config.toVelocyPack(true);
 
-    if (json == nullptr) {
-      TRI_V8_THROW_EXCEPTION_MEMORY();
-    }
-
-    v8::Handle<v8::Value> result = TRI_ObjectJson(isolate, json.get());
+    v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder->slice());
 
     TRI_V8_RETURN(result);
   }
@@ -770,14 +768,9 @@ static void JS_StateApplierReplication(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  TRI_json_t* json = TRI_JsonReplicationApplier(vocbase->_replicationApplier);
+  std::shared_ptr<VPackBuilder> builder = vocbase->_replicationApplier->toVelocyPack();
 
-  if (json == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
-  }
-
-  v8::Handle<v8::Value> result = TRI_ObjectJson(isolate, json);
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder->slice());
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END

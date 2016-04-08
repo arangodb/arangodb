@@ -23,13 +23,11 @@
 
 #include "AgencyComm.h"
 
-#include <velocypack/Iterator.h>
 #include <velocypack/Dumper.h>
-#include <velocypack/Sink.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/Sink.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Basics/JsonHelper.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
@@ -48,17 +46,17 @@
 
 using namespace arangodb;
 
-void addEmptyVPackObject(std::string const& name, VPackBuilder& builder) {
+static void addEmptyVPackObject(std::string const& name, VPackBuilder& builder) {
   builder.add(VPackValue(name));
-  { VPackObjectBuilder c(&builder); }
+  VPackObjectBuilder c(&builder);
 }
   
 //////////////////////////////////////////////////////////////////////////////
 /// @brief constructs an operation
 //////////////////////////////////////////////////////////////////////////////
+
 AgencyOperation::AgencyOperation(std::string const& key, AgencySimpleOperationType opType)
-: _key(AgencyComm::prefix() + key), _opType()
-{
+    : _key(AgencyComm::prefix() + key), _opType() {
   _opType.type = AgencyOperationType::SIMPLE;
   _opType.simple = opType;
 }
@@ -66,12 +64,10 @@ AgencyOperation::AgencyOperation(std::string const& key, AgencySimpleOperationTy
 //////////////////////////////////////////////////////////////////////////////
 /// @brief constructs an operation
 //////////////////////////////////////////////////////////////////////////////
-AgencyOperation::AgencyOperation(
-    std::string const& key, AgencyValueOperationType opType,
-    VPackSlice value
-)
-: _key(AgencyComm::prefix() + key), _opType(), _value(value)
-{
+
+AgencyOperation::AgencyOperation(std::string const& key, AgencyValueOperationType opType,
+    VPackSlice value)
+    : _key(AgencyComm::prefix() + key), _opType(), _value(value) {
   _opType.type = AgencyOperationType::VALUE;
   _opType.value = opType;
 }
@@ -79,6 +75,7 @@ AgencyOperation::AgencyOperation(
 //////////////////////////////////////////////////////////////////////////////
 /// @brief returns to full operation formatted as a vpack slice
 //////////////////////////////////////////////////////////////////////////////
+
 std::shared_ptr<VPackBuilder> AgencyOperation::toVelocyPack() {
   auto builder = std::make_shared<VPackBuilder>();
   {
@@ -118,12 +115,14 @@ std::shared_ptr<VPackBuilder> AgencyOperation::toVelocyPack() {
       }
     }
   }
+
   return builder;
 }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief converts the transaction to json
 //////////////////////////////////////////////////////////////////////////////
+
 std::string AgencyTransaction::toJson() const {
   VPackBuilder builder;
   {
@@ -586,7 +585,7 @@ bool AgencyComm::tryConnect() {
     std::string endpointsStr{getUniqueEndpointsString()};
 
     WRITE_LOCKER(writeLocker, AgencyComm::_globalLock);
-    if (_globalEndpoints.size() == 0) {
+    if (_globalEndpoints.empty()) {
       return false;
     }
 
@@ -627,6 +626,7 @@ bool AgencyComm::tryConnect() {
 //////////////////////////////////////////////////////////////////////////////
 /// @brief will try to initialize a new agency
 //////////////////////////////////////////////////////////////////////////////
+
 bool AgencyComm::initialize() {
   if (!AgencyComm::tryConnect()) {
     return false;
@@ -638,6 +638,7 @@ bool AgencyComm::initialize() {
 //////////////////////////////////////////////////////////////////////////////
 /// @brief will try to initialize a new agency
 //////////////////////////////////////////////////////////////////////////////
+
 bool AgencyComm::tryInitializeStructure() {
   VPackBuilder trueBuilder;
   trueBuilder.add(VPackValue(true));
@@ -734,11 +735,10 @@ bool AgencyComm::tryInitializeStructure() {
   try {
     VPackSlice s = builder.slice();
 
-    VPackOptions dumperOptions;
     // now dump the Slice into an std::string
     std::string buffer;
     VPackStringSink sink(&buffer);
-    VPackDumper::dump(s, &sink, &dumperOptions);
+    VPackDumper::dump(s, &sink);
 
     LOG(DEBUG) << "Initializing agency with " << buffer;
 
@@ -1172,7 +1172,7 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
   
   AgencyCommResult result;
   AgencyOperation operation(key, AgencyValueOperationType::SET, builder.slice());
-  operation._ttl = static_cast<uint64_t>(ttl);
+  operation._ttl = static_cast<uint32_t>(ttl);
   AgencyTransaction transaction(operation);
 
   sendTransactionWithFailover(result, transaction);
@@ -1194,7 +1194,7 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
 
   AgencyCommResult result;
   AgencyOperation operation(key, AgencyValueOperationType::SET, builder.slice());
-  operation._ttl = static_cast<uint64_t>(ttl);
+  operation._ttl = static_cast<uint32_t>(ttl);
   AgencyTransaction transaction(operation);
 
   sendTransactionWithFailover(result, transaction);
@@ -1301,7 +1301,7 @@ AgencyCommResult AgencyComm::increment(std::string const& key) {
   AgencyCommResult result;
 
   AgencyTransaction transaction(
-      AgencyOperation(key, AgencySimpleOperationType::INCREMENT)
+      AgencyOperation(key, AgencySimpleOperationType::INCREMENT_OP)
   );
 
   sendTransactionWithFailover(result, transaction);
@@ -1447,7 +1447,7 @@ AgencyCommResult AgencyComm::removeValues(std::string const& key,
                                           bool recursive) {
   AgencyCommResult result;
   AgencyTransaction transaction(
-      AgencyOperation(key, AgencySimpleOperationType::DELETE)
+      AgencyOperation(key, AgencySimpleOperationType::DELETE_OP)
   );
 
   sendTransactionWithFailover(result, transaction);
@@ -1461,7 +1461,7 @@ AgencyCommResult AgencyComm::removeValues(std::string const& key,
 ////////////////////////////////////////////////////////////////////////////////
 
 AgencyCommResult AgencyComm::casValue(std::string const& key,
-                                      arangodb::velocypack::Slice const json,
+                                      arangodb::velocypack::Slice const& json,
                                       bool prevExist, double ttl,
                                       double timeout) {
   AgencyCommResult result;
@@ -1473,7 +1473,7 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
   operation._precondition.type = AgencyOperationPrecondition::EMPTY;
   operation._precondition.empty = !prevExist;
   if (ttl >= 0.0) {
-    operation._ttl = static_cast<uint64_t>(ttl);
+    operation._ttl = static_cast<uint32_t>(ttl);
   }
   
   std::string url(buildUrl());
@@ -1513,7 +1513,7 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
   operation._precondition.type = AgencyOperationPrecondition::VALUE;
   operation._precondition.value = oldBuilder.slice();
   if (ttl >= 0.0) {
-    operation._ttl = static_cast<uint64_t>(ttl);
+    operation._ttl = static_cast<uint32_t>(ttl);
   }
   
   std::string url(buildUrl());

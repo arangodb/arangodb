@@ -108,7 +108,6 @@ add_executable(${BIN_ARANGOD}
   Aql/Function.cpp
   Aql/Functions.cpp
   Aql/Graphs.cpp
-  Aql/Index.cpp
   Aql/IndexBlock.cpp
   Aql/IndexNode.cpp
   Aql/ModificationBlocks.cpp
@@ -160,7 +159,6 @@ add_executable(${BIN_ARANGOD}
   FulltextIndex/fulltext-list.cpp
   FulltextIndex/fulltext-query.cpp
   FulltextIndex/fulltext-result.cpp
-  FulltextIndex/fulltext-wordlist.cpp
   GeoIndex/GeoIndex.cpp
   HttpServer/ApplicationEndpointServer.cpp
   HttpServer/AsyncJobManager.cpp
@@ -173,8 +171,6 @@ add_executable(${BIN_ARANGOD}
   HttpServer/HttpsCommTask.cpp
   HttpServer/HttpsServer.cpp
   HttpServer/PathHandler.cpp
-  IndexOperators/index-operator.cpp
-  Indexes/CapConstraint.cpp
   Indexes/EdgeIndex.cpp
   Indexes/FulltextIndex.cpp
   Indexes/GeoIndex2.cpp
@@ -196,7 +192,6 @@ add_executable(${BIN_ARANGOD}
   RestHandler/RestCursorHandler.cpp
   RestHandler/RestDebugHandler.cpp
   RestHandler/RestDocumentHandler.cpp
-  RestHandler/RestEdgeHandler.cpp
   RestHandler/RestEdgesHandler.cpp
   RestHandler/RestExportHandler.cpp
   RestHandler/RestImportHandler.cpp
@@ -228,15 +223,13 @@ add_executable(${BIN_ARANGOD}
   Scheduler/TaskManager.cpp
   Scheduler/TimerTask.cpp
   Statistics/statistics.cpp
-  Storage/Marker.cpp
-  Storage/Options.cpp
   Utils/CollectionExport.cpp
   Utils/CollectionKeys.cpp
   Utils/CollectionKeysRepository.cpp
   Utils/Cursor.cpp
   Utils/CursorRepository.cpp
-  Utils/DocumentHelper.cpp
-  Utils/ShapedJsonTransformer.cpp
+  Utils/OperationCursor.cpp
+  Utils/SingleCollectionTransaction.cpp
   Utils/StandaloneTransactionContext.cpp
   Utils/Transaction.cpp
   Utils/TransactionContext.cpp
@@ -248,44 +241,36 @@ add_executable(${BIN_ARANGOD}
   V8Server/V8QueueJob.cpp
   V8Server/V8TimerTask.cpp
   V8Server/V8Traverser.cpp
+  V8Server/V8VPackWrapper.cpp
   V8Server/v8-actions.cpp
   V8Server/v8-collection-util.cpp
   V8Server/v8-collection.cpp
   V8Server/v8-dispatcher.cpp
   V8Server/v8-query.cpp
   V8Server/v8-replication.cpp
-  V8Server/v8-shape-conv.cpp
   V8Server/v8-statistics.cpp
   V8Server/v8-user-structures.cpp
   V8Server/v8-util.cpp
   V8Server/v8-vocbase.cpp
   V8Server/v8-voccursor.cpp
   V8Server/v8-vocindex.cpp
-  V8Server/v8-wrapshapedjson.cpp
   VocBase/DatafileStatistics.cpp
   VocBase/Ditch.cpp
-  VocBase/DocumentAccessor.cpp
   VocBase/ExampleMatcher.cpp
   VocBase/Graphs.cpp
   VocBase/KeyGenerator.cpp
-  VocBase/Legends.cpp
-  VocBase/Shaper.cpp
   VocBase/Traverser.cpp
-  VocBase/VocShaper.cpp
   VocBase/auth.cpp
   VocBase/cleanup.cpp
   VocBase/collection.cpp
   VocBase/compactor.cpp
   VocBase/datafile.cpp
   VocBase/document-collection.cpp
-  VocBase/edge-collection.cpp
-  VocBase/headers.cpp
+  VocBase/MasterPointers.cpp
   VocBase/replication-applier.cpp
   VocBase/replication-common.cpp
   VocBase/replication-dump.cpp
   VocBase/server.cpp
-  VocBase/shape-accessor.cpp
-  VocBase/shaped-json.cpp
   VocBase/transaction.cpp
   VocBase/vocbase-defaults.cpp
   VocBase/vocbase.cpp

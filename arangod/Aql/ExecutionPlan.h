@@ -63,18 +63,18 @@ class ExecutionPlan {
   static ExecutionPlan* instantiateFromAst(Ast*);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief process the list of collections in a JSON
+  /// @brief process the list of collections in a VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  static void getCollectionsFromJson(Ast* ast,
-                                     arangodb::basics::Json const& Json);
+  static void getCollectionsFromVelocyPack(Ast* ast,
+                                           arangodb::velocypack::Slice const);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief create an execution plan from JSON
+  /// @brief create an execution plan from VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  static ExecutionPlan* instantiateFromJson(Ast* ast,
-                                            arangodb::basics::Json const& Json);
+  static ExecutionPlan* instantiateFromVelocyPack(
+      Ast* ast, arangodb::velocypack::Slice const);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clone the plan by recursively cloning starting from the root
@@ -95,6 +95,14 @@ class ExecutionPlan {
 
   arangodb::basics::Json toJson(Ast* ast, TRI_memory_zone_t* zone,
                                 bool verbose) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief export to VelocyPack
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(Ast*, bool) const;
+  
+  void toVelocyPack(arangodb::velocypack::Builder&, Ast*, bool) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check if the plan is empty

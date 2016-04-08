@@ -207,55 +207,6 @@ namespace arangodb {
 namespace basics {
 namespace StringUtils {
 
-// .............................................................................
-// STRING AND STRING POINTER
-// .............................................................................
-
-blob_t duplicateBlob(const blob_t& source) {
-  blob_t result = {0, 0};
-
-  if (source.length == 0 || source.data == 0) {
-    return result;
-  }
-
-  result.data = new char[source.length];
-
-  memcpy(const_cast<char*>(result.data), source.data, source.length);
-  result.length = source.length;
-
-  return result;
-}
-
-blob_t duplicateBlob(char const* source, size_t len) {
-  blob_t result = {0, 0};
-
-  if (source == 0 || len == 0) {
-    return result;
-  }
-
-  result.data = new char[len];
-
-  memcpy(const_cast<char*>(result.data), source, len);
-  result.length = (uint32_t)len;
-
-  return result;
-}
-
-blob_t duplicateBlob(std::string const& source) {
-  blob_t result = {0, 0};
-
-  if (source.size() == 0) {
-    return result;
-  }
-
-  result.data = new char[source.size()];
-
-  memcpy(const_cast<char*>(result.data), source.c_str(), source.size());
-  result.length = (uint32_t)source.size();
-
-  return result;
-}
-
 char* duplicate(std::string const& source) {
   size_t len = source.size();
   char* result = new char[len + 1];
@@ -308,27 +259,10 @@ void destroy(char*& source, size_t length) {
   }
 }
 
-void destroy(blob_t& source) {
-  if (source.data != 0) {
-    ::memset(const_cast<char*>(source.data), 0, source.length);
-    delete[] source.data;
-    source.data = 0;
-    source.length = 0;
-  }
-}
-
 void erase(char*& source) {
   if (source != 0) {
     delete[] source;
     source = 0;
-  }
-}
-
-void erase(blob_t& source) {
-  if (source.data != 0) {
-    delete[] source.data;
-    source.data = 0;
-    source.length = 0;
   }
 }
 

@@ -22,9 +22,8 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/ExecutionBlock.h"
+#include "ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
-#include "Basics/json-utilities.h"
 
 using namespace arangodb::aql;
 
@@ -38,6 +37,7 @@ ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
     : _engine(engine),
       _trx(engine->getQuery()->trx()),
       _exeNode(ep),
+      _pos(0),
       _done(false) {}
 
 ExecutionBlock::~ExecutionBlock() {
@@ -74,6 +74,7 @@ bool ExecutionBlock::removeDependency(ExecutionBlock* ep) {
 }
 
 int ExecutionBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
+  DEBUG_BEGIN_BLOCK();  
   for (auto& d : _dependencies) {
     int res = d->initializeCursor(items, pos);
 
@@ -89,6 +90,7 @@ int ExecutionBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 
   _done = false;
   return TRI_ERROR_NO_ERROR;
+  DEBUG_END_BLOCK();  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -159,10 +161,12 @@ int ExecutionBlock::shutdown(int errorCode) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlItemBlock* ExecutionBlock::getSome(size_t atLeast, size_t atMost) {
+  DEBUG_BEGIN_BLOCK();
   std::unique_ptr<AqlItemBlock> result(
       getSomeWithoutRegisterClearout(atLeast, atMost));
   clearRegisters(result.get());
   return result.release();
+  DEBUG_END_BLOCK();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -182,34 +186,6 @@ void ExecutionBlock::returnBlock(AqlItemBlock*& block) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief resolve a collection name and return cid and document key
-/// this is used for parsing _from, _to and _id values
-////////////////////////////////////////////////////////////////////////////////
-
-int ExecutionBlock::resolve(char const* handle, TRI_voc_cid_t& cid,
-                            std::string& key) const {
-  char const* p = strchr(handle, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR);
-  if (p == nullptr || *p == '\0') {
-    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
-  }
-
-  if (*handle >= '0' && *handle <= '9') {
-    cid = arangodb::basics::StringUtils::uint64(handle, p - handle);
-  } else {
-    std::string const name(handle, p - handle);
-    cid = _trx->resolver()->getCollectionIdCluster(name);
-  }
-
-  if (cid == 0) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-  }
-
-  key = std::string(p + 1);
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief copy register data from one block (src) into another (dst)
 /// register values are cloned
 ////////////////////////////////////////////////////////////////////////////////
@@ -217,26 +193,24 @@ int ExecutionBlock::resolve(char const* handle, TRI_voc_cid_t& cid,
 void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
                                       AqlItemBlock* dst, size_t srcRow,
                                       size_t dstRow) {
+  DEBUG_BEGIN_BLOCK();  
   RegisterId const n = src->getNrRegs();
   auto planNode = getPlanNode();
 
   for (RegisterId i = 0; i < n; i++) {
     if (planNode->_regsToClear.find(i) == planNode->_regsToClear.end()) {
-      auto value = src->getValueReference(srcRow, i);
+      auto const& value = src->getValueReference(srcRow, i);
 
       if (!value.isEmpty()) {
         AqlValue a = value.clone();
-        try {
-          dst->setValue(dstRow, i, a);
-        } catch (...) {
-          a.destroy();
-          throw;
-        }
+        AqlValueGuard guard(a, true);
+
+        dst->setValue(dstRow, i, a);
+        guard.steal();
       }
-      // copy collection
-      dst->setDocumentCollection(i, src->getDocumentCollection(i));
     }
   }
+  DEBUG_END_BLOCK();  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -246,31 +220,28 @@ void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
 
 void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
                                       AqlItemBlock* dst, size_t row) {
+  DEBUG_BEGIN_BLOCK();  
   RegisterId const n = src->getNrRegs();
   auto planNode = getPlanNode();
 
   for (RegisterId i = 0; i < n; i++) {
     if (planNode->_regsToClear.find(i) == planNode->_regsToClear.end()) {
-      auto value = src->getValueReference(row, i);
+      auto const& value = src->getValueReference(row, i);
 
       if (!value.isEmpty()) {
         AqlValue a = value.clone();
-
-        try {
-          TRI_IF_FAILURE("ExecutionBlock::inheritRegisters") {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-          }
-
-          dst->setValue(0, i, a);
-        } catch (...) {
-          a.destroy();
-          throw;
+        AqlValueGuard guard(a, true);
+          
+        TRI_IF_FAILURE("ExecutionBlock::inheritRegisters") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
+
+        dst->setValue(0, i, a);
+        guard.steal();
       }
-      // copy collection
-      dst->setDocumentCollection(i, src->getDocumentCollection(i));
     }
   }
+  DEBUG_END_BLOCK();  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -280,6 +251,7 @@ void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ExecutionBlock::getBlock(size_t atLeast, size_t atMost) {
+  DEBUG_BEGIN_BLOCK();
   throwIfKilled();  // check if we were aborted
 
   std::unique_ptr<AqlItemBlock> docs(
@@ -297,6 +269,7 @@ bool ExecutionBlock::getBlock(size_t atLeast, size_t atMost) {
   docs.release();
 
   return true;
+  DEBUG_END_BLOCK();  
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -309,6 +282,7 @@ bool ExecutionBlock::getBlock(size_t atLeast, size_t atMost) {
 
 AqlItemBlock* ExecutionBlock::getSomeWithoutRegisterClearout(size_t atLeast,
                                                              size_t atMost) {
+  DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(0 < atLeast && atLeast <= atMost);
   size_t skipped = 0;
 
@@ -320,16 +294,20 @@ AqlItemBlock* ExecutionBlock::getSomeWithoutRegisterClearout(size_t atLeast,
   }
 
   return result;
+  DEBUG_END_BLOCK();
 }
 
 void ExecutionBlock::clearRegisters(AqlItemBlock* result) {
+  DEBUG_BEGIN_BLOCK();
   // Clear out registers not needed later on:
   if (result != nullptr) {
     result->clearRegisters(getPlanNode()->_regsToClear);
   }
+  DEBUG_END_BLOCK();
 }
 
 size_t ExecutionBlock::skipSome(size_t atLeast, size_t atMost) {
+  DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(0 < atLeast && atLeast <= atMost);
   size_t skipped = 0;
 
@@ -343,11 +321,13 @@ size_t ExecutionBlock::skipSome(size_t atLeast, size_t atMost) {
   }
 
   return skipped;
+  DEBUG_END_BLOCK();
 }
 
 // skip exactly <number> outputs, returns <true> if _done after
 // skipping, and <false> otherwise . . .
 bool ExecutionBlock::skip(size_t number) {
+  DEBUG_BEGIN_BLOCK();
   size_t skipped = skipSome(number, number);
   size_t nr = skipped;
   while (nr != 0 && skipped < number) {
@@ -358,6 +338,7 @@ bool ExecutionBlock::skip(size_t number) {
     return true;
   }
   return !hasMore();
+  DEBUG_END_BLOCK();
 }
 
 bool ExecutionBlock::hasMore() {
@@ -385,6 +366,7 @@ int64_t ExecutionBlock::remaining() {
 
 int ExecutionBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
                                   AqlItemBlock*& result, size_t& skipped) {
+  DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(result == nullptr && skipped == 0);
 
   if (_done) {
@@ -496,4 +478,5 @@ int ExecutionBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
 
   freeCollector();
   return TRI_ERROR_NO_ERROR;
+  DEBUG_END_BLOCK();
 }

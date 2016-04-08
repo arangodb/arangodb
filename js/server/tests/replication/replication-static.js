@@ -127,13 +127,14 @@ function ReplicationSuite() {
       restrictType: restrictType,
       restrictCollections: restrictCollections
     });
-
+    
     assertTrue(syncResult.hasOwnProperty('lastLogTick'));
 
     applierConfiguration = applierConfiguration || {};
     applierConfiguration.endpoint = masterEndpoint;
     applierConfiguration.username = replicatorUser;
     applierConfiguration.password = replicatorPassword;
+    applierConfiguration.includeSystem = includeSystem;
 
     if (!applierConfiguration.hasOwnProperty('chunkSize')) {
       applierConfiguration.chunkSize = 16384;
@@ -535,7 +536,7 @@ function ReplicationSuite() {
               "_key": "test" + i
             });
             if (i % 3 === 0) {
-              c.remove(c.last());
+              c.remove("test" + i);
             } else if (i % 5 === 0) {
               c.update("test" + i, {
                 "def": "hifh"
@@ -630,7 +631,7 @@ function ReplicationSuite() {
               "_key": "test" + i
             });
             if (i % 3 === 0) {
-              c.remove(c.last());
+              c.remove("test" + i);
             } else if (i % 5 === 0) {
               c.update("test" + i, {
                 "def": "hifh"
@@ -1435,43 +1436,6 @@ function ReplicationSuite() {
         },
         function(state) {
           assertNull(db._collection(cn));
-        }
-      );
-    },
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test cap constraint
-    ////////////////////////////////////////////////////////////////////////////////
-
-    testCapConstraint: function() {
-      compare(
-        function(state) {
-          var c = db._create(cn),
-            i;
-          c.ensureCapConstraint(128);
-
-          for (i = 0; i < 1000; ++i) {
-            c.save({
-              "_key": "test" + i
-            });
-          }
-          state.last = c.last(3);
-
-          state.checksum = collectionChecksum(cn);
-          state.count = collectionCount(cn);
-          assertEqual(128, state.count);
-          assertEqual("test999", state.last[0]._key);
-          assertEqual("test998", state.last[1]._key);
-          assertEqual("test997", state.last[2]._key);
-
-          state.idx = c.getIndexes()[1];
-        },
-        function(state) {
-          assertEqual(state.count, collectionCount(cn));
-          assertEqual(state.checksum, collectionChecksum(cn));
-          assertEqual(state.last, db._collection(cn).last(3));
-
-          assertEqual(state.idx.id, db._collection(cn).getIndexes()[1].id);
         }
       );
     },

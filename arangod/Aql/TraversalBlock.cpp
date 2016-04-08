@@ -48,7 +48,7 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
       _resolver(nullptr),
       _expressions(ep->expressions()),
       _hasV8Expression(false) {
-  arangodb::traverser::TraverserOptions opts;
+  arangodb::traverser::TraverserOptions opts(_trx);
   ep->fillTraversalOptions(opts);
   auto ast = ep->_plan->getAst();
 
@@ -88,20 +88,10 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
     _traverser.reset(new arangodb::traverser::ClusterTraverser(
         ep->edgeColls(), opts,
         std::string(_trx->vocbase()->_name, strlen(_trx->vocbase()->_name)),
-        _resolver, _expressions));
+        _trx, _expressions));
   } else {
-    std::vector<TRI_document_collection_t*> edgeCollections;
-    for (auto const& coll : ep->edgeColls()) {
-      TRI_voc_cid_t cid = _resolver->getCollectionId(coll);
-      edgeCollections.push_back(_trx->documentCollection(cid));
-
-      auto trxCollection = _trx->trxCollection(cid);
-      if (trxCollection != nullptr) {
-        _trx->orderDitch(trxCollection);
-      }
-    }
-    _traverser.reset(new arangodb::traverser::DepthFirstTraverser(
-        edgeCollections, opts, _resolver, _trx, _expressions));
+    _traverser.reset(
+        new arangodb::traverser::DepthFirstTraverser(opts, _trx, _expressions));
   }
   if (!ep->usesInVariable()) {
     _vertexId = ep->getStartVertex();
@@ -148,6 +138,7 @@ void TraversalBlock::freeCaches() {
 }
 
 int TraversalBlock::initialize() {
+  DEBUG_BEGIN_BLOCK();
   int res = ExecutionBlock::initialize();
   auto varInfo = getPlanNode()->getRegisterPlan()->varInfo;
 
@@ -171,9 +162,11 @@ int TraversalBlock::initialize() {
   }
 
   return res;
+  DEBUG_END_BLOCK();
 }
 
 void TraversalBlock::executeExpressions() {
+  DEBUG_BEGIN_BLOCK();
   AqlItemBlock* cur = _buffer.front();
   for (auto& map : *_expressions) {
     for (size_t i = 0; i < map.second.size(); ++i) {
@@ -182,18 +175,33 @@ void TraversalBlock::executeExpressions() {
           dynamic_cast<SimpleTraverserExpression*>(map.second.at(i));
       if (it != nullptr && it->expression != nullptr) {
         // inVars and inRegs needs fixx
-        TRI_document_collection_t const* myCollection = nullptr;
+        bool mustDestroy;
         AqlValue a = it->expression->execute(_trx, cur, _pos, _inVars[i],
-                                             _inRegs[i], &myCollection);
-        it->compareTo.reset(new Json(a.toJson(_trx, myCollection, true)));
-        a.destroy();
+                                             _inRegs[i], mustDestroy);
+
+        AqlValueGuard guard(a, mustDestroy);
+        
+        AqlValueMaterializer materializer(_trx);
+        VPackSlice slice = materializer.slice(a);
+
+        VPackBuilder* builder = new VPackBuilder;
+        try {
+          builder->add(slice);
+        } catch (...) {
+          delete builder;
+          throw;
+        }
+
+        it->compareTo.reset(builder);
       }
     }
   }
   throwIfKilled();  // check if we were aborted
+  DEBUG_END_BLOCK();
 }
 
 void TraversalBlock::executeFilterExpressions() {
+  DEBUG_BEGIN_BLOCK();
   if (!_expressions->empty()) {
     if (_hasV8Expression) {
       bool const isRunningInCluster =
@@ -243,6 +251,7 @@ void TraversalBlock::executeFilterExpressions() {
       }
     }
   }
+  DEBUG_END_BLOCK();
 }
 
 int TraversalBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
@@ -258,6 +267,7 @@ int TraversalBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TraversalBlock::morePaths(size_t hint) {
+  DEBUG_BEGIN_BLOCK();
   freeCaches();
   _posInPaths = 0;
   if (!_traverser->hasMore()) {
@@ -265,8 +275,8 @@ bool TraversalBlock::morePaths(size_t hint) {
     _engine->_stats.filtered += _traverser->getAndResetFilteredPaths();
     return false;
   }
-  auto en = static_cast<TraversalNode const*>(getPlanNode());
 
+  VPackBuilder tmp;
   for (size_t j = 0; j < hint; ++j) {
     std::unique_ptr<arangodb::traverser::TraversalPath> p(_traverser->next());
 
@@ -275,20 +285,20 @@ bool TraversalBlock::morePaths(size_t hint) {
       break;
     }
 
-    AqlValue pathValue;
-
-    if (usesPathOutput() || (en->condition() != nullptr)) {
-      pathValue = AqlValue(p->pathToJson(_trx, _resolver));
-    }
-
     if (usesVertexOutput()) {
-      _vertices.emplace_back(p->lastVertexToJson(_trx, _resolver));
+      tmp.clear();
+      p->lastVertexToVelocyPack(_trx, tmp);
+      _vertices.emplace_back(tmp.slice());
     }
     if (usesEdgeOutput()) {
-      _edges.emplace_back(p->lastEdgeToJson(_trx, _resolver));
+      tmp.clear();
+      p->lastEdgeToVelocyPack(_trx, tmp);
+      _edges.emplace_back(tmp.slice());
     }
     if (usesPathOutput()) {
-      _paths.emplace_back(pathValue);
+      tmp.clear();
+      p->pathToVelocyPack(_trx, tmp);
+      _paths.emplace_back(tmp.slice());
     }
     _engine->_stats.scannedIndex += p->getReadDocuments();
 
@@ -299,6 +309,7 @@ bool TraversalBlock::morePaths(size_t hint) {
   _engine->_stats.filtered += _traverser->getAndResetFilteredPaths();
   // This is only save as long as _vertices is still build
   return !_vertices.empty();
+  DEBUG_END_BLOCK();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -306,12 +317,14 @@ bool TraversalBlock::morePaths(size_t hint) {
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t TraversalBlock::skipPaths(size_t hint) {
+  DEBUG_BEGIN_BLOCK();
   freeCaches();
   _posInPaths = 0;
   if (!_traverser->hasMore()) {
     return 0;
   }
   return _traverser->skip(hint);
+  DEBUG_END_BLOCK();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -319,8 +332,9 @@ size_t TraversalBlock::skipPaths(size_t hint) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TraversalBlock::initializePaths(AqlItemBlock const* items) {
+  DEBUG_BEGIN_BLOCK();
   if (!_vertices.empty()) {
-    // No Initialisation required.
+    // No Initialization required.
     return;
   }
   if (!_useRegister) {
@@ -333,36 +347,22 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items) {
                                              "Only id strings or objects with "
                                              "_id are allowed");
       } else {
-        auto v(arangodb::traverser::VertexId(
-            _resolver->getCollectionIdCluster(_vertexId.substr(0, pos).c_str()),
-            _vertexId.c_str() + pos + 1));
-
-        _traverser->setStartVertex(v);
+        _traverser->setStartVertex(_vertexId);
       }
     }
   } else {
-    auto in = items->getValueReference(_pos, _reg);
-    if (in.isShaped()) {
-      auto col = items->getDocumentCollection(_reg);
-      VertexId v(col->_info.id(), TRI_EXTRACT_MARKER_KEY(in.getMarker()));
-      _traverser->setStartVertex(v);
-    } else if (in.isObject()) {
-      Json input = in.toJson(_trx, nullptr, false);
-      if (input.has(TRI_VOC_ATTRIBUTE_ID)) {
-        Json _idJson = input.get(TRI_VOC_ATTRIBUTE_ID);
-        if (_idJson.isString()) {
-          _vertexId =
-              arangodb::basics::JsonHelper::getStringValue(_idJson.json(), "");
-          VertexId v =
-              arangodb::traverser::IdStringToVertexId(_resolver, _vertexId);
-          _traverser->setStartVertex(v);
-        }
+    AqlValue const& in = items->getValueReference(_pos, _reg);
+    if (in.isObject()) {
+      try {
+        std::string idString = _trx->extractIdString(in.slice());
+        _traverser->setStartVertex(idString);
+      }
+      catch (...) {
+        // _id or _key not present... ignore this error and fall through
       }
     } else if (in.isString()) {
-      _vertexId = in.toString();
-      VertexId v =
-          arangodb::traverser::IdStringToVertexId(_resolver, _vertexId);
-      _traverser->setStartVertex(v);
+      _vertexId = in.slice().copyString();
+      _traverser->setStartVertex(_vertexId);
     } else {
       _engine->getQuery()->registerWarning(TRI_ERROR_BAD_PARAMETER,
                                            "Invalid input for traversal: Only "
@@ -370,6 +370,7 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items) {
                                            "allowed");
     }
   }
+  DEBUG_END_BLOCK();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -378,6 +379,7 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items) {
 
 AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
                                       size_t atMost) {
+  DEBUG_BEGIN_BLOCK();
   if (_done) {
     return nullptr;
   }
@@ -471,6 +473,7 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
   return res.release();
+  DEBUG_END_BLOCK();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -478,6 +481,7 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t TraversalBlock::skipSome(size_t atLeast, size_t atMost) {
+  DEBUG_BEGIN_BLOCK();
   size_t skipped = 0;
 
   if (_done) {
@@ -517,4 +521,5 @@ size_t TraversalBlock::skipSome(size_t atLeast, size_t atMost) {
   _posInPaths += atMost;
   // Skip the next atMost many paths.
   return atMost;
+  DEBUG_END_BLOCK();
 }

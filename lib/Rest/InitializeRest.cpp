@@ -154,7 +154,6 @@ void InitializeRest() {
   TRI_InitializeFiles();
   TRI_InitializeMimetypes();
   Logger::initialize(false);
-  TRI_InitializeHashes();
   TRI_InitializeRandom();
   TRI_InitializeProcess();
 
@@ -190,7 +189,6 @@ void ShutdownRest() {
 
   TRI_ShutdownProcess();
   TRI_ShutdownRandom();
-  TRI_ShutdownHashes();
   Logger::shutdown(true);
   TRI_ShutdownMimetypes();
   TRI_ShutdownFiles();

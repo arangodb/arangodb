@@ -52,6 +52,7 @@ void Version::initialize() {
   }
 
   Values["architecture"] = (sizeof(void*) == 4 ? "32" : "64") + std::string("bit");
+  Values["asm-crc32"] = (ENABLE_ASM_CRC32) ? "true" : "false";
   Values["boost-version"] = getBoostVersion();
   Values["build-date"] = getBuildDate();
   Values["fd-setsize"] = arangodb::basics::StringUtils::itoa(FD_SETSIZE);
@@ -66,13 +67,19 @@ void Version::initialize() {
   Values["vpack-version"] = getVPackVersion();
   Values["zlib-version"] = getZLibVersion();
 
+#if defined(__SSE4_2__) && !defined(NO_SSE42)
+  Values["sse42"] = "true";
+#else
+  Values["sse42"] = "false";
+#endif
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   Values["maintainer-mode"] = "true";
 #else
   Values["maintainer-mode"] = "false";
 #endif
 
-#ifdef TRI_HAVE_TCMALLOC
+#ifdef ARANGODB_HAVE_TCMALLOC
   Values["tcmalloc"] = "true";
 #else
   Values["tcmalloc"] = "false";

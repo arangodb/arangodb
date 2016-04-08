@@ -744,7 +744,7 @@ function CompactionSuite () {
       assertEqual(0, fig["dead"]["size"]);
       assertEqual(0, fig["dead"]["deletion"]);
       assertEqual(0, fig["journals"]["count"]);
-      assertTrue(0 < fig["datafiles"]["count"]);
+      assertEqual(0, fig["datafiles"]["count"]);
 
       internal.db._drop(cn);
     },

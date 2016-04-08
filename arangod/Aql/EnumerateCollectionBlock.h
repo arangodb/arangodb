@@ -27,13 +27,13 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 
-struct TRI_doc_mptr_copy_t;
+struct TRI_doc_mptr_t;
 
 namespace arangodb {
 namespace aql {
 class AqlItemBlock;
 struct Collection;
-struct CollectionScanner;
+class CollectionScanner;
 class ExecutionEngine;
 
 class EnumerateCollectionBlock : public ExecutionBlock {
@@ -104,7 +104,13 @@ class EnumerateCollectionBlock : public ExecutionBlock {
   /// @brief document buffer
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<TRI_doc_mptr_copy_t> _documents;
+  arangodb::velocypack::Slice _documents;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief length of documents
+  //////////////////////////////////////////////////////////////////////////////
+
+  size_t _documentsSize;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief current position in _documents

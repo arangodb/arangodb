@@ -24,48 +24,30 @@
 #ifndef ARANGOD_VOC_BASE_EXAMPLE_MATCHER_H
 #define ARANGOD_VOC_BASE_EXAMPLE_MATCHER_H 1
 
-#include "v8.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/document-collection.h"
 
-struct TRI_doc_mptr_t;
-class VocShaper;
+#include <v8.h>
 
 namespace arangodb {
 
 namespace velocypack {
+class Builder;
 class Slice;
 }
 
 class ExampleMatcher {
-  struct DocumentId {
-    TRI_voc_cid_t cid;
-    std::string key;
-
-    DocumentId(TRI_voc_cid_t cid, std::string const& key)
-        : cid(cid), key(key) {}
-  };
-
-  enum internalAttr { key, id, rev, from, to };
-
-  // Has no destructor.
-  // The using ExampleMatcher will free all pointers.
-  // Should not directly be used from outside.
+ private:
   struct ExampleDefinition {
-    std::map<internalAttr, DocumentId> _internal;
-    std::vector<TRI_shape_pid_t> _pids;
-    std::vector<TRI_shaped_json_t*> _values;
+    std::vector<std::vector<std::string>> _paths;
+    arangodb::velocypack::Builder _values;
+
+    arangodb::velocypack::Slice slice() const;
   };
 
-  VocShaper* _shaper;
   std::vector<ExampleDefinition> definitions;
 
-  void fillExampleDefinition(TRI_json_t const* example,
-                             arangodb::CollectionNameResolver const* resolver,
-                             ExampleDefinition& def);
-
   void fillExampleDefinition(arangodb::velocypack::Slice const& example,
-                             arangodb::CollectionNameResolver const* resolver,
                              ExampleDefinition& def);
 
   void fillExampleDefinition(v8::Isolate* isolate,
@@ -75,24 +57,20 @@ class ExampleMatcher {
 
  public:
   ExampleMatcher(v8::Isolate* isolate, v8::Handle<v8::Object> const example,
-                 VocShaper* shaper, std::string& errorMessage);
+                 std::string& errorMessage);
 
   ExampleMatcher(v8::Isolate* isolate, v8::Handle<v8::Array> const examples,
-                 VocShaper* shaper, std::string& errorMessage);
+                 std::string& errorMessage);
 
-  ExampleMatcher(TRI_json_t const* example, VocShaper* shaper,
+  ExampleMatcher(TRI_json_t const* example,
                  arangodb::CollectionNameResolver const* resolver);
 
-  ExampleMatcher(arangodb::velocypack::Slice const& example, VocShaper* shaper,
-                 arangodb::CollectionNameResolver const* resolver,
+  ExampleMatcher(arangodb::velocypack::Slice const& example,
                  bool allowStrings);
 
-  ~ExampleMatcher() { cleanup(); }
+  ~ExampleMatcher() { }
 
-  bool matches(TRI_voc_cid_t cid, TRI_doc_mptr_t const* mptr) const;
-
- private:
-  void cleanup();
+  bool matches(arangodb::velocypack::Slice const) const;
 };
 }
 

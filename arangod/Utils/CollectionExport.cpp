@@ -25,9 +25,11 @@
 #include "Basics/JsonHelper.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Utils/CollectionGuard.h"
-#include "Utils/transactions.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/compactor.h"
 #include "VocBase/Ditch.h"
+#include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -89,7 +91,7 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
     uint64_t const maxTries = maxWaitTime / SleepTime;
 
     while (++tries < maxTries) {
-      if (TRI_IsFullyCollectedDocumentCollection(_document)) {
+      if (_document->isFullyCollected()) {
         break;
       }
       usleep(SleepTime);
@@ -97,18 +99,18 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
   }
 
   {
-    SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(),
-                                            _document->_vocbase, _name);
+    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_document->_vocbase),
+                                            _name, TRI_TRANSACTION_READ);
 
-    trx.addHint(TRI_TRANSACTION_HINT_NO_USAGE_LOCK,
-                true);  // already locked by guard above
+    // already locked by guard above
+    trx.addHint(TRI_TRANSACTION_HINT_NO_USAGE_LOCK, true);
     int res = trx.begin();
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }
-    auto idx = _document->primaryIndex();
-    size_t maxDocuments = idx->size();
+    
+    size_t maxDocuments = _document->primaryIndex()->size();
     if (limit > 0 && limit < maxDocuments) {
       maxDocuments = limit;
     } else {
@@ -116,24 +118,16 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
     }
     _documents->reserve(maxDocuments);
 
-    if (maxDocuments > 0) {
-      arangodb::basics::BucketPosition position;
-      uint64_t total = 0;
-      while (limit > 0) {
-        auto ptr = idx->lookupSequential(&trx, position, total);
-
-        if (ptr == nullptr) {
-          break;
-        }
-
-        void const* marker = ptr->getDataPtr();
-
-        if (!TRI_IsWalDataMarkerDatafile(marker)) {
-          _documents->emplace_back(marker);
-          --limit;
-        }
+    trx.invokeOnAllElements(_document->_info.name(), [this, &limit](TRI_doc_mptr_t const* mptr) {
+      if (limit == 0) {
+        return false;
       }
-    }
+      if (!mptr->pointsToWal()) {
+        _documents->emplace_back(mptr->getMarkerPtr());
+        --limit;
+      }
+      return true;
+    });
 
     trx.finish(res);
   }

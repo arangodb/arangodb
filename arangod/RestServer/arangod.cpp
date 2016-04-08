@@ -23,8 +23,10 @@
 
 #include "Basics/Common.h"
 
+#include "Basics/VelocyPackHelper.h"
 #include "Rest/InitializeRest.h"
 #include "RestServer/ArangoServer.h"
+
 #include <signal.h>
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -92,6 +94,8 @@ int main(int argc, char* argv[]) {
   // initialize sub-systems
   TRI_GlobalEntryFunction();
   TRIAGENS_REST_INITIALIZE();
+
+  arangodb::basics::VelocyPackHelper::initialize();
 
   if (startAsService) {
     TRI_StartService(argc, argv);

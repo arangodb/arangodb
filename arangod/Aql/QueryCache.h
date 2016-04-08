@@ -25,11 +25,9 @@
 #define ARANGOD_AQL_QUERY_CACHE_H 1
 
 #include "Basics/Common.h"
-#include "Basics/JsonHelper.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 
-struct TRI_json_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -47,7 +45,7 @@ enum QueryCacheMode { CACHE_ALWAYS_OFF, CACHE_ALWAYS_ON, CACHE_ON_DEMAND };
 struct QueryCacheResultEntry {
   QueryCacheResultEntry() = delete;
 
-  QueryCacheResultEntry(uint64_t, char const*, size_t, struct TRI_json_t*,
+  QueryCacheResultEntry(uint64_t, char const*, size_t, std::shared_ptr<arangodb::velocypack::Builder>,
                         std::vector<std::string> const&);
 
   ~QueryCacheResultEntry();
@@ -73,7 +71,7 @@ struct QueryCacheResultEntry {
   uint64_t const _hash;
   char* _queryString;
   size_t const _queryStringLength;
-  struct TRI_json_t* _queryResult;
+  std::shared_ptr<arangodb::velocypack::Builder> _queryResult;
   std::vector<std::string> const _collections;
   QueryCacheResultEntry* _prev;
   QueryCacheResultEntry* _next;
@@ -273,7 +271,7 @@ class QueryCache {
   //////////////////////////////////////////////////////////////////////////////
 
   QueryCacheResultEntry* store(TRI_vocbase_t*, uint64_t, char const*, size_t,
-                               struct TRI_json_t*,
+                               std::shared_ptr<arangodb::velocypack::Builder>,
                                std::vector<std::string> const&);
 
   //////////////////////////////////////////////////////////////////////////////

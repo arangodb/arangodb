@@ -37,7 +37,6 @@
 #include "Dispatcher/Job.h"
 #include "V8Server/ApplicationV8.h"
 #include "V8/v8-globals.h"
-#include "V8Server/v8-vocbase.h"
 #include "VocBase/auth.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"

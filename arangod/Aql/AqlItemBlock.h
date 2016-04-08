@@ -30,8 +30,6 @@
 #include "Aql/Range.h"
 #include "Aql/types.h"
 
-struct TRI_document_collection_t;
-
 namespace arangodb {
 namespace aql {
 
@@ -63,7 +61,7 @@ class AqlItemBlock {
 
   AqlItemBlock(size_t nrItems, RegisterId nrRegs);
 
-  AqlItemBlock(arangodb::basics::Json const& json);
+  explicit AqlItemBlock(arangodb::velocypack::Slice const);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroy the block
@@ -117,21 +115,6 @@ class AqlItemBlock {
     }
 
     _data[index * _nrRegs + varNr] = value;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief fill a slot in the item block with a SHAPED AqlValue
-  /// this is a specialization without reference counting
-  //////////////////////////////////////////////////////////////////////////////
-
-  void setShaped(size_t index, RegisterId varNr,
-                 TRI_df_marker_t const* marker) {
-    TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
-    TRI_ASSERT(!_data[index * _nrRegs + varNr].requiresDestruction());
-
-    auto& v = _data[index * _nrRegs + varNr];
-    v._marker = marker;
-    v._type = AqlValue::SHAPED;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -235,25 +218,6 @@ class AqlItemBlock {
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief getDocumentCollection
-  //////////////////////////////////////////////////////////////////////////////
-
-  inline TRI_document_collection_t const* getDocumentCollection(
-      RegisterId varNr) const {
-    return _docColls[varNr];
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief setDocumentCollection, set the current value of a variable or
-  /// attribute
-  //////////////////////////////////////////////////////////////////////////////
-
-  inline void setDocumentCollection(RegisterId varNr,
-                                    TRI_document_collection_t const* docColl) {
-    _docColls[varNr] = docColl;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief getter for _nrRegs
   //////////////////////////////////////////////////////////////////////////////
 
@@ -264,14 +228,6 @@ class AqlItemBlock {
   //////////////////////////////////////////////////////////////////////////////
 
   inline size_t size() const { return _nrItems; }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief getter for _docColls
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::vector<TRI_document_collection_t const*>& getDocumentCollections() {
-    return _docColls;
-  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief shrink the block to the specified number of rows
@@ -330,7 +286,8 @@ class AqlItemBlock {
   /// be used to recreate the AqlItemBlock via the Json constructor
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::basics::Json toJson(arangodb::AqlTransaction* trx) const;
+  void toVelocyPack(arangodb::AqlTransaction* trx,
+                    arangodb::velocypack::Builder&) const;
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -350,13 +307,6 @@ class AqlItemBlock {
   //////////////////////////////////////////////////////////////////////////////
 
   std::unordered_map<AqlValue, uint32_t> _valueCount;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief _docColls, for every column a possible collection, which contains
-  /// all AqlValues of type SHAPED in this column.
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::vector<TRI_document_collection_t const*> _docColls;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief _nrItems, number of rows

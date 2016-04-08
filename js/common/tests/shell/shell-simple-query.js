@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global fail, assertEqual, assertNotNull, assertNull, assertTrue, assertMatch,
+/*global assertEqual, assertNotNull, assertNull, assertTrue, assertMatch,
   assertFalse */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -982,7 +982,7 @@ function SimpleQueryByExampleSuite () {
         for (var i = 0; i < 5; ++i) {
           collection.save({ value: v });
         }
-      
+     
         var result = collection.byExample({ value: v }).toArray();
         assertEqual(5, result.length);
       });
@@ -1854,405 +1854,6 @@ function SimpleQueryByExampleSuite () {
   };
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite: byExampleHash
-////////////////////////////////////////////////////////////////////////////////
-
-function SimpleQueryByExampleHashSuite () {
-  'use strict';
-  var cn = "UnitTestsCollectionByExample";
-  var collection = null;
-  var errors = require("@arangodb").errors;
-
-  var id = function(d) { return d._id; };
-
-  return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUp : function () {
-      db._drop(cn);
-      collection = db._create(cn);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-    tearDown : function () {
-      collection.drop();
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: byExample, using indexes
-////////////////////////////////////////////////////////////////////////////////
-
-    testByExampleHashNoIndex : function () {
-      try {
-        collection.byExampleHash(null, { "d" : true }).toArray();
-        fail();
-      }
-      catch (err) {
-        assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err.errorNum);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: byExample, using indexes
-////////////////////////////////////////////////////////////////////////////////
-
-    testByExampleHashWrongIndex : function () {
-      var idx = collection.ensureSkiplist("d");
-
-      try {
-        collection.byExampleHash(idx.id, { "d" : true }).toArray();
-        fail();
-      }
-      catch (err) {
-        assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err.errorNum);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: byExample
-////////////////////////////////////////////////////////////////////////////////
-
-    testByExampleObject : function () {
-      var idx = collection.ensureHashIndex("i");
-
-      var d1 = collection.save({ i : 1 });
-      var d2 = collection.save({ i : 1, a : { j : 1 } });
-      var d3 = collection.save({ i : 1, a : { j : 1, k : 1 } });
-      var d4 = collection.save({ i : 1, a : { j : 2, k : 2 } });
-      var d5 = collection.save({ i : 2 });
-      var d6 = collection.save({ i : 2, a : 2 });
-      var d7 = collection.save({ i : 2, a : { j : 2, k : 2 } });
-      var d8 = collection.save({ i : null });
-      var d9 = collection.save({ i : null, a: 1 });
-      var s;
-
-      s = collection.byExampleHash(idx, { i : 1 }).toArray().map(id).sort();
-      assertEqual([d1._id, d2._id, d3._id, d4._id].sort(), s);
-
-      s = collection.byExampleHash(idx, { i : 2 }).toArray().map(id).sort();
-      assertEqual([d5._id, d6._id, d7._id].sort(), s);
-      
-      s = collection.byExampleHash(idx, { i : null }).toArray().map(id).sort();
-      assertEqual([d8._id, d9._id].sort(), s);
-
-      s = collection.byExampleHash(idx, { i : 9 }).toArray();
-      assertEqual([ ], s);
-
-      try {
-        collection.byExampleHash(idx.id, { j : 2 }).toArray();
-        fail();
-      }
-      catch (err1) {
-        assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err1.errorNum);
-      }
-
-      idx = collection.ensureHashIndex("a.j");
-
-      s = collection.byExampleHash(idx.id, { "a.j" : 1 }).toArray().map(id).sort();
-      assertEqual([d2._id, d3._id].sort(), s);
-
-      try {
-        collection.byExampleHash(idx.id, { i : 2 }).toArray();
-        fail();
-      }
-      catch (err2) {
-        assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err2.errorNum);
-      }
-
-      try {
-        collection.byExampleHash(idx.id, { j : 2 }).toArray();
-        fail();
-      }
-      catch (err3) {
-        assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err3.errorNum);
-      }
-
-      idx = collection.ensureHashIndex("i", "a.j");
-      s = collection.byExampleHash(idx, { i : 1, "a.j" : 1 }).toArray().map(id).sort();
-      assertEqual([d2._id, d3._id].sort(), s);
-
-      s = collection.byExampleHash(idx, { "a.j" : 1, i : 1 }).toArray().map(id).sort();
-      assertEqual([d2._id, d3._id].sort(), s);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: byExample
-////////////////////////////////////////////////////////////////////////////////
-
-    testByExampleObjectSparse : function () {
-      var idx = collection.ensureHashIndex("i", { sparse: true });
-
-      var d1 = collection.save({ i : 1 });
-      var d2 = collection.save({ i : 1, a : { j : 1 } });
-      var d3 = collection.save({ i : 1, a : { j : 1, k : 1 } });
-      var d4 = collection.save({ i : 1, a : { j : 2, k : 2 } });
-      var d5 = collection.save({ i : 2 });
-      var d6 = collection.save({ i : 2, a : 2 });
-      var d7 = collection.save({ i : 2, a : { j : 2, k : 2 } });
-      collection.save({ i : null });
-      collection.save({ i : null, a : 1 });
-      var s;
-
-      s = collection.byExampleHash(idx, { i : 1 }).toArray().map(id).sort();
-      assertEqual([d1._id, d2._id, d3._id, d4._id].sort(), s);
-
-      s = collection.byExampleHash(idx, { i : 2 }).toArray().map(id).sort();
-      assertEqual([d5._id, d6._id, d7._id].sort(), s);
-
-      s = collection.byExampleHash(idx, { i : null }).toArray();
-      assertEqual([ ], s);
-      
-      s = collection.byExampleHash(idx, { i : 9 }).toArray();
-      assertEqual([ ], s);
-
-      try {
-        collection.byExampleHash(idx.id, { j : 2 }).toArray();
-        fail();
-      }
-      catch (err1) {
-        assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err1.errorNum);
-      }
-
-      idx = collection.ensureHashIndex("a.j");
-
-      s = collection.byExampleHash(idx.id, { "a.j" : 1 }).toArray().map(id).sort();
-      assertEqual([d2._id, d3._id].sort(), s);
-
-      try {
-        collection.byExampleHash(idx.id, { i : 2 }).toArray();
-        fail();
-      }
-      catch (err2) {
-        assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err2.errorNum);
-      }
-
-      try {
-        collection.byExampleHash(idx.id, { j : 2 }).toArray();
-        fail();
-      }
-      catch (err3) {
-        assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err3.errorNum);
-      }
-
-      idx = collection.ensureHashIndex("i", "a.j");
-      s = collection.byExampleHash(idx, { i : 1, "a.j" : 1 }).toArray().map(id).sort();
-      assertEqual([d2._id, d3._id].sort(), s);
-
-      s = collection.byExampleHash(idx, { "a.j" : 1, i : 1 }).toArray().map(id).sort();
-      assertEqual([d2._id, d3._id].sort(), s);
-    }
-
-  };
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite: byExampleSkiplist
-////////////////////////////////////////////////////////////////////////////////
-
-function SimpleQueryByExampleSkiplistSuite () {
-  'use strict';
-  var cn = "UnitTestsCollectionByExample";
-  var collection = null;
-  var errors = require("@arangodb").errors;
-
-  var id = function(d) { return d._id; };
-
-  return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUp : function () {
-      db._drop(cn);
-      collection = db._create(cn);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-    tearDown : function () {
-      collection.drop();
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: byExample, using indexes
-////////////////////////////////////////////////////////////////////////////////
-
-    testByExampleSkiplistNoIndex : function () {
-      try {
-        collection.byExampleSkiplist(null, { "d" : true }).toArray();
-        fail();
-      }
-      catch (err) {
-        assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err.errorNum);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: byExample, using indexes
-////////////////////////////////////////////////////////////////////////////////
-
-    testByExampleSkiplistWrongIndex : function () {
-      var idx = collection.ensureHashIndex("d");
-
-      try {
-        collection.byExampleSkiplist(idx.id, { "d" : true }).toArray();
-        fail();
-      }
-      catch (err) {
-        assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err.errorNum);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: byExample
-////////////////////////////////////////////////////////////////////////////////
-
-    testByExampleObject : function () {
-      var idx = collection.ensureSkiplist("i");
-
-      var d1 = collection.save({ i : 1 });
-      var d2 = collection.save({ i : 1, a : { j : 1 } });
-      var d3 = collection.save({ i : 1, a : { j : 1, k : 1 } });
-      var d4 = collection.save({ i : 1, a : { j : 2, k : 2 } });
-      var d5 = collection.save({ i : 2 });
-      var d6 = collection.save({ i : 2, a : 2 });
-      var d7 = collection.save({ i : 2, a : { j : 2, k : 2 } });
-      var d8 = collection.save({ i : null });
-      var d9 = collection.save({ i : null, a : 1 });
-      var s;
-
-      s = collection.byExampleSkiplist(idx, { i : 1 }).toArray().map(id).sort();
-      assertEqual([d1._id, d2._id, d3._id, d4._id].sort(), s);
-
-      s = collection.byExampleSkiplist(idx, { i : 2 }).toArray().map(id).sort();
-      assertEqual([d5._id, d6._id, d7._id].sort(), s);
-      
-      s = collection.byExampleSkiplist(idx, { i : null }).toArray().map(id).sort();
-      assertEqual([d8._id, d9._id ], s);
-
-      s = collection.byExampleSkiplist(idx, { i : 9 }).toArray();
-      assertEqual([ ], s);
-
-      try {
-        collection.byExampleSkiplist(idx.id, { j : 2 }).toArray();
-        fail();
-      }
-      catch (err1) {
-        assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err1.errorNum);
-      }
-
-      idx = collection.ensureSkiplist("a.j");
-
-      s = collection.byExampleSkiplist(idx.id, { "a.j" : 1 }).toArray().map(id).sort();
-      assertEqual([d2._id, d3._id].sort(), s);
-
-      try {
-        collection.byExampleSkiplist(idx.id, { i : 2 }).toArray();
-        fail();
-      }
-      catch (err2) {
-        assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err2.errorNum);
-      }
-
-      try {
-        collection.byExampleSkiplist(idx.id, { j : 2 }).toArray();
-        fail();
-      }
-      catch (err3) {
-        assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err3.errorNum);
-      }
-
-      idx = collection.ensureSkiplist("i", "a.j");
-      s = collection.byExampleSkiplist(idx, { i : 1, "a.j" : 1 }).toArray().map(id).sort();
-      assertEqual([d2._id, d3._id].sort(), s);
-
-      s = collection.byExampleSkiplist(idx, { "a.j" : 1, i : 1 }).toArray().map(id).sort();
-      assertEqual([d2._id, d3._id].sort(), s);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: byExample
-////////////////////////////////////////////////////////////////////////////////
-
-    testByExampleObjectSparse : function () {
-      var idx = collection.ensureSkiplist("i", { sparse: true });
-
-      var d1 = collection.save({ i : 1 });
-      var d2 = collection.save({ i : 1, a : { j : 1 } });
-      var d3 = collection.save({ i : 1, a : { j : 1, k : 1 } });
-      var d4 = collection.save({ i : 1, a : { j : 2, k : 2 } });
-      var d5 = collection.save({ i : 2 });
-      var d6 = collection.save({ i : 2, a : 2 });
-      var d7 = collection.save({ i : 2, a : { j : 2, k : 2 } });
-      collection.save({ i : null });
-      collection.save({ i : null, a : 1 });
-      var s;
-
-      s = collection.byExampleSkiplist(idx, { i : 1 }).toArray().map(id).sort();
-      assertEqual([d1._id, d2._id, d3._id, d4._id].sort(), s);
-
-      s = collection.byExampleSkiplist(idx, { i : 2 }).toArray().map(id).sort();
-      assertEqual([d5._id, d6._id, d7._id].sort(), s);
-
-      s = collection.byExampleSkiplist(idx, { i : null }).toArray();
-      assertEqual([ ], s);
-      
-      s = collection.byExampleSkiplist(idx, { i : 9 }).toArray();
-      assertEqual([ ], s);
-
-      try {
-        collection.byExampleSkiplist(idx.id, { j : 2 }).toArray();
-        fail();
-      }
-      catch (err1) {
-        assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err1.errorNum);
-      }
-
-      idx = collection.ensureSkiplist("a.j");
-
-      s = collection.byExampleSkiplist(idx.id, { "a.j" : 1 }).toArray().map(id).sort();
-      assertEqual([d2._id, d3._id].sort(), s);
-
-      try {
-        collection.byExampleSkiplist(idx.id, { i : 2 }).toArray();
-        fail();
-      }
-      catch (err2) {
-        assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err2.errorNum);
-      }
-
-      try {
-        collection.byExampleSkiplist(idx.id, { j : 2 }).toArray();
-        fail();
-      }
-      catch (err3) {
-        assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err3.errorNum);
-      }
-
-      idx = collection.ensureSkiplist("i", "a.j");
-      s = collection.byExampleSkiplist(idx, { i : 1, "a.j" : 1 }).toArray().map(id).sort();
-      assertEqual([d2._id, d3._id].sort(), s);
-
-      s = collection.byExampleSkiplist(idx, { "a.j" : 1, i : 1 }).toArray().map(id).sort();
-      assertEqual([d2._id, d3._id].sort(), s);
-    }
-
-  };
-}
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: query-by-example
 ////////////////////////////////////////////////////////////////////////////////
@@ -2498,7 +2099,6 @@ function SimpleQuerySparseRangeSuite () {
   var collection = null;
   var age = function(d) { return d.age; };
   var ageSort = function(l, r) { if (l !== r) { if (l < r) { return -1; } return 1; } return 0; };
-  var errors = require("@arangodb").errors;
 
   return {
 
@@ -2536,20 +2136,11 @@ function SimpleQuerySparseRangeSuite () {
       l = collection.closedRange("age", 10, 13).toArray().map(age).sort(ageSort);
       assertEqual([ 10, 11, 12, 13 ], l);
 
-      try {
-        l = collection.range("age", null, 13).toArray();
-        fail();
-      }
-      catch (err1) {
-        assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err1.errorNum);
-      }
-
-      try {
-        l = collection.range("age", null, 13).toArray();
-      }
-      catch (err2) {
-        assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err2.errorNum);
-      }
+      l = collection.range("age", null, 13).toArray().map(age).sort(ageSort);
+      assertEqual([ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ], l);
+      
+      l = collection.closedRange("age", null, 13).toArray().map(age).sort(ageSort);
+      assertEqual([ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 ], l);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2575,7 +2166,6 @@ function SimpleQuerySparseRangeSuite () {
 
   };
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: range
@@ -2644,7 +2234,6 @@ function SimpleQueryUniqueSparseRangeSuite () {
   var collection = null;
   var age = function(d) { return d.age; };
   var ageSort = function(l, r) { if (l !== r) { if (l < r) { return -1; } return 1; } return 0; };
-  var errors = require("@arangodb").errors;
 
   return {
 
@@ -2681,21 +2270,12 @@ function SimpleQueryUniqueSparseRangeSuite () {
 
       l = collection.closedRange("age", 10, 13).toArray().map(age).sort(ageSort);
       assertEqual([ 10, 11, 12, 13 ], l);
+      
+      l = collection.range("age", null, 13).toArray().map(age).sort(ageSort);
+      assertEqual([ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ], l);
 
-      try {
-        l = collection.range("age", null, 13).toArray();
-        fail();
-      }
-      catch (err1) {
-        assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err1.errorNum);
-      }
-
-      try {
-        l = collection.range("age", null, 13).toArray();
-      }
-      catch (err2) {
-        assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err2.errorNum);
-      }
+      l = collection.closedRange("age", null, 13).toArray().map(age).sort(ageSort);
+      assertEqual([ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 ], l);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2785,8 +2365,6 @@ jsunity.run(SimpleQueryRemoveByKeysSuite);
 jsunity.run(SimpleQueryArraySkipLimitSuite);
 jsunity.run(SimpleQueryAllSkipLimitSuite);
 jsunity.run(SimpleQueryByExampleSuite);
-jsunity.run(SimpleQueryByExampleHashSuite);
-jsunity.run(SimpleQueryByExampleSkiplistSuite);
 jsunity.run(SimpleQueryByExampleEdgeSuite);
 jsunity.run(SimpleQueryRangeSuite);
 jsunity.run(SimpleQuerySparseRangeSuite);

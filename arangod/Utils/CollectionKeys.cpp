@@ -22,18 +22,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CollectionKeys.h"
-#include "Basics/hashes.h"
-#include "Basics/JsonHelper.h"
-#include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Indexes/PrimaryIndex.h"
 #include "Utils/CollectionGuard.h"
-#include "Utils/DocumentHelper.h"
-#include "Utils/transactions.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/compactor.h"
+#include "VocBase/DatafileHelper.h"
 #include "VocBase/Ditch.h"
+#include "VocBase/document-collection.h"
+#include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 #include "Wal/LogfileManager.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 
@@ -107,8 +109,8 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
 
   // copy all datafile markers into the result under the read-lock
   {
-    SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(),
-                                            _document->_vocbase, _name);
+    SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_document->_vocbase),
+                                            _name, TRI_TRANSACTION_READ);
 
     int res = trx.begin();
 
@@ -116,35 +118,18 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    auto idx = _document->primaryIndex();
-    _markers->reserve(idx->size());
+    trx.invokeOnAllElements(_document->_info.name(), [this, &maxTick](TRI_doc_mptr_t const* mptr) {
+      // only use those markers that point into datafiles
+      if (!mptr->pointsToWal()) {
+        auto marker = mptr->getMarkerPtr();
 
-    arangodb::basics::BucketPosition position;
-
-    uint64_t total = 0;
-
-    while (true) {
-      auto ptr = idx->lookupSequential(&trx, position, total);
-
-      if (ptr == nullptr) {
-        // done
-        break;
+        if (marker->getTick() <= maxTick) {
+          _markers->emplace_back(marker);
+        }
       }
 
-      void const* marker = ptr->getDataPtr();
-
-      if (TRI_IsWalDataMarkerDatafile(marker)) {
-        continue;
-      }
-
-      auto df = static_cast<TRI_df_marker_t const*>(marker);
-
-      if (df->_tick > maxTick) {
-        continue;
-      }
-
-      _markers->emplace_back(df);
-    }
+      return true;
+    });
 
     trx.finish(res);
   }
@@ -152,11 +137,11 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
   // now sort all markers without the read-lock
   std::sort(_markers->begin(), _markers->end(),
             [](TRI_df_marker_t const* lhs, TRI_df_marker_t const* rhs) -> bool {
-              int res = strcmp(TRI_EXTRACT_MARKER_KEY(lhs),
-                               TRI_EXTRACT_MARKER_KEY(rhs));
+    VPackSlice l(reinterpret_cast<char const*>(lhs) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+    VPackSlice r(reinterpret_cast<char const*>(rhs) + DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
 
-              return res < 0;
-            });
+    return (l.get(TRI_VOC_ATTRIBUTE_KEY).copyString() < r.get(TRI_VOC_ATTRIBUTE_KEY).copyString());
+  });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -170,27 +155,36 @@ std::tuple<std::string, std::string, uint64_t> CollectionKeys::hashChunk(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
 
-  std::string const first = TRI_EXTRACT_MARKER_KEY(_markers->at(from));
-  std::string const last = TRI_EXTRACT_MARKER_KEY(_markers->at(to - 1));
+  size_t const offset = DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT);
+  VPackSlice first(reinterpret_cast<char const*>(_markers->at(from)) + offset);
+  VPackSlice last(reinterpret_cast<char const*>(_markers->at(to - 1)) + offset);
+
+  TRI_ASSERT(first.isObject());
+  TRI_ASSERT(last.isObject());
 
   uint64_t hash = 0x012345678;
 
   for (size_t i = from; i < to; ++i) {
-    auto marker = _markers->at(i);
-    char const* key = TRI_EXTRACT_MARKER_KEY(marker);
+    VPackSlice current(reinterpret_cast<char const*>(_markers->at(i)) + offset);
+    TRI_ASSERT(current.isObject());
 
-    hash ^= TRI_FnvHashString(key);
-    hash ^= TRI_EXTRACT_MARKER_RID(marker);
+    // we can get away with the fast hash function here, as key values are 
+    // restricted to strings
+    hash ^= current.get(TRI_VOC_ATTRIBUTE_KEY).hash();
+    hash ^= current.get(TRI_VOC_ATTRIBUTE_REV).hash();
   }
 
-  return std::make_tuple(first, last, hash);
+  return std::make_tuple(
+    first.get(TRI_VOC_ATTRIBUTE_KEY).copyString(), 
+    last.get(TRI_VOC_ATTRIBUTE_KEY).copyString(), 
+    hash);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief dumps keys into the JSON
+/// @brief dumps keys into the result
 ////////////////////////////////////////////////////////////////////////////////
 
-void CollectionKeys::dumpKeys(arangodb::basics::Json& json, size_t chunk,
+void CollectionKeys::dumpKeys(VPackBuilder& result, size_t chunk,
                               size_t chunkSize) const {
   size_t from = chunk * chunkSize;
   size_t to = (chunk + 1) * chunkSize;
@@ -202,132 +196,47 @@ void CollectionKeys::dumpKeys(arangodb::basics::Json& json, size_t chunk,
   if (from >= _markers->size() || from >= to || to == 0) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
+  
+  size_t const offset = DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT);
 
   for (size_t i = from; i < to; ++i) {
-    auto marker = _markers->at(i);
+    VPackSlice current(reinterpret_cast<char const*>(_markers->at(i)) + offset);
+    TRI_ASSERT(current.isObject());
 
-    arangodb::basics::Json array(arangodb::basics::Json::Array, 2);
-    array.add(
-        arangodb::basics::Json(std::string(TRI_EXTRACT_MARKER_KEY(marker))));
-    array.add(
-        arangodb::basics::Json(std::to_string(TRI_EXTRACT_MARKER_RID(marker))));
-
-    json.add(array);
+    result.openArray();
+    result.add(current.get(TRI_VOC_ATTRIBUTE_KEY));
+    result.add(current.get(TRI_VOC_ATTRIBUTE_REV));
+    result.close();
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief dumps documents into the JSON
+/// @brief dumps documents into the result
 ////////////////////////////////////////////////////////////////////////////////
 
-void CollectionKeys::dumpDocs(arangodb::basics::Json& json, size_t chunk,
-                              size_t chunkSize, TRI_json_t const* ids) const {
-  if (!TRI_IsArrayJson(ids)) {
+void CollectionKeys::dumpDocs(arangodb::velocypack::Builder& result, size_t chunk,
+                              size_t chunkSize, VPackSlice const& ids) const {
+  if (!ids.isArray()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
 
-  auto shaper = _document->getShaper();
-  CollectionNameResolver resolver(_vocbase);
-
-  size_t const n = TRI_LengthArrayJson(ids);
-
-  for (size_t i = 0; i < n; ++i) {
-    auto valueJson =
-        static_cast<TRI_json_t const*>(TRI_AtVector(&ids->_value._objects, i));
-
-    if (!TRI_IsNumberJson(valueJson)) {
+  size_t const offset = DatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT);
+  
+  for (auto const& it : VPackArrayIterator(ids)) {
+    if (!it.isNumber()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
     }
 
-    size_t position =
-        chunk * chunkSize + static_cast<size_t>(valueJson->_value._number);
+    size_t position = chunk * chunkSize + it.getNumber<size_t>();
 
     if (position >= _markers->size()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
     }
-
-    auto df = _markers->at(position);
-
-    TRI_shaped_json_t shapedJson;
-    TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, df);
-
-    auto doc = TRI_JsonShapedJson(shaper, &shapedJson);
-
-    if (!TRI_IsObjectJson(doc)) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
-
-    char const* key = TRI_EXTRACT_MARKER_KEY(df);
-    TRI_json_t* keyJson =
-        TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, key, strlen(key));
-
-    if (keyJson != nullptr) {
-      TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, doc, TRI_VOC_ATTRIBUTE_KEY,
-                            keyJson);
-    }
-
-    // convert rid from uint64_t to string
-    std::string rid(
-        arangodb::basics::StringUtils::itoa(TRI_EXTRACT_MARKER_RID(df)));
-    TRI_json_t* revJson =
-        TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, rid.c_str(), rid.size());
-
-    if (revJson != nullptr) {
-      TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, doc, TRI_VOC_ATTRIBUTE_REV,
-                            revJson);
-    }
-
-    TRI_df_marker_type_t type = df->_type;
-
-    if (type == TRI_DOC_MARKER_KEY_EDGE) {
-      TRI_doc_edge_key_marker_t const* marker =
-          reinterpret_cast<TRI_doc_edge_key_marker_t const*>(df);
-      std::string from(DocumentHelper::assembleDocumentId(
-          resolver.getCollectionNameCluster(marker->_fromCid),
-          std::string((char*)marker + marker->_offsetFromKey)));
-      std::string to(DocumentHelper::assembleDocumentId(
-          resolver.getCollectionNameCluster(marker->_toCid),
-          std::string((char*)marker + marker->_offsetToKey)));
-
-      TRI_Insert3ObjectJson(
-          TRI_UNKNOWN_MEM_ZONE, doc, TRI_VOC_ATTRIBUTE_FROM,
-          TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, from.c_str(),
-                                   from.size()));
-      TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, doc, TRI_VOC_ATTRIBUTE_TO,
-                            TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
-                                                     to.c_str(), to.size()));
-    } else if (type == TRI_WAL_MARKER_EDGE) {
-      arangodb::wal::edge_marker_t const* marker =
-          reinterpret_cast<arangodb::wal::edge_marker_t const*>(
-              df);  // PROTECTED by trx passed from above
-      std::string from(DocumentHelper::assembleDocumentId(
-          resolver.getCollectionNameCluster(marker->_fromCid),
-          std::string((char*)marker + marker->_offsetFromKey)));
-      std::string to(DocumentHelper::assembleDocumentId(
-          resolver.getCollectionNameCluster(marker->_toCid),
-          std::string((char*)marker + marker->_offsetToKey)));
-
-      TRI_Insert3ObjectJson(
-          TRI_UNKNOWN_MEM_ZONE, doc, TRI_VOC_ATTRIBUTE_FROM,
-          TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, from.c_str(),
-                                   from.size()));
-      TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, doc, TRI_VOC_ATTRIBUTE_TO,
-                            TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
-                                                     to.c_str(), to.size()));
-    }
-
-    json.transfer(doc);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, doc);
+    
+    VPackSlice current(reinterpret_cast<char const*>(_markers->at(position)) + offset);
+    TRI_ASSERT(current.isObject());
+  
+    result.add(current);
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dumps documents into the JSON
-////////////////////////////////////////////////////////////////////////////////
-
-void CollectionKeys::dumpDocs(arangodb::basics::Json& json, size_t chunk,
-                              size_t chunkSize, VPackSlice const& ids) const {
-  std::unique_ptr<TRI_json_t> jsonIds(
-      arangodb::basics::VelocyPackHelper::velocyPackToJson(ids));
-  dumpDocs(json, chunk, chunkSize, jsonIds.get());
-}

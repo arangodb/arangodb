@@ -117,7 +117,7 @@ QueryResult Parser::parse(bool withDetails) {
   if (withDetails) {
     result.collectionNames = _query->collectionNames();
     result.bindParameters = _ast->bindParameters();
-    result.json = _ast->toJson(TRI_UNKNOWN_MEM_ZONE, false);
+    result.result = _ast->toVelocyPack(false);
   }
 
   return result;

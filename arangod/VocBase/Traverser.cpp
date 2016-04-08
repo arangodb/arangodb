@@ -24,6 +24,9 @@
 #include "Traverser.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/json-utilities.h"
+#include "Indexes/EdgeIndex.h"
+#include "Utils/Transaction.h"
+#include "Utils/TransactionContext.h"
 #include "VocBase/KeyGenerator.h"
 
 using TraverserExpression = arangodb::traverser::TraverserExpression;
@@ -39,7 +42,7 @@ arangodb::traverser::VertexId arangodb::traverser::IdStringToVertexId(
   size_t split;
   char const* str = vertex.c_str();
 
-  if (!TRI_ValidateDocumentIdKeyGenerator(str, &split)) {
+  if (!TRI_ValidateDocumentIdKeyGenerator(str, vertex.size(), &split)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
@@ -60,6 +63,9 @@ void arangodb::traverser::TraverserOptions::setCollections(
   TRI_ASSERT(!colls.empty());
   _collections = colls;
   _directions.emplace_back(dir);
+  for (auto const& it : colls) {
+    _indexHandles.emplace_back(_trx->edgeIndexHandle(it));
+  }
 }
 
 void arangodb::traverser::TraverserOptions::setCollections(
@@ -72,6 +78,9 @@ void arangodb::traverser::TraverserOptions::setCollections(
   TRI_ASSERT(colls.size() == dirs.size());
   _collections = colls;
   _directions = dirs;
+  for (auto const& it : colls) {
+    _indexHandles.emplace_back(_trx->edgeIndexHandle(it));
+  }
 }
 
 size_t arangodb::traverser::TraverserOptions::collectionCount () const {
@@ -90,6 +99,29 @@ bool arangodb::traverser::TraverserOptions::getCollection(
     dir = _directions.at(index);
   }
   name = _collections.at(index);
+
+  // arangodb::EdgeIndex::buildSearchValue(direction, eColName, _builder);
+  return true;
+}
+
+bool arangodb::traverser::TraverserOptions::getCollectionAndSearchValue(
+    size_t index, std::string const& vertexId, std::string& name,
+    Transaction::IndexHandle& indexHandle, VPackBuilder& builder) {
+  if (index >= _collections.size()) {
+    // No more collections stop now
+    return false;
+  }
+  TRI_edge_direction_e dir;
+  if (_directions.size() == 1) {
+    dir = _directions.at(0);
+  } else {
+    dir = _directions.at(index);
+  }
+  name = _collections.at(index);
+  indexHandle = _indexHandles.at(index);
+
+  builder.clear();
+  arangodb::EdgeIndex::buildSearchValue(dir, vertexId, builder);
   return true;
 }
 
@@ -120,15 +152,15 @@ TraverserExpression::TraverserExpression(VPackSlice const& slice) {
       basics::VelocyPackHelper::velocyPackToJson(slice.get("varAccess")),
       arangodb::basics::Json::AUTOFREE);
 
-  compareTo.reset(new arangodb::basics::Json(
-      TRI_UNKNOWN_MEM_ZONE,
-      basics::VelocyPackHelper::velocyPackToJson(slice.get("compareTo")),
-      arangodb::basics::Json::AUTOFREE));
-
-  if (compareTo->json() == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "invalid compareTo value");
+  VPackSlice compareToSlice = slice.get("compareTo");
+  VPackBuilder* builder = new VPackBuilder;
+  try {
+    builder->add(compareToSlice);
+  } catch (...) {
+    delete builder;
+    throw;
   }
+  compareTo.reset(builder);
   // If this fails everything before does not leak
   varAccess = new aql::AstNode(registerNode, registerString, varNode);
 }
@@ -140,13 +172,17 @@ TraverserExpression::TraverserExpression(VPackSlice const& slice) {
 void TraverserExpression::toJson(arangodb::basics::Json& json,
                                  TRI_memory_zone_t* zone) const {
   json("isEdgeAccess", arangodb::basics::Json(isEdgeAccess))(
-      "comparisonType",
-      arangodb::basics::Json(static_cast<int32_t>(comparisonType)))(
-      "varAccess", varAccess->toJson(zone, true));
+       "comparisonType",
+       arangodb::basics::Json(static_cast<int32_t>(comparisonType)))(
+       "varAccess", varAccess->toJson(zone, true));
 
-  if (compareTo.get() != nullptr) {
+  if (compareTo != nullptr) {
     // We have to copy compareTo. The json is greedy and steals it...
-    json("compareTo", compareTo->copy());
+    TRI_json_t* extracted = arangodb::basics::VelocyPackHelper::velocyPackToJson(compareTo->slice());
+    if (extracted == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+    json("compareTo", arangodb::basics::Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, extracted)));
   }
 }
 
@@ -156,22 +192,20 @@ void TraverserExpression::toJson(arangodb::basics::Json& json,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TraverserExpression::recursiveCheck(arangodb::aql::AstNode const* node,
-                                         DocumentAccessor& accessor) const {
+                                         arangodb::velocypack::Slice& element) const {
   switch (node->type) {
     case arangodb::aql::NODE_TYPE_REFERENCE:
       // We are on the variable access
       return true;
     case arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS: {
-      char const* attributeName = node->getStringValue();
-      TRI_ASSERT(attributeName != nullptr);
-      std::string name(attributeName, node->getStringLength());
-      if (!recursiveCheck(node->getMember(0), accessor)) {
+      std::string name(node->getString());
+      if (!recursiveCheck(node->getMember(0), element)) {
         return false;
       }
-      if (!accessor.isObject() || !accessor.hasKey(name)) {
+      if (!element.isObject() || !element.hasKey(name)) {
         return false;
       }
-      accessor.get(name);
+      element = element.get(name);
       break;
     }
     case arangodb::aql::NODE_TYPE_INDEXED_ACCESS: {
@@ -179,14 +213,14 @@ bool TraverserExpression::recursiveCheck(arangodb::aql::AstNode const* node,
       if (!index->isIntValue()) {
         return false;
       }
-      if (!recursiveCheck(node->getMember(0), accessor)) {
+      if (!recursiveCheck(node->getMember(0), element)) {
         return false;
       }
       auto idx = index->getIntValue();
-      if (!accessor.isArray()) {
+      if (!element.isArray()) {
         return false;
       }
-      accessor.at(idx);
+      element = element.at(idx);
       break;
     }
     default:
@@ -196,64 +230,41 @@ bool TraverserExpression::recursiveCheck(arangodb::aql::AstNode const* node,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief evalutes if an element matches the given expression
+/// @brief evaluates if an element matches the given expression
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TraverserExpression::matchesCheck(DocumentAccessor& accessor) const {
-  arangodb::basics::Json result(arangodb::basics::Json::Null);
-  if (recursiveCheck(varAccess, accessor)) {
-    result = accessor.toJson();
+bool TraverserExpression::matchesCheck(arangodb::Transaction* trx,
+                                       VPackSlice const& element) const {
+  TRI_ASSERT(trx != nullptr);
+
+  VPackSlice value = element; 
+  
+  // initialize compare value to Null
+  VPackSlice result = arangodb::basics::VelocyPackHelper::NullValue();
+  // perform recursive check. this may modify value
+  if (recursiveCheck(varAccess, value)) {
+    result = value;
   }
 
   TRI_ASSERT(compareTo != nullptr);
-  TRI_ASSERT(compareTo->json() != nullptr);
+  VPackOptions* options = trx->transactionContext()->getVPackOptions();
 
   switch (comparisonType) {
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
-      return TRI_CompareValuesJson(result.json(), compareTo->json(), false) ==
-             0;
+      return arangodb::basics::VelocyPackHelper::compare(result, compareTo->slice(), false, options) == 0; 
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE:
-      return TRI_CompareValuesJson(result.json(), compareTo->json(), false) !=
-             0;
+      return arangodb::basics::VelocyPackHelper::compare(result, compareTo->slice(), false, options) != 0; 
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
-      return TRI_CompareValuesJson(result.json(), compareTo->json(), true) < 0;
+      return arangodb::basics::VelocyPackHelper::compare(result, compareTo->slice(), true, options) < 0; 
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
-      return TRI_CompareValuesJson(result.json(), compareTo->json(), true) <= 0;
+      return arangodb::basics::VelocyPackHelper::compare(result, compareTo->slice(), true, options) <= 0; 
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
-      return TRI_CompareValuesJson(result.json(), compareTo->json(), true) >= 0;
+      return arangodb::basics::VelocyPackHelper::compare(result, compareTo->slice(), true, options) >= 0; 
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
-      return TRI_CompareValuesJson(result.json(), compareTo->json(), true) > 0;
+      return arangodb::basics::VelocyPackHelper::compare(result, compareTo->slice(), true, options) > 0; 
     default:
       TRI_ASSERT(false);
   }
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief evalutes if an element matches the given expression
-////////////////////////////////////////////////////////////////////////////////
-
-bool TraverserExpression::matchesCheck(TRI_json_t const* element) const {
-  DocumentAccessor accessor(element);
-  return matchesCheck(accessor);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief evalutes if an element matches the given expression
-////////////////////////////////////////////////////////////////////////////////
-
-bool TraverserExpression::matchesCheck(VPackSlice const& element) const {
-  DocumentAccessor accessor(element);
-  return matchesCheck(accessor);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief evalutes if an element matches the given expression
-////////////////////////////////////////////////////////////////////////////////
-
-bool TraverserExpression::matchesCheck(
-    TRI_doc_mptr_t& element, TRI_document_collection_t* collection,
-    arangodb::CollectionNameResolver const* resolver) const {
-  DocumentAccessor accessor(resolver, collection, &element);
-  return matchesCheck(accessor);
-}

@@ -28,10 +28,10 @@
 
 #include "Rest/HttpResponse.h"
 #include "RestServer/VocbaseContext.h"
-#include "Utils/transactions.h"
+#include "Utils/OperationResult.h"
+#include "VocBase/vocbase.h"
 
 struct TRI_vocbase_t;
-class VocShaper;
 
 namespace arangodb {
 
@@ -76,12 +76,6 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   static std::string const DOCUMENT_PATH;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief edge path
-  //////////////////////////////////////////////////////////////////////////////
-
-  static std::string const EDGE_PATH;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief edges path
@@ -137,6 +131,14 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   ~RestVocbaseBaseHandler();
 
  protected:
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief assemble a document id from a string and a string
+  /// optionally url-encodes
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::string assembleDocumentId(std::string const&, std::string const&, bool);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check if a collection needs to be created on the fly
   ///
@@ -155,8 +157,8 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   /// @brief generates a HTTP 201 or 202 response
   //////////////////////////////////////////////////////////////////////////////
 
-  void generate20x(GeneralResponse::ResponseCode, std::string const&,
-                   TRI_voc_key_t, TRI_voc_rid_t, TRI_col_type_e);
+  void generate20x(arangodb::OperationResult const&, std::string const&,
+                   TRI_col_type_e, arangodb::velocypack::Options const*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates ok message without content
@@ -176,70 +178,25 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   /// @brief generates message for a saved document
   //////////////////////////////////////////////////////////////////////////////
 
-  void generateSaved(arangodb::SingleCollectionWriteTransaction<1>& trx,
-                     TRI_voc_cid_t cid, TRI_doc_mptr_copy_t const& mptr) {
-    TRI_ASSERT(mptr.getDataPtr() != nullptr);  // PROTECTED by trx here
-
-    GeneralResponse::ResponseCode statusCode;
-    if (trx.synchronous()) {
-      statusCode = GeneralResponse::ResponseCode::CREATED;
-    } else {
-      statusCode = GeneralResponse::ResponseCode::ACCEPTED;
-    }
-
-    TRI_col_type_e type = trx.documentCollection()->_info.type();
-    generate20x(statusCode, trx.resolver()->getCollectionName(cid),
-                (TRI_voc_key_t)TRI_EXTRACT_MARKER_KEY(&mptr), mptr._rid,
-                type);  // PROTECTED by trx here
-  }
+  void generateSaved(arangodb::OperationResult const& result,
+                     std::string const& collectionName, TRI_col_type_e type,
+                     arangodb::velocypack::Options const*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates deleted message
   //////////////////////////////////////////////////////////////////////////////
 
-  void generateDeleted(arangodb::SingleCollectionWriteTransaction<1>& trx,
-                       TRI_voc_cid_t cid, TRI_voc_key_t key,
-                       TRI_voc_rid_t rid) {
-    GeneralResponse::ResponseCode statusCode;
-    if (trx.synchronous()) {
-      statusCode = GeneralResponse::ResponseCode::OK;
-    } else {
-      statusCode = GeneralResponse::ResponseCode::ACCEPTED;
-    }
-
-    TRI_col_type_e type = trx.documentCollection()->_info.type();
-    generate20x(statusCode, trx.resolver()->getCollectionName(cid), key, rid,
-                type);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief generates document not found error message, read transaction
-  //////////////////////////////////////////////////////////////////////////////
-
-  void generateDocumentNotFound(
-      arangodb::SingleCollectionReadOnlyTransaction& trx, TRI_voc_cid_t cid,
-      TRI_voc_key_t key) {
-    generateDocumentNotFound(trx.resolver()->getCollectionName(cid), key);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief generates document not found error message, write transaction
-  //////////////////////////////////////////////////////////////////////////////
-
-  void generateDocumentNotFound(
-      arangodb::SingleCollectionWriteTransaction<1>& trx, TRI_voc_cid_t cid,
-      TRI_voc_key_t key) {
-    generateDocumentNotFound(trx.resolver()->getCollectionName(cid), key);
-  }
+  void generateDeleted(arangodb::OperationResult const& result,
+                       std::string const& collectionName, TRI_col_type_e type,
+                       arangodb::velocypack::Options const*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates document not found error message, no transaction info
   //////////////////////////////////////////////////////////////////////////////
 
-  void generateDocumentNotFound(std::string const& collectionName,
-                                TRI_voc_key_t key) {
-    generateError(GeneralResponse::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+  void generateDocumentNotFound(std::string const& /* collection name */,
+                                std::string const& /* document key */) {
+    generateError(GeneralResponse::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -255,39 +212,18 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   void generateForbidden();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief generates precondition failed, for a read-transaction
+  /// @brief generates precondition failed, without transaction info
+  ///        DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
 
-  void generatePreconditionFailed(SingleCollectionReadOnlyTransaction& trx,
-                                  TRI_voc_cid_t cid,
-                                  TRI_doc_mptr_copy_t const& mptr,
-                                  TRI_voc_rid_t rid) {
-    return generatePreconditionFailed(
-        trx.resolver()->getCollectionName(cid),
-        (TRI_voc_key_t)TRI_EXTRACT_MARKER_KEY(&mptr),
-        rid);  // PROTECTED by RUNTIME
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief generates precondition failed, for a write-transaction
-  //////////////////////////////////////////////////////////////////////////////
-
-  void generatePreconditionFailed(SingleCollectionWriteTransaction<1>& trx,
-                                  TRI_voc_cid_t cid,
-                                  TRI_doc_mptr_copy_t const& mptr,
-                                  TRI_voc_rid_t rid) {
-    return generatePreconditionFailed(
-        trx.resolver()->getCollectionName(cid),
-        (TRI_voc_key_t)TRI_EXTRACT_MARKER_KEY(&mptr),
-        rid);  // PROTECTED by RUNTIME
-  }
+  void generatePreconditionFailed(std::string const&, std::string const& key,
+                                  TRI_voc_rid_t rev);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates precondition failed, without transaction info
   //////////////////////////////////////////////////////////////////////////////
 
-  void generatePreconditionFailed(std::string const&, TRI_voc_key_t key,
-                                  TRI_voc_rid_t rid);
+  void generatePreconditionFailed(arangodb::velocypack::Slice const& slice);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates not modified
@@ -299,15 +235,22 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   /// @brief generates first entry from a result set
   //////////////////////////////////////////////////////////////////////////////
 
-  void generateDocument(SingleCollectionReadOnlyTransaction& trx, TRI_voc_cid_t,
-                        TRI_doc_mptr_copy_t const&, VocShaper*, bool);
+  void generateDocument(arangodb::velocypack::Slice const&, bool,
+                        arangodb::velocypack::Options const* options = nullptr);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief generate an error message for a transaction error
+  ///        DEPRECATED
+  //////////////////////////////////////////////////////////////////////////////
+
+  void generateTransactionError(std::string const&, int, std::string const& key,
+                                TRI_voc_rid_t = 0);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generate an error message for a transaction error
   //////////////////////////////////////////////////////////////////////////////
-
-  void generateTransactionError(std::string const&, int, TRI_voc_key_t = 0,
-                                TRI_voc_rid_t = 0);
+  
+  void generateTransactionError(OperationResult const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extracts the revision
@@ -318,16 +261,10 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   TRI_voc_rid_t extractRevision(char const*, char const*, bool&);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief extracts the update policy
+  /// @brief extracts a boolean parameter value
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_doc_update_policy_e extractUpdatePolicy() const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief extracts the waitForSync value
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool extractWaitForSync() const;
+  bool extractBooleanParameter(char const* name, bool def) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief parses the body as VelocyPack
@@ -335,16 +272,8 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   std::shared_ptr<VPackBuilder> parseVelocyPackBody(VPackOptions const*, bool&);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief parses a document handle, on a cluster this will parse the
-  /// collection name as a cluster-wide collection name and return a
-  /// cluster-wide collection ID in `cid`.
-  //////////////////////////////////////////////////////////////////////////////
-
-  int parseDocumentId(arangodb::CollectionNameResolver const*,
-                      std::string const&, TRI_voc_cid_t&, TRI_voc_key_t&);
-
  protected:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief request context
   //////////////////////////////////////////////////////////////////////////////
@@ -373,13 +302,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   virtual void finalizeExecute() override;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief _nolockHeaderFound
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool _nolockHeaderFound;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief _nolockHeaderFound
+  /// @brief _nolockHeaderSet
   //////////////////////////////////////////////////////////////////////////////
 
   std::unordered_set<std::string>* _nolockHeaderSet;

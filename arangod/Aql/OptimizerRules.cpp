@@ -30,7 +30,6 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Function.h"
-#include "Aql/Index.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/SortCondition.h"
@@ -40,6 +39,7 @@
 #include "Aql/types.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/json-utilities.h"
+#include "Utils/Transaction.h"
 
 using namespace arangodb::aql;
 using Json = arangodb::basics::Json;
@@ -614,9 +614,7 @@ class PropagateConstantAttributesHelper {
     TRI_ASSERT(name.empty());
 
     while (attribute->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      name = std::string(".") + std::string(attribute->getStringValue(),
-                                            attribute->getStringLength()) +
-             name;
+      name = std::string(".") + attribute->getString() + name;
       attribute = attribute->getMember(0);
     }
 
@@ -668,8 +666,7 @@ class PropagateConstantAttributesHelper {
         return;
       }
 
-      if (TRI_CompareValuesJson(value->computeJson(), previous->computeJson(),
-                                true) != 0) {
+      if (!value->computeValue().equals(previous->computeValue())) {
         // different value found for an already tracked attribute. better not
         // use this attribute
         (*it2).second = nullptr;
@@ -1714,52 +1711,24 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       // now check if any of the collection's indexes covers it
 
       Variable const* outVariable = enumerateCollectionNode->outVariable();
-      auto const& indexes = enumerateCollectionNode->collection()->getIndexes();
-      arangodb::aql::Index const* bestIndex = nullptr;
-      double bestCost = 0.0;
-      size_t bestNumCovered = 0;
-
-      for (auto& index : indexes) {
-        if (!index->isSorted() || index->sparse) {
-          // can only use a sorted index
-          // cannot use a sparse index for sorting
-          continue;
-        }
-
-        size_t const numCovered =
-            sortCondition.coveredAttributes(outVariable, index->fields); 
-
-        if (numCovered == 0) {
-          continue;
-        }
-
-        double estimatedCost = 0.0;
-        if (!index->supportsSortCondition(
-                &sortCondition, 
-                outVariable,
-                enumerateCollectionNode->collection()->count(),
-                estimatedCost)) {
-          // should never happen
-          TRI_ASSERT(false);
-          continue;
-        }
- 
-        if (bestIndex == nullptr || estimatedCost < bestCost) {
-          bestIndex = index;
-          bestCost = estimatedCost;
-          bestNumCovered = numCovered;
-        }
-      }
-
-      if (bestIndex != nullptr) {
+      std::vector<arangodb::Transaction::IndexHandle> usedIndexes;
+      auto trx = _plan->getAst()->query()->trx();
+      size_t coveredAttributes = 0;
+      auto resultPair = trx->getIndexForSortCondition(
+          enumerateCollectionNode->collection()->getName(),
+          &sortCondition, outVariable, 
+          enumerateCollectionNode->collection()->count(),
+          usedIndexes, coveredAttributes);
+      if (resultPair.second) {
+        // If this bit is set, then usedIndexes has length exactly one
+        // and contains the best index found.
         auto condition = std::make_unique<Condition>(_plan->getAst());
         condition->normalize(_plan);
 
         std::unique_ptr<ExecutionNode> newNode(new IndexNode(
             _plan, _plan->nextId(), enumerateCollectionNode->vocbase(),
             enumerateCollectionNode->collection(), outVariable,
-            std::vector<Index const*>({bestIndex}), condition.get(),
-            sortCondition.isDescending()));
+            usedIndexes, condition.get(), sortCondition.isDescending()));
 
         condition.release();
 
@@ -1769,7 +1738,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         _plan->replaceNode(enumerateCollectionNode, n);
         _modified = true;
 
-        if (bestNumCovered == sortCondition.numAttributes()) {
+        if (coveredAttributes == sortCondition.numAttributes()) {
           // if the index covers the complete sort condition, we can also remove
           // the sort node
           _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
@@ -1797,6 +1766,12 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
     Variable const* outVariable = indexNode->outVariable();
     TRI_ASSERT(outVariable != nullptr);
 
+    auto index = indexes[0];
+    arangodb::Transaction* trx = indexNode->trx();
+    bool isSorted = false;
+    bool isSparse = false;
+    std::vector<std::vector<arangodb::basics::AttributeName>> fields =
+        trx->getIndexFeatures(index, isSorted, isSparse);
     if (indexes.size() != 1) {
       // can only use this index node if it uses exactly one index or multiple
       // indexes on exactly the same attributes
@@ -1806,17 +1781,13 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         return true;
       }
 
-      std::vector<std::vector<arangodb::basics::AttributeName>> seen;
+      if (!isSparse) {
+        return true;
+      }
 
-      for (auto& index : indexes) {
-        if (index->sparse) {
-          // cannot use a sparse index for sorting
-          return true;
-        }
-
-        if (!seen.empty() && arangodb::basics::AttributeName::isIdentical(
-                                 index->fields, seen, true)) {
-          // different attributes
+      for (auto& idx : indexes) {
+        if (idx != index) {
+          // Can only be sorted iff only one index is used.
           return true;
         }
       }
@@ -1827,22 +1798,21 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
 
     // if we get here, we either have one index or multiple indexes on the same
     // attributes
-    auto index = indexes[0];
     bool handled = false;
 
-    SortCondition sortCondition(_sorts, cond->getConstAttributes(outVariable, !index->sparse), _variableDefinitions);
+    SortCondition sortCondition(_sorts, cond->getConstAttributes(outVariable, !isSparse), _variableDefinitions);
 
     bool const isOnlyAttributeAccess =
         (!sortCondition.isEmpty() && sortCondition.isOnlyAttributeAccess());
 
-    if (isOnlyAttributeAccess && index->isSorted() && !index->sparse &&
+    if (isOnlyAttributeAccess && isSorted && !isSparse &&
         sortCondition.isUnidirectional() &&
         sortCondition.isDescending() == indexNode->reverse()) {
       // we have found a sort condition, which is unidirectional and in the same
       // order as the IndexNode...
       // now check if the sort attributes match the ones of the index
       size_t const numCovered =
-          sortCondition.coveredAttributes(outVariable, index->fields); 
+          sortCondition.coveredAttributes(outVariable, fields); 
 
       if (numCovered >= sortCondition.numAttributes()) {
         // sort condition is fully covered by index... now we can remove the
@@ -1868,12 +1838,11 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
           // fields
           // e.g. FILTER c.value1 == 1 && c.value2 == 42 SORT c.value1, c.value2
           size_t const numCovered = 
-              sortCondition.coveredAttributes(outVariable, index->fields); 
+              sortCondition.coveredAttributes(outVariable, fields);
 
           if (numCovered == sortCondition.numAttributes() &&
               sortCondition.isUnidirectional() &&
-              (index->isSorted() ||
-               index->fields.size() == sortCondition.numAttributes())) {
+              (isSorted || fields.size() == sortCondition.numAttributes())) {
             // no need to sort
             _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
             _modified = true;

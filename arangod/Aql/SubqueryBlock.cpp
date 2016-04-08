@@ -60,6 +60,7 @@ int SubqueryBlock::initialize() {
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlItemBlock* SubqueryBlock::getSome(size_t atLeast, size_t atMost) {
+  DEBUG_BEGIN_BLOCK();
   std::unique_ptr<AqlItemBlock> res(
       ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost));
 
@@ -122,6 +123,7 @@ AqlItemBlock* SubqueryBlock::getSome(size_t atLeast, size_t atMost) {
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
   return res.release();
+  DEBUG_END_BLOCK();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -143,6 +145,7 @@ int SubqueryBlock::shutdown(int errorCode) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::vector<AqlItemBlock*>* SubqueryBlock::executeSubquery() {
+  DEBUG_BEGIN_BLOCK();
   auto results = new std::vector<AqlItemBlock*>;
 
   try {
@@ -166,6 +169,7 @@ std::vector<AqlItemBlock*>* SubqueryBlock::executeSubquery() {
     destroySubqueryResults(results);
     throw;
   }
+  DEBUG_END_BLOCK();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

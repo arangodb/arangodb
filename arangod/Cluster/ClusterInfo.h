@@ -30,11 +30,10 @@
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/AgencyComm.h"
-#include "VocBase/collection.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
-#include <mutex>
+#include <velocypack/Slice.h>
 
 struct TRI_json_t;
 
@@ -295,7 +294,7 @@ class CollectionInfo {
   std::shared_ptr<ShardMap> shardIds() const {
     std::shared_ptr<ShardMap> res;
     {
-      std::lock_guard<std::mutex> locker(_mutex);
+      MUTEX_LOCKER(locker, _mutex);
       res = _shardMapCache;
     }
     if (res.get() != nullptr) {
@@ -322,7 +321,7 @@ class CollectionInfo {
       }
     }
     {
-      std::lock_guard<std::mutex> locker(_mutex);
+      MUTEX_LOCKER(locker, _mutex);
       _shardMapCache = res;
     }
     return res;
@@ -352,7 +351,7 @@ class CollectionInfo {
   TRI_json_t* _json;
 
   // Only to protect the cache:
-  mutable std::mutex _mutex;
+  mutable Mutex _mutex;
 
   // Just a cache
   mutable std::shared_ptr<ShardMap> _shardMapCache;
@@ -503,10 +502,9 @@ class CollectionInfoCurrent {
 
   std::unordered_map<ShardID, bool> getFlag(char const* name) const {
     std::unordered_map<ShardID, bool> m;
-    bool b;
     for (auto it = _jsons.begin(); it != _jsons.end(); ++it) {
       TRI_json_t* json = it->second;
-      b = arangodb::basics::JsonHelper::getBooleanValue(json, name, false);
+      bool b = arangodb::basics::JsonHelper::getBooleanValue(json, name, false);
       m.insert(std::make_pair(it->first, b));
     }
     return m;
@@ -673,7 +671,7 @@ class ClusterInfo {
   int createCollectionCoordinator(std::string const& databaseName,
                                   std::string const& collectionID,
                                   uint64_t numberOfShards,
-                                  arangodb::velocypack::Slice const json,
+                                  arangodb::velocypack::Slice const& json,
                                   std::string& errorMsg, double timeout);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -800,6 +798,15 @@ class ClusterInfo {
   /// @brief find the shard that is responsible for a document
   //////////////////////////////////////////////////////////////////////////////
 
+  int getResponsibleShard(CollectionID const&, arangodb::velocypack::Slice,
+                          bool docComplete, ShardID& shardID,
+                          bool& usesDefaultShardingAttributes);
+
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief find the shard that is responsible for a document
+  //////////////////////////////////////////////////////////////////////////////
+
   int getResponsibleShard(CollectionID const&, TRI_json_t const*,
                           bool docComplete, ShardID& shardID,
                           bool& usesDefaultShardingAttributes);
@@ -879,7 +886,7 @@ class ClusterInfo {
 
   struct ProtectionData {
     std::atomic<bool> isValid;
-    arangodb::Mutex mutex;
+    Mutex mutex;
     std::atomic<uint64_t> version;
     arangodb::basics::ReadWriteLock lock;
 
@@ -948,7 +955,7 @@ class ClusterInfo {
   /// @brief lock for uniqid sequence
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::Mutex _idLock;
+  Mutex _idLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the sole instance
@@ -981,12 +988,12 @@ class ClusterInfo {
 
 class FollowerInfo {
   std::shared_ptr<std::vector<ServerID> const> _followers;
-  std::mutex                                   _mutex;
+  Mutex                                        _mutex;
   TRI_document_collection_t*                   _docColl;
 
  public:
 
-  FollowerInfo(TRI_document_collection_t* d) 
+  explicit FollowerInfo(TRI_document_collection_t* d) 
     : _followers(new std::vector<ServerID>()), _docColl(d) { }
 
   //////////////////////////////////////////////////////////////////////////////

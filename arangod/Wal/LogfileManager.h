@@ -66,8 +66,9 @@ struct LogfileRange {
 typedef std::vector<LogfileRange> LogfileRanges;
 
 struct LogfileManagerState {
-  TRI_voc_tick_t lastTick;
-  TRI_voc_tick_t lastDataTick;
+  TRI_voc_tick_t lastAssignedTick;
+  TRI_voc_tick_t lastCommittedTick;
+  TRI_voc_tick_t lastCommittedDataTick;
   uint64_t numEvents;
   std::string timeString;
 };
@@ -356,19 +357,25 @@ class LogfileManager : public rest::ApplicationFeature {
   //////////////////////////////////////////////////////////////////////////////
 
   SlotInfo allocate(uint32_t);
-
+  
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief reserve space in a logfile, version for legends
+  /// @brief reserve space in a logfile
   //////////////////////////////////////////////////////////////////////////////
 
-  SlotInfo allocate(uint32_t, TRI_voc_cid_t cid, TRI_shape_sid_t sid,
-                    uint32_t legendOffset, void*& oldLegend);
+  SlotInfo allocate(TRI_voc_tick_t, TRI_voc_cid_t, uint32_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief finalize a log entry
   //////////////////////////////////////////////////////////////////////////////
 
   void finalize(SlotInfo&, bool);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief write data into the logfile, using database id and collection id
+  /// this is a convenience function that combines allocate, memcpy and finalize
+  //////////////////////////////////////////////////////////////////////////////
+
+  SlotInfoCopy allocateAndWrite(TRI_voc_tick_t, TRI_voc_cid_t, void*, uint32_t, bool);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief write data into the logfile
@@ -376,16 +383,6 @@ class LogfileManager : public rest::ApplicationFeature {
   //////////////////////////////////////////////////////////////////////////////
 
   SlotInfoCopy allocateAndWrite(void*, uint32_t, bool);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief write data into the logfile
-  /// this is a convenience function that combines allocate, memcpy and
-  /// finalize,
-  /// this version is for markers with legends
-  //////////////////////////////////////////////////////////////////////////////
-
-  SlotInfoCopy allocateAndWrite(void*, uint32_t, bool, TRI_voc_cid_t,
-                                TRI_shape_sid_t, uint32_t, void*&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief write data into the logfile
@@ -408,6 +405,12 @@ class LogfileManager : public rest::ApplicationFeature {
   //////////////////////////////////////////////////////////////////////////////
 
   int flush(bool, bool, bool);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// wait until all changes to the current logfile are synced
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool waitForSync(double);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief re-inserts a logfile back into the inventory only

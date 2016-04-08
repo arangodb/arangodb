@@ -25,7 +25,6 @@
 #define ARANGOD_UTILS_REPLICATION_TRANSACTION_H 1
 
 #include "Basics/Common.h"
-
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/Transaction.h"
 #include "VocBase/server.h"
@@ -43,7 +42,7 @@ class ReplicationTransaction : public Transaction {
 
   ReplicationTransaction(TRI_server_t* server, TRI_vocbase_t* vocbase,
                          TRI_voc_tid_t externalId)
-      : Transaction(new StandaloneTransactionContext(), vocbase, externalId),
+      : Transaction(StandaloneTransactionContext::Create(vocbase), externalId),
         _server(server),
         _externalId(externalId) {
     TRI_UseDatabaseServer(_server, vocbase->_name);

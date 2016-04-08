@@ -22,7 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Cluster/ClusterInfo.h"
+#include "ClusterInfo.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Builder.h>
@@ -37,6 +37,7 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/json-utilities.h"
 #include "Basics/json.h"
+#include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpResponse.h"
 #include "VocBase/document-collection.h"
@@ -1213,7 +1214,7 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
 int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
                                              std::string const& collectionID,
                                              uint64_t numberOfShards,
-                                             VPackSlice const json,
+                                             VPackSlice const& json,
                                              std::string& errorMsg,
                                              double timeout) {
   using arangodb::velocypack::Slice;
@@ -1634,7 +1635,6 @@ int ClusterInfo::ensureIndexCoordinator(
       VPackSlice const indexes = tmp->slice();
 
       if (indexes.isArray()) {
-        bool hasSameIndexType = false;
         VPackSlice const type = slice.get("type");
 
         if (!type.isString()) {
@@ -1649,8 +1649,6 @@ int ClusterInfo::ensureIndexCoordinator(
           }
           TRI_ASSERT(other.isObject());
 
-          hasSameIndexType = true;
-
           bool isSame = compare(slice, other);
 
           if (isSame) {
@@ -1664,21 +1662,6 @@ int ClusterInfo::ensureIndexCoordinator(
               resultBuilder.add("isNewlyCreated", VPackValue(false));
             }
             return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
-          }
-        }
-
-        if (type.copyString() == "cap") {
-          // special handling for cap constraints
-          if (hasSameIndexType) {
-            // there can only be one cap constraint
-            return setErrormsg(TRI_ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED,
-                               errorMsg);
-          }
-
-          if (numberOfShards > 1) {
-            // there must be at most one shard if there should be a cap
-            // constraint
-            return setErrormsg(TRI_ERROR_CLUSTER_UNSUPPORTED, errorMsg);
           }
         }
       }
@@ -2415,6 +2398,86 @@ std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList(
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find the shard that is responsible for a document, which is given
+/// as a VelocyPackSlice.
+///
+/// There are two modes, one assumes that the document is given as a
+/// whole (`docComplete`==`true`), in this case, the non-existence of
+/// values for some of the sharding attributes is silently ignored
+/// and treated as if these values were `null`. In the second mode
+/// (`docComplete`==false) leads to an error which is reported by
+/// returning TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, which is the only
+/// error code that can be returned.
+///
+/// In either case, if the collection is found, the variable
+/// shardID is set to the ID of the responsible shard and the flag
+/// `usesDefaultShardingAttributes` is used set to `true` if and only if
+/// `_key` is the one and only sharding attribute.
+////////////////////////////////////////////////////////////////////////////////
+
+
+int ClusterInfo::getResponsibleShard(CollectionID const& collectionID,
+                                     VPackSlice slice, bool docComplete,
+                                     ShardID& shardID,
+                                     bool& usesDefaultShardingAttributes) {
+  // Note that currently we take the number of shards and the shardKeys
+  // from Plan, since they are immutable. Later we will have to switch
+  // this to Current, when we allow to add and remove shards.
+  if (!_plannedCollectionsProt.isValid) {
+    loadPlannedCollections();
+  }
+
+  int tries = 0;
+  std::shared_ptr<std::vector<std::string>> shardKeysPtr;
+  std::shared_ptr<std::vector<ShardID>> shards;
+  bool found = false;
+
+  while (true) {
+    {
+      // Get the sharding keys and the number of shards:
+      READ_LOCKER(readLocker, _plannedCollectionsProt.lock);
+      // _shards is a map-type <CollectionId, shared_ptr<vector<string>>>
+      auto it = _shards.find(collectionID);
+
+      if (it != _shards.end()) {
+        shards = it->second;
+        // _shardKeys is a map-type <CollectionID, shared_ptr<vector<string>>>
+        auto it2 = _shardKeys.find(collectionID);
+        if (it2 != _shardKeys.end()) {
+          shardKeysPtr = it2->second;
+          usesDefaultShardingAttributes =
+              shardKeysPtr->size() == 1 &&
+              shardKeysPtr->at(0) == TRI_VOC_ATTRIBUTE_KEY;
+          found = true;
+          break;  // all OK
+        }
+      }
+    }
+    if (++tries >= 2) {
+      break;
+    }
+    loadPlannedCollections();
+  }
+
+  if (!found) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+
+  int error = TRI_ERROR_NO_ERROR;
+  uint64_t hash = arangodb::basics::VelocyPackHelper::hashByAttributes(
+      slice, *shardKeysPtr, docComplete, error);
+  static char const* magicPhrase =
+      "Foxx you have stolen the goose, give she back again!";
+  static size_t const len = 52;
+  // To improve our hash function:
+  hash = TRI_FnvHashBlock(hash, magicPhrase, len);
+
+  shardID = shards->at(hash % shards->size());
+  return error;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find the shard that is responsible for a document, which is given
 /// as a TRI_json_t const*.
 ///
 /// There are two modes, one assumes that the document is given as a
@@ -2486,7 +2549,7 @@ int ClusterInfo::getResponsibleShard(CollectionID const& collectionID,
 
   int error;
   uint64_t hash = TRI_HashJsonByAttributes(
-      json, shardKeys.get(), (int)shardKeysPtr->size(), docComplete, &error);
+      json, shardKeys.get(), (int)shardKeysPtr->size(), docComplete, error);
   static char const* magicPhrase =
       "Foxx you have stolen the goose, give she back again!";
   static size_t const len = 52;
@@ -2548,7 +2611,7 @@ void ClusterInfo::invalidateCurrent() {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<std::vector<ServerID> const> FollowerInfo::get() {
-  std::lock_guard<std::mutex> lock(_mutex);
+  MUTEX_LOCKER(locker, _mutex);
   return _followers;
 }
 
@@ -2611,7 +2674,8 @@ VPackBuilder newShardEntry(VPackSlice oldValue, ServerID const& sid, bool add) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void FollowerInfo::add(ServerID const& sid) {
-  std::lock_guard<std::mutex> lock(_mutex);
+  MUTEX_LOCKER(locker, _mutex);
+  
   // Fully copy the vector:
   auto v = std::make_shared<std::vector<ServerID>>(*_followers);
   v->push_back(sid);  // add a single entry
@@ -2671,7 +2735,8 @@ void FollowerInfo::add(ServerID const& sid) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void FollowerInfo::remove(ServerID const& sid) {
-  std::lock_guard<std::mutex> lock(_mutex);
+  MUTEX_LOCKER(locker, _mutex);
+  
   auto v = std::make_shared<std::vector<ServerID>>();
   v->reserve(_followers->size() - 1);
   for (auto const& i : *_followers) {

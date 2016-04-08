@@ -456,7 +456,7 @@ class ExecutionNode {
   /// @brief toVelocyPack, export an ExecutionNode to VelocyPack
   ///////////////////////////////////////////////////////////////////////////////
 
-  void toVelocyPack(arangodb::velocypack::Builder&, bool) const;
+  void toVelocyPack(arangodb::velocypack::Builder&, bool, bool = false) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief toVelocyPack

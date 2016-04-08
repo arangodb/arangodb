@@ -74,22 +74,22 @@ void Slot::fill(void* src, size_t size) {
   TRI_df_marker_t* marker = static_cast<TRI_df_marker_t*>(src);
 
   // set tick
-  marker->_tick = _tick;
+  marker->setTick(_tick);
 
   // set size
-  marker->_size = static_cast<TRI_voc_size_t>(size);
+  marker->setSize(static_cast<TRI_voc_size_t>(size));
 
   // calculate the crc
-  marker->_crc = 0;
+  marker->setCrc(0);
   TRI_voc_crc_t crc = TRI_InitialCrc32();
   crc = TRI_BlockCrc32(crc, (char const*)marker,
                        static_cast<TRI_voc_size_t>(size));
-  marker->_crc = TRI_FinalCrc32(crc);
+  marker->setCrc(TRI_FinalCrc32(crc));
 
   TRI_IF_FAILURE("WalSlotCrc") {
     // intentionally corrupt the marker
     LOG(WARN) << "intentionally writing corrupt marker into datafile";
-    marker->_crc = 0xdeadbeef;
+    marker->setCrc(0xdeadbeef);
   }
 
   // copy data into marker

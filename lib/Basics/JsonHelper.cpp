@@ -30,17 +30,6 @@
 using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert a uint64 into a JSON string
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t* JsonHelper::uint64String(TRI_memory_zone_t* zone, uint64_t value) {
-  char buffer[21];
-  size_t len = TRI_StringUInt64InPlace(value, (char*)&buffer);
-
-  return TRI_CreateStringCopyJson(zone, buffer, len);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a JSON string or number into a uint64
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -68,62 +57,6 @@ uint64_t JsonHelper::stringUInt64(TRI_json_t const* json, char const* name) {
 
   TRI_json_t const* element = TRI_LookupObjectJson(json, name);
   return stringUInt64(element);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a JSON key/value object from a key/value of strings
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t* JsonHelper::stringObject(
-    TRI_memory_zone_t* zone, std::map<std::string, std::string> const& values) {
-  TRI_json_t* json = TRI_CreateObjectJson(zone, values.size());
-
-  if (json == nullptr) {
-    return nullptr;
-  }
-
-  std::map<std::string, std::string>::const_iterator it;
-  for (it = values.begin(); it != values.end(); ++it) {
-    std::string const key = (*it).first;
-    std::string const value = (*it).second;
-
-    TRI_json_t* v = TRI_CreateStringCopyJson(zone, value.c_str(), value.size());
-    if (v != nullptr) {
-      TRI_Insert3ObjectJson(zone, json, key.c_str(), v);
-    }
-  }
-
-  return json;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a key/value object of strings from a JSON (sub-) object
-////////////////////////////////////////////////////////////////////////////////
-
-std::map<std::string, std::string> JsonHelper::stringObject(
-    TRI_json_t const* json) {
-  std::map<std::string, std::string> result;
-
-  if (isObject(json)) {
-    size_t const n = TRI_LengthVectorJson(json);
-
-    for (size_t i = 0; i < n; i += 2) {
-      auto k = static_cast<TRI_json_t const*>(
-          TRI_AtVector(&json->_value._objects, i));
-      auto v = static_cast<TRI_json_t const*>(
-          TRI_AtVector(&json->_value._objects, i + 1));
-
-      if (isString(k) && isString(v)) {
-        std::string const key =
-            std::string(k->_value._string.data, k->_value._string.length - 1);
-        std::string const value =
-            std::string(v->_value._string.data, v->_value._string.length - 1);
-        result.emplace(std::make_pair(key, value));
-      }
-    }
-  }
-
-  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

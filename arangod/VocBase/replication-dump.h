@@ -27,12 +27,13 @@
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringBuffer.h"
+#include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/replication-common.h"
-#include "VocBase/shaped-json.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
-struct TRI_shape_s;
+#include <velocypack/Options.h>
+
 class TRI_vocbase_col_t;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -40,16 +41,17 @@ class TRI_vocbase_col_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_replication_dump_t {
-  TRI_replication_dump_t(TRI_vocbase_t* vocbase, size_t chunkSize,
+  TRI_replication_dump_t(std::shared_ptr<arangodb::StandaloneTransactionContext> transactionContext,
+                         size_t chunkSize,
                          bool includeSystem, TRI_voc_cid_t restrictCollection)
-      : _vocbase(vocbase),
+      : _transactionContext(transactionContext),
+        _vocbase(transactionContext->vocbase()),
         _buffer(nullptr),
         _chunkSize(chunkSize),
         _lastFoundTick(0),
-        _lastSid(0),
-        _lastShape(nullptr),
         _restrictCollection(restrictCollection),
         _collectionNames(),
+        _vpackOptions(arangodb::velocypack::Options::Defaults),
         _failed(false),
         _bufferFull(false),
         _hasMore(false),
@@ -74,14 +76,14 @@ struct TRI_replication_dump_t {
     }
   }
 
+  std::shared_ptr<arangodb::StandaloneTransactionContext> _transactionContext;
   TRI_vocbase_t* _vocbase;
   TRI_string_buffer_t* _buffer;
   size_t _chunkSize;
   TRI_voc_tick_t _lastFoundTick;
-  TRI_shape_sid_t _lastSid;
-  struct TRI_shape_s const* _lastShape;
   TRI_voc_cid_t _restrictCollection;
   std::unordered_map<TRI_voc_cid_t, std::string> _collectionNames;
+  arangodb::velocypack::Options _vpackOptions;
   bool _failed;
   bool _bufferFull;
   bool _hasMore;
@@ -94,8 +96,7 @@ struct TRI_replication_dump_t {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_DumpCollectionReplication(TRI_replication_dump_t*, TRI_vocbase_col_t*,
-                                  TRI_voc_tick_t, TRI_voc_tick_t, bool, bool,
-                                  bool);
+                                  TRI_voc_tick_t, TRI_voc_tick_t, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump data from the replication log

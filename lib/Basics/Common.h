@@ -136,7 +136,6 @@ typedef long suseconds_t;
 #include <set>
 #include <string>
 #include <vector>
-// C++11!!
 #include <unordered_map>
 #include <unordered_set>
 #include <memory>
@@ -189,7 +188,7 @@ static inline uint32_t TRI_64to32(uint64_t x) {
 #define TRI_CHAR_LENGTH_PAIR(value) (value), strlen(value)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief asserts
+/// @brief assert
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRI_ASSERT
@@ -285,17 +284,6 @@ struct TRI_AutoOutOfScope {
 #define TRI_DEFER(Destructor)                                     \
   TRI_DEFER_INTERNAL(Destructor, TOKEN_PASTE(auto_fun, __LINE__), \
                      TOKEN_PASTE(auto_obj, __LINE__))
-
-// -----------------------------------------------------------------------------
-// --SECTIONS--                                               triagens namespace
-// -----------------------------------------------------------------------------
-
-namespace arangodb {
-typedef TRI_blob_t blob_t;
-typedef TRI_datetime_t datetime_t;
-typedef TRI_date_t date_t;
-typedef TRI_seconds_t seconds_t;
-}
 
 #undef TRI_SHOW_LOCK_TIME
 #define TRI_SHOW_LOCK_THRESHOLD 0.000199

@@ -25,20 +25,26 @@
 #define ARANGOD_AQL_VARIABLE_H 1
 
 #include "Basics/Common.h"
-#include "Basics/JsonHelper.h"
 #include "Aql/types.h"
 
+
 namespace arangodb {
+namespace velocypack {
+class Builder;
+class Slice;
+}
+
 namespace aql {
 
 struct Variable {
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the variable
   //////////////////////////////////////////////////////////////////////////////
 
   Variable(std::string const&, VariableId);
 
-  explicit Variable(basics::Json const& json);
+  explicit Variable(arangodb::velocypack::Slice const&);
 
   Variable* clone() const { return new Variable(name, id); }
 
@@ -79,12 +85,6 @@ struct Variable {
     // variables starting with a number are not user-defined
     return isUserDefined() || name.back() != '_';
   }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return a JSON representation of the variable
-  //////////////////////////////////////////////////////////////////////////////
-
-  arangodb::basics::Json toJson() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return a VelocyPack representation of the variable

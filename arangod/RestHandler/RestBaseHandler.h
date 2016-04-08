@@ -25,15 +25,14 @@
 #define ARANGOD_REST_HANDLER_REST_BASE_HANDLER_H 1
 
 #include "Basics/Common.h"
-#include "Basics/json.h"
 #include "HttpServer/HttpHandler.h"
 #include "Rest/HttpResponse.h"
 
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
 namespace arangodb {
+class TransactionContext;
+
 namespace velocypack {
+struct Options;
 class Slice;
 }
 
@@ -49,56 +48,52 @@ class RestBaseHandler : public rest::HttpHandler {
   void handleError(basics::Exception const&) override;
 
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief generates a result from JSON
-  //////////////////////////////////////////////////////////////////////////////
-
-  virtual void generateResult(TRI_json_t const* json);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief generates a result from JSON
-  //////////////////////////////////////////////////////////////////////////////
-
-  virtual void generateResult(GeneralResponse::ResponseCode,
-                              TRI_json_t const*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates a result from VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void generateResult(arangodb::velocypack::Slice const& slice);
-
+  void generateResult(GeneralResponse::ResponseCode,
+                      arangodb::velocypack::Slice const& slice);
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates a result from VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void generateResult(GeneralResponse::ResponseCode,
-                              arangodb::velocypack::Slice const& slice);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief generates a cancel message
-  //////////////////////////////////////////////////////////////////////////////
-
-  virtual void generateCanceled();
+  void generateResult(GeneralResponse::ResponseCode,
+                      arangodb::velocypack::Slice const& slice,
+                      std::shared_ptr<arangodb::TransactionContext> context);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates an error
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void generateError(GeneralResponse::ResponseCode, int);
+  void generateError(GeneralResponse::ResponseCode, int);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates an error
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void generateError(GeneralResponse::ResponseCode, int,
-                             std::string const&);
+  void generateError(GeneralResponse::ResponseCode, int, std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief generates an OUT_OF_MEMORY error
+  /// @brief generates an out of memory error
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void generateOOMError();
+  void generateOOMError();
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief generates a canceled message
+  //////////////////////////////////////////////////////////////////////////////
+
+  void generateCanceled();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief dumps the response as JSON into the response string buffer
+  //////////////////////////////////////////////////////////////////////////////
+
+  void dumpResponse(arangodb::velocypack::Slice const& slice,
+                    arangodb::velocypack::Options const* options);
 };
 }
 

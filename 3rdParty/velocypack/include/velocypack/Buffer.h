@@ -123,6 +123,7 @@ class Buffer {
   inline T* data() { return _buffer; }
   inline T const* data() const { return _buffer; }
 
+  inline bool empty() const { return _pos == 0; }
   inline ValueLength size() const { return _pos; }
   inline ValueLength length() const { return _pos; }
   inline ValueLength byteSize() const { return _pos; }

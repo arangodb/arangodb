@@ -28,16 +28,15 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
-#include "Utils/transactions.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/datafile.h"
 #include "VocBase/DatafileStatistics.h"
 #include "VocBase/Ditch.h"
-#include "VocBase/document-collection.h"
 #include "VocBase/voc-types.h"
 #include "Wal/Logfile.h"
 
 struct TRI_datafile_t;
-struct TRI_df_marker_s;
+struct TRI_df_marker_t;
 struct TRI_document_collection_t;
 struct TRI_server_t;
 
@@ -182,14 +181,14 @@ class CollectorThread : public Thread {
   /// @brief typedef key => document marker
   //////////////////////////////////////////////////////////////////////////////
 
-  typedef std::unordered_map<std::string, struct TRI_df_marker_s const*>
+  typedef std::unordered_map<std::string, struct TRI_df_marker_t const*>
       DocumentOperationsType;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief typedef for structural operation (attributes, shapes) markers
   //////////////////////////////////////////////////////////////////////////////
 
-  typedef std::vector<struct TRI_df_marker_s const*> OperationsType;
+  typedef std::vector<struct TRI_df_marker_t const*> OperationsType;
 
  public:
   void beginShutdown() override final;
@@ -233,7 +232,7 @@ class CollectorThread : public Thread {
   //////////////////////////////////////////////////////////////////////////////
 
   void processCollectionMarker(
-      arangodb::SingleCollectionWriteTransaction<UINT64_MAX>&,
+      arangodb::SingleCollectionTransaction&,
       TRI_document_collection_t*, CollectorCache*, CollectorOperation const&);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -303,15 +302,8 @@ class CollectorThread : public Thread {
   //////////////////////////////////////////////////////////////////////////////
 
   char* nextFreeMarkerPosition(struct TRI_document_collection_t*,
-                               TRI_voc_tick_t, TRI_df_marker_type_e,
+                               TRI_voc_tick_t, TRI_df_marker_type_t,
                                TRI_voc_size_t, CollectorCache*);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief initialize a marker
-  //////////////////////////////////////////////////////////////////////////////
-
-  void initMarker(struct TRI_df_marker_s*, TRI_df_marker_type_e,
-                  TRI_voc_size_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set the tick of a marker and calculate its CRC value

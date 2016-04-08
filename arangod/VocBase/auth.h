@@ -32,7 +32,6 @@ namespace arangodb {
 namespace velocypack {
 class Slice;
 }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief authentication and authorization
@@ -71,8 +70,6 @@ class VocbaseAuthInfo {
   /// @brief Checks if the given string is equal to the username
   //////////////////////////////////////////////////////////////////////////////
 
-  bool isEqualName(char const*) const;
-
   bool isEqualPasswordHash(char const*) const;
 
   char const* username() const;
@@ -90,17 +87,13 @@ class VocbaseAuthInfo {
 /// @brief header to username cache
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_vocbase_auth_cache_s {
-  char* _hash;
-  char* _username;
+struct VocbaseAuthCache {
+  std::string _hash;
+  std::string _username;
   bool _mustChange;
-} TRI_vocbase_auth_cache_t;
+};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initializes the authentication info
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_InitAuthInfo(TRI_vocbase_t*);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys the authentication info
@@ -143,7 +136,7 @@ void TRI_ClearAuthInfo(TRI_vocbase_t*);
 /// @brief looks up authentication data in the cache
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_CheckCacheAuthInfo(TRI_vocbase_t*, char const* hash,
+std::string TRI_CheckCacheAuthInfo(TRI_vocbase_t*, char const* hash,
                              bool* mustChange);
 
 ////////////////////////////////////////////////////////////////////////////////

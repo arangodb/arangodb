@@ -164,8 +164,9 @@ class Parser {
   // Not with this high-performance two-pass approach. :-(
 
   std::shared_ptr<Builder> steal() {
+    // Parser object is broken after a steal()
     std::shared_ptr<Builder> res(_b);
-    _b.reset(new Builder());
+    _b.reset();
     return res;
   }
 

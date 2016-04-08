@@ -26,19 +26,22 @@
 
 #include "Basics/Common.h"
 #include "Aql/AstNode.h"
-#include "Aql/Query.h"
 #include "Aql/Range.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
 #include "Basics/JsonHelper.h"
-#include "Basics/StringBuffer.h"
-#include "Utils/AqlTransaction.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 
 struct TRI_json_t;
 
 namespace arangodb {
+class AqlTransaction;
+
 namespace basics {
 class Json;
+class StringBuffer;
 }
 
 namespace aql {
@@ -166,9 +169,8 @@ class Expression {
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue execute(arangodb::AqlTransaction* trx, AqlItemBlock const*, size_t,
-                   std::vector<Variable const*> const&,
-                   std::vector<RegisterId> const&,
-                   TRI_document_collection_t const**);
+                    std::vector<Variable const*> const&,
+                    std::vector<RegisterId> const&, bool& mustDestroy);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check whether this is a JSON expression
@@ -278,8 +280,7 @@ class Expression {
   void invalidate();
 
  private:
-  void setVariable(Variable const* variable, TRI_json_t const* value) {
-    TRI_ASSERT(value != nullptr);
+  void setVariable(Variable const* variable, arangodb::velocypack::Slice value) {
     _variables.emplace(variable, value);
   }
 
@@ -290,8 +291,7 @@ class Expression {
   //////////////////////////////////////////////////////////////////////////////
 
   bool findInArray(AqlValue const&, AqlValue const&,
-                   TRI_document_collection_t const*,
-                   TRI_document_collection_t const*, arangodb::AqlTransaction*,
+                   arangodb::AqlTransaction*,
                    AstNode const*) const;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -312,11 +312,11 @@ class Expression {
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue executeSimpleExpression(AstNode const*,
-                                   TRI_document_collection_t const**,
-                                   arangodb::AqlTransaction*,
-                                   AqlItemBlock const*, size_t,
-                                   std::vector<Variable const*> const&,
-                                   std::vector<RegisterId> const&, bool);
+                                    arangodb::AqlTransaction*,
+                                    AqlItemBlock const*, size_t,
+                                    std::vector<Variable const*> const&,
+                                    std::vector<RegisterId> const&, 
+                                    bool& mustDestroy, bool);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief execute an expression of type SIMPLE with ATTRIBUTE ACCESS
@@ -324,7 +324,8 @@ class Expression {
 
   AqlValue executeSimpleExpressionAttributeAccess(
       AstNode const*, arangodb::AqlTransaction*, AqlItemBlock const*, size_t,
-      std::vector<Variable const*> const&, std::vector<RegisterId> const&);
+      std::vector<Variable const*> const&, std::vector<RegisterId> const&,
+      bool& mustDestroy);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief execute an expression of type SIMPLE with INDEXED ACCESS
@@ -332,17 +333,19 @@ class Expression {
 
   AqlValue executeSimpleExpressionIndexedAccess(
       AstNode const*, arangodb::AqlTransaction*, AqlItemBlock const*, size_t,
-      std::vector<Variable const*> const&, std::vector<RegisterId> const&);
+      std::vector<Variable const*> const&, std::vector<RegisterId> const&,
+      bool& mustDestroy);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief execute an expression of type SIMPLE with ARRAY
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue executeSimpleExpressionArray(AstNode const*,
-                                        arangodb::AqlTransaction*,
-                                        AqlItemBlock const*, size_t,
-                                        std::vector<Variable const*> const&,
-                                        std::vector<RegisterId> const&);
+                                         arangodb::AqlTransaction*,
+                                         AqlItemBlock const*, size_t,
+                                         std::vector<Variable const*> const&,
+                                         std::vector<RegisterId> const&,
+                                         bool& mustDestroy);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief execute an expression of type SIMPLE with OBJECT
@@ -352,63 +355,69 @@ class Expression {
                                          arangodb::AqlTransaction*,
                                          AqlItemBlock const*, size_t,
                                          std::vector<Variable const*> const&,
-                                         std::vector<RegisterId> const&);
+                                         std::vector<RegisterId> const&,
+                                         bool& mustDestroy);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief execute an expression of type SIMPLE with VALUE
   //////////////////////////////////////////////////////////////////////////////
 
-  AqlValue executeSimpleExpressionValue(AstNode const*);
+  AqlValue executeSimpleExpressionValue(AstNode const*, bool& mustDestroy);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief execute an expression of type SIMPLE with REFERENCE
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue executeSimpleExpressionReference(AstNode const*,
-                                            TRI_document_collection_t const**,
-                                            AqlItemBlock const*, size_t,
-                                            std::vector<Variable const*> const&,
-                                            std::vector<RegisterId> const&,
-                                            bool);
+                                             arangodb::AqlTransaction*,
+                                             AqlItemBlock const*, size_t,
+                                             std::vector<Variable const*> const&,
+                                             std::vector<RegisterId> const&,
+                                             bool& mustDestroy,
+                                             bool);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief execute an expression of type SIMPLE with FCALL
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue executeSimpleExpressionFCall(AstNode const*,
-                                        arangodb::AqlTransaction*,
-                                        AqlItemBlock const*, size_t,
-                                        std::vector<Variable const*> const&,
-                                        std::vector<RegisterId> const&);
+                                         arangodb::AqlTransaction*,
+                                         AqlItemBlock const*, size_t,
+                                         std::vector<Variable const*> const&,
+                                         std::vector<RegisterId> const&,
+                                         bool& mustDestroy);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief execute an expression of type SIMPLE with RANGE
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue executeSimpleExpressionRange(AstNode const*,
-                                        arangodb::AqlTransaction*,
-                                        AqlItemBlock const*, size_t,
-                                        std::vector<Variable const*> const&,
-                                        std::vector<RegisterId> const&);
+                                         arangodb::AqlTransaction*,
+                                         AqlItemBlock const*, size_t,
+                                         std::vector<Variable const*> const&,
+                                         std::vector<RegisterId> const&,
+                                         bool& mustDestroy);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief execute an expression of type SIMPLE with NOT
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue executeSimpleExpressionNot(AstNode const*, arangodb::AqlTransaction*,
-                                      AqlItemBlock const*, size_t,
-                                      std::vector<Variable const*> const&,
-                                      std::vector<RegisterId> const&);
+                                       AqlItemBlock const*, size_t,
+                                       std::vector<Variable const*> const&,
+                                       std::vector<RegisterId> const&,
+                                       bool& mustDestroy);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief execute an expression of type SIMPLE with AND or OR
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue executeSimpleExpressionAndOr(AstNode const*,
-                                        arangodb::AqlTransaction*,
-                                        AqlItemBlock const*, size_t,
-                                        std::vector<Variable const*> const&,
-                                        std::vector<RegisterId> const&);
+                                         arangodb::AqlTransaction*,
+                                         AqlItemBlock const*, size_t,
+                                         std::vector<Variable const*> const&,
+                                         std::vector<RegisterId> const&,
+                                         bool& mustDestroy);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief execute an expression of type SIMPLE with COMPARISON
@@ -416,7 +425,8 @@ class Expression {
 
   AqlValue executeSimpleExpressionComparison(
       AstNode const*, arangodb::AqlTransaction*, AqlItemBlock const*, size_t,
-      std::vector<Variable const*> const&, std::vector<RegisterId> const&);
+      std::vector<Variable const*> const&, std::vector<RegisterId> const&,
+      bool& mustDestroy);
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief execute an expression of type SIMPLE with ARRAY COMPARISON
@@ -424,38 +434,41 @@ class Expression {
 
   AqlValue executeSimpleExpressionArrayComparison(
       AstNode const*, arangodb::AqlTransaction*, AqlItemBlock const*, size_t,
-      std::vector<Variable const*> const&, std::vector<RegisterId> const&);
+      std::vector<Variable const*> const&, std::vector<RegisterId> const&,
+      bool& mustDestroy);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief execute an expression of type SIMPLE with TERNARY
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue executeSimpleExpressionTernary(AstNode const*,
-                                          arangodb::AqlTransaction*,
-                                          AqlItemBlock const*, size_t,
-                                          std::vector<Variable const*> const&,
-                                          std::vector<RegisterId> const&);
+                                           arangodb::AqlTransaction*,
+                                           AqlItemBlock const*, size_t,
+                                           std::vector<Variable const*> const&,
+                                           std::vector<RegisterId> const&,
+                                           bool& mustDestroy);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief execute an expression of type SIMPLE with EXPANSION
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue executeSimpleExpressionExpansion(AstNode const*,
-                                            arangodb::AqlTransaction*,
-                                            AqlItemBlock const*, size_t,
-                                            std::vector<Variable const*> const&,
-                                            std::vector<RegisterId> const&);
+                                             arangodb::AqlTransaction*,
+                                             AqlItemBlock const*, size_t,
+                                             std::vector<Variable const*> const&,
+                                             std::vector<RegisterId> const&,
+                                             bool& mustDestroy);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief execute an expression of type SIMPLE with EXPANSION
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue executeSimpleExpressionIterator(AstNode const*,
-                                           TRI_document_collection_t const**,
-                                           arangodb::AqlTransaction*,
-                                           AqlItemBlock const*, size_t,
-                                           std::vector<Variable const*> const&,
-                                           std::vector<RegisterId> const&);
+                                            arangodb::AqlTransaction*,
+                                            AqlItemBlock const*, size_t,
+                                            std::vector<Variable const*> const&,
+                                            std::vector<RegisterId> const&,
+                                            bool& mustDestroy);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief execute an expression of type SIMPLE with BINARY_* (+, -, * , /, %)
@@ -463,7 +476,8 @@ class Expression {
 
   AqlValue executeSimpleExpressionArithmetic(
       AstNode const*, arangodb::AqlTransaction*, AqlItemBlock const*, size_t,
-      std::vector<Variable const*> const&, std::vector<RegisterId> const&);
+      std::vector<Variable const*> const&, std::vector<RegisterId> const&,
+      bool& mustDestroy);
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -492,7 +506,7 @@ class Expression {
   union {
     V8Expression* _func;
 
-    struct TRI_json_t* _data;
+    uint8_t* _data;
 
     AttributeAccessor* _accessor;
   };
@@ -552,29 +566,8 @@ class Expression {
   /// @brief variables only temporarily valid during execution
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unordered_map<Variable const*, TRI_json_t const*> _variables;
+  std::unordered_map<Variable const*, arangodb::velocypack::Slice> _variables;
 
- public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief "constant" global object for NULL which can be shared by all
-  /// expressions but must never be freed
-  //////////////////////////////////////////////////////////////////////////////
-
-  static TRI_json_t const NullJson;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief "constant" global object for TRUE which can be shared by all
-  /// expressions but must never be freed
-  //////////////////////////////////////////////////////////////////////////////
-
-  static TRI_json_t const TrueJson;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief "constant" global object for FALSE which can be shared by all
-  /// expressions but must never be freed
-  //////////////////////////////////////////////////////////////////////////////
-
-  static TRI_json_t const FalseJson;
 };
 
 }  // namespace arangodb::aql

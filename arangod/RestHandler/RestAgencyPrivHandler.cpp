@@ -130,7 +130,7 @@ HttpHandler::status_t RestAgencyPrivHandler::execute() {
     }
     result.close();
     VPackSlice s = result.slice();
-    generateResult(s);
+    generateResult(GeneralResponse::ResponseCode::OK, s);
   } catch (...) {
     // Ignore this error
   }

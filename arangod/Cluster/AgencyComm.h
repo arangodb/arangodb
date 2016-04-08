@@ -50,6 +50,7 @@ class Slice;
 class AgencyComm;
 
 struct AgencyEndpoint {
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates an agency endpoint
   //////////////////////////////////////////////////////////////////////////////
@@ -102,11 +103,11 @@ enum class AgencyValueOperationType {
 };
 
 enum class AgencySimpleOperationType {
-  INCREMENT,
-  DECREMENT,
-  DELETE,
-  POP,
-  SHIFT
+  INCREMENT_OP,
+  DECREMENT_OP,
+  DELETE_OP,
+  POP_OP,
+  SHIFT_OP
 };
 
 struct AgencyOperationType {
@@ -133,15 +134,15 @@ struct AgencyOperationType {
         break;
       case SIMPLE:
         switch(simple) {
-          case AgencySimpleOperationType::INCREMENT:
+          case AgencySimpleOperationType::INCREMENT_OP:
             return "increment";
-          case AgencySimpleOperationType::DECREMENT:
+          case AgencySimpleOperationType::DECREMENT_OP:
             return "decrement";
-          case AgencySimpleOperationType::DELETE:
+          case AgencySimpleOperationType::DELETE_OP:
             return "delete";
-          case AgencySimpleOperationType::POP:
+          case AgencySimpleOperationType::POP_OP:
             return "pop";
-          case AgencySimpleOperationType::SHIFT:
+          case AgencySimpleOperationType::SHIFT_OP:
             return "shift";
           default:
             return "unknown_operation_type";
@@ -176,14 +177,17 @@ struct AgencyOperationPrecondition {
 };
 
 struct AgencyOperation {
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs an operation
   //////////////////////////////////////////////////////////////////////////////
+
   AgencyOperation(std::string const& key, AgencySimpleOperationType opType);
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs an operation with value
   //////////////////////////////////////////////////////////////////////////////
+
   AgencyOperation(
       std::string const& key,
       AgencyValueOperationType opType,
@@ -193,6 +197,7 @@ struct AgencyOperation {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns to full operation formatted as a vpack slice
   //////////////////////////////////////////////////////////////////////////////
+
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack();
   uint32_t _ttl = 0;
   VPackSlice _oldValue;
@@ -205,25 +210,29 @@ private:
 };
 
 struct AgencyTransaction {
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief vector of operations
   //////////////////////////////////////////////////////////////////////////////
+
   std::vector<AgencyOperation> operations;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief converts the transaction to json
   //////////////////////////////////////////////////////////////////////////////
+
   std::string toJson() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief shortcut to create a transaction with one operation
   //////////////////////////////////////////////////////////////////////////////
-  AgencyTransaction(AgencyOperation operation) {
+  explicit AgencyTransaction(AgencyOperation const& operation) {
     operations.push_back(operation);
   }
 };
 
 struct AgencyCommResult {
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a communication result
   //////////////////////////////////////////////////////////////////////////////
@@ -328,6 +337,7 @@ struct AgencyCommResult {
 };
 
 class AgencyCommLocker {
+
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs an agency comm locker
@@ -382,6 +392,7 @@ class AgencyComm {
   friend class AgencyCommLocker;
 
  public:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief cleans up all connections
   //////////////////////////////////////////////////////////////////////////////
@@ -528,7 +539,7 @@ class AgencyComm {
   //////////////////////////////////////////////////////////////////////////////
 
   AgencyCommResult casValue(std::string const&,
-                            arangodb::velocypack::Slice const, bool, double,
+                            arangodb::velocypack::Slice const&, bool, double,
                             double);
 
   //////////////////////////////////////////////////////////////////////////////

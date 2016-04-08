@@ -25,15 +25,17 @@
 #define ARANGOD_VOC_BASE_VOCBASE_H 1
 
 #include "Basics/Common.h"
-#include "Basics/associative.h"
 #include "Basics/DeadlockDetector.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/StringUtils.h"
 #include "Basics/threads.h"
 #include "Basics/vector.h"
 #include "Basics/voc-errors.h"
 #include "VocBase/vocbase-defaults.h"
 
-#include <functional>
+#include "velocypack/Slice.h"
+#include "velocypack/Builder.h"
+#include "velocypack/velocypack-aliases.h"
 
 struct TRI_document_collection_t;
 class TRI_replication_applier_t;
@@ -48,6 +50,8 @@ class Builder;
 namespace aql {
 class QueryList;
 }
+struct VocbaseAuthCache;
+class VocbaseAuthInfo;
 class VocbaseCollectionInfo;
 class CollectionKeysRepository;
 class CursorRepository;
@@ -96,55 +100,55 @@ extern bool IGNORE_DATAFILE_ERRORS;
 /// @brief name of the _from attribute
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_VOC_ATTRIBUTE_FROM "_from"
+constexpr auto TRI_VOC_ATTRIBUTE_FROM = "_from";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief name of the _to attribute
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_VOC_ATTRIBUTE_TO "_to"
+constexpr auto TRI_VOC_ATTRIBUTE_TO = "_to";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief name of the _key attribute
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_VOC_ATTRIBUTE_KEY "_key"
+constexpr auto TRI_VOC_ATTRIBUTE_KEY = "_key";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief name of the _rev attribute
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_VOC_ATTRIBUTE_REV "_rev"
+constexpr auto TRI_VOC_ATTRIBUTE_REV = "_rev";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief name of the _id attribute
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_VOC_ATTRIBUTE_ID "_id"
+constexpr auto TRI_VOC_ATTRIBUTE_ID = "_id";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief name of the system database
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_VOC_SYSTEM_DATABASE "_system"
+constexpr auto TRI_VOC_SYSTEM_DATABASE = "_system";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximal path length
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_COL_PATH_LENGTH (512)
+constexpr size_t TRI_COL_PATH_LENGTH = 512;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximal name length
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_COL_NAME_LENGTH (64)
+constexpr size_t TRI_COL_NAME_LENGTH = 64;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default maximal collection journal size
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE (1024 * 1024 * 32)
+constexpr size_t TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE = 1024 * 1024 * 32; // 32 MB
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief minimal collection journal size (for testing, we allow very small
@@ -153,76 +157,68 @@ extern bool IGNORE_DATAFILE_ERRORS;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
-#define TRI_JOURNAL_MINIMAL_SIZE (16 * 1024)
+constexpr size_t TRI_JOURNAL_MINIMAL_SIZE = 16 * 1024; // 16 KB
 
 #else
 
-#define TRI_JOURNAL_MINIMAL_SIZE (1024 * 1024)
+constexpr size_t TRI_JOURNAL_MINIMAL_SIZE = 1024 * 1024; // 1 MB
 
 #endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief journal overhead
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_JOURNAL_OVERHEAD \
-  (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t))
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document handle separator as character
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_DOCUMENT_HANDLE_SEPARATOR_CHR '/'
+constexpr char TRI_DOCUMENT_HANDLE_SEPARATOR_CHR = '/';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document handle separator as string
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_DOCUMENT_HANDLE_SEPARATOR_STR "/"
+constexpr auto TRI_DOCUMENT_HANDLE_SEPARATOR_STR = "/";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief index handle separator as character
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_INDEX_HANDLE_SEPARATOR_CHR '/'
+constexpr char TRI_INDEX_HANDLE_SEPARATOR_CHR = '/';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief index handle separator as string
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_INDEX_HANDLE_SEPARATOR_STR "/"
+constexpr auto TRI_INDEX_HANDLE_SEPARATOR_STR = "/";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection enum
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef enum {
+enum TRI_col_type_e {
   TRI_COL_TYPE_UNKNOWN = 0,           // only used when initializing
-  TRI_COL_TYPE_SHAPE_DEPRECATED = 1,  // not used since ArangoDB 1.5
   TRI_COL_TYPE_DOCUMENT = 2,
   TRI_COL_TYPE_EDGE = 3
-} TRI_col_type_e;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief database state
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef enum {
+enum TRI_vocbase_state_e {
   TRI_VOCBASE_STATE_INACTIVE = 0,
   TRI_VOCBASE_STATE_NORMAL = 1,
   TRI_VOCBASE_STATE_SHUTDOWN_COMPACTOR = 2,
   TRI_VOCBASE_STATE_SHUTDOWN_CLEANUP = 3,
   TRI_VOCBASE_STATE_FAILED_VERSION = 4
-} TRI_vocbase_state_e;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief database type
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef enum {
+enum TRI_vocbase_type_e {
   TRI_VOCBASE_TYPE_NORMAL = 0,
   TRI_VOCBASE_TYPE_COORDINATOR = 1
-} TRI_vocbase_type_e;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief database
@@ -255,8 +251,8 @@ struct TRI_vocbase_t {
                                                      // dropped that can be
                                                      // removed later
 
-  TRI_associative_pointer_t _collectionsByName;  // collections by name
-  TRI_associative_pointer_t _collectionsById;    // collections by id
+  std::unordered_map<std::string, TRI_vocbase_col_t*> _collectionsByName;  // collections by name
+  std::unordered_map<TRI_voc_cid_t, TRI_vocbase_col_t*> _collectionsById;    // collections by id
 
   arangodb::basics::ReadWriteLock _inventoryLock;  // object lock needed when
                                                    // replication is assessing
@@ -268,8 +264,8 @@ struct TRI_vocbase_t {
   arangodb::CursorRepository* _cursorRepository;
   arangodb::CollectionKeysRepository* _collectionKeys;
 
-  TRI_associative_pointer_t _authInfo;
-  TRI_associative_pointer_t _authCache;
+  std::unordered_map<std::string, arangodb::VocbaseAuthInfo*> _authInfo;
+  std::unordered_map<std::string, arangodb::VocbaseAuthCache*> _authCache;
   arangodb::basics::ReadWriteLock _authInfoLock;
   bool _authInfoLoaded;  // flag indicating whether the authentication info was
                          // loaded successfully
@@ -316,7 +312,7 @@ struct TRI_vocbase_t {
 /// in this enum for compatibility with earlier versions
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef enum {
+enum TRI_vocbase_col_status_e {
   TRI_VOC_COL_STATUS_CORRUPTED = 0,
   TRI_VOC_COL_STATUS_NEW_BORN = 1,  // DEPRECATED, and shouldn't be used anymore
   TRI_VOC_COL_STATUS_UNLOADED = 2,
@@ -324,7 +320,7 @@ typedef enum {
   TRI_VOC_COL_STATUS_UNLOADING = 4,
   TRI_VOC_COL_STATUS_DELETED = 5,
   TRI_VOC_COL_STATUS_LOADING = 6
-} TRI_vocbase_col_status_e;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection container
@@ -486,7 +482,7 @@ char const* TRI_GetStatusStringCollectionVocBase(TRI_vocbase_col_status_e);
 /// it is the caller's responsibility to free the name returned
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetCollectionNameByIdVocBase(TRI_vocbase_t*, const TRI_voc_cid_t);
+std::string TRI_GetCollectionNameByIdVocBase(TRI_vocbase_t*, const TRI_voc_cid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a (document) collection by name
@@ -634,4 +630,23 @@ bool TRI_GetThrowCollectionNotLoadedVocBase(TRI_vocbase_t*);
 
 void TRI_SetThrowCollectionNotLoadedVocBase(TRI_vocbase_t*, bool);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the _rev attribute from a slice
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_voc_rid_t TRI_ExtractRevisionId(VPackSlice const slice);
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the _rev attribute from a slice as a slice
+////////////////////////////////////////////////////////////////////////////////
+
+VPackSlice TRI_ExtractRevisionIdAsSlice(VPackSlice const slice);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sanitize an object, given as slice, builder must contain an
+/// open object which will remain open
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_SanitizeObject(VPackSlice const slice, VPackBuilder& builder);
+  
 #endif

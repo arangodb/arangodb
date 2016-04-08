@@ -124,7 +124,7 @@ int Optimizer::createPlans(ExecutionPlan* plan,
   // which optimizer rules are disabled?
   std::unordered_set<int> disabledIds(getDisabledRuleIds(rulesSpecification));
 
-  // _plans contains the previous optimisation result
+  // _plans contains the previous optimization result
   _plans.clear();
   try {
     _plans.push_back(plan, 0);
@@ -137,12 +137,10 @@ int Optimizer::createPlans(ExecutionPlan* plan,
 
   while (leastDoneLevel < maxRuleLevel) {
     // std::cout << "Have " << _plans.size() << " plans:" << std::endl;
-    /*
-    for (auto const& p : _plans.list) {
-      p->show();
-      std::cout << std::endl;
-    }
-    */
+    // for (auto const& p : _plans.list) {
+    //   p->show();
+    //   std::cout << std::endl;
+    // }
 
     // int count = 0;
 
@@ -157,11 +155,9 @@ int Optimizer::createPlans(ExecutionPlan* plan,
         auto it = _rules.upper_bound(level);
         TRI_ASSERT(it != _rules.end());
 
-        /*
-        std::cout << "Trying rule " << it->second.name << " with level "
-                  << it->first << " on plan " << count++
-                  << std::endl;
-        */
+        // std::cout << "Trying rule " << it->second.name << " with level "
+        //          << it->first << " on plan " << count++
+        //          << std::endl;
 
         level = (*it).first;
         auto& rule = (*it).second;
@@ -245,13 +241,13 @@ int Optimizer::createPlans(ExecutionPlan* plan,
   sortPlans();
 #if 0
   // Only for debugging:
-  std::cout << "Optimisation ends with " << _plans.size() << " plans."
-            << std::endl;
-  for (auto const& p : _plans.list) {
-    p->show();
-    std::cout << "costing: " << p->getCost() << std::endl;
-    std::cout << std::endl;
-  }
+  // std::cout << "Optimization ends with " << _plans.size() << " plans."
+  //           << std::endl;
+  // for (auto const& p : _plans.list) {
+  //   p->show();
+  //   std::cout << "costing: " << p->getCost() << std::endl;
+  //   std::cout << std::endl;
+  // }
 #endif
 
   return TRI_ERROR_NO_ERROR;

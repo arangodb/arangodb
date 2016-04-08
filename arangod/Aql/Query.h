@@ -25,7 +25,6 @@
 #define ARANGOD_AQL_QUERY_H 1
 
 #include "Basics/Common.h"
-#include "Basics/JsonHelper.h"
 #include "Aql/BindParameters.h"
 #include "Aql/Collections.h"
 #include "Aql/QueryResultV8.h"
@@ -36,7 +35,8 @@
 #include "VocBase/voc-types.h"
 #include "V8Server/ApplicationV8.h"
 
-struct TRI_json_t;
+#include <velocypack/Builder.h>
+
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -95,8 +95,6 @@ struct Profile {
 
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack();
 
-  TRI_json_t* toJson(TRI_memory_zone_t*);
-
   Query* query;
   std::vector<std::pair<ExecutionState, double>> results;
   double stamp;
@@ -114,10 +112,12 @@ class Query {
 
  public:
   Query(arangodb::ApplicationV8*, bool, TRI_vocbase_t*, char const*, size_t,
-        struct TRI_json_t*, struct TRI_json_t*, QueryPart);
+        std::shared_ptr<arangodb::velocypack::Builder>,
+        std::shared_ptr<arangodb::velocypack::Builder>, QueryPart);
 
   Query(arangodb::ApplicationV8*, bool, TRI_vocbase_t*,
-        arangodb::basics::Json queryStruct, struct TRI_json_t*, QueryPart);
+        std::shared_ptr<arangodb::velocypack::Builder> const,
+        std::shared_ptr<arangodb::velocypack::Builder>, QueryPart);
 
   ~Query();
 
@@ -229,7 +229,7 @@ class Query {
 
   size_t maxNumberOfPlans() const {
     double value = getNumericOption("maxNumberOfPlans", 0.0);
-    if (value > 0) {
+    if (value > 0.0) {
       return static_cast<size_t>(value);
     }
     return 0;
@@ -241,7 +241,7 @@ class Query {
 
   int64_t literalSizeThreshold() const {
     double value = getNumericOption("literalSizeThreshold", 0.0);
-    if (value > 0) {
+    if (value > 0.0) {
       return static_cast<int64_t>(value);
     }
     return -1;
@@ -276,7 +276,7 @@ class Query {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief prepare an AQL query, this is a preparation for execute, but
   /// execute calls it internally. The purpose of this separate method is
-  /// to be able to only prepare a query from JSON and then store it in the
+  /// to be able to only prepare a query from VelocyPack and then store it in the
   /// QueryRegistry.
   //////////////////////////////////////////////////////////////////////////////
 
@@ -388,7 +388,7 @@ class Query {
   /// @brief returns statistics for current query.
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::basics::Json getStats();
+  void getStats(arangodb::velocypack::Builder&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief fetch a boolean value from the options
@@ -397,10 +397,19 @@ class Query {
   bool getBooleanOption(char const*, bool) const;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief convert the list of warnings to JSON
+  /// @brief add the list of warnings to VelocyPack.
+  ///        Will add a new entry { ..., warnings: <warnings>, } if there are
+  ///        warnings. If there are none it will not modify the builder
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_json_t* warningsToJson(TRI_memory_zone_t*) const;
+   void addWarningsToVelocyPackObject(arangodb::velocypack::Builder&) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief transform the list of warnings to VelocyPack.
+  ///        NOTE: returns nullptr if there are no warnings.
+  //////////////////////////////////////////////////////////////////////////////
+
+   std::shared_ptr<arangodb::velocypack::Builder> warningsToVelocyPack() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief fetch the global query tracking value
@@ -420,17 +429,7 @@ class Query {
   /// @brief get a description of the query's current state
   ////////////////////////////////////////////////////////////////////////////////
 
-  std::string getStateString () const;
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief get a shared builder for in-place VelocyPack construction
-  ////////////////////////////////////////////////////////////////////////////////
-  
-  std::shared_ptr<arangodb::velocypack::Builder> getSharedBuilder ();
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
+  std::string getStateString() const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief look up a graph in the _graphs collection
@@ -504,7 +503,7 @@ class Query {
   /// @brief create a TransactionContext
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::TransactionContext* createTransactionContext();
+  std::shared_ptr<arangodb::TransactionContext> createTransactionContext();
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -563,10 +562,10 @@ class Query {
   size_t const _queryLength;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief query in a JSON structure
+  /// @brief query in a VelocyPack structure
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::basics::Json const _queryJson;
+  std::shared_ptr<arangodb::velocypack::Builder> const _queryBuilder;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief bind parameters for the query
@@ -578,7 +577,7 @@ class Query {
   /// @brief query options
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_json_t* _options;
+  std::shared_ptr<arangodb::velocypack::Builder> _options;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief collections used in the query

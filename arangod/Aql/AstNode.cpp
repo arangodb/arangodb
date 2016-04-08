@@ -40,6 +40,7 @@
 #endif
 
 #include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 #include <array>
 
@@ -202,10 +203,7 @@ static AstNode const* ResolveAttribute(AstNode const* node) {
   std::vector<std::string> attributeNames;
 
   while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    char const* attributeName = node->getStringValue();
-
-    TRI_ASSERT(attributeName != nullptr);
-    attributeNames.emplace_back(attributeName);
+    attributeNames.emplace_back(node->getString());
     node = node->getMember(0);
   }
 
@@ -220,26 +218,25 @@ static AstNode const* ResolveAttribute(AstNode const* node) {
 
     if (node->type == NODE_TYPE_OBJECT) {
       TRI_ASSERT(which > 0);
-      char const* attributeName = attributeNames[which - 1].c_str();
+      std::string const& attributeName = attributeNames[which - 1];
       --which;
 
       size_t const n = node->numMembers();
       for (size_t i = 0; i < n; ++i) {
         auto member = node->getMember(i);
 
-        if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
-            strcmp(member->getStringValue(), attributeName) == 0) {
+        if (member->type == NODE_TYPE_OBJECT_ELEMENT && 
+            member->getString() == attributeName) {
           // found the attribute
           node = member->getMember(0);
           if (which == 0) {
             // we found what we looked for
             return node;
-          } else {
-            // we found the correct attribute but there is now an attribute
-            // access on the result
-            found = true;
-            break;
-          }
+          } 
+          // we found the correct attribute but there is now an attribute
+          // access on the result
+          found = true;
+          break;
         }
       }
     }
@@ -432,7 +429,7 @@ static bool IsEmptyString(char const* p, size_t length) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode::AstNode(AstNodeType type)
-    : type(type), flags(0), computedJson(nullptr) {}
+    : type(type), flags(0), computedValue(nullptr) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a node, with defining a value type
@@ -441,7 +438,7 @@ AstNode::AstNode(AstNodeType type)
 AstNode::AstNode(AstNodeType type, AstNodeValueType valueType) : AstNode(type) {
   value.type = valueType;
   TRI_ASSERT(flags == 0);
-  TRI_ASSERT(computedJson == nullptr);
+  TRI_ASSERT(computedValue == nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -453,7 +450,7 @@ AstNode::AstNode(bool v, AstNodeValueType valueType)
   TRI_ASSERT(valueType == VALUE_TYPE_BOOL);
   value.value._bool = v;
   TRI_ASSERT(flags == 0);
-  TRI_ASSERT(computedJson == nullptr);
+  TRI_ASSERT(computedValue == nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -465,7 +462,7 @@ AstNode::AstNode(int64_t v, AstNodeValueType valueType)
   TRI_ASSERT(valueType == VALUE_TYPE_INT);
   value.value._int = v;
   TRI_ASSERT(flags == 0);
-  TRI_ASSERT(computedJson == nullptr);
+  TRI_ASSERT(computedValue == nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -477,7 +474,7 @@ AstNode::AstNode(char const* v, size_t length, AstNodeValueType valueType)
   TRI_ASSERT(valueType == VALUE_TYPE_STRING);
   setStringValue(v, length);
   TRI_ASSERT(flags == 0);
-  TRI_ASSERT(computedJson == nullptr);
+  TRI_ASSERT(computedValue == nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -487,7 +484,7 @@ AstNode::AstNode(char const* v, size_t length, AstNodeValueType valueType)
 AstNode::AstNode(Ast* ast, arangodb::basics::Json const& json)
     : AstNode(getNodeTypeFromJson(json)) {
   TRI_ASSERT(flags == 0);
-  TRI_ASSERT(computedJson == nullptr);
+  TRI_ASSERT(computedValue == nullptr);
 
   auto query = ast->query();
 
@@ -534,7 +531,9 @@ AstNode::AstNode(Ast* ast, arangodb::basics::Json const& json)
       break;
     }
     case NODE_TYPE_VARIABLE: {
-      auto variable = ast->variables()->createVariable(json);
+      // TODO: fix this
+      auto builder = JsonHelper::toVelocyPack(json.json());
+      auto variable = ast->variables()->createVariable(builder->slice());
       TRI_ASSERT(variable != nullptr);
       setData(variable);
       break;
@@ -674,7 +673,7 @@ AstNode::AstNode(std::function<void(AstNode*)> registerNode,
                  arangodb::basics::Json const& json)
     : AstNode(getNodeTypeFromJson(json)) {
   TRI_ASSERT(flags == 0);
-  TRI_ASSERT(computedJson == nullptr);
+  TRI_ASSERT(computedValue == nullptr);
 
   switch (type) {
     case NODE_TYPE_ATTRIBUTE_ACCESS: {
@@ -828,10 +827,21 @@ AstNode::AstNode(std::function<void(AstNode*)> registerNode,
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode::~AstNode() {
-  if (computedJson != nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, computedJson);
-    computedJson = nullptr;
+  if (computedValue != nullptr) {
+    delete[] computedValue;
   }
+}
+  
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return the string value of a node, as an std::string
+//////////////////////////////////////////////////////////////////////////////
+  
+std::string AstNode::getString() const {
+  TRI_ASSERT(type == NODE_TYPE_VALUE || type == NODE_TYPE_OBJECT_ELEMENT || 
+             type == NODE_TYPE_ATTRIBUTE_ACCESS || type == NODE_TYPE_PARAMETER || 
+             type == NODE_TYPE_COLLECTION || type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS);
+  TRI_ASSERT(value.type == VALUE_TYPE_STRING);
+  return std::string(getStringValue(), getStringLength());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -934,21 +944,23 @@ void AstNode::dump(int level) const {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief compute the JSON for a constant value node
-/// the JSON is owned by the node and must not be freed by the caller
+/// @brief compute the value for a constant value node
+/// the value is owned by the node and must not be freed by the caller
 /// note that the return value might be NULL in case of OOM
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* AstNode::computeJson() const {
+VPackSlice AstNode::computeValue() const {
   TRI_ASSERT(isConstant());
 
-  if (computedJson == nullptr) {
-    // note: the following may fail but we do not need to
-    // check that here
-    computedJson = toJsonValue(TRI_UNKNOWN_MEM_ZONE);
+  if (computedValue == nullptr) {
+    VPackBuilder builder;
+    toVelocyPackValue(builder);
+
+    computedValue = new uint8_t[builder.size()];
+    memcpy(computedValue, builder.data(), builder.size());
   }
 
-  return computedJson;
+  return VPackSlice(computedValue);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1345,7 +1357,7 @@ void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
       for (size_t i = 0; i < n; ++i) {
         auto member = getMemberUnchecked(i);
         if (member != nullptr) {
-          builder.add(VPackValue(member->getStringValue()));
+          builder.add(VPackValue(member->getString()));
           member->getMember(0)->toVelocyPackValue(builder);
         }
       }
@@ -1359,7 +1371,7 @@ void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
     if (tmp != nullptr) {
       VPackSlice slice = tmp->slice();
       if (slice.isObject()) {
-        slice = slice.get(getStringValue());
+        slice = slice.get(getString());
         if (!slice.isNone()) {
           builder.add(slice);
           return;
@@ -1402,7 +1414,7 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
         type == NODE_TYPE_ATTRIBUTE_ACCESS ||
         type == NODE_TYPE_OBJECT_ELEMENT || type == NODE_TYPE_FCALL_USER) {
       // dump "name" of node
-      builder.add("name", VPackValue(getStringValue()));
+      builder.add("name", VPackValue(getString()));
     }
     if (type == NODE_TYPE_FCALL) {
       auto func = static_cast<Function*>(getData());
@@ -1775,9 +1787,7 @@ bool AstNode::isAttributeAccessForVariable(
     if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
       result.second.insert(
           result.second.begin(),
-          arangodb::basics::AttributeName(
-              std::string(node->getStringValue(), node->getStringLength()),
-              expandNext));
+          arangodb::basics::AttributeName(node->getString(), expandNext));
       node = node->getMember(0);
       expandNext = false;
     } else {
@@ -2756,7 +2766,9 @@ AstNode const* AstNode::findReference(AstNode const* findme) const {
         }
         if (member != nullptr) {
           ret = member->findReference(findme);
-          if (ret != nullptr) return ret;
+          if (ret != nullptr) { 
+            return ret;
+          }
         }
       }
     } break;
@@ -2767,7 +2779,9 @@ AstNode const* AstNode::findReference(AstNode const* findme) const {
     case NODE_TYPE_OPERATOR_UNARY_PLUS:
     case NODE_TYPE_OPERATOR_UNARY_MINUS:
     case NODE_TYPE_OPERATOR_UNARY_NOT:
-      if (getMember(0) == findme) return this;
+      if (getMember(0) == findme) {
+        return this;
+      }
       return getMember(0)->findReference(findme);
 
     // two subnodes to inspect:
@@ -2791,29 +2805,39 @@ AstNode const* AstNode::findReference(AstNode const* findme) const {
     case NODE_TYPE_OPERATOR_BINARY_GE:
     case NODE_TYPE_OPERATOR_BINARY_IN:
     case NODE_TYPE_OPERATOR_BINARY_NIN:
-      if (getMember(0) == findme) return this;
+      if (getMember(0) == findme) {
+        return this;
+      }
       ret = getMember(0)->findReference(findme);
       if (ret != nullptr) {
         return ret;
       }
-      if (getMember(1) == findme) return this;
+      if (getMember(1) == findme) {
+        return this;
+      }
       ret = getMember(1)->findReference(findme);
       break;
 
     case NODE_TYPE_EXPANSION: {
-      if (getMember(0) == findme) return this;
+      if (getMember(0) == findme) {
+        return this;
+      }
       ret = getMember(0)->findReference(findme);
       if (ret != nullptr) {
         return ret;
       }
-      if (getMember(1) == findme) return this;
+      if (getMember(1) == findme) {
+        return this;
+      }
       ret = getMember(1)->findReference(findme);
       if (ret != nullptr) {
         return ret;
       }
       auto filterNode = getMember(2);
       if (filterNode != nullptr) {
-        if (filterNode->getMember(0) == findme) return this;
+        if (filterNode->getMember(0) == findme) {
+          return this;
+        }
 
         ret = filterNode->getMember(0)->findReference(findme);
         if (ret != nullptr) {
@@ -2822,7 +2846,9 @@ AstNode const* AstNode::findReference(AstNode const* findme) const {
       }
       auto limitNode = getMember(3);
       if (limitNode != nullptr) {
-        if (limitNode->getMember(0) == findme) return this;
+        if (limitNode->getMember(0) == findme) {
+          return this;
+        }
         ret = limitNode->getMember(0)->findReference(findme);
         if (ret != nullptr) {
           return ret;
@@ -2834,7 +2860,9 @@ AstNode const* AstNode::findReference(AstNode const* findme) const {
       }
       auto returnNode = getMember(4);
       if (returnNode != nullptr) {
-        if (returnNode->getMember(0) == findme) return this;
+        if (returnNode->getMember(0) == findme) {
+          return this;
+        }
         ret = returnNode->getMember(0)->findReference(findme);
       }
     } break;

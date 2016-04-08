@@ -24,10 +24,22 @@
 #ifndef ARANGOD_AQL_EXECUTION_BLOCK_H
 #define ARANGOD_AQL_EXECUTION_BLOCK_H 1
 
-#include "Aql/AqlItemBlock.h"
+#include "AqlItemBlock.h"
 #include "Aql/ExecutionNode.h"
 
 #include <deque>
+
+#if 0
+
+#define DEBUG_BEGIN_BLOCK() try { //
+#define DEBUG_END_BLOCK() } catch (arangodb::basics::Exception const& ex) { LOG(WARN) << "arango exception caught in " << __FILE__ << ":" << __LINE__ << ":" << ex.what(); throw; } catch (std::exception const& ex) { LOG(WARN) << "std exception caught in " << __FILE__ << ":" << __LINE__ << ": " << ex.what(); throw; } catch (...) { LOG(WARN) << "exception caught in " << __FILE__ << ":" << __LINE__; throw; } //
+
+#else
+
+#define DEBUG_BEGIN_BLOCK() //
+#define DEBUG_END_BLOCK() //
+
+#endif
 
 namespace arangodb {
 class AqlTransaction;
@@ -168,13 +180,6 @@ class ExecutionBlock {
   //////////////////////////////////////////////////////////////////////////////
 
   void returnBlock(AqlItemBlock*&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief resolve a collection name and return cid and document key
-  /// this is used for parsing _from, _to and _id values
-  //////////////////////////////////////////////////////////////////////////////
-
-  int resolve(char const*, TRI_voc_cid_t&, std::string&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief copy register data from one block (src) into another (dst)

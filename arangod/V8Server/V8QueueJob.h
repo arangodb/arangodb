@@ -25,7 +25,6 @@
 #define ARANGOD_V8_SERVER_V8_QUEUE_JOB_H 1
 
 #include "Dispatcher/Job.h"
-#include "Basics/json.h"
 
 struct TRI_vocbase_t;
 

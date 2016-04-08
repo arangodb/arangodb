@@ -23,7 +23,6 @@
 
 #include "Aql/Ast.h"
 #include "Aql/Arithmetic.h"
-#include "Aql/Collection.h"
 #include "Aql/Executor.h"
 #include "Aql/Graphs.h"
 #include "Aql/Query.h"
@@ -31,6 +30,10 @@
 #include "Basics/json-utilities.h"
 #include "Basics/tri-strings.h"
 #include "VocBase/collection.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
 
@@ -138,6 +141,7 @@ Ast::~Ast() {}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert the AST into JSON
 /// the caller is responsible for freeing the JSON later
+/// @DEPRECATED
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* Ast::toJson(TRI_memory_zone_t* zone, bool verbose) const {
@@ -155,6 +159,19 @@ TRI_json_t* Ast::toJson(TRI_memory_zone_t* zone, bool verbose) const {
   }
 
   return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert the AST into VelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<VPackBuilder> Ast::toVelocyPack(bool verbose) const {
+  auto builder = std::make_shared<VPackBuilder>();
+  {
+    VPackArrayBuilder guard(builder.get());
+    _root->toVelocyPack(*builder, verbose);
+  }
+  return builder;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1028,25 +1045,26 @@ AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs,
   size_t const nl = lhs->numMembers();
   size_t const nr = rhs->numMembers();
 
-  std::unordered_map<TRI_json_t*, AstNode const*, arangodb::basics::JsonHash,
-                     arangodb::basics::JsonEqual>
-      cache(nl + nr, arangodb::basics::JsonHash(),
-            arangodb::basics::JsonEqual());
+  std::unordered_map<VPackSlice, AstNode const*,
+                     arangodb::basics::VelocyPackHelper::VPackHash,
+                     arangodb::basics::VelocyPackHelper::VPackEqual>
+      cache(nl + nr, arangodb::basics::VelocyPackHelper::VPackHash(),
+            arangodb::basics::VelocyPackHelper::VPackEqual());
 
   for (size_t i = 0; i < nl; ++i) {
     auto member = lhs->getMemberUnchecked(i);
-    auto json = member->computeJson();
+    VPackSlice slice = member->computeValue();
 
-    cache.emplace(json, member);
+    cache.emplace(slice, member);
   }
 
   auto node = createNodeArray();
 
   for (size_t i = 0; i < nr; ++i) {
     auto member = rhs->getMemberUnchecked(i);
-    auto json = member->computeJson();
+    VPackSlice slice = member->computeValue();
 
-    auto it = cache.find(json);
+    auto it = cache.find(slice);
 
     if (it != cache.end()) {
       node->addMember((*it).second);
@@ -1067,10 +1085,11 @@ AstNode* Ast::createNodeUnionizedArray(AstNode const* lhs, AstNode const* rhs) {
   size_t const nl = lhs->numMembers();
   size_t const nr = rhs->numMembers();
 
-  std::unordered_map<TRI_json_t*, AstNode const*, arangodb::basics::JsonHash,
-                     arangodb::basics::JsonEqual>
-      cache(nl + nr, arangodb::basics::JsonHash(),
-            arangodb::basics::JsonEqual());
+  std::unordered_map<VPackSlice, AstNode const*,
+                     arangodb::basics::VelocyPackHelper::VPackHash,
+                     arangodb::basics::VelocyPackHelper::VPackEqual>
+      cache(nl + nr, arangodb::basics::VelocyPackHelper::VPackHash(),
+            arangodb::basics::VelocyPackHelper::VPackEqual());
 
   for (size_t i = 0; i < nl + nr; ++i) {
     AstNode* member;
@@ -1079,9 +1098,9 @@ AstNode* Ast::createNodeUnionizedArray(AstNode const* lhs, AstNode const* rhs) {
     } else {
       member = rhs->getMemberUnchecked(i - nl);
     }
-    auto json = member->computeJson();
+    VPackSlice slice = member->computeValue();
 
-    cache.emplace(json, member);
+    cache.emplace(slice, member);
   }
 
   auto node = createNodeArray();
@@ -1144,7 +1163,7 @@ AstNode* Ast::createNodeWithCollections (AstNode const* collections) {
     auto c = collections->getMember(i);
 
     if (c->isStringValue()) {
-      _query->collections()->add(c->getStringValue(), TRI_TRANSACTION_READ);
+      _query->collections()->add(c->getString(), TRI_TRANSACTION_READ);
     }// else bindParameter use default for collection bindVar
     // We do not need to propagate these members
     node->addMember(c);
@@ -1169,12 +1188,12 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections) {
     // TODO Direction Parsing!
     auto eC = edgeCollections->getMember(i);
     if (eC->isStringValue()) {
-      _query->collections()->add(eC->getStringValue(), TRI_TRANSACTION_READ);
+      _query->collections()->add(eC->getString(), TRI_TRANSACTION_READ);
     } else if (eC->type == NODE_TYPE_DIRECTION) {
       TRI_ASSERT(eC->numMembers() == 2);
       auto eCSub = eC->getMember(1);
       if (eCSub->isStringValue()) {
-        _query->collections()->add(eCSub->getStringValue(), TRI_TRANSACTION_READ);
+        _query->collections()->add(eCSub->getString(), TRI_TRANSACTION_READ);
       }
     }// else bindParameter use default for collection bindVar
     // We do not need to propagate these members
@@ -1413,50 +1432,52 @@ AstNode* Ast::createNodeNaryOperator(AstNodeType type, AstNode const* child) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Ast::injectBindParameters(BindParameters& parameters) {
-  auto p = parameters();
+  auto& p = parameters.get();
 
   auto func = [&](AstNode* node, void*) -> AstNode* {
     if (node->type == NODE_TYPE_PARAMETER) {
       // found a bind parameter in the query string
-      char const* param = node->getStringValue();
-      size_t const length = node->getStringLength();
+      std::string const param = node->getString();
 
-      if (param == nullptr) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      if (param.empty()) {
+        // parameter name must not be empty
+        _query->registerError(TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param.c_str());
+        return nullptr;
       }
-
-      auto it = p.find(std::string(param, length));
+      auto const& it = p.find(param);
 
       if (it == p.end()) {
         // query uses a bind parameter that was not defined by the user
-        _query->registerError(TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param);
+        _query->registerError(TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param.c_str());
         return nullptr;
       }
 
       // mark the bind parameter as being used
       (*it).second.second = true;
 
-      auto value = (*it).second.first;
+      auto& value = (*it).second.first;
 
-      if (*param == '@') {
+      TRI_ASSERT(!param.empty());
+      if (param[0] == '@') {
         // collection parameter
-        TRI_ASSERT(TRI_IsStringJson(value));
+        TRI_ASSERT(value.isString());
 
         // check if the collection was used in a data-modification query
         bool isWriteCollection = false;
 
         for (auto const& it : _writeCollections) {
-          if (it->type == NODE_TYPE_PARAMETER &&
-              strcmp(param, it->getStringValue()) == 0) {
+          if (it->type == NODE_TYPE_PARAMETER && param == it->getString()) {
             isWriteCollection = true;
             break;
           }
         }
 
         // turn node into a collection node
-        size_t const length = value->_value._string.length - 1;
+        VPackValueLength length;
+        char const* stringValue = value.getString(length);
+        // TODO: can we get away without registering the string value here?
         char const* name =
-            _query->registerString(value->_value._string.data, length);
+            _query->registerString(stringValue, static_cast<size_t>(length));
 
         node = createNodeCollection(name, isWriteCollection
                                               ? TRI_TRANSACTION_WRITE
@@ -1467,14 +1488,14 @@ void Ast::injectBindParameters(BindParameters& parameters) {
           // parameter
           for (size_t i = 0; i < _writeCollections.size(); ++i) {
             if (_writeCollections[i]->type == NODE_TYPE_PARAMETER &&
-                strcmp(param, _writeCollections[i]->getStringValue()) == 0) {
+                param == _writeCollections[i]->getString()) {
               _writeCollections[i] = node;
               // no break here. replace all occurrences
             }
           }
         }
       } else {
-        node = nodeFromJson(value, false);
+        node = nodeFromVPack(value, true);
 
         if (node != nullptr) {
           // already mark node as constant here
@@ -1492,9 +1513,7 @@ void Ast::injectBindParameters(BindParameters& parameters) {
           node->setFlag(FLAG_BIND_PARAMETER);
         }
       }
-    }
-
-    else if (node->type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS) {
+    } else if (node->type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS) {
       // look at second sub-node. this is the (replaced) bind parameter
       auto name = node->getMember(1);
 
@@ -1503,7 +1522,7 @@ void Ast::injectBindParameters(BindParameters& parameters) {
         // if no string value was inserted for the parameter name, this is an
         // error
         THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE,
-                                      node->getStringValue());
+                                      node->getString().c_str());
       }
       // convert into a regular attribute access node to simplify handling later
       return createNodeAttributeAccess(
@@ -1512,7 +1531,7 @@ void Ast::injectBindParameters(BindParameters& parameters) {
       auto graphNode = node->getMember(2);
       if (graphNode->type == NODE_TYPE_VALUE) {
         TRI_ASSERT(graphNode->isStringValue());
-        std::string graphName = graphNode->getStringValue();
+        std::string graphName = graphNode->getString();
         auto graph = _query->lookupGraphByName(graphName);
         auto vColls = graph->vertexCollections();
         for (const auto& n : vColls) {
@@ -1533,7 +1552,7 @@ void Ast::injectBindParameters(BindParameters& parameters) {
   // add all collections used in data-modification statements
   for (auto& it : _writeCollections) {
     if (it->type == NODE_TYPE_COLLECTION) {
-      _query->collections()->add(it->getStringValue(), TRI_TRANSACTION_WRITE);
+      _query->collections()->add(it->getString(), TRI_TRANSACTION_WRITE);
     }
   }
 
@@ -1667,7 +1686,7 @@ void Ast::validateAndOptimize() {
       c->hasSeenWriteNodeInCurrentScope = false;
 
       auto collection = node->getMember(1);
-      auto name = collection->getStringValue();
+      std::string name = collection->getString();
       c->writeCollectionsSeen.emplace(name);
     } else if (node->type == NODE_TYPE_FCALL) {
       auto func = static_cast<Function*>(node->getData());
@@ -1787,11 +1806,9 @@ void Ast::validateAndOptimize() {
 
     // collection
     if (node->type == NODE_TYPE_COLLECTION) {
-      char const* name = node->getStringValue();
-
       auto c = static_cast<TraversalContext*>(data);
 
-      if (c->writeCollectionsSeen.find(name) != c->writeCollectionsSeen.end()) {
+      if (c->writeCollectionsSeen.find(node->getString()) != c->writeCollectionsSeen.end()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION);
       }
 
@@ -2018,17 +2035,18 @@ AstNode const* Ast::deduplicateArray(AstNode const* node) {
   }
 
   // TODO: sort values in place first and compare two adjacent members each
-
-  std::unordered_map<TRI_json_t*, AstNode const*, arangodb::basics::JsonHash,
-                     arangodb::basics::JsonEqual>
-      cache(n, arangodb::basics::JsonHash(), arangodb::basics::JsonEqual());
+  std::unordered_map<VPackSlice, AstNode const*,
+                     arangodb::basics::VelocyPackHelper::VPackHash,
+                     arangodb::basics::VelocyPackHelper::VPackEqual>
+      cache(n, arangodb::basics::VelocyPackHelper::VPackHash(),
+            arangodb::basics::VelocyPackHelper::VPackEqual());
 
   for (size_t i = 0; i < n; ++i) {
     auto member = node->getMemberUnchecked(i);
-    auto json = member->computeJson();
+    VPackSlice slice = member->computeValue();
 
-    if (cache.find(json) == cache.end()) {
-      cache.emplace(json, member);
+    if (cache.find(slice) == cache.end()) {
+      cache.emplace(slice, member);
     }
   }
 
@@ -2199,27 +2217,18 @@ AstNode* Ast::executeConstExpression(AstNode const* node) {
   ISOLATE;
   v8::HandleScope scope(isolate);  // do not delete this!
 
-  TRI_json_t* result = _query->executor()->executeExpression(_query, node);
+  VPackBuilder builder;
+
+  int res = _query->executor()->executeExpression(_query, node, builder);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
 
   // context is not left here, but later
   // this allows re-using the same context for multiple expressions
 
-  if (result == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  AstNode* value = nullptr;
-  try {
-    value = nodeFromJson(result, true);
-  } catch (...) {
-  }
-
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, result);
-
-  if (value == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
+  AstNode* value = nodeFromVPack(builder.slice(), true);
   return value;
 }
 
@@ -2821,13 +2830,13 @@ AstNode* Ast::optimizeIndexedAccess(AstNode* node) {
     // found a string value (e.g. a['foo']). now turn this into
     // an attribute access (e.g. a.foo) in order to make the node qualify
     // for being turned into an index range later
-    char const* indexValue = index->getStringValue();
+    std::string indexValue(index->getString());
 
-    if (indexValue != nullptr && (indexValue[0] < '0' || indexValue[0] > '9')) {
+    if (!indexValue.empty() && (indexValue[0] < '0' || indexValue[0] > '9')) {
       // we have to be careful with numeric values here...
       // e.g. array['0'] is not the same as array.0 but must remain a['0'] or
       // (a[0])
-      return createNodeAttributeAccess(node->getMember(0), indexValue,
+      return createNodeAttributeAccess(node->getMember(0), index->getStringValue(),
                                        index->getStringLength());
     }
   }
@@ -2997,6 +3006,70 @@ AstNode* Ast::nodeFromJson(TRI_json_t const* json, bool copyStringValues) {
 
       node->addMember(createNodeObjectElement(
           attributeName, nameLength, nodeFromJson(value, copyStringValues)));
+    }
+
+    return node;
+  }
+
+  return createNodeValueNull();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST node from vpack
+/// if copyStringValues is `true`, then string values will be copied and will
+/// be freed with the query afterwards. when set to `false`, string values
+/// will not be copied and not freed by the query. the caller needs to make
+/// sure then that string values are valid through the query lifetime.
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::nodeFromVPack(VPackSlice const& slice, bool copyStringValues) {
+  if (slice.isBoolean()) {
+    return createNodeValueBool(slice.getBoolean());
+  }
+
+  if (slice.isNumber()) {
+    return createNodeValueDouble(slice.getNumber<double>());
+  }
+
+  if (slice.isString()) {
+    VPackValueLength length;
+    char const* p = slice.getString(length);
+
+    if (copyStringValues) {
+      // we must copy string values!
+      p = _query->registerString(p, static_cast<size_t>(length));
+    }
+    // we can get away without copying string values
+    return createNodeValueString(p, length);
+  }
+
+  if (slice.isArray()) {
+    auto node = createNodeArray();
+    node->members.reserve(slice.length());
+ 
+    for (auto const& it : VPackArrayIterator(slice)) {
+      node->addMember(nodeFromVPack(it, copyStringValues)); 
+    }
+
+    return node;
+  }
+
+  if (slice.isObject()) {
+    auto node = createNodeObject();
+    node->members.reserve(slice.length());
+
+    for (auto const& it : VPackObjectIterator(slice)) {
+      VPackValueLength nameLength;
+      char const* attributeName = it.key.getString(nameLength);
+
+      if (copyStringValues) {
+        // create a copy of the string value
+        attributeName =
+            _query->registerString(attributeName, static_cast<size_t>(nameLength));
+      }
+
+      node->addMember(createNodeObjectElement(
+          attributeName, nameLength, nodeFromVPack(it.value, copyStringValues)));
     }
 
     return node;

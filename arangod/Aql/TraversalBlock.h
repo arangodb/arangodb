@@ -109,8 +109,7 @@ class TraversalBlock : public ExecutionBlock {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Keep a copy of the start vertex id-string. Can be freed if this
-  /// start
-  ///        vertex is not in use any more.
+  /// start vertex is not in use any more.
   //////////////////////////////////////////////////////////////////////////////
 
   std::string _vertexId;

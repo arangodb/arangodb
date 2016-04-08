@@ -30,10 +30,10 @@
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/json.h"
-#include "Logger/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
+#include "Logger/Logger.h"
 #include "HttpServer/HttpServer.h"
 #include "Rest/GeneralRequest.h"
 #include "Rest/HttpRequest.h"
@@ -362,7 +362,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   req->ForceSet(ProtocolKey, TRI_V8_STD_STRING(protocol));
 
   // set the task id
-  std::string const&& taskId = StringUtils::itoa(request->clientTaskId());
+  std::string const taskId(StringUtils::itoa(request->clientTaskId()));
 
   // set the connection info
   const ConnectionInfo& info = request->connectionInfo();
@@ -591,8 +591,7 @@ static HttpResponse* ResponseV8ToCpp(v8::Isolate* isolate,
         response->body().appendText(V8Buffer::data(obj), V8Buffer::length(obj));
       } else {
         // treat body as a string
-        std::string&& obj(TRI_ObjectToString(res->Get(BodyKey)));
-        response->body().appendText(obj);
+        response->body().appendText(TRI_ObjectToString(res->Get(BodyKey)));
       }
     }
   }

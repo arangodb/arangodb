@@ -59,8 +59,6 @@ function FiguresSuite () {
       var f = c1.figures();
       assertEqual(0, f.datafiles.count);
       assertEqual(0, f.compactors.count);
-      assertEqual(0, f.shapefiles.count);
-      assertEqual(0, f.shapefiles.fileSize);
       assertEqual(0, f.alive.count);
       assertEqual(0, f.alive.size);
       assertEqual(0, f.dead.count);
@@ -85,8 +83,6 @@ function FiguresSuite () {
       assertEqual(1, f.journals.count);
       assertTrue(f.journals.fileSize > 0);
       assertEqual(0, f.compactors.count);
-      assertEqual(0, f.shapefiles.count);
-      assertEqual(0, f.shapefiles.fileSize);
       assertEqual(1, f.alive.count);
       assertNotEqual(0, f.alive.size);
       assertEqual(0, f.dead.count);
@@ -159,24 +155,6 @@ function FiguresSuite () {
       assertEqual(2, f.dead.count);
       assertNotEqual(0, f.dead.size);
       assertEqual(2, f.dead.deletion);
-
-      var attributes = f.attributes.count;
-      var shapes = f.shapes.count;
-
-      c1.save({ b0rk : "abc" });
-
-      internal.wal.flush(true, true);
-      tries = 0;
-      while (++tries < 20) {
-        f = c1.figures();
-        if (f.shapes.count === shapes + 1) {
-          break;
-        }
-        internal.wait(1, false);
-      }
-
-      assertEqual(attributes + 1, f.attributes.count);
-      assertEqual(shapes + 1, f.shapes.count);
 
       db._drop(collection);
     },

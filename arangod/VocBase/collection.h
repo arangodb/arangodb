@@ -25,7 +25,7 @@
 #define ARANGOD_VOC_BASE_COLLECTION_H 1
 
 #include "Basics/Common.h"
-#include "Basics/vector.h"
+#include "Basics/ReadWriteLock.h"
 #include "VocBase/datafile.h"
 #include "VocBase/vocbase.h"
 
@@ -46,12 +46,7 @@
 ///
 /// - index-NNN.json: An index description. The number NNN is the index
 ///     identifier, see @ref TRI_index_t.
-///
-/// The structure @ref TRI_collection_t is abstract. Currently, there is one
-/// concrete sub-class @ref TRI_document_collection_t.
 ////////////////////////////////////////////////////////////////////////////////
-
-struct TRI_json_t;
 
 namespace arangodb {
 class CollectionInfo;
@@ -61,18 +56,6 @@ class Buffer;
 class Slice;
 }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collection name regex
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_COL_NAME_REGEX "[a-zA-Z_][0-9a-zA-Z_-]*"
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collection version for ArangoDB >= 1.3
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_COL_VERSION_13 (4)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection version for ArangoDB >= 2.0
@@ -120,24 +103,24 @@ class Slice;
 /// @brief collection file structure
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_col_file_structure_s {
-  TRI_vector_string_t _journals;
-  TRI_vector_string_t _compactors;
-  TRI_vector_string_t _datafiles;
-  TRI_vector_string_t _indexes;
-} TRI_col_file_structure_t;
+struct TRI_col_file_structure_t {
+  std::vector<std::string> journals;
+  std::vector<std::string> compactors;
+  std::vector<std::string> datafiles;
+  std::vector<std::string> indexes;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief state of the datafile
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef enum {
+enum TRI_col_state_e {
   TRI_COL_STATE_CLOSED = 1,      // collection is closed
   TRI_COL_STATE_READ = 2,        // collection is opened read only
   TRI_COL_STATE_WRITE = 3,       // collection is opened read/append
   TRI_COL_STATE_OPEN_ERROR = 4,  // an error has occurred while opening
   TRI_COL_STATE_WRITE_ERROR = 5  // an error has occurred while writing
-} TRI_col_state_e;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection version
@@ -276,7 +259,7 @@ class VocbaseCollectionInfo {
   /// @brief saves a parameter info block to file
   //////////////////////////////////////////////////////////////////////////////
 
-  int saveToFile(char const*, bool) const;
+  int saveToFile(std::string const&, bool) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief updates settings for this collection info.
@@ -307,6 +290,35 @@ class VocbaseCollectionInfo {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_collection_t {
+ public:
+  TRI_collection_t(TRI_collection_t const&) = delete;
+  TRI_collection_t& operator=(TRI_collection_t const&) = delete;
+
+  TRI_collection_t() = delete;
+  
+  explicit TRI_collection_t(TRI_vocbase_t* vocbase)
+      : _vocbase(vocbase), _tickMax(0), _state(TRI_COL_STATE_WRITE), _lastError(0) {}
+
+  TRI_collection_t(TRI_vocbase_t* vocbase, arangodb::VocbaseCollectionInfo const& info)
+      : _info(info), _vocbase(vocbase), _tickMax(0), _state(TRI_COL_STATE_WRITE), _lastError(0) {}
+
+  ~TRI_collection_t() = default;
+
+ public:
+  void iterateIndexes(std::function<bool(std::string const&, void*)> const&, void*);
+
+  // datafile management
+  void addJournal(TRI_datafile_t*);
+  void addDatafile(TRI_datafile_t*);
+  void addCompactor(TRI_datafile_t*);
+  bool hasCompactor();
+  bool compactorToDatafile(TRI_datafile_t*);
+  bool journalToDatafile(TRI_datafile_t*);
+  bool removeCompactor(TRI_datafile_t*);
+  void addIndexFile(std::string const&);
+  int removeIndexFile(TRI_idx_iid_t);
+
+ public:
   arangodb::VocbaseCollectionInfo _info;
 
   TRI_vocbase_t* _vocbase;
@@ -315,19 +327,16 @@ struct TRI_collection_t {
   TRI_col_state_e _state;  // state of the collection
   int _lastError;          // last (critical) error
 
-  char* _directory;  // directory of the collection
+  std::string _directory;  // directory of the collection
 
-  TRI_vector_pointer_t _datafiles;   // all datafiles
-  TRI_vector_pointer_t _journals;    // all journals
-  TRI_vector_pointer_t _compactors;  // all compactor files
-  TRI_vector_string_t _indexFiles;   // all index filenames
+  std::vector<TRI_datafile_t*> _datafiles;   // all datafiles
+  std::vector<TRI_datafile_t*> _journals;    // all journals
+  std::vector<TRI_datafile_t*> _compactors;  // all compactor files
+ private:
+  std::vector<std::string> _indexFiles;   // all index filenames
 
-  TRI_collection_t() {}
-
-  explicit TRI_collection_t(arangodb::VocbaseCollectionInfo const& info)
-      : _info(info) {}
-
-  ~TRI_collection_t() {}
+ private:
+  arangodb::basics::ReadWriteLock _filesLock;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -353,11 +362,8 @@ void TRI_DestroyCollection(TRI_collection_t*);
 void TRI_FreeCollection(TRI_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief jsonify a parameter info block
+/// @brief convert a parameter info block to velocypack
 ////////////////////////////////////////////////////////////////////////////////
-
-struct TRI_json_t* TRI_CreateJsonCollectionInfo(
-    arangodb::VocbaseCollectionInfo const&);
 
 std::shared_ptr<arangodb::velocypack::Builder>
 TRI_CreateVelocyPackCollectionInfo(arangodb::VocbaseCollectionInfo const&);
@@ -380,25 +386,12 @@ int TRI_UpdateCollectionInfo(TRI_vocbase_t*, TRI_collection_t*,
 int TRI_RenameCollection(TRI_collection_t*, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an index file from the indexFiles vector
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_RemoveFileIndexCollection(TRI_collection_t*, TRI_idx_iid_t);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief iterates over a collection
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IterateCollection(TRI_collection_t*, bool (*)(TRI_df_marker_t const*,
                                                        void*, TRI_datafile_t*),
                            void*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief iterates over all index files of a collection
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_IterateIndexCollection(TRI_collection_t*, bool (*)(char const*, void*),
-                                void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens an existing collection
@@ -420,12 +413,6 @@ int TRI_CloseCollection(TRI_collection_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_col_file_structure_t TRI_FileStructureCollectionDirectory(char const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees the information
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyFileStructureCollection(TRI_col_file_structure_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterate over the markers in the collection's journals

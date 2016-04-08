@@ -25,11 +25,19 @@
 #define LIB_BASICS_VELOCY_PACK_HELPER_H 1
 
 #include "Basics/JsonHelper.h"
+#include "Logger/Logger.h"
 
+#include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
+namespace velocypack {
+struct AttributeExcludeHandler;
+class AttributeTranslator;
+}
+
 namespace basics {
 
 class VelocyPackHelper {
@@ -39,6 +47,16 @@ class VelocyPackHelper {
 
  public:
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief static initializer for all VPack values
+////////////////////////////////////////////////////////////////////////////////
+  
+  static void initialize();
+  static void disableAssemblerFunctions();
+  
+  static arangodb::velocypack::AttributeExcludeHandler* getExcludeHandler();
+  static arangodb::velocypack::AttributeTranslator* getTranslator();
+  
   struct VPackHash {
     size_t operator()(arangodb::velocypack::Slice const&) const;
   };
@@ -58,10 +76,19 @@ class VelocyPackHelper {
 
   template <bool useUtf8>
   struct VPackLess {
+    VPackLess(arangodb::velocypack::Options const* options = &arangodb::velocypack::Options::Defaults,
+              arangodb::velocypack::Slice const* lhsBase = nullptr,
+              arangodb::velocypack::Slice const* rhsBase = nullptr)
+        : options(options), lhsBase(lhsBase), rhsBase(rhsBase) {}
+
     inline bool operator()(arangodb::velocypack::Slice const& lhs,
                            arangodb::velocypack::Slice const& rhs) const {
-      return VelocyPackHelper::compare(lhs, rhs, useUtf8) < 0;
+      return VelocyPackHelper::compare(lhs, rhs, useUtf8, options, lhsBase, rhsBase) < 0;
     }
+
+    arangodb::velocypack::Options const* options;
+    arangodb::velocypack::Slice const* lhsBase;
+    arangodb::velocypack::Slice const* rhsBase;
   };
 
   struct AttributeSorter {
@@ -112,6 +139,28 @@ class VelocyPackHelper {
   static std::string checkAndGetStringValue(VPackSlice const&, char const*);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief returns a Numeric sub-element, or throws if <name> does not exist
+  /// or it is not a Number
+  //////////////////////////////////////////////////////////////////////////////
+
+  template <typename T>
+  static T checkAndGetNumericValue(VPackSlice const& slice, char const* name) {
+    TRI_ASSERT(slice.isObject());
+    if (!slice.hasKey(name)) {
+      std::string msg =
+          "The attribute '" + std::string(name) + "' was not found.";
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
+    }
+    VPackSlice const sub = slice.get(name);
+    if (!sub.isNumber()) {
+      std::string msg =
+          "The attribute '" + std::string(name) + "' is not a number.";
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
+    }
+    return sub.getNumericValue<T>();
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a string value, or the default value if it is not a string
   //////////////////////////////////////////////////////////////////////////////
 
@@ -123,7 +172,7 @@ class VelocyPackHelper {
   /// or it is not a string
   //////////////////////////////////////////////////////////////////////////////
 
-  static std::string getStringValue(VPackSlice const&, char const*,
+  static std::string getStringValue(VPackSlice, char const*,
                                     std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -136,7 +185,7 @@ class VelocyPackHelper {
   /// @brief Build TRI_json_t from VelocyPack. Just a temporary solution
   //////////////////////////////////////////////////////////////////////////////
 
-  static TRI_json_t* velocyPackToJson(VPackSlice const&);
+  static TRI_json_t* velocyPackToJson(VPackSlice const&, VPackOptions const* = &VPackOptions::Defaults);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief parses a json file to VelocyPack
@@ -154,8 +203,11 @@ class VelocyPackHelper {
   /// @brief Compares two VelocyPack slices
   //////////////////////////////////////////////////////////////////////////////
 
-  static int compare(VPackSlice const&, VPackSlice const&, bool);
-
+  static int compare(arangodb::velocypack::Slice const& lhs, 
+                     arangodb::velocypack::Slice const& rhs, 
+                     bool useUTF8, arangodb::velocypack::Options const* options = &arangodb::velocypack::Options::Defaults,
+                     arangodb::velocypack::Slice const* lhsBase = nullptr,
+                     arangodb::velocypack::Slice const* rhsBase = nullptr);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Merges two VelocyPack Slices
@@ -171,6 +223,17 @@ class VelocyPackHelper {
   //////////////////////////////////////////////////////////////////////////////
 
   static double toDouble(VPackSlice const&, bool&);
+
+  static uint64_t hashByAttributes(VPackSlice, std::vector<std::string> const&,
+                                   bool, int&);
+
+  static arangodb::velocypack::Slice NullValue();
+  static arangodb::velocypack::Slice TrueValue();
+  static arangodb::velocypack::Slice FalseValue();
+  static arangodb::velocypack::Slice BooleanValue(bool);
+  static arangodb::velocypack::Slice EmptyArrayValue();
+  static arangodb::velocypack::Slice EmptyObjectValue();
+  static arangodb::velocypack::Slice IllegalValue();
 };
 }
 }
@@ -178,7 +241,7 @@ class VelocyPackHelper {
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Simple and limited logging of VelocyPack slices
 //////////////////////////////////////////////////////////////////////////////
-#include "Logger/Logger.h"
+
 arangodb::LoggerStream& operator<<(arangodb::LoggerStream&,
   arangodb::velocypack::Slice const&);
 

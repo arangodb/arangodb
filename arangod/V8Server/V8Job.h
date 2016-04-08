@@ -25,7 +25,6 @@
 #define ARANGOD_V8_SERVER_V8_JOB_H 1
 
 #include "Basics/Common.h"
-#include "Basics/json.h"
 #include "Dispatcher/Job.h"
 
 struct TRI_vocbase_t;

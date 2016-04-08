@@ -41,7 +41,7 @@ namespace velocypack {
 class Builder;
 class Slice;
 }
-}
+
 class KeyGenerator {
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -104,7 +104,7 @@ class KeyGenerator {
   /// @brief track usage of a key
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void track(TRI_voc_key_t) = 0;
+  virtual void track(std::string const&) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return a VelocyPack representation of the generator
@@ -157,7 +157,7 @@ class TraditionalKeyGenerator : public KeyGenerator {
   /// @brief validate a key
   //////////////////////////////////////////////////////////////////////////////
 
-  static bool validateKey(char const* key);
+  static bool validateKey(char const* key, size_t len);
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -176,7 +176,7 @@ class TraditionalKeyGenerator : public KeyGenerator {
   /// @brief track usage of a key
   //////////////////////////////////////////////////////////////////////////////
 
-  void track(TRI_voc_key_t) override;
+  void track(std::string const&) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the generator name (must be lowercase)
@@ -210,7 +210,7 @@ class AutoIncrementKeyGenerator : public KeyGenerator {
   /// @brief validate a key
   //////////////////////////////////////////////////////////////////////////////
 
-  static bool validateKey(char const* key);
+  static bool validateKey(char const* key, size_t len);
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -229,7 +229,7 @@ class AutoIncrementKeyGenerator : public KeyGenerator {
   /// @brief track usage of a key
   //////////////////////////////////////////////////////////////////////////////
 
-  void track(TRI_voc_key_t) override;
+  void track(std::string const&) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the generator name (must be lowercase)
@@ -253,10 +253,12 @@ class AutoIncrementKeyGenerator : public KeyGenerator {
   uint64_t _increment;  // increment value
 };
 
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief validate a document id (collection name + / + document key)
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ValidateDocumentIdKeyGenerator(char const*, size_t*);
+bool TRI_ValidateDocumentIdKeyGenerator(char const*, size_t, size_t*);
 
 #endif

@@ -25,7 +25,6 @@
 #define LIB_BASICS_PROGRAM_OPTIONS_DESCRIPTION_H 1
 
 #include "Basics/Common.h"
-#include <functional>
 
 struct TRI_json_t;
 

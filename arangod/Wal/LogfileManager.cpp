@@ -22,13 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LogfileManager.h"
-
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Logger/Logger.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/files.h"
 #include "Basics/hashes.h"
@@ -116,7 +116,6 @@ LogfileManager::LogfileManager(TRI_server_t* server, std::string* databasePath)
       _allowOversizeEntries(true),
       _ignoreLogfileErrors(false),
       _ignoreRecoveryErrors(false),
-      _suppressShapeInformation(false),
       _allowWrites(false),  // start in read-only mode
       _hasFoundLastTick(false),
       _inRecovery(true),
@@ -215,9 +214,6 @@ void LogfileManager::setupOptions(
       "wal.reserve-logfiles", &_reserveLogfiles,
       "maximum number of reserve logfiles to maintain")(
       "wal.slots", &_numberOfSlots, "number of logfile slots to use")(
-      "wal.suppress-shape-information", &_suppressShapeInformation,
-      "do not write shape information for markers (saves a lot of disk space, "
-      "but effectively disables using the write-ahead log for replication)")(
       "wal.sync-interval", &_syncInterval,
       "interval for automatic, non-requested disk syncs (in milliseconds)")(
       "wal.throttle-when-pending", &_throttleWhenPending,
@@ -238,7 +234,7 @@ bool LogfileManager::prepare() {
 
   if (_directory.empty()) {
     // use global configuration variable
-    _directory = (*_databasePath);
+    _directory = *_databasePath;
 
     if (!basics::FileUtils::isDirectory(_directory)) {
       std::string systemErrorStr;
@@ -664,7 +660,7 @@ void LogfileManager::unregisterFailedTransactions(
 ////////////////////////////////////////////////////////////////////////////////
 
 bool LogfileManager::logfileCreationAllowed(uint32_t size) {
-  if (size + Logfile::overhead() > filesize()) {
+  if (size + DatafileHelper::JournalOverhead() > filesize()) {
     // oversize entry. this is always allowed because otherwise everything would
     // lock
     return true;
@@ -751,21 +747,13 @@ SlotInfo LogfileManager::allocate(uint32_t size) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief allocate space in a logfile for later writing, version for legends
-///
-/// See explanations about legends in the corresponding allocateAndWrite
-/// convenience function.
+/// @brief allocate space in a logfile for later writing
 ////////////////////////////////////////////////////////////////////////////////
 
-SlotInfo LogfileManager::allocate(uint32_t size, TRI_voc_cid_t cid,
-                                  TRI_shape_sid_t sid, uint32_t legendOffset,
-                                  void*& oldLegend) {
+SlotInfo LogfileManager::allocate(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
+                                  uint32_t size) {
   if (!_allowWrites) {
-// no writes allowed
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(false);
-#endif
-
+    // no writes allowed
     return SlotInfo(TRI_ERROR_ARANGO_READ_ONLY);
   }
 
@@ -779,34 +767,19 @@ SlotInfo LogfileManager::allocate(uint32_t size, TRI_voc_cid_t cid,
     return SlotInfo(TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE);
   }
 
-  return _slots->nextUnused(size, cid, sid, legendOffset, oldLegend);
+  return _slots->nextUnused(databaseId, collectionId, size);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief finalize a log entry
-////////////////////////////////////////////////////////////////////////////////
-
-void LogfileManager::finalize(SlotInfo& slotInfo, bool waitForSync) {
-  _slots->returnUsed(slotInfo, waitForSync);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief write data into the logfile
+/// @brief write data into the logfile, using database id and collection id
 /// this is a convenience function that combines allocate, memcpy and finalize
-///
-/// We need this version with cid, sid, legendOffset and oldLegend because
-/// there is a cache for each WAL file keeping track which legends are
-/// already in it. The decision whether or not an additional legend is
-/// needed therefore has to be taken in the allocation routine. This
-/// version is only used to write document or edge markers. If a previously
-/// written legend is found its address is returned in oldLegend such that
-/// the new marker can point to it with a relative reference.
 ////////////////////////////////////////////////////////////////////////////////
 
-SlotInfoCopy LogfileManager::allocateAndWrite(
-    void* src, uint32_t size, bool waitForSync, TRI_voc_cid_t cid,
-    TRI_shape_sid_t sid, uint32_t legendOffset, void*& oldLegend) {
-  SlotInfo slotInfo = allocate(size, cid, sid, legendOffset, oldLegend);
+SlotInfoCopy LogfileManager::allocateAndWrite(TRI_voc_tick_t databaseId,
+                                              TRI_voc_cid_t collectionId,
+                                              void* src, uint32_t size,
+                                              bool waitForSync) {
+  SlotInfo slotInfo = allocate(databaseId, collectionId, size);
 
   if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
     return SlotInfoCopy(slotInfo.errorCode);
@@ -849,7 +822,7 @@ SlotInfoCopy LogfileManager::allocateAndWrite(void* src, uint32_t size,
   try {
     slotInfo.slot->fill(src, size);
 
-    // we must copy the slotinfo because finalize() will set its internal to 0
+    // we must copy the slotinfo because finalize() will set its internals to 0
     // again
     SlotInfoCopy copy(slotInfo.slot);
 
@@ -871,6 +844,14 @@ SlotInfoCopy LogfileManager::allocateAndWrite(void* src, uint32_t size,
 SlotInfoCopy LogfileManager::allocateAndWrite(Marker const& marker,
                                               bool waitForSync) {
   return allocateAndWrite(marker.mem(), marker.size(), waitForSync);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finalize a log entry
+////////////////////////////////////////////////////////////////////////////////
+
+void LogfileManager::finalize(SlotInfo& slotInfo, bool waitForSync) {
+  _slots->returnUsed(slotInfo, waitForSync);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -955,6 +936,42 @@ int LogfileManager::flush(bool waitForSync, bool waitForCollector,
   }
 
   return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// wait until all changes to the current logfile are synced
+////////////////////////////////////////////////////////////////////////////////
+
+bool LogfileManager::waitForSync(double maxWait) {
+  TRI_ASSERT(!_inRecovery);
+
+  double const end = TRI_microtime() + maxWait;
+  TRI_voc_tick_t lastAssignedTick = 0;
+
+  while (true) {
+    // fill the state
+    LogfileManagerState state;
+    _slots->statistics(state.lastAssignedTick, state.lastCommittedTick, state.lastCommittedDataTick, state.numEvents);
+
+    if (lastAssignedTick == 0) {
+      // get last assigned tick only once
+      lastAssignedTick = state.lastAssignedTick;
+    }
+
+    // now compare last committed tick with first lastAssigned tick that we got
+    if (state.lastCommittedTick >= lastAssignedTick) {
+      // everything was already committed
+      return true;
+    }
+
+    // not everything was committed yet. wait a bit
+    usleep(10000);
+
+    if (TRI_microtime() >= end) {
+      // time's up!
+      return false;
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1675,7 +1692,7 @@ LogfileManagerState LogfileManager::state() {
   LogfileManagerState state;
 
   // now fill the state
-  _slots->statistics(state.lastTick, state.lastDataTick, state.numEvents);
+  _slots->statistics(state.lastAssignedTick, state.lastCommittedTick, state.lastCommittedDataTick, state.numEvents);
   state.timeString = getTimeString();
 
   return state;
@@ -2293,7 +2310,7 @@ int LogfileManager::createReserveLogfile(uint32_t size) {
   uint32_t realsize;
   if (size > 0 && size > filesize()) {
     // create a logfile with the requested size
-    realsize = size + Logfile::overhead();
+    realsize = size + DatafileHelper::JournalOverhead();
   } else {
     // create a logfile with default size
     realsize = filesize();

@@ -24,8 +24,13 @@
 #include "Aql/VariableGenerator.h"
 #include "Basics/Exceptions.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
+
 using namespace arangodb::aql;
-using Json = arangodb::basics::Json;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the generator
@@ -130,12 +135,12 @@ Variable* VariableGenerator::createVariable(Variable const* original) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generate a variable from JSON
+/// @brief generate a variable from VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
 Variable* VariableGenerator::createVariable(
-    arangodb::basics::Json const& json) {
-  auto variable = new Variable(json);
+    VPackSlice const slice) {
+  auto variable = new Variable(slice);
 
   auto existing = getVariable(variable->id);
   if (existing != nullptr) {
@@ -212,36 +217,33 @@ std::string VariableGenerator::nextName() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief export to JSON, returns an AUTOFREE Json object
+/// @brief export to VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::basics::Json VariableGenerator::toJson(
-    TRI_memory_zone_t* zone) const {
-  Json jsonAllVariablesList(Json::Array, _variables.size());
-
+void VariableGenerator::toVelocyPack(VPackBuilder& builder) const {
+  VPackArrayBuilder guard(&builder);
   for (auto const& oneVariable : _variables) {
-    jsonAllVariablesList(oneVariable.second->toJson());
+    oneVariable.second->toVelocyPack(builder);
   }
-
-  return jsonAllVariablesList;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief import from JSON
+/// @brief import from VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-void VariableGenerator::fromJson(Json const& query) {
-  Json jsonAllVariablesList = query.get("variables");
+void VariableGenerator::fromVelocyPack(VPackSlice const& query) {
+  VPackSlice allVariablesList = query.get("variables");
 
-  if (!jsonAllVariablesList.isArray()) {
+  if (!allVariablesList.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "variables needs to be an array");
   }
 
-  auto len = jsonAllVariablesList.size();
+  auto len = allVariablesList.length();
   _variables.reserve(len);
 
-  for (size_t i = 0; i < len; i++) {
-    createVariable(jsonAllVariablesList.at(i));
+  for (auto const& var : VPackArrayIterator(allVariablesList)) {
+    createVariable(var);
   }
 }
+

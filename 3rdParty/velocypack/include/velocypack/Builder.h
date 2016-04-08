@@ -115,20 +115,16 @@ class Builder {
   // at position base, also determine the length len of the attribute.
   // This takes into account the different possibilities for the format
   // of attribute names:
-  static uint8_t const* findAttrName(uint8_t const* base, uint64_t& len,
-                                     Options const*);
+  static uint8_t const* findAttrName(uint8_t const* base, uint64_t& len);
 
   static void sortObjectIndexShort(uint8_t* objBase,
-                                   std::vector<ValueLength>& offsets,
-                                   Options const*);
+                                   std::vector<ValueLength>& offsets);
 
   static void sortObjectIndexLong(uint8_t* objBase,
-                                  std::vector<ValueLength>& offsets,
-                                  Options const*);
+                                  std::vector<ValueLength>& offsets);
 
   static void sortObjectIndex(uint8_t* objBase,
-                              std::vector<ValueLength>& offsets,
-                              Options const*);
+                              std::vector<ValueLength>& offsets);
 
  public:
   Options const* options;
@@ -257,8 +253,9 @@ class Builder {
   std::shared_ptr<Buffer<uint8_t>> const& buffer() const { return _buffer; }
 
   std::shared_ptr<Buffer<uint8_t>> steal() {
-    std::shared_ptr<Buffer<uint8_t>> res = std::move(_buffer);
-    _buffer.reset(new Buffer<uint8_t>());
+    // After a steal the Builder is broken!
+    std::shared_ptr<Buffer<uint8_t>> res = _buffer;
+    _buffer.reset();
     _pos = 0;
     return res;
   }
@@ -301,7 +298,7 @@ class Builder {
     if (isEmpty()) { 
       return Slice();
     }
-    return Slice(start(), options); 
+    return Slice(start());
   }
 
   // Compute the actual size here, but only when sealed

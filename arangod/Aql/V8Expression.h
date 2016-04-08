@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Aql/AqlValue.h"
 #include "Aql/types.h"
+
 #include <v8.h>
 
 namespace arangodb {
@@ -37,6 +38,7 @@ class Query;
 struct Variable;
 
 struct V8Expression {
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create the v8 expression
   //////////////////////////////////////////////////////////////////////////////
@@ -69,9 +71,9 @@ struct V8Expression {
   //////////////////////////////////////////////////////////////////////////////
 
   AqlValue execute(v8::Isolate* isolate, Query* query,
-                   arangodb::AqlTransaction*, AqlItemBlock const*, size_t,
-                   std::vector<Variable const*> const&,
-                   std::vector<RegisterId> const&);
+                    arangodb::AqlTransaction*, AqlItemBlock const*, size_t,
+                    std::vector<Variable const*> const&,
+                    std::vector<RegisterId> const&, bool& mustDestroy);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the isolate used when executing and destroying the expression

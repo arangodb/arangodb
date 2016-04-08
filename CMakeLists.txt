@@ -13,7 +13,7 @@ endif ()
 option(VERBOSE OFF)
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9" CACHE STRING "deployment target for MacOSX")
 
-project(ArangoDB)
+project(ArangoDB CXX C ASM)
 
 # where to find CMAKE modules
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
@@ -298,6 +298,26 @@ else ()
 endif ()
 
 ################################################################################
+## ASSEMBLER OPTIMIZATIONS
+################################################################################
+
+# Allow to prohibit assembler optimization code explicitly
+if (MSVC)
+  SET(ASM_OPTIMIZATIONS_DEFAULT OFF)
+else (MSVC)
+  SET(ASM_OPTIMIZATIONS_DEFAULT ON)
+endif (MSVC)
+
+option(ASM_OPTIMIZATIONS "whether hand-optimized assembler code should be used"
+  ${ASM_OPTIMIZATIONS_DEFAULT})
+
+if (ASM_OPTIMIZATIONS)
+  add_definitions("-DASM_OPTIMIZATIONS=1")
+else (ASM_OPTIMIZATIONS)
+  add_definitions("-DASM_OPTIMIZATIONS=0")
+endif (ASM_OPTIMIZATIONS)
+
+################################################################################
 ## MAINTAINER MODE
 ################################################################################
 
@@ -341,6 +361,14 @@ endif ()
 
 if (USE_TCMALLOC)
   find_package(tcmalloc)
+
+  if (TCMALLOC_FOUND)
+    add_definitions("-DARANGODB_HAVE_TCMALLOC=1")
+    set(SYS_LIBS ${SYS_LIBS} ${TCMALLOC_tcmalloc_LIBRARY})
+    message(STATUS "Found TCMALLOC")
+  else ()
+    message(STATUS "Missing TCMALLOC")
+  endif ()
 endif ()
 
 ################################################################################

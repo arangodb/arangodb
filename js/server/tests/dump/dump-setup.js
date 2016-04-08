@@ -95,7 +95,6 @@
   c.ensureSkiplist("a_s1", "a_s2");
   c.ensureFulltextIndex("a_f");
   c.ensureGeoIndex("a_la", "a_lo");
-  c.ensureCapConstraint(1000, 1048576);
 
   c.ensureHashIndex("a_h1", "a_h2");
   c.ensureUniqueSkiplist("a_su");

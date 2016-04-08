@@ -30,7 +30,8 @@
 #include "Basics/json.h"
 #include "Basics/JsonHelper.h"
 
-#include <functional>
+#include <velocypack/Slice.h>
+
 #include <iosfwd>
 
 namespace arangodb {
@@ -270,6 +271,13 @@ struct AstNode {
   ~AstNode();
 
  public:
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return the string value of a node, as an std::string
+  //////////////////////////////////////////////////////////////////////////////
+  
+  std::string getString() const;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief test if all members of a node are equality comparisons
   //////////////////////////////////////////////////////////////////////////////
@@ -291,12 +299,12 @@ struct AstNode {
 #endif
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief compute the JSON for a constant value node
-  /// the JSON is owned by the node and must not be freed by the caller
+  /// @brief compute the value for a constant value node
+  /// the value is owned by the node and must not be freed by the caller
   /// note that the return value might be NULL in case of OOM
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_json_t* computeJson() const;
+  arangodb::velocypack::Slice computeValue() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sort the members of an (array) node
@@ -862,11 +870,22 @@ struct AstNode {
   //////////////////////////////////////////////////////////////////////////////
 
   inline void setStringValue(char const* v, size_t length) {
-    // note: v may contain the NUL byte
-    TRI_ASSERT(v == nullptr || strlen(v) <= length);
-
+    // note: v may contain the NUL byte and is not necessarily
+    // null-terminated itself (if from VPack)
+    value.type = VALUE_TYPE_STRING;
     value.value._string = v;
     value.length = static_cast<uint32_t>(length);
+  }
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not a string is equal to another
+  //////////////////////////////////////////////////////////////////////////////
+  
+  inline bool stringEquals(char const* other, bool caseInsensitive) const {
+    if (caseInsensitive) {
+      return (strncasecmp(getStringValue(), other, getStringLength()) == 0);
+    }
+    return (strncmp(getStringValue(), other, getStringLength()) == 0);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -932,10 +951,10 @@ struct AstNode {
 
  private:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief precomputed JSON value (used when executing expressions)
+  /// @brief precomputed VPack value (used when executing expressions)
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_json_t mutable* computedJson;
+  uint8_t mutable* computedValue;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the node's sub nodes

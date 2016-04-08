@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_REST_AQL_HANDLER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/JsonHelper.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/types.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
@@ -58,11 +59,11 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief POST method for /_api/aql/instantiate
-  /// The body is a JSON with attributes "plan" for the execution plan and
+  /// The body is a VelocyPack with attributes "plan" for the execution plan and
   /// "options" for the options, all exactly as in AQL_EXECUTEJSON.
   //////////////////////////////////////////////////////////////////////////////
 
-  void createQueryFromJson();
+  void createQueryFromVelocyPack();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief POST method for /_api/aql/parse
@@ -127,19 +128,28 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   void getInfoQuery(std::string const& operation, std::string const& idString);
 
  private:
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Send slice as result with the given response type.
+  //////////////////////////////////////////////////////////////////////////////
+
+  void sendResponse(GeneralResponse::ResponseCode,
+                    arangodb::velocypack::Slice const,
+                    TransactionContext*);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handle for useQuery
   //////////////////////////////////////////////////////////////////////////////
 
   void handleUseQuery(std::string const&, Query*,
-                      arangodb::basics::Json const&);
+                      arangodb::velocypack::Slice const);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief parseJsonBody, returns a nullptr and produces an error response if
+  /// @brief parseVelocyPackBody, returns a nullptr and produces an error response if
   /// parse was not successful.
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_json_t* parseJsonBody();
+  std::shared_ptr<arangodb::velocypack::Builder> parseVelocyPackBody();
 
  private:
   //////////////////////////////////////////////////////////////////////////////

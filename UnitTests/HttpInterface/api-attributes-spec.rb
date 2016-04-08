@@ -31,15 +31,12 @@ describe ArangoDB do
 
       doc.code.should eq(201)
       doc.headers['content-type'].should eq("application/json; charset=utf-8")
-
-      doc.parsed_response['error'].should eq(false)
-
       id = doc.parsed_response['_id']
 
       cmd = api + "/" + id
       doc = ArangoDB.log_get("#{prefix}-create-empty-name", cmd)
 
-      doc.parsed_response.should_not have_key('')
+      doc.parsed_response.should have_key('')
       doc.parsed_response.should have_key('foo')
     end
 
@@ -53,7 +50,6 @@ describe ArangoDB do
       doc = ArangoDB.log_post("#{prefix}-query-empty-name", cmd, :body => body)
 
       doc.code.should eq(201)
-      doc.parsed_response['error'].should eq(false)
 
       cmd = "/_api/simple/all"
       body = "{ \"collection\" : \"" + @cn + "\" }"
@@ -62,7 +58,7 @@ describe ArangoDB do
       documents = doc.parsed_response['result']
 
       documents.length.should eq(1)
-      documents[0].should_not have_key('')
+      documents[0].should have_key('')
       documents[0].should have_key('foo')
     end
 
@@ -78,8 +74,6 @@ describe ArangoDB do
       doc.code.should eq(201)
       doc.headers['content-type'].should eq("application/json; charset=utf-8")
 
-      doc.parsed_response['error'].should eq(false)
-
       id = doc.parsed_response['_id']
 
       cmd = api + "/" + id
@@ -87,8 +81,8 @@ describe ArangoDB do
 
       doc.parsed_response['_id'].should eq(id)
       doc.parsed_response['_rev'].should_not eq('99')
-      doc.parsed_response.should_not have_key('_from')
-      doc.parsed_response.should_not have_key('_to')
+      doc.parsed_response.should have_key('_from')
+      doc.parsed_response.should have_key('_to')
       doc.parsed_response.should have_key('_test')
       doc.parsed_response['_test'].should eq('c')
       doc.parsed_response.should have_key('meow')
@@ -107,8 +101,6 @@ describe ArangoDB do
 
       doc.code.should eq(201)
       doc.headers['content-type'].should eq("application/json; charset=utf-8")
-      doc.parsed_response['error'].should eq(false)
-      
       id = doc.parsed_response['_id']
 
       cmd = api + "/" + id
@@ -118,14 +110,14 @@ describe ArangoDB do
       doc.parsed_response['a'].should eq('1')
       doc.parsed_response.should have_key('b')
 
-      doc.parsed_response['b'].should_not have_key('')
+      doc.parsed_response['b'].should have_key('')
       doc.parsed_response['b'].should have_key('_from')
       doc.parsed_response['b'].should have_key('_key')
       doc.parsed_response['b'].should have_key('_lol')
       doc.parsed_response['b'].should have_key('b')
       doc.parsed_response['b'].should have_key('a')
       doc.parsed_response['b'].should have_key('c')
-      doc.parsed_response['b'].should eq({ "b" => "2", "a" => "3", "_key" => "moetoer", "_from" => "5", "_lol" => false, "c" => 6 })
+      doc.parsed_response['b'].should eq({ "" => "4", "b" => "2", "a" => "3", "_key" => "moetoer", "_from" => "5", "_lol" => false, "c" => 6 })
     end
 
 ################################################################################

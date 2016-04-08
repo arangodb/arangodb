@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestVersionHandler.h"
-
 #include "RestServer/ArangoServer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
@@ -31,7 +30,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
-
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
@@ -67,8 +65,7 @@ HttpHandler::status_t RestVersionHandler::execute() {
       result.close();
     }
     result.close();
-    VPackSlice s = result.slice();
-    generateResult(s);
+    generateResult(GeneralResponse::ResponseCode::OK, result.slice());
   } catch (...) {
     // Ignore this error
   }

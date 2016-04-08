@@ -32,7 +32,11 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
-#include "V8Server/v8-shape-conv.h"
+#include "V8/v8-vpack.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
 
@@ -42,6 +46,15 @@ using namespace arangodb::aql;
 
 static ExecutionCondition const NotInCluster =
     [] { return !arangodb::ServerState::instance()->isRunningInCluster(); };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determines if code is executed on coordinator or not
+////////////////////////////////////////////////////////////////////////////////
+
+static ExecutionCondition const NotInCoordinator = [] {
+  return !arangodb::ServerState::instance()->isRunningInCluster() ||
+         !arangodb::ServerState::instance()->isCoordinator();
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief internal functions used in execution
@@ -317,9 +330,9 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
 
     // geo functions
     {"NEAR", Function("NEAR", "AQL_NEAR", "hs,n,n|nz,s", true, false, true,
-                      false, true, &Functions::Near, NotInCluster)},
+                      false, true, &Functions::Near, NotInCoordinator)},
     {"WITHIN", Function("WITHIN", "AQL_WITHIN", "hs,n,n,n|s", true, false, true,
-                        false, true, &Functions::Within, NotInCluster)},
+                        false, true, &Functions::Within, NotInCoordinator)},
     {"WITHIN_RECTANGLE",
      Function("WITHIN_RECTANGLE", "AQL_WITHIN_RECTANGLE", "hs,d,d,d,d", true,
               false, true, false, true)},
@@ -329,7 +342,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
     // fulltext functions
     {"FULLTEXT",
      Function("FULLTEXT", "AQL_FULLTEXT", "hs,s,s|n", true, false, true, false,
-              true, &Functions::Fulltext, NotInCluster)},
+              true, &Functions::Fulltext, NotInCoordinator)},
 
     // graph functions
     {"PATHS", Function("PATHS", "AQL_PATHS", "c,h|s,ba", true, false, true,
@@ -557,7 +570,8 @@ V8Expression* Executor::generateExpression(AstNode const* node) {
 /// values for constant expressions
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* Executor::executeExpression(Query* query, AstNode const* node) {
+int Executor::executeExpression(Query* query, AstNode const* node, 
+                                VPackBuilder& builder) {
   ISOLATE;
 
   _constantRegisters.clear();
@@ -600,10 +614,11 @@ TRI_json_t* Executor::executeExpression(Query* query, AstNode const* node) {
 
   if (result->IsUndefined()) {
     // undefined => null
-    return TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE);
-  }
-
-  return TRI_ObjectToJson(isolate, result);
+    builder.add(VPackValue(VPackValueType::Null));
+    return TRI_ERROR_NO_ERROR;
+  } 
+  
+  return TRI_V8ToVPack(isolate, builder, result, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

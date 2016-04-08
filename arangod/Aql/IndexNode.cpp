@@ -26,11 +26,40 @@
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/Index.h"
+#include "Utils/Transaction.h"
 
 using namespace arangodb::aql;
 
 using JsonHelper = arangodb::basics::JsonHelper;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+IndexNode::IndexNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+            Collection const* collection, Variable const* outVariable,
+            std::vector<Transaction::IndexHandle> const& indexes,
+            Condition* condition, bool reverse)
+      : ExecutionNode(plan, id),
+        _vocbase(vocbase),
+        _collection(collection),
+        _outVariable(outVariable),
+        _indexes(indexes),
+        _condition(condition),
+        _reverse(reverse) {
+  TRI_ASSERT(_vocbase != nullptr);
+  TRI_ASSERT(_collection != nullptr);
+  TRI_ASSERT(_outVariable != nullptr);
+  TRI_ASSERT(_condition != nullptr);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return the transaction for the node
+//////////////////////////////////////////////////////////////////////////////
+
+arangodb::Transaction* IndexNode::trx() const {
+  return _plan->getAst()->query()->trx();
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack, for IndexNode
@@ -50,7 +79,9 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   {
     VPackArrayBuilder guard(&nodes);
     for (auto& index : _indexes) {
-      index->toVelocyPack(nodes);
+      nodes.openObject();
+      index.toVelocyPack(nodes, false);
+      nodes.close();
     }
   }
   nodes.add(VPackValue("condition"));
@@ -96,16 +127,11 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::basics::Json const& json)
   size_t length = TRI_LengthArrayJson(indexes);
   _indexes.reserve(length);
 
+  auto trx = plan->getAst()->query()->trx();
   for (size_t i = 0; i < length; ++i) {
-    auto iid = JsonHelper::checkAndGetStringValue(
-        TRI_LookupArrayJson(indexes, i), "id");
-    auto index = _collection->getIndex(iid);
-
-    if (index == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "index not found");
-    }
-
-    _indexes.emplace_back(index);
+    auto entry = TRI_LookupArrayJson(indexes, i);
+    std::string iid  = JsonHelper::checkAndGetStringValue(entry, "id");
+    _indexes.emplace_back(trx->getIndexByIdentifier(_collection->getName(), iid));
   }
 
   TRI_json_t const* condition =
@@ -137,6 +163,7 @@ double IndexNode::estimateCost(size_t& nrItems) const {
   double totalCost = 0.0;
 
   auto root = _condition->root();
+  auto transaction = trx();
 
   for (size_t i = 0; i < _indexes.size(); ++i) {
     double estimatedCost = 0.0;
@@ -150,9 +177,9 @@ double IndexNode::estimateCost(size_t& nrItems) const {
     }
 
     if (condition != nullptr &&
-        _indexes[i]->supportsFilterCondition(condition, _outVariable,
-                                             itemsInCollection, estimatedItems,
-                                             estimatedCost)) {
+        transaction->supportsFilterCondition(_indexes[i], condition,
+                                     _outVariable, itemsInCollection,
+                                     estimatedItems, estimatedCost)) {
       totalItems += estimatedItems;
       totalCost += estimatedCost;
     } else {

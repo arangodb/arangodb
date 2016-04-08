@@ -21,13 +21,13 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/ExecutionEngine.h"
-#include "Aql/CollectOptions.h"
+#include "ExecutionEngine.h"
 #include "Aql/BasicBlocks.h"
 #include "Aql/CalculationBlock.h"
 #include "Aql/ClusterBlocks.h"
 #include "Aql/CollectBlock.h"
 #include "Aql/CollectNode.h"
+#include "Aql/CollectOptions.h"
 #include "Aql/EnumerateCollectionBlock.h"
 #include "Aql/EnumerateListBlock.h"
 #include "Aql/ExecutionBlock.h"
@@ -41,8 +41,9 @@
 #include "Aql/TraversalBlock.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/Exceptions.h"
-#include "Logger/Logger.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterComm.h"
+#include "Logger/Logger.h"
 #include "VocBase/server.h"
 
 using namespace arangodb::aql;
@@ -486,8 +487,10 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         "type", Json(TRI_TransactionTypeGetStr(collection->accessType))));
 
     jsonNodesList.set("collections", jsonCollectionsList);
-    jsonNodesList.set("variables",
-                      query->ast()->variables()->toJson(TRI_UNKNOWN_MEM_ZONE));
+
+    VPackBuilder tmp;
+    query->ast()->variables()->toVelocyPack(tmp);
+    jsonNodesList.set("variables", arangodb::basics::VelocyPackHelper::velocyPackToJson(tmp.slice()));
 
     result.set("plan", jsonNodesList);
     if (info.part == arangodb::aql::PART_MAIN) {

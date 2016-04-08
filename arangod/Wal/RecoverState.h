@@ -25,7 +25,7 @@
 #define ARANGOD_WAL_RECOVER_STATE_H 1
 
 #include "Basics/Common.h"
-#include "Utils/transactions.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/datafile.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
@@ -33,13 +33,6 @@
 #include "VocBase/vocbase.h"
 #include "Wal/Logfile.h"
 #include "Wal/Marker.h"
-#include <functional>
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shortcut for single-operation write transaction
-////////////////////////////////////////////////////////////////////////////////
-
-#define SingleWriteTransactionType arangodb::SingleCollectionWriteTransaction<1>
 
 namespace arangodb {
 namespace wal {
@@ -119,6 +112,15 @@ struct RecoverState {
             failedTransactions.find(transactionId) != failedTransactions.end());
   }
 
+  void resetCollection() {
+    resetCollection(0, 0);
+  }
+  
+  void resetCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) {
+    lastDatabaseId = databaseId;
+    lastCollectionId = collectionId;
+  }
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief release opened collections and databases so they can be shut down
   /// etc.
@@ -165,7 +167,7 @@ struct RecoverState {
 
   int executeSingleOperation(
       TRI_voc_tick_t, TRI_voc_cid_t, TRI_df_marker_t const*, TRI_voc_fid_t,
-      std::function<int(SingleWriteTransactionType*, Marker*)>);
+      std::function<int(SingleCollectionTransaction*, Marker*)>);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief callback to handle one marker during recovery
@@ -224,9 +226,13 @@ struct RecoverState {
   std::unordered_map<TRI_voc_tick_t, TRI_vocbase_t*> openedDatabases;
   std::vector<std::string> emptyLogfiles;
 
-  TRI_doc_update_policy_t policy;
   bool ignoreRecoveryErrors;
   int64_t errorCount;
+
+ private:
+  TRI_voc_tick_t lastDatabaseId;
+  TRI_voc_cid_t lastCollectionId;
+
 };
 }
 }

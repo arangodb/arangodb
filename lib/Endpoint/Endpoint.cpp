@@ -74,7 +74,7 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
   }
 
   // read protocol from string
-  if (StringUtils::isPrefix(copy, "http+")) {
+  if (StringUtils::isPrefix(copy, "http+") || StringUtils::isPrefix(copy, "http@")) {
     protocol = TransportType::HTTP;
     prefix = "http+";
     copy = copy.substr(5);
@@ -194,16 +194,13 @@ Endpoint* Endpoint::factory(const Endpoint::EndpointType type,
   }
 
   std::string copy = unifiedForm(specification);
-  std::string prefix = "http";
   TransportType protocol = TransportType::HTTP;
 
   if (StringUtils::isPrefix(copy, "http+")) {
     protocol = TransportType::HTTP;
-    prefix = "http+";
     copy = copy.substr(5);
   } else if (StringUtils::isPrefix(copy, "vpp+")) {
     protocol = TransportType::VPP;
-    prefix = "vpp+";
     copy = copy.substr(4);
   } else {
     // invalid protocol

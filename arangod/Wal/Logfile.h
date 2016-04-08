@@ -25,22 +25,11 @@
 #define ARANGOD_WAL_LOGFILE_H 1
 
 #include "Basics/Common.h"
-#include "Basics/ReadWriteLock.h"
-#include "Basics/ReadLocker.h"
-#include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
 #include "VocBase/datafile.h"
-#include "VocBase/shaped-json.h"
+#include "VocBase/DatafileHelper.h"
 #include "VocBase/voc-types.h"
 #include "Wal/Marker.h"
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief number of cache buckets
-/// TODO: convert to a C++11 constexpr once Visual Studio supports it
-/// (Visual Studio 2015?)
-////////////////////////////////////////////////////////////////////////////////
-
-#define LOGFILE_LEGEND_CACHE_BUCKETS 8
 
 namespace arangodb {
 namespace wal {
@@ -167,7 +156,7 @@ class Logfile {
     }
 
     return static_cast<uint64_t>(allocatedSize() - _df->_currentSize -
-                                 overhead());
+                                 DatafileHelper::JournalOverhead());
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -219,12 +208,6 @@ class Logfile {
     return (_status == StatusType::COLLECTED && _collectQueueSize == 0 &&
             _users == 0);
   }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the logfile overhead
-  //////////////////////////////////////////////////////////////////////////////
-
-  static inline uint32_t overhead() { return TRI_JOURNAL_OVERHEAD; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the logfile status as a string
@@ -305,18 +288,6 @@ class Logfile {
   char* reserve(size_t);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief create a header marker
-  //////////////////////////////////////////////////////////////////////////////
-
-  TRI_df_header_marker_t getHeaderMarker() const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief create a footer marker
-  //////////////////////////////////////////////////////////////////////////////
-
-  TRI_df_footer_marker_t getFooterMarker() const;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief increase the number of collect operations waiting
   //////////////////////////////////////////////////////////////////////////////
 
@@ -343,43 +314,6 @@ class Logfile {
   inline void release() {
     TRI_ASSERT(_users > 0);
     --_users;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief lookup a legend in the cache
-  //////////////////////////////////////////////////////////////////////////////
-
-  void* lookupLegend(TRI_voc_cid_t cid, TRI_shape_sid_t sid) {
-    CidSid cs(cid, sid);
-
-    size_t const i = cs.hash() % LOGFILE_LEGEND_CACHE_BUCKETS;
-
-    READ_LOCKER(readLocker, _legendCacheLock[i]);
-
-    auto it = _legendCache[i].find(cs);
-
-    if (it != _legendCache[i].end()) {
-      return it->second;
-    }
-    return nullptr;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief cache a legend
-  //////////////////////////////////////////////////////////////////////////////
-
-  void cacheLegend(TRI_voc_cid_t cid, TRI_shape_sid_t sid, void* l) {
-    CidSid cs(cid, sid);
-
-    size_t const i = cs.hash() % LOGFILE_LEGEND_CACHE_BUCKETS;
-
-    WRITE_LOCKER(writeLocker, _legendCacheLock[i]);
-
-    auto it = _legendCache[i].find(cs);
-
-    if (it == _legendCache[i].end()) {
-      _legendCache[i].emplace(cs, l);
-    }
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -411,51 +345,6 @@ class Logfile {
   //////////////////////////////////////////////////////////////////////////////
 
   std::atomic<int64_t> _collectQueueSize;
-
- private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief legend cache, key type with hash function
-  //////////////////////////////////////////////////////////////////////////////
-
-  struct CidSid {
-    TRI_voc_cid_t cid;
-    TRI_shape_sid_t sid;
-    CidSid(TRI_voc_cid_t c, TRI_shape_sid_t s) : cid(c), sid(s) {}
-
-    size_t hash() const {
-      CidSidHash h;
-      return h(this);
-    }
-
-    bool operator==(CidSid const& a) const {
-      return this->cid == a.cid && this->sid == a.sid;
-    }
-  };
-
-  struct CidSidHash {
-    size_t operator()(CidSid const& cs) const {
-      return std::hash<TRI_voc_cid_t>()(cs.cid) ^
-             std::hash<TRI_shape_sid_t>()(cs.sid);
-    }
-
-    size_t operator()(CidSid const* cs) const {
-      return std::hash<TRI_voc_cid_t>()(cs->cid) ^
-             std::hash<TRI_shape_sid_t>()(cs->sid);
-    }
-  };
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief legend cache, split into buckets
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::unordered_map<CidSid, void*, CidSidHash>
-      _legendCache[LOGFILE_LEGEND_CACHE_BUCKETS];
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief legend cache, locks, split into buckets
-  //////////////////////////////////////////////////////////////////////////////
-
-  basics::ReadWriteLock _legendCacheLock[LOGFILE_LEGEND_CACHE_BUCKETS];
 };
 }
 }

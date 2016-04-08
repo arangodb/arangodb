@@ -25,10 +25,12 @@
 #define ARANGOD_REST_HANDLER_REST_EDGES_HANDLER_H 1
 
 #include "Basics/Common.h"
-
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
+#include <velocypack/Builder.h>
+
 namespace arangodb {
+class SingleCollectionTransaction;
 
 namespace traverser {
 class TraverserExpression;
@@ -68,10 +70,20 @@ class RestEdgesHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   bool getEdgesForVertex(
-      std::string const& id,
+      std::string const& id, std::string const& collectionName,
       std::vector<traverser::TraverserExpression*> const& expressions,
-      TRI_edge_direction_e direction, SingleCollectionReadOnlyTransaction& trx,
-      arangodb::basics::Json& result, size_t& scannedIndex, size_t& filtered);
+      TRI_edge_direction_e direction, SingleCollectionTransaction& trx,
+      arangodb::velocypack::Builder&, size_t& scannedIndex, size_t& filtered);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get all edges for a list of vertices. Independent from the request
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool getEdgesForVertexList(
+      arangodb::velocypack::Slice const ids,
+      std::vector<traverser::TraverserExpression*> const& expressions,
+      TRI_edge_direction_e direction, SingleCollectionTransaction& trx,
+      arangodb::velocypack::Builder&, size_t& scannedIndex, size_t& filtered);
 };
 }
 

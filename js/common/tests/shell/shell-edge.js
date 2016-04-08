@@ -96,7 +96,7 @@ function CollectionEdgeSuiteErrorHandling () {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code, err.errorNum);
       }
 
       try {
@@ -104,7 +104,7 @@ function CollectionEdgeSuiteErrorHandling () {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code, err.errorNum);
       }
       
       try {
@@ -112,7 +112,7 @@ function CollectionEdgeSuiteErrorHandling () {
         fail();
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code, err.errorNum);
       }
     }
   };
@@ -167,7 +167,7 @@ function CollectionEdgeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSaveEdgesInvalidType : function () {
-      [ 1, 2, 3, false, true, null, [ ] ].forEach(function (doc) {
+      [ 1, 2, 3, false, true, null ].forEach(function (doc) {
         try {
           edge.save(v1._key, v2._key, doc);
           fail();
@@ -313,13 +313,12 @@ function CollectionEdgeSuite () {
       [ "UnitTestsCollectionNonExistingVertex/12345", 
         "UnitTestsCollectionNonExistingVertex/456745" 
       ].forEach(function(key) {
-        try {
-          edge.save(key, key, { });
-          fail();
-        }
-        catch (err) {
-          assertEqual(ERRORS.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, err.errorNum);
-        }
+        var doc = edge.save(key, key, { });
+        assertTypeOf("string", doc._id);
+        assertTypeOf("string", doc._rev);
+        doc = edge.document(doc);
+        assertMatch(/^UnitTestsCollectionNonExistingVertex\//, doc._from);
+        assertMatch(/^UnitTestsCollectionNonExistingVertex\//, doc._to);
       });
     },
 

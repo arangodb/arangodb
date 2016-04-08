@@ -30,7 +30,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Thread.h"
 #include "Cluster/AgencyComm.h"
-#include "Logger/Logger.h"
+#include "Cluster/ClusterInfo.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"

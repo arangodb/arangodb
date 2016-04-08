@@ -26,17 +26,22 @@
 
 #include "Basics/Common.h"
 #include "Basics/AttributeNameParser.h"
-#include "VocBase/document-collection.h"
-#include "VocBase/shaped-json.h"
+#include "Basics/Exceptions.h"
+#include "VocBase/MasterPointer.h"
 #include "VocBase/vocbase.h"
-#include "VocBase/VocShaper.h"
 #include "VocBase/voc-types.h"
 
 #include <iosfwd>
 
-struct TRI_doc_mptr_t;
 struct TRI_document_collection_t;
-struct TRI_transaction_collection_s;
+
+// Define search slice attribute names
+#define TRI_SLICE_KEY_EQUAL "eq"
+#define TRI_SLICE_KEY_IN "in"
+#define TRI_SLICE_KEY_LE "le"
+#define TRI_SLICE_KEY_LT "lt"
+#define TRI_SLICE_KEY_GE "ge"
+#define TRI_SLICE_KEY_GT "gt"
 
 namespace arangodb {
 
@@ -67,7 +72,7 @@ struct TRI_index_element_t {
  private:
   TRI_doc_mptr_t* _document;
 
-  // Do not use new for this struct, use ...
+  // Do not use new for this struct, use allocate!
   TRI_index_element_t() {}
 
   ~TRI_index_element_t() = delete;
@@ -89,8 +94,8 @@ struct TRI_index_element_t {
   /// @brief Get a pointer to sub objects
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_shaped_sub_t* subObjects() const {
-    return reinterpret_cast<TRI_shaped_sub_t*>((char*)&_document +
+  TRI_vpack_sub_t* subObjects() const {
+    return reinterpret_cast<TRI_vpack_sub_t*>((char*)&_document +
                                                sizeof(TRI_doc_mptr_t*));
   }
 
@@ -101,7 +106,11 @@ struct TRI_index_element_t {
   static TRI_index_element_t* allocate(size_t numSubs) {
     void* space = TRI_Allocate(
         TRI_UNKNOWN_MEM_ZONE,
-        sizeof(TRI_doc_mptr_t*) + (sizeof(TRI_shaped_sub_t) * numSubs), false);
+        sizeof(TRI_doc_mptr_t*) + (sizeof(TRI_vpack_sub_t) * numSubs), false);
+    if (space == nullptr) {
+      return nullptr;
+    }
+    // FIXME: catch nullptr case?
     return new (space) TRI_index_element_t();
   }
 
@@ -110,7 +119,7 @@ struct TRI_index_element_t {
   //////////////////////////////////////////////////////////////////////////////
 
   static inline size_t memoryUsage(size_t numSubs) {
-    return sizeof(TRI_doc_mptr_t*) + (sizeof(TRI_shaped_sub_t) * numSubs);
+    return sizeof(TRI_doc_mptr_t*) + (sizeof(TRI_vpack_sub_t) * numSubs);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -124,6 +133,7 @@ struct TRI_index_element_t {
 
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, el);
   }
+
 };
 
 namespace arangodb {
@@ -136,7 +146,7 @@ class Index {
   Index(Index const&) = delete;
   Index& operator=(Index const&) = delete;
 
-  Index(TRI_idx_iid_t, struct TRI_document_collection_t*,
+  Index(TRI_idx_iid_t, TRI_document_collection_t*,
         std::vector<std::vector<arangodb::basics::AttributeName>> const&,
         bool unique, bool sparse);
 
@@ -157,10 +167,7 @@ class Index {
     TRI_IDX_TYPE_HASH_INDEX,
     TRI_IDX_TYPE_EDGE_INDEX,
     TRI_IDX_TYPE_FULLTEXT_INDEX,
-    TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX,  // DEPRECATED and not functional anymore
-    TRI_IDX_TYPE_SKIPLIST_INDEX,
-    TRI_IDX_TYPE_BITARRAY_INDEX,  // DEPRECATED and not functional anymore
-    TRI_IDX_TYPE_CAP_CONSTRAINT
+    TRI_IDX_TYPE_SKIPLIST_INDEX
   };
 
  public:
@@ -255,7 +262,7 @@ class Index {
   /// @brief return the underlying collection
   //////////////////////////////////////////////////////////////////////////////
 
-  inline struct TRI_document_collection_t* collection() const {
+  inline TRI_document_collection_t* collection() const {
     return _collection;
   }
 
@@ -344,9 +351,6 @@ class Index {
                      bool) = 0;
   virtual int remove(arangodb::Transaction*, struct TRI_doc_mptr_t const*,
                      bool) = 0;
-  virtual int postInsert(arangodb::Transaction*,
-                         struct TRI_transaction_collection_s*,
-                         struct TRI_doc_mptr_t const*);
   virtual int batchInsert(arangodb::Transaction*,
                           std::vector<TRI_doc_mptr_t const*> const*, size_t);
 
@@ -364,7 +368,7 @@ class Index {
 
   virtual bool supportsSortCondition(arangodb::aql::SortCondition const*,
                                      arangodb::aql::Variable const*, size_t,
-                                     double&) const;
+                                     double&, size_t&) const;
 
   virtual IndexIterator* iteratorForCondition(arangodb::Transaction*,
                                               IndexIteratorContext*,
@@ -372,6 +376,13 @@ class Index {
                                               arangodb::aql::AstNode const*,
                                               arangodb::aql::Variable const*,
                                               bool) const;
+
+  virtual IndexIterator* iteratorForSlice(arangodb::Transaction*,
+                                          IndexIteratorContext*,
+                                          arangodb::velocypack::Slice const,
+                                          bool) const {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
 
   virtual arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const;
@@ -382,10 +393,19 @@ class Index {
                            arangodb::aql::Variable const* reference,
                            bool) const;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Transform the list of search slices to search values.
+  ///        This will multiply all IN entries and simply return all other
+  ///        entries.
+  //////////////////////////////////////////////////////////////////////////////
+
+  virtual void expandInSearchValues(arangodb::velocypack::Slice const,
+                                    arangodb::velocypack::Builder&) const;
+
  protected:
   TRI_idx_iid_t const _iid;
 
-  struct TRI_document_collection_t* _collection;
+  TRI_document_collection_t* _collection;
 
   std::vector<std::vector<arangodb::basics::AttributeName>> _fields;
 

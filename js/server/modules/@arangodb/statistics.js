@@ -103,9 +103,11 @@ function collectGarbage (collection, start) {
 
 function lastEntry (collection, start, clusterId) {
   var filter = "";
+  var bindVars = { start: start, '@collection': collection };
 
-  if (clusterId !== undefined) {
+  if (clusterId !== undefined && clusterId !== null) {
     filter = " FILTER s.clusterId == @clusterId ";
+    bindVars.clusterId = clusterId;
   }
 
   var values = db._query(
@@ -114,8 +116,7 @@ function lastEntry (collection, start, clusterId) {
     +  filter
     + "SORT s.time desc "
     + "LIMIT 1 "
-    + "RETURN s",
-    { start: start, '@collection': collection, clusterId: clusterId });
+    + "RETURN s", bindVars);
 
   if (values.hasNext()) {
     return values.next();
@@ -301,9 +302,11 @@ function computePerSeconds (current, prev) {
 
 function compute15Minute (start, clusterId) {
   var filter = "";
+  var bindVars = { start: start };
 
-  if (clusterId !== undefined) {
+  if (clusterId !== undefined && clusterId !== null) {
     filter = " FILTER s.clusterId == @clusterId ";
+    bindVars.clusterId = clusterId;
   }
 
   var values = db._query(
@@ -311,8 +314,7 @@ function compute15Minute (start, clusterId) {
     + "  FILTER s.time >= @start "
     +    filter
     + "  SORT s.time "
-    + "  RETURN s",
-    { start: start, clusterId: clusterId });
+    + "  RETURN s", bindVars);
 
   var result = {};
   var count = 0;

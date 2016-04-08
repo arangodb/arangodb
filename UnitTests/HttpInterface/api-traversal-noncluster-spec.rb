@@ -29,11 +29,12 @@ describe ArangoDB do
         "London", "Paris", "Lyon", "Cologne","Dusseldorf", "Beijing", "Shanghai", "Tokyo", "Kyoto", "Taipeh", "Perth", "Sydney"
       ].each do|loc|
         body = "{ \"_key\" : \"#{loc}\" }"
-        ArangoDB.post(cmd, :body => body)
+        doc = ArangoDB.post(cmd, :body => body)
+        doc.code.should eq(202)
       end
       
       count = 1000
-      cmd = "/_api/edge?collection=#{@ce}" 
+      cmd = "/_api/document?collection=#{@ce}" 
       [
         ["World", "Europe"],
         ["World", "Asia"],
@@ -54,8 +55,9 @@ describe ArangoDB do
         count = count + 1
         from = pair[0]
         to = pair[1]
-        body = "{ \"_key\" : \"#{count}\" }"
-        ArangoDB.post(cmd + "&from=#{@cv}%2F#{from}&to=#{@cv}%2F#{to}", :body => body)
+        body = "{ \"_key\" : \"#{count}\", \"_from\" : \"#{@cv}/#{from}\", \"_to\" : \"#{@cv}/#{to}\" }"
+        doc = ArangoDB.post(cmd, :body => body)
+        doc.code.should eq(202)
       end
     end
     

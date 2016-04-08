@@ -39,8 +39,6 @@
 
 //using namespace arangodb::velocypack;
 
-class Slice {};
-
 namespace arangodb {
 namespace consensus {
 

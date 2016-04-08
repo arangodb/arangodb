@@ -1968,6 +1968,9 @@ int GeoIndex_remove(GeoIndex* gi, GeoCoordinate* c) {
 /* user when the results of a search are finished with */
 /* =================================================== */
 void GeoIndex_CoordinatesFree(GeoCoordinates* clist) {
+  if (clist == nullptr) {
+    return;
+  }
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, clist->coordinates);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, clist->distances);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, clist);
@@ -1993,10 +1996,7 @@ typedef struct {
 } hpot;  // pot for putting on the heap
 
 bool hpotcompare(hpot a, hpot b) {
-  if (a.dist > b.dist)
-    return true;
-  else
-    return false;
+  return (a.dist > b.dist);
 }
 
 typedef struct {
@@ -2036,17 +2036,20 @@ GeoFix makedist(GeoPot* pot, GeoDetailedPoint* gd) {
 
 GeoCursor* GeoIndex_NewCursor(GeoIndex* gi, GeoCoordinate* c) {
   GeoIx* gix;
-  GeoCr* gcr;
   hpot hp;
-  if (c->longitude < -180.0) return NULL;
-  if (c->longitude > 180.0) return NULL;
-  if (c->latitude < -90.0) return NULL;
-  if (c->latitude > 90.0) return NULL;
+  if (c->longitude < -180.0) return nullptr;
+  if (c->longitude > 180.0) return nullptr;
+  if (c->latitude < -90.0) return nullptr;
+  if (c->latitude > 90.0) return nullptr;
   gix = (GeoIx*)gi;
-  gcr = static_cast<GeoCr*>(
-      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(GeoCr), false));
+  GeoCr* gcr = nullptr;
+  
+  try {
+    gcr = new GeoCr;
+  }
+  catch (...) { }
 
-  if (gcr == NULL) {
+  if (gcr == nullptr) {
     return (GeoCursor*)gcr;
   }
   gcr->Ix = gix;
@@ -2145,13 +2148,11 @@ GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count) {
 }
 
 void GeoIndex_CursorFree(GeoCursor* gc) {
-  GeoCr* cr;
-  if (gc == NULL) {
+  if (gc == nullptr) {
     return;
   }
-  cr = (GeoCr*)gc;
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, cr);
-  return;
+  GeoCr* cr = reinterpret_cast<GeoCr*>(gc);
+  delete cr;
 }
 
 /* =================================================== */

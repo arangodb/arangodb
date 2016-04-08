@@ -25,7 +25,6 @@
 #define LIB_UTILITIES_LINE_EDITOR_H 1
 
 #include "Basics/Common.h"
-#include <functional>
 
 namespace arangodb {
 class ShellBase;

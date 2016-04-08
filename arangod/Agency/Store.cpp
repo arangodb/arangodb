@@ -22,13 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Store.h"
-#include "Agent.h"
+#include "Agency/Agent.h"
+#include "Basics/ConditionLocker.h"
+#include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
-
-#include <Basics/ConditionLocker.h>
 
 #include <ctime>
 #include <iomanip>
@@ -72,10 +73,10 @@ Node::Node (std::string const& name, Node* parent) :
 // Default dtor
 Node::~Node() {}
 
-// Get slice from buffer pointer
-VPackSlice Node::slice() const {
-  return (_value.size()==0) ?
-    VPackSlice("\x00a",&Options::Defaults):VPackSlice(_value.data());
+Slice Node::slice() const {
+  return (_value.size()==0) ? 
+    arangodb::basics::VelocyPackHelper::EmptyObjectValue() :
+    Slice(_value.data());
 }
 
 // Get name of this node
@@ -834,7 +835,7 @@ bool Store::read (VPackSlice const& query, Builder& ret) const {
         } catch(...) {}
       }
       if (copy(pv).type() == LEAF && copy(pv).slice().isNone()) {
-        copy(pv) = VPackSlice("\x00a",&Options::Defaults);
+        copy(pv) = arangodb::basics::VelocyPackHelper::EmptyObjectValue();
       }
     }
   }

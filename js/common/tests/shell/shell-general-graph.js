@@ -2280,7 +2280,7 @@ function EdgesAndVerticesSuite() {
       var vertexId2 = vertex2._id;
       var edge = g[ec1].save(vertexId1, vertexId2, {});
       var edgeId1 = edge._id;
-      edge = g[ec1].replace(edgeId1, {label: "knows"});
+      edge = g[ec1].replace(edgeId1, {_from: vertexId1, _to: vertexId2, label: "knows"});
       assertFalse(edge.error);
       var edgeObj = g[ec1].document(edgeId1);
       assertEqual(edgeObj.label, "knows");
@@ -2294,7 +2294,7 @@ function EdgesAndVerticesSuite() {
       var vertexId2 = vertex2._id;
       var edge = g[ec1].save(vertexId1, vertexId2, {});
       var edgeId1 = edge._id;
-      edge = g[ec1].replace(edgeId1, {label: "knows"});
+      edge = g[ec1].replace(edgeId1, {_from: vertexId1, _to: vertexId2, label: "knows"});
       edge = g[ec1].update(edgeId1, {blub: "blub"});
       assertFalse(edge.error);
       var edgeObj = g[ec1].document(edgeId1);

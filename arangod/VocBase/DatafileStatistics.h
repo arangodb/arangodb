@@ -45,13 +45,9 @@ struct DatafileStatisticsContainer {
   int64_t numberAlive;
   int64_t numberDead;
   int64_t numberDeletions;
-  int64_t numberShapes;
-  int64_t numberAttributes;
 
   int64_t sizeAlive;
   int64_t sizeDead;
-  int64_t sizeShapes;
-  int64_t sizeAttributes;
 
   int64_t numberUncollected;
 };
@@ -183,13 +179,6 @@ class DatafileStatistics {
 
   std::unordered_map<TRI_voc_fid_t, DatafileStatisticsContainer*> _stats;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief mapping of all datafiles, journals and compactors
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::vector<TRI_datafile_t*> _journals;
-  std::vector<TRI_datafile_t*> _datafiles;
-  std::vector<TRI_datafile_t*> _compactors;
 };
 }
 

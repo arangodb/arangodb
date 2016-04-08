@@ -23,10 +23,12 @@
 
 #include "ClusterBlocks.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/AqlValue.h"
 #include "Basics/Exceptions.h"
 #include "Basics/json-utilities.h"
 #include "Basics/StringUtils.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
@@ -35,11 +37,17 @@
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Collection.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
 using Json = arangodb::basics::Json;
 using JsonHelper = arangodb::basics::JsonHelper;
+using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 using StringBuffer = arangodb::basics::StringBuffer;
 
 // uncomment the following to get some debugging information
@@ -295,29 +303,17 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
 
   size_t toSend = (std::min)(available, atMost);  // nr rows in outgoing block
 
-  // get collections for ourLessThan . . .
-  std::vector<TRI_document_collection_t const*> colls;
-  for (RegisterId i = 0; i < _sortRegisters.size(); i++) {
-    colls.emplace_back(
-        _gatherBlockBuffer.at(index).front()->getDocumentCollection(
-            _sortRegisters[i].first));
-  }
-
   // the following is similar to AqlItemBlock's slice method . . .
   std::unordered_map<AqlValue, AqlValue> cache;
 
   // comparison function
-  OurLessThan ourLessThan(_trx, _gatherBlockBuffer, _sortRegisters, colls);
+  OurLessThan ourLessThan(_trx, _gatherBlockBuffer, _sortRegisters);
   AqlItemBlock* example = _gatherBlockBuffer.at(index).front();
   size_t nrRegs = example->getNrRegs();
 
   auto res = std::make_unique<AqlItemBlock>(
       toSend, static_cast<arangodb::aql::RegisterId>(nrRegs));
   // automatically deleted if things go wrong
-
-  for (RegisterId i = 0; i < nrRegs; i++) {
-    res->setDocumentCollection(i, example->getDocumentCollection(i));
-  }
 
   for (size_t i = 0; i < toSend; i++) {
     // get the next smallest row from the buffer . . .
@@ -330,6 +326,7 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
           _gatherBlockBuffer.at(val.first).front()->getValue(val.second, col));
       if (!x.isEmpty()) {
         auto it = cache.find(x);
+
         if (it == cache.end()) {
           AqlValue y = x.clone();
           try {
@@ -385,19 +382,15 @@ size_t GatherBlock::skipSome(size_t atLeast, size_t atMost) {
 
   // the non-simple case . . .
   size_t available = 0;  // nr of available rows
-  size_t index = 0;      // an index of a non-empty buffer
   TRI_ASSERT(_dependencies.size() != 0);
 
   // pull more blocks from dependencies . . .
   for (size_t i = 0; i < _dependencies.size(); i++) {
     if (_gatherBlockBuffer.at(i).empty()) {
       if (getBlock(i, atLeast, atMost)) {
-        index = i;
         _gatherBlockPos.at(i) = std::make_pair(i, 0);
       }
-    } else {
-      index = i;
-    }
+    } 
 
     auto cur = _gatherBlockBuffer.at(i);
     if (!cur.empty()) {
@@ -415,16 +408,8 @@ size_t GatherBlock::skipSome(size_t atLeast, size_t atMost) {
 
   size_t skipped = (std::min)(available, atMost);  // nr rows in outgoing block
 
-  // get collections for ourLessThan . . .
-  std::vector<TRI_document_collection_t const*> colls;
-  for (RegisterId i = 0; i < _sortRegisters.size(); i++) {
-    colls.emplace_back(
-        _gatherBlockBuffer.at(index).front()->getDocumentCollection(
-            _sortRegisters[i].first));
-  }
-
   // comparison function
-  OurLessThan ourLessThan(_trx, _gatherBlockBuffer, _sortRegisters, colls);
+  OurLessThan ourLessThan(_trx, _gatherBlockBuffer, _sortRegisters);
 
   for (size_t i = 0; i < skipped; i++) {
     // get the next smallest row from the buffer . . .
@@ -489,9 +474,7 @@ bool GatherBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
     int cmp = AqlValue::Compare(
         _trx,
         _gatherBlockBuffer.at(a.first).front()->getValue(a.second, reg.first),
-        _colls[i],
-        _gatherBlockBuffer.at(b.first).front()->getValue(b.second, reg.first),
-        _colls[i], true);
+        _gatherBlockBuffer.at(b.first).front()->getValue(b.second, reg.first), true);
 
     if (cmp == -1) {
       return reg.second;
@@ -1045,43 +1028,6 @@ bool DistributeBlock::getBlockForClient(size_t atLeast, size_t atMost,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the JSON that is used to determine the initial shard
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t const* DistributeBlock::getInputJson(AqlItemBlock const* cur) const {
-  auto const& val = cur->getValueReference(_pos, _regId);
-
-  if (val._type != AqlValue::JSON) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,
-                                   "DistributeBlock: can only send JSON");
-  }
-
-  TRI_json_t const* json = val._json->json();
-
-  if (json != nullptr && TRI_IsNullJson(json) &&
-      _alternativeRegId != ExecutionNode::MaxRegisterId) {
-    // json is set, but null
-    // check if there is a second input register available (UPSERT makes use of
-    // two input registers,
-    // one for the search document, the other for the insert document)
-    auto const& val = cur->getValueReference(_pos, _alternativeRegId);
-
-    if (val._type != AqlValue::JSON) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,
-                                     "DistributeBlock: can only send JSON");
-    }
-
-    json = val._json->json();
-  }
-
-  if (json == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json is a nullptr");
-  }
-
-  return json;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief sendToClient: for each row of the incoming AqlItemBlock use the
 /// attributes <shardKeys> of the Aql value <val> to determine to which shard
 /// the row should be sent and return its clientId
@@ -1091,37 +1037,47 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
   ENTER_BLOCK
 
   // inspect cur in row _pos and check to which shard it should be sent . .
-  auto json = getInputJson(cur);
+  AqlValue val = cur->getValueReference(_pos, _regId);
 
-  TRI_ASSERT(json != nullptr);
+  VPackSlice input = val.slice(); // will throw when wrong type
+
+  if (input.isNull() && _alternativeRegId != ExecutionNode::MaxRegisterId) {
+    // value is set, but null
+    // check if there is a second input register available (UPSERT makes use of
+    // two input registers,
+    // one for the search document, the other for the insert document)
+    val = cur->getValueReference(_pos, _alternativeRegId);
+
+    input = val.slice(); // will throw when wrong type
+  }
+
+  VPackSlice value = input;
+
+  VPackBuilder builder;
+  VPackBuilder builder2;
 
   bool hasCreatedKeyAttribute = false;
 
-  if (TRI_IsStringJson(json) &&
+  if (input.isString() &&
       static_cast<DistributeNode const*>(_exeNode)
           ->_allowKeyConversionToObject) {
-    TRI_json_t* obj = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE, 1);
-
-    if (obj == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
-
-    TRI_InsertObjectJson(TRI_UNKNOWN_MEM_ZONE, obj, TRI_VOC_ATTRIBUTE_KEY,
-                         json);
+    builder.openObject();
+    builder.add(TRI_VOC_ATTRIBUTE_KEY, input);
+    builder.close();
+    
     // clear the previous value
     cur->destroyValue(_pos, _regId);
 
     // overwrite with new value
-    cur->setValue(_pos, _regId, AqlValue(new arangodb::basics::Json(
-                                    TRI_UNKNOWN_MEM_ZONE, obj)));
+    cur->setValue(_pos, _regId, AqlValue(builder));
 
-    json = obj;
+    value = builder.slice();
     hasCreatedKeyAttribute = true;
-  } else if (!TRI_IsObjectJson(json)) {
+  } else if (!input.isObject()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
-  TRI_ASSERT(TRI_IsObjectJson(json));
+  TRI_ASSERT(value.isObject());
 
   if (static_cast<DistributeNode const*>(_exeNode)->_createKeys) {
     // we are responsible for creating keys if none present
@@ -1129,61 +1085,44 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
     if (_usesDefaultSharding) {
       // the collection is sharded by _key...
 
-      if (!hasCreatedKeyAttribute &&
-          TRI_LookupObjectJson(json, TRI_VOC_ATTRIBUTE_KEY) == nullptr) {
+      if (!hasCreatedKeyAttribute && !value.hasKey(TRI_VOC_ATTRIBUTE_KEY)) {
         // there is no _key attribute present, so we are responsible for
         // creating one
-        std::string keyString(createKey());
+        VPackBuilder temp;
+        temp.openObject();
+        temp.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(createKey()));
+        temp.close();
 
-        TRI_json_t* obj = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, json);
-
-        if (obj == nullptr) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-        }
-
-        TRI_Insert3ObjectJson(
-            TRI_UNKNOWN_MEM_ZONE, obj, TRI_VOC_ATTRIBUTE_KEY,
-            TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, keyString.c_str(),
-                                     keyString.size()));
+        builder2 = VPackCollection::merge(input, temp.slice(), true);
 
         // clear the previous value
         cur->destroyValue(_pos, _regId);
 
         // overwrite with new value
-        cur->setValue(_pos, _regId, AqlValue(new arangodb::basics::Json(
-                                        TRI_UNKNOWN_MEM_ZONE, obj)));
-        json = obj;
+        cur->setValue(_pos, _regId, AqlValue(builder2));
+        value = builder2.slice();
       }
     } else {
       // the collection is not sharded by _key
 
-      if (hasCreatedKeyAttribute ||
-          TRI_LookupObjectJson(json, TRI_VOC_ATTRIBUTE_KEY) != nullptr) {
+      if (hasCreatedKeyAttribute || value.hasKey(TRI_VOC_ATTRIBUTE_KEY)) {
         // a _key was given, but user is not allowed to specify _key
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
       }
+        
+      VPackBuilder temp;
+      temp.openObject();
+      temp.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(createKey()));
+      temp.close();
 
-      // no _key given. now create one
-      std::string keyString(createKey());
-
-      TRI_json_t* obj = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, json);
-
-      if (obj == nullptr) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-      }
-
-      TRI_Insert3ObjectJson(
-          TRI_UNKNOWN_MEM_ZONE, obj, TRI_VOC_ATTRIBUTE_KEY,
-          TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, keyString.c_str(),
-                                   keyString.size()));
+      builder2 = VPackCollection::merge(input, temp.slice(), true);
 
       // clear the previous value
       cur->destroyValue(_pos, _regId);
 
       // overwrite with new value
-      cur->setValue(_pos, _regId, AqlValue(new arangodb::basics::Json(
-                                      TRI_UNKNOWN_MEM_ZONE, obj)));
-      json = obj;
+      cur->setValue(_pos, _regId, AqlValue(builder2.slice()));
+      value = builder2.slice();
     }
   }
 
@@ -1196,7 +1135,13 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
   auto const planId =
       arangodb::basics::StringUtils::itoa(_collection->getPlanId());
 
-  int res = clusterInfo->getResponsibleShard(planId, json, true, shardId,
+  std::unique_ptr<TRI_json_t> json(arangodb::basics::VelocyPackHelper::velocyPackToJson(value));
+
+  if (json == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  int res = clusterInfo->getResponsibleShard(planId, json.get(), true, shardId,
                                              usesDefaultShardingAttributes);
 
   // std::cout << "SHARDID: " << shardId << "\n";
@@ -1406,17 +1351,26 @@ int RemoteBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  Json body(Json::Object, 4);
+  VPackBuilder builder;
+  builder.openObject();
+
   if (items == nullptr) {
     // first call, items is still a nullptr
-    body("exhausted", Json(true))("error", Json(false));
+    builder.add("exhausted", VPackValue(true));
+    builder.add("error", VPackValue(false));
   } else {
-    body("pos", Json(static_cast<double>(pos)))(
-        "items", items->toJson(_engine->getQuery()->trx()))(
-        "exhausted", Json(false))("error", Json(false));
+    builder.add("exhausted", VPackValue(false));
+    builder.add("error", VPackValue(false));
+    builder.add("pos", VPackValue(pos));
+    builder.add(VPackValue("items"));
+    builder.openObject();
+    items->toVelocyPack(_engine->getQuery()->trx(), builder);
+    builder.close();
   }
 
-  std::string bodyString(body.toString());
+  builder.close();
+
+  std::string bodyString(builder.slice().toJson());
 
   std::unique_ptr<ClusterCommResult> res =
       sendRequest(GeneralRequest::RequestType::PUT,
@@ -1505,21 +1459,19 @@ AqlItemBlock* RemoteBlock::getSome(size_t atLeast, size_t atMost) {
 
   // If we get here, then res->result is the response which will be
   // a serialized AqlItemBlock:
-  StringBuffer const& responseBodyBuf(res->result->getBody());
-  Json responseBodyJson(
-      TRI_UNKNOWN_MEM_ZONE,
-      TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, responseBodyBuf.begin()));
+  std::shared_ptr<VPackBuilder> responseBodyBuilder = res->result->getBodyVelocyPack();
+  VPackSlice responseBody = responseBodyBuilder->slice();
 
-  ExecutionStats newStats(responseBodyJson.get("stats"));
+  ExecutionStats newStats(responseBody.get("stats"));
 
   _engine->_stats.addDelta(_deltaStats, newStats);
   _deltaStats = newStats;
 
-  if (JsonHelper::getBooleanValue(responseBodyJson.json(), "exhausted", true)) {
+  if (VelocyPackHelper::getBooleanValue(responseBody, "exhausted", true)) {
     return nullptr;
   }
 
-  return new arangodb::aql::AqlItemBlock(responseBodyJson);
+  return new arangodb::aql::AqlItemBlock(responseBody);
   LEAVE_BLOCK
 }
 

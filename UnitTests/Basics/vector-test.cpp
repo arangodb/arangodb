@@ -131,31 +131,6 @@ BOOST_AUTO_TEST_CASE (tst_length_insert_remove) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test vector length after clearing
-////////////////////////////////////////////////////////////////////////////////
-
-BOOST_AUTO_TEST_CASE (tst_length_clear) {
-  VECTOR_INIT
-
-  int p1 = 1;
-  int p2 = 2;
-  int p3 = 3;
-
-  TRI_PushBackVector(&v1, &p1);
-  TRI_PushBackVector(&v1, &p2);
-  TRI_PushBackVector(&v1, &p3);
-  BOOST_CHECK_EQUAL((size_t) 3, TRI_LengthVector(&v1));
- 
-  TRI_ClearVector(&v1); 
-  BOOST_CHECK_EQUAL((size_t) 0, TRI_LengthVector(&v1));
-
-  TRI_PushBackVector(&v1, &p2);
-  BOOST_CHECK_EQUAL((size_t) 1, TRI_LengthVector(&v1));
-
-  VECTOR_DESTROY 
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test removal of elements at invalid positions
 ////////////////////////////////////////////////////////////////////////////////
 

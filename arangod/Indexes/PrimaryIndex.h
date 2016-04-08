@@ -31,15 +31,22 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 namespace arangodb {
 
+class PrimaryIndex;
 class Transaction;
 
 class PrimaryIndexIterator final : public IndexIterator {
  public:
   PrimaryIndexIterator(arangodb::Transaction* trx, PrimaryIndex const* index,
-                       std::vector<char const*>& keys)
-      : _trx(trx), _index(index), _keys(std::move(keys)), _position(0) {}
+                       std::unique_ptr<VPackBuilder>& keys)
+      : _trx(trx), _index(index), _keys(keys.get()), _position(0) {
+        keys.release(); // now we have ownership for _keys
+        TRI_ASSERT(_keys->slice().isArray());
+      }
 
   ~PrimaryIndexIterator() {}
 
@@ -50,8 +57,56 @@ class PrimaryIndexIterator final : public IndexIterator {
  private:
   arangodb::Transaction* _trx;
   PrimaryIndex const* _index;
-  std::vector<char const*> _keys;
+  std::unique_ptr<VPackBuilder> _keys;
   size_t _position;
+};
+
+class AllIndexIterator final : public IndexIterator {
+ private:
+  typedef arangodb::basics::AssocUnique<uint8_t, TRI_doc_mptr_t>
+      TRI_PrimaryIndex_t;
+
+ public:
+  AllIndexIterator(arangodb::Transaction* trx, TRI_PrimaryIndex_t const* index,
+                   bool reverse)
+      : _trx(trx), _index(index), _reverse(reverse), _total(0) {}
+
+  ~AllIndexIterator() {}
+
+  TRI_doc_mptr_t* next() override;
+
+  void reset() override;
+
+ private:
+  arangodb::Transaction* _trx;
+  TRI_PrimaryIndex_t const* _index;
+  arangodb::basics::BucketPosition _position;
+  bool const _reverse;
+  uint64_t _total;
+};
+
+class AnyIndexIterator final : public IndexIterator {
+ private:
+  typedef arangodb::basics::AssocUnique<uint8_t, TRI_doc_mptr_t>
+      TRI_PrimaryIndex_t;
+
+ public:
+  AnyIndexIterator(arangodb::Transaction* trx, TRI_PrimaryIndex_t const* index)
+      : _trx(trx), _index(index), _step(0), _total(0) {}
+
+  ~AnyIndexIterator() {}
+
+  TRI_doc_mptr_t* next() override;
+
+  void reset() override;
+
+ private:
+  arangodb::Transaction* _trx;
+  TRI_PrimaryIndex_t const* _index;
+  arangodb::basics::BucketPosition _initial;
+  arangodb::basics::BucketPosition _position;
+  uint64_t _step;
+  uint64_t _total;
 };
 
 class PrimaryIndex final : public Index {
@@ -65,7 +120,7 @@ class PrimaryIndex final : public Index {
   ~PrimaryIndex();
 
  private:
-  typedef arangodb::basics::AssocUnique<char const, TRI_doc_mptr_t>
+  typedef arangodb::basics::AssocUnique<uint8_t, TRI_doc_mptr_t>
       TRI_PrimaryIndex_t;
 
  public:
@@ -94,7 +149,17 @@ class PrimaryIndex final : public Index {
   int remove(arangodb::Transaction*, TRI_doc_mptr_t const*,
              bool) override final;
 
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief looks up an element given a request Slice. Key has to have the format
+  ///        [{eq: _key}]
+  //////////////////////////////////////////////////////////////////////////////
+
+  TRI_doc_mptr_t* lookup(arangodb::Transaction*, VPackSlice const&) const;
+
   TRI_doc_mptr_t* lookupKey(arangodb::Transaction*, char const*) const;
+  
+  TRI_doc_mptr_t* lookupKey(arangodb::Transaction*, VPackSlice const&) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief looks up an element given a key
@@ -110,6 +175,7 @@ class PrimaryIndex final : public Index {
   ///        a random order.
   ///        Returns nullptr if all documents have been returned.
   ///        Convention: step === 0 indicates a new start.
+  ///        DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_doc_mptr_t* lookupRandom(
@@ -122,6 +188,7 @@ class PrimaryIndex final : public Index {
   ///        a sequential order.
   ///        Returns nullptr if all documents have been returned.
   ///        Convention: position === 0 indicates a new start.
+  ///        DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_doc_mptr_t* lookupSequential(arangodb::Transaction*,
@@ -129,10 +196,26 @@ class PrimaryIndex final : public Index {
                                    uint64_t& total);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief request an iterator over all elements in the index in
+  ///        a sequential order.
+  //////////////////////////////////////////////////////////////////////////////
+
+  IndexIterator* allIterator(arangodb::Transaction*, bool) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief request an iterator over all elements in the index in
+  ///        a random order. It is guaranteed that each element is found
+  ///        exactly once unless the collection is modified.
+  //////////////////////////////////////////////////////////////////////////////
+
+  IndexIterator* anyIterator(arangodb::Transaction*) const;
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief a method to iterate over all elements in the index in
   ///        reversed sequential order.
   ///        Returns nullptr if all documents have been returned.
   ///        Convention: position === UINT64_MAX indicates a new start.
+  ///        DEPRECATED
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_doc_mptr_t* lookupSequentialReverse(
@@ -151,13 +234,16 @@ class PrimaryIndex final : public Index {
 
   TRI_doc_mptr_t* removeKey(arangodb::Transaction*, char const*);
 
+  TRI_doc_mptr_t* removeKey(arangodb::Transaction* trx,
+                            VPackSlice const&);
+
   int resize(arangodb::Transaction*, size_t);
 
-  static uint64_t calculateHash(arangodb::Transaction*, char const*);
+  static uint64_t calculateHash(arangodb::Transaction*, VPackSlice const&);
+  static uint64_t calculateHash(arangodb::Transaction*, uint8_t const*);
 
-  static uint64_t calculateHash(arangodb::Transaction*, char const*, size_t);
-
-  void invokeOnAllElements(std::function<void(TRI_doc_mptr_t*)>);
+  void invokeOnAllElements(std::function<bool(TRI_doc_mptr_t*)>);
+  void invokeOnAllElementsForRemoval(std::function<bool(TRI_doc_mptr_t*)>);
 
   bool supportsFilterCondition(arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
@@ -169,6 +255,10 @@ class PrimaryIndex final : public Index {
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
                                       bool) const override;
+
+  IndexIterator* iteratorForSlice(arangodb::Transaction*, IndexIteratorContext*,
+                                  arangodb::velocypack::Slice const,
+                                  bool) const override;
 
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;

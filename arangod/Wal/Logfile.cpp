@@ -24,7 +24,9 @@
 #include "Logfile.h"
 #include "Basics/FileUtils.h"
 #include "Basics/files.h"
+#include "VocBase/DatafileHelper.h"
 
+using namespace arangodb;
 using namespace arangodb::wal;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -152,40 +154,13 @@ int Logfile::judge(std::string const& filename) {
 ////////////////////////////////////////////////////////////////////////////////
 
 char* Logfile::reserve(size_t size) {
-  size = TRI_DF_ALIGN_BLOCK(size);
+  size = DatafileHelper::AlignedSize<size_t>(size);
 
   char* result = _df->_next;
 
   _df->_next += size;
-  _df->_currentSize += (TRI_voc_size_t)size;
+  _df->_currentSize += static_cast<TRI_voc_size_t>(size);
 
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a header marker
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_df_header_marker_t Logfile::getHeaderMarker() const {
-  TRI_df_header_marker_t header;
-  size_t const size = sizeof(TRI_df_header_marker_t);
-  TRI_InitMarkerDatafile((char*)&header, TRI_DF_MARKER_HEADER, size);
-
-  header._version = TRI_DF_VERSION;
-  header._maximalSize = static_cast<TRI_voc_size_t>(allocatedSize());
-  header._fid = static_cast<TRI_voc_fid_t>(_id);
-
-  return header;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a footer marker
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_df_footer_marker_t Logfile::getFooterMarker() const {
-  TRI_df_footer_marker_t footer;
-  size_t const size = sizeof(TRI_df_footer_marker_t);
-  TRI_InitMarkerDatafile((char*)&footer, TRI_DF_MARKER_FOOTER, size);
-
-  return footer;
-}

@@ -29,13 +29,15 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/IndexNode.h"
 #include "Utils/AqlTransaction.h"
-#include "VocBase/shaped-json.h"
 
-struct TRI_doc_mptr_copy_t;
+struct TRI_doc_mptr_t;
 
 namespace arangodb {
-class IndexIterator;
-struct IndexIteratorContext;
+struct OperationCursor;
+
+namespace velocypack {
+class Slice;
+}
 
 namespace aql {
 
@@ -83,13 +85,13 @@ class IndexBlock : public ExecutionBlock {
   /// @brief create an iterator object
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::IndexIterator* createIterator();
+  std::shared_ptr<arangodb::OperationCursor> createCursor();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Forwards _iterator to the next available index
+  /// @brief Forwards _cursor to the next available index
   //////////////////////////////////////////////////////////////////////////////
 
-  void startNextIterator();
+  void startNextCursor();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initializes the indexes
@@ -129,10 +131,16 @@ class IndexBlock : public ExecutionBlock {
   Collection const* _collection;
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief document result
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::shared_ptr<OperationResult> _result;
+  
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief document buffer
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<TRI_doc_mptr_copy_t> _documents;
+  std::vector<arangodb::velocypack::Slice> _documents;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief current position in _allDocs
@@ -150,7 +158,7 @@ class IndexBlock : public ExecutionBlock {
   /// @brief _indexes holds all Indexes used in this block
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<Index const*> _indexes;
+  std::vector<Transaction::IndexHandle> _indexes;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief _nonConstExpressions, list of all non const expressions, mapped
@@ -174,18 +182,12 @@ class IndexBlock : public ExecutionBlock {
   std::vector<std::vector<RegisterId>> _inRegs;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief context for index iteration
-  //////////////////////////////////////////////////////////////////////////////
-
-  arangodb::IndexIteratorContext* _context;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief _iterator: holds the index iterator found using
-  /// getIndexIterator (if any) so that it can be read in chunks and not
+  /// @brief _cursor: holds the index cursor found using
+  /// getIndexCursor (if any) so that it can be read in chunks and not
   /// necessarily all at once.
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::IndexIterator* _iterator;
+  std::shared_ptr<arangodb::OperationCursor> _cursor;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief _condition: holds the complete condition this Block can serve for
@@ -197,7 +199,7 @@ class IndexBlock : public ExecutionBlock {
   /// @brief set of already returned documents. Used to make the result distinct
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unordered_set<TRI_doc_mptr_t*> _alreadyReturned;
+  std::unordered_set<std::string> _alreadyReturned;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not at least one expression uses v8

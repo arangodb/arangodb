@@ -387,22 +387,20 @@ char* Utf8Helper::toupper(TRI_memory_zone_t* zone, char const* src,
 /// @brief Extract the words from a UTF-8 string.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_string_t* Utf8Helper::getWords(char const* text, size_t textLength,
-                                          size_t minimalLength,
-                                          size_t maximalLength,
-                                          bool lowerCase) {
-  TRI_vector_string_t* words;
+bool Utf8Helper::getWords(std::vector<std::string>& words,
+                          std::string const& text, size_t minimalLength,
+                          size_t maximalLength, bool lowerCase) {
   UErrorCode status = U_ZERO_ERROR;
   UnicodeString word;
 
-  if (textLength == 0) {
-    // input text is empty
-    return nullptr;
+  if (text.empty()) {
+    return true;
   }
+  size_t textLength = text.size();
 
   if (textLength < minimalLength) {
     // input text is shorter than required minimum length
-    return nullptr;
+    return true;
   }
 
   size_t textUtf16Length = 0;
@@ -412,28 +410,28 @@ TRI_vector_string_t* Utf8Helper::getWords(char const* text, size_t textLength,
     // lower case string
     int32_t lowerLength = 0;
     char* lower =
-        tolower(TRI_UNKNOWN_MEM_ZONE, text, (int32_t)textLength, lowerLength);
+        tolower(TRI_UNKNOWN_MEM_ZONE, text.c_str(), (int32_t)textLength, lowerLength);
 
     if (lower == nullptr) {
       // out of memory
-      return nullptr;
+      return false;
     }
 
     if (lowerLength == 0) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, lower);
-      return nullptr;
+      return false;
     }
 
     textUtf16 = TRI_Utf8ToUChar(TRI_UNKNOWN_MEM_ZONE, lower, lowerLength,
                                 &textUtf16Length);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, lower);
   } else {
-    textUtf16 = TRI_Utf8ToUChar(TRI_UNKNOWN_MEM_ZONE, text, (int32_t)textLength,
+    textUtf16 = TRI_Utf8ToUChar(TRI_UNKNOWN_MEM_ZONE, text.c_str(), (int32_t)textLength,
                                 &textUtf16Length);
   }
 
   if (textUtf16 == nullptr) {
-    return nullptr;
+    return false;
   }
 
   ULocDataLocaleType type = ULOC_VALID_LOCALE;
@@ -442,7 +440,7 @@ TRI_vector_string_t* Utf8Helper::getWords(char const* text, size_t textLength,
   if (U_FAILURE(status)) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, textUtf16);
     LOG(ERR) << "error in Collator::getLocale(...): " << u_errorName(status);
-    return nullptr;
+    return false;
   }
 
   UChar* tempUtf16 = (UChar*)TRI_Allocate(
@@ -450,16 +448,7 @@ TRI_vector_string_t* Utf8Helper::getWords(char const* text, size_t textLength,
 
   if (tempUtf16 == nullptr) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, textUtf16);
-    return nullptr;
-  }
-
-  words = (TRI_vector_string_t*)TRI_Allocate(
-      TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_string_t), false);
-
-  if (words == nullptr) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, textUtf16);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, tempUtf16);
-    return nullptr;
+    return false;
   }
 
   // estimate an initial vector size. this is not accurate, but setting the
@@ -474,146 +463,8 @@ TRI_vector_string_t* Utf8Helper::getWords(char const* text, size_t textLength,
     // alloc at most 8192 pointers (= 64kb)
     initialWordCount = 8192;
   }
-
-  TRI_InitVectorString2(words, TRI_UNKNOWN_MEM_ZONE, initialWordCount);
-
-  BreakIterator* wordIterator =
-      BreakIterator::createWordInstance(locale, status);
-  UnicodeString utext(textUtf16);
-
-  wordIterator->setText(utext);
-  int32_t start = wordIterator->first();
-  for (int32_t end = wordIterator->next(); end != BreakIterator::DONE;
-       start = end, end = wordIterator->next()) {
-    size_t tempUtf16Length = (size_t)(end - start);
-    // end - start = word length
-    if (tempUtf16Length >= minimalLength) {
-      size_t chunkLength = tempUtf16Length;
-      if (chunkLength > maximalLength) {
-        chunkLength = maximalLength;
-      }
-      utext.extractBetween(start, (int32_t)(start + chunkLength), tempUtf16, 0);
-
-      size_t utf8WordLength;
-      char* utf8Word = TRI_UCharToUtf8(TRI_UNKNOWN_MEM_ZONE, tempUtf16,
-                                       chunkLength, &utf8WordLength);
-      if (utf8Word != nullptr) {
-        TRI_PushBackVectorString(words, utf8Word);
-      }
-    }
-  }
-
-  delete wordIterator;
-
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, textUtf16);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, tempUtf16);
-
-  if (words->_length == 0) {
-    // no words found
-    TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
-    return nullptr;
-  }
-
-  return words;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Extract the words from a UTF-8 string.
-////////////////////////////////////////////////////////////////////////////////
-
-bool Utf8Helper::getWords(TRI_vector_string_t*& words, char const* text,
-                          size_t textLength, size_t minimalLength,
-                          size_t maximalLength, bool lowerCase) {
-  UErrorCode status = U_ZERO_ERROR;
-  UnicodeString word;
-
-  if (textLength == 0) {
-    // input text is empty
-    return true;
-  }
-
-  if (textLength < minimalLength) {
-    // input text is shorter than required minimum length
-    return true;
-  }
-
-  size_t textUtf16Length = 0;
-  UChar* textUtf16 = nullptr;
-
-  if (lowerCase) {
-    // lower case string
-    int32_t lowerLength = 0;
-    char* lower =
-        tolower(TRI_UNKNOWN_MEM_ZONE, text, (int32_t)textLength, lowerLength);
-
-    if (lower == nullptr) {
-      // out of memory
-      return false;
-    }
-
-    if (lowerLength == 0) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, lower);
-      return false;
-    }
-
-    textUtf16 = TRI_Utf8ToUChar(TRI_UNKNOWN_MEM_ZONE, lower, lowerLength,
-                                &textUtf16Length);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, lower);
-  } else {
-    textUtf16 = TRI_Utf8ToUChar(TRI_UNKNOWN_MEM_ZONE, text, (int32_t)textLength,
-                                &textUtf16Length);
-  }
-
-  if (textUtf16 == nullptr) {
-    return false;
-  }
-
-  ULocDataLocaleType type = ULOC_VALID_LOCALE;
-  const Locale& locale = _coll->getLocale(type, status);
-
-  if (U_FAILURE(status)) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, textUtf16);
-    LOG(ERR) << "error in Collator::getLocale(...): " << u_errorName(status);
-    return false;
-  }
-
-  UChar* tempUtf16 = (UChar*)TRI_Allocate(
-      TRI_UNKNOWN_MEM_ZONE, (textUtf16Length + 1) * sizeof(UChar), false);
-
-  if (tempUtf16 == nullptr) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, textUtf16);
-    return false;
-  }
-
-  bool created = false;
-
-  if (words == nullptr) {
-    words = (TRI_vector_string_t*)TRI_Allocate(
-        TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_string_t), false);
-    created = true;
-  }
-
-  if (words == nullptr) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, textUtf16);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, tempUtf16);
-    return false;
-  }
-
-  if (created) {
-    // estimate an initial vector size. this is not accurate, but setting the
-    // initial size to some
-    // value in the correct order of magnitude will save a lot of vector
-    // reallocations later
-    size_t initialWordCount = textLength / (2 * (minimalLength + 1));
-    if (initialWordCount < 32) {
-      // alloc at least 32 pointers (= 256b)
-      initialWordCount = 32;
-    } else if (initialWordCount > 8192) {
-      // alloc at most 8192 pointers (= 64kb)
-      initialWordCount = 8192;
-    }
-    TRI_InitVectorString2(words, TRI_UNKNOWN_MEM_ZONE, initialWordCount);
-  }
+  // Reserve initialWordCount additional words in the vector
+  words.reserve(words.size() + initialWordCount);
 
   BreakIterator* wordIterator =
       BreakIterator::createWordInstance(locale, status);
@@ -636,7 +487,9 @@ bool Utf8Helper::getWords(TRI_vector_string_t*& words, char const* text,
       char* utf8Word = TRI_UCharToUtf8(TRI_UNKNOWN_MEM_ZONE, tempUtf16,
                                        chunkLength, &utf8WordLength);
       if (utf8Word != nullptr) {
-        TRI_PushBackVectorString(words, utf8Word);
+        std::string word(utf8Word, utf8WordLength);
+        words.emplace_back(word);
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, utf8Word);
       }
     }
   }
@@ -729,28 +582,6 @@ char* TRI_tolower_utf8(TRI_memory_zone_t* zone, char const* src,
                        int32_t srcLength, int32_t* dstLength) {
   return Utf8Helper::DefaultUtf8Helper.tolower(zone, src, srcLength,
                                                *dstLength);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Get words of an UTF-8 string (implemented in Basic/Utf8Helper.cpp)
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_vector_string_t* TRI_get_words(char const* text, size_t textLength,
-                                   size_t minimalWordLength,
-                                   size_t maximalWordLength, bool lowerCase) {
-  return Utf8Helper::DefaultUtf8Helper.getWords(
-      text, textLength, minimalWordLength, maximalWordLength, lowerCase);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Get words of an UTF-8 string (implemented in Basic/Utf8Helper.cpp)
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_get_words(TRI_vector_string_t*& words, char const* text,
-                   size_t textLength, size_t minimalWordLength,
-                   size_t maximalWordLength, bool lowerCase) {
-  return Utf8Helper::DefaultUtf8Helper.getWords(
-      words, text, textLength, minimalWordLength, maximalWordLength, lowerCase);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -28,8 +28,8 @@
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/StringUtils.h"
+#include "VocBase/document-collection.h"
 #include "VocBase/server.h"
-#include "VocBase/VocShaper.h"
 
 #include <ostream>
 #include <velocypack/Iterator.h>
@@ -115,9 +115,6 @@ Index::IndexType Index::type(char const* type) {
   if (::strcmp(type, "fulltext") == 0) {
     return TRI_IDX_TYPE_FULLTEXT_INDEX;
   }
-  if (::strcmp(type, "cap") == 0) {
-    return TRI_IDX_TYPE_CAP_CONSTRAINT;
-  }
   if (::strcmp(type, "geo1") == 0) {
     return TRI_IDX_TYPE_GEO1_INDEX;
   }
@@ -144,14 +141,10 @@ char const* Index::typeName(Index::IndexType type) {
       return "skiplist";
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
       return "fulltext";
-    case TRI_IDX_TYPE_CAP_CONSTRAINT:
-      return "cap";
     case TRI_IDX_TYPE_GEO1_INDEX:
       return "geo1";
     case TRI_IDX_TYPE_GEO2_INDEX:
       return "geo2";
-    case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX:
-    case TRI_IDX_TYPE_BITARRAY_INDEX:
     case TRI_IDX_TYPE_UNKNOWN: {
     }
   }
@@ -213,7 +206,7 @@ bool Index::validateHandle(char const* key, size_t* split) {
     return false;
   }
 
-  if (p - key > TRI_COL_NAME_LENGTH) {
+  if (static_cast<size_t>(p - key) > TRI_COL_NAME_LENGTH) {
     return false;
   }
 
@@ -282,23 +275,6 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
     if (value.isNumber()) {
       if (arangodb::basics::VelocyPackHelper::compare(
               value, rhs.get("minLength"), false) != 0) {
-        return false;
-      }
-    }
-  } else if (type == IndexType::TRI_IDX_TYPE_CAP_CONSTRAINT) {
-    // size, byteSize
-    value = lhs.get("size");
-    if (value.isNumber()) {
-      if (arangodb::basics::VelocyPackHelper::compare(value, rhs.get("size"),
-                                                      false) != 0) {
-        return false;
-      }
-    }
-
-    value = lhs.get("byteSize");
-    if (value.isNumber()) {
-      if (arangodb::basics::VelocyPackHelper::compare(
-              value, rhs.get("byteSize"), false) != 0) {
         return false;
       }
     }
@@ -384,6 +360,7 @@ std::shared_ptr<VPackBuilder> Index::toVelocyPack(bool withFigures) const {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a VelocyPack representation of the index
 /// base functionality (called from derived classes)
+/// note: needs an already-opened object as its input!
 ////////////////////////////////////////////////////////////////////////////////
 
 void Index::toVelocyPack(VPackBuilder& builder, bool withFigures) const {
@@ -454,17 +431,6 @@ int Index::batchInsert(arangodb::Transaction*,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief default implementation for postInsert
-////////////////////////////////////////////////////////////////////////////////
-
-int Index::postInsert(arangodb::Transaction*,
-                      struct TRI_transaction_collection_s*,
-                      struct TRI_doc_mptr_t const*) {
-  // do nothing
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief default implementation for cleanup
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -492,8 +458,8 @@ bool Index::hasBatchInsert() const { return false; }
 /// @brief default implementation for supportsFilterCondition
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Index::supportsFilterCondition(arangodb::aql::AstNode const* node,
-                                    arangodb::aql::Variable const* reference,
+bool Index::supportsFilterCondition(arangodb::aql::AstNode const*,
+                                    arangodb::aql::Variable const*,
                                     size_t itemsInIndex, size_t& estimatedItems,
                                     double& estimatedCost) const {
   // by default, no filter conditions are supported
@@ -509,8 +475,10 @@ bool Index::supportsFilterCondition(arangodb::aql::AstNode const* node,
 bool Index::supportsSortCondition(arangodb::aql::SortCondition const*,
                                   arangodb::aql::Variable const*,
                                   size_t itemsInIndex,
-                                  double& estimatedCost) const {
+                                  double& estimatedCost,
+                                  size_t& coveredAttributes) const {
   // by default, no sort conditions are supported
+  coveredAttributes = 0;
   if (itemsInIndex > 0) {
     estimatedCost = itemsInIndex * std::log2(itemsInIndex);
   } else {
@@ -635,6 +603,110 @@ bool Index::canUseConditionPart(arangodb::aql::AstNode const* access,
   }
 
   return true;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Transform the list of search slices to search values.
+///        Always expects a list of lists as input.
+///        Outer list represents the single lookups, inner list represents the
+///        index field values.
+///        This will multiply all IN entries and simply return all other
+///        entries.
+///        Example: Index on (a, b)
+///        Input: [ [{=: 1}, {in: 2,3}], [{=:2}, {=:3}]
+///        Result: [ [{=: 1}, {=: 2}],[{=:1}, {=:3}], [{=:2}, {=:3}]]
+//////////////////////////////////////////////////////////////////////////////
+
+void Index::expandInSearchValues(VPackSlice const base,
+                                 VPackBuilder& result) const {
+  TRI_ASSERT(base.isArray());
+
+  VPackArrayBuilder baseGuard(&result); 
+  for (auto const& oneLookup: VPackArrayIterator(base)) {
+    TRI_ASSERT(oneLookup.isArray());
+
+    bool usesIn = false;
+    for (auto const& it : VPackArrayIterator(oneLookup)) {
+      if (it.hasKey(TRI_SLICE_KEY_IN)) {
+        usesIn = true;
+        break;
+      }
+    }
+    if (!usesIn) {
+      // Shortcut, no multiply
+      // Just copy over base
+      result.add(oneLookup);
+      return;
+    }
+
+    std::unordered_map<size_t, std::vector<VPackSlice>> elements;
+    arangodb::basics::VelocyPackHelper::VPackLess<true> sorter;
+    size_t n = static_cast<size_t>(oneLookup.length());
+    for (VPackValueLength i = 0; i < n; ++i) {
+      VPackSlice current = oneLookup.at(i);
+      if (current.hasKey(TRI_SLICE_KEY_IN)) {
+        VPackSlice inList = current.get(TRI_SLICE_KEY_IN);
+
+        std::unordered_set<VPackSlice, 
+                           arangodb::basics::VelocyPackHelper::VPackHash, 
+                           arangodb::basics::VelocyPackHelper::VPackEqual> 
+          tmp(inList.length(), arangodb::basics::VelocyPackHelper::VPackHash(), 
+              arangodb::basics::VelocyPackHelper::VPackEqual());
+
+        TRI_ASSERT(inList.isArray());
+        if (inList.length() == 0) {
+          // Empty Array. short circuit, no matches possible
+          result.clear();
+          result.openArray();
+          result.close();
+          return;
+        }
+        for (auto const& el : VPackArrayIterator(inList)) {
+          tmp.emplace(el);
+        }
+        auto& vector = elements[i];
+        vector.insert(vector.end(), tmp.begin(), tmp.end());
+        std::sort(vector.begin(), vector.end(), sorter);
+      }
+    }
+    // If there is an entry in elements for one depth it was an in,
+    // all of them are now unique so we simply have to multiply
+    
+    size_t level = n - 1;
+    std::vector<size_t> positions;
+    positions.resize(n);
+    bool done = false;
+    while (!done) {
+      TRI_IF_FAILURE("Index::permutationIN")  {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+      VPackArrayBuilder guard(&result);
+      for (size_t i = 0; i < n; ++i)  {
+        auto list = elements.find(i);
+        if (list == elements.end()) {
+          // Insert
+          result.add(oneLookup.at(i));
+        } else {
+          VPackObjectBuilder objGuard(&result);
+          result.add(TRI_SLICE_KEY_EQUAL, list->second.at(positions[i]));
+        }
+      }
+      while (true) {
+        auto list = elements.find(level);
+        if (list != elements.end() && ++positions[level] < list->second.size()) {
+          level = n - 1;
+          // abort inner iteration
+          break;
+        }
+        positions[level] = 0;
+        if (level == 0) {
+          done = true;
+          break;
+        }
+        --level;
+      }
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

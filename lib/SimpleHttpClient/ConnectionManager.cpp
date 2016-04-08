@@ -47,7 +47,7 @@ ConnectionOptions ConnectionManager::_globalConnectionOptions = {
 static ConnectionManager* Instance = nullptr;
 
 ConnectionManager::~ConnectionManager() {
-  for (size_t i = 0; i < CONNECTION_MANAGER_BUCKETS; ++i) {
+  for (size_t i = 0; i < ConnectionManagerBuckets(); ++i) {
     WRITE_LOCKER(writeLocker, _connectionsBuckets[i]._lock);
 
     for (auto& it : _connectionsBuckets[i]._connections) {
@@ -334,7 +334,7 @@ void ConnectionManager::closeUnusedConnections(double limit) {
   // copy the list of ServerConnections first
   std::vector<ConnectionManager::ServerConnections*> copy;
   {
-    for (size_t i = 0; i < CONNECTION_MANAGER_BUCKETS; ++i) {
+    for (size_t i = 0; i < ConnectionManagerBuckets(); ++i) {
       READ_LOCKER(readLocker, _connectionsBuckets[i]._lock);
 
       for (auto& it : _connectionsBuckets[i]._connections) {

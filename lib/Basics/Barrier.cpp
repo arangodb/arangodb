@@ -23,6 +23,7 @@
 
 #include "Barrier.h"
 #include "Basics/ConditionLocker.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb::basics;
 

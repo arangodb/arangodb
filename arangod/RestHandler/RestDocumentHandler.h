@@ -68,6 +68,12 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
   bool readSingleDocument(bool generateBody);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief reads multiple documents
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool readManyDocuments();
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief reads all documents
   //////////////////////////////////////////////////////////////////////////////
 
@@ -103,47 +109,6 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
 
   bool deleteDocument();
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief creates a document, coordinator case in a cluster
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool createDocumentCoordinator(char const* collection, bool waitForSync,
-                                 VPackSlice const& document);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief delete a document, coordinator case in a cluster
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool deleteDocumentCoordinator(std::string const& collname,
-                                 std::string const& key,
-                                 TRI_voc_rid_t const rev,
-                                 TRI_doc_update_policy_e policy,
-                                 bool waitForSync);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief read a single document, coordinator case in a cluster
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool getDocumentCoordinator(std::string const& collname,
-                              std::string const& key, bool generateBody);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief read all documents, coordinator case in a cluster
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool getAllDocumentsCoordinator(std::string const& collname,
-                                  std::string const& returnType);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief read a single document, coordinator case in a cluster
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool modifyDocumentCoordinator(std::string const& collname,
-                                 std::string const& key,
-                                 TRI_voc_rid_t const rev,
-                                 TRI_doc_update_policy_e policy,
-                                 bool waitForSync, bool isPatch,
-                                 VPackSlice const& document);
 };
 }
 

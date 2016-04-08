@@ -31,6 +31,17 @@
 
 using namespace arangodb::velocypack;
 
+static bool AssemblerFunctionsDisabled = false;
+
+// disable hand-coded SSE4_2 functions for JSON parsing
+// this must be called before the JSON parser is used 
+void arangodb::velocypack::disableAssemblerFunctions() {
+  AssemblerFunctionsDisabled = true;
+}
+
+bool arangodb::velocypack::assemblerFunctionsEnabled() { return !AssemblerFunctionsDisabled; }
+bool arangodb::velocypack::assemblerFunctionsDisabled() { return AssemblerFunctionsDisabled; }
+
 #ifndef VELOCYPACK_64BIT
 // check if the length is beyond the size of a SIZE_MAX on this platform
 std::size_t arangodb::velocypack::checkOverflow(ValueLength length) {

@@ -38,12 +38,8 @@ DatafileStatisticsContainer::DatafileStatisticsContainer()
     : numberAlive(0),
       numberDead(0),
       numberDeletions(0),
-      numberShapes(0),
-      numberAttributes(0),
       sizeAlive(0),
       sizeDead(0),
-      sizeShapes(0),
-      sizeAttributes(0),
       numberUncollected(0) {}
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -55,12 +51,8 @@ void DatafileStatisticsContainer::update(
   numberAlive += other.numberAlive;
   numberDead += other.numberDead;
   numberDeletions += other.numberDeletions;
-  numberShapes += other.numberShapes;
-  numberAttributes += other.numberAttributes;
   sizeAlive += other.sizeAlive;
   sizeDead += other.sizeDead;
-  sizeShapes += other.sizeShapes;
-  sizeAttributes += other.sizeAttributes;
   numberUncollected += other.numberUncollected;
 }
 
@@ -72,12 +64,8 @@ void DatafileStatisticsContainer::reset() {
   numberAlive = 0;
   numberDead = 0;
   numberDeletions = 0;
-  numberShapes = 0;
-  numberAttributes = 0;
   sizeAlive = 0;
   sizeDead = 0;
-  sizeShapes = 0;
-  sizeAttributes = 0;
   numberUncollected = 0;
 }
 
@@ -322,106 +310,3 @@ DatafileStatisticsContainer DatafileStatistics::all() {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add a journal
-////////////////////////////////////////////////////////////////////////////////
-
-void DatafileStatistics::addJournal(TRI_datafile_t* df) {
-  WRITE_LOCKER(writeLocker, _lock);
-
-  TRI_ASSERT(_journals.empty());
-  _journals.push_back(df);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add a datafile
-////////////////////////////////////////////////////////////////////////////////
-
-void DatafileStatistics::addDatafile(TRI_datafile_t* df) {
-  WRITE_LOCKER(writeLocker, _lock);
-  _datafiles.push_back(df);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add a compactor
-////////////////////////////////////////////////////////////////////////////////
-
-void DatafileStatistics::addCompactor(TRI_datafile_t* df) {
-  WRITE_LOCKER(writeLocker, _lock);
-
-  TRI_ASSERT(_compactors.empty());
-  _compactors.push_back(df);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check if there's a compactor
-////////////////////////////////////////////////////////////////////////////////
-
-bool DatafileStatistics::hasCompactor() {
-  READ_LOCKER(readLocker, _lock);
-
-  return !_compactors.empty();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief turn a compactor into a datafile
-////////////////////////////////////////////////////////////////////////////////
-
-bool DatafileStatistics::compactorToDatafile(TRI_datafile_t* df) {
-  WRITE_LOCKER(writeLocker, _lock);
-
-  for (auto it = _compactors.begin(); it != _compactors.end(); ++it) {
-    if ((*it) == df) {
-      // if the following fails, we just throw, but no harm is done
-      _datafiles.push_back(df);
-
-      // and finally remove the file from the _compactors vector
-      _compactors.erase(it);
-      return true;
-    }
-  }
-
-  // not found
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief turn a journal into a datafile
-////////////////////////////////////////////////////////////////////////////////
-
-bool DatafileStatistics::journalToDatafile(TRI_datafile_t* df) {
-  WRITE_LOCKER(writeLocker, _lock);
-
-  for (auto it = _journals.begin(); it != _journals.end(); ++it) {
-    if ((*it) == df) {
-      // if the following fails, we just throw, but no harm is done
-      _datafiles.push_back(df);
-
-      // and finally remove the file from the _compactors vector
-      _journals.erase(it);
-      return true;
-    }
-  }
-
-  // not found
-  return false;
-}
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief remove a compactor file
-//////////////////////////////////////////////////////////////////////////////
-
-bool DatafileStatistics::removeCompactor(TRI_datafile_t* df) {
-  WRITE_LOCKER(writeLocker, _lock);
-
-  for (auto it = _compactors.begin(); it != _compactors.end(); ++it) {
-    if ((*it) == df) {
-      // and finally remove the file from the _compactors vector
-      _compactors.erase(it);
-      return true;
-    }
-  }
-
-  // not found
-  return false;
-}

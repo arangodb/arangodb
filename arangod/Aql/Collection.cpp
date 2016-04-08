@@ -22,22 +22,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Collection.h"
-#include "Aql/Index.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
-#include "Indexes/EdgeIndex.h"
-#include "Indexes/HashIndex.h"
-#include "Indexes/PrimaryIndex.h"
-#include "Indexes/SkiplistIndex.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb::aql;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -60,12 +56,19 @@ Collection::Collection(std::string const& name, TRI_vocbase_t* vocbase,
 /// @brief destroy a collection wrapper
 ////////////////////////////////////////////////////////////////////////////////
 
-Collection::~Collection() {
-  for (auto& idx : indexes) {
-    delete idx;
-  }
-}
+Collection::~Collection() {}
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the pointer to the document collection
+////////////////////////////////////////////////////////////////////////////////
 
+TRI_document_collection_t* Collection::documentCollection() const {
+  TRI_ASSERT(collection != nullptr);
+  TRI_ASSERT(collection->_collection != nullptr);
+
+  return collection->_collection;
+}
+  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief count the number of documents in the collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -149,39 +152,6 @@ std::vector<std::string> Collection::shardKeys() const {
   }
   return keys;
 }
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the indexes of the collection
-////////////////////////////////////////////////////////////////////////////////
-
-std::vector<Index const*> Collection::getIndexes() const {
-  fillIndexes();
-
-  return indexes;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return an index by its id
-////////////////////////////////////////////////////////////////////////////////
-
-Index const* Collection::getIndex(TRI_idx_iid_t id) const {
-  fillIndexes();
-
-  for (auto const& idx : indexes) {
-    if (idx->id == id) {
-      return idx;
-    }
-  }
-
-  return nullptr;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return an index by its id
-////////////////////////////////////////////////////////////////////////////////
-
-Index const* Collection::getIndex(std::string const& id) const {
-  return getIndex(arangodb::basics::StringUtils::uint64(id));
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the collection uses the default sharding
@@ -197,199 +167,3 @@ bool Collection::usesDefaultSharding() const {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fills the index list for the collection
-////////////////////////////////////////////////////////////////////////////////
-
-void Collection::fillIndexes() const {
-  if (!indexes.empty()) {
-    return;
-  }
-
-  auto const role = arangodb::ServerState::instance()->getRole();
-
-  if (arangodb::ServerState::instance()->isCoordinator(role)) {
-    fillIndexesCoordinator();
-    return;
-  }
-
-  // must have a collection
-  TRI_ASSERT(collection != nullptr);
-
-// On a DBserver it is not necessary to consult the agency, therefore
-// we rather look at the local indexes.
-// FIXME: Remove fillIndexesDBServer later, when it is clear that we
-// will never have to do this.
-#if 0
-  if (arangodb::ServerState::instance()->isDBServer(role) && 
-      documentCollection()->_info._planId > 0) {
-    fillIndexesDBServer();
-    return;
-  }
-#endif
-
-  fillIndexesLocal();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fills the index list, cluster coordinator case
-////////////////////////////////////////////////////////////////////////////////
-
-void Collection::fillIndexesCoordinator() const {
-  // coordinator case, remote collection
-  auto clusterInfo = arangodb::ClusterInfo::instance();
-  auto collectionInfo =
-      clusterInfo->getCollection(std::string(vocbase->_name), name);
-
-  if (collectionInfo.get() == nullptr || (*collectionInfo).empty()) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_INTERNAL,
-                                  "collection not found '%s' in database '%s'",
-                                  name.c_str(), vocbase->_name);
-  }
-
-  TRI_json_t const* json = (*collectionInfo).getIndexes();
-  auto indexBuilder = arangodb::basics::JsonHelper::toVelocyPack(json);
-  VPackSlice const slice = indexBuilder->slice();
-
-  if (slice.isArray()) {
-    size_t const n = static_cast<size_t>(slice.length());
-    indexes.reserve(n);
-
-    for (auto const& v : VPackArrayIterator(slice)) {
-      if (!v.isObject()) {
-        continue;
-      }
-      VPackSlice const type = v.get("type");
-
-      if (!type.isString()) {
-        // no "type" attribute. this is invalid
-        continue;
-      }
-      std::string typeString = type.copyString();
-
-      if (typeString == "cap") {
-        // ignore cap constraints
-        continue;
-      }
-
-      auto idx = std::make_unique<arangodb::aql::Index>(v);
-
-      indexes.emplace_back(idx.get());
-      auto p = idx.release();
-
-      if (p->type == arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
-        p->setInternals(new arangodb::PrimaryIndex(v), true);
-      } else if (p->type == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
-        p->setInternals(new arangodb::EdgeIndex(v), true);
-      } else if (p->type == arangodb::Index::TRI_IDX_TYPE_HASH_INDEX) {
-        p->setInternals(new arangodb::HashIndex(v), true);
-      } else if (p->type == arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
-        p->setInternals(new arangodb::SkiplistIndex(v), true);
-      }
-    }
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fills the index list, cluster DB server case
-////////////////////////////////////////////////////////////////////////////////
-
-void Collection::fillIndexesDBServer() const {
-  auto document = documentCollection();
-
-  // lookup collection in agency by plan id
-  auto clusterInfo = arangodb::ClusterInfo::instance();
-  auto collectionInfo = clusterInfo->getCollection(
-      std::string(vocbase->_name),
-      arangodb::basics::StringUtils::itoa(document->_info.planId()));
-  if (collectionInfo.get() == nullptr || (*collectionInfo).empty()) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_INTERNAL,
-                                  "collection not found '%s' in database '%s'",
-                                  name.c_str(), vocbase->_name);
-  }
-
-  std::shared_ptr<VPackBuilder> indexBuilder =
-      arangodb::basics::JsonHelper::toVelocyPack(
-          (*collectionInfo).getIndexes());
-  VPackSlice const slice = indexBuilder->slice();
-  if (!slice.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "unexpected indexes definition format");
-  }
-
-  size_t const n = static_cast<size_t>(slice.length());
-  indexes.reserve(n);
-
-  // register indexes
-  for (auto const& v : VPackArrayIterator(slice)) {
-    if (v.isObject()) {
-      // lookup index id
-      VPackSlice const id = v.get("id");
-
-      if (!id.isString()) {
-        // no "id" attribute. this is invalid
-        continue;
-      }
-
-      VPackSlice const type = v.get("type");
-
-      if (!type.isString()) {
-        // no "type" attribute. this is invalid
-        continue;
-      }
-
-      if (type.copyString() == "cap") {
-        // ignore cap constraints
-        continue;
-      }
-
-      // use numeric index id
-      uint64_t iid = arangodb::basics::StringUtils::uint64(id.copyString());
-      arangodb::Index* data = nullptr;
-
-      auto const& allIndexes = document->allIndexes();
-      size_t const n = allIndexes.size();
-
-      // now check if we can find the local index and map it
-      for (size_t j = 0; j < n; ++j) {
-        auto localIndex = allIndexes[j];
-
-        if (localIndex->id() == iid) {
-          // found
-          data = localIndex;
-          break;
-        }
-      }
-
-      auto idx = std::make_unique<arangodb::aql::Index>(v);
-      // assign the found local index
-      idx->setInternals(data, false);
-
-      indexes.emplace_back(idx.get());
-      idx.release();
-    }
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fills the index list, local server case
-/// note: this will also be called for local collection on the DB server
-////////////////////////////////////////////////////////////////////////////////
-
-void Collection::fillIndexesLocal() const {
-  // local collection
-  auto const& allIndexes = documentCollection()->allIndexes();
-  size_t const n = allIndexes.size();
-  indexes.reserve(n);
-
-  for (size_t i = 0; i < n; ++i) {
-    if (allIndexes[i]->type() == arangodb::Index::TRI_IDX_TYPE_CAP_CONSTRAINT) {
-      // ignore this type of index
-      continue;
-    }
-
-    auto idx = std::make_unique<arangodb::aql::Index>(allIndexes[i]);
-    indexes.emplace_back(idx.get());
-    idx.release();
-  }
-}

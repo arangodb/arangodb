@@ -29,11 +29,13 @@
 #include "Aql/AstNode.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
-#include "VocBase/DocumentAccessor.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
+class TransactionContext;
+
 namespace velocypack {
+class Builder;
 class Slice;
 }
 namespace traverser {
@@ -80,7 +82,7 @@ class TraverserExpression {
   bool isEdgeAccess;
   arangodb::aql::AstNodeType comparisonType;
   arangodb::aql::AstNode const* varAccess;
-  std::unique_ptr<arangodb::basics::Json> compareTo;
+  std::unique_ptr<arangodb::velocypack::Builder> compareTo;
 
   TraverserExpression(bool pisEdgeAccess,
                       arangodb::aql::AstNodeType pcomparisonType,
@@ -103,15 +105,7 @@ class TraverserExpression {
 
   void toJson(arangodb::basics::Json& json, TRI_memory_zone_t* zone) const;
 
-  bool matchesCheck(TRI_doc_mptr_t& element,
-                    TRI_document_collection_t* collection,
-                    CollectionNameResolver const* resolver) const;
-
-  bool matchesCheck(TRI_json_t const* element) const;
-
-  bool matchesCheck(arangodb::velocypack::Slice const& element) const;
-
-  bool matchesCheck(DocumentAccessor& accessor) const;
+  bool matchesCheck(arangodb::Transaction*, arangodb::velocypack::Slice const& element) const;
 
  protected:
   TraverserExpression()
@@ -121,7 +115,7 @@ class TraverserExpression {
         compareTo(nullptr) {}
 
  private:
-  bool recursiveCheck(arangodb::aql::AstNode const*, DocumentAccessor&) const;
+  bool recursiveCheck(arangodb::aql::AstNode const*, arangodb::velocypack::Slice&) const;
 
   // Required when creating this expression without AST
   std::vector<std::unique_ptr<arangodb::aql::AstNode const>> _nodeRegister;
@@ -139,30 +133,31 @@ class TraversalPath {
   virtual ~TraversalPath() {}
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Builds the complete path as Json
+  /// @brief Builds the complete path as VelocyPack
   ///        Has the format:
   ///        {
-  ///           vertices: [<vertex-as-json>],
-  ///           edges: [<edge-as-json>]
+  ///           vertices: [<vertex-as-velocypack>],
+  ///           edges: [<edge-as-velocypack>]
   ///        }
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual arangodb::basics::Json* pathToJson(Transaction*,
-                                             CollectionNameResolver*) = 0;
+  virtual void pathToVelocyPack(Transaction*,
+                                arangodb::velocypack::Builder&) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Builds only the last edge on the path as Json
+  /// @brief Builds only the last edge on the path as VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual arangodb::basics::Json* lastEdgeToJson(Transaction*,
-                                                 CollectionNameResolver*) = 0;
+  virtual void lastEdgeToVelocyPack(Transaction*,
+                                    arangodb::velocypack::Builder&) = 0;
+
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Builds only the last vertex as Json
+  /// @brief Builds only the last vertex as VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual arangodb::basics::Json* lastVertexToJson(Transaction*,
-                                                   CollectionNameResolver*) = 0;
+  virtual void lastVertexToVelocyPack(Transaction*,
+                                      arangodb::velocypack::Builder&) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Gets the amount of read documents
@@ -179,17 +174,19 @@ class TraversalPath {
 };
 
 struct TraverserOptions {
-
+ private:
+  arangodb::Transaction* _trx;
   std::vector<std::string> _collections;
   std::vector<TRI_edge_direction_e> _directions;
+  std::vector<arangodb::Transaction::IndexHandle> _indexHandles;
+  arangodb::velocypack::Builder _builder;
 
  public:
-
   uint64_t minDepth;
 
   uint64_t maxDepth;
 
-  TraverserOptions() : minDepth(1), maxDepth(1) {}
+  explicit TraverserOptions(arangodb::Transaction* trx) : _trx(trx), minDepth(1), maxDepth(1) {}
 
   void setCollections(std::vector<std::string> const&, TRI_edge_direction_e);
   void setCollections(std::vector<std::string> const&, std::vector<TRI_edge_direction_e> const&);
@@ -197,6 +194,10 @@ struct TraverserOptions {
   size_t collectionCount() const;
 
   bool getCollection(size_t const, std::string&, TRI_edge_direction_e&) const;
+
+  bool getCollectionAndSearchValue(size_t, std::string const&, std::string&,
+                                   arangodb::Transaction::IndexHandle&,
+                                   arangodb::velocypack::Builder&);
 };
 
 class Traverser {
@@ -205,11 +206,12 @@ class Traverser {
   /// @brief Constructor. This is an abstract only class.
   //////////////////////////////////////////////////////////////////////////////
 
-  Traverser()
+  explicit Traverser(arangodb::Transaction* trx)
       : _readDocuments(0),
         _filteredPaths(0),
         _pruneNext(false),
         _done(true),
+        _opts(trx),
         _expressions(nullptr) {}
 
   //////////////////////////////////////////////////////////////////////////////
@@ -235,8 +237,8 @@ class Traverser {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Reset the traverser to use another start vertex
   //////////////////////////////////////////////////////////////////////////////
-
-  virtual void setStartVertex(VertexId const& v) = 0;
+  
+  virtual void setStartVertex(std::string const& value) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Skip amount many paths of the graph.
