@@ -36,10 +36,14 @@
 #include <deque>
 #include <functional>
 
-
-//using namespace arangodb::velocypack;
+struct TRI_vocbase_t;
 
 namespace arangodb {
+class ApplicationV8;
+namespace aql {
+class QueryRegistry;
+}
+
 namespace consensus {
 
 class Agent;
@@ -51,7 +55,6 @@ class State {
   
 public:
   
-
   /// @brief Default constructor
   explicit State (std::string const& end_point = "tcp://localhost:8529");
   
@@ -100,7 +103,7 @@ public:
 
 
   /// @brief Load persisted data from above or start with empty log
-  bool loadCollections ();
+  bool loadCollections (TRI_vocbase_t*, ApplicationV8*, aql::QueryRegistry*);
 
   /// @brief Pipe to ostream
   friend std::ostream& operator<< (std::ostream& os, State const& s) {
@@ -136,6 +139,10 @@ private:
   bool createCollection(std::string const& name);
 
   bool compact ();
+
+  TRI_vocbase_t* _vocbase;
+  ApplicationV8* _applicationV8;
+  aql::QueryRegistry* _queryRegistry;
 
   mutable arangodb::Mutex _logLock;  /**< @brief Mutex for modifying _log */
   std::deque<log_t> _log;           /**< @brief  State entries */

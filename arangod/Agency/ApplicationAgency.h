@@ -31,8 +31,13 @@
 #include "ApplicationServer/ApplicationFeature.h"
 #include "Agency/Agent.h"
 
+struct TRI_server_t;
 
 namespace arangodb {
+class ApplicationV8;
+namespace aql {
+class QueryRegistry;
+}
 namespace rest {
 class Task;
 
@@ -51,7 +56,9 @@ class ApplicationAgency : virtual public arangodb::rest::ApplicationFeature {
   
  public:
 
-  explicit ApplicationAgency(ApplicationEndpointServer*);
+  ApplicationAgency(TRI_server_t*, ApplicationEndpointServer*,
+                    ApplicationV8* applicationV8, 
+                    aql::QueryRegistry* queryRegistry);
 
   ~ApplicationAgency();
 
@@ -92,6 +99,8 @@ class ApplicationAgency : virtual public arangodb::rest::ApplicationFeature {
   
  private:
 
+  TRI_server_t* _server;
+
   uint64_t _size; /**< @brief: agency size (default: 5)*/
   double   _min_election_timeout; /**< @brief: min election timeout */
   double   _max_election_timeout; /**< @brief: max election timeout */
@@ -103,6 +112,8 @@ class ApplicationAgency : virtual public arangodb::rest::ApplicationFeature {
   uint32_t _agent_id;
 
   ApplicationEndpointServer* _endpointServer;
+  ApplicationV8* _applicationV8;
+  aql::QueryRegistry* _queryRegistry;
 
 };
 }

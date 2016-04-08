@@ -23,6 +23,8 @@
 
 #include "Agent.h"
 #include "Basics/ConditionLocker.h"
+#include "VocBase/server.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>    
 #include <velocypack/velocypack-aliases.h> 
@@ -35,11 +37,16 @@ using namespace arangodb::velocypack;
 namespace arangodb {
 namespace consensus {
 
-Agent::Agent () : Thread ("Agent"), _last_commit_index(0) {}
-
 //  Agent configuration
-Agent::Agent (config_t const& config) :
-  Thread ("Agent"), _config(config), _last_commit_index(0) {
+Agent::Agent (TRI_server_t* server, config_t const& config, ApplicationV8* applicationV8, aql::QueryRegistry* queryRegistry) 
+    : Thread ("Agent"), 
+      _server(server), 
+      _vocbase(nullptr), 
+      _applicationV8(applicationV8), 
+      _queryRegistry(queryRegistry), 
+      _config(config), 
+      _last_commit_index(0) {
+
   _state.setEndPoint(_config.end_point);
   _constituent.configure(this);
   _confirmed.resize(size(),0); // agency's size and reset to 0
@@ -52,6 +59,9 @@ id_t Agent::id() const {
 
 //  Shutdown
 Agent::~Agent () {
+  if (_vocbase != nullptr) {
+    TRI_ReleaseDatabaseServer(_server, _vocbase);
+  }
   shutdown();
 }
 
@@ -276,10 +286,20 @@ append_entries_t Agent::sendAppendEntriesRPC (id_t follower_id) {
   
 }
 
-// @brief load persisten state
+// @brief load persistent state
 bool Agent::load () {
+  TRI_vocbase_t* vocbase =
+      TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
+
+  if (vocbase == nullptr) {
+    LOG(FATAL) << "could not determine _system database";
+    FATAL_ERROR_EXIT();
+  }
+
+  _vocbase = vocbase;
+
   LOG_TOPIC(INFO, Logger::AGENCY) << "Loading persistent state.";
-  if (!_state.loadCollections()) {
+  if (!_state.loadCollections(_vocbase, _applicationV8, _queryRegistry)) {
     LOG_TOPIC(WARN, Logger::AGENCY) << "Failed to load persistent state on statup.";
   }
 
