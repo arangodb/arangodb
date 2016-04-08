@@ -83,6 +83,7 @@ ApplicationServer::ApplicationServer(std::string const& name,
       _gid(),
       _numericGid(0),
       _logApplicationName("arangod"),
+      _logBuffered(true),
       _logFacility(""),
       _logFile("+"),
       _logTty("+"),
@@ -146,7 +147,11 @@ std::string const& ApplicationServer::getName() const { return _name; }
 void ApplicationServer::setupLogging(bool threaded, bool daemon,
                                      bool backgrounded) {
   Logger::shutdown(false);
-  Logger::initialize(threaded);
+  Logger::initialize(threaded && _logBuffered);
+  
+  if (_options.has("log.buffered")) {
+    _logThreadId = true;
+  }
 
   if (_options.has("log.thread")) {
     _logThreadId = true;
@@ -185,13 +190,14 @@ void ApplicationServer::setupLogging(bool threaded, bool daemon,
     outputs.push_back("requests=" + definition);
   }
 
-// map deprecated option "log.facility" to "log.output"
+  // map deprecated option "log.facility" to "log.output"
 #ifdef ARANGODB_ENABLE_SYSLOG
   if (!_logFacility.empty()) {
     outputs.push_back("syslog://" + _logFacility + "/" + _logApplicationName);
   }
 #endif
 
+  // map deprecated option "log.performance" to "log.level"
   if (_options.has("log.performance")) {
     levels.push_back("requests=trace");
   }
@@ -777,6 +783,7 @@ void ApplicationServer::setupOptions(
   ;
 
   options["Hidden Options"]
+    ("log.buffered", &_logBuffered, "buffer the log output")
     ("log", &_logLevel, "log level")
 #ifdef ARANGODB_HAVE_SETUID
     ("uid", &_uid, "switch to user-id after reading config files")
