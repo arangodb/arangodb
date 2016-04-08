@@ -2550,7 +2550,7 @@ int ClusterInfo::getResponsibleShard(CollectionID const& collectionID,
 
   int error;
   uint64_t hash = TRI_HashJsonByAttributes(
-      json, shardKeys.get(), (int)shardKeysPtr->size(), docComplete, &error);
+      json, shardKeys.get(), (int)shardKeysPtr->size(), docComplete, error);
   static char const* magicPhrase =
       "Foxx you have stolen the goose, give she back again!";
   static size_t const len = 52;

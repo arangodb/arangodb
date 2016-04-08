@@ -133,7 +133,7 @@ SlotInfo Slots::nextUnused(uint32_t size) {
 
 SlotInfo Slots::nextUnused(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
                            uint32_t size) {
-  static size_t const PrologueSize = DatafileHelper::AlignedSize<size_t>(sizeof(TRI_df_prologue_marker_t));
+  static uint32_t const PrologueSize = DatafileHelper::AlignedSize<uint32_t>(sizeof(TRI_df_prologue_marker_t));
 
   // we need to use the aligned size for writing
   uint32_t alignedSize = DatafileHelper::AlignedSize<uint32_t>(size);

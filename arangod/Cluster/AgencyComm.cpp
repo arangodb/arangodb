@@ -1169,7 +1169,7 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
   
   AgencyCommResult result;
   AgencyOperation operation(key, AgencyValueOperationType::SET, builder.slice());
-  operation._ttl = static_cast<uint64_t>(ttl);
+  operation._ttl = static_cast<uint32_t>(ttl);
   AgencyTransaction transaction(operation);
 
   sendTransactionWithFailover(result, transaction);
@@ -1191,7 +1191,7 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
 
   AgencyCommResult result;
   AgencyOperation operation(key, AgencyValueOperationType::SET, builder.slice());
-  operation._ttl = static_cast<uint64_t>(ttl);
+  operation._ttl = static_cast<uint32_t>(ttl);
   AgencyTransaction transaction(operation);
 
   sendTransactionWithFailover(result, transaction);
@@ -1298,7 +1298,7 @@ AgencyCommResult AgencyComm::increment(std::string const& key) {
   AgencyCommResult result;
 
   AgencyTransaction transaction(
-      AgencyOperation(key, AgencySimpleOperationType::INCREMENT)
+      AgencyOperation(key, AgencySimpleOperationType::INCREMENT_OP)
   );
 
   sendTransactionWithFailover(result, transaction);
@@ -1440,7 +1440,7 @@ AgencyCommResult AgencyComm::removeValues(std::string const& key,
                                           bool recursive) {
   AgencyCommResult result;
   AgencyTransaction transaction(
-      AgencyOperation(key, AgencySimpleOperationType::DELETE)
+      AgencyOperation(key, AgencySimpleOperationType::DELETE_OP)
   );
 
   sendTransactionWithFailover(result, transaction);
@@ -1466,7 +1466,7 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
   operation._precondition.type = AgencyOperationPrecondition::EMPTY;
   operation._precondition.empty = !prevExist;
   if (ttl >= 0.0) {
-    operation._ttl = static_cast<uint64_t>(ttl);
+    operation._ttl = static_cast<uint32_t>(ttl);
   }
   
   std::string url(buildUrl());
@@ -1506,7 +1506,7 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
   operation._precondition.type = AgencyOperationPrecondition::VALUE;
   operation._precondition.value = oldBuilder.slice();
   if (ttl >= 0.0) {
-    operation._ttl = static_cast<uint64_t>(ttl);
+    operation._ttl = static_cast<uint32_t>(ttl);
   }
   
   std::string url(buildUrl());

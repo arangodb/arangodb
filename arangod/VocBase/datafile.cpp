@@ -556,7 +556,7 @@ static bool TryRepairDatafile(TRI_datafile_t* datafile) {
     }
 
     size_t alignedSize = DatafileHelper::AlignedMarkerSize<TRI_voc_size_t>(marker);
-    currentSize += alignedSize;
+    currentSize += static_cast<TRI_voc_size_t>(alignedSize);
 
     if (marker->getType() == TRI_DF_MARKER_FOOTER) {
       return true;
@@ -776,7 +776,7 @@ static bool CheckDatafile(TRI_datafile_t* datafile, bool ignoreFailures) {
     }
 
     size_t alignedSize = DatafileHelper::AlignedMarkerSize<size_t>(marker);
-    currentSize += alignedSize;
+    currentSize += static_cast<TRI_voc_size_t>(alignedSize);
 
     if (marker->getType() == TRI_DF_MARKER_FOOTER) {
       LOG(DEBUG) << "found footer, reached end of datafile '" << datafile->getName(datafile) << "', current size " << currentSize;
@@ -1818,7 +1818,7 @@ static DatafileScan ScanDatafile(TRI_datafile_t const* datafile) {
     DatafileScanEntry entry;
     entry.position = static_cast<TRI_voc_size_t>(ptr - datafile->_data);
     entry.size = marker->getSize();
-    entry.realSize = DatafileHelper::AlignedMarkerSize<size_t>(marker);
+    entry.realSize = static_cast<TRI_voc_size_t>(DatafileHelper::AlignedMarkerSize<size_t>(marker));
     entry.tick = marker->getTick();
     entry.type = marker->getType();
     entry.status = 1;

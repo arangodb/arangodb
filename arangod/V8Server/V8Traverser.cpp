@@ -524,7 +524,7 @@ std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch(
 
   auto vertexFilterClosure =
       [&opts](std::string const& v) -> bool {
-#warning This closure needs to be optimized
+        // TODO: this closure needs to be optimized
         std::vector<std::string> parts = arangodb::basics::StringUtils::split(v, "/");
         VPackBuilder tmp;
         tmp.openObject();

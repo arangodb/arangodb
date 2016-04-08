@@ -710,14 +710,16 @@ uint64_t VelocyPackHelper::hashByAttributes(
         if (attr == "_key" && !key.empty()) {
           VPackBuilder temporaryBuilder;
           temporaryBuilder.add(VPackValue(key));
-          temporaryBuilder.slice().normalizedHash(hash);
+          hash = temporaryBuilder.slice().normalizedHash(hash);
           continue;
         }
         if (!docComplete) {
           error = TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN;
         }
+        // Null is equal to None/not present
+        sub = NullBuilder.slice();
       }
-      sub.normalizedHash(hash);
+      hash = sub.normalizedHash(hash);
     }
   }
   return hash;

@@ -103,11 +103,11 @@ enum class AgencyValueOperationType {
 };
 
 enum class AgencySimpleOperationType {
-  INCREMENT,
-  DECREMENT,
-  DELETE,
-  POP,
-  SHIFT
+  INCREMENT_OP,
+  DECREMENT_OP,
+  DELETE_OP,
+  POP_OP,
+  SHIFT_OP
 };
 
 struct AgencyOperationType {
@@ -134,15 +134,15 @@ struct AgencyOperationType {
         break;
       case SIMPLE:
         switch(simple) {
-          case AgencySimpleOperationType::INCREMENT:
+          case AgencySimpleOperationType::INCREMENT_OP:
             return "increment";
-          case AgencySimpleOperationType::DECREMENT:
+          case AgencySimpleOperationType::DECREMENT_OP:
             return "decrement";
-          case AgencySimpleOperationType::DELETE:
+          case AgencySimpleOperationType::DELETE_OP:
             return "delete";
-          case AgencySimpleOperationType::POP:
+          case AgencySimpleOperationType::POP_OP:
             return "pop";
-          case AgencySimpleOperationType::SHIFT:
+          case AgencySimpleOperationType::SHIFT_OP:
             return "shift";
           default:
             return "unknown_operation_type";
