@@ -305,8 +305,6 @@ void Node::notifyObservers (std::string const& origin) const {
       path = i.substr(slash_p);
     }
 
-    std::cout << endpoint.str() << path << std::endl;
-      
     std::unique_ptr<std::map<std::string, std::string>> headerFields =
       std::make_unique<std::map<std::string, std::string> >();
     
@@ -320,13 +318,14 @@ void Node::notifyObservers (std::string const& origin) const {
 
 }
 
-  inline bool Node::observedBy (std::string const& url) const {
-    auto ret = root()._observer_table.equal_range(url);
-    for (auto it = ret.first; it!=ret.second; ++it) {
+inline bool Node::observedBy (std::string const& url) const {
+  auto ret = root()._observer_table.equal_range(url);
+  for (auto it = ret.first; it!=ret.second; ++it) {
     if (it->second == uri()) {
       return true;
     }
   }
+  return false;
 }
 
 namespace arangodb {
@@ -461,11 +460,13 @@ template<> bool Node::handle<OBSERVE> (VPackSlice const& slice) {
     return false;
   if (!slice.get("url").isString())
     return false;
-  std::string url (slice.get("url").copyString());
+  std::string url (slice.get("url").copyString()),
+    uri (this->uri());
   
   // check if such entry exists
   if (!observedBy(url)) {
-    root()._observer_table.insert(std::pair<std::string,std::string>(url,uri()));
+    root()._observer_table.insert(std::pair<std::string,std::string>(url,uri));
+    root()._observed_table.insert(std::pair<std::string,std::string>(uri,url));
     _observers.emplace(url);
     return true;
   }
@@ -480,12 +481,20 @@ template<> bool Node::handle<UNOBSERVE> (VPackSlice const& slice) {
     return false;
   if (!slice.get("url").isString())
     return false;
-
-  auto ret = root()._observer_table.equal_range((slice.get("url").copyString()));
+  std::string url (slice.get("url").copyString()),
+    uri (this->uri());
+  
+  auto ret = root()._observer_table.equal_range(url);
   for (auto it = ret.first; it!=ret.second; ++it) {
-    if (it->second == uri()) {
-      LOG_TOPIC(INFO, Logger::AGENCY) << it->first << " " << it->second;
+    if (it->second == uri) {
       root()._observer_table.erase(it);
+      break;
+    }
+  }
+  ret = root()._observed_table.equal_range(uri);
+  for (auto it = ret.first; it!=ret.second; ++it) {
+    if (it->second == url) {
+      root()._observed_table.erase(it);
       return true;
     }
   }
@@ -636,13 +645,83 @@ std::vector<bool> Store::apply (query_t const& query) {
   return applied;
 }
 
-// Apply external 
-std::vector<bool> Store::apply( std::vector<VPackSlice> const& queries) {
-  std::vector<bool> applied;
-  MUTEX_LOCKER(storeLocker, _storeLock);
-  for (auto const& i : queries) {
-    applied.push_back(applies(i)); // no precond
+//template<class T, class U> std::multimap<std::string, std::string>
+std::ostream& operator<< (std::ostream& os, std::multimap<std::string,std::string> const& m) {
+  for (auto const& i : m) {
+    os << i.first << ": " << i.second << std::endl;
   }
+  return os;
+}
+
+// Apply external 
+  struct notify_t {
+    std::string key;
+    std::string modified;
+    std::string oper;
+    notify_t (std::string const& k, std::string const& m, std::string const& o) :
+      key(k), modified(m), oper(o) {}
+  };
+
+std::vector<bool> Store::apply (
+  std::vector<VPackSlice> const& queries, bool inform) {
+  std::vector<bool> applied;
+  {
+    MUTEX_LOCKER(storeLocker, _storeLock);
+    for (auto const& i : queries) {
+      applied.push_back(applies(i)); // no precond
+    }
+  }
+
+  std::multimap<std::string,std::shared_ptr<notify_t>> in;
+  for (auto const& i : queries) {
+    for (auto const& j : VPackObjectIterator(i)) {
+      if (j.value.isObject() && j.value.hasKey("op")) {
+        std::string oper = j.value.get("op").copyString();
+        if (!(oper == "observe" || oper == "unobserve")) {
+          std::string uri = j.key.copyString();
+          size_t pos;
+          while (true) {
+            auto ret = _observed_table.equal_range(uri);
+            for (auto it = ret.first; it!=ret.second; ++it) {
+              in.emplace (
+                it->second, std::make_shared<notify_t>(
+                  it->first, j.key.copyString(), oper));
+            }
+            pos = uri.find_last_of('/');
+            if (pos == std::string::npos || pos == 0) {
+              break;
+            } else {
+              uri = uri.substr(0,pos);
+            }
+          } 
+        }
+      }
+    }
+  }
+
+  std::vector<std::string> urls;
+  for(auto it = in.begin(), end = in.end(); it != end; it = in.upper_bound(it->first)) {
+    urls.push_back(it->first);
+  }
+
+  for (auto const& url : urls) {
+    Builder tmp; // host
+    tmp.openObject();
+    tmp.add("term",VPackValue(0));
+    tmp.add("index",VPackValue(0));
+    auto ret = in.equal_range(url);
+/*    for (auto it = ret.first; it!=ret.second; ++it) {
+      tmp.add(url,VPackValue(VPackValueType::Object));
+      tmp.add(it->second->key,VPackValue(VPackValueType::Object));
+      tmp.add("op",VPackValue(it->second->oper));
+      tmp.close();
+      tmp.close();
+      std::cout << tmp.toJson() << std::endl;
+      }*/
+    tmp.close();
+    std::cout << tmp.toJson() << std::endl;
+  }
+
   return applied;
 }
 
@@ -806,6 +885,12 @@ void Store::dumpToBuilder (Builder& builder) const {
   {
     VPackObjectBuilder guard(&builder);
     for (auto const& i : _observer_table) {
+      builder.add(i.first, VPackValue(i.second));
+    }
+  }
+  {
+    VPackObjectBuilder guard(&builder);
+    for (auto const& i : _observed_table) {
       builder.add(i.first, VPackValue(i.second));
     }
   }

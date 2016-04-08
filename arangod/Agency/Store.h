@@ -181,6 +181,7 @@ protected:
 
   /// @brief Table of observers in tree (only used in root node)
   std::multimap <std::string,std::string> _observer_table;
+  std::multimap <std::string,std::string> _observed_table;
   
 };
 
@@ -205,7 +206,7 @@ public:
   std::vector<bool> apply (query_t const& query);
 
   /// @brief Apply entry in query 
-  std::vector<bool> apply (std::vector<Slice> const& query);
+  std::vector<bool> apply (std::vector<Slice> const& query, bool inform = true);
 
   /// @brief Read specified query from store
   std::vector<bool> read (query_t const& query, query_t& result) const;
@@ -224,6 +225,9 @@ public:
 
   /// @brief Dump everything to builder
   void dumpToBuilder (Builder&) const;
+
+  /// @brief Notify observers
+  void notifyObservers () const;
 
 private:
   /// @brief Read individual entry specified in slice into builder

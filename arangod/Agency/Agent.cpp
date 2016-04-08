@@ -284,7 +284,7 @@ bool Agent::load () {
   }
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Reassembling spearhead and read stores.";
-  _read_db.apply(_state.slices());
+//  _read_db.apply(_state.slices());
   _spearhead.apply(_state.slices(_last_commit_index+1));
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Starting spearhead worker.";
