@@ -568,8 +568,8 @@ int createDocumentOnCoordinator(
    }
  
    std::string const collid = StringUtils::itoa(collinfo->id());
-   std::unordered_map<ShardID, std::vector<VPackValueLength>> shardMap;
-  std::vector<std::pair<ShardID, VPackValueLength>> reverseMapping;
+   std::unordered_map<ShardID, std::vector<std::pair<VPackValueLength, std::string>>> shardMap;
+   std::vector<std::pair<ShardID, VPackValueLength>> reverseMapping;
    bool useMultiple = slice.isArray();
 
    auto workOnOneNode = [&shardMap, &ci, &collid, &collinfo, &reverseMapping](
@@ -597,8 +597,15 @@ int createDocumentOnCoordinator(
      // Now find the responsible shard:
      bool usesDefaultShardingAttributes;
      ShardID shardID;
-     int error = ci->getResponsibleShard(collid, node, true, shardID,
-                                         usesDefaultShardingAttributes);
+     int error TRI_ERROR_NO_ERROR;
+     if (userSpecifiedKey) {
+       error = ci->getResponsibleShard(collid, node, true, shardID,
+                                           usesDefaultShardingAttributes);
+     } else {
+       error = ci->getResponsibleShard(collid, node, true, shardID,
+                                           usesDefaultShardingAttributes,
+                                           _key);
+     }
      if (error == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
        return TRI_ERROR_CLUSTER_SHARD_GONE;
      }
@@ -610,10 +617,19 @@ int createDocumentOnCoordinator(
      // We found the responsible shard. Add it to the list.
      auto it = shardMap.find(shardID);
      if (it == shardMap.end()) {
-       std::vector<VPackValueLength> counter({index});
-       shardMap.emplace(shardID, counter);
+       if (userSpecifiedKey) {
+         std::vector<std::pair<VPackValueLength, std::string>> counter({{index, ""}});
+         shardMap.emplace(shardID, counter);
+       } else {
+         std::vector<std::pair<VPackValueLength, std::string>> counter({{index, _key}});
+         shardMap.emplace(shardID, counter);
+       }
      } else {
-       it->second.emplace_back(index);
+       if (userSpecifiedKey) {
+         it->second.emplace_back(index, "");
+       } else {
+         it->second.emplace_back(index, _key);
+       }
      }
      reverseMapping.emplace_back(shardID, index);
      return TRI_ERROR_NO_ERROR;
@@ -649,12 +665,30 @@ int createDocumentOnCoordinator(
    auto body = std::make_shared<std::string>();
    for (auto const& it : shardMap) {
      if (!useMultiple) {
-       body->assign(slice.toJson());
+       TRI_ASSERT(it.second.size() == 1);
+       auto idx = it.second.front();
+       if (idx.second.empty()) {
+         body->assign(slice.toJson());
+       } else {
+         reqBuilder.clear();
+         reqBuilder.openObject();
+         TRI_SanitizeObject(slice, reqBuilder);
+         reqBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(idx.second));
+         reqBuilder.close();
+         body->assign(reqBuilder.slice().toJson());
+       }
      } else {
        reqBuilder.clear();
        reqBuilder.openArray();
-       for (auto idx : it.second) {
-         reqBuilder.add(slice.at(idx));
+       for (auto const& idx : it.second) {
+         if (idx.second.empty()) {
+           reqBuilder.add(slice.at(idx.first));
+         } else {
+           reqBuilder.openObject();
+           TRI_SanitizeObject(slice.at(idx.first), reqBuilder);
+           reqBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(idx.second));
+           reqBuilder.close();
+         }
        }
        reqBuilder.close();
        body->assign(reqBuilder.slice().toJson());

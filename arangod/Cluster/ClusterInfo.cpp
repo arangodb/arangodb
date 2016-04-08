@@ -2418,7 +2418,8 @@ std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList(
 int ClusterInfo::getResponsibleShard(CollectionID const& collectionID,
                                      VPackSlice slice, bool docComplete,
                                      ShardID& shardID,
-                                     bool& usesDefaultShardingAttributes) {
+                                     bool& usesDefaultShardingAttributes,
+                                     std::string const& key) {
   // Note that currently we take the number of shards and the shardKeys
   // from Plan, since they are immutable. Later we will have to switch
   // this to Current, when we allow to add and remove shards.
@@ -2464,7 +2465,7 @@ int ClusterInfo::getResponsibleShard(CollectionID const& collectionID,
 
   int error = TRI_ERROR_NO_ERROR;
   uint64_t hash = arangodb::basics::VelocyPackHelper::hashByAttributes(
-      slice, *shardKeysPtr, docComplete, error);
+      slice, *shardKeysPtr, docComplete, error, key);
   static char const* magicPhrase =
       "Foxx you have stolen the goose, give she back again!";
   static size_t const len = 52;

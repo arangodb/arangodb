@@ -800,7 +800,8 @@ class ClusterInfo {
 
   int getResponsibleShard(CollectionID const&, arangodb::velocypack::Slice,
                           bool docComplete, ShardID& shardID,
-                          bool& usesDefaultShardingAttributes);
+                          bool& usesDefaultShardingAttributes,
+                          std::string const& key = "");
 
 
   //////////////////////////////////////////////////////////////////////////////
