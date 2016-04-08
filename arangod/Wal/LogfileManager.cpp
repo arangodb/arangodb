@@ -519,22 +519,58 @@ void LogfileManager::stop() {
 
   // set WAL to read-only mode
   allowWrites(false);
+  
+  // finalize allocator thread
+  // this prevents creating new (empty) WAL logfile once we flush
+  // current logfile
+  stopAllocatorThread();
+  if (_allocatorThread != nullptr) {
+    LOG(TRACE) << "stopping allocator thread";
+    while (_allocatorThread->isRunning()) { 
+      usleep(10000); 
+    }
+    delete _allocatorThread;
+    _allocatorThread = nullptr;
+  }
+
 
   // do a final flush at shutdown
   this->flush(true, true, false);
 
-  // stop threads
-  LOG(TRACE) << "stopping remover thread";
+  // stop other threads
+  LOG(TRACE) << "sending shutdown request to WAL threads";
   stopRemoverThread();
-
-  LOG(TRACE) << "stopping collector thread";
   stopCollectorThread();
-
-  LOG(TRACE) << "stopping allocator thread";
-  stopAllocatorThread();
-
-  LOG(TRACE) << "stopping synchronizer thread";
   stopSynchronizerThread();
+   
+  // physically destroy all threads 
+  if (_removerThread != nullptr) {
+    LOG(TRACE) << "stopping remover thread";
+    while (_removerThread->isRunning()) { 
+      usleep(10000); 
+    }
+    delete _removerThread;
+    _removerThread = nullptr;
+  }
+  
+  if (_collectorThread != nullptr) {
+    LOG(TRACE) << "stopping collector thread";
+    while (_collectorThread->isRunning()) { 
+      usleep(10000); 
+    }
+    delete _removerThread;
+    _collectorThread = nullptr;
+  }
+  
+  if (_synchronizerThread != nullptr) {
+    LOG(TRACE) << "stopping synchronizer thread";
+    while (_synchronizerThread->isRunning()) { 
+      usleep(10000); 
+    }
+    delete _synchronizerThread;
+    _synchronizerThread = nullptr;
+  }
+
 
   // close all open logfiles
   LOG(TRACE) << "closing logfiles";
@@ -2043,8 +2079,6 @@ void LogfileManager::stopSynchronizerThread() {
     LOG(TRACE) << "stopping WAL synchronizer thread";
 
     _synchronizerThread->beginShutdown();
-    delete _synchronizerThread;
-    _synchronizerThread = nullptr;
   }
 }
 
@@ -2076,8 +2110,6 @@ void LogfileManager::stopAllocatorThread() {
     LOG(TRACE) << "stopping WAL allocator thread";
 
     _allocatorThread->beginShutdown();
-    delete _allocatorThread;
-    _allocatorThread = nullptr;
   }
 }
 
@@ -2109,8 +2141,6 @@ void LogfileManager::stopCollectorThread() {
     LOG(TRACE) << "stopping WAL collector thread";
 
     _collectorThread->beginShutdown();
-    delete _collectorThread;
-    _collectorThread = nullptr;
   }
 }
 
@@ -2142,8 +2172,6 @@ void LogfileManager::stopRemoverThread() {
     LOG(TRACE) << "stopping WAL remover thread";
 
     _removerThread->beginShutdown();
-    delete _removerThread;
-    _removerThread = nullptr;
   }
 }
 
