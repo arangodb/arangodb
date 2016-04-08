@@ -84,7 +84,7 @@ class KeySpace {
 
   uint32_t keyspaceCount() {
     READ_LOCKER(readLocker, _lock);
-    return _hash.size();
+    return static_cast<uint32_t>(_hash.size());
   }
 
   uint32_t keyspaceCount(std::string const& prefix) {

@@ -139,7 +139,7 @@ ExecutionPlan* ExecutionPlan::instantiateFromVelocyPack(
 
   auto plan = std::make_unique<ExecutionPlan>(ast);
 
-#warning In place slice => Json
+  // TODO: in place slice => Json
   Json json(TRI_UNKNOWN_MEM_ZONE,
             arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
   plan->_root = plan->fromJson(json);

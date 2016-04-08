@@ -704,12 +704,12 @@ void Transaction::buildDocumentIdentity(VPackBuilder& builder,
   }
   if (oldMptr != nullptr) {
     builder.add("old", VPackSlice(oldMptr->vpack()));
-#warning Add externals later.
+    // TODO: add externals later.
     //builder.add("old", VPackValue(VPackValueType::External, oldMptr->vpack()));
   }
   if (newMptr != nullptr) {
     builder.add("new", VPackSlice(newMptr->vpack()));
-#warning Add externals later.
+    // TODO: add externals later.
     //builder.add("new", VPackValue(VPackValueType::External, newMptr->vpack()));
   }
   builder.close();

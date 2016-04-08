@@ -39,7 +39,7 @@ using namespace arangodb::basics;
                 windowsErrorBuf, sizeof(windowsErrorBuf), NULL);     \
   errno = GetLastError();
 #else
-#warning TODO move to system or os file
+/* TODO: move to system or os file */
 #define STR_ERROR() strerror(errno)
 #endif
 
