@@ -508,9 +508,7 @@ template<> bool Node::handle<UNOBSERVE> (VPackSlice const& slice) {
 
 // Apply slice to this node
 bool Node::applies (VPackSlice const& slice) {
-
-  if (slice.type() == ValueType::Object) {
-    
+  if (slice.isObject()) {
     for (auto const& i : VPackObjectIterator(slice)) {
 
       std::string key = i.key.copyString();
@@ -602,7 +600,7 @@ std::ostream& Node::print (std::ostream& o) const {
     o << std::endl;
   }
 
-  if (_time_table.size()) {
+  if (!_time_table.empty()) {
     for (auto const& i : _time_table) {
       o << i.second.get() << std::endl;
     }
@@ -680,7 +678,6 @@ std::vector<bool> Store::apply (
         std::string oper = j.value.get("op").copyString();
         if (!(oper == "observe" || oper == "unobserve")) {
           std::string uri = j.key.copyString();
-          size_t pos;
           while (true) {
             auto ret = _observed_table.equal_range(uri);
             for (auto it = ret.first; it!=ret.second; ++it) {
@@ -688,7 +685,7 @@ std::vector<bool> Store::apply (
                 it->second, std::make_shared<notify_t>(
                   it->first, j.key.copyString(), oper));
             }
-            pos = uri.find_last_of('/');
+            size_t pos = uri.find_last_of('/');
             if (pos == std::string::npos || pos == 0) {
               break;
             } else {
@@ -730,7 +727,7 @@ std::vector<bool> Store::apply (
 
 // Check precondition
 bool Store::check (VPackSlice const& slice) const {
-  if (slice.type() != VPackValueType::Object) {
+  if (!slice.isObject()) {
     LOG_TOPIC(WARN, Logger::AGENCY)
       << "Cannot check precondition: " << slice.toJson();
     return false;
@@ -745,22 +742,21 @@ bool Store::check (VPackSlice const& slice) const {
       found = true;
     } catch (StoreException const&) {}
     
-    if (precond.value.type() == VPackValueType::Object) { 
+    if (precond.value.isObject()) {
       for (auto const& op : VPackObjectIterator(precond.value)) {
         std::string const& oper = op.key.copyString();
         if (oper == "old") {                           // old
           return (node == op.value);
         } else if (oper == "isArray") {                // isArray
-          if (op.value.type()!=VPackValueType::Bool) { 
+          if (!op.value.isBoolean()) {
             LOG (FATAL) << "Non boolsh expression for 'isArray' precondition";
             return false;
           }
           bool isArray =
-            (node.type() == LEAF &&
-             node.slice().type() == VPackValueType::Array);
+            (node.type() == LEAF && node.slice().isArray());
           return op.value.getBool() ? isArray : !isArray;
         } else if (oper == "oldEmpty") {              // isEmpty
-          if (op.value.type()!=VPackValueType::Bool) { 
+          if (!op.value.isBoolean()) {
             LOG (FATAL) << "Non boolsh expression for 'oldEmpty' precondition";
             return false;
           }
@@ -779,7 +775,7 @@ bool Store::check (VPackSlice const& slice) const {
 std::vector<bool> Store::read (query_t const& queries, query_t& result) const { 
   std::vector<bool> success;
   MUTEX_LOCKER(storeLocker, _storeLock);
-  if (queries->slice().type() == VPackValueType::Array) {
+  if (queries->slice().isArray()) {
     result->add(VPackValue(VPackValueType::Array)); // top node array
     for (auto const& query : VPackArrayIterator(queries->slice())) {
       success.push_back(read (query, *result));
@@ -798,7 +794,7 @@ bool Store::read (VPackSlice const& query, Builder& ret) const {
   
   // Collect all paths
   std::list<std::string> query_strs;
-  if (query.type() == VPackValueType::Array) {
+  if (query.isArray()) {
     for (auto const& sub_query : VPackArrayIterator(query)) {
       query_strs.push_back(sub_query.copyString());
     }
