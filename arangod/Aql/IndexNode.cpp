@@ -28,6 +28,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Utils/Transaction.h"
 
+using namespace arangodb;
 using namespace arangodb::aql;
 
 using JsonHelper = arangodb::basics::JsonHelper;
@@ -38,7 +39,7 @@ using JsonHelper = arangodb::basics::JsonHelper;
 
 IndexNode::IndexNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
             Collection const* collection, Variable const* outVariable,
-            std::vector<Transaction::IndexHandle> const& indexes,
+            std::vector<arangodb::Transaction::IndexHandle> const& indexes,
             Condition* condition, bool reverse)
       : ExecutionNode(plan, id),
         _vocbase(vocbase),

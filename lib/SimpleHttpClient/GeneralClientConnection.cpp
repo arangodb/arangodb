@@ -88,7 +88,7 @@ GeneralClientConnection* GeneralClientConnection::factory(
 
 GeneralClientConnection* GeneralClientConnection::factory(
     std::unique_ptr<Endpoint>& endpoint, double requestTimeout, double connectTimeout,
-    size_t numRetries, uint32_t sslProtocol) {
+    size_t numRetries, uint64_t sslProtocol) {
   if (endpoint->encryption() == Endpoint::EncryptionType::NONE) {
     return new ClientConnection(endpoint, requestTimeout, connectTimeout,
                                 numRetries);
