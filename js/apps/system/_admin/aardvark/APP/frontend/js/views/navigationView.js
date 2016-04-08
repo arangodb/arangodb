@@ -1,10 +1,11 @@
 /*jshint browser: true */
 /*jshint unused: false */
-/*global Backbone, templateEngine, $, window, arangoHelper*/
+/*global Backbone, templateEngine, $, window, arangoHelper, _*/
 (function () {
   "use strict";
   window.NavigationView = Backbone.View.extend({
     el: '#navigationBar',
+    subEl: '#subNavigationBar',
 
     events: {
       "change #arangoCollectionSelect": "navigateBySelect",
@@ -16,6 +17,7 @@
     },
 
     renderFirst: true,
+    activeSubMenu: undefined,
 
     initialize: function () {
 
@@ -52,11 +54,8 @@
         isCluster: window.App.isCluster
       }));
 
-      //HEIKO
-      $("#subNavigationBar").html(this.templateSub.render({
-      }));
+      $(this.subEl).html(this.templateSub.render({}));
       
-      //HEIKO REMOVE
       this.dbSelectionView.render($("#dbSelect"));
       this.notificationView.render($("#notificationBar"));
 
@@ -69,16 +68,21 @@
       this.userCollection.whoAmI(callback);
       this.statisticBarView.render($("#statisticBar"));
 
-      // if demo content not available, do not show demo menu tab
-      if (!window.App.arangoCollectionsStore.findWhere({"name": "arangodbflightsdemo"})) {
-        $('.demo-menu').css("display","none");
-      }
       if (this.renderFirst) {
         this.renderFirst = false;
           
         var select = ((window.location.hash).substr(1, (window.location.hash).length) + '-menu');
         if (select.indexOf('/') === -1) {
           this.selectMenuItem(select);
+        }
+        else {
+          //handle subview menus which do not have a main menu entry
+          if (select.split('/')[2] === 'documents') {
+            self.selectMenuItem(select.split('/')[2], true);
+          }
+          else if (select.split('/')[0] === 'collection') {
+            self.selectMenuItem(select.split('/')[0], true);
+          }
         }
 
         $('.arangodbLogo').on('click', function() {
@@ -136,6 +140,107 @@
       });
     },
 
+    subViewConfig: {
+      documents: 'collections',
+      collection: 'collections'
+    },
+
+    subMenuConfig: {
+      collection: [
+        {
+          name: 'Settings',
+          view: undefined
+        },
+        {
+          name: 'Indices',
+          view: undefined
+        },
+        {
+          name: 'Content',
+          view: undefined,
+          active: true
+        }
+      ],
+      cluster: [
+        {
+          name: 'Dashboard',
+          view: undefined
+        },
+        {
+          name: 'Logs',
+          view: undefined
+        }
+      ],
+      query: [
+        {
+          name: 'Slow Query History',
+          route: 'queryManagement',
+          params: {
+            active: false
+          },
+          active: undefined
+        },
+        {
+          name: 'Running Queries',
+          route: 'queryManagement',
+          params: {
+            active: true
+          },
+          active: undefined
+        },
+        {
+          name: 'Editor',
+          route: 'query2',
+          active: true
+        }
+      ]
+    },
+
+    renderSubMenu: function(id) {
+      var self = this;
+
+      if (id === undefined) {
+        if (window.isCluster) {
+          id = 'cluster';
+        }
+        else {
+          id = 'dashboard';
+        }
+      }
+
+      $(this.subEl + ' .right').html('');
+      var cssclass = "";
+
+      _.each(this.subMenuConfig[id], function(menu) {
+
+        if (menu.active) {
+          cssclass = 'active';
+        }
+        else {
+          cssclass = '';
+        }
+
+        $(self.subEl +  ' .right').append(
+          '<li class="subMenuEntry ' + cssclass + '"><a>' + menu.name + '</a></li>'
+        );
+        $(self.subEl + ' .right').children().last().bind('click', function(elem) {
+          self.activeSubMenu = menu;
+          self.renderSubView(menu, elem);
+        });
+      });
+    },
+
+    renderSubView: function(menu, element) {
+      //trigger routers route
+      if (window.App[menu.route]) {
+        window.App[menu.route]("asd");
+      }
+
+      //select active sub view entry
+      $(this.subEl + ' .right').children().removeClass('active');
+      $(element.currentTarget).addClass('active');
+    },
+
     switchTab: function(e) {
       var id = $(e.currentTarget).children().first().attr('id');
 
@@ -144,10 +249,19 @@
       }
     },
 
-    selectMenuItem: function (menuItem) {
+    selectMenuItem: function (menuItem, noMenuEntry) {
+      try {
+        this.renderSubMenu(menuItem.split('-')[0]);
+      }
+      catch (e) {
+        this.renderSubMenu(menuItem);
+      }
       $('.navlist li').removeClass('active');
       if (typeof menuItem === 'string') {
-        if (menuItem) {
+        if (noMenuEntry) {
+          $('.' + this.subViewConfig[menuItem] + '-menu').addClass('active');
+        }
+        else if (menuItem) {
           $('.' + menuItem).addClass('active');
         }
       }

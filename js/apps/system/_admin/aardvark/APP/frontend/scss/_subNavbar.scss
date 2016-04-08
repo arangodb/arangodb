@@ -29,12 +29,15 @@
     }
 
     li {
+      cursor: pointer;
       font-size: 9pt;
       line-height: 30px;
       margin-bottom: 5px;
       margin-top: 5px;
 
       &.active {
+        cursor: default;
+
         a {
           color: rgba(51, 51, 51, .6);
         }

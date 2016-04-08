@@ -594,6 +594,7 @@
         }
         else {
           window.modalView.hide();
+
           data = data.split('/');
 
           try {
@@ -891,7 +892,6 @@
         url = "collection/" + this.collection.collectionID + '/' + encodeURIComponent(doc);
       }
 
-      //window.App.navigate(url, true);
       window.location.hash = url;
     },
 

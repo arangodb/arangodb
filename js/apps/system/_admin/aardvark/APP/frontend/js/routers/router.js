@@ -9,7 +9,7 @@
 
     toUpdate: [],
     dbServers: [],
-    isCluster: false,
+    isCluster: undefined,
 
     routes: {
       "": "cluster",
@@ -93,6 +93,25 @@
 
       this.initOnce = function () {
         this.initOnce = function() {};
+
+        var callback = function(error, isCoordinator) {
+          self = this;
+          if (isCoordinator) {
+            self.isCluster = true;
+
+            self.coordinatorCollection.fetch({
+              success: function() {
+                self.fetchDBS();
+              }
+            });
+          }
+          else {
+            self.isCluster = false;
+          }
+        }.bind(this);
+
+        window.isCoordinator(callback);
+
         this.initFinished = true;
         this.arangoDatabase = new window.ArangoDatabase();
         this.currentDB = new window.CurrentDatabase();
@@ -102,15 +121,6 @@
 
         //Cluster 
         this.coordinatorCollection = new window.ClusterCoordinators();
-        this.coordinatorCollection.fetch({
-          error: function() {
-            self.isCluster = false;
-          },
-          success: function() {
-            self.isCluster = true;
-            self.fetchDBS();
-          }
-        });
 
         arangoHelper.setDocumentStore(this.arangoDocumentStore);
 
@@ -147,15 +157,33 @@
         self.handleResize();
       });
 
+      $(window).scroll(function () {
+        self.handleScroll();
+      });
+
+    },
+
+    handleScroll: function() {
+      if ($(window).scrollTop() > 50) {
+        $('.navbar > .secondary').css('top', $(window).scrollTop());
+        $('.navbar > .secondary').css('position', 'absolute');
+        $('.navbar > .secondary').css('z-index', '10');
+        $('.navbar > .secondary').css('width', $(window).width());
+      }
+      else {
+        $('.navbar > .secondary').css('top', '0');
+        $('.navbar > .secondary').css('position', 'relative');
+        $('.navbar > .secondary').css('width', '');
+      }
     },
 
     cluster: function (initialized) {
       this.checkUser();
-      if (!initialized) {
+      if (!initialized || this.isCluster === undefined) {
         this.waitForInit(this.cluster.bind(this));
         return;
       }
-      if (!this.isCluster) {
+      if (this.isCluster === false) {
         this.routes[""] = 'dashboard';
         this.navigate("#dashboard", {trigger: true});
         return;
@@ -313,14 +341,12 @@
       this.documentView.colid = colid;
 
       var doc = window.location.hash.split("/")[2];
-     
       var test = (doc.split("%").length - 1) % 3;
 
       if (decodeURI(doc) !== doc && test !== 0) {
         doc = decodeURIComponent(doc);
       }
       this.documentView.docid = doc;
-
 
       this.documentView.render();
 
