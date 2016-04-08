@@ -558,7 +558,7 @@ void LogfileManager::stop() {
     while (_collectorThread->isRunning()) { 
       usleep(10000); 
     }
-    delete _removerThread;
+    delete _collectorThread;
     _collectorThread = nullptr;
   }
   
