@@ -114,7 +114,6 @@ static void mergeResults(
   resultBody->openArray();
   for (auto const& pair : reverseMapping) {
     VPackSlice arr = resultMap.find(pair.first)->second->slice();
-    LOG(ERR) << "SLICE: " << arr.toJson() << " AT " << pair.second;
     resultBody->add(arr.at(pair.second));
   }
   resultBody->close();
