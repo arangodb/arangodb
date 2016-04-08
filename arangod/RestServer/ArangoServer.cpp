@@ -1121,7 +1121,7 @@ void ArangoServer::buildApplicationServer() {
   // agency options
   // .............................................................................
 
-  _applicationAgency = new ApplicationAgency(_applicationEndpointServer);
+  _applicationAgency = new ApplicationAgency(_server, _applicationEndpointServer, _applicationV8, _queryRegistry);
   _applicationServer->addFeature(_applicationAgency);
 
   // .............................................................................
