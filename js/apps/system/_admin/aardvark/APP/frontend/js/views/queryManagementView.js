@@ -28,10 +28,14 @@
         if (window.location.hash === '#query' && window.VISIBLE && self.shouldRender 
             && arangoHelper.getCurrentSub().route === 'queryManagement') {
           if (self.active) {
-            self.convertModelToJSON(true);
+            if ($('#arangoQueryManagementTable').is(':visible')) {
+              self.convertModelToJSON(true);
+            }
           }
           else {
-            self.convertModelToJSON(false);
+            if ($('#arangoQueryManagementTable').is(':visible')) {
+              self.convertModelToJSON(false);
+            }
           }
         }
       }, self.refreshRate);

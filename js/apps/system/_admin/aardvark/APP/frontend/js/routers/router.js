@@ -22,7 +22,6 @@
       "shell": "shell",
       "query": "query2",
       "query2": "query",
-      "queryManagement": "queryManagement",
       "workMonitor": "workMonitor",
       "databases": "databases",
       "applications": "applications",

@@ -233,7 +233,10 @@
     renderSubView: function(menu, element) {
       //trigger routers route
       if (window.App[menu.route]) {
-        window.App[menu.route]("asd");
+        if (window.App[menu.route].resetState) {
+          window.App[menu.route].resetState();
+        }
+        window.App[menu.route]();
       }
 
       //select active sub view entry
