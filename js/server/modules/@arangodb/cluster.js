@@ -1518,4 +1518,5 @@ exports.role                          = role;
 exports.shardList                     = shardList;
 exports.status                        = status;
 exports.wait                          = waitForDistributedResponse;
+exports.endpointToURL                 = endpointToURL;
 
