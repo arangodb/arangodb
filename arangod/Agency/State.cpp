@@ -263,7 +263,7 @@ bool State::loadCollection(std::string const& name) {
     TRI_ASSERT(_applicationV8 != nullptr);
     TRI_ASSERT(_queryRegistry != nullptr);
     std::string const aql(std::string("FOR l IN ") + name + " SORT l._key RETURN l");
-    arangodb::aql::Query query(_applicationV8, true, _vocbase,
+    arangodb::aql::Query query(_applicationV8, false, _vocbase,
                                aql.c_str(), aql.size(), bindVars, nullptr,
                                arangodb::aql::PART_MAIN);
   
