@@ -31,10 +31,7 @@
 namespace arangodb {
 namespace aql {
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Traversal condition finder
-////////////////////////////////////////////////////////////////////////////////
-
 class TraversalConditionFinder : public WalkerWorker<ExecutionNode> {
  public:
   TraversalConditionFinder(ExecutionPlan* plan, bool* planAltered)

@@ -42,18 +42,12 @@ typedef std::function<AqlValue(arangodb::aql::Query*, arangodb::AqlTransaction*,
     FunctionImplementation;
 
 struct Functions {
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief called before a query starts
   /// has the chance to set up any thread-local storage
-  //////////////////////////////////////////////////////////////////////////////
-
   static void InitializeThreadContext();
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief called when a query ends
   /// its responsibility is to clear any thread-local storage
-  //////////////////////////////////////////////////////////////////////////////
-
   static void DestroyThreadContext();
 
   static AqlValue IsNull(arangodb::aql::Query*, arangodb::AqlTransaction*,

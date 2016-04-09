@@ -29,10 +29,7 @@
 
 using namespace arangodb::aql;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the accessor
-////////////////////////////////////////////////////////////////////////////////
-
 AttributeAccessor::AttributeAccessor(
     std::vector<std::string> const& attributeParts, Variable const* variable)
     : _attributeParts(attributeParts),
@@ -42,10 +39,7 @@ AttributeAccessor::AttributeAccessor(
   TRI_ASSERT(_variable != nullptr);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief execute the accessor
-////////////////////////////////////////////////////////////////////////////////
-
 AqlValue AttributeAccessor::get(arangodb::AqlTransaction* trx,
                                 AqlItemBlock const* argv, size_t startPos,
                                 std::vector<Variable const*> const& vars,

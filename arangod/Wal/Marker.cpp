@@ -26,30 +26,21 @@
 
 using namespace arangodb::wal;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a marker from a marker existing in memory
-////////////////////////////////////////////////////////////////////////////////
-
 Marker::Marker(TRI_df_marker_t const* existing, TRI_voc_fid_t fid)
     : _buffer(reinterpret_cast<char*>(const_cast<TRI_df_marker_t*>(existing))),
       _size(existing->getSize()),
       _mustFree(false),
       _fid(fid) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker from a VPackSlice
-////////////////////////////////////////////////////////////////////////////////
-  
 Marker::Marker(TRI_df_marker_type_t type, VPackSlice const& properties)
     : Marker(type, sizeof(TRI_df_marker_t) + properties.byteSize()) {
   
   storeSlice(sizeof(TRI_df_marker_t), properties);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker with a sized buffer
-////////////////////////////////////////////////////////////////////////////////
-
 Marker::Marker(TRI_df_marker_type_t type, size_t size)
     : _buffer(new char[size]),
       _size(static_cast<uint32_t>(size)),
@@ -58,37 +49,25 @@ Marker::Marker(TRI_df_marker_type_t type, size_t size)
   DatafileHelper::InitMarker(reinterpret_cast<TRI_df_marker_t*>(begin()), type, _size);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy marker
-////////////////////////////////////////////////////////////////////////////////
-
 Marker::~Marker() {
   if (_buffer != nullptr && _mustFree) {
     delete[] _buffer;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief store a vpack slice
-////////////////////////////////////////////////////////////////////////////////
-  
 void Marker::storeSlice(size_t offset, arangodb::velocypack::Slice const& slice) {
   char* p = static_cast<char*>(begin()) + offset;
   memcpy(p, slice.begin(), static_cast<size_t>(slice.byteSize()));
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
-////////////////////////////////////////////////////////////////////////////////
-
 MarkerEnvelope::MarkerEnvelope(TRI_df_marker_t const* existing,
                                TRI_voc_fid_t fid)
     : Marker(existing, fid) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
-////////////////////////////////////////////////////////////////////////////////
-
 CrudMarker::CrudMarker(TRI_df_marker_type_t type,
                        TRI_voc_tid_t transactionId,
                        VPackSlice const& properties)
@@ -99,10 +78,7 @@ CrudMarker::CrudMarker(TRI_df_marker_type_t type,
   storeSlice(DatafileHelper::VPackOffset(type), properties);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
-////////////////////////////////////////////////////////////////////////////////
-
 DatabaseMarker::DatabaseMarker(TRI_df_marker_type_t type,
                                TRI_voc_tick_t databaseId,
                                VPackSlice const& properties)
@@ -113,10 +89,7 @@ DatabaseMarker::DatabaseMarker(TRI_df_marker_type_t type,
   storeSlice(DatafileHelper::VPackOffset(type), properties);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
-////////////////////////////////////////////////////////////////////////////////
-
 CollectionMarker::CollectionMarker(TRI_df_marker_type_t type,
                                    TRI_voc_tick_t databaseId,
                                    TRI_voc_cid_t collectionId,
@@ -129,10 +102,7 @@ CollectionMarker::CollectionMarker(TRI_df_marker_type_t type,
   storeSlice(DatafileHelper::VPackOffset(type), properties);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
-////////////////////////////////////////////////////////////////////////////////
-
 TransactionMarker::TransactionMarker(TRI_df_marker_type_t type,
                                      TRI_voc_tick_t databaseId,
                                      TRI_voc_tid_t transactionId) 
@@ -142,10 +112,7 @@ TransactionMarker::TransactionMarker(TRI_df_marker_type_t type,
   *reinterpret_cast<TRI_voc_tid_t*>(begin() + DatafileHelper::TransactionIdOffset(type)) = transactionId;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
-////////////////////////////////////////////////////////////////////////////////
-
 BeginRemoteTransactionMarker::BeginRemoteTransactionMarker(
     TRI_voc_tick_t databaseId, TRI_voc_tid_t transactionId,
     TRI_voc_tid_t externalId)
@@ -159,10 +126,7 @@ BeginRemoteTransactionMarker::BeginRemoteTransactionMarker(
   m->_externalId = externalId;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
-////////////////////////////////////////////////////////////////////////////////
-
 CommitRemoteTransactionMarker::CommitRemoteTransactionMarker(
     TRI_voc_tick_t databaseId, TRI_voc_tid_t transactionId,
     TRI_voc_tid_t externalId)
@@ -176,10 +140,7 @@ CommitRemoteTransactionMarker::CommitRemoteTransactionMarker(
   m->_externalId = externalId;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker
-////////////////////////////////////////////////////////////////////////////////
-
 AbortRemoteTransactionMarker::AbortRemoteTransactionMarker(
     TRI_voc_tick_t databaseId, TRI_voc_tid_t transactionId,
     TRI_voc_tid_t externalId)

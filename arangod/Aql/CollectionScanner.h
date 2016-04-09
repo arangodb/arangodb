@@ -41,13 +41,10 @@ class CollectionScanner {
 
   void reset();
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief forwards the cursor n elements. Does not read the data.
   ///        Will at most forward to the last element.
   ///        In the second parameter we add how many elements are
   ///        really skipped
-  //////////////////////////////////////////////////////////////////////////////
-
   int forward(size_t, uint64_t&);
 
  private:

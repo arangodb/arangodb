@@ -100,8 +100,6 @@ static bool checkPathVariableAccessFeasible(CalculationNode const* cn,
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-
 static bool extractSimplePathAccesses(AstNode const* node, TraversalNode* tn,
                                       Ast* ast) {
   std::vector<AstNode const*> currentPath;

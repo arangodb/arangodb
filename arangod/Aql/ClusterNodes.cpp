@@ -29,10 +29,7 @@
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor for RemoteNode from Json
-////////////////////////////////////////////////////////////////////////////////
-
 RemoteNode::RemoteNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
     : ExecutionNode(plan, base),
       _vocbase(plan->getAst()->query()->vocbase()),
@@ -44,10 +41,7 @@ RemoteNode::RemoteNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
       _isResponsibleForInitCursor(JsonHelper::checkAndGetBooleanValue(
           base.json(), "isResponsibleForInitCursor")) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack, for RemoteNode
-////////////////////////////////////////////////////////////////////////////////
-
 void RemoteNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   ExecutionNode::toVelocyPackHelperGeneric(nodes,
                                            verbose);  // call base class method
@@ -65,10 +59,7 @@ void RemoteNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief estimateCost
-////////////////////////////////////////////////////////////////////////////////
-
 double RemoteNode::estimateCost(size_t& nrItems) const {
   if (_dependencies.size() == 1) {
     // This will usually be the case, however, in the context of the
@@ -82,10 +73,7 @@ double RemoteNode::estimateCost(size_t& nrItems) const {
   return 1.0;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief construct a scatter node from JSON
-////////////////////////////////////////////////////////////////////////////////
-
 ScatterNode::ScatterNode(ExecutionPlan* plan,
                          arangodb::basics::Json const& base)
     : ExecutionNode(plan, base),
@@ -93,10 +81,7 @@ ScatterNode::ScatterNode(ExecutionPlan* plan,
       _collection(plan->getAst()->query()->collections()->get(
           JsonHelper::checkAndGetStringValue(base.json(), "collection"))) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack, for ScatterNode
-////////////////////////////////////////////////////////////////////////////////
-
 void ScatterNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   ExecutionNode::toVelocyPackHelperGeneric(nodes, verbose);  // call base class method
 
@@ -107,10 +92,7 @@ void ScatterNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   nodes.close();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief estimateCost
-////////////////////////////////////////////////////////////////////////////////
-
 double ScatterNode::estimateCost(size_t& nrItems) const {
   double depCost = _dependencies[0]->getCost(nrItems);
   auto shardIds = _collection->shardIds();
@@ -118,10 +100,7 @@ double ScatterNode::estimateCost(size_t& nrItems) const {
   return depCost + nrItems * nrShards;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief construct a distribute node from JSON
-////////////////////////////////////////////////////////////////////////////////
-
 DistributeNode::DistributeNode(ExecutionPlan* plan,
                                arangodb::basics::Json const& base)
     : ExecutionNode(plan, base),
@@ -137,10 +116,7 @@ DistributeNode::DistributeNode(ExecutionPlan* plan,
       _allowKeyConversionToObject(JsonHelper::checkAndGetBooleanValue(
           base.json(), "allowKeyConversionToObject")) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack, for DistributedNode
-////////////////////////////////////////////////////////////////////////////////
-
 void DistributeNode::toVelocyPackHelper(VPackBuilder& nodes,
                                         bool verbose) const {
   ExecutionNode::toVelocyPackHelperGeneric(nodes,
@@ -159,19 +135,13 @@ void DistributeNode::toVelocyPackHelper(VPackBuilder& nodes,
   nodes.close();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief estimateCost
-////////////////////////////////////////////////////////////////////////////////
-
 double DistributeNode::estimateCost(size_t& nrItems) const {
   double depCost = _dependencies[0]->getCost(nrItems);
   return depCost + nrItems;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief construct a gather node from JSON
-////////////////////////////////////////////////////////////////////////////////
-
 GatherNode::GatherNode(ExecutionPlan* plan, arangodb::basics::Json const& base,
                        SortElementVector const& elements)
     : ExecutionNode(plan, base),
@@ -180,10 +150,7 @@ GatherNode::GatherNode(ExecutionPlan* plan, arangodb::basics::Json const& base,
       _collection(plan->getAst()->query()->collections()->get(
           JsonHelper::checkAndGetStringValue(base.json(), "collection"))) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack, for GatherNode
-////////////////////////////////////////////////////////////////////////////////
-
 void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   ExecutionNode::toVelocyPackHelperGeneric(nodes,
                                            verbose);  // call base class method
@@ -206,10 +173,7 @@ void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   nodes.close();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief estimateCost
-////////////////////////////////////////////////////////////////////////////////
-
 double GatherNode::estimateCost(size_t& nrItems) const {
   double depCost = _dependencies[0]->getCost(nrItems);
   return depCost + nrItems;

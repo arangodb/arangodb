@@ -35,12 +35,9 @@ using Json = arangodb::basics::Json;
 
 static AqlValue EmptyValue;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the value from an input register
 /// for a reduce function that does not require input, this will return a
 /// reference to a static empty AqlValue
-////////////////////////////////////////////////////////////////////////////////
-
 static inline AqlValue const& GetValueForRegister(AqlItemBlock const* src,
                                                    size_t row, RegisterId reg) {
   if (reg == ExecutionNode::MaxRegisterId) {
@@ -249,10 +246,7 @@ SortedCollectBlock::SortedCollectBlock(ExecutionEngine* engine,
 
 SortedCollectBlock::~SortedCollectBlock() {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize
-////////////////////////////////////////////////////////////////////////////////
-
 int SortedCollectBlock::initialize() {
   int res = ExecutionBlock::initialize();
 
@@ -454,10 +448,7 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief writes the current group data into the result
-////////////////////////////////////////////////////////////////////////////////
-
 void SortedCollectBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
                                    size_t row) {
   if (row > 0) {
@@ -583,10 +574,7 @@ HashedCollectBlock::HashedCollectBlock(ExecutionEngine* engine,
 
 HashedCollectBlock::~HashedCollectBlock() {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize
-////////////////////////////////////////////////////////////////////////////////
-
 int HashedCollectBlock::initialize() {
   int res = ExecutionBlock::initialize();
 
@@ -834,10 +822,7 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief hasher for groups
-////////////////////////////////////////////////////////////////////////////////
-
 size_t HashedCollectBlock::GroupKeyHash::operator()(
     std::vector<AqlValue> const& value) const {
   uint64_t hash = 0x12345678;
@@ -853,10 +838,7 @@ size_t HashedCollectBlock::GroupKeyHash::operator()(
   return static_cast<size_t>(hash);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief comparator for groups
-////////////////////////////////////////////////////////////////////////////////
-
 bool HashedCollectBlock::GroupKeyEqual::operator()(
     std::vector<AqlValue> const& lhs, std::vector<AqlValue> const& rhs) const {
   size_t const n = lhs.size();

@@ -34,10 +34,7 @@
 
 using namespace arangodb::aql;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the v8 expression
-////////////////////////////////////////////////////////////////////////////////
-
 V8Expression::V8Expression(v8::Isolate* isolate, v8::Handle<v8::Function> func,
                            v8::Handle<v8::Object> constantValues, bool isSimple)
     : isolate(isolate),
@@ -49,19 +46,13 @@ V8Expression::V8Expression(v8::Isolate* isolate, v8::Handle<v8::Function> func,
   _constantValues.Reset(isolate, constantValues);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the v8 expression
-////////////////////////////////////////////////////////////////////////////////
-
 V8Expression::~V8Expression() {
   _constantValues.Reset();
   _func.Reset();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief execute the expression
-////////////////////////////////////////////////////////////////////////////////
-
 AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
                                arangodb::AqlTransaction* trx,
                                AqlItemBlock const* argv, size_t startPos,

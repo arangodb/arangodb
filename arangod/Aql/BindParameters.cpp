@@ -32,10 +32,7 @@
 
 using namespace arangodb::aql;
   
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a hash value for the bind parameters
-////////////////////////////////////////////////////////////////////////////////
-
 uint64_t BindParameters::hash() const {
   if (_builder == nullptr) {
     return 0xdeadbeef;
@@ -45,10 +42,7 @@ uint64_t BindParameters::hash() const {
   return _builder->slice().hash();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief process the parameters
-////////////////////////////////////////////////////////////////////////////////
-
 void BindParameters::process() {
   if (_processed || _builder == nullptr) {
     return;
@@ -84,11 +78,8 @@ void BindParameters::process() {
   _processed = true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief strip collection name prefixes from the parameters
 /// the values must be a VelocyPack array
-////////////////////////////////////////////////////////////////////////////////
-
 VPackBuilder BindParameters::StripCollectionNames(VPackSlice const& keys,
                                                   char const* collectionName) {
   TRI_ASSERT(keys.isArray());

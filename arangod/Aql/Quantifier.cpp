@@ -30,10 +30,7 @@ int64_t const Quantifier::NONE = 1;
 int64_t const Quantifier::ALL =  2;
 int64_t const Quantifier::ANY =  3;
  
-////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a quantifier string into an int equivalent
-////////////////////////////////////////////////////////////////////////////////
-
 int64_t Quantifier::FromString(std::string const& value) {
   if (value == "all") {  
     return ALL;
@@ -48,10 +45,7 @@ int64_t Quantifier::FromString(std::string const& value) {
   return NONE;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a quantifier int value into its string equivalent
-////////////////////////////////////////////////////////////////////////////////
-  
 std::string Quantifier::Stringify(int64_t value) {
   if (value == ALL) {
     return "all";
@@ -65,10 +59,7 @@ std::string Quantifier::Stringify(int64_t value) {
   return "none";
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the min/max number of matches for an array comparison
-////////////////////////////////////////////////////////////////////////////////
-
 std::pair<size_t, size_t> Quantifier::RequiredMatches(size_t inputSize, AstNode const* quantifier) {
   TRI_ASSERT(quantifier != nullptr);
 
