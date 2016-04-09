@@ -496,7 +496,7 @@ static bool ParseValue (yyscan_t scanner, TRI_json_t* result, int c) {
 /// @brief parses a json string
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_Json2String (TRI_memory_zone_t* zone, char const* text, char** error) {
+TRI_json_t* TRI_JsonString (TRI_memory_zone_t* zone, char const* text) {
   TRI_json_t* object;
   YY_BUFFER_STATE buf;
   int c;
@@ -536,27 +536,10 @@ TRI_json_t* TRI_Json2String (TRI_memory_zone_t* zone, char const* text, char** e
     }
   }
 
-  if (error != nullptr) {
-    if (yyextra._message != nullptr) {
-      *error = TRI_DuplicateString(yyextra._message);
-    }
-    else {
-      *error = nullptr;
-    }
-  }
-
   yy_delete_buffer(buf, scanner);
   yylex_destroy(scanner);
 
   return object;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parses a json string
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t* TRI_JsonString (TRI_memory_zone_t* zone, char const* text) {
-  return TRI_Json2String(zone, text, nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
