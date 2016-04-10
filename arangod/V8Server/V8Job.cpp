@@ -41,12 +41,10 @@ using namespace arangodb::rest;
 /// @brief constructs a new V8 job
 ////////////////////////////////////////////////////////////////////////////////
 
-V8Job::V8Job(TRI_vocbase_t* vocbase, ApplicationV8* v8Dealer,
-             std::string const& command,
+V8Job::V8Job(TRI_vocbase_t* vocbase, std::string const& command,
              std::shared_ptr<VPackBuilder> parameters, bool allowUseDatabase)
     : Job("V8 Job"),
       _vocbase(vocbase),
-      _v8Dealer(v8Dealer),
       _command(command),
       _parameters(parameters),
       _canceled(false),

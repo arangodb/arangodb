@@ -60,7 +60,7 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   bool addGlobalContextMethod(std::string const&);
   void collectGarbage();
 
-  void loadJavascript(TRI_vocbase_t*);
+  void loadJavascript(TRI_vocbase_t*, std::string const&);
   void startGarbageCollection();
 
   V8Context* enterContext(TRI_vocbase_t*, bool useDatabase,
@@ -80,7 +80,7 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
  private:
   V8Context* pickFreeContextForGc();
   void initializeContext(size_t);
-  void loadJavascriptFiles(TRI_vocbase_t*, size_t);
+  void loadJavascriptFiles(TRI_vocbase_t*, std::string const&, size_t);
   void shutdownV8Instance(V8Context*);
 
  private:

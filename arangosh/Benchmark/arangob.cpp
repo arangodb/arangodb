@@ -52,7 +52,7 @@ int main(int argc, char* argv[]) {
   server.addFeature(new BenchFeature(&server, &ret));
   server.addFeature(new ClientFeature(&server));
   server.addFeature(new ConfigFeature(&server, "arangob"));
-  server.addFeature(new LoggerFeature(&server));
+  server.addFeature(new LoggerFeature(&server, false));
   server.addFeature(new RandomFeature(&server));
   server.addFeature(new ShutdownFeature(&server, "Bench"));
   server.addFeature(new TempFeature(&server, "arangob"));

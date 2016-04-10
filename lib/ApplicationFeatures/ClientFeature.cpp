@@ -188,3 +188,8 @@ std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient(
 
   return std::make_unique<SimpleHttpClient>(connection, _requestTimeout, _warn);
 }
+
+std::vector<std::string> ClientFeature::httpEndpoints() {
+#warning TODO
+  return {};
+}

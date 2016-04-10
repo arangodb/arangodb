@@ -23,6 +23,7 @@
 
 #include "EndpointFeature.h"
 
+#include "ApplicationFeatures/SslFeature.h"
 #include "Dispatcher/DispatcherFeature.h"
 #include "HttpServer/HttpServer.h"
 #include "HttpServer/HttpsServer.h"

@@ -57,7 +57,7 @@ int main(int argc, char* argv[]) {
   server.addFeature(new ConfigFeature(&server, name));
   server.addFeature(new ConsoleFeature(&server));
   server.addFeature(new LanguageFeature(&server));
-  server.addFeature(new LoggerFeature(&server));
+  server.addFeature(new LoggerFeature(&server, false));
   server.addFeature(new RandomFeature(&server));
   server.addFeature(new ShellFeature(&server, &ret));
   server.addFeature(new ShutdownFeature(&server, "Shell"));

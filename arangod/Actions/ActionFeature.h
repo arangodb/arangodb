@@ -34,10 +34,15 @@ class ActionFeature final : public application_features::ApplicationFeature {
   explicit ActionFeature(application_features::ApplicationServer* server);
 
  public:
-  bool allowUseDatabase() { return _allowUseAction; }
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void start() override;
+  void stop() override;
+
+ public:
+  bool allowUseDatabase() { return _allowUseDatabase; }
 
  private:
-  bool _allowUseAction;
+  bool _allowUseDatabase;
 };
 }
 

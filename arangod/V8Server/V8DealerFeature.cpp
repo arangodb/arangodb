@@ -29,6 +29,7 @@
 #include "Basics/RandomGenerator.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WorkMonitor.h"
+#include "Dispatcher/DispatcherFeature.h"
 #include "Dispatcher/DispatcherThread.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -171,6 +172,22 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (_gcFrequency < 1) {
     _gcFrequency = 1;
   }
+}
+
+void V8DealerFeature::start() {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
+
+  DEALER = this;
+
+  // try to guess a suitable number of contexts
+  if (0 == _nrContexts && 0 == _forceNrContexts) {
+    DispatcherFeature* dispatcher = dynamic_cast<DispatcherFeature*>(
+        ApplicationServer::lookupFeature("Dispatcher"));
+
+    if (dispatcher != nullptr) {
+      _nrContexts = dispatcher->concurrency();
+    }
+  }
 
   // set a minimum of V8 contexts
   if (_nrContexts < _minimumContexts) {
@@ -179,16 +196,9 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   if (0 < _forceNrContexts) {
     _nrContexts = _forceNrContexts;
-  }
-  else if (0 < _nrAdditionalContexts) {
+  } else if (0 < _nrAdditionalContexts) {
     _nrContexts += _nrAdditionalContexts;
   }
-}
-
-void V8DealerFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
-  DEALER = this;
 
   // setup instances
   {
@@ -209,7 +219,7 @@ void V8DealerFeature::start() {
   DatabaseFeature* database = dynamic_cast<DatabaseFeature*>(
       ApplicationServer::lookupFeature("Database"));
 
-  loadJavascript(database->vocbase());
+  loadJavascript(database->vocbase(), "server/initialize.js");
 }
 
 void V8DealerFeature::stop() {
@@ -372,20 +382,21 @@ void V8DealerFeature::collectGarbage() {
   _gcFinished = true;
 }
 
-void V8DealerFeature::loadJavascript(TRI_vocbase_t* vocbase) {
+void V8DealerFeature::loadJavascript(TRI_vocbase_t* vocbase,
+                                     std::string const& file) {
   if (1 < _nrContexts) {
     std::vector<std::thread> threads;
 
     for (size_t i = 0; i < _nrContexts; ++i) {
-      threads.push_back(
-          std::thread(&V8DealerFeature::loadJavascriptFiles, this, vocbase, i));
+      threads.push_back(std::thread(&V8DealerFeature::loadJavascriptFiles, this,
+                                    vocbase, file, i));
     }
 
     for (size_t i = 0; i < _nrContexts; ++i) {
       threads[i].join();
     }
   } else {
-    loadJavascriptFiles(vocbase, 0);
+    loadJavascriptFiles(vocbase, file, 0);
   }
 }
 
@@ -402,7 +413,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
                                          ssize_t forceContext) {
   V8Context* context = nullptr;
 
-  // this is for TESTING / DEBUGGING only
+  // this is for TESTING / DEBUGGING / INIT only
   if (forceContext != -1) {
     size_t id = (size_t)forceContext;
 
@@ -658,7 +669,7 @@ void V8DealerFeature::applyContextUpdates() {
   for (size_t i = 0; i < _nrContexts; ++i) {
     for (auto& p : _contextUpdates) {
       V8Context* context =
-          V8DealerFeature::DEALER->enterContext(p.second, true, 0);
+          V8DealerFeature::DEALER->enterContext(p.second, true, i);
       v8::HandleScope scope(context->_isolate);
       auto localContext =
           v8::Local<v8::Context>::New(context->_isolate, context->_context);
@@ -932,7 +943,8 @@ void V8DealerFeature::initializeContext(size_t i) {
   _freeContexts.emplace_back(context);
 }
 
-void V8DealerFeature::loadJavascriptFiles(TRI_vocbase_t* vocbase, size_t i) {
+void V8DealerFeature::loadJavascriptFiles(TRI_vocbase_t* vocbase,
+                                          std::string const& file, size_t i) {
   V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase, true, i);
   v8::HandleScope scope(context->_isolate);
   auto localContext =
@@ -942,26 +954,19 @@ void V8DealerFeature::loadJavascriptFiles(TRI_vocbase_t* vocbase, size_t i) {
   {
     v8::Context::Scope contextScope(localContext);
 
-    // load all init files
-    std::vector<std::string> files;
-    files.push_back("server/initialize.js");
-
-    for (auto& file : files) {
-      switch (
-          _startupLoader.loadScript(context->_isolate, localContext, file)) {
-        case JSLoader::eSuccess:
-          LOG(TRACE) << "loaded JavaScript file '" << file << "'";
-          break;
-        case JSLoader::eFailLoad:
-          LOG(FATAL) << "cannot load JavaScript file '" << file << "'";
-          FATAL_ERROR_EXIT();
-          break;
-        case JSLoader::eFailExecute:
-          LOG(FATAL) << "error during execution of JavaScript file '" << file
-                     << "'";
-          FATAL_ERROR_EXIT();
-          break;
-      }
+    switch (_startupLoader.loadScript(context->_isolate, localContext, file)) {
+      case JSLoader::eSuccess:
+        LOG(TRACE) << "loaded JavaScript file '" << file << "'";
+        break;
+      case JSLoader::eFailLoad:
+        LOG(FATAL) << "cannot load JavaScript file '" << file << "'";
+        FATAL_ERROR_EXIT();
+        break;
+      case JSLoader::eFailExecute:
+        LOG(FATAL) << "error during execution of JavaScript file '" << file
+                   << "'";
+        FATAL_ERROR_EXIT();
+        break;
     }
   }
 

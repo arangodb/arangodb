@@ -72,6 +72,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   bool _defaultWaitForSync;
   bool _forceSyncProperties;
   bool _ignoreDatafileErrors;
+  bool _throwCollectionNotLoadedError;
 
  private:
   void openDatabases();

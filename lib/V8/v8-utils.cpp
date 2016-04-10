@@ -31,6 +31,9 @@
 #include <fstream>
 #include <iostream>
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Nonce.h"
@@ -52,12 +55,14 @@
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
+#include "V8/v8-vpack.h"
 
 #include "unicode/normalizer2.h"
 
 #include "3rdParty/valgrind/valgrind.h"
 
 using namespace arangodb;
+using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::rest;
@@ -297,21 +302,10 @@ static void JS_Options(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("options()");
   }
 
-#warning TODO
-  #if 0
-  auto json = arangodb::basics::ProgramOptions::getJson();
+  VPackBuilder builder = ApplicationServer::server->options({"server.password"});
+  auto result = TRI_VPackToV8(isolate, builder.slice());
 
-  if (json != nullptr) {
-    auto result = TRI_ObjectJson(isolate, json);
-
-    // remove this variable
-    result->ToObject()->Delete(TRI_V8_STRING("server.password"));
-
-    TRI_V8_RETURN(result);
-  }
-#endif
-
-  TRI_V8_RETURN(v8::Object::New(isolate));
+  TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -553,56 +547,45 @@ static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string url = TRI_ObjectToString(args[0]);
 
   if (!url.empty() && url[0] == '/') {
-    // a relative url. now make this an absolute URL if possible
-#warning TODO
-#if 0
-    auto json = arangodb::basics::ProgramOptions::getJson();
+    std::vector<std::string> endpoints;
 
-    if (json != nullptr) {
-      // check if there are endpoints defined in the server options
-      auto eps = TRI_LookupObjectJson(json, "server.endpoint");
+    // check if we are a server
+    HttpEndpointProvider* server = dynamic_cast<HttpEndpointProvider*>(
+        ApplicationServer::lookupFeature("Server"));
 
-      // endpoints should be an array
-      if (TRI_IsArrayJson(eps)) {
-        // it is. now iterate over the list and pick the first one
-        for (size_t i = 0; i < TRI_LengthArrayJson(eps); ++i) {
-          auto ep = static_cast<TRI_json_t const*>(
-              TRI_AtVector(&eps->_value._objects, i));
+    if (server != nullptr) {
+      endpoints = server->httpEndpoints();
+    } else {
+      HttpEndpointProvider* client = dynamic_cast<HttpEndpointProvider*>(
+          ApplicationServer::lookupFeature("Client"));
 
-          if (TRI_IsStringJson(ep)) {
-            // prepend host and port to relative URL
-            url = std::string(ep->_value._string.data,
-                              ep->_value._string.length - 1) +
-                  url;
-
-            // ipv4: replace 0.0.0.0 with 127.0.0.1
-            auto pos = url.find("0.0.0.0");
-            if (pos != std::string::npos) {
-              url.replace(pos, strlen("0.0.0.0"), "127.0.0.1");
-            }
-            // ipv6: replace [::] with [::1]
-            pos = url.find("[::]");
-            if (pos != std::string::npos) {
-              url.replace(pos, strlen("[::]"), "[::1]");
-            }
-
-            if (url.substr(0, 4) == "tcp:") {
-              url = "http:" + url.substr(4);
-            } else if (url.substr(0, 4) == "ssl:") {
-              url = "https:" + url.substr(4);
-            }
-            // note: there can be endpoints not starting with tcp:// or ssl://,
-            // e.g. unix://...
-            // for these endpoints, the generated URL will be invalid, and this
-            // will trigger an
-            // "unsupport URL error" below
-
-            break;
-          }
-        }
+      if (client != nullptr) {
+        endpoints = server->httpEndpoints();
       }
     }
-#endif
+
+    // a relative url. now make this an absolute URL if possible
+    for (auto const& endpoint : endpoints) {
+      std::string fullurl = endpoint + url;
+
+      // ipv4: replace 0.0.0.0 with 127.0.0.1
+      auto pos = fullurl.find("0.0.0.0");
+
+      if (pos != std::string::npos) {
+        fullurl.replace(pos, strlen("0.0.0.0"), "127.0.0.1");
+      }
+
+      // ipv6: replace [::] with [::1]
+      else {
+        pos = fullurl.find("[::]");
+
+        if (pos != std::string::npos) {
+          fullurl.replace(pos, strlen("[::]"), "[::1]");
+        }
+      }
+
+      break;
+    }
   }
 
   std::string lastEndpoint = GetEndpointFromUrl(url);

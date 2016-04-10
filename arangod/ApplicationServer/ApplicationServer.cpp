@@ -1,3 +1,31 @@
+namespace arangodb {
+extern ConfigFeature CONFIG_FEATURE;
+extern LoggerFeature LOGGER_FEATURE;
+extern SslFeature SSL_FEATURE;
+
+#if 0
+  options["Hidden Options"]
+#ifdef ARANGODB_HAVE_SETUID
+    ("uid", &_uid, "switch to user-id after reading config files")
+#endif
+#ifdef ARANGODB_HAVE_SETGID
+    ("gid", &_gid, "switch to group-id after reading config files")
+#endif
+  ;
+
+#if defined(ARANGODB_HAVE_SETUID) || defined(ARANGODB_HAVE_SETGID)
+
+  options["General Options:help-admin"]
+#ifdef ARANGODB_HAVE_GETPPID
+      ("exit-on-parent-death", &_exitOnParentDeath, "exit if parent dies")
+#endif
+          ("watch-process", &_watchParent,
+           "exit if process with given PID dies");
+
+#endif
+
+#endif
+
 #warning TODO
 #if 0
   // .............................................................................

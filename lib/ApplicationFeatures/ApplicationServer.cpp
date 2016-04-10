@@ -189,6 +189,10 @@ void ApplicationServer::beginShutdown() {
   // to run method
 }
 
+VPackBuilder ApplicationServer::options(std::unordered_set<std::string> const& excludes) const {
+  return _options->toVPack(false, excludes);
+}
+
 // fail and abort with the specified message
 void ApplicationServer::fail(std::string const& message) {
   LOG(FATAL) << "error. cannot proceed. reason: " << message;
@@ -239,7 +243,7 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
 
   if (_dumpDependencies) {
     std::cout << "digraph dependencies\n"
-              << "{\n";
+              << "{\n" << "  overlap = false;\n";
     for (auto feature : _features) {
       for (auto before : feature.second->startsAfter()) {
         std::cout << "  " << feature.first << " -> " << before << ";\n";

@@ -24,6 +24,7 @@
 #define REST_SERVER_SERVER_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationFeatures/HttpEndpointProvider.h"
 
 #include "Actions/RestActionHandler.h"
 #include "Rest/OperationMode.h"
@@ -36,7 +37,8 @@ class AsyncJobManager;
 
 class ConsoleThread;
 
-class ServerFeature final : public application_features::ApplicationFeature {
+class ServerFeature final : public application_features::ApplicationFeature,
+                            public HttpEndpointProvider {
  public:
   ServerFeature(application_features::ApplicationServer* server,
                 std::string const&, int*);
@@ -54,6 +56,7 @@ class ServerFeature final : public application_features::ApplicationFeature {
     return _handlerFactory.get();
   }
   rest::AsyncJobManager* jobManager() { return _jobManager; }
+  std::vector<std::string> httpEndpoints() override;
 
  private:
   int32_t _defaultApiCompatibility;
@@ -61,12 +64,15 @@ class ServerFeature final : public application_features::ApplicationFeature {
   bool _console;
   bool _restServer;
   bool _authentication;
-  std::vector<std::string> _unittests;
+  std::vector<std::string> _unitTests;
   std::vector<std::string> _scripts;
+  std::vector<std::string> _scriptParameters;
 
  private:
   void startConsole();
   void stopConsole();
+  int runUnitTests();
+  int runScript();
   void buildHandlerFactory();
   void defineHandlers();
 

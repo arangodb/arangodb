@@ -90,8 +90,8 @@ int main(int argc, char* argv[]) {
   application_features::ApplicationServer server(options);
 
   std::vector<std::string> nonServerFeatures = {
-      "Daemon",    "Dispatcher", "Endpoint",  "Server",
-      "Scheduler", "Ssl",        "Supervisor"};
+      "Action", "Daemon",    "Dispatcher", "Endpoint",
+      "Server", "Scheduler", "Ssl",        "Supervisor"};
 
   int ret = EXIT_FAILURE;
 
@@ -101,6 +101,7 @@ int main(int argc, char* argv[]) {
   server.addFeature(new DispatcherFeature(&server));
   server.addFeature(new EndpointFeature(&server));
   server.addFeature(new LanguageFeature(&server));
+  server.addFeature(new LoggerFeature(&server, true));
   server.addFeature(new RandomFeature(&server));
   server.addFeature(new SchedulerFeature(&server));
   server.addFeature(new ServerFeature(&server, "arangod", &ret));
@@ -111,11 +112,6 @@ int main(int argc, char* argv[]) {
   server.addFeature(new V8DealerFeature(&server));
   server.addFeature(new V8PlatformFeature(&server));
   server.addFeature(new WorkMonitorFeature(&server));
-
-  std::unique_ptr<LoggerFeature> logger =
-      std::make_unique<LoggerFeature>(&server);
-  logger->setThreaded(true);
-  server.addFeature(logger.release());
 
 #ifdef ARANGODB_HAVE_FORK
   server.addFeature(new DaemonFeature(&server));

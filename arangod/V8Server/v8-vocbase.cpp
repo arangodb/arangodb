@@ -3513,7 +3513,7 @@ static void JS_ListEndpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-#warning TODO
+#warning TODO JS_ListEndpoints
 #if 0
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("db._listEndpoints()");

@@ -1223,8 +1223,7 @@ static void JS_AccessSid(v8::FunctionCallbackInfo<v8::Value> const& args) {
 /// @brief stores the V8 actions function inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Actions(v8::Isolate* isolate, v8::Handle<v8::Context> context,
-                       TRI_vocbase_t* vocbase) {
+void TRI_InitV8Actions(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   v8::HandleScope scope(isolate);
 
   // .............................................................................

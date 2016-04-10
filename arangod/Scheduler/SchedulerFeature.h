@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "ApplicationServer/ApplicationFeature.h"
 
 namespace arangodb {
 namespace rest {

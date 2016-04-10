@@ -24,7 +24,9 @@
 #include "V8TimerTask.h"
 #include "Basics/json.h"
 #include "Dispatcher/Dispatcher.h"
+#include "Dispatcher/DispatcherFeature.h"
 #include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "V8/v8-conv.h"
 #include "V8Server/V8Job.h"
 #include "VocBase/server.h"
@@ -36,9 +38,8 @@ using namespace arangodb;
 using namespace arangodb::rest;
 
 V8TimerTask::V8TimerTask(std::string const& id, std::string const& name,
-                         TRI_vocbase_t* vocbase, ApplicationV8* v8Dealer,
-                         Scheduler* scheduler, Dispatcher* dispatcher,
-                         double offset, std::string const& command,
+                         TRI_vocbase_t* vocbase, double offset,
+                         std::string const& command,
                          std::shared_ptr<VPackBuilder> parameters,
                          bool allowUseDatabase)
     : Task(id, name),
@@ -48,8 +49,6 @@ V8TimerTask::V8TimerTask(std::string const& id, std::string const& name,
                                                           // otherwise
       // the timertask will not execute the task at all
       _vocbase(vocbase),
-      _v8Dealer(v8Dealer),
-      _dispatcher(dispatcher),
       _command(command),
       _parameters(parameters),
       _created(TRI_microtime()),
@@ -81,14 +80,14 @@ void V8TimerTask::getDescription(VPackBuilder& builder) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool V8TimerTask::handleTimeout() {
-  std::unique_ptr<Job> job(new V8Job(
-      _vocbase, _v8Dealer, "(function (params) { " + _command + " } )(params);",
-      _parameters, _allowUseDatabase));
+  std::unique_ptr<Job> job(
+      new V8Job(_vocbase, "(function (params) { " + _command + " } )(params);",
+                _parameters, _allowUseDatabase));
 
-  _dispatcher->addJob(job);
+  DispatcherFeature::DISPATCHER->addJob(job);
 
   // note: this will destroy the task (i.e. ourselves!!)
-  _scheduler->destroyTask(this);
+  SchedulerFeature::SCHEDULER->destroyTask(this);
 
   return true;
 }

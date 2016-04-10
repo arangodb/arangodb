@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,16 +20,16 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_V8_SERVER_V8_ACTIONS_H
-#define ARANGOD_V8_SERVER_V8_ACTIONS_H 1
+#ifndef APPLICATION_FEATURES_HTTP_ENDPOINT_PROVIDER_H
+#define APPLICATION_FEATURES_HTTP_ENDPOINT_PROVIDER_H 1
 
 #include "Basics/Common.h"
 
-#include <v8.h>
+namespace arangodb {
+class HttpEndpointProvider {
+ public:
+  virtual std::vector<std::string> httpEndpoints() = 0;
+};
+}
 
-void TRI_InitV8Actions(v8::Isolate* isolate, v8::Handle<v8::Context> context);
-
-void TRI_InitV8DebugUtils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
-                          std::string const& startupPath,
-                          std::string const& modules);
 #endif

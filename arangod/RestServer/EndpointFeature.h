@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "ApplicationServer/ApplicationFeature.h"
 #include "Endpoint/EndpointList.h"
 
 namespace arangodb {

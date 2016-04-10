@@ -56,6 +56,7 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
       _defaultWaitForSync(false),
       _forceSyncProperties(true),
       _ignoreDatafileErrors(false),
+      _throwCollectionNotLoadedError(false),
       _vocbase(nullptr),
       _server(nullptr),
       _isInitiallyEmpty(false),
@@ -101,26 +102,20 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "threads to start for parallel background index creation",
       new UInt64Parameter(&_indexThreads));
 
-#warning TODO
-#if 0
-  (
-      _ignoreDatafileErrors(false),
-      "database.ignore-datafile-errors", &_ignoreDatafileErrors,
-      "load collections even if datafiles may contain errors")
+  options->addHiddenOption(
+      "--database.ignore-datafile-errors",
+      "load collections even if datafiles may contain errors",
+      new BooleanParameter(&_ignoreDatafileErrors));
 
-  IGNORE_DATAFILE_ERRORS = _ignoreDatafileErrors;
+  options->addHiddenOption(
+      "--database.throw-collection-not-loaded-error",
+      "throw an error when accessing a collection that is still loading",
+      new BooleanParameter(&_throwCollectionNotLoadedError));
 
-      _throwCollectionNotLoadedError(false),
-  (
-      "database.throw-collection-not-loaded-error",
-      &_throwCollectionNotLoadedError,
-      "throw an error when accessing a collection that is still loading");
-
-    ("server.disable-replication-applier", &_disableReplicationApplier,
-           "start with replication applier turned off")
-
-  TRI_SetThrowCollectionNotLoadedVocBase(_throwCollectionNotLoadedError);
-#endif
+  options->addHiddenOption(
+      "--database.replication-applier",
+      "switch to enable or disable the replication applier",
+      new BooleanParameter(&_replicationApplier));
 
   options->addSection("query", "Configure queries");
 
@@ -182,22 +177,6 @@ void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
                << TRI_JOURNAL_MINIMAL_SIZE;
     FATAL_ERROR_EXIT();
   }
-
-#warning TODO
-#if 0
-  if (_checkVersion && _upgrade) {
-    LOG(ERR) << "cannot specify both '--database.check-version' and "
-                "'--database.upgrade'";
-    abortInvalidParameters();
-  }
-#endif
-
-#warning TODO
-#if 0
-  if (_checkVersion || _upgrade) {
-    _replicationApplier = false;
-  }
-#endif
 }
 
 void DatabaseFeature::start() {
@@ -205,8 +184,18 @@ void DatabaseFeature::start() {
 
   LOG(INFO) << "" << rest::Version::getVerboseVersionString();
 
+  // sanity check
+  if (_checkVersion && _upgrade) {
+    LOG(FATAL) << "cannot specify both '--database.check-version' and "
+                "'--database.upgrade'";
+    FATAL_ERROR_EXIT();
+  }
+
   // set singleton
   DATABASE = this;
+
+  // set throw collection not loaded behavior
+  TRI_SetThrowCollectionNotLoadedVocBase(_throwCollectionNotLoadedError);
 
   // create the server
   TRI_InitServerGlobals();
@@ -333,7 +322,7 @@ void DatabaseFeature::openDatabases() {
     _indexPool.reset(new ThreadPool(_indexThreads, "IndexBuilder"));
   }
 
-#warning appPathm
+#warning appPath
 
   bool const iterateMarkersOnOpen =
       !wal::LogfileManager::instance()->hasFoundLastTick();

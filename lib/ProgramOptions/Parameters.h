@@ -351,6 +351,7 @@ struct VectorParameter : public Parameter {
     for (size_t i = 0; i < ptr->size(); ++i) {
       builder.add(VPackValue(ptr->at(i)));
     }
+    builder.close();
   }
 
   std::vector<typename T::ValueType>* ptr;

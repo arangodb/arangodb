@@ -27,8 +27,11 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "V8Server/V8DealerFeature.h"
+#include "V8Server/v8-dispatcher.h"
 
 using namespace arangodb;
+using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 using namespace arangodb::rest;
@@ -97,26 +100,16 @@ void DispatcherFeature::start() {
     buildAqlQueue();
   }
 
-#warning TODO
-#if 0
-  // initialize V8
-  if (!_applicationServer->programOptions().has("javascript.v8-contexts")) {
-    // the option was added recently so it's not always set
-    // the behavior in older ArangoDB was to create one V8 context per
-    // dispatcher thread
-    _v8Contexts = _dispatcherThreads;
-  }
-#endif
+  V8DealerFeature* dealer = dynamic_cast<V8DealerFeature*>(
+      ApplicationServer::lookupFeature("V8Dealer"));
 
-#warning TODO
-#if 0
-      if (_dispatcher->dispatcher() != nullptr) {
-        // don't initialize dispatcher if there is no scheduler (server started
-        // with --no-server option)
-        TRI_InitV8Dispatcher(isolate, localContext, _vocbase, _scheduler,
-                             _dispatcher, this);
-      }
-#endif
+  if (dealer != nullptr) {
+    dealer->defineContextUpdate(
+        [](v8::Isolate* isolate, v8::Handle<v8::Context> context, size_t) {
+          TRI_InitV8Dispatcher(isolate, context);
+        },
+        nullptr);
+  }
 }
 
 void DispatcherFeature::stop() {

@@ -232,6 +232,7 @@ class ProgramOptions {
 
       // add key
       builder.add(VPackValue(full));
+
       // add value
       option.toVPack(builder);
     }, onlyTouched);

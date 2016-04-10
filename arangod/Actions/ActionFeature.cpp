@@ -22,28 +22,51 @@
 
 #include "ActionFeature.h"
 
+#include "ProgramOptions/ProgramOptions.h"
+#include "ProgramOptions/Section.h"
+#include "V8Server/V8DealerFeature.h"
+#include "V8Server/v8-actions.h"
+
 using namespace arangodb;
+using namespace arangodb::application_features;
+using namespace arangodb::options;
 
 ActionFeature* ActionFeature::ACTION = nullptr;
 
+ActionFeature::ActionFeature(application_features::ApplicationServer* server)
+    : ApplicationFeature(server, "Action") {}
 
-#warning TODO
-#if 0
-      if (_useActions) {
-        TRI_InitV8Actions(isolate, localContext, _vocbase, this);
-      }
+void ActionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
 
-bool ALLOW_USE_DATABASE_IN_REST_ACTIONS;
+  options->addSection("server", "Server features");
 
+  options->addHiddenOption(
+      "--server.allow-use-database",
+      "allow change of database in REST actions, only needed for "
+      "unittests",
+      new BooleanParameter(&_allowUseDatabase));
+}
 
-(
-              "server.allow-use-database", &ALLOW_USE_DATABASE_IN_REST_ACTIONS,
-              "allow change of database in REST actions, only needed for "
-              "unittests")
+void ActionFeature::start() {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
 
+  ACTION = this;
 
-#endif
+  V8DealerFeature* dealer = dynamic_cast<V8DealerFeature*>(
+      ApplicationServer::lookupFeature("V8Dealer"));
 
+  if (dealer != nullptr) {
+    dealer->defineContextUpdate(
+        [](v8::Isolate* isolate, v8::Handle<v8::Context> context, size_t) {
+          TRI_InitV8Actions(isolate, context);
+        },
+        nullptr);
+  }
+}
 
+void ActionFeature::stop() {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
 
-
+  ACTION = this;
+}

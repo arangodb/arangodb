@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "ApplicationServer/ApplicationFeature.h"
 
 namespace arangodb {
 namespace rest {
@@ -52,6 +51,7 @@ class DispatcherFeature final
   void buildStandardQueue(size_t nrThreads, size_t maxSize);
   void buildAQLQueue(size_t nrThreads, size_t maxSize);
   void setProcessorAffinity(std::vector<size_t> const& cores);
+  size_t concurrency() const { return static_cast<size_t>(_nrStandardThreads); }
 
  private:
   void buildDispatcher();

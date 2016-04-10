@@ -25,6 +25,9 @@
 
 #include "Basics/Common.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 namespace arangodb {
 namespace options {
 class ProgramOptions;
@@ -129,6 +132,9 @@ class ApplicationServer {
 
   // signal the server to shut down
   void beginShutdown();
+
+  // return VPack options
+  VPackBuilder options(std::unordered_set<std::string> const& excludes) const;
 
  private:
   // fail and abort with the specified message

@@ -1,5 +1,3 @@
-bool IGNORE_DATAFILE_ERRORS;
-
 ArangoServer::ArangoServer(int argc, char** argv)
     : _mode(ServerMode::MODE_STANDALONE),
 #warning TODO
@@ -111,21 +109,6 @@ int ArangoServer::startupServer() {
 
   int res;
 
-  if (mode == OperationMode::MODE_CONSOLE) {
-    res = runConsole(vocbase);
-  } else if (mode == OperationMode::MODE_UNITTESTS) {
-    res = runUnitTests(vocbase);
-  } else if (mode == OperationMode::MODE_SCRIPT) {
-    res = runScript(vocbase);
-  } else {
-    res = runServer(vocbase);
-  }
-
-
-  _applicationServer->stop();
-
-
-  return res;
 #endif
 }
 
@@ -152,6 +135,7 @@ void ArangoServer::waitForHeartbeat() {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief runs the server
 ////////////////////////////////////////////////////////////////////////////////
+
 int ArangoServer::runServer(TRI_vocbase_t* vocbase) {
 #warning TODO
 #if 0
@@ -168,161 +152,3 @@ int ArangoServer::runServer(TRI_vocbase_t* vocbase) {
 #endif
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the JavaScript emergency console
-////////////////////////////////////////////////////////////////////////////////
-
-int ArangoServer::runConsole(TRI_vocbase_t* vocbase) {
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief runs unit tests
-////////////////////////////////////////////////////////////////////////////////
-
-int ArangoServer::runUnitTests(TRI_vocbase_t* vocbase) {
-#warning TODO
-#if 0
-  ApplicationV8::V8Context* context =
-      _applicationV8->enterContext(vocbase, true);
-
-  auto isolate = context->isolate;
-
-  bool ok = false;
-  {
-    v8::HandleScope scope(isolate);
-    v8::TryCatch tryCatch;
-
-    auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
-    localContext->Enter();
-    {
-      v8::Context::Scope contextScope(localContext);
-      // set-up unit tests array
-      v8::Handle<v8::Array> sysTestFiles = v8::Array::New(isolate);
-
-      for (size_t i = 0; i < _unitTests.size(); ++i) {
-        sysTestFiles->Set((uint32_t)i, TRI_V8_STD_STRING(_unitTests[i]));
-      }
-
-      localContext->Global()->Set(TRI_V8_ASCII_STRING("SYS_UNIT_TESTS"),
-                                  sysTestFiles);
-      localContext->Global()->Set(TRI_V8_ASCII_STRING("SYS_UNIT_TESTS_RESULT"),
-                                  v8::True(isolate));
-
-      v8::Local<v8::String> name(
-          TRI_V8_ASCII_STRING(TRI_V8_SHELL_COMMAND_NAME));
-
-      // run tests
-      auto input = TRI_V8_ASCII_STRING(
-          "require(\"@arangodb/testrunner\").runCommandLineTests();");
-      TRI_ExecuteJavaScriptString(isolate, localContext, input, name, true);
-
-      if (tryCatch.HasCaught()) {
-        if (tryCatch.CanContinue()) {
-          std::cerr << TRI_StringifyV8Exception(isolate, &tryCatch);
-        } else {
-          // will stop, so need for v8g->_canceled = true;
-          TRI_ASSERT(!ok);
-        }
-      } else {
-        ok = TRI_ObjectToBoolean(localContext->Global()->Get(
-            TRI_V8_ASCII_STRING("SYS_UNIT_TESTS_RESULT")));
-      }
-    }
-    localContext->Exit();
-  }
-
-  _applicationV8->exitContext(context);
-
-  return ok ? EXIT_SUCCESS : EXIT_FAILURE;
-#endif
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief runs a script
-////////////////////////////////////////////////////////////////////////////////
-
-int ArangoServer::runScript(TRI_vocbase_t* vocbase) {
-#warning TODO
-#if 0
-  bool ok = false;
-  ApplicationV8::V8Context* context =
-      _applicationV8->enterContext(vocbase, true);
-  auto isolate = context->isolate;
-
-  {
-    v8::HandleScope globalScope(isolate);
-
-    auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
-    localContext->Enter();
-    {
-      v8::Context::Scope contextScope(localContext);
-      for (size_t i = 0; i < _scriptFile.size(); ++i) {
-        bool r = TRI_ExecuteGlobalJavaScriptFile(isolate,
-                                                 _scriptFile[i].c_str(), true);
-
-        if (!r) {
-          LOG(FATAL) << "cannot load script '" << _scriptFile[i]
-                     << "', giving up";
-          FATAL_ERROR_EXIT();
-        }
-      }
-
-      v8::TryCatch tryCatch;
-      // run the garbage collection for at most 30 seconds
-      TRI_RunGarbageCollectionV8(isolate, 30.0);
-
-      // parameter array
-      v8::Handle<v8::Array> params = v8::Array::New(isolate);
-
-      params->Set(0, TRI_V8_STD_STRING(_scriptFile[_scriptFile.size() - 1]));
-
-      for (size_t i = 0; i < _scriptParameters.size(); ++i) {
-        params->Set((uint32_t)(i + 1), TRI_V8_STD_STRING(_scriptParameters[i]));
-      }
-
-      // call main
-      v8::Handle<v8::String> mainFuncName = TRI_V8_ASCII_STRING("main");
-      v8::Handle<v8::Function> main = v8::Handle<v8::Function>::Cast(
-          localContext->Global()->Get(mainFuncName));
-
-      if (main.IsEmpty() || main->IsUndefined()) {
-        LOG(FATAL) << "no main function defined, giving up";
-        FATAL_ERROR_EXIT();
-      } else {
-        v8::Handle<v8::Value> args[] = {params};
-
-        try {
-          v8::Handle<v8::Value> result = main->Call(main, 1, args);
-
-          if (tryCatch.HasCaught()) {
-            if (tryCatch.CanContinue()) {
-              TRI_LogV8Exception(isolate, &tryCatch);
-            } else {
-              // will stop, so need for v8g->_canceled = true;
-              TRI_ASSERT(!ok);
-            }
-          } else {
-            ok = TRI_ObjectToDouble(result) == 0;
-          }
-        } catch (arangodb::basics::Exception const& ex) {
-          LOG(ERR) << "caught exception " << TRI_errno_string(ex.code()) << ": "
-                   << ex.what();
-          ok = false;
-        } catch (std::bad_alloc const&) {
-          LOG(ERR) << "caught exception "
-                   << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
-          ok = false;
-        } catch (...) {
-          LOG(ERR) << "caught unknown exception";
-          ok = false;
-        }
-      }
-    }
-
-    localContext->Exit();
-  }
-
-  _applicationV8->exitContext(context);
-  return ok ? EXIT_SUCCESS : EXIT_FAILURE;
-#endif
-}

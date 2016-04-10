@@ -28,7 +28,7 @@
 namespace arangodb {
 class LoggerFeature final : public application_features::ApplicationFeature {
  public:
-  explicit LoggerFeature(application_features::ApplicationServer* server);
+  explicit LoggerFeature(application_features::ApplicationServer* server, bool threaded);
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
@@ -40,7 +40,7 @@ class LoggerFeature final : public application_features::ApplicationFeature {
 
  public:
   void setBackgrounded(bool backgrounded) { _backgrounded = backgrounded; }
-  void setThreaded(bool threaded) { _threaded = threaded; }
+  void disableThreaded() { _threaded = false; }
   void setSupervisor(bool supervisor) { _supervisor = supervisor; }
 
  private:

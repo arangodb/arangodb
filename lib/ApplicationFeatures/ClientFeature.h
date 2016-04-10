@@ -24,6 +24,7 @@
 #define APPLICATION_FEATURES_CLIENT_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationFeatures/HttpEndpointProvider.h"
 
 namespace arangodb {
 class Endpoint;
@@ -33,7 +34,8 @@ class GeneralClientConnection;
 class SimpleHttpClient;
 }
 
-class ClientFeature final : public application_features::ApplicationFeature {
+class ClientFeature final : public application_features::ApplicationFeature,
+                            public HttpEndpointProvider {
  public:
   constexpr static double const DEFAULT_REQUEST_TIMEOUT = 1200.0;
   constexpr static double const DEFAULT_CONNECTION_TIMEOUT = 5.0;
@@ -70,6 +72,7 @@ class ClientFeature final : public application_features::ApplicationFeature {
   std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient();
   std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient(
       std::string const& definition);
+  std::vector<std::string> httpEndpoints() override;
 
   void setDatabaseName(std::string const& databaseName) {
     _databaseName = databaseName;

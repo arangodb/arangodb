@@ -126,7 +126,7 @@ void SupervisorFeature::daemonize() {
 
                       if (logger != nullptr) {
                         logger->setSupervisor(true);
-                        logger->setThreaded(false);
+                        logger->disableThreaded();
                       }
                     });
 

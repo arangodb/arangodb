@@ -71,7 +71,7 @@ void CheckVersionFeature::validateOptions(
 
   LoggerFeature* logger =
       dynamic_cast<LoggerFeature*>(ApplicationServer::lookupFeature("Logger"));
-  logger->setThreaded(false);
+  logger->disableThreaded();
 
   DatabaseFeature* database = dynamic_cast<DatabaseFeature*>(
       ApplicationServer::lookupFeature("Database"));
