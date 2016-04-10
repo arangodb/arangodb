@@ -120,6 +120,84 @@ static void mergeResults(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief merge the baby-object results. (all shards version)
+///        results contians the result from all shards in any order.
+///        resultBody will be cleared and contains the merged result after this function
+///        errorCounter will correctly compute the NOT_FOUND counter, all other
+///        codes remain unmodified.
+///        
+///        The merge is executed the following way:
+///        FOR every expected document we scan iterate over the corresponding response
+///        of each shard. If any of them returned sth. different than NOT_FOUND
+///        we take this result as correct.
+///        If none returned sth different than NOT_FOUND we return NOT_FOUND as well
+////////////////////////////////////////////////////////////////////////////////
+
+static void mergeResultsAllShards(
+    std::vector<std::shared_ptr<VPackBuilder>> const& results,
+    std::shared_ptr<VPackBuilder>& resultBody,
+    std::unordered_map<int, size_t>& errorCounter,
+    VPackValueLength const expectedResults) {
+  // errorCounter is not allowed to contain any NOT_FOUND entry.
+  TRI_ASSERT(errorCounter.find(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) == errorCounter.end());
+  size_t realNotFound = 0;
+  VPackBuilder cmp;
+  cmp.openObject();
+  cmp.add("error", VPackValue(true));
+  cmp.add("errorNum", VPackValue(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND));
+  cmp.close();
+  VPackSlice notFound = cmp.slice();
+  bool foundRes = false;
+  resultBody->clear();
+  resultBody->openArray();
+  for (VPackValueLength currentIndex = 0; currentIndex < expectedResults; ++currentIndex) {
+    foundRes = false;
+    for (auto const& it: results) {
+      VPackSlice oneRes = it->slice();
+      TRI_ASSERT(oneRes.isArray());
+      oneRes = oneRes.at(currentIndex);
+      if (!oneRes.equals(notFound)) {
+        // This is the correct result
+        // Use it
+        resultBody->add(oneRes);
+        foundRes = true;
+        break;
+      }
+    }
+    if (!foundRes) {
+      // Found none, use NOT_FOUND
+      resultBody->add(notFound);
+      realNotFound++;
+    }
+  }
+  resultBody->close();
+  if (realNotFound > 0) {
+    errorCounter.emplace(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, realNotFound);
+  }
+}
+
+static void extractErrorCodes(ClusterCommResult const& res,
+                              std::unordered_map<int, size_t>& errorCounter,
+                              bool includeNotFound) {
+  auto resultHeaders = res.answer->headers();
+  auto codes = resultHeaders.find("X-Arango-Error-Codes");
+  if (codes != resultHeaders.end()) {
+    auto parsedCodes = VPackParser::fromJson(codes->second);
+    VPackSlice codesSlice = parsedCodes->slice();
+    TRI_ASSERT(codesSlice.isObject());
+    for (auto const& code : VPackObjectIterator(codesSlice)) {
+      VPackValueLength codeLength;
+      char const* codeString = code.key.getString(codeLength);
+      int codeNr = static_cast<int>(
+          arangodb::basics::StringUtils::int64(codeString, codeLength));
+      if (includeNotFound || codeNr != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+        errorCounter[codeNr] += code.value.getNumericValue<size_t>();
+      }
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief merge headers of a DB server response into the current response
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -750,20 +828,7 @@ int createDocumentOnCoordinator(
         TRI_ASSERT(res.answer != nullptr);
         resultMap.emplace(res.shardID,
                           res.answer->toVelocyPack(&VPackOptions::Defaults));
-        auto resultHeaders = res.answer->headers();
-        auto codes = resultHeaders.find("X-Arango-Error-Codes");
-        if (codes != resultHeaders.end()) {
-          auto parsedCodes = VPackParser::fromJson(codes->second);
-          VPackSlice codesSlice = parsedCodes->slice();
-          TRI_ASSERT(codesSlice.isObject());
-          for (auto const& code : VPackObjectIterator(codesSlice)) {
-            VPackValueLength codeLength;
-            char const* codeString = code.key.getString(codeLength);
-            int codeNr = static_cast<int>(
-                arangodb::basics::StringUtils::int64(codeString, codeLength));
-            errorCounter[codeNr] += code.value.getNumericValue<size_t>();
-          }
-        }
+        extractErrorCodes(res, errorCounter, true);
       }
     }
   }
@@ -1053,117 +1118,78 @@ int deleteDocumentOnCoordinator(
     mergeResults(reverseMapping, resultMap, resultBody);
     return TRI_ERROR_NO_ERROR;  // the cluster operation was OK, however,
                                 // the DBserver could have reported an error.
-
-
-  } else {
-    // slowpath we do not know which server is responsible ask all of them.
-
-    // We simply send the body to all shards and await their results.
-    // As soon as we have the results we merge them in the following way:
-    // For 1 .. slice.length()
-    //    for res : allResults
-    //      if res != NOT_FOUND => insert this result. skip other results
-    //    end
-    //    if (!skipped) => insert NOT_FOUND
-   
   }
 
-  // If _key is the one and only sharding attribute, we can do this quickly,
-  // because we can easily determine which shard is responsible for the
-  // document. Otherwise we have to contact all shards and ask them to
-  // delete the document. All but one will not know it.
-  // Now find the responsible shard:
-  
-  /*
-  TRI_json_t* json = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
-  if (json == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, TRI_VOC_ATTRIBUTE_KEY,
-                        TRI_CreateStringReferenceJson(TRI_UNKNOWN_MEM_ZONE,
-                                                      key.c_str(), key.size()));
-  bool usesDefaultShardingAttributes;
-  ShardID shardID;
-  int error = ci->getResponsibleShard(collid, json, true, shardID,
-                                      usesDefaultShardingAttributes);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  // slowpath we do not know which server is responsible ask all of them.
 
-  // Some stuff to prepare cluster-intern requests:
-  if (rev != 0) {
-    headers->emplace("if-match", StringUtils::itoa(rev));
-  }
-
-  if (usesDefaultShardingAttributes) {
-    // OK, this is the fast method, we only have to ask one shard:
-    if (error == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
-      return TRI_ERROR_CLUSTER_SHARD_GONE;
-    }
-
-    // Send a synchronous request to that shard using ClusterComm:
-    auto res = cc->syncRequest(
-        "", TRI_NewTickServer(), "shard:" + shardID,
-        arangodb::GeneralRequest::RequestType::DELETE_REQ,
-        "/_db/" + dbname + "/_api/document/" + StringUtils::urlEncode(shardID) +
-            "/" + StringUtils::urlEncode(key) + "?waitForSync=" +
-            (options.waitForSync ? "true" : "false") + "&returnOld=" +
-            (options.returnOld ? "true" : "false"),
-        "", *headers, 60.0);
-
-    int error = handleGeneralCommErrors(res.get());
-    if (error != TRI_ERROR_NO_ERROR) {
-      return error;
-    }
-    responseCode = static_cast<arangodb::GeneralResponse::ResponseCode>(
-        res->result->getHttpReturnCode());
-    resultHeaders = res->result->getHeaderFields();
-    resultBody.assign(res->result->getBody().c_str(),
-                      res->result->getBody().length());
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  // If we get here, the sharding attributes are not only _key, therefore
-  // we have to contact everybody:
-  auto shards = collinfo->shardIds();
-  CoordTransactionID coordTransactionID = TRI_NewTickServer();
-  for (auto const& p : *shards) {
-    std::unique_ptr<std::map<std::string, std::string>> headersCopy(
-        new std::map<std::string, std::string>(*headers));
-    cc->asyncRequest("", coordTransactionID, "shard:" + p.first,
+  // We simply send the body to all shards and await their results.
+  // As soon as we have the results we merge them in the following way:
+  // For 1 .. slice.length()
+  //    for res : allResults
+  //      if res != NOT_FOUND => insert this result. skip other results
+  //    end
+  //    if (!skipped) => insert NOT_FOUND
+ 
+  auto body = std::make_shared<std::string>(std::move(slice.toJson()));
+  auto shardList = ci->getShardList(collid);
+  for (auto const& shard : *shardList) {
+    auto headersCopy =
+        std::make_unique<std::map<std::string, std::string>>(*headers);
+    cc->asyncRequest("", coordTransactionID, "shard:" + shard,
                      arangodb::GeneralRequest::RequestType::DELETE_REQ,
-                     "/_db/" + StringUtils::urlEncode(dbname) +
-                         "/_api/document/" + StringUtils::urlEncode(p.first) +
-                         "/" + StringUtils::urlEncode(key) + "?waitForSync=" +
-                         (options.waitForSync ? "true" : "false") +
-                         "&returnOld=" + (options.returnOld ? "true" : "false"),
-                     std::shared_ptr<std::string const>(), headersCopy, nullptr,
-                     60.0);
+                     baseUrl + StringUtils::urlEncode(shard) + optsUrlPart,
+                     body, headersCopy, nullptr, 60.0);
   }
+
   // Now listen to the results:
-  int count;
-  int nrok = 0;
-  for (count = (int)shards->size(); count > 0; count--) {
-    auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
-    if (res.status == CL_COMM_RECEIVED) {
-      if (res.answer_code != arangodb::GeneralResponse::ResponseCode::NOT_FOUND ||
-          (nrok == 0 && count == 1)) {
-        nrok++;
-        responseCode = res.answer_code;
-        resultHeaders = res.answer->headers();
-        resultHeaders["content-length"] =
-            StringUtils::itoa(res.answer->contentLength());
-        resultBody = res.answer->body();
+  if (!useMultiple) {
+    // Only one can answer, we react a bit differently
+    int count;
+    int nrok = 0;
+    for (count = (int)shardList->size(); count > 0; count--) {
+      auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
+      if (res.status == CL_COMM_RECEIVED) {
+        if (res.answer_code !=
+                arangodb::GeneralResponse::ResponseCode::NOT_FOUND ||
+            (nrok == 0 && count == 1)) {
+          nrok++;
+          responseCode = res.answer_code;
+          TRI_ASSERT(res.answer != nullptr);
+          auto parsedResult = res.answer->toVelocyPack(&VPackOptions::Defaults);
+          resultBody.swap(parsedResult);
+        }
       }
     }
+
+    // Note that nrok is always at least 1!
+    if (nrok > 1) {
+      return TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS;
+    }
+    return TRI_ERROR_NO_ERROR;  // the cluster operation was OK, however,
+                                // the DBserver could have reported an error.
   }
 
-  // Note that nrok is always at least 1!
-  if (nrok > 1) {
-    return TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS;
+  // We select all results from all shards an merge them back again.
+  std::vector<std::shared_ptr<VPackBuilder>> allResults;
+  allResults.reserve(shardList->size());
+  for (size_t i = 0; i < shardList->size(); ++i) {
+    auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
+    int error = handleGeneralCommErrors(&res);
+    if (error != TRI_ERROR_NO_ERROR) {
+      // Cluster is in bad state. Just report. Drop other results.
+      cc->drop("", coordTransactionID, 0, "");
+      // Local data structores are automatically freed
+      return error;
+    }
+    TRI_ASSERT(res.answer_code == arangodb::GeneralResponse::ResponseCode::OK);
+    TRI_ASSERT(res.answer != nullptr);
+    allResults.emplace_back(res.answer->toVelocyPack(&VPackOptions::Defaults));
+    extractErrorCodes(res, errorCounter, false);
   }
-  return TRI_ERROR_NO_ERROR;  // the cluster operation was OK, however,
-                              // the DBserver could have reported an error.
-  */
-  return TRI_ERROR_NOT_IMPLEMENTED;
+  // If we get here we get exactly one result for every shard.
+  TRI_ASSERT(allResults.size() == shardList->size());
+  mergeResultsAllShards(allResults, resultBody, errorCounter, shardList->size());
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
