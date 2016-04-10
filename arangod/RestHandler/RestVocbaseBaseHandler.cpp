@@ -276,7 +276,6 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
     VPackSlice const& slice) {
 
   createResponse(GeneralResponse::ResponseCode::PRECONDITION_FAILED);
-  _response->setContentType("application/json; charset=utf-8");
 
   if (slice.isObject()) {  // single document case
     std::string const rev = VelocyPackHelper::getStringValue(slice, TRI_VOC_ATTRIBUTE_REV, "");
@@ -300,16 +299,8 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
     }
   }
 
-  VPackStringBufferAdapter buffer(_response->body().stringBuffer());
   auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
-  VPackDumper dumper(&buffer, transactionContext->getVPackOptions());
-
-  try {
-    dumper.dump(builder.slice());
-  } catch (...) {
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                  "cannot generate output");
-  }
+  writeResult(builder.slice(), *(transactionContext->getVPackOptions()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -356,34 +347,37 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& document,
 
   // and generate a response
   createResponse(GeneralResponse::ResponseCode::OK);
-  _response->setContentType("application/json; charset=utf-8");
   if (!rev.empty()) {
     _response->setHeaderNC("etag", "\"" + rev + "\"");
   }
 
   if (generateBody) {
-    VPackStringBufferAdapter buffer(_response->body().stringBuffer());
-    VPackDumper dumper(&buffer, options);
-    try {
-      dumper.dump(document);
-    } catch (...) {
-      generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                    "cannot generate output");
-    }
+    writeResult(document, *options);
   } else {
-    // TODO can we optimize this?
-    // Just dump some where else to find real length
-    StringBuffer tmp(TRI_UNKNOWN_MEM_ZONE);
-    // convert object to string
-    VPackStringBufferAdapter buffer(tmp.stringBuffer());
-    VPackDumper dumper(&buffer, options);
-    try {
-      dumper.dump(document);
-    } catch (...) {
-      generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                    "cannot generate output");
+    if(returnVelocypack()){
+      //TODO REVIEW
+      _response->setContentType("application/x-velocypack");
+      _response->headResponse(document.byteSize());
+    } else {
+      _response->setContentType("application/json; charset=utf-8");
+
+      // TODO can we optimize this?
+      // Just dump some where else to find real length
+      StringBuffer tmp(TRI_UNKNOWN_MEM_ZONE);
+      // convert object to string
+      VPackStringBufferAdapter buffer(tmp.stringBuffer());
+
+      //usual dumping -  but not to the response body
+      VPackDumper dumper(&buffer, options);
+      try {
+        dumper.dump(document);
+      } catch (...) {
+        generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                      "cannot generate output");
+      }
+      // set the length of what would have been written
+      _response->headResponse(tmp.length());
     }
-    _response->headResponse(tmp.length());
   }
 }
 

@@ -45,27 +45,6 @@ void RestBaseHandler::handleError(Exception const& ex) {
 
 
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief checks if velocypack is expected as answer
-//////////////////////////////////////////////////////////////////////////////
-
-bool RestBaseHandler::returnVelocypack() const {
-  auto accept = std::string(_request->header("accept"));
-  if (std::string::npos == accept.find("application/x-velocypack")) {
-    return false;
-  }
-  return true;
-}
-
-void RestBaseHandler::writeResult(arangodb::velocypack::Slice const& slice, VPackOptions const& options){
-  if(returnVelocypack()) {
-    _response->setContentType("application/x-velocypack");
-    _response->body().appendText(slice.startAs<const char>(),slice.byteSize());
-  } else {
-    _response->setContentType("application/json; charset=utf-8");
-    dumpResponse(slice, &options);
-  }
-}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a result from VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
@@ -166,3 +145,28 @@ void RestBaseHandler::dumpResponse(VPackSlice const& slice,
   }
 }
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief checks if velocypack is expected as answer
+//////////////////////////////////////////////////////////////////////////////
+
+bool RestBaseHandler::returnVelocypack() const {
+  auto accept = std::string(_request->header("accept"));
+  if (std::string::npos == accept.find("application/x-velocypack")) {
+    return false;
+  }
+  return true;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief writes volocypack or json to response
+//////////////////////////////////////////////////////////////////////////////
+
+void RestBaseHandler::writeResult(arangodb::velocypack::Slice const& slice, VPackOptions const& options){
+  if(returnVelocypack()) {
+    _response->setContentType("application/x-velocypack");
+    _response->body().appendText(slice.startAs<const char>(),slice.byteSize());
+  } else {
+    _response->setContentType("application/json; charset=utf-8");
+    dumpResponse(slice, &options);
+  }
+}
