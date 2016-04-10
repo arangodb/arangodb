@@ -278,30 +278,27 @@ function CollectionDocumentSuiteBabies() {
       collection.insert([{
         _key: "a"
       }]);
-      try {
-        collection.insert([{
-          _key: "b"
-        }, {
-          _key: "a"
-        }]);
-        fail();
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code,
-          err.errorNum);
-      }
-      assertEqual(collection.count(), 1);
-      try {
-        collection.insert([{
-          _key: "a"
-        }, {
-          _key: "b"
-        }]);
-        fail();
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code,
-          err.errorNum);
-      }
-      assertEqual(collection.count(), 1);
+      var docs =  collection.insert([{
+        _key: "b"
+      }, {
+        _key: "a"
+      }]);
+      assertEqual(docs.length, 2);
+      assertEqual(docs[0]._key, "b"); // The first is inserted
+      assertTrue(docs[1].error)
+      assertEqual(docs[1].errorNum, ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code);
+      assertEqual(collection.count(), 2);
+
+      docs = collection.insert([{
+        _key: "a"
+      }, {
+        _key: "c"
+      }]);
+      assertEqual(docs.length, 2);
+      assertTrue(docs[0].error)
+      assertEqual(docs[0].errorNum, ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code);
+      assertEqual(docs[1]._key, "c"); // The second is inserted
+      assertEqual(collection.count(), 3);
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -313,17 +310,16 @@ function CollectionDocumentSuiteBabies() {
         []
       ];
       l.forEach(function(k) {
-        try {
-          collection.insert([{
-            _key: "a"
-          }, {
-            _key: k
-          }]);
-          fail();
-        } catch (err) {
-          assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_KEY_BAD.code,
-            err.errorNum);
-        }
+        var docs = collection.insert([{
+          _key: "a"
+        }, {
+          _key: k
+        }]);
+        assertEqual(docs.length, 2);
+        assertEqual(docs[0]._key, "a");
+        assertTrue(docs[1].error);
+        assertEqual(docs[1].errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_KEY_BAD.code);
+        collection.remove("a");
       });
       assertEqual(collection.count(), 0);
     },
@@ -391,11 +387,12 @@ function CollectionDocumentSuiteBabies() {
       for (var i = 0; i < docs.length; i++) {
         assertEqual(docs3[i].value, 2);
       }
-      try {
-        collection.remove(docs);
-        fail();
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
+      var result = collection.remove(docs);
+      assertEqual(result.length, 3);
+      // All should conflict!
+      for (var i = 0; i < docs.length; i++) {
+        assertTrue(docs[i].error);
+        assertEqual(docs[i].errorNum, ERRORS.ERROR_ARANGO_CONFLICT.code);
       }
       assertEqual(collection.count(), 3);
       collection.remove(docs2);
@@ -427,11 +424,12 @@ function CollectionDocumentSuiteBabies() {
       for (var i = 0; i < docs.length; i++) {
         assertEqual(docs3[i].value, 2);
       }
-      try {
-        collection.remove(docs);
-        fail();
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
+      var result = collection.remove(docs);
+      assertEqual(result.length, 3);
+      // All should conflict!
+      for (var i = 0; i < docs.length; i++) {
+        assertTrue(docs[i].error);
+        assertEqual(docs[i].errorNum, ERRORS.ERROR_ARANGO_CONFLICT.code);
       }
       assertEqual(collection.count(), 3);
       collection.remove(docs2);
@@ -631,30 +629,41 @@ function CollectionDocumentSuiteBabies() {
       }, {
         value: 6
       }]);
-      var docs3;
-      try {
-        docs3 = collection.remove(docs);
-        fail();
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
+      var docs3 = collection.remove(docs);
+      assertEqual(docs3.length, 3);
+      // All should conflict!
+      for (var i = 0; i < docs.length; i++) {
+        assertTrue(docs[i].error);
+        assertEqual(docs[i].errorNum, ERRORS.ERROR_ARANGO_CONFLICT.code);
       }
+
       var test = [docs2[0], docs2[1], docs[2]];
-      try {
-        docs3 = collection.remove(test);
-        fail();
-      } catch (err2) {
-        assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err2.errorNum);
+      docs3 = collection.remove(test);
+      assertEqual(docs3.length, 3);
+      // The first 2 are successful
+      for (var i = 0; i < 2; i++) {
+        assertFalse(docs[i].hasOwnProperty("error"));
+        assertFalse(docs[i].hasOwnPropery("errorNum"));
       }
+      // The third conflicts
+      assertTrue(docs3[2].error);
+      assertEqual(docs3[2].errorNum, ERRORS.ERROR_ARANGO_CONFLICT.code);
+      assertEqual(collection.count(), 1);
+
       test = [docs[0], docs2[1], docs2[2]];
-      try {
-        docs3 = collection.remove(test);
-        fail();
-      } catch (err3) {
-        assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err3.errorNum);
-      }
-      docs3 = collection.remove(test, {
-        overwrite: true
-      });
+      docs3 = collection.remove(test);
+      assertEqual(docs3.length, 3);
+
+      // The first two do not exist
+      assertTrue(docs3[0].error);
+      assertEqual(docs3[0].errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+      assertTrue(docs3[1].error);
+      assertEqual(docs3[1].errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+
+      // The third is removed
+      assertFalse(docs[2].hasOwnProperty("error"));
+      assertFalse(docs[2].hasOwnPropery("errorNum"));
+      assertEqual(collection.count(), 0);
     },
 
     ////////////////////////////////////////////////////////////////////////////////
