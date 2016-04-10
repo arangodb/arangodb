@@ -54,6 +54,7 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   bool _performance;
   bool _keepLogRotate;
   bool _foregroundTty;
+  bool _forceDirect;
 
  private:
   bool _supervisor;

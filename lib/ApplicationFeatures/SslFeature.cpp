@@ -53,8 +53,7 @@ SslFeature::SslFeature(application_features::ApplicationServer* server)
 void SslFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
 
-  options->addSection(Section("ssl", "Configure SSL communication",
-                              "ssl options", false, false));
+  options->addSection("ssl", "Configure SSL communication");
 
   options->addOption("--ssl.cafile", "ca file used for secure connections",
                      new StringParameter(&_cafile));
@@ -72,10 +71,10 @@ void SslFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   std::unordered_set<uint64_t> sslProtocols = {1, 2, 3, 4};
 
-  options->addOption(
-      "--ssl.protocol",
-      "ssl protocol (1 = SSLv2, 2 = SSLv23, 3 = SSLv3, 4 = TLSv1, 5 = TLSV1.2 (recommended)",
-      new UInt64Parameter(&_protocol));
+  options->addOption("--ssl.protocol",
+                     "ssl protocol (1 = SSLv2, 2 = SSLv23, 3 = SSLv3, 4 = "
+                     "TLSv1, 5 = TLSV1.2 (recommended)",
+                     new UInt64Parameter(&_protocol));
 
   options->addHiddenOption(
       "--ssl.options", "ssl connection options, see OpenSSL documentation",

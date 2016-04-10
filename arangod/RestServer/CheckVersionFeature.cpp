@@ -54,8 +54,7 @@ void CheckVersionFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
 
-  options->addSection(Section("database", "Configure the database",
-                              "database options", false, false));
+  options->addSection("database", "Configure the database");
 
   options->addHiddenOption("--database.check-version",
                            "checks the versions of the database and exit",
@@ -68,13 +67,7 @@ void CheckVersionFeature::validateOptions(
     return;
   }
 
-  for (auto name : _nonServerFeatures) {
-    auto feature = ApplicationServer::lookupFeature(name);
-
-    if (feature != nullptr) {
-      feature->disable();
-    }
-  }
+  ApplicationServer::disableFeatures(_nonServerFeatures);
 
   LoggerFeature* logger =
       dynamic_cast<LoggerFeature*>(ApplicationServer::lookupFeature("Logger"));
@@ -85,6 +78,11 @@ void CheckVersionFeature::validateOptions(
   database->disableReplicationApplier();
   database->disableCompactor();
   database->enableCheckVersion();
+
+  V8DealerFeature* v8dealer = dynamic_cast<V8DealerFeature*>(
+      ApplicationServer::lookupFeature("V8Dealer"));
+
+  v8dealer->setNumberContexts(1);
 }
 
 void CheckVersionFeature::start() {

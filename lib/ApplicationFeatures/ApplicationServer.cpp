@@ -32,7 +32,10 @@ using namespace arangodb::options;
 ApplicationServer* ApplicationServer::server = nullptr;
 
 ApplicationServer::ApplicationServer(std::shared_ptr<ProgramOptions> options)
-    : _options(options), _stopping(false), _privilegesDropped(false) {
+    : _options(options),
+      _stopping(false),
+      _privilegesDropped(false),
+      _dumpDependencies(false) {
   if (ApplicationServer::server != nullptr) {
     LOG(ERR) << "ApplicationServer initialized twice";
   }
@@ -59,6 +62,16 @@ ApplicationFeature* ApplicationServer::lookupFeature(std::string const& name) {
   }
 
   return nullptr;
+}
+
+void ApplicationServer::disableFeatures(std::vector<std::string> const& names) {
+  for (auto name : names) {
+    auto feature = ApplicationServer::lookupFeature(name);
+
+    if (feature != nullptr) {
+      feature->disable();
+    }
+  }
 }
 
 // adds a feature to the application server. the application server
@@ -196,6 +209,12 @@ void ApplicationServer::apply(std::function<void(ApplicationFeature*)> callback,
 void ApplicationServer::collectOptions() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::collectOptions";
 
+  _options->addSection(
+      Section("", "Global configuration", "global options", false, false));
+
+  _options->addHiddenOption("--dump-dependencies", "dump dependency graph",
+                            new BooleanParameter(&_dumpDependencies, false));
+
   apply([this](ApplicationFeature* feature) {
     feature->collectOptions(_options);
   }, true);
@@ -216,6 +235,18 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
     // command-line option parsing failed. an error was already printed
     // by now, so we can exit
     exit(EXIT_FAILURE);
+  }
+
+  if (_dumpDependencies) {
+    std::cout << "digraph dependencies\n"
+              << "{\n";
+    for (auto feature : _features) {
+      for (auto before : feature.second->startsAfter()) {
+        std::cout << "  " << feature.first << " -> " << before << ";\n";
+      }
+    }
+    std::cout << "}\n";
+    exit(EXIT_SUCCESS);
   }
 
   for (auto it = _orderedFeatures.begin(); it != _orderedFeatures.end(); ++it) {
@@ -288,7 +319,7 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
   std::vector<ApplicationFeature*> features;
   for (auto& it : _features) {
     auto insertPosition = features.end();
-     
+
     if (!features.empty()) {
       for (size_t i = features.size(); i > 0; --i) {
         if (it.second->doesStartBefore(features[i - 1]->name())) {
@@ -298,7 +329,7 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
     }
     features.insert(insertPosition, it.second);
   }
-  
+
   // remove all inactive features
   for (auto it = features.begin(); it != features.end(); /* no hoisting */) {
     if ((*it)->isEnabled()) {

@@ -90,8 +90,8 @@ int main(int argc, char* argv[]) {
   application_features::ApplicationServer server(options);
 
   std::vector<std::string> nonServerFeatures = {
-      "Daemon",   "Dispatcher", "Endpoint",  "Scheduler",
-      "Shutdown", "Ssl",        "Supervisor"};
+      "Daemon",    "Dispatcher", "Endpoint",  "Server",
+      "Scheduler", "Ssl",        "Supervisor"};
 
   int ret = EXIT_FAILURE;
 
@@ -104,6 +104,7 @@ int main(int argc, char* argv[]) {
   server.addFeature(new RandomFeature(&server));
   server.addFeature(new SchedulerFeature(&server));
   server.addFeature(new ServerFeature(&server, "arangod", &ret));
+  server.addFeature(new ShutdownFeature(&server, "Server"));
   server.addFeature(new SslFeature(&server));
   server.addFeature(new TempFeature(&server, name));
   server.addFeature(new UpgradeFeature(&server, &ret, nonServerFeatures));
@@ -116,23 +117,13 @@ int main(int argc, char* argv[]) {
   logger->setThreaded(true);
   server.addFeature(logger.release());
 
-#warning todo
-#if 0
-  std::unique_ptr<ShutdownFeature> shutdown =
-    std::make_unique<ShutdownFeature>(&server, "Server");
-  shutdown->disable();
-  server.addFeature(shutdown.release());
-#endif
-
 #ifdef ARANGODB_HAVE_FORK
   server.addFeature(new DaemonFeature(&server));
 
-  {
-    std::unique_ptr<SupervisorFeature> supervisor =
-        std::make_unique<SupervisorFeature>(&server);
-    supervisor->supervisorStart({"Logger"});
-    server.addFeature(supervisor.release());
-  }
+  std::unique_ptr<SupervisorFeature> supervisor =
+      std::make_unique<SupervisorFeature>(&server);
+  supervisor->supervisorStart({"Logger"});
+  server.addFeature(supervisor.release());
 #endif
 
   server.run(argc, argv);

@@ -89,7 +89,7 @@ void V8ShellFeature::validateOptions(
 
   if (_startupDirectory.empty()) {
     LOG(FATAL) << "'--javascript.startup-directory' is empty, giving up";
-    abortInvalidParameters();
+    FATAL_ERROR_EXIT();
   }
 
   LOG_TOPIC(DEBUG, Logger::V8) << "using Javascript startup files at '"

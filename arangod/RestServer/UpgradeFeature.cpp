@@ -55,8 +55,7 @@ UpgradeFeature::UpgradeFeature(
 void UpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
 
-  options->addSection(Section("database", "Configure the database",
-                              "database options", false, false));
+  options->addSection("database", "Configure the database");
 
   options->addOption("--database.upgrade",
                      "perform a database upgrade if necessary",
@@ -71,12 +70,10 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
 
   if (_upgrade && !_upgradeCheck) {
-    LOG(ERR) << "cannot specify both '--database.upgrade true' and "
-                "'--database.upgrade-check false'";
-    abortInvalidParameters();
+    LOG(FATAL) << "cannot specify both '--database.upgrade true' and "
+                  "'--database.upgrade-check false'";
+    FATAL_ERROR_EXIT();
   }
-
-  LOG(FATAL) << "xxxx: " << (_upgrade ? "YES" : "NO");
 
   if (!_upgrade) {
     LOG(TRACE) << "executing upgrade check: not disable server features";
@@ -85,13 +82,7 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   LOG(TRACE) << "executing upgrade procedure: disable server features";
 
-  for (auto name : _nonServerFeatures) {
-    auto feature = ApplicationServer::lookupFeature(name);
-
-    if (feature != nullptr) {
-      feature->disable();
-    }
-  }
+  ApplicationServer::disableFeatures(_nonServerFeatures);
 
   DatabaseFeature* database = dynamic_cast<DatabaseFeature*>(
       ApplicationServer::lookupFeature("Database"));

@@ -24,86 +24,59 @@
 #include "ConsoleThread.h"
 
 #include <iostream>
+#include <v8.h>
 
-#include "ApplicationServer/ApplicationServer.h"
-#include "Basics/tri-strings.h"
+#include "Applicationfeatures/ApplicationServer.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 #include "Rest/Version.h"
-#include "VocBase/vocbase.h"
 #include "V8/V8LineEditor.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
-#include <v8.h>
+#include "V8Server/V8DealerFeature.h"
+#include "VocBase/vocbase.h"
 
+using namespace arangodb;
+using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-using namespace arangodb;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the line editor object for use in debugging
-////////////////////////////////////////////////////////////////////////////////
 
 V8LineEditor* ConsoleThread::serverConsole = nullptr;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief mutex for console access
-////////////////////////////////////////////////////////////////////////////////
-
 Mutex ConsoleThread::serverConsoleMutex;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a console thread
-////////////////////////////////////////////////////////////////////////////////
-
 ConsoleThread::ConsoleThread(ApplicationServer* applicationServer,
-                             ApplicationV8* applicationV8,
                              TRI_vocbase_t* vocbase)
     : Thread("Console"),
       _applicationServer(applicationServer),
-      _applicationV8(applicationV8),
       _context(nullptr),
       _vocbase(vocbase),
       _userAborted(false) {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a console thread
-////////////////////////////////////////////////////////////////////////////////
-
 ConsoleThread::~ConsoleThread() { shutdown(); }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief runs the thread
-////////////////////////////////////////////////////////////////////////////////
-
 void ConsoleThread::run() {
-#warning TODO
-#if 0
   usleep(100 * 1000);
 
   // enter V8 context
-  _context = _applicationV8->enterContext(_vocbase, true);
+  _context = V8DealerFeature::DEALER->enterContext(_vocbase, true);
 
   // work
   try {
     inner();
-  } catch (char const*) {
+  } catch (char const* error) {
+    LOG(ERR) << error;
   } catch (...) {
-    _applicationV8->exitContext(_context);
+    V8DealerFeature::DEALER->exitContext(_context);
     _applicationServer->beginShutdown();
 
     throw;
   }
 
   // exit context
-  _applicationV8->exitContext(_context);
+  V8DealerFeature::DEALER->exitContext(_context);
   _applicationServer->beginShutdown();
-#endif
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief inner thread loop - this handles all the user inputs
-////////////////////////////////////////////////////////////////////////////////
 
 void ConsoleThread::inner() {
   v8::Isolate* isolate = _context->_isolate;

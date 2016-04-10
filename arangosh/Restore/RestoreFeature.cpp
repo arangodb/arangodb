@@ -78,9 +78,6 @@ void RestoreFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
 
-  options->addSection(
-      Section("", "Global configuration", "global options", false, false));
-
   options->addOption(
       "--collection",
       "restrict to collection name (can be specified multiple times)",
@@ -136,9 +133,9 @@ void RestoreFeature::validateOptions(
   if (1 == n) {
     _inputDirectory = positionals[0];
   } else if (1 < n) {
-    LOG(ERR) << "expecting at most one directory, got " +
-                    StringUtils::join(positionals, ", ");
-    abortInvalidParameters();
+    LOG(FATAL) << "expecting at most one directory, got " +
+                      StringUtils::join(positionals, ", ");
+    FATAL_ERROR_EXIT();
   }
 
   // use a minimum value for batches

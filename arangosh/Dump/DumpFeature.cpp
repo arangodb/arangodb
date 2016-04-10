@@ -47,8 +47,8 @@ using namespace arangodb::httpclient;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
-DumpFeature::DumpFeature(
-    application_features::ApplicationServer* server, int* result)
+DumpFeature::DumpFeature(application_features::ApplicationServer* server,
+                         int* result)
     : ApplicationFeature(server, "Dump"),
       _collections(),
       _chunkSize(1024 * 1024 * 2),
@@ -76,9 +76,6 @@ DumpFeature::DumpFeature(
 void DumpFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
-  options->addSection(
-      Section("", "Global configuration", "global options", false, false));
 
   options->addOption(
       "--collection",
@@ -130,9 +127,9 @@ void DumpFeature::validateOptions(
   if (1 == n) {
     _outputDirectory = positionals[0];
   } else if (1 < n) {
-    LOG(ERR) << "expecting at most one directory, got " +
-                    StringUtils::join(positionals, ", ");
-    abortInvalidParameters();
+    LOG(FATAL) << "expecting at most one directory, got " +
+                      StringUtils::join(positionals, ", ");
+    FATAL_ERROR_EXIT();
   }
 
   if (_chunkSize < 1024 * 128) {
@@ -144,8 +141,8 @@ void DumpFeature::validateOptions(
   }
 
   if (_tickStart < _tickEnd) {
-    LOG(ERR) << "invalid values for --tick-start or --tick-end";
-    abortInvalidParameters();
+    LOG(FATAL) << "invalid values for --tick-start or --tick-end";
+    FATAL_ERROR_EXIT();
   }
 
   // trim trailing slash from path because it may cause problems on ...
@@ -213,8 +210,9 @@ int DumpFeature::startBatch(std::string DBserver, std::string& errorMsg) {
     urlExt = "?DBserver=" + DBserver;
   }
 
-  std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
-      GeneralRequest::RequestType::POST, url + urlExt, body.c_str(), body.size()));
+  std::unique_ptr<SimpleHttpResult> response(
+      _httpClient->request(GeneralRequest::RequestType::POST, url + urlExt,
+                           body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg =
@@ -265,8 +263,9 @@ void DumpFeature::extendBatch(std::string DBserver) {
     urlExt = "?DBserver=" + DBserver;
   }
 
-  std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
-      GeneralRequest::RequestType::PUT, url + urlExt, body.c_str(), body.size()));
+  std::unique_ptr<SimpleHttpResult> response(
+      _httpClient->request(GeneralRequest::RequestType::PUT, url + urlExt,
+                           body.c_str(), body.size()));
 
   // ignore any return value
 }
@@ -292,8 +291,8 @@ void DumpFeature::endBatch(std::string DBserver) {
 
 /// @brief dump a single collection
 int DumpFeature::dumpCollection(int fd, std::string const& cid,
-                                      std::string const& name, uint64_t maxTick,
-                                      std::string& errorMsg) {
+                                std::string const& name, uint64_t maxTick,
+                                std::string& errorMsg) {
   uint64_t chunkSize = _chunkSize;
 
   std::string const baseUrl = "/_api/replication/dump?collection=" + cid +
@@ -317,8 +316,8 @@ int DumpFeature::dumpCollection(int fd, std::string const& cid,
 
     _stats._totalBatches++;
 
-    std::unique_ptr<SimpleHttpResult> response(
-        _httpClient->request(GeneralRequest::RequestType::GET, url, nullptr, 0));
+    std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
+        GeneralRequest::RequestType::GET, url, nullptr, 0));
 
     if (response == nullptr || !response->isComplete()) {
       errorMsg =
@@ -666,8 +665,7 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
 
 /// @brief dump a single shard, that is a collection on a DBserver
 int DumpFeature::dumpShard(int fd, std::string const& DBserver,
-                                 std::string const& name,
-                                 std::string& errorMsg) {
+                           std::string const& name, std::string& errorMsg) {
   std::string const baseUrl = "/_api/replication/dump?DBserver=" + DBserver +
                               "&collection=" + name + "&chunkSize=" +
                               StringUtils::itoa(_chunkSize) +
@@ -685,8 +683,8 @@ int DumpFeature::dumpShard(int fd, std::string const& DBserver,
 
     _stats._totalBatches++;
 
-    std::unique_ptr<SimpleHttpResult> response(
-        _httpClient->request(GeneralRequest::RequestType::GET, url, nullptr, 0));
+    std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
+        GeneralRequest::RequestType::GET, url, nullptr, 0));
 
     if (response == nullptr || !response->isComplete()) {
       errorMsg =

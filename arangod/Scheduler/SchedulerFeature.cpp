@@ -60,8 +60,7 @@ void SchedulerFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
 
-  options->addSection(Section("scheduler", "Configure the I/O scheduler",
-                              "scheduler options", false, false));
+  options->addSection("scheduler", "Configure the I/O scheduler");
 
   options->addOption("--scheduler.threads",
                      "number of threads for I/O scheduler",
@@ -91,8 +90,8 @@ void SchedulerFeature::validateOptions(
   }
 
   if (_nrSchedulerThreads == 0) {
-    LOG(ERR) << "need at least one I/O thread";
-    abortInvalidParameters();
+    LOG(FATAL) << "need at least one I/O thread";
+    FATAL_ERROR_EXIT();
   }
 }
 

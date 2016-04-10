@@ -27,43 +27,12 @@
 #include "Basics/Common.h"
 
 namespace arangodb {
-namespace rest {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ArangoDB server operation modes
-////////////////////////////////////////////////////////////////////////////////
-
-class OperationMode {
- public:
-  typedef enum {
-    MODE_CONSOLE,
-    MODE_UNITTESTS,
-    MODE_SCRIPT,
-    MODE_SERVER
-  } server_operation_mode_e;
-
- public:
-//////////////////////////////////////////////////////////////////////////////
-/// @brief return the server operation mode
-//////////////////////////////////////////////////////////////////////////////
-
-#warning TODO
-#if 0
-  static server_operation_mode_e determineMode(
-      const arangodb::basics::ProgramOptions& options) {
-    if (options.has("console")) {
-      return MODE_CONSOLE;
-    } else if (options.has("javascript.unit-tests")) {
-      return MODE_UNITTESTS;
-    } else if (options.has("javascript.script")) {
-      return MODE_SCRIPT;
-    } else {
-      return MODE_SERVER;
-    }
-  }
-#endif
+enum class OperationMode {
+  MODE_CONSOLE,
+  MODE_UNITTESTS,
+  MODE_SCRIPT,
+  MODE_SERVER
 };
-}
 }
 
 #endif

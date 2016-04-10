@@ -77,9 +77,6 @@ BenchFeature::BenchFeature(application_features::ApplicationServer* server,
 void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
 
-  options->addSection(
-      Section("", "Global configuration", "global options", false, false));
-
   options->addOption("--async", "send asynchronous requests",
                      new BooleanParameter(&_async));
 

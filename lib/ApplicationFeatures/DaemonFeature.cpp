@@ -54,9 +54,6 @@ DaemonFeature::DaemonFeature(application_features::ApplicationServer* server)
 void DaemonFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
 
-  options->addSection(
-      Section("", "Global configuration", "global options", false, false));
-
   options->addHiddenOption("--daemon",
                            "background the server, running it as daemon",
                            new BooleanParameter(&_daemon, false));
@@ -74,8 +71,8 @@ void DaemonFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   if (_daemon) {
     if (_pidFile.empty()) {
-      LOG(ERR) << "need --pid-file in --daemon mode";
-      abortInvalidParameters();
+      LOG(FATAL) << "need --pid-file in --daemon mode";
+      FATAL_ERROR_EXIT();
     }
 
     LoggerFeature* logger = dynamic_cast<LoggerFeature*>(

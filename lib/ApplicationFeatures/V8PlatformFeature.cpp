@@ -41,8 +41,7 @@ void V8PlatformFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
 
-  options->addSection(Section("javascript", "Configure the Javascript engine",
-                              "javascript options", false, false));
+  options->addSection("javascript", "Configure the Javascript engine");
 
   options->addHiddenOption("--javascript.v8-options", "options to pass to v8",
                            new StringParameter(&_v8options));

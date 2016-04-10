@@ -44,6 +44,7 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer* server)
       _performance(false),
       _keepLogRotate(false),
       _foregroundTty(true),
+      _forceDirect(false),
       _supervisor(false),
       _backgrounded(false),
       _threaded(false) {
@@ -55,9 +56,6 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer* server)
 
 void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
-  options->addSection(
-      Section("", "Global configuration", "global options", false, false));
 
   options->addHiddenOption("--log", "the global or topic-specific log level",
                            new VectorParameter<StringParameter>(&_levels));
@@ -104,6 +102,10 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addHiddenOption("--log.foreground-tty",
                            "also log to tty if not backgrounded",
                            new BooleanParameter(&_foregroundTty));
+
+  options->addHiddenOption("--log.force-direct",
+                           "do not start a seperated thread for logging",
+                           new BooleanParameter(&_forceDirect));
 }
 
 void LoggerFeature::loadOptions(
@@ -168,7 +170,12 @@ void LoggerFeature::prepare() {
 void LoggerFeature::start() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
 
-  Logger::initialize(_threaded);
+  if (_forceDirect) {
+    Logger::initialize(false);
+  }
+  else {
+    Logger::initialize(_threaded);
+  }
 }
 
 void LoggerFeature::stop() {

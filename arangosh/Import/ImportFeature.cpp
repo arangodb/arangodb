@@ -36,8 +36,8 @@ using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::options;
 
-ImportFeature::ImportFeature(
-    application_features::ApplicationServer* server, int* result)
+ImportFeature::ImportFeature(application_features::ApplicationServer* server,
+                             int* result)
     : ApplicationFeature(server, "Import"),
       _filename(""),
       _useBackslash(false),
@@ -62,9 +62,6 @@ ImportFeature::ImportFeature(
 void ImportFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
-  options->addSection(
-      Section("", "Global configuration", "global options", false, false));
 
   options->addOption("--file", "file name (\"-\" for STDIN)",
                      new StringParameter(&_filename));
@@ -141,9 +138,9 @@ void ImportFeature::validateOptions(
   if (1 == n) {
     _filename = positionals[0];
   } else if (1 < n) {
-    LOG(ERR) << "expecting at most one filename, got " +
-                    StringUtils::join(positionals, ", ");
-    abortInvalidParameters();
+    LOG(FATAL) << "expecting at most one filename, got " +
+                      StringUtils::join(positionals, ", ");
+    FATAL_ERROR_EXIT();
   }
 }
 

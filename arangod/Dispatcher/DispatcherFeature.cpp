@@ -53,8 +53,7 @@ void DispatcherFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
 
-  options->addSection(
-      Section("server", "Server features", "server options", false, false));
+  options->addSection("server", "Server features");
 
   options->addOption("--server.threads",
                      "number of threads for basic operations",
@@ -73,8 +72,8 @@ void DispatcherFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
 
   if (_nrStandardThreads == 0) {
-    LOG(ERR) << "need at least one server thread";
-    abortInvalidParameters();
+    LOG(FATAL) << "need at least one server thread";
+    FATAL_ERROR_EXIT();
   }
 
   if (_nrAqlThreads == 0) {

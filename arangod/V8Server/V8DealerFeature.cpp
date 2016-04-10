@@ -92,7 +92,10 @@ V8DealerFeature::V8DealerFeature(
       _ok(false),
       _gcThread(nullptr),
       _stopping(false),
-      _gcFinished(false) {
+      _gcFinished(false),
+      _nrAdditionalContexts(0),
+      _minimumContexts(1),
+      _forceNrContexts(0) {
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("V8Platform");
@@ -103,8 +106,7 @@ V8DealerFeature::V8DealerFeature(
 void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
 
-  options->addSection(Section("javascript", "Configure the Javascript engine",
-                              "javascript options", false, false));
+  options->addSection("javascript", "Configure the Javascript engine");
 
   options->addOption(
       "--javascript.gc-frequency",
@@ -171,8 +173,15 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   // set a minimum of V8 contexts
-  if (_nrContexts < 1) {
-    _nrContexts = 1;
+  if (_nrContexts < _minimumContexts) {
+    _nrContexts = _minimumContexts;
+  }
+
+  if (0 < _forceNrContexts) {
+    _nrContexts = _forceNrContexts;
+  }
+  else if (0 < _nrAdditionalContexts) {
+    _nrContexts += _nrAdditionalContexts;
   }
 }
 

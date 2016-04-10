@@ -47,9 +47,6 @@ void SupervisorFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
 
-  options->addSection(
-      Section("", "Global configuration", "global options", false, false));
-
   options->addHiddenOption("--supervisor",
                            "background the server, starts a supervisor",
                            new BooleanParameter(&_supervisor, false));

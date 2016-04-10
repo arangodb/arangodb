@@ -25,6 +25,7 @@
 #include "Aql/RestAqlHandler.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/process-utils.h"
+#include "Basics/messages.h"
 #include "Cluster/RestShardHandler.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "Logger/Logger.h"
@@ -53,7 +54,9 @@
 #include "RestHandler/RestUploadHandler.h"
 #include "RestHandler/RestVersionHandler.h"
 #include "RestHandler/WorkMonitorHandler.h"
+#include "RestServer/ConsoleThread.h"
 #include "RestServer/DatabaseFeature.h"
+#include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -65,11 +68,16 @@ ServerFeature::ServerFeature(application_features::ApplicationServer* server,
     : ApplicationFeature(server, "Server"),
       _defaultApiCompatibility(Version::getNumericServerVersion()),
       _allowMethodOverride(false),
+      _console(false),
+      _restServer(true),
+      _authentication(false),
       _authenticationRealm(authenticationRealm),
       _result(res),
       _handlerFactory(nullptr),
-      _jobManager(nullptr) {
-  setOptional(false);
+      _jobManager(nullptr),
+      _operationMode(OperationMode::MODE_SERVER),
+      _consoleThread(nullptr) {
+  setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Database");
   startsAfter("Dispatcher");
@@ -80,19 +88,20 @@ ServerFeature::ServerFeature(application_features::ApplicationServer* server,
 void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
 
-  options->addSection(
-      Section("server", "Server features", "server options", false, false));
+  options->addOption("--console", "start a JavaScript emergency console",
+                     new BooleanParameter(&_console, false));
+
+  options->addSection("server", "Server features");
 
   options->addHiddenOption("--server.default-api-compatibility",
                            "default API compatibility version",
                            new Int32Parameter(&_defaultApiCompatibility));
 
+  options->addHiddenOption("--server.rest-server", "start a rest-server",
+                           new BooleanParameter(&_restServer));
+
 #warning TODO
 #if 0
-  additional["General Options:help-default"](
-      "console",
-      "do not start as server, start a JavaScript emergency console instead")(
-
   // other options
       "start-service", "used to start as windows service")(
       "no-server", "do not start the server, if console is requested")(
@@ -132,8 +141,7 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 #endif
 #endif
 
-  options->addSection(
-      Section("http", "HttpServer features", "http options", false, false));
+  options->addSection("http", "HttpServer features");
 
   options->addHiddenOption("--http.allow-method-override",
                            "allow HTTP method override using special headers",
@@ -152,6 +160,67 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 
   LOG(DEBUG) << "using default API compatibility: "
              << (long int)_defaultApiCompatibility;
+
+  int count = 0;
+
+  if (_console) {
+    _operationMode = OperationMode::MODE_CONSOLE;
+    ++count;
+  }
+
+  if (!_unittests.empty()) {
+    _operationMode = OperationMode::MODE_UNITTESTS;
+    ++count;
+  }
+
+  if (!_scripts.empty()) {
+    _operationMode = OperationMode::MODE_SCRIPT;
+    ++count;
+  }
+
+  if (1 < count) {
+    LOG(FATAL) << "cannot combine '--console', '--javascript.unit-tests' and "
+               << "'--javascript.script'";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (_operationMode == OperationMode::MODE_SERVER && !_restServer) {
+    LOG(FATAL) << "need at least '--console', '--javascript.unit-tests' or"
+               << "'--javascript.script if rest-server is disabled";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (!_restServer) {
+    ApplicationServer::disableFeatures(
+        {"Daemon", "Dispatcher", "Endpoint", "Scheduler", "Ssl", "Supervisor"});
+
+    DatabaseFeature* database = dynamic_cast<DatabaseFeature*>(
+        ApplicationServer::lookupFeature("Database"));
+    database->disableReplicationApplier();
+
+    TRI_ENABLE_STATISTICS = false;
+  }
+
+  V8DealerFeature* v8dealer = dynamic_cast<V8DealerFeature*>(
+      ApplicationServer::lookupFeature("V8Dealer"));
+
+  if (_operationMode == OperationMode::MODE_SCRIPT ||
+      _operationMode == OperationMode::MODE_UNITTESTS) {
+    _authentication = false;
+    v8dealer->setMinimumContexts(2);
+  } else {
+    v8dealer->setMinimumContexts(1);
+  }
+
+  if (_operationMode == OperationMode::MODE_CONSOLE) {
+    ApplicationServer::disableFeatures({"Daemon", "Supervisor"});
+    v8dealer->increaseContexts();
+  }
+
+  if (_operationMode == OperationMode::MODE_SERVER ||
+      _operationMode == OperationMode::MODE_CONSOLE) {
+    ApplicationServer::lookupFeature("Shutdown")->disable();
+  }
 }
 
 void ServerFeature::prepare() {
@@ -167,41 +236,77 @@ void ServerFeature::start() {
   DatabaseFeature* database = dynamic_cast<DatabaseFeature*>(
       application_features::ApplicationServer::lookupFeature("Database"));
 
-  httpOptions._vocbase = database->vocbase();
+  _httpOptions._vocbase = database->vocbase();
 
   defineHandlers();
   HttpHandlerFactory::setMaintenance(false);
 
 #warning TODO
 #if 0
-  _jobManager = new AsyncJobManager(ClusterCommRestCallback);
+  // disabled maintenance mode
+  waitForHeartbeat();
+
+  // just wait until we are signalled
+  _applicationServer->wait();
 #endif
 
 #warning TODO
 #if 0
-  if (mode == OperationMode::MODE_CONSOLE) {
-    // one V8 instance is taken by the console
-    if (startServer) {
-      ++_v8Contexts;
-    }
-  } else if (mode == OperationMode::MODE_UNITTESTS ||
-             mode == OperationMode::MODE_SCRIPT) {
-    if (_v8Contexts == 1) {
-      // at least two to allow both the test-runner and the scheduler to use a
-      // V8 instance
-      _v8Contexts = 2;
-    }
-  }
+  _jobManager = new AsyncJobManager(ClusterCommRestCallback);
 #endif
+
+  if (!_authentication) {
+    LOG(INFO) << "Authentication is turned off";
+  }
+
+  LOG(INFO) << "ArangoDB (version " << ARANGODB_VERSION_FULL
+            << ") is ready for business. Have fun!";
+
+  *_result = EXIT_SUCCESS;
+
+  if (_operationMode == OperationMode::MODE_CONSOLE) {
+    startConsole();
+  }
 }
 
 void ServerFeature::beginShutdown() {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::shutdown";
+
   std::string msg =
       ArangoGlobalContext::CONTEXT->binaryName() + " [shutting down]";
   TRI_SetProcessTitle(msg.c_str());
 }
 
-void ServerFeature::stop() { *_result = EXIT_SUCCESS; }
+void ServerFeature::stop() {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
+
+  _httpOptions._vocbase = nullptr;
+
+  if (_operationMode == OperationMode::MODE_CONSOLE) {
+    stopConsole();
+  }
+}
+
+void ServerFeature::startConsole() {
+  DatabaseFeature* database = dynamic_cast<DatabaseFeature*>(
+      ApplicationServer::lookupFeature("Database"));
+
+  _consoleThread.reset(new ConsoleThread(server(), database->vocbase()));
+  _consoleThread->start();
+}
+
+void ServerFeature::stopConsole() {
+  _consoleThread->userAbort();
+  _consoleThread->beginShutdown();
+
+  int iterations = 0;
+
+  while (_consoleThread->isRunning() && ++iterations < 30) {
+    usleep(100 * 1000);  // spin while console is still needed
+  }
+
+  std::cout << std::endl << TRI_BYE_MESSAGE << std::endl;
+}
 
 static TRI_vocbase_t* LookupDatabaseFromRequest(HttpRequest* request,
                                                 TRI_server_t* server) {

@@ -58,8 +58,7 @@ ClientFeature::ClientFeature(application_features::ApplicationServer* server,
 void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
 
-  options->addSection(Section(_section, "Configure a connection to the server",
-                              _section + " options", false, false));
+  options->addSection(_section, "Configure a connection to the server");
 
   options->addOption("--" + _section + ".database",
                      "database name to use when connecting",
@@ -110,25 +109,25 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   // check timeouts
   if (_connectionTimeout < 0.0) {
-    LOG(ERR) << "invalid value for --" << _section
-             << ".connect-timeout, must be >= 0";
-    abortInvalidParameters();
+    LOG(FATAL) << "invalid value for --" << _section
+               << ".connect-timeout, must be >= 0";
+    FATAL_ERROR_EXIT();
   } else if (_connectionTimeout == 0.0) {
     _connectionTimeout = LONG_TIMEOUT;
   }
 
   if (_requestTimeout < 0.0) {
-    LOG(ERR) << "invalid value for --" << _section
-             << ".request-timeout, must be positive";
-    abortInvalidParameters();
+    LOG(FATAL) << "invalid value for --" << _section
+               << ".request-timeout, must be positive";
+    FATAL_ERROR_EXIT();
   } else if (_requestTimeout == 0.0) {
     _requestTimeout = LONG_TIMEOUT;
   }
 
   // username must be non-empty
   if (_username.empty()) {
-    LOG(ERR) << "no value specified for --" << _section << ".username";
-    abortInvalidParameters();
+    LOG(FATAL) << "no value specified for --" << _section << ".username";
+    FATAL_ERROR_EXIT();
   }
 
   // ask for a password
@@ -136,11 +135,12 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       !options->processingResult().touched(_section + ".password")) {
     usleep(10 * 1000);
 
-    ConsoleFeature* console = dynamic_cast<ConsoleFeature*>(ApplicationServer::lookupFeature("Console"));
+    ConsoleFeature* console = dynamic_cast<ConsoleFeature*>(
+        ApplicationServer::lookupFeature("Console"));
 
     if (console != nullptr) {
       _password = console->readPassword("Please specify a password: ");
-    } else  {
+    } else {
       std::cout << "Please specify a password: " << std::flush;
       std::getline(std::cin, _password);
     }

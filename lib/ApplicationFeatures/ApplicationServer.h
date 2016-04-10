@@ -90,6 +90,7 @@ class ApplicationServer {
  public:
   static ApplicationServer* server;
   static ApplicationFeature* lookupFeature(std::string const&);
+  static void disableFeatures(std::vector<std::string> const&);
 
  public:
   explicit ApplicationServer(std::shared_ptr<options::ProgramOptions>);
@@ -187,6 +188,9 @@ class ApplicationServer {
 
   // whether or not privileges have been dropped permanently
   bool _privilegesDropped;
+
+  // whether or not to dump dependencies
+  bool _dumpDependencies;
 };
 }
 }

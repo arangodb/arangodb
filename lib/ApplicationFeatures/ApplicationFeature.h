@@ -103,7 +103,7 @@ class ApplicationFeature {
   // features, after the ApplicationServer has determined which features should
   // be turned off globally. in order to abort further processing in case of
   // invalid parameter values, the feature should bail out by calling
-  // `abortInvalidParameters()`
+  // FATAL_ERROR_EXIT.
   virtual void validateOptions(std::shared_ptr<options::ProgramOptions>);
 
   // allows process control
@@ -152,13 +152,6 @@ class ApplicationFeature {
 
   // determine all direct and indirect ancestors of a feature
   std::unordered_set<std::string> ancestors() const;
-
-  // abort program execution because of invalid parameters
-  // TODO: add default implementation
-  void abortInvalidParameters() {
-    LOG(FATAL) << "invalid parameters, refusing to start program";
-    FATAL_ERROR_EXIT();
-  }
 
  private:
   // pointer to application server

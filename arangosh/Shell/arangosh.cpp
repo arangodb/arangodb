@@ -53,7 +53,6 @@ int main(int argc, char* argv[]) {
 
   int ret;
 
-  server.addFeature(new CheckVersionFeature(&server));
   server.addFeature(new ClientFeature(&server));
   server.addFeature(new ConfigFeature(&server, name));
   server.addFeature(new ConsoleFeature(&server));

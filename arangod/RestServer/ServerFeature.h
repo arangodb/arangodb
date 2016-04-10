@@ -26,12 +26,15 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 #include "Actions/RestActionHandler.h"
+#include "Rest/OperationMode.h"
 
 namespace arangodb {
 namespace rest {
 class HttpHandlerFactory;
 class AsyncJobManager;
 }
+
+class ConsoleThread;
 
 class ServerFeature final : public application_features::ApplicationFeature {
  public:
@@ -55,8 +58,15 @@ class ServerFeature final : public application_features::ApplicationFeature {
  private:
   int32_t _defaultApiCompatibility;
   bool _allowMethodOverride;
+  bool _console;
+  bool _restServer;
+  bool _authentication;
+  std::vector<std::string> _unittests;
+  std::vector<std::string> _scripts;
 
  private:
+  void startConsole();
+  void stopConsole();
   void buildHandlerFactory();
   void defineHandlers();
 
@@ -65,7 +75,9 @@ class ServerFeature final : public application_features::ApplicationFeature {
   int* _result;
   std::unique_ptr<rest::HttpHandlerFactory> _handlerFactory;
   rest::AsyncJobManager* _jobManager;
-  RestActionHandler::action_options_t httpOptions;
+  RestActionHandler::action_options_t _httpOptions;
+  OperationMode _operationMode;
+  std::unique_ptr<ConsoleThread> _consoleThread;
 };
 }
 

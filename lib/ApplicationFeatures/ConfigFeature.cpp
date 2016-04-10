@@ -51,9 +51,6 @@ ConfigFeature::ConfigFeature(application_features::ApplicationServer* server,
 void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
 
-  options->addSection(
-      Section("", "Global configuration", "global options", false, false));
-
   options->addOption("--configuration,-c", "the configuration file or 'none'",
                      new StringParameter(&_file));
 

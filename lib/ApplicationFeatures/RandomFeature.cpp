@@ -35,7 +35,7 @@ using namespace arangodb::options;
 
 RandomFeature::RandomFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Random"),
-      _randomGenerator((uint32_t) RandomGenerator::RandomType::MERSENNE) {
+      _randomGenerator((uint32_t)RandomGenerator::RandomType::MERSENNE) {
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Logger");
@@ -44,8 +44,7 @@ RandomFeature::RandomFeature(application_features::ApplicationServer* server)
 void RandomFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
 
-  options->addSection(Section("random", "Configure the random generator",
-                              "random number options", false, false));
+  options->addSection("random", "Configure the random generator");
 
 #ifdef _WIN32
   std::unordered_set<uint32_t> generators = {1, 5};
@@ -53,11 +52,15 @@ void RandomFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   std::unordered_set<uint32_t> generators = {1, 2, 3, 4};
 #endif
 
-  options->addHiddenOption("--random.generator", "random number generator to use (1 = MERSENNE, 2 = RANDOM, "
-                           "3 = URANDOM, 4 = COMBINED (not for Windows), 5 = WinCrypt (Windows only)",
-                           new DiscreteValuesParameter<UInt32Parameter>(&_randomGenerator, generators));
+  options->addHiddenOption(
+      "--random.generator",
+      "random number generator to use (1 = MERSENNE, 2 = RANDOM, "
+      "3 = URANDOM, 4 = COMBINED (not for Windows), 5 = WinCrypt (Windows "
+      "only)",
+      new DiscreteValuesParameter<UInt32Parameter>(&_randomGenerator,
+                                                   generators));
 }
 
 void RandomFeature::start() {
-  RandomGenerator::initialize((RandomGenerator::RandomType) _randomGenerator);
+  RandomGenerator::initialize((RandomGenerator::RandomType)_randomGenerator);
 }

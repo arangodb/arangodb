@@ -57,8 +57,7 @@ EndpointFeature::EndpointFeature(
 void EndpointFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
 
-  options->addSection(
-      Section("server", "Server features", "server options", false, false));
+  options->addSection("server", "Server features");
 
   options->addOption("--server.endpoint",
                      "endpoint for client requests (e.g. "
@@ -66,8 +65,7 @@ void EndpointFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "'vpp+ssl://192.168.1.1:8529')",
                      new VectorParameter<StringParameter>(&_endpoints));
 
-  options->addSection(
-      Section("tcp", "TCP features", "tcp options", false, false));
+  options->addSection("tcp", "TCP features");
 
   options->addHiddenOption("--tcp.reuse-address", "try to reuse TCP port(s)",
                            new BooleanParameter(&_reuseAddress));
@@ -75,8 +73,7 @@ void EndpointFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addHiddenOption("--tcp.backlog-size", "listen backlog size",
                            new UInt64Parameter(&_backlogSize));
 
-  options->addSection(
-      Section("http", "HttpServer features", "http options", false, false));
+  options->addSection("http", "HttpServer features");
 
   options->addOption("--http.keep-alive-timeout",
                      "keep-alive timeout in seconds",

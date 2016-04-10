@@ -109,13 +109,6 @@ int ArangoServer::startupServer() {
     }
   }
 
-  if (_disableAuthentication) {
-    LOG(INFO) << "Authentication is turned off";
-  }
-
-  LOG(INFO) << "ArangoDB (version " << ARANGODB_VERSION_FULL
-            << ") is ready for business. Have fun!";
-
   int res;
 
   if (mode == OperationMode::MODE_CONSOLE) {
@@ -130,10 +123,6 @@ int ArangoServer::startupServer() {
 
 
   _applicationServer->stop();
-
-  if (mode == OperationMode::MODE_CONSOLE) {
-    std::cout << std::endl << TRI_BYE_MESSAGE << std::endl;
-  }
 
 
   return res;
@@ -184,45 +173,6 @@ int ArangoServer::runServer(TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::runConsole(TRI_vocbase_t* vocbase) {
-#warning TODO
-#if 0
-  ConsoleThread console(_applicationServer, _applicationV8, vocbase);
-  console.start();
-
-#ifdef __APPLE__
-  if (_applicationServer->programOptions().has("voice")) {
-    system("say -v zarvox 'welcome to ArangoDB' &");
-  }
-#endif
-
-  // disabled maintenance mode
-  waitForHeartbeat();
-  HttpHandlerFactory::setMaintenance(false);
-
-  // just wait until we are signalled
-  _applicationServer->wait();
-
-#ifdef __APPLE__
-  if (_applicationServer->programOptions().has("voice")) {
-    system("say -v zarvox 'good-bye' &");
-  }
-#endif
-
-  // .............................................................................
-  // and cleanup
-  // .............................................................................
-
-  console.userAbort();
-  console.beginShutdown();
-
-  int iterations = 0;
-
-  while (console.isRunning() && ++iterations < 30) {
-    usleep(100 * 1000);  // spin while console is still needed
-  }
-
-  return EXIT_SUCCESS;
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

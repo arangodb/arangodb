@@ -75,8 +75,7 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
 void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
 
-  options->addSection(Section("database", "Configure the database",
-                              "database options", false, false));
+  options->addSection("database", "Configure the database");
 
   options->addOption("--database.directory", "path to the database directory",
                      new StringParameter(&_directory));
@@ -123,8 +122,7 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   TRI_SetThrowCollectionNotLoadedVocBase(_throwCollectionNotLoadedError);
 #endif
 
-  options->addSection(
-      Section("query", "Configure queries", "query options", false, false));
+  options->addSection("query", "Configure queries");
 
   options->addOption("--query.tracking", "wether to track queries",
                      new BooleanParameter(&_queryTracking));
@@ -154,10 +152,20 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
 
+  auto const& positionals = options->processingResult()._positionals;
+
+  if (1 == positionals.size()) {
+    _directory = positionals[0];
+  } else if (1 < positionals.size()) {
+    LOG(FATAL) << "expected at most one database directory, got '"
+               << StringUtils::join(positionals, ",") << "'";
+    FATAL_ERROR_EXIT();
+  }
+
   if (_directory.empty()) {
-    LOG(ERR) << "no database path has been supplied, giving up, please use "
-                "the '--database.directory' option";
-    abortInvalidParameters();
+    LOG(FATAL) << "no database path has been supplied, giving up, please use "
+                  "the '--database.directory' option";
+    FATAL_ERROR_EXIT();
   }
 
   // strip trailing separators
@@ -169,10 +177,10 @@ void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   if (_maximalJournalSize < TRI_JOURNAL_MINIMAL_SIZE) {
-    LOG(ERR) << "invalid value for '--database.maximal-journal-size'. "
-                "expected at least "
-             << TRI_JOURNAL_MINIMAL_SIZE;
-    abortInvalidParameters();
+    LOG(FATAL) << "invalid value for '--database.maximal-journal-size'. "
+                  "expected at least "
+               << TRI_JOURNAL_MINIMAL_SIZE;
+    FATAL_ERROR_EXIT();
   }
 
 #warning TODO
@@ -188,48 +196,6 @@ void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 #if 0
   if (_checkVersion || _upgrade) {
     _replicationApplier = false;
-  }
-#endif
-
-#warning TODO
-#if 0
-  std::vector<std::string> arguments = _applicationServer->programArguments();
-
-  if (1 < arguments.size()) {
-    LOG(FATAL) << "expected at most one database directory, got "
-               << arguments.size();
-    FATAL_ERROR_EXIT();
-  } else if (1 == arguments.size()) {
-    _databasePath = arguments[0];
-  }
-
-  // disable certain options in unittest or script mode
-  OperationMode::server_operation_mode_e mode =
-      OperationMode::determineMode(_applicationServer->programOptions());
-
-  if (mode == OperationMode::MODE_SCRIPT ||
-      mode == OperationMode::MODE_UNITTESTS) {
-    // testing disables authentication
-    _disableAuthentication = true;
-  }
-
-  OperationMode::server_operation_mode_e mode =
-      OperationMode::determineMode(_applicationServer->programOptions());
-  if (mode != OperationMode::MODE_SERVER) {
-    LOG(FATAL) << "invalid mode. must not specify --console together with "
-                  "--daemon or --supervisor";
-    FATAL_ERROR_EXIT();
-  }
-
-  OperationMode::server_operation_mode_e mode =
-      OperationMode::determineMode(_applicationServer->programOptions());
-  bool startServer = true;
-
-  if (_applicationServer->programOptions().has("no-server")) {
-    startServer = false;
-    TRI_ENABLE_STATISTICS = false;
-    // --no-server disables all replication appliers
-    _disableReplicationApplier = true;
   }
 #endif
 }

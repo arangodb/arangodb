@@ -36,8 +36,10 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 #ifdef _WIN32
-static const int FOREGROUND_WHITE = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE;
-static const int BACKGROUND_WHITE = BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE;
+static const int FOREGROUND_WHITE =
+    FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE;
+static const int BACKGROUND_WHITE =
+    BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE;
 static const int INTENSITY = FOREGROUND_INTENSITY | BACKGROUND_INTENSITY;
 #endif
 
@@ -70,7 +72,6 @@ ConsoleFeature::ConsoleFeature(application_features::ApplicationServer* server)
 #if _WIN32
   _codePage = GetConsoleOutputCP();
 
-  
   CONSOLE_SCREEN_BUFFER_INFO info;
   GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &info);
 
@@ -86,14 +87,10 @@ ConsoleFeature::ConsoleFeature(application_features::ApplicationServer* server)
 void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
 
-  options->addSection(
-      Section("", "Global configuration", "global options", false, false));
-
   options->addOption("--quiet", "silent startup",
                      new BooleanParameter(&_quiet, false));
 
-  options->addSection(Section("console", "Configure the console",
-                              "console options", false, false));
+  options->addSection("console", "Configure the console");
 
   options->addOption("--console.colors", "enable color support",
                      new BooleanParameter(&_colors));
@@ -214,7 +211,8 @@ void ConsoleFeature::_print(std::string const& s) {
 
                 case 1:  // BOLD
                 case 5:  // BLINK
-                  _consoleAttribute = (_defaultAttribute ^ FOREGROUND_INTENSITY) & INTENSITY;
+                  _consoleAttribute =
+                      (_defaultAttribute ^ FOREGROUND_INTENSITY) & INTENSITY;
                   break;
 
                 case 30:
@@ -230,7 +228,8 @@ void ConsoleFeature::_print(std::string const& s) {
                   break;
 
                 case 33:
-                  _consoleColor = FOREGROUND_RED | FOREGROUND_GREEN | _defaultBackground;
+                  _consoleColor =
+                      FOREGROUND_RED | FOREGROUND_GREEN | _defaultBackground;
                   break;
 
                 case 34:
@@ -238,15 +237,18 @@ void ConsoleFeature::_print(std::string const& s) {
                   break;
 
                 case 35:
-                  _consoleColor = FOREGROUND_BLUE | FOREGROUND_RED | _defaultBackground;
+                  _consoleColor =
+                      FOREGROUND_BLUE | FOREGROUND_RED | _defaultBackground;
                   break;
 
                 case 36:
-                  _consoleColor = FOREGROUND_BLUE | FOREGROUND_GREEN | _defaultBackground;
+                  _consoleColor =
+                      FOREGROUND_BLUE | FOREGROUND_GREEN | _defaultBackground;
                   break;
 
                 case 37:
-                  _consoleColor = FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_BLUE | _defaultBackground;
+                  _consoleColor = FOREGROUND_GREEN | FOREGROUND_RED |
+                                  FOREGROUND_BLUE | _defaultBackground;
                   break;
               }
 
