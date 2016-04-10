@@ -52,7 +52,7 @@ class RestBaseHandler : public rest::HttpHandler {
   /// @brief checks if velocypack is expected as answer
   //////////////////////////////////////////////////////////////////////////////
 
-  bool returnVelocypack();
+  bool returnVelocypack() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates a result from VelocyPack
@@ -97,6 +97,13 @@ class RestBaseHandler : public rest::HttpHandler {
   /// @brief dumps the response as JSON into the response string buffer
   //////////////////////////////////////////////////////////////////////////////
 
+ protected:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief write result back to client
+  //////////////////////////////////////////////////////////////////////////////
+  void writeResult(arangodb::velocypack::Slice const& slice, VPackOptions const& options);
+
+ private:
   void dumpResponse(arangodb::velocypack::Slice const& slice,
                     arangodb::velocypack::Options const* options);
 };

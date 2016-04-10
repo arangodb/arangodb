@@ -246,20 +246,7 @@ void RestVocbaseBaseHandler::generate20x(
                                      DOCUMENT_PATH + "/" + escapedHandle));
   }
 
-  if(returnVelocypack()) {
-    _response->setContentType("application/x-velocypack");
-    _response->body().appendText(slice.startAs<const char>(),slice.byteSize());
-  } else {
-    _response->setContentType("application/json; charset=utf-8");
-    VPackStringBufferAdapter buffer(_response->body().stringBuffer());
-    VPackDumper dumper(&buffer, options);
-    try {
-      dumper.dump(slice);
-    } catch (...) {
-      generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                    "cannot generate output");
-    }
-  }
+  writeResult(slice, *options);
 
 }
 
