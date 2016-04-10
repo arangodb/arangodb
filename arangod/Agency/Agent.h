@@ -30,16 +30,21 @@
 #include "State.h"
 #include "Store.h"
 
+struct TRI_server_t;
+struct TRI_vocbase_t;
+
 namespace arangodb {
+class ApplicationV8;
+namespace aql {
+class QueryRegistry;
+}
+
 namespace consensus {
 
 class Agent : public arangodb::Thread {
  public:
-  /// @brief Default ctor
-  Agent();
-
   /// @brief Construct with program options
-  explicit Agent(config_t const&);
+  Agent(TRI_server_t*, config_t const&, ApplicationV8*, aql::QueryRegistry*);
 
   /// @brief Clean up
   virtual ~Agent();
@@ -49,6 +54,10 @@ class Agent : public arangodb::Thread {
 
   /// @brief Get current term
   id_t id() const;
+
+  TRI_vocbase_t* vocbase() const {
+    return _vocbase;
+  }
 
   /// @brief Vote request
   priv_rpc_ret_t requestVote(term_t, id_t, index_t, index_t, query_t const&);
@@ -103,7 +112,7 @@ class Agent : public arangodb::Thread {
   void reportIn(id_t id, index_t idx);
 
   /// @brief Wait for slaves to confirm appended entries
-  bool waitFor(index_t last_entry, duration_t timeout = duration_t(2000));
+  bool waitFor(index_t last_entry, double timeout = 2.0);
 
   /// @brief Convencience size of agency
   size_t size() const;
@@ -133,6 +142,11 @@ class Agent : public arangodb::Thread {
   Store const& spearhead() const; 
 
  private:
+  TRI_server_t* _server;
+  TRI_vocbase_t* _vocbase; 
+  ApplicationV8* _applicationV8;
+  aql::QueryRegistry* _queryRegistry;
+
   Constituent _constituent; /**< @brief Leader election delegate */
   State _state;             /**< @brief Log replica              */
   config_t _config;         /**< @brief Command line arguments   */

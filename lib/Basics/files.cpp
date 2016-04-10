@@ -2359,6 +2359,7 @@ size_t TRI_GetNullBufferSizeFiles() { return sizeof(NullBuffer); }
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitializeFiles() {
+  // fill buffer with 0 bytes
   memset(TRI_GetNullBufferFiles(), 0, TRI_GetNullBufferSizeFiles());
 }
 

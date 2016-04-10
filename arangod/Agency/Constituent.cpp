@@ -66,7 +66,7 @@ void Constituent::configure(Agent* agent) {
 // Default ctor
 Constituent::Constituent() :
   Thread("Constituent"), _term(0), _leader_id(0), _id(0), _gen(std::random_device()()),
-  _role(FOLLOWER), _agent(0) {}
+  _role(FOLLOWER), _agent(0), _voted_for(0) {}
 
 // Shutdown if not already
 Constituent::~Constituent() {

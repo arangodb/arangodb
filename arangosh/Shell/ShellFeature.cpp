@@ -147,7 +147,7 @@ void ShellFeature::start() {
   try {
     switch (_runMode) {
       case RunMode::INTERACTIVE:
-        ok = shell->runShell(_positionals);
+        ok = (shell->runShell(_positionals) == TRI_ERROR_NO_ERROR);
         break;
 
       case RunMode::EXECUTE_SCRIPT:

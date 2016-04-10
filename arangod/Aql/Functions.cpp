@@ -677,7 +677,7 @@ static void GetDocumentByIdentifier(arangodb::AqlTransaction* trx,
     try {
       TRI_voc_cid_t cid;
       RegisterCollectionInTransaction(trx, collectionName, cid);
-    } catch (arangodb::basics::Exception const& ex) {
+    } catch (arangodb::basics::Exception const&) {
       if (ignoreError) {
         return;
       }
@@ -693,7 +693,7 @@ static void GetDocumentByIdentifier(arangodb::AqlTransaction* trx,
       try {
         TRI_voc_cid_t cid;
         RegisterCollectionInTransaction(trx, parts[0], cid);
-      } catch (arangodb::basics::Exception const& ex) {
+      } catch (arangodb::basics::Exception const&) {
         if (ignoreError) {
           return;
         }
@@ -714,7 +714,7 @@ static void GetDocumentByIdentifier(arangodb::AqlTransaction* trx,
       try {
         TRI_voc_cid_t cid;
         RegisterCollectionInTransaction(trx, collectionName, cid);
-      } catch (arangodb::basics::Exception const& ex) {
+      } catch (arangodb::basics::Exception const&) {
         if (ignoreError) {
           return;
         }

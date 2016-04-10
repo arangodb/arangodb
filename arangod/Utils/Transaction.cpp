@@ -105,7 +105,7 @@ static bool indexSupportsSort(Index const* idx, arangodb::aql::Variable const* r
 static OperationResult DBServerResponseBad(std::shared_ptr<VPackBuilder> resultBody) {
   VPackSlice res = resultBody->slice();
   return OperationResult(
-      arangodb::basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      arangodb::basics::VelocyPackHelper::getNumericValue<int>(
           res, "errorNum", TRI_ERROR_INTERNAL),
       arangodb::basics::VelocyPackHelper::getStringValue(
           res, "errorMessage", "JSON sent to DBserver was bad"));

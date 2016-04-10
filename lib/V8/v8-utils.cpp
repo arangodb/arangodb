@@ -3194,7 +3194,7 @@ static void JS_ExecuteExternal(
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a string");
   }
 
-  char** arguments = 0;
+  char** arguments = nullptr;
   uint32_t n = 0;
 
   if (2 <= args.Length()) {
@@ -3204,8 +3204,7 @@ static void JS_ExecuteExternal(
       v8::Handle<v8::Array> arr = v8::Handle<v8::Array>::Cast(a);
 
       n = arr->Length();
-      arguments =
-          (char**)TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false);
+      arguments = static_cast<char**>(TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false));
 
       for (uint32_t i = 0; i < n; ++i) {
         TRI_Utf8ValueNFC arg(TRI_UNKNOWN_MEM_ZONE, arr->Get(i));
@@ -3218,8 +3217,7 @@ static void JS_ExecuteExternal(
       }
     } else {
       n = 1;
-      arguments =
-          (char**)TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false);
+      arguments = static_cast<char**>(TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false));
 
       TRI_Utf8ValueNFC arg(TRI_UNKNOWN_MEM_ZONE, a);
 
@@ -3236,9 +3234,9 @@ static void JS_ExecuteExternal(
   }
 
   TRI_external_id_t external;
-  TRI_CreateExternalProcess(*name, (char const**)arguments, (size_t)n, usePipes,
+  TRI_CreateExternalProcess(*name, const_cast<char const**>(arguments), (size_t)n, usePipes,
                             &external);
-  if (arguments != 0) {
+  if (arguments != nullptr) {
     for (uint32_t i = 0; i < n; ++i) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, arguments[i]);
     }
@@ -3251,7 +3249,7 @@ static void JS_ExecuteExternal(
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   result->Set(TRI_V8_ASCII_STRING("pid"),
               v8::Number::New(isolate, external._pid));
-// Now report about possible stdin and stdout pipes:
+  // Now report about possible stdin and stdout pipes:
 #ifndef _WIN32
   if (external._readPipe >= 0) {
     result->Set(TRI_V8_ASCII_STRING("readPipe"),
@@ -3383,7 +3381,7 @@ static void JS_ExecuteAndWaitExternal(
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a string");
   }
 
-  char** arguments = 0;
+  char** arguments = nullptr;
   uint32_t n = 0;
 
   if (2 <= args.Length()) {
@@ -3393,8 +3391,7 @@ static void JS_ExecuteAndWaitExternal(
       v8::Handle<v8::Array> arr = v8::Handle<v8::Array>::Cast(a);
 
       n = arr->Length();
-      arguments =
-          (char**)TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false);
+      arguments = static_cast<char**>(TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false));
 
       for (uint32_t i = 0; i < n; ++i) {
         TRI_Utf8ValueNFC arg(TRI_UNKNOWN_MEM_ZONE, arr->Get(i));
@@ -3407,8 +3404,7 @@ static void JS_ExecuteAndWaitExternal(
       }
     } else {
       n = 1;
-      arguments =
-          (char**)TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false);
+      arguments = static_cast<char**>(TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false));
 
       TRI_Utf8ValueNFC arg(TRI_UNKNOWN_MEM_ZONE, a);
 
@@ -3425,9 +3421,9 @@ static void JS_ExecuteAndWaitExternal(
   }
 
   TRI_external_id_t external;
-  TRI_CreateExternalProcess(*name, (char const**)arguments, (size_t)n, usePipes,
+  TRI_CreateExternalProcess(*name, const_cast<char const**>(arguments), static_cast<size_t>(n), usePipes,
                             &external);
-  if (arguments != 0) {
+  if (arguments != nullptr) {
     for (uint32_t i = 0; i < n; ++i) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, arguments[i]);
     }
@@ -3532,26 +3528,18 @@ static void JS_KillExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  v8::Handle<v8::String> pidname = TRI_V8_ASCII_STRING("pid");
-
   // extract the arguments
-  if (args.Length() != 1 || !args[0]->IsObject()) {
+  if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("killExternal(<external-identifier>)");
   }
 
-  v8::Handle<v8::Object> obj = v8::Handle<v8::Object>::Cast(args[0]);
-  if (!obj->Has(pidname)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "statusExternal: pid must be given");
-  }
   TRI_external_id_t pid;
   memset(&pid, 0, sizeof(TRI_external_id_t));
 
 #ifndef _WIN32
-  pid._pid =
-      static_cast<TRI_pid_t>(TRI_ObjectToUInt64(obj->Get(pidname), true));
+  pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(args[0], true));
 #else
-  pid._pid = static_cast<DWORD>(TRI_ObjectToUInt64(obj->Get(pidname), true));
+  pid._pid = static_cast<DWORD>(TRI_ObjectToUInt64(args[0], true));
 #endif
 
   // return the result

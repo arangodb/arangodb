@@ -23,6 +23,8 @@
 
 #include "Agent.h"
 #include "Basics/ConditionLocker.h"
+#include "VocBase/server.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>    
 #include <velocypack/velocypack-aliases.h> 
@@ -35,11 +37,16 @@ using namespace arangodb::velocypack;
 namespace arangodb {
 namespace consensus {
 
-Agent::Agent () : Thread ("Agent"), _last_commit_index(0) {}
-
 //  Agent configuration
-Agent::Agent (config_t const& config) :
-  Thread ("Agent"), _config(config), _last_commit_index(0) {
+Agent::Agent (TRI_server_t* server, config_t const& config, ApplicationV8* applicationV8, aql::QueryRegistry* queryRegistry) 
+    : Thread ("Agent"), 
+      _server(server), 
+      _vocbase(nullptr), 
+      _applicationV8(applicationV8), 
+      _queryRegistry(queryRegistry), 
+      _config(config), 
+      _last_commit_index(0) {
+
   _state.setEndPoint(_config.end_point);
   _constituent.configure(this);
   _confirmed.resize(size(),0); // agency's size and reset to 0
@@ -52,6 +59,9 @@ id_t Agent::id() const {
 
 //  Shutdown
 Agent::~Agent () {
+  if (_vocbase != nullptr) {
+    TRI_ReleaseDatabaseServer(_server, _vocbase);
+  }
   shutdown();
 }
 
@@ -108,42 +118,43 @@ id_t Agent::leaderID () const {
   return _constituent.leaderID();
 }
 
-//  Are we leading?
+// Are we leading?
 bool Agent::leading() const {
   return _constituent.leading();
 }
 
-//  Persist term and id we vote for
+// Persist term and id we vote for
 void Agent::persist(term_t t, id_t i) {
 //  _state.persist(t, i);
 }
 
-//  Waits here for confirmation of log's commits up to index
-bool Agent::waitFor (index_t index, duration_t timeout) {
+// Waits here for confirmation of log's commits up to index.
+// Timeout in seconds
+bool Agent::waitFor (index_t index, double timeout) {
 
   if (size() == 1) // single host agency
     return true;
     
   CONDITION_LOCKER(guard, _rest_cv);
-  auto start = std::chrono::system_clock::now();
 
   // Wait until woken up through AgentCallback 
   while (true) {
 
-    _rest_cv.wait();
-
-    // shutting down
-    if (this->isStopping()) {      
-      return false;
-    }
-    // timeout?
-    if (std::chrono::system_clock::now() - start > timeout) {
-      return false;
-    }
+    std::cout << _last_commit_index << std::endl;
     /// success?
     if (_last_commit_index >= index) {
       return true;
     }
+    // timeout
+    if (_rest_cv.wait(static_cast<uint64_t>(1.0e6*timeout))) {
+      return false;
+    }
+    
+    // shutting down
+    if (this->isStopping()) {      
+      return false;
+    }
+
   }
   // We should never get here
   TRI_ASSERT(false);
@@ -170,6 +181,7 @@ void Agent::reportIn (id_t id, index_t index) {
     }
   }
 
+  CONDITION_LOCKER(guard, _rest_cv);
   _rest_cv.broadcast();            // wake up REST handlers
 }
 
@@ -183,26 +195,42 @@ bool Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
       << "Received malformed entries for appending. Discarting!";  
     return false;
   }
+
+  MUTEX_LOCKER(mutexLocker, _ioLock);
+
+  index_t last_commit_index = _last_commit_index;
+  // 1. Reply false if term < currentTerm (§5.1)
+  if (this->term() > term) {
+    LOG_TOPIC(WARN, Logger::AGENCY) << "I have a higher term than RPC caller.";
+    return false;
+  }
+
+  // 2. Reply false if log doesn’t contain an entry at prevLogIndex
+  //    whose term matches prevLogTerm (§5.3)
+  if (!_state.find(prevIndex,prevTerm)) {
+    LOG_TOPIC(WARN, Logger::AGENCY)
+      << "Unable to find matching entry to previous entry (index,term) = ("
+      << prevIndex << "," << prevTerm << ")";
+    //return false;
+  }
+
+  // 3. If an existing entry conflicts with a new one (same index
+  //    but different terms), delete the existing entry and all that
+  //    follow it (§5.3)
+  // 4. Append any new entries not already in the log
   if (queries->slice().length()) {
     LOG_TOPIC(INFO, Logger::AGENCY) << "Appending "<< queries->slice().length()
-              << " entries to state machine.";
+                                    << " entries to state machine.";
+    /* bool success = */_state.log (queries, term, leaderId, prevIndex, prevTerm);
   } else { 
     // heart-beat
   }
-    
-  if (_last_commit_index < leaderCommitIndex) {
-    LOG_TOPIC(INFO, Logger::AGENCY) <<  "Updating last commited index to " << leaderCommitIndex;
-  }
-  _last_commit_index = leaderCommitIndex;
   
-  // Sanity
-  if (this->term() > term) {                 // (§5.1)
-    LOG_TOPIC(WARN, Logger::AGENCY) << "I have a higher term than RPC caller.";
-    throw LOWER_TERM_APPEND_ENTRIES_RPC; 
-  }
-  
-  // Delete conflits and append (§5.3)
-  _state.log (queries, term, leaderId, prevIndex, prevTerm);
+  // appendEntries 5. If leaderCommit > commitIndex, set commitIndex =
+  //min(leaderCommit, index of last new entry)
+  if (leaderCommitIndex > last_commit_index)
+  _last_commit_index = std::min(leaderCommitIndex,last_commit_index);
+
   return true;
 
 }
@@ -213,9 +241,13 @@ append_entries_t Agent::sendAppendEntriesRPC (id_t follower_id) {
   index_t last_confirmed = _confirmed[follower_id];
   std::vector<log_t> unconfirmed = _state.get(last_confirmed);
 
+  MUTEX_LOCKER(mutexLocker, _ioLock);
+
+  term_t t = this->term();
+
   // RPC path
   std::stringstream path;
-  path << "/_api/agency_priv/appendEntries?term=" << term() << "&leaderId="
+  path << "/_api/agency_priv/appendEntries?term=" << t << "&leaderId="
        << id() << "&prevLogIndex=" << unconfirmed[0].index << "&prevLogTerm="
        << unconfirmed[0].term << "&leaderCommit=" << _last_commit_index;
 
@@ -250,19 +282,29 @@ append_entries_t Agent::sendAppendEntriesRPC (id_t follower_id) {
      std::make_shared<AgentCallback>(this, follower_id, last),
      0, true);
 
-  return append_entries_t(this->term(), true);
+  return append_entries_t(t, true);
   
 }
 
-// @brief load persisten state
+// @brief load persistent state
 bool Agent::load () {
+  TRI_vocbase_t* vocbase =
+      TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
+
+  if (vocbase == nullptr) {
+    LOG(FATAL) << "could not determine _system database";
+    FATAL_ERROR_EXIT();
+  }
+
+  _vocbase = vocbase;
+
   LOG_TOPIC(INFO, Logger::AGENCY) << "Loading persistent state.";
-  if (!_state.loadCollections()) {
+  if (!_state.loadCollections(_vocbase, _applicationV8, _queryRegistry)) {
     LOG_TOPIC(WARN, Logger::AGENCY) << "Failed to load persistent state on statup.";
   }
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Reassembling spearhead and read stores.";
-  _read_db.apply(_state.slices());
+//  _read_db.apply(_state.slices());
   _spearhead.apply(_state.slices(_last_commit_index+1));
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Starting spearhead worker.";
@@ -279,17 +321,25 @@ bool Agent::load () {
 write_ret_t Agent::write (query_t const& query)  {
 
   if (_constituent.leading()) {                    // Only working as leader
-    MUTEX_LOCKER(mutexLocker, _ioLock);
-    std::vector<bool> applied = _spearhead.apply(query); // Apply to spearhead
-    std::vector<index_t> indices = 
-      _state.log (query, applied, term(), id());   // Append to log w/ indicies
-    for (size_t i = 0; i < applied.size(); ++i) {
-      if (applied[i]) {
-        _confirmed[id()] = indices[i];             // Confirm myself
+
+    std::vector<bool> applied;
+    std::vector<index_t> indices;
+    index_t maxind = 0;
+
+    {
+      MUTEX_LOCKER(mutexLocker, _ioLock);
+      applied = _spearhead.apply(query);             // Apply to spearhead
+      indices = _state.log (query, applied, term(), id()); // Log w/ indicies
+      if (!indices.empty()) {
+        maxind = *std::max_element(indices.begin(), indices.end());
       }
+      _cv.signal();                                  // Wake up run
     }
-    _cv.signal();                                  // Wake up run
+
+    reportIn(0,maxind);
+    
     return write_ret_t(true,id(),applied,indices); // Indices to wait for to rest
+    
   } else {                                         // Else we redirect
     return write_ret_t(false,_constituent.leaderID());
   }
@@ -299,8 +349,7 @@ write_ret_t Agent::write (query_t const& query)  {
 read_ret_t Agent::read (query_t const& query) const {
   if (_constituent.leading()) {     // Only working as leaer
     query_t result = std::make_shared<arangodb::velocypack::Builder>();
-    std::vector<bool> success= (_config.size() == 1) ?
-      _spearhead.read(query, result) : _read_db.read (query, result);
+    std::vector<bool> success = _read_db.read (query, result);
     return read_ret_t(true, _constituent.leaderID(), success, result);
   } else {                          // Else We redirect
     return read_ret_t(false, _constituent.leaderID());
