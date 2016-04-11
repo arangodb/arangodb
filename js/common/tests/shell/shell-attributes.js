@@ -570,6 +570,16 @@ function AttributesSuite () {
 
       assertEqual(3, result.length);
       assertEqual([ "first", "second", "third" ], result);
+      
+      result = db._query("RETURN LIKE('a\nb c', '%b%')").toArray().sort();
+
+      assertEqual(1, result.length);
+      assertEqual([ true ], result);
+      
+      result = db._query("RETURN NOOPT(LIKE('a\nb c', '%b%'))").toArray().sort();
+
+      assertEqual(1, result.length);
+      assertEqual([ true ], result);
     }
 
   };
