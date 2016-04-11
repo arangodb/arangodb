@@ -43,6 +43,7 @@
 using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
 using namespace arangodb::rest;
+using namespace arangodb;
 
 State::State(std::string const& end_point)
     : _vocbase(nullptr),

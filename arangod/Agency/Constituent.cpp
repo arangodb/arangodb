@@ -26,6 +26,7 @@
 #include "Basics/ConditionLocker.h"
 
 #include "Aql/Query.h"
+#include "Aql/QueryRegistry.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -46,6 +47,7 @@
 using namespace arangodb::consensus;
 using namespace arangodb::rest;
 using namespace arangodb::velocypack;
+using namespace arangodb;
 
 // Configure with agent's configuration
 void Constituent::configure(Agent* agent) {
@@ -55,14 +57,6 @@ void Constituent::configure(Agent* agent) {
   if (size() == 1) {
     _role = LEADER;
   } else {
-    try {
-      _votes.resize(size());
-    } catch (std::exception const& e) {
-      LOG_TOPIC(ERR, Logger::AGENCY) <<
-        "Cannot resize votes vector to " << size();
-      LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
-    }
-    
     _id = _agent->config().id;
     if (_agent->config().notify) {// (notify everyone) 
       notifyAll();
@@ -124,7 +118,7 @@ void Constituent::term(term_t t) {
     options.waitForSync = true; 
     options.silent = true;
     
-    OperationResult result = trx.insert("log", body.slice(), options);
+    OperationResult result = trx.insert("election", body.slice(), options);
     res = trx.finish(result.code);
     
   }
@@ -142,7 +136,6 @@ void Constituent::follow (term_t t) {
     LOG_TOPIC(INFO, Logger::AGENCY) << "Role change: Converted to follower in term " << t;
   }
   this->term(t);
-  _votes.assign(_votes.size(),false); // void all votes
   _role = FOLLOWER;
 }
 
@@ -263,15 +256,13 @@ const constituency_t& Constituent::gossip () {
 /// @brief Call to election
 void Constituent::callElection() {
 
-  try {
-    _votes.at(_id) = true; // vote for myself
-  } catch (std::out_of_range const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "_votes vector is not properly sized!";
-    LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
-  }
+  std::vector<bool> votes(size(),false);
+
+  votes.at(_id) = true; // vote for myself
   _cast = true;
-  if(_role == CANDIDATE)
+  if(_role == CANDIDATE) {
     this->term(_term+1);            // raise my term
+  }
   
   std::string body;
   std::vector<ClusterCommResult> results(_agent->config().end_points.size());
@@ -319,13 +310,12 @@ void Constituent::callElection() {
                 follow(t);
                 break;
               }
-              _votes[i] = slc.get("voteGranted").getBool();        // Get vote
-            } else {
-            }
+              votes[i] = slc.get("voteGranted").getBool();        // Get vote
+            } 
           }
         }
       } else { // Request failed
-        _votes[i] = false;
+        votes[i] = false;
       }
     }
   }
@@ -333,7 +323,7 @@ void Constituent::callElection() {
   // Count votes
   size_t yea = 0;
   for (size_t i = 0; i < size(); ++i) {
-    if (_votes[i]){
+    if (votes[i]){
       yea++;
     }    
   }
@@ -354,8 +344,8 @@ void Constituent::beginShutdown() {
 #include <iostream>
 
 bool Constituent::start (TRI_vocbase_t* vocbase,
-			 ApplicationV8* applicationV8,
-			 aql::QueryRegistry* queryRegistry) {
+                         ApplicationV8* applicationV8,
+                         aql::QueryRegistry* queryRegistry) {
 
   _vocbase = vocbase;
   _applicationV8 = applicationV8;
@@ -386,8 +376,18 @@ void Constituent::run() {
   }
   
   VPackSlice result = queryResult.result->slice();
-  
 
+  if (result.isArray()) {
+    for (auto const& i : VPackArrayIterator(result)) {
+      try {
+      _term = i.get("term").getUInt();
+      _voted_for = i.get("voted_for").getUInt();
+      } catch (std::exception const& e) {
+        LOG_TOPIC(ERR, Logger::AGENCY)
+          << "Persisted election entries corrupt! Defaulting term,vote (0,0)";
+      }
+    }
+  }
 
   // Always start off as follower
   while (!this->isStopping() && size() > 1) { 

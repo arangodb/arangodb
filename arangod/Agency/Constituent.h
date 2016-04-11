@@ -150,7 +150,6 @@ private:
   constituency_t       _constituency; /**< @brief List of consituents */
   std::mt19937         _gen;          /**< @brief Random number generator */
   role_t               _role;         /**< @brief My role */
-  std::vector<bool>    _votes;        /**< @brief My list of votes cast in my favour*/
   Agent*               _agent;        /**< @brief My boss */
   id_t                 _voted_for;
 
