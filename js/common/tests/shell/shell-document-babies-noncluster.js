@@ -751,7 +751,6 @@ function CollectionDocumentSuiteBabies() {
       });
       var origDocs = collection.insert([{}, {}, {}]);
       var expectedLength = origDocs.length;
-      require("internal").print(origDocs);
       values.forEach(function(x) {
         // Replace
         // Version 1
