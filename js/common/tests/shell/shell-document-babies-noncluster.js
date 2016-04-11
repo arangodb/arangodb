@@ -390,9 +390,9 @@ function CollectionDocumentSuiteBabies() {
       var result = collection.remove(docs);
       assertEqual(result.length, 3);
       // All should conflict!
-      for (var i = 0; i < docs.length; i++) {
-        assertTrue(docs[i].error);
-        assertEqual(docs[i].errorNum, ERRORS.ERROR_ARANGO_CONFLICT.code);
+      for (var i = 0; i < result.length; i++) {
+        assertTrue(result[i].error);
+        assertEqual(result[i].errorNum, ERRORS.ERROR_ARANGO_CONFLICT.code);
       }
       assertEqual(collection.count(), 3);
       collection.remove(docs2);
@@ -427,9 +427,9 @@ function CollectionDocumentSuiteBabies() {
       var result = collection.remove(docs);
       assertEqual(result.length, 3);
       // All should conflict!
-      for (var i = 0; i < docs.length; i++) {
-        assertTrue(docs[i].error);
-        assertEqual(docs[i].errorNum, ERRORS.ERROR_ARANGO_CONFLICT.code);
+      for (var i = 0; i < result.length; i++) {
+        assertTrue(result[i].error);
+        assertEqual(result[i].errorNum, ERRORS.ERROR_ARANGO_CONFLICT.code);
       }
       assertEqual(collection.count(), 3);
       collection.remove(docs2);
@@ -491,45 +491,54 @@ function CollectionDocumentSuiteBabies() {
       }, {
         value: 6
       }]);
-      var docs3;
-      try {
-        docs3 = collection.replace(docs, [{
-          value: 7
-        }, {
-          value: 8
-        }, {
-          value: 9
-        }]);
-        fail();
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
+      var docs3 = collection.replace(docs, [{
+        value: 7
+      }, {
+        value: 8
+      }, {
+        value: 9
+      }]);
+      assertEqual(docs3.length, docs.length);
+      for (var i = 0; i < docs3.length; ++i) {
+        assertEqual(docs3[i].error, true);
+        assertEqual(docs3[i].errorNum, ERRORS.ERROR_ARANGO_CONFLICT.code);
       }
+
+      // Only the third is not ok
       var test = [docs2[0], docs2[1], docs[2]];
-      try {
-        docs3 = collection.replace(test, [{
-          value: 7
-        }, {
-          value: 8
-        }, {
-          value: 9
-        }]);
-        fail();
-      } catch (err2) {
-        assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err2.errorNum);
-      }
+      docs3 = collection.replace(test, [{
+        value: 7
+      }, {
+        value: 8
+      }, {
+        value: 9
+      }]);
+      assertEqual(docs3.length, test.length);
+
+      assertEqual(docs3[0]._key, docs[0]._key);
+      assertEqual(docs3[1]._key, docs[1]._key);
+
+      assertEqual(docs3[2].error, true);
+      assertEqual(docs3[2].errorNum, ERRORS.ERROR_ARANGO_CONFLICT.code);
+
+      // Only the third is ok
       test = [docs[0], docs2[1], docs2[2]];
-      try {
-        docs3 = collection.replace(test, [{
-          value: 7
-        }, {
-          value: 8
-        }, {
-          value: 9
-        }]);
-        fail();
-      } catch (err3) {
-        assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err3.errorNum);
-      }
+
+      docs3 = collection.replace(test, [{
+        value: 7
+      }, {
+        value: 8
+      }, {
+        value: 9
+      }]);
+
+      assertEqual(docs3[0].error, true);
+      assertEqual(docs3[0].errorNum, ERRORS.ERROR_ARANGO_CONFLICT.code);
+      assertEqual(docs3[1].error, true);
+      assertEqual(docs3[1].errorNum, ERRORS.ERROR_ARANGO_CONFLICT.code);
+
+      assertEqual(docs3[2]._key, docs[2]._key);
+
       docs3 = collection.replace(test, [{
         value: 7
       }, {
@@ -539,6 +548,9 @@ function CollectionDocumentSuiteBabies() {
       }], {
         overwrite: true
       });
+      assertEqual(docs3[0]._key, docs[0]._key);
+      assertEqual(docs3[1]._key, docs[1]._key);
+      assertEqual(docs3[2]._key, docs[2]._key);
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -561,44 +573,53 @@ function CollectionDocumentSuiteBabies() {
         value: 6
       }]);
       var docs3;
-      try {
-        docs3 = collection.update(docs, [{
-          value: 7
-        }, {
-          value: 8
-        }, {
-          value: 9
-        }]);
-        fail();
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
+      docs3 = collection.update(docs, [{
+        value: 7
+      }, {
+        value: 8
+      }, {
+        value: 9
+      }]);
+      assertEqual(docs3.length, 3);
+      for (var i = 0; i < docs3.length; ++i) {
+        assertEqual(docs3[i].error, true);
+        assertEqual(docs3[i].errorNum, ERRORS.ERROR_ARANGO_CONFLICT.code);
       }
+
+      // Only the third is not ok
       var test = [docs2[0], docs2[1], docs[2]];
-      try {
-        docs3 = collection.update(test, [{
-          value: 7
-        }, {
-          value: 8
-        }, {
-          value: 9
-        }]);
-        fail();
-      } catch (err2) {
-        assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err2.errorNum);
-      }
+      docs3 = collection.update(test, [{
+        value: 7
+      }, {
+        value: 8
+      }, {
+        value: 9
+      }]);
+      assertEqual(docs3.length, test.length);
+
+      assertEqual(docs3[0]._key, docs[0]._key);
+      assertEqual(docs3[1]._key, docs[1]._key);
+
+      assertEqual(docs3[2].error, true);
+      assertEqual(docs3[2].errorNum, ERRORS.ERROR_ARANGO_CONFLICT.code);
+
+      // Only the third is ok
       test = [docs[0], docs2[1], docs2[2]];
-      try {
-        docs3 = collection.update(test, [{
-          value: 7
-        }, {
-          value: 8
-        }, {
-          value: 9
-        }]);
-        fail();
-      } catch (err3) {
-        assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err3.errorNum);
-      }
+      docs3 = collection.update(test, [{
+        value: 7
+      }, {
+        value: 8
+      }, {
+        value: 9
+      }]);
+
+      assertEqual(docs3[0].error, true);
+      assertEqual(docs3[0].errorNum, ERRORS.ERROR_ARANGO_CONFLICT.code);
+      assertEqual(docs3[1].error, true);
+      assertEqual(docs3[1].errorNum, ERRORS.ERROR_ARANGO_CONFLICT.code);
+
+      assertEqual(docs3[2]._key, docs[2]._key);
+
       docs3 = collection.update(test, [{
         value: 7
       }, {
@@ -608,6 +629,10 @@ function CollectionDocumentSuiteBabies() {
       }], {
         overwrite: true
       });
+
+      assertEqual(docs3[0]._key, docs[0]._key);
+      assertEqual(docs3[1]._key, docs[1]._key);
+      assertEqual(docs3[2]._key, docs[2]._key);
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -633,8 +658,8 @@ function CollectionDocumentSuiteBabies() {
       assertEqual(docs3.length, 3);
       // All should conflict!
       for (var i = 0; i < docs.length; i++) {
-        assertTrue(docs[i].error);
-        assertEqual(docs[i].errorNum, ERRORS.ERROR_ARANGO_CONFLICT.code);
+        assertTrue(docs3[i].error);
+        assertEqual(docs3[i].errorNum, ERRORS.ERROR_ARANGO_CONFLICT.code);
       }
 
       var test = [docs2[0], docs2[1], docs[2]];
@@ -642,8 +667,8 @@ function CollectionDocumentSuiteBabies() {
       assertEqual(docs3.length, 3);
       // The first 2 are successful
       for (var i = 0; i < 2; i++) {
-        assertFalse(docs[i].hasOwnProperty("error"));
-        assertFalse(docs[i].hasOwnPropery("errorNum"));
+        assertFalse(docs3[i].hasOwnProperty("error"));
+        assertFalse(docs3[i].hasOwnProperty("errorNum"));
       }
       // The third conflicts
       assertTrue(docs3[2].error);
@@ -661,8 +686,8 @@ function CollectionDocumentSuiteBabies() {
       assertEqual(docs3[1].errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
 
       // The third is removed
-      assertFalse(docs[2].hasOwnProperty("error"));
-      assertFalse(docs[2].hasOwnPropery("errorNum"));
+      assertFalse(docs3[2].hasOwnProperty("error"));
+      assertFalse(docs3[2].hasOwnProperty("errorNum"));
       assertEqual(collection.count(), 0);
     },
 
@@ -719,81 +744,156 @@ function CollectionDocumentSuiteBabies() {
       ];
       var docs;
       values.forEach(function(x) {
-        try {
-          docs = collection.insert([x]);
-          fail();
-        } catch (err) {
-          assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
-            err.errorNum);
-        }
+        docs = collection.insert([x]);
+        assertEqual(docs.length, 1);
+        assertEqual(docs[0].error, true);
+        assertEqual(docs[0].errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code);
       });
-      docs = collection.insert([{}, {}, {}]);
+      var origDocs = collection.insert([{}, {}, {}]);
+      var expectedLength = origDocs.length;
+      require("internal").print(origDocs);
       values.forEach(function(x) {
         // Replace
-        try {
-          docs = collection.replace(docs, [x, x, x]);
-          fail();
-        } catch (err2) {
-          assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
-            err2.errorNum);
+        // Version 1
+        /*
+        docs = collection.replace(origDocs, [x, x, x]);
+        assertEqual(docs.length, expectedLength);
+        for (var i = 0; i < expectedLength; ++i) {
+          assertEqual(docs[i].error, true);
+          assertEqual(docs[i].errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code);
         }
+        */
+        // Version 2
         try {
+          docs = collection.replace(origDocs, [x, x, x]);
+          fail();
+        } catch (err) {
+          assertEqual(err.errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code);
+        }
+
+        // Replace
+        // Version 1
+        if (typeof x === "string") {
           docs = collection.replace([x, x, x], [{}, {}, {}]);
-          fail();
-        } catch (err3) {
-          if (typeof x === "string") {
-            assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code,
-              err3.errorNum);
-          } else {
-            assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code,
-              err3.errorNum);
+          assertEqual(docs.length, expectedLength);
+          for (var i = 0; i < expectedLength; ++i) {
+            assertEqual(docs[i].error, true);
+            if (typeof x === "string") {
+              assertEqual(docs[i].errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+            } else {
+              assertEqual(docs[i].errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code);
+            }
+          }
+        } else {
+          // Version 2
+          try {
+            docs = collection.replace([x, x, x], [{}, {}, {}]);
+            fail();
+          } catch (err) {
+            if (typeof x === "string") {
+              assertEqual(err.errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+            } else {
+              assertEqual(err.errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code);
+            }
           }
         }
+
         // Update
-        try {
-          docs = collection.update(docs, [x, x, x]);
-          fail();
-        } catch (err2) {
-          assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
-            err2.errorNum);
+        // Version 1
+        /*
+        docs = collection.update(origDocs, [x, x, x]);
+        assertEqual(docs.length, expectedLength);
+        for (var i = 0; i < expectedLength; ++i) {
+          assertEqual(docs[i].error, true);
+          assertEqual(docs[i].errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code);
         }
+        */
+
+        // Version 2
         try {
+          docs = collection.update(origDocs, [x, x, x]);
+          fail();
+        } catch (err) {
+          assertEqual(err.errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code);
+        }
+
+        
+        if (typeof x === "string") {
+          // Version 1
           docs = collection.update([x, x, x], [{}, {}, {}]);
-          fail();
-        } catch (err3) {
-          if (typeof x === "string") {
-            assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code,
-              err3.errorNum);
-          } else {
-            assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code,
-              err3.errorNum);
+          assertEqual(docs.length, expectedLength);
+          for (var i = 0; i < expectedLength; ++i) {
+            assertEqual(docs[i].error, true);
+            if (typeof x === "string") {
+              assertEqual(docs[i].errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+            } else {
+              assertEqual(docs[i].errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code);
+            }
+          }
+        } else {
+          // Version 2
+          try {
+            docs = collection.update([x, x, x], [{}, {}, {}]);
+            fail();
+          } catch (err) {
+            if (typeof x === "string") {
+              assertEqual(err.errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+            } else {
+              assertEqual(err.errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code);
+            }
           }
         }
+
         // Remove
-        try {
+        // Version 1
+        if (typeof x === "string") {
           docs = collection.remove([x, x, x]);
-          fail();
-        } catch (err4) {
-          if (typeof x === "string") {
-            assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code,
-              err4.errorNum);
-          } else {
-            assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code,
-              err4.errorNum);
+          assertEqual(docs.length, expectedLength);
+          for (var i = 0; i < expectedLength; ++i) {
+            assertEqual(docs[i].error, true);
+            if (typeof x === "string") {
+              assertEqual(docs[i].errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+            } else {
+              assertEqual(docs[i].errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code);
+            }
+          }
+        } else {
+          // Version 2
+          try {
+            docs = collection.remove([x, x, x]);
+            fail();
+          } catch (err) {
+            assertEqual(err.errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code);
           }
         }
+
         // Document
-        try {
+        // if (typeof x === "string") {
+          // Version 1
+        /*
           docs = collection.document([x, x, x]);
-          fail();
-        } catch (err5) {
-          if (typeof x === "string") {
-            assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code,
-              err5.errorNum);
-          } else {
-            assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code,
-              err5.errorNum);
+          assertEqual(docs.length, expectedLength);
+          for (var i = 0; i < expectedLength; ++i) {
+            assertEqual(docs[i].error, true);
+            if (typeof x === "string") {
+              assertEqual(docs[i].errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+            } else {
+              assertEqual(docs[i].errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code);
+            }
           }
+        } else {
+          */
+          // Version 2
+          try {
+            docs = collection.document([x, x, x]);
+            fail();
+          } catch (err) {
+            if (typeof x === "string") {
+              assertEqual(err.errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+            } else {
+              assertEqual(err.errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code);
+            }
+          // }
         }
       });
     },
@@ -1266,10 +1366,7 @@ function CollectionDocumentSuiteReturnStuff() {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-// TODO FIXME: reactivate this test!
-if (false) {
-  jsunity.run(CollectionDocumentSuiteBabies);
-}
+jsunity.run(CollectionDocumentSuiteBabies);
 jsunity.run(CollectionDocumentSuiteReturnStuff);
 
 return jsunity.done();
