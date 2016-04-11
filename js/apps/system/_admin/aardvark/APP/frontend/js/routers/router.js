@@ -20,17 +20,19 @@
       "collection/:colid/documents/:pageid": "documents",
       "collection/:colid/:docid": "document",
       "shell": "shell",
-      "query": "query2",
+      "queries": "query2",
       "query2": "query",
       "workMonitor": "workMonitor",
       "databases": "databases",
-      "applications": "applications",
+      "services": "applications",
       "applications/:mount": "applicationDetail",
-      "graph": "graphManagement",
+      "graphs": "graphManagement",
       "graph/:name": "showGraph",
       "users": "userManagement",
       "userProfile": "userProfile",
       "cluster": "cluster",
+      "nodes": "nodes",
+      "node/:name": "node",
       "logs": "logs",
       "test": "test"
     },
@@ -157,7 +159,7 @@
       });
 
       $(window).scroll(function () {
-        self.handleScroll();
+        //self.handleScroll();
       });
 
     },
@@ -195,6 +197,48 @@
         });
       }
       this.clusterView.render();
+    },
+
+    node: function (name, initialized) {
+      this.checkUser();
+      if (!initialized || this.isCluster === undefined) {
+        this.waitForInit(this.node.bind(this), name);
+        return;
+      }
+      if (this.isCluster === false) {
+        this.routes[""] = 'dashboard';
+        this.navigate("#dashboard", {trigger: true});
+        return;
+      }
+
+      if (!this.nodeView) {
+        this.nodeView = new window.NodeView({
+          coordname: name,
+          coordinators: this.coordinatorCollection,
+        });
+      }
+      this.nodeView.render();
+    },
+
+    nodes: function (initialized) {
+      this.checkUser();
+      if (!initialized || this.isCluster === undefined) {
+        this.waitForInit(this.nodes.bind(this));
+        return;
+      }
+      if (this.isCluster === false) {
+        this.routes[""] = 'dashboard';
+        this.navigate("#dashboard", {trigger: true});
+        return;
+      }
+
+      if (!this.nodesView) {
+        this.nodesView = new window.NodesView({
+          coordinators: this.coordinatorCollection,
+          dbServers: this.dbServers
+        });
+      }
+      this.nodesView.render();
     },
 
     addAuth: function (xhr) {

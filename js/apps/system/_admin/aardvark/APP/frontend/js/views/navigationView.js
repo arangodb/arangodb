@@ -157,23 +157,31 @@
       ],
       cluster: [
         {
+          name: 'Dashboard',
+          view: undefined,
+          active: true
+        },
+        {
           name: 'Logs',
           view: undefined
-        },
+        }
+      ],
+      node: [
         {
           name: 'Dashboard',
           view: undefined,
           active: true
+        },
+        {
+          name: 'Logs',
+          view: undefined
         }
       ],
-      query: [
+      queries: [
         {
-          name: 'Slow Query History',
-          route: 'queryManagement',
-          params: {
-            active: false
-          },
-          active: undefined
+          name: 'Editor',
+          route: 'query2',
+          active: true
         },
         {
           name: 'Running Queries',
@@ -184,9 +192,12 @@
           active: undefined
         },
         {
-          name: 'Editor',
-          route: 'query2',
-          active: true
+          name: 'Slow Query History',
+          route: 'queryManagement',
+          params: {
+            active: false
+          },
+          active: undefined
         }
       ]
     },
@@ -203,11 +214,17 @@
         }
       }
 
-      $(this.subEl + ' .right').html('');
+      $(this.subEl + ' .bottom').html('');
       var cssclass = "";
 
-      _.each(this.subMenuConfig[id], function(menu) {
+      if (this.subMenuConfig[id] === undefined) {
+        $('#subNavigationBar .bottom').css('display', 'none');
+      }
+      else {
+        $('#subNavigationBar .bottom').css('display', 'block');
+      }
 
+      _.each(this.subMenuConfig[id], function(menu) {
         if (menu.active) {
           cssclass = 'active';
         }
@@ -215,10 +232,10 @@
           cssclass = '';
         }
 
-        $(self.subEl +  ' .right').append(
+        $(self.subEl +  ' .bottom').append(
           '<li class="subMenuEntry ' + cssclass + '"><a>' + menu.name + '</a></li>'
         );
-        $(self.subEl + ' .right').children().last().bind('click', function(elem) {
+        $(self.subEl + ' .bottom').children().last().bind('click', function(elem) {
           self.activeSubMenu = menu;
           self.renderSubView(menu, elem);
         });
@@ -235,7 +252,7 @@
       }
 
       //select active sub view entry
-      $(this.subEl + ' .right').children().removeClass('active');
+      $(this.subEl + ' .bottom').children().removeClass('active');
       $(element.currentTarget).addClass('active');
     },
 
@@ -247,6 +264,16 @@
       }
     },
 
+    breadcrumb: function (name) {
+
+      if (window.location.hash.split('/')[0] !== '#collection') {
+        $('#subNavigationBar .breadcrumb').html(
+          '<a class="activeBread" href="#' + name + '">' + name + '</a>'
+        );
+      }
+
+    },
+
     selectMenuItem: function (menuItem, noMenuEntry) {
 
       if (menuItem === undefined) {
@@ -254,12 +281,23 @@
         menuItem = menuItem.substr(1, menuItem.length - 1);
       }
 
+      if (menuItem === '') {
+        if (window.App.isCluster) {
+          menuItem = 'cluster';
+        }
+        else {
+          menuItem = 'dashboard';
+        }
+      }
       try {
         this.renderSubMenu(menuItem.split('-')[0]);
       }
       catch (e) {
         this.renderSubMenu(menuItem);
       }
+
+      this.breadcrumb(menuItem.split('-')[0]);
+
       $('.navlist li').removeClass('active');
       if (typeof menuItem === 'string') {
         if (noMenuEntry) {

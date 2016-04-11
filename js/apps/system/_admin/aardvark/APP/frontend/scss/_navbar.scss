@@ -1,18 +1,31 @@
-.navbar {
-  @extend %fixedbar;
-  -webkit-font-smoothing: subpixel-antialiased;
-  height: auto;
-  margin-bottom: 3px;
-  top: 0;
+$navbar-size: 150px;
 
-  > .primary {
-    background-color: $c-bar-bg-primary;
-  }
+.navbar2 {
+  color: $c-white;
 
   > .secondary {
     background-color: $c-white-transp;
-    border-bottom: 1px solid $c-content-border;
   }
+
+}
+
+.navbar {
+  @extend %fixedbar;
+  bottom: 0;
+  float: left;
+  -webkit-font-smoothing: subpixel-antialiased;
+  margin-bottom: 0;
+  position: absolute;
+  top: 0;
+  width: $navbar-size;
+
+  > .primary {
+    background-color: $c-navbar-main-color;
+    float: left;
+    height: 100%;
+    width: $navbar-size;
+  }
+
 
   > .resizecontainer {
     background-color: $c-white;
@@ -31,7 +44,7 @@
     height: auto;
     margin-left: -5px;
     margin-top: 6px;
-    width: 200px;
+    width: $navbar-size;
   }
 
   .arango-collection-select {
@@ -76,17 +89,22 @@
 
 .navlogo {
   @extend %pull-left;
-  margin-left: 5px;
-  margin-right: -3px;
-  padding-top: 3px;
+  padding: {
+    bottom: 5px;
+    left: 14px;
+    right: 5px;
+    top: 5px;
+  };
 }
 
 .navmenu {
-  @extend %pull-right;
+  clear: both;
 }
 
 .navlist {
   list-style: none;
+  margin: 0;
+  width: $navbar-size;
 
   > li {
     line-height: 30px;
@@ -94,10 +112,15 @@
 
   li {
     @extend %pull-left;
-    border-left: 1px solid transparent;
-    border-right: 1px solid transparent;
-    border-top: 1px solid transparent;
-    margin-left: 7px;
+    width: $navbar-size;
+
+    .fa {
+      opacity: .3;
+      padding-left: 5px;
+      padding-right: 15px;
+      text-align: center;
+      width: 10px;
+    }
 
     &.dropdown:hover {
       border-bottom-left-radius: 0;
@@ -115,24 +138,10 @@
 
     &.navbar-spacer {
       background-color: $c-white;
-      height: 21px;
-      margin-top: 14px;
+      height: 1px;
+      margin-bottom: 5px;
+      margin-top: 5px;
       opacity: .2;
-      width: 1px;
-
-      &.big {
-        margin-left: 15px;
-        margin-right: 8px;
-      }
-
-      &.med {
-        margin-left: 5px;
-        margin-right: 5px;
-      }
-
-      &:hover {
-        background-color: $c-navbar-spacer;
-      }
     }
   }
 
@@ -183,15 +192,14 @@
 
 .tab {
   color: $c-white;
-  //color: $c-bar-bg;
   display: block;
-  font-size: 10pt;
+  font-size: 9pt;
   font-weight: 100;
   padding: {
-    bottom: 10px;
+    bottom: 5px;
     left: 5px;
     right: 5px;
-    top: 9px;
+    top: 5px;
   }
   text-transform: uppercase;
 

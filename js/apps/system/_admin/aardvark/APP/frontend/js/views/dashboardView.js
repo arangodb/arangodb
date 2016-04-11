@@ -848,7 +848,15 @@
       return;
     }
     self.timer = window.setInterval(function () {
-        self.getStatistics();
+
+        if (window.App.isCluster) {
+          if (window.location.hash.indexOf(self.serverInfo.target) > -1) {
+            self.getStatistics();
+          }
+        }
+        else {
+          self.getStatistics();
+        }
       },
       self.interval
     );

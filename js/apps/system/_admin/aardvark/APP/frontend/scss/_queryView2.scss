@@ -298,7 +298,7 @@
 }
 
 #queryManagementContent {
-  border: 0;
+  border: 1px solid $c-content-border;
   padding-top: 0;
 
   .arango-table {

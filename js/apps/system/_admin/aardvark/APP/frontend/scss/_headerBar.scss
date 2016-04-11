@@ -1,8 +1,9 @@
 input.search-input {
   @extend %inputs;
-  height: 14px;
-  line-height: 18px;
-  margin-right: -1px;
+  border: 1px solid $c-white;
+  height: 15px;
+  line-height: 17px;
+  margin-right: -4px;
   margin-top: 6px;
   width: 120px;
 }
@@ -56,10 +57,9 @@ input.search-input {
 
 // The bar on top of each page
 div.headerBar {
-  background-color: $c-white;
-  border: 1px solid rgba(140, 138, 137, .25);
+  background-color: none;
   border-radius: 2px;
-  color: $c-white;
+  color: $c-black;
   font-size: 16px;
   height: 36px;
   padding-left: 5px;
@@ -169,11 +169,16 @@ div.headerBar {
   background: transparent;
   border: 0;
   border-radius: 0;
-  padding: 7px 0;
+  padding: {
+    bottom: 0;
+    left: 10px;
+    right: 0;
+    top: 0;
+  };
 
   // Disabled breadcrumb
   .disabledBread {
-    color: $c-darker-grey;
+    color: $c-white;
     float: left;
     font-size: 11.5pt;
     font-weight: 100;
@@ -191,7 +196,7 @@ div.headerBar {
     color: $c-positive;
     float: left;
     font-size: 11.5pt;
-    font-weight: 100;
+    font-weight: 400;
   }
 
   #app-development-path {

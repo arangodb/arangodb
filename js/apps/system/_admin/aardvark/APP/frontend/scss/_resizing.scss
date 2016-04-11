@@ -65,7 +65,8 @@
 @for $i from 1 through 11 {
   $white-space: 10px;
   $min: $tile-width * $i;
-  $content-size: $min - 12px;
+  $navbar-size: 150px;
+  $content-size: $min - 12px - $navbar-size;
 
   $legend-width: 140px;
   $legend-weight: 400;
@@ -559,18 +560,21 @@
 }
 
 div.centralRow {
-  margin: {
-    bottom: 40px;
-    top: 15px;
-  }
+  float: left;
+  height: 100%;
+  left: $navbar-size;
+  min-height: 100%;
+  overflow-y: scroll;
+  position: absolute;
+  right: 0;
 }
 
 div.centralContent {
   @extend %pull-left;
   background-color: rgba(0, 0, 0, 0);
-  height: 100%;
   margin-left: -5px;
   margin-right: -5px;
+  margin-top: 10px;
   min-height: 80px;
   padding: 5px;
   width: 100%;

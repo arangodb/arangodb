@@ -998,12 +998,10 @@
 
     breadcrumb: function () {
       this.collectionName = window.location.hash.split("/")[1];
-      $('#transparentHeader').append(
-        '<div class="breadcrumb">'+
+      $('#subNavigationBar .breadcrumb').html(
         '<a class="activeBread" href="#collections">Collections</a>'+
         '<span class="disabledBread"><i class="fa fa-chevron-right"></i></span>'+
-        '<a class="disabledBread">'+this.collectionName+'</a>'+
-        '</div>'
+        '<a class="disabledBread">'+this.collectionName+'</a>'
       );
     }
 
