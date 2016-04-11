@@ -32,14 +32,8 @@ const scriptArguments = {
 let ARANGOD;
 let ARANGOSH;
 
-if (fs.exists("bin")) {
-  ARANGOD = fs.join(fs.join(fs.makeAbsolute('')), "bin/arangod");
-  ARANGOSH = fs.join(fs.join(fs.makeAbsolute('')), "bin/arangosh");
-}
-else {
-  ARANGOD = fs.join(fs.join(fs.makeAbsolute('')), "build/bin/arangod");
-  ARANGOSH = fs.join(fs.join(fs.makeAbsolute('')), "build/bin/arangosh");
-}
+ARANGOD = fs.join(fs.join(fs.makeAbsolute('')), "build/bin/arangod");
+ARANGOSH = fs.join(fs.join(fs.makeAbsolute('')), "build/bin/arangosh");
 
 function endpointToURL(endpoint) {
   if (endpoint.substr(0, 6) === "ssl://") {
@@ -69,7 +63,8 @@ function findFreePort() {
 }
 
 function main(argv) {
-  let thePython = 'python';
+  let CMakeCache = fs.readFileSync('build/CMakeCache.txt');
+  let thePython = CMakeCache.toString().match(/^PYTHON_EXECUTABLE:FILEPATH=(.*)$/m)[1];
   let options = {};
   let serverEndpoint = '';
   let startServer = true;
@@ -135,7 +130,7 @@ function main(argv) {
 
     print("================================================================================");
     print(toArgv(serverArgs));
-    instanceInfo.pid = executeExternal(ARANGOD, toArgv(serverArgs));
+    instanceInfo.pid = executeExternal(ARANGOD, toArgv(serverArgs)).pid;
 
     // Wait until the server is up:
     count = 0;
