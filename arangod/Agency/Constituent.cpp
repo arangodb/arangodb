@@ -47,6 +47,7 @@
 using namespace arangodb::consensus;
 using namespace arangodb::rest;
 using namespace arangodb::velocypack;
+using namespace arangodb;
 
 // Configure with agent's configuration
 void Constituent::configure(Agent* agent) {
@@ -343,8 +344,8 @@ void Constituent::beginShutdown() {
 #include <iostream>
 
 bool Constituent::start (TRI_vocbase_t* vocbase,
-			 ApplicationV8* applicationV8,
-			 aql::QueryRegistry* queryRegistry) {
+                         ApplicationV8* applicationV8,
+                         aql::QueryRegistry* queryRegistry) {
 
   _vocbase = vocbase;
   _applicationV8 = applicationV8;
