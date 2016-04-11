@@ -1429,7 +1429,7 @@ OperationResult Transaction::modifyLocal(
 
   VPackBuilder resultBuilder;  // building the complete result
 
-  auto workForOneDocument = [&](VPackSlice const newVal) -> int {
+  auto workForOneDocument = [&](VPackSlice const newVal, bool isBabies) -> int {
     if (!newVal.isObject()) {
       return TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
     }
@@ -1449,7 +1449,7 @@ OperationResult Transaction::modifyLocal(
 
     if (res == TRI_ERROR_ARANGO_CONFLICT) {
       // still return 
-      if (!options.silent) {
+      if (!options.silent && !isBabies) {
         std::string key = newVal.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
         buildDocumentIdentity(resultBuilder, cid, key, actualRevision,
                               VPackSlice(), 
@@ -1475,20 +1475,24 @@ OperationResult Transaction::modifyLocal(
   res = TRI_ERROR_NO_ERROR;
 
   if (newValue.isArray()) {
-    VPackArrayBuilder b(&resultBuilder);
+    std::unordered_map<int, size_t> errorCounter;
+    resultBuilder.openArray();
     VPackArrayIterator it(newValue);
     while (it.valid()) {
-      res = workForOneDocument(it.value());
+      res = workForOneDocument(it.value(), true);
       if (res != TRI_ERROR_NO_ERROR) {
-        break;
+        createBabiesError(resultBuilder, errorCounter, res);
       }
       ++it;
     }
+    resultBuilder.close();
+    return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR,
+                           options.waitForSync, errorCounter); 
   } else {
-    res = workForOneDocument(newValue);
+    res = workForOneDocument(newValue, false);
+    return OperationResult(resultBuilder.steal(), nullptr, "", res,
+                           options.waitForSync); 
   }
-  return OperationResult(resultBuilder.steal(), nullptr, "", res,
-                         options.waitForSync); 
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -1581,7 +1585,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
  
   VPackBuilder resultBuilder;
 
-  auto workOnOneDocument = [&](VPackSlice value) -> int {
+  auto workOnOneDocument = [&](VPackSlice value, bool isBabies) -> int {
     VPackSlice actualRevision;
     TRI_doc_mptr_t previous;
     std::string key;
@@ -1606,7 +1610,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
                                actualRevision, previous);
     
     if (res != TRI_ERROR_NO_ERROR) {
-      if (res == TRI_ERROR_ARANGO_CONFLICT && !options.silent) {
+      if (res == TRI_ERROR_ARANGO_CONFLICT && !options.silent && !isBabies) {
         buildDocumentIdentity(resultBuilder, cid, key,
                               actualRevision, VPackSlice(), 
                               options.returnOld ? &previous : nullptr, nullptr);
@@ -1628,7 +1632,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
   if (value.isArray()) {
     VPackArrayBuilder guard(&resultBuilder);
     for (auto const& s : VPackArrayIterator(value)) {
-      res = workOnOneDocument(s);
+      res = workOnOneDocument(s, true);
       if (res != TRI_ERROR_NO_ERROR) {
         createBabiesError(resultBuilder, countErrorCodes, res);
       }
@@ -1636,7 +1640,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
     // With babies the reporting is handled somewhere else.
     res = TRI_ERROR_NO_ERROR;
   } else {
-    res = workOnOneDocument(value);
+    res = workOnOneDocument(value, false);
   }
   return OperationResult(resultBuilder.steal(), nullptr, "", res,
                          options.waitForSync, countErrorCodes); 
