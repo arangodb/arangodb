@@ -133,7 +133,7 @@ static std::string BuildRegexPattern(char const* ptr, size_t length,
           pattern.push_back('%');
         } else {
           // wildcard
-          pattern.append(".*");
+          pattern.append("(.|[\r\n])*");
         }
       } else if (c == '_') {
         if (escaped) {
@@ -141,7 +141,7 @@ static std::string BuildRegexPattern(char const* ptr, size_t length,
           pattern.push_back('_');
         } else {
           // wildcard character
-          pattern.push_back('.');
+          pattern.append("(.|[\r\n])");
         }
       } else if (c == '?' || c == '+' || c == '[' || c == '(' || c == ')' ||
                  c == '{' || c == '}' || c == '^' || c == '$' || c == '|' ||

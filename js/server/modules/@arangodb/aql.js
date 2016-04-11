@@ -904,7 +904,7 @@ function COMPILE_REGEX (regex, modifiers) {
         }
         else {
           // wildcard
-          pattern += '.*';
+          pattern += '(.|[\r\n])*';
         }
       }
       else if (c === '_') {
@@ -914,7 +914,7 @@ function COMPILE_REGEX (regex, modifiers) {
         }
         else {
           // wildcard character
-          pattern += '.';
+          pattern += '(.|[\r\n])';
         }
       }
       else if (c.match(specialChar)) {

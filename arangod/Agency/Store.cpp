@@ -255,9 +255,11 @@ bool Node::addTimeToLive (long millis) {
 bool Node::removeTimeToLive () {
   if (_ttl != std::chrono::system_clock::time_point()) {
     auto ret = root()._time_table.equal_range(_ttl);
-    for (auto it = ret.first; it!=ret.second; ++it) {
+    for (auto it = ret.first; it!=ret.second;) {
       if (it->second == _parent->_children[_node_name]) {
         root()._time_table.erase(it);
+        break;
+        ++it;
       }
     }
   }
