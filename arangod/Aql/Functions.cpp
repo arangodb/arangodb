@@ -110,7 +110,7 @@ static std::string BuildRegexPattern (char const* ptr,
         }
         else {
           // wildcard
-          pattern.append(".*");
+          pattern.append("(.|[\r\n])*");
         }
       }
       else if (c == '_') {
@@ -120,7 +120,7 @@ static std::string BuildRegexPattern (char const* ptr,
         }
         else {
           // wildcard character
-          pattern.push_back('.');
+          pattern.append("(.|[\r\n])*");
         }
       }
       else if (c == '?' || c == '+' || c == '[' || c == '(' || c == ')' ||
