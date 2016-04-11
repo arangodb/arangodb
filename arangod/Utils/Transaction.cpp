@@ -1285,11 +1285,6 @@ OperationResult Transaction::updateCoordinator(std::string const& collectionName
                                                VPackSlice const newValue,
                                                OperationOptions& options) {
 
-  if (newValue.isArray()) {
-    // multi-document variant is not yet implemented
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-  
   auto headers = std::make_unique<std::map<std::string, std::string>>();
   GeneralResponse::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
