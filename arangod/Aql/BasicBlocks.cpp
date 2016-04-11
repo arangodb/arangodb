@@ -30,11 +30,8 @@ using namespace arangodb::aql;
 
 using Json = arangodb::basics::Json;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initializeCursor, store a copy of the register values coming from
 /// above
-////////////////////////////////////////////////////////////////////////////////
-
 int SingletonBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();  
   // Create a deep copy of the register values given to us:
@@ -65,10 +62,7 @@ int SingletonBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   DEBUG_END_BLOCK();  
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown the singleton block
-////////////////////////////////////////////////////////////////////////////////
-
 int SingletonBlock::shutdown(int errorCode) {
   int res = ExecutionBlock::shutdown(errorCode);
 
@@ -144,10 +138,7 @@ FilterBlock::~FilterBlock() {}
 
 int FilterBlock::initialize() { return ExecutionBlock::initialize(); }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief internal function to get another block
-////////////////////////////////////////////////////////////////////////////////
-
 bool FilterBlock::getBlock(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();  
   while (true) {  // will be left by break or return
@@ -484,12 +475,9 @@ AqlItemBlock* ReturnBlock::getSome(size_t atLeast, size_t atMost) {
   DEBUG_END_BLOCK();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief make the return block return the results inherited from above,
 /// without creating new blocks
 /// returns the id of the register the final result can be found in
-////////////////////////////////////////////////////////////////////////////////
-
 RegisterId ReturnBlock::returnInheritedResults() {
   DEBUG_BEGIN_BLOCK();
   _returnInheritedResults = true;
@@ -502,10 +490,7 @@ RegisterId ReturnBlock::returnInheritedResults() {
   DEBUG_END_BLOCK();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initializeCursor, only call base
-////////////////////////////////////////////////////////////////////////////////
-
 int NoResultsBlock::initializeCursor(AqlItemBlock*, size_t) {
   DEBUG_BEGIN_BLOCK();  
   _done = true;

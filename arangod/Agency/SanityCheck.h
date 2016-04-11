@@ -18,38 +18,55 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_TRAVERSAL_CONDITION_FINDER_H
-#define ARANGOD_AQL_TRAVERSAL_CONDITION_FINDER_H 1
+#ifndef __ARANGODB_CONSENSUS_SANITY_CHECK__
+#define __ARANGODB_CONSENSUS_SANITY_CHECK__
 
-#include "Aql/Condition.h"
-#include "Aql/ExecutionNode.h"
-#include "Aql/WalkerWorker.h"
+#include "Basics/Thread.h"
+#include "Basics/ConditionVariable.h"
 
 namespace arangodb {
-namespace aql {
+namespace consensus {
 
-/// @brief Traversal condition finder
-class TraversalConditionFinder : public WalkerWorker<ExecutionNode> {
- public:
-  TraversalConditionFinder(ExecutionPlan* plan, bool* planAltered)
-      : _plan(plan), _variableDefinitions(), _planAltered(planAltered) {}
+class Agent;
 
-  ~TraversalConditionFinder() {}
+class SanityCheck : public arangodb::Thread {
+  
+public:
+  
+  /// @brief Construct sanity checking
+  SanityCheck ();
+  
+  /// @brief Default dtor
+  ~SanityCheck ();
+  
+  /// @brief Configure with agent
+  void configure (Agent* agent);
+  
+  /// @brief Run woker
+  void run() override final;
+  
+  /// @brief Begin thread shutdown
+  void beginShutdown() override final;
 
-  bool before(ExecutionNode*) override final;
+  /// @brief Wake up to task
+  void wakeUp ();
 
-  bool enterSubquery(ExecutionNode*, ExecutionNode*) override final;
+  /// @brief Stop task and wait
+  void passOut ();
+  
+private:
+  
+  Agent* _agent;
 
- private:
-  ExecutionPlan* _plan;
-  std::unordered_map<VariableId, CalculationNode const*> _variableDefinitions;
-  std::unordered_map<VariableId, ExecutionNode const*> _filters;
-  bool* _planAltered;
+  arangodb::basics::ConditionVariable _cv; /**< @brief Control if thread should run */
+  
+
+  
 };
-}
-}
 
-#endif
+}}
+
+#endif //__ARANGODB_CONSENSUS_SANITY_CHECK__

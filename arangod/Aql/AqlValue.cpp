@@ -34,21 +34,16 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+using namespace arangodb;
 using namespace arangodb::aql;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief construct a document
-////////////////////////////////////////////////////////////////////////////////
-  
 AqlValue::AqlValue(TRI_doc_mptr_t const* mptr) {
   _data.pointer = mptr->vpack();
   setType(AqlValueType::VPACK_DOCUMENT);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief hashes the value
-////////////////////////////////////////////////////////////////////////////////
-
 uint64_t AqlValue::hash(arangodb::AqlTransaction* trx) const {
   switch (type()) {
     case VPACK_DOCUMENT:  
@@ -72,10 +67,7 @@ uint64_t AqlValue::hash(arangodb::AqlTransaction* trx) const {
   return 0;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the value contains a none value
-////////////////////////////////////////////////////////////////////////////////
-
 bool AqlValue::isNone() const {
   AqlValueType t = type();
   if (t == DOCVEC || t == RANGE) {
@@ -85,10 +77,7 @@ bool AqlValue::isNone() const {
   return slice().isNone();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the value is a null value
-////////////////////////////////////////////////////////////////////////////////
-
 bool AqlValue::isNull(bool emptyIsNull) const {
   AqlValueType t = type();
   if (t == DOCVEC || t == RANGE) {
@@ -99,10 +88,7 @@ bool AqlValue::isNull(bool emptyIsNull) const {
   return (s.isNull() || (emptyIsNull && s.isNone()));
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the value is a boolean value
-////////////////////////////////////////////////////////////////////////////////
-
 bool AqlValue::isBoolean() const {
   AqlValueType t = type();
   if (t == VPACK_DOCUMENT || t == DOCVEC || t == RANGE) {
@@ -111,10 +97,7 @@ bool AqlValue::isBoolean() const {
   return slice().isBoolean();
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the value is a number
-//////////////////////////////////////////////////////////////////////////////
- 
 bool AqlValue::isNumber() const {
   AqlValueType t = type();
   if (t == DOCVEC || t == RANGE) {
@@ -123,10 +106,7 @@ bool AqlValue::isNumber() const {
   return slice().isNumber();
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the value is a string
-//////////////////////////////////////////////////////////////////////////////
- 
 bool AqlValue::isString() const {
   AqlValueType t = type();
   if (t == DOCVEC || t == RANGE) {
@@ -135,10 +115,7 @@ bool AqlValue::isString() const {
   return slice().isString();
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the value is an object
-//////////////////////////////////////////////////////////////////////////////
- 
 bool AqlValue::isObject() const {
   AqlValueType t = type();
   if (t == RANGE || t == DOCVEC) {
@@ -147,11 +124,8 @@ bool AqlValue::isObject() const {
   return slice().isObject();
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the value is an array (note: this treats ranges
 /// as arrays, too!)
-//////////////////////////////////////////////////////////////////////////////
- 
 bool AqlValue::isArray() const {
   AqlValueType t = type();
   if (t == RANGE || t == DOCVEC) {
@@ -160,10 +134,7 @@ bool AqlValue::isArray() const {
   return slice().isArray();
 }
   
-//////////////////////////////////////////////////////////////////////////////
 /// @brief get the (array) length (note: this treats ranges as arrays, too!)
-//////////////////////////////////////////////////////////////////////////////
-
 size_t AqlValue::length() const {
   switch (type()) {
     case VPACK_DOCUMENT: 
@@ -183,10 +154,7 @@ size_t AqlValue::length() const {
   return 0;
 }
   
-//////////////////////////////////////////////////////////////////////////////
 /// @brief get the (array) element at position 
-//////////////////////////////////////////////////////////////////////////////
-
 AqlValue AqlValue::at(int64_t position, bool& mustDestroy, 
                       bool doCopy) const {
   mustDestroy = false;
@@ -263,10 +231,7 @@ AqlValue AqlValue::at(int64_t position, bool& mustDestroy,
   return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
 }
   
-//////////////////////////////////////////////////////////////////////////////
 /// @brief get the (object) element by name
-//////////////////////////////////////////////////////////////////////////////
-  
 AqlValue AqlValue::get(arangodb::AqlTransaction* trx,
                        std::string const& name, bool& mustDestroy,
                        bool doCopy) const {
@@ -309,10 +274,7 @@ AqlValue AqlValue::get(arangodb::AqlTransaction* trx,
   return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief get the (object) element(s) by name
-//////////////////////////////////////////////////////////////////////////////
-  
 AqlValue AqlValue::get(arangodb::AqlTransaction* trx,
                        std::vector<std::string> const& names, 
                        bool& mustDestroy, bool doCopy) const {
@@ -355,10 +317,7 @@ AqlValue AqlValue::get(arangodb::AqlTransaction* trx,
   return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief check whether an object has a specific key
-//////////////////////////////////////////////////////////////////////////////
-  
 bool AqlValue::hasKey(arangodb::AqlTransaction* trx,
                       std::string const& name) const {
   switch (type()) {
@@ -379,10 +338,7 @@ bool AqlValue::hasKey(arangodb::AqlTransaction* trx,
   return false;
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief get the numeric value of an AqlValue
-//////////////////////////////////////////////////////////////////////////////
- 
 double AqlValue::toDouble() const {
   bool failed; // will be ignored
   return toDouble(failed);
@@ -456,10 +412,7 @@ double AqlValue::toDouble(bool& failed) const {
   return 0.0;
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief get the numeric value of an AqlValue
-//////////////////////////////////////////////////////////////////////////////
- 
 int64_t AqlValue::toInt64() const {
   switch (type()) {
     case VPACK_DOCUMENT: 
@@ -512,10 +465,7 @@ int64_t AqlValue::toInt64() const {
   return 0;
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the contained value evaluates to true
-//////////////////////////////////////////////////////////////////////////////
-
 bool AqlValue::toBoolean() const {
   switch (type()) {
     case VPACK_DOCUMENT: 
@@ -547,10 +497,7 @@ bool AqlValue::toBoolean() const {
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the total size of the docvecs
-////////////////////////////////////////////////////////////////////////////////
-
 size_t AqlValue::docvecSize() const {
   TRI_ASSERT(type() == DOCVEC);
   size_t s = 0;
@@ -560,11 +507,8 @@ size_t AqlValue::docvecSize() const {
   return s;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief construct a V8 value as input for the expression execution in V8
 /// only construct those attributes that are needed in the expression
-////////////////////////////////////////////////////////////////////////////////
-
 v8::Handle<v8::Value> AqlValue::toV8Partial(
     v8::Isolate* isolate, arangodb::AqlTransaction* trx,
     std::unordered_set<std::string> const& attributes) const {
@@ -614,10 +558,7 @@ v8::Handle<v8::Value> AqlValue::toV8Partial(
   return TRI_VPackToV8(isolate, s, options);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief construct a V8 value as input for the expression execution in V8
-////////////////////////////////////////////////////////////////////////////////
-
 v8::Handle<v8::Value> AqlValue::toV8(
     v8::Isolate* isolate, arangodb::AqlTransaction* trx) const {
   
@@ -662,10 +603,7 @@ v8::Handle<v8::Value> AqlValue::toV8(
   return v8::Null(isolate);
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief materializes a value into the builder
-//////////////////////////////////////////////////////////////////////////////
-
 void AqlValue::toVelocyPack(AqlTransaction* trx, 
                              arangodb::velocypack::Builder& builder) const {
   switch (type()) {
@@ -699,10 +637,7 @@ void AqlValue::toVelocyPack(AqlTransaction* trx,
   }
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief materializes a value into the builder
-//////////////////////////////////////////////////////////////////////////////
-
 AqlValue AqlValue::materialize(AqlTransaction* trx, bool& hasCopied) const {
   switch (type()) {
     case VPACK_DOCUMENT: 
@@ -731,10 +666,7 @@ AqlValue AqlValue::materialize(AqlTransaction* trx, bool& hasCopied) const {
   return AqlValue();
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief clone a value
-//////////////////////////////////////////////////////////////////////////////
-
 AqlValue AqlValue::clone() const {
   switch (type()) {
     case VPACK_DOCUMENT: 
@@ -777,10 +709,7 @@ AqlValue AqlValue::clone() const {
   return AqlValue();
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the value's internals
-//////////////////////////////////////////////////////////////////////////////
-
 void AqlValue::destroy() {
   switch (type()) { 
     case VPACK_DOCUMENT:
@@ -809,10 +738,7 @@ void AqlValue::destroy() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the slice from the value
-////////////////////////////////////////////////////////////////////////////////
- 
 VPackSlice AqlValue::slice() const {
   switch (type()) {
     case VPACK_DOCUMENT: 
@@ -841,10 +767,7 @@ VPackSlice AqlValue::slice() const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AqlValue from a vector of AqlItemBlock*s
-////////////////////////////////////////////////////////////////////////////////
-
 AqlValue AqlValue::CreateFromBlocks(
     arangodb::AqlTransaction* trx, std::vector<AqlItemBlock*> const& src,
     std::vector<std::string> const& variableNames) {
@@ -880,10 +803,7 @@ AqlValue AqlValue::CreateFromBlocks(
   return AqlValue(builder);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AqlValue from a vector of AqlItemBlock*s
-////////////////////////////////////////////////////////////////////////////////
-
 AqlValue AqlValue::CreateFromBlocks(
     arangodb::AqlTransaction* trx, std::vector<AqlItemBlock*> const& src,
     arangodb::aql::RegisterId expressionRegister) {
@@ -901,10 +821,7 @@ AqlValue AqlValue::CreateFromBlocks(
   return AqlValue(builder);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief 3-way comparison for AqlValue objects
-////////////////////////////////////////////////////////////////////////////////
-
 int AqlValue::Compare(arangodb::AqlTransaction* trx, AqlValue const& left,
                        AqlValue const& right,
                        bool compareUtf8) {

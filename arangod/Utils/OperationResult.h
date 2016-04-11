@@ -39,17 +39,15 @@ struct OperationResult {
   }
 
   explicit OperationResult(int code) 
-      : buffer(nullptr), customTypeHandler(), code(code), wasSynchronous(false) { 
-    buffer = std::make_shared<VPackBuffer<uint8_t>>();
+      : buffer(std::make_shared<VPackBuffer<uint8_t>>()), customTypeHandler(), code(code), wasSynchronous(false) { 
     if (code != TRI_ERROR_NO_ERROR) {
       errorMessage = TRI_errno_string(code);
     }
   }
 
   OperationResult(int code, std::string const& message) 
-      : customTypeHandler(), errorMessage(message), code(code),
+      : buffer(std::make_shared<VPackBuffer<uint8_t>>()), customTypeHandler(), errorMessage(message), code(code),
         wasSynchronous(false) { 
-    buffer = std::make_shared<VPackBuffer<uint8_t>>();
     TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
   }
 

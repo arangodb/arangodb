@@ -226,6 +226,7 @@ std::string AgencyCommResult::errorMessage() const {
   try {
     std::shared_ptr<VPackBuilder> bodyBuilder =
         VPackParser::fromJson(_body.c_str());
+
     VPackSlice body = bodyBuilder->slice();
     if (!body.isObject()) {
       return "";
@@ -233,8 +234,9 @@ std::string AgencyCommResult::errorMessage() const {
     // get "message" attribute ("" if not exist)
     return arangodb::basics::VelocyPackHelper::getStringValue(body, "message",
                                                               "");
-  } catch (VPackException const&) {
-    return std::string("Out of memory");
+  } catch (VPackException const& e) {
+    std::string message("VPackException parsing body ("+ _body + "): " + e.what());
+    return std::string(message);
   }
 }
 
@@ -785,6 +787,7 @@ bool AgencyComm::initFromVPackSlice(std::string key, VPackSlice s) {
     }
   } else {
     result = setValue(key, s.copyString(), 0.0);
+    ret = ret && result.successful();
   }
 
   return ret;
@@ -1169,7 +1172,7 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
   
   AgencyCommResult result;
   AgencyOperation operation(key, AgencyValueOperationType::SET, builder.slice());
-  operation._ttl = static_cast<uint64_t>(ttl);
+  operation._ttl = static_cast<uint32_t>(ttl);
   AgencyTransaction transaction(operation);
 
   sendTransactionWithFailover(result, transaction);
@@ -1191,7 +1194,7 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
 
   AgencyCommResult result;
   AgencyOperation operation(key, AgencyValueOperationType::SET, builder.slice());
-  operation._ttl = static_cast<uint64_t>(ttl);
+  operation._ttl = static_cast<uint32_t>(ttl);
   AgencyTransaction transaction(operation);
 
   sendTransactionWithFailover(result, transaction);
@@ -1298,7 +1301,7 @@ AgencyCommResult AgencyComm::increment(std::string const& key) {
   AgencyCommResult result;
 
   AgencyTransaction transaction(
-      AgencyOperation(key, AgencySimpleOperationType::INCREMENT)
+      AgencyOperation(key, AgencySimpleOperationType::INCREMENT_OP)
   );
 
   sendTransactionWithFailover(result, transaction);
@@ -1318,8 +1321,11 @@ AgencyCommResult AgencyComm::getValues(std::string const& key, bool recursive) {
   AgencyCommResult result;
   VPackBuilder builder;
   {
-    VPackArrayBuilder keys(&builder);
-    builder.add(VPackValue(AgencyComm::prefix() + key));
+    VPackArrayBuilder root(&builder);
+    {
+      VPackArrayBuilder keys(&builder);
+      builder.add(VPackValue(AgencyComm::prefix() + key));
+    }
   }
 
   sendWithFailover(arangodb::GeneralRequest::RequestType::POST,
@@ -1383,7 +1389,7 @@ AgencyCommResult AgencyComm::getValues(std::string const& key, bool recursive) {
       // mop: need to remove all parents... key requested: /arango/hans/mann/wurst.
       // instead of just the result of wurst we will get the full tree
       // but only if there is something inside this object
-      if (resultNode.isObject() && resultNode.length() > 0) {
+      if (resultNode.isObject()) {
         std::size_t currentKeyStart = 1;
         std::size_t found = fullKey.find_first_of("/", 1);
         std::string currentKey;
@@ -1403,6 +1409,7 @@ AgencyCommResult AgencyComm::getValues(std::string const& key, bool recursive) {
         currentKey = fullKey.substr(currentKeyStart, found - currentKeyStart);
 
         if (!resultNode.isObject() || !resultNode.hasKey(currentKey)) {
+          result._statusCode = 404;
           result.clear();
           return result;
         }
@@ -1440,7 +1447,7 @@ AgencyCommResult AgencyComm::removeValues(std::string const& key,
                                           bool recursive) {
   AgencyCommResult result;
   AgencyTransaction transaction(
-      AgencyOperation(key, AgencySimpleOperationType::DELETE)
+      AgencyOperation(key, AgencySimpleOperationType::DELETE_OP)
   );
 
   sendTransactionWithFailover(result, transaction);
@@ -1466,7 +1473,7 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
   operation._precondition.type = AgencyOperationPrecondition::EMPTY;
   operation._precondition.empty = !prevExist;
   if (ttl >= 0.0) {
-    operation._ttl = static_cast<uint64_t>(ttl);
+    operation._ttl = static_cast<uint32_t>(ttl);
   }
   
   std::string url(buildUrl());
@@ -1506,7 +1513,7 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
   operation._precondition.type = AgencyOperationPrecondition::VALUE;
   operation._precondition.value = oldBuilder.slice();
   if (ttl >= 0.0) {
-    operation._ttl = static_cast<uint64_t>(ttl);
+    operation._ttl = static_cast<uint32_t>(ttl);
   }
   
   std::string url(buildUrl());

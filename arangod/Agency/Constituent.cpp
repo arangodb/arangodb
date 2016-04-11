@@ -25,6 +25,15 @@
 #include "Logger/Logger.h"
 #include "Basics/ConditionLocker.h"
 
+#include "Aql/Query.h"
+#include "Aql/QueryRegistry.h"
+#include "Utils/OperationOptions.h"
+#include "Utils/OperationResult.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "Utils/StandaloneTransactionContext.h"
+#include "VocBase/collection.h"
+#include "VocBase/vocbase.h"
+
 #include "Constituent.h"
 #include "Agent.h"
 
@@ -38,6 +47,7 @@
 using namespace arangodb::consensus;
 using namespace arangodb::rest;
 using namespace arangodb::velocypack;
+using namespace arangodb;
 
 // Configure with agent's configuration
 void Constituent::configure(Agent* agent) {
@@ -47,14 +57,6 @@ void Constituent::configure(Agent* agent) {
   if (size() == 1) {
     _role = LEADER;
   } else {
-    try {
-      _votes.resize(size());
-    } catch (std::exception const& e) {
-      LOG_TOPIC(ERR, Logger::AGENCY) <<
-        "Cannot resize votes vector to " << size();
-      LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
-    }
-    
     _id = _agent->config().id;
     if (_agent->config().notify) {// (notify everyone) 
       notifyAll();
@@ -66,7 +68,7 @@ void Constituent::configure(Agent* agent) {
 // Default ctor
 Constituent::Constituent() :
   Thread("Constituent"), _term(0), _leader_id(0), _id(0), _gen(std::random_device()()),
-  _role(FOLLOWER), _agent(0) {}
+  _role(FOLLOWER), _agent(0), _voted_for(0) {}
 
 // Shutdown if not already
 Constituent::~Constituent() {
@@ -93,9 +95,6 @@ void Constituent::term(term_t t) {
 
     LOG_TOPIC(INFO, Logger::AGENCY) << "Updating term to " << t;
 
-    static std::string const path = "/_api/document?collection=election";
-    std::map<std::string, std::string> headerFields;
-    
     Builder body;
     body.add(VPackValue(VPackValueType::Object));
     std::ostringstream i_str;
@@ -105,17 +104,22 @@ void Constituent::term(term_t t) {
     body.add("voted_for", Value((uint32_t)_voted_for));
     body.close();
     
-    std::unique_ptr<arangodb::ClusterCommResult> res =
-      arangodb::ClusterComm::instance()->syncRequest(
-        "1", 1, _agent->config().end_point, GeneralRequest::RequestType::POST,
-        path, body.toJson(), headerFields, 0.0);
+    TRI_ASSERT(_vocbase != nullptr);
+    auto transactionContext = std::make_shared<StandaloneTransactionContext>(_vocbase);
+    SingleCollectionTransaction trx(transactionContext, "election", TRI_TRANSACTION_WRITE);
     
-    if (res->status != CL_COMM_SENT) {
-      LOG_TOPIC(ERR, Logger::AGENCY) << res->status << ": " << CL_COMM_SENT
-                                     << ", " << res->errorMessage;
-      LOG_TOPIC(ERR, Logger::AGENCY)
-        << res->result->getBodyVelocyPack()->toJson();
+    int res = trx.begin();
+    
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
     }
+    
+    OperationOptions options;
+    options.waitForSync = true; 
+    options.silent = true;
+    
+    OperationResult result = trx.insert("election", body.slice(), options);
+    res = trx.finish(result.code);
     
   }
   
@@ -132,7 +136,6 @@ void Constituent::follow (term_t t) {
     LOG_TOPIC(INFO, Logger::AGENCY) << "Role change: Converted to follower in term " << t;
   }
   this->term(t);
-  _votes.assign(_votes.size(),false); // void all votes
   _role = FOLLOWER;
 }
 
@@ -253,15 +256,13 @@ const constituency_t& Constituent::gossip () {
 /// @brief Call to election
 void Constituent::callElection() {
 
-  try {
-    _votes.at(_id) = true; // vote for myself
-  } catch (std::out_of_range const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "_votes vector is not properly sized!";
-    LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
-  }
+  std::vector<bool> votes(size(),false);
+
+  votes.at(_id) = true; // vote for myself
   _cast = true;
-  if(_role == CANDIDATE)
+  if(_role == CANDIDATE) {
     this->term(_term+1);            // raise my term
+  }
   
   std::string body;
   std::vector<ClusterCommResult> results(_agent->config().end_points.size());
@@ -309,13 +310,12 @@ void Constituent::callElection() {
                 follow(t);
                 break;
               }
-              _votes[i] = slc.get("voteGranted").getBool();        // Get vote
-            } else {
-            }
+              votes[i] = slc.get("voteGranted").getBool();        // Get vote
+            } 
           }
         }
       } else { // Request failed
-        _votes[i] = false;
+        votes[i] = false;
       }
     }
   }
@@ -323,7 +323,7 @@ void Constituent::callElection() {
   // Count votes
   size_t yea = 0;
   for (size_t i = 0; i < size(); ++i) {
-    if (_votes[i]){
+    if (votes[i]){
       yea++;
     }    
   }
@@ -340,39 +340,55 @@ void Constituent::beginShutdown() {
   Thread::beginShutdown();
 }
 
+
+#include <iostream>
+
+bool Constituent::start (TRI_vocbase_t* vocbase,
+                         ApplicationV8* applicationV8,
+                         aql::QueryRegistry* queryRegistry) {
+
+  _vocbase = vocbase;
+  _applicationV8 = applicationV8;
+  _queryRegistry = queryRegistry;
+
+  return Thread::start();
+}
+
+
 void Constituent::run() {
+  TRI_ASSERT(_vocbase != nullptr);
+  auto bindVars = std::make_shared<VPackBuilder>();
+  bindVars->openObject();
+  bindVars->close();
   
-  // Path
-  std::string path("/_api/cursor");
+  TRI_ASSERT(_applicationV8 != nullptr);
+  TRI_ASSERT(_queryRegistry != nullptr);
+
+  // Query
+  std::string const aql ("FOR l IN election SORT l._key DESC LIMIT 1 RETURN l");
+  arangodb::aql::Query query(_applicationV8, false, _vocbase,
+			     aql.c_str(), aql.size(), bindVars, nullptr,
+			     arangodb::aql::PART_MAIN);
   
-  // Body
-  Builder tmp;
-  tmp.openObject();
-  std::string query ("FOR l IN election SORT l._key DESC LIMIT 1 RETURN l");
-  tmp.add("query", VPackValue(query));
-  tmp.close();
+  auto queryResult = query.execute(_queryRegistry);
+  if (queryResult.code != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+  }
   
-  // Request
-  std::map<std::string, std::string> headerFields;
-  std::unique_ptr<arangodb::ClusterCommResult> res =
-    arangodb::ClusterComm::instance()->syncRequest(
-      "1", 1, _agent->config().end_point, GeneralRequest::RequestType::POST, path,
-      tmp.toJson(), headerFields, 1.0);
-  
-  // If success rebuild state deque
-  if (res->status == CL_COMM_SENT) {
-    std::shared_ptr<Builder> body = res->result->getBodyVelocyPack();
-    if (body->slice().hasKey("result")) {
-      Slice result = body->slice().get("result");
-      if (result.type() == VPackValueType::Array) {
-        for (auto const& i : VPackArrayIterator(result)) {
-          _term = i.get("term").getUInt();
-          _voted_for = i.get("voted_for").getUInt();
-        }
+  VPackSlice result = queryResult.result->slice();
+
+  if (result.isArray()) {
+    for (auto const& i : VPackArrayIterator(result)) {
+      try {
+      _term = i.get("term").getUInt();
+      _voted_for = i.get("voted_for").getUInt();
+      } catch (std::exception const& e) {
+        LOG_TOPIC(ERR, Logger::AGENCY)
+          << "Persisted election entries corrupt! Defaulting term,vote (0,0)";
       }
     }
   }
-  
+
   // Always start off as follower
   while (!this->isStopping() && size() > 1) { 
     if (_role == FOLLOWER) {

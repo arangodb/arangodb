@@ -107,7 +107,7 @@ static bool indexSupportsSort(Index const* idx, arangodb::aql::Variable const* r
 static OperationResult DBServerResponseBad(std::shared_ptr<VPackBuilder> resultBody) {
   VPackSlice res = resultBody->slice();
   return OperationResult(
-      arangodb::basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      arangodb::basics::VelocyPackHelper::getNumericValue<int>(
           res, "errorNum", TRI_ERROR_INTERNAL),
       arangodb::basics::VelocyPackHelper::getStringValue(
           res, "errorMessage", "JSON sent to DBserver was bad"));
@@ -706,12 +706,12 @@ void Transaction::buildDocumentIdentity(VPackBuilder& builder,
   }
   if (oldMptr != nullptr) {
     builder.add("old", VPackSlice(oldMptr->vpack()));
-#warning Add externals later.
+    // TODO: add externals later.
     //builder.add("old", VPackValue(VPackValueType::External, oldMptr->vpack()));
   }
   if (newMptr != nullptr) {
     builder.add("new", VPackSlice(newMptr->vpack()));
-#warning Add externals later.
+    // TODO: add externals later.
     //builder.add("new", VPackValue(VPackValueType::External, newMptr->vpack()));
   }
   builder.close();

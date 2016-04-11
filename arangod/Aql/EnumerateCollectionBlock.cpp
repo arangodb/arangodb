@@ -47,10 +47,7 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
 
 EnumerateCollectionBlock::~EnumerateCollectionBlock() { delete _scanner; }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize fetching of documents
-////////////////////////////////////////////////////////////////////////////////
-
 void EnumerateCollectionBlock::initializeDocuments() {
   _scanner->reset();
   _documents = VPackSlice();
@@ -58,10 +55,7 @@ void EnumerateCollectionBlock::initializeDocuments() {
   _posInDocuments = 0;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief skip instead of fetching
-////////////////////////////////////////////////////////////////////////////////
-
 bool EnumerateCollectionBlock::skipDocuments(size_t toSkip, size_t& skipped) {
   DEBUG_BEGIN_BLOCK();  
   throwIfKilled();  // check if we were aborted
@@ -89,10 +83,7 @@ bool EnumerateCollectionBlock::skipDocuments(size_t toSkip, size_t& skipped) {
   DEBUG_END_BLOCK();  
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief continue fetching of documents
-////////////////////////////////////////////////////////////////////////////////
-
 bool EnumerateCollectionBlock::moreDocuments(size_t hint) {
   DEBUG_BEGIN_BLOCK();  
   if (hint < DefaultBatchSize) {
@@ -150,10 +141,7 @@ int EnumerateCollectionBlock::initializeCursor(AqlItemBlock* items,
   DEBUG_END_BLOCK();  
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief getSome
-////////////////////////////////////////////////////////////////////////////////
-
 AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
                                                 size_t atMost) {
   DEBUG_BEGIN_BLOCK();  

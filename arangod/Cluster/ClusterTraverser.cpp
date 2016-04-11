@@ -24,6 +24,8 @@
 #include "ClusterTraverser.h"
 #include "Cluster/ClusterMethods.h"
 
+using namespace arangodb;
+
 using ClusterTraversalPath = arangodb::traverser::ClusterTraversalPath;
 using ClusterTraverser = arangodb::traverser::ClusterTraverser;
 

@@ -122,11 +122,11 @@ v8::Handle<v8::Value> TRI_VPackToV8(v8::Isolate* isolate,
     }
     case VPackValueType::Int: {
       int64_t value = slice.getInt();
-      if (value >= -2147483648 && value <= 2147483647) {
+      if (value >= -2147483648LL && value <= 2147483647LL) {
         // value is within bounds of an int32_t
         return v8::Integer::New(isolate, static_cast<int32_t>(value));
       }
-      if (value >= 0 && value <= 4294967295) {
+      if (value >= 0 && value <= 4294967295LL) {
         // value is within bounds of a uint32_t
         return v8::Integer::NewFromUnsigned(isolate, static_cast<uint32_t>(value));
       }
@@ -135,7 +135,7 @@ v8::Handle<v8::Value> TRI_VPackToV8(v8::Isolate* isolate,
     }
     case VPackValueType::UInt: {
       uint64_t value = slice.getUInt();
-      if (value <= 4294967295) {
+      if (value <= 4294967295ULL) {
         // value is within bounds of a uint32_t
         return v8::Integer::NewFromUnsigned(isolate, static_cast<uint32_t>(value));
       }

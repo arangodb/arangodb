@@ -30,6 +30,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/json.h"
 #include "Basics/JsonHelper.h"
+#include "Utils/Transaction.h"
 
 #ifdef _WIN32
 // turn off warnings about too long type name for debug symbols blabla in MSVC
@@ -37,6 +38,7 @@
 #pragma warning(disable : 4503)
 #endif
 
+using namespace arangodb;
 using namespace arangodb::aql;
 using CompareResult = ConditionPartCompareResult;
 
@@ -178,10 +180,7 @@ ConditionPart::ConditionPart(
 
 ConditionPart::~ConditionPart() {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief true if the condition is completely covered by the other condition
-////////////////////////////////////////////////////////////////////////////////
-
 bool ConditionPart::isCoveredBy(ConditionPart const& other) const {
   if (variable != other.variable || attributeName != other.attributeName) {
     return false;
@@ -265,26 +264,17 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other) const {
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the condition
-////////////////////////////////////////////////////////////////////////////////
-
 Condition::Condition(Ast* ast)
     : _ast(ast), _root(nullptr), _isNormalized(false), _isSorted(false) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the condition
-////////////////////////////////////////////////////////////////////////////////
-
 Condition::~Condition() {
   // memory for nodes is not owned and thus not freed by the condition
   // all nodes belong to the AST
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief export the condition as VelocyPack
-//////////////////////////////////////////////////////////////////////////////
-
 void Condition::toVelocyPack(arangodb::velocypack::Builder& builder,
                              bool verbose) const {
   if (_root == nullptr) {
@@ -294,10 +284,7 @@ void Condition::toVelocyPack(arangodb::velocypack::Builder& builder,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a condition from JSON
-////////////////////////////////////////////////////////////////////////////////
-
 Condition* Condition::fromJson(ExecutionPlan* plan,
                                arangodb::basics::Json const& json) {
   auto condition = std::make_unique<Condition>(plan->getAst());
@@ -314,10 +301,7 @@ Condition* Condition::fromJson(ExecutionPlan* plan,
   return condition.release();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief clone the condition
-////////////////////////////////////////////////////////////////////////////////
-
 Condition* Condition::clone() const {
   auto copy = std::make_unique<Condition>(_ast);
 
@@ -330,11 +314,8 @@ Condition* Condition::clone() const {
   return copy.release();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief add a sub-condition to the condition
 /// the sub-condition will be AND-combined with the existing condition(s)
-////////////////////////////////////////////////////////////////////////////////
-
 void Condition::andCombine(AstNode const* node) {
   if (_isNormalized) {
     // already normalized
@@ -354,15 +335,12 @@ void Condition::andCombine(AstNode const* node) {
   TRI_ASSERT(_root != nullptr);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief locate indexes for each condition
 /// return value is a pair indicating whether the index can be used for
 /// filtering(first) and sorting(second)
-////////////////////////////////////////////////////////////////////////////////
-
 std::pair<bool, bool> Condition::findIndexes(
     EnumerateCollectionNode const* node,
-    std::vector<Transaction::IndexHandle>& usedIndexes,
+    std::vector<arangodb::Transaction::IndexHandle>& usedIndexes,
     SortCondition const* sortCondition) {
   TRI_ASSERT(usedIndexes.empty());
   Variable const* reference = node->outVariable();
@@ -383,11 +361,8 @@ std::pair<bool, bool> Condition::findIndexes(
       usedIndexes, _isSorted);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the attributes for a sub-condition that are const
 /// (i.e. compared with equality)
-////////////////////////////////////////////////////////////////////////////////
-
 std::vector<std::vector<arangodb::basics::AttributeName>> Condition::getConstAttributes (Variable const* reference,
                                                                                          bool includeNull) {
   std::vector<std::vector<arangodb::basics::AttributeName>> result;
@@ -432,11 +407,8 @@ std::vector<std::vector<arangodb::basics::AttributeName>> Condition::getConstAtt
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize the condition
 /// this will convert the condition into its disjunctive normal form
-////////////////////////////////////////////////////////////////////////////////
-
 void Condition::normalize(ExecutionPlan* plan) {
   if (_isNormalized) {
     // already normalized
@@ -456,13 +428,10 @@ void Condition::normalize(ExecutionPlan* plan) {
 #endif
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize the condition
 /// this will convert the condition into its disjunctive normal form
 /// in this case we don't re-run the optimizer. Its expected that you
 /// don't want to remove eventually unneccessary filters.
-////////////////////////////////////////////////////////////////////////////////
-
 void Condition::normalize() {
   if (_isNormalized) {
     // already normalized
@@ -480,10 +449,7 @@ void Condition::normalize() {
 #endif
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief removes condition parts from another
-////////////////////////////////////////////////////////////////////////////////
-
 AstNode* Condition::removeIndexCondition(Variable const* variable,
                                          AstNode* other) {
   if (_root == nullptr || other == nullptr) {
@@ -573,10 +539,7 @@ AstNode* Condition::removeIndexCondition(Variable const* variable,
   return newNode;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief remove (now) invalid variables from the condition
-////////////////////////////////////////////////////////////////////////////////
-
 bool Condition::removeInvalidVariables(
     std::unordered_set<Variable const*> const& validVars) {
   if (_root == nullptr) {
@@ -628,10 +591,7 @@ bool Condition::removeInvalidVariables(
   return isEmpty;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief optimize the condition expression tree
-////////////////////////////////////////////////////////////////////////////////
-
 void Condition::optimize(ExecutionPlan* plan) {
   if (_root == nullptr) {
     return;
@@ -880,10 +840,7 @@ void Condition::optimize(ExecutionPlan* plan) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief registers an attribute access for a particular (collection) variable
-////////////////////////////////////////////////////////////////////////////////
-
 void Condition::storeAttributeAccess(VariableUsageType& variableUsage,
                                      AstNode const* node, size_t position,
                                      AttributeSideType side) {
@@ -927,10 +884,7 @@ void Condition::storeAttributeAccess(VariableUsageType& variableUsage,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief validate the condition's AST
-////////////////////////////////////////////////////////////////////////////////
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void Condition::validateAst(AstNode const* node, int level) {
   if (level == 0) {
@@ -954,10 +908,7 @@ void Condition::validateAst(AstNode const* node, int level) {
 }
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if the current condition is covered by the other
-////////////////////////////////////////////////////////////////////////////////
-
 bool Condition::canRemove(ConditionPart const& me,
                           arangodb::aql::AstNode const* otherCondition) const {
   TRI_ASSERT(otherCondition != nullptr);
@@ -1022,11 +973,8 @@ bool Condition::canRemove(ConditionPart const& me,
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief deduplicate IN condition values (and sort them)
 /// this may modify the node in place
-////////////////////////////////////////////////////////////////////////////////
-
 void Condition::deduplicateInOperation(AstNode* operation) {
   if (operation->type != NODE_TYPE_OPERATOR_BINARY_IN) {
     return;
@@ -1049,10 +997,7 @@ void Condition::deduplicateInOperation(AstNode* operation) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief merge the values from two IN operations
-////////////////////////////////////////////////////////////////////////////////
-
 AstNode* Condition::mergeInOperations(AstNode const* lhs, AstNode const* rhs) {
   TRI_ASSERT(lhs->type == NODE_TYPE_OPERATOR_BINARY_IN);
   TRI_ASSERT(rhs->type == NODE_TYPE_OPERATOR_BINARY_IN);
@@ -1066,10 +1011,7 @@ AstNode* Condition::mergeInOperations(AstNode const* lhs, AstNode const* rhs) {
   return _ast->createNodeIntersectedArray(lValue, rValue);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief merges the current node with the sub nodes of same type
-////////////////////////////////////////////////////////////////////////////////
-
 AstNode* Condition::collapse(AstNode const* node) {
   TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_NARY_OR ||
              node->type == NODE_TYPE_OPERATOR_NARY_AND);
@@ -1098,10 +1040,7 @@ AstNode* Condition::collapse(AstNode const* node) {
   return newOperator;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief converts binary logical operators into n-ary operators
-////////////////////////////////////////////////////////////////////////////////
-
 AstNode* Condition::transformNode(AstNode* node) {
   if (node == nullptr) {
     return nullptr;
@@ -1266,12 +1205,9 @@ AstNode* Condition::transformNode(AstNode* node) {
   return node;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Creates a top-level OR node if it does not already exist, and make
 /// sure that all second level nodes are AND nodes. Additionally, this step will
 /// remove all NOP nodes.
-////////////////////////////////////////////////////////////////////////////////
-
 AstNode* Condition::fixRoot(AstNode* node, int level) {
   if (node == nullptr) {
     return nullptr;

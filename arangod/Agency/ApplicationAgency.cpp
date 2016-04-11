@@ -27,17 +27,28 @@
 
 #include "Logger/Logger.h"
 #include "Scheduler/PeriodicTask.h"
+#include "VocBase/server.h"
+
+#include "V8Server/ApplicationV8.h"
 
 #include "ApplicationAgency.h"
 
 using namespace std;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
+using namespace arangodb;
 
-ApplicationAgency::ApplicationAgency(ApplicationEndpointServer* aes)
-  : ApplicationFeature("agency"), _size(1), _min_election_timeout(0.15),
-	  _max_election_timeout(1.0), _election_call_rate_mul(0.85), _notify(false),
-    _agent_id((std::numeric_limits<uint32_t>::max)()), _endpointServer(aes) {
+ApplicationAgency::ApplicationAgency(TRI_server_t* server, 
+                                     ApplicationEndpointServer* aes, 
+                                     ApplicationV8* applicationV8, 
+                                     aql::QueryRegistry* queryRegistry)
+  : ApplicationFeature("agency"), _server(server), _size(1),
+    _min_election_timeout(0.15), _max_election_timeout(1.0),
+    _election_call_rate_mul(0.85), _notify(false), _sanity_check(false),
+          _agent_id((std::numeric_limits<uint32_t>::max)()), 
+          _endpointServer(aes), 
+          _applicationV8(applicationV8), 
+          _queryRegistry(queryRegistry) {
 }
 
 
@@ -46,6 +57,7 @@ ApplicationAgency::~ApplicationAgency() {}
 
 /// @brief sets the processor affinity
 void ApplicationAgency::setupOptions(
+  
     std::map<std::string, ProgramOptionsDescription>& options) {
   options["Agency Options:help-agency"]("agency.size", &_size, "Agency size")
     ("agency.id", &_agent_id, "This agent's id")
@@ -57,8 +69,9 @@ void ApplicationAgency::setupOptions(
     ("agency.election_call_rate_mul [au]", &_election_call_rate_mul,
      "Multiplier (<1.0) defining how long the election timeout is with respect "
      "to the minumum election timeout")
-    ("agency.notify", &_notify, "Notify others");
-
+    ("agency.notify", &_notify, "Notify others")
+    ("agency.sanity-check", &_sanity_check,
+     "Perform arangodb cluster sanity checking");
   
 }
 
@@ -132,9 +145,11 @@ bool ApplicationAgency::prepare() {
   _agency_endpoints.resize(_size);
 
   _agent = std::unique_ptr<agent_t>(
-    new agent_t(arangodb::consensus::config_t(
-                  _agent_id, _min_election_timeout, _max_election_timeout,
-                  endpoint, _agency_endpoints, _notify)));
+    new agent_t(
+      _server, arangodb::consensus::config_t(
+        _agent_id, _min_election_timeout, _max_election_timeout,
+        endpoint, _agency_endpoints, _notify, _sanity_check), _applicationV8,
+      _queryRegistry));
   
   return true;
   

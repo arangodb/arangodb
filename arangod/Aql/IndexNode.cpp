@@ -28,17 +28,15 @@
 #include "Aql/ExecutionPlan.h"
 #include "Utils/Transaction.h"
 
+using namespace arangodb;
 using namespace arangodb::aql;
 
 using JsonHelper = arangodb::basics::JsonHelper;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
-
 IndexNode::IndexNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
             Collection const* collection, Variable const* outVariable,
-            std::vector<Transaction::IndexHandle> const& indexes,
+            std::vector<arangodb::Transaction::IndexHandle> const& indexes,
             Condition* condition, bool reverse)
       : ExecutionNode(plan, id),
         _vocbase(vocbase),
@@ -53,18 +51,12 @@ IndexNode::IndexNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
   TRI_ASSERT(_condition != nullptr);
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief return the transaction for the node
-//////////////////////////////////////////////////////////////////////////////
-
 arangodb::Transaction* IndexNode::trx() const {
   return _plan->getAst()->query()->trx();
 };
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack, for IndexNode
-////////////////////////////////////////////////////////////////////////////////
-
 void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   ExecutionNode::toVelocyPackHelperGeneric(nodes,
                                            verbose);  // call base class method
@@ -108,10 +100,7 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
   return static_cast<ExecutionNode*>(c);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor for IndexNode from Json
-////////////////////////////////////////////////////////////////////////////////
-
 IndexNode::IndexNode(ExecutionPlan* plan, arangodb::basics::Json const& json)
     : ExecutionNode(plan, json),
       _vocbase(plan->getAst()->query()->vocbase()),
@@ -144,17 +133,11 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::basics::Json const& json)
   TRI_ASSERT(_condition != nullptr);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the IndexNode
-////////////////////////////////////////////////////////////////////////////////
-
 IndexNode::~IndexNode() { delete _condition; }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief the cost of an index node is a multiple of the cost of
 /// its unique dependency
-////////////////////////////////////////////////////////////////////////////////
-
 double IndexNode::estimateCost(size_t& nrItems) const {
   size_t incoming = 0;
   double const dependencyCost = _dependencies.at(0)->getCost(incoming);
@@ -192,10 +175,7 @@ double IndexNode::estimateCost(size_t& nrItems) const {
   return dependencyCost + incoming * totalCost;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief getVariablesUsedHere, returning a vector
-////////////////////////////////////////////////////////////////////////////////
-
 std::vector<Variable const*> IndexNode::getVariablesUsedHere() const {
   std::unordered_set<Variable const*> s;
   // actual work is done by that method
@@ -211,10 +191,7 @@ std::vector<Variable const*> IndexNode::getVariablesUsedHere() const {
   return v;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief getVariablesUsedHere, modifying the set in-place
-////////////////////////////////////////////////////////////////////////////////
-
 void IndexNode::getVariablesUsedHere(
     std::unordered_set<Variable const*>& vars) const {
   Ast::getReferencedVariables(_condition->root(), vars);

@@ -67,15 +67,41 @@ class Slice {
   // constructor for an empty Value of type None
   Slice() : Slice("\x00") {}
 
-  explicit Slice(uint8_t const* start)
-      : _start(start) {}
+  // creates a slice of type None
+  static Slice noneSlice() { return Slice("\x00"); }
 
-  explicit Slice(char const* start)
-      : _start(reinterpret_cast<uint8_t const*>(start)) {}
+  // creates a slice of type Null
+  static Slice nullSlice() { return Slice("\x18"); }
+  
+  // creates a slice of type Boolean with false value
+  static Slice falseSlice() { return Slice("\x19"); }
+
+  // creates a slice of type Boolean with true value
+  static Slice trueSlice() { return Slice("\x1a"); }
+  
+  // creates a slice of type Array, empty
+  static Slice emptyArraySlice() { return Slice("\x01"); }
+  
+  // creates a slice of type Object, empty
+  static Slice emptyObjectSlice() { return Slice("\x0a"); }
+  
+  // creates a slice of type MinKey
+  static Slice minKeySlice() { return Slice("\x1e"); }
+
+  // creates a slice of type MaxKey
+  static Slice maxKeySlice() { return Slice("\x1f"); }
 
   // creates a Slice from Json and adds it to a scope
   static Slice fromJson(SliceScope& scope, std::string const& json,
                         Options const* options = &Options::Defaults);
+  
+  // creates a Slice from a pointer to a uint8_t array
+  explicit Slice(uint8_t const* start)
+      : _start(start) {}
+
+  // creates a Slice from a pointer to a char array
+  explicit Slice(char const* start)
+      : _start(reinterpret_cast<uint8_t const*>(start)) {}
 
   uint8_t const* begin() { return _start; }
 

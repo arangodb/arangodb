@@ -36,10 +36,7 @@
 
 using namespace arangodb::aql;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a collection wrapper
-////////////////////////////////////////////////////////////////////////////////
-
 Collection::Collection(std::string const& name, TRI_vocbase_t* vocbase,
                        TRI_transaction_type_e accessType)
     : collection(nullptr),
@@ -52,16 +49,10 @@ Collection::Collection(std::string const& name, TRI_vocbase_t* vocbase,
   TRI_ASSERT(vocbase != nullptr);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy a collection wrapper
-////////////////////////////////////////////////////////////////////////////////
-
 Collection::~Collection() {}
   
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the pointer to the document collection
-////////////////////////////////////////////////////////////////////////////////
-
 TRI_document_collection_t* Collection::documentCollection() const {
   TRI_ASSERT(collection != nullptr);
   TRI_ASSERT(collection->_collection != nullptr);
@@ -69,10 +60,7 @@ TRI_document_collection_t* Collection::documentCollection() const {
   return collection->_collection;
 }
   
-////////////////////////////////////////////////////////////////////////////////
 /// @brief count the number of documents in the collection
-////////////////////////////////////////////////////////////////////////////////
-
 size_t Collection::count() const {
   if (numDocuments == UNINITIALIZED) {
     if (arangodb::ServerState::instance()->isCoordinator()) {
@@ -95,10 +83,7 @@ size_t Collection::count() const {
   return static_cast<size_t>(numDocuments);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the collection's plan id
-////////////////////////////////////////////////////////////////////////////////
-
 TRI_voc_cid_t Collection::getPlanId() const {
   auto clusterInfo = arangodb::ClusterInfo::instance();
   auto collectionInfo =
@@ -113,20 +98,14 @@ TRI_voc_cid_t Collection::getPlanId() const {
   return collectionInfo.get()->id();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the shard ids of a collection
-////////////////////////////////////////////////////////////////////////////////
-
 std::shared_ptr<std::vector<std::string>> Collection::shardIds() const {
   auto clusterInfo = arangodb::ClusterInfo::instance();
   return clusterInfo->getShardList(
       arangodb::basics::StringUtils::itoa(getPlanId()));
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the shard keys of a collection
-////////////////////////////////////////////////////////////////////////////////
-
 std::vector<std::string> Collection::shardKeys() const {
   auto clusterInfo = arangodb::ClusterInfo::instance();
 
@@ -153,10 +132,7 @@ std::vector<std::string> Collection::shardKeys() const {
   return keys;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the collection uses the default sharding
-////////////////////////////////////////////////////////////////////////////////
-
 bool Collection::usesDefaultSharding() const {
   // check if collection shard keys are only _key
   std::vector<std::string> sk(shardKeys());

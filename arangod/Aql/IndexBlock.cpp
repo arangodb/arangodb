@@ -56,10 +56,7 @@ IndexBlock::~IndexBlock() {
   cleanupNonConstExpressions();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a UNIQUE() to a dynamic IN condition
-////////////////////////////////////////////////////////////////////////////////
-
 arangodb::aql::AstNode* IndexBlock::makeUnique(
     arangodb::aql::AstNode* node) const {
   if (node->type != arangodb::aql::NODE_TYPE_ARRAY ||
@@ -314,10 +311,7 @@ bool IndexBlock::initIndexes() {
   DEBUG_END_BLOCK();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an OperationCursor object
-////////////////////////////////////////////////////////////////////////////////
-
 std::shared_ptr<arangodb::OperationCursor> IndexBlock::createCursor() {
   DEBUG_BEGIN_BLOCK();
   IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
@@ -341,10 +335,7 @@ std::shared_ptr<arangodb::OperationCursor> IndexBlock::createCursor() {
   DEBUG_END_BLOCK();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Forwards _iterator to the next available index
-////////////////////////////////////////////////////////////////////////////////
-
 void IndexBlock::startNextCursor() {
   DEBUG_BEGIN_BLOCK();
 
@@ -448,10 +439,7 @@ int IndexBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   DEBUG_END_BLOCK();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief getSome
-////////////////////////////////////////////////////////////////////////////////
-
 AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   if (_done) {
@@ -550,10 +538,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
   DEBUG_END_BLOCK();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief skipSome
-////////////////////////////////////////////////////////////////////////////////
-
 size_t IndexBlock::skipSome(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   if (_done) {
@@ -613,10 +598,7 @@ size_t IndexBlock::skipSome(size_t atLeast, size_t atMost) {
   DEBUG_END_BLOCK();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the memory for all non-constant expressions
-////////////////////////////////////////////////////////////////////////////////
-
 void IndexBlock::cleanupNonConstExpressions() {
   for (auto& it : _nonConstExpressions) {
     delete it;

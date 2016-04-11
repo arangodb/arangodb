@@ -47,10 +47,7 @@ using Json = arangodb::basics::Json;
 using JsonHelper = arangodb::basics::JsonHelper;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief register warning
-////////////////////////////////////////////////////////////////////////////////
-
 static void RegisterWarning(arangodb::aql::Ast const* ast,
                             char const* functionName, int code) {
   std::string msg;
@@ -67,10 +64,7 @@ static void RegisterWarning(arangodb::aql::Ast const* ast,
   ast->query()->registerWarning(code, msg.c_str());
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the expression
-////////////////////////////////////////////////////////////////////////////////
-
 Expression::Expression(Ast* ast, AstNode* node)
     : _ast(ast),
       _executor(_ast->query()->executor()),
@@ -88,17 +82,11 @@ Expression::Expression(Ast* ast, AstNode* node)
   TRI_ASSERT(_node != nullptr);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an expression from JSON
-////////////////////////////////////////////////////////////////////////////////
-
 Expression::Expression(Ast* ast, arangodb::basics::Json const& json)
     : Expression(ast, new AstNode(ast, json.get("expression"))) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the expression
-////////////////////////////////////////////////////////////////////////////////
-
 Expression::~Expression() {
   if (_built) {
     switch (_type) {
@@ -126,18 +114,12 @@ Expression::~Expression() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return all variables used in the expression
-////////////////////////////////////////////////////////////////////////////////
-
 void Expression::variables(std::unordered_set<Variable const*>& result) const {
   Ast::getReferencedVariables(_node, result);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief execute the expression
-////////////////////////////////////////////////////////////////////////////////
-
 AqlValue Expression::execute(arangodb::AqlTransaction* trx,
                              AqlItemBlock const* argv, size_t startPos,
                              std::vector<Variable const*> const& vars,
@@ -183,10 +165,7 @@ AqlValue Expression::execute(arangodb::AqlTransaction* trx,
                                  "invalid simple expression");
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief replace variables in the expression with other variables
-////////////////////////////////////////////////////////////////////////////////
-
 void Expression::replaceVariables(
     std::unordered_map<VariableId, Variable const*> const& replacements) {
   _node = _ast->clone(_node);
@@ -196,12 +175,9 @@ void Expression::replaceVariables(
   invalidate();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief replace a variable reference in the expression with another
 /// expression (e.g. inserting c = `a + b` into expression `c + 1` so the latter
 /// becomes `a + b + 1`
-////////////////////////////////////////////////////////////////////////////////
-
 void Expression::replaceVariableReference(Variable const* variable,
                                           AstNode const* node) {
   _node = _ast->clone(_node);
@@ -227,13 +203,10 @@ void Expression::replaceVariableReference(Variable const* variable,
   _hasDeterminedAttributes = false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief invalidates an expression
 /// this only has an effect for V8-based functions, which need to be created,
 /// used and destroyed in the same context. when a V8 function is used across
 /// multiple V8 contexts, it must be invalidated in between
-////////////////////////////////////////////////////////////////////////////////
-
 void Expression::invalidate() {
   if (_type == V8) {
     // V8 expressions need a special handling
@@ -247,12 +220,9 @@ void Expression::invalidate() {
   // expression data will be freed in the destructor
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief find a value in an AQL list node
 /// this performs either a binary search (if the node is sorted) or a
 /// linear search (if the node is not sorted)
-////////////////////////////////////////////////////////////////////////////////
-
 bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
                              arangodb::AqlTransaction* trx,
                              AstNode const* node) const {
@@ -315,10 +285,7 @@ bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief analyze the expression (determine its type etc.)
-////////////////////////////////////////////////////////////////////////////////
-
 void Expression::analyzeExpression() {
   TRI_ASSERT(_type == UNPROCESSED);
   TRI_ASSERT(_built == false);
@@ -385,10 +352,7 @@ void Expression::analyzeExpression() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief build the expression
-////////////////////////////////////////////////////////////////////////////////
-
 void Expression::buildExpression() {
   TRI_ASSERT(!_built);
 
@@ -418,11 +382,8 @@ void Expression::buildExpression() {
   _built = true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE, the convention is that
 /// the resulting AqlValue will be destroyed outside eventually
-////////////////////////////////////////////////////////////////////////////////
-
 AqlValue Expression::executeSimpleExpression(
     AstNode const* node, arangodb::AqlTransaction* trx, AqlItemBlock const* argv, size_t startPos,
     std::vector<Variable const*> const& vars,
@@ -503,53 +464,35 @@ AqlValue Expression::executeSimpleExpression(
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether this is an attribute access of any degree (e.g. a.b,
 /// a.b.c, ...)
-////////////////////////////////////////////////////////////////////////////////
-
 bool Expression::isAttributeAccess() const {
   return _node->isAttributeAccessForVariable();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether this is a reference access
-////////////////////////////////////////////////////////////////////////////////
-
 bool Expression::isReference() const {
   return (_node->type == arangodb::aql::NODE_TYPE_REFERENCE);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether this is a constant node
-////////////////////////////////////////////////////////////////////////////////
-
 bool Expression::isConstant() const { return _node->isConstant(); }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief stringify an expression
 /// note that currently stringification is only supported for certain node types
-////////////////////////////////////////////////////////////////////////////////
-
 void Expression::stringify(arangodb::basics::StringBuffer* buffer) const {
   _node->stringify(buffer, true, false);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief stringify an expression
 /// note that currently stringification is only supported for certain node types
-////////////////////////////////////////////////////////////////////////////////
-
 void Expression::stringifyIfNotTooLong(
     arangodb::basics::StringBuffer* buffer) const {
   _node->stringify(buffer, true, true);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with ATTRIBUTE ACCESS
 /// always creates a copy
-////////////////////////////////////////////////////////////////////////////////
-
 AqlValue Expression::executeSimpleExpressionAttributeAccess(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
@@ -568,10 +511,7 @@ AqlValue Expression::executeSimpleExpressionAttributeAccess(
   return result.get(trx, name, mustDestroy, true);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with INDEXED ACCESS
-////////////////////////////////////////////////////////////////////////////////
-
 AqlValue Expression::executeSimpleExpressionIndexedAccess(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
@@ -643,10 +583,7 @@ AqlValue Expression::executeSimpleExpressionIndexedAccess(
   return AqlValue(VelocyPackHelper::NullValue());
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with ARRAY
-////////////////////////////////////////////////////////////////////////////////
-
 AqlValue Expression::executeSimpleExpressionArray(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
@@ -679,10 +616,7 @@ AqlValue Expression::executeSimpleExpressionArray(
   return AqlValue(builder);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with OBJECT
-////////////////////////////////////////////////////////////////////////////////
-
 AqlValue Expression::executeSimpleExpressionObject(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
@@ -721,10 +655,7 @@ AqlValue Expression::executeSimpleExpressionObject(
   return AqlValue(builder);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with VALUE
-////////////////////////////////////////////////////////////////////////////////
-
 AqlValue Expression::executeSimpleExpressionValue(AstNode const* node,
                                                   bool& mustDestroy) {
   // this will not create a copy
@@ -732,10 +663,7 @@ AqlValue Expression::executeSimpleExpressionValue(AstNode const* node,
   return AqlValue(node->computeValue().begin()); 
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with REFERENCE
-////////////////////////////////////////////////////////////////////////////////
-
 AqlValue Expression::executeSimpleExpressionReference(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
@@ -771,10 +699,7 @@ AqlValue Expression::executeSimpleExpressionReference(
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with RANGE
-////////////////////////////////////////////////////////////////////////////////
-
 AqlValue Expression::executeSimpleExpressionRange(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
@@ -799,10 +724,7 @@ AqlValue Expression::executeSimpleExpressionRange(
   return AqlValue(resultLow.toInt64(), resultHigh.toInt64());
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with FCALL
-////////////////////////////////////////////////////////////////////////////////
-
 AqlValue Expression::executeSimpleExpressionFCall(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
@@ -867,10 +789,7 @@ AqlValue Expression::executeSimpleExpressionFCall(
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with NOT
-////////////////////////////////////////////////////////////////////////////////
-
 AqlValue Expression::executeSimpleExpressionNot(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
@@ -889,10 +808,7 @@ AqlValue Expression::executeSimpleExpressionNot(
   return AqlValue(!operandIsTrue);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with AND or OR
-////////////////////////////////////////////////////////////////////////////////
-
 AqlValue Expression::executeSimpleExpressionAndOr(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
@@ -928,10 +844,7 @@ AqlValue Expression::executeSimpleExpressionAndOr(
                                  startPos, vars, regs, mustDestroy, true);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with COMPARISON
-////////////////////////////////////////////////////////////////////////////////
-
 AqlValue Expression::executeSimpleExpressionComparison(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
@@ -999,10 +912,7 @@ AqlValue Expression::executeSimpleExpressionComparison(
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with ARRAY COMPARISON
-////////////////////////////////////////////////////////////////////////////////
-
 AqlValue Expression::executeSimpleExpressionArrayComparison(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
@@ -1125,10 +1035,7 @@ AqlValue Expression::executeSimpleExpressionArrayComparison(
   return AqlValue(overallResult);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with TERNARY
-////////////////////////////////////////////////////////////////////////////////
-
 AqlValue Expression::executeSimpleExpressionTernary(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
@@ -1156,10 +1063,7 @@ AqlValue Expression::executeSimpleExpressionTernary(
                                  startPos, vars, regs, mustDestroy, true);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with EXPANSION
-////////////////////////////////////////////////////////////////////////////////
-
 AqlValue Expression::executeSimpleExpressionExpansion(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,
@@ -1342,10 +1246,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(
   return AqlValue(builder); // builder = dynamic data
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with ITERATOR
-////////////////////////////////////////////////////////////////////////////////
-
 AqlValue Expression::executeSimpleExpressionIterator(
     AstNode const* node, 
     arangodb::AqlTransaction* trx, AqlItemBlock const* argv, size_t startPos,
@@ -1358,10 +1259,7 @@ AqlValue Expression::executeSimpleExpressionIterator(
                                  startPos, vars, regs, mustDestroy, true);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with BINARY_* (+, -, * , /, %)
-////////////////////////////////////////////////////////////////////////////////
-
 AqlValue Expression::executeSimpleExpressionArithmetic(
     AstNode const* node, arangodb::AqlTransaction* trx,
     AqlItemBlock const* argv, size_t startPos,

@@ -96,10 +96,7 @@ GatherBlock::~GatherBlock() {
   LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize
-////////////////////////////////////////////////////////////////////////////////
-
 int GatherBlock::initialize() {
   ENTER_BLOCK
   _atDep = 0;
@@ -113,10 +110,7 @@ int GatherBlock::initialize() {
   LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown: need our own method since our _buffer is different
-////////////////////////////////////////////////////////////////////////////////
-
 int GatherBlock::shutdown(int errorCode) {
   ENTER_BLOCK
   // don't call default shutdown method since it does the wrong thing to
@@ -144,10 +138,7 @@ int GatherBlock::shutdown(int errorCode) {
   LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initializeCursor
-////////////////////////////////////////////////////////////////////////////////
-
 int GatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   ENTER_BLOCK
   int res = ExecutionBlock::initializeCursor(items, pos);
@@ -181,11 +172,8 @@ int GatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief count: the sum of the count() of the dependencies or -1 (if any
 /// dependency has count -1
-////////////////////////////////////////////////////////////////////////////////
-
 int64_t GatherBlock::count() const {
   ENTER_BLOCK
   int64_t sum = 0;
@@ -199,11 +187,8 @@ int64_t GatherBlock::count() const {
   LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief remaining: the sum of the remaining() of the dependencies or -1 (if
 /// any dependency has remaining -1
-////////////////////////////////////////////////////////////////////////////////
-
 int64_t GatherBlock::remaining() {
   ENTER_BLOCK
   int64_t sum = 0;
@@ -217,11 +202,8 @@ int64_t GatherBlock::remaining() {
   LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief hasMore: true if any position of _buffer hasMore and false
 /// otherwise.
-////////////////////////////////////////////////////////////////////////////////
-
 bool GatherBlock::hasMore() {
   ENTER_BLOCK
   if (_done) {
@@ -249,10 +231,7 @@ bool GatherBlock::hasMore() {
   LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief getSome
-////////////////////////////////////////////////////////////////////////////////
-
 AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
   ENTER_BLOCK
   if (_done) {
@@ -357,10 +336,7 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
   LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief skipSome
-////////////////////////////////////////////////////////////////////////////////
-
 size_t GatherBlock::skipSome(size_t atLeast, size_t atMost) {
   ENTER_BLOCK
   if (_done) {
@@ -431,11 +407,8 @@ size_t GatherBlock::skipSome(size_t atLeast, size_t atMost) {
   LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief getBlock: from dependency i into _gatherBlockBuffer.at(i),
 /// non-simple case only
-////////////////////////////////////////////////////////////////////////////////
-
 bool GatherBlock::getBlock(size_t i, size_t atLeast, size_t atMost) {
   ENTER_BLOCK
   TRI_ASSERT(i < _dependencies.size());
@@ -455,10 +428,7 @@ bool GatherBlock::getBlock(size_t i, size_t atLeast, size_t atMost) {
   LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief OurLessThan: comparison method for elements of _gatherBlockPos
-////////////////////////////////////////////////////////////////////////////////
-
 bool GatherBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
                                           std::pair<size_t, size_t> const& b) {
   // nothing in the buffer is maximum!
@@ -497,10 +467,7 @@ BlockWithClients::BlockWithClients(ExecutionEngine* engine,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initializeCursor: reset _doneForClient
-////////////////////////////////////////////////////////////////////////////////
-
 int BlockWithClients::initializeCursor(AqlItemBlock* items, size_t pos) {
   ENTER_BLOCK
 
@@ -522,10 +489,7 @@ int BlockWithClients::initializeCursor(AqlItemBlock* items, size_t pos) {
   LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown
-////////////////////////////////////////////////////////////////////////////////
-
 int BlockWithClients::shutdown(int errorCode) {
   ENTER_BLOCK
 
@@ -535,10 +499,7 @@ int BlockWithClients::shutdown(int errorCode) {
   LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief getSomeForShard
-////////////////////////////////////////////////////////////////////////////////
-
 AqlItemBlock* BlockWithClients::getSomeForShard(size_t atLeast, size_t atMost,
                                                 std::string const& shardId) {
   ENTER_BLOCK
@@ -561,10 +522,7 @@ AqlItemBlock* BlockWithClients::getSomeForShard(size_t atLeast, size_t atMost,
   LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief skipSomeForShard
-////////////////////////////////////////////////////////////////////////////////
-
 size_t BlockWithClients::skipSomeForShard(size_t atLeast, size_t atMost,
                                           std::string const& shardId) {
   ENTER_BLOCK
@@ -580,10 +538,7 @@ size_t BlockWithClients::skipSomeForShard(size_t atLeast, size_t atMost,
   LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief skipForShard
-////////////////////////////////////////////////////////////////////////////////
-
 bool BlockWithClients::skipForShard(size_t number, std::string const& shardId) {
   ENTER_BLOCK
   size_t skipped = skipSomeForShard(number, number, shardId);
@@ -599,11 +554,8 @@ bool BlockWithClients::skipForShard(size_t number, std::string const& shardId) {
   LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief getClientId: get the number <clientId> (used internally)
 /// corresponding to <shardId>
-////////////////////////////////////////////////////////////////////////////////
-
 size_t BlockWithClients::getClientId(std::string const& shardId) {
   ENTER_BLOCK
   if (shardId.empty()) {
@@ -620,10 +572,7 @@ size_t BlockWithClients::getClientId(std::string const& shardId) {
   LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initializeCursor
-////////////////////////////////////////////////////////////////////////////////
-
 int ScatterBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   ENTER_BLOCK
 
@@ -642,10 +591,7 @@ int ScatterBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initializeCursor
-////////////////////////////////////////////////////////////////////////////////
-
 int ScatterBlock::shutdown(int errorCode) {
   ENTER_BLOCK
   int res = BlockWithClients::shutdown(errorCode);
@@ -660,10 +606,7 @@ int ScatterBlock::shutdown(int errorCode) {
   LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief hasMoreForShard: any more for shard <shardId>?
-////////////////////////////////////////////////////////////////////////////////
-
 bool ScatterBlock::hasMoreForShard(std::string const& shardId) {
   ENTER_BLOCK
   size_t clientId = getClientId(shardId);
@@ -686,11 +629,8 @@ bool ScatterBlock::hasMoreForShard(std::string const& shardId) {
   LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief remainingForShard: remaining for shard, sum of the number of row left
 /// in the buffer and _dependencies[0]->remaining()
-////////////////////////////////////////////////////////////////////////////////
-
 int64_t ScatterBlock::remainingForShard(std::string const& shardId) {
   ENTER_BLOCK
   size_t clientId = getClientId(shardId);
@@ -716,10 +656,7 @@ int64_t ScatterBlock::remainingForShard(std::string const& shardId) {
   LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief getOrSkipSomeForShard
-////////////////////////////////////////////////////////////////////////////////
-
 int ScatterBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
                                         bool skipping, AqlItemBlock*& result,
                                         size_t& skipped,
@@ -815,10 +752,7 @@ DistributeBlock::DistributeBlock(ExecutionEngine* engine,
   _usesDefaultSharding = collection->usesDefaultSharding();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initializeCursor
-////////////////////////////////////////////////////////////////////////////////
-
 int DistributeBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   ENTER_BLOCK
 
@@ -840,10 +774,7 @@ int DistributeBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown
-////////////////////////////////////////////////////////////////////////////////
-
 int DistributeBlock::shutdown(int errorCode) {
   ENTER_BLOCK
   int res = BlockWithClients::shutdown(errorCode);
@@ -858,10 +789,7 @@ int DistributeBlock::shutdown(int errorCode) {
   LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief hasMore: any more for any shard?
-////////////////////////////////////////////////////////////////////////////////
-
 bool DistributeBlock::hasMoreForShard(std::string const& shardId) {
   ENTER_BLOCK
 
@@ -882,10 +810,7 @@ bool DistributeBlock::hasMoreForShard(std::string const& shardId) {
   LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief getOrSkipSomeForShard
-////////////////////////////////////////////////////////////////////////////////
-
 int DistributeBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
                                            bool skipping, AqlItemBlock*& result,
                                            size_t& skipped,
@@ -976,14 +901,11 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
   LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief getBlockForClient: try to get atLeast pairs into
 /// _distBuffer.at(clientId), this means we have to look at every row in the
 /// incoming blocks until they run out or we find enough rows for clientId. We
 /// also keep track of blocks which should be sent to other clients than the
 /// current one.
-////////////////////////////////////////////////////////////////////////////////
-
 bool DistributeBlock::getBlockForClient(size_t atLeast, size_t atMost,
                                         size_t clientId) {
   ENTER_BLOCK
@@ -1027,12 +949,9 @@ bool DistributeBlock::getBlockForClient(size_t atLeast, size_t atMost,
   LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief sendToClient: for each row of the incoming AqlItemBlock use the
 /// attributes <shardKeys> of the Aql value <val> to determine to which shard
 /// the row should be sent and return its clientId
-////////////////////////////////////////////////////////////////////////////////
-
 size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
   ENTER_BLOCK
 
@@ -1156,20 +1075,14 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
   LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new document key
-////////////////////////////////////////////////////////////////////////////////
-
 std::string DistributeBlock::createKey() const {
   ClusterInfo* ci = ClusterInfo::instance();
   uint64_t uid = ci->uniqid();
   return std::to_string(uid);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief local helper to throw an exception if a HTTP request went wrong
-////////////////////////////////////////////////////////////////////////////////
-
 static bool throwExceptionAfterBadSyncRequest(ClusterCommResult* res,
                                               bool isShutdown) {
   ENTER_BLOCK
@@ -1256,16 +1169,10 @@ static bool throwExceptionAfterBadSyncRequest(ClusterCommResult* res,
   LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief timeout
-////////////////////////////////////////////////////////////////////////////////
-
 double const RemoteBlock::defaultTimeOut = 3600.0;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a remote block
-////////////////////////////////////////////////////////////////////////////////
-
 RemoteBlock::RemoteBlock(ExecutionEngine* engine, RemoteNode const* en,
                          std::string const& server, std::string const& ownName,
                          std::string const& queryId)
@@ -1283,10 +1190,7 @@ RemoteBlock::RemoteBlock(ExecutionEngine* engine, RemoteNode const* en,
 
 RemoteBlock::~RemoteBlock() {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief local helper to send a request
-////////////////////////////////////////////////////////////////////////////////
-
 std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
     arangodb::GeneralRequest::RequestType type,
     std::string const& urlPart, std::string const& body) const {
@@ -1322,10 +1226,7 @@ std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
   LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize
-////////////////////////////////////////////////////////////////////////////////
-
 int RemoteBlock::initialize() {
   ENTER_BLOCK
   int res = ExecutionBlock::initialize();
@@ -1338,10 +1239,7 @@ int RemoteBlock::initialize() {
   LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initializeCursor, could be called multiple times
-////////////////////////////////////////////////////////////////////////////////
-
 int RemoteBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   ENTER_BLOCK
   // For every call we simply forward via HTTP
@@ -1388,10 +1286,7 @@ int RemoteBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown, will be called exactly once for the whole query
-////////////////////////////////////////////////////////////////////////////////
-
 int RemoteBlock::shutdown(int errorCode) {
   ENTER_BLOCK
 
@@ -1440,10 +1335,7 @@ int RemoteBlock::shutdown(int errorCode) {
   LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief getSome
-////////////////////////////////////////////////////////////////////////////////
-
 AqlItemBlock* RemoteBlock::getSome(size_t atLeast, size_t atMost) {
   ENTER_BLOCK
   // For every call we simply forward via HTTP
@@ -1475,10 +1367,7 @@ AqlItemBlock* RemoteBlock::getSome(size_t atLeast, size_t atMost) {
   LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief skipSome
-////////////////////////////////////////////////////////////////////////////////
-
 size_t RemoteBlock::skipSome(size_t atLeast, size_t atMost) {
   ENTER_BLOCK
   // For every call we simply forward via HTTP
@@ -1507,10 +1396,7 @@ size_t RemoteBlock::skipSome(size_t atLeast, size_t atMost) {
   LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief hasMore
-////////////////////////////////////////////////////////////////////////////////
-
 bool RemoteBlock::hasMore() {
   ENTER_BLOCK
   // For every call we simply forward via HTTP
@@ -1531,10 +1417,7 @@ bool RemoteBlock::hasMore() {
   LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief count
-////////////////////////////////////////////////////////////////////////////////
-
 int64_t RemoteBlock::count() const {
   ENTER_BLOCK
   // For every call we simply forward via HTTP
@@ -1556,10 +1439,7 @@ int64_t RemoteBlock::count() const {
   LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief remaining
-////////////////////////////////////////////////////////////////////////////////
-
 int64_t RemoteBlock::remaining() {
   ENTER_BLOCK
   // For every call we simply forward via HTTP

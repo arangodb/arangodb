@@ -262,10 +262,7 @@ int TraversalBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   return ExecutionBlock::initializeCursor(items, pos);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief read more paths
-////////////////////////////////////////////////////////////////////////////////
-
 bool TraversalBlock::morePaths(size_t hint) {
   DEBUG_BEGIN_BLOCK();
   freeCaches();
@@ -312,10 +309,7 @@ bool TraversalBlock::morePaths(size_t hint) {
   DEBUG_END_BLOCK();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief skip the next paths
-////////////////////////////////////////////////////////////////////////////////
-
 size_t TraversalBlock::skipPaths(size_t hint) {
   DEBUG_BEGIN_BLOCK();
   freeCaches();
@@ -327,10 +321,7 @@ size_t TraversalBlock::skipPaths(size_t hint) {
   DEBUG_END_BLOCK();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize the list of paths
-////////////////////////////////////////////////////////////////////////////////
-
 void TraversalBlock::initializePaths(AqlItemBlock const* items) {
   DEBUG_BEGIN_BLOCK();
   if (!_vertices.empty()) {
@@ -373,10 +364,7 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items) {
   DEBUG_END_BLOCK();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief getSome
-////////////////////////////////////////////////////////////////////////////////
-
 AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
                                       size_t atMost) {
   DEBUG_BEGIN_BLOCK();
@@ -476,10 +464,7 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
   DEBUG_END_BLOCK();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief skipSome
-////////////////////////////////////////////////////////////////////////////////
-
 size_t TraversalBlock::skipSome(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   size_t skipped = 0;

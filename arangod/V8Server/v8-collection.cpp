@@ -1598,7 +1598,7 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
   uint32_t const argLength = args.Length();
 
   if (argLength < 2 ||
-      argLength > (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE ? 4 : 5)) {
+      argLength > (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE ? 4UL : 5UL)) {
     if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
       TRI_V8_THROW_EXCEPTION_USAGE(
           "replace(<document(s)>, <data>, {overwrite: booleanValue,"
@@ -1767,7 +1767,7 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
   uint32_t const argLength = args.Length();
 
   if (argLength < 2 ||
-      argLength > (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE ? 4 : 5)) {
+      argLength > (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE ? 4UL : 5UL)) {
     if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
       TRI_V8_THROW_EXCEPTION_USAGE(
           "_replace(<document>, <data>, {overwrite: booleanValue, waitForSync: "
