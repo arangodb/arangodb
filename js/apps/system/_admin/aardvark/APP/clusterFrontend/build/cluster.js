@@ -61,6 +61,10 @@
       };
     },
 
+    getCurrentSub: function() {
+      return window.App.naviView.activeSubMenu;
+    },
+
     setCheckboxStatus: function(id) {
       _.each($(id).find('ul').find('li'), function(element) {
          if (!$(element).hasClass("nav-header")) {
@@ -2922,7 +2926,15 @@ window.StatisticsCollection = Backbone.Collection.extend({
       return;
     }
     self.timer = window.setInterval(function () {
-        self.getStatistics();
+
+        if (window.App.isCluster) {
+          if (window.location.hash.indexOf(self.serverInfo.target) > -1) {
+            self.getStatistics();
+          }
+        }
+        else {
+          self.getStatistics();
+        }
       },
       self.interval
     );
@@ -4551,6 +4563,7 @@ window.StatisticsDescriptionCollection = Backbone.Collection.extend({
       var statCollect = new window.ClusterStatisticsCollection();
       var coord = this.coordinators.first();
 
+      console.log(this.dbservers);
       // create statistics collector for DB servers
       this.dbservers.forEach(function (dbserver) {
         if (dbserver.get("status") !== "ok") {return;}

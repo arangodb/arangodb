@@ -10411,6 +10411,10 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       };
     },
 
+    getCurrentSub: function() {
+      return window.App.naviView.activeSubMenu;
+    },
+
     setCheckboxStatus: function(id) {
       _.each($(id).find('ul').find('li'), function(element) {
          if (!$(element).hasClass("nav-header")) {
@@ -19973,7 +19977,8 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     historyInit: false,
-    interval: 3000,
+    initDone: false,
+    interval: 5000,
     maxValues: 100,
     knownServers: [],
     chartData: {},
@@ -19992,23 +19997,47 @@ window.ArangoUsers = Backbone.Collection.extend({
 
         //start polling with interval
         window.setInterval(function() {
-          var callback = function(data) {
-            self.rerenderValues(data);
-            self.rerenderGraphs(data);
-          };
+          if (window.location.hash === '#cluster' 
+              || window.location.hash === '#') {
+            var callback = function(data) {
+              self.rerenderValues(data);
+              self.rerenderGraphs(data);
+            };
 
-          // now fetch the statistics history
-          self.getCoordStatHistory(callback);
+            // now fetch the statistics history
+            self.getCoordStatHistory(callback);
+          }
         }, this.interval);
       }
     },
 
     render: function () {
       this.$el.html(this.template.render({}));
-      this.initValues();
-      this.getServerStatistics();
+      //this.initValues();
 
+      if (!this.initDone) {
+        if (this.coordinators.first() !== undefined) {
+          this.getServerStatistics();
+        }
+        else {
+          this.waitForCoordinators();
+        }
+        this.initDone = true;
+      }
       this.initGraphs();
+    },
+
+    waitForCoordinators: function() {
+      var self = this; 
+
+      window.setTimeout(function() {
+        if (self.coordinators) {
+          self.getServerStatistics();
+        }
+        else {
+          self.waitForCoordinators();
+        }
+      }, 500);
     },
 
     updateServerTime: function() {
@@ -20085,6 +20114,9 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
     
     rerenderValues: function(data) {
+
+      // TODO cache value state like graph data
+
       //Connections
       this.renderValue('#clusterConnections', Math.round(data.clientConnectionsCurrent));
       this.renderValue('#clusterConnectionsAvg', Math.round(data.clientConnections15M));
@@ -20093,6 +20125,9 @@ window.ArangoUsers = Backbone.Collection.extend({
       var totalMem = data.physicalMemory;
       var usedMem = data.residentSizeCurrent;
       this.renderValue('#clusterRam', [usedMem, totalMem]);
+
+      //NODES
+      this.renderValue('#clusterNodes', this.statCollectCoord.size());
     },
 
     renderValue: function(id, value) {
@@ -20140,8 +20175,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
       _.each(self.chartsOptions, function(val1, key1) {
         _.each(val1.options, function(val2, key2) {
-            console.log(self.chartsOptions[key1].options[key2].values.length);
-          if (val2.values.length === self.maxValues) {
+          if (val2.values.length > self.maxValues - 1) {
             self.chartsOptions[key1].options[key2].values.shift();
           }
         });
@@ -22638,7 +22672,15 @@ window.ArangoUsers = Backbone.Collection.extend({
       return;
     }
     self.timer = window.setInterval(function () {
-        self.getStatistics();
+
+        if (window.App.isCluster) {
+          if (window.location.hash.indexOf(self.serverInfo.target) > -1) {
+            self.getStatistics();
+          }
+        }
+        else {
+          self.getStatistics();
+        }
       },
       self.interval
     );
@@ -23322,6 +23364,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     fillEditor: function() {
       var toFill = this.removeReadonlyKeys(this.collection.first().attributes);
+      $('.disabledBread').last().text(this.collection.first().get('_key'));
       this.editor.set(toFill);
       $('.ace_content').attr('font-size','11pt');
     },
@@ -24075,6 +24118,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         }
         else {
           window.modalView.hide();
+
           data = data.split('/');
 
           try {
@@ -24372,7 +24416,6 @@ window.ArangoUsers = Backbone.Collection.extend({
         url = "collection/" + this.collection.collectionID + '/' + encodeURIComponent(doc);
       }
 
-      //window.App.navigate(url, true);
       window.location.hash = url;
     },
 
@@ -24479,12 +24522,10 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     breadcrumb: function () {
       this.collectionName = window.location.hash.split("/")[1];
-      $('#transparentHeader').append(
-        '<div class="breadcrumb">'+
+      $('#subNavigationBar .breadcrumb').html(
         '<a class="activeBread" href="#collections">Collections</a>'+
         '<span class="disabledBread"><i class="fa fa-chevron-right"></i></span>'+
-        '<a class="disabledBread">'+this.collectionName+'</a>'+
-        '</div>'
+        '<a class="disabledBread">'+this.collectionName+'</a>'
       );
     }
 
@@ -26722,11 +26763,12 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global Backbone, templateEngine, $, window, arangoHelper*/
+/*global Backbone, templateEngine, $, window, arangoHelper, _*/
 (function () {
   "use strict";
   window.NavigationView = Backbone.View.extend({
     el: '#navigationBar',
+    subEl: '#subNavigationBar',
 
     events: {
       "change #arangoCollectionSelect": "navigateBySelect",
@@ -26738,8 +26780,11 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     renderFirst: true,
+    activeSubMenu: undefined,
 
     initialize: function () {
+
+      var self = this;
 
       this.userCollection = this.options.userCollection;
       this.currentDB = this.options.currentDB;
@@ -26757,6 +26802,10 @@ window.ArangoUsers = Backbone.Collection.extend({
           currentDB: this.currentDB
       });
       this.handleKeyboardHotkeys();
+
+      Backbone.history.on("all", function () {
+        self.selectMenuItem();
+      });
     },
 
     handleSelectDatabase: function () {
@@ -26770,14 +26819,12 @@ window.ArangoUsers = Backbone.Collection.extend({
       var self = this;
 
       $(this.el).html(this.template.render({
-        currentDB: this.currentDB
+        currentDB: this.currentDB,
+        isCluster: window.App.isCluster
       }));
 
-      //HEIKO
-      $("#subNavigationBar").html(this.templateSub.render({
-      }));
+      $(this.subEl).html(this.templateSub.render({}));
       
-      //HEIKO REMOVE
       this.dbSelectionView.render($("#dbSelect"));
       this.notificationView.render($("#notificationBar"));
 
@@ -26790,17 +26837,10 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.userCollection.whoAmI(callback);
       this.statisticBarView.render($("#statisticBar"));
 
-      // if demo content not available, do not show demo menu tab
-      if (!window.App.arangoCollectionsStore.findWhere({"name": "arangodbflightsdemo"})) {
-        $('.demo-menu').css("display","none");
-      }
       if (this.renderFirst) {
         this.renderFirst = false;
           
-        var select = ((window.location.hash).substr(1, (window.location.hash).length) + '-menu');
-        if (select.indexOf('/') === -1) {
-          this.selectMenuItem(select);
-        }
+        this.selectMenuItem();
 
         $('.arangodbLogo').on('click', function() {
           self.selectMenuItem();
@@ -26857,6 +26897,128 @@ window.ArangoUsers = Backbone.Collection.extend({
       });
     },
 
+    subViewConfig: {
+      documents: 'collections',
+      collection: 'collections'
+    },
+
+    subMenuConfig: {
+      collection: [
+        {
+          name: 'Settings',
+          view: undefined
+        },
+        {
+          name: 'Indices',
+          view: undefined
+        },
+        {
+          name: 'Content',
+          view: undefined,
+          active: true
+        }
+      ],
+      cluster: [
+        {
+          name: 'Dashboard',
+          view: undefined,
+          active: true
+        },
+        {
+          name: 'Logs',
+          view: undefined
+        }
+      ],
+      node: [
+        {
+          name: 'Dashboard',
+          view: undefined,
+          active: true
+        },
+        {
+          name: 'Logs',
+          view: undefined
+        }
+      ],
+      queries: [
+        {
+          name: 'Editor',
+          route: 'query2',
+          active: true
+        },
+        {
+          name: 'Running Queries',
+          route: 'queryManagement',
+          params: {
+            active: true
+          },
+          active: undefined
+        },
+        {
+          name: 'Slow Query History',
+          route: 'queryManagement',
+          params: {
+            active: false
+          },
+          active: undefined
+        }
+      ]
+    },
+
+    renderSubMenu: function(id) {
+      var self = this;
+
+      if (id === undefined) {
+        if (window.isCluster) {
+          id = 'cluster';
+        }
+        else {
+          id = 'dashboard';
+        }
+      }
+
+      $(this.subEl + ' .bottom').html('');
+      var cssclass = "";
+
+      if (this.subMenuConfig[id] === undefined) {
+        $('#subNavigationBar .bottom').css('display', 'none');
+      }
+      else {
+        $('#subNavigationBar .bottom').css('display', 'block');
+      }
+
+      _.each(this.subMenuConfig[id], function(menu) {
+        if (menu.active) {
+          cssclass = 'active';
+        }
+        else {
+          cssclass = '';
+        }
+
+        $(self.subEl +  ' .bottom').append(
+          '<li class="subMenuEntry ' + cssclass + '"><a>' + menu.name + '</a></li>'
+        );
+        $(self.subEl + ' .bottom').children().last().bind('click', function(elem) {
+          self.activeSubMenu = menu;
+          self.renderSubView(menu, elem);
+        });
+      });
+    },
+
+    renderSubView: function(menu, element) {
+      //trigger routers route
+      if (window.App[menu.route]) {
+        if (window.App[menu.route].resetState) {
+          window.App[menu.route].resetState();
+        }
+        window.App[menu.route]();
+      }
+
+      //select active sub view entry
+      $(this.subEl + ' .bottom').children().removeClass('active');
+      $(element.currentTarget).addClass('active');
+    },
+
     switchTab: function(e) {
       var id = $(e.currentTarget).children().first().attr('id');
 
@@ -26865,11 +27027,48 @@ window.ArangoUsers = Backbone.Collection.extend({
       }
     },
 
-    selectMenuItem: function (menuItem) {
+    breadcrumb: function (name) {
+
+      if (window.location.hash.split('/')[0] !== '#collection') {
+        $('#subNavigationBar .breadcrumb').html(
+          '<a class="activeBread" href="#' + name + '">' + name + '</a>'
+        );
+      }
+
+    },
+
+    selectMenuItem: function (menuItem, noMenuEntry) {
+
+      if (menuItem === undefined) {
+        menuItem = window.location.hash.split('/')[0];
+        menuItem = menuItem.substr(1, menuItem.length - 1);
+      }
+
+      if (menuItem === '') {
+        if (window.App.isCluster) {
+          menuItem = 'cluster';
+        }
+        else {
+          menuItem = 'dashboard';
+        }
+      }
+      try {
+        this.renderSubMenu(menuItem.split('-')[0]);
+      }
+      catch (e) {
+        this.renderSubMenu(menuItem);
+      }
+
+      this.breadcrumb(menuItem.split('-')[0]);
+
       $('.navlist li').removeClass('active');
       if (typeof menuItem === 'string') {
-        if (menuItem) {
+        if (noMenuEntry) {
+          $('.' + this.subViewConfig[menuItem] + '-menu').addClass('active');
+        }
+        else if (menuItem) {
           $('.' + menuItem).addClass('active');
+          $('.' + menuItem + '-menu').addClass('active');
         }
       }
       arangoHelper.hideArangoNotifications();
@@ -26895,6 +27094,180 @@ window.ArangoUsers = Backbone.Collection.extend({
       $("#link_dropdown").fadeOut(1);
       $("#tools_dropdown").fadeOut(1);
       $("#dbs_dropdown").fadeOut(1);
+    }
+
+  });
+}());
+
+/*jshint browser: true */
+/*jshint unused: false */
+/*global arangoHelper, Backbone, templateEngine, $, window, _, nv, d3 */
+(function () {
+  "use strict";
+
+  window.NodeView = Backbone.View.extend({
+
+    el: '#content',
+    template: templateEngine.createTemplate("nodeView.ejs"),
+    interval: 5000,
+    dashboards: [],
+
+    events: {
+    },
+
+    initialize: function () {
+
+      if (window.App.isCluster) {
+        this.coordinators = this.options.coordinators;
+        this.coordname = this.options.coordname;
+        this.updateServerTime();
+
+        //start polling with interval
+        window.setInterval(function() {
+          if (window.location.hash.indexOf('#node/') === 0) {
+
+            var callback = function(data) {
+            };
+
+          }
+        }, this.interval);
+      }
+    },
+
+    render: function () {
+      this.$el.html(this.template.render({coords: []}));
+
+      var callback = function() {
+        this.continueRender();
+      }.bind(this);
+
+      if (!this.initDone) {
+        this.waitForCoordinators(callback);
+      }
+      else {
+        this.coordname = window.location.hash.split('/')[1];
+        this.coordinator = this.coordinators.findWhere({name: this.coordname});
+        callback();
+      }
+    },
+
+    continueRender: function() {
+      this.dashboards[this.coordinator.get('name')] = new window.DashboardView({
+        dygraphConfig: window.dygraphConfig,
+        database: window.App.arangoDatabase,
+        serverToShow: {
+          raw: this.coordinator.get('address'),
+          isDBServer: false,
+          endpoint: this.coordinator.get('protocol') + "://" + this.coordinator.get('address'),
+          target: this.coordinator.get('name')
+        }
+      });
+      this.dashboards[this.coordinator.get('name')].render();
+    },
+
+    waitForCoordinators: function(callback) {
+      var self = this; 
+
+      window.setTimeout(function() {
+        if (self.coordinators.length === 0) {
+          self.waitForCoordinators(callback);
+        }
+        else {
+          self.coordinator = self.coordinators.findWhere({name: self.coordname});
+          self.initDone = true;
+          callback();
+        }
+      }, 200);
+    },
+
+    updateServerTime: function() {
+      this.serverTime = new Date().getTime();
+    }
+
+  });
+}());
+
+/*jshint browser: true */
+/*jshint unused: false */
+/*global arangoHelper, Backbone, templateEngine, $, window, _, nv, d3 */
+(function () {
+  "use strict";
+
+  window.NodesView = Backbone.View.extend({
+
+    el: '#content',
+    template: templateEngine.createTemplate("nodesView.ejs"),
+    interval: 5000,
+    knownServers: [],
+
+    events: {
+      "click .pure-table-body .pure-table-row": "navigateToNode"  
+    },
+
+    initialize: function () {
+      var self = this;
+
+      if (window.App.isCluster) {
+        this.dbServers = this.options.dbServers;
+        this.coordinators = this.options.coordinators;
+        this.updateServerTime();
+
+        //start polling with interval
+        window.setInterval(function() {
+          if (window.location.hash === '#nodes') {
+
+
+            var callback = function(data) {
+            };
+
+          }
+        }, this.interval);
+      }
+    },
+
+    navigateToNode: function(elem) {
+      var name = $(elem.currentTarget).attr('node');
+      window.App.navigate("#node/" + encodeURIComponent(name), {trigger: true});
+    },
+
+    render: function () {
+      this.$el.html(this.template.render({coords: []}));
+
+      var callback = function() {
+        this.continueRender();
+      }.bind(this);
+
+      if (!this.initDone) {
+        this.waitForCoordinators(callback);
+      }
+      else {
+        callback();
+      }
+    },
+
+    continueRender: function() {
+      var coords = this.coordinators.toJSON();
+      this.$el.html(this.template.render({
+        coords: coords
+      }));
+    },
+
+    waitForCoordinators: function(callback) {
+      var self = this; 
+
+      window.setTimeout(function() {
+        if (self.coordinators.length === 0) {
+          self.waitForCoordinators(callback);
+        }
+        else {
+          this.initDone = true;
+          callback();
+        }
+      }, 200);
+    },
+
+    updateServerTime: function() {
+      this.serverTime = new Date().getTime();
     }
 
   });
@@ -27122,7 +27495,6 @@ window.ArangoUsers = Backbone.Collection.extend({
     templateActive: templateEngine.createTemplate("queryManagementViewActive.ejs"),
     templateSlow: templateEngine.createTemplate("queryManagementViewSlow.ejs"),
     table: templateEngine.createTemplate("arangoTable.ejs"),
-    tabbar: templateEngine.createTemplate("arangoTabbar.ejs"),
     active: true,
     shouldRender: true,
     timer: 0,
@@ -27135,31 +27507,25 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.convertModelToJSON(true);
 
       window.setInterval(function() {
-        if (window.location.hash === '#queryManagement' && window.VISIBLE && self.shouldRender) {
+        if (window.location.hash === '#query' && window.VISIBLE && self.shouldRender 
+            && arangoHelper.getCurrentSub().route === 'queryManagement') {
           if (self.active) {
-            self.convertModelToJSON(true);
-            self.renderActive();
+            if ($('#arangoQueryManagementTable').is(':visible')) {
+              self.convertModelToJSON(true);
+            }
           }
           else {
-            self.convertModelToJSON(false);
-            self.renderSlow();
+            if ($('#arangoQueryManagementTable').is(':visible')) {
+              self.convertModelToJSON(false);
+            }
           }
         }
       }, self.refreshRate);
     },
 
     events: {
-      "click #arangoQueryManagementTabbar button" : "switchTab",
       "click #deleteSlowQueryHistory" : "deleteSlowQueryHistoryModal",
       "click #arangoQueryManagementTable .fa-minus-circle" : "deleteRunningQueryModal"
-    },
-
-    tabbarElements: {
-      id: "arangoQueryManagementTabbar",
-      titles: [
-        ["Active", "activequeries"],
-        ["Slow", "slowqueries"]
-      ]
     },
 
     tableDescription: {
@@ -27167,17 +27533,6 @@ window.ArangoUsers = Backbone.Collection.extend({
       titles: ["ID", "Query String", "Runtime", "Started", ""],
       rows: [],
       unescaped: [false, false, false, false, true]
-    },
-
-    switchTab: function(e) {
-      if (e.currentTarget.id === 'activequeries') {
-        this.active = true;
-        this.convertModelToJSON(true);
-      }
-      else if (e.currentTarget.id === 'slowqueries') {
-        this.active = false;
-        this.convertModelToJSON(false);
-      }
     },
 
     deleteRunningQueryModal: function(e) {
@@ -27259,7 +27614,15 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     render: function() {
-      this.convertModelToJSON(true);
+      var options = arangoHelper.getCurrentSub();
+      if (options.params.active) {
+        this.active = true;
+        this.convertModelToJSON(true);
+      }
+      else {
+        this.active = false;
+        this.convertModelToJSON(false);
+      }
     },
 
     addEvents: function() {
@@ -27277,7 +27640,6 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     renderActive: function() {
       this.$el.html(this.templateActive.render({}));
-      $(this.id).html(this.tabbar.render({content: this.tabbarElements}));
       $(this.id).append(this.table.render({content: this.tableDescription}));
       $('#activequeries').addClass("arango-active-tab");
       this.addEvents();
@@ -27285,7 +27647,6 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     renderSlow: function() {
       this.$el.html(this.templateSlow.render({}));
-      $(this.id).html(this.tabbar.render({content: this.tabbarElements}));
       $(this.id).append(this.table.render({
         content: this.tableDescription,
       }));
@@ -32737,7 +33098,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     toUpdate: [],
     dbServers: [],
-    isCluster: false,
+    isCluster: undefined,
 
     routes: {
       "": "cluster",
@@ -32748,18 +33109,19 @@ window.ArangoUsers = Backbone.Collection.extend({
       "collection/:colid/documents/:pageid": "documents",
       "collection/:colid/:docid": "document",
       "shell": "shell",
-      "query": "query2",
+      "queries": "query2",
       "query2": "query",
-      "queryManagement": "queryManagement",
       "workMonitor": "workMonitor",
       "databases": "databases",
-      "applications": "applications",
+      "services": "applications",
       "applications/:mount": "applicationDetail",
-      "graph": "graphManagement",
+      "graphs": "graphManagement",
       "graph/:name": "showGraph",
-      "userManagement": "userManagement",
+      "users": "userManagement",
       "userProfile": "userProfile",
       "cluster": "cluster",
+      "nodes": "nodes",
+      "node/:name": "node",
       "logs": "logs",
       "test": "test"
     },
@@ -32821,6 +33183,25 @@ window.ArangoUsers = Backbone.Collection.extend({
 
       this.initOnce = function () {
         this.initOnce = function() {};
+
+        var callback = function(error, isCoordinator) {
+          self = this;
+          if (isCoordinator) {
+            self.isCluster = true;
+
+            self.coordinatorCollection.fetch({
+              success: function() {
+                self.fetchDBS();
+              }
+            });
+          }
+          else {
+            self.isCluster = false;
+          }
+        }.bind(this);
+
+        window.isCoordinator(callback);
+
         this.initFinished = true;
         this.arangoDatabase = new window.ArangoDatabase();
         this.currentDB = new window.CurrentDatabase();
@@ -32830,15 +33211,6 @@ window.ArangoUsers = Backbone.Collection.extend({
 
         //Cluster 
         this.coordinatorCollection = new window.ClusterCoordinators();
-        this.coordinatorCollection.fetch({
-          error: function() {
-            self.isCluster = false;
-          },
-          success: function() {
-            self.isCluster = true;
-            self.fetchDBS();
-          }
-        });
 
         arangoHelper.setDocumentStore(this.arangoDocumentStore);
 
@@ -32875,19 +33247,87 @@ window.ArangoUsers = Backbone.Collection.extend({
         self.handleResize();
       });
 
+      $(window).scroll(function () {
+        //self.handleScroll();
+      });
+
+    },
+
+    handleScroll: function() {
+      if ($(window).scrollTop() > 50) {
+        $('.navbar > .secondary').css('top', $(window).scrollTop());
+        $('.navbar > .secondary').css('position', 'absolute');
+        $('.navbar > .secondary').css('z-index', '10');
+        $('.navbar > .secondary').css('width', $(window).width());
+      }
+      else {
+        $('.navbar > .secondary').css('top', '0');
+        $('.navbar > .secondary').css('position', 'relative');
+        $('.navbar > .secondary').css('width', '');
+      }
     },
 
     cluster: function (initialized) {
       this.checkUser();
-      if (!initialized) {
+      if (!initialized || this.isCluster === undefined) {
         this.waitForInit(this.cluster.bind(this));
         return;
       }
-      this.clusterView = new window.ClusterView({
-        coordinators: this.coordinatorCollection,
-        dbServers: this.dbServers
-      });
+      if (this.isCluster === false) {
+        this.routes[""] = 'dashboard';
+        this.navigate("#dashboard", {trigger: true});
+        return;
+      }
+
+      if (!this.clusterView) {
+        this.clusterView = new window.ClusterView({
+          coordinators: this.coordinatorCollection,
+          dbServers: this.dbServers
+        });
+      }
       this.clusterView.render();
+    },
+
+    node: function (name, initialized) {
+      this.checkUser();
+      if (!initialized || this.isCluster === undefined) {
+        this.waitForInit(this.node.bind(this), name);
+        return;
+      }
+      if (this.isCluster === false) {
+        this.routes[""] = 'dashboard';
+        this.navigate("#dashboard", {trigger: true});
+        return;
+      }
+
+      if (!this.nodeView) {
+        this.nodeView = new window.NodeView({
+          coordname: name,
+          coordinators: this.coordinatorCollection,
+        });
+      }
+      this.nodeView.render();
+    },
+
+    nodes: function (initialized) {
+      this.checkUser();
+      if (!initialized || this.isCluster === undefined) {
+        this.waitForInit(this.nodes.bind(this));
+        return;
+      }
+      if (this.isCluster === false) {
+        this.routes[""] = 'dashboard';
+        this.navigate("#dashboard", {trigger: true});
+        return;
+      }
+
+      if (!this.nodesView) {
+        this.nodesView = new window.NodesView({
+          coordinators: this.coordinatorCollection,
+          dbServers: this.dbServers
+        });
+      }
+      this.nodesView.render();
     },
 
     addAuth: function (xhr) {
@@ -33035,14 +33475,12 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.documentView.colid = colid;
 
       var doc = window.location.hash.split("/")[2];
-     
       var test = (doc.split("%").length - 1) % 3;
 
       if (decodeURI(doc) !== doc && test !== 0) {
         doc = decodeURIComponent(doc);
       }
       this.documentView.docid = doc;
-
 
       this.documentView.render();
 
