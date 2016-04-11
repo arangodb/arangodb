@@ -305,8 +305,9 @@ bool Agent::load () {
   }
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Reassembling spearhead and read stores.";
-//  _read_db.apply(_state.slices());
   _spearhead.apply(_state.slices(_last_commit_index+1));
+  reportIn(id(),_state.lastLog().index);
+  //_cv.signal();
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Starting spearhead worker.";
   _spearhead.start(this);
@@ -337,7 +338,7 @@ write_ret_t Agent::write (query_t const& query)  {
       _cv.signal();                                  // Wake up run
     }
 
-    reportIn(0,maxind);
+    reportIn(id(),maxind);
     
     return write_ret_t(true,id(),applied,indices); // Indices to wait for to rest
     
