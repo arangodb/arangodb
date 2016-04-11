@@ -47,6 +47,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void prepare() override;
   void start() override;
   void stop() override;
 

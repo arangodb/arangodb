@@ -63,6 +63,11 @@ void LanguageFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
+}
+
+void LanguageFeature::start() {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
+
   std::string languageName;
 
   if (Utf8Helper::DefaultUtf8Helper.getCollatorCountry() != "") {

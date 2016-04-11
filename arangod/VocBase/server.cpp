@@ -50,6 +50,7 @@
 #include "VocBase/vocbase.h"
 #include "Wal/LogfileManager.h"
 #include "Wal/Marker.h"
+#include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -513,7 +514,10 @@ static int OpenDatabases(TRI_server_t* server, bool isUpgrade) {
     // create app directories
     // .........................................................................
 
-    res = CreateApplicationDirectory(databaseName.c_str(), server->_appPath);
+    auto appPath = (V8DealerFeature::DEALER == nullptr
+                        ? std::string()
+                        : V8DealerFeature::DEALER->appPath());
+    res = CreateApplicationDirectory(databaseName.c_str(), appPath.c_str());
 
     if (res != TRI_ERROR_NO_ERROR) {
       break;
@@ -1040,8 +1044,12 @@ static void DatabaseManager(void* data) {
                    << "'";
 
         // remove apps directory for database
-        if (database->_isOwnAppsDirectory && strlen(server->_appPath) > 0) {
-          path = TRI_Concatenate3File(server->_appPath, "_db", database->_name);
+        auto appPath = (V8DealerFeature::DEALER == nullptr
+                            ? std::string()
+                            : V8DealerFeature::DEALER->appPath());
+
+        if (database->_isOwnAppsDirectory && !appPath.empty()) {
+          path = TRI_Concatenate3File(appPath.c_str(), "_db", database->_name);
 
           if (path != nullptr) {
             if (TRI_IsDirectory(path)) {
@@ -1119,13 +1127,11 @@ static void DatabaseManager(void* data) {
 /// @brief initialize a server instance with configuration
 ////////////////////////////////////////////////////////////////////////////////
 
-#warning appPath lives in V8DealerFeature - remove here
-
 int TRI_InitServer(TRI_server_t* server,
                    arangodb::basics::ThreadPool* indexPool,
-                   char const* basePath, char const* appPath,
-                   TRI_vocbase_defaults_t const* defaults, bool disableAppliers,
-                   bool disableCompactor, bool iterateMarkersOnOpen) {
+                   char const* basePath, TRI_vocbase_defaults_t const* defaults,
+                   bool disableAppliers, bool disableCompactor,
+                   bool iterateMarkersOnOpen) {
   TRI_ASSERT(server != nullptr);
   TRI_ASSERT(basePath != nullptr);
 
@@ -1171,21 +1177,6 @@ int TRI_InitServer(TRI_server_t* server,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  if (appPath == nullptr) {
-    server->_appPath = nullptr;
-  } else {
-    server->_appPath = TRI_DuplicateString(TRI_CORE_MEM_ZONE, appPath);
-
-    if (server->_appPath == nullptr) {
-      TRI_Free(TRI_CORE_MEM_ZONE, server->_serverIdFilename);
-      TRI_Free(TRI_CORE_MEM_ZONE, server->_lockFilename);
-      TRI_Free(TRI_CORE_MEM_ZONE, server->_databasePath);
-      TRI_Free(TRI_CORE_MEM_ZONE, server->_basePath);
-
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-  }
-
   // ...........................................................................
   // server defaults
   // ...........................................................................
@@ -1209,7 +1200,7 @@ int TRI_InitServer(TRI_server_t* server,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitServerGlobals() {
-  ServerIdentifier = RandomGenerator::interval((uint16_t) UINT16_MAX);
+  ServerIdentifier = RandomGenerator::interval((uint16_t)UINT16_MAX);
   PageSize = (size_t)getpagesize();
   memset(&ServerId, 0, sizeof(TRI_server_id_t));
 }
@@ -1332,29 +1323,32 @@ int TRI_StartServer(TRI_server_t* server, bool checkVersion,
   // create shared application directories
   // ...........................................................................
 
-  if (server->_appPath != nullptr && strlen(server->_appPath) > 0 &&
-      !TRI_IsDirectory(server->_appPath)) {
+  auto appPath =
+      (V8DealerFeature::DEALER == nullptr ? std::string()
+                                          : V8DealerFeature::DEALER->appPath());
+
+  if (!appPath.empty() && !TRI_IsDirectory(appPath.c_str())) {
     long systemError;
     std::string errorMessage;
-    bool res = TRI_CreateRecursiveDirectory(server->_appPath, systemError,
+    bool res = TRI_CreateRecursiveDirectory(appPath.c_str(), systemError,
                                             errorMessage);
 
     if (res) {
-      LOG(INFO) << "created --javascript.app-path directory '"
-                << server->_appPath << "'.";
+      LOG(INFO) << "created --javascript.app-path directory '" << appPath
+                << "'.";
     } else {
       LOG(ERR) << "unable to create --javascript.app-path directory '"
-               << server->_appPath << "': " << errorMessage;
+               << appPath << "': " << errorMessage;
       return TRI_ERROR_SYS_ERROR;
     }
   }
 
   // create subdirectories if not yet present
-  res = CreateBaseApplicationDirectory(server->_appPath, "_db");
+  res = CreateBaseApplicationDirectory(appPath.c_str(), "_db");
 
   // system directory is in a read-only location
   // if (res == TRI_ERROR_NO_ERROR) {
-  //   res = CreateBaseApplicationDirectory(server->_appPath, "system");
+  //   res = CreateBaseApplicationDirectory(appPath, "system");
   // }
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1608,11 +1602,11 @@ int TRI_CreateDatabaseServer(TRI_server_t* server, TRI_voc_tick_t databaseId,
         server->_databasePath, dirname.c_str()));
 
     if (arangodb::wal::LogfileManager::instance()->isInRecovery()) {
-      LOG(TRACE) << "creating database '" << name << "', directory '"
-                 << path << "'";
+      LOG(TRACE) << "creating database '" << name << "', directory '" << path
+                 << "'";
     } else {
-      LOG(INFO) << "creating database '" << name << "', directory '"
-                << path << "'";
+      LOG(INFO) << "creating database '" << name << "', directory '" << path
+                << "'";
     }
 
     vocbase = TRI_OpenVocBase(server, path.c_str(), databaseId, name, defaults,
@@ -1647,7 +1641,10 @@ int TRI_CreateDatabaseServer(TRI_server_t* server, TRI_voc_tick_t databaseId,
     }
 
     // create application directories
-    CreateApplicationDirectory(vocbase->_name, server->_appPath);
+    auto appPath = (V8DealerFeature::DEALER == nullptr
+                        ? std::string()
+                        : V8DealerFeature::DEALER->appPath());
+    CreateApplicationDirectory(vocbase->_name, appPath.c_str());
 
     if (!arangodb::wal::LogfileManager::instance()->isInRecovery()) {
       TRI_ReloadAuthInfo(vocbase);
@@ -2165,7 +2162,6 @@ TRI_server_t::TRI_server_t()
       _databasePath(nullptr),
       _lockFilename(nullptr),
       _serverIdFilename(nullptr),
-      _appPath(nullptr),
       _disableReplicationAppliers(false),
       _iterateMarkersOnOpen(false),
       _hasCreatedSystemDatabase(false),
@@ -2178,10 +2174,6 @@ TRI_server_t::~TRI_server_t() {
     auto p = _databasesLists.load();
     delete p;
 
-    if (_appPath != nullptr) {
-      TRI_Free(TRI_CORE_MEM_ZONE, _appPath);
-    }
-    
     TRI_Free(TRI_CORE_MEM_ZONE, _serverIdFilename);
     TRI_Free(TRI_CORE_MEM_ZONE, _lockFilename);
     TRI_Free(TRI_CORE_MEM_ZONE, _databasePath);

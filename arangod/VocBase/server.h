@@ -78,7 +78,6 @@ struct TRI_server_t {
   char* _databasePath;
   char* _lockFilename;
   char* _serverIdFilename;
-  char* _appPath;
 
   bool _disableReplicationAppliers;
   bool _disableCompactor;
@@ -98,8 +97,7 @@ extern size_t PageSize;
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitServer(TRI_server_t*, arangodb::basics::ThreadPool*, char const*,
-                   char const*, TRI_vocbase_defaults_t const*, bool, bool,
-                   bool);
+                   TRI_vocbase_defaults_t const*, bool, bool, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize globals

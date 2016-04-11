@@ -220,6 +220,7 @@ void Collection::fillIndexes() const {
 // we rather look at the local indexes.
 // FIXME: Remove fillIndexesDBServer later, when it is clear that we
 // will never have to do this.
+#warning TODO Remove fillIndexesDBServer later, when it is clear that we will never have to do this.
 #if 0
   if (arangodb::ServerState::instance()->isDBServer(role) && 
       documentCollection()->_info._planId > 0) {

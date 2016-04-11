@@ -22,6 +22,7 @@
 
 #include "ActionFeature.h"
 
+#include "Actions/actions.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "V8Server/V8DealerFeature.h"
@@ -34,7 +35,9 @@ using namespace arangodb::options;
 ActionFeature* ActionFeature::ACTION = nullptr;
 
 ActionFeature::ActionFeature(application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "Action") {}
+    : ApplicationFeature(server, "Action") {
+  startsAfter("Logger");
+}
 
 void ActionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
@@ -68,5 +71,7 @@ void ActionFeature::start() {
 void ActionFeature::stop() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
 
-  ACTION = this;
+  TRI_CleanupActions();
+
+  ACTION = nullptr;
 }

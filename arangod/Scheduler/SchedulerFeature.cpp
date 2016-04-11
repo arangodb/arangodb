@@ -48,10 +48,10 @@ SchedulerFeature::SchedulerFeature(
       _nrSchedulerThreads(2),
       _backend(0),
       _showBackends(false),
-      _scheduler(nullptr),
-      _enableControlCHandler(true) {
+      _scheduler(nullptr) {
   setOptional(true);
   requiresElevatedPrivileges(false);
+  startsAfter("FileDescriptorsFeature");
   startsAfter("Logger");
   startsAfter("WorkMonitor");
 }
@@ -293,28 +293,21 @@ void SchedulerFeature::buildScheduler() {
 }
 
 void SchedulerFeature::buildControlCHandler() {
-  if (_scheduler == nullptr) {
-    LOG(FATAL) << "no scheduler is known, cannot create control-c handler";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (_enableControlCHandler) {
 #ifdef WIN32
-    int result = SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, true);
+  int result = SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, true);
 
-    if (result == 0) {
-      LOG(WARN) << "unable to install control-c handler";
-    }
-#else
-    Task* controlC = new ControlCTask(server());
-
-    int res = _scheduler->registerTask(controlC);
-
-    if (res == TRI_ERROR_NO_ERROR) {
-      _tasks.emplace_back(controlC);
-    }
-#endif
+  if (result == 0) {
+    LOG(WARN) << "unable to install control-c handler";
   }
+#else
+  Task* controlC = new ControlCTask(server());
+
+  int res = _scheduler->registerTask(controlC);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    _tasks.emplace_back(controlC);
+  }
+#endif
 
 // hangup handler
 #ifndef WIN32
@@ -328,25 +321,7 @@ void SchedulerFeature::buildControlCHandler() {
 #endif
 }
 
-#warning TODO
-#if 0
-
-
-if (mode == OperationMode::MODE_CONSOLE) {
-    _applicationScheduler->disableControlCHandler();
-  }
-
-
-  if (!startServer) {
-    _applicationScheduler->disable();
-  }
-
-
-
-================================================================================
-
-void ApplicationScheduler::setProcessorAffinity(
-    std::vector<size_t> const& cores) {
+void SchedulerFeature::setProcessorAffinity(std::vector<size_t> const& cores) {
 #ifdef TRI_HAVE_THREAD_AFFINITY
   size_t j = 0;
 
@@ -365,121 +340,3 @@ void ApplicationScheduler::setProcessorAffinity(
   }
 #endif
 }
-
-void ApplicationScheduler::disableControlCHandler() {
-  _disableControlCHandler = true;
-}
-
-void ApplicationScheduler::setupOptions(
-    std::map<std::string, ProgramOptionsDescription>& options) {
-  // .............................................................................
-  // command line options
-  // .............................................................................
-
-  options["General Options:help-admin"]("show-io-backends",
-                                        "show available io backends");
-
-  // .............................................................................
-  // application server options
-  // .............................................................................
-
-  options["Server Options:help-admin"]
-#ifdef _WIN32
-// ...........................................................................
-// since we are trying to use libev, then only select is available
-// no point in allowing this to be configured at this stage. Perhaps if we
-// eventually write a native libev we can offer something.
-// ...........................................................................
-//("scheduler.backend", &_backend, "1: select, 2: poll, 4: epoll")
-#else
-      ("scheduler.backend", &_backend, "1: select, 2: poll, 4: epoll")
-#endif
-#ifdef TRI_HAVE_GETRLIMIT
-          ("server.descriptors-minimum", &_descriptorMinimum,
-           "minimum number of file descriptors needed to start")
-#endif
-              ;
-}
-
-bool ApplicationScheduler::afterOptionParsing(
-    arangodb::basics::ProgramOptions& options) {
-  // show io backends
-  if (options.has("show-io-backends")) {
-    std::cout << "available io backends are: "
-              << SchedulerLibev::availableBackends() << std::endl;
-    TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);
-  }
-
-  // adjust file descriptors
-  adjustFileDescriptors();
-
-  return true;
-}
-
-
-void ApplicationScheduler::adjustFileDescriptors() {
-#ifdef TRI_HAVE_GETRLIMIT
-
-  if (0 < _descriptorMinimum) {
-    struct rlimit rlim;
-    int res = getrlimit(RLIMIT_NOFILE, &rlim);
-
-    if (res != 0) {
-      LOG(FATAL) << "cannot get the file descriptor limit: " << strerror(errno); FATAL_ERROR_EXIT();
-    }
-    
-    LOG(DEBUG) << "file-descriptors (nofiles) hard limit is " << StringifyLimitValue(rlim.rlim_max)
-               << ", soft limit is " << StringifyLimitValue(rlim.rlim_cur); 
-
-    bool changed = false;
-
-    if (rlim.rlim_max < _descriptorMinimum) {
-      LOG(DEBUG) << "hard limit " << rlim.rlim_max << " is too small, trying to raise";
-
-      rlim.rlim_max = _descriptorMinimum;
-      rlim.rlim_cur = _descriptorMinimum;
-
-      res = setrlimit(RLIMIT_NOFILE, &rlim);
-
-      if (res < 0) {
-        LOG(FATAL) << "cannot raise the file descriptor limit to " << _descriptorMinimum << ": " << strerror(errno); FATAL_ERROR_EXIT();
-      }
-
-      changed = true;
-    } else if (rlim.rlim_cur < _descriptorMinimum) {
-      LOG(DEBUG) << "soft limit " << rlim.rlim_cur << " is too small, trying to raise";
-
-      rlim.rlim_cur = _descriptorMinimum;
-
-      res = setrlimit(RLIMIT_NOFILE, &rlim);
-
-      if (res < 0) {
-        LOG(FATAL) << "cannot raise the file descriptor limit to " << _descriptorMinimum << ": " << strerror(errno); FATAL_ERROR_EXIT();
-      }
-
-      changed = true;
-    }
-
-    if (changed) {
-      res = getrlimit(RLIMIT_NOFILE, &rlim);
-
-      if (res != 0) {
-        LOG(FATAL) << "cannot get the file descriptor limit: " << strerror(errno); FATAL_ERROR_EXIT();
-      }
-
-      LOG(INFO) << "file-descriptors (nofiles) new hard limit is " << StringifyLimitValue(rlim.rlim_max) 
-                << ", new soft limit is " << ", soft limit is " << StringifyLimitValue(rlim.rlim_cur); 
-    }
-
-    // the select backend has more restrictions
-    if (_backend == 1) {
-      if (FD_SETSIZE < _descriptorMinimum) {
-        LOG(FATAL) << "i/o backend 'select' has been selected, which supports only " << FD_SETSIZE << " descriptors, but " << _descriptorMinimum << " are required"; FATAL_ERROR_EXIT();
-      }
-    }
-  }
-
-#endif
-}
-
-#endif

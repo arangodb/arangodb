@@ -22,6 +22,7 @@
 
 #include "DatabaseFeature.h"
 
+#include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/StringUtils.h"
 #include "Basics/ThreadPool.h"
@@ -66,6 +67,7 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
       _upgrade(false) {
   setOptional(false);
   requiresElevatedPrivileges(false);
+  startsAfter("FileDescriptorsFeature");
   startsAfter("Language");
   startsAfter("Logger");
   startsAfter("Random");
@@ -122,19 +124,6 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--query.tracking", "wether to track queries",
                      new BooleanParameter(&_queryTracking));
 
-#warning TODO
-#if 0
-  // set global query tracking flag
-  arangodb::aql::Query::DisableQueryTracking(_disableQueryTracking);
-
-  // configure the query cache
-  {
-    std::pair<std::string, size_t> cacheProperties{_queryCacheMode,
-                                                   _queryCacheMaxResults};
-    arangodb::aql::QueryCache::instance()->setProperties(cacheProperties);
-  }
-#endif
-
   options->addOption("--query.cache-mode",
                      "mode for the AQL query cache (on, off, demand)",
                      new StringParameter(&_queryCacheMode));
@@ -179,6 +168,18 @@ void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 }
 
+void DatabaseFeature::prepare() {
+  // set global query tracking flag
+  arangodb::aql::Query::DisableQueryTracking(!_queryTracking);
+
+  // configure the query cache
+  {
+    std::pair<std::string, size_t> cacheProperties{_queryCacheMode,
+                                                   _queryCacheEntries};
+    arangodb::aql::QueryCache::instance()->setProperties(cacheProperties);
+  }
+}
+
 void DatabaseFeature::start() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
 
@@ -187,7 +188,7 @@ void DatabaseFeature::start() {
   // sanity check
   if (_checkVersion && _upgrade) {
     LOG(FATAL) << "cannot specify both '--database.check-version' and "
-                "'--database.upgrade'";
+                  "'--database.upgrade'";
     FATAL_ERROR_EXIT();
   }
 
@@ -322,14 +323,12 @@ void DatabaseFeature::openDatabases() {
     _indexPool.reset(new ThreadPool(_indexThreads, "IndexBuilder"));
   }
 
-#warning appPath
-
   bool const iterateMarkersOnOpen =
       !wal::LogfileManager::instance()->hasFoundLastTick();
 
   int res = TRI_InitServer(
-      _server.get(), _indexPool.get(), _databasePath.c_str(), nullptr,
-      &defaults, !_replicationApplier, _disableCompactor, iterateMarkersOnOpen);
+      _server.get(), _indexPool.get(), _databasePath.c_str(), &defaults,
+      !_replicationApplier, _disableCompactor, iterateMarkersOnOpen);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG(FATAL) << "cannot create server instance: out of memory";
@@ -353,12 +352,6 @@ void DatabaseFeature::openDatabases() {
 void DatabaseFeature::closeDatabases() {
   TRI_ASSERT(_server != nullptr);
 
-// cleanup actions
-#warning TODO
-#if 0
-  TRI_CleanupActions();
-#endif
-
   // stop the replication appliers so all replication transactions can end
   if (_replicationApplier) {
     TRI_StopReplicationAppliersServer(_server.get());
@@ -368,51 +361,3 @@ void DatabaseFeature::closeDatabases() {
   // write to the logs
   wal::LogfileManager::instance()->stop();
 }
-
-#if 0
-
-  // and add the feature to the application server
-  _applicationServer->addFeature(wal::LogfileManager::instance());
-
-  // run upgrade script
-  bool performUpgrade = false;
-
-  if (_applicationServer->programOptions().has("upgrade")) {
-    performUpgrade = true;
-    // --upgrade disables all replication appliers
-    _disableReplicationApplier = true;
-    if (_applicationCluster != nullptr) {
-      _applicationCluster->disable(); // TODO
-    }
-  }
-
-  // skip an upgrade even if VERSION is missing
-
-  // .............................................................................
-  // prepare the various parts of the Arango server
-  // .............................................................................
-
-  KeyGenerator::Initialize();
-
-  // open all databases
-  bool const iterateMarkersOnOpen =
-      !wal::LogfileManager::instance()->hasFoundLastTick();
-
-  openDatabases(checkVersion, performUpgraden, iterateMarkersOnOpen);
-
-  if (!checkVersion) {
-  }
-
-  // fetch the system database
-  TRI_vocbase_t* vocbase =
-      TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
-
-  if (vocbase == nullptr) {
-    LOG(FATAL)
-        << "No _system database found in database directory. Cannot start!";
-    FATAL_ERROR_EXIT();
-  }
-
-  TRI_ASSERT(vocbase != nullptr);
-
-#endif

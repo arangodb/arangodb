@@ -17,49 +17,49 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_LOGGER_FEATURE_H
-#define APPLICATION_FEATURES_LOGGER_FEATURE_H 1
+#ifndef ARANGOD_AGENCY_APPLICATION_AGENCY_H
+#define ARANGOD_AGENCY_APPLICATION_AGENCY_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
-class LoggerFeature final : public application_features::ApplicationFeature {
+namespace consensus {
+class Agent;
+}
+
+class AgencyFeature : virtual public application_features::ApplicationFeature {
+  AgencyFeature(AgencyFeature const&) = delete;
+  AgencyFeature& operator=(AgencyFeature const&) = delete;
+
  public:
-  LoggerFeature(application_features::ApplicationServer* server, bool threaded);
+  explicit AgencyFeature(application_features::ApplicationServer* server);
+  ~AgencyFeature();
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void loadOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void prepare() override;
-  void start() override;
-  void stop() override;
+  void prepare() override final;
+  void start() override final;
+  void stop() override final;
+
+ private:
+  uint64_t _size;                             // agency size (default: 5)
+  uint32_t _agentId;
+  double _minElectionTimeout;                 // min election timeout
+  double _maxElectionTimeout;                 // max election timeout
+  std::vector<std::string> _agencyEndpoints;  // agency adresses
+  double _electionCallRateMultiplier;
+  bool _notify;  // interval between retry to slaves
 
  public:
-  void setBackgrounded(bool backgrounded) { _backgrounded = backgrounded; }
-  void disableThreaded() { _threaded = false; }
-  void setSupervisor(bool supervisor) { _supervisor = supervisor; }
+  consensus::Agent* agent() const { return _agent.get(); }
 
  private:
-  std::vector<std::string> _output;
-  std::vector<std::string> _levels;
-  bool _useLocalTime;
-  std::string _prefix;
-  std::string _file;
-  bool _lineNumber;
-  bool _thread;
-  bool _performance;
-  bool _keepLogRotate;
-  bool _foregroundTty;
-  bool _forceDirect;
-
- private:
-  bool _supervisor;
-  bool _backgrounded;
-  bool _threaded;
+  std::unique_ptr<consensus::Agent> _agent;
+  bool _disabled;
 };
 }
 

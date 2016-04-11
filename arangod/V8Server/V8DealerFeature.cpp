@@ -99,9 +99,10 @@ V8DealerFeature::V8DealerFeature(
       _forceNrContexts(0) {
   setOptional(false);
   requiresElevatedPrivileges(false);
+  startsAfter("Action");
+  startsAfter("Database");
   startsAfter("V8Platform");
   startsAfter("WorkMonitor");
-  startsAfter("Database");
 }
 
 void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -149,19 +150,6 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   _startupLoader.setDirectory(_startupPath);
   ServerState::instance()->setJavaScriptPath(_startupPath);
 
-  // dump paths
-  {
-    std::vector<std::string> paths;
-
-    paths.push_back(std::string("startup '" + _startupPath + "'"));
-
-    if (!_appPath.empty()) {
-      paths.push_back(std::string("application '" + _appPath + "'"));
-    }
-
-    LOG(INFO) << "JavaScript using " << StringUtils::join(paths, ", ");
-  }
-
   // check whether app-path was specified
   if (_appPath.empty()) {
     LOG(FATAL) << "no value has been specified for --javascript.app-path.";
@@ -177,6 +165,20 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 void V8DealerFeature::start() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
 
+  // dump paths
+  {
+    std::vector<std::string> paths;
+
+    paths.push_back(std::string("startup '" + _startupPath + "'"));
+
+    if (!_appPath.empty()) {
+      paths.push_back(std::string("application '" + _appPath + "'"));
+    }
+
+    LOG(INFO) << "JavaScript using " << StringUtils::join(paths, ", ");
+  }
+
+  // set singleton
   DEALER = this;
 
   // try to guess a suitable number of contexts

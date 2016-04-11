@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationCluster.h"
+#include "ClusterFeature.h"
 
 #include "Basics/FileUtils.h"
 #include "Basics/JsonHelper.h"
@@ -31,129 +31,127 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/ServerState.h"
-#include "Dispatcher/ApplicationDispatcher.h"
 #include "Endpoint/Endpoint.h"
 #include "Logger/Logger.h"
+#include "ProgramOptions/ProgramOptions.h"
+#include "ProgramOptions/Section.h"
 #include "SimpleHttpClient/ConnectionManager.h"
-// #include "V8Server/ApplicationV8.h"
 #include "VocBase/server.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
+using namespace arangodb::options;
 
-ApplicationCluster::ApplicationCluster(
-    TRI_server_t* server, arangodb::rest::ApplicationDispatcher* dispatcher,
-    ApplicationV8* applicationV8)
-    : ApplicationFeature("Sharding"),
-      _server(server),
-      _dispatcher(dispatcher),
-      _applicationV8(applicationV8),
-      _heartbeat(nullptr),
-      _heartbeatInterval(0),
-      _agencyEndpoints(),
-      _agencyPrefix(),
-      _myId(),
-      _myAddress(),
+ClusterFeature::ClusterFeature(application_features::ApplicationServer* server)
+    : ApplicationFeature(server, "Cluster"),
       _username("root"),
-      _password(),
-      _dataPath(),
-      _logPath(),
-      _agentPath(),
-      _arangodPath(),
-      _dbserverConfig(),
-      _coordinatorConfig(),
-      _disableDispatcherFrontend(true),
-      _disableDispatcherKickstarter(true),
+      _dispatcherFrontend(false),
+      _kickstarter(false),
       _enableCluster(false),
+      _heartbeatThread(nullptr),
+      _heartbeatInterval(0),
       _disableHeartbeat(false) {
-  TRI_ASSERT(_dispatcher != nullptr);
+  setOptional(false);
+  requiresElevatedPrivileges(false);
+  startsAfter("Database");
+  startsAfter("Dispatcher");
+  startsAfter("Scheduler");
 }
 
-ApplicationCluster::~ApplicationCluster() {
-  delete _heartbeat;
+ClusterFeature::~ClusterFeature() {
+  delete _heartbeatThread;
 
   // delete connection manager instance
   auto cm = httpclient::ConnectionManager::instance();
   delete cm;
 }
 
-#warning TODO
-#if 0
-void ApplicationCluster::setupOptions(
-    std::map<std::string, basics::ProgramOptionsDescription>& options) {
-  options["Cluster options:help-cluster"]("cluster.agency-endpoint",
-                                          &_agencyEndpoints,
-                                          "agency endpoint to connect to")(
-      "cluster.agency-prefix", &_agencyPrefix, "agency prefix")(
-      "cluster.my-local-info", &_myLocalInfo, "this server's local info")(
-      "cluster.my-id", &_myId, "this server's id")(
-      "cluster.my-address", &_myAddress, "this server's endpoint")(
-      "cluster.my-role", &_myRole, "this server's role")(
-      "cluster.username", &_username,
-      "username used for cluster-internal communication")(
-      "cluster.password", &_password,
-      "password used for cluster-internal communication")(
-      "cluster.data-path", &_dataPath, "path to cluster database directory")(
-      "cluster.log-path", &_logPath, "path to log directory for the cluster")(
-      "cluster.agent-path", &_agentPath, "path to the agent for the cluster")(
-      "cluster.arangod-path", &_arangodPath,
-      "path to the arangod for the cluster")(
-      "cluster.dbserver-config", &_dbserverConfig,
-      "path to the DBserver configuration")(
-      "cluster.coordinator-config", &_coordinatorConfig,
-      "path to the coordinator configuration")(
-      "cluster.disable-dispatcher-frontend", &_disableDispatcherFrontend,
-      "do not show the dispatcher interface")(
-      "cluster.disable-dispatcher-kickstarter", &_disableDispatcherKickstarter,
-      "disable the kickstarter functionality");
+void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
+
+  options->addSection("cluster", "Configure the cluster");
+
+  options->addOption("--cluster.agency-endpoint",
+                     "agency endpoint to connect to",
+                     new VectorParameter<StringParameter>(&_agencyEndpoints));
+
+  options->addOption("--cluster.agency-prefix", "agency prefix",
+                     new StringParameter(&_agencyPrefix));
+
+  options->addOption("--cluster.my-local-info", "this server's local info",
+                     new StringParameter(&_myLocalInfo));
+
+  options->addOption("--cluster.my-id", "this server's id",
+                     new StringParameter(&_myId));
+
+  options->addOption("--cluster.my-role", "this server's role",
+                     new StringParameter(&_myRole));
+
+  options->addOption("--cluster.my-address", "this server's endpoint",
+                     new StringParameter(&_myAddress));
+
+  options->addOption("--cluster.username",
+                     "username used for cluster-internal communication",
+                     new StringParameter(&_username));
+
+  options->addOption("--cluster.password",
+                     "password used for cluster-internal communication",
+                     new StringParameter(&_password));
+
+  options->addOption("--cluster.data-path",
+                     "path to cluster database directory",
+                     new StringParameter(&_dataPath));
+
+  options->addOption("--cluster.log-path",
+                     "path to log directory for the cluster",
+                     new StringParameter(&_logPath));
+
+  options->addOption("--cluster.arangod-path",
+                     "path to the arangod for the cluster",
+                     new StringParameter(&_arangodPath));
+
+  options->addOption("--cluster.agent-path",
+                     "path to the agent for the cluster",
+                     new StringParameter(&_agentPath));
+
+  options->addOption("--cluster.dbserver-config",
+                     "path to the DBserver configuration",
+                     new StringParameter(&_dbserverConfig));
+
+  options->addOption("--cluster.coordinator-config",
+                     "path to the coordinator configuration",
+                     new StringParameter(&_coordinatorConfig));
+
+  options->addOption("--cluster.dispatcher-frontend",
+                     "show the dispatcher interface",
+                     new BooleanParameter(&_dispatcherFrontend));
+
+  options->addOption("--cluster.kickstarter", "enable the kickstarter",
+                     new BooleanParameter(&_kickstarter));
 }
-#endif
 
-bool ApplicationCluster::prepare() {
-  // set authentication data
-  ServerState::instance()->setAuthentication(_username, _password);
+void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
 
-  // overwrite memory area
-  _username = _password = "someotherusername";
-
-  ServerState::instance()->setDataPath(_dataPath);
-  ServerState::instance()->setLogPath(_logPath);
-  ServerState::instance()->setAgentPath(_agentPath);
-  ServerState::instance()->setArangodPath(_arangodPath);
-  ServerState::instance()->setDBserverConfig(_dbserverConfig);
-  ServerState::instance()->setCoordinatorConfig(_coordinatorConfig);
-  ServerState::instance()->setDisableDispatcherFrontend(
-      _disableDispatcherFrontend);
-  ServerState::instance()->setDisableDispatcherKickstarter(
-      _disableDispatcherKickstarter);
-
-  // initialize ConnectionManager library
-  httpclient::ConnectionManager::initialize();
-
-  // initialize ClusterComm library
-  // must call initialize while still single-threaded
-  ClusterComm::initialize();
-
-  if (_disabled) {
-    // if ApplicationFeature is disabled
-    _enableCluster = false;
-    ServerState::instance()->setRole(ServerState::ROLE_SINGLE);
-    return true;
-  }
-
-  // check the cluster state
+  // check if the cluster is enabled
   _enableCluster = !_agencyEndpoints.empty();
 
+  if (!_enableCluster) {
+    ServerState::instance()->setRole(ServerState::ROLE_SINGLE);
+    return;
+  }
+
+  // validate --cluster.agency-endpoint (currently a noop)
+  if (_agencyEndpoints.empty()) {
+    LOG(FATAL)
+        << "must at least specify one endpoint in --cluster.agency-endpoint";
+    FATAL_ERROR_EXIT();
+  }
+
+  // validate
   if (_agencyPrefix.empty()) {
     _agencyPrefix = "arango";
   }
-
-  if (!enabled()) {
-    ServerState::instance()->setRole(ServerState::ROLE_SINGLE);
-    return true;
-  }
-
-  ServerState::instance()->setClusterEnabled();
 
   // validate --cluster.agency-prefix
   size_t found = _agencyPrefix.find_first_not_of(
@@ -162,28 +160,6 @@ bool ApplicationCluster::prepare() {
   if (found != std::string::npos || _agencyPrefix.empty()) {
     LOG(FATAL) << "invalid value specified for --cluster.agency-prefix";
     FATAL_ERROR_EXIT();
-  }
-
-  // register the prefix with the communicator
-  AgencyComm::setPrefix(_agencyPrefix);
-
-  // validate --cluster.agency-endpoint
-  if (_agencyEndpoints.empty()) {
-    LOG(FATAL)
-        << "must at least specify one endpoint in --cluster.agency-endpoint";
-    FATAL_ERROR_EXIT();
-  }
-
-  for (size_t i = 0; i < _agencyEndpoints.size(); ++i) {
-    std::string const unified = Endpoint::unifiedForm(_agencyEndpoints[i]);
-
-    if (unified.empty()) {
-      LOG(FATAL) << "invalid endpoint '" << _agencyEndpoints[i]
-                 << "' specified for --cluster.agency-endpoint";
-      FATAL_ERROR_EXIT();
-    }
-
-    AgencyComm::addEndpoint(unified);
   }
 
   // validate --cluster.my-id
@@ -208,18 +184,63 @@ bool ApplicationCluster::prepare() {
       FATAL_ERROR_EXIT();
     }
   }
+}
+
+void ClusterFeature::prepare() {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::prepare";
+
+  ServerState::instance()->setAuthentication(_username, _password);
+  ServerState::instance()->setDataPath(_dataPath);
+  ServerState::instance()->setLogPath(_logPath);
+  ServerState::instance()->setAgentPath(_agentPath);
+  ServerState::instance()->setArangodPath(_arangodPath);
+  ServerState::instance()->setDBserverConfig(_dbserverConfig);
+  ServerState::instance()->setCoordinatorConfig(_coordinatorConfig);
+  ServerState::instance()->setDisableDispatcherFrontend(!_dispatcherFrontend);
+  ServerState::instance()->setDisableDispatcherKickstarter(!_kickstarter);
+
+  // initialize ConnectionManager library
+  httpclient::ConnectionManager::initialize();
+
+  // create an instance (this will not yet create a thread)
+  ClusterComm::instance();
+}
+
+#warning TODO split into methods
+
+void ClusterFeature::start() {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
+
+  // initialize ClusterComm library, must call initialize only once
+  ClusterComm::initialize();
+
+  // return if cluster is disabled
+  if (!_enableCluster) {
+    return;
+  }
+
+  ServerState::instance()->setClusterEnabled();
+
+  // register the prefix with the communicator
+  AgencyComm::setPrefix(_agencyPrefix);
+
+  for (size_t i = 0; i < _agencyEndpoints.size(); ++i) {
+    std::string const unified = Endpoint::unifiedForm(_agencyEndpoints[i]);
+
+    if (unified.empty()) {
+      LOG(FATAL) << "invalid endpoint '" << _agencyEndpoints[i]
+                 << "' specified for --cluster.agency-endpoint";
+      FATAL_ERROR_EXIT();
+    }
+
+    AgencyComm::addEndpoint(unified);
+  }
+
   // Now either _myId is set properly or _myId is empty and _myLocalInfo and
   // _myAddress are set.
   if (!_myAddress.empty()) {
     ServerState::instance()->setAddress(_myAddress);
   }
-
-  // initialize ConnectionManager library
-  // httpclient::ConnectionManager::initialize();
-
-  // initialize ClusterComm library
-  // must call initialize while still single-threaded
-  // ClusterComm::initialize();
 
   // disable error logging for a while
   ClusterComm::instance()->enableConnectionErrorLogging(false);
@@ -233,18 +254,21 @@ bool ApplicationCluster::prepare() {
   }
 
   ServerState::instance()->setLocalInfo(_myLocalInfo);
+
   if (!_myId.empty()) {
     ServerState::instance()->setId(_myId);
   }
 
   if (!_myRole.empty()) {
     ServerState::RoleEnum role = ServerState::stringToRole(_myRole);
+
     if (role == ServerState::ROLE_SINGLE ||
         role == ServerState::ROLE_UNDEFINED) {
       LOG(FATAL) << "Invalid role provided. Possible values: PRIMARY, "
                     "SECONDARY, COORDINATOR";
       FATAL_ERROR_EXIT();
     }
+
     if (!ServerState::instance()->registerWithRole(role)) {
       LOG(FATAL) << "Couldn't register at agency.";
       FATAL_ERROR_EXIT();
@@ -260,6 +284,13 @@ bool ApplicationCluster::prepare() {
     FATAL_ERROR_EXIT();
   }
 
+  if (role == ServerState::ROLE_SINGLE) {
+    LOG(FATAL) << "determined single-server role for server '" << _myId
+               << "'. Please check the configurarion in the agency ("
+               << endpoints << ")";
+    FATAL_ERROR_EXIT();
+  }
+
   if (_myId.empty()) {
     _myId = ServerState::instance()->getId();  // has been set by getRole!
   }
@@ -269,6 +300,7 @@ bool ApplicationCluster::prepare() {
     // no address given, now ask the agency for our address
     _myAddress = ServerState::instance()->getAddress();
   }
+
   // if nonempty, it has already been set above
 
   // If we are a coordinator, we wait until at least one DBServer is there,
@@ -276,29 +308,20 @@ bool ApplicationCluster::prepare() {
   // any collection:
   if (role == ServerState::ROLE_COORDINATOR) {
     ClusterInfo* ci = ClusterInfo::instance();
-    do {
+
+    while (true) {
       LOG(INFO) << "Waiting for a DBserver to show up...";
       ci->loadCurrentDBServers();
       std::vector<ServerID> DBServers = ci->getCurrentDBServers();
+
       if (DBServers.size() > 0) {
         LOG(INFO) << "Found a DBserver.";
         break;
       }
+
       sleep(1);
-    } while (true);
+    };
   }
-
-  return true;
-}
-
-bool ApplicationCluster::start() {
-  if (!enabled()) {
-    return true;
-  }
-
-  std::string const endpoints = AgencyComm::getEndpointsString();
-
-  ServerState::RoleEnum role = ServerState::instance()->getRole();
 
   if (_myAddress.empty()) {
     LOG(FATAL) << "unable to determine internal address for server '" << _myId
@@ -360,42 +383,33 @@ bool ApplicationCluster::start() {
     }
 
     // start heartbeat thread
-    _heartbeat = new HeartbeatThread(_server, _dispatcher, _applicationV8,
-                                     _heartbeatInterval * 1000, 5);
+    _heartbeatThread = new HeartbeatThread(_heartbeatInterval * 1000, 5);
 
-    if (_heartbeat == nullptr) {
+    if (_heartbeatThread == nullptr) {
       LOG(FATAL) << "unable to start cluster heartbeat thread";
       FATAL_ERROR_EXIT();
     }
 
-    if (!_heartbeat->init() || !_heartbeat->start()) {
+    if (!_heartbeatThread->init() || !_heartbeatThread->start()) {
       LOG(FATAL) << "heartbeat could not connect to agency endpoints ("
                  << endpoints << ")";
       FATAL_ERROR_EXIT();
     }
 
-    while (!_heartbeat->isReady()) {
+    while (!_heartbeatThread->isReady()) {
       // wait until heartbeat is ready
       usleep(10000);
     }
   }
 
-  return true;
-}
-
-bool ApplicationCluster::open() {
-  if (!enabled()) {
-    return true;
-  }
-
-  AgencyComm comm;
   AgencyCommResult result;
-
   bool success;
-  do {
+
+  while (true) {
     AgencyCommLocker locker("Current", "WRITE");
 
     success = locker.successful();
+
     if (success) {
       VPackBuilder builder;
       try {
@@ -421,10 +435,9 @@ bool ApplicationCluster::open() {
     if (success) {
       break;
     }
-    sleep(1);
-  } while (true);
 
-  ServerState::RoleEnum role = ServerState::instance()->getRole();
+    sleep(1);
+  }
 
   if (role == ServerState::ROLE_COORDINATOR) {
     ServerState::instance()->setState(ServerState::STATE_SERVING);
@@ -433,28 +446,26 @@ bool ApplicationCluster::open() {
   } else if (role == ServerState::ROLE_SECONDARY) {
     ServerState::instance()->setState(ServerState::STATE_SYNCING);
   }
-  return true;
+
+  DispatcherFeature::DISPATCHER->buildAqlQueue();
 }
 
-void ApplicationCluster::close() {
-  if (!enabled()) {
-    return;
+void ClusterFeature::stop() {
+  if (_enableCluster) {
+    if (_heartbeatThread != nullptr) {
+      _heartbeatThread->beginShutdown();
+    }
+
+    // change into shutdown state
+    ServerState::instance()->setState(ServerState::STATE_SHUTDOWN);
+
+    AgencyComm comm;
+    comm.sendServerState(0.0);
   }
 
-  if (_heartbeat != nullptr) {
-    _heartbeat->beginShutdown();
-  }
-
-  // change into shutdown state
-  ServerState::instance()->setState(ServerState::STATE_SHUTDOWN);
-
-  AgencyComm comm;
-  comm.sendServerState(0.0);
-}
-
-void ApplicationCluster::stop() {
   ClusterComm::cleanup();
-  if (!enabled()) {
+
+  if (!_enableCluster) {
     return;
   }
 
@@ -463,10 +474,6 @@ void ApplicationCluster::stop() {
 
   AgencyComm comm;
   comm.sendServerState(0.0);
-
-  if (_heartbeat != nullptr) {
-    _heartbeat->beginShutdown();
-  }
 
   {
     AgencyCommLocker locker("Current", "WRITE");
@@ -486,7 +493,7 @@ void ApplicationCluster::stop() {
     }
   }
 
-  while (_heartbeat->isRunning()) {
+  while (_heartbeatThread->isRunning()) {
     usleep(50000);
   }
 

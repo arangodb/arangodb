@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HeartbeatThread.h"
+
 #include "Basics/ConditionLocker.h"
 #include "Basics/JsonHelper.h"
 #include "Logger/Logger.h"
@@ -32,10 +33,9 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerJob.h"
 #include "Cluster/ServerState.h"
-// #include "Dispatcher/ApplicationDispatcher.h"
 #include "Dispatcher/Dispatcher.h"
+#include "Dispatcher/DispatcherFeature.h"
 #include "Dispatcher/Job.h"
-// #include "V8Server/ApplicationV8.h"
 #include "V8/v8-globals.h"
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/auth.h"
@@ -50,14 +50,9 @@ volatile sig_atomic_t HeartbeatThread::HasRunOnce = 0;
 /// @brief constructs a heartbeat thread
 ////////////////////////////////////////////////////////////////////////////////
 
-HeartbeatThread::HeartbeatThread(
-    TRI_server_t* server, arangodb::rest::ApplicationDispatcher* dispatcher,
-    ApplicationV8* applicationV8, uint64_t interval,
-    uint64_t maxFailsBeforeWarning)
+HeartbeatThread::HeartbeatThread(uint64_t interval,
+                                 uint64_t maxFailsBeforeWarning)
     : Thread("Heartbeat"),
-      _server(server),
-      _dispatcher(dispatcher),
-      _applicationV8(applicationV8),
       _statusLock(),
       _agency(),
       _condition(),
@@ -68,10 +63,8 @@ HeartbeatThread::HeartbeatThread(
       _numFails(0),
       _numDispatchedJobs(0),
       _lastDispatchedJobResult(false),
-      _versionThatTriggeredLastJob(0), 
-      _ready(false) {
-  TRI_ASSERT(_dispatcher != nullptr);
-}
+      _versionThatTriggeredLastJob(0),
+      _ready(false) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a heartbeat thread
@@ -376,7 +369,7 @@ void HeartbeatThread::runCoordinator() {
         uint64_t currentVersion =
             arangodb::basics::VelocyPackHelper::stringUInt64(
                 it->second._vpack->slice());
-        
+
         if (currentVersion > lastCurrentVersionNoticed) {
           lastCurrentVersionNoticed = currentVersion;
 
@@ -384,7 +377,6 @@ void HeartbeatThread::runCoordinator() {
         }
       }
     }
-
 
     if (shouldSleep) {
       double remain = interval - (TRI_microtime() - start);
@@ -616,19 +608,17 @@ bool HeartbeatThread::handlePlanChangeDBServer(uint64_t currentPlanVersion) {
   }
 
   // schedule a job for the change
-  std::unique_ptr<arangodb::rest::Job> job(
-      new ServerJob(this, _server, _applicationV8));
+  std::unique_ptr<arangodb::rest::Job> job(new ServerJob(this));
 
-#warning TODO
-#if 0
-  if (_dispatcher->dispatcher()->addJob(job) == TRI_ERROR_NO_ERROR) {
+  auto dispatcher = DispatcherFeature::DISPATCHER;
+
+  if (dispatcher->addJob(job) == TRI_ERROR_NO_ERROR) {
     ++_numDispatchedJobs;
     _versionThatTriggeredLastJob = currentPlanVersion;
 
     LOG(TRACE) << "scheduled plan update handler";
     return true;
   }
-#endif
 
   LOG(ERR) << "could not schedule plan update handler";
 

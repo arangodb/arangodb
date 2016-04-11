@@ -18,51 +18,64 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_DISPATCHER_DISPATCHER_FEATURE_H
-#define ARANGOD_DISPATCHER_DISPATCHER_FEATURE_H 1
+#ifndef ARANGOD_CLUSTER_CLUSTER_FEATURE_H
+#define ARANGOD_CLUSTER_CLUSTER_FEATURE_H 1
 
 #include "Basics/Common.h"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
-namespace rest {
-class Dispatcher;
-}
+class HeartbeatThread;
 
-class DispatcherFeature final
-    : public application_features::ApplicationFeature {
+class ClusterFeature : public application_features::ApplicationFeature {
  public:
-  static rest::Dispatcher* DISPATCHER;
+  ClusterFeature(application_features::ApplicationServer*);
+  ~ClusterFeature();
 
  public:
-  explicit DispatcherFeature(application_features::ApplicationServer* server);
+  // disable the heartbeat (used for testing)
+#warning TODO
+  // void disableHeartbeat() { _disableHeartbeat = true; }
+
+  // whether or not the cluster is enabled
+#warning TODO
+  // inline bool enabled() const { return _enableCluster; }
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void prepare() override;
   void start() override;
   void stop() override;
 
- public:
-  void buildStandardQueue(size_t nrThreads, size_t maxSize);
-  void buildAQLQueue(size_t nrThreads, size_t maxSize);
-  void setProcessorAffinity(std::vector<size_t> const& cores);
-  size_t concurrency() const { return static_cast<size_t>(_nrStandardThreads); }
+private:
+  std::vector<std::string> _agencyEndpoints;
+  std::string _agencyPrefix;
+  std::string _myLocalInfo;
+  std::string _myId;
+  std::string _myRole;
+  std::string _myAddress;
+  std::string _username;
+  std::string _password;
+  std::string _dataPath;
+  std::string _logPath;
+  std::string _arangodPath;
+  std::string _agentPath;
+  std::string _dbserverConfig;
+  std::string _coordinatorConfig;
+  bool _dispatcherFrontend;
+  bool _kickstarter;
+
 
  private:
-  void buildDispatcher();
-  void buildStandardQueue();
-  void buildAqlQueue();
-
- private:
-  rest::Dispatcher* _dispatcher;
-  uint64_t _nrStandardThreads;
-  uint64_t _nrAqlThreads;
-  uint64_t _queueSize;
+  bool _enableCluster;
+  HeartbeatThread* _heartbeatThread;
+  uint64_t _heartbeatInterval;
+  bool _disableHeartbeat;
 };
 }
 

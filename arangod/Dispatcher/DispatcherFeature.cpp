@@ -43,10 +43,10 @@ DispatcherFeature::DispatcherFeature(
     : ApplicationFeature(server, "Dispatcher"),
       _nrStandardThreads(8),
       _nrAqlThreads(0),
-      _queueSize(16384),
-      _startAqlQueue(false) {
+      _queueSize(16384) {
   setOptional(true);
   requiresElevatedPrivileges(false);
+  startsAfter("FileDescriptorsFeature");
   startsAfter("Logger");
   startsAfter("Scheduler");
   startsAfter("WorkMonitor");
@@ -96,10 +96,6 @@ void DispatcherFeature::start() {
   buildDispatcher();
   buildStandardQueue();
 
-  if (_startAqlQueue) {
-    buildAqlQueue();
-  }
-
   V8DealerFeature* dealer = dynamic_cast<V8DealerFeature*>(
       ApplicationServer::lookupFeature("V8Dealer"));
 
@@ -143,28 +139,3 @@ void DispatcherFeature::setProcessorAffinity(std::vector<size_t> const& cores) {
   _dispatcher->setProcessorAffinity(Dispatcher::STANDARD_QUEUE, cores);
 #endif
 }
-
-#warning TODO
-#if 0
-
-// now we can create the queues
-if (startServer) {
-  if (role == ServerState::ROLE_COORDINATOR ||
-      role == ServerState::ROLE_PRIMARY ||
-      role == ServerState::ROLE_SECONDARY) {
-    _applicationDispatcher->buildAQLQueue(_dispatcherThreads,
-                                          (int)_dispatcherQueueSize);
-  }
-}
-
-== == == == == == == == == == == == == == == == == == == == == == == == == == ==
-    == == == == == == == == == == == == ==
-
-    if (!startServer) {
-  _applicationDispatcher->disable();
-}
-
-== == == == == == == == == == == == == == == == == == == == == == == == == == ==
-    == == == == == == == == == == == == ==
-
-#endif

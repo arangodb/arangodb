@@ -82,6 +82,7 @@ ServerFeature::ServerFeature(application_features::ApplicationServer* server,
       _consoleThread(nullptr) {
   setOptional(true);
   requiresElevatedPrivileges(false);
+  startsAfter("Cluster");
   startsAfter("Database");
   startsAfter("Dispatcher");
   startsAfter("Scheduler");
@@ -236,6 +237,8 @@ void ServerFeature::prepare() {
 
   buildHandlerFactory();
   HttpHandlerFactory::setMaintenance(true);
+
+  adjustFileDescriptors();
 }
 
 void ServerFeature::start() {
@@ -244,6 +247,15 @@ void ServerFeature::start() {
   auto vocbase = DatabaseFeature::DATABASE->vocbase();
   V8DealerFeature::DEALER->loadJavascript(vocbase, "server/server.js");
   _httpOptions._vocbase = vocbase;
+
+  if (_operationMode != OperationMode::MODE_CONSOLE) {
+    auto scheduler = dynamic_cast<SchedulerFeature*>(
+        ApplicationServer::lookupFeature("Scheduler"));
+
+    if (scheduler != nullptr) {
+      scheduler->buildControlCHandler();
+    }
+  }
 
   defineHandlers();
   HttpHandlerFactory::setMaintenance(false);
@@ -670,6 +682,7 @@ void ServerFeature::defineHandlers() {
 #endif
 }
 
+#warning TODO
 #if 0
 
 template <typename T>

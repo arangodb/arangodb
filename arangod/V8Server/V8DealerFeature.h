@@ -77,6 +77,8 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
 
   void shutdownContexts();
 
+  std::string const& appPath() const { return _appPath; }
+
  private:
   V8Context* pickFreeContextForGc();
   void initializeContext(size_t);

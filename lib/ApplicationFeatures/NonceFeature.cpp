@@ -18,48 +18,25 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_SCHEDULER_SCHEDULER_FEATURE_H
-#define ARANGOD_SCHEDULER_SCHEDULER_FEATURE_H 1
+#include "NonceFeature.h"
 
-#include "Basics/Common.h"
+NonceFeature(application_features::ApplicationServer*);
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+void NonceFeature::validate() {}
 
-namespace arangodb {
-namespace rest {
-class Scheduler;
-class Task;
+void NonceFeature::prepare() {
+  uint32_t optionNonceHashSize = 0;
+
+  if (0 < _hashSize) {
+    Nonce::create(_hashSize);
+  }
 }
 
-class SchedulerFeature final : public application_features::ApplicationFeature {
- public:
-  static rest::Scheduler* SCHEDULER;
-
- public:
-  explicit SchedulerFeature(application_features::ApplicationServer* server);
-
- public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void start() override;
-  void stop() override;
-
- private:
-  void buildScheduler();
-  void buildControlCHandler();
-
- private:
-  uint64_t _nrSchedulerThreads;
-  uint64_t _backend;
-  bool _showBackends;
-
- private:
-  rest::Scheduler* _scheduler;
-  std::vector<rest::Task*> _tasks;
-};
+void NonceFeature::start() {
+  LOG(DEBUG) << "setting nonce hash size to " << _hashSize;
 }
 
-#endif
+void NonceFeature::stop() { Nonce::destroy(); }

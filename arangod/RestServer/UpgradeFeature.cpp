@@ -22,6 +22,7 @@
 
 #include "UpgradeFeature.h"
 
+#include "Cluster/ClusterFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
@@ -48,6 +49,7 @@ UpgradeFeature::UpgradeFeature(
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("CheckVersion");
+  startsAfter("Cluser");
   startsAfter("Database");
   startsAfter("V8Dealer");
 }
@@ -88,6 +90,10 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       ApplicationServer::lookupFeature("Database"));
   database->disableReplicationApplier();
   database->enableUpgrade();
+
+  ClusterFeature* cluster = dynamic_cast<ClusterFeature*>(
+      ApplicationServer::lookupFeature("Cluster"));
+  cluster->disable();
 }
 
 void UpgradeFeature::start() {

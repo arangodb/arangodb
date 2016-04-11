@@ -24,12 +24,13 @@
 #include "ServerJob.h"
 
 #include "Basics/MutexLocker.h"
-#include "Logger/Logger.h"
-#include "Cluster/HeartbeatThread.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/HeartbeatThread.h"
 #include "Dispatcher/DispatcherQueue.h"
+#include "Logger/Logger.h"
 #include "V8/v8-utils.h"
-// #include "V8Server/ApplicationV8.h"
+#include "V8Server/V8Context.h"
+#include "V8Server/V8DealerFeature.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
@@ -42,12 +43,9 @@ static arangodb::Mutex ExecutorLock;
 /// @brief constructs a new db server job
 ////////////////////////////////////////////////////////////////////////////////
 
-ServerJob::ServerJob(HeartbeatThread* heartbeat, TRI_server_t* server,
-                     ApplicationV8* applicationV8)
+ServerJob::ServerJob(HeartbeatThread* heartbeat)
     : Job("HttpServerJob"),
       _heartbeat(heartbeat),
-      _server(server),
-      _applicationV8(applicationV8),
       _shutdown(0),
       _abandon(false) {}
 
@@ -90,10 +88,9 @@ void ServerJob::cleanup(DispatcherQueue* queue) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ServerJob::execute() {
-#warning TODO
-#if 0
   // default to system database
-  TRI_vocbase_t* const vocbase = TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
+  TRI_vocbase_t* const vocbase =
+      TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
 
   if (vocbase == nullptr) {
     // database is gone
@@ -102,15 +99,15 @@ bool ServerJob::execute() {
 
   TRI_DEFER(TRI_ReleaseVocBase(vocbase));
 
-  ApplicationV8::V8Context* context =
-      _applicationV8->enterContext(vocbase, true);
+  V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase, true);
 
   if (context == nullptr) {
     return false;
   }
 
   bool ok = true;
-  auto isolate = context->isolate;
+  auto isolate = context->_isolate;
+
   try {
     v8::HandleScope scope(isolate);
 
@@ -121,7 +118,8 @@ bool ServerJob::execute() {
     v8::Handle<v8::Value> res = TRI_ExecuteJavaScriptString(
         isolate, isolate->GetCurrentContext(), content, file, false);
     if (res->IsBoolean() && res->IsTrue()) {
-      LOG(ERR) << "An error occurred whilst executing the handlePlanChange in JavaScript.";
+      LOG(ERR) << "An error occurred whilst executing the handlePlanChange in "
+                  "JavaScript.";
       ok = false;  // The heartbeat thread will notice this!
     }
     // invalidate our local cache, even if an error occurred
@@ -129,8 +127,7 @@ bool ServerJob::execute() {
   } catch (...) {
   }
 
-  _applicationV8->exitContext(context);
+  V8DealerFeature::DEALER->exitContext(context);
 
   return ok;
-#endif
 }

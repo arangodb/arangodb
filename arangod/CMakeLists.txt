@@ -70,7 +70,7 @@ add_executable(${BIN_ARANGOD}
   Actions/RestActionHandler.cpp
   Actions/actions.cpp
   Agency/Agent.cpp
-  # Agency/ApplicationAgency.cpp
+  Agency/AgencyFeature.cpp
   Agency/Constituent.cpp
   Agency/State.cpp
   Agency/Store.cpp
@@ -139,7 +139,7 @@ add_executable(${BIN_ARANGOD}
   Aql/grammar.cpp
   Aql/tokens.cpp
   Cluster/AgencyComm.cpp
-  # TODO Cluster/ApplicationCluster.cpp
+  Cluster/ClusterFeature.cpp
   Cluster/ClusterComm.cpp
   Cluster/ClusterInfo.cpp
   Cluster/ClusterMethods.cpp

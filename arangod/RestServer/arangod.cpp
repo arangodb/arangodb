@@ -23,6 +23,7 @@
 
 #include "Basics/Common.h"
 
+#include "Agency/AgencyFeature.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/DaemonFeature.h"
 #include "ApplicationFeatures/LanguageFeature.h"
@@ -35,6 +36,7 @@
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "ApplicationFeatures/WorkMonitorFeature.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Cluster/ClusterFeature.h"
 #include "Dispatcher/DispatcherFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/CheckVersionFeature.h"
@@ -90,16 +92,19 @@ int main(int argc, char* argv[]) {
   application_features::ApplicationServer server(options);
 
   std::vector<std::string> nonServerFeatures = {
-      "Action", "Daemon",    "Dispatcher", "Endpoint",
-      "Server", "Scheduler", "Ssl",        "Supervisor"};
+      "Action", "Cluster",   "Daemon", "Dispatcher", "Endpoint",
+      "Server", "Scheduler", "Ssl",    "Supervisor"};
 
   int ret = EXIT_FAILURE;
 
+  server.addFeature(new AgencyFeature(&server));
   server.addFeature(new CheckVersionFeature(&server, &ret, nonServerFeatures));
+  server.addFeature(new ClusterFeature(&server));
   server.addFeature(new ConfigFeature(&server, name));
   server.addFeature(new DatabaseFeature(&server));
   server.addFeature(new DispatcherFeature(&server));
   server.addFeature(new EndpointFeature(&server));
+  server.addFeature(new FileDescriptorsFeature(&server));
   server.addFeature(new LanguageFeature(&server));
   server.addFeature(new LoggerFeature(&server, true));
   server.addFeature(new RandomFeature(&server));
