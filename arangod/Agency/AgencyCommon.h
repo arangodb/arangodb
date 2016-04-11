@@ -102,11 +102,12 @@ struct AgentConfiguration {
   std::vector<std::string> end_points;
   std::string end_point_persist;
   bool notify;
+  bool sanity_check;
   AgentConfiguration () : id(0), min_ping(.15), max_ping(.3f), notify(false) {};
   AgentConfiguration (uint32_t i, double min_p, double max_p, std::string ep,
-                      std::vector<std::string> const& eps, bool n = false) :
+                      std::vector<std::string> const& eps, bool n = false, bool s = false) :
     id(i), min_ping(min_p), max_ping(max_p), end_point(ep), end_points(eps),
-    notify(n) {
+    notify(n), sanity_check(s) {
     end_point_persist = end_points[id]; 
   }
   inline size_t size() const {return end_points.size();}

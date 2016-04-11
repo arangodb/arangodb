@@ -69,7 +69,7 @@ void ApplicationAgency::setupOptions(
     ("agency.election_call_rate_mul [au]", &_election_call_rate_mul,
      "Multiplier (<1.0) defining how long the election timeout is with respect "
      "to the minumum election timeout")
-    ("agency.notify", &_notify, "Notify others");
+    ("agency.notify", &_notify, "Notify others")
     ("agency.sanity-check", &_sanity_check,
      "Perform arangodb cluster sanity checking");
   
@@ -148,7 +148,8 @@ bool ApplicationAgency::prepare() {
     new agent_t(
       _server, arangodb::consensus::config_t(
         _agent_id, _min_election_timeout, _max_election_timeout,
-        endpoint, _agency_endpoints, _notify), _applicationV8, _queryRegistry));
+        endpoint, _agency_endpoints, _notify, _sanity_check), _applicationV8,
+      _queryRegistry));
   
   return true;
   

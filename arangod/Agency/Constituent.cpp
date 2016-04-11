@@ -26,6 +26,7 @@
 #include "Basics/ConditionLocker.h"
 
 #include "Aql/Query.h"
+#include "Aql/QueryRegistry.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -116,7 +117,7 @@ void Constituent::term(term_t t) {
     options.waitForSync = true; 
     options.silent = true;
     
-    OperationResult result = trx.insert("log", body.slice(), options);
+    OperationResult result = trx.insert("election", body.slice(), options);
     res = trx.finish(result.code);
     
   }
@@ -374,7 +375,7 @@ void Constituent::run() {
   }
   
   VPackSlice result = queryResult.result->slice();
-  
+  std::cout << result.toJson() << std::endl;
 
 
   // Always start off as follower
