@@ -375,8 +375,18 @@ void Constituent::run() {
   }
   
   VPackSlice result = queryResult.result->slice();
-  std::cout << result.toJson() << std::endl;
 
+  if (result.isArray()) {
+    for (auto const& i : VPackArrayIterator(result)) {
+      try {
+      _term = i.get("term").getUInt();
+      _voted_for = i.get("voted_for").getUInt();
+      } catch (std::exception const& e) {
+        LOG_TOPIC(ERR, Logger::AGENCY)
+          << "Persisted election entries corrupt! Defaulting term,vote (0,0)";
+      }
+    }
+  }
 
   // Always start off as follower
   while (!this->isStopping() && size() > 1) { 
