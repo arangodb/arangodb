@@ -29,11 +29,14 @@
 #include "Scheduler/PeriodicTask.h"
 #include "VocBase/server.h"
 
+#include "V8Server/ApplicationV8.h"
+
 #include "ApplicationAgency.h"
 
 using namespace std;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
+using namespace arangodb;
 
 ApplicationAgency::ApplicationAgency(TRI_server_t* server, 
                                      ApplicationEndpointServer* aes, 
@@ -54,6 +57,7 @@ ApplicationAgency::~ApplicationAgency() {}
 
 /// @brief sets the processor affinity
 void ApplicationAgency::setupOptions(
+  
     std::map<std::string, ProgramOptionsDescription>& options) {
   options["Agency Options:help-agency"]("agency.size", &_size, "Agency size")
     ("agency.id", &_agent_id, "This agent's id")

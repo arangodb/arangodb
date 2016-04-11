@@ -228,8 +228,9 @@ bool Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
   
   // appendEntries 5. If leaderCommit > commitIndex, set commitIndex =
   //min(leaderCommit, index of last new entry)
-  if (leaderCommitIndex > last_commit_index)
-  _last_commit_index = std::min(leaderCommitIndex,last_commit_index);
+  if (leaderCommitIndex > last_commit_index) {
+    _last_commit_index = (std::min)(leaderCommitIndex,last_commit_index);
+  }
 
   return true;
 

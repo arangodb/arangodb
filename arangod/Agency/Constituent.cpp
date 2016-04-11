@@ -254,9 +254,9 @@ const constituency_t& Constituent::gossip () {
 /// @brief Call to election
 void Constituent::callElection() {
 
-  std::bool votes(size(),false);
+  std::vector<bool> votes(size(),false);
 
-  _votes.at(_id) = true; // vote for myself
+  votes.at(_id) = true; // vote for myself
   _cast = true;
   if(_role == CANDIDATE) {
     this->term(_term+1);            // raise my term
