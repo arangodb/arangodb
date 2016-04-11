@@ -833,7 +833,7 @@ int createDocumentOnCoordinator(
   VPackBuilder reqBuilder;
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
 
-  auto body = std::make_shared<std::string>(nullptr);
+  auto body = std::make_shared<std::string>();
   for (auto const& it : shardMap) {
     if (!useMultiple) {
       TRI_ASSERT(it.second.size() == 1);
