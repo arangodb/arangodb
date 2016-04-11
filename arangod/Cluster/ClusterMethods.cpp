@@ -736,7 +736,7 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
         arangodb::GeneralRequest::RequestType::GET,
         "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" +
             StringUtils::urlEncode(p.first) + "/count",
-        std::shared_ptr<std::string>(nullptr), headers, nullptr, 300.0);
+        std::shared_ptr<std::string>(), headers, nullptr, 300.0);
   }
   // Now listen to the results:
   int count;
@@ -1241,7 +1241,7 @@ int truncateCollectionOnCoordinator(std::string const& dbname,
                      arangodb::GeneralRequest::RequestType::PUT,
                      "/_db/" + StringUtils::urlEncode(dbname) +
                          "/_api/collection/" + p.first + "/truncate",
-                     std::shared_ptr<std::string>(nullptr), headers, nullptr,
+                     std::shared_ptr<std::string>(), headers, nullptr,
                      60.0);
   }
   // Now listen to the results:
@@ -1890,7 +1890,7 @@ int modifyDocumentOnCoordinator(
     // Contact all shards directly with the correct information.
 
     VPackBuilder reqBuilder;
-    auto body = std::make_shared<std::string>(nullptr);
+    auto body = std::make_shared<std::string>();
     for (auto const& it : shardMap) {
       if (!useMultiple) {
         TRI_ASSERT(it.second.size() == 1);
