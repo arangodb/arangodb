@@ -43,10 +43,12 @@ class Buffer {
     // poison memory
     memset(_buffer, 0xa5, _alloc);
 #endif
+    initWithNone();
   }
 
   explicit Buffer(ValueLength expectedLength) : Buffer() {
     reserve(expectedLength);
+    initWithNone();
   }
 
   Buffer(Buffer const& that) : Buffer() {
@@ -67,11 +69,13 @@ class Buffer {
     if (this != &that) {
       if (that._pos <= _alloc) { 
         // our own buffer is big enough to hold the data
+        initWithNone();
         memcpy(_buffer, that._buffer, checkOverflow(that._pos));
       }
       else {
         // our own buffer is not big enough to hold the data
         auto buffer = new T[that._pos];
+        initWithNone();
         memcpy(buffer, that._buffer, checkOverflow(that._pos));
 
         if (_buffer != _local) {
@@ -134,6 +138,7 @@ class Buffer {
 
   void reset() { 
     _pos = 0;
+    initWithNone();
   }
 
   void clear() {
@@ -146,6 +151,7 @@ class Buffer {
       // poison memory
       memset(_buffer, 0xa5, _alloc);
 #endif
+      initWithNone();
     }
   }
 
@@ -198,6 +204,9 @@ class Buffer {
   }
 
  private:
+  // initialize Buffer with a None value
+  inline void initWithNone() { _buffer[0] = '\x00'; }
+
   inline ValueLength capacity() const { return _alloc; }
 
   T* _buffer;
