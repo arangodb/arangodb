@@ -687,7 +687,7 @@ int TRI_DumpLogReplication(
             VPackSlice slice(reinterpret_cast<char const*>(marker) + DatafileHelper::VPackOffset(type));
             VPackSlice name = slice.get("name");
             if (name.isString()) {
-              dump->_collectionNames[collectionId] = std::move(name.copyString());
+              dump->_collectionNames[collectionId] = name.copyString();
             }
           }
         }
