@@ -52,16 +52,10 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief empty string singleton
-////////////////////////////////////////////////////////////////////////////////
-
 static char const* EmptyString = "";
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief names of query phases / states
-////////////////////////////////////////////////////////////////////////////////
-
 static std::string StateNames[] = {
     "initializing",        // INITIALIZATION
     "parsing",             // PARSING
@@ -79,10 +73,7 @@ static_assert(sizeof(StateNames) / sizeof(std::string) ==
                   static_cast<size_t>(ExecutionState::INVALID_STATE) + 1,
               "invalid number of ExecutionState values");
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a profile
-////////////////////////////////////////////////////////////////////////////////
-
 Profile::Profile(Query* query)
     : query(query), results(), stamp(query->startTime()), tracked(false) {
   auto queryList = static_cast<QueryList*>(query->vocbase()->_queries);
@@ -95,10 +86,7 @@ Profile::Profile(Query* query)
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy a profile
-////////////////////////////////////////////////////////////////////////////////
-
 Profile::~Profile() {
   // only remove from list when the query was inserted into it...
   if (tracked) {
@@ -113,10 +101,7 @@ Profile::~Profile() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief sets a state to done
-////////////////////////////////////////////////////////////////////////////////
-
 void Profile::setDone(ExecutionState state) {
   double const now = TRI_microtime();
 
@@ -129,10 +114,7 @@ void Profile::setDone(ExecutionState state) {
   stamp = now;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief convert the profile to VelocyPack
-////////////////////////////////////////////////////////////////////////////////
-
 std::shared_ptr<VPackBuilder> Profile::toVelocyPack() {
   auto result = std::make_shared<VPackBuilder>();
   {
@@ -145,16 +127,10 @@ std::shared_ptr<VPackBuilder> Profile::toVelocyPack() {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not query tracking is disabled globally
-////////////////////////////////////////////////////////////////////////////////
-
 bool Query::DoDisableQueryTracking = false;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a query
-////////////////////////////////////////////////////////////////////////////////
-
 Query::Query(arangodb::ApplicationV8* applicationV8,
              bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
              char const* queryString, size_t queryLength,
@@ -192,10 +168,7 @@ Query::Query(arangodb::ApplicationV8* applicationV8,
   TRI_ASSERT(_vocbase != nullptr);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a query from VelocyPack
-////////////////////////////////////////////////////////////////////////////////
-
 Query::Query(arangodb::ApplicationV8* applicationV8,
              bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
              std::shared_ptr<VPackBuilder> const queryStruct,
@@ -230,10 +203,7 @@ Query::Query(arangodb::ApplicationV8* applicationV8,
   TRI_ASSERT(_vocbase != nullptr);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a query
-////////////////////////////////////////////////////////////////////////////////
-
 Query::~Query() {
   // std::cout << TRI_CurrentThreadId() << ", QUERY " << this << " DTOR\r\n";
   cleanupPlanAndEngine(TRI_ERROR_INTERNAL);  // abort the transaction
@@ -276,12 +246,9 @@ Query::~Query() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief clone a query
 /// note: as a side-effect, this will also create and start a transaction for
 /// the query
-////////////////////////////////////////////////////////////////////////////////
-
 Query* Query::clone(QueryPart part, bool withPlan) {
   std::unique_ptr<Query> clone;
 
@@ -321,16 +288,10 @@ Query* Query::clone(QueryPart part, bool withPlan) {
   return clone.release();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief add a node to the list of nodes
-////////////////////////////////////////////////////////////////////////////////
-
 void Query::addNode(AstNode* node) { _nodes.emplace_back(node); }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief extract a region from the query
-////////////////////////////////////////////////////////////////////////////////
-
 std::string Query::extractRegion(int line, int column) const {
   // note: line numbers reported by bison/flex start at 1, columns start at 0
   int currentLine = 1;
@@ -384,11 +345,8 @@ std::string Query::extractRegion(int line, int column) const {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief register an error, with an optional parameter inserted into printf
 /// this also makes the query abort
-////////////////////////////////////////////////////////////////////////////////
-
 void Query::registerError(int code, char const* details) {
   TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
 
@@ -399,11 +357,8 @@ void Query::registerError(int code, char const* details) {
   THROW_ARANGO_EXCEPTION_PARAMS(code, details);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief register an error with a custom error message
 /// this also makes the query abort
-////////////////////////////////////////////////////////////////////////////////
-
 void Query::registerErrorCustom(int code, char const* details) {
   TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
 
@@ -418,10 +373,7 @@ void Query::registerErrorCustom(int code, char const* details) {
   THROW_ARANGO_EXCEPTION_MESSAGE(code, errorMessage);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief register a warning
-////////////////////////////////////////////////////////////////////////////////
-
 void Query::registerWarning(int code, char const* details) {
   TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
 
@@ -436,13 +388,10 @@ void Query::registerWarning(int code, char const* details) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief prepare an AQL query, this is a preparation for execute, but
 /// execute calls it internally. The purpose of this separate method is
 /// to be able to only prepare a query from VelocyPack and then store it in the
 /// QueryRegistry.
-////////////////////////////////////////////////////////////////////////////////
-
 QueryResult Query::prepare(QueryRegistry* registry) {
   try {
     init();
@@ -564,10 +513,7 @@ QueryResult Query::prepare(QueryRegistry* registry) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an AQL query
-////////////////////////////////////////////////////////////////////////////////
-
 QueryResult Query::execute(QueryRegistry* registry) {
   std::unique_ptr<AqlWorkStack> work;
 
@@ -721,11 +667,8 @@ QueryResult Query::execute(QueryRegistry* registry) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an AQL query
 /// may only be called with an active V8 handle scope
-////////////////////////////////////////////////////////////////////////////////
-
 QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
   std::unique_ptr<AqlWorkStack> work;
 
@@ -872,10 +815,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief parse an AQL query
-////////////////////////////////////////////////////////////////////////////////
-
 QueryResult Query::parse() {
   try {
     init();
@@ -896,10 +836,7 @@ QueryResult Query::parse() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief explain an AQL query
-////////////////////////////////////////////////////////////////////////////////
-
 QueryResult Query::explain() {
   try {
     init();
@@ -999,10 +936,7 @@ QueryResult Query::explain() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get v8 executor
-////////////////////////////////////////////////////////////////////////////////
-
 Executor* Query::executor() {
   if (_executor == nullptr) {
     // the executor is a singleton per query
@@ -1013,11 +947,8 @@ Executor* Query::executor() {
   return _executor;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief register a string
 /// the string is freed when the query is destroyed
-////////////////////////////////////////////////////////////////////////////////
-
 char* Query::registerString(char const* p, size_t length) {
   if (p == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -1047,20 +978,14 @@ char* Query::registerString(char const* p, size_t length) {
   return copy;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief register a string
 /// the string is freed when the query is destroyed
-////////////////////////////////////////////////////////////////////////////////
-
 char* Query::registerString(std::string const& p) {
   return registerString(p.c_str(), p.length());
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief register a potentially UTF-8-escaped string
 /// the string is freed when the query is destroyed
-////////////////////////////////////////////////////////////////////////////////
-
 char* Query::registerEscapedString(char const* p, size_t length,
                                    size_t& outLength) {
   if (p == nullptr) {
@@ -1089,10 +1014,7 @@ char* Query::registerEscapedString(char const* p, size_t length,
   return copy;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief enter a V8 context
-////////////////////////////////////////////////////////////////////////////////
-
 void Query::enterContext() {
   if (!_contextOwnedByExterior) {
     if (_context == nullptr) {
@@ -1119,10 +1041,7 @@ void Query::enterContext() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return a V8 context
-////////////////////////////////////////////////////////////////////////////////
-
 void Query::exitContext() {
   if (!_contextOwnedByExterior) {
     if (_context != nullptr) {
@@ -1142,10 +1061,7 @@ void Query::exitContext() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns statistics for current query.
-////////////////////////////////////////////////////////////////////////////////
-
 void Query::getStats(VPackBuilder& builder) {
   if (_engine) {
     _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
@@ -1155,10 +1071,7 @@ void Query::getStats(VPackBuilder& builder) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief fetch a boolean value from the options
-////////////////////////////////////////////////////////////////////////////////
-
 bool Query::getBooleanOption(char const* option, bool defaultValue) const {
   if (_options == nullptr) {
     return defaultValue;
@@ -1177,12 +1090,9 @@ bool Query::getBooleanOption(char const* option, bool defaultValue) const {
   return value.getBool();
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief convert the list of warnings to VelocyPack.
 ///        Will add a new entry { ..., warnings: <warnings>, } if there are
 ///        warnings. If there are none it will not modify the builder
-//////////////////////////////////////////////////////////////////////////////
-
 void Query::addWarningsToVelocyPackObject(
     arangodb::velocypack::Builder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
@@ -1201,10 +1111,7 @@ void Query::addWarningsToVelocyPackObject(
   }
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief transform the list of warnings to VelocyPack.
-//////////////////////////////////////////////////////////////////////////////
-
 std::shared_ptr<VPackBuilder> Query::warningsToVelocyPack() const {
   if (_warnings.empty()) {
     return nullptr;
@@ -1222,10 +1129,7 @@ std::shared_ptr<VPackBuilder> Query::warningsToVelocyPack() const {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the query
-////////////////////////////////////////////////////////////////////////////////
-
 void Query::init() {
   if (_id != 0) {
     // already called
@@ -1247,10 +1151,7 @@ void Query::init() {
   _strings.reserve(32);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief log a query
-////////////////////////////////////////////////////////////////////////////////
-
 void Query::log() {
   if (_queryString != nullptr) {
     static size_t const MaxLength = 1024;
@@ -1263,10 +1164,7 @@ void Query::log() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief calculate a hash value for the query and bind parameters
-////////////////////////////////////////////////////////////////////////////////
-
 uint64_t Query::hash() const {
   // hash the query string first
   uint64_t hash = arangodb::aql::QueryCache::instance()->hashQueryString(
@@ -1291,10 +1189,7 @@ uint64_t Query::hash() const {
   return hash ^ _bindParameters.hash();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the query cache can be used for the query
-////////////////////////////////////////////////////////////////////////////////
-
 bool Query::canUseQueryCache() const {
   if (_queryString == nullptr || _queryLength < 8) {
     return false;
@@ -1321,10 +1216,7 @@ bool Query::canUseQueryCache() const {
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief fetch a numeric value from the options
-////////////////////////////////////////////////////////////////////////////////
-
 double Query::getNumericOption(char const* option, double defaultValue) const {
   if (_options == nullptr) {
     return defaultValue;
@@ -1343,10 +1235,7 @@ double Query::getNumericOption(char const* option, double defaultValue) const {
   return value.getNumericValue<double>();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief neatly format transaction error to the user.
-////////////////////////////////////////////////////////////////////////////////
-
 QueryResult Query::transactionError(int errorCode) const {
   std::string err(TRI_errno_string(errorCode));
 
@@ -1363,10 +1252,7 @@ QueryResult Query::transactionError(int errorCode) const {
   return QueryResult(errorCode, err);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief read the "optimizer.inspectSimplePlans" section from the options
-////////////////////////////////////////////////////////////////////////////////
-
 bool Query::inspectSimplePlans() const {
   if (_options == nullptr) {
     return true;
@@ -1387,10 +1273,7 @@ bool Query::inspectSimplePlans() const {
       opt, "inspectSimplePlans", true);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief read the "optimizer.rules" section from the options
-////////////////////////////////////////////////////////////////////////////////
-
 std::vector<std::string> Query::getRulesFromOptions() const {
   std::vector<std::string> rules;
   
@@ -1425,10 +1308,7 @@ std::vector<std::string> Query::getRulesFromOptions() const {
   return rules;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief enter a new state
-////////////////////////////////////////////////////////////////////////////////
-
 void Query::enterState(ExecutionState state) {
   if (_profile != nullptr) {
     // record timing for previous state
@@ -1439,18 +1319,12 @@ void Query::enterState(ExecutionState state) {
   _state = state;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get a description of the query's current state
-////////////////////////////////////////////////////////////////////////////////
-
 std::string Query::getStateString() const {
   return std::string(" (while " + StateNames[_state] + ")");
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief cleanup plan and engine for current query
-////////////////////////////////////////////////////////////////////////////////
-
 void Query::cleanupPlanAndEngine(int errorCode) {
   if (_engine != nullptr) {
     try {
@@ -1480,10 +1354,7 @@ void Query::cleanupPlanAndEngine(int errorCode) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief set the plan for the query
-////////////////////////////////////////////////////////////////////////////////
-
 void Query::setPlan(ExecutionPlan* plan) {
   if (_plan != nullptr) {
     delete _plan;
@@ -1491,10 +1362,7 @@ void Query::setPlan(ExecutionPlan* plan) {
   _plan = plan;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a TransactionContext
-////////////////////////////////////////////////////////////////////////////////
-
 std::shared_ptr<arangodb::TransactionContext> Query::createTransactionContext() {
   if (_contextOwnedByExterior) {
     // we can use v8
@@ -1504,11 +1372,8 @@ std::shared_ptr<arangodb::TransactionContext> Query::createTransactionContext() 
   return arangodb::StandaloneTransactionContext::Create(_vocbase);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief look up a graph either from our cache list or from the  _graphs
 ///        collection
-////////////////////////////////////////////////////////////////////////////////
-
 Graph const* Query::lookupGraphByName(std::string const& name) {
   auto it = _graphs.find(name);
 

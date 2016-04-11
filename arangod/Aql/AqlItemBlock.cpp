@@ -30,10 +30,7 @@ using namespace arangodb::aql;
 using Json = arangodb::basics::Json;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the block
-////////////////////////////////////////////////////////////////////////////////
-
 AqlItemBlock::AqlItemBlock(size_t nrItems, RegisterId nrRegs)
     : _nrItems(nrItems), _nrRegs(nrRegs) {
   TRI_ASSERT(nrItems > 0);  // no, empty AqlItemBlocks are not allowed!
@@ -48,10 +45,7 @@ AqlItemBlock::AqlItemBlock(size_t nrItems, RegisterId nrRegs)
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the block from VelocyPack, note that this can throw
-////////////////////////////////////////////////////////////////////////////////
-
 AqlItemBlock::AqlItemBlock(VPackSlice const slice) {
   bool exhausted = VelocyPackHelper::getBooleanValue(slice, "exhausted", false);
 
@@ -147,10 +141,7 @@ AqlItemBlock::AqlItemBlock(VPackSlice const slice) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the block, used in the destructor and elsewhere
-////////////////////////////////////////////////////////////////////////////////
-
 void AqlItemBlock::destroy() {
   if (_valueCount.empty()) {
     return;
@@ -182,10 +173,7 @@ void AqlItemBlock::destroy() {
   _valueCount.clear();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief shrink the block to the specified number of rows
-////////////////////////////////////////////////////////////////////////////////
-
 void AqlItemBlock::shrink(size_t nrItems) {
   TRI_ASSERT(nrItems > 0);
 
@@ -228,11 +216,8 @@ void AqlItemBlock::shrink(size_t nrItems) {
   _nrItems = nrItems;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief clears out some columns (registers), this deletes the values if
 /// necessary, using the reference count.
-////////////////////////////////////////////////////////////////////////////////
-
 void AqlItemBlock::clearRegisters(
     std::unordered_set<RegisterId> const& toClear) {
   for (auto const& reg : toClear) {
@@ -260,10 +245,7 @@ void AqlItemBlock::clearRegisters(
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief slice/clone, this does a deep copy of all entries
-////////////////////////////////////////////////////////////////////////////////
-
 AqlItemBlock* AqlItemBlock::slice(size_t from, size_t to) const {
   TRI_ASSERT(from < to && to <= _nrItems);
 
@@ -298,10 +280,7 @@ AqlItemBlock* AqlItemBlock::slice(size_t from, size_t to) const {
   return res.release();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief slice/clone, this does a deep copy of all entries
-////////////////////////////////////////////////////////////////////////////////
-
 AqlItemBlock* AqlItemBlock::slice(
     size_t row, std::unordered_set<RegisterId> const& registers) const {
   std::unordered_map<AqlValue, AqlValue> cache;
@@ -336,11 +315,8 @@ AqlItemBlock* AqlItemBlock::slice(
   return res.release();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief slice/clone chosen rows for a subset, this does a deep copy
 /// of all entries
-////////////////////////////////////////////////////////////////////////////////
-
 AqlItemBlock* AqlItemBlock::slice(std::vector<size_t>& chosen, size_t from,
                                   size_t to) const {
   TRI_ASSERT(from < to && to <= chosen.size());
@@ -375,7 +351,6 @@ AqlItemBlock* AqlItemBlock::slice(std::vector<size_t>& chosen, size_t from,
   return res.release();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief steal for a subset, this does not copy the entries, rather,
 /// it remembers which it has taken. This is stored in the
 /// this by removing the value counts in _valueCount.
@@ -383,8 +358,6 @@ AqlItemBlock* AqlItemBlock::slice(std::vector<size_t>& chosen, size_t from,
 /// operation, because it is unclear, when the values to which our
 /// AqlValues point will vanish! In particular, do not use setValue
 /// any more.
-////////////////////////////////////////////////////////////////////////////////
-
 AqlItemBlock* AqlItemBlock::steal(std::vector<size_t>& chosen, size_t from,
                                   size_t to) {
   TRI_ASSERT(from < to && to <= chosen.size());
@@ -410,12 +383,9 @@ AqlItemBlock* AqlItemBlock::steal(std::vector<size_t>& chosen, size_t from,
   return res.release();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief concatenate multiple blocks, note that the new block now owns all
 /// AqlValue pointers in the old blocks, therefore, the latter are all
 /// set to nullptr, just to be sure.
-////////////////////////////////////////////////////////////////////////////////
-
 AqlItemBlock* AqlItemBlock::concatenate(
     std::vector<AqlItemBlock*> const& blocks) {
   TRI_ASSERT(!blocks.empty());
@@ -457,7 +427,6 @@ AqlItemBlock* AqlItemBlock::concatenate(
   return res.release();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toJson, transfer a whole AqlItemBlock to Json, the result can
 /// be used to recreate the AqlItemBlock via the Json constructor
 /// Here is a description of the data format: The resulting Json has
@@ -482,8 +451,6 @@ AqlItemBlock* AqlItemBlock::concatenate(
 ///                      corresponding position
 ///  "raw":     List of actual values, positions 0 and 1 are always null
 ///                      such that actual indices start at 2
-////////////////////////////////////////////////////////////////////////////////
-
 void AqlItemBlock::toVelocyPack(arangodb::AqlTransaction* trx,
                                 VPackBuilder& result) const {
   VPackBuilder data;

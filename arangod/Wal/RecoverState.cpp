@@ -43,10 +43,7 @@
 using namespace arangodb;
 using namespace arangodb::wal;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a number slice into its numeric equivalent
-////////////////////////////////////////////////////////////////////////////////
-
 template <typename T>
 static inline T NumericValue(VPackSlice const& slice, char const* attribute) {
   if (!slice.isObject()) {
@@ -65,10 +62,7 @@ static inline T NumericValue(VPackSlice const& slice, char const* attribute) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the directory for a database
-////////////////////////////////////////////////////////////////////////////////
-
 static std::string GetDatabaseDirectory(TRI_server_t* server,
                                         TRI_voc_tick_t databaseId) {
   std::string const dname("database-" + std::to_string(databaseId));
@@ -77,10 +71,7 @@ static std::string GetDatabaseDirectory(TRI_server_t* server,
   return filename;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief wait until a database directory disappears
-////////////////////////////////////////////////////////////////////////////////
-
 static int WaitForDeletion(TRI_server_t* server, TRI_voc_tick_t databaseId,
                            int statusCode) {
   std::string const result = GetDatabaseDirectory(server, databaseId);
@@ -113,10 +104,7 @@ static int WaitForDeletion(TRI_server_t* server, TRI_voc_tick_t databaseId,
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates the recover state
-////////////////////////////////////////////////////////////////////////////////
-
 RecoverState::RecoverState(TRI_server_t* server, bool ignoreRecoveryErrors)
     : server(server),
       failedTransactions(),
@@ -130,17 +118,11 @@ RecoverState::RecoverState(TRI_server_t* server, bool ignoreRecoveryErrors)
       lastDatabaseId(0),
       lastCollectionId(0) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys the recover state
-////////////////////////////////////////////////////////////////////////////////
-
 RecoverState::~RecoverState() { releaseResources(); }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief release opened collections and databases so they can be shut down
 /// etc.
-////////////////////////////////////////////////////////////////////////////////
-
 void RecoverState::releaseResources() {
   // release all collections
   for (auto it = openedCollections.begin(); it != openedCollections.end();
@@ -160,10 +142,7 @@ void RecoverState::releaseResources() {
   openedDatabases.clear();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief gets a database (and inserts it into the cache if not in it)
-////////////////////////////////////////////////////////////////////////////////
-
 TRI_vocbase_t* RecoverState::useDatabase(TRI_voc_tick_t databaseId) {
   auto it = openedDatabases.find(databaseId);
 
@@ -181,10 +160,7 @@ TRI_vocbase_t* RecoverState::useDatabase(TRI_voc_tick_t databaseId) {
   return vocbase;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief release a database (so it can be dropped)
-////////////////////////////////////////////////////////////////////////////////
-
 TRI_vocbase_t* RecoverState::releaseDatabase(TRI_voc_tick_t databaseId) {
   auto it = openedDatabases.find(databaseId);
 
@@ -223,10 +199,7 @@ TRI_vocbase_t* RecoverState::releaseDatabase(TRI_voc_tick_t databaseId) {
   return vocbase;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief release a collection (so it can be dropped)
-////////////////////////////////////////////////////////////////////////////////
-
 TRI_vocbase_col_t* RecoverState::releaseCollection(TRI_voc_cid_t collectionId) {
   auto it = openedCollections.find(collectionId);
 
@@ -243,10 +216,7 @@ TRI_vocbase_col_t* RecoverState::releaseCollection(TRI_voc_cid_t collectionId) {
   return collection;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief gets a collection (and inserts it into the cache if not in it)
-////////////////////////////////////////////////////////////////////////////////
-
 TRI_vocbase_col_t* RecoverState::useCollection(TRI_vocbase_t* vocbase,
                                                TRI_voc_cid_t collectionId,
                                                int& res) {
@@ -283,13 +253,10 @@ TRI_vocbase_col_t* RecoverState::useCollection(TRI_vocbase_t* vocbase,
   return collection;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a collection
 /// the collection will be opened after this call and inserted into a local
 /// cache for faster lookups
 /// returns nullptr if the collection does not exist
-////////////////////////////////////////////////////////////////////////////////
-
 TRI_document_collection_t* RecoverState::getCollection(
     TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) {
   TRI_vocbase_t* vocbase = useDatabase(databaseId);
@@ -313,10 +280,7 @@ TRI_document_collection_t* RecoverState::getCollection(
   return document;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a single operation inside a transaction
-////////////////////////////////////////////////////////////////////////////////
-
 int RecoverState::executeSingleOperation(
     TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
     TRI_df_marker_t const* marker, TRI_voc_fid_t fid,
@@ -383,11 +347,8 @@ int RecoverState::executeSingleOperation(
   return res;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief callback to handle one marker during recovery
 /// this function only builds up state and does not change any data
-////////////////////////////////////////////////////////////////////////////////
-
 bool RecoverState::InitialScanMarker(TRI_df_marker_t const* marker, void* data,
                                      TRI_datafile_t* datafile) {
   RecoverState* state = reinterpret_cast<RecoverState*>(data);
@@ -483,11 +444,8 @@ bool RecoverState::InitialScanMarker(TRI_df_marker_t const* marker, void* data,
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief callback to replay one marker during recovery
 /// this function modifies indexes etc.
-////////////////////////////////////////////////////////////////////////////////
-
 bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
                                 TRI_datafile_t* datafile) {
   RecoverState* state = reinterpret_cast<RecoverState*>(data);
@@ -1085,10 +1043,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief replay a single logfile
-////////////////////////////////////////////////////////////////////////////////
-
 int RecoverState::replayLogfile(Logfile* logfile, int number) {
   std::string const logfileName = logfile->filename();
 
@@ -1115,10 +1070,7 @@ int RecoverState::replayLogfile(Logfile* logfile, int number) {
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief replay all logfiles
-////////////////////////////////////////////////////////////////////////////////
-
 int RecoverState::replayLogfiles() {
   droppedCollections.clear();
   droppedDatabases.clear();
@@ -1136,10 +1088,7 @@ int RecoverState::replayLogfiles() {
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief abort open transactions
-////////////////////////////////////////////////////////////////////////////////
-
 int RecoverState::abortOpenTransactions() {
   if (failedTransactions.empty()) {
     // nothing to do
@@ -1185,10 +1134,7 @@ int RecoverState::abortOpenTransactions() {
   return res;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief remove all empty logfiles found during logfile inspection
-////////////////////////////////////////////////////////////////////////////////
-
 int RecoverState::removeEmptyLogfiles() {
   if (emptyLogfiles.empty()) {
     return TRI_ERROR_NO_ERROR;
@@ -1209,10 +1155,7 @@ int RecoverState::removeEmptyLogfiles() {
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief fill the secondary indexes of all collections used in recovery
-////////////////////////////////////////////////////////////////////////////////
-
 int RecoverState::fillIndexes() {
   // release all collections
   for (auto it = openedCollections.begin(); it != openedCollections.end();

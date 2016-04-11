@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
+var db = require("@arangodb").db;
 var errors = internal.errors;
 var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
@@ -39,7 +40,30 @@ var assertQueryError = helper.assertQueryError;
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlTypesFunctionsTestSuite () {
+  var vn = "UnitTestsAhuacatlVertex";
+  var vertex = null;
+  var d = null;
+
   return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      db._drop(vn);
+
+      vertex = db._create(vn);
+      d = vertex.save({ _key: "test1" });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      db._drop(vn);
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test is_string function
@@ -780,6 +804,16 @@ function ahuacatlTypesFunctionsTestSuite () {
     testToBool23 : function () {
       var expected = [ true ];
       var actual = getQueryResults("RETURN TO_BOOL({ \"false\" : null })");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test to_bool
+////////////////////////////////////////////////////////////////////////////////
+    
+    testToBool24 : function () {
+      var expected = [ true ];
+      var actual = getQueryResults("RETURN TO_BOOL(DOCUMENT(" + vn + ", " + JSON.stringify(d._id) + "))");
       assertEqual(expected, actual);
     },
 

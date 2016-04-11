@@ -26,30 +26,21 @@
 namespace arangodb {
 namespace aql {
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief node finder for one node type
-////////////////////////////////////////////////////////////////////////////////
-
 template <>
 NodeFinder<ExecutionNode::NodeType>::NodeFinder(
     ExecutionNode::NodeType lookingFor, std::vector<ExecutionNode*>& out,
     bool enterSubqueries)
     : _lookingFor(lookingFor), _out(out), _enterSubqueries(enterSubqueries) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief node finder for multiple types
-////////////////////////////////////////////////////////////////////////////////
-
 template <>
 NodeFinder<std::vector<ExecutionNode::NodeType>>::NodeFinder(
     std::vector<ExecutionNode::NodeType> lookingFor,
     std::vector<ExecutionNode*>& out, bool enterSubqueries)
     : _lookingFor(lookingFor), _out(out), _enterSubqueries(enterSubqueries) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief before method for one node type
-////////////////////////////////////////////////////////////////////////////////
-
 template <>
 bool NodeFinder<ExecutionNode::NodeType>::before(ExecutionNode* en) {
   if (en->getType() == _lookingFor) {
@@ -59,10 +50,7 @@ bool NodeFinder<ExecutionNode::NodeType>::before(ExecutionNode* en) {
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief before method for multiple node types
-////////////////////////////////////////////////////////////////////////////////
-
 template <>
 bool NodeFinder<std::vector<ExecutionNode::NodeType>>::before(
     ExecutionNode* en) {
@@ -77,18 +65,12 @@ bool NodeFinder<std::vector<ExecutionNode::NodeType>>::before(
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief node finder for one node type
-////////////////////////////////////////////////////////////////////////////////
-
 EndNodeFinder::EndNodeFinder(std::vector<ExecutionNode*>& out,
                              bool enterSubqueries)
     : _out(out), _found({false}), _enterSubqueries(enterSubqueries) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief before method for one node type
-////////////////////////////////////////////////////////////////////////////////
-
 bool EndNodeFinder::before(ExecutionNode* en) {
   TRI_ASSERT(!_found.empty());
   if (!_found.back()) {

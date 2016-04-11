@@ -46,10 +46,7 @@ ModificationNode::ModificationNode(ExecutionPlan* plan,
   TRI_ASSERT(_collection != nullptr);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack
-////////////////////////////////////////////////////////////////////////////////
-
 void ModificationNode::toVelocyPackHelper(VPackBuilder& builder,
                                           bool verbose) const {
   ExecutionNode::toVelocyPackHelperGeneric(builder,
@@ -71,12 +68,9 @@ void ModificationNode::toVelocyPackHelper(VPackBuilder& builder,
   _options.toVelocyPack(builder);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief estimateCost
 /// Note that all the modifying nodes use this estimateCost method which is
 /// why we can make it final here.
-////////////////////////////////////////////////////////////////////////////////
-
 double ModificationNode::estimateCost(size_t& nrItems) const {
   size_t incoming = 0;
   double depCost = _dependencies.at(0)->getCost(incoming);
@@ -94,10 +88,7 @@ RemoveNode::RemoveNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
     : ModificationNode(plan, base),
       _inVariable(varFromJson(plan->getAst(), base, "inVariable")) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toJson
-////////////////////////////////////////////////////////////////////////////////
-
 void RemoveNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   ModificationNode::toVelocyPackHelper(nodes, verbose);
   nodes.add(VPackValue("inVariable"));
@@ -107,10 +98,7 @@ void RemoveNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   nodes.close();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionNode* RemoveNode::clone(ExecutionPlan* plan, bool withDependencies,
                                  bool withProperties) const {
   auto outVariableOld = _outVariableOld;
@@ -136,10 +124,7 @@ InsertNode::InsertNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
     : ModificationNode(plan, base),
       _inVariable(varFromJson(plan->getAst(), base, "inVariable")) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack
-////////////////////////////////////////////////////////////////////////////////
-
 void InsertNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   ModificationNode::toVelocyPackHelper(nodes,
                                        verbose);  // call base class method
@@ -152,10 +137,7 @@ void InsertNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   nodes.close();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionNode* InsertNode::clone(ExecutionPlan* plan, bool withDependencies,
                                  bool withProperties) const {
   auto outVariableNew = _outVariableNew;
@@ -183,10 +165,7 @@ UpdateNode::UpdateNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
       _inKeyVariable(
           varFromJson(plan->getAst(), base, "inKeyVariable", Optional)) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack
-////////////////////////////////////////////////////////////////////////////////
-
 void UpdateNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   ModificationNode::toVelocyPackHelper(nodes, verbose);
   
@@ -203,10 +182,7 @@ void UpdateNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   nodes.close();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionNode* UpdateNode::clone(ExecutionPlan* plan, bool withDependencies,
                                  bool withProperties) const {
   auto outVariableOld = _outVariableOld;
@@ -246,10 +222,7 @@ ReplaceNode::ReplaceNode(ExecutionPlan* plan,
       _inKeyVariable(
           varFromJson(plan->getAst(), base, "inKeyVariable", Optional)) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack
-////////////////////////////////////////////////////////////////////////////////
-
 void ReplaceNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   ModificationNode::toVelocyPackHelper(nodes, verbose);
   
@@ -266,10 +239,7 @@ void ReplaceNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   nodes.close();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionNode* ReplaceNode::clone(ExecutionPlan* plan, bool withDependencies,
                                   bool withProperties) const {
   auto outVariableOld = _outVariableOld;
@@ -310,10 +280,7 @@ UpsertNode::UpsertNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
       _isReplace(
           JsonHelper::checkAndGetBooleanValue(base.json(), "isReplace")) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack
-////////////////////////////////////////////////////////////////////////////////
-
 void UpsertNode::toVelocyPackHelper(VPackBuilder& nodes,
                               bool verbose) const {
   ModificationNode::toVelocyPackHelper(nodes, verbose);
@@ -330,10 +297,7 @@ void UpsertNode::toVelocyPackHelper(VPackBuilder& nodes,
   nodes.close();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionNode* UpsertNode::clone(ExecutionPlan* plan, bool withDependencies,
                                  bool withProperties) const {
   auto outVariableNew = _outVariableNew;

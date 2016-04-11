@@ -30,10 +30,7 @@
 
 using namespace arangodb::aql;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief convert the statistics to VelocyPack
-////////////////////////////////////////////////////////////////////////////////
-
 void ExecutionStats::toVelocyPack(VPackBuilder& builder) const {
   builder.openObject();
   builder.add("writesExecuted", VPackValue(writesExecuted));

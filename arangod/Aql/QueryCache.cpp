@@ -35,28 +35,16 @@
 
 using namespace arangodb::aql;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief singleton instance of the query cache
-////////////////////////////////////////////////////////////////////////////////
-
 static arangodb::aql::QueryCache Instance;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief maximum number of results in each per-database cache
-////////////////////////////////////////////////////////////////////////////////
-
 static size_t MaxResults = 128;  // default value. can be changed later
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the cache is enabled
-////////////////////////////////////////////////////////////////////////////////
-
 static std::atomic<arangodb::aql::QueryCacheMode> Mode(CACHE_ON_DEMAND);
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a cache entry
-////////////////////////////////////////////////////////////////////////////////
-
 QueryCacheResultEntry::QueryCacheResultEntry(
     uint64_t hash, char const* queryString, size_t queryStringLength,
     std::shared_ptr<VPackBuilder> queryResult, std::vector<std::string> const& collections)
@@ -77,18 +65,12 @@ QueryCacheResultEntry::QueryCacheResultEntry(
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy a cache entry
-////////////////////////////////////////////////////////////////////////////////
-
 QueryCacheResultEntry::~QueryCacheResultEntry() {
   TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, _queryString);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether the element can be destroyed, and delete it if yes
-////////////////////////////////////////////////////////////////////////////////
-
 void QueryCacheResultEntry::tryDelete() {
   _deletionRequested = 1;
 
@@ -97,16 +79,10 @@ void QueryCacheResultEntry::tryDelete() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief use the element, so it cannot be deleted meanwhile
-////////////////////////////////////////////////////////////////////////////////
-
 void QueryCacheResultEntry::use() { ++_refCount; }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief unuse the element, so it can be deleted if required
-////////////////////////////////////////////////////////////////////////////////
-
 void QueryCacheResultEntry::unuse() {
   TRI_ASSERT(_refCount > 0);
 
@@ -118,10 +94,7 @@ void QueryCacheResultEntry::unuse() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a database-specific cache
-////////////////////////////////////////////////////////////////////////////////
-
 QueryCacheDatabaseEntry::QueryCacheDatabaseEntry()
     : _entriesByHash(),
       _entriesByCollection(),
@@ -132,10 +105,7 @@ QueryCacheDatabaseEntry::QueryCacheDatabaseEntry()
   _entriesByCollection.reserve(16);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy a database-specific cache
-////////////////////////////////////////////////////////////////////////////////
-
 QueryCacheDatabaseEntry::~QueryCacheDatabaseEntry() {
   for (auto& it : _entriesByHash) {
     tryDelete(it.second);
@@ -145,10 +115,7 @@ QueryCacheDatabaseEntry::~QueryCacheDatabaseEntry() {
   _entriesByCollection.clear();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief lookup a query result in the database-specific cache
-////////////////////////////////////////////////////////////////////////////////
-
 QueryCacheResultEntry* QueryCacheDatabaseEntry::lookup(
     uint64_t hash, char const* queryString, size_t queryStringLength) {
   auto it = _entriesByHash.find(hash);
@@ -176,10 +143,7 @@ QueryCacheResultEntry* QueryCacheDatabaseEntry::lookup(
   return entry;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief store a query result in the database-specific cache
-////////////////////////////////////////////////////////////////////////////////
-
 void QueryCacheDatabaseEntry::store(uint64_t hash,
                                     QueryCacheResultEntry* entry) {
   // insert entry into the cache
@@ -239,11 +203,8 @@ void QueryCacheDatabaseEntry::store(uint64_t hash,
   TRI_ASSERT(entry->_next == nullptr);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief invalidate all entries for the given collections in the
 /// database-specific cache
-////////////////////////////////////////////////////////////////////////////////
-
 void QueryCacheDatabaseEntry::invalidate(
     std::vector<std::string> const& collections) {
   for (auto const& it : collections) {
@@ -251,11 +212,8 @@ void QueryCacheDatabaseEntry::invalidate(
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief invalidate all entries for a collection in the database-specific
 /// cache
-////////////////////////////////////////////////////////////////////////////////
-
 void QueryCacheDatabaseEntry::invalidate(std::string const& collection) {
   auto it = _entriesByCollection.find(collection);
 
@@ -282,19 +240,13 @@ void QueryCacheDatabaseEntry::invalidate(std::string const& collection) {
   _entriesByCollection.erase(it);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief invalidate all entries for a collection in the database-specific
 /// cache
-////////////////////////////////////////////////////////////////////////////////
-
 void QueryCacheDatabaseEntry::invalidate(char const* collection) {
   return invalidate(std::string(collection));
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief enforce maximum number of results
-////////////////////////////////////////////////////////////////////////////////
-
 void QueryCacheDatabaseEntry::enforceMaxResults(size_t value) {
   while (_numElements > value) {
     // too many elements. now wipe the first element from the list
@@ -309,18 +261,12 @@ void QueryCacheDatabaseEntry::enforceMaxResults(size_t value) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether the element can be destroyed, and delete it if yes
-////////////////////////////////////////////////////////////////////////////////
-
 void QueryCacheDatabaseEntry::tryDelete(QueryCacheResultEntry* e) {
   e->tryDelete();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief unlink the result entry from the list
-////////////////////////////////////////////////////////////////////////////////
-
 void QueryCacheDatabaseEntry::unlink(QueryCacheResultEntry* e) {
   if (e->_prev != nullptr) {
     e->_prev->_next = e->_next;
@@ -343,10 +289,7 @@ void QueryCacheDatabaseEntry::unlink(QueryCacheResultEntry* e) {
   --_numElements;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief link the result entry to the end of the list
-////////////////////////////////////////////////////////////////////////////////
-
 void QueryCacheDatabaseEntry::link(QueryCacheResultEntry* e) {
   ++_numElements;
 
@@ -368,26 +311,17 @@ void QueryCacheDatabaseEntry::link(QueryCacheResultEntry* e) {
   _tail = e;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the query cache
-////////////////////////////////////////////////////////////////////////////////
-
 QueryCache::QueryCache() : _propertiesLock(), _entriesLock(), _entries() {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the query cache
-////////////////////////////////////////////////////////////////////////////////
-
 QueryCache::~QueryCache() { 
   for (unsigned int i = 0; i < NumberOfParts; ++i) {
     invalidate(i);
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the query cache properties
-////////////////////////////////////////////////////////////////////////////////
-
 VPackBuilder QueryCache::properties() {
   MUTEX_LOCKER(mutexLocker, _propertiesLock);
 
@@ -400,10 +334,7 @@ VPackBuilder QueryCache::properties() {
   return builder;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the cache properties
-////////////////////////////////////////////////////////////////////////////////
-
 void QueryCache::properties(std::pair<std::string, size_t>& result) {
   MUTEX_LOCKER(mutexLocker, _propertiesLock);
 
@@ -411,10 +342,7 @@ void QueryCache::properties(std::pair<std::string, size_t>& result) {
   result.second = MaxResults;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief set the cache properties
-////////////////////////////////////////////////////////////////////////////////
-
 void QueryCache::setProperties(
     std::pair<std::string, size_t> const& properties) {
   MUTEX_LOCKER(mutexLocker, _propertiesLock);
@@ -423,26 +351,17 @@ void QueryCache::setProperties(
   setMaxResults(properties.second);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test whether the cache might be active
 /// this is a quick test that may save the caller from further bothering
 /// about the query cache if case it returns `false`
-////////////////////////////////////////////////////////////////////////////////
-
 bool QueryCache::mayBeActive() const { return (mode() != CACHE_ALWAYS_OFF); }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether or not the query cache is enabled
-////////////////////////////////////////////////////////////////////////////////
-
 QueryCacheMode QueryCache::mode() const {
   return Mode.load(std::memory_order_relaxed);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return a string version of the mode
-////////////////////////////////////////////////////////////////////////////////
-
 std::string QueryCache::modeString(QueryCacheMode mode) {
   switch (mode) {
     case CACHE_ALWAYS_OFF:
@@ -457,10 +376,7 @@ std::string QueryCache::modeString(QueryCacheMode mode) {
   return "off";
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief lookup a query result in the cache
-////////////////////////////////////////////////////////////////////////////////
-
 QueryCacheResultEntry* QueryCache::lookup(TRI_vocbase_t* vocbase, uint64_t hash,
                                           char const* queryString,
                                           size_t queryStringLength) {
@@ -477,12 +393,9 @@ QueryCacheResultEntry* QueryCache::lookup(TRI_vocbase_t* vocbase, uint64_t hash,
   return (*it).second->lookup(hash, queryString, queryStringLength);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief store a query in the cache
 /// if the call is successful, the cache has taken over ownership for the
 /// query result!
-////////////////////////////////////////////////////////////////////////////////
-
 QueryCacheResultEntry* QueryCache::store(
     TRI_vocbase_t* vocbase, uint64_t hash, char const* queryString,
     size_t queryStringLength, std::shared_ptr<VPackBuilder> result,
@@ -514,10 +427,7 @@ QueryCacheResultEntry* QueryCache::store(
   return entry.release();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief invalidate all queries for the given collections
-////////////////////////////////////////////////////////////////////////////////
-
 void QueryCache::invalidate(TRI_vocbase_t* vocbase,
                             std::vector<std::string> const& collections) {
   auto const part = getPart(vocbase);
@@ -533,10 +443,7 @@ void QueryCache::invalidate(TRI_vocbase_t* vocbase,
   (*it).second->invalidate(collections);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief invalidate all queries for a particular collection
-////////////////////////////////////////////////////////////////////////////////
-
 void QueryCache::invalidate(TRI_vocbase_t* vocbase, char const* collection) {
   auto const part = getPart(vocbase);
   WRITE_LOCKER(writeLocker, _entriesLock[part]);
@@ -551,10 +458,7 @@ void QueryCache::invalidate(TRI_vocbase_t* vocbase, char const* collection) {
   (*it).second->invalidate(collection);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief invalidate all queries for a particular database
-////////////////////////////////////////////////////////////////////////////////
-
 void QueryCache::invalidate(TRI_vocbase_t* vocbase) {
   QueryCacheDatabaseEntry* databaseQueryCache = nullptr;
 
@@ -577,10 +481,7 @@ void QueryCache::invalidate(TRI_vocbase_t* vocbase) {
   delete databaseQueryCache;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief invalidate all queries
-////////////////////////////////////////////////////////////////////////////////
-
 void QueryCache::invalidate() {
   for (unsigned int i = 0; i < NumberOfParts; ++i) {
     WRITE_LOCKER(writeLocker, _entriesLock[i]);
@@ -595,10 +496,7 @@ void QueryCache::invalidate() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief hashes a query string
-////////////////////////////////////////////////////////////////////////////////
-
 uint64_t QueryCache::hashQueryString(char const* queryString,
                                      size_t queryLength) const {
   TRI_ASSERT(queryString != nullptr);
@@ -606,16 +504,10 @@ uint64_t QueryCache::hashQueryString(char const* queryString,
   return fasthash64(queryString, queryLength, 0x3123456789abcdef);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the query cache instance
-////////////////////////////////////////////////////////////////////////////////
-
 QueryCache* QueryCache::instance() { return &Instance; }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief enforce maximum number of elements in each database-specific cache
-////////////////////////////////////////////////////////////////////////////////
-
 void QueryCache::enforceMaxResults(size_t value) {
   for (unsigned int i = 0; i < NumberOfParts; ++i) {
     WRITE_LOCKER(writeLocker, _entriesLock[i]);
@@ -626,21 +518,15 @@ void QueryCache::enforceMaxResults(size_t value) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief determine which lock to use for the cache entries
-////////////////////////////////////////////////////////////////////////////////
-
 unsigned int QueryCache::getPart(TRI_vocbase_t const* vocbase) const {
   return static_cast<int>(
       fasthash64(vocbase, sizeof(decltype(vocbase)), 0xf12345678abcdef) %
       NumberOfParts);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief invalidate all entries in the cache part
 /// note that the caller of this method must hold the write lock
-////////////////////////////////////////////////////////////////////////////////
-
 void QueryCache::invalidate(unsigned int part) {
   for (auto& it : _entries[part]) {
     delete it.second;
@@ -649,10 +535,7 @@ void QueryCache::invalidate(unsigned int part) {
   _entries[part].clear();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the maximum number of results in each per-database cache
-////////////////////////////////////////////////////////////////////////////////
-
 void QueryCache::setMaxResults(size_t value) {
   if (value == 0) {
     return;
@@ -665,10 +548,7 @@ void QueryCache::setMaxResults(size_t value) {
   MaxResults = value;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the caching mode
-////////////////////////////////////////////////////////////////////////////////
-
 void QueryCache::setMode(QueryCacheMode value) {
   if (value == mode()) {
     // actually no mode change
@@ -680,10 +560,7 @@ void QueryCache::setMode(QueryCacheMode value) {
   Mode.store(value, std::memory_order_release);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief enable or disable the query cache
-////////////////////////////////////////////////////////////////////////////////
-
 void QueryCache::setMode(std::string const& value) {
   if (value == "demand") {
     setMode(CACHE_ON_DEMAND);

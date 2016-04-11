@@ -30,10 +30,7 @@ using namespace arangodb::aql;
 using Json = arangodb::basics::Json;
 using JsonHelper = arangodb::basics::JsonHelper;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor, using JSON
-////////////////////////////////////////////////////////////////////////////////
-
 CollectOptions::CollectOptions(Json const& json) {
   Json obj = json.get("collectOptions");
 
@@ -41,10 +38,7 @@ CollectOptions::CollectOptions(Json const& json) {
       methodFromString(JsonHelper::getStringValue(obj.json(), "method", ""));
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the hash method can be used
-////////////////////////////////////////////////////////////////////////////////
-
 bool CollectOptions::canUseHashMethod() const {
   if (method == CollectMethod::COLLECT_METHOD_SORTED) {
     return false;
@@ -53,29 +47,20 @@ bool CollectOptions::canUseHashMethod() const {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief convert the options to JSON
-////////////////////////////////////////////////////////////////////////////////
-
 void CollectOptions::toJson(arangodb::basics::Json& json,
                             TRI_memory_zone_t* zone) const {
   Json options = Json(Json::Object, 1)("method", Json(methodToString(method)));
   json("collectOptions", options);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief convert the options to VelocyPack
-////////////////////////////////////////////////////////////////////////////////
-
 void CollectOptions::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder guard(&builder);
   builder.add("method", VPackValue(methodToString(method)));
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the aggregation method from a string
-////////////////////////////////////////////////////////////////////////////////
-
 CollectOptions::CollectMethod CollectOptions::methodFromString(
     std::string const& method) {
   if (method == "hash") {
@@ -88,10 +73,7 @@ CollectOptions::CollectMethod CollectOptions::methodFromString(
   return CollectMethod::COLLECT_METHOD_UNDEFINED;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief stringify the aggregation method
-////////////////////////////////////////////////////////////////////////////////
-
 std::string CollectOptions::methodToString(
     CollectOptions::CollectMethod method) {
   if (method == CollectMethod::COLLECT_METHOD_HASH) {

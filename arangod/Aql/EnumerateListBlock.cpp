@@ -50,10 +50,7 @@ EnumerateListBlock::EnumerateListBlock(ExecutionEngine* engine,
 
 EnumerateListBlock::~EnumerateListBlock() {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize, here we get the inVariable
-////////////////////////////////////////////////////////////////////////////////
-
 int EnumerateListBlock::initialize() { return ExecutionBlock::initialize(); }
 
 int EnumerateListBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
@@ -235,10 +232,7 @@ size_t EnumerateListBlock::skipSome(size_t atLeast, size_t atMost) {
   DEBUG_END_BLOCK();  
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AqlValue from the inVariable using the current _index
-////////////////////////////////////////////////////////////////////////////////
-
 AqlValue EnumerateListBlock::getAqlValue(AqlValue const& inVarReg, bool& mustDestroy) {
   DEBUG_BEGIN_BLOCK();  
   TRI_IF_FAILURE("EnumerateListBlock::getAqlValue") {

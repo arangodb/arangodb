@@ -73,7 +73,6 @@ bool State::persist(index_t index, term_t term, id_t lid,
   body.add("request", entry);
   body.close();
 
-  // from V8Server/v8-collection.cpp:JS_InsertVocbaseCol()
   TRI_ASSERT(_vocbase != nullptr);
   auto transactionContext = std::make_shared<StandaloneTransactionContext>(_vocbase);
   SingleCollectionTransaction trx(transactionContext, "log", TRI_TRANSACTION_WRITE);
@@ -92,23 +91,6 @@ bool State::persist(index_t index, term_t term, id_t lid,
   res = trx.finish(result.code);
 
   return (res == TRI_ERROR_NO_ERROR);
-/* 
-  static std::string const path = "/_api/document?collection=log";
-  std::map<std::string, std::string> headerFields;
-  std::unique_ptr<arangodb::ClusterCommResult> res =
-      arangodb::ClusterComm::instance()->syncRequest(
-          "1", 1, _end_point, GeneralRequest::RequestType::POST, path,
-          body.toJson(), headerFields, 0.0);
-
-  if (res->status != CL_COMM_SENT) {
-    LOG_TOPIC(ERR, Logger::AGENCY) << res->status << ": " << CL_COMM_SENT
-                                   << ", " << res->errorMessage;
-    LOG_TOPIC(ERR, Logger::AGENCY)
-        << res->result->getBodyVelocyPack()->toJson();
-  }
-
-  return (res->status == CL_COMM_SENT);  // TODO: More verbose result
-*/  
 }
 
 //Leader
@@ -231,15 +213,6 @@ bool State::createCollection(std::string const& name) {
 
   return true;
 
-/*
-  static std::string const path = "/_api/collection";
-  std::map<std::string, std::string> headerFields;
-  std::unique_ptr<arangodb::ClusterCommResult> res =
-      arangodb::ClusterComm::instance()->syncRequest(
-          "1", 1, _end_point, GeneralRequest::RequestType::POST, path,
-          body.toJson(), headerFields, 1.0);
-  return (!res->result->wasHttpError());
-*/  
 }
 
 bool State::loadCollections(TRI_vocbase_t* vocbase, 
@@ -287,33 +260,6 @@ bool State::loadCollection(std::string const& name) {
       }
     }
 
-/*
-    // Request
-    std::map<std::string, std::string> headerFields;
-    std::unique_ptr<arangodb::ClusterCommResult> res =
-        arangodb::ClusterComm::instance()->syncRequest(
-            "1", 1, _end_point, GeneralRequest::RequestType::POST, path,
-            tmp.toJson(), headerFields, 1.0);
-
-    // If success rebuild state deque
-    if (res->status == CL_COMM_SENT) {
-      std::shared_ptr<Builder> body = res->result->getBodyVelocyPack();
-      if (body->slice().hasKey("result")) {
-        VPackSlice result = body->slice().get("result");
-        if (result.type() == VPackValueType::Array) {
-          for (auto const& i : VPackArrayIterator(result)) {
-            buffer_t tmp =
-              std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
-            tmp->append((char const*)i.get("request").begin(),
-                        i.get("request").byteSize());
-            _log.push_back(log_t(std::stoi(i.get("_key").copyString()),
-                                 i.get("term").getUInt(),
-                                 i.get("leader").getUInt(), tmp));
-          }
-        }
-      }
-    }
-*/
     return true;
   } 
   

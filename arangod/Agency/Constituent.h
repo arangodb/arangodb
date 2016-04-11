@@ -33,7 +33,15 @@
 #include "AgencyCommon.h"
 #include "Basics/Thread.h"
 
+struct TRI_server_t;
+struct TRI_vocbase_t;
+
 namespace arangodb {
+class ApplicationV8;
+namespace aql {
+class QueryRegistry;
+}
+
 namespace consensus {
 
 class Agent;
@@ -94,6 +102,8 @@ public:
   /// @brief Orderly shutdown of thread
   void beginShutdown () override;
 
+  bool start (TRI_vocbase_t* vocbase, ApplicationV8*, aql::QueryRegistry*);
+
 private:
 
   /// @brief set term to new term
@@ -124,6 +134,12 @@ private:
   
   /// @brief Sleep for how long
   duration_t sleepFor(double, double);
+
+  TRI_server_t* _server;
+  TRI_vocbase_t* _vocbase; 
+  ApplicationV8* _applicationV8;
+  aql::QueryRegistry* _queryRegistry;
+
 
   term_t               _term;         /**< @brief term number */
   std::atomic<bool>    _cast;         /**< @brief cast a vote this term */

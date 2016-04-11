@@ -29,17 +29,11 @@
 using namespace arangodb;
 using namespace arangodb::wal;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the logfile
-////////////////////////////////////////////////////////////////////////////////
-
 Logfile::Logfile(Logfile::IdType id, TRI_datafile_t* df, StatusType status)
     : _id(id), _users(0), _df(df), _status(status), _collectQueueSize(0) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the logfile
-////////////////////////////////////////////////////////////////////////////////
-
 Logfile::~Logfile() {
   if (_df != nullptr) {
     TRI_CloseDatafile(_df);
@@ -47,10 +41,7 @@ Logfile::~Logfile() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new logfile
-////////////////////////////////////////////////////////////////////////////////
-
 Logfile* Logfile::createNew(std::string const& filename, Logfile::IdType id,
                             uint32_t size) {
   TRI_datafile_t* df = TRI_CreateDatafile(
@@ -68,10 +59,7 @@ Logfile* Logfile::createNew(std::string const& filename, Logfile::IdType id,
   return new Logfile(id, df, StatusType::EMPTY);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief open an existing logfile
-////////////////////////////////////////////////////////////////////////////////
-
 Logfile* Logfile::openExisting(std::string const& filename, Logfile::IdType id,
                                bool wasCollected, bool ignoreErrors) {
   TRI_datafile_t* df = TRI_OpenDatafile(filename.c_str(), ignoreErrors);
@@ -104,10 +92,7 @@ Logfile* Logfile::openExisting(std::string const& filename, Logfile::IdType id,
   return logfile;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a logfile is empty
-////////////////////////////////////////////////////////////////////////////////
-
 int Logfile::judge(std::string const& filename) {
   off_t filesize = basics::FileUtils::size(filename);
 
@@ -149,10 +134,7 @@ int Logfile::judge(std::string const& filename) {
   return TRI_ERROR_ARANGO_DATAFILE_EMPTY;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief reserve space and update the current write position
-////////////////////////////////////////////////////////////////////////////////
-
 char* Logfile::reserve(size_t size) {
   size = DatafileHelper::AlignedSize<size_t>(size);
 

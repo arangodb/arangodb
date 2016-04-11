@@ -59,20 +59,14 @@ RestAqlHandler::RestAqlHandler(arangodb::HttpRequest* request,
   TRI_ASSERT(_queryRegistry != nullptr);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the queue name
-////////////////////////////////////////////////////////////////////////////////
-
 size_t RestAqlHandler::queue() const { return Dispatcher::AQL_QUEUE; }
 
 bool RestAqlHandler::isDirect() const { return false; }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief POST method for /_api/aql/instantiate (internal)
 /// The body is a VelocyPack with attributes "plan" for the execution plan and
 /// "options" for the options, all exactly as in AQL_EXECUTEJSON.
-////////////////////////////////////////////////////////////////////////////////
-
 void RestAqlHandler::createQueryFromVelocyPack() {
   std::shared_ptr<VPackBuilder> queryBuilder = parseVelocyPackBody();
   if (queryBuilder == nullptr) {
@@ -147,14 +141,11 @@ void RestAqlHandler::createQueryFromVelocyPack() {
                query->trx()->transactionContext().get());
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief POST method for /_api/aql/parse (internal)
 /// The body is a Json with attributes "query" for the query string,
 /// "parameters" for the query parameters and "options" for the options.
 /// This does the same as AQL_PARSE with exactly these parameters and
 /// does not keep the query hanging around.
-////////////////////////////////////////////////////////////////////////////////
-
 void RestAqlHandler::parseQuery() {
   std::shared_ptr<VPackBuilder> bodyBuilder = parseVelocyPackBody();
   if (bodyBuilder == nullptr) {
@@ -216,14 +207,11 @@ void RestAqlHandler::parseQuery() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief POST method for /_api/aql/explain (internal)
 /// The body is a Json with attributes "query" for the query string,
 /// "parameters" for the query parameters and "options" for the options.
 /// This does the same as AQL_EXPLAIN with exactly these parameters and
 /// does not keep the query hanging around.
-////////////////////////////////////////////////////////////////////////////////
-
 void RestAqlHandler::explainQuery() {
   std::shared_ptr<VPackBuilder> bodyBuilder = parseVelocyPackBody();
   if (bodyBuilder == nullptr) {
@@ -276,15 +264,12 @@ void RestAqlHandler::explainQuery() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief POST method for /_api/aql/query (internal)
 /// The body is a Json with attributes "query" for the query string,
 /// "parameters" for the query parameters and "options" for the options.
 /// This sets up the query as as AQL_EXECUTE would, but does not use
 /// the cursor API yet. Rather, the query is stored in the query registry
 /// for later use by PUT requests.
-////////////////////////////////////////////////////////////////////////////////
-
 void RestAqlHandler::createQueryFromString() {
   std::shared_ptr<VPackBuilder> queryBuilder = parseVelocyPackBody();
   if (queryBuilder == nullptr) {
@@ -357,7 +342,6 @@ void RestAqlHandler::createQueryFromString() {
   _response->body().appendText(answerBody.toString());
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief PUT method for /_api/aql/<operation>/<queryId>, (internal)
 /// this is using the part of the cursor API with side effects.
 /// <operation>: can be "lock" or "getSome" or "skip" or "initializeCursor" or
@@ -406,8 +390,6 @@ void RestAqlHandler::createQueryFromString() {
 /// set, then the root block of the stored query must be a ScatterBlock
 /// and the shard ID is given as an additional argument to the ScatterBlock's
 /// special API.
-////////////////////////////////////////////////////////////////////////////////
-
 void RestAqlHandler::useQuery(std::string const& operation,
                               std::string const& idString) {
   // the PUT verb
@@ -454,7 +436,6 @@ void RestAqlHandler::useQuery(std::string const& operation,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief GET method for /_api/aql/<operation>/<queryId>, (internal)
 /// this is using
 /// the part of the cursor API without side effects. The operation must
@@ -468,8 +449,6 @@ void RestAqlHandler::useQuery(std::string const& operation,
 ///                  and "hasMore" set to a boolean value.
 /// Note that both "count" and "remaining" may return "unknown" if the
 /// internal cursor API returned -1.
-////////////////////////////////////////////////////////////////////////////////
-
 void RestAqlHandler::getInfoQuery(std::string const& operation,
                                   std::string const& idString) {
   // the GET verb
@@ -568,10 +547,7 @@ void RestAqlHandler::getInfoQuery(std::string const& operation,
   _response->body().appendText(answerBody.toString());
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the handler
-////////////////////////////////////////////////////////////////////////////////
-
 arangodb::rest::HttpHandler::status_t RestAqlHandler::execute() {
   // std::cout << "GOT INCOMING REQUEST: " <<
   // arangodb::rest::HttpRequest::translateMethod(_request->requestType()) << ",
@@ -642,10 +618,7 @@ arangodb::rest::HttpHandler::status_t RestAqlHandler::execute() {
   return status_t(HANDLER_DONE);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief dig out the query from ID, handle errors
-////////////////////////////////////////////////////////////////////////////////
-
 bool RestAqlHandler::findQuery(std::string const& idString, Query*& query) {
   _qId = arangodb::basics::StringUtils::uint64(idString);
   query = nullptr;
@@ -682,10 +655,7 @@ bool RestAqlHandler::findQuery(std::string const& idString, Query*& query) {
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief handle for useQuery
-////////////////////////////////////////////////////////////////////////////////
-
 void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
                                     VPackSlice const querySlice) {
   bool found;
@@ -876,10 +846,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the VelocyPack from the request
-////////////////////////////////////////////////////////////////////////////////
-
 std::shared_ptr<VPackBuilder> RestAqlHandler::parseVelocyPackBody() {
   try {
     std::shared_ptr<VPackBuilder> body = _request->toVelocyPack(&VPackOptions::Defaults);
@@ -906,10 +873,7 @@ std::shared_ptr<VPackBuilder> RestAqlHandler::parseVelocyPackBody() {
 }
 
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief Send slice as result with the given response type.
-//////////////////////////////////////////////////////////////////////////////
-
 void RestAqlHandler::sendResponse(GeneralResponse::ResponseCode code,
                                   VPackSlice const slice,
                                   arangodb::TransactionContext* transactionContext) {

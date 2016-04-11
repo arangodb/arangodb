@@ -32,18 +32,12 @@
 
 using namespace arangodb::aql;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the generator
-////////////////////////////////////////////////////////////////////////////////
-
 VariableGenerator::VariableGenerator() : _variables(), _id(0) {
   _variables.reserve(8);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the generator
-////////////////////////////////////////////////////////////////////////////////
-
 VariableGenerator::~VariableGenerator() {
   // free all variables
   for (auto& it : _variables) {
@@ -51,10 +45,7 @@ VariableGenerator::~VariableGenerator() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return a map of all variable ids with their names
-////////////////////////////////////////////////////////////////////////////////
-
 std::unordered_map<VariableId, std::string const> VariableGenerator::variables(
     bool includeTemporaries) const {
   std::unordered_map<VariableId, std::string const> result;
@@ -71,10 +62,7 @@ std::unordered_map<VariableId, std::string const> VariableGenerator::variables(
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief generate a variable
-////////////////////////////////////////////////////////////////////////////////
-
 Variable* VariableGenerator::createVariable(char const* name, size_t length,
                                             bool isUserDefined) {
   TRI_ASSERT(name != nullptr);
@@ -96,10 +84,7 @@ Variable* VariableGenerator::createVariable(char const* name, size_t length,
   return variable;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief generate a variable
-////////////////////////////////////////////////////////////////////////////////
-
 Variable* VariableGenerator::createVariable(std::string const& name,
                                             bool isUserDefined) {
   auto variable = new Variable(name, nextId());
@@ -134,10 +119,7 @@ Variable* VariableGenerator::createVariable(Variable const* original) {
   return variable;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief generate a variable from VelocyPack
-////////////////////////////////////////////////////////////////////////////////
-
 Variable* VariableGenerator::createVariable(
     VPackSlice const slice) {
   auto variable = new Variable(slice);
@@ -160,26 +142,17 @@ Variable* VariableGenerator::createVariable(
   return variable;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief generate a temporary variable
-////////////////////////////////////////////////////////////////////////////////
-
 Variable* VariableGenerator::createTemporaryVariable() {
   return createVariable(nextName(), false);
 }
   
-////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a variable (assigns a temporary name)
-////////////////////////////////////////////////////////////////////////////////
-
 Variable* VariableGenerator::renameVariable(VariableId id) {
   return renameVariable(id, nextName());
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a variable (assigns the specified name
-////////////////////////////////////////////////////////////////////////////////
-
 Variable* VariableGenerator::renameVariable(VariableId id, std::string const& name) {
   auto it = _variables.find(id);
 
@@ -192,10 +165,7 @@ Variable* VariableGenerator::renameVariable(VariableId id, std::string const& na
   return (*it).second;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return a variable by id - this does not respect the scopes!
-////////////////////////////////////////////////////////////////////////////////
-
 Variable* VariableGenerator::getVariable(VariableId id) const {
   auto it = _variables.find(id);
 
@@ -206,20 +176,14 @@ Variable* VariableGenerator::getVariable(VariableId id) const {
   return (*it).second;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the next temporary variable name
-////////////////////////////////////////////////////////////////////////////////
-
 std::string VariableGenerator::nextName() {
   // note: if the naming scheme is adjusted, it may be necessary to adjust
   // Variable::isUserDefined, too!
   return std::to_string(nextId());
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief export to VelocyPack
-////////////////////////////////////////////////////////////////////////////////
-
 void VariableGenerator::toVelocyPack(VPackBuilder& builder) const {
   VPackArrayBuilder guard(&builder);
   for (auto const& oneVariable : _variables) {
@@ -227,10 +191,7 @@ void VariableGenerator::toVelocyPack(VPackBuilder& builder) const {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief import from VelocyPack
-////////////////////////////////////////////////////////////////////////////////
-
 void VariableGenerator::fromVelocyPack(VPackSlice const& query) {
   VPackSlice allVariablesList = query.get("variables");
 

@@ -312,7 +312,7 @@ bool Agent::load () {
   _read_db.start(this);
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Starting constituent personality.";
-  _constituent.start();
+  _constituent.start(_vocbase, _applicationV8, _queryRegistry);
   
   return true;
 }

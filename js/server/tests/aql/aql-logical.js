@@ -29,6 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
+var db = require("@arangodb").db;
 var helper = require("@arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
 
@@ -37,6 +38,10 @@ var getQueryResults = helper.getQueryResults;
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlLogicalTestSuite () {
+  var vn = "UnitTestsAhuacatlVertex";
+  var vertex = null;
+  var d = null;
+  
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -44,6 +49,11 @@ function ahuacatlLogicalTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
+      // this.tearDown(); should actually work as well
+      db._drop(vn);
+      
+      vertex = db._create(vn);
+      d = vertex.save({ _key: "test1" });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -51,6 +61,7 @@ function ahuacatlLogicalTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
+      db._drop(vn);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -137,6 +148,7 @@ function ahuacatlLogicalTestSuite () {
       assertEqual([ false ], getQueryResults("RETURN !\"value\"")); 
       assertEqual([ false ], getQueryResults("RETURN ![]")); 
       assertEqual([ false ], getQueryResults("RETURN !{}")); 
+      assertEqual([ false ], getQueryResults("RETURN !DOCUMENT(" + vn + ", " + JSON.stringify(d._id) + ")")); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////

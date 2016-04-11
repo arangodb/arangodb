@@ -48,10 +48,7 @@ using namespace arangodb::aql;
 using JsonHelper = arangodb::basics::JsonHelper;
 using Json = arangodb::basics::Json;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief quick translation array from an AST node value type to a JSON type
-////////////////////////////////////////////////////////////////////////////////
-
 std::array<TRI_json_type_e, 5> const JsonTypes{{
     TRI_JSON_NULL,     //    VALUE_TYPE_NULL   = 0,
     TRI_JSON_BOOLEAN,  //    VALUE_TYPE_BOOL   = 1,
@@ -99,10 +96,7 @@ std::unordered_map<int, std::string const> const AstNode::Operators{
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_IN), "array IN"},
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN), "array NOT IN"}};
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief type names for AST nodes
-////////////////////////////////////////////////////////////////////////////////
-
 std::unordered_map<int, std::string const> const AstNode::TypeNames{
     {static_cast<int>(NODE_TYPE_ROOT), "root"},
     {static_cast<int>(NODE_TYPE_FOR), "for"},
@@ -181,10 +175,7 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN), "array compare not in"},
     {static_cast<int>(NODE_TYPE_QUANTIFIER), "quantifier"}};
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief names for AST node value types
-////////////////////////////////////////////////////////////////////////////////
-
 std::unordered_map<int, std::string const> const AstNode::ValueTypeNames{
     {static_cast<int>(VALUE_TYPE_NULL), "null"},
     {static_cast<int>(VALUE_TYPE_BOOL), "bool"},
@@ -192,10 +183,7 @@ std::unordered_map<int, std::string const> const AstNode::ValueTypeNames{
     {static_cast<int>(VALUE_TYPE_DOUBLE), "double"},
     {static_cast<int>(VALUE_TYPE_STRING), "string"}};
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief resolve an attribute access
-////////////////////////////////////////////////////////////////////////////////
-
 static AstNode const* ResolveAttribute(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_ATTRIBUTE_ACCESS);
@@ -250,10 +238,7 @@ static AstNode const* ResolveAttribute(AstNode const* node) {
   return Ast::createNodeValueNull();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the node type for inter-node comparisons
-////////////////////////////////////////////////////////////////////////////////
-
 static TRI_json_type_e GetNodeCompareType(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
@@ -274,14 +259,11 @@ static TRI_json_type_e GetNodeCompareType(AstNode const* node) {
   return TRI_JSON_NULL;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two nodes
 /// @return range from -1 to +1 depending:
 ///  - -1 LHS being  less then   RHS,
 ///  -  0 LHS being     equal    RHS
 ///  -  1 LHS being greater then RHS
-////////////////////////////////////////////////////////////////////////////////
-
 int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs,
                                    bool compareUtf8) {
   TRI_ASSERT(lhs != nullptr);
@@ -406,10 +388,7 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs,
   return 0;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns whether or not the string is empty
-////////////////////////////////////////////////////////////////////////////////
-
 static bool IsEmptyString(char const* p, size_t length) {
   char const* e = p + length;
 
@@ -424,27 +403,18 @@ static bool IsEmptyString(char const* p, size_t length) {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the node
-////////////////////////////////////////////////////////////////////////////////
-
 AstNode::AstNode(AstNodeType type)
     : type(type), flags(0), computedValue(nullptr) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a node, with defining a value type
-////////////////////////////////////////////////////////////////////////////////
-
 AstNode::AstNode(AstNodeType type, AstNodeValueType valueType) : AstNode(type) {
   value.type = valueType;
   TRI_ASSERT(flags == 0);
   TRI_ASSERT(computedValue == nullptr);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a boolean node, with defining a value
-////////////////////////////////////////////////////////////////////////////////
-
 AstNode::AstNode(bool v, AstNodeValueType valueType)
     : AstNode(NODE_TYPE_VALUE, valueType) {
   TRI_ASSERT(valueType == VALUE_TYPE_BOOL);
@@ -453,10 +423,7 @@ AstNode::AstNode(bool v, AstNodeValueType valueType)
   TRI_ASSERT(computedValue == nullptr);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an int node, with defining a value
-////////////////////////////////////////////////////////////////////////////////
-
 AstNode::AstNode(int64_t v, AstNodeValueType valueType)
     : AstNode(NODE_TYPE_VALUE, valueType) {
   TRI_ASSERT(valueType == VALUE_TYPE_INT);
@@ -465,10 +432,7 @@ AstNode::AstNode(int64_t v, AstNodeValueType valueType)
   TRI_ASSERT(computedValue == nullptr);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a string node, with defining a value
-////////////////////////////////////////////////////////////////////////////////
-
 AstNode::AstNode(char const* v, size_t length, AstNodeValueType valueType)
     : AstNode(NODE_TYPE_VALUE, valueType) {
   TRI_ASSERT(valueType == VALUE_TYPE_STRING);
@@ -477,10 +441,7 @@ AstNode::AstNode(char const* v, size_t length, AstNodeValueType valueType)
   TRI_ASSERT(computedValue == nullptr);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the node from JSON
-////////////////////////////////////////////////////////////////////////////////
-
 AstNode::AstNode(Ast* ast, arangodb::basics::Json const& json)
     : AstNode(getNodeTypeFromJson(json)) {
   TRI_ASSERT(flags == 0);
@@ -664,10 +625,7 @@ AstNode::AstNode(Ast* ast, arangodb::basics::Json const& json)
   ast->query()->addNode(this);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the node from JSON
-////////////////////////////////////////////////////////////////////////////////
-
 AstNode::AstNode(std::function<void(AstNode*)> registerNode,
                  std::function<char const*(std::string const&)> registerString,
                  arangodb::basics::Json const& json)
@@ -822,20 +780,14 @@ AstNode::AstNode(std::function<void(AstNode*)> registerNode,
   registerNode(this);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the node
-////////////////////////////////////////////////////////////////////////////////
-
 AstNode::~AstNode() {
   if (computedValue != nullptr) {
     delete[] computedValue;
   }
 }
   
-//////////////////////////////////////////////////////////////////////////////
 /// @brief return the string value of a node, as an std::string
-//////////////////////////////////////////////////////////////////////////////
-  
 std::string AstNode::getString() const {
   TRI_ASSERT(type == NODE_TYPE_VALUE || type == NODE_TYPE_OBJECT_ELEMENT || 
              type == NODE_TYPE_ATTRIBUTE_ACCESS || type == NODE_TYPE_PARAMETER || 
@@ -844,10 +796,7 @@ std::string AstNode::getString() const {
   return std::string(getStringValue(), getStringLength());
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test if all members of a node are equality comparisons
-////////////////////////////////////////////////////////////////////////////////
-
 bool AstNode::isOnlyEqualityMatch() const {
   if (type != NODE_TYPE_OPERATOR_BINARY_AND &&
       type != NODE_TYPE_OPERATOR_NARY_AND) {
@@ -864,10 +813,7 @@ bool AstNode::isOnlyEqualityMatch() const {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief computes a hash value for a value node
-////////////////////////////////////////////////////////////////////////////////
-
 uint64_t AstNode::hashValue(uint64_t hash) const {
   if (type == NODE_TYPE_VALUE) {
     switch (value.type) {
@@ -917,10 +863,7 @@ uint64_t AstNode::hashValue(uint64_t hash) const {
   return 0;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief dump the node (for debugging purposes)
-////////////////////////////////////////////////////////////////////////////////
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void AstNode::dump(int level) const {
   for (int i = 0; i < level; ++i) {
@@ -943,12 +886,9 @@ void AstNode::dump(int level) const {
 }
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief compute the value for a constant value node
 /// the value is owned by the node and must not be freed by the caller
 /// note that the return value might be NULL in case of OOM
-////////////////////////////////////////////////////////////////////////////////
-
 VPackSlice AstNode::computeValue() const {
   TRI_ASSERT(isConstant());
 
@@ -963,11 +903,8 @@ VPackSlice AstNode::computeValue() const {
   return VPackSlice(computedValue);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief sort the members of an (array) node
 /// this will also set the VALUE_SORTED flag for the node
-////////////////////////////////////////////////////////////////////////////////
-
 void AstNode::sort() {
   TRI_ASSERT(type == NODE_TYPE_ARRAY);
   TRI_ASSERT(isConstant());
@@ -980,10 +917,7 @@ void AstNode::sort() {
   setFlag(DETERMINED_SORTED, VALUE_SORTED);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type name of a node
-////////////////////////////////////////////////////////////////////////////////
-
 std::string const& AstNode::getTypeString() const {
   auto it = TypeNames.find(static_cast<int>(type));
 
@@ -995,10 +929,7 @@ std::string const& AstNode::getTypeString() const {
                                  "missing node type in TypeNames");
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the value type name of a node
-////////////////////////////////////////////////////////////////////////////////
-
 std::string const& AstNode::getValueTypeString() const {
   auto it = ValueTypeNames.find(static_cast<int>(value.type));
 
@@ -1010,20 +941,14 @@ std::string const& AstNode::getValueTypeString() const {
                                  "missing node type in ValueTypeNames");
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief stringify the AstNode
-////////////////////////////////////////////////////////////////////////////////
-
 std::string AstNode::toString(AstNode const* node) {
   std::unique_ptr<TRI_json_t> json(node->toJson(TRI_UNKNOWN_MEM_ZONE, false));
 
   return arangodb::basics::JsonHelper::toString(json.get());
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether we know a type of this kind; throws exception if not.
-////////////////////////////////////////////////////////////////////////////////
-
 void AstNode::validateType(int type) {
   auto it = TypeNames.find(static_cast<int>(type));
 
@@ -1033,11 +958,8 @@ void AstNode::validateType(int type) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether we know a value type of this kind;
 /// throws exception if not.
-////////////////////////////////////////////////////////////////////////////////
-
 void AstNode::validateValueType(int type) {
   auto it = ValueTypeNames.find(static_cast<int>(type));
 
@@ -1047,21 +969,15 @@ void AstNode::validateValueType(int type) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief fetch a node's type from json
-////////////////////////////////////////////////////////////////////////////////
-
 AstNodeType AstNode::getNodeTypeFromJson(arangodb::basics::Json const& json) {
   int type = JsonHelper::checkAndGetNumericValue<int>(json.json(), "typeID");
   validateType(type);
   return static_cast<AstNodeType>(type);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return a JSON representation of the node value
 /// the caller is responsible for freeing the JSON later
-////////////////////////////////////////////////////////////////////////////////
-
 TRI_json_t* AstNode::toJsonValue(TRI_memory_zone_t* zone) const {
   if (type == NODE_TYPE_VALUE) {
     // dump value of "value" node
@@ -1145,11 +1061,8 @@ TRI_json_t* AstNode::toJsonValue(TRI_memory_zone_t* zone) const {
   return nullptr;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return a JSON representation of the node
 /// the caller is responsible for freeing the JSON later
-////////////////////////////////////////////////////////////////////////////////
-
 TRI_json_t* AstNode::toJson(TRI_memory_zone_t* zone, bool verbose) const {
   TRI_json_t* node = TRI_CreateObjectJson(zone);
 
@@ -1295,10 +1208,7 @@ TRI_json_t* AstNode::toJson(TRI_memory_zone_t* zone, bool verbose) const {
   return node;
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief return a VelocyPack representation of the node value
-//////////////////////////////////////////////////////////////////////////////
-
 std::shared_ptr<VPackBuilder> AstNode::toVelocyPackValue() const {
   auto builder = std::make_shared<VPackBuilder>();
   if (builder == nullptr) {
@@ -1308,11 +1218,8 @@ std::shared_ptr<VPackBuilder> AstNode::toVelocyPackValue() const {
   return builder;
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief build a VelocyPack representation of the node value
 ///        Can throw Out of Memory Error
-//////////////////////////////////////////////////////////////////////////////
-
 void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
   if (type == NODE_TYPE_VALUE) {
     // dump value of "value" node
@@ -1384,10 +1291,7 @@ void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
   // Do not add anything.
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief return a VelocyPack representation of the node
-//////////////////////////////////////////////////////////////////////////////
-
 std::shared_ptr<VPackBuilder> AstNode::toVelocyPack(bool verbose) const {
   auto builder = std::make_shared<VPackBuilder>();
   if (builder == nullptr) {
@@ -1397,10 +1301,7 @@ std::shared_ptr<VPackBuilder> AstNode::toVelocyPack(bool verbose) const {
   return builder;
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief Create a VelocyPack representation of the node
-//////////////////////////////////////////////////////////////////////////////
-
 void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
   try {
     VPackObjectBuilder guard(&builder);
@@ -1478,10 +1379,7 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief iterates whether a node of type "searchType" can be found
-////////////////////////////////////////////////////////////////////////////////
-
 bool AstNode::containsNodeType(AstNodeType searchType) const {
   if (type == searchType) {
     return true;
@@ -1503,12 +1401,9 @@ bool AstNode::containsNodeType(AstNodeType searchType) const {
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief convert the node's value to a boolean value
 /// this may create a new node or return the node itself if it is already a
 /// boolean value node
-////////////////////////////////////////////////////////////////////////////////
-
 AstNode* AstNode::castToBool(Ast* ast) {
   TRI_ASSERT(type == NODE_TYPE_VALUE || type == NODE_TYPE_ARRAY ||
              type == NODE_TYPE_OBJECT);
@@ -1539,12 +1434,9 @@ AstNode* AstNode::castToBool(Ast* ast) {
   return ast->createNodeValueBool(false);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief convert the node's value to a number value
 /// this may create a new node or return the node itself if it is already a
 /// numeric value node
-////////////////////////////////////////////////////////////////////////////////
-
 AstNode* AstNode::castToNumber(Ast* ast) {
   TRI_ASSERT(type == NODE_TYPE_VALUE || type == NODE_TYPE_ARRAY ||
              type == NODE_TYPE_OBJECT);
@@ -1594,12 +1486,9 @@ AstNode* AstNode::castToNumber(Ast* ast) {
   return ast->createNodeValueNull();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief convert the node's value to a string value
 /// this may create a new node or return the node itself if it is already a
 /// string value node
-////////////////////////////////////////////////////////////////////////////////
-
 AstNode* AstNode::castToString(Ast* ast) {
   TRI_ASSERT(type == NODE_TYPE_VALUE || type == NODE_TYPE_ARRAY ||
              type == NODE_TYPE_OBJECT);
@@ -1621,11 +1510,8 @@ AstNode* AstNode::castToString(Ast* ast) {
   return ast->createNodeValueString(value, buffer.length());
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a JSON representation of the node to the JSON list specified
 /// in the first argument
-////////////////////////////////////////////////////////////////////////////////
-
 void AstNode::toJson(TRI_json_t* json, TRI_memory_zone_t* zone,
                      bool verbose) const {
   TRI_ASSERT(TRI_IsArrayJson(json));
@@ -1639,11 +1525,8 @@ void AstNode::toJson(TRI_json_t* json, TRI_memory_zone_t* zone,
   TRI_PushBack3ArrayJson(zone, json, node);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the integer value of a node, provided the node is a value node
 /// this will return 0 for all non-value nodes and for all non-int value nodes!!
-////////////////////////////////////////////////////////////////////////////////
-
 int64_t AstNode::getIntValue() const {
   if (type == NODE_TYPE_VALUE) {
     switch (value.type) {
@@ -1660,10 +1543,7 @@ int64_t AstNode::getIntValue() const {
   return 0;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the double value of a node, provided the node is a value node
-////////////////////////////////////////////////////////////////////////////////
-
 double AstNode::getDoubleValue() const {
   if (type == NODE_TYPE_VALUE) {
     switch (value.type) {
@@ -1680,10 +1560,7 @@ double AstNode::getDoubleValue() const {
   return 0.0;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the node value is trueish
-////////////////////////////////////////////////////////////////////////////////
-
 bool AstNode::isTrue() const {
   if (type == NODE_TYPE_VALUE) {
     switch (value.type) {
@@ -1720,10 +1597,7 @@ bool AstNode::isTrue() const {
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the node value is falsey
-////////////////////////////////////////////////////////////////////////////////
-
 bool AstNode::isFalse() const {
   if (type == NODE_TYPE_VALUE) {
     switch (value.type) {
@@ -1760,13 +1634,10 @@ bool AstNode::isFalse() const {
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a value node is of type attribute access that
 /// refers to any variable reference
 /// returns true if yes, and then also returns variable reference and array
 /// of attribute names in the parameter passed by reference
-////////////////////////////////////////////////////////////////////////////////
-
 bool AstNode::isAttributeAccessForVariable(
     std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>&
         result) const {
@@ -1826,11 +1697,8 @@ bool AstNode::isAttributeAccessForVariable(
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a node is simple enough to be used in a simple
 /// expression
-////////////////////////////////////////////////////////////////////////////////
-
 bool AstNode::isSimple() const {
   if (hasFlag(DETERMINED_SIMPLE)) {
     // fast track exit
@@ -1988,10 +1856,7 @@ bool AstNode::isSimple() const {
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a node has a constant value
-////////////////////////////////////////////////////////////////////////////////
-
 bool AstNode::isConstant() const {
   if (hasFlag(DETERMINED_CONSTANT)) {
     // fast track exit
@@ -2055,10 +1920,7 @@ bool AstNode::isConstant() const {
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a node is a simple comparison operator
-////////////////////////////////////////////////////////////////////////////////
-
 bool AstNode::isSimpleComparisonOperator() const {
   return (type == NODE_TYPE_OPERATOR_BINARY_EQ ||
           type == NODE_TYPE_OPERATOR_BINARY_NE ||
@@ -2068,10 +1930,7 @@ bool AstNode::isSimpleComparisonOperator() const {
           type == NODE_TYPE_OPERATOR_BINARY_GE);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a node is a comparison operator
-////////////////////////////////////////////////////////////////////////////////
-
 bool AstNode::isComparisonOperator() const {
   return (type == NODE_TYPE_OPERATOR_BINARY_EQ ||
           type == NODE_TYPE_OPERATOR_BINARY_NE ||
@@ -2083,10 +1942,7 @@ bool AstNode::isComparisonOperator() const {
           type == NODE_TYPE_OPERATOR_BINARY_NIN);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a node is an array comparison operator
-////////////////////////////////////////////////////////////////////////////////
-
 bool AstNode::isArrayComparisonOperator() const {
   return (type == NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ ||
           type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NE ||
@@ -2098,11 +1954,8 @@ bool AstNode::isArrayComparisonOperator() const {
           type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a node (and its subnodes) can throw a runtime
 /// exception
-////////////////////////////////////////////////////////////////////////////////
-
 bool AstNode::canThrow() const {
   if (hasFlag(DETERMINED_THROWS)) {
     // fast track exit
@@ -2150,11 +2003,8 @@ bool AstNode::canThrow() const {
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a node (and its subnodes) can safely be executed on
 /// a DB server
-////////////////////////////////////////////////////////////////////////////////
-
 bool AstNode::canRunOnDBServer() const {
   if (hasFlag(DETERMINED_RUNONDBSERVER)) {
     // fast track exit
@@ -2195,10 +2045,7 @@ bool AstNode::canRunOnDBServer() const {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a node (and its subnodes) is deterministic
-////////////////////////////////////////////////////////////////////////////////
-
 bool AstNode::isDeterministic() const {
   if (hasFlag(DETERMINED_NONDETERMINISTIC)) {
     // fast track exit
@@ -2246,10 +2093,7 @@ bool AstNode::isDeterministic() const {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a node (and its subnodes) is cacheable
-////////////////////////////////////////////////////////////////////////////////
-
 bool AstNode::isCacheable() const {
   if (isConstant()) {
     return true;
@@ -2281,11 +2125,8 @@ bool AstNode::isCacheable() const {
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a node (and its subnodes) may contain a call to a
 /// user-defined function
-////////////////////////////////////////////////////////////////////////////////
-
 bool AstNode::callsUserDefinedFunction() const {
   if (isConstant()) {
     return true;
@@ -2305,11 +2146,8 @@ bool AstNode::callsUserDefinedFunction() const {
   return (type == NODE_TYPE_FCALL_USER);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the object node contains dynamically named attributes
 /// on its first level
-////////////////////////////////////////////////////////////////////////////////
-
 bool AstNode::containsDynamicAttributeName() const {
   TRI_ASSERT(type == NODE_TYPE_OBJECT);
 
@@ -2323,19 +2161,13 @@ bool AstNode::containsDynamicAttributeName() const {
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief clone a node, recursively
-////////////////////////////////////////////////////////////////////////////////
-
 AstNode* AstNode::clone(Ast* ast) const { return ast->clone(this); }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief append a string representation of the node to a string buffer
 /// the string representation does not need to be JavaScript-compatible
 /// except for node types NODE_TYPE_VALUE, NODE_TYPE_ARRAY and NODE_TYPE_OBJECT
 /// (only for objects that do not contain dynamic attributes)
-////////////////////////////////////////////////////////////////////////////////
-
 void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
                         bool failIfLong) const {
   // any arrays/objects with more values than this will not be stringified if
@@ -2618,10 +2450,7 @@ std::string AstNode::toString() const {
   return std::string(buffer.c_str(), buffer.length());
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief locate a variable including the direct path vector leading to it.
-////////////////////////////////////////////////////////////////////////////////
-
 void AstNode::findVariableAccess(
     std::vector<AstNode const*>& currentPath,
     std::vector<std::vector<AstNode const*>>& paths,
@@ -2919,12 +2748,9 @@ AstNode const* AstNode::findReference(AstNode const* findme) const {
   return ret;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief stringify the value of a node into a string buffer
 /// this creates an equivalent to what JSON.stringify() would do
 /// this method is used when generated JavaScript code for the node!
-////////////////////////////////////////////////////////////////////////////////
-
 void AstNode::appendValue(arangodb::basics::StringBuffer* buffer) const {
   TRI_ASSERT(type == NODE_TYPE_VALUE);
 
@@ -2963,10 +2789,7 @@ void AstNode::appendValue(arangodb::basics::StringBuffer* buffer) const {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief append the AstNode to an output stream
-////////////////////////////////////////////////////////////////////////////////
-
 std::ostream& operator<<(std::ostream& stream,
                          arangodb::aql::AstNode const* node) {
   if (node != nullptr) {
@@ -2975,10 +2798,7 @@ std::ostream& operator<<(std::ostream& stream,
   return stream;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief append the AstNode to an output stream
-////////////////////////////////////////////////////////////////////////////////
-
 std::ostream& operator<<(std::ostream& stream,
                          arangodb::aql::AstNode const& node) {
   stream << arangodb::aql::AstNode::toString(&node);

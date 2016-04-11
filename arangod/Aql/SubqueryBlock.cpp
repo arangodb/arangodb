@@ -41,10 +41,7 @@ SubqueryBlock::SubqueryBlock(ExecutionEngine* engine, SubqueryNode const* en,
 
 SubqueryBlock::~SubqueryBlock() {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize, tell dependency and the subquery
-////////////////////////////////////////////////////////////////////////////////
-
 int SubqueryBlock::initialize() {
   int res = ExecutionBlock::initialize();
 
@@ -55,10 +52,7 @@ int SubqueryBlock::initialize() {
   return getSubquery()->initialize();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief getSome
-////////////////////////////////////////////////////////////////////////////////
-
 AqlItemBlock* SubqueryBlock::getSome(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   std::unique_ptr<AqlItemBlock> res(
@@ -126,10 +120,7 @@ AqlItemBlock* SubqueryBlock::getSome(size_t atLeast, size_t atMost) {
   DEBUG_END_BLOCK();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown, tell dependency and the subquery
-////////////////////////////////////////////////////////////////////////////////
-
 int SubqueryBlock::shutdown(int errorCode) {
   int res = ExecutionBlock::shutdown(errorCode);
 
@@ -140,10 +131,7 @@ int SubqueryBlock::shutdown(int errorCode) {
   return getSubquery()->shutdown(errorCode);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief execute the subquery and return its results
-////////////////////////////////////////////////////////////////////////////////
-
 std::vector<AqlItemBlock*>* SubqueryBlock::executeSubquery() {
   DEBUG_BEGIN_BLOCK();
   auto results = new std::vector<AqlItemBlock*>;
@@ -172,10 +160,7 @@ std::vector<AqlItemBlock*>* SubqueryBlock::executeSubquery() {
   DEBUG_END_BLOCK();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the results of a subquery
-////////////////////////////////////////////////////////////////////////////////
-
 void SubqueryBlock::destroySubqueryResults(
     std::vector<AqlItemBlock*>* results) {
   for (auto& x : *results) {
