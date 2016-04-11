@@ -25,6 +25,14 @@
 #include "Logger/Logger.h"
 #include "Basics/ConditionLocker.h"
 
+#include "Aql/Query.h"
+#include "Utils/OperationOptions.h"
+#include "Utils/OperationResult.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "Utils/StandaloneTransactionContext.h"
+#include "VocBase/collection.h"
+#include "VocBase/vocbase.h"
+
 #include "Constituent.h"
 #include "Agent.h"
 
@@ -93,9 +101,6 @@ void Constituent::term(term_t t) {
 
     LOG_TOPIC(INFO, Logger::AGENCY) << "Updating term to " << t;
 
-    static std::string const path = "/_api/document?collection=election";
-    std::map<std::string, std::string> headerFields;
-    
     Builder body;
     body.add(VPackValue(VPackValueType::Object));
     std::ostringstream i_str;
@@ -105,17 +110,22 @@ void Constituent::term(term_t t) {
     body.add("voted_for", Value((uint32_t)_voted_for));
     body.close();
     
-    std::unique_ptr<arangodb::ClusterCommResult> res =
-      arangodb::ClusterComm::instance()->syncRequest(
-        "1", 1, _agent->config().end_point, GeneralRequest::RequestType::POST,
-        path, body.toJson(), headerFields, 0.0);
+    TRI_ASSERT(_vocbase != nullptr);
+    auto transactionContext = std::make_shared<StandaloneTransactionContext>(_vocbase);
+    SingleCollectionTransaction trx(transactionContext, "election", TRI_TRANSACTION_WRITE);
     
-    if (res->status != CL_COMM_SENT) {
-      LOG_TOPIC(ERR, Logger::AGENCY) << res->status << ": " << CL_COMM_SENT
-                                     << ", " << res->errorMessage;
-      LOG_TOPIC(ERR, Logger::AGENCY)
-        << res->result->getBodyVelocyPack()->toJson();
+    int res = trx.begin();
+    
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
     }
+    
+    OperationOptions options;
+    options.waitForSync = true; 
+    options.silent = true;
+    
+    OperationResult result = trx.insert("log", body.slice(), options);
+    res = trx.finish(result.code);
     
   }
   
@@ -340,39 +350,45 @@ void Constituent::beginShutdown() {
   Thread::beginShutdown();
 }
 
+
+#include <iostream>
+
+bool Constituent::start (TRI_vocbase_t* vocbase,
+			 ApplicationV8* applicationV8,
+			 aql::QueryRegistry* queryRegistry) {
+
+  _vocbase = vocbase;
+  _applicationV8 = applicationV8;
+  _queryRegistry = queryRegistry;
+
+  return Thread::start();
+}
+
+
 void Constituent::run() {
+  TRI_ASSERT(_vocbase != nullptr);
+  auto bindVars = std::make_shared<VPackBuilder>();
+  bindVars->openObject();
+  bindVars->close();
   
-  // Path
-  std::string path("/_api/cursor");
+  TRI_ASSERT(_applicationV8 != nullptr);
+  TRI_ASSERT(_queryRegistry != nullptr);
+
+  // Query
+  std::string const aql ("FOR l IN election SORT l._key DESC LIMIT 1 RETURN l");
+  arangodb::aql::Query query(_applicationV8, false, _vocbase,
+			     aql.c_str(), aql.size(), bindVars, nullptr,
+			     arangodb::aql::PART_MAIN);
   
-  // Body
-  Builder tmp;
-  tmp.openObject();
-  std::string query ("FOR l IN election SORT l._key DESC LIMIT 1 RETURN l");
-  tmp.add("query", VPackValue(query));
-  tmp.close();
-  
-  // Request
-  std::map<std::string, std::string> headerFields;
-  std::unique_ptr<arangodb::ClusterCommResult> res =
-    arangodb::ClusterComm::instance()->syncRequest(
-      "1", 1, _agent->config().end_point, GeneralRequest::RequestType::POST, path,
-      tmp.toJson(), headerFields, 1.0);
-  
-  // If success rebuild state deque
-  if (res->status == CL_COMM_SENT) {
-    std::shared_ptr<Builder> body = res->result->getBodyVelocyPack();
-    if (body->slice().hasKey("result")) {
-      Slice result = body->slice().get("result");
-      if (result.type() == VPackValueType::Array) {
-        for (auto const& i : VPackArrayIterator(result)) {
-          _term = i.get("term").getUInt();
-          _voted_for = i.get("voted_for").getUInt();
-        }
-      }
-    }
+  auto queryResult = query.execute(_queryRegistry);
+  if (queryResult.code != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
   }
   
+  VPackSlice result = queryResult.result->slice();
+  
+
+
   // Always start off as follower
   while (!this->isStopping() && size() > 1) { 
     if (_role == FOLLOWER) {
