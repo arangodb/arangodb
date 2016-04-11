@@ -572,15 +572,15 @@ function AttributesSuite () {
         "@collection" : c.name()
       }).toArray().sort();
 
-      assertEqual(2, result.length);
-      assertEqual([ "first", "third" ], result);
+      assertEqual(3, result.length);
+      assertEqual([ "first", "second", "third" ], result);
 
       result = db._query("FOR doc IN @@collection FILTER LIKE(doc.value, '\u0000%') SORT doc._key RETURN doc._key", { 
         "@collection" : c.name()
       }).toArray().sort();
 
-      assertEqual(2, result.length);
-      assertEqual([ "first", "third" ], result);
+      assertEqual(3, result.length);
+      assertEqual([ "first", "second", "third" ], result);
       
     }
 

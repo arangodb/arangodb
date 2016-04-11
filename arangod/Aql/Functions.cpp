@@ -120,7 +120,7 @@ static std::string BuildRegexPattern (char const* ptr,
         }
         else {
           // wildcard character
-          pattern.append("(.|[\r\n])*");
+          pattern.append("(.|[\r\n])");
         }
       }
       else if (c == '?' || c == '+' || c == '[' || c == '(' || c == ')' ||
