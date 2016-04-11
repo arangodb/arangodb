@@ -75,10 +75,7 @@ ModificationBlock::ModificationBlock(ExecutionEngine* engine,
 
 ModificationBlock::~ModificationBlock() {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get some - this accumulates all input and calls the work() method
-////////////////////////////////////////////////////////////////////////////////
-
 AqlItemBlock* ModificationBlock::getSome(size_t atLeast, size_t atMost) {
   std::vector<AqlItemBlock*> blocks;
   std::unique_ptr<AqlItemBlock> replyBlocks;
@@ -151,10 +148,7 @@ AqlItemBlock* ModificationBlock::getSome(size_t atLeast, size_t atMost) {
   return replyBlocks.release();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief extract a key from the AqlValue passed
-////////////////////////////////////////////////////////////////////////////////
-
 int ModificationBlock::extractKey(AqlValue const& value,
                                   std::string& key) {
   if (value.isObject()) {
@@ -174,10 +168,7 @@ int ModificationBlock::extractKey(AqlValue const& value,
   return TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief process the result of a data-modification operation
-////////////////////////////////////////////////////////////////////////////////
-
 void ModificationBlock::handleResult(int code, bool ignoreErrors,
                                      std::string const* errorMessage) {
   if (code == TRI_ERROR_NO_ERROR) {
@@ -203,10 +194,7 @@ void ModificationBlock::handleResult(int code, bool ignoreErrors,
 RemoveBlock::RemoveBlock(ExecutionEngine* engine, RemoveNode const* ep)
     : ModificationBlock(engine, ep) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief the actual work horse for removing data
-////////////////////////////////////////////////////////////////////////////////
-
 AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
   size_t const count = countBlocksRows(blocks);
 
@@ -306,10 +294,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
 InsertBlock::InsertBlock(ExecutionEngine* engine, InsertNode const* ep)
     : ModificationBlock(engine, ep) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief the actual work horse for inserting data
-////////////////////////////////////////////////////////////////////////////////
-
 AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
   size_t const count = countBlocksRows(blocks);
 
@@ -381,10 +366,7 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
 UpdateBlock::UpdateBlock(ExecutionEngine* engine, UpdateNode const* ep)
     : ModificationBlock(engine, ep) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief the actual work horse for inserting data
-////////////////////////////////////////////////////////////////////////////////
-
 AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
   size_t const count = countBlocksRows(blocks);
 
@@ -514,10 +496,7 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
 UpsertBlock::UpsertBlock(ExecutionEngine* engine, UpsertNode const* ep)
     : ModificationBlock(engine, ep) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief the actual work horse for inserting data
-////////////////////////////////////////////////////////////////////////////////
-
 AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
   size_t const count = countBlocksRows(blocks);
 
@@ -658,10 +637,7 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
 ReplaceBlock::ReplaceBlock(ExecutionEngine* engine, ReplaceNode const* ep)
     : ModificationBlock(engine, ep) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief the actual work horse for replacing data
-////////////////////////////////////////////////////////////////////////////////
-
 AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
   size_t const count = countBlocksRows(blocks);
 

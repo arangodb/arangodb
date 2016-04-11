@@ -27,10 +27,7 @@
 
 using namespace arangodb::aql;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief batch size value
-////////////////////////////////////////////////////////////////////////////////
-
 size_t const ExecutionBlock::DefaultBatchSize = 1000;
 
 ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
@@ -48,10 +45,7 @@ ExecutionBlock::~ExecutionBlock() {
   _buffer.clear();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the number of rows in a vector of blocks
-////////////////////////////////////////////////////////////////////////////////
-
 size_t ExecutionBlock::countBlocksRows(
     std::vector<AqlItemBlock*> const& blocks) const {
   size_t count = 0;
@@ -93,26 +87,17 @@ int ExecutionBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   DEBUG_END_BLOCK();  
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the query was killed
-////////////////////////////////////////////////////////////////////////////////
-
 bool ExecutionBlock::isKilled() const { return _engine->getQuery()->killed(); }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the query was killed
-////////////////////////////////////////////////////////////////////////////////
-
 void ExecutionBlock::throwIfKilled() {
   if (isKilled()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize
-////////////////////////////////////////////////////////////////////////////////
-
 int ExecutionBlock::initialize() {
   for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
     int res = (*it)->initialize();
@@ -124,10 +109,7 @@ int ExecutionBlock::initialize() {
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown, will be called exactly once for the whole query
-////////////////////////////////////////////////////////////////////////////////
-
 int ExecutionBlock::shutdown(int errorCode) {
   int ret = TRI_ERROR_NO_ERROR;
 
@@ -152,14 +134,11 @@ int ExecutionBlock::shutdown(int errorCode) {
   return ret;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief getSome, gets some more items, semantic is as follows: not
 /// more than atMost items may be delivered. The method tries to
 /// return a block of at least atLeast items, however, it may return
 /// less (for example if there are not enough items to come). However,
 /// if it returns an actual block, it must contain at least one item.
-////////////////////////////////////////////////////////////////////////////////
-
 AqlItemBlock* ExecutionBlock::getSome(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   std::unique_ptr<AqlItemBlock> result(
@@ -169,27 +148,18 @@ AqlItemBlock* ExecutionBlock::getSome(size_t atLeast, size_t atMost) {
   DEBUG_END_BLOCK();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief request an AqlItemBlock from the memory manager
-////////////////////////////////////////////////////////////////////////////////
-
 AqlItemBlock* ExecutionBlock::requestBlock(size_t nrItems, RegisterId nrRegs) {
   return _engine->_itemBlockManager.requestBlock(nrItems, nrRegs);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return an AqlItemBlock to the memory manager
-////////////////////////////////////////////////////////////////////////////////
-
 void ExecutionBlock::returnBlock(AqlItemBlock*& block) {
   _engine->_itemBlockManager.returnBlock(block);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief copy register data from one block (src) into another (dst)
 /// register values are cloned
-////////////////////////////////////////////////////////////////////////////////
-
 void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
                                       AqlItemBlock* dst, size_t srcRow,
                                       size_t dstRow) {
@@ -213,11 +183,8 @@ void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
   DEBUG_END_BLOCK();  
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief copy register data from one block (src) into another (dst)
 /// register values are cloned
-////////////////////////////////////////////////////////////////////////////////
-
 void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
                                       AqlItemBlock* dst, size_t row) {
   DEBUG_BEGIN_BLOCK();  
@@ -244,12 +211,9 @@ void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
   DEBUG_END_BLOCK();  
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief the following is internal to pull one more block and append it to
 /// our _buffer deque. Returns true if a new block was appended and false if
 /// the dependent node is exhausted.
-////////////////////////////////////////////////////////////////////////////////
-
 bool ExecutionBlock::getBlock(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   throwIfKilled();  // check if we were aborted
@@ -272,14 +236,11 @@ bool ExecutionBlock::getBlock(size_t atLeast, size_t atMost) {
   DEBUG_END_BLOCK();  
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief getSomeWithoutRegisterClearout, same as above, however, this
 /// is the actual worker which does not clear out registers at the end
 /// the idea is that somebody who wants to call the generic functionality
 /// in a derived class but wants to modify the results before the register
 /// cleanup can use this method, internal use only
-////////////////////////////////////////////////////////////////////////////////
-
 AqlItemBlock* ExecutionBlock::getSomeWithoutRegisterClearout(size_t atLeast,
                                                              size_t atMost) {
   DEBUG_BEGIN_BLOCK();

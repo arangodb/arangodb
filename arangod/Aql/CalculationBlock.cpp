@@ -81,11 +81,8 @@ CalculationBlock::~CalculationBlock() {}
 
 int CalculationBlock::initialize() { return ExecutionBlock::initialize(); }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief fill the target register in the item block with a reference to
 /// another variable
-////////////////////////////////////////////////////////////////////////////////
-
 void CalculationBlock::fillBlockWithReference(AqlItemBlock* result) {
   size_t const n = result->size();
   for (size_t i = 0; i < n; i++) {
@@ -105,10 +102,7 @@ void CalculationBlock::fillBlockWithReference(AqlItemBlock* result) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief shared code for executing a simple or a V8 expression
-////////////////////////////////////////////////////////////////////////////////
-
 void CalculationBlock::executeExpression(AqlItemBlock* result) {
   DEBUG_BEGIN_BLOCK();
   bool const hasCondition = (static_cast<CalculationNode const*>(_exeNode)
@@ -146,10 +140,7 @@ void CalculationBlock::executeExpression(AqlItemBlock* result) {
   DEBUG_END_BLOCK();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief doEvaluation, private helper to do the work
-////////////////////////////////////////////////////////////////////////////////
-
 void CalculationBlock::doEvaluation(AqlItemBlock* result) {
   DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(result != nullptr);

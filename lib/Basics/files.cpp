@@ -2313,11 +2313,8 @@ char* TRI_LocateConfigDirectory() {
 #elif defined(_SYSCONFDIR_)
 
 char* TRI_LocateConfigDirectory() {
-  size_t len;
   char const* dir = _SYSCONFDIR_;
-  char* v;
-
-  v = LocateConfigDirectoryEnv();
+  char* v = LocateConfigDirectoryEnv();
 
   if (v != nullptr) {
     return v;
@@ -2327,7 +2324,7 @@ char* TRI_LocateConfigDirectory() {
     return nullptr;
   }
 
-  len = strlen(dir);
+  size_t len = strlen(dir);
 
   if (dir[len - 1] != TRI_DIR_SEPARATOR_CHAR) {
     return TRI_Concatenate2String(dir, "/");
