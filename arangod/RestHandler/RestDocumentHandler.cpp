@@ -113,6 +113,7 @@ bool RestDocumentHandler::createDocument() {
   }
   
   arangodb::OperationOptions opOptions;
+  opOptions.isRestore = extractBooleanParameter("isRestore", false);
   opOptions.waitForSync = extractBooleanParameter("waitForSync", false);
   opOptions.returnNew = extractBooleanParameter("returnNew", false);
 
@@ -210,6 +211,9 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
     return false;
   }
 
+  OperationOptions options;
+  options.ignoreRevs = true;
+
   TRI_voc_rid_t const ifRid =
       extractRevision("if-match", nullptr, isValidRevision);
   if (!isValidRevision) {
@@ -223,6 +227,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
     VPackObjectBuilder guard(&builder);
     builder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
     if (ifRid != 0) {
+      options.ignoreRevs = false;
       builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(std::to_string(ifRid)));
     }
   }
@@ -245,8 +250,6 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
     return false;
   }
 
-  OperationOptions options;
-  options.ignoreRevs = false;
   OperationResult result = trx.document(collection, search, options);
 
   res = trx.finish(result.code);
@@ -416,6 +419,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   }
 
   OperationOptions opOptions;
+  opOptions.isRestore = extractBooleanParameter("isRestore", false);
   opOptions.ignoreRevs = extractBooleanParameter("ignoreRevs", true);
   opOptions.waitForSync = extractBooleanParameter("waitForSync", false);
   opOptions.returnNew = extractBooleanParameter("returnNew", false);
@@ -538,7 +542,7 @@ bool RestDocumentHandler::deleteDocument() {
 
   OperationOptions opOptions;
   opOptions.returnOld = extractBooleanParameter("returnOld", false);
-  opOptions.ignoreRevs = extractBooleanParameter("ignoreRevs", false);
+  opOptions.ignoreRevs = extractBooleanParameter("ignoreRevs", true);
 
   auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
   SingleCollectionTransaction trx(transactionContext,
@@ -567,6 +571,7 @@ bool RestDocumentHandler::deleteDocument() {
       VPackObjectBuilder guard(&builder);
       builder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
       if (revision != 0) {
+        opOptions.ignoreRevs = false;
         builder.add(TRI_VOC_ATTRIBUTE_REV, VPackValue(std::to_string(revision)));
       }
     }
@@ -620,7 +625,7 @@ bool RestDocumentHandler::readManyDocuments() {
   std::string const& collectionName = suffix[0];
 
   OperationOptions opOptions;
-  opOptions.ignoreRevs = extractBooleanParameter("ignoreRevs", false);
+  opOptions.ignoreRevs = extractBooleanParameter("ignoreRevs", true);
 
   auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
   SingleCollectionTransaction trx(transactionContext,

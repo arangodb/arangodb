@@ -111,19 +111,6 @@ static OperationResult DBServerResponseBad(std::shared_ptr<VPackBuilder> resultB
           res, "errorMessage", "JSON sent to DBserver was bad"));
 }
 
-static OperationResult DBServerResponseBad(std::string const& resultBody) {
-  // TODO DEPRECATED
-  // The body contains more information so we parse it.
-  VPackParser parser;
-  try {
-    parser.parse(resultBody);
-    return DBServerResponseBad(parser.steal());
-  } catch (...) {
-    return OperationResult(TRI_ERROR_INTERNAL, "JSON sent to DBserver was bad");
-  }
-}
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Insert an errror reported instead of the new document
 ////////////////////////////////////////////////////////////////////////////////
@@ -1305,19 +1292,12 @@ OperationResult Transaction::updateCoordinator(std::string const& collectionName
   
   auto headers = std::make_unique<std::map<std::string, std::string>>();
   GeneralResponse::ResponseCode responseCode;
-  std::map<std::string, std::string> resultHeaders;
-  std::string resultBody;
-
-  std::string key(Transaction::extractKey(newValue));
-  if (key.empty()) {
-    return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
-  }
-  TRI_voc_rid_t const expectedRevision 
-      = options.ignoreRevs ? 0 : TRI_ExtractRevisionId(newValue);
+  std::unordered_map<int, size_t> errorCounter;
+  std::shared_ptr<VPackBuilder> resultBody;
 
   int res = arangodb::modifyDocumentOnCoordinator(
-      _vocbase->_name, collectionName, key, expectedRevision, options,
-      true /* isPatch */, newValue, headers, responseCode, resultHeaders,
+      _vocbase->_name, collectionName, newValue, options,
+      true /* isPatch */, headers, responseCode, errorCounter,
       resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -1333,22 +1313,10 @@ OperationResult Transaction::updateCoordinator(std::string const& collectionName
         // Fall through
       case GeneralResponse::ResponseCode::ACCEPTED:
       case GeneralResponse::ResponseCode::CREATED:
-        {
-          VPackParser parser;
-          try {
-            parser.parse(resultBody);
-            auto bui = parser.steal();
-            auto buf = bui->steal();
-            return OperationResult(
-                buf, nullptr, "", errorCode,
-                responseCode == GeneralResponse::ResponseCode::CREATED);
-          }
-          catch (VPackException& e) {
-            std::string message = "JSON from DBserver not parseable: "
-                                  + resultBody + ":" + e.what();
-            return OperationResult(TRI_ERROR_INTERNAL, message);
-          }
-        }
+        return OperationResult(
+            resultBody->steal(), nullptr, "", errorCode,
+            responseCode == GeneralResponse::ResponseCode::CREATED,
+            errorCounter);
       case GeneralResponse::ResponseCode::BAD:
         return DBServerResponseBad(resultBody);
       case GeneralResponse::ResponseCode::NOT_FOUND:
@@ -1401,19 +1369,12 @@ OperationResult Transaction::replaceCoordinator(std::string const& collectionNam
 
   auto headers = std::make_unique<std::map<std::string, std::string>>();
   GeneralResponse::ResponseCode responseCode;
-  std::map<std::string, std::string> resultHeaders;
-  std::string resultBody;
-
-  std::string key(Transaction::extractKey(newValue));
-  if (key.empty()) {
-    return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
-  }
-  TRI_voc_rid_t const expectedRevision 
-      = options.ignoreRevs ? 0 : TRI_ExtractRevisionId(newValue);
+  std::unordered_map<int, size_t> errorCounter;
+  std::shared_ptr<VPackBuilder> resultBody;
 
   int res = arangodb::modifyDocumentOnCoordinator(
-      _vocbase->_name, collectionName, key, expectedRevision, options,
-      false /* isPatch */, newValue, headers, responseCode, resultHeaders,
+      _vocbase->_name, collectionName, newValue, options,
+      false /* isPatch */, headers, responseCode, errorCounter,
       resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -1428,22 +1389,10 @@ OperationResult Transaction::replaceCoordinator(std::string const& collectionNam
         // Fall through
       case GeneralResponse::ResponseCode::ACCEPTED:
       case GeneralResponse::ResponseCode::CREATED:
-        {
-          VPackParser parser;
-          try {
-            parser.parse(resultBody);
-            auto bui = parser.steal();
-            auto buf = bui->steal();
-            return OperationResult(
-                buf, nullptr, "", errorCode,
-                responseCode == GeneralResponse::ResponseCode::CREATED);
-          }
-          catch (VPackException& e) {
-            std::string message = "JSON from DBserver not parseable: "
-                                  + resultBody + ":" + e.what();
-            return OperationResult(TRI_ERROR_INTERNAL, message);
-          }
-        }
+        return OperationResult(
+            resultBody->steal(), nullptr, "", errorCode,
+            responseCode == GeneralResponse::ResponseCode::CREATED,
+            errorCounter);
       case GeneralResponse::ResponseCode::BAD:
         return DBServerResponseBad(resultBody);
       case GeneralResponse::ResponseCode::NOT_FOUND:

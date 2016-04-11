@@ -199,25 +199,12 @@ int getFilteredEdgesOnCoordinator(
 
 int modifyDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
-    std::string const& key, TRI_voc_rid_t const rev,
+    arangodb::velocypack::Slice const slice,
     OperationOptions const& options, bool isPatch,
-    arangodb::velocypack::Slice const& slice,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
     arangodb::GeneralResponse::ResponseCode& responseCode,
-    std::map<std::string, std::string>& resultHeaders, std::string& resultBody);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief modify a document in a coordinator
-////////////////////////////////////////////////////////////////////////////////
-
-int modifyDocumentOnCoordinator(
-    std::string const& dbname, std::string const& collname,
-    std::string const& key, TRI_voc_rid_t const rev,
-    OperationOptions const& options, bool isPatch,
-    std::unique_ptr<TRI_json_t>& json,
-    std::unique_ptr<std::map<std::string, std::string>>& headers,
-    arangodb::GeneralResponse::ResponseCode& responseCode,
-    std::map<std::string, std::string>& resultHeaders, std::string& resultBody);
+    std::unordered_map<int, size_t>& errorCounter,
+    std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief truncate a cluster collection on a coordinator
