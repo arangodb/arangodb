@@ -504,6 +504,17 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   }
 
   generateSaved(result, collectionName, TRI_col_type_e(trx.getCollectionType(collectionName)), transactionContext->getVPackOptions());
+
+  if (isArrayCase && !result.countErrorCodes.empty()) {
+    VPackBuilder errorBuilder;
+    errorBuilder.openObject();
+    for (auto const& it : result.countErrorCodes) {
+      errorBuilder.add(basics::StringUtils::itoa(it.first), VPackValue(it.second));
+    }
+    errorBuilder.close();
+    _response->setHeader("X-Arango-Error-Codes", errorBuilder.slice().toJson());
+  }
+
   return true;
 }
 
