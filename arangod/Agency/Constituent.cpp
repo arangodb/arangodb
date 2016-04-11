@@ -55,14 +55,6 @@ void Constituent::configure(Agent* agent) {
   if (size() == 1) {
     _role = LEADER;
   } else {
-    try {
-      _votes.resize(size());
-    } catch (std::exception const& e) {
-      LOG_TOPIC(ERR, Logger::AGENCY) <<
-        "Cannot resize votes vector to " << size();
-      LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
-    }
-    
     _id = _agent->config().id;
     if (_agent->config().notify) {// (notify everyone) 
       notifyAll();
@@ -142,7 +134,6 @@ void Constituent::follow (term_t t) {
     LOG_TOPIC(INFO, Logger::AGENCY) << "Role change: Converted to follower in term " << t;
   }
   this->term(t);
-  _votes.assign(_votes.size(),false); // void all votes
   _role = FOLLOWER;
 }
 
@@ -263,15 +254,13 @@ const constituency_t& Constituent::gossip () {
 /// @brief Call to election
 void Constituent::callElection() {
 
-  try {
-    _votes.at(_id) = true; // vote for myself
-  } catch (std::out_of_range const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "_votes vector is not properly sized!";
-    LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
-  }
+  std::bool votes(size(),false);
+
+  _votes.at(_id) = true; // vote for myself
   _cast = true;
-  if(_role == CANDIDATE)
+  if(_role == CANDIDATE) {
     this->term(_term+1);            // raise my term
+  }
   
   std::string body;
   std::vector<ClusterCommResult> results(_agent->config().end_points.size());
@@ -319,13 +308,12 @@ void Constituent::callElection() {
                 follow(t);
                 break;
               }
-              _votes[i] = slc.get("voteGranted").getBool();        // Get vote
-            } else {
-            }
+              votes[i] = slc.get("voteGranted").getBool();        // Get vote
+            } 
           }
         }
       } else { // Request failed
-        _votes[i] = false;
+        votes[i] = false;
       }
     }
   }
@@ -333,7 +321,7 @@ void Constituent::callElection() {
   // Count votes
   size_t yea = 0;
   for (size_t i = 0; i < size(); ++i) {
-    if (_votes[i]){
+    if (votes[i]){
       yea++;
     }    
   }
