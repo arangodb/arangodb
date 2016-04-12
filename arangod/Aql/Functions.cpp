@@ -133,7 +133,7 @@ static std::string BuildRegexPattern(char const* ptr, size_t length,
           pattern.push_back('%');
         } else {
           // wildcard
-          pattern.append(".*");
+          pattern.append("(.|[\r\n])*");
         }
       } else if (c == '_') {
         if (escaped) {
@@ -141,7 +141,7 @@ static std::string BuildRegexPattern(char const* ptr, size_t length,
           pattern.push_back('_');
         } else {
           // wildcard character
-          pattern.push_back('.');
+          pattern.append("(.|[\r\n])");
         }
       } else if (c == '?' || c == '+' || c == '[' || c == '(' || c == ')' ||
                  c == '{' || c == '}' || c == '^' || c == '$' || c == '|' ||
@@ -3410,27 +3410,17 @@ AqlValue Functions::Range(arangodb::aql::Query* query,
   double from = left.toDouble(unused);
   double to = right.toDouble(unused);
 
-  double step = 0.0;
-  if (parameters.size() == 3) {
-    AqlValue stepValue = ExtractFunctionParameterValue(trx, parameters, 2);
-    if (!stepValue.isNull(true)) {
-      step = stepValue.toDouble(unused);
-    } else {
-      // no step specified
-      if (from <= to) {
-        step = 1.0;
-      } else {
-        step = -1.0;
-      }
-    }
-  } else {
-    // no step specified
-    if (from <= to) {
-      step = 1.0;
-    } else {
-      step = -1.0;
-    }
+  if (parameters.size() < 3) {
+    return AqlValue(left.toInt64(), right.toInt64());
   }
+
+  AqlValue stepValue = ExtractFunctionParameterValue(trx, parameters, 2);
+  if (stepValue.isNull(true)) {
+    // no step specified
+    return AqlValue(left.toInt64(), right.toInt64());
+  } 
+  
+  double step = stepValue.toDouble(unused);
 
   if (step == 0.0 || (from < to && step < 0.0) || (from > to && step > 0.0)) {
     RegisterWarning(query, "RANGE",
