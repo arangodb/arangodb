@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint unused: false */
-/*global arangoHelper, Backbone, templateEngine, $, window, _, nv, d3 */
+/*global arangoHelper, prettyBytes, Backbone, templateEngine, $, window, _, nv, d3 */
 (function () {
   "use strict";
 
@@ -116,7 +116,6 @@
         + coord.get("address")
         + "/_admin/clusterStatistics?DBserver="
         + dbserver.get("name");
-
         self.statCollectDBS.add(stat);
       });
 
@@ -316,10 +315,10 @@
         nv.addGraph(function() {
           self.charts[c.id] = nv.models.stackedAreaChart()
           .options({
-            transitionDuration: 300,
             useInteractiveGuideline: true,
             showControls: false,
-            noData: 'Fetching data...'
+            noData: 'Fetching data...',
+            duration: 0
           });
 
           self.charts[c.id].xAxis
@@ -332,14 +331,14 @@
           })
           .staggerLabels(false);
 
-          // TODO UPDATE SINGLE VALUES AFTER UPDATE
           self.charts[c.id].yAxis
           .axisLabel('')
-          .tickFormat(function(d) { //TODO 1k bytes sizes
+          .tickFormat(function(d) {
             if (d === null) {
               return 'N/A';
             }
-            return d3.format(',.2f')(d);
+            var formatted = parseFloat(d3.format(".2f")(d));
+            return prettyBytes(formatted);
           });
 
           var data, lines = self.returnGraphOptions(c.id);
@@ -355,13 +354,13 @@
 
           self.chartData[c.id] = d3.select(c.id).append('svg')
           .datum(data)
-          .transition().duration(1000)
+          .transition().duration(300)
           .call(self.charts[c.id])
           .each('start', function() {
             window.setTimeout(function() {
               d3.selectAll(c.id + ' *').each(function() {
                 if (this.__transition__) {
-                  this.__transition__.duration = 1;
+                  this.__transition__.duration = 0;
                 }
               });
             }, 0);

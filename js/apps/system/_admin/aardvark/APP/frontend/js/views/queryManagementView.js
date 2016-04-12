@@ -25,7 +25,7 @@
       this.convertModelToJSON(true);
 
       window.setInterval(function() {
-        if (window.location.hash === '#query' && window.VISIBLE && self.shouldRender 
+        if (window.location.hash === '#queries' && window.VISIBLE && self.shouldRender 
             && arangoHelper.getCurrentSub().route === 'queryManagement') {
           if (self.active) {
             if ($('#arangoQueryManagementTable').is(':visible')) {

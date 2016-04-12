@@ -163,7 +163,8 @@
         },
         {
           name: 'Logs',
-          view: undefined
+          view: undefined,
+          disabled: true
         }
       ],
       node: [
@@ -231,14 +232,19 @@
         else {
           cssclass = '';
         }
+        if (menu.disabled) {
+          cssclass = 'disabled';
+        }
 
         $(self.subEl +  ' .bottom').append(
           '<li class="subMenuEntry ' + cssclass + '"><a>' + menu.name + '</a></li>'
         );
-        $(self.subEl + ' .bottom').children().last().bind('click', function(elem) {
-          self.activeSubMenu = menu;
-          self.renderSubView(menu, elem);
-        });
+        if (!menu.disabled) {
+          $(self.subEl + ' .bottom').children().last().bind('click', function(elem) {
+            self.activeSubMenu = menu;
+            self.renderSubView(menu, elem);
+          });
+        }
       });
     },
 

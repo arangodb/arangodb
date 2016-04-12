@@ -687,8 +687,8 @@
           .showValues(false)
           .showYAxis(false)
           .showXAxis(false)
-          .transitionDuration(100)
-          .tooltips(false)
+          //.transitionDuration(100)
+          //.tooltips(false)
           .showLegend(false)
           .showControls(false)
           .stacked(true);
@@ -803,8 +803,8 @@
             .showValues(false)
             .showYAxis(true)
             .showXAxis(true)
-            .transitionDuration(100)
-            .tooltips(false)
+            //.transitionDuration(100)
+            //.tooltips(false)
             .showLegend(false)
             .showControls(false)
             .forceY([0,1]);
