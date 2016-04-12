@@ -13,7 +13,9 @@
       <a id="services" class="tab" href="#services"><i class="fa fa-cogs"></i>Services</a>
     </li>
     <li class="users-menu"><a id="users" class="tab" href="#manage"><i class="fa fa-users"></i>Users</a></li>
-    <li class="logs-menu"><a id="logs" class="tab" href="#manage"><i class="fa fa-list"></i>Logs</a></li>
+    <% if (!isCluster) { %>
+      <li class="logs-menu"><a id="logs" class="tab" href="#manage"><i class="fa fa-list"></i>Logs</a></li>
+    <% } %>
     <li class="query-menu"><a id="settings" class="tab" href="#settings"><i class="fa fa-cog"></i></a></li>
     <!--
     <li class="navbar-spacer big"></li>
@@ -25,7 +27,7 @@
           <a id="shell" class="tab" href="#shell">JS Shell</a>
         </li>
 
-        <% if (isCluster) { %>
+        <% if (!isCluster) { %>
           <% if (currentDB.get('isSystem')) { %>
             <li class="dropdown-item">
               <a id="logs" class="tab" href="#logs">Logs</a>
