@@ -43,16 +43,17 @@ void RestBaseHandler::handleError(Exception const& ex) {
   generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
 }
 
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a result from VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestBaseHandler::generateResult(GeneralResponse::ResponseCode code,
                                      VPackSlice const& slice) {
-  createResponse(code);
-  _response->setContentType("application/json; charset=utf-8");
 
-  dumpResponse(slice, &VPackOptions::Defaults);
+  createResponse(code);
+  writeResult(slice, VPackOptions::Defaults);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,9 +64,7 @@ void RestBaseHandler::generateResult(GeneralResponse::ResponseCode code,
                                      VPackSlice const& slice,
                                      std::shared_ptr<TransactionContext> context) {
   createResponse(code);
-  _response->setContentType("application/json; charset=utf-8");
-  
-  dumpResponse(slice, context->getVPackOptions());
+  writeResult(slice,*(context->getVPackOptions()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -90,7 +89,6 @@ void RestBaseHandler::generateError(GeneralResponse::ResponseCode code,
 void RestBaseHandler::generateError(GeneralResponse::ResponseCode code,
                                     int errorCode, std::string const& message) {
   createResponse(code);
-  _response->setContentType("application/json; charset=utf-8");
 
   VPackBuilder builder;
   try {
@@ -106,7 +104,7 @@ void RestBaseHandler::generateError(GeneralResponse::ResponseCode code,
     builder.add("errorNum", VPackValue(errorCode));
     builder.close();
 
-    dumpResponse(builder.slice(), &VPackOptions::Defaults);
+    writeResult(builder.slice(), VPackOptions::Defaults);
   } catch (...) {
     // Building the error response failed
   }
@@ -147,3 +145,28 @@ void RestBaseHandler::dumpResponse(VPackSlice const& slice,
   }
 }
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief checks if velocypack is expected as answer
+//////////////////////////////////////////////////////////////////////////////
+
+bool RestBaseHandler::returnVelocypack() const {
+  auto accept = std::string(_request->header("accept"));
+  if (std::string::npos == accept.find("application/x-velocypack")) {
+    return false;
+  }
+  return true;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief writes volocypack or json to response
+//////////////////////////////////////////////////////////////////////////////
+
+void RestBaseHandler::writeResult(arangodb::velocypack::Slice const& slice, VPackOptions const& options){
+  if(returnVelocypack()) {
+    _response->setContentType("application/x-velocypack");
+    _response->body().appendText(slice.startAs<const char>(),slice.byteSize());
+  } else {
+    _response->setContentType("application/json; charset=utf-8");
+    dumpResponse(slice, &options);
+  }
+}
