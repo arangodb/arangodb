@@ -62,9 +62,11 @@ div.headerBar {
   color: $c-black;
   font-size: 16px;
   height: 36px;
+  margin-top: -55px;
   padding-left: 5px;
   padding-right: 5px;
-  position: relative;
+  position: absolute;
+  right: 5px;
 
   select {
     &:focus {

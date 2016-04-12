@@ -14,7 +14,7 @@
     events: {
     },
 
-    initialize: function (option) {
+    initialize: function (options) {
 
       if (window.App.isCluster) {
         this.coordinators = options.coordinators;
