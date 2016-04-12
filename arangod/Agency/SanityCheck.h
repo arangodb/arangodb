@@ -42,9 +42,12 @@ public:
   /// @brief Default dtor
   ~SanityCheck ();
   
-  /// @brief Configure with agent
-  void configure (Agent* agent);
-  
+  /// @brief Start thread
+  bool start ();
+
+  /// @brief Start thread with access to agent
+  bool start (Agent*);
+
   /// @brief Run woker
   void run() override final;
   
@@ -54,16 +57,15 @@ public:
   /// @brief Wake up to task
   void wakeUp ();
 
-  /// @brief Stop task and wait
-  void passOut ();
-  
 private:
+
+  /// @brief Perform sanity checking
+  bool doChecks(bool);
   
-  Agent* _agent;
+  Agent* _agent; /**< @brief My agent */
 
   arangodb::basics::ConditionVariable _cv; /**< @brief Control if thread should run */
   
-
   
 };
 

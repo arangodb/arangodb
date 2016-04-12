@@ -647,7 +647,8 @@ std::vector<bool> Store::apply (query_t const& query) {
 }
 
 //template<class T, class U> std::multimap<std::string, std::string>
-std::ostream& operator<< (std::ostream& os, std::multimap<std::string,std::string> const& m) {
+std::ostream& operator<< (
+  std::ostream& os, std::multimap<std::string,std::string> const& m) {
   for (auto const& i : m) {
     os << i.first << ": " << i.second << std::endl;
   }
@@ -700,10 +701,11 @@ std::vector<bool> Store::apply (
   }
 
   std::vector<std::string> urls;
-  for(auto it = in.begin(), end = in.end(); it != end; it = in.upper_bound(it->first)) {
+  for (auto it = in.begin(), end = in.end(); it != end;
+       it = in.upper_bound(it->first)) {
     urls.push_back(it->first);
   }
-
+  
   for (auto const& url : urls) {
     Builder tmp; // host
     tmp.openObject();
@@ -712,18 +714,14 @@ std::vector<bool> Store::apply (
     auto ret = in.equal_range(url);
     
     for (auto it = ret.first; it!=ret.second; ++it) {
-      //tmp.add(url,VPackValue(VPackValueType::Object));
       tmp.add(it->second->key,VPackValue(VPackValueType::Object));
       tmp.add("op",VPackValue(it->second->oper));
-      //tmp.close();
       tmp.close();
-      }
+    }
     
     tmp.close();
-      std::cout << tmp.toJson() << std::endl;
-
   }
-
+  
   return applied;
 }
 
@@ -791,7 +789,7 @@ std::vector<bool> Store::read (query_t const& queries, query_t& result) const {
 
 // read single query into ret
 bool Store::read (VPackSlice const& query, Builder& ret) const {
-
+  
   bool success = true;
   
   // Collect all paths
@@ -837,7 +835,7 @@ bool Store::read (VPackSlice const& query, Builder& ret) const {
       }
     }
   }
-
+  
   // Into result builder
   copy.toBuilder(ret);
   

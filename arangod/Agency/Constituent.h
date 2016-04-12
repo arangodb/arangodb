@@ -33,7 +33,6 @@
 #include "AgencyCommon.h"
 #include "Basics/Thread.h"
 
-struct TRI_server_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -93,6 +92,9 @@ public:
   /// @brief Who is leading
   id_t leaderID () const;
 
+  /// @brief Configuration
+  config_t const& config () const;
+
   /// @brief Become follower
   void follow(term_t);
 
@@ -135,7 +137,6 @@ private:
   /// @brief Sleep for how long
   duration_t sleepFor(double, double);
 
-  TRI_server_t* _server;
   TRI_vocbase_t* _vocbase; 
   ApplicationV8* _applicationV8;
   aql::QueryRegistry* _queryRegistry;

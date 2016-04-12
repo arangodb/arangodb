@@ -75,8 +75,10 @@ bool State::persist(index_t index, term_t term, id_t lid,
   body.close();
 
   TRI_ASSERT(_vocbase != nullptr);
-  auto transactionContext = std::make_shared<StandaloneTransactionContext>(_vocbase);
-  SingleCollectionTransaction trx(transactionContext, "log", TRI_TRANSACTION_WRITE);
+  auto transactionContext =
+    std::make_shared<StandaloneTransactionContext>(_vocbase);
+  SingleCollectionTransaction trx (
+    transactionContext, "log", TRI_TRANSACTION_WRITE);
   
   int res = trx.begin();
 
@@ -131,7 +133,7 @@ bool State::log(query_t const& queries, term_t term, id_t lid,
       buf->append((char const*)i.get("query").begin(),
                   i.get("query").byteSize());
       _log.push_back(log_t(i.get("index").getUInt(), term, lid, buf));
-      persist(i.get("index").getUInt(), term, lid, i.get("query")); // log to disk
+      persist(i.get("index").getUInt(), term, lid, i.get("query")); // to disk
     } catch (std::exception const& e) {
       LOG(ERR) << e.what();
     }
@@ -194,7 +196,8 @@ bool State::createCollections() {
 
 bool State::checkCollection(std::string const& name) {
   if (!_collections_checked) {
-    return (TRI_LookupCollectionByNameVocBase(_vocbase, name.c_str()) != nullptr);
+    return (
+      TRI_LookupCollectionByNameVocBase(_vocbase, name.c_str()) != nullptr);
   }
   return true;
 }
@@ -204,7 +207,8 @@ bool State::createCollection(std::string const& name) {
   body.add(VPackValue(VPackValueType::Object));
   body.close();
 
-  VocbaseCollectionInfo parameters(_vocbase, name.c_str(), TRI_COL_TYPE_DOCUMENT, body.slice());
+  VocbaseCollectionInfo parameters(_vocbase, name.c_str(),
+                                   TRI_COL_TYPE_DOCUMENT, body.slice());
   TRI_vocbase_col_t const* collection =
       TRI_CreateCollectionVocBase(_vocbase, parameters, parameters.id(), true);
   
@@ -216,8 +220,7 @@ bool State::createCollection(std::string const& name) {
 
 }
 
-bool State::loadCollections(TRI_vocbase_t* vocbase, 
-                            ApplicationV8* applicationV8, 
+bool State::loadCollections(TRI_vocbase_t* vocbase, ApplicationV8* applicationV8, 
                             aql::QueryRegistry* queryRegistry) {
   _vocbase = vocbase;
   _applicationV8 = applicationV8;
@@ -227,20 +230,21 @@ bool State::loadCollections(TRI_vocbase_t* vocbase,
 
 bool State::loadCollection(std::string const& name) {
   TRI_ASSERT(_vocbase != nullptr);
-
+  
   if (checkCollection(name)) {
     auto bindVars = std::make_shared<VPackBuilder>();
     bindVars->openObject();
     bindVars->close();
     // ^^^ TODO: check if bindvars are actually needed
-
+    
     TRI_ASSERT(_applicationV8 != nullptr);
     TRI_ASSERT(_queryRegistry != nullptr);
-    std::string const aql(std::string("FOR l IN ") + name + " SORT l._key RETURN l");
+    std::string const aql(std::string("FOR l IN ") + name
+                          + " SORT l._key RETURN l");
     arangodb::aql::Query query(_applicationV8, false, _vocbase,
                                aql.c_str(), aql.size(), bindVars, nullptr,
                                arangodb::aql::PART_MAIN);
-  
+    
     auto queryResult = query.execute(_queryRegistry);
 
     if (queryResult.code != TRI_ERROR_NO_ERROR) {
@@ -255,9 +259,10 @@ bool State::loadCollection(std::string const& name) {
               std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
         VPackSlice req = i.get("request");
         tmp->append(req.startAs<char const>(), req.byteSize());
-        _log.push_back(log_t(std::stoi(i.get(TRI_VOC_ATTRIBUTE_KEY).copyString()),
-                                 i.get("term").getUInt(),
-                                 i.get("leader").getUInt(), tmp));
+        _log.push_back(
+          log_t(std::stoi(i.get(TRI_VOC_ATTRIBUTE_KEY).copyString()),
+                i.get("term").getUInt(),
+                i.get("leader").getUInt(), tmp));
       }
     }
 
