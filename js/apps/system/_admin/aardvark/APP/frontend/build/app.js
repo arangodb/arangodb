@@ -19964,7 +19964,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global arangoHelper, Backbone, templateEngine, $, window, _, nv, d3 */
+/*global arangoHelper, prettyBytes, Backbone, templateEngine, $, window, _, nv, d3 */
 (function () {
   "use strict";
 
@@ -20080,7 +20080,6 @@ window.ArangoUsers = Backbone.Collection.extend({
         + coord.get("address")
         + "/_admin/clusterStatistics?DBserver="
         + dbserver.get("name");
-
         self.statCollectDBS.add(stat);
       });
 
@@ -20280,10 +20279,10 @@ window.ArangoUsers = Backbone.Collection.extend({
         nv.addGraph(function() {
           self.charts[c.id] = nv.models.stackedAreaChart()
           .options({
-            transitionDuration: 300,
             useInteractiveGuideline: true,
             showControls: false,
-            noData: 'Fetching data...'
+            noData: 'Fetching data...',
+            duration: 0
           });
 
           self.charts[c.id].xAxis
@@ -20296,14 +20295,14 @@ window.ArangoUsers = Backbone.Collection.extend({
           })
           .staggerLabels(false);
 
-          // TODO UPDATE SINGLE VALUES AFTER UPDATE
           self.charts[c.id].yAxis
           .axisLabel('')
-          .tickFormat(function(d) { //TODO 1k bytes sizes
+          .tickFormat(function(d) {
             if (d === null) {
               return 'N/A';
             }
-            return d3.format(',.2f')(d);
+            var formatted = parseFloat(d3.format(".2f")(d));
+            return prettyBytes(formatted);
           });
 
           var data, lines = self.returnGraphOptions(c.id);
@@ -20319,13 +20318,13 @@ window.ArangoUsers = Backbone.Collection.extend({
 
           self.chartData[c.id] = d3.select(c.id).append('svg')
           .datum(data)
-          .transition().duration(1000)
+          .transition().duration(300)
           .call(self.charts[c.id])
           .each('start', function() {
             window.setTimeout(function() {
               d3.selectAll(c.id + ' *').each(function() {
                 if (this.__transition__) {
-                  this.__transition__.duration = 1;
+                  this.__transition__.duration = 0;
                 }
               });
             }, 0);
@@ -22511,8 +22510,8 @@ window.ArangoUsers = Backbone.Collection.extend({
           .showValues(false)
           .showYAxis(false)
           .showXAxis(false)
-          .transitionDuration(100)
-          .tooltips(false)
+          //.transitionDuration(100)
+          //.tooltips(false)
           .showLegend(false)
           .showControls(false)
           .stacked(true);
@@ -22627,8 +22626,8 @@ window.ArangoUsers = Backbone.Collection.extend({
             .showValues(false)
             .showYAxis(true)
             .showXAxis(true)
-            .transitionDuration(100)
-            .tooltips(false)
+            //.transitionDuration(100)
+            //.tooltips(false)
             .showLegend(false)
             .showControls(false)
             .forceY([0,1]);
@@ -26926,7 +26925,8 @@ window.ArangoUsers = Backbone.Collection.extend({
         },
         {
           name: 'Logs',
-          view: undefined
+          view: undefined,
+          disabled: true
         }
       ],
       node: [
@@ -26994,14 +26994,19 @@ window.ArangoUsers = Backbone.Collection.extend({
         else {
           cssclass = '';
         }
+        if (menu.disabled) {
+          cssclass = 'disabled';
+        }
 
         $(self.subEl +  ' .bottom').append(
           '<li class="subMenuEntry ' + cssclass + '"><a>' + menu.name + '</a></li>'
         );
-        $(self.subEl + ' .bottom').children().last().bind('click', function(elem) {
-          self.activeSubMenu = menu;
-          self.renderSubView(menu, elem);
-        });
+        if (!menu.disabled) {
+          $(self.subEl + ' .bottom').children().last().bind('click', function(elem) {
+            self.activeSubMenu = menu;
+            self.renderSubView(menu, elem);
+          });
+        }
       });
     },
 
@@ -27507,7 +27512,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.convertModelToJSON(true);
 
       window.setInterval(function() {
-        if (window.location.hash === '#query' && window.VISIBLE && self.shouldRender 
+        if (window.location.hash === '#queries' && window.VISIBLE && self.shouldRender 
             && arangoHelper.getCurrentSub().route === 'queryManagement') {
           if (self.active) {
             if ($('#arangoQueryManagementTable').is(':visible')) {
@@ -33116,12 +33121,13 @@ window.ArangoUsers = Backbone.Collection.extend({
       "services": "applications",
       "applications/:mount": "applicationDetail",
       "graphs": "graphManagement",
-      "graph/:name": "showGraph",
+      "graphs/:name": "showGraph",
       "users": "userManagement",
       "userProfile": "userProfile",
       "cluster": "cluster",
       "nodes": "nodes",
       "node/:name": "node",
+      "node/:name/logs": "logs",
       "logs": "logs",
       "test": "test"
     },

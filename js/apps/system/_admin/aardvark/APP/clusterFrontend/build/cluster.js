@@ -2765,8 +2765,8 @@ window.StatisticsCollection = Backbone.Collection.extend({
           .showValues(false)
           .showYAxis(false)
           .showXAxis(false)
-          .transitionDuration(100)
-          .tooltips(false)
+          //.transitionDuration(100)
+          //.tooltips(false)
           .showLegend(false)
           .showControls(false)
           .stacked(true);
@@ -2881,8 +2881,8 @@ window.StatisticsCollection = Backbone.Collection.extend({
             .showValues(false)
             .showYAxis(true)
             .showXAxis(true)
-            .transitionDuration(100)
-            .tooltips(false)
+            //.transitionDuration(100)
+            //.tooltips(false)
             .showLegend(false)
             .showControls(false)
             .forceY([0,1]);
@@ -4563,7 +4563,6 @@ window.StatisticsDescriptionCollection = Backbone.Collection.extend({
       var statCollect = new window.ClusterStatisticsCollection();
       var coord = this.coordinators.first();
 
-      console.log(this.dbservers);
       // create statistics collector for DB servers
       this.dbservers.forEach(function (dbserver) {
         if (dbserver.get("status") !== "ok") {return;}
