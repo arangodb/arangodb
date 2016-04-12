@@ -40,24 +40,42 @@
 .dashboard-sub-bar {
   @extend %clear-float;
   @extend %pull-left;
-  background-color: $c-bar-bg;
+  background-color: $c-white;
   border-bottom-left-radius: 3px;
   border-bottom-right-radius: 3px;
-  color: $c-white;
+  color: rgba(0, 0, 0, .5);
+  font-family: Lato,sans-serif;
+  font-size: 11pt;
+  font-weight: 600;
   height: 24px;
   line-height: 24px;
   margin: 0;
-  padding: 0 6px;
+  padding: {
+    bottom: 20px;
+    left: 6px;
+    right: 6px;
+    top: 10px;
+  };
+  text-align: center;
+  text-transform: uppercase;
 
   .dashboard-sub-bar-title {
     @extend %pull-left;
+    color: $c-black;
+    font-family: Lato,sans-serif;
+    font-size: 11pt;
+    font-weight: 600;
+    opacity: .5;
+    text-align: center;
+    text-transform: uppercase;
+    width: 100%;
   }
 }
 
 .dashboard-full-width-chart {
   @extend %dashboard-chart-basic;
   border: 1px solid rgba(104, 103, 102, .10);
-  border-radius: 3px;
+  border-radius: 2px;
   margin-right: 12px;
 
   .dashboard-full-width-chart-inner {
@@ -124,9 +142,9 @@
   }
 
   .state {
-    background-color: $c-white;
+    background-color: $c-new-grey;
     border-radius: 5px;
-    color: $c-black;
+    color: $c-white;
     margin-left: 5px;
     padding-left: 6px;
     padding-right: 4px;
@@ -136,7 +154,7 @@
 .dashboard-large-chart {
   @extend %dashboard-chart-basic;
   border: 1px solid rgba(104, 103, 102, .10);
-  border-radius: 3px;
+  border-radius: 2px;
   margin-right: 12px;
 
   .dashboard-large-chart-inner {
@@ -160,7 +178,7 @@
 .dashboard-small-chart {
   @extend %dashboard-chart-basic;
   border: 1px solid rgba(104, 103, 102, .10);
-  border-radius: 3px;
+  border-radius: 2px;
 
   .dashboard-small-chart-inner {
     @extend %dashboard-chart-box;
@@ -186,7 +204,7 @@
 
 .dashboard-medium-chart-outer {
   border: 1px solid rgba(104, 103, 102, .10);
-  border-radius: 3px;
+  border-radius: 2px;
 
   &:first-child {
     margin-right: 10px;
@@ -214,7 +232,7 @@
 
   .dashboard-medium-chart-outer {
     border: 1px solid rgba(104, 103, 102, .10);
-    border-radius: 3px;
+    border-radius: 2px;
   }
 
   .dashboard-medium-chart-menu {
@@ -251,7 +269,11 @@
   @extend %dashboard-chart-box;
   @extend %dashboard-chart-basic;
   border: 1px solid rgba(104, 103, 102, .10);
-  border-radius: 3px;
+  border-radius: 2px;
+
+  .dashboard-sub-bar {
+    padding-bottom: 5px;
+  }
 
   .dashboard-tendency-chart {
     @extend %clear-float;
@@ -292,7 +314,11 @@
   @extend %dashboard-chart-box;
   @extend %dashboard-chart-basic;
   border: 1px solid rgba(104, 103, 102, .10);
-  border-radius: 3px;
+  border-radius: 2px;
+
+  .dashboard-sub-bar {
+    padding-bottom: 5px;
+  }
 
   .dashboard-bar-chart {
     @extend %clear-float;

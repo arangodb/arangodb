@@ -66,7 +66,8 @@
   $white-space: 10px;
   $min: $tile-width * $i;
   $navbar-size: 150px;
-  $content-size: $min - 12px - $navbar-size;
+  //TODO 
+  $content-size: $min - $navbar-size;
 
   $legend-width: 140px;
   $legend-weight: 400;

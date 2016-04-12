@@ -35,7 +35,7 @@
 
     li {
       cursor: pointer;
-      font-size: 9pt;
+      font-size: 10pt;
       line-height: 30px;
       margin-bottom: 5px;
       margin-top: 5px;
@@ -48,9 +48,12 @@
         }
       }
 
+      &.disabled {
+        cursor: not-allowed;
+      }
+
       a {
         color: $c-black;
-        text-transform: uppercase;
       }
 
     }

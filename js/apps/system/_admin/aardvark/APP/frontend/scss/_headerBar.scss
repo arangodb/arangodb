@@ -180,8 +180,9 @@ div.headerBar {
   .disabledBread {
     color: $c-white;
     float: left;
-    font-size: 11.5pt;
+    font-size: 13pt;
     font-weight: 100;
+    opacity: .65;
     padding-right: 5px;
     position: relative;
 
@@ -190,13 +191,28 @@ div.headerBar {
       margin-left: 10px;
     }
 
+    &:hover {
+      cursor: default;
+    }
+
   }
 
   .activeBread {
-    color: $c-positive;
+    color: $c-white;
     float: left;
-    font-size: 11.5pt;
-    font-weight: 400;
+    font-size: 13pt;
+    font-weight: 100;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-transition: opacity .2s cubic-bezier(.645, .045, .355, 1);
+    transition: opacity .2s cubic-bezier(.645, .045, .355, 1);
+
+    &:hover {
+      opacity: .65;
+    }
+  }
+
+  a {
+    text-transform: capitalize;
   }
 
   #app-development-path {

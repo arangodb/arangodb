@@ -1,6 +1,8 @@
 $c-body-color: #333;
 $c-login-bg: #dee8d0;
 
+$c-arangodb-green: rgb(159, 175, 77);
+
 $c-lightgreen-bg: rgba(222, 233, 207, 1);
 $c-lightgreen-2-bg: #f5f8f0;
 $c-lightgreen-transp-bg: #f5f8f0;
@@ -73,7 +75,7 @@ $c-content-row-active: #bdcc92;
 $c-odd: #d9d9d9;
 $c-even: #fff;
 
-$c-navbar-main-color: rgba(34, 34, 34, 1);
+$c-navbar-main-color: rgba(34, 34, 34, 0.9);
 $c-navbar-spacer: #a0a0a0;
 $c-navbar-border: rgba(140,138,137,.25);
 $c-navbar-spacer-shadow: #c8c8c8;
