@@ -25,11 +25,10 @@
 const db = require('@arangodb').db;
 const sessionsMiddleware = require('@arangodb/foxx/sessions');
 const cookieTransport = require('@arangodb/foxx/sessions/transports/cookie');
-const collectionStorage = require('@arangodb/foxx/sessions/storages/collection');
+const systemStorage = require('@arangodb/foxx/sessions/storages/_system');
 const auth = require('@arangodb/foxx/auth');
 
-module.context.sessions = collectionStorage('_sessions');
-module.context.users = db._collection('_users');
+module.context.sessions = systemStorage();
 module.context.auth = auth('sha256');
 
 module.context.use(sessionsMiddleware({

@@ -35,6 +35,8 @@ const notifications = require('@arangodb/configuration').notifications;
 const createRouter = require('@arangodb/foxx/router');
 const NOT_FOUND = require('@arangodb').errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code;
 
+const sessions = module.context.sessions;
+const auth = module.context.auth;
 const router = createRouter();
 module.exports = router;
 
@@ -50,24 +52,27 @@ router.get('/whoAmI', function(req, res) {
       if (!e.isArangoError || e.errorNum !== NOT_FOUND) {
         throw e;
       }
-      req.session.uid = null;
+      sessions.setUser(req.session);
     }
   }
   res.json({user});
 });
 
 router.post('/logout', function (req, res) {
-  req.session.uid = null;
+  if (req.session) {
+    sessions.clear(req.session._key);
+    delete req.session;
+  }
   res.json({success: true});
 });
 
 router.post('/login', function (req, res) {
   if (!req.session) {
-    req.session = module.context.sessions.new();
+    req.session = sessions.new();
   }
 
   const doc = db._users.firstExample({user: req.body.username});
-  const valid = module.context.auth.verify(
+  const valid = auth.verify(
     doc ? doc.authData.simple : null,
     req.body.password
   );
@@ -76,8 +81,8 @@ router.post('/login', function (req, res) {
     throw new httperr.Unauthorized();
   }
 
+  sessions.setUser(req.session, doc);
   const user = doc.user;
-  req.session.uid = doc._key;
   res.json({user});
 })
 .body({
@@ -97,7 +102,7 @@ const authRouter = createRouter();
 router.use(authRouter);
 
 authRouter.use((req, res, next) => {
-  if (!internal.options()['server.disable-authentication'] && !req.user) {
+  if (!internal.options()['server.disable-authentication'] && !req.session.uid) {
     throw new httperr.Unauthorized();
   }
   next();
@@ -289,7 +294,6 @@ authRouter.delete('/job/', function(req, res) {
 .description('Delete all jobs in a specific system database with a given id.');
 
 authRouter.delete('/job/:id', function(req, res) {
-
   var id = req.params('id');
 
   if (id) {

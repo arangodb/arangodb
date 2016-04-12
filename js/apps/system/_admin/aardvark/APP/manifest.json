@@ -93,8 +93,6 @@
       "path": "frontend/src/worker-json.js",
       "gzip": true
     }
-  },
-
-  "lib": "."
+  }
 }
 
