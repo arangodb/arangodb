@@ -20,7 +20,7 @@ $navbar-size: 150px;
   width: $navbar-size;
 
   > .primary {
-    background-color: $c-navbar-main-color;
+    background-color: $c-bluegrey-dark;
     float: left;
     height: 100%;
     width: $navbar-size;
@@ -107,7 +107,7 @@ $navbar-size: 150px;
   width: $navbar-size;
 
   > li {
-    line-height: 30px;
+    line-height: 25px;
   }
 
   li {
@@ -146,31 +146,31 @@ $navbar-size: 150px;
   }
 
   .active {
+    border-left: 2px solid $c-bluegrey-nontransp;
+
     .tab {
-      //border-bottom: 2px solid $c-positive;
-      //padding-bottom: 4px;
+      color: $c-white;
     }
   }
 
   > .active {
-    background-color: $c-transp;
+    background-color: rgba(255, 255, 255, .2);
 
     a {
-      opacity: .65;
+      opacity: 1;
     }
   }
 
   .dropdown-item:hover,
   > li:hover {
-    //background-color: $c-white;
-    border-radius: 3px;
 
     a {
       color: $c-white;
-      opacity: .65;
-      -webkit-tap-highlight-color: transparent;
-      -webkit-transition: opacity .2s cubic-bezier(.645, .045, .355, 1);
-      transition: opacity .2s cubic-bezier(.645, .045, .355, 1);
+      opacity: 1;
+      -moz-transition: all .2s ease-in;
+      -o-transition: all .2s ease-in;
+      -webkit-transition: all .2s ease-in;
+      transition: all .2s ease-in;
     }
   }
 
@@ -191,7 +191,7 @@ $navbar-size: 150px;
 }
 
 .tab {
-  color: $c-white;
+  color: rgba(255, 255, 255, .64);
   display: block;
   font-size: 9pt;
   font-weight: 100;

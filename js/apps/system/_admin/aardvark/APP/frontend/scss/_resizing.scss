@@ -1,6 +1,12 @@
 .resizecontainer {
   @extend %clear-float;
-  margin: 0 auto;
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+  padding: {
+    left: 10px;
+    right: 10px; 
+  };
 }
 
 @media (max-width: 738px) {
@@ -50,15 +56,11 @@
 
 @media (min-width: 739px) and (max-width: 1041px) {
   #arangoCollectionUl a {
-    font-size: 12px;
-    height: 12px;
-    padding: 8px 5px;
   }
 }
 
 @media (min-width: 1042px) and (max-width: 1284px) {
   #arangoCollectionUl a {
-    font-size: 14px;
   }
 }
 
@@ -66,7 +68,6 @@
   $white-space: 10px;
   $min: $tile-width * $i;
   $navbar-size: 150px;
-  //TODO 
   $content-size: $min - $navbar-size;
 
   $legend-width: 140px;
@@ -175,7 +176,7 @@
 
   @media (min-width: $min + $white-space) and (max-width: $min + $tile-width - 1 + $white-space) {
     .resizecontainer {
-      width: $content-size;
+      width: 100%;
     }
 
     .dashboard-full-width-chart {
@@ -583,7 +584,7 @@ div.centralContent {
 
 .contentDiv {
   list-style: none;
-  padding: 13px 0 0;
+  padding: 15px 0 0;
 
   li {
     @extend %pull-left;

@@ -15,10 +15,10 @@ input.search-input {
   .fa-search {
     color: $c-c2grey;
     font-size: 12pt;
+    margin-left: -20px;
     opacity: .5;
-    position: absolute;
-    right: 9px;
-    top: 9px;
+    position: relative;
+    top: -2px;
 
     &:hover {
       cursor: pointer;
@@ -65,8 +65,6 @@ div.headerBar {
   margin-top: -55px;
   padding-left: 5px;
   padding-right: 5px;
-  position: absolute;
-  right: 5px;
 
   select {
     &:focus {

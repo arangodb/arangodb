@@ -25,7 +25,7 @@ $iconsize: 50px;
   @include box-shadow(none);
 
   background-color: $c-white;
-  border: 1px solid $c-lightgreen-2-bg;
+  //border: 1px solid $c-lightgreen-2-bg;
   border-radius: 2px;
   font-size: 14px;
   list-style: none;
@@ -192,7 +192,7 @@ $iconsize: 50px;
   }
 
   h5 {
-    background: $c-new-grey;
+    background: $c-bluegrey-light;
     color: $c-white;
     font-size: 12px;
     margin: 0;
@@ -229,7 +229,7 @@ $iconsize: 50px;
   }
 
   .borderBox {
-    border: 1px solid $c-tile-border;
+    border: 1px solid $c-bluegrey-border;
     border-bottom: 0;
     border-radius: 2px;
     height: 75px;
@@ -374,8 +374,8 @@ div {
 }
 
 .collectionName {
-  border-bottom-left-radius: 3px;
-  border-bottom-right-radius: 3px;
+  border-bottom-left-radius: 2px;
+  border-bottom-right-radius: 2px;
   bottom: 0;
   font-weight: 300;
   left: 0;
