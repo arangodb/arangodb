@@ -58,6 +58,7 @@
 
     continueRender: function() {
       var coords = this.coordinators.toJSON();
+      console.log(coords);
       this.$el.html(this.template.render({
         coords: coords
       }));
