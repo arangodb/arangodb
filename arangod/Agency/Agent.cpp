@@ -394,7 +394,9 @@ void Agent::beginShutdown() {
   _constituent.beginShutdown();
   _spearhead.beginShutdown();
   _read_db.beginShutdown();
-  _sanity_check.beginShutdown();
+  if (_config.sanity_check) {
+    _sanity_check.beginShutdown();
+  }
   
   // Wake up all waiting REST handler (waitFor)
   CONDITION_LOCKER(guard, _cv);
