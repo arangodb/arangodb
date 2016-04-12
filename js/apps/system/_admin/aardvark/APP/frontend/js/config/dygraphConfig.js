@@ -57,7 +57,7 @@
     },
 
     //colors for dygraphs
-    colors: ["#617e2b", "#296e9c", "#81ccd8", "#7ca530", "#3c3c3c",
+    colors: ["rgb(46, 196, 211)", "rgb(194, 195, 56)", "#81ccd8", "#7ca530", "#3c3c3c",
              "#aa90bd", "#e1811d", "#c7d4b2", "#d0b2d4"],
 
 
@@ -210,14 +210,15 @@
         digitsAfterDecimal: 1,
         drawGapPoints: true,
         fillGraph: true,
+        fillAlpha: 0.7,
         showLabelsOnHighlight: false,
-        strokeWidth: 1.0,
-        lineWidth: 1.0,
-        strokeBorderWidth: 1.0,
+        strokeWidth: 0.0,
+        lineWidth: 0.0,
+        strokeBorderWidth: 0.0,
         includeZero: true,
         highlightCircleSize: 2.5,
         labelsSeparateLines : true,
-        strokeBorderColor: '#ffffff',
+        strokeBorderColor: 'rgba(0,0,0,0)',
         interactionModel: {},
         maxNumberWidth : 10,
         colors: [this.colors[0]],
