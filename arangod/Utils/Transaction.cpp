@@ -1338,7 +1338,7 @@ OperationResult Transaction::updateCoordinator(std::string const& collectionName
   auto headers = std::make_unique<std::map<std::string, std::string>>();
   GeneralResponse::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
-  std::shared_ptr<VPackBuilder> resultBody;
+  auto resultBody = std::make_shared<VPackBuilder>();
 
   int res = arangodb::modifyDocumentOnCoordinator(
       _vocbase->_name, collectionName, newValue, options,
@@ -1415,7 +1415,7 @@ OperationResult Transaction::replaceCoordinator(std::string const& collectionNam
   auto headers = std::make_unique<std::map<std::string, std::string>>();
   GeneralResponse::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
-  std::shared_ptr<VPackBuilder> resultBody;
+  auto resultBody = std::make_shared<VPackBuilder>();
 
   int res = arangodb::modifyDocumentOnCoordinator(
       _vocbase->_name, collectionName, newValue, options,
