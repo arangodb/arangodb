@@ -239,7 +239,7 @@ void Thread::shutdown() {
   }
 
   if (_state.load() != ThreadState::STOPPED) {
-    LOG(FATAL) << "cannot shutdown threads, giving up";
+    LOG(FATAL) << "cannot shutdown thread, giving up";
     FATAL_ERROR_EXIT();
   }
 }

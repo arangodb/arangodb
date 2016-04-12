@@ -27,6 +27,7 @@
 #include "AgencyCommon.h"
 #include "AgentCallback.h"
 #include "Constituent.h"
+#include "SanityCheck.h"
 #include "State.h"
 #include "Store.h"
 
@@ -42,7 +43,8 @@ class QueryRegistry;
 namespace consensus {
 
 class Agent : public arangodb::Thread {
- public:
+
+public:
   /// @brief Construct with program options
   Agent(TRI_server_t*, config_t const&, ApplicationV8*, aql::QueryRegistry*);
 
@@ -77,6 +79,8 @@ class Agent : public arangodb::Thread {
 
   /// @brief Leader ID
   id_t leaderID() const;
+
+  /// @brief Are we leading?
   bool leading() const;
 
   /// @brief Pick up leadership tasks
@@ -148,7 +152,9 @@ class Agent : public arangodb::Thread {
   aql::QueryRegistry* _queryRegistry;
 
   Constituent _constituent; /**< @brief Leader election delegate */
+  SanityCheck _sanity_check; /**< @brief sanitychecking */
   State _state;             /**< @brief Log replica              */
+  
   config_t _config;         /**< @brief Command line arguments   */
 
   std::atomic<index_t> _last_commit_index; /**< @brief Last commit index */
@@ -165,7 +171,7 @@ class Agent : public arangodb::Thread {
       _confirmed;          /**< @brief Confirmed log index of each slave */
   arangodb::Mutex _ioLock; /**< @brief Read/Write lock */
 };
-}
-}
+
+}}
 
 #endif

@@ -45,10 +45,7 @@
 using namespace arangodb;
 using namespace arangodb::wal;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a slice value into its numeric equivalent
-////////////////////////////////////////////////////////////////////////////////
-    
 template <typename T>
 static inline T NumericValue(VPackSlice const& slice, char const* attribute) {
   VPackSlice v = slice.get(attribute);
@@ -61,20 +58,14 @@ static inline T NumericValue(VPackSlice const& slice, char const* attribute) {
   return 0;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return a reference to an existing datafile statistics struct
-////////////////////////////////////////////////////////////////////////////////
-
 static inline DatafileStatisticsContainer& getDfi(CollectorCache* cache,
                                                   TRI_voc_fid_t fid) {
   return cache->dfi[fid];
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return a reference to an existing datafile statistics struct,
 /// create it if it does not exist
-////////////////////////////////////////////////////////////////////////////////
-
 static inline DatafileStatisticsContainer& createDfi(CollectorCache* cache,
                                                      TRI_voc_fid_t fid) {
   auto it = cache->dfi.find(fid);
@@ -88,10 +79,7 @@ static inline DatafileStatisticsContainer& createDfi(CollectorCache* cache,
   return cache->dfi[fid];
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief state that is built up when scanning a WAL logfile
-////////////////////////////////////////////////////////////////////////////////
-
 struct CollectorState {
   std::unordered_map<TRI_voc_cid_t, TRI_voc_tick_t> collections;
   std::unordered_map<TRI_voc_cid_t, int64_t> operationsCount;
@@ -119,10 +107,7 @@ struct CollectorState {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a collection can be ignored in the gc
-////////////////////////////////////////////////////////////////////////////////
-
 static bool ShouldIgnoreCollection(CollectorState const* state,
                                    TRI_voc_cid_t cid) {
   if (state->droppedCollections.find(cid) != state->droppedCollections.end()) {
@@ -149,10 +134,7 @@ static bool ShouldIgnoreCollection(CollectorState const* state,
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief callback to handle one marker during collection
-////////////////////////////////////////////////////////////////////////////////
-
 static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
                        TRI_datafile_t* datafile) {
   CollectorState* state = static_cast<CollectorState*>(data);
@@ -284,16 +266,10 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief wait interval for the collector thread when idle
-////////////////////////////////////////////////////////////////////////////////
-
 uint64_t const CollectorThread::Interval = 1000000;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the collector thread
-////////////////////////////////////////////////////////////////////////////////
-
 CollectorThread::CollectorThread(LogfileManager* logfileManager,
                                  TRI_server_t* server)
     : Thread("WalCollector"),
@@ -307,10 +283,7 @@ CollectorThread::CollectorThread(LogfileManager* logfileManager,
       _collectorResultCondition(),
       _collectorResult(TRI_ERROR_NO_ERROR) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief wait for the collector result
-////////////////////////////////////////////////////////////////////////////////
-
 int CollectorThread::waitForResult(uint64_t timeout) {
   CONDITION_LOCKER(guard, _collectorResultCondition);
 
@@ -323,10 +296,7 @@ int CollectorThread::waitForResult(uint64_t timeout) {
   return _collectorResult;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief begin shutdown sequence
-////////////////////////////////////////////////////////////////////////////////
-
 void CollectorThread::beginShutdown() {
   Thread::beginShutdown();
 
@@ -334,19 +304,13 @@ void CollectorThread::beginShutdown() {
   guard.signal();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief signal the thread that there is something to do
-////////////////////////////////////////////////////////////////////////////////
-
 void CollectorThread::signal() {
   CONDITION_LOCKER(guard, _condition);
   guard.signal();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief main loop
-////////////////////////////////////////////////////////////////////////////////
-
 void CollectorThread::run() {
   int counter = 0;
 
@@ -422,30 +386,21 @@ void CollectorThread::run() {
   TRI_ASSERT(!hasQueuedOperations());
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether there are queued operations left
-////////////////////////////////////////////////////////////////////////////////
-
 bool CollectorThread::hasQueuedOperations() {
   MUTEX_LOCKER(mutexLocker, _operationsQueueLock);
 
   return !_operationsQueue.empty();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether there are queued operations left
-////////////////////////////////////////////////////////////////////////////////
-
 bool CollectorThread::hasQueuedOperations(TRI_voc_cid_t cid) {
   MUTEX_LOCKER(mutexLocker, _operationsQueueLock);
 
   return (_operationsQueue.find(cid) != _operationsQueue.end());
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief step 1: perform collection of a logfile (if any)
-////////////////////////////////////////////////////////////////////////////////
-
 int CollectorThread::collectLogfiles(bool& worked) {
   // always init result variable
   worked = false;
@@ -505,10 +460,7 @@ int CollectorThread::collectLogfiles(bool& worked) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief step 2: process all still-queued collection operations
-////////////////////////////////////////////////////////////////////////////////
-
 int CollectorThread::processQueuedOperations(bool& worked) {
   // always init result variable
   worked = false;
@@ -623,20 +575,14 @@ int CollectorThread::processQueuedOperations(bool& worked) {
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the number of queued operations
-////////////////////////////////////////////////////////////////////////////////
-
 size_t CollectorThread::numQueuedOperations() {
   MUTEX_LOCKER(mutexLocker, _operationsQueueLock);
 
   return _operationsQueue.size();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief process a single marker in collector step 2
-////////////////////////////////////////////////////////////////////////////////
-
 void CollectorThread::processCollectionMarker(
     arangodb::SingleCollectionTransaction& trx,
     TRI_document_collection_t* document, CollectorCache* cache,
@@ -696,10 +642,7 @@ void CollectorThread::processCollectionMarker(
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief process all operations for a single collection
-////////////////////////////////////////////////////////////////////////////////
-
 int CollectorThread::processCollectionOperations(CollectorCache* cache) {
   arangodb::DatabaseGuard dbGuard(_server, cache->databaseId);
   TRI_vocbase_t* vocbase = dbGuard.database();
@@ -779,10 +722,7 @@ int CollectorThread::processCollectionOperations(CollectorCache* cache) {
   return res;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief collect one logfile
-////////////////////////////////////////////////////////////////////////////////
-
 int CollectorThread::collect(Logfile* logfile) {
   TRI_ASSERT(logfile != nullptr);
 
@@ -916,10 +856,7 @@ int CollectorThread::collect(Logfile* logfile) {
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief transfer markers into a collection
-////////////////////////////////////////////////////////////////////////////////
-
 int CollectorThread::transferMarkers(Logfile* logfile,
                                      TRI_voc_cid_t collectionId,
                                      TRI_voc_tick_t databaseId,
@@ -979,11 +916,8 @@ int CollectorThread::transferMarkers(Logfile* logfile,
   return res;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief transfer markers into a collection, actual work
 /// the collection must have been prepared to call this function
-////////////////////////////////////////////////////////////////////////////////
-
 int CollectorThread::executeTransferMarkers(TRI_document_collection_t* document,
                                             CollectorCache* cache,
                                             OperationsType const& operations) {
@@ -1039,10 +973,7 @@ int CollectorThread::executeTransferMarkers(TRI_document_collection_t* document,
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief insert the collect operations into a per-collection queue
-////////////////////////////////////////////////////////////////////////////////
-
 int CollectorThread::queueOperations(arangodb::wal::Logfile* logfile,
                                      CollectorCache*& cache) {
   TRI_voc_cid_t cid = cache->collectionId;
@@ -1097,10 +1028,7 @@ int CollectorThread::queueOperations(arangodb::wal::Logfile* logfile,
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief update a collection's datafile information
-////////////////////////////////////////////////////////////////////////////////
-
 int CollectorThread::updateDatafileStatistics(
     TRI_document_collection_t* document, CollectorCache* cache) {
   // iterate over all datafile infos and update the collection's datafile stats
@@ -1117,10 +1045,7 @@ int CollectorThread::updateDatafileStatistics(
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief sync all journals of a collection
-////////////////////////////////////////////////////////////////////////////////
-
 int CollectorThread::syncDatafileCollection(
     TRI_document_collection_t* document) {
   TRI_IF_FAILURE("CollectorThread::syncDatafileCollection") {
@@ -1174,10 +1099,7 @@ int CollectorThread::syncDatafileCollection(
   return res;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the next position for a marker of the specified size
-////////////////////////////////////////////////////////////////////////////////
-
 char* CollectorThread::nextFreeMarkerPosition(
     TRI_document_collection_t* document, TRI_voc_tick_t tick,
     TRI_df_marker_type_t type, TRI_voc_size_t size, CollectorCache* cache) {
@@ -1295,10 +1217,7 @@ leave:
   return dst;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief set the tick of a marker and calculate its CRC value
-////////////////////////////////////////////////////////////////////////////////
-
 void CollectorThread::finishMarker(char const* walPosition,
                                    char* datafilePosition,
                                    TRI_document_collection_t* document,

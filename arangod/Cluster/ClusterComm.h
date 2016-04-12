@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 
 #include "Basics/ConditionVariable.h"
+#include "Logger/Logger.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Thread.h"
 #include "Cluster/AgencyComm.h"
@@ -73,7 +74,10 @@ enum ClusterCommOpStatus {
   CL_COMM_DROPPED = 7,    // operation was dropped, not known
                           // this is only used to report an error
                           // in the wait or enquire methods
-  CL_COMM_BACKEND_UNAVAILABLE = 8 // mop: communication problem with the backend
+  CL_COMM_BACKEND_UNAVAILABLE = 8 // communication problem with the backend
+                                  // note that in this case result and answer
+                                  // are not set and one can assume that
+                                  // already the connection could not be opened
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -114,9 +118,9 @@ struct ClusterCommResult {
         single(false),
         answer_code(GeneralResponse::ResponseCode::PROCESSING) {}
 
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief routine to set the destination
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
 
   void setDestination(std::string const& dest, bool logConnectionErrors);
 };
@@ -173,6 +177,31 @@ struct ClusterCommOperation {
 
 void ClusterCommRestCallback(std::string& coordinator,
                              HttpResponse* response);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief used to let ClusterComm send a set of requests and look after them
+////////////////////////////////////////////////////////////////////////////////
+
+struct ClusterCommRequest {
+  std::string                        destination;
+  GeneralRequest::RequestType        requestType;
+  std::string                        path;
+  std::shared_ptr<std::string const> body;
+  ClusterCommResult                  result;
+  bool                               done;
+
+  ClusterCommRequest() : done(false) {
+  }
+
+  ClusterCommRequest(std::string dest,
+                     GeneralRequest::RequestType type,
+                     std::string path,
+                     std::shared_ptr<std::string const> body)
+    : destination(dest), requestType(type), path(path), body(body), done(false)
+  {
+  }
+
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the class for the cluster communications library
@@ -305,6 +334,26 @@ class ClusterComm {
 
   void asyncAnswer(std::string& coordinatorHeader,
                    HttpResponse* responseToSend);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief this method performs the given requests described by the vector
+  /// of ClusterCommRequest structs in the following way: all requests are
+  /// tried and the result is stored in the result component. Each request is
+  /// done with asyncRequest and the given timeout. If a request times out
+  /// it is considered to be a failure. If a connection cannot be created,
+  /// a retry is done with exponential backoff, that is, first after 1 second,
+  /// then after another 2 seconds, 4 seconds and so on, until the overall
+  /// timeout has been reached. A request that can connect and produces a
+  /// result is simply reported back with no retry, even in an error case.
+  /// The method returns the number of successful requests and puts the
+  /// number of finished ones in nrDone. Thus, the timeout was triggered
+  /// if and only if nrDone < requests.size().
+  //////////////////////////////////////////////////////////////////////////////
+
+  size_t performRequests(std::vector<ClusterCommRequest>& requests,
+                         ClusterCommTimeout timeout,
+                         size_t& nrDone,
+                         arangodb::LogTopic const& logTopic);
 
  private:
   //////////////////////////////////////////////////////////////////////////////

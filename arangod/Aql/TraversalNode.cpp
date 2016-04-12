@@ -461,10 +461,7 @@ int TraversalNode::checkIsOutVariable(size_t variableId) const {
   return -1;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack, for TraversalNode
-////////////////////////////////////////////////////////////////////////////////
-
 void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
                                        bool verbose) const {
   ExecutionNode::toVelocyPackHelperGeneric(nodes,
@@ -539,10 +536,7 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
   nodes.close();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
                                     bool withProperties) const {
   auto c = new TraversalNode(plan, _id, _vocbase, _edgeColls, _inVariable,
@@ -583,10 +577,7 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
   return static_cast<ExecutionNode*>(c);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief the cost of a traversal node
-////////////////////////////////////////////////////////////////////////////////
-
 double TraversalNode::estimateCost(size_t& nrItems) const {
   size_t incoming = 0;
   double depCost = _dependencies.at(0)->getCost(incoming);
@@ -634,10 +625,7 @@ void TraversalNode::fillTraversalOptions(
   opts.setCollections(_edgeColls, _directions);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief remember the condition to execute for early traversal abortion.
-////////////////////////////////////////////////////////////////////////////////
-
 void TraversalNode::setCondition(arangodb::aql::Condition* condition) {
   std::unordered_set<Variable const*> varsUsedByCondition;
 

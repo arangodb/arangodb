@@ -18,38 +18,31 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_TRAVERSAL_CONDITION_FINDER_H
-#define ARANGOD_AQL_TRAVERSAL_CONDITION_FINDER_H 1
+#ifndef __ARANGODB_CONSENSUS_STORE_CALLBACK__
+#define __ARANGODB_CONSENSUS_STORE_CALLBACK__
 
-#include "Aql/Condition.h"
-#include "Aql/ExecutionNode.h"
-#include "Aql/WalkerWorker.h"
+#include "Cluster/ClusterComm.h"
 
 namespace arangodb {
-namespace aql {
+namespace consensus {
 
-/// @brief Traversal condition finder
-class TraversalConditionFinder : public WalkerWorker<ExecutionNode> {
- public:
-  TraversalConditionFinder(ExecutionPlan* plan, bool* planAltered)
-      : _plan(plan), _variableDefinitions(), _planAltered(planAltered) {}
-
-  ~TraversalConditionFinder() {}
-
-  bool before(ExecutionNode*) override final;
-
-  bool enterSubquery(ExecutionNode*, ExecutionNode*) override final;
-
- private:
-  ExecutionPlan* _plan;
-  std::unordered_map<VariableId, CalculationNode const*> _variableDefinitions;
-  std::unordered_map<VariableId, ExecutionNode const*> _filters;
-  bool* _planAltered;
+class StoreCallback : public arangodb::ClusterCommCallback {
+  
+public:
+  
+  StoreCallback();
+  
+  virtual bool operator()(arangodb::ClusterCommResult*) override final;
+  
+  void shutdown();
+  
+private:
+  
 };
-}
-}
+
+}} // namespace
 
 #endif

@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Store.h"
+#include "StoreCallback.h"
 #include "Agency/Agent.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/VelocyPackHelper.h"
@@ -36,6 +37,39 @@
 #include <iostream>
 
 using namespace arangodb::consensus;
+
+inline static bool endpointPathFromUrl (
+  std::string const& url, std::string& endpoint, std::string& path) {
+
+  std::stringstream ep;
+  path = "/";
+  size_t pos = 7;
+  if (url.find("http://")==0) {
+    ep << "tcp://";
+  } else if (url.find("https://")==0) {
+    ep << "ssl://";
+    ++pos;
+  } else {
+    return false;
+  }
+  
+  size_t slash_p = url.find("/",pos);
+  if (slash_p==std::string::npos) {
+    ep << url.substr(pos);
+  } else {
+    ep << url.substr(pos,slash_p-pos);
+    path = url.substr(slash_p);
+  }
+
+  if (ep.str().find(':')==std::string::npos) {
+    ep << ":8529";
+  }
+
+  endpoint = ep.str();
+
+  return true;
+    
+}
 
 struct NotEmpty {
   bool operator()(const std::string& s) { return !s.empty(); }
@@ -255,9 +289,11 @@ bool Node::addTimeToLive (long millis) {
 bool Node::removeTimeToLive () {
   if (_ttl != std::chrono::system_clock::time_point()) {
     auto ret = root()._time_table.equal_range(_ttl);
-    for (auto it = ret.first; it!=ret.second; ++it) {
+    for (auto it = ret.first; it!=ret.second;) {
       if (it->second == _parent->_children[_node_name]) {
         root()._time_table.erase(it);
+        break;
+        ++it;
       }
     }
   }
@@ -508,9 +544,7 @@ template<> bool Node::handle<UNOBSERVE> (VPackSlice const& slice) {
 
 // Apply slice to this node
 bool Node::applies (VPackSlice const& slice) {
-
-  if (slice.type() == ValueType::Object) {
-    
+  if (slice.isObject()) {
     for (auto const& i : VPackObjectIterator(slice)) {
 
       std::string key = i.key.copyString();
@@ -602,7 +636,7 @@ std::ostream& Node::print (std::ostream& o) const {
     o << std::endl;
   }
 
-  if (_time_table.size()) {
+  if (!_time_table.empty()) {
     for (auto const& i : _time_table) {
       o << i.second.get() << std::endl;
     }
@@ -647,7 +681,8 @@ std::vector<bool> Store::apply (query_t const& query) {
 }
 
 //template<class T, class U> std::multimap<std::string, std::string>
-std::ostream& operator<< (std::ostream& os, std::multimap<std::string,std::string> const& m) {
+std::ostream& operator<< (
+  std::ostream& os, std::multimap<std::string,std::string> const& m) {
   for (auto const& i : m) {
     os << i.first << ": " << i.second << std::endl;
   }
@@ -680,7 +715,6 @@ std::vector<bool> Store::apply (
         std::string oper = j.value.get("op").copyString();
         if (!(oper == "observe" || oper == "unobserve")) {
           std::string uri = j.key.copyString();
-          size_t pos;
           while (true) {
             auto ret = _observed_table.equal_range(uri);
             for (auto it = ret.first; it!=ret.second; ++it) {
@@ -688,7 +722,7 @@ std::vector<bool> Store::apply (
                 it->second, std::make_shared<notify_t>(
                   it->first, j.key.copyString(), oper));
             }
-            pos = uri.find_last_of('/');
+            size_t pos = uri.find_last_of('/');
             if (pos == std::string::npos || pos == 0) {
               break;
             } else {
@@ -701,36 +735,51 @@ std::vector<bool> Store::apply (
   }
 
   std::vector<std::string> urls;
-  for(auto it = in.begin(), end = in.end(); it != end; it = in.upper_bound(it->first)) {
+  for (auto it = in.begin(), end = in.end(); it != end;
+       it = in.upper_bound(it->first)) {
     urls.push_back(it->first);
   }
-
+  
   for (auto const& url : urls) {
-    Builder tmp; // host
-    tmp.openObject();
-    tmp.add("term",VPackValue(0));
-    tmp.add("index",VPackValue(0));
+
+    Builder body; // host
+    body.openObject();
+    body.add("term",VPackValue(0));
+    body.add("index",VPackValue(0));
     auto ret = in.equal_range(url);
     
     for (auto it = ret.first; it!=ret.second; ++it) {
-      //tmp.add(url,VPackValue(VPackValueType::Object));
-      tmp.add(it->second->key,VPackValue(VPackValueType::Object));
-      tmp.add("op",VPackValue(it->second->oper));
-      //tmp.close();
-      tmp.close();
-      }
+      body.add(it->second->key,VPackValue(VPackValueType::Object));
+      body.add("op",VPackValue(it->second->oper));
+      body.close();
+    }
     
-    tmp.close();
-      std::cout << tmp.toJson() << std::endl;
+    body.close();
+
+    std::string endpoint, path;
+    if (endpointPathFromUrl (url,endpoint,path)) {
+
+      std::unique_ptr<std::map<std::string, std::string>> headerFields =
+        std::make_unique<std::map<std::string, std::string> >();
+      
+      ClusterCommResult res =
+        arangodb::ClusterComm::instance()->asyncRequest(
+          "1", 1, endpoint, GeneralRequest::RequestType::POST, path,
+          std::make_shared<std::string>(body.toString()), headerFields,
+          std::make_shared<StoreCallback>(), 0.0, true);
+      
+    } else {
+      LOG_TOPIC(WARN, Logger::AGENCY) << "Malformed URL " << url;
+    }
 
   }
-
+  
   return applied;
 }
 
 // Check precondition
 bool Store::check (VPackSlice const& slice) const {
-  if (slice.type() != VPackValueType::Object) {
+  if (!slice.isObject()) {
     LOG_TOPIC(WARN, Logger::AGENCY)
       << "Cannot check precondition: " << slice.toJson();
     return false;
@@ -745,22 +794,21 @@ bool Store::check (VPackSlice const& slice) const {
       found = true;
     } catch (StoreException const&) {}
     
-    if (precond.value.type() == VPackValueType::Object) { 
+    if (precond.value.isObject()) {
       for (auto const& op : VPackObjectIterator(precond.value)) {
         std::string const& oper = op.key.copyString();
         if (oper == "old") {                           // old
           return (node == op.value);
         } else if (oper == "isArray") {                // isArray
-          if (op.value.type()!=VPackValueType::Bool) { 
+          if (!op.value.isBoolean()) {
             LOG (FATAL) << "Non boolsh expression for 'isArray' precondition";
             return false;
           }
           bool isArray =
-            (node.type() == LEAF &&
-             node.slice().type() == VPackValueType::Array);
+            (node.type() == LEAF && node.slice().isArray());
           return op.value.getBool() ? isArray : !isArray;
         } else if (oper == "oldEmpty") {              // isEmpty
-          if (op.value.type()!=VPackValueType::Bool) { 
+          if (!op.value.isBoolean()) {
             LOG (FATAL) << "Non boolsh expression for 'oldEmpty' precondition";
             return false;
           }
@@ -779,7 +827,7 @@ bool Store::check (VPackSlice const& slice) const {
 std::vector<bool> Store::read (query_t const& queries, query_t& result) const { 
   std::vector<bool> success;
   MUTEX_LOCKER(storeLocker, _storeLock);
-  if (queries->slice().type() == VPackValueType::Array) {
+  if (queries->slice().isArray()) {
     result->add(VPackValue(VPackValueType::Array)); // top node array
     for (auto const& query : VPackArrayIterator(queries->slice())) {
       success.push_back(read (query, *result));
@@ -793,12 +841,12 @@ std::vector<bool> Store::read (query_t const& queries, query_t& result) const {
 
 // read single query into ret
 bool Store::read (VPackSlice const& query, Builder& ret) const {
-
+  
   bool success = true;
   
   // Collect all paths
   std::list<std::string> query_strs;
-  if (query.type() == VPackValueType::Array) {
+  if (query.isArray()) {
     for (auto const& sub_query : VPackArrayIterator(query)) {
       query_strs.push_back(sub_query.copyString());
     }
@@ -839,7 +887,7 @@ bool Store::read (VPackSlice const& query, Builder& ret) const {
       }
     }
   }
-
+  
   // Into result builder
   copy.toBuilder(ret);
   
