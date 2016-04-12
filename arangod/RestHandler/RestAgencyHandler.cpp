@@ -73,19 +73,18 @@ inline HttpHandler::status_t RestAgencyHandler::reportUnknownMethod() {
 
 void RestAgencyHandler::redirectRequest(id_t leaderId) {
 
-  std::shared_ptr<Endpoint> ep (
-    Endpoint::clientFactory (_agent->config().end_points.at(leaderId)));
-  std::stringstream url;
-
-  url << ep->transport() << "://";
-  if (ep->encryption() == arangodb::Endpoint::EncryptionType::SSL) {
-    url << "s";
+  try {
+    std::string url = Endpoint::uriForm(
+      _agent->config().end_points.at(leaderId));
+    createResponse(GeneralResponse::ResponseCode::TEMPORARY_REDIRECT);
+    static std::string const location = "location";
+    _response->setHeaderNC(location, url);
+  } catch (std::exception const& e) {
+    LOG_TOPIC(WARN, Logger::AGENCY) << e.what();
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_INTERNAL, e.what());
   }
-  url << ep->hostAndPort() << _request->requestPath();
   
-  createResponse(GeneralResponse::ResponseCode::TEMPORARY_REDIRECT);
-  static std::string const location = "location";
-  _response->setHeaderNC(location, url.str());
 }
 
 HttpHandler::status_t RestAgencyHandler::handleStores () {

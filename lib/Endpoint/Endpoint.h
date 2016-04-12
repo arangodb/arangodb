@@ -52,6 +52,7 @@ class Endpoint {
   virtual ~Endpoint() {}
 
  public:
+  static std::string uriForm(std::string const&);
   static std::string unifiedForm(std::string const&);
   static Endpoint* serverFactory(std::string const&, int, bool reuseAddress);
   static Endpoint* clientFactory(std::string const&);
