@@ -59,9 +59,6 @@ id_t Agent::id() const {
 
 //  Shutdown
 Agent::~Agent () {
-  if (_vocbase != nullptr) {
-    TRI_ReleaseDatabaseServer(_server, _vocbase);
-  }
   shutdown();
 }
 
@@ -382,10 +379,6 @@ void Agent::run() {
 // Orderly shutdown
 void Agent::beginShutdown() {
 
-  if (_vocbase != nullptr) {
-    TRI_ReleaseDatabaseServer(_server, _vocbase);
-  }
-  
   // Personal hygiene
   Thread::beginShutdown();
   
@@ -397,6 +390,10 @@ void Agent::beginShutdown() {
   // Wake up all waiting REST handler (waitFor)
   CONDITION_LOCKER(guard, _cv);
   guard.broadcast();
+  
+  if (_vocbase != nullptr) {
+    TRI_ReleaseDatabaseServer(_server, _vocbase);
+  }
   
 }
 
