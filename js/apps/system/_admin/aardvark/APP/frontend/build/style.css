@@ -3,7 +3,7 @@ html {
   height: 100%; }
 
 body {
-  background: none;
+  background: rgba(64, 74, 83, 0.04);
   color: #333;
   display: block;
   font-family: 'Lato', sans-serif !important;
@@ -13,7 +13,7 @@ body {
   line-height: 20px;
   margin: 0; }
   body .bodyWrapper {
-    background-image: linear-gradient(to bottom, #e9eae1 0%, #fafbfc 100%);
+    background: rgba(64, 74, 83, 0.04);
     height: 100%;
     margin: 0 auto -42px;
     min-height: 100%; }
@@ -2273,7 +2273,7 @@ div.queryline input, input.search-input, .modal-body .select2-choices input, .mo
   top: 0;
   width: 150px; }
   .navbar > .primary {
-    background-color: rgba(34, 34, 34, 0.9);
+    background-color: #404a53;
     float: left;
     height: 100%;
     width: 150px; }
@@ -2323,7 +2323,7 @@ div.queryline input, input.search-input, .modal-body .select2-choices input, .mo
   margin: 0;
   width: 150px; }
   .navlist > li {
-    line-height: 30px; }
+    line-height: 25px; }
   .navlist li {
     width: 150px; }
     .navlist li .fa {
@@ -2345,20 +2345,24 @@ div.queryline input, input.search-input, .modal-body .select2-choices input, .mo
       margin-bottom: 5px;
       margin-top: 5px;
       opacity: .2; }
+  .navlist .active {
+    border-left: 2px solid #d9dbdc; }
+    .navlist .active .tab {
+      color: #fff; }
+      .navlist .active .tab .fa {
+        opacity: 1; }
   .navlist > .active {
-    background-color: transparent; }
+    background-color: rgba(255, 255, 255, 0.2); }
     .navlist > .active a {
-      opacity: .65; }
-  .navlist .dropdown-item:hover,
-  .navlist > li:hover {
-    border-radius: 3px; }
-    .navlist .dropdown-item:hover a,
-    .navlist > li:hover a {
-      color: #fff;
-      opacity: .65;
-      -webkit-tap-highlight-color: transparent;
-      -webkit-transition: opacity 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
-      transition: opacity 0.2s cubic-bezier(0.645, 0.045, 0.355, 1); }
+      opacity: 1; }
+  .navlist .dropdown-item:hover a,
+  .navlist > li:hover a {
+    color: #fff;
+    opacity: 1;
+    -moz-transition: all .2s ease-in;
+    -o-transition: all .2s ease-in;
+    -webkit-transition: all .2s ease-in;
+    transition: all .2s ease-in; }
   .navlist .dropdown-item {
     margin-left: 0; }
     .navlist .dropdown-item a {
@@ -2370,7 +2374,7 @@ div.queryline input, input.search-input, .modal-body .select2-choices input, .mo
       color: #686766; }
 
 .tab {
-  color: #fff;
+  color: rgba(255, 255, 255, 0.8);
   display: block;
   font-size: 9pt;
   font-weight: 100;
@@ -2888,7 +2892,6 @@ div .tile, div .bigtile {
   -moz-box-shadow: none;
   box-shadow: none;
   background-color: #fff;
-  border: 1px solid #f5f8f0;
   border-radius: 2px;
   font-size: 14px;
   list-style: none;
@@ -2987,7 +2990,7 @@ div .tile, div .bigtile {
     -o-transform: rotate(80deg);
     -webkit-transform: rotate(80deg); }
   div .tile h5, div .bigtile h5 {
-    background: #8c8a89;
+    background: rgba(64, 74, 83, 0.8);
     color: #fff;
     font-size: 12px;
     margin: 0;
@@ -3014,7 +3017,7 @@ div .tile, div .bigtile {
     position: absolute;
     width: 100%; }
   div .tile .borderBox, div .bigtile .borderBox {
-    border: 1px solid rgba(140, 138, 137, 0.25);
+    border: 1px solid rgba(64, 74, 83, 0.2);
     border-bottom: 0;
     border-radius: 2px;
     height: 75px;
@@ -3100,8 +3103,8 @@ div .bigtile {
       padding: 2px; }
 
 .collectionName {
-  border-bottom-left-radius: 3px;
-  border-bottom-right-radius: 3px;
+  border-bottom-left-radius: 2px;
+  border-bottom-right-radius: 2px;
   bottom: 0;
   font-weight: 300;
   left: 0;
@@ -3110,7 +3113,11 @@ div .bigtile {
   text-align: left; }
 
 .resizecontainer {
-  margin: 0 auto; }
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+  padding-left: 10px;
+  padding-right: 10px; }
 
 @media (max-width: 738px) {
   #arangoCollectionUl {
@@ -3136,19 +3143,9 @@ div .bigtile {
     padding-top: 0;
     position: absolute; } }
 
-@media (min-width: 739px) and (max-width: 1041px) {
-  #arangoCollectionUl a {
-    font-size: 12px;
-    height: 12px;
-    padding: 8px 5px; } }
-
-@media (min-width: 1042px) and (max-width: 1284px) {
-  #arangoCollectionUl a {
-    font-size: 14px; } }
-
 @media (min-width: 250px) and (max-width: 489px) {
   .resizecontainer {
-    width: 90px; }
+    width: 100%; }
   .dashboard-full-width-chart {
     width: 87px; }
     .dashboard-full-width-chart .dashboard-full-width-chart-inner {
@@ -3332,7 +3329,7 @@ div .bigtile {
 
 @media (min-width: 490px) and (max-width: 729px) {
   .resizecontainer {
-    width: 330px; }
+    width: 100%; }
   .dashboard-full-width-chart {
     width: 327px; }
     .dashboard-full-width-chart .dashboard-full-width-chart-inner {
@@ -3516,7 +3513,7 @@ div .bigtile {
 
 @media (min-width: 730px) and (max-width: 969px) {
   .resizecontainer {
-    width: 570px; }
+    width: 100%; }
   .dashboard-full-width-chart {
     width: 567px; }
     .dashboard-full-width-chart .dashboard-full-width-chart-inner {
@@ -3698,7 +3695,7 @@ div .bigtile {
 
 @media (min-width: 970px) and (max-width: 1209px) {
   .resizecontainer {
-    width: 810px; }
+    width: 100%; }
   .dashboard-full-width-chart {
     width: 807px; }
     .dashboard-full-width-chart .dashboard-full-width-chart-inner {
@@ -3877,7 +3874,7 @@ div .bigtile {
 
 @media (min-width: 1210px) and (max-width: 1449px) {
   .resizecontainer {
-    width: 1050px; }
+    width: 100%; }
   .dashboard-full-width-chart {
     width: 1047px; }
     .dashboard-full-width-chart .dashboard-full-width-chart-inner {
@@ -4056,7 +4053,7 @@ div .bigtile {
 
 @media (min-width: 1450px) and (max-width: 1689px) {
   .resizecontainer {
-    width: 1290px; }
+    width: 100%; }
   .dashboard-full-width-chart {
     width: 1287px; }
     .dashboard-full-width-chart .dashboard-full-width-chart-inner {
@@ -4235,7 +4232,7 @@ div .bigtile {
 
 @media (min-width: 1690px) and (max-width: 1929px) {
   .resizecontainer {
-    width: 1530px; }
+    width: 100%; }
   .dashboard-full-width-chart {
     width: 1527px; }
     .dashboard-full-width-chart .dashboard-full-width-chart-inner {
@@ -4414,7 +4411,7 @@ div .bigtile {
 
 @media (min-width: 1930px) and (max-width: 2169px) {
   .resizecontainer {
-    width: 1770px; }
+    width: 100%; }
   .dashboard-full-width-chart {
     width: 1767px; }
     .dashboard-full-width-chart .dashboard-full-width-chart-inner {
@@ -4593,7 +4590,7 @@ div .bigtile {
 
 @media (min-width: 2170px) and (max-width: 2409px) {
   .resizecontainer {
-    width: 2010px; }
+    width: 100%; }
   .dashboard-full-width-chart {
     width: 2007px; }
     .dashboard-full-width-chart .dashboard-full-width-chart-inner {
@@ -4772,7 +4769,7 @@ div .bigtile {
 
 @media (min-width: 2410px) and (max-width: 2649px) {
   .resizecontainer {
-    width: 2250px; }
+    width: 100%; }
   .dashboard-full-width-chart {
     width: 2247px; }
     .dashboard-full-width-chart .dashboard-full-width-chart-inner {
@@ -4951,7 +4948,7 @@ div .bigtile {
 
 @media (min-width: 2650px) and (max-width: 2889px) {
   .resizecontainer {
-    width: 2490px; }
+    width: 100%; }
   .dashboard-full-width-chart {
     width: 2487px; }
     .dashboard-full-width-chart .dashboard-full-width-chart-inner {
@@ -5148,7 +5145,7 @@ div.centralContent {
 
 .contentDiv {
   list-style: none;
-  padding: 13px 0 0; }
+  padding: 15px 0 0; }
   .contentDiv li {
     background-color: rgba(0, 0, 0, 0.05); }
   .contentDiv a.add {
@@ -5366,10 +5363,10 @@ input.search-input {
   .search-field .fa-search {
     color: #c2c2c2;
     font-size: 12pt;
+    margin-left: -20px;
     opacity: .5;
-    position: absolute;
-    right: 9px;
-    top: 9px; }
+    position: relative;
+    top: -2px; }
     .search-field .fa-search:hover {
       cursor: pointer;
       opacity: 1; }
@@ -5397,9 +5394,9 @@ div.headerBar {
   color: #000;
   font-size: 16px;
   height: 36px;
+  margin-top: -55px;
   padding-left: 5px;
-  padding-right: 5px;
-  position: relative; }
+  padding-right: 5px; }
   div.headerBar select:focus {
     outline: none; }
   div.headerBar .infoField {
@@ -7748,15 +7745,6 @@ input.gv-radio-button {
   .arango-collection-select {
     display: inline-block; } }
 
-@media (min-width: 739px) and (max-width: 1041px) {
-  .arango-collection-ul a {
-    font-size: 11px;
-    padding: 7px 5px 10px; } }
-
-@media (min-width: 1042px) and (max-width: 1284px) {
-  .arango-collection-ul a {
-    font-size: 13px; } }
-
 #documentsDiv {
   padding-top: 1px; }
 
@@ -8313,17 +8301,16 @@ main {
     .subnavmenu ul.top, .subnavmenu ul.bottom {
       height: 40px; }
     .subnavmenu ul.top {
-      background-color: rgba(34, 34, 34, 0.9);
-      border-bottom: 1px solid rgba(140, 138, 137, 0.25);
+      background-color: #404a53;
       width: 100%; }
       .subnavmenu ul.top li {
         padding: 0 10px 0 0; }
     .subnavmenu ul.bottom {
-      border-bottom: 1px solid rgba(140, 138, 137, 0.25);
+      border-bottom: 2px solid #d9dbdc;
       width: 100%; }
       .subnavmenu ul.bottom li {
         float: left;
-        padding: 0 0 0 40px; }
+        padding: 0 12px; }
     .subnavmenu ul li {
       cursor: pointer;
       font-size: 10pt;
@@ -8333,11 +8320,21 @@ main {
       .subnavmenu ul li.active {
         cursor: default; }
         .subnavmenu ul li.active a {
-          color: rgba(51, 51, 51, 0.6); }
+          color: #000; }
       .subnavmenu ul li.disabled {
         cursor: not-allowed; }
+      .subnavmenu ul li:hover a {
+        color: #333333;
+        -moz-transition: all .2s ease-in;
+        -o-transition: all .2s ease-in;
+        -webkit-transition: all .2s ease-in;
+        transition: all .2s ease-in; }
       .subnavmenu ul li a {
-        color: #000; }
+        color: rgba(51, 51, 51, 0.6);
+        -moz-transition: all .2s ease-in;
+        -o-transition: all .2s ease-in;
+        -webkit-transition: all .2s ease-in;
+        transition: all .2s ease-in; }
   .subnavmenu .health-info,
   .subnavmenu .db-info,
   .subnavmenu .db-state,
@@ -8551,6 +8548,7 @@ table .sorting {
   box-shadow: none;
   color: #000;
   float: right;
+  font-size: 11pt;
   font-weight: 300;
   height: 28px;
   line-height: 18px;

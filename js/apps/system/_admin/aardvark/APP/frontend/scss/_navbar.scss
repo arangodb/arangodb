@@ -150,6 +150,10 @@ $navbar-size: 150px;
 
     .tab {
       color: $c-white;
+
+      .fa {
+        opacity: 1;
+      }
     }
   }
 
@@ -191,7 +195,7 @@ $navbar-size: 150px;
 }
 
 .tab {
-  color: rgba(255, 255, 255, .64);
+  color: rgba(255, 255, 255, .8);
   display: block;
   font-size: 9pt;
   font-weight: 100;

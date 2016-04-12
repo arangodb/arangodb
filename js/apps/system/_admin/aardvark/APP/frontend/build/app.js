@@ -21988,6 +21988,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     initialize: function (options) {
+      this.options = options;
       this.dygraphConfig = options.dygraphConfig;
       this.d3NotInitialized = true;
       this.events["click .dashboard-sub-bar-menu-sign"] = this.showDetail.bind(this);
@@ -24525,9 +24526,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     breadcrumb: function () {
       this.collectionName = window.location.hash.split("/")[1];
       $('#subNavigationBar .breadcrumb').html(
-        '<a class="activeBread" href="#collections">Collections</a>'+
-        '<span class="disabledBread"><i class="fa fa-chevron-right"></i></span>'+
-        '<a class="disabledBread">'+this.collectionName+'</a>'
+        'Collection: ' + this.collectionName
       );
     }
 
@@ -27129,7 +27128,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     events: {
     },
 
-    initialize: function (option) {
+    initialize: function (options) {
 
       if (window.App.isCluster) {
         this.coordinators = options.coordinators;

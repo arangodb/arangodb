@@ -2481,6 +2481,8 @@ if (list.length > 0) {
       <li class="cluster-menu"><a id="cluster" class="tab" href="#cluster"><i class="fa fa-circle-o"></i>Cluster</a></li>
       <li class="nodes-menu"><a id="nodes" class="tab" href="#nodes"><i class="fa fa-server"></i>Nodes</a></li>
       <li class="navbar-spacer big"></li>
+    <% } else { %>
+      <li class="dashboard-menu"><a id="dashboard" class="tab" href="#dashboard"><i class="fa fa-dashboard"></i>Dashboard</a></li>
     <% } %>
     <li id="dbSelect" class="dropdown databases-menu"></li>
     <li class="collections-menu"><a id="collections" class="tab" href="#collections"><i class="fa fa-folder"></i>Collections</a></li>
@@ -2493,6 +2495,7 @@ if (list.length > 0) {
     <% if (!isCluster) { %>
       <li class="logs-menu"><a id="logs" class="tab" href="#manage"><i class="fa fa-list"></i>Logs</a></li>
     <% } %>
+    <li class="navbar-spacer big"></li>
     <li class="settings-menu"><a id="settings" class="tab" href="#settings"><i class="fa fa-cog"></i>Settings</a></li>
     <!--
     <li class="navbar-spacer big"></li>
@@ -3223,7 +3226,7 @@ var cutByResolution = function (str) {
           <div class="navlogo">
             <a class="logo" href="#"><img class="arangodbLogo" src="img/DEVLOGO.png"/></a>
           </div>
-          <div id="progressPlaceholderIcon"></div>
+          <!-- <div id="progressPlaceholderIcon"></div> -->
             <div class="statmenu" id="statisticBar">
             </div>
             <div class="navmenu" id="navigationBar">
@@ -3267,9 +3270,9 @@ var cutByResolution = function (str) {
     </div>
   </div>
 
-<script src="sharedLibs.js?version=1460470473188"></script>
-<script src="libs.js?version=1460470473188"></script>
-<script src="app.js?version=1460470473188"></script>
+<script src="sharedLibs.js?version=1460489005800"></script>
+<script src="libs.js?version=1460489005800"></script>
+<script src="app.js?version=1460489005800"></script>
 
   </body>
 </html>

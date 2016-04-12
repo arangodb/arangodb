@@ -2243,6 +2243,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
     },
 
     initialize: function (options) {
+      this.options = options;
       this.dygraphConfig = options.dygraphConfig;
       this.d3NotInitialized = true;
       this.events["click .dashboard-sub-bar-menu-sign"] = this.showDetail.bind(this);

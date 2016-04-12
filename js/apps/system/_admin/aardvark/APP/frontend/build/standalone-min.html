@@ -2315,6 +2315,8 @@ if (list.length > 0) {
       <li class="cluster-menu"><a id="cluster" class="tab" href="#cluster"><i class="fa fa-circle-o"></i>Cluster</a></li>
       <li class="nodes-menu"><a id="nodes" class="tab" href="#nodes"><i class="fa fa-server"></i>Nodes</a></li>
       <li class="navbar-spacer big"></li>
+    <% } else { %>
+      <li class="dashboard-menu"><a id="dashboard" class="tab" href="#dashboard"><i class="fa fa-dashboard"></i>Dashboard</a></li>
     <% } %>
     <li id="dbSelect" class="dropdown databases-menu"></li>
     <li class="collections-menu"><a id="collections" class="tab" href="#collections"><i class="fa fa-folder"></i>Collections</a></li>
@@ -2327,6 +2329,7 @@ if (list.length > 0) {
     <% if (!isCluster) { %>
       <li class="logs-menu"><a id="logs" class="tab" href="#manage"><i class="fa fa-list"></i>Logs</a></li>
     <% } %>
+    <li class="navbar-spacer big"></li>
     <li class="settings-menu"><a id="settings" class="tab" href="#settings"><i class="fa fa-cog"></i>Settings</a></li>
     <!--
     <li class="navbar-spacer big"></li>
@@ -2954,4 +2957,4 @@ var cutByResolution = function (str) {
   </div>
 
   <div id="workMonitorContent" class="innerContent">
-  </div></script></head><body><nav class="navbar"><div class="primary"><div class="navlogo"><a class="logo" href="#"><img class="arangodbLogo" src="img/DEVLOGO.png"></a></div><div id="progressPlaceholderIcon"></div><div class="statmenu" id="statisticBar"></div><div class="navmenu" id="navigationBar"></div></div></nav><div class="bodyWrapper"><div class="centralRow"><div id="navbar2" class="secondary"><div class="subnavmenu" id="subNavigationBar"></div></div><div class="resizecontainer contentWrapper" style="clear:both"><div id="content" class="centralContent"></div><footer class="footer"><div class="" id="footerBar"></div></footer></div></div></div><div id="modalPlaceholder"></div><div id="progressPlaceholder" style="display:none"></div><div id="spotlightPlaceholder" style="display:none"></div><div class="arangoFrame" style=""><div class="outerDiv"><div class="innerDiv"></div></div></div><script src="sharedLibs.js?version=1460470473188"></script><script src="libs.js?version=1460470473188"></script><script src="app.js?version=1460470473188"></script></body></html>
+  </div></script></head><body><nav class="navbar"><div class="primary"><div class="navlogo"><a class="logo" href="#"><img class="arangodbLogo" src="img/DEVLOGO.png"></a></div><div class="statmenu" id="statisticBar"></div><div class="navmenu" id="navigationBar"></div></div></nav><div class="bodyWrapper"><div class="centralRow"><div id="navbar2" class="secondary"><div class="subnavmenu" id="subNavigationBar"></div></div><div class="resizecontainer contentWrapper" style="clear:both"><div id="content" class="centralContent"></div><footer class="footer"><div class="" id="footerBar"></div></footer></div></div></div><div id="modalPlaceholder"></div><div id="progressPlaceholder" style="display:none"></div><div id="spotlightPlaceholder" style="display:none"></div><div class="arangoFrame" style=""><div class="outerDiv"><div class="innerDiv"></div></div></div><script src="sharedLibs.js?version=1460489005800"></script><script src="libs.js?version=1460489005800"></script><script src="app.js?version=1460489005800"></script></body></html>
