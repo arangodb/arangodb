@@ -216,10 +216,14 @@ static int distributeBabyOnShards(
   // Now find the responsible shard:
   bool usesDefaultShardingAttributes;
   ShardID shardID;
-  int error = ci->getResponsibleShard(collid, node, true, shardID,
+  int error = ci->getResponsibleShard(collid, node, false, shardID,
                                       usesDefaultShardingAttributes);
   if (error == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
     return TRI_ERROR_CLUSTER_SHARD_GONE;
+  }
+  if (error != TRI_ERROR_NO_ERROR) {
+    // We can not find a responsible shard
+    return error;
   }
 
   // We found the responsible shard. Add it to the list.
@@ -1955,12 +1959,24 @@ int modifyDocumentOnCoordinator(
 
   auto body = std::make_shared<std::string>(std::move(slice.toJson()));
   auto shardList = ci->getShardList(collid);
-  for (auto const& shard : *shardList) {
-    auto headersCopy =
-        std::make_unique<std::map<std::string, std::string>>(*headers);
-    cc->asyncRequest("", coordTransactionID, "shard:" + shard, reqType,
-                     baseUrl + StringUtils::urlEncode(shard) + optsUrlPart,
-                     body, headersCopy, nullptr, 60.0);
+  if (!useMultiple) {
+    for (auto const& shard : *shardList) {
+      auto headersCopy =
+          std::make_unique<std::map<std::string, std::string>>(*headers);
+      cc->asyncRequest("", coordTransactionID, "shard:" + shard, reqType,
+                       baseUrl + StringUtils::urlEncode(shard) + "/" +
+                           slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString() +
+                           optsUrlPart,
+                       body, headersCopy, nullptr, 60.0);
+    }
+  } else {
+    for (auto const& shard : *shardList) {
+      auto headersCopy =
+          std::make_unique<std::map<std::string, std::string>>(*headers);
+      cc->asyncRequest("", coordTransactionID, "shard:" + shard, reqType,
+                       baseUrl + StringUtils::urlEncode(shard) + optsUrlPart,
+                       body, headersCopy, nullptr, 60.0);
+    }
   }
 
   // Now listen to the results:
