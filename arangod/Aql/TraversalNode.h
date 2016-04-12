@@ -103,15 +103,19 @@ class TraversalNode : public ExecutionNode {
   /// @brief the cost of a traversal node
   double estimateCost(size_t&) const override final;
 
-  /// @brief Test if this node uses an in variable or constant.
+  /// @brief Test if this node uses an in variable or constant
   bool usesInVariable() const { return _inVariable != nullptr; }
 
   /// @brief getVariablesUsedHere
   std::vector<Variable const*> getVariablesUsedHere() const override final {
-    if (usesInVariable()) {
-      return std::vector<Variable const*>{_inVariable};
+    std::vector<Variable const*> result;
+    for (auto const& condVar : _conditionVariables) {
+      result.emplace_back(condVar);
     }
-    return std::vector<Variable const*>{};
+    if (usesInVariable()) {
+      result.emplace_back(_inVariable);
+    }
+    return result;
   }
 
   /// @brief getVariablesUsedHere
@@ -127,12 +131,15 @@ class TraversalNode : public ExecutionNode {
 
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final {
-    std::vector<Variable const*> vars{_vertexOutVariable};
+    std::vector<Variable const*> vars;
+    if (_vertexOutVariable != nullptr) {
+      vars.emplace_back(_vertexOutVariable);
+    }
     if (_edgeOutVariable != nullptr) {
       vars.emplace_back(_edgeOutVariable);
-      if (_pathOutVariable != nullptr) {
-        vars.emplace_back(_pathOutVariable);
-      }
+    }
+    if (_pathOutVariable != nullptr) {
+      vars.emplace_back(_pathOutVariable);
     }
     return vars;
   }
