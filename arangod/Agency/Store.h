@@ -174,8 +174,6 @@ protected:
   TimePoint _ttl;                      /**< @brief my expiry */
   Buffer<uint8_t> _value;              /**< @brief my value */
 
-//  std::unordered_set<std::string> _observers; /**< @brief my observers */
-
   /// @brief Table of expiries in tree (only used in root node)
   std::multimap<TimePoint, std::shared_ptr<Node>> _time_table;
 
