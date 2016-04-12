@@ -358,7 +358,12 @@ function ClusterCrudReplaceSuite () {
       fail();
     }
     catch (err3) {
-      assertEqual(ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code, err3.errorNum);
+      // We cannot determine if it is SHARDING_ATTRIBUTES_CHANGED or NOT_FOUND using one round-trip only.
+      if (err3.errorNum != ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code) {
+        assertEqual(ERRORS.ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err3.errorNum);
+      } else {
+        assertEqual(ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code, err3.errorNum);
+      }
     }
 
     try {
