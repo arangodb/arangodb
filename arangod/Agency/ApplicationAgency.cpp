@@ -38,17 +38,21 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb;
 
-ApplicationAgency::ApplicationAgency(TRI_server_t* server, 
-                                     ApplicationEndpointServer* aes, 
-                                     ApplicationV8* applicationV8, 
-                                     aql::QueryRegistry* queryRegistry)
-  : ApplicationFeature("agency"), _server(server), _size(1),
-    _min_election_timeout(0.15), _max_election_timeout(1.0),
-    _election_call_rate_mul(0.85), _notify(false), _sanity_check(false),
-          _agent_id((std::numeric_limits<uint32_t>::max)()), 
-          _endpointServer(aes), 
-          _applicationV8(applicationV8), 
-          _queryRegistry(queryRegistry) {
+ApplicationAgency::ApplicationAgency(
+  TRI_server_t* server, ApplicationEndpointServer* aes,
+  ApplicationV8* applicationV8, aql::QueryRegistry* queryRegistry)
+  : ApplicationFeature("agency"),
+    _server(server),
+    _size(1),
+    _min_election_timeout(0.15),
+    _max_election_timeout(1.0),
+    _election_call_rate_mul(0.85),
+    _notify(false),
+    _sanity_check(false),
+    _agent_id((std::numeric_limits<uint32_t>::max)()), 
+    _endpointServer(aes), 
+    _applicationV8(applicationV8), 
+    _queryRegistry(queryRegistry) {
 }
 
 

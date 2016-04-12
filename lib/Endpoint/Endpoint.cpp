@@ -51,6 +51,27 @@ Endpoint::Endpoint(DomainType domainType, EndpointType type,
   TRI_invalidatesocket(&_socket);
 }
 
+
+std::string Endpoint::uriForm (std::string const& endpoint) {
+
+  std::stringstream url;
+  size_t const prefix_len = 6;
+  
+  if (StringUtils::isPrefix(endpoint, "tcp://")) {
+    url << "http://";
+  } else if (StringUtils::isPrefix(endpoint, "ssl://")) {
+    url << "https://";
+  } else {
+    throw arangodb::basics::Exception (
+      0, std::string("malformed URL ") + endpoint
+      + ". Support only for ssl:// and tcp:// endpoints." , __FILE__, __LINE__);
+  }
+
+  url << endpoint.substr(prefix_len,endpoint.size()+1-(prefix_len+1));
+  
+  return url.str();
+  
+}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the endpoint specification in a unified form
 ////////////////////////////////////////////////////////////////////////////////
@@ -68,9 +89,9 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
   std::string copy = StringUtils::tolower(specification);
   StringUtils::trimInPlace(copy);
 
-  if (specification[specification.size() - 1] == '/') {
+  if (specification.back() == '/') {
     // address ends with a slash => remove
-    copy = copy.substr(0, copy.size() - 1);
+    copy.pop_back();
   }
 
   // read protocol from string

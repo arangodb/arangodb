@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Store.h"
+#include "StoreCallback.h"
 #include "Agency/Agent.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/VelocyPackHelper.h"
@@ -36,6 +37,39 @@
 #include <iostream>
 
 using namespace arangodb::consensus;
+
+inline static bool endpointPathFromUrl (
+  std::string const& url, std::string& endpoint, std::string& path) {
+
+  std::stringstream ep;
+  path = "/";
+  size_t pos = 7;
+  if (url.find("http://")==0) {
+    ep << "tcp://";
+  } else if (url.find("https://")==0) {
+    ep << "ssl://";
+    ++pos;
+  } else {
+    return false;
+  }
+  
+  size_t slash_p = url.find("/",pos);
+  if (slash_p==std::string::npos) {
+    ep << url.substr(pos);
+  } else {
+    ep << url.substr(pos,slash_p-pos);
+    path = url.substr(slash_p);
+  }
+
+  if (ep.str().find(':')==std::string::npos) {
+    ep << ":8529";
+  }
+
+  endpoint = ep.str();
+
+  return true;
+    
+}
 
 struct NotEmpty {
   bool operator()(const std::string& s) { return !s.empty(); }
@@ -647,7 +681,8 @@ std::vector<bool> Store::apply (query_t const& query) {
 }
 
 //template<class T, class U> std::multimap<std::string, std::string>
-std::ostream& operator<< (std::ostream& os, std::multimap<std::string,std::string> const& m) {
+std::ostream& operator<< (
+  std::ostream& os, std::multimap<std::string,std::string> const& m) {
   for (auto const& i : m) {
     os << i.first << ": " << i.second << std::endl;
   }
@@ -700,30 +735,45 @@ std::vector<bool> Store::apply (
   }
 
   std::vector<std::string> urls;
-  for(auto it = in.begin(), end = in.end(); it != end; it = in.upper_bound(it->first)) {
+  for (auto it = in.begin(), end = in.end(); it != end;
+       it = in.upper_bound(it->first)) {
     urls.push_back(it->first);
   }
-
+  
   for (auto const& url : urls) {
-    Builder tmp; // host
-    tmp.openObject();
-    tmp.add("term",VPackValue(0));
-    tmp.add("index",VPackValue(0));
+
+    Builder body; // host
+    body.openObject();
+    body.add("term",VPackValue(0));
+    body.add("index",VPackValue(0));
     auto ret = in.equal_range(url);
     
     for (auto it = ret.first; it!=ret.second; ++it) {
-      //tmp.add(url,VPackValue(VPackValueType::Object));
-      tmp.add(it->second->key,VPackValue(VPackValueType::Object));
-      tmp.add("op",VPackValue(it->second->oper));
-      //tmp.close();
-      tmp.close();
-      }
+      body.add(it->second->key,VPackValue(VPackValueType::Object));
+      body.add("op",VPackValue(it->second->oper));
+      body.close();
+    }
     
-    tmp.close();
-      std::cout << tmp.toJson() << std::endl;
+    body.close();
+
+    std::string endpoint, path;
+    if (endpointPathFromUrl (url,endpoint,path)) {
+
+      std::unique_ptr<std::map<std::string, std::string>> headerFields =
+        std::make_unique<std::map<std::string, std::string> >();
+      
+      ClusterCommResult res =
+        arangodb::ClusterComm::instance()->asyncRequest(
+          "1", 1, endpoint, GeneralRequest::RequestType::POST, path,
+          std::make_shared<std::string>(body.toString()), headerFields,
+          std::make_shared<StoreCallback>(), 0.0, true);
+      
+    } else {
+      LOG_TOPIC(WARN, Logger::AGENCY) << "Malformed URL " << url;
+    }
 
   }
-
+  
   return applied;
 }
 
@@ -791,7 +841,7 @@ std::vector<bool> Store::read (query_t const& queries, query_t& result) const {
 
 // read single query into ret
 bool Store::read (VPackSlice const& query, Builder& ret) const {
-
+  
   bool success = true;
   
   // Collect all paths
@@ -837,7 +887,7 @@ bool Store::read (VPackSlice const& query, Builder& ret) const {
       }
     }
   }
-
+  
   // Into result builder
   copy.toBuilder(ret);
   

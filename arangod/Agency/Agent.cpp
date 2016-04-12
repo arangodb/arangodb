@@ -38,7 +38,8 @@ namespace arangodb {
 namespace consensus {
 
 //  Agent configuration
-Agent::Agent (TRI_server_t* server, config_t const& config, ApplicationV8* applicationV8, aql::QueryRegistry* queryRegistry) 
+Agent::Agent (TRI_server_t* server, config_t const& config,
+              ApplicationV8* applicationV8, aql::QueryRegistry* queryRegistry) 
     : Thread ("Agent"), 
       _server(server), 
       _vocbase(nullptr), 
@@ -218,7 +219,8 @@ bool Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
   if (queries->slice().length()) {
     LOG_TOPIC(INFO, Logger::AGENCY) << "Appending "<< queries->slice().length()
                                     << " entries to state machine.";
-    /* bool success = */_state.log (queries, term, leaderId, prevIndex, prevTerm);
+    /* bool success = */
+    _state.log (queries, term, leaderId, prevIndex, prevTerm);
   } else { 
     // heart-beat
   }
@@ -298,12 +300,13 @@ bool Agent::load () {
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Loading persistent state.";
   if (!_state.loadCollections(_vocbase, _applicationV8, _queryRegistry)) {
-    LOG_TOPIC(WARN, Logger::AGENCY) << "Failed to load persistent state on statup.";
+    LOG_TOPIC(WARN, Logger::AGENCY)
+      << "Failed to load persistent state on statup.";
   }
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Reassembling spearhead and read stores.";
-//  _read_db.apply(_state.slices());
   _spearhead.apply(_state.slices(_last_commit_index+1));
+  reportIn(id(),_state.lastLog().index);
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Starting spearhead worker.";
   _spearhead.start(this);
@@ -311,6 +314,11 @@ bool Agent::load () {
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Starting constituent personality.";
   _constituent.start(_vocbase, _applicationV8, _queryRegistry);
+
+  if (_config.sanity_check) {
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Starting cluster sanity facilities";
+    _sanity_check.start(this);
+  }
   
   return true;
 }
@@ -334,7 +342,7 @@ write_ret_t Agent::write (query_t const& query)  {
       _cv.signal();                                  // Wake up run
     }
 
-    reportIn(0,maxind);
+    reportIn(id(),maxind);
     
     return write_ret_t(true,id(),applied,indices); // Indices to wait for to rest
     
@@ -386,6 +394,9 @@ void Agent::beginShutdown() {
   _constituent.beginShutdown();
   _spearhead.beginShutdown();
   _read_db.beginShutdown();
+  if (_config.sanity_check) {
+    _sanity_check.beginShutdown();
+  }
   
   // Wake up all waiting REST handler (waitFor)
   CONDITION_LOCKER(guard, _cv);

@@ -21,54 +21,28 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef __ARANGODB_CONSENSUS_SANITY_CHECK__
-#define __ARANGODB_CONSENSUS_SANITY_CHECK__
+#ifndef __ARANGODB_CONSENSUS_STORE_CALLBACK__
+#define __ARANGODB_CONSENSUS_STORE_CALLBACK__
 
-#include "Basics/Thread.h"
-#include "Basics/ConditionVariable.h"
+#include "Cluster/ClusterComm.h"
 
 namespace arangodb {
 namespace consensus {
 
-class Agent;
-
-class SanityCheck : public arangodb::Thread {
+class StoreCallback : public arangodb::ClusterCommCallback {
   
 public:
   
-  /// @brief Construct sanity checking
-  SanityCheck ();
+  StoreCallback();
   
-  /// @brief Default dtor
-  ~SanityCheck ();
+  virtual bool operator()(arangodb::ClusterCommResult*) override final;
   
-  /// @brief Start thread
-  bool start ();
-
-  /// @brief Start thread with access to agent
-  bool start (Agent*);
-
-  /// @brief Run woker
-  void run() override final;
+  void shutdown();
   
-  /// @brief Begin thread shutdown
-  void beginShutdown() override final;
-
-  /// @brief Wake up to task
-  void wakeUp ();
-
 private:
-
-  /// @brief Perform sanity checking
-  bool doChecks(bool);
-  
-  Agent* _agent; /**< @brief My agent */
-
-  arangodb::basics::ConditionVariable _cv; /**< @brief Control if thread should run */
-  
   
 };
 
-}}
+}} // namespace
 
-#endif //__ARANGODB_CONSENSUS_SANITY_CHECK__
+#endif
