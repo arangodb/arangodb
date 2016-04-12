@@ -16,6 +16,7 @@ void SanityCheck::wakeUp () {
 }
 
 bool SanityCheck::doChecks (bool timedout) {
+  LOG_TOPIC(INFO, Logger::AGENCY) << "Sanity checks";
   return true;
 }
 

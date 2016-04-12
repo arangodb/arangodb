@@ -37,6 +37,34 @@
 
 using namespace arangodb::consensus;
 
+inline static enpointPathFromUrl (
+  std::string const& url, std::string& enpoint, std::string& path) {
+
+  std::stringstream ep;
+  path = "/";
+  size_t pos = 7;
+  if (i.find("http://")==0) {
+    ep << "tcp://";
+  } else if (i.find("https://")==0) {
+    ep << "ssl://";
+    ++pos;
+  } else {
+    LOG_TOPIC(WARN,Logger::AGENCY) << "Malformed notification URL " << i;
+    return;
+  }
+  
+  size_t slash_p = i.find("/",pos);
+  if ((slash_p==std::string::npos)) {
+    ep << i.substr(pos);
+  } else {
+    ep << i.substr(pos,slash_p-pos);
+    path = i.substr(slash_p);
+  }
+
+  endpoint = ep.str();
+    
+}
+
 struct NotEmpty {
   bool operator()(const std::string& s) { return !s.empty(); }
 };
@@ -707,6 +735,7 @@ std::vector<bool> Store::apply (
   }
   
   for (auto const& url : urls) {
+
     Builder tmp; // host
     tmp.openObject();
     tmp.add("term",VPackValue(0));
@@ -720,6 +749,19 @@ std::vector<bool> Store::apply (
     }
     
     tmp.close();
+
+    std::string endpoint, path;
+    endpointPathFromUrl (url,endpoint,path);
+
+    std::unique_ptr<std::map<std::string, std::string>> headerFields =
+      std::make_unique<std::map<std::string, std::string> >();
+    
+    ClusterCommResult res =
+      arangodb::ClusterComm::instance()->asyncRequest(
+        "1", 1, endpoint, GeneralRequest::RequestType::POST, path,
+        std::make_shared<std::string>(body.toString()), headerFields,
+        nullptr, 0.0, true);
+
   }
   
   return applied;

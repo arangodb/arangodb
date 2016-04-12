@@ -69,12 +69,13 @@ add_executable(${BIN_ARANGOD}
   Actions/RestActionHandler.cpp
   Actions/actions.cpp
   Agency/Agent.cpp
+  Agency/AgentCallback.cpp
   Agency/ApplicationAgency.cpp
   Agency/Constituent.cpp
   Agency/SanityCheck.cpp
   Agency/State.cpp
   Agency/Store.cpp
-  Agency/AgentCallback.cpp
+  Agency/StoreCallback.cpp
   ApplicationServer/ApplicationFeature.cpp
   ApplicationServer/ApplicationServer.cpp
   Aql/Aggregator.cpp
