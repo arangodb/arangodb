@@ -1,5 +1,6 @@
 /*global aqlQuery */
 'use strict';
+
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -88,6 +89,17 @@ module.exports = function collectionStorage(cfg) {
       }
       collection.replace(session._key, payload);
       return session._key;
+    },
+    clear(sid) {
+      try {
+        collection.remove(sid);
+      } catch (e) {
+        if (e.isArangoError && e.errorNum === NOT_FOUND) {
+          return false;
+        }
+        throw e;
+      }
+      return true;
     },
     new() {
       return {
