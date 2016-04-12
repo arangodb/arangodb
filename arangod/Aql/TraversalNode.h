@@ -168,10 +168,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<Variable const*> getVariablesUsedHere () const override final {
-          if (usesInVariable()) {
-            return std::vector<Variable const*>{ _inVariable };
+          std::vector<Variable const*> result;
+          for (auto const& condVar : _conditionVariables) {
+            result.emplace_back(condVar);
           }
-          return std::vector<Variable const*>{ };
+          if (usesInVariable()) {
+            result.emplace_back(_inVariable);
+          }
+          return result;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -186,7 +190,6 @@ namespace triagens {
             result.emplace(_inVariable);
           }
         }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getVariablesSetHere
