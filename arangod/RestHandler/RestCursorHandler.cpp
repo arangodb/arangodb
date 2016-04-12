@@ -25,7 +25,6 @@
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/Exceptions.h"
-#include "Basics/json.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/VPackStringBufferAdapter.h"
@@ -493,14 +492,12 @@ void RestCursorHandler::deleteCursor() {
     return;
   }
 
-  createResponse(GeneralResponse::ResponseCode::ACCEPTED);
-  _response->setContentType("application/json; charset=utf-8");
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("id", VPackValue(id));
+  builder.add("error", VPackValue(false));
+  builder.add("code", VPackValue(static_cast<int>(GeneralResponse::ResponseCode::ACCEPTED)));
+  builder.close();
 
-  arangodb::basics::Json json(arangodb::basics::Json::Object);
-  json.set("id", arangodb::basics::Json(id));  // id as a string!
-  json.set("error", arangodb::basics::Json(false));
-  json.set("code", arangodb::basics::Json(
-                       static_cast<double>(_response->responseCode())));
-
-  json.dump(_response->body());
+  generateResult(GeneralResponse::ResponseCode::ACCEPTED, builder.slice());
 }
