@@ -688,9 +688,6 @@ std::vector<bool> Store::apply (
     
     body.close();
 
-    std::cout << url << body.toString() << std::endl;
-
-
     std::string endpoint, path;
     if (endpointPathFromUrl (url,endpoint,path)) {
 
