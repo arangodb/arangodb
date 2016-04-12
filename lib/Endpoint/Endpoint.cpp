@@ -62,9 +62,8 @@ std::string Endpoint::uriForm (std::string const& endpoint) {
   } else if (StringUtils::isPrefix(endpoint, "ssl://")) {
     url << "https://";
   } else {
-    throw arangodb::basics::Exception (
-      0, std::string("malformed URL ") + endpoint
-      + ". Support only for ssl:// and tcp:// endpoints." , __FILE__, __LINE__);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("malformed URL ") + endpoint
+      + ". Support only for ssl:// and tcp:// endpoints.");
   }
 
   url << endpoint.substr(prefix_len,endpoint.size()+1-(prefix_len+1));
