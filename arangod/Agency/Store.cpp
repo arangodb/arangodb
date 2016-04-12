@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Store.h"
+#include "StoreCallback.h"
 #include "Agency/Agent.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/VelocyPackHelper.h"
@@ -37,31 +38,36 @@
 
 using namespace arangodb::consensus;
 
-inline static enpointPathFromUrl (
-  std::string const& url, std::string& enpoint, std::string& path) {
+inline static bool endpointPathFromUrl (
+  std::string const& url, std::string& endpoint, std::string& path) {
 
   std::stringstream ep;
   path = "/";
   size_t pos = 7;
-  if (i.find("http://")==0) {
+  if (url.find("http://")==0) {
     ep << "tcp://";
-  } else if (i.find("https://")==0) {
+  } else if (url.find("https://")==0) {
     ep << "ssl://";
     ++pos;
   } else {
-    LOG_TOPIC(WARN,Logger::AGENCY) << "Malformed notification URL " << i;
-    return;
+    return false;
   }
   
-  size_t slash_p = i.find("/",pos);
+  size_t slash_p = url.find("/",pos);
   if ((slash_p==std::string::npos)) {
-    ep << i.substr(pos);
+    ep << url.substr(pos);
   } else {
-    ep << i.substr(pos,slash_p-pos);
-    path = i.substr(slash_p);
+    ep << url.substr(pos,slash_p-pos);
+    path = url.substr(slash_p);
+  }
+
+  if (ep.str().find(':')==std::string::npos) {
+    ep << ":8529";
   }
 
   endpoint = ep.str();
+
+  return true;
     
 }
 
@@ -736,31 +742,35 @@ std::vector<bool> Store::apply (
   
   for (auto const& url : urls) {
 
-    Builder tmp; // host
-    tmp.openObject();
-    tmp.add("term",VPackValue(0));
-    tmp.add("index",VPackValue(0));
+    Builder body; // host
+    body.openObject();
+    body.add("term",VPackValue(0));
+    body.add("index",VPackValue(0));
     auto ret = in.equal_range(url);
     
     for (auto it = ret.first; it!=ret.second; ++it) {
-      tmp.add(it->second->key,VPackValue(VPackValueType::Object));
-      tmp.add("op",VPackValue(it->second->oper));
-      tmp.close();
+      body.add(it->second->key,VPackValue(VPackValueType::Object));
+      body.add("op",VPackValue(it->second->oper));
+      body.close();
     }
     
-    tmp.close();
+    body.close();
 
     std::string endpoint, path;
-    endpointPathFromUrl (url,endpoint,path);
+    if (endpointPathFromUrl (url,endpoint,path)) {
 
-    std::unique_ptr<std::map<std::string, std::string>> headerFields =
-      std::make_unique<std::map<std::string, std::string> >();
-    
-    ClusterCommResult res =
-      arangodb::ClusterComm::instance()->asyncRequest(
-        "1", 1, endpoint, GeneralRequest::RequestType::POST, path,
-        std::make_shared<std::string>(body.toString()), headerFields,
-        nullptr, 0.0, true);
+      std::unique_ptr<std::map<std::string, std::string>> headerFields =
+        std::make_unique<std::map<std::string, std::string> >();
+      
+      ClusterCommResult res =
+        arangodb::ClusterComm::instance()->asyncRequest(
+          "1", 1, endpoint, GeneralRequest::RequestType::POST, path,
+          std::make_shared<std::string>(body.toString()), headerFields,
+          std::make_shared<StoreCallback>(), 0.0, true);
+      
+    } else {
+      LOG_TOPIC(WARN, Logger::AGENCY) << "Malformed URL " << url;
+    }
 
   }
   

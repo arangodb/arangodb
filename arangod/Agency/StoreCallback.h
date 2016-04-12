@@ -25,7 +25,6 @@
 #define __ARANGODB_CONSENSUS_STORE_CALLBACK__
 
 #include "Cluster/ClusterComm.h"
-#include "AgencyCommon.h"
 
 namespace arangodb {
 namespace consensus {
@@ -35,8 +34,6 @@ class StoreCallback : public arangodb::ClusterCommCallback {
 public:
   
   StoreCallback();
-
-  explicit StoreCallback();
 
   virtual bool operator()(arangodb::ClusterCommResult*) override final;
 

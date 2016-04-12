@@ -76,8 +76,12 @@ void RestAgencyHandler::redirectRequest(id_t leaderId) {
   std::shared_ptr<Endpoint> ep (
     Endpoint::clientFactory (_agent->config().end_points.at(leaderId)));
   std::stringstream url;
-  url << ep->transport() << "://" << ep->hostAndPort()
-      << _request->requestPath();
+
+  url << ep->transport() << "://";
+  if (ep->encryption() == arangodb::Endpoint::EncryptionType::SSL) {
+    url << "s";
+  }
+  url << ep->hostAndPort() << _request->requestPath();
   
   createResponse(GeneralResponse::ResponseCode::TEMPORARY_REDIRECT);
   static std::string const location = "location";
