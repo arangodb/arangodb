@@ -54,7 +54,7 @@ inline static bool endpointPathFromUrl (
   }
   
   size_t slash_p = url.find("/",pos);
-  if ((slash_p==std::string::npos)) {
+  if (slash_p==std::string::npos) {
     ep << url.substr(pos);
   } else {
     ep << url.substr(pos,slash_p-pos);
