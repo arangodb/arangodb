@@ -1031,7 +1031,9 @@ int deleteDocumentOnCoordinator(
 
   std::string const optsUrlPart =
       std::string("?waitForSync=") + (options.waitForSync ? "true" : "false") +
-      "&returnOld=" + (options.returnOld ? "true" : "false");
+      "&returnOld=" + (options.returnOld ? "true" : "false") +
+      "&ignoreRevs=" + (options.ignoreRevs ? "true" : "false");
+
 
   VPackBuilder reqBuilder;
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
