@@ -1,6 +1,12 @@
 v3.0.0 (XXXX-XX-XX)
 -------------------
 
+* renamed AQL optimizer rule "merge-traversal-filter" to "optimize-traversals"
+  Additionally, the optimizer rule will remove unused edge and paths result variables
+  from the traversal in case they are specified in the `FOR` section of the traversal,
+  but are not referenced later in the query. This saves constructing edges and paths
+  results.
+
 * added new endpoint "srv://" for DNS service records
 
 * The result order of the AQL functions VALUES and KEYS has never been guaranteed

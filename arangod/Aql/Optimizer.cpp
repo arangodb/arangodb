@@ -410,8 +410,8 @@ void Optimizer::setupRules() {
                true);
 
   // merge filters into traversals
-  registerRule("merge-traversal-filter", mergeFilterIntoTraversalRule,
-               mergeFilterIntoTraversalRule_pass6, true);
+  registerRule("optimize-traversals", optimizeTraversalsRule,
+               optimizeTraversalsRule_pass6, true);
 
   /// "Pass 5": try to remove redundant or unnecessary nodes (second try)
   // remove filters from the query that are not necessary at all

@@ -38,7 +38,7 @@ var _ = require("lodash");
 ////////////////////////////////////////////////////////////////////////////////
 
 function optimizerRuleTestSuite () {
-  var ruleName = "merge-traversal-filter";
+  var ruleName = "optimize-traversals";
   // various choices to control the optimizer: 
   var paramEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
   var paramDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
@@ -90,6 +90,41 @@ function optimizerRuleTestSuite () {
       graph_module._drop(graphName, true);
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test that rule removes variables
+////////////////////////////////////////////////////////////////////////////////
+
+    testRuleRemoveVariables : function () {
+      var queries = [ 
+        [ "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' RETURN 1", true, [ true, false, false ] ],
+        [ "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' RETURN [v, e]", true, [ true, true, false ] ],
+        [ "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' RETURN [v, p]", true, [ true, false, true ] ],
+        [ "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' RETURN [e, p]", false, [ true, true, true ] ],
+        [ "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' RETURN [v]", true, [ true, false, false ] ],
+        [ "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' RETURN [e]", true, [ true, true, false ] ],
+        [ "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' RETURN [p]", true, [ true, false, true ] ],
+        [ "FOR v, e IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' RETURN [v, e]", false, [ true, true, false ] ],
+        [ "FOR v, e IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' RETURN [v]", true, [ true, false, false ] ],
+        [ "FOR v IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' RETURN [v]", false, [ true, false, false ] ]
+      ];
+
+      queries.forEach(function(query) {
+        var result = AQL_EXPLAIN(query[0], { }, paramEnabled);
+        assertEqual(query[1], result.plan.rules.indexOf(ruleName) !== -1, query);
+
+        // check that variables were correctly optimized away
+        var found = false;
+        result.plan.nodes.forEach(function (thisNode) {
+          if (thisNode.type === "TraversalNode") {
+            assertEqual(query[2][0], thisNode.hasOwnProperty("vertexOutVariable"));
+            assertEqual(query[2][1], thisNode.hasOwnProperty("edgeOutVariable"));
+            assertEqual(query[2][2], thisNode.hasOwnProperty("pathOutVariable"));
+            found = true;
+          }
+        });
+        assertTrue(found);
+      });
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test that rule has no effect
@@ -102,9 +137,9 @@ function optimizerRuleTestSuite () {
         "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[*].theTruth == true or p.edges[1].label == 'bar' return {v:v,e:e,p:p}",
         "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[RAND()].theFalse == false return {v:v,e:e,p:p}",
         "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[p.edges.length - 1].theFalse == false return {v:v,e:e,p:p}",
-        "FOR v, e, p IN 2 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER CONCAT(p.edges[0]._key, '') == " + edgeKey + " SORT v._key RETURN v._key",
-        "FOR v, e, p IN 2 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER NOOPT(CONCAT(p.edges[0]._key, '')) == " + edgeKey + " SORT v._key RETURN v._key",
-        "FOR v, e, p IN 2 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER NOOPT(V8(CONCAT(p.edges[0]._key, ''))) == " + edgeKey + " SORT v._key RETURN v._key"
+        "FOR v, e, p IN 2 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER CONCAT(p.edges[0]._key, '') == " + edgeKey + " SORT v._key RETURN {v:v,e:e,p:p}",
+        "FOR v, e, p IN 2 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER NOOPT(CONCAT(p.edges[0]._key, '')) == " + edgeKey + " SORT v._key RETURN {v:v,e:e,p:p}",
+        "FOR v, e, p IN 2 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER NOOPT(V8(CONCAT(p.edges[0]._key, ''))) == " + edgeKey + " SORT v._key RETURN {v:v,e:e,p:p}"
       ];
 
       queries.forEach(function(query) {
@@ -119,12 +154,12 @@ function optimizerRuleTestSuite () {
 
     testRuleHasEffect : function () {
       var queries = [
-        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[0].theTruth == true return {v:v,e:e,p:p}",
-        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[1].theTruth == true return {v:v,e:e,p:p}",
-        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[2].theTruth == true return {v:v,e:e,p:p}",
-        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[2].theTruth == true AND    p.edges[1].label == 'bar' return {v:v,e:e,p:p}",
-        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[0].theTruth == true FILTER p.edges[1].label == 'bar' return {v:v,e:e,p:p}",
-        "FOR snippet IN ['a', 'b'] FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[1].label == CONCAT(snippet, 'ar') return {v:v,e:e,p:p}"
+        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[0].theTruth == true RETURN {v:v,e:e,p:p}",
+        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[1].theTruth == true RETURN {v:v,e:e,p:p}",
+        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[2].theTruth == true RETURN {v:v,e:e,p:p}",
+        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[2].theTruth == true AND    p.edges[1].label == 'bar' RETURN {v:v,e:e,p:p}",
+        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[0].theTruth == true FILTER p.edges[1].label == 'bar' RETURN {v:v,e:e,p:p}",
+        "FOR snippet IN ['a', 'b'] FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[1].label == CONCAT(snippet, 'ar') RETURN {v:v,e:e,p:p}"
       ];
 
       queries.forEach(function(query) {

@@ -95,7 +95,7 @@ function namedGraphSuite () {
 
   var g;
   const gn = "UnitTestGraph";
-  var ruleName = "merge-traversal-filter";
+  var ruleName = "optimize-traversals";
   var paramEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
   var opts = _.clone(paramEnabled);
 
@@ -379,7 +379,7 @@ function multiCollectionGraphSuite () {
   const gn = "UnitTestGraph";
   const vn2 = "UnitTestVertexCollection2";
   const en2 = "UnitTestEdgeCollection2";
-  var ruleName = "merge-traversal-filter";
+  var ruleName = "optimize-traversals";
   var paramEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
   var opts = _.clone(paramEnabled);
 
@@ -844,7 +844,7 @@ function multiEdgeCollectionGraphSuite () {
   var g;
   const gn = "UnitTestGraph";
   const en2 = "UnitTestEdgeCollection2";
-  var ruleName = "merge-traversal-filter";
+  var ruleName = "optimize-traversals";
   var paramEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
   var opts = _.clone(paramEnabled);
 
@@ -1163,7 +1163,7 @@ function potentialErrorsSuite () {
 }
 
 function complexInternaSuite () {
-  var ruleName = "merge-traversal-filter";
+  var ruleName = "optimize-traversals";
   var paramEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
   var opts = _.clone(paramEnabled);
 
