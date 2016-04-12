@@ -845,24 +845,14 @@ function CollectionDocumentSuiteBabies() {
 
         // Remove
         // Version 1
-        if (typeof x === "string") {
-          docs = collection.remove([x, x, x]);
-          assertEqual(docs.length, expectedLength);
-          for (var i = 0; i < expectedLength; ++i) {
-            assertEqual(docs[i].error, true);
-            if (typeof x === "string") {
-              assertEqual(docs[i].errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
-            } else {
-              assertEqual(docs[i].errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code);
-            }
-          }
-        } else {
-          // Version 2
-          try {
-            docs = collection.remove([x, x, x]);
-            fail();
-          } catch (err) {
-            assertEqual(err.errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code);
+        docs = collection.remove([x, x, x]);
+        assertEqual(docs.length, expectedLength);
+        for (var i = 0; i < expectedLength; ++i) {
+          assertEqual(docs[i].error, true);
+          if (typeof x === "string") {
+            assertEqual(docs[i].errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+          } else {
+            assertEqual(docs[i].errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code);
           }
         }
 
