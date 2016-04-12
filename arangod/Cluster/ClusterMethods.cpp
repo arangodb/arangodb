@@ -1892,9 +1892,18 @@ int modifyDocumentOnCoordinator(
     VPackBuilder reqBuilder;
     auto body = std::make_shared<std::string>();
     for (auto const& it : shardMap) {
+      auto headersCopy =
+          std::make_unique<std::map<std::string, std::string>>(*headers);
       if (!useMultiple) {
         TRI_ASSERT(it.second.size() == 1);
-        body = std::make_shared<std::string>("[" + std::move(slice.toJson()) + "]");
+        body = std::make_shared<std::string>(std::move(slice.toJson()));
+
+        // We send to single endpoint
+        cc->asyncRequest("", coordTransactionID, "shard:" + it.first, reqType,
+                         baseUrl + StringUtils::urlEncode(it.first) + "/" +
+                             slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString() +
+                             optsUrlPart,
+                         body, headersCopy, nullptr, 60.0);
       } else {
         reqBuilder.clear();
         reqBuilder.openArray();
@@ -1903,12 +1912,11 @@ int modifyDocumentOnCoordinator(
         }
         reqBuilder.close();
         body = std::make_shared<std::string>(std::move(reqBuilder.slice().toJson()));
+        // We send to Babies endpoint
+        cc->asyncRequest("", coordTransactionID, "shard:" + it.first, reqType,
+            baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart,
+            body, headersCopy, nullptr, 60.0);
       }
-      auto headersCopy =
-          std::make_unique<std::map<std::string, std::string>>(*headers);
-      cc->asyncRequest("", coordTransactionID, "shard:" + it.first, reqType,
-          baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart,
-          body, headersCopy, nullptr, 60.0);
     }
 
     // Now listen to the results:
