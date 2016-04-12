@@ -33,9 +33,15 @@
       "cluster": "cluster",
       "nodes": "nodes",
       "node/:name": "node",
-      "node/:name/logs": "logs",
       "logs": "logs",
       "test": "test"
+    },
+
+    execute: function(callback, args, name) {
+      $('#subNavigationBar .breadcrumb').html('');
+      if (callback) {
+        callback.apply(this, args);
+      }
     },
 
     checkUser: function () {
@@ -141,7 +147,8 @@
               database: self.arangoDatabase,
               currentDB: self.currentDB,
               notificationCollection: self.notificationList,
-              userCollection: self.userCollection
+              userCollection: self.userCollection,
+              isCluster: self.isCluster
             });
             self.naviView.render();
           }
@@ -221,6 +228,10 @@
       this.nodeView.render();
     },
 
+    nodeLogs: function (initialized) {
+
+    },
+
     nodes: function (initialized) {
       this.checkUser();
       if (!initialized || this.isCluster === undefined) {
@@ -257,10 +268,10 @@
       xhr.setRequestHeader('Authorization', "Basic " + btoa(token));
     },
 
-    logs: function (initialized) {
+    logs: function (name, initialized) {
       this.checkUser();
       if (!initialized) {
-        this.waitForInit(this.logs.bind(this));
+        this.waitForInit(this.logs.bind(this), logs);
         return;
       }
       if (!this.logsView) {

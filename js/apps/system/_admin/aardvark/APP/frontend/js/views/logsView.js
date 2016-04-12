@@ -13,7 +13,8 @@
     idPrefix: "logTable",
     fetchedAmount: false,
 
-    initialize: function () {
+    initialize: function (options) {
+      this.options = options;
       this.convertModelToJSON();
     },
 

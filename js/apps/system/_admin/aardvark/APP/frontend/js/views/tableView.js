@@ -10,8 +10,8 @@
     template: templateEngine.createTemplate("tableView.ejs"),
     loading: templateEngine.createTemplate("loadingTableView.ejs"),
 
-    initialize: function() {
-      this.rowClickCallback = this.options.rowClick;
+    initialize: function(options) {
+      this.rowClickCallback = options.rowClick;
     },
 
     events: {

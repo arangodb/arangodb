@@ -57,7 +57,7 @@
     },
 
     //colors for dygraphs
-    colors: ["rgb(46, 196, 211)", "rgb(194, 195, 56)", "#81ccd8", "#7ca530", "#3c3c3c",
+    colors: ["rgb(95, 194, 135)", "rgb(238, 190, 77)", "#81ccd8", "#7ca530", "#3c3c3c",
              "#aa90bd", "#e1811d", "#c7d4b2", "#d0b2d4"],
 
 
@@ -210,7 +210,7 @@
         digitsAfterDecimal: 1,
         drawGapPoints: true,
         fillGraph: true,
-        fillAlpha: 0.7,
+        fillAlpha: 0.85,
         showLabelsOnHighlight: false,
         strokeWidth: 0.0,
         lineWidth: 0.0,

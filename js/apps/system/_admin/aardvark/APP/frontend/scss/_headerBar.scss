@@ -169,6 +169,10 @@ div.headerBar {
   background: transparent;
   border: 0;
   border-radius: 0;
+  color: $c-white;
+  font-size: 11pt;
+  font-weight: 100;
+  margin: 0;
   padding: {
     bottom: 0;
     left: 10px;
@@ -180,7 +184,7 @@ div.headerBar {
   .disabledBread {
     color: $c-white;
     float: left;
-    font-size: 13pt;
+    font-size: 11pt;
     font-weight: 100;
     opacity: .65;
     padding-right: 5px;
@@ -200,7 +204,7 @@ div.headerBar {
   .activeBread {
     color: $c-white;
     float: left;
-    font-size: 13pt;
+    font-size: 11pt;
     font-weight: 100;
     -webkit-tap-highlight-color: transparent;
     -webkit-transition: opacity .2s cubic-bezier(.645, .045, .355, 1);

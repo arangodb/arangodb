@@ -19,25 +19,28 @@
     renderFirst: true,
     activeSubMenu: undefined,
 
-    initialize: function () {
+    initialize: function (options) {
 
       var self = this;
 
-      this.userCollection = this.options.userCollection;
-      this.currentDB = this.options.currentDB;
+      this.userCollection = options.userCollection;
+      this.currentDB = options.currentDB;
       this.dbSelectionView = new window.DBSelectionView({
-        collection: this.options.database,
+        collection: options.database,
         current: this.currentDB
       });
       this.userBarView = new window.UserBarView({
         userCollection: this.userCollection
       });
       this.notificationView = new window.NotificationView({
-        collection: this.options.notificationCollection
+        collection: options.notificationCollection
       });
       this.statisticBarView = new window.StatisticBarView({
           currentDB: this.currentDB
       });
+
+      this.isCluster = options.isCluster;
+
       this.handleKeyboardHotkeys();
 
       Backbone.history.on("all", function () {
@@ -57,7 +60,7 @@
 
       $(this.el).html(this.template.render({
         currentDB: this.currentDB,
-        isCluster: window.App.isCluster
+        isCluster: this.isCluster
       }));
 
       $(this.subEl).html(this.templateSub.render({}));
@@ -175,7 +178,10 @@
         },
         {
           name: 'Logs',
-          view: undefined
+          route: 'nodeLogs',
+          params: {
+            node: undefined
+          }
         }
       ],
       queries: [
@@ -217,13 +223,6 @@
 
       $(this.subEl + ' .bottom').html('');
       var cssclass = "";
-
-      if (this.subMenuConfig[id] === undefined) {
-        $('#subNavigationBar .bottom').css('display', 'none');
-      }
-      else {
-        $('#subNavigationBar .bottom').css('display', 'block');
-      }
 
       _.each(this.subMenuConfig[id], function(menu) {
         if (menu.active) {
@@ -270,6 +269,7 @@
       }
     },
 
+    /*
     breadcrumb: function (name) {
 
       if (window.location.hash.split('/')[0] !== '#collection') {
@@ -279,6 +279,7 @@
       }
 
     },
+    */
 
     selectMenuItem: function (menuItem, noMenuEntry) {
 
@@ -302,7 +303,7 @@
         this.renderSubMenu(menuItem);
       }
 
-      this.breadcrumb(menuItem.split('-')[0]);
+      //this.breadcrumb(menuItem.split('-')[0]);
 
       $('.navlist li').removeClass('active');
       if (typeof menuItem === 'string') {

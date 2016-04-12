@@ -161,14 +161,14 @@
       });
     },
 
-    initialize: function () {
-      this.dygraphConfig = this.options.dygraphConfig;
+    initialize: function (options) {
+      this.dygraphConfig = options.dygraphConfig;
       this.d3NotInitialized = true;
       this.events["click .dashboard-sub-bar-menu-sign"] = this.showDetail.bind(this);
       this.events["mousedown .dygraph-rangesel-zoomhandle"] = this.stopUpdating.bind(this);
       this.events["mouseup .dygraph-rangesel-zoomhandle"] = this.startUpdating.bind(this);
 
-      this.serverInfo = this.options.serverToShow;
+      this.serverInfo = options.serverToShow;
 
       if (! this.serverInfo) {
         this.server = "-local-";
@@ -451,7 +451,7 @@
         },
         {
           "key": "",
-          "color": this.dygraphConfig.colors[0],
+          "color": this.dygraphConfig.colors[2],
           "values": [
             {
               label: "used",
@@ -469,11 +469,11 @@
     mergeBarChartData: function (attribList, newData) {
       var i, v1 = {
         "key": this.barChartsElementNames[attribList[0]],
-        "color": this.dygraphConfig.colors[0],
+        "color": this.dygraphConfig.colors[1],
         "values": []
       }, v2 = {
         "key": this.barChartsElementNames[attribList[1]],
-        "color": this.dygraphConfig.colors[1],
+        "color": this.dygraphConfig.colors[2],
         "values": []
       };
       for (i = newData[attribList[0]].values.length - 1;  0 <= i;  --i) {
@@ -688,7 +688,7 @@
           .showYAxis(false)
           .showXAxis(false)
           //.transitionDuration(100)
-          //.tooltips(false)
+          //.tooltip(false)
           .showLegend(false)
           .showControls(false)
           .stacked(true);

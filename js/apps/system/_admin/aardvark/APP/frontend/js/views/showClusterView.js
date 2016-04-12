@@ -47,7 +47,8 @@
     },
 
 
-    initialize: function() {
+    initialize: function(options) {
+      this.options = options;
       this.interval = 10000;
       this.isUpdating = false;
       this.timer = null;

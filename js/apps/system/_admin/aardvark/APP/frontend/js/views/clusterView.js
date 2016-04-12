@@ -23,12 +23,12 @@
     startHistory: {},
     startHistoryAccumulated: {},
 
-    initialize: function () {
+    initialize: function (options) {
       var self = this;
 
       if (window.App.isCluster) {
-        this.dbServers = this.options.dbServers;
-        this.coordinators = this.options.coordinators;
+        this.dbServers = options.dbServers;
+        this.coordinators = options.coordinators;
         this.updateServerTime();
 
         //start polling with interval

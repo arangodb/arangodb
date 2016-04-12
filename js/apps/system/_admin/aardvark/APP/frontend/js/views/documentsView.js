@@ -32,9 +32,9 @@
 
     editButtons: ["#deleteSelected", "#moveSelected"],
 
-    initialize : function () {
-      this.documentStore = this.options.documentStore;
-      this.collectionsStore = this.options.collectionsStore;
+    initialize : function (options) {
+      this.documentStore = options.documentStore;
+      this.collectionsStore = options.collectionsStore;
       this.tableView = new window.TableView({
         el: this.table,
         collection: this.collection

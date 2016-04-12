@@ -11,8 +11,8 @@
     className: "tile",
     template: templateEngine.createTemplate("collectionsItemView.ejs"),
 
-    initialize: function () {
-      this.collectionsView = this.options.collectionsView;
+    initialize: function (options) {
+      this.collectionsView = options.collectionsView;
     },
 
     events: {

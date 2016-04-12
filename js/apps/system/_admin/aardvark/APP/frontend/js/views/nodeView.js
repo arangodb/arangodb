@@ -14,11 +14,11 @@
     events: {
     },
 
-    initialize: function () {
+    initialize: function (option) {
 
       if (window.App.isCluster) {
-        this.coordinators = this.options.coordinators;
-        this.coordname = this.options.coordname;
+        this.coordinators = options.coordinators;
+        this.coordname = options.coordname;
         this.updateServerTime();
 
         //start polling with interval
@@ -33,11 +33,18 @@
       }
     },
 
+    breadcrumb: function(name) {
+      console.log("yes");
+      $('#subNavigationBar .breadcrumb').html("Node: " + name);
+    },
+
     render: function () {
+      console.log(1);
       this.$el.html(this.template.render({coords: []}));
 
       var callback = function() {
         this.continueRender();
+        this.breadcrumb(this.coordname);
       }.bind(this);
 
       if (!this.initDone) {
