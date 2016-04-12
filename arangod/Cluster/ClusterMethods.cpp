@@ -1894,7 +1894,7 @@ int modifyDocumentOnCoordinator(
     for (auto const& it : shardMap) {
       if (!useMultiple) {
         TRI_ASSERT(it.second.size() == 1);
-        body = std::make_shared<std::string>(std::move(slice.toJson()));
+        body = std::make_shared<std::string>("[" + std::move(slice.toJson()) + "]");
       } else {
         reqBuilder.clear();
         reqBuilder.openArray();
