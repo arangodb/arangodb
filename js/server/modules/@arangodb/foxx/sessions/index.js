@@ -96,7 +96,7 @@ module.exports = function sessionMiddleware(cfg) {
           sid = storage.forClient(req.session);
           for (const transport of transports.reverse()) {
             if (typeof transport.set === 'function') {
-              transport.set(req, sid);
+              transport.set(res, sid);
             }
           }
         } else if (payload) {
