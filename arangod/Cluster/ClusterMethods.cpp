@@ -1860,7 +1860,7 @@ int modifyDocumentOnCoordinator(
 
   std::string baseUrl = "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document/";
   std::string optsUrlPart = std::string("?waitForSync=") + (options.waitForSync ? "true" : "false");
-  optsUrlPart += std::string("&ignoreRevs") + (options.ignoreRevs ? "true" : "false");
+  optsUrlPart += std::string("&ignoreRevs=") + (options.ignoreRevs ? "true" : "false");
 
   arangodb::GeneralRequest::RequestType reqType;
   if (isPatch) {
