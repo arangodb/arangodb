@@ -7,7 +7,9 @@ using namespace arangodb::consensus;
 
 SanityCheck::SanityCheck() : arangodb::Thread("SanityCheck"), _agent(nullptr) {}
 
-SanityCheck::~SanityCheck() {};
+SanityCheck::~SanityCheck() {
+  shutdown();
+};
 
 void SanityCheck::wakeUp () {
   _cv.signal();
