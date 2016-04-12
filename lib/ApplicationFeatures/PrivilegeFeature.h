@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,24 +17,27 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_FILE_DESCRIPTORS_FEATURE_H
-#define ARANGOD_CLUSTER_FILE_DESCRIPTORS_FEATURE_H 1
-
-#include "Basics/Common.h"
+#ifndef APPLICATION_FEATURES_PRIVILEGE_FEATURE_H
+#define APPLICATION_FEATURES_PRIVILEGE_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
-class ClusterFeature : public application_features::ApplicationFeature {
+class PrivilegeFeature final : public application_features::ApplicationFeature {
  public:
-  ClusterFeature(application_features::ApplicationServer*);
+  explicit PrivilegeFeature(application_features::ApplicationServer* server);
 
  public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void prepare() override;
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
+  void start() override final;
+
+ public:
+  std::string _path;
+  std::string _appname;
 };
 }
 

@@ -42,10 +42,10 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   explicit V8DealerFeature(application_features::ApplicationServer* server);
 
  public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void start() override;
-  void stop() override;
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void start() override final;
+  void stop() override final;
 
  private:
   double _gcFrequency;

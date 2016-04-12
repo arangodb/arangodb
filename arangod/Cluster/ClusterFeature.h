@@ -37,22 +37,22 @@ class ClusterFeature : public application_features::ApplicationFeature {
   ~ClusterFeature();
 
  public:
-  // disable the heartbeat (used for testing)
+// disable the heartbeat (used for testing)
 #warning TODO
-  // void disableHeartbeat() { _disableHeartbeat = true; }
+// void disableHeartbeat() { _disableHeartbeat = true; }
 
-  // whether or not the cluster is enabled
+// whether or not the cluster is enabled
 #warning TODO
   // inline bool enabled() const { return _enableCluster; }
 
  public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void prepare() override;
-  void start() override;
-  void stop() override;
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
+  void start() override final;
+  void stop() override final;
 
-private:
+ private:
   std::vector<std::string> _agencyEndpoints;
   std::string _agencyPrefix;
   std::string _myLocalInfo;
@@ -69,7 +69,6 @@ private:
   std::string _coordinatorConfig;
   bool _dispatcherFrontend;
   bool _kickstarter;
-
 
  private:
   bool _enableCluster;

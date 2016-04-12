@@ -28,13 +28,13 @@
 namespace arangodb {
 class ConfigFeature final : public application_features::ApplicationFeature {
  public:
-  explicit ConfigFeature(application_features::ApplicationServer* server,
-                         std::string const& progname);
+  ConfigFeature(application_features::ApplicationServer* server,
+                std::string const& progname);
 
  public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void loadOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void loadOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
  public:
   std::string _file;

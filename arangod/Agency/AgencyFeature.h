@@ -31,16 +31,13 @@ class Agent;
 }
 
 class AgencyFeature : virtual public application_features::ApplicationFeature {
-  AgencyFeature(AgencyFeature const&) = delete;
-  AgencyFeature& operator=(AgencyFeature const&) = delete;
-
  public:
   explicit AgencyFeature(application_features::ApplicationServer* server);
   ~AgencyFeature();
 
  public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
   void stop() override final;

@@ -32,9 +32,9 @@ class UpgradeFeature final : public application_features::ApplicationFeature {
                  std::vector<std::string> const& nonServerFeatures);
 
  public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void start() override;
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void start() override final;
 
  private:
   bool _upgrade;

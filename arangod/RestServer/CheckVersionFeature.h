@@ -37,9 +37,9 @@ class CheckVersionFeature final
   bool _checkVersion;
 
  public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void start() override;
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void start() override final;
 
  private:
   void checkVersion();

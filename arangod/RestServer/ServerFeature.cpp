@@ -56,6 +56,7 @@
 #include "RestHandler/WorkMonitorHandler.h"
 #include "RestServer/ConsoleThread.h"
 #include "RestServer/DatabaseFeature.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
@@ -237,8 +238,6 @@ void ServerFeature::prepare() {
 
   buildHandlerFactory();
   HttpHandlerFactory::setMaintenance(true);
-
-  adjustFileDescriptors();
 }
 
 void ServerFeature::start() {

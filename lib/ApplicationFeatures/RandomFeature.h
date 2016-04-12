@@ -31,8 +31,8 @@ class RandomFeature final : public application_features::ApplicationFeature {
   explicit RandomFeature(application_features::ApplicationServer* server);
 
  public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void start() override;
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void start() override final;
 
  public:
   uint32_t _randomGenerator;

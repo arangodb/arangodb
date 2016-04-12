@@ -33,9 +33,9 @@ class SslFeature final : public application_features::ApplicationFeature {
   explicit SslFeature(application_features::ApplicationServer* server);
 
  public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void prepare() override;
-  void stop() override;
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
+  void stop() override final;
 
  public:
   SSL_CTX* sslContext() const { return _sslContext; }

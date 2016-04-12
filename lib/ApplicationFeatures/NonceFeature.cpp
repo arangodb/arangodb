@@ -23,20 +23,46 @@
 
 #include "NonceFeature.h"
 
-NonceFeature(application_features::ApplicationServer*);
+#include "Basics/Nonce.h"
+#include "ProgramOptions/ProgramOptions.h"
+#include "ProgramOptions/Section.h"
 
-void NonceFeature::validate() {}
+using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::options;
+
+NonceFeature::NonceFeature(application_features::ApplicationServer* server)
+    : ApplicationFeature(server, "Nonce") {
+  setOptional(true);
+  requiresElevatedPrivileges(false);
+  startsAfter("Logger");
+}
+
+void NonceFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
+
+  options->addSection("nonce", "Configure the nonces");
+
+  options->addOption("--nonce.size", "the size of the hash array for nonces",
+                     new UInt64Parameter(&_size));
+}
 
 void NonceFeature::prepare() {
-  uint32_t optionNonceHashSize = 0;
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::prepare";
 
-  if (0 < _hashSize) {
-    Nonce::create(_hashSize);
+  if (0 < _size) {
+    Nonce::create(_size);
   }
 }
 
 void NonceFeature::start() {
-  LOG(DEBUG) << "setting nonce hash size to " << _hashSize;
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
+
+  LOG(DEBUG) << "setting nonce hash size to " << _size;
 }
 
-void NonceFeature::stop() { Nonce::destroy(); }
+void NonceFeature::stop() {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
+
+  Nonce::destroy();
+}

@@ -31,9 +31,9 @@ class LanguageFeature final : public application_features::ApplicationFeature {
   explicit LanguageFeature(application_features::ApplicationServer* server);
 
  public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void prepare() override;
-  void start() override;
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
+  void start() override final;
 
  private:
   std::string _language;

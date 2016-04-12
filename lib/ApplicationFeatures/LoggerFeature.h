@@ -31,12 +31,12 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   LoggerFeature(application_features::ApplicationServer* server, bool threaded);
 
  public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void loadOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void prepare() override;
-  void start() override;
-  void stop() override;
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void loadOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
+  void start() override final;
+  void stop() override final;
 
  public:
   void setBackgrounded(bool backgrounded) { _backgrounded = backgrounded; }

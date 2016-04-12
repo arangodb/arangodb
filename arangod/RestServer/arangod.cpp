@@ -23,11 +23,13 @@
 
 #include "Basics/Common.h"
 
+#include "Actions/ActionFeature.h"
 #include "Agency/AgencyFeature.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/DaemonFeature.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/LoggerFeature.h"
+#include "ApplicationFeatures/NonceFeature.h"
 #include "ApplicationFeatures/RandomFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/SslFeature.h"
@@ -42,6 +44,7 @@
 #include "RestServer/CheckVersionFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/EndpointFeature.h"
+#include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -98,6 +101,7 @@ int main(int argc, char* argv[]) {
   int ret = EXIT_FAILURE;
 
   server.addFeature(new AgencyFeature(&server));
+  server.addFeature(new ActionFeature(&server));
   server.addFeature(new CheckVersionFeature(&server, &ret, nonServerFeatures));
   server.addFeature(new ClusterFeature(&server));
   server.addFeature(new ConfigFeature(&server, name));
@@ -107,6 +111,7 @@ int main(int argc, char* argv[]) {
   server.addFeature(new FileDescriptorsFeature(&server));
   server.addFeature(new LanguageFeature(&server));
   server.addFeature(new LoggerFeature(&server, true));
+  server.addFeature(new NonceFeature(&server));
   server.addFeature(new RandomFeature(&server));
   server.addFeature(new SchedulerFeature(&server));
   server.addFeature(new ServerFeature(&server, "arangod", &ret));

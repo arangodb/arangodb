@@ -51,7 +51,7 @@ SchedulerFeature::SchedulerFeature(
       _scheduler(nullptr) {
   setOptional(true);
   requiresElevatedPrivileges(false);
-  startsAfter("FileDescriptorsFeature");
+  startsAfter("FileDescriptors");
   startsAfter("Logger");
   startsAfter("WorkMonitor");
 }
@@ -95,30 +95,8 @@ void SchedulerFeature::validateOptions(
   }
 }
 
-#ifdef TRI_HAVE_GETRLIMIT
-template <typename T>
-static std::string StringifyLimitValue(T value) {
-  auto max = std::numeric_limits<decltype(value)>::max();
-  if (value == max || value == max / 2) {
-    return "unlimited";
-  }
-  return std::to_string(value);
-}
-#endif
-
 void SchedulerFeature::start() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
-#ifdef TRI_HAVE_GETRLIMIT
-  struct rlimit rlim;
-  int res = getrlimit(RLIMIT_NOFILE, &rlim);
-
-  if (res == 0) {
-    LOG(INFO) << "file-descriptors (nofiles) hard limit is "
-              << StringifyLimitValue(rlim.rlim_max) << ", soft limit is "
-              << StringifyLimitValue(rlim.rlim_cur);
-  }
-#endif
 
   buildScheduler();
   buildControlCHandler();
@@ -294,29 +272,35 @@ void SchedulerFeature::buildScheduler() {
 
 void SchedulerFeature::buildControlCHandler() {
 #ifdef WIN32
-  int result = SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, true);
+  {
+    int result = SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, true);
 
-  if (result == 0) {
-    LOG(WARN) << "unable to install control-c handler";
+    if (result == 0) {
+      LOG(WARN) << "unable to install control-c handler";
+    }
   }
 #else
-  Task* controlC = new ControlCTask(server());
+  {
+    Task* controlC = new ControlCTask(server());
 
-  int res = _scheduler->registerTask(controlC);
+    int res = _scheduler->registerTask(controlC);
 
-  if (res == TRI_ERROR_NO_ERROR) {
-    _tasks.emplace_back(controlC);
+    if (res == TRI_ERROR_NO_ERROR) {
+      _tasks.emplace_back(controlC);
+    }
   }
 #endif
 
 // hangup handler
 #ifndef WIN32
-  Task* hangup = new HangupTask();
+  {
+    Task* hangup = new HangupTask();
 
-  int res = _scheduler->registerTask(hangup);
+    int res = _scheduler->registerTask(hangup);
 
-  if (res == TRI_ERROR_NO_ERROR) {
-    _tasks.emplace_back(hangup);
+    if (res == TRI_ERROR_NO_ERROR) {
+      _tasks.emplace_back(hangup);
+    }
   }
 #endif
 }

@@ -18,51 +18,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_DISPATCHER_DISPATCHER_FEATURE_H
-#define ARANGOD_DISPATCHER_DISPATCHER_FEATURE_H 1
-
-#include "Basics/Common.h"
+#ifndef ARANGOD_CLUSTER_FILE_DESCRIPTORS_FEATURE_H
+#define ARANGOD_CLUSTER_FILE_DESCRIPTORS_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
-namespace rest {
-class Dispatcher;
-}
-
-class DispatcherFeature final
-    : public application_features::ApplicationFeature {
+class FileDescriptorsFeature : public application_features::ApplicationFeature {
  public:
-  static rest::Dispatcher* DISPATCHER;
-
- public:
-  explicit DispatcherFeature(application_features::ApplicationServer* server);
+  explicit FileDescriptorsFeature(application_features::ApplicationServer*);
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
   void start() override final;
-  void stop() override final;
-
- public:
-  void buildStandardQueue(size_t nrThreads, size_t maxSize);
-  void buildAQLQueue(size_t nrThreads, size_t maxSize);
-  void setProcessorAffinity(std::vector<size_t> const& cores);
-  size_t concurrency() const { return static_cast<size_t>(_nrStandardThreads); }
-  void buildAqlQueue();
 
  private:
-  void buildDispatcher();
-  void buildStandardQueue();
+  uint64_t _descriptorsMinimum;
 
  private:
-  rest::Dispatcher* _dispatcher;
-  uint64_t _nrStandardThreads;
-  uint64_t _nrAqlThreads;
-  uint64_t _queueSize;
+  void adjustFileDescriptors();
 };
 }
 

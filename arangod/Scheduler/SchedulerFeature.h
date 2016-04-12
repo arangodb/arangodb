@@ -42,19 +42,23 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   explicit SchedulerFeature(application_features::ApplicationServer* server);
 
  public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void start() override;
-  void stop() override;
-
- private:
-  void buildScheduler();
-  void buildControlCHandler();
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void start() override final;
+  void stop() override final;
 
  private:
   uint64_t _nrSchedulerThreads;
   uint64_t _backend;
   bool _showBackends;
+
+ public:
+  uint64_t backend() const { return _backend; }
+  void setProcessorAffinity(std::vector<size_t> const& cores);
+  void buildControlCHandler();
+
+ private:
+  void buildScheduler();
 
  private:
   rest::Scheduler* _scheduler;

@@ -32,7 +32,8 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-LoggerFeature::LoggerFeature(application_features::ApplicationServer* server, bool threaded)
+LoggerFeature::LoggerFeature(application_features::ApplicationServer* server,
+                             bool threaded)
     : ApplicationFeature(server, "Logger"),
       _output(),
       _levels(),
@@ -48,13 +49,14 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer* server, bo
       _supervisor(false),
       _backgrounded(false),
       _threaded(threaded) {
-  _levels.push_back("info");
   setOptional(false);
   requiresElevatedPrivileges(false);
 
   if (threaded) {
     startsAfter("WorkMonitor");
   }
+
+  _levels.push_back("info");
 }
 
 void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -175,8 +177,7 @@ void LoggerFeature::start() {
 
   if (_forceDirect) {
     Logger::initialize(false);
-  }
-  else {
+  } else {
     Logger::initialize(_threaded);
   }
 }

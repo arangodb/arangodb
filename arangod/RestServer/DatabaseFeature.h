@@ -45,11 +45,11 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   explicit DatabaseFeature(application_features::ApplicationServer* server);
 
  public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void prepare() override;
-  void start() override;
-  void stop() override;
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
+  void start() override final;
+  void stop() override final;
 
  public:
   TRI_vocbase_t* vocbase() const { return _vocbase; }

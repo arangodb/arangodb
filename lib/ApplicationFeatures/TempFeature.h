@@ -32,9 +32,9 @@ class TempFeature final : public application_features::ApplicationFeature {
               std::string const& appname);
 
  public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void prepare() override;
-  void start() override;
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
+  void start() override final;
 
  public:
   std::string _path;

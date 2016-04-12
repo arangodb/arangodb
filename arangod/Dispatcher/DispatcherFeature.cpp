@@ -46,7 +46,7 @@ DispatcherFeature::DispatcherFeature(
       _queueSize(16384) {
   setOptional(true);
   requiresElevatedPrivileges(false);
-  startsAfter("FileDescriptorsFeature");
+  startsAfter("FileDescriptors");
   startsAfter("Logger");
   startsAfter("Scheduler");
   startsAfter("WorkMonitor");

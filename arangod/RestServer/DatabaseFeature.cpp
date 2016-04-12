@@ -67,7 +67,7 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
       _upgrade(false) {
   setOptional(false);
   requiresElevatedPrivileges(false);
-  startsAfter("FileDescriptorsFeature");
+  startsAfter("FileDescriptors");
   startsAfter("Language");
   startsAfter("Logger");
   startsAfter("Random");

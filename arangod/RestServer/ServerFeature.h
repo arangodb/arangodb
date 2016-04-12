@@ -44,12 +44,12 @@ class ServerFeature final : public application_features::ApplicationFeature,
                 std::string const&, int*);
 
  public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void prepare() override;
-  void start() override;
-  void beginShutdown() override;
-  void stop() override;
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
+  void start() override final;
+  void beginShutdown() override final;
+  void stop() override final;
 
  public:
   rest::HttpHandlerFactory* httpHandlerFactory() {

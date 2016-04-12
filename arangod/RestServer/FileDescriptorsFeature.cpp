@@ -23,7 +23,13 @@
 
 #include "FileDescriptorsFeature.h"
 
+#include "Logger/Logger.h"
+#include "ProgramOptions/ProgramOptions.h"
+#include "ProgramOptions/Section.h"
+#include "Scheduler/SchedulerFeature.h"
+
 using namespace arangodb;
+using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
@@ -44,7 +50,7 @@ void FileDescriptorsFeature::collectOptions(
 
   options->addOption("--server.descriptors-minimum",
                      "minimum number of file descriptors needed to start",
-                     new UInt64Parameter(&_descriptorMinimum));
+                     new UInt64Parameter(&_descriptorsMinimum));
 #endif
 }
 
@@ -54,10 +60,33 @@ void FileDescriptorsFeature::prepare() {
   adjustFileDescriptors();
 }
 
-void FileDescriptors::adjustFileDescriptors() {
 #ifdef TRI_HAVE_GETRLIMIT
+template <typename T>
+static std::string StringifyLimitValue(T value) {
+  auto max = std::numeric_limits<decltype(value)>::max();
+  if (value == max || value == max / 2) {
+    return "unlimited";
+  }
+  return std::to_string(value);
+}
+#endif
 
-  if (0 < _descriptorMinimum) {
+void FileDescriptorsFeature::start() {
+#ifdef TRI_HAVE_GETRLIMIT
+  struct rlimit rlim;
+  int res = getrlimit(RLIMIT_NOFILE, &rlim);
+
+  if (res == 0) {
+    LOG(INFO) << "file-descriptors (nofiles) hard limit is "
+              << StringifyLimitValue(rlim.rlim_max) << ", soft limit is "
+              << StringifyLimitValue(rlim.rlim_cur);
+  }
+#endif
+}
+
+void FileDescriptorsFeature::adjustFileDescriptors() {
+#ifdef TRI_HAVE_GETRLIMIT
+  if (0 < _descriptorsMinimum) {
     struct rlimit rlim;
     int res = getrlimit(RLIMIT_NOFILE, &rlim);
 
@@ -72,33 +101,33 @@ void FileDescriptors::adjustFileDescriptors() {
 
     bool changed = false;
 
-    if (rlim.rlim_max < _descriptorMinimum) {
+    if (rlim.rlim_max < _descriptorsMinimum) {
       LOG(DEBUG) << "hard limit " << rlim.rlim_max
                  << " is too small, trying to raise";
 
-      rlim.rlim_max = _descriptorMinimum;
-      rlim.rlim_cur = _descriptorMinimum;
+      rlim.rlim_max = _descriptorsMinimum;
+      rlim.rlim_cur = _descriptorsMinimum;
 
       res = setrlimit(RLIMIT_NOFILE, &rlim);
 
       if (res < 0) {
         LOG(FATAL) << "cannot raise the file descriptor limit to "
-                   << _descriptorMinimum << ": " << strerror(errno);
+                   << _descriptorsMinimum << ": " << strerror(errno);
         FATAL_ERROR_EXIT();
       }
 
       changed = true;
-    } else if (rlim.rlim_cur < _descriptorMinimum) {
+    } else if (rlim.rlim_cur < _descriptorsMinimum) {
       LOG(DEBUG) << "soft limit " << rlim.rlim_cur
                  << " is too small, trying to raise";
 
-      rlim.rlim_cur = _descriptorMinimum;
+      rlim.rlim_cur = _descriptorsMinimum;
 
       res = setrlimit(RLIMIT_NOFILE, &rlim);
 
       if (res < 0) {
         LOG(FATAL) << "cannot raise the file descriptor limit to "
-                   << _descriptorMinimum << ": " << strerror(errno);
+                   << _descriptorsMinimum << ": " << strerror(errno);
         FATAL_ERROR_EXIT();
       }
 
@@ -120,16 +149,18 @@ void FileDescriptors::adjustFileDescriptors() {
     }
 
     // the select backend has more restrictions
-    if (_backend == 1) {
-      if (FD_SETSIZE < _descriptorMinimum) {
+    SchedulerFeature* scheduler = dynamic_cast<SchedulerFeature*>(
+        ApplicationServer::lookupFeature("Scheduler"));
+
+    if (scheduler != nullptr && scheduler->backend() == 1) {
+      if (FD_SETSIZE < _descriptorsMinimum) {
         LOG(FATAL)
             << "i/o backend 'select' has been selected, which supports only "
-            << FD_SETSIZE << " descriptors, but " << _descriptorMinimum
+            << FD_SETSIZE << " descriptors, but " << _descriptorsMinimum
             << " are required";
         FATAL_ERROR_EXIT();
       }
     }
   }
-
 #endif
 }

@@ -31,11 +31,16 @@
 namespace arangodb {
 class NonceFeature : public application_features::ApplicationFeature {
  public:
-  NonceFeature(application_features::ApplicationServer*);
+  explicit NonceFeature(application_features::ApplicationServer*);
 
  public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void prepare() override;
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
+  void start() override final;
+  void stop() override final;
+
+ private:
+  uint64_t _size;
 };
 }
 

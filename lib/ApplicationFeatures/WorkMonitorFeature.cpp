@@ -29,7 +29,7 @@ using namespace arangodb;
 WorkMonitorFeature::WorkMonitorFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "WorkMonitor") {
-  setOptional(true);
+  setOptional(false);
   requiresElevatedPrivileges(false);
 }
 

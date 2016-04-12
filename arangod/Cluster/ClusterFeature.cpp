@@ -31,6 +31,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/ServerState.h"
+#include "Dispatcher/DispatcherFeature.h"
 #include "Endpoint/Endpoint.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -39,6 +40,7 @@
 #include "VocBase/server.h"
 
 using namespace arangodb;
+using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
@@ -447,7 +449,10 @@ void ClusterFeature::start() {
     ServerState::instance()->setState(ServerState::STATE_SYNCING);
   }
 
-  DispatcherFeature::DISPATCHER->buildAqlQueue();
+  DispatcherFeature* dispatcher = dynamic_cast<DispatcherFeature*>(
+      ApplicationServer::lookupFeature("Dispatcher"));
+
+  dispatcher->buildAqlQueue();
 }
 
 void ClusterFeature::stop() {

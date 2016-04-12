@@ -1,76 +1,52 @@
-#warning TODO
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Dr. Frank Celler
+////////////////////////////////////////////////////////////////////////////////
 
+#include "PrivilegeFeature.h"
+
+#warning TODO
 #if 0
-  options["Hidden Options"]
+
+SslFeature::SslFeature(application_features::ApplicationServer* server)
+    : ApplicationFeature(server, "Privilege") {
+  setOptional(true);
+  requiresElevatedPrivileges(false);
+  startsAfter("Logger");
+}
+
+void SslFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
+
 #ifdef ARANGODB_HAVE_SETUID
-    ("uid", &_uid, "switch to user-id after reading config files")
+  options->addHiddenOption("--uid",
+                           "switch to user-id after reading config files",
+                           new UInt64Parameter(&_uid));
 #endif
+
 #ifdef ARANGODB_HAVE_SETGID
-    ("gid", &_gid, "switch to group-id after reading config files")
+  options->addHiddenOption("--gid",
+                           "switch to group-id after reading config files",
+                           new UInt64Parameter(&_gid));
 #endif
-  ;
-
-#if defined(ARANGODB_HAVE_SETUID) || defined(ARANGODB_HAVE_SETGID)
-
-  options["General Options:help-admin"]
-#ifdef ARANGODB_HAVE_GETPPID
-      ("exit-on-parent-death", &_exitOnParentDeath, "exit if parent dies")
-#endif
-          ("watch-process", &_watchParent,
-           "exit if process with given PID dies");
-
-#endif
-
-#endif
-
-#warning TODO
-#if 0
-  // .............................................................................
-  // UID and GID
-  // .............................................................................
-
-  extractPrivileges();
-  dropPrivilegesPermanently();
-
-  return true;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if the parent is still alive
-////////////////////////////////////////////////////////////////////////////////
-
-bool ApplicationServer::checkParent() {
-// check our parent, if it died given up
-#ifdef ARANGODB_HAVE_GETPPID
-  if (_exitOnParentDeath && getppid() == 1) {
-    LOG(INFO) << "parent has died";
-    return false;
-  }
-#endif
-
-// unfortunately even though windows has <signal.h>, there is no
-// kill method defined. Notice that the kill below is not to terminate
-// the process.
-#ifdef TRI_HAVE_SIGNAL_H
-  if (_watchParent != 0) {
-#ifdef TRI_HAVE_POSIX
-    int res = kill(_watchParent, 0);
-#else
-    int res = -1;
-#endif
-    if (res != 0) {
-      LOG(INFO) << "parent " << _watchParent << " has died";
-      return false;
-    }
-  }
-#endif
-
-  return true;
-}
-
-#endif
-
-#if 0
 
 void ApplicationServer::extractPrivileges() {
 #ifdef ARANGODB_HAVE_SETGID
@@ -101,8 +77,7 @@ void ApplicationServer::extractPrivileges() {
         FATAL_ERROR_EXIT();
       }
 #else
-      LOG(FATAL) << "cannot convert groupname '" << _gid
-                 << "' to numeric gid";
+      LOG(FATAL) << "cannot convert groupname '" << _gid << "' to numeric gid";
       FATAL_ERROR_EXIT();
 #endif
     }
@@ -134,13 +109,11 @@ void ApplicationServer::extractPrivileges() {
       if (p != 0) {
         uidNumber = p->pw_uid;
       } else {
-        LOG(FATAL) << "cannot convert username '" << _uid
-                   << "' to numeric uid";
+        LOG(FATAL) << "cannot convert username '" << _uid << "' to numeric uid";
         FATAL_ERROR_EXIT();
       }
 #else
-      LOG(FATAL) << "cannot convert username '" << _uid
-                 << "' to numeric uid";
+      LOG(FATAL) << "cannot convert username '" << _uid << "' to numeric uid";
       FATAL_ERROR_EXIT();
 #endif
     }
@@ -151,10 +124,9 @@ void ApplicationServer::extractPrivileges() {
 }
 
 void ApplicationServer::dropPrivilegesPermanently() {
-// clear all supplementary groups
 #if defined(ARANGODB_HAVE_INITGROUPS) && defined(ARANGODB_HAVE_SETGID) && \
     defined(ARANGODB_HAVE_SETUID)
-
+  // clear all supplementary groups
   if (!_gid.empty() && !_uid.empty()) {
     struct passwd* pwent = getpwuid(_numericUid);
 
@@ -162,12 +134,10 @@ void ApplicationServer::dropPrivilegesPermanently() {
       initgroups(pwent->pw_name, _numericGid);
     }
   }
-
 #endif
 
-// first GID
 #ifdef ARANGODB_HAVE_SETGID
-
+  // first GID
   if (!_gid.empty()) {
     LOG(DEBUG) << "permanently changing the gid to " << _numericGid;
 
@@ -178,24 +148,20 @@ void ApplicationServer::dropPrivilegesPermanently() {
       FATAL_ERROR_EXIT();
     }
   }
-
 #endif
 
-// then UID (because we are dropping)
 #ifdef ARANGODB_HAVE_SETUID
-
+  // then UID (because we are dropping)
   if (!_uid.empty()) {
     LOG(DEBUG) << "permanently changing the uid to " << _numericUid;
 
     int res = setuid(_numericUid);
 
     if (res != 0) {
-      LOG(FATAL) << "cannot set uid '" << _uid
-                 << "': " << strerror(errno);
+      LOG(FATAL) << "cannot set uid '" << _uid << "': " << strerror(errno);
       FATAL_ERROR_EXIT();
     }
   }
-
 #endif
 }
 

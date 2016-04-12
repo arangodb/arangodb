@@ -49,7 +49,7 @@ UpgradeFeature::UpgradeFeature(
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("CheckVersion");
-  startsAfter("Cluser");
+  startsAfter("Cluster");
   startsAfter("Database");
   startsAfter("V8Dealer");
 }
