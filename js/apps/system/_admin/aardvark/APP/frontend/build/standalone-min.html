@@ -2327,7 +2327,7 @@ if (list.length > 0) {
     <% if (!isCluster) { %>
       <li class="logs-menu"><a id="logs" class="tab" href="#manage"><i class="fa fa-list"></i>Logs</a></li>
     <% } %>
-    <li class="query-menu"><a id="settings" class="tab" href="#settings"><i class="fa fa-cog"></i></a></li>
+    <li class="settings-menu"><a id="settings" class="tab" href="#settings"><i class="fa fa-cog"></i>Settings</a></li>
     <!--
     <li class="navbar-spacer big"></li>
     <li class="dropdown tools-menu" id="toolsDropdown">
@@ -2411,9 +2411,10 @@ if (list.length > 0) {
 
     <div class="pure-g cluster-nodes-title pure-table pure-table-header pure-title">
       <div class="pure-table-row">
-        <div class="pure-u-1-3 mid">Name</div>
-        <div class="pure-u-1-3 mid">Address</div>
-        <div class="pure-u-1-3 mid">Status</div>
+        <div class="pure-u-1-4 mid">Name</div>
+        <div class="pure-u-1-4 mid">Address</div>
+        <div class="pure-u-1-4 mid">Protocol</div>
+        <div class="pure-u-1-4 mid">Status</div>
       </div>
     </div>
 
@@ -2423,13 +2424,14 @@ if (list.length > 0) {
 
         <div class="pure-table-row" node="<%=node.name%>">
 
-          <div class="pure-u-1-3 mid"><%= node.name %></div>
-          <div class="pure-u-1-3 mid"><%= node.address %></div>
+          <div class="pure-u-1-4 mid"><%= node.name %></div>
+          <div class="pure-u-1-4 mid"><%= node.address %></div>
+          <div class="pure-u-1-4 mid"><%= node.protocol %></div>
 
           <% if(node.status === 'ok') { %>
-            <div class="pure-u-1-3 mid"><i class="fa fa-check-circle"></i></div>
+            <div class="pure-u-1-4 mid"><i class="fa fa-check-circle"></i></div>
           <% } else { %>
-            <div class="pure-u-1-3 mid"><i class="fa fa-exclamation-circle"></i></div>
+            <div class="pure-u-1-4 mid"><i class="fa fa-exclamation-circle"></i></div>
           <% } %>
 
         </div>
@@ -2952,4 +2954,4 @@ var cutByResolution = function (str) {
   </div>
 
   <div id="workMonitorContent" class="innerContent">
-  </div></script></head><body><nav class="navbar"><div class="primary"><div class="navlogo"><a class="logo" href="#"><img class="arangodbLogo" src="img/DEVLOGO.png"></a></div><div id="progressPlaceholderIcon"></div><div class="statmenu" id="statisticBar"></div><div class="navmenu" id="navigationBar"></div></div></nav><div class="bodyWrapper"><div class="centralRow"><div id="navbar2" class="secondary"><div class="subnavmenu" id="subNavigationBar"></div></div><div class="resizecontainer contentWrapper" style="clear:both"><div id="content" class="centralContent"></div><footer class="footer"><div class="" id="footerBar"></div></footer></div></div></div><div id="modalPlaceholder"></div><div id="progressPlaceholder" style="display:none"></div><div id="spotlightPlaceholder" style="display:none"></div><div class="arangoFrame" style=""><div class="outerDiv"><div class="innerDiv"></div></div></div><script src="sharedLibs.js?version=1460456107828"></script><script src="libs.js?version=1460456107828"></script><script src="app.js?version=1460456107828"></script></body></html>
+  </div></script></head><body><nav class="navbar"><div class="primary"><div class="navlogo"><a class="logo" href="#"><img class="arangodbLogo" src="img/DEVLOGO.png"></a></div><div id="progressPlaceholderIcon"></div><div class="statmenu" id="statisticBar"></div><div class="navmenu" id="navigationBar"></div></div></nav><div class="bodyWrapper"><div class="centralRow"><div id="navbar2" class="secondary"><div class="subnavmenu" id="subNavigationBar"></div></div><div class="resizecontainer contentWrapper" style="clear:both"><div id="content" class="centralContent"></div><footer class="footer"><div class="" id="footerBar"></div></footer></div></div></div><div id="modalPlaceholder"></div><div id="progressPlaceholder" style="display:none"></div><div id="spotlightPlaceholder" style="display:none"></div><div class="arangoFrame" style=""><div class="outerDiv"><div class="innerDiv"></div></div></div><script src="sharedLibs.js?version=1460470473188"></script><script src="libs.js?version=1460470473188"></script><script src="app.js?version=1460470473188"></script></body></html>

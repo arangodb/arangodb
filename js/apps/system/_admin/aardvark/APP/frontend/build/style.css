@@ -5466,6 +5466,10 @@ div.headerBar {
   background: transparent;
   border: 0;
   border-radius: 0;
+  color: #fff;
+  font-size: 11pt;
+  font-weight: 100;
+  margin: 0;
   padding-bottom: 0;
   padding-left: 10px;
   padding-right: 0;
@@ -5473,7 +5477,7 @@ div.headerBar {
   .breadcrumb .disabledBread {
     color: #fff;
     float: left;
-    font-size: 13pt;
+    font-size: 11pt;
     font-weight: 100;
     opacity: .65;
     padding-right: 5px;
@@ -5486,7 +5490,7 @@ div.headerBar {
   .breadcrumb .activeBread {
     color: #fff;
     float: left;
-    font-size: 13pt;
+    font-size: 11pt;
     font-weight: 100;
     -webkit-tap-highlight-color: transparent;
     -webkit-transition: opacity 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
@@ -8338,7 +8342,7 @@ main {
   .subnavmenu .db-info,
   .subnavmenu .db-state,
   .subnavmenu .health-state {
-    font-weight: 600; }
+    font-weight: 300; }
   .subnavmenu .health-info,
   .subnavmenu .db-info,
   .subnavmenu .db-icon {

@@ -1915,7 +1915,10 @@ window.StatisticsCollection = Backbone.Collection.extend({
         var template = $("#" + id.replace(".", "\\.")).html();
         return {
           render: function(params) {
-            return _.template(template, params);
+            var tmp = _.template(template);
+            tmp = tmp(params);
+
+            return tmp;
           }
         };
       };
@@ -2239,14 +2242,14 @@ window.StatisticsCollection = Backbone.Collection.extend({
       });
     },
 
-    initialize: function () {
-      this.dygraphConfig = this.options.dygraphConfig;
+    initialize: function (options) {
+      this.dygraphConfig = options.dygraphConfig;
       this.d3NotInitialized = true;
       this.events["click .dashboard-sub-bar-menu-sign"] = this.showDetail.bind(this);
       this.events["mousedown .dygraph-rangesel-zoomhandle"] = this.stopUpdating.bind(this);
       this.events["mouseup .dygraph-rangesel-zoomhandle"] = this.startUpdating.bind(this);
 
-      this.serverInfo = this.options.serverToShow;
+      this.serverInfo = options.serverToShow;
 
       if (! this.serverInfo) {
         this.server = "-local-";
@@ -2529,7 +2532,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
         },
         {
           "key": "",
-          "color": this.dygraphConfig.colors[0],
+          "color": this.dygraphConfig.colors[2],
           "values": [
             {
               label: "used",
@@ -2547,11 +2550,11 @@ window.StatisticsCollection = Backbone.Collection.extend({
     mergeBarChartData: function (attribList, newData) {
       var i, v1 = {
         "key": this.barChartsElementNames[attribList[0]],
-        "color": this.dygraphConfig.colors[0],
+        "color": this.dygraphConfig.colors[1],
         "values": []
       }, v2 = {
         "key": this.barChartsElementNames[attribList[1]],
-        "color": this.dygraphConfig.colors[1],
+        "color": this.dygraphConfig.colors[2],
         "values": []
       };
       for (i = newData[attribList[0]].values.length - 1;  0 <= i;  --i) {
@@ -2766,7 +2769,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
           .showYAxis(false)
           .showXAxis(false)
           //.transitionDuration(100)
-          //.tooltips(false)
+          //.tooltip(false)
           .showLegend(false)
           .showControls(false)
           .stacked(true);

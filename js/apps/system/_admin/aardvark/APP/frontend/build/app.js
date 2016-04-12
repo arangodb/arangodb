@@ -10927,7 +10927,10 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
         var template = $("#" + id.replace(".", "\\.")).html();
         return {
           render: function(params) {
-            return _.template(template, params);
+            var tmp = _.template(template);
+            tmp = tmp(params);
+
+            return tmp;
           }
         };
       };
@@ -19987,12 +19990,12 @@ window.ArangoUsers = Backbone.Collection.extend({
     startHistory: {},
     startHistoryAccumulated: {},
 
-    initialize: function () {
+    initialize: function (options) {
       var self = this;
 
       if (window.App.isCluster) {
-        this.dbServers = this.options.dbServers;
-        this.coordinators = this.options.coordinators;
+        this.dbServers = options.dbServers;
+        this.coordinators = options.coordinators;
         this.updateServerTime();
 
         //start polling with interval
@@ -20518,8 +20521,8 @@ window.ArangoUsers = Backbone.Collection.extend({
     className: "tile",
     template: templateEngine.createTemplate("collectionsItemView.ejs"),
 
-    initialize: function () {
-      this.collectionsView = this.options.collectionsView;
+    initialize: function (options) {
+      this.collectionsView = options.collectionsView;
     },
 
     events: {
@@ -21984,14 +21987,14 @@ window.ArangoUsers = Backbone.Collection.extend({
       });
     },
 
-    initialize: function () {
-      this.dygraphConfig = this.options.dygraphConfig;
+    initialize: function (options) {
+      this.dygraphConfig = options.dygraphConfig;
       this.d3NotInitialized = true;
       this.events["click .dashboard-sub-bar-menu-sign"] = this.showDetail.bind(this);
       this.events["mousedown .dygraph-rangesel-zoomhandle"] = this.stopUpdating.bind(this);
       this.events["mouseup .dygraph-rangesel-zoomhandle"] = this.startUpdating.bind(this);
 
-      this.serverInfo = this.options.serverToShow;
+      this.serverInfo = options.serverToShow;
 
       if (! this.serverInfo) {
         this.server = "-local-";
@@ -22274,7 +22277,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         },
         {
           "key": "",
-          "color": this.dygraphConfig.colors[0],
+          "color": this.dygraphConfig.colors[2],
           "values": [
             {
               label: "used",
@@ -22292,11 +22295,11 @@ window.ArangoUsers = Backbone.Collection.extend({
     mergeBarChartData: function (attribList, newData) {
       var i, v1 = {
         "key": this.barChartsElementNames[attribList[0]],
-        "color": this.dygraphConfig.colors[0],
+        "color": this.dygraphConfig.colors[1],
         "values": []
       }, v2 = {
         "key": this.barChartsElementNames[attribList[1]],
-        "color": this.dygraphConfig.colors[1],
+        "color": this.dygraphConfig.colors[2],
         "values": []
       };
       for (i = newData[attribList[0]].values.length - 1;  0 <= i;  --i) {
@@ -22511,7 +22514,7 @@ window.ArangoUsers = Backbone.Collection.extend({
           .showYAxis(false)
           .showXAxis(false)
           //.transitionDuration(100)
-          //.tooltips(false)
+          //.tooltip(false)
           .showLegend(false)
           .showControls(false)
           .stacked(true);
@@ -23555,9 +23558,9 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     editButtons: ["#deleteSelected", "#moveSelected"],
 
-    initialize : function () {
-      this.documentStore = this.options.documentStore;
-      this.collectionsStore = this.options.collectionsStore;
+    initialize : function (options) {
+      this.documentStore = options.documentStore;
+      this.collectionsStore = options.collectionsStore;
       this.tableView = new window.TableView({
         el: this.table,
         collection: this.collection
@@ -25247,6 +25250,10 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     dropdownVisible: false,
 
+    initialize: function(options) {
+      this.options = options;
+    },
+
     events: {
       "click #deleteGraph"                        : "deleteGraph",
       "click .icon_arangodb_settings2.editGraph"  : "editGraph",
@@ -26160,7 +26167,8 @@ window.ArangoUsers = Backbone.Collection.extend({
     idPrefix: "logTable",
     fetchedAmount: false,
 
-    initialize: function () {
+    initialize: function (options) {
+      this.options = options;
       this.convertModelToJSON();
     },
 
@@ -26781,25 +26789,28 @@ window.ArangoUsers = Backbone.Collection.extend({
     renderFirst: true,
     activeSubMenu: undefined,
 
-    initialize: function () {
+    initialize: function (options) {
 
       var self = this;
 
-      this.userCollection = this.options.userCollection;
-      this.currentDB = this.options.currentDB;
+      this.userCollection = options.userCollection;
+      this.currentDB = options.currentDB;
       this.dbSelectionView = new window.DBSelectionView({
-        collection: this.options.database,
+        collection: options.database,
         current: this.currentDB
       });
       this.userBarView = new window.UserBarView({
         userCollection: this.userCollection
       });
       this.notificationView = new window.NotificationView({
-        collection: this.options.notificationCollection
+        collection: options.notificationCollection
       });
       this.statisticBarView = new window.StatisticBarView({
           currentDB: this.currentDB
       });
+
+      this.isCluster = options.isCluster;
+
       this.handleKeyboardHotkeys();
 
       Backbone.history.on("all", function () {
@@ -26819,7 +26830,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
       $(this.el).html(this.template.render({
         currentDB: this.currentDB,
-        isCluster: window.App.isCluster
+        isCluster: this.isCluster
       }));
 
       $(this.subEl).html(this.templateSub.render({}));
@@ -26937,7 +26948,10 @@ window.ArangoUsers = Backbone.Collection.extend({
         },
         {
           name: 'Logs',
-          view: undefined
+          route: 'nodeLogs',
+          params: {
+            node: undefined
+          }
         }
       ],
       queries: [
@@ -26979,13 +26993,6 @@ window.ArangoUsers = Backbone.Collection.extend({
 
       $(this.subEl + ' .bottom').html('');
       var cssclass = "";
-
-      if (this.subMenuConfig[id] === undefined) {
-        $('#subNavigationBar .bottom').css('display', 'none');
-      }
-      else {
-        $('#subNavigationBar .bottom').css('display', 'block');
-      }
 
       _.each(this.subMenuConfig[id], function(menu) {
         if (menu.active) {
@@ -27032,6 +27039,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       }
     },
 
+    /*
     breadcrumb: function (name) {
 
       if (window.location.hash.split('/')[0] !== '#collection') {
@@ -27041,6 +27049,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       }
 
     },
+    */
 
     selectMenuItem: function (menuItem, noMenuEntry) {
 
@@ -27064,7 +27073,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         this.renderSubMenu(menuItem);
       }
 
-      this.breadcrumb(menuItem.split('-')[0]);
+      //this.breadcrumb(menuItem.split('-')[0]);
 
       $('.navlist li').removeClass('active');
       if (typeof menuItem === 'string') {
@@ -27120,11 +27129,11 @@ window.ArangoUsers = Backbone.Collection.extend({
     events: {
     },
 
-    initialize: function () {
+    initialize: function (option) {
 
       if (window.App.isCluster) {
-        this.coordinators = this.options.coordinators;
-        this.coordname = this.options.coordname;
+        this.coordinators = options.coordinators;
+        this.coordname = options.coordname;
         this.updateServerTime();
 
         //start polling with interval
@@ -27139,11 +27148,18 @@ window.ArangoUsers = Backbone.Collection.extend({
       }
     },
 
+    breadcrumb: function(name) {
+      console.log("yes");
+      $('#subNavigationBar .breadcrumb').html("Node: " + name);
+    },
+
     render: function () {
+      console.log(1);
       this.$el.html(this.template.render({coords: []}));
 
       var callback = function() {
         this.continueRender();
+        this.breadcrumb(this.coordname);
       }.bind(this);
 
       if (!this.initDone) {
@@ -27209,12 +27225,12 @@ window.ArangoUsers = Backbone.Collection.extend({
       "click .pure-table-body .pure-table-row": "navigateToNode"  
     },
 
-    initialize: function () {
+    initialize: function (options) {
       var self = this;
 
       if (window.App.isCluster) {
-        this.dbServers = this.options.dbServers;
-        this.coordinators = this.options.coordinators;
+        this.dbServers = options.dbServers;
+        this.coordinators = options.coordinators;
         this.updateServerTime();
 
         //start polling with interval
@@ -27252,6 +27268,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     continueRender: function() {
       var coords = this.coordinators.toJSON();
+      console.log(coords);
       this.$el.html(this.template.render({
         coords: coords
       }));
@@ -30646,7 +30663,8 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
 
-    initialize: function() {
+    initialize: function(options) {
+      this.options = options;
       this.interval = 10000;
       this.isUpdating = false;
       this.timer = null;
@@ -31428,8 +31446,8 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     template: templateEngine.createTemplate("statisticBarView.ejs"),
 
-    initialize : function () {
-      this.currentDB = this.options.currentDB;
+    initialize : function (options) {
+      this.currentDB = options.currentDB;
     },
 
     replaceSVG: function($img) {
@@ -31522,8 +31540,8 @@ window.ArangoUsers = Backbone.Collection.extend({
     template: templateEngine.createTemplate("tableView.ejs"),
     loading: templateEngine.createTemplate("loadingTableView.ejs"),
 
-    initialize: function() {
-      this.rowClickCallback = this.options.rowClick;
+    initialize: function(options) {
+      this.rowClickCallback = options.rowClick;
     },
 
     events: {
@@ -32316,8 +32334,8 @@ window.ArangoUsers = Backbone.Collection.extend({
       "click #userLogout"             : "userLogout"
     },
 
-    initialize: function () {
-      this.userCollection = this.options.userCollection;
+    initialize: function (options) {
+      this.userCollection = options.userCollection;
       this.userCollection.fetch({async: true});
       this.userCollection.bind("change:extra", this.render.bind(this));
     },
@@ -33127,9 +33145,15 @@ window.ArangoUsers = Backbone.Collection.extend({
       "cluster": "cluster",
       "nodes": "nodes",
       "node/:name": "node",
-      "node/:name/logs": "logs",
       "logs": "logs",
       "test": "test"
+    },
+
+    execute: function(callback, args, name) {
+      $('#subNavigationBar .breadcrumb').html('');
+      if (callback) {
+        callback.apply(this, args);
+      }
     },
 
     checkUser: function () {
@@ -33235,7 +33259,8 @@ window.ArangoUsers = Backbone.Collection.extend({
               database: self.arangoDatabase,
               currentDB: self.currentDB,
               notificationCollection: self.notificationList,
-              userCollection: self.userCollection
+              userCollection: self.userCollection,
+              isCluster: self.isCluster
             });
             self.naviView.render();
           }
@@ -33315,6 +33340,10 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.nodeView.render();
     },
 
+    nodeLogs: function (initialized) {
+
+    },
+
     nodes: function (initialized) {
       this.checkUser();
       if (!initialized || this.isCluster === undefined) {
@@ -33351,10 +33380,10 @@ window.ArangoUsers = Backbone.Collection.extend({
       xhr.setRequestHeader('Authorization', "Basic " + btoa(token));
     },
 
-    logs: function (initialized) {
+    logs: function (name, initialized) {
       this.checkUser();
       if (!initialized) {
-        this.waitForInit(this.logs.bind(this));
+        this.waitForInit(this.logs.bind(this), logs);
         return;
       }
       if (!this.logsView) {
