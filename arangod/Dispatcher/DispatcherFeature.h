@@ -47,12 +47,15 @@ class DispatcherFeature final
   void start() override final;
   void stop() override final;
 
+ private:
+  uint64_t _nrStandardThreads;
+  uint64_t _nrAqlThreads;
+  uint64_t _queueSize;
+
  public:
-  void buildStandardQueue(size_t nrThreads, size_t maxSize);
-  void buildAQLQueue(size_t nrThreads, size_t maxSize);
+  void buildAqlQueue();
   void setProcessorAffinity(std::vector<size_t> const& cores);
   size_t concurrency() const { return static_cast<size_t>(_nrStandardThreads); }
-  void buildAqlQueue();
 
  private:
   void buildDispatcher();
@@ -60,9 +63,6 @@ class DispatcherFeature final
 
  private:
   rest::Dispatcher* _dispatcher;
-  uint64_t _nrStandardThreads;
-  uint64_t _nrAqlThreads;
-  uint64_t _queueSize;
 };
 }
 

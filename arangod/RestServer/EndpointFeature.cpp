@@ -107,27 +107,6 @@ void EndpointFeature::start() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
 
   _endpointList.dump();
-  buildServers();
-
-  for (auto& server : _servers) {
-    server->startListening();
-  }
-}
-
-void EndpointFeature::stop() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
-
-  for (auto& server : _servers) {
-    server->stopListening();
-  }
-
-  for (auto& server : _servers) {
-    server->stop();
-  }
-
-  for (auto& server : _servers) {
-    delete server;
-  }
 }
 
 void EndpointFeature::buildEndpointLists() {
@@ -139,49 +118,5 @@ void EndpointFeature::buildEndpointLists() {
       LOG(FATAL) << "invalid endpoint '" << (*i) << "'";
       FATAL_ERROR_EXIT();
     }
-  }
-}
-
-void EndpointFeature::buildServers() {
-  ServerFeature* server = dynamic_cast<ServerFeature*>(
-      application_features::ApplicationServer::lookupFeature("Server"));
-
-  TRI_ASSERT(server != nullptr);
-
-  HttpHandlerFactory* handlerFactory = server->httpHandlerFactory();
-  AsyncJobManager* jobManager = server->jobManager();
-
-#warning TODO filter list
-  HttpServer* httpServer;
-
-  // unencrypted HTTP endpoints
-  httpServer =
-      new HttpServer(SchedulerFeature::SCHEDULER, DispatcherFeature::DISPATCHER,
-                     handlerFactory, jobManager, _keepAliveTimeout);
-
-  httpServer->setEndpointList(&_endpointList);
-  _servers.push_back(httpServer);
-
-  // ssl endpoints
-  if (_endpointList.hasSsl()) {
-    SslFeature* ssl = dynamic_cast<SslFeature*>(
-        application_features::ApplicationServer::lookupFeature("Ssl"));
-
-    // check the ssl context
-    if (ssl == nullptr || ssl->sslContext() == nullptr) {
-      LOG(FATAL) << "no ssl context is known, cannot create https server, "
-                    "please use the '--ssl.keyfile' option";
-      FATAL_ERROR_EXIT();
-    }
-
-    SSL_CTX* sslContext = ssl->sslContext();
-
-    // https
-    httpServer = new HttpsServer(SchedulerFeature::SCHEDULER,
-                                 DispatcherFeature::DISPATCHER, handlerFactory,
-                                 jobManager, _keepAliveTimeout, sslContext);
-
-    httpServer->setEndpointList(&_endpointList);
-    _servers.push_back(httpServer);
   }
 }

@@ -35,7 +35,8 @@ using namespace arangodb::options;
 
 FileDescriptorsFeature::FileDescriptorsFeature(
     application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "FileDescriptors") {
+  : ApplicationFeature(server, "FileDescriptors"),
+    _descriptorsMinimum(1024) {
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Logger");

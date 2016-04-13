@@ -45,7 +45,7 @@ Scheduler* SchedulerFeature::SCHEDULER = nullptr;
 SchedulerFeature::SchedulerFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Scheduler"),
-      _nrSchedulerThreads(2),
+      _nrSchedulerThreads(0),
       _backend(0),
       _showBackends(false),
       _scheduler(nullptr) {
@@ -90,8 +90,14 @@ void SchedulerFeature::validateOptions(
   }
 
   if (_nrSchedulerThreads == 0) {
-    LOG(FATAL) << "need at least one I/O thread";
-    FATAL_ERROR_EXIT();
+    size_t n = TRI_numberProcessors();
+
+    if (n <= 4) {
+      _nrSchedulerThreads = 1;
+    }
+    else {
+      _nrSchedulerThreads = 2;
+    }
   }
 }
 

@@ -77,6 +77,10 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
 
   void shutdownContexts();
 
+  void defineBoolean(std::string name, bool value) {
+    _definedBooleans[name] = value;
+  }
+
   std::string const& appPath() const { return _appPath; }
 
  private:

@@ -23,10 +23,12 @@
 #include "ApplicationServer.h"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/StringUtils.h"
 #include "ProgramOptions/ArgumentParser.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb::application_features;
+using namespace arangodb::basics;
 using namespace arangodb::options;
 
 ApplicationServer* ApplicationServer::server = nullptr;
@@ -189,7 +191,8 @@ void ApplicationServer::beginShutdown() {
   // to run method
 }
 
-VPackBuilder ApplicationServer::options(std::unordered_set<std::string> const& excludes) const {
+VPackBuilder ApplicationServer::options(
+    std::unordered_set<std::string> const& excludes) const {
   return _options->toVPack(false, excludes);
 }
 
@@ -243,7 +246,8 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
 
   if (_dumpDependencies) {
     std::cout << "digraph dependencies\n"
-              << "{\n" << "  overlap = false;\n";
+              << "{\n"
+              << "  overlap = false;\n";
     for (auto feature : _features) {
       for (auto before : feature.second->startsAfter()) {
         std::cout << "  " << feature.first << " -> " << before << ";\n";
@@ -332,6 +336,21 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
       }
     }
     features.insert(insertPosition, it.second);
+  }
+
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "ordered features:";
+
+  for (auto feature : features) {
+    LOG_TOPIC(TRACE, Logger::STARTUP)
+        << "  " << feature->name()
+        << (feature->isEnabled() ? "" : "(disabled)");
+
+    auto startsAfter = feature->startsAfter();
+
+    if (!startsAfter.empty()) {
+      LOG_TOPIC(TRACE, Logger::STARTUP)
+          << "    " << StringUtils::join(feature->startsAfter(), ", ");
+    }
   }
 
   // remove all inactive features

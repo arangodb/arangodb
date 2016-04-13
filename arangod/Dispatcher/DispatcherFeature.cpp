@@ -41,9 +41,10 @@ Dispatcher* DispatcherFeature::DISPATCHER = nullptr;
 DispatcherFeature::DispatcherFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Dispatcher"),
-      _nrStandardThreads(8),
+      _nrStandardThreads(0),
       _nrAqlThreads(0),
-      _queueSize(16384) {
+      _queueSize(16384),
+      _dispatcher(nullptr) {
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("FileDescriptors");
@@ -75,8 +76,14 @@ void DispatcherFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
 
   if (_nrStandardThreads == 0) {
-    LOG(FATAL) << "need at least one server thread";
-    FATAL_ERROR_EXIT();
+    size_t n = TRI_numberProcessors();
+
+    if (n <= 4) {
+      _nrStandardThreads = n - 1;
+    }
+    else {
+      _nrStandardThreads = n - 2;
+    }
   }
 
   if (_nrAqlThreads == 0) {
@@ -113,6 +120,8 @@ void DispatcherFeature::stop() {
 
   _dispatcher->beginShutdown();
   _dispatcher->shutdown();
+
+  DISPATCHER = nullptr;
 }
 
 void DispatcherFeature::buildDispatcher() {

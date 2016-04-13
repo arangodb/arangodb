@@ -35,8 +35,6 @@ class HttpHandlerFactory;
 class AsyncJobManager;
 }
 
-class ConsoleThread;
-
 class ServerFeature final : public application_features::ApplicationFeature,
                             public HttpEndpointProvider {
  public:
@@ -46,16 +44,12 @@ class ServerFeature final : public application_features::ApplicationFeature,
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void prepare() override final;
   void start() override final;
   void beginShutdown() override final;
   void stop() override final;
 
  public:
-  rest::HttpHandlerFactory* httpHandlerFactory() {
-    return _handlerFactory.get();
-  }
-  rest::AsyncJobManager* jobManager() { return _jobManager; }
+  OperationMode operationMode() const { return _operationMode; }
   std::vector<std::string> httpEndpoints() override;
 
  private:
@@ -69,21 +63,15 @@ class ServerFeature final : public application_features::ApplicationFeature,
   std::vector<std::string> _scriptParameters;
 
  private:
-  void startConsole();
-  void stopConsole();
+  void waitForHeartbeat();
   int runUnitTests();
   int runScript();
-  void buildHandlerFactory();
-  void defineHandlers();
 
  private:
   std::string const _authenticationRealm;
   int* _result;
-  std::unique_ptr<rest::HttpHandlerFactory> _handlerFactory;
-  rest::AsyncJobManager* _jobManager;
-  RestActionHandler::action_options_t _httpOptions;
   OperationMode _operationMode;
-  std::unique_ptr<ConsoleThread> _consoleThread;
+  RestActionHandler::action_options_t _httpOptions;
 };
 }
 

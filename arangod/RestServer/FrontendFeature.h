@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,41 +20,22 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_HTTP_SERVER_ENDPOINT_FEATURE_H
-#define ARANGOD_HTTP_SERVER_ENDPOINT_FEATURE_H 1
-
-#include "Basics/Common.h"
+#ifndef APPLICATION_FEATURES_FRONTEND_FEATURE_H
+#define APPLICATION_FEATURES_FRONTEND_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Endpoint/EndpointList.h"
 
 namespace arangodb {
-namespace rest {
-class HttpServer;
-class HttpsServer;
-}
-
-class EndpointFeature final : public application_features::ApplicationFeature {
+class FrontendFeature final : public application_features::ApplicationFeature {
  public:
-  explicit EndpointFeature(application_features::ApplicationServer* server);
+  explicit FrontendFeature(application_features::ApplicationServer* server);
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
-  void start() override final;
 
  private:
-  void buildEndpointLists();
-
- private:
-  std::vector<std::string> _endpoints;
-  bool _reuseAddress;
-  uint64_t _backlogSize;
-  double _keepAliveTimeout;
-
- private:
-  EndpointList _endpointList;
+  bool _versionCheck;
 };
 }
 

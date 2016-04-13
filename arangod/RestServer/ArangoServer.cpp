@@ -118,20 +118,6 @@ int ArangoServer::startupServer() {
 /// run at least once
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoServer::waitForHeartbeat() {
-  if (!ServerState::instance()->isCoordinator()) {
-    // waiting for the heartbeart thread is necessary on coordinator only
-    return;
-  }
-
-  while (true) {
-    if (HeartbeatThread::hasRunOnce()) {
-      break;
-    }
-    usleep(100 * 1000);
-  }
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief runs the server
 ////////////////////////////////////////////////////////////////////////////////

@@ -38,7 +38,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  return;
   var internal = require("internal");
 
   // in the cluster the kickstarter will call boostrap-role.js

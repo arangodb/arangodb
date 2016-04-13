@@ -41,10 +41,14 @@
 #include "Cluster/ClusterFeature.h"
 #include "Dispatcher/DispatcherFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/AffinityFeature.h"
 #include "RestServer/CheckVersionFeature.h"
+#include "RestServer/ConsoleFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/EndpointFeature.h"
 #include "RestServer/FileDescriptorsFeature.h"
+#include "RestServer/FrontendFeature.h"
+#include "RestServer/RestServerFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -100,19 +104,23 @@ int main(int argc, char* argv[]) {
 
   int ret = EXIT_FAILURE;
 
-  server.addFeature(new AgencyFeature(&server));
   server.addFeature(new ActionFeature(&server));
+  server.addFeature(new AffinityFeature(&server));
+  server.addFeature(new AgencyFeature(&server));
   server.addFeature(new CheckVersionFeature(&server, &ret, nonServerFeatures));
   server.addFeature(new ClusterFeature(&server));
   server.addFeature(new ConfigFeature(&server, name));
+  server.addFeature(new ConsoleFeature(&server));
   server.addFeature(new DatabaseFeature(&server));
   server.addFeature(new DispatcherFeature(&server));
   server.addFeature(new EndpointFeature(&server));
   server.addFeature(new FileDescriptorsFeature(&server));
+  server.addFeature(new FrontendFeature(&server));
   server.addFeature(new LanguageFeature(&server));
   server.addFeature(new LoggerFeature(&server, true));
   server.addFeature(new NonceFeature(&server));
   server.addFeature(new RandomFeature(&server));
+  server.addFeature(new RestServerFeature(&server));
   server.addFeature(new SchedulerFeature(&server));
   server.addFeature(new ServerFeature(&server, "arangod", &ret));
   server.addFeature(new ShutdownFeature(&server, "Server"));

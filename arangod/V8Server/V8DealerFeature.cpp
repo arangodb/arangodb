@@ -101,6 +101,8 @@ V8DealerFeature::V8DealerFeature(
   requiresElevatedPrivileges(false);
   startsAfter("Action");
   startsAfter("Database");
+  startsAfter("Dispatcher");
+  startsAfter("Scheduler");
   startsAfter("V8Platform");
   startsAfter("WorkMonitor");
 }
@@ -670,8 +672,14 @@ void V8DealerFeature::defineContextUpdate(
 void V8DealerFeature::applyContextUpdates() {
   for (size_t i = 0; i < _nrContexts; ++i) {
     for (auto& p : _contextUpdates) {
+      auto vocbase = p.second;
+
+      if (vocbase == nullptr) {
+        vocbase = DatabaseFeature::DATABASE->vocbase();
+      }
+      
       V8Context* context =
-          V8DealerFeature::DEALER->enterContext(p.second, true, i);
+          V8DealerFeature::DEALER->enterContext(vocbase, true, i);
       v8::HandleScope scope(context->_isolate);
       auto localContext =
           v8::Local<v8::Context>::New(context->_isolate, context->_context);

@@ -202,27 +202,29 @@ std::vector<std::string> split(std::string const& source,
 /// @brief joins a string
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string join(std::vector<std::string> const& source, char delim = ',');
+template <typename C>
+std::string join(C const& source, std::string const& delim = ",") {
+  std::string result = "";
+  bool first = true;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief joins a string
-////////////////////////////////////////////////////////////////////////////////
+  for (auto c : source) {
+    if (first) {
+      first = false;
+    } else {
+      result += delim;
+    }
 
-std::string join(std::vector<std::string> const& source,
-                 std::string const& delim = ",");
+    result += c;
+  }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief joins a string
-////////////////////////////////////////////////////////////////////////////////
+  return result;
+}
 
-std::string join(std::set<std::string> const& source, char delim = ',');
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief joins a string
-////////////////////////////////////////////////////////////////////////////////
-
-std::string join(std::set<std::string> const& source,
-                 std::string const& delim = ",");
+template <typename C>
+std::string join(C const& source, char delim = ',') {
+  std::string delimStr(1, delim);
+  return join(source, delimStr);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes leading and trailing whitespace
