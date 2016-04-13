@@ -3,11 +3,12 @@ v2.8.7 (2016-04-07)
 
 * optimized primary=>secondary failover
 
-* fix detection of TRUE for whole documents
+* fix to-boolean conversion for documentsin AQL
 
-* expose the User-Agent http header since github requires it. 
+* expose the User-Agent HTTP header from the ArangoShell since Github seems to
+  require it now, and we use the ArangoShell for fetching Foxx repositories from Github
 
-* work with http servers that only send \n
+* work with http servers that only send
 
 * fixed potential race condition between compactor and collector threads
 
