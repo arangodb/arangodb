@@ -178,10 +178,22 @@ module.exports = class FoxxService {
               console.errorLines(e.stack);
               error = new InternalServerError();
               error.cause = e;
+              let err = e;
+              while (err.cause && err.cause.stack) {
+                err = err.cause;
+                console.errorLines(`via ${err.stack}`);
+              }
+            } else if (e.statusCode >= 500) {
+              console.warnLines(e.stack);
+              let err = e;
+              while (err.cause && err.cause.stack) {
+                err = err.cause;
+                console.warnLines(`via ${err.stack}`);
+              }
             }
             const body = {
               error: true,
-              errorNum: error.statusCode,
+              errorNum: error.errorNum || error.statusCode,
               errorMessage: error.message,
               code: error.statusCode
             };
