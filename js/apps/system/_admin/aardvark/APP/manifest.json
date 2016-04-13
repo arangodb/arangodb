@@ -9,6 +9,10 @@
     "arangodb": "^3.0.0-0 || ^3.0.0"
   },
 
+  "scripts": {
+    "setup": "setup.js"
+  },
+
   "repository": {
     "type": "git",
     "url": "https://github.com/arangodb/arangodb.git"
