@@ -61,14 +61,24 @@ list(APPEND V8_GYP_ARGS
 ## ICU EXPORTS
 ################################################################################
 
-set(ICU_VERSION
-  "54.1"
+set(ICU_COMPACT_VERSION
+  "54"
   CACHE INTERNAL
-  "ICU: Version"
+  "ICU: compact Version"
 )
 
+set(ICU_VERSION
+  "${ICU_COMPACT_VERSION}.1"
+  CACHE INTERNAL
+  "ICU: Version"
+  )
+
+set(ICU_BASEDIR ${V8_DIR}/third_party/icu/source)
+set(ICU_DT "${ICU_BASEDIR}/data/in/icudtl.dat")
+set(ICU_DT_DEST "icudt${ICU_COMPACT_VERSION}l.dat")
+
 set(ICU_INCLUDE_DIR
-  ${V8_DIR}/third_party/icu/source/common;${V8_DIR}/third_party/icu/source/i18n;${V8_DIR}/third_party/icu/source/io
+  ${ICU_BASEDIR}/common;${ICU_BASEDIR}/i18n;${ICU_BASEDIR}/io
   CACHE INTERNAL
   "ICU: include path"
   FORCE
@@ -449,3 +459,6 @@ else ()
   set(LINK_DIRECTORIES "${LINK_DIRECTORIES}" PARENT_SCOPE)
 endif()
 
+install(FILES ${ICU_DT}
+  DESTINATION "share/arangodb/"
+  RENAME ${ICU_DT_DEST})
