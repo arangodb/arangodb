@@ -369,15 +369,16 @@ configure_file("${CMAKE_SOURCE_DIR}/CMakeCPackOptions.cmake.in"
     "${CMAKE_BINARY_DIR}/CMakeCPackOptions.cmake" @ONLY)
 set(CPACK_PROJECT_CONFIG_FILE "${CMAKE_BINARY_DIR}/CMakeCPackOptions.cmake")
 
-# components
-install(
-  FILES ${PROJECT_SOURCE_DIR}/Installation/debian/arangodb.init
-  PERMISSIONS OWNER_READ OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
-  DESTINATION etc/init.d
-  RENAME arangodb
-  COMPONENT debian-extras
-)
-
+if (NOT(MSVC))
+  # components
+  install(
+    FILES ${PROJECT_SOURCE_DIR}/Installation/debian/arangodb.init
+    PERMISSIONS OWNER_READ OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+    DESTINATION etc/init.d
+    RENAME arangodb
+    COMPONENT debian-extras
+  )
+endif()
 
 # Custom targets ----------------------------------------------------------------
 

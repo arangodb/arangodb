@@ -1300,10 +1300,169 @@ function complexInternaSuite () {
       }
       // All elements must be enumerated
       assertEqual(found, amount);
-    }
+    },
 
   };
 
+}
+
+function optimizeInSuite () {
+
+  var ruleName = "optimize-traversals";
+  var startId = vn + "/optIn";
+
+  return {
+
+    setUp: function () {
+      cleanup();
+      vc = db._create(vn, {numberOfShards: 4});
+      ec = db._createEdgeCollection(en, {numberOfShards: 4});
+      vc.save({_key: startId.split("/")[1]});
+      
+      for (var i = 0; i < 100; ++i) {
+        var tmp = vc.save({_key: "tmp" + i, value: i});
+        ec.save(startId, tmp._id, {_key: "tmp" + i, value: i});
+        for (var j = 0; j < 100; ++j) {
+          var innerTmp = vc.save({_key: "innertmp" + i + "_" + j});
+          ec.save(tmp._id, innerTmp._id, {});
+        }
+      }
+    },
+
+    tearDown: cleanup,
+
+    testSingleOptimize: function () {
+      var vertexQuery = "FOR v, e, p IN 2 OUTBOUND @startId @@eCol FILTER p.vertices[1]._key IN @keys RETURN v._key";
+      var edgeQuery = "FOR v, e, p IN 2 OUTBOUND @startId @@eCol FILTER p.edges[0]._key IN @keys RETURN v._key";
+      var bindVars = {
+        "@eCol": en,
+        "startId": startId,
+        "keys": ["tmp0", "tmp1", "tmp2", "tmp3", "tmp4", "tmp5", "tmp6", "tmp7", "tmp8", "tmp9"]
+      };
+      
+      var result = db._query(vertexQuery, bindVars);
+      var extra = result.getExtra();
+
+      // We have only 10 valid elements in the array.
+      assertEqual(extra.stats.filtered, 90);
+      assertEqual(result.count(), 1000);
+
+      result = db._query(edgeQuery, bindVars);
+      extra = result.getExtra();
+      // We have only 10 valid elements in the array.
+      assertEqual(extra.stats.filtered, 90);
+      assertEqual(result.count(), 1000);
+
+      // if the rule is disabled we expect to do way more filtering
+      var noOpt  = { optimizer: { rules: [ "-all" ] } };
+      result = db._query(vertexQuery, bindVars, {}, noOpt);
+      extra = result.getExtra();
+      // For each vertex not in the list we filter once for every conncted edge
+      assertEqual(extra.stats.filtered, 90 * 100);
+      assertEqual(result.count(), 1000);
+
+      result = db._query(edgeQuery, bindVars, {}, noOpt);
+      extra = result.getExtra();
+      // For each vertex not in the list we filter once for every conncted edge
+      assertEqual(extra.stats.filtered, 90 * 100);
+      assertEqual(result.count(), 1000);
+    },
+
+    testCombinedAndOptimize: function () {
+      var vertexQuery = "FOR v, e, p IN 2 OUTBOUND @startId @@eCol FILTER p.vertices[1]._key " + 
+                        " IN @keys AND p.vertices[1].value IN @values RETURN v._key";
+      var edgeQuery = "FOR v, e, p IN 2 OUTBOUND @startId @@eCol FILTER p.edges[0]._key " +
+                      "IN @keys AND p.edges[0].value IN @values RETURN v._key";
+      var mixedQuery1 = "FOR v, e, p IN 2 OUTBOUND @startId @@eCol FILTER p.edges[0]._key " +
+                        "IN @keys AND p.vertices[1].value IN @values RETURN v._key";
+      var mixedQuery2 = "FOR v, e, p IN 2 OUTBOUND @startId @@eCol FILTER p.vertices[1]._key " +
+                        "IN @keys AND p.edges[0].value IN @values RETURN v._key";
+      var bindVars = {
+        "@eCol": en,
+        "startId": startId,
+        "keys": ["tmp0", "tmp1", "tmp2", "tmp3", "tmp4", "tmp5", "tmp6", "tmp7", "tmp8", "tmp9"],
+        "values": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+      };
+      
+      var result = db._query(vertexQuery, bindVars);
+      var extra = result.getExtra();
+
+      // We have only 10 valid elements in the array.
+      assertEqual(extra.stats.filtered, 90);
+      assertEqual(result.count(), 1000);
+
+      result = db._query(edgeQuery, bindVars);
+      extra = result.getExtra();
+      // We have only 10 valid elements in the array.
+      assertEqual(extra.stats.filtered, 90);
+      assertEqual(result.count(), 1000);
+
+      result = db._query(mixedQuery1, bindVars);
+      extra = result.getExtra();
+      // We have only 10 valid elements in the array.
+      assertEqual(extra.stats.filtered, 90);
+      assertEqual(result.count(), 1000);
+
+      result = db._query(mixedQuery2, bindVars);
+      extra = result.getExtra();
+      // We have only 10 valid elements in the array.
+      assertEqual(extra.stats.filtered, 90);
+      assertEqual(result.count(), 1000);
+
+      // if the rule is disabled we expect to do way more filtering
+      var noOpt  = { optimizer: { rules: [ "-all" ] } };
+      result = db._query(vertexQuery, bindVars, {}, noOpt);
+      extra = result.getExtra();
+      // For each vertex not in the list we filter once for every conncted edge
+      assertEqual(extra.stats.filtered, 90 * 100);
+      assertEqual(result.count(), 1000);
+
+      result = db._query(edgeQuery, bindVars, {}, noOpt);
+      extra = result.getExtra();
+      // For each vertex not in the list we filter once for every conncted edge
+      assertEqual(extra.stats.filtered, 90 * 100);
+      assertEqual(result.count(), 1000);
+
+      result = db._query(mixedQuery1, bindVars, {}, noOpt);
+      extra = result.getExtra();
+      // For each vertex not in the list we filter once for every conncted edge
+      assertEqual(extra.stats.filtered, 90 * 100);
+      assertEqual(result.count(), 1000);
+
+      result = db._query(mixedQuery2, bindVars, {}, noOpt);
+      extra = result.getExtra();
+      // For each vertex not in the list we filter once for every conncted edge
+      assertEqual(extra.stats.filtered, 90 * 100);
+      assertEqual(result.count(), 1000);
+    },
+
+    testCombinedNoOptimize: function () {
+      var vertexQuery = "FOR v, e, p IN 2 OUTBOUND @startId @@eCol FILTER @obj IN p.vertices RETURN [v, e, p]";
+      var edgeQuery = "FOR v, e, p IN 2 OUTBOUND @startId @@eCol FILTER @obj IN p.edges RETURN [v, e, p]";
+      var bindVars = {
+        "@eCol": en,
+        "startId": startId,
+        "obj": {"_key": "tmp0", "value": 0}
+      };
+
+      var noOpt  = { optimizer: { rules: [ "-all" ] } };
+      var opt  = { optimizer: { rules: [ "-all" , "+" + ruleName ] } };
+
+      var optPlans = AQL_EXPLAIN(vertexQuery, bindVars, opt).plan;
+      var noOptPlans = AQL_EXPLAIN(vertexQuery, bindVars, noOpt).plan;
+      assertEqual(optPlans.rules, []);
+      // This query cannot be optimized by traversal rule
+      assertEqual(optPlans, noOptPlans);
+
+      optPlans = AQL_EXPLAIN(edgeQuery, bindVars, opt).plan;
+      noOptPlans = AQL_EXPLAIN(edgeQuery, bindVars, noOpt).plan;
+      assertEqual(optPlans.rules, []);
+      // This query cannot be optimized by traversal rule
+      assertEqual(optPlans, noOptPlans);
+    },
+    
+
+  };
 }
 
 function complexFilteringSuite () {
@@ -2083,6 +2242,7 @@ jsunity.run(multiCollectionGraphSuite);
 jsunity.run(multiEdgeCollectionGraphSuite);
 jsunity.run(potentialErrorsSuite);
 jsunity.run(complexInternaSuite);
+jsunity.run(optimizeInSuite);
 jsunity.run(complexFilteringSuite);
 jsunity.run(brokenGraphSuite);
 jsunity.run(multiEdgeDirectionSuite);
