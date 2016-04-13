@@ -194,6 +194,9 @@ module.exports = class SyntheticResponse {
   }
 
   sendStatus(status) {
+    if (typeof status === 'string') {
+      status = statuses(status);
+    }
     const message = String(statuses[status] || status);
     this.statusCode = status;
     this.body = message;
@@ -212,6 +215,9 @@ module.exports = class SyntheticResponse {
   }
 
   status(statusCode) {
+    if (typeof statusCode === 'string') {
+      statusCode = statuses(statusCode);
+    }
     this.statusCode = statusCode;
     return this;
   }

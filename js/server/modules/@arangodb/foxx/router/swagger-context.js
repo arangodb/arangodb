@@ -262,6 +262,9 @@ module.exports = exports = class SwaggerContext {
   }
 
   error(status, reason) {
+    if (typeof status === 'string') {
+      status = statuses(status);
+    }
     return this.response(
       status,
       DEFAULT_ERROR_SCHEMA,
