@@ -98,10 +98,6 @@ public:
   log_t const& lastLog () const;
 
 
-  /// @brief Wait for sync?
-  bool waitForSync () const;
-
-  
   /// @brief Set endpoint
   bool setEndPoint (std::string const&);
 
@@ -154,7 +150,9 @@ private:
   std::string _end_point;            /**< @brief persistence end point */
   bool _collections_checked;                 /**< @brief Collections checked */
   bool _collections_loaded;
-  bool _wait_for_sync;
+
+  OperationOptions _options;
+
   
 };
 

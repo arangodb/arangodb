@@ -45,10 +45,6 @@ using namespace arangodb::velocypack;
 using namespace arangodb::rest;
 using namespace arangodb;
 
-bool State::waitForSync () const {
-  return _wait_for_sync;
-}
-
 State::State(std::string const& end_point)
     : _vocbase(nullptr),
       _applicationV8(nullptr),
@@ -90,11 +86,7 @@ bool State::persist(index_t index, term_t term, id_t lid,
     THROW_ARANGO_EXCEPTION(res);
   }
   
-  OperationOptions options;
-  options.waitForSync = waitForSync();
-  options.silent = true;
-
-  OperationResult result = trx.insert("log", body.slice(), options);
+  OperationResult result = trx.insert("log", body.slice(), _options);
   res = trx.finish(result.code);
 
   return (res == TRI_ERROR_NO_ERROR);
@@ -229,7 +221,10 @@ bool State::loadCollections(TRI_vocbase_t* vocbase, ApplicationV8* applicationV8
   _vocbase = vocbase;
   _applicationV8 = applicationV8;
   _queryRegistry = queryRegistry;
-  _wait_for_sync = waitForSync;
+
+  _options.waitForSync = waitForSync;
+  _options.silent = true;
+
   return loadCollection("log");
 }
 
