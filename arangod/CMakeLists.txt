@@ -141,12 +141,15 @@ add_executable(${BIN_ARANGOD}
   Aql/grammar.cpp
   Aql/tokens.cpp
   Cluster/AgencyComm.cpp
+  Cluster/AgencyCallback.cpp
+  Cluster/AgencyCallbackRegistry.cpp
   Cluster/ApplicationCluster.cpp
   Cluster/ClusterComm.cpp
   Cluster/ClusterInfo.cpp
   Cluster/ClusterMethods.cpp
   Cluster/ClusterTraverser.cpp
   Cluster/HeartbeatThread.cpp
+  Cluster/RestAgencyCallbacksHandler.cpp
   Cluster/RestShardHandler.cpp
   Cluster/ServerJob.cpp
   Cluster/ServerState.cpp

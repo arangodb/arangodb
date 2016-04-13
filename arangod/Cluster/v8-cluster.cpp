@@ -545,67 +545,6 @@ static void JS_SetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief watches a value in the agency
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_WatchAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() < 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE(
-        "watch(<key>, <waitIndex>, <timeout>, <recursive>)");
-  }
-
-  std::string const key = TRI_ObjectToString(args[0]);
-  double timeout = 1.0;
-  uint64_t waitIndex = 0;
-  bool recursive = false;
-
-  if (args.Length() > 1) {
-    waitIndex = TRI_ObjectToUInt64(args[1], true);
-  }
-  if (args.Length() > 2) {
-    timeout = TRI_ObjectToDouble(args[2]);
-  }
-  if (args.Length() > 3) {
-    recursive = TRI_ObjectToBoolean(args[3]);
-  }
-
-  AgencyComm comm;
-  AgencyCommResult result = comm.watchValue(key, waitIndex, timeout, recursive);
-
-  if (result._statusCode == 0) {
-    // watch timed out
-    TRI_V8_RETURN_FALSE();
-  }
-
-  if (!result.successful()) {
-    THROW_AGENCY_EXCEPTION(result);
-  }
-
-  result.parse("", false);
-  std::map<std::string, AgencyCommResultEntry>::const_iterator it =
-      result._values.begin();
-
-  v8::Handle<v8::Object> l = v8::Object::New(isolate);
-
-  while (it != result._values.end()) {
-    std::string const key = (*it).first;
-    VPackSlice const slice = it->second._vpack->slice();
-
-    if (!slice.isNone()) {
-      l->Set(TRI_V8_STD_STRING(key), TRI_VPackToV8(isolate, slice));
-    }
-
-    ++it;
-  }
-
-  TRI_V8_RETURN(l);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the agency endpoints
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2105,8 +2044,6 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("remove"),
                        JS_RemoveAgency);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("set"), JS_SetAgency);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("watch"),
-                       JS_WatchAgency);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("endpoints"),
                        JS_EndpointsAgency);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("prefix"),

@@ -98,6 +98,8 @@ struct AgencyCommResultEntry {
 
 enum class AgencyValueOperationType {
   SET,
+  OBSERVE,
+  UNOBSERVE,
   PUSH,
   PREPEND
 };
@@ -124,6 +126,10 @@ struct AgencyOperationType {
         switch(value) {
           case AgencyValueOperationType::SET:
             return "set";
+          case AgencyValueOperationType::OBSERVE:
+            return "observe";
+          case AgencyValueOperationType::UNOBSERVE:
+            return "unobserve";
           case AgencyValueOperationType::PUSH:
             return "push";
           case AgencyValueOperationType::PREPEND:
@@ -296,7 +302,7 @@ struct AgencyCommResult {
   //////////////////////////////////////////////////////////////////////////////
 
   std::string const location() const { return _location; }
-
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the body (might be empty)
   //////////////////////////////////////////////////////////////////////////////
@@ -329,6 +335,7 @@ struct AgencyCommResult {
   std::string _location;
   std::string _message;
   std::string _body;
+  std::string _realBody;
 
   std::map<std::string, AgencyCommResultEntry> _values;
   uint64_t _index;
@@ -559,10 +566,14 @@ class AgencyComm {
   AgencyCommResult uniqid(std::string const&, uint64_t, double);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief blocks on a change of a single value in the back end
+  /// @brief registers a callback on a key
   //////////////////////////////////////////////////////////////////////////////
-
-  AgencyCommResult watchValue(std::string const&, uint64_t, double, bool);
+  bool registerCallback(std::string const& key, std::string const& endpoint);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief unregisters a callback on a key
+  //////////////////////////////////////////////////////////////////////////////
+  bool unregisterCallback(std::string const& key, std::string const& endpoint);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief acquire a read lock
