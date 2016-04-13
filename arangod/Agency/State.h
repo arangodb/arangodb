@@ -98,12 +98,17 @@ public:
   log_t const& lastLog () const;
 
 
+  /// @brief Wait for sync?
+  bool waitForSync () const;
+
+  
   /// @brief Set endpoint
   bool setEndPoint (std::string const&);
 
 
   /// @brief Load persisted data from above or start with empty log
-  bool loadCollections (TRI_vocbase_t*, ApplicationV8*, aql::QueryRegistry*);
+  bool loadCollections (TRI_vocbase_t*, ApplicationV8*,
+                        aql::QueryRegistry*, bool);
 
   /// @brief Pipe to ostream
   friend std::ostream& operator<< (std::ostream& os, State const& s) {
@@ -149,6 +154,7 @@ private:
   std::string _end_point;            /**< @brief persistence end point */
   bool _collections_checked;                 /**< @brief Collections checked */
   bool _collections_loaded;
+  bool _wait_for_sync;
   
 };
 
