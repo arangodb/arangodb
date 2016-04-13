@@ -144,6 +144,7 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_DETERMINE_ID, "could not determine my ID from my local info");
   REG_ERROR(ERROR_CLUSTER_ONLY_ON_DBSERVER, "this operation is only valid on a DBserver in a cluster");
   REG_ERROR(ERROR_CLUSTER_BACKEND_UNAVAILABLE, "A cluster backend which was required for the operation could not be reached");
+  REG_ERROR(ERROR_CLUSTER_UNKNOWN_CALLBACK_ENDPOINT, "An endpoint couldn't be found");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "%s");
   REG_ERROR(ERROR_QUERY_EMPTY, "query is empty");

@@ -71,7 +71,8 @@ start() {
                 --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
                 --cluster.my-role $ROLE \
                 --log.file cluster/$PORT.log \
-                --log.level TRACE \
+                --log.level trace \
+                --log.buffered false \
                 --log.requests-file cluster/$PORT.req \
                 --server.disable-statistics true \
                 --server.foxx-queues false \
@@ -197,7 +198,7 @@ testServer() {
     PORT=$1
     while true ; do
         sleep 1
-        curl -s -X GET "http://127.0.0.1:$PORT/_api/version" > /dev/null 2>&1
+        curl -s -f -X GET "http://127.0.0.1:$PORT/_api/version" > /dev/null 2>&1
         if [ "$?" != "0" ] ; then
             echo Server on port $PORT does not answer yet.
         else

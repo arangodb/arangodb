@@ -87,7 +87,12 @@ std::shared_ptr<VPackBuilder> AgencyOperation::toVelocyPack() {
         VPackObjectBuilder valueOperation(builder.get());
         builder->add("op", VPackValue(_opType.toString()));
         if (_opType.type == AgencyOperationType::VALUE) {
-          builder->add("new", _value);
+          if (_opType.value == AgencyValueOperationType::OBSERVE
+              || _opType.value == AgencyValueOperationType::UNOBSERVE) {
+            builder->add("url", _value);
+          } else {
+            builder->add("new", _value);
+          }
           if (_ttl > 0) {
             builder->add("ttl", VPackValue(_ttl));
           }
@@ -1529,6 +1534,38 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
       transaction.toJson(),
       false);
   return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief registers a callback on a key
+////////////////////////////////////////////////////////////////////////////////
+bool AgencyComm::registerCallback(std::string const& key, std::string const& endpoint) {
+  VPackBuilder builder;
+  builder.add(VPackValue(endpoint));
+  
+  AgencyCommResult result;
+  AgencyOperation operation(key, AgencyValueOperationType::OBSERVE, builder.slice());
+  AgencyTransaction transaction(operation);
+  
+  sendTransactionWithFailover(result, transaction);
+
+  return result.successful();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unregisters a callback on a key
+////////////////////////////////////////////////////////////////////////////////
+bool AgencyComm::unregisterCallback(std::string const& key, std::string const& endpoint) {
+  VPackBuilder builder;
+  builder.add(VPackValue(endpoint));
+  
+  AgencyCommResult result;
+  AgencyOperation operation(key, AgencyValueOperationType::UNOBSERVE, builder.slice());
+  AgencyTransaction transaction(operation);
+  
+  sendTransactionWithFailover(result, transaction);
+
+  return result.successful();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
