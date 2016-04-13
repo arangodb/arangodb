@@ -90,6 +90,11 @@ config_t const& Constituent::config () const {
   return _agent->config();
 }
 
+// Wait for sync
+bool Constituent::waitForSync() const {
+  return _agent->config().wait_for_sync;
+}
+
 // Random sleep times in election process
 duration_t Constituent::sleepFor (double min_t, double max_t) {
   dist_t dis(min_t, max_t);
@@ -132,7 +137,7 @@ void Constituent::term(term_t t) {
     }
     
     OperationOptions options;
-    options.waitForSync = true; 
+    options.waitForSync = waitForSync(); 
     options.silent = true;
     
     OperationResult result = trx.insert("election", body.slice(), options);

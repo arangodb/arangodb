@@ -41,6 +41,7 @@ build/bin/arangod -c etc/relative/arangod.conf \
   --agency.size 1 \
   --server.endpoint tcp://127.0.0.1:4001 \
   --agency.endpoint tcp://127.0.0.1:4001 \
+  --agency.wait-for-sync false \
   --database.directory cluster/data4001 \
   --agency.id 0 \
   --log.file cluster/4001.log \

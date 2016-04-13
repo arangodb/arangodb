@@ -129,6 +129,9 @@ private:
   /// @brief Count my votes
   void countVotes();
 
+  /// @brief Wait for sync
+  bool waitForSync () const;
+
   /// @brief Notify everyone, that we are good to go.
   ///        This is the task of the last process starting up.
   ///        Will be taken care of by gossip
