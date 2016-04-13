@@ -52,6 +52,7 @@
 #include "RestServer/ServerFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Statistics/StatisticsFeature.h"
 #include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb;
@@ -120,11 +121,12 @@ int main(int argc, char* argv[]) {
   server.addFeature(new LoggerFeature(&server, true));
   server.addFeature(new NonceFeature(&server));
   server.addFeature(new RandomFeature(&server));
-  server.addFeature(new RestServerFeature(&server));
+  server.addFeature(new RestServerFeature(&server, "arangodb"));
   server.addFeature(new SchedulerFeature(&server));
-  server.addFeature(new ServerFeature(&server, "arangod", &ret));
+  server.addFeature(new ServerFeature(&server, &ret));
   server.addFeature(new ShutdownFeature(&server, "Server"));
   server.addFeature(new SslFeature(&server));
+  server.addFeature(new StatisticsFeature(&server));
   server.addFeature(new TempFeature(&server, name));
   server.addFeature(new UpgradeFeature(&server, &ret, nonServerFeatures));
   server.addFeature(new V8DealerFeature(&server));

@@ -23,10 +23,6 @@
 
 #include "EndpointFeature.h"
 
-#include "ApplicationFeatures/SslFeature.h"
-#include "Dispatcher/DispatcherFeature.h"
-#include "HttpServer/HttpServer.h"
-#include "HttpServer/HttpsServer.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/ServerFeature.h"
@@ -41,8 +37,7 @@ EndpointFeature::EndpointFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Endpoint"),
       _reuseAddress(true),
-      _backlogSize(64),
-      _keepAliveTimeout(300.0) {
+      _backlogSize(64) {
   setOptional(true);
   requiresElevatedPrivileges(true);
   startsAfter("Ssl");
@@ -73,12 +68,6 @@ void EndpointFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addHiddenOption("--tcp.backlog-size", "listen backlog size",
                            new UInt64Parameter(&_backlogSize));
-
-  options->addSection("http", "HttpServer features");
-
-  options->addOption("--http.keep-alive-timeout",
-                     "keep-alive timeout in seconds",
-                     new DoubleParameter(&_keepAliveTimeout));
 }
 
 void EndpointFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
@@ -107,6 +96,11 @@ void EndpointFeature::start() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
 
   _endpointList.dump();
+}
+
+std::vector<std::string> EndpointFeature::httpEndpoints() {
+#warning TODO
+  return {};
 }
 
 void EndpointFeature::buildEndpointLists() {

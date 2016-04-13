@@ -25,16 +25,51 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
+#include "Actions/RestActionHandler.h"
+
 namespace arangodb {
+namespace rest {
+class AsyncJobManager;
+class HttpHandlerFactory;
+class HttpServer;
+}
+
 class RestServerThread;
 
-class RestServerFeature final : public application_features::ApplicationFeature {
+class RestServerFeature final
+    : public application_features::ApplicationFeature {
  public:
-  explicit RestServerFeature(application_features::ApplicationServer* server);
+  RestServerFeature(application_features::ApplicationServer*,
+                    std::string const&);
 
  public:
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
   void start() override final;
   void stop() override final;
+
+ private:
+  double _keepAliveTimeout;
+  std::string const _authenticationRealm;
+  int32_t _defaultApiCompatibility;
+  bool _allowMethodOverride;
+
+ public:
+#warning TODO
+  bool authentication() const { return false; }
+  bool authenticationUnixSockets() const { return false; }
+  bool authenticationSystemOnly() const { return false; }
+
+ private:
+  void buildServers();
+  void defineHandlers();
+
+ private:
+  std::unique_ptr<rest::HttpHandlerFactory> _handlerFactory;
+  std::unique_ptr<rest::AsyncJobManager> _jobManager;
+  std::vector<rest::HttpServer*> _servers;
+  RestActionHandler::action_options_t _httpOptions;
 };
 }
 

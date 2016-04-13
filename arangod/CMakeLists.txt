@@ -234,6 +234,7 @@ add_executable(${BIN_ARANGOD}
   Scheduler/Task.cpp
   Scheduler/TaskManager.cpp
   Scheduler/TimerTask.cpp
+  Statistics/StatisticsFeature.cpp
   Statistics/statistics.cpp
   Storage/Marker.cpp
   Storage/Options.cpp

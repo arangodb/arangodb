@@ -22,147 +22,100 @@
 
 #include "RestServerFeature.h"
 
+#include "ApplicationFeatures/SslFeature.h"
+#include "Aql/RestAqlHandler.h"
+#include "Cluster/ClusterComm.h"
+#include "Cluster/RestShardHandler.h"
+#include "Dispatcher/DispatcherFeature.h"
+#include "HttpServer/HttpHandlerFactory.h"
+#include "HttpServer/HttpServer.h"
+#include "HttpServer/HttpsServer.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Rest/Version.h"
+#include "RestHandler/RestAdminLogHandler.h"
+#include "RestHandler/RestBatchHandler.h"
+#include "RestHandler/RestCursorHandler.h"
+#include "RestHandler/RestDebugHandler.h"
+#include "RestHandler/RestDocumentHandler.h"
+#include "RestHandler/RestEdgeHandler.h"
+#include "RestHandler/RestEdgesHandler.h"
+#include "RestHandler/RestExportHandler.h"
+#include "RestHandler/RestHandlerCreator.h"
+#include "RestHandler/RestImportHandler.h"
+#include "RestHandler/RestJobHandler.h"
+#include "RestHandler/RestPleaseUpgradeHandler.h"
+#include "RestHandler/RestQueryCacheHandler.h"
+#include "RestHandler/RestQueryHandler.h"
+#include "RestHandler/RestReplicationHandler.h"
+#include "RestHandler/RestShutdownHandler.h"
+#include "RestHandler/RestSimpleHandler.h"
+#include "RestHandler/RestSimpleQueryHandler.h"
+#include "RestHandler/RestUploadHandler.h"
+#include "RestHandler/RestVersionHandler.h"
+#include "RestHandler/WorkMonitorHandler.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/EndpointFeature.h"
 #include "RestServer/ServerFeature.h"
+#include "Scheduler/SchedulerFeature.h"
+#include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
+using namespace arangodb::rest;
 using namespace arangodb::options;
 
-RestServerFeature::RestServerFeature(application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "RestServer") {
+RestServerFeature::RestServerFeature(
+    application_features::ApplicationServer* server,
+    std::string const& authenticationRealm)
+    : ApplicationFeature(server, "RestServer"),
+      _keepAliveTimeout(300.0),
+      _authenticationRealm(authenticationRealm),
+      _defaultApiCompatibility(Version::getNumericServerVersion()),
+      _allowMethodOverride(false),
+      _handlerFactory(nullptr),
+      _jobManager(nullptr) {
+  setOptional(true);
+  requiresElevatedPrivileges(false);
+  startsAfter("Dispatcher");
+  startsAfter("Endpoint");
+  startsAfter("Scheduler");
   startsAfter("Server");
 }
 
-void RestServerFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
+void RestServerFeature::collectOptions(
+    std::shared_ptr<ProgramOptions> options) {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
 
+  options->addSection("server", "Server features");
+
+  options->addHiddenOption("--server.default-api-compatibility",
+                           "default API compatibility version",
+                           new Int32Parameter(&_defaultApiCompatibility));
+
+  options->addSection("http", "HttpServer features");
+
+  options->addSection("http", "HttpServer features");
+
+  options->addHiddenOption("--http.allow-method-override",
+                           "allow HTTP method override using special headers",
+                           new BooleanParameter(&_allowMethodOverride));
+
+  options->addOption("--http.keep-alive-timeout",
+                     "keep-alive timeout in seconds",
+                     new DoubleParameter(&_keepAliveTimeout));
 }
 
-void RestServerFeature::stop() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
+void RestServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
 
-}
-
-
-#if 0
-      _jobManager(nullptr),
-
-  rest::AsyncJobManager* jobManager() const { return _jobManager; }
-
-      _handlerFactory(nullptr),
-  rest::AsyncJobManager* _jobManager;
-
-
-  defineHandlers();
-
-  // disabled maintenance mode
-  HttpHandlerFactory::setMaintenance(false);
-
-
-  void buildServers();
-
-  std::vector<rest::HttpServer*> _servers;
-
-
-
-prepare:
-  buildHandlerFactory();
-  HttpHandlerFactory::setMaintenance(true);
-
-
-start:
-  buildServers();
-
-  for (auto& server : _servers) {
-    server->startListening();
-  }
-
-#warning TODO
-#if 0
-  _jobManager = new AsyncJobManager(ClusterCommRestCallback);
-#endif
-
-
-
-stop:
-
-  for (auto& server : _servers) {
-    server->stopListening();
-  }
-
-  for (auto& server : _servers) {
-    server->stop();
-  }
-
-  for (auto& server : _servers) {
-    delete server;
-  }
-
-
-
-
-
-
-
-void EndpointFeature::buildServers() {
-  ServerFeature* server = dynamic_cast<ServerFeature*>(
-      application_features::ApplicationServer::lookupFeature("Server"));
-
-  TRI_ASSERT(server != nullptr);
-
-  HttpHandlerFactory* handlerFactory = server->httpHandlerFactory();
-  AsyncJobManager* jobManager = server->jobManager();
-
-#warning TODO filter list
-  HttpServer* httpServer;
-
-  // unencrypted HTTP endpoints
-  httpServer =
-      new HttpServer(SchedulerFeature::SCHEDULER, DispatcherFeature::DISPATCHER,
-                     handlerFactory, jobManager, _keepAliveTimeout);
-
-  httpServer->setEndpointList(&_endpointList);
-  _servers.push_back(httpServer);
-
-  // ssl endpoints
-  if (_endpointList.hasSsl()) {
-    SslFeature* ssl = dynamic_cast<SslFeature*>(
-        application_features::ApplicationServer::lookupFeature("Ssl"));
-
-    // check the ssl context
-    if (ssl == nullptr || ssl->sslContext() == nullptr) {
-      LOG(FATAL) << "no ssl context is known, cannot create https server, "
-                    "please use the '--ssl.keyfile' option";
-      FATAL_ERROR_EXIT();
-    }
-
-    SSL_CTX* sslContext = ssl->sslContext();
-
-    // https
-    httpServer = new HttpsServer(SchedulerFeature::SCHEDULER,
-                                 DispatcherFeature::DISPATCHER, handlerFactory,
-                                 jobManager, _keepAliveTimeout, sslContext);
-
-    httpServer->setEndpointList(&_endpointList);
-    _servers.push_back(httpServer);
+  if (_defaultApiCompatibility < HttpRequest::MIN_COMPATIBILITY) {
+    LOG(FATAL) << "invalid value for --server.default-api-compatibility. "
+                  "minimum allowed value is "
+               << HttpRequest::MIN_COMPATIBILITY;
+    FATAL_ERROR_EXIT();
   }
 }
-
-
-
-
-
-  std::unique_ptr<rest::HttpHandlerFactory> _handlerFactory;
-
-  void buildHandlerFactory();
-  void defineHandlers();
-
-  rest::HttpHandlerFactory* httpHandlerFactory() const {
-    return _handlerFactory.get();
-  }
 
 static TRI_vocbase_t* LookupDatabaseFromRequest(HttpRequest* request,
                                                 TRI_server_t* server) {
@@ -205,15 +158,102 @@ static bool SetRequestContext(HttpRequest* request, void* data) {
   return true;
 }
 
-void ServerFeature::buildHandlerFactory() {
-  _handlerFactory.reset(new HttpHandlerFactory(
-      _authenticationRealm, _defaultApiCompatibility, _allowMethodOverride,
-      &SetRequestContext, nullptr));
+void RestServerFeature::prepare() {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::prepare";
+
+  HttpHandlerFactory::setMaintenance(true);
 }
 
-void ServerFeature::defineHandlers() {
-#warning TODO
-#if 0
+void RestServerFeature::start() {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
+
+  LOG(DEBUG) << "using default API compatibility: "
+             << (long int)_defaultApiCompatibility;
+
+  _jobManager.reset(new AsyncJobManager(ClusterCommRestCallback));
+
+  auto vocbase = DatabaseFeature::DATABASE->vocbase();
+  V8DealerFeature::DEALER->loadJavascript(vocbase, "server/server.js");
+  _httpOptions._vocbase = vocbase;
+
+  auto server = DatabaseFeature::DATABASE->server();
+  _handlerFactory.reset(new HttpHandlerFactory(
+      _authenticationRealm, _defaultApiCompatibility, _allowMethodOverride,
+      &SetRequestContext, server));
+
+  defineHandlers();
+  buildServers();
+
+  for (auto& server : _servers) {
+    server->startListening();
+  }
+
+  // disabled maintenance mode
+  HttpHandlerFactory::setMaintenance(false);
+}
+
+void RestServerFeature::stop() {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
+
+  for (auto& server : _servers) {
+    server->stopListening();
+  }
+
+  for (auto& server : _servers) {
+    server->stop();
+  }
+
+  for (auto& server : _servers) {
+    delete server;
+  }
+
+  _httpOptions._vocbase = nullptr;
+}
+
+void RestServerFeature::buildServers() {
+  EndpointFeature* endpoint = dynamic_cast<EndpointFeature*>(
+      application_features::ApplicationServer::lookupFeature("Endpoint"));
+
+  HttpServer* httpServer;
+
+  // unencrypted HTTP endpoints
+  httpServer = new HttpServer(
+      SchedulerFeature::SCHEDULER, DispatcherFeature::DISPATCHER,
+      _handlerFactory.get(), _jobManager.get(), _keepAliveTimeout);
+
+#warning TODO filter list
+  auto const& endpointList = endpoint->endpointList();
+  httpServer->setEndpointList(&endpointList);
+  _servers.push_back(httpServer);
+
+  // ssl endpoints
+  if (endpointList.hasSsl()) {
+    SslFeature* ssl = dynamic_cast<SslFeature*>(
+        application_features::ApplicationServer::lookupFeature("Ssl"));
+
+    // check the ssl context
+    if (ssl == nullptr || ssl->sslContext() == nullptr) {
+      LOG(FATAL) << "no ssl context is known, cannot create https server, "
+                    "please use the '--ssl.keyfile' option";
+      FATAL_ERROR_EXIT();
+    }
+
+    SSL_CTX* sslContext = ssl->sslContext();
+
+    // https
+    httpServer =
+        new HttpsServer(SchedulerFeature::SCHEDULER,
+                        DispatcherFeature::DISPATCHER, _handlerFactory.get(),
+                        _jobManager.get(), _keepAliveTimeout, sslContext);
+
+    httpServer->setEndpointList(&endpointList);
+    _servers.push_back(httpServer);
+  }
+}
+
+void RestServerFeature::defineHandlers() {
+  auto queryRegistry = DatabaseFeature::DATABASE->queryRegistry();
+
   // ...........................................................................
   // /_msg
   // ...........................................................................
@@ -232,9 +272,8 @@ void ServerFeature::defineHandlers() {
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::CURSOR_PATH,
-      RestHandlerCreator<RestCursorHandler>::createData<
-          std::pair<ApplicationV8*, aql::QueryRegistry*>*>,
-      _pairForAqlHandler);
+      RestHandlerCreator<RestCursorHandler>::createData<aql::QueryRegistry*>,
+      queryRegistry);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::DOCUMENT_PATH,
@@ -248,62 +287,48 @@ void ServerFeature::defineHandlers() {
       RestVocbaseBaseHandler::EDGES_PATH,
       RestHandlerCreator<RestEdgesHandler>::createNoData);
 
-#warning TODO
-#if 0
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::EXPORT_PATH,
       RestHandlerCreator<RestExportHandler>::createNoData);
-#endif
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::IMPORT_PATH,
       RestHandlerCreator<RestImportHandler>::createNoData);
 
-#warning TODO
-#if 0
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::REPLICATION_PATH,
       RestHandlerCreator<RestReplicationHandler>::createNoData);
-#endif
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH,
       RestHandlerCreator<RestSimpleQueryHandler>::createData<
-          std::pair<ApplicationV8*, aql::QueryRegistry*>*>,
-      _pairForAqlHandler);
+          aql::QueryRegistry*>,
+      queryRegistry);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH,
-      RestHandlerCreator<RestSimpleHandler>::createData<
-          std::pair<ApplicationV8*, aql::QueryRegistry*>*>,
-      _pairForAqlHandler);
+      RestHandlerCreator<RestSimpleHandler>::createData<aql::QueryRegistry*>,
+      queryRegistry);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH,
-      RestHandlerCreator<RestSimpleHandler>::createData<
-          std::pair<ApplicationV8*, aql::QueryRegistry*>*>,
-      _pairForAqlHandler);
+      RestHandlerCreator<RestSimpleHandler>::createData<aql::QueryRegistry*>,
+      queryRegistry);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::UPLOAD_PATH,
       RestHandlerCreator<RestUploadHandler>::createNoData);
 
-#warning TODO
-#if 0
   _handlerFactory->addPrefixHandler(
-      "/_api/shard-comm",
-      RestHandlerCreator<RestShardHandler>::createNoData);
-#endif
+      "/_api/shard-comm", RestHandlerCreator<RestShardHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
-      "/_api/aql", RestHandlerCreator<aql::RestAqlHandler>::createData<
-                       std::pair<ApplicationV8*, aql::QueryRegistry*>*>,
-      _pairForAqlHandler);
+      "/_api/aql",
+      RestHandlerCreator<aql::RestAqlHandler>::createData<aql::QueryRegistry*>,
+      queryRegistry);
 
   _handlerFactory->addPrefixHandler(
-      "/_api/query",
-      RestHandlerCreator<RestQueryHandler>::createData<ApplicationV8*>,
-      _applicationV8);
+      "/_api/query", RestHandlerCreator<RestQueryHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       "/_api/query-cache",
@@ -312,12 +337,11 @@ void ServerFeature::defineHandlers() {
   // And now some handlers which are registered in both /_api and /_admin
   _handlerFactory->addPrefixHandler(
       "/_api/job", RestHandlerCreator<arangodb::RestJobHandler>::createData<
-                       std::pair<Dispatcher*, AsyncJobManager*>*>,
-      _pairForJobHandler);
+                       AsyncJobManager*>,
+      _jobManager.get());
 
   _handlerFactory->addHandler(
-      "/_api/version", RestHandlerCreator<RestVersionHandler>::createNoData,
-      nullptr);
+      "/_api/version", RestHandlerCreator<RestVersionHandler>::createNoData);
 
   // ...........................................................................
   // /_admin
@@ -325,36 +349,30 @@ void ServerFeature::defineHandlers() {
 
   _handlerFactory->addPrefixHandler(
       "/_admin/job", RestHandlerCreator<arangodb::RestJobHandler>::createData<
-                         std::pair<Dispatcher*, AsyncJobManager*>*>,
-      _pairForJobHandler);
+                         AsyncJobManager*>,
+      _jobManager.get());
 
   _handlerFactory->addHandler(
-      "/_admin/version", RestHandlerCreator<RestVersionHandler>::createNoData,
-      nullptr);
+      "/_admin/version", RestHandlerCreator<RestVersionHandler>::createNoData);
 
   // further admin handlers
   _handlerFactory->addHandler(
       "/_admin/log",
-      RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData, nullptr);
+      RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       "/_admin/work-monitor",
-      RestHandlerCreator<WorkMonitorHandler>::createNoData, nullptr);
+      RestHandlerCreator<WorkMonitorHandler>::createNoData);
 
-// This handler is to activate SYS_DEBUG_FAILAT on DB servers
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  // This handler is to activate SYS_DEBUG_FAILAT on DB servers
   _handlerFactory->addPrefixHandler(
-      "/_admin/debug", RestHandlerCreator<RestDebugHandler>::createNoData,
-      nullptr);
+      "/_admin/debug", RestHandlerCreator<RestDebugHandler>::createNoData);
 #endif
 
-#warning TODO
-#if 0
   _handlerFactory->addPrefixHandler(
       "/_admin/shutdown",
-      RestHandlerCreator<arangodb::RestShutdownHandler>::createData<void*>,
-      static_cast<void*>(_applicationServer));
-#endif
+      RestHandlerCreator<arangodb::RestShutdownHandler>::createNoData);
 
   // ...........................................................................
   // /_admin
@@ -363,8 +381,5 @@ void ServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       "/", RestHandlerCreator<RestActionHandler>::createData<
                RestActionHandler::action_options_t*>,
-      (void*)&httpOptions);
-#endif
+      (void*)&_httpOptions);
 }
-
-#endif

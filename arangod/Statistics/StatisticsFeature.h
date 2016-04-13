@@ -20,49 +20,35 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef REST_SERVER_SERVER_FEATURE_H
-#define REST_SERVER_SERVER_FEATURE_H 1
+#ifndef APPLICATION_FEATURES_STATISTICS_FEATURE_H
+#define APPLICATION_FEATURES_STATISTICS_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
-#include "Rest/OperationMode.h"
-
 namespace arangodb {
-namespace rest {
-class HttpHandlerFactory;
-class AsyncJobManager;
-}
-
-class ServerFeature final : public application_features::ApplicationFeature {
+class StatisticsFeature final
+    : public application_features::ApplicationFeature {
  public:
-  ServerFeature(application_features::ApplicationServer* server, int*);
+  static bool enabled() {
+    return STATISTICS != nullptr && STATISTICS->_statistics;
+  }
+
+ private:
+  static StatisticsFeature* STATISTICS;
+  
+ public:
+  explicit StatisticsFeature(application_features::ApplicationServer* server);
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
-  void beginShutdown() override final;
   void stop() override final;
 
  public:
-  OperationMode operationMode() const { return _operationMode; }
+  void disableStatistics() { _statistics = false; }
 
  private:
-  bool _console;
-  bool _restServer;
-  bool _authentication;
-  std::vector<std::string> _unitTests;
-  std::vector<std::string> _scripts;
-  std::vector<std::string> _scriptParameters;
-
- private:
-  void waitForHeartbeat();
-  int runUnitTests();
-  int runScript();
-
- private:
-  int* _result;
-  OperationMode _operationMode;
+  bool _statistics;
 };
 }
 

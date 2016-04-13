@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 
+#include "Statistics/StatisticsFeature.h"
 #include "Statistics/statistics.h"
 
 namespace arangodb {
@@ -173,7 +174,7 @@ class RequestStatisticsAgent
   //////////////////////////////////////////////////////////////////////////////
 
   void requestStatisticsAgentSetRequestType(GeneralRequest::RequestType b) {
-    if (TRI_ENABLE_STATISTICS) {
+    if (StatisticsFeature::enabled()) {
       if (_statistics != nullptr) {
         _statistics->_requestType = b;
       }
@@ -185,7 +186,7 @@ class RequestStatisticsAgent
   //////////////////////////////////////////////////////////////////////////////
 
   void requestStatisticsAgentSetAsync() {
-    if (TRI_ENABLE_STATISTICS) {
+    if (StatisticsFeature::enabled()) {
       if (_statistics != nullptr) {
         _statistics->_async = true;
       }
@@ -197,7 +198,7 @@ class RequestStatisticsAgent
   //////////////////////////////////////////////////////////////////////////////
 
   void requestStatisticsAgentSetReadStart() {
-    if (TRI_ENABLE_STATISTICS) {
+    if (StatisticsFeature::enabled()) {
       if (_statistics != nullptr && _statistics->_readStart == 0.0) {
         _lastReadStart = _statistics->_readStart = TRI_StatisticsTime();
       }
@@ -209,7 +210,7 @@ class RequestStatisticsAgent
   //////////////////////////////////////////////////////////////////////////////
 
   void requestStatisticsAgentSetReadEnd() {
-    if (TRI_ENABLE_STATISTICS) {
+    if (StatisticsFeature::enabled()) {
       if (_statistics != nullptr) {
         _statistics->_readEnd = TRI_StatisticsTime();
       }
@@ -221,7 +222,7 @@ class RequestStatisticsAgent
   //////////////////////////////////////////////////////////////////////////////
 
   void requestStatisticsAgentSetWriteStart() {
-    if (TRI_ENABLE_STATISTICS) {
+    if (StatisticsFeature::enabled()) {
       if (_statistics != nullptr) {
         _statistics->_writeStart = TRI_StatisticsTime();
       }
@@ -233,7 +234,7 @@ class RequestStatisticsAgent
   //////////////////////////////////////////////////////////////////////////////
 
   void requestStatisticsAgentSetWriteEnd() {
-    if (TRI_ENABLE_STATISTICS) {
+    if (StatisticsFeature::enabled()) {
       if (_statistics != nullptr) {
         _statistics->_writeEnd = TRI_StatisticsTime();
       }
@@ -245,7 +246,7 @@ class RequestStatisticsAgent
   //////////////////////////////////////////////////////////////////////////////
 
   void requestStatisticsAgentSetQueueStart() {
-    if (TRI_ENABLE_STATISTICS) {
+    if (StatisticsFeature::enabled()) {
       if (_statistics != nullptr) {
         _statistics->_queueStart = TRI_StatisticsTime();
       }
@@ -257,7 +258,7 @@ class RequestStatisticsAgent
   //////////////////////////////////////////////////////////////////////////////
 
   void requestStatisticsAgentSetQueueEnd() {
-    if (TRI_ENABLE_STATISTICS) {
+    if (StatisticsFeature::enabled()) {
       if (_statistics != nullptr) {
         _statistics->_queueEnd = TRI_StatisticsTime();
       }
@@ -269,7 +270,7 @@ class RequestStatisticsAgent
   //////////////////////////////////////////////////////////////////////////////
 
   void requestStatisticsAgentSetRequestStart() {
-    if (TRI_ENABLE_STATISTICS) {
+    if (StatisticsFeature::enabled()) {
       if (_statistics != nullptr) {
         _statistics->_requestStart = TRI_StatisticsTime();
       }
@@ -281,7 +282,7 @@ class RequestStatisticsAgent
   //////////////////////////////////////////////////////////////////////////////
 
   void requestStatisticsAgentSetRequestEnd() {
-    if (TRI_ENABLE_STATISTICS) {
+    if (StatisticsFeature::enabled()) {
       if (_statistics != nullptr) {
         _statistics->_requestEnd = TRI_StatisticsTime();
       }
@@ -293,7 +294,7 @@ class RequestStatisticsAgent
   //////////////////////////////////////////////////////////////////////////////
 
   void requestStatisticsAgentSetExecuteError() {
-    if (TRI_ENABLE_STATISTICS) {
+    if (StatisticsFeature::enabled()) {
       if (_statistics != nullptr) {
         _statistics->_executeError = true;
       }
@@ -305,7 +306,7 @@ class RequestStatisticsAgent
   //////////////////////////////////////////////////////////////////////////////
 
   void requestStatisticsAgentSetIgnore() {
-    if (TRI_ENABLE_STATISTICS) {
+    if (StatisticsFeature::enabled()) {
       if (_statistics != nullptr) {
         _statistics->_ignore = true;
       }
@@ -317,7 +318,7 @@ class RequestStatisticsAgent
   //////////////////////////////////////////////////////////////////////////////
 
   void requestStatisticsAgentAddReceivedBytes(size_t b) {
-    if (TRI_ENABLE_STATISTICS) {
+    if (StatisticsFeature::enabled()) {
       if (_statistics != nullptr) {
         _statistics->_receivedBytes += b;
       }
@@ -329,7 +330,7 @@ class RequestStatisticsAgent
   //////////////////////////////////////////////////////////////////////////////
 
   void requestStatisticsAgentAddSentBytes(size_t b) {
-    if (TRI_ENABLE_STATISTICS) {
+    if (StatisticsFeature::enabled()) {
       if (_statistics != nullptr) {
         _statistics->_sentBytes += b;
       }
@@ -369,7 +370,7 @@ class ConnectionStatisticsAgent
   //////////////////////////////////////////////////////////////////////////////
 
   void connectionStatisticsAgentSetHttp() {
-    if (TRI_ENABLE_STATISTICS) {
+    if (StatisticsFeature::enabled()) {
       if (_statistics != nullptr) {
         _statistics->_http = true;
       }
@@ -381,7 +382,7 @@ class ConnectionStatisticsAgent
   //////////////////////////////////////////////////////////////////////////////
 
   void connectionStatisticsAgentSetStart() {
-    if (TRI_ENABLE_STATISTICS) {
+    if (StatisticsFeature::enabled()) {
       if (_statistics != nullptr) {
         _statistics->_connStart = TRI_StatisticsTime();
       }
@@ -393,7 +394,7 @@ class ConnectionStatisticsAgent
   //////////////////////////////////////////////////////////////////////////////
 
   void connectionStatisticsAgentSetEnd() {
-    if (TRI_ENABLE_STATISTICS) {
+    if (StatisticsFeature::enabled()) {
       if (_statistics != nullptr) {
         _statistics->_connEnd = TRI_StatisticsTime();
       }

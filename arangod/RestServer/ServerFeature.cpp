@@ -22,43 +22,22 @@
 
 #include "ServerFeature.h"
 
-#include "Aql/RestAqlHandler.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/process-utils.h"
 #include "Cluster/HeartbeatThread.h"
-#include "Cluster/RestShardHandler.h"
-#include "HttpServer/HttpHandlerFactory.h"
+#include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
-#include "RestHandler/RestAdminLogHandler.h"
-#include "RestHandler/RestBatchHandler.h"
-#include "RestHandler/RestCursorHandler.h"
-#include "RestHandler/RestDebugHandler.h"
-#include "RestHandler/RestDocumentHandler.h"
-#include "RestHandler/RestEdgeHandler.h"
-#include "RestHandler/RestEdgesHandler.h"
-#include "RestHandler/RestExportHandler.h"
-#include "RestHandler/RestHandlerCreator.h"
-#include "RestHandler/RestImportHandler.h"
-#include "RestHandler/RestJobHandler.h"
-#include "RestHandler/RestPleaseUpgradeHandler.h"
-#include "RestHandler/RestQueryCacheHandler.h"
-#include "RestHandler/RestQueryHandler.h"
-#include "RestHandler/RestReplicationHandler.h"
-#include "RestHandler/RestShutdownHandler.h"
-#include "RestHandler/RestSimpleHandler.h"
-#include "RestHandler/RestSimpleQueryHandler.h"
-#include "RestHandler/RestUploadHandler.h"
-#include "RestHandler/RestVersionHandler.h"
-#include "RestHandler/WorkMonitorHandler.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Statistics/StatisticsFeature.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
+#include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb;
@@ -66,15 +45,11 @@ using namespace arangodb::application_features;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
-ServerFeature::ServerFeature(application_features::ApplicationServer* server,
-                             std::string const& authenticationRealm, int* res)
+ServerFeature::ServerFeature(application_features::ApplicationServer* server, int* res)
     : ApplicationFeature(server, "Server"),
-      _defaultApiCompatibility(Version::getNumericServerVersion()),
-      _allowMethodOverride(false),
       _console(false),
       _restServer(true),
       _authentication(false),
-      _authenticationRealm(authenticationRealm),
       _result(res),
       _operationMode(OperationMode::MODE_SERVER) {
   setOptional(true);
@@ -83,8 +58,9 @@ ServerFeature::ServerFeature(application_features::ApplicationServer* server,
   startsAfter("Database");
   startsAfter("Dispatcher");
   startsAfter("Scheduler");
-  startsAfter("WorkMonitor");
+  startsAfter("Statistics");
   startsAfter("V8Dealer");
+  startsAfter("WorkMonitor");
 }
 
 void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -94,10 +70,6 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new BooleanParameter(&_console, false));
 
   options->addSection("server", "Server features");
-
-  options->addHiddenOption("--server.default-api-compatibility",
-                           "default API compatibility version",
-                           new Int32Parameter(&_defaultApiCompatibility));
 
   options->addHiddenOption("--server.rest-server", "start a rest-server",
                            new BooleanParameter(&_restServer));
@@ -134,12 +106,6 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 #endif
 #endif
 
-  options->addSection("http", "HttpServer features");
-
-  options->addHiddenOption("--http.allow-method-override",
-                           "allow HTTP method override using special headers",
-                           new BooleanParameter(&_allowMethodOverride));
-
   options->addSection("javascript", "Configure the Javascript engine");
 
   options->addHiddenOption("--javascript.unit-tests", "run unit-tests and exit",
@@ -154,16 +120,6 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
 void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
-
-  if (_defaultApiCompatibility < HttpRequest::MIN_COMPATIBILITY) {
-    LOG(FATAL) << "invalid value for --server.default-api-compatibility. "
-                  "minimum allowed value is "
-               << HttpRequest::MIN_COMPATIBILITY;
-    FATAL_ERROR_EXIT();
-  }
-
-  LOG(DEBUG) << "using default API compatibility: "
-             << (long int)_defaultApiCompatibility;
 
   int count = 0;
 
@@ -195,14 +151,17 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   }
 
   if (!_restServer) {
-    ApplicationServer::disableFeatures(
-        {"Daemon", "Dispatcher", "Endpoint", "Scheduler", "Ssl", "Supervisor"});
+    ApplicationServer::disableFeatures({"Daemon", "Dispatcher", "Endpoint",
+                                        "RestServer", "Scheduler", "Ssl",
+                                        "Supervisor"});
 
     DatabaseFeature* database = dynamic_cast<DatabaseFeature*>(
         ApplicationServer::lookupFeature("Database"));
     database->disableReplicationApplier();
 
-    TRI_ENABLE_STATISTICS = false;
+    StatisticsFeature* statistics = dynamic_cast<StatisticsFeature*>(
+        ApplicationServer::lookupFeature("Statistics"));
+    statistics->disableStatistics();
   }
 
   V8DealerFeature* v8dealer = dynamic_cast<V8DealerFeature*>(
@@ -229,10 +188,6 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 
 void ServerFeature::start() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
-  auto vocbase = DatabaseFeature::DATABASE->vocbase();
-  V8DealerFeature::DEALER->loadJavascript(vocbase, "server/server.js");
-  _httpOptions._vocbase = vocbase;
 
   if (_operationMode != OperationMode::MODE_CONSOLE) {
     auto scheduler = dynamic_cast<SchedulerFeature*>(
@@ -271,13 +226,6 @@ void ServerFeature::beginShutdown() {
 
 void ServerFeature::stop() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
-
-  _httpOptions._vocbase = nullptr;
-}
-
-std::vector<std::string> ServerFeature::httpEndpoints() {
-#warning TODO
-  return {};
 }
 
 void ServerFeature::waitForHeartbeat() {
@@ -436,4 +384,3 @@ int ServerFeature::runScript() {
 
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
-

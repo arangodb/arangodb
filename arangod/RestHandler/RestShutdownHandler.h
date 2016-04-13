@@ -37,7 +37,7 @@ namespace arangodb {
 
 class RestShutdownHandler : public RestBaseHandler {
  public:
-  RestShutdownHandler(HttpRequest*, void* applicationServer);
+  RestShutdownHandler(HttpRequest*);
 
  public:
   bool isDirect() const override;
@@ -47,13 +47,6 @@ class RestShutdownHandler : public RestBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   status_t execute() override;
-
- private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief application server
-  //////////////////////////////////////////////////////////////////////////////
-
-  application_features::ApplicationServer* _applicationServer;
 };
 }
 

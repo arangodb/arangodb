@@ -24,9 +24,9 @@
 #ifndef ARANGOD_HTTP_SERVER_ENDPOINT_FEATURE_H
 #define ARANGOD_HTTP_SERVER_ENDPOINT_FEATURE_H 1
 
-#include "Basics/Common.h"
-
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationFeatures/HttpEndpointProvider.h"
+
 #include "Endpoint/EndpointList.h"
 
 namespace arangodb {
@@ -35,7 +35,8 @@ class HttpServer;
 class HttpsServer;
 }
 
-class EndpointFeature final : public application_features::ApplicationFeature {
+class EndpointFeature final : public application_features::ApplicationFeature,
+                            public HttpEndpointProvider {
  public:
   explicit EndpointFeature(application_features::ApplicationServer* server);
 
@@ -46,13 +47,16 @@ class EndpointFeature final : public application_features::ApplicationFeature {
   void start() override final;
 
  private:
-  void buildEndpointLists();
-
- private:
   std::vector<std::string> _endpoints;
   bool _reuseAddress;
   uint64_t _backlogSize;
-  double _keepAliveTimeout;
+
+ public:
+  std::vector<std::string> httpEndpoints() override;
+  EndpointList const& endpointList() const { return _endpointList; }
+
+ private:
+  void buildEndpointLists();
 
  private:
   EndpointList _endpointList;

@@ -40,8 +40,7 @@ class Dispatcher;
 
 class RestJobHandler : public RestBaseHandler {
  public:
-  RestJobHandler(HttpRequest* request,
-                 std::pair<rest::Dispatcher*, rest::AsyncJobManager*>*);
+  RestJobHandler(HttpRequest* request, rest::AsyncJobManager*);
 
  public:
   bool isDirect() const override;
@@ -89,12 +88,6 @@ class RestJobHandler : public RestBaseHandler {
   void deleteJob();
 
  private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief dispatcher
-  //////////////////////////////////////////////////////////////////////////////
-
-  rest::Dispatcher* _dispatcher;
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief async job manager
   //////////////////////////////////////////////////////////////////////////////

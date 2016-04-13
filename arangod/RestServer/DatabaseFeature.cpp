@@ -31,6 +31,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Rest/Version.h"
+#include "RestServer/RestServerFeature.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-query.h"
 #include "V8Server/v8-vocbase.h"
@@ -309,13 +310,19 @@ void DatabaseFeature::openDatabases() {
   defaults.defaultWaitForSync = _defaultWaitForSync;
   defaults.forceSyncProperties = _forceSyncProperties;
 
-#warning TODO
-#if 0
-  defaults.requireAuthentication = !_disableAuthentication;
-  defaults.requireAuthenticationUnixSockets =
-      !_disableAuthenticationUnixSockets;
-  defaults.authenticateSystemOnly = _authenticateSystemOnly;
-#endif
+  // get authentication (if available)
+  RestServerFeature* rest = dynamic_cast<RestServerFeature*>(
+      ApplicationServer::lookupFeature("RestServer"));
+
+  if (rest != nullptr) {
+    defaults.requireAuthentication = rest->authentication();
+    defaults.requireAuthenticationUnixSockets = rest->authenticationUnixSockets();
+    defaults.authenticateSystemOnly = rest->authenticationSystemOnly();
+  } else {
+    defaults.requireAuthentication = true;
+    defaults.requireAuthenticationUnixSockets = true;
+    defaults.authenticateSystemOnly = false;
+  }
 
   TRI_ASSERT(_server != nullptr);
 

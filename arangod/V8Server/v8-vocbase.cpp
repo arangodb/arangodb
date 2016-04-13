@@ -40,6 +40,7 @@
 #include "Rest/Version.h"
 #include "RestServer/ConsoleThread.h"
 #include "RestServer/VocbaseContext.h"
+#include "Statistics/StatisticsFeature.h"
 #include "Utils/V8ResolverGuard.h"
 #include "Utils/transactions.h"
 #include "V8/JSLoader.h"
@@ -71,8 +72,6 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::traverser;
-
-extern bool TRI_ENABLE_STATISTICS;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wrapped class for TRI_vocbase_t
@@ -3872,7 +3871,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
   // whether or not statistics are enabled
   context->Global()->ForceSet(TRI_V8_ASCII_STRING("ENABLE_STATISTICS"),
-                              v8::Boolean::New(isolate, TRI_ENABLE_STATISTICS),
+                              v8::Boolean::New(isolate, StatisticsFeature::enabled()),
                               v8::ReadOnly);
 
   // a thread-global variable that will is supposed to contain the AQL module

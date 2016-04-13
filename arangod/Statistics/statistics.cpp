@@ -22,13 +22,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "statistics.h"
+
+#include <boost/lockfree/queue.hpp>
+
 #include "Logger/Logger.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/threads.h"
+#include "Statistics/StatisticsFeature.h"
 
-#include <boost/lockfree/queue.hpp>
-
+using namespace arangodb;
 using namespace arangodb::basics;
 
 static size_t const QUEUE_SIZE = 1000;
@@ -135,7 +138,7 @@ static size_t ProcessAllRequestStatistics() {
 TRI_request_statistics_t* TRI_AcquireRequestStatistics() {
   TRI_request_statistics_t* statistics = nullptr;
 
-  if (TRI_ENABLE_STATISTICS && RequestFreeList.pop(statistics)) {
+  if (StatisticsFeature::enabled() && RequestFreeList.pop(statistics)) {
     return statistics;
   }
 
@@ -213,7 +216,7 @@ static boost::lockfree::queue<TRI_connection_statistics_t*,
 TRI_connection_statistics_t* TRI_AcquireConnectionStatistics() {
   TRI_connection_statistics_t* statistics = nullptr;
 
-  if (TRI_ENABLE_STATISTICS && ConnectionFreeList.pop(statistics)) {
+  if (StatisticsFeature::enabled() && ConnectionFreeList.pop(statistics)) {
     return statistics;
   }
 
@@ -309,7 +312,7 @@ static void StatisticsQueueWorker(void* data) {
   uint64_t const MaxSleepTime = 250 * 1000;
   int nothingHappened = 0;
 
-  while (!Shutdown.load(std::memory_order_relaxed) && TRI_ENABLE_STATISTICS) {
+  while (!Shutdown.load(std::memory_order_relaxed) && StatisticsFeature::enabled()) {
     size_t count = ProcessAllRequestStatistics();
 
     if (count == 0) {
@@ -366,12 +369,6 @@ static void StatisticsQueueWorker(void* data) {
     }
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief statistics enabled flags
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_ENABLE_STATISTICS = true;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of http connections

@@ -551,7 +551,7 @@ static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     // check if we are a server
     HttpEndpointProvider* server = dynamic_cast<HttpEndpointProvider*>(
-        ApplicationServer::lookupFeature("Server"));
+        ApplicationServer::lookupFeature("Endpoint"));
 
     if (server != nullptr) {
       endpoints = server->httpEndpoints();

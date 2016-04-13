@@ -54,6 +54,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
  public:
   TRI_vocbase_t* vocbase() const { return _vocbase; }
   TRI_server_t* server() const { return _server.get(); }
+  aql::QueryRegistry* queryRegistry() const { return _queryRegistry.get(); }
 
   bool ignoreDatafileErrors() const { return _ignoreDatafileErrors; }
   bool isInitiallyEmpty() const { return _isInitiallyEmpty; }
