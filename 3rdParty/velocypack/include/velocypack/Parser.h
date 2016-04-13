@@ -132,6 +132,14 @@ class Parser {
     parser.parse(json);
     return parser.steal();
   }
+  
+  static std::shared_ptr<Builder> fromJson(
+      char const* start, size_t size,
+      Options const* options = &Options::Defaults) {
+    Parser parser(options);
+    parser.parse(start, size);
+    return parser.steal();
+  }
 
   static std::shared_ptr<Builder> fromJson(
       uint8_t const* start, size_t size,

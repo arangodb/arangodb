@@ -1232,6 +1232,26 @@ function startInstanceCluster(instanceInfo, protocol, options,
   httpOptions.method = 'POST';
   httpOptions.returnBodyOnError = true;
   
+  let count = 0;
+  instanceInfo.arangods.forEach(arangod => {
+    while (true) {
+      const reply = download(arangod.url + "/_api/version", "", makeAuthorizationHeaders(options));
+
+      if (!reply.error && reply.code === 200) {
+        break;
+      }
+
+      ++count;
+
+      if (count % 60 === 0) {
+        if (!checkArangoAlive(arangod, options)) {
+          throw new Error("startup failed! bailing out!");
+        }
+      }
+      wait(0.5, false);
+    }
+  });
+  
   response = download(coordinatorUrl + '/_admin/cluster/bootstrapDbServers', '{"isRelaunch":false}', httpOptions);
 
   while (response.code !== 200) {
@@ -1294,24 +1314,6 @@ function startArango(protocol, options, addArgs, name, rootDir) {
   const startTime = time();
   instanceInfo.pid = executeValgrind(ARANGOD_BIN, toArgv(args), options, name).pid;
 
-  let count = 0;
-  while (true) {
-    wait(0.5, false);
-
-    const reply = download(instanceInfo.url + "/_api/version", "", makeAuthorizationHeaders(options));
-
-    if (!reply.error && reply.code === 200) {
-      break;
-    }
-
-    ++count;
-
-    if (count % 60 === 0) {
-      if (!checkArangoAlive(instanceInfo, options)) {
-        throw new Error("startup failed! bailing out!");
-      }
-    }
-  }
   if (platform.substr(0, 3) === 'win') {
     const procdumpArgs = [
       '-accepteula',
@@ -1371,6 +1373,7 @@ function startInstanceSingleServer(instanceInfo, protocol, options,
   addArgs, testname, rootDir) {
 
   instanceInfo.arangods.push(startArango(protocol, options, addArgs, testname, rootDir));
+  
   instanceInfo.endpoint = instanceInfo.arangods[instanceInfo.arangods.length - 1].endpoint;
   instanceInfo.url = instanceInfo.arangods[instanceInfo.arangods.length - 1].url;
 
@@ -1380,7 +1383,7 @@ function startInstanceSingleServer(instanceInfo, protocol, options,
 function startInstance(protocol, options, addArgs, testname, tmpDir) {
   let rootDir = fs.join(tmpDir || fs.getTempFile(), testname);
   let instanceInfo = {rootDir, arangods: []};
-
+  
   try {
     if (options.cluster) {
       startInstanceCluster(instanceInfo, protocol, options,
@@ -1390,12 +1393,36 @@ function startInstance(protocol, options, addArgs, testname, tmpDir) {
           addArgs, testname, rootDir);
     } else {
       startInstanceSingleServer(instanceInfo, protocol, options,
-            addArgs, testname, rootDir);
+          addArgs, testname, rootDir);
+    }
+    
+    if (!options.cluster) {
+      let count = 0;
+      instanceInfo.arangods.forEach(arangod => {
+        while (true) {
+          const reply = download(arangod.url + "/_api/version", "", makeAuthorizationHeaders(options));
+
+          if (!reply.error && reply.code === 200) {
+            break;
+          }
+
+          ++count;
+
+          if (count % 60 === 0) {
+            if (!checkArangoAlive(arangod, options)) {
+              throw new Error("startup failed! bailing out!");
+            }
+          }
+          wait(0.5, false);
+        }
+      });
     }
   } catch (e) {
     print(e, e.stack);
     return false;
   }
+  
+  
 
   return instanceInfo;
 }

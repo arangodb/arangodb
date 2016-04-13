@@ -241,7 +241,7 @@ class SimpleHttpClient {
   /// @brief extract an error message from a response
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string getHttpErrorMessage(SimpleHttpResult*);
+  std::string getHttpErrorMessage(SimpleHttpResult const*);
 
  private:
   //////////////////////////////////////////////////////////////////////////////

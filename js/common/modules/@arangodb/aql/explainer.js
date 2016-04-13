@@ -755,21 +755,19 @@ function processQuery (query, explain) {
         node.minMaxDepth = node.minDepth + ".." + node.maxDepth;
         node.minMaxDepthLen = node.minMaxDepth.length;
 
-        var rc = keyword("FOR ") + 
-          variableName(node.vertexOutVariable) + 
-          "  " + annotation("/* vertex */");
-        
+        var rc = keyword("FOR "), parts = [];
+        if (node.hasOwnProperty('vertexOutVariable')) {
+          parts.push(variableName(node.vertexOutVariable) + "  " + annotation("/* vertex */"));
+        }
         if (node.hasOwnProperty('edgeOutVariable')) {
-          rc += "  , " + variableName(node.edgeOutVariable) +
-            "  " + annotation("/* edge */");
+          parts.push(variableName(node.edgeOutVariable) + "  " + annotation("/* edge */"));
         }
         if (node.hasOwnProperty('pathOutVariable')) {
-          rc += "  , " + variableName(node.pathOutVariable) +
-            "  " + annotation("/* paths */");
+          parts.push(variableName(node.pathOutVariable) + "  " + annotation("/* paths */"));
         }
-        rc += "  " +
-          keyword("IN") + " " +
-          value(node.minMaxDepth) + "  " + annotation("/* min..maxPathDepth */") + "  ";
+
+        rc += parts.join(", ") + " " + keyword("IN") + " " +
+          value(node.minMaxDepth) + "  " + annotation("/* min..maxPathDepth */") + " ";
 
         var translate = ["ANY", "INBOUND", "OUTBOUND"];
         var defaultDirection = node.directions[0];
@@ -1008,7 +1006,7 @@ function processQuery (query, explain) {
 
   stringBuilder.appendLine();
   printIndexes(indexes);
-  printTraversalDetails (traversalDetails);
+  printTraversalDetails(traversalDetails);
   stringBuilder.appendLine();
   printRules(plan.rules);
   printModificationFlags(modificationFlags);

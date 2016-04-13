@@ -1675,6 +1675,11 @@ int ArangoServer::startupServer() {
       FATAL_ERROR_EXIT();
     }
   }
+  
+  // Loading ageny's persistent state
+  if(_applicationAgency->agent() != nullptr) {
+    _applicationAgency->agent()->load();
+  }
 
   if (_disableAuthentication) {
     LOG(INFO) << "Authentication is turned off";
@@ -1828,14 +1833,11 @@ void ArangoServer::waitForHeartbeat() {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief runs the server
 ////////////////////////////////////////////////////////////////////////////////
+
 int ArangoServer::runServer(TRI_vocbase_t* vocbase) {
-  // disabled maintenance mode
+  // disable maintenance mode
   waitForHeartbeat();
   HttpHandlerFactory::setMaintenance(false);
-
-  // Loading ageny's persistent state
-  if(_applicationAgency->agent()!=nullptr)
-    _applicationAgency->agent()->load();
 
   // just wait until we are signalled
   _applicationServer->wait();

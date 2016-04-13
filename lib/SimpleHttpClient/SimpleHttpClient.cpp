@@ -878,28 +878,28 @@ void SimpleHttpClient::processChunkedBody() {
 /// @brief extract an error message from a response
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string SimpleHttpClient::getHttpErrorMessage(SimpleHttpResult* result) {
+std::string SimpleHttpClient::getHttpErrorMessage(SimpleHttpResult const* result) {
   arangodb::basics::StringBuffer const& body = result->getBody();
+
   std::string details;
 
-  std::unique_ptr<TRI_json_t> json(
-      arangodb::basics::JsonHelper::fromString(body.c_str(), body.length()));
+  try {
+    std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(body.c_str(), body.length());
+ 
+    VPackSlice slice = builder->slice();
+    if (slice.isObject()) { 
+      VPackSlice msg = slice.get("errorMessage");
+      int errorNum = slice.get("errorNum").getNumericValue<int>();
 
-  if (json != nullptr) {
-    std::string const errorMessage =
-        arangodb::basics::JsonHelper::getStringValue(json.get(), "errorMessage",
-                                                     "");
-    int errorNum = arangodb::basics::JsonHelper::getNumericValue<int>(
-        json.get(), "errorNum", 0);
-
-    if (errorMessage != "" && errorNum > 0) {
-      details =
-          ": ArangoError " + StringUtils::itoa(errorNum) + ": " + errorMessage;
+      if (msg.isString() && msg.getStringLength() > 0 && errorNum > 0) {
+        details = ": ArangoError " + std::to_string(errorNum) + ": " + msg.copyString();
+      }
     }
+  } catch (...) {
+    // don't rethrow here. we'll response with an error message anyway
   }
-
-  return "got error from server: HTTP " +
-         arangodb::basics::StringUtils::itoa(result->getHttpReturnCode()) +
+   
+  return "got error from server: HTTP " + std::to_string(result->getHttpReturnCode()) +
          " (" + result->getHttpReturnMessage() + ")" + details;
 }
 

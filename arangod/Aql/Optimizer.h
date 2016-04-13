@@ -162,7 +162,7 @@ class Optimizer {
     removeUnnecessaryCalculationsRule_pass6 = 870,
 
     // merge filters into graph traversals
-    mergeFilterIntoTraversalRule_pass6 = 880,
+    optimizeTraversalsRule_pass6 = 880,
 
     /// Pass 9: push down calculations beyond FILTERs and LIMITs
     moveCalculationsDownRule_pass9 = 900,

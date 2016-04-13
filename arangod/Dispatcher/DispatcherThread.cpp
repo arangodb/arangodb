@@ -51,7 +51,7 @@ DispatcherThread::DispatcherThread(DispatcherQueue* queue)
 
 void DispatcherThread::run() {
   double worked = 0;
-  double grace = 0.2;
+  double const grace = 0.2;
 
   // iterate until we are shutting down
   while (!_queue->_stopping.load(std::memory_order_relaxed)) {
@@ -72,7 +72,7 @@ void DispatcherThread::run() {
 
       // we need to check again if more work has arrived after we have
       // aquired the lock. The lockfree queue and _nrWaiting are accessed
-      // using "memory_order_seq_cst", this guaranties that we do not
+      // using "memory_order_seq_cst", this guarantees that we do not
       // miss a signal.
 
       if (worked + grace < now) {
@@ -98,8 +98,12 @@ void DispatcherThread::run() {
           break;
         }
       } else if (worked < now) {
+        // we worked earlier, but not now
         uintptr_t n = (uintptr_t) this;
-        usleep(1 + ((n >> 3) % 19));
+        usleep(20 + ((n >> 3) % 19));
+      } else {
+        // we worked just now. sleep a little while to avoid completely busy waiting
+        usleep(20);
       }
     }
   }

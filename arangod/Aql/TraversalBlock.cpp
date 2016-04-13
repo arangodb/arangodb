@@ -143,18 +143,21 @@ int TraversalBlock::initialize() {
   auto varInfo = getPlanNode()->getRegisterPlan()->varInfo;
 
   if (usesVertexOutput()) {
+    TRI_ASSERT(_vertexVar != nullptr);
     auto it = varInfo.find(_vertexVar->id);
     TRI_ASSERT(it != varInfo.end());
     TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
     _vertexReg = it->second.registerId;
   }
   if (usesEdgeOutput()) {
+    TRI_ASSERT(_edgeVar != nullptr);
     auto it = varInfo.find(_edgeVar->id);
     TRI_ASSERT(it != varInfo.end());
     TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
     _edgeReg = it->second.registerId;
   }
   if (usesPathOutput()) {
+    TRI_ASSERT(_pathVar != nullptr);
     auto it = varInfo.find(_pathVar->id);
     TRI_ASSERT(it != varInfo.end());
     TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
@@ -304,7 +307,6 @@ bool TraversalBlock::morePaths(size_t hint) {
 
   _engine->_stats.scannedIndex += _traverser->getAndResetReadDocuments();
   _engine->_stats.filtered += _traverser->getAndResetFilteredPaths();
-  // This is only save as long as _vertices is still build
   return !_vertices.empty();
   DEBUG_END_BLOCK();
 }

@@ -145,14 +145,6 @@ Node& Node::operator= (VPackSlice const& slice) {
   _children.clear();
   _value.reset();
   _value.append(reinterpret_cast<char const*>(slice.begin()), slice.byteSize());
-/*
-  notifyObservers(uri());
-  Node *par = _parent;
-  while (par != 0) {
-    _parent->notifyObservers(uri());
-    par = par->_parent;
-  }
-*/
   return *this;
 }
 
@@ -167,14 +159,6 @@ Node& Node::operator= (Node const& rhs) {
   _node_name = rhs._node_name;
   _value = rhs._value;
   _children = rhs._children;
-  /*
-  notifyObservers(uri());
-  Node *par = _parent;
-  while (par != 0) {
-    _parent->notifyObservers(uri());
-    par = par->_parent;
-  }
-  */
   return *this;
 }
 
@@ -208,7 +192,7 @@ NodeType Node::type() const {
 // lh-value at path vector
 Node& Node::operator ()(std::vector<std::string> const& pv) {
   if (pv.size()) {
-    std::string const key = pv.at(0);
+    std::string const& key = pv.at(0);
     if (_children.find(key) == _children.end()) {
       _children[key] = std::make_shared<Node>(key, this);
     }
@@ -223,7 +207,7 @@ Node& Node::operator ()(std::vector<std::string> const& pv) {
 // rh-value at path vector
 Node const& Node::operator ()(std::vector<std::string> const& pv) const {
   if (pv.size()) {
-    std::string const key = pv.at(0);
+    std::string const& key = pv.at(0);
     if (_children.find(key) == _children.end()) {
       throw StoreException(
         std::string("Node ") + key + std::string(" not found"));
@@ -299,61 +283,6 @@ bool Node::removeTimeToLive () {
   }
   return true;
 }
-
-// Add observing url for this node
-/*bool Node::addObserver (std::string const& uri) {
-  auto it = std::find(_observers.begin(), _observers.end(), uri);
-  if (it==_observers.end()) {
-    _observers.emplace(uri);
-    return true;
-  }
-  return false;
-  }*/
-
-/*void Node::notifyObservers (std::string const& origin) const {
-
-  for (auto const& i : _observers) {
-
-    Builder body;
-    body.openObject();
-    body.add(uri(), VPackValue(VPackValueType::Object));
-    body.add("op",VPackValue("modified"));
-    body.close();
-    body.close();
-    
-    std::stringstream endpoint;
-    std::string path = "/";
-    size_t pos = 7;
-    if (i.find("http://")==0) {
-      endpoint << "tcp://";
-    } else if (i.find("https://")==0) {
-      endpoint << "ssl://";
-      ++pos;
-    } else {
-      LOG_TOPIC(WARN,Logger::AGENCY) << "Malformed notification URL " << i;
-      return;
-    }
-
-    size_t slash_p = i.find("/",pos);
-    if ((slash_p==std::string::npos)) {
-      endpoint << i.substr(pos);
-    } else {
-      endpoint << i.substr(pos,slash_p-pos);
-      path = i.substr(slash_p);
-    }
-
-    std::unique_ptr<std::map<std::string, std::string>> headerFields =
-      std::make_unique<std::map<std::string, std::string> >();
-    
-    ClusterCommResult res =
-      arangodb::ClusterComm::instance()->asyncRequest(
-        "1", 1, endpoint.str(), GeneralRequest::RequestType::POST, path,
-        std::make_shared<std::string>(body.toString()), headerFields, nullptr,
-        0.0, true);
-
-  }
-
-  }*/
 
 inline bool Node::observedBy (std::string const& url) const {
   auto ret = root()._observer_table.equal_range(url);
@@ -504,10 +433,9 @@ template<> bool Node::handle<OBSERVE> (VPackSlice const& slice) {
   if (!observedBy(url)) {
     root()._observer_table.emplace(std::pair<std::string,std::string>(url,uri));
     root()._observed_table.emplace(std::pair<std::string,std::string>(uri,url));
-//    _observers.emplace(url);
     return true;
   }
-  
+
   return false;
 
 }
@@ -520,7 +448,9 @@ template<> bool Node::handle<UNOBSERVE> (VPackSlice const& slice) {
     return false;
   std::string url (slice.get("url").copyString()),
     uri (this->uri());
-  
+
+  // delete in both cases a single entry (ensured above)
+  // breaking the iterators is fine then
   auto ret = root()._observer_table.equal_range(url);
   for (auto it = ret.first; it!=ret.second; ++it) {
     if (it->second == uri) {
@@ -750,7 +680,9 @@ std::vector<bool> Store::apply (
     
     for (auto it = ret.first; it!=ret.second; ++it) {
       body.add(it->second->key,VPackValue(VPackValueType::Object));
+      body.add(it->second->modified,VPackValue(VPackValueType::Object));
       body.add("op",VPackValue(it->second->oper));
+      body.close();
       body.close();
     }
     
@@ -934,14 +866,16 @@ void Store::dumpToBuilder (Builder& builder) const {
     }
   }
   {
-    VPackObjectBuilder guard(&builder);
+    VPackArrayBuilder garray(&builder);
     for (auto const& i : _observer_table) {
+      VPackObjectBuilder guard(&builder);
       builder.add(i.first, VPackValue(i.second));
     }
   }
   {
-    VPackObjectBuilder guard(&builder);
+    VPackArrayBuilder garray(&builder);
     for (auto const& i : _observed_table) {
+      VPackObjectBuilder guard(&builder);
       builder.add(i.first, VPackValue(i.second));
     }
   }

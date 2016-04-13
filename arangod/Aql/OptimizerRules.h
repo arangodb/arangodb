@@ -185,9 +185,10 @@ void removeDataModificationOutVariablesRule(Optimizer*, ExecutionPlan*,
 void patchUpdateStatementsRule(Optimizer*, ExecutionPlan*,
                                Optimizer::Rule const*);
 
-/// @brief merges filter nodes into graph traversal nodes
-void mergeFilterIntoTraversalRule(Optimizer* opt, ExecutionPlan* plan,
-                                  Optimizer::Rule const* rule);
+/// @brief optimizes away unused traversal output variables and
+/// merges filter nodes into graph traversal nodes
+void optimizeTraversalsRule(Optimizer* opt, ExecutionPlan* plan,
+                            Optimizer::Rule const* rule);
 
 /// @brief moves simple subqueries one level higher
 void inlineSubqueriesRule(Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
