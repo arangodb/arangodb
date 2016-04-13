@@ -29,6 +29,9 @@
 #include "Utils/TransactionContext.h"
 #include "VocBase/KeyGenerator.h"
 
+#include <velocypack/Iterator.h> 
+#include <velocypack/velocypack-aliases.h>
+
 using TraverserExpression = arangodb::traverser::TraverserExpression;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -261,7 +264,31 @@ bool TraverserExpression::matchesCheck(arangodb::Transaction* trx,
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
       return arangodb::basics::VelocyPackHelper::compare(result, compareTo->slice(), true, options) >= 0; 
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
-      return arangodb::basics::VelocyPackHelper::compare(result, compareTo->slice(), true, options) > 0; 
+      return arangodb::basics::VelocyPackHelper::compare(result, compareTo->slice(), true, options) > 0;
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN: {
+      // In means any of the elements in compareTo is identical
+      VPackSlice compareArray = compareTo->slice();
+      for (auto const& cmp : VPackArrayIterator(compareArray)) {
+        if (arangodb::basics::VelocyPackHelper::compare(result, cmp, false, options) == 0) {
+          // One is identical
+          return true;
+        }
+      }
+      // If we get here non is identical
+      return false;
+    }
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NIN: {
+      // NIN means none of the elements in compareTo is identical
+      VPackSlice compareArray = compareTo->slice();
+      for (auto const& cmp : VPackArrayIterator(compareArray)) {
+        if (arangodb::basics::VelocyPackHelper::compare(result, cmp, false, options) == 0) {
+          // One is identical
+          return false;
+        }
+      }
+      // If we get here non is identical
+      return true;
+    }
     default:
       TRI_ASSERT(false);
   }
