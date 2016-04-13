@@ -35,6 +35,7 @@
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
 #include "Aql/TraversalConditionFinder.h"
+#include "Aql/TraversalNode.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
 #include "Basics/AttributeNameParser.h"
@@ -1544,7 +1545,8 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
         // If this node can throw, we must not optimize it away!
         continue;
       }
-    } else {
+      // will remove calculation when we get here
+    } else if (n->getType() == EN::SUBQUERY) {
       auto nn = static_cast<SubqueryNode*>(n);
 
       if (nn->canThrow()) {
@@ -1556,7 +1558,8 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
         // subqueries that modify data must not be optimized away
         continue;
       }
-    }
+      // will remove calculation when we get here
+    } 
 
     auto outvar = n->getVariablesSetHere();
     TRI_ASSERT(outvar.size() == 1);
@@ -3465,22 +3468,52 @@ void arangodb::aql::patchUpdateStatementsRule(Optimizer* opt,
   opt->addPlan(plan, rule, modified);
 }
 
-/// @brief merges filter nodes into graph traversal nodes
-void arangodb::aql::mergeFilterIntoTraversalRule(Optimizer* opt,
-                                                 ExecutionPlan* plan,
-                                                 Optimizer::Rule const* rule) {
+/// @brief optimizes away unused traversal output variables and
+/// merges filter nodes into graph traversal nodes
+void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
+                                           ExecutionPlan* plan,
+                                           Optimizer::Rule const* rule) {
   std::vector<ExecutionNode*> tNodes(
       plan->findNodesOfType(EN::TRAVERSAL, true));
 
   if (tNodes.empty()) {
+    // no traversals present
     opt->addPlan(plan, rule, false);
     return;
+  }
+  
+  bool modified = false;
+  
+  // first make a pass over all traversal nodes and remove unused 
+  // variables from them  
+  for (auto const& n : tNodes) {
+    TraversalNode* traversal = static_cast<TraversalNode*>(n);
+
+    auto varsUsedLater = n->getVarsUsedLater();
+    
+    // note that we can NOT optimize away the vertex output variable
+    // yet, as many traversal internals depend on the number of vertices
+    // found/built
+    auto outVariable = traversal->edgeOutVariable();
+    if (outVariable != nullptr &&
+        varsUsedLater.find(outVariable) == varsUsedLater.end()) {
+      // traversal vertex outVariable not used later
+      traversal->setEdgeOutput(nullptr);
+      modified = true;
+    }
+    
+    outVariable = traversal->pathOutVariable();
+    if (outVariable != nullptr &&
+        varsUsedLater.find(outVariable) == varsUsedLater.end()) {
+      // traversal vertex outVariable not used later
+      traversal->setPathOutput(nullptr);
+      modified = true;
+    }
   }
 
   // These are all the end nodes where we start
   std::vector<ExecutionNode*> nodes(plan->findEndNodes(true));
 
-  bool modified = false;
   for (auto const& n : nodes) {
     TraversalConditionFinder finder(plan, &modified);
     n->walk(&finder);

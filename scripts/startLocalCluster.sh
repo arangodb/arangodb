@@ -71,7 +71,7 @@ start() {
                 --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
                 --cluster.my-role $ROLE \
                 --log.file cluster/$PORT.log \
-                --log.level TRACE \
+                --log.level info \
                 --log.requests-file cluster/$PORT.req \
                 --server.disable-statistics true \
                 --server.foxx-queues false \

@@ -236,7 +236,6 @@ void RestVocbaseBaseHandler::generate20x(
 
   VPackSlice slice = result.slice();
   TRI_ASSERT(slice.isObject() || slice.isArray());
-  _response->setContentType("application/json; charset=utf-8");
   if (slice.isObject()) {
     _response->setHeaderNC("etag", "\"" + slice.get(TRI_VOC_ATTRIBUTE_REV).copyString() + "\"");
     // pre 1.4 location headers withdrawn for >= 3.0
@@ -246,14 +245,9 @@ void RestVocbaseBaseHandler::generate20x(
                          std::string("/_db/" + _request->databaseName() +
                                      DOCUMENT_PATH + "/" + escapedHandle));
   }
-  VPackStringBufferAdapter buffer(_response->body().stringBuffer());
-  VPackDumper dumper(&buffer, options);
-  try {
-    dumper.dump(slice);
-  } catch (...) {
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                  "cannot generate output");
-  }
+
+  writeResult(slice, *options);
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -282,8 +276,7 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
     VPackSlice const& slice) {
 
   createResponse(GeneralResponse::ResponseCode::PRECONDITION_FAILED);
-  _response->setContentType("application/json; charset=utf-8");
-  
+
   if (slice.isObject()) {  // single document case
     std::string const rev = VelocyPackHelper::getStringValue(slice, TRI_VOC_ATTRIBUTE_REV, "");
     _response->setHeaderNC("etag", "\"" + rev + "\"");
@@ -306,16 +299,8 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
     }
   }
 
-  VPackStringBufferAdapter buffer(_response->body().stringBuffer());
   auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
-  VPackDumper dumper(&buffer, transactionContext->getVPackOptions());
-
-  try {
-    dumper.dump(builder.slice());
-  } catch (...) {
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                  "cannot generate output");
-  }
+  writeResult(builder.slice(), *(transactionContext->getVPackOptions()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -362,34 +347,37 @@ void RestVocbaseBaseHandler::generateDocument(VPackSlice const& document,
 
   // and generate a response
   createResponse(GeneralResponse::ResponseCode::OK);
-  _response->setContentType("application/json; charset=utf-8");
   if (!rev.empty()) {
     _response->setHeaderNC("etag", "\"" + rev + "\"");
   }
 
   if (generateBody) {
-    VPackStringBufferAdapter buffer(_response->body().stringBuffer());
-    VPackDumper dumper(&buffer, options);
-    try {
-      dumper.dump(document);
-    } catch (...) {
-      generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                    "cannot generate output");
-    }
+    writeResult(document, *options);
   } else {
-    // TODO can we optimize this?
-    // Just dump some where else to find real length
-    StringBuffer tmp(TRI_UNKNOWN_MEM_ZONE);
-    // convert object to string
-    VPackStringBufferAdapter buffer(tmp.stringBuffer());
-    VPackDumper dumper(&buffer, options);
-    try {
-      dumper.dump(document);
-    } catch (...) {
-      generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                    "cannot generate output");
+    if(returnVelocypack()){
+      //TODO REVIEW
+      _response->setContentType("application/x-velocypack");
+      _response->headResponse(document.byteSize());
+    } else {
+      _response->setContentType("application/json; charset=utf-8");
+
+      // TODO can we optimize this?
+      // Just dump some where else to find real length
+      StringBuffer tmp(TRI_UNKNOWN_MEM_ZONE);
+      // convert object to string
+      VPackStringBufferAdapter buffer(tmp.stringBuffer());
+
+      //usual dumping -  but not to the response body
+      VPackDumper dumper(&buffer, options);
+      try {
+        dumper.dump(document);
+      } catch (...) {
+        generateError(GeneralResponse::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                      "cannot generate output");
+      }
+      // set the length of what would have been written
+      _response->headResponse(tmp.length());
     }
-    _response->headResponse(tmp.length());
   }
 }
 
@@ -489,9 +477,9 @@ void RestVocbaseBaseHandler::generateTransactionError(
       generateError(GeneralResponse::ResponseCode::FORBIDDEN, res);
       return;
     }
-        
-    case TRI_ERROR_OUT_OF_MEMORY: 
-    case TRI_ERROR_LOCK_TIMEOUT: 
+
+    case TRI_ERROR_OUT_OF_MEMORY:
+    case TRI_ERROR_LOCK_TIMEOUT:
     case TRI_ERROR_DEBUG:
     case TRI_ERROR_LOCKED:
     case TRI_ERROR_DEADLOCK: {
@@ -517,7 +505,7 @@ void RestVocbaseBaseHandler::generateTransactionError(
       generateError(GeneralResponse::ResponseCode::FORBIDDEN, result.code,
                     "collection is read-only");
       return;
-    
+
     case TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED:
       generateError(GeneralResponse::ResponseCode::CONFLICT, result.code,
                     "cannot create document, unique constraint violated");
@@ -576,14 +564,14 @@ void RestVocbaseBaseHandler::generateTransactionError(
       generateError(GeneralResponse::ResponseCode::NOT_IMPLEMENTED, result.code);
       return;
     }
-    
+
     case TRI_ERROR_FORBIDDEN: {
       generateError(GeneralResponse::ResponseCode::FORBIDDEN, result.code);
       return;
     }
-        
-    case TRI_ERROR_OUT_OF_MEMORY: 
-    case TRI_ERROR_LOCK_TIMEOUT: 
+
+    case TRI_ERROR_OUT_OF_MEMORY:
+    case TRI_ERROR_LOCK_TIMEOUT:
     case TRI_ERROR_DEBUG:
     case TRI_ERROR_LOCKED:
     case TRI_ERROR_DEADLOCK: {

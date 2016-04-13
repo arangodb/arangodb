@@ -284,7 +284,9 @@ else ()
 endif ()
 
 # Build package ----------------------------------------------------------------
-set(CPACK_SET_DESTDIR ON)
+if (NOT(MSVC))
+  set(CPACK_SET_DESTDIR ON)
+endif()
 
 # General
 set(CPACK_PACKAGE_NAME "arangodb")
