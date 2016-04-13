@@ -162,11 +162,7 @@ const manifestSchema = {
 var appCache = {};
 var usedSystemMountPoints = [
   '/_admin/aardvark', // Admin interface.
-  '/_system/cerberus', // Password recovery.
-  '/_api/gharial', // General_Graph API.
-  '/_system/sessions', // Sessions.
-  '/_system/users', // Users.
-  '/_system/simple-auth' // Authentication.
+  '/_api/gharial' // General_Graph API.
 ];
 
 
