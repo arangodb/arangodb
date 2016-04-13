@@ -313,6 +313,12 @@
 
     breadcrumb: function () {
       var name = window.location.hash.split("/");
+      $('#subNavigationBar .breadcrumb').html(
+        '<a href="#collection/' + name[1] + '/documents/1">Collection: ' + name[1].toLowerCase() + '</a>' + 
+        '<i class="fa fa-chevron-right"></i>'+
+        'Document: ' + name[2]
+      );
+      /*
       $('#transparentHeader').append(
         '<div class="breadcrumb">'+
         '<a href="#collections" class="activeBread">Collections</a>'+
@@ -322,6 +328,7 @@
         '<a class="disabledBread">' + name[2] + '</a>'+
         '</div>'
       );
+     */
     },
 
     escaped: function (value) {

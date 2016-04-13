@@ -893,6 +893,7 @@
         this.prepareD3Charts();
         this.prepareResidentSize();
         this.updateTendencies();
+        $(window).trigger('resize');
       }
       this.startUpdating();
     }.bind(this);

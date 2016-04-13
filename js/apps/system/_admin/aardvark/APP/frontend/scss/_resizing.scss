@@ -172,36 +172,37 @@
 
     .dashboard-full-width-chart {
       $int-width: $content-size - 3px;
-      width: $int-width;
+      width: 100%;
 
       .dashboard-full-width-chart-inner {
-        width: $int-width - 10px;
+        width: 100%;
 
         .dashboard-interior-chart {
           float: left;
           $int-height: (($dashboard-height - 29px) / 2) - $tendency-height-corrector;
           //height: $int-height + 10px;
-          width: (($int-width - 11px) / 3) - 2px;
         }
       }
 
       .dashboard-sub-bar {
-        width: $int-width - 11px;
+        width: 100%;
       }
     }
 
     .dashboard-large-chart {
       $int-width: ($content-size * 2 / 3) - 4px - 2px;
-      width: $int-width;
+      //width: $int-width;
 
       .dashboard-sub-bar {
-        width: $int-width - 12px;
+        width: 100%;
       }
 
       .dashboard-large-chart-inner {
+        width: 100%;
+
         .dashboard-interior-chart {
           height: $dashboard-height - $dashboard-padding - 5px;
-          width: $int-width - $legend-width - $legend-margin - 0;
+          //width: $int-width - $legend-width - $legend-margin - 0;
         }
       }
     }
@@ -213,21 +214,21 @@
     .dashboard-medium-chart-outer {
       $int-width: ($content-size / 2) - 16px - 2px + 10px;
       float: left;
-      width: $int-width;
+      //width: $int-width;
     }
 
     .dashboard-medium-chart {
       $int-width: ($content-size / 2) - 16px - 2px;
-      width: $int-width;
+      width: 100%;
 
       .dashboard-sub-bar {
         margin-left: -5px;
-        width: $int-width - 1px;
+        width: 100%;
       }
 
       .dashboard-interior-chart {
         height: $dashboard-height - $dashboard-padding - 5px;
-        width: $int-width - $legend-width - $legend-margin + 10px;
+        width: 100%;
       }
 
       .dashboard-medium-chart-menu {
@@ -248,18 +249,21 @@
 
     .dashboard-small-chart {
       $int-width: ($content-size / 3) - 8px - 2px;
-      width: $int-width;
+      //width: auto;
 
       .dashboard-sub-bar {
-        width: $int-width - 12px;
+        clear: both;
+        height: 65px;
+        margin-bottom: 0;
+        width: 100%;
       }
 
       .dashboard-small-chart-inner {
-        width: $int-width - 10px;
+        width: 100%;
 
         .dashboard-interior-chart {
           height: $dashboard-height - $smallchart-height-corrector + 2px;
-          width: $int-width - 10px;
+          width: auto;
 
           .nv-axis text {
             fill: $c-darker-grey;
@@ -300,7 +304,7 @@
       }
 
       .dashboard-sub-bar {
-        width: $int-width;
+        width: 100%;
       }
     }
 
@@ -310,8 +314,8 @@
       height: $int-height + 2px;
 
       .dashboard-bar-chart {
-        height: $int-height;
-        width: $int-width;
+        height: $int-height - 3px;
+        width: 100%;
 
         .dashboard-bar-chart-title {
           height: (($int-height - 2px) / 3);
@@ -341,7 +345,7 @@
       }
 
       .dashboard-sub-bar {
-        width: $int-width - 2px;
+        width: 100%;
       }
     }
 
@@ -380,12 +384,12 @@
         width: $int-width;
 
         .dashboard-sub-bar {
-          width: $int-width - 12px;
+          width: 100%;
         }
 
         .dashboard-large-chart-inner {
           .dashboard-interior-chart {
-            width: $int-width - $legend-width - $legend-margin;
+            width: 100%;
           }
         }
       }
@@ -398,14 +402,14 @@
 
       .dashboard-medium-chart {
         $int-width: ($content-size / 2) - 21px - 2px;
-        width: $int-width;
+        width: 100%;
 
         .dashboard-sub-bar {
-          width: $int-width - 2px;
+          width: 100%;
         }
 
         .dashboard-interior-chart {
-          width: $int-width - $legend-width - $legend-margin + 10px;
+          width: 100%;
         }
 
         .dashboard-medium-chart-menu {
@@ -415,35 +419,41 @@
 
       .dashboard-small-chart {
         $int-width: ($content-size / 3) - 13px - 2px;
-        width: $int-width;
+        width: auto;
 
         .dashboard-sub-bar {
-          width: $int-width - 12px;
+          clear: both;
+          width: auto;
         }
 
         .dashboard-small-chart-inner {
-          width: $int-width - 10px;
+          width: auto;
 
           .dashboard-interior-chart {
-            width: $int-width - 10px;
+            width: auto;
           }
         }
       }
 
       .dashboard-tendency-container {
         $int-width: ($content-size / 3) - 25px;
+        box-sizing: border-box;
+        width: 100%;
 
         .dashboard-tendency-chart {
+          box-sizing: border-box;
+          width: 100%;
 
           .dashboard-tendency,
           .dashboard-subtitle-bar,
           .dashboard-figure {
-            width: ($int-width / 2) - 19px;
+            box-sizing: border-box;
+            width: 100%;
           }
         }
 
         .dashboard-sub-bar {
-          width: $int-width;
+          width: 100%;
         }
       }
 
@@ -451,7 +461,7 @@
         $int-width: ($content-size / 3) - 18px - 2px;
 
         .dashboard-bar-chart {
-          width: $int-width;
+          width: auto;
 
           .dashboard-bar-chart-title {
             .percentage {
@@ -469,7 +479,7 @@
         }
 
         .dashboard-sub-bar {
-          width: $int-width - 2px;
+          width: 100%;
         }
       }
     }
@@ -519,9 +529,8 @@
       }
       font-size: $legend-font;
       font-weight: $legend-weight;
-      height: $dashboard-height - $dashboard-padding;
-      margin-top: -3px;
-      width: $legend-width;
+      height: 30px;
+      width: 100%;
     }
 
     .dashboard-half-height-legend {

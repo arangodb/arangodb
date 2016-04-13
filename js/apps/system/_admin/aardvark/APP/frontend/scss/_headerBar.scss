@@ -170,9 +170,11 @@ div.headerBar {
   border: 0;
   border-radius: 0;
   color: $c-white;
-  font-size: 11pt;
+  font-size: 14pt;
   font-weight: 100;
+  line-height: 45px;
   margin: 0;
+  margin-left: -4px;
   padding: {
     bottom: 0;
     left: 10px;
@@ -180,13 +182,17 @@ div.headerBar {
     top: 0;
   };
 
+  .fa-chevron-right {
+    margin-left: 10px;
+    margin-right: 8px;
+  }
+
   // Disabled breadcrumb
   .disabledBread {
     color: $c-white;
     float: left;
-    font-size: 11pt;
+    font-size: 14pt;
     font-weight: 100;
-    opacity: .65;
     padding-right: 5px;
     position: relative;
 
@@ -216,7 +222,21 @@ div.headerBar {
   }
 
   a {
+    color: $c-white !important;
+    opacity: .8;
     text-transform: capitalize;
+    -moz-transition: all .2s ease-in;
+    -o-transition: all .2s ease-in;
+    -webkit-transition: all .2s ease-in;
+    transition: all .2s ease-in;
+
+    &:hover {
+      opacity: 1;
+      -moz-transition: all .2s ease-in;
+      -o-transition: all .2s ease-in;
+      -webkit-transition: all .2s ease-in;
+      transition: all .2s ease-in;
+    }
   }
 
   #app-development-path {
