@@ -10,18 +10,9 @@
 }
 
 @media (max-width: 738px) {
-  #arangoCollectionUl {
-    display: none;
-  }
 
   #collectionsDropdown ul {
     width: auto !important;
-  }
-
-  #arangoCollectionSelect {
-    display: inline-block;
-    height: 29px;
-    margin-top: 1px;
   }
 
   .footer-center {

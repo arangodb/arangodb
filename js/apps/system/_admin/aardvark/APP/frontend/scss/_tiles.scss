@@ -1,7 +1,8 @@
 .tileList {
   @extend %clear-float;
-  margin-left: -6px;
-  margin-right: -6px;
+  //margin-left: -6px;
+  //margin-right: -6px;
+  width: 100%;
 
   legend {
     padding-left: 5px;
@@ -24,15 +25,15 @@ $iconsize: 50px;
   @extend %pull-left;
   @include box-shadow(none);
 
-  background-color: $c-white;
+  //background-color: $c-white;
   //border: 1px solid $c-lightgreen-2-bg;
   border-radius: 2px;
   font-size: 14px;
   list-style: none;
   margin: {
     bottom: 13px;
-    left: 6px;
-    right: 6px;
+    //left: 6px;
+    //right: 6px;
   }
   position: relative;
   text-align: center;
@@ -117,7 +118,9 @@ $iconsize: 50px;
   .collection-type-icon {
     color: $c-darker-grey;
     font-size: 30pt;
-    margin-top: 12pt;
+    margin-left: -18px;
+    position: absolute;
+    top: 15px;
   }
 
   .collection-type-icon:hover {
@@ -129,6 +132,7 @@ $iconsize: 50px;
 
     &.icon {
       height: $iconsize;
+      margin-top: -110px;
       width: $iconsize;
     }
 
@@ -180,12 +184,21 @@ $iconsize: 50px;
     color: $c-icon-grey;
     font-size: $iconsize;
     line-height: 1.2;
+    margin-left: -50px;
+    top: 10px;
+  }
+
+  .icon_arangodb_edge5-2,
+  .tile-icon {
+    position: absolute;
+    top: 15px;
   }
 
   .icon_arangodb_edge5-2 {
     display: inline-block;
-    position: relative;
-    top: 15px;
+    margin-left: 5px;
+    position: absolute;
+    top: 0;
     -moz-transform: rotate(80deg);
     -o-transform: rotate(80deg);
     -webkit-transform: rotate(80deg);
@@ -196,6 +209,8 @@ $iconsize: 50px;
     color: $c-white;
     font-size: 12px;
     margin: 0;
+    margin-left: 5px;
+    margin-right: 5px;
     overflow: hidden !important;
     padding: 4px 8px;
     text-overflow: ellipsis !important;
@@ -221,20 +236,32 @@ $iconsize: 50px;
   }
 
   .fullBorderBox {
+    background-color: $c-white;
     border: 1px solid $c-tile-border;
     border-radius: 2px;
+    box-sizing: border-box;
     height: 100%;
-    position: absolute;
-    width: 100%;
+    margin-left: 5px;
+    margin-right: 5px;
+    position: relative;
+    width: auto;
+  }
+
+  .paddingBox {
+    box-sizing: border-box;
+    padding-left: 5px;
+    padding-right: 5px;
   }
 
   .borderBox {
+    background-color: $c-white;
     border: 1px solid $c-bluegrey-border;
     border-bottom: 0;
     border-radius: 2px;
+    box-sizing: border-box;
     height: 75px;
-    position: absolute;
-    width: 224px;
+    position: relative;
+    width: 100%;
   }
 
   .iconSet {
@@ -315,7 +342,7 @@ $iconsize: 50px;
         color: $c-white;
         height: 0;
         margin-bottom: 4px;
-        margin-right: 5px;
+        margin-right: 10px;
         padding-left: 1px;
         padding-right: 6px;
 
@@ -343,15 +370,27 @@ $iconsize: 50px;
   }
 }
 
+#installedList,
+#userManagementThumbnailsIn {
+  h5 {
+    margin: 0;
+  }
+}
+
 div {
 
   .tile {
     @extend %tile;
     height: 100px;
-    width: $tile-width - 14px;
+    //width: $tile-width - 14px;
   }
 
   .tile-graph {
+
+    h5 {
+      margin: 0;
+    }
+
     .tile-icon:hover {
       cursor: pointer;
     }

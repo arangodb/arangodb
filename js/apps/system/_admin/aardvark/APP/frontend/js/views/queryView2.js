@@ -1210,7 +1210,7 @@
     setEditorAutoHeight: function (editor) {
       editor.setOptions({
         maxLines: 100,
-        minLines: 3
+        minLines: 10
       }); 
     },
 

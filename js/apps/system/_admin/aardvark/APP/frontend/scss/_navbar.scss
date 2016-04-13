@@ -42,9 +42,9 @@ $navbar-size: 150px;
 
   .arangodbLogo {
     height: auto;
-    margin-left: -5px;
-    margin-top: 6px;
-    width: $navbar-size;
+    margin-left: 6px;
+    margin-top: 15px;
+    width: $navbar-size - 12px;
   }
 
   .arango-collection-select {
@@ -89,12 +89,8 @@ $navbar-size: 150px;
 
 .navlogo {
   @extend %pull-left;
-  padding: {
-    bottom: 5px;
-    left: 14px;
-    right: 5px;
-    top: 5px;
-  };
+  height: 60px;
+  width: 100%;
 }
 
 .navmenu {
@@ -146,10 +142,11 @@ $navbar-size: 150px;
   }
 
   .active {
-    border-left: 2px solid $c-bluegrey-nontransp;
+    border-left: 2px solid $c-active-green;
 
     .tab {
       color: $c-white;
+      margin-left: -2px;
 
       .fa {
         opacity: 1;

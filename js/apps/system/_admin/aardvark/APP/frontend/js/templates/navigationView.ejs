@@ -70,29 +70,4 @@
   -->
   </ul>
 
-  <select id="arangoCollectionSelect" class="arango-collection-select">
-    <option value="" selected="selected">Select</option>
-    <option value="#">Dashboard</option>
-
-    <% if(currentDB.get('isSystem')) { %>
-
-      <option value="#databases">Databases</option>
-
-    <% } %>
-
-    <option value="#collections">Collections</option>
-    <option value="#applications">Services</option>
-    <option value="#graph">Graph</option>
-    <option value="#query">AQL Editor</option>
-    <option value="#shell">JS Shell</option>
-    <option value="#userManagement">User Management</option>
-    <option value="#queryManagement">Query Management</option>
-    <option value="#workMonitor">Work Monitor</option>
-
-    <% if(currentDB.get('isSystem')) { %>
-
-      <option value="#logs">Logs</option>
-
-    <% } %>
-  </select>
 </script>
