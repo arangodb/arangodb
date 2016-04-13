@@ -1309,8 +1309,6 @@ function complexInternaSuite () {
 function optimizeInSuite () {
 
   var ruleName = "optimize-traversals";
-  var paramEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
-  var opts = _.clone(paramEnabled);
   var startId = vn + "/optIn";
 
   return {
@@ -1371,10 +1369,14 @@ function optimizeInSuite () {
     },
 
     testCombinedAndOptimize: function () {
-      var vertexQuery = "FOR v, e, p IN 2 OUTBOUND @startId @@eCol FILTER p.vertices[1]._key IN @keys AND p.vertices[1].value IN @values RETURN v._key";
-      var edgeQuery = "FOR v, e, p IN 2 OUTBOUND @startId @@eCol FILTER p.edges[0]._key IN @keys AND p.edges[0].value IN @values RETURN v._key";
-      var mixedQuery1 = "FOR v, e, p IN 2 OUTBOUND @startId @@eCol FILTER p.edges[0]._key IN @keys AND p.vertices[1].value IN @values RETURN v._key";
-      var mixedQuery2 = "FOR v, e, p IN 2 OUTBOUND @startId @@eCol FILTER p.vertices[1]._key IN @keys AND p.edges[0].value IN @values RETURN v._key";
+      var vertexQuery = "FOR v, e, p IN 2 OUTBOUND @startId @@eCol FILTER p.vertices[1]._key " + 
+                        " IN @keys AND p.vertices[1].value IN @values RETURN v._key";
+      var edgeQuery = "FOR v, e, p IN 2 OUTBOUND @startId @@eCol FILTER p.edges[0]._key " +
+                      "IN @keys AND p.edges[0].value IN @values RETURN v._key";
+      var mixedQuery1 = "FOR v, e, p IN 2 OUTBOUND @startId @@eCol FILTER p.edges[0]._key " +
+                        "IN @keys AND p.vertices[1].value IN @values RETURN v._key";
+      var mixedQuery2 = "FOR v, e, p IN 2 OUTBOUND @startId @@eCol FILTER p.vertices[1]._key " +
+                        "IN @keys AND p.edges[0].value IN @values RETURN v._key";
       var bindVars = {
         "@eCol": en,
         "startId": startId,
@@ -1459,25 +1461,6 @@ function optimizeInSuite () {
       assertEqual(optPlans, noOptPlans);
     },
     
-    testCanOptimizeParts: function () {
-      var lateNoOptQuery = "FOR v, e, p IN 2 OUTBOUND @startId @@eCol FILTER p.vertices[1]._key IN ['tmp0', 'tmp1'] AND (p.vertices[2]._key == 'innertmp0_10' OR p.vertices[2].value == 1) RETURN v._key";
-      var earlyNoOptQuery = "FOR v, e, p IN 2 OUTBOUND @startId @@eCol FILTER p.vertices[2]._key == 'innertmp0_10' AND (p.vertices[1]._key == 'tmp0' OR p.vertices[1].value == 1) RETURN v._key";
-
-      var bindVars = {
-        "@eCol": en,
-        "startId": startId
-      };
-
-      var opt  = { optimizer: { rules: [ "-all" , "+" + ruleName ] } };
-
-      var optPlans = AQL_EXPLAIN(lateNoOptQuery, bindVars, opt).plan;
-      // We can optimize at least parts of the query
-      assertEqual(optPlans.rules, [ ruleName ]);
-
-      var optPlans = AQL_EXPLAIN(earlyNoOptQuery, bindVars, opt).plan;
-      // We can optimize at least parts of the query
-      assertEqual(optPlans.rules, [ ruleName ]);
-    },
 
   };
 }
