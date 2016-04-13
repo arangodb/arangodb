@@ -28,7 +28,6 @@
 #include <chrono>
 #include <thread>
 #include "Basics/MutexLocker.h"
-#include <iostream>
 
 using namespace arangodb;
 
