@@ -155,7 +155,8 @@ HttpHandler::status_t RestAgencyHandler::handleWrite () {
       body.close();
       
       if (errors > 0) { // Some/all requests failed
-        generateResult(GeneralResponse::ResponseCode::PRECONDITION_FAILED, body.slice());
+        generateResult(GeneralResponse::ResponseCode::PRECONDITION_FAILED,
+                       body.slice());
       } else {          // All good 
         generateResult(GeneralResponse::ResponseCode::OK, body.slice());
       }

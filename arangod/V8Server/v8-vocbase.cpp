@@ -62,6 +62,7 @@
 #include <unicode/smpdtfmt.h>
 #include <unicode/dtfmtsym.h>
 
+#include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -2833,23 +2834,20 @@ static void ListDatabasesCoordinator(
           // We got an array back as JSON, let's parse it and build a v8
           StringBuffer& body = res->result->getBody();
 
-          TRI_json_t* json = JsonHelper::fromString(body.c_str());
+          std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(body.c_str(), body.length()); 
+          VPackSlice resultSlice = builder->slice();
 
-          if (json != 0 && JsonHelper::isObject(json)) {
-            TRI_json_t const* dotresult =
-                JsonHelper::getObjectElement(json, "result");
-
-            if (dotresult != 0) {
-              std::vector<std::string> list =
-                  JsonHelper::stringArray(dotresult);
-              TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+          if (resultSlice.isObject()) {
+            VPackSlice r = resultSlice.get("result");
+            if (r.isArray()) {
+              uint32_t i = 0;
               v8::Handle<v8::Array> result = v8::Array::New(isolate);
-              for (size_t i = 0; i < list.size(); ++i) {
-                result->Set((uint32_t)i, TRI_V8_STD_STRING(list[i]));
+              for (auto const& it : VPackArrayIterator(r)) {
+                std::string v = it.copyString();
+                result->Set(i++, TRI_V8_STD_STRING(v));
               }
               TRI_V8_RETURN(result);
             }
-            TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
           }
         }
       }
