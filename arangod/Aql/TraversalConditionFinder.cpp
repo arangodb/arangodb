@@ -37,13 +37,10 @@ using EN = triagens::aql::ExecutionNode;
 static bool checkPathVariableAccessFeasible (CalculationNode const* cn,
                                              TraversalNode* tn,
                                              Variable const* var,
-                                             bool& conditionIsImpossible,
-                                             Ast* ast) {
+                                             bool& conditionIsImpossible) {
   auto node = cn->expression()->node();
 
-  if (node->containsNodeType(NODE_TYPE_OPERATOR_BINARY_OR) ||
-      node->containsNodeType(NODE_TYPE_OPERATOR_BINARY_IN) ||
-      node->containsNodeType(NODE_TYPE_OPERATOR_BINARY_NIN)) {
+  if (node->containsNodeType(NODE_TYPE_OPERATOR_BINARY_OR)) {
     return false;
   }
 
@@ -62,6 +59,12 @@ static bool checkPathVariableAccessFeasible (CalculationNode const* cn,
         // we currently don't know how to execute functions in the
         // traversal (-> TraverserExpression::recursiveCheck
         return false;
+      }
+      if (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
+          node->type == NODE_TYPE_OPERATOR_BINARY_NIN) {
+        if (!node->getMember(0)->isAttributeAccessForVariable(var, true)) {
+          return false;
+        }
       }
     }
 
@@ -143,11 +146,9 @@ static bool extractSimplePathAccesses (AstNode const* node,
           (oneNode->type == NODE_TYPE_OPERATOR_BINARY_LT ) ||
           (oneNode->type == NODE_TYPE_OPERATOR_BINARY_LE ) ||
           (oneNode->type == NODE_TYPE_OPERATOR_BINARY_GT ) ||
-          (oneNode->type == NODE_TYPE_OPERATOR_BINARY_GE )
-          //  || As long as we need to twist the access, this is impossible:
-          // (oneNode->type == NODE_TYPE_OPERATOR_BINARY_IN ) ||
-          // (oneNode->type == NODE_TYPE_OPERATOR_BINARY_NIN))
-          ) {
+          (oneNode->type == NODE_TYPE_OPERATOR_BINARY_GE ) || 
+          (oneNode->type == NODE_TYPE_OPERATOR_BINARY_IN ) ||
+          (oneNode->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
         compareNode = oneNode;
       }
     }
@@ -339,19 +340,21 @@ bool TraversalConditionFinder::before (ExecutionNode* en) {
               int variableType = node->checkIsOutVariable(conditionVar->id);
               if (variableType >= 0) {
                 if ((variableType == 2) &&
-                    checkPathVariableAccessFeasible(cn, node, conditionVar, conditionIsImpossible, _plan->getAst())) {
+                    checkPathVariableAccessFeasible(cn, node, conditionVar, conditionIsImpossible)) {
                     condition->andCombine(it.second->expression()->node()->clone(_plan->getAst()));
                     foundCondition = true;
                     node->setCalculationNodeId(cn->id());
                   }
-                if (conditionIsImpossible)
+                if (conditionIsImpossible) {
                   break;
+                }
               }
             }
           }
         }
-        if (conditionIsImpossible)
+        if (conditionIsImpossible) {
           break;
+        }
       }
 
       if (!conditionIsImpossible) {

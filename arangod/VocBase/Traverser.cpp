@@ -31,6 +31,10 @@
 #include "Basics/json-utilities.h"
 #include "VocBase/KeyGenerator.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
+
 using TraverserExpression = triagens::arango::traverser::TraverserExpression;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -225,6 +229,33 @@ bool TraverserExpression::matchesCheck (DocumentAccessor& accessor) const {
       return TRI_CompareValuesJson(result.json(), compareTo->json(), true) >= 0;
     case triagens::aql::NODE_TYPE_OPERATOR_BINARY_GT:
       return TRI_CompareValuesJson(result.json(), compareTo->json(), true) > 0;
+
+    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN: {
+      TRI_json_t* compList = compareTo->json();
+      size_t length  = TRI_LengthArrayJson(compList);
+      for (size_t i = 0; i < length; ++i) {
+        TRI_json_t* cmpElm = static_cast<TRI_json_t*>(TRI_AtVector(&compList->_value._objects, i));
+        if (TRI_CompareValuesJson(result.json(), cmpElm, false) == 0) {
+          // This is identical
+          return true;
+        }
+      }
+      // If we get here none is identical
+      return false;
+    }
+    case triagens::aql::NODE_TYPE_OPERATOR_BINARY_NIN: {
+      TRI_json_t* compList = compareTo->json();
+      size_t length  = TRI_LengthArrayJson(compList);
+      for (size_t i = 0; i < length; ++i) {
+        TRI_json_t* cmpElm = static_cast<TRI_json_t*>(TRI_AtVector(&compList->_value._objects, i));
+        if (TRI_CompareValuesJson(result.json(), cmpElm, false) == 0) {
+          // This is identical
+          return false;
+        }
+      }
+      // If we get here none is identical
+      return true;
+    }
     default:
       TRI_ASSERT(false);
   }

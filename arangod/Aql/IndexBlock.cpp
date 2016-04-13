@@ -196,7 +196,7 @@ int IndexBlock::initialize () {
       auto lhs = leaf->getMember(0);
       auto rhs = leaf->getMember(1);
 
-      if (lhs->isAttributeAccessForVariable(outVariable)) {
+      if (lhs->isAttributeAccessForVariable(outVariable, false)) {
         // Index is responsible for the left side, check if right side has to be evaluated
         if (! rhs->isConstant()) {
           if (leaf->type == NODE_TYPE_OPERATOR_BINARY_IN) {

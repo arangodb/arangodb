@@ -510,17 +510,20 @@ namespace triagens {
 /// refers to a variable reference
 ////////////////////////////////////////////////////////////////////////////////
 
-        AstNode const* getAttributeAccessForVariable () const {
+        AstNode const* getAttributeAccessForVariable (bool allowIndexedAccess) const {
           if (type != NODE_TYPE_ATTRIBUTE_ACCESS &&
-              type != NODE_TYPE_EXPANSION) {
+              type != NODE_TYPE_EXPANSION &&
+              !(allowIndexedAccess && type == NODE_TYPE_INDEXED_ACCESS)) {
             return nullptr;
           }
 
           auto node = this;
      
-          while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+          while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS || 
+                 (allowIndexedAccess && node->type == NODE_TYPE_INDEXED_ACCESS) ||
                  node->type == NODE_TYPE_EXPANSION) {
-            if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+            if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+                node->type == NODE_TYPE_INDEXED_ACCESS) {
               node = node->getMember(0);
             }
             else {
@@ -529,7 +532,7 @@ namespace triagens {
               TRI_ASSERT(node->numMembers() >= 2);
 
               if (node->getMember(1)->type != NODE_TYPE_REFERENCE) {
-                if (node->getMember(1)->getAttributeAccessForVariable() == nullptr) {
+                if (node->getMember(1)->getAttributeAccessForVariable(allowIndexedAccess) == nullptr) {
                   return nullptr;
                 }
               }
@@ -553,7 +556,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool isAttributeAccessForVariable () const {
-          return (getAttributeAccessForVariable() != nullptr);
+          return (getAttributeAccessForVariable(false) != nullptr);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -561,8 +564,8 @@ namespace triagens {
 /// refers to the specified variable reference
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isAttributeAccessForVariable (Variable const* variable) const {
-          auto node = getAttributeAccessForVariable();
+        bool isAttributeAccessForVariable (Variable const* variable, bool allowIndexedAccess) const {
+          auto node = getAttributeAccessForVariable(allowIndexedAccess);
 
           if (node == nullptr) {
             return false;
