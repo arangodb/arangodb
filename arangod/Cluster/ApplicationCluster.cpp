@@ -101,6 +101,7 @@ void ApplicationCluster::setupOptions(
 }
 
 bool ApplicationCluster::prepare() {
+  ClusterInfo::createInstance(_agencyCallbackRegistry);
   // set authentication data
   ServerState::instance()->setAuthentication(_username, _password);
 

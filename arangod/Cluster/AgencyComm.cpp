@@ -1569,19 +1569,6 @@ bool AgencyComm::unregisterCallback(std::string const& key, std::string const& e
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief blocks on a change of a single value in the backend
-////////////////////////////////////////////////////////////////////////////////
-
-AgencyCommResult AgencyComm::watchValue(std::string const& key,
-                                        uint64_t waitIndex, double timeout,
-                                        bool recursive) {
-  AgencyCommResult result = getValues(key, recursive);
-
-  usleep(1000);
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief acquire a read lock
 ////////////////////////////////////////////////////////////////////////////////
 
