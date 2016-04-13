@@ -1311,8 +1311,6 @@ function complexInternaSuite () {
 function optimizeInSuite () {
 
   var ruleName = "optimize-traversals";
-  var paramEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
-  var opts = _.clone(paramEnabled);
   var startId = vn + "/optIn";
 
   return {
@@ -1373,10 +1371,14 @@ function optimizeInSuite () {
     },
 
     testCombinedAndOptimize: function () {
-      var vertexQuery = "FOR v, e, p IN 2 OUTBOUND @startId @@eCol FILTER p.vertices[1]._key IN @keys AND p.vertices[1].value IN @values RETURN v._key";
-      var edgeQuery = "FOR v, e, p IN 2 OUTBOUND @startId @@eCol FILTER p.edges[0]._key IN @keys AND p.edges[0].value IN @values RETURN v._key";
-      var mixedQuery1 = "FOR v, e, p IN 2 OUTBOUND @startId @@eCol FILTER p.edges[0]._key IN @keys AND p.vertices[1].value IN @values RETURN v._key";
-      var mixedQuery2 = "FOR v, e, p IN 2 OUTBOUND @startId @@eCol FILTER p.vertices[1]._key IN @keys AND p.edges[0].value IN @values RETURN v._key";
+      var vertexQuery = "FOR v, e, p IN 2 OUTBOUND @startId @@eCol FILTER p.vertices[1]._key " +
+                        "IN @keys AND p.vertices[1].value IN @values RETURN v._key";
+      var edgeQuery = "FOR v, e, p IN 2 OUTBOUND @startId @@eCol FILTER p.edges[0]._key " +
+                      "IN @keys AND p.edges[0].value IN @values RETURN v._key";
+      var mixedQuery1 = "FOR v, e, p IN 2 OUTBOUND @startId @@eCol FILTER p.edges[0]._key " +
+                        "IN @keys AND p.vertices[1].value IN @values RETURN v._key";
+      var mixedQuery2 = "FOR v, e, p IN 2 OUTBOUND @startId @@eCol FILTER p.vertices[1]._key " +
+                        "IN @keys AND p.edges[0].value IN @values RETURN v._key";
       var bindVars = {
         "@eCol": en,
         "startId": startId,
