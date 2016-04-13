@@ -192,7 +192,7 @@ NodeType Node::type() const {
 // lh-value at path vector
 Node& Node::operator ()(std::vector<std::string> const& pv) {
   if (pv.size()) {
-    std::string const key = pv.at(0);
+    std::string const& key = pv.at(0);
     if (_children.find(key) == _children.end()) {
       _children[key] = std::make_shared<Node>(key, this);
     }
@@ -207,7 +207,7 @@ Node& Node::operator ()(std::vector<std::string> const& pv) {
 // rh-value at path vector
 Node const& Node::operator ()(std::vector<std::string> const& pv) const {
   if (pv.size()) {
-    std::string const key = pv.at(0);
+    std::string const& key = pv.at(0);
     if (_children.find(key) == _children.end()) {
       throw StoreException(
         std::string("Node ") + key + std::string(" not found"));
@@ -866,14 +866,16 @@ void Store::dumpToBuilder (Builder& builder) const {
     }
   }
   {
-    VPackObjectBuilder guard(&builder);
+    VPackArrayBuilder garray(&builder);
     for (auto const& i : _observer_table) {
+      VPackObjectBuilder guard(&builder);
       builder.add(i.first, VPackValue(i.second));
     }
   }
   {
-    VPackObjectBuilder guard(&builder);
+    VPackArrayBuilder garray(&builder);
     for (auto const& i : _observed_table) {
+      VPackObjectBuilder guard(&builder);
       builder.add(i.first, VPackValue(i.second));
     }
   }
