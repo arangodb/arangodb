@@ -24139,7 +24139,6 @@ window.ArangoUsers = Backbone.Collection.extend({
         }
         else {
           window.modalView.hide();
-
           data = data.split('/');
 
           try {
