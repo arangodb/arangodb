@@ -70,16 +70,28 @@ module.exports = exports = class SwaggerContext {
   }
 
   header(name, schema, description) {
+    if (typeof schema === 'string') {
+      description = schema;
+      schema = undefined;
+    }
     this._headers.set(name, {schema, description});
     return this;
   }
 
   pathParam(name, schema, description) {
+    if (typeof schema === 'string') {
+      description = schema;
+      schema = undefined;
+    }
     this._pathParams.set(name, {schema, description});
     return this;
   }
 
   queryParam(name, schema, description) {
+    if (typeof schema === 'string') {
+      description = schema;
+      schema = undefined;
+    }
     this._queryParams.set(name, {schema, description});
     return this;
   }
