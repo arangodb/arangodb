@@ -1,0 +1,24 @@
+.centralContent {
+
+  .createModalDialog {
+    outline: none;
+  }
+
+  .modal-body {
+    color: $c-black;
+    max-height: none;
+
+    .icon_arangodb_info {
+      margin-left: 10px;
+      right: inherit;
+    }
+
+    .modalSelect {
+      margin-top: 0;
+    }
+
+    .tab-pane {
+      padding-top: 0 !important;
+    }
+  }
+}
