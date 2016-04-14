@@ -120,7 +120,7 @@ struct AgencyOperationType {
   };
 
   // mop: hmmm...explicit implementation...maybe use to_string?
-  std::string toString() {
+  std::string toString() const {
     switch(type) {
       case VALUE:
         switch(value) {
@@ -204,7 +204,7 @@ struct AgencyOperation {
   /// @brief returns to full operation formatted as a vpack slice
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack();
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack() const;
   uint32_t _ttl = 0;
   VPackSlice _oldValue;
   AgencyOperationPrecondition _precondition;
