@@ -211,7 +211,7 @@ static int distributeBabyOnShards(
     std::unordered_map<ShardID, std::vector<VPackValueLength>>& shardMap,
     ClusterInfo* ci, std::string const& collid,
     std::shared_ptr<CollectionInfo> collinfo,
-    std::vector<std::pair<ShardID, VPackValueLength>> reverseMapping,
+    std::vector<std::pair<ShardID, VPackValueLength>>& reverseMapping,
     VPackSlice const node, VPackValueLength const index) {
   // Now find the responsible shard:
   bool usesDefaultShardingAttributes;
@@ -250,7 +250,7 @@ static int distributeBabyOnShards(
     std::unordered_map<ShardID, std::vector<std::pair<VPackValueLength, std::string>>>& shardMap,
     ClusterInfo* ci, std::string const& collid,
     std::shared_ptr<CollectionInfo> collinfo,
-    std::vector<std::pair<ShardID, VPackValueLength>> reverseMapping,
+    std::vector<std::pair<ShardID, VPackValueLength>>& reverseMapping,
     VPackSlice const node, VPackValueLength const index) {
   // Sort out the _key attribute:
   // The user is allowed to specify _key, provided that _key is the one
