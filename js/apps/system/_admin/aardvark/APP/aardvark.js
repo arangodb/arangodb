@@ -25,7 +25,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const underscore = require('lodash');
-const cluster = require('@arangodb/cluster');
 const joi = require('joi');
 const httperr = require('http-errors');
 const contentDisposition = require('content-disposition');
