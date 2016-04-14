@@ -17862,20 +17862,11 @@ window.arangoDocument = Backbone.Collection.extend({
   url: '/_api/document/',
   model: arangoDocumentModel,
   collectionInfo: {},
+
   deleteEdge: function (colid, docid, callback) {
-    $.ajax({
-      cache: false,
-      type: 'DELETE',
-      contentType: "application/json",
-      url: "/_api/edge/" + encodeURIComponent(colid) + "/" + encodeURIComponent(docid),
-      success: function () {
-        callback(false);
-      },
-      error: function () {
-        callback(true);
-      }
-    });
+    this.deleteDocument(colid, docid, callback);
   },
+
   deleteDocument: function (colid, docid, callback) {
     $.ajax({
       cache: false,
@@ -17899,17 +17890,22 @@ window.arangoDocument = Backbone.Collection.extend({
 
     if (key) {
       newEdge = JSON.stringify({
-        _key: key
+        _key: key,
+        _from: from,
+        _to: to
       });
     }
     else {
-      newEdge = JSON.stringify({});
+      newEdge = JSON.stringify({
+        _from: from,
+        _to: to
+      });
     }
 
     $.ajax({
       cache: false,
       type: "POST",
-      url: "/_api/edge?collection=" + collectionID + "&from=" + from + "&to=" + to,
+      url: "/_api/document?collection=" + encodeURIComponent(collectionID),
       data: newEdge,
       contentType: "application/json",
       processData: false,
@@ -17967,22 +17963,7 @@ window.arangoDocument = Backbone.Collection.extend({
     });
   },
   getEdge: function (colid, docid, callback){
-    var self = this;
-    this.clearDocument();
-    $.ajax({
-      cache: false,
-      type: "GET",
-      url: "/_api/edge/" + encodeURIComponent(colid) +"/"+ encodeURIComponent(docid),
-      contentType: "application/json",
-      processData: false,
-      success: function(data) {
-        self.add(data);
-        callback(false, data, 'edge');
-      },
-      error: function(data) {
-        callback(true, data);
-      }
-    });
+    this.getDocument(colid, docid, callback);
   },
   getDocument: function (colid, docid, callback) {
     var self = this;
@@ -24186,7 +24167,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         }
         else {
           window.modalView.hide();
-          data = data.split('/');
+          data = data._id.split('/');
 
           try {
             url = "collection/" + data[0] + '/' + data[1];
@@ -34055,8 +34036,9 @@ window.ArangoUsers = Backbone.Collection.extend({
       "test": "test"
     },
 
-    execute: function(callback, args, name) {
+    execute: function(callback, args) {
       $('#subNavigationBar .breadcrumb').html('');
+      $('#subNavigationBar .bottom').html('');
       if (callback) {
         callback.apply(this, args);
       }

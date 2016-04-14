@@ -5212,8 +5212,7 @@ div.centralRow {
 
 div.centralContent {
   background-color: transparent;
-  margin-left: -5px;
-  margin-right: -5px;
+  box-sizing: border-box;
   margin-top: 10px;
   min-height: 80px;
   padding: 5px;
@@ -5221,7 +5220,7 @@ div.centralContent {
 
 .contentDiv {
   list-style: none;
-  padding: 15px 0 0; }
+  padding: 0; }
   .contentDiv li {
     background-color: rgba(0, 0, 0, 0.05); }
   .contentDiv a.add {
@@ -7124,6 +7123,9 @@ toolbar {
   #queryManagementContent .arango-table {
     border: 0; }
 
+#clearQuery {
+  display: none; }
+
 .display-none {
   display: none; }
 
@@ -7860,6 +7862,8 @@ input.gv-radio-button {
     margin-left: 5px; }
 
 @media (max-width: 568px) {
+  .document-info-div .search {
+    display: none; }
   .dashboard-large-chart,
   .dashboard-medium-chart-outer:first-child {
     padding-right: 0 !important; }
@@ -7885,6 +7889,8 @@ input.gv-radio-button {
     .arango-collection-ul .tab .fa {
       padding-left: 6px;
       padding-right: 20px; }
+  .headerButtonBar {
+    display: none; }
   div.centralRow {
     left: 40px; } }
 
@@ -7892,6 +7898,10 @@ input.gv-radio-button {
   .dashboard-large-chart,
   .dashboard-medium-chart-outer:first-child {
     padding-right: 0 !important; }
+  .document-info-div .search {
+    display: none; }
+  .headerButtonBar {
+    display: none; }
   .dashboard-bar-chart-container {
     margin-bottom: 65px !important;
     padding-left: 0 !important;
@@ -7906,9 +7916,6 @@ input.gv-radio-button {
     width: auto !important; }
   .arango-collection-select {
     display: inline-block; } }
-
-#documentsDiv {
-  padding-top: 1px; }
 
 .document-info-div {
   margin-top: 20px;
@@ -8630,9 +8637,6 @@ table.arangoDataTable tr.odd {
 
 table .sorting {
   background: none !important; }
-
-#documentsDiv {
-  margin-top: 20px; }
 
 .new-index-view input[type='checkbox'] {
   float: left; }
