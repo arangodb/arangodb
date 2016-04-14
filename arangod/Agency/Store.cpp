@@ -277,8 +277,8 @@ bool Node::removeTimeToLive () {
       if (it->second == _parent->_children[_node_name]) {
         root()._time_table.erase(it);
         break;
-        ++it;
       }
+      ++it;
     }
   }
   return true;

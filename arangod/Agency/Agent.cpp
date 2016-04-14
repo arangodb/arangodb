@@ -368,7 +368,7 @@ void Agent::run() {
 
   CONDITION_LOCKER(guard, _cv);
   
-  while (!this->isStopping()) {
+  while (!this->isStopping() && size() > 1) { // need only to run in multi-host
 
     if (leading())
       _cv.wait(250000); // Only if leading
