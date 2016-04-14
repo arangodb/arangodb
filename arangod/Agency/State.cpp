@@ -86,11 +86,7 @@ bool State::persist(index_t index, term_t term, id_t lid,
     THROW_ARANGO_EXCEPTION(res);
   }
   
-  OperationOptions options;
-  options.waitForSync = true; 
-  options.silent = true;
-
-  OperationResult result = trx.insert("log", body.slice(), options);
+  OperationResult result = trx.insert("log", body.slice(), _options);
   res = trx.finish(result.code);
 
   return (res == TRI_ERROR_NO_ERROR);
@@ -221,10 +217,14 @@ bool State::createCollection(std::string const& name) {
 }
 
 bool State::loadCollections(TRI_vocbase_t* vocbase, ApplicationV8* applicationV8, 
-                            aql::QueryRegistry* queryRegistry) {
+                            aql::QueryRegistry* queryRegistry, bool waitForSync) {
   _vocbase = vocbase;
   _applicationV8 = applicationV8;
   _queryRegistry = queryRegistry;
+
+  _options.waitForSync = waitForSync;
+  _options.silent = true;
+
   return loadCollection("log");
 }
 

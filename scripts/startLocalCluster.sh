@@ -41,6 +41,7 @@ build/bin/arangod -c etc/relative/arangod.conf \
   --agency.size 1 \
   --server.endpoint tcp://127.0.0.1:4001 \
   --agency.endpoint tcp://127.0.0.1:4001 \
+  --agency.wait-for-sync false \
   --database.directory cluster/data4001 \
   --agency.id 0 \
   --log.file cluster/4001.log \
@@ -71,6 +72,7 @@ start() {
                 --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
                 --cluster.my-role $ROLE \
                 --log.file cluster/$PORT.log \
+                --log.buffered false \
                 --log.level info \
                 --log.requests-file cluster/$PORT.req \
                 --server.disable-statistics true \
@@ -197,7 +199,7 @@ testServer() {
     PORT=$1
     while true ; do
         sleep 1
-        curl -s -X GET "http://127.0.0.1:$PORT/_api/version" > /dev/null 2>&1
+        curl -s -f -X GET "http://127.0.0.1:$PORT/_api/version" > /dev/null 2>&1
         if [ "$?" != "0" ] ; then
             echo Server on port $PORT does not answer yet.
         else

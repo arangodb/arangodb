@@ -103,7 +103,8 @@ public:
 
 
   /// @brief Load persisted data from above or start with empty log
-  bool loadCollections (TRI_vocbase_t*, ApplicationV8*, aql::QueryRegistry*);
+  bool loadCollections (TRI_vocbase_t*, ApplicationV8*,
+                        aql::QueryRegistry*, bool);
 
   /// @brief Pipe to ostream
   friend std::ostream& operator<< (std::ostream& os, State const& s) {
@@ -149,6 +150,9 @@ private:
   std::string _end_point;            /**< @brief persistence end point */
   bool _collections_checked;                 /**< @brief Collections checked */
   bool _collections_loaded;
+
+  OperationOptions _options;
+
   
 };
 

@@ -30,6 +30,7 @@
 #include "Basics/Thread.h"
 #include "Logger/Logger.h"
 #include "Cluster/AgencyComm.h"
+#include "Cluster/AgencyCallbackRegistry.h"
 
 struct TRI_server_t;
 struct TRI_vocbase_t;
@@ -48,7 +49,7 @@ class HeartbeatThread : public Thread {
 
  public:
   HeartbeatThread(TRI_server_t*, arangodb::rest::ApplicationDispatcher*,
-                  ApplicationV8*, uint64_t, uint64_t);
+                  ApplicationV8*, AgencyCallbackRegistry*, uint64_t, uint64_t);
 
   ~HeartbeatThread();
 
@@ -77,12 +78,6 @@ class HeartbeatThread : public Thread {
   //////////////////////////////////////////////////////////////////////////////
 
   void removeDispatchedJob(bool success);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief check whether a job is still running or does not have reported yet
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool hasPendingJob();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the thread has run at least once.
@@ -167,6 +162,12 @@ class HeartbeatThread : public Thread {
   ApplicationV8* _applicationV8;
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief AgencyCallbackRegistry
+  //////////////////////////////////////////////////////////////////////////////
+
+  AgencyCallbackRegistry* _agencyCallbackRegistry;
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief status lock
   //////////////////////////////////////////////////////////////////////////////
 
@@ -183,6 +184,8 @@ class HeartbeatThread : public Thread {
   //////////////////////////////////////////////////////////////////////////////
 
   arangodb::basics::ConditionVariable _condition;
+
+  VPackBuilder _dispatchedPlanVersion;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief users for these databases will be re-fetched the next time the
@@ -238,6 +241,7 @@ class HeartbeatThread : public Thread {
   //////////////////////////////////////////////////////////////////////////////
 
   std::atomic<bool> _ready;
+  
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the heartbeat thread has run at least once

@@ -35,6 +35,7 @@ class ApplicationDispatcher;
 }
 
 class ApplicationV8;
+class AgencyCallbackRegistry;
 class HeartbeatThread;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -48,7 +49,7 @@ class ApplicationCluster : public rest::ApplicationFeature {
 
  public:
   ApplicationCluster(TRI_server_t*, arangodb::rest::ApplicationDispatcher*,
-                     arangodb::ApplicationV8*);
+                     arangodb::ApplicationV8*, arangodb::AgencyCallbackRegistry*);
 
   ~ApplicationCluster();
 
@@ -96,6 +97,12 @@ class ApplicationCluster : public rest::ApplicationFeature {
   //////////////////////////////////////////////////////////////////////////////
 
   arangodb::ApplicationV8* _applicationV8;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the agency callback registry
+  //////////////////////////////////////////////////////////////////////////////
+
+  arangodb::AgencyCallbackRegistry* _agencyCallbackRegistry;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief thread for heartbeat
