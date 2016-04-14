@@ -116,6 +116,12 @@ void HeartbeatThread::runDBServer() {
   uint64_t lastCommandIndex = getLastCommandIndex();
 
   std::function<bool(VPackSlice const& result)> updatePlan = [&](VPackSlice const& result) {
+    if (!result.isNumber()) {
+      LOG(ERR) << "Version is not a number! " << result.toJson();
+      return false;
+    }
+    uint64_t version = result.getNumber<uint64_t>();
+    LOG(TRACE) << "Hass " << result.toJson() << " " << version << " " << _dispatchedPlanVersion;
     bool mustHandlePlanChange = false;
     {
       MUTEX_LOCKER(mutexLocker, _statusLock);
@@ -126,7 +132,7 @@ void HeartbeatThread::runDBServer() {
         if (_lastDispatchedJobResult) {
           LOG(DEBUG) << "...and was successful";
           // mop: the dispatched version is still the same => we are finally uptodate
-          if (!_dispatchedPlanVersion.isEmpty() && _dispatchedPlanVersion.slice().equals(result)) {
+          if (_dispatchedPlanVersion == version) {
             LOG(DEBUG) << "Version is correct :)";
             return true;
           }
@@ -134,15 +140,14 @@ void HeartbeatThread::runDBServer() {
         }
       }
       if (_numDispatchedJobs == 0) {
-        LOG(DEBUG) << "Will dispatch plan change " << result;
+        LOG(DEBUG) << "Will dispatch plan change " << version;
         mustHandlePlanChange = true;
-        _dispatchedPlanVersion.clear();
-        _dispatchedPlanVersion.add(result);
+        _dispatchedPlanVersion = version;
       }
     }
     if (mustHandlePlanChange) {
       // mop: a dispatched task has returned
-      handlePlanChangeDBServer(arangodb::basics::VelocyPackHelper::stringUInt64(result));
+      handlePlanChangeDBServer(version);
     }
     return false;
   };

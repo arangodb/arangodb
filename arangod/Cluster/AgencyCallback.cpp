@@ -68,6 +68,7 @@ void AgencyCallback::refetchAndUpdate() {
   
   if (it == result._values.end()) {
     std::shared_ptr<VPackBuilder> newData = std::make_shared<VPackBuilder>();
+    newData->add(VPackSlice::noneSlice());
     checkValue(newData);
   } else {
     checkValue(it->second._vpack);
@@ -76,7 +77,8 @@ void AgencyCallback::refetchAndUpdate() {
 
 void AgencyCallback::checkValue(std::shared_ptr<VPackBuilder> newData) {
   if (!_lastData || !_lastData->slice().equals(newData->slice())) {
-    LOG(DEBUG) << "Got new value" << newData->toJson();
+    LOG(DEBUG) << "Got new value " << newData->slice().typeName();
+    LOG(DEBUG) << "Got new value " << newData->toJson();
     if (execute(newData)) {
       _lastData = newData;
     } else {

@@ -73,7 +73,7 @@ start() {
                 --cluster.my-role $ROLE \
                 --log.file cluster/$PORT.log \
                 --log.buffered false \
-                --log.level info \
+                --log.level trace \
                 --log.requests-file cluster/$PORT.req \
                 --server.disable-statistics true \
                 --server.foxx-queues false \
