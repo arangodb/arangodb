@@ -1,5 +1,5 @@
-/*jshint globalstrict: true */
 /*global applicationContext*/
+"use strict";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief A Foxx.Controller to show all Foxx Applications
@@ -28,25 +28,19 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-"use strict";
-
 var Foxx = require("org/arangodb/foxx");
 var publicController = new Foxx.Controller(applicationContext);
 var controller = new Foxx.Controller(applicationContext);
 var underscore = require("underscore");
 var cluster = require("org/arangodb/cluster");
 var joi = require("joi");
-var util = require("util");
 var internal = require("internal");
 var notifications = require("org/arangodb/configuration").notifications;
 var db = require("org/arangodb").db;
-var foxxInstallKey = joi.string().required().description(
-  "The _key attribute, where the information of this Foxx-Install is stored."
-);
 
-var foxxes = new (require("./lib/foxxes").Foxxes)();
-var FoxxManager = require("org/arangodb/foxx/manager");
 var UnauthorizedError = require("http-errors").Unauthorized;
+var API_DOCS = require(applicationContext.fileName("api-docs.json"));
+API_DOCS.basePath = "/_db/" + encodeURIComponent(db._name());
 
 publicController.activateSessions({
   autoCreateSession: false,
@@ -132,8 +126,7 @@ controller.allRoutes
 
 controller.apiDocumentation('/api', {
   swaggerJson(req, res) {
-    var filename = applicationContext.fileName('api-docs.json');
-    res.sendFile(filename, {lastModified: true});
+    res.json(API_DOCS);
   }
 });
 
