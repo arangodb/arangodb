@@ -1364,8 +1364,6 @@ function startInstanceAgency(instanceInfo, protocol, options,
     let dir = fs.join(rootDir, 'agency-' + i);
     fs.makeDirectoryRecursive(dir);
 
-    console.log("fucks", instanceArgs);
-
     instanceInfo.arangods.push(startArango(protocol, options, instanceArgs, testname, rootDir));
   }
 
