@@ -353,6 +353,8 @@
 ///   a different type of node.
 /// - 1478: @LIT{A cluster backend which was required for the operation could not be reached}
 ///   Will be raised if a required db server can't be reached.
+/// - 1479: @LIT{An endpoint couldn't be found}
+///    "An endpoint couldn't be found"
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -2079,6 +2081,16 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE                             (1478)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1479: ERROR_CLUSTER_UNKNOWN_CALLBACK_ENDPOINT
+///
+/// An endpoint couldn't be found
+///
+///  "An endpoint couldn't be found"
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_UNKNOWN_CALLBACK_ENDPOINT                       (1479)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED

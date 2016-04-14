@@ -549,7 +549,13 @@ function ahuacatlBindTestSuite () {
       var actual = getQueryResults("FOR u IN [ { name: { first: 'foo', last: 'bar' } } ] FILTER u.name.@part1 == 'foo' && u.name.@part2 == 'bar' RETURN u", { "part1" : "first", "part2" : "last" });
       assertEqual([ { name: { first: "foo", last: "bar" } } ], actual);
       
+      actual = getQueryResults("FOR u IN [ { name: { first: 'foo', last: 'bar' } } ] FILTER u.@part1 == 'foo' && u.@part2 == 'bar' RETURN u", { "part1" : [ "name", "first" ], "part2" : [ "name", "last" ] });
+      assertEqual([ { name: { first: "foo", last: "bar" } } ], actual);
+      
       actual = getQueryResults("FOR u IN [ { name: { first: 'foo', last: 'bar' } } ] FILTER u.@part1.@first == 'foo' && u.@part1.@last == 'bar' RETURN u", { "part1" : "name", "first" : "first", "last" : "last" });
+      assertEqual([ { name: { first: "foo", last: "bar" } } ], actual);
+      
+      actual = getQueryResults("FOR u IN [ { name: { first: 'foo', last: 'bar' } } ] FILTER u.@first == 'foo' && u.@last == 'bar' RETURN u", { "first" : [ "name", "first" ], "last" : [ "name", "last" ] });
       assertEqual([ { name: { first: "foo", last: "bar" } } ], actual);
       
       actual = getQueryResults("FOR u IN [ { values: [ { age: 28 }, { age: 30 }, { age: 40 } ] } ] RETURN u.values[*].@what", { "what" : "age" });

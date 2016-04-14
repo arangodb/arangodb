@@ -117,6 +117,8 @@ class ApplicationAgency : virtual public arangodb::rest::ApplicationFeature {
   ApplicationV8* _applicationV8;
   aql::QueryRegistry* _queryRegistry;
 
+  bool     _wait_for_sync;
+
 };
 }
 }

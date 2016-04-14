@@ -52,7 +52,8 @@ ApplicationAgency::ApplicationAgency(
     _agent_id((std::numeric_limits<uint32_t>::max)()), 
     _endpointServer(aes), 
     _applicationV8(applicationV8), 
-    _queryRegistry(queryRegistry) {
+    _queryRegistry(queryRegistry),
+    _wait_for_sync(true) {
 }
 
 
@@ -75,7 +76,9 @@ void ApplicationAgency::setupOptions(
      "to the minumum election timeout")
     ("agency.notify", &_notify, "Notify others")
     ("agency.sanity-check", &_sanity_check,
-     "Perform arangodb cluster sanity checking");
+     "Perform arangodb cluster sanity checking")
+    ("agency.wait-for-sync", &_wait_for_sync,
+     "Wait for hard disk syncs on every persistence call (Must for production)");
   
 }
 
@@ -152,8 +155,8 @@ bool ApplicationAgency::prepare() {
     new agent_t(
       _server, arangodb::consensus::config_t(
         _agent_id, _min_election_timeout, _max_election_timeout,
-        endpoint, _agency_endpoints, _notify, _sanity_check), _applicationV8,
-      _queryRegistry));
+        endpoint, _agency_endpoints, _notify, _sanity_check, _wait_for_sync),
+      _applicationV8, _queryRegistry));
   
   return true;
   

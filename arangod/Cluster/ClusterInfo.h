@@ -30,6 +30,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/AgencyComm.h"
+#include "Cluster/AgencyCallbackRegistry.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -540,7 +541,7 @@ class ClusterInfo {
   /// @brief creates library
   //////////////////////////////////////////////////////////////////////////////
 
-  ClusterInfo();
+  explicit ClusterInfo(AgencyCallbackRegistry*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief shuts down library
@@ -549,6 +550,7 @@ class ClusterInfo {
   ~ClusterInfo();
 
  public:
+  static void createInstance(AgencyCallbackRegistry*);
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the unique instance
   //////////////////////////////////////////////////////////////////////////////
@@ -866,6 +868,8 @@ class ClusterInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   AgencyComm _agency;
+
+  AgencyCallbackRegistry* _agencyCallbackRegistry;
 
   // Cached data from the agency, we reload whenever necessary:
 

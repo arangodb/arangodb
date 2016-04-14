@@ -43,11 +43,13 @@ using namespace arangodb::basics;
 
 ApplicationCluster::ApplicationCluster(
     TRI_server_t* server, arangodb::rest::ApplicationDispatcher* dispatcher,
-    ApplicationV8* applicationV8)
+    ApplicationV8* applicationV8,
+    arangodb::AgencyCallbackRegistry* agencyCallbackRegistry)
     : ApplicationFeature("Sharding"),
       _server(server),
       _dispatcher(dispatcher),
       _applicationV8(applicationV8),
+      _agencyCallbackRegistry(agencyCallbackRegistry),
       _heartbeat(nullptr),
       _heartbeatInterval(0),
       _agencyEndpoints(),
@@ -99,6 +101,7 @@ void ApplicationCluster::setupOptions(
 }
 
 bool ApplicationCluster::prepare() {
+  ClusterInfo::createInstance(_agencyCallbackRegistry);
   // set authentication data
   ServerState::instance()->setAuthentication(_username, _password);
 
@@ -345,6 +348,7 @@ bool ApplicationCluster::start() {
 
     // start heartbeat thread
     _heartbeat = new HeartbeatThread(_server, _dispatcher, _applicationV8,
+                                     _agencyCallbackRegistry,
                                      _heartbeatInterval * 1000, 5);
 
     if (_heartbeat == nullptr) {
