@@ -41,4 +41,3 @@ module.context.use(require('./aardvark'));
 module.context.use('/foxxes', require('./foxxes'));
 module.context.use('/cluster', require('./cluster'));
 module.context.use('/statistics', require('./statistics'));
-module.context.use('/templates', require('./foxxTemplates'));
