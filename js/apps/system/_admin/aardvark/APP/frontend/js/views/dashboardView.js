@@ -161,14 +161,15 @@
       });
     },
 
-    initialize: function () {
-      this.dygraphConfig = this.options.dygraphConfig;
+    initialize: function (options) {
+      this.options = options;
+      this.dygraphConfig = options.dygraphConfig;
       this.d3NotInitialized = true;
       this.events["click .dashboard-sub-bar-menu-sign"] = this.showDetail.bind(this);
       this.events["mousedown .dygraph-rangesel-zoomhandle"] = this.stopUpdating.bind(this);
       this.events["mouseup .dygraph-rangesel-zoomhandle"] = this.startUpdating.bind(this);
 
-      this.serverInfo = this.options.serverToShow;
+      this.serverInfo = options.serverToShow;
 
       if (! this.serverInfo) {
         this.server = "-local-";
@@ -451,7 +452,7 @@
         },
         {
           "key": "",
-          "color": this.dygraphConfig.colors[0],
+          "color": this.dygraphConfig.colors[2],
           "values": [
             {
               label: "used",
@@ -469,11 +470,11 @@
     mergeBarChartData: function (attribList, newData) {
       var i, v1 = {
         "key": this.barChartsElementNames[attribList[0]],
-        "color": this.dygraphConfig.colors[0],
+        "color": this.dygraphConfig.colors[1],
         "values": []
       }, v2 = {
         "key": this.barChartsElementNames[attribList[1]],
-        "color": this.dygraphConfig.colors[1],
+        "color": this.dygraphConfig.colors[2],
         "values": []
       };
       for (i = newData[attribList[0]].values.length - 1;  0 <= i;  --i) {
@@ -687,8 +688,8 @@
           .showValues(false)
           .showYAxis(false)
           .showXAxis(false)
-          .transitionDuration(100)
-          .tooltips(false)
+          //.transitionDuration(100)
+          //.tooltip(false)
           .showLegend(false)
           .showControls(false)
           .stacked(true);
@@ -803,8 +804,8 @@
             .showValues(false)
             .showYAxis(true)
             .showXAxis(true)
-            .transitionDuration(100)
-            .tooltips(false)
+            //.transitionDuration(100)
+            //.tooltips(false)
             .showLegend(false)
             .showControls(false)
             .forceY([0,1]);
@@ -848,7 +849,15 @@
       return;
     }
     self.timer = window.setInterval(function () {
-        self.getStatistics();
+
+        if (window.App.isCluster) {
+          if (window.location.hash.indexOf(self.serverInfo.target) > -1) {
+            self.getStatistics();
+          }
+        }
+        else {
+          self.getStatistics();
+        }
       },
       self.interval
     );
@@ -884,6 +893,7 @@
         this.prepareD3Charts();
         this.prepareResidentSize();
         this.updateTendencies();
+        $(window).trigger('resize');
       }
       this.startUpdating();
     }.bind(this);

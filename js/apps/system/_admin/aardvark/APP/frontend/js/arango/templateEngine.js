@@ -11,7 +11,10 @@
         var template = $("#" + id.replace(".", "\\.")).html();
         return {
           render: function(params) {
-            return _.template(template, params);
+            var tmp = _.template(template);
+            tmp = tmp(params);
+
+            return tmp;
           }
         };
       };

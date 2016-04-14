@@ -1,7 +1,78 @@
-@media (max-width: 738px) {
-  .arango-collection-ul {
-    display: none;
+@media (max-width: 568px) {
+
+  // SINGLE NODE DASHBOARD
+  .dashboard-large-chart,
+  .dashboard-medium-chart-outer:first-child {
+    padding-right: 0 !important;
   }
+
+  .dashboard-bar-chart-container {
+    margin-bottom: 65px !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .dashboard-medium-chart {
+    margin-bottom: 10px;
+  }
+
+  // CONTENT DROPDOWNS
+  div.dropdownInner ul label {
+    font-size: 13px;
+  }
+
+  // NAVIGATION LEFT
+  .navbar,
+  .navmenu,
+  .primary,
+  .navlist,
+  .navlist li,
+  .primary li {
+    width: 40px !important;
+  }
+
+  .arango-collection-ul {
+    .tab {
+      font-size: 12pt;
+      height: 30px;
+      overflow: hidden;
+
+      .fa {
+        padding-left: 6px;
+        padding-right: 20px;
+      }
+    }
+  }
+
+  div.centralRow {
+    left: 40px;
+  }
+
+}
+
+@media (min-width: 569px) and (max-width: 738px) {
+
+  // SINGLE NODE DASHBOARD
+  .dashboard-large-chart,
+  .dashboard-medium-chart-outer:first-child {
+    padding-right: 0 !important;
+  }
+
+  .dashboard-bar-chart-container {
+    margin-bottom: 65px !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .dashboard-medium-chart {
+    margin-bottom: 10px;
+  }
+
+  #repl-numbers, #repl-progress, #repl-ticks {
+    width: 100% !important;
+  }
+
+  //NAVIGATION 
 
   .collection-dropdown {
 
@@ -16,21 +87,8 @@
 }
 
 @media (min-width: 739px) and (max-width: 1041px) {
-  .arango-collection-ul {
-
-    a {
-      font-size: 11px;
-      padding: 7px 5px 10px;
-    }
-  }
 }
 
 
 @media (min-width: 1042px) and (max-width: 1284px) {
-  .arango-collection-ul {
-
-    a {
-      font-size: 13px;
-    }
-  }
 }

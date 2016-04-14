@@ -173,6 +173,7 @@
 
     fillEditor: function() {
       var toFill = this.removeReadonlyKeys(this.collection.first().attributes);
+      $('.disabledBread').last().text(this.collection.first().get('_key'));
       this.editor.set(toFill);
       $('.ace_content').attr('font-size','11pt');
     },
@@ -312,14 +313,10 @@
 
     breadcrumb: function () {
       var name = window.location.hash.split("/");
-      $('#transparentHeader').append(
-        '<div class="breadcrumb">'+
-        '<a href="#collections" class="activeBread">Collections</a>'+
-        '<span class="disabledBread"><i class="fa fa-chevron-right"></i></span>'+
-        '<a class="activeBread" href="#collection/' + name[1] + '/documents/1">' + name[1] + '</a>'+
-        '<span class="disabledBread"><i class="fa fa-chevron-right"></i></span>'+
-        '<a class="disabledBread">' + name[2] + '</a>'+
-        '</div>'
+      $('#subNavigationBar .breadcrumb').html(
+        '<a href="#collection/' + name[1] + '/documents/1">Collection: ' + name[1].toLowerCase() + '</a>' + 
+        '<i class="fa fa-chevron-right"></i>' +
+        'Document: ' + name[2]
       );
     },
 

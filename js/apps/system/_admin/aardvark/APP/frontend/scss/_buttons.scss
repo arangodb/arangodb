@@ -1,9 +1,9 @@
 // Bootstrap Buttons
 %bare-btn {
-  @include border-radius(3px);
+  @include border-radius(2px);
   @include box-shadow(0);
   font-size: 14px;
-  font-weight: 300 !important;
+  font-weight: 400 !important;
 }
 
 %btn {
@@ -46,6 +46,11 @@
 .button-success {
   @extend %btn;
   @extend %positive;
+}
+
+.button-info {
+  @extend %btn;
+  @extend %info;
 }
 
 [class^='button-']:disabled,
@@ -103,7 +108,7 @@ button.disabled,
 
 
 button {
-  font-family: 'Open Sans', sans-serif !important;
+  font-family: 'Lato', sans-serif !important;
 
   &.btn-server {
     width: 120px;

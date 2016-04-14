@@ -1,10 +1,35 @@
+$navbar-size: 150px;
+
+.navbar2 {
+  color: $c-white;
+
+  > .secondary {
+    background-color: $c-white-transp;
+  }
+
+}
+
 .navbar {
   @extend %fixedbar;
+  bottom: 0;
+  float: left;
   -webkit-font-smoothing: subpixel-antialiased;
-  height: 44px;
-  margin-bottom: 3px;
-  padding-top: 6px;
+  margin-bottom: 0;
+  position: absolute;
   top: 0;
+  width: $navbar-size;
+
+  > .primary {
+    background-color: $c-bluegrey-dark;
+    float: left;
+    height: 100%;
+    width: $navbar-size;
+  }
+
+
+  > .resizecontainer {
+    background-color: $c-white;
+  }
 
   .no-left-margin {
     border: 0;
@@ -17,9 +42,9 @@
 
   .arangodbLogo {
     height: auto;
-    margin-left: -5px;
-    margin-top: -1px;
-    width: 40%;
+    margin-left: 6px;
+    margin-top: 15px;
+    width: $navbar-size - 12px;
   }
 
   .arango-collection-select {
@@ -64,40 +89,38 @@
 
 .navlogo {
   @extend %pull-left;
-  margin-left: 5px;
-  margin-right: -3px;
-  padding-top: 3px;
+  height: 60px;
+  width: 100%;
 }
 
 .navmenu {
-  @extend %pull-right;
+  clear: both;
 }
 
 .navlist {
   list-style: none;
+  margin: 0;
+  width: $navbar-size;
 
   > li {
-    height: 39px;
+    line-height: 30px;
   }
 
   li {
     @extend %pull-left;
-    border-left: 1px solid transparent;
-    border-right: 1px solid transparent;
-    border-top: 1px solid transparent;
-    margin-left: 7px;
+    width: $navbar-size;
+
+    .fa {
+      opacity: .3;
+      padding-left: 5px;
+      padding-right: 15px;
+      text-align: center;
+      width: 10px;
+    }
 
     &.dropdown:hover {
-      background-color: $c-white;
       border-bottom-left-radius: 0;
       border-bottom-right-radius: 0;
-      border-left: 1px solid rgba(0, 0, 0, .2);
-      border-right: 1px solid rgba(0, 0, 0, .2);
-      border-top: 1px solid rgba(0, 0, 0, .2);
-
-      a {
-        border-bottom: 2px solid $c-white;
-      }
     }
 
     &.navbar-spacer,
@@ -110,58 +133,45 @@
     }
 
     &.navbar-spacer {
-      background-color: $c-navbar-spacer;
-      height: 21px;
-      margin-top: 9px;
-      width: 1px;
-
-      &.big {
-        margin-left: 15px;
-        margin-right: 15px;
-      }
-
-      &.med {
-        margin-left: 5px;
-        margin-right: 5px;
-      }
-
-      &:hover {
-        background-color: $c-navbar-spacer;
-      }
+      background-color: $c-white;
+      height: 1px;
+      margin-bottom: 5px;
+      margin-top: 5px;
+      opacity: .2;
     }
   }
 
   .active {
+    border-left: 2px solid $c-active-green;
+
     .tab {
-      border-bottom: 2px solid $c-positive;
-      padding-bottom: 4px;
+      color: $c-white;
+      margin-left: -2px;
+
+      .fa {
+        opacity: 1;
+      }
     }
   }
 
   > .active {
-    background-color: $c-transp;
+    background-color: rgba(255, 255, 255, .2);
 
     a {
-      color: $c-black;
+      opacity: 1;
     }
-  }
-
-  > .active:hover {
-    background-color: $c-white;
-
-    a {
-      color: $c-black;
-    }
-
   }
 
   .dropdown-item:hover,
   > li:hover {
-    background-color: $c-white;
-    border-radius: 3px;
 
     a {
-      color: $c-black;
+      color: $c-white;
+      opacity: 1;
+      -moz-transition: all .2s ease-in;
+      -o-transition: all .2s ease-in;
+      -webkit-transition: all .2s ease-in;
+      transition: all .2s ease-in;
     }
   }
 
@@ -182,16 +192,17 @@
 }
 
 .tab {
-  color: $c-bar-bg;
+  color: rgba(255, 255, 255, .8);
   display: block;
-  font-size: 12pt;
+  font-size: 9pt;
   font-weight: 100;
   padding: {
-    bottom: 10px;
+    bottom: 5px;
     left: 5px;
     right: 5px;
-    top: 9px;
+    top: 5px;
   }
+  text-transform: uppercase;
 
   &.userImg {
     padding-bottom: 5px;
@@ -208,7 +219,6 @@
 .dropdown-toolbar {
   @extend %dropdown-menu;
   background-color: $c-white !important;
-  border: 1px solid $c-content-border;
 
   li {
 
@@ -227,12 +237,11 @@
 .link-dropdown-menu,
 .user-dropdown-menu {
   @extend %dropdown-menu;
-  background-color: $c-white;
-  border: 1px solid rgba(0, 0, 0, .2);
+  background-color: $c-bar-bg-primary;
   border-top-right-radius: 0;
   margin-right: -1px;
   margin-top: 7px;
-  z-index: -10;
+  z-index: 50;
 
   .dropdown-item {
     border-left: 0;

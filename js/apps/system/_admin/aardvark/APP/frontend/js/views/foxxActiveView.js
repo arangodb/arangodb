@@ -7,7 +7,7 @@
 
   window.FoxxActiveView = Backbone.View.extend({
     tagName: 'div',
-    className: 'tile',
+    className: 'tile pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-3 pure-u-lg-1-4 pure-u-xl-1-6',
     template: templateEngine.createTemplate('foxxActiveView.ejs'),
     _show: true,
 
@@ -16,7 +16,7 @@
     },
 
     openAppDetailView: function() {
-      window.App.navigate('applications/' + encodeURIComponent(this.model.get('mount')), { trigger: true });
+      window.App.navigate('service/' + encodeURIComponent(this.model.get('mount')), { trigger: true });
     },
 
     toggle: function(type, shouldShow) {
