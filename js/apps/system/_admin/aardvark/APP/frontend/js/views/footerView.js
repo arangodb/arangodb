@@ -32,7 +32,7 @@
     template: templateEngine.createTemplate("footerView.ejs"),
 
     showServerStatus: function(isOnline) {
-      if (!window.App.isCluster) {
+      if (!window.App.isCluster) {
         if (isOnline === true) {
           $('#healthStatus').removeClass('negative');
           $('#healthStatus').addClass('positive');

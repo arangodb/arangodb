@@ -1,6 +1,6 @@
 /*jshint unused: false */
 /*global window, $, Backbone, document, arangoCollectionModel*/
-/*global arangoHelper,dashboardView,arangoDatabase, _*/
+/*global arangoHelper, btoa, dashboardView, arangoDatabase, _*/
 
 (function () {
   "use strict";
@@ -271,7 +271,7 @@
     logs: function (name, initialized) {
       this.checkUser();
       if (!initialized) {
-        this.waitForInit(this.logs.bind(this), logs);
+        this.waitForInit(this.logs.bind(this), name);
         return;
       }
       if (!this.logsView) {
