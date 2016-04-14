@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
+const dd = require('dedent');
 const InternalServerError = require('http-errors').InternalServerError;
 const internal = require('internal');
 const assert = require('assert');
@@ -77,9 +78,10 @@ module.exports = class FoxxService {
     this.dependencies = createDependencies(this.manifest.dependencies, this.options.dependencies);
     const warnings = this.applyConfiguration(this.options.configuration);
     if (warnings.length) {
-      console.warnLines(
-        `Stored configuration for app "${data.mount}" has errors:\n${warnings.join('\n  ')}`
-      );
+      console.warnLines(dd`
+        Stored configuration for app "${data.mount}" has errors:
+          ${warnings.join('\n  ')}
+      `);
     }
 
     this.thumbnail = null;
@@ -93,9 +95,10 @@ module.exports = class FoxxService {
     const range = this.manifest.engines && this.manifest.engines.arangodb;
     this.legacy = range ? semver.gtr('3.0.0', range) : false;
     if (this.legacy) {
-      console.debug(
-        `Running ${this.mount} in 2.x compatibility mode (requested version ${range} pre-dates 3.0.0)`
-      );
+      console.debugLines(dd`
+        Running "${this.mount}" in 2.x compatibility mode.
+        Requested version ${range} is lower than 3.0.0.
+      `);
     }
 
     this._reset();
@@ -151,10 +154,26 @@ module.exports = class FoxxService {
   buildRoutes() {
     const service = this;
     const tree = new Tree(this.main.context, this.router);
+    let paths = [];
+    try {
+      paths = tree.buildSwaggerPaths();
+    } catch (e) {
+      console.errorLines(e.stack);
+      let err = e.cause;
+      while (err && err.stack) {
+        console.errorLines(`via ${err.stack}`);
+        err = err.cause;
+      }
+      console.warnLines(dd`
+        Failed to build API documentation for "${this.mount}"!
+        This is likely a bug in your Foxx service.
+        Check the route methods you are using to document your API.
+      `);
+    }
     this.docs = {
       swagger: '2.0',
       basePath: this.main.context.baseUrl,
-      paths: tree.buildSwaggerPaths(),
+      paths: paths,
       info: {
         title: this.name,
         description: this.manifest.description,
@@ -186,10 +205,10 @@ module.exports = class FoxxService {
             }
             if (logLevel) {
               console[`${logLevel}Lines`](e.stack);
-              let err = e;
-              while (err.cause && err.cause.stack) {
-                err = err.cause;
+              let err = e.cause;
+              while (err && err.stack) {
                 console[`${logLevel}Lines`](`via ${err.stack}`);
+                err = err.cause;
               }
             }
             const body = {
