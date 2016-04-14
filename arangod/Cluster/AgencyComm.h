@@ -491,13 +491,10 @@ class AgencyComm {
   /// @brief update a version number in the agency
   //////////////////////////////////////////////////////////////////////////////
 
-  bool increaseVersion(std::string const& key);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief update a version number in the agency, retry until it works
-  //////////////////////////////////////////////////////////////////////////////
-
-  void increaseVersionRepeated(std::string const& key);
+  inline bool increaseVersion(std::string const& key) {
+    AgencyCommResult result = increment(key);
+    return result.successful();
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a directory in the backend

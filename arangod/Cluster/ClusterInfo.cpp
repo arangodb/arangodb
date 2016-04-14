@@ -1258,7 +1258,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
                        errorMsg);
   }
 
-  ac.increaseVersionRepeated("Plan/Version");
+  ac.increaseVersion("Plan/Version");
 
   // Update our cache:
   loadPlannedCollections();

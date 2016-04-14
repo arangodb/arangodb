@@ -500,7 +500,7 @@ bool AgencyCommLocker::fetchVersion(AgencyComm& comm) {
   }
 
   VPackSlice const versionSlice = it->second._vpack->slice();
-  _version = arangodb::basics::VelocyPackHelper::stringUInt64(versionSlice);
+  _version = versionSlice.getUInt();
   return true;
 }
 
@@ -666,7 +666,7 @@ bool AgencyComm::tryInitializeStructure() {
         VPackObjectBuilder d(&builder);
         addEmptyVPackObject("_system", builder);
       }
-      builder.add("Version", VPackValue("1"));
+      builder.add("Version", VPackValue(1));
       addEmptyVPackObject("ShardsCopied", builder);
       addEmptyVPackObject("NewServers", builder);
       addEmptyVPackObject("Coordinators", builder);
@@ -691,7 +691,7 @@ bool AgencyComm::tryInitializeStructure() {
       }
       builder.add("Lock", VPackValue("\"UNLOCKED\""));
       addEmptyVPackObject("DBServers", builder);
-      builder.add("Version", VPackValue("1"));
+      builder.add("Version", VPackValue(1));
       builder.add(VPackValue("Collections"));
       {
         VPackObjectBuilder d(&builder);
@@ -709,7 +709,7 @@ bool AgencyComm::tryInitializeStructure() {
         VPackObjectBuilder d(&builder);
         addEmptyVPackObject("_system", builder);
       }
-      builder.add("Version", VPackValue("\"1\""));
+      builder.add("Version", VPackValue(1));
       addEmptyVPackObject("MapLocalToID", builder);
       builder.add(VPackValue("Databases"));
       {
@@ -1166,87 +1166,6 @@ bool AgencyComm::exists(std::string const& key) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief update a version number in the agency
-////////////////////////////////////////////////////////////////////////////////
-
-bool AgencyComm::increaseVersion(std::string const& key) {
-  // fetch existing version number
-  AgencyCommResult result = getValues(key, false);
-  
-  if (!result.successful()) {
-    if (result.httpCode() !=
-        (int)arangodb::GeneralResponse::ResponseCode::NOT_FOUND) {
-      return false;
-    }
-
-    // no version key found, now set it
-    VPackBuilder builder;
-    try {
-      builder.add(VPackValue(1));
-    } catch (...) {
-      LOG(ERR) << "Couldn't add value to builder";
-      return false;
-    }
-
-    result.clear();
-    result = casValue(key, builder.slice(), false, 0.0, 0.0);
-
-    return result.successful();
-  }
-
-  // found a version
-  result.parse("", false);
-  auto it = result._values.begin();
-
-  if (it == result._values.end()) {
-    return false;
-  }
-
-  VPackSlice const versionSlice = it->second._vpack->slice();
-  uint64_t version =
-      arangodb::basics::VelocyPackHelper::stringUInt64(versionSlice);
-  VPackBuilder oldBuilder;
-  try {
-    if (versionSlice.isString()) {
-      oldBuilder.add(VPackValue(std::to_string(version)));
-    } else {
-      oldBuilder.add(VPackValue(version));
-    }
-  } catch (...) {
-    return false;
-  }
-  VPackBuilder newBuilder;
-  try {
-    newBuilder.add(VPackValue(version + 1));
-  } catch (...) {
-    return false;
-  }
-  result.clear();
-
-  result = casValue(key, oldBuilder.slice(), newBuilder.slice(), 0.0, 0.0);
-
-  return result.successful();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief update a version number in the agency, retry until it works
-////////////////////////////////////////////////////////////////////////////////
-
-void AgencyComm::increaseVersionRepeated(std::string const& key) {
-  bool ok = false;
-  while (!ok) {
-    ok = increaseVersion(key);
-    if (ok) {
-      return;
-    }
-    uint32_t val = 300 + TRI_UInt32Random() % 400;
-    LOG(INFO) << "Could not increase " << key << " in agency, retrying in "
-              << val << "!";
-    usleep(val * 1000);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief increment a key
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1626,8 +1545,7 @@ AgencyCommResult AgencyComm::uniqid(std::string const& key, uint64_t count,
     }
 
     VPackSlice oldSlice = oldBuilder->slice();
-    uint64_t const oldValue =
-        arangodb::basics::VelocyPackHelper::stringUInt64(oldSlice) + count;
+    uint64_t const oldValue = oldSlice.getUInt();
     uint64_t const newValue = oldValue + count;
 
     VPackBuilder newBuilder;
