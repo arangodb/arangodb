@@ -1289,16 +1289,44 @@ void Ast::injectBindParameters(BindParameters& parameters) {
       // look at second sub-node. this is the (replaced) bind parameter
       auto name = node->getMember(1);
 
-      if (name->type != NODE_TYPE_VALUE ||
-          name->value.type != VALUE_TYPE_STRING || name->value.length == 0) {
-        // if no string value was inserted for the parameter name, this is an
-        // error
-        THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE,
-                                      node->getString().c_str());
+      if (name->type == NODE_TYPE_VALUE) {
+        if (name->value.type == VALUE_TYPE_STRING && name->value.length != 0) {
+          // convert into a regular attribute access node to simplify handling later
+          return createNodeAttributeAccess(
+            node->getMember(0), name->getStringValue(), name->getStringLength());
+        }
+      } else if (name->type == NODE_TYPE_ARRAY) {
+        // bind parameter is an array (e.g. ["a", "b", "c"]. now build the attribute
+        // accesses for the array members recursively
+        size_t const n = name->numMembers();
+
+        AstNode* result = nullptr;
+        if (n > 0) {
+          result = node->getMember(0);
+        }
+
+        for (size_t i = 0; i < n; ++i) {
+          auto part = name->getMember(i);
+          if (part->value.type != VALUE_TYPE_STRING || part->value.length == 0) {
+            // invalid attribute name part
+            result = nullptr;
+            break;
+          }
+
+          result = createNodeAttributeAccess(
+            result, part->getStringValue(), part->getStringLength());
+        }
+
+        if (result != nullptr) {
+          return result;
+        }
       }
-      // convert into a regular attribute access node to simplify handling later
-      return createNodeAttributeAccess(
-          node->getMember(0), name->getStringValue(), name->getStringLength());
+      // fallthrough to exception
+         
+      // if no string value was inserted for the parameter name, this is an
+      // error
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE,
+                                    node->getString().c_str());
     } else if (node->type == NODE_TYPE_TRAVERSAL) {
       auto graphNode = node->getMember(2);
       if (graphNode->type == NODE_TYPE_VALUE) {

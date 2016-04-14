@@ -355,7 +355,7 @@ class AgencyCommLocker {
   /// The keys mentioned in this class are all not yet encoded.
   //////////////////////////////////////////////////////////////////////////////
 
-  AgencyCommLocker(std::string const&, std::string const&, double = 0.0);
+  AgencyCommLocker(std::string const&, std::string const&, double = 0.0, double = 0.0);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroys an agency comm locker

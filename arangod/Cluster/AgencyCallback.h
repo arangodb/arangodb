@@ -37,7 +37,8 @@ public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ctor
   //////////////////////////////////////////////////////////////////////////////
-  AgencyCallback(AgencyComm&, std::string const&, std::function<bool(VPackSlice const&)> const&);
+  AgencyCallback(AgencyComm&, std::string const&, 
+                 std::function<bool(VPackSlice const&)> const&, bool needsValue);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief wait a specified timeout. execute cb if watch didn't fire
@@ -54,8 +55,13 @@ private:
   AgencyComm& _agency;
   std::function<bool(VPackSlice const&)> const _cb;
   std::shared_ptr<VPackBuilder> _lastData;
+  bool const _needsValue;
 
+  // execute callback with current value data
   bool execute(std::shared_ptr<VPackBuilder>);
+  // execute callback without any data
+  bool executeEmpty(); 
+
   void checkValue(std::shared_ptr<VPackBuilder>);
 };
 

@@ -42,11 +42,12 @@ if (WIN32 AND NOT SSL_NUGET)
     set(OPENSSL_EXT "")
   endif ()
 
-  if (${BITS} EQUAL 64)
-    set(OPENSSL_LIB_DIR "${OPENSSL_ROOT_DIR}/lib64")
-  else ()
-    set(OPENSSL_LIB_DIR "${OPENSSL_ROOT_DIR}/lib")
+  if (NOT ${OPENSSL_LIB_DIR)
+    set(OPENSSL_LIB_DIR "${OPENSSL_ROOT_DIR}/lib/VC")
   endif ()
+
+message(STATUS "OPENSSL_LIB_DIR = ${OPENSSL_LIB_DIR}")
+message(STATUS "OPENSSL_ROOT_DIR = ${OPENSSL_ROOT_DIR}")
 
   set(OPENSSL_LIBRARIES
     debug "${OPENSSL_LIB_DIR}/ssleay32MTd.lib;${OPENSSL_LIB_DIR}/libeay32MTd.lib"

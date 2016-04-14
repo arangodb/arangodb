@@ -1,8 +1,10 @@
 %dashboard-chart-box {
   @extend %pull-left;
+  background-color: $c-white;
   border-left: 0 solid $c-black;
   border-top-left-radius: 3px;
   border-top-right-radius: 3px;
+  box-sizing: border-box;
 
   &:first-child {
     margin-left: 0;
@@ -14,6 +16,10 @@
 
   margin-bottom: $dashboard-margin;
   position: relative;
+}
+
+.dashboard-interior-chart {
+  width: 100% !important;
 }
 
 .dashboard-sub-bar-menu {
@@ -31,7 +37,7 @@
 
 .dataNotReadyYet {
   color: $c-warning;
-  font-family: 'Open Sans', sans-serif;
+  font-family: 'Lato', sans-serif;
   font-size: 14px;
   font-weight: 100;
   text-align: center;
@@ -40,25 +46,45 @@
 .dashboard-sub-bar {
   @extend %clear-float;
   @extend %pull-left;
-  background-color: $c-bar-bg;
+  background-color: $c-white;
   border-bottom-left-radius: 3px;
   border-bottom-right-radius: 3px;
-  color: $c-white;
-  height: 24px;
+  box-sizing: border-box;
+  color: rgba(0, 0, 0, .5);
+  font-family: Lato,sans-serif;
+  font-size: 11pt;
+  font-weight: 600;
+  height: 50px;
   line-height: 24px;
   margin: 0;
-  padding: 0 6px;
+  padding: {
+    bottom: 20px;
+    left: 6px;
+    right: 6px;
+    top: 10px;
+  };
+  text-align: center;
+  text-transform: uppercase;
 
   .dashboard-sub-bar-title {
     @extend %pull-left;
+    color: $c-black;
+    font-family: Lato,sans-serif;
+    font-size: 11pt;
+    font-weight: 600;
+    opacity: .5;
+    text-align: center;
+    text-transform: uppercase;
+    width: 100%;
   }
 }
 
 .dashboard-full-width-chart {
   @extend %dashboard-chart-basic;
   border: 1px solid rgba(104, 103, 102, .10);
-  border-radius: 3px;
+  border-radius: 2px;
   margin-right: 12px;
+  width: 100%;
 
   .dashboard-full-width-chart-inner {
     @extend %dashboard-chart-box;
@@ -69,6 +95,7 @@
     border-top: $dashboard-borderwidth solid $c-white;
     padding-bottom: $dashboard-padding;
     padding-top: $dashboard-padding + 2px;
+    width: 100%;
 
     .dashboard-subtitle-bar {
 
@@ -83,7 +110,6 @@
 
     .dashboard-interior-chart {
       @extend %pull-left;
-      border-left: 1px solid $c-e1grey;
 
       .inner {
         margin-left: 10px;
@@ -117,16 +143,12 @@
 
     }
 
-    .dashboard-interior-chart:first-child {
-      border-left: 0;
-    }
-
   }
 
   .state {
-    background-color: $c-white;
+    background-color: $c-new-grey;
     border-radius: 5px;
-    color: $c-black;
+    color: $c-white;
     margin-left: 5px;
     padding-left: 6px;
     padding-right: 4px;
@@ -135,9 +157,8 @@
 
 .dashboard-large-chart {
   @extend %dashboard-chart-basic;
-  border: 1px solid rgba(104, 103, 102, .10);
-  border-radius: 3px;
-  margin-right: 12px;
+  box-sizing: border-box;
+  padding-right: 10px;
 
   .dashboard-large-chart-inner {
     @extend %dashboard-chart-box;
@@ -147,7 +168,7 @@
     border-right: $dashboard-borderwidth solid $c-white;
     border-top: $dashboard-borderwidth solid $c-white;
     padding-bottom: $dashboard-padding;
-    padding-top: $dashboard-padding + 2px;
+    //padding-top: $dashboard-padding + 2px;
 
     .dashboard-interior-chart {
       @extend %pull-left;
@@ -159,8 +180,8 @@
 
 .dashboard-small-chart {
   @extend %dashboard-chart-basic;
-  border: 1px solid rgba(104, 103, 102, .10);
-  border-radius: 3px;
+  border-radius: 2px;
+  //width: auto;
 
   .dashboard-small-chart-inner {
     @extend %dashboard-chart-box;
@@ -185,11 +206,11 @@
 }
 
 .dashboard-medium-chart-outer {
-  border: 1px solid rgba(104, 103, 102, .10);
-  border-radius: 3px;
+  border-radius: 2px;
 
   &:first-child {
-    margin-right: 10px;
+    box-sizing: border-box;
+    padding-right: 10px;
   }
 }
 
@@ -210,11 +231,6 @@
   .dashboard-interior-chart {
     @extend %pull-left;
     margin-bottom: 0;
-  }
-
-  .dashboard-medium-chart-outer {
-    border: 1px solid rgba(104, 103, 102, .10);
-    border-radius: 3px;
   }
 
   .dashboard-medium-chart-menu {
@@ -250,8 +266,12 @@
 .dashboard-tendency-container {
   @extend %dashboard-chart-box;
   @extend %dashboard-chart-basic;
-  border: 1px solid rgba(104, 103, 102, .10);
-  border-radius: 3px;
+  //border: 1px solid rgba(104, 103, 102, .10);
+  border-radius: 2px;
+
+  .dashboard-sub-bar {
+    height: 46px;
+  }
 
   .dashboard-tendency-chart {
     @extend %clear-float;
@@ -266,8 +286,10 @@
     .dashboard-tendency {
       @extend %pull-left;
       background-color: $c-white;
+      box-sizing: border-box;
       margin-top: 5px;
-      padding: 0 8px;
+      padding: 0;
+      width: 50%;
 
       &:first-child {
         border-right: 1px solid $c-e1grey;
@@ -276,12 +298,17 @@
       .dashboard-subtitle-bar {
         @extend %pull-left;
         border-bottom: 1px solid $c-e1grey;
+        box-sizing: inherit;
+        padding-right: 11px;
         text-align: right;
+        width: 100%;
       }
 
       .dashboard-figure {
         @extend %pull-left;
+        box-sizing: border-box;
         text-align: center;
+        width: 100%;
       }
     }
   }
@@ -291,8 +318,18 @@
 .dashboard-bar-chart-container {
   @extend %dashboard-chart-box;
   @extend %dashboard-chart-basic;
-  border: 1px solid rgba(104, 103, 102, .10);
-  border-radius: 3px;
+  background: none;
+  //border: 1px solid rgba(104, 103, 102, .10);
+  border: 0;
+  border-radius: 2px;
+  box-sizing: border-box;
+  padding-left: 10px;
+  padding-right: 10px;
+
+  .dashboard-sub-bar {
+    padding-bottom: 17px;
+    padding-top: 5px;
+  }
 
   .dashboard-bar-chart {
     @extend %clear-float;
@@ -303,6 +340,7 @@
     border-top-left-radius: 3px;
     border-top-right-radius: 3px;
     padding-bottom: $dashboard-padding-tendency;
+    width: auto;
 
     .dashboard-bar-chart-title {
       @extend %pull-left;
@@ -334,10 +372,19 @@
 
 
 .dashboard-legend {
-  @extend %pull-left;
+  @extend %pull-right;
 
   .dashboard-legend-inner {
     padding: 0 5px 5px 0;
+
+    br {
+      display: none;
+    }
+
+    span {
+      @extend %pull-right;
+      padding-left: 10px;
+    }
   }
 }
 
@@ -345,8 +392,9 @@
   margin: 0 12px;
 }
 
-.headerBar.dashboard-headerbar {
-  margin: 20px 0;
+.dashboard-headerbar {
+  margin-bottom: 15px;
+  margin-top: 10px;
 }
 
 .modal-chart-detail {
@@ -407,6 +455,10 @@
   margin-bottom: 0;
   margin-left: 0;
   margin-right: 0;
+
+  .fa-arrows-alt {
+    display: none;
+  }
 }
 
 
@@ -415,4 +467,10 @@
   &.dygraph-axis-label-x {
     color: $c-darker-grey;
   }
+}
+
+#repl-numbers,
+#repl-ticks,
+#repl-progress {
+  width: 33.3% !important;
 }

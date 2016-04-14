@@ -69,7 +69,24 @@ if(OPENSSL_USE_STATIC_LIBS)
   endif()
 endif()
 
+
 if (WIN32)
+  # 32-bit not officially supported anymore anyway
+  set(SSL_BITS "x64")
+  # v140 corresponds to VS 2015
+  set(SSL_NUGET_DIR "lib/native/v140/windesktop/msvcstl/dyn/rt-dyn")
+  set(SSL_NUGET_ROOT "$ENV{USERPROFILE}/.nuget/packages/openssl.v140.windesktop.msvcstl.dyn.rt-dyn.${SSL_BITS}")
+  if (NOT OPENSSL_ROOT_DIR AND IS_DIRECTORY ${SSL_NUGET_ROOT})
+    # find latest version based on folder name and assign to OPENSSL_ROOT_DIR
+    FILE(GLOB dirlist RELATIVE ${SSL_NUGET_ROOT} ${SSL_NUGET_ROOT}/*)
+    list(SORT dirlist)
+    list(LENGTH dirlist listlength)
+    math(EXPR lastindex "${listlength}-1")
+    list(GET dirlist ${lastindex} latestversion)
+    set(OPENSSL_ROOT_DIR
+      "${SSL_NUGET_ROOT}/${latestversion}"
+      )
+  endif()
   if (IS_DIRECTORY "${OPENSSL_ROOT_DIR}/build/native/")
     set(SSL_NUGET TRUE)
   else()
@@ -77,24 +94,26 @@ if (WIN32)
   endif()
   if (OPENSSL_ROOT_DIR AND SSL_NUGET)
     message("Found nuGET installation of OpenSSL!")
-    set(SSL_BITS "x64")
     # its an openssl downloaded via nuget!
     set(OPENSSL_INCLUDE "${OPENSSL_ROOT_DIR}/build/native/include")
     set(_OPENSSL_ROOT_HINTS "${OPENSSL_ROOT_DIR}/build/native/include")
 
-    set(OPENSSL_LIB_DIR "${OPENSSL_ROOT_DIR}/lib/native/v140/windesktop/msvcstl/dyn/rt-dyn/${SSL_BITS}")
+    set(OPENSSL_LIB_DIR "${OPENSSL_ROOT_DIR}/${SSL_NUGET_DIR}/${SSL_BITS}")
     set(_OPENSSL_ROOT_HINTS "${OPENSSL_ROOT_DIR}/build/native/include")
 
     set(_OPENSSL_ROOT_PATHS
       "${OPENSSL_ROOT_DIR}/build/native/include"
-      "${OPENSSL_ROOT_DIR}/lib/native/v140/windesktop/msvcstl/dyn/rt-dyn/${SSL_BITS}/")
+      "${OPENSSL_ROOT_DIR}/${SSL_NUGET_DIR}/${SSL_BITS}/")
   else()
     # http://www.slproweb.com/products/Win32OpenSSL.html
     set(_OPENSSL_ROOT_HINTS
       ${OPENSSL_ROOT_DIR}
       "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\OpenSSL (32-bit)_is1;Inno Setup: App Path]"
       "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\OpenSSL (64-bit)_is1;Inno Setup: App Path]"
-      ENV OPENSSL_ROOT_DIR
+      $ENV{OPENSSL_ROOT_DIR}
+      )
+    set(_OPENSSL_ROOT_PATHS
+      $ENV{PATH}
       )
     file(TO_CMAKE_PATH "$ENV{PROGRAMFILES}" _programfiles)
     set(_OPENSSL_ROOT_PATHS
@@ -106,6 +125,9 @@ if (WIN32)
       "C:/OpenSSL-Win64/"
       )
     unset(_programfiles)
+    # none of the above will actually set OPENSSL_ROOT_DIR, but one could
+    # simply use the parent dir of the include dir (defined further below!)
+    #get_filename_component(OPENSSL_ROOT_DIR ${OPENSSL_INCLUDE_DIR} DIRECTORY)
   endif()
 else ()
   set(_OPENSSL_ROOT_HINTS

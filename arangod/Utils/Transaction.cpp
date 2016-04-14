@@ -1277,7 +1277,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
       // FIXME: We might only want to send the successful tries to the
       // replica, for now, we simply send the same body:
       auto body = std::make_shared<std::string>();
-      *body = std::move(value.toJson());
+      *body = value.toJson();
 
       // Now prepare the requests:
       std::vector<ClusterCommRequest> requests;

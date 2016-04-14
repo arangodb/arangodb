@@ -1,8 +1,9 @@
 input.search-input {
   @extend %inputs;
-  height: 14px;
-  line-height: 18px;
-  margin-right: -1px;
+  border: 1px solid $c-white;
+  height: 15px;
+  line-height: 17px;
+  margin-right: -4px;
   margin-top: 6px;
   width: 120px;
 }
@@ -14,10 +15,10 @@ input.search-input {
   .fa-search {
     color: $c-c2grey;
     font-size: 12pt;
+    margin-left: -20px;
     opacity: .5;
-    position: absolute;
-    right: 9px;
-    top: 9px;
+    position: relative;
+    top: -2px;
 
     &:hover {
       cursor: pointer;
@@ -56,17 +57,14 @@ input.search-input {
 
 // The bar on top of each page
 div.headerBar {
-  background-color: $c-white;
-  border: 1px solid rgba(140, 138, 137, .25);
-  border-radius: 3px;
-  color: $c-white;
+  background-color: none;
+  border-radius: 2px;
+  color: $c-black;
   font-size: 16px;
   height: 36px;
-  margin-bottom: 5px;
-  margin-top: 15px;
+  margin-top: -55px;
   padding-left: 5px;
   padding-right: 5px;
-  position: relative;
 
   select {
     &:focus {
@@ -171,13 +169,34 @@ div.headerBar {
   background: transparent;
   border: 0;
   border-radius: 0;
-  padding: 7px 0;
+  color: $c-white;
+  font-size: 12pt;
+  font-weight: 100;
+  line-height: 45px;
+  margin: 0;
+  margin-left: -4px;
+  padding: {
+    bottom: 0;
+    left: 10px;
+    right: 0;
+    top: 0;
+  };
+
+  .fa {
+    margin-left: 10px;
+    margin-right: 8px;
+  }
+
+  .fa-ellipsis-v {
+    font-size: 10pt;
+    opacity: 0;
+  }
 
   // Disabled breadcrumb
   .disabledBread {
-    color: $c-darker-grey;
+    color: $c-white;
     float: left;
-    font-size: 11.5pt;
+    font-size: 12pt;
     font-weight: 100;
     padding-right: 5px;
     position: relative;
@@ -187,13 +206,42 @@ div.headerBar {
       margin-left: 10px;
     }
 
+    &:hover {
+      cursor: default;
+    }
+
   }
 
   .activeBread {
-    color: $c-positive;
+    color: $c-white;
     float: left;
-    font-size: 11.5pt;
+    font-size: 11pt;
     font-weight: 100;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-transition: opacity .2s cubic-bezier(.645, .045, .355, 1);
+    transition: opacity .2s cubic-bezier(.645, .045, .355, 1);
+
+    &:hover {
+      opacity: .65;
+    }
+  }
+
+  a {
+    color: $c-white !important;
+    opacity: .8;
+    text-transform: capitalize;
+    -moz-transition: all .2s ease-in;
+    -o-transition: all .2s ease-in;
+    -webkit-transition: all .2s ease-in;
+    transition: all .2s ease-in;
+
+    &:hover {
+      opacity: 1;
+      -moz-transition: all .2s ease-in;
+      -o-transition: all .2s ease-in;
+      -webkit-transition: all .2s ease-in;
+      transition: all .2s ease-in;
+    }
   }
 
   #app-development-path {
