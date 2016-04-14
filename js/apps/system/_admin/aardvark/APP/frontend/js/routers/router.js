@@ -18,6 +18,9 @@
       "new": "newCollection",
       "login": "login",
       "collection/:colid/documents/:pageid": "documents",
+      "cIndices/:colname": "cIndices",
+      "cSettings/:colname": "cSettings",
+      "cInfo/:colname": "cInfo",
       "collection/:colid/:docid": "document",
       "shell": "shell",
       "queries": "query2",
@@ -366,6 +369,69 @@
       });
     },
 
+    cIndices: function (colname, initialized) {
+      var self = this;
+
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.cIndices.bind(this), colname);
+        return;
+      }
+      this.arangoCollectionsStore.fetch({
+        success: function () {
+          self.indicesView = new window.IndicesView({
+            collectionName: colname,
+            collection: self.arangoCollectionsStore.findWhere({
+              name: colname
+            })
+          });
+          self.indicesView.render();
+        }
+      });
+    },
+
+    cSettings: function (colname, initialized) {
+      var self = this;
+
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.cSettings.bind(this), colname);
+        return;
+      }
+      this.arangoCollectionsStore.fetch({
+        success: function () {
+          self.settingsView = new window.SettingsView({
+            collectionName: colname,
+            collection: self.arangoCollectionsStore.findWhere({
+              name: colname
+            })
+          });
+          self.settingsView.render();
+        }
+      });
+    },
+
+    cInfo: function (colname, initialized) {
+      var self = this;
+
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.cInfo.bind(this), colname);
+        return;
+      }
+      this.arangoCollectionsStore.fetch({
+        success: function () {
+          self.settingsView = new window.InfoView({
+            collectionName: colname,
+            collection: self.arangoCollectionsStore.findWhere({
+              name: colname
+            })
+          });
+          self.infoView.render();
+        }
+      });
+    },
+
     documents: function (colid, pageid, initialized) {
       this.checkUser();
       if (!initialized) {
@@ -381,7 +447,6 @@
       }
       this.documentsView.setCollectionId(colid, pageid);
       this.documentsView.render();
-
     },
 
     document: function (colid, docid, initialized) {
@@ -431,7 +496,7 @@
       this.shellView.render();
     },
 
-    query: function (initialized) {
+    /*query: function (initialized) {
       this.checkUser();
       if (!initialized) {
         this.waitForInit(this.query.bind(this));
@@ -444,6 +509,7 @@
       }
       this.queryView.render();
     },
+    */
 
     query2: function (initialized) {
       this.checkUser();
@@ -458,7 +524,8 @@
       }
       this.queryView2.render();
     },
-    
+   
+    /* 
     test: function (initialized) {
       this.checkUser();
       if (!initialized) {
@@ -471,6 +538,7 @@
       }
       this.testView.render();
     },
+    */
 
     workMonitor: function (initialized) {
       this.checkUser();
