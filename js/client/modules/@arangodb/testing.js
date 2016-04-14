@@ -1123,7 +1123,6 @@ function shutdownInstance(instanceInfo, options) {
   while (toShutdown.length > 0) {
     toShutdown = toShutdown.filter(arangod => {
       arangod.exitStatus = statusExternal(arangod.pid, false);
-      console.log(arangod);
 
       if (arangod.exitStatus.status === "RUNNING") {
         ++count;
@@ -1299,7 +1298,6 @@ function startArango(protocol, options, addArgs, name, rootDir) {
   args["server.endpoint"] = endpoint;
   args["database.directory"] = dataDir;
   args["log.file"] = fs.join(rootDir, "log");
-  args["log.level"] = 'trace';
 
   if (protocol === "ssl") {
     args["server.keyfile"] = fs.join("UnitTests", "server.pem");
@@ -1363,8 +1361,6 @@ function startInstanceAgency(instanceInfo, protocol, options,
     }
     let dir = fs.join(rootDir, 'agency-' + i);
     fs.makeDirectoryRecursive(dir);
-
-    console.log("fucks", instanceArgs);
 
     instanceInfo.arangods.push(startArango(protocol, options, instanceArgs, testname, rootDir));
   }
