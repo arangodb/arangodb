@@ -1396,7 +1396,7 @@ AgencyCommResult AgencyComm::getValues(std::string const& key, bool recursive) {
       // but only if there is something inside this object
 
       TRI_ASSERT(fullKey.size() > 0);
-      TRI_ASSERT(fullkey[0] == '/');
+      //TRI_ASSERT(fullkey[0] == '/');
       size_t currentKeyStart = fullKey.size() > 1 ? 1 : std::string::npos;
       while (currentKeyStart != std::string::npos) {
         // at least one further step to go down
