@@ -173,22 +173,23 @@ module.exports = class FoxxService {
           try {
             handled = tree.dispatch(req, res);
           } catch (e) {
+            const logLevel = (
+              !e.statusCode ? 'error' : // Unhandled
+              e.statusCode >= 500 ? 'warn' : // Internal
+              service.isDevelopment ? 'info' : // Debug
+              undefined
+            );
             let error = e;
             if (!e.statusCode) {
-              console.errorLines(e.stack);
               error = new InternalServerError();
               error.cause = e;
+            }
+            if (logLevel) {
+              console[`${logLevel}Lines`](e.stack);
               let err = e;
               while (err.cause && err.cause.stack) {
                 err = err.cause;
-                console.errorLines(`via ${err.stack}`);
-              }
-            } else if (e.statusCode >= 500) {
-              console.warnLines(e.stack);
-              let err = e;
-              while (err.cause && err.cause.stack) {
-                err = err.cause;
-                console.warnLines(`via ${err.stack}`);
+                console[`${logLevel}Lines`](`via ${err.stack}`);
               }
             }
             const body = {
