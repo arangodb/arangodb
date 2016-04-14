@@ -33,6 +33,8 @@ const db = require('@arangodb').db;
 const notifications = require('@arangodb/configuration').notifications;
 const createRouter = require('@arangodb/foxx/router');
 const NOT_FOUND = require('@arangodb').errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code;
+const API_DOCS = require(module.context.fileName('api-docs.json'));
+API_DOCS.basePath = `/_db/${encodeURIComponent(db._name())}`;
 
 const sessions = module.context.sessions;
 const auth = module.context.auth;
@@ -107,14 +109,11 @@ authRouter.use((req, res, next) => {
   next();
 });
 
-authRouter.get('/api/*', module.context.createSwaggerHandler(
-  (req) => ({
-    appPath: req.queryParams.mount,
-    swaggerJson(req, res) {
-      res.sendFile(module.context.fileName('api-docs.json'), {lastModified: true});
-    }
-  })
-));
+authRouter.get('/api/*', module.context.createSwaggerHandler({
+  swaggerJson(req, res) {
+    res.json(API_DOCS);
+  }
+}));
 
 authRouter.get('shouldCheckVersion', function(req, res) {
   var versions = notifications.versions();
