@@ -555,6 +555,7 @@ void RestVocbaseBaseHandler::generateTransactionError(
       return;
 
     case TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES:
+    case TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN:
     case TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY: {
       generateError(GeneralResponse::ResponseCode::BAD, result.code);
       return;
