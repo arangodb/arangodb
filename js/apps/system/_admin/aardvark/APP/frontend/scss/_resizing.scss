@@ -1,11 +1,11 @@
 .resizecontainer {
   @extend %clear-float;
-  -webkit-box-sizing: border-box;
   -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
   box-sizing: border-box;
   padding: {
     left: 10px;
-    right: 10px; 
+    right: 10px;
   };
 }
 
@@ -37,20 +37,13 @@
       display: none;
     }
   }
-
-  .navmenu {
-  }
 }
 
 
 @media (min-width: 739px) and (max-width: 1041px) {
-  #arangoCollectionUl a {
-  }
 }
 
 @media (min-width: 1042px) and (max-width: 1284px) {
-  #arangoCollectionUl a {
-  }
 }
 
 @for $i from 1 through 11 {
@@ -561,7 +554,7 @@
 
 
 div.contentWrapper {
-  padding-bottom: 42px; 
+  padding-bottom: 42px;
 }
 
 div.centralRow {
