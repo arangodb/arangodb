@@ -24,6 +24,7 @@
 const _ = require('lodash');
 const fs = require('fs');
 const vary = require('vary');
+const httperr = require('http-errors');
 const statuses = require('statuses');
 const mediaTyper = require('media-typer');
 const mimeTypes = require('mime-types');
@@ -270,6 +271,13 @@ module.exports = class SyntheticResponse {
       );
     }
     return this;
+  }
+
+  throw(status, reason, args) {
+    if (typeof status === 'string') {
+      status = statuses(status);
+    }
+    throw Object.assign(httperr(status, reason), args);
   }
 
   send(body, type) {
