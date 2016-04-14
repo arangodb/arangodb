@@ -1092,74 +1092,8 @@ function shutdownArangod(arangod, options) {
     print(arangod.url + "/_admin/shutdown");
     download(arangod.url + "/_admin/shutdown", "",
         makeAuthorizationHeaders(options));
-
-    print("Waiting for server with pid " + arangod.pid + " to shut down");
-
-    let count = 0;
-    let bar = "[";
-
-    let timeout = 600;
-
-    if (options.sanitizer) {
-      timeout *= 2;
-    }
-
-    while (true) {
-      arangod.exitStatus = statusExternal(arangod.pid, false);
-
-      if (arangod.exitStatus.status === "RUNNING") {
-        ++count;
-
-        if (options.valgrind) {
-          wait(1);
-          continue;
-        }
-
-        if (count % 10 === 0) {
-          bar = bar + "#";
-        }
-
-        if (count > 600) {
-          print("forcefully terminating " + yaml.safeDump(arangod.pid) +
-              " after " + timeout + "s grace period; marking crashy.");
-          serverCrashed = true;
-          killExternal(arangod.pid);
-          break;
-        } else {
-          wait(1);
-        }
-      } else if (arangod.exitStatus.status !== "TERMINATED") {
-        if (arangod.exitStatus.hasOwnProperty('signal')) {
-          print("Server shut down with : " +
-              yaml.safeDump(arangod.exitStatus) +
-              " marking build as crashy.");
-
-          serverCrashed = true;
-          break;
-        }
-        if (platform.substr(0, 3) === 'win') {
-          // Windows: wait for procdump to do its job...
-          statusExternal(arangod.monitor, true);
-        }
-      } else {
-        print("Server shutdown: Success.");
-        break; // Success.
-      }
-    }
-
-    if (count > 10) {
-      print("long Server shutdown: " + bar + ']');
-    }
   } else {
     print("Server already dead, doing nothing.");
-  }
-
-  if (!options.skipLogAnalysis) {
-    let errorEntries = readImportantLogLines(arangod.rootDir);
-    if (Object.keys(errorEntries).length > 0) {
-      print("Found messages in the server logs: \n" +
-        yaml.safeDump(errorEntries));
-    }
   }
 }
 
@@ -1168,14 +1102,79 @@ function shutdownArangod(arangod, options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function shutdownInstance(instanceInfo, options) {
-  // mop: reversing for now because it seems cluster hangs when agency is killed first :S
-  // should be fixed :S
   if (!checkInstanceAlive(instanceInfo, options)) {
     print("Server already dead, doing nothing. This shouldn't happen?");
   }
   instanceInfo.arangods.reverse().forEach(arangod => {
     shutdownArangod(arangod, options);
   });
+  
+  let timeout = 60;
+  if (options.valgrind) {
+    timeout *= 10;
+  }
+  if (options.sanitizer) {
+    timeout *= 2;
+  }
+  let count = 0;
+  let bar = "[";
+  
+  let toShutdown = instanceInfo.arangods.slice();
+  while (toShutdown.length > 0) {
+    toShutdown = toShutdown.filter(arangod => {
+      arangod.exitStatus = statusExternal(arangod.pid, false);
+      console.log(arangod);
+
+      if (arangod.exitStatus.status === "RUNNING") {
+        ++count;
+
+        if (count % 10 === 0) {
+          bar = bar + "#";
+        }
+
+        if (count > timeout) {
+          print("forcefully terminating " + yaml.safeDump(arangod.pid) +
+              " after " + timeout + "s grace period; marking crashy.");
+          serverCrashed = true;
+          killExternal(arangod.pid);
+          return false;
+        } else {
+          return true;
+        }
+      } else if (arangod.exitStatus.status !== "TERMINATED") {
+        if (arangod.exitStatus.hasOwnProperty('signal')) {
+          print("Server shut down with : " +
+              yaml.safeDump(arangod.exitStatus) +
+              " marking build as crashy.");
+
+          serverCrashed = true;
+          return false;
+        }
+        if (platform.substr(0, 3) === 'win') {
+          // Windows: wait for procdump to do its job...
+          statusExternal(arangod.monitor, true);
+        }
+      } else {
+        print("Server shutdown: Success.");
+        return false;
+      }
+    });
+    if (toShutdown.length > 0) {
+      print(toShutdown.length + " arangods are still running...");
+      wait(1);
+    }
+  }
+   
+  if (!options.skipLogAnalysis) {
+    instanceInfo.arangods.forEach(arangod => {
+      let errorEntries = readImportantLogLines(arangod.rootDir);
+      if (Object.keys(errorEntries).length > 0) {
+        print("Found messages in the server logs: \n" +
+            yaml.safeDump(errorEntries));
+      }
+    });
+  }
+
   cleanupDirectories.push(instanceInfo.rootDir);
 }
 
@@ -1300,6 +1299,7 @@ function startArango(protocol, options, addArgs, name, rootDir) {
   args["server.endpoint"] = endpoint;
   args["database.directory"] = dataDir;
   args["log.file"] = fs.join(rootDir, "log");
+  args["log.level"] = 'trace';
 
   if (protocol === "ssl") {
     args["server.keyfile"] = fs.join("UnitTests", "server.pem");
@@ -1312,7 +1312,6 @@ function startArango(protocol, options, addArgs, name, rootDir) {
   }
   instanceInfo.url = endpointToURL(instanceInfo.endpoint);
   
-  const startTime = time();
   instanceInfo.pid = executeValgrind(ARANGOD_BIN, toArgv(args), options, name).pid;
 
   if (platform.substr(0, 3) === 'win') {
@@ -1331,7 +1330,6 @@ function startArango(protocol, options, addArgs, name, rootDir) {
       throw x;
     }
   }
-  print("up and running in " + (time() - startTime) + " seconds");
   return instanceInfo;
 }
 
@@ -1339,7 +1337,11 @@ function startInstanceAgency(instanceInfo, protocol, options,
   addArgs, testname, rootDir) {
 
   const N = options.agencySize;
+  if (options.agencyWaitForSync === undefined) {
+    options.agencyWaitForSync = true;
+  }
   const wfs = options.agencyWaitForSync;
+  
   for (let i = 0; i < N; i++) {
     let instanceArgs = _.clone(addArgs);
     instanceArgs["agency.id"] = String(i);
@@ -1361,6 +1363,8 @@ function startInstanceAgency(instanceInfo, protocol, options,
     }
     let dir = fs.join(rootDir, 'agency-' + i);
     fs.makeDirectoryRecursive(dir);
+
+    console.log("fucks", instanceArgs);
 
     instanceInfo.arangods.push(startArango(protocol, options, instanceArgs, testname, rootDir));
   }
@@ -1387,6 +1391,7 @@ function startInstance(protocol, options, addArgs, testname, tmpDir) {
   let rootDir = fs.join(tmpDir || fs.getTempFile(), testname);
   let instanceInfo = {rootDir, arangods: []};
   
+  const startTime = time();
   try {
     if (options.cluster) {
       startInstanceCluster(instanceInfo, protocol, options,
@@ -1420,6 +1425,7 @@ function startInstance(protocol, options, addArgs, testname, tmpDir) {
         }
       });
     }
+    print("up and running in " + (time() - startTime) + " seconds");
   } catch (e) {
     print(e, e.stack);
     return false;

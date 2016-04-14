@@ -198,6 +198,15 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["a/y"]]), [{"a":{"y":12}}]);
       sleep(1100);
       assertEqual(readAndCheck([["a/y"]]), [{"a":{"y":12}}]);
+      writeAndCheck([[{"foo/bar":{"op":"set","new":{"baz":12}}}]]);
+      assertEqual(readAndCheck([["/foo/bar/baz"]]), [{"foo":{"bar":{"baz":12}}}]);
+      assertEqual(readAndCheck([["/foo/bar"]]), [{"foo":{"bar":{"baz":12}}}]);
+      assertEqual(readAndCheck([["/foo"]]), [{"foo":{"bar":{"baz":12}}}]);
+      writeAndCheck([[{"foo/bar":{"op":"set","new":{"baz":12},"ttl":1}}]]);
+      sleep(1000);
+      assertEqual(readAndCheck([["/foo"]]), [{"foo":{}}]);
+      assertEqual(readAndCheck([["/foo/bar"]]), [{"foo":{}}]);
+      assertEqual(readAndCheck([["/foo/bar/baz"]]), [{"foo":{}}]);
     },
 
     testOpNew : function () {

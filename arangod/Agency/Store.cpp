@@ -302,7 +302,12 @@ template<> bool Node::handle<SET> (VPackSlice const& slice) {
     LOG_TOPIC(WARN, Logger::AGENCY) << slice.toJson();
     return false;
   }
-  *this = slice.get("new");
+  Slice val = slice.get("new");
+  if (val.isObject()) {
+    this->applies(val);
+  } else { 
+    *this = val;
+  }
   if (slice.hasKey("ttl")) {
     VPackSlice ttl_v = slice.get("ttl");
     if (ttl_v.isNumber()) {
