@@ -733,21 +733,6 @@ function AgencySuite () {
       var values = agency.get("UnitTestsAgency/someDir/foobar");
       assertTrue(values.hasOwnProperty("UnitTestsAgency/someDir/foobar"));
       assertEqual(values["UnitTestsAgency/someDir/foobar"], value);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test set / get
-////////////////////////////////////////////////////////////////////////////////
-
-    testGetUrlEncodedKey : function () {
-      assertTrue(agency.createDirectory("UnitTestsAgency/someDir"));
-
-      var key = "foo bar baz / hihi";
-      agency.set("UnitTestsAgency/someDir/" + encodeURIComponent(key), "something");
-     
-      var values = agency.get("UnitTestsAgency/someDir/" + encodeURIComponent(key));
-      assertTrue(values.hasOwnProperty("UnitTestsAgency/someDir/" + key));
-      assertEqual(values["UnitTestsAgency/someDir/" + key], "something");
     }
 
   };
