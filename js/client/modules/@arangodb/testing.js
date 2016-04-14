@@ -1339,7 +1339,11 @@ function startInstanceAgency(instanceInfo, protocol, options,
   addArgs, testname, rootDir) {
 
   const N = options.agencySize;
+  if (options.agencyWaitForSync === undefined) {
+    options.agencyWaitForSync = true;
+  }
   const wfs = options.agencyWaitForSync;
+  
   for (let i = 0; i < N; i++) {
     let instanceArgs = _.clone(addArgs);
     instanceArgs["agency.id"] = String(i);
@@ -1361,6 +1365,8 @@ function startInstanceAgency(instanceInfo, protocol, options,
     }
     let dir = fs.join(rootDir, 'agency-' + i);
     fs.makeDirectoryRecursive(dir);
+
+    console.log("fucks", instanceArgs);
 
     instanceInfo.arangods.push(startArango(protocol, options, instanceArgs, testname, rootDir));
   }
