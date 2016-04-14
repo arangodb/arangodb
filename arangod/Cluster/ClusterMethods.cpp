@@ -1358,6 +1358,9 @@ int getDocumentOnCoordinator(
           std::make_unique<std::map<std::string, std::string>>(*headers);
       if (!useMultiple) {
         TRI_ASSERT(it.second.size() == 1);
+        if (!options.ignoreRevs && slice.hasKey(TRI_VOC_ATTRIBUTE_REV)) {
+          headersCopy->emplace("if-match", slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
+        }
 
         // We send to single endpoint
         cc->asyncRequest("", coordTransactionID, "shard:" + it.first, reqType,
@@ -1414,6 +1417,10 @@ int getDocumentOnCoordinator(
 
   auto shardList = ci->getShardList(collid);
   if (!useMultiple) {
+
+    if (!options.ignoreRevs && slice.hasKey(TRI_VOC_ATTRIBUTE_REV)) {
+      headers->emplace("if-match", slice.get(TRI_VOC_ATTRIBUTE_REV).copyString());
+    }
     for (auto const& shard : *shardList) {
       auto headersCopy =
           std::make_unique<std::map<std::string, std::string>>(*headers);
