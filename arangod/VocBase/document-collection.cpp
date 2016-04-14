@@ -3378,6 +3378,9 @@ int TRI_document_collection_t::update(Transaction* trx,
                                       bool lock,
                                       VPackSlice& prevRev,
                                       TRI_doc_mptr_t& previous) {
+  if (!newSlice.isObject()) {
+    return TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
+  }
   // initialize the result
   TRI_ASSERT(mptr != nullptr);
   mptr->setDataPtr(nullptr);
@@ -3406,7 +3409,9 @@ int TRI_document_collection_t::update(Transaction* trx,
     // get the header pointer of the previous revision
     TRI_doc_mptr_t* oldHeader;
     VPackSlice key = newSlice.get(TRI_VOC_ATTRIBUTE_KEY);
-    TRI_ASSERT(!key.isNone());
+    if (key.isNone()) {
+      return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+    }
     res = lookupDocument(trx, key, oldHeader);
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
@@ -3514,6 +3519,10 @@ int TRI_document_collection_t::replace(Transaction* trx,
                                        bool lock,
                                        VPackSlice& prevRev,
                                        TRI_doc_mptr_t& previous) {
+  if (!newSlice.isObject()) {
+    return TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
+  }
+
   prevRev = VPackSlice();
 
   if (_info.type() == TRI_COL_TYPE_EDGE) {
@@ -3554,7 +3563,9 @@ int TRI_document_collection_t::replace(Transaction* trx,
     // get the header pointer of the previous revision
     TRI_doc_mptr_t* oldHeader;
     VPackSlice key = newSlice.get(TRI_VOC_ATTRIBUTE_KEY);
-    TRI_ASSERT(!key.isNone());
+    if (key.isNone()) {
+      return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+    }
     res = lookupDocument(trx, key, oldHeader);
     if (res != TRI_ERROR_NO_ERROR) {
       return res;

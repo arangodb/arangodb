@@ -1275,12 +1275,11 @@ int truncateCollectionOnCoordinator(std::string const& dbname,
 
 int getDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
-    std::string const& key, TRI_voc_rid_t const rev,
+    VPackSlice const slice, OperationOptions const& options,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
-    bool generateDocument,
     arangodb::GeneralResponse::ResponseCode& responseCode,
-    std::map<std::string, std::string>& resultHeaders,
-    std::string& resultBody) {
+    std::unordered_map<int, size_t>& errorCounter,
+    std::shared_ptr<VPackBuilder>& resultBody) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   ClusterComm* cc = ClusterComm::instance();
@@ -1297,7 +1296,198 @@ int getDocumentOnCoordinator(
   // because we can easily determine which shard is responsible for the
   // document. Otherwise we have to contact all shards and ask them to
   // delete the document. All but one will not know it.
-  // Now find the responsible shard:
+  // Now find the responsible shard(s)
+  
+  ShardID shardID;
+
+  std::unordered_map<ShardID, std::vector<VPackValueLength>> shardMap;
+  std::vector<std::pair<ShardID, VPackValueLength>> reverseMapping;
+  bool useMultiple = slice.isArray();
+
+  int res = TRI_ERROR_NO_ERROR;
+  bool canUseFastPath = true;
+  if (useMultiple) {
+    VPackValueLength length = slice.length();
+    for (VPackValueLength idx = 0; idx < length; ++idx) {
+      res = distributeBabyOnShards(shardMap, ci, collid, collinfo,
+                                   reverseMapping, slice.at(idx), idx);
+      if (res != TRI_ERROR_NO_ERROR) {
+        canUseFastPath = false;
+        shardMap.clear();
+        reverseMapping.clear();
+        break;
+      }
+    }
+  } else {
+    res = distributeBabyOnShards(shardMap, ci, collid, collinfo, reverseMapping,
+                                 slice, 0);
+    if (res != TRI_ERROR_NO_ERROR) {
+      canUseFastPath = false;
+    }
+  }
+
+  // Some stuff to prepare cluster-internal requests:
+
+  std::string baseUrl = "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document/";
+  std::string optsUrlPart = std::string("?ignoreRevs=") + (options.ignoreRevs ? "true" : "false");
+ 
+  arangodb::GeneralRequest::RequestType reqType;
+  if (!useMultiple) {
+    if (options.silent) {
+      reqType = arangodb::GeneralRequest::RequestType::HEAD;
+    } else {
+      reqType = arangodb::GeneralRequest::RequestType::GET;
+    }
+  } else {
+    reqType = arangodb::GeneralRequest::RequestType::PUT;
+    if (options.silent) {
+      optsUrlPart += std::string("&silent=true");
+    }
+    optsUrlPart += std::string("&onlyget=true");
+  }
+
+  CoordTransactionID coordTransactionID = TRI_NewTickServer();
+  if (canUseFastPath) {
+    // All shard keys are known in all documents.
+    // Contact all shards directly with the correct information.
+ 
+    VPackBuilder reqBuilder;
+    auto body = std::make_shared<std::string>();
+    for (auto const& it : shardMap) {
+      auto headersCopy =
+          std::make_unique<std::map<std::string, std::string>>(*headers);
+      if (!useMultiple) {
+        TRI_ASSERT(it.second.size() == 1);
+
+        // We send to single endpoint
+        cc->asyncRequest("", coordTransactionID, "shard:" + it.first, reqType,
+                         baseUrl + StringUtils::urlEncode(it.first) + "/" +
+                             slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString() +
+                             optsUrlPart,
+                         body, headersCopy, nullptr, 60.0);
+      } else {
+        reqBuilder.clear();
+        reqBuilder.openArray();
+        for (auto const& idx : it.second) {
+          reqBuilder.add(slice.at(idx));
+        }
+        reqBuilder.close();
+        body = std::make_shared<std::string>(std::move(reqBuilder.slice().toJson()));
+        // We send to Babies endpoint
+        cc->asyncRequest("", coordTransactionID, "shard:" + it.first, reqType,
+            baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart,
+            body, headersCopy, nullptr, 60.0);
+      }
+    }
+
+    // Now listen to the results:
+    if (!useMultiple) {
+      auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
+
+      int commError = handleGeneralCommErrors(&res);
+      if (commError != TRI_ERROR_NO_ERROR) {
+        return commError;
+      }
+
+      responseCode = res.answer_code;
+      TRI_ASSERT(res.answer != nullptr);
+      auto parsedResult = res.answer->toVelocyPack(&VPackOptions::Defaults);
+      resultBody.swap(parsedResult);
+      return TRI_ERROR_NO_ERROR;
+    }
+
+    std::unordered_map<ShardID, std::shared_ptr<VPackBuilder>> resultMap;
+    collectResultsFromAllShards<VPackValueLength>(
+        shardMap, cc, coordTransactionID, errorCounter, resultMap);
+
+    responseCode = GeneralResponse::ResponseCode::OK;
+
+    mergeResults(reverseMapping, resultMap, resultBody);
+
+    // the cluster operation was OK, however,
+    // the DBserver could have reported an error.
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  // Not all shard keys are known in all documents.
+  // We contact all shards with the complete body and ignore NOT_FOUND
+
+  auto shardList = ci->getShardList(collid);
+  if (!useMultiple) {
+    for (auto const& shard : *shardList) {
+      auto headersCopy =
+          std::make_unique<std::map<std::string, std::string>>(*headers);
+      cc->asyncRequest("", coordTransactionID, "shard:" + shard, reqType,
+                       baseUrl + StringUtils::urlEncode(shard) + "/" +
+                           slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString() +
+                           optsUrlPart,
+                       nullptr, headersCopy, nullptr, 60.0);
+    }
+  } else {
+    auto body = std::make_shared<std::string>(std::move(slice.toJson()));
+    for (auto const& shard : *shardList) {
+      auto headersCopy =
+          std::make_unique<std::map<std::string, std::string>>(*headers);
+      cc->asyncRequest("", coordTransactionID, "shard:" + shard, reqType,
+                       baseUrl + StringUtils::urlEncode(shard) + optsUrlPart,
+                       body, headersCopy, nullptr, 60.0);
+    }
+  }
+
+  // Now listen to the results:
+  if (!useMultiple) {
+    // Only one can answer, we react a bit differently
+    int count;
+    int nrok = 0;
+    for (count = (int)shardList->size(); count > 0; count--) {
+      auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
+      if (res.status == CL_COMM_RECEIVED) {
+        if (res.answer_code !=
+                arangodb::GeneralResponse::ResponseCode::NOT_FOUND ||
+            (nrok == 0 && count == 1)) {
+          nrok++;
+          responseCode = res.answer_code;
+          TRI_ASSERT(res.answer != nullptr);
+          auto parsedResult = res.answer->toVelocyPack(&VPackOptions::Defaults);
+          resultBody.swap(parsedResult);
+        }
+      }
+    }
+    // Note that nrok is always at least 1!
+    if (nrok > 1) {
+      return TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS;
+    }
+    return TRI_ERROR_NO_ERROR;  // the cluster operation was OK, however,
+                                // the DBserver could have reported an error.
+
+  }
+
+  // We select all results from all shards an merge them back again.
+  std::vector<std::shared_ptr<VPackBuilder>> allResults;
+  allResults.reserve(shardList->size());
+  for (size_t i = 0; i < shardList->size(); ++i) {
+    auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
+    int error = handleGeneralCommErrors(&res);
+    if (error != TRI_ERROR_NO_ERROR) {
+      // Cluster is in bad state. Just report. Drop other results.
+      cc->drop("", coordTransactionID, 0, "");
+      // Local data structores are automatically freed
+      return error;
+    }
+    TRI_ASSERT(res.answer_code == arangodb::GeneralResponse::ResponseCode::OK);
+    TRI_ASSERT(res.answer != nullptr);
+    allResults.emplace_back(res.answer->toVelocyPack(&VPackOptions::Defaults));
+    extractErrorCodes(res, errorCounter, false);
+  }
+  // If we get here we get exactly one result for every shard.
+  TRI_ASSERT(allResults.size() == shardList->size());
+  mergeResultsAllShards(allResults, resultBody, errorCounter, shardList->size());
+  return TRI_ERROR_NO_ERROR;
+}
+
+
+
+/*
   TRI_json_t* json = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
   if (json == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -1387,6 +1577,7 @@ int getDocumentOnCoordinator(
   return TRI_ERROR_NO_ERROR;  // the cluster operation was OK, however,
                               // the DBserver could have reported an error.
 }
+*/
 
 static void insertIntoShardMap(
     ClusterInfo* ci, std::string const& dbname, std::string const& documentId,
