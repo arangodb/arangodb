@@ -1363,11 +1363,13 @@ int getDocumentOnCoordinator(
         }
 
         // We send to single endpoint
-        cc->asyncRequest("", coordTransactionID, "shard:" + it.first, reqType,
-                         baseUrl + StringUtils::urlEncode(it.first) + "/" +
-                             slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString() +
-                             optsUrlPart,
-                         body, headersCopy, nullptr, 60.0);
+        cc->asyncRequest(
+            "", coordTransactionID, "shard:" + it.first, reqType,
+            baseUrl + StringUtils::urlEncode(it.first) + "/" +
+                StringUtils::urlEncode(
+                    slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString()) +
+                optsUrlPart,
+            body, headersCopy, nullptr, 60.0);
       } else {
         reqBuilder.clear();
         reqBuilder.openArray();
@@ -1426,7 +1428,8 @@ int getDocumentOnCoordinator(
           std::make_unique<std::map<std::string, std::string>>(*headers);
       cc->asyncRequest("", coordTransactionID, "shard:" + shard, reqType,
                        baseUrl + StringUtils::urlEncode(shard) + "/" +
-                           slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString() +
+                           StringUtils::urlEncode(
+                               slice.get(TRI_VOC_ATTRIBUTE_KEY).copyString()) +
                            optsUrlPart,
                        nullptr, headersCopy, nullptr, 60.0);
     }
