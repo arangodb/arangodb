@@ -155,7 +155,11 @@ module.exports = class SyntheticResponse {
     if (!this._raw.contentType) {
       this._raw.contentType = MIME_JSON;
     }
-    this._raw.body = JSON.stringify(value);
+    if (this.context.isDevelopment) {
+      this._raw.body = JSON.stringify(value, null, 2);
+    } else {
+      this._raw.body = JSON.stringify(value);
+    }
     return this;
   }
 
