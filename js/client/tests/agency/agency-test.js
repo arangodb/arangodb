@@ -198,14 +198,15 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["a/y"]]), [{"a":{"y":12}}]);
       sleep(1100);
       assertEqual(readAndCheck([["a/y"]]), [{"a":{"y":12}}]);
-    },
-
-    testOpNew : function () {
-      writeAndCheck([[{"a/z":{"new":13}}]]);
-      assertEqual(readAndCheck([["a/z"]]), [{"a":{"z":13}}]);
-      writeAndCheck([[{"a/z":{"new":["hello", "world", 1.06]}}]]);
-      assertEqual(readAndCheck([["a/z"]]),
-                  [{"a":{"z":["hello", "world", 1.06]}}]);
+      writeAndCheck([[{"foo/bar":{"op":"set","new":{"baz":12}}}]]);
+      assertEqual(readAndCheck([["/foo/bar/baz"]]), [{"foo":{"bar":{"baz":12}}}]);
+      assertEqual(readAndCheck([["/foo/bar"]]), [{"foo":{"bar":{"baz":12}}}]);
+      assertEqual(readAndCheck([["/foo"]]), [{"foo":{"bar":{"baz":12}}}]);
+      writeAndCheck([[{"foo/bar":{"op":"set","new":{"baz":12},"ttl":1}}]]);
+      sleep(1000);
+      assertEqual(readAndCheck([["/foo"]]), [{"foo":{}}]);
+      assertEqual(readAndCheck([["/foo/bar"]]), [{"foo":{}}]);
+      assertEqual(readAndCheck([["/foo/bar/baz"]]), [{"foo":{}}]);
     },
 
     testOpPush : function () {
@@ -266,6 +267,7 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["a/f"]]), [{a:{f:[]}}]);
       writeAndCheck([[{"a/b/c":{"op":"pop"}}]]); // on existing array
       assertEqual(readAndCheck([["a/b/c"]]), [{a:{b:{c:[1,2,3]}}}]);        
+      writeAndCheck([[{"a/b/d":1}]]); // on existing scalar
       writeAndCheck([[{"a/b/d":{"op":"pop"}}]]); // on existing scalar
       assertEqual(readAndCheck([["a/b/d"]]), [{a:{b:{d:[]}}}]);        
     },

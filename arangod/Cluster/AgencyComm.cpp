@@ -432,7 +432,7 @@ AgencyConnectionOptions AgencyComm::_globalConnectionOptions = {
 ////////////////////////////////////////////////////////////////////////////////
 
 AgencyCommLocker::AgencyCommLocker(std::string const& key,
-                                   std::string const& type, double ttl)
+                                   std::string const& type, double ttl, double timeout)
     : _key(key), _type(type), _version(0), _isLocked(false) {
   AgencyComm comm;
 
@@ -442,8 +442,8 @@ AgencyCommLocker::AgencyCommLocker(std::string const& key,
   } catch (...) {
     return;
   }
-
-  if (comm.lock(key, ttl, 0.0, _vpack->slice())) {
+  
+  if (comm.lock(key, ttl, timeout, _vpack->slice())) {
     fetchVersion(comm);
     _isLocked = true;
   }
@@ -1709,7 +1709,6 @@ bool AgencyComm::lock(std::string const& key, double ttl, double timeout,
   if (timeout == 0.0) {
     timeout = _globalConnectionOptions._lockTimeout;
   }
-
   unsigned long sleepTime = InitialSleepTime;
   double const end = TRI_microtime() + timeout;
 

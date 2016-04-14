@@ -11,7 +11,7 @@
       font-weight: 600;
 
       &:hover {
-        background-color: $c-white; 
+        background-color: $c-white;
         cursor: default;
       }
     }
@@ -26,12 +26,12 @@
 
   .pure-table-row {
     border-bottom: 1px solid $c-content-border;
-    font-weight: 100;
     color: $c-pure-text;
+    font-weight: 100;
     line-height: 40px;
 
     &:hover {
-      background-color: rgb(239, 240, 235); 
+      background-color: rgb(239, 240, 235);
       cursor: pointer;
     }
 

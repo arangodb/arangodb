@@ -277,8 +277,8 @@ bool Node::removeTimeToLive () {
       if (it->second == _parent->_children[_node_name]) {
         root()._time_table.erase(it);
         break;
-        ++it;
       }
+      ++it;
     }
   }
   return true;
@@ -296,13 +296,19 @@ inline bool Node::observedBy (std::string const& url) const {
 
 namespace arangodb {
 namespace consensus {
+
 template<> bool Node::handle<SET> (VPackSlice const& slice) {
   if (!slice.hasKey("new")) {
     LOG_TOPIC(WARN, Logger::AGENCY) << "Operator set without new value";
     LOG_TOPIC(WARN, Logger::AGENCY) << slice.toJson();
     return false;
   }
-  *this = slice.get("new");
+  Slice val = slice.get("new");
+  if (val.isObject()) {
+    this->applies(val);
+  } else { 
+    *this = val;
+  }
   if (slice.hasKey("ttl")) {
     VPackSlice ttl_v = slice.get("ttl");
     if (ttl_v.isNumber()) {
@@ -406,7 +412,7 @@ template<> bool Node::handle<SHIFT> (VPackSlice const& slice) {
   if (this->slice().isArray()) { // If a
     VPackArrayIterator it(this->slice());
     bool first = true;
-    for (auto old : it) {
+    for (auto const& old : it) {
       if (first) {
         first = false;
       } else {
@@ -505,10 +511,10 @@ bool Node::applies (VPackSlice const& slice) {
           LOG_TOPIC(WARN, Logger::AGENCY) << "Unknown operation " << oper;
           return false;
         }
-      } else if (slice.hasKey("new")) { // new without set
+      } /*else if (slice.hasKey("new")) { // new without set
         *this = slice.get("new");
         return true;
-      } else if (key.find('/')!=std::string::npos) {
+        } */else if (key.find('/')!=std::string::npos) {
         (*this)(key).applies(i.value);
       } else {
         auto found = _children.find(key);

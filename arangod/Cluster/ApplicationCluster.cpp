@@ -456,7 +456,9 @@ void ApplicationCluster::stop() {
   }
 
   {
-    AgencyCommLocker locker("Current", "WRITE");
+    // Try only once to unregister because maybe the agencycomm
+    // is shutting down as well...
+    AgencyCommLocker locker("Current", "WRITE", 120.0, 0.001);
 
     if (locker.successful()) {
       // unregister ourselves

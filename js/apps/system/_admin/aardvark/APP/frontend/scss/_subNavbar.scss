@@ -8,17 +8,10 @@
     list-style: none;
     margin: 0;
 
-    &.bottom {
-      height: 40px;
-    }
-
-    &.top {
-      height: 60px;
-    }
-
     &.top {
       //background-color: $c-navbar-main-color;
       background-color: $c-bluegrey-dark;
+      height: 60px;
       width: 100%;
 
       li {
@@ -28,6 +21,7 @@
 
     &.bottom {
       border-bottom: 2px solid $c-bluegrey-nontransp;
+      height: 40px;
       width: 100%;
 
       li {

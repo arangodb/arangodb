@@ -33,8 +33,8 @@
 
         //start polling with interval
         window.setInterval(function() {
-          if (window.location.hash === '#cluster' 
-              || window.location.hash === '#') {
+          if (window.location.hash === '#cluster'
+              || window.location.hash === '#') {
             var callback = function(data) {
               self.rerenderValues(data);
               self.rerenderGraphs(data);
