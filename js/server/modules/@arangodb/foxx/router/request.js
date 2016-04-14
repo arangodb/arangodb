@@ -140,6 +140,10 @@ module.exports = class SyntheticRequest {
 
   // idiosyncratic
 
+  get database() {
+    return this._raw.database;
+  }
+
   params(name) {
     if (hasOwnProperty.call(this.pathParams, name)) {
       return this.pathParams[name];
