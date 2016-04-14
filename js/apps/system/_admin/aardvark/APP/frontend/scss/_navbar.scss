@@ -110,6 +110,10 @@ $navbar-size: 150px;
     @extend %pull-left;
     width: $navbar-size;
 
+    a {
+      outline: none;
+    }
+
     .fa {
       opacity: .3;
       padding-left: 5px;
