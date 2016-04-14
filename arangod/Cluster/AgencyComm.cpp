@@ -1368,7 +1368,7 @@ AgencyCommResult AgencyComm::getValues(std::string const& key, bool recursive) {
       if (node.isObject()) {
         builder.add("dir", VPackValue(true));
 
-        if (node.length() > 0 && (recursive || level < 2)) {
+        if (node.length() > 0 && (recursive || level < 1)) {
           builder.add(VPackValue("nodes"));
           VPackArrayBuilder objectStructure(&builder);
           for (auto const& it : VPackObjectIterator(node)) {
@@ -1394,31 +1394,26 @@ AgencyCommResult AgencyComm::getValues(std::string const& key, bool recursive) {
       // mop: need to remove all parents... key requested: /arango/hans/mann/wurst.
       // instead of just the result of wurst we will get the full tree
       // but only if there is something inside this object
-      if (resultNode.isObject()) {
-        std::size_t currentKeyStart = 1;
-        std::size_t found = fullKey.find_first_of("/", 1);
-        std::string currentKey;
-        while (found != std::string::npos) {
-          currentKey = fullKey.substr(currentKeyStart, found - currentKeyStart);
 
-          if (!resultNode.isObject() || !resultNode.hasKey(currentKey)) {
-            LOG(TRACE) << "Structure unexpected";
-            result.clear();
-            return result;
-          }
-          resultNode = resultNode.get(currentKey);
-
-          currentKeyStart = found + 1;
-          found = fullKey.find_first_of("/", found + 1);
-        }
-        currentKey = fullKey.substr(currentKeyStart, found - currentKeyStart);
-
+      TRI_ASSERT(fullKey.size() > 0);
+      TRI_ASSERT(fullkey[0] == '/');
+      size_t currentKeyStart = fullKey.size() > 1 ? 1 : std::string::npos;
+      while (currentKeyStart != std::string::npos) {
+        // at least one further step to go down
+        size_t found = fullKey.find_first_of('/', currentKeyStart);
+        std::string currentKey 
+            = (found == std::string::npos) ?
+              fullKey.substr(currentKeyStart) :
+              fullKey.substr(currentKeyStart, found - currentKeyStart);
         if (!resultNode.isObject() || !resultNode.hasKey(currentKey)) {
-          result._statusCode = 404;
           result.clear();
+          result._statusCode = 404;
           return result;
         }
         resultNode = resultNode.get(currentKey);
+
+        currentKeyStart 
+            = (found == std::string::npos) ? found : found + 1;
       }
       
       fakeEtcdNode(AgencyComm::prefix() + key, resultNode, builder, 0);
