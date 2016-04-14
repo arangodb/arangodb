@@ -70,17 +70,17 @@ module.exports = exports = class SwaggerContext {
   }
 
   header(name, schema, description) {
-    this._headers.set(name, {schema: schema, description: description});
+    this._headers.set(name, {schema, description});
     return this;
   }
 
   pathParam(name, schema, description) {
-    this._pathParams.set(name, {schema: schema, description: description});
+    this._pathParams.set(name, {schema, description});
     return this;
   }
 
   queryParam(name, schema, description) {
-    this._queryParams.set(name, {schema: schema, description: description});
+    this._queryParams.set(name, {schema, description});
     return this;
   }
 
@@ -160,10 +160,10 @@ module.exports = exports = class SwaggerContext {
     }
 
     this._bodyParam = {
-      model: model,
-      multiple: multiple,
-      contentTypes: contentTypes,
-      description: description
+      model,
+      multiple,
+      contentTypes,
+      description
     };
     return this;
   }
@@ -253,9 +253,9 @@ module.exports = exports = class SwaggerContext {
     }
 
     this._responses.set(statusCode, {
-      model: model,
-      multiple: multiple,
-      contentTypes: contentTypes,
+      model,
+      multiple,
+      contentTypes,
       description: reason
     });
     return this;
@@ -529,7 +529,7 @@ function swaggerifyType(joi) {
 function swaggerifyParam(joi) {
   const param = {
     required: joi._presence === 'required',
-    description: joi._description
+    description: joi._description || undefined
   };
   let item = param;
   if (joi._meta.some(function (meta) {
@@ -558,7 +558,7 @@ function swaggerifyParam(joi) {
 function swaggerifyBody(joi, multiple) {
   return {
     required: joi._presence === 'required',
-    description: joi._description,
+    description: joi._description || undefined,
     schema: joi2schema(joi, multiple)
   };
 }
