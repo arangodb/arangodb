@@ -1732,7 +1732,7 @@ bool AgencyComm::lock(std::string const& key, double ttl, double timeout,
 
     if (!result.successful() &&
         result.httpCode() ==
-            (int)arangodb::GeneralResponse::ResponseCode::NOT_FOUND) {
+            (int)arangodb::GeneralResponse::ResponseCode::PRECONDITION_FAILED) {
       // key does not yet exist. create it now
       result = casValue(key + "/Lock", slice, false, ttl, timeout);
     }
