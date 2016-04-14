@@ -223,14 +223,12 @@ Node const& Node::operator ()(std::vector<std::string> const& pv) const {
 
 // lh-value at path
 Node& Node::operator ()(std::string const& path) {
-  PathType pv = split(path,'/');
-  return this->operator()(pv);
+  return this->operator()(split(path,'/'));
 }
 
 // rh-value at path
 Node const& Node::operator ()(std::string const& path) const {
-  PathType pv = split(path,'/');
-  return this->operator()(pv);
+  return this->operator()(split(path,'/'));
 }
 
 // lh-store 
