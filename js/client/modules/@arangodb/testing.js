@@ -1200,6 +1200,7 @@ function startInstanceCluster(instanceInfo, protocol, options,
   };
 
   options.agencySize = 1;
+  options.agencyWaitForSync = false;
   startInstanceAgency(instanceInfo, protocol, options, ...makeArgs('agency', {}));
   
   let agencyEndpoint = instanceInfo.endpoint;
@@ -1338,10 +1339,12 @@ function startInstanceAgency(instanceInfo, protocol, options,
   addArgs, testname, rootDir) {
 
   const N = options.agencySize;
+  const wfs = options.agencyWaitForSync;
   for (let i = 0; i < N; i++) {
     let instanceArgs = _.clone(addArgs);
     instanceArgs["agency.id"] = String(i);
     instanceArgs["agency.size"] = String(N);
+    instanceArgs["agency.wait-for-sync"] = String(wfs);
     
     if (i === N - 1) {
       let l = [];
