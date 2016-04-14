@@ -90,6 +90,9 @@ module.exports = function createSwaggerRouteHandler(foxxMount, opts) {
         }
         swaggerJsonHandler(req, res, {appPath, foxx});
         return;
+      } else if (swaggerJsonHandler && typeof swaggerJsonHandler === 'object') {
+        res.json(swaggerJsonHandler);
+        return;
       }
     } else if (path === 'index.html') {
       path = indexFile;
