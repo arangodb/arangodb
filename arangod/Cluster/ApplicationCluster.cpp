@@ -267,7 +267,7 @@ bool ApplicationCluster::prepare() {
       LOG(INFO) << "Waiting for a DBserver to show up...";
       ci->loadCurrentDBServers();
       std::vector<ServerID> DBServers = ci->getCurrentDBServers();
-      if (DBServers.size() > 0) {
+      if (!DBServers.empty()) {
         LOG(INFO) << "Found a DBserver.";
         break;
       }

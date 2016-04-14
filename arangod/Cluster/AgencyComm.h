@@ -120,7 +120,7 @@ struct AgencyOperationType {
   };
 
   // mop: hmmm...explicit implementation...maybe use to_string?
-  std::string toString() {
+  std::string toString() const {
     switch(type) {
       case VALUE:
         switch(value) {
@@ -204,7 +204,7 @@ struct AgencyOperation {
   /// @brief returns to full operation formatted as a vpack slice
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack();
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack() const;
   uint32_t _ttl = 0;
   VPackSlice _oldValue;
   AgencyOperationPrecondition _precondition;
@@ -234,6 +234,9 @@ struct AgencyTransaction {
   //////////////////////////////////////////////////////////////////////////////
   explicit AgencyTransaction(AgencyOperation const& operation) {
     operations.push_back(operation);
+  }
+  
+  explicit AgencyTransaction() {
   }
 };
 
@@ -375,12 +378,6 @@ class AgencyCommLocker {
 
  private:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief fetch a lock version from the agency
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool fetchVersion(AgencyComm&);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief update a lock version in the agency
   //////////////////////////////////////////////////////////////////////////////
 
@@ -390,7 +387,6 @@ class AgencyCommLocker {
   std::string const _key;
   std::string const _type;
   std::shared_ptr<arangodb::velocypack::Builder> _vpack;
-  uint64_t _version;
   bool _isLocked;
 };
 
@@ -488,13 +484,10 @@ class AgencyComm {
   /// @brief update a version number in the agency
   //////////////////////////////////////////////////////////////////////////////
 
-  bool increaseVersion(std::string const& key);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief update a version number in the agency, retry until it works
-  //////////////////////////////////////////////////////////////////////////////
-
-  void increaseVersionRepeated(std::string const& key);
+  inline bool increaseVersion(std::string const& key) {
+    AgencyCommResult result = increment(key);
+    return result.successful();
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a directory in the backend
