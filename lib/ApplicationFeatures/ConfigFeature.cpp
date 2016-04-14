@@ -42,6 +42,7 @@ ConfigFeature::ConfigFeature(application_features::ApplicationServer* server,
     : ApplicationFeature(server, "Config"),
       _file(""),
       _version(false),
+      _checkConfiguration(false),
       _progname(progname) {
   setOptional(false);
   requiresElevatedPrivileges(false);
@@ -56,11 +57,30 @@ void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--version", "reports the version and exists",
                      new BooleanParameter(&_version, false));
+
+  options->addOption("--check-configuration", "check the configuration and exists",
+                     new BooleanParameter(&_checkConfiguration, false));
 }
 
 void ConfigFeature::loadOptions(std::shared_ptr<ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::loadOptions";
 
+  loadConfigFile(options);
+ 
+  if (_checkConfiguration) {
+    exit(EXIT_SUCCESS);
+  }
+}
+
+void ConfigFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
+  if (_version) {
+    std::cout << Version::getServerVersion() << "\n\n"
+              << Version::getDetailed() << std::endl;
+    exit(EXIT_SUCCESS);
+  }
+}
+
+void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options) {
   if (StringUtils::tolower(_file) == "none") {
     LOG_TOPIC(DEBUG, Logger::CONFIG) << "use 'none' config file at all";
     return;
@@ -138,13 +158,5 @@ void ConfigFeature::loadOptions(std::shared_ptr<ProgramOptions> options) {
 
   if (!parser.parse(filename)) {
     exit(EXIT_FAILURE);
-  }
-}
-
-void ConfigFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
-  if (_version) {
-    std::cout << Version::getServerVersion() << "\n\n"
-              << Version::getDetailed() << std::endl;
-    exit(EXIT_SUCCESS);
   }
 }

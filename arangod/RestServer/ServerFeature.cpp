@@ -95,9 +95,6 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "server.authenticate-system-only", &_authenticateSystemOnly,
       "use HTTP authentication only for requests to /_api and /_admin")
 
-    (
-      "server.disable-authentication", &_disableAuthentication,
-      "disable authentication for ALL client requests")
 
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
       ("server.disable-authentication-unix-sockets",

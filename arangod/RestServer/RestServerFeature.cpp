@@ -73,6 +73,7 @@ RestServerFeature::RestServerFeature(
       _authenticationRealm(authenticationRealm),
       _defaultApiCompatibility(Version::getNumericServerVersion()),
       _allowMethodOverride(false),
+      _authentication(true),
       _handlerFactory(nullptr),
       _jobManager(nullptr) {
   setOptional(true);
@@ -93,7 +94,9 @@ void RestServerFeature::collectOptions(
                            "default API compatibility version",
                            new Int32Parameter(&_defaultApiCompatibility));
 
-  options->addSection("http", "HttpServer features");
+  options->addOption("--server.authentication",
+                           "enable or disable authentication for ALL client requests",
+                           new BooleanParameter(&_authentication));
 
   options->addSection("http", "HttpServer features");
 

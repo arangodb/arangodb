@@ -274,15 +274,15 @@ function makeArgsArangod(options, appDir) {
 
   return {
     "configuration": "none",
-    "server.keyfile": PEM_FILE,
-    "database.maximal-journal-size": "1048576",
     "database.force-sync-properties": "false",
+    "database.maximal-journal-size": "1048576",
     "javascript.app-path": appDir,
     "javascript.startup-directory": JS_DIR,
-    "server.threads": "20",
     "javascript.v8-contexts": "5",
-    "server.disable-authentication": "true",
-    "server.allow-use-database": "true"
+    "server.allow-use-database": "true",
+    "server.authentication": "false",
+    "server.threads": "20",
+    "ssl.keyfile": PEM_FILE
   };
 }
 
@@ -2731,7 +2731,7 @@ testFuncs.config = function(options) {
 
     const args = {
       "configuration": fs.join(CONFIG_DIR, test + ".conf"),
-      "flatCommands": ["--help"]
+      "flatCommands": ["--check-configuration"]
     };
 
     const run = fs.join(BIN_DIR, test);
@@ -2758,7 +2758,7 @@ testFuncs.config = function(options) {
 
     const args = {
       "configuration": fs.join(CONFIG_RELATIVE_DIR, test + ".conf"),
-      "flatCommands": ["--help"]
+      "flatCommands": ["--check-configuration"]
     };
 
     const run = fs.join(BIN_DIR, test);

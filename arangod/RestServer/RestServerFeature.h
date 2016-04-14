@@ -54,10 +54,11 @@ class RestServerFeature final
   std::string const _authenticationRealm;
   int32_t _defaultApiCompatibility;
   bool _allowMethodOverride;
+  bool _authentication;
 
  public:
 #warning TODO
-  bool authentication() const { return false; }
+  bool authentication() const { return _authentication; }
   bool authenticationUnixSockets() const { return false; }
   bool authenticationSystemOnly() const { return false; }
 
