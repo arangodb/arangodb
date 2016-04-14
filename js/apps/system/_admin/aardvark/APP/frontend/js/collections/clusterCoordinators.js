@@ -1,4 +1,4 @@
-/*global window, Backbone, console */
+/*global window */
 (function() {
   "use strict";
   window.ClusterCoordinators = window.AutomaticRetryCollection.extend({

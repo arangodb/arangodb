@@ -1,4 +1,4 @@
-/*global window, Backbone, _, console */
+/*global window */
 (function() {
 
   "use strict";
@@ -77,7 +77,7 @@
       });
     },
 
-    getList: function(callback) {
+    getList: function() {
       throw "Do not use";
       /*
       var self = this;
