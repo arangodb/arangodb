@@ -43,6 +43,7 @@
 #include "Indexes/PrimaryIndex.h"
 #include "Indexes/SkiplistIndex.h"
 #include "RestServer/ArangoServer.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/CollectionReadLocker.h"
 #include "Utils/CollectionWriteLocker.h"
 #include "Utils/SingleCollectionTransaction.h"
