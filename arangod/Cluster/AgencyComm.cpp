@@ -346,8 +346,8 @@ bool AgencyCommResult::parseVelocyPackNode(VPackSlice const& node,
     // get "value" attribute
     VPackSlice const value = node.get("value");
 
-    if (value.isString()) {
-      if (!prefix.empty()) {
+    if (!prefix.empty()) {
+      if (value.isString()) {
         AgencyCommResultEntry entry;
 
         // get "modifiedIndex"
@@ -356,6 +356,18 @@ bool AgencyCommResult::parseVelocyPackNode(VPackSlice const& node,
         std::string tmp = value.copyString();
         entry._vpack = VPackParser::fromJson(tmp);
         entry._isDir = false;
+
+        _values.emplace(prefix, entry);
+      } else if (value.isNumber()) {
+        AgencyCommResultEntry entry;
+
+        // get "modifiedIndex"
+        entry._index = arangodb::basics::VelocyPackHelper::stringUInt64(
+            node.get("modifiedIndex"));
+        entry._vpack = std::make_shared<VPackBuilder>();
+        entry._isDir = false;
+
+        entry._vpack->add(value);
 
         _values.emplace(prefix, entry);
       }
@@ -433,7 +445,7 @@ AgencyConnectionOptions AgencyComm::_globalConnectionOptions = {
 
 AgencyCommLocker::AgencyCommLocker(std::string const& key,
                                    std::string const& type, double ttl, double timeout)
-    : _key(key), _type(type), _version(0), _isLocked(false) {
+    : _key(key), _type(type), _isLocked(false) {
   AgencyComm comm;
 
   _vpack = std::make_shared<VPackBuilder>();
@@ -444,7 +456,6 @@ AgencyCommLocker::AgencyCommLocker(std::string const& key,
   }
   
   if (comm.lock(key, ttl, timeout, _vpack->slice())) {
-    fetchVersion(comm);
     _isLocked = true;
   }
 }
@@ -473,38 +484,6 @@ void AgencyCommLocker::unlock() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fetch a lock version from the agency
-////////////////////////////////////////////////////////////////////////////////
-
-bool AgencyCommLocker::fetchVersion(AgencyComm& comm) {
-  if (_type != "WRITE") {
-    return true;
-  }
-
-  AgencyCommResult result = comm.getValues(_key + "/Version", false);
-  if (!result.successful()) {
-    if (result.httpCode() !=
-        (int)arangodb::GeneralResponse::ResponseCode::NOT_FOUND) {
-      return false;
-    }
-
-    return true;
-  }
-
-  result.parse("", false);
-  std::map<std::string, AgencyCommResultEntry>::const_iterator it =
-      result._values.begin();
-
-  if (it == result._values.end()) {
-    return false;
-  }
-
-  VPackSlice const versionSlice = it->second._vpack->slice();
-  _version = arangodb::basics::VelocyPackHelper::stringUInt64(versionSlice);
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief update a lock version in the agency
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -512,39 +491,9 @@ bool AgencyCommLocker::updateVersion(AgencyComm& comm) {
   if (_type != "WRITE") {
     return true;
   }
+  AgencyCommResult result = comm.increment(_key  + "/Version");
 
-  if (_version == 0) {
-    VPackBuilder builder;
-    try {
-      builder.add(VPackValue(1));
-    } catch (...) {
-      return false;
-    }
-
-    // no Version key found, now set it
-    AgencyCommResult result =
-        comm.casValue(_key + "/Version", builder.slice(), false, 0.0, 0.0);
-
-    return result.successful();
-  } else {
-    // Version key found, now update it
-    VPackBuilder oldBuilder;
-    try {
-      oldBuilder.add(VPackValue(_version));
-    } catch (...) {
-      return false;
-    }
-    VPackBuilder newBuilder;
-    try {
-      newBuilder.add(VPackValue(_version + 1));
-    } catch (...) {
-      return false;
-    }
-    AgencyCommResult result = comm.casValue(
-        _key + "/Version", oldBuilder.slice(), newBuilder.slice(), 0.0, 0.0);
-
-    return result.successful();
-  }
+  return result.successful();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -645,18 +594,6 @@ bool AgencyComm::initialize() {
 //////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::tryInitializeStructure() {
-  VPackBuilder trueBuilder;
-  trueBuilder.add(VPackValue(true));
-
-  VPackSlice trueSlice = trueBuilder.slice();
-
-  AgencyCommResult result;
-  result = casValue("Init", trueSlice, false, 120.0, 0.0);
-  if (!result.successful()) {
-    // mop: we couldn"t aquire a lock. so somebody else is already initializing
-    return false;
-  }
-
   VPackBuilder builder;
   try {
     VPackObjectBuilder b(&builder);
@@ -678,7 +615,7 @@ bool AgencyComm::tryInitializeStructure() {
         VPackObjectBuilder d(&builder);
         addEmptyVPackObject("_system", builder);
       }
-      builder.add("Version", VPackValue("1"));
+      builder.add("Version", VPackValue(1));
       addEmptyVPackObject("ShardsCopied", builder);
       addEmptyVPackObject("NewServers", builder);
       addEmptyVPackObject("Coordinators", builder);
@@ -703,7 +640,7 @@ bool AgencyComm::tryInitializeStructure() {
       }
       builder.add("Lock", VPackValue("\"UNLOCKED\""));
       addEmptyVPackObject("DBServers", builder);
-      builder.add("Version", VPackValue("1"));
+      builder.add("Version", VPackValue(1));
       builder.add(VPackValue("Collections"));
       {
         VPackObjectBuilder d(&builder);
@@ -721,7 +658,7 @@ bool AgencyComm::tryInitializeStructure() {
         VPackObjectBuilder d(&builder);
         addEmptyVPackObject("_system", builder);
       }
-      builder.add("Version", VPackValue("\"1\""));
+      builder.add("Version", VPackValue(1));
       addEmptyVPackObject("MapLocalToID", builder);
       builder.add(VPackValue("Databases"));
       {
@@ -731,6 +668,7 @@ bool AgencyComm::tryInitializeStructure() {
       }
       addEmptyVPackObject("DBServers", builder);
       builder.add("Lock", VPackValue("\"UNLOCKED\""));
+      builder.add("InitDone", VPackValue(true));
     }
   } catch (...) {
     LOG(WARN) << "Couldn't create initializing structure";
@@ -738,22 +676,16 @@ bool AgencyComm::tryInitializeStructure() {
   }
 
   try {
-    VPackSlice s = builder.slice();
+    LOG(DEBUG) << "Initializing agency with " << builder.toJson();
 
-    // now dump the Slice into an std::string
-    std::string buffer;
-    VPackStringSink sink(&buffer);
-    VPackDumper::dump(s, &sink);
+    AgencyCommResult result;
+    AgencyOperation initOperation("", AgencyValueOperationType::SET, builder.slice());
+    AgencyTransaction initTransaction;
+    initTransaction.operations.push_back(initOperation);
 
-    LOG(DEBUG) << "Initializing agency with " << buffer;
-
-    if (!initFromVPackSlice(std::string(""), s)) {
-      LOG(FATAL) << "Couldn't initialize agency";
-      FATAL_ERROR_EXIT();
-    } else {
-      setValue("InitDone", trueSlice, 0.0);
-      return true;
-    }
+    sendTransactionWithFailover(result, initTransaction);
+    
+    return result.successful();
   } catch (std::exception const& e) {
     LOG(FATAL) << "Fatal error initializing agency " << e.what();
     FATAL_ERROR_EXIT();
@@ -761,41 +693,6 @@ bool AgencyComm::tryInitializeStructure() {
     LOG(FATAL) << "Fatal error initializing agency";
     FATAL_ERROR_EXIT();
   }
-}
-
-bool AgencyComm::initFromVPackSlice(std::string key, VPackSlice s) {
-  bool ret = true;
-  AgencyCommResult result;
-  if (s.isObject()) {
-    if (!key.empty()) {
-      result = createDirectory(key);
-      if (!result.successful()) {
-        // mop: forbidden will be thrown if directory already exists
-        // need ability to recover in a case where the agency was half
-        // initialized
-        if (result.httpCode() !=
-            (int)arangodb::GeneralResponse::ResponseCode::FORBIDDEN) {
-          ret = false;
-          return ret;
-        }
-      }
-    }
-
-    for (auto const& it : VPackObjectIterator(s)) {
-      std::string subKey("");
-      if (!key.empty()) {
-        subKey += key + "/";
-      }
-      subKey += it.key.copyString();
-
-      ret = ret && initFromVPackSlice(subKey, it.value);
-    }
-  } else {
-    result = setValue(key, s.copyString(), 0.0);
-    ret = ret && result.successful();
-  }
-
-  return ret;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -1218,87 +1115,6 @@ bool AgencyComm::exists(std::string const& key) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief update a version number in the agency
-////////////////////////////////////////////////////////////////////////////////
-
-bool AgencyComm::increaseVersion(std::string const& key) {
-  // fetch existing version number
-  AgencyCommResult result = getValues(key, false);
-  
-  if (!result.successful()) {
-    if (result.httpCode() !=
-        (int)arangodb::GeneralResponse::ResponseCode::NOT_FOUND) {
-      return false;
-    }
-
-    // no version key found, now set it
-    VPackBuilder builder;
-    try {
-      builder.add(VPackValue(1));
-    } catch (...) {
-      LOG(ERR) << "Couldn't add value to builder";
-      return false;
-    }
-
-    result.clear();
-    result = casValue(key, builder.slice(), false, 0.0, 0.0);
-
-    return result.successful();
-  }
-
-  // found a version
-  result.parse("", false);
-  auto it = result._values.begin();
-
-  if (it == result._values.end()) {
-    return false;
-  }
-
-  VPackSlice const versionSlice = it->second._vpack->slice();
-  uint64_t version =
-      arangodb::basics::VelocyPackHelper::stringUInt64(versionSlice);
-  VPackBuilder oldBuilder;
-  try {
-    if (versionSlice.isString()) {
-      oldBuilder.add(VPackValue(std::to_string(version)));
-    } else {
-      oldBuilder.add(VPackValue(version));
-    }
-  } catch (...) {
-    return false;
-  }
-  VPackBuilder newBuilder;
-  try {
-    newBuilder.add(VPackValue(version + 1));
-  } catch (...) {
-    return false;
-  }
-  result.clear();
-
-  result = casValue(key, oldBuilder.slice(), newBuilder.slice(), 0.0, 0.0);
-
-  return result.successful();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief update a version number in the agency, retry until it works
-////////////////////////////////////////////////////////////////////////////////
-
-void AgencyComm::increaseVersionRepeated(std::string const& key) {
-  bool ok = false;
-  while (!ok) {
-    ok = increaseVersion(key);
-    if (ok) {
-      return;
-    }
-    uint32_t val = 300 + TRI_UInt32Random() % 400;
-    LOG(INFO) << "Could not increase " << key << " in agency, retrying in "
-              << val << "!";
-    usleep(val * 1000);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief increment a key
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1673,8 +1489,7 @@ AgencyCommResult AgencyComm::uniqid(std::string const& key, uint64_t count,
     }
 
     VPackSlice oldSlice = oldBuilder->slice();
-    uint64_t const oldValue =
-        arangodb::basics::VelocyPackHelper::stringUInt64(oldSlice) + count;
+    uint64_t const oldValue = arangodb::basics::VelocyPackHelper::stringUInt64(oldSlice) + count;
     uint64_t const newValue = oldValue + count;
 
     VPackBuilder newBuilder;

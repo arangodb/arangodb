@@ -1258,25 +1258,24 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
                        errorMsg);
   }
 
-  ac.increaseVersionRepeated("Plan/Version");
+  ac.increaseVersion("Plan/Version");
 
   // Update our cache:
   loadPlannedCollections();
-
-  // Now wait for it to appear and be complete:
-  AgencyCommResult res = ac.getValues("Current/Version", false);
-  if (!res.successful()) {
-    return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
-                       errorMsg);
-  }
-
+  
+  AgencyCommResult res;
   std::string const where =
       "Current/Collections/" + databaseName + "/" + collectionID;
   while (TRI_microtime() <= endTime) {
     res.clear();
     res = ac.getValues(where, true);
+
+    LOG(TRACE) << "CREATE OYOYOYOY " << where;
+    
     if (res.successful() && res.parse(where + "/", false)) {
+    LOG(TRACE) << "CREATE IS SUCCESS " << where;
       if (res._values.size() == (size_t)numberOfShards) {
+    LOG(TRACE) << "CREATE has number " << where;
         std::string tmpMsg = "";
         bool tmpHaveError = false;
         for (auto const& p : res._values) {
@@ -1298,17 +1297,23 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
             }
           }
         }
+    LOG(TRACE) << "CREATE PRE LOAD has number " << where;
         loadCurrentCollections();
+    LOG(TRACE) << "CREATE POST LOAD has number " << where;
         if (tmpHaveError) {
           errorMsg = "Error in creation of collection:" + tmpMsg;
+    LOG(TRACE) << "CREATE KAP0TT " << where;
           return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION;
         }
+    LOG(TRACE) << "CREATE OK " << where;
         return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
       }
     }
 
     res.clear();
+    LOG(TRACE) << "JASSSSS " << interval;
     _agencyCallbackRegistry->awaitNextChange("Current/Version", interval);
+    LOG(TRACE) << "NNNNJASSSSS " << interval;
   }
 
   // LOG(ERR) << "GOT TIMEOUT. NUMBEROFSHARDS: " << numberOfShards;
