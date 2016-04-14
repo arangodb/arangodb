@@ -1,7 +1,17 @@
+.usermenu {
+  width: 40px;
+}
+
+.userImg {
+  margin-top: -11px;
+
+  .caret {
+    margin-top: 13px;
+  }
+}
+
 .user-menu-img {
-  @include border-radius(3px);
+  @include border-radius(2px);
   background-color: $c-white;
-  border: 1px solid $c-content-border;
   height: 25px;
-  margin-top: -4px;
 }

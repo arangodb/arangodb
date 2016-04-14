@@ -35,7 +35,7 @@ RestAgencyCallbacksHandler::RestAgencyCallbacksHandler(arangodb::HttpRequest* re
     _agencyCallbackRegistry(agencyCallbackRegistry) {
 }
 
-bool RestAgencyCallbacksHandler::isDirect() const { return true; }
+bool RestAgencyCallbacksHandler::isDirect() const { return false; }
 
 arangodb::rest::HttpHandler::status_t RestAgencyCallbacksHandler::execute() {
   std::vector<std::string> const& suffix = _request->suffix();

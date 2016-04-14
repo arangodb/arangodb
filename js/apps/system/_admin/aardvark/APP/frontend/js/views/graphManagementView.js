@@ -14,6 +14,10 @@
 
     dropdownVisible: false,
 
+    initialize: function(options) {
+      this.options = options;
+    },
+
     events: {
       "click #deleteGraph"                        : "deleteGraph",
       "click .icon_arangodb_settings2.editGraph"  : "editGraph",

@@ -1,3 +1,5 @@
+
+
 #notification_menu {
   .innerDropdownInnerUL {
     margin-left: 0;
@@ -128,10 +130,11 @@
 
 #stat_hd {
   @include border-radius(3px);
-  background-color: $c-white;
+  //background-color: $c-white;
   border: 1px solid $c-content-border;
   height: 25px;
-  margin-top: 3px;
+  margin-left: -10px;
+  margin-top: 8px;
   position: relative;
   right: 3px;
   text-align: center;

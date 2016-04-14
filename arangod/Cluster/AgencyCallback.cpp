@@ -31,15 +31,27 @@
 
 using namespace arangodb;
 
-AgencyCallback::AgencyCallback(AgencyComm& agency, std::string const& key, std::function<bool(VPackSlice const&)> const& cb)
+AgencyCallback::AgencyCallback(AgencyComm& agency, 
+                               std::string const& key, 
+                               std::function<bool(VPackSlice const&)> const& cb,
+                               bool needsValue) 
   : key(key),
     _agency(agency),
-    _cb(cb)
-{
-  refetchAndUpdate();
+    _cb(cb),
+    _needsValue(needsValue) {
+
+  if (_needsValue) {
+    refetchAndUpdate();
+  }
 }
 
 void AgencyCallback::refetchAndUpdate() {
+  if (!_needsValue) {
+    // no need to pass any value to the callback
+    executeEmpty();
+    return;
+  }
+
   AgencyCommResult result = _agency.getValues(key, true);
 
   if (!result.successful()) {
@@ -50,7 +62,7 @@ void AgencyCallback::refetchAndUpdate() {
     LOG(ERR) << "Cannot parse body " << result.body();
     return;
   }
-  
+
   std::map<std::string, AgencyCommResultEntry>::const_iterator it =
       result._values.begin();
   
@@ -71,6 +83,12 @@ void AgencyCallback::checkValue(std::shared_ptr<VPackBuilder> newData) {
       LOG(DEBUG) << "Callback was not successful for " << newData->toJson();
     }
   }
+}
+
+bool AgencyCallback::executeEmpty() {
+  LOG(DEBUG) << "Executing (empty)";
+  MUTEX_LOCKER(locker, _lock);
+  return _cb(VPackSlice::noneSlice());
 }
 
 bool AgencyCallback::execute(std::shared_ptr<VPackBuilder> newData) {

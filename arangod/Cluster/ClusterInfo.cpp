@@ -1357,14 +1357,6 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
   // Update our own cache:
   loadPlannedCollections();
 
-  // Now wait for it to appear and be complete:
-  res.clear();
-  res = ac.getValues("Current/Version", false);
-  if (!res.successful()) {
-    return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
-                       errorMsg);
-  }
-
   // monitor the entry for the collection
   std::string const where =
       "Current/Collections/" + databaseName + "/" + collectionID;

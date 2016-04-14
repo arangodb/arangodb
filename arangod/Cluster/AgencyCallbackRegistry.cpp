@@ -51,13 +51,12 @@ bool AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> cb
     WRITE_LOCKER(locker, _lock);
     while (true) {
       rand = TRI_UInt32Random();
-      if (_endpoints.count(rand) == 0) {
-        _endpoints.emplace(rand, cb);
+      if (_endpoints.emplace(rand, cb).second) {
         break;
       }
     }
   }
-  
+
   bool ok = false;
   try {
     ok = _agency.registerCallback(cb->key, getEndpointUrl(rand));
@@ -89,10 +88,10 @@ std::shared_ptr<AgencyCallback> AgencyCallbackRegistry::getCallback(uint32_t id)
 bool AgencyCallbackRegistry::unregisterCallback(std::shared_ptr<AgencyCallback> cb) {
   WRITE_LOCKER(locker, _lock);
 
-  for (auto it: _endpoints) {
-    if (it.second == cb) {
-      _endpoints.erase(it.first);
+  for (auto const& it: _endpoints) {
+    if (it.second.get() == cb.get()) {
       _agency.unregisterCallback(cb->key, getEndpointUrl(it.first));
+      _endpoints.erase(it.first);
       return true;
     }
   }
@@ -116,7 +115,7 @@ void AgencyCallbackRegistry::awaitNextChange(std::string const& key, double time
     cv.notify_one();
     return true;
   };
-  auto agencyCallback = std::make_shared<AgencyCallback>(_agency, key, notify);
+  auto agencyCallback = std::make_shared<AgencyCallback>(_agency, key, notify, false);
   
   std::mutex mtx;
   std::unique_lock<std::mutex> lck(mtx);
