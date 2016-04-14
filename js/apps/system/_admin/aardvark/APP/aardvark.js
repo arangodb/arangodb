@@ -26,7 +26,6 @@
 
 const underscore = require('lodash');
 const joi = require('joi');
-const httperr = require('http-errors');
 const contentDisposition = require('content-disposition');
 const internal = require('internal');
 const db = require('@arangodb').db;
@@ -79,7 +78,7 @@ router.post('/login', function (req, res) {
   );
 
   if (!valid) {
-    throw new httperr.Unauthorized();
+    res.throw('unauthorized');
   }
 
   sessions.setUser(req.session, doc);
@@ -91,8 +90,8 @@ router.post('/login', function (req, res) {
   password: joi.string().required().allow('')
 }, 'Login credentials.');
 
-router.get('/unauthorized', function() {
-  throw new httperr.Unauthorized();
+router.get('/unauthorized', function(req, res) {
+  res.throw('unauthorized');
 });
 
 router.get('/index.html', function(req, res) {
@@ -104,7 +103,7 @@ router.use(authRouter);
 
 authRouter.use((req, res, next) => {
   if (!internal.options()['server.disable-authentication'] && !req.session.uid) {
-    throw new httperr.Unauthorized();
+    res.throw('unauthorized');
   }
   next();
 });
