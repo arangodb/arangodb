@@ -25,45 +25,38 @@
 /// @author Alan Plum
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
-var cluster = require("@arangodb/cluster");
+const internal = require('internal');
+const cluster = require('@arangodb/cluster');
 
-var db = require("@arangodb").db;
+const db = require('@arangodb').db;
 
-var STATISTICS_INTERVAL = require("@arangodb/statistics").STATISTICS_INTERVAL;
-var STATISTICS_HISTORY_INTERVAL = require("@arangodb/statistics").STATISTICS_HISTORY_INTERVAL;
+const STATISTICS_INTERVAL = require('@arangodb/statistics').STATISTICS_INTERVAL;
+const STATISTICS_HISTORY_INTERVAL = require('@arangodb/statistics').STATISTICS_HISTORY_INTERVAL;
 
-const joi = require("joi");
-const httperr = require("http-errors");
-const createRouter = require("@arangodb/foxx/router");
+const joi = require('joi');
+const httperr = require('http-errors');
+const createRouter = require('@arangodb/foxx/router');
 
 const router = createRouter();
 module.exports = router;
 
 const startOffsetSchema = joi.number().default(
   () => internal.time() - STATISTICS_INTERVAL * 10,
-  "Default offset"
+  'Default offset'
 );
+
 const clusterIdSchema = joi.string().default(
   () => cluster.isCluster() ? ArangoServerState.id() : undefined,
-  "Default DB server"
+  'Default DB server'
 );
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief percentChange
-////////////////////////////////////////////////////////////////////////////////
 
 function percentChange (current, prev, section, src) {
-
   if (prev === null) {
     return 0;
   }
 
-  var p = prev[section][src];
+  const p = prev[section][src];
 
   if (p !== 0) {
     return (current[section][src] - p) / p;
@@ -72,17 +65,13 @@ function percentChange (current, prev, section, src) {
   return 0;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief percentChange2
-////////////////////////////////////////////////////////////////////////////////
 
 function percentChange2 (current, prev, section, src1, src2) {
-
   if (prev === null) {
     return 0;
   }
 
-  var p = prev[section][src1] - prev[section][src2];
+  const p = prev[section][src1] - prev[section][src2];
 
   if (p !== 0) {
     return (current[section][src1] - current[section][src2] - p) / p;
@@ -91,11 +80,8 @@ function percentChange2 (current, prev, section, src1, src2) {
   return 0;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief computeStatisticsRaw
-////////////////////////////////////////////////////////////////////////////////
 
-var STAT_SERIES = {
+const STAT_SERIES = {
   avgTotalTime: [ "client", "avgTotalTime" ],
   avgRequestTime: [ "client", "avgRequestTime" ],
   avgQueueTime: [ "client", "avgQueueTime" ],
@@ -120,7 +106,8 @@ var STAT_SERIES = {
   minorPageFaultsPerSecond: [ "system", "minorPageFaultsPerSecond" ]
 };
 
-var STAT_DISTRIBUTION = {
+
+const STAT_DISTRIBUTION = {
   totalTimeDistributionPercent: [ "client", "totalTimePercent" ],
   requestTimeDistributionPercent: [ "client", "requestTimePercent" ],
   queueTimeDistributionPercent: [ "client", "queueTimePercent" ],
@@ -128,15 +115,16 @@ var STAT_DISTRIBUTION = {
   bytesReceivedDistributionPercent: [ "client", "bytesReceivedPercent" ]
 };
 
+
 function computeStatisticsRaw (result, start, clusterId) {
 
-  var filter = "";
+  let filter = "";
 
   if (clusterId !== undefined) {
     filter = " FILTER s.clusterId == @clusterId ";
   }
 
-  var values = db._query(
+  const values = db._query(
         "FOR s IN _statistics "
       + "  FILTER s.time > @start "
       +    filter
@@ -146,21 +134,19 @@ function computeStatisticsRaw (result, start, clusterId) {
 
   result.times = [];
 
-  var key;
-
-  for (key in STAT_SERIES) {
+  for (let key in STAT_SERIES) {
     if (STAT_SERIES.hasOwnProperty(key)) {
       result[key] = [];
     }
   }
 
-  var lastRaw = null;
-  var lastRaw2 = null;
-  var path;
+  let lastRaw = null;
+  let lastRaw2 = null;
+  let path;
 
   // read the last entries
   while (values.hasNext()) {
-    var stat = values.next();
+    const stat = values.next();
 
     lastRaw2 = lastRaw;
     lastRaw = stat;
@@ -171,7 +157,7 @@ function computeStatisticsRaw (result, start, clusterId) {
 
     result.times.push(stat.time);
 
-    for (key in STAT_SERIES) {
+    for (let key in STAT_SERIES) {
       if (STAT_SERIES.hasOwnProperty(key)) {
         path = STAT_SERIES[key];
 
@@ -182,7 +168,7 @@ function computeStatisticsRaw (result, start, clusterId) {
 
   // have at least one entry, use it
   if (lastRaw !== null) {
-    for (key in STAT_DISTRIBUTION) {
+    for (let key in STAT_DISTRIBUTION) {
       if (STAT_DISTRIBUTION.hasOwnProperty(key)) {
         path = STAT_DISTRIBUTION[key];
 
@@ -212,13 +198,13 @@ function computeStatisticsRaw (result, start, clusterId) {
 
   // have no entry, add nulls
   else {
-    for (key in STAT_DISTRIBUTION) {
+    for (let key in STAT_DISTRIBUTION) {
       if (STAT_DISTRIBUTION.hasOwnProperty(key)) {
         result[key] = { values: [0,0,0,0,0,0,0], cuts: [0,0,0,0,0,0] };
       }
     }
 
-    var ps = internal.processStatistics();
+    const ps = internal.processStatistics();
 
     result.numberOfThreadsCurrent = ps.numberOfThreads;
     result.numberOfThreadsPercentChange = 0;
@@ -240,7 +226,7 @@ function computeStatisticsRaw (result, start, clusterId) {
   }
 
   // add physical memory
-  var ss = internal.serverStatistics();
+  const ss = internal.serverStatistics();
 
   result.physicalMemory = ss.physicalMemory;
 
@@ -255,19 +241,15 @@ function computeStatisticsRaw (result, start, clusterId) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief computeStatisticsRaw15M
-////////////////////////////////////////////////////////////////////////////////
 
 function computeStatisticsRaw15M (result, start, clusterId) {
-
-  var filter = "";
+  let filter = "";
 
   if (clusterId !== undefined) {
     filter = " FILTER s.clusterId == @clusterId ";
   }
 
-  var values = db._query(
+  const values = db._query(
         "FOR s IN _statistics15 "
       + "  FILTER s.time > @start "
       +    filter
@@ -275,12 +257,12 @@ function computeStatisticsRaw15M (result, start, clusterId) {
       + "  return s",
     { start: start - 2 * STATISTICS_HISTORY_INTERVAL, clusterId: clusterId });
 
-  var lastRaw = null;
-  var lastRaw2 = null;
+  let lastRaw = null;
+  let lastRaw2 = null;
 
   // read the last entries
   while (values.hasNext()) {
-    var stat = values.next();
+    const stat = values.next();
 
     lastRaw2 = lastRaw;
     lastRaw = stat;
@@ -307,7 +289,7 @@ function computeStatisticsRaw15M (result, start, clusterId) {
 
   // have no entry, add nulls
   else {
-    var ps = internal.processStatistics();
+    const ps = internal.processStatistics();
 
     result.numberOfThreads15M = ps.numberOfThreads;
     result.numberOfThreads15MPercentChange = 0;
@@ -326,13 +308,9 @@ function computeStatisticsRaw15M (result, start, clusterId) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief computeStatisticsShort
-////////////////////////////////////////////////////////////////////////////////
 
 function computeStatisticsShort (start, clusterId) {
-
-  var result = {};
+  const result = {};
 
   computeStatisticsRaw(result, start, clusterId);
   computeStatisticsRaw15M(result, start, clusterId);
@@ -340,28 +318,22 @@ function computeStatisticsShort (start, clusterId) {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief computeStatisticsValues
-////////////////////////////////////////////////////////////////////////////////
 
 function computeStatisticsValues (result, values, attrs) {
-
-  var key;
-
-  for (key in attrs) {
+  for (let key in attrs) {
     if (attrs.hasOwnProperty(key)) {
       result[key] = [];
     }
   }
 
   while (values.hasNext()) {
-    var stat = values.next();
+    const stat = values.next();
 
     result.times.push(stat.time);
 
-    for (key in attrs) {
+    for (let key in attrs) {
       if (attrs.hasOwnProperty(key) && STAT_SERIES.hasOwnProperty(key)) {
-        var path = STAT_SERIES[key];
+        const path = STAT_SERIES[key];
 
         result[key].push(stat[path[0]][path[1]]);
       }
@@ -369,21 +341,16 @@ function computeStatisticsValues (result, values, attrs) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief computeStatisticsLong
-////////////////////////////////////////////////////////////////////////////////
 
 function computeStatisticsLong (attrs, clusterId) {
-
-  var short = { times: [] };
-
-  var filter = "";
+  const short = { times: [] };
+  let filter = "";
 
   if (clusterId !== undefined) {
     filter = " FILTER s.clusterId == @clusterId ";
   }
 
-  var values = db._query(
+  const values = db._query(
       "FOR s IN _statistics "
     +    filter
     + "  SORT s.time "
@@ -392,15 +359,15 @@ function computeStatisticsLong (attrs, clusterId) {
 
   computeStatisticsValues(short, values, attrs);
 
-  var filter2 = "";
-  var end = 0;
+  let filter2 = "";
+  let end = 0;
 
   if (short.times.length !== 0) {
     filter2 = " FILTER s.time < @end ";
     end = short.times[0];
   }
 
-  values = db._query(
+  const values2 = db._query(
     "FOR s IN _statistics15 "
     +    filter
     +    filter2
@@ -408,13 +375,11 @@ function computeStatisticsLong (attrs, clusterId) {
     + "  return s",
     { end: end, clusterId: clusterId });
 
-  var long = { times: [] };
+  const long = { times: [] };
 
-  computeStatisticsValues(long, values, attrs);
+  computeStatisticsValues(long, values2, attrs);
 
-  var key;
-
-  for (key in attrs) {
+  for (let key in attrs) {
     if (attrs.hasOwnProperty(key) && long.hasOwnProperty(key)) {
       long[key] = long[key].concat(short[key]);
     }
@@ -427,6 +392,7 @@ function computeStatisticsLong (attrs, clusterId) {
   return long;
 }
 
+
 router.use((req, res, next) => {
   if (!internal.options()['server.disable-authentication'] && !req.session.uid) {
     throw new httperr.Unauthorized();
@@ -434,10 +400,11 @@ router.use((req, res, next) => {
   next();
 });
 
-router.get("short", function (req, res) {
-  var start = req.params("start");
-  var clusterId = req.params("DBserver");
-  var series = computeStatisticsShort(start, clusterId);
+
+router.get("/short", function (req, res) {
+  const start = req.queryParams.start;
+  const clusterId = req.queryParams.DBserver;
+  const series = computeStatisticsShort(start, clusterId);
   res.json(series);
 })
 .queryParam("start", startOffsetSchema)
@@ -445,19 +412,19 @@ router.get("short", function (req, res) {
 .summary("Short term history")
 .description("This function is used to get the statistics history.");
 
-router.get("long", function (req, res) {
-  var filter = req.params("filter");
-  var clusterId = req.params("DBserver");
 
-  var attrs = {};
-  var s = filter.split(",");
-  var i;
+router.get("/long", function (req, res) {
+  const filter = req.queryParams.filter;
+  const clusterId = req.queryParams.DBserver;
 
-  for (i = 0;  i < s.length;  ++i) {
+  const attrs = {};
+  const s = filter.split(",");
+
+  for (let i = 0;  i < s.length; i++) {
     attrs[s[i]] = true;
   }
 
-  var series = computeStatisticsLong(attrs, clusterId);
+  const series = computeStatisticsLong(attrs, clusterId);
   res.json(series);
 })
 .queryParam("filter", joi.string().required())
@@ -465,36 +432,37 @@ router.get("long", function (req, res) {
 .summary("Long term history")
 .description("This function is used to get the aggregated statistics history.");
 
-router.get("cluster", function (req, res) {
+
+router.get("/cluster", function (req, res) {
   if (!cluster.isCoordinator()) {
     throw new httperr.Forbidden("only allowed on coordinator");
   }
 
-  var DBserver = req.parameters.DBserver;
-  var type = req.parameters.type;
-  var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
-  var options = { coordTransactionID: coord.coordTransactionID, timeout: 10 };
+  const DBserver = req.queryParams.DBserver;
+  let type = req.queryParams.type;
+  const coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
+  const options = { coordTransactionID: coord.coordTransactionID, timeout: 10 };
 
   if (type !== "short" && type !== "long") {
     type = "short";
   }
 
-  var url = "/_admin/statistics/" + type;
-  var sep = "?";
+  let url = "/_admin/statistics/" + type;
+  let sep = "?";
 
-  if (req.parameters.hasOwnProperty("start")) {
-    url += sep + "start=" + encodeURIComponent(req.params("start"));
+  if (req.queryParams.start) {
+    url += sep + "start=" + encodeURIComponent(req.queryParams.start);
     sep = "&";
   }
 
-  if (req.parameters.hasOwnProperty("filter")) {
-    url += sep + "filter=" + encodeURIComponent(req.params("filter"));
+  if (req.queryParams.filter) {
+    url += sep + "filter=" + encodeURIComponent(req.queryParams.filter);
     sep = "&";
   }
 
   url += sep + "DBserver=" + encodeURIComponent(DBserver);
 
-  var op = ArangoClusterComm.asyncRequest(
+  const op = ArangoClusterComm.asyncRequest(
     "GET",
     "server:" + DBserver,
     "_system",
@@ -504,7 +472,7 @@ router.get("cluster", function (req, res) {
     options
   );
 
-  var r = ArangoClusterComm.wait(op);
+  const r = ArangoClusterComm.wait(op);
 
   if (r.status === "RECEIVED") {
     res.set("content-type", "application/json; charset=utf-8");
@@ -512,7 +480,7 @@ router.get("cluster", function (req, res) {
   } else if (r.status === "TIMEOUT") {
     throw new httperr.BadRequest("operation timed out");
   } else {
-    var body;
+    let body;
 
     try {
       body = JSON.parse(r.body);

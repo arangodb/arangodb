@@ -34,7 +34,7 @@
   ],
 
   "main": "index.js",
-  "defaultDocument": "index.html",
+  "defaultDocument": "standalone.html",
 
   "files": {
     "/standalone.html": {

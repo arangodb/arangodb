@@ -24,14 +24,15 @@
 /// @author Alan Plum
 ////////////////////////////////////////////////////////////////////////////////
 
-const underscore = require('lodash');
 const joi = require('joi');
-const contentDisposition = require('content-disposition');
+const dd = require('dedent');
 const internal = require('internal');
 const db = require('@arangodb').db;
+const errors = require('@arangodb').errors;
 const notifications = require('@arangodb/configuration').notifications;
+const examples = require('@arangodb/graph-examples/example-graph');
 const createRouter = require('@arangodb/foxx/router');
-const NOT_FOUND = require('@arangodb').errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code;
+
 const API_DOCS = require(module.context.fileName('api-docs.json'));
 API_DOCS.basePath = `/_db/${encodeURIComponent(db._name())}`;
 
@@ -39,6 +40,7 @@ const sessions = module.context.sessions;
 const auth = module.context.auth;
 const router = createRouter();
 module.exports = router;
+
 
 router.get('/whoAmI', function(req, res) {
   let user = null;
@@ -49,14 +51,20 @@ router.get('/whoAmI', function(req, res) {
       const doc = db._users.document(req.session.uid);
       user = doc.user;
     } catch (e) {
-      if (!e.isArangoError || e.errorNum !== NOT_FOUND) {
+      if (!e.isArangoError || e.errorNum !== errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
         throw e;
       }
-      sessions.setUser(req.session);
+      sessions.setUser(req.session, null);
     }
   }
   res.json({user});
-});
+})
+.summary('Return the current user')
+.description(dd`
+  Returns the current user or "null" if the user is not authenticated.
+  Returns "false" if authentication is disabled.
+`);
+
 
 router.post('/logout', function (req, res) {
   if (req.session) {
@@ -64,7 +72,12 @@ router.post('/logout', function (req, res) {
     delete req.session;
   }
   res.json({success: true});
-});
+})
+.summary('Log out')
+.description(dd`
+  Destroys the current session and revokes any authentication.
+`);
+
 
 router.post('/login', function (req, res) {
   if (!req.session) {
@@ -88,18 +101,28 @@ router.post('/login', function (req, res) {
 .body({
   username: joi.string().required(),
   password: joi.string().required().allow('')
-}, 'Login credentials.');
+}, 'Login credentials.')
+.error('unauthorized', 'Invalid credentials.')
+.summary('Log in')
+.description(dd`
+  Authenticates the user for the active session with a username and password.
+  Creates a new session if none exists.
+`);
+
 
 router.get('/unauthorized', function(req, res) {
   res.throw('unauthorized');
-});
+})
+.error('unauthorized')
+.summary('Unauthorized')
+.description(dd`
+  Responds with a HTTP 401 response.
+`);
 
-router.get('/index.html', function(req, res) {
-  res.redirect(req.makeAbsolute('standalone.html'));
-});
 
 const authRouter = createRouter();
 router.use(authRouter);
+
 
 authRouter.use((req, res, next) => {
   if (!internal.options()['server.disable-authentication'] && !req.session.uid) {
@@ -108,210 +131,227 @@ authRouter.use((req, res, next) => {
   next();
 });
 
+
 authRouter.get('/api/*', module.context.createSwaggerHandler({
   swaggerJson(req, res) {
     res.json(API_DOCS);
   }
-}));
+}))
+.summary('System API documentation')
+.description(dd`
+  Mounts the system API documentation.
+`);
+
 
 authRouter.get('shouldCheckVersion', function(req, res) {
-  var versions = notifications.versions();
+  const versions = notifications.versions();
   res.json(Boolean(versions && versions.enableVersionNotification));
 })
 .summary('Is version check allowed')
-.description('Check if version check is allowed.');
+.description(dd`
+  Check if version check is allowed.
+`);
+
 
 authRouter.post('disableVersionCheck', function(req, res) {
-  notifications.setVersions({
-    enableVersionNotification: false
-  });
+  notifications.setVersions({enableVersionNotification: false});
   res.json('ok');
 })
 .summary('Disable version check')
-.description('Disable the version check in web interface');
+.description(dd`
+  Disable the version check in web interface
+`);
+
 
 authRouter.post('/query/explain', function(req, res) {
+  const bindVars = req.body.bindVars;
+  const query = req.body.query;
+  let msg = null;
 
-  var explain, query = req.body().query,
-  bindVars = req.body().bindVars;
-
-  if (query.length > 0) {
-    try {
-      if (bindVars) {
-        explain = require('@arangodb/aql/explainer').explain({
-          query: query,
-          bindVars: bindVars
-        }, {colors: false}, false, bindVars);
-      }
-      else {
-        explain = require('@arangodb/aql/explainer').explain(query, {colors: false}, false);
-      }
+  try {
+    if (bindVars) {
+      msg = require('@arangodb/aql/explainer').explain({
+        query: query,
+        bindVars: bindVars
+      }, {colors: false}, false, bindVars);
+    } else {
+      msg = require('@arangodb/aql/explainer').explain(query, {colors: false}, false);
     }
-    catch (e) {
-      explain = JSON.stringify(e);
-    }
+  } catch (e) {
+    res.throw('bad request', e.message, {cause: e});
   }
 
-
-  res.json({msg: explain});
-
+  res.json({msg});
 })
+.body(joi.object({
+  query: joi.string().required(),
+  bindVars: joi.object().optional()
+}).required(), 'Query and bindVars to explain.')
 .summary('Explains a query')
-.description('Explains a query in a more user-friendly way than the query_api/explain');
+.description(dd`
+  Explains a query in a more user-friendly way than the query_api/explain
+`);
 
 
 authRouter.post('/query/upload/:user', function(req, res) {
-  var user = req.params('user');
-  var queries, doc, queriesToSave;
+  let doc;
 
-  queries = req.body();
-  doc = db._users.byExample({'user': user}).toArray()[0];
-  queriesToSave = doc.userData.queries || [ ];
-
-  underscore.each(queries, function(newq) {
-    var found = false, i;
-    for (i = 0; i < queriesToSave.length; ++i) {
-      if (queriesToSave[i].name === newq.name) {
-        queriesToSave[i] = newq;
-        found = true;
-        break;
+  if (req.session && req.session.uid) {
+    try {
+      doc = db._users.document(req.session.uid);
+    } catch (e) {
+      if (!e.isArangoError || e.errorNum !== errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
+        throw e;
       }
     }
-    if (!found) {
-      queriesToSave.push(newq);
-    }
-  });
+  } else {
+    doc = db._users.firstExample({user: req.pathParams.user});
+  }
 
-  var toUpdate = {
-    userData: {
-      queries: queriesToSave
-    }
-  };
+  if (!doc) {
+    res.throw('not found');
+  }
 
-  var result = db._users.update(doc, toUpdate, true);
-  res.json(result);
+  if (!doc.userData.queries) {
+    doc.userData.queries = [];
+  }
+
+  const existingQueries = doc.userData.queries
+  .map(query => query.name);
+
+  for (const query of req.body) {
+    if (existingQueries.indexOf(query.name) !== -1) {
+      existingQueries.push(query.name);
+      doc.userData.queries.push(query);
+    }
+  }
+
+  const meta = db._users.replace(doc, doc);
+  res.json(meta);
 })
+.pathParam('user', joi.string().required(), 'Username. Ignored if authentication is enabled.')
+.body(joi.array().items(joi.object({
+  name: joi.string().required(),
+  parameter: joi.any().optional(),
+  value: joi.any().optional()
+}).required()).required(), 'User query array to import.')
+.error('not found', 'User does not exist.')
 .summary('Upload user queries')
-.description('This function uploads all given user queries');
+.description(dd`
+  This function uploads all given user queries.
+`);
+
 
 authRouter.get('/query/download/:user', function(req, res) {
-  var user = req.params('user');
-  var result = db._users.byExample({'user': user}).toArray()[0];
+  let doc;
 
-  res.set('Content-Type', 'application/json');
-  res.set('Content-Disposition', contentDisposition('queries.json'));
-
-  if (result === null || result === undefined) {
-    res.json([]);
+  if (req.session && req.session.uid) {
+    try {
+      doc = db._users.document(req.session.uid);
+    } catch (e) {
+      if (!e.isArangoError || e.errorNum !== errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
+        throw e;
+      }
+    }
+  } else {
+    doc = db._users.firstExample({user: req.pathParams.user});
   }
-  else {
-    res.json(result.userData.queries || []);
+
+  if (!doc) {
+    res.throw('not found');
   }
 
+  res.attachment(`queries-${db._name()}-${doc.user}.json`);
+  res.json(doc.userData.queries || []);
 })
+.pathParam('user', joi.string().required(), 'Username. Ignored if authentication is enabled.')
+.error('not found', 'User does not exist.')
 .summary('Download stored queries')
-.description('Download and export all queries from the given username.');
+.description(dd`
+  Download and export all queries from the given username.
+`);
+
 
 authRouter.get('/query/result/download/:query', function(req, res) {
-  var query = req.params('query'),
-  parsedQuery;
-
-  var internal = require('internal');
-  query = internal.base64Decode(query);
+  let query;
   try {
-    parsedQuery = JSON.parse(query);
+    query = internal.base64Decode(req.pathParams.query);
+    query = JSON.parse(query);
   }
-  catch (ignore) {
+  catch (e) {
+    res.throw('bad request', e.message, {cause: e});
   }
 
-  var result = db._query(parsedQuery.query, parsedQuery.bindVars).toArray();
-  res.set('Content-Type', 'application/json');
-  res.set('Content-Disposition', contentDisposition('results.json'));
+  const result = db._query(query.query, query.bindVars).toArray();
+  res.attachment(`results-${db._name()}.json`);
   res.json(result);
-
 })
+.pathParam('query', joi.string().required(), 'Base64 encoded query.')
+.error('bad request', 'The query is invalid or malformed.')
 .summary('Download the result of a query')
-.description('This function downloads the result of a user query.');
+.description(dd`
+  This function downloads the result of a user query.
+`);
+
 
 authRouter.post('/graph-examples/create/:name', function(req, res) {
-  var name = req.params('name'), g,
-  examples = require('@arangodb/graph-examples/example-graph.js');
+  const name = req.pathParams.name;
 
-  if (name === 'knows_graph') {
-    g = examples.loadGraph('knows_graph');
-  }
-  else if (name === 'social') {
-    g = examples.loadGraph('social');
-  }
-  else if (name === 'routeplanner') {
-    g = examples.loadGraph('routeplanner');
+  if (['knows_graph', 'social', 'routeplanner'].indexOf(name) === -1) {
+    res.throw('not found');
   }
 
-  if (typeof g === 'object') {
-    res.json({error: false});
-  }
-  else {
-    res.json({error: true});
-  }
-
+  const g = examples.loadGraph(name);
+  res.json({error: !g});
 })
-.summary('Create sample graphs')
-.description('Create one of the given sample graphs.');
+.pathParam('name', joi.string().required(), 'Name of the example graph.')
+.summary('Create example graphs')
+.description(dd`
+  Create one of the given example graphs.
+`);
+
 
 authRouter.post('/job', function(req, res) {
-
-  if (req.body().id && req.body().collection && req.body().type && req.body().desc) {
-
-    //store id in _system
-    db._frontend.save({
-      id: req.body().id,
-      collection: req.body().collection, 
-      type: req.body().type,
-      model: 'job',
-      desc: req.body().desc
-    });
-
-    res.json(true);
-  }
-  else {
-    res.json(false);
-  }
-
+  db._frontend.save(Object.assign(req.body, {model: 'job'}));
+  res.json(true);
 })
+.body(joi.object({
+  id: joi.any().required(),
+  collection: joi.any().required(),
+  type: joi.any().required(),
+  desc: joi.any().required()
+}).required())
 .summary('Store job id of a running job')
-.description('Create a new job id entry in a specific system database with a given id.');
+.description(dd`
+  Create a new job id entry in a specific system database with a given id.
+`);
 
-authRouter.delete('/job/', function(req, res) {
-  db._frontend.removeByExample({
-    model: 'job'
-  }, true);
+
+authRouter.delete('/job', function(req, res) {
+  db._frontend.removeByExample({model: 'job'}, true);
   res.json(true);
 })
 .summary('Delete all jobs')
-.description('Delete all jobs in a specific system database with a given id.');
+.description(dd`
+  Delete all jobs in a specific system database with a given id.
+`);
+
 
 authRouter.delete('/job/:id', function(req, res) {
-  var id = req.params('id');
-
-  if (id) {
-    db._frontend.removeByExample({
-      id: id
-    }, true);
-    res.json(true);
-  }
-  else {
-    res.json(false);
-  }
-
+  db._frontend.removeByExample({id: req.pathParams.id}, true);
+  res.json(true);
 })
 .summary('Delete a job id')
-.description('Delete an existing job id entry in a specific system database with a given id.');
+.description(dd`
+  Delete an existing job id entry in a specific system database with a given id.
+`);
+
 
 authRouter.get('/job', function(req, res) {
-
-  var result = db._frontend.all().toArray();
+  const result = db._frontend.all().toArray();
   res.json(result);
-
 })
 .summary('Return all job ids.')
-.description('This function returns the job ids of all currently running jobs.');
+.description(dd`
+  This function returns the job ids of all currently running jobs.
+`);

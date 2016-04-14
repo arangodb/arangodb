@@ -33,6 +33,7 @@ const internal = require('internal');
 const router = createRouter();
 module.exports = router;
 
+
 router.use((req, res, next) => {
   if (!internal.options()['server.disable-authentication'] && !req.session.uid) {
     res.throw('unauthorized');
@@ -40,27 +41,27 @@ router.use((req, res, next) => {
   next();
 });
 
+
 router.get('/amICoordinator', function(req, res) {
   res.json(cluster.isCoordinator());
 })
 .summary('Plan and start a new cluster')
 .description('This will plan a new cluster with the information given in the body');
 
+
 if (cluster.isCluster()) {
   // only make these functions available in cluster mode!
-  var Communication = require("@arangodb/cluster/agency-communication");
-  var comm = new Communication.Communication();
-  var beats = comm.sync.Heartbeats();
-  var diff = comm.diff.current;
-  var servers = comm.current.DBServers();
-  var dbs = comm.current.Databases();
-  var coords = comm.current.Coordinators();
+  const Communication = require('@arangodb/cluster/agency-communication');
+  const comm = new Communication.Communication();
+  const beats = comm.sync.Heartbeats();
+  const diff = comm.diff.current;
+  const servers = comm.current.DBServers();
+  const dbs = comm.current.Databases();
+  const coords = comm.current.Coordinators();
 
-  router.get("/ClusterType", function(req, res) {
+  router.get('/ClusterType', function(req, res) {
     // Not yet implemented
-    res.json({
-      type: "symmetricSetup"
-    });
+    res.json({type: 'symmetricSetup'});
   })
   .summary('Get the type of the cluster')
   .description(dd`
@@ -71,90 +72,97 @@ if (cluster.isCluster()) {
      - asymmetricalSetup
   `);
 
-  router.get("/DBServers", function(req, res) {
-    var resList = [],
-      list = servers.getList(),
-      diffList = diff.DBServers(),
-      didBeat = beats.didBeat(),
-      serving = beats.getServing();
+  router.get('/DBServers', function(req, res) {
+    const resList = [];
+    const list = servers.getList();
+    const diffList = diff.DBServers();
+    const didBeat = beats.didBeat();
+    const serving = beats.getServing();
 
     _.each(list, function(v, k) {
       v.name = k;
       resList.push(v);
       if (!_.contains(didBeat, k)) {
-        v.status = "critical";
+        v.status = 'critical';
         return;
       }
-      if (v.role === "primary" && !_.contains(serving, k)) {
-        v.status = "warning";
+      if (v.role === 'primary' && !_.contains(serving, k)) {
+        v.status = 'warning';
         return;
       }
-      v.status = "ok";
+      v.status = 'ok';
     });
+
     _.each(diffList.missing, function(v) {
-      v.status = "missing";
+      v.status = 'missing';
       resList.push(v);
     });
+
     res.json(resList);
   })
   .summary('Get all DBServers')
   .description('Get a list of all running and expected DBServers within the cluster');
 
-  router.get("/Coordinators", function(req, res) {
-    var resList = [],
-      list = coords.getList(),
-      diffList = diff.Coordinators(),
-      didBeat = beats.didBeat();
+  router.get('/Coordinators', function(req, res) {
+    const resList = [];
+    const list = coords.getList();
+    const diffList = diff.Coordinators();
+    const didBeat = beats.didBeat();
 
-    _.each(list, function(v, k) {
+    _.each(list, (v, k) => {
       v.name = k;
       resList.push(v);
       if (!_.contains(didBeat, k)) {
-        v.status = "critical";
+        v.status = 'critical';
         return;
       }
-      v.status = "ok";
+      v.status = 'ok';
     });
-    _.each(diffList.missing, function(v) {
-      v.status = "missing";
+
+    _.each(diffList.missing, (v) => {
+      v.status = 'missing';
       resList.push(v);
     });
+
     res.json(resList);
   });
 
-  router.get("/Databases", function(req, res) {
-    var list = dbs.getList();
-    res.json(_.map(list, (name) => ({name})));
+  router.get('/Databases', function(req, res) {
+    res.json(
+      dbs.getList()
+      .map((name) => ({name}))
+    );
   });
 
-  router.get("/:dbname/Collections", function(req, res) {
-    var dbname = req.params("dbname"),
-      selected = dbs.select(dbname);
+  router.get('/:dbname/Collections', function(req, res) {
     try {
-      res.json(_.map(
-        selected.getCollections(),
-        (name) => ({name})
-      ));
-    } catch(e) {
+      res.json(
+        dbs
+        .select(req.pathParams.dbname)
+        .getCollections()
+        .map((name) => ({name}))
+      );
+    } catch (e) {
       res.json([]);
     }
   });
 
-  router.get("/:dbname/:colname/Shards", function(req, res) {
-    var dbname = req.params("dbname");
-    var colname = req.params("colname");
-    var selected = dbs.select(dbname).collection(colname);
-    res.json(selected.getShardsByServers());
+  router.get('/:dbname/:colname/Shards', function(req, res) {
+    res.json(
+      dbs
+      .select(req.pathParams.dbname)
+      .collection(req.pathParams.colname)
+      .getShardsByServers()
+    );
   });
 
-  router.get("/:dbname/:colname/Shards/:servername", function(req, res) {
-    var dbname = req.params("dbname");
-    var colname = req.params("colname");
-    var servername = req.params("servername");
-    var selected = dbs.select(dbname).collection(colname);
-    res.json(_.map(
-      selected.getShardsForServer(servername),
-      (c) => ({id: c})
-    ));
+  router.get('/:dbname/:colname/Shards/:servername', function(req, res) {
+    res.json(
+      dbs
+      .select(req.pathParams.dbname)
+      .collection(req.pathParams.colname)
+      .getShardsForServer(req.pathParams.servername)
+      .map((c) => ({id: c}))
+    );
   });
 }
