@@ -11,6 +11,7 @@
 
 @media (max-width: 738px) {
 
+  // NAVIGATION
   #collectionsDropdown ul {
     width: auto !important;
   }
@@ -38,9 +39,6 @@
   }
 
   .navmenu {
-    padding-left: 20px;
-    padding-top: 0;
-    position: absolute;
   }
 }
 
@@ -567,6 +565,7 @@ div.contentWrapper {
 }
 
 div.centralRow {
+  background: $c-bluegrey-bg;
   float: left;
   height: 100%;
   left: $navbar-size;
