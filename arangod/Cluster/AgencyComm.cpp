@@ -645,18 +645,6 @@ bool AgencyComm::initialize() {
 //////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::tryInitializeStructure() {
-  VPackBuilder trueBuilder;
-  trueBuilder.add(VPackValue(true));
-
-  VPackSlice trueSlice = trueBuilder.slice();
-
-  AgencyCommResult result;
-  result = casValue("Init", trueSlice, false, 120.0, 0.0);
-  if (!result.successful()) {
-    // mop: we couldn"t aquire a lock. so somebody else is already initializing
-    return false;
-  }
-
   VPackBuilder builder;
   try {
     VPackObjectBuilder b(&builder);
@@ -731,6 +719,7 @@ bool AgencyComm::tryInitializeStructure() {
       }
       addEmptyVPackObject("DBServers", builder);
       builder.add("Lock", VPackValue("\"UNLOCKED\""));
+      builder.add("InitDone", VPackValue(true));
     }
   } catch (...) {
     LOG(WARN) << "Couldn't create initializing structure";
@@ -738,22 +727,16 @@ bool AgencyComm::tryInitializeStructure() {
   }
 
   try {
-    VPackSlice s = builder.slice();
+    LOG(DEBUG) << "Initializing agency with " << builder.toJson();
 
-    // now dump the Slice into an std::string
-    std::string buffer;
-    VPackStringSink sink(&buffer);
-    VPackDumper::dump(s, &sink);
+    AgencyCommResult result;
+    AgencyOperation initOperation("", AgencyValueOperationType::SET, builder.slice());
+    AgencyTransaction initTransaction;
+    initTransaction.operations.push_back(initOperation);
 
-    LOG(DEBUG) << "Initializing agency with " << buffer;
-
-    if (!initFromVPackSlice(std::string(""), s)) {
-      LOG(FATAL) << "Couldn't initialize agency";
-      FATAL_ERROR_EXIT();
-    } else {
-      setValue("InitDone", trueSlice, 0.0);
-      return true;
-    }
+    sendTransactionWithFailover(result, initTransaction);
+    
+    return result.successful();
   } catch (std::exception const& e) {
     LOG(FATAL) << "Fatal error initializing agency " << e.what();
     FATAL_ERROR_EXIT();
@@ -761,41 +744,6 @@ bool AgencyComm::tryInitializeStructure() {
     LOG(FATAL) << "Fatal error initializing agency";
     FATAL_ERROR_EXIT();
   }
-}
-
-bool AgencyComm::initFromVPackSlice(std::string key, VPackSlice s) {
-  bool ret = true;
-  AgencyCommResult result;
-  if (s.isObject()) {
-    if (!key.empty()) {
-      result = createDirectory(key);
-      if (!result.successful()) {
-        // mop: forbidden will be thrown if directory already exists
-        // need ability to recover in a case where the agency was half
-        // initialized
-        if (result.httpCode() !=
-            (int)arangodb::GeneralResponse::ResponseCode::FORBIDDEN) {
-          ret = false;
-          return ret;
-        }
-      }
-    }
-
-    for (auto const& it : VPackObjectIterator(s)) {
-      std::string subKey("");
-      if (!key.empty()) {
-        subKey += key + "/";
-      }
-      subKey += it.key.copyString();
-
-      ret = ret && initFromVPackSlice(subKey, it.value);
-    }
-  } else {
-    result = setValue(key, s.copyString(), 0.0);
-    ret = ret && result.successful();
-  }
-
-  return ret;
 }
 
 //////////////////////////////////////////////////////////////////////////////

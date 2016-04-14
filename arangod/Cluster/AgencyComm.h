@@ -235,6 +235,9 @@ struct AgencyTransaction {
   explicit AgencyTransaction(AgencyOperation const& operation) {
     operations.push_back(operation);
   }
+  
+  explicit AgencyTransaction() {
+  }
 };
 
 struct AgencyCommResult {
