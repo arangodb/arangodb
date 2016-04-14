@@ -298,17 +298,22 @@ namespace arangodb {
 namespace consensus {
 
 template<> bool Node::handle<SET> (VPackSlice const& slice) {
-  if (!slice.hasKey("new")) {
-    LOG_TOPIC(WARN, Logger::AGENCY) << "Operator set without new value";
-    LOG_TOPIC(WARN, Logger::AGENCY) << slice.toJson();
-    return false;
-  }
+
   Slice val = slice.get("new");
+  
   if (val.isObject()) {
-    this->applies(val);
+    if (val.hasKey("op")) { // No longer a keyword but a regular key "op"
+      if (_children.find("op") == _children.end()) {
+        _children["op"] = std::make_shared<Node>("op", this);
+      }
+      *(_children["op"]) = val.get("op");
+    } else {               // Deeper down
+      this->applies(val);
+    }
   } else { 
     *this = val;
   }
+  
   if (slice.hasKey("ttl")) {
     VPackSlice ttl_v = slice.get("ttl");
     if (ttl_v.isNumber()) {
@@ -322,7 +327,9 @@ template<> bool Node::handle<SET> (VPackSlice const& slice) {
         "Non-number value assigned to ttl: " << ttl_v.toJson();
     }
   }
+  
   return true;
+  
 }
 
 template<> bool Node::handle<INCREMENT> (VPackSlice const& slice) {
@@ -480,51 +487,54 @@ template<> bool Node::handle<UNOBSERVE> (VPackSlice const& slice) {
 
 // Apply slice to this node
 bool Node::applies (VPackSlice const& slice) {
-  if (slice.isObject()) {
-    for (auto const& i : VPackObjectIterator(slice)) {
 
+  if (slice.isObject()) {
+    
+    for (auto const& i : VPackObjectIterator(slice)) {
+      
       std::string key = i.key.copyString();
       
       if (slice.hasKey("op")) {
         std::string oper = slice.get("op").copyString();
         if (oper == "delete") {
           return _parent->removeChild(_node_name);
-        } else if (oper == "set") { //
+        } else if (oper == "set") {       // "op":"set"
           return handle<SET>(slice);
-        } else if (oper == "increment") { // Increment
+        } else if (oper == "increment") { // "op":"increment"
           return handle<INCREMENT>(slice);
-        } else if (oper == "decrement") { // Decrement
+        } else if (oper == "decrement") { // "op":"decrement"
           return handle<DECREMENT>(slice);
-        } else if (oper == "push") { // Push
+        } else if (oper == "push") {      // "op":"push"
           return handle<PUSH>(slice);
-        } else if (oper == "pop") { // Pop
+        } else if (oper == "pop") {       // "op":"pop"
           return handle<POP>(slice);
-        } else if (oper == "prepend") { // Prepend
+        } else if (oper == "prepend") {   // "op":"prepend"
           return handle<PREPEND>(slice);
-        } else if (oper == "shift") { // Shift
+        } else if (oper == "shift") {     // "op":"shift"
           return handle<SHIFT>(slice);
-        } else if (oper == "observe") {
+        } else if (oper == "observe") {   // "op":"observe"
           return handle<OBSERVE>(slice);
-        } else if (oper == "unobserve") {
+        } else if (oper == "unobserve") { // "op":"unobserve"
           return handle<UNOBSERVE>(slice);
-        } else {
-          LOG_TOPIC(WARN, Logger::AGENCY) << "Unknown operation " << oper;
-          return false;
+        } else {                          // "op" might not be a key word after all
+          LOG_TOPIC(INFO, Logger::AGENCY)
+            << "Keyword 'op' without known operation. Handling as regular key.";
         }
-      } /*else if (slice.hasKey("new")) { // new without set
-        *this = slice.get("new");
-        return true;
-        } */else if (key.find('/')!=std::string::npos) {
+      }
+      
+      if (key.find('/')!=std::string::npos) {
         (*this)(key).applies(i.value);
       } else {
         auto found = _children.find(key);
         if (found == _children.end()) {
           _children[key] = std::make_shared<Node>(key, this);
         }
-      _children[key]->applies(i.value);
+        _children[key]->applies(i.value);
       }
+      
     }
-  } else {
+    
+  } else { // slice.isObject()
     *this = slice;
   }
   return true;
