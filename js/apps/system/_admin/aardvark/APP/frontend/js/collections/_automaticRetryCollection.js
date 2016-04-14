@@ -1,4 +1,4 @@
-/*global window, Backbone, console */
+/*global window, Backbone */
 (function() {
   "use strict";
 

@@ -1,4 +1,4 @@
-/*global window, $, Backbone, templateEngine, alert, _, d3, Dygraph, document */
+/*global window, $, Backbone, templateEngine,  _, d3, Dygraph, document */
 
 (function() {
   "use strict";
