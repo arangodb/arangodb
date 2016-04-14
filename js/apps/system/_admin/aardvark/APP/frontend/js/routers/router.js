@@ -25,7 +25,7 @@
       "workMonitor": "workMonitor",
       "databases": "databases",
       "services": "applications",
-      "applications/:mount": "applicationDetail",
+      "service/:mount": "applicationDetail",
       "graphs": "graphManagement",
       "graphs/:name": "showGraph",
       "users": "userManagement",

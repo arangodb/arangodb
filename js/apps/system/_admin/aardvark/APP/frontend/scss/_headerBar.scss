@@ -170,7 +170,7 @@ div.headerBar {
   border: 0;
   border-radius: 0;
   color: $c-white;
-  font-size: 14pt;
+  font-size: 12pt;
   font-weight: 100;
   line-height: 45px;
   margin: 0;
@@ -182,16 +182,21 @@ div.headerBar {
     top: 0;
   };
 
-  .fa-chevron-right {
+  .fa {
     margin-left: 10px;
     margin-right: 8px;
+  }
+
+  .fa-ellipsis-v {
+    font-size: 10pt;
+    opacity: 0;
   }
 
   // Disabled breadcrumb
   .disabledBread {
     color: $c-white;
     float: left;
-    font-size: 14pt;
+    font-size: 12pt;
     font-weight: 100;
     padding-right: 5px;
     position: relative;

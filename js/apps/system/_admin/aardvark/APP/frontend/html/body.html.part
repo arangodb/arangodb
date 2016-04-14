@@ -11,23 +11,25 @@
             <div class="navmenu" id="navigationBar">
             </div>
       </div>
-
-
     </nav>
 
     <div class="bodyWrapper">
+
       <div class="centralRow">
         <div id='navbar2' class="secondary">
             <div class="subnavmenu" id="subNavigationBar"></div>
         </div>
         <div class="resizecontainer contentWrapper" style="clear:both;">
           <div id="content" class="centralContent"></div>
+        </div>
+        <div class="resizecontainer footerWrapper" style="clear:both;">
           <footer class="footer">
             <div class="" id="footerBar">
             </div>
           </footer>
         </div>
       </div>
+
     </div>
 
     <div id="modalPlaceholder">

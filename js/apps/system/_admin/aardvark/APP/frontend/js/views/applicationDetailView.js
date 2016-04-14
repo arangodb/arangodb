@@ -214,11 +214,32 @@
             });
           }
         }
+
+        this.breadcrumb();
       }.bind(this);
 
       arangoHelper.currentDatabase(callback);
 
       return $(this.el);
+    },
+
+    breadcrumb: function() {
+      console.log(this.model.toJSON());
+      var string = 'Service: ' + this.model.get('name') + 
+      '<i class="fa fa-ellipsis-v" aria-hidden="true"></i>';
+
+      if (this.model.get("mount")) {
+        string += 'Mount: ' + this.model.get("mount");
+      }
+
+      if (this.model.get("development")) {
+        if (this.model.get("path")) {
+          string += '<i class="fa fa-ellipsis-v" aria-hidden="true"></i>';
+          string += 'Path: <span class="small">' + this.model.get("path") + '</span>';
+        }
+      }
+      $('#subNavigationBar .breadcrumb').html(string);
+      
     },
 
     openApp: function() {
@@ -242,7 +263,7 @@
           this.model.destroy(opts, function (err, result) {
             if (!err && result.error === false) {
               window.modalView.hide();
-              window.App.navigate('applications', {trigger: true});
+              window.App.navigate('services', {trigger: true});
             }
           });
         }.bind(this))

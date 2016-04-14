@@ -170,6 +170,21 @@
           disabled: true
         }
       ],
+      service: [
+        {
+          name: 'Info',
+          view: undefined,
+          active: true
+        },
+        {
+          name: 'API',
+          view: undefined,
+        },
+        {
+          name: 'Settings',
+          view: undefined,
+        }
+      ],
       node: [
         {
           name: 'Dashboard',

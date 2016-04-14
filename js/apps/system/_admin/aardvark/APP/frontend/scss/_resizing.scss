@@ -561,12 +561,17 @@
   }
 }
 
+
+div.contentWrapper {
+  padding-bottom: 42px; 
+}
+
 div.centralRow {
   float: left;
   height: 100%;
   left: $navbar-size;
   min-height: 100%;
-  overflow-y: scroll;
+  overflow-y: auto;
   position: absolute;
   right: 0;
 }

@@ -16,7 +16,7 @@
     },
 
     openAppDetailView: function() {
-      window.App.navigate('applications/' + encodeURIComponent(this.model.get('mount')), { trigger: true });
+      window.App.navigate('service/' + encodeURIComponent(this.model.get('mount')), { trigger: true });
     },
 
     toggle: function(type, shouldShow) {

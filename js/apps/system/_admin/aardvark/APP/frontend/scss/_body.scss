@@ -13,6 +13,7 @@ body {
   height: 100%;
   line-height: 20px;
   margin: 0;
+  overflow: hidden;
 
   .bodyWrapper {
     //background-image: linear-gradient(to bottom, #e9eae1 0%, #fafbfc 100%);
@@ -20,9 +21,6 @@ body {
     height: 100%;
     margin: 0 auto -42px;
     min-height: 100%;
-  }
-
-  .contentWrapper {
   }
 }
 
