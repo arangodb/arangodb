@@ -40,8 +40,9 @@
       "test": "test"
     },
 
-    execute: function(callback, args, name) {
+    execute: function(callback, args) {
       $('#subNavigationBar .breadcrumb').html('');
+      $('#subNavigationBar .bottom').html('');
       if (callback) {
         callback.apply(this, args);
       }
