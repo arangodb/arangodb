@@ -1962,15 +1962,19 @@ window.StatisticsCollection = Backbone.Collection.extend({
     template: templateEngine.createTemplate("footerView.ejs"),
 
     showServerStatus: function(isOnline) {
-      if (isOnline === true) {
-        $('.serverStatusIndicator').addClass('isOnline');
-        $('.serverStatusIndicator').addClass('fa-check-circle-o');
-        $('.serverStatusIndicator').removeClass('fa-times-circle-o');
-      }
-      else {
-        $('.serverStatusIndicator').removeClass('isOnline');
-        $('.serverStatusIndicator').removeClass('fa-check-circle-o');
-        $('.serverStatusIndicator').addClass('fa-times-circle-o');
+      if (!window.App.isCluster) {
+        if (isOnline === true) {
+          $('#healthStatus').removeClass('negative');
+          $('#healthStatus').addClass('positive');
+          $('.health-state').html('GOOD');
+          $('.health-icon').html('<i class="fa fa-check-circle"></i>');
+        }
+        else {
+          $('#healthStatus').removeClass('positive');
+          $('#healthStatus').addClass('negative');
+          $('.health-state').html('OFFLINE');
+          $('.health-icon').html('<i class="fa fa-exclamation-circle"></i>');
+        }
       }
     },
 
@@ -2974,6 +2978,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
         this.prepareD3Charts();
         this.prepareResidentSize();
         this.updateTendencies();
+        $(window).trigger('resize');
       }
       this.startUpdating();
     }.bind(this);

@@ -17762,8 +17762,8 @@ window.ClusterStatisticsCollection = Backbone.Collection.extend({
         if (base.indexOf("#collection") === 0) {
           base = "#collections";
         }
-        if (base.indexOf("#application") === 0) {
-          base = "#applications";
+        if (base.indexOf("#service") === 0) {
+          base = "#services";
         }
         url += base;
       }
@@ -19570,11 +19570,32 @@ window.ArangoUsers = Backbone.Collection.extend({
             });
           }
         }
+
+        this.breadcrumb();
       }.bind(this);
 
       arangoHelper.currentDatabase(callback);
 
       return $(this.el);
+    },
+
+    breadcrumb: function() {
+      console.log(this.model.toJSON());
+      var string = 'Service: ' + this.model.get('name') + 
+      '<i class="fa fa-ellipsis-v" aria-hidden="true"></i>';
+
+      if (this.model.get("mount")) {
+        string += 'Mount: ' + this.model.get("mount");
+      }
+
+      if (this.model.get("development")) {
+        if (this.model.get("path")) {
+          string += '<i class="fa fa-ellipsis-v" aria-hidden="true"></i>';
+          string += 'Path: <span class="small">' + this.model.get("path") + '</span>';
+        }
+      }
+      $('#subNavigationBar .breadcrumb').html(string);
+      
     },
 
     openApp: function() {
@@ -19598,7 +19619,7 @@ window.ArangoUsers = Backbone.Collection.extend({
           this.model.destroy(opts, function (err, result) {
             if (!err && result.error === false) {
               window.modalView.hide();
-              window.App.navigate('applications', {trigger: true});
+              window.App.navigate('services', {trigger: true});
             }
           });
         }.bind(this))
@@ -20518,7 +20539,7 @@ window.ArangoUsers = Backbone.Collection.extend({
   window.CollectionListItemView = Backbone.View.extend({
 
     tagName: "div",
-    className: "tile",
+    className: "tile pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-3 pure-u-lg-1-4 pure-u-xl-1-6",
     template: templateEngine.createTemplate("collectionsItemView.ejs"),
 
     initialize: function (options) {
@@ -22719,6 +22740,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         this.prepareD3Charts();
         this.prepareResidentSize();
         this.updateTendencies();
+        $(window).trigger('resize');
       }
       this.startUpdating();
     }.bind(this);
@@ -23507,14 +23529,10 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     breadcrumb: function () {
       var name = window.location.hash.split("/");
-      $('#transparentHeader').append(
-        '<div class="breadcrumb">'+
-        '<a href="#collections" class="activeBread">Collections</a>'+
-        '<span class="disabledBread"><i class="fa fa-chevron-right"></i></span>'+
-        '<a class="activeBread" href="#collection/' + name[1] + '/documents/1">' + name[1] + '</a>'+
-        '<span class="disabledBread"><i class="fa fa-chevron-right"></i></span>'+
-        '<a class="disabledBread">' + name[2] + '</a>'+
-        '</div>'
+      $('#subNavigationBar .breadcrumb').html(
+        '<a href="#collection/' + name[1] + '/documents/1">Collection: ' + name[1].toLowerCase() + '</a>' + 
+        '<i class="fa fa-chevron-right"></i>' +
+        'Document: ' + name[2]
       );
     },
 
@@ -24625,15 +24643,19 @@ window.ArangoUsers = Backbone.Collection.extend({
     template: templateEngine.createTemplate("footerView.ejs"),
 
     showServerStatus: function(isOnline) {
-      if (isOnline === true) {
-        $('.serverStatusIndicator').addClass('isOnline');
-        $('.serverStatusIndicator').addClass('fa-check-circle-o');
-        $('.serverStatusIndicator').removeClass('fa-times-circle-o');
-      }
-      else {
-        $('.serverStatusIndicator').removeClass('isOnline');
-        $('.serverStatusIndicator').removeClass('fa-check-circle-o');
-        $('.serverStatusIndicator').addClass('fa-times-circle-o');
+      if (!window.App.isCluster) {
+        if (isOnline === true) {
+          $('#healthStatus').removeClass('negative');
+          $('#healthStatus').addClass('positive');
+          $('.health-state').html('GOOD');
+          $('.health-icon').html('<i class="fa fa-check-circle"></i>');
+        }
+        else {
+          $('#healthStatus').removeClass('positive');
+          $('#healthStatus').addClass('negative');
+          $('.health-state').html('OFFLINE');
+          $('.health-icon').html('<i class="fa fa-exclamation-circle"></i>');
+        }
       }
     },
 
@@ -24753,7 +24775,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
   window.FoxxActiveView = Backbone.View.extend({
     tagName: 'div',
-    className: 'tile',
+    className: 'tile pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-3 pure-u-lg-1-4 pure-u-xl-1-6',
     template: templateEngine.createTemplate('foxxActiveView.ejs'),
     _show: true,
 
@@ -24762,7 +24784,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     openAppDetailView: function() {
-      window.App.navigate('applications/' + encodeURIComponent(this.model.get('mount')), { trigger: true });
+      window.App.navigate('service/' + encodeURIComponent(this.model.get('mount')), { trigger: true });
     },
 
     toggle: function(type, shouldShow) {
@@ -26937,6 +26959,21 @@ window.ArangoUsers = Backbone.Collection.extend({
           name: 'Logs',
           view: undefined,
           disabled: true
+        }
+      ],
+      service: [
+        {
+          name: 'Info',
+          view: undefined,
+          active: true
+        },
+        {
+          name: 'API',
+          view: undefined,
+        },
+        {
+          name: 'Settings',
+          view: undefined,
         }
       ],
       node: [
@@ -30158,7 +30195,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     setEditorAutoHeight: function (editor) {
       editor.setOptions({
         maxLines: 100,
-        minLines: 3
+        minLines: 10
       }); 
     },
 
@@ -33136,7 +33173,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       "workMonitor": "workMonitor",
       "databases": "databases",
       "services": "applications",
-      "applications/:mount": "applicationDetail",
+      "service/:mount": "applicationDetail",
       "graphs": "graphManagement",
       "graphs/:name": "showGraph",
       "users": "userManagement",
