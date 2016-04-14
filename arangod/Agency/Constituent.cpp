@@ -78,7 +78,9 @@ Constituent::Constituent() :
   _gen(std::random_device()()),
   _role(FOLLOWER),
   _agent(0),
-  _voted_for(0) {}
+  _voted_for(0) {
+  _gen.seed(TRI_UInt32Random());
+}
 
 // Shutdown if not already
 Constituent::~Constituent() {

@@ -61,6 +61,10 @@
       };
     },
 
+    getCurrentSub: function() {
+      return window.App.naviView.activeSubMenu;
+    },
+
     setCheckboxStatus: function(id) {
       _.each($(id).find('ul').find('li'), function(element) {
          if (!$(element).hasClass("nav-header")) {

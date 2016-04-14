@@ -1,0 +1,56 @@
+.graphLabel {
+  font-family: "Lato", sans-serif;
+  font-size: 11pt;
+  font-weight: 600;
+  margin-top: -25px;
+  opacity: .5;
+  padding-bottom: 20px;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.cluster-graphs {
+
+  > div {
+
+    .graphWrapper {
+      border: 1px solid $c-content-border;
+      margin-left: -1px;
+      margin-top: -1px;
+
+      .nv-controlsWrap {
+        display: none;
+      }
+
+      svg {
+        height: 250px;
+        margin-left: -17px;
+      }
+    }
+
+  }
+}
+
+.cluster-values {
+
+  margin-top: -13px;
+
+  > div {
+    .valueWrapper {
+      border: 1px solid $c-content-border;
+      margin-left: -1px;
+      margin-top: -1px;
+
+      .value {
+        color: $c-positive;
+        font-size: 24pt;
+        line-height: 150px;
+        text-align: center;
+      }
+
+      div:first-child {
+        height: 150px;
+      }
+    }
+  }
+}

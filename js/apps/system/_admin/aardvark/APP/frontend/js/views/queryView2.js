@@ -793,11 +793,11 @@
       //init aql editor
       this.aqlEditor = ace.edit("aqlEditor");
       this.aqlEditor.getSession().setMode("ace/mode/aql");
-      this.aqlEditor.setFontSize("13px");
+      this.aqlEditor.setFontSize("10pt");
 
       this.bindParamAceEditor = ace.edit("bindParamAceEditor");
       this.bindParamAceEditor.getSession().setMode("ace/mode/json");
-      this.bindParamAceEditor.setFontSize("13px");
+      this.bindParamAceEditor.setFontSize("10pt");
 
       this.bindParamAceEditor.getSession().on('change', function() {
         try {
@@ -1210,7 +1210,7 @@
     setEditorAutoHeight: function (editor) {
       editor.setOptions({
         maxLines: 100,
-        minLines: 3
+        minLines: 10
       }); 
     },
 
