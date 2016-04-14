@@ -37,19 +37,6 @@
           </li>
         </ul>
       </div>
-      <div class="breadcrumb">
-        <a class="activeBread" href="#applications">Services</a>
-        <span class="disabledBread"><i class="fa fa-chevron-right"></i></span>
-        <span class="disabledBread">
-          <%= app.attributes.mount %>
-        </span>
-        <span class="disabledBread" id="app-development-indicator" style="display:<%=app.get('development')?'inline':'none' %>;">
-          (development) Location: 
-        </span>
-        <span class="disabledBread" id="app-development-path" style="display:<%=app.get('development')?'inline':'none' %>;">
-          <%= app.get("path")%>
-        </span>
-      </div>
     </div>
     <section class="info">
       <div class="header">

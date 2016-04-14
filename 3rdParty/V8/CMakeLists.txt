@@ -74,8 +74,6 @@ set(ICU_VERSION
   )
 
 set(ICU_BASEDIR ${V8_DIR}/third_party/icu/source)
-set(ICU_DT "${ICU_BASEDIR}/data/in/icudtl.dat")
-set(ICU_DT_DEST "icudt${ICU_COMPACT_VERSION}l.dat")
 
 set(ICU_INCLUDE_DIR
   ${ICU_BASEDIR}/common;${ICU_BASEDIR}/i18n;${ICU_BASEDIR}/io
@@ -459,6 +457,11 @@ else ()
   set(LINK_DIRECTORIES "${LINK_DIRECTORIES}" PARENT_SCOPE)
 endif()
 
-install(FILES ${ICU_DT}
-  DESTINATION "share/arangodb/"
-  RENAME ${ICU_DT_DEST})
+if (WIN32)
+  set(ICU_DT "${ICU_BASEDIR}/data/in/icudtl.dat")
+  set(ICU_DT_DEST "icudt${ICU_COMPACT_VERSION}l.dat")
+  # other platforms link the file into the binary
+  install(FILES ${ICU_DT}
+    DESTINATION "share/arangodb/"
+    RENAME ${ICU_DT_DEST})
+endif()

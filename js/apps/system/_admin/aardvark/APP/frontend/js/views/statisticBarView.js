@@ -13,8 +13,8 @@
 
     template: templateEngine.createTemplate("statisticBarView.ejs"),
 
-    initialize : function () {
-      this.currentDB = this.options.currentDB;
+    initialize : function (options) {
+      this.currentDB = options.currentDB;
     },
 
     replaceSVG: function($img) {

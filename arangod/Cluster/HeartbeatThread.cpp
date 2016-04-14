@@ -125,7 +125,7 @@ void HeartbeatThread::runDBServer() {
         _numDispatchedJobs = 0;
         if (_lastDispatchedJobResult) {
           LOG(DEBUG) << "...and was successful";
-          // mop: the dispatched version is still the same => we aer finally uptodate
+          // mop: the dispatched version is still the same => we are finally uptodate
           if (!_dispatchedPlanVersion.isEmpty() && _dispatchedPlanVersion.slice().equals(result)) {
             LOG(DEBUG) << "Version is correct :)";
             return true;
@@ -147,7 +147,7 @@ void HeartbeatThread::runDBServer() {
     return false;
   };
   
-  auto agencyCallback = std::make_shared<AgencyCallback>(_agency, "Plan/Version", updatePlan);
+  auto agencyCallback = std::make_shared<AgencyCallback>(_agency, "Plan/Version", updatePlan, true);
   
   bool registered = false;
   while (!registered) {

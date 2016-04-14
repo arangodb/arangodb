@@ -13,10 +13,6 @@ svg.clusterChart {
 .lineGraph {
   position: absolute;
 
-  .few .dygraph-legend > span.highlight {
-    border: 1px solid $c-chart-border;
-  }
-
   .many .dygraph-legend > span {
     display: none;
 

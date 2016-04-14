@@ -71,8 +71,13 @@
 @import 'progressView';
 // spotlight view
 @import 'spotlightView';
+// cluster view
+@import 'clusterView';
 // application detail view
 @import 'applicationDetailView';
+
+// pure responsive components
+@import 'pure';
 
 // screen hotkeys
 @import 'hotkeys';
@@ -81,6 +86,8 @@
 @import 'arangoTable';
 //arangoTabbar Template
 @import 'arangoTabbar';
+//Sub Navigation
+@import 'subNavbar';
 
 // Data Tables, TODO: might all be superflous
 @import 'dataTables';
