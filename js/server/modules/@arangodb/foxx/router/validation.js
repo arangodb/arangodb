@@ -45,7 +45,7 @@ exports.validateParams = function validateParams(typeDefs, rawParams) {
 };
 
 
-exports.validateRequestBody = function validateRequestBody(def, req) {
+exports.parseRequestBody = function parseRequestBody(def, req) {
   let body = req.body;
 
   if (!def.contentTypes) {
@@ -66,7 +66,7 @@ exports.validateRequestBody = function validateRequestBody(def, req) {
   }
 
   if (!actualType) {
-    actualType = def.contentTypes[0];
+    actualType = def.contentTypes[0] || indicatedType;
   }
 
   const parsedType = mediaTyper.parse(actualType);
@@ -98,7 +98,18 @@ exports.validateRequestBody = function validateRequestBody(def, req) {
     body = handler.fromClient(body, req, parsedType);
   }
 
+  return body;
+};
+
+
+exports.validateRequestBody = function validateRequestBody(def, req) {
+  let body = req.body;
+
   const schema = def.model && (def.model.schema || def.model);
+  if (!schema) {
+    return body;
+  }
+
   if (schema.isJoi) {
     const result = schema.validate(body);
 

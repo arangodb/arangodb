@@ -24,7 +24,7 @@
 const _ = require('lodash');
 const joinPath = require('path').posix.join;
 const querystring = require('querystring');
-const httpError = require('http-errors');
+const httperr = require('http-errors');
 const union = require('@arangodb/util').union;
 const SwaggerContext = require('@arangodb/foxx/router/swagger-context');
 const SyntheticRequest = require('@arangodb/foxx/router/request');
@@ -98,13 +98,20 @@ module.exports = class Tree {
       try {
         applyPathParams(route);
       } catch (e) {
-        error = error || httpError(404);
+        if (!error) {
+          error = Object.assign(
+            new httperr.NotFound(),
+            {cause: e}
+          );
+        }
         continue;
       }
 
       if (endpoint._methods.indexOf(method) === -1) {
-        error = httpError(405);
-        error.methods = endpoint._methods;
+        error = Object.assign(
+          new httperr.MethodNotAllowed(),
+          {methods: endpoint._methods}
+        );
         continue;
       }
 
@@ -226,6 +233,7 @@ function dispatch(route, req, res) {
   }
 
   let i = 0;
+  let requestBodyParsed = false;
   function next(err) {
     if (err) {
       throw err;
@@ -245,12 +253,22 @@ function dispatch(route, req, res) {
 
     if (!ignoreRequestBody && context._bodyParam) {
       try {
+        if (!requestBodyParsed) {
+          requestBodyParsed = true;
+          req.body = validation.parseRequestBody(
+            context._bodyParam,
+            req
+          );
+        }
         req.body = validation.validateRequestBody(
           context._bodyParam,
           req
         );
       } catch (e) {
-        throw httpError(400, e.message);
+        throw Object.assign(
+          new httperr.BadRequest(e.message),
+          {cause: e}
+        );
       }
     }
 
@@ -261,7 +279,10 @@ function dispatch(route, req, res) {
           req.queryParams
         );
       } catch (e) {
-        throw httpError(400, e.message);
+        throw Object.assign(
+          new httperr.BadRequest(e.message),
+          {cause: e}
+        );
       }
     }
 
