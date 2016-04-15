@@ -764,8 +764,7 @@ function CollectionDocumentSuiteBabies() {
         }
 
         // Replace
-        if (typeof x === "object" && !Array.isArray(x) &&
-            cluster.isCoordinator()) {
+        if (cluster.isCoordinator() && typeof x !== "string") {
           try {
             docs = collection.replace([x, x, x], [{}, {}, {}]);
             fail();
