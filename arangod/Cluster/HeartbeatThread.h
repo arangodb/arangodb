@@ -39,8 +39,6 @@ namespace rest {
 class ApplicationDispatcher;
 }
 
-class ApplicationV8;
-
 class HeartbeatThread : public Thread {
   HeartbeatThread(HeartbeatThread const&) = delete;
   HeartbeatThread& operator=(HeartbeatThread const&) = delete;

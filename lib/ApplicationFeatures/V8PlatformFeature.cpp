@@ -29,7 +29,7 @@
 using namespace arangodb;
 using namespace arangodb::options;
 
-namespace  {
+namespace {
   class ArrayBufferAllocator : public v8::ArrayBuffer::Allocator {
    public:
     virtual void* Allocate(size_t length) override {

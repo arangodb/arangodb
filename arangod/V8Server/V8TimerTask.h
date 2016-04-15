@@ -38,8 +38,6 @@ class Dispatcher;
 class Scheduler;
 }
 
-class ApplicationV8;
-
 class V8TimerTask : public rest::TimerTask {
  public:
   V8TimerTask(std::string const&, std::string const&, TRI_vocbase_t*, double,

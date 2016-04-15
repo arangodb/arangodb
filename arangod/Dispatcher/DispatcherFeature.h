@@ -45,6 +45,7 @@ class DispatcherFeature final
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
+  void beginShutdown() override final;
   void stop() override final;
 
  private:

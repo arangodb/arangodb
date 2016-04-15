@@ -150,15 +150,6 @@ int main(int argc, char* argv[]) {
 #warning TODO
 #if 0
 
-  int res = EXIT_SUCCESS;
-
-  // Note: NEVER start threads or create global objects in here. The server
-  //       might enter enter a daemon mode, in which it leave the main function
-  //       in the parent and only a forked child is running.
-  //
-  //       Any startup handling MUST be done inside "startupServer".
-
-
   // windows only
   bool const startAsService = TRI_ParseMoreArgs(argc, argv);
 

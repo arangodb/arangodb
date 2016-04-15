@@ -115,10 +115,15 @@ void DispatcherFeature::start() {
   }
 }
 
+void DispatcherFeature::beginShutdown() {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::beginShutdown";
+
+  _dispatcher->beginShutdown();
+}
+
 void DispatcherFeature::stop() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
 
-  _dispatcher->beginShutdown();
   _dispatcher->shutdown();
 
   DISPATCHER = nullptr;

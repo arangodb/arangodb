@@ -37,7 +37,6 @@ namespace aql {
 class QueryRegistry;
 }
 
-class ApplicationV8;
 class CollectionNameResolver;
 class JSLoader;
 }

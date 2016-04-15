@@ -415,6 +415,10 @@ void V8DealerFeature::startGarbageCollection() {
 V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
                                          bool allowUseDatabase,
                                          ssize_t forceContext) {
+  if (_stopping) {
+    return nullptr;
+  }
+
   V8Context* context = nullptr;
 
   // this is for TESTING / DEBUGGING / INIT only
@@ -429,6 +433,10 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
     while (!_stopping) {
       {
         CONDITION_LOCKER(guard, _contextCondition);
+
+        if (_stopping) {
+          break;
+        }
 
         for (auto iter = _freeContexts.begin(); iter != _freeContexts.end();
              ++iter) {
@@ -605,8 +613,8 @@ void V8DealerFeature::exitContext(V8Context* context) {
     }
 
     TRI_GET_GLOBALS();
-    // reset the context data. garbage collection should be able to run without
-    // it
+
+    // reset the context data; gc should be able to run without it
     v8g->_query = nullptr;
     v8g->_vocbase = nullptr;
     v8g->_allowUseDatabase = false;
@@ -658,6 +666,7 @@ void V8DealerFeature::exitContext(V8Context* context) {
     }
   } else {
     CONDITION_LOCKER(guard, _contextCondition);
+
     _busyContexts.erase(context);
     _freeContexts.emplace_back(context);
   }
@@ -677,7 +686,7 @@ void V8DealerFeature::applyContextUpdates() {
       if (vocbase == nullptr) {
         vocbase = DatabaseFeature::DATABASE->vocbase();
       }
-      
+
       V8Context* context =
           V8DealerFeature::DEALER->enterContext(vocbase, true, i);
       v8::HandleScope scope(context->_isolate);
@@ -715,7 +724,7 @@ void V8DealerFeature::shutdownContexts() {
       LOG(DEBUG) << "waiting for busy V8 contexts (" << _busyContexts.size()
                  << ") to finish ";
 
-      guard.wait(100000);
+      guard.wait(100 * 1000);
     }
   }
 
@@ -1043,3 +1052,9 @@ void V8DealerFeature::shutdownV8Instance(V8Context* context) {
 
   delete context;
 }
+
+#warning TODO
+#if 0
+  _applicationV8->defineDouble("DISPATCHER_THREADS", _dispatcherThreads);
+  _applicationV8->defineDouble("V8_CONTEXTS", _v8Contexts);
+#endif

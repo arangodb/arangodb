@@ -177,18 +177,31 @@ void AffinityFeature::prepare() {
 void AffinityFeature::start() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
 
-  LOG(INFO) << "the server has " << _n << " (hyper) cores, using " << _ns
-            << " scheduler threads, " << _nd << " dispatcher threads";
-
   if (0 < _threadAffinity) {
+    LOG(INFO) << "the server has " << _n << " (hyper) cores, using " << _ns
+              << " scheduler threads, " << _nd << " dispatcher threads";
+
     if (0 < _ns) {
-      LOG(INFO) << "scheduler cores: " << ToString(_ps);
+      LOG(DEBUG) << "scheduler cores: " << ToString(_ps);
     }
 
     if (0 < _nd) {
-      LOG(INFO) << "dispatcher cores: " << ToString(_pd);
+      LOG(DEBUG) << "dispatcher cores: " << ToString(_pd);
     }
   } else {
-    LOG(INFO) << "the server has " << _n << " (hyper) cores";
+    DispatcherFeature* dispatcher = dynamic_cast<DispatcherFeature*>(
+        ApplicationServer::lookupFeature("Dispatcher"));
+    SchedulerFeature* scheduler = dynamic_cast<SchedulerFeature*>(
+        ApplicationServer::lookupFeature("Scheduler"));
+
+    if (dispatcher != nullptr || scheduler != nullptr) {
+      size_t nd = (dispatcher == nullptr ? 0 : dispatcher->concurrency());
+      size_t ns = (scheduler == nullptr ? 0 : scheduler->concurrency());
+
+      LOG(INFO) << "the server has " << _n << " (hyper) cores, using " << ns
+                << " scheduler threads, " << nd << " dispatcher threads";
+    } else {
+      LOG(INFO) << "the server has " << _n << " (hyper) cores";
+    }
   }
 }
