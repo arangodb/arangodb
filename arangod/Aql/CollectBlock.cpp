@@ -188,7 +188,7 @@ SortedCollectBlock::SortedCollectBlock(ExecutionEngine* engine,
   }
   TRI_ASSERT(_aggregateRegisters.size() == en->_aggregateVariables.size());
   TRI_ASSERT(_aggregateRegisters.size() == _currentGroup.aggregators.size());
-
+    
   if (en->_outVariable != nullptr) {
     auto const& registerPlan = en->getRegisterPlan()->varInfo;
     auto it = registerPlan.find(en->_outVariable->id);
@@ -207,13 +207,13 @@ SortedCollectBlock::SortedCollectBlock(ExecutionEngine* engine,
     // we need this mapping to generate the grouped output
 
     for (size_t i = 0; i < registerPlan.size(); ++i) {
-      _variableNames.emplace_back("");  // initialize with some default value
+      _variableNames.emplace_back("");  // initialize with default value
     }
 
     // iterate over all our variables
     if (en->_keepVariables.empty()) {
       auto usedVariableIds(en->getVariableIdsUsedHere());
-
+       
       for (auto const& vi : registerPlan) {
         if (vi.second.depth > 0 || en->getDepth() == 1) {
           // Do not keep variables from depth 0, unless we are depth 1 ourselves

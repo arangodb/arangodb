@@ -234,7 +234,7 @@ class CollectNode : public ExecutionNode {
   std::vector<Variable const*> _keepVariables;
 
   /// @brief map of all variable ids and names (needed to construct group data)
-  std::unordered_map<VariableId, std::string const> const _variableMap;
+  std::unordered_map<VariableId, std::string const> _variableMap;
 
   /// @brief COUNTing node?
   bool _count;

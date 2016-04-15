@@ -377,6 +377,9 @@ class Ast {
   static void getReferencedVariables(AstNode const*,
                                      std::unordered_set<Variable const*>&);
 
+  /// @brief count how many times a variable is referenced in an expression
+  static size_t countReferences(AstNode const*, Variable const*);
+
   /// @brief determines the top-level attributes in an expression, grouped by
   /// variable
   static TopLevelAttributes getReferencedAttributes(AstNode const*, bool&);

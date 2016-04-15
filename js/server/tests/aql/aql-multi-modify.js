@@ -403,7 +403,7 @@ function ahuacatlMultiModifySuite () {
     },
     
     testMultiInsert : function () {
-      var actual = AQL_EXECUTE("FOR i IN 1..2010 INSERT { value: i * 3 } INTO @@cn1 LET one = NEW._key INSERT { value: i * 5 } INTO @@cn2 LET two = NEW._key RETURN [ one, two ]", { "@cn1" : cn1, "@cn2": cn2 }).json;
+      var actual = AQL_EXECUTE("FOR i IN 1..2010 INSERT { value: i * 3, _key: CONCAT('one-', i) } INTO @@cn1 LET one = NEW._key INSERT { value: i * 5, _key: CONCAT('two-', i) } INTO @@cn2 LET two = NEW._key RETURN [ one, two ]", { "@cn1" : cn1, "@cn2": cn2 }).json;
       assertEqual(2010, actual.length);
       var i, seen = { };
       for (i = 0; i < actual.length; ++i) {
