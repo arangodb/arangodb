@@ -1258,6 +1258,7 @@ function startInstanceCluster(instanceInfo, protocol, options,
     wait(1);
   }
   
+  httpOptions.timeout = 3600;
   response = download(coordinatorUrl + '/_admin/cluster/upgradeClusterDatabase', '{"isRelaunch":false}', httpOptions);
   if (response.code !== 200) {
     throw new Error('Upgrading DB failed');
