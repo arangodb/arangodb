@@ -34,10 +34,10 @@
   ],
 
   "main": "index.js",
-  "defaultDocument": "standalone.html",
+  "defaultDocument": "index.html",
 
   "files": {
-    "/standalone.html": {
+    "/index.html": {
       "path": "frontend/build/standalone-min.html",
       "gzip": true
     },
