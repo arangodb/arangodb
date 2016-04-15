@@ -378,6 +378,8 @@ static int TruncateAndSealDatafile(TRI_datafile_t* datafile,
     TRI_UnlinkFile(filename.c_str());
 
     LOG(ERR) << "cannot memory map file '" << filename << "': " << TRI_GET_ERRORBUF;
+    LOG(ERR) << "The database directory might reside on a shared folder or an NFS "
+             << "mounted volume which does not allow memory mapped files."
 
     return TRI_errno();
   }
@@ -883,6 +885,8 @@ static TRI_datafile_t* CreateAnonymousDatafile(TRI_voc_fid_t fid,
     TRI_set_errno(res);
 
     LOG(ERR) << "cannot memory map anonymous region: " << TRI_last_error();
+    LOG(ERR) << "The database directory might reside on a shared folder or an NFS "
+             << "mounted volume which does not allow memory mapped files."
     return nullptr;
   }
 
@@ -940,6 +944,8 @@ static TRI_datafile_t* CreatePhysicalDatafile(char const* filename,
     TRI_UnlinkFile(filename);
 
     LOG(ERR) << "cannot memory map file '" << filename << "': '" << TRI_errno_string((int)res) << "'";
+    LOG(ERR) << "The database directory might reside on a shared folder or an NFS "
+             << "mounted volume which does not allow memory mapped files."
     return nullptr;
   }
 
@@ -1077,6 +1083,8 @@ static TRI_datafile_t* OpenDatafile(char const* filename, bool ignoreErrors) {
     TRI_CLOSE(fd);
 
     LOG(ERR) << "cannot memory map datafile '" << filename << "': " << TRI_errno_string(res);
+    LOG(ERR) << "The database directory might reside on a shared folder or an NFS "
+             << "mounted volume which does not allow memory mapped files."
     return nullptr;
   }
 
