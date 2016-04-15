@@ -966,18 +966,24 @@ int deleteDocumentOnCoordinator(
       // Sort out the _key attribute and identify the shard responsible for it.
 
       std::string _key(Transaction::extractKey(node));
-      if (_key.empty()) {
-        return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
-      }
-      // Now find the responsible shard:
-      bool usesDefaultShardingAttributes;
       ShardID shardID;
-      int error = ci->getResponsibleShard(
-          collid, arangodb::basics::VelocyPackHelper::EmptyObjectValue(), true,
-          shardID, usesDefaultShardingAttributes, _key);
+      if (_key.empty()) {
+        // We have invalid input at this point.
+        // However we can work with the other babies.
+        // This is for compatibility with single server
+        // We just asign it to any shard and pretend the user has given a key
+        std::shared_ptr<std::vector<ShardID>> shards = ci->getShardList(collid);
+        shardID = shards->at(0);
+      } else {
+        // Now find the responsible shard:
+        bool usesDefaultShardingAttributes;
+        int error = ci->getResponsibleShard(
+            collid, arangodb::basics::VelocyPackHelper::EmptyObjectValue(), true,
+            shardID, usesDefaultShardingAttributes, _key);
 
-      if (error == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
-        return TRI_ERROR_CLUSTER_SHARD_GONE;
+        if (error == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+          return TRI_ERROR_CLUSTER_SHARD_GONE;
+        }
       }
 
       // We found the responsible shard. Add it to the list.
@@ -1128,7 +1134,7 @@ int deleteDocumentOnCoordinator(
   }
   // If we get here we get exactly one result for every shard.
   TRI_ASSERT(allResults.size() == shardList->size());
-  mergeResultsAllShards(allResults, resultBody, errorCounter, shardList->size());
+  mergeResultsAllShards(allResults, resultBody, errorCounter, static_cast<size_t>(slice.length()));
   responseCode =
       (options.waitForSync ? GeneralResponse::ResponseCode::OK
                            : GeneralResponse::ResponseCode::ACCEPTED);
@@ -1408,7 +1414,7 @@ int getDocumentOnCoordinator(
   }
   // If we get here we get exactly one result for every shard.
   TRI_ASSERT(allResults.size() == shardList->size());
-  mergeResultsAllShards(allResults, resultBody, errorCounter, shardList->size());
+  mergeResultsAllShards(allResults, resultBody, errorCounter, static_cast<size_t>(slice.length()));
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -2054,7 +2060,7 @@ int modifyDocumentOnCoordinator(
   }
   // If we get here we get exactly one result for every shard.
   TRI_ASSERT(allResults.size() == shardList->size());
-  mergeResultsAllShards(allResults, resultBody, errorCounter, shardList->size());
+  mergeResultsAllShards(allResults, resultBody, errorCounter, static_cast<size_t>(slice.length()));
   responseCode =
       (options.waitForSync ? GeneralResponse::ResponseCode::OK
                            : GeneralResponse::ResponseCode::ACCEPTED);
