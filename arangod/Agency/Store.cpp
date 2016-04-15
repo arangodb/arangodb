@@ -851,15 +851,18 @@ void Store::beginShutdown() {
 // TTL clear values from store
 query_t Store::clearExpired () const {
   query_t tmp = std::make_shared<Builder>();
-  tmp->openArray(); 
-  for (auto it = _time_table.cbegin(); it != _time_table.cend(); ++it) {
-    if (it->first < std::chrono::system_clock::now()) {
-      tmp->openArray(); tmp->openObject();
-      tmp->add(it->second->uri(), VPackValue(VPackValueType::Object));
-      tmp->add("op",VPackValue("delete"));
-      tmp->close(); tmp->close(); tmp->close();
-    } else {
-      break;
+  tmp->openArray();
+  {
+    MUTEX_LOCKER(storeLocker, _storeLock);
+    for (auto it = _time_table.cbegin(); it != _time_table.cend(); ++it) {
+      if (it->first < std::chrono::system_clock::now()) {
+        tmp->openArray(); tmp->openObject();
+        tmp->add(it->second->uri(), VPackValue(VPackValueType::Object));
+        tmp->add("op",VPackValue("delete"));
+        tmp->close(); tmp->close(); tmp->close();
+      } else {
+        break;
+      }
     }
   }
   tmp->close();
@@ -909,16 +912,32 @@ bool Store::start (Agent* agent) {
 
 // Work ttls and callbacks
 void Store::run() {
+
   CONDITION_LOCKER(guard, _cv);
+  
   while (!this->isStopping()) { // Check timetable and remove overage entries
-    if (!_time_table.empty()) {
-      auto t = std::chrono::duration_cast<std::chrono::microseconds>(
-        _time_table.begin()->first - std::chrono::system_clock::now());
+
+    std::chrono::microseconds t{0};
+    query_t toClear;
+    
+    { // any entries in time table?
+      MUTEX_LOCKER(storeLocker, _storeLock);
+      if (!_time_table.empty()) {
+        t = std::chrono::duration_cast<std::chrono::microseconds>(
+          _time_table.begin()->first - std::chrono::system_clock::now());
+      }
+    }
+    
+    if (t != std::chrono::microseconds{0}) {
       _cv.wait(t.count());
     } else {
-      _cv.wait();           // better wait to next known time point
+      _cv.wait();
     }
-    auto toclear = clearExpired();
-    _agent->write(toclear);
+    
+    toClear = clearExpired();
+    _agent->write(toClear);
+    
   }
+  
 }
+

@@ -159,8 +159,6 @@ public:
 
   std::atomic<index_t> _last_commit_index; /**< @brief Last commit index */
 
-  arangodb::Mutex _uncommitedLock; /**< @brief  */
-
   Store _spearhead; /**< @brief Spearhead key value store */
   Store _read_db;   /**< @brief Read key value store */
 

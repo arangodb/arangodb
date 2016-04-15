@@ -3,7 +3,8 @@
     <nav class="navbar">
       <div class="primary">
           <div class="navlogo">
-            <a class="logo" href="#"><img class="arangodbLogo" src="img/DEVLOGO.png"/></a>
+            <a class="logo big" href="#"><img class="arangodbLogo" src="img/arangodb_logo_big.png"/></a>
+            <a class="logo small" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"/></a>
           </div>
           <!-- <div id="progressPlaceholderIcon"></div> -->
             <div class="statmenu" id="statisticBar">
