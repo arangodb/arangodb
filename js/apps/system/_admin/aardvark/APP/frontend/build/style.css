@@ -2312,6 +2312,8 @@ div.queryline input, input.search-input, .modal-body .select2-choices input, .mo
 .navlogo {
   height: 60px;
   width: 100%; }
+  .navlogo .small {
+    display: none; }
 
 .navmenu {
   clear: both; }
@@ -2324,6 +2326,8 @@ div.queryline input, input.search-input, .modal-body .select2-choices input, .mo
     line-height: 30px; }
   .navlist li {
     width: 150px; }
+    .navlist li a {
+      outline: none; }
     .navlist li .fa {
       opacity: .3;
       padding-left: 5px;
@@ -7875,6 +7879,12 @@ input.gv-radio-button {
     margin-bottom: 10px; }
   div.dropdownInner ul label {
     font-size: 13px; }
+  .navlogo .big {
+    display: none; }
+  .navlogo .small {
+    display: block;
+    height: auto;
+    width: 28px; }
   .navbar,
   .navmenu,
   .primary,
