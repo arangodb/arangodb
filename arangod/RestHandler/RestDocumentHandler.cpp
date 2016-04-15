@@ -177,15 +177,15 @@ bool RestDocumentHandler::readDocument() {
   switch (len) {
     case 0:
     case 1:
-      return readAllDocuments();
-
+      generateError(GeneralResponse::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                    "expecting GET /_api/document/<document-handle>");
+      return false;
     case 2:
       return readSingleDocument(true);
 
     default:
       generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
-                    "expecting GET /_api/document/<document-handle> or GET "
-                    "/_api/document?collection=<collection-name>");
+                    "expecting GET /_api/document/<document-handle>");
       return false;
   }
 }
@@ -279,52 +279,6 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
     generateDocument(result.slice(), generateBody,
                      transactionContext->getVPackOptions());
   }
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock REST_DOCUMENT_READ_ALL
-////////////////////////////////////////////////////////////////////////////////
-
-bool RestDocumentHandler::readAllDocuments() {
-  bool found;
-  std::string collectionName;
-
-  std::vector<std::string> const& suffix = _request->suffix();
-  if (suffix.size() == 1) {
-    collectionName = suffix[0];
-  } else {
-    collectionName = _request->value("collection", found);
-  }
-  std::string returnType = _request->value("type", found);
-
-  if (returnType.empty()) {
-    returnType = "path";
-  }
-
-  // find and load collection given by name or identifier
-  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
-                                          collectionName, TRI_TRANSACTION_READ);
-
-  int res = trx.begin();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collectionName, res, "");
-    return false;
-  }
-
-  OperationOptions options;
-  OperationResult opRes = trx.allKeys(collectionName, returnType, options);
-
-  res = trx.finish(opRes.code);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collectionName, res, "");
-    return false;
-  }
-
-  // generate response
-  generateResult(GeneralResponse::ResponseCode::OK, VPackSlice(opRes.buffer->data()));
   return true;
 }
 
