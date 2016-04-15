@@ -594,7 +594,7 @@
         }
         else {
           window.modalView.hide();
-          data = data.split('/');
+          data = data._id.split('/');
 
           try {
             url = "collection/" + data[0] + '/' + data[1];
@@ -942,7 +942,10 @@
         this.collection.collectionID
       );
 
+      this.collectionName = window.location.hash.split("/")[1];
+      //fill navigation and breadcrumb
       this.breadcrumb();
+      window.arangoHelper.buildCollectionSubNav(this.collectionName, 'Content');
 
       this.checkCollectionState();
 
@@ -996,7 +999,6 @@
     },
 
     breadcrumb: function () {
-      this.collectionName = window.location.hash.split("/")[1];
       $('#subNavigationBar .breadcrumb').html(
         'Collection: ' + this.collectionName
       );

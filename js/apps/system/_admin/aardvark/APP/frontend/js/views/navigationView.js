@@ -143,6 +143,7 @@
     },
 
     subMenuConfig: {
+      /*
       collection: [
         {
           name: 'Settings',
@@ -157,7 +158,7 @@
           view: undefined,
           active: true
         }
-      ],
+      ],*/
       cluster: [
         {
           name: 'Dashboard',
@@ -236,30 +237,33 @@
         }
       }
 
-      $(this.subEl + ' .bottom').html('');
-      var cssclass = "";
+      if (this.subMenuConfig[id]) {
+        $(this.subEl + ' .bottom').html('');
+        var cssclass = "";
 
-      _.each(this.subMenuConfig[id], function(menu) {
-        if (menu.active) {
-          cssclass = 'active';
-        }
-        else {
-          cssclass = '';
-        }
-        if (menu.disabled) {
-          cssclass = 'disabled';
-        }
+        _.each(this.subMenuConfig[id], function(menu) {
+          if (menu.active) {
+            cssclass = 'active';
+          }
+          else {
+            cssclass = '';
+          }
+          if (menu.disabled) {
+            cssclass = 'disabled';
+          }
 
-        $(self.subEl +  ' .bottom').append(
-          '<li class="subMenuEntry ' + cssclass + '"><a>' + menu.name + '</a></li>'
-        );
-        if (!menu.disabled) {
-          $(self.subEl + ' .bottom').children().last().bind('click', function(elem) {
-            self.activeSubMenu = menu;
-            self.renderSubView(menu, elem);
-          });
-        }
-      });
+          $(self.subEl +  ' .bottom').append(
+            '<li class="subMenuEntry ' + cssclass + '"><a>' + menu.name + '</a></li>'
+          );
+          if (!menu.disabled) {
+            $(self.subEl + ' .bottom').children().last().bind('click', function(elem) {
+              self.activeSubMenu = menu;
+              self.renderSubView(menu, elem);
+            });
+          }
+        });
+      }
+
     },
 
     renderSubView: function(menu, element) {

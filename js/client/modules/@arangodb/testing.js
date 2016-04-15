@@ -1299,7 +1299,7 @@ function startArango(protocol, options, addArgs, name, rootDir) {
   args["server.endpoint"] = endpoint;
   args["database.directory"] = dataDir;
   args["log.file"] = fs.join(rootDir, "log");
-  args["log.level"] = 'trace';
+  args["log.level"] = 'info';
 
   if (protocol === "ssl") {
     args["server.keyfile"] = fs.join("UnitTests", "server.pem");
@@ -1363,8 +1363,6 @@ function startInstanceAgency(instanceInfo, protocol, options,
     }
     let dir = fs.join(rootDir, 'agency-' + i);
     fs.makeDirectoryRecursive(dir);
-
-    console.log("fucks", instanceArgs);
 
     instanceInfo.arangods.push(startArango(protocol, options, instanceArgs, testname, rootDir));
   }

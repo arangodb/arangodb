@@ -23,6 +23,7 @@
       border-bottom: 2px solid $c-bluegrey-nontransp;
       height: 40px;
       width: 100%;
+      z-index: 1000;
 
       li {
         float: left;
@@ -103,5 +104,4 @@
   .db-icon {
     color: rgba(255, 255, 255, .95);
   }
-
 }

@@ -27,7 +27,8 @@
         var callback = function(error, lockedCollections) {
           var self = this;
           if (error) {
-            arangoHelper.arangoError("Collections", "Could not check locked collections");
+            //arangoHelper.arangoError("Collections", "Could not check locked collections");
+            console.log("Could not check locked collections");
           }
           else {
             this.collection.each(function(model) {

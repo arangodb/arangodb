@@ -185,7 +185,7 @@ class HeartbeatThread : public Thread {
 
   arangodb::basics::ConditionVariable _condition;
 
-  VPackBuilder _dispatchedPlanVersion;
+  uint64_t _dispatchedPlanVersion;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief users for these databases will be re-fetched the next time the
