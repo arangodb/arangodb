@@ -380,8 +380,8 @@ namespace triagens {
 /// if the attribute is not there or not a string, this returns 0
 ////////////////////////////////////////////////////////////////////////////////
 
-        char const* extractJsonStringValue (TRI_json_t const*,
-                                            char const*);
+        char* extractJsonStringValue (TRI_json_t const*,
+                                      char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a document handle, on a cluster this will parse the

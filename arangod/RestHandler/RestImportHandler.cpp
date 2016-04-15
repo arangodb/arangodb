@@ -95,6 +95,22 @@ HttpHandler::status_t RestImportHandler::execute () {
 
   switch (type) {
     case HttpRequest::HTTP_REQUEST_POST: {
+      char const* from = _request->value("fromPrefix", found);
+      if (found) {
+        _fromPrefix = from;
+        if (!_fromPrefix.empty() && _fromPrefix[_fromPrefix.size() - 1] != '/') {
+          _fromPrefix.push_back('/');
+        }
+      }
+      
+      char const* to = _request->value("toPrefix", found);
+      if (to) {
+        _toPrefix = to;
+        if (!_toPrefix.empty() && _toPrefix[_toPrefix.size() - 1] != '/') {
+          _toPrefix.push_back('/');
+        }
+      }
+
       // extract the import type
       string const documentType = _request->value("type", found);
 
@@ -248,8 +264,8 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
   int res = TRI_ERROR_NO_ERROR;
 
   if (isEdgeCollection) {
-    char const* from = extractJsonStringValue(json, TRI_VOC_ATTRIBUTE_FROM);
-    char const* to   = extractJsonStringValue(json, TRI_VOC_ATTRIBUTE_TO);
+    char* from = extractJsonStringValue(json, TRI_VOC_ATTRIBUTE_FROM);
+    char* to   = extractJsonStringValue(json, TRI_VOC_ATTRIBUTE_TO);
 
     if (from == nullptr || to == nullptr) {
       string part = JsonHelper::toString(json);
@@ -271,6 +287,30 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
     edge._fromKey = nullptr;
     edge._toKey   = nullptr;
 
+    TRI_ASSERT(from != nullptr);
+    TRI_ASSERT(to != nullptr);
+      
+    bool fromIsArtificial = false;
+    bool toIsArtificial = false;
+
+    if (!_fromPrefix.empty() && strchr(from, '/') == nullptr) {
+      fromIsArtificial = true;
+      from = TRI_Concatenate2StringZ(TRI_UNKNOWN_MEM_ZONE, _fromPrefix.c_str(), from);
+      if (from == nullptr) {
+        return TRI_ERROR_OUT_OF_MEMORY;
+      }
+    }
+    
+    if (!_toPrefix.empty() && strchr(to, '/') == nullptr) {
+      toIsArtificial = true;
+      to = TRI_Concatenate2StringZ(TRI_UNKNOWN_MEM_ZONE, _toPrefix.c_str(), to);
+      if (to == nullptr) {
+        TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, from);
+        return TRI_ERROR_OUT_OF_MEMORY;
+      }
+    }
+
+
     // Note that in a DBserver in a cluster the following two calls will
     // parse the first part as a cluster-wide collection name:
     int res1 = parseDocumentId(trx.resolver(), from, edge._fromCid, edge._fromKey);
@@ -282,6 +322,13 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
     }
     else {
       res = (res1 != TRI_ERROR_NO_ERROR ? res1 : res2);
+    }
+    
+    if (fromIsArtificial) {
+      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, from);
+    }
+    if (toIsArtificial) {
+      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, to);
     }
 
     if (edge._fromKey != nullptr) {
@@ -410,6 +457,16 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 /// If this parameter has a value of `document` or `edge`, it will determine
 /// the type of collection that is going to be created when the `createCollection`
 /// option is set to `true`. The default value is `document`.
+///
+/// @RESTQUERYPARAM{fromPrefix,string,optional}
+/// An optional prefix for the values in `_from` attributes. If specified, the
+/// value is automatically prepended to each `_from` input value. This allows
+/// specifying just the keys for `_from`.
+///
+/// @RESTQUERYPARAM{toPrefix,string,optional}
+/// An optional prefix for the values in `_to` attributes. If specified, the
+/// value is automatically prepended to each `_to` input value. This allows
+/// specifying just the keys for `_to`.
 ///
 /// @RESTQUERYPARAM{overwrite,boolean,optional}
 /// If this parameter has a value of `true` or `yes`, then all data in the

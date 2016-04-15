@@ -1,6 +1,26 @@
 v2.8.8 (????-??-??)
 -------------------
 
+* allow specifying collection name prefixes for `_from` and `_to` in arangoimp:
+
+  To avoid specifying complete document ids (consisting of collection names and document
+  keys) for *_from* and *_to* values when importing edges with arangoimp, there are now
+  the options *--from-collection-prefix* and *--to-collection-prefix*. 
+  
+  If specified, these values will be automatically prepended to each value in *_from* 
+  (or *_to* resp.). This allows specifying only document keys inside *_from* and/or *_to*.
+
+  *Example*
+
+      > arangoimp --from-collection-prefix users --to-collection-prefix products ...
+
+  Importing the following document will then create an edge between *users/1234* and
+  *products/4321*:
+
+  ```js
+  { "_from" : "1234", "_to" : "4321", "desc" : "users/1234 is connected to products/4321" }
+  ```
+
 * requests made with the interactive system API documentation in the web interface
   will now respect the active database instead of always using `_system`
 

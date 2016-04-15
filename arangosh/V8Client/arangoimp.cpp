@@ -100,6 +100,9 @@ static string FileName = "";
 
 static string CollectionName = "";
 
+static string FromCollectionName = "";
+static string ToCollectionName = "";
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief import type
 ////////////////////////////////////////////////////////////////////////////////
@@ -158,6 +161,8 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("backslash-escape", &UseBackslash, "use backslash as the escape character for quotes, used for csv")
     ("batch-size", &ChunkSize, "size for individual data batches (in bytes)")
     ("collection", &CollectionName, "collection name")
+    ("from-collection-prefix", &FromCollectionName, "_from collection name prefix (will be prepended to all values in '_from')")
+    ("to-collection-prefix", &ToCollectionName, "_to collection name prefix (will be prepended to all values in '_to'")
     ("create-collection", &CreateCollection, "create collection if it does not yet exist")
     ("create-collection-type", &CreateCollectionType, "type of collection if collection is created ('document' or 'edge')")
     ("type", &TypeImport, "type of file (\"csv\", \"tsv\", or \"json\")")
@@ -344,11 +349,17 @@ int main (int argc, char* argv[]) {
           << BaseClient.databaseName() << "', username: '" << BaseClient.username() << "'" << endl;
 
       cout << "----------------------------------------" << endl;
-      cout << "database:         " << BaseClient.databaseName() << endl;
-      cout << "collection:       " << CollectionName << endl;
-      cout << "create:           " << (CreateCollection ? "yes" : "no") << endl;
-      cout << "file:             " << FileName << endl;
-      cout << "type:             " << TypeImport << endl;
+      cout << "database:                " << BaseClient.databaseName() << endl;
+      cout << "collection:              " << CollectionName << endl;
+      if (!FromCollectionName.empty()) {
+        cout << "_from collection prefix: " << FromCollectionName << endl;
+      }
+      if (!ToCollectionName.empty()) {
+        cout << "_to collection prefix:   " << ToCollectionName << endl;
+      }
+      cout << "create collection:       " << (CreateCollection ? "yes" : "no") << endl;
+      cout << "source filename:         " << FileName << endl;
+      cout << "file type:               " << TypeImport << endl;
 
       if (TypeImport == "csv") {
         cout << "quote:            " << Quote << endl;
@@ -434,6 +445,8 @@ int main (int argc, char* argv[]) {
 
       try {
         bool ok = false;
+        ih.setFrom(FromCollectionName);
+        ih.setTo(ToCollectionName);
 
         // import type
         if (TypeImport == "csv") {

@@ -633,8 +633,8 @@ TRI_json_t* RestVocbaseBaseHandler::parseJsonBody () {
 /// if the attribute is not there or not a string, this returns 0
 ////////////////////////////////////////////////////////////////////////////////
 
-char const* RestVocbaseBaseHandler::extractJsonStringValue (TRI_json_t const* json,
-                                                            char const* name) {
+char* RestVocbaseBaseHandler::extractJsonStringValue (TRI_json_t const* json,
+                                                      char const* name) {
   if (! TRI_IsObjectJson(json)) {
     return nullptr;
   }

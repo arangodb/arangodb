@@ -650,6 +650,14 @@ namespace triagens {
 
       map<string, string> headerFields;
       string url("/_api/import?" + getCollectionUrlPart() + "&line=" + StringUtils::itoa(_rowOffset) + "&details=true&onDuplicate=" + StringUtils::urlEncode(_onDuplicateAction));
+      
+      if (!_fromCollectionPrefix.empty()) {
+        url += "&fromPrefix=" + StringUtils::urlEncode(_fromCollectionPrefix);
+      }
+      if (!_toCollectionPrefix.empty()) {
+        url += "&toPrefix=" + StringUtils::urlEncode(_toCollectionPrefix);
+      }
+
       std::unique_ptr<SimpleHttpResult> result(_client->request(HttpRequest::HTTP_REQUEST_POST, url, _outputBuffer.c_str(), _outputBuffer.length(), headerFields));
 
       handleResult(result.get());
@@ -670,6 +678,12 @@ namespace triagens {
       }
       else {
         url += "&type=documents";
+      }
+      if (!_fromCollectionPrefix.empty()) {
+        url += "&fromPrefix=" + StringUtils::urlEncode(_fromCollectionPrefix);
+      }
+      if (!_toCollectionPrefix.empty()) {
+        url += "&toPrefix=" + StringUtils::urlEncode(_toCollectionPrefix);
       }
 
       map<string, string> headerFields;

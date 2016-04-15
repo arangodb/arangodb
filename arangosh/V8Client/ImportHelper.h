@@ -112,8 +112,24 @@ namespace triagens {
 /// this is a string because the quote might also be empty if not used
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setQuote (std::string quote) {
+      void setQuote (std::string const& quote) {
         _quote = quote;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set collection name prefix for _from
+////////////////////////////////////////////////////////////////////////////////
+
+      void setFrom (std::string const& from) {
+        _fromCollectionPrefix = from;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set collection name prefix for _to
+////////////////////////////////////////////////////////////////////////////////
+      
+      void setTo (std::string const& to) {
+        _toCollectionPrefix = to;
       }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -128,7 +144,7 @@ namespace triagens {
 /// @brief sets the separator
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setSeparator (std::string separator) {
+      void setSeparator (std::string const& separator) {
         _separator = separator;
       }
 
@@ -260,6 +276,8 @@ namespace triagens {
 
       std::string _onDuplicateAction;
       std::string _collectionName;
+      std::string _fromCollectionPrefix;
+      std::string _toCollectionPrefix;
       triagens::basics::StringBuffer _lineBuffer;
       triagens::basics::StringBuffer _outputBuffer;
       std::string _firstLine;
