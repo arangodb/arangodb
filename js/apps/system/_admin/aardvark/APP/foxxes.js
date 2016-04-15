@@ -55,12 +55,6 @@ router.use(foxxRouter)
 `);
 
 
-foxxRouter.use((req, res, next) => {
-  req.queryParams.mount = decodeURIComponent(req.queryParams.mount);
-  next();
-});
-
-
 const installer = createRouter();
 foxxRouter.use(installer)
 .queryParam('upgrade', joi.boolean().default(false), dd`
@@ -74,7 +68,7 @@ foxxRouter.use(installer)
 
 
 installer.use(function (req, res, next) {
-  const mount = req.queryParams.mount;
+  const mount = decodeURIComponent(req.queryParams.mount);
   const upgrade = req.queryParams.upgrade;
   const replace = req.queryParams.replace;
   next();
@@ -150,7 +144,7 @@ installer.put('/zip', function (req) {
 
 
 foxxRouter.delete('/', function (req, res) {
-  const mount = req.queryParams.mount;
+  const mount = decodeURIComponent(req.queryParams.mount);
   const runTeardown = req.parameters.teardown;
   const service = FoxxManager.uninstall(mount, {
     teardown: runTeardown,
@@ -187,7 +181,7 @@ router.get('/', function (req, res) {
 
 
 foxxRouter.get('/thumbnail', function (req, res) {
-  const mount = req.queryParams.mount;
+  const mount = decodeURIComponent(req.queryParams.mount);
   const service = FoxxManager.lookupApp(mount);
   res.sendFile(service.thumbnail || DEFAULT_THUMBNAIL);
 })
@@ -198,7 +192,7 @@ foxxRouter.get('/thumbnail', function (req, res) {
 
 
 foxxRouter.get('/config', function (req, res) {
-  const mount = req.queryParams.mount;
+  const mount = decodeURIComponent(req.queryParams.mount);
   res.json(FoxxManager.configuration(mount));
 })
 .summary('Get the configuration for a service')
@@ -208,7 +202,7 @@ foxxRouter.get('/config', function (req, res) {
 
 
 foxxRouter.patch('/config', function (req, res) {
-  const mount = req.queryParams.mount;
+  const mount = decodeURIComponent(req.queryParams.mount);
   const configuration = req.body;
   res.json(FoxxManager.configure(mount, {configuration}));
 })
@@ -220,7 +214,7 @@ foxxRouter.patch('/config', function (req, res) {
 
 
 foxxRouter.get('/deps', function (req, res) {
-  const mount = req.queryParams.mount;
+  const mount = decodeURIComponent(req.queryParams.mount);
   res.json(FoxxManager.dependencies(mount));
 })
 .summary('Get the dependencies for a service')
@@ -230,7 +224,7 @@ foxxRouter.get('/deps', function (req, res) {
 
 
 foxxRouter.patch('/deps', function (req, res) {
-  const mount = req.queryParams.mount;
+  const mount = decodeURIComponent(req.queryParams.mount);
   const dependencies = req.body;
   res.json(FoxxManager.updateDeps(mount, {dependencies}));
 })
@@ -242,7 +236,7 @@ foxxRouter.patch('/deps', function (req, res) {
 
 
 foxxRouter.post('/tests', function (req, res) {
-  const mount = req.queryParams.mount;
+  const mount = decodeURIComponent(req.queryParams.mount);
   res.json(FoxxManager.runTests(mount, req.body));
 })
 .body(joi.object().optional(), 'Options to pass to the test runner.')
@@ -253,7 +247,7 @@ foxxRouter.post('/tests', function (req, res) {
 
 
 foxxRouter.post('/scripts/:name', function (req, res) {
-  const mount = req.queryParams.mount;
+  const mount = decodeURIComponent(req.queryParams.mount);
   const name = req.queryParams.name;
   try {
     res.json(FoxxManager.runScript(name, mount, req.body));
@@ -270,7 +264,7 @@ foxxRouter.post('/scripts/:name', function (req, res) {
 
 
 foxxRouter.patch('/devel', function (req, res) {
-  const mount = req.queryParams.mount;
+  const mount = decodeURIComponent(req.queryParams.mount);
   const activate = Boolean(req.body);
   res.json(FoxxManager[activate ? 'development' : 'production'](mount));
 })
@@ -282,7 +276,7 @@ foxxRouter.patch('/devel', function (req, res) {
 
 
 foxxRouter.get('/download/zip', function (req, res) {
-  const mount = req.queryParams.mount;
+  const mount = decodeURIComponent(req.queryParams.mount);
   const service = FoxxManager.lookupApp(mount);
   const dir = fs.join(fs.makeAbsolute(service.root), service.path);
   const zipPath = fmUtils.zipDirectory(dir);
@@ -304,16 +298,16 @@ router.get('/fishbowl', function (req, res) {
 `);
 
 
-foxxRouter.get('/docs/standalone/*', module.context.createSwaggerHandler(
+router.get('/docs/standalone/*', module.context.apiDocumentation(
   (req) => ({
-    appPath: req.queryParams.mount
+    appPath: decodeURIComponent(req.queryParams.mount)
   })
 ));
 
 
-foxxRouter.get('/docs/*', module.context.createSwaggerHandler(
+router.get('/docs/*', module.context.apiDocumentation(
   (req) => ({
-    appPath: req.queryParams.mount,
+    appPath: decodeURIComponent(req.queryParams.mount),
     indexFile: 'index-alt.html'
   })
 ));

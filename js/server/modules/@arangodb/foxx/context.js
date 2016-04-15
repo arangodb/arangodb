@@ -27,7 +27,7 @@ const path = require('path');
 const fs = require('fs');
 const internal = require('internal');
 const mimeTypes = require('mime-types');
-const createSwaggerHandler = require('@arangodb/foxx/swagger');
+const createSwaggerRouteHandler = require('@arangodb/foxx/swagger');
 
 
 module.exports = class FoxxContext {
@@ -36,8 +36,8 @@ module.exports = class FoxxContext {
     this.argv = [];
   }
 
-  createSwaggerHandler(opts) {
-    return createSwaggerHandler(this.mount, opts);
+  apiDocumentation(opts) {
+    return createSwaggerRouteHandler(this.mount, opts);
   }
 
   use(path, router, name) {
