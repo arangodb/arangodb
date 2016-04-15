@@ -1566,17 +1566,6 @@ OperationResult Transaction::removeCoordinator(std::string const& collectionName
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
 
-  /*
-  std::string key(Transaction::extractKey(value));
-  if (key.empty()) {
-    return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
-  }
-  TRI_voc_rid_t expectedRevision = 0;
-  if (!options.ignoreRevs) {
-    expectedRevision = TRI_ExtractRevisionId(value);
-  }
-  */
-
   int res = arangodb::deleteDocumentOnCoordinator(
       _vocbase->_name, collectionName, value, options, headers,
       responseCode, errorCounter, resultBody);

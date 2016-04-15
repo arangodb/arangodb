@@ -1415,6 +1415,7 @@ int getDocumentOnCoordinator(
   // If we get here we get exactly one result for every shard.
   TRI_ASSERT(allResults.size() == shardList->size());
   mergeResultsAllShards(allResults, resultBody, errorCounter, static_cast<size_t>(slice.length()));
+  responseCode = arangodb::GeneralResponse::ResponseCode::OK;
   return TRI_ERROR_NO_ERROR;
 }
 
