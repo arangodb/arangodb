@@ -521,7 +521,7 @@ bool Node::applies (VPackSlice const& slice) {
   
   if (slice.isObject()) {
 
-    // Object is an operation
+    // Object is an operation?
     if (slice.hasKey("op")) {
       if (applieOp(slice)) {
         return true;
