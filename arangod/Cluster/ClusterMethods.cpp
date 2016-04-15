@@ -1129,6 +1129,9 @@ int deleteDocumentOnCoordinator(
   // If we get here we get exactly one result for every shard.
   TRI_ASSERT(allResults.size() == shardList->size());
   mergeResultsAllShards(allResults, resultBody, errorCounter, shardList->size());
+  responseCode =
+      (options.waitForSync ? GeneralResponse::ResponseCode::OK
+                           : GeneralResponse::ResponseCode::ACCEPTED);
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -2042,7 +2045,9 @@ int modifyDocumentOnCoordinator(
       // Local data structores are automatically freed
       return error;
     }
-    TRI_ASSERT(res.answer_code == arangodb::GeneralResponse::ResponseCode::OK);
+    TRI_ASSERT(res.answer_code == arangodb::GeneralResponse::ResponseCode::OK ||
+               res.answer_code ==
+                   arangodb::GeneralResponse::ResponseCode::ACCEPTED);
     TRI_ASSERT(res.answer != nullptr);
     allResults.emplace_back(res.answer->toVelocyPack(&VPackOptions::Defaults));
     extractErrorCodes(res, errorCounter, false);
@@ -2050,6 +2055,9 @@ int modifyDocumentOnCoordinator(
   // If we get here we get exactly one result for every shard.
   TRI_ASSERT(allResults.size() == shardList->size());
   mergeResultsAllShards(allResults, resultBody, errorCounter, shardList->size());
+  responseCode =
+      (options.waitForSync ? GeneralResponse::ResponseCode::OK
+                           : GeneralResponse::ResponseCode::ACCEPTED);
   return TRI_ERROR_NO_ERROR;
 }
 
