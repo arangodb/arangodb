@@ -331,8 +331,11 @@ static void collectResultsFromAllShards(
     std::unordered_map<ShardID, std::vector<T>> const& shardMap,
     ClusterComm* cc, CoordTransactionID const& coordTransactionID,
     std::unordered_map<int, size_t>& errorCounter,
-    std::unordered_map<ShardID, std::shared_ptr<VPackBuilder>>& resultMap) {
+    std::unordered_map<ShardID, std::shared_ptr<VPackBuilder>>& resultMap,
+    GeneralResponse::ResponseCode& responseCode) {
   size_t count;
+  // If none of the shards responds we return a SERVER_ERROR;
+  responseCode = GeneralResponse::ResponseCode::SERVER_ERROR;
   for (count = shardMap.size(); count > 0; count--) {
     auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
@@ -354,6 +357,7 @@ static void collectResultsFromAllShards(
         resultMap.emplace(res.shardID,
                           res.answer->toVelocyPack(&VPackOptions::Defaults));
         extractErrorCodes(res, errorCounter, true);
+        responseCode = res.answer_code;
       }
     }
   }
@@ -900,7 +904,7 @@ int createDocumentOnCoordinator(
   std::unordered_map<ShardID, std::shared_ptr<VPackBuilder>> resultMap;
 
   collectResultsFromAllShards<std::pair<VPackValueLength, std::string>>(
-      shardMap, cc, coordTransactionID, errorCounter, resultMap);
+      shardMap, cc, coordTransactionID, errorCounter, resultMap, responseCode);
 
   responseCode =
       (options.waitForSync ? GeneralResponse::ResponseCode::CREATED
@@ -1057,10 +1061,7 @@ int deleteDocumentOnCoordinator(
 
     std::unordered_map<ShardID, std::shared_ptr<VPackBuilder>> resultMap;
     collectResultsFromAllShards<VPackValueLength>(
-        shardMap, cc, coordTransactionID, errorCounter, resultMap);
-    responseCode =
-        (options.waitForSync ? GeneralResponse::ResponseCode::OK
-                             : GeneralResponse::ResponseCode::ACCEPTED);
+        shardMap, cc, coordTransactionID, errorCounter, resultMap, responseCode);
     mergeResults(reverseMapping, resultMap, resultBody);
     return TRI_ERROR_NO_ERROR;  // the cluster operation was OK, however,
                                 // the DBserver could have reported an error.
@@ -1099,6 +1100,7 @@ int deleteDocumentOnCoordinator(
                 arangodb::GeneralResponse::ResponseCode::NOT_FOUND ||
             (nrok == 0 && count == 1)) {
           nrok++;
+
           responseCode = res.answer_code;
           TRI_ASSERT(res.answer != nullptr);
           auto parsedResult = res.answer->toVelocyPack(&VPackOptions::Defaults);
@@ -1118,6 +1120,8 @@ int deleteDocumentOnCoordinator(
   // We select all results from all shards an merge them back again.
   std::vector<std::shared_ptr<VPackBuilder>> allResults;
   allResults.reserve(shardList->size());
+  // If no server responds we return 500
+  responseCode = GeneralResponse::ResponseCode::SERVER_ERROR;
   for (size_t i = 0; i < shardList->size(); ++i) {
     auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
     int error = handleGeneralCommErrors(&res);
@@ -1127,7 +1131,10 @@ int deleteDocumentOnCoordinator(
       // Local data structores are automatically freed
       return error;
     }
-    TRI_ASSERT(res.answer_code == arangodb::GeneralResponse::ResponseCode::OK);
+    if (res.answer_code == GeneralResponse::ResponseCode::OK ||
+        res.answer_code == GeneralResponse::ResponseCode::ACCEPTED) {
+      responseCode = res.answer_code;
+    }
     TRI_ASSERT(res.answer != nullptr);
     allResults.emplace_back(res.answer->toVelocyPack(&VPackOptions::Defaults));
     extractErrorCodes(res, errorCounter, false);
@@ -1135,9 +1142,6 @@ int deleteDocumentOnCoordinator(
   // If we get here we get exactly one result for every shard.
   TRI_ASSERT(allResults.size() == shardList->size());
   mergeResultsAllShards(allResults, resultBody, errorCounter, static_cast<size_t>(slice.length()));
-  responseCode =
-      (options.waitForSync ? GeneralResponse::ResponseCode::OK
-                           : GeneralResponse::ResponseCode::ACCEPTED);
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -1326,9 +1330,7 @@ int getDocumentOnCoordinator(
 
     std::unordered_map<ShardID, std::shared_ptr<VPackBuilder>> resultMap;
     collectResultsFromAllShards<VPackValueLength>(
-        shardMap, cc, coordTransactionID, errorCounter, resultMap);
-
-    responseCode = GeneralResponse::ResponseCode::OK;
+        shardMap, cc, coordTransactionID, errorCounter, resultMap, responseCode);
 
     mergeResults(reverseMapping, resultMap, resultBody);
 
@@ -1398,6 +1400,8 @@ int getDocumentOnCoordinator(
   // We select all results from all shards an merge them back again.
   std::vector<std::shared_ptr<VPackBuilder>> allResults;
   allResults.reserve(shardList->size());
+  // If no server responds we return 500
+  responseCode = GeneralResponse::ResponseCode::SERVER_ERROR;
   for (size_t i = 0; i < shardList->size(); ++i) {
     auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
     int error = handleGeneralCommErrors(&res);
@@ -1407,7 +1411,10 @@ int getDocumentOnCoordinator(
       // Local data structores are automatically freed
       return error;
     }
-    TRI_ASSERT(res.answer_code == arangodb::GeneralResponse::ResponseCode::OK);
+    if (res.answer_code == GeneralResponse::ResponseCode::OK ||
+        res.answer_code == GeneralResponse::ResponseCode::ACCEPTED) {
+      responseCode = res.answer_code;
+    }
     TRI_ASSERT(res.answer != nullptr);
     allResults.emplace_back(res.answer->toVelocyPack(&VPackOptions::Defaults));
     extractErrorCodes(res, errorCounter, false);
@@ -1415,7 +1422,6 @@ int getDocumentOnCoordinator(
   // If we get here we get exactly one result for every shard.
   TRI_ASSERT(allResults.size() == shardList->size());
   mergeResultsAllShards(allResults, resultBody, errorCounter, static_cast<size_t>(slice.length()));
-  responseCode = arangodb::GeneralResponse::ResponseCode::OK;
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -1974,11 +1980,7 @@ int modifyDocumentOnCoordinator(
 
     std::unordered_map<ShardID, std::shared_ptr<VPackBuilder>> resultMap;
     collectResultsFromAllShards<VPackValueLength>(
-        shardMap, cc, coordTransactionID, errorCounter, resultMap);
-
-    responseCode =
-        (options.waitForSync ? GeneralResponse::ResponseCode::OK
-                             : GeneralResponse::ResponseCode::ACCEPTED);
+        shardMap, cc, coordTransactionID, errorCounter, resultMap, responseCode);
 
     mergeResults(reverseMapping, resultMap, resultBody);
 
@@ -2040,6 +2042,7 @@ int modifyDocumentOnCoordinator(
 
   }
 
+  responseCode = GeneralResponse::ResponseCode::SERVER_ERROR;
   // We select all results from all shards an merge them back again.
   std::vector<std::shared_ptr<VPackBuilder>> allResults;
   allResults.reserve(shardList->size());
@@ -2052,9 +2055,10 @@ int modifyDocumentOnCoordinator(
       // Local data structores are automatically freed
       return error;
     }
-    TRI_ASSERT(res.answer_code == arangodb::GeneralResponse::ResponseCode::OK ||
-               res.answer_code ==
-                   arangodb::GeneralResponse::ResponseCode::ACCEPTED);
+    if (res.answer_code == GeneralResponse::ResponseCode::OK ||
+        res.answer_code == GeneralResponse::ResponseCode::ACCEPTED) {
+      responseCode = res.answer_code;
+    }
     TRI_ASSERT(res.answer != nullptr);
     allResults.emplace_back(res.answer->toVelocyPack(&VPackOptions::Defaults));
     extractErrorCodes(res, errorCounter, false);
@@ -2062,9 +2066,6 @@ int modifyDocumentOnCoordinator(
   // If we get here we get exactly one result for every shard.
   TRI_ASSERT(allResults.size() == shardList->size());
   mergeResultsAllShards(allResults, resultBody, errorCounter, static_cast<size_t>(slice.length()));
-  responseCode =
-      (options.waitForSync ? GeneralResponse::ResponseCode::OK
-                           : GeneralResponse::ResponseCode::ACCEPTED);
   return TRI_ERROR_NO_ERROR;
 }
 

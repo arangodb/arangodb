@@ -508,24 +508,9 @@ bool RestDocumentHandler::deleteDocument() {
   OperationOptions opOptions;
   opOptions.returnOld = extractBooleanParameter("returnOld", false);
   opOptions.ignoreRevs = extractBooleanParameter("ignoreRevs", true);
+  opOptions.waitForSync = extractBooleanParameter("waitForSync", false);
 
   auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
-  SingleCollectionTransaction trx(transactionContext,
-                                  collectionName, TRI_TRANSACTION_WRITE);
-  if (suffix.size() == 2) {
-    trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
-  }
-
-  // ...........................................................................
-  // inside write transaction
-  // ...........................................................................
-
-  int res = trx.begin();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collectionName, res, "");
-    return false;
-  }
 
   VPackBuilder builder;
   VPackSlice search;
@@ -551,6 +536,19 @@ bool RestDocumentHandler::deleteDocument() {
       return false;
     }
     search = builderPtr->slice();
+  }
+
+  SingleCollectionTransaction trx(transactionContext,
+                                  collectionName, TRI_TRANSACTION_WRITE);
+  if (suffix.size() == 2 || !search.isArray()) {
+    trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
+  }
+
+  int res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collectionName, res, "");
+    return false;
   }
 
   OperationResult result = trx.remove(collectionName, search, opOptions);

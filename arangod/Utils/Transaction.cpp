@@ -1579,7 +1579,8 @@ OperationResult Transaction::removeCoordinator(std::string const& collectionName
           responseCode == GeneralResponse::ResponseCode::PRECONDITION_FAILED
               ? TRI_ERROR_ARANGO_CONFLICT
               : TRI_ERROR_NO_ERROR,
-          responseCode != GeneralResponse::ResponseCode::ACCEPTED);
+          responseCode != GeneralResponse::ResponseCode::ACCEPTED,
+          errorCounter);
     } else if (responseCode == GeneralResponse::ResponseCode::BAD) {
       return DBServerResponseBad(resultBody);
     } else if (responseCode == GeneralResponse::ResponseCode::NOT_FOUND) {
