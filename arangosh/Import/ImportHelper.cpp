@@ -623,6 +623,14 @@ void ImportHelper::sendCsvBuffer() {
   std::string url("/_api/import?" + getCollectionUrlPart() + "&line=" +
                   StringUtils::itoa(_rowOffset) + "&details=true&onDuplicate=" +
                   StringUtils::urlEncode(_onDuplicateAction));
+
+  if (!_fromCollectionPrefix.empty()) {
+    url += "&fromPrefix=" + StringUtils::urlEncode(_fromCollectionPrefix);
+  }
+  if (!_toCollectionPrefix.empty()) {
+    url += "&toPrefix=" + StringUtils::urlEncode(_toCollectionPrefix);
+  }
+
   std::unique_ptr<SimpleHttpResult> result(_client->request(
       GeneralRequest::RequestType::POST, url, _outputBuffer.c_str(),
       _outputBuffer.length(), headerFields));
@@ -646,6 +654,13 @@ void ImportHelper::sendJsonBuffer(char const* str, size_t len, bool isObject) {
     url += "&type=array";
   } else {
     url += "&type=documents";
+  }
+
+  if (!_fromCollectionPrefix.empty()) {
+    url += "&fromPrefix=" + StringUtils::urlEncode(_fromCollectionPrefix);
+  }
+  if (!_toCollectionPrefix.empty()) {
+    url += "&toPrefix=" + StringUtils::urlEncode(_toCollectionPrefix);
   }
 
   std::map<std::string, std::string> headerFields;
