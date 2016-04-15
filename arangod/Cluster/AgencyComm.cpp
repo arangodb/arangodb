@@ -358,7 +358,7 @@ bool AgencyCommResult::parseVelocyPackNode(VPackSlice const& node,
         entry._isDir = false;
 
         _values.emplace(prefix, entry);
-      } else if (value.isNumber()) {
+      } else if (value.isNumber() || value.isBoolean()) {
         AgencyCommResultEntry entry;
 
         // get "modifiedIndex"
@@ -668,15 +668,15 @@ bool AgencyComm::tryInitializeStructure() {
       }
       addEmptyVPackObject("DBServers", builder);
       builder.add("Lock", VPackValue("\"UNLOCKED\""));
-      builder.add("InitDone", VPackValue(true));
     }
+    builder.add("InitDone", VPackValue(true));
   } catch (...) {
     LOG(WARN) << "Couldn't create initializing structure";
     return false;
   }
 
   try {
-    LOG(DEBUG) << "Initializing agency with " << builder.toJson();
+    LOG(TRACE) << "Initializing agency with " << builder.toJson();
 
     AgencyCommResult result;
     AgencyOperation initOperation("", AgencyValueOperationType::SET, builder.slice());
@@ -712,6 +712,7 @@ bool AgencyComm::shouldInitializeStructure() {
       result.httpCode() ==
           (int)arangodb::GeneralResponse::ResponseCode::PRECONDITION_FAILED) {
     // somebody else has or is initializing the agency
+    LOG(TRACE) << "someone else is initializing the agency";
     return false;
   }
   
@@ -725,20 +726,43 @@ bool AgencyComm::shouldInitializeStructure() {
 bool AgencyComm::ensureStructureInitialized() {
   LOG(TRACE) << "Checking if agency is initialized";
 
-  while (shouldInitializeStructure()) {
-    LOG(TRACE) << "Agency is fresh. Needs initial structure.";
-    // mop: we initialized it .. great success
-    if (tryInitializeStructure()) {
-      LOG(TRACE) << "Done initializing agency";
-      return true;
-    } 
+  while (true) {
+    while (shouldInitializeStructure()) {
+      LOG(TRACE) << "Agency is fresh. Needs initial structure.";
+      // mop: we initialized it .. great success
+      if (tryInitializeStructure()) {
+        LOG(TRACE) << "Done initializing agency";
+        break;
+      } 
 
-    LOG(WARN) << "Initializing agency failed. We'll try again soon";
-    // mop: somebody else is initializing it right now...wait a bit and retry
+      LOG(WARN) << "Initializing agency failed. We'll try again soon";
+      // mop: somebody else is initializing it right now...wait a bit and retry
+      sleep(1);
+    }
+    
+    AgencyCommResult result = getValues("InitDone", false);
+ 
+    if (result.successful()) {
+      result.parse("", false);
+
+      std::map<std::string, AgencyCommResultEntry>::iterator it =
+          result._values.begin();
+      if (it != result._values.end()) {
+        auto value = (*it).second._vpack;
+
+        if (value->slice().isBoolean() && value->slice().getBoolean()) {
+          // expecting a value of "true"
+          LOG(TRACE) << "Found an initialized agency";
+          return true;
+        }
+        // fallthrough to sleeping
+      }
+    }
+          
+    LOG(TRACE) << "Waiting for agency to get initialized";
+
     sleep(1);
-  }
-
-  return true;
+  } // next attempt
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1172,7 +1196,7 @@ AgencyCommResult AgencyComm::getValues(std::string const& key, bool recursive) {
   try {
     std::shared_ptr<VPackBuilder> parsedBody;
     std::string const body = result.body();
-    
+   
     parsedBody = VPackParser::fromJson(body.c_str());
     VPackSlice agencyResult = parsedBody->slice();
 
