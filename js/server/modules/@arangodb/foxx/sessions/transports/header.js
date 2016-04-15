@@ -23,17 +23,17 @@
 
 module.exports = function headerTransport(cfg) {
   if (!cfg) {
-    cfg = 'X-Session-Id';
-  }
-  if (typeof cfg === 'string') {
+    cfg = {};
+  } else if (typeof cfg === 'string') {
     cfg = {name: cfg};
   }
+  const name = cfg.name || 'X-Session-Id';
   return {
     get(req) {
-      return req.headers[cfg.name.toLowerCase()];
+      return req.headers[name.toLowerCase()];
     },
     set(res, value) {
-      res.set(cfg.name, value);
+      res.set(name, value);
     }
   };
 };

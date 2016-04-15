@@ -23,13 +23,15 @@
 /// @author Alan Plum
 ////////////////////////////////////////////////////////////////////////////////
 
+const assert = require('assert');
 const internal = require('internal');
 const arangodb = require('@arangodb');
 const NOT_FOUND = arangodb.errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code;
 const db = arangodb.db;
 
 
-module.exports = function systemStorage() {
+module.exports = function systemStorage(cfg) {
+  assert(!cfg, 'System session storage does not expect any options');
   const expiry = Number(internal.options()['server.session-timeout']) * 1000;
   return {
     prune() {

@@ -155,6 +155,12 @@ module.exports = exports = class SwaggerContext {
       if (model.schema && !model.schema.isJoi) {
         model.schema = joi.object(model.schema).required();
       }
+      if (!model.forClient && typeof model.toClient === 'function') {
+        console.warn(il`
+          Found unexpected "toClient" method on request body model.
+          Did you mean "forClient"?
+        `);
+      }
       assert(!model.forClient || typeof model.forClient === 'function', il`
         Request body model forClient handler must be a function,
         not ${typeof model.forClient}
@@ -163,12 +169,6 @@ module.exports = exports = class SwaggerContext {
         Request body model fromClient handler must be a function,
         not ${typeof model.fromClient}
       `);
-      if (!model.forClient && typeof model.toClient === 'function') {
-        console.log(il`
-          Found unexpected "toClient" method on request body model.
-          Did you mean "forClient"?
-        `);
-      }
     }
 
     this._bodyParam = {
@@ -248,6 +248,12 @@ module.exports = exports = class SwaggerContext {
       if (model.schema && !model.schema.isJoi) {
         model.schema = joi.object(model.schema).required();
       }
+      if (!model.forClient && typeof model.toClient === 'function') {
+        console.warn(il`
+          Found unexpected "toClient" method on response body model at ${statusCode}.
+          Did you mean "forClient"?
+        `);
+      }
       assert(!model.forClient || typeof model.forClient === 'function', il`
         Response body model forClient handler at ${statusCode} must be a function,
         not ${typeof model.forClient}
@@ -256,12 +262,6 @@ module.exports = exports = class SwaggerContext {
         Response body model fromClient handler at ${statusCode} must be a function,
         not ${typeof model.fromClient}
       `);
-      if (!model.forClient && typeof model.toClient === 'function') {
-        console.log(il`
-          Found unexpected "toClient" method on response body model at ${statusCode}.
-          Did you mean "forClient"?
-        `);
-      }
     }
 
     this._responses.set(statusCode, {

@@ -63,6 +63,13 @@ module.exports = class FoxxContext {
 
     def = _.clone(def);
 
+    if (!def.fromClient && typeof def.toClient === 'function') {
+      console.log(
+        `Found unexpected "toClient" method on type handler for "${type}".`
+        + ' Did you mean "forClient"?'
+      );
+    }
+
     assert(
       !def.forClient || typeof def.forClient === 'function',
       `Type forClient handler must be a function, not ${typeof def.forClient}`
@@ -72,13 +79,6 @@ module.exports = class FoxxContext {
       !def.fromClient || typeof def.fromClient === 'function',
       `Type fromClient handler must be a function, not ${typeof def.fromClient}`
     );
-
-    if (!def.fromClient && typeof def.toClient === 'function') {
-      console.log(
-        `Found unexpected "toClient" method on type handler for "${type}".`
-        + ' Did you mean "forClient"?'
-      );
-    }
 
     this.service.types.set(type, def);
   }
@@ -100,9 +100,7 @@ module.exports = class FoxxContext {
       this.collectionPrefix
       + name.replace(/[^a-z0-9]/ig, '_').replace(/(^_+|_+$)/g, '').substr(0, 64)
     );
-    if (!fqn.length) {
-      throw new Error(`Cannot derive collection name from "${name}"`);
-    }
+    assert(fqn.length > 0, `Cannot derive collection name from "${name}"`);
     return fqn;
   }
 

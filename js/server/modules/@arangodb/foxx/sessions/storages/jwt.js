@@ -22,6 +22,7 @@
 /// @author Alan Plum
 ////////////////////////////////////////////////////////////////////////////////
 
+const assert = require('assert');
 const crypto = require('@arangodb/crypto');
 
 module.exports = function jwtStorage(cfg) {
@@ -31,6 +32,8 @@ module.exports = function jwtStorage(cfg) {
   if (!cfg) {
     cfg = {};
   }
+  assert(cfg.algorithm === 'none' || cfg.secret, `Must pass a JWT secret for "${cfg.algorithm}" algorithm`);
+  assert(cfg.algorithm !== 'none' || !cfg.secret, 'Must NOT pass a JWT secret for "none" algorithm');
   const expiry = (cfg.expiry || 60) * 60 * 1000;
   return {
     fromClient(sid) {

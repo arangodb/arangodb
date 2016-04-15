@@ -21,27 +21,32 @@
 /// @author Alan Plum
 ////////////////////////////////////////////////////////////////////////////////
 
+const assert = require('assert');
+
+
 module.exports = function cookieTransport(cfg) {
   if (!cfg) {
-    cfg = 'sid';
-  }
-  if (typeof cfg === 'string') {
+    cfg = {};
+  } else if (typeof cfg === 'string') {
     cfg = {name: cfg};
   }
-  const ttl = cfg.ttl;
+  assert(!cfg.ttl || typeof cfg.ttl === 'number', 'TTL must be a number or not set');
+  assert(!cfg.algorithm || cfg.secret, 'Must specify a secret when specifying an algorithm');
+  const name = cfg.name || 'sid';
+  const ttl = cfg.ttl || undefined;
   const opts = cfg.secret ? {
     secret: cfg.secret,
     algorithm: cfg.algorithm
   } : undefined;
   return {
     get(req) {
-      return req.cookie(cfg.name, opts);
+      return req.cookie(name, opts);
     },
     set(res, value) {
-      res.cookie(cfg.name, value, Object.assign({}, opts, {ttl}));
+      res.cookie(name, value, Object.assign({}, opts, {ttl}));
     },
     clear(res) {
-      res.cookie(cfg.name, '', Object.assign({}, opts, {ttl: -1 * 60 * 60 * 24}));
+      res.cookie(name, '', Object.assign({}, opts, {ttl: -1 * 60 * 60 * 24}));
     }
   };
 };

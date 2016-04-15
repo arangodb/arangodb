@@ -23,6 +23,7 @@
 /// @author Alan Plum
 ////////////////////////////////////////////////////////////////////////////////
 
+const assert = require('assert');
 const arangodb = require('@arangodb');
 const NOT_FOUND = arangodb.errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code;
 const db = arangodb.db;
@@ -42,6 +43,8 @@ module.exports = function collectionStorage(cfg) {
     ? db._collection(cfg.collection)
     : cfg.collection
   );
+  assert(cfg.collection, 'Must pass a collection to store sessions');
+  assert(collection.isArangoCollection, `No such collection: ${cfg.collection}`);
   return {
     prune() {
       return db._query(aqlQuery`

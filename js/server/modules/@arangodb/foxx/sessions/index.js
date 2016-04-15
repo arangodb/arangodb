@@ -21,6 +21,8 @@
 /// @author Alan Plum
 ////////////////////////////////////////////////////////////////////////////////
 
+const assert = require('assert');
+const il = require('@arangodb/util').inline;
 const cookieTransport = require('@arangodb/foxx/sessions/transports/cookie');
 const headerTransport = require('@arangodb/foxx/sessions/transports/header');
 const collectionStorage = require('@arangodb/foxx/sessions/storages/collection');
@@ -30,18 +32,35 @@ module.exports = function sessionMiddleware(cfg) {
     cfg = {};
   }
   let storage = cfg.storage;
-  if (!storage) {
-    throw new Error('No session storage specified');
+  if (cfg.storages) {
+    console.warn(il`
+      Found unexpected "storages" option in session middleware.
+      Did you mean "storage"?
+    `);
   }
+  assert(storage, 'No session storage specified');
   if (typeof storage === 'string' || storage.isArangoCollection) {
     storage = collectionStorage(storage);
   } else if (typeof storage === 'function') {
     storage = storage();
   }
-  if (!storage.forClient || !storage.fromClient) {
-    throw new Error('Session storage has no forClient/fromClient method');
+  if (storage.toClient) {
+    console.warn(il`
+      Found unexpected "toClient" method on session storage.
+      Did you mean "forClient"?
+    `);
   }
-  let transports = cfg.transport || [];
+  assert(
+    storage.forClient || storage.fromClient,
+    'Session storage must have a forClient and/or fromClient method'
+  );
+  if (cfg.transport) {
+    console.warn(il`
+      Found unexpected "transport" option in session middleware.
+      Did you mean "transports"?
+    `);
+  }
+  let transports = cfg.transports || [];
   if (!Array.isArray(transports)) {
     transports = [transports];
   }
@@ -55,20 +74,16 @@ module.exports = function sessionMiddleware(cfg) {
     if (typeof transport === 'function') {
       transport = transport();
     }
-    if (!transport.get && !transport.set) {
-      throw new Error('Session handler has no get/set method');
-    }
-    return transport;
+    assert(
+      transport.get || transport.set,
+      'Session transport must have a get and/or set method'
+    );
+    return transports;
   });
-  if (!transports.length) {
-    throw new Error('No session transport spcified');
-  }
+  assert(transports.length > 0, 'Must specify a session transports');
   const autoCreate = cfg.autoCreate !== false;
   return {
-    config: {
-      storage: storage,
-      transport: transports
-    },
+    config: {storage, transports},
     register() {
       return function (req, res, next) {
         let sid = null;
