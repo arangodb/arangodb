@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global fail, assertFalse, assertTrue, assertEqual, assertNotEqual, ArangoAgency */
+/*global fail, assertFalse, assertTrue, assertEqual, ArangoAgency */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the agency communication layer
