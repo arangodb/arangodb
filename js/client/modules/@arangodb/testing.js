@@ -118,6 +118,8 @@ const optionsDocumentation = [
   '        DBServer    - flag to run DBServers with valgrind',
   '',
   '   - `extraArgs`: list of extra commandline arguments to add to arangod',
+  '',
+  '   - `verbose`: if set to true, be more verbose',
   '   - `extremeVerbosity`: if set to true, then there will be more test run',
   '     output, especially for cluster tests.',
   ''
@@ -164,6 +166,7 @@ const optionsDefaults = {
   "valgrindFileBase": "",
   "valgrindArgs": {},
   "valgrindHosts": false,
+  "verbose": false,
   "writeXmlReport": true
 };
 
@@ -279,6 +282,7 @@ function makeArgsArangod(options, appDir) {
     "javascript.app-path": appDir,
     "javascript.startup-directory": JS_DIR,
     "javascript.v8-contexts": "5",
+    "log.level": "warning",
     "server.allow-use-database": "true",
     "server.authentication": "false",
     "server.threads": "20",
@@ -1645,7 +1649,7 @@ function startInstanceAgency(instanceInfo, protocol, options,
       }
       l.push("--agency.notify");
       l.push("true");
-      
+
       args["flatCommands"] = l;
     }
     argss.push(args);
@@ -2476,7 +2480,7 @@ testFuncs.authentication = function(options) {
   print("Authentication tests...");
 
   let instanceInfo = startInstance("tcp", options, {
-    "server.disable-authentication": "false"
+    "server.authentication": "true"
   }, "authentication");
 
   if (instanceInfo === false) {
@@ -2534,13 +2538,13 @@ const authTestNames = [
 ];
 
 const authTestServerParams = [{
-  "server.disable-authentication": "false",
+  "server.authentication": "true",
   "server.authenticate-system-only": "false"
 }, {
-  "server.disable-authentication": "false",
+  "server.authentication": "true",
   "server.authenticate-system-only": "true"
 }, {
-  "server.disable-authentication": "true",
+  "server.authentication": "false",
   "server.authenticate-system-only": "true"
 }];
 
@@ -2896,7 +2900,7 @@ testFuncs.dump_authentication = function(options) {
   print("dump_authentication tests...");
 
   const auth1 = {
-    "server.disable-authentication": "false"
+    "server.authentication": "true"
   };
 
   const auth2 = {
@@ -3407,7 +3411,7 @@ testFuncs.replication_static = function(options) {
   const mr = makeResults('replication');
 
   let master = startInstance("tcp", options, {
-    "server.disable-authentication": "false"
+    "server.authentication": "true"
   }, "master_static");
 
   if (master === false) {
@@ -4249,7 +4253,11 @@ function unitTest(cases, options) {
   for (let n = 0; n < caselist.length; ++n) {
     const currentTest = caselist[n];
 
-    print("Executing test", currentTest, "with options", options);
+    if (options.verbose) {
+      print("Executing test", currentTest, "with options", options);
+    } else {
+      print("Executing test", currentTest);
+    }
 
     let result = testFuncs[currentTest](options);
     results[currentTest] = result;
