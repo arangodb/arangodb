@@ -353,98 +353,7 @@ function AgencySuite () {
       }
       catch (e) {
         assertEqual(404, e.code); 
-        assertEqual(100, e.errorNum);  // not found
       }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test watch
-////////////////////////////////////////////////////////////////////////////////
-
-    testWatchTimeout : function () {
-      assertTrue(agency.set("UnitTestsAgency/foo", "bar"));
-
-      var wait = 3;
-      var start = require("internal").time();
-      assertFalse(agency.watch("UnitTestsAgency/foo", 0, wait));
-      var end = require("internal").time();
-      assertEqual(wait, Math.round(end - start));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test watch
-////////////////////////////////////////////////////////////////////////////////
-
-    testWatchChange : function () {
-      assertTrue(agency.set("UnitTestsAgency/foo", "bar"));
-
-      var wait = 1;
-      var start = require("internal").time();
-
-      assertFalse(agency.watch("UnitTestsAgency/foo", 0, wait));
-      var end = require("internal").time();
-      assertEqual(wait, Math.round(end - start));
-
-      assertTrue(agency.set("UnitTestsAgency/foo", "baz"));
-      assertTrue(agency.set("UnitTestsAgency/foo", "bart"));
-
-      var idx = agency.get("UnitTestsAgency/foo", false, true)["UnitTestsAgency/foo"].index;
-      start = require("internal").time();
-      var result = agency.watch("UnitTestsAgency/foo", idx, wait);
-      end = require("internal").time();
-
-      assertEqual(0, Math.round(end - start));
-
-      idx = agency.get("UnitTestsAgency/foo", false, true)["UnitTestsAgency/foo"].index;
-      start = require("internal").time();
-      result = agency.watch("UnitTestsAgency/foo", idx + 100000, wait);
-      end = require("internal").time();
-
-      assertEqual(wait, Math.round(end - start));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test recursive watch
-////////////////////////////////////////////////////////////////////////////////
-
-    testWatchRecursive : function () {
-      assertTrue(agency.set("UnitTestsAgency/foo/1", "bar"));
-      assertTrue(agency.set("UnitTestsAgency/foo/2", "baz"));
-
-      var wait = 1;
-      var start = require("internal").time();
-      assertFalse(agency.watch("UnitTestsAgency/foo", 0, wait));
-      var end = require("internal").time();
-
-      // expecting this to time out
-      assertEqual(wait, Math.round(end - start));
-
-      assertTrue(agency.set("UnitTestsAgency/foo/3", "bart"));
-      var idx = agency.get("UnitTestsAgency/foo", false, true)["UnitTestsAgency/foo/3"].index;
-      assertTrue(agency.set("UnitTestsAgency/foo/3", "bartz"));
-      start = require("internal").time();
-      var result = agency.watch("UnitTestsAgency/foo", idx - 100, wait);
-      end = require("internal").time();
-
-      // expecting an immediate return
-      assertEqual(0, Math.round(end - start));
-     
-      idx = agency.get("UnitTestsAgency/foo", false, true)["UnitTestsAgency/foo/3"].index;
-      assertTrue(agency.set("UnitTestsAgency/foo/3", "barto"));
-      start = require("internal").time();
-      result = agency.watch("UnitTestsAgency/foo", idx, wait, true);
-      end = require("internal").time();
-
-      // expecting an immediate return
-      assertEqual(0, Math.round(end - start));
-      
-      idx = agency.get("UnitTestsAgency/foo", false, true)["UnitTestsAgency/foo/3"].index;
-      start = require("internal").time();
-      result = agency.watch("UnitTestsAgency/foo", idx + 100000, wait, true);
-      end = require("internal").time();
-
-      // expecting a timeout
-      assertEqual(wait, Math.round(end - start));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -711,8 +620,6 @@ function AgencySuite () {
       assertEqual(values["UnitTestsAgency/someDir/bar"].value, "baz");
       assertTrue(values["UnitTestsAgency/someDir/foo"].hasOwnProperty("index"));
       assertTrue(values["UnitTestsAgency/someDir/bar"].hasOwnProperty("index"));
-
-      assertNotEqual(values["UnitTestsAgency/someDir/foo"].index, values["UnitTestsAgency/someDir/bar"].index);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -826,21 +733,6 @@ function AgencySuite () {
       var values = agency.get("UnitTestsAgency/someDir/foobar");
       assertTrue(values.hasOwnProperty("UnitTestsAgency/someDir/foobar"));
       assertEqual(values["UnitTestsAgency/someDir/foobar"], value);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test set / get
-////////////////////////////////////////////////////////////////////////////////
-
-    testGetUrlEncodedKey : function () {
-      assertTrue(agency.createDirectory("UnitTestsAgency/someDir"));
-
-      var key = "foo bar baz / hihi";
-      agency.set("UnitTestsAgency/someDir/" + encodeURIComponent(key), "something");
-     
-      var values = agency.get("UnitTestsAgency/someDir/" + encodeURIComponent(key));
-      assertTrue(values.hasOwnProperty("UnitTestsAgency/someDir/" + key));
-      assertEqual(values["UnitTestsAgency/someDir/" + key], "something");
     }
 
   };

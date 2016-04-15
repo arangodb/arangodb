@@ -76,7 +76,7 @@ AgencyOperation::AgencyOperation(std::string const& key, AgencyValueOperationTyp
 /// @brief returns to full operation formatted as a vpack slice
 //////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> AgencyOperation::toVelocyPack() {
+std::shared_ptr<VPackBuilder> AgencyOperation::toVelocyPack() const {
   auto builder = std::make_shared<VPackBuilder>();
   {
     VPackArrayBuilder operation(builder.get());
@@ -133,7 +133,7 @@ std::string AgencyTransaction::toJson() const {
   {
     VPackArrayBuilder transaction(&builder);
     {
-      for (AgencyOperation operation: operations) {
+      for (AgencyOperation const& operation: operations) {
         auto opBuilder = operation.toVelocyPack();
         builder.add(opBuilder->slice());
       }
@@ -1903,7 +1903,7 @@ bool AgencyComm::send(arangodb::httpclient::GeneralClientConnection* connection,
   }
 
   result._connected = true;
-
+  
   if (response->getHttpReturnCode() ==
       (int)arangodb::GeneralResponse::ResponseCode::TEMPORARY_REDIRECT) {
     // temporary redirect. now save location header

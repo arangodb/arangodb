@@ -889,8 +889,8 @@ if (list.length > 0) {
 
 <script id="documentsView.ejs" type="text/template">
 <div id="transparentHeader" class="headerBar">
-  <div id="documentsToolbar" class="headerButtonBar">
 
+  <div id="documentsToolbar" class="headerButtonBar">
 
   <!-- remove marker for docupdiv-->
   <ul class="headerButtonList">
@@ -1554,6 +1554,9 @@ if (list.length > 0) {
           </button>
         </div>
     </div>
+    <div id="modal-dialog">
+      <div class="modal-footer"></div>
+    </div>
   </div>
 </script>
 
@@ -1824,15 +1827,6 @@ if (list.length > 0) {
     var revision    = content.revision;
 %>
 
-    <ul id="infoTab" class="nav nav-tabs">
-      <li class="active"><a href="#info" data-toggle="tab">Info</a></li>
-      <li><a href="#figures" data-toggle="tab">Figures</a></li>
-    </ul>
-
-    <div class="tab-content" id="tab-content-collection-info">
-
-			<div class="tab-pane active" id="info">
-
         <table id="collectionInfoTable">
           <tr id="collectionSizeBox">
             <th class="collectionInfoTh2">Journal size:</th>
@@ -1919,7 +1913,6 @@ if (list.length > 0) {
 
       </div>
 
-      <div class="tab-pane collection-info-figures" id="figures">
         <table class="figures1">
           <tr class="figuresHeader">
             <th class="">Type</th>
@@ -1964,17 +1957,6 @@ if (list.length > 0) {
             </th>
           </tr>
           <tr>
-            <th class="modal-text">Shape files</th>
-            <th class="modal-text"><%=numeral(figuresData.figures.shapefiles.count).format('0,0')%></th>
-            <th class="modal-text">
-            <%=prettyBytes(figuresData.figures.shapefiles.fileSize)%>
-            </th>
-            <th class="tooltipInfoTh">
-              <a class="modalTooltips" title="Number and total size of shape files.">
-                <span class="arangoicon icon_arangodb_info"></span></a>
-            </th>
-          </tr>
-          <tr>
             <th class="modal-text">Indexes</th>
             <th class="modal-text"><%=numeral(figuresData.figures.indexes.count).format('0,0')%></th>
             <th class="modal-text">
@@ -1992,22 +1974,6 @@ if (list.length > 0) {
             <th>Type</th>
             <th>Count</th>
             <th>Info</th>
-          </tr>
-          <tr>
-            <th class="modal-text">Shapes</th>
-            <th class="modal-text"><%=numeral(figuresData.figures.shapes.count).format('0,0')%></th>
-            <th class="tooltipInfoTh">
-              <a class="modalTooltips" title="Total number of shapes in the collection">
-                <span class="arangoicon icon_arangodb_info"></span></a>
-            </th>
-          </tr>
-          <tr>
-            <th class="modal-text">Attributes</th>
-            <th class="modal-text"><%=numeral(figuresData.figures.attributes.count).format('0,0')%></th>
-            <th class="tooltipInfoTh">
-              <a class="modalTooltips" title="Total number of attributes in the collection">
-                <span class="arangoicon icon_arangodb_info"></span></a>
-            </th>
           </tr>
           <tr>
             <th class="modal-text">Uncollected</th>
@@ -2067,9 +2033,7 @@ if (list.length > 0) {
           </tr>
           <tr><th><div> </div></th></tr>
         </table>
-      </div>
 
-	  </div>
 </script>
 
 <script id="modalDownloadFoxx.ejs" type="text/template">
@@ -3236,9 +3200,9 @@ var cutByResolution = function (str) {
     </div>
   </div>
 
-<script src="sharedLibs.js?version=1460632927485"></script>
-<script src="libs.js?version=1460632927485"></script>
-<script src="app.js?version=1460632927485"></script>
+<script src="sharedLibs.js?version=1460670094870"></script>
+<script src="libs.js?version=1460670094870"></script>
+<script src="app.js?version=1460670094870"></script>
 
   </body>
 </html>

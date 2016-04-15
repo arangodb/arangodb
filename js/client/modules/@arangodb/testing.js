@@ -1298,6 +1298,7 @@ function startArango(protocol, options, addArgs, name, rootDir) {
   args["server.endpoint"] = endpoint;
   args["database.directory"] = dataDir;
   args["log.file"] = fs.join(rootDir, "log");
+  args["log.level"] = 'info';
 
   if (protocol === "ssl") {
     args["server.keyfile"] = fs.join("UnitTests", "server.pem");
