@@ -54,13 +54,13 @@ module.exports = function sessionMiddleware(cfg) {
     storage.forClient || storage.fromClient,
     'Session storage must have a forClient and/or fromClient method'
   );
-  if (cfg.transport) {
+  if (cfg.transports) {
     console.warn(il`
-      Found unexpected "transport" option in session middleware.
-      Did you mean "transports"?
+      Found unexpected "transports" option in session middleware.
+      Did you mean "transport"?
     `);
   }
-  let transports = cfg.transports || [];
+  let transports = cfg.transport || [];
   if (!Array.isArray(transports)) {
     transports = [transports];
   }
@@ -80,10 +80,10 @@ module.exports = function sessionMiddleware(cfg) {
     );
     return transports;
   });
-  assert(transports.length > 0, 'Must specify a session transports');
+  assert(transports.length > 0, 'Must specify at least one session transport');
   const autoCreate = cfg.autoCreate !== false;
   return {
-    config: {storage, transports},
+    config: {storage, transport: transports},
     register() {
       return function (req, res, next) {
         let sid = null;
