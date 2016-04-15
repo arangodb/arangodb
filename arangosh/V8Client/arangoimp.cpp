@@ -362,12 +362,12 @@ int main (int argc, char* argv[]) {
       cout << "file type:               " << TypeImport << endl;
 
       if (TypeImport == "csv") {
-        cout << "quote:            " << Quote << endl;
-        cout << "separator:        " << Separator << endl;
+        cout << "quote:                   " << Quote << endl;
+        cout << "separator:               " << Separator << endl;
       }
 
-      cout << "connect timeout:  " << BaseClient.connectTimeout() << endl;
-      cout << "request timeout:  " << BaseClient.requestTimeout() << endl;
+      cout << "connect timeout:         " << BaseClient.connectTimeout() << endl;
+      cout << "request timeout:         " << BaseClient.requestTimeout() << endl;
       cout << "----------------------------------------" << endl;
 
       triagens::v8client::ImportHelper ih(&client, ChunkSize);
