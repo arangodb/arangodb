@@ -252,65 +252,70 @@ static int distributeBabyOnShards(
     std::shared_ptr<CollectionInfo> collinfo,
     std::vector<std::pair<ShardID, VPackValueLength>>& reverseMapping,
     VPackSlice const node, VPackValueLength const index) {
-  // Sort out the _key attribute:
-  // The user is allowed to specify _key, provided that _key is the one
-  // and only sharding attribute, because in this case we can delegate
-  // the responsibility to make _key attributes unique to the responsible
-  // shard. Otherwise, we ensure uniqueness here and now by taking a
-  // cluster-wide unique number. Note that we only know the sharding
-  // attributes a bit further down the line when we have determined
-  // the responsible shard.
 
-  bool userSpecifiedKey = false;
-  std::string _key;
-  VPackSlice keySlice = node.get(TRI_VOC_ATTRIBUTE_KEY);
-  if (keySlice.isNone()) {
-    // The user did not specify a key, let's create one:
-    uint64_t uid = ci->uniqid();
-    _key = arangodb::basics::StringUtils::itoa(uid);
-  } else {
-    userSpecifiedKey = true;
-  }
 
-  // Now find the responsible shard:
-  bool usesDefaultShardingAttributes;
   ShardID shardID;
-  int error = TRI_ERROR_NO_ERROR;
-  if (userSpecifiedKey) {
-    error = ci->getResponsibleShard(collid, node, true, shardID,
-                                    usesDefaultShardingAttributes);
+  bool userSpecifiedKey = false;
+  std::string _key = "";
+
+  if (!node.isObject()) {
+    // We have invalid input at this point.
+    // However we can work with the other babies.
+    // This is for compatibility with single server
+    // We just asign it to any shard and pretend the user has given a key
+    std::shared_ptr<std::vector<ShardID>> shards = ci->getShardList(collid);
+    shardID = shards->at(0);
+    userSpecifiedKey = true;
   } else {
-    error = ci->getResponsibleShard(collid, node, true, shardID,
-                                    usesDefaultShardingAttributes, _key);
-  }
-  if (error == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
-    return TRI_ERROR_CLUSTER_SHARD_GONE;
+
+    // Sort out the _key attribute:
+    // The user is allowed to specify _key, provided that _key is the one
+    // and only sharding attribute, because in this case we can delegate
+    // the responsibility to make _key attributes unique to the responsible
+    // shard. Otherwise, we ensure uniqueness here and now by taking a
+    // cluster-wide unique number. Note that we only know the sharding
+    // attributes a bit further down the line when we have determined
+    // the responsible shard.
+
+    VPackSlice keySlice = node.get(TRI_VOC_ATTRIBUTE_KEY);
+    if (keySlice.isNone()) {
+      // The user did not specify a key, let's create one:
+      uint64_t uid = ci->uniqid();
+      _key = arangodb::basics::StringUtils::itoa(uid);
+    } else {
+      userSpecifiedKey = true;
+    }
+
+    // Now find the responsible shard:
+    bool usesDefaultShardingAttributes;
+    int error = TRI_ERROR_NO_ERROR;
+    if (userSpecifiedKey) {
+      error = ci->getResponsibleShard(collid, node, true, shardID,
+                                      usesDefaultShardingAttributes);
+    } else {
+      error = ci->getResponsibleShard(collid, node, true, shardID,
+                                      usesDefaultShardingAttributes, _key);
+    }
+    if (error == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+      return TRI_ERROR_CLUSTER_SHARD_GONE;
+    }
+
+    // Now perform the above mentioned check:
+    if (userSpecifiedKey &&
+        (!usesDefaultShardingAttributes || !collinfo->allowUserKeys())) {
+      return TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY;
+    }
   }
 
-  // Now perform the above mentioned check:
-  if (userSpecifiedKey &&
-      (!usesDefaultShardingAttributes || !collinfo->allowUserKeys())) {
-    return TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY;
-  }
   // We found the responsible shard. Add it to the list.
   auto it = shardMap.find(shardID);
   if (it == shardMap.end()) {
-    if (userSpecifiedKey) {
-      std::vector<std::pair<VPackValueLength, std::string>> counter(
-          {{index, ""}});
-      shardMap.emplace(shardID, counter);
-    } else {
-      std::vector<std::pair<VPackValueLength, std::string>> counter(
-          {{index, _key}});
-      shardMap.emplace(shardID, counter);
-    }
+    std::vector<std::pair<VPackValueLength, std::string>> counter(
+        {{index, _key}});
+    shardMap.emplace(shardID, counter);
     reverseMapping.emplace_back(shardID, 0);
   } else {
-    if (userSpecifiedKey) {
-      it->second.emplace_back(index, "");
-    } else {
-      it->second.emplace_back(index, _key);
-    }
+    it->second.emplace_back(index, _key);
     reverseMapping.emplace_back(shardID, it->second.size() - 1);
   }
   return TRI_ERROR_NO_ERROR;
@@ -904,97 +909,6 @@ int createDocumentOnCoordinator(
 
   // the cluster operation was OK, however,
   // the DBserver could have reported an error.
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a document in a coordinator
-////////////////////////////////////////////////////////////////////////////////
-
-int createDocumentOnCoordinator(
-    std::string const& dbname, std::string const& collname, arangodb::OperationOptions const& options,
-    std::unique_ptr<TRI_json_t>& json,
-    std::map<std::string, std::string> const& headers,
-    arangodb::GeneralResponse::ResponseCode& responseCode,
-    std::map<std::string, std::string>& resultHeaders,
-    std::string& resultBody) {
-  // Set a few variables needed for our work:
-  ClusterInfo* ci = ClusterInfo::instance();
-  ClusterComm* cc = ClusterComm::instance();
-
-  // First determine the collection ID from the name:
-  std::shared_ptr<CollectionInfo> collinfo =
-      ci->getCollection(dbname, collname);
-
-  if (collinfo->empty()) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-  }
-
-  std::string const collid = StringUtils::itoa(collinfo->id());
-
-  // Sort out the _key attribute:
-  // The user is allowed to specify _key, provided that _key is the one
-  // and only sharding attribute, because in this case we can delegate
-  // the responsibility to make _key attributes unique to the responsible
-  // shard. Otherwise, we ensure uniqueness here and now by taking a
-  // cluster-wide unique number. Note that we only know the sharding
-  // attributes a bit further down the line when we have determined
-  // the responsible shard.
-  TRI_json_t* subjson = TRI_LookupObjectJson(json.get(), TRI_VOC_ATTRIBUTE_KEY);
-  bool userSpecifiedKey = false;
-  std::string _key;
-  if (subjson == nullptr) {
-    // The user did not specify a key, let's create one:
-    uint64_t uid = ci->uniqid();
-    _key = arangodb::basics::StringUtils::itoa(uid);
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json.get(),
-                          TRI_VOC_ATTRIBUTE_KEY,
-                          TRI_CreateStringReferenceJson(
-                              TRI_UNKNOWN_MEM_ZONE, _key.c_str(), _key.size()));
-  } else {
-    userSpecifiedKey = true;
-  }
-
-  // Now find the responsible shard:
-  bool usesDefaultShardingAttributes;
-  ShardID shardID;
-  int error = ci->getResponsibleShard(collid, json.get(), true, shardID,
-                                      usesDefaultShardingAttributes);
-  if (error == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
-    return TRI_ERROR_CLUSTER_SHARD_GONE;
-  }
-
-  // Now perform the above mentioned check:
-  if (userSpecifiedKey && !usesDefaultShardingAttributes) {
-    return TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY;
-  }
-
-  if (userSpecifiedKey && !collinfo->allowUserKeys()) {
-    return TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY;
-  }
-
-  std::string const body = JsonHelper::toString(json.get());
-
-  // Send a synchronous request to that shard using ClusterComm:
-  auto res = cc->syncRequest(
-      "", TRI_NewTickServer(), "shard:" + shardID,
-      arangodb::GeneralRequest::RequestType::POST,
-      "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document?collection=" +
-          StringUtils::urlEncode(shardID) + "&waitForSync=" +
-          (options.waitForSync ? "true" : "false") + "&returnNew=" +
-          (options.returnNew ? "true" : "false") + "&returnOld=" +
-            (options.returnOld ? "true" : "false"),
-      body, headers, 60.0);
-
-  int commError = handleGeneralCommErrors(res.get());
-  if (commError != TRI_ERROR_NO_ERROR) {
-    return commError;
-  }
-  responseCode = static_cast<arangodb::GeneralResponse::ResponseCode>(
-      res->result->getHttpReturnCode());
-  resultHeaders = res->result->getHeaderFields();
-  resultBody.assign(res->result->getBody().c_str(),
-                    res->result->getBody().length());
   return TRI_ERROR_NO_ERROR;
 }
 

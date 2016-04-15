@@ -33,8 +33,6 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-struct TRI_json_t;
-
 namespace arangodb {
 namespace velocypack {
 template <typename T>
@@ -111,17 +109,6 @@ int createDocumentOnCoordinator(
     arangodb::GeneralResponse::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounters,
     std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a document in a coordinator
-////////////////////////////////////////////////////////////////////////////////
-
-int createDocumentOnCoordinator(
-    std::string const& dbname, std::string const& collname,
-    OperationOptions const& options, std::unique_ptr<TRI_json_t>& json,
-    std::map<std::string, std::string> const& headers,
-    arangodb::GeneralResponse::ResponseCode& responseCode,
-    std::map<std::string, std::string>& resultHeaders, std::string& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a document in a coordinator
