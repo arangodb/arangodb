@@ -29,6 +29,19 @@
   }
 
   // NAVIGATION LEFT
+
+  .navlogo {
+    .big {
+      display: none;
+    }
+
+    .small {
+      display: block;
+      height: auto;
+      width: 28px;
+    }
+  }
+
   .navbar,
   .navmenu,
   .primary,
