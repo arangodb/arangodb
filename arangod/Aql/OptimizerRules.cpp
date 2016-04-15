@@ -1388,6 +1388,11 @@ int triagens::aql::moveFiltersUpRule (Optimizer* opt,
         break;
       }
 
+      if (current->isModificationNode()) {
+        // must not move a filter beyond a modification node
+        break;
+      }
+
       if (current->getType() == EN::CALCULATION) {
         // must not move a filter beyond a node with a non-deterministic result
         auto calculation = static_cast<CalculationNode const*>(current);
