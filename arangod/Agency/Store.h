@@ -134,6 +134,9 @@ public:
   /// #brief Get path of this node
   std::string path (); 
   
+  /// @brief Apply single operation as defined by "op"
+  bool applieOp (arangodb::velocypack::Slice const&);
+
   /// @brief Apply single slice
   bool applies (arangodb::velocypack::Slice const&);
 

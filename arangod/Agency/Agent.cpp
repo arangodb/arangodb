@@ -138,7 +138,6 @@ bool Agent::waitFor (index_t index, double timeout) {
   // Wait until woken up through AgentCallback 
   while (true) {
 
-    std::cout << _last_commit_index << std::endl;
     /// success?
     if (_last_commit_index >= index) {
       return true;
@@ -301,7 +300,7 @@ bool Agent::load () {
   LOG_TOPIC(INFO, Logger::AGENCY) << "Loading persistent state.";
   if (!_state.loadCollections(_vocbase, _applicationV8, _queryRegistry,
                               _config.wait_for_sync)) {
-    LOG_TOPIC(WARN, Logger::AGENCY)
+    LOG_TOPIC(INFO, Logger::AGENCY)
       << "Failed to load persistent state on statup.";
   }
 
@@ -337,11 +336,11 @@ write_ret_t Agent::write (query_t const& query)  {
       MUTEX_LOCKER(mutexLocker, _ioLock);
       applied = _spearhead.apply(query);             // Apply to spearhead
       indices = _state.log (query, applied, term(), id()); // Log w/ indicies
-      if (!indices.empty()) {
-        maxind = *std::max_element(indices.begin(), indices.end());
-      }
-      _cv.signal();                                  // Wake up run
     }
+    if (!indices.empty()) {
+      maxind = *std::max_element(indices.begin(), indices.end());
+    }
+    _cv.signal();                                  // Wake up run
 
     reportIn(id(),maxind);
     

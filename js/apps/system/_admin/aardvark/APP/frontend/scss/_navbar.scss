@@ -91,6 +91,10 @@ $navbar-size: 150px;
   @extend %pull-left;
   height: 60px;
   width: 100%;
+
+  .small {
+    display: none;
+  }
 }
 
 .navmenu {
@@ -109,6 +113,10 @@ $navbar-size: 150px;
   li {
     @extend %pull-left;
     width: $navbar-size;
+
+    a {
+      outline: none;
+    }
 
     .fa {
       opacity: .3;

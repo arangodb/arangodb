@@ -19,7 +19,7 @@
 
     render: function() {
       this.breadcrumb();
-      window.arangoHelper.buildCollectionSubNav(this.collectionName, 'Indices');
+      window.arangoHelper.buildCollectionSubNav(this.collectionName, 'Info');
 
       this.renderInfoView();
     },

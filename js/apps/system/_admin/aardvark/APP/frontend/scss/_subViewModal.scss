@@ -21,4 +21,17 @@
       padding-top: 0 !important;
     }
   }
+
+  .figures1,
+  .figures2,
+  .figures3 {
+    margin-left: 0 !important;
+    margin-top: 40px;
+    width: 100%;
+
+    .icon_arangodb_info {
+      position: relative;
+      text-align: center;
+    }
+  }
 }

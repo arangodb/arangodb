@@ -301,6 +301,7 @@
 
   </div></script><script id="collectionsItemView.ejs" type="text/template"><div class="paddingBox">
   <div class="borderBox"></div>
+<!--
   <div class="iconSet">
     <span id="editCollection_<%=model.get('name')%>" class="icon_arangodb_settings2" alt="Edit collection properties" title="Edit collection properties"></span>
     <% if(model.get('status') === "loaded") { %>
@@ -309,7 +310,7 @@
       <span class="icon_arangodb_info disabled" alt="disabled"></span>
     <%}%>
   </div>
-
+-->
   <i class="collection-type-icon fa <%= model.get('picture') %>"></i>
   <!--<img src="<%= model.get('picture') %>" height="50" width="50" alt="" class="icon">-->
   <div class="tileBadge">
@@ -820,8 +821,8 @@ if (list.length > 0) {
     </div>
     <div class="pull-left shortcuts showHotkeyHelp"></div>
 	</div></script><script id="documentsView.ejs" type="text/template"><div id="transparentHeader" class="headerBar">
-  <div id="documentsToolbar" class="headerButtonBar">
 
+  <div id="documentsToolbar" class="headerButtonBar">
 
   <!-- remove marker for docupdiv-->
   <ul class="headerButtonList">
@@ -1447,6 +1448,9 @@ if (list.length > 0) {
           </button>
         </div>
     </div>
+    <div id="modal-dialog">
+      <div class="modal-footer"></div>
+    </div>
   </div></script><script id="lineChartDetailView.ejs" type="text/template"><div id="lineChartDetail" class="modal hide fade modal-chart-detail" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
 		<div class="modal-header">
 			<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
@@ -1689,15 +1693,6 @@ if (list.length > 0) {
     var revision    = content.revision;
 %>
 
-    <ul id="infoTab" class="nav nav-tabs">
-      <li class="active"><a href="#info" data-toggle="tab">Info</a></li>
-      <li><a href="#figures" data-toggle="tab">Figures</a></li>
-    </ul>
-
-    <div class="tab-content" id="tab-content-collection-info">
-
-			<div class="tab-pane active" id="info">
-
         <table id="collectionInfoTable">
           <tr id="collectionSizeBox">
             <th class="collectionInfoTh2">Journal size:</th>
@@ -1784,7 +1779,6 @@ if (list.length > 0) {
 
       </div>
 
-      <div class="tab-pane collection-info-figures" id="figures">
         <table class="figures1">
           <tr class="figuresHeader">
             <th class="">Type</th>
@@ -1829,17 +1823,6 @@ if (list.length > 0) {
             </th>
           </tr>
           <tr>
-            <th class="modal-text">Shape files</th>
-            <th class="modal-text"><%=numeral(figuresData.figures.shapefiles.count).format('0,0')%></th>
-            <th class="modal-text">
-            <%=prettyBytes(figuresData.figures.shapefiles.fileSize)%>
-            </th>
-            <th class="tooltipInfoTh">
-              <a class="modalTooltips" title="Number and total size of shape files.">
-                <span class="arangoicon icon_arangodb_info"></span></a>
-            </th>
-          </tr>
-          <tr>
             <th class="modal-text">Indexes</th>
             <th class="modal-text"><%=numeral(figuresData.figures.indexes.count).format('0,0')%></th>
             <th class="modal-text">
@@ -1857,22 +1840,6 @@ if (list.length > 0) {
             <th>Type</th>
             <th>Count</th>
             <th>Info</th>
-          </tr>
-          <tr>
-            <th class="modal-text">Shapes</th>
-            <th class="modal-text"><%=numeral(figuresData.figures.shapes.count).format('0,0')%></th>
-            <th class="tooltipInfoTh">
-              <a class="modalTooltips" title="Total number of shapes in the collection">
-                <span class="arangoicon icon_arangodb_info"></span></a>
-            </th>
-          </tr>
-          <tr>
-            <th class="modal-text">Attributes</th>
-            <th class="modal-text"><%=numeral(figuresData.figures.attributes.count).format('0,0')%></th>
-            <th class="tooltipInfoTh">
-              <a class="modalTooltips" title="Total number of attributes in the collection">
-                <span class="arangoicon icon_arangodb_info"></span></a>
-            </th>
           </tr>
           <tr>
             <th class="modal-text">Uncollected</th>
@@ -1931,10 +1898,7 @@ if (list.length > 0) {
 
           </tr>
           <tr><th><div> </div></th></tr>
-        </table>
-      </div>
-
-	  </div></script><script id="modalDownloadFoxx.ejs" type="text/template"><div>
+        </table></script><script id="modalDownloadFoxx.ejs" type="text/template"><div>
     Your new Foxx Service is ready for download.
     You can edit it on your local system and repack it in a zip file to publish it on ArangoDB.
   </div></script><script id="modalGraph.ejs" type="text/template"><div class="detail-chart">
@@ -2920,4 +2884,4 @@ var cutByResolution = function (str) {
   </div>
 
   <div id="workMonitorContent" class="innerContent">
-  </div></script></head><body><nav class="navbar"><div class="primary"><div class="navlogo"><a class="logo" href="#"><img class="arangodbLogo" src="img/DEVLOGO.png"></a></div><div class="statmenu" id="statisticBar"></div><div class="navmenu" id="navigationBar"></div></div></nav><div class="bodyWrapper"><div class="centralRow"><div id="navbar2" class="secondary"><div class="subnavmenu" id="subNavigationBar"></div></div><div class="resizecontainer contentWrapper" style="clear:both"><div id="content" class="centralContent"></div></div><div class="resizecontainer footerWrapper" style="clear:both"><footer class="footer"><div class="" id="footerBar"></div></footer></div></div></div><div id="modalPlaceholder"></div><div id="progressPlaceholder" style="display:none"></div><div id="spotlightPlaceholder" style="display:none"></div><div class="arangoFrame" style=""><div class="outerDiv"><div class="innerDiv"></div></div></div><script src="sharedLibs.js?version=1460632927485"></script><script src="libs.js?version=1460632927485"></script><script src="app.js?version=1460632927485"></script></body></html>
+  </div></script></head><body><nav class="navbar"><div class="primary"><div class="navlogo"><a class="logo big" href="#"><img class="arangodbLogo" src="img/arangodb_logo_big.png"></a> <a class="logo small" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"></a></div><div class="statmenu" id="statisticBar"></div><div class="navmenu" id="navigationBar"></div></div></nav><div class="bodyWrapper"><div class="centralRow"><div id="navbar2" class="secondary"><div class="subnavmenu" id="subNavigationBar"></div></div><div class="resizecontainer contentWrapper" style="clear:both"><div id="content" class="centralContent"></div></div><div class="resizecontainer footerWrapper" style="clear:both"><footer class="footer"><div class="" id="footerBar"></div></footer></div></div></div><div id="modalPlaceholder"></div><div id="progressPlaceholder" style="display:none"></div><div id="spotlightPlaceholder" style="display:none"></div><div class="arangoFrame" style=""><div class="outerDiv"><div class="innerDiv"></div></div></div><script src="sharedLibs.js?version=1460720592272"></script><script src="libs.js?version=1460720592272"></script><script src="app.js?version=1460720592272"></script></body></html>

@@ -594,7 +594,7 @@
         }
         else {
           window.modalView.hide();
-          data = data.split('/');
+          data = data._id.split('/');
 
           try {
             url = "collection/" + data[0] + '/' + data[1];

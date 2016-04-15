@@ -25,6 +25,16 @@
 /// the type of collection that is going to be created when the `createCollection`
 /// option is set to `true`. The default value is `document`.
 ///
+/// @RESTQUERYPARAM{fromPrefix,string,optional}
+/// An optional prefix for the values in `_from` attributes. If specified, the
+/// value is automatically prepended to each `_from` input value. This allows
+/// specifying just the keys for `_from`.
+///
+/// @RESTQUERYPARAM{toPrefix,string,optional}
+/// An optional prefix for the values in `_to` attributes. If specified, the
+/// value is automatically prepended to each `_to` input value. This allows
+/// specifying just the keys for `_to`.
+///
 /// @RESTQUERYPARAM{overwrite,boolean,optional}
 /// If this parameter has a value of `true` or `yes`, then all data in the
 /// collection will be removed prior to the import. Note that any existing

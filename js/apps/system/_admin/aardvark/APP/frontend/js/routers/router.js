@@ -40,8 +40,9 @@
       "test": "test"
     },
 
-    execute: function(callback, args, name) {
+    execute: function(callback, args) {
       $('#subNavigationBar .breadcrumb').html('');
+      $('#subNavigationBar .bottom').html('');
       if (callback) {
         callback.apply(this, args);
       }
@@ -421,7 +422,7 @@
       }
       this.arangoCollectionsStore.fetch({
         success: function () {
-          self.settingsView = new window.InfoView({
+          self.infoView = new window.InfoView({
             collectionName: colname,
             collection: self.arangoCollectionsStore.findWhere({
               name: colname

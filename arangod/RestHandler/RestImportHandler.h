@@ -27,6 +27,10 @@
 #include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 namespace arangodb {
 struct OperationOptions;
 class SingleCollectionTransaction;
@@ -93,7 +97,9 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   int handleSingleDocument(SingleCollectionTransaction&, RestImportResult&,
-                           char const*, VPackSlice const&, std::string const&,
+                           arangodb::velocypack::Builder& builder,
+                           char const*, arangodb::velocypack::Slice,
+                           std::string const&,
                            bool, OperationOptions const&, size_t);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -139,8 +145,9 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   /// @brief builds a VPackBuilder object from a key and value list
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<VPackBuilder> createVelocyPackObject(VPackSlice const&,
-                                                       VPackSlice const&,
+  std::shared_ptr<arangodb::velocypack::Builder> createVelocyPackObject(
+                                                       arangodb::velocypack::Slice const&,
+                                                       arangodb::velocypack::Slice const&,
                                                        std::string&, size_t);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -148,7 +155,7 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   /// strings.
   //////////////////////////////////////////////////////////////////////////////
 
-  bool checkKeys(VPackSlice const&) const;
+  bool checkKeys(arangodb::velocypack::Slice const&) const;
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -169,6 +176,13 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   OnDuplicateActionType _onDuplicateAction;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief prefixes for edge collections
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::string _fromPrefix;
+  std::string _toPrefix;
 };
 }
 

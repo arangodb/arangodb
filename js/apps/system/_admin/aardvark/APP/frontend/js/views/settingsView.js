@@ -288,12 +288,7 @@
               this.events, null,
               tabBar, 'content'
             );
-            if (this.model.get("status") === 'loaded') {
-              this.getIndex();
-            }
-            else {
-              $($('#infoTab').children()[1]).remove();
-            }
+            $($('#infoTab').children()[1]).remove();
           }.bind(this);
 
           if (collectionIsLoaded) {
