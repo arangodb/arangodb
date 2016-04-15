@@ -1268,6 +1268,11 @@ void arangodb::aql::moveFiltersUpRule(Optimizer* opt, ExecutionPlan* plan,
         // must not move a filter beyond a node that can throw
         break;
       }
+      
+      if (current->isModificationNode()) {
+        // must not move a filter beyond a modification node
+        break;
+      }
 
       if (current->getType() == EN::CALCULATION) {
         // must not move a filter beyond a node with a non-deterministic result
