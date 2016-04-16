@@ -44,7 +44,7 @@ AffinityFeature::AffinityFeature(
 void AffinityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
 
-  options->addSection("affinity", "Configure the affinity");
+  options->addSection("server", "Server features");
 
   std::unordered_set<uint32_t> choices{0, 1, 2, 3, 4};
 
