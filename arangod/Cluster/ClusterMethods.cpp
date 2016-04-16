@@ -23,8 +23,6 @@
 
 #include "ClusterMethods.h"
 #include "Basics/conversions.h"
-#include "Basics/json.h"
-#include "Basics/json-utilities.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
@@ -1421,12 +1419,14 @@ static void insertIntoShardMap(
   std::string collid = StringUtils::itoa(collinfo->id());
   if (collinfo->usesDefaultShardKeys()) {
     // We only need add one resp. shard
-    arangodb::basics::Json partial(arangodb::basics::Json::Object, 1);
-    partial.set("_key", arangodb::basics::Json(splitId[1]));
+    VPackBuilder partial;
+    partial.openObject();
+    partial.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(splitId[1]));
+    partial.close();
     bool usesDefaultShardingAttributes;
     ShardID shardID;
 
-    int error = ci->getResponsibleShard(collid, partial.json(), true, shardID,
+    int error = ci->getResponsibleShard(collid, partial.slice(), true, shardID,
                                         usesDefaultShardingAttributes);
     if (error != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(error);
@@ -1569,9 +1569,8 @@ int getFilteredEdgesOnCoordinator(
     std::string const& vertex, TRI_edge_direction_e const& direction,
     std::vector<traverser::TraverserExpression*> const& expressions,
     arangodb::GeneralResponse::ResponseCode& responseCode,
-    std::string& contentType, arangodb::basics::Json& result) {
-  TRI_ASSERT(result.isObject());
-  TRI_ASSERT(result.members() == 0);
+    std::string& contentType, VPackBuilder& result) {
+  TRI_ASSERT(result.isOpenObject());
 
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
@@ -1594,13 +1593,13 @@ int getFilteredEdgesOnCoordinator(
   }
   auto reqBodyString = std::make_shared<std::string>();
   if (!expressions.empty()) {
-    arangodb::basics::Json body(Json::Array, expressions.size());
+    VPackBuilder bodyBuilder;
+    bodyBuilder.openArray();
     for (auto& e : expressions) {
-      arangodb::basics::Json tmp(Json::Object);
-      e->toJson(tmp, TRI_UNKNOWN_MEM_ZONE);
-      body.add(tmp.steal());
+      e->toVelocyPack(bodyBuilder);
     }
-    reqBodyString->append(body.toString());
+    bodyBuilder.close();
+    reqBodyString->append(bodyBuilder.toJson());
   }
   for (auto const& p : *shards) {
     std::unique_ptr<std::map<std::string, std::string>> headers(
@@ -1618,7 +1617,7 @@ int getFilteredEdgesOnCoordinator(
   size_t filtered = 0;
   size_t scannedIndex = 0;
 
-  arangodb::basics::Json documents(arangodb::basics::Json::Array);
+  result.add("edges", VPackValue(VPackValueType::Array));
 
   for (count = (int)shards->size(); count > 0; count--) {
     auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
@@ -1631,59 +1630,51 @@ int getFilteredEdgesOnCoordinator(
       cc->drop("", coordTransactionID, 0, "");
       return TRI_ERROR_INTERNAL;
     }
+    std::shared_ptr<VPackBuilder> shardResult = res.answer->toVelocyPack(&VPackOptions::Defaults);
 
-    std::unique_ptr<TRI_json_t> shardResult(
-        TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, res.answer->body().c_str()));
-
-    if (shardResult == nullptr || !TRI_IsObjectJson(shardResult.get())) {
+    if (shardResult == nullptr) {
       return TRI_ERROR_INTERNAL;
     }
 
-    bool const isError = arangodb::basics::JsonHelper::checkAndGetBooleanValue(
-        shardResult.get(), "error");
+    VPackSlice shardSlice = shardResult->slice();
+    if (!shardSlice.isObject()) {
+      return TRI_ERROR_INTERNAL;
+    }
+
+    bool const isError = arangodb::basics::VelocyPackHelper::getBooleanValue(
+        shardSlice, "error", false);
     if (isError) {
-      // shared returned an error
-      return arangodb::basics::JsonHelper::getNumericValue<int>(
-          shardResult.get(), "errorNum", TRI_ERROR_INTERNAL);
+      // shard returned an error
+      return arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+          shardSlice, "errorNum", TRI_ERROR_INTERNAL);
     }
 
-    auto docs = TRI_LookupObjectJson(shardResult.get(), "edges");
+    VPackSlice docs = shardSlice.get("edges");
 
-    if (!TRI_IsArrayJson(docs)) {
+    if (!docs.isArray()) {
       return TRI_ERROR_INTERNAL;
     }
 
-    size_t const n = TRI_LengthArrayJson(docs);
-    documents.reserve(n);
-
-    for (size_t j = 0; j < n; ++j) {
-      auto doc =
-          static_cast<TRI_json_t*>(TRI_AtVector(&docs->_value._objects, j));
-
-      // this will transfer the ownership for the JSON into "documents"
-      documents.transfer(doc);
+    for (auto const& doc : VPackArrayIterator(docs)) {
+      result.add(doc);
     }
 
-    TRI_json_t* stats = arangodb::basics::JsonHelper::getObjectElement(
-        shardResult.get(), "stats");
-    // We do not own stats, do not delete it.
-
-    if (stats != nullptr) {
-      filtered += arangodb::basics::JsonHelper::getNumericValue<size_t>(
+    VPackSlice stats = shardSlice.get("stats");
+    if (stats.isObject()) {
+      filtered += arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
           stats, "filtered", 0);
-      scannedIndex += arangodb::basics::JsonHelper::getNumericValue<size_t>(
+      scannedIndex += arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
           stats, "scannedIndex", 0);
     }
   }
+  result.close(); // edges
 
-  result("edges", documents);
+  result.add("stats", VPackValue(VPackValueType::Object));
+  result.add("scannedIndex", VPackValue(scannedIndex));
+  result.add("filtered", VPackValue(filtered));
+  result.close(); // stats
 
-  arangodb::basics::Json stats(arangodb::basics::Json::Object, 2);
-  stats("scannedIndex",
-        arangodb::basics::Json(static_cast<int32_t>(scannedIndex)));
-  stats("filtered", arangodb::basics::Json(static_cast<int32_t>(filtered)));
-  result("stats", stats);
-
+  // Leave outer Object open
   return TRI_ERROR_NO_ERROR;
 }
 
