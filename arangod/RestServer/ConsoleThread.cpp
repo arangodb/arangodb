@@ -55,6 +55,8 @@ ConsoleThread::ConsoleThread(ApplicationServer* applicationServer,
 
 ConsoleThread::~ConsoleThread() { shutdown(); }
 
+static char const* USER_ABORTED = "user aborted";
+
 void ConsoleThread::run() {
   usleep(100 * 1000);
 
@@ -65,7 +67,9 @@ void ConsoleThread::run() {
   try {
     inner();
   } catch (char const* error) {
-    LOG(ERR) << error;
+    if (strcmp(error, USER_ABORTED) != 0) {
+      LOG(ERR) << error;
+    }
   } catch (...) {
     V8DealerFeature::DEALER->exitContext(_context);
     _applicationServer->beginShutdown();
@@ -202,5 +206,5 @@ start_pretty_print();
   }
 
   localContext->Exit();
-  throw "user aborted";
+  throw USER_ABORTED;
 }
