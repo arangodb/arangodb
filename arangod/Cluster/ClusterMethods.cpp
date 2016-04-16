@@ -1568,22 +1568,8 @@ int getFilteredDocumentsOnCoordinator(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get all edges on coordinator
+/// @brief get all edges on coordinator using a Traverser Filter
 ////////////////////////////////////////////////////////////////////////////////
-
-int getAllEdgesOnCoordinator(
-    std::string const& dbname, std::string const& collname,
-    std::string const& vertex, TRI_edge_direction_e const& direction,
-    arangodb::GeneralResponse::ResponseCode& responseCode,
-    std::string& contentType, std::string& resultBody) {
-  arangodb::basics::Json result(arangodb::basics::Json::Object);
-  std::vector<traverser::TraverserExpression*> expTmp;
-  int res =
-      getFilteredEdgesOnCoordinator(dbname, collname, vertex, direction, expTmp,
-                                    responseCode, contentType, result);
-  resultBody = arangodb::basics::JsonHelper::toString(result.json());
-  return res;
-}
 
 int getFilteredEdgesOnCoordinator(
     std::string const& dbname, std::string const& collname,
