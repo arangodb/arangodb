@@ -80,8 +80,7 @@ void DispatcherFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 
     if (n <= 4) {
       _nrStandardThreads = n - 1;
-    }
-    else {
+    } else {
       _nrStandardThreads = n - 2;
     }
   }
@@ -94,6 +93,15 @@ void DispatcherFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
     LOG(FATAL)
         << "invalid value for `--server.maximal-queue-size', need at least 128";
     FATAL_ERROR_EXIT();
+  }
+}
+
+void DispatcherFeature::prepare() {
+  V8DealerFeature* dealer = dynamic_cast<V8DealerFeature*>(
+      ApplicationServer::lookupFeature("V8Dealer"));
+
+  if (dealer != nullptr) {
+    dealer->defineDouble("DISPATCHER_THREADS", _nrStandardThreads);
   }
 }
 

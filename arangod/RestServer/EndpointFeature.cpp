@@ -99,8 +99,18 @@ void EndpointFeature::start() {
 }
 
 std::vector<std::string> EndpointFeature::httpEndpoints() {
-#warning TODO
-  return {};
+  auto httpEntries = _endpointList.all(Endpoint::TransportType::HTTP);
+  std::vector<std::string> result;
+
+  for (auto http : httpEntries) {
+    auto uri = Endpoint::uriForm(http);
+
+    if (!uri.empty()) {
+      result.emplace_back(uri);
+    }
+  }
+
+  return result;
 }
 
 void EndpointFeature::buildEndpointLists() {

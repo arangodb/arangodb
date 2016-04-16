@@ -198,9 +198,9 @@ void ClusterFeature::prepare() {
   ClusterComm::instance();
 }
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#warning TODO split into methods
-#endif
+//YYY #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+//YYY #warning FRANK split into methods
+//YYY #endif
 
 void ClusterFeature::start() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";

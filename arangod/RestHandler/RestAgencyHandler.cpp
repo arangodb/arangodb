@@ -72,19 +72,16 @@ inline HttpHandler::status_t RestAgencyHandler::reportUnknownMethod() {
 }
 
 void RestAgencyHandler::redirectRequest(id_t leaderId) {
+  std::string url = Endpoint::uriForm(_agent->config().end_points.at(leaderId));
 
-  try {
-    std::string url = Endpoint::uriForm(
-      _agent->config().end_points.at(leaderId));
+  if (url.empty()) {
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_INTERNAL, "cannot convert endpoint uri");
+  } else {
     createResponse(GeneralResponse::ResponseCode::TEMPORARY_REDIRECT);
     static std::string const location = "location";
     _response->setHeaderNC(location, url);
-  } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, Logger::AGENCY) << e.what();
-    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_INTERNAL, e.what());
   }
-  
 }
 
 HttpHandler::status_t RestAgencyHandler::handleStores () {

@@ -21,7 +21,7 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#warning nope, include guards
+//XXX #warning MOP nope, include guards
 #pragma once
 
 #include "Basics/Common.h"

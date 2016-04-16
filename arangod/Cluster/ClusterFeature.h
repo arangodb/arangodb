@@ -38,15 +38,6 @@ class ClusterFeature : public application_features::ApplicationFeature {
   ~ClusterFeature();
 
  public:
-// disable the heartbeat (used for testing)
-#warning TODO
-// void disableHeartbeat() { _disableHeartbeat = true; }
-
-// whether or not the cluster is enabled
-#warning TODO
-  // inline bool enabled() const { return _enableCluster; }
-
- public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;

@@ -89,8 +89,6 @@ V8DealerFeature::V8DealerFeature(
       _gcFrequency(15.0),
       _gcInterval(1000),
       _nrContexts(0),
-      _frontendVersionCheck(true),
-      _useActions(true),
       _ok(false),
       _gcThread(nullptr),
       _stopping(false),
@@ -204,6 +202,8 @@ void V8DealerFeature::start() {
   } else if (0 < _nrAdditionalContexts) {
     _nrContexts += _nrAdditionalContexts;
   }
+
+  defineDouble("V8_CONTEXTS", _nrContexts);
 
   // setup instances
   {
@@ -1053,9 +1053,3 @@ void V8DealerFeature::shutdownV8Instance(V8Context* context) {
 
   delete context;
 }
-
-#warning TODO
-#if 0
-  _applicationV8->defineDouble("DISPATCHER_THREADS", _dispatcherThreads);
-  _applicationV8->defineDouble("V8_CONTEXTS", _v8Contexts);
-#endif

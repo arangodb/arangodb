@@ -32,6 +32,7 @@
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/VocbaseContext.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "V8/v8-conv.h"
@@ -45,7 +46,8 @@ using namespace arangodb::application_features;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
-ServerFeature::ServerFeature(application_features::ApplicationServer* server, int* res)
+ServerFeature::ServerFeature(application_features::ApplicationServer* server,
+                             int* res)
     : ApplicationFeature(server, "Server"),
       _console(false),
       _restServer(true),
@@ -74,33 +76,14 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addHiddenOption("--server.rest-server", "start a rest-server",
                            new BooleanParameter(&_restServer));
 
+  options->addOption("--server.session-timeout",
+                     "timeout of web interface server sessions (in seconds)",
+                     new DoubleParameter(&VocbaseContext::ServerSessionTtl));
+
 #warning TODO
 #if 0
   // other options
       "start-service", "used to start as windows service")
-
-      (
-      "", &,
-      "");
-
-(
-              "server.hide-product-header", &HttpResponse::HIDE_PRODUCT_HEADER,
-              "do not expose \"Server: ArangoDB\" header in HTTP responses")
-
-              "server.session-timeout", &VocbaseContext::ServerSessionTtl,
-              "timeout of web interface server sessions (in seconds)");
-
-
-  additional["Server Options:help-admin"](
-      "server.authenticate-system-only", &_authenticateSystemOnly,
-      "use HTTP authentication only for requests to /_api and /_admin")
-
-
-#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
-      ("server.disable-authentication-unix-sockets",
-       &_disableAuthenticationUnixSockets,
-       "disable authentication for requests via UNIX domain sockets")
-#endif
 #endif
 
   options->addSection("javascript", "Configure the Javascript engine");

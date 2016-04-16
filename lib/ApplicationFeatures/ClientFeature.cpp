@@ -190,6 +190,11 @@ std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient(
 }
 
 std::vector<std::string> ClientFeature::httpEndpoints() {
-#warning TODO
-  return {};
+  std::string http = Endpoint::uriForm(_endpoint);
+
+  if (http.empty()) {
+    return {};
+  }
+
+  return { http };
 }

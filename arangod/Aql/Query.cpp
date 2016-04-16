@@ -878,7 +878,7 @@ QueryResult Query::explain() {
     enterState(FINALIZATION);
 
     QueryResult result(TRI_ERROR_NO_ERROR);
-#warning why???
+//XXX #warning JAN why???
     QueryRegistry localRegistry;
 
     if (allPlans()) {

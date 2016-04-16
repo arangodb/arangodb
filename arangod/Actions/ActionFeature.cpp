@@ -36,6 +36,8 @@ ActionFeature* ActionFeature::ACTION = nullptr;
 
 ActionFeature::ActionFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Action") {
+  setOptional(true);
+  requiresElevatedPrivileges(false);
   startsAfter("Logger");
 }
 

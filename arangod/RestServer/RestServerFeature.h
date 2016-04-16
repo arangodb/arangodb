@@ -55,12 +55,13 @@ class RestServerFeature final
   int32_t _defaultApiCompatibility;
   bool _allowMethodOverride;
   bool _authentication;
+  bool _authenticationUnixSockets;
+  bool _authenticationSystemOnly;
 
  public:
-#warning TODO
   bool authentication() const { return _authentication; }
-  bool authenticationUnixSockets() const { return false; }
-  bool authenticationSystemOnly() const { return false; }
+  bool authenticationUnixSockets() const { return _authenticationUnixSockets; }
+  bool authenticationSystemOnly() const { return _authenticationSystemOnly; }
 
  private:
   void buildServers();

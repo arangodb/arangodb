@@ -74,6 +74,8 @@ RestServerFeature::RestServerFeature(
       _defaultApiCompatibility(Version::getNumericServerVersion()),
       _allowMethodOverride(false),
       _authentication(true),
+      _authenticationUnixSockets(true),
+      _authenticationSystemOnly(false),
       _handlerFactory(nullptr),
       _jobManager(nullptr) {
   setOptional(true);
@@ -95,8 +97,19 @@ void RestServerFeature::collectOptions(
                            new Int32Parameter(&_defaultApiCompatibility));
 
   options->addOption("--server.authentication",
-                           "enable or disable authentication for ALL client requests",
-                           new BooleanParameter(&_authentication));
+                     "enable or disable authentication for ALL client requests",
+                     new BooleanParameter(&_authentication));
+
+  options->addOption(
+      "--server.authentication-system-only",
+      "use HTTP authentication only for requests to /_api and /_admin",
+      new BooleanParameter(&_authenticationSystemOnly));
+
+#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
+  options->addOption("--server.authentication-unix-sockets",
+                     "authentication for requests via UNIX domain sockets",
+                     new BooleanParameter(&_authenticationUnixSockets));
+#endif
 
   options->addSection("http", "HttpServer features");
 
@@ -107,6 +120,10 @@ void RestServerFeature::collectOptions(
   options->addOption("--http.keep-alive-timeout",
                      "keep-alive timeout in seconds",
                      new DoubleParameter(&_keepAliveTimeout));
+
+  options->addOption("--http.hide-product-header",
+                     "do not expose \"Server: ArangoDB\" header in HTTP responses",
+                     new BooleanParameter(&HttpResponse::HIDE_PRODUCT_HEADER));
 }
 
 void RestServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
@@ -180,9 +197,9 @@ void RestServerFeature::start() {
   _httpOptions._vocbase = vocbase;
 
   auto server = DatabaseFeature::DATABASE->server();
-  _handlerFactory.reset(new HttpHandlerFactory(
-      _authenticationRealm, _defaultApiCompatibility, _allowMethodOverride,
-      &SetRequestContext, server));
+  _handlerFactory.reset(
+      new HttpHandlerFactory(_authenticationRealm, _defaultApiCompatibility,
+                             _allowMethodOverride, &SetRequestContext, server));
 
   defineHandlers();
   buildServers();
@@ -224,7 +241,7 @@ void RestServerFeature::buildServers() {
       SchedulerFeature::SCHEDULER, DispatcherFeature::DISPATCHER,
       _handlerFactory.get(), _jobManager.get(), _keepAliveTimeout);
 
-#warning TODO filter list
+//YYY #warning FRANK filter list
   auto const& endpointList = endpoint->endpointList();
   httpServer->setEndpointList(&endpointList);
   _servers.push_back(httpServer);

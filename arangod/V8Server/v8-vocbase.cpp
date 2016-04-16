@@ -34,6 +34,7 @@
 #include <v8.h>
 #include <iostream>
 
+#include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Aql/Query.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
@@ -71,6 +72,7 @@
 #include "Wal/LogfileManager.h"
 
 using namespace arangodb;
+using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::traverser;
@@ -3293,18 +3295,14 @@ static void JS_ListEndpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-#warning TODO JS_ListEndpoints
-#if 0
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("db._listEndpoints()");
   }
 
-  TRI_GET_GLOBALS();
-  TRI_server_t* server = static_cast<TRI_server_t*>(v8g->_server);
-  ApplicationEndpointServer* s = static_cast<ApplicationEndpointServer*>(
-      server->_applicationEndpointServer);
+  HttpEndpointProvider* server = dynamic_cast<HttpEndpointProvider*>(
+    ApplicationServer::lookupFeature("Endpoint"));
 
-  if (s == nullptr) {
+  if (server == nullptr) {
     // not implemented in console mode
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
@@ -3322,7 +3320,7 @@ static void JS_ListEndpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Handle<v8::Array> result = v8::Array::New(isolate);
   uint32_t j = 0;
 
-  for (auto const& it : s->getEndpoints()) {
+  for (auto const& it : server->httpEndpoints()) {
     v8::Handle<v8::Object> item = v8::Object::New(isolate);
     item->Set(TRI_V8_ASCII_STRING("endpoint"), TRI_V8_STD_STRING(it));
 
@@ -3330,7 +3328,6 @@ static void JS_ListEndpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_V8_RETURN(result);
-#endif
   TRI_V8_TRY_CATCH_END
 }
 

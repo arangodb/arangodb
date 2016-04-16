@@ -23,9 +23,9 @@
 
 #include "conversions.h"
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#warning this files should be replaces by StringUtils and Co
-#endif
+//YYY #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+//YYY #warning FRANK this files should be replaces by StringUtils and Co
+//YYY #endif
 
 #include "Basics/tri-strings.h"
 

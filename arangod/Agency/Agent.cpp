@@ -300,7 +300,7 @@ bool Agent::load () {
   }
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Loading persistent state.";
-  if (!_state.loadCollections(_vocbase, 
+  if (!_state.loadCollections(vocbase, 
                               _config.wait_for_sync)) {
     LOG_TOPIC(INFO, Logger::AGENCY)
       << "Failed to load persistent state on statup.";

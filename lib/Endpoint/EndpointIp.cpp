@@ -39,9 +39,9 @@ using namespace arangodb::basics;
                 windowsErrorBuf, sizeof(windowsErrorBuf), NULL);     \
   errno = GetLastError();
 #else
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#warning TODO move to system or os file
-#endif
+//YYY #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+//YYY #warning FRANK move to system or os file
+//YYY #endif
 #define STR_ERROR() strerror(errno)
 #endif
 

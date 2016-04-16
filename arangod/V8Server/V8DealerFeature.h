@@ -53,7 +53,6 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   std::string _appPath;
   std::string _startupPath;
   uint64_t _nrContexts;
-  bool _frontendVersionCheck;
 
  public:
   JSLoader* startupLoader() { return &_startupLoader; };
@@ -81,6 +80,10 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
     _definedBooleans[name] = value;
   }
 
+  void defineDouble(std::string name, double value) {
+    _definedDoubles[name] = value;
+  }
+
   std::string const& appPath() const { return _appPath; }
 
  private:
@@ -90,7 +93,6 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   void shutdownV8Instance(V8Context*);
 
  private:
-  bool _useActions;
   std::atomic<bool> _ok;
 
   Thread* _gcThread;

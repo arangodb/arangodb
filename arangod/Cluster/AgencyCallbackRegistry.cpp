@@ -30,11 +30,11 @@
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
 #include <ctime>
-#warning why? use ConditionVariable
+//XXX #warning MOP why? use ConditionVariable
 #include <condition_variable>
-#warning why? use Mutex
+//XXX #warning MOP why? use Mutex
 #include <mutex>
-#warning why?
+//XXX #warning MOP why?
 #include <thread>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -104,8 +104,9 @@ bool AgencyCallbackRegistry::unregisterCallback(std::shared_ptr<AgencyCallback> 
 
 std::string AgencyCallbackRegistry::getEndpointUrl(uint32_t endpoint) {
   std::stringstream url;
-  url << Endpoint::uriForm(ServerState::instance()->getAddress()) << _callbackBasePath << "/" << endpoint;
-  
+  url << Endpoint::uriForm(ServerState::instance()->getAddress())
+      << _callbackBasePath << "/" << endpoint;
+
   return url.str();
 }
 
