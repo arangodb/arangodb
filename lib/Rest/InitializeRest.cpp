@@ -36,16 +36,19 @@
 
 #include "Logger/Logger.h"
 #include "Basics/RandomGenerator.h"
+#include "Basics/Thread.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/error.h"
 #include "Basics/files.h"
 #include "Basics/hashes.h"
 #include "Basics/locks.h"
 #include "Basics/mimetypes.h"
 #include "Basics/process-utils.h"
-#include "Basics/Thread.h"
 #include "Rest/Version.h"
 
 using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 // -----------------------------------------------------------------------------
 // OPEN SSL support
@@ -172,6 +175,7 @@ void InitializeRest() {
   opensslSetup();
 
   Version::initialize();
+  VelocyPackHelper::initialize();
 }
 
 void ShutdownRest() {
