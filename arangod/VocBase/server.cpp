@@ -113,7 +113,7 @@ static TRI_server_id_t ServerId;
 
 static int GenerateServerId(void) {
   do {
-    ServerId = RandomGenerator::interval(SERVER_ID_MASK);
+    ServerId = RandomGenerator::interval((uint64_t) SERVER_ID_MASK);
   } while (ServerId == 0);
 
   return TRI_ERROR_NO_ERROR;
