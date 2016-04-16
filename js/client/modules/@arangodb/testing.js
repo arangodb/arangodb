@@ -188,6 +188,11 @@ const toArgv = require("internal").toArgv;
 const wait = require("internal").wait;
 const platform = require("internal").platform;
 
+const CYAN = require("internal").COLORS.COLOR_CYAN;
+const GREEN = require("internal").COLORS.COLOR_GREEN;
+const RED = require("internal").COLORS.COLOR_RED;
+const RESET = require("internal").COLORS.COLOR_RESET;
+
 let cleanupDirectories = [];
 let serverCrashed = false;
 
@@ -912,9 +917,11 @@ function executeAndWait(cmd, args, options, valgrindTest) {
   let errorMessage = ' - ';
 
   if (res.status === "TERMINATED") {
-    print("Finished: " + res.status +
+    const color = (res.exit === 0 ? GREEN : RED);
+
+    print(color + "Finished: " + res.status +
       " exit code: " + res.exit +
-      " Time elapsed: " + deltaTime);
+      " Time elapsed: " + deltaTime + RESET);
 
     if (res.exit === 0) {
       return {
@@ -1399,13 +1406,8 @@ function startInstanceAgency(instanceInfo, protocol, options,
 function startInstanceSingleServer(instanceInfo, protocol, options,
   addArgs, testname, rootDir) {
 
-  << << << < HEAD
-  instanceInfo.arangods.push(startArango(protocol, options, addArgs, testname, rootDir));
-
-  === === =
   instanceInfo.arangods.push(startArango(protocol, options, addArgs, testname, rootDir, false));
 
-  >>> >>> > bbac0b673facbbb30b0d7733c86a332a4174d9b9
   instanceInfo.endpoint = instanceInfo.arangods[instanceInfo.arangods.length - 1].endpoint;
   instanceInfo.url = instanceInfo.arangods[instanceInfo.arangods.length - 1].url;
 
@@ -1840,6 +1842,10 @@ const internalMembers = [
   "message",
   "suiteName"
 ];
+
+function skipInternalMember(r, a) {
+  return !r.hasOwnProperty(a) || internalMembers.indexOf(a) !== -1;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief TEST: all
@@ -2387,6 +2393,7 @@ testFuncs.config = function(options) {
 
   for (let i = 0; i < ts.length; i++) {
     const test = ts[i];
+    print(CYAN + "checking '" + test + "'" + RESET);
 
     const args = {
       "configuration": fs.join(CONFIG_DIR, test + ".conf"),
@@ -2397,15 +2404,18 @@ testFuncs.config = function(options) {
 
     results.absolut[test] = executeAndWait(run, toArgv(args), options, test);
 
+/* XX */ results.absolut[test].status = false;
     if (!results.absolut[test].status) {
       results.absolut.status = false;
     }
 
     results.absolut.total++;
 
-    print("Args for [" + test + "]:");
-    print(yaml.safeDump(args));
-    print("Result: " + results.absolut[test].status);
+    if (options.verbose) {
+      print("Args for [" + test + "]:");
+      print(yaml.safeDump(args));
+      print("Result: " + results.absolut[test].status);
+    }
   }
 
   print("--------------------------------------------------------------------------------");
@@ -2414,6 +2424,7 @@ testFuncs.config = function(options) {
 
   for (let i = 0; i < ts.length; i++) {
     const test = ts[i];
+    print(CYAN + "checking '" + test + "'" + RESET);
 
     const args = {
       "configuration": fs.join(CONFIG_RELATIVE_DIR, test + ".conf"),
@@ -2430,9 +2441,11 @@ testFuncs.config = function(options) {
 
     results.relative.total++;
 
-    print("Args for (relative) [" + test + "]:");
-    print(yaml.safeDump(args));
-    print("Result: " + results.relative[test].status);
+    if (options.verbose) {
+      print("Args for (relative) [" + test + "]:");
+      print(yaml.safeDump(args));
+      print("Result: " + results.relative[test].status);
+    }
   }
 
   return results;
@@ -3625,84 +3638,93 @@ testFuncs.agency = function(options) {
 function unitTestPrettyPrintResults(r) {
   let testFail = 0;
   let testSuiteFail = 0;
+
+  let header = "";
   let success = "";
   let fail = "";
 
   try {
+    /*jshint forin: false */
     for (let testrun in r) {
-      if (r.hasOwnProperty(testrun) && (internalMembers.indexOf(testrun) === -1)) {
-        let isSuccess = true;
-        let successTests = {};
-        let oneOutput = "* Testrun: " + testrun + "\n";
+      if (skipInternalMember(r, testrun)) {
+        continue;
+      }
 
-        for (let test in r[testrun]) {
-          if (r[testrun].hasOwnProperty(test) &&
-            (internalMembers.indexOf(test) === -1)) {
-            if (r[testrun][test].status) {
-              const where = test.lastIndexOf(fs.pathSeparator);
-              let which;
+      let isSuccess = true;
+      let successTests = {};
+      let oneOutput = "";
 
-              if (where < 0) {
-                which = 'Unittests';
-              } else {
-                which = test.substring(0, where);
-                test = test.substring(where + 1, test.length);
-              }
+      print("* Test '" + testrun + "'");
 
-              if (!successTests.hasOwnProperty(which)) {
-                successTests[which] = [];
-              }
+      for (let test in r[testrun]) {
+	if (r[testrun].hasOwnProperty(test) &&
+	  (internalMembers.indexOf(test) === -1)) {
 
-              successTests[which].push(test);
-            } else {
-              testSuiteFail++;
+	  if (r[testrun][test].status) {
+	    const where = test.lastIndexOf(fs.pathSeparator);
+	    let which;
 
-              if (r[testrun][test].hasOwnProperty('message')) {
-                isSuccess = false;
-                oneOutput += "     [  Fail ] " + test +
-                  ": Whole testsuite failed!\n";
+	    if (where < 0) {
+	      which = 'Unittests';
+	    } else {
+	      which = test.substring(0, where);
+	      test = test.substring(where + 1, test.length);
+	    }
 
-                if (typeof r[testrun][test].message === "object" &&
-                  r[testrun][test].message.hasOwnProperty('body')) {
-                  oneOutput += r[testrun][test].message.body + "\n";
-                } else {
-                  oneOutput += r[testrun][test].message + "\n";
-                }
-              } else {
-                isSuccess = false;
-                oneOutput += "    [  Fail ] " + test + "\n";
+	    if (!successTests.hasOwnProperty(which)) {
+	      successTests[which] = [];
+	    }
 
-                for (let oneTest in r[testrun][test]) {
-                  if (r[testrun][test].hasOwnProperty(oneTest) &&
-                    (internalMembers.indexOf(oneTest) === -1) &&
-                    (!r[testrun][test][oneTest].status)) {
-                    ++testFail;
-                    oneOutput += "          -> " + oneTest +
-                      " Failed; Verbose message:\n" +
-                      r[testrun][test][oneTest].message + "\n";
-                  }
-                }
-              }
-            }
-          }
-        }
+	    successTests[which].push(test);
+	  } else {
+	    testSuiteFail++;
 
-        if (successTests !== "") {
-          for (let key in successTests) {
-            if (successTests.hasOwnProperty(key)) {
-              oneOutput = "     [Success] " + key +
-                " / [" + successTests[key].join(', ') + ']\n' + oneOutput;
-            }
-          }
-        }
+	    if (r[testrun][test].hasOwnProperty('message')) {
+	      isSuccess = false;
+	      oneOutput += "     [  Fail ] " + test +
+		": Whole testsuite failed!\n";
 
-        if (isSuccess) {
-          success += oneOutput;
-        } else {
-          fail += oneOutput;
-        }
+	      if (typeof r[testrun][test].message === "object" &&
+		r[testrun][test].message.hasOwnProperty('body')) {
+		oneOutput += r[testrun][test].message.body + "\n";
+	      } else {
+		oneOutput += r[testrun][test].message + "\n";
+	      }
+	    } else {
+	      isSuccess = false;
+	      oneOutput += "    [  Fail ] " + test + "\n";
+
+	      for (let oneTest in r[testrun][test]) {
+		if (r[testrun][test].hasOwnProperty(oneTest) &&
+		  (internalMembers.indexOf(oneTest) === -1) &&
+		  (!r[testrun][test][oneTest].status)) {
+		  ++testFail;
+		  oneOutput += "          -> " + oneTest +
+		    " Failed; Verbose message:\n" +
+		    r[testrun][test][oneTest].message + "\n";
+		}
+	      }
+	    }
+	  }
+	}
+      }
+
+      if (successTests !== "") {
+	for (let key in successTests) {
+	  if (successTests.hasOwnProperty(key)) {
+	    oneOutput = "     [Success] " + key +
+	      " / [" + successTests[key].join(', ') + ']\n' + oneOutput;
+	  }
+	}
+      }
+
+      if (isSuccess) {
+	success += oneOutput;
+      } else {
+	fail += oneOutput;
       }
     }
+    /*jshint forin: true */
 
     if (success !== "") {
       print(success);
