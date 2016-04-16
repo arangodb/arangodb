@@ -390,6 +390,12 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
   its input completely, but to process it in smaller batches. The rule will fire for an
   *UPDATE* query that is fed by a full collection scan, and that does not use any other
   indexes and subqueries.
+* `optimize-traversals`: will appear if either the edge or path output variable in an
+  AQL traversal was optimized away, or if a *FILTER* condition from the query was moved
+  in the *TraversalNode* for early pruning of results.
+* `inline-subqueries`: will appear when a subquery was pulled out in its surrounding scope,
+  e.g. `FOR x IN (FOR y IN collection FILTER y.value >= 5 RETURN y.test) RETURN x.a` 
+  would become `FOR tmp IN collection FILTER tmp.value >= 5 LET x = tmp.test RETURN x.a` 
 
 The following optimizer rules may appear in the `rules` attribute of cluster plans:
 

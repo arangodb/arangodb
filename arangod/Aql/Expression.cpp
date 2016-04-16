@@ -172,6 +172,11 @@ void Expression::replaceVariables(
   TRI_ASSERT(_node != nullptr);
 
   _node = _ast->replaceVariables(const_cast<AstNode*>(_node), replacements);
+  
+  if (_type == ATTRIBUTE && _accessor != nullptr) {
+    _accessor->replaceVariable(replacements);
+  }
+
   invalidate();
 }
 
@@ -684,7 +689,7 @@ AqlValue Expression::executeSimpleExpressionReference(
 
   size_t i = 0;
   for (auto it = vars.begin(); it != vars.end(); ++it, ++i) {
-    if ((*it)->name == v->name) {
+    if ((*it)->id == v->id) {
       if (doCopy) {
         mustDestroy = true; // as we are copying
         return argv->getValueReference(startPos, regs[i]).clone();

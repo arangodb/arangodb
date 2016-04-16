@@ -608,6 +608,110 @@ describe ArangoDB do
         doc.parsed_response['updated'].should eq(0)
         doc.parsed_response['ignored'].should eq(0)
       end
+      
+      it "multiple docs, with wrong fromPrefix" do
+        cmd = api + "?collection=#{@en}&createCollection=false&type=array&fromPrefix=a+b"
+        body = "[\n"
+        body += "{ \"a\" : 1, \"_from\" : \"vertex1\", \"_to\" : \"" + @vn + "/vertex2\" }\n"
+        body += "]";
+        doc = ArangoDB.log_post("#{prefix}-edge-json-fromto", cmd, :body => body)
+
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['created'].should eq(0)
+        doc.parsed_response['errors'].should eq(1)
+        doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['updated'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
+      end
+      
+      it "multiple docs, with wrong toPrefix" do
+        cmd = api + "?collection=#{@en}&createCollection=false&type=array&toPrefix=a+b"
+        body = "[\n"
+        body += "{ \"a\" : 1, \"_to\" : \"vertex1\", \"_from\" : \"" + @vn + "/vertex2\" }\n"
+        body += "]";
+        doc = ArangoDB.log_post("#{prefix}-edge-json-fromto", cmd, :body => body)
+
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['created'].should eq(0)
+        doc.parsed_response['errors'].should eq(1)
+        doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['updated'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
+      end
+      
+      it "multiple docs, with fromPrefix" do
+        cmd = api + "?collection=#{@en}&createCollection=false&type=array&fromPrefix=#{@vn}"
+        body = "[\n"
+        body += "{ \"a\" : 1, \"_from\" : \"vertex1\", \"_to\" : \"" + @vn + "/vertex2\" },\n"
+        body += "{ \"foo\" : true, \"bar\": \"baz\", \"_from\" : \"vertex1\", \"_to\" : \"" + @vn + "/vertex2\" },\n"
+        body += "{ \"from\" : \"vertex1\", \"to\" : \"" + @vn + "/vertex2\" }\n"
+        body += "]";
+        doc = ArangoDB.log_post("#{prefix}-edge-json-fromto", cmd, :body => body)
+
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['created'].should eq(2)
+        doc.parsed_response['errors'].should eq(1)
+        doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['updated'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
+      end
+      
+      it "multiple docs, with toPrefix" do
+        cmd = api + "?collection=#{@en}&createCollection=false&type=array&toPrefix=#{@vn}"
+        body = "[\n"
+        body += "{ \"a\" : 1, \"_to\" : \"vertex1\", \"_from\" : \"" + @vn + "/vertex2\" },\n"
+        body += "{ \"foo\" : true, \"bar\": \"baz\", \"_to\" : \"vertex1\", \"_from\" : \"" + @vn + "/vertex2\" },\n"
+        body += "{ \"to\" : \"vertex1\", \"from\" : \"" + @vn + "/vertex2\" }\n"
+        body += "]";
+        doc = ArangoDB.log_post("#{prefix}-edge-json-fromto", cmd, :body => body)
+
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['created'].should eq(2)
+        doc.parsed_response['errors'].should eq(1)
+        doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['updated'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
+      end
+      
+      it "multiple docs, with fromPrefix and toPrefix" do
+        cmd = api + "?collection=#{@en}&createCollection=false&type=array&fromPrefix=#{@vn}&toPrefix=#{@vn}"
+        body = "[\n"
+        body += "{ \"a\" : 1, \"_to\" : \"vertex1\", \"_from\" : \"vertex2\" },\n"
+        body += "{ \"foo\" : true, \"bar\": \"baz\", \"_to\" : \"vertex1\", \"_from\" : \"vertex2\" },\n"
+        body += "{ \"to\" : \"vertex1\", \"from\" : \"vertex2\" }\n"
+        body += "]";
+        doc = ArangoDB.log_post("#{prefix}-edge-json-fromto", cmd, :body => body)
+
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['created'].should eq(2)
+        doc.parsed_response['errors'].should eq(1)
+        doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['updated'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
+      end
+      
+      it "multiple docs, with fromPrefix and toPrefix, double prefixing" do
+        cmd = api + "?collection=#{@en}&createCollection=false&type=array&fromPrefix=#{@vn}&toPrefix=#{@vn}"
+        body = "[\n"
+        body += "{ \"a\" : 1, \"_to\" : \"#{@vn}/vertex1\", \"_from\" : \"#{@vn}/vertex2\" },\n"
+        body += "{ \"foo\" : true, \"bar\": \"baz\", \"_to\" : \"#{@vn}/vertex1\", \"_from\" : \"#{@vn}vertex2\" },\n"
+        body += "{ \"to\" : \"#{@vn}/vertex1\", \"from\" : \"#{@vn}/vertex2\" }\n"
+        body += "]";
+        doc = ArangoDB.log_post("#{prefix}-edge-json-fromto", cmd, :body => body)
+
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['created'].should eq(2)
+        doc.parsed_response['errors'].should eq(1)
+        doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['updated'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
+      end
     end
 
 ################################################################################

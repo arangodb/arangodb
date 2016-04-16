@@ -45,6 +45,9 @@ class AttributeAccessor {
   AqlValue get(arangodb::AqlTransaction* trx, AqlItemBlock const*, size_t,
                std::vector<Variable const*> const&,
                std::vector<RegisterId> const&, bool& mustDestroy);
+    
+ public:
+  void replaceVariable(std::unordered_map<VariableId, Variable const*> const& replacements);
 
  private:
 

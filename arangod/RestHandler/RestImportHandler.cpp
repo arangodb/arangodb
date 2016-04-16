@@ -34,6 +34,7 @@
 #include "VocBase/MasterPointer.h"
 #include "VocBase/vocbase.h"
 
+#include <velocypack/Collection.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
@@ -76,6 +77,22 @@ HttpHandler::status_t RestImportHandler::execute() {
 
   switch (type) {
     case GeneralRequest::RequestType::POST: {
+      std::string const& from = _request->value("fromPrefix", found);
+      if (found) {
+        _fromPrefix = from;
+        if (!_fromPrefix.empty() && _fromPrefix[_fromPrefix.size() - 1] != '/') {
+          _fromPrefix.push_back('/');
+        }
+      }
+      
+      std::string const& to = _request->value("toPrefix", found);
+      if (found) {
+        _toPrefix = to;
+        if (!_toPrefix.empty() && _toPrefix[_toPrefix.size() - 1] != '/') {
+          _toPrefix.push_back('/');
+        }
+      }
+
       // extract the import type
       std::string const& documentType = _request->value("type", found);
 
@@ -163,8 +180,9 @@ std::string RestImportHandler::buildParseError(size_t i,
 ////////////////////////////////////////////////////////////////////////////////
 
 int RestImportHandler::handleSingleDocument(
-    SingleCollectionTransaction& trx, RestImportResult& result, char const* lineStart,
-    VPackSlice const& slice, std::string const& collectionName,
+    SingleCollectionTransaction& trx, RestImportResult& result, 
+    VPackBuilder& tempBuilder, char const* lineStart,
+    VPackSlice slice, std::string const& collectionName,
     bool isEdgeCollection, OperationOptions const& opOptions, size_t i) {
 
   if (!slice.isObject()) {
@@ -187,9 +205,40 @@ int RestImportHandler::handleSingleDocument(
   TRI_doc_mptr_t document;
   int res = TRI_ERROR_NO_ERROR;
 
+  VPackBuilder newBuilder;
+
   if (isEdgeCollection) {
     // Validate from and to
     // TODO: Check if this is unified in trx.insert
+    
+    if (!_fromPrefix.empty() || !_toPrefix.empty()) {
+      tempBuilder.clear();
+      tempBuilder.openObject();
+      if (!_fromPrefix.empty()) {
+        VPackSlice from = slice.get(TRI_VOC_ATTRIBUTE_FROM);
+        if (from.isString()) {
+          std::string f = from.copyString();
+          if (f.find('/') == std::string::npos) {
+            tempBuilder.add(TRI_VOC_ATTRIBUTE_FROM, VPackValue(_fromPrefix + f));
+          }
+        }
+      }
+      if (!_toPrefix.empty()) {
+        VPackSlice to = slice.get(TRI_VOC_ATTRIBUTE_TO);
+        if (to.isString()) {
+          std::string t = to.copyString();
+          if (t.find('/') == std::string::npos) {
+            tempBuilder.add(TRI_VOC_ATTRIBUTE_TO, VPackValue(_toPrefix + t));
+          }
+        }
+      }
+      tempBuilder.close();
+
+      if (tempBuilder.slice().length() > 0) {
+        newBuilder = VPackCollection::merge(slice, tempBuilder.slice(), false, false);
+        slice = newBuilder.slice();
+      }
+    }
 
     try {
       arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
@@ -211,7 +260,7 @@ int RestImportHandler::handleSingleDocument(
       registerError(result, errorMsg);
       return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
     }
-
+  
   }
 
   OperationResult opResult = trx.insert(collectionName, slice, opOptions);
@@ -358,7 +407,8 @@ bool RestImportHandler::createFromJson(std::string const& type) {
     return false;
   }
 
-  
+ 
+  VPackBuilder tempBuilder; 
   bool const isEdgeCollection = trx.isEdgeCollection(collectionName);
 
   if (overwrite) {
@@ -432,7 +482,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
         continue;
       }
 
-      res = handleSingleDocument(trx, result, oldPtr, builder->slice(),
+      res = handleSingleDocument(trx, result, tempBuilder, oldPtr, builder->slice(),
                                  collectionName, isEdgeCollection, opOptions, i);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -472,7 +522,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
     for (VPackValueLength i = 0; i < n; ++i) {
       VPackSlice const slice = documents.at(i);
 
-      res = handleSingleDocument(trx, result, nullptr, slice, collectionName,
+      res = handleSingleDocument(trx, result, tempBuilder, nullptr, slice, collectionName,
                                  isEdgeCollection, opOptions, i + 1);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -628,7 +678,8 @@ bool RestImportHandler::createFromKeyValueList() {
     // Ignore the result ...
   }
 
-  size_t i = (size_t)lineNumber;
+  VPackBuilder tempBuilder; 
+  size_t i = static_cast<size_t>(lineNumber);
 
   while (current != nullptr && current < bodyEnd) {
     i++;
@@ -683,7 +734,7 @@ bool RestImportHandler::createFromKeyValueList() {
         std::shared_ptr<VPackBuilder> objectBuilder =
             createVelocyPackObject(keys, values, errorMsg, i);
         res =
-            handleSingleDocument(trx, result, lineStart, objectBuilder->slice(),
+            handleSingleDocument(trx, result, tempBuilder, lineStart, objectBuilder->slice(),
                                  collectionName, isEdgeCollection, opOptions, i);
       } catch (...) {
         // raise any error

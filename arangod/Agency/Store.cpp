@@ -485,43 +485,54 @@ template<> bool Node::handle<UNOBSERVE> (VPackSlice const& slice) {
 
 }}
 
+bool Node::applieOp (VPackSlice const& slice) {
+
+  std::string oper = slice.get("op").copyString();
+  
+  if (oper == "delete") {
+    return _parent->removeChild(_node_name);
+  } else if (oper == "set") {       // "op":"set"
+    return handle<SET>(slice);
+  } else if (oper == "increment") { // "op":"increment"
+    return handle<INCREMENT>(slice);
+  } else if (oper == "decrement") { // "op":"decrement"
+    return handle<DECREMENT>(slice);
+  } else if (oper == "push") {      // "op":"push"
+    return handle<PUSH>(slice);
+  } else if (oper == "pop") {       // "op":"pop"
+    return handle<POP>(slice);
+  } else if (oper == "prepend") {   // "op":"prepend"
+    return handle<PREPEND>(slice);
+  } else if (oper == "shift") {     // "op":"shift"
+    return handle<SHIFT>(slice);
+  } else if (oper == "observe") {   // "op":"observe"
+    return handle<OBSERVE>(slice);
+  } else if (oper == "unobserve") { // "op":"unobserve"
+    return handle<UNOBSERVE>(slice);
+  } else {                          // "op" might not be a key word after all
+    LOG_TOPIC(INFO, Logger::AGENCY)
+      << "Keyword 'op' without known operation. Handling as regular key.";
+  }
+  
+  return false;
+  
+}
+
 // Apply slice to this node
 bool Node::applies (VPackSlice const& slice) {
-
+  
   if (slice.isObject()) {
-    
-    for (auto const& i : VPackObjectIterator(slice)) {
-      
-      std::string key = i.key.copyString();
-      
-      if (slice.hasKey("op")) {
-        std::string oper = slice.get("op").copyString();
-        if (oper == "delete") {
-          return _parent->removeChild(_node_name);
-        } else if (oper == "set") {       // "op":"set"
-          return handle<SET>(slice);
-        } else if (oper == "increment") { // "op":"increment"
-          return handle<INCREMENT>(slice);
-        } else if (oper == "decrement") { // "op":"decrement"
-          return handle<DECREMENT>(slice);
-        } else if (oper == "push") {      // "op":"push"
-          return handle<PUSH>(slice);
-        } else if (oper == "pop") {       // "op":"pop"
-          return handle<POP>(slice);
-        } else if (oper == "prepend") {   // "op":"prepend"
-          return handle<PREPEND>(slice);
-        } else if (oper == "shift") {     // "op":"shift"
-          return handle<SHIFT>(slice);
-        } else if (oper == "observe") {   // "op":"observe"
-          return handle<OBSERVE>(slice);
-        } else if (oper == "unobserve") { // "op":"unobserve"
-          return handle<UNOBSERVE>(slice);
-        } else {                          // "op" might not be a key word after all
-          LOG_TOPIC(INFO, Logger::AGENCY)
-            << "Keyword 'op' without known operation. Handling as regular key.";
-        }
+
+    // Object is an operation?
+    if (slice.hasKey("op")) {
+      if (applieOp(slice)) {
+        return true;
       }
-      
+    }
+
+    // Object is special case json
+    for (auto const& i : VPackObjectIterator(slice)) {
+      std::string key = i.key.copyString();
       if (key.find('/')!=std::string::npos) {
         (*this)(key).applies(i.value);
       } else {
@@ -531,12 +542,12 @@ bool Node::applies (VPackSlice const& slice) {
         }
         _children[key]->applies(i.value);
       }
-      
     }
     
-  } else { // slice.isObject()
+  } else { 
     *this = slice;
   }
+  
   return true;
 }
 
@@ -853,15 +864,18 @@ void Store::beginShutdown() {
 // TTL clear values from store
 query_t Store::clearExpired () const {
   query_t tmp = std::make_shared<Builder>();
-  tmp->openArray(); 
-  for (auto it = _time_table.cbegin(); it != _time_table.cend(); ++it) {
-    if (it->first < std::chrono::system_clock::now()) {
-      tmp->openArray(); tmp->openObject();
-      tmp->add(it->second->uri(), VPackValue(VPackValueType::Object));
-      tmp->add("op",VPackValue("delete"));
-      tmp->close(); tmp->close(); tmp->close();
-    } else {
-      break;
+  tmp->openArray();
+  {
+    MUTEX_LOCKER(storeLocker, _storeLock);
+    for (auto it = _time_table.cbegin(); it != _time_table.cend(); ++it) {
+      if (it->first < std::chrono::system_clock::now()) {
+        tmp->openArray(); tmp->openObject();
+        tmp->add(it->second->uri(), VPackValue(VPackValueType::Object));
+        tmp->add("op",VPackValue("delete"));
+        tmp->close(); tmp->close(); tmp->close();
+      } else {
+        break;
+      }
     }
   }
   tmp->close();
@@ -911,16 +925,32 @@ bool Store::start (Agent* agent) {
 
 // Work ttls and callbacks
 void Store::run() {
+
   CONDITION_LOCKER(guard, _cv);
+  
   while (!this->isStopping()) { // Check timetable and remove overage entries
-    if (!_time_table.empty()) {
-      auto t = std::chrono::duration_cast<std::chrono::microseconds>(
-        _time_table.begin()->first - std::chrono::system_clock::now());
+
+    std::chrono::microseconds t{0};
+    query_t toClear;
+    
+    { // any entries in time table?
+      MUTEX_LOCKER(storeLocker, _storeLock);
+      if (!_time_table.empty()) {
+        t = std::chrono::duration_cast<std::chrono::microseconds>(
+          _time_table.begin()->first - std::chrono::system_clock::now());
+      }
+    }
+    
+    if (t != std::chrono::microseconds{0}) {
       _cv.wait(t.count());
     } else {
-      _cv.wait();           // better wait to next known time point
+      _cv.wait();
     }
-    auto toclear = clearExpired();
-    _agent->write(toclear);
+    
+    toClear = clearExpired();
+    _agent->write(toClear);
+    
   }
+  
 }
+

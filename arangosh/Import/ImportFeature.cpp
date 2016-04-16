@@ -43,6 +43,8 @@ ImportFeature::ImportFeature(application_features::ApplicationServer* server,
       _useBackslash(false),
       _chunkSize(1024 * 1024 * 16),
       _collectionName(""),
+      _fromCollectionPrefix(""),
+      _toCollectionPrefix(""),
       _createCollection(false),
       _createCollectionType("document"),
       _typeImport("json"),
@@ -77,6 +79,12 @@ void ImportFeature::collectOptions(
 
   options->addOption("--collection", "collection name",
                      new StringParameter(&_collectionName));
+  
+  options->addOption("--from-collection-prefix", "_from collection name prefix (will be prepended to all values in '_from')",
+                     new StringParameter(&_fromCollectionPrefix));
+  
+  options->addOption("--to-collection-prefix", "_to collection name prefix (will be prepended to all values in '_to')",
+                     new StringParameter(&_toCollectionPrefix));
 
   options->addOption("--create-collection",
                      "create collection if it does not yet exist",
@@ -186,20 +194,26 @@ void ImportFeature::start() {
             << "'" << std::endl;
 
   std::cout << "----------------------------------------" << std::endl;
-  std::cout << "database:         " << client->databaseName() << std::endl;
-  std::cout << "collection:       " << _collectionName << std::endl;
-  std::cout << "create:           " << (_createCollection ? "yes" : "no")
+  std::cout << "database:               " << client->databaseName() << std::endl;
+  std::cout << "collection:             " << _collectionName << std::endl;
+  if (!_fromCollectionPrefix.empty()) {
+    std::cout << "from collection prefix: " << _fromCollectionPrefix << std::endl;
+  }
+  if (!_toCollectionPrefix.empty()) {
+    std::cout << "to collection prefix:   " << _toCollectionPrefix << std::endl;
+  }
+  std::cout << "create:                 " << (_createCollection ? "yes" : "no")
             << std::endl;
-  std::cout << "file:             " << _filename << std::endl;
-  std::cout << "type:             " << _typeImport << std::endl;
+  std::cout << "source filename:        " << _filename << std::endl;
+  std::cout << "file type:              " << _typeImport << std::endl;
 
   if (_typeImport == "csv") {
-    std::cout << "quote:            " << _quote << std::endl;
-    std::cout << "separator:        " << _separator << std::endl;
+    std::cout << "quote:                  " << _quote << std::endl;
+    std::cout << "separator:              " << _separator << std::endl;
   }
 
-  std::cout << "connect timeout:  " << client->connectionTimeout() << std::endl;
-  std::cout << "request timeout:  " << client->requestTimeout() << std::endl;
+  std::cout << "connect timeout:        " << client->connectionTimeout() << std::endl;
+  std::cout << "request timeout:        " << client->requestTimeout() << std::endl;
   std::cout << "----------------------------------------" << std::endl;
 
   arangodb::import::ImportHelper ih(httpClient.get(), _chunkSize);
@@ -274,6 +288,9 @@ void ImportFeature::start() {
 
   try {
     bool ok = false;
+    // set prefixes
+    ih.setFrom(_fromCollectionPrefix);
+    ih.setTo(_toCollectionPrefix);
 
     // import type
     if (_typeImport == "csv") {

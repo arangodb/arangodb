@@ -90,7 +90,7 @@ function optimizerCostsTestSuite () {
     testEnumerateListNodeSubquery : function () {
       var query = "FOR i IN (FOR j IN [ 1, 2, 3, 4 ] RETURN j) RETURN i";
 
-      var plan = AQL_EXPLAIN(query);
+      var plan = AQL_EXPLAIN(query, { }, { optimizer: { "rules" : [ "-all" ] } });
       var node = helper.findExecutionNodes(plan, "EnumerateListNode")[0];
        
       // number of nodes cannot be estimated properly due to function call

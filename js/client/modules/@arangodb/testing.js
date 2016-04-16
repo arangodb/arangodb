@@ -1092,7 +1092,8 @@ function shutdownArangod(arangod, options) {
   if (options.valgrind) {
     waitOnServerForGC(arangod, options, 60);
   }
-  if (arangod.exitStatus === undefined) {
+  if (arangod.exitStatus === undefined ||
+    arangod.exitStatus.status === "RUNNING") {
     print(arangod.url + "/_admin/shutdown");
     download(arangod.url + "/_admin/shutdown", "",
       makeAuthorizationHeaders(options));
@@ -1109,9 +1110,18 @@ function shutdownInstance(instanceInfo, options) {
   if (!checkInstanceAlive(instanceInfo, options)) {
     print("Server already dead, doing nothing. This shouldn't happen?");
   }
-  instanceInfo.arangods.reverse().forEach(arangod => {
-    shutdownArangod(arangod, options);
-  });
+
+  // Shut down all non-agency servers:
+  const n = instanceInfo.arangods.length;
+
+  let nonagencies = instanceInfo.arangods
+    .filter(arangod => !arangod.isAgency);
+  nonagencies.forEach(arangod =>
+    shutdownArangod(arangod, options)
+  );
+
+  let agentsKilled = false;
+  let nrAgents = n - nonagencies.length;
 
   let timeout = 60;
   if (options.valgrind) {
@@ -1125,9 +1135,17 @@ function shutdownInstance(instanceInfo, options) {
 
   let toShutdown = instanceInfo.arangods.slice();
   while (toShutdown.length > 0) {
+    // Once all other servers are shut down, we take care of the agents,
+    // we do this exactly once (agentsKilled flag) and only if there
+    // are agents:
+    if (!agentsKilled && nrAgents > 0 && toShutdown.length === nrAgents) {
+      instanceInfo.arangods
+        .filter(arangod => arangod.isAgency)
+        .forEach(arangod => shutdownArangod(arangod, options));
+      agentsKilled = true;
+    }
     toShutdown = toShutdown.filter(arangod => {
       arangod.exitStatus = statusExternal(arangod.pid, false);
-      console.log(arangod);
 
       if (arangod.exitStatus.status === "RUNNING") {
         ++count;
@@ -1265,6 +1283,7 @@ function startInstanceCluster(instanceInfo, protocol, options,
 
   response = download(coordinatorUrl + '/_admin/cluster/upgradeClusterDatabase', '{"isRelaunch":false}', httpOptions);
   if (response.code !== 200) {
+    console.log(response);
     throw new Error('Upgrading DB failed');
   }
 
@@ -1278,7 +1297,7 @@ function startInstanceCluster(instanceInfo, protocol, options,
   return true;
 }
 
-function startArango(protocol, options, addArgs, name, rootDir) {
+function startArango(protocol, options, addArgs, name, rootDir, isAgency) {
   const dataDir = fs.join(rootDir, "data");
   const appDir = fs.join(rootDir, "apps");
 
@@ -1295,10 +1314,9 @@ function startArango(protocol, options, addArgs, name, rootDir) {
     endpoint = addArgs["server.endpoint"];
     port = endpoint.split(":").pop();
   }
-  let instanceInfo = {};
-  instanceInfo.port = port;
-  instanceInfo.endpoint = endpoint;
-  instanceInfo.rootDir = rootDir;
+  let instanceInfo = {
+    isAgency, port, endpoint, rootDir
+  };
 
   args["server.endpoint"] = endpoint;
   args["database.directory"] = dataDir;
@@ -1368,7 +1386,7 @@ function startInstanceAgency(instanceInfo, protocol, options,
     let dir = fs.join(rootDir, 'agency-' + i);
     fs.makeDirectoryRecursive(dir);
 
-    instanceInfo.arangods.push(startArango(protocol, options, instanceArgs, testname, rootDir));
+    instanceInfo.arangods.push(startArango(protocol, options, instanceArgs, testname, rootDir, true));
   }
 
   instanceInfo.endpoint = instanceInfo.arangods[instanceInfo.arangods.length - 1].endpoint;
@@ -1381,8 +1399,13 @@ function startInstanceAgency(instanceInfo, protocol, options,
 function startInstanceSingleServer(instanceInfo, protocol, options,
   addArgs, testname, rootDir) {
 
+  << << << < HEAD
   instanceInfo.arangods.push(startArango(protocol, options, addArgs, testname, rootDir));
 
+  === === =
+  instanceInfo.arangods.push(startArango(protocol, options, addArgs, testname, rootDir, false));
+
+  >>> >>> > bbac0b673facbbb30b0d7733c86a332a4174d9b9
   instanceInfo.endpoint = instanceInfo.arangods[instanceInfo.arangods.length - 1].endpoint;
   instanceInfo.url = instanceInfo.arangods[instanceInfo.arangods.length - 1].url;
 

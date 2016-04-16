@@ -1656,6 +1656,29 @@ void Ast::getReferencedVariables(AstNode const* node,
   traverseReadOnly(node, visitor, &result);
 }
 
+/// @brief count how many times a variable is referenced in an expression
+size_t Ast::countReferences(AstNode const* node,
+                            Variable const* search) {
+  size_t result = 0;
+  auto visitor = [&result, &search](AstNode const* node, void*) -> void {
+    if (node == nullptr) {
+      return;
+    }
+
+    // reference to a variable
+    if (node->type == NODE_TYPE_REFERENCE) {
+      auto variable = static_cast<Variable const*>(node->getData());
+
+      if (variable->id == search->id) {
+        ++result;
+      }
+    }
+  };
+
+  traverseReadOnly(node, visitor, nullptr);
+  return result;
+}
+
 /// @brief determines the top-level attributes referenced in an expression,
 /// grouped by variable name
 TopLevelAttributes Ast::getReferencedAttributes(AstNode const* node,
