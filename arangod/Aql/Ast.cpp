@@ -27,7 +27,6 @@
 #include "Aql/Graphs.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
-#include "Basics/json-utilities.h"
 #include "Basics/tri-strings.h"
 #include "VocBase/collection.h"
 
@@ -107,26 +106,6 @@ Ast::Ast(Query* query)
 
 /// @brief destroy the AST
 Ast::~Ast() {}
-
-/// @brief convert the AST into JSON
-/// the caller is responsible for freeing the JSON later
-/// @DEPRECATED
-TRI_json_t* Ast::toJson(TRI_memory_zone_t* zone, bool verbose) const {
-  TRI_json_t* json = TRI_CreateArrayJson(zone);
-
-  if (json == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  try {
-    _root->toJson(json, zone, verbose);
-  } catch (...) {
-    TRI_FreeJson(zone, json);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  return json;
-}
 
 /// @brief convert the AST into VelocyPack
 std::shared_ptr<VPackBuilder> Ast::toVelocyPack(bool verbose) const {

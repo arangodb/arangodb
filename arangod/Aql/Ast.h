@@ -30,7 +30,6 @@
 #include "Aql/Scopes.h"
 #include "Aql/Variable.h"
 #include "Aql/VariableGenerator.h"
-#include "Basics/json.h"
 #include "VocBase/transaction.h"
 
 #include <functional>
@@ -136,12 +135,7 @@ class Ast {
   /// @brief whether or not the query contains a traversal
   bool containsTraversal() const { return _containsTraversal; }
 
-  /// @brief convert the AST into JSON
-  /// the caller is responsible for freeing the JSON later
-  /// @DEPRECATED
-  TRI_json_t* toJson(TRI_memory_zone_t*, bool) const;
-
-  /// @brief convert the AST into JSON
+  /// @brief convert the AST into VelocyPack
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(bool) const;
 
   /// @brief add an operation to the root node
