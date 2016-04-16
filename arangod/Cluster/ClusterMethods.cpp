@@ -364,27 +364,6 @@ static void collectResultsFromAllShards(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief merge headers of a DB server response into the current response
-////////////////////////////////////////////////////////////////////////////////
-
-void mergeResponseHeaders(GeneralResponse* response,
-                          std::map<std::string, std::string> const& headers) {
-  std::map<std::string, std::string>::const_iterator it = headers.begin();
-
-  while (it != headers.end()) {
-    // skip first header line (which is the HTTP response code)
-    std::string const& key = (*it).first;
-
-    // the following headers are ignored
-    if (key != "http/1.1" && key != "connection" && key != "content-length" &&
-        key != "server") {
-      response->setHeader(key, (*it).second);
-    }
-    ++it;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a copy of all HTTP headers to forward
 ////////////////////////////////////////////////////////////////////////////////
 
