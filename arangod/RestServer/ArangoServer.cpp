@@ -7,6 +7,7 @@ ArangoServer::ArangoServer(int argc, char** argv)
       _tempPath(),
       _applicationEndpointServer(nullptr),
       _applicationCluster(nullptr),
+      _agencyCallbackRegistry(nullptr),
       _applicationAgency(nullptr),
       _jobManager(nullptr),
       _applicationV8(nullptr),
@@ -106,6 +107,11 @@ int ArangoServer::startupServer() {
       FATAL_ERROR_EXIT();
     }
   }
+  
+  // Loading ageny's persistent state
+  if(_applicationAgency->agent() != nullptr) {
+    _applicationAgency->agent()->load();
+  }
 
   int res;
 
@@ -126,10 +132,6 @@ int ArangoServer::runServer(TRI_vocbase_t* vocbase) {
 #warning TODO
 #if 0
   waitForHeartbeat();
-
-  // Loading ageny's persistent state
-  if(_applicationAgency->agent()!=nullptr)
-    _applicationAgency->agent()->load();
 
   // just wait until we are signalled
   _applicationServer->wait();

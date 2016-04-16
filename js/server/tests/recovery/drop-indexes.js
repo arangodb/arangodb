@@ -44,7 +44,6 @@ function runSetup () {
 
     c.ensureHashIndex("value1");
     c.ensureSkiplist("value2");
-    c.ensureCapConstraint(1000);
   }
   
   // drop all indexes but primary
@@ -91,7 +90,7 @@ function recoverySuite () {
 
       c = db._collection("UnitTestsRecovery4");
       idx = c.getIndexes();
-      assertEqual(4, idx.length);
+      assertEqual(3, idx.length);
     }
         
   };

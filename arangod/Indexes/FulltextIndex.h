@@ -27,11 +27,11 @@
 #include "Basics/Common.h"
 #include "FulltextIndex/fulltext-common.h"
 #include "Indexes/Index.h"
-#include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
-struct TRI_fulltext_wordlist_s;
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 
@@ -77,14 +77,14 @@ class FulltextIndex final : public Index {
   TRI_fts_index_t* internals() { return _fulltextIndex; }
 
  private:
-  struct TRI_fulltext_wordlist_s* wordlist(struct TRI_doc_mptr_t const*);
+  std::vector<std::string> wordlist(struct TRI_doc_mptr_t const*);
 
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the indexed attribute (path)
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_shape_pid_t _pid;
+  std::vector<std::string> _attr;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the fulltext index

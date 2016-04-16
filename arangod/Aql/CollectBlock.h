@@ -26,9 +26,12 @@
 #define ARANGOD_AQL_COLLECT_BLOCK_H 1
 
 #include "Basics/Common.h"
+#include "Aql/AqlValue.h"
 #include "Aql/CollectNode.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
+
+#include <velocypack/Builder.h>
 
 namespace arangodb {
 namespace utils {
@@ -48,7 +51,6 @@ class SortedCollectBlock : public ExecutionBlock {
 
   struct CollectGroup {
     std::vector<AqlValue> groupValues;
-    std::vector<TRI_document_collection_t const*> collections;
 
     std::vector<AqlItemBlock*> groupBlocks;
     AggregateValuesType aggregators;
@@ -59,9 +61,7 @@ class SortedCollectBlock : public ExecutionBlock {
     bool const count;
 
     CollectGroup() = delete;
-
     explicit CollectGroup(bool);
-
     ~CollectGroup();
 
     void initialize(size_t capacity);
@@ -91,58 +91,39 @@ class SortedCollectBlock : public ExecutionBlock {
   int getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
                     AqlItemBlock*& result, size_t& skipped) override;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief writes the current group data into the result
-  //////////////////////////////////////////////////////////////////////////////
-
   void emitGroup(AqlItemBlock const* cur, AqlItemBlock* res, size_t row);
 
  private:
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief pairs, consisting of out register and in register
-  //////////////////////////////////////////////////////////////////////////////
-
   std::vector<std::pair<RegisterId, RegisterId>> _groupRegisters;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief pairs, consisting of out register and in register
-  //////////////////////////////////////////////////////////////////////////////
-
   std::vector<std::pair<RegisterId, RegisterId>> _aggregateRegisters;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief details about the current group
-  //////////////////////////////////////////////////////////////////////////////
-
   CollectGroup _currentGroup;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief the optional register that contains the input expression values for
   /// each group
-  //////////////////////////////////////////////////////////////////////////////
-
   RegisterId _expressionRegister;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief the optional register that contains the values for each group
   /// if no values should be returned, then this has a value of MaxRegisterId
   /// this register is also used for counting in case WITH COUNT INTO var is
   /// used
-  //////////////////////////////////////////////////////////////////////////////
-
   RegisterId _collectRegister;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief list of variables names for the registers
-  //////////////////////////////////////////////////////////////////////////////
-
   std::vector<std::string> _variableNames;
+  
+  /// @brief builder for temporary aggregate values
+  arangodb::velocypack::Builder _builder;
 };
 
 class HashedCollectBlock : public ExecutionBlock {
  public:
   HashedCollectBlock(ExecutionEngine*, CollectNode const*);
-
   ~HashedCollectBlock();
 
   int initialize() override;
@@ -152,57 +133,38 @@ class HashedCollectBlock : public ExecutionBlock {
                     AqlItemBlock*& result, size_t& skipped) override;
 
  private:
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief pairs, consisting of out register and in register
-  //////////////////////////////////////////////////////////////////////////////
-
   std::vector<std::pair<RegisterId, RegisterId>> _groupRegisters;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief pairs, consisting of out register and in register
-  //////////////////////////////////////////////////////////////////////////////
-
   std::vector<std::pair<RegisterId, RegisterId>> _aggregateRegisters;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief the optional register that contains the values for each group
   /// if no values should be returned, then this has a value of MaxRegisterId
   /// this register is also used for counting in case WITH COUNT INTO var is
   /// used
-  //////////////////////////////////////////////////////////////////////////////
-
   RegisterId _collectRegister;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief hasher for a vector of AQL values
-  //////////////////////////////////////////////////////////////////////////////
-
   struct GroupKeyHash {
-    GroupKeyHash(arangodb::AqlTransaction* trx,
-                 std::vector<TRI_document_collection_t const*>& colls)
-        : _trx(trx), _colls(colls), _num(colls.size()) {}
+    GroupKeyHash(arangodb::AqlTransaction* trx, size_t num)
+        : _trx(trx), _num(num) {}
 
     size_t operator()(std::vector<AqlValue> const& value) const;
 
     arangodb::AqlTransaction* _trx;
-    std::vector<TRI_document_collection_t const*>& _colls;
     size_t const _num;
   };
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief comparator for a vector of AQL values
-  //////////////////////////////////////////////////////////////////////////////
-
   struct GroupKeyEqual {
-    GroupKeyEqual(arangodb::AqlTransaction* trx,
-                  std::vector<TRI_document_collection_t const*>& colls)
-        : _trx(trx), _colls(colls) {}
+    explicit GroupKeyEqual(arangodb::AqlTransaction* trx)
+        : _trx(trx) {}
 
     bool operator()(std::vector<AqlValue> const&,
                     std::vector<AqlValue> const&) const;
 
     arangodb::AqlTransaction* _trx;
-    std::vector<TRI_document_collection_t const*>& _colls;
   };
 };
 

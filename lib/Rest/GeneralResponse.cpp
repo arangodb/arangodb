@@ -323,7 +323,6 @@ GeneralResponse::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED:
     case TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST:
     case TRI_ERROR_ARANGO_INDEX_HANDLE_BAD:
-    case TRI_ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED:
     case TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE:
     case TRI_ERROR_QUERY_PARSE:
     case TRI_ERROR_QUERY_EMPTY:
@@ -451,13 +450,11 @@ void GeneralResponse::setHeader(std::string const& key,
                                 std::string const& value) {
   std::string k = StringUtils::tolower(key);
 
-  _headers[key] = value;
+  _headers[k] = value;
 }
 
 void GeneralResponse::setHeaderNC(std::string const& key,
                                   std::string const& value) {
-  std::string k = StringUtils::tolower(key);
-
   _headers[key] = value;
 }
 

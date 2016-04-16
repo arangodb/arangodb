@@ -105,9 +105,8 @@ bool RestQueryHandler::readQueryProperties() {
     result.add("maxQueryStringLength",
                VPackValue(queryList->maxQueryStringLength()));
     result.close();
-    VPackSlice slice = result.slice();
 
-    generateResult(slice);
+    generateResult(GeneralResponse::ResponseCode::OK, result.slice());
   } catch (Exception const& err) {
     handleError(err);
   } catch (std::exception const& ex) {
@@ -144,9 +143,8 @@ bool RestQueryHandler::readQuery(bool slow) {
       result.close();
     }
     result.close();
-    VPackSlice s = result.slice();
-
-    generateResult(s);
+    
+    generateResult(GeneralResponse::ResponseCode::OK, result.slice());
   } catch (Exception const& err) {
     handleError(err);
   } catch (std::exception const& ex) {
@@ -199,8 +197,8 @@ bool RestQueryHandler::deleteQuerySlow() {
   result.add("error", VPackValue(false));
   result.add("code", VPackValue((int)GeneralResponse::ResponseCode::OK));
   result.close();
-  VPackSlice slice = result.slice();
-  generateResult(slice);
+    
+  generateResult(GeneralResponse::ResponseCode::OK, result.slice());
 
   return true;
 }
@@ -218,8 +216,8 @@ bool RestQueryHandler::deleteQuery(std::string const& name) {
     result.add("error", VPackValue(false));
     result.add("code", VPackValue((int)GeneralResponse::ResponseCode::OK));
     result.close();
-    VPackSlice slice = result.slice();
-    generateResult(slice);
+  
+    generateResult(GeneralResponse::ResponseCode::OK, result.slice());
   } else {
     generateError(GeneralResponse::ResponseCode::BAD, res, "cannot kill query '" + name + "'");
   }
@@ -258,9 +256,8 @@ bool RestQueryHandler::replaceProperties() {
   }
 
   bool parseSuccess = true;
-  VPackOptions options;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&options, parseSuccess);
+      parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVelocyPackBody
     return true;
@@ -338,9 +335,8 @@ bool RestQueryHandler::parseQuery() {
   }
 
   bool parseSuccess = true;
-  VPackOptions options;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&options, parseSuccess);
+      parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVelocyPackBody
     return true;
@@ -386,19 +382,14 @@ bool RestQueryHandler::parseQuery() {
       }
       result.close();  // bindVars
 
-      auto tmp = VPackParser::fromJson(
-          arangodb::basics::JsonHelper::toString(parseResult.json));
-      result.add("ast", tmp->slice());
+      result.add("ast", parseResult.result->slice());
 
       if (parseResult.warnings != nullptr) {
-        auto tmp = VPackParser::fromJson(
-            arangodb::basics::JsonHelper::toString(parseResult.warnings));
-        result.add("warnings", tmp->slice());
+        result.add("warnings", parseResult.warnings->slice());
       }
     }
 
-    VPackSlice slice = result.slice();
-    generateResult(slice);
+    generateResult(GeneralResponse::ResponseCode::OK, result.slice());
   } catch (Exception const& err) {
     handleError(err);
   } catch (std::exception const& ex) {

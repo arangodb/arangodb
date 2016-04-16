@@ -89,7 +89,7 @@ void TRI_DeleteDocumentFulltextIndex(TRI_fts_index_t* const,
 
 bool TRI_InsertWordsFulltextIndex(TRI_fts_index_t* const,
                                   const TRI_fulltext_doc_t,
-                                  struct TRI_fulltext_wordlist_s*);
+                                  std::vector<std::string>&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find all documents that contain a word (exact match)

@@ -21,7 +21,6 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/JsonHelper.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/TraversalConditionFinder.h"
@@ -33,13 +32,10 @@ using EN = arangodb::aql::ExecutionNode;
 static bool checkPathVariableAccessFeasible(CalculationNode const* cn,
                                             TraversalNode* tn,
                                             Variable const* var,
-                                            bool& conditionIsImpossible,
-                                            Ast* ast) {
+                                            bool& conditionIsImpossible) {
   auto node = cn->expression()->node();
 
-  if (node->containsNodeType(NODE_TYPE_OPERATOR_BINARY_OR) ||
-      node->containsNodeType(NODE_TYPE_OPERATOR_BINARY_IN) ||
-      node->containsNodeType(NODE_TYPE_OPERATOR_BINARY_NIN)) {
+  if (node->containsNodeType(NODE_TYPE_OPERATOR_BINARY_OR)) {
     return false;
   }
 
@@ -59,18 +55,24 @@ static bool checkPathVariableAccessFeasible(CalculationNode const* cn,
         // traversal (-> TraverserExpression::recursiveCheck
         return false;
       }
+      if (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
+          node->type == NODE_TYPE_OPERATOR_BINARY_NIN) {
+        if (!node->getMember(0)->isAttributeAccessForVariable(var, true)) {
+          return false;
+        }
+      }
     }
 
     if (onePath[len - 2]->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      isEdgeAccess = strcmp(onePath[len - 2]->getStringValue(), "edges") == 0;
+      isEdgeAccess = onePath[len - 2]->stringEquals("edges", false);
 
       if (!isEdgeAccess &&
-          strcmp(onePath[len - 2]->getStringValue(), "vertices") != 0) {
+          !onePath[len - 2]->stringEquals("vertices", false)) {
         /* We can't catch all cases in which this error would occur, so we don't
            throw here.
            std::string message("TRAVERSAL: path only knows 'edges' and
            'vertices', not ");
-           message += onePath[len - 2]->getStringValue();
+           message += onePath[len - 2]->getString();
            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, message);
         */
         return false;
@@ -101,8 +103,6 @@ static bool checkPathVariableAccessFeasible(CalculationNode const* cn,
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-
 static bool extractSimplePathAccesses(AstNode const* node, TraversalNode* tn,
                                       Ast* ast) {
   std::vector<AstNode const*> currentPath;
@@ -118,7 +118,7 @@ static bool extractSimplePathAccesses(AstNode const* node, TraversalNode* tn,
 
     TRI_ASSERT(len >= 3);
     if (onePath[len - 2]->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      isEdgeAccess = strcmp(onePath[len - 2]->getStringValue(), "edges") == 0;
+      isEdgeAccess = onePath[len - 2]->stringEquals("edges", false);
     }
     // we now need to check for p.edges[n] whether n is >= 0
     if (onePath[len - 3]->type == NODE_TYPE_INDEXED_ACCESS) {
@@ -139,11 +139,10 @@ static bool extractSimplePathAccesses(AstNode const* node, TraversalNode* tn,
           (oneNode->type == NODE_TYPE_OPERATOR_BINARY_LT) ||
           (oneNode->type == NODE_TYPE_OPERATOR_BINARY_LE) ||
           (oneNode->type == NODE_TYPE_OPERATOR_BINARY_GT) ||
-          (oneNode->type == NODE_TYPE_OPERATOR_BINARY_GE)
-          //  || As long as we need to twist the access, this is impossible:
-          // (oneNode->type == NODE_TYPE_OPERATOR_BINARY_IN ) ||
-          // (oneNode->type == NODE_TYPE_OPERATOR_BINARY_NIN))
-          ) {
+          (oneNode->type == NODE_TYPE_OPERATOR_BINARY_GE) ||
+          (oneNode->type == NODE_TYPE_OPERATOR_BINARY_IN ) ||
+          (oneNode->type == NODE_TYPE_OPERATOR_BINARY_NIN))
+           {
         compareNode = oneNode;
       }
     }
@@ -337,18 +336,21 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
               if (variableType >= 0) {
                 if ((variableType == 2) &&
                     checkPathVariableAccessFeasible(cn, node, conditionVar,
-                                                    conditionIsImpossible,
-                                                    _plan->getAst())) {
+                                                    conditionIsImpossible)) {
                   condition->andCombine(
                       it.second->expression()->node()->clone(_plan->getAst()));
                   foundCondition = true;
                 }
-                if (conditionIsImpossible) break;
+                if (conditionIsImpossible) {
+                  break;
+                }
               }
             }
           }
         }
-        if (conditionIsImpossible) break;
+        if (conditionIsImpossible) {
+          break;
+        }
       }
 
       if (!conditionIsImpossible) {

@@ -223,7 +223,7 @@ function CollectionDocumentSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSaveInvalidDocumentType : function () {
-      [ 1, 2, 3, false, true, null, [ ] ].forEach(function (doc) {
+      [ 1, 2, 3, false, true, null ].forEach(function (doc) {
         try {
           collection.save(doc);
           fail();
@@ -666,32 +666,67 @@ function CollectionDocumentSuite () {
       // string keys
       assertFalse(collection.exists("foo"));
       assertFalse(collection.exists("bar"));
-      assertTrue(collection.exists("baz"));
+      var r = collection.exists("baz");
+      assertTypeOf("object", r);
+      assertTypeOf("string", r._id);
+      assertTypeOf("string", r._key);
+      assertTypeOf("string", r._rev);
 
       assertFalse(collection.exists(cn + "/foo"));
       assertFalse(collection.exists(cn + "/bar"));
-      assertTrue(collection.exists(cn + "/baz"));
+      r = collection.exists(cn + "/baz");
+      assertTypeOf("object", r);
+      assertTypeOf("string", r._id);
+      assertTypeOf("string", r._key);
+      assertTypeOf("string", r._rev);
 
       // object key
-      assertTrue(collection.exists(d1));
+      r = collection.exists(d1);
+      assertTypeOf("object", r);
+      assertTypeOf("string", r._id);
+      assertTypeOf("string", r._key);
+      assertTypeOf("string", r._rev);
       
       var d2 = collection.save({ _key : "2" });
       // string keys
       assertFalse(collection.exists("1"));
-      assertTrue(collection.exists("2"));
+      r = collection.exists("2");
+      assertTypeOf("object", r);
+      assertTypeOf("string", r._id);
+      assertTypeOf("string", r._key);
+      assertTypeOf("string", r._rev);
 
       assertFalse(collection.exists(cn + "/1"));
-      assertTrue(collection.exists(cn + "/2"));
+      r = collection.exists(cn + "/2");
+      assertTypeOf("object", r);
+      assertTypeOf("string", r._id);
+      assertTypeOf("string", r._key);
+      assertTypeOf("string", r._rev);
 
       // object key
-      assertTrue(collection.exists(d2));
+      r = collection.exists(d2);
+      assertTypeOf("object", r);
+      assertTypeOf("string", r._id);
+      assertTypeOf("string", r._key);
+      assertTypeOf("string", r._rev);
 
       // check with revision
       var d3 = collection.replace("2", { });
       // d2 is gone now...
-      assertFalse(collection.exists(d2));
+      try {
+        collection.exists(d2);
+        fail();
+      }
+      catch (err0) {
+        assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err0.errorNum);
+      }
+
       // d3 is still there
-      assertTrue(collection.exists(d3));
+      r = collection.exists(d3);
+      assertTypeOf("object", r);
+      assertTypeOf("string", r._id);
+      assertTypeOf("string", r._key);
+      assertTypeOf("string", r._rev);
 
       // cross-collection query
       try {
@@ -1151,12 +1186,20 @@ function CollectionDocumentSuite () {
 
       var a3 = collection.remove(a1, true);
 
-      assertEqual(a3, true);
+      assertTypeOf("object", a3);
+      assertTypeOf("string", a3._id);
+      assertTypeOf("string", a3._rev);
+      assertTypeOf("string", a3._key);
 
-      var a4 = collection.remove(a1, true);
-
-      assertEqual(a4, false);
+      try {
+        collection.remove(a1, true);
+        fail();
+      }
+      catch (err2) {
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err2.errorNum);
+      }
     },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a document using new signature
 ////////////////////////////////////////////////////////////////////////////////
@@ -1181,12 +1224,19 @@ function CollectionDocumentSuite () {
       }
 
       var a3 = collection.remove(a1, {"overwrite": true});
+      assertTypeOf("object", a3);
+      assertTypeOf("string", a3._id);
+      assertTypeOf("string", a3._rev);
+      assertTypeOf("string", a3._key);
 
-      assertEqual(a3, true);
+      try {
+        collection.remove(a1, {"overwrite": true});
+        fail();
+      }
+      catch (err2) {
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err2.errorNum);
+      }
 
-      var a4 = collection.remove(a1, {"overwrite": true});
-
-      assertEqual(a4, false);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1263,8 +1313,12 @@ function CollectionDocumentSuite () {
       assertTypeOf("string", a1._rev);
 
       var a2 = collection.remove(a1, true, false);
-      assertEqual(a2, true);
+      assertTypeOf("object", a2);
+      assertTypeOf("string", a2._id);
+      assertTypeOf("string", a2._rev);
+      assertTypeOf("string", a2._key);
     },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a document, waitForSync=false , using new signature
 ////////////////////////////////////////////////////////////////////////////////
@@ -1276,7 +1330,10 @@ function CollectionDocumentSuite () {
       assertTypeOf("string", a1._rev);
 
       var a2 = collection.remove(a1, {"overwrite": true, "waitForSync": false});
-      assertEqual(a2, true);
+      assertTypeOf("object", a2);
+      assertTypeOf("string", a2._id);
+      assertTypeOf("string", a2._rev);
+      assertTypeOf("string", a2._key);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1290,8 +1347,12 @@ function CollectionDocumentSuite () {
       assertTypeOf("string", a1._rev);
 
       var a2 = collection.remove(a1, true, true);
-      assertEqual(a2, true);
+      assertTypeOf("object", a2);
+      assertTypeOf("string", a2._id);
+      assertTypeOf("string", a2._rev);
+      assertTypeOf("string", a2._key);
     },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a document, waitForSync=true , using new signature
 ////////////////////////////////////////////////////////////////////////////////
@@ -1303,7 +1364,10 @@ function CollectionDocumentSuite () {
       assertTypeOf("string", a1._rev);
 
       var a2 = collection.remove(a1, {"overwrite": true, "waitForSync": true});
-      assertEqual(a2, true);
+      assertTypeOf("object", a2);
+      assertTypeOf("string", a2._id);
+      assertTypeOf("string", a2._rev);
+      assertTypeOf("string", a2._key);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1499,6 +1563,7 @@ function DatabaseDocumentSuite () {
       }
     },
 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief exists
 ////////////////////////////////////////////////////////////////////////////////
@@ -1523,13 +1588,24 @@ function DatabaseDocumentSuite () {
       // check with revision
       var d3 = collection.replace("2", { });
       // d2 is gone now...
-      assertFalse(db._exists(d2));
+      try {
+        db._exists(d2);
+      }
+      catch (err0) {
+        assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err0.errorNum);
+      }
+
       // d3 is still there
       assertTrue(db._exists(d3));
 
 
       // non existing collection
-      assertFalse(db._exists("UnitTestsNonExistingCollection/1"));
+      try {
+        db._exists("UnitTestsNonExistingCollection/1");
+      }
+      catch (err1) {
+        assertEqual(ERRORS.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, err1.errorNum);
+      }
 
       // invalid key pattern
       try {
@@ -1873,6 +1949,7 @@ function DatabaseDocumentSuite () {
       var a2 = db._replace(a1, { a : 2 });
 
       assertEqual(a1._id, a2._id);
+      assertEqual(a1._key, a2._key);
       assertNotEqual(a1._rev, a2._rev);
 
       try {
@@ -1884,13 +1961,20 @@ function DatabaseDocumentSuite () {
       }
 
       var a3 = db._remove(a1, {"overwrite" : true});
+      assertTypeOf("object", a3);
+      assertTypeOf("string", a3._id);
+      assertTypeOf("string", a3._rev);
+      assertTypeOf("string", a3._key);
 
-      assertEqual(a3, true);
-
-      var a4 = db._remove(a1, {"overwrite" : true});
-
-      assertEqual(a4, false);
+      try {
+        db._remove(a1, {"overwrite" : true});
+        fail();
+      }
+      catch (err2) {
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err2.errorNum);
+      }
     },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a document using new signature of the remove function
 ///       of the remove function
@@ -1917,11 +2001,18 @@ function DatabaseDocumentSuite () {
 
       var a3 = db._remove(a1, {"overwrite" : true});
 
-      assertEqual(a3, true);
+      assertTypeOf("object", a3);
+      assertTypeOf("string", a3._id);
+      assertTypeOf("string", a3._rev);
+      assertTypeOf("string", a3._key);
 
-      var a4 = db._remove(a1, {"overwrite" : true});
-
-      assertEqual(a4, false);
+      try {
+        db._remove(a1, {"overwrite" : true});
+        fail();
+      }
+      catch (err2) {
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err2.errorNum);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1982,6 +2073,301 @@ function DatabaseDocumentSuite () {
   };
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite: returnNew and returnOld options
+////////////////////////////////////////////////////////////////////////////////
+
+function DatabaseDocumentSuiteReturnStuff () {
+  'use strict';
+  var cn = "UnitTestsCollectionBasics";
+  var collection = null;
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      db._drop(cn);
+      collection = db._create(cn, { waitForSync : false });
+
+      collection.load();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      collection.drop();
+      wait(0.0);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create with and without returnNew
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateReturnNew : function () {
+      var res = collection.insert({"Hallo":12});
+      assertTypeOf("object", res);
+      assertEqual(3, Object.keys(res).length);
+      assertTypeOf("string", res._id);
+      assertTypeOf("string", res._key);
+      assertTypeOf("string", res._rev);
+
+      // Now with returnNew: true
+      res = collection.insert({"Hallo":12}, {returnNew: true});
+      assertTypeOf("object", res);
+      assertEqual(4, Object.keys(res).length);
+      assertTypeOf("string", res._id);
+      assertTypeOf("string", res._key);
+      assertTypeOf("string", res._rev);
+      assertTypeOf("object", res["new"]);
+      assertEqual(12, res["new"].Hallo);
+      assertEqual(4, Object.keys(res["new"]).length);
+
+      // Now with returnNew: false
+      res = collection.insert({"Hallo":12}, {returnNew: false});
+      assertTypeOf("object", res);
+      assertEqual(3, Object.keys(res).length);
+      assertTypeOf("string", res._id);
+      assertTypeOf("string", res._key);
+      assertTypeOf("string", res._rev);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove with and without returnOld
+////////////////////////////////////////////////////////////////////////////////
+
+    testRemoveReturnOld : function () {
+      var res = collection.insert({"Hallo":12});
+      var res2 = collection.remove(res._key);
+
+      assertTypeOf("object", res2);
+      assertEqual(3, Object.keys(res2).length);
+      assertTypeOf("string", res2._id);
+      assertTypeOf("string", res2._key);
+      assertTypeOf("string", res2._rev);
+
+      // Now with returnOld: true
+      res = collection.insert({"Hallo":12});
+      res2 = collection.remove(res._key, {returnOld: true});
+      assertTypeOf("object", res2);
+      assertEqual(4, Object.keys(res2).length);
+      assertTypeOf("string", res2._id);
+      assertTypeOf("string", res2._key);
+      assertTypeOf("string", res2._rev);
+      assertTypeOf("object", res2.old);
+      assertEqual(12, res2.old.Hallo);
+      assertEqual(4, Object.keys(res2.old).length);
+
+      // Now with returnOld: false
+      res = collection.insert({"Hallo":12});
+      res2 = collection.remove(res._key, {returnOld: false});
+      assertTypeOf("object", res2);
+      assertEqual(3, Object.keys(res2).length);
+      assertTypeOf("string", res2._id);
+      assertTypeOf("string", res2._key);
+      assertTypeOf("string", res2._rev);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replace with and without returnOld and returnNew
+////////////////////////////////////////////////////////////////////////////////
+
+    testReplaceReturnOldNew : function () {
+      var res = collection.insert({"Hallo":12});
+      var res2 = collection.replace(res._key,{"Hallo":13});
+
+      assertTypeOf("object", res2);
+      assertEqual(4, Object.keys(res2).length);
+      assertTypeOf("string", res2._id);
+      assertTypeOf("string", res2._key);
+      assertTypeOf("string", res2._rev);
+
+      // Now with returnOld: true
+      res = collection.insert({"Hallo":12});
+      res2 = collection.replace(res._key, {"Hallo":13}, {returnOld: true});
+      assertTypeOf("object", res2);
+      assertEqual(5, Object.keys(res2).length);
+      assertTypeOf("string", res2._id);
+      assertTypeOf("string", res2._key);
+      assertTypeOf("string", res2._rev);
+      assertTypeOf("object", res2.old);
+      assertEqual(12, res2.old.Hallo);
+      assertEqual(4, Object.keys(res2.old).length);
+
+      // Now with returnOld: false
+      res = collection.insert({"Hallo":12});
+      res2 = collection.replace(res._key, {"Hallo":14}, {returnOld: false});
+      assertTypeOf("object", res2);
+      assertEqual(4, Object.keys(res2).length);
+      assertTypeOf("string", res2._id);
+      assertTypeOf("string", res2._key);
+      assertTypeOf("string", res2._rev);
+
+      // Now with returnNew: true
+      res = collection.insert({"Hallo":12});
+      res2 = collection.replace(res._key, {"Hallo":14}, {returnNew: true});
+      assertTypeOf("object", res2);
+      assertEqual(5, Object.keys(res2).length);
+      assertTypeOf("string", res2._id);
+      assertTypeOf("string", res2._key);
+      assertTypeOf("string", res2._rev);
+      assertTypeOf("object", res2["new"]);
+      assertEqual(14, res2["new"].Hallo);
+      assertEqual(4, Object.keys(res2["new"]).length);
+
+      // Now with returnOld: false
+      res = collection.insert({"Hallo":12});
+      res2 = collection.replace(res._key, {"Hallo":15}, {returnNew: false});
+      assertTypeOf("object", res2);
+      assertEqual(4, Object.keys(res2).length);
+      assertTypeOf("string", res2._id);
+      assertTypeOf("string", res2._key);
+      assertTypeOf("string", res2._rev);
+
+      // Now with returnNew: true and returnOld:true
+      res = collection.insert({"Hallo":12});
+      res2 = collection.replace(res._key, {"Hallo":16},
+                                {returnNew: true, returnOld: true});
+      assertTypeOf("object", res2);
+      assertEqual(6, Object.keys(res2).length);
+      assertTypeOf("string", res2._id);
+      assertTypeOf("string", res2._key);
+      assertTypeOf("string", res2._rev);
+      assertTypeOf("object", res2.old);
+      assertTypeOf("object", res2["new"]);
+      assertEqual(16, res2["new"].Hallo);
+      assertEqual(12, res2.old.Hallo);
+      assertEqual(4, Object.keys(res2["new"]).length);
+      assertEqual(4, Object.keys(res2.old).length);
+
+      // Now with returnOld: false and returnNew: false
+      res = collection.insert({"Hallo":12});
+      res2 = collection.replace(res._key, {"Hallo":15},
+                                {returnNew: false, returnOld: false});
+      assertTypeOf("object", res2);
+      assertEqual(4, Object.keys(res2).length);
+      assertTypeOf("string", res2._id);
+      assertTypeOf("string", res2._key);
+      assertTypeOf("string", res2._rev);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update with and without returnOld and returnNew
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateReturnOldNew : function () {
+      var res = collection.insert({"Hallo":12});
+      var res2 = collection.update(res._key,{"Hallo":13});
+
+      assertTypeOf("object", res2);
+      assertEqual(4, Object.keys(res2).length);
+      assertTypeOf("string", res2._id);
+      assertTypeOf("string", res2._key);
+      assertTypeOf("string", res2._rev);
+
+      // Now with returnOld: true
+      res = collection.insert({"Hallo":12});
+      res2 = collection.update(res._key, {"Hallo":13}, {returnOld: true});
+      assertTypeOf("object", res2);
+      assertEqual(5, Object.keys(res2).length);
+      assertTypeOf("string", res2._id);
+      assertTypeOf("string", res2._key);
+      assertTypeOf("string", res2._rev);
+      assertTypeOf("object", res2.old);
+      assertEqual(12, res2.old.Hallo);
+      assertEqual(4, Object.keys(res2.old).length);
+
+      // Now with returnOld: false
+      res = collection.insert({"Hallo":12});
+      res2 = collection.update(res._key, {"Hallo":14}, {returnOld: false});
+      assertTypeOf("object", res2);
+      assertEqual(4, Object.keys(res2).length);
+      assertTypeOf("string", res2._id);
+      assertTypeOf("string", res2._key);
+      assertTypeOf("string", res2._rev);
+
+      // Now with returnNew: true
+      res = collection.insert({"Hallo":12});
+      res2 = collection.update(res._key, {"Hallo":14}, {returnNew: true});
+      assertTypeOf("object", res2);
+      assertEqual(5, Object.keys(res2).length);
+      assertTypeOf("string", res2._id);
+      assertTypeOf("string", res2._key);
+      assertTypeOf("string", res2._rev);
+      assertTypeOf("object", res2["new"]);
+      assertEqual(14, res2["new"].Hallo);
+      assertEqual(4, Object.keys(res2["new"]).length);
+
+      // Now with returnOld: false
+      res = collection.insert({"Hallo":12});
+      res2 = collection.update(res._key, {"Hallo":15}, {returnNew: false});
+      assertTypeOf("object", res2);
+      assertEqual(4, Object.keys(res2).length);
+      assertTypeOf("string", res2._id);
+      assertTypeOf("string", res2._key);
+      assertTypeOf("string", res2._rev);
+
+      // Now with returnNew: true and returnOld:true
+      res = collection.insert({"Hallo":12});
+      res2 = collection.update(res._key, {"Hallo":16},
+                                {returnNew: true, returnOld: true});
+      assertTypeOf("object", res2);
+      assertEqual(6, Object.keys(res2).length);
+      assertTypeOf("string", res2._id);
+      assertTypeOf("string", res2._key);
+      assertTypeOf("string", res2._rev);
+      assertTypeOf("object", res2.old);
+      assertTypeOf("object", res2["new"]);
+      assertEqual(16, res2["new"].Hallo);
+      assertEqual(12, res2.old.Hallo);
+      assertEqual(4, Object.keys(res2["new"]).length);
+      assertEqual(4, Object.keys(res2.old).length);
+
+      // Now with returnOld: false and returnNew: false
+      res = collection.insert({"Hallo":12});
+      res2 = collection.update(res._key, {"Hallo":15},
+                                {returnNew: false, returnOld: false});
+      assertTypeOf("object", res2);
+      assertEqual(4, Object.keys(res2).length);
+      assertTypeOf("string", res2._id);
+      assertTypeOf("string", res2._key);
+      assertTypeOf("string", res2._rev);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test new features from 3.0
+////////////////////////////////////////////////////////////////////////////////
+
+/* Not Functional in arangosh connected to coordinator.
+    testNewFeatures : function () {
+      if (! require("@arangodb/cluster").isCluster()) {
+        var x = collection.insert({Hallo: 12}, { silent: true });
+        assertEqual(true, x);
+        x = collection.insert([{Hallo: 13}], { silent: true });
+        assertEqual(true, x);
+        x = collection.insert({Hallo:14});
+        var y = collection.replace(x._key, {Hallo:15}, { silent: true });
+        assertEqual(true, y);
+        y = db._replace(x._id, {Hallo: 16}, {silent: true});
+        assertEqual(true, y);
+        y = collection.update(x._key, {Hallo:17}, { silent: true });
+        assertEqual(true, y);
+        y = db._update(x._id, {Hallo:18}, { silent: true });
+        assertEqual(true, y);
+        y = collection.remove(x._key, { silent: true });
+        assertEqual(true, y);
+        x = collection.insert({Hallo:19});
+        y = db._remove(x._id, {silent: true});
+        assertEqual(true, y);
+      }
+    }
+*/
+  };
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
@@ -1992,6 +2378,8 @@ jsunity.run(CollectionDocumentSuite);
 
 jsunity.run(DatabaseDocumentSuiteErrorHandling);
 jsunity.run(DatabaseDocumentSuite);
+
+jsunity.run(DatabaseDocumentSuiteReturnStuff);
 
 return jsunity.done();
 

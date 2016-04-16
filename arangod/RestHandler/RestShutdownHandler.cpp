@@ -45,10 +45,9 @@ HttpHandler::status_t RestShutdownHandler::execute() {
   ApplicationServer::server->beginShutdown();
 
   try {
-    VPackBuilder json;
-    json.add(VPackValue("OK"));
-    VPackSlice slice(json.start());
-    generateResult(slice);
+    VPackBuilder result;
+    result.add(VPackValue("OK"));
+    generateResult(GeneralResponse::ResponseCode::OK, result.slice());
   } catch (...) {
     // Ignore the error
   }

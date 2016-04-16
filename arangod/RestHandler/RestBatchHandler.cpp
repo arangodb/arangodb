@@ -102,12 +102,12 @@ HttpHandler::status_t RestBatchHandler::execute() {
     size_t const partLength = helper.foundLength;
 
     char const* headerStart = partStart;
-    char* bodyStart = nullptr;
+    char const* bodyStart = nullptr;
     size_t headerLength = 0;
     size_t bodyLength = 0;
 
     // assume Windows linebreak \r\n\r\n as delimiter
-    char* p = strstr((char*)headerStart, "\r\n\r\n");
+    char const* p = strstr(headerStart, "\r\n\r\n");
 
     if (p != nullptr && p + 4 <= partEnd) {
       headerLength = p - partStart;
@@ -115,7 +115,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
       bodyLength = partEnd - bodyStart;
     } else {
       // test Unix linebreak
-      p = strstr((char*)headerStart, "\n\n");
+      p = strstr(headerStart, "\n\n");
 
       if (p != nullptr && p + 2 <= partEnd) {
         headerLength = p - partStart;
@@ -154,14 +154,14 @@ HttpHandler::status_t RestBatchHandler::execute() {
       request->setBody(bodyStart, bodyLength);
     }
 
-    if (authorization.size()) {
+    if (!authorization.empty()) {
       // inject Authorization header of multipart message into part message
       request->setHeader("authorization", authorization);
     }
 
     HttpHandler* handler = _server->createHandler(request);
 
-    if (!handler) {
+    if (handler == nullptr) {
       delete request;
 
       generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_INTERNAL,
@@ -191,7 +191,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
         return status_t(HttpHandler::HANDLER_FAILED);
       }
 
-      const GeneralResponse::ResponseCode code = partResponse->responseCode();
+      GeneralResponse::ResponseCode const code = partResponse->responseCode();
 
       // count everything above 400 as error
       if (int(code) >= 400) {

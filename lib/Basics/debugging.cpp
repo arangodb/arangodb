@@ -92,9 +92,9 @@ static char* MakeValue(char const* value) {
 void TRI_SegfaultDebugging(char const* message) {
   LOG(WARN) << "" << message << ": summon Baal!";
   // make sure the latest log messages are flushed
-  Logger::shutdown(true);
+  TRI_FlushDebugging();
 
-// and now crash
+  // and now crash
 #ifndef __APPLE__
   // on MacOS, the following statement makes the server hang but not crash
   *((char*)-1) = '!';
@@ -204,11 +204,7 @@ void TRI_RemoveFailurePointDebugging(char const* value) {
   char* checkValue = MakeValue(value);
 
   if (checkValue != nullptr) {
-    char* found;
-    char* copy;
-    size_t n;
-
-    found = strstr(FailurePoints, checkValue);
+    char* found = strstr(FailurePoints, checkValue);
 
     if (found == nullptr) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, checkValue);
@@ -223,7 +219,7 @@ void TRI_RemoveFailurePointDebugging(char const* value) {
       return;
     }
 
-    copy = static_cast<char*>(
+    char* copy = static_cast<char*>(
         TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
                      strlen(FailurePoints) - strlen(checkValue) + 2, false));
 
@@ -233,7 +229,7 @@ void TRI_RemoveFailurePointDebugging(char const* value) {
     }
 
     // copy start of string
-    n = found - FailurePoints;
+    size_t n = found - FailurePoints;
     memcpy(copy, FailurePoints, n);
 
     // copy remainder of string

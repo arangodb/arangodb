@@ -247,8 +247,7 @@ HttpHandler::status_t RestAdminLogHandler::execute() {
 
     result.close();  // Close the result object
 
-    VPackSlice slice = result.slice();
-    generateResult(slice);
+    generateResult(GeneralResponse::ResponseCode::OK, result.slice());
   } catch (...) {
     // Not Enough memory to build everything up
     // Has been ignored thus far

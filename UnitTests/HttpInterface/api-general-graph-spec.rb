@@ -573,7 +573,7 @@ describe ArangoDB do
         oldTag.should eq(doc.headers['etag'])
         type = "divorced"
 
-        doc = replace_edge(graph_name, friend_collection, key, {"type2" => type}) 
+        doc = replace_edge(graph_name, friend_collection, key, {"type2" => type, "_from" => v1, "_to" => v2}) 
         doc.code.should eq(202)
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(202)

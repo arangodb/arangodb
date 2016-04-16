@@ -22,8 +22,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "State.h"
+#include "Aql/Query.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Utils/OperationOptions.h"
+#include "Utils/OperationResult.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "Utils/StandaloneTransactionContext.h"
+#include "VocBase/collection.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Buffer.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <chrono>
@@ -34,14 +43,18 @@
 using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
 using namespace arangodb::rest;
+using namespace arangodb;
 
 State::State(std::string const& end_point)
-    : _end_point(end_point),
+    : _vocbase(nullptr),
+      _applicationV8(nullptr),
+      _queryRegistry(nullptr),
+      _end_point(end_point),
       _collections_checked(false),
       _collections_loaded(false) {
   std::shared_ptr<Buffer<uint8_t>> buf = std::make_shared<Buffer<uint8_t>>();
-  arangodb::velocypack::Slice tmp("\x00a", &Options::Defaults);
-  buf->append(reinterpret_cast<char const*>(tmp.begin()), tmp.byteSize());
+  VPackSlice value = arangodb::basics::VelocyPackHelper::EmptyObjectValue();
+  buf->append(value.startAs<char const>(), value.byteSize());
   if (!_log.size()) {
     _log.push_back(log_t(index_t(0), term_t(0), id_t(0), buf));
   }
@@ -51,9 +64,6 @@ State::~State() {}
 
 bool State::persist(index_t index, term_t term, id_t lid,
                     arangodb::velocypack::Slice const& entry) {
-  static std::string const path = "/_api/document?collection=log";
-  std::map<std::string, std::string> headerFields;
-
   Builder body;
   body.add(VPackValue(VPackValueType::Object));
   std::ostringstream i_str;
@@ -61,44 +71,35 @@ bool State::persist(index_t index, term_t term, id_t lid,
   body.add("_key", Value(i_str.str()));
   body.add("term", Value(term));
   body.add("leader", Value((uint32_t)lid));
-  body.add("request", entry[0]);
+  body.add("request", entry);
   body.close();
 
-  std::unique_ptr<arangodb::ClusterCommResult> res =
-      arangodb::ClusterComm::instance()->syncRequest(
-          "1", 1, _end_point, GeneralRequest::RequestType::POST, path,
-          body.toJson(), headerFields, 0.0);
-
-  if (res->status != CL_COMM_SENT) {
-    LOG_TOPIC(ERR, Logger::AGENCY) << res->status << ": " << CL_COMM_SENT
-                                   << ", " << res->errorMessage;
-    LOG_TOPIC(ERR, Logger::AGENCY)
-        << res->result->getBodyVelocyPack()->toJson();
-  }
-
-  return (res->status == CL_COMM_SENT);  // TODO: More verbose result
-}
-
-bool State::persist (term_t t, id_t i) {
+  TRI_ASSERT(_vocbase != nullptr);
+  auto transactionContext =
+    std::make_shared<StandaloneTransactionContext>(_vocbase);
+  SingleCollectionTransaction trx (
+    transactionContext, "log", TRI_TRANSACTION_WRITE);
   
-  return true;  
+  int res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+  
+  OperationResult result = trx.insert("log", body.slice(), _options);
+  res = trx.finish(result.code);
+
+  return (res == TRI_ERROR_NO_ERROR);
 }
 
 //Leader
 std::vector<index_t> State::log (
   query_t const& query, std::vector<bool> const& appl, term_t term, id_t lid) {
-  if (!checkCollections()) {
-    createCollections();
-  }
-  if (!_collections_loaded) {
-    loadCollections();
-    _collections_loaded = true;
-  }
 
-  // TODO: Check array
   std::vector<index_t> idx(appl.size());
   std::vector<bool> good = appl;
   size_t j = 0;
+  
   MUTEX_LOCKER(mutexLocker, _logLock);  // log entries must stay in order
   for (auto const& i : VPackArrayIterator(query->slice())) {
     if (good[j]) {
@@ -107,7 +108,7 @@ std::vector<index_t> State::log (
       buf->append((char const*)i[0].begin(), i[0].byteSize());
       idx[j] = _log.back().index + 1;
       _log.push_back(log_t(idx[j], term, lid, buf));  // log to RAM
-      persist(idx[j], term, lid, i);                  // log to disk
+      persist(idx[j], term, lid, i[0]);                  // log to disk
       ++j;
     }
   }
@@ -115,7 +116,6 @@ std::vector<index_t> State::log (
 }
 
 // Follower
-#include <iostream>
 bool State::log(query_t const& queries, term_t term, id_t lid,
                 index_t prevLogIndex, term_t prevLogTerm) {  // TODO: Throw exc
   if (queries->slice().type() != VPackValueType::Array) {
@@ -129,19 +129,21 @@ bool State::log(query_t const& queries, term_t term, id_t lid,
       buf->append((char const*)i.get("query").begin(),
                   i.get("query").byteSize());
       _log.push_back(log_t(i.get("index").getUInt(), term, lid, buf));
+      persist(i.get("index").getUInt(), term, lid, i.get("query")); // to disk
     } catch (std::exception const& e) {
-      LOG(FATAL) << e.what();
+      LOG(ERR) << e.what();
     }
-    // save (builder);
+  
   }
   return true;
 }
 
+// Get log entries from indices "start" to "end"
 std::vector<log_t> State::get(index_t start, index_t end) const {
   std::vector<log_t> entries;
   MUTEX_LOCKER(mutexLocker, _logLock);
   if (end == (std::numeric_limits<uint64_t>::max)()) end = _log.size() - 1;
-  for (size_t i = start; i <= end; ++i) {  // TODO:: Check bounds
+  for (size_t i = start; i <= end; ++i) {  
     entries.push_back(_log[i]);
   }
   return entries;
@@ -190,75 +192,104 @@ bool State::createCollections() {
 
 bool State::checkCollection(std::string const& name) {
   if (!_collections_checked) {
-    std::string path(std::string("/_api/collection/") + name +
-                     std::string("/properties"));
-    std::map<std::string, std::string> headerFields;
-    std::unique_ptr<arangodb::ClusterCommResult> res =
-        arangodb::ClusterComm::instance()->syncRequest(
-            "1", 1, _end_point, GeneralRequest::RequestType::GET, path, "",
-            headerFields, 1.0);
-    return (!res->result->wasHttpError());
+    return (
+      TRI_LookupCollectionByNameVocBase(_vocbase, name.c_str()) != nullptr);
   }
   return true;
 }
 
 bool State::createCollection(std::string const& name) {
-  static std::string const path = "/_api/collection";
-  std::map<std::string, std::string> headerFields;
   Builder body;
   body.add(VPackValue(VPackValueType::Object));
-  body.add("name", Value(name));
   body.close();
-  std::unique_ptr<arangodb::ClusterCommResult> res =
-      arangodb::ClusterComm::instance()->syncRequest(
-          "1", 1, _end_point, GeneralRequest::RequestType::POST, path,
-          body.toJson(), headerFields, 1.0);
-  return (!res->result->wasHttpError());
+
+  VocbaseCollectionInfo parameters(_vocbase, name.c_str(),
+                                   TRI_COL_TYPE_DOCUMENT, body.slice());
+  TRI_vocbase_col_t const* collection =
+      TRI_CreateCollectionVocBase(_vocbase, parameters, parameters.id(), true);
+  
+  if (collection == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_errno(), "cannot create collection");
+  }
+
+  return true;
+
 }
 
-bool State::loadCollections() {
+bool State::loadCollections(TRI_vocbase_t* vocbase, ApplicationV8* applicationV8, 
+                            aql::QueryRegistry* queryRegistry, bool waitForSync) {
+  _vocbase = vocbase;
+  _applicationV8 = applicationV8;
+  _queryRegistry = queryRegistry;
+
+  _options.waitForSync = waitForSync;
+  _options.silent = true;
+
   return loadCollection("log");
 }
 
 bool State::loadCollection(std::string const& name) {
+  TRI_ASSERT(_vocbase != nullptr);
+  
   if (checkCollection(name)) {
-    // Path
-    std::string path("/_api/cursor");
+    auto bindVars = std::make_shared<VPackBuilder>();
+    bindVars->openObject();
+    bindVars->close();
+    // ^^^ TODO: check if bindvars are actually needed
+    
+    TRI_ASSERT(_applicationV8 != nullptr);
+    TRI_ASSERT(_queryRegistry != nullptr);
+    std::string const aql(std::string("FOR l IN ") + name
+                          + " SORT l._key RETURN l");
+    arangodb::aql::Query query(_applicationV8, false, _vocbase,
+                               aql.c_str(), aql.size(), bindVars, nullptr,
+                               arangodb::aql::PART_MAIN);
+    
+    auto queryResult = query.execute(_queryRegistry);
 
-    // Body
-    Builder tmp;
-    tmp.openObject();
-    tmp.add("query", Value(std::string("FOR l IN ") + name +
-                           std::string(" SORT l._key RETURN l")));
-    tmp.close();
-
-    // Request
-    std::map<std::string, std::string> headerFields;
-    std::unique_ptr<arangodb::ClusterCommResult> res =
-        arangodb::ClusterComm::instance()->syncRequest(
-            "1", 1, _end_point, GeneralRequest::RequestType::POST, path,
-            tmp.toJson(), headerFields, 1.0);
-
-    // If success rebuild state deque
-    if (res->status == CL_COMM_SENT) {
-      std::shared_ptr<Builder> body = res->result->getBodyVelocyPack();
-      if (body->slice().hasKey("result")) {
-        for (auto const& i : VPackArrayIterator(body->slice().get("result"))) {
-          buffer_t tmp =
+    if (queryResult.code != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+    }
+  
+    VPackSlice result = queryResult.result->slice();
+        
+    if (result.isArray()) {
+      for (auto const& i : VPackArrayIterator(result)) {
+        buffer_t tmp =
               std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
-          tmp->append((char const*)i.get("request").begin(),
-                      i.get("request").byteSize());
-          _log.push_back(log_t(std::stoi(i.get("_key").copyString()),
-                               i.get("term").getUInt(),
-                               i.get("leader").getUInt(), tmp));
-        }
+        VPackSlice req = i.get("request");
+        tmp->append(req.startAs<char const>(), req.byteSize());
+        _log.push_back(
+          log_t(std::stoi(i.get(TRI_VOC_ATTRIBUTE_KEY).copyString()),
+                i.get("term").getUInt(),
+                i.get("leader").getUInt(), tmp));
       }
     }
-    return true;
-  } else {
-    LOG_TOPIC (INFO, Logger::AGENCY) << "Couldn't find persisted log";
-    createCollections();
 
+    return true;
+  } 
+  
+  LOG_TOPIC (INFO, Logger::AGENCY) << "Couldn't find persisted log";
+  createCollections();
+
+  return false;
+}
+
+bool State::find (index_t prevIndex, term_t prevTerm) {
+  MUTEX_LOCKER(mutexLocker, _logLock);
+  if (prevIndex > _log.size()) {
     return false;
   }
+  return _log.at(prevIndex).term == prevTerm;
+}
+
+bool State::compact () {
+
+  // get read db at lastcommit % n == 0
+  // save read db with key 10
+  // update offset in logs
+  // delete
+
+  return true;
+  
 }

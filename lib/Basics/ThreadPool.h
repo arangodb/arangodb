@@ -28,7 +28,6 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
 
-#include <functional>
 #include <deque>
 
 namespace arangodb {

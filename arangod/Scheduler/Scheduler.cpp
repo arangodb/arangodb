@@ -389,7 +389,7 @@ void Scheduler::setProcessorAffinity(size_t i, size_t c) {
 Task* Scheduler::lookupTaskById(uint64_t taskId) {
   MUTEX_LOCKER(mutexLocker, schedulerLock);
 
-  auto&& task = taskRegistered.find(taskId);
+  auto task = taskRegistered.find(taskId);
 
   if (task == taskRegistered.end()) {
     return nullptr;
@@ -405,7 +405,7 @@ Task* Scheduler::lookupTaskById(uint64_t taskId) {
 EventLoop Scheduler::lookupLoopById(uint64_t taskId) {
   MUTEX_LOCKER(mutexLocker, schedulerLock);
 
-  auto&& task = taskRegistered.find(taskId);
+  auto task = taskRegistered.find(taskId);
 
   if (task == taskRegistered.end()) {
     return static_cast<EventLoop>(nrThreads);

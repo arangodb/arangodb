@@ -94,8 +94,8 @@
         if (base.indexOf("#collection") === 0) {
           base = "#collections";
         }
-        if (base.indexOf("#application") === 0) {
-          base = "#applications";
+        if (base.indexOf("#service") === 0) {
+          base = "#services";
         }
         url += base;
       }

@@ -21,13 +21,13 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/ExecutionEngine.h"
-#include "Aql/CollectOptions.h"
+#include "ExecutionEngine.h"
 #include "Aql/BasicBlocks.h"
 #include "Aql/CalculationBlock.h"
 #include "Aql/ClusterBlocks.h"
 #include "Aql/CollectBlock.h"
 #include "Aql/CollectNode.h"
+#include "Aql/CollectOptions.h"
 #include "Aql/EnumerateCollectionBlock.h"
 #include "Aql/EnumerateListBlock.h"
 #include "Aql/ExecutionBlock.h"
@@ -41,18 +41,16 @@
 #include "Aql/TraversalBlock.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/Exceptions.h"
-#include "Logger/Logger.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterComm.h"
+#include "Logger/Logger.h"
 #include "VocBase/server.h"
 
 using namespace arangodb::aql;
 
 using Json = arangodb::basics::Json;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function to create a block
-////////////////////////////////////////////////////////////////////////////////
-
 static ExecutionBlock* CreateBlock(
     ExecutionEngine* engine, ExecutionNode const* en,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache) {
@@ -164,10 +162,7 @@ static ExecutionBlock* CreateBlock(
   return nullptr;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the engine
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionEngine::ExecutionEngine(Query* query)
     : _stats(),
       _blocks(),
@@ -180,10 +175,7 @@ ExecutionEngine::ExecutionEngine(Query* query)
   _blocks.reserve(8);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the engine, frees all assigned blocks
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionEngine::~ExecutionEngine() {
   try {
     shutdown(TRI_ERROR_INTERNAL);
@@ -422,10 +414,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
   ~CoordinatorInstanciator() {}
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief generatePlanForOneShard
-  //////////////////////////////////////////////////////////////////////////////
-
   void generatePlanForOneShard(VPackBuilder& builder, size_t nr,
                                EngineInfo const& info, QueryId& connectedId,
                                std::string const& shardId, bool verbose) {
@@ -463,10 +452,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     return plan.root()->toVelocyPack(builder, verbose);
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief distributePlanToShard, send a single plan to one shard
-  //////////////////////////////////////////////////////////////////////////////
-
   void distributePlanToShard(arangodb::CoordTransactionID& coordTransactionID,
                              EngineInfo const& info, Collection* collection,
                              QueryId& connectedId, std::string const& shardId,
@@ -486,8 +472,10 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         "type", Json(TRI_TransactionTypeGetStr(collection->accessType))));
 
     jsonNodesList.set("collections", jsonCollectionsList);
-    jsonNodesList.set("variables",
-                      query->ast()->variables()->toJson(TRI_UNKNOWN_MEM_ZONE));
+
+    VPackBuilder tmp;
+    query->ast()->variables()->toVelocyPack(tmp);
+    jsonNodesList.set("variables", arangodb::basics::VelocyPackHelper::velocyPackToJson(tmp.slice()));
 
     result.set("plan", jsonNodesList);
     if (info.part == arangodb::aql::PART_MAIN) {
@@ -524,10 +512,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
                                 url, body, headers, nullptr, 30.0);
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief aggregateQueryIds, get answers for all shards in a Scatter/Gather
-  //////////////////////////////////////////////////////////////////////////////
-
   void aggregateQueryIds(EngineInfo const& info, arangodb::ClusterComm*& cc,
                          arangodb::CoordTransactionID& coordTransactionID,
                          Collection* collection) {
@@ -585,10 +570,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     }
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief distributePlansToShards, for a single Scatter/Gather block
-  //////////////////////////////////////////////////////////////////////////////
-
   void distributePlansToShards(EngineInfo const& info, QueryId connectedId) {
     // std::cout << "distributePlansToShards: " << info.id << std::endl;
     Collection* collection = info.getCollection();
@@ -617,10 +599,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     aggregateQueryIds(info, cc, coordTransactionID, collection);
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief buildEngineCoordinator, for a single piece
-  //////////////////////////////////////////////////////////////////////////////
-
   ExecutionEngine* buildEngineCoordinator(EngineInfo& info) {
     Query* localQuery = query;
     bool needToClone = info.id > 0;  // use the original for the main part
@@ -735,10 +714,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     }
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief buildEngines, build engines on DBservers and coordinator
-  //////////////////////////////////////////////////////////////////////////////
-
   ExecutionEngine* buildEngines() {
     ExecutionEngine* engine = nullptr;
     QueryId id = 0;
@@ -790,10 +766,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     return engine;
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief before method for collection of pieces phase
-  //////////////////////////////////////////////////////////////////////////////
-
   virtual bool before(ExecutionNode* en) override final {
     auto const nodeType = en->getType();
 
@@ -825,10 +798,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     return false;
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief after method for collection of pieces phase
-  //////////////////////////////////////////////////////////////////////////////
-
   virtual void after(ExecutionNode* en) override final {
     auto const nodeType = en->getType();
 
@@ -843,10 +813,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution engine from a plan
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionEngine* ExecutionEngine::instantiateFromPlan(
     QueryRegistry* queryRegistry, Query* query, ExecutionPlan* plan,
     bool planRegisters) {
@@ -1047,10 +1014,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief add a block to the engine
-////////////////////////////////////////////////////////////////////////////////
-
 void ExecutionEngine::addBlock(ExecutionBlock* block) {
   TRI_ASSERT(block != nullptr);
 

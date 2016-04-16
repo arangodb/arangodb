@@ -47,49 +47,34 @@ class SortBlock : public ExecutionBlock {
 
   int initializeCursor(AqlItemBlock* items, size_t pos) override final;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief dosorting
-  //////////////////////////////////////////////////////////////////////////////
-
  private:
   void doSorting();
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief OurLessThan
-  //////////////////////////////////////////////////////////////////////////////
-
   class OurLessThan {
    public:
     OurLessThan(arangodb::AqlTransaction* trx,
                 std::deque<AqlItemBlock*>& buffer,
-                std::vector<std::pair<RegisterId, bool>>& sortRegisters,
-                std::vector<TRI_document_collection_t const*>& colls)
+                std::vector<std::pair<RegisterId, bool>>& sortRegisters)
         : _trx(trx),
           _buffer(buffer),
-          _sortRegisters(sortRegisters),
-          _colls(colls) {}
+          _sortRegisters(sortRegisters) {}
 
     bool operator()(std::pair<size_t, size_t> const& a,
-                    std::pair<size_t, size_t> const& b);
+                    std::pair<size_t, size_t> const& b) const;
 
    private:
     arangodb::AqlTransaction* _trx;
     std::deque<AqlItemBlock*>& _buffer;
     std::vector<std::pair<RegisterId, bool>>& _sortRegisters;
-    std::vector<TRI_document_collection_t const*>& _colls;
   };
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief pairs, consisting of variable and sort direction
   /// (true = ascending | false = descending)
-  //////////////////////////////////////////////////////////////////////////////
-
   std::vector<std::pair<RegisterId, bool>> _sortRegisters;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the sort should be stable
-  //////////////////////////////////////////////////////////////////////////////
-
   bool _stable;
 };
 

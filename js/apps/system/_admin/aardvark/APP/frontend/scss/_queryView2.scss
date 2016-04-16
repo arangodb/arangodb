@@ -27,6 +27,8 @@
 
   .bindParamEditorWrapper,
   .aqlEditorWrapper {
+
+    background-color: $c-white;
     overflow: hidden;
 
     .stringtype {
@@ -51,7 +53,7 @@
 
     table {
       border-top: 0;
-      font: 13px/normal Monaco,Menlo,'Ubuntu Mono',Consolas,source-code-pro,monospace;
+      font-family: 'Lato', sans-serif;
 
       tbody {
         display: block;
@@ -72,7 +74,7 @@
         }
 
         &.selected {
-          background-color: $c-positive;
+          background-color: rgba(125, 188, 66, .64);
           color: $c-white;
 
           .spanWrapper {
@@ -107,7 +109,7 @@
 
           .fa {
             cursor: pointer;
-            font-size: 18pt;
+            font-size: 16pt;
             margin-left: 5px;
             margin-right: 5px;
           }
@@ -125,7 +127,7 @@
           @extend %inputs;
           clear: both;
           float: right;
-          font: 13px/normal Monaco,Menlo,'Ubuntu Mono',Consolas,source-code-pro,monospace !important;
+          font-family: 'Lato', sans-serif;
           height: 17px;
           margin-bottom: 3px;
           margin-top: 3px;
@@ -134,7 +136,8 @@
       }
 
       th {
-        font: 13px/normal 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+        font-family: 'Lato', sans-serif;
+        font-weight: 400;
         height: 34px;
         padding: 0;
         width: 50%;
@@ -145,6 +148,27 @@
   .aqlEditorWrapper,
   .bindParamEditorWrapper {
     height: 100%;
+
+    table {
+      thead {
+        tr {
+          th {
+            text-align: left;
+          }
+
+          th:first-child {
+            padding-left: 10px;
+          }
+
+        }
+      }
+
+      tbody {
+        input {
+          width: 100% !important;
+        }
+      }
+    }
 
     .selectError {
       background: $c-negative;
@@ -186,7 +210,7 @@
       .previewBar {
         background-color: $c-white;
         border-bottom: 1px solid $c-content-border;
-        font: 13px/normal 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+        font-family: 'Lato', sans-serif;
         height: 34px;
 
         span {
@@ -220,6 +244,15 @@
   clear: both;
   margin-top: 0;
   width: 100%;
+
+  .arangoToolbar {
+    .fa {
+      &.fa-star,
+      &.fa-star-o {
+        color: $c-yellow;
+      }
+    }
+  }
 }
 
 .outputEditors {
@@ -262,4 +295,17 @@
     }
   }
 
+}
+
+#queryManagementContent {
+  border: 1px solid $c-content-border;
+  padding-top: 0;
+
+  .arango-table {
+    border: 0;
+  }
+}
+
+#clearQuery {
+  display: none;
 }

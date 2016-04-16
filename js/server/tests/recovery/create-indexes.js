@@ -46,7 +46,6 @@ function runSetup () {
 
     c.ensureUniqueConstraint("value1");
     c.ensureUniqueSkiplist("value2");
-    c.ensureCapConstraint(50);
   }
  
   db._drop("test");
@@ -79,11 +78,11 @@ function recoverySuite () {
       var hash = null, skip = null;
       for (i = 0; i < 5; ++i) {
         c = db._collection("UnitTestsRecovery" + i);
-        assertEqual(50, c.count());
+        assertEqual(100, c.count());
         idx = c.getIndexes();
-        assertEqual(4, idx.length);
+        assertEqual(3, idx.length);
 
-        for (j = 1; j < 4; ++j) {
+        for (j = 1; j < 3; ++j) {
           if (idx[j].type === 'hash') {
             hash = idx[j];
           }  
@@ -95,13 +94,13 @@ function recoverySuite () {
         assertNotNull(hash);
         assertNotNull(skip);
 
-        for (j = 50; j < 100; ++j) {
+        for (j = 0; j < 100; ++j) {
           doc = c.document("test" + j);
           assertEqual("foo" + j, doc.value1);
           assertEqual("bar" + j, doc.value2);
         
-          assertEqual(1, c.byExampleHash(hash.id, { value1: "foo" + j }).toArray().length);
-          assertEqual(1, c.byExampleSkiplist(skip.id, { value2: "bar" + j }).toArray().length);
+          assertEqual(1, c.byExample({ value1: "foo" + j }).toArray().length);
+          assertEqual(1, c.byExample({ value2: "bar" + j }).toArray().length);
         }
       }
 

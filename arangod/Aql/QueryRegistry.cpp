@@ -61,10 +61,7 @@ QueryRegistry::~QueryRegistry() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief insert
-////////////////////////////////////////////////////////////////////////////////
-
 void QueryRegistry::insert(QueryId id, Query* query, double ttl) {
   TRI_ASSERT(query != nullptr);
   TRI_ASSERT(query->trx() != nullptr);
@@ -110,10 +107,7 @@ void QueryRegistry::insert(QueryId id, Query* query, double ttl) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief open
-////////////////////////////////////////////////////////////////////////////////
-
 Query* QueryRegistry::open(TRI_vocbase_t* vocbase, QueryId id) {
   // std::cout << "Taking out query with ID " << id << std::endl;
   WRITE_LOCKER(writeLocker, _lock);
@@ -147,10 +141,7 @@ Query* QueryRegistry::open(TRI_vocbase_t* vocbase, QueryId id) {
   return qi->_query;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief close
-////////////////////////////////////////////////////////////////////////////////
-
 void QueryRegistry::close(TRI_vocbase_t* vocbase, QueryId id, double ttl) {
   // std::cout << "Returning query with ID " << id << std::endl;
   WRITE_LOCKER(writeLocker, _lock);
@@ -195,10 +186,7 @@ void QueryRegistry::close(TRI_vocbase_t* vocbase, QueryId id, double ttl) {
   qi->_expires = TRI_microtime() + qi->_timeToLive;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy
-////////////////////////////////////////////////////////////////////////////////
-
 void QueryRegistry::destroy(std::string const& vocbase, QueryId id,
                             int errorCode) {
   WRITE_LOCKER(writeLocker, _lock);
@@ -242,18 +230,12 @@ void QueryRegistry::destroy(std::string const& vocbase, QueryId id,
   m->second.erase(q);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy
-////////////////////////////////////////////////////////////////////////////////
-
 void QueryRegistry::destroy(TRI_vocbase_t* vocbase, QueryId id, int errorCode) {
   destroy(vocbase->_name, id, errorCode);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief expireQueries
-////////////////////////////////////////////////////////////////////////////////
-
 void QueryRegistry::expireQueries() {
   double now = TRI_microtime();
   std::vector<std::pair<std::string, QueryId>> toDelete;

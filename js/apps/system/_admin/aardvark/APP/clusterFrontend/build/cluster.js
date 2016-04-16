@@ -61,6 +61,10 @@
       };
     },
 
+    getCurrentSub: function() {
+      return window.App.naviView.activeSubMenu;
+    },
+
     setCheckboxStatus: function(id) {
       _.each($(id).find('ul').find('li'), function(element) {
          if (!$(element).hasClass("nav-header")) {
@@ -1911,7 +1915,10 @@ window.StatisticsCollection = Backbone.Collection.extend({
         var template = $("#" + id.replace(".", "\\.")).html();
         return {
           render: function(params) {
-            return _.template(template, params);
+            var tmp = _.template(template);
+            tmp = tmp(params);
+
+            return tmp;
           }
         };
       };
@@ -1955,15 +1962,19 @@ window.StatisticsCollection = Backbone.Collection.extend({
     template: templateEngine.createTemplate("footerView.ejs"),
 
     showServerStatus: function(isOnline) {
-      if (isOnline === true) {
-        $('.serverStatusIndicator').addClass('isOnline');
-        $('.serverStatusIndicator').addClass('fa-check-circle-o');
-        $('.serverStatusIndicator').removeClass('fa-times-circle-o');
-      }
-      else {
-        $('.serverStatusIndicator').removeClass('isOnline');
-        $('.serverStatusIndicator').removeClass('fa-check-circle-o');
-        $('.serverStatusIndicator').addClass('fa-times-circle-o');
+      if (!window.App.isCluster) {
+        if (isOnline === true) {
+          $('#healthStatus').removeClass('negative');
+          $('#healthStatus').addClass('positive');
+          $('.health-state').html('GOOD');
+          $('.health-icon').html('<i class="fa fa-check-circle"></i>');
+        }
+        else {
+          $('#healthStatus').removeClass('positive');
+          $('#healthStatus').addClass('negative');
+          $('.health-state').html('OFFLINE');
+          $('.health-icon').html('<i class="fa fa-exclamation-circle"></i>');
+        }
       }
     },
 
@@ -2235,14 +2246,15 @@ window.StatisticsCollection = Backbone.Collection.extend({
       });
     },
 
-    initialize: function () {
-      this.dygraphConfig = this.options.dygraphConfig;
+    initialize: function (options) {
+      this.options = options;
+      this.dygraphConfig = options.dygraphConfig;
       this.d3NotInitialized = true;
       this.events["click .dashboard-sub-bar-menu-sign"] = this.showDetail.bind(this);
       this.events["mousedown .dygraph-rangesel-zoomhandle"] = this.stopUpdating.bind(this);
       this.events["mouseup .dygraph-rangesel-zoomhandle"] = this.startUpdating.bind(this);
 
-      this.serverInfo = this.options.serverToShow;
+      this.serverInfo = options.serverToShow;
 
       if (! this.serverInfo) {
         this.server = "-local-";
@@ -2525,7 +2537,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
         },
         {
           "key": "",
-          "color": this.dygraphConfig.colors[0],
+          "color": this.dygraphConfig.colors[2],
           "values": [
             {
               label: "used",
@@ -2543,11 +2555,11 @@ window.StatisticsCollection = Backbone.Collection.extend({
     mergeBarChartData: function (attribList, newData) {
       var i, v1 = {
         "key": this.barChartsElementNames[attribList[0]],
-        "color": this.dygraphConfig.colors[0],
+        "color": this.dygraphConfig.colors[1],
         "values": []
       }, v2 = {
         "key": this.barChartsElementNames[attribList[1]],
-        "color": this.dygraphConfig.colors[1],
+        "color": this.dygraphConfig.colors[2],
         "values": []
       };
       for (i = newData[attribList[0]].values.length - 1;  0 <= i;  --i) {
@@ -2761,8 +2773,8 @@ window.StatisticsCollection = Backbone.Collection.extend({
           .showValues(false)
           .showYAxis(false)
           .showXAxis(false)
-          .transitionDuration(100)
-          .tooltips(false)
+          //.transitionDuration(100)
+          //.tooltip(false)
           .showLegend(false)
           .showControls(false)
           .stacked(true);
@@ -2877,8 +2889,8 @@ window.StatisticsCollection = Backbone.Collection.extend({
             .showValues(false)
             .showYAxis(true)
             .showXAxis(true)
-            .transitionDuration(100)
-            .tooltips(false)
+            //.transitionDuration(100)
+            //.tooltips(false)
             .showLegend(false)
             .showControls(false)
             .forceY([0,1]);
@@ -2922,7 +2934,15 @@ window.StatisticsCollection = Backbone.Collection.extend({
       return;
     }
     self.timer = window.setInterval(function () {
-        self.getStatistics();
+
+        if (window.App.isCluster) {
+          if (window.location.hash.indexOf(self.serverInfo.target) > -1) {
+            self.getStatistics();
+          }
+        }
+        else {
+          self.getStatistics();
+        }
       },
       self.interval
     );
@@ -2958,6 +2978,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
         this.prepareD3Charts();
         this.prepareResidentSize();
         this.updateTendencies();
+        $(window).trigger('resize');
       }
       this.startUpdating();
     }.bind(this);

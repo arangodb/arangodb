@@ -23,8 +23,9 @@
 
 #include "cleanup.h"
 #include "Basics/files.h"
-#include "Logger/Logger.h"
+#include "Basics/ReadLocker.h"
 #include "Basics/tri-strings.h"
+#include "Logger/Logger.h"
 #include "Utils/CursorRepository.h"
 #include "VocBase/compactor.h"
 #include "VocBase/Ditch.h"
@@ -130,7 +131,7 @@ static void CleanupDocumentCollection(TRI_vocbase_col_t* collection,
         }
       }
 
-      if (!TRI_IsFullyCollectedDocumentCollection(document)) {
+      if (!document->isFullyCollected()) {
         bool isDeleted = false;
 
         // if there is still some garbage collection to perform,

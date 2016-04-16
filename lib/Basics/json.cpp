@@ -564,47 +564,11 @@ void TRI_FreeJson(TRI_memory_zone_t* zone, TRI_json_t* object) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a user printable string
-////////////////////////////////////////////////////////////////////////////////
-
-char const* TRI_GetTypeStringJson(TRI_json_t const* object) {
-  switch (object->_type) {
-    case TRI_JSON_UNUSED:
-      return "unused";
-    case TRI_JSON_NULL:
-      return "null";
-    case TRI_JSON_BOOLEAN:
-      return "boolean";
-    case TRI_JSON_NUMBER:
-      return "number";
-    case TRI_JSON_STRING:
-      return "string";
-    case TRI_JSON_STRING_REFERENCE:
-      return "string-reference";
-    case TRI_JSON_OBJECT:
-      return "object";
-    case TRI_JSON_ARRAY:
-      return "array";
-  }
-  return "unknown";
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief determines the length of an array json
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t TRI_LengthArrayJson(TRI_json_t const* json) {
   TRI_ASSERT(json != nullptr && json->_type == TRI_JSON_ARRAY);
-  return TRI_LengthVector(&json->_value._objects);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief determines the length of the json's objects vector
-////////////////////////////////////////////////////////////////////////////////
-
-size_t TRI_LengthVectorJson(TRI_json_t const* json) {
-  TRI_ASSERT(json != nullptr &&
-             (json->_type == TRI_JSON_ARRAY || json->_type == TRI_JSON_OBJECT));
   return TRI_LengthVector(&json->_value._objects);
 }
 
@@ -682,70 +646,6 @@ TRI_json_t* TRI_LookupArrayJson(TRI_json_t const* array, size_t pos) {
   }
 
   return static_cast<TRI_json_t*>(TRI_AtVector(&array->_value._objects, pos));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes an element from a json array
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_DeleteArrayJson(TRI_memory_zone_t* zone, TRI_json_t* array,
-                         size_t index) {
-  TRI_ASSERT(TRI_IsArrayJson(array));
-
-  size_t const n = TRI_LengthArrayJson(array);
-
-  if (index >= n) {
-    return false;
-  }
-
-  TRI_json_t* element =
-      static_cast<TRI_json_t*>(TRI_AtVector(&array->_value._objects, index));
-  TRI_ASSERT(element != nullptr);
-  TRI_DestroyJson(zone, element);
-  TRI_RemoveVector(&array->_value._objects, index);
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a new attribute to an object, using copy
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InsertObjectJson(TRI_memory_zone_t* zone, TRI_json_t* object,
-                          char const* name, TRI_json_t const* subobject) {
-  TRI_ASSERT(object->_type == TRI_JSON_OBJECT);
-
-  if (subobject == nullptr) {
-    return;
-  }
-
-  if (TRI_ReserveVector(&object->_value._objects, 2) != TRI_ERROR_NO_ERROR) {
-    return;
-  }
-
-  // attribute name
-  size_t length = strlen(name);
-  char* att = TRI_DuplicateString(zone, name, length);
-
-  if (att == nullptr) {
-    return;
-  }
-
-  // create attribute name in place
-  TRI_json_t* next =
-      static_cast<TRI_json_t*>(TRI_NextVector(&object->_value._objects));
-  // we have made sure above with the reserve that the vector has enough
-  // capacity
-  TRI_ASSERT(next != nullptr);
-  InitString(next, att, length);
-
-  // attribute value
-  next = static_cast<TRI_json_t*>(TRI_NextVector(&object->_value._objects));
-  // we have made sure above with the reserve call that the vector has enough
-  // capacity
-  TRI_ASSERT(next != nullptr);
-
-  TRI_CopyToJson(zone, next, subobject);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -947,14 +847,6 @@ bool TRI_ReplaceObjectJson(TRI_memory_zone_t* zone, TRI_json_t* object,
 
 int TRI_StringifyJson(TRI_string_buffer_t* buffer, TRI_json_t const* object) {
   return StringifyJson(buffer->_memoryZone, buffer, object, true);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stringifies a json object skipping the outer braces
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_Stringify2Json(TRI_string_buffer_t* buffer, TRI_json_t const* object) {
-  return StringifyJson(buffer->_memoryZone, buffer, object, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1160,91 +1052,3 @@ TRI_json_t* TRI_CopyJson(TRI_memory_zone_t* zone, TRI_json_t const* src) {
   return dst;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a json object into a number
-////////////////////////////////////////////////////////////////////////////////
-
-int64_t TRI_ToInt64Json(TRI_json_t const* json) {
-  TRI_ASSERT(json != nullptr);
-
-  switch (json->_type) {
-    case TRI_JSON_UNUSED:
-    case TRI_JSON_NULL:
-      return 0;
-    case TRI_JSON_BOOLEAN:
-      return (json->_value._boolean ? 1 : 0);
-    case TRI_JSON_NUMBER:
-      return static_cast<int64_t>(json->_value._number);
-    case TRI_JSON_STRING:
-    case TRI_JSON_STRING_REFERENCE:
-      try {
-        // try converting string to number
-        double v = std::stod(json->_value._string.data);
-        return static_cast<int64_t>(v);
-      } catch (...) {
-        // conversion failed
-      }
-      break;
-    case TRI_JSON_ARRAY: {
-      size_t const n = TRI_LengthArrayJson(json);
-
-      if (n == 0) {
-        return 0;
-      } else if (n == 1) {
-        return TRI_ToInt64Json(TRI_LookupArrayJson(json, 0));
-      }
-      break;
-    }
-    case TRI_JSON_OBJECT:
-      break;
-  }
-
-  return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a json object into a number
-////////////////////////////////////////////////////////////////////////////////
-
-double TRI_ToDoubleJson(TRI_json_t const* json, bool& failed) {
-  TRI_ASSERT(json != nullptr);
-
-  failed = false;
-  switch (json->_type) {
-    case TRI_JSON_UNUSED:
-    case TRI_JSON_NULL:
-      return 0.0;
-    case TRI_JSON_BOOLEAN:
-      return (json->_value._boolean ? 1.0 : 0.0);
-    case TRI_JSON_NUMBER:
-      return json->_value._number;
-    case TRI_JSON_STRING:
-    case TRI_JSON_STRING_REFERENCE:
-      try {
-        // try converting string to number
-        double v = std::stod(json->_value._string.data);
-        return v;
-      } catch (...) {
-        if (strlen(json->_value._string.data) == 0) {
-          return 0.0;
-        }
-        // conversion failed
-      }
-      break;
-    case TRI_JSON_ARRAY: {
-      size_t const n = TRI_LengthArrayJson(json);
-
-      if (n == 0) {
-        return 0.0;
-      } else if (n == 1) {
-        return TRI_ToDoubleJson(TRI_LookupArrayJson(json, 0), failed);
-      }
-      break;
-    }
-    case TRI_JSON_OBJECT:
-      break;
-  }
-
-  failed = true;
-  return 0.0;
-}

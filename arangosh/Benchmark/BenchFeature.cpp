@@ -204,7 +204,7 @@ void BenchFeature::start() {
 
     BenchmarkThread* thread = new BenchmarkThread(
         benchmark.get(), &startCondition, &BenchFeature::updateStartCounter,
-        i, (unsigned long)_batchSize, &operationsCounter, client, _keepAlive,
+        static_cast<int>(i), (unsigned long)_batchSize, &operationsCounter, client, _keepAlive,
         _async, _verbose);
 
     threads.push_back(thread);

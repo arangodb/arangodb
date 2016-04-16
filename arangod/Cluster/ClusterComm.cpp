@@ -540,8 +540,7 @@ ClusterCommResult const ClusterComm::enquire(OperationID const operationID) {
 /// a result structure with status CL_COMM_DROPPED if no operation
 /// matches. If `timeout` is given, the result can be a result structure
 /// with status CL_COMM_TIMEOUT indicating that no matching answer was
-/// available until the timeout was hit. The caller has to delete the
-/// result.
+/// available until the timeout was hit.
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterCommResult const ClusterComm::wait(
@@ -1014,6 +1013,145 @@ void ClusterCommThread::beginShutdown() {
     CONDITION_LOCKER(guard, cc->somethingToSend);
     guard.signal();
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief this method performs the given requests described by the vector
+/// of ClusterCommRequest structs in the following way: all requests are
+/// tried and the result is stored in the result component. Each request is
+/// done with asyncRequest and the given timeout. If a request times out
+/// it is considered to be a failure. If a connection cannot be created,
+/// a retry is done with exponential backoff, that is, first after 1 second,
+/// then after another 2 seconds, 4 seconds and so on, until the overall
+/// timeout has been reached. A request that can connect and produces a
+/// result is simply reported back with no retry, even in an error case.
+/// The method returns the number of successful requests and puts the
+/// number of finished ones in nrDone. Thus, the timeout was triggered
+/// if and only if nrDone < requests.size().
+////////////////////////////////////////////////////////////////////////////////
+
+size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
+                                    ClusterCommTimeout timeout,
+                                    size_t& nrDone,
+                                    arangodb::LogTopic const& logTopic) {
+
+  if (requests.size() == 0) {
+    return 0;
+  }
+
+  CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
+
+  ClusterCommTimeout startTime = TRI_microtime();
+  ClusterCommTimeout now = startTime;
+  ClusterCommTimeout endTime = startTime + timeout;
+
+  std::vector<ClusterCommTimeout> dueTime;
+  for (size_t i = 0; i < requests.size(); ++i) {
+    dueTime.push_back(startTime);
+  }
+  
+  nrDone = 0;
+  size_t nrGood = 0;
+
+  std::unordered_map<OperationID, size_t> opIDtoIndex;
+
+  try {
+    while (true) {
+      if (nrDone >= requests.size()) {
+        // All good, report
+        return nrGood;
+      }
+
+      // First send away what is due:
+      for (size_t i = 0; i < requests.size(); i++) {
+        if (!requests[i].done && now >= dueTime[i]) {
+          auto headers = std::make_unique<std::map<std::string, std::string>>();
+          LOG_TOPIC(TRACE, logTopic)
+              << "ClusterComm::performRequests: sending request to "
+              << requests[i].destination << ":" << requests[i].path
+              << "body:" << requests[i].body;
+          auto res = asyncRequest("", coordinatorTransactionID,
+                                  requests[i].destination,
+                                  requests[i].requestType,
+                                  requests[i].path,
+                                  requests[i].body,
+                                  headers, nullptr, timeout - (now - startTime),
+                                  false);
+          if (res.status == CL_COMM_ERROR) {
+            // We did not find the destination, this is could change in the
+            // future, therefore we will retry at some stage:
+            drop("", 0, res.operationID, "");   // forget about it
+            dueTime[i] = (std::max)(now + 1.0, 
+                                    startTime + 2 * (now - startTime));
+          } else {
+            dueTime[i] = endTime + 10.0;  // Never retry
+            opIDtoIndex.insert(std::make_pair(res.operationID, i));
+          }
+        }
+      }
+
+      // Now see how long we can afford to wait:
+      ClusterCommTimeout actionNeeded = endTime;
+      for (size_t i = 0; i < dueTime.size(); i++) {
+        if (!requests[i].done && dueTime[i] < actionNeeded) {
+          actionNeeded = dueTime[i];
+        }
+      }
+
+      // Now wait for results:
+      while (true) {
+        now = TRI_microtime();
+        if (now >= actionNeeded) {
+          break;
+        }
+        auto res = wait("", coordinatorTransactionID, 0, "", actionNeeded - now);
+        if (res.status == CL_COMM_TIMEOUT && res.operationID == 0) {
+          break;
+        }
+        auto it = opIDtoIndex.find(res.operationID);
+        TRI_ASSERT(it != opIDtoIndex.end());  // we should really know this!
+        size_t index = it->second;
+        if (res.status == CL_COMM_RECEIVED) {
+          requests[index].result = res;
+          requests[index].done = true;
+          nrDone++;
+          if (res.answer_code == GeneralResponse::ResponseCode::OK ||
+              res.answer_code == GeneralResponse::ResponseCode::CREATED ||
+              res.answer_code == GeneralResponse::ResponseCode::ACCEPTED) {
+            nrGood++;
+          }
+          LOG_TOPIC(TRACE, logTopic) << "ClusterComm::performRequests: "
+              << "got answer from " << requests[index].destination << ":"
+              << requests[index].path << " with return code " 
+              << (int) res.answer_code;
+        } else if (res.status == CL_COMM_BACKEND_UNAVAILABLE) {
+          dueTime[index] = (std::max)(now + 1.0, 
+                                  startTime + 2 * (now - startTime));
+        } else {
+          requests[index].result = res;
+          requests[index].done = true;
+          nrDone++;
+          LOG_TOPIC(TRACE, logTopic) << "ClusterComm::peformRequests: "
+              << "got no answer from " << requests[index].destination << ":"
+              << requests[index].path << " with error " << res.status;
+        }
+        if (nrDone >= requests.size()) {
+          // We are done, all results are in!
+          return nrGood;
+        }
+      }
+    }
+  } catch (...) {
+    LOG_TOPIC(ERR, logTopic) << "ClusterComm::performRequests: "
+        << "caught exception, ignoring...";
+  }
+
+  // We only get here if the global timeout was triggered, not all
+  // requests are marked by done!
+
+  // Forget about 
+  drop("", coordinatorTransactionID, 0, "");
+  return nrGood;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

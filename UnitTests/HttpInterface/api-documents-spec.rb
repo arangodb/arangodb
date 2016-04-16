@@ -26,15 +26,13 @@ describe ArangoDB do
 
     it "creates a document with an invalid type" do
       cmd = api + "?collection=" + @cn
-      body = "[ ]";
+      body = "[ [] ]";
       doc = ArangoDB.log_post("#{prefix}-create-list1", cmd, :body => body)
 
-      doc.code.should eq(400)
+      doc.code.should eq(202)
       doc.headers['content-type'].should eq("application/json; charset=utf-8")
-
-      doc.parsed_response['error'].should eq(true)
-      doc.parsed_response['code'].should eq(400)
-      doc.parsed_response['errorNum'].should eq(1227)
+      doc.parsed_response[0]["error"].should eq(true)
+      doc.parsed_response[0]["errorNum"].should eq(1227)
     end
     
     it "creates a document with an invalid type" do

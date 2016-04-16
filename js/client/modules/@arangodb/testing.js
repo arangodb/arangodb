@@ -39,7 +39,8 @@ const functionsDocumentation = {
   "dfdb": "start test",
   "foxx_manager": "foxx manager tests",
   "http_replication": "http replication tests",
-  "http_server": "http server tests",
+  "http_server": "http server tests in Ruby",
+  "server_http": "http server tests in Mocha",
   "importing": "import tests",
   "recovery": "run recovery tests",
   "replication_ongoing": "replication ongoing tests",
@@ -187,9 +188,6 @@ const toArgv = require("internal").toArgv;
 const wait = require("internal").wait;
 const platform = require("internal").platform;
 
-const Planner = require("@arangodb/cluster").Planner;
-const Kickstarter = require("@arangodb/cluster").Kickstarter;
-
 let cleanupDirectories = [];
 let serverCrashed = false;
 
@@ -213,7 +211,6 @@ let ARANGOIMP_BIN;
 let ARANGORESTORE_BIN;
 let ARANGOSH_BIN;
 let CONFIG_RELATIVE_DIR;
-let ETCD_ARANGO_BIN;
 let JS_DIR;
 let LOGS_DIR;
 let PEM_FILE;
@@ -450,21 +447,17 @@ function analyzeCoreDumpWindows(instanceInfo) {
   executeExternalAndWait("cdb", args);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks of an instance is still alive
-////////////////////////////////////////////////////////////////////////////////
-
-function checkInstanceAliveSingleServer(instanceInfo, options) {
-  if (instanceInfo.hasOwnProperty('exitStatus')) {
+function checkArangoAlive(arangod, options) {
+  if (arangod.hasOwnProperty('exitStatus')) {
     return false;
   }
 
-  const res = statusExternal(instanceInfo.pid, false);
+  const res = statusExternal(arangod.pid, false);
   const ret = res.status === "RUNNING";
 
   if (!ret) {
-    print("ArangoD with PID " + instanceInfo.pid.pid + " gone:");
-    print(instanceInfo);
+    print("ArangoD with PID " + arangod.pid + " gone:");
+    print(arangod);
 
     if (res.hasOwnProperty('signal') &&
       ((res.signal === 11) ||
@@ -473,29 +466,29 @@ function checkInstanceAliveSingleServer(instanceInfo, options) {
         (platform.substr(0, 3) === 'win')
       )
     ) {
-      const storeArangodPath = "/var/tmp/arangod_" + instanceInfo.pid.pid;
+      const storeArangodPath = "/var/tmp/arangod_" + arangod.pid;
 
       print("Core dump written; copying arangod to " +
-        instanceInfo.tmpDataDir + " for later analysis.");
+        arangod.tmpDataDir + " for later analysis.");
 
       let corePath = (options.coreDirectory === "") ?
         "core" :
-        options.coreDirectory + "/core*" + instanceInfo.pid.pid + "*'";
+        options.coreDirectory + "/core*" + arangod.pid + "*'";
 
       res.gdbHint = "Run debugger with 'gdb " +
         storeArangodPath + " " + corePath;
 
       if (platform.substr(0, 3) === 'win') {
         // Windows: wait for procdump to do its job...
-        statusExternal(instanceInfo.monitor, true);
-        analyzeCoreDumpWindows(instanceInfo);
+        statusExternal(arangod.monitor, true);
+        analyzeCoreDumpWindows(arangod);
       } else {
         fs.copyFile("bin/arangod", storeArangodPath);
-        analyzeCoreDump(instanceInfo, options, storeArangodPath, instanceInfo.pid.pid);
+        analyzeCoreDump(arangod, options, storeArangodPath, arangod.pid);
       }
     }
 
-    instanceInfo.exitStatus = res;
+    arangod.exitStatus = res;
   }
 
   if (!ret) {
@@ -506,137 +499,10 @@ function checkInstanceAliveSingleServer(instanceInfo, options) {
   return ret;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if an agency instance is still alive
-////////////////////////////////////////////////////////////////////////////////
-
-function checkInstanceAliveAgency(instanceInfo, options) {
-  if (instanceInfo.hasOwnProperty('exitStatus')) {
-    return false;
-  }
-
-  for (let i = 0; i < options.agencySize; i++) {
-    const res = statusExternal(instanceInfo.pids[i], false);
-    const ret = res.status === "RUNNING";
-
-    if (!ret) {
-      print("ArangoD with PID " + instanceInfo.pids[i].pid + " gone:");
-      print(instanceInfo);
-
-      if (res.hasOwnProperty('signal') &&
-        ((res.signal === 11) ||
-          (res.signal === 6) ||
-          // Windows sometimes has random numbers in signal...
-          (platform.substr(0, 3) === 'win')
-        )
-      ) {
-        const storeArangodPath = "/var/tmp/arangod_" + instanceInfo.pids[i].pid;
-
-        print("Core dump written; copying arangod to " +
-          instanceInfo.tmpDataDir + " for later analysis.");
-
-        let corePath = (options.coreDirectory === "") ?
-          "core" :
-          options.coreDirectory + "/core*" + instanceInfo.pids[i].pid + "*'";
-
-        res.gdbHint = "Run debugger with 'gdb " +
-          storeArangodPath + " " + corePath;
-
-        if (platform.substr(0, 3) === 'win') {
-          // Windows: wait for procdump to do its job...
-          statusExternal(instanceInfo.monitor, true);
-          analyzeCoreDumpWindows(instanceInfo);
-        } else {
-          fs.copyFile("bin/arangod", storeArangodPath);
-          analyzeCoreDump(instanceInfo, options, storeArangodPath, instanceInfo.pids[i].pid);
-        }
-      }
-
-      if (instanceInfo.exitStatus === undefined) {
-        instanceInfo.exitStatus = [];
-      }
-      instanceInfo.exitStatus[i] = res;
-    }
-  }
-
-  if (instanceInfo.exitStatus !== undefined) {
-    print("marking crashy");
-    serverCrashed = true;
-    return false;
-  }
-
-  return true;
-}
-
-function checkRemoteInstance(pid, wait, options) {
-  const debug = options.debug || false;
-  const p = JSON.stringify(pid);
-  const res = JSON.parse(arango.PUT("/_admin/execute",
-    `return require("internal").statusExternal(${p}, ${wait});`));
-
-  if (debug) {
-    print(`status of remote process ${p}: ${res.status}`);
-  }
-
-  return res;
-}
-
-function checkInstanceAliveCluster(instanceInfo, options) {
-  let clusterFit = true;
-
-  for (let part in instanceInfo.kickstarter.runInfo) {
-    if (instanceInfo.kickstarter.runInfo[part].hasOwnProperty("pids")) {
-      for (let pid in instanceInfo.kickstarter.runInfo[part].pids) {
-        if (instanceInfo.kickstarter.runInfo[part].pids.hasOwnProperty(pid)) {
-          const checkpid = instanceInfo.kickstarter.runInfo[part].pids[pid];
-          const ress = checkRemoteInstance(checkpid, false, options);
-
-          if (ress.hasOwnProperty('signal') &&
-            ((ress.signal === 11) || (ress.signal === 6))) {
-            const storeArangodPath = "/var/tmp/arangod_" + checkpid.pid;
-
-            print("Core dump written; copying arangod to " +
-              storeArangodPath + " for later analysis.");
-
-            ress.gdbHint = "Run debugger with 'gdb " +
-              storeArangodPath +
-              " /var/tmp/core*" + checkpid.pid + "*'";
-
-            if (platform.substr(0, 3) === 'win') {
-              // Windows: wait for procdump to do its job...
-              checkRemoteInstance(instanceInfo.monitor, true, options);
-              analyzeCoreDumpWindows(instanceInfo);
-            } else {
-              fs.copyFile("bin/arangod", storeArangodPath);
-              analyzeCoreDump(instanceInfo, options, storeArangodPath, checkpid.pid);
-            }
-
-            instanceInfo.exitStatus = ress;
-            clusterFit = false;
-          }
-        }
-      }
-    }
-  }
-
-  if (clusterFit && instanceInfo.kickstarter.isHealthy()) {
-    return true;
-  } else {
-    print("marking crashy");
-    serverCrashed = true;
-    return false;
-  }
-}
-
 function checkInstanceAlive(instanceInfo, options) {
-  if (options.cluster) {
-    return checkInstanceAliveCluster(instanceInfo, options);
-  }
-  if (options.agency) {
-    return checkInstanceAliveAgency(instanceInfo, options);
-  }
-  return checkInstanceAliveSingleServer(instanceInfo, options);
-
+  return instanceInfo.arangods.reduce((previous, arangod) => {
+    return previous && checkArangoAlive(arangod, options);
+  }, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -835,7 +701,6 @@ function performTests(options, testList, testname) {
         }
 
         print("\n" + Date() + " arangod: Trying", te, "...");
-
         let reply = runThere(options, instanceInfo, te);
 
         if (reply.hasOwnProperty('status')) {
@@ -883,13 +748,6 @@ function performTests(options, testList, testname) {
   print("Shutting down...");
   shutdownInstance(instanceInfo, options);
   print("done.");
-
-  if ((!options.skipLogAnalysis) &&
-    instanceInfo.hasOwnProperty('importantLogLines') &&
-    Object.keys(instanceInfo.importantLogLines).length > 0) {
-    print("Found messages in the server logs: \n" +
-      yaml.safeDump(instanceInfo.importantLogLines));
-  }
 
   return results;
 }
@@ -1110,12 +968,7 @@ function executeAndWait(cmd, args, options, valgrindTest) {
 
 function runInArangosh(options, instanceInfo, file, addArgs) {
   let args = makeArgsArangosh(options);
-  if (instanceInfo.endpoint !== undefined) {
-    args["server.endpoint"] = instanceInfo.endpoint;
-  }
-  if (instanceInfo.urls !== undefined) {
-    args["flatCommands"] = instanceInfo.urls;
-  }
+  args["server.endpoint"] = instanceInfo.endpoint;
   args["javascript.unit-tests"] = fs.join(TOP_DIR, file);
 
   if (addArgs !== undefined) {
@@ -1157,7 +1010,7 @@ function runArangoshCmd(options, instanceInfo, addArgs, cmds) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief runs arangodump or arangoimp
+/// @brief runs arangoimp
 ////////////////////////////////////////////////////////////////////////////////
 
 function runArangoImp(options, instanceInfo, what) {
@@ -1201,11 +1054,11 @@ function runArangoDumpRestore(options, instanceInfo, which, database) {
   let exe;
 
   if (which === "dump") {
-    args["output-directory"] = fs.join(instanceInfo.tmpDataDir, "dump");
+    args["output-directory"] = fs.join(instanceInfo.rootDir, "dump");
     exe = ARANGODUMP_BIN;
   } else {
     args["create-database"] = "true";
-    args["input-directory"] = fs.join(instanceInfo.tmpDataDir, "dump");
+    args["input-directory"] = fs.join(instanceInfo.rootDir, "dump");
     exe = ARANGORESTORE_BIN;
   }
 
@@ -1235,6 +1088,19 @@ function runArangoBenchmark(options, instanceInfo, cmds) {
   return executeAndWait(ARANGOB_BIN, toArgv(args), options);
 }
 
+function shutdownArangod(arangod, options) {
+  if (options.valgrind) {
+    waitOnServerForGC(arangod, options, 60);
+  }
+  if (arangod.exitStatus === undefined) {
+    print(arangod.url + "/_admin/shutdown");
+    download(arangod.url + "/_admin/shutdown", "",
+      makeAuthorizationHeaders(options));
+  } else {
+    print("Server already dead, doing nothing.");
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shuts down an instance
 ////////////////////////////////////////////////////////////////////////////////
@@ -1243,253 +1109,77 @@ function shutdownInstance(instanceInfo, options) {
   if (!checkInstanceAlive(instanceInfo, options)) {
     print("Server already dead, doing nothing. This shouldn't happen?");
   }
+  instanceInfo.arangods.reverse().forEach(arangod => {
+    shutdownArangod(arangod, options);
+  });
 
+  let timeout = 60;
   if (options.valgrind) {
-    waitOnServerForGC(instanceInfo, options, 60);
+    timeout *= 10;
   }
-
-  if (options.cluster) {
-    let rc = instanceInfo.kickstarter.shutdown();
-
-    if (!options.skipLogAnalysis) {
-      instanceInfo.importantLogLines = readImportantLogLines(instanceInfo.tmpDataDir);
-    }
-
-    if (options.cleanup) {
-      instanceInfo.kickstarter.cleanup();
-    }
-
-    if (rc.error && rc.results !== undefined) {
-      for (let i = 0; i < rc.results.length; ++i) {
-        if (rc.results[i].hasOwnProperty('isStartServers') &&
-          (rc.results[i].isStartServers === true)) {
-          for (let serverState in rc.results[i].serverStates) {
-            if (rc.results[i].serverStates.hasOwnProperty(serverState)) {
-              if ((rc.results[i].serverStates[serverState].status === "NOT-FOUND") ||
-                (rc.results[i].serverStates[serverState].hasOwnProperty('signal'))) {
-                print("Server " + serverState + " shut down with:\n" +
-                  yaml.safeDump(rc.results[i].serverStates[serverState]));
-
-                if (!serverCrashed) {
-                  print("marking run as crashy");
-                  serverCrashed = true;
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-
-    killExternal(instanceInfo.dispatcherPid);
+  if (options.sanitizer) {
+    timeout *= 2;
   }
+  let count = 0;
+  let bar = "[";
 
-  // agency mode
-  else if (options.agency) {
-    if (instanceInfo.exitStatus === undefined) {
-      instanceInfo.exitStatus = [];
-    }
+  let toShutdown = instanceInfo.arangods.slice();
+  while (toShutdown.length > 0) {
+    toShutdown = toShutdown.filter(arangod => {
+      arangod.exitStatus = statusExternal(arangod.pid, false);
+      console.log(arangod);
 
-    for (let i = 0; i < options.agencySize; i++) {
-      if (instanceInfo.exitStatus[i] === undefined) {
-        download(instanceInfo.urls[i] + "/_admin/shutdown", "",
-          makeAuthorizationHeaders(options));
+      if (arangod.exitStatus.status === "RUNNING") {
+        ++count;
 
-        print("Waiting for server shut down");
-
-        let count = 0;
-        let bar = "[";
-
-        let timeout = 600;
-
-        if (options.sanitizer) {
-          timeout *= 2;
+        if (count % 10 === 0) {
+          bar = bar + "#";
         }
 
-        if (instanceInfo.exitStatus === undefined) {
-          instanceInfo.exitStatus = [];
+        if (count > timeout) {
+          print("forcefully terminating " + yaml.safeDump(arangod.pid) +
+            " after " + timeout + "s grace period; marking crashy.");
+          serverCrashed = true;
+          killExternal(arangod.pid);
+          return false;
+        } else {
+          return true;
         }
-        while (true) {
-          instanceInfo.exitStatus[i] = statusExternal(instanceInfo.pids[i], false);
+      } else if (arangod.exitStatus.status !== "TERMINATED") {
+        if (arangod.exitStatus.hasOwnProperty('signal')) {
+          print("Server shut down with : " +
+            yaml.safeDump(arangod.exitStatus) +
+            " marking build as crashy.");
 
-          if (instanceInfo.exitStatus[i].status === "RUNNING") {
-            ++count;
-
-            if (options.valgrind) {
-              wait(1);
-              continue;
-            }
-
-            if (count % 10 === 0) {
-              bar = bar + "#";
-            }
-
-            if (count > 600) {
-              print("forcefully terminating " + yaml.safeDump(instanceInfo.pids[i]) +
-                " after " + timeout + "s grace period; marking crashy.");
-              serverCrashed = true;
-              killExternal(instanceInfo.pids[i]);
-              break;
-            } else {
-              wait(1);
-            }
-          } else if (instanceInfo.exitStatus[i].status !== "TERMINATED") {
-            if (instanceInfo.exitStatus[i].hasOwnProperty('signal')) {
-              print("Server shut down with : " +
-                yaml.safeDump(instanceInfo.exitStatus[i]) +
-                " marking build as crashy.");
-
-              serverCrashed = true;
-              break;
-            }
-            if (platform.substr(0, 3) === 'win') {
-              // Windows: wait for procdump to do its job...
-              statusExternal(instanceInfo.monitor, true);
-            }
-          } else {
-            print("Server shutdown: Success.");
-            break; // Success.
-          }
+          serverCrashed = true;
+          return false;
         }
-
-        if (count > 10) {
-          print("long Server shutdown: " + bar + ']');
+        if (platform.substr(0, 3) === 'win') {
+          // Windows: wait for procdump to do its job...
+          statusExternal(arangod.monitor, true);
         }
       } else {
-        print("Server already dead, doing nothing.");
+        print("Server shutdown: Success.");
+        return false;
       }
-
-      if (!options.skipLogAnalysis) {
-        instanceInfo.importantLogLines =
-          readImportantLogLines(instanceInfo.tmpDataDir);
-      }
+    });
+    if (toShutdown.length > 0) {
+      print(toShutdown.length + " arangods are still running...");
+      wait(1);
     }
   }
 
-  // single server
-  else {
-    if (typeof(instanceInfo.exitStatus) === 'undefined') {
-      download(instanceInfo.url + "/_admin/shutdown", "",
-        makeAuthorizationHeaders(options));
-
-      print("Waiting for server shut down");
-
-      let count = 0;
-      let bar = "[";
-
-      let timeout = 600;
-
-      if (options.sanitizer) {
-        timeout *= 2;
+  if (!options.skipLogAnalysis) {
+    instanceInfo.arangods.forEach(arangod => {
+      let errorEntries = readImportantLogLines(arangod.rootDir);
+      if (Object.keys(errorEntries).length > 0) {
+        print("Found messages in the server logs: \n" +
+          yaml.safeDump(errorEntries));
       }
-
-      while (true) {
-        instanceInfo.exitStatus = statusExternal(instanceInfo.pid, false);
-
-        if (instanceInfo.exitStatus.status === "RUNNING") {
-          ++count;
-
-          if (options.valgrind) {
-            wait(1);
-            continue;
-          }
-
-          if (count % 10 === 0) {
-            bar = bar + "#";
-          }
-
-          if (count > 600) {
-            print("forcefully terminating " + yaml.safeDump(instanceInfo.pid) +
-              " after " + timeout + "s grace period; marking crashy.");
-            serverCrashed = true;
-            killExternal(instanceInfo.pid);
-            break;
-          } else {
-            wait(1);
-          }
-        } else if (instanceInfo.exitStatus.status !== "TERMINATED") {
-          if (instanceInfo.exitStatus.hasOwnProperty('signal')) {
-            print("Server shut down with : " +
-              yaml.safeDump(instanceInfo.exitStatus) +
-              " marking build as crashy.");
-
-            serverCrashed = true;
-            break;
-          }
-          if (platform.substr(0, 3) === 'win') {
-            // Windows: wait for procdump to do its job...
-            statusExternal(instanceInfo.monitor, true);
-          }
-        } else {
-          print("Server shutdown: Success.");
-          break; // Success.
-        }
-      }
-
-      if (count > 10) {
-        print("long Server shutdown: " + bar + ']');
-      }
-    } else {
-      print("Server already dead, doing nothing.");
-    }
-
-    if (!options.skipLogAnalysis) {
-      instanceInfo.importantLogLines =
-        readImportantLogLines(instanceInfo.tmpDataDir);
-    }
+    });
   }
 
-  cleanupDirectories = cleanupDirectories.concat(
-    instanceInfo.tmpDataDir, instanceInfo.flatTmpDataDir);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief starts a dispatcher
-////////////////////////////////////////////////////////////////////////////////
-
-function startDispatcher(instanceInfo) {
-  let args = {};
-
-  args["configuration"] = "none";
-
-  args["cluster.agent-path"] = ETCD_ARANGO_BIN;
-
-  args["cluster.arangod-path"] = ARANGOD_BIN;
-
-  args["cluster.coordinator-config"] =
-    fs.join("etc", "relative", "arangod-coordinator.conf");
-
-  args["cluster.dbserver-config"] =
-    fs.join("etc", "relative", "arangod-dbserver.conf");
-
-  args["cluster.disable-dispatcher-frontend"] = "false";
-
-  args["cluster.disable-dispatcher-kickstarter"] = "false";
-
-  args["cluster.data-path"] = "cluster";
-
-  args["cluster.log-path"] = "cluster";
-
-  args["database.directory"] =
-    fs.join(instanceInfo.flatTmpDataDir, "dispatcher");
-
-  args["log.file"] =
-    fs.join(instanceInfo.flatTmpDataDir, "dispatcher.log");
-
-  args["server.endpoint"] = arango.getEndpoint();
-
-  args["javascript.startup-directory"] = "js";
-
-  args["javascript.app-path"] = fs.join("js", "apps");
-
-  instanceInfo.dispatcherPid = executeExternal(ARANGOD_BIN, toArgv(args));
-
-  while (arango.GET("/_admin/version").error === true) {
-    print("Waiting for dispatcher to appear");
-    sleep(1);
-  }
-
-  print("Dispatcher is ready");
+  cleanupDirectories.push(instanceInfo.rootDir);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1499,185 +1189,121 @@ function startDispatcher(instanceInfo) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function startInstanceCluster(instanceInfo, protocol, options,
-  addArgs, testname, appDir, tmpDataDir) {
-  startDispatcher(instanceInfo, options);
+  addArgs, name, rootDir) {
+  let makeArgs = function(name, args) {
+    args = args || options.extraArgs;
 
-  const clusterNodes = options.clusterNodes;
+    let subDir = fs.join(rootDir, name);
+    fs.makeDirectoryRecursive(subDir);
 
-  let extraArgs = makeArgsArangod(options, appDir);
-  extraArgs = _.extend(extraArgs, options.extraArgs);
+    let subArgs = makeArgsArangod(options, fs.join(subDir, "apps"));
+    subArgs = _.extend(subArgs, args);
 
-  if (addArgs !== undefined) {
-    extraArgs = _.extend(extraArgs, addArgs);
-  }
-
-  const dispatcher = {
-    "endpoint": "tcp://127.0.0.1:",
-    "arangodExtraArgs": toArgv(extraArgs),
-    "username": "root",
-    "password": ""
+    return [subArgs, name, subDir];
   };
 
-  print("Temporary cluster data and logs are in", tmpDataDir);
+  options.agencySize = 1;
+  options.agencyWaitForSync = false;
+  startInstanceAgency(instanceInfo, protocol, options, ...makeArgs('agency', {}));
 
-  let runInValgrind = "";
-  let testfn = "";
+  let agencyEndpoint = instanceInfo.endpoint;
+  let i;
+  for (i = 0; i < options.clusterNodes; i++) {
+    let endpoint = protocol + "://127.0.0.1:" + findFreePort();
+    let primaryArgs = _.clone(options.extraArgs);
+    primaryArgs['server.endpoint'] = endpoint;
+    primaryArgs['cluster.my-address'] = endpoint;
+    primaryArgs['cluster.my-local-info'] = endpoint;
+    primaryArgs['cluster.my-role'] = 'PRIMARY';
+    primaryArgs['cluster.agency-endpoint'] = agencyEndpoint;
 
-  if (options.valgrind) {
-    runInValgrind = options.valgrind;
-
-    testfn = options.valgrindFileBase;
-
-    if (testfn.length > 0) {
-      testfn += '_';
-    }
-
-    testfn += "cluster";
+    startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('dbserver' + i, primaryArgs));
   }
 
-  let valgrindHosts = '';
+  let endpoint = protocol + "://127.0.0.1:" + findFreePort();
+  let coordinatorArgs = _.clone(options.extraArgs);
+  coordinatorArgs['server.endpoint'] = endpoint;
+  coordinatorArgs['cluster.my-address'] = endpoint;
+  coordinatorArgs['cluster.my-local-info'] = endpoint;
+  coordinatorArgs['cluster.my-role'] = 'COORDINATOR';
+  coordinatorArgs['cluster.agency-endpoint'] = agencyEndpoint;
 
-  if (options.valgrindHosts) {
-    if (options.valgrindHosts.Coordinator === true) {
-      valgrindHosts += 'Coordinator';
-    }
+  startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('coordinator', coordinatorArgs));
 
-    if (options.valgrindHosts.DBServer === true) {
-      valgrindHosts += 'DBserver';
-    }
-  }
+  let coordinatorUrl = instanceInfo.url;
+  let response;
+  let httpOptions = makeAuthorizationHeaders(options);
+  httpOptions.method = 'POST';
+  httpOptions.returnBodyOnError = true;
 
-  let valgrindOpts = {};
+  let count = 0;
+  instanceInfo.arangods.forEach(arangod => {
+    while (true) {
+      const reply = download(arangod.url + "/_api/version", "", makeAuthorizationHeaders(options));
 
-  if (options.valgrindArgs) {
-    valgrindOpts = options.valgrindArgs;
-  }
-
-  let plan = new Planner({
-    "numberOfDBservers": clusterNodes,
-    "numberOfCoordinators": 1,
-    "dispatchers": {
-      "me": dispatcher
-    },
-    "dataPath": tmpDataDir,
-    "logPath": tmpDataDir,
-    "useSSLonCoordinators": protocol === "ssl",
-    "valgrind": runInValgrind,
-    "valgrindOpts": toArgv(valgrindOpts, true),
-    "valgrindXmlFileBase": testfn,
-    "valgrindTestname": testname,
-    "valgrindHosts": valgrindHosts,
-    "extremeVerbosity": options.extremeVerbosity
-  });
-
-  instanceInfo.kickstarter = new Kickstarter(plan.getPlan());
-
-  let rc = instanceInfo.kickstarter.launch();
-
-  if (rc.error) {
-    print("Cluster startup failed: " + rc.errorMessage);
-    return false;
-  }
-
-  let runInfo = instanceInfo.kickstarter.runInfo;
-  let j = runInfo.length - 1;
-
-  while (j > 0 && runInfo[j].isStartServers === undefined) {
-    --j;
-  }
-
-  if ((runInfo.length === 0) || (runInfo[0].error === true)) {
-    let error = new Error();
-    error.errorMessage = yaml.safeDump(runInfo);
-    throw error;
-  }
-
-  let roles = runInfo[j].roles;
-  let endpoints = runInfo[j].endpoints;
-  let pos = roles.indexOf("COORDINATOR");
-
-  instanceInfo.endpoint = endpoints[pos];
-
-  return true;
-}
-
-function startInstanceAgency(instanceInfo, protocol, options,
-  addArgs, testname, appDir, tmpDataDir) {
-  const N = options.agencySize;
-  const ports = [];
-  for (let i = 0; i < N; i++) {
-    ports.push(findFreePort());
-  }
-  instanceInfo.ports = ports;
-
-  const endpoints = ports.map(function(port) {
-    return protocol + "://127.0.0.1:" + port;
-  });
-  instanceInfo.endpoints = endpoints;
-
-  let td = ports.map(function(port) {
-    return fs.join(tmpDataDir, "data" + port);
-  });
-  for (let i = 0; i < N; i++) {
-    fs.makeDirectoryRecursive(td[i]);
-  }
-
-  let argss = [];
-  for (let i = 0; i < N; i++) {
-    let args = makeArgsArangod(options, appDir);
-    args["server.endpoint"] = endpoints[i];
-    args["database.directory"] = td[i];
-    args["log.file"] = fs.join(tmpDataDir, "log" + ports[i]);
-    args["agency.id"] = String(i);
-    args["agency.size"] = String(N);
-
-    if (protocol === "ssl") {
-      args["server.keyfile"] = fs.join("UnitTests", "server.pem");
-    }
-
-    args = _.extend(args, options.extraArgs);
-
-    if (addArgs !== undefined) {
-      args = _.extend(args, addArgs);
-    }
-
-    if (i === N - 1) {
-      let l = [];
-      for (let j = 0; j < N; j++) {
-        l.push("--agency.endpoint");
-        l.push(endpoints[j]);
+      if (!reply.error && reply.code === 200) {
+        break;
       }
-      l.push("--agency.notify");
-      l.push("true");
 
-      args["flatCommands"] = l;
+      ++count;
+
+      if (count % 60 === 0) {
+        if (!checkArangoAlive(arangod, options)) {
+          throw new Error("startup failed! bailing out!");
+        }
+      }
+      wait(0.5, false);
     }
-    argss.push(args);
+  });
+
+  response = download(coordinatorUrl + '/_admin/cluster/bootstrapDbServers', '{"isRelaunch":false}', httpOptions);
+
+  while (response.code !== 200) {
+    console.log('bootstrap dbservers failed', response);
+    wait(1);
   }
 
-  instanceInfo.pids = [];
-  for (let i = 0; i < N; i++) {
-    instanceInfo.pids[i] = executeValgrind(ARANGOD_BIN, toArgv(argss[i]), options, testname);
+  response = download(coordinatorUrl + '/_admin/cluster/upgradeClusterDatabase', '{"isRelaunch":false}', httpOptions);
+  if (response.code !== 200) {
+    throw new Error('Upgrading DB failed');
   }
+
+  response = download(coordinatorUrl + '/_admin/cluster/bootstrapCoordinator', '{"isRelaunch":false}', httpOptions);
+  if (response.code !== 200) {
+    throw new Error('bootstraping coordinator failed');
+  }
+
+  arango.reconnect(endpoint, "_system", 'root', '');
 
   return true;
 }
 
-function startInstanceSingleServer(instanceInfo, protocol, options,
-  addArgs, testname, appDir, tmpDataDir) {
-  const port = findFreePort();
-  instanceInfo.port = port;
+function startArango(protocol, options, addArgs, name, rootDir) {
+  const dataDir = fs.join(rootDir, "data");
+  const appDir = fs.join(rootDir, "apps");
 
-  const endpoint = protocol + "://127.0.0.1:" + port;
-  instanceInfo.endpoint = endpoint;
-
-  let td = fs.join(tmpDataDir, "data");
-  fs.makeDirectoryRecursive(td);
+  fs.makeDirectoryRecursive(dataDir);
+  fs.makeDirectoryRecursive(appDir);
 
   let args = makeArgsArangod(options, appDir);
+  let endpoint;
+  let port;
+  if (!addArgs["server.endpoint"]) {
+    port = findFreePort();
+    endpoint = protocol + "://127.0.0.1:" + port;
+  } else {
+    endpoint = addArgs["server.endpoint"];
+    port = endpoint.split(":").pop();
+  }
+  let instanceInfo = {};
+  instanceInfo.port = port;
+  instanceInfo.endpoint = endpoint;
+  instanceInfo.rootDir = rootDir;
+
   args["server.endpoint"] = endpoint;
-  args["database.directory"] = td;
-  args["log.file"] = fs.join(tmpDataDir, "log");
+  args["database.directory"] = dataDir;
+  args["log.file"] = fs.join(rootDir, "log");
+  args["log.level"] = 'info';
 
   if (protocol === "ssl") {
     args["server.keyfile"] = fs.join("UnitTests", "server.pem");
@@ -1688,92 +1314,17 @@ function startInstanceSingleServer(instanceInfo, protocol, options,
   if (addArgs !== undefined) {
     args = _.extend(args, addArgs);
   }
+  instanceInfo.url = endpointToURL(instanceInfo.endpoint);
 
-  instanceInfo.pid = executeValgrind(ARANGOD_BIN, toArgv(args), options, testname);
+  instanceInfo.pid = executeValgrind(ARANGOD_BIN, toArgv(args), options, name).pid;
 
-  return true;
-}
-
-function startInstance(protocol, options, addArgs, testname, tmpDir) {
-  const startTime = time();
-
-  let instanceInfo = {};
-  instanceInfo.topDir = TOP_DIR;
-
-  // create temporary directories
-  instanceInfo.flatTmpDataDir = tmpDir || fs.getTempFile();
-
-  const tmpDataDir = fs.join(instanceInfo.flatTmpDataDir, testname);
-  const appDir = fs.join(tmpDataDir, "apps");
-
-  fs.makeDirectoryRecursive(tmpDataDir);
-  instanceInfo.tmpDataDir = tmpDataDir;
-
-  // startup in cluster mode
-  let res = false;
-
-  if (options.cluster) {
-    res = startInstanceCluster(instanceInfo, protocol, options,
-      addArgs, testname, appDir, tmpDataDir);
-  }
-
-  // agency testing mode
-  else if (options.agency) {
-    res = startInstanceAgency(instanceInfo, protocol, options,
-      addArgs, testname, appDir, tmpDataDir);
-  }
-
-  // single instance mode
-  else {
-    res = startInstanceSingleServer(instanceInfo, protocol, options,
-      addArgs, testname, appDir, tmpDataDir);
-  }
-
-  if (!res) {
-    return false;
-  }
-
-  // wait until the server/coordinator is up:
-  let count = 0;
-
-  let url;
-  if (instanceInfo.endpoint !== undefined) {
-    url = endpointToURL(instanceInfo.endpoint);
-    instanceInfo.url = url;
-  } else {
-    instanceInfo.urls = instanceInfo.endpoints.map(endpointToURL);
-    url = instanceInfo.urls[0];
-    instanceInfo.url = url;
-  }
-
-  while (true) {
-    wait(0.5, false);
-
-    const reply = download(url + "/_api/version", "", makeAuthorizationHeaders(options));
-
-    if (!reply.error && reply.code === 200) {
-      break;
-    }
-
-    ++count;
-
-    if (count % 60 === 0) {
-      if (!checkInstanceAlive(instanceInfo, options)) {
-        print("startup failed! bailing out!");
-        return false;
-      }
-    }
-  }
-
-  print("up and running in " + (time() - startTime) + " seconds");
-
-  if (!options.cluster && (platform.substr(0, 3) === 'win')) {
+  if (platform.substr(0, 3) === 'win') {
     const procdumpArgs = [
       '-accepteula',
       '-e',
       '-ma',
-      instanceInfo.pid.pid,
-      fs.join(tmpDataDir, 'core.dmp')
+      instanceInfo.pid,
+      fs.join(rootDir, 'core.dmp')
     ];
 
     try {
@@ -1783,6 +1334,108 @@ function startInstance(protocol, options, addArgs, testname, tmpDir) {
       throw x;
     }
   }
+  return instanceInfo;
+}
+
+function startInstanceAgency(instanceInfo, protocol, options,
+  addArgs, testname, rootDir) {
+
+  const N = options.agencySize;
+  if (options.agencyWaitForSync === undefined) {
+    options.agencyWaitForSync = true;
+  }
+  const wfs = options.agencyWaitForSync;
+
+  for (let i = 0; i < N; i++) {
+    let instanceArgs = _.clone(addArgs);
+    instanceArgs["agency.id"] = String(i);
+    instanceArgs["agency.size"] = String(N);
+    instanceArgs["agency.wait-for-sync"] = String(wfs);
+
+    if (i === N - 1) {
+      let l = [];
+      for (let j = 0; j < N; j++) {
+        instanceInfo.arangods.forEach(arangod => {
+          l.push("--agency.endpoint");
+          l.push(arangod.endpoint);
+        });
+      }
+      l.push("--agency.notify");
+      l.push("true");
+
+      instanceArgs["flatCommands"] = l;
+    }
+    let dir = fs.join(rootDir, 'agency-' + i);
+    fs.makeDirectoryRecursive(dir);
+
+    instanceInfo.arangods.push(startArango(protocol, options, instanceArgs, testname, rootDir));
+  }
+
+  instanceInfo.endpoint = instanceInfo.arangods[instanceInfo.arangods.length - 1].endpoint;
+  instanceInfo.url = instanceInfo.arangods[instanceInfo.arangods.length - 1].url;
+  print("Agency Endpoint: " + instanceInfo.endpoint);
+
+  return instanceInfo;
+}
+
+function startInstanceSingleServer(instanceInfo, protocol, options,
+  addArgs, testname, rootDir) {
+
+  instanceInfo.arangods.push(startArango(protocol, options, addArgs, testname, rootDir));
+
+  instanceInfo.endpoint = instanceInfo.arangods[instanceInfo.arangods.length - 1].endpoint;
+  instanceInfo.url = instanceInfo.arangods[instanceInfo.arangods.length - 1].url;
+
+  return instanceInfo;
+}
+
+function startInstance(protocol, options, addArgs, testname, tmpDir) {
+  let rootDir = fs.join(tmpDir || fs.getTempFile(), testname);
+  let instanceInfo = {
+    rootDir, arangods: []
+  };
+
+  const startTime = time();
+  try {
+    if (options.cluster) {
+      startInstanceCluster(instanceInfo, protocol, options,
+        addArgs, testname, rootDir);
+    } else if (options.agency) {
+      startInstanceAgency(instanceInfo, protocol, options,
+        addArgs, testname, rootDir);
+    } else {
+      startInstanceSingleServer(instanceInfo, protocol, options,
+        addArgs, testname, rootDir);
+    }
+
+    if (!options.cluster) {
+      let count = 0;
+      instanceInfo.arangods.forEach(arangod => {
+        while (true) {
+          const reply = download(arangod.url + "/_api/version", "", makeAuthorizationHeaders(options));
+
+          if (!reply.error && reply.code === 200) {
+            break;
+          }
+
+          ++count;
+
+          if (count % 60 === 0) {
+            if (!checkArangoAlive(arangod, options)) {
+              throw new Error("startup failed! bailing out!");
+            }
+          }
+          wait(0.5, false);
+        }
+      });
+    }
+    print("up and running in " + (time() - startTime) + " seconds");
+  } catch (e) {
+    print(e, e.stack);
+    return false;
+  }
+
+
 
   return instanceInfo;
 }
@@ -1950,15 +1603,7 @@ function rubyTests(options, ssl) {
 
   fs.remove(tmpname);
   shutdownInstance(instanceInfo, options);
-
   print("done.");
-
-  if ((!options.skipLogAnalysis) &&
-    instanceInfo.hasOwnProperty('importantLogLines') &&
-    Object.keys(instanceInfo.importantLogLines).length > 0) {
-    print("Found messages in the server logs: \n" +
-      yaml.safeDump(instanceInfo.importantLogLines));
-  }
 
   return result;
 }
@@ -2025,6 +1670,14 @@ function findTests() {
       function(x) {
         return fs.join(makePathUnix("js/server/perftests"), x);
       }).sort();
+
+  testsCases.server_http = _.filter(fs.list(makePathUnix("js/common/tests/http")),
+    function(p) {
+      return p.substr(-3) === ".js";
+    }).map(
+    function(x) {
+      return fs.join(makePathUnix("js/common/tests/http"), x);
+    }).sort();
 
   testsCases.replication = _.filter(fs.list(makePathUnix("js/common/tests/replication")),
     function(p) {
@@ -2139,6 +1792,7 @@ let allTests = [
   "dfdb",
   "http_server",
   "importing",
+  "server_http",
   "shell_client",
   "shell_server",
   "shell_server_aql",
@@ -2451,13 +2105,6 @@ testFuncs.arangob = function(options) {
   shutdownInstance(instanceInfo, options);
   print("done.");
 
-  if ((!options.skipLogAnalysis) &&
-    instanceInfo.hasOwnProperty('importantLogLines') &&
-    Object.keys(instanceInfo.importantLogLines).length > 0) {
-    print("Found messages in the server logs: \n" +
-      yaml.safeDump(instanceInfo.importantLogLines));
-  }
-
   return results;
 };
 
@@ -2500,13 +2147,6 @@ testFuncs.authentication = function(options) {
   print("Shutting down...");
   shutdownInstance(instanceInfo, options);
   print("done.");
-
-  if ((!options.skipLogAnalysis) &&
-    instanceInfo.hasOwnProperty('importantLogLines') &&
-    Object.keys(instanceInfo.importantLogLines).length > 0) {
-    print("Found messages in the server logs: \n" +
-      yaml.safeDump(instanceInfo.importantLogLines));
-  }
 
   return results;
 };
@@ -2651,14 +2291,6 @@ testFuncs.authentication_parameters = function(options) {
 
     print("Shutting down " + authTestNames[test] + " test...");
     shutdownInstance(instanceInfo, options);
-
-    if ((!options.skipLogAnalysis) &&
-      instanceInfo.hasOwnProperty('importantLogLines') &&
-      (instanceInfo.importantLogLines.length > 0)) {
-      print("Found messages in the server logs: \n" +
-        yaml.safeDump(instanceInfo.importantLogLines));
-    }
-
     print("done with " + authTestNames[test] + " test.");
   }
 
@@ -2868,13 +2500,6 @@ testFuncs.dump = function(options) {
   shutdownInstance(instanceInfo, options);
   print("done.");
 
-  if ((!options.skipLogAnalysis) &&
-    instanceInfo.hasOwnProperty('importantLogLines') &&
-    Object.keys(instanceInfo.importantLogLines).length > 0) {
-    print("Found messages in the server logs: \n" +
-      yaml.safeDump(instanceInfo.importantLogLines));
-  }
-
   return results;
 };
 
@@ -2972,13 +2597,6 @@ testFuncs.dump_authentication = function(options) {
   shutdownInstance(instanceInfo, options);
   print("done.");
 
-  if ((!options.skipLogAnalysis) &&
-    instanceInfo.hasOwnProperty('importantLogLines') &&
-    Object.keys(instanceInfo.importantLogLines).length > 0) {
-    print("Found messages in the server logs: \n" +
-      yaml.safeDump(instanceInfo.importantLogLines));
-  }
-
   return results;
 };
 
@@ -3016,18 +2634,11 @@ testFuncs.foxx_manager = function(options) {
   shutdownInstance(instanceInfo, options);
   print("done.");
 
-  if ((!options.skipLogAnalysis) &&
-    instanceInfo.hasOwnProperty('importantLogLines') &&
-    Object.keys(instanceInfo.importantLogLines).length > 0) {
-    print("Found messages in the server logs: \n" +
-      yaml.safeDump(instanceInfo.importantLogLines));
-  }
-
   return results;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief TEST: http replication
+/// @brief TEST: http_replication
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.http_replication = function(options) {
@@ -3040,7 +2651,7 @@ testFuncs.http_replication = function(options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief TEST: http server
+/// @brief TEST: http_server
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.http_server = function(options) {
@@ -3196,14 +2807,6 @@ testFuncs.importing = function(options) {
   shutdownInstance(instanceInfo, options);
   print("done.");
 
-  if ((!options.skipLogAnalysis) &&
-    instanceInfo.hasOwnProperty('importantLogLines') &&
-    Object.keys(instanceInfo.importantLogLines).length > 0) {
-
-    print("Found messages in the server logs: \n" +
-      yaml.safeDump(instanceInfo.importantLogLines));
-  }
-
   return result;
 };
 
@@ -3298,7 +2901,6 @@ const recoveryTests = [
   "indexes-sparse-skiplist",
   "indexes-geo",
   "edges",
-  "cap-constraint",
   "indexes",
   "many-inserts",
   "many-updates",
@@ -3526,7 +3128,7 @@ testFuncs.shell_replication = function(options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief TEST: shell client
+/// @brief TEST: shell_client
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.shell_client = function(options) {
@@ -3589,18 +3191,21 @@ testFuncs.shell_client = function(options) {
   shutdownInstance(instanceInfo, options);
   print("done.");
 
-  if ((!options.skipLogAnalysis) &&
-    instanceInfo.hasOwnProperty('importantLogLines') &&
-    Object.keys(instanceInfo.importantLogLines).length > 0) {
-    print("Found messages in the server logs: \n" +
-      yaml.safeDump(instanceInfo.importantLogLines));
-  }
-
   return results;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief TEST: shell server
+/// @brief TEST: shell_http
+////////////////////////////////////////////////////////////////////////////////
+
+testFuncs.server_http = function(options) {
+  findTests();
+
+  return performTests(options, testsCases.server_http, 'server_http');
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief TEST: shell_server
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.shell_server = function(options) {
@@ -3610,7 +3215,7 @@ testFuncs.shell_server = function(options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief TEST: shell server aql
+/// @brief TEST: shell_server_aql
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.shell_server_aql = function(options) {
@@ -3636,7 +3241,7 @@ testFuncs.shell_server_aql = function(options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief TEST: shell server only
+/// @brief TEST: shell_server_only
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.shell_server_only = function(options) {
@@ -3646,7 +3251,7 @@ testFuncs.shell_server_only = function(options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief TEST: shell server performance
+/// @brief TEST: shell_server_perf
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.shell_server_perf = function(options) {
@@ -3657,7 +3262,7 @@ testFuncs.shell_server_perf = function(options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief TEST: single client
+/// @brief TEST: single_client
 ////////////////////////////////////////////////////////////////////////////////
 
 function single_usage(testsuite, list) {
@@ -3714,13 +3319,6 @@ testFuncs.single_client = function(options) {
 
     print("done.");
 
-    if ((!options.skipLogAnalysis) &&
-      instanceInfo.hasOwnProperty('importantLogLines') &&
-      Object.keys(instanceInfo.importantLogLines).length > 0) {
-      print("Found messages in the server logs: \n" +
-        yaml.safeDump(instanceInfo.importantLogLines));
-    }
-
     return result;
   } else {
     findTests();
@@ -3729,7 +3327,7 @@ testFuncs.single_client = function(options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief TEST: single server
+/// @brief TEST: single_server
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.single_server = function(options) {
@@ -3776,18 +3374,11 @@ testFuncs.single_server = function(options) {
 
   print("done.");
 
-  if ((!options.skipLogAnalysis) &&
-    instanceInfo.hasOwnProperty('importantLogLines') &&
-    Object.keys(instanceInfo.importantLogLines).length > 0) {
-    print("Found messages in the server logs: \n" +
-      yaml.safeDump(instanceInfo.importantLogLines));
-  }
-
   return result;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief TEST: https server
+/// @brief TEST: ssl_server
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.ssl_server = function(options) {
@@ -3953,7 +3544,7 @@ testFuncs.agency = function(options) {
   let continueTesting = true;
 
   for (let i = 0; i < testsCases.agency.length; i++) {
-    const te = testsCases.agency[i];
+    let te = testsCases.agency[i];
 
     if (filterTestcaseByOptions(te, options, filtered)) {
       if (!continueTesting) {
@@ -3969,9 +3560,16 @@ testFuncs.agency = function(options) {
         break;
       }
 
+      let agencyServers = instanceInfo.arangods.map(arangod => {
+        return arangod.url;
+      });
+
+
       print("\narangosh: Trying", te, "...");
 
-      const reply = runInArangosh(options, instanceInfo, te);
+      const reply = runInArangosh(options, instanceInfo, te, {
+        "flatCommands": agencyServers.join(' ')
+      });
       results[te] = reply;
 
       if (reply.status !== true) {
@@ -3993,13 +3591,6 @@ testFuncs.agency = function(options) {
   print("Shutting down...");
   shutdownInstance(instanceInfo, options);
   print("done.");
-
-  if ((!options.skipLogAnalysis) &&
-    instanceInfo.hasOwnProperty('importantLogLines') &&
-    Object.keys(instanceInfo.importantLogLines).length > 0) {
-    print("Found messages in the server logs: \n" +
-      yaml.safeDump(instanceInfo.importantLogLines));
-  }
 
   return results;
 };
@@ -4211,7 +3802,6 @@ function unitTest(cases, options) {
   ARANGORESTORE_BIN = fs.join(BIN_DIR, "arangorestore");
   ARANGOSH_BIN = fs.join(BIN_DIR, "arangosh");
   CONFIG_RELATIVE_DIR = fs.join(TOP_DIR, "etc", "relative");
-  ETCD_ARANGO_BIN = fs.join(BIN_DIR, "etcd-arango");
   JS_DIR = fs.join(TOP_DIR, "js");
   LOGS_DIR = fs.join(TOP_DIR, "logs");
   PEM_FILE = fs.join(TOP_DIR, "UnitTests", "server.pem");
@@ -4285,7 +3875,7 @@ function unitTest(cases, options) {
   if (globalStatus && !serverCrashed) {
     cleanupDBDirectories(options);
   } else {
-    print("since some tests weren't successfully, not cleaning up: \n" +
+    print("not cleaning up as some tests weren't successful:\n" +
       yaml.safeDump(cleanupDirectories));
   }
 

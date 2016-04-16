@@ -22,6 +22,9 @@ if [ ! -z "$3" ] ; then
     elif [ "$3" == "D" ] ; then
         CLUSTERDEBUGGER=1
         echo Running cluster in debugger.
+    elif [ "$3" == "R" ] ; then
+        RRDEBUGGER=1
+        echo Running cluster in rr with --console.
     fi
 fi
 
@@ -33,10 +36,22 @@ fi
 
 rm -rf cluster
 mkdir cluster
-cd cluster
 echo Starting agency...
-../build/bin/etcd-arango --data-dir agency > agency.log 2>&1 &
-cd ..
+build/bin/arangod -c etc/relative/arangod.conf \
+  --agency.size 1 \
+  --server.endpoint tcp://127.0.0.1:4001 \
+  --agency.endpoint tcp://127.0.0.1:4001 \
+  --agency.wait-for-sync false \
+  --database.directory cluster/data4001 \
+  --agency.id 0 \
+  --log.file cluster/4001.log \
+  --log.requests-file cluster/4001.req \
+  --server.disable-statistics true \
+  --server.foxx-queues false \
+  --server.disable-authentication true \
+  --javascript.app-path ./js/apps \
+  --javascript.startup-directory ./js \
+  > cluster/4001.stdout 2>&1 &
 sleep 1
 
 start() {
@@ -49,13 +64,16 @@ start() {
     PORT=$2
     mkdir cluster/data$PORT
     echo Starting $TYPE on port $PORT
-    build/bin/arangod --database.directory cluster/data$PORT \
+    build/bin/arangod -c etc/relative/arangod.conf \
+                --database.directory cluster/data$PORT \
                 --cluster.agency-endpoint tcp://127.0.0.1:4001 \
                 --cluster.my-address tcp://127.0.0.1:$PORT \
                 --server.endpoint tcp://127.0.0.1:$PORT \
                 --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
                 --cluster.my-role $ROLE \
                 --log.file cluster/$PORT.log \
+                --log.buffered false \
+                --log.level info \
                 --log.requests-file cluster/$PORT.req \
                 --server.disable-statistics true \
                 --server.foxx-queues false \
@@ -75,7 +93,8 @@ startTerminal() {
     PORT=$2
     mkdir cluster/data$PORT
     echo Starting $TYPE on port $PORT
-    xterm $XTERMOPTIONS -e build/bin/arangod --database.directory cluster/data$PORT \
+    xterm $XTERMOPTIONS -e build/bin/arangod -c etc/relative/arangod.conf \
+                --database.directory cluster/data$PORT \
                 --cluster.agency-endpoint tcp://127.0.0.1:4001 \
                 --cluster.my-address tcp://127.0.0.1:$PORT \
                 --server.endpoint tcp://127.0.0.1:$PORT \
@@ -101,7 +120,8 @@ startDebugger() {
     PORT=$2
     mkdir cluster/data$PORT
     echo Starting $TYPE on port $PORT with debugger
-    build/bin/arangod --database.directory cluster/data$PORT \
+    build/bin/arangod -c etc/relative/arangod.conf \
+                --database.directory cluster/data$PORT \
                 --cluster.agency-endpoint tcp://127.0.0.1:4001 \
                 --cluster.my-address tcp://127.0.0.1:$PORT \
                 --server.endpoint tcp://127.0.0.1:$PORT \
@@ -117,10 +137,40 @@ startDebugger() {
     xterm $XTERMOPTIONS -title "$TYPE $PORT" -e gdb build/bin/arangod -p $! &
 }
 
+startRR() {
+    if [ "$1" == "dbserver" ]; then
+      ROLE="PRIMARY"
+    elif [ "$1" == "coordinator" ]; then
+      ROLE="COORDINATOR"
+    fi
+    TYPE=$1
+    PORT=$2
+    mkdir cluster/data$PORT
+    echo Starting $TYPE on port $PORT with rr tracer
+    xterm $XTERMOPTIONS -title "$TYPE $PORT" -e rr build/bin/arangod \
+                -c etc/relative/arangod.conf \
+                --database.directory cluster/data$PORT \
+                --cluster.agency-endpoint tcp://127.0.0.1:4001 \
+                --cluster.my-address tcp://127.0.0.1:$PORT \
+                --server.endpoint tcp://127.0.0.1:$PORT \
+                --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
+                --cluster.my-role $ROLE \
+                --log.file cluster/$PORT.log \
+                --log.requests-file cluster/$PORT.req \
+                --server.disable-statistics true \
+                --javascript.startup-directory ./js \
+                --javascript.app-path ./js/apps \
+                --server.disable-authentication true \
+                --server.foxx-queues false \
+                --console &
+}
+
 PORTTOPDB=`expr 8629 + $NRDBSERVERS - 1`
 for p in `seq 8629 $PORTTOPDB` ; do
     if [ "$CLUSTERDEBUGGER" == "1" ] ; then
         startDebugger dbserver $p
+    elif [ "$RRDEBUGGER" == "1" ] ; then
+        startRR dbserver $p
     else
         start dbserver $p
     fi
@@ -131,6 +181,8 @@ for p in `seq 8530 $PORTTOPCO` ; do
         startDebugger coordinator $p
     elif [ $p == "8530" -a ! -z "$COORDINATORCONSOLE" ] ; then
         startTerminal coordinator $p
+    elif [ "$RRDEBUGGER" == "1" ] ; then
+        startRR coordinator $p
     else
         start coordinator $p
     fi
@@ -147,7 +199,7 @@ testServer() {
     PORT=$1
     while true ; do
         sleep 1
-        curl -s -X GET "http://127.0.0.1:$PORT/_api/version" > /dev/null 2>&1
+        curl -s -f -X GET "http://127.0.0.1:$PORT/_api/version" > /dev/null 2>&1
         if [ "$?" != "0" ] ; then
             echo Server on port $PORT does not answer yet.
         else
@@ -175,7 +227,8 @@ if [ -n "$SECONDARIES" ]; then
     echo Registering secondary $CLUSTER_ID for "DBServer$index"
     curl -f -X PUT --data "{\"primary\": \"DBServer$index\", \"oldSecondary\": \"none\", \"newSecondary\": \"$CLUSTER_ID\"}" -H "Content-Type: application/json" localhost:8530/_admin/cluster/replaceSecondary
     echo Starting Secondary $CLUSTER_ID on port $PORT
-    build/bin/arangod --database.directory cluster/data$PORT \
+    build/bin/arangod -c etc/relative/arangod.conf \
+                --database.directory cluster/data$PORT \
                 --cluster.agency-endpoint tcp://127.0.0.1:4001 \
                 --cluster.my-address tcp://127.0.0.1:$PORT \
                 --server.endpoint tcp://127.0.0.1:$PORT \

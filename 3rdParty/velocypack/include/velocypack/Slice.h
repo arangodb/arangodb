@@ -33,6 +33,7 @@
 #include <vector>
 #include <iosfwd>
 #include <algorithm>
+#include <functional>
 #include <type_traits>
 
 #include "velocypack/velocypack-common.h"
@@ -47,6 +48,7 @@ namespace velocypack {
 // forward for fasthash64 function declared elsewhere
 uint64_t fasthash64(void const*, size_t, uint64_t);
 
+class AttributeTranslator;
 class SliceScope;
 
 class Slice {
@@ -59,47 +61,47 @@ class Slice {
   uint8_t const* _start;
 
  public:
-  Options const* options;
+
+  static AttributeTranslator* attributeTranslator;
 
   // constructor for an empty Value of type None
-  Slice() : Slice("\x00", &Options::Defaults) {}
+  Slice() : Slice("\x00") {}
 
-  explicit Slice(uint8_t const* start,
-                 Options const* options = &Options::Defaults)
-      : _start(start), options(options) {
-    VELOCYPACK_ASSERT(options != nullptr);
-  }
+  // creates a slice of type None
+  static Slice noneSlice() { return Slice("\x00"); }
 
-  explicit Slice(char const* start, Options const* options = &Options::Defaults)
-      : _start(reinterpret_cast<uint8_t const*>(start)), options(options) {
-    VELOCYPACK_ASSERT(options != nullptr);
-  }
+  // creates a slice of type Null
+  static Slice nullSlice() { return Slice("\x18"); }
+  
+  // creates a slice of type Boolean with false value
+  static Slice falseSlice() { return Slice("\x19"); }
 
-  Slice(Slice const& other) : _start(other._start), options(other.options) {
-    VELOCYPACK_ASSERT(options != nullptr);
-  }
+  // creates a slice of type Boolean with true value
+  static Slice trueSlice() { return Slice("\x1a"); }
+  
+  // creates a slice of type Array, empty
+  static Slice emptyArraySlice() { return Slice("\x01"); }
+  
+  // creates a slice of type Object, empty
+  static Slice emptyObjectSlice() { return Slice("\x0a"); }
+  
+  // creates a slice of type MinKey
+  static Slice minKeySlice() { return Slice("\x1e"); }
 
-  Slice(Slice&& other) : _start(other._start), options(other.options) {
-    VELOCYPACK_ASSERT(options != nullptr);
-  }
-
-  Slice& operator=(Slice const& other) {
-    _start = other._start;
-    options = other.options;
-    VELOCYPACK_ASSERT(options != nullptr);
-    return *this;
-  }
-
-  Slice& operator=(Slice&& other) {
-    _start = other._start;
-    options = other.options;
-    VELOCYPACK_ASSERT(options != nullptr);
-    return *this;
-  }
+  // creates a slice of type MaxKey
+  static Slice maxKeySlice() { return Slice("\x1f"); }
 
   // creates a Slice from Json and adds it to a scope
   static Slice fromJson(SliceScope& scope, std::string const& json,
                         Options const* options = &Options::Defaults);
+  
+  // creates a Slice from a pointer to a uint8_t array
+  explicit Slice(uint8_t const* start)
+      : _start(start) {}
+
+  // creates a Slice from a pointer to a char array
+  explicit Slice(char const* start)
+      : _start(reinterpret_cast<uint8_t const*>(start)) {}
 
   uint8_t const* begin() { return _start; }
 
@@ -119,6 +121,9 @@ class Slice {
   // pointer to the head byte
   uint8_t const* start() const { return _start; }
 
+  // Set new memory position
+  void set(uint8_t const* s) { _start = s; }
+
   // pointer to the head byte
   template <typename T>
   T const* startAs() const {
@@ -128,9 +133,15 @@ class Slice {
   // value of the head byte
   inline uint8_t head() const { return *_start; }
 
-  inline uint64_t hash() const {
-    return fasthash64(start(), checkOverflow(byteSize()), 0xdeadbeef);
+  // hashes the binary representation of a value
+  inline uint64_t hash(uint64_t seed = 0xdeadbeef) const {
+    return fasthash64(start(), checkOverflow(byteSize()), seed);
   }
+
+  // hashes the value, normalizing different representations of
+  // arrays, objects and numbers. this function may produce different
+  // hash values than the binary hash() function
+  uint64_t normalizedHash(uint64_t seed = 0xdeadbeef) const;
 
   // check if slice is of the specified type
   inline bool isType(ValueType t) const { return type() == t; }
@@ -281,7 +292,7 @@ class Slice {
     // find number of items
     if (h <= 0x05) {  // No offset table or length, need to compute:
       ValueLength firstSubOffset = findDataOffset(h);
-      Slice first(_start + firstSubOffset, options);
+      Slice first(_start + firstSubOffset);
       return (end - firstSubOffset) / first.byteSize();
     } else if (offsetSize < 8) {
       return readInteger<ValueLength>(_start + offsetSize + 1, offsetSize);
@@ -322,7 +333,7 @@ class Slice {
     }
 
     Slice key = getNthKey(index, false);
-    return Slice(key.start() + key.byteSize(), options);
+    return Slice(key.start() + key.byteSize());
   }
 
   // look for the specified attribute path inside an Object
@@ -334,7 +345,30 @@ class Slice {
     }
 
     // use ourselves as the starting point
-    Slice last = Slice(start(), options);
+    Slice last = Slice(start());
+    for (size_t i = 0; i < attributes.size(); ++i) {
+      // fetch subattribute
+      last = last.get(attributes[i]);
+
+      // abort as early as possible
+      if (last.isNone() || (i + 1 < n && !last.isObject())) {
+        return Slice();
+      }
+    }
+
+    return last;
+  }
+  
+  // look for the specified attribute path inside an Object
+  // returns a Slice(ValueType::None) if not found
+  Slice get(std::vector<char const*> const& attributes) const {
+    size_t const n = attributes.size();
+    if (n == 0) {
+      throw Exception(Exception::InvalidAttributePath);
+    }
+
+    // use ourselves as the starting point
+    Slice last = Slice(start());
     for (size_t i = 0; i < attributes.size(); ++i) {
       // fetch subattribute
       last = last.get(attributes[i]);
@@ -351,6 +385,12 @@ class Slice {
   // look for the specified attribute inside an Object
   // returns a Slice(ValueType::None) if not found
   Slice get(std::string const& attribute) const;
+  
+  // look for the specified attribute inside an Object
+  // returns a Slice(ValueType::None) if not found
+  Slice get(char const* attribute) const {
+    return get(std::string(attribute));
+  }
 
   Slice operator[](std::string const& attribute) const {
     return get(attribute);
@@ -636,11 +676,41 @@ class Slice {
       }
 
       case ValueType::Custom: {
-        if (options->customTypeHandler == nullptr) {
-          throw Exception(Exception::NeedCustomTypeHandler);
-        }
+        auto const h = head();
+        switch (h) {
+          case 0xf0: return 1 + 1;
+          case 0xf1: return 1 + 2;
+          case 0xf2: return 1 + 4;
+          case 0xf3: return 1 + 8;
 
-        return options->customTypeHandler->byteSize(*this);
+          case 0xf4: 
+          case 0xf5: 
+          case 0xf6: {
+            return 2 + readInteger<ValueLength>(_start + 1, 1);
+          }
+
+          case 0xf7: 
+          case 0xf8: 
+          case 0xf9:  {
+            return 3 + readInteger<ValueLength>(_start + 1, 2);
+          }
+          
+          case 0xfa: 
+          case 0xfb: 
+          case 0xfc: {
+            return 5 + readInteger<ValueLength>(_start + 1, 4);
+          }
+          
+          case 0xfd: 
+          case 0xfe: 
+          case 0xff: {
+            return 9 + readInteger<ValueLength>(_start + 1, 8);
+          }
+
+          default: {
+            // fallthrough intentional
+          }
+        }
       }
     }
 
@@ -654,9 +724,15 @@ class Slice {
 
   // check if two Slices are equal on the binary level
   bool equals(Slice const& other) const;
+  bool operator==(Slice const& other) const { return equals(other); }
+  bool operator!=(Slice const& other) const { return !equals(other); }
 
-  std::string toJson() const;
-  std::string toString() const;
+  static bool equals(uint8_t const* left, uint8_t const* right) {
+    return Slice(left).equals(Slice(right));
+  }
+
+  std::string toJson(Options const* options = &Options::Defaults) const;
+  std::string toString(Options const* options = &Options::Defaults) const;
   std::string hexType() const;
 
  private:
@@ -729,7 +805,6 @@ class Slice {
   static ValueType const TypeMap[256];
   static unsigned int const WidthMap[32];
   static unsigned int const FirstSubMap[32];
-  static char const* NullStr;
 };
 
 // a class for keeping Slice allocations in scope
@@ -740,8 +815,7 @@ class SliceScope {
   SliceScope();
   ~SliceScope();
 
-  Slice add(uint8_t const* data, ValueLength size,
-            Options const* options = &Options::Defaults);
+  Slice add(uint8_t const* data, ValueLength size);
 
  private:
   std::vector<uint8_t*> _allocations;
@@ -767,14 +841,6 @@ struct hash<arangodb::velocypack::Slice> {
   }
 };
 
-// implementation of std::equal_to for two Slice objects
-template <>
-struct equal_to<arangodb::velocypack::Slice> {
-  bool operator()(arangodb::velocypack::Slice const& left,
-                  arangodb::velocypack::Slice const& right) const {
-    return left.equals(right);
-  }
-};
 }
 
 std::ostream& operator<<(std::ostream&, arangodb::velocypack::Slice const*);

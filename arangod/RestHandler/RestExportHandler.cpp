@@ -23,7 +23,6 @@
 
 #include "RestExportHandler.h"
 #include "Basics/Exceptions.h"
-#include "Basics/json.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/VPackStringBufferAdapter.h"
@@ -198,9 +197,8 @@ void RestExportHandler::createCursor() {
 
   try {
     bool parseSuccess = true;
-    VPackOptions vpoptions;
     std::shared_ptr<VPackBuilder> parsedBody =
-        parseVelocyPackBody(&vpoptions, parseSuccess);
+        parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
 
     if (!parseSuccess) {
       return;

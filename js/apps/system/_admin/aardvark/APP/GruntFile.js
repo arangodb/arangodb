@@ -30,6 +30,7 @@
             "frontend/css/ansi.css",
             "frontend/css/highlightjs.css",
             "frontend/css/jsoneditor.css",
+            "frontend/css/grids-responsive-min.css",
             "frontend/ttf/arangofont/style.css"
           ]
         },
@@ -351,7 +352,7 @@
             "frontend/js/lib/underscore-min.js",
             "frontend/js/lib/backbone-min.js",
             "frontend/js/lib/bootstrap-min.js",
-            "frontend/js/lib/d3.v3.min.js",
+            "frontend/js/lib/d3.min.js",
             "frontend/js/lib/nv.d3.min.js",
             "frontend/js/config/dygraphConfig.js",
             "frontend/js/lib/dygraph-combined.min.js"

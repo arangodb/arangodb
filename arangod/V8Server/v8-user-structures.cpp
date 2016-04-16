@@ -70,50 +70,29 @@ struct KeySpaceElement {
 
 class KeySpace {
  public:
-  explicit KeySpace(uint32_t initialSize) : _lock() {
-    TRI_InitAssociativePointer(&_hash, TRI_UNKNOWN_MEM_ZONE,
-                               TRI_HashStringKeyAssociativePointer, HashHash,
-                               EqualHash, nullptr);
-
-    if (initialSize > 0) {
-      TRI_ReserveAssociativePointer(&_hash, initialSize);
-    }
-  }
+  explicit KeySpace(uint32_t initialSize) : _lock() {}
 
   ~KeySpace() {
-    uint32_t const n = _hash._nrAlloc;
-    for (uint32_t i = 0; i < n; ++i) {
-      auto element = static_cast<KeySpaceElement*>(_hash._table[i]);
+    for (auto& it : _hash) {
+      auto element = it.second;
 
       if (element != nullptr) {
         delete element;
       }
     }
-    TRI_DestroyAssociativePointer(&_hash);
-  }
-
-  static uint64_t HashHash(TRI_associative_pointer_t*, void const* element) {
-    return TRI_FnvHashString(static_cast<KeySpaceElement const*>(element)->key);
-  }
-
-  static bool EqualHash(TRI_associative_pointer_t*, void const* key,
-                        void const* element) {
-    return TRI_EqualString(static_cast<char const*>(key),
-                           static_cast<KeySpaceElement const*>(element)->key);
   }
 
   uint32_t keyspaceCount() {
     READ_LOCKER(readLocker, _lock);
-    return _hash._nrUsed;
+    return static_cast<uint32_t>(_hash.size());
   }
 
   uint32_t keyspaceCount(std::string const& prefix) {
     uint32_t count = 0;
     READ_LOCKER(readLocker, _lock);
 
-    uint32_t const n = _hash._nrAlloc;
-    for (uint32_t i = 0; i < n; ++i) {
-      auto data = static_cast<KeySpaceElement*>(_hash._table[i]);
+    for (auto const& it : _hash) {
+      auto data = it.second;
 
       if (data != nullptr) {
         if (TRI_IsPrefixString(data->key, prefix.c_str())) {
@@ -129,20 +108,17 @@ class KeySpace {
     v8::EscapableHandleScope scope(isolate);
 
     WRITE_LOCKER(writeLocker, _lock);
-
-    uint32_t const n = _hash._nrAlloc;
     uint32_t deleted = 0;
-
-    for (uint32_t i = 0; i < n; ++i) {
-      auto element = static_cast<KeySpaceElement*>(_hash._table[i]);
+ 
+    for (auto& it : _hash) {
+      auto element = it.second;
 
       if (element != nullptr) {
         delete element;
-        _hash._table[i] = nullptr;
         ++deleted;
-      }
+      } 
     }
-    _hash._nrUsed = 0;
+    _hash.clear();
 
     return scope.Escape<v8::Value>(
         v8::Number::New(isolate, static_cast<int>(deleted)));
@@ -153,24 +129,20 @@ class KeySpace {
     v8::EscapableHandleScope scope(isolate);
     WRITE_LOCKER(writeLocker, _lock);
 
-    uint32_t const n = _hash._nrAlloc;
-    uint32_t i = 0;
     uint32_t deleted = 0;
 
-    while (i < n) {
-      auto element = static_cast<KeySpaceElement*>(_hash._table[i]);
+    for (auto it = _hash.begin(); it != _hash.end(); /* no hoisting */) {
+      auto element = (*it).second;
 
       if (element != nullptr) {
         if (TRI_IsPrefixString(element->key, prefix.c_str())) {
-          if (TRI_RemoveKeyAssociativePointer(&_hash, element->key) !=
-              nullptr) {
-            delete element;
-            ++deleted;
-            continue;
-          }
+          it = _hash.erase(it);
+          delete element;
+          ++deleted;
+          continue;
         }
       }
-      ++i;
+      ++it;
     }
 
     return scope.Escape<v8::Value>(
@@ -183,12 +155,11 @@ class KeySpace {
     {
       READ_LOCKER(readLocker, _lock);
 
-      uint32_t const n = _hash._nrAlloc;
       uint32_t count = 0;
-      result = v8::Array::New(isolate, static_cast<int>(_hash._nrUsed));
+      result = v8::Array::New(isolate, static_cast<int>(_hash.size()));
 
-      for (uint32_t i = 0; i < n; ++i) {
-        auto element = static_cast<KeySpaceElement*>(_hash._table[i]);
+      for (auto const& it : _hash) {
+        auto element = it.second;
 
         if (element != nullptr) {
           result->Set(count++, TRI_V8_STRING(element->key));
@@ -206,12 +177,11 @@ class KeySpace {
     {
       READ_LOCKER(readLocker, _lock);
 
-      uint32_t const n = _hash._nrAlloc;
       uint32_t count = 0;
       result = v8::Array::New(isolate);
 
-      for (uint32_t i = 0; i < n; ++i) {
-        auto element = static_cast<KeySpaceElement*>(_hash._table[i]);
+      for (auto const& it : _hash) {
+        auto element = it.second;
 
         if (element != nullptr) {
           if (TRI_IsPrefixString(element->key, prefix.c_str())) {
@@ -230,10 +200,8 @@ class KeySpace {
     {
       READ_LOCKER(readLocker, _lock);
 
-      uint32_t const n = _hash._nrAlloc;
-
-      for (uint32_t i = 0; i < n; ++i) {
-        auto element = static_cast<KeySpaceElement*>(_hash._table[i]);
+      for (auto const& it : _hash) {
+        auto element = it.second;
 
         if (element != nullptr) {
           result->Set(TRI_V8_STRING(element->key),
@@ -252,10 +220,8 @@ class KeySpace {
     {
       READ_LOCKER(readLocker, _lock);
 
-      uint32_t const n = _hash._nrAlloc;
-
-      for (uint32_t i = 0; i < n; ++i) {
-        auto element = static_cast<KeySpaceElement*>(_hash._table[i]);
+      for (auto const& it : _hash) {
+        auto element = it.second;
 
         if (element != nullptr) {
           if (TRI_IsPrefixString(element->key, prefix.c_str())) {
@@ -272,11 +238,10 @@ class KeySpace {
   bool keyCount(std::string const& key, uint32_t& result) {
     READ_LOCKER(readLocker, _lock);
 
-    auto found = static_cast<KeySpaceElement*>(
-        TRI_LookupByKeyAssociativePointer(&_hash, key.c_str()));
-
-    if (found != nullptr) {
-      TRI_json_t const* value = found->json;
+    auto it = _hash.find(key);
+    
+    if (it != _hash.end()) {
+      TRI_json_t const* value = (*it).second->json;
 
       if (TRI_IsArrayJson(value)) {
         result =
@@ -299,13 +264,11 @@ class KeySpace {
     {
       READ_LOCKER(readLocker, _lock);
 
-      auto found = static_cast<KeySpaceElement*>(
-          TRI_LookupByKeyAssociativePointer(&_hash, key.c_str()));
-
-      if (found == nullptr) {
+      auto it = _hash.find(key);
+      if (it == _hash.end()) {
         result = v8::Undefined(isolate);
       } else {
-        result = TRI_ObjectJson(isolate, found->json);
+        result = TRI_ObjectJson(isolate, (*it).second->json);
       }
     }
 
@@ -316,24 +279,25 @@ class KeySpace {
               v8::Handle<v8::Value> const& value, bool replace) {
     auto element = new KeySpaceElement(key.c_str(), key.size(),
                                        TRI_ObjectToJson(isolate, value));
-    KeySpaceElement* found = nullptr;
-
     {
       WRITE_LOCKER(writeLocker, _lock);
 
-      found = static_cast<KeySpaceElement*>(TRI_InsertKeyAssociativePointer(
-          &_hash, element->key, element, replace));
+      if (replace) {
+        // delete previous entry
+        auto it = _hash.find(key);
+        if (it != _hash.end()) {
+          delete (*it).second;
+          _hash.erase(it);
+        }
+      }
+
+      auto it = _hash.emplace(key, element);
+      if (it.second) {
+        return true;
+      }
     }
 
-    if (found == nullptr) {
-      return true;
-    }
-
-    if (replace) {
-      delete found;
-      return true;
-    }
-
+    // insertion failed
     delete element;
     return false;
   }
@@ -345,16 +309,21 @@ class KeySpace {
                                        TRI_ObjectToJson(isolate, value));
 
     WRITE_LOCKER(writeLocker, _lock);
-
-    auto found = static_cast<KeySpaceElement*>(
-        TRI_InsertKeyAssociativePointer(&_hash, element->key, element, false));
-
-    if (found == nullptr) {
+  
+    auto it = _hash.emplace(key, element);
+    if (it.second) {
       // no object saved yet
       match = true;
 
       return TRI_ERROR_NO_ERROR;
     }
+
+    auto it2 = _hash.find(key);
+    if (it2 == _hash.end()) {
+      return TRI_ERROR_INTERNAL;
+    }
+
+    KeySpaceElement* found = (*it2).second;
 
     if (compare->IsUndefined()) {
       // other object saved, but we compare it with nothing => no match
@@ -380,8 +349,13 @@ class KeySpace {
       delete element;
       match = false;
     } else {
-      TRI_InsertKeyAssociativePointer(&_hash, element->key, element, true);
-      delete found;
+      auto it = _hash.find(key);
+      if (it != _hash.end()) {
+        auto found = (*it).second;
+        _hash.erase(it);
+        delete found;
+      }
+      _hash.emplace(key, element);
       match = true;
     }
 
@@ -394,8 +368,11 @@ class KeySpace {
     {
       WRITE_LOCKER(writeLocker, _lock);
 
-      found = static_cast<KeySpaceElement*>(
-          TRI_RemoveKeyAssociativePointer(&_hash, key.c_str()));
+      auto it = _hash.find(key);
+      if (it != _hash.end()) {
+        found = (*it).second;
+        _hash.erase(it);
+      }
     }
 
     if (found != nullptr) {
@@ -409,26 +386,24 @@ class KeySpace {
   bool keyExists(std::string const& key) {
     READ_LOCKER(readLocker, _lock);
 
-    return (TRI_LookupByKeyAssociativePointer(&_hash, key.c_str()) != nullptr);
+    return _hash.find(key) != _hash.end();
   }
 
   int keyIncr(std::string const& key, double value, double& result) {
     WRITE_LOCKER(writeLocker, _lock);
 
-    auto found = static_cast<KeySpaceElement*>(
-        TRI_LookupByKeyAssociativePointer(&_hash, key.c_str()));
+    KeySpaceElement* found = nullptr;
+    auto it = _hash.find(key);
+    if (it != _hash.end()) {
+      found = (*it).second;
+    }
 
     if (found == nullptr) {
       auto element = new KeySpaceElement(
           key.c_str(), key.size(),
           TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, value));
 
-      if (TRI_InsertKeyAssociativePointer(&_hash, element->key,
-                                          static_cast<void*>(element),
-                                          false) != TRI_ERROR_NO_ERROR) {
-        delete element;
-        return TRI_ERROR_OUT_OF_MEMORY;
-      }
+      _hash.emplace(key, element);
       result = value;
     } else {
       TRI_json_t* current = found->json;
@@ -447,8 +422,11 @@ class KeySpace {
               v8::Handle<v8::Value> const& value) {
     WRITE_LOCKER(writeLocker, _lock);
 
-    auto found = static_cast<KeySpaceElement*>(
-        TRI_LookupByKeyAssociativePointer(&_hash, key.c_str()));
+    KeySpaceElement* found = nullptr;
+    auto it = _hash.find(key);
+    if (it != _hash.end()) {
+      found = (*it).second;
+    }
 
     if (found == nullptr) {
       TRI_json_t* list = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, 1);
@@ -466,12 +444,7 @@ class KeySpace {
 
       auto element = new KeySpaceElement(key.c_str(), key.size(), list);
 
-      if (TRI_InsertKeyAssociativePointer(&_hash, element->key,
-                                          static_cast<void*>(element),
-                                          false) != TRI_ERROR_NO_ERROR) {
-        delete element;
-        return TRI_ERROR_OUT_OF_MEMORY;
-      }
+      _hash.emplace(key, element);
     } else {
       TRI_json_t* current = found->json;
 
@@ -495,8 +468,11 @@ class KeySpace {
     v8::HandleScope scope(isolate);
     WRITE_LOCKER(writeLocker, _lock);
 
-    auto found = static_cast<KeySpaceElement*>(
-        TRI_LookupByKeyAssociativePointer(&_hash, key.c_str()));
+    KeySpaceElement* found = nullptr;
+    auto it = _hash.find(key);
+    if (it != _hash.end()) {
+      found = (*it).second;
+    }
 
     if (found == nullptr) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -533,8 +509,11 @@ class KeySpace {
 
     WRITE_LOCKER(writeLocker, _lock);
 
-    auto source = static_cast<KeySpaceElement*>(
-        TRI_LookupByKeyAssociativePointer(&_hash, keyFrom.c_str()));
+    KeySpaceElement* source = nullptr;
+    auto it = _hash.find(keyFrom);
+    if (it != _hash.end()) {
+      source = (*it).second;
+    }
 
     if (source == nullptr) {
       TRI_V8_RETURN_UNDEFINED();
@@ -555,8 +534,11 @@ class KeySpace {
     TRI_json_t* sourceItem = static_cast<TRI_json_t*>(
         TRI_AtVector(&source->json->_value._objects, n - 1));
 
-    auto dest = static_cast<KeySpaceElement*>(
-        TRI_LookupByKeyAssociativePointer(&_hash, keyTo.c_str()));
+    KeySpaceElement* dest = nullptr;
+    auto it2 = _hash.find(keyTo);
+    if (it2 != _hash.end()) {
+      dest = (*it2).second;
+    }
 
     if (dest == nullptr) {
       TRI_json_t* list = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, 1);
@@ -569,7 +551,7 @@ class KeySpace {
 
       try {
         auto element = new KeySpaceElement(keyTo.c_str(), keyTo.size(), list);
-        TRI_InsertKeyAssociativePointer(&_hash, element->key, element, false);
+        _hash.emplace(keyTo, element);
         // hack: decrease the vector size
         TRI_SetLengthVector(&current->_value._objects,
                             TRI_LengthVector(&current->_value._objects) - 1);
@@ -579,6 +561,8 @@ class KeySpace {
         TRI_V8_THROW_EXCEPTION_MEMORY();
       }
     }
+
+    TRI_ASSERT(dest != nullptr);
 
     if (!TRI_IsArrayJson(dest->json)) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -598,13 +582,11 @@ class KeySpace {
     {
       READ_LOCKER(readLocker, _lock);
 
-      auto found = static_cast<KeySpaceElement*>(
-          TRI_LookupByKeyAssociativePointer(&_hash, key.c_str()));
-
-      if (found == nullptr) {
+      auto it = _hash.find(key);
+      if (it == _hash.end()) {
         result = v8::Undefined(isolate);
       } else {
-        result = TRI_KeysJson(isolate, found->json);
+        result = TRI_KeysJson(isolate, (*it).second->json);
       }
     }
 
@@ -618,13 +600,11 @@ class KeySpace {
     {
       READ_LOCKER(readLocker, _lock);
 
-      auto found = static_cast<KeySpaceElement*>(
-          TRI_LookupByKeyAssociativePointer(&_hash, key.c_str()));
-
-      if (found == nullptr) {
+      auto it = _hash.find(key);
+      if (it == _hash.end()) {
         result = v8::Undefined(isolate);
       } else {
-        result = TRI_ValuesJson(isolate, found->json);
+        result = TRI_ValuesJson(isolate, (*it).second->json);
       }
     }
 
@@ -640,12 +620,11 @@ class KeySpace {
     {
       READ_LOCKER(readLocker, _lock);
 
-      auto found = static_cast<KeySpaceElement*>(
-          TRI_LookupByKeyAssociativePointer(&_hash, key.c_str()));
-
-      if (found == nullptr) {
+      auto it = _hash.find(key);
+      if (it == _hash.end()) {
         result = v8::Undefined(isolate);
       } else {
+        KeySpaceElement* found = (*it).second;
         if (!TRI_IsArrayJson(found->json)) {
           TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
         }
@@ -673,12 +652,12 @@ class KeySpace {
                 v8::Handle<v8::Value> const& value) {
     WRITE_LOCKER(writeLocker, _lock);
 
-    auto found = static_cast<KeySpaceElement*>(
-        TRI_LookupByKeyAssociativePointer(&_hash, key.c_str()));
+    auto it = _hash.find(key);
 
-    if (found == nullptr) {
+    if (it == _hash.end()) {
       return false;
     } else {
+      KeySpaceElement* found = (*it).second;
       if (!TRI_IsArrayJson(found->json)) {
         return false;
       }
@@ -720,9 +699,9 @@ class KeySpace {
   char const* keyType(std::string const& key) {
     READ_LOCKER(readLocker, _lock);
 
-    void* found = TRI_LookupByKeyAssociativePointer(&_hash, key.c_str());
-
-    if (found != nullptr) {
+    auto it = _hash.find(key);
+    if (it != _hash.end()) {
+      KeySpaceElement* found = (*it).second;
       TRI_json_t const* value = static_cast<KeySpaceElement*>(found)->json;
 
       switch (value->_type) {
@@ -759,16 +738,16 @@ class KeySpace {
 
     WRITE_LOCKER(writeLocker, _lock);
 
-    auto found = static_cast<KeySpaceElement*>(
-        TRI_LookupByKeyAssociativePointer(&_hash, key.c_str()));
-
-    if (found == nullptr) {
+    auto it = _hash.find(key);
+    if (it == _hash.end()) {
       auto element = new KeySpaceElement(key.c_str(), key.size(),
                                          TRI_ObjectToJson(isolate, value));
-      TRI_InsertKeyAssociativePointer(&_hash, element->key, element, false);
+      _hash.emplace(key, element);
 
       TRI_V8_RETURN(value);
     }
+
+    KeySpaceElement* found = (*it).second;
 
     if (!TRI_IsObjectJson(found->json)) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -795,7 +774,7 @@ class KeySpace {
 
  private:
   arangodb::basics::ReadWriteLock _lock;
-  TRI_associative_pointer_t _hash;
+  std::unordered_map<std::string, KeySpaceElement*> _hash;
 };
 
 struct UserStructures {

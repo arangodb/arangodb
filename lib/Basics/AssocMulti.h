@@ -30,12 +30,11 @@
 // #define TRI_CHECK_MULTI_POINTER_HASH 1
 
 #include "Basics/Common.h"
-#include "Basics/JsonHelper.h"
-#include "Logger/Logger.h"
 #include "Basics/memory-map.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/prime-numbers.h"
+#include "Logger/Logger.h"
 
 #include <thread>
 #include <velocypack/Builder.h>
@@ -130,7 +129,7 @@ class AssocMulti {
       IsEqualKeyElementFuncType;
   typedef std::function<bool(UserData*, Element const*, Element const*)>
       IsEqualElementElementFuncType;
-  typedef std::function<void(Element*)> CallbackElementFuncType;
+  typedef std::function<bool(Element*)> CallbackElementFuncType;
 
  private:
   typedef Entry<Element, IndexType, useHashCache> EntryType;
@@ -294,23 +293,6 @@ class AssocMulti {
     builder.close();  // buckets
     builder.add("nrBuckets", VPackValue(_buckets.size()));
     builder.add("totalUsed", VPackValue(size()));
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Appends information about statistics in the given json.
-  //////////////////////////////////////////////////////////////////////////////
-
-  void appendToJson(TRI_memory_zone_t* zone, Json& json) {
-    Json bkts(zone, Json::Array);
-    for (auto& b : _buckets) {
-      Json bucketInfo(zone, Json::Object);
-      bucketInfo("nrAlloc", Json(static_cast<double>(b._nrAlloc)));
-      bucketInfo("nrUsed", Json(static_cast<double>(b._nrUsed)));
-      bkts.add(bucketInfo);
-    }
-    json("buckets", bkts);
-    json("nrBuckets", Json(static_cast<double>(_buckets.size())));
-    json("totalUsed", Json(static_cast<double>(size())));
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -534,7 +516,9 @@ class AssocMulti {
         if (b._table[i].ptr == nullptr) {
           continue;
         }
-        callback(b._table[i].ptr);
+        if (!callback(b._table[i].ptr)) {
+          return;
+        }
       }
     }
   }
@@ -791,7 +775,7 @@ class AssocMulti {
 
   std::vector<Element*>* lookupByKey(UserData* userData, Key const* key,
                                      size_t limit = 0) const {
-    std::unique_ptr<std::vector<Element*>> result(new std::vector<Element*>());
+    auto result = std::make_unique<std::vector<Element*>>();
 
     // compute the hash
     uint64_t hashByKey = _hashKey(userData, key);
@@ -835,7 +819,7 @@ class AssocMulti {
   std::vector<Element*>* lookupWithElementByKey(UserData* userData,
                                                 Element const* element,
                                                 size_t limit = 0) const {
-    std::unique_ptr<std::vector<Element*>> result(new std::vector<Element*>());
+    auto result = std::make_unique<std::vector<Element*>>();
 
     // compute the hash
     uint64_t hashByKey = _hashElement(userData, element, true);
@@ -879,7 +863,7 @@ class AssocMulti {
 
   std::vector<Element*>* lookupWithElementByKeyContinue(
       UserData* userData, Element const* element, size_t limit = 0) const {
-    std::unique_ptr<std::vector<Element*>> result(new std::vector<Element*>());
+    auto result = std::make_unique<std::vector<Element*>>();
 
     uint64_t hashByKey = _hashElement(userData, element, true);
     Bucket const& b = _buckets[hashByKey & _bucketsMask];

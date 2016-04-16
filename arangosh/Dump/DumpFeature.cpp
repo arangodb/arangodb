@@ -21,12 +21,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DumpFeature.h"
-
-#include <iostream>
-
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include "ApplicationFeatures/ClientFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
@@ -40,6 +34,11 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include <iostream>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -164,11 +163,9 @@ void DumpFeature::prepare() {
     isDirectory = TRI_IsDirectory(_outputDirectory.c_str());
 
     if (isDirectory) {
-      TRI_vector_string_t files =
-          TRI_FullTreeDirectory(_outputDirectory.c_str());
+      std::vector<std::string> files(TRI_FullTreeDirectory(_outputDirectory.c_str()));
       // we don't care if the target directory is empty
-      isEmptyDirectory = (files._length == 0);
-      TRI_DestroyVectorString(&files);
+      isEmptyDirectory = (files.empty()); // TODO: TRI_FullTreeDirectory always returns at least one element (""), even if directory is empty?
     }
   }
 
@@ -296,7 +293,7 @@ int DumpFeature::dumpCollection(int fd, std::string const& cid,
   uint64_t chunkSize = _chunkSize;
 
   std::string const baseUrl = "/_api/replication/dump?collection=" + cid +
-                              "&ticks=false&translateIds=true&flush=false";
+                              "&ticks=false&flush=false";
 
   uint64_t fromTick = _tickStart;
 
@@ -669,7 +666,7 @@ int DumpFeature::dumpShard(int fd, std::string const& DBserver,
   std::string const baseUrl = "/_api/replication/dump?DBserver=" + DBserver +
                               "&collection=" + name + "&chunkSize=" +
                               StringUtils::itoa(_chunkSize) +
-                              "&ticks=false&translateIds=true";
+                              "&ticks=false";
 
   uint64_t fromTick = 0;
   uint64_t maxTick = UINT64_MAX;

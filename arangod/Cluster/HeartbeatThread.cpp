@@ -37,10 +37,10 @@
 #include "Dispatcher/DispatcherFeature.h"
 #include "Dispatcher/Job.h"
 #include "V8/v8-globals.h"
-#include "V8Server/v8-vocbase.h"
 #include "VocBase/auth.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
+#include <functional>
 
 using namespace arangodb;
 
@@ -53,9 +53,11 @@ volatile sig_atomic_t HeartbeatThread::HasRunOnce = 0;
 HeartbeatThread::HeartbeatThread(uint64_t interval,
                                  uint64_t maxFailsBeforeWarning)
     : Thread("Heartbeat"),
+      _agencyCallbackRegistry(agencyCallbackRegistry),
       _statusLock(),
       _agency(),
       _condition(),
+      _dispatchedPlanVersion(),
       _refetchUsers(),
       _myId(ServerState::instance()->getId()),
       _interval(interval),
@@ -103,20 +105,59 @@ void HeartbeatThread::runDBServer() {
   // convert timeout to seconds
   double const interval = (double)_interval / 1000.0 / 1000.0;
 
-  // last value of plan which we have noticed:
-  uint64_t lastPlanVersionNoticed = 0;
-
-  // last value of plan for which a job was successfully completed
-  // on a coordinator, only this is used and not lastPlanVersionJobScheduled
-  uint64_t lastPlanVersionJobSuccess = 0;
-
   // value of Sync/Commands/my-id at startup
   uint64_t lastCommandIndex = getLastCommandIndex();
 
-  uint64_t agencyIndex = 0;
-
+  std::function<bool(VPackSlice const& result)> updatePlan = [&](VPackSlice const& result) {
+    if (!result.isNumber()) {
+      LOG(ERR) << "Version is not a number! " << result.toJson();
+      return false;
+    }
+    uint64_t version = result.getNumber<uint64_t>();
+    LOG(TRACE) << "Hass " << result.toJson() << " " << version << " " << _dispatchedPlanVersion;
+    bool mustHandlePlanChange = false;
+    {
+      MUTEX_LOCKER(mutexLocker, _statusLock);
+      if (_numDispatchedJobs == -1) {
+        LOG(DEBUG) << "Dispatched plan changed returned";
+        // mop: unblock dispatching
+        _numDispatchedJobs = 0;
+        if (_lastDispatchedJobResult) {
+          LOG(DEBUG) << "...and was successful";
+          // mop: the dispatched version is still the same => we are finally uptodate
+          if (_dispatchedPlanVersion == version) {
+            LOG(DEBUG) << "Version is correct :)";
+            return true;
+          }
+          // mop: meanwhile we got an updated version and must reschedule
+        }
+      }
+      if (_numDispatchedJobs == 0) {
+        LOG(DEBUG) << "Will dispatch plan change " << version;
+        mustHandlePlanChange = true;
+        _dispatchedPlanVersion = version;
+      }
+    }
+    if (mustHandlePlanChange) {
+      // mop: a dispatched task has returned
+      handlePlanChangeDBServer(version);
+    }
+    return false;
+  };
+  
+  auto agencyCallback = std::make_shared<AgencyCallback>(_agency, "Plan/Version", updatePlan, true);
+  
+  bool registered = false;
+  while (!registered) {
+    registered = _agencyCallbackRegistry->registerCallback(agencyCallback);
+    if (!registered) {
+      LOG(ERR) << "Couldn't register plan change in agency!";
+      sleep(1);
+    }
+  }
+        
   while (!isStopping()) {
-    LOG(TRACE) << "sending heartbeat to agency";
+    LOG(DEBUG) << "sending heartbeat to agency";
 
     double const start = TRI_microtime();
 
@@ -141,81 +182,12 @@ void HeartbeatThread::runDBServer() {
     if (isStopping()) {
       break;
     }
-
-    // The following loop will run until the interval has passed, at which
-    // time a break will be called.
-    while (true) {
-      double remain = interval - (TRI_microtime() - start);
-
-      if (remain <= 0.0) {
-        break;
-      }
-
-      // First see whether a previously scheduled job has done some good:
-      double timeout = remain;
-      {
-        MUTEX_LOCKER(mutexLocker, _statusLock);
-        if (_numDispatchedJobs == -1) {
-          if (_lastDispatchedJobResult) {
-            lastPlanVersionJobSuccess = _versionThatTriggeredLastJob;
-            LOG(INFO) << "Found result of successful handleChangesDBServer "
-                         "job, have now version "
-                      << lastPlanVersionJobSuccess << ".";
-          }
-          _numDispatchedJobs = 0;
-        } else if (_numDispatchedJobs > 0) {
-          timeout = (std::min)(0.1, remain);
-          // Only wait for at most this much, because
-          // we want to see the result of the running job
-          // in time
-        }
-      }
-
-      // get the current version of the Plan, or watch for a change:
-      AgencyCommResult result;
-      result.clear();
-
-      if (agencyIndex != 0) {
-        // If a job is scheduled and is still running, the timeout is at most
-        // 0.1s, otherwise we wait up to the remainder of the interval:
-        result =
-            _agency.watchValue("Plan/Version", agencyIndex + 1, timeout, false);
-      } else {
-        result = _agency.getValues("Plan/Version", false);
-      }
-
-      if (result.successful()) {
-        agencyIndex = result.index();
-        result.parse("", false);
-
-        std::map<std::string, AgencyCommResultEntry>::iterator it =
-            result._values.begin();
-
-        if (it != result._values.end()) {
-          // there is a plan version
-          uint64_t planVersion =
-              arangodb::basics::VelocyPackHelper::stringUInt64(
-                  it->second._vpack->slice());
-
-          if (planVersion > lastPlanVersionNoticed) {
-            lastPlanVersionNoticed = planVersion;
-          }
-        }
-      } else {
-        agencyIndex = 0;
-      }
-
-      if (lastPlanVersionNoticed > lastPlanVersionJobSuccess &&
-          !hasPendingJob()) {
-        handlePlanChangeDBServer(lastPlanVersionNoticed);
-      }
-
-      if (isStopping()) {
-        break;
-      }
-    }
+    
+    double remain = interval - (TRI_microtime() - start);
+    agencyCallback->waitWithFailover(remain);
   }
-
+  
+  _agencyCallbackRegistry->unregisterCallback(agencyCallback);
   // Wait until any pending job is finished
   int count = 0;
   while (count++ < 10000) {
@@ -229,15 +201,6 @@ void HeartbeatThread::runDBServer() {
   }
 
   LOG(TRACE) << "stopped heartbeat thread (DBServer version)";
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether a job is still running or does not have reported yet
-////////////////////////////////////////////////////////////////////////////////
-
-bool HeartbeatThread::hasPendingJob() {
-  MUTEX_LOCKER(mutexLocker, _statusLock);
-  return _numDispatchedJobs != 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -290,7 +253,7 @@ void HeartbeatThread::runCoordinator() {
     }
 
     bool shouldSleep = true;
-
+    
     // get the current version of the Plan
     AgencyCommResult result = _agency.getValues("Plan/Version", false);
 

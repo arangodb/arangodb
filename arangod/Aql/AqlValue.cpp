@@ -21,520 +21,508 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/AqlValue.h"
+#include "AqlValue.h"
 #include "Aql/AqlItemBlock.h"
-#include "Basics/json-utilities.h"
-#include "Utils/ShapedJsonTransformer.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Utils/AqlTransaction.h"
 #include "V8/v8-conv.h"
-#include "V8Server/v8-shape-conv.h"
-#include "V8Server/v8-wrapshapedjson.h"
-#include "VocBase/VocShaper.h"
+#include "V8/v8-vpack.h"
+#include "VocBase/document-collection.h"
 
 #include <velocypack/Buffer.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+using namespace arangodb;
 using namespace arangodb::aql;
-using Json = arangodb::basics::Json;
-using JsonHelper = arangodb::basics::JsonHelper;
 
-AqlValue::AqlValue(AqlValue$ const& other) : _json(nullptr), _type(JSON) {
-  _json = new Json(TRI_UNKNOWN_MEM_ZONE, arangodb::basics::VelocyPackHelper::velocyPackToJson(other.slice()));
-  TRI_ASSERT(_json != nullptr);
+/// @brief construct a document
+AqlValue::AqlValue(TRI_doc_mptr_t const* mptr) {
+  _data.pointer = mptr->vpack();
+  setType(AqlValueType::VPACK_DOCUMENT);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief a quick method to decide whether a value is true
-////////////////////////////////////////////////////////////////////////////////
-
-bool AqlValue::isTrue() const {
-  if (_type == JSON) {
-    TRI_ASSERT(_json != nullptr);
-    TRI_json_t* json = _json->json();
-    if (TRI_IsBooleanJson(json) && json->_value._boolean) {
-      return true;
-    } else if (TRI_IsNumberJson(json) && json->_value._number != 0.0) {
-      return true;
-    } else if (TRI_IsStringJson(json) && json->_value._string.length != 1) {
-      // the trailing NULL byte counts, too...
-      return true;
-    } else if (TRI_IsArrayJson(json) || TRI_IsObjectJson(json)) {
-      return true;
+/// @brief hashes the value
+uint64_t AqlValue::hash(arangodb::AqlTransaction* trx) const {
+  switch (type()) {
+    case VPACK_DOCUMENT:  
+    case VPACK_POINTER:  
+    case VPACK_INLINE: 
+    case VPACK_EXTERNAL: {
+      // we must use the slow hash function here, because a value may have 
+      // different representations in case its an array/object/number
+      return slice().normalizedHash();
     }
-  } else if (_type == RANGE || _type == DOCVEC) {
-    // a range or a docvec is equivalent to an array
-    return true;
-  } else if (_type == EMPTY) {
-    return false;
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy, explicit destruction, only when needed
-////////////////////////////////////////////////////////////////////////////////
-
-void AqlValue::destroy() {
-  switch (_type) {
-    case JSON: {
-      delete _json;
-      _json = nullptr;
-      break;
-    }
-    case DOCVEC: {
-      if (_vector != nullptr) {
-        for (auto it = _vector->begin(); it != _vector->end(); ++it) {
-          delete *it;
-        }
-        delete _vector;
-        _vector = nullptr;
-      }
-      break;
-    }
-    case RANGE: {
-      delete _range;
-      _range = nullptr;
-      break;
-    }
-    case SHAPED: {
-      // do nothing here, since data pointers need not be freed
-      break;
-    }
-    case EMPTY: {
-      // do nothing
-      break;
-    }
-  }
-
-  // to avoid double freeing
-  _type = EMPTY;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the name of an AqlValue type
-////////////////////////////////////////////////////////////////////////////////
-
-std::string AqlValue::getTypeString() const {
-  switch (_type) {
-    case JSON:
-      TRI_ASSERT(_json != nullptr);
-      return std::string("json (") +
-             std::string(TRI_GetTypeStringJson(_json->json())) +
-             std::string(")");
-    case SHAPED:
-      return "shaped";
     case DOCVEC:
-      return "docvec";
-    case RANGE:
-      return "range";
-    case EMPTY:
-      return "empty";
-  }
-
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clone for recursive copying
-////////////////////////////////////////////////////////////////////////////////
-
-AqlValue AqlValue::clone() const {
-  switch (_type) {
-    case JSON: {
-      TRI_ASSERT(_json != nullptr);
-      return AqlValue(new Json(_json->copy()));
-    }
-
-    case SHAPED: {
-      return AqlValue(_marker);
-    }
-
-    case DOCVEC: {
-      auto c = new std::vector<AqlItemBlock*>;
-      try {
-        c->reserve(_vector->size());
-        for (auto it = _vector->begin(); it != _vector->end(); ++it) {
-          c->emplace_back((*it)->slice(0, (*it)->size()));
-        }
-      } catch (...) {
-        for (auto& x : *c) {
-          delete x;
-        }
-        delete c;
-        throw;
-      }
-      return AqlValue(c);
-    }
-
-    case RANGE: {
-      return AqlValue(_range->_low, _range->_high);
-    }
-
-    case EMPTY: {
-      return AqlValue();
-    }
-  }
-
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shallow clone
-////////////////////////////////////////////////////////////////////////////////
-
-AqlValue AqlValue::shallowClone() const {
-  if (_type == JSON) {
-    TRI_ASSERT(_json != nullptr);
-    return AqlValue(
-        new Json(TRI_UNKNOWN_MEM_ZONE, _json->json(), Json::NOFREE));
-  }
-
-  // fallback to regular deep-copying
-  return clone();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the AqlValue contains a string value
-////////////////////////////////////////////////////////////////////////////////
-
-bool AqlValue::isString() const {
-  switch (_type) {
-    case JSON: {
-      TRI_ASSERT(_json != nullptr);
-      TRI_json_t const* json = _json->json();
-      return TRI_IsStringJson(json);
-    }
-
-    case SHAPED:
-    case DOCVEC:
-    case RANGE:
-    case EMPTY: {
-      return false;
-    }
-  }
-
-  TRI_ASSERT(false);
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the AqlValue contains a numeric value
-////////////////////////////////////////////////////////////////////////////////
-
-bool AqlValue::isNumber() const {
-  switch (_type) {
-    case JSON: {
-      TRI_ASSERT(_json != nullptr);
-      TRI_json_t const* json = _json->json();
-      return TRI_IsNumberJson(json);
-    }
-
-    case SHAPED:
-    case DOCVEC:
-    case RANGE:
-    case EMPTY: {
-      return false;
-    }
-  }
-
-  TRI_ASSERT(false);
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the AqlValue contains a boolean value
-////////////////////////////////////////////////////////////////////////////////
-
-bool AqlValue::isBoolean() const {
-  switch (_type) {
-    case JSON: {
-      TRI_ASSERT(_json != nullptr);
-      TRI_json_t const* json = _json->json();
-      return TRI_IsBooleanJson(json);
-    }
-
-    case SHAPED:
-    case DOCVEC:
-    case RANGE:
-    case EMPTY: {
-      return false;
-    }
-  }
-
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the AqlValue contains an array value
-////////////////////////////////////////////////////////////////////////////////
-
-bool AqlValue::isArray() const {
-  switch (_type) {
-    case JSON: {
-      TRI_ASSERT(_json != nullptr);
-      TRI_json_t const* json = _json->json();
-      return TRI_IsArrayJson(json);
-    }
-
-    case SHAPED: {
-      return false;
-    }
-
-    case DOCVEC:
-    case RANGE: {
-      return true;
-    }
-
-    case EMPTY: {
-      return false;
-    }
-  }
-
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the AqlValue contains an object value
-////////////////////////////////////////////////////////////////////////////////
-
-bool AqlValue::isObject() const {
-  switch (_type) {
-    case JSON: {
-      TRI_ASSERT(_json != nullptr);
-      TRI_json_t const* json = _json->json();
-      return TRI_IsObjectJson(json);
-    }
-
-    case SHAPED: {
-      return true;
-    }
-
-    case DOCVEC:
-    case RANGE:
-    case EMPTY: {
-      return false;
-    }
-  }
-
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the AqlValue contains a null value
-////////////////////////////////////////////////////////////////////////////////
-
-bool AqlValue::isNull(bool emptyIsNull) const {
-  switch (_type) {
-    case JSON: {
-      TRI_ASSERT(_json != nullptr);
-      TRI_json_t const* json = _json->json();
-      return json == nullptr || json->_type == TRI_JSON_NULL;
-    }
-
-    case SHAPED: {
-      return false;
-    }
-
-    case DOCVEC:
-    case RANGE: {
-      return false;
-    }
-
-    case EMPTY: {
-      return emptyIsNull;
-    }
-  }
-
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the array member at position i
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::basics::Json AqlValue::at(arangodb::AqlTransaction* trx,
-                                    size_t i) const {
-  switch (_type) {
-    case JSON: {
-      TRI_ASSERT(_json != nullptr);
-      TRI_json_t const* json = _json->json();
-      if (TRI_IsArrayJson(json)) {
-        if (i < TRI_LengthArrayJson(json)) {
-          return arangodb::basics::Json(
-              TRI_UNKNOWN_MEM_ZONE,
-              static_cast<TRI_json_t*>(TRI_AtVector(&json->_value._objects, i)),
-              arangodb::basics::Json::NOFREE);
-        }
-      }
-      break;  // fall-through to exception
-    }
-
-    case DOCVEC: {
-      TRI_ASSERT(_vector != nullptr);
-      // calculate the result list length
-      size_t offset = 0;
-      for (auto it = _vector->begin(); it != _vector->end(); ++it) {
-        auto current = (*it);
-        size_t const n = current->size();
-
-        if (offset + i < n) {
-          auto vecCollection = current->getDocumentCollection(0);
-
-          return current->getValue(i - offset, 0)
-              .toJson(trx, vecCollection, true);
-        }
-
-        offset += (*it)->size();
-      }
-      break;  // fall-through to exception
-    }
-
-    case RANGE: {
-      TRI_ASSERT(_range != nullptr);
-      return arangodb::basics::Json(static_cast<double>(_range->at(i)));
-    }
-
-    case SHAPED:
-    case EMPTY: {
-    }
-  }
-
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the length of an AqlValue containing an array
-////////////////////////////////////////////////////////////////////////////////
-
-size_t AqlValue::arraySize() const {
-  switch (_type) {
-    case JSON: {
-      TRI_ASSERT(_json != nullptr);
-      TRI_json_t const* json = _json->json();
-
-      if (TRI_IsArrayJson(json)) {
-        return TRI_LengthArrayJson(json);
-      }
-      return 0;
-    }
-
-    case DOCVEC: {
-      TRI_ASSERT(_vector != nullptr);
-      // calculate the result list length
-      size_t totalSize = 0;
-      for (auto it = _vector->begin(); it != _vector->end(); ++it) {
-        totalSize += (*it)->size();
-      }
-      return totalSize;
-    }
-
-    case RANGE: {
-      TRI_ASSERT(_range != nullptr);
-      return _range->size();
-    }
-
-    case SHAPED:
-    case EMPTY: {
+    case RANGE: { 
+      VPackBuilder builder;
+      toVelocyPack(trx, builder);
+      // we must use the slow hash function here, because a value may have 
+      // different representations in case its an array/object/number
+      return builder.slice().normalizedHash();
     }
   }
 
   return 0;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the numeric value of an AqlValue
-////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the value contains a none value
+bool AqlValue::isNone() const {
+  AqlValueType t = type();
+  if (t == DOCVEC || t == RANGE) {
+    return false;
+  }
+ 
+  return slice().isNone();
+}
 
+/// @brief whether or not the value is a null value
+bool AqlValue::isNull(bool emptyIsNull) const {
+  AqlValueType t = type();
+  if (t == DOCVEC || t == RANGE) {
+    return false;
+  }
+ 
+  VPackSlice s(slice());
+  return (s.isNull() || (emptyIsNull && s.isNone()));
+}
+
+/// @brief whether or not the value is a boolean value
+bool AqlValue::isBoolean() const {
+  AqlValueType t = type();
+  if (t == VPACK_DOCUMENT || t == DOCVEC || t == RANGE) {
+    return false;
+  }
+  return slice().isBoolean();
+}
+
+/// @brief whether or not the value is a number
+bool AqlValue::isNumber() const {
+  AqlValueType t = type();
+  if (t == DOCVEC || t == RANGE) {
+    return false;
+  }
+  return slice().isNumber();
+}
+
+/// @brief whether or not the value is a string
+bool AqlValue::isString() const {
+  AqlValueType t = type();
+  if (t == DOCVEC || t == RANGE) {
+    return false;
+  }
+  return slice().isString();
+}
+
+/// @brief whether or not the value is an object
+bool AqlValue::isObject() const {
+  AqlValueType t = type();
+  if (t == RANGE || t == DOCVEC) {
+    return false;
+  }
+  return slice().isObject();
+}
+
+/// @brief whether or not the value is an array (note: this treats ranges
+/// as arrays, too!)
+bool AqlValue::isArray() const {
+  AqlValueType t = type();
+  if (t == RANGE || t == DOCVEC) {
+    return true;
+  }
+  return slice().isArray();
+}
+  
+/// @brief get the (array) length (note: this treats ranges as arrays, too!)
+size_t AqlValue::length() const {
+  switch (type()) {
+    case VPACK_DOCUMENT: 
+    case VPACK_POINTER: 
+    case VPACK_INLINE:
+    case VPACK_EXTERNAL: {
+      return slice().length();
+    }
+    case DOCVEC: {
+      return docvecSize();
+    }
+    case RANGE: {
+      return range()->size(); 
+    }
+  }
+  TRI_ASSERT(false);
+  return 0;
+}
+  
+/// @brief get the (array) element at position 
+AqlValue AqlValue::at(int64_t position, bool& mustDestroy, 
+                      bool doCopy) const {
+  mustDestroy = false;
+  switch (type()) {
+    case VPACK_DOCUMENT: 
+    case VPACK_POINTER: 
+    case VPACK_INLINE:
+      doCopy = false; 
+      // fall-through intentional
+    case VPACK_EXTERNAL: {
+      VPackSlice s(slice());
+      if (s.isArray()) {
+        int64_t const n = static_cast<int64_t>(s.length());
+        if (position < 0) {
+          // a negative position is allowed
+          position = n + position;
+        }
+        if (position >= 0 && position < n) {
+          if (doCopy || s.byteSize() < sizeof(_data.internal)) {
+            mustDestroy = true;
+            return AqlValue(s.at(position));
+          }
+          // return a reference to an existing slice
+          return AqlValue(s.at(position).begin());
+        }
+      }
+      // fall-through intentional
+      break;
+    }
+    case DOCVEC: {
+      size_t const n = docvecSize();
+      if (position < 0) {
+        // a negative position is allowed
+        position = static_cast<int64_t>(n) + position;
+      }
+      if (position >= 0 && position < static_cast<int64_t>(n)) {
+        // only look up the value if it is within array bounds
+        size_t total = 0;
+        for (auto const& it : *_data.docvec) {
+          if (position < static_cast<int64_t>(total + it->size())) {
+            // found the correct vector
+            if (doCopy) {
+              mustDestroy = true;
+              return it->getValueReference(position - total, 0).clone();
+            }
+            return it->getValue(position - total, 0);
+          }
+          total += it->size();
+        }
+      }
+      // fall-through intentional
+      break;
+    }
+    case RANGE: {
+      size_t const n = range()->size();
+      if (position < 0) {
+        // a negative position is allowed
+        position = static_cast<int64_t>(n) + position;
+      }
+
+      if (position >= 0 && position < static_cast<int64_t>(n)) {
+        // only look up the value if it is within array bounds
+        VPackBuilder builder;
+        builder.add(VPackValue(_data.range->at(static_cast<size_t>(position))));
+        mustDestroy = true;
+        return AqlValue(builder);
+      }
+      // fall-through intentional
+      break;
+    }
+  }
+
+  // default is to return null
+  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+}
+  
+/// @brief get the (object) element by name
+AqlValue AqlValue::get(arangodb::AqlTransaction* trx,
+                       std::string const& name, bool& mustDestroy,
+                       bool doCopy) const {
+  mustDestroy = false;
+  switch (type()) {
+    case VPACK_DOCUMENT: 
+    case VPACK_POINTER: 
+    case VPACK_INLINE:
+      doCopy = false; 
+      // fall-through intentional
+    case VPACK_EXTERNAL: {
+      VPackSlice s(slice());
+      if (s.isObject()) {
+        VPackSlice found(s.get(name));
+        if (found.isCustom()) { 
+          // _id needs special treatment
+          mustDestroy = true;
+          return AqlValue(trx->extractIdString(s));
+        }
+        if (!found.isNone()) {
+          if (doCopy || found.byteSize() < sizeof(_data.internal)) {
+            mustDestroy = true;
+            return AqlValue(found);
+          }
+          // return a reference to an existing slice
+          return AqlValue(found.begin());
+        }
+      }
+      // fall-through intentional
+      break;
+    }
+    case DOCVEC: 
+    case RANGE: {
+      // will return null
+      break;
+    }
+  }
+
+  // default is to return null
+  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+}
+
+/// @brief get the (object) element(s) by name
+AqlValue AqlValue::get(arangodb::AqlTransaction* trx,
+                       std::vector<std::string> const& names, 
+                       bool& mustDestroy, bool doCopy) const {
+  mustDestroy = false;
+  switch (type()) {
+    case VPACK_DOCUMENT: 
+    case VPACK_POINTER: 
+    case VPACK_INLINE:
+      doCopy = false; 
+      // fall-through intentional
+    case VPACK_EXTERNAL: {
+      VPackSlice s(slice());
+      if (s.isObject()) {
+        VPackSlice found(s.get(names));
+        if (found.isCustom()) { 
+          // _id needs special treatment
+          mustDestroy = true;
+          return AqlValue(trx->extractIdString(s));
+        }
+        if (!found.isNone()) {
+          if (doCopy || found.byteSize() < sizeof(_data.internal)) {
+            mustDestroy = true;
+            return AqlValue(found);
+          }
+          // return a reference to an existing slice
+          return AqlValue(found.begin());
+        }
+      }
+      // fall-through intentional
+      break;
+    }
+    case DOCVEC: 
+    case RANGE: {
+      // will return null
+      break;
+    }
+  }
+
+  // default is to return null
+  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+}
+
+/// @brief check whether an object has a specific key
+bool AqlValue::hasKey(arangodb::AqlTransaction* trx,
+                      std::string const& name) const {
+  switch (type()) {
+    case VPACK_DOCUMENT: 
+    case VPACK_POINTER: 
+    case VPACK_INLINE:
+    case VPACK_EXTERNAL: {
+      VPackSlice s(slice());
+      return (s.isObject() && s.hasKey(name));
+    }
+    case DOCVEC: 
+    case RANGE: {
+      break;
+    }
+  }
+
+  // default is to return false
+  return false;
+}
+
+/// @brief get the numeric value of an AqlValue
+double AqlValue::toDouble() const {
+  bool failed; // will be ignored
+  return toDouble(failed);
+}
+
+double AqlValue::toDouble(bool& failed) const {
+  failed = false;
+  switch (type()) {
+    case VPACK_DOCUMENT: 
+    case VPACK_POINTER: 
+    case VPACK_INLINE:
+    case VPACK_EXTERNAL: {
+      VPackSlice s(slice());
+      if (s.isNull()) {
+        return 0.0;
+      }
+      if (s.isNumber()) {
+        return s.getNumber<double>();
+      }
+      if (s.isBoolean()) {
+        return s.getBoolean() ? 1.0 : 0.0;
+      }
+      if (s.isString()) {
+        std::string v(s.copyString());
+        try {
+          size_t behind = 0;
+          double value = std::stod(v, &behind);
+          while (behind < v.size()) {
+            char c = v[behind];
+            if (c != ' ' && c != '\t' && c != '\r' && c != '\n' && c != '\f') {
+              failed = true;
+              return 0.0;
+            }
+            ++behind;
+          }
+          TRI_ASSERT(!failed);
+          return value;
+        } catch (...) {
+          if (v.empty()) {
+            return 0.0;
+          }
+          // conversion failed
+          break;
+        }
+      }
+      else if (s.isArray()) {
+        auto length = s.length();
+        if (length == 0) {
+          return 0.0;
+        }
+        if (length == 1) {
+          bool mustDestroy; // we can ignore destruction here
+          return at(0, mustDestroy, false).toDouble(failed);
+        }
+      }
+      // fall-through intentional
+      break;
+    }
+    case DOCVEC:
+    case RANGE: {
+      if (length() == 1) {
+        bool mustDestroy; // we can ignore destruction here
+        return at(0, mustDestroy, false).toDouble(failed);
+      }
+      // will return 0
+      return 0.0;
+    }
+  }
+
+  failed = true;
+  return 0.0;
+}
+
+/// @brief get the numeric value of an AqlValue
 int64_t AqlValue::toInt64() const {
-  switch (_type) {
-    case JSON:
-      TRI_ASSERT(_json != nullptr);
-      return TRI_ToInt64Json(_json->json());
-    case RANGE: {
-      size_t rangeSize = _range->size();
-      if (rangeSize == 1) {
-        return _range->at(0);
+  switch (type()) {
+    case VPACK_DOCUMENT: 
+    case VPACK_POINTER: 
+    case VPACK_INLINE:
+    case VPACK_EXTERNAL: {
+      VPackSlice s(slice());
+      if (s.isNumber()) {
+        return s.getNumber<int64_t>();
       }
-      return 0;
-    }
-    case DOCVEC:
-    case SHAPED:
-    case EMPTY:
-      // cannot convert these types
-      return 0;
-  }
-
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the numeric value of an AqlValue
-////////////////////////////////////////////////////////////////////////////////
-
-double AqlValue::toNumber(bool& failed) const {
-  switch (_type) {
-    case JSON:
-      TRI_ASSERT(_json != nullptr);
-      return TRI_ToDoubleJson(_json->json(), failed);
-    case RANGE: {
-      size_t rangeSize = _range->size();
-      if (rangeSize == 1) {
-        return static_cast<double>(_range->at(0));
+      if (s.isBoolean()) {
+        return s.getBoolean() ? 1 : 0;
       }
-      return 0.0;
+      if (s.isString()) {
+        std::string v(s.copyString());
+        try {
+          return static_cast<int64_t>(std::stoll(v));
+        } catch (...) {
+          if (v.empty()) {
+            return 0;
+          }
+          // conversion failed
+        }
+      }
+      else if (s.isArray()) {
+        auto length = s.length();
+        if (length == 0) {
+          return 0;
+        }
+        if (length == 1) {
+          // we can ignore destruction here
+          bool mustDestroy;
+          return at(0, mustDestroy, false).toInt64();
+        }
+      }
+      // fall-through intentional
+      break;
     }
     case DOCVEC:
-    case SHAPED:
-    case EMPTY:
-      // cannot convert these types
-      return 0.0;
-  }
-
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get a string representation of the AqlValue
-////////////////////////////////////////////////////////////////////////////////
-
-std::string AqlValue::toString() const {
-  switch (_type) {
-    case JSON: {
-      TRI_ASSERT(_json != nullptr);
-      TRI_json_t const* json = _json->json();
-      TRI_ASSERT(TRI_IsStringJson(json));
-      return std::string(json->_value._string.data,
-                         json->_value._string.length - 1);
-    }
-
-    case SHAPED:
-    case DOCVEC:
-    case RANGE:
-    case EMPTY: {
-      // cannot convert these types
+    case RANGE: {
+      if (length() == 1) {
+        bool mustDestroy;
+        return at(0, mustDestroy, false).toInt64();
+      }
+      // will return 0
+      break;
     }
   }
 
-  return std::string("");
+  return 0;
 }
 
-////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the contained value evaluates to true
+bool AqlValue::toBoolean() const {
+  switch (type()) {
+    case VPACK_DOCUMENT: 
+    case VPACK_POINTER: 
+    case VPACK_INLINE:
+    case VPACK_EXTERNAL: {
+      VPackSlice s(slice());
+      if (s.isBoolean()) {
+        return s.getBoolean();
+      } 
+      if (s.isNumber()) {
+        return (s.getNumber<double>() != 0.0);
+      } 
+      if (s.isString()) {
+        return (s.getStringLength() > 0);
+      } 
+      if (s.isArray() || s.isObject() || s.isCustom()) {
+        // custom _id type is also true
+        return true;
+      }
+      // all other cases, including Null and None
+      return false;
+    }
+    case DOCVEC: 
+    case RANGE: {
+      return true;
+    }
+  }
+  return false;
+}
+
+/// @brief return the total size of the docvecs
+size_t AqlValue::docvecSize() const {
+  TRI_ASSERT(type() == DOCVEC);
+  size_t s = 0;
+  for (auto const& it : *_data.docvec) {
+    s += it->size();
+  }
+  return s;
+}
+
 /// @brief construct a V8 value as input for the expression execution in V8
 /// only construct those attributes that are needed in the expression
-////////////////////////////////////////////////////////////////////////////////
-
 v8::Handle<v8::Value> AqlValue::toV8Partial(
     v8::Isolate* isolate, arangodb::AqlTransaction* trx,
-    std::unordered_set<std::string> const& attributes,
-    TRI_document_collection_t const* document) const {
-  TRI_ASSERT(_type == JSON);
-  TRI_ASSERT(_json != nullptr);
+    std::unordered_set<std::string> const& attributes) const {
+  AqlValueType t = type();
 
-  TRI_json_t const* json = _json->json();
+  if (t == DOCVEC || t == RANGE) {
+    // cannot make use of these types
+    return v8::Null(isolate);
+  }
 
-  if (TRI_IsObjectJson(json)) {
-    size_t const n = TRI_LengthVector(&json->_value._objects);
+  VPackOptions* options = trx->transactionContext()->getVPackOptions();
+  VPackSlice s(slice());
 
+  if (s.isObject()) {
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
     // only construct those attributes needed
@@ -544,30 +532,17 @@ v8::Handle<v8::Value> AqlValue::toV8Partial(
     TRI_ASSERT(left > 0);
 
     // iterate over all the object's attributes
-    for (size_t i = 0; i < n; i += 2) {
-      TRI_json_t const* key = static_cast<TRI_json_t const*>(
-          TRI_AddressVector(&json->_value._objects, i));
-
-      if (!TRI_IsStringJson(key)) {
-        continue;
-      }
-
+    for (auto const& it : VPackObjectIterator(s)) {
       // check if we need to render this attribute
-      auto it = attributes.find(std::string(key->_value._string.data,
-                                            key->_value._string.length - 1));
+      auto it2 = attributes.find(it.key.copyString());
 
-      if (it == attributes.end()) {
+      if (it2 == attributes.end()) {
         // we can skip the attribute
         continue;
       }
 
-      TRI_json_t const* value = static_cast<TRI_json_t const*>(
-          TRI_AddressVector(&json->_value._objects, (i + 1)));
-
-      if (value != nullptr) {
-        result->ForceSet(TRI_V8_STD_STRING((*it)),
-                         TRI_ObjectJson(isolate, value));
-      }
+      result->ForceSet(TRI_V8_STD_STRING((*it2)),
+                       TRI_VPackToV8(isolate, it.value, options, &s));
 
       if (--left == 0) {
         // we have rendered all required attributes
@@ -580,937 +555,356 @@ v8::Handle<v8::Value> AqlValue::toV8Partial(
   }
 
   // fallback
-  return TRI_ObjectJson(isolate, json);
+  return TRI_VPackToV8(isolate, s, options);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief construct a V8 value as input for the expression execution in V8
-////////////////////////////////////////////////////////////////////////////////
-
 v8::Handle<v8::Value> AqlValue::toV8(
-    v8::Isolate* isolate, arangodb::AqlTransaction* trx,
-    TRI_document_collection_t const* document) const {
-  switch (_type) {
-    case JSON: {
-      TRI_ASSERT(_json != nullptr);
-      return TRI_ObjectJson(isolate, _json->json());
+    v8::Isolate* isolate, arangodb::AqlTransaction* trx) const {
+  
+  switch (type()) {
+    case VPACK_DOCUMENT:
+    case VPACK_POINTER:
+    case VPACK_INLINE:
+    case VPACK_EXTERNAL: {
+      VPackOptions* options = trx->transactionContext()->getVPackOptions();
+      return TRI_VPackToV8(isolate, slice(), options);
     }
-
-    case SHAPED: {
-      TRI_ASSERT(document != nullptr);
-      TRI_ASSERT(_marker != nullptr);
-      return TRI_WrapShapedJson<arangodb::AqlTransaction>(
-          isolate, *trx, document->_info.id(), _marker);
-    }
-
     case DOCVEC: {
-      TRI_ASSERT(_vector != nullptr);
-
       // calculate the result array length
-      size_t totalSize = 0;
-      for (auto it = _vector->begin(); it != _vector->end(); ++it) {
-        totalSize += (*it)->size();
-      }
-
+      size_t const s = docvecSize();
       // allocate the result array
       v8::Handle<v8::Array> result =
-          v8::Array::New(isolate, static_cast<int>(totalSize));
+          v8::Array::New(isolate, static_cast<int>(s));
       uint32_t j = 0;  // output row count
-
-      for (auto it = _vector->begin(); it != _vector->end(); ++it) {
-        auto current = (*it);
-        size_t const n = current->size();
-        auto vecCollection = current->getDocumentCollection(0);
+      for (auto const& it : *_data.docvec) {
+        size_t const n = it->size();
         for (size_t i = 0; i < n; ++i) {
-          result->Set(j++, current->getValueReference(i, 0)
-                               .toV8(isolate, trx, vecCollection));
+          result->Set(j++, it->getValueReference(i, 0).toV8(isolate, trx));
         }
       }
       return result;
     }
-
     case RANGE: {
-      TRI_ASSERT(_range != nullptr);
-
-      // allocate the buffer for the result
-      size_t const n = _range->size();
+      size_t const n = _data.range->size();
       v8::Handle<v8::Array> result =
           v8::Array::New(isolate, static_cast<int>(n));
 
       for (uint32_t i = 0; i < n; ++i) {
         // is it safe to use a double here (precision loss)?
-        result->Set(i, v8::Number::New(isolate, static_cast<double>(_range->at(
-                                                    static_cast<size_t>(i)))));
+        result->Set(i, v8::Number::New(isolate, 
+          static_cast<double>(_data.range->at(static_cast<size_t>(i)))));
       }
-
       return result;
     }
-
-    case EMPTY: {
-      return v8::Null(isolate);
-    }
   }
 
-  // should never get here
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  // we shouldn't get here
+  return v8::Null(isolate);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson method
-////////////////////////////////////////////////////////////////////////////////
-
-Json AqlValue::toJson(arangodb::AqlTransaction* trx,
-                      TRI_document_collection_t const* document,
-                      bool copy) const {
-  switch (_type) {
-    case JSON: {
-      TRI_ASSERT(_json != nullptr);
-      if (copy) {
-        return _json->copy();
-      }
-      return Json(_json->zone(), _json->json(), Json::NOFREE);
+/// @brief materializes a value into the builder
+void AqlValue::toVelocyPack(AqlTransaction* trx, 
+                             arangodb::velocypack::Builder& builder) const {
+  switch (type()) {
+    case VPACK_DOCUMENT: 
+    case VPACK_POINTER: 
+    case VPACK_INLINE: 
+    case VPACK_EXTERNAL: {
+      builder.add(slice());
+      break;
     }
-
-    case SHAPED: {
-      TRI_ASSERT(document != nullptr);
-      TRI_ASSERT(_marker != nullptr);
-
-      auto shaper = document->getShaper();
-      return TRI_ExpandShapedJson(shaper, trx->resolver(), document->_info.id(),
-                                  _marker);
-    }
-
     case DOCVEC: {
-      TRI_ASSERT(_vector != nullptr);
-
-      // calculate the result array length
-      size_t totalSize = 0;
-      for (auto it = _vector->begin(); it != _vector->end(); ++it) {
-        totalSize += (*it)->size();
-      }
-
-      // allocate the result array
-      Json json(Json::Array, static_cast<size_t>(totalSize));
-
-      for (auto it = _vector->begin(); it != _vector->end(); ++it) {
-        auto current = (*it);
-        size_t const n = current->size();
-        auto vecCollection = current->getDocumentCollection(0);
+      builder.openArray();
+      for (auto const& it : *_data.docvec) {
+        size_t const n = it->size();
         for (size_t i = 0; i < n; ++i) {
-          json.add(current->getValueReference(i, 0)
-                       .toJson(trx, vecCollection, true));
+          it->getValueReference(i, 0).toVelocyPack(trx, builder);
         }
       }
-
-      return json;
+      builder.close();
+      break;
     }
-
     case RANGE: {
-      TRI_ASSERT(_range != nullptr);
-
-      // allocate the buffer for the result
-      size_t const n = _range->size();
-      Json json(Json::Array, n);
-
+      builder.openArray();
+      size_t const n = _data.range->size();
       for (size_t i = 0; i < n; ++i) {
-        // is it safe to use a double here (precision loss)?
-        json.add(Json(static_cast<double>(_range->at(i))));
+        builder.add(VPackValue(_data.range->at(i)));
       }
-
-      return json;
-    }
-
-    case EMPTY: {
-      return Json(Json::Null);
-    }
-  }
-
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Constructor
-////////////////////////////////////////////////////////////////////////////////
-
-AqlValue$::AqlValue$(VPackBuilder const& data) {
-  TRI_ASSERT(data.isClosed());
-  VPackValueLength l = data.size();
-  if (l < 16) {
-    // Use internal
-    memcpy(_data.internal, data.data(), l);
-    _data.internal[15] = AqlValueType::INTERNAL; 
-  } else {
-    // Use external
-    _data.external = new VPackBuffer<uint8_t>(l);
-    memcpy(_data.external->data(), data.data(), l);
-    _data.internal[15] = AqlValueType::EXTERNAL; 
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Constructor
-////////////////////////////////////////////////////////////////////////////////
-
-AqlValue$::AqlValue$(VPackBuilder const* data) : AqlValue$(*data){};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Constructor
-////////////////////////////////////////////////////////////////////////////////
-
-AqlValue$::AqlValue$(VPackSlice const& data) {
-  VPackValueLength l = data.byteSize();
-  if (l < 16) {
-    // Use internal
-    memcpy(_data.internal, data.start(), l);
-    _data.internal[15] = AqlValueType::INTERNAL; 
-  } else {
-    // Use external
-    _data.external = new VPackBuffer<uint8_t>(l);
-    memcpy(_data.external->data(), data.start(), l);
-    _data.internal[15] = AqlValueType::EXTERNAL; 
-  }
-};
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Copy Constructor.
-////////////////////////////////////////////////////////////////////////////////
-
-AqlValue$::AqlValue$(AqlValue$ const& other) {
-  VPackSlice s = other.slice();
-  VPackValueLength length = s.byteSize();
-  if (other.type()) {
-    // Isse external
-    _data.external = new VPackBuffer<uint8_t>(length);
-    memcpy(_data.external->data(), other._data.external->data(), length);
-    _data.internal[15] = AqlValueType::EXTERNAL; 
-  } else {
-    memcpy(_data.internal, other._data.internal, length);
-    _data.internal[15] = AqlValueType::INTERNAL; 
-  }
-}
-
-// Temporary constructor to transform an old AqlValue to a new VPackBased
-// AqlValue
-AqlValue$::AqlValue$(AqlValue const& other, arangodb::AqlTransaction* trx,
-                     TRI_document_collection_t const* document) {
-  VPackBuilder builder;
-  switch (other._type) {
-    case AqlValue::JSON: {
-      TRI_ASSERT(other._json != nullptr);
-      // TODO: Internal is still JSON. We always copy.
-      int res = arangodb::basics::JsonHelper::toVelocyPack(other._json->json(), builder);
-      if (res != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
+      builder.close();
       break;
     }
-    case AqlValue::SHAPED: {
-      TRI_ASSERT(document != nullptr);
-      TRI_ASSERT(other._marker != nullptr);
-      auto shaper = document->getShaper();
-      Json tmp = TRI_ExpandShapedJson(shaper, trx->resolver(),
-                                      document->_info.id(), other._marker);
-      int res = arangodb::basics::JsonHelper::toVelocyPack(tmp.json(), builder);
-      if (res != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
-      break;
+  }
+}
+
+/// @brief materializes a value into the builder
+AqlValue AqlValue::materialize(AqlTransaction* trx, bool& hasCopied) const {
+  switch (type()) {
+    case VPACK_DOCUMENT: 
+    case VPACK_POINTER: 
+    case VPACK_INLINE: 
+    case VPACK_EXTERNAL: {
+      hasCopied = false;
+      return *this;
     }
-    case AqlValue::DOCVEC: {
-      TRI_ASSERT(other._vector != nullptr);
+    case DOCVEC: {
+      VPackBuilder builder;
+      toVelocyPack(trx, builder);
+      hasCopied = true;
+      return AqlValue(builder);
+    }
+    case RANGE: {
+      VPackBuilder builder;
+      toVelocyPack(trx, builder);
+      hasCopied = true;
+      return AqlValue(builder);
+    }
+  }
+
+  // we shouldn't get here
+  hasCopied = false;
+  return AqlValue();
+}
+
+/// @brief clone a value
+AqlValue AqlValue::clone() const {
+  switch (type()) {
+    case VPACK_DOCUMENT: 
+    case VPACK_POINTER: {
+      return AqlValue(_data.pointer);
+    }
+    case VPACK_INLINE: {
+      // copy internal data
+      return AqlValue(slice());
+    }
+    case VPACK_EXTERNAL: {
+      // copy buffer
+      VPackValueLength length = _data.buffer->size();
+      auto buffer = new VPackBuffer<uint8_t>(length);
+      buffer->append(reinterpret_cast<char const*>(_data.buffer->data()), length);
+      return AqlValue(buffer);
+    }
+    case DOCVEC: {
+      auto c = std::make_unique<std::vector<AqlItemBlock*>>();
+      c->reserve(docvecSize());
       try {
-        VPackArrayBuilder b(&builder);
-        for (auto const& current : *other._vector) {
-          size_t const n = current->size();
-          auto vecCollection = current->getDocumentCollection(0);
-          for (size_t i = 0; i < n; ++i) {
-            current->getValueReference(i, 0)
-                .toVelocyPack(trx, vecCollection, builder);
-          }
+        for (auto const& it : *_data.docvec) {
+          c->emplace_back(it->slice(0, it->size()));
         }
       } catch (...) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-      }
-      break;
-    }
-    case AqlValue::RANGE: {
-      // TODO Has to be replaced by VPackCustom Type
-      TRI_ASSERT(other._range != nullptr);
-      try {
-        VPackArrayBuilder b(&builder);
-        size_t const n = other._range->size();
-        for (size_t i = 0; i < n; ++i) {
-          builder.add(VPackValue(other._range->at(i)));
+        for (auto& it : *c) {
+          delete it;
         }
-      } catch (...) {
+        throw;
       }
-      break;
+      return AqlValue(c.release());
     }
-    case AqlValue::EMPTY: {
-      builder.add(VPackValue(VPackValueType::Null));
-      break;
+    case RANGE: {
+      // create a new value with a new range
+      return AqlValue(range()->_low, range()->_high);
     }
-    default: {
-        TRI_ASSERT(false);
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-      }
   }
-  VPackValueLength length = builder.size();
-  if (length < 16) {
-    // Small enough for local
-    // copy memory from the builder into the internal data.
-    memcpy(_data.internal, builder.data(), length);
-    _data.internal[15] = AqlValueType::INTERNAL; 
-  } else {
-    // We need a large external buffer
-    // TODO: Replace by SlimBuffer
-    _data.external = new VPackBuffer<uint8_t>(length);
-    memcpy(_data.external->data(), builder.data(), length);
-    _data.internal[15] = AqlValueType::EXTERNAL; 
-  }
+
+  TRI_ASSERT(false);
+  return AqlValue();
 }
 
-AqlValue$::AqlValueType AqlValue$::type() const {
-  return static_cast<AqlValueType>(_data.internal[15]);
-}
-
-VPackSlice AqlValue$::slice() const {
-  if (type()) {
-    // Use External
-    return VPackSlice(_data.external->data());
-  } else {
-    return VPackSlice(_data.internal);
-  }
-}
-
-void AqlValue::toVelocyPack(arangodb::AqlTransaction* trx,
-                            TRI_document_collection_t const* document,
-                            VPackBuilder& builder) const {
-  switch (_type) {
-    case JSON: {
-      TRI_ASSERT(_json != nullptr);
-      // TODO: Internal is still JSON. We always copy.
-      int res = arangodb::basics::JsonHelper::toVelocyPack(_json->json(), builder);
-      if (res != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
+/// @brief destroy the value's internals
+void AqlValue::destroy() {
+  switch (type()) { 
+    case VPACK_DOCUMENT:
+    case VPACK_POINTER:
+    case VPACK_INLINE: {
+      // nothing to do
       break;
     }
-    case SHAPED: {
-      TRI_ASSERT(document != nullptr);
-      TRI_ASSERT(_marker != nullptr);
-      auto shaper = document->getShaper();
-      Json tmp = TRI_ExpandShapedJson(shaper, trx->resolver(),
-                                      document->_info.id(), _marker);
-      int res = arangodb::basics::JsonHelper::toVelocyPack(tmp.json(), builder);
-      if (res != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
+    case VPACK_EXTERNAL: {
+      delete _data.buffer;
+      erase(); // to prevent duplicate deletion
       break;
     }
     case DOCVEC: {
-      TRI_ASSERT(_vector != nullptr);
-      try {
-        VPackArrayBuilder b(&builder);
-        for (auto const& current : *_vector) {
-          size_t const n = current->size();
-          auto vecCollection = current->getDocumentCollection(0);
-          for (size_t i = 0; i < n; ++i) {
-            current->getValueReference(i, 0)
-                .toVelocyPack(trx, vecCollection, builder);
-          }
-        }
-      } catch (...) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      for (auto& it : *_data.docvec) {
+        delete it;
       }
+      delete _data.docvec;
+      erase(); // to prevent duplicate deletion
       break;
     }
     case RANGE: {
-      // TODO Has to be replaced by VPackCustom Type
-      TRI_ASSERT(_range != nullptr);
-      try {
-        VPackArrayBuilder b(&builder);
-        size_t const n = _range->size();
-        for (size_t i = 0; i < n; ++i) {
-          builder.add(VPackValue(_range->at(i)));
-        }
-      } catch (...) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-      }
-      break;
+      delete _data.range;
+      erase(); // to prevent duplicate deletion
     }
-    case EMPTY: {
-      builder.add(VPackValue(VPackValueType::Null));
-      break;
-    }
-    default: {
-        TRI_ASSERT(false);
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-      }
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hashes the JSON contents
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t AqlValue::hash(arangodb::AqlTransaction* trx,
-                        TRI_document_collection_t const* document) const {
-  switch (_type) {
-    case JSON: {
-      TRI_ASSERT(_json != nullptr);
-      return TRI_FastHashJson(_json->json());
+/// @brief return the slice from the value
+VPackSlice AqlValue::slice() const {
+  switch (type()) {
+    case VPACK_DOCUMENT: 
+    case VPACK_POINTER: {
+      return VPackSlice(_data.pointer);
     }
-
-    case SHAPED: {
-      TRI_ASSERT(document != nullptr);
-      TRI_ASSERT(_marker != nullptr);
-
-      auto shaper = document->getShaper();
-      TRI_shaped_json_t shaped;
-      TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, _marker);
-
-      auto v = TRI_JsonShapedJson(shaper, &shaped);
-
-      if (v == nullptr) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    case VPACK_INLINE: {
+      VPackSlice s(&_data.internal[0]);
+      if (s.isExternal()) {
+        s = VPackSlice(s.getExternal());
       }
-
-      Json json(shaper->memoryZone(), v);
-
-      // append the internal attributes
-
-      // _id, _key, _rev
-      char const* key = TRI_EXTRACT_MARKER_KEY(_marker);
-      std::string id(trx->resolver()->getCollectionName(document->_info.id()));
-      id.push_back('/');
-      id.append(key);
-      json(TRI_VOC_ATTRIBUTE_ID, Json(id));
-      json(TRI_VOC_ATTRIBUTE_REV,
-           Json(std::to_string(TRI_EXTRACT_MARKER_RID(_marker))));
-      json(TRI_VOC_ATTRIBUTE_KEY, Json(key));
-
-      if (TRI_IS_EDGE_MARKER(_marker)) {
-        // _from
-        std::string from(trx->resolver()->getCollectionNameCluster(
-            TRI_EXTRACT_MARKER_FROM_CID(_marker)));
-        from.push_back('/');
-        from.append(TRI_EXTRACT_MARKER_FROM_KEY(_marker));
-        json(TRI_VOC_ATTRIBUTE_FROM, Json(from));
-
-        // _to
-        std::string to(trx->resolver()->getCollectionNameCluster(
-            TRI_EXTRACT_MARKER_TO_CID(_marker)));
-        to.push_back('/');
-        to.append(TRI_EXTRACT_MARKER_TO_KEY(_marker));
-        json(TRI_VOC_ATTRIBUTE_TO, Json(to));
-      }
-
-      return TRI_FastHashJson(json.json());
+      return s;
     }
-
-    case DOCVEC: {
-      TRI_ASSERT(_vector != nullptr);
-
-      // calculate the result array length
-      size_t totalSize = 0;
-      for (auto it = _vector->begin(); it != _vector->end(); ++it) {
-        totalSize += (*it)->size();
+    case VPACK_EXTERNAL: {
+      VPackSlice s(_data.buffer->data());
+      if (s.isExternal()) {
+        s = VPackSlice(s.getExternal());
       }
-
-      // allocate the result array
-      Json json(Json::Array, static_cast<size_t>(totalSize));
-
-      for (auto it = _vector->begin(); it != _vector->end(); ++it) {
-        auto current = (*it);
-        size_t const n = current->size();
-        auto vecCollection = current->getDocumentCollection(0);
-
-        for (size_t i = 0; i < n; ++i) {
-          json.add(current->getValueReference(i, 0)
-                       .toJson(trx, vecCollection, true));
-        }
-      }
-
-      return TRI_FastHashJson(json.json());
+      return s;
     }
-
-    case RANGE: {
-      TRI_ASSERT(_range != nullptr);
-
-      // allocate the buffer for the result
-      size_t const n = _range->size();
-      Json json(Json::Array, n);
-
-      for (size_t i = 0; i < n; ++i) {
-        // is it safe to use a double here (precision loss)?
-        json.add(Json(static_cast<double>(_range->at(i))));
-      }
-
-      return TRI_FastHashJson(json.json());
-    }
-
-    case EMPTY: {
-    }
-  }
-
-  return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract an attribute value from the AqlValue
-/// this will return an empty Json if the value is not an object
-////////////////////////////////////////////////////////////////////////////////
-
-Json AqlValue::extractObjectMember(
-    arangodb::AqlTransaction* trx, TRI_document_collection_t const* document,
-    char const* name, bool copy, arangodb::basics::StringBuffer& buffer) const {
-  switch (_type) {
-    case JSON: {
-      TRI_ASSERT(_json != nullptr);
-      TRI_json_t const* json = _json->json();
-
-      if (TRI_IsObjectJson(json)) {
-        TRI_json_t const* found = TRI_LookupObjectJson(json, name);
-
-        if (found != nullptr) {
-          if (copy) {
-            auto c = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, found);
-
-            if (c == nullptr) {
-              THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-            }
-
-            // return a copy of the value
-            return Json(TRI_UNKNOWN_MEM_ZONE, c,
-                        arangodb::basics::Json::AUTOFREE);
-          }
-
-          // return a pointer to the original value, without asking for its
-          // ownership
-          return Json(TRI_UNKNOWN_MEM_ZONE, found,
-                      arangodb::basics::Json::NOFREE);
-        }
-      }
-
-      // attribute does not exist or something went wrong - fall-through to
-      // returning null below
-      return Json(Json::Null);
-    }
-
-    case SHAPED: {
-      TRI_ASSERT(document != nullptr);
-      TRI_ASSERT(_marker != nullptr);
-
-      // look for the attribute name in the shape
-      if (*name == '_' && name[1] != '\0') {
-        if (name[1] == 'k' && strcmp(name, TRI_VOC_ATTRIBUTE_KEY) == 0) {
-          // _key value is copied into JSON
-          return Json(TRI_UNKNOWN_MEM_ZONE, TRI_EXTRACT_MARKER_KEY(_marker));
-        }
-        if (name[1] == 'i' && strcmp(name, TRI_VOC_ATTRIBUTE_ID) == 0) {
-          // _id
-          buffer.reset();
-          trx->resolver()->getCollectionName(document->_info.id(), buffer);
-          buffer.appendChar('/');
-          buffer.appendText(TRI_EXTRACT_MARKER_KEY(_marker));
-          return Json(TRI_UNKNOWN_MEM_ZONE, buffer.c_str(), buffer.length());
-        }
-        if (name[1] == 'r' && strcmp(name, TRI_VOC_ATTRIBUTE_REV) == 0) {
-          // _rev
-          TRI_voc_rid_t rid = TRI_EXTRACT_MARKER_RID(_marker);
-          buffer.reset();
-          buffer.appendInteger(rid);
-          return Json(TRI_UNKNOWN_MEM_ZONE, buffer.c_str(), buffer.length());
-        }
-        if (name[1] == 'f' && strcmp(name, TRI_VOC_ATTRIBUTE_FROM) == 0 &&
-            (_marker->_type == TRI_DOC_MARKER_KEY_EDGE ||
-             _marker->_type == TRI_WAL_MARKER_EDGE)) {
-          buffer.reset();
-          trx->resolver()->getCollectionNameCluster(
-              TRI_EXTRACT_MARKER_FROM_CID(_marker), buffer);
-          buffer.appendChar('/');
-          buffer.appendText(TRI_EXTRACT_MARKER_FROM_KEY(_marker));
-          return Json(TRI_UNKNOWN_MEM_ZONE, buffer.c_str(), buffer.length());
-        }
-        if (name[1] == 't' && strcmp(name, TRI_VOC_ATTRIBUTE_TO) == 0 &&
-            (_marker->_type == TRI_DOC_MARKER_KEY_EDGE ||
-             _marker->_type == TRI_WAL_MARKER_EDGE)) {
-          buffer.reset();
-          trx->resolver()->getCollectionNameCluster(
-              TRI_EXTRACT_MARKER_TO_CID(_marker), buffer);
-          buffer.appendChar('/');
-          buffer.appendText(TRI_EXTRACT_MARKER_TO_KEY(_marker));
-          return Json(TRI_UNKNOWN_MEM_ZONE, buffer.c_str(), buffer.length());
-        }
-      }
-
-      auto shaper = document->getShaper();
-
-      TRI_shape_pid_t pid = shaper->lookupAttributePathByName(name);
-
-      if (pid != 0) {
-        // attribute exists
-        TRI_shaped_json_t document;
-        TRI_EXTRACT_SHAPED_JSON_MARKER(document, _marker);
-
-        TRI_shaped_json_t json;
-        TRI_shape_t const* shape;
-
-        bool ok = shaper->extractShapedJson(&document, 0, pid, &json, &shape);
-
-        if (ok && shape != nullptr) {
-          auto v = TRI_JsonShapedJson(shaper, &json);
-
-          if (v == nullptr) {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-          }
-
-          return Json(TRI_UNKNOWN_MEM_ZONE, v);
-        }
-      }
-
-      // attribute does not exist or something went wrong - fall-through to
-      // returning null
-      break;
-    }
-
     case DOCVEC:
-    case RANGE:
-    case EMPTY: {
-      break;
-    }
-  }
-
-  return Json(Json::Null);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract a value from an array AqlValue
-/// this will return null if the value is not an array
-/// depending on the last parameter, the return value will either contain a
-/// copy of the original value in the array or a reference to it (which must
-/// not be freed)
-////////////////////////////////////////////////////////////////////////////////
-
-Json AqlValue::extractArrayMember(arangodb::AqlTransaction* trx,
-                                  TRI_document_collection_t const* document,
-                                  int64_t position, bool copy) const {
-  switch (_type) {
-    case JSON: {
-      TRI_ASSERT(_json != nullptr);
-      TRI_json_t const* json = _json->json();
-
-      if (TRI_IsArrayJson(json)) {
-        size_t const length = TRI_LengthArrayJson(json);
-        if (position < 0) {
-          // a negative position is allowed
-          position = static_cast<int64_t>(length) + position;
-        }
-
-        if (position >= 0 && position < static_cast<int64_t>(length)) {
-          // only look up the value if it is within array bounds
-          TRI_json_t const* found =
-              TRI_LookupArrayJson(json, static_cast<size_t>(position));
-
-          if (found != nullptr) {
-            if (copy) {
-              auto c = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, found);
-
-              if (c == nullptr) {
-                THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-              }
-              // return a copy of the value
-              return Json(TRI_UNKNOWN_MEM_ZONE, c,
-                          arangodb::basics::Json::AUTOFREE);
-            }
-
-            // return a pointer to the original value, without asking for its
-            // ownership
-            return Json(TRI_UNKNOWN_MEM_ZONE, found,
-                        arangodb::basics::Json::NOFREE);
-          }
-        }
-      }
-
-      // attribute does not exist or something went wrong - fall-through to
-      // returning null below
-      return Json(Json::Null);
-    }
-
     case RANGE: {
-      TRI_ASSERT(_range != nullptr);
-      size_t const n = _range->size();
-
-      if (position < 0) {
-        // a negative position is allowed
-        position = static_cast<int64_t>(n) + position;
-      }
-
-      if (position >= 0 && position < static_cast<int64_t>(n)) {
-        // only look up the value if it is within array bounds
-        return Json(
-            static_cast<double>(_range->at(static_cast<size_t>(position))));
-      }
-      break;  // fall-through to returning null
-    }
-
-    case DOCVEC: {
-      TRI_ASSERT(_vector != nullptr);
-      size_t const p = static_cast<size_t>(position);
-
-      // calculate the result array length
-      size_t totalSize = 0;
-      for (auto it = _vector->begin(); it != _vector->end(); ++it) {
-        if (p < totalSize + (*it)->size()) {
-          // found the correct vector
-          auto vecCollection = (*it)->getDocumentCollection(0);
-          return (*it)
-              ->getValueReference(p - totalSize, 0)
-              .toJson(trx, vecCollection, copy);
-        }
-        totalSize += (*it)->size();
-      }
-      break;  // fall-through to returning null
-    }
-
-    case SHAPED:
-    case EMPTY: {
-      break;  // fall-through to returning null
     }
   }
 
-  return Json(Json::Null);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AqlValue from a vector of AqlItemBlock*s
-////////////////////////////////////////////////////////////////////////////////
-
 AqlValue AqlValue::CreateFromBlocks(
     arangodb::AqlTransaction* trx, std::vector<AqlItemBlock*> const& src,
     std::vector<std::string> const& variableNames) {
-  size_t totalSize = 0;
 
-  for (auto it = src.begin(); it != src.end(); ++it) {
-    totalSize += (*it)->size();
-  }
+  VPackBuilder builder;
+  builder.openArray();
 
-  auto json = std::make_unique<Json>(Json::Array, totalSize);
-
-  for (auto it = src.begin(); it != src.end(); ++it) {
-    auto current = (*it);
+  for (auto const& current : src) {
     RegisterId const n = current->getNrRegs();
 
-    std::vector<std::pair<RegisterId, TRI_document_collection_t const*>>
-        registers;
+    std::vector<RegisterId> registers;
     for (RegisterId j = 0; j < n; ++j) {
       // temporaries don't have a name and won't be included
       if (variableNames[j][0] != '\0') {
-        registers.emplace_back(
-            std::make_pair(j, current->getDocumentCollection(j)));
+        registers.emplace_back(j);
       }
     }
 
     for (size_t i = 0; i < current->size(); ++i) {
-      Json values(Json::Object, registers.size());
+      builder.openObject();
 
       // only enumerate the registers that are left
       for (auto const& reg : registers) {
-        values.set(variableNames[reg.first],
-                   current->getValueReference(i, reg.first)
-                       .toJson(trx, reg.second, true));
+        builder.add(VPackValue(variableNames[reg]));
+        current->getValueReference(i, reg).toVelocyPack(trx, builder);
       }
 
-      json->add(values);
+      builder.close();
     }
   }
 
-  return AqlValue(json.release());
+  builder.close();
+  return AqlValue(builder);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AqlValue from a vector of AqlItemBlock*s
-////////////////////////////////////////////////////////////////////////////////
-
 AqlValue AqlValue::CreateFromBlocks(
     arangodb::AqlTransaction* trx, std::vector<AqlItemBlock*> const& src,
     arangodb::aql::RegisterId expressionRegister) {
-  size_t totalSize = 0;
 
-  for (auto it = src.begin(); it != src.end(); ++it) {
-    totalSize += (*it)->size();
-  }
+  VPackBuilder builder;
+  builder.openArray();
 
-  auto json = std::make_unique<Json>(Json::Array, totalSize);
-
-  for (auto it = src.begin(); it != src.end(); ++it) {
-    auto current = (*it);
-    auto document = current->getDocumentCollection(expressionRegister);
-
+  for (auto const& current : src) {
     for (size_t i = 0; i < current->size(); ++i) {
-      json->add(current->getValueReference(i, expressionRegister)
-                    .toJson(trx, document, true));
+      current->getValueReference(i, expressionRegister).toVelocyPack(trx, builder);
     }
   }
 
-  return AqlValue(json.release());
+  builder.close();
+  return AqlValue(builder);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief 3-way comparison for AqlValue objects
-////////////////////////////////////////////////////////////////////////////////
-
 int AqlValue::Compare(arangodb::AqlTransaction* trx, AqlValue const& left,
-                      TRI_document_collection_t const* leftcoll,
-                      AqlValue const& right,
-                      TRI_document_collection_t const* rightcoll,
-                      bool compareUtf8) {
-  if (left._type != right._type) {
-    if (left._type == AqlValue::EMPTY) {
-      return -1;
+                       AqlValue const& right,
+                       bool compareUtf8) {
+  VPackOptions* options = trx->transactionContext()->getVPackOptions();
+
+  AqlValue::AqlValueType const leftType = left.type();
+  AqlValue::AqlValueType const rightType = right.type();
+
+  if (leftType != rightType) {
+    if (leftType == RANGE || rightType == RANGE || leftType == DOCVEC || rightType == DOCVEC) {
+      // range|docvec against x
+      VPackBuilder leftBuilder;
+      left.toVelocyPack(trx, leftBuilder);
+
+      VPackBuilder rightBuilder;
+      right.toVelocyPack(trx, rightBuilder);
+    
+      return arangodb::basics::VelocyPackHelper::compare(leftBuilder.slice(), rightBuilder.slice(), compareUtf8, options);
     }
-
-    if (right._type == AqlValue::EMPTY) {
-      return 1;
-    }
-
-    // JSON against x
-    if (left._type == AqlValue::JSON &&
-        (right._type == AqlValue::SHAPED || right._type == AqlValue::RANGE ||
-         right._type == AqlValue::DOCVEC)) {
-      arangodb::basics::Json rjson = right.toJson(trx, rightcoll, false);
-      return TRI_CompareValuesJson(left._json->json(), rjson.json(),
-                                   compareUtf8);
-    }
-
-    // SHAPED against x
-    if (left._type == AqlValue::SHAPED) {
-      arangodb::basics::Json ljson = left.toJson(trx, leftcoll, false);
-
-      if (right._type == AqlValue::JSON) {
-        return TRI_CompareValuesJson(ljson.json(), right._json->json(),
-                                     compareUtf8);
-      } else if (right._type == AqlValue::RANGE ||
-                 right._type == AqlValue::DOCVEC) {
-        arangodb::basics::Json rjson = right.toJson(trx, rightcoll, false);
-        return TRI_CompareValuesJson(ljson.json(), rjson.json(), compareUtf8);
-      }
-    }
-
-    // RANGE against x
-    if (left._type == AqlValue::RANGE) {
-      arangodb::basics::Json ljson = left.toJson(trx, leftcoll, false);
-
-      if (right._type == AqlValue::JSON) {
-        return TRI_CompareValuesJson(ljson.json(), right._json->json(),
-                                     compareUtf8);
-      } else if (right._type == AqlValue::SHAPED ||
-                 right._type == AqlValue::DOCVEC) {
-        arangodb::basics::Json rjson = right.toJson(trx, rightcoll, false);
-        return TRI_CompareValuesJson(ljson.json(), rjson.json(), compareUtf8);
-      }
-    }
-
-    // DOCVEC against x
-    if (left._type == AqlValue::DOCVEC) {
-      arangodb::basics::Json ljson = left.toJson(trx, leftcoll, false);
-
-      if (right._type == AqlValue::JSON) {
-        return TRI_CompareValuesJson(ljson.json(), right._json->json(),
-                                     compareUtf8);
-      } else if (right._type == AqlValue::SHAPED ||
-                 right._type == AqlValue::RANGE) {
-        arangodb::basics::Json rjson = right.toJson(trx, rightcoll, false);
-        return TRI_CompareValuesJson(ljson.json(), rjson.json(), compareUtf8);
-      }
-    }
-
-    // No other comparisons are defined
-    TRI_ASSERT(false);
+    // fall-through to other types intentional
   }
 
-  // if we get here, types are equal
+  // if we get here, types are equal or can be treated as being equal
 
-  switch (left._type) {
-    case AqlValue::EMPTY: {
-      return 0;
+  switch (leftType) {
+    case VPACK_DOCUMENT:
+    case VPACK_POINTER:
+    case VPACK_INLINE:
+    case VPACK_EXTERNAL: {
+      return arangodb::basics::VelocyPackHelper::compare(left.slice(), right.slice(), compareUtf8, options);
     }
-
-    case AqlValue::JSON: {
-      TRI_ASSERT(left._json != nullptr);
-      TRI_ASSERT(right._json != nullptr);
-      return TRI_CompareValuesJson(left._json->json(), right._json->json(),
-                                   compareUtf8);
-    }
-
-    case AqlValue::SHAPED: {
-      TRI_shaped_json_t l;
-      TRI_shaped_json_t r;
-      TRI_EXTRACT_SHAPED_JSON_MARKER(l, left._marker);
-      TRI_EXTRACT_SHAPED_JSON_MARKER(r, right._marker);
-
-      return TRI_CompareShapeTypes(nullptr, nullptr, &l, leftcoll->getShaper(),
-                                   nullptr, nullptr, &r,
-                                   rightcoll->getShaper());
-    }
-
-    case AqlValue::DOCVEC: {
+    case DOCVEC: {
       // use lexicographic ordering of AqlValues regardless of block,
       // DOCVECs have a single register coming from ReturnNode.
       size_t lblock = 0;
       size_t litem = 0;
       size_t rblock = 0;
       size_t ritem = 0;
+      size_t const lsize = left._data.docvec->size();
+      size_t const rsize = right._data.docvec->size();
 
-      while (lblock < left._vector->size() && rblock < right._vector->size()) {
-        AqlValue lval = left._vector->at(lblock)->getValue(litem, 0);
-        AqlValue rval = right._vector->at(rblock)->getValue(ritem, 0);
+      while (lblock < lsize && rblock < rsize) {
+        AqlValue const& lval = left._data.docvec->at(lblock)->getValueReference(litem, 0);
+        AqlValue const& rval = right._data.docvec->at(rblock)->getValueReference(ritem, 0);
 
-        int cmp = Compare(
-            trx, lval, left._vector->at(lblock)->getDocumentCollection(0), rval,
-            right._vector->at(rblock)->getDocumentCollection(0), compareUtf8);
+        int cmp = Compare(trx, lval, rval, compareUtf8);
 
         if (cmp != 0) {
           return cmp;
         }
-        if (++litem == left._vector->size()) {
+        if (++litem == lsize) {
           litem = 0;
           lblock++;
         }
-        if (++ritem == right._vector->size()) {
+        if (++ritem == rsize) {
           ritem = 0;
           rblock++;
         }
       }
 
-      if (lblock == left._vector->size() && rblock == right._vector->size()) {
+      if (lblock == lsize && rblock == rsize) {
         return 0;
       }
 
-      return (lblock < left._vector->size() ? -1 : 1);
+      return (lblock < lsize ? -1 : 1);
     }
-
-    case AqlValue::RANGE: {
-      if (left._range->_low < right._range->_low) {
+    case RANGE: {
+      if (left.range()->_low < right.range()->_low) {
         return -1;
       }
-      if (left._range->_low > right._range->_low) {
+      if (left.range()->_low > right.range()->_low) {
         return 1;
       }
-      if (left._range->_high < left._range->_high) {
+      if (left.range()->_high < right.range()->_high) {
         return -1;
       }
-      if (left._range->_high > left._range->_high) {
+      if (left.range()->_high > right.range()->_high) {
         return 1;
       }
-      return 0;
-    }
-
-    default: {
-      TRI_ASSERT(false);
       return 0;
     }
   }
+
+  return 0;
 }
+

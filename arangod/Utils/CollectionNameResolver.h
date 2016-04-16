@@ -26,7 +26,6 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadLocker.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterInfo.h"
@@ -40,21 +39,23 @@ class CollectionNameResolver {
   /// @brief create the resolver
   //////////////////////////////////////////////////////////////////////////////
 
-  CollectionNameResolver(TRI_vocbase_t* vocbase)
+  explicit CollectionNameResolver(TRI_vocbase_t* vocbase)
       : _vocbase(vocbase), _resolvedNames(), _resolvedIds() {}
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroy the resolver
   //////////////////////////////////////////////////////////////////////////////
 
-  ~CollectionNameResolver() {}
+  ~CollectionNameResolver() = default;
 
  public:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief look up a collection id for a collection name (local case)
+  /// @brief look up a collection id for a collection name (local case),
+  /// use this if you know you are on a single server or on a DBserver
+  /// and need to look up a local collection name (or shard name).
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_voc_cid_t getCollectionId(std::string const& name) const {
+  TRI_voc_cid_t getCollectionIdLocal(std::string const& name) const {
     if (name[0] >= '0' && name[0] <= '9') {
       // name is a numeric id
       return static_cast<TRI_voc_cid_t>(
@@ -67,6 +68,53 @@ class CollectionNameResolver {
       return collection->_cid;
     }
     return 0;
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief look up a cluster collection id for a cluster collection name,
+  /// only use this is in cluster mode on a coordinator or DBserver, in both
+  /// cases the name is resolved as a cluster wide collection name and the
+  /// cluster wide collection id is returned.
+  //////////////////////////////////////////////////////////////////////////////
+
+  TRI_voc_cid_t getCollectionIdCluster(std::string const& name) const {
+    if (!ServerState::instance()->isRunningInCluster()) {
+      return getCollectionIdLocal(name);
+    }
+    if (name[0] >= '0' && name[0] <= '9') {
+      // name is a numeric id
+      TRI_voc_cid_t cid = (TRI_voc_cid_t)arangodb::basics::StringUtils::uint64(name);
+      // Now validate the cid
+      TRI_col_type_t type = getCollectionTypeCluster(getCollectionNameCluster(cid));
+      if (type == TRI_COL_TYPE_UNKNOWN) {
+        return 0;
+      }
+      return cid;
+    }
+
+    // We have to look up the collection info:
+    ClusterInfo* ci = ClusterInfo::instance();
+    std::shared_ptr<CollectionInfo> cinfo =
+        ci->getCollection(DatabaseID(_vocbase->_name), name);
+    if (cinfo->empty()) {
+      return 0;
+    }
+    return cinfo->id();
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief look up a collection id for a collection name, this is the
+  /// default one to use, which will usually do the right thing. On a
+  /// single server or DBserver it will use the local lookup and on a
+  /// coordinator it will use the cluster wide lookup.
+  //////////////////////////////////////////////////////////////////////////////
+
+  TRI_voc_cid_t getCollectionId(std::string const& name) const {
+    if (!ServerState::instance()->isRunningInCluster() ||
+        ServerState::instance()->isDBServer()) {
+      return getCollectionIdLocal(name);
+    }
+    return getCollectionIdCluster(name);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -107,29 +155,6 @@ class CollectionNameResolver {
     }
 
     return collection;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief look up a cluster collection id for a cluster collection name
-  //////////////////////////////////////////////////////////////////////////////
-
-  TRI_voc_cid_t getCollectionIdCluster(std::string const& name) const {
-    if (!ServerState::instance()->isRunningInCluster()) {
-      return getCollectionId(name);
-    }
-    if (name[0] >= '0' && name[0] <= '9') {
-      // name is a numeric id
-      return (TRI_voc_cid_t)arangodb::basics::StringUtils::uint64(name);
-    }
-
-    // We have to look up the collection info:
-    ClusterInfo* ci = ClusterInfo::instance();
-    std::shared_ptr<CollectionInfo> cinfo =
-        ci->getCollection(DatabaseID(_vocbase->_name), name);
-    if (cinfo->empty()) {
-      return 0;
-    }
-    return cinfo->id();
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -177,33 +202,25 @@ class CollectionNameResolver {
     if (ServerState::instance()->isDBServer()) {
       READ_LOCKER(readLocker, _vocbase->_collectionsLock);
 
-      TRI_vocbase_col_t* found = static_cast<TRI_vocbase_col_t*>(
-          TRI_LookupByKeyAssociativePointer(&_vocbase->_collectionsById, &cid));
+      auto it = _vocbase->_collectionsById.find(cid);
 
-      if (nullptr != found) {
-        if (found->_planId == 0) {
+      if (it != _vocbase->_collectionsById.end()) {
+        if ((*it).second->_planId == 0) {
           // DBserver local case
-          char* n = TRI_GetCollectionNameByIdVocBase(_vocbase, cid);
-          if (n != nullptr) {
-            name = n;
-            TRI_Free(TRI_UNKNOWN_MEM_ZONE, n);
-          }
+          name = (*it).second->name();
         } else {
           // DBserver case of a shard:
-          name = arangodb::basics::StringUtils::itoa(found->_planId);
+          name = arangodb::basics::StringUtils::itoa((*it).second->_planId);
           std::shared_ptr<CollectionInfo> ci =
-              ClusterInfo::instance()->getCollection(found->_dbName, name);
+              ClusterInfo::instance()->getCollection((*it).second->_dbName, name);
           name = ci->name();  // can be empty, if collection unknown
         }
       }
     } else {
       // exactly as in the non-cluster case
-      char* n = TRI_GetCollectionNameByIdVocBase(_vocbase, cid);
-      if (nullptr != n) {
-        name = n;
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, n);
-      }
+      name = TRI_GetCollectionNameByIdVocBase(_vocbase, cid);
     }
+
     if (name.empty()) {
       name = "_unknown";
     }
@@ -235,29 +252,6 @@ class CollectionNameResolver {
 
     memcpy(buffer, name.c_str(), name.size());
     return name.size();
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief look up a collection name for a collection id, this implements
-  /// some magic in the cluster case: a DBserver in a cluster will automatically
-  /// translate the local collection ID into a cluster wide collection name.
-  ///
-  /// the name is copied into <buffer>. the caller is responsible for allocating
-  /// a big-enough buffer (that is, at least 64 bytes). no NUL byte is appended
-  /// to the buffer. the length of the collection name is returned.
-  //////////////////////////////////////////////////////////////////////////////
-
-  void getCollectionName(TRI_voc_cid_t cid,
-                         arangodb::basics::StringBuffer& buffer) const {
-    auto const& it = _resolvedIds.find(cid);
-
-    if (it != _resolvedIds.end()) {
-      buffer.appendText((*it).second.c_str(), (*it).second.size());
-      return;
-    }
-
-    std::string name(getCollectionName(cid));
-    buffer.appendText(name.c_str(), name.size());
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -323,36 +317,22 @@ class CollectionNameResolver {
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief look up a cluster-wide collection name for a cluster-wide
-  /// collection id
+  /// @brief return collection name if given string is either the name or
+  /// a string with the (numerical) collection id, this returns the cluster
+  /// wide collection name in the DBserver case
   //////////////////////////////////////////////////////////////////////////////
 
-  void getCollectionNameCluster(TRI_voc_cid_t cid,
-                                arangodb::basics::StringBuffer& buffer) const {
-    if (!ServerState::instance()->isRunningInCluster()) {
-      return getCollectionName(cid, buffer);
+  std::string getCollectionName(std::string const& nameOrId) const {
+    if (!nameOrId.empty() &&
+        (nameOrId[0] < '0' || nameOrId[0] > '9')) {
+      return nameOrId;
     }
-
-    int tries = 0;
-
-    while (tries++ < 2) {
-      std::shared_ptr<CollectionInfo> ci =
-          ClusterInfo::instance()->getCollection(
-              _vocbase->_name, arangodb::basics::StringUtils::itoa(cid));
-      std::string name = ci->name();
-
-      if (name.empty()) {
-        ClusterInfo::instance()->flush();
-        continue;
-      }
-      buffer.appendText(name);
-      return;
-    }
-
-    buffer.appendText("_unknown");
+    TRI_voc_cid_t tmp = arangodb::basics::StringUtils::uint64(nameOrId);
+    return getCollectionName(tmp);
   }
 
  private:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief vocbase base pointer
   //////////////////////////////////////////////////////////////////////////////

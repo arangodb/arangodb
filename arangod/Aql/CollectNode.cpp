@@ -53,10 +53,7 @@ CollectNode::CollectNode(
 
 CollectNode::~CollectNode() {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack, for CollectNode
-////////////////////////////////////////////////////////////////////////////////
-
 void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   ExecutionNode::toVelocyPackHelperGeneric(nodes,
                                            verbose);  // call base class method
@@ -122,10 +119,7 @@ void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   nodes.close();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionNode* CollectNode::clone(ExecutionPlan* plan, bool withDependencies,
                                   bool withProperties) const {
   auto outVariable = _outVariable;
@@ -177,10 +171,7 @@ ExecutionNode* CollectNode::clone(ExecutionPlan* plan, bool withDependencies,
   return static_cast<ExecutionNode*>(c);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief helper struct for finding variables
-////////////////////////////////////////////////////////////////////////////////
-
 struct UserVarFinder final : public WalkerWorker<ExecutionNode> {
   explicit UserVarFinder(int mindepth) : mindepth(mindepth), depth(-1) {}
 
@@ -215,10 +206,7 @@ struct UserVarFinder final : public WalkerWorker<ExecutionNode> {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief getVariablesUsedHere, returning a vector
-////////////////////////////////////////////////////////////////////////////////
-
 std::vector<Variable const*> CollectNode::getVariablesUsedHere() const {
   std::unordered_set<Variable const*> v;
   // actual work is done by that method
@@ -230,10 +218,7 @@ std::vector<Variable const*> CollectNode::getVariablesUsedHere() const {
   return vv;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief getVariablesUsedHere, modifying the set in-place
-////////////////////////////////////////////////////////////////////////////////
-
 void CollectNode::getVariablesUsedHere(
     std::unordered_set<Variable const*>& vars) const {
   for (auto const& p : _groupVariables) {
@@ -275,10 +260,7 @@ void CollectNode::getVariablesUsedHere(
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief estimateCost
-////////////////////////////////////////////////////////////////////////////////
-
 double CollectNode::estimateCost(size_t& nrItems) const {
   double depCost = _dependencies.at(0)->getCost(nrItems);
 

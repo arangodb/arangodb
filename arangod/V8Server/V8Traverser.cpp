@@ -23,38 +23,142 @@
 
 #include "V8Traverser.h"
 #include "Indexes/EdgeIndex.h"
-#include "Utils/transactions.h"
-#include "Utils/V8ResolverGuard.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/ShapedJsonTransformer.h"
-#include "Utils/SingleCollectionReadOnlyTransaction.h"
+#include "Utils/OperationCursor.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/KeyGenerator.h"
-#include "VocBase/VocShaper.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::traverser;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the _from Id out of mptr, we return an RValue reference
-/// to explicitly allow move semantics.
+/// @brief Get a document by it's ID. Also lazy locks the collection.
+///        If DOCUMENT_NOT_FOUND this function will return normally
+///        with a OperationResult.failed() == true.
+///        On all other cases this function throws.
 ////////////////////////////////////////////////////////////////////////////////
 
-static VertexId ExtractFromId(TRI_doc_mptr_copy_t const& ptr) {
-  return VertexId(TRI_EXTRACT_MARKER_FROM_CID(&ptr),
-                  TRI_EXTRACT_MARKER_FROM_KEY(&ptr));
+static OperationResult FetchDocumentById(arangodb::Transaction* trx,
+                                         std::string const& id,
+                                         VPackBuilder& builder,
+                                         OperationOptions& options) {
+  std::vector<std::string> parts =
+          arangodb::basics::StringUtils::split(id, "/");
+  TRI_ASSERT(parts.size() == 2);
+  trx->addCollectionAtRuntime(parts[0]);
+  builder.clear();
+  builder.openObject();
+  builder.add(VPackValue(TRI_VOC_ATTRIBUTE_KEY));
+  builder.add(VPackValue(parts[1]));
+  builder.close();
+
+  OperationResult opRes = trx->document(parts[0], builder.slice(), options);
+
+  if (opRes.failed() && opRes.code != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+    THROW_ARANGO_EXCEPTION(opRes.code);
+  }
+  return opRes;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Local class to expand edges.
+///        Will be handed over to the path finder
+////////////////////////////////////////////////////////////////////////////////
+
+struct BasicExpander {
+ private:
+  std::vector<EdgeCollectionInfo*> const _colls;
+  arangodb::Transaction* _trx;
+  TRI_edge_direction_e _dir;
+  std::shared_ptr<OperationResult> _opRes;
+
+ public:
+  BasicExpander(std::vector<EdgeCollectionInfo*> const& colls,
+                arangodb::Transaction* trx, TRI_edge_direction_e dir)
+      : _colls(colls),
+        _trx(trx),
+        _dir(dir),
+        _opRes(std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR)){};
+
+  void operator()(std::string const& v, std::vector<std::string>& res_edges,
+                  std::vector<std::string>& neighbors) {
+    for (auto const& edgeCollection : _colls) {
+      TRI_ASSERT(edgeCollection != nullptr);
+      std::shared_ptr<OperationCursor> edgeCursor = edgeCollection->getEdges(_dir, v);
+      while (edgeCursor->hasMore()) {
+        edgeCursor->getMore(_opRes);
+        if (_opRes->failed()) {
+          THROW_ARANGO_EXCEPTION(_opRes->code);
+        }
+        VPackSlice edges = _opRes->slice();
+
+        for (auto const& edge : VPackArrayIterator(edges)) {
+          std::string edgeId = _trx->extractIdString(edge);
+          std::string from = edge.get(TRI_VOC_ATTRIBUTE_FROM).copyString();
+          if (from == v) {
+            std::string to = edge.get(TRI_VOC_ATTRIBUTE_TO).copyString();
+            if (to != v) {
+              res_edges.emplace_back(edgeId);
+              neighbors.emplace_back(to);
+            }
+          } else {
+            res_edges.emplace_back(edgeId);
+            neighbors.emplace_back(from);
+          }
+
+        }
+      }
+    }
+  }
 };
 
+
+EdgeCollectionInfo::EdgeCollectionInfo(arangodb::Transaction* trx,
+                                       std::string const& collectionName,
+                                       WeightCalculatorFunction weighter)
+    : _trx(trx), _collectionName(collectionName), _weighter(weighter) {
+
+  trx->addCollectionAtRuntime(collectionName);
+
+  if (!trx->isEdgeCollection(collectionName)) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
+  }
+  _indexId = trx->edgeIndexHandle(collectionName);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the _to Id out of mptr, we return an RValue reference
-/// to explicitly allow move semantics.
+/// @brief Get edges for the given direction and start vertex.
 ////////////////////////////////////////////////////////////////////////////////
 
-static VertexId ExtractToId(TRI_doc_mptr_copy_t const& ptr) {
-  return VertexId(TRI_EXTRACT_MARKER_TO_CID(&ptr),
-                  TRI_EXTRACT_MARKER_TO_KEY(&ptr));
-};
+std::shared_ptr<OperationCursor> EdgeCollectionInfo::getEdges(
+    TRI_edge_direction_e direction, std::string const& vertexId) {
+  _searchBuilder.clear();
+  EdgeIndex::buildSearchValue(direction, vertexId, _searchBuilder);
+  return _trx->indexScan(_collectionName,
+                         arangodb::Transaction::CursorType::INDEX, _indexId,
+                         _searchBuilder.slice(), 0, UINT64_MAX, 1000, false);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Compute the weight of an edge
+////////////////////////////////////////////////////////////////////////////////
+
+double EdgeCollectionInfo::weightEdge(VPackSlice const edge) {
+  return _weighter(edge);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Return name of the wrapped collection
+////////////////////////////////////////////////////////////////////////////////
+
+std::string const& EdgeCollectionInfo::getName() {
+  return _collectionName;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Expander for Multiple edge collections
@@ -77,63 +181,72 @@ class MultiCollectionEdgeExpander {
   /// @brief function to check if the edge passes the filter
   //////////////////////////////////////////////////////////////////////////////
 
-  std::function<bool(EdgeId&, TRI_doc_mptr_copy_t*)> _isAllowed;
+  std::function<bool(VPackSlice)> _isAllowed;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief function to check if the vertex passes the filter
   //////////////////////////////////////////////////////////////////////////////
 
-  std::function<bool(VertexId&)> _isAllowedVertex;
+  std::function<bool(std::string const&)> _isAllowedVertex;
 
  public:
   MultiCollectionEdgeExpander(
       TRI_edge_direction_e const& direction,
       std::vector<EdgeCollectionInfo*> const& edgeCollections,
-      std::function<bool(EdgeId&, TRI_doc_mptr_copy_t*)> isAllowed,
-      std::function<bool(VertexId&)> isAllowedVertex)
+      std::function<bool(VPackSlice const)> isAllowed,
+      std::function<bool(std::string const&)> isAllowedVertex)
       : _direction(direction),
         _edgeCollections(edgeCollections),
         _isAllowed(isAllowed),
         _isAllowedVertex(isAllowedVertex) {}
 
-  void operator()(VertexId& source,
+  void operator()(std::string const& source,
                   std::vector<ArangoDBPathFinder::Step*>& result) {
-    std::equal_to<VertexId> eq;
     for (auto const& edgeCollection : _edgeCollections) {
       TRI_ASSERT(edgeCollection != nullptr);
 
-      auto edges = edgeCollection->getEdges(_direction, source);
+      auto edgeCursor = edgeCollection->getEdges(_direction, source);
+      std::unordered_map<std::string, size_t> candidates;
 
-      std::unordered_map<VertexId, size_t> candidates;
-      for (size_t j = 0; j < edges.size(); ++j) {
-        EdgeId edgeId = edgeCollection->extractEdgeId(edges[j]);
-        if (!_isAllowed(edgeId, &edges[j])) {
-          continue;
-        }
-        VertexId from = ExtractFromId(edges[j]);
-        VertexId to = ExtractToId(edges[j]);
-        double currentWeight = edgeCollection->weightEdge(edges[j]);
-        auto inserter = [&](VertexId& s, VertexId& t) {
-          if (_isAllowedVertex(t)) {
-            auto cand = candidates.find(t);
-            if (cand == candidates.end()) {
-              // Add weight
-              result.emplace_back(
-                  new ArangoDBPathFinder::Step(t, s, currentWeight, edgeId));
-              candidates.emplace(t, result.size() - 1);
-            } else {
-              // Compare weight
-              auto oldWeight = result[cand->second]->weight();
-              if (currentWeight < oldWeight) {
-                result[cand->second]->setWeight(currentWeight);
-              }
+      auto inserter = [&](std::string const& s, std::string const& t,
+                          double currentWeight, VPackSlice edge) {
+        if (_isAllowedVertex(t)) {
+          auto cand = candidates.find(t);
+          if (cand == candidates.end()) {
+            // Add weight
+            result.emplace_back(new ArangoDBPathFinder::Step(
+                t, s, currentWeight, edgeCollection->trx()->extractIdString(edge)));
+            candidates.emplace(t, result.size() - 1);
+          } else {
+            // Compare weight
+            auto oldWeight = result[cand->second]->weight();
+            if (currentWeight < oldWeight) {
+              result[cand->second]->setWeight(currentWeight);
             }
           }
-        };
-        if (!eq(from, source)) {
-          inserter(to, from);
-        } else if (!eq(to, source)) {
-          inserter(from, to);
+        }
+      };
+
+      auto opRes = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
+      while (edgeCursor->hasMore()) {
+        edgeCursor->getMore(opRes);
+        if (opRes->failed()) {
+          THROW_ARANGO_EXCEPTION(opRes->code);
+        }
+        VPackSlice edges = opRes->slice();
+
+        for (auto const& edge : VPackArrayIterator(edges)) {
+          if (!_isAllowed(edge)) {
+            continue;
+          }
+          std::string const from = edge.get(TRI_VOC_ATTRIBUTE_FROM).copyString();
+          std::string const to = edge.get(TRI_VOC_ATTRIBUTE_TO).copyString();
+          double currentWeight = edgeCollection->weightEdge(edge);
+          if (from == source) {
+            inserter(from, to, currentWeight, edge);
+          } else {
+            inserter(to, from, currentWeight, edge);
+          }
         }
       }
     }
@@ -156,38 +269,48 @@ class SimpleEdgeExpander {
  public:
   SimpleEdgeExpander(TRI_edge_direction_e& direction,
                      EdgeCollectionInfo* edgeCollection)
-      : _direction(direction), _edgeCollection(edgeCollection){};
+      : _direction(direction), _edgeCollection(edgeCollection) {}
 
-  void operator()(VertexId& source,
+  void operator()(std::string const& source,
                   std::vector<ArangoDBPathFinder::Step*>& result) {
     TRI_ASSERT(_edgeCollection != nullptr);
-    auto edges = _edgeCollection->getEdges(_direction, source);
 
-    std::equal_to<VertexId> eq;
-    std::unordered_map<VertexId, size_t> candidates;
-    for (size_t j = 0; j < edges.size(); ++j) {
-      VertexId from = ExtractFromId(edges[j]);
-      VertexId to = ExtractToId(edges[j]);
-      double currentWeight = _edgeCollection->weightEdge(edges[j]);
-      auto inserter = [&](VertexId& s, VertexId& t) {
-        auto cand = candidates.find(t);
-        if (cand == candidates.end()) {
-          // Add weight
-          result.emplace_back(new ArangoDBPathFinder::Step(
-              t, s, currentWeight, _edgeCollection->extractEdgeId(edges[j])));
-          candidates.emplace(t, result.size() - 1);
-        } else {
-          // Compare weight
-          auto oldWeight = result[cand->second]->weight();
-          if (currentWeight < oldWeight) {
-            result[cand->second]->setWeight(currentWeight);
-          }
+    std::unordered_map<std::string, size_t> candidates;
+
+    auto inserter = [&](std::string const& s, std::string const& t,
+                        double currentWeight, VPackSlice edge) {
+      auto cand = candidates.find(t);
+      if (cand == candidates.end()) {
+        // Add weight
+        result.emplace_back(new ArangoDBPathFinder::Step(
+            t, s, currentWeight, _edgeCollection->trx()->extractIdString(edge)));
+        candidates.emplace(t, result.size() - 1);
+      } else {
+        // Compare weight
+        auto oldWeight = result[cand->second]->weight();
+        if (currentWeight < oldWeight) {
+          result[cand->second]->setWeight(currentWeight);
         }
-      };
-      if (!eq(from, source)) {
-        inserter(to, from);
-      } else if (!eq(to, source)) {
-        inserter(from, to);
+      }
+    };
+
+    auto edgeCursor = _edgeCollection->getEdges(_direction, source);
+    auto opRes = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
+    while (edgeCursor->hasMore()) {
+      edgeCursor->getMore(opRes);
+      if (opRes->failed()) {
+        THROW_ARANGO_EXCEPTION(opRes->code);
+      }
+      VPackSlice edges = opRes->slice();
+      for (auto const& edge : VPackArrayIterator(edges)) {
+        std::string const from = edge.get(TRI_VOC_ATTRIBUTE_FROM).copyString();
+        std::string const to = edge.get(TRI_VOC_ATTRIBUTE_TO).copyString();
+        double currentWeight = _edgeCollection->weightEdge(edge);
+        if (from == source) {
+          inserter(from, to, currentWeight, edge);
+        } else {
+          inserter(to, from, currentWeight, edge);
+        }
       }
     }
   }
@@ -199,28 +322,19 @@ class SimpleEdgeExpander {
 
 void BasicOptions::addVertexFilter(v8::Isolate* isolate,
                                    v8::Handle<v8::Value> const& example,
-                                   ExplicitTransaction* trx,
-                                   TRI_transaction_collection_t* col,
-                                   VocShaper* shaper, TRI_voc_cid_t const& cid,
+                                   arangodb::Transaction* trx,
+                                   std::string const& name,
                                    std::string& errorMessage) {
-  auto it = _vertexFilter.find(cid);
+  auto it = _vertexFilter.find(name);
 
-  if (example->IsArray()) {
-    if (it == _vertexFilter.end()) {
-      _vertexFilter.emplace(
-          cid, VertexFilterInfo(
-                   trx, col, new ExampleMatcher(
-                                 isolate, v8::Handle<v8::Array>::Cast(example),
-                                 shaper, errorMessage)));
-    }
-  } else {
-    // Has to be Object
-    if (it == _vertexFilter.end()) {
-      _vertexFilter.emplace(
-          cid, VertexFilterInfo(
-                   trx, col, new ExampleMatcher(
-                                 isolate, v8::Handle<v8::Array>::Cast(example),
-                                 shaper, errorMessage)));
+  if (it == _vertexFilter.end()) {
+    if (example->IsArray()) {
+      _vertexFilter.emplace(name, new ExampleMatcher(
+          isolate, v8::Handle<v8::Array>::Cast(example), errorMessage));
+    } else {
+      // Has to be Object
+      _vertexFilter.emplace(name, new ExampleMatcher(
+          isolate, v8::Handle<v8::Object>::Cast(example), errorMessage));
     }
   }
 }
@@ -229,29 +343,21 @@ void BasicOptions::addVertexFilter(v8::Isolate* isolate,
 /// @brief Checks if a vertex matches to given examples
 ////////////////////////////////////////////////////////////////////////////////
 
-bool BasicOptions::matchesVertex(VertexId const& v) const {
+bool BasicOptions::matchesVertex(std::string const& collectionName,
+                                 std::string const& key,
+                                 VPackSlice vertex) const {
   if (!useVertexFilter) {
     // Nothing to do
     return true;
   }
-
-  auto it = _vertexFilter.find(v.cid);
+  auto it = _vertexFilter.find(collectionName);
 
   if (it == _vertexFilter.end()) {
     // This collection does not have any object of this shape.
     // Short circuit.
     return false;
   }
-
-  TRI_doc_mptr_copy_t vertex;
-
-  int res = it->second.trx->readSingle(it->second.col, &vertex, v.key);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return false;
-  }
-
-  return it->second.matcher->matches(v.cid, &vertex);
+  return it->second->matches(vertex);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -260,10 +366,10 @@ bool BasicOptions::matchesVertex(VertexId const& v) const {
 
 void BasicOptions::addEdgeFilter(v8::Isolate* isolate,
                                  v8::Handle<v8::Value> const& example,
-                                 VocShaper* shaper, TRI_voc_cid_t const& cid,
+                                 std::string const& cName,
                                  std::string& errorMessage) {
   useEdgeFilter = true;
-  auto it = _edgeFilter.find(cid);
+  auto it = _edgeFilter.find(cName);
 
   if (it != _edgeFilter.end()) {
     return;
@@ -271,13 +377,13 @@ void BasicOptions::addEdgeFilter(v8::Isolate* isolate,
 
   if (example->IsArray()) {
     _edgeFilter.emplace(
-        cid, new ExampleMatcher(isolate, v8::Handle<v8::Array>::Cast(example),
-                                shaper, errorMessage));
+        cName, new ExampleMatcher(isolate, v8::Handle<v8::Array>::Cast(example),
+                                errorMessage));
   } else {
     // Has to be Object
     _edgeFilter.emplace(
-        cid, new ExampleMatcher(isolate, v8::Handle<v8::Object>::Cast(example),
-                                shaper, errorMessage));
+        cName, new ExampleMatcher(isolate, v8::Handle<v8::Object>::Cast(example),
+                                errorMessage));
   }
 }
 
@@ -285,29 +391,12 @@ void BasicOptions::addEdgeFilter(v8::Isolate* isolate,
 /// @brief Insert a new edge matcher object
 ////////////////////////////////////////////////////////////////////////////////
 
-void BasicOptions::addEdgeFilter(Json const& example, VocShaper* shaper,
-                                 TRI_voc_cid_t const& cid,
-                                 CollectionNameResolver const* resolver) {
+void BasicOptions::addEdgeFilter(VPackSlice const& example,
+                                 std::string const& cName) {
   useEdgeFilter = true;
-  auto it = _edgeFilter.find(cid);
+  auto it = _edgeFilter.find(cName);
   if (it == _edgeFilter.end()) {
-    _edgeFilter.emplace(cid,
-                        new ExampleMatcher(example.json(), shaper, resolver));
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Insert a new edge matcher object
-////////////////////////////////////////////////////////////////////////////////
-
-void BasicOptions::addEdgeFilter(VPackSlice const& example, VocShaper* shaper,
-                                 TRI_voc_cid_t const& cid,
-                                 CollectionNameResolver const* resolver) {
-  useEdgeFilter = true;
-  auto it = _edgeFilter.find(cid);
-  if (it == _edgeFilter.end()) {
-    _edgeFilter.emplace(cid,
-                        new ExampleMatcher(example, shaper, resolver, true));
+    _edgeFilter.emplace(cName, new ExampleMatcher(example, true));
   }
 }
 
@@ -317,49 +406,85 @@ void BasicOptions::addEdgeFilter(VPackSlice const& example, VocShaper* shaper,
 /// @brief Checks if an edge matches to given examples
 ////////////////////////////////////////////////////////////////////////////////
 
-bool BasicOptions::matchesEdge(EdgeId& e, TRI_doc_mptr_copy_t* edge) const {
+bool BasicOptions::matchesEdge(VPackSlice edge) const {
   if (!useEdgeFilter) {
     // Nothing to do
     return true;
   }
 
-  auto it = _edgeFilter.find(e.cid);
-
+  auto id = _trx->extractIdString(edge);
+  std::vector<std::string> parts = arangodb::basics::StringUtils::split(id, "/");
+  TRI_ASSERT(parts.size() == 2); // We have a real ID
+  auto it = _edgeFilter.find(parts[0]);
+  
   if (it == _edgeFilter.end()) {
-    // This collection does not have any object of this shape.
+    // This collection does not have any object that can match.
     // Short circuit.
     return false;
   }
 
-  return it->second->matches(e.cid, edge);
+  return it->second->matches(edge);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Checks if a vertex matches to given examples
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ShortestPathOptions::matchesVertex(VertexId const& v) const {
+bool ShortestPathOptions::matchesVertex(std::string const& collectionName,
+                                        std::string const& key,
+                                        VPackSlice vertex) const {
+  std::string v = collectionName + "/" + key;
   if (start == v || end == v) {
     return true;
   }
 
-  return BasicOptions::matchesVertex(v);
+  return BasicOptions::matchesVertex(collectionName, key, vertex);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Checks if a vertex matches to given examples
 ////////////////////////////////////////////////////////////////////////////////
 
-bool NeighborsOptions::matchesVertex(VertexId const& v) const {
+bool NeighborsOptions::matchesVertex(std::string const& collectionName,
+                                     std::string const& key,
+                                     VPackSlice vertex) const {
   // If there are explicitly marked collections check them.
   if (!_explicitCollections.empty()) {
     // If the current collection is not stored the result is invalid
-    if (_explicitCollections.find(v.cid) == _explicitCollections.end()) {
+    if (_explicitCollections.find(collectionName) == _explicitCollections.end()) {
       return false;
     }
   }
-  return BasicOptions::matchesVertex(v);
+  return BasicOptions::matchesVertex(collectionName, key, vertex);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Checks if a vertex matches to given examples. Also fetches the vertex.
+////////////////////////////////////////////////////////////////////////////////
+
+bool NeighborsOptions::matchesVertex(std::string const& id) const {
+  std::vector<std::string> parts =
+      arangodb::basics::StringUtils::split(id, "/");
+  TRI_ASSERT(parts.size() == 2);
+  // If there are explicitly marked collections check them.
+  if (!_explicitCollections.empty()) {
+    // If the current collection is not stored the result is invalid
+    if (_explicitCollections.find(parts[0]) == _explicitCollections.end()) {
+      return false;
+    }
+  }
+  VPackBuilder tmp;
+  tmp.openObject();
+  tmp.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(parts[1]));
+  tmp.close();
+  OperationOptions opOpts;
+  OperationResult opRes = _trx->document(parts[0], tmp.slice(), opOpts);
+  if (opRes.failed()) {
+    return false;
+  }
+  return BasicOptions::matchesVertex(parts[0], parts[1], opRes.slice());
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Inserts one explicitly allowed collection. As soon as one is
@@ -369,8 +494,8 @@ bool NeighborsOptions::matchesVertex(VertexId const& v) const {
 /// collection all are implicitly allowed.
 ////////////////////////////////////////////////////////////////////////////////
 
-void NeighborsOptions::addCollectionRestriction(TRI_voc_cid_t cid) {
-  _explicitCollections.emplace(cid);
+void NeighborsOptions::addCollectionRestriction(std::string const& collectionName) {
+  _explicitCollections.emplace(collectionName);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -378,7 +503,7 @@ void NeighborsOptions::addCollectionRestriction(TRI_voc_cid_t cid) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch(
-    std::vector<EdgeCollectionInfo*>& collectionInfos,
+    std::vector<EdgeCollectionInfo*> const& collectionInfos,
     ShortestPathOptions& opts) {
   TRI_edge_direction_e forward;
   TRI_edge_direction_e backward;
@@ -394,11 +519,24 @@ std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch(
     backward = TRI_EDGE_ANY;
   }
 
-  auto edgeFilterClosure = [&opts](EdgeId& e, TRI_doc_mptr_copy_t* edge)
-                               -> bool { return opts.matchesEdge(e, edge); };
+  auto edgeFilterClosure = [&opts](VPackSlice edge)
+                               -> bool { return opts.matchesEdge(edge); };
 
   auto vertexFilterClosure =
-      [&opts](VertexId& v) -> bool { return opts.matchesVertex(v); };
+      [&opts](std::string const& v) -> bool {
+        // TODO: this closure needs to be optimized
+        std::vector<std::string> parts = arangodb::basics::StringUtils::split(v, "/");
+        VPackBuilder tmp;
+        tmp.openObject();
+        tmp.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(parts[1]));
+        tmp.close();
+        OperationOptions opOpts;
+        OperationResult opRes = opts.trx()->document(parts[0], tmp.slice(), opOpts);
+        if (opRes.failed()) {
+          return false;
+        }
+        return opts.matchesVertex(parts[0], parts[1], opRes.slice());
+      };
 
   MultiCollectionEdgeExpander forwardExpander(
       forward, collectionInfos, edgeFilterClosure, vertexFilterClosure);
@@ -408,6 +546,9 @@ std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch(
   ArangoDBPathFinder pathFinder(forwardExpander, backwardExpander,
                                 opts.bidirectional);
   std::unique_ptr<ArangoDBPathFinder::Path> path;
+  // New trx api is not thread safe. Two threads only give little performance
+  // gain. Maybe reactivate this in the future (MVCC).
+  opts.multiThreaded = false;
   if (opts.multiThreaded) {
     path.reset(pathFinder.shortestPathTwoThreads(opts.start, opts.end));
   } else {
@@ -422,7 +563,8 @@ std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch(
 
 std::unique_ptr<ArangoDBConstDistancePathFinder::Path>
 TRI_RunSimpleShortestPathSearch(
-    std::vector<EdgeCollectionInfo*>& collectionInfos,
+    std::vector<EdgeCollectionInfo*> const& collectionInfos,
+    arangodb::Transaction* trx,
     ShortestPathOptions& opts) {
   TRI_edge_direction_e forward;
   TRI_edge_direction_e backward;
@@ -438,55 +580,11 @@ TRI_RunSimpleShortestPathSearch(
     backward = TRI_EDGE_ANY;
   }
 
-  auto fwExpander =
-      [&collectionInfos, forward](VertexId& v, std::vector<EdgeId>& res_edges,
-                                  std::vector<VertexId>& neighbors) {
-        std::equal_to<VertexId> eq;
-        for (auto const& edgeCollection : collectionInfos) {
-          TRI_ASSERT(edgeCollection != nullptr);
-          auto edges = edgeCollection->getEdges(forward, v);
-          for (size_t j = 0; j < edges.size(); ++j) {
-            EdgeId edgeId = edgeCollection->extractEdgeId(edges[j]);
-            VertexId from = ExtractFromId(edges[j]);
-            if (!eq(from, v)) {
-              res_edges.emplace_back(edgeId);
-              neighbors.emplace_back(from);
-            } else {
-              VertexId to = ExtractToId(edges[j]);
-              if (!eq(to, v)) {
-                res_edges.emplace_back(edgeId);
-                neighbors.emplace_back(to);
-              }
-            }
-          }
-        }
-      };
-  auto bwExpander =
-      [&collectionInfos, backward](VertexId& v, std::vector<EdgeId>& res_edges,
-                                   std::vector<VertexId>& neighbors) {
-        std::equal_to<VertexId> eq;
-        for (auto const& edgeCollection : collectionInfos) {
-          TRI_ASSERT(edgeCollection != nullptr);
-          auto edges = edgeCollection->getEdges(backward, v);
-          for (size_t j = 0; j < edges.size(); ++j) {
-            EdgeId edgeId = edgeCollection->extractEdgeId(edges[j]);
-            VertexId from = ExtractFromId(edges[j]);
-            if (!eq(from, v)) {
-              res_edges.emplace_back(edgeId);
-              neighbors.emplace_back(from);
-            } else {
-              VertexId to = ExtractToId(edges[j]);
-              if (!eq(to, v)) {
-                res_edges.emplace_back(edgeId);
-                neighbors.emplace_back(to);
-              }
-            }
-          }
-        }
-      };
+  auto fwExpander = BasicExpander(collectionInfos, trx, forward);
+  auto bwExpander = BasicExpander(collectionInfos, trx, backward);
 
   ArangoDBConstDistancePathFinder pathFinder(fwExpander, bwExpander);
-  std::unique_ptr<ArangoDBConstDistancePathFinder::Path> path;
+  auto path = std::make_unique<ArangoDBConstDistancePathFinder::Path>();
   path.reset(pathFinder.search(opts.start, opts.end));
   return path;
 }
@@ -497,35 +595,41 @@ TRI_RunSimpleShortestPathSearch(
 
 static void InboundNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
                              NeighborsOptions& opts,
-                             std::unordered_set<VertexId>& startVertices,
-                             std::unordered_set<VertexId>& visited,
-                             std::unordered_set<VertexId>& distinct,
+                             std::unordered_set<std::string>& startVertices,
+                             std::unordered_set<std::string>& visited,
+                             std::unordered_set<std::string>& distinct,
                              uint64_t depth = 1) {
   TRI_edge_direction_e dir = TRI_EDGE_IN;
-  std::unordered_set<VertexId> nextDepth;
+  std::unordered_set<std::string> nextDepth;
 
+  auto opRes = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
   for (auto const& col : collectionInfos) {
     TRI_ASSERT(col != nullptr);
 
-    for (VertexId const& start : startVertices) {
-      auto edges = col->getEdges(dir, start);
-      for (size_t j = 0; j < edges.size(); ++j) {
-        EdgeId edgeId = col->extractEdgeId(edges[j]);
-
-        if (opts.matchesEdge(edgeId, &edges[j])) {
-          VertexId v = ExtractFromId(edges[j]);
-          if (visited.find(v) != visited.end()) {
-            // We have already visited this vertex
-            continue;
-          }
-          visited.emplace(v);
-          if (depth >= opts.minDepth) {
-            if (opts.matchesVertex(v)) {
-              distinct.emplace(v);
+    for (auto const& start : startVertices) {
+      auto edgeCursor = col->getEdges(dir, start);
+      while (edgeCursor->hasMore()) {
+        edgeCursor->getMore(opRes);
+        if (opRes->failed()) {
+          THROW_ARANGO_EXCEPTION(opRes->code);
+        }
+        VPackSlice edges = opRes->slice();
+        for (auto const& edge : VPackArrayIterator(edges)) {
+          if (opts.matchesEdge(edge)) {
+            std::string v = edge.get(TRI_VOC_ATTRIBUTE_FROM).copyString();
+            if (visited.find(v) != visited.end()) {
+              // We have already visited this vertex
+              continue;
             }
-          }
-          if (depth < opts.maxDepth) {
-            nextDepth.emplace(v);
+            visited.emplace(v);
+            if (depth >= opts.minDepth) {
+              if (opts.matchesVertex(v)) {
+                distinct.emplace(v);
+              }
+            }
+            if (depth < opts.maxDepth) {
+              nextDepth.emplace(v);
+            }
           }
         }
       }
@@ -544,39 +648,47 @@ static void InboundNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
 
 static void OutboundNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
                               NeighborsOptions& opts,
-                              std::unordered_set<VertexId>& startVertices,
-                              std::unordered_set<VertexId>& visited,
-                              std::unordered_set<VertexId>& distinct,
+                              std::unordered_set<std::string>& startVertices,
+                              std::unordered_set<std::string>& visited,
+                              std::unordered_set<std::string>& distinct,
                               uint64_t depth = 1) {
   TRI_edge_direction_e dir = TRI_EDGE_OUT;
-  std::unordered_set<VertexId> nextDepth;
+  std::unordered_set<std::string> nextDepth;
+  auto opRes = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
 
   for (auto const& col : collectionInfos) {
     TRI_ASSERT(col != nullptr);
-    for (VertexId const& start : startVertices) {
-      auto edges = col->getEdges(dir, start);
 
-      for (size_t j = 0; j < edges.size(); ++j) {
-        EdgeId edgeId = col->extractEdgeId(edges[j]);
-        if (opts.matchesEdge(edgeId, &edges[j])) {
-          VertexId v = ExtractToId(edges[j]);
-          if (visited.find(v) != visited.end()) {
-            // We have already visited this vertex
-            continue;
-          }
-          visited.emplace(v);
-          if (depth >= opts.minDepth) {
-            if (opts.matchesVertex(v)) {
-              distinct.emplace(v);
+    for (auto const& start : startVertices) {
+      auto edgeCursor = col->getEdges(dir, start);
+      while (edgeCursor->hasMore()) {
+        edgeCursor->getMore(opRes);
+        if (opRes->failed()) {
+          THROW_ARANGO_EXCEPTION(opRes->code);
+        }
+        VPackSlice edges = opRes->slice();
+        for (auto const& edge : VPackArrayIterator(edges)) {
+          if (opts.matchesEdge(edge)) {
+            std::string v = edge.get(TRI_VOC_ATTRIBUTE_TO).copyString();
+            if (visited.find(v) != visited.end()) {
+              // We have already visited this vertex
+              continue;
             }
-          }
-          if (depth < opts.maxDepth) {
-            nextDepth.emplace(v);
+            visited.emplace(v);
+            if (depth >= opts.minDepth) {
+              if (opts.matchesVertex(v)) {
+                distinct.emplace(v);
+              }
+            }
+            if (depth < opts.maxDepth) {
+              nextDepth.emplace(v);
+            }
           }
         }
       }
     }
   }
+
   if (!nextDepth.empty()) {
     OutboundNeighbors(collectionInfos, opts, nextDepth, visited, distinct,
                       depth + 1);
@@ -589,61 +701,58 @@ static void OutboundNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
 
 static void AnyNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
                          NeighborsOptions& opts,
-                         std::unordered_set<VertexId>& startVertices,
-                         std::unordered_set<VertexId>& visited,
-                         std::unordered_set<VertexId>& distinct,
+                         std::unordered_set<std::string>& startVertices,
+                         std::unordered_set<std::string>& visited,
+                         std::unordered_set<std::string>& distinct,
                          uint64_t depth = 1) {
-  TRI_edge_direction_e dir = TRI_EDGE_OUT;
-  std::unordered_set<VertexId> nextDepth;
+
+  TRI_edge_direction_e dir = TRI_EDGE_ANY;
+  std::unordered_set<std::string> nextDepth;
+  auto opRes = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
 
   for (auto const& col : collectionInfos) {
     TRI_ASSERT(col != nullptr);
-    for (VertexId const& start : startVertices) {
-      dir = TRI_EDGE_OUT;
-      auto edges = col->getEdges(dir, start);
 
-      for (size_t j = 0; j < edges.size(); ++j) {
-        EdgeId edgeId = col->extractEdgeId(edges[j]);
-        if (opts.matchesEdge(edgeId, &edges[j])) {
-          VertexId v = ExtractToId(edges[j]);
-          if (visited.find(v) != visited.end()) {
-            // We have already visited this vertex
-            continue;
-          }
-          visited.emplace(v);
-          if (depth >= opts.minDepth) {
-            if (opts.matchesVertex(v)) {
-              distinct.emplace(v);
-            }
-          }
-          if (depth < opts.maxDepth) {
-            nextDepth.emplace(v);
-          }
+    for (auto const& start : startVertices) {
+      auto edgeCursor = col->getEdges(dir, start);
+      while (edgeCursor->hasMore()) {
+        edgeCursor->getMore(opRes);
+        if (opRes->failed()) {
+          THROW_ARANGO_EXCEPTION(opRes->code);
         }
-      }
-      dir = TRI_EDGE_IN;
-      edges = col->getEdges(dir, start);
-      for (size_t j = 0; j < edges.size(); ++j) {
-        EdgeId edgeId = col->extractEdgeId(edges[j]);
-        if (opts.matchesEdge(edgeId, &edges[j])) {
-          VertexId v = ExtractFromId(edges[j]);
-          if (visited.find(v) != visited.end()) {
-            // We have already visited this vertex
-            continue;
-          }
-          visited.emplace(v);
-          if (depth >= opts.minDepth) {
-            if (opts.matchesVertex(v)) {
-              distinct.emplace(v);
+        VPackSlice edges = opRes->slice();
+        for (auto const& edge : VPackArrayIterator(edges)) {
+          if (opts.matchesEdge(edge)) {
+            std::string v = edge.get(TRI_VOC_ATTRIBUTE_TO).copyString();
+            if (visited.find(v) == visited.end()) {
+              visited.emplace(v);
+              if (depth >= opts.minDepth) {
+                if (opts.matchesVertex(v)) {
+                  distinct.emplace(v);
+                }
+              }
+              if (depth < opts.maxDepth) {
+                nextDepth.emplace(v);
+              }
             }
-          }
-          if (depth < opts.maxDepth) {
-            nextDepth.emplace(v);
+            v = edge.get(TRI_VOC_ATTRIBUTE_FROM).copyString();
+            if (visited.find(v) == visited.end()) {
+              visited.emplace(v);
+              if (depth >= opts.minDepth) {
+                if (opts.matchesVertex(v)) {
+                  distinct.emplace(v);
+                }
+              }
+              if (depth < opts.maxDepth) {
+                nextDepth.emplace(v);
+              }
+            }
           }
         }
       }
     }
   }
+
   if (!nextDepth.empty()) {
     AnyNeighbors(collectionInfos, opts, nextDepth, visited, distinct,
                  depth + 1);
@@ -656,9 +765,9 @@ static void AnyNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
 
 void TRI_RunNeighborsSearch(std::vector<EdgeCollectionInfo*>& collectionInfos,
                             NeighborsOptions& opts,
-                            std::unordered_set<VertexId>& result) {
-  std::unordered_set<VertexId> startVertices;
-  std::unordered_set<VertexId> visited;
+                            std::unordered_set<std::string>& result) {
+  std::unordered_set<std::string> startVertices;
+  std::unordered_set<std::string> visited;
   startVertices.emplace(opts.start);
   visited.emplace(opts.start);
 
@@ -675,117 +784,66 @@ void TRI_RunNeighborsSearch(std::vector<EdgeCollectionInfo*>& collectionInfos,
   }
 }
 
-Json* SingleServerTraversalPath::pathToJson(Transaction* trx,
-                                            CollectionNameResolver* resolver) {
-  auto path = std::make_unique<Json>(Json::Object, 2);
-  Json vertices(Json::Array);
-  for (size_t i = 0; i < _path.vertices.size(); ++i) {
-    auto v = vertexToJson(trx, resolver, _path.vertices[i]);
-    try {
-      vertices(*v);
-      delete v;
-    } catch (...) {
-      delete v;
-      throw;
-    }
-  }
-  Json edges(Json::Array);
-  for (size_t i = 0; i < _path.edges.size(); ++i) {
-    auto e = edgeToJson(trx, resolver, _path.edges[i]);
-    try {
-      edges(*e);
-      delete e;
-    } catch (...) {
-      delete e;
-      throw;
-    }
-  }
-  (*path)("vertices", vertices)("edges", edges);
+void SingleServerTraversalPath::getDocumentByIdentifier(Transaction* trx,
+                                                        std::string const& identifier,
+                                                        VPackBuilder& result) {
+  // TODO Check if we can get away with using ONLY VPackSlices referencing externals instead of std::string.
+  // I am afaid that they may run out of scope.
+  OperationOptions options;
+  OperationResult opRes = FetchDocumentById(trx, identifier, _searchBuilder, options);
 
-  return path.release();
+  if (opRes.failed()) {
+    THROW_ARANGO_EXCEPTION(opRes.code);
+  }
+
+  result.add(opRes.slice());
 }
 
-Json* SingleServerTraversalPath::lastEdgeToJson(
-    Transaction* trx, CollectionNameResolver* resolver) {
-  return edgeToJson(trx, resolver, _path.edges.back());
+void SingleServerTraversalPath::pathToVelocyPack(Transaction* trx,
+                                                 VPackBuilder& result) {
+  result.openObject();
+  result.add(VPackValue("edges"));
+  result.openArray();
+  for (auto const& it : _path.edges) {
+    auto cached = _traverser->_edges.find(it);
+    // All edges are cached!!
+    TRI_ASSERT(cached != _traverser->_edges.end());
+    result.add(VPackSlice(cached->second->data()));
+  }
+  result.close();
+  result.add(VPackValue("vertices"));
+  result.openArray();
+  for (auto const& it : _path.vertices) {
+    std::shared_ptr<VPackBuffer<uint8_t>> vertex =
+        _traverser->fetchVertexData(it);
+    result.add(VPackSlice(vertex->data()));
+  }
+  result.close();
+  result.close();
 }
 
-Json* SingleServerTraversalPath::lastVertexToJson(
-    Transaction* trx, CollectionNameResolver* resolver) {
-  return vertexToJson(trx, resolver, _path.vertices.back());
+void SingleServerTraversalPath::lastEdgeToVelocyPack(Transaction* trx, VPackBuilder& result) {
+  auto cached = _traverser->_edges.find(_path.edges.back());
+  // All edges are cached!!
+  TRI_ASSERT(cached != _traverser->_edges.end());
+  result.add(VPackSlice(cached->second->data()));
 }
 
-Json* SingleServerTraversalPath::edgeToJson(Transaction* trx,
-                                            CollectionNameResolver* resolver,
-                                            EdgeInfo const& e) {
-  auto collection = trx->trxCollection(e.cid);
-
-  if (collection == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-  }
-  TRI_ASSERT(collection != nullptr);
-
-  TRI_shaped_json_t shapedJson;
-  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, &e.mptr);
-  return new Json(
-      TRI_ExpandShapedJson(collection->_collection->_collection->getShaper(),
-                           resolver, e.cid, &e.mptr));
-}
-
-Json* SingleServerTraversalPath::vertexToJson(Transaction* trx,
-                                              CollectionNameResolver* resolver,
-                                              VertexId const& v) {
-  auto collection = trx->trxCollection(v.cid);
-  if (collection == nullptr) {
-    int res = TRI_AddCollectionTransaction(trx->getInternals(), v.cid,
-                                           TRI_TRANSACTION_READ,
-                                           trx->nestingLevel(), true, true);
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-
-    TRI_EnsureCollectionsTransaction(trx->getInternals());
-    collection = trx->trxCollection(v.cid);
-
-    if (collection == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "collection is a nullptr");
-    }
-
-    auto trxCollection = trx->trxCollection(v.cid);
-    if (trxCollection != nullptr) {
-      trx->orderDitch(trxCollection);
-    }
-  }
-  TRI_doc_mptr_copy_t mptr;
-  int res = trx->readSingle(collection, &mptr, v.key);
-  ++_readDocuments;
-  if (res != TRI_ERROR_NO_ERROR) {
-    if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
-      return new Json(Json::Null);
-    }
-    THROW_ARANGO_EXCEPTION(res);
-  }
-  return new Json(
-      TRI_ExpandShapedJson(collection->_collection->_collection->getShaper(),
-                           resolver, v.cid, &mptr));
+void SingleServerTraversalPath::lastVertexToVelocyPack(Transaction* trx, VPackBuilder& result) {
+  std::shared_ptr<VPackBuffer<uint8_t>> vertex =
+      _traverser->fetchVertexData(_path.vertices.back());
+  result.add(VPackSlice(vertex->data()));
 }
 
 DepthFirstTraverser::DepthFirstTraverser(
-    std::vector<TRI_document_collection_t*> const& edgeCollections,
-    TraverserOptions& opts, CollectionNameResolver* resolver, Transaction* trx,
+    TraverserOptions& opts, Transaction* trx,
     std::unordered_map<size_t, std::vector<TraverserExpression*>> const*
         expressions)
-    : Traverser(opts, expressions),
-      _resolver(resolver),
-      _edgeGetter(this, opts, resolver, trx),
-      _edgeCols(edgeCollections),
-      _trx(trx) {
+    : Traverser(opts, expressions), _edgeGetter(this, opts, trx), _trx(trx) {
   _defInternalFunctions();
 }
 
-bool DepthFirstTraverser::edgeMatchesConditions(TRI_doc_mptr_t& e,
-                                                size_t& eColIdx, size_t depth) {
+bool DepthFirstTraverser::edgeMatchesConditions(VPackSlice e, size_t depth) {
   TRI_ASSERT(_expressions != nullptr);
 
   auto it = _expressions->find(depth);
@@ -794,8 +852,7 @@ bool DepthFirstTraverser::edgeMatchesConditions(TRI_doc_mptr_t& e,
     for (auto const& exp : it->second) {
       TRI_ASSERT(exp != nullptr);
 
-      if (exp->isEdgeAccess &&
-          !exp->matchesCheck(e, _edgeCols.at(eColIdx), _resolver)) {
+      if (exp->isEdgeAccess && !exp->matchesCheck(_trx, e)) {
         ++_filteredPaths;
         return false;
       }
@@ -804,69 +861,24 @@ bool DepthFirstTraverser::edgeMatchesConditions(TRI_doc_mptr_t& e,
   return true;
 }
 
-bool DepthFirstTraverser::vertexMatchesConditions(VertexId const& v,
+bool DepthFirstTraverser::vertexMatchesConditions(std::string const& v,
                                                   size_t depth) {
   TRI_ASSERT(_expressions != nullptr);
 
   auto it = _expressions->find(depth);
 
   if (it != _expressions->end()) {
-    TRI_doc_mptr_copy_t mptr;
-    TRI_document_collection_t* docCol = nullptr;
     bool fetchVertex = true;
+    std::shared_ptr<VPackBuffer<uint8_t>> vertex;
     for (auto const& exp : it->second) {
       TRI_ASSERT(exp != nullptr);
 
       if (!exp->isEdgeAccess) {
         if (fetchVertex) {
           fetchVertex = false;
-          auto collection = _trx->trxCollection(v.cid);
-          if (collection == nullptr) {
-            int res = TRI_AddCollectionTransaction(
-                _trx->getInternals(), v.cid, TRI_TRANSACTION_READ,
-                _trx->nestingLevel(), true, true);
-            if (res != TRI_ERROR_NO_ERROR) {
-              THROW_ARANGO_EXCEPTION(res);
-            }
-            TRI_EnsureCollectionsTransaction(_trx->getInternals());
-            collection = _trx->trxCollection(v.cid);
-
-            if (collection == nullptr) {
-              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                             "collection is a nullptr");
-            }
-            auto trxCollection = _trx->trxCollection(v.cid);
-            if (trxCollection != nullptr) {
-              _trx->orderDitch(trxCollection);
-            }
-          }
-
-          int res = _trx->readSingle(collection, &mptr, v.key);
-          ++_readDocuments;
-          if (res != TRI_ERROR_NO_ERROR) {
-            if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
-              // Vertex does not exist. Do not try filter
-              arangodb::basics::Json tmp(arangodb::basics::Json::Null);
-              // This needs a different check method now.
-              // Innerloop here
-              for (auto const& exp2 : it->second) {
-                TRI_ASSERT(exp2 != nullptr);
-
-                if (!exp2->isEdgeAccess) {
-                  if (!exp2->matchesCheck(tmp.json())) {
-                    ++_filteredPaths;
-                    return false;
-                  }
-                }
-              }
-              return true;
-            }
-            THROW_ARANGO_EXCEPTION(res);
-          }
-          docCol = collection->_collection->_collection;
+          vertex = fetchVertexData(v);
         }
-        TRI_ASSERT(docCol != nullptr);
-        if (!exp->matchesCheck(mptr, docCol, _resolver)) {
+        if (!exp->matchesCheck(_trx, VPackSlice(vertex->data()))) {
           ++_filteredPaths;
           return false;
         }
@@ -876,24 +888,41 @@ bool DepthFirstTraverser::vertexMatchesConditions(VertexId const& v,
   return true;
 }
 
+std::shared_ptr<VPackBuffer<uint8_t>> DepthFirstTraverser::fetchVertexData(
+    std::string const& id) {
+  auto it = _vertices.find(id);
+  if (it == _vertices.end()) {
+    OperationResult opRes =
+        FetchDocumentById(_trx, id, _builder, _operationOptions);
+    ++_readDocuments;
+    if (opRes.failed()) {
+      TRI_ASSERT(opRes.code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+      VPackBuilder tmp;
+      tmp.add(VPackValue(VPackValueType::Null));
+      return tmp.steal();
+    }
+    _vertices.emplace(id, opRes.buffer);
+    return opRes.buffer;
+  }
+  return it->second;
+}
+
 void DepthFirstTraverser::_defInternalFunctions() {
-  _getVertex = [](EdgeInfo const& edge, VertexId const& vertex, size_t depth,
-                  VertexId& result) -> bool {
-    auto mptr = edge.mptr;
-    if (strcmp(TRI_EXTRACT_MARKER_FROM_KEY(&mptr), vertex.key) == 0 &&
-        TRI_EXTRACT_MARKER_FROM_CID(&mptr) == vertex.cid) {
-      result = VertexId(TRI_EXTRACT_MARKER_TO_CID(&mptr),
-                        TRI_EXTRACT_MARKER_TO_KEY(&mptr));
-    } else {
-      result = VertexId(TRI_EXTRACT_MARKER_FROM_CID(&mptr),
-                        TRI_EXTRACT_MARKER_FROM_KEY(&mptr));
+  _getVertex = [this](std::string const& edge, std::string const& vertex, size_t depth,
+                  std::string& result) -> bool {
+    auto const& it = _edges.find(edge);
+    TRI_ASSERT(it != _edges.end());
+    VPackSlice v(it->second->data());
+    // NOTE: We assume that we only have valid edges.
+    result = v.get(TRI_VOC_ATTRIBUTE_FROM).copyString();
+    if (result == vertex) {
+      result = v.get(TRI_VOC_ATTRIBUTE_TO).copyString();
     }
     return true;
   };
 }
 
-void DepthFirstTraverser::setStartVertex(
-    arangodb::traverser::VertexId const& v) {
+void DepthFirstTraverser::setStartVertex(std::string const& v) {
   _pruneNext = false;
 
   TRI_ASSERT(_expressions != nullptr);
@@ -902,8 +931,7 @@ void DepthFirstTraverser::setStartVertex(
 
   if (it != _expressions->end()) {
     if (!it->second.empty()) {
-      TRI_doc_mptr_copy_t mptr;
-      TRI_document_collection_t* docCol = nullptr;
+      std::shared_ptr<VPackBuffer<uint8_t>> vertex;
       bool fetchVertex = true;
       for (auto const& exp : it->second) {
         TRI_ASSERT(exp != nullptr);
@@ -911,38 +939,17 @@ void DepthFirstTraverser::setStartVertex(
         if (!exp->isEdgeAccess) {
           if (fetchVertex) {
             fetchVertex = false;
-            auto collection = _trx->trxCollection(v.cid);
-            if (collection == nullptr) {
-              int res = TRI_AddCollectionTransaction(
-                  _trx->getInternals(), v.cid, TRI_TRANSACTION_READ,
-                  _trx->nestingLevel(), true, true);
-              if (res != TRI_ERROR_NO_ERROR) {
-                THROW_ARANGO_EXCEPTION(res);
-              }
-              TRI_EnsureCollectionsTransaction(_trx->getInternals());
-              collection = _trx->trxCollection(v.cid);
-
-              if (collection == nullptr) {
-                THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                               "collection is a nullptr");
-              }
-              auto trxCollection = _trx->trxCollection(v.cid);
-              if (trxCollection != nullptr) {
-                _trx->orderDitch(trxCollection);
-              }
-            }
-
-            int res = _trx->readSingle(collection, &mptr, v.key);
+            OperationResult result = FetchDocumentById(_trx, v, _builder, _operationOptions);
             ++_readDocuments;
-            if (res != TRI_ERROR_NO_ERROR) {
+            if (result.failed()) {
               // Vertex does not exist
               _done = true;
               return;
             }
-            docCol = collection->_collection->_collection;
+            vertex = result.buffer;
+            _vertices.emplace(v, vertex);
           }
-          TRI_ASSERT(docCol != nullptr);
-          if (!exp->matchesCheck(mptr, docCol, _resolver)) {
+          if (!exp->matchesCheck(_trx, VPackSlice(vertex->data()))) {
             ++_filteredPaths;
             _done = true;
             return;
@@ -951,7 +958,7 @@ void DepthFirstTraverser::setStartVertex(
       }
     }
   }
-  _enumerator.reset(new PathEnumerator<EdgeInfo, VertexId, TRI_doc_mptr_t>(
+  _enumerator.reset(new PathEnumerator<std::string, std::string, VPackValueLength>(
       _edgeGetter, _getVertex, v));
   _done = false;
 }
@@ -963,7 +970,7 @@ TraversalPath* DepthFirstTraverser::next() {
     _enumerator->prune();
   }
   TRI_ASSERT(!_pruneNext);
-  const EnumeratedPath<EdgeInfo, VertexId>& path = _enumerator->next();
+  EnumeratedPath<std::string, std::string> const& path = _enumerator->next();
   size_t countEdges = path.edges.size();
   if (countEdges == 0) {
     _done = true;
@@ -971,7 +978,7 @@ TraversalPath* DepthFirstTraverser::next() {
     return nullptr;
   }
 
-  auto p = std::make_unique<SingleServerTraversalPath>(path);
+  auto p = std::make_unique<SingleServerTraversalPath>(path, this);
   if (countEdges >= _opts.maxDepth) {
     _pruneNext = true;
   }
@@ -981,87 +988,128 @@ TraversalPath* DepthFirstTraverser::next() {
   return p.release();
 }
 
-EdgeIndex* DepthFirstTraverser::EdgeGetter::getEdgeIndex(
-    std::string const& eColName,
-    TRI_voc_cid_t& cid) {
-  auto it = _indexCache.find(eColName);
-  if (it == _indexCache.end()) {
-    cid = _resolver->getCollectionId(eColName);
-    TRI_transaction_collection_t* trxCollection = _trx->trxCollection(cid);
-    TRI_ASSERT(trxCollection != nullptr);
-    TRI_document_collection_t* ecl = trxCollection->_collection->_collection;
-    arangodb::EdgeIndex* edgeIndex = ecl->edgeIndex();
-    _indexCache.emplace(eColName, std::make_pair(cid, edgeIndex));
-    return edgeIndex;
+bool DepthFirstTraverser::EdgeGetter::nextCursor(std::string const& startVertex,
+                                                 size_t& eColIdx,
+                                                 VPackValueLength*& last) {
+  while (true) {
+    std::string eColName;
+    arangodb::Transaction::IndexHandle indexHandle;
+    if (last != nullptr) {
+      // The cursor is empty clean up
+      last = nullptr;
+      TRI_ASSERT(!_posInCursor.empty());
+      TRI_ASSERT(!_cursors.empty());
+      TRI_ASSERT(!_results.empty());
+      _posInCursor.pop();
+      _cursors.pop();
+      _results.pop();
+    }
+    if (!_opts.getCollectionAndSearchValue(eColIdx, startVertex, eColName, indexHandle,
+                                           _builder)) {
+      // If we get here there are no valid edges at all
+      return false;
+    }
+    std::shared_ptr<OperationCursor> cursor = _trx->indexScan(
+        eColName, arangodb::Transaction::CursorType::INDEX, indexHandle,
+        _builder.slice(), 0, UINT64_MAX, TRI_DEFAULT_BATCH_SIZE, false);
+    if (cursor->failed()) {
+      // Some error, ignore and go to next
+      eColIdx++;
+      continue;
+    }
+    TRI_ASSERT(_posInCursor.size() == _cursors.size());
+    _cursors.push(cursor);
+    _results.emplace(std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR));
+    return true;
   }
-  cid = it->second.first;
-  return it->second.second;
 }
 
-void DepthFirstTraverser::EdgeGetter::operator()(VertexId const& startVertex,
-                                                 std::vector<EdgeInfo>& edges,
-                                                 TRI_doc_mptr_t*& last,
-                                                 size_t& eColIdx, bool& dir) {
-  std::string eColName;
-  TRI_edge_direction_e direction;
+void DepthFirstTraverser::EdgeGetter::nextEdge(
+    std::string const& startVertex, size_t& eColIdx, VPackValueLength*& last,
+    std::vector<std::string>& edges) {
+  if (last == nullptr) {
+    _posInCursor.push(0);
+    last = &_posInCursor.top();
+  } else {
+    ++(*last);
+  }
   while (true) {
-    if (!_opts.getCollection(eColIdx, eColName, direction)) {
-      // We are done traversing.
-      return;
-    }
-    TRI_voc_cid_t cid;
-    arangodb::EdgeIndex* edgeIndex = getEdgeIndex(eColName, cid);
-    std::vector<TRI_doc_mptr_copy_t> tmp;
-    if (direction == TRI_EDGE_ANY) {
-      TRI_edge_direction_e currentDir = dir ? TRI_EDGE_OUT : TRI_EDGE_IN;
-      TRI_edge_index_iterator_t it(currentDir, startVertex.cid,
-                                   startVertex.key);
-      edgeIndex->lookup(_trx, &it, tmp, last, 1);
-      if (last == nullptr) {
-        // Could not find next edge.
-        // Change direction and increase collectionId
-        if (dir) {
-          ++eColIdx;
-        }
-        dir = !dir;
+    TRI_ASSERT(!_cursors.empty());
+    auto cursor = _cursors.top();
+    TRI_ASSERT(!_results.empty());
+    auto opRes = _results.top();
+    TRI_ASSERT(opRes != nullptr);
+    // note: we need to check *first* that there is actually something in the buffer
+    // before we access its internals. otherwise, the buffer contents are uninitialized
+    // and non-deterministic behavior will be the consequence
+    VPackSlice edge = opRes->slice();
+    if (opRes->buffer->empty() || !edge.isArray() || edge.length() <= *last) {
+      if (cursor->hasMore()) {
+        // Fetch next and try again
+        cursor->getMore(opRes);
+        TRI_ASSERT(last != nullptr);
+        *last = 0;
+        edge = opRes->slice();
+        TRI_ASSERT(edge.isArray());
+        _traverser->_readDocuments += edge.length();
         continue;
       }
-    }
-    else {
-      TRI_edge_index_iterator_t it(direction, startVertex.cid,
-                                   startVertex.key);
-      edgeIndex->lookup(_trx, &it, tmp, last, 1);
-      if (last == nullptr) {
-        // Could not find next edge.
-        // Set direction to false and continue with next collection
-        dir = false;
-        ++eColIdx;
-        continue;
+      eColIdx++;
+      if (!nextCursor(startVertex, eColIdx, last)) {
+        // No further edges.
+        TRI_ASSERT(last == nullptr);
+        TRI_ASSERT(_cursors.size() == _posInCursor.size());
+        TRI_ASSERT(_cursors.size() == _results.size());
+        return;
       }
-    }
-    // If we get here we have found the next edge.
-    // Now validate expression checks
-    ++_traverser->_readDocuments;
-    // sth is stored in tmp. Now push it on edges
-    TRI_ASSERT(tmp.size() == 1);
-    if (!_traverser->edgeMatchesConditions(tmp.back(), eColIdx, edges.size())) {
-      // Retry with the next element
+      // There is a new Cursor on top of the stack, try it
+      _posInCursor.push(0);
+      last = &_posInCursor.top();
       continue;
     }
-    EdgeInfo e(cid, tmp.back());
-    VertexId other;
-    // This always returns true and third parameter is ignored
-    _traverser->_getVertex(e, startVertex, 0, other);
+    edge = edge.at(*last);
+    if (!_traverser->edgeMatchesConditions(edge, edges.size())) {
+      TRI_ASSERT(last != nullptr);
+      (*last)++;
+      continue;
+    }
+    std::string id = _trx->extractIdString(edge);
+    // test if edge is already on this path
+    auto found = std::find(edges.begin(), edges.end(), id);
+    if (found != edges.end()) {
+      // This edge is already on the path, next
+      TRI_ASSERT(last != nullptr);
+      (*last)++;
+      continue;
+    }
+
+    VPackBuilder tmpBuilder = VPackBuilder::clone(edge);
+    _traverser->_edges.emplace(id, tmpBuilder.steal());
+
+    std::string other;
+    _traverser->_getVertex(id, startVertex, 0, other);
     if (!_traverser->vertexMatchesConditions(other, edges.size() + 1)) {
       // Retry with the next element
+      TRI_ASSERT(last != nullptr);
+      (*last)++;
       continue;
     }
-    auto search = std::find(edges.begin(), edges.end(), e);
-    if (search != edges.end()) {
-      // The edge is included twice. Go on with the next
-      continue;
-    }
-    edges.push_back(e);
+
+    edges.emplace_back(id);
     return;
   }
+}
+
+void DepthFirstTraverser::EdgeGetter::operator()(
+    std::string const& startVertex,
+    std::vector<std::string>& edges, VPackValueLength*& last, size_t& eColIdx,
+    bool& dir) {
+  if (last == nullptr) {
+    eColIdx = 0;
+    if (!nextCursor(startVertex, eColIdx, last)) {
+      // We were not able to find any edge
+      return;
+    }
+  }
+  nextEdge(startVertex, eColIdx, last, edges);
 }

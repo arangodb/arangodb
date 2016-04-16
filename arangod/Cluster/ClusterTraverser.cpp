@@ -24,51 +24,45 @@
 #include "ClusterTraverser.h"
 #include "Cluster/ClusterMethods.h"
 
+using namespace arangodb;
+
 using ClusterTraversalPath = arangodb::traverser::ClusterTraversalPath;
 using ClusterTraverser = arangodb::traverser::ClusterTraverser;
 
-arangodb::basics::Json* ClusterTraversalPath::pathToJson(
-    arangodb::Transaction*, arangodb::CollectionNameResolver*) {
-  auto result =
-      std::make_unique<arangodb::basics::Json>(arangodb::basics::Json::Object);
-
-  size_t vCount = _path.vertices.size();
-  arangodb::basics::Json vertices(arangodb::basics::Json::Array, vCount);
-  for (auto& it : _path.vertices) {
-    auto v = _traverser->vertexToJson(it);
-    try {
-      vertices.add(*v);
-      delete v;
-    } catch (...) {
-      delete v;
-      throw;
-    }
+void ClusterTraversalPath::pathToVelocyPack(Transaction*, VPackBuilder& result) {
+  result.openObject();
+  result.add(VPackValue("edges"));
+  result.openArray();
+  for (auto const& it : _path.edges) {
+    auto cached = _traverser->_edges.find(it);
+    // All edges are cached!!
+    TRI_ASSERT(cached != _traverser->_edges.end());
+    result.add(VPackSlice(cached->second->data()));
   }
-  arangodb::basics::Json edges(arangodb::basics::Json::Array,
-                               _path.edges.size());
-  for (auto& it : _path.edges) {
-    auto e = _traverser->edgeToJson(it);
-    try {
-      edges.add(*e);
-      delete e;
-    } catch (...) {
-      delete e;
-      throw;
-    }
+  result.close();
+  result.add(VPackValue("vertices"));
+  result.openArray();
+  for (auto const& it : _path.vertices) {
+    // All vertices are cached!!
+    auto cached = _traverser->_vertices.find(it);
+    TRI_ASSERT(cached != _traverser->_vertices.end());
+    result.add(VPackSlice(cached->second->data()));
   }
-  result->set("edges", edges);
-  result->set("vertices", vertices);
-  return result.release();
+  result.close();
+  result.close();
 }
 
-arangodb::basics::Json* ClusterTraversalPath::lastEdgeToJson(
-    arangodb::Transaction*, arangodb::CollectionNameResolver*) {
-  return _traverser->edgeToJson(_path.edges.back());
+void ClusterTraversalPath::lastVertexToVelocyPack(Transaction*, VPackBuilder& result) {
+  auto cached = _traverser->_vertices.find(_path.vertices.back());
+  TRI_ASSERT(cached != _traverser->_vertices.end());
+  result.add(VPackSlice(cached->second->data()));
 }
 
-arangodb::basics::Json* ClusterTraversalPath::lastVertexToJson(
-    arangodb::Transaction*, arangodb::CollectionNameResolver*) {
-  return _traverser->vertexToJson(_path.vertices.back());
+void ClusterTraversalPath::lastEdgeToVelocyPack(Transaction*, VPackBuilder& result) {
+  auto cached = _traverser->_edges.find(_path.edges.back());
+  // All edges are cached!!
+  TRI_ASSERT(cached != _traverser->_edges.end());
+  result.add(VPackSlice(cached->second->data()));
 }
 
 bool ClusterTraverser::VertexGetter::operator()(std::string const& edgeId,
@@ -76,15 +70,13 @@ bool ClusterTraverser::VertexGetter::operator()(std::string const& edgeId,
                                                 size_t depth,
                                                 std::string& result) {
   auto it = _traverser->_edges.find(edgeId);
-  std::string def = "";
   if (it != _traverser->_edges.end()) {
-    std::string from =
-        arangodb::basics::JsonHelper::getStringValue(it->second, "_from", def);
+    VPackSlice slice(it->second->data());
+    std::string from = slice.get(TRI_VOC_ATTRIBUTE_FROM).copyString();
     if (from != vertexId) {
       result = from;
     } else {
-      std::string to =
-          arangodb::basics::JsonHelper::getStringValue(it->second, "_to", def);
+      std::string to = slice.get(TRI_VOC_ATTRIBUTE_TO).copyString();
       result = to;
     }
     auto exp = _traverser->_expressions->find(depth);
@@ -96,14 +88,14 @@ bool ClusterTraverser::VertexGetter::operator()(std::string const& edgeId,
         ++_traverser->_filteredPaths;
         return false;
       }
-      if (!_traverser->vertexMatchesCondition(v->second, exp->second)) {
+      if (!_traverser->vertexMatchesCondition(VPackSlice(v->second->data()), exp->second)) {
         return false;
       }
     }
     return true;
   }
   // This should never be reached
-  result = def;
+  result = "";
   return false;
 }
 
@@ -117,8 +109,8 @@ void ClusterTraverser::EdgeGetter::operator()(std::string const& startVertex,
     // Nothing to do, caller has set a defined state already.
     return;
   }
-  size_t depth = result.size();
   if (last == nullptr) {
+    size_t depth = result.size();
     TRI_ASSERT(_traverser->_iteratorCache.size() == result.size());
     // We have to request the next level
     arangodb::basics::Json resultEdges(arangodb::basics::Json::Object);
@@ -170,39 +162,15 @@ void ClusterTraverser::EdgeGetter::operator()(std::string const& startVertex,
       if (_traverser->_vertices.find(toId) == _traverser->_vertices.end()) {
         verticesToFetch.emplace(toId);
       }
-      std::unique_ptr<TRI_json_t> copy(edge.copy().steal());
-      if (copy != nullptr) {
-        if (_traverser->_edges.emplace(edgeId, copy.get()).second) {
-          // if insertion was successful, hand over the ownership
-          copy.release();
-        }
-        // else we have a duplicate and we need to free the copy again
+      auto tmpBuilder = basics::JsonHelper::toVelocyPack(edge.json());
+      if (tmpBuilder != nullptr) {
+        _traverser->_edges.emplace(edgeId, tmpBuilder->steal());
       }
     }
 
-    std::vector<TraverserExpression*> expVertices;
-    found = _traverser->_expressions->find(depth + 1);
-    if (found != _traverser->_expressions->end()) {
-      expVertices = found->second;
-    }
+    _traverser->fetchVertices(verticesToFetch, depth + 1);
 
-    std::unique_ptr<std::map<std::string, std::string>> headers(
-        new std::map<std::string, std::string>());
-    _traverser->_readDocuments += verticesToFetch.size();
-    res = getFilteredDocumentsOnCoordinator(_traverser->_dbname, expVertices,
-                                            headers, verticesToFetch,
-                                            _traverser->_vertices);
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-    // By convention verticesToFetch now contains all _ids of vertices that
-    // could not be found.
-    // Store them as NULL
-    for (auto const& it : verticesToFetch) {
-      _traverser->_vertices.emplace(it,
-                                    TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE));
-    }
-    std::string next = stack.top();
+   std::string next = stack.top();
     stack.pop();
     last = &_continueConst;
     _traverser->_iteratorCache.emplace(stack);
@@ -227,12 +195,11 @@ void ClusterTraverser::EdgeGetter::operator()(std::string const& startVertex,
       operator()(startVertex, result, last, eColIdx, unused);
       return;
     } else {
-      std::string next = tmp.top();
+      std::string const next = tmp.top();
       tmp.pop();
       auto search = std::find(result.begin(), result.end(), next);
       if (search != result.end()) {
-        // result.push_back(next);
-        // The edge is now included twice. Go on with the next
+        // The edge would be included twice. Go on with the next
         operator()(startVertex, result, last, eColIdx, unused);
         return;
       }
@@ -241,52 +208,66 @@ void ClusterTraverser::EdgeGetter::operator()(std::string const& startVertex,
   }
 }
 
-void ClusterTraverser::setStartVertex(arangodb::traverser::VertexId const& v) {
-  std::string id = v.toString(_resolver);
+void ClusterTraverser::setStartVertex(std::string const& id) {
   _enumerator.reset(
       new arangodb::basics::PathEnumerator<std::string, std::string, size_t>(
           _edgeGetter, _vertexGetter, id));
   _done = false;
   auto it = _vertices.find(id);
   if (it == _vertices.end()) {
-    arangodb::GeneralResponse::ResponseCode responseCode;
-    std::unique_ptr<std::map<std::string, std::string>> headers(
-        new std::map<std::string, std::string>());
-    std::map<std::string, std::string> resultHeaders;
-    std::vector<std::string> splitId =
-        arangodb::basics::StringUtils::split(id, '/');
-    TRI_ASSERT(splitId.size() == 2);
-    std::string vertexResult;
-    int res = getDocumentOnCoordinator(_dbname, splitId[0], splitId[1], 0,
-                                       headers, true, responseCode,
-                                       resultHeaders, vertexResult);
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-    ++_readDocuments;
-    if (responseCode ==
-        arangodb::GeneralResponse::ResponseCode::NOT_FOUND) {
-      _vertices.emplace(id, TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE));
-    } else {
-      _vertices.emplace(id,
-                        arangodb::basics::JsonHelper::fromString(vertexResult));
-    }
+    std::unordered_set<std::string> vertexToFetch;
+    vertexToFetch.emplace(id);
+    fetchVertices(vertexToFetch, 0); // this inserts the vertex
     it = _vertices.find(id);
+    if (it == _vertices.end()) {
+      // We can stop here. The start vertex does not match condition.
+      ++_filteredPaths;
+      _done = true;
+      return;
+    }
   }
+
   auto exp = _expressions->find(0);
   if (exp != _expressions->end() &&
-      !vertexMatchesCondition(it->second, exp->second)) {
+      !vertexMatchesCondition(VPackSlice(it->second->data()), exp->second)) {
     // We can stop here. The start vertex does not match condition
     _done = true;
   }
 }
 
+void ClusterTraverser::fetchVertices(std::unordered_set<std::string>& verticesToFetch, size_t depth) {
+  std::unique_ptr<std::map<std::string, std::string>> headers(
+      new std::map<std::string, std::string>());
+  _readDocuments += verticesToFetch.size();
+
+  std::vector<TraverserExpression*> expVertices;
+  auto found = _expressions->find(depth);
+  if (found != _expressions->end()) {
+    expVertices = found->second;
+  }
+
+  int res = getFilteredDocumentsOnCoordinator(_dbname, expVertices, headers,
+                                              verticesToFetch, _vertices);
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  // By convention verticesToFetch now contains all _ids of vertices that
+  // could not be found.
+  // Store them as NULL
+  for (auto const& it : verticesToFetch) {
+    VPackBuilder builder;
+    builder.add(VPackValue(VPackValueType::Null));
+    _vertices.emplace(it, builder.steal());
+  }
+}
+
 bool ClusterTraverser::vertexMatchesCondition(
-    TRI_json_t* v,
+    VPackSlice const& v,
     std::vector<arangodb::traverser::TraverserExpression*> const& exp) {
   for (auto const& e : exp) {
     if (!e->isEdgeAccess) {
-      if (v == nullptr || !e->matchesCheck(v)) {
+      if (v.isNone() || !e->matchesCheck(_trx, v)) {
         ++_filteredPaths;
         return false;
       }
@@ -319,20 +300,4 @@ arangodb::traverser::TraversalPath* ClusterTraverser::next() {
     return next();
   }
   return p.release();
-}
-
-arangodb::basics::Json* ClusterTraverser::edgeToJson(
-    std::string const& id) const {
-  auto it = _edges.find(id);
-  TRI_ASSERT(it != _edges.end());
-  return new arangodb::basics::Json(
-      TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, it->second));
-}
-
-arangodb::basics::Json* ClusterTraverser::vertexToJson(
-    std::string const& id) const {
-  auto it = _vertices.find(id);
-  TRI_ASSERT(it != _vertices.end());
-  return new arangodb::basics::Json(
-      TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, it->second));
 }

@@ -28,6 +28,7 @@
 #include "Logger/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Basics/Exceptions.h"
+#include "VocBase/DatafileHelper.h"
 #include "VocBase/collection.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
@@ -46,6 +47,8 @@
 #define LOG_TRX(...) while (0) LOG(TRACE)
 
 #endif
+
+using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns whether the collection is currently locked
@@ -200,19 +203,18 @@ static void FreeOperations(TRI_transaction_t* trx) {
         arangodb::wal::DocumentOperation* op = (*it);
 
         if (op->type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
+            op->type == TRI_VOC_DOCUMENT_OPERATION_REPLACE ||
             op->type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-          TRI_voc_fid_t fid = op->oldHeader._fid;
-          TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(
-              op->oldHeader.getDataPtr());  // PROTECTED by trx from above
+          TRI_voc_fid_t fid = op->oldHeader.getFid();
+          auto marker = op->oldHeader.getMarkerPtr();
 
           auto it2 = stats.find(fid);
 
           if (it2 == stats.end()) {
-            stats.emplace(fid,
-                          std::make_pair(1, TRI_DF_ALIGN_BLOCK(marker->_size)));
+            stats.emplace(fid, std::make_pair(1, DatafileHelper::AlignedMarkerSize<int64_t>(marker)));
           } else {
             (*it2).second.first++;
-            (*it2).second.second += TRI_DF_ALIGN_BLOCK(marker->_size);
+            (*it2).second.second += DatafileHelper::AlignedMarkerSize<int64_t>(marker);
           }
         }
       }
@@ -301,7 +303,6 @@ static TRI_transaction_collection_t* CreateCollection(
   trxCollection->_accessType = accessType;
   trxCollection->_nestingLevel = nestingLevel;
   trxCollection->_collection = nullptr;
-  trxCollection->_ditch = nullptr;
   trxCollection->_operations = nullptr;
   trxCollection->_originalRevision = 0;
   trxCollection->_lockType = TRI_TRANSACTION_NONE;
@@ -319,22 +320,6 @@ static void FreeCollection(TRI_transaction_collection_t* trxCollection) {
   TRI_ASSERT(trxCollection != nullptr);
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, trxCollection);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees an unused ditch if it exists
-////////////////////////////////////////////////////////////////////////////////
-
-static void FreeDitch(TRI_transaction_collection_t* trxCollection) {
-  auto ditch = trxCollection->_ditch;
-
-  if (ditch != nullptr) {
-    // we're done with this ditch
-    ditch->ditches()->freeDocumentDitch(ditch, true /* fromTransaction */);
-    // If some external entity is still using the ditch, it is kept!
-
-    trxCollection->_ditch = nullptr;
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -513,8 +498,7 @@ static int UseCollections(TRI_transaction_t* trx, int nestingLevel) {
       // read-lock the compaction lock
       if (!HasHint(trx, TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK)) {
         if (!trxCollection->_compactionLocked) {
-          TRI_ReadLockReadWriteLock(
-              &trxCollection->_collection->_collection->_compactionLock);
+          trxCollection->_collection->_collection->_compactionLock.readLock();
           trxCollection->_compactionLocked = true;
         }
       }
@@ -574,8 +558,7 @@ static int UnuseCollections(TRI_transaction_t* trx, int nestingLevel) {
         if (trxCollection->_accessType == TRI_TRANSACTION_WRITE &&
             trxCollection->_compactionLocked) {
           // read-unlock the compaction lock
-          TRI_ReadUnlockReadWriteLock(
-              &trxCollection->_collection->_collection->_compactionLock);
+          trxCollection->_collection->_collection->_compactionLock.unlock();
           trxCollection->_compactionLocked = false;
         }
       }
@@ -638,7 +621,7 @@ static int WriteBeginMarker(TRI_transaction_t* trx) {
   int res;
 
   try {
-    arangodb::wal::BeginTransactionMarker marker(trx->_vocbase->_id, trx->_id);
+    arangodb::wal::TransactionMarker marker(TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION, trx->_vocbase->_id, trx->_id);
     res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
 
     if (res == TRI_ERROR_NO_ERROR) {
@@ -677,7 +660,7 @@ static int WriteAbortMarker(TRI_transaction_t* trx) {
   int res;
 
   try {
-    arangodb::wal::AbortTransactionMarker marker(trx->_vocbase->_id, trx->_id);
+    arangodb::wal::TransactionMarker marker(TRI_DF_MARKER_VPACK_ABORT_TRANSACTION, trx->_vocbase->_id, trx->_id);
     res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
@@ -708,8 +691,8 @@ static int WriteCommitMarker(TRI_transaction_t* trx) {
   int res;
 
   try {
-    arangodb::wal::CommitTransactionMarker marker(trx->_vocbase->_id, trx->_id);
-    res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
+    arangodb::wal::TransactionMarker marker(TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION, trx->_vocbase->_id, trx->_id);
+    res = GetLogfileManager()->allocateAndWrite(marker, trx->_waitForSync).errorCode;
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
   } catch (...) {
@@ -786,7 +769,7 @@ TRI_transaction_t* TRI_CreateTransaction(TRI_vocbase_t* vocbase,
 /// @brief free a transaction container
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeTransaction(TRI_transaction_t* trx) {
+bool TRI_FreeTransaction(TRI_transaction_t* trx) {
   TRI_ASSERT(trx != nullptr);
 
   if (trx->_status == TRI_TRANSACTION_RUNNING) {
@@ -796,8 +779,6 @@ void TRI_FreeTransaction(TRI_transaction_t* trx) {
   // release the marker protector
   bool const hasFailedOperations =
       (trx->_hasOperations && trx->_status == TRI_TRANSACTION_ABORTED);
-  arangodb::wal::LogfileManager::instance()->unregisterTransaction(
-      trx->_id, hasFailedOperations);
 
   ReleaseCollections(trx, 0);
 
@@ -807,13 +788,13 @@ void TRI_FreeTransaction(TRI_transaction_t* trx) {
     auto trxCollection = static_cast<TRI_transaction_collection_t*>(
         TRI_AtVectorPointer(&trx->_collections, i));
 
-    FreeDitch(trxCollection);
     FreeCollection(trxCollection);
   }
 
   TRI_DestroyVectorPointer(&trx->_collections);
-
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, trx);
+
+  return hasFailedOperations;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -825,23 +806,9 @@ TRI_transaction_type_e TRI_GetTransactionTypeFromStr(char const* s) {
     return TRI_TRANSACTION_READ;
   } else if (TRI_EqualString(s, "write")) {
     return TRI_TRANSACTION_WRITE;
-  } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "invalid transaction type");
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the collection from a transaction
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_WasSynchronousCollectionTransaction(TRI_transaction_t const* trx,
-                                             TRI_voc_cid_t cid) {
-  TRI_ASSERT(trx->_status == TRI_TRANSACTION_RUNNING ||
-             trx->_status == TRI_TRANSACTION_ABORTED ||
-             trx->_status == TRI_TRANSACTION_COMMITTED);
-
-  return trx->_waitForSync;
+  } 
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "invalid transaction type");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1023,6 +990,8 @@ int TRI_UnlockCollectionTransaction(TRI_transaction_collection_t* trxCollection,
 bool TRI_IsLockedCollectionTransaction(
     TRI_transaction_collection_t const* trxCollection,
     TRI_transaction_type_e accessType, int nestingLevel) {
+  TRI_ASSERT(trxCollection != nullptr);
+
   if (accessType == TRI_TRANSACTION_WRITE &&
       trxCollection->_accessType != TRI_TRANSACTION_WRITE) {
     // wrong lock type
@@ -1039,6 +1008,7 @@ bool TRI_IsLockedCollectionTransaction(
 
 bool TRI_IsLockedCollectionTransaction(
     TRI_transaction_collection_t const* trxCollection) {
+  TRI_ASSERT(trxCollection != nullptr);
   return IsLocked(trxCollection);
 }
 
@@ -1071,17 +1041,16 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
                                 bool& waitForSync) {
   TRI_ASSERT(operation.header != nullptr);
 
+  TRI_document_collection_t* document = operation.document;
   bool const isSingleOperationTransaction = IsSingleOperationTransaction(trx);
 
   // upgrade the info for the transaction
-  if (waitForSync || operation.document->_info.waitForSync()) {
+  if (waitForSync || document->_info.waitForSync()) {
     trx->_waitForSync = true;
   }
 
-  // default is false
-  waitForSync = false;
   if (isSingleOperationTransaction) {
-    waitForSync |= operation.document->_info.waitForSync();
+    waitForSync |= document->_info.waitForSync();
   }
 
   TRI_IF_FAILURE("TransactionOperationNoSlot") { return TRI_ERROR_DEBUG; }
@@ -1101,95 +1070,20 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
   TRI_voc_fid_t fid = 0;
   void const* position = nullptr;
 
-  int64_t sizeChanged = 0;
-  TRI_document_collection_t* document = operation.document;
-
   if (operation.marker->fid() == 0) {
     // this is a "real" marker that must be written into the logfiles
-    char* oldmarker = static_cast<char*>(operation.marker->mem());
-    auto oldm = reinterpret_cast<arangodb::wal::document_marker_t*>(oldmarker);
-    if ((oldm->_type == TRI_WAL_MARKER_DOCUMENT ||
-         oldm->_type == TRI_WAL_MARKER_EDGE) &&
-        !arangodb::wal::LogfileManager::instance()
-             ->suppressShapeInformation()) {
-      // In this case we have to take care of the legend, we know that the
-      // marker does not have a legend so far, so first try to get away
-      // with this:
-      // (Note that the latter also works for edges!
-      TRI_voc_cid_t cid = oldm->_collectionId;
-      TRI_shape_sid_t sid = oldm->_shape;
-      void* oldLegend;
-      arangodb::wal::SlotInfoCopy slotInfo =
-          arangodb::wal::LogfileManager::instance()->allocateAndWrite(
-              oldmarker, operation.marker->size(), false, cid, sid, 0,
-              oldLegend);
-      if (slotInfo.errorCode == TRI_ERROR_LEGEND_NOT_IN_WAL_FILE) {
-        // Oh dear, we have to build a legend and patch the marker:
-        arangodb::basics::JsonLegend legend(
-            document->getShaper());  // PROTECTED by trx
-        int res = legend.addShape(sid, oldmarker + oldm->_offsetJson,
-                                  oldm->_size - oldm->_offsetJson);
-        if (res != TRI_ERROR_NO_ERROR) {
-          return res;
-        } else {
-          sizeChanged =
-              legend.getSize() - (oldm->_offsetJson - oldm->_offsetLegend);
-          TRI_voc_size_t newMarkerSize =
-              (TRI_voc_size_t)(oldm->_size + sizeChanged);
-
-          // Now construct the new marker on the heap:
-          char* newmarker = new char[newMarkerSize];
-          memcpy(newmarker, oldmarker, oldm->_offsetLegend);
-          legend.dump(newmarker + oldm->_offsetLegend);
-          memcpy(newmarker + oldm->_offsetLegend + legend.getSize(),
-                 oldmarker + oldm->_offsetJson,
-                 oldm->_size - oldm->_offsetJson);
-
-          // And fix its entries:
-          auto newm =
-              reinterpret_cast<arangodb::wal::document_marker_t*>(newmarker);
-          newm->_size = newMarkerSize;
-          newm->_offsetJson =
-              (uint32_t)(oldm->_offsetLegend + legend.getSize());
-          arangodb::wal::SlotInfoCopy slotInfo2 =
-              arangodb::wal::LogfileManager::instance()->allocateAndWrite(
-                  newmarker, newMarkerSize, false, cid, sid,
-                  newm->_offsetLegend, oldLegend);
-          delete[] newmarker;
-          if (slotInfo2.errorCode != TRI_ERROR_NO_ERROR) {
-            return slotInfo2.errorCode;
-          }
-          fid = slotInfo2.logfileId;
-          position = slotInfo2.mem;
-          operation.tick = slotInfo2.tick;
-        }
-      } else if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
-        return slotInfo.errorCode;
-      } else {
-        int64_t* legendPtr =
-            reinterpret_cast<int64_t*>(oldmarker + oldm->_offsetLegend);
-        *legendPtr = reinterpret_cast<char*>(oldLegend) -
-                     reinterpret_cast<char*>(legendPtr);
-        // This means that we can find the old legend relative to
-        // the new position in the same WAL file.
-        operation.tick = slotInfo.tick;
-        fid = slotInfo.logfileId;
-        position = slotInfo.mem;
-      }
-
-    } else {
-      // No document or edge marker, just append it to the WAL:
-      arangodb::wal::SlotInfoCopy slotInfo =
-          arangodb::wal::LogfileManager::instance()->allocateAndWrite(
-              operation.marker->mem(), operation.marker->size(), false);
-      if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
-        // some error occurred
-        return slotInfo.errorCode;
-      }
-      operation.tick = slotInfo.tick;
-      fid = slotInfo.logfileId;
-      position = slotInfo.mem;
+    // just append it to the WAL:
+    arangodb::wal::SlotInfoCopy slotInfo =
+        arangodb::wal::LogfileManager::instance()->allocateAndWrite(
+            trx->_vocbase->_id, document->_info.id(), 
+            operation.marker->mem(), operation.marker->size(), false);
+    if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
+      // some error occurred
+      return slotInfo.errorCode;
     }
+    operation.tick = slotInfo.tick;
+    fid = slotInfo.logfileId;
+    position = slotInfo.mem;
   } else {
     // this is an envelope marker that has been written to the logfiles before
     // avoid writing it again!
@@ -1201,21 +1095,17 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
   TRI_ASSERT(position != nullptr);
 
   if (operation.type == TRI_VOC_DOCUMENT_OPERATION_INSERT ||
-      operation.type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
+      operation.type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
+      operation.type == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
     // adjust the data position in the header
-    operation.header->setDataPtr(
-        position);  // PROTECTED by ongoing trx from operation
-    if (operation.type == TRI_VOC_DOCUMENT_OPERATION_INSERT && sizeChanged) {
-      document->_headersPtr->adjustTotalSize(0, sizeChanged);
-    }
+    operation.header->setDataPtr(position); 
   }
 
   TRI_IF_FAILURE("TransactionOperationAfterAdjust") { return TRI_ERROR_DEBUG; }
 
   // set header file id
-  operation.header->_fid = fid;
-
-  TRI_ASSERT(operation.header->_fid > 0);
+  TRI_ASSERT(fid > 0);
+  operation.header->setFid(fid, true); // always in WAL
 
   if (isSingleOperationTransaction) {
     // operation is directly executed
@@ -1227,23 +1117,19 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
     ++document->_uncollectedLogfileEntries;
 
     if (operation.type == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
+        operation.type == TRI_VOC_DOCUMENT_OPERATION_REPLACE ||
         operation.type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
       // update datafile statistics for the old header
-      TRI_ASSERT(operation.oldHeader._fid > 0);
-
-      TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(
-          operation.oldHeader.getDataPtr());  // PROTECTED by trx from above
+      TRI_df_marker_t const* marker = operation.oldHeader.getMarkerPtr();
       document->_datafileStatistics.increaseDead(
-          operation.oldHeader._fid, 1,
-          static_cast<int64_t>(TRI_DF_ALIGN_BLOCK(marker->_size)));
+          operation.oldHeader.getFid(), 1, DatafileHelper::AlignedMarkerSize<int64_t>(marker));
     }
   } else {
     // operation is buffered and might be rolled back
     TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(
         trx, document->_info.id(), TRI_TRANSACTION_WRITE);
     if (trxCollection->_operations == nullptr) {
-      trxCollection->_operations =
-          new std::vector<arangodb::wal::DocumentOperation*>;
+      trxCollection->_operations = new std::vector<arangodb::wal::DocumentOperation*>;
       trx->_hasOperations = true;
     }
 
@@ -1252,7 +1138,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
     copy->handle();
   }
 
-  TRI_UpdateRevisionDocumentCollection(document, operation.rid, false);
+  document->setLastRevision(static_cast<TRI_voc_tick_t>(operation.tick), false);
 
   TRI_IF_FAILURE("TransactionOperationAtEnd") { return TRI_ERROR_DEBUG; }
 
@@ -1388,3 +1274,12 @@ int TRI_AbortTransaction(TRI_transaction_t* trx, int nestingLevel) {
 
   return res;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a transaction consists of a single operation
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_IsSingleOperationTransaction(TRI_transaction_t const* trx) {
+  return HasHint(trx, TRI_TRANSACTION_HINT_SINGLE_OPERATION);
+}
+

@@ -797,7 +797,8 @@ static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     SimpleHttpClient client(connection.get(), timeout, false);
     client.setSupportDeflate(false);
-    client.setExposeArangoDB(false);
+    // security by obscurity won't work. Github requires a useragent nowadays.
+    client.setExposeArangoDB(true);
 
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
@@ -1389,16 +1390,12 @@ static void JS_ListTree(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // constructed listing
   v8::Handle<v8::Array> result = v8::Array::New(isolate);
-  TRI_vector_string_t list = TRI_FullTreeDirectory(*name);
+  std::vector<std::string> files(TRI_FullTreeDirectory(*name));
 
-  uint32_t j = 0;
-
-  for (size_t i = 0; i < list._length; ++i) {
-    char const* f = list._buffer[i];
-    result->Set(j++, TRI_V8_STRING(f));
+  uint32_t i = 0;
+  for (auto const& it : files) {
+    result->Set(i++, TRI_V8_STD_STRING(it));
   }
-
-  TRI_DestroyVectorString(&list);
 
   // return result
   TRI_V8_RETURN(result);
@@ -1540,15 +1537,12 @@ static void JS_ZipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Handle<v8::Array> files = v8::Handle<v8::Array>::Cast(args[2]);
 
   int res = TRI_ERROR_NO_ERROR;
-  TRI_vector_string_t filenames;
-  TRI_InitVectorString(&filenames, TRI_UNKNOWN_MEM_ZONE);
+  std::vector<std::string> filenames;
 
   for (uint32_t i = 0; i < files->Length(); ++i) {
     v8::Handle<v8::Value> file = files->Get(i);
     if (file->IsString()) {
-      std::string fname = TRI_ObjectToString(file);
-      TRI_PushBackVectorString(
-          &filenames, TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, fname.c_str()));
+      filenames.emplace_back(TRI_ObjectToString(file));
     } else {
       res = TRI_ERROR_BAD_PARAMETER;
       break;
@@ -1556,8 +1550,6 @@ static void JS_ZipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_DestroyVectorString(&filenames);
-
     TRI_V8_THROW_EXCEPTION_USAGE(
         "zipFile(<filename>, <chdir>, <files>, <password>)");
   }
@@ -1569,8 +1561,7 @@ static void JS_ZipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
     p = password.c_str();
   }
 
-  res = TRI_ZipFile(filename.c_str(), dir.c_str(), &filenames, p);
-  TRI_DestroyVectorString(&filenames);
+  res = TRI_ZipFile(filename.c_str(), dir.c_str(), filenames, p);
 
   if (res == TRI_ERROR_NO_ERROR) {
     TRI_V8_RETURN_TRUE();
@@ -3192,7 +3183,7 @@ static void JS_ExecuteExternal(
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a string");
   }
 
-  char** arguments = 0;
+  char** arguments = nullptr;
   uint32_t n = 0;
 
   if (2 <= args.Length()) {
@@ -3202,8 +3193,7 @@ static void JS_ExecuteExternal(
       v8::Handle<v8::Array> arr = v8::Handle<v8::Array>::Cast(a);
 
       n = arr->Length();
-      arguments =
-          (char**)TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false);
+      arguments = static_cast<char**>(TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false));
 
       for (uint32_t i = 0; i < n; ++i) {
         TRI_Utf8ValueNFC arg(TRI_UNKNOWN_MEM_ZONE, arr->Get(i));
@@ -3216,8 +3206,7 @@ static void JS_ExecuteExternal(
       }
     } else {
       n = 1;
-      arguments =
-          (char**)TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false);
+      arguments = static_cast<char**>(TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false));
 
       TRI_Utf8ValueNFC arg(TRI_UNKNOWN_MEM_ZONE, a);
 
@@ -3234,9 +3223,9 @@ static void JS_ExecuteExternal(
   }
 
   TRI_external_id_t external;
-  TRI_CreateExternalProcess(*name, (char const**)arguments, (size_t)n, usePipes,
+  TRI_CreateExternalProcess(*name, const_cast<char const**>(arguments), (size_t)n, usePipes,
                             &external);
-  if (arguments != 0) {
+  if (arguments != nullptr) {
     for (uint32_t i = 0; i < n; ++i) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, arguments[i]);
     }
@@ -3249,7 +3238,7 @@ static void JS_ExecuteExternal(
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   result->Set(TRI_V8_ASCII_STRING("pid"),
               v8::Number::New(isolate, external._pid));
-// Now report about possible stdin and stdout pipes:
+  // Now report about possible stdin and stdout pipes:
 #ifndef _WIN32
   if (external._readPipe >= 0) {
     result->Set(TRI_V8_ASCII_STRING("readPipe"),
@@ -3287,19 +3276,11 @@ static void JS_ExecuteExternal(
 static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  v8::Handle<v8::String> pidname = TRI_V8_ASCII_STRING("pid");
 
   // extract the arguments
-  if (args.Length() < 1 || args.Length() > 2 || !args[0]->IsObject()) {
+  if (args.Length() < 1 || args.Length() > 2) {
     TRI_V8_THROW_EXCEPTION_USAGE(
         "statusExternal(<external-identifier>[, <wait>])");
-  }
-
-  v8::Handle<v8::Object> obj = v8::Handle<v8::Object>::Cast(args[0]);
-
-  if (!obj->Has(pidname)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "statusExternal: pid must be given");
   }
 
   TRI_external_id_t pid;
@@ -3307,9 +3288,9 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
 #ifndef _WIN32
   pid._pid =
-      static_cast<TRI_pid_t>(TRI_ObjectToUInt64(obj->Get(pidname), true));
+      static_cast<TRI_pid_t>(TRI_ObjectToUInt64(args[0], true));
 #else
-  pid._pid = static_cast<DWORD>(TRI_ObjectToUInt64(obj->Get(pidname), true));
+  pid._pid = static_cast<DWORD>(TRI_ObjectToUInt64(args[0], true));
 #endif
   bool wait = false;
   if (args.Length() == 2) {
@@ -3389,7 +3370,7 @@ static void JS_ExecuteAndWaitExternal(
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a string");
   }
 
-  char** arguments = 0;
+  char** arguments = nullptr;
   uint32_t n = 0;
 
   if (2 <= args.Length()) {
@@ -3399,8 +3380,7 @@ static void JS_ExecuteAndWaitExternal(
       v8::Handle<v8::Array> arr = v8::Handle<v8::Array>::Cast(a);
 
       n = arr->Length();
-      arguments =
-          (char**)TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false);
+      arguments = static_cast<char**>(TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false));
 
       for (uint32_t i = 0; i < n; ++i) {
         TRI_Utf8ValueNFC arg(TRI_UNKNOWN_MEM_ZONE, arr->Get(i));
@@ -3413,8 +3393,7 @@ static void JS_ExecuteAndWaitExternal(
       }
     } else {
       n = 1;
-      arguments =
-          (char**)TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false);
+      arguments = static_cast<char**>(TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*), false));
 
       TRI_Utf8ValueNFC arg(TRI_UNKNOWN_MEM_ZONE, a);
 
@@ -3431,9 +3410,9 @@ static void JS_ExecuteAndWaitExternal(
   }
 
   TRI_external_id_t external;
-  TRI_CreateExternalProcess(*name, (char const**)arguments, (size_t)n, usePipes,
+  TRI_CreateExternalProcess(*name, const_cast<char const**>(arguments), static_cast<size_t>(n), usePipes,
                             &external);
-  if (arguments != 0) {
+  if (arguments != nullptr) {
     for (uint32_t i = 0; i < n; ++i) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, arguments[i]);
     }
@@ -3538,26 +3517,18 @@ static void JS_KillExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  v8::Handle<v8::String> pidname = TRI_V8_ASCII_STRING("pid");
-
   // extract the arguments
-  if (args.Length() != 1 || !args[0]->IsObject()) {
+  if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("killExternal(<external-identifier>)");
   }
 
-  v8::Handle<v8::Object> obj = v8::Handle<v8::Object>::Cast(args[0]);
-  if (!obj->Has(pidname)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "statusExternal: pid must be given");
-  }
   TRI_external_id_t pid;
   memset(&pid, 0, sizeof(TRI_external_id_t));
 
 #ifndef _WIN32
-  pid._pid =
-      static_cast<TRI_pid_t>(TRI_ObjectToUInt64(obj->Get(pidname), true));
+  pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(args[0], true));
 #else
-  pid._pid = static_cast<DWORD>(TRI_ObjectToUInt64(obj->Get(pidname), true));
+  pid._pid = static_cast<DWORD>(TRI_ObjectToUInt64(args[0], true));
 #endif
 
   // return the result

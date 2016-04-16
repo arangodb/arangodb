@@ -23,8 +23,8 @@
 
 #include "CursorRepository.h"
 #include "Basics/json.h"
-#include "Logger/Logger.h"
 #include "Basics/MutexLocker.h"
+#include "Logger/Logger.h"
 #include "Utils/CollectionExport.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"

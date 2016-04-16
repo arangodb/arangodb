@@ -34,10 +34,7 @@ SortNode::SortNode(ExecutionPlan* plan, arangodb::basics::Json const& base,
                    SortElementVector const& elements, bool stable)
     : ExecutionNode(plan, base), _elements(elements), _stable(stable) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack, for SortNode
-////////////////////////////////////////////////////////////////////////////////
-
 void SortNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   ExecutionNode::toVelocyPackHelperGeneric(nodes,
                                            verbose);  // call base class method
@@ -95,13 +92,10 @@ std::vector<std::pair<ExecutionNode*, bool>> SortNode::getCalcNodePairs() {
   return findExp._myVars;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief simplifies the expressions of the sort node
 /// this will sort expressions if they are constant
 /// the method will return true if all sort expressions were removed after
 /// simplification, and false otherwise
-////////////////////////////////////////////////////////////////////////////////
-
 bool SortNode::simplify(ExecutionPlan* plan) {
   for (auto it = _elements.begin(); it != _elements.end(); /* no hoisting */) {
     auto variable = (*it).first;
@@ -128,10 +122,7 @@ bool SortNode::simplify(ExecutionPlan* plan) {
   return _elements.empty();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all sort information
-////////////////////////////////////////////////////////////////////////////////
-
 SortInformation SortNode::getSortInformation(
     ExecutionPlan* plan, arangodb::basics::StringBuffer* buffer) const {
   SortInformation result;
@@ -181,10 +172,7 @@ SortInformation SortNode::getSortInformation(
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief estimateCost
-////////////////////////////////////////////////////////////////////////////////
-
 double SortNode::estimateCost(size_t& nrItems) const {
   double depCost = _dependencies.at(0)->getCost(nrItems);
   if (nrItems <= 3.0) {

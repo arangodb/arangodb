@@ -1,6 +1,5 @@
 <script id="applicationsView.ejs" type="text/template">
 <div class="headerBar">
-  <a class="arangoHeader">Services</a>
   <div class="headerButtonBar">
     <ul class="headerButtonList">
       <li>
@@ -16,7 +15,7 @@
   <div id="foxxDropdown" class="dropdownInner">
     <ul>
       <li class="nav-header">Type</li>
-      <li><a href="#applications">
+      <li><a href="#services">
         <label class="checkbox checkboxLabel">
           <input class="css-checkbox" type="checkbox" id="checkProduction"/>
           <i class="fa"></i>
@@ -24,7 +23,7 @@
         </label>
       </a></li>
 
-      <li><a href="#applications">
+      <li><a href="#services">
         <label class="checkbox checkboxLabel">
           <input class="css-checkbox" type="checkbox" id="checkDevel"/>
           <i class="fa"></i>
@@ -32,11 +31,11 @@
         </label>
       </a></li>
 
-      <li><a href="#applications">
+      <li><a href="#services">
         <label class="checkbox checkboxLabel">
           <input class="css-checkbox" id="checkSystem" type="checkbox"/>
           <i class="fa"></i>
-          System applications
+          System Services
         </label>
       </a></li>
     </ul>
@@ -45,8 +44,8 @@
 
 <div class="contentDiv">
   <div id="installed">
-    <div id="installedList" class="tileList">
-      <div class="tile">
+    <div id="installedList" class="tileList pure-u">
+      <div class="tile pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-3 pure-u-lg-1-4 pure-u-xl-1-6">
         <div class="fullBorderBox">
           <a href="#" id="addApp" class="add"><span class="pull-left add-Icon"><i class="fa fa-plus-circle"></i>
 </span> Add Service</a>

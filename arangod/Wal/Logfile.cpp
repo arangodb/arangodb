@@ -24,20 +24,16 @@
 #include "Logfile.h"
 #include "Basics/FileUtils.h"
 #include "Basics/files.h"
+#include "VocBase/DatafileHelper.h"
 
+using namespace arangodb;
 using namespace arangodb::wal;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the logfile
-////////////////////////////////////////////////////////////////////////////////
-
 Logfile::Logfile(Logfile::IdType id, TRI_datafile_t* df, StatusType status)
     : _id(id), _users(0), _df(df), _status(status), _collectQueueSize(0) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the logfile
-////////////////////////////////////////////////////////////////////////////////
-
 Logfile::~Logfile() {
   if (_df != nullptr) {
     TRI_CloseDatafile(_df);
@@ -45,10 +41,7 @@ Logfile::~Logfile() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new logfile
-////////////////////////////////////////////////////////////////////////////////
-
 Logfile* Logfile::createNew(std::string const& filename, Logfile::IdType id,
                             uint32_t size) {
   TRI_datafile_t* df = TRI_CreateDatafile(
@@ -66,10 +59,7 @@ Logfile* Logfile::createNew(std::string const& filename, Logfile::IdType id,
   return new Logfile(id, df, StatusType::EMPTY);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief open an existing logfile
-////////////////////////////////////////////////////////////////////////////////
-
 Logfile* Logfile::openExisting(std::string const& filename, Logfile::IdType id,
                                bool wasCollected, bool ignoreErrors) {
   TRI_datafile_t* df = TRI_OpenDatafile(filename.c_str(), ignoreErrors);
@@ -102,10 +92,7 @@ Logfile* Logfile::openExisting(std::string const& filename, Logfile::IdType id,
   return logfile;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a logfile is empty
-////////////////////////////////////////////////////////////////////////////////
-
 int Logfile::judge(std::string const& filename) {
   off_t filesize = basics::FileUtils::size(filename);
 
@@ -147,45 +134,15 @@ int Logfile::judge(std::string const& filename) {
   return TRI_ERROR_ARANGO_DATAFILE_EMPTY;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief reserve space and update the current write position
-////////////////////////////////////////////////////////////////////////////////
-
 char* Logfile::reserve(size_t size) {
-  size = TRI_DF_ALIGN_BLOCK(size);
+  size = DatafileHelper::AlignedSize<size_t>(size);
 
   char* result = _df->_next;
 
   _df->_next += size;
-  _df->_currentSize += (TRI_voc_size_t)size;
+  _df->_currentSize += static_cast<TRI_voc_size_t>(size);
 
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a header marker
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_df_header_marker_t Logfile::getHeaderMarker() const {
-  TRI_df_header_marker_t header;
-  size_t const size = sizeof(TRI_df_header_marker_t);
-  TRI_InitMarkerDatafile((char*)&header, TRI_DF_MARKER_HEADER, size);
-
-  header._version = TRI_DF_VERSION;
-  header._maximalSize = static_cast<TRI_voc_size_t>(allocatedSize());
-  header._fid = static_cast<TRI_voc_fid_t>(_id);
-
-  return header;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a footer marker
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_df_footer_marker_t Logfile::getFooterMarker() const {
-  TRI_df_footer_marker_t footer;
-  size_t const size = sizeof(TRI_df_footer_marker_t);
-  TRI_InitMarkerDatafile((char*)&footer, TRI_DF_MARKER_FOOTER, size);
-
-  return footer;
-}

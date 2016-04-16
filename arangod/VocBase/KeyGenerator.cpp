@@ -32,6 +32,7 @@
 
 #include <array>
 
+using namespace arangodb;
 using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -140,11 +141,10 @@ KeyGenerator* KeyGenerator::factory(VPackSlice const& options) {
       VPackSlice const incrementSlice = options.get("increment");
 
       if (incrementSlice.isNumber()) {
-        if (incrementSlice.isDouble()) {
-          if (incrementSlice.getDouble() <= 0.0) {
-            // negative or 0 increment is not allowed
-            return nullptr;
-          }
+        double v = incrementSlice.getNumericValue<double>();
+        if (v <= 0.0) {
+          // negative or 0 increment is not allowed
+          return nullptr;
         }
 
         increment = incrementSlice.getNumericValue<uint64_t>();
@@ -157,12 +157,12 @@ KeyGenerator* KeyGenerator::factory(VPackSlice const& options) {
       VPackSlice const offsetSlice = options.get("offset");
 
       if (offsetSlice.isNumber()) {
-        if (offsetSlice.isDouble()) {
-          if (offsetSlice.getDouble() < 0.0) {
-            // negative or 0 offset is not allowed
-            return nullptr;
-          }
+        double v = offsetSlice.getNumericValue<double>();
+        if (v < 0.0) {
+          // negative or 0 offset is not allowed
+          return nullptr;
         }
+
         offset = offsetSlice.getNumericValue<uint64_t>();
 
         if (offset >= UINT64_MAX) {
@@ -230,23 +230,21 @@ TraditionalKeyGenerator::~TraditionalKeyGenerator() {}
 /// @brief validate a key
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TraditionalKeyGenerator::validateKey(char const* key) {
+bool TraditionalKeyGenerator::validateKey(char const* key, size_t len) {
   unsigned char const* p = reinterpret_cast<unsigned char const*>(key);
-  unsigned char const* s = p;
+  size_t pos = 0;
 
   while (true) {
-    unsigned char c = *p;
-
-    if (c == '\0') {
-      return ((p - s) > 0) && ((p - s) <= TRI_VOC_KEY_MAX_LENGTH);
+    if (pos >= len || *p == '\0') {
+      return (pos > 0) && (pos <= TRI_VOC_KEY_MAX_LENGTH);
     }
 
-    if (LookupTable[c]) {
-      ++p;
-      continue;
+    if (!LookupTable[*p]) {
+      return false;
     }
 
-    return false;
+    ++p;
+    ++pos;
   }
 }
 
@@ -270,7 +268,7 @@ int TraditionalKeyGenerator::validate(std::string const& key, bool isRestore) {
   }
 
   // validate user-supplied key
-  if (!validateKey(key.c_str())) {
+  if (!validateKey(key.c_str(), key.size())) {
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
   }
 
@@ -281,7 +279,7 @@ int TraditionalKeyGenerator::validate(std::string const& key, bool isRestore) {
 /// @brief track usage of a key
 ////////////////////////////////////////////////////////////////////////////////
 
-void TraditionalKeyGenerator::track(TRI_voc_key_t) {}
+void TraditionalKeyGenerator::track(std::string const&) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a VPack representation of the generator
@@ -319,22 +317,21 @@ AutoIncrementKeyGenerator::~AutoIncrementKeyGenerator() {}
 /// @brief validate a numeric key
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AutoIncrementKeyGenerator::validateKey(char const* key) {
+bool AutoIncrementKeyGenerator::validateKey(char const* key, size_t len) {
   char const* p = key;
+  size_t pos = 0;
 
   while (true) {
-    char c = *p;
-
-    if (c == '\0') {
-      return ((p - key) > 0) && ((p - key) <= TRI_VOC_KEY_MAX_LENGTH);
+    if (pos >= len || *p == '\0') {
+      return (pos > 0) && (pos <= TRI_VOC_KEY_MAX_LENGTH);
     }
 
-    if (c >= '0' && c <= '9') {
-      ++p;
-      continue;
+    if (*p < '0' || *p > '9') {
+      return false;
     }
 
-    return false;
+    ++p;
+    ++pos;
   }
 }
 
@@ -382,7 +379,7 @@ int AutoIncrementKeyGenerator::validate(std::string const& key,
   }
 
   // validate user-supplied key
-  if (!validateKey(key.c_str())) {
+  if (!validateKey(key.c_str(), key.size())) {
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
   }
 
@@ -401,7 +398,7 @@ int AutoIncrementKeyGenerator::validate(std::string const& key,
 /// @brief track usage of a key
 ////////////////////////////////////////////////////////////////////////////////
 
-void AutoIncrementKeyGenerator::track(TRI_voc_key_t key) {
+void AutoIncrementKeyGenerator::track(std::string const& key) {
   // check the numeric key part
   uint64_t value = StringUtils::uint64(key);
 
@@ -427,9 +424,15 @@ void AutoIncrementKeyGenerator::toVelocyPack(VPackBuilder& builder) const {
 /// @brief validate a document id (collection name + / + document key)
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ValidateDocumentIdKeyGenerator(char const* key, size_t* split) {
+bool TRI_ValidateDocumentIdKeyGenerator(char const* key, size_t len,
+                                        size_t* split) {
+  if (len == 0) {
+    return false;
+  }
+
   char const* p = key;
   char c = *p;
+  size_t pos = 0;
 
   // extract collection name
   if (!(c == '_' || (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') ||
@@ -438,13 +441,18 @@ bool TRI_ValidateDocumentIdKeyGenerator(char const* key, size_t* split) {
   }
 
   ++p;
+  ++pos;
 
-  while (1) {
+  while (true) {
+    if (pos >= len) {
+      return false;
+    }
+
     c = *p;
-
     if (c == '_' || c == '-' || (c >= '0' && c <= '9') ||
         (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) {
       ++p;
+      ++pos;
       continue;
     }
 
@@ -455,14 +463,15 @@ bool TRI_ValidateDocumentIdKeyGenerator(char const* key, size_t* split) {
     return false;
   }
 
-  if (p - key > TRI_COL_NAME_LENGTH) {
+  if (pos > TRI_COL_NAME_LENGTH) {
     return false;
   }
 
   // store split position
-  *split = p - key;
+  *split = pos;
   ++p;
+  ++pos;
 
   // validate document key
-  return TraditionalKeyGenerator::validateKey(p);
+  return TraditionalKeyGenerator::validateKey(p, len - pos);
 }

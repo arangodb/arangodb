@@ -118,7 +118,7 @@ class SliceContainer {
     if (_data == nullptr) {
       return Slice();
     }
-    return Slice(_data, &Options::Defaults);
+    return Slice(_data);
   } 
   
   inline uint8_t const* begin() const { return _data; }

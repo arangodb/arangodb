@@ -27,19 +27,26 @@
 #include "AgencyCommon.h"
 #include "AgentCallback.h"
 #include "Constituent.h"
+#include "SanityCheck.h"
 #include "State.h"
 #include "Store.h"
 
+struct TRI_server_t;
+struct TRI_vocbase_t;
+
 namespace arangodb {
+class ApplicationV8;
+namespace aql {
+class QueryRegistry;
+}
+
 namespace consensus {
 
 class Agent : public arangodb::Thread {
- public:
-  /// @brief Default ctor
-  Agent();
 
+public:
   /// @brief Construct with program options
-  explicit Agent(config_t const&);
+  Agent(TRI_server_t*, config_t const&, ApplicationV8*, aql::QueryRegistry*);
 
   /// @brief Clean up
   virtual ~Agent();
@@ -49,6 +56,10 @@ class Agent : public arangodb::Thread {
 
   /// @brief Get current term
   id_t id() const;
+
+  TRI_vocbase_t* vocbase() const {
+    return _vocbase;
+  }
 
   /// @brief Vote request
   priv_rpc_ret_t requestVote(term_t, id_t, index_t, index_t, query_t const&);
@@ -68,6 +79,8 @@ class Agent : public arangodb::Thread {
 
   /// @brief Leader ID
   id_t leaderID() const;
+
+  /// @brief Are we leading?
   bool leading() const;
 
   /// @brief Pick up leadership tasks
@@ -103,7 +116,7 @@ class Agent : public arangodb::Thread {
   void reportIn(id_t id, index_t idx);
 
   /// @brief Wait for slaves to confirm appended entries
-  bool waitFor(index_t last_entry, duration_t timeout = duration_t(2000));
+  bool waitFor(index_t last_entry, double timeout = 2.0);
 
   /// @brief Convencience size of agency
   size_t size() const;
@@ -133,10 +146,19 @@ class Agent : public arangodb::Thread {
   Store const& spearhead() const; 
 
  private:
+  TRI_server_t* _server;
+  TRI_vocbase_t* _vocbase; 
+  ApplicationV8* _applicationV8;
+  aql::QueryRegistry* _queryRegistry;
+
   Constituent _constituent; /**< @brief Leader election delegate */
+#warning TODO name convention
+  SanityCheck _sanity_check; /**< @brief sanitychecking */
   State _state;             /**< @brief Log replica              */
+  
   config_t _config;         /**< @brief Command line arguments   */
 
+#warning TODO name convention
   std::atomic<index_t> _last_commit_index; /**< @brief Last commit index */
 
   arangodb::Mutex _uncommitedLock; /**< @brief  */
@@ -145,13 +167,14 @@ class Agent : public arangodb::Thread {
   Store _read_db;   /**< @brief Read key value store */
 
   arangodb::basics::ConditionVariable _cv; /**< @brief Internal callbacks */
+#warning TODO name convention
   arangodb::basics::ConditionVariable _rest_cv; /**< @brief Rest handler */
 
   std::vector<index_t>
       _confirmed;          /**< @brief Confirmed log index of each slave */
   arangodb::Mutex _ioLock; /**< @brief Read/Write lock */
 };
-}
-}
+
+}}
 
 #endif

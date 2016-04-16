@@ -86,38 +86,23 @@ DMG_NAME := ArangoDB-CLI.app
 
 pack-dmg:
 	rm -rf Build && mkdir Build
-
-	./configure \
-		--prefix=/opt/arangodb \
-		CPPFLAGS="-I`brew --prefix`/opt/openssl/include" \
-		LDFLAGS="-L`brew --prefix`/opt/openssl/lib"
-
 	${MAKE} pack-dmg-cmake
 
 pack-dmg-cmake:
 	cd Build && cmake \
-		-D "ARANGODB_VERSION=${VERSION}" \
 		-D "BUILD_PACKAGE=dmg-cli" \
 		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
 		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
 		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
-		-D "LIBEV_VERSION=${LIBEV_VERSION}" \
 		-D "OPENSSL_INCLUDE=`brew --prefix`/opt/openssl/include" \
 		-D "OPENSSL_LIB_PATH=`brew --prefix`/opt/openssl/lib" \
 		-D "OPENSSL_LIBS=`brew --prefix`/opt/openssl/lib/libssl.a;`brew --prefix`/opt/openssl/lib/libcrypto.a" \
-		-D "V8_VERSION=${V8_VERSION}" \
-		-D "ZLIB_VERSION=${ZLIB_VERSION}" \
 		..
-
-	${MAKE} .libev-build-64
-	${MAKE} .zlib-build-64
-	${MAKE} .v8-build-64
 
 	${MAKE} ${BUILT_SOURCES}
 
 	test -d bin || mkdir bin
-	make bin/etcd-arango
 
 	rm -f ./.file-list-js
 	cd Build && ${MAKE}
@@ -138,29 +123,19 @@ PACK_DESTDIR ?= .
 
 pack-macosxcode:
 	rm -rf Build && mkdir Build
-
-	./configure \
-		--prefix=/opt/arangodb \
-		CPPFLAGS="-I`brew --prefix`/opt/openssl/include" \
-		LDFLAGS="-L`brew --prefix`/opt/openssl/lib"
-
 	${MAKE} -f GNUMakefile pack-macosxcode-cmake MOREOPTS='$(MOREOPTS)'
 
 pack-macosxcode-cmake:
 	rm -f ./.file-list-js
 	cd Build && cmake \
-		-D "ARANGODB_VERSION=${VERSION}" \
 		-D "BUILD_PACKAGE=dmg-cli" \
 		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
 		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
 		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
-		-D "LIBEV_VERSION=${LIBEV_VERSION}" \
 		-D "OPENSSL_INCLUDE=`brew --prefix`/opt/openssl/include" \
 		-D "OPENSSL_LIB_PATH=`brew --prefix`/opt/openssl/lib" \
 		-D "OPENSSL_LIBS=`brew --prefix`/opt/openssl/lib/libssl.a;`brew --prefix`/opt/openssl/lib/libcrypto.a" \
-		-D "V8_VERSION=${V8_VERSION}" \
-		-D "ZLIB_VERSION=${ZLIB_VERSION}" \
 		-G Xcode \
 		$(MOREOPTS) \
 		..
@@ -179,38 +154,24 @@ PACK_DESTDIR ?= .
 pack-macosx:
 	rm -rf Build && mkdir Build
 
-	./configure \
-		--prefix=/opt/arangodb \
-		CPPFLAGS="-I`brew --prefix`/opt/openssl/include" \
-		LDFLAGS="-L`brew --prefix`/opt/openssl/lib"
-
 	${MAKE} pack-macosx-cmake MOREOPTS='$(MOREOPTS)'
 
 pack-macosx-cmake:
 	cd Build && cmake \
-		-D "ARANGODB_VERSION=${VERSION}" \
 		-D "BUILD_PACKAGE=dmg-cli" \
 		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
 		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
 		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
-		-D "LIBEV_VERSION=${LIBEV_VERSION}" \
 		-D "OPENSSL_INCLUDE=`brew --prefix`/opt/openssl/include" \
 		-D "OPENSSL_LIB_PATH=`brew --prefix`/opt/openssl/lib" \
 		-D "OPENSSL_LIBS=`brew --prefix`/opt/openssl/lib/libssl.a;`brew --prefix`/opt/openssl/lib/libcrypto.a" \
-		-D "V8_VERSION=${V8_VERSION}" \
-		-D "ZLIB_VERSION=${ZLIB_VERSION}" \
 		$(MOREOPTS) \
 		..
-
-	${MAKE} .libev-build-64
-	${MAKE} .zlib-build-64
-	${MAKE} .v8-build-64
 
 	${MAKE} ${BUILT_SOURCES}
 
 	test -d bin || mkdir bin
-	make bin/etcd-arango
 
 	rm -f ./.file-list-js
 	cd Build && ${MAKE}
@@ -228,15 +189,6 @@ pack-macosx-cmake:
 pack-arm:
 	rm -rf Build && mkdir Build
 
-	./configure \
-		--prefix=/usr \
-		--sysconfdir=/etc \
-		--localstatedir=/var
-
-	touch .libev-build-32
-	touch .v8-build-32
-	touch .zlib-build-32
-
 	${MAKE} pack-arm-cmake
 
 pack-arm-cmake:
@@ -250,10 +202,7 @@ pack-arm-cmake:
 		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
 		-D "ETCDIR=${sysconfdir}" \
-		-D "LIBEV_VERSION=${LIBEV_VERSION}" \
-		-D "V8_VERSION=${V8_VERSION}" \
 		-D "VARDIR=${localstatedir}" \
-		-D "ZLIB_VERSION=${ZLIB_VERSION}" \
 		$(MOREOPTS) \
 		..
 
@@ -278,18 +227,10 @@ pack-deb-cmake:
 		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
 		-D "ETCDIR=${sysconfdir}" \
-		-D "LIBEV_VERSION=${LIBEV_VERSION}" \
-		-D "V8_VERSION=${V8_VERSION}" \
 		-D "VARDIR=${localstatedir}" \
-		-D "ZLIB_VERSION=${ZLIB_VERSION}" \
 		$(MOREOPTS) \
 		..
 
-	${MAKE} .libev-build-64
-	${MAKE} .zlib-build-64
-	${MAKE} .v8-build-64
-
-	${MAKE} ${BUILT_SOURCES}
 	${MAKE} ${BUILT_SOURCES}
 
 	rm -f ./.file-list-js

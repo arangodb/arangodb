@@ -58,14 +58,6 @@ extern int32_t const WRP_VOCBASE_COL_TYPE;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a v8 document id value from the parameters
-////////////////////////////////////////////////////////////////////////////////
-
-v8::Handle<v8::Value> V8DocumentId(v8::Isolate* isolate,
-                                   std::string const& collectionName,
-                                   std::string const& key);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a v8 revision id value from the internal revision id
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -91,5 +83,17 @@ bool ExtractDocumentHandle(v8::Isolate* isolate,
                            v8::Handle<v8::Value> const val,
                            std::string& collectionName,
                            std::unique_ptr<char[]>& key, TRI_voc_rid_t& rid);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parse document or document handle from a v8 value (string | object)
+/// Note that the builder must already be open with an object and will remain
+/// open afterwards.
+////////////////////////////////////////////////////////////////////////////////
+
+bool ExtractDocumentHandle(v8::Isolate* isolate,
+                           v8::Handle<v8::Value> const val,
+                           std::string& collectionName,
+                           arangodb::velocypack::Builder& builder,
+                           bool includeRev);
 
 #endif

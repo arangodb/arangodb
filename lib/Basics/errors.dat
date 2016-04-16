@@ -25,10 +25,7 @@ ERROR_CANNOT_CREATE_DIRECTORY,19,"cannot create directory","Will be raised when 
 ERROR_CANNOT_CREATE_TEMP_FILE,20,"cannot create temporary file","Will be raised when an attempt to create a temporary file fails."
 ERROR_REQUEST_CANCELED,21,"canceled request","Will be raised when a request is canceled by the user."
 ERROR_DEBUG,22,"intentional debug error","Will be raised intentionally during debugging."
-ERROR_AID_NOT_FOUND,23,"internal error with attribute ID in shaper","Will be raised if an attribute ID is not found in the shaper but should have been."
-ERROR_LEGEND_INCOMPLETE,24,"internal error if a legend could not be created","Will be raised if the legend generator was only given access to the shape and some sids are in the data object (inhomogeneous lists)."
 ERROR_IP_ADDRESS_INVALID,25,"IP address is invalid","Will be raised when the structure of an IP address is invalid."
-ERROR_LEGEND_NOT_IN_WAL_FILE,26,"internal error if a legend for a marker does not yet exist in the same WAL file","Will be raised internally, then fixed internally, and never come out to the user."
 ERROR_FILE_EXISTS,27,"file exists","Will be raised when a file already exists."
 ERROR_LOCKED,28,"locked","Will be raised when a resource or an operation is locked."
 ERROR_DEADLOCK,29,"deadlock detected","Will be raised when a deadlock is detected when accessing collections."
@@ -58,7 +55,6 @@ ERROR_HTTP_SUPERFLUOUS_SUFFICES,601,"superfluous URL suffices","Will be raised w
 ################################################################################
 
 ERROR_ARANGO_ILLEGAL_STATE,1000,"illegal state","Internal error that will be raised when the datafile is not in the required state."
-ERROR_ARANGO_SHAPER_FAILED,1001,"could not shape document","Internal error that will be raised when the shaper encountered a problem."
 ERROR_ARANGO_DATAFILE_SEALED,1002,"datafile sealed","Internal error that will be raised when trying to write to a datafile."
 ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE,1003,"unknown type","Internal error that will be raised when an unknown collection type is encountered."
 ERROR_ARANGO_READ_ONLY,1004,"read only","Internal error that will be raised when trying to write to a read-only datafile or collection."
@@ -104,7 +100,6 @@ ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED,1210,"unique constraint violated","Will 
 ERROR_ARANGO_INDEX_NOT_FOUND,1212,"index not found","Will be raised when an index with a given identifier is unknown."
 ERROR_ARANGO_CROSS_COLLECTION_REQUEST,1213,"cross collection request not allowed","Will be raised when a cross-collection is requested."
 ERROR_ARANGO_INDEX_HANDLE_BAD,1214,"illegal index handle","Will be raised when a index handle is corrupt."
-ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED,1215,"cap constraint already defined","Will be raised when a cap constraint was already defined."
 ERROR_ARANGO_DOCUMENT_TOO_LARGE,1216,"document too large","Will be raised when the document cannot fit into any datafile because of it is too large."
 ERROR_ARANGO_COLLECTION_NOT_UNLOADED,1217,"collection must be unloaded","Will be raised when a collection should be unloaded, but has a different status."
 ERROR_ARANGO_COLLECTION_TYPE_INVALID,1218,"collection type invalid","Will be raised when an invalid collection type is used in a request."
@@ -127,6 +122,7 @@ ERROR_ARANGO_INDEX_CREATION_FAILED,1235,"index creation failed","Will be raised 
 ERROR_ARANGO_WRITE_THROTTLE_TIMEOUT,1236,"write-throttling timeout","Will be raised when the server is write-throttled and a write operation has waited too long for the server to process queued operations."
 ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,1237,"collection type mismatch","Will be raised when a collection has a different type from what has been expected."
 ERROR_ARANGO_COLLECTION_NOT_LOADED,1238,"collection not loaded","Will be raised when a collection is accessed that is not yet loaded."
+ERROR_ARANGO_DOCUMENT_REV_BAD,1239,"illegal document revision","Will be raised when a document revision is corrupt or is missing where needed."
 
 ################################################################################
 ## ArangoDB storage errors
@@ -188,6 +184,7 @@ ERROR_ARANGO_DOCUMENT_NOT_FOUND_OR_SHARDING_ATTRIBUTES_CHANGED,1475,"document no
 ERROR_CLUSTER_COULD_NOT_DETERMINE_ID,1476,"could not determine my ID from my local info","Will be raised if a cluster server at startup could not determine its own ID from the local info provided."
 ERROR_CLUSTER_ONLY_ON_DBSERVER,1477,"this operation is only valid on a DBserver in a cluster","Will be raised if there is an attempt to run a DBserver-only operation on a different type of node."
 ERROR_CLUSTER_BACKEND_UNAVAILABLE,1478,"A cluster backend which was required for the operation could not be reached","Will be raised if a required db server can't be reached."
+ERROR_CLUSTER_UNKNOWN_CALLBACK_ENDPOINT,1479,"An endpoint couldn't be found", "An endpoint couldn't be found"
 
 ################################################################################
 ## ArangoDB query errors

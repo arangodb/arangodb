@@ -30,22 +30,13 @@ using namespace arangodb::aql;
 
 arangodb::Mutex Optimizer::SetupLock;
 
-////////////////////////////////////////////////////////////////////////////////
 // @brief list of all rules
-////////////////////////////////////////////////////////////////////////////////
-
 std::map<int, Optimizer::Rule> Optimizer::_rules;
 
-////////////////////////////////////////////////////////////////////////////////
 // @brief lookup from rule name to rule level
-////////////////////////////////////////////////////////////////////////////////
-
 std::unordered_map<std::string, int> Optimizer::_ruleLookup;
 
-////////////////////////////////////////////////////////////////////////////////
 // @brief constructor, this will initialize the rules database
-////////////////////////////////////////////////////////////////////////////////
-
 Optimizer::Optimizer(size_t maxNumberOfPlans)
     : _maxNumberOfPlans(maxNumberOfPlans > 0 ? maxNumberOfPlans
                                              : DefaultMaxNumberOfPlans) {
@@ -54,10 +45,7 @@ Optimizer::Optimizer(size_t maxNumberOfPlans)
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 // @brief add a plan to the optimizer
-////////////////////////////////////////////////////////////////////////////////
-
 bool Optimizer::addPlan(ExecutionPlan* plan, Rule const* rule, bool wasModified,
                         int newLevel) {
   TRI_ASSERT(plan != nullptr);
@@ -90,10 +78,7 @@ bool Optimizer::addPlan(ExecutionPlan* plan, Rule const* rule, bool wasModified,
   return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 // @brief the actual optimization
-////////////////////////////////////////////////////////////////////////////////
-
 int Optimizer::createPlans(ExecutionPlan* plan,
                            std::vector<std::string> const& rulesSpecification,
                            bool inspectSimplePlans) {
@@ -124,7 +109,7 @@ int Optimizer::createPlans(ExecutionPlan* plan,
   // which optimizer rules are disabled?
   std::unordered_set<int> disabledIds(getDisabledRuleIds(rulesSpecification));
 
-  // _plans contains the previous optimisation result
+  // _plans contains the previous optimization result
   _plans.clear();
   try {
     _plans.push_back(plan, 0);
@@ -137,12 +122,10 @@ int Optimizer::createPlans(ExecutionPlan* plan,
 
   while (leastDoneLevel < maxRuleLevel) {
     // std::cout << "Have " << _plans.size() << " plans:" << std::endl;
-    /*
-    for (auto const& p : _plans.list) {
-      p->show();
-      std::cout << std::endl;
-    }
-    */
+    // for (auto const& p : _plans.list) {
+    //   p->show();
+    //   std::cout << std::endl;
+    // }
 
     // int count = 0;
 
@@ -157,11 +140,9 @@ int Optimizer::createPlans(ExecutionPlan* plan,
         auto it = _rules.upper_bound(level);
         TRI_ASSERT(it != _rules.end());
 
-        /*
-        std::cout << "Trying rule " << it->second.name << " with level "
-                  << it->first << " on plan " << count++
-                  << std::endl;
-        */
+        // std::cout << "Trying rule " << it->second.name << " with level "
+        //          << it->first << " on plan " << count++
+        //          << std::endl;
 
         level = (*it).first;
         auto& rule = (*it).second;
@@ -245,22 +226,19 @@ int Optimizer::createPlans(ExecutionPlan* plan,
   sortPlans();
 #if 0
   // Only for debugging:
-  std::cout << "Optimisation ends with " << _plans.size() << " plans."
-            << std::endl;
-  for (auto const& p : _plans.list) {
-    p->show();
-    std::cout << "costing: " << p->getCost() << std::endl;
-    std::cout << std::endl;
-  }
+  // std::cout << "Optimization ends with " << _plans.size() << " plans."
+  //           << std::endl;
+  // for (auto const& p : _plans.list) {
+  //   p->show();
+  //   std::cout << "costing: " << p->getCost() << std::endl;
+  //   std::cout << std::endl;
+  // }
 #endif
 
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief translate a list of rule ids into rule names
-////////////////////////////////////////////////////////////////////////////////
-
 std::vector<std::string> Optimizer::translateRules(
     std::vector<int> const& rules) {
   std::vector<std::string> names;
@@ -276,10 +254,7 @@ std::vector<std::string> Optimizer::translateRules(
   return names;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief translate a single rule
-////////////////////////////////////////////////////////////////////////////////
-
 char const* Optimizer::translateRule(int rule) {
   auto it = _rules.find(rule);
 
@@ -290,10 +265,7 @@ char const* Optimizer::translateRule(int rule) {
   return nullptr;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief estimatePlans
-////////////////////////////////////////////////////////////////////////////////
-
 void Optimizer::estimatePlans() {
   for (auto& p : _plans.list) {
     if (!p->varUsageComputed()) {
@@ -305,20 +277,14 @@ void Optimizer::estimatePlans() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief sortPlans
-////////////////////////////////////////////////////////////////////////////////
-
 void Optimizer::sortPlans() {
   std::sort(_plans.list.begin(), _plans.list.end(),
             [](ExecutionPlan* const& a, ExecutionPlan* const& b)
                 -> bool { return a->getCost() < b->getCost(); });
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief look up the ids of all disabled rules
-////////////////////////////////////////////////////////////////////////////////
-
 std::unordered_set<int> Optimizer::getDisabledRuleIds(
     std::vector<std::string> const& names) const {
   std::unordered_set<int> disabled;
@@ -358,10 +324,7 @@ std::unordered_set<int> Optimizer::getDisabledRuleIds(
   return disabled;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief set up the optimizer rules once and forever
-////////////////////////////////////////////////////////////////////////////////
-
 void Optimizer::setupRules() {
   MUTEX_LOCKER(mutexLocker, SetupLock);
 
@@ -375,10 +338,7 @@ void Optimizer::setupRules() {
 
 // note that levels must be unique
 
-//////////////////////////////////////////////////////////////////////////////
 // "Pass 1": moving nodes "up" (potentially outside loops):
-//////////////////////////////////////////////////////////////////////////////
-
 #if 0
   // rule not yet tested
   registerRule("split-filters",
@@ -415,10 +375,7 @@ void Optimizer::setupRules() {
   registerRule("remove-redundant-calculations", removeRedundantCalculationsRule,
                removeRedundantCalculationsRule_pass1, true);
 
-  //////////////////////////////////////////////////////////////////////////////
   /// "Pass 2": try to remove redundant or unnecessary nodes
-  //////////////////////////////////////////////////////////////////////////////
-
   // remove filters from the query that are not necessary at all
   // filters that are always true will be removed entirely
   // filters that are always false will be replaced with a NoResults node
@@ -434,20 +391,14 @@ void Optimizer::setupRules() {
   registerRule("remove-redundant-sorts", removeRedundantSortsRule,
                removeRedundantSortsRule_pass2, true);
 
-  //////////////////////////////////////////////////////////////////////////////
   /// "Pass 3": interchange EnumerateCollection nodes in all possible ways
   ///           this is level 500, please never let new plans from higher
   ///           levels go back to this or lower levels!
-  //////////////////////////////////////////////////////////////////////////////
-
   registerRule("interchange-adjacent-enumerations",
                interchangeAdjacentEnumerationsRule,
                interchangeAdjacentEnumerationsRule_pass3, true);
 
-  //////////////////////////////////////////////////////////////////////////////
   // "Pass 4": moving nodes "up" (potentially outside loops) (second try):
-  //////////////////////////////////////////////////////////////////////////////
-
   // move calculations up the dependency chain (to pull them out of
   // inner loops etc.)
   registerRule("move-calculations-up-2", moveCalculationsUpRule,
@@ -459,13 +410,10 @@ void Optimizer::setupRules() {
                true);
 
   // merge filters into traversals
-  registerRule("merge-traversal-filter", mergeFilterIntoTraversalRule,
-               mergeFilterIntoTraversalRule_pass6, true);
+  registerRule("optimize-traversals", optimizeTraversalsRule,
+               optimizeTraversalsRule_pass6, true);
 
-  //////////////////////////////////////////////////////////////////////////////
   /// "Pass 5": try to remove redundant or unnecessary nodes (second try)
-  //////////////////////////////////////////////////////////////////////////////
-
   // remove filters from the query that are not necessary at all
   // filters that are always true will be removed entirely
   // filters that are always false will be replaced with a NoResults node
@@ -493,10 +441,7 @@ void Optimizer::setupRules() {
   registerRule("propagate-constant-attributes", propagateConstantAttributesRule,
                propagateConstantAttributesRule_pass5, true);
 
-  //////////////////////////////////////////////////////////////////////////////
   /// "Pass 6": use indexes if possible for FILTER and/or SORT nodes
-  //////////////////////////////////////////////////////////////////////////////
-
   // try to replace simple OR conditions with IN
   registerRule("replace-or-with-in", replaceOrWithInRule,
                replaceOrWithInRule_pass6, true);

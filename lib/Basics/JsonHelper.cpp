@@ -30,17 +30,6 @@
 using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert a uint64 into a JSON string
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t* JsonHelper::uint64String(TRI_memory_zone_t* zone, uint64_t value) {
-  char buffer[21];
-  size_t len = TRI_StringUInt64InPlace(value, (char*)&buffer);
-
-  return TRI_CreateStringCopyJson(zone, buffer, len);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a JSON string or number into a uint64
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -71,86 +60,6 @@ uint64_t JsonHelper::stringUInt64(TRI_json_t const* json, char const* name) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a JSON key/value object from a key/value of strings
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t* JsonHelper::stringObject(
-    TRI_memory_zone_t* zone, std::map<std::string, std::string> const& values) {
-  TRI_json_t* json = TRI_CreateObjectJson(zone, values.size());
-
-  if (json == nullptr) {
-    return nullptr;
-  }
-
-  std::map<std::string, std::string>::const_iterator it;
-  for (it = values.begin(); it != values.end(); ++it) {
-    std::string const key = (*it).first;
-    std::string const value = (*it).second;
-
-    TRI_json_t* v = TRI_CreateStringCopyJson(zone, value.c_str(), value.size());
-    if (v != nullptr) {
-      TRI_Insert3ObjectJson(zone, json, key.c_str(), v);
-    }
-  }
-
-  return json;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a key/value object of strings from a JSON (sub-) object
-////////////////////////////////////////////////////////////////////////////////
-
-std::map<std::string, std::string> JsonHelper::stringObject(
-    TRI_json_t const* json) {
-  std::map<std::string, std::string> result;
-
-  if (isObject(json)) {
-    size_t const n = TRI_LengthVectorJson(json);
-
-    for (size_t i = 0; i < n; i += 2) {
-      auto k = static_cast<TRI_json_t const*>(
-          TRI_AtVector(&json->_value._objects, i));
-      auto v = static_cast<TRI_json_t const*>(
-          TRI_AtVector(&json->_value._objects, i + 1));
-
-      if (isString(k) && isString(v)) {
-        std::string const key =
-            std::string(k->_value._string.data, k->_value._string.length - 1);
-        std::string const value =
-            std::string(v->_value._string.data, v->_value._string.length - 1);
-        result.emplace(std::make_pair(key, value));
-      }
-    }
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a JSON object from an array of strings
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t* JsonHelper::stringArray(TRI_memory_zone_t* zone,
-                                    std::vector<std::string> const& values) {
-  TRI_json_t* json = TRI_CreateArrayJson(zone, values.size());
-
-  if (json == nullptr) {
-    return nullptr;
-  }
-
-  for (size_t i = 0, n = values.size(); i < n; ++i) {
-    TRI_json_t* v =
-        TRI_CreateStringCopyJson(zone, values[i].c_str(), values[i].size());
-
-    if (v != nullptr) {
-      TRI_PushBack3ArrayJson(zone, json, v);
-    }
-  }
-
-  return json;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an array of strings from a JSON (sub-) object
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -164,7 +73,7 @@ std::vector<std::string> JsonHelper::stringArray(TRI_json_t const* json) {
       auto v = static_cast<TRI_json_t const*>(
           TRI_AtVector(&json->_value._objects, i));
 
-      if (isString(v)) {
+      if (TRI_IsStringJson(v)) {
         result.emplace_back(
             std::string(v->_value._string.data, v->_value._string.length - 1));
       }
@@ -180,22 +89,6 @@ std::vector<std::string> JsonHelper::stringArray(TRI_json_t const* json) {
 
 TRI_json_t* JsonHelper::fromString(std::string const& data) {
   return TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data.c_str());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create JSON from string
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t* JsonHelper::fromString(char const* data) {
-  return TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create JSON from string
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t* JsonHelper::fromString(char const* data, size_t length) {
-  return TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -229,7 +122,7 @@ std::string JsonHelper::toString(TRI_json_t const* json) {
 
 TRI_json_t* JsonHelper::getObjectElement(TRI_json_t const* json,
                                          char const* name) {
-  if (!isObject(json)) {
+  if (!TRI_IsObjectJson(json)) {
     return nullptr;
   }
 
@@ -242,7 +135,7 @@ TRI_json_t* JsonHelper::getObjectElement(TRI_json_t const* json,
 
 std::string JsonHelper::getStringValue(TRI_json_t const* json,
                                        std::string const& defaultValue) {
-  if (isString(json)) {
+  if (TRI_IsStringJson(json)) {
     return std::string(json->_value._string.data,
                        json->_value._string.length - 1);
   }
@@ -257,7 +150,7 @@ std::string JsonHelper::getStringValue(TRI_json_t const* json, char const* name,
                                        std::string const& defaultValue) {
   TRI_json_t const* sub = getObjectElement(json, name);
 
-  if (isString(sub)) {
+  if (TRI_IsStringJson(sub)) {
     return std::string(sub->_value._string.data,
                        sub->_value._string.length - 1);
   }
@@ -272,7 +165,7 @@ bool JsonHelper::getBooleanValue(TRI_json_t const* json, char const* name,
                                  bool defaultValue) {
   TRI_json_t const* sub = getObjectElement(json, name);
 
-  if (isBoolean(sub)) {
+  if (TRI_IsBooleanJson(sub)) {
     return sub->_value._boolean;
   }
 
@@ -288,7 +181,7 @@ bool JsonHelper::checkAndGetBooleanValue(TRI_json_t const* json,
                                          char const* name) {
   TRI_json_t const* sub = getObjectElement(json, name);
 
-  if (!isBoolean(sub)) {
+  if (!TRI_IsBooleanJson(sub)) {
     std::string msg = "The attribute '" + std::string(name) +
                       "' was not found or is not a boolean.";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
@@ -306,7 +199,7 @@ std::string JsonHelper::checkAndGetStringValue(TRI_json_t const* json,
                                                char const* name) {
   TRI_json_t const* sub = getObjectElement(json, name);
 
-  if (!isString(sub)) {
+  if (!TRI_IsStringJson(sub)) {
     std::string msg = "The attribute '" + std::string(name) +
                       "' was not found or is not a string.";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
@@ -323,7 +216,7 @@ TRI_json_t const* JsonHelper::checkAndGetObjectValue(TRI_json_t const* json,
                                                      char const* name) {
   TRI_json_t const* sub = getObjectElement(json, name);
 
-  if (!isObject(sub)) {
+  if (!TRI_IsObjectJson(sub)) {
     std::string msg = "The attribute '" + std::string(name) +
                       "' was not found or is not an object.";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
@@ -341,7 +234,7 @@ TRI_json_t const* JsonHelper::checkAndGetArrayValue(TRI_json_t const* json,
                                                     char const* name) {
   TRI_json_t const* sub = getObjectElement(json, name);
 
-  if (!isArray(sub)) {
+  if (!TRI_IsArrayJson(sub)) {
     std::string msg = "The attribute '" + std::string(name) +
                       "' was not found or is not an array.";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);

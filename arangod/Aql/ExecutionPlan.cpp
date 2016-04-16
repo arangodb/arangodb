@@ -39,16 +39,19 @@
 #include "Aql/WalkerWorker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/JsonHelper.h"
+#include "Basics/tri-strings.h"
+#include "Basics/VelocyPackHelper.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/Options.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
 using namespace arangodb::basics;
 
 using JsonHelper = arangodb::basics::JsonHelper;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the plan
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionPlan::ExecutionPlan(Ast* ast)
     : _ids(),
       _root(nullptr),
@@ -58,20 +61,14 @@ ExecutionPlan::ExecutionPlan(Ast* ast)
       _lastLimitNode(nullptr),
       _subqueries() {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the plan, frees all assigned nodes
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionPlan::~ExecutionPlan() {
   for (auto& x : _ids) {
     delete x.second;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan from an AST
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionPlan* ExecutionPlan::instantiateFromAst(Ast* ast) {
   TRI_ASSERT(ast != nullptr);
 
@@ -94,59 +91,49 @@ ExecutionPlan* ExecutionPlan::instantiateFromAst(Ast* ast) {
   return plan.release();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief process the list of collections in a JSON
-////////////////////////////////////////////////////////////////////////////////
-
-void ExecutionPlan::getCollectionsFromJson(Ast* ast,
-                                           arangodb::basics::Json const& json) {
+/// @brief process the list of collections in a VelocyPack
+void ExecutionPlan::getCollectionsFromVelocyPack(Ast* ast,
+                                                 VPackSlice const slice) {
   TRI_ASSERT(ast != nullptr);
 
-  arangodb::basics::Json jsonCollections = json.get("collections");
+  VPackSlice collectionsSlice = slice.get("collections");
 
-  if (!jsonCollections.isArray()) {
+  if (!collectionsSlice.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
         "json node \"collections\" not found or not an array");
   }
 
-  auto const size = jsonCollections.size();
-
-  for (size_t i = 0; i < size; i++) {
-    arangodb::basics::Json oneJsonCollection =
-        jsonCollections.at(static_cast<int>(i));
-    auto typeStr = arangodb::basics::JsonHelper::checkAndGetStringValue(
-        oneJsonCollection.json(), "type");
-
+  for (auto const& collection : VPackArrayIterator(collectionsSlice)) {
+    auto typeStr = arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
+        collection, "type");
     ast->query()->collections()->add(
-        arangodb::basics::JsonHelper::checkAndGetStringValue(
-            oneJsonCollection.json(), "name"),
+        arangodb::basics::VelocyPackHelper::checkAndGetStringValue(collection,
+                                                                   "name"),
         TRI_GetTransactionTypeFromStr(
-            arangodb::basics::JsonHelper::checkAndGetStringValue(
-                oneJsonCollection.json(), "type").c_str()));
+            arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
+                collection, "type")
+                .c_str()));
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create an execution plan from JSON
-////////////////////////////////////////////////////////////////////////////////
-
-ExecutionPlan* ExecutionPlan::instantiateFromJson(
-    Ast* ast, arangodb::basics::Json const& json) {
+/// @brief create an execution plan from VelocyPack
+ExecutionPlan* ExecutionPlan::instantiateFromVelocyPack(
+    Ast* ast, VPackSlice const slice) {
   TRI_ASSERT(ast != nullptr);
 
   auto plan = std::make_unique<ExecutionPlan>(ast);
 
+  // TODO: in place slice => Json
+  Json json(TRI_UNKNOWN_MEM_ZONE,
+            arangodb::basics::VelocyPackHelper::velocyPackToJson(slice));
   plan->_root = plan->fromJson(json);
   plan->_varUsageComputed = true;
 
   return plan.release();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief clone the plan by recursively cloning starting from the root
-////////////////////////////////////////////////////////////////////////////////
-
 class CloneNodeAdder final : public WalkerWorker<ExecutionNode> {
   ExecutionPlan* _plan;
 
@@ -169,10 +156,7 @@ class CloneNodeAdder final : public WalkerWorker<ExecutionNode> {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief clone an existing execution plan
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionPlan* ExecutionPlan::clone() {
   auto plan = std::make_unique<ExecutionPlan>(_ast);
 
@@ -193,11 +177,8 @@ ExecutionPlan* ExecutionPlan::clone() {
   return plan.release();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan identical to this one
 ///   keep the memory of the plan on the query object specified.
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionPlan* ExecutionPlan::clone(Query const& query) {
   auto otherPlan = std::make_unique<ExecutionPlan>(query.ast());
 
@@ -208,10 +189,8 @@ ExecutionPlan* ExecutionPlan::clone(Query const& query) {
   return otherPlan.release();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief export to JSON, returns an AUTOFREE Json object
-////////////////////////////////////////////////////////////////////////////////
-
+/// DEPRECATED
 arangodb::basics::Json ExecutionPlan::toJson(Ast* ast, TRI_memory_zone_t* zone,
                                              bool verbose) const {
   // TODO
@@ -243,7 +222,10 @@ arangodb::basics::Json ExecutionPlan::toJson(Ast* ast, TRI_memory_zone_t* zone,
   }
 
   result.set("collections", jsonCollectionList);
-  result.set("variables", ast->variables()->toJson(TRI_UNKNOWN_MEM_ZONE));
+
+  VPackBuilder tmpTwo;
+  ast->variables()->toVelocyPack(tmpTwo);
+  result.set("variables", arangodb::basics::VelocyPackHelper::velocyPackToJson(tmpTwo.slice()));
   size_t nrItems = 0;
   result.set("estimatedCost", arangodb::basics::Json(_root->getCost(nrItems)));
   result.set("estimatedNrItems",
@@ -252,18 +234,58 @@ arangodb::basics::Json ExecutionPlan::toJson(Ast* ast, TRI_memory_zone_t* zone,
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get a list of all applied rules
-////////////////////////////////////////////////////////////////////////////////
+/// @brief export to VelocyPack
+std::shared_ptr<VPackBuilder> ExecutionPlan::toVelocyPack(Ast* ast, bool verbose) const {
+  auto builder = std::make_shared<VPackBuilder>();
 
+  toVelocyPack(*builder, ast, verbose);
+  return builder;
+}
+
+/// @brief export to VelocyPack
+void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast, bool verbose) const {
+  // keeps top level of built object open
+  _root->toVelocyPack(builder, verbose, true);
+
+  TRI_ASSERT(!builder.isClosed());
+
+  // set up rules
+  builder.add(VPackValue("rules"));
+  builder.openArray();
+  for (auto const& r : Optimizer::translateRules(_appliedRules)) {
+    builder.add(VPackValue(r));
+  }
+  builder.close();
+  
+  // set up collections
+  builder.add(VPackValue("collections"));
+  builder.openArray();
+  for (auto const& c : *ast->query()->collections()->collections()) {
+    builder.openObject();
+    builder.add("name", VPackValue(c.first));
+    builder.add("type",
+                VPackValue(TRI_TransactionTypeGetStr(c.second->accessType)));
+    builder.close();
+  }
+  builder.close();
+
+  // set up variables
+  builder.add(VPackValue("variables"));
+  ast->variables()->toVelocyPack(builder);
+
+  size_t nrItems = 0;
+  builder.add("estimatedCost", VPackValue(_root->getCost(nrItems)));
+  builder.add("estimatedNrItems", VPackValue(nrItems));
+
+  builder.close();
+}
+
+/// @brief get a list of all applied rules
 std::vector<std::string> ExecutionPlan::getAppliedRules() const {
   return Optimizer::translateRules(_appliedRules);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get a node by its id
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionNode* ExecutionPlan::getNodeById(size_t id) const {
   auto it = _ids.find(id);
 
@@ -278,10 +300,7 @@ ExecutionNode* ExecutionPlan::getNodeById(size_t id) const {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a calculation node for an arbitrary expression
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionNode* ExecutionPlan::createCalculation(
     Variable* out, Variable const* conditionVariable, AstNode const* expression,
     ExecutionNode* previous) {
@@ -325,11 +344,8 @@ ExecutionNode* ExecutionPlan::createCalculation(
   return collectNode;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the subquery node from an expression
 /// this will return a nullptr if the expression does not refer to a subquery
-////////////////////////////////////////////////////////////////////////////////
-
 SubqueryNode* ExecutionPlan::getSubqueryFromExpression(
     AstNode const* expression) const {
   TRI_ASSERT(expression != nullptr);
@@ -355,10 +371,7 @@ SubqueryNode* ExecutionPlan::getSubqueryFromExpression(
   return static_cast<SubqueryNode*>((*it).second);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the output variable from a node
-////////////////////////////////////////////////////////////////////////////////
-
 Variable const* ExecutionPlan::getOutVariable(ExecutionNode const* node) const {
   if (node->getType() == ExecutionNode::CALCULATION) {
     // CalculationNode has an outVariale() method
@@ -385,10 +398,7 @@ Variable const* ExecutionPlan::getOutVariable(ExecutionNode const* node) const {
                                  "invalid node type in getOutVariable");
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an anonymous COLLECT node (for a DISTINCT)
-////////////////////////////////////////////////////////////////////////////////
-
 CollectNode* ExecutionPlan::createAnonymousCollect(
     CalculationNode const* previous) {
   // generate an out variable for the COLLECT
@@ -411,10 +421,7 @@ CollectNode* ExecutionPlan::createAnonymousCollect(
   return en;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create modification options from an AST node
-////////////////////////////////////////////////////////////////////////////////
-
 ModificationOptions ExecutionPlan::createModificationOptions(
     AstNode const* node) {
   ModificationOptions options;
@@ -427,19 +434,19 @@ ModificationOptions ExecutionPlan::createModificationOptions(
       auto member = node->getMember(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
-        auto name = member->getStringValue();
+        std::string const name = member->getString();
         auto value = member->getMember(0);
 
         TRI_ASSERT(value->isConstant());
 
-        if (strcmp(name, "waitForSync") == 0) {
+        if (name == "waitForSync") {
           options.waitForSync = value->isTrue();
-        } else if (strcmp(name, "ignoreErrors") == 0) {
+        } else if (name == "ignoreErrors") {
           options.ignoreErrors = value->isTrue();
-        } else if (strcmp(name, "keepNull") == 0) {
+        } else if (name == "keepNull") {
           // nullMeansRemove is the opposite of keepNull
           options.nullMeansRemove = value->isFalse();
-        } else if (strcmp(name, "mergeObjects") == 0) {
+        } else if (name == "mergeObjects") {
           options.mergeObjects = value->isTrue();
         }
       }
@@ -481,10 +488,7 @@ ModificationOptions ExecutionPlan::createModificationOptions(
   return options;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create COLLECT options from an AST node
-////////////////////////////////////////////////////////////////////////////////
-
 CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
   CollectOptions options;
 
@@ -496,15 +500,15 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
       auto member = node->getMember(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
-        auto name = member->getStringValue();
+        std::string const name = member->getString();
         auto value = member->getMember(0);
 
         TRI_ASSERT(value->isConstant());
 
-        if (strcmp(name, "method") == 0) {
+        if (name == "method") {
           if (value->isStringValue()) {
             options.method =
-                CollectOptions::methodFromString(value->getStringValue());
+                CollectOptions::methodFromString(value->getString());
           }
         }
       }
@@ -514,10 +518,7 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
   return options;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief register a node with the plan, will delete node if addition fails
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionNode* ExecutionPlan::registerNode(ExecutionNode* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->id() > 0);
@@ -531,10 +532,7 @@ ExecutionNode* ExecutionPlan::registerNode(ExecutionNode* node) {
   return node;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a anonymous calculation node for an arbitrary expression
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionNode* ExecutionPlan::createTemporaryCalculation(
     AstNode const* expression, ExecutionNode* previous) {
   // generate a temporary variable
@@ -544,10 +542,7 @@ ExecutionNode* ExecutionPlan::createTemporaryCalculation(
   return createCalculation(out, nullptr, expression, previous);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief adds "previous" as dependency to "plan", returns "plan"
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionNode* ExecutionPlan::addDependency(ExecutionNode* previous,
                                             ExecutionNode* plan) {
   TRI_ASSERT(previous != nullptr);
@@ -563,10 +558,7 @@ ExecutionNode* ExecutionPlan::addDependency(ExecutionNode* previous,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan element from an AST FOR node
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
                                           AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_FOR);
@@ -585,7 +577,7 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
   // peek at second operand
   if (expression->type == NODE_TYPE_COLLECTION) {
     // second operand is a collection
-    char const* collectionName = expression->getStringValue();
+    std::string const collectionName = expression->getString();
     auto collections = _ast->query()->collections();
     auto collection = collections->get(collectionName);
 
@@ -613,10 +605,7 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
   return addDependency(previous, en);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan element from an AST FOR TRAVERSAL node
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
                                                 AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_TRAVERSAL);
@@ -635,8 +624,7 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
     for (size_t i = 0; i < n; ++i) {
       auto member = start->getMember(i);
       if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
-          strncmp(member->getStringValue(), TRI_VOC_ATTRIBUTE_ID,
-                  member->getStringLength()) == 0) {
+          member->getString() == TRI_VOC_ATTRIBUTE_ID) {
         start = member->getMember(0);
         break;
       }
@@ -681,10 +669,7 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
   return addDependency(previous, en);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan element from an AST FILTER node
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionNode* ExecutionPlan::fromNodeFilter(ExecutionNode* previous,
                                              AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_FILTER);
@@ -709,12 +694,9 @@ ExecutionNode* ExecutionPlan::fromNodeFilter(ExecutionNode* previous,
   return addDependency(previous, en);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan element from an AST LET node
 /// this also includes handling of subqueries (as subqueries can only occur
 /// inside LET nodes)
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionNode* ExecutionPlan::fromNodeLet(ExecutionNode* previous,
                                           AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_LET);
@@ -770,10 +752,7 @@ ExecutionNode* ExecutionPlan::fromNodeLet(ExecutionNode* previous,
   return addDependency(previous, en);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan element from an AST SORT node
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous,
                                            AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_SORT);
@@ -804,11 +783,10 @@ ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous,
       if (ascending->type == NODE_TYPE_VALUE) {
         if (ascending->value.type == VALUE_TYPE_STRING) {
           // special treatment for string values ASC/DESC
-          if (TRI_CaseEqualString(ascending->value.value._string, "ASC")) {
+          if (ascending->stringEquals("ASC", true)) {
             isAscending = true;
             handled = true;
-          } else if (TRI_CaseEqualString(ascending->value.value._string,
-                                         "DESC")) {
+          } else if (ascending->stringEquals("DESC", true)) {
             isAscending = false;
             handled = true;
           }
@@ -868,10 +846,7 @@ ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous,
   return addDependency(previous, en);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan element from an AST COLLECT node
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_COLLECT);
@@ -1023,12 +998,9 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous,
   return addDependency(previous, en);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan element from an AST COLLECT node, COUNT
 /// note that also a sort plan node will be added in front of the collect plan
 /// node
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionNode* ExecutionPlan::fromNodeCollectCount(ExecutionNode* previous,
                                                    AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_COLLECT_COUNT);
@@ -1088,10 +1060,7 @@ ExecutionNode* ExecutionPlan::fromNodeCollectCount(ExecutionNode* previous,
   return addDependency(previous, en);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan element from an AST LIMIT node
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionNode* ExecutionPlan::fromNodeLimit(ExecutionNode* previous,
                                             AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_LIMIT);
@@ -1138,10 +1107,7 @@ ExecutionNode* ExecutionPlan::fromNodeLimit(ExecutionNode* previous,
   return addDependency(previous, en);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan element from an AST RETURN node
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionNode* ExecutionPlan::fromNodeReturn(ExecutionNode* previous,
                                              AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_RETURN);
@@ -1166,17 +1132,14 @@ ExecutionNode* ExecutionPlan::fromNodeReturn(ExecutionNode* previous,
   return addDependency(previous, en);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan element from an AST REMOVE node
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous,
                                              AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_REMOVE);
   TRI_ASSERT(node->numMembers() == 4);
 
   auto options = createModificationOptions(node->getMember(0));
-  char const* collectionName = node->getMember(1)->getStringValue();
+  std::string const collectionName = node->getMember(1)->getString();
   auto collections = _ast->query()->collections();
   auto collection = collections->get(collectionName);
 
@@ -1210,17 +1173,14 @@ ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous,
   return addDependency(previous, en);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan element from an AST INSERT node
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous,
                                              AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_INSERT);
   TRI_ASSERT(node->numMembers() == 4);
 
   auto options = createModificationOptions(node->getMember(0));
-  char const* collectionName = node->getMember(1)->getStringValue();
+  std::string const collectionName = node->getMember(1)->getString();
   auto collections = _ast->query()->collections();
   auto collection = collections->get(collectionName);
   auto expression = node->getMember(2);
@@ -1249,17 +1209,14 @@ ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous,
   return addDependency(previous, en);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan element from an AST UPDATE node
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionNode* ExecutionPlan::fromNodeUpdate(ExecutionNode* previous,
                                              AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_UPDATE);
   TRI_ASSERT(node->numMembers() == 6);
 
   auto options = createModificationOptions(node->getMember(0));
-  char const* collectionName = node->getMember(1)->getStringValue();
+  std::string const collectionName = node->getMember(1)->getString();
   auto collections = _ast->query()->collections();
   auto collection = collections->get(collectionName);
   auto docExpression = node->getMember(2);
@@ -1310,17 +1267,14 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate(ExecutionNode* previous,
   return addDependency(previous, en);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan element from an AST REPLACE node
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionNode* ExecutionPlan::fromNodeReplace(ExecutionNode* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_REPLACE);
   TRI_ASSERT(node->numMembers() == 6);
 
   auto options = createModificationOptions(node->getMember(0));
-  char const* collectionName = node->getMember(1)->getStringValue();
+  std::string const collectionName = node->getMember(1)->getString();
   auto collections = _ast->query()->collections();
   auto collection = collections->get(collectionName);
   auto docExpression = node->getMember(2);
@@ -1371,17 +1325,14 @@ ExecutionNode* ExecutionPlan::fromNodeReplace(ExecutionNode* previous,
   return addDependency(previous, en);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan element from an AST UPSERT node
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionNode* ExecutionPlan::fromNodeUpsert(ExecutionNode* previous,
                                              AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_UPSERT);
   TRI_ASSERT(node->numMembers() == 7);
 
   auto options = createModificationOptions(node->getMember(0));
-  char const* collectionName = node->getMember(1)->getStringValue();
+  std::string const collectionName = node->getMember(1)->getString();
   auto collections = _ast->query()->collections();
   auto collection = collections->get(collectionName);
   auto docExpression = node->getMember(2);
@@ -1428,10 +1379,7 @@ ExecutionNode* ExecutionPlan::fromNodeUpsert(ExecutionNode* previous,
   return addDependency(previous, en);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan from an abstract syntax tree node
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
@@ -1537,10 +1485,7 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
   return en;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief find nodes of a certain type
-////////////////////////////////////////////////////////////////////////////////
-
 std::vector<ExecutionNode*> ExecutionPlan::findNodesOfType(
     ExecutionNode::NodeType type, bool enterSubqueries) {
   std::vector<ExecutionNode*> result;
@@ -1549,10 +1494,7 @@ std::vector<ExecutionNode*> ExecutionPlan::findNodesOfType(
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief find nodes of a certain types
-////////////////////////////////////////////////////////////////////////////////
-
 std::vector<ExecutionNode*> ExecutionPlan::findNodesOfType(
     std::vector<ExecutionNode::NodeType> const& types, bool enterSubqueries) {
   std::vector<ExecutionNode*> result;
@@ -1562,10 +1504,7 @@ std::vector<ExecutionNode*> ExecutionPlan::findNodesOfType(
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief find all end nodes in a plan
-////////////////////////////////////////////////////////////////////////////////
-
 std::vector<ExecutionNode*> ExecutionPlan::findEndNodes(
     bool enterSubqueries) const {
   std::vector<ExecutionNode*> result;
@@ -1574,10 +1513,7 @@ std::vector<ExecutionNode*> ExecutionPlan::findEndNodes(
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief check linkage of execution plan
-////////////////////////////////////////////////////////////////////////////////
-
 #if 0
 class LinkChecker : public WalkerWorker<ExecutionNode> {
 
@@ -1630,10 +1566,7 @@ void ExecutionPlan::checkLinkage () {
 
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief helper struct for findVarUsage
-////////////////////////////////////////////////////////////////////////////////
-
 struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
   std::unordered_set<Variable const*> _usedLater;
   std::unordered_set<Variable const*> _valid;
@@ -1688,10 +1621,7 @@ struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief determine and set _varsUsedLater in all nodes
-////////////////////////////////////////////////////////////////////////////////
-
 void ExecutionPlan::findVarUsage() {
   ::VarUsageFinder finder;
   root()->walk(&finder);
@@ -1700,17 +1630,11 @@ void ExecutionPlan::findVarUsage() {
   _varUsageComputed = true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief determine if the above are already set
-////////////////////////////////////////////////////////////////////////////////
-
 bool ExecutionPlan::varUsageComputed() const { return _varUsageComputed; }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief unlinkNodes, note that this does not delete the removed
 /// nodes and that one cannot remove the root node of the plan.
-////////////////////////////////////////////////////////////////////////////////
-
 void ExecutionPlan::unlinkNodes(
     std::unordered_set<ExecutionNode*> const& toRemove) {
   for (auto& node : toRemove) {
@@ -1718,11 +1642,8 @@ void ExecutionPlan::unlinkNodes(
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief unlinkNode, note that this does not delete the removed
 /// node and that one cannot remove the root node of the plan.
-////////////////////////////////////////////////////////////////////////////////
-
 void ExecutionPlan::unlinkNode(ExecutionNode* node, bool allowUnlinkingRoot) {
   auto parents = node->getParents();
 
@@ -1755,12 +1676,9 @@ void ExecutionPlan::unlinkNode(ExecutionNode* node, bool allowUnlinkingRoot) {
   _varUsageComputed = false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief replaceNode, note that <newNode> must be registered with the plan
 /// before this method is called, also this does not delete the old
 /// node and that one cannot replace the root node of the plan.
-////////////////////////////////////////////////////////////////////////////////
-
 void ExecutionPlan::replaceNode(ExecutionNode* oldNode,
                                 ExecutionNode* newNode) {
   TRI_ASSERT(oldNode->id() != newNode->id());
@@ -1787,14 +1705,11 @@ void ExecutionPlan::replaceNode(ExecutionNode* oldNode,
   _varUsageComputed = false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief insert <newNode> as a new (the first!) dependency of
 /// <oldNode> and make the former first dependency of <oldNode> a
 /// dependency of <newNode> (and no longer a direct dependency of
 /// <oldNode>).
 /// <newNode> must be registered with the plan before this method is called.
-////////////////////////////////////////////////////////////////////////////////
-
 void ExecutionPlan::insertDependency(ExecutionNode* oldNode,
                                      ExecutionNode* newNode) {
   TRI_ASSERT(oldNode->id() != newNode->id());
@@ -1813,10 +1728,7 @@ void ExecutionPlan::insertDependency(ExecutionNode* oldNode,
   _varUsageComputed = false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a plan from the JSON provided
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionNode* ExecutionPlan::fromJson(arangodb::basics::Json const& json) {
   ExecutionNode* ret = nullptr;
   arangodb::basics::Json nodes = json.get("nodes");
@@ -1887,11 +1799,8 @@ ExecutionNode* ExecutionPlan::fromJson(arangodb::basics::Json const& json) {
   return ret;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns true if a plan is so simple that optimizations would
 /// probably cost more than simply executing the plan
-////////////////////////////////////////////////////////////////////////////////
-
 bool ExecutionPlan::isDeadSimple() const {
   auto current = _root;
 
@@ -1923,10 +1832,7 @@ bool ExecutionPlan::isDeadSimple() const {
 
 #include <iostream>
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief show an overview over the plan
-////////////////////////////////////////////////////////////////////////////////
-
 struct Shower final : public WalkerWorker<ExecutionNode> {
   int indent;
 
@@ -1951,10 +1857,7 @@ struct Shower final : public WalkerWorker<ExecutionNode> {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief show an overview over the plan
-////////////////////////////////////////////////////////////////////////////////
-
 void ExecutionPlan::show() {
   Shower shower;
   _root->walk(&shower);

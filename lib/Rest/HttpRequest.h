@@ -28,7 +28,6 @@
 #include "Rest/GeneralRequest.h"
 
 #include "Basics/StringBuffer.h"
-#include "Basics/json.h"
 #include "Endpoint/ConnectionInfo.h"
 
 namespace arangodb {
@@ -73,9 +72,6 @@ class HttpRequest : public GeneralRequest {
   // the request body as VelocyPackBuilder
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(
       arangodb::velocypack::Options const*);
-
-  // the request body as TRI_json_t*
-  TRI_json_t* toJson(char**);
 
   using GeneralRequest::setHeader;
 

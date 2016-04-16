@@ -41,7 +41,6 @@
   var console = require("console");
   var userManager = require("@arangodb/users");
   var FoxxService = require("@arangodb/foxx/service");
-  require("@arangodb/cluster"); // TODO Is this unused or magic?
   var currentVersion = require("@arangodb/database-version").CURRENT_VERSION;
   var sprintf = internal.sprintf;
   var db = internal.db;
@@ -797,28 +796,6 @@
     });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _cluster_kickstarter_plans
-///
-/// create the _routing collection
-////////////////////////////////////////////////////////////////////////////////
-
-    addTask({
-      name:        "createKickstarterConfiguration",
-      description: "setup _cluster_kickstarter_plans collection",
-
-      mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
-      cluster:     [ CLUSTER_NONE ],
-      database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
-
-      task: function () {
-        //TODO add check if this is the main dispatcher
-        return createSystemCollection("_cluster_kickstarter_plans", {
-          journalSize: 4 * 1024 * 1024
-        });
-      }
-    });
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief insertRedirectionsAll
 ///
 /// create the default route in the _routing collection
@@ -1105,87 +1082,6 @@
         });
 
         return didWork;
-      }
-    });
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief upgrade a cluster plan
-////////////////////////////////////////////////////////////////////////////////
-
-    addTask({
-      name:        "upgradeClusterPlan",
-      description: "upgrade the cluster plan",
-
-      mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
-      cluster:     [ CLUSTER_NONE ],
-      database:    [ DATABASE_UPGRADE ],
-
-      task: function () {
-        var plans = db._collection("_cluster_kickstarter_plans");
-        var cursor = plans.all();
-        var endpointToURL = require("@arangodb/cluster/planner").endpointToURL;
-
-        while (cursor.hasNext()) {
-          var plan = cursor.next();
-          var commands = plan.plan.commands;
-          var dbServers;
-          var coordinators;
-          var endpoints;
-          var posCreateSystemColls;
-          var i;
-
-          for (i = 0;  i < commands.length;  ++i) {
-            var command = commands[i];
-
-            if (command.action === "sendConfiguration") {
-              dbServers = command.data.arango.Target.DBServers;
-              coordinators = command.data.arango.Target.Coordinators;
-              endpoints = command.data.arango.Target.MapIDToEndpoint;
-            }
-
-            if (command.action === "createSystemColls") {
-              posCreateSystemColls = i;
-            }
-          }
-
-          if (i === undefined) {
-            continue;
-          }
-
-          if (dbServers === undefined || coordinators === undefined || endpoints === undefined) {
-            continue;
-          }
-
-          var dbEndpoints = [];
-          var coorEndpoints = [];
-          var e;
-
-          for (i in dbServers) {
-            if (dbServers.hasOwnProperty(i)) {
-              e = endpoints[i];
-              dbEndpoints.push(endpointToURL(e.substr(1,e.length - 2)));
-            }
-          }
-
-          for (i in coordinators) {
-            if (coordinators.hasOwnProperty(i)) {
-              e = endpoints[i];
-              coorEndpoints.push(endpointToURL(e.substr(1,e.length - 2)));
-            }
-          }
-
-          var p = plan._shallowCopy;
-
-          p.plan.commands[posCreateSystemColls] = {
-            action: "bootstrapServers",
-            dbServers: dbEndpoints,
-            coordinators: coorEndpoints
-          };
-
-          plans.update(plan, p);
-        }
-
-        return true;
       }
     });
 

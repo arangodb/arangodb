@@ -30,8 +30,6 @@
 #include "Aql/Range.h"
 #include "Aql/types.h"
 
-struct TRI_document_collection_t;
-
 namespace arangodb {
 namespace aql {
 
@@ -57,46 +55,31 @@ class AqlItemBlock {
   friend class AqlItemBlockManager;
 
  public:
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief create the block
-  //////////////////////////////////////////////////////////////////////////////
-
   AqlItemBlock(size_t nrItems, RegisterId nrRegs);
 
-  AqlItemBlock(arangodb::basics::Json const& json);
+  explicit AqlItemBlock(arangodb::velocypack::Slice const);
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief destroy the block
-  //////////////////////////////////////////////////////////////////////////////
-
   ~AqlItemBlock() { destroy(); }
 
  private:
   void destroy();
 
  public:
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief getValue, get the value of a register
-  //////////////////////////////////////////////////////////////////////////////
-
   AqlValue getValue(size_t index, RegisterId varNr) const {
     TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
     return _data[index * _nrRegs + varNr];
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief getValue, get the value of a register by reference
-  //////////////////////////////////////////////////////////////////////////////
-
   AqlValue const& getValueReference(size_t index, RegisterId varNr) const {
     TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
     return _data[index * _nrRegs + varNr];
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief setValue, set the current value of a register
-  //////////////////////////////////////////////////////////////////////////////
-
   void setValue(size_t index, RegisterId varNr, AqlValue const& value) {
     TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
     TRI_ASSERT(_data[index * _nrRegs + varNr].isEmpty());
@@ -119,28 +102,10 @@ class AqlItemBlock {
     _data[index * _nrRegs + varNr] = value;
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief fill a slot in the item block with a SHAPED AqlValue
-  /// this is a specialization without reference counting
-  //////////////////////////////////////////////////////////////////////////////
-
-  void setShaped(size_t index, RegisterId varNr,
-                 TRI_df_marker_t const* marker) {
-    TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
-    TRI_ASSERT(!_data[index * _nrRegs + varNr].requiresDestruction());
-
-    auto& v = _data[index * _nrRegs + varNr];
-    v._marker = marker;
-    v._type = AqlValue::SHAPED;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief eraseValue, erase the current value of a register and freeing it
   /// if this was the last reference to the value
   /// use with caution only in special situations when it can be ensured that
   /// no one else will be pointing to the same value
-  //////////////////////////////////////////////////////////////////////////////
-
   void destroyValue(size_t index, RegisterId varNr) {
     size_t const pos = index * _nrRegs + varNr;
     auto& element = _data[pos];
@@ -163,11 +128,8 @@ class AqlItemBlock {
     element.erase();
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief eraseValue, erase the current value of a register not freeing it
   /// this is used if the value is stolen and later released from elsewhere
-  //////////////////////////////////////////////////////////////////////////////
-
   void eraseValue(size_t index, RegisterId varNr) {
     size_t const pos = index * _nrRegs + varNr;
     auto& element = _data[pos];
@@ -188,11 +150,8 @@ class AqlItemBlock {
     element.erase();
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief eraseValue, erase the current value of a register not freeing it
   /// this is used if the value is stolen and later released from elsewhere
-  //////////////////////////////////////////////////////////////////////////////
-
   void eraseAll() {
     for (auto& it : _data) {
       if (!it.isEmpty()) {
@@ -203,11 +162,8 @@ class AqlItemBlock {
     _valueCount.clear();
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief valueCount
   /// this is used if the value is stolen and later released from elsewhere
-  //////////////////////////////////////////////////////////////////////////////
-
   uint32_t valueCount(AqlValue const& v) const {
     auto it = _valueCount.find(v);
 
@@ -217,13 +173,10 @@ class AqlItemBlock {
     return it->second;
   }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief steal, steal an AqlValue from an AqlItemBlock, it will never free
   /// the same value again. Note that once you do this for a single AqlValue
   /// you should delete the AqlItemBlock soon, because the stolen AqlValues
   /// might be deleted at any time!
-  //////////////////////////////////////////////////////////////////////////////
-
   void steal(AqlValue const& v) {
     if (v.requiresDestruction()) {
       auto it = _valueCount.find(v);
@@ -234,140 +187,65 @@ class AqlItemBlock {
     }
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief getDocumentCollection
-  //////////////////////////////////////////////////////////////////////////////
-
-  inline TRI_document_collection_t const* getDocumentCollection(
-      RegisterId varNr) const {
-    return _docColls[varNr];
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief setDocumentCollection, set the current value of a variable or
-  /// attribute
-  //////////////////////////////////////////////////////////////////////////////
-
-  inline void setDocumentCollection(RegisterId varNr,
-                                    TRI_document_collection_t const* docColl) {
-    _docColls[varNr] = docColl;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief getter for _nrRegs
-  //////////////////////////////////////////////////////////////////////////////
-
   inline RegisterId getNrRegs() const { return _nrRegs; }
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief getter for _nrItems
-  //////////////////////////////////////////////////////////////////////////////
-
   inline size_t size() const { return _nrItems; }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief getter for _docColls
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::vector<TRI_document_collection_t const*>& getDocumentCollections() {
-    return _docColls;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief shrink the block to the specified number of rows
-  //////////////////////////////////////////////////////////////////////////////
-
   void shrink(size_t nrItems);
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief clears out some columns (registers), this deletes the values if
   /// necessary, using the reference count.
-  //////////////////////////////////////////////////////////////////////////////
-
   void clearRegisters(std::unordered_set<RegisterId> const& toClear);
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief slice/clone, this does a deep copy of all entries
-  //////////////////////////////////////////////////////////////////////////////
-
   AqlItemBlock* slice(size_t from, size_t to) const;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief create an AqlItemBlock with a single row, with copies of the
   /// specified registers from the current block
-  //////////////////////////////////////////////////////////////////////////////
-
   AqlItemBlock* slice(size_t row, std::unordered_set<RegisterId> const&) const;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief slice/clone chosen rows for a subset, this does a deep copy
   /// of all entries
-  //////////////////////////////////////////////////////////////////////////////
-
   AqlItemBlock* slice(std::vector<size_t>& chosen, size_t from,
                       size_t to) const;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief steal for a subset, this does not copy the entries, rather,
   /// it remembers which it has taken. This is stored in the
   /// this AqlItemBlock. It is highly recommended to delete it right
   /// after this operation, because it is unclear, when the values
   /// to which our AqlValues point will vanish.
-  //////////////////////////////////////////////////////////////////////////////
-
   AqlItemBlock* steal(std::vector<size_t>& chosen, size_t from, size_t to);
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief concatenate multiple blocks, note that the new block now owns all
   /// AqlValue pointers in the old blocks, therefore, the latter are all
   /// set to nullptr, just to be sure.
-  //////////////////////////////////////////////////////////////////////////////
-
   static AqlItemBlock* concatenate(std::vector<AqlItemBlock*> const& blocks);
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief toJson, transfer a whole AqlItemBlock to Json, the result can
   /// be used to recreate the AqlItemBlock via the Json constructor
-  //////////////////////////////////////////////////////////////////////////////
-
-  arangodb::basics::Json toJson(arangodb::AqlTransaction* trx) const;
+  void toVelocyPack(arangodb::AqlTransaction* trx,
+                    arangodb::velocypack::Builder&) const;
 
  private:
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief _data, the actual data as a single vector of dimensions _nrItems
   /// times _nrRegs
-  //////////////////////////////////////////////////////////////////////////////
-
   std::vector<AqlValue> _data;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief _valueCount, since we have to allow for identical AqlValues
   /// in an AqlItemBlock, this map keeps track over which AqlValues we
   /// have in this AqlItemBlock and how often.
   /// setValue above puts values in the map and increases the count if they
   /// are already there, eraseValue decreases the count. One can ask the
   /// count with valueCount.
-  //////////////////////////////////////////////////////////////////////////////
-
   std::unordered_map<AqlValue, uint32_t> _valueCount;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief _docColls, for every column a possible collection, which contains
-  /// all AqlValues of type SHAPED in this column.
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::vector<TRI_document_collection_t const*> _docColls;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief _nrItems, number of rows
-  //////////////////////////////////////////////////////////////////////////////
-
   size_t _nrItems;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief _nrRegs, number of rows
-  //////////////////////////////////////////////////////////////////////////////
-
   RegisterId _nrRegs;
 };
 

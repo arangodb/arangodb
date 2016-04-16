@@ -27,8 +27,6 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 
-#include <functional>
-
 struct TRI_document_collection_t;
 struct TRI_collection_t;
 struct TRI_datafile_t;

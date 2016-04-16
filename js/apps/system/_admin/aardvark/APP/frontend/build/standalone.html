@@ -10,8 +10,7 @@
     <link href="css/style.css" rel="stylesheet">
     <link href="css/sass.css" rel="stylesheet">
     <link rel="shortcut icon" type="image/x-icon" href="favicon.ico">
-
-<!-- obsolete file -->
+    <link href='https://fonts.googleapis.com/css?family=Lato:400,300,700' rel='stylesheet' type='text/css'>
 
 <script id="applicationDetailView.ejs" type="text/template">
   <div class="application-detail-view">
@@ -51,19 +50,6 @@
             </a>
           </li>
         </ul>
-      </div>
-      <div class="breadcrumb">
-        <a class="activeBread" href="#applications">Services</a>
-        <span class="disabledBread"><i class="fa fa-chevron-right"></i></span>
-        <span class="disabledBread">
-          <%= app.attributes.mount %>
-        </span>
-        <span class="disabledBread" id="app-development-indicator" style="display:<%=app.get('development')?'inline':'none' %>;">
-          (development) Location: 
-        </span>
-        <span class="disabledBread" id="app-development-path" style="display:<%=app.get('development')?'inline':'none' %>;">
-          <%= app.get("path")%>
-        </span>
       </div>
     </div>
     <section class="info">
@@ -186,7 +172,6 @@
 
 <script id="applicationsView.ejs" type="text/template">
 <div class="headerBar">
-  <a class="arangoHeader">Services</a>
   <div class="headerButtonBar">
     <ul class="headerButtonList">
       <li>
@@ -202,7 +187,7 @@
   <div id="foxxDropdown" class="dropdownInner">
     <ul>
       <li class="nav-header">Type</li>
-      <li><a href="#applications">
+      <li><a href="#services">
         <label class="checkbox checkboxLabel">
           <input class="css-checkbox" type="checkbox" id="checkProduction"/>
           <i class="fa"></i>
@@ -210,7 +195,7 @@
         </label>
       </a></li>
 
-      <li><a href="#applications">
+      <li><a href="#services">
         <label class="checkbox checkboxLabel">
           <input class="css-checkbox" type="checkbox" id="checkDevel"/>
           <i class="fa"></i>
@@ -218,11 +203,11 @@
         </label>
       </a></li>
 
-      <li><a href="#applications">
+      <li><a href="#services">
         <label class="checkbox checkboxLabel">
           <input class="css-checkbox" id="checkSystem" type="checkbox"/>
           <i class="fa"></i>
-          System applications
+          System Services
         </label>
       </a></li>
     </ul>
@@ -231,8 +216,8 @@
 
 <div class="contentDiv">
   <div id="installed">
-    <div id="installedList" class="tileList">
-      <div class="tile">
+    <div id="installedList" class="tileList pure-u">
+      <div class="tile pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-3 pure-u-lg-1-4 pure-u-xl-1-6">
         <div class="fullBorderBox">
           <a href="#" id="addApp" class="add"><span class="pull-left add-Icon"><i class="fa fa-plus-circle"></i>
 </span> Add Service</a>
@@ -288,49 +273,117 @@
 </table>
 </script>
 
-<script id="collectionsItemView.ejs" type="text/template">
-<div class="borderBox"></div>
-<div class="iconSet">
-  <span id="editCollection_<%=model.get('name')%>" class="icon_arangodb_settings2" alt="Edit collection properties" title="Edit collection properties"></span>
-  <% if(model.get('status') === "loaded") { %>
-    <span id="info_<%=model.get('name')%>" class="spanInfo icon_arangodb_info" title="Show collection properties"></span>
-  <%} else {%>
-    <span class="icon_arangodb_info disabled" alt="disabled"></span>
-  <%}%>
-</div>
+<script id="clusterView.ejs" type="text/template">
 
-<i class="collection-type-icon fa <%= model.get('picture') %>"></i>
-<!--<img src="<%= model.get('picture') %>" height="50" width="50" alt="" class="icon">-->
-<div class="tileBadge">
-  <span>
-  <% if(model.get('desc')) { %>
-    <div class="corneredBadge inProgress">
-      <%= model.get('desc') %>
+  <div id="clusterContent" class="innerContent">
+
+    <div class="pure-g cluster-values">
+
+      <div class="pure-u-1-2 pure-u-md-1-4">
+        <div class="valueWrapper">
+          <div id="clusterNodes" class="value"><i class="fa fa-spin fa-circle-o-notch" style="color: rgba(0, 0, 0, 0.64);"></i></div>
+          <div class="graphLabel">Nodes</div>
+        </div>
+      </div>
+
+      <div class="pure-u-1-2 pure-u-md-1-4">
+        <div class="valueWrapper">
+          <div id="clusterRam" class="value"><i class="fa fa-spin fa-circle-o-notch" style="color: rgba(0, 0, 0, 0.64);"></i></div>
+          <div class="graphLabel">RAM</div>
+        </div>
+      </div>
+
+      <div class="pure-u-1-2 pure-u-md-1-4">
+        <div class="valueWrapper">
+          <div id="clusterConnections" class="value"><i class="fa fa-spin fa-circle-o-notch" style="color: rgba(0, 0, 0, 0.64);"></i></div>
+          <div class="graphLabel">Connections</div>
+        </div>
+      </div>
+
+      <div class="pure-u-1-2 pure-u-md-1-4">
+        <div class="valueWrapper">
+          <div id="clusterConnectionsAvg" class="value"><i class="fa fa-spin fa-circle-o-notch" style="color: rgba(0, 0, 0, 0.64);"></i></div>
+          <div class="graphLabel">Connections AVG</div>
+        </div>
+      </div>
+
     </div>
-  <% } else if (model.get('status') === "loaded" || model.get('status') === 'unloaded' || model.get('status') === 'loading' || model.get('status') === 'unloading') { %>
-    <% if (!model.get('locked') && model.get("status") !== "loading" && model.get("status") !== "unloading") { %>
-      <div class="corneredBadge <%= model.get('status') %>">
-        <%= model.get('status') %>
-      </div>
-    <% } else if (model.get('status') === 'loading' || model.get('status') === 'unloading') { %>
-      <div class="corneredBadge inProgress">
-        <%= model.get('status') %>
-      </div>
-    <% } else { %>
-      <div class="corneredBadge inProgress">
-        <%= model.get('status') %>
-      </div>
-    <% } %>
-  <% } %>
-  </span>
-</div>
 
-<% if(model.get('lockType') === "index") { %>
-  <!-- <progress max="100" value="80"></progress>-->
-  <h5 class="collectionName"><%= model.get('name') %></h5>
-<% } else { %>
-  <h5 class="collectionName"><%= model.get('name') %></h5>
-<% } %>
+
+    <div class="pure-g cluster-graphs">
+
+      <div class="pure-u-1-1 pure-u-md-24-24 pure-u-lg-12-24">
+        <div class="graphWrapper">
+          <div id='clusterData'></div>
+          <div class="graphLabel">DATA</div>
+        </div>
+      </div>
+
+      <div class="pure-u-1-1 pure-u-md-12-24 pure-u-lg-6-24">
+        <div class="graphWrapper">
+          <div id='clusterHttp'></div>
+          <div class="graphLabel">HTTP</div>
+        </div>
+      </div>
+
+      <div class="pure-u-1-1 pure-u-md-12-24 pure-u-lg-6-24">
+        <div class="graphWrapper">
+          <div id='clusterAverage'></div>
+          <div class="graphLabel">TRANSFER SIZE</div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</script>
+
+<script id="collectionsItemView.ejs" type="text/template">
+<div class="paddingBox">
+  <div class="borderBox"></div>
+  <div class="iconSet">
+    <span id="editCollection_<%=model.get('name')%>" class="icon_arangodb_settings2" alt="Edit collection properties" title="Edit collection properties"></span>
+    <% if(model.get('status') === "loaded") { %>
+      <span id="info_<%=model.get('name')%>" class="spanInfo icon_arangodb_info" title="Show collection properties"></span>
+    <%} else {%>
+      <span class="icon_arangodb_info disabled" alt="disabled"></span>
+    <%}%>
+  </div>
+
+  <i class="collection-type-icon fa <%= model.get('picture') %>"></i>
+  <!--<img src="<%= model.get('picture') %>" height="50" width="50" alt="" class="icon">-->
+  <div class="tileBadge">
+    <span>
+    <% if(model.get('desc')) { %>
+      <div class="corneredBadge inProgress">
+        <%= model.get('desc') %>
+      </div>
+    <% } else if (model.get('status') === "loaded" || model.get('status') === 'unloaded' || model.get('status') === 'loading' || model.get('status') === 'unloading') { %>
+      <% if (!model.get('locked') && model.get("status") !== "loading" && model.get("status") !== "unloading") { %>
+        <div class="corneredBadge <%= model.get('status') %>">
+          <%= model.get('status') %>
+        </div>
+      <% } else if (model.get('status') === 'loading' || model.get('status') === 'unloading') { %>
+        <div class="corneredBadge inProgress">
+          <%= model.get('status') %>
+        </div>
+      <% } else { %>
+        <div class="corneredBadge inProgress">
+          <%= model.get('status') %>
+        </div>
+      <% } %>
+    <% } %>
+    </span>
+  </div>
+
+  <% if(model.get('lockType') === "index") { %>
+    <!-- <progress max="100" value="80"></progress>-->
+    <h5 class="collectionName"><%= model.get('name') %></h5>
+  <% } else { %>
+    <h5 class="collectionName"><%= model.get('name') %></h5>
+  <% } %>
+</div>
 </script>
 
 <script id="collectionsView.ejs" type="text/template">
@@ -350,9 +403,6 @@
       </ul>
     </div>
 
-    <div class="pull-left">
-      <a class="arangoHeader">Collections</a>
-    </div>
   </div>
 
 
@@ -441,8 +491,8 @@
   </div>
 
   <div class="contentDiv" id="arangoCollectionsContainer">
-      <div id="collectionsThumbnailsIn" class="tileList">
-        <div class="tile">
+      <div id="collectionsThumbnailsIn" class="tileList pure-g">
+        <div class="tile pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-3 pure-u-lg-1-4 pure-u-xl-1-6">
           <div class="fullBorderBox">
             <a href="#" id="createCollection" class="add"><span id="newCollection" class="pull-left add-Icon"><i class="fa fa-plus-circle"></i>
 </span> Add Collection</a>
@@ -468,20 +518,20 @@
   } %>
 
   <% var largeChart = function(name, title, arrows) { %>
-    <div class="dashboard-large-chart">
+    <div class="dashboard-large-chart pure-u-1-1 pure-u-sm-1-1 pure-u-md-2-3">
       <% enlargeButton(name, true); %>
       <div class="dashboard-large-chart-inner dashboard-chart" id="<%= name %>Container">
-        <div id="<%= name %>" class="dashboard-interior-chart"></div>
         <div class="dashboard-legend">
           <div class="dashboard-legend-inner" id="<%= name %>Legend"></div>
         </div>
+        <div id="<%= name %>" class="dashboard-interior-chart"></div>
       </div>
       <% subBar(title) %>
     </div>
   <% } %>
 
   <% var mediumChart = function(name, title, arrows) { %>
-    <div class="dashboard-medium-chart-outer">
+    <div class="dashboard-medium-chart-outer pure-u-1-1 pure-u-sm-1-1 pure-u-md-1-2">
       <div class="dashboard-medium-chart">
         <% enlargeButton(name, true); %>
         <div class="dashboard-medium-chart-inner dashboard-chart" id="<%= name %>Container">
@@ -496,7 +546,7 @@
   <% } %>
 
   <% var smallChart = function(name, title, arrows) { %>
-    <div class="dashboard-small-chart">
+    <div class="dashboard-small-chart pure-u-1-1 pure-u-sm-1-1 pure-u-md-1-3">
       <% enlargeButton(name, arrows); %>
       <div class="dashboard-small-chart-inner dashboard-chart" id="<%= name %>Container">
         <div id="<%= name %>" class="dashboard-interior-chart">
@@ -508,7 +558,7 @@
   <% } %>
 
   <% var tendency = function(title, name, arrows) { %>
-    <div class="dashboard-tendency-container">
+    <div class="dashboard-tendency-container pure-u-1-1 pure-u-sm-1-1 pure-u-md-1-3">
       <div class="dashboard-tendency-chart">
         <% enlargeButton(name, arrows); %>
         <div class="dashboard-tendency">
@@ -540,36 +590,36 @@
     </div>
   <% } %>
 
-  <div class="headerBar">
-    <a class="arangoHeader">Request Statistics</a>
+  <div class="contentBar">
+    Request Statistics
   </div>
   <div class="contentDiv">
-    <div class="dashboard-row">
+    <div class="dashboard-row pure-u">
       <% largeChart("requestsChart", "Requests per Second") %>
 
       <% tendency("Request Types", "asyncRequests", false); %>
       <% tendency("Number of Client Connections", "clientConnections", false); %>
     </div>
     
-    <div class="dashboard-row">
+    <div class="dashboard-row pure-u">
       <% largeChart("dataTransferChart", "Transfer Size per Second (bytes)") %>
       <% smallChart("dataTransferDistribution", "Transfer Size per Second (distribution)", false) %>
     </div>
     
-    <div class="dashboard-row">
+    <div class="dashboard-row pure-u">
       <% largeChart("totalTimeChart", "Average Request Time (seconds)") %>
       <% smallChart("totalTimeDistribution", "Average Request Time (distribution)", false) %>
     </div>
   </div>
 
-  <div class="dashboard-headerbar headerBar">
-    <a class="arangoHeader">System Resources</a>
+  <div class="dashboard-headerbar contentBar">
+    System Resources
   </div>
 
-  <div class="dashboard-row">
+  <div class="dashboard-row pure-u" style="width: 100%;">
     <% tendency("Number of threads", "numberOfThreads", false); %>
 
-    <div class="dashboard-bar-chart-container dashboard-spacer">
+    <div class="dashboard-bar-chart-container pure-u-1-1 pure-u-sm-1-1 pure-u-md-1-3">
       <div class="dashboard-bar-chart">
         <div class="dashboard-bar-chart-title">
           <div class="percentage"></div>
@@ -586,19 +636,19 @@
 
     <% tendency("Virtual Size in GB", "virtualSize", false); %>
   </div>
-  <div class="dashboard-row">
+  <div class="dashboard-row pure-u" style="width: 100%">
     <% mediumChart("pageFaultsChart", "Major Page Faults") %>
     <% mediumChart("systemUserTimeChart", "Used CPU Time per Second") %>
   </div>
 
-  <div class="dashboard-headerbar headerBar">
-    <a class="arangoHeader">Replication</a>
+  <div class="dashboard-headerbar contentBar">
+    Replication
   </div>
 
   <div class="dashboard-row">
     <div class="dashboard-full-width-chart" id="replication-chart">
-      <div class="dashboard-full-width-chart-inner">
-        <div id="repl-numbers" class="dashboard-interior-chart">
+      <div class="dashboard-full-width-chart-inner pure-u">
+        <div id="repl-numbers" class="dashboard-interior-chart pure-u-1-3">
           <div class="inner">
             <div class="top dashboard-subtitle-bar">Totals</div>
             <div class="bottom">
@@ -621,7 +671,7 @@
             </div>
           </div>
         </div>
-        <div id="repl-ticks" class="dashboard-interior-chart">
+        <div id="repl-ticks" class="dashboard-interior-chart pure-u-1-3">
           <div class="inner">
             <div class="top dashboard-subtitle-bar">Ticks</div>
             <div class="bottom">
@@ -644,7 +694,7 @@
             </div>
           </div>
         </div>
-        <div id="repl-progress" class="dashboard-interior-chart">
+        <div id="repl-progress" class="dashboard-interior-chart pure-u-1-3">
           <div class="inner">
             <div class="top dashboard-subtitle-bar">Progress</div>
             <div class="bottom">
@@ -716,8 +766,8 @@
 
 
   <div class="contentDiv" id="arangoCollectionsContainer">
-    <div class="tileList">
-      <div class="tile">
+    <div class="tileList pure-u">
+      <div class="tile pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-3 pure-u-lg-1-4 pure-u-xl-1-6">
         <div class="fullBorderBox">
           <a href="#" id="createDatabase" class="add">
             <span id="newDatabase" class="pull-left add-Icon"><i class="fa fa-plus-circle"></i></span>
@@ -730,7 +780,7 @@
       %>
 
       <% if (name !== '_system') { %>
-        <div class="tile">
+        <div class="tile pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-3 pure-u-lg-1-4 pure-u-xl-1-6">
           <div class="borderBox"></div>
           <div class="iconSet">
             <span class="icon_arangodb_settings2 editDatabase" id="<%=name %>_edit-database" alt="Edit database" title="Edit database"></span>
@@ -738,7 +788,7 @@
           <img src="img/databaseIcon.svg" class="tile-icon-svg svgToReplace"/>
           <div class="tileBadge">
           </div>
-          <h5 class="collectionName"><%=name %></h5>
+          <h5 class="collectionName" style="margin-left: 0; margin-right: 0;"><%=name %></h5>
         </div>
       <%};%>
 
@@ -749,7 +799,9 @@
 </script>
 
 <script id="dbSelectionView.ejs" type="text/template">
-<a href="#" class="tab" id="dbselection"></span><div class="dbselection">DB: <%=current%></div> <b class="caret"></b></a>
+<a href="#" class="tab" id="dbselection"><div class="dbselection"><i class="fa fa-database"></i><span class="db-name">DB: </span> <%=current%><i class="fa fa-caret-square-o-down"></i></div>
+<!-- <b class="caret"></b> -->
+</a>
 <ul class="link-dropdown-menu" id="dbs_dropdown">
 <%
 if (list.length > 0) {
@@ -837,8 +889,8 @@ if (list.length > 0) {
 
 <script id="documentsView.ejs" type="text/template">
 <div id="transparentHeader" class="headerBar">
-  <div id="documentsToolbar" class="headerButtonBar">
 
+  <div id="documentsToolbar" class="headerButtonBar">
 
   <!-- remove marker for docupdiv-->
   <ul class="headerButtonList">
@@ -1048,7 +1100,7 @@ if (list.length > 0) {
 </div>
 
 <div class="footer-right">
-  <p><% if(n) { %><i class="isOnline fa fa-check-circle-o serverStatusIndicator"></i><a><%=n%> <%=v%> <% } %></a></i></p>
+  <p><% if(n) { %><a><%=n%> <%=v%> <% } %></a></p>
 </div>
 </script>
 
@@ -1194,9 +1246,6 @@ if (list.length > 0) {
           </li>
         </ul>
       </div>
-    <div class="pull-left">
-      <a class="arangoHeader">Graphs</a>
-    </div>
   </div>
 
 
@@ -1219,8 +1268,8 @@ if (list.length > 0) {
 
 
   <div class="contentDiv" id="arangoCollectionsContainer">
-    <div id="graphManagementThumbnailsIn" class="tileList">
-      <div class="tile">
+    <div id="graphManagementThumbnailsIn" class="tileList pure-u">
+      <div class="tile pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-3 pure-u-lg-1-4 pure-u-xl-1-6">
         <div class="fullBorderBox">
           <a href="#" id="createGraph" class="add">
             <span id="newGraph" class="pull-left add-Icon"><i class="fa fa-plus-circle"></i></span>
@@ -1234,7 +1283,7 @@ if (list.length > 0) {
         var graphName = graph.get("_key");
       %>
 
-      <div class="tile tile-graph" id="<%=graphName %>_tile">
+      <div class="tile tile-graph pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-3 pure-u-lg-1-4 pure-u-xl-1-6" id="<%=graphName %>_tile">
       <div class="borderBox"></div>
       <div class="iconSet">
         <span class="icon_arangodb_settings2 editGraph" id="<%=graphName %>_settings" alt="Edit graph" title="Edit graph"></span>
@@ -1505,6 +1554,9 @@ if (list.length > 0) {
           </button>
         </div>
     </div>
+    <div id="modal-dialog">
+      <div class="modal-footer"></div>
+    </div>
   </div>
 </script>
 
@@ -1552,10 +1604,6 @@ if (list.length > 0) {
 </script>
 
 <script id="logsView.ejs" type="text/template">
-  <div class="headerBar">
-    <a class="arangoHeader">Logs</a>
-  </div>
-
   <div id="logContent" class="log-content-id innerContent">
   </div>
   <!-- <div id="logPaginationDiv" class="pagination-line"></div> -->
@@ -1779,15 +1827,6 @@ if (list.length > 0) {
     var revision    = content.revision;
 %>
 
-    <ul id="infoTab" class="nav nav-tabs">
-      <li class="active"><a href="#info" data-toggle="tab">Info</a></li>
-      <li><a href="#figures" data-toggle="tab">Figures</a></li>
-    </ul>
-
-    <div class="tab-content" id="tab-content-collection-info">
-
-			<div class="tab-pane active" id="info">
-
         <table id="collectionInfoTable">
           <tr id="collectionSizeBox">
             <th class="collectionInfoTh2">Journal size:</th>
@@ -1874,7 +1913,6 @@ if (list.length > 0) {
 
       </div>
 
-      <div class="tab-pane collection-info-figures" id="figures">
         <table class="figures1">
           <tr class="figuresHeader">
             <th class="">Type</th>
@@ -1919,17 +1957,6 @@ if (list.length > 0) {
             </th>
           </tr>
           <tr>
-            <th class="modal-text">Shape files</th>
-            <th class="modal-text"><%=numeral(figuresData.figures.shapefiles.count).format('0,0')%></th>
-            <th class="modal-text">
-            <%=prettyBytes(figuresData.figures.shapefiles.fileSize)%>
-            </th>
-            <th class="tooltipInfoTh">
-              <a class="modalTooltips" title="Number and total size of shape files.">
-                <span class="arangoicon icon_arangodb_info"></span></a>
-            </th>
-          </tr>
-          <tr>
             <th class="modal-text">Indexes</th>
             <th class="modal-text"><%=numeral(figuresData.figures.indexes.count).format('0,0')%></th>
             <th class="modal-text">
@@ -1947,22 +1974,6 @@ if (list.length > 0) {
             <th>Type</th>
             <th>Count</th>
             <th>Info</th>
-          </tr>
-          <tr>
-            <th class="modal-text">Shapes</th>
-            <th class="modal-text"><%=numeral(figuresData.figures.shapes.count).format('0,0')%></th>
-            <th class="tooltipInfoTh">
-              <a class="modalTooltips" title="Total number of shapes in the collection">
-                <span class="arangoicon icon_arangodb_info"></span></a>
-            </th>
-          </tr>
-          <tr>
-            <th class="modal-text">Attributes</th>
-            <th class="modal-text"><%=numeral(figuresData.figures.attributes.count).format('0,0')%></th>
-            <th class="tooltipInfoTh">
-              <a class="modalTooltips" title="Total number of attributes in the collection">
-                <span class="arangoicon icon_arangodb_info"></span></a>
-            </th>
           </tr>
           <tr>
             <th class="modal-text">Uncollected</th>
@@ -2022,9 +2033,7 @@ if (list.length > 0) {
           </tr>
           <tr><th><div> </div></th></tr>
         </table>
-      </div>
 
-	  </div>
 </script>
 
 <script id="modalDownloadFoxx.ejs" type="text/template">
@@ -2421,14 +2430,27 @@ if (list.length > 0) {
 
 <script id="navigationView.ejs" type="text/template">
   <ul class="navlist arango-collection-ul" id="arangoCollectionUl">
+    <% if (isCluster) { %>
+      <li class="cluster-menu"><a id="cluster" class="tab" href="#cluster"><i class="fa fa-circle-o"></i>Cluster</a></li>
+      <li class="nodes-menu"><a id="nodes" class="tab" href="#nodes"><i class="fa fa-server"></i>Nodes</a></li>
+    <% } else { %>
+      <li class="dashboard-menu"><a id="dashboard" class="tab" href="#dashboard"><i class="fa fa-dashboard"></i>Dashboard</a></li>
+    <% } %>
+    <li class="navbar-spacer big"></li>
     <li id="dbSelect" class="dropdown databases-menu"></li>
-    <li class="collections-menu"><a id="collections" class="tab" href="#collections">Collections</a></li>
-    <li class="demo-menu"><a id="demo" class="tab" href="#demo">Demo</a></li>
-    <li class="graph-menu"><a id="graph" class="tab" href="#graph">Graphs</a></li>
-    <li class="applications-menu">
-      <a id="applications" class="tab" href="#applications">Services</a>
+    <li class="collections-menu"><a id="collections" class="tab" href="#collections"><i class="fa fa-folder"></i>Collections</a></li>
+    <li class="queries-menu"><a id="queries" class="tab" href="#queries"><i class="fa fa-bolt"></i>Queries</a></li>
+    <li class="graphs-menu"><a id="graphs" class="tab" href="#graphs"><i class="fa fa-area-chart"></i>Graphs</a></li>
+    <li class="services-menu">
+      <a id="services" class="tab" href="#services"><i class="fa fa-cogs"></i>Services</a>
     </li>
-    <li class="query-menu"><a id="query" class="tab" href="#query">AQL Editor</a></li>
+    <li class="users-menu"><a id="users" class="tab" href="#manage"><i class="fa fa-users"></i>Users</a></li>
+    <% if (!isCluster) { %>
+      <li class="logs-menu"><a id="logs" class="tab" href="#manage"><i class="fa fa-list"></i>Logs</a></li>
+    <% } %>
+    <li class="navbar-spacer big"></li>
+    <li class="settings-menu"><a id="settings" class="tab" href="#settings"><i class="fa fa-cog"></i>Settings</a></li>
+    <!--
     <li class="navbar-spacer big"></li>
     <li class="dropdown tools-menu" id="toolsDropdown">
       <a href="#" class="tab" id="tools">Tools <b class="caret"></b></a>
@@ -2438,10 +2460,12 @@ if (list.length > 0) {
           <a id="shell" class="tab" href="#shell">JS Shell</a>
         </li>
 
-        <% if (currentDB.get('isSystem')) { %>
-          <li class="dropdown-item">
-            <a id="logs" class="tab" href="#logs">Logs</a>
-          </li>
+        <% if (!isCluster) { %>
+          <% if (currentDB.get('isSystem')) { %>
+            <li class="dropdown-item">
+              <a id="logs" class="tab" href="#logs">Logs</a>
+            </li>
+          <% } %>
         <% } %>
 
         <li class="dropdown-item">
@@ -2473,33 +2497,61 @@ if (list.length > 0) {
         <li class="dropdown-item"><a href="https://www.arangodb.com" target="_blank">ArangoDB.com</a></li>
       </ul>
     </li>
+  -->
   </ul>
 
-  <select id="arangoCollectionSelect" class="arango-collection-select">
-    <option value="" selected="selected">Select</option>
-    <option value="#">Dashboard</option>
+</script>
 
-    <% if(currentDB.get('isSystem')) { %>
+<script id="nodeView.ejs" type="text/template">
 
-      <option value="#databases">Databases</option>
+  <div id="nodeContent" class="innerContent">
 
-    <% } %>
 
-    <option value="#collections">Collections</option>
-    <option value="#applications">Services</option>
-    <option value="#graph">Graph</option>
-    <option value="#query">AQL Editor</option>
-    <option value="#shell">JS Shell</option>
-    <option value="#userManagement">User Management</option>
-    <option value="#queryManagement">Query Management</option>
-    <option value="#workMonitor">Work Monitor</option>
+  </div>
 
-    <% if(currentDB.get('isSystem')) { %>
+</script>
 
-      <option value="#logs">Logs</option>
+<script id="nodesView.ejs" type="text/template">
 
-    <% } %>
-  </select>
+  <div id="nodesContent" class="innerContent">
+
+  <% if(coords.length > 0) { %>
+
+    <div class="pure-g cluster-nodes-title pure-table pure-table-header pure-title">
+      <div class="pure-table-row">
+        <div class="pure-u-1-4 mid">Name</div>
+        <div class="pure-u-1-4 mid">Address</div>
+        <div class="pure-u-1-4 mid">Protocol</div>
+        <div class="pure-u-1-4 mid">Status</div>
+      </div>
+    </div>
+
+    <div class="pure-g cluster-nodes pure-table pure-table-body">
+
+      <% _.each(coords, function(node) { %>
+
+        <div class="pure-table-row" node="<%=node.name%>">
+
+          <div class="pure-u-1-4 mid"><%= node.name %></div>
+          <div class="pure-u-1-4 mid"><%= node.address %></div>
+          <div class="pure-u-1-4 mid"><%= node.protocol %></div>
+
+          <% if(node.status === 'ok') { %>
+            <div class="pure-u-1-4 mid"><i class="fa fa-check-circle"></i></div>
+          <% } else { %>
+            <div class="pure-u-1-4 mid"><i class="fa fa-exclamation-circle"></i></div>
+          <% } %>
+
+        </div>
+
+      <% }); %>
+
+    </div>
+
+  <% } %>
+
+  </div>
+
 </script>
 
 <script id="notificationItem.ejs" type="text/template">
@@ -2550,19 +2602,11 @@ if (list.length > 0) {
 </script>
 
 <script id="queryManagementViewActive.ejs" type="text/template">
-  <div class="headerBar">
-    <a class="arangoHeader">Query Management</a>
-  </div>
-
   <div id="queryManagementContent" class="innerContent">
   </div>
 </script>
 
 <script id="queryManagementViewSlow.ejs" type="text/template">
-  <div class="headerBar">
-    <a class="arangoHeader">Query Management</a>
-  </div>
-
   <div id="queryManagementContent" class="innerContent">
   </div>
 
@@ -2675,17 +2719,12 @@ if (list.length > 0) {
 
 <script id="queryView2.ejs" type="text/template">
 
-  <div class="headerBar">
-    <a class="arangoHeader">AQL Editor 2</a>
-  </div>
-
-
   <div id="queryContent" class="queryContent">
 
     <div class="arangoToolbar arangoToolbarTop">
       <div class="pull-left">
-        <button id="toggleQueries1" class="button-success"><i class="fa fa-star-o"></i>Queries</button>
-        <button id="toggleQueries2" class="button-success" style="display: none"><i class="fa fa-star"></i>Queries</button>
+        <button id="toggleQueries1" class="button-primary"><i class="fa fa-star-o"></i>Queries</button>
+        <button id="toggleQueries2" class="button-primary" style="display: none"><i class="fa fa-star"></i>Queries</button>
         <button id="saveCurrentQuery" class="button-success"><i class="fa fa-save"></i>Save</button>
       </div>
 
@@ -2724,7 +2763,7 @@ if (list.length > 0) {
         <button id="exportQuery" class="button-success query-button" style="display:none">Export Queries</button>
         <button id="importQuery" class="button-success query-button" style="display:none">Import Queries</button>
         <button id="executeQuery" class="button-success query-button">Execute</button>
-        <button id="explainQuery" class="button-success query-button">Explain</button>
+        <button id="explainQuery" class="button-info query-button">Explain</button>
         <button id="removeResults" class="button-close query-button" style="display: none">Remove results</button>
       </div>
     </div>
@@ -2851,6 +2890,30 @@ if (list.length > 0) {
   </div>
 </script>
 
+<script id="subNavigationView.ejs" type="text/template">
+
+  <ul class="subMenuEntries top">
+    <li class="subMenuEntry pull-left">
+      <div class="breadcrumb"></div>
+    </li>
+    <li id="healthStatus" class="subMenuEntry pull-right">
+      <a class="health-info">HEALTH: </a>
+      <a class="health-state">GOOD</a>
+      <a class="health-icon">
+        <i class="fa fa-check-circle"></i>
+      </a>
+    </li>
+    <li class="subMenuEntry pull-right" style="margin-right: 10px;">
+      <div class="usermenu" id="userBar"></div>
+      <div class="notificationmenu" id="notificationBar"></div>
+    </li>
+  </ul>
+
+  <ul class="subMenuEntries bottom">
+  </ul>
+
+</script>
+
 <script id="tableView.ejs" type="text/template">
 <%
 var escaped = function (value) {
@@ -2965,10 +3028,6 @@ var cutByResolution = function (str) {
         </li>
       </ul>
     </div>
-
-    <div class="pull-left">
-      <a class="arangoHeader">User Management</a>
-    </div>
   </div>
 
 
@@ -3006,8 +3065,8 @@ var cutByResolution = function (str) {
 
 
   <div class="contentDiv" id="arangoCollectionsContainer">
-    <div id="userManagementThumbnailsIn" class="tileList">
-      <div class="tile">
+    <div id="userManagementThumbnailsIn" class="tileList pure-u">
+      <div class="tile pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-3 pure-u-lg-1-4 pure-u-xl-1-6">
         <div class="fullBorderBox">
           <a href="#" id="createUser" class="add">
             <span id="newUser" class="pull-left add-Icon"><i class="fa fa-plus-circle"></i></span>
@@ -3040,7 +3099,7 @@ var cutByResolution = function (str) {
               }
       %>
 
-      <div class="tile">
+      <div class="tile pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-3 pure-u-lg-1-4 pure-u-xl-1-6">
         <div class="borderBox"></div>
         <div class="iconSet">
           <span class="icon_arangodb_settings2 editUser" id="<%=_.escape(username) %>_edit-user" alt="Edit user" title="Edit user"></span>
@@ -3090,42 +3149,50 @@ var cutByResolution = function (str) {
 
 </head>
 <body>
-  <nav class="navbar">
-    <div class="resizecontainer">
-      <div class="navlogo">
-        <a class="logo" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"/></a>
+    <nav class="navbar">
+      <div class="primary">
+          <div class="navlogo">
+            <a class="logo" href="#"><img class="arangodbLogo" src="img/DEVLOGO.png"/></a>
+          </div>
+          <!-- <div id="progressPlaceholderIcon"></div> -->
+            <div class="statmenu" id="statisticBar">
+            </div>
+            <div class="navmenu" id="navigationBar">
+            </div>
       </div>
-      <div id="progressPlaceholderIcon"></div>
-        <div class="statmenu" id="statisticBar">
+    </nav>
+
+    <div class="bodyWrapper">
+
+      <div class="centralRow">
+        <div id='navbar2' class="secondary">
+            <div class="subnavmenu" id="subNavigationBar"></div>
         </div>
-        <div class="usermenu" id="userBar" style="float:right;">
+        <div class="resizecontainer contentWrapper" style="clear:both;">
+          <div id="content" class="centralContent"></div>
         </div>
-        <div class="notificationmenu" id="notificationBar" style="float:right;">
+        <div class="resizecontainer footerWrapper" style="clear:both;">
+          <footer class="footer">
+            <div class="" id="footerBar">
+            </div>
+          </footer>
         </div>
-        <div class="navmenu" id="navigationBar">
-        </div>
+      </div>
+
     </div>
-  </nav>
 
-  <div class="centralRow resizecontainer">
-    <div id="content" class="centralContent"></div>
-  </div>
-
-  <div id="modalPlaceholder">
-  </div>
-
-  <div id="progressPlaceholder" style="display:none">
-  </div>
-
-  <div id="spotlightPlaceholder" style="display:none">
-  </div>
-
-  </div>
-
-  <footer class="footer">
-    <div class="resizecontainer" id="footerBar">
+    <div id="modalPlaceholder">
     </div>
-  </footer>
+
+    <div id="progressPlaceholder" style="display:none">
+    </div>
+
+    <div id="spotlightPlaceholder" style="display:none">
+    </div>
+
+    </div>
+
+
 
   <div class="arangoFrame" style="">
     <div class="outerDiv">
@@ -3133,9 +3200,9 @@ var cutByResolution = function (str) {
     </div>
   </div>
 
-<script src="sharedLibs.js?version=1459264721189"></script>
-<script src="libs.js?version=1459264721189"></script>
-<script src="app.js?version=1459264721189"></script>
+<script src="sharedLibs.js?version=1460670094870"></script>
+<script src="libs.js?version=1460670094870"></script>
+<script src="app.js?version=1460670094870"></script>
 
   </body>
 </html>

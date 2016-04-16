@@ -39,7 +39,7 @@ class SslFeature final : public application_features::ApplicationFeature {
 
  public:
   SSL_CTX* sslContext() const { return _sslContext; }
-
+  
  public:
   std::string _cafile;
   std::string _keyfile;
@@ -47,9 +47,11 @@ class SslFeature final : public application_features::ApplicationFeature {
   std::string _cipherList;
   uint64_t _protocol;
   uint64_t _options;
-
+  std::string _ecdhCurve;
+  
  private:
   void createSslContext();
+  std::string stringifySslOptions(uint64_t opts) const;
 
  private:
   SSL_CTX* _sslContext;

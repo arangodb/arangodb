@@ -97,7 +97,12 @@ Edge.prototype.setProperty = function (name, value) {
   shallow.$label = this._properties.$label;
   shallow[name] = value;
 
-  // TODO use "update" if this becomes available
+  if (this._properties.hasOwnProperty('_from')) {
+    shallow._from = this._properties._from;
+  }
+  if (this._properties.hasOwnProperty('_to')) {
+    shallow._to = this._properties._to;
+  }
   id = this._graph._edges.replace(this._properties, shallow);
   this._properties = this._graph._edges.document(id);
 

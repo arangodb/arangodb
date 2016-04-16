@@ -30,7 +30,6 @@
 #include "fulltext-list.h"
 #include "fulltext-query.h"
 #include "fulltext-result.h"
-#include "fulltext-wordlist.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief use padding for pointers in binary data
@@ -399,7 +398,7 @@ static inline node_t** FollowersNodes(void* data) {
   uint8_t numAllocated = *head;
   uint8_t* keys = (uint8_t*)(head + 2);  // numAllocated + numEntries
 
-  return (node_t**)(uint8_t*)((keys + numAllocated) + Padding(numAllocated));
+  return reinterpret_cast<node_t**>(keys + numAllocated + Padding(numAllocated));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -425,7 +424,7 @@ static inline node_t** FollowersNodesPos(void* data, uint32_t numAllocated) {
   uint8_t* head = (uint8_t*)data;
   uint8_t* keys = (uint8_t*)(head + 2);  // numAllocated + numEntries
 
-  return (node_t**)(uint8_t*)((keys + numAllocated) + Padding(numAllocated));
+  return reinterpret_cast<node_t**>(keys + numAllocated + Padding(numAllocated));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1194,14 +1193,13 @@ TRI_fulltext_result_t* FindDocuments (index__t* const idx,
 /// @brief determine the common prefix length of two words
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline size_t CommonPrefixLength(char const* const lhs,
-                                        char const* const rhs) {
-  char* p1;
-  char* p2;
+static inline size_t CommonPrefixLength(std::string const& left,
+                                        std::string const& right) {
+  char const* lhs = left.c_str();
+  char const* rhs = right.c_str();
   size_t length = 0;
 
-  for (p1 = (char*)lhs, p2 = (char*)rhs; *p1 && *p2 && *p1 == *p2;
-       ++p1, ++p2, ++length)
+  for (; *lhs && *rhs && *lhs == *rhs; ++lhs, ++rhs, ++length)
     ;
 
   return length;
@@ -1316,14 +1314,13 @@ void TRI_DeleteDocumentFulltextIndex(TRI_fts_index_t* const ftx,
 
 bool TRI_InsertWordsFulltextIndex(TRI_fts_index_t* const ftx,
                                   const TRI_fulltext_doc_t document,
-                                  TRI_fulltext_wordlist_t* wordlist) {
+                                  std::vector<std::string>& wordlist) {
   index__t* idx;
   TRI_fulltext_handle_t handle;
   node_t* paths[MAX_WORD_BYTES + 4];
   size_t lastLength;
-  size_t w;
 
-  if (wordlist->_numWords == 0) {
+  if (wordlist.empty()) {
     return true;
   }
 
@@ -1332,10 +1329,11 @@ bool TRI_InsertWordsFulltextIndex(TRI_fts_index_t* const ftx,
   paths[MAX_WORD_BYTES] = nullptr;
 
   // the words must be sorted so we can avoid duplicate words and use an
-  // optimisation
+  // optimization
   // for words with common prefixes (which will be adjacent in the sorted list
   // of words)
-  TRI_SortWordlistFulltextIndex(wordlist);
+  // The default comparator (<) is exactly what we need here
+  std::sort(wordlist.begin(), wordlist.end());
 
   idx = (index__t*)ftx;
 
@@ -1354,16 +1352,18 @@ bool TRI_InsertWordsFulltextIndex(TRI_fts_index_t* const ftx,
   paths[0] = idx->_root;
   lastLength = 0;
 
-  w = 0;
-  while (w < wordlist->_numWords) {
+  size_t w = 0;
+  size_t numWords = wordlist.size();
+  while (w < numWords) {
     node_t* node;
-    char* p;
+    const char* p;
     size_t start;
     size_t i;
 
     // LOG(DEBUG) << "checking word " << wordlist->_words[w];
 
     if (w > 0) {
+      std::string tmp = wordlist[w];
       // check if current word has a shared/common prefix with the previous word
       // inserted
       // in case this is true, we can use an optimisation and do not need to
@@ -1371,7 +1371,7 @@ bool TRI_InsertWordsFulltextIndex(TRI_fts_index_t* const ftx,
       // tree from the root again. instead, we just start at the node at the end
       // of the
       // shared/common prefix. this will save us a lot of tree lookups
-      start = CommonPrefixLength(wordlist->_words[w - 1], wordlist->_words[w]);
+      start = CommonPrefixLength(wordlist[w - 1], tmp);
       if (start > MAX_WORD_BYTES) {
         start = MAX_WORD_BYTES;
       }
@@ -1380,7 +1380,7 @@ bool TRI_InsertWordsFulltextIndex(TRI_fts_index_t* const ftx,
       // insert the
       // same word multiple times for the same document
       if (start > 0 && start == lastLength &&
-          start == strlen(wordlist->_words[w])) {
+          start == tmp.size()) {
         // duplicate word, skip it and continue with next word
         w++;
         continue;
@@ -1398,7 +1398,8 @@ bool TRI_InsertWordsFulltextIndex(TRI_fts_index_t* const ftx,
 
     // now insert into the tree, starting at the next character after the common
     // prefix
-    p = wordlist->_words[w++] + start;
+    std::string tmp = wordlist[w++].substr(start);
+    p = tmp.c_str();
 
     for (i = start; *p && i <= MAX_WORD_BYTES; ++i) {
       node_char_t c = (node_char_t) * (p++);

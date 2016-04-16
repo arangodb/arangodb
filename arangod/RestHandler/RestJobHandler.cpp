@@ -107,7 +107,7 @@ void RestJobHandler::putJob() {
   _response = response;
 
   // plus a new header
-  static std::string xArango = "x-arango-async-id";
+  static std::string const xArango = "x-arango-async-id";
   _response->setHeaderNC(xArango, value);
 }
 
@@ -136,7 +136,7 @@ void RestJobHandler::putJobMethod() {
         json.close();
 
         VPackSlice slice(json.start());
-        generateResult(slice);
+        generateResult(GeneralResponse::ResponseCode::OK, slice);
       } catch (...) {
         // Ignore the error
       }
@@ -230,18 +230,14 @@ void RestJobHandler::getJobByType(std::string const& type) {
   }
 
   try {
-    VPackBuilder json;
-    json.add(VPackValue(VPackValueType::Array));
+    VPackBuilder result;
+    result.add(VPackValue(VPackValueType::Array));
     size_t const n = ids.size();
     for (size_t i = 0; i < n; ++i) {
-      char* idString = TRI_StringUInt64(ids[i]);
-      if (idString != nullptr) {
-        json.add(VPackValue(idString));
-      }
+      result.add(VPackValue(std::to_string(ids[i])));
     }
-    json.close();
-    VPackSlice slice(json.start());
-    generateResult(slice);
+    result.close();
+    generateResult(GeneralResponse::ResponseCode::OK, result.slice());
   } catch (...) {
     generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_OUT_OF_MEMORY);
@@ -295,7 +291,7 @@ void RestJobHandler::deleteJob() {
     json.add("result", VPackValue(true));
     json.close();
     VPackSlice slice(json.start());
-    generateResult(slice);
+    generateResult(GeneralResponse::ResponseCode::OK, slice);
   } catch (...) {
     generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_OUT_OF_MEMORY);

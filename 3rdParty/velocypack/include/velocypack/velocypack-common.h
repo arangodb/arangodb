@@ -69,6 +69,14 @@ namespace velocypack {
 // though no VPack values can exceed the bounds of 32 bit on a 32 bit OS
 typedef uint64_t ValueLength;
 
+// disable hand-coded SSE4_2 functions for JSON parsing
+// this must be called before the JSON parser is used 
+void disableAssemblerFunctions();
+
+// whether or not the SSE4_2 functions are disabled
+bool assemblerFunctionsEnabled();
+bool assemblerFunctionsDisabled();
+
 #ifndef VELOCYPACK_64BIT
 // check if the length is beyond the size of a SIZE_MAX on this platform
 std::size_t checkOverflow(ValueLength);

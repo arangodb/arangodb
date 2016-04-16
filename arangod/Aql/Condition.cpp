@@ -25,12 +25,12 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/Index.h"
 #include "Aql/SortCondition.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 #include "Basics/json.h"
 #include "Basics/JsonHelper.h"
+#include "Utils/Transaction.h"
 
 #ifdef _WIN32
 // turn off warnings about too long type name for debug symbols blabla in MSVC
@@ -38,6 +38,7 @@
 #pragma warning(disable : 4503)
 #endif
 
+using namespace arangodb;
 using namespace arangodb::aql;
 using CompareResult = ConditionPartCompareResult;
 
@@ -179,10 +180,7 @@ ConditionPart::ConditionPart(
 
 ConditionPart::~ConditionPart() {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief true if the condition is completely covered by the other condition
-////////////////////////////////////////////////////////////////////////////////
-
 bool ConditionPart::isCoveredBy(ConditionPart const& other) const {
   if (variable != other.variable || attributeName != other.attributeName) {
     return false;
@@ -266,26 +264,17 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other) const {
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the condition
-////////////////////////////////////////////////////////////////////////////////
-
 Condition::Condition(Ast* ast)
     : _ast(ast), _root(nullptr), _isNormalized(false), _isSorted(false) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the condition
-////////////////////////////////////////////////////////////////////////////////
-
 Condition::~Condition() {
   // memory for nodes is not owned and thus not freed by the condition
   // all nodes belong to the AST
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief export the condition as VelocyPack
-//////////////////////////////////////////////////////////////////////////////
-
 void Condition::toVelocyPack(arangodb::velocypack::Builder& builder,
                              bool verbose) const {
   if (_root == nullptr) {
@@ -295,10 +284,7 @@ void Condition::toVelocyPack(arangodb::velocypack::Builder& builder,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a condition from JSON
-////////////////////////////////////////////////////////////////////////////////
-
 Condition* Condition::fromJson(ExecutionPlan* plan,
                                arangodb::basics::Json const& json) {
   auto condition = std::make_unique<Condition>(plan->getAst());
@@ -315,10 +301,7 @@ Condition* Condition::fromJson(ExecutionPlan* plan,
   return condition.release();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief clone the condition
-////////////////////////////////////////////////////////////////////////////////
-
 Condition* Condition::clone() const {
   auto copy = std::make_unique<Condition>(_ast);
 
@@ -331,11 +314,8 @@ Condition* Condition::clone() const {
   return copy.release();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief add a sub-condition to the condition
 /// the sub-condition will be AND-combined with the existing condition(s)
-////////////////////////////////////////////////////////////////////////////////
-
 void Condition::andCombine(AstNode const* node) {
   if (_isNormalized) {
     // already normalized
@@ -355,124 +335,34 @@ void Condition::andCombine(AstNode const* node) {
   TRI_ASSERT(_root != nullptr);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief locate indexes for each condition
 /// return value is a pair indicating whether the index can be used for
 /// filtering(first) and sorting(second)
-////////////////////////////////////////////////////////////////////////////////
-
 std::pair<bool, bool> Condition::findIndexes(
-    EnumerateCollectionNode const* node, std::vector<Index const*>& usedIndexes,
+    EnumerateCollectionNode const* node,
+    std::vector<arangodb::Transaction::IndexHandle>& usedIndexes,
     SortCondition const* sortCondition) {
   TRI_ASSERT(usedIndexes.empty());
   Variable const* reference = node->outVariable();
-
-  if (_root == nullptr) {
-    // We do not have a condition. But we have a sort!
-    if (!sortCondition->isEmpty() && sortCondition->isOnlyAttributeAccess() &&
-        sortCondition->isUnidirectional()) {
-      size_t const itemsInIndex = node->collection()->count();
-      double bestCost = 0.0;
-      Index const* bestIndex = nullptr;
-
-      std::vector<Index const*> indexes = node->collection()->getIndexes();
-
-      for (auto const& idx : indexes) {
-        if (idx->sparse) {
-          // a sparse index may exclude some documents, so it can't be used to
-          // get a sorted view of the ENTIRE collection
-          continue;
-        }
-        double sortCost = 0.0;
-        if (indexSupportsSort(idx, reference, sortCondition, itemsInIndex,
-                              sortCost)) {
-          if (bestIndex == nullptr || sortCost < bestCost) {
-            bestCost = sortCost;
-            bestIndex = idx;
-          }
-        }
-      }
-
-      if (bestIndex != nullptr) {
-        usedIndexes.emplace_back(bestIndex);
-      }
-
-      return std::make_pair(false, bestIndex != nullptr);
-    }
-
-    // No Index and no sort condition that
-    // can be supported by an index.
-    // Nothing to do here.
-    return std::make_pair(false, false);
-  }
-
-  // We can only start after DNF transformation
-  TRI_ASSERT(_root->type == NODE_TYPE_OPERATOR_NARY_OR);
-  bool canUseForFilter = (_root->numMembers() > 0);
-  bool canUseForSort = false;
-
-  for (size_t i = 0; i < _root->numMembers(); ++i) {
-    auto canUseIndex =
-        findIndexForAndNode(i, reference, node, usedIndexes, sortCondition);
-
-    if (canUseIndex.second && !canUseIndex.first) {
-      // index can be used for sorting only
-      // we need to abort further searching and only return one index
-      TRI_ASSERT(!usedIndexes.empty());
-      if (usedIndexes.size() > 1) {
-        auto sortIndex = usedIndexes.back();
-
-        usedIndexes.clear();
-        usedIndexes.emplace_back(sortIndex);
-      }
-
-      TRI_ASSERT(usedIndexes.size() == 1);
-
-      if (usedIndexes.back()->sparse) {
-        // cannot use a sparse index for sorting alone
-        usedIndexes.clear();
-      }
-      return std::make_pair(false, !usedIndexes.empty());
-    }
-
-    canUseForFilter &= canUseIndex.first;
-    canUseForSort |= canUseIndex.second;
-  }
-
-  if (canUseForFilter) {
-    _isSorted = sortOrs(reference, usedIndexes);
-  }
-
-  // should always be true here. maybe not in the future in case a collection
-  // has absolutely no indexes
-  return std::make_pair(canUseForFilter, canUseForSort);
-}
-
-bool Condition::indexSupportsSort(Index const* idx, Variable const* reference,
-                                  SortCondition const* sortCondition,
-                                  size_t itemsInIndex,
-                                  double& estimatedCost) const {
-  if (idx->isSorted() &&
-      idx->supportsSortCondition(sortCondition, reference, itemsInIndex,
-                                 estimatedCost)) {
-    // index supports the sort condition
-    return true;
-  }
-
-  // index does not support the sort condition
-  if (itemsInIndex > 0) {
-    estimatedCost = itemsInIndex * std::log2(static_cast<double>(itemsInIndex));
-  } else {
-    estimatedCost = 0.0;
-  }
-  return false;
-}
+  std::string collectionName = node->collection()->getName();
  
-////////////////////////////////////////////////////////////////////////////////
+  arangodb::Transaction* trx = _ast->query()->trx();
+
+  size_t const itemsInIndex = node->collection()->count();
+  if (_root == nullptr) {
+    size_t dummy;
+    return trx->getIndexForSortCondition(collectionName, sortCondition,
+                                         reference, itemsInIndex, usedIndexes,
+                                         dummy);
+  }
+
+  return trx->getBestIndexHandlesForFilterCondition(
+      collectionName, _ast, _root, reference, sortCondition, itemsInIndex,
+      usedIndexes, _isSorted);
+}
+
 /// @brief get the attributes for a sub-condition that are const
 /// (i.e. compared with equality)
-////////////////////////////////////////////////////////////////////////////////
-
 std::vector<std::vector<arangodb::basics::AttributeName>> Condition::getConstAttributes (Variable const* reference,
                                                                                          bool includeNull) {
   std::vector<std::vector<arangodb::basics::AttributeName>> result;
@@ -517,116 +407,8 @@ std::vector<std::vector<arangodb::basics::AttributeName>> Condition::getConstAtt
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds the best index that can match this single node
-////////////////////////////////////////////////////////////////////////////////
-
-std::pair<bool, bool> Condition::findIndexForAndNode(
-    size_t position, Variable const* reference,
-    EnumerateCollectionNode const* colNode,
-    std::vector<Index const*>& usedIndexes,
-    SortCondition const* sortCondition) {
-  // We can only iterate through a proper DNF
-  auto node = _root->getMember(position);
-  TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_NARY_AND);
-
-  // number of items in collection
-  size_t const itemsInCollection = colNode->collection()->count();
-
-  Index const* bestIndex = nullptr;
-  double bestCost = 0.0;
-  bool bestSupportsFilter = false;
-  bool bestSupportsSort = false;
-
-  std::vector<Index const*> indexes = colNode->collection()->getIndexes();
-
-  for (auto const& idx : indexes) {
-    double filterCost = 0.0;
-    double sortCost = 0.0;
-    size_t itemsInIndex = itemsInCollection;
-
-    bool supportsFilter = false;
-    bool supportsSort = false;
-
-    // check if the index supports the filter expression
-    double estimatedCost;
-    size_t estimatedItems;
-    if (idx->supportsFilterCondition(node, reference, itemsInIndex,
-                                     estimatedItems, estimatedCost)) {
-      // index supports the filter condition
-      filterCost = estimatedCost;
-      // this reduces the number of items left
-      itemsInIndex = estimatedItems;
-      supportsFilter = true;
-    } else {
-      // index does not support the filter condition
-      filterCost = itemsInIndex * 1.5;
-    }
-
-    bool const isOnlyAttributeAccess =
-        (!sortCondition->isEmpty() && sortCondition->isOnlyAttributeAccess());
-
-    if (sortCondition->isUnidirectional()) {
-      // only go in here if we actually have a sort condition and it can in
-      // general be supported by an index. for this, a sort condition must not
-      // be empty, must consist only of attribute access, and all attributes
-      // must be sorted in the direction
-      if (indexSupportsSort(idx, reference, sortCondition, itemsInIndex,
-                            sortCost)) {
-        supportsSort = true;
-      }
-    }
-
-    if (!supportsSort && isOnlyAttributeAccess && node->isOnlyEqualityMatch()) {
-      // index cannot be used for sorting, but the filter condition consists
-      // only of equality lookups (==)
-      // now check if the index fields are the same as the sort condition fields
-      // e.g. FILTER c.value1 == 1 && c.value2 == 42 SORT c.value1, c.value2
-      size_t coveredFields =
-          sortCondition->coveredAttributes(reference, idx->fields); 
-
-      if (coveredFields == sortCondition->numAttributes() &&
-          (idx->isSorted() ||
-           idx->fields.size() == sortCondition->numAttributes())) {
-        // no sorting needed
-        sortCost = 0.0;
-      }
-    }
-
-    // std::cout << "INDEX: " << idx << ", SUPPORTS FILTER: " << supportsFilter
-    // << ", SUPPORTS SORT: " << supportsSort << ", FILTER COST: " << filterCost
-    // << ", SORT COST: " << sortCost << "\n";
-
-    if (!supportsFilter && !supportsSort) {
-      continue;
-    }
-
-    double const totalCost = filterCost + sortCost;
-    if (bestIndex == nullptr || totalCost < bestCost) {
-      bestIndex = idx;
-      bestCost = totalCost;
-      bestSupportsFilter = supportsFilter;
-      bestSupportsSort = supportsSort;
-    }
-  }
-
-  if (bestIndex == nullptr) {
-    return std::make_pair(false, false);
-  }
-
-  _root->changeMember(position,
-                      bestIndex->specializeCondition(node, reference));
-
-  usedIndexes.emplace_back(bestIndex);
-
-  return std::make_pair(bestSupportsFilter, bestSupportsSort);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize the condition
 /// this will convert the condition into its disjunctive normal form
-////////////////////////////////////////////////////////////////////////////////
-
 void Condition::normalize(ExecutionPlan* plan) {
   if (_isNormalized) {
     // already normalized
@@ -646,13 +428,10 @@ void Condition::normalize(ExecutionPlan* plan) {
 #endif
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize the condition
 /// this will convert the condition into its disjunctive normal form
 /// in this case we don't re-run the optimizer. Its expected that you
 /// don't want to remove eventually unneccessary filters.
-////////////////////////////////////////////////////////////////////////////////
-
 void Condition::normalize() {
   if (_isNormalized) {
     // already normalized
@@ -670,10 +449,7 @@ void Condition::normalize() {
 #endif
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief removes condition parts from another
-////////////////////////////////////////////////////////////////////////////////
-
 AstNode* Condition::removeIndexCondition(Variable const* variable,
                                          AstNode* other) {
   if (_root == nullptr || other == nullptr) {
@@ -763,10 +539,7 @@ AstNode* Condition::removeIndexCondition(Variable const* variable,
   return newNode;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief remove (now) invalid variables from the condition
-////////////////////////////////////////////////////////////////////////////////
-
 bool Condition::removeInvalidVariables(
     std::unordered_set<Variable const*> const& validVars) {
   if (_root == nullptr) {
@@ -818,256 +591,7 @@ bool Condition::removeInvalidVariables(
   return isEmpty;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sort ORs for the same attribute so they are in ascending value
-/// order. this will only work if the condition is for a single attribute
-/// the usedIndexes vector may also be re-sorted
-////////////////////////////////////////////////////////////////////////////////
-
-bool Condition::sortOrs(Variable const* variable,
-                        std::vector<Index const*>& usedIndexes) {
-  if (_root == nullptr) {
-    return true;
-  }
-
-  size_t const n = _root->numMembers();
-
-  if (n < 2) {
-    return true;
-  }
-
-  if (n != usedIndexes.size()) {
-    // sorting will break if the number of ORs is unequal to the number of
-    // indexes
-    // but we shouldn't have got here then
-    TRI_ASSERT(false);
-    return false;
-  }
-
-  typedef std::pair<AstNode*, Index const*> ConditionData;
-  std::vector<ConditionData*> conditionData;
-
-  auto cleanup = [&conditionData]() -> void {
-    for (auto& it : conditionData) {
-      delete it;
-    }
-  };
-
-  TRI_DEFER(cleanup());
-
-  std::vector<ConditionPart> parts;
-  parts.reserve(n);
-
-  for (size_t i = 0; i < n; ++i) {
-    // sort the conditions of each AND
-    auto sub = _root->getMemberUnchecked(i);
-
-    TRI_ASSERT(sub != nullptr && sub->type == NODE_TYPE_OPERATOR_NARY_AND);
-    size_t const nAnd = sub->numMembers();
-
-    if (nAnd != 1) {
-      // we can't handle this one
-      return false;
-    }
-
-    auto operand = sub->getMemberUnchecked(0);
-
-    if (!operand->isComparisonOperator()) {
-      return false;
-    }
-
-    if (operand->type == NODE_TYPE_OPERATOR_BINARY_NE ||
-        operand->type == NODE_TYPE_OPERATOR_BINARY_NIN) {
-      return false;
-    }
-
-    auto lhs = operand->getMember(0);
-    auto rhs = operand->getMember(1);
-
-    if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
-          result;
-
-      if (rhs->isConstant() && lhs->isAttributeAccessForVariable(result) &&
-          result.first == variable &&
-          (operand->type != NODE_TYPE_OPERATOR_BINARY_IN || rhs->isArray())) {
-        // create the condition data struct on the heap
-        auto data = std::make_unique<ConditionData>(sub, usedIndexes[i]);
-        // push it into an owning vector
-        conditionData.emplace_back(data.get());
-        // vector is now responsible for data
-        auto p = data.release();
-        // also add the pointer to the (non-owning) parts vector
-        parts.emplace_back(ConditionPart(result.first, result.second, operand,
-                                         ATTRIBUTE_LEFT, p));
-      }
-    }
-
-    if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-        rhs->type == NODE_TYPE_EXPANSION) {
-      std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
-          result;
-
-      if (lhs->isConstant() && rhs->isAttributeAccessForVariable(result) &&
-          result.first == variable) {
-        // create the condition data struct on the heap
-        auto data = std::make_unique<ConditionData>(sub, usedIndexes[i]);
-        // push it into an owning vector
-        conditionData.emplace_back(data.get());
-        // vector is now responsible for data
-        auto p = data.release();
-        // also add the pointer to the (non-owning) parts vector
-        parts.emplace_back(ConditionPart(result.first, result.second, operand,
-                                         ATTRIBUTE_RIGHT, p));
-      }
-    }
-  }
-
-  if (parts.size() != _root->numMembers()) {
-    return false;
-  }
-
-  // check if all parts use the same variable and attribute
-  for (size_t i = 1; i < n; ++i) {
-    auto& lhs = parts[i - 1];
-    auto& rhs = parts[i];
-
-    if (lhs.variable != rhs.variable ||
-        lhs.attributeName != rhs.attributeName) {
-      // oops, the different OR parts are on different variables or attributes
-      return false;
-    }
-  }
-
-  size_t previousIn = SIZE_MAX;
-
-  for (size_t i = 0; i < n; ++i) {
-    auto& p = parts[i];
-
-    if (p.operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
-        p.valueNode->isArray()) {
-      TRI_ASSERT(p.valueNode->isConstant());
-
-      if (previousIn != SIZE_MAX) {
-        // merge IN with IN
-        TRI_ASSERT(previousIn < i);
-        auto emptyArray = _ast->createNodeArray();
-        auto mergedIn = _ast->createNodeUnionizedArray(
-            parts[previousIn].valueNode, p.valueNode);
-        parts[previousIn].valueNode = mergedIn;
-        parts[i].valueNode = emptyArray;
-        _root->getMember(previousIn)->getMember(0)->changeMember(1, mergedIn);
-        _root->getMember(i)->getMember(0)->changeMember(1, emptyArray);
-      } else {
-        // note first IN
-        previousIn = i;
-      }
-    }
-  }
-
-  // now sort all conditions by variable name, attribute name, attribute value
-  std::sort(parts.begin(), parts.end(),
-            [](ConditionPart const& lhs, ConditionPart const& rhs) -> bool {
-              // compare variable names first
-              auto res = lhs.variable->name.compare(rhs.variable->name);
-
-              if (res != 0) {
-                return res < 0;
-              }
-
-              // compare attribute names next
-              res = lhs.attributeName.compare(rhs.attributeName);
-
-              if (res != 0) {
-                return res < 0;
-              }
-
-              // compare attribute values next
-              auto ll = lhs.lowerBound();
-              auto lr = rhs.lowerBound();
-
-              if (ll == nullptr && lr != nullptr) {
-                // left lower bound is not set but right
-                return true;
-              } else if (ll != nullptr && lr == nullptr) {
-                // left lower bound is set but not right
-                return false;
-              }
-
-              if (ll != nullptr && lr != nullptr) {
-                // both lower bounds are set
-                res = CompareAstNodes(ll, lr, true);
-
-                if (res != 0) {
-                  return res < 0;
-                }
-              }
-
-              if (lhs.isLowerInclusive() && !rhs.isLowerInclusive()) {
-                return true;
-              }
-              if (rhs.isLowerInclusive() && !lhs.isLowerInclusive()) {
-                return false;
-              }
-
-              // all things equal
-              return false;
-            });
-
-  /*
-    auto l = 0;
-    for (size_t r = 1; r < n; ++r) {
-      auto& l = parts[l].data;
-      auto& r = parts[r].data;
-
-      if (l.higher > r.higher ||
-          (l.higher == r.higher && (l.inclusive || ! r.inclusive)) {
-        // r is contained in l => remove r (i.e. do nothing)
-        r.data = nullptr;
-      }
-      else if (r.lower < l.higher || (r.lower == l.higher && (r.inclusive ||
-    l.inclusive))) {
-        // r extends l => fuse l.lower & r.higher
-
-        r.data = nullptr;
-        newOrNode->getMember(newor
-      }
-      else {
-        // disjoint ranges. simply add the node
-        newOrNode->addMember(r);
-      }
-    }
-    */
-
-  TRI_ASSERT(parts.size() == conditionData.size());
-
-  // clean up
-  usedIndexes.clear();
-  while (_root->numMembers()) {
-    _root->removeMemberUnchecked(0);
-  }
-
-  // and rebuild
-  for (size_t i = 0; i < n; ++i) {
-    if (parts[i].operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
-        parts[i].valueNode->isArray() &&
-        parts[i].valueNode->numMembers() == 0) {
-      // can optimize away empty IN array
-      continue;
-    }
-
-    auto conditionData = static_cast<ConditionData*>(parts[i].data);
-    _root->addMember(conditionData->first);
-    usedIndexes.emplace_back(conditionData->second);
-  }
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief optimize the condition expression tree
-////////////////////////////////////////////////////////////////////////////////
-
 void Condition::optimize(ExecutionPlan* plan) {
   if (_root == nullptr) {
     return;
@@ -1316,10 +840,7 @@ void Condition::optimize(ExecutionPlan* plan) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief registers an attribute access for a particular (collection) variable
-////////////////////////////////////////////////////////////////////////////////
-
 void Condition::storeAttributeAccess(VariableUsageType& variableUsage,
                                      AstNode const* node, size_t position,
                                      AttributeSideType side) {
@@ -1363,10 +884,7 @@ void Condition::storeAttributeAccess(VariableUsageType& variableUsage,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief validate the condition's AST
-////////////////////////////////////////////////////////////////////////////////
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void Condition::validateAst(AstNode const* node, int level) {
   if (level == 0) {
@@ -1390,10 +908,7 @@ void Condition::validateAst(AstNode const* node, int level) {
 }
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if the current condition is covered by the other
-////////////////////////////////////////////////////////////////////////////////
-
 bool Condition::canRemove(ConditionPart const& me,
                           arangodb::aql::AstNode const* otherCondition) const {
   TRI_ASSERT(otherCondition != nullptr);
@@ -1458,11 +973,8 @@ bool Condition::canRemove(ConditionPart const& me,
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief deduplicate IN condition values (and sort them)
 /// this may modify the node in place
-////////////////////////////////////////////////////////////////////////////////
-
 void Condition::deduplicateInOperation(AstNode* operation) {
   if (operation->type != NODE_TYPE_OPERATOR_BINARY_IN) {
     return;
@@ -1485,10 +997,7 @@ void Condition::deduplicateInOperation(AstNode* operation) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief merge the values from two IN operations
-////////////////////////////////////////////////////////////////////////////////
-
 AstNode* Condition::mergeInOperations(AstNode const* lhs, AstNode const* rhs) {
   TRI_ASSERT(lhs->type == NODE_TYPE_OPERATOR_BINARY_IN);
   TRI_ASSERT(rhs->type == NODE_TYPE_OPERATOR_BINARY_IN);
@@ -1502,10 +1011,7 @@ AstNode* Condition::mergeInOperations(AstNode const* lhs, AstNode const* rhs) {
   return _ast->createNodeIntersectedArray(lValue, rValue);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief merges the current node with the sub nodes of same type
-////////////////////////////////////////////////////////////////////////////////
-
 AstNode* Condition::collapse(AstNode const* node) {
   TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_NARY_OR ||
              node->type == NODE_TYPE_OPERATOR_NARY_AND);
@@ -1534,10 +1040,7 @@ AstNode* Condition::collapse(AstNode const* node) {
   return newOperator;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief converts binary logical operators into n-ary operators
-////////////////////////////////////////////////////////////////////////////////
-
 AstNode* Condition::transformNode(AstNode* node) {
   if (node == nullptr) {
     return nullptr;
@@ -1702,12 +1205,9 @@ AstNode* Condition::transformNode(AstNode* node) {
   return node;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Creates a top-level OR node if it does not already exist, and make
 /// sure that all second level nodes are AND nodes. Additionally, this step will
 /// remove all NOP nodes.
-////////////////////////////////////////////////////////////////////////////////
-
 AstNode* Condition::fixRoot(AstNode* node, int level) {
   if (node == nullptr) {
     return nullptr;

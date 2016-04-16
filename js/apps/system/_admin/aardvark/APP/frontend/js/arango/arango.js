@@ -61,6 +61,10 @@
       };
     },
 
+    getCurrentSub: function() {
+      return window.App.naviView.activeSubMenu;
+    },
+
     setCheckboxStatus: function(id) {
       _.each($(id).find('ul').find('li'), function(element) {
          if (!$(element).hasClass("nav-header")) {
@@ -216,6 +220,51 @@
 
         window.modalView.show("modalHotkeys.ejs", "Keyboard Shortcuts", buttons, content);
       }
+    },
+
+    //object: {"name": "Menu 1", func: function(), active: true/false }
+    buildSubNavBar: function(menuItems) {
+      $('#subNavigationBar .bottom').html('');
+      var cssClass;
+
+      _.each(menuItems, function(menu, name) {
+        if (menu.active) {
+          cssClass += ' active';
+        }
+        else {
+          cssClass = '';
+        }
+        $('#subNavigationBar .bottom').append(
+          '<li class="subMenuEntry ' + cssClass + '"><a>' + name + '</a></li>'
+        );
+        $('#subNavigationBar .bottom').children().last().bind('click', function() {
+          window.App.navigate(menu.route, {trigger: true});
+        });
+      });
+    },
+
+    //nav for collection view
+    buildCollectionSubNav: function(collectionName, activeKey) {
+
+      var defaultRoute = '#collection/' + encodeURIComponent(collectionName);
+
+      var menus = {
+        Content: {
+          route: defaultRoute + '/documents/1'
+        },
+        Indices: {
+          route: '#cIndices/' + encodeURIComponent(collectionName)
+        },
+        Info: {
+          route: '#cInfo/' + encodeURIComponent(collectionName)
+        },
+        Settings: {
+          route: '#cSettings/' + encodeURIComponent(collectionName)
+        }
+      };
+
+      menus[activeKey].active = true;
+      this.buildSubNavBar(menus);
     },
 
     enableKeyboardHotkeys: function (enable) {

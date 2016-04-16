@@ -287,7 +287,7 @@ BOOST_AUTO_TEST_CASE (tst_value_mchacki2_roundtrip) {
 
   BOOST_CHECK_EQUAL(std::string("56.94837631946843"), std::string(buffer._buffer, buffer._current - buffer._buffer));
 
-  auto json2 = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, buffer._buffer, nullptr);
+  auto json2 = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, buffer._buffer);
   BOOST_CHECK_EQUAL(TRI_JSON_NUMBER, json2->_type);
   BOOST_CHECK_EQUAL(value, json2->_value._number);
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json2);
@@ -332,7 +332,7 @@ BOOST_AUTO_TEST_CASE (tst_one_third_roundtrip) {
 
   BOOST_CHECK_EQUAL(std::string("0.3333333333333333"), std::string(buffer._buffer, buffer._current - buffer._buffer));
 
-  auto json2 = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, buffer._buffer, nullptr);
+  auto json2 = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, buffer._buffer);
   BOOST_CHECK_EQUAL(TRI_JSON_NUMBER, json2->_type);
   BOOST_CHECK_EQUAL(value, json2->_value._number);
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json2);
@@ -377,7 +377,7 @@ BOOST_AUTO_TEST_CASE (tst_04_roundtrip) {
 
   BOOST_CHECK_EQUAL(std::string("0.4"), std::string(buffer._buffer, buffer._current - buffer._buffer));
   
-  auto json2 = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, buffer._buffer, nullptr);
+  auto json2 = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, buffer._buffer);
   BOOST_CHECK_EQUAL(TRI_JSON_NUMBER, json2->_type);
   BOOST_CHECK_EQUAL(value, json2->_value._number);
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json2);
@@ -403,7 +403,7 @@ BOOST_AUTO_TEST_CASE (tst_value_high_roundtrip) {
 
   BOOST_CHECK_EQUAL(std::string("4.32e+261"), std::string(buffer._buffer, buffer._current - buffer._buffer));
   
-  auto json2 = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, buffer._buffer, nullptr);
+  auto json2 = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, buffer._buffer);
   BOOST_CHECK_EQUAL(TRI_JSON_NUMBER, json2->_type);
   BOOST_CHECK_EQUAL(value, json2->_value._number);
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json2);
@@ -429,7 +429,7 @@ BOOST_AUTO_TEST_CASE (tst_value_low_roundtrip) {
 
   BOOST_CHECK_EQUAL(std::string("-4.32e+261"), std::string(buffer._buffer, buffer._current - buffer._buffer));
   
-  auto json2 = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, buffer._buffer, nullptr);
+  auto json2 = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, buffer._buffer);
   BOOST_CHECK_EQUAL(TRI_JSON_NUMBER, json2->_type);
   BOOST_CHECK_EQUAL(value, json2->_value._number);
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json2);

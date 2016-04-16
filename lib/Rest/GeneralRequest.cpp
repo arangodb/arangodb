@@ -46,7 +46,9 @@ std::string GeneralRequest::translateVersion(ProtocolVersion version) {
       return "HTTP/1.0";
 
     case ProtocolVersion::UNKNOWN:
+    default: {
       return "HTTP/1.0";
+    }
   }
 
   return "UNKNOWN"; // in order please MSVC
@@ -271,6 +273,6 @@ std::string const& GeneralRequest::value(std::string const& key, bool& found) co
 void GeneralRequest::setArrayValue(char* key, size_t length, char const* value) {
   std::string keyStr(key, length);
 
-  _arrayValues[key].emplace_back(value);
+  _arrayValues[keyStr].emplace_back(value);
 }
 

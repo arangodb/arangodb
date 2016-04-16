@@ -21,6 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
+#warning TODO name convention
 #ifndef __ARANGODB_CONSENSUS_STATE__
 #define __ARANGODB_CONSENSUS_STATE__
 
@@ -36,12 +37,14 @@
 #include <deque>
 #include <functional>
 
-
-//using namespace arangodb::velocypack;
-
-class Slice {};
+struct TRI_vocbase_t;
 
 namespace arangodb {
+class ApplicationV8;
+namespace aql {
+class QueryRegistry;
+}
+
 namespace consensus {
 
 class Agent;
@@ -53,7 +56,6 @@ class State {
   
 public:
   
-
   /// @brief Default constructor
   explicit State (std::string const& end_point = "tcp://localhost:8529");
   
@@ -75,7 +77,7 @@ public:
 
 
   /// @brief Find entry at index with term
-  bool findit (index_t index, term_t term);
+  bool find (index_t index, term_t term);
 
 
   /// @brief Get complete log entries bound by lower and upper bounds.
@@ -102,7 +104,8 @@ public:
 
 
   /// @brief Load persisted data from above or start with empty log
-  bool loadCollections ();
+  bool loadCollections (TRI_vocbase_t*, ApplicationV8*,
+                        aql::QueryRegistry*, bool);
 
   /// @brief Pipe to ostream
   friend std::ostream& operator<< (std::ostream& os, State const& s) {
@@ -114,9 +117,6 @@ public:
     return os;
   }
 
-  // @brief Persist term/leaderid
-  bool persist (term_t, id_t);
-  
 private:
 
   bool snapshot ();
@@ -140,11 +140,23 @@ private:
   /// @brief Create collection
   bool createCollection(std::string const& name);
 
+  bool compact ();
+
+  TRI_vocbase_t* _vocbase;
+  ApplicationV8* _applicationV8;
+  aql::QueryRegistry* _queryRegistry;
+
   mutable arangodb::Mutex _logLock;  /**< @brief Mutex for modifying _log */
   std::deque<log_t> _log;           /**< @brief  State entries */
+#warning TODO name convention
   std::string _end_point;            /**< @brief persistence end point */
+#warning TODO name convention
   bool _collections_checked;                 /**< @brief Collections checked */
+#warning TODO name convention
   bool _collections_loaded;
+
+  OperationOptions _options;
+
   
 };
 

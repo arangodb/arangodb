@@ -129,12 +129,24 @@ set(LIB_ARANGO_VPACK
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/velocypack-common.cpp
 )
 
+if (ASM_OPTIMIZATIONS AND CMAKE_TARGET_ARCHITECTURE_CODE MATCHES "x86_64")
+  SET(LIB_ASM_SOURCES
+    Basics/crc1.s
+  )
+  add_definitions("-DENABLE_ASM_CRC32=1")
+  message("-- Will compile in hand-optimized assembler code for CRC32.")
+else()
+  add_definitions("-DENABLE_ASM_CRC32=0")
+  message("-- Will not compile in hand-optimized assembler code for CRC32.")
+endif()
+
 add_library(${LIB_ARANGO} STATIC
   ${LIB_ARANGO_APPLE}
   ${LIB_ARANGO_MSVC}
   ${LIB_ARANGO_POSIX}
   ${LIB_ARANGO_LINENOISE}
   ${LIB_ARANGO_VPACK}
+  ${LIB_ASM_SOURCES}
   ApplicationFeatures/ApplicationFeature.cpp
   ApplicationFeatures/ApplicationServer.cpp
   ApplicationFeatures/ClientFeature.cpp
@@ -170,11 +182,9 @@ add_library(${LIB_ARANGO} STATIC
   Basics/ThreadPool.cpp
   Basics/UniformCharacter.cpp
   Basics/Utf8Helper.cpp
-  Basics/VPackStringBufferAdapter.cpp
   Basics/VelocyPackHelper.cpp
   Basics/WorkMonitor.cpp
   Basics/application-exit.cpp
-  Basics/associative.cpp
   Basics/conversions.cpp
   Basics/csv.cpp
   Basics/debugging.cpp

@@ -1,3 +1,4 @@
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Infrastructure for ExecutionPlans
 ///
 /// DISCLAIMER
@@ -38,36 +39,13 @@
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 
-// uncomment the following to get some debugging information
-#if 0
-#define ENTER_BLOCK \
-  try {             \
-    (void)0;
-#define LEAVE_BLOCK                                                            \
-  }                                                                            \
-  catch (...) {                                                                \
-    std::cout << "caught an exception in " << __FUNCTION__ << ", " << __FILE__ \
-              << ":" << __LINE__ << "!\n";                                     \
-    throw;                                                                     \
-  }
-#else
-#define ENTER_BLOCK
-#define LEAVE_BLOCK
-#endif
-
 static bool const Optional = true;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief maximum register id that can be assigned.
 /// this is used for assertions
-////////////////////////////////////////////////////////////////////////////////
-
 RegisterId const ExecutionNode::MaxRegisterId = 1000;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief type names
-////////////////////////////////////////////////////////////////////////////////
-
 std::unordered_map<int, std::string const> const ExecutionNode::TypeNames{
     {static_cast<int>(ILLEGAL), "ExecutionNode (abstract)"},
     {static_cast<int>(SINGLETON), "SingletonNode"},
@@ -93,10 +71,7 @@ std::unordered_map<int, std::string const> const ExecutionNode::TypeNames{
     {static_cast<int>(UPSERT), "UpsertNode"},
     {static_cast<int>(TRAVERSAL), "TraversalNode"}};
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the type name of the node
-////////////////////////////////////////////////////////////////////////////////
-
 std::string const& ExecutionNode::getTypeString() const {
   auto it = TypeNames.find(static_cast<int>(getType()));
 
@@ -295,10 +270,7 @@ ExecutionNode* ExecutionNode::fromJsonFactory(
   return nullptr;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an ExecutionNode from JSON
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionNode::ExecutionNode(ExecutionPlan* plan,
                              arangodb::basics::Json const& json)
     : _id(JsonHelper::checkAndGetNumericValue<size_t>(json.json(), "id")),
@@ -394,7 +366,9 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan,
   len = jsonvarsUsedLater.size();
   _varsUsedLater.reserve(len);
   for (size_t i = 0; i < len; i++) {
-    auto oneVarUsedLater = std::make_unique<Variable>(jsonvarsUsedLater.at(i));
+    // TODO: still Json Version. Ignore return val
+    auto builder = JsonHelper::toVelocyPack(jsonvarsUsedLater.at(i).json());
+    auto oneVarUsedLater = std::make_unique<Variable>(builder->slice());
     Variable* oneVariable = allVars->getVariable(oneVarUsedLater->id);
 
     if (oneVariable == nullptr) {
@@ -415,7 +389,9 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan,
   len = jsonvarsValidList.size();
   _varsValid.reserve(len);
   for (size_t i = 0; i < len; i++) {
-    auto oneVarValid = std::make_unique<Variable>(jsonvarsValidList.at(i));
+    // TODO: deprecated
+    auto builder = JsonHelper::toVelocyPack(jsonvarsValidList.at(i).json());
+    auto oneVarValid = std::make_unique<Variable>(builder->slice());
     Variable* oneVariable = allVars->getVariable(oneVarValid->id);
 
     if (oneVariable == nullptr) {
@@ -427,27 +403,22 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack, export an ExecutionNode to VelocyPack
-////////////////////////////////////////////////////////////////////////////////
-
-void ExecutionNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
-  ENTER_BLOCK
-  VPackObjectBuilder obj(&builder);
+void ExecutionNode::toVelocyPack(VPackBuilder& builder, 
+                                 bool verbose, bool keepTopLevelOpen) const {
+  // default value is to NOT keep top level open
+  builder.openObject();
   builder.add(VPackValue("nodes"));
   {
     VPackArrayBuilder guard(&builder);
     toVelocyPackHelper(builder, verbose);
   }
-  LEAVE_BLOCK
+  if (!keepTopLevelOpen) {
+    builder.close();
+  }
 }
 
-
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief execution Node clone utility to be called by derives
-////////////////////////////////////////////////////////////////////////////////
-
 void ExecutionNode::cloneHelper(ExecutionNode* other, ExecutionPlan* plan,
                                 bool withDependencies,
                                 bool withProperties) const {
@@ -495,10 +466,7 @@ void ExecutionNode::cloneHelper(ExecutionNode* other, ExecutionPlan* plan,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief helper for cloning, use virtual clone methods for dependencies
-////////////////////////////////////////////////////////////////////////////////
-
 void ExecutionNode::cloneDependencies(ExecutionPlan* plan,
                                       ExecutionNode* theClone,
                                       bool withProperties) const {
@@ -516,10 +484,7 @@ void ExecutionNode::cloneDependencies(ExecutionPlan* plan,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief convert to a string, basically for debugging purposes
-////////////////////////////////////////////////////////////////////////////////
-
 void ExecutionNode::appendAsString(std::string& st, int indent) {
   for (int i = 0; i < indent; i++) {
     st.push_back(' ');
@@ -541,10 +506,7 @@ void ExecutionNode::appendAsString(std::string& st, int indent) {
   st.push_back('>');
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief invalidate the cost estimation for the node and its dependencies
-////////////////////////////////////////////////////////////////////////////////
-
 void ExecutionNode::invalidateCost() {
   _estimatedCostSet = false;
 
@@ -561,10 +523,7 @@ void ExecutionNode::invalidateCost() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief functionality to walk an execution plan recursively
-////////////////////////////////////////////////////////////////////////////////
-
 bool ExecutionNode::walk(WalkerWorker<ExecutionNode>* worker) {
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // Only do every node exactly once
@@ -606,10 +565,7 @@ bool ExecutionNode::walk(WalkerWorker<ExecutionNode>* worker) {
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the surrounding loop
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionNode const* ExecutionNode::getLoop() const {
   auto node = this;
   while (node != nullptr) {
@@ -631,10 +587,7 @@ ExecutionNode const* ExecutionNode::getLoop() const {
   return nullptr;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief factory for (optional) variables from json
-////////////////////////////////////////////////////////////////////////////////
-
 Variable* ExecutionNode::varFromJson(Ast* ast,
                                      arangodb::basics::Json const& base,
                                      char const* variableName, bool optional) {
@@ -650,21 +603,18 @@ Variable* ExecutionNode::varFromJson(Ast* ast,
         "Mandatory variable \"" + std::string(variableName) + "\" not found.";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
   }
-
-  return ast->variables()->createVariable(variableJson);
+  // TODO: deprecated
+  auto builder = JsonHelper::toVelocyPack(variableJson.json());
+  return ast->variables()->createVariable(builder->slice());
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPackHelper, for a generic node
 /// Note: The input nodes has to be an Array Element that is still Open.
 ///       At the end of this function the current-nodes Object is OPEN and
 ///       has to be closed. The initial caller of toVelocyPackHelper
 ///       has to close the array.
-////////////////////////////////////////////////////////////////////////////////
-
 void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes,
                                               bool verbose) const {
-  ENTER_BLOCK
   TRI_ASSERT(nodes.isOpenArray());
   size_t const n = _dependencies.size();
   for (size_t i = 0; i < n; i++) {
@@ -768,13 +718,9 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes,
     }
   }
   TRI_ASSERT(nodes.isOpenObject());
-  LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief static analysis debugger
-////////////////////////////////////////////////////////////////////////////////
-
 #if 0
 struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode> {
   RegisterPlanningDebugger () 
@@ -820,10 +766,7 @@ struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode> {
 
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief planRegisters
-////////////////////////////////////////////////////////////////////////////////
-
 void ExecutionNode::planRegisters(ExecutionNode* super) {
   // The super is only for the case of subqueries.
   std::shared_ptr<RegisterPlan> v;
@@ -1209,34 +1152,21 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toJson, for SingletonNode
-////////////////////////////////////////////////////////////////////////////////
-
 SingletonNode::SingletonNode(ExecutionPlan* plan,
                              arangodb::basics::Json const& base)
     : ExecutionNode(plan, base) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack, for SingletonNode
-////////////////////////////////////////////////////////////////////////////////
-
 void SingletonNode::toVelocyPackHelper(VPackBuilder& nodes,
                                        bool verbose) const {
-  ENTER_BLOCK
   ExecutionNode::toVelocyPackHelperGeneric(nodes,
                                            verbose);  // call base class method
   // This node has no own information.
   nodes.close();
-  LEAVE_BLOCK
 }
 
-
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief the cost of a singleton is 1, it produces one item only
-////////////////////////////////////////////////////////////////////////////////
-
 double SingletonNode::estimateCost(size_t& nrItems) const {
   nrItems = 1;
   return 1.0;
@@ -1251,13 +1181,9 @@ EnumerateCollectionNode::EnumerateCollectionNode(
       _outVariable(varFromJson(plan->getAst(), base, "outVariable")),
       _random(JsonHelper::checkAndGetBooleanValue(base.json(), "random")) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack, for EnumerateCollectionNode
-////////////////////////////////////////////////////////////////////////////////
-
 void EnumerateCollectionNode::toVelocyPackHelper(VPackBuilder& nodes,
                                                  bool verbose) const {
-  ENTER_BLOCK
   ExecutionNode::toVelocyPackHelperGeneric(nodes,
                                            verbose);  // call base class method
 
@@ -1270,13 +1196,9 @@ void EnumerateCollectionNode::toVelocyPackHelper(VPackBuilder& nodes,
 
   // And close it:
   nodes.close();
-  LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan,
                                               bool withDependencies,
                                               bool withProperties) const {
@@ -1294,13 +1216,9 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan,
   return static_cast<ExecutionNode*>(c);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief the cost of an enumerate collection node is a multiple of the cost of
 /// its unique dependency
-////////////////////////////////////////////////////////////////////////////////
-
 double EnumerateCollectionNode::estimateCost(size_t& nrItems) const {
-  ENTER_BLOCK
   size_t incoming;
   double depCost = _dependencies.at(0)->getCost(incoming);
   size_t count = _collection->count();
@@ -1308,7 +1226,6 @@ double EnumerateCollectionNode::estimateCost(size_t& nrItems) const {
   // We do a full collection scan for each incoming item.
   // random iteration is slightly more expensive than linear iteration
   return depCost + nrItems * (_random ? 1.005 : 1.0);
-  LEAVE_BLOCK
 }
 
 EnumerateListNode::EnumerateListNode(ExecutionPlan* plan,
@@ -1317,13 +1234,9 @@ EnumerateListNode::EnumerateListNode(ExecutionPlan* plan,
       _inVariable(varFromJson(plan->getAst(), base, "inVariable")),
       _outVariable(varFromJson(plan->getAst(), base, "outVariable")) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack, for EnumerateListNode
-////////////////////////////////////////////////////////////////////////////////
-
 void EnumerateListNode::toVelocyPackHelper(VPackBuilder& nodes,
                                            bool verbose) const {
-  ENTER_BLOCK
   ExecutionNode::toVelocyPackHelperGeneric(nodes,
                                            verbose);  // call base class method
   nodes.add(VPackValue("inVariable"));
@@ -1334,13 +1247,9 @@ void EnumerateListNode::toVelocyPackHelper(VPackBuilder& nodes,
 
   // And close it:
   nodes.close();
-  LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionNode* EnumerateListNode::clone(ExecutionPlan* plan,
                                         bool withDependencies,
                                         bool withProperties) const {
@@ -1359,12 +1268,8 @@ ExecutionNode* EnumerateListNode::clone(ExecutionPlan* plan,
   return static_cast<ExecutionNode*>(c);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief the cost of an enumerate list node
-////////////////////////////////////////////////////////////////////////////////
-
 double EnumerateListNode::estimateCost(size_t& nrItems) const {
-  ENTER_BLOCK
   size_t incoming = 0;
   double depCost = _dependencies.at(0)->getCost(incoming);
 
@@ -1413,7 +1318,6 @@ double EnumerateListNode::estimateCost(size_t& nrItems) const {
 
   nrItems = length * incoming;
   return depCost + static_cast<double>(length) * incoming;
-  LEAVE_BLOCK
 }
 
 LimitNode::LimitNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
@@ -1425,13 +1329,8 @@ LimitNode::LimitNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
       _fullCount(
           JsonHelper::checkAndGetBooleanValue(base.json(), "fullCount")) {}
 
-////////////////////////////////////////////////////////////////////////////////
 // @brief toVelocyPack, for LimitNode
-////////////////////////////////////////////////////////////////////////////////
-
 void LimitNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ENTER_BLOCK
-
   ExecutionNode::toVelocyPackHelperGeneric(nodes, verbose);  // call base class method
   nodes.add("offset", VPackValue(static_cast<double>(_offset)));
   nodes.add("limit", VPackValue(static_cast<double>(_limit)));
@@ -1439,22 +1338,16 @@ void LimitNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
 
   // And close it:
   nodes.close();
-  LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief estimateCost
-////////////////////////////////////////////////////////////////////////////////
-
 double LimitNode::estimateCost(size_t& nrItems) const {
-  ENTER_BLOCK
   size_t incoming = 0;
   double depCost = _dependencies.at(0)->getCost(incoming);
   nrItems = (std::min)(_limit,
                        (std::max)(static_cast<size_t>(0), incoming - _offset));
 
   return depCost + nrItems;
-  LEAVE_BLOCK
 }
 
 CalculationNode::CalculationNode(ExecutionPlan* plan,
@@ -1466,13 +1359,9 @@ CalculationNode::CalculationNode(ExecutionPlan* plan,
       _expression(new Expression(plan->getAst(), base)),
       _canRemoveIfThrows(false) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack, for CalculationNode
-////////////////////////////////////////////////////////////////////////////////
-
 void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes,
                                          bool verbose) const {
-  ENTER_BLOCK
   ExecutionNode::toVelocyPackHelperGeneric(nodes,
                                            verbose);  // call base class method
   nodes.add(VPackValue("expression"));
@@ -1492,7 +1381,6 @@ void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes,
 
   // And close it
   nodes.close();
-  LEAVE_BLOCK
 }
 
 ExecutionNode* CalculationNode::clone(ExecutionPlan* plan,
@@ -1518,16 +1406,11 @@ ExecutionNode* CalculationNode::clone(ExecutionPlan* plan,
   return static_cast<ExecutionNode*>(c);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief estimateCost
-////////////////////////////////////////////////////////////////////////////////
-
 double CalculationNode::estimateCost(size_t& nrItems) const {
-  ENTER_BLOCK
   TRI_ASSERT(!_dependencies.empty());
   double depCost = _dependencies.at(0)->getCost(nrItems);
   return depCost + nrItems;
-  LEAVE_BLOCK
 }
 
 SubqueryNode::SubqueryNode(ExecutionPlan* plan,
@@ -1536,12 +1419,8 @@ SubqueryNode::SubqueryNode(ExecutionPlan* plan,
       _subquery(nullptr),
       _outVariable(varFromJson(plan->getAst(), base, "outVariable")) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack, for SubqueryNode
-////////////////////////////////////////////////////////////////////////////////
-
 void SubqueryNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ENTER_BLOCK
   ExecutionNode::toVelocyPackHelperGeneric(nodes,
                                            verbose);  // call base class method
 
@@ -1552,7 +1431,6 @@ void SubqueryNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
 
   // And add it:
   nodes.close();
-  LEAVE_BLOCK
 }
 
 ExecutionNode* SubqueryNode::clone(ExecutionPlan* plan, bool withDependencies,
@@ -1570,10 +1448,7 @@ ExecutionNode* SubqueryNode::clone(ExecutionPlan* plan, bool withDependencies,
   return static_cast<ExecutionNode*>(c);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the subquery is a data-modification operation
-////////////////////////////////////////////////////////////////////////////////
-
 bool SubqueryNode::isModificationQuery() const {
   std::vector<ExecutionNode*> stack({_subquery});
 
@@ -1591,31 +1466,20 @@ bool SubqueryNode::isModificationQuery() const {
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief replace the out variable, so we can adjust the name.
-////////////////////////////////////////////////////////////////////////////////
-
 void SubqueryNode::replaceOutVariable(Variable const* var) {
   _outVariable = var;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief estimateCost
-////////////////////////////////////////////////////////////////////////////////
-
 double SubqueryNode::estimateCost(size_t& nrItems) const {
-  ENTER_BLOCK
   double depCost = _dependencies.at(0)->getCost(nrItems);
   size_t nrItemsSubquery;
   double subCost = _subquery->getCost(nrItemsSubquery);
   return depCost + nrItems * subCost;
-  LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief helper struct to find all (outer) variables used in a SubqueryNode
-////////////////////////////////////////////////////////////////////////////////
-
 struct SubqueryVarUsageFinder final : public WalkerWorker<ExecutionNode> {
   std::unordered_set<Variable const*> _usedLater;
   std::unordered_set<Variable const*> _valid;
@@ -1659,10 +1523,7 @@ struct SubqueryVarUsageFinder final : public WalkerWorker<ExecutionNode> {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief getVariablesUsedHere, returning a vector
-////////////////////////////////////////////////////////////////////////////////
-
 std::vector<Variable const*> SubqueryNode::getVariablesUsedHere() const {
   SubqueryVarUsageFinder finder;
   _subquery->walk(&finder);
@@ -1678,10 +1539,7 @@ std::vector<Variable const*> SubqueryNode::getVariablesUsedHere() const {
   return v;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief getVariablesUsedHere, modifying the set in-place
-////////////////////////////////////////////////////////////////////////////////
-
 void SubqueryNode::getVariablesUsedHere(
     std::unordered_set<Variable const*>& vars) const {
   SubqueryVarUsageFinder finder;
@@ -1695,11 +1553,8 @@ void SubqueryNode::getVariablesUsedHere(
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief can the node throw? We have to find whether any node in the
 /// subquery plan can throw.
-////////////////////////////////////////////////////////////////////////////////
-
 struct CanThrowFinder final : public WalkerWorker<ExecutionNode> {
   bool _canThrow;
 
@@ -1730,12 +1585,8 @@ FilterNode::FilterNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
     : ExecutionNode(plan, base),
       _inVariable(varFromJson(plan->getAst(), base, "inVariable")) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack, for FilterNode
-////////////////////////////////////////////////////////////////////////////////
-
 void FilterNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ENTER_BLOCK
   ExecutionNode::toVelocyPackHelperGeneric(nodes,
                                            verbose);  // call base class method
 
@@ -1744,7 +1595,6 @@ void FilterNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
 
   // And close it:
   nodes.close();
-  LEAVE_BLOCK
 }
 
 ExecutionNode* FilterNode::clone(ExecutionPlan* plan, bool withDependencies,
@@ -1761,12 +1611,8 @@ ExecutionNode* FilterNode::clone(ExecutionPlan* plan, bool withDependencies,
   return static_cast<ExecutionNode*>(c);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief estimateCost
-////////////////////////////////////////////////////////////////////////////////
-
 double FilterNode::estimateCost(size_t& nrItems) const {
-  ENTER_BLOCK
   double depCost = _dependencies.at(0)->getCost(nrItems);
   // We are pessimistic here by not reducing the nrItems. However, in the
   // worst case the filter does not reduce the items at all. Furthermore,
@@ -1778,19 +1624,14 @@ double FilterNode::estimateCost(size_t& nrItems) const {
   // the rule throwing away a FilterNode that is already covered by an
   // IndexNode cannot reduce the costs.
   return depCost + nrItems;
-  LEAVE_BLOCK
 }
 
 ReturnNode::ReturnNode(ExecutionPlan* plan, arangodb::basics::Json const& base)
     : ExecutionNode(plan, base),
       _inVariable(varFromJson(plan->getAst(), base, "inVariable")) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack, for ReturnNode
-////////////////////////////////////////////////////////////////////////////////
-
 void ReturnNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ENTER_BLOCK
   ExecutionNode::toVelocyPackHelperGeneric(nodes,
                                            verbose);  // call base class method
 
@@ -1800,13 +1641,9 @@ void ReturnNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
 
   // And close it:
   nodes.close();
-  LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionNode* ReturnNode::clone(ExecutionPlan* plan, bool withDependencies,
                                  bool withProperties) const {
   auto inVariable = _inVariable;
@@ -1822,39 +1659,24 @@ ExecutionNode* ReturnNode::clone(ExecutionPlan* plan, bool withDependencies,
   return static_cast<ExecutionNode*>(c);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief estimateCost
-////////////////////////////////////////////////////////////////////////////////
-
 double ReturnNode::estimateCost(size_t& nrItems) const {
-  ENTER_BLOCK
   double depCost = _dependencies.at(0)->getCost(nrItems);
   return depCost + nrItems;
-  LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack, for NoResultsNode
-////////////////////////////////////////////////////////////////////////////////
-
 void NoResultsNode::toVelocyPackHelper(VPackBuilder& nodes,
                                        bool verbose) const {
-  ENTER_BLOCK
   ExecutionNode::toVelocyPackHelperGeneric(nodes, verbose);
 
   //And close it
   nodes.close();
-  LEAVE_BLOCK
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief estimateCost, the cost of a NoResults is nearly 0
-////////////////////////////////////////////////////////////////////////////////
-
 double NoResultsNode::estimateCost(size_t& nrItems) const {
-  ENTER_BLOCK
   nrItems = 0;
   return 0.5;  // just to make it non-zero
-  LEAVE_BLOCK
 }
 

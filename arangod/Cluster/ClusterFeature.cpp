@@ -46,6 +46,7 @@ using namespace arangodb::options;
 
 ClusterFeature::ClusterFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Cluster"),
+      _agencyCallbackRegistry(agencyCallbackRegistry),
       _username("root"),
       _dispatcherFrontend(false),
       _kickstarter(false),
@@ -317,8 +318,7 @@ void ClusterFeature::start() {
       LOG(INFO) << "Waiting for a DBserver to show up...";
       ci->loadCurrentDBServers();
       std::vector<ServerID> DBServers = ci->getCurrentDBServers();
-
-      if (DBServers.size() > 0) {
+      if (!DBServers.empty()) {
         LOG(INFO) << "Found a DBserver.";
         break;
       }
@@ -387,7 +387,7 @@ void ClusterFeature::start() {
     }
 
     // start heartbeat thread
-    _heartbeatThread = new HeartbeatThread(_heartbeatInterval * 1000, 5);
+    _heartbeatThread = new HeartbeatThread(_agencyCallbackRegistry, _heartbeatInterval * 1000, 5);
 
     if (_heartbeatThread == nullptr) {
       LOG(FATAL) << "unable to start cluster heartbeat thread";
@@ -407,12 +407,10 @@ void ClusterFeature::start() {
   }
 
   AgencyCommResult result;
-  bool success;
 
   while (true) {
     AgencyCommLocker locker("Current", "WRITE");
-
-    success = locker.successful();
+    bool success = locker.successful();
 
     if (success) {
       VPackBuilder builder;
@@ -483,7 +481,9 @@ void ClusterFeature::stop() {
   comm.sendServerState(0.0);
 
   {
-    AgencyCommLocker locker("Current", "WRITE");
+    // Try only once to unregister because maybe the agencycomm
+    // is shutting down as well...
+    AgencyCommLocker locker("Current", "WRITE", 120.0, 0.001);
 
     if (locker.successful()) {
       // unregister ourselves

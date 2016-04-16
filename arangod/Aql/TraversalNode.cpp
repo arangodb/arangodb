@@ -27,7 +27,7 @@
 #include "Aql/TraversalNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Ast.h"
-#include "Aql/Index.h"
+#include "Indexes/Index.h"
 
 #include <cmath>
 
@@ -186,7 +186,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
         _directions.emplace_back(baseDirection);
       }
 
-      std::string eColName = col->getStringValue();
+      std::string eColName = col->getString();
       auto eColType = resolver->getCollectionTypeCluster(eColName);
       if (eColType != TRI_COL_TYPE_EDGE) {
         std::string msg("collection type invalid for collection '" +
@@ -201,7 +201,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
   } else {
     if (_edgeColls.empty()) {
       if (graph->isStringValue()) {
-        std::string graphName = graph->getStringValue();
+        std::string graphName = graph->getString();
         _graphJson = arangodb::basics::Json(graphName);
         _graphObj = plan->getAst()->query()->lookupGraphByName(graphName);
 
@@ -238,9 +238,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
                                        "an _id string or an object with _id.");
       }
       _inVariable = nullptr;
-      _vertexId =
-          std::string(start->getStringValue(), start->getStringLength());
-      ;
+      _vertexId = start->getString();
       break;
     default:
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
@@ -272,7 +270,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
   _graphJson = arangodb::basics::Json(arangodb::basics::Json::Array, edgeColls.size());
 
   for (auto& it : edgeColls) {
-    _edgeColls.push_back(it);
+    _edgeColls.emplace_back(it);
     _graphJson.add(arangodb::basics::Json(it));
   }
 }
@@ -463,10 +461,7 @@ int TraversalNode::checkIsOutVariable(size_t variableId) const {
   return -1;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toVelocyPack, for TraversalNode
-////////////////////////////////////////////////////////////////////////////////
-
 void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
                                        bool verbose) const {
   ExecutionNode::toVelocyPackHelperGeneric(nodes,
@@ -541,10 +536,7 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
   nodes.close();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
-////////////////////////////////////////////////////////////////////////////////
-
 ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
                                     bool withProperties) const {
   auto c = new TraversalNode(plan, _id, _vocbase, _edgeColls, _inVariable,
@@ -585,14 +577,12 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
   return static_cast<ExecutionNode*>(c);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief the cost of a traversal node
-////////////////////////////////////////////////////////////////////////////////
-
 double TraversalNode::estimateCost(size_t& nrItems) const {
   size_t incoming = 0;
   double depCost = _dependencies.at(0)->getCost(incoming);
   double expectedEdgesPerDepth = 0.0;
+  auto trx = _plan->getAst()->query()->trx();
   auto collections = _plan->getAst()->query()->collections();
 
   TRI_ASSERT(collections != nullptr);
@@ -607,8 +597,9 @@ double TraversalNode::estimateCost(size_t& nrItems) const {
 
     TRI_ASSERT(collection != nullptr);
 
-    for (auto const& index : collection->getIndexes()) {
-      if (index->type == arangodb::Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
+    auto indexes = trx->indexesForCollection(collection->name);
+    for (auto const& index : indexes) {
+      if (index->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
         // We can only use Edge Index
         if (index->hasSelectivityEstimate()) {
           expectedEdgesPerDepth += 1 / index->selectivityEstimate();
@@ -634,10 +625,7 @@ void TraversalNode::fillTraversalOptions(
   opts.setCollections(_edgeColls, _directions);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief remember the condition to execute for early traversal abortion.
-////////////////////////////////////////////////////////////////////////////////
-
 void TraversalNode::setCondition(arangodb::aql::Condition* condition) {
   std::unordered_set<Variable const*> varsUsedByCondition;
 

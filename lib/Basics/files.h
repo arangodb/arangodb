@@ -29,7 +29,6 @@
 #endif
 
 #include "Basics/Common.h"
-#include "Basics/vector.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the size of a file
@@ -142,7 +141,7 @@ std::vector<std::string> TRI_FilesDirectory(char const* path);
 /// @brief lists the directory tree including files and directories
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_string_t TRI_FullTreeDirectory(char const* path);
+std::vector<std::string> TRI_FullTreeDirectory(char const* path);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a file

@@ -22,8 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestEdgesHandler.h"
+#include "Basics/JsonHelper.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterMethods.h"
+#include "Indexes/EdgeIndex.h"
+#include "Utils/OperationCursor.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/Traverser.h"
 
 #include <velocypack/Iterator.h>
@@ -69,55 +74,116 @@ HttpHandler::status_t RestEdgesHandler::execute() {
   return status_t(HANDLER_DONE);
 }
 
-bool RestEdgesHandler::getEdgesForVertex(
-    std::string const& id,
+bool RestEdgesHandler::getEdgesForVertexList(
+    VPackSlice const ids,
     std::vector<traverser::TraverserExpression*> const& expressions,
-    TRI_edge_direction_e direction, SingleCollectionReadOnlyTransaction& trx,
-    arangodb::basics::Json& result, size_t& scannedIndex, size_t& filtered) {
-  arangodb::traverser::VertexId start;
-  try {
-    start = arangodb::traverser::IdStringToVertexId(trx.resolver(), id);
-  } catch (arangodb::basics::Exception& e) {
-    handleError(e);
-    return false;
+    TRI_edge_direction_e direction, SingleCollectionTransaction& trx,
+    VPackBuilder& result, size_t& scannedIndex, size_t& filtered) {
+  TRI_ASSERT(ids.isArray());
+  trx.orderDitch(trx.cid()); // will throw when it fails
+    
+  std::string const collectionName 
+      = trx.resolver()->getCollectionName(trx.cid());
+  Transaction::IndexHandle indexId = trx.edgeIndexHandle(collectionName);
+  
+  VPackBuilder searchValueBuilder;
+  EdgeIndex::buildSearchValueFromArray(direction, ids, searchValueBuilder);
+  VPackSlice search = searchValueBuilder.slice();
+  
+  std::shared_ptr<OperationCursor> cursor = trx.indexScan(
+      collectionName, arangodb::Transaction::CursorType::INDEX, indexId,
+      search, 0, UINT64_MAX, 1000, false);
+  if (cursor->failed()) {
+    THROW_ARANGO_EXCEPTION(cursor->code);
   }
-  TRI_document_collection_t* docCol =
-      trx.trxCollection()->_collection->_collection;
-
-  if (trx.orderDitch(trx.trxCollection()) == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  std::vector<TRI_doc_mptr_copy_t>&& edges = TRI_LookupEdgesDocumentCollection(
-      &trx, docCol, direction, start.cid, const_cast<char*>(start.key));
-
-  // generate result
-  result.reserve(edges.size());
-  scannedIndex += edges.size();
-
-  if (expressions.empty()) {
-    for (auto& e : edges) {
-      DocumentAccessor da(trx.resolver(), docCol, &e);
-      result.add(da.toJson());
+  
+  auto opRes = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
+  while (cursor->hasMore()) {
+    cursor->getMore(opRes);
+    if (opRes->failed()) {
+      THROW_ARANGO_EXCEPTION(opRes->code);
     }
-  } else {
-    for (auto& e : edges) {
+    VPackSlice edges = opRes->slice();
+    TRI_ASSERT(edges.isArray());
+
+    // generate result
+    scannedIndex += edges.length();
+
+    for (auto const& edge : VPackArrayIterator(edges)) {
       bool add = true;
-      // Expressions symbolize an and, so all have to be matched
-      for (auto& exp : expressions) {
-        if (exp->isEdgeAccess &&
-            !exp->matchesCheck(e, docCol, trx.resolver())) {
-          ++filtered;
-          add = false;
-          break;
+      if (!expressions.empty()) {
+        for (auto& exp : expressions) {
+          if (exp->isEdgeAccess &&
+              !exp->matchesCheck(&trx, edge)) {
+            ++filtered;
+            add = false;
+            break;
+          }
         }
       }
+
       if (add) {
-        DocumentAccessor da(trx.resolver(), docCol, &e);
-        result.add(da.toJson());
+        result.add(edge);
       }
     }
   }
+
+  return true;
+}
+
+bool RestEdgesHandler::getEdgesForVertex(
+    std::string const& id,
+    std::string const& collectionName,
+    std::vector<traverser::TraverserExpression*> const& expressions,
+    TRI_edge_direction_e direction, SingleCollectionTransaction& trx,
+    VPackBuilder& result, size_t& scannedIndex, size_t& filtered) {
+  
+  trx.orderDitch(trx.cid()); // will throw when it fails
+    
+  Transaction::IndexHandle indexId = trx.edgeIndexHandle(collectionName);
+  
+  VPackBuilder searchValueBuilder;
+  EdgeIndex::buildSearchValue(direction, id, searchValueBuilder);
+  VPackSlice search = searchValueBuilder.slice();
+  
+  std::shared_ptr<OperationCursor> cursor = trx.indexScan(
+      collectionName, arangodb::Transaction::CursorType::INDEX, indexId,
+      search, 0, UINT64_MAX, 1000, false);
+  if (cursor->failed()) {
+    THROW_ARANGO_EXCEPTION(cursor->code);
+  }
+  
+  auto opRes = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
+  while (cursor->hasMore()) {
+    cursor->getMore(opRes);
+    if (opRes->failed()) {
+      THROW_ARANGO_EXCEPTION(opRes->code);
+    }
+    VPackSlice edges = opRes->slice();
+    TRI_ASSERT(edges.isArray());
+
+    // generate result
+    scannedIndex += edges.length();
+
+    for (auto const& edge : VPackArrayIterator(edges)) {
+      bool add = true;
+      if (!expressions.empty()) {
+        for (auto& exp : expressions) {
+          if (exp->isEdgeAccess &&
+              !exp->matchesCheck(&trx, edge)) {
+            ++filtered;
+            add = false;
+            break;
+          }
+        }
+      }
+
+      if (add) {
+        result.add(edge);
+      }
+    }
+  }
+
   return true;
 }
 
@@ -144,7 +210,9 @@ bool RestEdgesHandler::readEdges(
     generateError(GeneralResponse::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     return false;
-  } else if (colType != TRI_COL_TYPE_EDGE) {
+  } 
+
+  if (colType != TRI_COL_TYPE_EDGE) {
     generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
     return false;
   }
@@ -184,6 +252,7 @@ bool RestEdgesHandler::readEdges(
     GeneralResponse::ResponseCode responseCode;
     std::string contentType;
     arangodb::basics::Json resultDocument(arangodb::basics::Json::Object, 3);
+
     int res = getFilteredEdgesOnCoordinator(
         _vocbase->_name, collectionName, vertexString, direction, expressions,
         responseCode, contentType, resultDocument);
@@ -191,16 +260,20 @@ bool RestEdgesHandler::readEdges(
       generateError(responseCode, res);
       return false;
     }
-
+    
     resultDocument.set("error", arangodb::basics::Json(false));
     resultDocument.set("code", arangodb::basics::Json(200));
-    generateResult(resultDocument.json());
+
+    VPackBuilder tmp;
+    arangodb::basics::JsonHelper::toVelocyPack(resultDocument.json(), tmp);
+    generateResult(GeneralResponse::ResponseCode::OK, tmp.slice());
+
     return true;
   }
 
   // find and load collection given by name or identifier
-  SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(),
-                                          _vocbase, collectionName);
+  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
+                                          collectionName, TRI_TRANSACTION_READ);
 
   // .............................................................................
   // inside read transaction
@@ -208,22 +281,25 @@ bool RestEdgesHandler::readEdges(
 
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collectionName, res);
+    generateTransactionError(collectionName, res, "");
     return false;
   }
 
-  // If we are a DBserver, we want to use the cluster-wide collection
-  // name for error reporting:
-  if (ServerState::instance()->isDBServer()) {
-    collectionName = trx.resolver()->getCollectionName(trx.cid());
-  }
 
   size_t filtered = 0;
   size_t scannedIndex = 0;
+  
+  VPackBuilder resultBuilder;
+  resultBuilder.openObject();
+  // build edges
+  resultBuilder.add(VPackValue("edges")); // only key 
+  resultBuilder.openArray();
+  // NOTE: collecitonName is the shard-name in DBServer case
+  bool ok =
+      getEdgesForVertex(startVertex, collectionName, expressions, direction,
+                        trx, resultBuilder, scannedIndex, filtered);
+  resultBuilder.close();
 
-  arangodb::basics::Json documents(arangodb::basics::Json::Array);
-  bool ok = getEdgesForVertex(startVertex, expressions, direction, trx,
-                              documents, scannedIndex, filtered);
   res = trx.finish(res);
   if (!ok) {
     // Error has been built internally
@@ -231,23 +307,25 @@ bool RestEdgesHandler::readEdges(
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collectionName, res);
+    if (ServerState::instance()->isDBServer()) {
+    // If we are a DBserver, we want to use the cluster-wide collection
+    // name for error reporting:
+      collectionName = trx.resolver()->getCollectionName(trx.cid());
+    }
+    generateTransactionError(collectionName, res, "");
     return false;
   }
 
-  arangodb::basics::Json result(arangodb::basics::Json::Object, 4);
-  result("edges", documents);
-  result("error", arangodb::basics::Json(false));
-  result("code", arangodb::basics::Json(200));
-  arangodb::basics::Json stats(arangodb::basics::Json::Object, 2);
-
-  stats("scannedIndex",
-        arangodb::basics::Json(static_cast<int32_t>(scannedIndex)));
-  stats("filtered", arangodb::basics::Json(static_cast<int32_t>(filtered)));
-  result("stats", stats);
+  resultBuilder.add("error", VPackValue(false));
+  resultBuilder.add("code", VPackValue(200));
+  resultBuilder.add("stats", VPackValue(VPackValueType::Object));
+  resultBuilder.add("scannedIndex", VPackValue(scannedIndex));
+  resultBuilder.add("filtered", VPackValue(filtered));
+  resultBuilder.close(); // inner object
+  resultBuilder.close();
 
   // and generate a response
-  generateResult(result.json());
+  generateResult(GeneralResponse::ResponseCode::OK, resultBuilder.slice(), trx.transactionContext());
 
   return true;
 }
@@ -269,11 +347,13 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   }
 
   bool parseSuccess = true;
-  VPackOptions options;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&options, parseSuccess);
+      parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
 
   if (!parseSuccess) {
+    generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expected POST " + EDGES_PATH +
+                      "/<collection-identifier>?direction=<direction>");
     // A body is required
     return false;
   }
@@ -319,16 +399,39 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
     return false;
   }
 
+  std::vector<traverser::TraverserExpression*> const expressions;
   if (ServerState::instance()->isCoordinator()) {
-    // This API is only for internal use on DB servers and is not (yet) allowed
-    // to
-    // be executed on the coordinator
-    return false;
+    GeneralResponse::ResponseCode responseCode;
+    std::string contentType;
+    arangodb::basics::Json resultDocument(arangodb::basics::Json::Object, 3);
+
+    for (auto const& it : VPackArrayIterator(body)) {
+      if (it.isString()) {
+        std::string vertexString(it.copyString());
+
+        int res = getFilteredEdgesOnCoordinator(
+            _vocbase->_name, collectionName, vertexString, direction, expressions,
+            responseCode, contentType, resultDocument);
+        if (res != TRI_ERROR_NO_ERROR) {
+          generateError(responseCode, res);
+          return false;
+        }
+      }
+    }
+    
+    resultDocument.set("error", arangodb::basics::Json(false));
+    resultDocument.set("code", arangodb::basics::Json(200));
+
+    VPackBuilder tmp;
+    arangodb::basics::JsonHelper::toVelocyPack(resultDocument.json(), tmp);
+    generateResult(GeneralResponse::ResponseCode::OK, tmp.slice());
+
+    return true;
   }
 
   // find and load collection given by name or identifier
-  SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(),
-                                          _vocbase, collectionName);
+  SingleCollectionTransaction trx(StandaloneTransactionContext::Create(_vocbase),
+                                          collectionName, TRI_TRANSACTION_READ);
 
   // .............................................................................
   // inside read transaction
@@ -336,7 +439,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
 
   int res = trx.begin();
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collectionName, res);
+    generateTransactionError(collectionName, res, "");
     return false;
   }
 
@@ -348,39 +451,39 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
 
   size_t filtered = 0;
   size_t scannedIndex = 0;
-  std::vector<traverser::TraverserExpression*> const expressions;
 
-  arangodb::basics::Json documents(arangodb::basics::Json::Array);
-  for (auto const& vertexSlice : VPackArrayIterator(body)) {
-    if (vertexSlice.isString()) {
-      std::string vertex = vertexSlice.copyString();
-      bool ok = getEdgesForVertex(vertex, expressions, direction, trx,
-                                  documents, scannedIndex, filtered);
-      if (!ok) {
-        // Ignore the error
-      }
-    }
+  VPackBuilder resultBuilder;
+  resultBuilder.openObject();
+  // build edges
+  resultBuilder.add(VPackValue("edges")); // only key 
+  resultBuilder.openArray();
+
+  bool ok = getEdgesForVertexList(body, expressions, direction, trx,
+                                  resultBuilder, scannedIndex, filtered);
+
+  if (!ok) {
+    // Ignore the error
   }
+
+  resultBuilder.close();
 
   res = trx.finish(res);
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collectionName, res);
+    generateTransactionError(collectionName, res, "");
     return false;
   }
 
-  arangodb::basics::Json result(arangodb::basics::Json::Object, 4);
-  result("edges", documents);
-  result("error", arangodb::basics::Json(false));
-  result("code", arangodb::basics::Json(200));
-  arangodb::basics::Json stats(arangodb::basics::Json::Object, 2);
-
-  stats("scannedIndex",
-        arangodb::basics::Json(static_cast<int32_t>(scannedIndex)));
-  stats("filtered", arangodb::basics::Json(static_cast<int32_t>(filtered)));
-  result("stats", stats);
+  resultBuilder.add("error", VPackValue(false));
+  resultBuilder.add("code", VPackValue(200));
+  resultBuilder.add("stats", VPackValue(VPackValueType::Object));
+  resultBuilder.add("scannedIndex", VPackValue(scannedIndex));
+  resultBuilder.add("filtered", VPackValue(filtered));
+  resultBuilder.close(); // inner object
+  resultBuilder.close(); 
 
   // and generate a response
-  generateResult(result.json());
+  generateResult(GeneralResponse::ResponseCode::OK, resultBuilder.slice(),
+                 trx.transactionContext());
 
   return true;
 }
@@ -394,9 +497,8 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
 bool RestEdgesHandler::readFilteredEdges() {
   std::vector<traverser::TraverserExpression*> expressions;
   bool parseSuccess = true;
-  VPackOptions options;
   std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(&options, parseSuccess);
+      parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
   if (!parseSuccess) {
     // We continue unfiltered
     // Filter could be done by caller

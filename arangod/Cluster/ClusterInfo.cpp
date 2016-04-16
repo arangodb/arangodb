@@ -22,7 +22,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Cluster/ClusterInfo.h"
+#include "ClusterInfo.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Builder.h>
@@ -37,6 +37,7 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/json-utilities.h"
 #include "Basics/json.h"
+#include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpResponse.h"
 #include "VocBase/document-collection.h"
@@ -51,12 +52,7 @@ using namespace arangodb;
 
 using arangodb::basics::JsonHelper;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief single instance of ClusterInfo - will live as long as the server is
-/// running
-////////////////////////////////////////////////////////////////////////////////
-
-static ClusterInfo Instance;
+static std::unique_ptr<ClusterInfo> _instance;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a local helper to report errors and messages
@@ -267,16 +263,25 @@ void CollectionInfoCurrent::copyAllJsons() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create the clusterinfo instance
+////////////////////////////////////////////////////////////////////////////////
+
+void ClusterInfo::createInstance(AgencyCallbackRegistry* agencyCallbackRegistry) {
+  _instance.reset(new ClusterInfo(agencyCallbackRegistry));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns an instance of the cluster info class
 ////////////////////////////////////////////////////////////////////////////////
 
-ClusterInfo* ClusterInfo::instance() { return &Instance; }
+ClusterInfo* ClusterInfo::instance() { return _instance.get(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a cluster info object
 ////////////////////////////////////////////////////////////////////////////////
 
-ClusterInfo::ClusterInfo() : _agency(), _uniqid() {
+ClusterInfo::ClusterInfo(AgencyCallbackRegistry* agencyCallbackRegistry)
+  : _agency(), _agencyCallbackRegistry(agencyCallbackRegistry), _uniqid() {
   _uniqid._currentValue = _uniqid._upperValue = 0ULL;
 
   // Actual loading into caches is postponed until necessary
@@ -1059,8 +1064,6 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
     return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
                        errorMsg);
   }
-  uint64_t index = res._index;
-
   std::vector<ServerID> DBServers = getCurrentDBServers();
   int count = 0;  // this counts, when we have to reload the DBServers
 
@@ -1100,11 +1103,10 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
         return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
       }
     }
-
+     
     res.clear();
-    res = ac.watchValue("Current/Version", index,
-                        getReloadServerListTimeout() / interval, false);
-    index = res._index;
+    _agencyCallbackRegistry->awaitNextChange("Current/Version", getReloadServerListTimeout() / interval);
+
     if (++count >= static_cast<int>(getReloadServerListTimeout() / interval)) {
       // We update the list of DBServers every minute in case one of them
       // was taken away since we last looked. This also helps (slightly)
@@ -1176,7 +1178,6 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
     return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
                        errorMsg);
   }
-  uint64_t index = res._index;
 
   std::string where = "Current/Databases/" + name;
   while (TRI_microtime() <= endTime) {
@@ -1198,8 +1199,7 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
       }
     }
     res.clear();
-    res = ac.watchValue("Current/Version", index, interval, false);
-    index = res._index;
+    _agencyCallbackRegistry->awaitNextChange("Current/Version", interval);
   }
   return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
 }
@@ -1213,7 +1213,7 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
 int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
                                              std::string const& collectionID,
                                              uint64_t numberOfShards,
-                                             VPackSlice const json,
+                                             VPackSlice const& json,
                                              std::string& errorMsg,
                                              double timeout) {
   using arangodb::velocypack::Slice;
@@ -1258,26 +1258,24 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
                        errorMsg);
   }
 
-  ac.increaseVersionRepeated("Plan/Version");
+  ac.increaseVersion("Plan/Version");
 
   // Update our cache:
   loadPlannedCollections();
-
-  // Now wait for it to appear and be complete:
-  AgencyCommResult res = ac.getValues("Current/Version", false);
-  if (!res.successful()) {
-    return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
-                       errorMsg);
-  }
-  uint64_t index = res._index;
-
+  
+  AgencyCommResult res;
   std::string const where =
       "Current/Collections/" + databaseName + "/" + collectionID;
   while (TRI_microtime() <= endTime) {
     res.clear();
     res = ac.getValues(where, true);
+
+    LOG(TRACE) << "CREATE OYOYOYOY " << where;
+    
     if (res.successful() && res.parse(where + "/", false)) {
+    LOG(TRACE) << "CREATE IS SUCCESS " << where;
       if (res._values.size() == (size_t)numberOfShards) {
+    LOG(TRACE) << "CREATE has number " << where;
         std::string tmpMsg = "";
         bool tmpHaveError = false;
         for (auto const& p : res._values) {
@@ -1299,18 +1297,23 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
             }
           }
         }
+    LOG(TRACE) << "CREATE PRE LOAD has number " << where;
         loadCurrentCollections();
+    LOG(TRACE) << "CREATE POST LOAD has number " << where;
         if (tmpHaveError) {
           errorMsg = "Error in creation of collection:" + tmpMsg;
+    LOG(TRACE) << "CREATE KAP0TT " << where;
           return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION;
         }
+    LOG(TRACE) << "CREATE OK " << where;
         return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
       }
     }
 
     res.clear();
-    res = ac.watchValue("Current/Version", index, interval, false);
-    index = res._index;
+    LOG(TRACE) << "JASSSSS " << interval;
+    _agencyCallbackRegistry->awaitNextChange("Current/Version", interval);
+    LOG(TRACE) << "NNNNJASSSSS " << interval;
   }
 
   // LOG(ERR) << "GOT TIMEOUT. NUMBEROFSHARDS: " << numberOfShards;
@@ -1359,15 +1362,6 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
   // Update our own cache:
   loadPlannedCollections();
 
-  // Now wait for it to appear and be complete:
-  res.clear();
-  res = ac.getValues("Current/Version", false);
-  if (!res.successful()) {
-    return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
-                       errorMsg);
-  }
-  uint64_t index = res._index;
-
   // monitor the entry for the collection
   std::string const where =
       "Current/Collections/" + databaseName + "/" + collectionID;
@@ -1396,8 +1390,7 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
     }
 
     res.clear();
-    res = ac.watchValue("Current/Version", index, interval, false);
-    index = res._index;
+    _agencyCallbackRegistry->awaitNextChange("Current/Version", interval);
   }
   return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
 }
@@ -1634,7 +1627,6 @@ int ClusterInfo::ensureIndexCoordinator(
       VPackSlice const indexes = tmp->slice();
 
       if (indexes.isArray()) {
-        bool hasSameIndexType = false;
         VPackSlice const type = slice.get("type");
 
         if (!type.isString()) {
@@ -1649,8 +1641,6 @@ int ClusterInfo::ensureIndexCoordinator(
           }
           TRI_ASSERT(other.isObject());
 
-          hasSameIndexType = true;
-
           bool isSame = compare(slice, other);
 
           if (isSame) {
@@ -1664,21 +1654,6 @@ int ClusterInfo::ensureIndexCoordinator(
               resultBuilder.add("isNewlyCreated", VPackValue(false));
             }
             return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
-          }
-        }
-
-        if (type.copyString() == "cap") {
-          // special handling for cap constraints
-          if (hasSameIndexType) {
-            // there can only be one cap constraint
-            return setErrormsg(TRI_ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED,
-                               errorMsg);
-          }
-
-          if (numberOfShards > 1) {
-            // there must be at most one shard if there should be a cap
-            // constraint
-            return setErrormsg(TRI_ERROR_CLUSTER_UNSUPPORTED, errorMsg);
           }
         }
       }
@@ -1758,7 +1733,6 @@ int ClusterInfo::ensureIndexCoordinator(
     return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
                        errorMsg);
   }
-  uint64_t index = res._index;
 
   std::string where =
       "Current/Collections/" + databaseName + "/" + collectionID;
@@ -1830,8 +1804,7 @@ int ClusterInfo::ensureIndexCoordinator(
       }
     }
     res.clear();
-    res = ac.watchValue("Current/Version", index, interval, false);
-    index = res._index;
+    _agencyCallbackRegistry->awaitNextChange("Current/Version", interval);
   }
 
   return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
@@ -1976,7 +1949,6 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
     return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
                        errorMsg);
   }
-  uint64_t index = res._index;
 
   std::string where =
       "Current/Collections/" + databaseName + "/" + collectionID;
@@ -2018,8 +1990,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
     }
 
     res.clear();
-    res = ac.watchValue("Current/Version", index, interval, false);
-    index = res._index;
+    _agencyCallbackRegistry->awaitNextChange("Current/Version", interval);
   }
 
   return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
@@ -2415,6 +2386,86 @@ std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList(
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find the shard that is responsible for a document, which is given
+/// as a VelocyPackSlice.
+///
+/// There are two modes, one assumes that the document is given as a
+/// whole (`docComplete`==`true`), in this case, the non-existence of
+/// values for some of the sharding attributes is silently ignored
+/// and treated as if these values were `null`. In the second mode
+/// (`docComplete`==false) leads to an error which is reported by
+/// returning TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, which is the only
+/// error code that can be returned.
+///
+/// In either case, if the collection is found, the variable
+/// shardID is set to the ID of the responsible shard and the flag
+/// `usesDefaultShardingAttributes` is used set to `true` if and only if
+/// `_key` is the one and only sharding attribute.
+////////////////////////////////////////////////////////////////////////////////
+
+
+int ClusterInfo::getResponsibleShard(CollectionID const& collectionID,
+                                     VPackSlice slice, bool docComplete,
+                                     ShardID& shardID,
+                                     bool& usesDefaultShardingAttributes) {
+  // Note that currently we take the number of shards and the shardKeys
+  // from Plan, since they are immutable. Later we will have to switch
+  // this to Current, when we allow to add and remove shards.
+  if (!_plannedCollectionsProt.isValid) {
+    loadPlannedCollections();
+  }
+
+  int tries = 0;
+  std::shared_ptr<std::vector<std::string>> shardKeysPtr;
+  std::shared_ptr<std::vector<ShardID>> shards;
+  bool found = false;
+
+  while (true) {
+    {
+      // Get the sharding keys and the number of shards:
+      READ_LOCKER(readLocker, _plannedCollectionsProt.lock);
+      // _shards is a map-type <CollectionId, shared_ptr<vector<string>>>
+      auto it = _shards.find(collectionID);
+
+      if (it != _shards.end()) {
+        shards = it->second;
+        // _shardKeys is a map-type <CollectionID, shared_ptr<vector<string>>>
+        auto it2 = _shardKeys.find(collectionID);
+        if (it2 != _shardKeys.end()) {
+          shardKeysPtr = it2->second;
+          usesDefaultShardingAttributes =
+              shardKeysPtr->size() == 1 &&
+              shardKeysPtr->at(0) == TRI_VOC_ATTRIBUTE_KEY;
+          found = true;
+          break;  // all OK
+        }
+      }
+    }
+    if (++tries >= 2) {
+      break;
+    }
+    loadPlannedCollections();
+  }
+
+  if (!found) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+
+  int error = TRI_ERROR_NO_ERROR;
+  uint64_t hash = arangodb::basics::VelocyPackHelper::hashByAttributes(
+      slice, *shardKeysPtr, docComplete, error);
+  static char const* magicPhrase =
+      "Foxx you have stolen the goose, give she back again!";
+  static size_t const len = 52;
+  // To improve our hash function:
+  hash = TRI_FnvHashBlock(hash, magicPhrase, len);
+
+  shardID = shards->at(hash % shards->size());
+  return error;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find the shard that is responsible for a document, which is given
 /// as a TRI_json_t const*.
 ///
 /// There are two modes, one assumes that the document is given as a
@@ -2486,7 +2537,7 @@ int ClusterInfo::getResponsibleShard(CollectionID const& collectionID,
 
   int error;
   uint64_t hash = TRI_HashJsonByAttributes(
-      json, shardKeys.get(), (int)shardKeysPtr->size(), docComplete, &error);
+      json, shardKeys.get(), (int)shardKeysPtr->size(), docComplete, error);
   static char const* magicPhrase =
       "Foxx you have stolen the goose, give she back again!";
   static size_t const len = 52;
@@ -2548,7 +2599,7 @@ void ClusterInfo::invalidateCurrent() {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<std::vector<ServerID> const> FollowerInfo::get() {
-  std::lock_guard<std::mutex> lock(_mutex);
+  MUTEX_LOCKER(locker, _mutex);
   return _followers;
 }
 
@@ -2611,7 +2662,8 @@ VPackBuilder newShardEntry(VPackSlice oldValue, ServerID const& sid, bool add) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void FollowerInfo::add(ServerID const& sid) {
-  std::lock_guard<std::mutex> lock(_mutex);
+  MUTEX_LOCKER(locker, _mutex);
+  
   // Fully copy the vector:
   auto v = std::make_shared<std::vector<ServerID>>(*_followers);
   v->push_back(sid);  // add a single entry
@@ -2671,7 +2723,8 @@ void FollowerInfo::add(ServerID const& sid) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void FollowerInfo::remove(ServerID const& sid) {
-  std::lock_guard<std::mutex> lock(_mutex);
+  MUTEX_LOCKER(locker, _mutex);
+  
   auto v = std::make_shared<std::vector<ServerID>>();
   v->reserve(_followers->size() - 1);
   for (auto const& i : *_followers) {

@@ -47,7 +47,7 @@ using namespace arangodb::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 int HttpServer::sendChunk(uint64_t taskId, std::string const& data) {
-  std::unique_ptr<TaskData> taskData(new TaskData());
+  auto taskData = std::make_unique<TaskData>();
 
   taskData->_taskId = taskId;
   taskData->_loop = SchedulerFeature::SCHEDULER->lookupLoopById(taskId);

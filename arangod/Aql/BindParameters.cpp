@@ -22,8 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/BindParameters.h"
-#include "Basics/json.h"
-#include "Basics/json-utilities.h"
 #include "Basics/Exceptions.h"
 
 #include <velocypack/Builder.h>
@@ -33,93 +31,60 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the parameters
-////////////////////////////////////////////////////////////////////////////////
-
-BindParameters::BindParameters(TRI_json_t* json)
-    : _json(json), _parameters(), _processed(false) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the parameters
-////////////////////////////////////////////////////////////////////////////////
-
-BindParameters::~BindParameters() {
-  if (_json != nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _json);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
+  
 /// @brief create a hash value for the bind parameters
-////////////////////////////////////////////////////////////////////////////////
-
 uint64_t BindParameters::hash() const {
-  if (_json == nullptr) {
-    return 0x12345678abcdef;
+  if (_builder == nullptr) {
+    return 0xdeadbeef;
   }
-
-  return TRI_FastHashJson(_json);
+  // we can get away with the fast hash function here, as we're only using the
+  // hash for quickly checking whether we've seen the same set of parameters
+  return _builder->slice().hash();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief process the parameters
-////////////////////////////////////////////////////////////////////////////////
-
 void BindParameters::process() {
-  if (_processed || _json == nullptr) {
+  if (_processed || _builder == nullptr) {
     return;
   }
 
-  if (!TRI_IsObjectJson(_json)) {
+  VPackSlice const slice = _builder->slice();
+  if (slice.isNone()) {
+    return;
+  }
+
+  if (!slice.isObject()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_BIND_PARAMETERS_INVALID);
   }
 
-  size_t const n = TRI_LengthVector(&_json->_value._objects);
-
-  for (size_t i = 0; i < n; i += 2) {
-    auto key = static_cast<TRI_json_t const*>(
-        TRI_AddressVector(&_json->_value._objects, i));
-
-    if (!TRI_IsStringJson(key)) {
-      // no string, should not happen
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE);
-    }
-
-    std::string const k(key->_value._string.data,
-                        key->_value._string.length - 1);
-
-    auto value = static_cast<TRI_json_t const*>(
-        TRI_AtVector(&_json->_value._objects, i + 1));
-
-    if (value == nullptr) {
+  for (auto const& it : VPackObjectIterator(slice)) {
+    std::string const key(it.key.copyString());
+    VPackSlice const value(it.value);
+    
+    if (value.isNone()) {
       THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE,
-                                    k.c_str());
+                                    key.c_str());
     }
 
-    if (k[0] == '@' && !TRI_IsStringJson(value)) {
+    if (key[0] == '@' && !value.isString()) {
       // collection bind parameter
       THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE,
-                                    k.c_str());
+                                    key.c_str());
     }
 
-    _parameters.emplace(std::move(k), std::make_pair(value, false));
+    _parameters.emplace(std::move(key), std::make_pair(value, false));
   }
 
   _processed = true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief strip collection name prefixes from the parameters
 /// the values must be a VelocyPack array
-////////////////////////////////////////////////////////////////////////////////
-
 VPackBuilder BindParameters::StripCollectionNames(VPackSlice const& keys,
                                                   char const* collectionName) {
   TRI_ASSERT(keys.isArray());
   VPackBuilder result;
-  result.add(VPackValue(VPackValueType::Array));
+  result.openArray();
   for (auto const& element : VPackArrayIterator(keys)) {
     if (element.isString()) {
       VPackValueLength l;
@@ -140,35 +105,3 @@ VPackBuilder BindParameters::StripCollectionNames(VPackSlice const& keys,
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief strip collection name prefixes from the parameters
-/// the values must be a JSON array. the array is modified in place
-////////////////////////////////////////////////////////////////////////////////
-
-void BindParameters::StripCollectionNames(TRI_json_t* keys,
-                                          char const* collectionName) {
-  if (!TRI_IsArrayJson(keys)) {
-    return;
-  }
-
-  size_t const n = TRI_LengthVectorJson(keys);
-
-  for (size_t i = 0; i < n; ++i) {
-    auto key =
-        static_cast<TRI_json_t*>(TRI_AtVector(&keys->_value._objects, i));
-
-    if (TRI_IsStringJson(key)) {
-      auto s = key->_value._string.data;
-      auto p = strchr(s, '/');
-
-      if (p != nullptr && strncmp(s, collectionName, p - s) == 0) {
-        size_t pos = static_cast<size_t>(p - s);
-        // key begins with collection name + '/', now strip it in place for
-        // further comparisons
-        memmove(s, p + 1, key->_value._string.length - 2 - pos);
-        key->_value._string.length -= static_cast<uint32_t>(pos + 1);
-        key->_value._string.data[key->_value._string.length - 1] = '\0';
-      }
-    }
-  }
-}

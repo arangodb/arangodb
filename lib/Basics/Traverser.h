@@ -26,11 +26,10 @@
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
-#include "Basics/hashes.h"
+#include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
 
 #include <deque>
-#include <functional>
-#include <mutex>
 #include <stack>
 #include <thread>
 
@@ -435,7 +434,7 @@ class PathFinder {
 
     Step() : _done(false) {}
 
-    Step(VertexId& vert, VertexId& pred, EdgeWeight weig, EdgeId const& edge)
+    Step(VertexId const& vert, VertexId const& pred, EdgeWeight weig, EdgeId const& edge)
         : _weight(weig),
           _vertex(vert),
           _predecessor(pred),
@@ -459,14 +458,14 @@ class PathFinder {
   /// @brief callback to find neighbours
   //////////////////////////////////////////////////////////////////////////////
 
-  typedef std::function<void(VertexId& V, std::vector<Step*>& result)>
+  typedef std::function<void(std::string const&, std::vector<Step*>&)>
       ExpanderFunction;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief our specialization of the priority queue
   //////////////////////////////////////////////////////////////////////////////
 
-  typedef arangodb::basics::PriorityQueue<VertexId, Step, EdgeWeight> PQueue;
+  typedef arangodb::basics::PriorityQueue<std::string, Step, EdgeWeight> PQueue;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief information for each thread
@@ -474,7 +473,7 @@ class PathFinder {
 
   struct ThreadInfo {
     PQueue _pq;
-    std::mutex _mutex;
+    arangodb::Mutex _mutex;
   };
 
   //////////////////////////////////////////////////////////////////////////////
@@ -506,7 +505,8 @@ class PathFinder {
 
    private:
     void insertNeighbor(Step* step, EdgeWeight newWeight) {
-      std::lock_guard<std::mutex> guard(_myInfo._mutex);
+      MUTEX_LOCKER(locker, _myInfo._mutex);
+
       Step* s = _myInfo._pq.find(step->_vertex);
 
       // Not found, so insert it:
@@ -533,7 +533,8 @@ class PathFinder {
     ////////////////////////////////////////////////////////////////////////////////
 
     void lookupPeer(VertexId& vertex, EdgeWeight weight) {
-      std::lock_guard<std::mutex> guard(_peerInfo._mutex);
+      MUTEX_LOCKER(locker, _peerInfo._mutex);
+
       Step* s = _peerInfo._pq.find(vertex);
       if (s == nullptr) {
         // Not found, nothing more to do
@@ -542,7 +543,8 @@ class PathFinder {
       EdgeWeight total = s->weight() + weight;
 
       // Update the highscore:
-      std::lock_guard<std::mutex> guard2(_pathFinder->_resultMutex);
+      MUTEX_LOCKER(resultLocker, _pathFinder->_resultMutex);
+
       if (!_pathFinder->_highscoreSet || total < _pathFinder->_highscore) {
         _pathFinder->_highscoreSet = true;
         _pathFinder->_highscore = total;
@@ -591,7 +593,7 @@ class PathFinder {
         Step* s;
         bool b;
         {
-          std::lock_guard<std::mutex> guard(_myInfo._mutex);
+          MUTEX_LOCKER(locker, _myInfo._mutex);
           b = _myInfo._pq.popMinimal(v, s, true);
         }
 
@@ -607,7 +609,7 @@ class PathFinder {
           }
           lookupPeer(v, s->weight());
 
-          std::lock_guard<std::mutex> guard(_myInfo._mutex);
+          MUTEX_LOCKER(locker, _myInfo._mutex);
           Step* s2 = _myInfo._pq.find(v);
           s2->_done = true;
           b = _myInfo._pq.popMinimal(v, s, true);
@@ -815,7 +817,7 @@ class PathFinder {
     _bingo = false;
 
     // Forward with initialization:
-    VertexId emptyVertex(0, "");
+    VertexId emptyVertex;
     EdgeId emptyEdge;
     ThreadInfo forward;
     forward._pq.insert(start, new Step(start, emptyVertex, 0, emptyEdge));
@@ -856,8 +858,7 @@ class PathFinder {
     // FORWARD Go path back from intermediate -> start.
     // Insert all vertices and edges at front of vector
     // Do NOT! insert the intermediate vertex
-    while (s->_predecessor.key != nullptr &&
-           strcmp(s->_predecessor.key, "") != 0) {
+    while (!s->_predecessor.empty()) {
       r_edges.push_front(s->_edge);
       r_vertices.push_front(s->_predecessor);
       s = forward._pq.find(s->_predecessor);
@@ -867,9 +868,7 @@ class PathFinder {
     // Insert all vertices and edges at back of vector
     // Also insert the intermediate vertex
     s = backward._pq.find(_intermediate);
-    while (s->_predecessor.key != nullptr &&
-           strcmp(s->_predecessor.key, "") != 0) {
-      r_edges.emplace_back(s->_edge);
+    while (!s->_predecessor.empty()) {
       r_vertices.emplace_back(s->_predecessor);
       s = backward._pq.find(s->_predecessor);
     }
@@ -947,8 +946,7 @@ class PathFinder {
     // FORWARD Go path back from intermediate -> start.
     // Insert all vertices and edges at front of vector
     // Do NOT! insert the intermediate vertex
-    while (s->_predecessor.key != nullptr &&
-           strcmp(s->_predecessor.key, "") != 0) {
+    while (!s->_predecessor.empty()) {
       r_edges.push_front(s->_edge);
       r_vertices.push_front(s->_predecessor);
       s = forward._pq.find(s->_predecessor);
@@ -958,8 +956,7 @@ class PathFinder {
     // Insert all vertices and edges at back of vector
     // Also insert the intermediate vertex
     s = backward._pq.find(_intermediate);
-    while (s->_predecessor.key != nullptr &&
-           strcmp(s->_predecessor.key, "") != 0) {
+    while (!s->_predecessor.empty()) {
       r_edges.emplace_back(s->_edge);
       r_vertices.emplace_back(s->_predecessor);
       s = backward._pq.find(s->_predecessor);
@@ -1072,7 +1069,7 @@ class PathFinder {
   /// @brief _resultMutex, this is used to protect access to the result data
   //////////////////////////////////////////////////////////////////////////////
 
-  std::mutex _resultMutex;
+  arangodb::Mutex _resultMutex;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief _intermediate, one vertex on the shortest path found, flag

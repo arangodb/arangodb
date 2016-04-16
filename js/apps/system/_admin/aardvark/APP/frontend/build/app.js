@@ -10411,6 +10411,10 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       };
     },
 
+    getCurrentSub: function() {
+      return window.App.naviView.activeSubMenu;
+    },
+
     setCheckboxStatus: function(id) {
       _.each($(id).find('ul').find('li'), function(element) {
          if (!$(element).hasClass("nav-header")) {
@@ -10566,6 +10570,51 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
 
         window.modalView.show("modalHotkeys.ejs", "Keyboard Shortcuts", buttons, content);
       }
+    },
+
+    //object: {"name": "Menu 1", func: function(), active: true/false }
+    buildSubNavBar: function(menuItems) {
+      $('#subNavigationBar .bottom').html('');
+      var cssClass;
+
+      _.each(menuItems, function(menu, name) {
+        if (menu.active) {
+          cssClass += ' active';
+        }
+        else {
+          cssClass = '';
+        }
+        $('#subNavigationBar .bottom').append(
+          '<li class="subMenuEntry ' + cssClass + '"><a>' + name + '</a></li>'
+        );
+        $('#subNavigationBar .bottom').children().last().bind('click', function() {
+          window.App.navigate(menu.route, {trigger: true});
+        });
+      });
+    },
+
+    //nav for collection view
+    buildCollectionSubNav: function(collectionName, activeKey) {
+
+      var defaultRoute = '#collection/' + encodeURIComponent(collectionName);
+
+      var menus = {
+        Content: {
+          route: defaultRoute + '/documents/1'
+        },
+        Indices: {
+          route: '#cIndices/' + encodeURIComponent(collectionName)
+        },
+        Info: {
+          route: '#cInfo/' + encodeURIComponent(collectionName)
+        },
+        Settings: {
+          route: '#cSettings/' + encodeURIComponent(collectionName)
+        }
+      };
+
+      menus[activeKey].active = true;
+      this.buildSubNavBar(menus);
     },
 
     enableKeyboardHotkeys: function (enable) {
@@ -10923,7 +10972,10 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
         var template = $("#" + id.replace(".", "\\.")).html();
         return {
           render: function(params) {
-            return _.template(template, params);
+            var tmp = _.template(template);
+            tmp = tmp(params);
+
+            return tmp;
           }
         };
       };
@@ -16905,6 +16957,86 @@ window.Users = Backbone.Model.extend({
 
 });
 
+/*global window, Backbone */
+(function() {
+  "use strict";
+
+  window.ClusterCoordinator = Backbone.Model.extend({
+
+    defaults: {
+      "name": "",
+      "status": "ok",
+      "address": "",
+      "protocol": ""
+    },
+
+    idAttribute: "name",
+    /*
+    url: "/_admin/aardvark/cluster/Coordinators";
+
+    updateUrl: function() {
+      this.url = window.getNewRoute("Coordinators");
+    },
+    */
+    forList: function() {
+      return {
+        name: this.get("name"),
+        status: this.get("status"),
+        url: this.get("url")
+      };
+    }
+
+  });
+}());
+
+/*global window, Backbone */
+(function() {
+  "use strict";
+
+  window.ClusterServer = Backbone.Model.extend({
+    defaults: {
+      name: "",
+      address: "",
+      role: "",
+      status: "ok"
+    },
+
+    idAttribute: "name",
+    /*
+    url: "/_admin/aardvark/cluster/DBServers";
+
+    updateUrl: function() {
+      this.url = window.getNewRoute("DBServers");
+    },
+    */
+    forList: function() {
+      return {
+        name: this.get("name"),
+        address: this.get("address"),
+        status: this.get("status")
+      };
+    }
+
+  });
+}());
+
+
+/*global window, Backbone */
+(function() {
+  "use strict";
+
+  window.Coordinator = Backbone.Model.extend({
+
+    defaults: {
+      address: "",
+      protocol: "",
+      name: "",
+      status: ""
+    }
+
+  });
+}());
+
 /*global Backbone, window */
 
 (function() {
@@ -17154,7 +17286,6 @@ window.Users = Backbone.Model.extend({
   });
 }());
 
-
 /*global window, Backbone */
 (function() {
   "use strict";
@@ -17229,6 +17360,45 @@ window.Users = Backbone.Model.extend({
       number: "",
       status: "",
       type: ""
+    }
+
+  });
+}());
+
+/*global window, Backbone */
+(function() {
+  "use strict";
+
+  window.AutomaticRetryCollection = Backbone.Collection.extend({
+
+    _retryCount: 0,
+
+
+    checkRetries: function() {
+      var self = this;
+      this.updateUrl();
+      if (this._retryCount > 10) {
+        window.setTimeout(function() {
+          self._retryCount = 0;
+        }, 10000);
+        window.App.clusterUnreachable();
+        return false;
+      }
+      return true;
+    },
+
+    successFullTry: function() {
+      this._retryCount = 0;
+    },
+
+    failureTry: function(retry, ignore, err) {
+      if (err.status === 401) {
+        window.App.requestAuth();
+      } else {
+        window.App.clusterPlan.rotateCoordinator();
+        this._retryCount++;
+        retry();
+      }
     }
 
   });
@@ -17320,6 +17490,40 @@ window.Users = Backbone.Model.extend({
 
   });
 }());
+
+/*global Backbone, window */
+/* jshint strict: false */
+
+window.ClusterStatisticsCollection = Backbone.Collection.extend({
+  model: window.Statistics,
+
+  url: "/_admin/statistics",
+
+  updateUrl: function() {
+    this.url = window.App.getNewRoute(this.host) + this.url;
+  },
+
+  initialize: function(models, options) {
+    this.host = options.host;
+    window.App.registerForUpdate(this);
+  },
+
+  // The callback has to be invokeable for each result individually
+  // TODO RE-ADD Auth
+  /*
+  fetch: function(callback, errCB) {
+    this.forEach(function (m) {
+      m.fetch({
+        beforeSend: window.App.addAuth.bind(window.App),
+        error: function() {
+          errCB(m);
+        }
+      }).done(function() {
+        callback(m);
+      });
+    });
+  }*/
+});
 
 /*jshint browser: true */
 /*jshint unused: false */
@@ -17605,8 +17809,8 @@ window.Users = Backbone.Model.extend({
         if (base.indexOf("#collection") === 0) {
           base = "#collections";
         }
-        if (base.indexOf("#application") === 0) {
-          base = "#applications";
+        if (base.indexOf("#service") === 0) {
+          base = "#services";
         }
         url += base;
       }
@@ -17658,26 +17862,17 @@ window.arangoDocument = Backbone.Collection.extend({
   url: '/_api/document/',
   model: arangoDocumentModel,
   collectionInfo: {},
+
   deleteEdge: function (colid, docid, callback) {
-    $.ajax({
-      cache: false,
-      type: 'DELETE',
-      contentType: "application/json",
-      url: "/_api/edge/" + colid + "/" + docid,
-      success: function () {
-        callback(false);
-      },
-      error: function () {
-        callback(true);
-      }
-    });
+    this.deleteDocument(colid, docid, callback);
   },
+
   deleteDocument: function (colid, docid, callback) {
     $.ajax({
       cache: false,
       type: 'DELETE',
       contentType: "application/json",
-      url: "/_api/document/" + colid + "/" + docid,
+      url: "/_api/document/" + encodeURIComponent(colid) + "/" + encodeURIComponent(docid),
       success: function () {
         callback(false);
       },
@@ -17695,17 +17890,22 @@ window.arangoDocument = Backbone.Collection.extend({
 
     if (key) {
       newEdge = JSON.stringify({
-        _key: key
+        _key: key,
+        _from: from,
+        _to: to
       });
     }
     else {
-      newEdge = JSON.stringify({});
+      newEdge = JSON.stringify({
+        _from: from,
+        _to: to
+      });
     }
 
     $.ajax({
       cache: false,
       type: "POST",
-      url: "/_api/edge?collection=" + collectionID + "&from=" + from + "&to=" + to,
+      url: "/_api/document?collection=" + encodeURIComponent(collectionID),
       data: newEdge,
       contentType: "application/json",
       processData: false,
@@ -17763,22 +17963,7 @@ window.arangoDocument = Backbone.Collection.extend({
     });
   },
   getEdge: function (colid, docid, callback){
-    var self = this;
-    this.clearDocument();
-    $.ajax({
-      cache: false,
-      type: "GET",
-      url: "/_api/edge/" + colid +"/"+ docid,
-      contentType: "application/json",
-      processData: false,
-      success: function(data) {
-        self.add(data);
-        callback(false, data, 'edge');
-      },
-      error: function(data) {
-        callback(true, data);
-      }
-    });
+    this.getDocument(colid, docid, callback);
   },
   getDocument: function (colid, docid, callback) {
     var self = this;
@@ -17786,7 +17971,7 @@ window.arangoDocument = Backbone.Collection.extend({
     $.ajax({
       cache: false,
       type: "GET",
-      url: "/_api/document/" + colid +"/"+ docid,
+      url: "/_api/document/" + encodeURIComponent(colid) +"/"+ encodeURIComponent(docid),
       contentType: "application/json",
       processData: false,
       success: function(data) {
@@ -17802,7 +17987,7 @@ window.arangoDocument = Backbone.Collection.extend({
     $.ajax({
       cache: false,
       type: "PUT",
-      url: "/_api/edge/" + colid + "/" + docid,
+      url: "/_api/edge/" + encodeURIComponent(colid) + "/" + encodeURIComponent(docid),
       data: model,
       contentType: "application/json",
       processData: false,
@@ -17818,7 +18003,7 @@ window.arangoDocument = Backbone.Collection.extend({
     $.ajax({
       cache: false,
       type: "PUT",
-      url: "/_api/document/" + colid + "/" + docid,
+      url: "/_api/document/" + encodeURIComponent(colid) + "/" + encodeURIComponent(docid),
       data: model,
       contentType: "application/json",
       processData: false,
@@ -18592,6 +18777,262 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 });
 
+/*global window */
+(function() {
+  "use strict";
+  window.ClusterCoordinators = window.AutomaticRetryCollection.extend({
+    model: window.ClusterCoordinator,
+
+    url: "/_admin/aardvark/cluster/Coordinators",
+
+    updateUrl: function() {
+      this.url = window.App.getNewRoute("Coordinators");
+    },
+
+    initialize: function() {
+      //window.App.registerForUpdate(this);
+    },
+
+    statusClass: function(s) {
+      switch (s) {
+        case "ok":
+          return "success";
+        case "warning":
+          return "warning";
+        case "critical":
+          return "danger";
+        case "missing":
+          return "inactive";
+        default:
+          return "danger";
+      }
+    },
+
+    getStatuses: function(cb, nextStep) {
+      if(!this.checkRetries()) {
+        return;
+      }
+      var self = this;
+      this.fetch({
+        beforeSend: window.App.addAuth.bind(window.App),
+        error: self.failureTry.bind(self, self.getStatuses.bind(self, cb, nextStep))
+      }).done(function() {
+        self.successFullTry();
+        self.forEach(function(m) {
+          cb(self.statusClass(m.get("status")), m.get("address"));
+        });
+        nextStep();
+      });
+    },
+
+    byAddress: function (res, callback) {
+      if(!this.checkRetries()) {
+        return;
+      }
+      var self = this;
+      this.fetch({
+        beforeSend: window.App.addAuth.bind(window.App),
+        error: self.failureTry.bind(self, self.byAddress.bind(self, res, callback))
+      }).done(function() {
+        self.successFullTry();
+        res = res || {};
+        self.forEach(function(m) {
+          var addr = m.get("address");
+          addr = addr.split(":")[0];
+          res[addr] = res[addr] || {};
+          res[addr].coords = res[addr].coords || [];
+          res[addr].coords.push(m);
+        });
+        callback(res);
+      });
+    },
+
+    checkConnection: function(callback) {
+      var self = this;
+      if(!this.checkRetries()) {
+        return;
+      }
+      this.fetch({
+        beforeSend: window.App.addAuth.bind(window.App),
+        error: self.failureTry.bind(self, self.checkConnection.bind(self, callback))
+      }).done(function() {
+        self.successFullTry();
+        callback();
+      });
+    }
+
+  });
+}());
+
+
+
+/*global window */
+(function() {
+
+  "use strict";
+
+  window.ClusterServers = window.AutomaticRetryCollection.extend({
+
+    model: window.ClusterServer,
+    host: '',
+
+    url: "/_admin/aardvark/cluster/DBServers",
+
+    updateUrl: function() {
+      //this.url = window.App.getNewRoute("DBServers");
+      this.url = window.App.getNewRoute(this.host) + this.url;
+    },
+
+    initialize: function(models, options) {
+      this.host = options.host;
+      window.App.registerForUpdate(this);
+    },
+
+    statusClass: function(s) {
+      switch (s) {
+        case "ok":
+          return "success";
+        case "warning":
+          return "warning";
+        case "critical":
+          return "danger";
+        case "missing":
+          return "inactive";
+        default:
+          return "danger";
+      }
+    },
+
+    getStatuses: function(cb) {
+      if(!this.checkRetries()) {
+        return;
+      }
+      var self = this,
+        completed = function() {
+          self.successFullTry();
+          self._retryCount = 0;
+          self.forEach(function(m) {
+            cb(self.statusClass(m.get("status")), m.get("address"));
+          });
+        };
+      // This is the first function called in
+      // Each update loop
+      this.fetch({
+        beforeSend: window.App.addAuth.bind(window.App),
+        error: self.failureTry.bind(self, self.getStatuses.bind(self, cb))
+      }).done(completed);
+    },
+
+    byAddress: function (res, callback) {
+      if(!this.checkRetries()) {
+        return;
+      }
+      var self = this;
+      this.fetch({
+        beforeSend: window.App.addAuth.bind(window.App),
+        error: self.failureTry.bind(self, self.byAddress.bind(self, res, callback))
+      }).done(function() {
+        self.successFullTry();
+        res = res || {};
+        self.forEach(function(m) {
+          var addr = m.get("address");
+          addr = addr.split(":")[0];
+          res[addr] = res[addr] || {};
+          res[addr].dbs = res[addr].dbs || [];
+          res[addr].dbs.push(m);
+        });
+        callback(res);
+      });
+    },
+
+    getList: function() {
+      throw "Do not use";
+      /*
+      var self = this;
+      this.fetch({
+        beforeSend: window.App.addAuth.bind(window.App),
+        error: self.failureTry.bind(self, self.getList.bind(self, callback))
+      }).done(function() {
+        self.successFullTry();
+        var res = [];
+        _.each(self.where({role: "primary"}), function(m) {
+          var e = {};
+          e.primary = m.forList();
+          if (m.get("secondary")) {
+            e.secondary = self.get(m.get("secondary")).forList();
+          }
+          res.push(e);
+        });
+        callback(res);
+      });
+      */
+    },
+
+    getOverview: function() {
+      throw "Do not use DbServer.getOverview";
+      /*
+      this.fetch({
+        async: false,
+        beforeSend: window.App.addAuth.bind(window.App)
+      });
+      var res = {
+        plan: 0,
+        having: 0,
+        status: "ok"
+      },
+      self = this,
+      updateStatus = function(to) {
+        if (res.status === "critical") {
+          return;
+        }
+        res.status = to;
+      };
+      _.each(this.where({role: "primary"}), function(m) {
+        res.plan++;
+        switch (m.get("status")) {
+          case "ok":
+            res.having++;
+            break;
+          case "warning":
+            res.having++;
+            updateStatus("warning");
+            break;
+          case "critical":
+            var bkp = self.get(m.get("secondary"));
+            if (!bkp || bkp.get("status") === "critical") {
+              updateStatus("critical");
+            } else {
+              if (bkp.get("status") === "ok") {
+                res.having++;
+                updateStatus("warning");
+              }
+            }
+            break;
+          default:
+            console.debug("Undefined server state occurred. This is still in development");
+        }
+      });
+      return res;
+      */
+    }
+  });
+
+}());
+
+
+/*jshint browser: true */
+/*jshint unused: false */
+/*global window, Backbone, $ */
+(function() {
+  "use strict";
+  window.CoordinatorCollection = Backbone.Collection.extend({
+    model: window.Coordinator,
+
+    url: "/_admin/aardvark/cluster/Coordinators"
+
+  });
+}());
+
 /*jshint browser: true */
 /*jshint unused: false */
 /*global window, Backbone, $ */
@@ -19157,11 +19598,32 @@ window.ArangoUsers = Backbone.Collection.extend({
             });
           }
         }
+
+        this.breadcrumb();
       }.bind(this);
 
       arangoHelper.currentDatabase(callback);
 
       return $(this.el);
+    },
+
+    breadcrumb: function() {
+      console.log(this.model.toJSON());
+      var string = 'Service: ' + this.model.get('name') + 
+      '<i class="fa fa-ellipsis-v" aria-hidden="true"></i>';
+
+      if (this.model.get("mount")) {
+        string += 'Mount: ' + this.model.get("mount");
+      }
+
+      if (this.model.get("development")) {
+        if (this.model.get("path")) {
+          string += '<i class="fa fa-ellipsis-v" aria-hidden="true"></i>';
+          string += 'Path: <span class="small">' + this.model.get("path") + '</span>';
+        }
+      }
+      $('#subNavigationBar .breadcrumb').html(string);
+      
     },
 
     openApp: function() {
@@ -19185,7 +19647,7 @@ window.ArangoUsers = Backbone.Collection.extend({
           this.model.destroy(opts, function (err, result) {
             if (!err && result.error === false) {
               window.modalView.hide();
-              window.App.navigate('applications', {trigger: true});
+              window.App.navigate('services', {trigger: true});
             }
           });
         }.bind(this))
@@ -19554,6 +20016,549 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
+/*global arangoHelper, prettyBytes, Backbone, templateEngine, $, window, _, nv, d3 */
+(function () {
+  "use strict";
+
+  window.ClusterView = Backbone.View.extend({
+
+    el: '#content',
+    template: templateEngine.createTemplate("clusterView.ejs"),
+
+    events: {
+    },
+
+    historyInit: false,
+    initDone: false,
+    interval: 5000,
+    maxValues: 100,
+    knownServers: [],
+    chartData: {},
+    charts: {},
+    nvcharts: [],
+    startHistory: {},
+    startHistoryAccumulated: {},
+
+    initialize: function (options) {
+      var self = this;
+
+      if (window.App.isCluster) {
+        this.dbServers = options.dbServers;
+        this.coordinators = options.coordinators;
+        this.updateServerTime();
+
+        //start polling with interval
+        window.setInterval(function() {
+          if (window.location.hash === '#cluster'
+              || window.location.hash === '#') {
+            var callback = function(data) {
+              self.rerenderValues(data);
+              self.rerenderGraphs(data);
+            };
+
+            // now fetch the statistics history
+            self.getCoordStatHistory(callback);
+          }
+        }, this.interval);
+      }
+    },
+
+    render: function () {
+      this.$el.html(this.template.render({}));
+      //this.initValues();
+
+      if (!this.initDone) {
+        if (this.coordinators.first() !== undefined) {
+          this.getServerStatistics();
+        }
+        else {
+          this.waitForCoordinators();
+        }
+        this.initDone = true;
+      }
+      this.initGraphs();
+    },
+
+    waitForCoordinators: function() {
+      var self = this; 
+
+      window.setTimeout(function() {
+        if (self.coordinators) {
+          self.getServerStatistics();
+        }
+        else {
+          self.waitForCoordinators();
+        }
+      }, 500);
+    },
+
+    updateServerTime: function() {
+      this.serverTime = new Date().getTime();
+    },
+
+    getServerStatistics: function() {
+      var self = this;
+
+      this.data = undefined;
+
+      var coord = this.coordinators.first();
+
+      this.statCollectCoord = new window.ClusterStatisticsCollection([],
+        {host: coord.get('address')}
+      );
+      this.statCollectDBS = new window.ClusterStatisticsCollection([],
+        {host: coord.get('address')}
+      );
+
+      // create statistics collector for DB servers
+      var dbsmodels = [];
+      _.each(this.dbServers, function(dbs) {
+        dbs.each(function(model) {
+          dbsmodels.push(model);
+        });
+      });
+
+      _.each(dbsmodels, function (dbserver) {
+        if (dbserver.get("status") !== "ok") {
+          return;
+        }
+
+        if (self.knownServers.indexOf(dbserver.id) === -1) {
+          self.knownServers.push(dbserver.id);
+        }
+
+        var stat = new window.Statistics({name: dbserver.id});
+        stat.url = coord.get("protocol") + "://"
+        + coord.get("address")
+        + "/_admin/clusterStatistics?DBserver="
+        + dbserver.get("name");
+        self.statCollectDBS.add(stat);
+      });
+
+      // create statistics collector for coordinator
+      this.coordinators.forEach(function (coordinator) {
+        if (coordinator.get("status") !== "ok") {return;}
+
+        if (self.knownServers.indexOf(coordinator.id) === -1) {
+          self.knownServers.push(coordinator.id);
+        }
+
+        var stat = new window.Statistics({name: coordinator.id});
+
+        stat.url = coordinator.get("protocol") + "://"
+        + coordinator.get("address")
+        + "/_admin/statistics";
+
+        self.statCollectCoord.add(stat);
+      });
+
+      // first load history callback
+      var callback = function(data) {
+        self.rerenderValues(data);
+        self.rerenderGraphs(data);
+      };
+
+      // now fetch the statistics history
+      self.getCoordStatHistory(callback);
+      
+      this.updateValues();
+    },
+    
+    rerenderValues: function(data) {
+
+      // TODO cache value state like graph data
+
+      //Connections
+      this.renderValue('#clusterConnections', Math.round(data.clientConnectionsCurrent));
+      this.renderValue('#clusterConnectionsAvg', Math.round(data.clientConnections15M));
+
+      //RAM
+      var totalMem = data.physicalMemory;
+      var usedMem = data.residentSizeCurrent;
+      this.renderValue('#clusterRam', [usedMem, totalMem]);
+
+      //NODES
+      this.renderValue('#clusterNodes', this.statCollectCoord.size());
+    },
+
+    renderValue: function(id, value) {
+      if (typeof value === 'number') {
+        $(id).html(value);
+      }
+      else if ($.isArray(value)) {
+        var a = value[0], b = value[1];
+
+        var percent = 1 / (b/a) * 100;
+        $(id).html(percent.toFixed(1) + ' %');
+      }
+    },
+
+    updateValues: function() {
+      this.renderValue('#clusterNodes', this.statCollectCoord.size());
+      this.renderValue('#clusterRam', [1024, 4096]);
+    },
+
+    initValues: function() {
+
+      var values = [
+        "#clusterNodes",
+        "#clusterRam",
+        "#clusterConnections",
+        "#clusterConnectionsAvg",
+      ];
+
+      _.each(values, function(id) {
+        $(id).html('<i class="fa fa-spin fa-circle-o-notch" style="color: rgba(0, 0, 0, 0.64);"></i>'); 
+      });
+    },
+
+    graphData: {
+      data: {
+        sent: [],
+        received: []
+      },
+      http: [],
+      average: []
+    },
+
+    checkArraySizes: function() {
+      var self = this;
+
+      _.each(self.chartsOptions, function(val1, key1) {
+        _.each(val1.options, function(val2, key2) {
+          if (val2.values.length > self.maxValues - 1) {
+            self.chartsOptions[key1].options[key2].values.shift();
+          }
+        });
+      });
+    },
+
+    formatDataForGraph: function(data) {
+      var self = this;
+
+      if (!self.historyInit) {
+        _.each(data.times, function(time, key) {
+
+          //DATA
+          self.chartsOptions[0].options[0].values.push({x:time, y: data.bytesSentPerSecond[key]});
+          self.chartsOptions[0].options[1].values.push({x:time, y: data.bytesReceivedPerSecond[key]});
+
+          //HTTP
+          self.chartsOptions[1].options[0].values.push({x:time, y: self.calcTotalHttp(data.http, key)});
+
+          //AVERAGE
+          self.chartsOptions[2].options[0].values.push({x:time, y: data.avgRequestTime[key]});
+        });
+        self.historyInit = true;
+      }
+      else {
+        self.checkArraySizes();
+
+        //DATA
+        self.chartsOptions[0].options[0].values.push({
+          x: data.times[data.times.length - 1],
+          y: data.bytesSentPerSecond[data.bytesSentPerSecond.length - 1]
+        });
+        self.chartsOptions[0].options[1].values.push({
+          x: data.times[data.times.length - 1],
+          y: data.bytesReceivedPerSecond[data.bytesReceivedPerSecond.length - 1]
+        });
+        //HTTP
+        self.chartsOptions[1].options[0].values.push({
+          x: data.times[data.times.length - 1],
+          y: self.calcTotalHttp(data.http, data.bytesSentPerSecond.length - 1)
+        });
+        //AVERAGE
+        self.chartsOptions[2].options[0].values.push({
+          x: data.times[data.times.length - 1],
+          y: data.avgRequestTime[data.bytesSentPerSecond.length - 1]
+        });
+
+
+      }
+    },
+
+    chartsOptions: [
+      {
+        id: "#clusterData",
+        count: 2,
+        options: [
+          {
+            area: true,
+            values: [],
+            key: "Bytes out",
+            color: 'rgb(23,190,207)',
+            strokeWidth: 2,
+            fillOpacity: 0.1
+          },
+          {
+            area: true,
+            values: [],
+            key: "Bytes in",
+            color: "rgb(188, 189, 34)",
+            strokeWidth: 2,
+            fillOpacity: 0.1
+          }
+        ]
+      },
+      {
+        id: "#clusterHttp",
+        options: [{
+          area: true,
+          values: [],
+          key: "Bytes",
+          color: "rgb(0, 166, 90)",
+          fillOpacity: 0.1
+        }]
+      },
+      {
+        id: "#clusterAverage",
+        data: [],
+        options: [{
+          area: true,
+          values: [],
+          key: "Bytes",
+          color: "rgb(243, 156, 18)",
+          fillOpacity: 0.1
+        }]
+      }
+    ],
+
+    initGraphs: function() {
+      var self = this;
+
+      _.each(self.chartsOptions, function(c) {
+        nv.addGraph(function() {
+          self.charts[c.id] = nv.models.stackedAreaChart()
+          .options({
+            useInteractiveGuideline: true,
+            showControls: false,
+            noData: 'Fetching data...',
+            duration: 0
+          });
+
+          self.charts[c.id].xAxis
+          .axisLabel("")
+          .tickFormat(function(d) {
+            var x = new Date(d * 1000);
+            return (x.getHours() < 10 ? '0' : '') + x.getHours() + ":" +  
+              (x.getMinutes() < 10 ? '0' : '') + x.getMinutes() + ":" + 
+              (x.getSeconds() < 10 ? '0' : '') + x.getSeconds();
+          })
+          .staggerLabels(false);
+
+          self.charts[c.id].yAxis
+          .axisLabel('')
+          .tickFormat(function(d) {
+            if (d === null) {
+              return 'N/A';
+            }
+            var formatted = parseFloat(d3.format(".2f")(d));
+            return prettyBytes(formatted);
+          });
+
+          var data, lines = self.returnGraphOptions(c.id);
+          if (lines.length > 0) {
+            _.each(lines, function (val, key) {
+              c.options[key].values = val;
+            });
+          }
+          else {
+            c.options[0].values = [];
+          }
+          data = c.options;
+
+          self.chartData[c.id] = d3.select(c.id).append('svg')
+          .datum(data)
+          .transition().duration(300)
+          .call(self.charts[c.id])
+          .each('start', function() {
+            window.setTimeout(function() {
+              d3.selectAll(c.id + ' *').each(function() {
+                if (this.__transition__) {
+                  this.__transition__.duration = 0;
+                }
+              });
+            }, 0);
+          });
+
+          nv.utils.windowResize(self.charts[c.id].update);
+          self.nvcharts.push(self.charts[c.id]);
+          
+          return self.charts[c.id];
+        });
+      });
+    },
+
+    returnGraphOptions: function(id) {
+      var arr = []; 
+      if (id === '#clusterData') {
+        //arr =  [this.graphData.data.sent, this.graphData.data.received];
+        arr = [
+          this.chartsOptions[0].options[0].values,
+          this.chartsOptions[0].options[1].values
+        ];
+      }
+      else if (id === '#clusterHttp') {
+        arr = [this.chartsOptions[1].options[0].values];
+      }
+      else if (id === '#clusterAverage') {
+        arr = [this.chartsOptions[2].options[0].values];
+      }
+      else {
+        arr = [];
+      }
+
+      return arr;
+    },
+
+    rerenderGraphs: function(input) {
+      var self = this, data, lines;
+      this.formatDataForGraph(input);
+
+      _.each(self.chartsOptions, function(c) {
+        lines = self.returnGraphOptions(c.id);
+
+        if (lines.length > 0) {
+          _.each(lines, function (val, key) {
+            c.options[key].values = val;
+          });
+        }
+        else {
+          c.options[0].values = [];
+        }
+        data = c.options;
+
+        //update nvd3 chart
+        if (data[0].values.length > 0) {
+          if (self.historyInit) {
+            if (self.charts[c.id]) {
+              self.charts[c.id].update();
+            }
+          }
+        }
+        
+      });
+    },
+
+    calcTotalHttp: function(object, pos) {
+      var sum = 0;
+      _.each(object, function(totalHttp) {
+        sum += totalHttp[pos];
+      });
+      return sum;
+    },
+
+    getCoordStatHistory: function(callback) {
+      var self = this, promises = [], historyUrl;
+
+      var merged = {
+        http: {}
+      };
+
+      var getHistory = function(url) {
+        return $.get(url, {count: self.statCollectCoord.size()}, null, 'json');
+      };
+
+      var mergeHistory = function(data) {
+
+
+        var onetime = ['times'];
+        var values = [
+          'physicalMemory',
+          'residentSizeCurrent',
+          'clientConnections15M',
+          'clientConnectionsCurrent'
+        ];
+        var http = [
+          'optionsPerSecond',
+          'putsPerSecond',
+          'headsPerSecond',
+          'postsPerSecond',
+          'getsPerSecond',
+          'deletesPerSecond',
+          'othersPerSecond',
+          'patchesPerSecond'
+        ];
+        var arrays = [
+          'bytesSentPerSecond',
+          'bytesReceivedPerSecond',
+          'avgRequestTime'
+        ];
+
+        var counter = 0, counter2;
+
+        _.each(data, function(stat) {
+          if (typeof stat === 'object') {
+            if (counter === 0) {
+              //one time value
+              _.each(onetime, function(value) {
+                merged[value] = stat[value];
+              });
+
+              //values
+              _.each(values, function(value) {
+                merged[value] = stat[value];
+              });
+
+              //http requests arrays
+              _.each(http, function(value) {
+                merged.http[value] = stat[value];
+              });
+
+              //arrays
+              _.each(arrays, function(value) {
+                merged[value] = stat[value];
+              });
+
+            }
+            else {
+              //values
+              _.each(values, function(value) {
+                merged[value] = merged[value] + stat[value];
+              });
+              //http requests arrays
+              _.each(http, function(value) {
+                  counter2 = 0;
+                  _.each(stat[value], function(x) {
+                    merged.http[value][counter] = merged.http[value][counter] + x;
+                    counter2++;
+                  });
+              });
+              _.each(arrays, function(value) {
+                counter2 = 0;
+                _.each(stat[value], function(x) {
+                  merged[value][counter] = merged[value][counter] + x;
+                  counter2++;
+                });
+              });
+            }
+          counter++;
+          }
+        });
+      };
+
+      this.statCollectCoord.each(function(coord) {
+        historyUrl = coord.url + '/short';
+        promises.push(getHistory(historyUrl));
+      });
+
+      $.when.apply($, promises).done(function() {
+        //wait until all data is here
+        var arr = [];
+        _.each(promises, function(stat) {
+          arr.push(stat.responseJSON);
+        });
+        mergeHistory(arr);
+        callback(merged);
+      });
+    }
+
+  });
+}());
+
+/*jshint browser: true */
+/*jshint unused: false */
 /*global window, exports, Backbone, EJS, _, $, templateEngine, arangoHelper, Joi*/
 
 (function() {
@@ -19562,11 +20567,11 @@ window.ArangoUsers = Backbone.Collection.extend({
   window.CollectionListItemView = Backbone.View.extend({
 
     tagName: "div",
-    className: "tile",
+    className: "tile pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-3 pure-u-lg-1-4 pure-u-xl-1-6",
     template: templateEngine.createTemplate("collectionsItemView.ejs"),
 
-    initialize: function () {
-      this.collectionsView = this.options.collectionsView;
+    initialize: function (options) {
+      this.collectionsView = options.collectionsView;
     },
 
     events: {
@@ -21031,14 +22036,15 @@ window.ArangoUsers = Backbone.Collection.extend({
       });
     },
 
-    initialize: function () {
-      this.dygraphConfig = this.options.dygraphConfig;
+    initialize: function (options) {
+      this.options = options;
+      this.dygraphConfig = options.dygraphConfig;
       this.d3NotInitialized = true;
       this.events["click .dashboard-sub-bar-menu-sign"] = this.showDetail.bind(this);
       this.events["mousedown .dygraph-rangesel-zoomhandle"] = this.stopUpdating.bind(this);
       this.events["mouseup .dygraph-rangesel-zoomhandle"] = this.startUpdating.bind(this);
 
-      this.serverInfo = this.options.serverToShow;
+      this.serverInfo = options.serverToShow;
 
       if (! this.serverInfo) {
         this.server = "-local-";
@@ -21321,7 +22327,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         },
         {
           "key": "",
-          "color": this.dygraphConfig.colors[0],
+          "color": this.dygraphConfig.colors[2],
           "values": [
             {
               label: "used",
@@ -21339,11 +22345,11 @@ window.ArangoUsers = Backbone.Collection.extend({
     mergeBarChartData: function (attribList, newData) {
       var i, v1 = {
         "key": this.barChartsElementNames[attribList[0]],
-        "color": this.dygraphConfig.colors[0],
+        "color": this.dygraphConfig.colors[1],
         "values": []
       }, v2 = {
         "key": this.barChartsElementNames[attribList[1]],
-        "color": this.dygraphConfig.colors[1],
+        "color": this.dygraphConfig.colors[2],
         "values": []
       };
       for (i = newData[attribList[0]].values.length - 1;  0 <= i;  --i) {
@@ -21557,8 +22563,8 @@ window.ArangoUsers = Backbone.Collection.extend({
           .showValues(false)
           .showYAxis(false)
           .showXAxis(false)
-          .transitionDuration(100)
-          .tooltips(false)
+          //.transitionDuration(100)
+          //.tooltip(false)
           .showLegend(false)
           .showControls(false)
           .stacked(true);
@@ -21673,8 +22679,8 @@ window.ArangoUsers = Backbone.Collection.extend({
             .showValues(false)
             .showYAxis(true)
             .showXAxis(true)
-            .transitionDuration(100)
-            .tooltips(false)
+            //.transitionDuration(100)
+            //.tooltips(false)
             .showLegend(false)
             .showControls(false)
             .forceY([0,1]);
@@ -21718,7 +22724,15 @@ window.ArangoUsers = Backbone.Collection.extend({
       return;
     }
     self.timer = window.setInterval(function () {
-        self.getStatistics();
+
+        if (window.App.isCluster) {
+          if (window.location.hash.indexOf(self.serverInfo.target) > -1) {
+            self.getStatistics();
+          }
+        }
+        else {
+          self.getStatistics();
+        }
       },
       self.interval
     );
@@ -21754,6 +22768,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         this.prepareD3Charts();
         this.prepareResidentSize();
         this.updateTendencies();
+        $(window).trigger('resize');
       }
       this.startUpdating();
     }.bind(this);
@@ -22402,6 +23417,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     fillEditor: function() {
       var toFill = this.removeReadonlyKeys(this.collection.first().attributes);
+      $('.disabledBread').last().text(this.collection.first().get('_key'));
       this.editor.set(toFill);
       $('.ace_content').attr('font-size','11pt');
     },
@@ -22541,14 +23557,10 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     breadcrumb: function () {
       var name = window.location.hash.split("/");
-      $('#transparentHeader').append(
-        '<div class="breadcrumb">'+
-        '<a href="#collections" class="activeBread">Collections</a>'+
-        '<span class="disabledBread"><i class="fa fa-chevron-right"></i></span>'+
-        '<a class="activeBread" href="#collection/' + name[1] + '/documents/1">' + name[1] + '</a>'+
-        '<span class="disabledBread"><i class="fa fa-chevron-right"></i></span>'+
-        '<a class="disabledBread">' + name[2] + '</a>'+
-        '</div>'
+      $('#subNavigationBar .breadcrumb').html(
+        '<a href="#collection/' + name[1] + '/documents/1">Collection: ' + name[1].toLowerCase() + '</a>' + 
+        '<i class="fa fa-chevron-right"></i>' +
+        'Document: ' + name[2]
       );
     },
 
@@ -22593,9 +23605,9 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     editButtons: ["#deleteSelected", "#moveSelected"],
 
-    initialize : function () {
-      this.documentStore = this.options.documentStore;
-      this.collectionsStore = this.options.collectionsStore;
+    initialize : function (options) {
+      this.documentStore = options.documentStore;
+      this.collectionsStore = options.collectionsStore;
       this.tableView = new window.TableView({
         el: this.table,
         collection: this.collection
@@ -23146,6 +24158,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       var from = $('.modal-body #new-edge-from-attr').last().val();
       var to = $('.modal-body #new-edge-to').last().val();
       var key = $('.modal-body #new-edge-key-attr').last().val();
+      var url;
 
 
       var callback = function(error, data) {
@@ -23154,7 +24167,15 @@ window.ArangoUsers = Backbone.Collection.extend({
         }
         else {
           window.modalView.hide();
-          window.location.hash = "collection/" + data;
+          data = data._id.split('/');
+
+          try {
+            url = "collection/" + data[0] + '/' + data[1];
+            decodeURI(url);
+          } catch (ex) {
+            url = "collection/" + data[0] + '/' + encodeURIComponent(data[1]);
+          }
+          window.location.hash = url;
         }
       }.bind(this);
 
@@ -23169,6 +24190,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     addDocument: function() {
       var collid = window.location.hash.split("/")[1];
       var key = $('.modal-body #new-document-key-attr').last().val();
+      var url;
 
       var callback = function(error, data) {
         if (error) {
@@ -23176,7 +24198,16 @@ window.ArangoUsers = Backbone.Collection.extend({
         }
         else {
           window.modalView.hide();
-          window.location.hash = "collection/" + data;
+          data = data.split('/');
+
+          try {
+            url = "collection/" + data[0] + '/' + data[1];
+            decodeURI(url);
+          } catch (ex) {
+            url = "collection/" + data[0] + '/' + encodeURIComponent(data[1]);
+          }
+
+          window.location.hash = url;
         }
       }.bind(this);
 
@@ -23423,7 +24454,17 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     clicked: function (event) {
       var self = event.currentTarget;
-      window.App.navigate("collection/" + this.collection.collectionID + "/" + $(self).attr("id").substr(4), true);
+
+      var url, doc = $(self).attr("id").substr(4);
+
+      try {
+        url = "collection/" + this.collection.collectionID + '/' + doc;
+        decodeURI(doc);
+      } catch (ex) {
+        url = "collection/" + this.collection.collectionID + '/' + encodeURIComponent(doc);
+      }
+
+      window.location.hash = url;
     },
 
     drawTable: function() {
@@ -23474,7 +24515,10 @@ window.ArangoUsers = Backbone.Collection.extend({
         this.collection.collectionID
       );
 
+      this.collectionName = window.location.hash.split("/")[1];
+      //fill navigation and breadcrumb
       this.breadcrumb();
+      window.arangoHelper.buildCollectionSubNav(this.collectionName, 'Content');
 
       this.checkCollectionState();
 
@@ -23528,13 +24572,8 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     breadcrumb: function () {
-      this.collectionName = window.location.hash.split("/")[1];
-      $('#transparentHeader').append(
-        '<div class="breadcrumb">'+
-        '<a class="activeBread" href="#collections">Collections</a>'+
-        '<span class="disabledBread"><i class="fa fa-chevron-right"></i></span>'+
-        '<a class="disabledBread">'+this.collectionName+'</a>'+
-        '</div>'
+      $('#subNavigationBar .breadcrumb').html(
+        'Collection: ' + this.collectionName
       );
     }
 
@@ -23633,15 +24672,19 @@ window.ArangoUsers = Backbone.Collection.extend({
     template: templateEngine.createTemplate("footerView.ejs"),
 
     showServerStatus: function(isOnline) {
-      if (isOnline === true) {
-        $('.serverStatusIndicator').addClass('isOnline');
-        $('.serverStatusIndicator').addClass('fa-check-circle-o');
-        $('.serverStatusIndicator').removeClass('fa-times-circle-o');
-      }
-      else {
-        $('.serverStatusIndicator').removeClass('isOnline');
-        $('.serverStatusIndicator').removeClass('fa-check-circle-o');
-        $('.serverStatusIndicator').addClass('fa-times-circle-o');
+      if (!window.App.isCluster) {
+        if (isOnline === true) {
+          $('#healthStatus').removeClass('negative');
+          $('#healthStatus').addClass('positive');
+          $('.health-state').html('GOOD');
+          $('.health-icon').html('<i class="fa fa-check-circle"></i>');
+        }
+        else {
+          $('#healthStatus').removeClass('positive');
+          $('#healthStatus').addClass('negative');
+          $('.health-state').html('OFFLINE');
+          $('.health-icon').html('<i class="fa fa-exclamation-circle"></i>');
+        }
       }
     },
 
@@ -23761,7 +24804,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
   window.FoxxActiveView = Backbone.View.extend({
     tagName: 'div',
-    className: 'tile',
+    className: 'tile pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-3 pure-u-lg-1-4 pure-u-xl-1-6',
     template: templateEngine.createTemplate('foxxActiveView.ejs'),
     _show: true,
 
@@ -23770,7 +24813,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     openAppDetailView: function() {
-      window.App.navigate('applications/' + encodeURIComponent(this.model.get('mount')), { trigger: true });
+      window.App.navigate('service/' + encodeURIComponent(this.model.get('mount')), { trigger: true });
     },
 
     toggle: function(type, shouldShow) {
@@ -24256,6 +25299,10 @@ window.ArangoUsers = Backbone.Collection.extend({
     removedECollList : [],
 
     dropdownVisible: false,
+
+    initialize: function(options) {
+      this.options = options;
+    },
 
     events: {
       "click #deleteGraph"                        : "deleteGraph",
@@ -25086,6 +26133,429 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
+/*global _, arangoHelper, Backbone, window, templateEngine, $ */
+
+(function() {
+  "use strict";
+
+  window.IndicesView = Backbone.View.extend({
+
+    el: "#content",
+
+    initialize: function(options) {
+      this.collectionName = options.collectionName;
+      this.model = this.collection;
+    },
+
+    template: templateEngine.createTemplate("indicesView.ejs"),
+
+    events: {
+    },
+
+    render: function() {
+      $(this.el).html(this.template.render({
+        model: this.model
+      }));
+
+      this.breadcrumb();
+      window.arangoHelper.buildCollectionSubNav(this.collectionName, 'Indices');
+
+      this.getIndex();
+    },
+
+    breadcrumb: function () {
+      $('#subNavigationBar .breadcrumb').html(
+        'Collection: ' + this.collectionName
+      );
+    },
+
+    getIndex: function () {
+
+      var callback = function(error, data) {
+        if (error) {
+          window.arangoHelper.arangoError('Index', data.errorMessage);
+        }
+        else {
+          this.renderIndex(data);
+        }
+      }.bind(this);
+
+      this.model.getIndex(callback);
+    },
+
+    createIndex: function () {
+      //e.preventDefault();
+      var self = this;
+      var indexType = $('#newIndexType').val();
+      var postParameter = {};
+      var fields;
+      var unique;
+      var sparse;
+
+      switch (indexType) {
+        case 'Cap':
+          var size = parseInt($('#newCapSize').val(), 10) || 0;
+        var byteSize = parseInt($('#newCapByteSize').val(), 10) || 0;
+        postParameter = {
+          type: 'cap',
+          size: size,
+          byteSize: byteSize
+        };
+        break;
+        case 'Geo':
+          //HANDLE ARRAY building
+          fields = $('#newGeoFields').val();
+        var geoJson = self.checkboxToValue('#newGeoJson');
+        var constraint = self.checkboxToValue('#newGeoConstraint');
+        var ignoreNull = self.checkboxToValue('#newGeoIgnoreNull');
+        postParameter = {
+          type: 'geo',
+          fields: self.stringToArray(fields),
+          geoJson: geoJson,
+          constraint: constraint,
+          ignoreNull: ignoreNull
+        };
+        break;
+        case 'Hash':
+          fields = $('#newHashFields').val();
+        unique = self.checkboxToValue('#newHashUnique');
+        sparse = self.checkboxToValue('#newHashSparse');
+        postParameter = {
+          type: 'hash',
+          fields: self.stringToArray(fields),
+          unique: unique,
+          sparse: sparse
+        };
+        break;
+        case 'Fulltext':
+          fields = ($('#newFulltextFields').val());
+        var minLength =  parseInt($('#newFulltextMinLength').val(), 10) || 0;
+        postParameter = {
+          type: 'fulltext',
+          fields: self.stringToArray(fields),
+          minLength: minLength
+        };
+        break;
+        case 'Skiplist':
+          fields = $('#newSkiplistFields').val();
+        unique = self.checkboxToValue('#newSkiplistUnique');
+        sparse = self.checkboxToValue('#newSkiplistSparse');
+        postParameter = {
+          type: 'skiplist',
+          fields: self.stringToArray(fields),
+          unique: unique,
+          sparse: sparse
+        };
+        break;
+      }
+      var callback = function(error, msg){
+        if (error) {
+          if (msg) {
+            var message = JSON.parse(msg.responseText);
+            arangoHelper.arangoError("Document error", message.errorMessage);
+          }
+          else {
+            arangoHelper.arangoError("Document error", "Could not create index.");
+          }
+        }
+        self.toggleNewIndexView();
+      };
+
+      self.model.createIndex(postParameter, callback);
+    },
+
+    bindIndexEvents: function() {
+      this.unbindIndexEvents();
+      var self = this;
+
+      $('#indexEditView #addIndex').bind('click', function() {
+        self.toggleNewIndexView();
+
+        $('#cancelIndex').unbind('click');
+        $('#cancelIndex').bind('click', function() {
+          self.toggleNewIndexView();
+        });
+
+        $('#createIndex').unbind('click');
+        $('#createIndex').bind('click', function() {
+          self.createIndex();
+        });
+
+      });
+
+      $('#newIndexType').bind('change', function() {
+        self.selectIndexType();
+      });
+
+      $('.deleteIndex').bind('click', function(e) {
+        self.prepDeleteIndex(e);
+      });
+
+      $('#infoTab a').bind('click', function(e) {
+        $('#indexDeleteModal').remove();
+        if ($(e.currentTarget).html() === 'Indices'  && !$(e.currentTarget).parent().hasClass('active')) {
+
+          $('#newIndexView').hide();
+          $('#indexEditView').show();
+
+          $('#indexHeaderContent #modal-dialog .modal-footer .button-danger').hide();  
+          $('#indexHeaderContent #modal-dialog .modal-footer .button-success').hide();  
+          $('#indexHeaderContent #modal-dialog .modal-footer .button-notification').hide();
+        }
+        if ($(e.currentTarget).html() === 'General' && !$(e.currentTarget).parent().hasClass('active')) {
+          $('#indexHeaderContent #modal-dialog .modal-footer .button-danger').show();  
+          $('#indexHeaderContent #modal-dialog .modal-footer .button-success').show();  
+          $('#indexHeaderContent #modal-dialog .modal-footer .button-notification').show();
+          var elem2 = $('.index-button-bar2')[0]; 
+          //$('#addIndex').detach().appendTo(elem);
+          if ($('#cancelIndex').is(':visible')) {
+            $('#cancelIndex').detach().appendTo(elem2);
+            $('#createIndex').detach().appendTo(elem2);
+          }
+        }
+      });
+    },
+
+    prepDeleteIndex: function (e) {
+      var self = this;
+      this.lastTarget = e;
+
+      this.lastId = $(this.lastTarget.currentTarget).
+        parent().
+        parent().
+        first().
+        children().
+        first().
+        text();
+      //window.modalView.hide();
+
+      //delete modal
+      $("#modal-dialog .modal-footer").after(
+        '<div id="indexDeleteModal" style="display:block;" class="alert alert-error modal-delete-confirmation">' +
+        '<strong>Really delete?</strong>' +
+        '<button id="indexConfirmDelete" class="button-danger pull-right modal-confirm-delete">Yes</button>' +
+        '<button id="indexAbortDelete" class="button-neutral pull-right">No</button>' +
+        '</div>'
+      );
+      $('#indexConfirmDelete').unbind('click');
+      $('#indexConfirmDelete').bind('click', function() {
+        $('#indexDeleteModal').remove();
+        self.deleteIndex();
+      });
+
+      $('#indexAbortDelete').unbind('click');
+      $('#indexAbortDelete').bind('click', function() {
+        $('#indexDeleteModal').remove();
+      });
+    },
+
+    unbindIndexEvents: function() {
+      $('#indexEditView #addIndex').unbind('click');
+      $('#newIndexType').unbind('change');
+      $('#infoTab a').unbind('click');
+      $('.deleteIndex').unbind('click');
+    },
+
+    deleteIndex: function () {
+      var callback = function(error) {
+        if (error) {
+          arangoHelper.arangoError("Could not delete index");
+          $("tr th:contains('"+ this.lastId+"')").parent().children().last().html(
+            '<span class="deleteIndex icon_arangodb_roundminus"' + 
+              ' data-original-title="Delete index" title="Delete index"></span>'
+          );
+          this.model.set("locked", false);
+        }
+        else if (!error && error !== undefined) {
+          $("tr th:contains('"+ this.lastId+"')").parent().remove();
+          this.model.set("locked", false);
+        }
+      }.bind(this);
+
+      this.model.set("locked", true);
+      this.model.deleteIndex(this.lastId, callback);
+
+      $("tr th:contains('"+ this.lastId+"')").parent().children().last().html(
+        '<i class="fa fa-circle-o-notch fa-spin"></i>'
+      );
+    },
+    renderIndex: function(data) {
+
+      this.index = data;
+
+      var cssClass = 'collectionInfoTh modal-text';
+      if (this.index) {
+        var fieldString = '';
+        var actionString = '';
+
+        _.each(this.index.indexes, function(v) {
+          if (v.type === 'primary' || v.type === 'edge') {
+            actionString = '<span class="icon_arangodb_locked" ' +
+              'data-original-title="No action"></span>';
+          }
+          else {
+            actionString = '<span class="deleteIndex icon_arangodb_roundminus" ' +
+              'data-original-title="Delete index" title="Delete index"></span>';
+          }
+
+          if (v.fields !== undefined) {
+            fieldString = v.fields.join(", ");
+          }
+
+          //cut index id
+          var position = v.id.indexOf('/');
+          var indexId = v.id.substr(position + 1, v.id.length);
+          var selectivity = (
+            v.hasOwnProperty("selectivityEstimate") ? 
+              (v.selectivityEstimate * 100).toFixed(2) + "%" : 
+              "n/a"
+          );
+          var sparse = (v.hasOwnProperty("sparse") ? v.sparse : "n/a");
+
+          $('#collectionEditIndexTable').append(
+            '<tr>' +
+              '<th class=' + JSON.stringify(cssClass) + '>' + indexId + '</th>' +
+              '<th class=' + JSON.stringify(cssClass) + '>' + v.type + '</th>' +
+              '<th class=' + JSON.stringify(cssClass) + '>' + v.unique + '</th>' +
+              '<th class=' + JSON.stringify(cssClass) + '>' + sparse + '</th>' +
+              '<th class=' + JSON.stringify(cssClass) + '>' + selectivity + '</th>' +
+              '<th class=' + JSON.stringify(cssClass) + '>' + fieldString + '</th>' +
+              '<th class=' + JSON.stringify(cssClass) + '>' + actionString + '</th>' +
+              '</tr>'
+          );
+        });
+      }
+      this.bindIndexEvents();
+    },
+
+    selectIndexType: function () {
+      $('.newIndexClass').hide();
+      var type = $('#newIndexType').val();
+      $('#newIndexType'+type).show();
+    },
+
+    resetIndexForms: function () {
+      $('#indexHeader input').val('').prop("checked", false);
+      $('#newIndexType').val('Cap').prop('selected',true);
+      this.selectIndexType();
+    },
+
+    toggleNewIndexView: function () {
+      var elem = $('.index-button-bar2')[0];
+
+      if ($('#indexEditView').is(':visible')) {
+        $('#indexEditView').hide();
+        $('#newIndexView').show();
+        $('#cancelIndex').detach().appendTo('#indexHeaderContent #modal-dialog .modal-footer');
+        $('#createIndex').detach().appendTo('#indexHeaderContent #modal-dialog .modal-footer');
+      }
+      else {
+        $('#indexEditView').show();
+        $('#newIndexView').hide();
+        $('#cancelIndex').detach().appendTo(elem);
+        $('#createIndex').detach().appendTo(elem);
+      }
+
+      arangoHelper.fixTooltips(".icon_arangodb, .arangoicon", "right");
+      this.resetIndexForms();
+    },
+
+    stringToArray: function (fieldString) {
+      var fields = [];
+      fieldString.split(',').forEach(function(field){
+        field = field.replace(/(^\s+|\s+$)/g,'');
+        if (field !== '') {
+          fields.push(field);
+        }
+      });
+      return fields;
+    },
+
+    checkboxToValue: function (id) {
+      return $(id).prop('checked');
+    }
+
+  });
+
+}());
+
+/*jshint browser: true */
+/*jshint unused: false */
+/*global arangoHelper, Backbone, window, templateEngine, $ */
+
+(function() {
+  "use strict";
+
+  window.InfoView = Backbone.View.extend({
+
+    el: "#content",
+
+    initialize: function(options) {
+      this.collectionName = options.collectionName;
+      this.model = this.collection;
+    },
+
+    events: {
+    },
+
+    render: function() {
+      this.breadcrumb();
+      window.arangoHelper.buildCollectionSubNav(this.collectionName, 'Info');
+
+      this.renderInfoView();
+    },
+
+    breadcrumb: function () {
+      $('#subNavigationBar .breadcrumb').html(
+        'Collection: ' + this.collectionName
+      );
+    },
+
+    renderInfoView: function() {
+      if (this.model.get("locked")) {
+        return 0;
+      }
+      var callbackRev = function(error, revision, figures) {
+        if (error) {
+          arangoHelper.arangoError("Figures", "Could not get revision.");        
+        }
+        else {
+          var buttons = [];
+          var tableContent = {
+            figures: figures,
+            revision: revision,
+            model: this.model
+          };
+          window.modalView.show(
+            "modalCollectionInfo.ejs",
+            "Collection: " + this.model.get('name'),
+            buttons,
+            tableContent, null, null,
+            null, null,
+            null, 'content'
+          );
+        }
+      }.bind(this);
+
+      var callback = function(error, data) {
+        if (error) {
+          arangoHelper.arangoError("Figures", "Could not get figures.");        
+        }
+        else {
+          var figures = data;
+          this.model.getRevision(callbackRev, figures);
+        }
+      }.bind(this);
+
+      this.model.getFigures(callback);
+    }
+
+  });
+
+}());
+
+/*jshint browser: true */
+/*jshint unused: false */
 /*global Backbone, EJS, arangoHelper, window, setTimeout, $, templateEngine*/
 
 (function() {
@@ -25170,7 +26640,8 @@ window.ArangoUsers = Backbone.Collection.extend({
     idPrefix: "logTable",
     fetchedAmount: false,
 
-    initialize: function () {
+    initialize: function (options) {
+      this.options = options;
       this.convertModelToJSON();
     },
 
@@ -25522,7 +26993,8 @@ window.ArangoUsers = Backbone.Collection.extend({
       };
     },
 
-    show: function(templateName, title, buttons, tableContent, advancedContent, extraInfo, events, noConfirm, tabBar) {
+    show: function(templateName, title, buttons, tableContent, advancedContent,
+                   extraInfo, events, noConfirm, tabBar, divID) {
       var self = this, lastBtn, confirmMsg, closeButtonFound = false;
       buttons = buttons || [];
       noConfirm = Boolean(noConfirm);
@@ -25545,13 +27017,35 @@ window.ArangoUsers = Backbone.Collection.extend({
       } else {
         buttons.push(self.createCloseButton('Close'));
       }
-      $(this.el).html(this.baseTemplate.render({
-        title: title,
-        buttons: buttons,
-        hideFooter: this.hideFooter,
-        confirm: confirmMsg,
-        tabBar: tabBar
-      }));
+      if (!divID) {
+        $(this.el).html(this.baseTemplate.render({
+          title: title,
+          buttons: buttons,
+          hideFooter: this.hideFooter,
+          confirm: confirmMsg,
+          tabBar: tabBar
+        }));
+      }
+      else {
+        //render into custom div
+        $('#' + divID).html(this.baseTemplate.render({
+          title: title,
+          buttons: buttons,
+          hideFooter: this.hideFooter,
+          confirm: confirmMsg,
+          tabBar: tabBar
+        }));
+        //remove not needed modal elements
+        $('#' + divID + " #modal-dialog").removeClass("fade hide modal");
+        $('#' + divID + " .modal-header").remove();
+        $('#' + divID + " .modal-tabbar").remove();
+        $('#' + divID + " .modal-tabbar").remove();
+        $('#' + divID + " .button-close").remove();
+        if ($('#' + divID + " .modal-footer").children().length === 0) {
+          $('#' + divID + " .modal-footer").remove();
+        }
+
+      }
       _.each(buttons, function(b, i) {
         if (b.disabled || !b.callback) {
           return;
@@ -25646,7 +27140,9 @@ window.ArangoUsers = Backbone.Collection.extend({
         }, 100);
       }
 
-      $("#modal-dialog").modal("show");
+      if (!divID) {
+        $("#modal-dialog").modal("show");
+      }
 
       //enable modal hotkeys after rendering is complete
       if (this.enabledHotkey === false) {
@@ -25772,11 +27268,12 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global Backbone, templateEngine, $, window, arangoHelper*/
+/*global Backbone, templateEngine, $, window, arangoHelper, _*/
 (function () {
   "use strict";
   window.NavigationView = Backbone.View.extend({
     el: '#navigationBar',
+    subEl: '#subNavigationBar',
 
     events: {
       "change #arangoCollectionSelect": "navigateBySelect",
@@ -25788,25 +27285,35 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     renderFirst: true,
+    activeSubMenu: undefined,
 
-    initialize: function () {
+    initialize: function (options) {
 
-      this.userCollection = this.options.userCollection;
-      this.currentDB = this.options.currentDB;
+      var self = this;
+
+      this.userCollection = options.userCollection;
+      this.currentDB = options.currentDB;
       this.dbSelectionView = new window.DBSelectionView({
-        collection: this.options.database,
+        collection: options.database,
         current: this.currentDB
       });
       this.userBarView = new window.UserBarView({
         userCollection: this.userCollection
       });
       this.notificationView = new window.NotificationView({
-        collection: this.options.notificationCollection
+        collection: options.notificationCollection
       });
       this.statisticBarView = new window.StatisticBarView({
           currentDB: this.currentDB
       });
+
+      this.isCluster = options.isCluster;
+
       this.handleKeyboardHotkeys();
+
+      Backbone.history.on("all", function () {
+        self.selectMenuItem();
+      });
     },
 
     handleSelectDatabase: function () {
@@ -25814,13 +27321,18 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     template: templateEngine.createTemplate("navigationView.ejs"),
+    templateSub: templateEngine.createTemplate("subNavigationView.ejs"),
 
     render: function () {
       var self = this;
 
       $(this.el).html(this.template.render({
-        currentDB: this.currentDB
+        currentDB: this.currentDB,
+        isCluster: this.isCluster
       }));
+
+      $(this.subEl).html(this.templateSub.render({}));
+      
       this.dbSelectionView.render($("#dbSelect"));
       this.notificationView.render($("#notificationBar"));
 
@@ -25833,17 +27345,10 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.userCollection.whoAmI(callback);
       this.statisticBarView.render($("#statisticBar"));
 
-      // if demo content not available, do not show demo menu tab
-      if (!window.App.arangoCollectionsStore.findWhere({"name": "arangodbflightsdemo"})) {
-        $('.demo-menu').css("display","none");
-      }
       if (this.renderFirst) {
         this.renderFirst = false;
           
-        var select = ((window.location.hash).substr(1, (window.location.hash).length) + '-menu');
-        if (select.indexOf('/') === -1) {
-          this.selectMenuItem(select);
-        }
+        this.selectMenuItem();
 
         $('.arangodbLogo').on('click', function() {
           self.selectMenuItem();
@@ -25900,6 +27405,149 @@ window.ArangoUsers = Backbone.Collection.extend({
       });
     },
 
+    subViewConfig: {
+      documents: 'collections',
+      collection: 'collections'
+    },
+
+    subMenuConfig: {
+      /*
+      collection: [
+        {
+          name: 'Settings',
+          view: undefined
+        },
+        {
+          name: 'Indices',
+          view: undefined
+        },
+        {
+          name: 'Content',
+          view: undefined,
+          active: true
+        }
+      ],*/
+      cluster: [
+        {
+          name: 'Dashboard',
+          view: undefined,
+          active: true
+        },
+        {
+          name: 'Logs',
+          view: undefined,
+          disabled: true
+        }
+      ],
+      service: [
+        {
+          name: 'Info',
+          view: undefined,
+          active: true
+        },
+        {
+          name: 'API',
+          view: undefined,
+        },
+        {
+          name: 'Settings',
+          view: undefined,
+        }
+      ],
+      node: [
+        {
+          name: 'Dashboard',
+          view: undefined,
+          active: true
+        },
+        {
+          name: 'Logs',
+          route: 'nodeLogs',
+          params: {
+            node: undefined
+          }
+        }
+      ],
+      queries: [
+        {
+          name: 'Editor',
+          route: 'query2',
+          active: true
+        },
+        {
+          name: 'Running Queries',
+          route: 'queryManagement',
+          params: {
+            active: true
+          },
+          active: undefined
+        },
+        {
+          name: 'Slow Query History',
+          route: 'queryManagement',
+          params: {
+            active: false
+          },
+          active: undefined
+        }
+      ]
+    },
+
+    renderSubMenu: function(id) {
+      var self = this;
+
+      if (id === undefined) {
+        if (window.isCluster) {
+          id = 'cluster';
+        }
+        else {
+          id = 'dashboard';
+        }
+      }
+
+      if (this.subMenuConfig[id]) {
+        $(this.subEl + ' .bottom').html('');
+        var cssclass = "";
+
+        _.each(this.subMenuConfig[id], function(menu) {
+          if (menu.active) {
+            cssclass = 'active';
+          }
+          else {
+            cssclass = '';
+          }
+          if (menu.disabled) {
+            cssclass = 'disabled';
+          }
+
+          $(self.subEl +  ' .bottom').append(
+            '<li class="subMenuEntry ' + cssclass + '"><a>' + menu.name + '</a></li>'
+          );
+          if (!menu.disabled) {
+            $(self.subEl + ' .bottom').children().last().bind('click', function(elem) {
+              self.activeSubMenu = menu;
+              self.renderSubView(menu, elem);
+            });
+          }
+        });
+      }
+
+    },
+
+    renderSubView: function(menu, element) {
+      //trigger routers route
+      if (window.App[menu.route]) {
+        if (window.App[menu.route].resetState) {
+          window.App[menu.route].resetState();
+        }
+        window.App[menu.route]();
+      }
+
+      //select active sub view entry
+      $(this.subEl + ' .bottom').children().removeClass('active');
+      $(element.currentTarget).addClass('active');
+    },
+
     switchTab: function(e) {
       var id = $(e.currentTarget).children().first().attr('id');
 
@@ -25908,11 +27556,50 @@ window.ArangoUsers = Backbone.Collection.extend({
       }
     },
 
-    selectMenuItem: function (menuItem) {
+    /*
+    breadcrumb: function (name) {
+
+      if (window.location.hash.split('/')[0] !== '#collection') {
+        $('#subNavigationBar .breadcrumb').html(
+          '<a class="activeBread" href="#' + name + '">' + name + '</a>'
+        );
+      }
+
+    },
+    */
+
+    selectMenuItem: function (menuItem, noMenuEntry) {
+
+      if (menuItem === undefined) {
+        menuItem = window.location.hash.split('/')[0];
+        menuItem = menuItem.substr(1, menuItem.length - 1);
+      }
+
+      if (menuItem === '') {
+        if (window.App.isCluster) {
+          menuItem = 'cluster';
+        }
+        else {
+          menuItem = 'dashboard';
+        }
+      }
+      try {
+        this.renderSubMenu(menuItem.split('-')[0]);
+      }
+      catch (e) {
+        this.renderSubMenu(menuItem);
+      }
+
+      //this.breadcrumb(menuItem.split('-')[0]);
+
       $('.navlist li').removeClass('active');
       if (typeof menuItem === 'string') {
-        if (menuItem) {
+        if (noMenuEntry) {
+          $('.' + this.subViewConfig[menuItem] + '-menu').addClass('active');
+        }
+        else if (menuItem) {
           $('.' + menuItem).addClass('active');
+          $('.' + menuItem + '-menu').addClass('active');
         }
       }
       arangoHelper.hideArangoNotifications();
@@ -25938,6 +27625,188 @@ window.ArangoUsers = Backbone.Collection.extend({
       $("#link_dropdown").fadeOut(1);
       $("#tools_dropdown").fadeOut(1);
       $("#dbs_dropdown").fadeOut(1);
+    }
+
+  });
+}());
+
+/*jshint browser: true */
+/*jshint unused: false */
+/*global arangoHelper, Backbone, templateEngine, $, window, _, nv, d3 */
+(function () {
+  "use strict";
+
+  window.NodeView = Backbone.View.extend({
+
+    el: '#content',
+    template: templateEngine.createTemplate("nodeView.ejs"),
+    interval: 5000,
+    dashboards: [],
+
+    events: {
+    },
+
+    initialize: function (options) {
+
+      if (window.App.isCluster) {
+        this.coordinators = options.coordinators;
+        this.coordname = options.coordname;
+        this.updateServerTime();
+
+        //start polling with interval
+        window.setInterval(function() {
+          if (window.location.hash.indexOf('#node/') === 0) {
+
+            var callback = function(data) {
+            };
+
+          }
+        }, this.interval);
+      }
+    },
+
+    breadcrumb: function(name) {
+      console.log("yes");
+      $('#subNavigationBar .breadcrumb').html("Node: " + name);
+    },
+
+    render: function () {
+      console.log(1);
+      this.$el.html(this.template.render({coords: []}));
+
+      var callback = function() {
+        this.continueRender();
+        this.breadcrumb(this.coordname);
+      }.bind(this);
+
+      if (!this.initDone) {
+        this.waitForCoordinators(callback);
+      }
+      else {
+        this.coordname = window.location.hash.split('/')[1];
+        this.coordinator = this.coordinators.findWhere({name: this.coordname});
+        callback();
+      }
+    },
+
+    continueRender: function() {
+      this.dashboards[this.coordinator.get('name')] = new window.DashboardView({
+        dygraphConfig: window.dygraphConfig,
+        database: window.App.arangoDatabase,
+        serverToShow: {
+          raw: this.coordinator.get('address'),
+          isDBServer: false,
+          endpoint: this.coordinator.get('protocol') + "://" + this.coordinator.get('address'),
+          target: this.coordinator.get('name')
+        }
+      });
+      this.dashboards[this.coordinator.get('name')].render();
+    },
+
+    waitForCoordinators: function(callback) {
+      var self = this; 
+
+      window.setTimeout(function() {
+        if (self.coordinators.length === 0) {
+          self.waitForCoordinators(callback);
+        }
+        else {
+          self.coordinator = self.coordinators.findWhere({name: self.coordname});
+          self.initDone = true;
+          callback();
+        }
+      }, 200);
+    },
+
+    updateServerTime: function() {
+      this.serverTime = new Date().getTime();
+    }
+
+  });
+}());
+
+/*jshint browser: true */
+/*jshint unused: false */
+/*global arangoHelper, Backbone, templateEngine, $, window, _, nv, d3 */
+(function () {
+  "use strict";
+
+  window.NodesView = Backbone.View.extend({
+
+    el: '#content',
+    template: templateEngine.createTemplate("nodesView.ejs"),
+    interval: 5000,
+    knownServers: [],
+
+    events: {
+      "click .pure-table-body .pure-table-row": "navigateToNode"  
+    },
+
+    initialize: function (options) {
+      var self = this;
+
+      if (window.App.isCluster) {
+        this.dbServers = options.dbServers;
+        this.coordinators = options.coordinators;
+        this.updateServerTime();
+
+        //start polling with interval
+        window.setInterval(function() {
+          if (window.location.hash === '#nodes') {
+
+
+            var callback = function(data) {
+            };
+
+          }
+        }, this.interval);
+      }
+    },
+
+    navigateToNode: function(elem) {
+      var name = $(elem.currentTarget).attr('node');
+      window.App.navigate("#node/" + encodeURIComponent(name), {trigger: true});
+    },
+
+    render: function () {
+      this.$el.html(this.template.render({coords: []}));
+
+      var callback = function() {
+        this.continueRender();
+      }.bind(this);
+
+      if (!this.initDone) {
+        this.waitForCoordinators(callback);
+      }
+      else {
+        callback();
+      }
+    },
+
+    continueRender: function() {
+      var coords = this.coordinators.toJSON();
+      console.log(coords);
+      this.$el.html(this.template.render({
+        coords: coords
+      }));
+    },
+
+    waitForCoordinators: function(callback) {
+      var self = this; 
+
+      window.setTimeout(function() {
+        if (self.coordinators.length === 0) {
+          self.waitForCoordinators(callback);
+        }
+        else {
+          this.initDone = true;
+          callback();
+        }
+      }, 200);
+    },
+
+    updateServerTime: function() {
+      this.serverTime = new Date().getTime();
     }
 
   });
@@ -26165,7 +28034,6 @@ window.ArangoUsers = Backbone.Collection.extend({
     templateActive: templateEngine.createTemplate("queryManagementViewActive.ejs"),
     templateSlow: templateEngine.createTemplate("queryManagementViewSlow.ejs"),
     table: templateEngine.createTemplate("arangoTable.ejs"),
-    tabbar: templateEngine.createTemplate("arangoTabbar.ejs"),
     active: true,
     shouldRender: true,
     timer: 0,
@@ -26178,31 +28046,25 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.convertModelToJSON(true);
 
       window.setInterval(function() {
-        if (window.location.hash === '#queryManagement' && window.VISIBLE && self.shouldRender) {
+        if (window.location.hash === '#queries' && window.VISIBLE && self.shouldRender 
+            && arangoHelper.getCurrentSub().route === 'queryManagement') {
           if (self.active) {
-            self.convertModelToJSON(true);
-            self.renderActive();
+            if ($('#arangoQueryManagementTable').is(':visible')) {
+              self.convertModelToJSON(true);
+            }
           }
           else {
-            self.convertModelToJSON(false);
-            self.renderSlow();
+            if ($('#arangoQueryManagementTable').is(':visible')) {
+              self.convertModelToJSON(false);
+            }
           }
         }
       }, self.refreshRate);
     },
 
     events: {
-      "click #arangoQueryManagementTabbar button" : "switchTab",
       "click #deleteSlowQueryHistory" : "deleteSlowQueryHistoryModal",
       "click #arangoQueryManagementTable .fa-minus-circle" : "deleteRunningQueryModal"
-    },
-
-    tabbarElements: {
-      id: "arangoQueryManagementTabbar",
-      titles: [
-        ["Active", "activequeries"],
-        ["Slow", "slowqueries"]
-      ]
     },
 
     tableDescription: {
@@ -26210,17 +28072,6 @@ window.ArangoUsers = Backbone.Collection.extend({
       titles: ["ID", "Query String", "Runtime", "Started", ""],
       rows: [],
       unescaped: [false, false, false, false, true]
-    },
-
-    switchTab: function(e) {
-      if (e.currentTarget.id === 'activequeries') {
-        this.active = true;
-        this.convertModelToJSON(true);
-      }
-      else if (e.currentTarget.id === 'slowqueries') {
-        this.active = false;
-        this.convertModelToJSON(false);
-      }
     },
 
     deleteRunningQueryModal: function(e) {
@@ -26302,7 +28153,15 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     render: function() {
-      this.convertModelToJSON(true);
+      var options = arangoHelper.getCurrentSub();
+      if (options.params.active) {
+        this.active = true;
+        this.convertModelToJSON(true);
+      }
+      else {
+        this.active = false;
+        this.convertModelToJSON(false);
+      }
     },
 
     addEvents: function() {
@@ -26320,7 +28179,6 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     renderActive: function() {
       this.$el.html(this.templateActive.render({}));
-      $(this.id).html(this.tabbar.render({content: this.tabbarElements}));
       $(this.id).append(this.table.render({content: this.tableDescription}));
       $('#activequeries').addClass("arango-active-tab");
       this.addEvents();
@@ -26328,7 +28186,6 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     renderSlow: function() {
       this.$el.html(this.templateSlow.render({}));
-      $(this.id).html(this.tabbar.render({content: this.tabbarElements}));
       $(this.id).append(this.table.render({
         content: this.tableDescription,
       }));
@@ -28402,11 +30259,11 @@ window.ArangoUsers = Backbone.Collection.extend({
       //init aql editor
       this.aqlEditor = ace.edit("aqlEditor");
       this.aqlEditor.getSession().setMode("ace/mode/aql");
-      this.aqlEditor.setFontSize("13px");
+      this.aqlEditor.setFontSize("10pt");
 
       this.bindParamAceEditor = ace.edit("bindParamAceEditor");
       this.bindParamAceEditor.getSession().setMode("ace/mode/json");
-      this.bindParamAceEditor.setFontSize("13px");
+      this.bindParamAceEditor.setFontSize("10pt");
 
       this.bindParamAceEditor.getSession().on('change', function() {
         try {
@@ -28819,7 +30676,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     setEditorAutoHeight: function (editor) {
       editor.setOptions({
         maxLines: 100,
-        minLines: 3
+        minLines: 10
       }); 
     },
 
@@ -28986,6 +30843,13 @@ window.ArangoUsers = Backbone.Collection.extend({
           },
           error: function (resp) {
             try {
+
+              if (resp.statusText === 'Gone') {
+                arangoHelper.arangoNotification("Query", "Query execution aborted.");
+                self.removeOutputEditor(counter);
+                return;
+              }
+
               var error = JSON.parse(resp.responseText);
               if (error.errorMessage) {
                 if (error.errorMessage.match(/\d+:\d+/g) !== null) {
@@ -29004,7 +30868,8 @@ window.ArangoUsers = Backbone.Collection.extend({
               }
             }
             catch (e) {
-              arangoHelper.arangoError("Query", "Something went wrong.");
+              arangoHelper.arangoError("Query", "Successfully aborted.");
+              console.log(e);
               self.removeOutputEditor(counter);
             }
 
@@ -29132,6 +30997,373 @@ window.ArangoUsers = Backbone.Collection.extend({
   });
 }());
 
+
+/*jshint browser: true */
+/*jshint unused: false */
+/*global arangoHelper, Joi, Backbone, window, templateEngine, $ */
+
+(function() {
+  "use strict";
+
+  window.SettingsView = Backbone.View.extend({
+
+    el: "#content",
+
+    initialize: function(options) {
+      this.collectionName = options.collectionName;
+      this.model = this.collection;
+    },
+
+    events: {
+    },
+
+    render: function() {
+      this.breadcrumb();
+      window.arangoHelper.buildCollectionSubNav(this.collectionName, 'Settings');
+
+      this.renderSettings();
+    },
+
+    breadcrumb: function () {
+      $('#subNavigationBar .breadcrumb').html(
+        'Collection: ' + this.collectionName
+      );
+    },
+
+    unloadCollection: function () {
+
+      var unloadCollectionCallback = function(error) {
+        if (error) {
+          arangoHelper.arangoError('Collection error', this.model.get("name") + ' could not be unloaded.');
+        }
+        else if (error === undefined) {
+          this.model.set("status", "unloading");
+          this.render();
+        }
+        else {
+          if (window.location.hash === "#collections") {
+            this.model.set("status", "unloaded");
+            this.render();
+          }
+          else {
+            arangoHelper.arangoNotification("Collection " + this.model.get("name") + " unloaded.");
+          }
+        }
+      }.bind(this);
+
+      this.model.unloadCollection(unloadCollectionCallback);
+      window.modalView.hide();
+    },
+
+    loadCollection: function () {
+
+      var loadCollectionCallback = function(error) {
+        if (error) {
+          arangoHelper.arangoError('Collection error', this.model.get("name") + ' could not be loaded.');
+        }
+        else if (error === undefined) {
+          this.model.set("status", "loading");
+          this.render();
+        }
+        else {
+          if (window.location.hash === "#collections") {
+            this.model.set("status", "loaded");
+            this.render();
+          }
+          else {
+            arangoHelper.arangoNotification("Collection " + this.model.get("name") + " loaded.");
+          }
+        }
+      }.bind(this);
+
+      this.model.loadCollection(loadCollectionCallback);
+      window.modalView.hide();
+    },
+
+    truncateCollection: function () {
+      this.model.truncateCollection();
+      window.modalView.hide();
+    },
+
+    deleteCollection: function () {
+      this.model.destroy(
+        {
+          error: function() {
+            arangoHelper.arangoError('Could not delete collection.');
+          },
+          success: function() {
+            window.modalView.hide();
+          }
+        }
+      );
+      this.collectionsView.render();
+    },
+
+    saveModifiedCollection: function() {
+
+      var callback = function(error, isCoordinator) {
+        if (error) {
+          arangoHelper.arangoError("Error", "Could not get coordinator info");
+        }
+        else {
+          var newname;
+          if (isCoordinator) {
+            newname = this.model.get('name');
+          }
+          else {
+            newname = $('#change-collection-name').val();
+          }
+          var status = this.model.get('status');
+
+          if (status === 'loaded') {
+            var journalSize;
+            try {
+              journalSize = JSON.parse($('#change-collection-size').val() * 1024 * 1024);
+            }
+            catch (e) {
+              arangoHelper.arangoError('Please enter a valid number');
+              return 0;
+            }
+
+            var indexBuckets;
+            try {
+              indexBuckets = JSON.parse($('#change-index-buckets').val());
+              if (indexBuckets < 1 || parseInt(indexBuckets) !== Math.pow(2, Math.log2(indexBuckets))) {
+                throw "invalid indexBuckets value";
+              }
+            }
+            catch (e) {
+              arangoHelper.arangoError('Please enter a valid number of index buckets');
+              return 0;
+            }
+            var callbackChange = function(error) {
+              if (error) {
+                arangoHelper.arangoError("Collection error: " + error.responseText);
+              }
+              else {
+                this.collectionsView.render();
+                window.modalView.hide();
+              }
+            }.bind(this);
+
+            var callbackRename = function(error) {
+              if (error) {
+                arangoHelper.arangoError("Collection error: " + error.responseText);
+              }
+              else {
+                var wfs = $('#change-collection-sync').val();
+                this.model.changeCollection(wfs, journalSize, indexBuckets, callbackChange);
+              }
+            }.bind(this);
+
+            this.model.renameCollection(newname, callbackRename);
+          }
+          else if (status === 'unloaded') {
+            if (this.model.get('name') !== newname) {
+
+              var callbackRename2 = function(error, data) {
+                if (error) {
+                  arangoHelper.arangoError("Collection error: " + data.responseText);
+                }
+                else {
+                  this.collectionsView.render();
+                  window.modalView.hide();
+                }
+              }.bind(this);
+
+              this.model.renameCollection(newname, callbackRename2);
+            }
+            else {
+              window.modalView.hide();
+            }
+          }
+        }
+      }.bind(this);
+
+      window.isCoordinator(callback);
+    },
+    renderSettings: function() {
+
+      var callback = function(error, isCoordinator) {
+        if (error) {
+          arangoHelper.arangoError("Error","Could not get coordinator info");
+        }
+        else {
+          var collectionIsLoaded = false;
+
+          if (this.model.get('status') === "loaded") {
+            collectionIsLoaded = true;
+          }
+
+          var buttons = [],
+            tableContent = [];
+
+          if (!isCoordinator) {
+            tableContent.push(
+              window.modalView.createTextEntry(
+                "change-collection-name",
+                "Name",
+                this.model.get('name'),
+                false,
+                "",
+                true,
+                [
+                  {
+                    rule: Joi.string().regex(/^[a-zA-Z]/),
+                    msg: "Collection name must always start with a letter."
+                  },
+                  {
+                    rule: Joi.string().regex(/^[a-zA-Z0-9\-_]*$/),
+                    msg: 'Only Symbols "_" and "-" are allowed.'
+                  },
+                  {
+                    rule: Joi.string().required(),
+                    msg: "No collection name given."
+                  }
+                ]
+              )
+            );
+          }
+
+          var after = function() {
+
+            tableContent.push(
+              window.modalView.createReadOnlyEntry(
+                "change-collection-id", "ID", this.model.get('id'), ""
+              )
+            );
+            tableContent.push(
+              window.modalView.createReadOnlyEntry(
+                "change-collection-type", "Type", this.model.get('type'), ""
+              )
+            );
+            tableContent.push(
+              window.modalView.createReadOnlyEntry(
+                "change-collection-status", "Status", this.model.get('status'), ""
+              )
+            );
+            buttons.push(
+              window.modalView.createDeleteButton(
+                "Delete",
+                this.deleteCollection.bind(this)
+              )
+            );
+            buttons.push(
+              window.modalView.createDeleteButton(
+                "Truncate",
+                this.truncateCollection.bind(this)
+              )
+            );
+            if (collectionIsLoaded) {
+              buttons.push(
+                window.modalView.createNotificationButton(
+                  "Unload",
+                  this.unloadCollection.bind(this)
+                )
+              );
+            } else {
+              buttons.push(
+                window.modalView.createNotificationButton(
+                  "Load",
+                  this.loadCollection.bind(this)
+                )
+              );
+            }
+
+            buttons.push(
+              window.modalView.createSuccessButton(
+                "Save",
+                this.saveModifiedCollection.bind(this)
+              )
+            );
+
+            var tabBar = ["General", "Indices"],
+              templates =  ["modalTable.ejs", "indicesView.ejs"];
+
+            window.modalView.show(
+              templates,
+              "Modify Collection",
+              buttons,
+              tableContent, null, null,
+              this.events, null,
+              tabBar, 'content'
+            );
+            $($('#infoTab').children()[1]).remove();
+          }.bind(this);
+
+          if (collectionIsLoaded) {
+
+            var callback2 = function(error, data) {
+              if (error) {
+                arangoHelper.arangoError("Collection", "Could not fetch properties");
+              }
+              else {
+                var journalSize = data.journalSize/(1024*1024);
+                var indexBuckets = data.indexBuckets;
+                var wfs = data.waitForSync;
+
+                tableContent.push(
+                  window.modalView.createTextEntry(
+                    "change-collection-size",
+                    "Journal size",
+                    journalSize,
+                    "The maximal size of a journal or datafile (in MB). Must be at least 1.",
+                    "",
+                    true,
+                    [
+                      {
+                        rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
+                        msg: "Must be a number."
+                      }
+                    ]
+                  )
+                );
+
+                tableContent.push(
+                  window.modalView.createTextEntry(
+                    "change-index-buckets",
+                    "Index buckets",
+                    indexBuckets,
+                    "The number of index buckets for this collection. Must be at least 1 and a power of 2.",
+                    "",
+                    true,
+                    [
+                      {
+                        rule: Joi.string().allow('').optional().regex(/^[1-9][0-9]*$/),
+                        msg: "Must be a number greater than 1 and a power of 2."
+                      }
+                    ]
+                  )
+                );
+
+                // prevent "unexpected sync method error"
+                tableContent.push(
+                  window.modalView.createSelectEntry(
+                    "change-collection-sync",
+                    "Wait for sync",
+                    wfs,
+                    "Synchronize to disk before returning from a create or update of a document.",
+                    [{value: false, label: "No"}, {value: true, label: "Yes"}]        )
+                );
+              }
+              after();
+
+            }.bind(this);
+
+            this.model.getProperties(callback2);
+          }
+          else {
+            after(); 
+          }
+
+        }
+      }.bind(this);
+      window.isCoordinator(callback);
+    }
+
+  });
+
+}());
 
 /*jshint browser: true, evil: true */
 /*jshint unused: false */
@@ -29264,6 +31496,594 @@ window.ArangoUsers = Backbone.Collection.extend({
     }
 
   });
+}());
+
+/*global window, $, Backbone, templateEngine,  _, d3, Dygraph, document */
+
+(function() {
+  "use strict";
+
+  window.ShowClusterView = Backbone.View.extend({
+    detailEl: '#modalPlaceholder',
+    el: "#content",
+    defaultFrame: 20 * 60 * 1000,
+    template: templateEngine.createTemplate("showCluster.ejs"),
+    modal: templateEngine.createTemplate("waitModal.ejs"),
+    detailTemplate: templateEngine.createTemplate("detailView.ejs"),
+
+    events: {
+      "change #selectDB"                : "updateCollections",
+      "change #selectCol"               : "updateShards",
+      "click .dbserver.success"         : "dashboard",
+      "click .coordinator.success"      : "dashboard"
+    },
+
+    replaceSVGs: function() {
+      $(".svgToReplace").each(function() {
+        var img = $(this);
+        var id = img.attr("id");
+        var src = img.attr("src");
+        $.get(src, function(d) {
+          var svg = $(d).find("svg");
+          svg.attr("id", id)
+          .attr("class", "icon")
+          .removeAttr("xmlns:a");
+          img.replaceWith(svg);
+        }, "xml");
+      });
+    },
+
+    updateServerTime: function() {
+      this.serverTime = new Date().getTime();
+    },
+
+    setShowAll: function() {
+      this.graphShowAll = true;
+    },
+
+    resetShowAll: function() {
+      this.graphShowAll = false;
+      this.renderLineChart();
+    },
+
+
+    initialize: function(options) {
+      this.options = options;
+      this.interval = 10000;
+      this.isUpdating = false;
+      this.timer = null;
+      this.knownServers = [];
+      this.graph = undefined;
+      this.graphShowAll = false;
+      this.updateServerTime();
+      this.dygraphConfig = this.options.dygraphConfig;
+      this.dbservers = new window.ClusterServers([], {
+        interval: this.interval
+      });
+      this.coordinators = new window.ClusterCoordinators([], {
+        interval: this.interval
+      });
+      this.documentStore =  new window.arangoDocuments();
+      this.statisticsDescription = new window.StatisticsDescription();
+      this.statisticsDescription.fetch({
+        async: false
+      });
+      this.dbs = new window.ClusterDatabases([], {
+        interval: this.interval
+      });
+      this.cols = new window.ClusterCollections();
+      this.shards = new window.ClusterShards();
+      this.startUpdating();
+    },
+
+    listByAddress: function(callback) {
+      var byAddress = {};
+      var self = this;
+      this.dbservers.byAddress(byAddress, function(res) {
+        self.coordinators.byAddress(res, callback);
+      });
+    },
+
+    updateCollections: function() {
+      var self = this;
+      var selCol = $("#selectCol");
+      var dbName = $("#selectDB").find(":selected").attr("id");
+      if (!dbName) {
+        return;
+      }
+      var colName = selCol.find(":selected").attr("id");
+      selCol.html("");
+      this.cols.getList(dbName, function(list) {
+        _.each(_.pluck(list, "name"), function(c) {
+          selCol.append("<option id=\"" + c + "\">" + c + "</option>");
+        });
+        var colToSel = $("#" + colName, selCol);
+        if (colToSel.length === 1) {
+          colToSel.prop("selected", true);
+        }
+        self.updateShards();
+      });
+    },
+
+    updateShards: function() {
+      var dbName = $("#selectDB").find(":selected").attr("id");
+      var colName = $("#selectCol").find(":selected").attr("id");
+      this.shards.getList(dbName, colName, function(list) {
+        $(".shardCounter").html("0");
+        _.each(list, function(s) {
+          $("#" + s.server + "Shards").html(s.shards.length);
+        });
+      });
+    },
+
+    updateServerStatus: function(nextStep) {
+      var self = this;
+      var callBack = function(cls, stat, serv) {
+        var id = serv,
+          type, icon;
+        id = id.replace(/\./g,'-');
+        id = id.replace(/\:/g,'_');
+        icon = $("#id" + id);
+        if (icon.length < 1) {
+          // callback after view was unrendered
+          return;
+        }
+        type = icon.attr("class").split(/\s+/)[1];
+        icon.attr("class", cls + " " + type + " " + stat);
+        if (cls === "coordinator") {
+          if (stat === "success") {
+            $(".button-gui", icon.closest(".tile")).toggleClass("button-gui-disabled", false);
+          } else {
+            $(".button-gui", icon.closest(".tile")).toggleClass("button-gui-disabled", true);
+          }
+
+        }
+      };
+      this.coordinators.getStatuses(callBack.bind(this, "coordinator"), function() {
+        self.dbservers.getStatuses(callBack.bind(self, "dbserver"));
+        nextStep();
+      });
+    },
+
+    updateDBDetailList: function() {
+      var self = this;
+      var selDB = $("#selectDB");
+      var dbName = selDB.find(":selected").attr("id");
+      selDB.html("");
+      this.dbs.getList(function(dbList) {
+        _.each(_.pluck(dbList, "name"), function(c) {
+          selDB.append("<option id=\"" + c + "\">" + c + "</option>");
+        });
+        var dbToSel = $("#" + dbName, selDB);
+        if (dbToSel.length === 1) {
+          dbToSel.prop("selected", true);
+        }
+        self.updateCollections();
+      });
+    },
+
+    rerender : function() {
+      var self = this;
+      this.updateServerStatus(function() {
+        self.getServerStatistics(function() {
+          self.updateServerTime();
+          self.data = self.generatePieData();
+          self.renderPieChart(self.data);
+          self.renderLineChart();
+          self.updateDBDetailList();
+        });
+      });
+    },
+
+    render: function() {
+      this.knownServers = [];
+      delete this.hist;
+      var self = this;
+      this.listByAddress(function(byAddress) {
+        if (Object.keys(byAddress).length === 1) {
+          self.type = "testPlan";
+        } else {
+          self.type = "other";
+        }
+        self.updateDBDetailList();
+        self.dbs.getList(function(dbList) {
+          $(self.el).html(self.template.render({
+            dbs: _.pluck(dbList, "name"),
+            byAddress: byAddress,
+            type: self.type
+          }));
+          $(self.el).append(self.modal.render({}));
+          self.replaceSVGs();
+          /* this.loadHistory(); */
+          self.getServerStatistics(function() {
+            self.data = self.generatePieData();
+            self.renderPieChart(self.data);
+            self.renderLineChart();
+            self.updateDBDetailList();
+            self.startUpdating();
+          });
+        });
+      });
+    },
+
+    generatePieData: function() {
+      var pieData = [];
+      var self = this;
+
+      this.data.forEach(function(m) {
+        pieData.push({key: m.get("name"), value: m.get("system").virtualSize,
+          time: self.serverTime});
+      });
+
+      return pieData;
+    },
+
+    /*
+     loadHistory : function() {
+       this.hist = {};
+
+       var self = this;
+       var coord = this.coordinators.findWhere({
+         status: "ok"
+       });
+
+       var endpoint = coord.get("protocol")
+       + "://"
+       + coord.get("address");
+
+       this.dbservers.forEach(function (dbserver) {
+         if (dbserver.get("status") !== "ok") {return;}
+
+         if (self.knownServers.indexOf(dbserver.id) === -1) {
+           self.knownServers.push(dbserver.id);
+         }
+
+         var server = {
+           raw: dbserver.get("address"),
+           isDBServer: true,
+           target: encodeURIComponent(dbserver.get("name")),
+           endpoint: endpoint,
+           addAuth: window.App.addAuth.bind(window.App)
+         };
+       });
+
+       this.coordinators.forEach(function (coordinator) {
+         if (coordinator.get("status") !== "ok") {return;}
+
+         if (self.knownServers.indexOf(coordinator.id) === -1) {
+           self.knownServers.push(coordinator.id);
+         }
+
+         var server = {
+           raw: coordinator.get("address"),
+           isDBServer: false,
+           target: encodeURIComponent(coordinator.get("name")),
+           endpoint: coordinator.get("protocol") + "://" + coordinator.get("address"),
+           addAuth: window.App.addAuth.bind(window.App)
+         };
+       });
+     },
+     */
+
+    addStatisticsItem: function(name, time, requests, snap) {
+      var self = this;
+
+      if (! self.hasOwnProperty('hist')) {
+        self.hist = {};
+      }
+
+      if (! self.hist.hasOwnProperty(name)) {
+        self.hist[name] = [];
+      }
+
+      var h = self.hist[name];
+      var l = h.length;
+
+      if (0 === l) {
+        h.push({
+          time: time,
+          snap: snap,
+          requests: requests,
+          requestsPerSecond: 0
+        });
+      }
+      else {
+        var lt = h[l - 1].time;
+        var tt = h[l - 1].requests;
+
+        if (tt < requests) {
+          var dt = time - lt;
+          var ps = 0;
+
+          if (dt > 0) {
+            ps = (requests - tt) / dt;
+          }
+
+          h.push({
+            time: time,
+            snap: snap,
+            requests: requests,
+            requestsPerSecond: ps
+          });
+        }
+        /*
+        else {
+          h.times.push({
+            time: time,
+            snap: snap,
+            requests: requests,
+            requestsPerSecond: 0
+          });
+        }
+        */
+      }
+    },
+
+    getServerStatistics: function(nextStep) {
+      var self = this;
+      var snap = Math.round(self.serverTime / 1000);
+
+      this.data = undefined;
+
+      var statCollect = new window.ClusterStatisticsCollection();
+      var coord = this.coordinators.first();
+
+      // create statistics collector for DB servers
+      this.dbservers.forEach(function (dbserver) {
+        if (dbserver.get("status") !== "ok") {return;}
+
+        if (self.knownServers.indexOf(dbserver.id) === -1) {
+          self.knownServers.push(dbserver.id);
+        }
+
+        var stat = new window.Statistics({name: dbserver.id});
+
+        stat.url = coord.get("protocol") + "://"
+        + coord.get("address")
+        + "/_admin/clusterStatistics?DBserver="
+        + dbserver.get("name");
+
+        statCollect.add(stat);
+      });
+
+      // create statistics collector for coordinator
+      this.coordinators.forEach(function (coordinator) {
+        if (coordinator.get("status") !== "ok") {return;}
+
+        if (self.knownServers.indexOf(coordinator.id) === -1) {
+          self.knownServers.push(coordinator.id);
+        }
+
+        var stat = new window.Statistics({name: coordinator.id});
+
+        stat.url = coordinator.get("protocol") + "://"
+        + coordinator.get("address")
+        + "/_admin/statistics";
+
+        statCollect.add(stat);
+      });
+
+      var cbCounter = statCollect.size();
+
+      this.data = [];
+
+      var successCB = function(m) {
+        cbCounter--;
+        var time = m.get("time");
+        var name = m.get("name");
+        var requests = m.get("http").requestsTotal;
+
+        self.addStatisticsItem(name, time, requests, snap);
+        self.data.push(m);
+        if (cbCounter === 0) {
+          nextStep();
+        }
+      };
+      var errCB = function() {
+        cbCounter--;
+        if (cbCounter === 0) {
+          nextStep();
+        }
+      };
+      // now fetch the statistics
+      statCollect.fetch(successCB, errCB);
+    },
+
+    renderPieChart: function(dataset) {
+      var w = $("#clusterGraphs svg").width();
+      var h = $("#clusterGraphs svg").height();
+      var radius = Math.min(w, h) / 2; //change 2 to 1.4. It's hilarious.
+      // var color = d3.scale.category20();
+      var color = this.dygraphConfig.colors;
+
+      var arc = d3.svg.arc() //each datapoint will create one later.
+      .outerRadius(radius - 20)
+      .innerRadius(0);
+      var pie = d3.layout.pie()
+      .sort(function (d) {
+        return d.value;
+      })
+      .value(function (d) {
+        return d.value;
+      });
+      d3.select("#clusterGraphs").select("svg").remove();
+      var pieChartSvg = d3.select("#clusterGraphs").append("svg")
+      // .attr("width", w)
+      // .attr("height", h)
+      .attr("class", "clusterChart")
+      .append("g") //someone to transform. Groups data.
+      .attr("transform", "translate(" + w / 2 + "," + ((h / 2) - 10) + ")");
+
+    var arc2 = d3.svg.arc()
+    .outerRadius(radius-2)
+    .innerRadius(radius-2);
+    var slices = pieChartSvg.selectAll(".arc")
+    .data(pie(dataset))
+    .enter().append("g")
+    .attr("class", "slice");
+        slices.append("path")
+    .attr("d", arc)
+    .style("fill", function (item, i) {
+      return color[i % color.length];
+    })
+    .style("stroke", function (item, i) {
+      return color[i % color.length];
+    });
+        slices.append("text")
+    .attr("transform", function(d) { return "translate(" + arc.centroid(d) + ")"; })
+    // .attr("dy", "0.35em")
+    .style("text-anchor", "middle")
+    .text(function(d) {
+      var v = d.data.value / 1024 / 1024 / 1024;
+      return v.toFixed(2); });
+
+    slices.append("text")
+    .attr("transform", function(d) { return "translate(" + arc2.centroid(d) + ")"; })
+    // .attr("dy", "1em")
+    .style("text-anchor", "middle")
+    .text(function(d) { return d.data.key; });
+  },
+
+  renderLineChart: function() {
+    var self = this;
+
+    var interval = 60 * 20;
+    var data = [];
+    var hash = [];
+    var t = Math.round(new Date().getTime() / 1000) - interval;
+    var ks = self.knownServers;
+    var f = function() {
+      return null;
+    };
+
+    var d, h, i, j, tt, snap;
+
+    for (i = 0;  i < ks.length;  ++i) {
+      h = self.hist[ks[i]];
+
+      if (h) {
+        for (j = 0;  j < h.length;  ++j) {
+          snap = h[j].snap;
+
+          if (snap < t) {
+            continue;
+          }
+
+          if (! hash.hasOwnProperty(snap)) {
+            tt = new Date(snap * 1000);
+
+            d = hash[snap] = [ tt ].concat(ks.map(f));
+          }
+          else {
+            d = hash[snap];
+          }
+
+          d[i + 1] = h[j].requestsPerSecond;
+        }
+      }
+    }
+
+    data = [];
+
+    Object.keys(hash).sort().forEach(function (m) {
+      data.push(hash[m]);
+    });
+
+    var options = this.dygraphConfig.getDefaultConfig('clusterRequestsPerSecond');
+    options.labelsDiv = $("#lineGraphLegend")[0];
+    options.labels = [ "datetime" ].concat(ks);
+
+    self.graph = new Dygraph(
+      document.getElementById('lineGraph'),
+      data,
+      options
+    );
+  },
+
+  stopUpdating: function () {
+    window.clearTimeout(this.timer);
+    delete this.graph;
+    this.isUpdating = false;
+  },
+
+  startUpdating: function () {
+    if (this.isUpdating) {
+      return;
+    }
+
+    this.isUpdating = true;
+
+    var self = this;
+
+    this.timer = window.setInterval(function() {
+      self.rerender();
+    }, this.interval);
+  },
+
+
+  dashboard: function(e) {
+    this.stopUpdating();
+
+    var tar = $(e.currentTarget);
+    var serv = {};
+    var cur;
+    var coord;
+
+    var ip_port = tar.attr("id");
+    ip_port = ip_port.replace(/\-/g,'.');
+    ip_port = ip_port.replace(/\_/g,':');
+    ip_port = ip_port.substr(2);
+
+    serv.raw = ip_port;
+    serv.isDBServer = tar.hasClass("dbserver");
+
+    if (serv.isDBServer) {
+      cur = this.dbservers.findWhere({
+        address: serv.raw
+      });
+      coord = this.coordinators.findWhere({
+        status: "ok"
+      });
+      serv.endpoint = coord.get("protocol")
+      + "://"
+      + coord.get("address");
+    }
+    else {
+      cur = this.coordinators.findWhere({
+        address: serv.raw
+      });
+      serv.endpoint = cur.get("protocol")
+      + "://"
+      + cur.get("address");
+    }
+
+    serv.target = encodeURIComponent(cur.get("name"));
+    window.App.serverToShow = serv;
+    window.App.dashboard();
+  },
+
+  getCurrentSize: function (div) {
+    if (div.substr(0,1) !== "#") {
+      div = "#" + div;
+    }
+    var height, width;
+    $(div).attr("style", "");
+    height = $(div).height();
+    width = $(div).width();
+    return {
+      height: height,
+      width: width
+    };
+  },
+
+  resize: function () {
+    var dimensions;
+    if (this.graph) {
+      dimensions = this.getCurrentSize(this.graph.maindiv_.id);
+      this.graph.resize(dimensions.width, dimensions.height);
+    }
+  }
+});
 }());
 
 /*jshint browser: true */
@@ -29510,8 +32330,8 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     template: templateEngine.createTemplate("statisticBarView.ejs"),
 
-    initialize : function () {
-      this.currentDB = this.options.currentDB;
+    initialize : function (options) {
+      this.currentDB = options.currentDB;
     },
 
     replaceSVG: function($img) {
@@ -29604,8 +32424,8 @@ window.ArangoUsers = Backbone.Collection.extend({
     template: templateEngine.createTemplate("tableView.ejs"),
     loading: templateEngine.createTemplate("loadingTableView.ejs"),
 
-    initialize: function() {
-      this.rowClickCallback = this.options.rowClick;
+    initialize: function(options) {
+      this.rowClickCallback = options.rowClick;
     },
 
     events: {
@@ -30398,8 +33218,8 @@ window.ArangoUsers = Backbone.Collection.extend({
       "click #userLogout"             : "userLogout"
     },
 
-    initialize: function () {
-      this.userCollection = this.options.userCollection;
+    initialize: function (options) {
+      this.userCollection = options.userCollection;
       this.userCollection.fetch({async: true});
       this.userCollection.bind("change:extra", this.render.bind(this));
     },
@@ -31176,34 +33996,52 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 /*jshint unused: false */
 /*global window, $, Backbone, document, arangoCollectionModel*/
-/*global arangoHelper,dashboardView,arangoDatabase, _*/
+/*global arangoHelper, btoa, dashboardView, arangoDatabase, _*/
 
 (function () {
   "use strict";
 
   window.Router = Backbone.Router.extend({
+
+    toUpdate: [],
+    dbServers: [],
+    isCluster: undefined,
+
     routes: {
-      "": "dashboard",
+      "": "cluster",
       "dashboard": "dashboard",
       "collections": "collections",
       "new": "newCollection",
       "login": "login",
       "collection/:colid/documents/:pageid": "documents",
+      "cIndices/:colname": "cIndices",
+      "cSettings/:colname": "cSettings",
+      "cInfo/:colname": "cInfo",
       "collection/:colid/:docid": "document",
       "shell": "shell",
-      "query": "query2",
+      "queries": "query2",
       "query2": "query",
-      "queryManagement": "queryManagement",
       "workMonitor": "workMonitor",
       "databases": "databases",
-      "applications": "applications",
-      "applications/:mount": "applicationDetail",
-      "graph": "graphManagement",
-      "graph/:name": "showGraph",
-      "userManagement": "userManagement",
+      "services": "applications",
+      "service/:mount": "applicationDetail",
+      "graphs": "graphManagement",
+      "graphs/:name": "showGraph",
+      "users": "userManagement",
       "userProfile": "userProfile",
+      "cluster": "cluster",
+      "nodes": "nodes",
+      "node/:name": "node",
       "logs": "logs",
       "test": "test"
+    },
+
+    execute: function(callback, args) {
+      $('#subNavigationBar .breadcrumb').html('');
+      $('#subNavigationBar .bottom').html('');
+      if (callback) {
+        callback.apply(this, args);
+      }
     },
 
     checkUser: function () {
@@ -31263,12 +34101,35 @@ window.ArangoUsers = Backbone.Collection.extend({
 
       this.initOnce = function () {
         this.initOnce = function() {};
+
+        var callback = function(error, isCoordinator) {
+          self = this;
+          if (isCoordinator) {
+            self.isCluster = true;
+
+            self.coordinatorCollection.fetch({
+              success: function() {
+                self.fetchDBS();
+              }
+            });
+          }
+          else {
+            self.isCluster = false;
+          }
+        }.bind(this);
+
+        window.isCoordinator(callback);
+
         this.initFinished = true;
         this.arangoDatabase = new window.ArangoDatabase();
         this.currentDB = new window.CurrentDatabase();
 
         this.arangoCollectionsStore = new window.arangoCollections();
         this.arangoDocumentStore = new window.arangoDocument();
+
+        //Cluster 
+        this.coordinatorCollection = new window.ClusterCoordinators();
+
         arangoHelper.setDocumentStore(this.arangoDocumentStore);
 
         this.arangoCollectionsStore.fetch();
@@ -31286,7 +34147,8 @@ window.ArangoUsers = Backbone.Collection.extend({
               database: self.arangoDatabase,
               currentDB: self.currentDB,
               notificationCollection: self.notificationList,
-              userCollection: self.userCollection
+              userCollection: self.userCollection,
+              isCluster: self.isCluster
             });
             self.naviView.render();
           }
@@ -31304,12 +34166,112 @@ window.ArangoUsers = Backbone.Collection.extend({
         self.handleResize();
       });
 
+      $(window).scroll(function () {
+        //self.handleScroll();
+      });
+
     },
 
-    logs: function (initialized) {
+    handleScroll: function() {
+      if ($(window).scrollTop() > 50) {
+        $('.navbar > .secondary').css('top', $(window).scrollTop());
+        $('.navbar > .secondary').css('position', 'absolute');
+        $('.navbar > .secondary').css('z-index', '10');
+        $('.navbar > .secondary').css('width', $(window).width());
+      }
+      else {
+        $('.navbar > .secondary').css('top', '0');
+        $('.navbar > .secondary').css('position', 'relative');
+        $('.navbar > .secondary').css('width', '');
+      }
+    },
+
+    cluster: function (initialized) {
+      this.checkUser();
+      if (!initialized || this.isCluster === undefined) {
+        this.waitForInit(this.cluster.bind(this));
+        return;
+      }
+      if (this.isCluster === false) {
+        this.routes[""] = 'dashboard';
+        this.navigate("#dashboard", {trigger: true});
+        return;
+      }
+
+      if (!this.clusterView) {
+        this.clusterView = new window.ClusterView({
+          coordinators: this.coordinatorCollection,
+          dbServers: this.dbServers
+        });
+      }
+      this.clusterView.render();
+    },
+
+    node: function (name, initialized) {
+      this.checkUser();
+      if (!initialized || this.isCluster === undefined) {
+        this.waitForInit(this.node.bind(this), name);
+        return;
+      }
+      if (this.isCluster === false) {
+        this.routes[""] = 'dashboard';
+        this.navigate("#dashboard", {trigger: true});
+        return;
+      }
+
+      if (!this.nodeView) {
+        this.nodeView = new window.NodeView({
+          coordname: name,
+          coordinators: this.coordinatorCollection,
+        });
+      }
+      this.nodeView.render();
+    },
+
+    nodeLogs: function (initialized) {
+
+    },
+
+    nodes: function (initialized) {
+      this.checkUser();
+      if (!initialized || this.isCluster === undefined) {
+        this.waitForInit(this.nodes.bind(this));
+        return;
+      }
+      if (this.isCluster === false) {
+        this.routes[""] = 'dashboard';
+        this.navigate("#dashboard", {trigger: true});
+        return;
+      }
+
+      if (!this.nodesView) {
+        this.nodesView = new window.NodesView({
+          coordinators: this.coordinatorCollection,
+          dbServers: this.dbServers
+        });
+      }
+      this.nodesView.render();
+    },
+
+    addAuth: function (xhr) {
+      var u = this.clusterPlan.get("user");
+      if (!u) {
+        xhr.abort();
+        if (!this.isCheckingUser) {
+          this.requestAuth();
+        }
+        return;
+      }
+      var user = u.name;
+      var pass = u.passwd;
+      var token = user.concat(":", pass);
+      xhr.setRequestHeader('Authorization', "Basic " + btoa(token));
+    },
+
+    logs: function (name, initialized) {
       this.checkUser();
       if (!initialized) {
-        this.waitForInit(this.logs.bind(this));
+        this.waitForInit(this.logs.bind(this), name);
         return;
       }
       if (!this.logsView) {
@@ -31404,6 +34366,69 @@ window.ArangoUsers = Backbone.Collection.extend({
       });
     },
 
+    cIndices: function (colname, initialized) {
+      var self = this;
+
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.cIndices.bind(this), colname);
+        return;
+      }
+      this.arangoCollectionsStore.fetch({
+        success: function () {
+          self.indicesView = new window.IndicesView({
+            collectionName: colname,
+            collection: self.arangoCollectionsStore.findWhere({
+              name: colname
+            })
+          });
+          self.indicesView.render();
+        }
+      });
+    },
+
+    cSettings: function (colname, initialized) {
+      var self = this;
+
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.cSettings.bind(this), colname);
+        return;
+      }
+      this.arangoCollectionsStore.fetch({
+        success: function () {
+          self.settingsView = new window.SettingsView({
+            collectionName: colname,
+            collection: self.arangoCollectionsStore.findWhere({
+              name: colname
+            })
+          });
+          self.settingsView.render();
+        }
+      });
+    },
+
+    cInfo: function (colname, initialized) {
+      var self = this;
+
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.cInfo.bind(this), colname);
+        return;
+      }
+      this.arangoCollectionsStore.fetch({
+        success: function () {
+          self.infoView = new window.InfoView({
+            collectionName: colname,
+            collection: self.arangoCollectionsStore.findWhere({
+              name: colname
+            })
+          });
+          self.infoView.render();
+        }
+      });
+    },
+
     documents: function (colid, pageid, initialized) {
       this.checkUser();
       if (!initialized) {
@@ -31419,7 +34444,6 @@ window.ArangoUsers = Backbone.Collection.extend({
       }
       this.documentsView.setCollectionId(colid, pageid);
       this.documentsView.render();
-
     },
 
     document: function (colid, docid, initialized) {
@@ -31434,7 +34458,15 @@ window.ArangoUsers = Backbone.Collection.extend({
         });
       }
       this.documentView.colid = colid;
-      this.documentView.docid = docid;
+
+      var doc = window.location.hash.split("/")[2];
+      var test = (doc.split("%").length - 1) % 3;
+
+      if (decodeURI(doc) !== doc && test !== 0) {
+        doc = decodeURIComponent(doc);
+      }
+      this.documentView.docid = doc;
+
       this.documentView.render();
 
       var callback = function(error, type) {
@@ -31461,7 +34493,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.shellView.render();
     },
 
-    query: function (initialized) {
+    /*query: function (initialized) {
       this.checkUser();
       if (!initialized) {
         this.waitForInit(this.query.bind(this));
@@ -31474,6 +34506,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       }
       this.queryView.render();
     },
+    */
 
     query2: function (initialized) {
       this.checkUser();
@@ -31488,7 +34521,8 @@ window.ArangoUsers = Backbone.Collection.extend({
       }
       this.queryView2.render();
     },
-    
+   
+    /* 
     test: function (initialized) {
       this.checkUser();
       if (!initialized) {
@@ -31501,6 +34535,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       }
       this.testView.render();
     },
+    */
 
     workMonitor: function (initialized) {
       this.checkUser();
@@ -31681,7 +34716,32 @@ window.ArangoUsers = Backbone.Collection.extend({
         });
       }
       this.userManagementView.render(true);
+    },
+    
+    fetchDBS: function() {
+      var self = this;
+
+      this.coordinatorCollection.each(function(coordinator) {
+        self.dbServers.push(
+          new window.ClusterServers([], {
+            host: coordinator.get('address') 
+          })
+        );
+      });           
+      _.each(this.dbServers, function(dbservers) {
+        dbservers.fetch();
+      });
+    },
+
+    getNewRoute: function(host) {
+      return "http://" + host;
+    },
+
+    registerForUpdate: function(o) {
+      this.toUpdate.push(o);
+      o.updateUrl();
     }
+
   });
 
 }());

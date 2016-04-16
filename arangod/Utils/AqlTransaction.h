@@ -25,12 +25,11 @@
 #define ARANGOD_UTILS_AQL_TRANSACTION_H 1
 
 #include "Basics/Common.h"
-
 #include "Aql/Collection.h"
 #include "Cluster/ServerState.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/Transaction.h"
 #include "Utils/StandaloneTransactionContext.h"
+#include "Utils/Transaction.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 
@@ -44,10 +43,10 @@ class AqlTransaction : public Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   AqlTransaction(
-      TransactionContext* transactionContext, TRI_vocbase_t* vocbase,
+      std::shared_ptr<TransactionContext> transactionContext, 
       std::map<std::string, arangodb::aql::Collection*> const* collections,
       bool isMainTransaction)
-      : Transaction(transactionContext, vocbase, 0),
+      : Transaction(transactionContext, 0),
         _collections(*collections) {
     if (!isMainTransaction) {
       this->addHint(TRI_TRANSACTION_HINT_LOCK_NEVER, true);
@@ -67,7 +66,7 @@ class AqlTransaction : public Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   ~AqlTransaction() {}
-
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add a list of collections to the transaction
   //////////////////////////////////////////////////////////////////////////////
@@ -107,7 +106,7 @@ class AqlTransaction : public Transaction {
 
   int processCollectionCoordinator(arangodb::aql::Collection* collection) {
     TRI_voc_cid_t cid =
-        this->resolver()->getCollectionIdCluster(collection->getName());
+        this->resolver()->getCollectionId(collection->getName());
 
     return this->addCollection(cid, collection->getName().c_str(),
                                collection->accessType);
@@ -141,9 +140,7 @@ class AqlTransaction : public Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   arangodb::DocumentDitch* ditch(TRI_voc_cid_t cid) {
-    TRI_transaction_collection_t* trxColl = this->trxCollection(cid);
-    TRI_ASSERT(trxColl != nullptr);
-    return trxColl->_ditch;
+    return this->_transactionContext->ditch(cid);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -164,7 +161,7 @@ class AqlTransaction : public Transaction {
 
   arangodb::AqlTransaction* clone() const {
     return new arangodb::AqlTransaction(
-        new arangodb::StandaloneTransactionContext(), this->_vocbase,
+        arangodb::StandaloneTransactionContext::Create(this->_vocbase),
         &_collections, false);
   }
 

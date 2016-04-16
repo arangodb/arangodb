@@ -904,7 +904,7 @@ function COMPILE_REGEX (regex, modifiers) {
         }
         else {
           // wildcard
-          pattern += '.*';
+          pattern += '(.|[\r\n])*';
         }
       }
       else if (c === '_') {
@@ -914,7 +914,7 @@ function COMPILE_REGEX (regex, modifiers) {
         }
         else {
           // wildcard character
-          pattern += '.';
+          pattern += '(.|[\r\n])';
         }
       }
       else if (c.match(specialChar)) {
@@ -4092,23 +4092,7 @@ function AQL_NEAR (collection, latitude, longitude, limit, distanceAttribute) {
     THROW("NEAR", INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
   }
 
-  var result = COLLECTION(collection, "NEAR").NEAR(idx.id, latitude, longitude, limit);
-
-  if (distanceAttribute === null || distanceAttribute === undefined) {
-    return result.documents;
-  }
-
-  distanceAttribute = AQL_TO_STRING(distanceAttribute);
-
-  // inject distances
-  var documents = result.documents;
-  var distances = result.distances;
-  var n = documents.length, i;
-  for (i = 0; i < n; ++i) {
-    documents[i][distanceAttribute] = distances[i];
-  }
-
-  return documents;
+  return COLLECTION(collection, "NEAR").NEAR(idx.id, latitude, longitude, limit, distanceAttribute);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4141,21 +4125,7 @@ function AQL_WITHIN (collection, latitude, longitude, radius, distanceAttribute)
     THROW("WITHIN", INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
   }
 
-  var result = COLLECTION(collection, "WITHIN").WITHIN(idx.id, latitude, longitude, radius);
-
-  if (distanceAttribute === null || distanceAttribute === undefined) {
-    return result.documents;
-  }
-
-  // inject distances
-  var documents = result.documents;
-  var distances = result.distances;
-  var n = documents.length, i;
-  for (i = 0; i < n; ++i) {
-    documents[i][distanceAttribute] = distances[i];
-  }
-
-  return documents;
+  return COLLECTION(collection, "WITHIN").WITHIN(idx.id, latitude, longitude, radius, distanceAttribute);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6918,7 +6888,7 @@ function AQL_GRAPH_SHORTEST_PATH (graphName,
     if (!Array.isArray(options.edgeCollectionRestriction)) {
       if (typeof options.edgeCollectionRestriction === "string") {
         if (!underscore.contains(edgeCollections, options.edgeCollectionRestriction)) {
-          // Short circut collection not in graph, cannot find results.
+          // Short circuit collection not in graph, cannot find results.
           return [];
         }
         edgeCollections = [options.edgeCollectionRestriction];
@@ -7491,7 +7461,7 @@ function AQL_GRAPH_NEIGHBORS (graphName,
     if (!Array.isArray(options.edgeCollectionRestriction)) {
       if (typeof options.edgeCollectionRestriction === "string") {
         if (!underscore.contains(edgeCollections, options.edgeCollectionRestriction)) {
-          // Short circut collection not in graph, cannot find results.
+          // Short circuit collection not in graph, cannot find results.
           return [];
         }
         edgeCollections = [options.edgeCollectionRestriction];
@@ -7509,7 +7479,7 @@ function AQL_GRAPH_NEIGHBORS (graphName,
     if (!Array.isArray(options.vertexCollectionRestriction)) {
       if (typeof options.vertexCollectionRestriction === "string") {
         if (!underscore.contains(vertexCollections, options.vertexCollectionRestriction)) {
-          // Short circut collection not in graph, cannot find results.
+          // Short circuit collection not in graph, cannot find results.
           return [];
         }
         vertexCollections = [options.vertexCollectionRestriction];

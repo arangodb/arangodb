@@ -53,17 +53,8 @@
 ///   Will be raised when a request is canceled by the user.
 /// - 22: @LIT{intentional debug error}
 ///   Will be raised intentionally during debugging.
-/// - 23: @LIT{internal error with attribute ID in shaper}
-///   Will be raised if an attribute ID is not found in the shaper but should
-///   have been.
-/// - 24: @LIT{internal error if a legend could not be created}
-///   Will be raised if the legend generator was only given access to the shape
-///   and some sids are in the data object (inhomogeneous lists).
 /// - 25: @LIT{IP address is invalid}
 ///   Will be raised when the structure of an IP address is invalid.
-/// - 26: @LIT{internal error if a legend for a marker does not yet exist in the same WAL file}
-///   Will be raised internally, then fixed internally, and never come out to
-///   the user.
 /// - 27: @LIT{file exists}
 ///   Will be raised when a file already exists.
 /// - 28: @LIT{locked}
@@ -92,8 +83,6 @@
 /// - 1000: @LIT{illegal state}
 ///   Internal error that will be raised when the datafile is not in the
 ///   required state.
-/// - 1001: @LIT{could not shape document}
-///   Internal error that will be raised when the shaper encountered a problem.
 /// - 1002: @LIT{datafile sealed}
 ///   Internal error that will be raised when trying to write to a datafile.
 /// - 1003: @LIT{unknown type}
@@ -173,8 +162,6 @@
 ///   Will be raised when a cross-collection is requested.
 /// - 1214: @LIT{illegal index handle}
 ///   Will be raised when a index handle is corrupt.
-/// - 1215: @LIT{cap constraint already defined}
-///   Will be raised when a cap constraint was already defined.
 /// - 1216: @LIT{document too large}
 ///   Will be raised when the document cannot fit into any datafile because of
 ///   it is too large.
@@ -230,6 +217,9 @@
 ///   expected.
 /// - 1238: @LIT{collection not loaded}
 ///   Will be raised when a collection is accessed that is not yet loaded.
+/// - 1239: @LIT{illegal document revision}
+///   Will be raised when a document revision is corrupt or is missing where
+///   needed.
 /// - 1300: @LIT{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1301: @LIT{server database directory is empty}
@@ -363,6 +353,8 @@
 ///   a different type of node.
 /// - 1478: @LIT{A cluster backend which was required for the operation could not be reached}
 ///   Will be raised if a required db server can't be reached.
+/// - 1479: @LIT{An endpoint couldn't be found}
+///    "An endpoint couldn't be found"
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -877,28 +869,6 @@ void TRI_InitializeErrorMessages ();
 #define TRI_ERROR_DEBUG                                                   (22)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 23: ERROR_AID_NOT_FOUND
-///
-/// internal error with attribute ID in shaper
-///
-/// Will be raised if an attribute ID is not found in the shaper but should
-/// have been.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_AID_NOT_FOUND                                           (23)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 24: ERROR_LEGEND_INCOMPLETE
-///
-/// internal error if a legend could not be created
-///
-/// Will be raised if the legend generator was only given access to the shape
-/// and some sids are in the data object (inhomogeneous lists).
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_LEGEND_INCOMPLETE                                       (24)
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief 25: ERROR_IP_ADDRESS_INVALID
 ///
 /// IP address is invalid
@@ -907,18 +877,6 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_IP_ADDRESS_INVALID                                      (25)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 26: ERROR_LEGEND_NOT_IN_WAL_FILE
-///
-/// internal error if a legend for a marker does not yet exist in the same WAL
-/// file
-///
-/// Will be raised internally, then fixed internally, and never come out to the
-/// user.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_LEGEND_NOT_IN_WAL_FILE                                  (26)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 27: ERROR_FILE_EXISTS
@@ -1051,16 +1009,6 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_ILLEGAL_STATE                                    (1000)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1001: ERROR_ARANGO_SHAPER_FAILED
-///
-/// could not shape document
-///
-/// Internal error that will be raised when the shaper encountered a problem.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_ARANGO_SHAPER_FAILED                                    (1001)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1002: ERROR_ARANGO_DATAFILE_SEALED
@@ -1401,16 +1349,6 @@ void TRI_InitializeErrorMessages ();
 #define TRI_ERROR_ARANGO_INDEX_HANDLE_BAD                                 (1214)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 1215: ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED
-///
-/// cap constraint already defined
-///
-/// Will be raised when a cap constraint was already defined.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED                   (1215)
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief 1216: ERROR_ARANGO_DOCUMENT_TOO_LARGE
 ///
 /// document too large
@@ -1640,6 +1578,17 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED                            (1238)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1239: ERROR_ARANGO_DOCUMENT_REV_BAD
+///
+/// illegal document revision
+///
+/// Will be raised when a document revision is corrupt or is missing where
+/// needed.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_DOCUMENT_REV_BAD                                 (1239)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL
@@ -2132,6 +2081,16 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE                             (1478)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1479: ERROR_CLUSTER_UNKNOWN_CALLBACK_ENDPOINT
+///
+/// An endpoint couldn't be found
+///
+///  "An endpoint couldn't be found"
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_UNKNOWN_CALLBACK_ENDPOINT                       (1479)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED

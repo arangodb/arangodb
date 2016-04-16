@@ -24,6 +24,7 @@
 #include "tri-zip.h"
 
 #include "Basics/files.h"
+#include "Basics/FileUtils.h"
 #include "Basics/tri-strings.h"
 #include "Zip/unzip.h"
 #include "Zip/zip.h"
@@ -258,72 +259,61 @@ static int UnzipFile(unzFile uf, void* buffer, size_t const bufferSize,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_ZipFile(char const* filename, char const* dir,
-                TRI_vector_string_t const* files, char const* password) {
+                std::vector<std::string> const& files, char const* password) {
   void* buffer;
-  int bufferSize;
-  zipFile zf;
 #ifdef USEWIN32IOAPI
   zlib_filefunc64_def ffunc;
 #endif
-  size_t i, n;
-  int res;
 
   if (TRI_ExistsFile(filename)) {
     return TRI_ERROR_CANNOT_OVERWRITE_FILE;
   }
 
-  bufferSize = 16384;
+  int bufferSize = 16384;
   buffer = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (size_t)bufferSize, false);
 
-  if (buffer == NULL) {
+  if (buffer == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
 #ifdef USEWIN32IOAPI
   fill_win32_filefunc64A(&ffunc);
-  zf = zipOpen2_64(filename, 0, NULL, &ffunc);
+  zipFile zf = zipOpen2_64(filename, 0, NULL, &ffunc);
 #else
-  zf = zipOpen64(filename, 0);
+  zipFile zf = zipOpen64(filename, 0);
 #endif
 
-  if (zf == NULL) {
+  if (zf == nullptr) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, buffer);
 
     return ZIP_ERRNO;
   }
 
-  res = TRI_ERROR_NO_ERROR;
+  int res = TRI_ERROR_NO_ERROR;
 
-  n = files->_length;
-  for (i = 0; i < n; ++i) {
-    FILE* fin;
-    char* file;
-    char* fullfile;
-    char* saveName;
-    zip_fileinfo zi;
-    uint32_t crc;
-    int isLarge;
-
-    file = TRI_AtVectorString(files, i);
+  size_t n = files.size();
+  for (size_t i = 0; i < n; ++i) {
+    std::string fullfile;
 
     if (*dir == '\0') {
-      fullfile = TRI_DuplicateString(file);
+      fullfile = files[i];
     } else {
-      fullfile = TRI_Concatenate2File(dir, file);
+      fullfile = arangodb::basics::FileUtils::buildFilename(dir, files[i]);
     }
 
+    zip_fileinfo zi;
     memset(&zi, 0, sizeof(zi));
 
-    res = TRI_Crc32File(fullfile, &crc);
+    uint32_t crc;
+    res = TRI_Crc32File(fullfile.c_str(), &crc);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, fullfile);
       break;
     }
 
-    isLarge = (TRI_SizeFile(file) > 0xFFFFFFFFLL);
+    int isLarge = (TRI_SizeFile(files[i].c_str()) > 0xFFFFFFFFLL);
 
-    saveName = file;
+    char const* saveName = files[i].c_str();
 
     while (*saveName == '\\' || *saveName == '/') {
       ++saveName;
@@ -335,21 +325,17 @@ int TRI_ZipFile(char const* filename, char const* dir,
             Z_DEFAULT_STRATEGY, password, (unsigned long)crc,
             isLarge) != ZIP_OK) {
       res = TRI_ERROR_INTERNAL;
-      TRI_FreeString(TRI_CORE_MEM_ZONE, fullfile);
       break;
     }
 
-    fin = fopen(fullfile, "rb");
-    TRI_FreeString(TRI_CORE_MEM_ZONE, fullfile);
+    FILE* fin = fopen(fullfile.c_str(), "rb");
 
-    if (fin == NULL) {
+    if (fin == nullptr) {
       break;
     }
 
     while (true) {
-      int sizeRead;
-
-      sizeRead = (int)fread(buffer, 1, bufferSize, fin);
+      int sizeRead = (int)fread(buffer, 1, bufferSize, fin);
       if (sizeRead < bufferSize) {
         if (feof(fin) == 0) {
           res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -388,36 +374,31 @@ int TRI_ZipFile(char const* filename, char const* dir,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_UnzipFile(char const* filename, char const* outPath,
-                  bool const skipPaths, bool const overwrite,
+                  bool skipPaths, bool overwrite,
                   char const* password, std::string& errorMessage) {
-  unzFile uf;
 #ifdef USEWIN32IOAPI
   zlib_filefunc64_def ffunc;
 #endif
-  void* buffer;
-  size_t bufferSize;
-  int res;
+  size_t bufferSize = 16384;
+  void* buffer = (void*)TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, bufferSize, false);
 
-  bufferSize = 16384;
-  buffer = (void*)TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, bufferSize, false);
-
-  if (buffer == NULL) {
+  if (buffer == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
 #ifdef USEWIN32IOAPI
   fill_win32_filefunc64A(&ffunc);
-  uf = unzOpen2_64(filename, &ffunc);
+  unzFile uf = unzOpen2_64(filename, &ffunc);
 #else
-  uf = unzOpen64(filename);
+  unzFile uf = unzOpen64(filename);
 #endif
   if (uf == nullptr) {
     errorMessage = std::string("unable to open zip file ") + filename;
     return TRI_ERROR_INTERNAL;
   }
 
-  res = UnzipFile(uf, buffer, bufferSize, outPath, skipPaths, overwrite,
-                  password, errorMessage);
+  int res = UnzipFile(uf, buffer, bufferSize, outPath, skipPaths, overwrite,
+                      password, errorMessage);
 
   unzClose(uf);
 

@@ -549,7 +549,8 @@ function ensureIndexSuite() {
       assertTrue(idx.sparse);
       assertFalse(idx.geoJson);
 
-      res = collection.getIndexes()[collection.getIndexes().length - 1];
+      var indexes = collection.getIndexes();
+      res = indexes[0].type === "primary" ? indexes[1] : indexes[0];
 
       assertEqual("geo1", res.type);
       assertFalse(res.unique);

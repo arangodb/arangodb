@@ -156,13 +156,6 @@ endif ()
 ## INSTALL
 ################################################################################
 
-if (NOT WINDOWS)
-  install(
-    PROGRAMS ${PROJECT_BINARY_DIR}/bin/etcd-arango
-    DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}
-  )
-endif ()
-
 # Global macros ----------------------------------------------------------------
 macro (generate_root_config name)
   FILE(READ ${PROJECT_SOURCE_DIR}/etc/arangodb/${name}.conf.in FileContent)
@@ -291,7 +284,9 @@ else ()
 endif ()
 
 # Build package ----------------------------------------------------------------
-set(CPACK_SET_DESTDIR ON)
+if (NOT(MSVC))
+  set(CPACK_SET_DESTDIR ON)
+endif()
 
 # General
 set(CPACK_PACKAGE_NAME "arangodb")
@@ -319,7 +314,8 @@ set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "https://www.arangodb.com/")
 set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_SOURCE_DIR}/Installation/debian/postinst;${CMAKE_CURRENT_SOURCE_DIR}/Installation/debian/preinst;${CMAKE_CURRENT_SOURCE_DIR}/Installation/debian/postrm;${CMAKE_CURRENT_SOURCE_DIR}/Installation/debian/prerm;")
 set(CPACK_BUNDLE_NAME            "${CPACK_PACKAGE_NAME}")
-set(CPACK_BUNDLE_PLIST           "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/Info.plist")
+configure_file("${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/Info.plist.in" "${CMAKE_CURRENT_BINARY_DIR}/Info.plist")
+set(CPACK_BUNDLE_PLIST           "${CMAKE_CURRENT_BINARY_DIR}/Info.plist")
 set(CPACK_BUNDLE_ICON            "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/icon.icns")
 set(CPACK_BUNDLE_STARTUP_COMMAND "${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/arangodb-cli.sh")
 
@@ -368,39 +364,22 @@ if (MSVC)
   set(CPACK_NSIS_HELP_LINK           ${ARANGODB_HELP_LINK})
   set(CPACK_NSIS_URL_INFO_ABOUT      ${ARANGODB_URL_INFO_ABOUT})
   set(CPACK_NSIS_CONTACT             ${ARANGODB_CONTACT})
-
-  # etcd
-  if (CMAKE_CL_64)
-    install(PROGRAMS WindowsLibraries/64/bin/etcd-arango.exe
-            DESTINATION ${ARANGODB_INSTALL_SBIN})
-
-    install(FILES WindowsLibraries/64/icudtl.dat
-            DESTINATION share/arangodb
-            RENAME icudt54l.dat)
-  else ()
-    install(PROGRAMS WindowsLibraries/32/bin/etcd-arango.exe
-            DESTINATION ${ARANGODB_INSTALL_SBIN})
-
-    install(FILES WindowsLibraries/32/icudtl.dat
-            DESTINATION share/arangodb
-            RENAME icudt54l.dat)
-  endif ()
-
 endif ()
 
 configure_file("${CMAKE_SOURCE_DIR}/CMakeCPackOptions.cmake.in"
     "${CMAKE_BINARY_DIR}/CMakeCPackOptions.cmake" @ONLY)
 set(CPACK_PROJECT_CONFIG_FILE "${CMAKE_BINARY_DIR}/CMakeCPackOptions.cmake")
 
-# components
-install(
-  FILES ${PROJECT_SOURCE_DIR}/Installation/debian/arangodb.init
-  PERMISSIONS OWNER_READ OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
-  DESTINATION etc/init.d
-  RENAME arangodb
-  COMPONENT debian-extras
-)
-
+if (NOT(MSVC))
+  # components
+  install(
+    FILES ${PROJECT_SOURCE_DIR}/Installation/debian/arangodb.init
+    PERMISSIONS OWNER_READ OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+    DESTINATION etc/init.d
+    RENAME arangodb
+    COMPONENT debian-extras
+  )
+endif()
 
 # Custom targets ----------------------------------------------------------------
 

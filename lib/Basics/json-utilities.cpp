@@ -21,11 +21,15 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/json-utilities.h"
+#include "json-utilities.h"
 #include "Basics/fasthash.h"
 #include "Basics/hashes.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/VelocyPackHelper.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 static TRI_json_t* MergeRecursive(TRI_memory_zone_t* zone,
                                   TRI_json_t const* lhs, TRI_json_t const* rhs,
@@ -128,12 +132,65 @@ static int TypeWeight(TRI_json_t const* value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief uniquify a sorted json list into a new array
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_json_t* UniquifyArrayJson(TRI_json_t const* array) {
+  TRI_ASSERT(array != nullptr);
+  TRI_ASSERT(array->_type == TRI_JSON_ARRAY);
+
+  // create result array
+  std::unique_ptr<TRI_json_t> result(TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE));
+
+  if (result == nullptr) {
+    return nullptr;
+  }
+
+  size_t const n = TRI_LengthVector(&array->_value._objects);
+
+  TRI_json_t const* last = nullptr;
+  for (size_t i = 0; i < n; ++i) {
+    auto p = static_cast<TRI_json_t const*>(
+        TRI_AtVector(&array->_value._objects, i));
+
+    // don't push value if it is the same as the last value
+    if (last == nullptr || TRI_CompareValuesJson(p, last, false) != 0) {
+      TRI_PushBackArrayJson(TRI_UNKNOWN_MEM_ZONE, result.get(), p);
+
+      // remember last element
+      last = p;
+    }
+  }
+
+  return result.release();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief callback function used for json value sorting
 ////////////////////////////////////////////////////////////////////////////////
 
 static int CompareJson(void const* lhs, void const* rhs) {
   return TRI_CompareValuesJson(static_cast<TRI_json_t const*>(lhs),
                                static_cast<TRI_json_t const*>(rhs), true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sorts a json array in place
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_json_t* SortArrayJson(TRI_json_t* array) {
+  TRI_ASSERT(array != nullptr);
+  TRI_ASSERT(array->_type == TRI_JSON_ARRAY);
+
+  size_t const n = TRI_LengthVector(&array->_value._objects);
+
+  if (n > 1) {
+    // only sort if more than one value in array
+    qsort(TRI_BeginVector(&array->_value._objects), n, sizeof(TRI_json_t),
+          &CompareJson);
+  }
+
+  return array;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -180,10 +237,10 @@ static TRI_json_t* GetMergedKeyArray(TRI_json_t const* lhs,
   }
 
   // sort the key array in place
-  TRI_SortArrayJson(keys.get());
+  SortArrayJson(keys.get());
 
   // array is now sorted
-  return TRI_UniquifyArrayJson(keys.get());
+  return UniquifyArrayJson(keys.get());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -342,135 +399,6 @@ int TRI_CompareValuesJson(TRI_json_t const* lhs, TRI_json_t const* rhs,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check if two json values are the same
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_CheckSameValueJson(TRI_json_t const* lhs, TRI_json_t const* rhs) {
-  return (TRI_CompareValuesJson(lhs, rhs, false) == 0);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief uniquify a sorted json list into a new array
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t* TRI_UniquifyArrayJson(TRI_json_t const* array) {
-  TRI_ASSERT(array != nullptr);
-  TRI_ASSERT(array->_type == TRI_JSON_ARRAY);
-
-  // create result array
-  std::unique_ptr<TRI_json_t> result(TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE));
-
-  if (result == nullptr) {
-    return nullptr;
-  }
-
-  size_t const n = TRI_LengthVector(&array->_value._objects);
-
-  TRI_json_t const* last = nullptr;
-  for (size_t i = 0; i < n; ++i) {
-    auto p = static_cast<TRI_json_t const*>(
-        TRI_AtVector(&array->_value._objects, i));
-
-    // don't push value if it is the same as the last value
-    if (last == nullptr || TRI_CompareValuesJson(p, last, false) != 0) {
-      TRI_PushBackArrayJson(TRI_UNKNOWN_MEM_ZONE, result.get(), p);
-
-      // remember last element
-      last = p;
-    }
-  }
-
-  return result.release();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sorts a json array in place
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t* TRI_SortArrayJson(TRI_json_t* array) {
-  TRI_ASSERT(array != nullptr);
-  TRI_ASSERT(array->_type == TRI_JSON_ARRAY);
-
-  size_t const n = TRI_LengthVector(&array->_value._objects);
-
-  if (n > 1) {
-    // only sort if more than one value in array
-    qsort(TRI_BeginVector(&array->_value._objects), n, sizeof(TRI_json_t),
-          &CompareJson);
-  }
-
-  return array;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if a JSON struct has duplicate attribute names
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_HasDuplicateKeyJson(TRI_json_t const* object) {
-  if (object && object->_type == TRI_JSON_OBJECT) {
-    size_t const n = TRI_LengthVector(&object->_value._objects);
-    bool const hasMultipleElements = (n > 2);
-
-    // if we don't have attributes, we do not need to check for duplicates
-    // if we only have one attribute, we don't need to check for duplicates in
-    // the array, but we need to recursively validate the array values (if
-    // array value itself is an array)
-    if (n > 0) {
-      TRI_associative_pointer_t hash;
-      size_t i;
-
-      if (hasMultipleElements) {
-        TRI_InitAssociativePointer(&hash, TRI_UNKNOWN_MEM_ZONE,
-                                   &TRI_HashStringKeyAssociativePointer,
-                                   &TRI_HashStringKeyAssociativePointer,
-                                   &TRI_EqualStringKeyAssociativePointer, 0);
-      }
-
-      for (i = 0; i < n; i += 2) {
-        auto key = static_cast<TRI_json_t const*>(
-            TRI_AtVector(&object->_value._objects, i));
-
-        if (!TRI_IsStringJson(key)) {
-          continue;
-        }
-
-        auto value = static_cast<TRI_json_t const*>(
-            TRI_AtVector(&object->_value._objects, i + 1));
-
-        // recursively check sub-array elements
-        if (value->_type == TRI_JSON_OBJECT && TRI_HasDuplicateKeyJson(value)) {
-          // duplicate found in sub-array
-          if (hasMultipleElements) {
-            TRI_DestroyAssociativePointer(&hash);
-          }
-
-          return true;
-        }
-
-        if (hasMultipleElements) {
-          void* previous = TRI_InsertKeyAssociativePointer(
-              &hash, key->_value._string.data, key->_value._string.data, false);
-
-          if (previous != nullptr) {
-            // duplicate found
-            TRI_DestroyAssociativePointer(&hash);
-
-            return true;
-          }
-        }
-      }
-
-      if (hasMultipleElements) {
-        TRI_DestroyAssociativePointer(&hash);
-      }
-    }
-  }
-
-  // no duplicate found
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief merge two JSON documents into one
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -481,101 +409,6 @@ TRI_json_t* TRI_MergeJson(TRI_memory_zone_t* zone, TRI_json_t const* lhs,
   TRI_ASSERT(rhs->_type == TRI_JSON_OBJECT);
 
   return MergeRecursive(zone, lhs, rhs, nullMeansRemove, mergeObjects);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief computes a FNV hash for strings with a length
-/// this function has an influence on how keys are distributed to shards
-/// change with caution!
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t HashBlock(uint64_t hash, char const* buffer, size_t length) {
-  uint64_t nMagicPrime = 0x00000100000001b3ULL;
-
-  for (size_t j = 0; j < length; ++j) {
-    hash ^= ((int8_t const*)buffer)[j];
-    hash *= nMagicPrime;
-  }
-  return hash;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compute a hash value for a JSON document, starting with a given
-/// initial hash value. Note that a NULL pointer for json hashes to the
-/// same value as a json pointer that points to a JSON value `null`.
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t HashJsonRecursive(uint64_t hash, TRI_json_t const* object) {
-  if (nullptr == object) {
-    return HashBlock(hash, "null", 4);  // strlen("null")
-  }
-
-  switch (object->_type) {
-    case TRI_JSON_UNUSED: {
-      return hash;
-    }
-
-    case TRI_JSON_NULL: {
-      return HashBlock(hash, "null", 4);  // strlen("null")
-    }
-
-    case TRI_JSON_BOOLEAN: {
-      if (object->_value._boolean) {
-        return HashBlock(hash, "true", 4);  // strlen("true")
-      } else {
-        return HashBlock(hash, "false", 5);  // strlen("true")
-      }
-    }
-
-    case TRI_JSON_NUMBER: {
-      return HashBlock(hash, (char const*)&(object->_value._number),
-                       sizeof(object->_value._number));
-    }
-
-    case TRI_JSON_STRING:
-    case TRI_JSON_STRING_REFERENCE: {
-      return HashBlock(hash, object->_value._string.data,
-                       object->_value._string.length);
-    }
-
-    case TRI_JSON_OBJECT: {
-      hash = HashBlock(hash, "array", 5);  // strlen("array")
-      size_t const n = TRI_LengthVector(&object->_value._objects);
-      uint64_t tmphash = hash;
-      for (size_t i = 0; i < n; i += 2) {
-        auto subjson = static_cast<TRI_json_t const*>(
-            TRI_AddressVector(&object->_value._objects, i));
-        TRI_ASSERT(TRI_IsStringJson(subjson));
-        tmphash ^= HashJsonRecursive(hash, subjson);
-        subjson = static_cast<TRI_json_t const*>(
-            TRI_AddressVector(&object->_value._objects, i + 1));
-        tmphash ^= HashJsonRecursive(hash, subjson);
-      }
-      return tmphash;
-    }
-
-    case TRI_JSON_ARRAY: {
-      hash = HashBlock(hash, "list", 4);  // strlen("list")
-      size_t const n = TRI_LengthVector(&object->_value._objects);
-      for (size_t i = 0; i < n; ++i) {
-        auto subjson = static_cast<TRI_json_t const*>(
-            TRI_AddressVector(&object->_value._objects, i));
-        hash = HashJsonRecursive(hash, subjson);
-      }
-      return hash;
-    }
-  }
-  return hash;  // never reached
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compute a hash value for a JSON document. Note that a NULL pointer
-/// for json hashes to the same value as a json pointer that points to a
-/// JSON value `null`.
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t TRI_HashJson(TRI_json_t const* json) {
-  return HashJsonRecursive(TRI_FnvHashBlockInitial(), json);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -597,94 +430,14 @@ uint64_t TRI_HashJson(TRI_json_t const* json) {
 
 uint64_t TRI_HashJsonByAttributes(TRI_json_t const* json,
                                   char const* attributes[], int nrAttributes,
-                                  bool docComplete, int* error) {
-  if (error != nullptr) {
-    *error = TRI_ERROR_NO_ERROR;
+                                  bool docComplete, int& error) {
+  error = TRI_ERROR_NO_ERROR;
+  std::shared_ptr<VPackBuilder> transformed = arangodb::basics::JsonHelper::toVelocyPack(json);
+  std::vector<std::string> attr;
+
+  for (int i = 0; i < nrAttributes; i++) {
+    attr.emplace_back(attributes[i]);
   }
-  uint64_t hash = TRI_FnvHashBlockInitial();
-  if (TRI_IsObjectJson(json)) {
-    for (int i = 0; i < nrAttributes; i++) {
-      TRI_json_t const* subjson = TRI_LookupObjectJson(json, attributes[i]);
-
-      if (subjson == nullptr && !docComplete && error != nullptr) {
-        *error = TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN;
-      }
-      hash = HashJsonRecursive(hash, subjson);
-    }
-  }
-  return hash;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief workhorse for fasthash computing
-////////////////////////////////////////////////////////////////////////////////
-
-static uint64_t FastHashJsonRecursive(uint64_t hash, TRI_json_t const* object) {
-  if (nullptr == object) {
-    return fasthash64(static_cast<const void*>("null"), 4, hash);
-  }
-
-  switch (object->_type) {
-    case TRI_JSON_UNUSED: {
-      return hash;
-    }
-
-    case TRI_JSON_NULL: {
-      return fasthash64(static_cast<const void*>("null"), 4, hash);
-    }
-
-    case TRI_JSON_BOOLEAN: {
-      if (object->_value._boolean) {
-        return fasthash64(static_cast<const void*>("true"), 4, hash);
-      }
-      return fasthash64(static_cast<const void*>("false"), 5, hash);
-    }
-
-    case TRI_JSON_NUMBER: {
-      return fasthash64(static_cast<const void*>(&object->_value._number),
-                        sizeof(object->_value._number), hash);
-    }
-
-    case TRI_JSON_STRING:
-    case TRI_JSON_STRING_REFERENCE: {
-      return fasthash64(static_cast<const void*>(object->_value._string.data),
-                        object->_value._string.length, hash);
-    }
-
-    case TRI_JSON_OBJECT: {
-      hash = fasthash64(static_cast<const void*>("object"), 6, hash);
-      size_t const n = TRI_LengthVector(&object->_value._objects);
-      for (size_t i = 0; i < n; i += 2) {
-        auto subjson = static_cast<TRI_json_t const*>(
-            TRI_AddressVector(&object->_value._objects, i));
-        TRI_ASSERT(TRI_IsStringJson(subjson));
-        hash = FastHashJsonRecursive(hash, subjson);
-        subjson = static_cast<TRI_json_t const*>(
-            TRI_AddressVector(&object->_value._objects, i + 1));
-        hash = FastHashJsonRecursive(hash, subjson);
-      }
-      return hash;
-    }
-
-    case TRI_JSON_ARRAY: {
-      hash = fasthash64(static_cast<const void*>("array"), 5, hash);
-      size_t const n = TRI_LengthVector(&object->_value._objects);
-      for (size_t i = 0; i < n; ++i) {
-        auto subjson = static_cast<TRI_json_t const*>(
-            TRI_AddressVector(&object->_value._objects, i));
-        hash = FastHashJsonRecursive(hash, subjson);
-      }
-    }
-  }
-
-  return hash;  // never reached
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compute a hash value for a JSON document, using fasthash64.
-/// This is slightly faster than the FNV-based hashing
-////////////////////////////////////////////////////////////////////////////////
-
-uint64_t TRI_FastHashJson(TRI_json_t const* json) {
-  return FastHashJsonRecursive(0x012345678, json);
+  return arangodb::basics::VelocyPackHelper::hashByAttributes(
+      transformed->slice(), attr, docComplete, error);
 }

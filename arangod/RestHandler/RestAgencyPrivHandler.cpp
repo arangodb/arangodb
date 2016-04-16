@@ -98,12 +98,7 @@ HttpHandler::status_t RestAgencyPrivHandler::execute() {
           bool ret = _agent->recvAppendEntriesRPC(
               term, id, prevLogIndex, prevLogTerm, leaderCommit,
               _request->toVelocyPack(&opts));
-          if (ret) {  // TODO: more verbose
-            result.add("success", VPackValue(ret));
-          } else {
-            // Should neve get here
-            TRI_ASSERT(false);
-          }
+          result.add("success", VPackValue(ret));
         } else {
           return reportBadQuery();  // bad query
         }
@@ -135,7 +130,7 @@ HttpHandler::status_t RestAgencyPrivHandler::execute() {
     }
     result.close();
     VPackSlice s = result.slice();
-    generateResult(s);
+    generateResult(GeneralResponse::ResponseCode::OK, s);
   } catch (...) {
     // Ignore this error
   }

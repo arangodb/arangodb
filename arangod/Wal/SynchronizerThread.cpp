@@ -42,10 +42,7 @@ SynchronizerThread::SynchronizerThread(LogfileManager* logfileManager,
       _syncInterval(syncInterval),
       _logfileCache({0, -1}) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief begin shutdown sequence
-////////////////////////////////////////////////////////////////////////////////
-
 void SynchronizerThread::beginShutdown() {
   Thread::beginShutdown();
 
@@ -53,20 +50,16 @@ void SynchronizerThread::beginShutdown() {
   guard.signal();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief signal that we need a sync
-////////////////////////////////////////////////////////////////////////////////
-
 void SynchronizerThread::signalSync() {
   CONDITION_LOCKER(guard, _condition);
-  ++_waiting;
-  _condition.signal();
+  if (++_waiting == 1) {
+    // only signal once
+    _condition.signal();
+  }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief main loop
-////////////////////////////////////////////////////////////////////////////////
-
 void SynchronizerThread::run() {
   uint64_t iterations = 0;
   uint32_t waiting;
@@ -126,10 +119,7 @@ void SynchronizerThread::run() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief synchronize an unsynchronized region
-////////////////////////////////////////////////////////////////////////////////
-
 int SynchronizerThread::doSync(bool& checkMore) {
   checkMore = false;
 
@@ -200,10 +190,7 @@ int SynchronizerThread::doSync(bool& checkMore) {
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get a logfile descriptor (it caches the descriptor for performance)
-////////////////////////////////////////////////////////////////////////////////
-
 int SynchronizerThread::getLogfileDescriptor(Logfile::IdType id) {
   if (id != _logfileCache.id || _logfileCache.id == 0) {
     _logfileCache.id = id;

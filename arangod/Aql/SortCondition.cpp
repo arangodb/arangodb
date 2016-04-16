@@ -27,10 +27,7 @@
 
 using namespace arangodb::aql;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not an attribute is contained in a vector
-////////////////////////////////////////////////////////////////////////////////
-      
 static bool IsContained (std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
                          std::vector<arangodb::basics::AttributeName> const& attribute) {
   for (auto const& it : attributes) {
@@ -42,10 +39,7 @@ static bool IsContained (std::vector<std::vector<arangodb::basics::AttributeName
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an empty condition
-////////////////////////////////////////////////////////////////////////////////
-
 SortCondition::SortCondition()
     : _fields(),
       _constAttributes(),
@@ -53,10 +47,7 @@ SortCondition::SortCondition()
       _onlyAttributeAccess(false),
       _ascending(true) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the sort condition
-////////////////////////////////////////////////////////////////////////////////
-
 SortCondition::SortCondition(
     std::vector<std::pair<VariableId, bool>> const& sorts,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& constAttributes,
@@ -85,7 +76,7 @@ SortCondition::SortCondition(
         std::vector<arangodb::basics::AttributeName> fieldNames;
         while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
           fieldNames.emplace_back(
-              arangodb::basics::AttributeName(node->getStringValue()));
+              arangodb::basics::AttributeName(node->getString()));
           node = node->getMember(0);
         }
 
@@ -131,17 +122,11 @@ SortCondition::SortCondition(
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the sort condition
-////////////////////////////////////////////////////////////////////////////////
-
 SortCondition::~SortCondition() {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the number of attributes in the sort condition covered
 /// by the specified index fields
-////////////////////////////////////////////////////////////////////////////////
-
 size_t SortCondition::coveredAttributes(
     Variable const* reference,
     std::vector<std::vector<arangodb::basics::AttributeName>> const&

@@ -24,17 +24,22 @@
 #ifndef __ARANGODB_CONSENSUS_AGENCY_COMMON__
 #define __ARANGODB_CONSENSUS_AGENCY_COMMON__
 
+#warning order, quotes
 #include <Logger/Logger.h>
 #include <Basics/VelocyPackHelper.h>
+#include <Basics/random.h>
 
 #include <velocypack/Buffer.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <chrono>
 #include <initializer_list>
+#warning why?
 #include <list>
+#warning why?
 #include <string>
 #include <sstream>
+#warning why?
 #include <vector>
 
 #include <memory>
@@ -98,15 +103,32 @@ struct AgentConfiguration {
   id_t id;
   double min_ping;
   double max_ping;
+  std::string end_point;
   std::vector<std::string> end_points;
-  std::string end_point_persist;
   bool notify;
-  AgentConfiguration () : id(0), min_ping(.15), max_ping(.3f), notify(false) {};
-  AgentConfiguration (uint32_t i, double min_p, double max_p, 
-                      std::vector<std::string> const& end_p, bool n = false) :
-    id(i), min_ping(min_p), max_ping(max_p), end_points(end_p), notify(n) {
-    end_point_persist = end_points[id]; 
-  }
+  bool sanity_check;
+  bool wait_for_sync;
+  AgentConfiguration () :
+    id(0),
+    min_ping(.15),
+    max_ping(.3f),
+    end_point("tcp://localhost:8529"),
+    notify(false),
+    sanity_check(false),
+    wait_for_sync(true) {}
+  
+  AgentConfiguration (uint32_t i, double min_p, double max_p, std::string ep,
+                      std::vector<std::string> const& eps, bool n,
+                      bool s, bool w) :
+    id(i),
+    min_ping(min_p),
+    max_ping(max_p),
+    end_point(ep),
+    end_points(eps),
+    notify(n),
+    sanity_check(s),
+    wait_for_sync(w) {}
+  
   inline size_t size() const {return end_points.size();}
   friend std::ostream& operator<<(std::ostream& o, AgentConfiguration const& c) {
     o << "id(" << c.id << ") min_ping(" << c.min_ping
@@ -213,5 +235,6 @@ struct priv_rpc_ret_t {
 
 }}
 
+#warning remove
 #endif // __ARANGODB_CONSENSUS_AGENT__
 

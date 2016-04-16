@@ -25,7 +25,6 @@
 #define ARANGOD_AQL_QUERY_RESULT_H 1
 
 #include "Basics/Common.h"
-#include "Basics/json.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -40,59 +39,38 @@ struct QueryResult {
     code = other.code;
     cached = other.cached;
     details = other.details;
-    warnings = other.warnings;
-    json = other.json;
-    stats = other.stats;
-    profile = other.profile;
-    zone = other.zone;
-    clusterplan = other.clusterplan;
+    warnings.swap(other.warnings);
+    result.swap(other.result);
+    stats.swap(other.stats);
+    profile.swap(other.profile);
+
     bindParameters = other.bindParameters;
     collectionNames = other.collectionNames;
-
-    other.warnings = nullptr;
-    other.json = nullptr;
-    other.stats = nullptr;
-    other.profile = nullptr;
-    other.clusterplan = nullptr;
   }
 
   QueryResult(int code, std::string const& details)
       : code(code),
         cached(false),
         details(details),
-        zone(TRI_UNKNOWN_MEM_ZONE),
         warnings(nullptr),
-        json(nullptr),
-        profile(nullptr),
-        clusterplan(nullptr) {}
+        result(nullptr),
+        profile(nullptr) {}
 
   explicit QueryResult(int code) : QueryResult(code, "") {}
 
   QueryResult() : QueryResult(TRI_ERROR_NO_ERROR) {}
 
-  virtual ~QueryResult() {
-    if (warnings != nullptr) {
-      TRI_FreeJson(zone, warnings);
-    }
-    if (json != nullptr) {
-      TRI_FreeJson(zone, json);
-    }
-    if (profile != nullptr) {
-      TRI_FreeJson(zone, profile);
-    }
-  }
+  virtual ~QueryResult() {}
 
   int code;
   bool cached;
   std::string details;
   std::unordered_set<std::string> bindParameters;
   std::vector<std::string> collectionNames;
-  TRI_memory_zone_t* zone;
-  TRI_json_t* warnings;
-  TRI_json_t* json;
+  std::shared_ptr<arangodb::velocypack::Builder> warnings;
+  std::shared_ptr<arangodb::velocypack::Builder> result;
   std::shared_ptr<arangodb::velocypack::Builder> stats;
-  TRI_json_t* profile;
-  TRI_json_t* clusterplan;
+  std::shared_ptr<arangodb::velocypack::Builder> profile;
 };
 }
 }

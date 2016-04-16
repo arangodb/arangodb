@@ -25,14 +25,11 @@
 #define ARANGOD_REST_HANDLER_REST_IMPORT_HANDLER_H 1
 
 #include "Basics/Common.h"
-
 #include "RestHandler/RestVocbaseBaseHandler.h"
-#include "Utils/transactions.h"
-
-#define RestImportTransaction \
-  arangodb::SingleCollectionWriteTransaction<UINT64_MAX>
 
 namespace arangodb {
+struct OperationOptions;
+class SingleCollectionTransaction;
 
 struct RestImportResult {
  public:
@@ -74,18 +71,6 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   TRI_col_type_e getCollectionType();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief extracts the "overwrite" value
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool extractOverwrite() const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief extracts the "complete" value
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool extractComplete() const;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief create a position string
   //////////////////////////////////////////////////////////////////////////////
 
@@ -107,8 +92,9 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   /// @brief process a single VelocyPack document
   //////////////////////////////////////////////////////////////////////////////
 
-  int handleSingleDocument(RestImportTransaction&, RestImportResult&,
-                           char const*, VPackSlice const&, bool, bool, size_t);
+  int handleSingleDocument(SingleCollectionTransaction&, RestImportResult&,
+                           char const*, VPackSlice const&, std::string const&,
+                           bool, OperationOptions const&, size_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates documents by JSON objects

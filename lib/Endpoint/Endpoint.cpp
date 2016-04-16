@@ -23,6 +23,7 @@
 
 #include "Endpoint.h"
 
+#include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/socket-utils.h"
 #include "Endpoint/EndpointIpV4.h"
@@ -50,6 +51,26 @@ Endpoint::Endpoint(DomainType domainType, EndpointType type,
   TRI_invalidatesocket(&_socket);
 }
 
+
+std::string Endpoint::uriForm (std::string const& endpoint) {
+
+  std::stringstream url;
+  size_t const prefix_len = 6;
+  
+  if (StringUtils::isPrefix(endpoint, "tcp://")) {
+    url << "http://";
+  } else if (StringUtils::isPrefix(endpoint, "ssl://")) {
+    url << "https://";
+  } else {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("malformed URL ") + endpoint
+      + ". Support only for ssl:// and tcp:// endpoints.");
+  }
+
+  url << endpoint.substr(prefix_len,endpoint.size()+1-(prefix_len+1));
+  
+  return url.str();
+  
+}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the endpoint specification in a unified form
 ////////////////////////////////////////////////////////////////////////////////
@@ -67,13 +88,13 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
   std::string copy = StringUtils::tolower(specification);
   StringUtils::trimInPlace(copy);
 
-  if (specification[specification.size() - 1] == '/') {
+  if (specification.back() == '/') {
     // address ends with a slash => remove
-    copy = copy.substr(0, copy.size() - 1);
+    copy.pop_back();
   }
 
   // read protocol from string
-  if (StringUtils::isPrefix(copy, "http+")) {
+  if (StringUtils::isPrefix(copy, "http+") || StringUtils::isPrefix(copy, "http@")) {
     protocol = TransportType::HTTP;
     prefix = "http+";
     copy = copy.substr(5);
@@ -193,16 +214,13 @@ Endpoint* Endpoint::factory(const Endpoint::EndpointType type,
   }
 
   std::string copy = unifiedForm(specification);
-  std::string prefix = "http";
   TransportType protocol = TransportType::HTTP;
 
   if (StringUtils::isPrefix(copy, "http+")) {
     protocol = TransportType::HTTP;
-    prefix = "http+";
     copy = copy.substr(5);
   } else if (StringUtils::isPrefix(copy, "vpp+")) {
     protocol = TransportType::VPP;
-    prefix = "vpp+";
     copy = copy.substr(4);
   } else {
     // invalid protocol
@@ -311,6 +329,10 @@ std::string const Endpoint::defaultEndpoint(TransportType type) {
     case TransportType::VPP:
       return "vpp+tcp://" + std::string(EndpointIp::_defaultHost) + ":" +
              StringUtils::itoa(EndpointIp::_defaultPortVpp);
+
+    default: {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid transport type");
+    }
   }
 
   return ""; // silence GCC
@@ -363,4 +385,61 @@ bool Endpoint::setSocketFlags(TRI_socket_t s) {
   }
 
   return true;
+}
+
+std::ostream& operator<<(std::ostream& stream, arangodb::Endpoint::TransportType type) {
+  switch (type) {
+    case arangodb::Endpoint::TransportType::HTTP: 
+      stream << "http";
+      break;
+    case arangodb::Endpoint::TransportType::VPP: 
+      stream << "vsp";
+      break;
+  }
+  return stream;
+}
+
+std::ostream& operator<<(std::ostream& stream, arangodb::Endpoint::EndpointType type) {
+  switch (type) {
+    case arangodb::Endpoint::EndpointType::SERVER:
+      stream << "server";
+      break;
+    case arangodb::Endpoint::EndpointType::CLIENT:
+      stream << "client";
+      break;
+  }
+  return stream;
+}
+
+std::ostream& operator<<(std::ostream& stream, arangodb::Endpoint::EncryptionType type) {
+  switch (type) {
+    case arangodb::Endpoint::EncryptionType::NONE:
+      stream << "none";
+      break;
+    case arangodb::Endpoint::EncryptionType::SSL:
+      stream << "ssl";
+      break;
+  }
+  return stream;
+}
+
+std::ostream& operator<<(std::ostream& stream, arangodb::Endpoint::DomainType type) {
+  switch (type) {
+    case arangodb::Endpoint::DomainType::UNIX:
+      stream << "unix";
+      break;
+    case arangodb::Endpoint::DomainType::IPV4:
+      stream << "ipv4";
+      break;
+    case arangodb::Endpoint::DomainType::IPV6:
+      stream << "ipv6";
+      break;
+    case arangodb::Endpoint::DomainType::SRV:
+      stream << "srv";
+      break;
+    case arangodb::Endpoint::DomainType::UNKNOWN:
+      stream << "unknown";
+      break;
+  }
+  return stream;
 }

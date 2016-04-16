@@ -29,7 +29,7 @@
 #include "Basics/JsonHelper.h"
 #include "Utils/AqlTransaction.h"
 
-struct TRI_document_collection_t;
+#include <velocypack/Builder.h>
 
 namespace arangodb {
 class AqlTransaction;
@@ -45,8 +45,7 @@ struct Aggregator {
   virtual ~Aggregator() = default;
   virtual char const* name() const = 0;
   virtual void reset() = 0;
-  virtual void reduce(AqlValue const&,
-                      struct TRI_document_collection_t const*) = 0;
+  virtual void reduce(AqlValue const&) = 0;
   virtual AqlValue stealValue() = 0;
 
   static Aggregator* fromTypeString(arangodb::AqlTransaction*,
@@ -58,6 +57,8 @@ struct Aggregator {
   static bool requiresInput(std::string const&);
 
   arangodb::AqlTransaction* trx;
+
+  arangodb::velocypack::Builder builder;
 };
 
 struct AggregatorLength final : public Aggregator {
@@ -69,8 +70,7 @@ struct AggregatorLength final : public Aggregator {
   char const* name() const override final { return "LENGTH"; }
 
   void reset() override final;
-  void reduce(AqlValue const&,
-              struct TRI_document_collection_t const*) override final;
+  void reduce(AqlValue const&) override final;
   AqlValue stealValue() override final;
 
   uint64_t count;
@@ -78,36 +78,32 @@ struct AggregatorLength final : public Aggregator {
 
 struct AggregatorMin final : public Aggregator {
   explicit AggregatorMin(arangodb::AqlTransaction* trx)
-      : Aggregator(trx), value(), coll(nullptr) {}
+      : Aggregator(trx), value() {}
 
   ~AggregatorMin();
 
   char const* name() const override final { return "MIN"; }
 
   void reset() override final;
-  void reduce(AqlValue const&,
-              struct TRI_document_collection_t const*) override final;
+  void reduce(AqlValue const&) override final;
   AqlValue stealValue() override final;
 
   AqlValue value;
-  struct TRI_document_collection_t const* coll;
 };
 
 struct AggregatorMax final : public Aggregator {
   explicit AggregatorMax(arangodb::AqlTransaction* trx)
-      : Aggregator(trx), value(), coll(nullptr) {}
+      : Aggregator(trx), value() {}
 
   ~AggregatorMax();
 
   char const* name() const override final { return "MAX"; }
 
   void reset() override final;
-  void reduce(AqlValue const&,
-              struct TRI_document_collection_t const*) override final;
+  void reduce(AqlValue const&) override final;
   AqlValue stealValue() override final;
 
   AqlValue value;
-  struct TRI_document_collection_t const* coll;
 };
 
 struct AggregatorSum final : public Aggregator {
@@ -117,8 +113,7 @@ struct AggregatorSum final : public Aggregator {
   char const* name() const override final { return "SUM"; }
 
   void reset() override final;
-  void reduce(AqlValue const&,
-              struct TRI_document_collection_t const*) override final;
+  void reduce(AqlValue const&) override final;
   AqlValue stealValue() override final;
 
   double sum;
@@ -132,8 +127,7 @@ struct AggregatorAverage final : public Aggregator {
   char const* name() const override final { return "AVERAGE"; }
 
   void reset() override final;
-  void reduce(AqlValue const&,
-              struct TRI_document_collection_t const*) override final;
+  void reduce(AqlValue const&) override final;
   AqlValue stealValue() override final;
 
   uint64_t count;
@@ -151,8 +145,7 @@ struct AggregatorVarianceBase : public Aggregator {
         invalid(false) {}
 
   void reset() override final;
-  void reduce(AqlValue const&,
-              struct TRI_document_collection_t const*) override final;
+  void reduce(AqlValue const&) override final;
 
   bool const population;
   uint64_t count;

@@ -545,67 +545,6 @@ static void JS_SetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief watches a value in the agency
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_WatchAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() < 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE(
-        "watch(<key>, <waitIndex>, <timeout>, <recursive>)");
-  }
-
-  std::string const key = TRI_ObjectToString(args[0]);
-  double timeout = 1.0;
-  uint64_t waitIndex = 0;
-  bool recursive = false;
-
-  if (args.Length() > 1) {
-    waitIndex = TRI_ObjectToUInt64(args[1], true);
-  }
-  if (args.Length() > 2) {
-    timeout = TRI_ObjectToDouble(args[2]);
-  }
-  if (args.Length() > 3) {
-    recursive = TRI_ObjectToBoolean(args[3]);
-  }
-
-  AgencyComm comm;
-  AgencyCommResult result = comm.watchValue(key, waitIndex, timeout, recursive);
-
-  if (result._statusCode == 0) {
-    // watch timed out
-    TRI_V8_RETURN_FALSE();
-  }
-
-  if (!result.successful()) {
-    THROW_AGENCY_EXCEPTION(result);
-  }
-
-  result.parse("", false);
-  std::map<std::string, AgencyCommResultEntry>::const_iterator it =
-      result._values.begin();
-
-  v8::Handle<v8::Object> l = v8::Object::New(isolate);
-
-  while (it != result._values.end()) {
-    std::string const key = (*it).first;
-    VPackSlice const slice = it->second._vpack->slice();
-
-    if (!slice.isNone()) {
-      l->Set(TRI_V8_STD_STRING(key), TRI_VPackToV8(isolate, slice));
-    }
-
-    ++it;
-  }
-
-  TRI_V8_RETURN(l);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the agency endpoints
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1308,24 +1247,6 @@ static void JS_LogPathServerState(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the agent path
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_AgentPathServerState(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("agentPath()");
-  }
-
-  std::string const path = ServerState::instance()->getAgentPath();
-  TRI_V8_RETURN_STD_STRING(path);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the arangod path
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1394,46 +1315,6 @@ static void JS_CoordinatorConfigServerState(
 
   std::string const path = ServerState::instance()->getCoordinatorConfig();
   TRI_V8_RETURN_STD_STRING(path);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns true, if the dispatcher frontend should be disabled
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_DisableDipatcherFrontendServerState(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("disableDispatcherFrontend()");
-  }
-
-  if (ServerState::instance()->getDisableDispatcherFrontend()) {
-    TRI_V8_RETURN_TRUE();
-  }
-  TRI_V8_RETURN_FALSE();
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns true, if the dispatcher kickstarter should be disabled
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_DisableDipatcherKickstarterServerState(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("disableDispatcherKickstarter()");
-  }
-
-  if (ServerState::instance()->getDisableDispatcherKickstarter()) {
-    TRI_V8_RETURN_TRUE();
-  }
-  TRI_V8_RETURN_FALSE();
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1602,29 +1483,6 @@ static void JS_StatusServerState(
       ServerState::stateToString(ServerState::instance()->getState());
 
   TRI_V8_RETURN_STD_STRING(state);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the server state
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_GetClusterAuthentication(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("getClusterAuthentication()");
-  }
-
-  std::string auth;
-  if (ServerState::instance()->getRole() == ServerState::ROLE_SINGLE) {
-    // Only on dispatchers, otherwise this would be a security risk!
-    auth = ServerState::instance()->getAuthentication();
-  }
-
-  TRI_V8_RETURN_STD_STRING(auth);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2186,8 +2044,6 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("remove"),
                        JS_RemoveAgency);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("set"), JS_SetAgency);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("watch"),
-                       JS_WatchAgency);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("endpoints"),
                        JS_EndpointsAgency);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("prefix"),
@@ -2293,8 +2149,6 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
                        JS_DataPathServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("logPath"),
                        JS_LogPathServerState);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("agentPath"),
-                       JS_AgentPathServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("arangodPath"),
                        JS_ArangodPathServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("javaScriptPath"),
@@ -2303,12 +2157,6 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
                        JS_DBserverConfigServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("coordinatorConfig"),
                        JS_CoordinatorConfigServerState);
-  TRI_AddMethodVocbase(isolate, rt,
-                       TRI_V8_ASCII_STRING("disableDispatcherFrontend"),
-                       JS_DisableDipatcherFrontendServerState);
-  TRI_AddMethodVocbase(isolate, rt,
-                       TRI_V8_ASCII_STRING("disableDispatcherKickstarter"),
-                       JS_DisableDipatcherKickstarterServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("initialized"),
                        JS_InitializedServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("isCoordinator"),
@@ -2325,9 +2173,6 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
                        JS_RedetermineRoleServerState, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("status"),
                        JS_StatusServerState);
-  TRI_AddMethodVocbase(isolate, rt,
-                       TRI_V8_ASCII_STRING("getClusterAuthentication"),
-                       JS_GetClusterAuthentication);
 
   v8g->ServerStateTempl.Reset(isolate, rt);
   TRI_AddGlobalFunctionVocbase(isolate, context,

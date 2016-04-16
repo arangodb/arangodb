@@ -132,6 +132,14 @@ class Parser {
     parser.parse(json);
     return parser.steal();
   }
+  
+  static std::shared_ptr<Builder> fromJson(
+      char const* start, size_t size,
+      Options const* options = &Options::Defaults) {
+    Parser parser(options);
+    parser.parse(start, size);
+    return parser.steal();
+  }
 
   static std::shared_ptr<Builder> fromJson(
       uint8_t const* start, size_t size,
@@ -164,8 +172,9 @@ class Parser {
   // Not with this high-performance two-pass approach. :-(
 
   std::shared_ptr<Builder> steal() {
+    // Parser object is broken after a steal()
     std::shared_ptr<Builder> res(_b);
-    _b.reset(new Builder());
+    _b.reset();
     return res;
   }
 

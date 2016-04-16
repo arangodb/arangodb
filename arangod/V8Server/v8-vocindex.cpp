@@ -22,15 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-vocindex.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
-
-#include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
+#include "Basics/StringUtils.h"
+#include "Basics/tri-strings.h"
+#include "Basics/VelocyPackHelper.h"
 #include "FulltextIndex/fulltext-index.h"
-#include "Indexes/CapConstraint.h"
 #include "Indexes/EdgeIndex.h"
 #include "Indexes/FulltextIndex.h"
 #include "Indexes/GeoIndex2.h"
@@ -38,8 +34,8 @@
 #include "Indexes/Index.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Indexes/SkiplistIndex.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "Utils/V8TransactionContext.h"
-#include "Utils/transactions.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
@@ -47,6 +43,10 @@
 #include "V8Server/v8-collection.h"
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocbaseprivate.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -152,7 +152,7 @@ static int ProcessIndexFields(v8::Isolate* isolate,
 
       std::string const f = TRI_ObjectToString(fieldList->Get(i));
 
-      if (f.empty() || (create && f[0] == '_')) {
+      if (f.empty() || (create && f == TRI_VOC_ATTRIBUTE_ID)) {
         // accessing internal attributes is disallowed
         return TRI_ERROR_BAD_PARAMETER;
       }
@@ -316,46 +316,6 @@ static int EnhanceJsonIndexFulltext(v8::Isolate* isolate,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief enhances the json of a cap constraint
-////////////////////////////////////////////////////////////////////////////////
-
-static int EnhanceJsonIndexCap(v8::Isolate* isolate,
-                               v8::Handle<v8::Object> const obj,
-                               VPackBuilder& builder) {
-  // handle "size" attribute
-  size_t count = 0;
-  if (obj->Has(TRI_V8_ASCII_STRING("size")) &&
-      obj->Get(TRI_V8_ASCII_STRING("size"))->IsNumber()) {
-    int64_t value = TRI_ObjectToInt64(obj->Get(TRI_V8_ASCII_STRING("size")));
-
-    if (value < 0 || value > INT64_MAX) {
-      return TRI_ERROR_BAD_PARAMETER;
-    }
-    count = (size_t)value;
-  }
-
-  // handle "byteSize" attribute
-  int64_t byteSize = 0;
-  if (obj->Has(TRI_V8_ASCII_STRING("byteSize")) &&
-      obj->Get(TRI_V8_ASCII_STRING("byteSize"))->IsNumber()) {
-    byteSize = TRI_ObjectToInt64(obj->Get(TRI_V8_ASCII_STRING("byteSize")));
-  }
-
-  if (count == 0 && byteSize <= 0) {
-    return TRI_ERROR_BAD_PARAMETER;
-  }
-
-  if (byteSize < 0 ||
-      (byteSize > 0 && byteSize < arangodb::CapConstraint::MinSize)) {
-    return TRI_ERROR_BAD_PARAMETER;
-  }
-
-  builder.add("size", VPackValue(count));
-  builder.add("byteSize", VPackValue(byteSize));
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief enhances the json of an index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -427,15 +387,13 @@ static int EnhanceIndexJson(v8::FunctionCallbackInfo<v8::Value> const& args,
     builder.add("type", VPackValue(idxType));
 
     switch (type) {
-      case arangodb::Index::TRI_IDX_TYPE_UNKNOWN:
-      case arangodb::Index::TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX: {
+      case arangodb::Index::TRI_IDX_TYPE_UNKNOWN: {
         res = TRI_ERROR_BAD_PARAMETER;
         break;
       }
 
       case arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX:
-      case arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX:
-      case arangodb::Index::TRI_IDX_TYPE_BITARRAY_INDEX: {
+      case arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX: {
         break;
       }
 
@@ -457,10 +415,6 @@ static int EnhanceIndexJson(v8::FunctionCallbackInfo<v8::Value> const& args,
 
       case arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX:
         res = EnhanceJsonIndexFulltext(isolate, obj, builder, create);
-        break;
-
-      case arangodb::Index::TRI_IDX_TYPE_CAP_CONSTRAINT:
-        res = EnhanceJsonIndexCap(isolate, obj, builder);
         break;
     }
   } catch (...) {
@@ -601,9 +555,10 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
       }
     }
   }
+  
+  READ_LOCKER(readLocker, collection->_vocbase->_inventoryLock);
 
-  SingleCollectionReadOnlyTransaction trx(
-      new V8TransactionContext(true), collection->_vocbase, collection->_cid);
+  SingleCollectionTransaction trx(V8TransactionContext::Create(collection->_vocbase, true), collection->_cid, create ? TRI_TRANSACTION_WRITE : TRI_TRANSACTION_READ);
 
   int res = trx.begin();
 
@@ -626,9 +581,7 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
   switch (type) {
     case arangodb::Index::TRI_IDX_TYPE_UNKNOWN:
     case arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX:
-    case arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX:
-    case arangodb::Index::TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX:
-    case arangodb::Index::TRI_IDX_TYPE_BITARRAY_INDEX: {
+    case arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX: {
       // these indexes cannot be created directly
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
@@ -646,9 +599,10 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
             TRI_EnsureGeoIndex1DocumentCollection(
                 &trx, document, iid, attributes[0], geoJson, created));
       } else {
+        std::vector<std::string> location =
+            arangodb::basics::StringUtils::split(attributes[0], ".");
         idx = static_cast<arangodb::GeoIndex2*>(
-            TRI_LookupGeoIndex1DocumentCollection(document, attributes[0],
-                                                  geoJson));
+            TRI_LookupGeoIndex1DocumentCollection(document, location, geoJson));
       }
       break;
     }
@@ -663,9 +617,12 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
             TRI_EnsureGeoIndex2DocumentCollection(
                 &trx, document, iid, attributes[0], attributes[1], created));
       } else {
+        std::vector<std::string> lat =
+            arangodb::basics::StringUtils::split(attributes[0], ".");
+        std::vector<std::string> lon =
+            arangodb::basics::StringUtils::split(attributes[0], ".");
         idx = static_cast<arangodb::GeoIndex2*>(
-            TRI_LookupGeoIndex2DocumentCollection(document, attributes[0],
-                                                  attributes[1]));
+            TRI_LookupGeoIndex2DocumentCollection(document, lon, lat));
       }
       break;
     }
@@ -727,26 +684,6 @@ static void EnsureIndexLocal(v8::FunctionCallbackInfo<v8::Value> const& args,
         idx = static_cast<arangodb::FulltextIndex*>(
             TRI_LookupFulltextIndexDocumentCollection(document, attributes[0],
                                                       minWordLength));
-      }
-      break;
-    }
-
-    case arangodb::Index::TRI_IDX_TYPE_CAP_CONSTRAINT: {
-      size_t size = arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
-          slice, "size", 0);
-
-      int64_t byteSize =
-          arangodb::basics::VelocyPackHelper::getNumericValue<int64_t>(
-              slice, "byteSize", 0);
-      ;
-
-      if (create) {
-        idx = static_cast<arangodb::Index*>(
-            TRI_EnsureCapConstraintDocumentCollection(&trx, document, iid, size,
-                                                      byteSize, created));
-      } else {
-        idx = static_cast<arangodb::Index*>(
-            TRI_LookupCapConstraintDocumentCollection(document));
       }
       break;
     }
@@ -1249,9 +1186,10 @@ static void JS_DropIndexVocbaseCol(
     DropIndexCoordinator(args, collection, args[0]);
     return;
   }
+  
+  READ_LOCKER(readLocker, collection->_vocbase->_inventoryLock);
 
-  SingleCollectionReadOnlyTransaction trx(
-      new V8TransactionContext(true), collection->_vocbase, collection->_cid);
+  SingleCollectionTransaction trx(V8TransactionContext::Create(collection->_vocbase, true), collection->_cid, TRI_TRANSACTION_WRITE);
 
   int res = trx.begin();
 
@@ -1360,8 +1298,7 @@ static void JS_GetIndexesVocbaseCol(
     withFigures = TRI_ObjectToBoolean(args[0]);
   }
 
-  SingleCollectionReadOnlyTransaction trx(
-      new V8TransactionContext(true), collection->_vocbase, collection->_cid);
+  SingleCollectionTransaction trx(V8TransactionContext::Create(collection->_vocbase, true), collection->_cid, TRI_TRANSACTION_READ);
 
   int res = trx.begin();
 
@@ -1376,7 +1313,7 @@ static void JS_GetIndexesVocbaseCol(
   std::string const& collectionName = std::string(collection->_name);
 
   // get list of indexes
-  auto&& indexes = TRI_IndexesDocumentCollection(document, withFigures);
+  auto indexes(TRI_IndexesDocumentCollection(document, withFigures));
 
   trx.finish(res);
   // READ-LOCK end

@@ -112,7 +112,8 @@ function CollectionEdgeSuite () {
 
       e = edge.edges([v1, v2]);
 
-      assertEqual(4, e.length);
+      // The list of edges is UNIQUE. So we find both edges exactly once
+      assertEqual(2, e.length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

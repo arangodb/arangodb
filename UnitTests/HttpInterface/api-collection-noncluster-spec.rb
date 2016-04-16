@@ -40,8 +40,8 @@ describe ArangoDB do
         r1.should be_kind_of(String)
         r1.should_not eq("");
         c1 = doc.parsed_response['checksum']
-        c1.should be_kind_of(Integer)
-        c1.should eq(0);
+        c1.should be_kind_of(String)
+        c1.should eq("0");
 
         # create a new document
         body = "{ \"test\" : 1 }"
@@ -59,8 +59,8 @@ describe ArangoDB do
         r2.should_not eq("");
         r2.should_not eq(r1);
         c2 = doc.parsed_response['checksum']
-        c2.should be_kind_of(Integer)
-        c2.should_not eq(0);
+        c2.should be_kind_of(String)
+        c2.should_not eq("0");
         c2.should_not eq(c1);
 
         # create another document
@@ -79,8 +79,8 @@ describe ArangoDB do
         r3.should_not eq(r1);
         r3.should_not eq(r2);
         c3 = doc.parsed_response['checksum']
-        c3.should be_kind_of(Integer)
-        c3.should_not eq(0);
+        c3.should be_kind_of(String)
+        c3.should_not eq("0");
         c3.should_not eq(c1);
         c3.should_not eq(c2);
         
@@ -95,8 +95,8 @@ describe ArangoDB do
         r4 = doc.parsed_response['revision']
         r4.should eq(r3);
         c4 = doc.parsed_response['checksum']
-        c4.should be_kind_of(Integer)
-        c4.should_not eq(0);
+        c4.should be_kind_of(String)
+        c4.should_not eq("0");
         c4.should_not eq(c1);
         c4.should_not eq(c2);
         c4.should_not eq(c3);
@@ -119,8 +119,8 @@ describe ArangoDB do
         r5.should_not eq(r3);
         r5.should_not eq(r4);
         c5 = doc.parsed_response['checksum']
-        c5.should be_kind_of(Integer)
-        c5.should eq(0);
+        c5.should be_kind_of(String)
+        c5.should eq("0");
       end
     end
 

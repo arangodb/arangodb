@@ -243,11 +243,8 @@ var registerFunction = function (name, code, isDeterministic) {
       var name = params.name;
 
       try {
-        var doc = collection.document(name.toUpperCase());
-        if (doc !== null) {
-          collection.remove(doc._key);
-          exists = true;
-        }
+        collection.remove(name.toUpperCase());
+        exists = true;
       }
       catch (err2) {
       }

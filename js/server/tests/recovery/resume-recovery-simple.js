@@ -70,14 +70,13 @@ function recoverySuite () {
     
     testResumeRecoverySimple : function () {
       var c = db._collection("UnitTestsRecovery"), doc;
-      var idx = c.getIndexes()[1];
         
       assertEqual(1, c.count());
 
       doc = c.document("test");
       assertEqual(1, doc.foo);
       assertEqual(2, doc.bar);
-      assertEqual(1, c.byExampleHash(idx.id, { foo: 1, bar: 2 }).toArray().length);
+      assertEqual(1, c.byExample({ foo: 1, bar: 2 }).toArray().length);
     }
         
   };

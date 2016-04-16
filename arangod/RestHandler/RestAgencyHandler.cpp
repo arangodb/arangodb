@@ -67,17 +67,24 @@ inline HttpHandler::status_t RestAgencyHandler::reportTooManySuffices() {
 inline HttpHandler::status_t RestAgencyHandler::reportUnknownMethod() {
   LOG_TOPIC(WARN, Logger::AGENCY) << "Public REST interface has no method "
                                   << _request->suffix()[0];
-  generateError(GeneralResponse::ResponseCode::NOT_FOUND, 404);
+  generateError(GeneralResponse::ResponseCode::NOT_FOUND, 405);
   return HttpHandler::status_t(HANDLER_DONE);
 }
 
 void RestAgencyHandler::redirectRequest(id_t leaderId) {
-  std::string rendpoint = _agent->config().end_points.at(leaderId);
-  rendpoint = rendpoint.substr(6, rendpoint.size() - 6);
-  rendpoint = std::string("http://" + rendpoint + _request->requestPath());
-  createResponse(GeneralResponse::ResponseCode::TEMPORARY_REDIRECT);
-  static std::string const location = "location";
-  _response->setHeaderNC(location, rendpoint);
+
+  try {
+    std::string url = Endpoint::uriForm(
+      _agent->config().end_points.at(leaderId));
+    createResponse(GeneralResponse::ResponseCode::TEMPORARY_REDIRECT);
+    static std::string const location = "location";
+    _response->setHeaderNC(location, url);
+  } catch (std::exception const& e) {
+    LOG_TOPIC(WARN, Logger::AGENCY) << e.what();
+    generateError(GeneralResponse::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_INTERNAL, e.what());
+  }
+  
 }
 
 HttpHandler::status_t RestAgencyHandler::handleStores () {
@@ -91,9 +98,9 @@ HttpHandler::status_t RestAgencyHandler::handleStores () {
     _agent->readDB().dumpToBuilder(body);
     body.close();
     body.close();
-    generateResult(body.slice());
+    generateResult(GeneralResponse::ResponseCode::OK, body.slice());
   } else {
-    generateError(GeneralResponse::ResponseCode::BAD,400);
+    generateError(GeneralResponse::ResponseCode::BAD, 400);
   }
   return HttpHandler::status_t(HANDLER_DONE);
 }
@@ -136,7 +143,7 @@ HttpHandler::status_t RestAgencyHandler::handleWrite () {
         body.close();
 
         // Wait for commit of highest except if it is 0?
-        if (call_mode == "waitForCommitted") {
+        if (!ret.indices.empty() && call_mode == "waitForCommitted") {
           index_t max_index =
               *std::max_element(ret.indices.begin(), ret.indices.end());
           if (max_index > 0) {
@@ -146,15 +153,14 @@ HttpHandler::status_t RestAgencyHandler::handleWrite () {
       }
 
       body.close();
-
-      if (errors > 0) {  // Some/all requests failed
+      
+      if (errors > 0) { // Some/all requests failed
         generateResult(GeneralResponse::ResponseCode::PRECONDITION_FAILED,
                        body.slice());
-      } else {  // All good
-        generateResult(body.slice());
+      } else {          // All good 
+        generateResult(GeneralResponse::ResponseCode::OK, body.slice());
       }
-
-    } else {  // Redirect to leader
+    } else {            // Redirect to leader
       redirectRequest(ret.redirect);
     }
   } else {  // Unknown method
@@ -171,7 +177,7 @@ inline HttpHandler::status_t RestAgencyHandler::handleRead() {
       query = _request->toVelocyPack(&options);
     } catch (std::exception const& e) {
       LOG_TOPIC(WARN, Logger::AGENCY) << e.what();
-      generateError(GeneralResponse::ResponseCode::BAD,400);
+      generateError(GeneralResponse::ResponseCode::BAD, 400);
       return HttpHandler::status_t(HANDLER_DONE);
     }
     read_ret_t ret = _agent->read (query);
@@ -180,14 +186,14 @@ inline HttpHandler::status_t RestAgencyHandler::handleRead() {
       if (ret.success.size() == 1 && !ret.success.at(0)) {
         generateResult(GeneralResponse::ResponseCode::I_AM_A_TEAPOT, ret.result->slice());
       } else {
-        generateResult(ret.result->slice());
+        generateResult(GeneralResponse::ResponseCode::OK, ret.result->slice());
       }
     } else {            // Redirect to leader
       redirectRequest(ret.redirect);
       return HttpHandler::status_t(HANDLER_DONE);
     }
   } else {
-    generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED,405);
+    generateError(GeneralResponse::ResponseCode::METHOD_NOT_ALLOWED, 405);
     return HttpHandler::status_t(HANDLER_DONE);
   }
   return HttpHandler::status_t(HANDLER_DONE);
@@ -200,7 +206,7 @@ HttpHandler::status_t RestAgencyHandler::handleConfig() {
   body.add("leaderId", Value(_agent->leaderID()));
   body.add("configuration", _agent->config().toBuilder()->slice());
   body.close();
-  generateResult(body.slice());
+  generateResult(GeneralResponse::ResponseCode::OK, body.slice());
   return HttpHandler::status_t(HANDLER_DONE);
 }
 
@@ -216,7 +222,7 @@ HttpHandler::status_t RestAgencyHandler::handleState() {
     body.close();
   }
   body.close();
-  generateResult(body.slice());
+  generateResult(GeneralResponse::ResponseCode::OK, body.slice());
   return HttpHandler::status_t(HANDLER_DONE);
 }
 

@@ -22,11 +22,6 @@
 
 #include "RestoreFeature.h"
 
-#include <iostream>
-
-#include <velocypack/Options.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -41,6 +36,11 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+
+#include <velocypack/Options.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include <iostream>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -173,18 +173,18 @@ void RestoreFeature::prepare() {
 
 int RestoreFeature::tryCreateDatabase(ClientFeature* client,
                                       std::string const& name) {
-  arangodb::basics::Json json(arangodb::basics::Json::Object);
-  json("name", arangodb::basics::Json(name));
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("name", VPackValue(name));
+  builder.add("users", VPackValue(VPackValueType::Array));
+  builder.openObject();
+  builder.add("username", VPackValue(client->username()));
+  builder.add("passwd", VPackValue(client->password()));
+  builder.close();
+  builder.close();
+  builder.close();
 
-  arangodb::basics::Json user(arangodb::basics::Json::Object);
-  user("username", arangodb::basics::Json(client->username()));
-  user("passwd", arangodb::basics::Json(client->password()));
-
-  arangodb::basics::Json users(arangodb::basics::Json::Array);
-  users.add(user);
-  json("users", users);
-
-  std::string const body(arangodb::basics::JsonHelper::toString(json.json()));
+  std::string const body = builder.slice().toJson();
 
   std::unique_ptr<SimpleHttpResult> response(
       _httpClient->request(GeneralRequest::RequestType::POST, "/_api/database",

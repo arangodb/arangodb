@@ -38,6 +38,7 @@
 #include "Basics/gcd.h"
 #include "Basics/memory-map.h"
 #include "Basics/prime-numbers.h"
+#include "Basics/random.h"
 #include "Logger/Logger.h"
 
 namespace arangodb {
@@ -77,7 +78,7 @@ class AssocUnique {
   typedef std::function<bool(UserData*, Element const*, Element const*)>
       IsEqualElementElementFuncType;
 
-  typedef std::function<void(Element*)> CallbackElementFuncType;
+  typedef std::function<bool(Element*)> CallbackElementFuncType;
 
  private:
   struct Bucket {
@@ -331,6 +332,10 @@ class AssocUnique {
   }
 
  public:
+  size_t buckets() const {
+    return _buckets.size();
+  }
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief checks if this index is empty
   //////////////////////////////////////////////////////////////////////////////
@@ -386,26 +391,6 @@ class AssocUnique {
       }
     }
     return TRI_ERROR_NO_ERROR;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Appends information about statistics in the given json.
-  //////////////////////////////////////////////////////////////////////////////
-
-  void appendToJson(TRI_memory_zone_t* zone, arangodb::basics::Json& json) {
-    arangodb::basics::Json bkts(zone, arangodb::basics::Json::Array);
-    for (auto& b : _buckets) {
-      arangodb::basics::Json bucketInfo(zone, arangodb::basics::Json::Object);
-      bucketInfo("nrAlloc",
-                 arangodb::basics::Json(static_cast<double>(b._nrAlloc)));
-      bucketInfo("nrUsed",
-                 arangodb::basics::Json(static_cast<double>(b._nrUsed)));
-      bkts.add(bucketInfo);
-    }
-    json("buckets", bkts);
-    json("nrBuckets",
-         arangodb::basics::Json(static_cast<double>(_buckets.size())));
-    json("totalUsed", arangodb::basics::Json(static_cast<double>(size())));
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -838,9 +823,10 @@ class AssocUnique {
 
     return old;
   }
-
+  
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief a method to iterate over all elements in the hash
+  /// @brief a method to iterate over all elements in the hash. this method
+  /// can NOT be used for deleting elements
   //////////////////////////////////////////////////////////////////////////////
 
   void invokeOnAllElements(CallbackElementFuncType callback) {
@@ -852,7 +838,39 @@ class AssocUnique {
         if (b._table[i] == nullptr) {
           continue;
         }
-        callback(b._table[i]);
+        if (!callback(b._table[i])) {
+          return;
+        }
+      }
+    }
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief a method to iterate over all elements in the hash. this method
+  /// can be used for deleting elements as well
+  //////////////////////////////////////////////////////////////////////////////
+
+  void invokeOnAllElementsForRemoval(CallbackElementFuncType callback) {
+    for (auto& b : _buckets) {
+      if (b._table == nullptr) {
+        continue;
+      }
+      for (size_t i = 0; i < b._nrAlloc; /* no hoisting */) {
+        if (b._table[i] == nullptr) {
+          ++i;
+          continue;
+        }
+        // intentionally don't increment i
+        auto old = b._table[i];
+        if (!callback(b._table[i])) {
+          return;
+        }
+        if (b._nrUsed == 0) {
+          break;
+        }
+        if (b._table[i] == old) {
+          ++i;
+        }
       }
     }
   }

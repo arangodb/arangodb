@@ -4,15 +4,6 @@
     var revision    = content.revision;
 %>
 
-    <ul id="infoTab" class="nav nav-tabs">
-      <li class="active"><a href="#info" data-toggle="tab">Info</a></li>
-      <li><a href="#figures" data-toggle="tab">Figures</a></li>
-    </ul>
-
-    <div class="tab-content" id="tab-content-collection-info">
-
-			<div class="tab-pane active" id="info">
-
         <table id="collectionInfoTable">
           <tr id="collectionSizeBox">
             <th class="collectionInfoTh2">Journal size:</th>
@@ -99,7 +90,6 @@
 
       </div>
 
-      <div class="tab-pane collection-info-figures" id="figures">
         <table class="figures1">
           <tr class="figuresHeader">
             <th class="">Type</th>
@@ -144,17 +134,6 @@
             </th>
           </tr>
           <tr>
-            <th class="modal-text">Shape files</th>
-            <th class="modal-text"><%=numeral(figuresData.figures.shapefiles.count).format('0,0')%></th>
-            <th class="modal-text">
-            <%=prettyBytes(figuresData.figures.shapefiles.fileSize)%>
-            </th>
-            <th class="tooltipInfoTh">
-              <a class="modalTooltips" title="Number and total size of shape files.">
-                <span class="arangoicon icon_arangodb_info"></span></a>
-            </th>
-          </tr>
-          <tr>
             <th class="modal-text">Indexes</th>
             <th class="modal-text"><%=numeral(figuresData.figures.indexes.count).format('0,0')%></th>
             <th class="modal-text">
@@ -172,22 +151,6 @@
             <th>Type</th>
             <th>Count</th>
             <th>Info</th>
-          </tr>
-          <tr>
-            <th class="modal-text">Shapes</th>
-            <th class="modal-text"><%=numeral(figuresData.figures.shapes.count).format('0,0')%></th>
-            <th class="tooltipInfoTh">
-              <a class="modalTooltips" title="Total number of shapes in the collection">
-                <span class="arangoicon icon_arangodb_info"></span></a>
-            </th>
-          </tr>
-          <tr>
-            <th class="modal-text">Attributes</th>
-            <th class="modal-text"><%=numeral(figuresData.figures.attributes.count).format('0,0')%></th>
-            <th class="tooltipInfoTh">
-              <a class="modalTooltips" title="Total number of attributes in the collection">
-                <span class="arangoicon icon_arangodb_info"></span></a>
-            </th>
           </tr>
           <tr>
             <th class="modal-text">Uncollected</th>
@@ -247,7 +210,5 @@
           </tr>
           <tr><th><div> </div></th></tr>
         </table>
-      </div>
 
-	  </div>
 </script>

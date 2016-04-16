@@ -24,21 +24,20 @@
 #include "Aql/VariableGenerator.h"
 #include "Basics/Exceptions.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
+
 using namespace arangodb::aql;
-using Json = arangodb::basics::Json;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the generator
-////////////////////////////////////////////////////////////////////////////////
-
 VariableGenerator::VariableGenerator() : _variables(), _id(0) {
   _variables.reserve(8);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the generator
-////////////////////////////////////////////////////////////////////////////////
-
 VariableGenerator::~VariableGenerator() {
   // free all variables
   for (auto& it : _variables) {
@@ -46,10 +45,7 @@ VariableGenerator::~VariableGenerator() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return a map of all variable ids with their names
-////////////////////////////////////////////////////////////////////////////////
-
 std::unordered_map<VariableId, std::string const> VariableGenerator::variables(
     bool includeTemporaries) const {
   std::unordered_map<VariableId, std::string const> result;
@@ -66,10 +62,7 @@ std::unordered_map<VariableId, std::string const> VariableGenerator::variables(
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief generate a variable
-////////////////////////////////////////////////////////////////////////////////
-
 Variable* VariableGenerator::createVariable(char const* name, size_t length,
                                             bool isUserDefined) {
   TRI_ASSERT(name != nullptr);
@@ -91,10 +84,7 @@ Variable* VariableGenerator::createVariable(char const* name, size_t length,
   return variable;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief generate a variable
-////////////////////////////////////////////////////////////////////////////////
-
 Variable* VariableGenerator::createVariable(std::string const& name,
                                             bool isUserDefined) {
   auto variable = new Variable(name, nextId());
@@ -129,13 +119,10 @@ Variable* VariableGenerator::createVariable(Variable const* original) {
   return variable;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generate a variable from JSON
-////////////////////////////////////////////////////////////////////////////////
-
+/// @brief generate a variable from VelocyPack
 Variable* VariableGenerator::createVariable(
-    arangodb::basics::Json const& json) {
-  auto variable = new Variable(json);
+    VPackSlice const slice) {
+  auto variable = new Variable(slice);
 
   auto existing = getVariable(variable->id);
   if (existing != nullptr) {
@@ -155,26 +142,17 @@ Variable* VariableGenerator::createVariable(
   return variable;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief generate a temporary variable
-////////////////////////////////////////////////////////////////////////////////
-
 Variable* VariableGenerator::createTemporaryVariable() {
   return createVariable(nextName(), false);
 }
   
-////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a variable (assigns a temporary name)
-////////////////////////////////////////////////////////////////////////////////
-
 Variable* VariableGenerator::renameVariable(VariableId id) {
   return renameVariable(id, nextName());
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a variable (assigns the specified name
-////////////////////////////////////////////////////////////////////////////////
-
 Variable* VariableGenerator::renameVariable(VariableId id, std::string const& name) {
   auto it = _variables.find(id);
 
@@ -187,10 +165,7 @@ Variable* VariableGenerator::renameVariable(VariableId id, std::string const& na
   return (*it).second;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return a variable by id - this does not respect the scopes!
-////////////////////////////////////////////////////////////////////////////////
-
 Variable* VariableGenerator::getVariable(VariableId id) const {
   auto it = _variables.find(id);
 
@@ -201,47 +176,35 @@ Variable* VariableGenerator::getVariable(VariableId id) const {
   return (*it).second;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the next temporary variable name
-////////////////////////////////////////////////////////////////////////////////
-
 std::string VariableGenerator::nextName() {
   // note: if the naming scheme is adjusted, it may be necessary to adjust
   // Variable::isUserDefined, too!
   return std::to_string(nextId());
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief export to JSON, returns an AUTOFREE Json object
-////////////////////////////////////////////////////////////////////////////////
-
-arangodb::basics::Json VariableGenerator::toJson(
-    TRI_memory_zone_t* zone) const {
-  Json jsonAllVariablesList(Json::Array, _variables.size());
-
+/// @brief export to VelocyPack
+void VariableGenerator::toVelocyPack(VPackBuilder& builder) const {
+  VPackArrayBuilder guard(&builder);
   for (auto const& oneVariable : _variables) {
-    jsonAllVariablesList(oneVariable.second->toJson());
+    oneVariable.second->toVelocyPack(builder);
   }
-
-  return jsonAllVariablesList;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief import from JSON
-////////////////////////////////////////////////////////////////////////////////
+/// @brief import from VelocyPack
+void VariableGenerator::fromVelocyPack(VPackSlice const& query) {
+  VPackSlice allVariablesList = query.get("variables");
 
-void VariableGenerator::fromJson(Json const& query) {
-  Json jsonAllVariablesList = query.get("variables");
-
-  if (!jsonAllVariablesList.isArray()) {
+  if (!allVariablesList.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "variables needs to be an array");
   }
 
-  auto len = jsonAllVariablesList.size();
+  auto len = allVariablesList.length();
   _variables.reserve(len);
 
-  for (size_t i = 0; i < len; i++) {
-    createVariable(jsonAllVariablesList.at(i));
+  for (auto const& var : VPackArrayIterator(allVariablesList)) {
+    createVariable(var);
   }
 }
+

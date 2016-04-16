@@ -25,10 +25,14 @@
 #define ARANGOD_UTILS_COLLECTION_KEYS_H 1
 
 #include "Basics/Common.h"
-#include "Basics/JsonHelper.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/voc-types.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
+struct TRI_df_marker_t;
 struct TRI_document_collection_t;
 struct TRI_vocbase_t;
 
@@ -97,19 +101,16 @@ class CollectionKeys {
                                                            size_t) const;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief dumps keys into the JSON
+  /// @brief dumps keys into the result
   //////////////////////////////////////////////////////////////////////////////
 
-  void dumpKeys(arangodb::basics::Json&, size_t, size_t) const;
+  void dumpKeys(arangodb::velocypack::Builder&, size_t, size_t) const;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief dumps documents into the JSON
+  /// @brief dumps documents into the result
   //////////////////////////////////////////////////////////////////////////////
 
-  void dumpDocs(arangodb::basics::Json&, size_t, size_t,
-                TRI_json_t const*) const;
-
-  void dumpDocs(arangodb::basics::Json&, size_t, size_t,
+  void dumpDocs(arangodb::velocypack::Builder&, size_t, size_t,
                 arangodb::velocypack::Slice const&) const;
 
  private:

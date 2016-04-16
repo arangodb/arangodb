@@ -29,10 +29,7 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_CANNOT_CREATE_TEMP_FILE, "cannot create temporary file");
   REG_ERROR(ERROR_REQUEST_CANCELED, "canceled request");
   REG_ERROR(ERROR_DEBUG, "intentional debug error");
-  REG_ERROR(ERROR_AID_NOT_FOUND, "internal error with attribute ID in shaper");
-  REG_ERROR(ERROR_LEGEND_INCOMPLETE, "internal error if a legend could not be created");
   REG_ERROR(ERROR_IP_ADDRESS_INVALID, "IP address is invalid");
-  REG_ERROR(ERROR_LEGEND_NOT_IN_WAL_FILE, "internal error if a legend for a marker does not yet exist in the same WAL file");
   REG_ERROR(ERROR_FILE_EXISTS, "file exists");
   REG_ERROR(ERROR_LOCKED, "locked");
   REG_ERROR(ERROR_DEADLOCK, "deadlock detected");
@@ -46,7 +43,6 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_HTTP_CORRUPTED_JSON, "invalid JSON object");
   REG_ERROR(ERROR_HTTP_SUPERFLUOUS_SUFFICES, "superfluous URL suffices");
   REG_ERROR(ERROR_ARANGO_ILLEGAL_STATE, "illegal state");
-  REG_ERROR(ERROR_ARANGO_SHAPER_FAILED, "could not shape document");
   REG_ERROR(ERROR_ARANGO_DATAFILE_SEALED, "datafile sealed");
   REG_ERROR(ERROR_ARANGO_UNKNOWN_COLLECTION_TYPE, "unknown type");
   REG_ERROR(ERROR_ARANGO_READ_ONLY, "read only");
@@ -80,7 +76,6 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_ARANGO_INDEX_NOT_FOUND, "index not found");
   REG_ERROR(ERROR_ARANGO_CROSS_COLLECTION_REQUEST, "cross collection request not allowed");
   REG_ERROR(ERROR_ARANGO_INDEX_HANDLE_BAD, "illegal index handle");
-  REG_ERROR(ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED, "cap constraint already defined");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_TOO_LARGE, "document too large");
   REG_ERROR(ERROR_ARANGO_COLLECTION_NOT_UNLOADED, "collection must be unloaded");
   REG_ERROR(ERROR_ARANGO_COLLECTION_TYPE_INVALID, "collection type invalid");
@@ -103,6 +98,7 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_ARANGO_WRITE_THROTTLE_TIMEOUT, "write-throttling timeout");
   REG_ERROR(ERROR_ARANGO_COLLECTION_TYPE_MISMATCH, "collection type mismatch");
   REG_ERROR(ERROR_ARANGO_COLLECTION_NOT_LOADED, "collection not loaded");
+  REG_ERROR(ERROR_ARANGO_DOCUMENT_REV_BAD, "illegal document revision");
   REG_ERROR(ERROR_ARANGO_DATAFILE_FULL, "datafile full");
   REG_ERROR(ERROR_ARANGO_EMPTY_DATADIR, "server database directory is empty");
   REG_ERROR(ERROR_REPLICATION_NO_RESPONSE, "no response");
@@ -148,6 +144,7 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_DETERMINE_ID, "could not determine my ID from my local info");
   REG_ERROR(ERROR_CLUSTER_ONLY_ON_DBSERVER, "this operation is only valid on a DBserver in a cluster");
   REG_ERROR(ERROR_CLUSTER_BACKEND_UNAVAILABLE, "A cluster backend which was required for the operation could not be reached");
+  REG_ERROR(ERROR_CLUSTER_UNKNOWN_CALLBACK_ENDPOINT, "An endpoint couldn't be found");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "%s");
   REG_ERROR(ERROR_QUERY_EMPTY, "query is empty");

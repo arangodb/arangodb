@@ -981,9 +981,10 @@ describe ArangoDB do
         e_key = doc.parsed_response['edge']['_key']
         e_id = doc.parsed_response['edge']['_id']
         e_to = doc.parsed_response['edge']['_to']
+        e_from = doc.parsed_response['edge']['_from']
 
         cmd = "/_api/graph/#{graph_name}/edge/#{e_id}"
-        body = "{\"_key\" : \"edge4711\", \"optional2\" : \"val2\", \"$label\" : \"label2\", \"_to\" : \"to\"}"
+        body = "{\"_key\" : \"edge4711\", \"optional2\" : \"val2\", \"$label\" : \"label2\", \"_from\" : \"#{e_from}\", \"_to\" : \"#{e_to}\"}"
         doc1 = ArangoDB.log_put("#{prefix}", cmd, :body => body)
         doc1.code.should eq(201)
         doc1.parsed_response['error'].should eq(false)
@@ -1020,9 +1021,10 @@ describe ArangoDB do
         e_key = doc.parsed_response['edge']['_key']
         e_id = doc.parsed_response['edge']['_id']
         e_to = doc.parsed_response['edge']['_to']
+        e_from = doc.parsed_response['edge']['_from']
 
         cmd = "/_api/graph/#{graph_name}/edge/#{e_id}"
-        body = "{\"_key\" : \"edge4711\", \"optional2\" : \"val2\", \"$label\" : \"label2\", \"_to\" : \"to\"}"
+        body = "{\"_key\" : \"edge4711\", \"optional2\" : \"val2\", \"$label\" : \"label2\", \"_from\" : \"#{e_from}\", \"_to\" : \"#{e_to}\"}"
         doc1 = ArangoDB.log_put("#{prefix}", cmd, :body => body)
         doc1.code.should eq(202)
         doc1.parsed_response['error'].should eq(false)
@@ -1035,7 +1037,7 @@ describe ArangoDB do
         doc1.parsed_response['edge']['$label'].should eq("label1")
 
         cmd = "/_api/graph/#{graph_name}/edge/#{e_id}?waitForSync=true"
-        body = "{\"_key\" : \"edge4711\", \"optional1\" : \"val1_huhu\", \"$label\" : \"label2\", \"_to\" : \"to\"}"
+        body = "{\"_key\" : \"edge4711\", \"optional1\" : \"val1_huhu\", \"$label\" : \"label2\", \"_from\" : \"#{e_from}\", \"_to\" : \"#{e_to}\"}"
         doc1 = ArangoDB.log_put("#{prefix}", cmd, :body => body)
         doc1.code.should eq(201)
         doc1.parsed_response['error'].should eq(false)
@@ -1046,7 +1048,6 @@ describe ArangoDB do
         doc1.parsed_response['edge']['optional2'].should eq(nil)
         doc1.parsed_response['edge']['optional1'].should eq("val1_huhu")
         doc1.parsed_response['edge']['$label'].should eq("label1")
-
       end
 
       it "checks replace edge properties with if-match" do
@@ -1060,6 +1061,8 @@ describe ArangoDB do
 
         e_key = doc.parsed_response['edge']['_key']
         e_rev = doc.parsed_response['edge']['_rev']
+        e_from = doc.parsed_response['edge']['_from']
+        e_to = doc.parsed_response['edge']['_to']
 
         cmd = "/_api/graph/#{graph_name}/edge/#{e_key}?rev=123"
         body = "{\"_key\" : \"edge4711\", \"optional2\" : \"val2\", \"$label\" : \"label2\", \"_to\" : \"to\"}"
@@ -1069,7 +1072,7 @@ describe ArangoDB do
         doc1.parsed_response['code'].should eq(412)
 
         cmd = "/_api/graph/#{graph_name}/edge/#{e_key}?rev=#{e_rev}"
-        body = "{\"_key\" : \"edge4711\", \"optional2\" : \"val2\", \"$label\" : \"label2\", \"_to\" : \"to\"}"
+        body = "{\"_key\" : \"edge4711\", \"optional2\" : \"val2\", \"$label\" : \"label2\", \"_from\" : \"#{e_from}\", \"_to\" : \"#{e_to}\"}"
         doc2 = ArangoDB.log_put("#{prefix}", cmd, :body => body)
         doc2.code.should eq(201)
         doc2.parsed_response['error'].should eq(false)
@@ -1079,13 +1082,13 @@ describe ArangoDB do
 
         cmd = "/_api/graph/#{graph_name}/edge/#{e_key}"
         hdr = { "if-match" => "123456" }
-        body = "{\"_key\" : \"edge4711\", \"optional2\" : \"val2\", \"$label\" : \"label2\", \"_to\" : \"to\"}"
+        body = "{\"_key\" : \"edge4711\", \"optional2\" : \"val2\", \"$label\" : \"label2\", \"_from\" : \"#{e_from}\", \"_to\" : \"#{e_to}\"}"
         doc3 = ArangoDB.log_put("#{prefix}", cmd, :body => body, :headers => hdr)
         doc3.code.should eq(412)
 
         cmd = "/_api/graph/#{graph_name}/edge/#{e_key}"
         hdr = { "if-match" => "#{e_rev}" }
-        body = "{\"_key\" : \"edge4711\", \"optional2\" : \"val2\", \"$label\" : \"label2\", \"_to\" : \"to\"}"
+        body = "{\"_key\" : \"edge4711\", \"optional2\" : \"val2\", \"$label\" : \"label2\", \"_from\" : \"#{e_from}\", \"_to\" : \"#{e_to}\"}"
         doc3 = ArangoDB.log_put("#{prefix}", cmd, :body => body, :headers => hdr)
         doc3.code.should eq(201)
 

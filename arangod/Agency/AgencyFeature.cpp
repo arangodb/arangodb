@@ -40,7 +40,9 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
       _minElectionTimeout(0.15),
       _maxElectionTimeout(1.0),
       _electionCallRateMultiplier(0.85),
-      _notify(false) {
+      _notify(false),
+      _sanityCheck(false),
+      _waitForSync(true) {
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Database");
@@ -82,6 +84,15 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--agency.notify", "notify others",
                      new BooleanParameter(&_notify));
+
+  options->addOption("--agency.sanity-check",
+                     "perform arangodb cluster sanity checking",
+                     new BooleanParameter(&_sanityCheck));
+
+  options->addHiddenOption("--agency.wait-for-sync",
+                           "wait for hard disk syncs on every persistence call "
+                           "(required in production)",
+                           new BooleanParameter(&_waitForSync));
 }
 
 void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -93,24 +104,43 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     return;
   }
 
+  // TODO: Port this to new options handling
+  std::string endpoint;
+  std::string port = "8529";
+
+  if (_endpointServer->getEndpoints().size()) {
+    endpoint = _endpointServer->getEndpoints().at(0);
+    size_t pos = endpoint.find(':', 10);
+
+    if (pos != std::string::npos) {
+      port = endpoint.substr(pos + 1, endpoint.size() - pos);
+    }
+  }
+
+  endpoint = std::string("tcp://localhost:" + port);
+
+  // Agency size
   if (_size < 1) {
     LOG_TOPIC(FATAL, Logger::AGENCY)
         << "AGENCY: agency must have size greater 0";
     FATAL_ERROR_EXIT();
   }
 
+  // Size needs to be odd
   if (_size % 2 == 0) {
     LOG_TOPIC(FATAL, Logger::AGENCY)
         << "AGENCY: agency must have odd number of members";
     FATAL_ERROR_EXIT();
   }
 
+  // Id out of range
   if (_agentId >= _size) {
     LOG_TOPIC(FATAL, Logger::AGENCY) << "agency.id must not be larger than or "
                                      << "equal to agency.size";
     FATAL_ERROR_EXIT();
   }
 
+  // Timeouts sanity
   if (_minElectionTimeout <= 0.) {
     LOG_TOPIC(FATAL, Logger::AGENCY)
         << "agency.election-timeout-min must not be negative!";
@@ -148,7 +178,7 @@ void AgencyFeature::start() {
 
   _agent.reset(new consensus::Agent(
       consensus::config_t(_agentId, _minElectionTimeout, _maxElectionTimeout,
-                          _agencyEndpoints, _notify)));
+                          _agencyEndpoints, _notify, _sanityCheck, _waitForSync)));
 
   _agent->start();
 }

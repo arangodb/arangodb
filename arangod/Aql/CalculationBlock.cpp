@@ -24,8 +24,9 @@
 #include "CalculationBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Functions.h"
-#include "Basics/ScopeGuard.h"
 #include "Basics/Exceptions.h"
+#include "Basics/ScopeGuard.h"
+#include "Basics/VelocyPackHelper.h"
 #include "V8/v8-globals.h"
 #include "VocBase/vocbase.h"
 
@@ -80,15 +81,9 @@ CalculationBlock::~CalculationBlock() {}
 
 int CalculationBlock::initialize() { return ExecutionBlock::initialize(); }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief fill the target register in the item block with a reference to
 /// another variable
-////////////////////////////////////////////////////////////////////////////////
-
 void CalculationBlock::fillBlockWithReference(AqlItemBlock* result) {
-  result->setDocumentCollection(_outReg,
-                                result->getDocumentCollection(_inRegs[0]));
-
   size_t const n = result->size();
   for (size_t i = 0; i < n; i++) {
     // need not clone to avoid a copy, the AqlItemBlock's hash takes
@@ -107,57 +102,47 @@ void CalculationBlock::fillBlockWithReference(AqlItemBlock* result) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief shared code for executing a simple or a V8 expression
-////////////////////////////////////////////////////////////////////////////////
-
 void CalculationBlock::executeExpression(AqlItemBlock* result) {
-  result->setDocumentCollection(_outReg, nullptr);
-
+  DEBUG_BEGIN_BLOCK();
   bool const hasCondition = (static_cast<CalculationNode const*>(_exeNode)
                                  ->_conditionVariable != nullptr);
+  TRI_ASSERT(!hasCondition); // currently not implemented
 
   size_t const n = result->size();
 
   for (size_t i = 0; i < n; i++) {
     // check the condition variable (if any)
     if (hasCondition) {
-      AqlValue conditionResult = result->getValueReference(i, _conditionReg);
+      AqlValue const& conditionResult = result->getValueReference(i, _conditionReg);
 
-      if (!conditionResult.isTrue()) {
+      if (!conditionResult.toBoolean()) {
         TRI_IF_FAILURE("CalculationBlock::executeExpressionWithCondition") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
-        result->setValue(i, _outReg, AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE,
-                                                       &Expression::NullJson,
-                                                       Json::NOFREE)));
+        result->setValue(i, _outReg, AqlValue(arangodb::basics::VelocyPackHelper::NullValue()));
         continue;
       }
     }
 
     // execute the expression
-    TRI_document_collection_t const* myCollection = nullptr;
-    AqlValue a =
-        _expression->execute(_trx, result, i, _inVars, _inRegs, &myCollection);
+    bool mustDestroy;
+    AqlValue a = _expression->execute(_trx, result, i, _inVars, _inRegs, mustDestroy);
+    AqlValueGuard guard(a, mustDestroy);
 
-    try {
-      TRI_IF_FAILURE("CalculationBlock::executeExpression") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-      result->setValue(i, _outReg, a);
-    } catch (...) {
-      a.destroy();
-      throw;
+    TRI_IF_FAILURE("CalculationBlock::executeExpression") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
+    result->setValue(i, _outReg, a);
+    guard.steal(); // itemblock has taken over now
     throwIfKilled();  // check if we were aborted
   }
+  DEBUG_END_BLOCK();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief doEvaluation, private helper to do the work
-////////////////////////////////////////////////////////////////////////////////
-
 void CalculationBlock::doEvaluation(AqlItemBlock* result) {
+  DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(result != nullptr);
 
   if (_isReference) {
@@ -209,9 +194,11 @@ void CalculationBlock::doEvaluation(AqlItemBlock* result) {
     // the V8 handle scope and the scope guard
     executeExpression(result);
   }
+  DEBUG_END_BLOCK();
 }
 
 AqlItemBlock* CalculationBlock::getSome(size_t atLeast, size_t atMost) {
+  DEBUG_BEGIN_BLOCK();
   std::unique_ptr<AqlItemBlock> res(
       ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost));
 
@@ -223,4 +210,5 @@ AqlItemBlock* CalculationBlock::getSome(size_t atLeast, size_t atMost) {
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
   return res.release();
+  DEBUG_END_BLOCK();
 }
