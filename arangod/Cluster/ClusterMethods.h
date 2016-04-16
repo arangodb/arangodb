@@ -142,16 +142,6 @@ int getFilteredDocumentsOnCoordinator(
     std::unordered_map<std::string, std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>& result);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get all documents in a coordinator
-////////////////////////////////////////////////////////////////////////////////
-
-int getAllDocumentsOnCoordinator(
-    std::string const& dbname, std::string const& collname,
-    std::string const& returnType,
-    arangodb::GeneralResponse::ResponseCode& responseCode,
-    std::string& contentType, std::string& resultBody);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get all edges in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
