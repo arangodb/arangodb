@@ -1482,28 +1482,28 @@ int getFilteredDocumentsOnCoordinator(
   // If it is by key the key was only added to one key list, if not
   // it is contained multiple times.
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
+  VPackBuilder bodyBuilder;
   for (auto const& shard : shardRequestMap) {
     std::unique_ptr<std::map<std::string, std::string>> headersCopy(
         new std::map<std::string, std::string>(*headers));
-    arangodb::basics::Json reqBody(arangodb::basics::Json::Object, 2);
-    reqBody("collection", arangodb::basics::Json(static_cast<std::string>(
-                              shard.first)));  // ShardID is a string
-    arangodb::basics::Json keyList(arangodb::basics::Json::Array,
-                                   shard.second.size());
+    bodyBuilder.clear();
+    bodyBuilder.openObject();
+    bodyBuilder.add("collection", VPackValue(shard.first));
+    bodyBuilder.add("keys", VPackValue(VPackValueType::Array));
     for (auto const& key : shard.second) {
-      keyList.add(arangodb::basics::Json(key));
+      bodyBuilder.add(VPackValue(key));
     }
-    reqBody("keys", keyList.steal());
+    bodyBuilder.close(); // keys
     if (!expressions.empty()) {
-      arangodb::basics::Json filter(Json::Array, expressions.size());
+      bodyBuilder.add("filter", VPackValue(VPackValueType::Array));
       for (auto const& e : expressions) {
-        arangodb::basics::Json tmp(Json::Object);
-        e->toJson(tmp, TRI_UNKNOWN_MEM_ZONE);
-        filter.add(tmp.steal());
+        e->toVelocyPack(bodyBuilder);
       }
-      reqBody("filter", filter);
     }
-    auto bodyString = std::make_shared<std::string>(reqBody.toString());
+    bodyBuilder.close(); // filter
+    bodyBuilder.close(); // Object
+
+    auto bodyString = std::make_shared<std::string>(bodyBuilder.toJson());
 
     cc->asyncRequest("", coordTransactionID, "shard:" + shard.first,
                      arangodb::GeneralRequest::RequestType::PUT,
@@ -1515,50 +1515,43 @@ int getFilteredDocumentsOnCoordinator(
   for (size_t i = 0; i < shardRequestMap.size(); ++i) {
     auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
-      std::unique_ptr<TRI_json_t> resultBody(
-          arangodb::basics::JsonHelper::fromString(res.answer->body()));
 
-      if (!TRI_IsObjectJson(resultBody.get())) {
+      std::shared_ptr<VPackBuilder> resultBody = res.answer->toVelocyPack(&VPackOptions::Defaults);
+      VPackSlice resSlice = resultBody->slice();
+
+      if (!resSlice.isObject()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_INTERNAL, "Received an invalid result in cluster.");
       }
-      bool isError = arangodb::basics::JsonHelper::checkAndGetBooleanValue(
-          resultBody.get(), "error");
+      bool isError = arangodb::basics::VelocyPackHelper::getBooleanValue(
+          resSlice, "error", false);
       if (isError) {
-        int errorNum = arangodb::basics::JsonHelper::getNumericValue<int>(
-            resultBody.get(), "errorNum", TRI_ERROR_INTERNAL);
-        std::string message = arangodb::basics::JsonHelper::getStringValue(
-            resultBody.get(), "errorMessage", "");
+        int errorNum = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+            resSlice, "errorNum", TRI_ERROR_INTERNAL);
+        std::string message =
+            arangodb::basics::VelocyPackHelper::getStringValue(
+                resSlice, "errorMessage", "");
         THROW_ARANGO_EXCEPTION_MESSAGE(errorNum, message);
       }
-      TRI_json_t* documents =
-          TRI_LookupObjectJson(resultBody.get(), "documents");
-      if (!TRI_IsArrayJson(documents)) {
+      VPackSlice documents = resSlice.get("documents");
+      if (!documents.isArray()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_INTERNAL, "Received an invalid result in cluster.");
       }
-      size_t resCount = TRI_LengthArrayJson(documents);
-      for (size_t k = 0; k < resCount; ++k) {
-        try {
-          TRI_json_t const* element = TRI_LookupArrayJson(documents, k);
-          std::string id = arangodb::basics::JsonHelper::checkAndGetStringValue(
-              element, TRI_VOC_ATTRIBUTE_ID);
-          auto tmpBuilder = basics::JsonHelper::toVelocyPack(element);
-          result.emplace(id, tmpBuilder->steal());
-          documentIds.erase(id);
-        } catch (...) {
-          // Ignore this error.
-        }
+      for (auto const& element : VPackArrayIterator(documents)) {
+        std::string id = arangodb::basics::VelocyPackHelper::getStringValue(
+            element, TRI_VOC_ATTRIBUTE_ID, "");
+        VPackBuilder tmp;
+        tmp.add(element);
+        result.emplace(id, tmp.steal());
       }
-      TRI_json_t* filtered = TRI_LookupObjectJson(resultBody.get(), "filtered");
-      if (filtered != nullptr && TRI_IsArrayJson(filtered)) {
-        size_t resCount = TRI_LengthArrayJson(filtered);
-        for (size_t k = 0; k < resCount; ++k) {
-          TRI_json_t* element = TRI_LookupArrayJson(filtered, k);
-          std::string def;
-          std::string id =
-              arangodb::basics::JsonHelper::getStringValue(element, def);
-          documentIds.erase(id);
+      VPackSlice filtered = resSlice.get("filtered");
+      if (filtered.isArray()) {
+        for (auto const& element : VPackArrayIterator(filtered)) {
+          if (element.isString()) {
+            std::string id = element.copyString();
+            documentIds.erase(id);
+          }
         }
       }
     }

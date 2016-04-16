@@ -190,6 +190,26 @@ void TraverserExpression::toJson(arangodb::basics::Json& json,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief transforms the expression into VelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+void TraverserExpression::toVelocyPack(VPackBuilder& builder) const {
+  builder.openObject();
+  builder.add("isEdgeAccess", VPackValue(isEdgeAccess));
+  builder.add("comparisonType",
+              VPackValue(static_cast<int32_t>(comparisonType)));
+  
+  builder.add(VPackValue("varAccess"));
+  varAccess->toVelocyPack(builder, true);
+  if (compareTo != nullptr) {
+    builder.add("compareTo", compareTo->slice());
+  }
+  builder.close();
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief recursively iterates through the access ast
 ///        Returns false whenever the document does not have the required format
 ////////////////////////////////////////////////////////////////////////////////
