@@ -26,7 +26,7 @@
 #include <iostream>
 #include <v8.h>
 
-#include "Applicationfeatures/ApplicationServer.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
