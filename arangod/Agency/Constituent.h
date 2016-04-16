@@ -21,25 +21,27 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#warning TODO name convention
+//XXX #warning KAVEH clang-format
+//XXX #warning KAVEH name convention
 #ifndef __ARANGODB_CONSENSUS_CONSTITUENT__
 #define __ARANGODB_CONSENSUS_CONSTITUENT__
 
+//XXX #warning KAVEH order!
 #include <cstdint>
-#warning why?
+//XXX #warning KAVEH why?
 #include <string>
-#warning why?
+//XXX #warning KAVEH why?
 #include <vector>
 #include <random>
 
-#warning Common.h missing
+//XXX #warning KAVEH Common.h missing
 #include "AgencyCommon.h"
 #include "Basics/Thread.h"
+#include "Basics/ConditionVariable.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
-class ApplicationV8;
 namespace aql {
 class QueryRegistry;
 }
@@ -107,7 +109,7 @@ public:
   /// @brief Orderly shutdown of thread
   void beginShutdown () override;
 
-  bool start (TRI_vocbase_t* vocbase, ApplicationV8*, aql::QueryRegistry*);
+  bool start (TRI_vocbase_t* vocbase);
 
 private:
 
@@ -144,7 +146,6 @@ private:
   duration_t sleepFor(double, double);
 
   TRI_vocbase_t* _vocbase; 
-  ApplicationV8* _applicationV8;
   aql::QueryRegistry* _queryRegistry;
 
 
@@ -152,14 +153,14 @@ private:
   std::atomic<bool>    _cast;         /**< @brief cast a vote this term */
   std::atomic<state_t> _state;        /**< @brief State (follower, candidate, leader)*/
 
-#warning TODO name convention
+//XXX #warning KAVEH name convention
   id_t                 _leader_id;    /**< @brief Current leader */
   id_t                 _id;           /**< @brief My own id */
   constituency_t       _constituency; /**< @brief List of consituents */
   std::mt19937         _gen;          /**< @brief Random number generator */
   role_t               _role;         /**< @brief My role */
   Agent*               _agent;        /**< @brief My boss */
-#warning TODO name convention
+//XXX #warning KAVEH name convention
   id_t                 _voted_for;
 
   arangodb::basics::ConditionVariable _cv;      // agency callbacks

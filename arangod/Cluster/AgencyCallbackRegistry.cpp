@@ -22,15 +22,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AgencyCallbackRegistry.h"
+
 #include "Basics/ReadLocker.h"
-#include "Basics/random.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/Exceptions.h"
+#include "Basics/RandomGenerator.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
 #include <ctime>
+#warning why? use ConditionVariable
 #include <condition_variable>
+#warning why? use Mutex
 #include <mutex>
+#warning why?
 #include <thread>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -50,7 +54,7 @@ bool AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> cb
   { 
     WRITE_LOCKER(locker, _lock);
     while (true) {
-      rand = TRI_UInt32Random();
+      rand = RandomGenerator::interval(UINT32_MAX);
       if (_endpoints.emplace(rand, cb).second) {
         break;
       }

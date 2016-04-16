@@ -45,7 +45,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/CollectionKeysRepository.h"
 #include "Utils/CursorRepository.h"
-#include "Utils/transactions.h"
 #include "V8Server/v8-user-structures.h"
 #include "VocBase/Ditch.h"
 #include "VocBase/auth.h"

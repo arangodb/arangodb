@@ -217,7 +217,7 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
     }
 
     arangodb::aql::Query query(
-        _applicationV8, false, _vocbase, aql.c_str(), aql.size(),
+        false, _vocbase, aql.c_str(), aql.size(),
         bindVars, nullptr, arangodb::aql::PART_MAIN);
 
     registerQuery(&query);
@@ -335,7 +335,7 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
         "FOR doc IN @@collection FILTER doc._key IN @keys RETURN doc");
 
     arangodb::aql::Query query(
-        _applicationV8, false, _vocbase, aql.c_str(), aql.size(),
+        false, _vocbase, aql.c_str(), aql.size(),
         bindVars, nullptr, arangodb::aql::PART_MAIN);
 
     registerQuery(&query);

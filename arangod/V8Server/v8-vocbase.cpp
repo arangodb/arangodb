@@ -50,6 +50,7 @@
 #include "Rest/Version.h"
 #include "RestServer/ConsoleThread.h"
 #include "RestServer/VocbaseContext.h"
+#include "Statistics/StatisticsFeature.h"
 #include "Utils/ExplicitTransaction.h"
 #include "Utils/V8TransactionContext.h"
 #include "V8/JSLoader.h"
@@ -337,12 +338,12 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_PARAMETER(actionError);
   }
 
-  auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, embed);
+  auto transactionContext =
+      std::make_shared<V8TransactionContext>(vocbase, embed);
 
   // start actual transaction
   ExplicitTransaction trx(transactionContext, readCollections, writeCollections,
-                          lockTimeout, waitForSync,
-                          allowImplicitCollections);
+                          lockTimeout, waitForSync, allowImplicitCollections);
 
   int res = trx.begin();
 
@@ -1135,10 +1136,8 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // bind parameters will be freed by the query later
-  TRI_GET_GLOBALS();
-  arangodb::aql::Query query(v8g->_applicationV8, true, vocbase,
-                             queryString.c_str(), queryString.size(),
-                             bindVars, options,
+  arangodb::aql::Query query(true, vocbase, queryString.c_str(),
+                             queryString.size(), bindVars, options,
                              arangodb::aql::PART_MAIN);
 
   auto queryResult = query.explain();
@@ -1194,7 +1193,7 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (vocbase == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
- 
+
   if (args.Length() < 1 || args.Length() > 2) {
     TRI_V8_THROW_EXCEPTION_USAGE("AQL_EXECUTEJSON(<queryjson>, <options>)");
   }
@@ -1224,8 +1223,8 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  arangodb::aql::Query query(v8g->_applicationV8, true, vocbase, queryBuilder,
-                             options, arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query(true, vocbase, queryBuilder, options,
+                             arangodb::aql::PART_MAIN);
 
   auto queryResult = query.execute(
       static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry));
@@ -1234,7 +1233,8 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_FULL(queryResult.code, queryResult.details);
   }
 
-  auto transactionContext = std::make_shared<StandaloneTransactionContext>(vocbase);
+  auto transactionContext =
+      std::make_shared<StandaloneTransactionContext>(vocbase);
   // return the array value as it is. this is a performance optimisation
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   if (queryResult.result != nullptr) {
@@ -1326,9 +1326,9 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // bind parameters will be freed by the query later
   TRI_GET_GLOBALS();
-  arangodb::aql::Query query(v8g->_applicationV8, true, vocbase,
-                             queryString.c_str(), queryString.size(), bindVars,
-                             options, arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query(true, vocbase, queryString.c_str(),
+                             queryString.size(), bindVars, options,
+                             arangodb::aql::PART_MAIN);
 
   auto queryResult = query.executeV8(
       isolate, static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry));
@@ -1697,14 +1697,13 @@ static void JS_ThrowCollectionNotLoaded(
 ///        NOTE: Collection has to be known to the transaction.
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> VertexIdToData(
-    v8::Isolate* isolate,
-    Transaction* trx,
-    std::string const& vertexId) {
+static v8::Handle<v8::Value> VertexIdToData(v8::Isolate* isolate,
+                                            Transaction* trx,
+                                            std::string const& vertexId) {
   OperationOptions options;
   std::vector<std::string> parts =
       arangodb::basics::StringUtils::split(vertexId, "/");
-  TRI_ASSERT(parts.size() == 2); // All internal _id attributes
+  TRI_ASSERT(parts.size() == 2);  // All internal _id attributes
 
   VPackBuilder builder;
   builder.openObject();
@@ -1727,10 +1726,9 @@ static v8::Handle<v8::Value> VertexIdToData(
 ///        NOTE: Collection has to be known to the transaction.
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> EdgeIdToData(
-    v8::Isolate* isolate,
-    Transaction* trx,
-    std::string const& edgeId) {
+static v8::Handle<v8::Value> EdgeIdToData(v8::Isolate* isolate,
+                                          Transaction* trx,
+                                          std::string const& edgeId) {
   return VertexIdToData(isolate, trx, edgeId);
 }
 
@@ -1742,7 +1740,7 @@ static v8::Handle<v8::Value> EdgeIdToData(
 ////////////////////////////////////////////////////////////////////////////////
 
 static ExplicitTransaction* BeginTransaction(
-    std::shared_ptr<V8TransactionContext> transactionContext, 
+    std::shared_ptr<V8TransactionContext> transactionContext,
     std::vector<std::string> const& readCollections,
     std::vector<std::string> const& writeCollections) {
   // IHHF isCoordinator
@@ -1752,8 +1750,8 @@ static ExplicitTransaction* BeginTransaction(
 
   // Start Transaction to collect all parts of the path
   auto trx = std::make_unique<ExplicitTransaction>(
-      transactionContext, readCollections, writeCollections, lockTimeout, waitForSync,
-      true);
+      transactionContext, readCollections, writeCollections, lockTimeout,
+      waitForSync, true);
 
   int res = trx->begin();
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1952,7 +1950,8 @@ static void JS_QueryShortestPath(
   }
   std::string const targetVertex = TRI_ObjectToString(args[3]);
 
-  auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
+  auto transactionContext =
+      std::make_shared<V8TransactionContext>(vocbase, true);
 
   int res = TRI_ERROR_NO_ERROR;
   std::vector<std::string> readCollections;
@@ -2048,17 +2047,14 @@ static void JS_QueryShortestPath(
     }
   }
 
-
-
   std::vector<EdgeCollectionInfo*> edgeCollectionInfos;
 
-  arangodb::basics::ScopeGuard guard{
-      []() -> void {},
-      [&edgeCollectionInfos]() -> void {
-        for (auto& p : edgeCollectionInfos) {
-          delete p;
-        }
-      }};
+  arangodb::basics::ScopeGuard guard{[]() -> void {},
+                                     [&edgeCollectionInfos]() -> void {
+                                       for (auto& p : edgeCollectionInfos) {
+                                         delete p;
+                                       }
+                                     }};
 
   if (opts.useWeight) {
     for (auto const& it : edgeCollectionNames) {
@@ -2131,9 +2127,9 @@ static void JS_QueryShortestPath(
       TRI_V8_RETURN(scope.Escape<v8::Value>(v8::Null(isolate)));
     }
 
-
     try {
-      auto result = PathIdsToV8(isolate, vocbase, trx.get(), *path, includeData);
+      auto result =
+          PathIdsToV8(isolate, vocbase, trx.get(), *path, includeData);
       TRI_V8_RETURN(result);
     } catch (Exception& e) {
       TRI_V8_THROW_EXCEPTION(e.code());
@@ -2144,7 +2140,8 @@ static void JS_QueryShortestPath(
     std::unique_ptr<ArangoDBConstDistancePathFinder::Path> path;
 
     try {
-      path = TRI_RunSimpleShortestPathSearch(edgeCollectionInfos, trx.get(), opts);
+      path =
+          TRI_RunSimpleShortestPathSearch(edgeCollectionInfos, trx.get(), opts);
     } catch (Exception& e) {
       trx->finish(e.code());
       TRI_V8_THROW_EXCEPTION(e.code());
@@ -2158,7 +2155,8 @@ static void JS_QueryShortestPath(
     }
 
     try {
-      auto result = PathIdsToV8(isolate, vocbase, trx.get(), *path, includeData);
+      auto result =
+          PathIdsToV8(isolate, vocbase, trx.get(), *path, includeData);
       TRI_V8_RETURN(result);
     } catch (Exception& e) {
       TRI_V8_THROW_EXCEPTION(e.code());
@@ -2172,10 +2170,10 @@ static void JS_QueryShortestPath(
 /// @brief Transforms an vector<VertexId> to v8 json values
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> VertexIdsToV8(
-    v8::Isolate* isolate, ExplicitTransaction* trx,
-    std::unordered_set<std::string>& ids,
-    bool includeData = false) {
+static v8::Handle<v8::Value> VertexIdsToV8(v8::Isolate* isolate,
+                                           ExplicitTransaction* trx,
+                                           std::unordered_set<std::string>& ids,
+                                           bool includeData = false) {
   v8::EscapableHandleScope scope(isolate);
   uint32_t const vn = static_cast<uint32_t>(ids.size());
   v8::Handle<v8::Array> vertices =
@@ -2249,7 +2247,8 @@ static void JS_QueryNeighbors(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::vector<std::string> readCollections;
   std::vector<std::string> writeCollections;
 
-  auto transactionContext = std::make_shared<V8TransactionContext>(vocbase, true);
+  auto transactionContext =
+      std::make_shared<V8TransactionContext>(vocbase, true);
 
   int res = TRI_ERROR_NO_ERROR;
 
@@ -2333,17 +2332,14 @@ static void JS_QueryNeighbors(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-
-
   std::vector<EdgeCollectionInfo*> edgeCollectionInfos;
 
-  arangodb::basics::ScopeGuard guard{
-      []() -> void {},
-      [&edgeCollectionInfos]() -> void {
-        for (auto& p : edgeCollectionInfos) {
-          delete p;
-        }
-      }};
+  arangodb::basics::ScopeGuard guard{[]() -> void {},
+                                     [&edgeCollectionInfos]() -> void {
+                                       for (auto& p : edgeCollectionInfos) {
+                                         delete p;
+                                       }
+                                     }};
 
   for (auto const& it : edgeCollectionNames) {
     edgeCollectionInfos.emplace_back(
@@ -2524,7 +2520,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
       }
     }
   }
-  
+
   TRI_GET_GLOBALS();
 
   auto globals = isolate->GetCurrentContext()->Global();
@@ -2533,7 +2529,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
   TRI_GET_GLOBAL_STRING(_DbCacheKey);
   if (globals->Has(_DbCacheKey)) {
     cacheObject = globals->Get(_DbCacheKey)->ToObject();
-  } 
+  }
 
   if (!cacheObject.IsEmpty() && cacheObject->HasRealNamedProperty(cacheName)) {
     v8::Handle<v8::Object> value =
@@ -2826,7 +2822,8 @@ static void ListDatabasesCoordinator(
           // We got an array back as JSON, let's parse it and build a v8
           StringBuffer& body = res->result->getBody();
 
-          std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(body.c_str(), body.length()); 
+          std::shared_ptr<VPackBuilder> builder =
+              VPackParser::fromJson(body.c_str(), body.length());
           VPackSlice resultSlice = builder->slice();
 
           if (resultSlice.isObject()) {
@@ -3540,8 +3537,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                TRI_V8_ASCII_STRING("CPP_NEIGHBORS"),
                                JS_QueryNeighbors, true);
 
-  TRI_InitV8Replication(isolate, context, server, vocbase, threadNumber,
-                        v8g);
+  TRI_InitV8Replication(isolate, context, server, vocbase, threadNumber, v8g);
 
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("COMPARE_STRING"),
@@ -3610,9 +3606,9 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                               v8::ReadOnly);
 
   // whether or not statistics are enabled
-  context->Global()->ForceSet(TRI_V8_ASCII_STRING("ENABLE_STATISTICS"),
-                              v8::Boolean::New(isolate, StatisticsFeature::enabled()),
-                              v8::ReadOnly);
+  context->Global()->ForceSet(
+      TRI_V8_ASCII_STRING("ENABLE_STATISTICS"),
+      v8::Boolean::New(isolate, StatisticsFeature::enabled()), v8::ReadOnly);
 
   // a thread-global variable that will is supposed to contain the AQL module
   // do not remove this, otherwise AQL queries will break

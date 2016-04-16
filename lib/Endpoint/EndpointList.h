@@ -29,7 +29,6 @@
 #include "Endpoint/Endpoint.h"
 
 namespace arangodb {
-
 class EndpointList {
  public:
   EndpointList();

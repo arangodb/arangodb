@@ -24,24 +24,24 @@
 #ifndef __ARANGODB_CONSENSUS_STORE__
 #define __ARANGODB_CONSENSUS_STORE__
 
-#warning order
+//XXX #warning KAVEH order
 #include "AgencyCommon.h"
 
 #include <type_traits>
 #include <utility>
 #include <typeinfo>
-#warning why?
+//XXX #warning KAVEH why?
 #include <string>
 #include <cassert>
-#warning why?
+//XXX #warning KAVEH why?
 #include <map>
-#warning why?
+//XXX #warning KAVEH why?
 #include <vector>
-#warning why?
+//XXX #warning KAVEH why?
 #include <list>
-#warning why?
+//XXX #warning KAVEH why?
 #include <memory>
-#warning why?
+//XXX #warning KAVEH why?
 #include <cstdint>
 
 #include <Basics/Mutex.h>

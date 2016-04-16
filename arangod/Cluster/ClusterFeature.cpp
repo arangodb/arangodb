@@ -36,6 +36,7 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestServer/DatabaseFeature.h"
 #include "SimpleHttpClient/ConnectionManager.h"
 #include "VocBase/server.h"
 
@@ -46,14 +47,12 @@ using namespace arangodb::options;
 
 ClusterFeature::ClusterFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Cluster"),
-      _agencyCallbackRegistry(agencyCallbackRegistry),
       _username("root"),
-      _dispatcherFrontend(false),
-      _kickstarter(false),
       _enableCluster(false),
       _heartbeatThread(nullptr),
       _heartbeatInterval(0),
-      _disableHeartbeat(false) {
+      _disableHeartbeat(false),
+      _agencyCallbackRegistry(nullptr) {
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Database");
@@ -113,10 +112,6 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "path to the arangod for the cluster",
                      new StringParameter(&_arangodPath));
 
-  options->addOption("--cluster.agent-path",
-                     "path to the agent for the cluster",
-                     new StringParameter(&_agentPath));
-
   options->addOption("--cluster.dbserver-config",
                      "path to the DBserver configuration",
                      new StringParameter(&_dbserverConfig));
@@ -124,13 +119,6 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--cluster.coordinator-config",
                      "path to the coordinator configuration",
                      new StringParameter(&_coordinatorConfig));
-
-  options->addOption("--cluster.dispatcher-frontend",
-                     "show the dispatcher interface",
-                     new BooleanParameter(&_dispatcherFrontend));
-
-  options->addOption("--cluster.kickstarter", "enable the kickstarter",
-                     new BooleanParameter(&_kickstarter));
 }
 
 void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -195,12 +183,13 @@ void ClusterFeature::prepare() {
   ServerState::instance()->setAuthentication(_username, _password);
   ServerState::instance()->setDataPath(_dataPath);
   ServerState::instance()->setLogPath(_logPath);
-  ServerState::instance()->setAgentPath(_agentPath);
   ServerState::instance()->setArangodPath(_arangodPath);
   ServerState::instance()->setDBserverConfig(_dbserverConfig);
   ServerState::instance()->setCoordinatorConfig(_coordinatorConfig);
-  ServerState::instance()->setDisableDispatcherFrontend(!_dispatcherFrontend);
-  ServerState::instance()->setDisableDispatcherKickstarter(!_kickstarter);
+
+  // create callback registery
+  _agencyCallbackRegistry.reset(
+      new AgencyCallbackRegistry(agencyCallbacksPath()));
 
   // initialize ConnectionManager library
   httpclient::ConnectionManager::initialize();
@@ -387,7 +376,9 @@ void ClusterFeature::start() {
     }
 
     // start heartbeat thread
-    _heartbeatThread = new HeartbeatThread(_agencyCallbackRegistry, _heartbeatInterval * 1000, 5);
+    _heartbeatThread = new HeartbeatThread(DatabaseFeature::DATABASE->server(),
+                                           _agencyCallbackRegistry.get(),
+                                           _heartbeatInterval * 1000, 5);
 
     if (_heartbeatThread == nullptr) {
       LOG(FATAL) << "unable to start cluster heartbeat thread";

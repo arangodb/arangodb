@@ -1,4 +1,3 @@
-
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -22,21 +21,9 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Cluster/ClusterComm.h"
-#include "Logger/Logger.h"
-#include "Basics/ConditionLocker.h"
-
-#include "Aql/Query.h"
-#include "Aql/QueryRegistry.h"
-#include "Utils/OperationOptions.h"
-#include "Utils/OperationResult.h"
-#include "Utils/SingleCollectionTransaction.h"
-#include "Utils/StandaloneTransactionContext.h"
-#include "VocBase/collection.h"
-#include "VocBase/vocbase.h"
+//XXX #warning KAVEH clang-format
 
 #include "Constituent.h"
-#include "Agent.h"
 
 #include <velocypack/Iterator.h>    
 #include <velocypack/velocypack-aliases.h> 
@@ -44,6 +31,20 @@
 #include <chrono>
 #include <iomanip>
 #include <thread>
+
+#include "Agency/Agent.h"
+#include "Aql/Query.h"
+#include "Aql/QueryRegistry.h"
+#include "Basics/ConditionLocker.h"
+#include "Basics/RandomGenerator.h"
+#include "Cluster/ClusterComm.h"
+#include "Logger/Logger.h"
+#include "Utils/OperationOptions.h"
+#include "Utils/OperationResult.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "Utils/StandaloneTransactionContext.h"
+#include "VocBase/collection.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb::consensus;
 using namespace arangodb::rest;
@@ -69,17 +70,15 @@ void Constituent::configure(Agent* agent) {
 // Default ctor
 Constituent::Constituent() :
   Thread("Constituent"),
-  _vocbase(nullptr),
-  _applicationV8(nullptr),
-  _queryRegistry(nullptr),
   _term(0),
   _leader_id(0),
   _id(0),
+//XXX #warning KAVEH use RandomGenerator
   _gen(std::random_device()()),
   _role(FOLLOWER),
   _agent(0),
   _voted_for(0) {
-  _gen.seed(TRI_UInt32Random());
+  _gen.seed(RandomGenerator::interval(UINT32_MAX));
 }
 
 // Shutdown if not already
@@ -367,13 +366,8 @@ void Constituent::beginShutdown() {
 }
 
 
-bool Constituent::start (TRI_vocbase_t* vocbase,
-                         ApplicationV8* applicationV8,
-                         aql::QueryRegistry* queryRegistry) {
-
+bool Constituent::start (TRI_vocbase_t* vocbase) {
   _vocbase = vocbase;
-  _applicationV8 = applicationV8;
-  _queryRegistry = queryRegistry;
 
   return Thread::start();
 }
@@ -386,12 +380,9 @@ void Constituent::run() {
   bindVars->openObject();
   bindVars->close();
   
-  TRI_ASSERT(_applicationV8 != nullptr);
-  TRI_ASSERT(_queryRegistry != nullptr);
-
   // Query
   std::string const aql ("FOR l IN election SORT l._key DESC LIMIT 1 RETURN l");
-  arangodb::aql::Query query(_applicationV8, false, _vocbase,
+  arangodb::aql::Query query(false, _vocbase,
                              aql.c_str(), aql.size(), bindVars, nullptr,
                              arangodb::aql::PART_MAIN);
   

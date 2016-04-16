@@ -38,7 +38,6 @@
 #include "RestHandler/RestCursorHandler.h"
 #include "RestHandler/RestDebugHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
-#include "RestHandler/RestEdgeHandler.h"
 #include "RestHandler/RestEdgesHandler.h"
 #include "RestHandler/RestExportHandler.h"
 #include "RestHandler/RestHandlerCreator.h"
@@ -59,6 +58,7 @@
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "V8Server/V8DealerFeature.h"
+#include "VocBase/server.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -281,10 +281,6 @@ void RestServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::DOCUMENT_PATH,
       RestHandlerCreator<RestDocumentHandler>::createNoData);
-
-  _handlerFactory->addPrefixHandler(
-      RestVocbaseBaseHandler::EDGE_PATH,
-      RestHandlerCreator<RestEdgeHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::EDGES_PATH,

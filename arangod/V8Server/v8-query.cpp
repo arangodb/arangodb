@@ -56,7 +56,7 @@ static aql::QueryResultV8 AqlQuery(v8::Isolate* isolate, TRI_vocbase_col_t const
   TRI_ASSERT(col != nullptr);
 
   TRI_GET_GLOBALS();
-  arangodb::aql::Query query(v8g->_applicationV8, true, col->_vocbase,
+  arangodb::aql::Query query(true, col->_vocbase,
                              aql.c_str(), aql.size(), bindVars, nullptr,
                              arangodb::aql::PART_MAIN);
 

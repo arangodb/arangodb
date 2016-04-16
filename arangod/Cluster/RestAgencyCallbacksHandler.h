@@ -21,6 +21,7 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
+#warning nope, include guards
 #pragma once
 
 #include "Basics/Common.h"

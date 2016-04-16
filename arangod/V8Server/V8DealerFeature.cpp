@@ -29,6 +29,7 @@
 #include "Basics/RandomGenerator.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WorkMonitor.h"
+#include "Cluster/ServerState.h"
 #include "Dispatcher/DispatcherFeature.h"
 #include "Dispatcher/DispatcherThread.h"
 #include "ProgramOptions/ProgramOptions.h"

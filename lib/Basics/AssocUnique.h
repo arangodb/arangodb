@@ -38,7 +38,6 @@
 #include "Basics/gcd.h"
 #include "Basics/memory-map.h"
 #include "Basics/prime-numbers.h"
-#include "Basics/random.h"
 #include "Logger/Logger.h"
 
 namespace arangodb {

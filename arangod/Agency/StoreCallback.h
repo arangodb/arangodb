@@ -21,7 +21,8 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#warning TODO name convention
+//XXX #warning KAVEH clang-format
+//XXX #warning KAVEH name convention
 #ifndef __ARANGODB_CONSENSUS_STORE_CALLBACK__
 #define __ARANGODB_CONSENSUS_STORE_CALLBACK__
 

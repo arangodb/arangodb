@@ -28,7 +28,6 @@
 
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
-#include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/AgencyComm.h"
 #include "Logger/Logger.h"
 
@@ -36,14 +35,14 @@ struct TRI_server_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class AgencyCallbackRegistry;
+
 class HeartbeatThread : public Thread {
   HeartbeatThread(HeartbeatThread const&) = delete;
   HeartbeatThread& operator=(HeartbeatThread const&) = delete;
 
  public:
-  HeartbeatThread(TRI_server_t*, arangodb::rest::ApplicationDispatcher*,
-                  ApplicationV8*, AgencyCallbackRegistry*, uint64_t, uint64_t);
-
+  HeartbeatThread(TRI_server_t*, AgencyCallbackRegistry*, uint64_t, uint64_t);
   ~HeartbeatThread();
 
  public:
@@ -143,18 +142,6 @@ class HeartbeatThread : public Thread {
   TRI_server_t* _server;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Job dispatcher
-  //////////////////////////////////////////////////////////////////////////////
-
-  arangodb::rest::ApplicationDispatcher* _dispatcher;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief v8 dispatcher
-  //////////////////////////////////////////////////////////////////////////////
-
-  ApplicationV8* _applicationV8;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief AgencyCallbackRegistry
   //////////////////////////////////////////////////////////////////////////////
 
@@ -234,7 +221,6 @@ class HeartbeatThread : public Thread {
   //////////////////////////////////////////////////////////////////////////////
 
   std::atomic<bool> _ready;
-  
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the heartbeat thread has run at least once

@@ -50,9 +50,12 @@ volatile sig_atomic_t HeartbeatThread::HasRunOnce = 0;
 /// @brief constructs a heartbeat thread
 ////////////////////////////////////////////////////////////////////////////////
 
-HeartbeatThread::HeartbeatThread(uint64_t interval,
+HeartbeatThread::HeartbeatThread(TRI_server_t* server,
+                                 AgencyCallbackRegistry* agencyCallbackRegistry,
+                                 uint64_t interval,
                                  uint64_t maxFailsBeforeWarning)
     : Thread("Heartbeat"),
+      _server(server),
       _agencyCallbackRegistry(agencyCallbackRegistry),
       _statusLock(),
       _agency(),
@@ -108,13 +111,15 @@ void HeartbeatThread::runDBServer() {
   // value of Sync/Commands/my-id at startup
   uint64_t lastCommandIndex = getLastCommandIndex();
 
-  std::function<bool(VPackSlice const& result)> updatePlan = [&](VPackSlice const& result) {
+  std::function<bool(VPackSlice const& result)> updatePlan = [&](
+      VPackSlice const& result) {
     if (!result.isNumber()) {
       LOG(ERR) << "Version is not a number! " << result.toJson();
       return false;
     }
     uint64_t version = result.getNumber<uint64_t>();
-    LOG(TRACE) << "Hass " << result.toJson() << " " << version << " " << _dispatchedPlanVersion;
+    LOG(TRACE) << "Hass " << result.toJson() << " " << version << " "
+               << _dispatchedPlanVersion;
     bool mustHandlePlanChange = false;
     {
       MUTEX_LOCKER(mutexLocker, _statusLock);
@@ -124,7 +129,8 @@ void HeartbeatThread::runDBServer() {
         _numDispatchedJobs = 0;
         if (_lastDispatchedJobResult) {
           LOG(DEBUG) << "...and was successful";
-          // mop: the dispatched version is still the same => we are finally uptodate
+          // mop: the dispatched version is still the same => we are finally
+          // uptodate
           if (_dispatchedPlanVersion == version) {
             LOG(DEBUG) << "Version is correct :)";
             return true;
@@ -144,9 +150,10 @@ void HeartbeatThread::runDBServer() {
     }
     return false;
   };
-  
-  auto agencyCallback = std::make_shared<AgencyCallback>(_agency, "Plan/Version", updatePlan, true);
-  
+
+  auto agencyCallback = std::make_shared<AgencyCallback>(
+      _agency, "Plan/Version", updatePlan, true);
+
   bool registered = false;
   while (!registered) {
     registered = _agencyCallbackRegistry->registerCallback(agencyCallback);
@@ -155,7 +162,7 @@ void HeartbeatThread::runDBServer() {
       sleep(1);
     }
   }
-        
+
   while (!isStopping()) {
     LOG(DEBUG) << "sending heartbeat to agency";
 
@@ -182,11 +189,11 @@ void HeartbeatThread::runDBServer() {
     if (isStopping()) {
       break;
     }
-    
+
     double remain = interval - (TRI_microtime() - start);
     agencyCallback->waitWithFailover(remain);
   }
-  
+
   _agencyCallbackRegistry->unregisterCallback(agencyCallback);
   // Wait until any pending job is finished
   int count = 0;
@@ -253,7 +260,7 @@ void HeartbeatThread::runCoordinator() {
     }
 
     bool shouldSleep = true;
-    
+
     // get the current version of the Plan
     AgencyCommResult result = _agency.getValues("Plan/Version", false);
 

@@ -27,8 +27,10 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestServer/EndpointFeature.h"
 
 using namespace arangodb;
+using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 using namespace arangodb::rest;
@@ -47,6 +49,7 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
   requiresElevatedPrivileges(false);
   startsAfter("Database");
   startsAfter("Dispatcher");
+  startsAfter("Endpoint");
   startsAfter("Scheduler");
   startsAfter("Server");
 }
@@ -103,21 +106,6 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (_disabled) {
     return;
   }
-
-  // TODO: Port this to new options handling
-  std::string endpoint;
-  std::string port = "8529";
-
-  if (_endpointServer->getEndpoints().size()) {
-    endpoint = _endpointServer->getEndpoints().at(0);
-    size_t pos = endpoint.find(':', 10);
-
-    if (pos != std::string::npos) {
-      port = endpoint.substr(pos + 1, endpoint.size() - pos);
-    }
-  }
-
-  endpoint = std::string("tcp://localhost:" + port);
 
   // Agency size
   if (_size < 1) {
@@ -176,8 +164,28 @@ void AgencyFeature::start() {
     return;
   }
 
+  // TODO: Port this to new options handling
+  std::string endpoint;
+  std::string port = "8529";
+
+  EndpointFeature* endpointFeature = dynamic_cast<EndpointFeature*>(
+    ApplicationServer::lookupFeature("Endpoint"));
+  auto endpoints = endpointFeature->httpEndpoints();
+
+  if (!endpoints.empty()) {
+    endpoint = endpoints[0];
+    size_t pos = endpoint.find(':', 10);
+
+    if (pos != std::string::npos) {
+      port = endpoint.substr(pos + 1, endpoint.size() - pos);
+    }
+  }
+
+//XXX #warning KAVEH why overwriting the above?????  
+  endpoint = std::string("tcp://localhost:" + port);
+
   _agent.reset(new consensus::Agent(
-      consensus::config_t(_agentId, _minElectionTimeout, _maxElectionTimeout,
+      consensus::config_t(_agentId, _minElectionTimeout, _maxElectionTimeout, endpoint,
                           _agencyEndpoints, _notify, _sanityCheck, _waitForSync)));
 
   _agent->start();

@@ -21,7 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#warning TODO name convention
+//XXX #warning KAVEH name convention
 #ifndef __ARANGODB_CONSENSUS_SANITY_CHECK__
 #define __ARANGODB_CONSENSUS_SANITY_CHECK__
 

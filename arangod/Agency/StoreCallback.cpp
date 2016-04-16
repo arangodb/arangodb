@@ -1,3 +1,5 @@
+//XXX #warning KAVEH clang-format, preamble
+
 #include "StoreCallback.h"
 
 using namespace arangodb::consensus;

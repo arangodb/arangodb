@@ -44,7 +44,7 @@ SslFeature::SslFeature(application_features::ApplicationServer* server)
       _protocol(TLS_V1),
       _options(
           (long)(SSL_OP_TLS_ROLLBACK_BUG | SSL_OP_CIPHER_SERVER_PREFERENCE)),
-      _sslEcdhCurve("prime256v1"),
+      _ecdhCurve("prime256v1"),
       _sslContext(nullptr) {
   setOptional(true);
   requiresElevatedPrivileges(false);
@@ -152,8 +152,7 @@ void SslFeature::createSslContext() {
   // set options
   SSL_CTX_set_options(_sslContext, (long)_options);
 
-  std::string sslOptions = stringifySslOptions(_sslOptions);
-  LOG(INFO) << "using SSL options: " << sslOptions;
+  LOG(INFO) << "using SSL options: " << stringifySslOptions(_options);
 
   if (!_cipherList.empty()) {
     if (SSL_CTX_set_cipher_list(_sslContext, _cipherList.c_str()) != 1) {
@@ -168,11 +167,11 @@ void SslFeature::createSslContext() {
 #if OPENSSL_VERSION_NUMBER >= 0x0090800fL
   int sslEcdhNid;
   EC_KEY* ecdhKey;
-  sslEcdhNid = OBJ_sn2nid(_sslEcdhCurve.c_str());
+  sslEcdhNid = OBJ_sn2nid(_ecdhCurve.c_str());
 
   if (sslEcdhNid == 0) {
     LOG(ERR) << "SSL error: " << lastSSLError()
-             << " Unknown curve name: " << _sslEcdhCurve;
+             << " Unknown curve name: " << _ecdhCurve;
     FATAL_ERROR_EXIT();
   }
 
@@ -180,7 +179,7 @@ void SslFeature::createSslContext() {
   ecdhKey = EC_KEY_new_by_curve_name(sslEcdhNid);
   if (ecdhKey == nullptr) {
     LOG(ERR) << "SSL error: " << lastSSLError()
-             << " Unable to create curve by name: " << _sslEcdhCurve;
+             << " Unable to create curve by name: " << _ecdhCurve;
     FATAL_ERROR_EXIT();
   }
 
@@ -249,7 +248,7 @@ void SslFeature::createSslContext() {
   }
 }
 
-std::string ApplicationEndpointServer::stringifySslOptions(
+std::string SslFeature::stringifySslOptions(
     uint64_t opts) const {
   std::string result;
 

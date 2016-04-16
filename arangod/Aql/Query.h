@@ -102,11 +102,11 @@ class Query {
   Query& operator=(Query const&) = delete;
 
  public:
-  Query(arangodb::ApplicationV8*, bool, TRI_vocbase_t*, char const*, size_t,
+  Query(bool, TRI_vocbase_t*, char const*, size_t,
         std::shared_ptr<arangodb::velocypack::Builder>,
         std::shared_ptr<arangodb::velocypack::Builder>, QueryPart);
 
-  Query(arangodb::ApplicationV8*, bool, TRI_vocbase_t*,
+  Query(bool, TRI_vocbase_t*,
         std::shared_ptr<arangodb::velocypack::Builder> const,
         std::shared_ptr<arangodb::velocypack::Builder>, QueryPart);
 
@@ -324,10 +324,6 @@ class Query {
   /// @brief query id
   TRI_voc_tick_t _id;
 
-  /// @brief application v8 used in the query, we need this for V8 context
-  /// access
-  arangodb::ApplicationV8* _applicationV8;
-
   /// @brief all nodes created in the AST - will be used for freeing them later
   std::vector<AstNode*> _nodes;
 
@@ -338,7 +334,7 @@ class Query {
   Executor* _executor;
 
   /// @brief the currently used V8 context
-  arangodb::ApplicationV8::V8Context* _context;
+  V8Context* _context;
 
   /// @brief warnings collected during execution
   std::unordered_map<std::string, Graph*> _graphs;

@@ -152,9 +152,6 @@ void InitializeRest() {
   TRI_InitializeError();
   TRI_InitializeFiles();
   TRI_InitializeMimetypes();
-  TRI_InitializeHashes();
-  Logger::initialize(false);
-  TRI_InitializeRandom();
   TRI_InitializeProcess();
 
   // use the rng so the linker does not remove it from the executable
@@ -187,9 +184,6 @@ void ShutdownRest() {
   RandomGenerator::shutdown();
 
   TRI_ShutdownProcess();
-  TRI_ShutdownHashes();
-  TRI_ShutdownRandom();
-  Logger::shutdown(true);
   TRI_ShutdownMimetypes();
   TRI_ShutdownFiles();
   TRI_ShutdownError();

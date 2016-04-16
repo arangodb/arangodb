@@ -21,8 +21,10 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
+//XXX #warning MOP nope, include guards
 #pragma once
 
+//XXX #warning MOP order, Common.h
 #include <functional>
 #include <memory>
 #include "Cluster/AgencyComm.h"

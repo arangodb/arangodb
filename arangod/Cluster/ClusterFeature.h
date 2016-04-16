@@ -29,7 +29,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
-  class AgencyCallbackRegistry;
+class AgencyCallbackRegistry;
 class HeartbeatThread;
 
 class ClusterFeature : public application_features::ApplicationFeature {
@@ -68,12 +68,17 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::string _dbserverConfig;
   std::string _coordinatorConfig;
 
+ public:
+  std::string const agencyCallbacksPath() {
+    return "/_api/agency/agency-callbacks";
+  };
+
  private:
   bool _enableCluster;
   HeartbeatThread* _heartbeatThread;
   uint64_t _heartbeatInterval;
   bool _disableHeartbeat;
-  AgencyCallbackRegistry* _agencyCallbackRegistry;
+  std::unique_ptr<AgencyCallbackRegistry> _agencyCallbackRegistry;
 };
 }
 

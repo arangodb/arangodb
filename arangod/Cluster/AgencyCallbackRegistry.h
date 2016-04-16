@@ -21,6 +21,7 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
+//XXX #warning MOP nope, include guards
 #pragma once
 
 #include "Cluster/AgencyCallback.h"

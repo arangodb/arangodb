@@ -21,7 +21,9 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
+//XXX #warning KAVEH clang-format
 #include "Store.h"
+
 #include "StoreCallback.h"
 #include "Agency/Agent.h"
 #include "Basics/ConditionLocker.h"

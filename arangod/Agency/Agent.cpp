@@ -21,30 +21,32 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
+//XXX #warning KAVEH clang-format!!!!
+
 #include "Agent.h"
+
+//XXX #warning KAVEH order!
 #include "Basics/ConditionLocker.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
+#include "RestServer/DatabaseFeature.h"
 
 #include <velocypack/Iterator.h>    
 #include <velocypack/velocypack-aliases.h> 
 
 #include <chrono>
+//XXX #warning KAVEH WHY????
 #include <iostream>
 
+using namespace arangodb::application_features;
 using namespace arangodb::velocypack;
 
 namespace arangodb {
 namespace consensus {
 
 //  Agent configuration
-Agent::Agent (TRI_server_t* server, config_t const& config,
-              ApplicationV8* applicationV8, aql::QueryRegistry* queryRegistry) 
+Agent::Agent (config_t const& config) 
     : Thread ("Agent"), 
-      _server(server), 
-      _vocbase(nullptr), 
-      _applicationV8(applicationV8), 
-      _queryRegistry(queryRegistry), 
       _config(config), 
       _last_commit_index(0) {
 
@@ -59,7 +61,7 @@ id_t Agent::id() const {
 }
 
 //  Shutdown
-Agent::~Agent () {
+Agent::~Agent() {
   shutdown();
 }
 
@@ -252,8 +254,8 @@ append_entries_t Agent::sendAppendEntriesRPC (id_t follower_id) {
        << unconfirmed[0].term << "&leaderCommit=" << _last_commit_index;
 
   // Headers
-	std::unique_ptr<std::map<std::string, std::string>> headerFields =
-	  std::make_unique<std::map<std::string, std::string> >();
+        std::unique_ptr<std::map<std::string, std::string>> headerFields =
+          std::make_unique<std::map<std::string, std::string> >();
 
   // Body
   Builder builder;
@@ -288,19 +290,18 @@ append_entries_t Agent::sendAppendEntriesRPC (id_t follower_id) {
 
 // @brief load persistent state
 bool Agent::load () {
-  TRI_vocbase_t* vocbase =
-      TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
+  DatabaseFeature* database = dynamic_cast<DatabaseFeature*>(
+    ApplicationServer::lookupFeature("Database"));
+
+  auto vocbase = database->vocbase();
 
   if (vocbase == nullptr) {
     LOG(FATAL) << "could not determine _system database";
     FATAL_ERROR_EXIT();
   }
 
-  _vocbase = vocbase;
-
   LOG_TOPIC(INFO, Logger::AGENCY) << "Loading persistent state.";
-  if (!_state.loadCollections(_vocbase, _applicationV8, _queryRegistry,
-                              _config.wait_for_sync)) {
+  if (!_state.loadCollections(vocbase, _config.wait_for_sync)) {
     LOG_TOPIC(WARN, Logger::AGENCY)
       << "Failed to load persistent state on statup.";
   }
@@ -314,7 +315,7 @@ bool Agent::load () {
   _read_db.start(this);
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Starting constituent personality.";
-  _constituent.start(_vocbase, _applicationV8, _queryRegistry);
+  _constituent.start(vocbase);
 
   if (_config.sanity_check) {
     LOG_TOPIC(INFO, Logger::AGENCY) << "Starting cluster sanity facilities";
@@ -402,11 +403,6 @@ void Agent::beginShutdown() {
   // Wake up all waiting REST handler (waitFor)
   CONDITION_LOCKER(guard, _cv);
   guard.broadcast();
-  
-  if (_vocbase != nullptr) {
-    TRI_ReleaseDatabaseServer(_server, _vocbase);
-  }
-  
 }
 
 // Becoming leader 

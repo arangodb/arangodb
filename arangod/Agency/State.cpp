@@ -21,13 +21,17 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
+#warning order
+
 #include "State.h"
+
 #include "Aql/Query.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
+#include "RestServer/DatabaseFeature.h"
 #include "VocBase/collection.h"
 #include "VocBase/vocbase.h"
 
@@ -40,15 +44,14 @@
 #include <sstream>
 #include <thread>
 
+using namespace arangodb;
+using namespace arangodb::application_features;
 using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
 using namespace arangodb::rest;
-using namespace arangodb;
 
 State::State(std::string const& end_point)
     : _vocbase(nullptr),
-      _applicationV8(nullptr),
-      _queryRegistry(nullptr),
       _end_point(end_point),
       _collections_checked(false),
       _collections_loaded(false) {
@@ -216,11 +219,8 @@ bool State::createCollection(std::string const& name) {
 
 }
 
-bool State::loadCollections(TRI_vocbase_t* vocbase, ApplicationV8* applicationV8, 
-                            aql::QueryRegistry* queryRegistry, bool waitForSync) {
+bool State::loadCollections(TRI_vocbase_t* vocbase, bool waitForSync) {
   _vocbase = vocbase;
-  _applicationV8 = applicationV8;
-  _queryRegistry = queryRegistry;
 
   _options.waitForSync = waitForSync;
   _options.silent = true;
@@ -237,15 +237,16 @@ bool State::loadCollection(std::string const& name) {
     bindVars->close();
     // ^^^ TODO: check if bindvars are actually needed
     
-    TRI_ASSERT(_applicationV8 != nullptr);
-    TRI_ASSERT(_queryRegistry != nullptr);
     std::string const aql(std::string("FOR l IN ") + name
                           + " SORT l._key RETURN l");
-    arangodb::aql::Query query(_applicationV8, false, _vocbase,
+    arangodb::aql::Query query(false, _vocbase,
                                aql.c_str(), aql.size(), bindVars, nullptr,
                                arangodb::aql::PART_MAIN);
     
-    auto queryResult = query.execute(_queryRegistry);
+    DatabaseFeature* database = dynamic_cast<DatabaseFeature*>(
+      ApplicationServer::lookupFeature("Database"));
+    
+    auto queryResult = query.execute(database->queryRegistry());
 
     if (queryResult.code != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);

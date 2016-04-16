@@ -21,25 +21,25 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
+//XXX #warning KAVEH clang-format
 #ifndef __ARANGODB_CONSENSUS_AGENCY_COMMON__
 #define __ARANGODB_CONSENSUS_AGENCY_COMMON__
 
-#warning order, quotes
+//XXX #warning KAVEH order, quotes, Common.h
 #include <Logger/Logger.h>
 #include <Basics/VelocyPackHelper.h>
-#include <Basics/random.h>
 
 #include <velocypack/Buffer.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <chrono>
 #include <initializer_list>
-#warning why?
+//XXX #warning KAVEH why?
 #include <list>
-#warning why?
+//XXX #warning KAVEH why?
 #include <string>
 #include <sstream>
-#warning why?
+//XXX #warning KAVEH why?
 #include <vector>
 
 #include <memory>
@@ -99,6 +99,7 @@ typedef std::chrono::duration<long,std::ratio<1,1000>> duration_t;     // Durati
 
 using query_t = std::shared_ptr<arangodb::velocypack::Builder>;
 
+//XXX #warning KAVEH why not in AgentConfiguration.h???
 struct AgentConfiguration {               
   id_t id;
   double min_ping;
@@ -154,6 +155,8 @@ struct AgentConfiguration {
     return ret;
   }
 };
+
+//XXX #warning KAVEH why???
 typedef AgentConfiguration config_t;
 
 struct vote_ret_t {
@@ -235,6 +238,6 @@ struct priv_rpc_ret_t {
 
 }}
 
-#warning remove
+//XXX #warning KAVEH remove
 #endif // __ARANGODB_CONSENSUS_AGENT__
 

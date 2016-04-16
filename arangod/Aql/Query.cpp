@@ -46,7 +46,6 @@
 #include "Utils/V8TransactionContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-vpack.h"
-#include "V8Server/ApplicationV8.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Graphs.h"
 #include "VocBase/vocbase.h"
@@ -134,8 +133,7 @@ std::shared_ptr<VPackBuilder> Profile::toVelocyPack() {
 bool Query::DoDisableQueryTracking = false;
 
 /// @brief creates a query
-Query::Query(arangodb::ApplicationV8* applicationV8,
-             bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
+Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
              char const* queryString, size_t queryLength,
              std::shared_ptr<VPackBuilder> bindParameters, std::shared_ptr<VPackBuilder> options, QueryPart part)
     : _id(0),
@@ -171,8 +169,7 @@ Query::Query(arangodb::ApplicationV8* applicationV8,
 }
 
 /// @brief creates a query from VelocyPack
-Query::Query(arangodb::ApplicationV8* applicationV8,
-             bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
+Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
              std::shared_ptr<VPackBuilder> const queryStruct,
              std::shared_ptr<VPackBuilder> options, QueryPart part)
     : _id(0),
@@ -253,7 +250,7 @@ Query::~Query() {
 Query* Query::clone(QueryPart part, bool withPlan) {
   std::unique_ptr<Query> clone;
 
-  clone.reset(new Query(_applicationV8, false, _vocbase, _queryString,
+  clone.reset(new Query(false, _vocbase, _queryString,
                         _queryLength, std::shared_ptr<VPackBuilder>(), _options, part));
 
   if (_plan != nullptr) {
@@ -881,6 +878,7 @@ QueryResult Query::explain() {
     enterState(FINALIZATION);
 
     QueryResult result(TRI_ERROR_NO_ERROR);
+#warning why???
     QueryRegistry localRegistry;
 
     if (allPlans()) {

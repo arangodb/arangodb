@@ -110,7 +110,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
   char const* queryString = querySlice.getString(l);
 
   arangodb::aql::Query query(
-      _applicationV8, false, _vocbase, queryString, static_cast<size_t>(l),
+      false, _vocbase, queryString, static_cast<size_t>(l),
       bindVarsBuilder,
       options,
       arangodb::aql::PART_MAIN);

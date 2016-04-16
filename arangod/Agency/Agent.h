@@ -21,6 +21,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
+//XXX #warning KAVEH clang-format
 #ifndef __ARANGODB_CONSENSUS_AGENT__
 #define __ARANGODB_CONSENSUS_AGENT__
 
@@ -35,31 +36,21 @@ struct TRI_server_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
-class ApplicationV8;
-namespace aql {
-class QueryRegistry;
-}
-
 namespace consensus {
-
 class Agent : public arangodb::Thread {
 
 public:
   /// @brief Construct with program options
-  Agent(TRI_server_t*, config_t const&, ApplicationV8*, aql::QueryRegistry*);
+  Agent(config_t const&);
 
   /// @brief Clean up
-  virtual ~Agent();
+  ~Agent();
 
   /// @brief Get current term
   term_t term() const;
 
   /// @brief Get current term
   id_t id() const;
-
-  TRI_vocbase_t* vocbase() const {
-    return _vocbase;
-  }
 
   /// @brief Vote request
   priv_rpc_ret_t requestVote(term_t, id_t, index_t, index_t, query_t const&);
@@ -146,19 +137,14 @@ public:
   Store const& spearhead() const; 
 
  private:
-  TRI_server_t* _server;
-  TRI_vocbase_t* _vocbase; 
-  ApplicationV8* _applicationV8;
-  aql::QueryRegistry* _queryRegistry;
-
   Constituent _constituent; /**< @brief Leader election delegate */
-#warning TODO name convention
+//XXX #warning KAVEH name convention
   SanityCheck _sanity_check; /**< @brief sanitychecking */
   State _state;             /**< @brief Log replica              */
   
   config_t _config;         /**< @brief Command line arguments   */
 
-#warning TODO name convention
+//XXX #warning KAVEH name convention
   std::atomic<index_t> _last_commit_index; /**< @brief Last commit index */
 
   arangodb::Mutex _uncommitedLock; /**< @brief  */
@@ -167,7 +153,7 @@ public:
   Store _read_db;   /**< @brief Read key value store */
 
   arangodb::basics::ConditionVariable _cv; /**< @brief Internal callbacks */
-#warning TODO name convention
+//XXX #warning KAVEH name convention
   arangodb::basics::ConditionVariable _rest_cv; /**< @brief Rest handler */
 
   std::vector<index_t>
