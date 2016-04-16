@@ -398,9 +398,6 @@ class Ast {
   /// @brief get the n-ary operator type equivalent for a binary operator type
   static AstNodeType NaryOperatorType(AstNodeType);
 
-  /// @brief create an AST node from JSON
-  AstNode* nodeFromJson(TRI_json_t const*, bool);
-  
   /// @brief create an AST node from vpack
   AstNode* nodeFromVPack(arangodb::velocypack::Slice const&, bool);
 
