@@ -103,8 +103,6 @@ class TraverserExpression {
     }
   }
 
-  void toJson(arangodb::basics::Json& json, TRI_memory_zone_t* zone) const;
-
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
 
   bool matchesCheck(arangodb::Transaction*, arangodb::velocypack::Slice const& element) const;

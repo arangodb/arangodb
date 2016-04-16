@@ -23,7 +23,6 @@
 
 #include "Traverser.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/json-utilities.h"
 #include "Indexes/EdgeIndex.h"
 #include "Utils/Transaction.h"
 #include "Utils/TransactionContext.h"
@@ -166,27 +165,6 @@ TraverserExpression::TraverserExpression(VPackSlice const& slice) {
   compareTo.reset(builder);
   // If this fails everything before does not leak
   varAccess = new aql::AstNode(registerNode, registerString, varNode);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief transforms the expression into json
-////////////////////////////////////////////////////////////////////////////////
-
-void TraverserExpression::toJson(arangodb::basics::Json& json,
-                                 TRI_memory_zone_t* zone) const {
-  json("isEdgeAccess", arangodb::basics::Json(isEdgeAccess))(
-       "comparisonType",
-       arangodb::basics::Json(static_cast<int32_t>(comparisonType)))(
-       "varAccess", varAccess->toJson(zone, true));
-
-  if (compareTo != nullptr) {
-    // We have to copy compareTo. The json is greedy and steals it...
-    TRI_json_t* extracted = arangodb::basics::VelocyPackHelper::velocyPackToJson(compareTo->slice());
-    if (extracted == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
-    json("compareTo", arangodb::basics::Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, extracted)));
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
