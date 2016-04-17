@@ -90,12 +90,12 @@ static int ExtractCurrentFile(unzFile uf, void* buffer, size_t const bufferSize,
   if (*filenameWithoutPath == '\0') {
     if (!skipPaths) {
       fullPath = TRI_Concatenate2File(outPath, filenameInZip);
-      bool res =
+      int res =
           TRI_CreateRecursiveDirectory(fullPath, systemError, errorMessage);
 
-      if (!res) {
+      if (res != TRI_ERROR_NO_ERROR) {
         TRI_Free(TRI_CORE_MEM_ZONE, fullPath);
-        return TRI_ERROR_SYS_ERROR;
+        return res;
       }
 
       TRI_Free(TRI_CORE_MEM_ZONE, fullPath);
@@ -139,11 +139,11 @@ static int ExtractCurrentFile(unzFile uf, void* buffer, size_t const bufferSize,
 
       // create target directory recursively
       char* d = TRI_Concatenate2File(outPath, filenameInZip);
-      bool res = TRI_CreateRecursiveDirectory(d, systemError, errorMessage);
+      int res = TRI_CreateRecursiveDirectory(d, systemError, errorMessage);
 
-      if (!res) {
+      if (res != TRI_ERROR_NO_ERROR) {
         TRI_Free(TRI_CORE_MEM_ZONE, d);
-        return err;
+        return res;
       }
 
       TRI_Free(TRI_CORE_MEM_ZONE, d);
@@ -157,12 +157,12 @@ static int ExtractCurrentFile(unzFile uf, void* buffer, size_t const bufferSize,
       char* d = TRI_Concatenate2File(outPath, filenameInZip);
       // strip filename so we only have the directory name
       char* dir = TRI_Dirname(d);
-      bool res = TRI_CreateRecursiveDirectory(dir, systemError, errorMessage);
+      int res = TRI_CreateRecursiveDirectory(dir, systemError, errorMessage);
 
-      if (!res) {
+      if (res != TRI_ERROR_NO_ERROR) {
         TRI_Free(TRI_CORE_MEM_ZONE, d);
         TRI_Free(TRI_CORE_MEM_ZONE, dir);
-        return TRI_ERROR_SYS_ERROR;
+        return res;
       }
 
       TRI_Free(TRI_CORE_MEM_ZONE, d);

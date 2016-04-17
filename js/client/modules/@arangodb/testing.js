@@ -1469,7 +1469,7 @@ function startInstance(protocol, options, addArgs, testname, tmpDir) {
         }
       });
     }
-    print("up and running in " + (time() - startTime) + " seconds");
+    print(CYAN + "up and running in " + (time() - startTime) + " seconds" + RESET);
   } catch (e) {
     print(e, e.stack);
     return false;
@@ -2511,6 +2511,8 @@ testFuncs.dfdb = function(options) {
 
   results.dfdb = executeAndWait(ARANGOD_BIN, args, options, "dfdb");
 
+  print();
+
   return results;
 };
 
@@ -2527,7 +2529,7 @@ testFuncs.dump = function(options) {
     cluster = "";
   }
 
-  print("dump tests...");
+  print(CYAN + "dump tests..." + RESET);
 
   let instanceInfo = startInstance("tcp", options, {}, "dump");
 
@@ -2540,7 +2542,7 @@ testFuncs.dump = function(options) {
     };
   }
 
-  print(Date() + ": Setting up");
+  print(CYAN + Date() + ": Setting up" + RESET);
 
   let results = {};
   results.setup = runInArangosh(options, instanceInfo,
@@ -2548,21 +2550,21 @@ testFuncs.dump = function(options) {
 
   if (checkInstanceAlive(instanceInfo, options) &&
     (results.setup.status === true)) {
-    print(Date() + ": Dump and Restore - dump");
+    print(CYAN + Date() + ": Dump and Restore - dump" + RESET);
 
     results.dump = runArangoDumpRestore(options, instanceInfo, "dump",
       "UnitTestsDumpSrc");
 
     if (checkInstanceAlive(instanceInfo, options) &&
       (results.dump.status === true)) {
-      print(Date() + ": Dump and Restore - restore");
+      print(CYAN + Date() + ": Dump and Restore - restore" + RESET);
 
       results.restore = runArangoDumpRestore(options, instanceInfo, "restore",
         "UnitTestsDumpDst");
 
       if (checkInstanceAlive(instanceInfo, options) &&
         (results.restore.status === true)) {
-        print(Date() + ": Dump and Restore - dump after restore");
+        print(CYAN + Date() + ": Dump and Restore - dump after restore" + RESET);
 
         results.test = runInArangosh(options, instanceInfo,
           makePathUnix("js/server/tests/dump/dump" + cluster + ".js"), {
@@ -2571,7 +2573,7 @@ testFuncs.dump = function(options) {
 
         if (checkInstanceAlive(instanceInfo, options) &&
           (results.test.status === true)) {
-          print(Date() + ": Dump and Restore - teardown");
+          print(CYAN + Date() + ": Dump and Restore - teardown" + RESET);
 
           results.tearDown = runInArangosh(options, instanceInfo,
             makePathUnix("js/server/tests/dump/dump-teardown" + cluster + ".js"));
@@ -2580,9 +2582,11 @@ testFuncs.dump = function(options) {
     }
   }
 
-  print("Shutting down...");
+  print(CYAN + "Shutting down..." + RESET);
   shutdownInstance(instanceInfo, options);
-  print("done.");
+  print(CYAN + "done." + RESET);
+
+  print();
 
   return results;
 };
@@ -2594,7 +2598,7 @@ testFuncs.dump = function(options) {
 testFuncs.dump_authentication = function(options) {
   if (options.cluster) {
     if (options.extremeVerbosity) {
-      print("Skipped because of cluster.");
+      print(CYAN + "Skipped because of cluster." + RESET);
     }
 
     return {
@@ -2606,7 +2610,7 @@ testFuncs.dump_authentication = function(options) {
     };
   }
 
-  print("dump_authentication tests...");
+  print(CYAN + "dump_authentication tests..." + RESET);
 
   const auth1 = {
     "server.authentication": "true"
@@ -2615,8 +2619,6 @@ testFuncs.dump_authentication = function(options) {
   const auth2 = {
     "server.authentication": "true"
   };
-
-  print(JSON.stringify(auth1));
 
   let instanceInfo = startInstance("tcp", options, auth1, "dump_authentication");
 
@@ -2629,7 +2631,7 @@ testFuncs.dump_authentication = function(options) {
     };
   }
 
-  print(Date() + ": Setting up");
+  print(CYAN + Date() + ": Setting up" + RESET);
 
   let results = {};
   results.setup = runInArangosh(options, instanceInfo,
@@ -2638,7 +2640,7 @@ testFuncs.dump_authentication = function(options) {
 
   if (checkInstanceAlive(instanceInfo, options) &&
     (results.setup.status === true)) {
-    print(Date() + ": Dump and Restore - dump");
+    print(CYAN + Date() + ": Dump and Restore - dump" + RESET);
 
     let authOpts = {
       username: "foobaruser",
@@ -2652,14 +2654,14 @@ testFuncs.dump_authentication = function(options) {
 
     if (checkInstanceAlive(instanceInfo, options) &&
       (results.dump.status === true)) {
-      print(Date() + ": Dump and Restore - restore");
+      print(CYAN + Date() + ": Dump and Restore - restore" + RESET);
 
       results.restore = runArangoDumpRestore(authOpts, instanceInfo, "restore",
         "UnitTestsDumpDst");
 
       if (checkInstanceAlive(instanceInfo, options) &&
         (results.restore.status === true)) {
-        print(Date() + ": Dump and Restore - dump after restore");
+        print(CYAN + Date() + ": Dump and Restore - dump after restore" + RESET);
 
         results.test = runInArangosh(authOpts, instanceInfo,
           makePathUnix("js/server/tests/dump/dump-authentication.js"), {
@@ -2668,7 +2670,7 @@ testFuncs.dump_authentication = function(options) {
 
         if (checkInstanceAlive(instanceInfo, options) &&
           (results.test.status === true)) {
-          print(Date() + ": Dump and Restore - teardown");
+          print(CYAN + Date() + ": Dump and Restore - teardown" + RESET);
 
           results.tearDown = runInArangosh(options, instanceInfo,
             makePathUnix("js/server/tests/dump/dump-teardown.js"), auth2);
@@ -2677,9 +2679,11 @@ testFuncs.dump_authentication = function(options) {
     }
   }
 
-  print("Shutting down...");
+  print(CYAN + "Shutting down..." + RESET);
   shutdownInstance(instanceInfo, options);
-  print("done.");
+  print(CYAN + "done." + RESET);
+
+  print();
 
   return results;
 };
@@ -2912,7 +2916,7 @@ function runArangodRecovery(instanceInfo, options, script, setup) {
     args["wal.reserve-logfiles"] = 1;
     args["database.directory"] = instanceInfo.tmpDataDir;
 
-    instanceInfo.recoveryArgv = toArgv(args).concat(["--no-server"]);
+    instanceInfo.recoveryArgv = toArgv(args).concat(["--server.rest-server", "false"]);
   }
 
   let argv = instanceInfo.recoveryArgv;

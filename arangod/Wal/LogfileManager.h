@@ -107,7 +107,7 @@ class LogfileManager {
   static void initialize(std::string*, TRI_server_t*);
 
  public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions> options);
+  static void collectOptions(std::shared_ptr<options::ProgramOptions> options);
   bool prepare();
   bool open();
   bool start();
@@ -140,12 +140,6 @@ class LogfileManager {
 
   /// @brief set the number of historic logfiles
   inline void historicLogfiles(uint32_t value) { _historicLogfiles = value; }
-
-  /// @brief whether or not shape information should be suppress when writing
-  /// markers into the write-ahead log
-  inline bool suppressShapeInformation() const {
-    return _suppressShapeInformation;
-  }
 
   /// @brief whether or not there was a SHUTDOWN file with a tick value
   /// at server start
@@ -443,36 +437,27 @@ class LogfileManager {
   /// @brief the arangod config variable containing the database path
   std::string* _databasePath;
 
-  std::string _directory;
-
   /// @brief state during recovery
   RecoverState* _recoverState;
 
-  uint32_t _filesize;
-
-  uint32_t _reserveLogfiles;
-
-  uint32_t _historicLogfiles;
-
   /// @brief maximum number of parallel open logfiles
-  uint32_t _maxOpenLogfiles;
 
-  uint32_t _numberOfSlots;
-
-  uint64_t _syncInterval;
 
   /// @brief maximum wait time for write-throttling
-  uint64_t _maxThrottleWait;
 
-  uint64_t _throttleWhenPending;
-
-  bool _allowOversizeEntries;
-
-  bool _ignoreLogfileErrors;
-
-  bool _ignoreRecoveryErrors;
-
-  bool _suppressShapeInformation;
+#warning JAN this should be non-static, but the singleton cannot be created before 'start'
+  static bool _allowOversizeEntries;
+  static std::string _directory;
+  static uint32_t _historicLogfiles;
+  static bool _ignoreLogfileErrors;
+  static bool _ignoreRecoveryErrors;
+  static uint32_t _filesize;
+  static uint32_t _maxOpenLogfiles;
+  static uint32_t _reserveLogfiles;
+  static uint32_t _numberOfSlots;
+  static uint64_t _syncInterval;
+  static uint64_t _throttleWhenPending;
+  static uint64_t _maxThrottleWait;
 
   /// @brief whether or not writes to the WAL are allowed
   bool _allowWrites;

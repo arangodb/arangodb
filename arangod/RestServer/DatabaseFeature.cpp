@@ -132,6 +132,8 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--query.cache-entries",
                      "maximum number of results in query cache per database",
                      new UInt64Parameter(&_queryCacheEntries));
+
+  wal::LogfileManager::collectOptions(options);
 }
 
 void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {

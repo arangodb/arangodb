@@ -79,23 +79,25 @@ static inline uint32_t MinSlots() { return 1024 * 8; }
 /// @brief maximum number of slots
 static inline uint32_t MaxSlots() { return 1024 * 1024 * 16; }
 
+#warning JAN should not be static
+bool LogfileManager::_allowOversizeEntries = true;
+std::string LogfileManager::_directory;
+uint32_t LogfileManager::_historicLogfiles = 10;
+bool LogfileManager::_ignoreLogfileErrors = false;
+bool LogfileManager::_ignoreRecoveryErrors = false;
+uint32_t LogfileManager::_filesize = 32 * 1024 * 1024;
+uint32_t LogfileManager::_maxOpenLogfiles = 0;
+uint32_t LogfileManager::_reserveLogfiles = 4;
+uint32_t LogfileManager::_numberOfSlots = 1048576;
+uint64_t LogfileManager::_syncInterval = 100;
+uint64_t LogfileManager::_throttleWhenPending = 0;
+uint64_t LogfileManager::_maxThrottleWait = 15000;
+
 /// @brief create the logfile manager
 LogfileManager::LogfileManager(TRI_server_t* server, std::string* databasePath)
     : _server(server),
       _databasePath(databasePath),
-      _directory(),
       _recoverState(nullptr),
-      _filesize(32 * 1024 * 1024),
-      _reserveLogfiles(4),
-      _historicLogfiles(10),
-      _maxOpenLogfiles(0),
-      _numberOfSlots(1048576),
-      _syncInterval(100),
-      _maxThrottleWait(15000),
-      _throttleWhenPending(0),
-      _allowOversizeEntries(true),
-      _ignoreLogfileErrors(false),
-      _ignoreRecoveryErrors(false),
       _allowWrites(false),  // start in read-only mode
       _hasFoundLastTick(false),
       _inRecovery(true),
@@ -203,12 +205,6 @@ void LogfileManager::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addHiddenOption("--wal.slots", "number of logfile slots to use",
                            new UInt32Parameter(&_numberOfSlots));
 
-  options->addHiddenOption(
-      "--wal.suppress-shape-information",
-      "do not write shape information for markers (saves a lot of disk space, "
-      "but effectively disables using the write-ahead log for replication)",
-      new BooleanParameter(&_suppressShapeInformation));
-
   options->addOption(
       "--wal.sync-interval",
       "interval for automatic, non-requested disk syncs (in milliseconds)",
@@ -243,10 +239,10 @@ bool LogfileManager::prepare() {
       std::string systemErrorStr;
       long errorNo;
 
-      bool res = TRI_CreateRecursiveDirectory(_directory.c_str(), errorNo,
-                                              systemErrorStr);
+      int res = TRI_CreateRecursiveDirectory(_directory.c_str(), errorNo,
+                                             systemErrorStr);
 
-      if (res) {
+      if (res == TRI_ERROR_NO_ERROR) {
         LOG(INFO) << "created database directory '" << _directory << "'.";
       } else {
         LOG(FATAL) << "unable to create database directory: " << systemErrorStr;
@@ -518,20 +514,19 @@ void LogfileManager::stop() {
 
   // set WAL to read-only mode
   allowWrites(false);
-  
+
   // finalize allocator thread
   // this prevents creating new (empty) WAL logfile once we flush
   // current logfile
   stopAllocatorThread();
   if (_allocatorThread != nullptr) {
     LOG(TRACE) << "stopping allocator thread";
-    while (_allocatorThread->isRunning()) { 
-      usleep(10000); 
+    while (_allocatorThread->isRunning()) {
+      usleep(10000);
     }
     delete _allocatorThread;
     _allocatorThread = nullptr;
   }
-
 
   // do a final flush at shutdown
   this->flush(true, true, false);
@@ -541,35 +536,34 @@ void LogfileManager::stop() {
   stopRemoverThread();
   stopCollectorThread();
   stopSynchronizerThread();
-   
-  // physically destroy all threads 
+
+  // physically destroy all threads
   if (_removerThread != nullptr) {
     LOG(TRACE) << "stopping remover thread";
-    while (_removerThread->isRunning()) { 
-      usleep(10000); 
+    while (_removerThread->isRunning()) {
+      usleep(10000);
     }
     delete _removerThread;
     _removerThread = nullptr;
   }
-  
+
   if (_collectorThread != nullptr) {
     LOG(TRACE) << "stopping collector thread";
-    while (_collectorThread->isRunning()) { 
-      usleep(10000); 
+    while (_collectorThread->isRunning()) {
+      usleep(10000);
     }
     delete _collectorThread;
     _collectorThread = nullptr;
   }
-  
+
   if (_synchronizerThread != nullptr) {
     LOG(TRACE) << "stopping synchronizer thread";
-    while (_synchronizerThread->isRunning()) { 
-      usleep(10000); 
+    while (_synchronizerThread->isRunning()) {
+      usleep(10000);
     }
     delete _synchronizerThread;
     _synchronizerThread = nullptr;
   }
-
 
   // close all open logfiles
   LOG(TRACE) << "closing logfiles";
@@ -752,8 +746,8 @@ SlotInfo LogfileManager::allocate(uint32_t size) {
 }
 
 /// @brief allocate space in a logfile for later writing
-SlotInfo LogfileManager::allocate(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-                                  uint32_t size) {
+SlotInfo LogfileManager::allocate(TRI_voc_tick_t databaseId,
+                                  TRI_voc_cid_t collectionId, uint32_t size) {
   if (!_allowWrites) {
     // no writes allowed
     return SlotInfo(TRI_ERROR_ARANGO_READ_ONLY);
@@ -932,7 +926,8 @@ bool LogfileManager::waitForSync(double maxWait) {
   while (true) {
     // fill the state
     LogfileManagerState state;
-    _slots->statistics(state.lastAssignedTick, state.lastCommittedTick, state.lastCommittedDataTick, state.numEvents);
+    _slots->statistics(state.lastAssignedTick, state.lastCommittedTick,
+                       state.lastCommittedDataTick, state.numEvents);
 
     if (lastAssignedTick == 0) {
       // get last assigned tick only once
@@ -1583,7 +1578,8 @@ LogfileManagerState LogfileManager::state() {
   LogfileManagerState state;
 
   // now fill the state
-  _slots->statistics(state.lastAssignedTick, state.lastCommittedTick, state.lastCommittedDataTick, state.numEvents);
+  _slots->statistics(state.lastAssignedTick, state.lastCommittedTick,
+                     state.lastCommittedDataTick, state.numEvents);
   state.timeString = getTimeString();
 
   return state;

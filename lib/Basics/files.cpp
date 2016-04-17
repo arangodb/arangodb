@@ -446,8 +446,8 @@ int TRI_MTimeFile(char const* path, int64_t* mtime) {
 /// @brief creates a directory, recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CreateRecursiveDirectory(char const* path, long& systemError,
-                                  std::string& systemErrorStr) {
+int TRI_CreateRecursiveDirectory(char const* path, long& systemError,
+                                 std::string& systemErrorStr) {
   char* copy;
   char* p;
   char* s;
@@ -468,6 +468,7 @@ bool TRI_CreateRecursiveDirectory(char const* path, long& systemError,
 #endif
         *p = '\0';
         res = TRI_CreateDirectory(copy, systemError, systemErrorStr);
+
         if ((res == TRI_ERROR_FILE_EXISTS) || (res == TRI_ERROR_NO_ERROR)) {
           res = TRI_ERROR_NO_ERROR;
           *p = TRI_DIR_SEPARATOR_CHAR;
@@ -477,6 +478,7 @@ bool TRI_CreateRecursiveDirectory(char const* path, long& systemError,
         }
       }
     }
+
     p++;
   }
 
@@ -490,7 +492,7 @@ bool TRI_CreateRecursiveDirectory(char const* path, long& systemError,
 
   TRI_Free(TRI_CORE_MEM_ZONE, copy);
 
-  return res == TRI_ERROR_NO_ERROR;
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2176,11 +2178,11 @@ int TRI_GetTempName(char const* directory, char** result, bool const createFile,
   // remove trailing PATH_SEPARATOR
   RemoveTrailingSeparator(dir);
 
-  bool res = TRI_CreateRecursiveDirectory(dir, systemError, errorMessage);
+  int res = TRI_CreateRecursiveDirectory(dir, systemError, errorMessage);
 
-  if (!res) {
+  if (res != TRI_ERROR_NO_ERROR) {
     TRI_Free(TRI_CORE_MEM_ZONE, dir);
-    return TRI_ERROR_SYS_ERROR;
+    return res;
   }
 
   if (!TRI_IsDirectory(dir)) {
