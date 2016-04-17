@@ -78,11 +78,11 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   if (!_upgrade) {
-    LOG(TRACE) << "executing upgrade check: not disable server features";
+    LOG(TRACE) << "executing upgrade check: not disabling server features";
     return;
   }
 
-  LOG(TRACE) << "executing upgrade procedure: disable server features";
+  LOG(TRACE) << "executing upgrade procedure: disabling server features";
 
   ApplicationServer::disableFeatures(_nonServerFeatures);
 

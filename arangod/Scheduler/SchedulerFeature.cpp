@@ -105,7 +105,7 @@ void SchedulerFeature::start() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
 
   buildScheduler();
-  buildControlCHandler();
+  buildHangupHandler();
 
   bool ok = _scheduler->start(nullptr);
 
@@ -286,7 +286,7 @@ void SchedulerFeature::buildControlCHandler() {
     }
   }
 #else
-  {
+  if (_scheduler != nullptr) {
     Task* controlC = new ControlCTask(server());
 
     int res = _scheduler->registerTask(controlC);
@@ -296,8 +296,9 @@ void SchedulerFeature::buildControlCHandler() {
     }
   }
 #endif
+}
 
-// hangup handler
+void SchedulerFeature::buildHangupHandler() {
 #ifndef WIN32
   {
     Task* hangup = new HangupTask();

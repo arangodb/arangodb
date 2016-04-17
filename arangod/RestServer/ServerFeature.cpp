@@ -169,7 +169,7 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 void ServerFeature::start() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
 
-  if (_operationMode != OperationMode::MODE_CONSOLE) {
+  if (_operationMode != OperationMode::MODE_CONSOLE && _restServer) {
     auto scheduler = dynamic_cast<SchedulerFeature*>(
         ApplicationServer::lookupFeature("Scheduler"));
 
@@ -189,10 +189,24 @@ void ServerFeature::start() {
 
   *_result = EXIT_SUCCESS;
 
-  if (_operationMode == OperationMode::MODE_UNITTESTS) {
-    *_result = runUnitTests();
-  } else if (_operationMode == OperationMode::MODE_SCRIPT) {
-    *_result = runScript();
+  switch (_operationMode) {
+    case OperationMode::MODE_UNITTESTS:
+      LOG_TOPIC(TRACE, Logger::STARTUP) << "server about to run unit-tests";
+      *_result = runUnitTests();
+      break;
+
+    case OperationMode::MODE_SCRIPT:
+      LOG_TOPIC(TRACE, Logger::STARTUP) << "server about to run scripts";
+      *_result = runScript();
+      break;
+
+    case OperationMode::MODE_CONSOLE:
+      LOG_TOPIC(TRACE, Logger::STARTUP) << "server operation mode: CONSOLE";
+      break;
+
+    case OperationMode::MODE_SERVER:
+      LOG_TOPIC(TRACE, Logger::STARTUP) << "server operation mode: SERVER";
+      break;
   }
 }
 
@@ -297,6 +311,7 @@ int ServerFeature::runScript() {
     {
       v8::Context::Scope contextScope(localContext);
       for (auto script : _scripts) {
+        LOG(TRACE) << "executing script '" << script << "'";
         bool r = TRI_ExecuteGlobalJavaScriptFile(isolate, script.c_str(), true);
 
         if (!r) {

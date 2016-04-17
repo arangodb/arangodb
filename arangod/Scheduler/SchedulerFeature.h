@@ -57,6 +57,7 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   size_t concurrency() const { return static_cast<size_t>(_nrSchedulerThreads); }
   void setProcessorAffinity(std::vector<size_t> const& cores);
   void buildControlCHandler();
+  void buildHangupHandler();
 
  private:
   void buildScheduler();

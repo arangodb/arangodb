@@ -104,17 +104,21 @@ function resultsToXml(results, baseName, cluster) {
             failures: failuresFound,
             tests: total,
             name: xmlName,
-            time: current.duration
+            time: 0 + current.duration
           });
+
+          let seen = false;
 
           for (let oneTestName in current) {
             if (isSignificant(current, oneTestName)) {
               const oneTest = current[oneTestName];
               const success = (oneTest.status === true);
 
+              seen = true;
+
               xml.elem("testcase", {
                 name: clprefix + oneTestName,
-                time: oneTest.duration
+                time: 0 + oneTest.duration
               }, success);
 
               if (!success) {
@@ -126,18 +130,11 @@ function resultsToXml(results, baseName, cluster) {
             }
           }
 
-          if (!current.status) {
+          if (!seen) {
             xml.elem("testcase", {
               name: 'all tests in ' + xmlName,
-              time: current.duration
-            }, false);
-
-            xml.elem("failure");
-            xml.text('<![CDATA[' +
-              JSON.stringify(current.message || "unknown failure reason") +
-              ']]>\n');
-            xml.elem("/failure");
-            xml.elem("/testcase");
+              time: 0 + current.duration
+            }, 0 < failuresFound);
           }
 
           xml.elem("/testsuite");

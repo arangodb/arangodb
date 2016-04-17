@@ -71,7 +71,7 @@ const optionsDocumentation = [
   '   - `skipAql`: if set to true the AQL tests are skipped',
   '   - `skipArangoBNonConnKeepAlive`: if set to true benchmark do not use keep-alive',
   '   - `skipArangoB`: if set to true benchmark tests are skipped',
-  '   - `skipAuth : testing authentication and authentication_paramaters will be skipped.',
+  '   - `skipAuthenication : testing authentication and authentication_paramaters will be skipped.',
   '   - `skipBoost`: if set to true the boost unittests are skipped',
   '   - `skipConfig`: omit the noisy configuration tests',
   '   - `skipFoxxQueues`: omit the test for the foxx queues',
@@ -151,6 +151,7 @@ const optionsDefaults = {
   "skipAql": false,
   "skipArangoB": false,
   "skipArangoBNonConnKeepAlive": true,
+  "skipAuthenication": false,
   "skipBoost": false,
   "skipGeo": false,
   "skipLogAnalysis": false,
@@ -979,6 +980,10 @@ function runInArangosh(options, instanceInfo, file, addArgs) {
   let args = makeArgsArangosh(options);
   args["server.endpoint"] = instanceInfo.endpoint;
   args["javascript.unit-tests"] = fs.join(TOP_DIR, file);
+
+  if (!options.verbose) {
+    args["log.level"] = "warning";
+  }
 
   if (addArgs !== undefined) {
     args = _.extend(args, addArgs);
@@ -1871,9 +1876,18 @@ let testFuncs = {
 
 testFuncs.arangosh = function(options) {
   let ret = {
-    "testArangoshExitCodeFail": { status: true, total: 0 },
-    "testArangoshExitCodeSuccess": { status: true, total: 0 },
-    "testArangoshShebang": { status: true, total: 0 },
+    "testArangoshExitCodeFail": {
+      status: true,
+      total: 0
+    },
+    "testArangoshExitCodeSuccess": {
+      status: true,
+      total: 0
+    },
+    "testArangoshShebang": {
+      status: true,
+      total: 0
+    },
   };
 
   print("--------------------------------------------------------------------------------");
@@ -1882,7 +1896,7 @@ testFuncs.arangosh = function(options) {
 
   let args = makeArgsArangosh(options);
   args["javascript.execute-string"] = "throw('foo')";
-  args["log.level"] = "fatal";
+  args["log.level"] = "error";
 
   const startTime = time();
   let rc = executeExternalAndWait(ARANGOSH_BIN, toArgv(args));
@@ -1905,7 +1919,7 @@ testFuncs.arangosh = function(options) {
   print("--------------------------------------------------------------------------------");
 
   args["javascript.execute-string"] = ";";
-  args["log.level"] = "fatal";
+  args["log.level"] = "warning";
 
   const startTime2 = time();
   rc = executeExternalAndWait(ARANGOSH_BIN, toArgv(args));
@@ -2096,11 +2110,11 @@ testFuncs.arangob = function(options) {
   }
 
   let results = {};
-
   let continueTesting = true;
 
   for (let i = 0; i < benchTodos.length; i++) {
     const benchTodo = benchTodos[i];
+    const name = "case" + i;
 
     if ((options.skipArangoBNonConnKeepAlive) &&
       benchTodo.hasOwnProperty('keep-alive') &&
@@ -2134,8 +2148,6 @@ testFuncs.arangob = function(options) {
       let oneResult = runArangoBenchmark(options, instanceInfo, args);
       print();
 
-      let name = "case" + i;
-
       results[name] = oneResult;
       results[name].total++;
 
@@ -2163,7 +2175,7 @@ testFuncs.arangob = function(options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.authentication = function(options) {
-  if (options.skipAuth === true) {
+  if (options.skipAuthenication === true) {
     print("skipping Authentication tests!");
 
     return {
@@ -2174,7 +2186,7 @@ testFuncs.authentication = function(options) {
     };
   }
 
-  print("Authentication tests...");
+  print(CYAN + "Authentication tests..." + RESET);
 
   let instanceInfo = startInstance("tcp", options, {
     "server.authentication": "true"
@@ -2194,9 +2206,11 @@ testFuncs.authentication = function(options) {
   results.authentication = runInArangosh(options, instanceInfo,
     fs.join("js", "client", "tests", "auth.js"));
 
-  print("Shutting down...");
+  print(CYAN + "Shutting down..." + RESET);
   shutdownInstance(instanceInfo, options);
-  print("done.");
+  print(CYAN + "done." + RESET);
+
+  print();
 
   return results;
 };
@@ -2229,13 +2243,13 @@ const authTestNames = [
 
 const authTestServerParams = [{
   "server.authentication": "true",
-  "server.authenticate-system-only": "false"
+  "server.authentication-system-only": "false"
 }, {
   "server.authentication": "true",
-  "server.authenticate-system-only": "true"
+  "server.authentication-system-only": "true"
 }, {
   "server.authentication": "false",
-  "server.authenticate-system-only": "true"
+  "server.authentication-system-only": "true"
 }];
 
 function checkBodyForJsonToParse(request) {
@@ -2245,8 +2259,8 @@ function checkBodyForJsonToParse(request) {
 }
 
 testFuncs.authentication_parameters = function(options) {
-  if (options.skipAuth === true) {
-    print("skipping Authentication with parameters tests!");
+  if (options.skipAuthenication === true) {
+    print(CYAN + "skipping Authentication with parameters tests!" + RESET);
     return {
       authentication_parameters: {
         status: true,
@@ -2255,7 +2269,7 @@ testFuncs.authentication_parameters = function(options) {
     };
   }
 
-  print("Authentication with parameters tests...");
+  print(CYAN + "Authentication with parameters tests..." + RESET);
 
   let downloadOptions = {
     followRedirects: false,
@@ -2285,7 +2299,7 @@ testFuncs.authentication_parameters = function(options) {
       };
     }
 
-    print(Date() + " Starting " + authTestNames[test] + " test");
+    print(CYAN + Date() + " Starting " + authTestNames[test] + " test" + RESET);
 
     const testName = 'auth_' + authTestNames[test];
     results[testName] = {
@@ -2298,10 +2312,10 @@ testFuncs.authentication_parameters = function(options) {
 
       ++results[testName].total;
 
-      print("  URL: " + instanceInfo.url + authTestUrl);
+      print(CYAN + "  URL: " + instanceInfo.url + authTestUrl + RESET);
 
       if (!continueTesting) {
-        print("Skipping " + authTestUrl + ", server is gone.");
+        print(RED + "Skipping " + authTestUrl + ", server is gone." + RESET);
 
         results[testName][authTestUrl] = {
           status: false,
@@ -2339,10 +2353,12 @@ testFuncs.authentication_parameters = function(options) {
 
     results[testName].status = results[testName].failed === 0;
 
-    print("Shutting down " + authTestNames[test] + " test...");
+    print(CYAN + "Shutting down " + authTestNames[test] + " test..." + RESET);
     shutdownInstance(instanceInfo, options);
-    print("done with " + authTestNames[test] + " test.");
+    print(CYAN + "done with " + authTestNames[test] + " test." + RESET);
   }
+
+  print();
 
   return results;
 };
@@ -2392,11 +2408,13 @@ testFuncs.config = function(options) {
   let results = {
     absolut: {
       status: true,
-      total: 0
+      total: 0,
+      duration: 0
     },
     relative: {
       status: true,
-      total: 0
+      total: 0,
+      duration: 0
     }
   };
 
@@ -2411,6 +2429,8 @@ testFuncs.config = function(options) {
   print("--------------------------------------------------------------------------------");
   print("absolute config tests");
   print("--------------------------------------------------------------------------------");
+
+  let startTime = time();
 
   for (let i = 0; i < ts.length; i++) {
     const test = ts[i];
@@ -2438,9 +2458,13 @@ testFuncs.config = function(options) {
     }
   }
 
+  results.absolut.duration = time() - startTime;
+
   print("\n--------------------------------------------------------------------------------");
   print("relative config tests");
   print("--------------------------------------------------------------------------------");
+
+  startTime = time();
 
   for (let i = 0; i < ts.length; i++) {
     const test = ts[i];
@@ -2468,6 +2492,8 @@ testFuncs.config = function(options) {
     }
   }
 
+  results.relative.duration = time() - startTime;
+
   print();
 
   return results;
@@ -2479,7 +2505,7 @@ testFuncs.config = function(options) {
 
 testFuncs.dfdb = function(options) {
   const dataDir = fs.getTempFile();
-  const args = ["-c", "etc/relative/arango-dfdb.conf", "--no-server", dataDir];
+  const args = ["-c", "etc/relative/arango-dfdb.conf", dataDir];
 
   let results = {};
 
@@ -3734,8 +3760,7 @@ function unitTestPrettyPrintResults(r) {
 
         if (details.skipped) {
           print(YELLOW + "    [SKIPPED] " + name + RESET);
-        }
-        else {
+        } else {
           print(GREEN + "    [SUCCESS] " + name + RESET);
         }
       }
