@@ -330,7 +330,26 @@ function optimizerRuleTestSuite () {
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), plan[0]);
         assertEqual(plan[1], helper.getCompactPlan(result).map(function(node) { return node.type; }), plan[0]);
       });
-    }
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test generated results
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testResults : function () {
+      var queries = [ 
+        [ "FOR doc IN [ { a: 1, b: 2 }, { a: 2, b: 4 } ] LET a = doc.a RETURN a * 2", [ 2, 4 ] ],
+        [ "FOR doc IN [ { a: 1, b: 2 }, { a: 2, b: 4 } ] LET a = doc.a * 2 RETURN a * 2", [ 4, 8 ] ],
+        [ "FOR doc IN [ { a: 1, b: 2 }, { a: 2, b: 4 } ] LET a = doc RETURN a.a", [ 1, 2 ] ]
+      ];
+      queries.forEach(function(query) {
+        var result = AQL_EXPLAIN(query[0]);
+        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+
+        result = AQL_EXECUTE(query[0]).json;
+        assertEqual(query[1], result, query);
+      });
+    },
 
   };
 }
