@@ -3982,7 +3982,12 @@ function unitTest(cases, options) {
       yaml.safeDump(cleanupDirectories));
   }
 
-  yaml.safeDump(results);
+  try {
+    yaml.safeDump(results);
+  } catch (err) {
+    print(RED + "cannot dump results: " + String(err) + RESET);
+    print(CYAN + require("internal").inspect(results) + RESET);
+  }
 
   if (jsonReply === true) {
     return results;
