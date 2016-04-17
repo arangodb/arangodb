@@ -51,6 +51,7 @@ SchedulerFeature::SchedulerFeature(
       _scheduler(nullptr) {
   setOptional(true);
   requiresElevatedPrivileges(false);
+  startsAfter("Database");
   startsAfter("FileDescriptors");
   startsAfter("Logger");
   startsAfter("WorkMonitor");

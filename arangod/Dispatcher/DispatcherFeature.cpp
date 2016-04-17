@@ -47,6 +47,7 @@ DispatcherFeature::DispatcherFeature(
       _dispatcher(nullptr) {
   setOptional(true);
   requiresElevatedPrivileges(false);
+  startsAfter("Database");
   startsAfter("FileDescriptors");
   startsAfter("Logger");
   startsAfter("Scheduler");
