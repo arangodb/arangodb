@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, AQL_EXECUTE */
+/*global assertEqual, assertFalse, assertTrue, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
@@ -62,12 +62,74 @@ function rangesSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test range as result
+////////////////////////////////////////////////////////////////////////////////
+
+    testRangeAsResultReversed : function () {
+      var actual = AQL_EXECUTE("RETURN 9..1").json;
+      assertEqual([ 9, 8, 7, 6, 5, 4, 3, 2, 1 ], actual[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test range as result
+////////////////////////////////////////////////////////////////////////////////
+
+    testRangeInInExpressionWrong : function () {
+      for (var i = 0; i <= 10; ++i) {
+        var actual = AQL_EXECUTE("RETURN 1..9 IN " + i).json;
+        assertFalse(actual[0]);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test range as result
+////////////////////////////////////////////////////////////////////////////////
+
+    testRangeInInExpression : function () {
+      for (var i = 0; i <= 10; ++i) {
+        var actual = AQL_EXECUTE("RETURN " + i + " IN 1..9").json;
+        var expected = (i !== 0 && i !== 10);
+        assertEqual(expected, actual[0]);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test range as result
+////////////////////////////////////////////////////////////////////////////////
+
+    testRangeInNotInExpression : function () {
+      for (var i = 0; i <= 10; ++i) {
+        var actual = AQL_EXECUTE("RETURN " + i + " NOT IN 1..9").json;
+        var expected = (i === 0 || i === 10);
+        assertEqual(expected, actual[0]);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test range as result
+////////////////////////////////////////////////////////////////////////////////
+
+    testRangeInEqualityExpression : function () {
+      var actual = AQL_EXECUTE("RETURN 1..9 == 1..9").json;
+      assertTrue(actual[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test range as a function parameter
 ////////////////////////////////////////////////////////////////////////////////
 
     testRangeAsFunctionParameter1 : function () {
       var actual = AQL_EXECUTE("RETURN IS_STRING(1..73)").json;
-      assertEqual(false, actual[0]);
+      assertFalse(actual[0]);
+      
+      actual = AQL_EXECUTE("RETURN NOOPT(IS_STRING(1..73))").json;
+      assertFalse(actual[0]);
+      
+      actual = AQL_EXECUTE("RETURN IS_ARRAY(1..73)").json;
+      assertTrue(actual[0]);
+      
+      actual = AQL_EXECUTE("RETURN NOOPT(IS_ARRAY(1..73))").json;
+      assertTrue(actual[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -76,6 +138,9 @@ function rangesSuite () {
 
     testRangeAsFunctionParameter2 : function () {
       var actual = AQL_EXECUTE("RETURN MAX(1..73)").json;
+      assertEqual(73, actual[0]);
+
+      actual = AQL_EXECUTE("RETURN NOOPT(MAX(1..73))").json;
       assertEqual(73, actual[0]);
     },
 
@@ -86,6 +151,9 @@ function rangesSuite () {
     testRangeAsFunctionParameter3 : function () {
       var actual = AQL_EXECUTE("RETURN LENGTH(1..73)").json;
       assertEqual(73, actual[0]);
+      
+      actual = AQL_EXECUTE("RETURN NOOPT(LENGTH(1..73))").json;
+      assertEqual(73, actual[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -94,6 +162,9 @@ function rangesSuite () {
 
     testFunctionRange : function () {
       var actual = AQL_EXECUTE("RETURN FLOOR(1) .. FLOOR(10)").json;
+      assertEqual([ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ], actual[0]);
+      
+      actual = AQL_EXECUTE("RETURN NOOPT(FLOOR(1) .. FLOOR(10))").json;
       assertEqual([ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ], actual[0]);
     },
 
