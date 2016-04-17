@@ -61,6 +61,7 @@ class SimpleTraverserExpression
 class TraversalNode : public ExecutionNode {
   friend class ExecutionBlock;
   friend class TraversalCollectionBlock;
+  friend class RedundantCalculationsReplacer;
 
   /// @brief constructor with a vocbase and a collection name
  public:

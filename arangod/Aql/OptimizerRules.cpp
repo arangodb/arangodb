@@ -1370,6 +1370,11 @@ class arangodb::aql::RedundantCalculationsReplacer final
         replaceInVariable<FilterNode>(en);
         break;
       }
+      
+      case EN::TRAVERSAL: {
+        replaceInVariable<TraversalNode>(en);
+        break;
+      }
 
       case EN::COLLECT: {
         auto node = static_cast<CollectNode*>(en);
@@ -1395,6 +1400,55 @@ class arangodb::aql::RedundantCalculationsReplacer final
         auto node = static_cast<SortNode*>(en);
         for (auto& variable : node->_elements) {
           variable.first = Variable::replace(variable.first, _replacements);
+        }
+        break;
+      }
+
+      case EN::REMOVE: {
+        replaceInVariable<RemoveNode>(en);
+        break;
+      }
+
+      case EN::INSERT: {
+        replaceInVariable<InsertNode>(en);
+        break;
+      }
+      
+      case EN::UPSERT: {
+        auto node = static_cast<UpsertNode*>(en);
+
+        if (node->_inDocVariable != nullptr) {
+          node->_inDocVariable = Variable::replace(node->_inDocVariable, _replacements);
+        }
+        if (node->_insertVariable != nullptr) {
+          node->_insertVariable = Variable::replace(node->_insertVariable, _replacements);
+        }
+        if (node->_updateVariable != nullptr) {
+          node->_updateVariable = Variable::replace(node->_updateVariable, _replacements);
+        }
+        break;
+      }
+
+      case EN::UPDATE: {
+        auto node = static_cast<UpdateNode*>(en);
+
+        if (node->_inDocVariable != nullptr) {
+          node->_inDocVariable = Variable::replace(node->_inDocVariable, _replacements);
+        }
+        if (node->_inKeyVariable != nullptr) {
+          node->_inKeyVariable = Variable::replace(node->_inKeyVariable, _replacements);
+        }
+        break;
+      }
+      
+      case EN::REPLACE: {
+        auto node = static_cast<ReplaceNode*>(en);
+
+        if (node->_inDocVariable != nullptr) {
+          node->_inDocVariable = Variable::replace(node->_inDocVariable, _replacements);
+        }
+        if (node->_inKeyVariable != nullptr) {
+          node->_inKeyVariable = Variable::replace(node->_inKeyVariable, _replacements);
         }
         break;
       }
@@ -1579,13 +1633,13 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
     TRI_ASSERT(outvars.size() == 1);
     auto varsUsedLater = n->getVarsUsedLater();
 
+
     if (varsUsedLater.find(outvars[0]) == varsUsedLater.end()) {
       // The variable whose value is calculated here is not used at
       // all further down the pipeline! We remove the whole
       // calculation node,
       toUnlink.emplace(n);
-    }
-    else if (n->getType() == EN::CALCULATION) {
+    } else if (n->getType() == EN::CALCULATION) {
       // variable is still used later, but...
       // ...if it's used exactly once later by another calculation,
       // it's a temporary variable that we can fuse with the other
@@ -1595,7 +1649,39 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
           !static_cast<CalculationNode*>(n)->expression()->isDeterministic()) {
         continue;
       }
+
+      AstNode const* rootNode = static_cast<CalculationNode*>(n)->expression()->node();
       
+      if (rootNode->type == NODE_TYPE_REFERENCE) {
+        // if the LET is a simple reference to another variable, e.g. LET a = b
+        // then replace all references to a with references to b
+        bool hasCollectWithOutVariable = false;
+        auto current = n->getFirstParent();
+
+        // check first if we have a COLLECT with an INTO later in the query
+        // in this case we must not perform the replacements
+        while (current != nullptr) {
+          if (current->getType() == EN::COLLECT) {
+            if (static_cast<CollectNode const*>(current)->hasOutVariable()) {
+              hasCollectWithOutVariable = true;
+              break;
+            }
+          }
+          current = current->getFirstParent();
+        }
+
+        if (!hasCollectWithOutVariable) {
+          // no COLLECT found, now replace
+          std::unordered_map<VariableId, Variable const*> replacements;
+          replacements.emplace(outvars[0]->id, static_cast<Variable const*>(rootNode->getData()));
+
+          RedundantCalculationsReplacer finder(replacements);
+          plan->root()->walk(&finder);
+          toUnlink.emplace(n);
+          continue;
+        }
+      }
+
       std::unordered_set<Variable const*> vars;
 
       size_t usageCount = 0;
@@ -1605,12 +1691,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
       while (current != nullptr) {
         current->getVariablesUsedHere(vars);
         if (vars.find(outvars[0]) != vars.end()) {
-          if (current->getType() != EN::CALCULATION) {
-            // don't know how to replace the variable in a non-LET node
-            // abort the search
-            usageCount = 0;
-            break;
-          } else if (current->getType() == EN::COLLECT) {
+          if (current->getType() == EN::COLLECT) {
             if (static_cast<CollectNode const*>(current)->hasOutVariable()) {
               // COLLECT with an INTO variable will collect all variables from
               // the scope, so we shouldn't try to remove or change the meaning
@@ -1618,25 +1699,33 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
               usageCount = 0;
               break;
             }
+          } 
+          if (current->getType() != EN::CALCULATION) {
+            // don't know how to replace the variable in a non-LET node
+            // abort the search
+            usageCount = 0;
+            break;
           }
+
           // got a LET. we can replace the variable reference in it by 
           // something else
           ++usageCount;
           other = static_cast<CalculationNode*>(current);
         }
+
         if (usageCount > 1) {
           break;
         }
+
         current = current->getFirstParent();
         vars.clear();
       }
+
 
       if (usageCount == 1) {
         // our variable is used by exactly one other calculation
         // now we can replace the reference to our variable in the other
         // calculation with the variable's expression directly
-        AstNode const* rootNode = static_cast<CalculationNode*>(n)->expression()->node();
-        
         auto otherExpression = other->expression();
         TRI_ASSERT(otherExpression != nullptr);
 
@@ -1650,7 +1739,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
         otherExpression->replaceVariableReference(outvars[0], rootNode);
 
         toUnlink.emplace(n);
-      }
+      } 
     }
   }
 

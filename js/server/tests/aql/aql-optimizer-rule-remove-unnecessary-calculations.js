@@ -76,7 +76,9 @@ function optimizerRuleTestSuite () {
         "FOR i IN [1] LET a = i, b = a RETURN b",
         "FOR i IN [1] LET a = i + 1, b = a + 1 RETURN b",
         "FOR i IN [1] LET a = i, b = i RETURN [ a, b ]",
-        "FOR i IN [1] LET a = i + 1, b = i - 1 RETURN [ a, b ]"
+        "FOR i IN [1] LET a = i + 1, b = i - 1 RETURN [ a, b ]",
+        "FOR i IN [1] LET a = i RETURN a.value",
+        "FOR i IN [1] LET a = i RETURN a[0]"
       ];
 
       queries.forEach(function(query) {
@@ -148,9 +150,13 @@ function optimizerRuleTestSuite () {
         "FOR i IN [1] LET x = (FOR j IN [1] RETURN j) RETURN x",
         "FOR i IN [1] FOR j IN [1] LET x = (FOR k IN [1] RETURN k) RETURN x",
         "LET x = (FOR k IN [1] RETURN k) RETURN x",
+        "LET r = (FOR doc IN [ { a: 1, b: 2 }, { a: 2, b: 4 } ] RETURN doc) RETURN r[0]",
 
         // used by different node types
         "FOR i IN [1] LET x = (FOR j IN FLATTEN([1,2]) RETURN j) RETURN x[0]",
+        // used twice
+        "FOR i IN [1] LET x = i[0] RETURN x + x", 
+        "FOR i IN [1] LET x = i * 2 RETURN x + x", 
         
         // indirectly used
         "FOR i IN [1] LET a = i * 2 RETURN a * a",
@@ -240,7 +246,15 @@ function optimizerRuleTestSuite () {
         "FOR i IN [1] LET x = (FOR j IN [1] RETURN j) RETURN i",
         "FOR i IN [1] FOR j IN [1] LET x = (FOR k IN [1] RETURN k) RETURN i",
         "FOR i IN [1] FOR j IN [1] LET x = (FOR k IN [1] RETURN k) RETURN j",
-        "LET x = (FOR k IN [1] RETURN k) RETURN 1"
+        "LET x = (FOR k IN [1] RETURN k) RETURN 1",
+
+        // modification nodes
+        "FOR i IN 1..2 LET a = CONCAT('UnitTestsOptimizer', i) INSERT CONCAT(a, i) INTO _users OPTIONS { ignoreErrors: true }",
+        "FOR i IN 1..2 LET a = CONCAT('UnitTestsOptimizer', i) REMOVE CONCAT(a, i) INTO _users OPTIONS { ignoreErrors: true }",
+        "FOR i IN 1..2 LET a = CONCAT('UnitTestsOptimizer', i) UPDATE CONCAT(a, i) WITH { } INTO _users OPTIONS { ignoreErrors: true }",
+        "FOR i IN 1..2 LET a = CONCAT('UnitTestsOptimizer', i) UPDATE CONCAT('UnitTestsOptimizer', i * 2) WITH CONCAT(a, i) INTO _users OPTIONS { ignoreErrors: true }",
+        "FOR i IN 1..2 LET a = CONCAT('UnitTestsOptimizer', i) REPLACE CONCAT(a, i) WITH { } INTO _users OPTIONS { ignoreErrors: true }",
+        "FOR i IN 1..2 LET a = CONCAT('UnitTestsOptimizer', i) REPLACE CONCAT('UnitTestsOptimizer', i * 2) WITH CONCAT(a, i) INTO _users OPTIONS { ignoreErrors: true }"
       ];
 
       queries.forEach(function(query) {
