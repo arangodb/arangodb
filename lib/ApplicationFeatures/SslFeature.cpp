@@ -93,6 +93,16 @@ void SslFeature::prepare() {
   createSslContext();
 }
 
+void SslFeature::start() {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
+
+  LOG(INFO) << "using SSL options: " << stringifySslOptions(_options);
+
+  if (!_cipherList.empty()) {
+      LOG(INFO) << "using SSL cipher-list '" << _cipherList << "'";
+  }
+}
+
 void SslFeature::stop() {
   if (_sslContext != nullptr) {
     SSL_CTX_free(_sslContext);
@@ -152,15 +162,11 @@ void SslFeature::createSslContext() {
   // set options
   SSL_CTX_set_options(_sslContext, (long)_options);
 
-  LOG(INFO) << "using SSL options: " << stringifySslOptions(_options);
-
   if (!_cipherList.empty()) {
     if (SSL_CTX_set_cipher_list(_sslContext, _cipherList.c_str()) != 1) {
       LOG(FATAL) << "cannot set SSL cipher list '" << _cipherList
                  << "': " << lastSSLError();
       FATAL_ERROR_EXIT();
-    } else {
-      LOG(INFO) << "using SSL cipher-list '" << _cipherList << "'";
     }
   }
 
@@ -170,7 +176,7 @@ void SslFeature::createSslContext() {
   sslEcdhNid = OBJ_sn2nid(_ecdhCurve.c_str());
 
   if (sslEcdhNid == 0) {
-    LOG(ERR) << "SSL error: " << lastSSLError()
+    LOG(FATAL) << "SSL error: " << lastSSLError()
              << " Unknown curve name: " << _ecdhCurve;
     FATAL_ERROR_EXIT();
   }
@@ -178,7 +184,7 @@ void SslFeature::createSslContext() {
   // https://www.openssl.org/docs/manmaster/apps/ecparam.html
   ecdhKey = EC_KEY_new_by_curve_name(sslEcdhNid);
   if (ecdhKey == nullptr) {
-    LOG(ERR) << "SSL error: " << lastSSLError()
+    LOG(FATAL) << "SSL error: " << lastSSLError()
              << " Unable to create curve by name: " << _ecdhCurve;
     FATAL_ERROR_EXIT();
   }

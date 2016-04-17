@@ -188,10 +188,12 @@ const toArgv = require("internal").toArgv;
 const wait = require("internal").wait;
 const platform = require("internal").platform;
 
+const BLUE = require("internal").COLORS.COLOR_BLUE;
 const CYAN = require("internal").COLORS.COLOR_CYAN;
 const GREEN = require("internal").COLORS.COLOR_GREEN;
 const RED = require("internal").COLORS.COLOR_RED;
 const RESET = require("internal").COLORS.COLOR_RESET;
+const YELLOW = require("internal").COLORS.COLOR_YELLOW;
 
 let cleanupDirectories = [];
 let serverCrashed = false;
@@ -1089,7 +1091,8 @@ function runArangoBenchmark(options, instanceInfo, cmds) {
   args = _.extend(args, cmds);
 
   if (!args.hasOwnProperty('verbose')) {
-    args.quiet = true;
+    args["log.level"] = "warning";
+    args["flatCommands"] = ["--quiet"];
   }
 
   return executeAndWait(ARANGOB_BIN, toArgv(args), options);
@@ -1314,6 +1317,7 @@ function startArango(protocol, options, addArgs, name, rootDir, isAgency) {
   let args = makeArgsArangod(options, appDir);
   let endpoint;
   let port;
+
   if (!addArgs["server.endpoint"]) {
     port = findFreePort();
     endpoint = protocol + "://127.0.0.1:" + port;
@@ -1321,6 +1325,7 @@ function startArango(protocol, options, addArgs, name, rootDir, isAgency) {
     endpoint = addArgs["server.endpoint"];
     port = endpoint.split(":").pop();
   }
+
   let instanceInfo = {
     isAgency, port, endpoint, rootDir
   };
@@ -1328,7 +1333,12 @@ function startArango(protocol, options, addArgs, name, rootDir, isAgency) {
   args["server.endpoint"] = endpoint;
   args["database.directory"] = dataDir;
   args["log.file"] = fs.join(rootDir, "log");
-  args["log.level"] = 'info';
+
+  if (options.verbose) {
+    args["log.level"] = 'info';
+  } else {
+    args["log.level"] = 'error';
+  }
 
   if (protocol === "ssl") {
     args["server.keyfile"] = fs.join("UnitTests", "server.pem");
@@ -1339,8 +1349,8 @@ function startArango(protocol, options, addArgs, name, rootDir, isAgency) {
   if (addArgs !== undefined) {
     args = _.extend(args, addArgs);
   }
-  instanceInfo.url = endpointToURL(instanceInfo.endpoint);
 
+  instanceInfo.url = endpointToURL(instanceInfo.endpoint);
   instanceInfo.pid = executeValgrind(ARANGOD_BIN, toArgv(args), options, name).pid;
 
   if (platform.substr(0, 3) === 'win') {
@@ -1860,21 +1870,19 @@ let testFuncs = {
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.arangosh = function(options) {
-  let args = makeArgsArangosh(options);
-
   let ret = {
-    "ArangoshExitCodeTest": {
-      "testArangoshExitCodeFail": {},
-      "testArangoshExitCodeSuccess": {},
-      "testArangoshebang": {},
-      "total": 2,
-      "duration": 0.0
-    }
+    "testArangoshExitCodeFail": { status: true, total: 0 },
+    "testArangoshExitCodeSuccess": { status: true, total: 0 },
+    "testArangoshShebang": { status: true, total: 0 },
   };
 
-  // termination by throw
+  print("--------------------------------------------------------------------------------");
   print("Starting arangosh with exception throwing script:");
+  print("--------------------------------------------------------------------------------");
+
+  let args = makeArgsArangosh(options);
   args["javascript.execute-string"] = "throw('foo')";
+  args["log.level"] = "fatal";
 
   const startTime = time();
   let rc = executeExternalAndWait(ARANGOSH_BIN, toArgv(args));
@@ -1882,18 +1890,22 @@ testFuncs.arangosh = function(options) {
   const failSuccess = (rc.hasOwnProperty('exit') && rc.exit === 1);
 
   if (!failSuccess) {
-    ret.ArangoshExitCodeTest.testArangoshExitCodeFail['message'] =
+    ret.testArangoshExitCodeFail['message'] =
       "didn't get expected return code (1): \n" +
       yaml.safeDump(rc);
   }
 
-  ret.ArangoshExitCodeTest.testArangoshExitCodeFail['status'] = failSuccess;
-  ret.ArangoshExitCodeTest.testArangoshExitCodeFail['duration'] = deltaTime;
-  print("Status: " + ((failSuccess) ? "SUCCESS" : "FAIL") + "\n");
+  ++ret.testArangoshExitCodeFail['total'];
+  ret.testArangoshExitCodeFail['status'] = failSuccess;
+  ret.testArangoshExitCodeFail['duration'] = deltaTime;
+  print((failSuccess ? GREEN : RED) + "Status: " + (failSuccess ? "SUCCESS" : "FAIL") + RESET);
 
-  // regular termination
+  print("\n--------------------------------------------------------------------------------");
   print("Starting arangosh with regular terminating script:");
+  print("--------------------------------------------------------------------------------");
+
   args["javascript.execute-string"] = ";";
+  args["log.level"] = "fatal";
 
   const startTime2 = time();
   rc = executeExternalAndWait(ARANGOSH_BIN, toArgv(args));
@@ -1902,25 +1914,32 @@ testFuncs.arangosh = function(options) {
   const successSuccess = (rc.hasOwnProperty('exit') && rc.exit === 0);
 
   if (!successSuccess) {
-    ret.ArangoshExitCodeTest.testArangoshExitCodeFail['message'] =
+    ret.testArangoshExitCodeFail['message'] =
       "didn't get expected return code (0): \n" +
       yaml.safeDump(rc);
   }
 
-  ret.ArangoshExitCodeTest.testArangoshExitCodeSuccess['status'] = failSuccess;
-  ret.ArangoshExitCodeTest.testArangoshExitCodeSuccess['duration'] = deltaTime2;
-  print("Status: " + ((successSuccess) ? "SUCCESS" : "FAIL") + "\n");
+  ++ret.testArangoshExitCodeSuccess['total'];
+  ret.testArangoshExitCodeSuccess['status'] = failSuccess;
+  ret.testArangoshExitCodeSuccess['duration'] = deltaTime2;
+  print((successSuccess ? GREEN : RED) + "Status: " + (successSuccess ? "SUCCESS" : "FAIL") + RESET);
 
   // test shebang execution with arangosh
-  var shebangSuccess = true;
-  var deltaTime3 = 0;
-
   if (!options.skipShebang && platform.substr(0, 3) !== "win") {
+    var shebangSuccess = true;
+    var deltaTime3 = 0;
     var shebangFile = fs.getTempFile();
 
-    print("Starting arangosh via shebang script: " + shebangFile);
+    print("\n--------------------------------------------------------------------------------");
+    print("Starting arangosh via shebang script");
+    print("--------------------------------------------------------------------------------");
+
+    if (options.verbose) {
+      print(CYAN + "shebang script: " + shebangFile + RESET);
+    }
+
     fs.write(shebangFile,
-      "#!" + fs.makeAbsolute(ARANGOSH_BIN) + " --javascript.execute \n" +
+      "#!" + fs.makeAbsolute(ARANGOSH_BIN) + " --log.level fatal --javascript.execute \n" +
       "print('hello world');\n");
 
     executeExternalAndWait("sh", ["-c", "chmod a+x " + shebangFile]);
@@ -1928,27 +1947,31 @@ testFuncs.arangosh = function(options) {
     const startTime3 = time();
     rc = executeExternalAndWait("sh", ["-c", shebangFile]);
     deltaTime3 = time() - startTime3;
-    print(rc);
+
+    if (options.verbose) {
+      print(CYAN + "execute returned: " + RESET, rc);
+    }
 
     shebangSuccess = (rc.hasOwnProperty('exit') && rc.exit === 0);
 
     if (!shebangSuccess) {
-      ret.ArangoshExitCodeTest.testArangoshebang['message'] =
+      ret.testArangoshShebang['message'] =
         "didn't get expected return code (0): \n" +
         yaml.safeDump(rc);
     }
 
     fs.remove(shebangFile);
 
-    print("Status: " + ((successSuccess) ? "SUCCESS" : "FAIL") + "\n");
+    ++ret.testArangoshShebang['total'];
+    ret.testArangoshShebang['status'] = shebangSuccess;
+    ret.testArangoshShebang['duration'] = deltaTime3;
+    print((shebangSuccess ? GREEN : RED) + "Status: " + (shebangSuccess ? "SUCCESS" : "FAIL") + RESET);
+  } else {
+    ret.testArangoshShebang['skipped'] = true;
   }
 
-  ret.ArangoshExitCodeTest.testArangoshebang['status'] = shebangSuccess;
-  ret.ArangoshExitCodeTest.testArangoshebang['duration'] = deltaTime3;
+  print();
 
-  // return result
-  ret.ArangoshExitCodeTest.status = failSuccess && successSuccess && shebangSuccess;
-  ret.ArangoshExitCodeTest.duration = deltaTime + deltaTime2 + deltaTime3;
   return ret;
 };
 
@@ -2059,7 +2082,7 @@ testFuncs.arangob = function(options) {
     };
   }
 
-  print("arangob tests...");
+  print(CYAN + "arangob tests..." + RESET);
 
   let instanceInfo = startInstance("tcp", options, {}, "arangob");
 
@@ -2072,12 +2095,7 @@ testFuncs.arangob = function(options) {
     };
   }
 
-  let results = {
-    arangob: {
-      status: true,
-      total: 0
-    }
-  };
+  let results = {};
 
   let continueTesting = true;
 
@@ -2094,9 +2112,9 @@ testFuncs.arangob = function(options) {
     if (!options.cluster || !benchTodo.transaction) {
 
       if (!continueTesting) {
-        print("Skipping " + benchTodo + ", server is gone.");
+        print(RED + "Skipping " + benchTodo + ", server is gone." + RESET);
 
-        results.arangob[i] = {
+        results[name] = {
           status: false,
           message: instanceInfo.exitStatus
         };
@@ -2114,12 +2132,15 @@ testFuncs.arangob = function(options) {
       }
 
       let oneResult = runArangoBenchmark(options, instanceInfo, args);
+      print();
 
-      results.arangob[i] = oneResult;
-      results.arangob.total++;
+      let name = "case" + i;
 
-      if (!results.arangob[i].status) {
-        results.arangob.status = false;
+      results[name] = oneResult;
+      results[name].total++;
+
+      if (!results[name].status) {
+        results.status = false;
       }
 
       continueTesting = checkInstanceAlive(instanceInfo, options);
@@ -2130,9 +2151,9 @@ testFuncs.arangob = function(options) {
     }
   }
 
-  print("Shutting down...");
+  print(CYAN + "Shutting down..." + RESET);
   shutdownInstance(instanceInfo, options);
-  print("done.");
+  print(CYAN + "done." + RESET);
 
   return results;
 };
@@ -2404,7 +2425,6 @@ testFuncs.config = function(options) {
 
     results.absolut[test] = executeAndWait(run, toArgv(args), options, test);
 
-/* XX */ results.absolut[test].status = false;
     if (!results.absolut[test].status) {
       results.absolut.status = false;
     }
@@ -2418,7 +2438,7 @@ testFuncs.config = function(options) {
     }
   }
 
-  print("--------------------------------------------------------------------------------");
+  print("\n--------------------------------------------------------------------------------");
   print("relative config tests");
   print("--------------------------------------------------------------------------------");
 
@@ -2447,6 +2467,8 @@ testFuncs.config = function(options) {
       print("Result: " + results.relative[test].status);
     }
   }
+
+  print();
 
   return results;
 };
@@ -3635,113 +3657,118 @@ testFuncs.agency = function(options) {
 /// @brief pretty prints the result
 ////////////////////////////////////////////////////////////////////////////////
 
-function unitTestPrettyPrintResults(r) {
-  let testFail = 0;
-  let testSuiteFail = 0;
+function testCaseMessage(test) {
+  if (typeof test.message === "object" && test.message.hasOwnProperty('body')) {
+    return test.message.body;
+  } else {
+    return test.message;
+  }
+}
 
-  let header = "";
-  let success = "";
-  let fail = "";
+function unitTestPrettyPrintResults(r) {
+  print(BLUE + "================================================================================");
+  print("TEST RESULTS");
+  print("================================================================================\n" + RESET);
+
+  let failedSuite = 0;
+  let failedTests = 0;
 
   try {
     /*jshint forin: false */
-    for (let testrun in r) {
-      if (skipInternalMember(r, testrun)) {
+    for (let testrunName in r) {
+      if (skipInternalMember(r, testrunName)) {
         continue;
       }
 
+      let testrun = r[testrunName];
+
+      print("* Test '" + testrunName + "'");
+
+      let successCases = {};
+      let failedCases = {};
       let isSuccess = true;
-      let successTests = {};
-      let oneOutput = "";
 
-      print("* Test '" + testrun + "'");
+      for (let testName in testrun) {
+        if (skipInternalMember(testrun, testName)) {
+          continue;
+        }
 
-      for (let test in r[testrun]) {
-	if (r[testrun].hasOwnProperty(test) &&
-	  (internalMembers.indexOf(test) === -1)) {
+        let test = testrun[testName];
 
-	  if (r[testrun][test].status) {
-	    const where = test.lastIndexOf(fs.pathSeparator);
-	    let which;
+        if (test.status) {
+          successCases[testName] = test;
+        } else {
+          isSuccess = false;
+          ++failedSuite;
 
-	    if (where < 0) {
-	      which = 'Unittests';
-	    } else {
-	      which = test.substring(0, where);
-	      test = test.substring(where + 1, test.length);
-	    }
+          if (test.hasOwnProperty('message')) {
+            ++failedTests;
+            failedCases[testName] = {
+              test: testCaseMessage(test)
+            };
+          } else {
+            let fails = failedCases[testName] = {};
 
-	    if (!successTests.hasOwnProperty(which)) {
-	      successTests[which] = [];
-	    }
+            for (let oneName in test) {
+              if (skipInternalMember(test, oneName)) {
+                continue;
+              }
 
-	    successTests[which].push(test);
-	  } else {
-	    testSuiteFail++;
+              let oneTest = test[oneName];
 
-	    if (r[testrun][test].hasOwnProperty('message')) {
-	      isSuccess = false;
-	      oneOutput += "     [  Fail ] " + test +
-		": Whole testsuite failed!\n";
-
-	      if (typeof r[testrun][test].message === "object" &&
-		r[testrun][test].message.hasOwnProperty('body')) {
-		oneOutput += r[testrun][test].message.body + "\n";
-	      } else {
-		oneOutput += r[testrun][test].message + "\n";
-	      }
-	    } else {
-	      isSuccess = false;
-	      oneOutput += "    [  Fail ] " + test + "\n";
-
-	      for (let oneTest in r[testrun][test]) {
-		if (r[testrun][test].hasOwnProperty(oneTest) &&
-		  (internalMembers.indexOf(oneTest) === -1) &&
-		  (!r[testrun][test][oneTest].status)) {
-		  ++testFail;
-		  oneOutput += "          -> " + oneTest +
-		    " Failed; Verbose message:\n" +
-		    r[testrun][test][oneTest].message + "\n";
-		}
-	      }
-	    }
-	  }
-	}
+              if (!oneTest.status) {
+                ++failedTests;
+                fails[oneName] = testCaseMessage(oneTest);
+              }
+            }
+          }
+        }
       }
 
-      if (successTests !== "") {
-	for (let key in successTests) {
-	  if (successTests.hasOwnProperty(key)) {
-	    oneOutput = "     [Success] " + key +
-	      " / [" + successTests[key].join(', ') + ']\n' + oneOutput;
-	  }
-	}
+      for (let name in successCases) {
+        if (!successCases.hasOwnProperty(name)) {
+          continue;
+        }
+
+        let details = successCases[name];
+
+        if (details.skipped) {
+          print(YELLOW + "    [SKIPPED] " + name + RESET);
+        }
+        else {
+          print(GREEN + "    [SUCCESS] " + name + RESET);
+        }
       }
 
-      if (isSuccess) {
-	success += oneOutput;
-      } else {
-	fail += oneOutput;
+      for (let name in failedCases) {
+        if (!failedCases.hasOwnProperty(name)) {
+          continue;
+        }
+
+        print(RED + "    [FAILED]  " + name + RESET);
+
+        let details = failedCases[name];
+
+        for (let one in details) {
+          if (!details.hasOwnProperty(one)) {
+            continue;
+          }
+
+          print(RED + "      '" + one + "' failed: " + details[one] + RESET);
+        }
       }
     }
     /*jshint forin: true */
 
-    if (success !== "") {
-      print(success);
-    }
-
-    if (fail !== "") {
-      print(fail);
-    }
-
-    print("Overall state: " + ((r.status === true) ? "Success" : "Fail"));
+    let color = (r.status === true) ? GREEN : RED;
+    print("\n" + color + "* Overall state: " + ((r.status === true) ? "Success" : "Fail") + RESET);
 
     if (r.status !== true) {
-      print("   Suites failed: " + testSuiteFail + " Tests Failed: " + testFail);
+      print(color + "   Suites failed: " + failedSuite + " Tests Failed: " + failedTests + RESET);
     }
 
     if (r.crashed === true) {
-      print("   We had at least one unclean shutdown of an arangod during the testrun.");
+      print("\nWe had at least one unclean shutdown or crash during the testrun.");
     }
   } catch (x) {
     print("exception caught while pretty printing result: ");
@@ -3888,10 +3915,12 @@ function unitTest(cases, options) {
   for (let n = 0; n < caselist.length; ++n) {
     const currentTest = caselist[n];
 
+    print(BLUE + "================================================================================");
+    print("Executing test", currentTest);
+    print("================================================================================\n" + RESET);
+
     if (options.verbose) {
-      print("Executing test", currentTest, "with options", options);
-    } else {
-      print("Executing test", currentTest);
+      print(CYAN + "with options:", options, RESET);
     }
 
     let result = testFuncs[currentTest](options);

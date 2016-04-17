@@ -35,6 +35,7 @@ class SslFeature final : public application_features::ApplicationFeature {
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
+  void start() override final;
   void stop() override final;
 
  public:
