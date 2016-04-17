@@ -48,3 +48,12 @@ int64_t Range::at(size_t position) const {
   // e.g. 10..1
   return _low - static_cast<int64_t>(position);
 }
+
+bool Range::isIn(int64_t value) const {
+  if (_low <= _high) {
+    // e.g. 1..1, 1..10 etc.
+    return value >= _low && value <= _high;
+  }
+  // e.g. 10..1
+  return value <= _low && value >= _high;
+}

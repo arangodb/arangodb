@@ -39,6 +39,8 @@ struct Range {
 
   int64_t at(size_t position) const;
 
+  bool isIn(int64_t value) const;
+
   int64_t const _low;
   int64_t const _high;
 };

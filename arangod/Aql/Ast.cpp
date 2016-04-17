@@ -1748,13 +1748,17 @@ TopLevelAttributes Ast::getReferencedAttributes(AstNode const* node,
 
 /// @brief recursively clone a node
 AstNode* Ast::clone(AstNode const* node) {
-  auto type = node->type;
+  AstNodeType const type = node->type;
   if (type == NODE_TYPE_NOP) {
     // nop node is a singleton
     return const_cast<AstNode*>(node);
   }
 
-  auto copy = createNode(type);
+  AstNode* copy = createNode(type);
+  TRI_ASSERT(copy != nullptr);
+
+  // copy flags
+  copy->flags = node->flags;
 
   // special handling for certain node types
   // copy payload...
@@ -1998,6 +2002,7 @@ AstNode* Ast::executeConstExpression(AstNode const* node) {
   ISOLATE;
   v8::HandleScope scope(isolate);  // do not delete this!
 
+  // we should recycle an existing builder here
   VPackBuilder builder;
 
   int res = _query->executor()->executeExpression(_query, node, builder);
@@ -2009,8 +2014,7 @@ AstNode* Ast::executeConstExpression(AstNode const* node) {
   // context is not left here, but later
   // this allows re-using the same context for multiple expressions
 
-  AstNode* value = nodeFromVPack(builder.slice(), true);
-  return value;
+  return nodeFromVPack(builder.slice(), true);
 }
 
 /// @brief optimizes the unary operators + and -
@@ -2182,9 +2186,6 @@ AstNode* Ast::optimizeBinaryOperatorRelational(AstNode* node) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  bool const lhsIsConst = lhs->isConstant();
-  bool const rhsIsConst = rhs->isConstant();
-
   if (!lhs->canThrow() && rhs->type == NODE_TYPE_ARRAY &&
       rhs->numMembers() <= 1 && (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
                                  node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
@@ -2208,6 +2209,8 @@ AstNode* Ast::optimizeBinaryOperatorRelational(AstNode* node) {
     }
     // fall-through intentional
   }
+  
+  bool const rhsIsConst = rhs->isConstant();
 
   if (!rhsIsConst) {
     return node;
@@ -2216,12 +2219,15 @@ AstNode* Ast::optimizeBinaryOperatorRelational(AstNode* node) {
   if (rhs->type != NODE_TYPE_ARRAY &&
       (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
        node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
-    // right operand of IN or NOT IN must be an array, otherwise we return false
+    // right operand of IN or NOT IN must be an array or a range, otherwise we return false
     return createNodeValueBool(false);
   }
+  
+  bool const lhsIsConst = lhs->isConstant();
 
   if (!lhsIsConst) {
     if (rhs->numMembers() >= 8 &&
+        rhs->type == NODE_TYPE_ARRAY &&
         (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
          node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
       // if the IN list contains a considerable amount of items, we will sort

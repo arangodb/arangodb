@@ -2770,7 +2770,12 @@ void AstNode::appendValue(arangodb::basics::StringBuffer* buffer) const {
     }
 
     case VALUE_TYPE_DOUBLE: {
-      buffer->appendDecimal(value.value._double);
+      double const v = value.value._double;
+      if (std::isnan(v) || !std::isfinite(v) || v == HUGE_VAL || v == -HUGE_VAL) {
+        buffer->appendText(TRI_CHAR_LENGTH_PAIR("null"));
+      } else {
+        buffer->appendDecimal(value.value._double);
+      }
       break;
     }
 
