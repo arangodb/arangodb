@@ -1953,7 +1953,7 @@ testFuncs.arangosh = function(options) {
     }
 
     fs.write(shebangFile,
-      "#!" + fs.makeAbsolute(ARANGOSH_BIN) + " --log.level fatal --javascript.execute \n" +
+      "#!" + fs.makeAbsolute(ARANGOSH_BIN) + " --javascript.execute \n" +
       "print('hello world');\n");
 
     executeExternalAndWait("sh", ["-c", "chmod a+x " + shebangFile]);
