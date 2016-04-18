@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, globalstrict: true */
-/*global describe, beforeEach, it*/
+/*global describe, it*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Spec for foxx manager
@@ -38,11 +38,6 @@ FoxxManager.update();
 var list = FoxxManager.availableJson("match-engines");
 
 describe("Foxx Manager", function() {
-
-  beforeEach(function() {
-    FoxxManager.update();
-  });
-
   it("should fetch services from the servicestore", function() {
     expect(list).to.not.be.empty();
   });
@@ -65,7 +60,7 @@ describe("Foxx Manager", function() {
 
   var testInstall = function(service){
     var mount = "/unittest/testServices";
-    try { 
+    try {
       FoxxManager.uninstall(mount, { force: true });
     } catch(e) {
     }
@@ -110,13 +105,11 @@ describe("Foxx Manager", function() {
     } else {
       try {
         FoxxManager.install(service.name, mount);
-        FoxxManager.uninstall(mount);
-      } catch(e) {
-        expect(e).to.not.be.undefined()
-        ("Could not install " + service.name + " - \n" + e.stack);
+      } finally {
         try {
           FoxxManager.uninstall(mount, { force: true });
-        } catch(err) {
+        } catch(e) {
+          // noop
         }
       }
     }

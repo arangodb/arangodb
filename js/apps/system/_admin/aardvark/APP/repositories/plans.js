@@ -1,12 +1,10 @@
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief A TODO-List Foxx-Application written for ArangoDB
-///
-/// @file This Document represents the repository communicating with ArangoDB
-///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2010-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,89 +18,71 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Michael Hackstein
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+/// @author Alan Plum
 ////////////////////////////////////////////////////////////////////////////////
 
-(function () {
-  "use strict";
+const db = require('@arangodb').db;
+const version = String(require('@arangodb/database-version').CURRENT_VERSION);
+const collection = db._collection('_cluster_kickstarter_plans');
 
-  var _ = require("lodash"),
-    Foxx = require("@arangodb/foxx"),
-    version = require("@arangodb/database-version").CURRENT_VERSION + "", // do not use new String, there is bug in update
-    Plans;
+module.exports = {
+  hasConfig() {
+    return Boolean(this.loadConfig());
+  },
 
-  Plans = Foxx.Repository.extend({
-    hasConfig: function() {
-      if (this.loadConfig()) {
-        return true;
-      }
-      return false;
-    },
+  clear() {
+    collection.truncate();
+  },
 
-    clear: function() {
-      this.collection.truncate();
-    },
+  loadConfig() {
+    return collection.any();
+  },
 
-    loadConfig: function() {
-      return this.collection.any();
-    },
+  getPlan() {
+    return this.loadConfig().plan;
+  },
 
-    getPlan: function() {
-      return this.loadConfig().plan;
-    },
+  getRunInfo() {
+    return this.loadConfig().runInfo;
+  },
 
-    getRunInfo: function() {
-      return this.loadConfig().runInfo;
-    },
+  getCredentials() {
+    return this.loadConfig().user;
+  },
 
-    getCredentials: function() {
-      return this.loadConfig().user;
-    },
+  updateConfig(config) {
+    const old = this.loadConfig();
+    collection.update(old._id, config);
+    return true;
+  },
 
-    updateConfig: function(config) {
-      var old = this.loadConfig();
-      this.collection.update(old._id, config);
-      return true;
-    },
+  saveCredentials(name, passwd) {
+    const config = {user: {name, passwd}};
+    const old = this.loadConfig();
+    collection.update(old._id, config);
+    return true;
+  },
 
-    saveCredentials: function(user, passwd) {
-      var config = {
-        user: {
-          name: user,
-          passwd: passwd
-        }
-      };
-      var old = this.loadConfig();
-      this.collection.update(old._id, config);
-      return true;
-    },
+  storeConfig(config) {
+    collection.truncate();
+    config.version = version;
+    collection.save(config);
+    return true;
+  },
 
-    storeConfig: function(config) {
-      this.collection.truncate();
-      config.version = version;
-      this.collection.save(config);
-      return true;
-    },
+  removeRunInfo() {
+    const old = this.loadConfig();
+    delete old.runInfo;
+    collection.replace(old._id, old);
+    return true;
+  },
 
-    removeRunInfo: function() {
-      var old = this.loadConfig();
-      delete old.runInfo;
-      this.collection.replace(old._id, old);
-      return true;
-    },
-
-    replaceRunInfo: function(newInfo) {
-      var old = this.loadConfig();
-      this.collection.update(old._id, {
-        runInfo: newInfo,
-        version: version
-      });
-      return true;
-    }
-  });
-
-  exports.Repository = Plans;
-}());
+  replaceRunInfo(runInfo) {
+    const old = this.loadConfig();
+    collection.update(old._id, {runInfo, version});
+    return true;
+  }
+};

@@ -32,6 +32,9 @@ const Module = require('module');
 const runTests = require('@arangodb/mocha').run;
 const colors = require('internal').COLORS;
 
+const $_MODULE_CONTEXT = Symbol.for('@arangodb/module.context');
+
+
 module.exports = function (files, returnJson) {
   const results = runTests(run, files, 'suite');
   print();
@@ -194,7 +197,7 @@ function run(filename, context) {
 
   if (context) {
     Object.keys(context).forEach(function (key) {
-      module.context[key] = context[key];
+      module[$_MODULE_CONTEXT][key] = context[key];
     });
   }
 

@@ -65,6 +65,8 @@ function GeneralArrayCursor (documents, skip, limit, data) {
   this.execute();
 }
 
+GeneralArrayCursor.prototype.isArangoResultSet = true;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes an array query
@@ -214,6 +216,8 @@ function SimpleQuery () {
   this._countTotal = null;
   this._batchSize = null;
 }
+
+SimpleQuery.prototype.isArangoResultSet = true;
 
 
 ////////////////////////////////////////////////////////////////////////////////

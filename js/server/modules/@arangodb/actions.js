@@ -8,7 +8,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2012-2014 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +26,8 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
+/// @author Alan Plum
+/// @author Copyright 2014-2016, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -37,12 +38,15 @@ var Module = require("module");
 
 var fs = require("fs");
 var util = require("util");
+var mimeTypes = require("mime-types");
 var console = require("console");
 var _ = require("lodash");
 
 var arangodb = require("@arangodb");
 var foxxManager = require("@arangodb/foxx/manager");
 var ErrorStackParser = require("error-stack-parser");
+
+const MIME_DEFAULT = 'text/plain; charset=utf-8';
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -95,7 +99,8 @@ var RoutingList = {};
 /// @brief all methods
 ////////////////////////////////////////////////////////////////////////////////
 
-var ALL_METHODS = [ "DELETE", "GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH" ];
+var ALL_METHODS = [ 'DELETE', 'GET', 'HEAD', 'OPTIONS', 'POST', 'PUT', 'PATCH' ];
+var BODYFREE_METHODS = [ 'CONNECT', 'DELETE', 'GET', 'HEAD', 'TRACE' ];
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -790,7 +795,7 @@ function analyseRoutes (storage, routes) {
   var urlPrefix = routes.urlPrefix || "";
 
   // use normal root module or app context
-  var appContext = routes.appContext || {
+  var foxxContext = routes.foxxContext || {
     module: new Module(routes.name || 'anonymous')
   };
 
@@ -807,7 +812,7 @@ function analyseRoutes (storage, routes) {
         installRoute(storage[key],
                      r[i],
                      urlPrefix,
-                     appContext);
+                     foxxContext);
       }
     }
   }
@@ -841,11 +846,11 @@ function buildRoutingTree (routes) {
       else {
 
         // use normal root module or app context
-        var appContext = routes.appContext || {
+        var foxxContext = routes.foxxContext || {
           module: new Module(route.name || 'anonymous')
         };
 
-        installRoute(storage.routes, route, "", appContext);
+        installRoute(storage.routes, route, "", foxxContext);
       }
     }
     catch (err) {
@@ -1027,7 +1032,7 @@ function foxxRouting (req, res, options, next) {
     options.error = {
       code: exports.HTTP_SERVER_ERROR,
       num: arangodb.ERROR_HTTP_SERVER_ERROR,
-      msg: "failed to load foxx mounted at '" + mount + "'",
+      msg: "failed to load Foxx service mounted at '" + mount + "'",
       info: { exception: String(err1) }
     };
 
@@ -1055,7 +1060,7 @@ function foxxRouting (req, res, options, next) {
         res,
         err2,
         {},
-        "failed to execute foxx mounted at '" + mount + "'");
+        "failed to execute Foxx service mounted at '" + mount + "'");
     }
   }
 }
@@ -1093,7 +1098,7 @@ function buildRouting (dbname) {
     var foxx = foxxes[i];
 
     routes.push({
-      name: "foxx app mounted at '" + foxx + "'",
+      name: "Foxx service mounted at '" + foxx + "'",
       url: { match: foxx + "/*" },
       action: { callback: foxxRouting, options: { mount: foxx } }
     });
@@ -2061,31 +2066,24 @@ function pathHandler (req, res, options, next) {
 
   if (options.hasOwnProperty('root')) {
     var root = options.root;
-
     filename = fs.join(root, filename);
     encodedFilename = filename;
   }
   if (fs.exists(filename)) {
     res.responseCode = exports.HTTP_OK;
-    res.contentType = arangodb.guessContentType(filename);
-    if (options.hasOwnProperty('gzip')) {
-      if (options.gzip === true) {
-
-        //check if client is capable of gzip encoding
-        if (req.hasOwnProperty('headers')) {
-          if (req.headers.hasOwnProperty('accept-encoding')) {
-            var encoding = req.headers['accept-encoding'];
-            if (encoding.indexOf('gzip') > -1) {
-
-              //check if gzip file is available
-              encodedFilename = encodedFilename + '.gz';
-              if (fs.exists(encodedFilename)) {
-                if (!res.hasOwnProperty('headers')) {
-                  res.headers = {};
-                }
-                res.headers['Content-Encoding'] = "gzip";
-              }
+    res.contentType = options.type || mimeTypes.lookup(filename) || MIME_DEFAULT;
+    if (options.gzip === true) {
+      //check if client is capable of gzip encoding
+      if (req.headers) {
+        var encoding = req.headers['accept-encoding'];
+        if (encoding && encoding.indexOf('gzip') >= 0) {
+          //check if gzip file is available
+          encodedFilename = encodedFilename + '.gz';
+          if (fs.exists(encodedFilename)) {
+            if (!res.headers) {
+              res.headers = {};
             }
+            res.headers['Content-Encoding'] = "gzip";
           }
         }
       }
@@ -2165,6 +2163,7 @@ exports.PUT                      = "PUT";
 exports.PATCH                    = "PATCH";
 
 exports.ALL_METHODS              = ALL_METHODS;
+exports.BODYFREE_METHODS         = BODYFREE_METHODS;
 
 // HTTP 2xx
 exports.HTTP_OK                  = 200;
@@ -2200,5 +2199,3 @@ exports.HTTP_SERVER_ERROR        = 500;
 exports.HTTP_NOT_IMPLEMENTED     = 501;
 exports.HTTP_BAD_GATEWAY         = 502;
 exports.HTTP_SERVICE_UNAVAILABLE = 503;
-
-
