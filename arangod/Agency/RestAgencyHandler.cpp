@@ -71,13 +71,11 @@ inline HttpHandler::status_t RestAgencyHandler::reportUnknownMethod() {
   return HttpHandler::status_t(HANDLER_DONE);
 }
 
-#include <iostream>
 void RestAgencyHandler::redirectRequest(id_t leaderId) {
 
   try {
     std::string url = Endpoint::uriForm(
       _agent->config().end_points.at(leaderId)) + _request->requestPath();
-    std::cout << url << std::endl;
     createResponse(GeneralResponse::ResponseCode::TEMPORARY_REDIRECT);
     static std::string const location = "location";
     _response->setHeaderNC(location, url);

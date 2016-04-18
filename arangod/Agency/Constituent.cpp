@@ -114,18 +114,24 @@ term_t Constituent::term() const {
 // Update my term
 void Constituent::term(term_t t) {
 
-  if (_term != t) {
-
+  term_t tmp;
+  
+  {
+    MUTEX_LOCKER (guard, _castLock);
+    tmp = _term;
     _term  = t;
+  }
+  
+  if (tmp != t) {
 
     LOG_TOPIC(INFO, Logger::AGENCY) << "Updating term to " << t;
-
+    
     Builder body;
     body.add(VPackValue(VPackValueType::Object));
     std::ostringstream i_str;
-    i_str << std::setw(20) << std::setfill('0') << _term;
+    i_str << std::setw(20) << std::setfill('0') << t;
     body.add("_key", Value(i_str.str()));
-    body.add("term", Value(_term));
+    body.add("term", Value(t));
     body.add("voted_for", Value((uint32_t)_voted_for));
     body.close();
     
@@ -154,21 +160,24 @@ void Constituent::term(term_t t) {
 
 /// @brief My role
 role_t Constituent::role () const {
+  MUTEX_LOCKER (guard, _castLock);
   return _role;
 }
 
 /// @brief Become follower in term 
 void Constituent::follow (term_t t) {
+  MUTEX_LOCKER(guard, _castLock);
   if (_role != FOLLOWER) {
     LOG_TOPIC(INFO, Logger::AGENCY)
-      << "Role change: Converted to follower in term " << t;
+      << "Role change: Converting to follower in term " << t;
   }
-  this->term(t);
+  _term = t;
   _role = FOLLOWER;
 }
 
 /// @brief Become leader
 void Constituent::lead () {
+  MUTEX_LOCKER(guard, _castLock);
   if (_role != LEADER) {
     LOG_TOPIC(INFO, Logger::AGENCY)
       << "Role change: Converted to leader in term " << _term ;
@@ -180,6 +189,7 @@ void Constituent::lead () {
 
 /// @brief Become follower
 void Constituent::candidate () {
+  MUTEX_LOCKER(guard, _castLock);
   if (_role != CANDIDATE)
     LOG_TOPIC(INFO, Logger::AGENCY)
       << "Role change: Converted to candidate in term " << _term ;
@@ -188,16 +198,19 @@ void Constituent::candidate () {
 
 /// @brief Leading?
 bool Constituent::leading () const {
+  MUTEX_LOCKER(guard, _castLock);
   return _role == LEADER;
 }
 
 /// @brief Following?
 bool Constituent::following () const {
+  MUTEX_LOCKER(guard, _castLock);
   return _role == FOLLOWER;
 }
 
 /// @brief Runnig as candidate?
 bool Constituent::running () const {
+  MUTEX_LOCKER(guard, _castLock);
   return _role == CANDIDATE;
 }
 
@@ -257,30 +270,30 @@ size_t Constituent::notifyAll () {
 /// @brief Vote
 bool Constituent::vote (
   term_t term, id_t id, index_t prevLogIndex, term_t prevLogTerm) {
-  if (term > _term || (_term==term&&_leader_id==id)) {
+  term_t t = 0;
+  id_t lid = 0;
+  {
+    MUTEX_LOCKER(guard,_castLock);
+    t = _term;
+    lid = _leader_id;
+  }
+  if (term > t || (t == term && lid == id)) {
     this->term(term);
-    _cast = true;      // Note that I voted this time around.
-    _voted_for = id;   // The guy I voted for I assume leader.
-    _leader_id = id;
-    if (_role>FOLLOWER)
+    {
+      MUTEX_LOCKER(guard,_castLock);
+      _cast = true;      // Note that I voted this time around.
+      _voted_for = id;   // The guy I voted for I assume leader.
+      _leader_id = id;
+    }
+    if (_role>FOLLOWER) {
       follow (_term);
-    _agent->persist(_term,_voted_for);
+    }
+    _agent->persist(term,id);
     _cv.signal();
     return true;
   } else {             // Myself running or leading
     return false;
   }
-}
-
-/// @brief Implementation of a gossip protocol
-void Constituent::gossip (const constituency_t& constituency) {
-  // TODO: Replace lame notification by gossip protocol
-}
-
-/// @brief Implementation of a gossip protocol
-const constituency_t& Constituent::gossip () {
-  // TODO: Replace lame notification by gossip protocol
-  return _constituency;
 }
 
 /// @brief Call to election
@@ -430,7 +443,7 @@ void Constituent::run() {
 
       dist_t dis(config().min_ping, config().max_ping);
       long rand_wait = static_cast<long>(dis(_gen)*1000000.0);
-      bool timedout = _cv.wait(rand_wait);
+      /*bool timedout =*/ _cv.wait(rand_wait);
 
       {
         MUTEX_LOCKER(guard, _castLock);
