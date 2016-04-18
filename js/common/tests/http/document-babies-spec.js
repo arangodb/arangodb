@@ -316,7 +316,6 @@ describe('babies collection document', function() {
 
       // Check header error codes
       let headers = req.headers;
-      require("internal").print(JSON.stringify(headers));
       expect(headers).to.have.property(errorHeader);
       let errorCodes = JSON.parse(headers[errorHeader]);
       expect(errorCodes).to.have.property(uniqueCode);
@@ -451,11 +450,11 @@ describe('babies collection document', function() {
         expect(docs3[i].value).to.equal(2);
       }
 
-      try {
-        collection.remove(b1);
-        expect("expecting exception").to.equal(false);
-      } catch (err) {
-        expect(err.errorNum).to.equal(ERRORS.ERROR_ARANGO_CONFLICT.code);
+      let docs4 = collection.remove(b1);
+      expect(docs4.length).to.equal(3);
+      for (let i = 0; i < docs3.length; i++) {
+        expect(docs4[i].error).to.equal(true);
+        expect(docs4[i].errorNum).to.equal(ERRORS.ERROR_ARANGO_CONFLICT.code);
       }
 
       expect(collection.count()).to.equal(3);
@@ -512,11 +511,11 @@ describe('babies collection document', function() {
         expect(docs3[i].value).to.equal(2);
       }
 
-      try {
-        collection.remove(b1);
-        expect("expecting exception").to.equal(false);
-      } catch (err) {
-        expect(err.errorNum).to.equal(ERRORS.ERROR_ARANGO_CONFLICT.code);
+      let docs4 = collection.remove(b1);
+      expect(docs4.length).to.equal(3);
+      for (let i = 0; i < docs3.length; i++) {
+        expect(docs4[i].error).to.equal(true);
+        expect(docs4[i].errorNum).to.equal(ERRORS.ERROR_ARANGO_CONFLICT.code);
       }
 
       expect(collection.count()).to.equal(3);
@@ -582,8 +581,15 @@ describe('babies collection document', function() {
         extend(endpoint, {
           body: JSON.stringify(l3)
         }));
+      // Babies only have positive result codes
+      expect(req3.statusCode).to.equal(202);
 
-      expect(req3.statusCode).to.equal(412);
+      let b3 = JSON.parse(req3.rawBody);
+      for (let i = 0; i < l3.length; ++i) {
+        expect(b3[i].error).to.equal(true);
+        expect(b3[i].errorNum).to.equal(ERRORS.ERROR_ARANGO_CONFLICT.code);
+      }
+
       expect(collection.count()).to.equal(l1.length);
     });
 
@@ -646,7 +652,14 @@ describe('babies collection document', function() {
           body: JSON.stringify(l3)
         }));
 
-      expect(req3.statusCode).to.equal(412);
+      // Babies only have positive result codes
+      expect(req3.statusCode).to.equal(202);
+
+      let b3 = JSON.parse(req3.rawBody);
+      for (let i = 0; i < l3.length; ++i) {
+        expect(b3[i].error).to.equal(true);
+        expect(b3[i].errorNum).to.equal(ERRORS.ERROR_ARANGO_CONFLICT.code);
+      }
       expect(collection.count()).to.equal(l1.length);
     });
 

@@ -150,16 +150,6 @@ ExampleMatcher::ExampleMatcher(v8::Isolate* isolate,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Constructor using a TRI_json_t object
-///        DEPRECATED
-////////////////////////////////////////////////////////////////////////////////
-
-ExampleMatcher::ExampleMatcher(TRI_json_t const* example,
-                               CollectionNameResolver const* resolver) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Constructor using a VelocyPack object
 ///        Note: allowStrings is used to define if strings in example-array
 ///        should be matched to _id

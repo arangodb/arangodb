@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 #include "Aql/Collection.h"
 #include "Cluster/ServerState.h"
-#include "Utils/CollectionNameResolver.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/Transaction.h"
 #include "VocBase/transaction.h"
@@ -87,53 +86,19 @@ class AqlTransaction : public Transaction {
   /// @brief add a collection to the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  int processCollection(arangodb::aql::Collection* collection) {
-    int state = setupState();
-
-    if (state != TRI_ERROR_NO_ERROR) {
-      return state;
-    }
-
-    if (ServerState::instance()->isCoordinator()) {
-      return processCollectionCoordinator(collection);
-    }
-    return processCollectionNormal(collection);
-  }
+  int processCollection(arangodb::aql::Collection*); 
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add a coordinator collection to the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  int processCollectionCoordinator(arangodb::aql::Collection* collection) {
-    TRI_voc_cid_t cid =
-        this->resolver()->getCollectionId(collection->getName());
-
-    return this->addCollection(cid, collection->getName().c_str(),
-                               collection->accessType);
-  }
+  int processCollectionCoordinator(arangodb::aql::Collection*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add a regular collection to the transaction
   //////////////////////////////////////////////////////////////////////////////
 
-  int processCollectionNormal(arangodb::aql::Collection* collection) {
-    TRI_vocbase_col_t const* col =
-        this->resolver()->getCollectionStruct(collection->getName());
-    TRI_voc_cid_t cid = 0;
-
-    if (col != nullptr) {
-      cid = col->_cid;
-    }
-
-    int res =
-        this->addCollection(cid, collection->getName(), collection->accessType);
-
-    if (res == TRI_ERROR_NO_ERROR && col != nullptr) {
-      collection->setCollection(const_cast<TRI_vocbase_col_t*>(col));
-    }
-
-    return res;
-  }
+  int processCollectionNormal(arangodb::aql::Collection* collection);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ditch
@@ -174,20 +139,7 @@ class AqlTransaction : public Transaction {
   /// order via an HTTP call. This method is used to implement that HTTP action.
   //////////////////////////////////////////////////////////////////////////////
 
-  int lockCollections() {
-    auto trx = getInternals();
-
-    for (size_t i = 0; i < trx->_collections._length; i++) {
-      auto trxCollection = static_cast<TRI_transaction_collection_t*>(
-          TRI_AtVectorPointer(&trx->_collections, i));
-      int res = TRI_LockCollectionTransaction(trxCollection,
-                                              trxCollection->_accessType, 0);
-      if (res != TRI_ERROR_NO_ERROR) {
-        return res;
-      }
-    }
-    return TRI_ERROR_NO_ERROR;
-  }
+  int lockCollections();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief keep a copy of the collections, this is needed for the clone

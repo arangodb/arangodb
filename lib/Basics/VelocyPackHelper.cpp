@@ -700,19 +700,25 @@ double VelocyPackHelper::toDouble(VPackSlice const& slice, bool& failed) {
 
 uint64_t VelocyPackHelper::hashByAttributes(
     VPackSlice slice, std::vector<std::string> const& attributes,
-    bool docComplete, int& error) {
+    bool docComplete, int& error, std::string const& key) {
   error = TRI_ERROR_NO_ERROR;
   uint64_t hash = TRI_FnvHashBlockInitial();
   if (slice.isObject()) {
     for (auto const& attr: attributes) {
       VPackSlice sub = slice.get(attr);
       if (sub.isNone()) {
+        if (attr == "_key" && !key.empty()) {
+          VPackBuilder temporaryBuilder;
+          temporaryBuilder.add(VPackValue(key));
+          hash = temporaryBuilder.slice().normalizedHash(hash);
+          continue;
+        }
         if (!docComplete) {
           error = TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN;
-        } 
+        }
         // Null is equal to None/not present
         sub = NullBuilder.slice();
-      } 
+      }
       hash = sub.normalizedHash(hash);
     }
   }

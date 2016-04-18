@@ -225,7 +225,7 @@ class VelocyPackHelper {
   static double toDouble(VPackSlice const&, bool&);
 
   static uint64_t hashByAttributes(VPackSlice, std::vector<std::string> const&,
-                                   bool, int&);
+                                   bool, int&, std::string const& key = "");
 
   static arangodb::velocypack::Slice NullValue();
   static arangodb::velocypack::Slice TrueValue();
