@@ -104,6 +104,8 @@ function createRequire(module) {
 
   require.cache = Module._cache;
 
+  require.aliases = {};
+
   return require;
 }
 
@@ -132,6 +134,7 @@ function Module(id, parent) {
   if (parent) {
     this.context = parent.context;
     this.require.cache = parent.require.cache;
+    this.require.aliases = parent.require.aliases;
     this[$_MODULE_ROOT] = parent[$_MODULE_ROOT];
     Object.keys(parent[$_MODULE_CONTEXT]).forEach(function (key) {
       if (!hasOwnProperty(this[$_MODULE_CONTEXT], key)) {
@@ -420,6 +423,7 @@ function isGlobalModule(filename) {
 //    object.
 Module._load = function(request, parent, isMain) {
   request = request.replace(/^org\/arangodb/, '@arangodb');
+  request = (parent && parent.require.aliases[request]) || request;
 
   var filename = request;
   var dbModule = false;

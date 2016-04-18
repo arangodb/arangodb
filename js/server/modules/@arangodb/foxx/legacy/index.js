@@ -2,6 +2,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
+/// Copyright 2013 triagens GmbH, Cologne, Germany
 /// Copyright 2016 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,11 +19,18 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Lucas Dohmen
 /// @author Alan Plum
 ////////////////////////////////////////////////////////////////////////////////
 
-const manager = require('@arangodb/foxx/manager');
+exports.Controller = require('@arangodb/foxx/legacy/controller').Controller;
+exports.Model = require('@arangodb/foxx/legacy/model').Model;
+exports.Repository = require('@arangodb/foxx/legacy/repository').Repository;
+exports.createQuery = require('@arangodb/foxx/legacy/query').createQuery;
+exports.toJSONSchema = require('@arangodb/foxx/legacy/schema').toJSONSchema;
+exports.queues = require('@arangodb/foxx/queues');
 
-exports.getExports = function (path) {
-  return manager.requireApp('/' + path.replace(/(^\/+|\/+$)/, ''));
+exports.getExports = require('../').getExports;
+exports.requireApp = function (path) {
+  return exports.getExports(path);
 };
