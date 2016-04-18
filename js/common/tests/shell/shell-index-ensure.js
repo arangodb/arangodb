@@ -580,7 +580,7 @@ function ensureIndexSuite() {
 /// @brief test: ensure w/ skiplist
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEnsureSkiplisthOnKey : function () {
+    testEnsureSkiplistOnKey : function () {
       var res = collection.getIndexes();
 
       assertEqual(1, res.length);
@@ -1026,10 +1026,199 @@ function ensureIndexSuite() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite: ensureIndex
+////////////////////////////////////////////////////////////////////////////////
+
+function ensureIndexEdgesSuite() {
+  'use strict';
+  var cn = "UnitTestsCollectionIdx";
+  var vertex = null;
+  var edge = null;
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      internal.db._drop(cn);
+      vertex = internal.db._createEdgeCollection(cn + "Vertex");
+      edge = internal.db._create(cn + "Edge");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      vertex.drop();
+      edge.drop();
+      vertex = null;
+      edge = null;
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: ensure w/ skiplist
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureSkiplistOnFrom : function () {
+      var res = edge.getIndexes();
+
+      assertEqual(1, res.length);
+
+      var idx = edge.ensureIndex({ type: "skiplist", fields: [ "_from" ] });
+      assertEqual("skiplist", idx.type);
+      assertFalse(idx.unique);
+      assertFalse(idx.sparse);
+      assertEqual([ "_from" ], idx.fields);
+
+      res = edge.getIndexes()[edge.getIndexes().length - 1];
+
+      assertEqual("skiplist", res.type);
+      assertFalse(res.unique);
+      assertFalse(res.sparse);
+      assertEqual([ "_from" ], res.fields);
+
+      assertEqual(idx.id, res.id);
+
+      var query = "FOR doc IN " + edge.name() + " FILTER doc._from >= 0 SORT doc._from RETURN doc";
+      var st = db._createStatement({ query: query });
+     
+      var found = false; 
+      st.explain().plan.nodes.forEach(function(node) { 
+        if (node.type === "IndexNode") {
+          assertEqual("skiplist", node.indexes[0].type);
+          found = true; 
+        }
+      });
+      assertTrue(found);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: ensure w/ skiplist
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureSkiplistOnTo : function () {
+      var res = edge.getIndexes();
+
+      assertEqual(1, res.length);
+
+      var idx = edge.ensureIndex({ type: "skiplist", fields: [ "_to" ] });
+      assertEqual("skiplist", idx.type);
+      assertFalse(idx.unique);
+      assertFalse(idx.sparse);
+      assertEqual([ "_to" ], idx.fields);
+
+      res = edge.getIndexes()[edge.getIndexes().length - 1];
+
+      assertEqual("skiplist", res.type);
+      assertFalse(res.unique);
+      assertFalse(res.sparse);
+      assertEqual([ "_to" ], res.fields);
+
+      assertEqual(idx.id, res.id);
+
+      var query = "FOR doc IN " + edge.name() + " FILTER doc._to >= 0 SORT doc._to RETURN doc";
+      var st = db._createStatement({ query: query });
+     
+      var found = false; 
+      st.explain().plan.nodes.forEach(function(node) { 
+        if (node.type === "IndexNode") {
+          assertEqual("skiplist", node.indexes[0].type);
+          found = true; 
+        }
+      });
+      assertTrue(found);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: ensure w/ skiplist
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureSkiplistOnFromToCombinedHash : function () {
+      var res = edge.getIndexes();
+
+      assertEqual(1, res.length);
+
+      var idx = edge.ensureIndex({ type: "hash", fields: [ "_from", "_to" ] });
+      assertEqual("hash", idx.type);
+      assertFalse(idx.unique);
+      assertFalse(idx.sparse);
+      assertEqual([ "_from", "_to" ], idx.fields);
+
+      res = edge.getIndexes()[edge.getIndexes().length - 1];
+
+      assertEqual("hash", res.type);
+      assertFalse(res.unique);
+      assertFalse(res.sparse);
+      assertEqual([ "_from", "_to" ], res.fields);
+
+      assertEqual(idx.id, res.id);
+
+      var query = "FOR doc IN " + edge.name() + 
+                  " FILTER doc._from == 'UnitTestsCollectionIdxVertex/test1' && " +
+                  "doc._to == 'UnitTestsCollectionIdxVertex' RETURN doc";
+      var st = db._createStatement({ query: query });
+     
+      var found = false; 
+      st.explain().plan.nodes.forEach(function(node) { 
+        if (node.type === "IndexNode") {
+          assertTrue(node.indexes[0].type === "hash");
+          found = true; 
+        }
+      });
+      assertTrue(found);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: ensure w/ skiplist
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureSkiplistOnFromToCombinedSkiplist : function () {
+      var res = edge.getIndexes();
+
+      assertEqual(1, res.length);
+
+      var idx = edge.ensureIndex({ type: "skiplist", fields: [ "_from", "_to" ] });
+      assertEqual("skiplist", idx.type);
+      assertFalse(idx.unique);
+      assertFalse(idx.sparse);
+      assertEqual([ "_from", "_to" ], idx.fields);
+
+      res = edge.getIndexes()[edge.getIndexes().length - 1];
+
+      assertEqual("skiplist", res.type);
+      assertFalse(res.unique);
+      assertFalse(res.sparse);
+      assertEqual([ "_from", "_to" ], res.fields);
+
+      assertEqual(idx.id, res.id);
+
+      var query = "FOR doc IN " + edge.name() + 
+                  " FILTER doc._from == 'UnitTestsCollectionIdxVertex/test1' && " + 
+                  "doc._to == 'UnitTestsCollectionIdxVertex' RETURN doc";
+      var st = db._createStatement({ query: query });
+     
+      var found = false; 
+      st.explain().plan.nodes.forEach(function(node) { 
+        if (node.type === "IndexNode") {
+          assertTrue(node.indexes[0].type === "skiplist");
+          found = true; 
+        }
+      });
+      assertTrue(found);
+    }
+
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ensureIndexSuite);
+jsunity.run(ensureIndexEdgesSuite);
 
 return jsunity.done();
 
