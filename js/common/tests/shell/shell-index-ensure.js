@@ -31,7 +31,7 @@
 var jsunity = require("jsunity");
 var internal = require("internal");
 var errors = internal.errors;
-
+var db = require("@arangodb").db;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: ensureIndex
@@ -130,6 +130,21 @@ function ensureIndexSuite() {
       try {
         // no type given
         collection.ensureIndex({ something: "foo" });
+        fail();
+      }
+      catch (err) {
+        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: ensure invalid attribute
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureInvalidAttribute : function () {
+      try {
+        // no type given
+        collection.ensureIndex({ type: "hash", fields: [ "_id" ] });
         fail();
       }
       catch (err) {
@@ -320,6 +335,88 @@ function ensureIndexSuite() {
 /// @brief test: ensure w/ hash
 ////////////////////////////////////////////////////////////////////////////////
 
+    testEnsureHashOnKey : function () {
+      var res = collection.getIndexes();
+
+      assertEqual(1, res.length);
+
+      var idx = collection.ensureIndex({ type: "hash", fields: [ "_key" ] });
+      assertEqual("hash", idx.type);
+      assertFalse(idx.unique);
+      assertFalse(idx.sparse);
+      assertEqual([ "_key" ], idx.fields);
+
+      res = collection.getIndexes()[collection.getIndexes().length - 1];
+
+      assertEqual("hash", res.type);
+      assertFalse(res.unique);
+      assertFalse(res.sparse);
+      assertEqual([ "_key" ], res.fields);
+
+      assertEqual(idx.id, res.id);
+
+      var i = 0;
+      for (i = 0; i < 100; ++i) {
+        collection.insert({ _key: "test" + i, value: i });
+      }
+      for (i = 0; i < 100; ++i) {
+        var doc = collection.document("test" + i);
+        assertEqual("test" + i, doc._key);
+        assertEqual(i, doc.value);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: ensure w/ hash
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureHashOnKeyCombined : function () {
+      var res = collection.getIndexes();
+
+      assertEqual(1, res.length);
+
+      var idx = collection.ensureIndex({ type: "hash", fields: [ "_key", "value" ] });
+      assertEqual("hash", idx.type);
+      assertFalse(idx.unique);
+      assertFalse(idx.sparse);
+      assertEqual([ "_key", "value" ], idx.fields);
+
+      res = collection.getIndexes()[collection.getIndexes().length - 1];
+
+      assertEqual("hash", res.type);
+      assertFalse(res.unique);
+      assertFalse(res.sparse);
+      assertEqual([ "_key", "value" ], res.fields);
+
+      assertEqual(idx.id, res.id);
+
+      var i = 0;
+      for (i = 0; i < 100; ++i) {
+        collection.insert({ _key: "test" + i, value: i });
+      }
+      for (i = 0; i < 100; ++i) {
+        var doc = collection.document("test" + i);
+        assertEqual("test" + i, doc._key);
+        assertEqual(i, doc.value);
+      }
+      
+      var query = "FOR doc IN " + collection.name() + " FILTER doc._key == 'test1' && doc.value == 1 RETURN doc";
+      var st = db._createStatement({ query: query });
+     
+      var found = false; 
+      st.explain().plan.nodes.forEach(function(node) { 
+        if (node.type === "IndexNode") {
+          assertTrue(node.indexes[0].type === "primary" || node.indexes[0].type === "hash");
+          found = true; 
+        }
+      });
+      assertTrue(found);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: ensure w/ hash
+////////////////////////////////////////////////////////////////////////////////
+
     testEnsureHashFail : function () {
       try {
         collection.ensureIndex({ type: "hash" });
@@ -477,6 +574,100 @@ function ensureIndexSuite() {
       assertFalse(idx3.sparse);
       assertEqual([ "b", "c" ], res.fields);
       assertEqual(idx3.id, res.id);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: ensure w/ skiplist
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureSkiplisthOnKey : function () {
+      var res = collection.getIndexes();
+
+      assertEqual(1, res.length);
+
+      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "_key" ] });
+      assertEqual("skiplist", idx.type);
+      assertFalse(idx.unique);
+      assertFalse(idx.sparse);
+      assertEqual([ "_key" ], idx.fields);
+
+      res = collection.getIndexes()[collection.getIndexes().length - 1];
+
+      assertEqual("skiplist", res.type);
+      assertFalse(res.unique);
+      assertFalse(res.sparse);
+      assertEqual([ "_key" ], res.fields);
+
+      assertEqual(idx.id, res.id);
+
+      var i = 0;
+      for (i = 0; i < 100; ++i) {
+        collection.insert({ _key: "test" + i, value: i });
+      }
+      for (i = 0; i < 100; ++i) {
+        var doc = collection.document("test" + i);
+        assertEqual("test" + i, doc._key);
+        assertEqual(i, doc.value);
+      }
+      
+      var query = "FOR doc IN " + collection.name() + " FILTER doc._key >= 0 SORT doc._key RETURN doc";
+      var st = db._createStatement({ query: query });
+     
+      var found = false; 
+      st.explain().plan.nodes.forEach(function(node) { 
+        if (node.type === "IndexNode") {
+          assertEqual("skiplist", node.indexes[0].type);
+          found = true; 
+        }
+      });
+      assertTrue(found);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: ensure w/ skiplist
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureSkiplistOnKeyCombined : function () {
+      var res = collection.getIndexes();
+
+      assertEqual(1, res.length);
+
+      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "_key", "value" ] });
+      assertEqual("skiplist", idx.type);
+      assertFalse(idx.unique);
+      assertFalse(idx.sparse);
+      assertEqual([ "_key", "value" ], idx.fields);
+
+      res = collection.getIndexes()[collection.getIndexes().length - 1];
+
+      assertEqual("skiplist", res.type);
+      assertFalse(res.unique);
+      assertFalse(res.sparse);
+      assertEqual([ "_key", "value" ], res.fields);
+
+      assertEqual(idx.id, res.id);
+
+      var i = 0;
+      for (i = 0; i < 100; ++i) {
+        collection.insert({ _key: "test" + i, value: i });
+      }
+      for (i = 0; i < 100; ++i) {
+        var doc = collection.document("test" + i);
+        assertEqual("test" + i, doc._key);
+        assertEqual(i, doc.value);
+      }
+
+      var query = "FOR doc IN " + collection.name() + " FILTER doc._key == 'test1' && doc.value == 1 RETURN doc";
+      var st = db._createStatement({ query: query });
+     
+      var found = false; 
+      st.explain().plan.nodes.forEach(function(node) { 
+        if (node.type === "IndexNode") {
+          assertTrue(node.indexes[0].type === "primary" || node.indexes[0].type === "skiplist");
+          found = true; 
+        }
+      });
+      assertTrue(found);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -833,7 +1024,6 @@ function ensureIndexSuite() {
 
   };
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
