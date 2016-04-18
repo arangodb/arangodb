@@ -33,7 +33,6 @@
 
     showServerStatus: function(isOnline) {
       var self = this;
-      console.log(isOnline);
 
       if (!window.App.isCluster) {
         if (isOnline === true) {
