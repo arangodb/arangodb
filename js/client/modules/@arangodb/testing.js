@@ -3983,10 +3983,10 @@ function unitTest(cases, options) {
   }
 
   try {
-    yaml.safeDump(results);
+    yaml.safeDump(JSON.parse(JSON.stringify(results)));
   } catch (err) {
     print(RED + "cannot dump results: " + String(err) + RESET);
-    print(CYAN + require("internal").inspect(results) + RESET);
+    print(RED + require("internal").inspect(results) + RESET);
   }
 
   if (jsonReply === true) {
