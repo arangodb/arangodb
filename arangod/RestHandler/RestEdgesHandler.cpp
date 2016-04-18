@@ -405,7 +405,6 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
     VPackBuilder resultDocument;
     resultDocument.openObject();
 
-#warning Proper babies implementation required here
     for (auto const& it : VPackArrayIterator(body)) {
       if (it.isString()) {
         std::string vertexString(it.copyString());

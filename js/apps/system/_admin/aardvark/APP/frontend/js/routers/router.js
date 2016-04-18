@@ -142,7 +142,9 @@
           collection: this.arangoCollectionsStore 
         });
 
-        this.footerView = new window.FooterView();
+        this.footerView = new window.FooterView({
+          collection: self.coordinatorCollection
+        });
         this.notificationList = new window.NotificationCollection();
 
         this.currentDB.fetch({
