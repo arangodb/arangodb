@@ -752,7 +752,7 @@ int Syncer::handleStateResponse(VPackSlice const& slice, std::string& errorMsg) 
   }
 
   if (major != 3) {
-    // we can connect to 3.x onyl
+    // we can connect to 3.x only
     errorMsg = "got incompatible master version" + endpointString + ": '" +
                versionString + "'";
 
