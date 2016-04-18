@@ -566,7 +566,6 @@ static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     // a relative url. now make this an absolute URL if possible
     for (auto const& endpoint : endpoints) {
-      LOG(FATAL) << endpoint;
       std::string fullurl = endpoint;
 
       // ipv4: replace 0.0.0.0 with 127.0.0.1
