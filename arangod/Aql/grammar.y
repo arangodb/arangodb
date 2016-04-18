@@ -59,7 +59,7 @@ void Aqlerror (YYLTYPE* locp,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check if any of variables used into the INTO expression was 
+/// @brief check if any of the variables used in the INTO expression were 
 /// introduced by the COLLECT itself, in which case it would fail
 ////////////////////////////////////////////////////////////////////////////////
          

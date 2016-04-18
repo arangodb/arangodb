@@ -31,6 +31,7 @@
 var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
 var isEqual = helper.isEqual;
+var db = require("@arangodb").db;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -51,6 +52,8 @@ function optimizerRuleTestSuite () {
     ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
+      db._drop("UnitTestsOptimizerTest");
+      db._create("UnitTestsOptimizerTest");
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -58,6 +61,7 @@ function optimizerRuleTestSuite () {
     ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
+      db._drop("UnitTestsOptimizerTest");
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -249,12 +253,12 @@ function optimizerRuleTestSuite () {
         "LET x = (FOR k IN [1] RETURN k) RETURN 1",
 
         // modification nodes
-        "FOR i IN 1..2 LET a = CONCAT('UnitTestsOptimizer', i) INSERT CONCAT(a, i) INTO _users OPTIONS { ignoreErrors: true }",
-        "FOR i IN 1..2 LET a = CONCAT('UnitTestsOptimizer', i) REMOVE CONCAT(a, i) INTO _users OPTIONS { ignoreErrors: true }",
-        "FOR i IN 1..2 LET a = CONCAT('UnitTestsOptimizer', i) UPDATE CONCAT(a, i) WITH { } INTO _users OPTIONS { ignoreErrors: true }",
-        "FOR i IN 1..2 LET a = CONCAT('UnitTestsOptimizer', i) UPDATE CONCAT('UnitTestsOptimizer', i * 2) WITH CONCAT(a, i) INTO _users OPTIONS { ignoreErrors: true }",
-        "FOR i IN 1..2 LET a = CONCAT('UnitTestsOptimizer', i) REPLACE CONCAT(a, i) WITH { } INTO _users OPTIONS { ignoreErrors: true }",
-        "FOR i IN 1..2 LET a = CONCAT('UnitTestsOptimizer', i) REPLACE CONCAT('UnitTestsOptimizer', i * 2) WITH CONCAT(a, i) INTO _users OPTIONS { ignoreErrors: true }"
+        "FOR i IN 1..2 LET a = CONCAT('UnitTestsOptimizer', i) INSERT CONCAT(a, i) INTO UnitTestsOptimizerTest OPTIONS { ignoreErrors: true }",
+        "FOR i IN 1..2 LET a = CONCAT('UnitTestsOptimizer', i) REMOVE CONCAT(a, i) INTO UnitTestsOptimizerTest OPTIONS { ignoreErrors: true }",
+        "FOR i IN 1..2 LET a = CONCAT('UnitTestsOptimizer', i) UPDATE CONCAT(a, i) WITH { } INTO UnitTestsOptimizerTest OPTIONS { ignoreErrors: true }",
+        "FOR i IN 1..2 LET a = CONCAT('UnitTestsOptimizer', i) UPDATE CONCAT('UnitTestsOptimizer', i * 2) WITH CONCAT(a, i) INTO UnitTestsOptimizerTest OPTIONS { ignoreErrors: true }",
+        "FOR i IN 1..2 LET a = CONCAT('UnitTestsOptimizer', i) REPLACE CONCAT(a, i) WITH { } INTO UnitTestsOptimizerTest OPTIONS { ignoreErrors: true }",
+        "FOR i IN 1..2 LET a = CONCAT('UnitTestsOptimizer', i) REPLACE CONCAT('UnitTestsOptimizer', i * 2) WITH CONCAT(a, i) INTO UnitTestsOptimizerTest OPTIONS { ignoreErrors: true }"
       ];
 
       queries.forEach(function(query) {

@@ -131,6 +131,15 @@ $navbar-size: 150px;
       }
     }
 
+    &.disabled:hover {
+      cursor: default;
+
+      a:hover {
+        cursor: default;
+        opacity: .8;
+      }
+    }
+
     &.dropdown:hover {
       border-bottom-left-radius: 0;
       border-bottom-right-radius: 0;

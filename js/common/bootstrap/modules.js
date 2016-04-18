@@ -61,6 +61,8 @@ const console = NATIVE_MODULES.console;
 delete global.SCAFFOLDING_MODULES;
 delete global.DEFINE_MODULE;
 const LOADING = [];
+const $_MODULE_ROOT = Symbol.for('@arangodb/module.root');
+const $_MODULE_CONTEXT = Symbol.for('@arangodb/module.context');
 
 const GLOBAL_PATHS = [];
 const ROOT_PATH = fs.normalize(fs.makeAbsolute(internal.startupPath));
@@ -88,7 +90,9 @@ function hasOwnProperty(obj, prop) {
 
 function createRequire(module) {
   function require(path) {
-    return module.require(path);
+    assert(path, 'missing path');
+    assert(typeof path === 'string', 'path must be a string');
+    return Module._load(path, module);
   }
 
   require.resolve = function(request) {
@@ -98,38 +102,43 @@ function createRequire(module) {
   // Enable support to add extra extension types
   require.extensions = Module._extensions;
 
-  require.cache = module.cache;
+  require.cache = Module._cache;
+
+  require.aliases = {};
 
   return require;
 }
 
-function Module(id, parent, cache) {
+function Module(id, parent) {
   this.id = id;
   this.exports = {};
+  this.require = createRequire(this);
   this.parent = parent;
   if (parent && parent.children) {
     parent.children.push(this);
   }
 
-  this.cache = cache || (parent ? parent.cache : Module._cache);
-
-  this.context = {
-    print: internal.print,
-    process: NATIVE_MODULES.process,
-    console: NATIVE_MODULES.console,
-    module: this,
-    exports: this.exports,
-    require: createRequire(this),
-    __filename: null,
-    __dirname: null
-  };
+  Object.defineProperty(this, $_MODULE_CONTEXT, {
+    value: {
+      print: internal.print,
+      process: NATIVE_MODULES.process,
+      console: NATIVE_MODULES.console,
+      module: this,
+      exports: this.exports,
+      require: this.require,
+      __filename: null,
+      __dirname: null
+    }
+  });
 
   if (parent) {
-    this.root = parent.root;
-    this.preprocess = parent.preprocess;
-    Object.keys(parent.context).forEach(function (key) {
-      if (!hasOwnProperty(this.context, key)) {
-        this.context[key] = parent.context[key];
+    this.context = parent.context;
+    this.require.cache = parent.require.cache;
+    this.require.aliases = parent.require.aliases;
+    this[$_MODULE_ROOT] = parent[$_MODULE_ROOT];
+    Object.keys(parent[$_MODULE_CONTEXT]).forEach(function (key) {
+      if (!hasOwnProperty(this[$_MODULE_CONTEXT], key)) {
+        this[$_MODULE_CONTEXT][key] = parent[$_MODULE_CONTEXT][key];
       }
     }.bind(this));
   }
@@ -138,11 +147,11 @@ function Module(id, parent, cache) {
     configurable: true,
     enumerable: true,
     get() {
-      return this.context.__filename;
+      return this[$_MODULE_CONTEXT].__filename;
     },
     set(filename) {
-      this.context.__filename = filename;
-      this.context.__dirname = filename === null ? null : path.dirname(filename);
+      this[$_MODULE_CONTEXT].__filename = filename;
+      this[$_MODULE_CONTEXT].__dirname = filename === null ? null : path.dirname(filename);
     }
   });
 
@@ -414,6 +423,7 @@ function isGlobalModule(filename) {
 //    object.
 Module._load = function(request, parent, isMain) {
   request = request.replace(/^org\/arangodb/, '@arangodb');
+  request = (parent && parent.require.aliases[request]) || request;
 
   var filename = request;
   var dbModule = false;
@@ -444,8 +454,11 @@ Module._load = function(request, parent, isMain) {
   }
 
   var cache;
-  if (parent && (dbModule || !isGlobalModule(filename))) cache = parent.cache;
-  else cache = Module._cache;
+  if (parent && (dbModule || !isGlobalModule(filename))) {
+    cache = parent.require.cache;
+  } else {
+    cache = Module._cache;
+  }
 
   var cachedModule = cache[filename];
   if (cachedModule) {
@@ -479,7 +492,7 @@ Module._load = function(request, parent, isMain) {
     if (hadException) {
       delete cache[filename];
     }
-    
+
     var i = LOADING.indexOf(loading);
     if (i !== -1) {
       LOADING.splice(i, 1);
@@ -522,7 +535,7 @@ Module._resolveFilename = function(request, parent) {
 Module.prototype.load = function(filename) {
   assert(!this.loaded);
   this.filename = filename;
-  this.paths = Module._nodeModulePaths(path.dirname(filename), this.root);
+  this.paths = Module._nodeModulePaths(path.dirname(filename), this[$_MODULE_ROOT]);
 
   var extension = path.extname(filename) || '.js';
   if (!Module._extensions[extension]) extension = '.js';
@@ -556,15 +569,6 @@ Module.prototype._loadDbModule = function (dbModule) {
 };
 
 
-// Loads a module at the given file path. Returns that module's
-// `exports` property.
-Module.prototype.require = function(path) {
-  assert(path, 'missing path');
-  assert(typeof path === 'string', 'path must be a string');
-  return Module._load(path, this);
-};
-
-
 // Run the file contents in the correct scope or sandbox. Expose
 // the correct helper variables (require, module, exports) to
 // the file.
@@ -572,13 +576,10 @@ Module.prototype.require = function(path) {
 Module.prototype._compile = function(content, filename) {
   // remove shebang
   content = content.replace(/^\#\!.*/, '');
-  if (this.preprocess) {
-    content = this.preprocess(content, filename);
-  }
 
   this.filename = filename;
 
-  var args = this.context;
+  var args = this[$_MODULE_CONTEXT];
   var keys = Object.keys(args);
   // Do not use Function constructor or line numbers will be wrong
   var wrapper = `(function (${keys.join(', ')}) {${content}\n})`;

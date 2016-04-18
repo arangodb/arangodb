@@ -84,7 +84,6 @@ actions.defineHttp({
       var appInfo = body.appInfo;
       var mount = body.mount;
       var options = body.options;
-      foxxManager.update();
       return foxxManager.install(appInfo, mount, options);
     }
   })
