@@ -29,7 +29,7 @@ void SanityCheck::run() {
   while (!this->isStopping()) {
     
     if (_agent->leading()) {
-      timedout = _cv.wait(1000000);
+      timedout = _cv.wait(250000);//quarter second
     } else {
       _cv.wait();
     }

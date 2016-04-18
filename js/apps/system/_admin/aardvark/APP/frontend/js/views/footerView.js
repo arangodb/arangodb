@@ -18,7 +18,7 @@
     initialize: function () {
       //also server online check
       var self = this;
-      window.setInterval(function(){
+      window.setInterval(function() {
         self.getVersion();
       }, 15000);
       self.getVersion();
@@ -51,45 +51,51 @@
       else {
         self.collection.fetch({
           success: function() {
-            self.renderClusterState();
+            self.renderClusterState(true);
+          },
+          error: function() {
+            self.renderClusterState(false);
           }
         });
       }
     },
 
-    renderClusterState: function() {
+    renderClusterState: function(connection) {
       var ok = 0, error = 0;
 
-      this.collection.each(function(value) {
-        if (value.toJSON().status === 'ok') {
-          ok++;
-        }
-        else {
-          error++;
-        }
-      });
+      if (connection) {
+        this.collection.each(function(value) {
+          if (value.toJSON().status === 'ok') {
+            ok++;
+          }
+          else {
+            error++;
+          }
+        });
 
-      if (error > 0) {
-        $('#healthStatus').removeClass('positive');
-        $('#healthStatus').addClass('negative');
-        if (error === 1) {
-          $('.health-state').html(error + ' NODE ERROR');
+        if (error > 0) {
+          $('#healthStatus').removeClass('positive');
+          $('#healthStatus').addClass('negative');
+          if (error === 1) {
+            $('.health-state').html(error + ' NODE ERROR');
+          }
+          else {
+            $('.health-state').html(error + ' NODES ERROR');
+          }
+          $('.health-icon').html('<i class="fa fa-exclamation-circle"></i>');
         }
         else {
-          $('.health-state').html(error + ' NODES ERROR');
+          $('#healthStatus').removeClass('negative');
+          $('#healthStatus').addClass('positive');
+          $('.health-state').html('NODES OK');
+          $('.health-icon').html('<i class="fa fa-check-circle"></i>');
         }
-        $('.health-icon').html('<i class="fa fa-exclamation-circle"></i>');
       }
       else {
-        $('#healthStatus').removeClass('negative');
-        $('#healthStatus').addClass('positive');
-        if (ok === 1) {
-          $('.health-state').html(ok + ' NODE OK');
-        }
-        else {
-          $('.health-state').html(ok + ' NODES OK');
-        }
-        $('.health-icon').html('<i class="fa fa-check-circle"></i>');
+        $('#healthStatus').removeClass('positive');
+        $('#healthStatus').addClass('negative');
+        $('.health-state').html(window.location.host + ' OFFLINE');
+        $('.health-icon').html('<i class="fa fa-exclamation-circle"></i>');
       }
     },
 

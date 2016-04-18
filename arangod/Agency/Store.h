@@ -230,6 +230,9 @@ public:
   /// @brief Notify observers
   void notifyObservers () const;
 
+  /// @brief See how far the path matches anything in store
+  size_t matchPath (std::vector<std::string> const& pv) const;
+
 private:
   /// @brief Read individual entry specified in slice into builder
   bool read  (arangodb::velocypack::Slice const&,

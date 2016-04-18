@@ -96,7 +96,11 @@ QueryResult Parser::parse(bool withDetails) {
   }
 
   // end main scope
-  scopes->endCurrent();
+  TRI_ASSERT(scopes->numActive() > 0);
+
+  while (scopes->numActive() > 0) {
+    scopes->endCurrent();
+  }
 
   TRI_ASSERT(scopes->numActive() == 0);
 

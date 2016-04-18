@@ -34,17 +34,16 @@
     },
 
     breadcrumb: function(name) {
-      console.log("yes");
       $('#subNavigationBar .breadcrumb').html("Node: " + name);
     },
 
     render: function () {
-      console.log(1);
       this.$el.html(this.template.render({coords: []}));
 
       var callback = function() {
         this.continueRender();
         this.breadcrumb(this.coordname);
+        $(window).trigger('resize');
       }.bind(this);
 
       if (!this.initDone) {
@@ -58,6 +57,8 @@
     },
 
     continueRender: function() {
+      var self = this;
+
       this.dashboards[this.coordinator.get('name')] = new window.DashboardView({
         dygraphConfig: window.dygraphConfig,
         database: window.App.arangoDatabase,
@@ -69,6 +70,9 @@
         }
       });
       this.dashboards[this.coordinator.get('name')].render();
+      window.setTimeout(function() {
+        self.dashboards[self.coordinator.get('name')].resize();
+      }, 100);
     },
 
     waitForCoordinators: function(callback) {

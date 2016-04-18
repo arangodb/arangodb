@@ -396,6 +396,7 @@ void Dumper::dumpValue(Slice const* slice, Slice const* base) {
       break;
     }
 
+    case ValueType::Illegal:
     case ValueType::MinKey:
     case ValueType::MaxKey: {
       handleUnsupportedType(slice);

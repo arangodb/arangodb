@@ -170,6 +170,8 @@ the sort parameter.
 v2.8.8 (????-??-??)
 -------------------
 
+* fixed issue #1805: Query: internal error (location: arangod/Aql/AqlValue.cpp:182). Please report this error to arangodb.com (while executing)
+
 * allow specifying collection name prefixes for `_from` and `_to` in arangoimp:
 
   To avoid specifying complete document ids (consisting of collection names and document

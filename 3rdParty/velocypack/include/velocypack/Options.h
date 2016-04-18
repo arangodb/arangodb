@@ -62,6 +62,7 @@ struct CustomTypeHandler {
 struct Options {
   enum UnsupportedTypeBehavior {
     NullifyUnsupportedType,
+    ConvertUnsupportedType,
     FailOnUnsupportedType
   };
 
