@@ -107,6 +107,7 @@ duration_t Constituent::sleepFor (double min_t, double max_t) {
 
 // Get my term
 term_t Constituent::term() const {
+  MUTEX_LOCKER (guard, _castLock);
   return _term;
 }
 
@@ -417,8 +418,11 @@ void Constituent::run() {
   }
   
   // Always start off as follower
-  while (!this->isStopping() && size() > 1) { 
+  while (!this->isStopping() && size() > 1) {
+
     if (_role == FOLLOWER) {
+      bool cast = false;
+
       {
         MUTEX_LOCKER(guard, _castLock);
         _cast = false;                           // New round set not cast vote
@@ -430,9 +434,11 @@ void Constituent::run() {
 
       {
         MUTEX_LOCKER(guard, _castLock);
-        if (!_cast) {
-          candidate();                           // Next round, we are running
-        }
+        cast = _cast;
+      }
+      
+      if (!cast) {
+        candidate();                           // Next round, we are running
       }
     } else {
       callElection();                          // Run for office
