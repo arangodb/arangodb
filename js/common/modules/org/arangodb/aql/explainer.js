@@ -139,12 +139,19 @@ function printModificationFlags (flags) {
   stringBuilder.appendLine(section("Write query options:"));
   var keys = Object.keys(flags), maxLen = "Option".length;
   keys.forEach(function(k) {
+    if (k === 'nullMeansRemove') { // translate option name
+      k = 'keepNull';
+    }
     if (k.length > maxLen) {
       maxLen = k.length;
     }
   });
   stringBuilder.appendLine(" " + header("Option") + pad(1 + maxLen - "Option".length) + "   " + header("Value"));
   keys.forEach(function(k) {
+    if (k === 'nullMeansRemove') { // translate option name
+      flags.keepNull = !flags[k];
+      k = 'keepNull';
+    }
     stringBuilder.appendLine(" " + keyword(k) + pad(1 + maxLen - k.length) + "   " + value(JSON.stringify(flags[k]))); 
   });
   stringBuilder.appendLine();
