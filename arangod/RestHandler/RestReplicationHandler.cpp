@@ -2286,9 +2286,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
       if (!doc.isNone() && type != REPLICATION_MARKER_REMOVE) {
         ShardID responsibleShard;
         bool usesDefaultSharding;
-        std::unique_ptr<TRI_json_t> tmp(
-            arangodb::basics::VelocyPackHelper::velocyPackToJson(doc));
-        res = ci->getResponsibleShard(col->id_as_string(), tmp.get(), true,
+        res = ci->getResponsibleShard(col->id_as_string(), doc, true,
                                       responsibleShard, usesDefaultSharding);
         if (res != TRI_ERROR_NO_ERROR) {
           errorMsg = "error during determining responsible shard";

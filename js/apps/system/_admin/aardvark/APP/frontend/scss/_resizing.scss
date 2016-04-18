@@ -552,20 +552,25 @@
   }
 }
 
-
-div.contentWrapper {
-  padding-bottom: 42px;
+div.headerBar {
+  background-color: none;
+  border-radius: 2px;
+  float: right;
+  font-size: 16px;
+  height: 36px;
+  margin-top: -55px;
+  position: absolute;
+  right: 150px;
 }
 
 div.centralRow {
   background: $c-bluegrey-bg;
-  float: left;
   height: 100%;
-  left: $navbar-size;
   min-height: 100%;
   overflow-y: auto;
-  position: absolute;
+  position: relative;
   right: 0;
+  //width: 100%;
 }
 
 div.centralContent {
@@ -573,8 +578,12 @@ div.centralContent {
   background-color: rgba(0, 0, 0, 0);
   box-sizing: border-box;
   margin-top: 10px;
-  min-height: 80px;
-  padding: 5px;
+  padding: {
+    bottom: 43px;
+    left: 5px;
+    right: 5px;
+    top: 5px;
+  }
   width: 100%;
 }
 

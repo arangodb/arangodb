@@ -113,19 +113,6 @@ static OperationResult DBServerResponseBad(std::shared_ptr<VPackBuilder> resultB
           res, "errorMessage", "JSON sent to DBserver was bad"));
 }
 
-static OperationResult DBServerResponseBad(std::string const& resultBody) {
-  // TODO DEPRECATED
-  // The body contains more information so we parse it.
-  VPackParser parser;
-  try {
-    parser.parse(resultBody);
-    return DBServerResponseBad(parser.steal());
-  } catch (...) {
-    return OperationResult(TRI_ERROR_INTERNAL, "JSON sent to DBserver was bad");
-  }
-}
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Insert an errror reported instead of the new document
 ////////////////////////////////////////////////////////////////////////////////
@@ -1019,43 +1006,27 @@ OperationResult Transaction::document(std::string const& collectionName,
 OperationResult Transaction::documentCoordinator(std::string const& collectionName,
                                                  VPackSlice const value,
                                                  OperationOptions& options) {
-  if (value.isArray()) {
-    // multi-document variant is not yet implemented
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
   auto headers = std::make_unique<std::map<std::string, std::string>>();
   GeneralResponse::ResponseCode responseCode;
-  std::map<std::string, std::string> resultHeaders;
-  std::string resultBody;
+  std::unordered_map<int, size_t> errorCounter;
+  auto resultBody = std::make_shared<VPackBuilder>();
 
-  std::string key(Transaction::extractKey(value));
-  if (key.empty()) {
-    return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
+  if (!value.isArray()) {
+    std::string key(Transaction::extractKey(value));
+    if (key.empty()) {
+      return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
+    }
   }
-  TRI_voc_rid_t expectedRevision = TRI_ExtractRevisionId(value);
-
+  
   int res = arangodb::getDocumentOnCoordinator(
-      _vocbase->_name, collectionName, key, expectedRevision, headers, true,
-      responseCode, resultHeaders, resultBody);
+      _vocbase->_name, collectionName, value, options, headers, responseCode, errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
     if (responseCode == GeneralResponse::ResponseCode::OK ||
         responseCode == GeneralResponse::ResponseCode::PRECONDITION_FAILED) {
-      VPackParser parser;
-      try {
-        parser.parse(resultBody);
-        auto bui = parser.steal();
-        auto buf = bui->steal();
-        return OperationResult(buf, nullptr, "", 
-            responseCode == GeneralResponse::ResponseCode::OK ?
-            TRI_ERROR_NO_ERROR : TRI_ERROR_ARANGO_CONFLICT, false);
-      }
-      catch (VPackException& e) {
-        std::string message = "JSON from DBserver not parseable: "
-                              + resultBody + ":" + e.what();
-        return OperationResult(TRI_ERROR_INTERNAL, message);
-      }
+      return OperationResult(resultBody->steal(), nullptr, "", 
+          responseCode == GeneralResponse::ResponseCode::OK ?
+          TRI_ERROR_NO_ERROR : TRI_ERROR_ARANGO_CONFLICT, false, errorCounter);
     } else if (responseCode == GeneralResponse::ResponseCode::NOT_FOUND) {
       return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     } else {
@@ -1079,7 +1050,7 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
  
   VPackBuilder resultBuilder;
 
-  auto workOnOneDocument = [&](VPackSlice const value) -> int {
+  auto workOnOneDocument = [&](VPackSlice const value, bool isMultiple) -> int {
     std::string key(Transaction::extractKey(value));
     if (key.empty()) {
       return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
@@ -1101,9 +1072,11 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
     if (!expectedRevision.isNone()) {
       VPackSlice foundRevision = mptr.revisionIdAsSlice();
       if (expectedRevision != foundRevision) {
-        // still return 
-        buildDocumentIdentity(resultBuilder, cid, key, foundRevision, 
-                              VPackSlice(), nullptr, nullptr);
+        if (!isMultiple) {
+          // still return 
+          buildDocumentIdentity(resultBuilder, cid, key, foundRevision, 
+                                VPackSlice(), nullptr, nullptr);
+        }
         return TRI_ERROR_ARANGO_CONFLICT;
       }
     }
@@ -1112,27 +1085,31 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
       //resultBuilder.add(VPackValue(static_cast<void const*>(mptr.vpack()), VPackValueType::External));
       // This is the future, for now, we have to do this:
       resultBuilder.add(VPackSlice(mptr.vpack()));
+    } else if (isMultiple) {
+      resultBuilder.add(VPackValue(VPackValueType::Null));
     }
 
     return TRI_ERROR_NO_ERROR;
   };
 
   int res = TRI_ERROR_NO_ERROR;
+  std::unordered_map<int, size_t> countErrorCodes;
   if (!value.isArray()) {
-    res = workOnOneDocument(value);
+    res = workOnOneDocument(value, false);
   } else {
     VPackArrayBuilder guard(&resultBuilder);
     for (auto const& s : VPackArrayIterator(value)) {
-      res = workOnOneDocument(s);
+      res = workOnOneDocument(s, true);
       if (res != TRI_ERROR_NO_ERROR) {
-        break;
+        createBabiesError(resultBuilder, countErrorCodes, res);
       }
     }
+    res = TRI_ERROR_NO_ERROR;
   }
 
   return OperationResult(resultBuilder.steal(), 
                          transactionContext()->orderCustomTypeHandler(), "",
-                         res, options.waitForSync); 
+                         res, options.waitForSync, countErrorCodes); 
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -1377,26 +1354,14 @@ OperationResult Transaction::updateCoordinator(std::string const& collectionName
                                                VPackSlice const newValue,
                                                OperationOptions& options) {
 
-  if (newValue.isArray()) {
-    // multi-document variant is not yet implemented
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-  
   auto headers = std::make_unique<std::map<std::string, std::string>>();
   GeneralResponse::ResponseCode responseCode;
-  std::map<std::string, std::string> resultHeaders;
-  std::string resultBody;
-
-  std::string key(Transaction::extractKey(newValue));
-  if (key.empty()) {
-    return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
-  }
-  TRI_voc_rid_t const expectedRevision 
-      = options.ignoreRevs ? 0 : TRI_ExtractRevisionId(newValue);
+  std::unordered_map<int, size_t> errorCounter;
+  auto resultBody = std::make_shared<VPackBuilder>();
 
   int res = arangodb::modifyDocumentOnCoordinator(
-      _vocbase->_name, collectionName, key, expectedRevision, options,
-      true /* isPatch */, newValue, headers, responseCode, resultHeaders,
+      _vocbase->_name, collectionName, newValue, options,
+      true /* isPatch */, headers, responseCode, errorCounter,
       resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -1412,22 +1377,10 @@ OperationResult Transaction::updateCoordinator(std::string const& collectionName
         // Fall through
       case GeneralResponse::ResponseCode::ACCEPTED:
       case GeneralResponse::ResponseCode::CREATED:
-        {
-          VPackParser parser;
-          try {
-            parser.parse(resultBody);
-            auto bui = parser.steal();
-            auto buf = bui->steal();
-            return OperationResult(
-                buf, nullptr, "", errorCode,
-                responseCode == GeneralResponse::ResponseCode::CREATED);
-          }
-          catch (VPackException& e) {
-            std::string message = "JSON from DBserver not parseable: "
-                                  + resultBody + ":" + e.what();
-            return OperationResult(TRI_ERROR_INTERNAL, message);
-          }
-        }
+        return OperationResult(
+            resultBody->steal(), nullptr, "", errorCode,
+            responseCode == GeneralResponse::ResponseCode::CREATED,
+            errorCounter);
       case GeneralResponse::ResponseCode::BAD:
         return DBServerResponseBad(resultBody);
       case GeneralResponse::ResponseCode::NOT_FOUND:
@@ -1474,25 +1427,14 @@ OperationResult Transaction::replace(std::string const& collectionName,
 OperationResult Transaction::replaceCoordinator(std::string const& collectionName,
                                                 VPackSlice const newValue,
                                                 OperationOptions& options) {
-  if (newValue.isArray()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-  }
-
   auto headers = std::make_unique<std::map<std::string, std::string>>();
   GeneralResponse::ResponseCode responseCode;
-  std::map<std::string, std::string> resultHeaders;
-  std::string resultBody;
-
-  std::string key(Transaction::extractKey(newValue));
-  if (key.empty()) {
-    return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
-  }
-  TRI_voc_rid_t const expectedRevision 
-      = options.ignoreRevs ? 0 : TRI_ExtractRevisionId(newValue);
+  std::unordered_map<int, size_t> errorCounter;
+  auto resultBody = std::make_shared<VPackBuilder>();
 
   int res = arangodb::modifyDocumentOnCoordinator(
-      _vocbase->_name, collectionName, key, expectedRevision, options,
-      false /* isPatch */, newValue, headers, responseCode, resultHeaders,
+      _vocbase->_name, collectionName, newValue, options,
+      false /* isPatch */, headers, responseCode, errorCounter,
       resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -1507,22 +1449,10 @@ OperationResult Transaction::replaceCoordinator(std::string const& collectionNam
         // Fall through
       case GeneralResponse::ResponseCode::ACCEPTED:
       case GeneralResponse::ResponseCode::CREATED:
-        {
-          VPackParser parser;
-          try {
-            parser.parse(resultBody);
-            auto bui = parser.steal();
-            auto buf = bui->steal();
-            return OperationResult(
-                buf, nullptr, "", errorCode,
-                responseCode == GeneralResponse::ResponseCode::CREATED);
-          }
-          catch (VPackException& e) {
-            std::string message = "JSON from DBserver not parseable: "
-                                  + resultBody + ":" + e.what();
-            return OperationResult(TRI_ERROR_INTERNAL, message);
-          }
-        }
+        return OperationResult(
+            resultBody->steal(), nullptr, "", errorCode,
+            responseCode == GeneralResponse::ResponseCode::CREATED,
+            errorCounter);
       case GeneralResponse::ResponseCode::BAD:
         return DBServerResponseBad(resultBody);
       case GeneralResponse::ResponseCode::NOT_FOUND:
@@ -1559,7 +1489,7 @@ OperationResult Transaction::modifyLocal(
 
   VPackBuilder resultBuilder;  // building the complete result
 
-  auto workForOneDocument = [&](VPackSlice const newVal) -> int {
+  auto workForOneDocument = [&](VPackSlice const newVal, bool isBabies) -> int {
     if (!newVal.isObject()) {
       return TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
     }
@@ -1579,7 +1509,7 @@ OperationResult Transaction::modifyLocal(
 
     if (res == TRI_ERROR_ARANGO_CONFLICT) {
       // still return 
-      if (!options.silent) {
+      if (!options.silent && !isBabies) {
         std::string key = newVal.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
         buildDocumentIdentity(resultBuilder, cid, key, actualRevision,
                               VPackSlice(), 
@@ -1605,20 +1535,24 @@ OperationResult Transaction::modifyLocal(
   res = TRI_ERROR_NO_ERROR;
 
   if (newValue.isArray()) {
-    VPackArrayBuilder b(&resultBuilder);
+    std::unordered_map<int, size_t> errorCounter;
+    resultBuilder.openArray();
     VPackArrayIterator it(newValue);
     while (it.valid()) {
-      res = workForOneDocument(it.value());
+      res = workForOneDocument(it.value(), true);
       if (res != TRI_ERROR_NO_ERROR) {
-        break;
+        createBabiesError(resultBuilder, errorCounter, res);
       }
       ++it;
     }
+    resultBuilder.close();
+    return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR,
+                           options.waitForSync, errorCounter); 
   } else {
-    res = workForOneDocument(newValue);
+    res = workForOneDocument(newValue, false);
+    return OperationResult(resultBuilder.steal(), nullptr, "", res,
+                           options.waitForSync); 
   }
-  return OperationResult(resultBuilder.steal(), nullptr, "", res,
-                         options.waitForSync); 
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -1656,50 +1590,26 @@ OperationResult Transaction::removeCoordinator(std::string const& collectionName
                                                VPackSlice const value,
                                                OperationOptions& options) {
 
-  if (value.isArray()) {
-    // multi-document variant is not yet implemented
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-  
   auto headers = std::make_unique<std::map<std::string, std::string>>();
   GeneralResponse::ResponseCode responseCode;
-  std::map<std::string, std::string> resultHeaders;
-  std::string resultBody;
-
-  std::string key(Transaction::extractKey(value));
-  if (key.empty()) {
-    return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
-  }
-  TRI_voc_rid_t expectedRevision = 0;
-  if (!options.ignoreRevs) {
-    expectedRevision = TRI_ExtractRevisionId(value);
-  }
+  std::unordered_map<int, size_t> errorCounter;
+  auto resultBody = std::make_shared<VPackBuilder>();
 
   int res = arangodb::deleteDocumentOnCoordinator(
-      _vocbase->_name, collectionName, key, expectedRevision, options, headers,
-      responseCode, resultHeaders, resultBody);
+      _vocbase->_name, collectionName, value, options, headers,
+      responseCode, errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
     if (responseCode == GeneralResponse::ResponseCode::OK ||
         responseCode == GeneralResponse::ResponseCode::ACCEPTED ||
         responseCode == GeneralResponse::ResponseCode::PRECONDITION_FAILED) {
-      VPackParser parser;
-      try {
-        parser.parse(resultBody);
-        auto bui = parser.steal();
-        auto buf = bui->steal();
-        return OperationResult(
-            buf, nullptr, "",
-            responseCode == GeneralResponse::ResponseCode::PRECONDITION_FAILED
-                ? TRI_ERROR_ARANGO_CONFLICT
-                : TRI_ERROR_NO_ERROR,
-            responseCode != GeneralResponse::ResponseCode::ACCEPTED);
-      }
-      catch (VPackException& e) {
-        std::string message = "JSON from DBserver not parseable: "
-                              + resultBody + ":" + e.what();
-        return OperationResult(TRI_ERROR_INTERNAL, message);
-      }
+      return OperationResult(
+          resultBody->steal(), nullptr, "",
+          responseCode == GeneralResponse::ResponseCode::PRECONDITION_FAILED
+              ? TRI_ERROR_ARANGO_CONFLICT
+              : TRI_ERROR_NO_ERROR,
+          responseCode != GeneralResponse::ResponseCode::ACCEPTED,
+          errorCounter);
     } else if (responseCode == GeneralResponse::ResponseCode::BAD) {
       return DBServerResponseBad(resultBody);
     } else if (responseCode == GeneralResponse::ResponseCode::NOT_FOUND) {
@@ -1725,7 +1635,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
  
   VPackBuilder resultBuilder;
 
-  auto workOnOneDocument = [&](VPackSlice value) -> int {
+  auto workOnOneDocument = [&](VPackSlice value, bool isBabies) -> int {
     VPackSlice actualRevision;
     TRI_doc_mptr_t previous;
     std::string key;
@@ -1740,6 +1650,10 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
         value = builder->slice();
       }
     } else if (value.isObject()) {
+      VPackSlice keySlice = value.get(TRI_VOC_ATTRIBUTE_KEY);
+      if (!keySlice.isString()) {
+        return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+      }
       key = value.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
     } else {
       return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
@@ -1750,7 +1664,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
                                actualRevision, previous);
     
     if (res != TRI_ERROR_NO_ERROR) {
-      if (res == TRI_ERROR_ARANGO_CONFLICT && !options.silent) {
+      if (res == TRI_ERROR_ARANGO_CONFLICT && !options.silent && !isBabies) {
         buildDocumentIdentity(resultBuilder, cid, key,
                               actualRevision, VPackSlice(), 
                               options.returnOld ? &previous : nullptr, nullptr);
@@ -1768,119 +1682,22 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
   };
 
   int res = TRI_ERROR_NO_ERROR;
+  std::unordered_map<int, size_t> countErrorCodes;
   if (value.isArray()) {
     VPackArrayBuilder guard(&resultBuilder);
     for (auto const& s : VPackArrayIterator(value)) {
-      res = workOnOneDocument(s);
+      res = workOnOneDocument(s, true);
       if (res != TRI_ERROR_NO_ERROR) {
-        break;
+        createBabiesError(resultBuilder, countErrorCodes, res);
       }
     }
+    // With babies the reporting is handled somewhere else.
+    res = TRI_ERROR_NO_ERROR;
   } else {
-    res = workOnOneDocument(value);
+    res = workOnOneDocument(value, false);
   }
   return OperationResult(resultBuilder.steal(), nullptr, "", res,
-                         options.waitForSync); 
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fetches all document keys in a collection
-////////////////////////////////////////////////////////////////////////////////
-
-OperationResult Transaction::allKeys(std::string const& collectionName,
-                                     std::string const& type,
-                                     OperationOptions const& options) {
-  TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
-  
-  std::string prefix;
-
-  std::string realCollName = resolver()->getCollectionName(collectionName);
-
-  if (type == "key") {
-    prefix = "";
-  } else if (type == "id") {
-    prefix = realCollName + "/";
-  } else {
-    prefix = std::string("/_db/") + _vocbase->_name + "/_api/document/" + realCollName + "/";
-  }
-  
-  OperationOptions optionsCopy = options;
-
-  if (ServerState::instance()->isCoordinator()) {
-    return allKeysCoordinator(collectionName, type, prefix, optionsCopy);
-  }
-
-  return allKeysLocal(collectionName, type, prefix, optionsCopy);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fetches all document keys in a collection, coordinator
-////////////////////////////////////////////////////////////////////////////////
-
-OperationResult Transaction::allKeysCoordinator(std::string const& collectionName,
-                                                std::string const& type,
-                                                std::string const& prefix,
-                                                OperationOptions& options) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fetches all document keys in a collection, local
-////////////////////////////////////////////////////////////////////////////////
-
-OperationResult Transaction::allKeysLocal(std::string const& collectionName,
-                                          std::string const& type,
-                                          std::string const& prefix,
-                                          OperationOptions& options) {
-  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
-  
-  orderDitch(cid); // will throw when it fails
-  
-  int res = lock(trxCollection(cid), TRI_TRANSACTION_READ);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return OperationResult(res);
-  }
-  
-  VPackBuilder resultBuilder;
-  resultBuilder.add(VPackValue(VPackValueType::Object));
-  resultBuilder.add("documents", VPackValue(VPackValueType::Array));
-
-  std::shared_ptr<OperationCursor> cursor =
-      indexScan(collectionName, Transaction::CursorType::ALL, IndexHandle(),
-                {}, 0, UINT64_MAX, 1000, false);
-
-  auto result = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
-  while (cursor->hasMore()) {
-    cursor->getMore(result);
-
-    if (result->failed()) {
-      return OperationResult(result->code);
-    }
-  
-    std::string value;
-    VPackSlice docs = result->slice();
-    VPackArrayIterator it(docs);
-    while (it.valid()) {
-      value.assign(prefix);
-      value.append(it.value().get(TRI_VOC_ATTRIBUTE_KEY).copyString());
-      resultBuilder.add(VPackValue(value));
-      it.next();
-    }
-  }
-
-  resultBuilder.close(); // array
-  resultBuilder.close(); // object
-
-  res = unlock(trxCollection(cid), TRI_TRANSACTION_READ);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return OperationResult(res);
-  }
-
-  return OperationResult(resultBuilder.steal(),
-                         transactionContext()->orderCustomTypeHandler(), "",
-                         TRI_ERROR_NO_ERROR, false);
+                         options.waitForSync, countErrorCodes); 
 }
 
 ////////////////////////////////////////////////////////////////////////////////

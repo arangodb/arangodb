@@ -37,7 +37,7 @@
 
 .dataNotReadyYet {
   color: $c-warning;
-  font-family: 'Lato', sans-serif;
+  font-family: 'Roboto', sans-serif;
   font-size: 14px;
   font-weight: 100;
   text-align: center;
@@ -51,7 +51,7 @@
   border-bottom-right-radius: 3px;
   box-sizing: border-box;
   color: rgba(0, 0, 0, .5);
-  font-family: Lato,sans-serif;
+  font-family: 'Roboto', sans-serif;
   font-size: 11pt;
   font-weight: 600;
   height: 50px;
@@ -69,7 +69,7 @@
   .dashboard-sub-bar-title {
     @extend %pull-left;
     color: $c-black;
-    font-family: Lato,sans-serif;
+    font-family: 'Roboto', sans-serif;
     font-size: 11pt;
     font-weight: 600;
     opacity: .5;

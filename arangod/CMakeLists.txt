@@ -228,6 +228,7 @@ add_executable(${BIN_ARANGOD}
   Scheduler/TaskManager.cpp
   Scheduler/TimerTask.cpp
   Statistics/statistics.cpp
+  Utils/AqlTransaction.cpp
   Utils/CollectionExport.cpp
   Utils/CollectionKeys.cpp
   Utils/CollectionKeysRepository.cpp

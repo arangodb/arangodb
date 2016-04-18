@@ -335,22 +335,28 @@ function ClusterCrudReplaceSuite () {
 
     // don't specify any values for shard keys, but update later
     old = c.save({ "value" : 1 });
-    doc = c.replace(old, { "foo" : 2 });
+    try {
+      c.replace(old, { "foo" : 2 });
+      fail();
+    } catch (err5) {
+      assertEqual(ERRORS.ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN.code, err5.errorNum);
+    }
 
-    assertEqual(2, c.document(doc._key).foo);
-    assertUndefined(c.document(doc._key).value);
+    assertEqual(1, c.document(old._key).value);
+    assertUndefined(c.document(old._key).foo);
 
-    doc = c.replace(doc, { "a" : null, "b" : null, "foo" : 3 });
+    doc = c.replace(old, { "a" : null, "b" : null, "foo" : 3 });
     assertEqual(3, c.document(doc._key).foo);
     assertUndefined(c.document(doc._key).value);
 
     // specify null values for shard keys, but update later
     old = c.save({ "a" : null, "b" : null, "value" : 1 });
-    doc = c.replace(old, { "foo" : 2 });
-    assertUndefined(c.document(doc._key).a);
-    assertUndefined(c.document(doc._key).b);
-    assertEqual(2, c.document(doc._key).foo);
-    assertUndefined(c.document(doc._key).value);
+    try {
+      doc = c.replace(old, { "foo" : 2 });
+      fail();
+    } catch (err6) {
+      assertEqual(ERRORS.ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN.code, err6.errorNum);
+    }
 
     // change shard keys
     try {
@@ -358,15 +364,28 @@ function ClusterCrudReplaceSuite () {
       fail();
     }
     catch (err3) {
-      assertEqual(ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code, err3.errorNum);
+      // We cannot determine if it is SHARDING_ATTRIBUTES_CHANGED or NOT_FOUND using one round-trip only.
+      if (err3.errorNum !== ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code) {
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err3.errorNum);
+      } else {
+        assertEqual(ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code, err3.errorNum);
+      }
+    }
+
+    try {
+      doc = c.replace("foobar", { "value" : 1, a: 1, b: 2 });
+      fail();
+    }
+    catch (err4) {
+      assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err4.errorNum);
     }
 
     try {
       doc = c.replace("foobar", { "value" : 1 });
       fail();
     }
-    catch (err4) {
-      assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err4.errorNum);
+    catch (err9) {
+      assertEqual(ERRORS.ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN.code, err9.errorNum);
     }
   };
 

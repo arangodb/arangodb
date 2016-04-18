@@ -769,6 +769,13 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
           std::pair<ApplicationV8*, aql::QueryRegistry*>*>,
       _pairForAqlHandler);
 
+  // add "/simple/all-keys" handler
+  factory->addPrefixHandler(
+      RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_KEYS_PATH,
+      RestHandlerCreator<RestSimpleQueryHandler>::createData<
+          std::pair<ApplicationV8*, aql::QueryRegistry*>*>,
+      _pairForAqlHandler);
+
   // add "/simple/lookup-by-key" handler
   factory->addPrefixHandler(
       RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH,

@@ -22,7 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterTraverser.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterMethods.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 
@@ -113,7 +117,6 @@ void ClusterTraverser::EdgeGetter::operator()(std::string const& startVertex,
     size_t depth = result.size();
     TRI_ASSERT(_traverser->_iteratorCache.size() == result.size());
     // We have to request the next level
-    arangodb::basics::Json resultEdges(arangodb::basics::Json::Object);
     arangodb::GeneralResponse::ResponseCode responseCode;
     std::string contentType;
     std::vector<TraverserExpression*> expEdges;
@@ -122,24 +125,27 @@ void ClusterTraverser::EdgeGetter::operator()(std::string const& startVertex,
       expEdges = found->second;
     }
 
+    VPackBuilder resultEdges;
+    resultEdges.openObject();
     int res = getFilteredEdgesOnCoordinator(
         _traverser->_dbname, collName, startVertex, dir,
         expEdges, responseCode, contentType, resultEdges);
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }
-    arangodb::basics::Json edgesJson = resultEdges.get("edges");
+    resultEdges.close();
+    VPackSlice resSlice = resultEdges.slice();
+    VPackSlice edgesSlice = resSlice.get("edges");
+    VPackSlice statsSlice = resSlice.get("stats");
 
-    arangodb::basics::Json statsJson = resultEdges.get("stats");
-    size_t read = arangodb::basics::JsonHelper::getNumericValue<size_t>(
-        statsJson.json(), "scannedIndex", 0);
-    size_t filter = arangodb::basics::JsonHelper::getNumericValue<size_t>(
-        statsJson.json(), "filtered", 0);
+    size_t read = arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
+        statsSlice, "scannedIndex", 0);
+    size_t filter = arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(
+        statsSlice, "filtered", 0);
     _traverser->_readDocuments += read;
     _traverser->_filteredPaths += filter;
 
-    size_t count = edgesJson.size();
-    if (count == 0) {
+    if (edgesSlice.isNone() || edgesSlice.length() == 0) {
       last = nullptr;
       eColIdx++;
       operator()(startVertex, result, last, eColIdx, unused);
@@ -147,30 +153,28 @@ void ClusterTraverser::EdgeGetter::operator()(std::string const& startVertex,
     }
     std::stack<std::string> stack;
     std::unordered_set<std::string> verticesToFetch;
-    for (size_t i = 0; i < edgesJson.size(); ++i) {
-      arangodb::basics::Json edge = edgesJson.at(i);
-      std::string edgeId =
-          arangodb::basics::JsonHelper::getStringValue(edge.json(), "_id", "");
-      stack.push(edgeId);
-      std::string fromId = arangodb::basics::JsonHelper::getStringValue(
-          edge.json(), "_from", "");
+    for (auto const& edge : VPackArrayIterator(edgesSlice)) {
+      std::string edgeId = arangodb::basics::VelocyPackHelper::getStringValue(
+          edge, TRI_VOC_ATTRIBUTE_ID, "");
+      std::string fromId = arangodb::basics::VelocyPackHelper::getStringValue(
+          edge, TRI_VOC_ATTRIBUTE_FROM, "");
       if (_traverser->_vertices.find(fromId) == _traverser->_vertices.end()) {
-        verticesToFetch.emplace(fromId);
+        verticesToFetch.emplace(std::move(fromId));
       }
-      std::string toId =
-          arangodb::basics::JsonHelper::getStringValue(edge.json(), "_to", "");
+      std::string toId = arangodb::basics::VelocyPackHelper::getStringValue(
+          edge, TRI_VOC_ATTRIBUTE_TO, "");
       if (_traverser->_vertices.find(toId) == _traverser->_vertices.end()) {
-        verticesToFetch.emplace(toId);
+        verticesToFetch.emplace(std::move(toId));
       }
-      auto tmpBuilder = basics::JsonHelper::toVelocyPack(edge.json());
-      if (tmpBuilder != nullptr) {
-        _traverser->_edges.emplace(edgeId, tmpBuilder->steal());
-      }
+      VPackBuilder tmpBuilder;
+      tmpBuilder.add(edge);
+      _traverser->_edges.emplace(edgeId, tmpBuilder.steal());
+      stack.push(std::move(edgeId));
     }
 
     _traverser->fetchVertices(verticesToFetch, depth + 1);
 
-   std::string next = stack.top();
+    std::string next = stack.top();
     stack.pop();
     last = &_continueConst;
     _traverser->_iteratorCache.emplace(stack);

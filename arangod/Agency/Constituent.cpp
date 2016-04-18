@@ -25,6 +25,8 @@
 #include "Cluster/ClusterComm.h"
 #include "Logger/Logger.h"
 #include "Basics/ConditionLocker.h"
+#include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
 
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
@@ -417,11 +419,20 @@ void Constituent::run() {
   // Always start off as follower
   while (!this->isStopping() && size() > 1) { 
     if (_role == FOLLOWER) {
-      _cast = false;                           // New round set not cast vote
-      std::this_thread::sleep_for(             // Sleep for random time
-        sleepFor(config().min_ping, config().max_ping)); 
-      if (!_cast) {
-        candidate();                           // Next round, we are running
+      {
+        MUTEX_LOCKER(guard, _castLock);
+        _cast = false;                           // New round set not cast vote
+      }
+
+      dist_t dis(config().min_ping, config().max_ping);
+      long rand_wait = static_cast<long>(dis(_gen)*1000000.0);
+      bool timedout = _cv.wait(rand_wait);
+
+      {
+        MUTEX_LOCKER(guard, _castLock);
+        if (!_cast) {
+          candidate();                           // Next round, we are running
+        }
       }
     } else {
       callElection();                          // Run for office

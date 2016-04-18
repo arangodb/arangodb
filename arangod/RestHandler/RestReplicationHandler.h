@@ -27,12 +27,12 @@
 #include "Basics/Common.h"
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
-#include "Utils/CollectionNameResolver.h"
 #include "VocBase/replication-common.h"
 
 class TRI_vocbase_col_t;
 
 namespace arangodb {
+class CollectionNameResolver;
 class Transaction;
 
 ////////////////////////////////////////////////////////////////////////////////
