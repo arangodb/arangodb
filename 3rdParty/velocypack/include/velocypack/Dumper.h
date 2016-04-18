@@ -133,9 +133,12 @@ class Dumper {
     }
   }
 
-  void handleUnsupportedType(Slice const*) {
+  void handleUnsupportedType(Slice const* slice) {
     if (options->unsupportedTypeBehavior == Options::NullifyUnsupportedType) {
       _sink->append("null", 4);
+      return;
+    } else if (options->unsupportedTypeBehavior == Options::ConvertUnsupportedType) {
+      _sink->append(std::string("\"(non-representable type ") + slice->typeName() + ")\"");
       return;
     }
 

@@ -650,6 +650,11 @@ uint8_t* Builder::set(Value const& item) {
       _pos += v;
       break;
     }
+    case ValueType::Illegal: {
+      reserveSpace(1);
+      _start[_pos++] = 0x17;
+      break;
+    }
     case ValueType::MinKey: {
       reserveSpace(1);
       _start[_pos++] = 0x1e;
