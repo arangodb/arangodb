@@ -77,6 +77,17 @@
   }
 
   #healthStatus {
+
+    line-height: 45px;
+
+    &:hover {
+      cursor: default;
+
+      .health-info {
+        color: $c-white;
+      }
+    }
+
     &.positive {
       .health-state,
       .health-icon {
