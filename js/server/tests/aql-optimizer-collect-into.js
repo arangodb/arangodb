@@ -36,6 +36,16 @@ var db = require("org/arangodb").db;
 ////////////////////////////////////////////////////////////////////////////////
 
 function optimizerCollectExpressionTestSuite () {
+  var assertFailingQuery = function (query) {
+    try {
+      AQL_EXECUTE(query);
+      fail();
+    }
+    catch (err) {
+      assertEqual(internal.errors.ERROR_QUERY_PARSE.code, err.errorNum);
+    }
+  };
+
   var c;
 
   return {
@@ -202,6 +212,15 @@ function optimizerCollectExpressionTestSuite () {
       for (i = 0; i < 500; ++i) {
         assertTrue(typeof results.json[1].ages[i] === 'number');
       }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test expression
+////////////////////////////////////////////////////////////////////////////////
+
+    testIntoWithOutVariableUsedInAssignment : function () {
+      assertFailingQuery("FOR doc IN [{ age: 1, value: 1 }, { age: 1, value: 2 }, { age: 2, value: 1 }, { age: 2, value: 2 }] COLLECT v1 = doc.age, v2 = doc.value INTO g = v1 RETURN [v1,v2,g]");
+      assertFailingQuery("FOR doc IN [{ age: 1, value: 1 }, { age: 1, value: 2 }, { age: 2, value: 1 }, { age: 2, value: 2 }] COLLECT v1 = doc.age AGGREGATE v2 = MAX(doc.value) INTO g = v2 RETURN [v1,v2,g]");
     }
 
   };

@@ -58,6 +58,33 @@ void Aqlerror (YYLTYPE* locp,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check if any of variables used into the INTO expression was 
+/// introduced by the COLLECT itself, in which case it would fail
+////////////////////////////////////////////////////////////////////////////////
+         
+static Variable const* CheckIntoVariables(AstNode const* collectVars, 
+                                          std::unordered_set<Variable const*> const& vars) {
+  if (collectVars == nullptr || collectVars->type != NODE_TYPE_ARRAY) {
+    return nullptr;
+  }
+
+  size_t const n = collectVars->numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    auto member = collectVars->getMember(i);
+
+    if (member != nullptr) {
+      TRI_ASSERT(member->type == NODE_TYPE_ASSIGN);
+      auto v = static_cast<Variable*>(member->getMember(0)->getData());
+      if (vars.find(v) != vars.end()) {
+        return v;
+      }
+    }
+  }
+
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief register variables in the scope
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -539,6 +566,17 @@ collect_statement:
       if (! ValidateAggregates(parser, $2)) {
         YYABORT;
       }
+      
+      if ($3 != nullptr && $3->type == NODE_TYPE_ARRAY) {
+        std::unordered_set<Variable const*> vars;
+        Ast::getReferencedVariables($3->getMember(1), vars);
+
+        Variable const* used = CheckIntoVariables($2, vars);
+        if (used != nullptr) {
+          std::string msg("use of COLLECT variable '" + used->name + "' IN INTO expression");
+          parser->registerParseError(TRI_ERROR_QUERY_PARSE, msg.c_str(), yylloc.first_line, yylloc.first_column);
+        }
+      }
 
       AstNode const* into = GetIntoVariable(parser, $3);
       AstNode const* intoExpression = GetIntoExpression($3);
@@ -557,6 +595,22 @@ collect_statement:
 
       if (! ValidateAggregates(parser, $2)) {
         YYABORT;
+      }
+      
+      if ($3 != nullptr && $3->type == NODE_TYPE_ARRAY) {
+        std::unordered_set<Variable const*> vars;
+        Ast::getReferencedVariables($3->getMember(1), vars);
+
+        Variable const* used = CheckIntoVariables($1, vars);
+        if (used != nullptr) {
+          std::string msg("use of COLLECT variable '" + used->name + "' IN INTO expression");
+          parser->registerParseError(TRI_ERROR_QUERY_PARSE, msg.c_str(), yylloc.first_line, yylloc.first_column);
+        }
+        used = CheckIntoVariables($2, vars);
+        if (used != nullptr) {
+          std::string msg("use of COLLECT variable '" + used->name + "' IN INTO expression");
+          parser->registerParseError(TRI_ERROR_QUERY_PARSE, msg.c_str(), yylloc.first_line, yylloc.first_column);
+        }
       }
 
       // note all group variables
@@ -608,6 +662,17 @@ collect_statement:
       AstNode const* into = GetIntoVariable(parser, $2);
       AstNode const* intoExpression = GetIntoExpression($2);
 
+      if ($2 != nullptr && $2->type == NODE_TYPE_ARRAY) {
+        std::unordered_set<Variable const*> vars;
+        Ast::getReferencedVariables($2->getMember(1), vars);
+
+        Variable const* used = CheckIntoVariables($1, vars);
+        if (used != nullptr) {
+          std::string msg("use of COLLECT variable '" + used->name + "' IN INTO expression");
+          parser->registerParseError(TRI_ERROR_QUERY_PARSE, msg.c_str(), yylloc.first_line, yylloc.first_column);
+        }
+      }
+
       auto node = parser->ast()->createNodeCollect($1, parser->ast()->createNodeArray(), into, intoExpression, nullptr, $3);
       parser->ast()->addOperation(node);
     }
@@ -622,6 +687,17 @@ collect_statement:
       if ($2 == nullptr && 
           $3 != nullptr) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of 'KEEP' without 'INTO'", yylloc.first_line, yylloc.first_column);
+      }
+      
+      if ($2 != nullptr && $2->type == NODE_TYPE_ARRAY) {
+        std::unordered_set<Variable const*> vars;
+        Ast::getReferencedVariables($2->getMember(1), vars);
+
+        Variable const* used = CheckIntoVariables($1, vars);
+        if (used != nullptr) {
+          std::string msg("use of COLLECT variable '" + used->name + "' IN INTO expression");
+          parser->registerParseError(TRI_ERROR_QUERY_PARSE, msg.c_str(), yylloc.first_line, yylloc.first_column);
+        }
       }
  
       AstNode const* into = GetIntoVariable(parser, $2);
