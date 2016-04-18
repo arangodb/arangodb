@@ -1499,8 +1499,8 @@ int getFilteredDocumentsOnCoordinator(
       for (auto const& e : expressions) {
         e->toVelocyPack(bodyBuilder);
       }
+      bodyBuilder.close(); // filter
     }
-    bodyBuilder.close(); // filter
     bodyBuilder.close(); // Object
 
     auto bodyString = std::make_shared<std::string>(bodyBuilder.toJson());

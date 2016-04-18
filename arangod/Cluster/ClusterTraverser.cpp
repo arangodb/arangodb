@@ -145,8 +145,7 @@ void ClusterTraverser::EdgeGetter::operator()(std::string const& startVertex,
     _traverser->_readDocuments += read;
     _traverser->_filteredPaths += filter;
 
-    size_t count = static_cast<size_t>(resSlice.length());
-    if (count == 0) {
+    if (edgesSlice.isNone() || edgesSlice.length() == 0) {
       last = nullptr;
       eColIdx++;
       operator()(startVertex, result, last, eColIdx, unused);
@@ -155,27 +154,27 @@ void ClusterTraverser::EdgeGetter::operator()(std::string const& startVertex,
     std::stack<std::string> stack;
     std::unordered_set<std::string> verticesToFetch;
     for (auto const& edge : VPackArrayIterator(edgesSlice)) {
-      std::string edgeId =
-          arangodb::basics::VelocyPackHelper::getStringValue(edge, "_id", "");
-      stack.push(std::move(edgeId));
+      std::string edgeId = arangodb::basics::VelocyPackHelper::getStringValue(
+          edge, TRI_VOC_ATTRIBUTE_ID, "");
       std::string fromId = arangodb::basics::VelocyPackHelper::getStringValue(
-          edge, "_from", "");
+          edge, TRI_VOC_ATTRIBUTE_FROM, "");
       if (_traverser->_vertices.find(fromId) == _traverser->_vertices.end()) {
         verticesToFetch.emplace(std::move(fromId));
       }
-      std::string toId =
-          arangodb::basics::VelocyPackHelper::getStringValue(edge, "_to", "");
+      std::string toId = arangodb::basics::VelocyPackHelper::getStringValue(
+          edge, TRI_VOC_ATTRIBUTE_TO, "");
       if (_traverser->_vertices.find(toId) == _traverser->_vertices.end()) {
         verticesToFetch.emplace(std::move(toId));
       }
       VPackBuilder tmpBuilder;
       tmpBuilder.add(edge);
       _traverser->_edges.emplace(edgeId, tmpBuilder.steal());
+      stack.push(std::move(edgeId));
     }
 
     _traverser->fetchVertices(verticesToFetch, depth + 1);
 
-   std::string next = stack.top();
+    std::string next = stack.top();
     stack.pop();
     last = &_continueConst;
     _traverser->_iteratorCache.emplace(stack);
