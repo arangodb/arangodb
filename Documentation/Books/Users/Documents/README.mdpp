@@ -12,20 +12,20 @@ For example:
 
 ```js
 { 
-  "firstName" : "Hugo", 
-  "lastName" : "Schlonz", 
+  "firstName" : "John", 
+  "lastName" : "Doe", 
   "address" : { 
-    "city" : "Hier", 
-    "street" : "Strasse 1" 
+    "city" : "Gotham", 
+    "street" : "Road To Nowhere 1" 
   }, 
   "hobbies" : [ 
-    "swimming", 
-    "biking", 
-    "programming" 
+    {name: "swimming", howFavourite: 10},
+    {name: "biking", howFavourite: 6},
+    {name: "programming", howFavourite: 4}
   ], 
-  "_id" : "demo/schlonz", 
+  "_id" : "demo/Doe", 
   "_rev" : "13728680", 
-  "_key" : "schlonz" 
+  "_key" : "Doe" 
 }
 ```
 All documents contain special attributes: the document handle in *_id*, the
@@ -60,3 +60,71 @@ even if this might work for some cases.
 
 *Document Etag*: The document revision enclosed in double quotes. The revision is 
 returned by several HTTP API methods in the Etag HTTP header.
+
+!SUBSECTION Comming from a relational background - how do browse vectors translate into document queries?
+In traditional SQL you may either fetch all columns of a table row by row using `SELECT * FROM table`,
+or select a subset of the columns.
+The list of table columns to fetch is commonly called *column list* or *browse vector*:
+`SELECT columnA, columnB, columnZ FROM table`
+
+Since documents aren't 2 dimensional, and neither you want only to be able to return 2 dimensional lists, requirements to AQL are a little bit more complex.
+The semantics how it does this leans mostly on the syntax used in JavaScript to work with structured data. 
+
+!SUBSUBSECTION Composing the return documents
+The AQL `RETURN` statement returns one item per document it is handed. You can Return the whole document, or just parts of it:
+
+The full example:
+
+    RETURN oneDocument
+    -> { 
+      "firstName" : "John", 
+      "lastName" : "Doe", 
+      "address" : { 
+        "city" : "Gotham", 
+        "street" : "Road To Nowhere 1" 
+      }, 
+      "hobbies" : [ 
+        {name: "swimming", howFavourite: 10},
+        {name: "biking", howFavourite: 6},
+        {name: "programming", howFavourite: 4}
+      ], 
+      "_id" : "demo/Doe", 
+      "_rev" : "13728680", 
+      "_key" : "Doe" 
+    }
+
+Only the hobbies sub-structure from the example:
+
+    RETURN oneDocument.hobbies
+    -> [
+        {name: "swimming", howFavourite: 10},
+        {name: "biking", howFavourite: 6},
+        {name: "programming", howFavourite: 4}
+    ]
+
+The hobbies and the address: 
+
+    RETURN { hobbies: oneDocument.hobbies, address: oneDocument.address }
+    -> {
+    hobbies: [
+        {name: "swimming", howFavourite: 10},
+        {name: "biking", howFavourite: 6},
+        {name: "programming", howFavourite: 4}
+    ],
+    address: oneDocument.{ 
+        "city" : "Gotham", 
+        "street" : "Road To Nowhere 1" 
+      },
+    }
+
+The first hoby:
+
+    RETURN oneDocument.hobbies[0].name
+    ->"swimming"
+
+A list of the hobbie strings: 
+
+    RETURN { hobbies: oneDocument.hobbies[*].name }
+    -> {hobbies: ["swimming", "biking", "porgramming"] }
+
+More complex [array](../Aql/ArrayFunctions.md) and [object manipulations](../Aql/DocumentFunctions.md) can be done using AQL functions
