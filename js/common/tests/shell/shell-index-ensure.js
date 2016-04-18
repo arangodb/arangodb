@@ -335,6 +335,31 @@ function ensureIndexSuite() {
 /// @brief test: ensure w/ hash
 ////////////////////////////////////////////////////////////////////////////////
 
+    testEnsureHashOnRev : function () {
+      var res = collection.getIndexes();
+
+      assertEqual(1, res.length);
+
+      var idx = collection.ensureIndex({ type: "hash", fields: [ "_rev" ] });
+      assertEqual("hash", idx.type);
+      assertFalse(idx.unique);
+      assertFalse(idx.sparse);
+      assertEqual([ "_rev" ], idx.fields);
+
+      res = collection.getIndexes()[collection.getIndexes().length - 1];
+
+      assertEqual("hash", res.type);
+      assertFalse(res.unique);
+      assertFalse(res.sparse);
+      assertEqual([ "_rev" ], res.fields);
+
+      assertEqual(idx.id, res.id);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: ensure w/ hash
+////////////////////////////////////////////////////////////////////////////////
+
     testEnsureHashOnKey : function () {
       var res = collection.getIndexes();
 
@@ -574,6 +599,43 @@ function ensureIndexSuite() {
       assertFalse(idx3.sparse);
       assertEqual([ "b", "c" ], res.fields);
       assertEqual(idx3.id, res.id);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: ensure w/ skiplist
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureSkiplistOnRev : function () {
+      var res = collection.getIndexes();
+
+      assertEqual(1, res.length);
+
+      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "_rev" ] });
+      assertEqual("skiplist", idx.type);
+      assertFalse(idx.unique);
+      assertFalse(idx.sparse);
+      assertEqual([ "_rev" ], idx.fields);
+
+      res = collection.getIndexes()[collection.getIndexes().length - 1];
+
+      assertEqual("skiplist", res.type);
+      assertFalse(res.unique);
+      assertFalse(res.sparse);
+      assertEqual([ "_rev" ], res.fields);
+
+      assertEqual(idx.id, res.id);
+
+      var query = "FOR doc IN " + collection.name() + " FILTER doc._rev >= 0 SORT doc._rev RETURN doc";
+      var st = db._createStatement({ query: query });
+     
+      var found = false; 
+      st.explain().plan.nodes.forEach(function(node) { 
+        if (node.type === "IndexNode") {
+          assertEqual("skiplist", node.indexes[0].type);
+          found = true; 
+        }
+      });
+      assertTrue(found);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
