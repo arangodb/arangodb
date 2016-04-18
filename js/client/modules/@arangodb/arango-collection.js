@@ -1105,6 +1105,7 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
 function fillInSpecial(id, data) {
   var pos;
   if (data === null || typeof data !== "object" || Array.isArray(data)) {
+    return;
     throw new ArangoError({
       error : true,
       errorCode : internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
@@ -1128,12 +1129,9 @@ function fillInSpecial(id, data) {
       data._key = id._key;
       delete data._id;
     } else {
-      throw new ArangoError({
-        error : true,
-        errorCode : internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
-        errorNum : internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
-        errorMessage : internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.message
-      });
+      delete data._id;
+      delete data._key;
+      // Server shall fail here
     }
   } else if (typeof id === "string") {
     delete data._rev;
@@ -1146,12 +1144,8 @@ function fillInSpecial(id, data) {
       delete data._id;
     }
   } else {
-    throw new ArangoError({
-      error : true,
-      errorCode : internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code,
-      errorNum : internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code,
-      errorMessage : internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.message
-    });
+    delete data._id;
+    delete data._key;
   }
 }
 
