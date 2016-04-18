@@ -389,13 +389,4 @@ describe('Foxx Manager install', function() {
       .with.property('errorNum', errors.ERROR_INVALID_MOUNTPOINT.code);
     });
   });
-
-  it('checking marvelous comments', function() {
-    const mount = '/unittest/comments';
-    expect(function () {
-      FoxxManager.uninstall(mount, {force: true});
-      FoxxManager.install(fs.join(basePath, 'fanciful-comments'), mount);
-      FoxxManager.uninstall(mount, {force: true});
-    }).not.to.throw();
-  });
 });

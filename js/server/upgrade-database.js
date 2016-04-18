@@ -501,6 +501,29 @@
 
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief setupSessions
+///
+/// set up the collection _sessions
+////////////////////////////////////////////////////////////////////////////////
+
+    addTask({
+      name:        "setupSessions",
+      description: "setup _sessions collection",
+
+      mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
+      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL ],
+      database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
+
+      task: function () {
+        return createSystemCollection("_sessions", {
+          waitForSync: false,
+          journalSize: 4 * 1024 * 1024
+        });
+      }
+    });
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief setupUsers
 ///
 /// set up the collection _users
@@ -831,6 +854,46 @@
 
         // add redirections to new location
         [ "/", "/_admin/html", "/_admin/html/index.html" ].forEach (function (src) {
+          routing.save({
+            url: src,
+            action: {
+              "do": "@arangodb/actions/redirectRequest",
+              options: {
+                permanently: true,
+                destination: "/_db/" + db._name() + "/_admin/aardvark/index.html"
+              }
+            },
+            priority: -1000000
+          });
+        });
+
+        return true;
+      }
+    });
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief insertRedirectionsUnified
+///
+/// create the default route in the _routing collection
+////////////////////////////////////////////////////////////////////////////////
+
+    addTask({
+      name:        "insertRedirectionsUnified",
+      description: "insert legacy compat routes for the non-unified admin interface",
+
+      mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
+      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL ],
+      database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
+
+      task: function () {
+        var routing = getCollection("_routing");
+
+        if (! routing) {
+          return false;
+        }
+
+        // add redirections to new location
+        [ "/_admin/aardvark/standalone.html", "/_admin/aardvark/cluster.html" ].forEach (function (src) {
           routing.save({
             url: src,
             action: {

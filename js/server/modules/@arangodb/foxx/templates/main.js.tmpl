@@ -1,0 +1,3 @@
+'use strict';
+<% _.each(routePaths, function (path) { %>
+module.context.use('/<%= path %>', require('./routes/<%= path %>'), '<%= path %>');<% }); %>

@@ -242,7 +242,7 @@ describe ArangoDB do
 
         # only run the following test when using SSL
         if not ArangoDB.base_uri =~ /^https:/
-          uri = URI.parse(ArangoDB.base_uri + "/_db/_system/_admin/aardvark/standalone.html")
+          uri = URI.parse(ArangoDB.base_uri + "/_db/_system/_admin/aardvark/index.html")
           http = Net::HTTP.new(uri.host, uri.port)
 
           request = Net::HTTP::Get.new(uri.request_uri)
@@ -255,7 +255,7 @@ describe ArangoDB do
       end
 
       it "checks handling of an request, without gzip support" do
-        cmd = "/_admin/aardvark/standalone.html"
+        cmd = "/_admin/aardvark/index.html"
         doc = ArangoDB.log_get("admin-interface-get", cmd, :headers => { "Accept-Encoding" => "" }, :format => :plain)
 
         # check response code
