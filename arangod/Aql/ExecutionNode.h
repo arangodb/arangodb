@@ -498,7 +498,7 @@ class ExecutionNode {
 
   /// @brief get depth
   int getDepth() const { return _depth; }
-
+  
   /// @brief get registers to clear
   std::unordered_set<RegisterId> const& getRegsToClear() const {
     return _regsToClear;

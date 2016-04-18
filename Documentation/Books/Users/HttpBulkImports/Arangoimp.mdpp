@@ -357,3 +357,20 @@ If you import values into *_key*, you should make sure they are valid and unique
 
 When importing data into an edge collection, you should make sure that all import
 documents can *_from* and *_to* and that their values point to existing documents.
+
+To avoid specifying complete document ids (consisting of collection names and document
+keys) for *_from* and *_to* values, there are the options *--from-collection-prefix* and
+*--to-collection-prefix*. If specified, these values will be automatically prepended
+to each value in *_from* (or *_to* resp.). This allows specifying only document keys
+inside *_from* and/or *_to*.
+
+*Example*
+
+    > arangoimp --from-collection-prefix users --to-collection-prefix products ...
+
+Importing the following document will then create an edge between *users/1234* and
+*products/4321*:
+
+```js
+{ "_from" : "1234", "_to" : "4321", "desc" : "users/1234 is connected to products/4321" }
+```

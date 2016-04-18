@@ -50,6 +50,8 @@ class ImportFeature final : public application_features::ApplicationFeature,
   bool _useBackslash;
   uint64_t _chunkSize;
   std::string _collectionName;
+  std::string _fromCollectionPrefix;
+  std::string _toCollectionPrefix;
   bool _createCollection;
   std::string _createCollectionType;
   std::string _typeImport;

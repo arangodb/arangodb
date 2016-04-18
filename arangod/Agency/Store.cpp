@@ -483,43 +483,54 @@ template<> bool Node::handle<UNOBSERVE> (VPackSlice const& slice) {
 
 }}
 
+bool Node::applieOp (VPackSlice const& slice) {
+
+  std::string oper = slice.get("op").copyString();
+  
+  if (oper == "delete") {
+    return _parent->removeChild(_node_name);
+  } else if (oper == "set") {       // "op":"set"
+    return handle<SET>(slice);
+  } else if (oper == "increment") { // "op":"increment"
+    return handle<INCREMENT>(slice);
+  } else if (oper == "decrement") { // "op":"decrement"
+    return handle<DECREMENT>(slice);
+  } else if (oper == "push") {      // "op":"push"
+    return handle<PUSH>(slice);
+  } else if (oper == "pop") {       // "op":"pop"
+    return handle<POP>(slice);
+  } else if (oper == "prepend") {   // "op":"prepend"
+    return handle<PREPEND>(slice);
+  } else if (oper == "shift") {     // "op":"shift"
+    return handle<SHIFT>(slice);
+  } else if (oper == "observe") {   // "op":"observe"
+    return handle<OBSERVE>(slice);
+  } else if (oper == "unobserve") { // "op":"unobserve"
+    return handle<UNOBSERVE>(slice);
+  } else {                          // "op" might not be a key word after all
+    LOG_TOPIC(INFO, Logger::AGENCY)
+      << "Keyword 'op' without known operation. Handling as regular key.";
+  }
+  
+  return false;
+  
+}
+
 // Apply slice to this node
 bool Node::applies (VPackSlice const& slice) {
-
+  
   if (slice.isObject()) {
-    
-    for (auto const& i : VPackObjectIterator(slice)) {
-      
-      std::string key = i.key.copyString();
-      
-      if (slice.hasKey("op")) {
-        std::string oper = slice.get("op").copyString();
-        if (oper == "delete") {
-          return _parent->removeChild(_node_name);
-        } else if (oper == "set") {       // "op":"set"
-          return handle<SET>(slice);
-        } else if (oper == "increment") { // "op":"increment"
-          return handle<INCREMENT>(slice);
-        } else if (oper == "decrement") { // "op":"decrement"
-          return handle<DECREMENT>(slice);
-        } else if (oper == "push") {      // "op":"push"
-          return handle<PUSH>(slice);
-        } else if (oper == "pop") {       // "op":"pop"
-          return handle<POP>(slice);
-        } else if (oper == "prepend") {   // "op":"prepend"
-          return handle<PREPEND>(slice);
-        } else if (oper == "shift") {     // "op":"shift"
-          return handle<SHIFT>(slice);
-        } else if (oper == "observe") {   // "op":"observe"
-          return handle<OBSERVE>(slice);
-        } else if (oper == "unobserve") { // "op":"unobserve"
-          return handle<UNOBSERVE>(slice);
-        } else {                          // "op" might not be a key word after all
-          LOG_TOPIC(INFO, Logger::AGENCY)
-            << "Keyword 'op' without known operation. Handling as regular key.";
-        }
+
+    // Object is an operation?
+    if (slice.hasKey("op")) {
+      if (applieOp(slice)) {
+        return true;
       }
-      
+    }
+
+    // Object is special case json
+    for (auto const& i : VPackObjectIterator(slice)) {
+      std::string key = i.key.copyString();
       if (key.find('/')!=std::string::npos) {
         (*this)(key).applies(i.value);
       } else {
@@ -529,12 +540,12 @@ bool Node::applies (VPackSlice const& slice) {
         }
         _children[key]->applies(i.value);
       }
-      
     }
     
-  } else { // slice.isObject()
+  } else { 
     *this = slice;
   }
+  
   return true;
 }
 

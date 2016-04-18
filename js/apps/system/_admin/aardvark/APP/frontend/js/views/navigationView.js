@@ -100,9 +100,14 @@
     },
 
     navigateByTab: function (e) {
+
       var tab = e.target || e.srcElement,
       navigateTo = tab.id,
       dropdown = false;
+
+      if ($(tab).hasClass('fa')) {
+        return;
+      }
 
       if (navigateTo === "") {
         navigateTo = $(tab).attr("class");

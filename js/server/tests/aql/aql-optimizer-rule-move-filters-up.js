@@ -88,6 +88,10 @@ function optimizerRuleTestSuite () {
         "FOR i IN 1..10 LET a = i LET b = i FILTER a == b RETURN i",
         "FOR i IN 1..10 FOR j IN 1..10 FILTER i > j RETURN i",
         "FOR i IN 1..10 LET a = 2 * i FILTER a == 1 RETURN i",
+        "FOR i IN 1..10 INSERT { } INTO _users FILTER i < 5 RETURN i", // can't pull filter beyond INSERT
+        "FOR i IN 1..10 REMOVE 'foo' INTO _users FILTER i < 5 RETURN i", // can't pull filter beyond REMOVE
+        "FOR i IN 1..10 UPDATE 'foo' WITH { } INTO _users FILTER i < 5 RETURN i", // can't pull filter beyond UPDATE
+        "FOR i IN 1..10 REPLACE 'foo' WITH { } INTO _users FILTER i < 5 RETURN i", // can't pull filter beyond REPLACE
         "FOR i IN 1..10 LET a = SLEEP(1) FILTER i == 1 RETURN i" // SLEEP is non-deterministic
       ];
 

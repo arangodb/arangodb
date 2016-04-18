@@ -1268,6 +1268,11 @@ void arangodb::aql::moveFiltersUpRule(Optimizer* opt, ExecutionPlan* plan,
         // must not move a filter beyond a node that can throw
         break;
       }
+      
+      if (current->isModificationNode()) {
+        // must not move a filter beyond a modification node
+        break;
+      }
 
       if (current->getType() == EN::CALCULATION) {
         // must not move a filter beyond a node with a non-deterministic result
@@ -1365,6 +1370,11 @@ class arangodb::aql::RedundantCalculationsReplacer final
         replaceInVariable<FilterNode>(en);
         break;
       }
+      
+      case EN::TRAVERSAL: {
+        replaceInVariable<TraversalNode>(en);
+        break;
+      }
 
       case EN::COLLECT: {
         auto node = static_cast<CollectNode*>(en);
@@ -1374,6 +1384,15 @@ class arangodb::aql::RedundantCalculationsReplacer final
         for (auto& variable : node->_aggregateVariables) {
           variable.second.first = Variable::replace(variable.second.first, _replacements);
         }
+        if (node->_expressionVariable != nullptr) {
+          node->_expressionVariable = Variable::replace(node->_expressionVariable, _replacements);
+        }
+        for (auto const& it : _replacements) {
+          node->_variableMap.emplace(it.second->id, it.second->name);
+        }
+        // node->_keepVariables does not need to be updated at the moment as the
+        // "remove-redundant-calculations" rule will stop when it finds a COLLECT
+        // with an INTO, and the "inline-subqueries" rule will abort there as well 
         break;
       }
 
@@ -1381,6 +1400,55 @@ class arangodb::aql::RedundantCalculationsReplacer final
         auto node = static_cast<SortNode*>(en);
         for (auto& variable : node->_elements) {
           variable.first = Variable::replace(variable.first, _replacements);
+        }
+        break;
+      }
+
+      case EN::REMOVE: {
+        replaceInVariable<RemoveNode>(en);
+        break;
+      }
+
+      case EN::INSERT: {
+        replaceInVariable<InsertNode>(en);
+        break;
+      }
+      
+      case EN::UPSERT: {
+        auto node = static_cast<UpsertNode*>(en);
+
+        if (node->_inDocVariable != nullptr) {
+          node->_inDocVariable = Variable::replace(node->_inDocVariable, _replacements);
+        }
+        if (node->_insertVariable != nullptr) {
+          node->_insertVariable = Variable::replace(node->_insertVariable, _replacements);
+        }
+        if (node->_updateVariable != nullptr) {
+          node->_updateVariable = Variable::replace(node->_updateVariable, _replacements);
+        }
+        break;
+      }
+
+      case EN::UPDATE: {
+        auto node = static_cast<UpdateNode*>(en);
+
+        if (node->_inDocVariable != nullptr) {
+          node->_inDocVariable = Variable::replace(node->_inDocVariable, _replacements);
+        }
+        if (node->_inKeyVariable != nullptr) {
+          node->_inKeyVariable = Variable::replace(node->_inKeyVariable, _replacements);
+        }
+        break;
+      }
+      
+      case EN::REPLACE: {
+        auto node = static_cast<ReplaceNode*>(en);
+
+        if (node->_inDocVariable != nullptr) {
+          node->_inDocVariable = Variable::replace(node->_inDocVariable, _replacements);
+        }
+        if (node->_inKeyVariable != nullptr) {
+          node->_inKeyVariable = Variable::replace(node->_inKeyVariable, _replacements);
         }
         break;
       }
@@ -1561,15 +1629,117 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
       // will remove calculation when we get here
     } 
 
-    auto outvar = n->getVariablesSetHere();
-    TRI_ASSERT(outvar.size() == 1);
+    auto outvars = n->getVariablesSetHere();
+    TRI_ASSERT(outvars.size() == 1);
     auto varsUsedLater = n->getVarsUsedLater();
 
-    if (varsUsedLater.find(outvar[0]) == varsUsedLater.end()) {
+
+    if (varsUsedLater.find(outvars[0]) == varsUsedLater.end()) {
       // The variable whose value is calculated here is not used at
       // all further down the pipeline! We remove the whole
       // calculation node,
       toUnlink.emplace(n);
+    } else if (n->getType() == EN::CALCULATION) {
+      // variable is still used later, but...
+      // ...if it's used exactly once later by another calculation,
+      // it's a temporary variable that we can fuse with the other
+      // calculation easily
+
+      if (n->canThrow() || 
+          !static_cast<CalculationNode*>(n)->expression()->isDeterministic()) {
+        continue;
+      }
+
+      AstNode const* rootNode = static_cast<CalculationNode*>(n)->expression()->node();
+      
+      if (rootNode->type == NODE_TYPE_REFERENCE) {
+        // if the LET is a simple reference to another variable, e.g. LET a = b
+        // then replace all references to a with references to b
+        bool hasCollectWithOutVariable = false;
+        auto current = n->getFirstParent();
+
+        // check first if we have a COLLECT with an INTO later in the query
+        // in this case we must not perform the replacements
+        while (current != nullptr) {
+          if (current->getType() == EN::COLLECT) {
+            if (static_cast<CollectNode const*>(current)->hasOutVariable()) {
+              hasCollectWithOutVariable = true;
+              break;
+            }
+          }
+          current = current->getFirstParent();
+        }
+
+        if (!hasCollectWithOutVariable) {
+          // no COLLECT found, now replace
+          std::unordered_map<VariableId, Variable const*> replacements;
+          replacements.emplace(outvars[0]->id, static_cast<Variable const*>(rootNode->getData()));
+
+          RedundantCalculationsReplacer finder(replacements);
+          plan->root()->walk(&finder);
+          toUnlink.emplace(n);
+          continue;
+        }
+      }
+
+      std::unordered_set<Variable const*> vars;
+
+      size_t usageCount = 0;
+      CalculationNode* other = nullptr;
+      auto current = n->getFirstParent();
+
+      while (current != nullptr) {
+        current->getVariablesUsedHere(vars);
+        if (vars.find(outvars[0]) != vars.end()) {
+          if (current->getType() == EN::COLLECT) {
+            if (static_cast<CollectNode const*>(current)->hasOutVariable()) {
+              // COLLECT with an INTO variable will collect all variables from
+              // the scope, so we shouldn't try to remove or change the meaning
+              // of variables
+              usageCount = 0;
+              break;
+            }
+          } 
+          if (current->getType() != EN::CALCULATION) {
+            // don't know how to replace the variable in a non-LET node
+            // abort the search
+            usageCount = 0;
+            break;
+          }
+
+          // got a LET. we can replace the variable reference in it by 
+          // something else
+          ++usageCount;
+          other = static_cast<CalculationNode*>(current);
+        }
+
+        if (usageCount > 1) {
+          break;
+        }
+
+        current = current->getFirstParent();
+        vars.clear();
+      }
+
+
+      if (usageCount == 1) {
+        // our variable is used by exactly one other calculation
+        // now we can replace the reference to our variable in the other
+        // calculation with the variable's expression directly
+        auto otherExpression = other->expression();
+        TRI_ASSERT(otherExpression != nullptr);
+
+        if (rootNode->type != NODE_TYPE_ATTRIBUTE_ACCESS &&
+            Ast::countReferences(otherExpression->node(), outvars[0]) > 1) {
+          // used more than once... better give up
+          continue;
+        }
+
+        TRI_ASSERT(other != nullptr);
+        otherExpression->replaceVariableReference(outvars[0], rootNode);
+
+        toUnlink.emplace(n);
+      } 
     }
   }
 
@@ -3552,17 +3722,41 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
   bool modified = false;
 
   for (auto const& n : nodes) {
-    auto subqueryNode = static_cast<SubqueryNode const*>(n);
+    auto subqueryNode = static_cast<SubqueryNode*>(n);
   
     if (subqueryNode->isModificationQuery()) {
       // can't modify modifying subqueries
+      continue;
+    }
+    
+    if (subqueryNode->canThrow()) {
+      // can't inline throwing subqueries
+      continue;
+    }
+
+    // check if subquery contains a COLLECT node with an INTO variable
+    bool eligible = true;
+    auto current = subqueryNode->getSubquery();
+    TRI_ASSERT(current != nullptr);
+
+    while (current != nullptr) {
+      if (current->getType() == EN::COLLECT) {
+        if (static_cast<CollectNode const*>(current)->hasOutVariable()) {
+          eligible = false;
+          break;
+        }
+      }
+      current = current->getFirstDependency();
+    }
+
+    if (!eligible) {
       continue;
     }
 
     Variable const* out = subqueryNode->outVariable();
     TRI_ASSERT(out != nullptr);
 
-    auto current = n;
+    current = n;
     // now check where the subquery is used
     while (current->hasParent()) {
       if (current->getType() == EN::ENUMERATE_LIST) {
@@ -3620,7 +3814,7 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
           plan->unlinkNode(listNode, false);
 
           queryVariables->renameVariable(returnNode->inVariable()->id, listNode->outVariable()->name);
-
+        
           // finally replace the variables
           std::unordered_map<VariableId, Variable const*> replacements;
           replacements.emplace(listNode->outVariable()->id, returnNode->inVariable());
@@ -3635,8 +3829,7 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
         break;
       }
 
-      auto const& parents = current->getParents();
-      current = parents[0];
+      current = current->getFirstParent();
     }
   }
 

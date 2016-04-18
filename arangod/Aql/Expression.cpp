@@ -172,6 +172,11 @@ void Expression::replaceVariables(
   TRI_ASSERT(_node != nullptr);
 
   _node = _ast->replaceVariables(const_cast<AstNode*>(_node), replacements);
+  
+  if (_type == ATTRIBUTE && _accessor != nullptr) {
+    _accessor->replaceVariable(replacements);
+  }
+
   invalidate();
 }
 
@@ -267,6 +272,26 @@ bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
       }
     }
   } 
+
+  // if right operand of IN/NOT IN is a range, we can use an optimized search
+  if (right.isRange()) {
+    // but only if left operand is a number
+    if (!left.isNumber()) {
+      // a non-number will never be contained in the range
+      return false;
+    }
+
+    // check if conversion to int64 would be lossy
+    int64_t value = left.toInt64();
+    if (left.toDouble() == static_cast<double>(value)) {
+      // no loss
+      Range const* r = right.range();
+      TRI_ASSERT(r != nullptr);
+
+      return r->isIn(value);
+    }
+    // fall-through to linear search
+  }
     
   // use linear search
   for (size_t i = 0; i < n; ++i) {
@@ -684,7 +709,7 @@ AqlValue Expression::executeSimpleExpressionReference(
 
   size_t i = 0;
   for (auto it = vars.begin(); it != vars.end(); ++it, ++i) {
-    if ((*it)->name == v->name) {
+    if ((*it)->id == v->id) {
       if (doCopy) {
         mustDestroy = true; // as we are copying
         return argv->getValueReference(startPos, regs[i]).clone();
@@ -868,7 +893,7 @@ AqlValue Expression::executeSimpleExpressionComparison(
       node->type == NODE_TYPE_OPERATOR_BINARY_NIN) {
     // IN and NOT IN
     if (!right.isArray()) {
-      // right operand must be a list, otherwise we return false
+      // right operand must be an array, otherwise we return false
       // do not throw, but return "false" instead
       return AqlValue(false);
     }

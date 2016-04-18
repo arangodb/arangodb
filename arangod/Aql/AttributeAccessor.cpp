@@ -38,6 +38,16 @@ AttributeAccessor::AttributeAccessor(
 
   TRI_ASSERT(_variable != nullptr);
 }
+  
+/// @brief replace the variable in the accessor
+void AttributeAccessor::replaceVariable(std::unordered_map<VariableId, Variable const*> const& replacements) {
+  for (auto const& it : replacements) {
+    if (it.first == _variable->id) {
+      _variable = it.second;
+      return;
+    }
+  }
+}
 
 /// @brief execute the accessor
 AqlValue AttributeAccessor::get(arangodb::AqlTransaction* trx,

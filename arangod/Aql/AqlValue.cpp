@@ -781,7 +781,7 @@ AqlValue AqlValue::CreateFromBlocks(
     std::vector<RegisterId> registers;
     for (RegisterId j = 0; j < n; ++j) {
       // temporaries don't have a name and won't be included
-      if (variableNames[j][0] != '\0') {
+      if (!variableNames[j].empty()) {
         registers.emplace_back(j);
       }
     }

@@ -1,24 +1,20 @@
-.footerWrapper {
-  bottom: 0;
-  height: 42px;
-  position: absolute;
-}
-
 .footer {
+  background-color: rgba(239, 240, 241, .8);
   font-size: 14px;
-  left: 0;
-  right: 0;
+  left: 160px;
+  right: 10px;
   text-align: center;
   z-index: 1000;
 }
 
 footer.footer {
-  @extend %fixedbar;
+  //@extend %fixedbar;
   //background-color: $c-white-transp;
   //background-color: rgba(219, 226, 230, 1);
   //border-top: 1px solid $c-navbar-border;
   bottom: 0;
-  height: 40px;
+  height: 43px;
+  position: fixed;
 
   p {
     font-size: 10pt;

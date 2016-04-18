@@ -73,6 +73,12 @@ function optimizerRuleTestSuite () {
         "FOR i IN [1] LET a = i, b = a RETURN 1",
         "FOR i IN [1] LET a = i, b = i RETURN a",
         "FOR i IN [1] LET a = i, b = i RETURN b",
+        "FOR i IN [1] LET a = i, b = a RETURN b",
+        "FOR i IN [1] LET a = i + 1, b = a + 1 RETURN b",
+        "FOR i IN [1] LET a = i, b = i RETURN [ a, b ]",
+        "FOR i IN [1] LET a = i + 1, b = i - 1 RETURN [ a, b ]",
+        "FOR i IN [1] LET a = i RETURN a.value",
+        "FOR i IN [1] LET a = i RETURN a[0]"
       ];
 
       queries.forEach(function(query) {
@@ -116,6 +122,7 @@ function optimizerRuleTestSuite () {
         "FOR a IN [0.75, 0.8] RETURN VARIANCE_SAMPLE(a)",
         "FOR a IN [0.75, 0.8] RETURN STDDEV_POPULATION(a)",
         "FOR a IN [1975] RETURN DATE_YEAR(a)",
+        "FOR i IN [1] LET a = CONCAT('a', i) RETURN a * a",
 
         "LET a = SLEEP(2) RETURN 1",
 
@@ -139,16 +146,22 @@ function optimizerRuleTestSuite () {
         "FOR a in [1,7,4,3,4,5,6,9,8] SORT a + 1, SQRT(a) RETURN a",
         "FOR a in [1,7,4,3,4,5,6,9,8] FILTER a != 4 RETURN a",
 
-        // not used variables
-        "FOR i IN [1] LET a = i, b = a RETURN b",
-        "FOR i IN [1] LET a = i + 1, b = a + 1 RETURN b",
-        "FOR i IN [1] LET a = i, b = i RETURN [ a, b ]",
-        "FOR i IN [1] LET a = i + 1, b = i - 1 RETURN [ a, b ]",
-
         // subqueries
         "FOR i IN [1] LET x = (FOR j IN [1] RETURN j) RETURN x",
         "FOR i IN [1] FOR j IN [1] LET x = (FOR k IN [1] RETURN k) RETURN x",
-        "LET x = (FOR k IN [1] RETURN k) RETURN x"
+        "LET x = (FOR k IN [1] RETURN k) RETURN x",
+        "LET r = (FOR doc IN [ { a: 1, b: 2 }, { a: 2, b: 4 } ] RETURN doc) RETURN r[0]",
+
+        // used by different node types
+        "FOR i IN [1] LET x = (FOR j IN FLATTEN([1,2]) RETURN j) RETURN x[0]",
+        // used twice
+        "FOR i IN [1] LET x = i[0] RETURN x + x", 
+        "FOR i IN [1] LET x = i * 2 RETURN x + x", 
+        
+        // indirectly used
+        "FOR i IN [1] LET a = i * 2 RETURN a * a",
+        "FOR i IN [1] LET a = CONCAT('a', i) RETURN CONCAT(a, a)",
+        "FOR i IN [1] LET a = i * 2 COLLECT y = a INTO g RETURN [ y * 2, g ]",
       ];
 
       queries.forEach(function(query) {
@@ -197,6 +210,7 @@ function optimizerRuleTestSuite () {
         "LET a = [0.75, 0.8] RETURN VARIANCE_SAMPLE(a)",
         "LET a = [0.75, 0.8] RETURN STDDEV_POPULATION(a)",
         "LET a = 1975 RETURN DATE_YEAR(a)",
+        "FOR i IN [1] LET a = CONCAT('a', i) RETURN a * 2",
         // here we test the calculation.
 
         "LET a = 1 RETURN 1",
@@ -219,11 +233,28 @@ function optimizerRuleTestSuite () {
         "FOR i IN [1] LET a = i, b = i RETURN a",
         "FOR i IN [1] LET a = i, b = i RETURN b",
         
+        // indirectly used variables
+        "FOR i IN [1] LET a = i, b = a RETURN b",
+        "FOR i IN [1] LET a = i + 1, b = a + 1 RETURN b",
+        "FOR i IN [1] LET a = i, b = i RETURN [ a, b ]",
+        "FOR i IN [1] LET a = i + 1, b = i - 1 RETURN [ a, b ]",
+        "FOR i IN [1] LET a = CONCAT('a', 'b') RETURN a.b",
+        "FOR i IN [1] LET a = i * 2 RETURN a * 3",
+        "FOR i IN [1] LET a = i.a RETURN a * a",
+        
         // subqueries
         "FOR i IN [1] LET x = (FOR j IN [1] RETURN j) RETURN i",
         "FOR i IN [1] FOR j IN [1] LET x = (FOR k IN [1] RETURN k) RETURN i",
         "FOR i IN [1] FOR j IN [1] LET x = (FOR k IN [1] RETURN k) RETURN j",
-        "LET x = (FOR k IN [1] RETURN k) RETURN 1"
+        "LET x = (FOR k IN [1] RETURN k) RETURN 1",
+
+        // modification nodes
+        "FOR i IN 1..2 LET a = CONCAT('UnitTestsOptimizer', i) INSERT CONCAT(a, i) INTO _users OPTIONS { ignoreErrors: true }",
+        "FOR i IN 1..2 LET a = CONCAT('UnitTestsOptimizer', i) REMOVE CONCAT(a, i) INTO _users OPTIONS { ignoreErrors: true }",
+        "FOR i IN 1..2 LET a = CONCAT('UnitTestsOptimizer', i) UPDATE CONCAT(a, i) WITH { } INTO _users OPTIONS { ignoreErrors: true }",
+        "FOR i IN 1..2 LET a = CONCAT('UnitTestsOptimizer', i) UPDATE CONCAT('UnitTestsOptimizer', i * 2) WITH CONCAT(a, i) INTO _users OPTIONS { ignoreErrors: true }",
+        "FOR i IN 1..2 LET a = CONCAT('UnitTestsOptimizer', i) REPLACE CONCAT(a, i) WITH { } INTO _users OPTIONS { ignoreErrors: true }",
+        "FOR i IN 1..2 LET a = CONCAT('UnitTestsOptimizer', i) REPLACE CONCAT('UnitTestsOptimizer', i * 2) WITH CONCAT(a, i) INTO _users OPTIONS { ignoreErrors: true }"
       ];
 
       queries.forEach(function(query) {
@@ -313,7 +344,26 @@ function optimizerRuleTestSuite () {
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), plan[0]);
         assertEqual(plan[1], helper.getCompactPlan(result).map(function(node) { return node.type; }), plan[0]);
       });
-    }
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test generated results
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testResults : function () {
+      var queries = [ 
+        [ "FOR doc IN [ { a: 1, b: 2 }, { a: 2, b: 4 } ] LET a = doc.a RETURN a * 2", [ 2, 4 ] ],
+        [ "FOR doc IN [ { a: 1, b: 2 }, { a: 2, b: 4 } ] LET a = doc.a * 2 RETURN a * 2", [ 4, 8 ] ],
+        [ "FOR doc IN [ { a: 1, b: 2 }, { a: 2, b: 4 } ] LET a = doc RETURN a.a", [ 1, 2 ] ]
+      ];
+      queries.forEach(function(query) {
+        var result = AQL_EXPLAIN(query[0]);
+        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+
+        result = AQL_EXECUTE(query[0]).json;
+        assertEqual(query[1], result, query);
+      });
+    },
 
   };
 }
