@@ -80,15 +80,22 @@
 
 //new log view - do not delete
 #arangoLogTable {
+  min-height: 444px;
+
   tbody {
+
+    tr {
+      height: 40px;
+    }
+
     td:nth-child(1) {
       text-align: center;
-      width: 80px;
+      width: 70px;
     }
 
     td:nth-child(2) {
       text-align: center;
-      width: 80px;
+      width: 150px;
     }
 
     td:nth-child(3) {
