@@ -18,6 +18,7 @@ console.log(result);
 !SECTION AQL Template Strings
 
 ArangoDB supports ES2015-style template strings for queries using the `aqlQuery` template helper.
+First, lets have a look at how it works, then use it for a query:
 
 **Examples**
 
@@ -27,6 +28,15 @@ var console = require('console');
 
 var isAdmin = true;
 var userCollection = applicationContext.collection('users');
+
+var key = 'testKey';
+aqlQuery`FOR c IN mycollection FILTER c._key == ${key} RETURN c._key`;
+var results_in = {
+  "query" : "FOR c IN mycollection FILTER c._key == @value0 RETURN c._key",
+  "bindVars" : {
+    "value0" : "testKey"
+  }
+}
 
 var usernames = db._query(aqlQuery`
     FOR user IN ${userCollection}

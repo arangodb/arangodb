@@ -37,7 +37,19 @@ To pass bind parameters into a query, they can be specified as second argument t
 !SUBSUBSECTION ES6 template strings 
 
 It is also possible to use ES6 template strings for generating AQL queries. There is
-a template string generator function named *aqlQuery*:
+a template string generator function named *aqlQuery*; we call it once to demonstrate
+its result, and once putting it directly into the query:
+
+    ```js
+    var key = 'testKey';
+    aqlQuery`FOR c IN mycollection FILTER c._key == ${key} RETURN c._key`;
+    { 
+      "query" : "FOR c IN mycollection FILTER c._key == @value0 RETURN c._key", 
+      "bindVars" : { 
+        "value0" : "testKey" 
+      } 
+    }
+    ```
 
     @startDocuBlockInline 02_workWithAQL_aqlQuery
     @EXAMPLE_ARANGOSH_OUTPUT{02_workWithAQL_aqlQuery}
