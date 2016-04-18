@@ -205,8 +205,11 @@ static bool extractSimplePathAccesses(AstNode const* node, TraversalNode* tn,
           delete varRefNode;
           throw;
         }
-        varRefNode->setData(isEdgeAccess ? tn->edgeOutVariable()
-                                         : tn->vertexOutVariable());
+
+        // We fake the variable at this point.
+        // The reason is that we need a variable access (instead of indexed access)
+        // for serialisation. However the content of this variable is never used.
+        varRefNode->setData(tn->vertexOutVariable());
         firstRefNode->changeMember(0, varRefNode);
 
         auto expressionOperator = compareNode->type;

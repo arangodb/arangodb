@@ -109,6 +109,13 @@ std::string const RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH =
     "/_api/simple/all";
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief simple query all-keys path
+////////////////////////////////////////////////////////////////////////////////
+
+std::string const RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_KEYS_PATH =
+    "/_api/simple/all-keys";
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief document batch lookup path
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -555,6 +562,7 @@ void RestVocbaseBaseHandler::generateTransactionError(
       return;
 
     case TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES:
+    case TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN:
     case TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY: {
       generateError(GeneralResponse::ResponseCode::BAD, result.code);
       return;

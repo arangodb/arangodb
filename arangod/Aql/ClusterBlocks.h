@@ -29,6 +29,7 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionStats.h"
+#include "Rest/GeneralRequest.h"
 
 struct TRI_json_t;
 

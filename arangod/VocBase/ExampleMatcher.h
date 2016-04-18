@@ -62,9 +62,6 @@ class ExampleMatcher {
   ExampleMatcher(v8::Isolate* isolate, v8::Handle<v8::Array> const examples,
                  std::string& errorMessage);
 
-  ExampleMatcher(TRI_json_t const* example,
-                 arangodb::CollectionNameResolver const* resolver);
-
   ExampleMatcher(arangodb::velocypack::Slice const& example,
                  bool allowStrings);
 

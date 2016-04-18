@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestEdgesHandler.h"
-#include "Basics/JsonHelper.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterMethods.h"
 #include "Indexes/EdgeIndex.h"
@@ -251,7 +250,8 @@ bool RestEdgesHandler::readEdges(
     std::string vertexString(startVertex);
     GeneralResponse::ResponseCode responseCode;
     std::string contentType;
-    arangodb::basics::Json resultDocument(arangodb::basics::Json::Object, 3);
+    VPackBuilder resultDocument;
+    resultDocument.openObject();
 
     int res = getFilteredEdgesOnCoordinator(
         _vocbase->_name, collectionName, vertexString, direction, expressions,
@@ -261,12 +261,11 @@ bool RestEdgesHandler::readEdges(
       return false;
     }
     
-    resultDocument.set("error", arangodb::basics::Json(false));
-    resultDocument.set("code", arangodb::basics::Json(200));
+    resultDocument.add("error", VPackValue(false));
+    resultDocument.add("code", VPackValue(200));
+    resultDocument.close();
 
-    VPackBuilder tmp;
-    arangodb::basics::JsonHelper::toVelocyPack(resultDocument.json(), tmp);
-    generateResult(GeneralResponse::ResponseCode::OK, tmp.slice());
+    generateResult(GeneralResponse::ResponseCode::OK, resultDocument.slice());
 
     return true;
   }
@@ -403,8 +402,10 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   if (ServerState::instance()->isCoordinator()) {
     GeneralResponse::ResponseCode responseCode;
     std::string contentType;
-    arangodb::basics::Json resultDocument(arangodb::basics::Json::Object, 3);
+    VPackBuilder resultDocument;
+    resultDocument.openObject();
 
+#warning Proper babies implementation required here
     for (auto const& it : VPackArrayIterator(body)) {
       if (it.isString()) {
         std::string vertexString(it.copyString());
@@ -418,14 +419,11 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
         }
       }
     }
-    
-    resultDocument.set("error", arangodb::basics::Json(false));
-    resultDocument.set("code", arangodb::basics::Json(200));
+    resultDocument.add("error", VPackValue(false));
+    resultDocument.add("code", VPackValue(200));
+    resultDocument.close();
 
-    VPackBuilder tmp;
-    arangodb::basics::JsonHelper::toVelocyPack(resultDocument.json(), tmp);
-    generateResult(GeneralResponse::ResponseCode::OK, tmp.slice());
-
+    generateResult(GeneralResponse::ResponseCode::OK, resultDocument.slice());
     return true;
   }
 

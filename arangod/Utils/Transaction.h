@@ -398,14 +398,6 @@ class Transaction {
                          OperationOptions const& options);
   
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief fetches all document keys in a collection
-  //////////////////////////////////////////////////////////////////////////////
-
-  OperationResult allKeys(std::string const& collectionName, 
-                          std::string const& type,
-                          OperationOptions const& options);
-  
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief fetches all documents in a collection
   //////////////////////////////////////////////////////////////////////////////
 
@@ -575,16 +567,6 @@ class Transaction {
                               VPackSlice const value,
                               OperationOptions& options);
   
-  OperationResult allKeysCoordinator(std::string const& collectionName,
-                                     std::string const& type,
-                                     std::string const& prefix,
-                                     OperationOptions& options);
-  
-  OperationResult allKeysLocal(std::string const& collectionName,
-                               std::string const& type,
-                               std::string const& prefix,
-                               OperationOptions& options);
-
   OperationResult allCoordinator(std::string const& collectionName,
                                  uint64_t skip, uint64_t limit,
                                  OperationOptions& options);
