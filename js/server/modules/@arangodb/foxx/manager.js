@@ -908,6 +908,11 @@ function _buildAppInPath(appInfo, path, options) {
       appInfo = fs.join(fs.getTempPath(), appInfo);
       installAppFromLocal(appInfo, path);
     } else {
+      try {
+        store.update();
+      } catch (e) {
+        console.warnLines(`Failed to update Foxx store: ${e.stack}`);
+      }
       installAppFromRemote(store.buildUrl(appInfo), path);
     }
   } catch (e) {

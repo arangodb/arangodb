@@ -289,7 +289,11 @@ foxxRouter.get('/download/zip', function (req, res) {
 
 
 router.get('/fishbowl', function (req, res) {
-  FoxxManager.update();
+  try {
+    FoxxManager.update();
+  } catch (e) {
+    console.warnLines(`Failed to update Foxx store: ${e.stack}`);
+  }
   res.json(FoxxManager.availableJson());
 })
 .summary('List of all foxx services submitted to the Foxx store.')
