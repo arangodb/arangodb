@@ -25,7 +25,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const joi = require('joi');
-const Foxx = require('@arangodb/foxx');
+const Foxx = require('@arangodb/foxx/legacy');
 const crypto = require('@arangodb/crypto');
 const paramSchema = joi.string().optional().description('Foxx session ID');
 

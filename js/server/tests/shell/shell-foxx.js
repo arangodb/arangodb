@@ -118,7 +118,7 @@ mockConstructor = function () {
 
 
 var jsunity = require("jsunity"),
-  FoxxController = require("@arangodb/foxx").Controller,
+  FoxxController = require("@arangodb/foxx/legacy").Controller,
   fakeContext,
   fakeContextWithRootElement;
 
@@ -526,7 +526,7 @@ function DocumentationAndConstraintsSpec () {
       app = new FoxxController(fakeContext);
       routes = app.routingInfo.routes;
       models = app.models;
-      Model = require('@arangodb/foxx').Model;
+      Model = require('@arangodb/foxx/legacy').Model;
     },
 
     testDefinePathParam: function () {

@@ -210,7 +210,7 @@ class Controller {
     this.routingInfo.routes.push(newRoute);
 
     if (method === 'post' || method === 'put' || method === 'patch') {
-      const Model = require('@arangodb/foxx').Model;
+      const Model = require('@arangodb/foxx/legacy').Model;
       let UndocumentedBody = Model.extend({});
       requestContext.bodyParam('undocumented body', {
         description: 'Undocumented body param',
