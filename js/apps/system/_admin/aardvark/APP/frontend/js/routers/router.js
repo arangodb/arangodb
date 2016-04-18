@@ -27,6 +27,7 @@
       "query2": "query",
       "workMonitor": "workMonitor",
       "databases": "databases",
+      "settings": "databases",
       "services": "applications",
       "service/:mount": "applicationDetail",
       "graphs": "graphManagement",

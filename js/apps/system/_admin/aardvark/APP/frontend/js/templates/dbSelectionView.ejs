@@ -1,7 +1,11 @@
 <script id="dbSelectionView.ejs" type="text/template">
-<a href="#" class="tab" id="dbselection"><div class="dbselection"><i class="fa fa-database"></i><span class="db-name">DB: </span> <%=current%><i class="fa fa-caret-square-o-down"></i></div>
+<a href="#" class="tab disabled" id="dbselection"><div class="dbselection"><i class="fa fa-database"></i><span class="db-name">DB: </span> <%=current%>
+<!-- <i class="fa fa-caret-square-o-down"></i> -->
+</div>
 <!-- <b class="caret"></b> -->
 </a>
+
+<!--
 <ul class="link-dropdown-menu" id="dbs_dropdown">
 <%
 if (list.length > 0) {
@@ -29,4 +33,5 @@ if (list.length > 0) {
     </li>
     <% } %>
 </ul>
+-->
 </script>

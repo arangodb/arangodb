@@ -72,7 +72,7 @@
       this.dashboards[this.coordinator.get('name')].render();
       window.setTimeout(function() {
         self.dashboards[self.coordinator.get('name')].resize();
-      }, 100);
+      }, 500);
     },
 
     waitForCoordinators: function(callback) {
