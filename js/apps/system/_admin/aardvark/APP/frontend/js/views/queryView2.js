@@ -799,10 +799,11 @@
       this.bindParamAceEditor.getSession().setMode("ace/mode/json");
       this.bindParamAceEditor.setFontSize("10pt");
 
-      this.bindParamAceEditor.getSession().on('change', function() {
+      this.bindParamAceEditor.getSession().on('change', function(a, b, c) {
         try {
           self.bindParamTableObj = JSON.parse(self.bindParamAceEditor.getValue());
           self.allowParamToggle = true;
+          self.setCachedQuery(self.aqlEditor.getValue(), JSON.stringify(self.bindParamTableObj));
         }
         catch (e) {
           self.allowParamToggle = false;
