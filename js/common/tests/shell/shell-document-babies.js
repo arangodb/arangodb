@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 5000 */
-/*global fail, assertEqual, assertTypeOf, assertTrue */
+/*global fail, assertEqual, assertTypeOf, assertTrue, assertFalse */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -285,7 +285,7 @@ function CollectionDocumentSuiteBabies() {
       }]);
       assertEqual(docs.length, 2);
       assertEqual(docs[0]._key, "b"); // The first is inserted
-      assertTrue(docs[1].error)
+      assertTrue(docs[1].error);
       assertEqual(docs[1].errorNum, ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code);
       assertEqual(collection.count(), 2);
 
@@ -295,7 +295,7 @@ function CollectionDocumentSuiteBabies() {
         _key: "c"
       }]);
       assertEqual(docs.length, 2);
-      assertTrue(docs[0].error)
+      assertTrue(docs[0].error);
       assertEqual(docs[0].errorNum, ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code);
       assertEqual(docs[1]._key, "c"); // The second is inserted
       assertEqual(collection.count(), 3);
@@ -390,7 +390,7 @@ function CollectionDocumentSuiteBabies() {
       var result = collection.remove(docs);
       assertEqual(result.length, 3);
       // All should conflict!
-      for (var i = 0; i < result.length; i++) {
+      for (i = 0; i < result.length; i++) {
         assertTrue(result[i].error);
         assertEqual(result[i].errorNum, ERRORS.ERROR_ARANGO_CONFLICT.code);
       }
@@ -427,7 +427,7 @@ function CollectionDocumentSuiteBabies() {
       var result = collection.remove(docs);
       assertEqual(result.length, 3);
       // All should conflict!
-      for (var i = 0; i < result.length; i++) {
+      for (i = 0; i < result.length; i++) {
         assertTrue(result[i].error);
         assertEqual(result[i].errorNum, ERRORS.ERROR_ARANGO_CONFLICT.code);
       }
@@ -666,7 +666,7 @@ function CollectionDocumentSuiteBabies() {
       docs3 = collection.remove(test);
       assertEqual(docs3.length, 3);
       // The first 2 are successful
-      for (var i = 0; i < 2; i++) {
+      for (i = 0; i < 2; i++) {
         assertFalse(docs3[i].hasOwnProperty("error"));
         assertFalse(docs3[i].hasOwnProperty("errorNum"));
       }
@@ -767,7 +767,7 @@ function CollectionDocumentSuiteBabies() {
           try {
             docs = collection.replace([x, x, x], [{}, {}, {}]);
             assertEqual(docs.length, expectedLength);
-            for (var i = 0; i < expectedLength; ++i) {
+            for (i = 0; i < expectedLength; ++i) {
               assertEqual(docs[i].error, true);
               if (typeof x === "string") {
                 assertEqual(docs[i].errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
@@ -786,14 +786,14 @@ function CollectionDocumentSuiteBabies() {
         // Version 1
         docs = collection.update(origDocs, [x, x, x]);
         assertEqual(docs.length, expectedLength);
-        for (var i = 0; i < expectedLength; ++i) {
+        for (i = 0; i < expectedLength; ++i) {
           assertEqual(docs[i].error, true);
           assertEqual(docs[i].errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code);
         }
 
         docs = collection.update([x, x, x], [{}, {}, {}]);
         assertEqual(docs.length, expectedLength);
-        for (var i = 0; i < expectedLength; ++i) {
+        for (i = 0; i < expectedLength; ++i) {
           assertEqual(docs[i].error, true);
           if (typeof x === "string") {
             assertEqual(docs[i].errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
@@ -807,7 +807,7 @@ function CollectionDocumentSuiteBabies() {
 
         docs = collection.remove([x, x, x]);
         assertEqual(docs.length, expectedLength);
-        for (var i = 0; i < expectedLength; ++i) {
+        for (i = 0; i < expectedLength; ++i) {
           assertEqual(docs[i].error, true);
           if (typeof x === "string") {
             assertEqual(docs[i].errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
@@ -819,7 +819,7 @@ function CollectionDocumentSuiteBabies() {
         // Document
         docs = collection.document([x, x, x]);
         assertEqual(docs.length, expectedLength);
-        for (var i = 0; i < expectedLength; ++i) {
+        for (i = 0; i < expectedLength; ++i) {
           assertEqual(docs[i].error, true);
           if (typeof x === "string") {
             assertEqual(docs[i].errorNum, ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);

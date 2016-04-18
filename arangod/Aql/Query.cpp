@@ -880,7 +880,6 @@ QueryResult Query::explain() {
     enterState(FINALIZATION);
 
     QueryResult result(TRI_ERROR_NO_ERROR);
-    QueryRegistry localRegistry;
 
     if (allPlans()) {
       result.result = std::make_shared<VPackBuilder>();

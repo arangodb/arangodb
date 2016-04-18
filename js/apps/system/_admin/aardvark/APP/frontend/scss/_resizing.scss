@@ -578,7 +578,12 @@ div.centralContent {
   background-color: rgba(0, 0, 0, 0);
   box-sizing: border-box;
   margin-top: 10px;
-  padding: 5px;
+  padding: {
+    bottom: 43px;
+    left: 5px;
+    right: 5px;
+    top: 5px;
+  }
   width: 100%;
 }
 
