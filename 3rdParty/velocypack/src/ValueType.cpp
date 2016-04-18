@@ -34,6 +34,8 @@ char const* arangodb::velocypack::valueTypeName(ValueType type) {
   switch (type) {
     case ValueType::None:
       return "none";
+    case ValueType::Illegal:
+      return "illegal";
     case ValueType::Null:
       return "null";
     case ValueType::Bool:

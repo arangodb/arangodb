@@ -53,7 +53,7 @@ VT const Slice::TypeMap[256] = {
     /* 0x10 */ VT::Object,   /* 0x11 */ VT::Object,
     /* 0x12 */ VT::Object,   /* 0x13 */ VT::Array,
     /* 0x14 */ VT::Object,   /* 0x15 */ VT::None,
-    /* 0x16 */ VT::None,     /* 0x17 */ VT::None,
+    /* 0x16 */ VT::None,     /* 0x17 */ VT::Illegal,
     /* 0x18 */ VT::Null,     /* 0x19 */ VT::Bool,
     /* 0x1a */ VT::Bool,     /* 0x1b */ VT::Double,
     /* 0x1c */ VT::UTCDate,  /* 0x1d */ VT::External,
@@ -231,12 +231,19 @@ Slice Slice::translate() const {
     throw Exception(Exception::InvalidValueType,
                     "Cannot translate key of this type");
   }
-  uint64_t id = getUInt();
   if (attributeTranslator == nullptr) {
     throw Exception(Exception::NeedAttributeTranslator);
   }
+  return translateUnchecked();
+}
 
-  return Slice(attributeTranslator->translate(id));
+// translates an integer key into a string, without checks
+Slice Slice::translateUnchecked() const {
+  uint8_t const* result = attributeTranslator->translate(getUInt());
+  if (result == nullptr) {
+    return Slice();
+  }
+  return Slice(result);
 }
 
 // check if two Slices are equal on the binary level
@@ -581,7 +588,10 @@ Slice Slice::makeKey() const {
     return *this;
   }
   if (isSmallInt() || isUInt()) {
-    return translate();
+    if (attributeTranslator == nullptr) {
+      throw Exception(Exception::NeedAttributeTranslator);
+    }
+    return translateUnchecked();
   }
 
   throw Exception(Exception::InvalidValueType,
@@ -615,6 +625,8 @@ ValueLength Slice::getNthOffsetFromCompact(ValueLength index) const {
 Slice Slice::searchObjectKeyLinear(std::string const& attribute,
                                    ValueLength ieBase, ValueLength offsetSize,
                                    ValueLength n) const {
+  bool const useTranslator = (attributeTranslator != nullptr);
+
   for (ValueLength index = 0; index < n; ++index) {
     ValueLength offset = ieBase + index * offsetSize;
     Slice key(_start + readInteger<ValueLength>(_start + offset, offsetSize));
@@ -625,7 +637,11 @@ Slice Slice::searchObjectKeyLinear(std::string const& attribute,
       }
     } else if (key.isSmallInt() || key.isUInt()) {
       // translate key
-      if (!key.translate().isEqualString(attribute)) {
+      if (!useTranslator) {
+        // no attribute translator
+        throw Exception(Exception::NeedAttributeTranslator);
+      }
+      if (!key.translateUnchecked().isEqualString(attribute)) {
         continue;
       }
     } else {
@@ -645,6 +661,7 @@ Slice Slice::searchObjectKeyLinear(std::string const& attribute,
 Slice Slice::searchObjectKeyBinary(std::string const& attribute,
                                    ValueLength ieBase, ValueLength offsetSize,
                                    ValueLength n) const {
+  bool const useTranslator = (attributeTranslator != nullptr);
   VELOCYPACK_ASSERT(n > 0);
 
   ValueLength l = 0;
@@ -662,7 +679,11 @@ Slice Slice::searchObjectKeyBinary(std::string const& attribute,
       res = key.compareString(attribute);
     } else if (key.isSmallInt() || key.isUInt()) {
       // translate key
-      res = key.translate().compareString(attribute);
+      if (!useTranslator) {
+        // no attribute translator
+        throw Exception(Exception::NeedAttributeTranslator);
+      }
+      res = key.translateUnchecked().compareString(attribute);
     } else {
       // invalid key
       return Slice();

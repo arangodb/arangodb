@@ -69,6 +69,9 @@ class Slice {
 
   // creates a slice of type None
   static Slice noneSlice() { return Slice("\x00"); }
+  
+  // creates a slice of type Illegal
+  static Slice illegalSlice() { return Slice("\x17"); }
 
   // creates a slice of type Null
   static Slice nullSlice() { return Slice("\x18"); }
@@ -114,12 +117,12 @@ class Slice {
   // No destructor, does not take part in memory management,
 
   // get the type for the slice
-  inline ValueType type() const { return TypeMap[head()]; }
+  inline ValueType type() const throw() { return TypeMap[head()]; }
 
   char const* typeName() const { return valueTypeName(type()); }
 
   // pointer to the head byte
-  uint8_t const* start() const { return _start; }
+  uint8_t const* start() const throw() { return _start; }
 
   // Set new memory position
   void set(uint8_t const* s) { _start = s; }
@@ -131,7 +134,7 @@ class Slice {
   }
 
   // value of the head byte
-  inline uint8_t head() const { return *_start; }
+  inline uint8_t head() const throw() { return *_start; }
 
   // hashes the binary representation of a value
   inline uint64_t hash(uint64_t seed = 0xdeadbeef) const {
@@ -144,76 +147,79 @@ class Slice {
   uint64_t normalizedHash(uint64_t seed = 0xdeadbeef) const;
 
   // check if slice is of the specified type
-  inline bool isType(ValueType t) const { return type() == t; }
+  inline bool isType(ValueType t) const throw() { return TypeMap[*_start] == t; }
 
   // check if slice is a None object
-  bool isNone() const { return isType(ValueType::None); }
+  bool isNone() const throw() { return isType(ValueType::None); }
+  
+  // check if slice is an Illegal object
+  bool isIllegal() const throw() { return isType(ValueType::Illegal); }
 
   // check if slice is a Null object
-  bool isNull() const { return isType(ValueType::Null); }
+  bool isNull() const throw() { return isType(ValueType::Null); }
 
   // check if slice is a Bool object
-  bool isBool() const { return isType(ValueType::Bool); }
+  bool isBool() const throw() { return isType(ValueType::Bool); }
 
   // check if slice is a Bool object - this is an alias for isBool()
-  bool isBoolean() const { return isBool(); }
+  bool isBoolean() const throw() { return isBool(); }
 
   // check if slice is the Boolean value true
-  bool isTrue() const { return head() == 0x1a; }
+  bool isTrue() const throw() { return head() == 0x1a; }
 
   // check if slice is the Boolean value false
-  bool isFalse() const { return head() == 0x19; }
+  bool isFalse() const throw() { return head() == 0x19; }
 
   // check if slice is an Array object
-  bool isArray() const { return isType(ValueType::Array); }
+  bool isArray() const throw() { return isType(ValueType::Array); }
 
   // check if slice is an Object object
-  bool isObject() const { return isType(ValueType::Object); }
+  bool isObject() const throw() { return isType(ValueType::Object); }
 
   // check if slice is a Double object
-  bool isDouble() const { return isType(ValueType::Double); }
+  bool isDouble() const throw() { return isType(ValueType::Double); }
 
   // check if slice is a UTCDate object
-  bool isUTCDate() const { return isType(ValueType::UTCDate); }
+  bool isUTCDate() const throw() { return isType(ValueType::UTCDate); }
 
   // check if slice is an External object
-  bool isExternal() const { return isType(ValueType::External); }
+  bool isExternal() const throw() { return isType(ValueType::External); }
 
   // check if slice is a MinKey object
-  bool isMinKey() const { return isType(ValueType::MinKey); }
+  bool isMinKey() const throw() { return isType(ValueType::MinKey); }
 
   // check if slice is a MaxKey object
-  bool isMaxKey() const { return isType(ValueType::MaxKey); }
+  bool isMaxKey() const throw() { return isType(ValueType::MaxKey); }
 
   // check if slice is an Int object
-  bool isInt() const { return isType(ValueType::Int); }
+  bool isInt() const throw() { return isType(ValueType::Int); }
 
   // check if slice is a UInt object
-  bool isUInt() const { return isType(ValueType::UInt); }
+  bool isUInt() const throw() { return isType(ValueType::UInt); }
 
   // check if slice is a SmallInt object
-  bool isSmallInt() const { return isType(ValueType::SmallInt); }
+  bool isSmallInt() const throw() { return isType(ValueType::SmallInt); }
 
   // check if slice is a String object
-  bool isString() const { return isType(ValueType::String); }
+  bool isString() const throw() { return isType(ValueType::String); }
 
   // check if slice is a Binary object
-  bool isBinary() const { return isType(ValueType::Binary); }
+  bool isBinary() const throw() { return isType(ValueType::Binary); }
 
   // check if slice is a BCD
-  bool isBCD() const { return isType(ValueType::BCD); }
+  bool isBCD() const throw() { return isType(ValueType::BCD); }
 
   // check if slice is a Custom type
-  bool isCustom() const { return isType(ValueType::Custom); }
+  bool isCustom() const throw() { return isType(ValueType::Custom); }
 
   // check if a slice is any number type
-  bool isInteger() const {
+  bool isInteger() const throw() {
     return isType(ValueType::Int) || isType(ValueType::UInt) ||
            isType(ValueType::SmallInt);
   }
 
   // check if slice is any Number-type object
-  bool isNumber() const { return isInteger() || isDouble(); }
+  bool isNumber() const throw() { return isInteger() || isDouble(); }
 
   bool isSorted() const {
     auto const h = head();
@@ -599,6 +605,7 @@ class Slice {
   ValueLength byteSize() const {
     switch (type()) {
       case ValueType::None:
+      case ValueType::Illegal:
       case ValueType::Null:
       case ValueType::Bool:
       case ValueType::MinKey:
@@ -736,6 +743,9 @@ class Slice {
   std::string hexType() const;
 
  private:
+  // translates an integer key into a string, without checks
+  Slice translateUnchecked() const;
+
   Slice getFromCompactObject(std::string const& attribute) const;
 
   ValueLength findDataOffset(uint8_t head) const {
