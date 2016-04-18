@@ -32,6 +32,8 @@
     template: templateEngine.createTemplate("footerView.ejs"),
 
     showServerStatus: function(isOnline) {
+      var self = this;
+
       if (!window.App.isCluster) {
         if (isOnline === true) {
           $('#healthStatus').removeClass('negative');
@@ -45,6 +47,49 @@
           $('.health-state').html('OFFLINE');
           $('.health-icon').html('<i class="fa fa-exclamation-circle"></i>');
         }
+      }
+      else {
+        self.collection.fetch({
+          success: function() {
+            self.renderClusterState();
+          }
+        });
+      }
+    },
+
+    renderClusterState: function() {
+      var ok = 0, error = 0;
+
+      this.collection.each(function(value) {
+        if (value.toJSON().status === 'ok') {
+          ok++;
+        }
+        else {
+          error++;
+        }
+      });
+
+      if (error > 0) {
+        $('#healthStatus').removeClass('positive');
+        $('#healthStatus').addClass('negative');
+        if (error === 1) {
+          $('.health-state').html(error + ' NODE ERROR');
+        }
+        else {
+          $('.health-state').html(error + ' NODES ERROR');
+        }
+        $('.health-icon').html('<i class="fa fa-exclamation-circle"></i>');
+      }
+      else {
+        $('#healthStatus').removeClass('negative');
+        $('#healthStatus').addClass('positive');
+        if (ok === 1) {
+          $('.health-state').html(ok + ' NODE OK');
+        }
+        else {
+          $('.health-state').html(ok + ' NODES OK');
+        }
+        $('.health-icon').html('<i class="fa fa-check-circle"></i>');
       }
     },
 
