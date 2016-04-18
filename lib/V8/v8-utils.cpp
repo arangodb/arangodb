@@ -560,29 +560,32 @@ static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
           ApplicationServer::lookupFeature("Client"));
 
       if (client != nullptr) {
-        endpoints = server->httpEndpoints();
+        endpoints = client->httpEndpoints();
       }
     }
 
     // a relative url. now make this an absolute URL if possible
     for (auto const& endpoint : endpoints) {
-      std::string fullurl = endpoint + url;
+      LOG(FATAL) << endpoint;
+      std::string fullurl = endpoint;
 
       // ipv4: replace 0.0.0.0 with 127.0.0.1
-      auto pos = fullurl.find("0.0.0.0");
+      auto pos = fullurl.find("//0.0.0.0");
 
       if (pos != std::string::npos) {
-        fullurl.replace(pos, strlen("0.0.0.0"), "127.0.0.1");
+        fullurl.replace(pos, strlen("//0.0.0.0"), "//127.0.0.1");
       }
 
       // ipv6: replace [::] with [::1]
       else {
-        pos = fullurl.find("[::]");
+        pos = fullurl.find("//[::]");
 
         if (pos != std::string::npos) {
-          fullurl.replace(pos, strlen("[::]"), "[::1]");
+          fullurl.replace(pos, strlen("//[::]"), "//[::1]");
         }
       }
+
+      url = fullurl + url;
 
       break;
     }
