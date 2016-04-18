@@ -158,6 +158,7 @@ private:
   id_t                 _voted_for;
 
   arangodb::basics::ConditionVariable _cv;      // agency callbacks
+  arangodb::Mutex _castLock;
 
 };
   
