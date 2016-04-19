@@ -30,23 +30,14 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 }
+
+class TransactionContext;
+
 namespace aql {
 
 struct QueryResult {
   QueryResult& operator=(QueryResult const& other) = delete;
-
-  QueryResult(QueryResult&& other) {
-    code = other.code;
-    cached = other.cached;
-    details = other.details;
-    warnings.swap(other.warnings);
-    result.swap(other.result);
-    stats.swap(other.stats);
-    profile.swap(other.profile);
-
-    bindParameters = other.bindParameters;
-    collectionNames = other.collectionNames;
-  }
+  QueryResult(QueryResult&& other) = default;
 
   QueryResult(int code, std::string const& details)
       : code(code),
@@ -54,7 +45,8 @@ struct QueryResult {
         details(details),
         warnings(nullptr),
         result(nullptr),
-        profile(nullptr) {}
+        profile(nullptr),
+        context(nullptr) {}
 
   explicit QueryResult(int code) : QueryResult(code, "") {}
 
@@ -71,6 +63,7 @@ struct QueryResult {
   std::shared_ptr<arangodb::velocypack::Builder> result;
   std::shared_ptr<arangodb::velocypack::Builder> stats;
   std::shared_ptr<arangodb::velocypack::Builder> profile;
+  std::shared_ptr<arangodb::TransactionContext> context;
 };
 }
 }

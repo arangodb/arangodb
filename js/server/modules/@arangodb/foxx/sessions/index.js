@@ -78,7 +78,7 @@ module.exports = function sessionMiddleware(cfg) {
       transport.get || transport.set,
       'Session transport must have a get and/or set method'
     );
-    return transports;
+    return transport;
   });
   assert(transports.length > 0, 'Must specify at least one session transport');
   const autoCreate = cfg.autoCreate !== false;

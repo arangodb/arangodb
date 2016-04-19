@@ -1056,7 +1056,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
   std::unordered_map<OperationID, size_t> opIDtoIndex;
 
   try {
-    while (true) {
+    while (now <= endTime) {
       if (nrDone >= requests.size()) {
         // All good, report
         return nrGood;
@@ -1107,6 +1107,16 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
         auto res = wait("", coordinatorTransactionID, 0, "", actionNeeded - now);
         if (res.status == CL_COMM_TIMEOUT && res.operationID == 0) {
           break;
+        }
+        if (res.status == CL_COMM_DROPPED) {
+          // Nothing in flight, simply wait:
+          now = TRI_microtime();
+          if (now >= actionNeeded) {
+            break;
+          }
+          usleep( (std::min)(500000,
+                             static_cast<int>((actionNeeded-now)*1000000)) );
+          continue;
         }
         auto it = opIDtoIndex.find(res.operationID);
         TRI_ASSERT(it != opIDtoIndex.end());  // we should really know this!

@@ -67,10 +67,8 @@ router.get('/whoAmI', function(req, res) {
 
 
 router.post('/logout', function (req, res) {
-  if (req.session) {
-    sessions.clear(req.session._key);
-    delete req.session;
-  }
+  sessions.clear(req.session);
+  delete req.session;
   res.json({success: true});
 })
 .summary('Log out')
@@ -95,6 +93,7 @@ router.post('/login', function (req, res) {
   }
 
   sessions.setUser(req.session, doc);
+  sessions.save(req.session);
   const user = doc.user;
   res.json({user});
 })
@@ -125,7 +124,7 @@ router.use(authRouter);
 
 
 authRouter.use((req, res, next) => {
-  if (!internal.options()['server.disable-authentication'] && !req.session.uid) {
+  if (!internal.options()['server.disable-authentication'] && (!req.session || !req.session.uid)) {
     res.throw('unauthorized');
   }
   next();

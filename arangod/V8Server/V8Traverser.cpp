@@ -90,7 +90,7 @@ struct BasicExpander {
       TRI_ASSERT(edgeCollection != nullptr);
       std::shared_ptr<OperationCursor> edgeCursor = edgeCollection->getEdges(_dir, v);
       while (edgeCursor->hasMore()) {
-        edgeCursor->getMore(_opRes, UINT64_MAX, true);
+        edgeCursor->getMore(_opRes, UINT64_MAX, false);
         if (_opRes->failed()) {
           THROW_ARANGO_EXCEPTION(_opRes->code);
         }
@@ -230,7 +230,7 @@ class MultiCollectionEdgeExpander {
 
       auto opRes = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
       while (edgeCursor->hasMore()) {
-        edgeCursor->getMore(opRes, UINT64_MAX, true);
+        edgeCursor->getMore(opRes, UINT64_MAX, false);
         if (opRes->failed()) {
           THROW_ARANGO_EXCEPTION(opRes->code);
         }
@@ -300,7 +300,7 @@ class SimpleEdgeExpander {
     auto edgeCursor = _edgeCollection->getEdges(_direction, source);
     auto opRes = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
     while (edgeCursor->hasMore()) {
-      edgeCursor->getMore(opRes, UINT64_MAX, true);
+      edgeCursor->getMore(opRes, UINT64_MAX, false);
       if (opRes->failed()) {
         THROW_ARANGO_EXCEPTION(opRes->code);
       }
@@ -616,7 +616,7 @@ static void InboundNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
     for (auto const& start : startVertices) {
       auto edgeCursor = col->getEdges(dir, start);
       while (edgeCursor->hasMore()) {
-        edgeCursor->getMore(opRes, UINT64_MAX, true);
+        edgeCursor->getMore(opRes, UINT64_MAX, false);
         if (opRes->failed()) {
           THROW_ARANGO_EXCEPTION(opRes->code);
         }
@@ -669,7 +669,7 @@ static void OutboundNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
     for (auto const& start : startVertices) {
       auto edgeCursor = col->getEdges(dir, start);
       while (edgeCursor->hasMore()) {
-        edgeCursor->getMore(opRes, UINT64_MAX, true);
+        edgeCursor->getMore(opRes, UINT64_MAX, false);
         if (opRes->failed()) {
           THROW_ARANGO_EXCEPTION(opRes->code);
         }
@@ -725,7 +725,7 @@ static void AnyNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
     for (auto const& start : startVertices) {
       auto edgeCursor = col->getEdges(dir, start);
       while (edgeCursor->hasMore()) {
-        edgeCursor->getMore(opRes, UINT64_MAX, true);
+        edgeCursor->getMore(opRes, UINT64_MAX, false);
         if (opRes->failed()) {
           THROW_ARANGO_EXCEPTION(opRes->code);
         }

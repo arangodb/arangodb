@@ -4,7 +4,7 @@ input,
 textarea,
 .page-title span,
 .pingback a.url {
-  font-family: 'Lato', sans-serif !important;
+  font-family: 'Roboto', sans-serif !important;
   font-weight: 400; }
 
 @font-face {
@@ -2077,10 +2077,11 @@ div.footer-right, div.footer-right p, ul.headerButtonList li, div .tile .iconSet
   height: 0;
   visibility: hidden; }
 
-.script-dropdown-menu .dropdown-item, .addButton, .deleteButton i, a.headerButton, a.button-gui, div.toolbox div.gv_action_button, .clusterDownBtn button, div .tile a span.icon, div .bigtile a span.icon, div .tile a svg, div .bigtile a svg, div .tile .iconSet span, div .bigtile .iconSet span, div .bigtile, .contentDiv .icon, .icon-info-sign, .arangoicon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox label.css-label, .search-submit-icon, .gv-search-submit-icon, .scenarioImage {
+.script-dropdown-menu .dropdown-item, .addButton, .deleteButton i, a.headerButton, a.button-gui, div.toolbox div.gv_action_button, .clusterDownBtn button, div .tile a span.icon, div .bigtile a span.icon, div .tile a svg, div .bigtile a svg, div .tile .iconSet span, div .bigtile .iconSet span, div .bigtile, .contentDiv .icon, .icon-info-sign, .arangoicon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox label.css-label,
+.dropdownImport.headerDropdown input[type=checkbox].css-checkbox label.css-label, .search-submit-icon, .gv-search-submit-icon, .scenarioImage {
   cursor: pointer; }
 
-.navbar, footer.footer {
+.navbar {
   color: #fff;
   left: 0;
   right: 0;
@@ -2316,6 +2317,8 @@ div.queryline input, input.search-input, .modal-body .select2-choices input, .mo
 .navlogo {
   height: 60px;
   width: 100%; }
+  .navlogo .small {
+    display: none; }
 
 .navmenu {
   clear: both; }
@@ -2328,12 +2331,22 @@ div.queryline input, input.search-input, .modal-body .select2-choices input, .mo
     line-height: 30px; }
   .navlist li {
     width: 150px; }
+    .navlist li a {
+      outline: none; }
     .navlist li .fa {
       opacity: .3;
       padding-left: 5px;
       padding-right: 15px;
       text-align: center;
       width: 10px; }
+      .navlist li .fa.fa-heart {
+        color: #ff7a7a;
+        opacity: 1; }
+    .navlist li.disabled:hover {
+      cursor: default; }
+      .navlist li.disabled:hover a:hover {
+        cursor: default;
+        opacity: .8; }
     .navlist li.dropdown:hover {
       border-bottom-left-radius: 0;
       border-bottom-right-radius: 0; }
@@ -2344,8 +2357,8 @@ div.queryline input, input.search-input, .modal-body .select2-choices input, .mo
     .navlist li.navbar-spacer {
       background-color: #fff;
       height: 1px;
-      margin-bottom: 5px;
-      margin-top: 5px;
+      margin-bottom: 0;
+      margin-top: 0;
       opacity: .2; }
   .navlist .active {
     border-left: 2px solid #77cb99; }
@@ -2471,21 +2484,18 @@ div.queryline input, input.search-input, .modal-body .select2-choices input, .mo
   .arango-logo img {
     margin-left: 22px; }
 
-.footerWrapper {
-  bottom: 0;
-  height: 42px;
-  position: absolute; }
-
 .footer {
+  background-color: rgba(239, 240, 241, 0.8);
   font-size: 14px;
-  left: 0;
-  right: 0;
+  left: 160px;
+  right: 10px;
   text-align: center;
   z-index: 1000; }
 
 footer.footer {
   bottom: 0;
-  height: 40px; }
+  height: 43px;
+  position: fixed; }
   footer.footer p {
     font-size: 10pt;
     font-weight: 100;
@@ -2611,7 +2621,7 @@ button.disabled,
   margin-left: 0 !important; }
 
 button {
-  font-family: 'Lato', sans-serif !important; }
+  font-family: 'Roboto', sans-serif !important; }
   button.btn-server {
     width: 120px; }
   button.gv-zoom-btn {
@@ -3144,8 +3154,8 @@ div .bigtile {
   text-align: left; }
 
 .resizecontainer {
-  -webkit-box-sizing: border-box;
   -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
   box-sizing: border-box;
   padding-left: 10px;
   padding-right: 10px; }
@@ -5201,31 +5211,37 @@ div .bigtile {
   .application-detail-view section.info {
     width: 2290px; } }
 
-div.contentWrapper {
-  padding-bottom: 42px; }
+div.headerBar {
+  background-color: none;
+  border-radius: 2px;
+  float: right;
+  font-size: 16px;
+  height: 36px;
+  margin-top: -55px;
+  position: absolute;
+  right: 150px; }
 
 div.centralRow {
   background: rgba(64, 74, 83, 0.04);
-  float: left;
   height: 100%;
-  left: 150px;
   min-height: 100%;
   overflow-y: auto;
-  position: absolute;
+  position: relative;
   right: 0; }
 
 div.centralContent {
   background-color: transparent;
-  margin-left: -5px;
-  margin-right: -5px;
+  box-sizing: border-box;
   margin-top: 10px;
-  min-height: 80px;
-  padding: 5px;
+  padding-bottom: 43px;
+  padding-left: 5px;
+  padding-right: 5px;
+  padding-top: 5px;
   width: 100%; }
 
 .contentDiv {
   list-style: none;
-  padding: 15px 0 0; }
+  padding: 0; }
   .contentDiv li {
     background-color: rgba(0, 0, 0, 0.05); }
   .contentDiv a.add {
@@ -5275,7 +5291,8 @@ li a [class*=" icon_arangodb"] {
 .fa-minus-circle:hover {
   cursor: pointer; }
 
-div.headerDropdown {
+div.headerDropdown,
+.dropdownImport {
   background-color: #fff;
   border: 1px solid rgba(140, 138, 137, 0.25);
   border-radius: 2px;
@@ -5284,11 +5301,14 @@ div.headerDropdown {
   padding: 10px;
   position: relative;
   width: auto; }
-  div.headerDropdown.smallDropdown .dropdownInner {
+  div.headerDropdown.smallDropdown .dropdownInner,
+  .dropdownImport.smallDropdown .dropdownInner {
     min-height: 20px; }
-  div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox {
+  div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox,
+  .dropdownImport.headerDropdown input[type=checkbox].css-checkbox {
     display: none; }
-    div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox label.css-label {
+    div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox label.css-label,
+    .dropdownImport.headerDropdown input[type=checkbox].css-checkbox label.css-label {
       background-position: 0 0;
       background-repeat: no-repeat;
       display: inline-block;
@@ -5297,7 +5317,8 @@ div.headerDropdown {
       margin-top: 0;
       padding-left: 20px;
       vertical-align: middle; }
-    div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox:checked + label.css-label {
+    div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox:checked + label.css-label,
+    .dropdownImport.headerDropdown input[type=checkbox].css-checkbox:checked + label.css-label {
       background-position: 0 -15px; }
 
 div.dropdown-title {
@@ -5472,11 +5493,13 @@ div.headerBar {
   background-color: none;
   border-radius: 2px;
   color: #000;
+  float: right;
   font-size: 16px;
   height: 36px;
   margin-top: -55px;
   padding-left: 5px;
-  padding-right: 5px; }
+  padding-right: 5px;
+  right: 0; }
   div.headerBar select:focus {
     outline: none; }
   div.headerBar .infoField {
@@ -5552,7 +5575,8 @@ div.headerBar {
   padding-bottom: 0;
   padding-left: 10px;
   padding-right: 0;
-  padding-top: 0; }
+  padding-top: 0;
+  text-transform: capitalize; }
   .breadcrumb .fa {
     margin-left: 10px;
     margin-right: 8px; }
@@ -5656,7 +5680,7 @@ div.headerBar {
 
 .modal-body {
   color: #736b68;
-  font-family: 'Lato', sans-serif !important;
+  font-family: 'Roboto', sans-serif !important;
   font-size: 14px;
   font-weight: 300;
   max-height: 410px; }
@@ -6339,7 +6363,7 @@ div .bigtile {
 
 .dataNotReadyYet {
   color: #faa732;
-  font-family: 'Lato', sans-serif;
+  font-family: 'Roboto', sans-serif;
   font-size: 14px;
   font-weight: 100;
   text-align: center; }
@@ -6350,7 +6374,7 @@ div .bigtile {
   border-bottom-right-radius: 3px;
   box-sizing: border-box;
   color: rgba(0, 0, 0, 0.5);
-  font-family: Lato,sans-serif;
+  font-family: 'Roboto', sans-serif;
   font-size: 11pt;
   font-weight: 600;
   height: 50px;
@@ -6364,7 +6388,7 @@ div .bigtile {
   text-transform: uppercase; }
   .dashboard-sub-bar .dashboard-sub-bar-title {
     color: #000;
-    font-family: Lato,sans-serif;
+    font-family: 'Roboto', sans-serif;
     font-size: 11pt;
     font-weight: 600;
     opacity: .5;
@@ -6591,8 +6615,8 @@ div .bigtile {
   width: 33.3% !important; }
 
 .resizecontainer {
-  -webkit-box-sizing: border-box;
   -moz-box-sizing: border-box;
+  -webkit-box-sizing: border-box;
   box-sizing: border-box;
   padding-left: 10px;
   padding-right: 10px; }
@@ -8648,31 +8672,37 @@ div .bigtile {
   .application-detail-view section.info {
     width: 2290px; } }
 
-div.contentWrapper {
-  padding-bottom: 42px; }
+div.headerBar {
+  background-color: none;
+  border-radius: 2px;
+  float: right;
+  font-size: 16px;
+  height: 36px;
+  margin-top: -55px;
+  position: absolute;
+  right: 150px; }
 
 div.centralRow {
   background: rgba(64, 74, 83, 0.04);
-  float: left;
   height: 100%;
-  left: 150px;
   min-height: 100%;
   overflow-y: auto;
-  position: absolute;
+  position: relative;
   right: 0; }
 
 div.centralContent {
   background-color: transparent;
-  margin-left: -5px;
-  margin-right: -5px;
+  box-sizing: border-box;
   margin-top: 10px;
-  min-height: 80px;
-  padding: 5px;
+  padding-bottom: 43px;
+  padding-left: 5px;
+  padding-right: 5px;
+  padding-top: 5px;
   width: 100%; }
 
 .contentDiv {
   list-style: none;
-  padding: 15px 0 0; }
+  padding: 0; }
   .contentDiv li {
     background-color: rgba(0, 0, 0, 0.05); }
   .contentDiv a.add {
