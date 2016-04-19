@@ -106,8 +106,9 @@ class ApplicationAgency : virtual public arangodb::rest::ApplicationFeature {
   double   _max_election_timeout; /**< @brief: max election timeout */
   double   _election_call_rate_mul; /**< @brief: */
   bool     _notify;
-  bool     _sanity_check;
+  bool     _supervision;
                /**< @brief interval between retry to slaves*/
+  
   std::vector<std::string> _agency_endpoints; /**< @brief agency adresses */
   std::unique_ptr<agent_t> _agent;
   
@@ -118,6 +119,7 @@ class ApplicationAgency : virtual public arangodb::rest::ApplicationFeature {
   aql::QueryRegistry* _queryRegistry;
 
   bool     _wait_for_sync;
+  double  _supervision_frequency;
 
 };
 }

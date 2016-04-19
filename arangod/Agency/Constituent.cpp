@@ -152,7 +152,7 @@ void Constituent::term(term_t t) {
     options.silent = true;
     
     OperationResult result = trx.insert("election", body.slice(), options);
-    res = trx.finish(result.code);
+    /*res = */trx.finish(result.code); // OMG
     
   }
   
@@ -426,6 +426,7 @@ void Constituent::run() {
       } catch (std::exception const& e) {
         LOG_TOPIC(ERR, Logger::AGENCY)
           << "Persisted election entries corrupt! Defaulting term,vote (0,0)";
+        
       }
     }
   }

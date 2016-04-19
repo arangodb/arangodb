@@ -316,9 +316,9 @@ bool Agent::load () {
   LOG_TOPIC(INFO, Logger::AGENCY) << "Starting constituent personality.";
   _constituent.start(_vocbase, _applicationV8, _queryRegistry);
 
-  if (_config.sanity_check) {
+  if (_config.supervision) {
     LOG_TOPIC(INFO, Logger::AGENCY) << "Starting cluster sanity facilities";
-    _sanity_check.start(this);
+    _supervision.start(this);
   }
   
   return true;
@@ -395,8 +395,8 @@ void Agent::beginShutdown() {
   _constituent.beginShutdown();
   _spearhead.beginShutdown();
   _read_db.beginShutdown();
-  if (_config.sanity_check) {
-    _sanity_check.beginShutdown();
+  if (_config.supervision) {
+    _supervision.beginShutdown();
   }
   
   // Wake up all waiting REST handler (waitFor)

@@ -1,26 +1,27 @@
-#include "SanityCheck.h"
+#include "Supervision.h"
 #include "Agent.h"
+#include "Store.h"
 
 #include "Basics/ConditionLocker.h"
 
 using namespace arangodb::consensus;
 
-SanityCheck::SanityCheck() : arangodb::Thread("SanityCheck"), _agent(nullptr) {}
+Supervision::Supervision() : arangodb::Thread("Supervision"), _agent(nullptr) {}
 
-SanityCheck::~SanityCheck() {
+Supervision::~Supervision() {
   shutdown();
 };
 
-void SanityCheck::wakeUp () {
+void Supervision::wakeUp () {
   _cv.signal();
 }
 
-bool SanityCheck::doChecks (bool timedout) {
+bool Supervision::doChecks (bool timedout) {
   LOG_TOPIC(INFO, Logger::AGENCY) << "Sanity checks";
   return true;
 }
 
-void SanityCheck::run() {
+void Supervision::run() {
 
   CONDITION_LOCKER(guard, _cv);
   TRI_ASSERT(_agent!=nullptr);
@@ -29,7 +30,7 @@ void SanityCheck::run() {
   while (!this->isStopping()) {
     
     if (_agent->leading()) {
-      timedout = _cv.wait(250000);//quarter second
+      timedout = _cv.wait(_frequency);//quarter second
     } else {
       _cv.wait();
     }
@@ -41,18 +42,23 @@ void SanityCheck::run() {
 }
 
 // Start thread
-bool SanityCheck::start () {
+bool Supervision::start () {
   Thread::start();
   return true;
 }
 
 // Start thread with agent
-bool SanityCheck::start (Agent* agent) {
+bool Supervision::start (Agent* agent) {
   _agent = agent;
+  _frequency = static_cast<long>(1.0e6*_agent->config().supervision_frequency);
   return start();
 }
 
-void SanityCheck::beginShutdown() {
+void Supervision::beginShutdown() {
   // Personal hygiene
   Thread::beginShutdown();
+}
+
+Store const& Supervision::store() const {
+  return _agent->readDB();
 }

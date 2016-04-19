@@ -102,28 +102,32 @@ struct AgentConfiguration {
   std::string end_point;
   std::vector<std::string> end_points;
   bool notify;
-  bool sanity_check;
+  bool supervision;
   bool wait_for_sync;
+  double supervision_frequency;
+  
   AgentConfiguration () :
     id(0),
-    min_ping(.15),
-    max_ping(.3f),
+    min_ping(0.3f),
+    max_ping(1.0f),
     end_point("tcp://localhost:8529"),
     notify(false),
-    sanity_check(false),
-    wait_for_sync(true) {}
+    supervision(false),
+    wait_for_sync(true),
+    supervision_frequency(5.0) {}
   
   AgentConfiguration (uint32_t i, double min_p, double max_p, std::string ep,
                       std::vector<std::string> const& eps, bool n,
-                      bool s, bool w) :
+                      bool s, bool w, double f) :
     id(i),
     min_ping(min_p),
     max_ping(max_p),
     end_point(ep),
     end_points(eps),
     notify(n),
-    sanity_check(s),
-    wait_for_sync(w) {}
+    supervision(s),
+    wait_for_sync(w),
+    supervision_frequency(f){}
   
   inline size_t size() const {return end_points.size();}
   friend std::ostream& operator<<(std::ostream& o, AgentConfiguration const& c) {
@@ -143,9 +147,13 @@ struct AgentConfiguration {
     for (auto const& i : end_points)
       ret->add(VPackValue(i));
     ret->close();
+    ret->add("endpoint", VPackValue(end_point));
     ret->add("id",VPackValue(id));
     ret->add("min_ping",VPackValue(min_ping));
     ret->add("max_ping",VPackValue(max_ping));
+    ret->add("notify peers", VPackValue(notify));
+    ret->add("supervision", VPackValue(supervision));
+    ret->add("supervision frequency", VPackValue(supervision_frequency));
     ret->close();
     return ret;
   }
