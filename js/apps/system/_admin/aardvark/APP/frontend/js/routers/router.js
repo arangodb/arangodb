@@ -35,9 +35,11 @@
       "users": "userManagement",
       "userProfile": "userProfile",
       "cluster": "cluster",
-      "nodes": "nodes",
+      "nodes": "cNodes",
+      "cNodes": "cNodes",
+      "dNodes": "dNodes",
       "node/:name": "node",
-      "nLogs/:name": "nLogs",
+      //"nLogs/:name": "nLogs",
       "logs": "logs",
       "helpus": "helpUs"
     },
@@ -237,14 +239,10 @@
       this.nodeView.render();
     },
 
-    nodeLogs: function (initialized) {
-
-    },
-
-    nodes: function (initialized) {
+    cNodes: function (initialized) {
       this.checkUser();
       if (!initialized || this.isCluster === undefined) {
-        this.waitForInit(this.nodes.bind(this));
+        this.waitForInit(this.cNodes.bind(this));
         return;
       }
       if (this.isCluster === false) {
@@ -253,12 +251,31 @@
         return;
       }
 
-      if (!this.nodesView) {
-        this.nodesView = new window.NodesView({
-          coordinators: this.coordinatorCollection,
-          dbServers: this.dbServers[0]
-        });
+      this.nodesView = new window.NodesView({
+        coordinators: this.coordinatorCollection,
+        dbServers: this.dbServers[0],
+        toRender: 'coordinator'
+      });
+      this.nodesView.render();
+    },
+
+    dNodes: function (initialized) {
+      this.checkUser();
+      if (!initialized || this.isCluster === undefined) {
+        this.waitForInit(this.dNodes.bind(this));
+        return;
       }
+      if (this.isCluster === false) {
+        this.routes[""] = 'dashboard';
+        this.navigate("#dashboard", {trigger: true});
+        return;
+      }
+
+      this.nodesView = new window.NodesView({
+        coordinators: this.coordinatorCollection,
+        dbServers: this.dbServers[0],
+        toRender: 'dbserver'
+      });
       this.nodesView.render();
     },
 
@@ -310,6 +327,7 @@
       this.logsView.render();
     },
 
+    /*
     nLogs: function (nodename, initialized) {
       this.checkUser();
       if (!initialized) {
@@ -340,6 +358,7 @@
       });
       this.nLogsView.render();
     },
+    */
 
     applicationDetail: function (mount, initialized) {
       this.checkUser();
