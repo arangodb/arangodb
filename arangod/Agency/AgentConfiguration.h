@@ -31,53 +31,53 @@ struct config_t {
   
   id_t id;
   double min_ping;
-  double maxPing;
+  double max_ping;
   std::string end_point;
   std::vector<std::string> end_points;
   bool notify;
   bool supervision;
-  bool waitForSync;
-  double supervisionFrequency;
+  bool wait_for_sync;
+  double supervision_frequency;
   
   config_t () :
-    id(0),
-    minPing(0.3f),
-    maxPing(1.0f),
-    endpoint("tcp://localhost:8529"),
+  id(0),
+    min_ping(0.3f),
+    max_ping(1.0f),
+    end_point("tcp://localhost:8529"),
     notify(false),
     supervision(false),
-    waitForSync(true),
-    supervisionFrequency(5.0) {}
+    wait_for_sync(true),
+    supervision_frequency(5.0) {}
   
   config_t (uint32_t i, double min_p, double max_p, std::string ep,
 	    std::vector<std::string> const& eps, bool n,
 	    bool s, bool w, double f) :
     id(i),
-    minPing(min_p),
-    maxPing(max_p),
-    endpoint(ep),
-    endpoints(eps),
+    min_ping(min_p),
+    max_ping(max_p),
+    end_point(ep),
+    end_points(eps),
     notify(n),
     supervision(s),
-    waitForSync(w),
-    supervisionFrequency(f){}
+    wait_for_sync(w),
+    supervision_frequency(f){}
   
-  inline size_t size() const {return endpoints.size();}
+  inline size_t size() const {return end_points.size();}
 
   query_t const toBuilder () const {
     query_t ret = std::make_shared<arangodb::velocypack::Builder>();
     ret->openObject();
     ret->add("endpoints", VPackValue(VPackValueType::Array));
-    for (auto const& i : endpoints)
+    for (auto const& i : end_points)
       ret->add(VPackValue(i));
     ret->close();
-    ret->add("endpoint", VPackValue(endpoint));
+    ret->add("endpoint", VPackValue(end_point));
     ret->add("id",VPackValue(id));
-    ret->add("minPing",VPackValue(minPing));
-    ret->add("maxPing",VPackValue(maxPing));
+    ret->add("min_ping",VPackValue(min_ping));
+    ret->add("max_ping",VPackValue(max_ping));
     ret->add("notify peers", VPackValue(notify));
     ret->add("supervision", VPackValue(supervision));
-    ret->add("supervision frequency", VPackValue(supervisionFrequency));
+    ret->add("supervision frequency", VPackValue(supervision_frequency));
     ret->close();
     return ret;
   }
