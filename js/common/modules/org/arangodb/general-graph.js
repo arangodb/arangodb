@@ -93,6 +93,11 @@ var findOrCreateCollectionByName = function (name, type, noCreate) {
     err.errorNum = arangodb.errors.ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION.code;
     err.errorMessage = name + arangodb.errors.ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION.message;
     throw err;
+  } else if (type == ArangoCollection.TYPE_EDGE && col.type() !== type) {
+    var err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_ARANGO_COLLECTION_TYPE_INVALID.code;
+    err.errorMessage = name + " cannot be used as a relation. It is not an edge collection.";
+    throw err;
   }
   return res;
 };
