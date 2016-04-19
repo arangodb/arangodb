@@ -63,7 +63,6 @@
         isCluster: this.isCluster
       }));
 
-      console.log(this.currentDB);
       $(this.subEl).html(this.templateSub.render({
         currentDB: this.currentDB.toJSON()
       }));
@@ -192,20 +191,6 @@
         {
           name: 'Settings',
           view: undefined,
-        }
-      ],
-      node: [
-        {
-          name: 'Dashboard',
-          view: undefined,
-          active: true
-        },
-        {
-          name: 'Logs',
-          route: 'nodeLogs',
-          params: {
-            node: undefined
-          }
         }
       ],
       queries: [
