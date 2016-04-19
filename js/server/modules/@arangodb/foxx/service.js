@@ -481,7 +481,11 @@ function createDependencies(definitions, options) {
       enumerable: true,
       get() {
         const mount = options[name];
-        return mount ? require('@arangodb/foxx').getExports(mount) : null;
+        if (!mount) {
+          return null;
+        }
+        const FoxxManager = require('@arangodb/foxx/manager');
+        return FoxxManager.requireApp('/' + mount.replace(/(^\/+|\/+$)/, ''));
       }
     });
   });
