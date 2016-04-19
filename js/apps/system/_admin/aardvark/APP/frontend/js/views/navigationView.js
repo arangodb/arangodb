@@ -300,6 +300,7 @@
         menuItem = menuItem.substr(1, menuItem.length - 1);
       }
 
+      //Location for selecting MainView Primary Navigaation Entry
       if (menuItem === '') {
         if (window.App.isCluster) {
           menuItem = 'cluster';
@@ -307,6 +308,9 @@
         else {
           menuItem = 'dashboard';
         }
+      }
+      else if (menuItem === 'cNodes' || menuItem === 'dNodes') {
+        menuItem = 'nodes';
       }
       try {
         this.renderSubMenu(menuItem.split('-')[0]);

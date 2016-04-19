@@ -21,7 +21,8 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#ifndef ARANGOD_CLUSTER_AGENCY_CALLBACK_REGISTRY_H
+#define ARANGOD_CLUSTER_AGENCY_CALLBACK_REGISTRY_H 1
 
 #include "Cluster/AgencyCallback.h"
 #include "Basics/ReadWriteLock.h"
@@ -73,3 +74,5 @@ private:
 };
 
 }
+
+#endif
