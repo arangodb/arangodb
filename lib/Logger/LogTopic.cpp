@@ -36,6 +36,20 @@ std::atomic<uint16_t> NEXT_TOPIC_ID(0);
 Mutex LogTopic::_namesLock;
 std::map<std::string, LogTopic*> LogTopic::_names;
 
+LogTopic Logger::AGENCY("agency", LogLevel::INFO);
+LogTopic Logger::COLLECTOR("collector");
+LogTopic Logger::COMPACTOR("compactor");
+LogTopic Logger::CONFIG("config");
+LogTopic Logger::DATAFILES("datafiles", LogLevel::INFO);
+LogTopic Logger::MMAP("mmap");
+LogTopic Logger::PERFORMANCE("performance", LogLevel::FATAL);  // suppress
+LogTopic Logger::QUERIES("queries", LogLevel::INFO);
+LogTopic Logger::REPLICATION("replication", LogLevel::INFO);
+LogTopic Logger::REQUESTS("requests", LogLevel::FATAL);  // suppress
+LogTopic Logger::STARTUP("startup", LogLevel::INFO);
+LogTopic Logger::THREADS("threads", LogLevel::WARN);
+LogTopic Logger::V8("v8", LogLevel::WARN);
+
 std::vector<std::pair<std::string, LogLevel>> LogTopic::logLevelTopics() {
   std::vector<std::pair<std::string, LogLevel>> levels;
 

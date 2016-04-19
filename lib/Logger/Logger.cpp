@@ -49,20 +49,6 @@ std::string Logger::_outputPrefix("");
 
 std::unique_ptr<LogThread> Logger::_loggingThread(nullptr);
 
-LogTopic Logger::AGENCY("agency", LogLevel::INFO);
-LogTopic Logger::COLLECTOR("collector");
-LogTopic Logger::COMPACTOR("compactor");
-LogTopic Logger::CONFIG("config");
-LogTopic Logger::DATAFILES("datafiles", LogLevel::INFO);
-LogTopic Logger::MMAP("mmap");
-LogTopic Logger::PERFORMANCE("performance", LogLevel::FATAL);  // suppress
-LogTopic Logger::QUERIES("queries", LogLevel::INFO);
-LogTopic Logger::REPLICATION("replication", LogLevel::INFO);
-LogTopic Logger::REQUESTS("requests", LogLevel::FATAL);  // suppress
-LogTopic Logger::STARTUP("startup", LogLevel::INFO);
-LogTopic Logger::THREADS("threads", LogLevel::WARN);
-LogTopic Logger::V8("v8", LogLevel::WARN);
-
 LogLevel Logger::logLevel() { return _level.load(std::memory_order_relaxed); }
 
 std::vector<std::pair<std::string, LogLevel>> Logger::logLevelTopics() {
