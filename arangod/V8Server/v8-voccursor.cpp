@@ -94,6 +94,8 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
   result.cached = false;
   result.context = std::make_shared<arangodb::StandaloneTransactionContext>(vocbase);
 
+  TRI_ASSERT(builder.get() != nullptr);
+
   try {
     arangodb::Cursor* cursor = cursors->createFromQueryResult(
         std::move(result), static_cast<size_t>(batchSize), nullptr, ttl, true);
