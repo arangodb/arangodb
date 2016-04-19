@@ -97,8 +97,10 @@ module.exports = class FoxxContext {
 
   collectionName(name) {
     const fqn = (
-      this.collectionPrefix
-      + name.replace(/[^a-z0-9]/ig, '_').replace(/(^_+|_+$)/g, '').substr(0, 64)
+      this.collectionPrefix + name
+      .replace(/[^a-z0-9]/ig, '_')
+      .replace(/(^_+|_+$)/g, '')
+      .substr(0, 64)
     );
     assert(fqn.length > 0, `Cannot derive collection name from "${name}"`);
     return fqn;

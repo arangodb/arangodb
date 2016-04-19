@@ -281,7 +281,15 @@ module.exports = class SyntheticResponse {
     if (typeof status === 'string') {
       status = statuses(status);
     }
-    throw Object.assign(httperr(status, reason), args);
+    if (reason && typeof reason === 'object') {
+      args = reason;
+      reason = undefined;
+    }
+    throw Object.assign(
+      httperr(status, reason),
+      {statusCode: status, status},
+      args
+    );
   }
 
   send(body, type) {

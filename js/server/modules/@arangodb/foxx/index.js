@@ -21,8 +21,12 @@
 /// @author Alan Plum
 ////////////////////////////////////////////////////////////////////////////////
 
-const manager = require('@arangodb/foxx/manager');
-
-exports.getExports = function (path) {
-  return manager.requireApp('/' + path.replace(/(^\/+|\/+$)/, ''));
+module.exports = {
+  get createRouter() {
+    return require('@arangodb/foxx/router');
+  },
+  get queue() {
+    const queues = require('@arangodb/foxx/queues');
+    return queues.get('default');
+  }
 };

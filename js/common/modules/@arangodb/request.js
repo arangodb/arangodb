@@ -41,10 +41,10 @@ const url = require('url');
 class Response {
   throw(msg) {
     if (this.status >= 400) {
-      let HttpError = httperr[this.status] || httperr[500];
-      let err = new HttpError(msg || this.message);
-      err.details = this;
-      throw err;
+      throw Object.assign(
+        httperr(this.status, msg || this.message),
+        {details: this}
+      );
     }
   }
   constructor(res, encoding, json) {
