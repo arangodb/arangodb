@@ -35,6 +35,7 @@
         window.setInterval(function() {
           if (window.location.hash === '#cluster'
               || window.location.hash === '#') {
+
             var callback = function(data) {
               self.rerenderValues(data);
               self.rerenderGraphs(data);
@@ -140,17 +141,36 @@
       var callback = function(data) {
         self.rerenderValues(data);
         self.rerenderGraphs(data);
-      };
+      }.bind(this);
 
       // now fetch the statistics history
       self.getCoordStatHistory(callback);
-      
-      this.updateValues();
+
+      //special case nodes
+      self.coordinators.fetch({
+        success: function() {
+          self.renderNode(true);
+        },
+        error: function() {
+          self.renderNode(false);
+        }
+      });
     },
     
     rerenderValues: function(data) {
+      var self = this;
 
       //TODO cache value state like graph data
+
+      //NODE
+      this.coordinators.fetch({
+        success: function() {
+          self.renderNode(true);
+        },
+        error: function() {
+          self.renderNode(false);
+        }
+      });
 
       //Connections
       this.renderValue('#clusterConnections', Math.round(data.clientConnectionsCurrent));
@@ -185,20 +205,6 @@
         $(id).removeClass('negative');
       }
 
-    },
-
-    updateValues: function() {
-      var self = this;
-
-      this.coordinators.fetch({
-        success: function() {
-          self.renderNode(true);
-        },
-        error: function() {
-          self.renderNode(false);
-        }
-      });
-      //this.renderValue('#clusterRam', [1024, 4096]);
     },
 
     renderNode: function(connection) {

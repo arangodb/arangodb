@@ -163,6 +163,11 @@
 * GITHUB: https://github.com/hapijs/joi
 * License: [BSD-style 3-Clause License](https://github.com/hapijs/joi/blob/master/LICENSE)
 
+### joi-to-json-schema
+
+* GITHUB: https://github.com/lightsofapollo/joi-to-json-schema
+* License: [Apache 2 License](https://github.com/lightsofapollo/joi-to-json-schema/blob/master/README.md#license)
+
 #### JS-YAML
 
 * GITHUB: https://github.com/nodeca/js-yaml

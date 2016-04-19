@@ -76,14 +76,14 @@
     }
   }
 
-  #healthStatus {
+  .infoEntry {
 
     line-height: 45px;
 
     &:hover {
       cursor: default;
 
-      .health-info {
+      .info {
         color: $c-white;
       }
     }
@@ -103,16 +103,15 @@
     }
   }
 
-  .health-info,
-  .db-info,
-  .db-state,
-  .health-state {
+  .info,
+  .icon,
+  .state {
+    color: rgba(255, 255, 255, .95);
     font-weight: 300;
+    text-transform: uppercase;
   }
 
-  .health-info,
-  .db-info,
-  .db-icon {
-    color: rgba(255, 255, 255, .95);
+  #dbStatus {
+    padding-right: 20px;
   }
 }

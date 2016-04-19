@@ -8,7 +8,7 @@
       <li class="dashboard-menu"><a id="dashboard" class="tab" href="#dashboard"><i class="fa fa-dashboard"></i>Dashboard</a></li>
     <% } %>
     <li class="navbar-spacer big"></li>
-    <li id="dbSelect" class="dropdown databases-menu"></li>
+    <!-- <li id="dbSelect" class="dropdown databases-menu disabled"></li> -->
     <li class="collections-menu"><a id="collections" class="tab" href="#collections"><i class="fa fa-folder"></i>Collections</a></li>
     <li class="queries-menu"><a id="queries" class="tab" href="#queries"><i class="fa fa-bolt"></i>Queries</a></li>
     <li class="graphs-menu"><a id="graphs" class="tab" href="#graphs"><i class="fa fa-area-chart"></i>Graphs</a></li>
@@ -19,8 +19,10 @@
     <% if (!isCluster) { %>
       <li class="logs-menu"><a id="logs" class="tab" href="#manage"><i class="fa fa-file-text"></i>Logs</a></li>
     <% } %>
-    <li class="navbar-spacer big"></li>
-    <li class="settings-menu"><a id="settings" class="tab" href="#settings"><i class="fa fa-cog"></i>Settings</a></li>
+    <% if (currentDB.get('isSystem')) { %>
+      <li class="navbar-spacer big"></li>
+      <li class="settings-menu"><a id="settings" class="tab" href="#settings"><i class="fa fa-cog"></i>Settings</a></li>
+    <% } %>
     <li class="helpus-menu" style="position: absolute; bottom: 0;"><a id="helpus" class="tab" href="#helpus"><i class="fa fa-heart"></i>Help Us</a></li>
     <!--
     <li class="navbar-spacer big"></li>
