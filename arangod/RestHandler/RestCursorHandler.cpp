@@ -193,6 +193,8 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
     bool count = arangodb::basics::VelocyPackHelper::getBooleanValue(
         opts, "count", false);
 
+    TRI_ASSERT(queryResult.result.get() != nullptr);
+
     // steal the query result, cursor will take over the ownership
     arangodb::VelocyPackCursor* cursor = cursors->createFromQueryResult(
         std::move(queryResult), batchSize, extra, ttl, count);
