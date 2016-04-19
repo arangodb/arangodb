@@ -125,7 +125,7 @@ router.use(authRouter);
 
 
 authRouter.use((req, res, next) => {
-  if (!internal.options()['server.disable-authentication'] && !req.session.uid) {
+  if (!internal.options()['server.disable-authentication'] && (!req.session || !req.session.uid)) {
     res.throw('unauthorized');
   }
   next();
