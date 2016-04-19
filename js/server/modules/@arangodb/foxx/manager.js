@@ -382,7 +382,7 @@ function validateManifestFile(filename) {
       errorNum: errors.ERROR_MALFORMED_MANIFEST_FILE.code,
       errorMessage: errors.ERROR_MALFORMED_MANIFEST_FILE.message
       + '\nFile: ' + filename
-      + '\nCause: ' + e
+      + '\nCause: ' + e.stack
     });
     error.cause = e;
     throw error;
@@ -394,7 +394,7 @@ function validateManifestFile(filename) {
       errorNum: errors.ERROR_INVALID_APPLICATION_MANIFEST.code,
       errorMessage: errors.ERROR_INVALID_APPLICATION_MANIFEST.message
       + '\nFile: ' + filename
-      + '\nCause: ' + e
+      + '\nCause: ' + e.stack
     });
     error.cause = e;
     throw error;
