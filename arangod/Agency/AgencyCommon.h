@@ -21,8 +21,8 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef __ARANGODB_CONSENSUS_AGENCY_COMMON__
-#define __ARANGODB_CONSENSUS_AGENCY_COMMON__
+#ifndef ARANGODB_CONSENSUS_AGENCY_COMMON_H
+#define ARANGODB_CONSENSUS_AGENCY_COMMON_H
 
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"

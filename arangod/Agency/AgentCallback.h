@@ -21,8 +21,8 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef __ARANGODB_CONSENSUS_AGENT_CALLBACK__
-#define __ARANGODB_CONSENSUS_AGENT_CALLBACK__
+#ifndef ARANGODB_CONSENSUS_AGENT_CALLBACK_H
+#define ARANGODB_CONSENSUS_AGENT_CALLBACK_H
 
 #include "Cluster/ClusterComm.h"
 #include "AgencyCommon.h"

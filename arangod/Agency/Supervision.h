@@ -21,8 +21,8 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef __ARANGODB_CONSENSUS_SUPERVISION__
-#define __ARANGODB_CONSENSUS_SUPERVISION__
+#ifndef ARANGODB_CONSENSUS_SUPERVISION_H
+#define ARANGODB_CONSENSUS_SUPERVISION_H
 
 #include "Basics/Thread.h"
 #include "Basics/ConditionVariable.h"

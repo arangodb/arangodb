@@ -158,4 +158,4 @@ private:
   
 }}
 
-#endif //__ARANGODB_CONSENSUS_CONSTITUENT__
+#endif
