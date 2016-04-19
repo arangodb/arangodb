@@ -37,6 +37,7 @@
       "cluster": "cluster",
       "nodes": "nodes",
       "node/:name": "node",
+      "nLogs/:name": "nLogs",
       "logs": "logs",
       "helpus": "helpUs"
     },
@@ -230,6 +231,7 @@
         this.nodeView = new window.NodeView({
           coordname: name,
           coordinators: this.coordinatorCollection,
+          dbServers: this.dbServers
         });
       }
       this.nodeView.render();
@@ -254,7 +256,7 @@
       if (!this.nodesView) {
         this.nodesView = new window.NodesView({
           coordinators: this.coordinatorCollection,
-          dbServers: this.dbServers
+          dbServers: this.dbServers[0]
         });
       }
       this.nodesView.render();
@@ -306,6 +308,37 @@
         });
       }
       this.logsView.render();
+    },
+
+    nLogs: function (nodename, initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.nLogs.bind(this), nodename);
+        return;
+      }
+      var newLogsAllCollection = new window.ArangoLogs(
+        {upto: true, loglevel: 4}
+      ),
+      newLogsDebugCollection = new window.ArangoLogs(
+        {loglevel: 4}
+      ),
+      newLogsInfoCollection = new window.ArangoLogs(
+        {loglevel: 3}
+      ),
+      newLogsWarningCollection = new window.ArangoLogs(
+        {loglevel: 2}
+      ),
+      newLogsErrorCollection = new window.ArangoLogs(
+        {loglevel: 1}
+      );
+      this.nLogsView = new window.LogsView({
+        logall: newLogsAllCollection,
+        logdebug: newLogsDebugCollection,
+        loginfo: newLogsInfoCollection,
+        logwarning: newLogsWarningCollection,
+        logerror: newLogsErrorCollection
+      });
+      this.nLogsView.render();
     },
 
     applicationDetail: function (mount, initialized) {
@@ -746,7 +779,7 @@
             host: coordinator.get('address') 
           })
         );
-      });           
+      });
       _.each(this.dbServers, function(dbservers) {
         dbservers.fetch();
       });

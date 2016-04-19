@@ -230,6 +230,10 @@
       _.each(menuItems, function(menu, name) {
         if (menu.active) {
           cssClass += ' active';
+
+          if (menu.disabled) {
+            cssClass += ' disabled';
+          }
         }
         else {
           cssClass = '';
@@ -241,6 +245,21 @@
           window.App.navigate(menu.route, {trigger: true});
         });
       });
+    },
+
+    buildNodeSubNav: function(node, activeKey, disabled) {
+      var menus = {
+        Dashboard: {
+          route: '#node/' + encodeURIComponent(node)
+        },
+        Logs: {
+          route: '#nLogs/' + encodeURIComponent(node)
+        }
+      };
+
+      menus[activeKey].active = true;
+      menus[disabled].disabled = true;
+      this.buildSubNavBar(menus);
     },
 
     //nav for collection view
