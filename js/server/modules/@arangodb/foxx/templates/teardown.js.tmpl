@@ -1,9 +1,8 @@
 'use strict';
-var db = require("@arangodb").db;
+const db = require('@arangodb').db;
+const collections = <%= JSON.stringify(collections, null, 2) %>;
 
-function dropCollection(name) {
-  var collectionName = applicationContext.collectionName(name);
-  db._drop(collectionName);
+for (const localName of collections) {
+  const qualifiedName = module.context.collectionName(localName);
+  db._drop(qualifiedName);
 }
-<% _.each(collections, function(c) { %>
-dropCollection("<%= c %>");<% }); %>

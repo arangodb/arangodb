@@ -1,0 +1,84 @@
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "options": {
+      "oneOf": [
+        {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "enum": [
+                    "",
+                    "foo"
+                  ],
+                  "type": "string"
+                },
+                "size": {
+                  "enum": [
+                    "2x4"
+                  ],
+                  "type": "string"
+                },
+                "value": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "name",
+                "size",
+                "value"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "enum": [
+                    "foo"
+                  ],
+                  "type": "string"
+                },
+                "size": {
+                  "enum": [
+                    "4x8"
+                  ],
+                  "type": "string"
+                },
+                "value": {
+                  "type": "number",
+                  "minimum": 11,
+                  "maximum": 20
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "name",
+                "size",
+                "value"
+              ]
+            }
+          ]
+        },
+        {
+          "type": "string",
+          "pattern": "^[a-z]+$"
+        },
+        {
+          "type": "string",
+          "pattern": "^[A-Z]+$"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "options"
+  ]
+}

@@ -30,7 +30,6 @@
 #include <velocypack/velocypack-aliases.h> 
 
 #include <chrono>
-#include <iostream>
 
 using namespace arangodb::velocypack;
 
@@ -46,7 +45,7 @@ Agent::Agent (TRI_server_t* server, config_t const& config,
       _applicationV8(applicationV8), 
       _queryRegistry(queryRegistry), 
       _config(config), 
-      _last_commit_index(0) {
+      _lastCommitIndex(0) {
 
   _state.setEndPoint(_config.end_point);
   _constituent.configure(this);
@@ -133,17 +132,17 @@ bool Agent::waitFor (index_t index, double timeout) {
   if (size() == 1) // single host agency
     return true;
     
-  CONDITION_LOCKER(guard, _rest_cv);
+  CONDITION_LOCKER(guard, _waitForCV);
 
   // Wait until woken up through AgentCallback 
   while (true) {
 
     /// success?
-    if (_last_commit_index >= index) {
+    if (_lastCommitIndex >= index) {
       return true;
     }
     // timeout
-    if (_rest_cv.wait(static_cast<uint64_t>(1.0e6*timeout))) {
+    if (_waitForCV.wait(static_cast<uint64_t>(1.0e6*timeout))) {
       return false;
     }
     
@@ -164,22 +163,22 @@ void Agent::reportIn (id_t id, index_t index) {
   if (index > _confirmed[id])      // progress this follower?
     _confirmed[id] = index;
   
-  if(index > _last_commit_index) { // progress last commit?
+  if(index > _lastCommitIndex) { // progress last commit?
     size_t n = 0;
     for (size_t i = 0; i < size(); ++i) {
       n += (_confirmed[i]>=index);
     }
     if (n>size()/2) { // catch up read database and commit index
       LOG_TOPIC(INFO, Logger::AGENCY) << "Critical mass for commiting " <<
-        _last_commit_index+1 << " through " << index << " to read db";
+        _lastCommitIndex+1 << " through " << index << " to read db";
       
-      _read_db.apply(_state.slices(_last_commit_index+1, index));
-      _last_commit_index = index;
+      _readDB.apply(_state.slices(_lastCommitIndex+1, index));
+      _lastCommitIndex = index;
     }
   }
 
-  CONDITION_LOCKER(guard, _rest_cv);
-  _rest_cv.broadcast();            // wake up REST handlers
+  CONDITION_LOCKER(guard, _waitForCV);
+  _waitForCV.broadcast();            // wake up REST handlers
 }
 
 //  Followers' append entries
@@ -195,7 +194,7 @@ bool Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
 
   MUTEX_LOCKER(mutexLocker, _ioLock);
 
-  index_t last_commit_index = _last_commit_index;
+  index_t lastCommitIndex = _lastCommitIndex;
   // 1. Reply false if term < currentTerm (§5.1)
   if (this->term() > term) {
     LOG_TOPIC(WARN, Logger::AGENCY) << "I have a higher term than RPC caller.";
@@ -227,8 +226,8 @@ bool Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
   
   // appendEntries 5. If leaderCommit > commitIndex, set commitIndex =
   //min(leaderCommit, index of last new entry)
-  if (leaderCommitIndex > last_commit_index) {
-    _last_commit_index = (std::min)(leaderCommitIndex,last_commit_index);
+  if (leaderCommitIndex > lastCommitIndex) {
+    _lastCommitIndex = (std::min)(leaderCommitIndex,lastCommitIndex);
   }
 
   return true;
@@ -249,7 +248,7 @@ append_entries_t Agent::sendAppendEntriesRPC (id_t follower_id) {
   std::stringstream path;
   path << "/_api/agency_priv/appendEntries?term=" << t << "&leaderId="
        << id() << "&prevLogIndex=" << unconfirmed[0].index << "&prevLogTerm="
-       << unconfirmed[0].term << "&leaderCommit=" << _last_commit_index;
+       << unconfirmed[0].term << "&leaderCommit=" << _lastCommitIndex;
 
   // Headers
 	std::unique_ptr<std::map<std::string, std::string>> headerFields =
@@ -306,19 +305,19 @@ bool Agent::load () {
   }
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Reassembling spearhead and read stores.";
-  _spearhead.apply(_state.slices(_last_commit_index+1));
+  _spearhead.apply(_state.slices(_lastCommitIndex+1));
   reportIn(id(),_state.lastLog().index);
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Starting spearhead worker.";
   _spearhead.start(this);
-  _read_db.start(this);
+  _readDB.start(this);
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Starting constituent personality.";
   _constituent.start(_vocbase, _applicationV8, _queryRegistry);
 
-  if (_config.sanity_check) {
+  if (_config.supervision) {
     LOG_TOPIC(INFO, Logger::AGENCY) << "Starting cluster sanity facilities";
-    _sanity_check.start(this);
+    _supervision.start(this);
   }
   
   return true;
@@ -341,7 +340,7 @@ write_ret_t Agent::write (query_t const& query)  {
     if (!indices.empty()) {
       maxind = *std::max_element(indices.begin(), indices.end());
     }
-    _cv.signal();                                  // Wake up run
+    _appendCV.signal();                                  // Wake up run
 
     reportIn(id(),maxind);
     
@@ -356,7 +355,7 @@ write_ret_t Agent::write (query_t const& query)  {
 read_ret_t Agent::read (query_t const& query) const {
   if (_constituent.leading()) {     // Only working as leaer
     query_t result = std::make_shared<arangodb::velocypack::Builder>();
-    std::vector<bool> success = _read_db.read (query, result);
+    std::vector<bool> success = _readDB.read (query, result);
     return read_ret_t(true, _constituent.leaderID(), success, result);
   } else {                          // Else We redirect
     return read_ret_t(false, _constituent.leaderID());
@@ -366,14 +365,14 @@ read_ret_t Agent::read (query_t const& query) const {
 // Repeated append entries
 void Agent::run() {
 
-  CONDITION_LOCKER(guard, _cv);
+  CONDITION_LOCKER(guard, _appendCV);
   
   while (!this->isStopping() && size() > 1) { // need only to run in multi-host
 
     if (leading())
-      _cv.wait(500000); // Only if leading
+      _appendCV.wait(500000); // Only if leading
     else
-      _cv.wait();       // Just sit there doing nothing
+      _appendCV.wait();       // Just sit there doing nothing
 
     // Collect all unacknowledged
     for (id_t i = 0; i < size(); ++i) {
@@ -385,6 +384,8 @@ void Agent::run() {
 
 }
 
+
+
 // Orderly shutdown
 void Agent::beginShutdown() {
 
@@ -394,13 +395,13 @@ void Agent::beginShutdown() {
   // Stop constituent and key value stores
   _constituent.beginShutdown();
   _spearhead.beginShutdown();
-  _read_db.beginShutdown();
-  if (_config.sanity_check) {
-    _sanity_check.beginShutdown();
+  _readDB.beginShutdown();
+  if (_config.supervision) {
+    _supervision.beginShutdown();
   }
   
   // Wake up all waiting REST handler (waitFor)
-  CONDITION_LOCKER(guard, _cv);
+  CONDITION_LOCKER(guard, _appendCV);
   guard.broadcast();
   
   if (_vocbase != nullptr) {
@@ -416,7 +417,7 @@ bool Agent::lead () {
   rebuildDBs();
 
   // Wake up run
-  _cv.signal();
+  _appendCV.signal();
   
   return true;
 }
@@ -425,7 +426,7 @@ bool Agent::lead () {
 bool Agent::rebuildDBs() {
   MUTEX_LOCKER(mutexLocker, _ioLock);
   _spearhead.apply(_state.slices());
-  _read_db.apply(_state.slices());
+  _readDB.apply(_state.slices());
   return true;
 }
 
@@ -441,7 +442,7 @@ Store const& Agent::spearhead () const {
 
 // Get readdb
 Store const& Agent::readDB () const {
-  return _read_db;
+  return _readDB;
 }
 
 }}

@@ -48,12 +48,13 @@ ApplicationAgency::ApplicationAgency(
     _max_election_timeout(1.0),
     _election_call_rate_mul(0.85),
     _notify(false),
-    _sanity_check(false),
+    _supervision(false),
     _agent_id((std::numeric_limits<uint32_t>::max)()), 
     _endpointServer(aes), 
     _applicationV8(applicationV8), 
     _queryRegistry(queryRegistry),
-    _wait_for_sync(true) {
+    _wait_for_sync(true),
+    _supervision_frequency(5.0) {
 }
 
 
@@ -75,8 +76,10 @@ void ApplicationAgency::setupOptions(
      "Multiplier (<1.0) defining how long the election timeout is with respect "
      "to the minumum election timeout")
     ("agency.notify", &_notify, "Notify others")
-    ("agency.sanity-check", &_sanity_check,
+    ("agency.supervision", &_supervision,
      "Perform arangodb cluster sanity checking")
+    ("agency.supervision-frequency", &_supervision_frequency,
+     "Cluster supervision frequency ")
     ("agency.wait-for-sync", &_wait_for_sync,
      "Wait for hard disk syncs on every persistence call (Must for production)");
   
@@ -155,7 +158,8 @@ bool ApplicationAgency::prepare() {
     new agent_t(
       _server, arangodb::consensus::config_t(
         _agent_id, _min_election_timeout, _max_election_timeout,
-        endpoint, _agency_endpoints, _notify, _sanity_check, _wait_for_sync),
+        endpoint, _agency_endpoints, _notify, _supervision, _wait_for_sync,
+        _supervision_frequency),
       _applicationV8, _queryRegistry));
   
   return true;

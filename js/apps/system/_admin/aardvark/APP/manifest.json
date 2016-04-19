@@ -2,11 +2,11 @@
   "name": "aardvark",
   "description": "ArangoDB Admin Web Interface",
   "author": "ArangoDB GmbH",
-  "version": "1.0",
+  "version": "3.0.0",
   "license": "Apache License, Version 2.0",
-  "isSystem": true,
+
   "engines": {
-    "arangodb": "^3.0.0"
+    "arangodb": "^3.0.0-0 || ^3.0.0"
   },
 
   "repository": {
@@ -29,16 +29,11 @@
     }
   ],
 
-  "controllers": {
-    "/": "aardvark.js",
-    "/foxxes": "foxxes.js",
-    "/cluster": "cluster.js",
-    "/statistics": "statistics.js",
-    "/templates": "foxxTemplates.js"
-  },
+  "main": "index.js",
+  "defaultDocument": "index.html",
 
   "files": {
-    "/standalone.html": {
+    "/index.html": {
       "path": "frontend/build/standalone-min.html",
       "gzip": true
     },
@@ -98,8 +93,6 @@
       "path": "frontend/src/worker-json.js",
       "gzip": true
     }
-  },
-
-  "lib": "."
+  }
 }
 

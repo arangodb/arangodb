@@ -159,7 +159,7 @@ int getFilteredEdgesOnCoordinator(
 
 int modifyDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
-    arangodb::velocypack::Slice const slice,
+    arangodb::velocypack::Slice const& slice,
     OperationOptions const& options, bool isPatch,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
     arangodb::GeneralResponse::ResponseCode& responseCode,

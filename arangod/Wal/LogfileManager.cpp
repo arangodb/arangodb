@@ -488,6 +488,7 @@ void LogfileManager::stop() {
   // this prevents creating new (empty) WAL logfile once we flush
   // current logfile
   stopAllocatorThread();
+
   if (_allocatorThread != nullptr) {
     LOG(TRACE) << "stopping allocator thread";
     while (_allocatorThread->isRunning()) { 
@@ -1851,10 +1852,6 @@ int LogfileManager::writeShutdownInfo(bool writeShutdownTime) {
 int LogfileManager::startSynchronizerThread() {
   _synchronizerThread = new SynchronizerThread(this, _syncInterval);
 
-  if (_synchronizerThread == nullptr) {
-    return TRI_ERROR_INTERNAL;
-  }
-
   if (!_synchronizerThread->start()) {
     delete _synchronizerThread;
     return TRI_ERROR_INTERNAL;
@@ -1875,10 +1872,6 @@ void LogfileManager::stopSynchronizerThread() {
 /// @brief start the allocator thread
 int LogfileManager::startAllocatorThread() {
   _allocatorThread = new AllocatorThread(this);
-
-  if (_allocatorThread == nullptr) {
-    return TRI_ERROR_INTERNAL;
-  }
 
   if (!_allocatorThread->start()) {
     delete _allocatorThread;
@@ -1901,10 +1894,6 @@ void LogfileManager::stopAllocatorThread() {
 int LogfileManager::startCollectorThread() {
   _collectorThread = new CollectorThread(this, _server);
 
-  if (_collectorThread == nullptr) {
-    return TRI_ERROR_INTERNAL;
-  }
-
   if (!_collectorThread->start()) {
     delete _collectorThread;
     return TRI_ERROR_INTERNAL;
@@ -1925,10 +1914,6 @@ void LogfileManager::stopCollectorThread() {
 /// @brief start the remover thread
 int LogfileManager::startRemoverThread() {
   _removerThread = new RemoverThread(this);
-
-  if (_removerThread == nullptr) {
-    return TRI_ERROR_INTERNAL;
-  }
 
   if (!_removerThread->start()) {
     delete _removerThread;

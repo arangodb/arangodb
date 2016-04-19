@@ -145,11 +145,10 @@ static void mergeResultsAllShards(
   cmp.add("errorNum", VPackValue(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND));
   cmp.close();
   VPackSlice notFound = cmp.slice();
-  bool foundRes = false;
   resultBody->clear();
   resultBody->openArray();
   for (VPackValueLength currentIndex = 0; currentIndex < expectedResults; ++currentIndex) {
-    foundRes = false;
+    bool foundRes = false;
     for (auto const& it: results) {
       VPackSlice oneRes = it->slice();
       TRI_ASSERT(oneRes.isArray());
@@ -906,8 +905,6 @@ int deleteDocumentOnCoordinator(
     std::unordered_map<int, size_t>& errorCounter,
     std::shared_ptr<arangodb::velocypack::Builder>& resultBody) {
   // Set a few variables needed for our work:
-
-  std::map<std::string, std::string> resultHeaders;
   ClusterInfo* ci = ClusterInfo::instance();
   ClusterComm* cc = ClusterComm::instance();
 
@@ -981,9 +978,8 @@ int deleteDocumentOnCoordinator(
     };
 
     if (useMultiple) {
-      int res;
       for (VPackValueLength idx = 0; idx < slice.length(); ++idx) {
-        res = workOnOneNode(slice.at(idx), idx);
+        int res = workOnOneNode(slice.at(idx), idx);
         if (res != TRI_ERROR_NO_ERROR) {
           // Is early abortion correct?
           return res;
@@ -1684,7 +1680,7 @@ int getFilteredEdgesOnCoordinator(
 
 int modifyDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
-    VPackSlice const slice,
+    VPackSlice const& slice,
     arangodb::OperationOptions const& options, bool isPatch,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
     arangodb::GeneralResponse::ResponseCode& responseCode,

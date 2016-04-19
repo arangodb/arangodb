@@ -35,7 +35,7 @@ var stub,
   FunctionStub,
   mockConstructor,
   joi = require("joi"),
-  transformRoute = require("@arangodb/foxx/routing").__test_transformControllerToRoute,
+  transformRoute = require("@arangodb/foxx/legacy/routing").__test_transformControllerToRoute,
   _ = require("lodash");
 
 // Sorry for Yak Shaving. But I can't take it anymore.
@@ -118,32 +118,26 @@ mockConstructor = function () {
 
 
 var jsunity = require("jsunity"),
-  FoxxController = require("@arangodb/foxx").Controller,
+  FoxxController = require("@arangodb/foxx/legacy").Controller,
   fakeContext,
   fakeContextWithRootElement;
 
 fakeContext = {
   prefix: "",
   foxxes: [],
-  comments: [],
   manifest: {
     rootElement: false
   },
-  clearComments: function () {},
-  comment: function () {},
-  collectionName: function () {}
+  collectionName() {}
 };
 
 fakeContextWithRootElement = {
   prefix: "",
   foxxes: [],
-  comments: [],
   manifest: {
     rootElement: true
   },
-  clearComments: function () {},
-  comment: function () {},
-  collectionName: function () {}
+  collectionName() {}
 };
 
 function CreateFoxxControllerSpec () {
@@ -532,7 +526,7 @@ function DocumentationAndConstraintsSpec () {
       app = new FoxxController(fakeContext);
       routes = app.routingInfo.routes;
       models = app.models;
-      Model = require('@arangodb/foxx').Model;
+      Model = require('@arangodb/foxx/legacy').Model;
     },
 
     testDefinePathParam: function () {
@@ -1297,63 +1291,17 @@ function CommentDrivenDocumentationSpec () {
     },
 
     testSettingTheSummary: function () {
-      fakeContext.comments = [
-        "Get all the foxes",
-        "A function to get all foxes from the database",
-        "in a good way."
-      ];
+      app.get('/simple/route', noop)
+      .summary('Get all the foxes');
 
-      app.get('/simple/route', noop);
-
-      assertEqual(routingInfo.routes[0].docs.summary, "Get all the foxes");
+      assertEqual(routingInfo.routes[0].docs.summary, 'Get all the foxes');
     },
 
     testSettingTheNotes: function () {
-      fakeContext.comments = [
-        "Get all the foxes",
-        "A function to get all foxes from the database",
-        "in a good way."
-      ];
-
-      app.get('/simple/route', noop);
+      app.get('/simple/route', noop)
+      .notes('A function to get all foxes from the database\nin a good way.');
 
       assertEqual(routingInfo.routes[0].docs.notes, "A function to get all foxes from the database\nin a good way.");
-    },
-
-    testSettingTheSummaryWithAnEmptyFirstLine: function () {
-      fakeContext.comments = [
-        "",
-        "Get all the foxes"
-      ];
-
-      app.get('/simple/route', noop);
-
-      assertEqual(routingInfo.routes[0].docs.summary, "Get all the foxes");
-    },
-
-    testCleanUpCommentsAfterwards: function () {
-      var clearCommentsWasCalled = false;
-      fakeContext.clearComments = function () { clearCommentsWasCalled = true; };
-      fakeContext.comments = [
-        "Get all the foxes",
-        "A function to get all foxes from the database",
-        "in a good way."
-      ];
-
-      app.get('/simple/route', noop);
-      assertTrue(clearCommentsWasCalled);
-    },
-
-    testSetBothToEmptyStringsIfTheJSDocWasEmpty: function () {
-      fakeContext.comments = [
-        "",
-        "",
-        ""
-      ];
-
-      app.get('/simple/route', noop);
-      assertEqual(routingInfo.routes[0].docs.summary, "");
-      assertEqual(routingInfo.routes[0].docs.notes, "");
     }
   };
 }
@@ -1379,7 +1327,7 @@ function SetupAuthorization () {
         err = e;
       }
 
-      assertUndefined(err);
+      assertUndefined(err && err.stack);
     },
 
     testRefusesUnknownAuthTypes: function () {

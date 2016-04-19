@@ -21,13 +21,14 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef __ARANGODB_CONSENSUS_AGENT__
-#define __ARANGODB_CONSENSUS_AGENT__
+#ifndef ARANGODB_CONSENSUS_AGENT_H
+#define ARANGODB_CONSENSUS_AGENT_H
 
 #include "AgencyCommon.h"
+#include "AgentConfiguration.h"
 #include "AgentCallback.h"
 #include "Constituent.h"
-#include "SanityCheck.h"
+#include "Supervision.h"
 #include "State.h"
 #include "Store.h"
 
@@ -56,10 +57,6 @@ public:
 
   /// @brief Get current term
   id_t id() const;
-
-  TRI_vocbase_t* vocbase() const {
-    return _vocbase;
-  }
 
   /// @brief Vote request
   priv_rpc_ret_t requestVote(term_t, id_t, index_t, index_t, query_t const&);
@@ -127,12 +124,6 @@ public:
   /// @brief Last log entry
   log_t const& lastLog() const;
 
-  /// @brief Pipe configuration to ostream
-  friend std::ostream& operator<<(std::ostream& o, Agent const& a) {
-    o << a.config();
-    return o;
-  }
-
   /// @brief Persist term
   void persist (term_t, id_t);
 
@@ -146,28 +137,50 @@ public:
   Store const& spearhead() const; 
 
  private:
-  TRI_server_t* _server;
-  TRI_vocbase_t* _vocbase; 
-  ApplicationV8* _applicationV8;
-  aql::QueryRegistry* _queryRegistry;
 
-  Constituent _constituent; /**< @brief Leader election delegate */
-  SanityCheck _sanity_check; /**< @brief sanitychecking */
-  State _state;             /**< @brief Log replica              */
-  
-  config_t _config;         /**< @brief Command line arguments   */
+  /// @brief This server (need endpoint)
+  TRI_server_t*        _server;
 
-  std::atomic<index_t> _last_commit_index; /**< @brief Last commit index */
+  /// @brief Vocbase for agency persistence
 
-  Store _spearhead; /**< @brief Spearhead key value store */
-  Store _read_db;   /**< @brief Read key value store */
+  TRI_vocbase_t*       _vocbase; 
+  /// @brief V8 application for agency persistence
 
-  arangodb::basics::ConditionVariable _cv; /**< @brief Internal callbacks */
-  arangodb::basics::ConditionVariable _rest_cv; /**< @brief Rest handler */
+  ApplicationV8*       _applicationV8;
 
-  std::vector<index_t>
-      _confirmed;          /**< @brief Confirmed log index of each slave */
-  arangodb::Mutex _ioLock; /**< @brief Read/Write lock */
+  /// @brief Query registry for agency persistence
+  aql::QueryRegistry*  _queryRegistry;
+
+  /// @brief Leader election delegate
+  Constituent          _constituent;
+
+  /// @brief Cluster supervision module
+  Supervision          _supervision;
+
+  /// @brief State machine
+  State                _state;
+
+  /// @brief Configuration of command line options
+  config_t             _config;   
+
+  /// @brief Last commit index (raft) 
+  index_t _lastCommitIndex; 
+
+  /// @brief Spearhead (write) kv-store
+  Store                _spearhead;
+
+  /// @brief Commited (read) kv-store
+  Store                _readDB;
+
+  /// @brief Condition variable for appendEntries 
+  arangodb::basics::ConditionVariable _appendCV;
+
+  /// @brief Condition variable for waitFor 
+  arangodb::basics::ConditionVariable _waitForCV;
+
+  /// @brief Confirmed indices of all members of agency
+  std::vector<index_t> _confirmed;
+  arangodb::Mutex _ioLock;          /**< @brief Read/Write lock */
 };
 
 }}
