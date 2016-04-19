@@ -27,7 +27,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoError
 ////////////////////////////////////////////////////////////////////////////////
-if(global.ArangoError){exports.ArangoError = global.ArangoError;delete global.ArangoError;}else {exports.ArangoError = function(error){if(error !== undefined){this.error = error.error;this.code = error.code;this.errorNum = error.errorNum;this.errorMessage = error.errorMessage;}};exports.ArangoError.prototype = new Error();}Object.defineProperty(exports.ArangoError.prototype,'message',{configurable:true,enumerable:true,get:function get(){return this.errorMessage;}});exports.ArangoError.prototype.name = 'ArangoError';exports.ArangoError.prototype._PRINT = function(context){context.output += '[' + this.toString() + ']';};exports.ArangoError.prototype.toString = function(){return this.name + ' ' + this.errorNum + ': ' + this.message;}; ////////////////////////////////////////////////////////////////////////////////
+if(global.ArangoError){exports.ArangoError = global.ArangoError;delete global.ArangoError;}else {exports.ArangoError = function(error){if(error !== undefined){this.error = error.error;this.code = error.code;this.errorNum = error.errorNum;this.errorMessage = error.errorMessage;}};exports.ArangoError.prototype = new Error();}exports.ArangoError.prototype.isArangoError = true;Object.defineProperty(exports.ArangoError.prototype,'message',{configurable:true,enumerable:true,get:function get(){return this.errorMessage;}});exports.ArangoError.prototype.name = 'ArangoError';exports.ArangoError.prototype._PRINT = function(context){context.output += '[' + this.toString() + ']';};exports.ArangoError.prototype.toString = function(){return this.name + ' ' + this.errorNum + ': ' + this.message;}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief threadNumber
 ////////////////////////////////////////////////////////////////////////////////
 exports.threadNumber = 0;if(global.THREAD_NUMBER){exports.threadNumber = global.THREAD_NUMBER;delete global.THREAD_NUMBER;} ////////////////////////////////////////////////////////////////////////////////
@@ -1784,7 +1784,7 @@ ArangoStatement.prototype.execute = function(){throw "cannot call abstract metho
 /// @author Dr. Frank Celler
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-var internal=require("internal");var fs=require("fs");var mimetypes=require("@arangodb/mimetypes").mimeTypes; ////////////////////////////////////////////////////////////////////////////////
+var internal=require("internal");var fs=require("fs"); ////////////////////////////////////////////////////////////////////////////////
 /// @brief errors
 ////////////////////////////////////////////////////////////////////////////////
 Object.keys(internal.errors).forEach(function(key){exports[key] = internal.errors[key].code;});exports.errors = internal.errors; ////////////////////////////////////////////////////////////////////////////////
@@ -1794,12 +1794,6 @@ exports.ArangoError = internal.ArangoError; ////////////////////////////////////
 /// @brief defines a module
 ////////////////////////////////////////////////////////////////////////////////
 exports.defineModule = function(path,file){var content;var m;var mc;content = fs.read(file);mc = internal.db._collection("_modules");if(mc === null){mc = internal.db._create("_modules",{isSystem:true});}path = module.normalize(path);m = mc.firstExample({path:path});if(m === null){mc.save({path:path,content:content});}else {mc.replace(m,{path:path,content:content});}}; ////////////////////////////////////////////////////////////////////////////////
-/// @brief guessContentType
-////////////////////////////////////////////////////////////////////////////////
-exports.guessContentType = function(filename,defaultValue){var re=/\.([a-zA-Z0-9]+)$/;var match=re.exec(filename);if(match !== null){var extension=match[1];if(mimetypes.hasOwnProperty(extension)){var type=mimetypes[extension];if(type[1]){ // append charset
-return type[0] + "; charset=utf-8";}return type[0];} // fall-through intentional
-} // default mimetype
-if(defaultValue){return defaultValue;}return "text/plain; charset=utf-8";}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalizeURL
 ///
 /// If @FA{path} starts with "." or "..", then it is a relative path.
@@ -2817,7 +2811,7 @@ var arangodb=require("@arangodb");var ArangoError=arangodb.ArangoError; // forwa
 var SimpleQueryArray;var SimpleQueryNear;var SimpleQueryWithin;var SimpleQueryWithinRectangle; ////////////////////////////////////////////////////////////////////////////////
 /// @brief array query
 ////////////////////////////////////////////////////////////////////////////////
-function GeneralArrayCursor(documents,skip,limit,data){this._documents = documents;this._countTotal = documents.length;this._skip = skip;this._limit = limit;this._cached = false;this._extra = {};var self=this;if(data !== null && data !== undefined && typeof data === 'object'){['stats','warnings','profile'].forEach(function(d){if(data.hasOwnProperty(d)){self._extra[d] = data[d];}});this._cached = data.cached || false;}this.execute();} ////////////////////////////////////////////////////////////////////////////////
+function GeneralArrayCursor(documents,skip,limit,data){this._documents = documents;this._countTotal = documents.length;this._skip = skip;this._limit = limit;this._cached = false;this._extra = {};var self=this;if(data !== null && data !== undefined && typeof data === 'object'){['stats','warnings','profile'].forEach(function(d){if(data.hasOwnProperty(d)){self._extra[d] = data[d];}});this._cached = data.cached || false;}this.execute();}GeneralArrayCursor.prototype.isArangoResultSet = true; ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes an array query
 ////////////////////////////////////////////////////////////////////////////////
 GeneralArrayCursor.prototype.execute = function(){if(this._skip === null){this._skip = 0;}var len=this._documents.length;var s=0;var e=len; // skip from the beginning
@@ -2847,7 +2841,7 @@ GeneralArrayCursor.prototype.next = function(){if(this._current < this._stop){re
 GeneralArrayCursor.prototype.dispose = function(){this._documents = null;this._skip = null;this._limit = null;this._countTotal = null;this._countQuery = null;this._current = null;this._stop = null;this._extra = null;}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief simple query
 ////////////////////////////////////////////////////////////////////////////////
-function SimpleQuery(){this._execution = null;this._skip = 0;this._limit = null;this._countQuery = null;this._countTotal = null;this._batchSize = null;} ////////////////////////////////////////////////////////////////////////////////
+function SimpleQuery(){this._execution = null;this._skip = 0;this._limit = null;this._countQuery = null;this._countTotal = null;this._batchSize = null;}SimpleQuery.prototype.isArangoResultSet = true; ////////////////////////////////////////////////////////////////////////////////
 /// @brief join limits
 ////////////////////////////////////////////////////////////////////////////////
 function joinLimits(query,limit){ // original limit is 0, keep it

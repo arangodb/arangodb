@@ -18,6 +18,7 @@
 
       if (window.App.isCluster) {
         this.coordinators = options.coordinators;
+        this.dbServers = options.dbServers;
         this.coordname = options.coordname;
         this.updateServerTime();
 
@@ -43,17 +44,27 @@
       var callback = function() {
         this.continueRender();
         this.breadcrumb(this.coordname);
+        window.arangoHelper.buildNodeSubNav(this.coordname, 'Dashboard', 'Logs');
         $(window).trigger('resize');
       }.bind(this);
 
-      if (!this.initDone) {
-        this.waitForCoordinators(callback);
+      var cb =function() {
+        console.log("dummy");
+      };
+
+      if (!this.initCoordDone) {
+        this.waitForCoordinators(cb);
+      }
+
+      if (!this.initDBDone) {
+        this.waitForDBServers(callback);
       }
       else {
         this.coordname = window.location.hash.split('/')[1];
         this.coordinator = this.coordinators.findWhere({name: this.coordname});
         callback();
       }
+
     },
 
     continueRender: function() {
@@ -84,7 +95,30 @@
         }
         else {
           self.coordinator = self.coordinators.findWhere({name: self.coordname});
-          self.initDone = true;
+          self.initCoordDone = true;
+          callback();
+        }
+      }, 200);
+    },
+
+    waitForDBServers: function(callback) {
+      var self = this; 
+
+      window.setTimeout(function() {
+        if (self.dbServers[0].length === 0) {
+          self.waitForDBServers(callback);
+        }
+        else {
+          self.initDBDone = true;
+          self.dbServer = self.dbServers[0];
+
+          self.dbServer.each(function(model) {
+            if (model.get("name") === 'DBServer1') {
+              self.dbServer = model;
+            }
+          });
+
+          console.log(self.dbServer.toJSON());
           callback();
         }
       }, 200);

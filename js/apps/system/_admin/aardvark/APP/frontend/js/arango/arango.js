@@ -230,6 +230,10 @@
       _.each(menuItems, function(menu, name) {
         if (menu.active) {
           cssClass += ' active';
+
+          if (menu.disabled) {
+            cssClass += ' disabled';
+          }
         }
         else {
           cssClass = '';
@@ -241,6 +245,44 @@
           window.App.navigate(menu.route, {trigger: true});
         });
       });
+    },
+
+    buildNodeSubNav: function(node, activeKey, disabled) {
+      var menus = {
+        Dashboard: {
+          route: '#node/' + encodeURIComponent(node)
+        },
+        Logs: {
+          route: '#nLogs/' + encodeURIComponent(node),
+          disabled: true
+        }
+      };
+
+      menus[activeKey].active = true;
+      menus[disabled].disabled = true;
+      this.buildSubNavBar(menus);
+    },
+
+    //nav for collection view
+    buildNodesSubNav: function(type) {
+
+      var menus = {
+        Coordinators: {
+          route: '#cNodes'
+        },
+        DBServers: {
+          route: '#dNodes'
+        }
+      };
+
+      if (type === 'coordinator') {
+        menus.Coordinators.active = true;
+      }
+      else {
+        menus.DBServers.active = true;
+      }
+
+      this.buildSubNavBar(menus);
     },
 
     //nav for collection view

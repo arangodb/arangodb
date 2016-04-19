@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Cursor.h"
-#include "Basics/JsonHelper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Utils/CollectionExport.h"
@@ -63,20 +62,20 @@ VPackSlice Cursor::extra() const {
   return _extra->slice();
 }
 
-JsonCursor::JsonCursor(TRI_vocbase_t* vocbase, CursorId id,
-                       std::shared_ptr<VPackBuilder> json, size_t batchSize,
-                       std::shared_ptr<VPackBuilder> extra, double ttl,
-                       bool hasCount, bool cached)
+VelocyPackCursor::VelocyPackCursor(TRI_vocbase_t* vocbase, CursorId id,
+                                   aql::QueryResult&& result, size_t batchSize,
+                                   std::shared_ptr<VPackBuilder> extra,
+                                   double ttl, bool hasCount)
     : Cursor(id, batchSize, extra, ttl, hasCount),
       _vocbase(vocbase),
-      _json(json),
-      _size(json->slice().length()),
-      _cached(cached) {
-  TRI_ASSERT(json->slice().isArray());
+      _result(std::move(result)),
+      _size(_result.result->slice().length()),
+      _cached(_result.cached) {
+  TRI_ASSERT(_result.result->slice().isArray());
   TRI_UseVocBase(vocbase);
 }
 
-JsonCursor::~JsonCursor() {
+VelocyPackCursor::~VelocyPackCursor() {
   freeJson();
 
   TRI_ReleaseVocBase(_vocbase);
@@ -86,7 +85,7 @@ JsonCursor::~JsonCursor() {
 /// @brief check whether the cursor contains more data
 ////////////////////////////////////////////////////////////////////////////////
 
-bool JsonCursor::hasNext() {
+bool VelocyPackCursor::hasNext() {
   if (_position < _size) {
     return true;
   }
@@ -99,10 +98,10 @@ bool JsonCursor::hasNext() {
 /// @brief return the next element
 ////////////////////////////////////////////////////////////////////////////////
 
-VPackSlice JsonCursor::next() {
-  TRI_ASSERT(_json != nullptr);
+VPackSlice VelocyPackCursor::next() {
+  TRI_ASSERT(_result.result != nullptr);
   TRI_ASSERT(_position < _size);
-  VPackSlice slice = _json->slice();
+  VPackSlice slice = _result.result->slice();
   return slice.at(_position++);
 }
 
@@ -110,13 +109,13 @@ VPackSlice JsonCursor::next() {
 /// @brief return the cursor size
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t JsonCursor::count() const { return _size; }
+size_t VelocyPackCursor::count() const { return _size; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump the cursor contents into a string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-void JsonCursor::dump(arangodb::basics::StringBuffer& buffer) {
+void VelocyPackCursor::dump(arangodb::basics::StringBuffer& buffer) {
   buffer.appendText("\"result\":[");
 
   size_t const n = batchSize();
@@ -135,6 +134,9 @@ void JsonCursor::dump(arangodb::basics::StringBuffer& buffer) {
     }
   }
 
+  arangodb::basics::VPackStringBufferAdapter bufferAdapter(
+      buffer.stringBuffer());
+  VPackDumper dumper(&bufferAdapter, transactionContext->getVPackOptions());
   for (size_t i = 0; i < n; ++i) {
     if (!hasNext()) {
       break;
@@ -149,9 +151,6 @@ void JsonCursor::dump(arangodb::basics::StringBuffer& buffer) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
 
-    arangodb::basics::VPackStringBufferAdapter bufferAdapter(
-        buffer.stringBuffer());
-    VPackDumper dumper(&bufferAdapter, transactionContext->getVPackOptions());
     try {
       dumper.dump(row);
     } catch (...) {
@@ -198,9 +197,7 @@ void JsonCursor::dump(arangodb::basics::StringBuffer& buffer) {
 /// @brief free the internals
 ////////////////////////////////////////////////////////////////////////////////
 
-void JsonCursor::freeJson() {
-  _json = nullptr;
-
+void VelocyPackCursor::freeJson() {
   _isDeleted = true;
 }
 

@@ -177,10 +177,9 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
 
-      auto transactionContext = std::make_shared<StandaloneTransactionContext>(_vocbase);
       arangodb::basics::VPackStringBufferAdapter bufferAdapter(
           _response->body().stringBuffer());
-      VPackDumper dumper(&bufferAdapter, transactionContext->getVPackOptions());
+      VPackDumper dumper(&bufferAdapter, queryResult.context->getVPackOptions());
       dumper.dump(result.slice());
       return;
     }
@@ -194,9 +193,11 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
     bool count = arangodb::basics::VelocyPackHelper::getBooleanValue(
         opts, "count", false);
 
+    TRI_ASSERT(queryResult.result.get() != nullptr);
+
     // steal the query result, cursor will take over the ownership
-    arangodb::JsonCursor* cursor = cursors->createFromVelocyPack(
-        queryResult.result, batchSize, extra, ttl, count, queryResult.cached);
+    arangodb::VelocyPackCursor* cursor = cursors->createFromQueryResult(
+        std::move(queryResult), batchSize, extra, ttl, count);
 
     try {
       _response->body().appendChar('{');
