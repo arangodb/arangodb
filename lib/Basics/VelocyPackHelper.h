@@ -203,15 +203,15 @@ class VelocyPackHelper {
   /// @brief Compares two VelocyPack number values
   //////////////////////////////////////////////////////////////////////////////
 
-  static int compareNumberValues(arangodb::velocypack::Slice const& lhs, 
-                                 arangodb::velocypack::Slice const& rhs);
+  static int compareNumberValues(arangodb::velocypack::Slice lhs, 
+                                 arangodb::velocypack::Slice rhs);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Compares two VelocyPack slices
   //////////////////////////////////////////////////////////////////////////////
 
-  static int compare(arangodb::velocypack::Slice const& lhs, 
-                     arangodb::velocypack::Slice const& rhs, 
+  static int compare(arangodb::velocypack::Slice lhs, 
+                     arangodb::velocypack::Slice rhs, 
                      bool useUTF8, arangodb::velocypack::Options const* options = &arangodb::velocypack::Options::Defaults,
                      arangodb::velocypack::Slice const* lhsBase = nullptr,
                      arangodb::velocypack::Slice const* rhsBase = nullptr);

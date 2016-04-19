@@ -156,16 +156,16 @@ static int TypeWeight(VPackSlice const& slice) {
     case VPackValueType::Array:
       return 4;
     case VPackValueType::Object:
-    case VPackValueType::External: 
-      // External type is used for documents
       return 5;
+    case VPackValueType::External: 
+      return TypeWeight(slice.resolveExternal());
     default:
       // All other values have equal weight
       return 0;
   }
 }
 
-int VelocyPackHelper::compareNumberValues(VPackSlice const& lhs, VPackSlice const& rhs) {
+int VelocyPackHelper::compareNumberValues(VPackSlice lhs, VPackSlice rhs) {
   VPackValueType const lType = lhs.type();
 
   if (lType == rhs.type()) {
@@ -428,9 +428,12 @@ bool VelocyPackHelper::velocyPackToFile(char const* filename,
   return true;
 }
 
-int VelocyPackHelper::compare(VPackSlice const& lhs, VPackSlice const& rhs,
+int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs,
                               bool useUTF8, VPackOptions const* options,
                               VPackSlice const* lhsBase, VPackSlice const* rhsBase) {
+  lhs = lhs.resolveExternal(); // follow externals
+  rhs = rhs.resolveExternal(); // follow externals
+
   {
     int lWeight = TypeWeight(lhs);
     int rWeight = TypeWeight(rhs);
@@ -542,11 +545,11 @@ int VelocyPackHelper::compare(VPackSlice const& lhs, VPackSlice const& rhs,
       for (VPackValueLength i = 0; i < n; ++i) {
         VPackSlice lhsValue;
         if (i < nl) {
-          lhsValue = lhs.at(i);
+          lhsValue = lhs.at(i).resolveExternal();
         }
         VPackSlice rhsValue;
         if (i < nr) {
-          rhsValue = rhs.at(i);
+          rhsValue = rhs.at(i).resolveExternal();
         }
 
         int result = compare(lhsValue, rhsValue, useUTF8, options, &lhs, &rhs);
@@ -561,13 +564,15 @@ int VelocyPackHelper::compare(VPackSlice const& lhs, VPackSlice const& rhs,
       VPackCollection::keys(lhs, keys);
       VPackCollection::keys(rhs, keys);
       for (auto const& key : keys) {
-        VPackSlice lhsValue;
-        if (lhs.hasKey(key)) {
-          lhsValue = lhs.get(key);
+        VPackSlice lhsValue = lhs.get(key).resolveExternal();
+        if (lhsValue.isNone()) {
+          // not present => null
+          lhsValue = VPackSlice::nullSlice();
         }
-        VPackSlice rhsValue;
-        if (rhs.hasKey(key)) {
-          rhsValue = rhs.get(key);
+        VPackSlice rhsValue = rhs.get(key).resolveExternal();
+        if (rhsValue.isNone()) {
+          // not present => null
+          rhsValue = VPackSlice::nullSlice();
         }
 
         int result = compare(lhsValue, rhsValue, useUTF8, options, &lhs, &rhs);
@@ -626,14 +631,16 @@ double VelocyPackHelper::toDouble(VPackSlice const& slice, bool& failed) {
       if (n == 0) {
         return 0.0;
       } else if (n == 1) {
-        return VelocyPackHelper::toDouble(slice.at(0), failed);
+        return VelocyPackHelper::toDouble(slice.at(0).resolveExternal(), failed);
       }
       break;
+    }
+    case VPackValueType::External: {
+      return VelocyPackHelper::toDouble(slice.resolveExternal(), failed);
     }
     case VPackValueType::Illegal:
     case VPackValueType::Object:
     case VPackValueType::UTCDate:
-    case VPackValueType::External:
     case VPackValueType::MinKey:
     case VPackValueType::MaxKey:
     case VPackValueType::Binary:
@@ -649,11 +656,12 @@ double VelocyPackHelper::toDouble(VPackSlice const& slice, bool& failed) {
 uint64_t VelocyPackHelper::hashByAttributes(
     VPackSlice slice, std::vector<std::string> const& attributes,
     bool docComplete, int& error, std::string const& key) {
-  error = TRI_ERROR_NO_ERROR;
   uint64_t hash = TRI_FnvHashBlockInitial();
+  error = TRI_ERROR_NO_ERROR;
+  slice = slice.resolveExternal();
   if (slice.isObject()) {
-    for (auto const& attr: attributes) {
-      VPackSlice sub = slice.get(attr);
+    for (auto const& attr : attributes) {
+      VPackSlice sub = slice.get(attr).resolveExternal();
       if (sub.isNone()) {
         if (attr == "_key" && !key.empty()) {
           VPackBuilder temporaryBuilder;
