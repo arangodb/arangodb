@@ -87,11 +87,11 @@ var findOrCreateCollectionByName = function (name, type, noCreate) {
     err.errorNum = arangodb.errors.ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION.code;
     err.errorMessage = name + arangodb.errors.ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION.message;
     throw err;
-  } else if (type == ArangoCollection.TYPE_EDGE && col.type() !== type) {
-     var err = new ArangoError();
-     err.errorNum = arangodb.errors.ERROR_ARANGO_COLLECTION_TYPE_INVALID.code;
-     err.errorMessage = name + " cannot be used as relation. It is not an edge collection";
-     throw err;
+  } else if (type === ArangoCollection.TYPE_EDGE && col.type() !== type) {
+     var err2 = new ArangoError();
+     err2.errorNum = arangodb.errors.ERROR_ARANGO_COLLECTION_TYPE_INVALID.code;
+     err2.errorMessage = name + " cannot be used as relation. It is not an edge collection";
+     throw err2;
   }
   return res;
 };
