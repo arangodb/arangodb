@@ -1293,7 +1293,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
                             path, body);
     }
     size_t nrDone = 0;
-    size_t nrGood = cc->performRequests(requests, 60.0, nrDone,
+    size_t nrGood = cc->performRequests(requests, 15.0, nrDone,
                                         Logger::REPLICATION);
     if (nrGood < followers->size()) {
       // we drop all followers that were not successful:
