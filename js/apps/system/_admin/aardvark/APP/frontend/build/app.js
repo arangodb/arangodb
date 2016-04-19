@@ -10578,22 +10578,23 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       var cssClass;
 
       _.each(menuItems, function(menu, name) {
+        cssClass = '';
+
         if (menu.active) {
           cssClass += ' active';
+        }
+        if (menu.disabled) {
+          cssClass += ' disabled';
+        }
 
-          if (menu.disabled) {
-            cssClass += ' disabled';
-          }
-        }
-        else {
-          cssClass = '';
-        }
         $('#subNavigationBar .bottom').append(
           '<li class="subMenuEntry ' + cssClass + '"><a>' + name + '</a></li>'
         );
-        $('#subNavigationBar .bottom').children().last().bind('click', function() {
-          window.App.navigate(menu.route, {trigger: true});
-        });
+        if (!menu.disabled) {
+          $('#subNavigationBar .bottom').children().last().bind('click', function() {
+            window.App.navigate(menu.route, {trigger: true});
+          });
+        }
       });
     },
 
@@ -10603,12 +10604,35 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
           route: '#node/' + encodeURIComponent(node)
         },
         Logs: {
-          route: '#nLogs/' + encodeURIComponent(node)
+          route: '#nLogs/' + encodeURIComponent(node),
+          disabled: true
         }
       };
 
       menus[activeKey].active = true;
       menus[disabled].disabled = true;
+      this.buildSubNavBar(menus);
+    },
+
+    //nav for collection view
+    buildNodesSubNav: function(type) {
+
+      var menus = {
+        Coordinators: {
+          route: '#cNodes'
+        },
+        DBServers: {
+          route: '#dNodes'
+        }
+      };
+
+      if (type === 'coordinator') {
+        menus.Coordinators.active = true;
+      }
+      else {
+        menus.DBServers.active = true;
+      }
+
       this.buildSubNavBar(menus);
     },
 
@@ -22893,8 +22917,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       "click #databaseSearchSubmit" : "search",
       "click #databaseToggle"       : "toggleSettingsDropdown",
       "click .css-label"            : "checkBoxes",
-      "click #dbSortDesc"           : "sorting",
-      "click .tile"                 : "switchDatabase"
+      "click #dbSortDesc"           : "sorting"
     },
 
     sorting: function() {
@@ -27713,6 +27736,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         menuItem = menuItem.substr(1, menuItem.length - 1);
       }
 
+      //Location for selecting MainView Primary Navigaation Entry
       if (menuItem === '') {
         if (window.App.isCluster) {
           menuItem = 'cluster';
@@ -27720,6 +27744,9 @@ window.ArangoUsers = Backbone.Collection.extend({
         else {
           menuItem = 'dashboard';
         }
+      }
+      else if (menuItem === 'cNodes' || menuItem === 'dNodes') {
+        menuItem = 'nodes';
       }
       try {
         this.renderSubMenu(menuItem.split('-')[0]);
@@ -27915,21 +27942,23 @@ window.ArangoUsers = Backbone.Collection.extend({
     knownServers: [],
 
     events: {
-      "click .pure-table-body .pure-table-row": "navigateToNode"  
     },
 
     initialize: function (options) {
-      var self = this;
 
       if (window.App.isCluster) {
         this.dbServers = options.dbServers;
         this.coordinators = options.coordinators;
         this.updateServerTime();
+        this.toRender = options.toRender;
+
+        if (this.toRender !== 'coordinator') {
+          this.events["click .pure-table-body .pure-table-row"] = "navigateToNode";
+        }
 
         //start polling with interval
         window.setInterval(function() {
-          if (window.location.hash === '#nodes') {
-
+          if (window.location.hash === '#cNodes' || window.location.hash === '#dNodes') {
 
             var callback = function(data) {
             };
@@ -27945,7 +27974,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     render: function () {
-      this.$el.html(this.template.render({coords: []}));
+      window.arangoHelper.buildNodesSubNav(this.toRender);
 
       var callback = function() {
         this.continueRender();
@@ -27960,9 +27989,18 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     continueRender: function() {
-      var coords = this.coordinators.toJSON();
+      var coords;
+
+      if (this.toRender === 'coordinator') {
+        coords = this.coordinators.toJSON();
+      }
+      else {
+        coords = this.dbServers.toJSON();
+      }
+
       this.$el.html(this.template.render({
-        coords: coords
+        coords: coords,
+        type: this.toRender
       }));
     },
 
@@ -34207,9 +34245,11 @@ window.ArangoUsers = Backbone.Collection.extend({
       "users": "userManagement",
       "userProfile": "userProfile",
       "cluster": "cluster",
-      "nodes": "nodes",
+      "nodes": "cNodes",
+      "cNodes": "cNodes",
+      "dNodes": "dNodes",
       "node/:name": "node",
-      "nLogs/:name": "nLogs",
+      //"nLogs/:name": "nLogs",
       "logs": "logs",
       "helpus": "helpUs"
     },
@@ -34409,14 +34449,10 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.nodeView.render();
     },
 
-    nodeLogs: function (initialized) {
-
-    },
-
-    nodes: function (initialized) {
+    cNodes: function (initialized) {
       this.checkUser();
       if (!initialized || this.isCluster === undefined) {
-        this.waitForInit(this.nodes.bind(this));
+        this.waitForInit(this.cNodes.bind(this));
         return;
       }
       if (this.isCluster === false) {
@@ -34425,12 +34461,31 @@ window.ArangoUsers = Backbone.Collection.extend({
         return;
       }
 
-      if (!this.nodesView) {
-        this.nodesView = new window.NodesView({
-          coordinators: this.coordinatorCollection,
-          dbServers: this.dbServers[0]
-        });
+      this.nodesView = new window.NodesView({
+        coordinators: this.coordinatorCollection,
+        dbServers: this.dbServers[0],
+        toRender: 'coordinator'
+      });
+      this.nodesView.render();
+    },
+
+    dNodes: function (initialized) {
+      this.checkUser();
+      if (!initialized || this.isCluster === undefined) {
+        this.waitForInit(this.dNodes.bind(this));
+        return;
       }
+      if (this.isCluster === false) {
+        this.routes[""] = 'dashboard';
+        this.navigate("#dashboard", {trigger: true});
+        return;
+      }
+
+      this.nodesView = new window.NodesView({
+        coordinators: this.coordinatorCollection,
+        dbServers: this.dbServers[0],
+        toRender: 'dbserver'
+      });
       this.nodesView.render();
     },
 
@@ -34482,6 +34537,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.logsView.render();
     },
 
+    /*
     nLogs: function (nodename, initialized) {
       this.checkUser();
       if (!initialized) {
@@ -34512,6 +34568,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       });
       this.nLogsView.render();
     },
+    */
 
     applicationDetail: function (mount, initialized) {
       this.checkUser();
