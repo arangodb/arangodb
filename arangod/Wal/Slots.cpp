@@ -51,12 +51,19 @@ Slots::Slots(LogfileManager* logfileManager, size_t numberOfSlots,
       _lastCommittedDataTick(0),
       _numEvents(0),
       _lastDatabaseId(0),
-      _lastCollectionId(0) {
+      _lastCollectionId(0), 
+      _shutdown(false) {
   _slots = new Slot[numberOfSlots];
 }
 
 /// @brief destroy the slots
 Slots::~Slots() { delete[] _slots; }
+
+/// @brief sets a shutdown flag, disabling the request for new logfiles
+void Slots::shutdown() {
+  MUTEX_LOCKER(mutexLocker, _lock);
+  _shutdown = true;
+}
 
 /// @brief get the statistics of the slots
 void Slots::statistics(Slot::TickType& lastAssignedTick, 
@@ -76,6 +83,11 @@ int Slots::flush(bool waitForSync) {
   bool worked;
 
   int res = closeLogfile(lastTick, worked);
+
+  if (res == TRI_ERROR_REQUEST_CANCELED) {
+    // only happens during shutdown
+    res = TRI_ERROR_NO_ERROR;
+  }
 
   if (res == TRI_ERROR_NO_ERROR) {
     _logfileManager->signalSync();
@@ -506,7 +518,7 @@ int Slots::closeLogfile(Slot::TickType& lastCommittedTick, bool& worked) {
         TRI_ASSERT(_logfile == nullptr);
         // fetch the next free logfile (this may create a new one)
         // note: as we don't have a real marker to write the size does
-        // not matter (we use a size of 1 as  it must be > 0)
+        // not matter (we use a size of 1 as it must be > 0)
         Logfile::StatusType status;
         int res = newLogfile(1, status);
 
@@ -659,6 +671,10 @@ bool Slots::waitForTick(Slot::TickType tick) {
 /// specified size
 int Slots::newLogfile(uint32_t size, Logfile::StatusType& status) {
   TRI_ASSERT(size > 0);
+
+  if (_shutdown) {
+    return TRI_ERROR_REQUEST_CANCELED;
+  }
 
   status = Logfile::StatusType::UNKNOWN;
   Logfile* logfile = nullptr;
