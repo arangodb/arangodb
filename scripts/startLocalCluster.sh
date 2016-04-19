@@ -44,6 +44,7 @@ build/bin/arangod -c etc/relative/arangod.conf \
   --agency.wait-for-sync false \
   --database.directory cluster/data4001 \
   --agency.id 0 \
+  --javascript.v8-contexts 1 \
   --log.file cluster/4001.log \
   --log.requests-file cluster/4001.req \
   --server.disable-statistics true \
