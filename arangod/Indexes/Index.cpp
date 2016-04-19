@@ -85,7 +85,7 @@ Index::Index(VPackSlice const& slice)
 
     std::vector<arangodb::basics::AttributeName> parsedAttributes;
     TRI_ParseAttributeString(name.copyString(), parsedAttributes);
-    _fields.emplace_back(parsedAttributes);
+    _fields.emplace_back(std::move(parsedAttributes));
   }
 
   _selectivityEstimate =
