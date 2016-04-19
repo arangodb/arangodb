@@ -197,6 +197,11 @@ void TRI_FillRequestStatistics (StatisticsDistribution& totalTime,
                                 StatisticsDistribution& ioTime,
                                 StatisticsDistribution& bytesSent,
                                 StatisticsDistribution& bytesReceived) {
+  if (!TRI_ENABLE_STATISTICS) {
+    // all the below objects may be deleted if we don't have statistics enabled
+    return;
+  }
+
   MUTEX_LOCKER(RequestDataLock);
 
   totalTime     = *TRI_TotalTimeDistributionStatistics;
@@ -289,6 +294,16 @@ void TRI_FillConnectionStatistics (StatisticsCounter& httpConnections,
                                    vector<StatisticsCounter>& methodRequests,
                                    StatisticsCounter& asyncRequests,
                                    StatisticsDistribution& connectionTime) {
+
+  if (!TRI_ENABLE_STATISTICS) {
+    // all the below objects may be deleted if we don't have statistics enabled
+    for (int i = 0; i < ((int)triagens::rest::HttpRequest::HTTP_REQUEST_ILLEGAL) + 1;
+         ++i) {
+      methodRequests.emplace_back(StatisticsCounter());
+    }
+    return;
+  }
+
   MUTEX_LOCKER(ConnectionDataLock);
 
   httpConnections = TRI_HttpConnectionsStatistics;
