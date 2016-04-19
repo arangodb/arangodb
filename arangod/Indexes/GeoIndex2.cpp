@@ -185,8 +185,8 @@ int GeoIndex2::remove(arangodb::Transaction*, TRI_doc_mptr_t const* doc, bool) {
 
   VPackSlice const slice(doc->vpack());
 
-  double latitude;
-  double longitude;
+  double latitude = 0.0;
+  double longitude = 0.0;
   bool ok = true;
 
   if (_variant == INDEX_GEO_INDIVIDUAL_LAT_LON) {
