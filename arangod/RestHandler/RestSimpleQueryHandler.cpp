@@ -32,7 +32,6 @@
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/CollectionNameResolver.h"
-#include "V8Server/ApplicationV8.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;
