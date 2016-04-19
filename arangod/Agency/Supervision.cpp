@@ -1,5 +1,6 @@
 #include "Supervision.h"
 #include "Agent.h"
+#include "Store.h"
 
 #include "Basics/ConditionLocker.h"
 
@@ -29,7 +30,7 @@ void Supervision::run() {
   while (!this->isStopping()) {
     
     if (_agent->leading()) {
-      timedout = _cv.wait(250000);//quarter second
+      timedout = _cv.wait(_frequency);//quarter second
     } else {
       _cv.wait();
     }
@@ -49,10 +50,15 @@ bool Supervision::start () {
 // Start thread with agent
 bool Supervision::start (Agent* agent) {
   _agent = agent;
+  _frequency = static_cast<long>(1.0e6*_agent->config().supervision_frequency);
   return start();
 }
 
 void Supervision::beginShutdown() {
   // Personal hygiene
   Thread::beginShutdown();
+}
+
+Store const& Supervision::store() const {
+  return _agent->readDB();
 }

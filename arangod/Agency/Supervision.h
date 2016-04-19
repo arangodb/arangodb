@@ -27,10 +27,13 @@
 #include "Basics/Thread.h"
 #include "Basics/ConditionVariable.h"
 
+
+
 namespace arangodb {
 namespace consensus {
 
 class Agent;
+class Store;
 
 class Supervision : public arangodb::Thread {
   
@@ -60,7 +63,7 @@ public:
 private:
 
   /// @brief Read db
-  Store const& store ();
+  Store const& store () const;
 
   /// @brief Perform sanity checking
   bool doChecks(bool);
@@ -68,6 +71,8 @@ private:
   Agent* _agent; /**< @brief My agent */
 
   arangodb::basics::ConditionVariable _cv; /**< @brief Control if thread should run */
+
+  long _frequency;
 
   
 };

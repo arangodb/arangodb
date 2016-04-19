@@ -27,7 +27,7 @@
 #include "AgencyCommon.h"
 #include "AgentCallback.h"
 #include "Constituent.h"
-#include "SanityCheck.h"
+#include "Supervision.h"
 #include "State.h"
 #include "Store.h"
 
@@ -152,7 +152,7 @@ public:
   aql::QueryRegistry* _queryRegistry;
 
   Constituent _constituent; /**< @brief Leader election delegate */
-  SanityCheck _sanity_check; /**< @brief sanitychecking */
+  Supervision _supervision; /**< @brief sanitychecking */
   State _state;             /**< @brief Log replica              */
   
   config_t _config;         /**< @brief Command line arguments   */
