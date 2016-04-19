@@ -21,35 +21,23 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef __ARANGODB_CONSENSUS_STORE__
-#define __ARANGODB_CONSENSUS_STORE__
+#ifndef ARANGODB_CONSENSUS_STORE_H
+#define ARANGODB_CONSENSUS_STORE_H
 
-//XXX #warning KAVEH order
 #include "AgencyCommon.h"
+
+#include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
+#include "Basics/Thread.h"
+#include "Basics/ConditionVariable.h"
+
+#include <velocypack/Buffer.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include <type_traits>
 #include <utility>
-#include <typeinfo>
-//XXX #warning KAVEH why?
 #include <string>
-#include <cassert>
-//XXX #warning KAVEH why?
-#include <map>
-//XXX #warning KAVEH why?
 #include <vector>
-//XXX #warning KAVEH why?
-#include <list>
-//XXX #warning KAVEH why?
-#include <memory>
-//XXX #warning KAVEH why?
-#include <cstdint>
-
-#include <Basics/Mutex.h>
-#include <Basics/MutexLocker.h>
-#include <Basics/Thread.h>
-#include <Basics/ConditionVariable.h>
-#include <velocypack/Buffer.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace consensus {

@@ -21,14 +21,14 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-//XXX #warning KAVEH clang-format
-#ifndef __ARANGODB_CONSENSUS_AGENT__
-#define __ARANGODB_CONSENSUS_AGENT__
+#ifndef ARANGODB_CONSENSUS_AGENT_H
+#define ARANGODB_CONSENSUS_AGENT_H
 
 #include "AgencyCommon.h"
+#include "AgentConfiguration.h"
 #include "AgentCallback.h"
 #include "Constituent.h"
-#include "SanityCheck.h"
+#include "Supervision.h"
 #include "State.h"
 #include "Store.h"
 
@@ -86,14 +86,14 @@ public:
   /// @brief Read from agency
   read_ret_t read(query_t const&) const;
 
-  /// @brief Received by followers to replicate log entries (§5.3);
-  ///        also used as heartbeat (§5.2).
+  /// @brief Received by followers to replicate log entries ($5.3);
+  ///        also used as heartbeat ($5.2).
   bool recvAppendEntriesRPC(term_t term, id_t leaderId, index_t prevIndex,
                             term_t prevTerm, index_t lastCommitIndex,
                             query_t const& queries);
 
-  /// @brief Invoked by leader to replicate log entries (§5.3);
-  ///        also used as heartbeat (§5.2).
+  /// @brief Invoked by leader to replicate log entries ($5.3);
+  ///        also used as heartbeat ($5.2).
   append_entries_t sendAppendEntriesRPC(id_t slave_id);
 
   /// @brief 1. Deal with appendEntries to slaves.
@@ -118,12 +118,6 @@ public:
   /// @brief Last log entry
   log_t const& lastLog() const;
 
-  /// @brief Pipe configuration to ostream
-  friend std::ostream& operator<<(std::ostream& o, Agent const& a) {
-    o << a.config();
-    return o;
-  }
-
   /// @brief Persist term
   void persist (term_t, id_t);
 
@@ -137,26 +131,46 @@ public:
   Store const& spearhead() const; 
 
  private:
-  Constituent _constituent; /**< @brief Leader election delegate */
-//XXX #warning KAVEH name convention
-  SanityCheck _sanity_check; /**< @brief sanitychecking */
-  State _state;             /**< @brief Log replica              */
-  
-  config_t _config;         /**< @brief Command line arguments   */
 
-//XXX #warning KAVEH name convention
-  std::atomic<index_t> _last_commit_index; /**< @brief Last commit index */
+  /// @brief This server (need endpoint)
+  TRI_server_t*        _server;
 
-  Store _spearhead; /**< @brief Spearhead key value store */
-  Store _read_db;   /**< @brief Read key value store */
+  /// @brief Vocbase for agency persistence
+  TRI_vocbase_t*       _vocbase; 
 
-  arangodb::basics::ConditionVariable _cv; /**< @brief Internal callbacks */
-//XXX #warning KAVEH name convention
-  arangodb::basics::ConditionVariable _rest_cv; /**< @brief Rest handler */
+  /// @brief Query registry for agency persistence
+  aql::QueryRegistry*  _queryRegistry;
 
-  std::vector<index_t>
-      _confirmed;          /**< @brief Confirmed log index of each slave */
-  arangodb::Mutex _ioLock; /**< @brief Read/Write lock */
+  /// @brief Leader election delegate
+  Constituent          _constituent;
+
+  /// @brief Cluster supervision module
+  Supervision          _supervision;
+
+  /// @brief State machine
+  State                _state;
+
+  /// @brief Configuration of command line options
+  config_t             _config;   
+
+  /// @brief Last commit index (raft) 
+  index_t _lastCommitIndex; 
+
+  /// @brief Spearhead (write) kv-store
+  Store                _spearhead;
+
+  /// @brief Commited (read) kv-store
+  Store                _readDB;
+
+  /// @brief Condition variable for appendEntries 
+  arangodb::basics::ConditionVariable _appendCV;
+
+  /// @brief Condition variable for waitFor 
+  arangodb::basics::ConditionVariable _waitForCV;
+
+  /// @brief Confirmed indices of all members of agency
+  std::vector<index_t> _confirmed;
+  arangodb::Mutex _ioLock;          /**< @brief Read/Write lock */
 };
 
 }}

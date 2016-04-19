@@ -38,7 +38,7 @@ public:
   
   AgentCallback();
 
-  AgentCallback(Agent* agent, id_t slave_id, index_t last);
+  AgentCallback(Agent*, id_t, index_t);
 
   virtual bool operator()(arangodb::ClusterCommResult*) override final;
 
@@ -47,7 +47,7 @@ public:
 private:
   Agent* _agent;
   index_t _last;
-  id_t _slave_id;
+  id_t _slaveID;
   
 };
 

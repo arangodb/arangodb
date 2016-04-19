@@ -75,7 +75,7 @@ void RestAgencyHandler::redirectRequest(id_t leaderId) {
 
   try {
     std::string url = Endpoint::uriForm(
-      _agent->config().end_points.at(leaderId)) + _request->requestPath();
+      _agent->config().endpoints.at(leaderId)) + _request->requestPath();
     createResponse(GeneralResponse::ResponseCode::TEMPORARY_REDIRECT);
     static std::string const location = "location";
     _response->setHeaderNC(location, url);

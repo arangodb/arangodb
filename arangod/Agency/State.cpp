@@ -21,17 +21,15 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-//XXX #warning KAVEH order
-
 #include "State.h"
 
 #include "Aql/Query.h"
 #include "Basics/VelocyPackHelper.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
-#include "RestServer/DatabaseFeature.h"
 #include "VocBase/collection.h"
 #include "VocBase/vocbase.h"
 
@@ -50,11 +48,11 @@ using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
 using namespace arangodb::rest;
 
-State::State(std::string const& end_point)
+State::State(std::string const& endpoint)
     : _vocbase(nullptr),
-      _end_point(end_point),
-      _collections_checked(false),
-      _collections_loaded(false) {
+      _endpoint(endpoint),
+      _collectionsChecked(false),
+      _collectionsLoaded(false) {
   std::shared_ptr<Buffer<uint8_t>> buf = std::make_shared<Buffer<uint8_t>>();
   VPackSlice value = arangodb::basics::VelocyPackHelper::EmptyObjectValue();
   buf->append(value.startAs<char const>(), value.byteSize());
@@ -172,29 +170,29 @@ log_t const& State::lastLog() const {
   return _log.back();
 }
 
-bool State::setEndPoint(std::string const& end_point) {
-  _end_point = end_point;
-  _collections_checked = false;
+bool State::setEndPoint(std::string const& endpoint) {
+  _endpoint = endpoint;
+  _collectionsChecked = false;
   return true;
 };
 
 bool State::checkCollections() {
-  if (!_collections_checked) {
-    _collections_checked =
+  if (!_collectionsChecked) {
+    _collectionsChecked =
         checkCollection("log") && checkCollection("election");
   }
-  return _collections_checked;
+  return _collectionsChecked;
 }
 
 bool State::createCollections() {
-  if (!_collections_checked) {
+  if (!_collectionsChecked) {
     return (createCollection("log") && createCollection("election"));
   }
-  return _collections_checked;
+  return _collectionsChecked;
 }
 
 bool State::checkCollection(std::string const& name) {
-  if (!_collections_checked) {
+  if (!_collectionsChecked) {
     return (
       TRI_LookupCollectionByNameVocBase(_vocbase, name.c_str()) != nullptr);
   }
@@ -235,7 +233,6 @@ bool State::loadCollection(std::string const& name) {
     auto bindVars = std::make_shared<VPackBuilder>();
     bindVars->openObject();
     bindVars->close();
-    // ^^^ TODO: check if bindvars are actually needed
     
     std::string const aql(std::string("FOR l IN ") + name
                           + " SORT l._key RETURN l");
@@ -247,11 +244,11 @@ bool State::loadCollection(std::string const& name) {
       ApplicationServer::lookupFeature("Database"));
     
     auto queryResult = query.execute(database->queryRegistry());
-
+    
     if (queryResult.code != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
     }
-  
+    
     VPackSlice result = queryResult.result->slice();
         
     if (result.isArray()) {

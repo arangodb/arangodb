@@ -43,7 +43,7 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
       _maxElectionTimeout(1.0),
       _electionCallRateMultiplier(0.85),
       _notify(false),
-      _sanityCheck(false),
+      _supervision(false),
       _waitForSync(true) {
   setOptional(false);
   requiresElevatedPrivileges(false);
@@ -90,7 +90,7 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--agency.sanity-check",
                      "perform arangodb cluster sanity checking",
-                     new BooleanParameter(&_sanityCheck));
+                     new BooleanParameter(&_supervision));
 
   options->addHiddenOption("--agency.wait-for-sync",
                            "wait for hard disk syncs on every persistence call "
@@ -173,7 +173,6 @@ void AgencyFeature::start() {
   auto endpoints = endpointFeature->httpEndpoints();
 
   if (!endpoints.empty()) {
-    endpoint = endpoints[0];
     size_t pos = endpoint.find(':', 10);
 
     if (pos != std::string::npos) {
@@ -181,12 +180,12 @@ void AgencyFeature::start() {
     }
   }
 
-//XXX #warning KAVEH why overwriting the above?????  
   endpoint = std::string("tcp://localhost:" + port);
 
-  _agent.reset(new consensus::Agent(
-      consensus::config_t(_agentId, _minElectionTimeout, _maxElectionTimeout, endpoint,
-                          _agencyEndpoints, _notify, _sanityCheck, _waitForSync)));
+  _agent.reset( new consensus::Agent(
+      consensus::config_t(_agentId, _minElectionTimeout, _maxElectionTimeout,
+                          endpoint, _agencyEndpoints, _notify, _supervision,
+                          _waitForSync, _supervisionFrequency)));
 
   _agent->start();
 }

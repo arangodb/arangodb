@@ -21,7 +21,6 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-//XXX #warning KAVEH clang-format
 #include "Store.h"
 
 #include "StoreCallback.h"

@@ -21,14 +21,11 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-//XXX #warning KAVEH clang-format
-//XXX #warning KAVEH name convention
-#ifndef __ARANGODB_CONSENSUS_STATE__
-#define __ARANGODB_CONSENSUS_STATE__
+#ifndef ARANGODB_CONSENSUS_STATE_H
+#define ARANGODB_CONSENSUS_STATE_H
 
 
 #include "AgencyCommon.h"
-#include "State.h"
 
 #include <Basics/Thread.h>
 #include <Cluster/ClusterComm.h>
@@ -141,12 +138,9 @@ private:
 
   mutable arangodb::Mutex _logLock;  /**< @brief Mutex for modifying _log */
   std::deque<log_t> _log;           /**< @brief  State entries */
-//XXX #warning KAVEH name convention
-  std::string _end_point;            /**< @brief persistence end point */
-//XXX #warning KAVEH name convention
-  bool _collections_checked;                 /**< @brief Collections checked */
-//XXX #warning KAVEH name convention
-  bool _collections_loaded;
+  std::string _endpoint;            /**< @brief persistence end point */
+  bool _collectionsChecked;                 /**< @brief Collections checked */
+  bool _collectionsLoaded;
 
   OperationOptions _options;
 

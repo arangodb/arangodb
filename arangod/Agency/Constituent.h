@@ -21,21 +21,17 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-//XXX #warning KAVEH clang-format
-//XXX #warning KAVEH name convention
-#ifndef __ARANGODB_CONSENSUS_CONSTITUENT__
-#define __ARANGODB_CONSENSUS_CONSTITUENT__
+#ifndef ARANGODB_CONSENSUS_CONSTITUENT_H
+#define ARANGODB_CONSENSUS_CONSTITUENT_H
 
-//XXX #warning KAVEH order!
-#include <cstdint>
-//XXX #warning KAVEH why?
 #include <string>
-//XXX #warning KAVEH why?
 #include <vector>
 #include <random>
 
-//XXX #warning KAVEH Common.h missing
 #include "AgencyCommon.h"
+#include "AgentConfiguration.h"
+
+#include "Basics/Common.h"
 #include "Basics/Thread.h"
 #include "Basics/ConditionVariable.h"
 
@@ -111,10 +107,10 @@ private:
   void term (term_t);
 
   /// @brief Agency endpoints
-  std::vector<std::string> const& end_points() const;
+  std::vector<std::string> const& endpoints() const;
 
   /// @brief Endpoint of agent with id
-  std::string const& end_point(id_t) const;
+  std::string const& endpoint(id_t) const;
 
   /// @brief Run for leadership
   void candidate();
@@ -147,15 +143,13 @@ private:
   std::atomic<bool>    _cast;         /**< @brief cast a vote this term */
   std::atomic<state_t> _state;        /**< @brief State (follower, candidate, leader)*/
 
-//XXX #warning KAVEH name convention
-  id_t                 _leader_id;    /**< @brief Current leader */
+  id_t                 _leaderID;     /**< @brief Current leader */
   id_t                 _id;           /**< @brief My own id */
   constituency_t       _constituency; /**< @brief List of consituents */
   std::mt19937         _gen;          /**< @brief Random number generator */
   role_t               _role;         /**< @brief My role */
   Agent*               _agent;        /**< @brief My boss */
-//XXX #warning KAVEH name convention
-  id_t                 _voted_for;
+  id_t                 _votedFor;
 
   arangodb::basics::ConditionVariable _cv;      // agency callbacks
   mutable arangodb::Mutex _castLock;

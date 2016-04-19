@@ -379,17 +379,17 @@ module.exports = class FoxxService {
     this.main.filename = path.resolve(moduleRoot, '.foxx');
     this.main[$_MODULE_ROOT] = moduleRoot;
     this.main[$_MODULE_CONTEXT].console = foxxConsole;
-    this.main.require.aliases = this.legacy ? {
-      '@arangodb/foxx/authentication': '@arangodb/foxx/legacy/authentication',
-      '@arangodb/foxx/controller': '@arangodb/foxx/legacy/controller',
-      '@arangodb/foxx/model': '@arangodb/foxx/legacy/model',
-      '@arangodb/foxx/query': '@arangodb/foxx/legacy/query',
-      '@arangodb/foxx/repository': '@arangodb/foxx/legacy/repository',
-      '@arangodb/foxx/schema': '@arangodb/foxx/legacy/schema',
-      '@arangodb/foxx/sessions': '@arangodb/foxx/legacy/sessions',
-      '@arangodb/foxx/template_middleware': '@arangodb/foxx/legacy/template_middleware',
-      '@arangodb/foxx': '@arangodb/foxx/legacy'
-    } : {};
+    this.main.require.aliases = new Map(this.legacy ? [
+      ['@arangodb/foxx/authentication', '@arangodb/foxx/legacy/authentication'],
+      ['@arangodb/foxx/controller', '@arangodb/foxx/legacy/controller'],
+      ['@arangodb/foxx/model', '@arangodb/foxx/legacy/model'],
+      ['@arangodb/foxx/query', '@arangodb/foxx/legacy/query'],
+      ['@arangodb/foxx/repository', '@arangodb/foxx/legacy/repository'],
+      ['@arangodb/foxx/schema', '@arangodb/foxx/legacy/schema'],
+      ['@arangodb/foxx/sessions', '@arangodb/foxx/legacy/sessions'],
+      ['@arangodb/foxx/template_middleware', '@arangodb/foxx/legacy/template_middleware'],
+      ['@arangodb/foxx', '@arangodb/foxx/legacy']
+    ] : []);
     this.main.require.cache = this.requireCache;
     this.main.context = new FoxxContext(this);
     this.router = new Router();

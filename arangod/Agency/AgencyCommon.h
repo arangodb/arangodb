@@ -21,25 +21,17 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-//XXX #warning KAVEH clang-format
 #ifndef __ARANGODB_CONSENSUS_AGENCY_COMMON__
 #define __ARANGODB_CONSENSUS_AGENCY_COMMON__
 
-//XXX #warning KAVEH order, quotes, Common.h
-#include <Logger/Logger.h>
-#include <Basics/VelocyPackHelper.h>
+#include "Basics/VelocyPackHelper.h"
+#include "Logger/Logger.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <chrono>
-#include <initializer_list>
-//XXX #warning KAVEH why?
-#include <list>
-//XXX #warning KAVEH why?
 #include <string>
-#include <sstream>
-//XXX #warning KAVEH why?
 #include <vector>
 
 #include <memory>
@@ -47,46 +39,12 @@
 namespace arangodb {
 namespace consensus {
 
-typedef enum AGENCY_STATUS {
-  OK = 0,
-  RETRACTED_CANDIDACY_FOR_HIGHER_TERM, // Vote for higher term candidate
-                                       // while running. Strange!
-  RESIGNED_LEADERSHIP_FOR_HIGHER_TERM, // Vote for higher term candidate
-                                       // while leading. Very bad!
-  LOWER_TERM_APPEND_ENTRIES_RPC,
-  NO_MATCHING_PREVLOG
-} status_t;
-
 typedef uint64_t term_t;                           // Term type
 typedef uint32_t id_t;                             // Id type
 
 enum role_t {                                      // Role
   FOLLOWER, CANDIDATE, LEADER
 };
-
-enum AGENT_FAILURE {
-  PERSISTENCE,
-  TIMEOUT,
-  UNAVAILABLE,
-  PRECONDITION
-};
-
-/**
- * @brief Agent configuration
- */
-template<class T>
-inline std::ostream& operator<< (std::ostream& l, std::vector<T> const& v) {
-  for (auto const& i : v)
-    l << i << ",";
-  return l;
-}
-template<typename T>
-inline std::ostream& operator<< (std::ostream& os, std::list<T> const& l) {
-  for (auto const& i : l)
-    os << i << ",";
-  return os;
-}
-
 
 struct  constituent_t {                               // Constituent type
   id_t id;
@@ -98,66 +56,6 @@ typedef uint32_t                      state_t;        // State type
 typedef std::chrono::duration<long,std::ratio<1,1000>> duration_t;     // Duration type
 
 using query_t = std::shared_ptr<arangodb::velocypack::Builder>;
-
-//XXX #warning KAVEH why not in AgentConfiguration.h???
-struct AgentConfiguration {               
-  id_t id;
-  double min_ping;
-  double max_ping;
-  std::string end_point;
-  std::vector<std::string> end_points;
-  bool notify;
-  bool sanity_check;
-  bool wait_for_sync;
-  AgentConfiguration () :
-    id(0),
-    min_ping(.15),
-    max_ping(.3f),
-    end_point("tcp://localhost:8529"),
-    notify(false),
-    sanity_check(false),
-    wait_for_sync(true) {}
-  
-  AgentConfiguration (uint32_t i, double min_p, double max_p, std::string ep,
-                      std::vector<std::string> const& eps, bool n,
-                      bool s, bool w) :
-    id(i),
-    min_ping(min_p),
-    max_ping(max_p),
-    end_point(ep),
-    end_points(eps),
-    notify(n),
-    sanity_check(s),
-    wait_for_sync(w) {}
-  
-  inline size_t size() const {return end_points.size();}
-  friend std::ostream& operator<<(std::ostream& o, AgentConfiguration const& c) {
-    o << "id(" << c.id << ") min_ping(" << c.min_ping
-      << ") max_ping(" << c.max_ping << ") endpoints(" << c.end_points << ")";
-    return o;
-  }
-  inline std::string const toString() const {
-    std::stringstream s;
-    s << *this;
-    return s.str();
-  }
-  query_t const toBuilder () const {
-    query_t ret = std::make_shared<arangodb::velocypack::Builder>();
-    ret->openObject();
-    ret->add("endpoints", VPackValue(VPackValueType::Array));
-    for (auto const& i : end_points)
-      ret->add(VPackValue(i));
-    ret->close();
-    ret->add("id",VPackValue(id));
-    ret->add("min_ping",VPackValue(min_ping));
-    ret->add("max_ping",VPackValue(max_ping));
-    ret->close();
-    return ret;
-  }
-};
-
-//XXX #warning KAVEH why???
-typedef AgentConfiguration config_t;
 
 struct vote_ret_t {
   query_t result;
@@ -196,7 +94,7 @@ using buffer_t = std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>;
  */
 struct log_t {
   index_t      index;
-  term_t       term; 
+  term_t       term;
   id_t         leaderId;
   buffer_t     entry;
   milliseconds timestamp;
@@ -211,7 +109,7 @@ struct log_t {
 };
 
 enum agencyException {
-  QUERY_NOT_APPLICABLE
+    QUERY_NOT_APPLICABLE
 };
 
 struct append_entries_t {
@@ -238,6 +136,4 @@ struct priv_rpc_ret_t {
 
 }}
 
-//XXX #warning KAVEH remove
-#endif // __ARANGODB_CONSENSUS_AGENT__
-
+#endif

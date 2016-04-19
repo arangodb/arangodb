@@ -21,22 +21,17 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-//XXX #warning KAVEH clang-format!!!!
-
 #include "Agent.h"
 
-//XXX #warning KAVEH order!
 #include "Basics/ConditionLocker.h"
+#include "RestServer/DatabaseFeature.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
-#include "RestServer/DatabaseFeature.h"
 
 #include <velocypack/Iterator.h>    
 #include <velocypack/velocypack-aliases.h> 
 
 #include <chrono>
-//XXX #warning KAVEH WHY????
-#include <iostream>
 
 using namespace arangodb::application_features;
 using namespace arangodb::velocypack;
@@ -48,9 +43,9 @@ namespace consensus {
 Agent::Agent (config_t const& config) 
     : Thread ("Agent"), 
       _config(config), 
-      _last_commit_index(0) {
+      _lastCommitIndex(0) {
 
-  _state.setEndPoint(_config.end_point);
+  _state.setEndPoint(_config.endpoint);
   _constituent.configure(this);
   _confirmed.resize(size(),0); // agency's size and reset to 0
 }
@@ -97,7 +92,7 @@ priv_rpc_ret_t Agent::requestVote(term_t t, id_t id, index_t lastLogIndex,
         query->slice().get("endpoints").isArray()) {
       size_t j = 0;
       for (auto const& i : VPackArrayIterator(query->slice().get("endpoints"))) {
-        _config.end_points[j++] = i.copyString();
+        _config.endpoints[j++] = i.copyString();
       }
     }
   }
@@ -135,17 +130,17 @@ bool Agent::waitFor (index_t index, double timeout) {
   if (size() == 1) // single host agency
     return true;
     
-  CONDITION_LOCKER(guard, _rest_cv);
+  CONDITION_LOCKER(guard, _waitForCV);
 
   // Wait until woken up through AgentCallback 
   while (true) {
 
     /// success?
-    if (_last_commit_index >= index) {
+    if (_lastCommitIndex >= index) {
       return true;
     }
     // timeout
-    if (_rest_cv.wait(static_cast<uint64_t>(1.0e6*timeout))) {
+    if (_waitForCV.wait(static_cast<uint64_t>(1.0e6*timeout))) {
       return false;
     }
     
@@ -166,22 +161,22 @@ void Agent::reportIn (id_t id, index_t index) {
   if (index > _confirmed[id])      // progress this follower?
     _confirmed[id] = index;
   
-  if(index > _last_commit_index) { // progress last commit?
+  if(index > _lastCommitIndex) { // progress last commit?
     size_t n = 0;
     for (size_t i = 0; i < size(); ++i) {
       n += (_confirmed[i]>=index);
     }
     if (n>size()/2) { // catch up read database and commit index
       LOG_TOPIC(INFO, Logger::AGENCY) << "Critical mass for commiting " <<
-        _last_commit_index+1 << " through " << index << " to read db";
+        _lastCommitIndex+1 << " through " << index << " to read db";
       
-      _read_db.apply(_state.slices(_last_commit_index+1, index));
-      _last_commit_index = index;
+      _readDB.apply(_state.slices(_lastCommitIndex+1, index));
+      _lastCommitIndex = index;
     }
   }
 
-  CONDITION_LOCKER(guard, _rest_cv);
-  _rest_cv.broadcast();            // wake up REST handlers
+  CONDITION_LOCKER(guard, _waitForCV);
+  _waitForCV.broadcast();            // wake up REST handlers
 }
 
 //  Followers' append entries
@@ -197,15 +192,15 @@ bool Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
 
   MUTEX_LOCKER(mutexLocker, _ioLock);
 
-  index_t last_commit_index = _last_commit_index;
-  // 1. Reply false if term < currentTerm (§5.1)
+  index_t lastCommitIndex = _lastCommitIndex;
+  // 1. Reply false if term < currentTerm ($5.1)
   if (this->term() > term) {
     LOG_TOPIC(WARN, Logger::AGENCY) << "I have a higher term than RPC caller.";
     return false;
   }
 
-  // 2. Reply false if log doesn’t contain an entry at prevLogIndex
-  //    whose term matches prevLogTerm (§5.3)
+  // 2. Reply false if log does not contain an entry at prevLogIndex
+  //    whose term matches prevLogTerm ($5.3)
   if (!_state.find(prevIndex,prevTerm)) {
     LOG_TOPIC(WARN, Logger::AGENCY)
       << "Unable to find matching entry to previous entry (index,term) = ("
@@ -215,22 +210,21 @@ bool Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
 
   // 3. If an existing entry conflicts with a new one (same index
   //    but different terms), delete the existing entry and all that
-  //    follow it (§5.3)
+  //    follow it ($5.3)
   // 4. Append any new entries not already in the log
   if (queries->slice().length()) {
     LOG_TOPIC(INFO, Logger::AGENCY) << "Appending "<< queries->slice().length()
                                     << " entries to state machine.";
     /* bool success = */
     _state.log (queries, term, leaderId, prevIndex, prevTerm);
-//    _constituent.vote();
   } else { 
     // heart-beat
   }
   
   // appendEntries 5. If leaderCommit > commitIndex, set commitIndex =
   //min(leaderCommit, index of last new entry)
-  if (leaderCommitIndex > last_commit_index) {
-    _last_commit_index = (std::min)(leaderCommitIndex,last_commit_index);
+  if (leaderCommitIndex > lastCommitIndex) {
+    _lastCommitIndex = (std::min)(leaderCommitIndex,lastCommitIndex);
   }
 
   return true;
@@ -251,7 +245,7 @@ append_entries_t Agent::sendAppendEntriesRPC (id_t follower_id) {
   std::stringstream path;
   path << "/_api/agency_priv/appendEntries?term=" << t << "&leaderId="
        << id() << "&prevLogIndex=" << unconfirmed[0].index << "&prevLogTerm="
-       << unconfirmed[0].term << "&leaderCommit=" << _last_commit_index;
+       << unconfirmed[0].term << "&leaderCommit=" << _lastCommitIndex;
 
   // Headers
         std::unique_ptr<std::map<std::string, std::string>> headerFields =
@@ -278,7 +272,7 @@ append_entries_t Agent::sendAppendEntriesRPC (id_t follower_id) {
   }
 
   arangodb::ClusterComm::instance()->asyncRequest
-    ("1", 1, _config.end_points[follower_id],
+    ("1", 1, _config.endpoints[follower_id],
      arangodb::GeneralRequest::RequestType::POST,
      path.str(), std::make_shared<std::string>(builder.toJson()), headerFields,
      std::make_shared<AgentCallback>(this, follower_id, last),
@@ -302,25 +296,25 @@ bool Agent::load () {
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Loading persistent state.";
   if (!_state.loadCollections(vocbase, 
-                              _config.wait_for_sync)) {
+                              _config.waitForSync)) {
     LOG_TOPIC(INFO, Logger::AGENCY)
       << "Failed to load persistent state on statup.";
   }
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Reassembling spearhead and read stores.";
-  _spearhead.apply(_state.slices(_last_commit_index+1));
+  _spearhead.apply(_state.slices(_lastCommitIndex+1));
   reportIn(id(),_state.lastLog().index);
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Starting spearhead worker.";
   _spearhead.start(this);
-  _read_db.start(this);
+  _readDB.start(this);
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Starting constituent personality.";
   _constituent.start(vocbase);
 
-  if (_config.sanity_check) {
+  if (_config.supervision) {
     LOG_TOPIC(INFO, Logger::AGENCY) << "Starting cluster sanity facilities";
-    _sanity_check.start(this);
+    _supervision.start(this);
   }
   
   return true;
@@ -343,7 +337,7 @@ write_ret_t Agent::write (query_t const& query)  {
     if (!indices.empty()) {
       maxind = *std::max_element(indices.begin(), indices.end());
     }
-    _cv.signal();                                  // Wake up run
+    _appendCV.signal();                                  // Wake up run
 
     reportIn(id(),maxind);
     
@@ -358,7 +352,7 @@ write_ret_t Agent::write (query_t const& query)  {
 read_ret_t Agent::read (query_t const& query) const {
   if (_constituent.leading()) {     // Only working as leaer
     query_t result = std::make_shared<arangodb::velocypack::Builder>();
-    std::vector<bool> success = _read_db.read (query, result);
+    std::vector<bool> success = _readDB.read (query, result);
     return read_ret_t(true, _constituent.leaderID(), success, result);
   } else {                          // Else We redirect
     return read_ret_t(false, _constituent.leaderID());
@@ -368,14 +362,14 @@ read_ret_t Agent::read (query_t const& query) const {
 // Repeated append entries
 void Agent::run() {
 
-  CONDITION_LOCKER(guard, _cv);
+  CONDITION_LOCKER(guard, _appendCV);
   
   while (!this->isStopping() && size() > 1) { // need only to run in multi-host
 
     if (leading())
-      _cv.wait(500000); // Only if leading
+      _appendCV.wait(500000); // Only if leading
     else
-      _cv.wait();       // Just sit there doing nothing
+      _appendCV.wait();       // Just sit there doing nothing
 
     // Collect all unacknowledged
     for (id_t i = 0; i < size(); ++i) {
@@ -387,6 +381,8 @@ void Agent::run() {
 
 }
 
+
+
 // Orderly shutdown
 void Agent::beginShutdown() {
 
@@ -396,13 +392,13 @@ void Agent::beginShutdown() {
   // Stop constituent and key value stores
   _constituent.beginShutdown();
   _spearhead.beginShutdown();
-  _read_db.beginShutdown();
-  if (_config.sanity_check) {
-    _sanity_check.beginShutdown();
+  _readDB.beginShutdown();
+  if (_config.supervision) {
+    _supervision.beginShutdown();
   }
   
   // Wake up all waiting REST handler (waitFor)
-  CONDITION_LOCKER(guard, _cv);
+  CONDITION_LOCKER(guard, _appendCV);
   guard.broadcast();
 }
 
@@ -413,7 +409,7 @@ bool Agent::lead () {
   rebuildDBs();
 
   // Wake up run
-  _cv.signal();
+  _appendCV.signal();
   
   return true;
 }
@@ -422,7 +418,7 @@ bool Agent::lead () {
 bool Agent::rebuildDBs() {
   MUTEX_LOCKER(mutexLocker, _ioLock);
   _spearhead.apply(_state.slices());
-  _read_db.apply(_state.slices());
+  _readDB.apply(_state.slices());
   return true;
 }
 
@@ -438,7 +434,7 @@ Store const& Agent::spearhead () const {
 
 // Get readdb
 Store const& Agent::readDB () const {
-  return _read_db;
+  return _readDB;
 }
 
 }}

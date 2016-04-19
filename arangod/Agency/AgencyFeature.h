@@ -50,8 +50,9 @@ class AgencyFeature : virtual public application_features::ApplicationFeature {
   std::vector<std::string> _agencyEndpoints;  // agency adresses
   double _electionCallRateMultiplier;
   bool _notify;  // interval between retry to slaves
-  bool _sanityCheck;
+  bool _supervision;
   bool _waitForSync;
+  double _supervisionFrequency;
 
  public:
   consensus::Agent* agent() const { return _agent.get(); }
