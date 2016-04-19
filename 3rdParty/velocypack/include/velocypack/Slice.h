@@ -214,8 +214,7 @@ class Slice {
 
   // check if a slice is any number type
   bool isInteger() const throw() {
-    return isType(ValueType::Int) || isType(ValueType::UInt) ||
-           isType(ValueType::SmallInt);
+    return (isInt() || isUInt() || isSmallInt());
   }
 
   // check if slice is any Number-type object
@@ -228,10 +227,10 @@ class Slice {
 
   // return the value for a Bool object
   bool getBool() const {
-    if (type() != ValueType::Bool) {
+    if (!isBool()) {
       throw Exception(Exception::InvalidValueType, "Expecting type Bool");
     }
-    return (head() == 0x1a);  // 0x19 == false, 0x1a == true
+    return isTrue();
   }
 
   // return the value for a Bool object - this is an alias for getBool()
@@ -239,7 +238,7 @@ class Slice {
 
   // return the value for a Double object
   double getDouble() const {
-    if (type() != ValueType::Double) {
+    if (!isDouble()) {
       throw Exception(Exception::InvalidValueType, "Expecting type Double");
     }
     union {
@@ -264,7 +263,7 @@ class Slice {
   // - 0x08      : array with 4-byte index table entries
   // - 0x09      : array with 8-byte index table entries
   Slice at(ValueLength index) const {
-    if (!isType(ValueType::Array)) {
+    if (!isArray()) {
       throw Exception(Exception::InvalidValueType, "Expecting type Array");
     }
 
@@ -275,7 +274,7 @@ class Slice {
 
   // return the number of members for an Array or Object object
   ValueLength length() const {
-    if (type() != ValueType::Array && type() != ValueType::Object) {
+    if (!isArray() && !isObject()) {
       throw Exception(Exception::InvalidValueType,
                       "Expecting type Array or Object");
     }
@@ -326,7 +325,7 @@ class Slice {
   // - 0x12      : object with 8-byte index table entries, not sorted by
   // attribute name
   Slice keyAt(ValueLength index) const {
-    if (!isType(ValueType::Object)) {
+    if (!isObject()) {
       throw Exception(Exception::InvalidValueType, "Expecting type Object");
     }
 
@@ -334,7 +333,7 @@ class Slice {
   }
 
   Slice valueAt(ValueLength index) const {
-    if (!isType(ValueType::Object)) {
+    if (!isObject()) {
       throw Exception(Exception::InvalidValueType, "Expecting type Object");
     }
 
@@ -414,7 +413,7 @@ class Slice {
 
   // return the pointer to the data for an External object
   char const* getExternal() const {
-    if (type() != ValueType::External) {
+    if (!isExternal()) {
       throw Exception(Exception::InvalidValueType, "Expecting type External");
     }
     return extractValue<char const*>();
@@ -494,10 +493,9 @@ class Slice {
 
   // return the value for a UTCDate object
   int64_t getUTCDate() const {
-    if (type() != ValueType::UTCDate) {
+    if (!isUTCDate()) {
       throw Exception(Exception::InvalidValueType, "Expecting type UTCDate");
     }
-    assertType(ValueType::UTCDate);
     uint64_t v = readInteger<uint64_t>(_start + 1, sizeof(uint64_t));
     return toInt64(v);
   }
@@ -559,7 +557,7 @@ class Slice {
 
   // return the value for a Binary object
   uint8_t const* getBinary(ValueLength& length) const {
-    if (type() != ValueType::Binary) {
+    if (!isBinary()) {
       throw Exception(Exception::InvalidValueType, "Expecting type Binary");
     }
 
@@ -573,7 +571,7 @@ class Slice {
 
   // return the length of the Binary slice
   ValueLength getBinaryLength() const {
-    if (type() != ValueType::Binary) {
+    if (!isBinary()) {
       throw Exception(Exception::InvalidValueType, "Expecting type Binary");
     }
 
@@ -585,7 +583,7 @@ class Slice {
 
   // return a copy of the value for a Binary object
   std::vector<uint8_t> copyBinary() const {
-    if (type() != ValueType::Binary) {
+    if (!isBinary()) {
       throw Exception(Exception::InvalidValueType, "Expecting type Binary");
     }
 
