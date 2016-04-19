@@ -132,6 +132,7 @@ function computeStatisticsRaw (result, start, clusterId) {
       + "  return s",
     { start: start - 2 * STATISTICS_INTERVAL, clusterId: clusterId });
 
+  result.enabled = internal.enabledStatistics(); 
   result.times = [];
 
   for (let key in STAT_SERIES) {
