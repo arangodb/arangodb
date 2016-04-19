@@ -77,6 +77,9 @@ module.exports = function collectionStorage(cfg) {
       }
     },
     forClient(session) {
+      return session && session._key || null;
+    },
+    save(session) {
       if (!session) {
         return null;
       }
@@ -88,14 +91,18 @@ module.exports = function collectionStorage(cfg) {
       };
       if (!session._key) {
         const meta = collection.save(payload);
-        return meta._key;
+        session._key = meta._key;
+      } else {
+        collection.replace(session._key, payload);
       }
-      collection.replace(session._key, payload);
-      return session._key;
+      return session;
     },
-    clear(sid) {
+    clear(session) {
+      if (!session || !session._key) {
+        return false;
+      }
       try {
-        collection.remove(sid);
+        collection.remove(session);
       } catch (e) {
         if (e.isArangoError && e.errorNum === NOT_FOUND) {
           return false;
