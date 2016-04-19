@@ -12,15 +12,19 @@
     knownServers: [],
 
     events: {
-      "click .pure-table-body .pure-table-row": "navigateToNode"  
     },
 
     initialize: function (options) {
+
       if (window.App.isCluster) {
         this.dbServers = options.dbServers;
         this.coordinators = options.coordinators;
         this.updateServerTime();
         this.toRender = options.toRender;
+
+        if (this.toRender !== 'coordinator') {
+          this.events["click .pure-table-body .pure-table-row"] = "navigateToNode";
+        }
 
         //start polling with interval
         window.setInterval(function() {
