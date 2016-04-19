@@ -12,21 +12,23 @@
     knownServers: [],
 
     events: {
-      "click .pure-table-body .pure-table-row": "navigateToNode"  
     },
 
     initialize: function (options) {
-      var self = this;
 
       if (window.App.isCluster) {
         this.dbServers = options.dbServers;
         this.coordinators = options.coordinators;
         this.updateServerTime();
+        this.toRender = options.toRender;
+
+        if (this.toRender !== 'coordinator') {
+          this.events["click .pure-table-body .pure-table-row"] = "navigateToNode";
+        }
 
         //start polling with interval
         window.setInterval(function() {
-          if (window.location.hash === '#nodes') {
-
+          if (window.location.hash === '#cNodes' || window.location.hash === '#dNodes') {
 
             var callback = function(data) {
             };
@@ -42,7 +44,7 @@
     },
 
     render: function () {
-      this.$el.html(this.template.render({coords: []}));
+      window.arangoHelper.buildNodesSubNav(this.toRender);
 
       var callback = function() {
         this.continueRender();
@@ -57,9 +59,18 @@
     },
 
     continueRender: function() {
-      var coords = this.coordinators.toJSON();
+      var coords;
+
+      if (this.toRender === 'coordinator') {
+        coords = this.coordinators.toJSON();
+      }
+      else {
+        coords = this.dbServers.toJSON();
+      }
+
       this.$el.html(this.template.render({
-        coords: coords
+        coords: coords,
+        type: this.toRender
       }));
     },
 

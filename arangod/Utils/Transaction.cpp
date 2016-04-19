@@ -1190,6 +1190,16 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
 
+  // First see whether or not we have to do synchronous replication:
+  std::shared_ptr<std::vector<ServerID> const> followers;
+  bool doingSynchronousReplication = false;
+  if (ServerState::instance()->isDBServer()) {
+    // Now replicate the same operation on all followers:
+    auto const& followerInfo = document->followers();
+    followers = followerInfo->get();
+    doingSynchronousReplication = followers->size() > 0;
+  }
+
   VPackBuilder resultBuilder;
 
   auto workForOneDocument = [&](VPackSlice const value) -> int {
@@ -1204,7 +1214,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
       return res;
     }
 
-    if (options.silent) {
+    if (options.silent && !doingSynchronousReplication) {
       // no need to construct the result object
       return TRI_ERROR_NO_ERROR;
     }
@@ -1237,49 +1247,68 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
     res = workForOneDocument(value);
   }
 
-  if (ServerState::instance()->isDBServer()) {
+  if (doingSynchronousReplication) {
     // Now replicate the same operation on all followers:
-    auto const& followerInfo = document->followers();
-    std::shared_ptr<std::vector<ServerID> const> followers = followerInfo->get();
-    if (followers->size() > 0) {
-      auto cc = arangodb::ClusterComm::instance();
+    auto cc = arangodb::ClusterComm::instance();
 
-      std::string path
-          = "/_db/" +
-            arangodb::basics::StringUtils::urlEncode(_vocbase->_name) +
-            "/_api/document/" +
-            arangodb::basics::StringUtils::urlEncode(document->_info.name());
-      // FIXME: scan options and append the right ones
+    std::string path
+        = "/_db/" +
+          arangodb::basics::StringUtils::urlEncode(_vocbase->_name) +
+          "/_api/document/" +
+          arangodb::basics::StringUtils::urlEncode(document->_info.name())
+          + "?isRestore=true";
 
-      // FIXME: We might only want to send the successful tries to the
-      // replica, for now, we simply send the same body:
-      auto body = std::make_shared<std::string>();
-      *body = value.toJson();
+    VPackBuilder payload;
 
-      // Now prepare the requests:
-      std::vector<ClusterCommRequest> requests;
-      for (auto const& f : *followers) {
-        requests.emplace_back("server:" + f, 
-                              arangodb::GeneralRequest::RequestType::POST,
-                              path, body);
+    auto doOneDoc = [&](VPackSlice doc, VPackSlice result) {
+      VPackObjectBuilder guard(&payload);
+      TRI_SanitizeObject(doc, payload);
+      VPackSlice s = result.get(TRI_VOC_ATTRIBUTE_KEY);
+      payload.add(TRI_VOC_ATTRIBUTE_KEY, s);
+      s = result.get(TRI_VOC_ATTRIBUTE_REV);
+      payload.add(TRI_VOC_ATTRIBUTE_REV, s);
+    };
+
+    VPackSlice ourResult = resultBuilder.slice();
+    if (value.isArray()) {
+      VPackArrayBuilder guard(&payload);
+      VPackArrayIterator itValue(value);
+      VPackArrayIterator itResult(ourResult);
+      while (itValue.valid() && itResult.valid()) {
+        doOneDoc(itValue.value(), itResult.value());
+        itValue.next();
+        itResult.next();
       }
-      size_t nrDone = 0;
-      size_t nrGood = cc->performRequests(requests, 60.0, nrDone,
-                                          Logger::REPLICATION);
-      if (nrGood < followers->size()) {
-        // we drop all followers that were not successful:
-        for (size_t i = 0; i < followers->size(); ++i) {
-          if (!requests[i].done || 
-              requests[i].result.status != CL_COMM_RECEIVED ||
-              (requests[i].result.answer_code != 
-                   GeneralResponse::ResponseCode::ACCEPTED &&
-               requests[i].result.answer_code != 
-                   GeneralResponse::ResponseCode::CREATED)) {
-            followerInfo->remove(requests[i].result.serverID);
-            LOG_TOPIC(ERR, Logger::REPLICATION)
-                << "insertLocal: dropping follower "
-                << requests[i].result.serverID;
-          }
+    } else {
+      doOneDoc(value, ourResult);
+    }
+    auto body = std::make_shared<std::string>();
+    *body = payload.slice().toJson();
+
+    // Now prepare the requests:
+    std::vector<ClusterCommRequest> requests;
+    for (auto const& f : *followers) {
+      requests.emplace_back("server:" + f, 
+                            arangodb::GeneralRequest::RequestType::POST,
+                            path, body);
+    }
+    size_t nrDone = 0;
+    size_t nrGood = cc->performRequests(requests, 15.0, nrDone,
+                                        Logger::REPLICATION);
+    if (nrGood < followers->size()) {
+      // we drop all followers that were not successful:
+      for (size_t i = 0; i < followers->size(); ++i) {
+        if (!requests[i].done || 
+            requests[i].result.status != CL_COMM_RECEIVED ||
+            (requests[i].result.answer_code != 
+                 GeneralResponse::ResponseCode::ACCEPTED &&
+             requests[i].result.answer_code != 
+                 GeneralResponse::ResponseCode::CREATED)) {
+          auto const& followerInfo = document->followers();
+          followerInfo->remove((*followers)[i]);
+          LOG_TOPIC(ERR, Logger::REPLICATION)
+              << "insertLocal: dropping follower "
+              << (*followers)[i] << " for shard " << collectionName;
         }
       }
     }

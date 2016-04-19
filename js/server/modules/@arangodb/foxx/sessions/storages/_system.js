@@ -68,6 +68,9 @@ module.exports = function systemStorage(cfg) {
       }
     },
     forClient(session) {
+      return session && session._key || null;
+    },
+    save(session) {
       if (!session) {
         return null;
       }
@@ -85,6 +88,7 @@ module.exports = function systemStorage(cfg) {
       if (isNew) {
         const meta = db._sessions.save(payload);
         sid = meta._key;
+        session._key = sid;
       } else {
         db._sessions.replace(sid, payload);
       }
@@ -96,7 +100,7 @@ module.exports = function systemStorage(cfg) {
           internal.accessSid(sid);
         }
       }
-      return sid;
+      return session;
     },
     setUser(session, user) {
       if (user) {
@@ -113,17 +117,20 @@ module.exports = function systemStorage(cfg) {
         }
       }
     },
-    clear(sid) {
+    clear(session) {
+      if (!session || !session._key) {
+        return false;
+      }
       try {
-        db._sessions.remove(sid);
+        db._sessions.remove(session);
       } catch (e) {
         if (e.isArangoError && e.errorNum === NOT_FOUND) {
-          internal.clearSid(sid);
+          internal.clearSid(session._key);
           return false;
         }
         throw e;
       }
-      internal.clearSid(sid);
+      internal.clearSid(session._key);
       return true;
     },
     new() {

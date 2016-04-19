@@ -67,10 +67,8 @@ router.get('/whoAmI', function(req, res) {
 
 
 router.post('/logout', function (req, res) {
-  if (req.session) {
-    sessions.clear(req.session._key);
-    delete req.session;
-  }
+  sessions.clear(req.session);
+  delete req.session;
   res.json({success: true});
 })
 .summary('Log out')
@@ -95,6 +93,7 @@ router.post('/login', function (req, res) {
   }
 
   sessions.setUser(req.session, doc);
+  sessions.save(req.session);
   const user = doc.user;
   res.json({user});
 })
@@ -107,16 +106,6 @@ router.post('/login', function (req, res) {
 .description(dd`
   Authenticates the user for the active session with a username and password.
   Creates a new session if none exists.
-`);
-
-
-router.get('/unauthorized', function(req, res) {
-  res.throw('unauthorized');
-})
-.error('unauthorized')
-.summary('Unauthorized')
-.description(dd`
-  Responds with a HTTP 401 response.
 `);
 
 

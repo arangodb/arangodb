@@ -27,8 +27,7 @@
       "click #databaseSearchSubmit" : "search",
       "click #databaseToggle"       : "toggleSettingsDropdown",
       "click .css-label"            : "checkBoxes",
-      "click #dbSortDesc"           : "sorting",
-      "click .tile"                 : "switchDatabase"
+      "click #dbSortDesc"           : "sorting"
     },
 
     sorting: function() {

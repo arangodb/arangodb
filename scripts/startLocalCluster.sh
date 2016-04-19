@@ -49,6 +49,7 @@ build/bin/arangod -c etc/relative/arangod.conf \
   --server.disable-statistics true \
   --server.foxx-queues false \
   --server.disable-authentication true \
+  --server.threads 16 \
   --javascript.app-path ./js/apps \
   --javascript.startup-directory ./js \
   > cluster/4001.stdout 2>&1 &

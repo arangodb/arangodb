@@ -314,6 +314,7 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
             return nullptr;
           }
           this->close();  // this sets the state to IN_CONNECT for a retry
+          usleep(5000);
           break;
         }
 

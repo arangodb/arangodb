@@ -183,12 +183,13 @@ void ClusterCommRestCallback(std::string& coordinator,
 ////////////////////////////////////////////////////////////////////////////////
 
 struct ClusterCommRequest {
-  std::string                        destination;
-  GeneralRequest::RequestType        requestType;
-  std::string                        path;
-  std::shared_ptr<std::string const> body;
-  ClusterCommResult                  result;
-  bool                               done;
+  std::string                                         destination;
+  GeneralRequest::RequestType                         requestType;
+  std::string                                         path;
+  std::shared_ptr<std::string const>                  body;
+  std::unique_ptr<std::map<std::string, std::string>> headerFields;
+  ClusterCommResult                                   result;
+  bool                                                done;
 
   ClusterCommRequest() : done(false) {
   }
@@ -201,6 +202,9 @@ struct ClusterCommRequest {
   {
   }
 
+  void setHeaders(std::unique_ptr<std::map<std::string, std::string>>& headers) {
+    headerFields = std::move(headers);
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -85,6 +85,9 @@ class Slots {
   ~Slots();
 
  public:
+  /// @brief sets a shutdown flag, disabling the request for new logfiles
+  void shutdown();
+
   /// @brief get the statistics of the slots
   void statistics(Slot::TickType&, Slot::TickType&, Slot::TickType&, uint64_t&);
 
@@ -186,6 +189,9 @@ class Slots {
   
   /// @brief last written collection id (in prologue marker)
   TRI_voc_cid_t _lastCollectionId;
+
+  /// @brief shutdown flag, set by LogfileManager on shutdown
+  bool _shutdown;
 };
 }
 }

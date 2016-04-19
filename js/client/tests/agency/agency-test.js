@@ -75,8 +75,8 @@ function agencyTestSuite () {
   }*/
 
   function readAndCheck(list) {
-      var res = readAgency(list);
-      require ("internal").print(list,res);
+    var res = readAgency(list);
+    //  require ("internal").print(list,res);
     assertEqual(res.statusCode, 200);
     return res.bodyParsed;
   }
@@ -286,9 +286,17 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["version"]]), [{version:-1}]);
       writeAndCheck([[{"version":{"op":"decrement"}}]]); // int before
       assertEqual(readAndCheck([["version"]]), [{version:-2}]);
+    },
+
+    testOpInStrangePlaces : function () {
+      writeAndCheck([[{"/op":12}]]);
+      assertEqual(readAndCheck([["/op"]]), [{op:12}]);
+      writeAndCheck([[{"/op":{op:"delete"}}]]);
+      writeAndCheck([[{"/op/a/b/c": {"op":"set", "new": {op:13}}}]]);
+      assertEqual(readAndCheck([["/op/a/b/c"]], [{op:{a:{b:{c:{op:13}}}}}]));
+      writeAndCheck([[{"/op/a/b/d": {"op":"set", "new": {ttl:13}}}]]);
+      assertEqual(readAndCheck([["/op/a/b/c"]], [{op:{a:{b:{d:{ttl:14}}}}}]));
     }
-
-
   };
 }
 
