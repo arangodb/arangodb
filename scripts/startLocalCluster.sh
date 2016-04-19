@@ -44,11 +44,13 @@ build/bin/arangod -c etc/relative/arangod.conf \
   --agency.wait-for-sync false \
   --database.directory cluster/data4001 \
   --agency.id 0 \
+  --javascript.v8-contexts 1 \
   --log.file cluster/4001.log \
   --log.requests-file cluster/4001.req \
   --server.disable-statistics true \
   --server.foxx-queues false \
   --server.disable-authentication true \
+  --server.threads 16 \
   --javascript.app-path ./js/apps \
   --javascript.startup-directory ./js \
   > cluster/4001.stdout 2>&1 &
@@ -247,12 +249,21 @@ if [ -n "$SECONDARIES" ]; then
 fi
 
 echo Bootstrapping DBServers...
-curl -s -X POST "http://127.0.0.1:8530/_admin/cluster/bootstrapDbServers" \
+curl -s -f -X POST "http://127.0.0.1:8530/_admin/cluster/bootstrapDbServers" \
      -d '{"isRelaunch":false}' >> cluster/DBServersUpgrade.log 2>&1
+if [ "$?" != 0 ] ; then
+  echo "Bootstrapping DBServers failed"
+  exit 1;
+fi
+
 
 echo Running DB upgrade on cluster...
-curl -s -X POST "http://127.0.0.1:8530/_admin/cluster/upgradeClusterDatabase" \
+curl -s -f -X POST "http://127.0.0.1:8530/_admin/cluster/upgradeClusterDatabase" \
      -d '{"isRelaunch":false}' >> cluster/DBUpgrade.log 2>&1
+if [ "$?" != 0 ] ; then
+  echo "DB upgrade on cluster failed"
+  exit 1;
+fi
 
 echo Bootstrapping Coordinators...
 PIDS=""

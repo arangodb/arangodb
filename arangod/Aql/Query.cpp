@@ -533,6 +533,10 @@ QueryResult Query::execute(QueryRegistry* registry) {
       if (cacheEntry != nullptr) {
         // got a result from the query cache
         QueryResult res(TRI_ERROR_NO_ERROR);
+        // we don't have yet a transaction when we're here, so let's create
+        // a mimimal context to build the result
+        res.context = std::make_shared<StandaloneTransactionContext>(_vocbase);
+
         res.warnings = warningsToVelocyPack();
         TRI_ASSERT(cacheEntry->_queryResult != nullptr);
         res.result = cacheEntry->_queryResult;
@@ -687,13 +691,13 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
       arangodb::aql::QueryCacheResultEntryGuard guard(cacheEntry);
 
       if (cacheEntry != nullptr) {
-        // we don't have yet a transaction when we're here, so let's create
-        // a mimimal context to build the result
-        auto transactionContext = createTransactionContext();
         // got a result from the query cache
         QueryResultV8 res(TRI_ERROR_NO_ERROR);
+        // we don't have yet a transaction when we're here, so let's create
+        // a mimimal context to build the result
+        res.context = std::make_shared<StandaloneTransactionContext>(_vocbase);
 
-        v8::Handle<v8::Value> values = TRI_VPackToV8(isolate, cacheEntry->_queryResult->slice(), transactionContext->getVPackOptions());
+        v8::Handle<v8::Value> values = TRI_VPackToV8(isolate, cacheEntry->_queryResult->slice(), res.context->getVPackOptions());
         TRI_ASSERT(values->IsArray());
         res.result = v8::Handle<v8::Array>::Cast(values); 
         res.cached = true;

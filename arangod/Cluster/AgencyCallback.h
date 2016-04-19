@@ -21,7 +21,8 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#ifndef ARANGOD_CLUSTER_AGENCY_CALLBACK_H
+#define ARANGOD_CLUSTER_AGENCY_CALLBACK_H 1
 
 #include <functional>
 #include <memory>
@@ -66,3 +67,6 @@ private:
 };
 
 }
+
+
+#endif
