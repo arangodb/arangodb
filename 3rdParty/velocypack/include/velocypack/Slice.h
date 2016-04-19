@@ -418,6 +418,15 @@ class Slice {
     }
     return extractValue<char const*>();
   }
+  
+  // returns the Slice managed by an External or the Slice itself if it's not
+  // an External
+  Slice resolveExternal() const {
+    if (isExternal()) {
+      return Slice(extractValue<char const*>());
+    }
+    return *this;
+  }
 
   // translates an integer key into a string
   Slice translate() const;

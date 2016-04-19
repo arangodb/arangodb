@@ -47,9 +47,12 @@ function ahuacatlFailureSuite () {
   var e;
   var count = 5000;
         
-  var assertFailingQuery = function (query) {
+  var assertFailingQuery = function (query, rulesToExclude) {
+    if (!rulesToExclude) {
+      rulesToExclude = [];
+    }
     try {
-      AQL_EXECUTE(query);
+      AQL_EXECUTE(query, null, { optimizer: { rules: rulesToExclude } });
       fail();
     }
     catch (err) {
@@ -317,7 +320,7 @@ function ahuacatlFailureSuite () {
 
     testCalculationBlock1 : function () {
       internal.debugSetFailAt("CalculationBlock::fillBlockWithReference");
-      assertFailingQuery("FOR i IN " + c.name() + " LET v = i RETURN v");
+      assertFailingQuery("FOR i IN " + c.name() + " LET v = i RETURN v", [ "-all" ]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -335,7 +338,7 @@ function ahuacatlFailureSuite () {
     
     testEnumerateListBlock1 : function () {
       internal.debugSetFailAt("EnumerateListBlock::getSome");
-      assertFailingQuery("LET values = (FOR i IN " + c.name() + " RETURN i) FOR x IN values RETURN x");
+      assertFailingQuery("LET values = (FOR i IN " + c.name() + " RETURN i) FOR x IN values RETURN x", [ "-all" ]);
       assertFailingQuery("FOR i IN 1..10000 RETURN i");
     },
 
@@ -345,7 +348,7 @@ function ahuacatlFailureSuite () {
 
     testEnumerateListBlock2 : function () {
       internal.debugSetFailAt("EnumerateListBlock::getAqlValue");
-      assertFailingQuery("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ 1, 2, 3, 4 ] RETURN q)) RETURN LENGTH(quarters)");
+      assertFailingQuery("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ 1, 2, 3, 4 ] RETURN q)) RETURN LENGTH(quarters)", [ "-all" ]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -354,9 +357,9 @@ function ahuacatlFailureSuite () {
 
     testSubqueryBlock1 : function () {
       internal.debugSetFailAt("SubqueryBlock::getSome");
-      assertFailingQuery("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ 1, 2, 3, 4 ] RETURN q)) RETURN LENGTH(quarters)");
-      assertFailingQuery("LET values = (FOR i IN " + c.name() + " RETURN i) FOR x IN values RETURN x");
-      assertFailingQuery("LET values = (FOR i IN 1..10000 RETURN i) FOR x IN values RETURN x");
+      assertFailingQuery("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ 1, 2, 3, 4 ] RETURN q)) RETURN LENGTH(quarters)", [ "-all" ]);
+      assertFailingQuery("LET values = (FOR i IN " + c.name() + " RETURN i) FOR x IN values RETURN x", [ "-all" ]);
+      assertFailingQuery("LET values = (FOR i IN 1..10000 RETURN i) FOR x IN values RETURN x", [ "-all" ]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -365,8 +368,8 @@ function ahuacatlFailureSuite () {
 
     testSubqueryBlock2 : function () {
       internal.debugSetFailAt("SubqueryBlock::executeSubquery");
-      assertFailingQuery("LET values = (FOR i IN " + c.name() + " RETURN i) FOR x IN values RETURN x");
-      assertFailingQuery("LET values = (FOR i IN 1..10000 RETURN i) FOR x IN values RETURN x");
+      assertFailingQuery("LET values = (FOR i IN " + c.name() + " RETURN i) FOR x IN values RETURN x", [ "-all" ]);
+      assertFailingQuery("LET values = (FOR i IN 1..10000 RETURN i) FOR x IN values RETURN x", [ "-all" ]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
