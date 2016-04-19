@@ -173,11 +173,11 @@ protected:
   Buffer<uint8_t> _value;              /**< @brief my value */
 
   /// @brief Table of expiries in tree (only used in root node)
-  std::multimap<TimePoint, std::shared_ptr<Node>> _time_table;
+  std::multimap<TimePoint, std::shared_ptr<Node>> _timeTable;
 
   /// @brief Table of observers in tree (only used in root node)
-  std::multimap <std::string,std::string> _observer_table;
-  std::multimap <std::string,std::string> _observed_table;
+  std::multimap <std::string,std::string> _observerTable;
+  std::multimap <std::string,std::string> _observedTable;
   
 };
 
