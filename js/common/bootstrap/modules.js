@@ -104,7 +104,7 @@ function createRequire(module) {
 
   require.cache = Module._cache;
 
-  require.aliases = {};
+  require.aliases = new Map();
 
   return require;
 }
@@ -423,7 +423,7 @@ function isGlobalModule(filename) {
 //    object.
 Module._load = function(request, parent, isMain) {
   request = request.replace(/^org\/arangodb/, '@arangodb');
-  request = (parent && parent.require.aliases[request]) || request;
+  request = (parent && parent.require.aliases.get(request)) || request;
 
   var filename = request;
   var dbModule = false;
@@ -548,7 +548,7 @@ Module.prototype.load = function(filename) {
         errorNum: internal.errors.ERROR_MODULE_FAILURE.code,
         errorMessage: internal.errors.ERROR_MODULE_FAILURE.message
         + '\nFile: ' + filename
-        + '\nCause: ' + e
+        + '\nCause: ' + e.stack
       });
       error.cause = e;
       throw error;
