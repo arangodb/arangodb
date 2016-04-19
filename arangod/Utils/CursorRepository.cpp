@@ -91,17 +91,15 @@ CursorRepository::~CursorRepository() {
 /// the cursor will take ownership of both json and extra
 ////////////////////////////////////////////////////////////////////////////////
 
-JsonCursor* CursorRepository::createFromVelocyPack(
-    std::shared_ptr<VPackBuilder> json, size_t batchSize,
-    std::shared_ptr<VPackBuilder> extra, double ttl, bool count, bool cached) {
-
-  TRI_ASSERT(json != nullptr);
+VelocyPackCursor* CursorRepository::createFromQueryResult(
+    aql::QueryResult&& result, size_t batchSize, std::shared_ptr<VPackBuilder> extra,
+    double ttl, bool count) {
+  TRI_ASSERT(result.result != nullptr);
 
   CursorId const id = TRI_NewTickServer();
-  arangodb::JsonCursor* cursor = nullptr;
 
-  cursor = new arangodb::JsonCursor(_vocbase, id, json, batchSize, extra, ttl,
-                                    count, cached);
+  arangodb::VelocyPackCursor* cursor = new arangodb::VelocyPackCursor(
+      _vocbase, id, std::move(result), batchSize, extra, ttl, count);
   cursor->use();
 
   try {

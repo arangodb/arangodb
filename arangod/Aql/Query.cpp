@@ -541,10 +541,10 @@ QueryResult Query::execute(QueryRegistry* registry) {
       }
     }
 
-    QueryResult res = prepare(registry);
+    QueryResult result = prepare(registry);
 
-    if (res.code != TRI_ERROR_NO_ERROR) {
-      return res;
+    if (result.code != TRI_ERROR_NO_ERROR) {
+      return result;
     }
 
     if (_queryString == nullptr) {
@@ -631,11 +631,12 @@ QueryResult Query::execute(QueryRegistry* registry) {
     auto stats = std::make_shared<VPackBuilder>();
     _engine->_stats.toVelocyPack(*(stats.get()));
 
+    result.context = _trx->transactionContext();
+
     cleanupPlanAndEngine(TRI_ERROR_NO_ERROR);
 
     enterState(FINALIZATION);
 
-    QueryResult result(TRI_ERROR_NO_ERROR);
     result.warnings = warningsToVelocyPack();
     result.result = resultBuilder;
     result.stats = stats;
@@ -700,10 +701,10 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
       }
     }
 
-    QueryResultV8 res = prepare(registry);
+    QueryResultV8 result = prepare(registry);
 
-    if (res.code != TRI_ERROR_NO_ERROR) {
-      return res;
+    if (result.code != TRI_ERROR_NO_ERROR) {
+      return result;
     }
 
     work.reset(new AqlWorkStack(_vocbase, _id, _queryString, _queryLength));
@@ -715,7 +716,6 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
       useQueryCache = false;
     }
 
-    QueryResultV8 result(TRI_ERROR_NO_ERROR);
     result.result = v8::Array::New(isolate);
 
     // this is the RegisterId our results can be found in
@@ -780,6 +780,8 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
     _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
     auto stats = std::make_shared<VPackBuilder>();
     _engine->_stats.toVelocyPack(*(stats.get()));
+
+    result.context = _trx->transactionContext();
 
     cleanupPlanAndEngine(TRI_ERROR_NO_ERROR);
 

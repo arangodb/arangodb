@@ -36,6 +36,10 @@ namespace velocypack {
 class Builder;
 }
 
+namespace aql {
+struct QueryResult;
+}
+
 class CollectionExport;
 
 class CursorRepository {
@@ -60,9 +64,9 @@ class CursorRepository {
   /// the cursor will retain a shared pointer of both json and extra
   //////////////////////////////////////////////////////////////////////////////
 
-  JsonCursor* createFromVelocyPack(
-      std::shared_ptr<arangodb::velocypack::Builder>, size_t,
-      std::shared_ptr<arangodb::velocypack::Builder>, double, bool, bool);
+  VelocyPackCursor* createFromQueryResult(
+      aql::QueryResult&&, size_t, std::shared_ptr<arangodb::velocypack::Builder>,
+      double, bool);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a cursor and stores it in the registry

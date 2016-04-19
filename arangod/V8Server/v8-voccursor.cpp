@@ -25,6 +25,7 @@
 #include "Basics/conversions.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
+#include "Utils/StandaloneTransactionContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/v8-voccursor.h"
@@ -88,9 +89,14 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto cursors =
       static_cast<arangodb::CursorRepository*>(vocbase->_cursorRepository);
 
+  arangodb::aql::QueryResult result(TRI_ERROR_NO_ERROR);
+  result.result = builder;
+  result.cached = false;
+  result.context = std::make_shared<arangodb::StandaloneTransactionContext>(vocbase);
+
   try {
-    arangodb::Cursor* cursor = cursors->createFromVelocyPack(
-        builder, static_cast<size_t>(batchSize), nullptr, ttl, true, false);
+    arangodb::Cursor* cursor = cursors->createFromQueryResult(
+        std::move(result), static_cast<size_t>(batchSize), nullptr, ttl, true);
 
     TRI_ASSERT(cursor != nullptr);
     cursors->release(cursor);
