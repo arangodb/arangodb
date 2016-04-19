@@ -185,7 +185,7 @@ describe ArangoDB do
           ArangoDB.log_get("admin-interface-get", cmd, :format => :plain, :no_follow => true)
         rescue HTTParty::RedirectionTooDeep => e
           # check response code
-          e.response.code.should eq("301")
+          e.response.code.should eq("307")
           e.response.header['location'].should =~ /\/_admin\/aardvark\/index.html$/
         end
       end

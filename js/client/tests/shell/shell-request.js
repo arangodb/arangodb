@@ -235,7 +235,7 @@ function RequestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBadJson: function () {
-      var url = buildUrl('/_admin/aardvark/standalone.html', false);
+      var url = buildUrl('/_admin/aardvark/index.html', false);
       var res = request.get(url, {json: true, timeout: 300});
       expect(res).to.be.a(request.Response);
       expect(res.json).to.be(undefined);

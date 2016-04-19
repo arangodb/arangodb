@@ -18,7 +18,7 @@
     initialize: function () {
       //also server online check
       var self = this;
-      window.setInterval(function(){
+      window.setInterval(function() {
         self.getVersion();
       }, 15000);
       self.getVersion();
@@ -32,6 +32,8 @@
     template: templateEngine.createTemplate("footerView.ejs"),
 
     showServerStatus: function(isOnline) {
+      var self = this;
+
       if (!window.App.isCluster) {
         if (isOnline === true) {
           $('#healthStatus').removeClass('negative');
@@ -45,6 +47,55 @@
           $('.health-state').html('OFFLINE');
           $('.health-icon').html('<i class="fa fa-exclamation-circle"></i>');
         }
+      }
+      else {
+        self.collection.fetch({
+          success: function() {
+            self.renderClusterState(true);
+          },
+          error: function() {
+            self.renderClusterState(false);
+          }
+        });
+      }
+    },
+
+    renderClusterState: function(connection) {
+      var ok = 0, error = 0;
+
+      if (connection) {
+        this.collection.each(function(value) {
+          if (value.toJSON().status === 'ok') {
+            ok++;
+          }
+          else {
+            error++;
+          }
+        });
+
+        if (error > 0) {
+          $('#healthStatus').removeClass('positive');
+          $('#healthStatus').addClass('negative');
+          if (error === 1) {
+            $('.health-state').html(error + ' NODE ERROR');
+          }
+          else {
+            $('.health-state').html(error + ' NODES ERROR');
+          }
+          $('.health-icon').html('<i class="fa fa-exclamation-circle"></i>');
+        }
+        else {
+          $('#healthStatus').removeClass('negative');
+          $('#healthStatus').addClass('positive');
+          $('.health-state').html('NODES OK');
+          $('.health-icon').html('<i class="fa fa-check-circle"></i>');
+        }
+      }
+      else {
+        $('#healthStatus').removeClass('positive');
+        $('#healthStatus').addClass('negative');
+        $('.health-state').html(window.location.host + ' OFFLINE');
+        $('.health-icon').html('<i class="fa fa-exclamation-circle"></i>');
       }
     },
 

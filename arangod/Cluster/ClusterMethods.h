@@ -33,8 +33,6 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-struct TRI_json_t;
-
 namespace arangodb {
 namespace velocypack {
 template <typename T>
@@ -48,13 +46,6 @@ class TraverserExpression;
 }
 
 struct OperationOptions;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief merge headers of a DB server response into the current response
-////////////////////////////////////////////////////////////////////////////////
-
-void mergeResponseHeaders(arangodb::GeneralResponse* response,
-                          std::map<std::string, std::string> const& headers);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a copy of all HTTP headers to forward
@@ -113,27 +104,16 @@ int createDocumentOnCoordinator(
     std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a document in a coordinator
-////////////////////////////////////////////////////////////////////////////////
-
-int createDocumentOnCoordinator(
-    std::string const& dbname, std::string const& collname,
-    OperationOptions const& options, std::unique_ptr<TRI_json_t>& json,
-    std::map<std::string, std::string> const& headers,
-    arangodb::GeneralResponse::ResponseCode& responseCode,
-    std::map<std::string, std::string>& resultHeaders, std::string& resultBody);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
 int deleteDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
-    std::string const& key, TRI_voc_rid_t const rev,
-    OperationOptions const& options,
+    VPackSlice const slice, OperationOptions const& options,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
     arangodb::GeneralResponse::ResponseCode& responseCode,
-    std::map<std::string, std::string>& resultHeaders, std::string& resultBody);
+    std::unordered_map<int, size_t>& errorCounters,
+    std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a document in a coordinator
@@ -141,11 +121,11 @@ int deleteDocumentOnCoordinator(
 
 int getDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
-    std::string const& key, TRI_voc_rid_t const rev,
+    VPackSlice const slice, OperationOptions const& options,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
-    bool generateDocument,
     arangodb::GeneralResponse::ResponseCode& responseCode,
-    std::map<std::string, std::string>& resultHeaders, std::string& resultBody);
+    std::unordered_map<int, size_t>& errorCounter,
+    std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a list of filtered documents in a coordinator
@@ -162,28 +142,8 @@ int getFilteredDocumentsOnCoordinator(
     std::unordered_map<std::string, std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>& result);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get all documents in a coordinator
-////////////////////////////////////////////////////////////////////////////////
-
-int getAllDocumentsOnCoordinator(
-    std::string const& dbname, std::string const& collname,
-    std::string const& returnType,
-    arangodb::GeneralResponse::ResponseCode& responseCode,
-    std::string& contentType, std::string& resultBody);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get all edges in a coordinator
-////////////////////////////////////////////////////////////////////////////////
-
-int getAllEdgesOnCoordinator(
-    std::string const& dbname, std::string const& collname,
-    std::string const& vertex, TRI_edge_direction_e const& direction,
-    arangodb::GeneralResponse::ResponseCode& responseCode,
-    std::string& contentType, std::string& resultBody);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get a filtered set of edges on Coordinator.
-///        Also returns the result in Json
+///        Also returns the result in VelcoyPack
 ////////////////////////////////////////////////////////////////////////////////
 
 int getFilteredEdgesOnCoordinator(
@@ -191,7 +151,7 @@ int getFilteredEdgesOnCoordinator(
     std::string const& vertex, TRI_edge_direction_e const& direction,
     std::vector<traverser::TraverserExpression*> const& expressions,
     arangodb::GeneralResponse::ResponseCode& responseCode,
-    std::string& contentType, arangodb::basics::Json& resultJson);
+    std::string& contentType, arangodb::velocypack::Builder& result);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief modify a document in a coordinator
@@ -199,25 +159,12 @@ int getFilteredEdgesOnCoordinator(
 
 int modifyDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
-    std::string const& key, TRI_voc_rid_t const rev,
-    OperationOptions const& options, bool isPatch,
     arangodb::velocypack::Slice const& slice,
-    std::unique_ptr<std::map<std::string, std::string>>& headers,
-    arangodb::GeneralResponse::ResponseCode& responseCode,
-    std::map<std::string, std::string>& resultHeaders, std::string& resultBody);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief modify a document in a coordinator
-////////////////////////////////////////////////////////////////////////////////
-
-int modifyDocumentOnCoordinator(
-    std::string const& dbname, std::string const& collname,
-    std::string const& key, TRI_voc_rid_t const rev,
     OperationOptions const& options, bool isPatch,
-    std::unique_ptr<TRI_json_t>& json,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
     arangodb::GeneralResponse::ResponseCode& responseCode,
-    std::map<std::string, std::string>& resultHeaders, std::string& resultBody);
+    std::unordered_map<int, size_t>& errorCounter,
+    std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief truncate a cluster collection on a coordinator

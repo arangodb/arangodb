@@ -35,6 +35,7 @@
         window.setInterval(function() {
           if (window.location.hash === '#cluster'
               || window.location.hash === '#') {
+
             var callback = function(data) {
               self.rerenderValues(data);
               self.rerenderGraphs(data);
@@ -140,17 +141,36 @@
       var callback = function(data) {
         self.rerenderValues(data);
         self.rerenderGraphs(data);
-      };
+      }.bind(this);
 
       // now fetch the statistics history
       self.getCoordStatHistory(callback);
-      
-      this.updateValues();
+
+      //special case nodes
+      self.coordinators.fetch({
+        success: function() {
+          self.renderNode(true);
+        },
+        error: function() {
+          self.renderNode(false);
+        }
+      });
     },
     
     rerenderValues: function(data) {
+      var self = this;
 
-      // TODO cache value state like graph data
+      //TODO cache value state like graph data
+
+      //NODE
+      this.coordinators.fetch({
+        success: function() {
+          self.renderNode(true);
+        },
+        error: function() {
+          self.renderNode(false);
+        }
+      });
 
       //Connections
       this.renderValue('#clusterConnections', Math.round(data.clientConnectionsCurrent));
@@ -160,12 +180,9 @@
       var totalMem = data.physicalMemory;
       var usedMem = data.residentSizeCurrent;
       this.renderValue('#clusterRam', [usedMem, totalMem]);
-
-      //NODES
-      this.renderValue('#clusterNodes', this.statCollectCoord.size());
     },
 
-    renderValue: function(id, value) {
+    renderValue: function(id, value, error) {
       if (typeof value === 'number') {
         $(id).html(value);
       }
@@ -175,11 +192,46 @@
         var percent = 1 / (b/a) * 100;
         $(id).html(percent.toFixed(1) + ' %');
       }
+      else if (typeof value === 'string') {
+        $(id).html(value);
+      }
+
+      if (error) {
+        $(id).addClass('negative');
+        $(id).removeClass('positive');
+      }
+      else {
+        $(id).addClass('positive');
+        $(id).removeClass('negative');
+      }
+
     },
 
-    updateValues: function() {
-      this.renderValue('#clusterNodes', this.statCollectCoord.size());
-      this.renderValue('#clusterRam', [1024, 4096]);
+    renderNode: function(connection) {
+      var ok = 0, error = 0;
+
+      if (connection) {
+        this.coordinators.each(function(value) {
+          if (value.toJSON().status === 'ok') {
+            ok++;
+          }
+          else {
+            error++;
+          }
+        });
+        
+        if (error > 0) {
+          var total = error + ok;
+          this.renderValue('#clusterNodes', ok + '/' + total, true);
+        }
+        else {
+          this.renderValue('#clusterNodes', ok);
+        }
+      }
+      else {
+        this.renderValue('#clusterNodes', 'OFFLINE', true);
+      }
+
     },
 
     initValues: function() {
@@ -445,7 +497,6 @@
       };
 
       var mergeHistory = function(data) {
-
 
         var onetime = ['times'];
         var values = [

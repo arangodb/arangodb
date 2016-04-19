@@ -74,6 +74,8 @@ add_executable(${BIN_ARANGOD}
   Agency/AgentCallback.cpp
   Agency/Constituent.cpp
   Agency/SanityCheck.cpp
+  Agency/RestAgencyHandler.cpp
+  Agency/RestAgencyPrivHandler.cpp
   Agency/State.cpp
   Agency/Store.cpp
   Agency/StoreCallback.cpp
@@ -188,8 +190,6 @@ add_executable(${BIN_ARANGOD}
   Replication/InitialSyncer.cpp
   Replication/Syncer.cpp
   RestHandler/RestAdminLogHandler.cpp
-  RestHandler/RestAgencyHandler.cpp
-  RestHandler/RestAgencyPrivHandler.cpp
   RestHandler/RestBaseHandler.cpp
   RestHandler/RestBatchHandler.cpp
   RestHandler/RestCursorHandler.cpp
@@ -236,6 +236,7 @@ add_executable(${BIN_ARANGOD}
   Scheduler/TimerTask.cpp
   Statistics/StatisticsFeature.cpp
   Statistics/statistics.cpp
+  Utils/AqlTransaction.cpp
   Utils/CollectionExport.cpp
   Utils/CollectionKeys.cpp
   Utils/CollectionKeysRepository.cpp

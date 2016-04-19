@@ -37,7 +37,14 @@
     background: $c-spotlight-bg;
     border-radius: 3px;
     color: $c-white;
+    height: 300px;
+    overflow: auto;
     width: 100%;
+
+    .tt-suggestion:hover {
+      background-color: $c-bluegrey-dark;
+      cursor: pointer;
+    }
 
     .header-type {
       background: $c-spotlight-header-bg;

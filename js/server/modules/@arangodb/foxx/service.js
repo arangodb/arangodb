@@ -1,13 +1,8 @@
 'use strict';
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief FoxxService and FoxxContext types
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2015 triagens GmbH, Cologne, Germany
+/// Copyright 2015-2016 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,156 +16,36 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Alan Plum
-/// @author Copyright 2015, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
+const dd = require('dedent');
+const InternalServerError = require('http-errors').InternalServerError;
 const internal = require('internal');
 const assert = require('assert');
 const Module = require('module');
+const semver = require('semver');
 const path = require('path');
 const fs = require('fs');
+const defaultTypes = require('@arangodb/foxx/types');
+const FoxxContext = require('@arangodb/foxx/context');
 const parameterTypes = require('@arangodb/foxx/manager-utils').parameterTypes;
 const getReadableName = require('@arangodb/foxx/manager-utils').getReadableName;
+const Router = require('@arangodb/foxx/router/router');
+const Tree = require('@arangodb/foxx/router/tree');
+
+const $_MODULE_ROOT = Symbol.for('@arangodb/module.root');
+const $_MODULE_CONTEXT = Symbol.for('@arangodb/module.context');
 
 const APP_PATH = internal.appPath ? path.resolve(internal.appPath) : undefined;
 const STARTUP_PATH = internal.startupPath ? path.resolve(internal.startupPath) : undefined;
 const DEV_APP_PATH = internal.devAppPath ? path.resolve(internal.devAppPath) : undefined;
 
-class AppContext {
-  constructor(service) {
-    this.basePath = path.resolve(service.root, service.path);
-    this.comments = [];
-    Object.defineProperty(this, '_service', {
-      get() {
-        return service;
-      }
-    });
-  }
 
-  fileName(filename) {
-    return fs.safeJoin(this._prefix, filename);
-  }
-
-  file(filename, encoding) {
-    return fs.readFileSync(this.fileName(filename), encoding);
-  }
-
-  foxxFilename(filename) {
-    return this.fileName(filename);
-  }
-
-  path(name) {
-    return path.join(this._prefix, name);
-  }
-
-  collectionName(name) {
-    let fqn = (
-      this.collectionPrefix
-      + name.replace(/[^a-z0-9]/ig, '_').replace(/(^_+|_+$)/g, '').substr(0, 64)
-    );
-    if (!fqn.length) {
-      throw new Error(`Cannot derive collection name from "${name}"`);
-    }
-    return fqn;
-  }
-
-  collection(name) {
-    return internal.db._collection(this.collectionName(name));
-  }
-
-  get _prefix() {
-    return this.basePath;
-  }
-
-  get baseUrl() {
-    return `/_db/${encodeURIComponent(internal.db._name())}/${this._service.mount.slice(1)}`;
-  }
-
-  get collectionPrefix() {
-    return this._service.collectionPrefix;
-  }
-
-  get mount() {
-    return this._service.mount;
-  }
-
-  get name() {
-    return this._service.name;
-  }
-
-  get version() {
-    return this._service.version;
-  }
-
-  get manifest() {
-    return this._service.manifest;
-  }
-
-  get isDevelopment() {
-    return this._service.isDevelopment;
-  }
-
-  get isProduction() {
-    return !this.isDevelopment;
-  }
-
-  get options() {
-    return this._service.options;
-  }
-
-  get configuration() {
-    return this._service.configuration;
-  }
-
-  get dependencies() {
-    return this._service.dependencies;
-  }
-}
-
-Object.defineProperties(AppContext.prototype, {
-  comment: {
-    value: function (str) {
-      this.comments.push(str);
-    }
-  },
-  clearComments: {
-    value: function () {
-      this.comments.splice(0, this.comments.length);
-    }
-  }
-});
-
-function createConfiguration(definitions) {
-  const config = {};
-  Object.keys(definitions).forEach(function (name) {
-    const def = definitions[name];
-    if (def.default !== undefined) {
-      config[name] = def.default;
-    }
-  });
-  return config;
-}
-
-function createDependencies(definitions, options) {
-  const deps = {};
-  Object.keys(definitions).forEach(function (name) {
-    Object.defineProperty(deps, name, {
-      configurable: true,
-      enumerable: true,
-      get() {
-        const mount = options[name];
-        return mount ? require('@arangodb/foxx').getExports(mount) : null;
-      }
-    });
-  });
-  return deps;
-}
-
-class FoxxService {
+module.exports = class FoxxService {
   constructor(data) {
     assert(data, 'no arguments');
     assert(data.mount, 'mount path required');
@@ -180,7 +55,8 @@ class FoxxService {
     // mount paths always start with a slash
     this.mount = data.mount;
     this.path = data.path;
-    this.isDevelopment = data.isDevelopment || false;
+    this.basePath = path.resolve(this.root, this.path);
+    this.isDevelopment = Boolean(data.isDevelopment);
 
     this.manifest = data.manifest;
     if (!this.manifest.dependencies) {
@@ -200,38 +76,32 @@ class FoxxService {
 
     this.configuration = createConfiguration(this.manifest.configuration);
     this.dependencies = createDependencies(this.manifest.dependencies, this.options.dependencies);
-    let warnings = this.applyConfiguration(this.options.configuration);
+    const warnings = this.applyConfiguration(this.options.configuration);
     if (warnings.length) {
-      console.warnLines(
-        `Stored configuration for app "${data.mount}" has errors:\n${warnings.join('\n  ')}`
-      );
+      console.warnLines(dd`
+        Stored configuration for app "${data.mount}" has errors:
+          ${warnings.join('\n  ')}
+      `);
     }
-    // don't need to apply deps from options -- they work automatically
 
+    this.thumbnail = null;
     if (this.manifest.thumbnail) {
-      let thumb = path.resolve(this.root, this.path, this.manifest.thumbnail);
-      try {
-        this.thumbnail = fs.read64(thumb);
-      } catch (e) {
-        this.thumbnail = null;
-        /*
-        console.warnLines(
-          `Cannot read thumbnail "${thumb}" for app "${data.mount}": ${e.stack}`
-        );
-        */
+      const thumb = path.resolve(this.root, this.path, this.manifest.thumbnail);
+      if (fs.exists(thumb)) {
+        this.thumbnail = thumb;
       }
-    } else {
-      this.thumbnail = null;
     }
 
-    let lib = this.manifest.lib || '.';
-    let moduleRoot = path.resolve(this.root, this.path, lib);
-    this.moduleCache = {};
-    this.main = new Module(`foxx:${data.mount}`, undefined, this.moduleCache);
-    this.main.root = moduleRoot;
-    this.main.filename = path.resolve(moduleRoot, '.foxx');
-    this.main.context.applicationContext = new AppContext(this);
-    this.main.context.console = require('@arangodb/foxx/console')(this.mount);
+    const range = this.manifest.engines && this.manifest.engines.arangodb;
+    this.legacy = range ? semver.gtr('3.0.0', range) : false;
+    if (this.legacy) {
+      console.debugLines(dd`
+        Running "${this.mount}" in 2.x compatibility mode.
+        Requested version ${range} is lower than 3.0.0.
+      `);
+    }
+
+    this._reset();
   }
 
   applyConfiguration(config) {
@@ -256,7 +126,7 @@ class FoxxService {
       let warning;
 
       if (validate.isJoi) {
-        let result = validate.required().validate(rawValue);
+        const result = validate.required().validate(rawValue);
         if (result.error) {
           warning = result.error.message.replace(/^"value"/, `"${name}"`);
         } else {
@@ -281,9 +151,101 @@ class FoxxService {
     return warnings;
   }
 
+  buildRoutes() {
+    const service = this;
+    const tree = new Tree(this.main.context, this.router);
+    let paths = [];
+    try {
+      paths = tree.buildSwaggerPaths();
+    } catch (e) {
+      console.errorLines(e.stack);
+      let err = e.cause;
+      while (err && err.stack) {
+        console.errorLines(`via ${err.stack}`);
+        err = err.cause;
+      }
+      console.warnLines(dd`
+        Failed to build API documentation for "${this.mount}"!
+        This is likely a bug in your Foxx service.
+        Check the route methods you are using to document your API.
+      `);
+    }
+    this.docs = {
+      swagger: '2.0',
+      basePath: this.main.context.baseUrl,
+      paths: paths,
+      info: {
+        title: this.name,
+        description: this.manifest.description,
+        version: this.version,
+        license: {
+          name: this.manifest.license
+        }
+      }
+    };
+    this.routes.routes.push({
+      url: {match: '/*'},
+      action: {
+        callback(req, res, opts, next) {
+          let handled = true;
+
+          try {
+            handled = tree.dispatch(req, res);
+          } catch (e) {
+            const logLevel = (
+              !e.statusCode ? 'error' : // Unhandled
+              e.statusCode >= 500 ? 'warn' : // Internal
+              service.isDevelopment ? 'info' : // Debug
+              undefined
+            );
+            let error = e;
+            if (!e.statusCode) {
+              error = new InternalServerError();
+              error.cause = e;
+            }
+            if (logLevel) {
+              console[`${logLevel}Lines`](e.stack);
+              let err = e.cause;
+              while (err && err.stack) {
+                console[`${logLevel}Lines`](`via ${err.stack}`);
+                err = err.cause;
+              }
+            }
+            const body = {
+              error: true,
+              errorNum: error.errorNum || error.statusCode,
+              errorMessage: error.message,
+              code: error.statusCode
+            };
+            if (error.statusCode === 405 && error.methods) {
+              res.headers.allow = error.methods.join(', ');
+            }
+            if (service.isDevelopment) {
+              let err = error.cause || error;
+              body.exception = String(err);
+              body.stacktrace = err.stack;
+            }
+            if (error.extra) {
+              Object.keys(error.extra).forEach(function (key) {
+                body[key] = error.extra[key];
+              });
+            }
+            res.responseCode = error.statusCode;
+            res.contentType = 'application/json';
+            res.body = JSON.stringify(body);
+          }
+
+          if (!handled) {
+            next();
+          }
+        }
+      }
+    });
+  }
+
   applyDependencies(deps) {
-    var definitions = this.manifest.dependencies;
-    var warnings = [];
+    const definitions = this.manifest.dependencies;
+    const warnings = [];
 
     _.each(deps, function (mount, name) {
       const dfn = definitions[name];
@@ -323,7 +285,11 @@ class FoxxService {
       result.description = this.manifest.description;
     }
     if (this.thumbnail) {
-      result.thumbnail = this.thumbnail;
+      try {
+        result.thumbnail = fs.read64(this.thumbnail);
+      } catch (e) {
+        // noop
+      }
     }
     return result;
   }
@@ -341,11 +307,11 @@ class FoxxService {
   }
 
   getConfiguration(simple) {
-    var config = {};
-    var definitions = this.manifest.configuration;
-    var options = this.options.configuration;
+    const config = {};
+    const definitions = this.manifest.configuration;
+    const options = this.options.configuration;
     _.each(definitions, function (dfn, name) {
-      var value = options[name] === undefined ? dfn.default : options[name];
+      const value = options[name] === undefined ? dfn.default : options[name];
       config[name] = simple ? value : _.extend({}, dfn, {
         title: getReadableName(name),
         current: value
@@ -355,9 +321,9 @@ class FoxxService {
   }
 
   getDependencies(simple) {
-    var deps = {};
-    var definitions = this.manifest.dependencies;
-    var options = this.options.dependencies;
+    const deps = {};
+    const definitions = this.manifest.dependencies;
+    const options = this.options.dependencies;
     _.each(definitions, function (dfn, name) {
       deps[name] = simple ? options[name] : {
         definition: dfn,
@@ -369,8 +335,8 @@ class FoxxService {
   }
 
   needsConfiguration() {
-    var config = this.getConfiguration();
-    var deps = this.getDependencies();
+    const config = this.getConfiguration();
+    const deps = this.getDependencies();
     return _.any(config, function (cfg) {
       return cfg.current === undefined && cfg.required !== false;
     }) || _.any(deps, function (dep) {
@@ -380,28 +346,62 @@ class FoxxService {
 
   run(filename, options) {
     options = options || {};
-    filename = path.resolve(this.main.context.__dirname, filename);
+    filename = path.resolve(this.main[$_MODULE_CONTEXT].__dirname, filename);
 
-    var module = new Module(filename, this.main);
-    module.context.console = this.main.context.console;
-    module.context.applicationContext = _.extend(
-      new AppContext(this.main.context.applicationContext._service),
-      this.main.context.applicationContext,
-      options.appContext
+    const module = new Module(filename, this.main);
+    module[$_MODULE_CONTEXT].console = this.main[$_MODULE_CONTEXT].console;
+    module.context = _.extend(
+      new FoxxContext(this),
+      this.main.context,
+      options.foxxContext
     );
-
-    if (options.preprocess) {
-      module.preprocess = options.preprocess;
-    }
 
     if (options.context) {
       Object.keys(options.context).forEach(function (key) {
-        module.context[key] = options.context[key];
+        module[$_MODULE_CONTEXT][key] = options.context[key];
       });
+    }
+
+    if (this.legacy) {
+      module[$_MODULE_CONTEXT].applicationContext = module.context;
     }
 
     module.load(filename);
     return module.exports;
+  }
+
+  _reset() {
+    this.requireCache = {};
+    const lib = this.manifest.lib || '.';
+    const moduleRoot = path.resolve(this.root, this.path, lib);
+    const foxxConsole = require('@arangodb/foxx/console')(this.mount);
+    this.main = new Module(`foxx:${this.mount}`);
+    this.main.filename = path.resolve(moduleRoot, '.foxx');
+    this.main[$_MODULE_ROOT] = moduleRoot;
+    this.main[$_MODULE_CONTEXT].console = foxxConsole;
+    this.main.require.aliases = this.legacy ? {
+      '@arangodb/foxx/authentication': '@arangodb/foxx/legacy/authentication',
+      '@arangodb/foxx/controller': '@arangodb/foxx/legacy/controller',
+      '@arangodb/foxx/model': '@arangodb/foxx/legacy/model',
+      '@arangodb/foxx/query': '@arangodb/foxx/legacy/query',
+      '@arangodb/foxx/repository': '@arangodb/foxx/legacy/repository',
+      '@arangodb/foxx/schema': '@arangodb/foxx/legacy/schema',
+      '@arangodb/foxx/sessions': '@arangodb/foxx/legacy/sessions',
+      '@arangodb/foxx/template_middleware': '@arangodb/foxx/legacy/template_middleware',
+      '@arangodb/foxx': '@arangodb/foxx/legacy'
+    } : {};
+    this.main.require.cache = this.requireCache;
+    this.main.context = new FoxxContext(this);
+    this.router = new Router();
+    this.types = new Map(defaultTypes);
+    this.routes = {
+      name: `foxx("${this.mount}")`,
+      routes: []
+    };
+
+    if (this.legacy) {
+      this.main.context.foxxFilename = this.main.context.fileName;
+    }
   }
 
   get exports() {
@@ -458,6 +458,32 @@ class FoxxService {
       path.join(DEV_APP_PATH, 'databases', internal.db._name())
     ) : undefined;
   }
+};
+
+
+function createConfiguration(definitions) {
+  const config = {};
+  Object.keys(definitions).forEach(function (name) {
+    const def = definitions[name];
+    if (def.default !== undefined) {
+      config[name] = def.default;
+    }
+  });
+  return config;
 }
 
-module.exports = FoxxService;
+
+function createDependencies(definitions, options) {
+  const deps = {};
+  Object.keys(definitions).forEach(function (name) {
+    Object.defineProperty(deps, name, {
+      configurable: true,
+      enumerable: true,
+      get() {
+        const mount = options[name];
+        return mount ? require('@arangodb/foxx').getExports(mount) : null;
+      }
+    });
+  });
+  return deps;
+}

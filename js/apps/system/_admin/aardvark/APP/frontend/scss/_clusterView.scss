@@ -1,5 +1,5 @@
 .graphLabel {
-  font-family: "Lato", sans-serif;
+  font-family: "Roboto", sans-serif;
   font-size: 11pt;
   font-weight: 600;
   margin-top: -25px;
@@ -17,9 +17,19 @@
       border: 1px solid $c-content-border;
       margin-left: -1px;
       margin-top: -1px;
+      padding: {
+        bottom: 10px;
+        left: 20px;
+        right: 20px;
+        top: 20px;
+      }
 
       .nv-controlsWrap {
         display: none;
+      }
+
+      .nv-legendWrap {
+        margin-bottom: 10px;
       }
 
       svg {
@@ -42,10 +52,19 @@
       margin-top: -1px;
 
       .value {
-        color: $c-positive;
+        color: $c-black;
         font-size: 24pt;
         line-height: 150px;
         text-align: center;
+
+        &.positive {
+          color: $c-positive;
+        }
+
+        &.negative {
+          color: $c-negative;
+        }
+
       }
 
       div:first-child {

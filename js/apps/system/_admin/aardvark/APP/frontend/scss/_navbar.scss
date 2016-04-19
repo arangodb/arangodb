@@ -124,6 +124,20 @@ $navbar-size: 150px;
       padding-right: 15px;
       text-align: center;
       width: 10px;
+
+      &.fa-heart {
+        color: rgb(255, 122, 122);
+        opacity: 1;
+      }
+    }
+
+    &.disabled:hover {
+      cursor: default;
+
+      a:hover {
+        cursor: default;
+        opacity: .8;
+      }
     }
 
     &.dropdown:hover {
@@ -143,8 +157,8 @@ $navbar-size: 150px;
     &.navbar-spacer {
       background-color: $c-white;
       height: 1px;
-      margin-bottom: 5px;
-      margin-top: 5px;
+      margin-bottom: 0;
+      margin-top: 0;
       opacity: .2;
     }
   }

@@ -1,18 +1,46 @@
 v3.0.0 (XXXX-XX-XX)
 -------------------
 
+* make AQL optimizer rule "remove-unnecessary-calculations" fire in more cases
+
+  The rule will now remove calculations that are used exactly once in other
+  expressions (e.g. `LET a = doc RETURN a.value`) and calculations,
+  or calculations that are just references (e.g. `LET a = b`).
+
 * renamed AQL optimizer rule "merge-traversal-filter" to "optimize-traversals"
-  Additionally, the optimizer rule will remove unused edge and paths result variables
+  Additionally, the optimizer rule will remove unused edge and path result variables
   from the traversal in case they are specified in the `FOR` section of the traversal,
-  but are not referenced later in the query. This saves constructing edges and paths
+  but not referenced later in the query. This saves constructing edges and paths
   results.
+
+* added AQL optimizer rule "inline-subqueries"
+
+  This rule can pull out certain subqueries that are used as an operand to a `FOR`
+  loop one level higher, eliminating the subquery completely. For example, the query
+
+      FOR i IN (FOR j IN [1,2,3] RETURN j) RETURN i
+      
+  will be transformed by the rule to:
+   
+      FOR i IN [1,2,3] RETURN i
+      
+  The query
+
+      FOR name IN (FOR doc IN _users FILTER doc.status == 1 RETURN doc.name) LIMIT 2 RETURN name
+      
+  will be transformed into
+  
+      FOR tmp IN _users FILTER tmp.status == 1 LIMIT 2 RETURN tmp.name
+       
+  The rule will only fire when the subquery is used as an operand to a `FOR` loop, and
+  if the subquery does not contain a `COLLECT` with an `INTO` variable.
 
 * added new endpoint "srv://" for DNS service records
 
 * The result order of the AQL functions VALUES and KEYS has never been guaranteed
 and it only had the "correct" ordering by accident when iterating over objects that
-were not loaded from the database. This behaviour is now changed by
-introduction of VelocyPack and no ordering is guaranteed unless you specify
+were not loaded from the database. This accidental behavior is now changed by
+introduction of VelocyPack. No ordering is guaranteed unless you specify
 the sort parameter.
 
 * removed configure option `--enable-logger`
@@ -141,6 +169,8 @@ the sort parameter.
 
 v2.8.8 (????-??-??)
 -------------------
+
+* fixed issue #1805: Query: internal error (location: arangod/Aql/AqlValue.cpp:182). Please report this error to arangodb.com (while executing)
 
 * allow specifying collection name prefixes for `_from` and `_to` in arangoimp:
 

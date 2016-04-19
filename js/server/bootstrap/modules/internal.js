@@ -328,7 +328,11 @@ exports.loadStartup = function (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 if (global.SYS_RAW_REQUEST_BODY) {
-  exports.rawRequestBody = global.SYS_RAW_REQUEST_BODY;
+  const $_RAW_BODY_BUFFER = Symbol.for('@arangodb/request.rawBodyBuffer');
+  const getRawBodyBuffer = global.SYS_RAW_REQUEST_BODY;
+  exports.rawRequestBody = function (req) {
+    return req[$_RAW_BODY_BUFFER] || getRawBodyBuffer(req);
+  };
   delete global.SYS_RAW_REQUEST_BODY;
 }
 

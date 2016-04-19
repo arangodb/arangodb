@@ -27,6 +27,7 @@
       "query2": "query",
       "workMonitor": "workMonitor",
       "databases": "databases",
+      "settings": "databases",
       "services": "applications",
       "service/:mount": "applicationDetail",
       "graphs": "graphManagement",
@@ -37,7 +38,7 @@
       "nodes": "nodes",
       "node/:name": "node",
       "logs": "logs",
-      "test": "test"
+      "helpus": "helpUs"
     },
 
     execute: function(callback, args) {
@@ -142,7 +143,9 @@
           collection: this.arangoCollectionsStore 
         });
 
-        this.footerView = new window.FooterView();
+        this.footerView = new window.FooterView({
+          collection: self.coordinatorCollection
+        });
         this.notificationList = new window.NotificationCollection();
 
         this.currentDB.fetch({
@@ -540,6 +543,18 @@
       this.testView.render();
     },
     */
+    helpUs: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.helpUs.bind(this));
+        return;
+      }
+      if (!this.testView) {
+        this.helpUsView = new window.HelpUsView({
+        });
+      }
+      this.helpUsView.render();
+    },
 
     workMonitor: function (initialized) {
       this.checkUser();

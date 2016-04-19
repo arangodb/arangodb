@@ -26,7 +26,7 @@ describe("Foxx Manager", function () {
 
       var app = FoxxManager.lookupApp(mount);
       expect(app.manifest.dependencies).to.eql({});
-      var filename = app.main.context.applicationContext.fileName('manifest.json');
+      var filename = app.main.context.fileName('manifest.json');
       var rawJson = fs.readFileSync(filename, 'utf-8');
       var json = JSON.parse(rawJson);
 

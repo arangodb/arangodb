@@ -878,8 +878,6 @@ QueryResult Query::explain() {
     enterState(FINALIZATION);
 
     QueryResult result(TRI_ERROR_NO_ERROR);
-//XXX #warning JAN why???
-    QueryRegistry localRegistry;
 
     if (allPlans()) {
       result.result = std::make_shared<VPackBuilder>();

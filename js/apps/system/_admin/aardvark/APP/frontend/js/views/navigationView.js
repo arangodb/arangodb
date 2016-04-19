@@ -63,7 +63,10 @@
         isCluster: this.isCluster
       }));
 
-      $(this.subEl).html(this.templateSub.render({}));
+      console.log(this.currentDB);
+      $(this.subEl).html(this.templateSub.render({
+        currentDB: this.currentDB.toJSON()
+      }));
       
       this.dbSelectionView.render($("#dbSelect"));
       this.notificationView.render($("#notificationBar"));
@@ -100,9 +103,14 @@
     },
 
     navigateByTab: function (e) {
+
       var tab = e.target || e.srcElement,
       navigateTo = tab.id,
       dropdown = false;
+
+      if ($(tab).hasClass('fa')) {
+        return;
+      }
 
       if (navigateTo === "") {
         navigateTo = $(tab).attr("class");

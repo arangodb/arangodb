@@ -71,7 +71,7 @@ typedef uint32_t TRI_fulltext_handle_t;
 /// to documents are just adjacent (second pointer is higher than first
 /// pointer).
 /// This is only true for documents that are created on the same memory page
-/// but this should be the common case to optimise for.
+/// but this should be the common case to optimize for.
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_fulltext_handle_slot_s {

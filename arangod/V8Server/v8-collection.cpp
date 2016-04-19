@@ -441,11 +441,13 @@ static void DocumentVocbaseCol(
 
   VPackBuilder searchBuilder;
 
-  auto workOnOneDocument = [&](v8::Local<v8::Value> const searchValue) {
+  auto workOnOneDocument = [&](v8::Local<v8::Value> const searchValue, bool isBabies) {
     std::string collName;
     if (!ExtractDocumentHandle(isolate, searchValue, collName, searchBuilder,
                                true)) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+      if (!isBabies) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+      }
     }
     if (!collName.empty() && collName != collectionName) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST);
@@ -454,13 +456,13 @@ static void DocumentVocbaseCol(
 
   if (!args[0]->IsArray()) {
     VPackObjectBuilder guard(&searchBuilder);
-    workOnOneDocument(args[0]);
+    workOnOneDocument(args[0], false);
   } else {
     VPackArrayBuilder guard(&searchBuilder);
     auto searchVals = v8::Local<v8::Array>::Cast(args[0]);
     for (uint32_t i = 0; i < searchVals->Length(); ++i) {
       VPackObjectBuilder guard(&searchBuilder);
-      workOnOneDocument(searchVals->Get(i));
+      workOnOneDocument(searchVals->Get(i), true);
     }
   }
 
@@ -637,11 +639,14 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   VPackBuilder searchBuilder;
 
-  auto workOnOneDocument = [&](v8::Local<v8::Value> const searchValue) {
+  auto workOnOneDocument = [&](v8::Local<v8::Value> const searchValue, bool isBabies) {
     std::string collName;
     if (!ExtractDocumentHandle(isolate, searchValue, collName, searchBuilder,
                                true)) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+      if (!isBabies) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+      }
+      return;
     }
     if (!collName.empty() && collName != collectionName) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST);
@@ -650,13 +655,13 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (!args[0]->IsArray()) {
     VPackObjectBuilder guard(&searchBuilder);
-    workOnOneDocument(args[0]);
+    workOnOneDocument(args[0], false);
   } else {
     VPackArrayBuilder guard(&searchBuilder);
     auto searchVals = v8::Local<v8::Array>::Cast(args[0]);
     for (uint32_t i = 0; i < searchVals->Length(); ++i) {
       VPackObjectBuilder guard(&searchBuilder);
-      workOnOneDocument(searchVals->Get(i));
+      workOnOneDocument(searchVals->Get(i), true);
     }
   }
 
@@ -1666,11 +1671,15 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
 
   VPackBuilder updateBuilder;
 
-  auto workOnOneSearchVal = [&](v8::Local<v8::Value> const searchVal) {
+  auto workOnOneSearchVal = [&](v8::Local<v8::Value> const searchVal, bool isBabies) {
     std::string collName;
     if (!ExtractDocumentHandle(isolate, searchVal, collName,
                                updateBuilder, true)) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+      if (!isBabies) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
+      } else {
+        return;
+      }
     }
     if (!collName.empty() && collName != collectionName) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST);
@@ -1691,7 +1700,7 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
     // we deal with the single document case:
     VPackObjectBuilder guard(&updateBuilder);
     workOnOneDocument(args[1]);
-    workOnOneSearchVal(args[0]);
+    workOnOneSearchVal(args[0], false);
   } else { // finally, the array case, note that we already know that the two
            // arrays have equal length!
     TRI_ASSERT(args[0]->IsArray() && args[1]->IsArray());
@@ -1699,9 +1708,15 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
     auto searchVals = v8::Local<v8::Array>::Cast(args[0]);
     auto documents = v8::Local<v8::Array>::Cast(args[1]);
     for (uint32_t i = 0; i < searchVals->Length(); ++i) {
+      v8::Local<v8::Value> const newVal = documents->Get(i);
+      if (!newVal->IsObject() || newVal->IsArray()) {
+        // We insert a non-object that should fail later.
+        updateBuilder.add(VPackValue(VPackValueType::Null));
+        continue;
+      }
       VPackObjectBuilder guard(&updateBuilder);
-      workOnOneDocument(documents->Get(i));
-      workOnOneSearchVal(searchVals->Get(i));
+      workOnOneDocument(newVal);
+      workOnOneSearchVal(searchVals->Get(i), true);
     }
   }
 

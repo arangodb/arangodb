@@ -73,12 +73,6 @@ public:
   /// @brief Get current role
   role_t role() const;
   
-  /// @brief Gossip protocol: listen
-  void gossip(constituency_t const&);
-  
-  /// @brief Gossip protocol: talk
-  const constituency_t& gossip();
-
   /// @brief Are we leading?
   bool leading() const;
 
@@ -164,6 +158,7 @@ private:
   id_t                 _voted_for;
 
   arangodb::basics::ConditionVariable _cv;      // agency callbacks
+  mutable arangodb::Mutex _castLock;
 
 };
   

@@ -7,8 +7,8 @@
 
 .pagination-line {
   background-color: $c-white;
-  border-bottom-left-radius: 3px;
-  border-bottom-right-radius: 3px;
+  border-bottom-left-radius: 2px;
+  border-bottom-right-radius: 2px;
   border-top: 1px solid rgba(104, 103, 102, .1);
   margin: 20px 0;
   margin-bottom: 0;
@@ -17,7 +17,7 @@
   text-align: center;
 
   %pg-active {
-    background-color: $c-neutral;
+    background-color: $c-bluegrey-dark;
     color: $c-white;
   }
 
@@ -33,7 +33,7 @@
   }
 
   ul {
-    @include border-radius(3px);
+    @include border-radius(2px);
     display: inline-block;
     margin-bottom: 0;
     margin-left: 0;
@@ -67,9 +67,9 @@
       a,
       span {
         @include box-shadow(0);
-        background: $c-neutral;
+        background: $c-bluegrey-dark;
         border: 0;
-        color: $c-black;
+        color: $c-white;
         height: 21px;
         position: relative;
         width: 14px;

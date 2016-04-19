@@ -66,6 +66,7 @@ div.headerBar {
   margin-top: -55px;
   padding-left: 5px;
   padding-right: 5px;
+  right: 0;
 
   select {
     &:focus {
@@ -182,6 +183,7 @@ div.headerBar {
     right: 0;
     top: 0;
   };
+  text-transform: capitalize;
 
   .fa {
     margin-left: 10px;

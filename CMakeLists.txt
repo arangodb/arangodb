@@ -690,7 +690,6 @@ if (USE_MAINTAINER_MODE)
   set(MIMETYPES_FILES
     lib/Basics/voc-mimetypes.h
     lib/Basics/voc-mimetypes.cpp
-    js/common/modules/@arangodb/mimetypes.js
   )
 
   set(MIMETYPES_FILES_GEN)

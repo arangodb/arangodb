@@ -200,6 +200,13 @@ class VelocyPackHelper {
   static bool velocyPackToFile(char const*, VPackSlice const&, bool);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Compares two VelocyPack number values
+  //////////////////////////////////////////////////////////////////////////////
+
+  static int compareNumberValues(arangodb::velocypack::Slice const& lhs, 
+                                 arangodb::velocypack::Slice const& rhs);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Compares two VelocyPack slices
   //////////////////////////////////////////////////////////////////////////////
 
@@ -225,15 +232,43 @@ class VelocyPackHelper {
   static double toDouble(VPackSlice const&, bool&);
 
   static uint64_t hashByAttributes(VPackSlice, std::vector<std::string> const&,
-                                   bool, int&);
+                                   bool, int&, std::string const& key = "");
 
-  static arangodb::velocypack::Slice NullValue();
-  static arangodb::velocypack::Slice TrueValue();
-  static arangodb::velocypack::Slice FalseValue();
-  static arangodb::velocypack::Slice BooleanValue(bool);
-  static arangodb::velocypack::Slice EmptyArrayValue();
-  static arangodb::velocypack::Slice EmptyObjectValue();
-  static arangodb::velocypack::Slice IllegalValue();
+  static inline arangodb::velocypack::Slice NullValue() { 
+    return arangodb::velocypack::Slice::nullSlice(); 
+  }
+
+  static inline arangodb::velocypack::Slice TrueValue() {
+    return arangodb::velocypack::Slice::trueSlice(); 
+  }
+
+  static inline arangodb::velocypack::Slice FalseValue() {
+    return arangodb::velocypack::Slice::falseSlice(); 
+  }
+
+  static inline arangodb::velocypack::Slice BooleanValue(bool value) {
+    if (value) {
+      return arangodb::velocypack::Slice::trueSlice(); 
+    }
+    return arangodb::velocypack::Slice::falseSlice(); 
+  }
+
+  static inline arangodb::velocypack::Slice EmptyArrayValue() {
+    return arangodb::velocypack::Slice::emptyArraySlice(); 
+  }
+
+  static inline arangodb::velocypack::Slice EmptyObjectValue() {
+    return arangodb::velocypack::Slice::emptyObjectSlice(); 
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief "constant" global object for illegal slices
+  ///        Are used in Array Indexes to distinguish NULL and not existent.
+  //////////////////////////////////////////////////////////////////////////////
+
+  static inline arangodb::velocypack::Slice IllegalValue() {
+    return arangodb::velocypack::Slice::illegalSlice(); 
+  }
 };
 }
 }

@@ -222,6 +222,7 @@ bool Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
                                     << " entries to state machine.";
     /* bool success = */
     _state.log (queries, term, leaderId, prevIndex, prevTerm);
+//    _constituent.vote();
   } else { 
     // heart-beat
   }
@@ -372,7 +373,7 @@ void Agent::run() {
   while (!this->isStopping() && size() > 1) { // need only to run in multi-host
 
     if (leading())
-      _cv.wait(250000); // Only if leading
+      _cv.wait(500000); // Only if leading
     else
       _cv.wait();       // Just sit there doing nothing
 

@@ -27,7 +27,6 @@
 #include "Aql/Graphs.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
-#include "Basics/json-utilities.h"
 #include "Basics/tri-strings.h"
 #include "VocBase/collection.h"
 
@@ -107,26 +106,6 @@ Ast::Ast(Query* query)
 
 /// @brief destroy the AST
 Ast::~Ast() {}
-
-/// @brief convert the AST into JSON
-/// the caller is responsible for freeing the JSON later
-/// @DEPRECATED
-TRI_json_t* Ast::toJson(TRI_memory_zone_t* zone, bool verbose) const {
-  TRI_json_t* json = TRI_CreateArrayJson(zone);
-
-  if (json == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  try {
-    _root->toJson(json, zone, verbose);
-  } catch (...) {
-    TRI_FreeJson(zone, json);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  return json;
-}
 
 /// @brief convert the AST into VelocyPack
 std::shared_ptr<VPackBuilder> Ast::toVelocyPack(bool verbose) const {
@@ -1748,13 +1727,17 @@ TopLevelAttributes Ast::getReferencedAttributes(AstNode const* node,
 
 /// @brief recursively clone a node
 AstNode* Ast::clone(AstNode const* node) {
-  auto type = node->type;
+  AstNodeType const type = node->type;
   if (type == NODE_TYPE_NOP) {
     // nop node is a singleton
     return const_cast<AstNode*>(node);
   }
 
-  auto copy = createNode(type);
+  AstNode* copy = createNode(type);
+  TRI_ASSERT(copy != nullptr);
+
+  // copy flags
+  copy->flags = node->flags;
 
   // special handling for certain node types
   // copy payload...
@@ -1998,6 +1981,7 @@ AstNode* Ast::executeConstExpression(AstNode const* node) {
   ISOLATE;
   v8::HandleScope scope(isolate);  // do not delete this!
 
+  // we should recycle an existing builder here
   VPackBuilder builder;
 
   int res = _query->executor()->executeExpression(_query, node, builder);
@@ -2009,8 +1993,7 @@ AstNode* Ast::executeConstExpression(AstNode const* node) {
   // context is not left here, but later
   // this allows re-using the same context for multiple expressions
 
-  AstNode* value = nodeFromVPack(builder.slice(), true);
-  return value;
+  return nodeFromVPack(builder.slice(), true);
 }
 
 /// @brief optimizes the unary operators + and -
@@ -2182,9 +2165,6 @@ AstNode* Ast::optimizeBinaryOperatorRelational(AstNode* node) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  bool const lhsIsConst = lhs->isConstant();
-  bool const rhsIsConst = rhs->isConstant();
-
   if (!lhs->canThrow() && rhs->type == NODE_TYPE_ARRAY &&
       rhs->numMembers() <= 1 && (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
                                  node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
@@ -2208,6 +2188,8 @@ AstNode* Ast::optimizeBinaryOperatorRelational(AstNode* node) {
     }
     // fall-through intentional
   }
+  
+  bool const rhsIsConst = rhs->isConstant();
 
   if (!rhsIsConst) {
     return node;
@@ -2216,12 +2198,15 @@ AstNode* Ast::optimizeBinaryOperatorRelational(AstNode* node) {
   if (rhs->type != NODE_TYPE_ARRAY &&
       (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
        node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
-    // right operand of IN or NOT IN must be an array, otherwise we return false
+    // right operand of IN or NOT IN must be an array or a range, otherwise we return false
     return createNodeValueBool(false);
   }
+  
+  bool const lhsIsConst = lhs->isConstant();
 
   if (!lhsIsConst) {
     if (rhs->numMembers() >= 8 &&
+        rhs->type == NODE_TYPE_ARRAY &&
         (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
          node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
       // if the IN list contains a considerable amount of items, we will sort
@@ -2669,85 +2654,6 @@ AstNode* Ast::optimizeFor(AstNode* node) {
 
   // no real optimizations will be done here
   return node;
-}
-
-/// @brief create an AST node from JSON
-/// if copyStringValues is `true`, then string values will be copied and will
-/// be freed with the query afterwards. when set to `false`, string values
-/// will not be copied and not freed by the query. the caller needs to make
-/// sure then that string values are valid through the query lifetime.
-AstNode* Ast::nodeFromJson(TRI_json_t const* json, bool copyStringValues) {
-  TRI_ASSERT(json != nullptr);
-
-  if (json->_type == TRI_JSON_BOOLEAN) {
-    return createNodeValueBool(json->_value._boolean);
-  }
-
-  if (json->_type == TRI_JSON_NUMBER) {
-    return createNodeValueDouble(json->_value._number);
-  }
-
-  if (json->_type == TRI_JSON_STRING ||
-      json->_type == TRI_JSON_STRING_REFERENCE) {
-    size_t const length = json->_value._string.length - 1;
-
-    if (copyStringValues) {
-      // we must copy string values!
-      char const* value =
-          _query->registerString(json->_value._string.data, length);
-      return createNodeValueString(value, length);
-    }
-    // we can get away without copying string values
-    return createNodeValueString(json->_value._string.data, length);
-  }
-
-  if (json->_type == TRI_JSON_ARRAY) {
-    auto node = createNodeArray();
-    size_t const n = TRI_LengthArrayJson(json);
-    node->members.reserve(n);
-
-    for (size_t i = 0; i < n; ++i) {
-      node->addMember(
-          nodeFromJson(static_cast<TRI_json_t const*>(
-                           TRI_AddressVector(&json->_value._objects, i)),
-                       copyStringValues));
-    }
-
-    return node;
-  }
-
-  if (json->_type == TRI_JSON_OBJECT) {
-    auto node = createNodeObject();
-    size_t const n = TRI_LengthVector(&json->_value._objects);
-
-    for (size_t i = 0; i < n; i += 2) {
-      auto key = static_cast<TRI_json_t const*>(
-          TRI_AddressVector(&json->_value._objects, i));
-      auto value = static_cast<TRI_json_t const*>(
-          TRI_AddressVector(&json->_value._objects, i + 1));
-
-      if (!TRI_IsStringJson(key) || value == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "unexpected type found in object node");
-      }
-
-      char const* attributeName = key->_value._string.data;
-      size_t const nameLength = key->_value._string.length - 1;
-
-      if (copyStringValues) {
-        // create a copy of the string value
-        attributeName =
-            _query->registerString(key->_value._string.data, nameLength);
-      }
-
-      node->addMember(createNodeObjectElement(
-          attributeName, nameLength, nodeFromJson(value, copyStringValues)));
-    }
-
-    return node;
-  }
-
-  return createNodeValueNull();
 }
 
 /// @brief create an AST node from vpack

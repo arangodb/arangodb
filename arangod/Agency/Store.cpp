@@ -911,6 +911,15 @@ void Store::dumpToBuilder (Builder& builder) const {
   }
 }
 
+size_t Store::matchPath (std::vector<std::string> const& pv) const {
+//  Node* cur(this);
+/*  for (size_t i = 0; i < pv.size(); ++i) {
+    if (cur.find(pv.at(i))) {
+    }
+    }*/
+  return 0;
+}
+
 // Start thread
 bool Store::start () {
   Thread::start();
