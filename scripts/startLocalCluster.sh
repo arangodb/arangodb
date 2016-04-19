@@ -249,12 +249,21 @@ if [ -n "$SECONDARIES" ]; then
 fi
 
 echo Bootstrapping DBServers...
-curl -s -X POST "http://127.0.0.1:8530/_admin/cluster/bootstrapDbServers" \
+curl -s -f -X POST "http://127.0.0.1:8530/_admin/cluster/bootstrapDbServers" \
      -d '{"isRelaunch":false}' >> cluster/DBServersUpgrade.log 2>&1
+if [ "$?" != 0 ] ; then
+  echo "Bootstrapping DBServers failed"
+  exit 1;
+fi
+
 
 echo Running DB upgrade on cluster...
-curl -s -X POST "http://127.0.0.1:8530/_admin/cluster/upgradeClusterDatabase" \
+curl -s -f -X POST "http://127.0.0.1:8530/_admin/cluster/upgradeClusterDatabase" \
      -d '{"isRelaunch":false}' >> cluster/DBUpgrade.log 2>&1
+if [ "$?" != 0 ] ; then
+  echo "DB upgrade on cluster failed"
+  exit 1;
+fi
 
 echo Bootstrapping Coordinators...
 PIDS=""
