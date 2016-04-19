@@ -1305,10 +1305,10 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
              requests[i].result.answer_code != 
                  GeneralResponse::ResponseCode::CREATED)) {
           auto const& followerInfo = document->followers();
-          followerInfo->remove(requests[i].result.serverID);
+          followerInfo->remove((*followers)[i]);
           LOG_TOPIC(ERR, Logger::REPLICATION)
               << "insertLocal: dropping follower "
-              << requests[i].result.serverID;
+              << (*followers)[i] << " for shard " << collectionName;
         }
       }
     }
