@@ -228,22 +228,23 @@
       var cssClass;
 
       _.each(menuItems, function(menu, name) {
+        cssClass = '';
+
         if (menu.active) {
           cssClass += ' active';
+        }
+        if (menu.disabled) {
+          cssClass += ' disabled';
+        }
 
-          if (menu.disabled) {
-            cssClass += ' disabled';
-          }
-        }
-        else {
-          cssClass = '';
-        }
         $('#subNavigationBar .bottom').append(
           '<li class="subMenuEntry ' + cssClass + '"><a>' + name + '</a></li>'
         );
-        $('#subNavigationBar .bottom').children().last().bind('click', function() {
-          window.App.navigate(menu.route, {trigger: true});
-        });
+        if (!menu.disabled) {
+          $('#subNavigationBar .bottom').children().last().bind('click', function() {
+            window.App.navigate(menu.route, {trigger: true});
+          });
+        }
       });
     },
 
