@@ -1,4 +1,4 @@
-v2.8.8 (????-??-??)
+v2.8.8 (2016-04-19)
 -------------------
 
 * fixed issue #1805: Query: internal error (location: arangod/Aql/AqlValue.cpp:182). Please report this error to arangodb.com (while executing)
