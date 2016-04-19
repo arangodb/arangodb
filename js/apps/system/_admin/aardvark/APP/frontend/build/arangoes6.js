@@ -8643,12 +8643,19 @@ function printModificationFlags (flags) {
   stringBuilder.appendLine(section("Write query options:"));
   var keys = Object.keys(flags), maxLen = "Option".length;
   keys.forEach(function(k) {
+    if (k === 'nullMeansRemove') { // translate option name
+      k = 'keepNull';
+    }
     if (k.length > maxLen) {
       maxLen = k.length;
     }
   });
   stringBuilder.appendLine(" " + header("Option") + pad(1 + maxLen - "Option".length) + "   " + header("Value"));
   keys.forEach(function(k) {
+    if (k === 'nullMeansRemove') { // translate option name
+      flags.keepNull = !flags[k];
+      k = 'keepNull';
+    }
     stringBuilder.appendLine(" " + keyword(k) + pad(1 + maxLen - k.length) + "   " + value(JSON.stringify(flags[k]))); 
   });
   stringBuilder.appendLine();
@@ -11331,6 +11338,11 @@ var findOrCreateCollectionByName = function (name, type, noCreate) {
     err.errorNum = arangodb.errors.ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION.code;
     err.errorMessage = name + arangodb.errors.ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION.message;
     throw err;
+  } else if (type === ArangoCollection.TYPE_EDGE && col.type() !== type) {
+    var err2 = new ArangoError();
+    err2.errorNum = arangodb.errors.ERROR_ARANGO_COLLECTION_TYPE_INVALID.code;
+    err2.errorMessage = name + " cannot be used as a relation. It is not an edge collection.";
+    throw err2;
   }
   return res;
 };

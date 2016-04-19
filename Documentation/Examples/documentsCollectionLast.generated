@@ -1,15 +1,15 @@
 arangosh&gt; db.example.last(<span class="hljs-number">2</span>);
 [ 
   { 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/1111175216"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1111175216"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1111175216"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/1112740878"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1112740878"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1112740878"</span>, 
     <span class="hljs-string">"Foo"</span> : <span class="hljs-string">"bar"</span> 
   }, 
   { 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/1110847536"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1110847536"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1110847536"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/1112413198"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1112413198"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1112413198"</span>, 
     <span class="hljs-string">"Hello"</span> : <span class="hljs-string">"world"</span> 
   } 
 ]

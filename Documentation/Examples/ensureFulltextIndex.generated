@@ -1,6 +1,6 @@
 arangosh&gt; db.example.ensureIndex({ type: <span class="hljs-string">"fulltext"</span>, fields: [ <span class="hljs-string">"text"</span> ], minLength: <span class="hljs-number">3</span> });
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"example/1130901552"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"example/1132467214"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"fulltext"</span>, 
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"text"</span> 
@@ -13,45 +13,45 @@ arangosh&gt; db.example.ensureIndex({ type: <span class="hljs-string">"fulltext"
 }
 arangosh&gt; db.example.save({ text : <span class="hljs-string">"the quick brown"</span>, b : { c : <span class="hljs-number">1</span> } });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/1131425840"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1131425840"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1131425840"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/1132991502"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1132991502"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1132991502"</span> 
 }
 arangosh&gt; db.example.save({ text : <span class="hljs-string">"quick brown fox"</span>, b : { c : <span class="hljs-number">2</span> } });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/1131622448"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1131622448"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1131622448"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/1133188110"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1133188110"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1133188110"</span> 
 }
 arangosh&gt; db.example.save({ text : <span class="hljs-string">"brown fox jums"</span>, b : { c : <span class="hljs-number">3</span> } });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/1131819056"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1131819056"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1131819056"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/1133384718"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1133384718"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1133384718"</span> 
 }
 arangosh&gt; db.example.save({ text : <span class="hljs-string">"fox jumps over"</span>, b : { c : <span class="hljs-number">4</span> } });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/1132015664"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1132015664"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1132015664"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/1133581326"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1133581326"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1133581326"</span> 
 }
 arangosh&gt; db.example.save({ text : <span class="hljs-string">"jumps over the"</span>, b : { c : <span class="hljs-number">5</span> } });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/1132212272"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1132212272"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1132212272"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/1133777934"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1133777934"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1133777934"</span> 
 }
 arangosh&gt; db.example.save({ text : <span class="hljs-string">"over the lazy"</span>, b : { c : <span class="hljs-number">6</span> } });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/1132408880"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1132408880"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1132408880"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/1133974542"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1133974542"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1133974542"</span> 
 }
 arangosh&gt; db.example.save({ text : <span class="hljs-string">"the lazy dog"</span>, b : { c : <span class="hljs-number">7</span> } });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/1132605488"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1132605488"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1132605488"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/1134171150"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1134171150"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1134171150"</span> 
 }
 arangosh&gt; db._query(<span class="hljs-string">"FOR document IN FULLTEXT(example, 'text', 'the') RETURN document"</span>);
 [ 
@@ -60,36 +60,36 @@ arangosh&gt; db._query(<span class="hljs-string">"FOR document IN FULLTEXT(examp
       <span class="hljs-string">"c"</span> : <span class="hljs-number">1</span> 
     }, 
     <span class="hljs-string">"text"</span> : <span class="hljs-string">"the quick brown"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/1131425840"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1131425840"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1131425840"</span> 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/1132991502"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1132991502"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1132991502"</span> 
   }, 
   { 
     <span class="hljs-string">"b"</span> : { 
       <span class="hljs-string">"c"</span> : <span class="hljs-number">5</span> 
     }, 
     <span class="hljs-string">"text"</span> : <span class="hljs-string">"jumps over the"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/1132212272"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1132212272"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1132212272"</span> 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/1133777934"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1133777934"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1133777934"</span> 
   }, 
   { 
     <span class="hljs-string">"b"</span> : { 
       <span class="hljs-string">"c"</span> : <span class="hljs-number">6</span> 
     }, 
     <span class="hljs-string">"text"</span> : <span class="hljs-string">"over the lazy"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/1132408880"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1132408880"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1132408880"</span> 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/1133974542"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1133974542"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1133974542"</span> 
   }, 
   { 
     <span class="hljs-string">"b"</span> : { 
       <span class="hljs-string">"c"</span> : <span class="hljs-number">7</span> 
     }, 
     <span class="hljs-string">"text"</span> : <span class="hljs-string">"the lazy dog"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/1132605488"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1132605488"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1132605488"</span> 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/1134171150"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1134171150"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1134171150"</span> 
   } 
 ]
 [object ArangoQueryCursor, count: <span class="hljs-number">4</span>, hasMore: <span class="hljs-literal">false</span>]
