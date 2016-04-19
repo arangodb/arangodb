@@ -109,16 +109,6 @@ router.post('/login', function (req, res) {
 `);
 
 
-router.get('/unauthorized', function(req, res) {
-  res.throw('unauthorized');
-})
-.error('unauthorized')
-.summary('Unauthorized')
-.description(dd`
-  Responds with a HTTP 401 response.
-`);
-
-
 const authRouter = createRouter();
 router.use(authRouter);
 
