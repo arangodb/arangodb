@@ -31,6 +31,7 @@
 
 
 #include "AgencyCommon.h"
+#include "AgentConfiguration.h"
 #include "Basics/Thread.h"
 
 struct TRI_vocbase_t;
