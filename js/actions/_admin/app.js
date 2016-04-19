@@ -118,6 +118,7 @@ actions.defineHttp({
     try {
       result = {};
       result.time = internal.time();
+      result.enabled = internal.enabledStatistics();
       result.system = internal.processStatistics();
       result.client = internal.clientStatistics();
       result.http = internal.httpStatistics();

@@ -182,6 +182,11 @@ void TRI_FillRequestStatistics(StatisticsDistribution& totalTime,
                                StatisticsDistribution& ioTime,
                                StatisticsDistribution& bytesSent,
                                StatisticsDistribution& bytesReceived) {
+  if (!TRI_ENABLE_STATISTICS) {
+    // all the below objects may be deleted if we don't have statistics enabled
+    return;
+  }
+
   MUTEX_LOCKER(mutexLocker, RequestDataLock);
 
   totalTime = *TRI_TotalTimeDistributionStatistics;
@@ -266,6 +271,15 @@ void TRI_FillConnectionStatistics(
     StatisticsCounter& httpConnections, StatisticsCounter& totalRequests,
     std::vector<StatisticsCounter>& methodRequests,
     StatisticsCounter& asyncRequests, StatisticsDistribution& connectionTime) {
+  if (!TRI_ENABLE_STATISTICS) {
+    // all the below objects may be deleted if we don't have statistics enabled
+    for (int i = 0; i < ((int)arangodb::GeneralRequest::RequestType::ILLEGAL) + 1;
+         ++i) {
+      methodRequests.emplace_back(StatisticsCounter());
+    }
+    return;
+  }
+
   MUTEX_LOCKER(mutexLocker, ConnectionDataLock);
 
   httpConnections = TRI_HttpConnectionsStatistics;
@@ -338,12 +352,19 @@ static void StatisticsQueueWorker(void* data) {
   }
 
   delete TRI_ConnectionTimeDistributionStatistics;
+  TRI_ConnectionTimeDistributionStatistics = nullptr;
   delete TRI_TotalTimeDistributionStatistics;
+  TRI_TotalTimeDistributionStatistics = nullptr;
   delete TRI_RequestTimeDistributionStatistics;
+  TRI_RequestTimeDistributionStatistics = nullptr;
   delete TRI_QueueTimeDistributionStatistics;
+  TRI_QueueTimeDistributionStatistics = nullptr;
   delete TRI_IoTimeDistributionStatistics;
+  TRI_IoTimeDistributionStatistics = nullptr;
   delete TRI_BytesSentDistributionStatistics;
+  TRI_BytesSentDistributionStatistics = nullptr;
   delete TRI_BytesReceivedDistributionStatistics;
+  TRI_BytesReceivedDistributionStatistics = nullptr;
 
   {
     TRI_request_statistics_t* entry = nullptr;
