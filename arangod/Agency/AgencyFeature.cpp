@@ -45,7 +45,7 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
       _notify(false),
       _supervision(false),
       _waitForSync(true) {
-  setOptional(false);
+  setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Database");
   startsAfter("Dispatcher");
