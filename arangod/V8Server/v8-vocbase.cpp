@@ -3021,7 +3021,7 @@ static void CreateDatabaseCoordinator(
 
   v8g->_vocbase = vocbase;
 
-  // initalise database
+  // initalize database
   bool allowUseDatabase = v8g->_allowUseDatabase;
   v8g->_allowUseDatabase = true;
 
@@ -3166,7 +3166,7 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   v8g->_vocbase = database;
 
-  // initalise database
+  // initalize database
   v8g->_loader->executeGlobalScript(isolate, isolate->GetCurrentContext(),
                                     "server/bootstrap/local-database.js");
 

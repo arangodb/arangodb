@@ -267,7 +267,7 @@ bool HttpServer::openEndpoint(Endpoint* endpoint) {
   ListenTask* task = new HttpListenTask(this, endpoint);
 
   // ...................................................................
-  // For some reason we have failed in our endeavour to bind to the socket -
+  // For some reason we have failed in our endeavor to bind to the socket -
   // this effectively terminates the server
   // ...................................................................
 

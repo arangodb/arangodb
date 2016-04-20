@@ -111,7 +111,7 @@ var saveWorldCountryGraphData = function() {
   //    var africa = worldCountryGraph.worldVertices.save({ _key: "continent-africa", name: "Africa", type: "continent" });
   //    worldCountryGraph.worldEdges.save(world._id, africa._id, { type: "is-in" });
   //
-  // we will directly put the documnets into their respective collections
+  // we will directly put the documents into their respective collections
   // and have to ensure graph consistency by ourselves.
 
   // vertices: root node 

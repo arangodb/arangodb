@@ -4088,7 +4088,7 @@ arangodb (2.1.0r1-1.1) stable; urgency=low
   * added REST API method HTTP GET `/_api/job/job-id` to query the status of an
     async job without potentially fetching it from the list of done jobs
   
-  * fixed non-intuitive behaviour in jobs API: previously, querying the status
+  * fixed non-intuitive behavior in jobs API: previously, querying the status
     of an async job via the API HTTP PUT `/_api/job/job-id` removed a currently 
     executing async job from the list of queryable jobs on the server.
     Now, when querying the result of an async job that is still executing, 
@@ -4213,7 +4213,7 @@ arangodb (2.1.0a9-1.1) stable; urgency=low
   * added REST API method HTTP GET `/_api/job/job-id` to query the status of an
     async job without potentially fetching it from the list of done jobs
   
-  * fixed non-intuitive behaviour in jobs API: previously, querying the status
+  * fixed non-intuitive behavior in jobs API: previously, querying the status
     of an async job via the API HTTP PUT `/_api/job/job-id` removed a currently 
     executing async job from the list of queryable jobs on the server.
     Now, when querying the result of an async job that is still executing, 
@@ -4338,7 +4338,7 @@ arangodb (2.1.0a7-1.1) stable; urgency=low
   * added REST API method HTTP GET `/_api/job/job-id` to query the status of an
     async job without potentially fetching it from the list of done jobs
   
-  * fixed non-intuitive behaviour in jobs API: previously, querying the status
+  * fixed non-intuitive behavior in jobs API: previously, querying the status
     of an async job via the API HTTP PUT `/_api/job/job-id` removed a currently 
     executing async job from the list of queryable jobs on the server.
     Now, when querying the result of an async job that is still executing, 
@@ -4463,7 +4463,7 @@ arangodb (2.1.0a6-1.1) stable; urgency=low
   * added REST API method HTTP GET `/_api/job/job-id` to query the status of an
     async job without potentially fetching it from the list of done jobs
   
-  * fixed non-intuitive behaviour in jobs API: previously, querying the status
+  * fixed non-intuitive behavior in jobs API: previously, querying the status
     of an async job via the API HTTP PUT `/_api/job/job-id` removed a currently 
     executing async job from the list of queryable jobs on the server.
     Now, when querying the result of an async job that is still executing, 
@@ -4588,7 +4588,7 @@ arangodb (2.1.0a4-1.1) stable; urgency=low
   * added REST API method HTTP GET `/_api/job/job-id` to query the status of an
     async job without potentially fetching it from the list of done jobs
   
-  * fixed non-intuitive behaviour in jobs API: previously, querying the status
+  * fixed non-intuitive behavior in jobs API: previously, querying the status
     of an async job via the API HTTP PUT `/_api/job/job-id` removed a currently 
     executing async job from the list of queryable jobs on the server.
     Now, when querying the result of an async job that is still executing, 
@@ -4731,7 +4731,7 @@ arangodb (2.0.2-1.1) stable; urgency=low
   * added REST API method HTTP GET `/_api/job/job-id` to query the status of an
     async job without potentially fetching it from the list of done jobs
   
-  * fixed non-intuitive behaviour in jobs API: previously, querying the status
+  * fixed non-intuitive behavior in jobs API: previously, querying the status
     of an async job via the API HTTP PUT `/_api/job/job-id` removed a currently 
     executing async job from the list of queryable jobs on the server.
     Now, when querying the result of an async job that is still executing, 
