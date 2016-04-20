@@ -90,8 +90,9 @@ int main(int argc, char* argv[]) {
   application_features::ApplicationServer server(options);
 
   std::vector<std::string> nonServerFeatures = {
-      "Action", "Cluster",   "Daemon", "Dispatcher", "Endpoint",
-      "Server", "Scheduler", "Ssl",    "Supervisor"};
+      "Action", "Agency", "Cluster", "Daemon", "Dispatcher", "Endpoint",
+      "Server", "Scheduler", "Ssl", "Supervisor"};
+#warning FRANK: does it make sense to list Agency here?
 
   int ret = EXIT_FAILURE;
 

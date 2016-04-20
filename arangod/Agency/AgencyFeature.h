@@ -59,7 +59,6 @@ class AgencyFeature : virtual public application_features::ApplicationFeature {
 
  private:
   std::unique_ptr<consensus::Agent> _agent;
-  bool _disabled;
 };
 }
 

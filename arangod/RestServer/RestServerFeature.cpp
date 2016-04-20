@@ -24,6 +24,9 @@
 
 #include "ApplicationFeatures/SslFeature.h"
 #include "Aql/RestAqlHandler.h"
+#include "Agency/AgencyFeature.h"
+#include "Agency/RestAgencyHandler.h"
+#include "Agency/RestAgencyPrivHandler.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/RestShardHandler.h"
 #include "Dispatcher/DispatcherFeature.h"
@@ -272,6 +275,10 @@ void RestServerFeature::buildServers() {
 }
 
 void RestServerFeature::defineHandlers() {
+  AgencyFeature* agency = dynamic_cast<AgencyFeature*>(
+      application_features::ApplicationServer::lookupFeature("Agency"));
+  TRI_ASSERT(agency != nullptr);
+
   auto queryRegistry = DatabaseFeature::DATABASE->queryRegistry();
 
   // ...........................................................................
@@ -355,6 +362,18 @@ void RestServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       "/_api/query-cache",
       RestHandlerCreator<RestQueryCacheHandler>::createNoData);
+
+  if (agency->isEnabled()) {
+    _handlerFactory->addPrefixHandler(
+        RestVocbaseBaseHandler::AGENCY_PATH,
+        RestHandlerCreator<RestAgencyHandler>::createData<consensus::Agent*>,
+        agency->agent());
+
+    _handlerFactory->addPrefixHandler(
+        RestVocbaseBaseHandler::AGENCY_PRIV_PATH,
+        RestHandlerCreator<RestAgencyPrivHandler>::createData<consensus::Agent*>,
+        agency->agent());
+  }
 
   // And now some handlers which are registered in both /_api and /_admin
   _handlerFactory->addPrefixHandler(

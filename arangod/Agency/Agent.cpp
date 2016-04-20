@@ -350,7 +350,7 @@ write_ret_t Agent::write (query_t const& query)  {
 
 // Read from store
 read_ret_t Agent::read (query_t const& query) const {
-  if (_constituent.leading()) {     // Only working as leaer
+  if (_constituent.leading()) {     // Only working as leader
     query_t result = std::make_shared<arangodb::velocypack::Builder>();
     std::vector<bool> success = _readDB.read (query, result);
     return read_ret_t(true, _constituent.leaderID(), success, result);
