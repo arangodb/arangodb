@@ -122,7 +122,7 @@
             collapseWhitespace: true
           },
           files: {
-            'frontend/build/standalone-min.html' : 'frontend/build/standalone.html'
+            'frontend/build/index-min.html' : 'frontend/build/index.html'
           }
         }
       },
@@ -203,7 +203,7 @@
           },
           files: {
             'frontend/build/style-minified.css': ['frontend/build/style.css'],
-            'build/extra-minified.css': ['build/extra.css']
+            'frontend/build/extra-minified.css': ['frontend/build/extra.css']
           }
         }
       },
@@ -225,7 +225,7 @@
       concat: {
         css: {
           src: ['<%=project.shared.css %>'],
-          dest: 'build/extra.css'
+          dest: 'frontend/build/extra.css'
         }
       },
 
