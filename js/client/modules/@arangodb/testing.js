@@ -429,7 +429,7 @@ function analyzeCoreDump(instanceInfo, options, storeArangodPath, pid) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function analyzeCoreDumpWindows(instanceInfo) {
-  const coreFN = instanceInfo.tmpDataDir + "\\" + "core.dmp";
+  const coreFN = instanceInfo.rootDir + "\\" + "core.dmp";
 
   if (!fs.exists(coreFN)) {
     print("core file " + coreFN + " not found?");
@@ -477,7 +477,7 @@ function checkArangoAlive(arangod, options) {
       const storeArangodPath = "/var/tmp/arangod_" + arangod.pid;
 
       print("Core dump written; copying arangod to " +
-        arangod.tmpDataDir + " for later analysis.");
+          arangod.rootDir + " for later analysis.");
 
       let corePath = (options.coreDirectory === "") ?
         "core" :

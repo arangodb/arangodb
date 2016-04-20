@@ -90,7 +90,7 @@ struct BasicExpander {
       TRI_ASSERT(edgeCollection != nullptr);
       std::shared_ptr<OperationCursor> edgeCursor = edgeCollection->getEdges(_dir, v);
       while (edgeCursor->hasMore()) {
-        edgeCursor->getMore(_opRes);
+        edgeCursor->getMore(_opRes, UINT64_MAX, false);
         if (_opRes->failed()) {
           THROW_ARANGO_EXCEPTION(_opRes->code);
         }
@@ -102,12 +102,12 @@ struct BasicExpander {
           if (from == v) {
             std::string to = edge.get(TRI_VOC_ATTRIBUTE_TO).copyString();
             if (to != v) {
-              res_edges.emplace_back(edgeId);
-              neighbors.emplace_back(to);
+              res_edges.emplace_back(std::move(edgeId));
+              neighbors.emplace_back(std::move(to));
             }
           } else {
-            res_edges.emplace_back(edgeId);
-            neighbors.emplace_back(from);
+            res_edges.emplace_back(std::move(edgeId));
+            neighbors.emplace_back(std::move(from));
           }
 
         }
@@ -214,8 +214,9 @@ class MultiCollectionEdgeExpander {
           auto cand = candidates.find(t);
           if (cand == candidates.end()) {
             // Add weight
-            result.emplace_back(new ArangoDBPathFinder::Step(
-                t, s, currentWeight, edgeCollection->trx()->extractIdString(edge)));
+            auto step = std::make_unique<ArangoDBPathFinder::Step>(
+                t, s, currentWeight, edgeCollection->trx()->extractIdString(edge));
+            result.emplace_back(step.release());
             candidates.emplace(t, result.size() - 1);
           } else {
             // Compare weight
@@ -229,7 +230,7 @@ class MultiCollectionEdgeExpander {
 
       auto opRes = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
       while (edgeCursor->hasMore()) {
-        edgeCursor->getMore(opRes);
+        edgeCursor->getMore(opRes, UINT64_MAX, false);
         if (opRes->failed()) {
           THROW_ARANGO_EXCEPTION(opRes->code);
         }
@@ -266,6 +267,8 @@ class SimpleEdgeExpander {
 
   EdgeCollectionInfo* _edgeCollection;
 
+  std::unordered_map<std::string, size_t> _candidates;
+
  public:
   SimpleEdgeExpander(TRI_edge_direction_e& direction,
                      EdgeCollectionInfo* edgeCollection)
@@ -275,16 +278,16 @@ class SimpleEdgeExpander {
                   std::vector<ArangoDBPathFinder::Step*>& result) {
     TRI_ASSERT(_edgeCollection != nullptr);
 
-    std::unordered_map<std::string, size_t> candidates;
+    _candidates.clear();
 
     auto inserter = [&](std::string const& s, std::string const& t,
                         double currentWeight, VPackSlice edge) {
-      auto cand = candidates.find(t);
-      if (cand == candidates.end()) {
+      auto cand = _candidates.find(t);
+      if (cand == _candidates.end()) {
         // Add weight
-        result.emplace_back(new ArangoDBPathFinder::Step(
-            t, s, currentWeight, _edgeCollection->trx()->extractIdString(edge)));
-        candidates.emplace(t, result.size() - 1);
+        auto step = std::make_unique<ArangoDBPathFinder::Step>(
+            std::move(t), std::move(s), currentWeight, _edgeCollection->trx()->extractIdString(edge));
+        result.emplace_back(step.release());
       } else {
         // Compare weight
         auto oldWeight = result[cand->second]->weight();
@@ -297,7 +300,7 @@ class SimpleEdgeExpander {
     auto edgeCursor = _edgeCollection->getEdges(_direction, source);
     auto opRes = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
     while (edgeCursor->hasMore()) {
-      edgeCursor->getMore(opRes);
+      edgeCursor->getMore(opRes, UINT64_MAX, false);
       if (opRes->failed()) {
         THROW_ARANGO_EXCEPTION(opRes->code);
       }
@@ -307,9 +310,9 @@ class SimpleEdgeExpander {
         std::string const to = edge.get(TRI_VOC_ATTRIBUTE_TO).copyString();
         double currentWeight = _edgeCollection->weightEdge(edge);
         if (from == source) {
-          inserter(from, to, currentWeight, edge);
+          inserter(std::move(from), std::move(to), currentWeight, edge);
         } else {
-          inserter(to, from, currentWeight, edge);
+          inserter(std::move(to), std::move(from), currentWeight, edge);
         }
       }
     }
@@ -329,12 +332,14 @@ void BasicOptions::addVertexFilter(v8::Isolate* isolate,
 
   if (it == _vertexFilter.end()) {
     if (example->IsArray()) {
-      _vertexFilter.emplace(name, new ExampleMatcher(
-          isolate, v8::Handle<v8::Array>::Cast(example), errorMessage));
+      auto matcher = std::make_unique<ExampleMatcher>(
+          isolate, v8::Handle<v8::Array>::Cast(example), errorMessage);
+      _vertexFilter.emplace(name, matcher.release());
     } else {
       // Has to be Object
-      _vertexFilter.emplace(name, new ExampleMatcher(
-          isolate, v8::Handle<v8::Object>::Cast(example), errorMessage));
+      auto matcher = std::make_unique<ExampleMatcher>(
+          isolate, v8::Handle<v8::Object>::Cast(example), errorMessage);
+      _vertexFilter.emplace(name, matcher.release());
     }
   }
 }
@@ -376,14 +381,14 @@ void BasicOptions::addEdgeFilter(v8::Isolate* isolate,
   }
 
   if (example->IsArray()) {
-    _edgeFilter.emplace(
-        cName, new ExampleMatcher(isolate, v8::Handle<v8::Array>::Cast(example),
-                                errorMessage));
+    auto matcher = std::make_unique<ExampleMatcher>(
+        isolate, v8::Handle<v8::Array>::Cast(example), errorMessage);
+    _edgeFilter.emplace(cName, matcher.release());
   } else {
     // Has to be Object
-    _edgeFilter.emplace(
-        cName, new ExampleMatcher(isolate, v8::Handle<v8::Object>::Cast(example),
-                                errorMessage));
+    auto matcher = std::make_unique<ExampleMatcher>(
+        isolate, v8::Handle<v8::Object>::Cast(example), errorMessage);
+    _edgeFilter.emplace(cName, matcher.release());
   }
 }
 
@@ -396,7 +401,8 @@ void BasicOptions::addEdgeFilter(VPackSlice const& example,
   useEdgeFilter = true;
   auto it = _edgeFilter.find(cName);
   if (it == _edgeFilter.end()) {
-    _edgeFilter.emplace(cName, new ExampleMatcher(example, true));
+    auto matcher = std::make_unique<ExampleMatcher>(example, true);
+    _edgeFilter.emplace(cName, matcher.release());
   }
 }
 
@@ -584,8 +590,9 @@ TRI_RunSimpleShortestPathSearch(
   auto bwExpander = BasicExpander(collectionInfos, trx, backward);
 
   ArangoDBConstDistancePathFinder pathFinder(fwExpander, bwExpander);
-  auto path = std::make_unique<ArangoDBConstDistancePathFinder::Path>();
-  path.reset(pathFinder.search(opts.start, opts.end));
+
+  auto path = std::unique_ptr<ArangoDBConstDistancePathFinder::Path>(
+      pathFinder.search(opts.start, opts.end));
   return path;
 }
 
@@ -609,7 +616,7 @@ static void InboundNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
     for (auto const& start : startVertices) {
       auto edgeCursor = col->getEdges(dir, start);
       while (edgeCursor->hasMore()) {
-        edgeCursor->getMore(opRes);
+        edgeCursor->getMore(opRes, UINT64_MAX, false);
         if (opRes->failed()) {
           THROW_ARANGO_EXCEPTION(opRes->code);
         }
@@ -648,7 +655,7 @@ static void InboundNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
 
 static void OutboundNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
                               NeighborsOptions& opts,
-                              std::unordered_set<std::string>& startVertices,
+                              std::unordered_set<std::string> const& startVertices,
                               std::unordered_set<std::string>& visited,
                               std::unordered_set<std::string>& distinct,
                               uint64_t depth = 1) {
@@ -662,27 +669,29 @@ static void OutboundNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
     for (auto const& start : startVertices) {
       auto edgeCursor = col->getEdges(dir, start);
       while (edgeCursor->hasMore()) {
-        edgeCursor->getMore(opRes);
+        edgeCursor->getMore(opRes, UINT64_MAX, false);
         if (opRes->failed()) {
           THROW_ARANGO_EXCEPTION(opRes->code);
         }
         VPackSlice edges = opRes->slice();
         for (auto const& edge : VPackArrayIterator(edges)) {
           if (opts.matchesEdge(edge)) {
-            std::string v = edge.get(TRI_VOC_ATTRIBUTE_TO).copyString();
-            if (visited.find(v) != visited.end()) {
+            VPackValueLength l;
+            char const* v = edge.get(TRI_VOC_ATTRIBUTE_TO).getString(l);
+            if (visited.find(std::string(v, l)) != visited.end()) {
               // We have already visited this vertex
               continue;
             }
-            visited.emplace(v);
+            std::string tmp(v, l);
             if (depth >= opts.minDepth) {
-              if (opts.matchesVertex(v)) {
-                distinct.emplace(v);
+              if (opts.matchesVertex(tmp)) {
+                distinct.emplace(tmp);
               }
             }
             if (depth < opts.maxDepth) {
-              nextDepth.emplace(v);
+              nextDepth.emplace(tmp);
             }
+            visited.emplace(std::move(tmp));
           }
         }
       }
@@ -716,7 +725,7 @@ static void AnyNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
     for (auto const& start : startVertices) {
       auto edgeCursor = col->getEdges(dir, start);
       while (edgeCursor->hasMore()) {
-        edgeCursor->getMore(opRes);
+        edgeCursor->getMore(opRes, UINT64_MAX, false);
         if (opRes->failed()) {
           THROW_ARANGO_EXCEPTION(opRes->code);
         }

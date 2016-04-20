@@ -144,7 +144,11 @@ void ImportFeature::validateOptions(
   size_t n = positionals.size();
 
   if (1 == n) {
-    _filename = positionals[0];
+    // only take positional file name attribute into account if user
+    // did not specify the --file option as well
+    if (!options->processingResult().touched("--file")) {
+      _filename = positionals[0];
+    }
   } else if (1 < n) {
     LOG(FATAL) << "expecting at most one filename, got " +
                       StringUtils::join(positionals, ", ");

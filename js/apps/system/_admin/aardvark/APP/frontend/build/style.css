@@ -6,7 +6,7 @@ body {
   background: rgba(64, 74, 83, 0.04);
   color: #333;
   display: block;
-  font-family: 'Lato', sans-serif !important;
+  font-family: 'Roboto', sans-serif !important;
   font-size: 14px;
   font-weight: 400;
   height: 100%;
@@ -15,15 +15,19 @@ body {
   overflow: hidden; }
   body .bodyWrapper {
     height: 100%;
-    margin: 0 auto -42px;
-    min-height: 100%; }
+    left: 150px;
+    min-height: 100%;
+    position: absolute;
+    right: 0; }
+  body .centralRow {
+    position: relative; }
 
 body,
 input,
 textarea,
 .page-title span,
 .pingback a.url {
-  font-family: 'Lato', sans-serif !important;
+  font-family: 'Roboto', sans-serif !important;
   font-weight: 400; }
 
 @font-face {
@@ -2085,7 +2089,7 @@ textarea,
 .user-dropdown-menu, .script-dropdown-menu, .gv-dropdown-menu, .navlogo, .navlist li, div.footer-left, div.footer-left p, div.footer-center, a.headerButton, a.button-gui, div .tile, div .bigtile, div .tile a span.add-Icon, div .bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .fixedDropdown .notificationItemContent, .innerDropdownInnerUL, .dashboard-full-width-chart .dashboard-full-width-chart-inner, .dashboard-large-chart .dashboard-large-chart-inner, .dashboard-small-chart .dashboard-small-chart-inner, .dashboard-medium-chart, .dashboard-tendency-container, .dashboard-bar-chart-container, .dashboard-full-width-chart, .dashboard-large-chart, .dashboard-small-chart, .dashboard-sub-bar, .dashboard-sub-bar .dashboard-sub-bar-title, .dashboard-full-width-chart .dashboard-full-width-chart-inner .dashboard-interior-chart, .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart, .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart, .dashboard-medium-chart .dashboard-interior-chart, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-subtitle-bar, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-figure, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart, .modal-chart-detail, .modal-chart-detail .modal-body, .modal-chart-detail .modal-dashboard-legend, .modal-chart-detail .modal-inner-detail, .dashboard-half-height-legend, .dashboard-title-bar .dashboard-half-title-bar, .dashboardModal, .pagination-line li a {
   float: left; }
 
-div.footer-right, div.footer-right p, ul.headerButtonList li, div .tile .iconSet span, div .bigtile .iconSet span, .search-field, .headerBar > div.headerButtonBar, .fixedDropdown button, .fixedDropdown .notificationItem i, .dashboard-sub-bar-menu, .dashboard-legend, .dashboard-legend .dashboard-legend-inner span, .query-button, .arango-tab li, div.gv_colour_list, .docsThirdCol {
+div.footer-right, div.footer-right p, ul.headerButtonList li, div .tile .iconSet span, div .bigtile .iconSet span, .search-field, .headerBar > div.headerButtonBar, .fixedDropdown button, .fixedDropdown .notificationItem i, .dashboard-sub-bar-menu, .dashboard-legend, .query-button, .arango-tab li, div.gv_colour_list, .docsThirdCol {
   float: right; }
 
 .tileList:after, .resizecontainer:after, .headerBar > div.headerButtonBar:after, .detail-chart:after, .dashboard-sub-bar:after, .dashboard-medium-chart .dashboard-medium-chart-menu:after, .dashboard-medium-chart .dashboard-medium-chart-inner:after, .dashboard-tendency-container .dashboard-tendency-chart:after, .dashboard-bar-chart-container .dashboard-bar-chart:after, .dashboard-row:after, #distributionChartDiv:after, .lineChartDiv:after, .arango-tab:after, .pagination-line li:after, .document-info .document-info-container .document-inner-info-container .document-attribute:after {
@@ -2096,10 +2100,11 @@ div.footer-right, div.footer-right p, ul.headerButtonList li, div .tile .iconSet
   height: 0;
   visibility: hidden; }
 
-.script-dropdown-menu .dropdown-item, .addButton, .deleteButton i, a.headerButton, a.button-gui, div.toolbox div.gv_action_button, .clusterDownBtn button, div .tile a span.icon, div .bigtile a span.icon, div .tile a svg, div .bigtile a svg, div .tile .iconSet span, div .bigtile .iconSet span, div .bigtile, .contentDiv .icon, .icon-info-sign, .arangoicon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox label.css-label, .search-submit-icon, .gv-search-submit-icon, .fixedDropdown .notificationItem i, .fullNotification:hover, .contentTables tr.contentRowInactive a, .arango-tab a, .arango-tab li, .pagination-line li a, .link > line, .node, .edit-index-table .icon_arangodb_roundminus {
+.script-dropdown-menu .dropdown-item, .addButton, .deleteButton i, a.headerButton, a.button-gui, div.toolbox div.gv_action_button, .clusterDownBtn button, div .tile a span.icon, div .bigtile a span.icon, div .tile a svg, div .bigtile a svg, div .tile .iconSet span, div .bigtile .iconSet span, div .bigtile, .contentDiv .icon, .icon-info-sign, .arangoicon, div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox label.css-label,
+.dropdownImport.headerDropdown input[type=checkbox].css-checkbox label.css-label, .search-submit-icon, .gv-search-submit-icon, .fixedDropdown .notificationItem i, .fullNotification:hover, .contentTables tr.contentRowInactive a, .arango-tab a, .arango-tab li, .pagination-line li a, .link > line, .node, .edit-index-table .icon_arangodb_roundminus {
   cursor: pointer; }
 
-.navbar, footer.footer {
+.navbar {
   color: #fff;
   left: 0;
   right: 0;
@@ -2334,6 +2339,14 @@ div.queryline input, input.search-input, .modal-body .select2-choices input, .mo
       padding-right: 15px;
       text-align: center;
       width: 10px; }
+      .navlist li .fa.fa-heart {
+        color: #ff7a7a;
+        opacity: 1; }
+    .navlist li.disabled:hover {
+      cursor: default; }
+      .navlist li.disabled:hover a:hover {
+        cursor: default;
+        opacity: .8; }
     .navlist li.dropdown:hover {
       border-bottom-left-radius: 0;
       border-bottom-right-radius: 0; }
@@ -2344,8 +2357,8 @@ div.queryline input, input.search-input, .modal-body .select2-choices input, .mo
     .navlist li.navbar-spacer {
       background-color: #fff;
       height: 1px;
-      margin-bottom: 5px;
-      margin-top: 5px;
+      margin-bottom: 0;
+      margin-top: 0;
       opacity: .2; }
   .navlist .active {
     border-left: 2px solid #77cb99; }
@@ -2471,21 +2484,18 @@ div.queryline input, input.search-input, .modal-body .select2-choices input, .mo
   .arango-logo img {
     margin-left: 22px; }
 
-.footerWrapper {
-  bottom: 0;
-  height: 42px;
-  position: absolute; }
-
 .footer {
+  background-color: rgba(239, 240, 241, 0.8);
   font-size: 14px;
-  left: 0;
-  right: 0;
+  left: 160px;
+  right: 10px;
   text-align: center;
   z-index: 1000; }
 
 footer.footer {
   bottom: 0;
-  height: 40px; }
+  height: 43px;
+  position: fixed; }
   footer.footer p {
     font-size: 10pt;
     font-weight: 100;
@@ -2611,7 +2621,7 @@ button.disabled,
   margin-left: 0 !important; }
 
 button {
-  font-family: 'Lato', sans-serif !important; }
+  font-family: 'Roboto', sans-serif !important; }
   button.btn-server {
     width: 120px; }
   button.gv-zoom-btn {
@@ -5201,25 +5211,32 @@ div .bigtile {
   .application-detail-view section.info {
     width: 2290px; } }
 
-div.contentWrapper {
-  padding-bottom: 42px; }
+div.headerBar {
+  background-color: none;
+  border-radius: 2px;
+  float: right;
+  font-size: 16px;
+  height: 36px;
+  margin-top: -55px;
+  position: absolute;
+  right: 150px; }
 
 div.centralRow {
   background: rgba(64, 74, 83, 0.04);
-  float: left;
   height: 100%;
-  left: 150px;
   min-height: 100%;
   overflow-y: auto;
-  position: absolute;
+  position: relative;
   right: 0; }
 
 div.centralContent {
   background-color: transparent;
   box-sizing: border-box;
   margin-top: 10px;
-  min-height: 80px;
-  padding: 5px;
+  padding-bottom: 43px;
+  padding-left: 5px;
+  padding-right: 5px;
+  padding-top: 5px;
   width: 100%; }
 
 .contentDiv {
@@ -5274,7 +5291,8 @@ li a [class*=" icon_arangodb"] {
 .fa-minus-circle:hover {
   cursor: pointer; }
 
-div.headerDropdown {
+div.headerDropdown,
+.dropdownImport {
   background-color: #fff;
   border: 1px solid rgba(140, 138, 137, 0.25);
   border-radius: 2px;
@@ -5283,11 +5301,14 @@ div.headerDropdown {
   padding: 10px;
   position: relative;
   width: auto; }
-  div.headerDropdown.smallDropdown .dropdownInner {
+  div.headerDropdown.smallDropdown .dropdownInner,
+  .dropdownImport.smallDropdown .dropdownInner {
     min-height: 20px; }
-  div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox {
+  div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox,
+  .dropdownImport.headerDropdown input[type=checkbox].css-checkbox {
     display: none; }
-    div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox label.css-label {
+    div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox label.css-label,
+    .dropdownImport.headerDropdown input[type=checkbox].css-checkbox label.css-label {
       background-position: 0 0;
       background-repeat: no-repeat;
       display: inline-block;
@@ -5296,7 +5317,8 @@ div.headerDropdown {
       margin-top: 0;
       padding-left: 20px;
       vertical-align: middle; }
-    div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox:checked + label.css-label {
+    div.headerDropdown.headerDropdown input[type=checkbox].css-checkbox:checked + label.css-label,
+    .dropdownImport.headerDropdown input[type=checkbox].css-checkbox:checked + label.css-label {
       background-position: 0 -15px; }
 
 div.dropdown-title {
@@ -5476,7 +5498,8 @@ div.headerBar {
   height: 36px;
   margin-top: -55px;
   padding-left: 5px;
-  padding-right: 5px; }
+  padding-right: 5px;
+  right: 0; }
   div.headerBar select:focus {
     outline: none; }
   div.headerBar .infoField {
@@ -5552,7 +5575,8 @@ div.headerBar {
   padding-bottom: 0;
   padding-left: 10px;
   padding-right: 0;
-  padding-top: 0; }
+  padding-top: 0;
+  text-transform: capitalize; }
   .breadcrumb .fa {
     margin-left: 10px;
     margin-right: 8px; }
@@ -5656,7 +5680,7 @@ div.headerBar {
 
 .modal-body {
   color: #736b68;
-  font-family: 'Lato', sans-serif !important;
+  font-family: 'Roboto', sans-serif !important;
   font-size: 14px;
   font-weight: 300;
   max-height: 410px; }
@@ -6115,7 +6139,7 @@ div.headerBar {
   border-radius: 3px !important;
   box-shadow: none !important;
   color: #fff !important;
-  font-family: 'Lato',sans-serif !important;
+  font-family: 'Roboto', sans-serif !important;
   font-size: 10pt !important;
   font-weight: 100 !important;
   z-index: 99999999; }
@@ -6225,7 +6249,7 @@ div.headerBar {
 
 .dataNotReadyYet {
   color: #faa732;
-  font-family: 'Lato', sans-serif;
+  font-family: 'Roboto', sans-serif;
   font-size: 14px;
   font-weight: 100;
   text-align: center; }
@@ -6236,7 +6260,7 @@ div.headerBar {
   border-bottom-right-radius: 3px;
   box-sizing: border-box;
   color: rgba(0, 0, 0, 0.5);
-  font-family: Lato,sans-serif;
+  font-family: 'Roboto', sans-serif;
   font-size: 11pt;
   font-weight: 600;
   height: 50px;
@@ -6250,7 +6274,7 @@ div.headerBar {
   text-transform: uppercase; }
   .dashboard-sub-bar .dashboard-sub-bar-title {
     color: #000;
-    font-family: Lato,sans-serif;
+    font-family: 'Roboto', sans-serif;
     font-size: 11pt;
     font-weight: 600;
     opacity: .5;
@@ -6426,7 +6450,8 @@ div.headerBar {
       stroke-width: .5px; }
 
 .dashboard-legend .dashboard-legend-inner {
-  padding: 0 5px 5px 0; }
+  padding: 0 5px 5px 0;
+  text-align: right; }
   .dashboard-legend .dashboard-legend-inner br {
     display: none; }
   .dashboard-legend .dashboard-legend-inner span {
@@ -6523,7 +6548,7 @@ div.headerBar {
 
 .dygraph-label.dygraph-title {
   color: #000;
-  font-family: 'Lato', sans-serif;
+  font-family: 'Roboto', sans-serif;
   font-size: 15px;
   font-weight: 400;
   text-align: left; }
@@ -6949,7 +6974,7 @@ toolbar {
     .inputEditorWrapper .bindParamEditorWrapper table,
     .inputEditorWrapper .aqlEditorWrapper table {
       border-top: 0;
-      font-family: 'Lato', sans-serif; }
+      font-family: 'Roboto', sans-serif; }
       .inputEditorWrapper .bindParamEditorWrapper table tbody,
       .inputEditorWrapper .aqlEditorWrapper table tbody {
         display: block;
@@ -7043,7 +7068,7 @@ toolbar {
       cursor: pointer;
       font-size: 13pt;
       height: 23px;
-      line-height: 22px;
+      line-height: 23px;
       opacity: .8;
       position: absolute;
       right: 5px;
@@ -7275,8 +7300,8 @@ toolbar {
 
 .pagination-line {
   background-color: #fff;
-  border-bottom-left-radius: 3px;
-  border-bottom-right-radius: 3px;
+  border-bottom-left-radius: 2px;
+  border-bottom-right-radius: 2px;
   border-top: 1px solid rgba(104, 103, 102, 0.1);
   margin: 20px 0;
   margin-bottom: 0;
@@ -7285,7 +7310,7 @@ toolbar {
   text-align: center; }
   .pagination-line li a:hover, .pagination-line li.active a,
   .pagination-line li.active span {
-    background-color: #8f8d8c;
+    background-color: #404a53;
     color: #fff; }
   .pagination-line li a {
     background-color: #fff;
@@ -7296,9 +7321,9 @@ toolbar {
     padding: 2px 10px;
     text-decoration: none; }
   .pagination-line ul {
-    -moz-border-radius: 3px;
-    -webkit-border-radius: 3px;
-    border-radius: 3px;
+    -moz-border-radius: 2px;
+    -webkit-border-radius: 2px;
+    border-radius: 2px;
     display: inline-block;
     margin-bottom: 0;
     margin-left: 0; }
@@ -7319,9 +7344,9 @@ toolbar {
       -webkit-box-shadow: 0;
       -moz-box-shadow: 0;
       box-shadow: 0;
-      background: #8f8d8c;
+      background: #404a53;
       border: 0;
-      color: #000;
+      color: #fff;
       height: 21px;
       position: relative;
       width: 14px; }
@@ -7578,16 +7603,18 @@ textarea,
 .dataTables_info {
   display: none; }
 
-#arangoLogTable tbody td:nth-child(1) {
-  text-align: center;
-  width: 80px; }
-
-#arangoLogTable tbody td:nth-child(2) {
-  text-align: center;
-  width: 80px; }
-
-#arangoLogTable tbody td:nth-child(3) {
-  width: auto; }
+#arangoLogTable {
+  min-height: 444px; }
+  #arangoLogTable tbody tr {
+    height: 40px; }
+  #arangoLogTable tbody td:nth-child(1) {
+    text-align: center;
+    width: 70px; }
+  #arangoLogTable tbody td:nth-child(2) {
+    text-align: center;
+    width: 150px; }
+  #arangoLogTable tbody td:nth-child(3) {
+    width: auto; }
 
 div.gv_zoom_widget {
   height: 300px;
@@ -7705,7 +7732,7 @@ input.gv-radio-button {
   width: auto; }
 
 .collectionTh {
-  font-family: 'Lato Sans', sans-serif !important;
+  font-family: 'Roboto', sans-serif !important;
   font-size: 14px;
   font-weight: 400 !important;
   text-align: left;
@@ -7901,7 +7928,8 @@ input.gv-radio-button {
       padding-right: 20px; }
   .headerButtonBar {
     display: none; }
-  div.centralRow {
+  div.bodyWrapper,
+  .footer {
     left: 40px; } }
 
 @media (min-width: 569px) and (max-width: 738px) {
@@ -8120,7 +8148,12 @@ input.gv-radio-button {
     background: #3d4246;
     border-radius: 3px;
     color: #fff;
+    height: 300px;
+    overflow: auto;
     width: 100%; }
+    .spotlightWrapper .tt-menu .tt-suggestion:hover {
+      background-color: #404a53;
+      cursor: pointer; }
     .spotlightWrapper .tt-menu .header-type {
       background: #32373b;
       clear: both;
@@ -8168,7 +8201,7 @@ input.gv-radio-button {
     outline-style: none; }
 
 .graphLabel {
-  font-family: "Lato", sans-serif;
+  font-family: "Roboto", sans-serif;
   font-size: 11pt;
   font-weight: 600;
   margin-top: -25px;
@@ -8180,9 +8213,15 @@ input.gv-radio-button {
 .cluster-graphs > div .graphWrapper {
   border: 1px solid rgba(140, 138, 137, 0.25);
   margin-left: -1px;
-  margin-top: -1px; }
+  margin-top: -1px;
+  padding-bottom: 10px;
+  padding-left: 20px;
+  padding-right: 20px;
+  padding-top: 20px; }
   .cluster-graphs > div .graphWrapper .nv-controlsWrap {
     display: none; }
+  .cluster-graphs > div .graphWrapper .nv-legendWrap {
+    margin-bottom: 10px; }
   .cluster-graphs > div .graphWrapper svg {
     height: 250px;
     margin-left: -17px; }
@@ -8194,10 +8233,14 @@ input.gv-radio-button {
     margin-left: -1px;
     margin-top: -1px; }
     .cluster-values > div .valueWrapper .value {
-      color: #7dbc42;
+      color: #000;
       font-size: 24pt;
       line-height: 150px;
       text-align: center; }
+      .cluster-values > div .valueWrapper .value.positive {
+        color: #7dbc42; }
+      .cluster-values > div .valueWrapper .value.negative {
+        color: #da4f49; }
     .cluster-values > div .valueWrapper div:first-child {
       height: 150px; }
 
@@ -8302,8 +8345,7 @@ input.gv-radio-button {
 main {
   background-color: #fff;
   border: 1px solid rgba(140, 138, 137, 0.25);
-  border-radius: 3px;
-  margin-top: 220px; }
+  border-radius: 3px; }
   main .app-info {
     -moz-border-radius: 3px;
     -webkit-border-radius: 3px;
@@ -8408,10 +8450,14 @@ main {
     border-bottom: 1px solid rgba(140, 138, 137, 0.25);
     color: #8a969f;
     font-weight: 100;
-    line-height: 40px; }
+    line-height: 40px;
+    width: 100%; }
     .pure-table .pure-table-row:hover {
       background-color: #eff0eb;
       cursor: pointer; }
+    .pure-table .pure-table-row.disabled:hover {
+      background-color: #fff;
+      cursor: not-allowed; }
     .pure-table .pure-table-row .left {
       text-align: left; }
     .pure-table .pure-table-row .right {
@@ -8474,10 +8520,10 @@ main {
   height: 27px;
   width: 100%; }
   .arango-tabbar button {
-    background-color: #8c8a89;
+    background-color: #404a53;
     border: 0;
-    border-top-left-radius: 3px;
-    border-top-right-radius: 3px;
+    border-top-left-radius: 2px;
+    border-top-right-radius: 2px;
     color: #fff;
     float: right;
     font-weight: 100;
@@ -8540,21 +8586,26 @@ main {
         -o-transition: all .2s ease-in;
         -webkit-transition: all .2s ease-in;
         transition: all .2s ease-in; }
-  .subnavmenu #healthStatus.positive .health-state,
-  .subnavmenu #healthStatus.positive .health-icon {
-    color: #7dbc42; }
-  .subnavmenu #healthStatus.negative .health-state,
-  .subnavmenu #healthStatus.negative .health-icon {
-    color: #da4f49; }
-  .subnavmenu .health-info,
-  .subnavmenu .db-info,
-  .subnavmenu .db-state,
-  .subnavmenu .health-state {
-    font-weight: 300; }
-  .subnavmenu .health-info,
-  .subnavmenu .db-info,
-  .subnavmenu .db-icon {
-    color: rgba(255, 255, 255, 0.95); }
+  .subnavmenu .infoEntry {
+    line-height: 45px; }
+    .subnavmenu .infoEntry:hover {
+      cursor: default; }
+      .subnavmenu .infoEntry:hover .info {
+        color: #fff; }
+    .subnavmenu .infoEntry.positive .health-state,
+    .subnavmenu .infoEntry.positive .health-icon {
+      color: #7dbc42; }
+    .subnavmenu .infoEntry.negative .health-state,
+    .subnavmenu .infoEntry.negative .health-icon {
+      color: #da4f49; }
+  .subnavmenu .info,
+  .subnavmenu .icon,
+  .subnavmenu .state {
+    color: rgba(255, 255, 255, 0.95);
+    font-weight: 300;
+    text-transform: uppercase; }
+  .subnavmenu #dbStatus {
+    padding-right: 20px; }
 
 .arangoDataTable {
   border-spacing: 0 0;
@@ -8743,7 +8794,7 @@ table .sorting {
 .documentsDropdown .dropdownImport,
 .documentsDropdown .headerDropdown {
   clear: both;
-  margin-bottom: 5px; }
+  margin-bottom: 10px; }
 
 .documents-size {
   background-color: #fff !important;

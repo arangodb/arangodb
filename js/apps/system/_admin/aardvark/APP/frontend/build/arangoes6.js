@@ -1,7 +1,7 @@
 /*eslint camelcase:0 */
 /*jshint esnext:true, -W051:true */
 /*eslint-disable */
-global.DEFINE_MODULE('internal', (function() {
+global.DEFINE_MODULE('internal', (function () {
 'use strict';
 /*eslint-enable */
 
@@ -42,7 +42,7 @@ if (global.ArangoError) {
   exports.ArangoError = global.ArangoError;
   delete global.ArangoError;
 } else {
-  exports.ArangoError = function(error) {
+  exports.ArangoError = function (error) {
     if (error !== undefined) {
       this.error = error.error;
       this.code = error.code;
@@ -53,6 +53,8 @@ if (global.ArangoError) {
 
   exports.ArangoError.prototype = new Error();
 }
+
+exports.ArangoError.prototype.isArangoError = true;
 
 Object.defineProperty(exports.ArangoError.prototype, 'message', {
   configurable: true,
@@ -335,16 +337,16 @@ if (global.SYS_GET_CURRENT_RESPONSE) {
 /// @brief extend
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.extend = function(target, source) {
+exports.extend = function (target, source) {
 
   Object.getOwnPropertyNames(source)
-    .forEach(function(propName) {
-      Object.defineProperty(
-        target,
-        propName,
-        Object.getOwnPropertyDescriptor(source, propName)
-      );
-    });
+  .forEach(function(propName) {
+    Object.defineProperty(
+      target,
+      propName,
+      Object.getOwnPropertyDescriptor(source, propName)
+    );
+  });
 
   return target;
 };
@@ -9563,11 +9565,7 @@ module.define("@arangodb/common", function(exports, module) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
-
 var fs = require("fs");
-
-var mimetypes = require("@arangodb/mimetypes").mimeTypes;
-
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -9615,37 +9613,6 @@ exports.defineModule = function (path, file) {
   else {
     mc.replace(m, { path: path, content: content });
   }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief guessContentType
-////////////////////////////////////////////////////////////////////////////////
-
-exports.guessContentType = function (filename, defaultValue) {
-  var re = /\.([a-zA-Z0-9]+)$/;
-  var match = re.exec(filename);
-
-  if (match !== null) {
-    var extension = match[1];
-
-    if (mimetypes.hasOwnProperty(extension)) {
-      var type = mimetypes[extension];
-
-      if (type[1]) {
-        // append charset
-        return type[0] + "; charset=utf-8";
-      }
-
-      return type[0];
-    }
-    // fall-through intentional
-  }
-
-  // default mimetype
-  if (defaultValue) {
-    return defaultValue;
-  }
-  return "text/plain; charset=utf-8";
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -15436,6 +15403,8 @@ function GeneralArrayCursor (documents, skip, limit, data) {
   this.execute();
 }
 
+GeneralArrayCursor.prototype.isArangoResultSet = true;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes an array query
@@ -15585,6 +15554,8 @@ function SimpleQuery () {
   this._countTotal = null;
   this._batchSize = null;
 }
+
+SimpleQuery.prototype.isArangoResultSet = true;
 
 
 ////////////////////////////////////////////////////////////////////////////////

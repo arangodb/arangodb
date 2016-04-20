@@ -1036,6 +1036,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
                                     arangodb::LogTopic const& logTopic) {
 
   if (requests.size() == 0) {
+    nrDone = 0;
     return 0;
   }
 
@@ -1056,7 +1057,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
   std::unordered_map<OperationID, size_t> opIDtoIndex;
 
   try {
-    while (true) {
+    while (now <= endTime) {
       if (nrDone >= requests.size()) {
         // All good, report
         return nrGood;
@@ -1065,7 +1066,10 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
       // First send away what is due:
       for (size_t i = 0; i < requests.size(); i++) {
         if (!requests[i].done && now >= dueTime[i]) {
-          auto headers = std::make_unique<std::map<std::string, std::string>>();
+          if (requests[i].headerFields.get() == nullptr) {
+            requests[i].headerFields 
+                = std::make_unique<std::map<std::string, std::string>>();
+          }
           LOG_TOPIC(TRACE, logTopic)
               << "ClusterComm::performRequests: sending request to "
               << requests[i].destination << ":" << requests[i].path
@@ -1075,7 +1079,8 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
                                   requests[i].requestType,
                                   requests[i].path,
                                   requests[i].body,
-                                  headers, nullptr, timeout - (now - startTime),
+                                  requests[i].headerFields,
+                                  nullptr, timeout - (now - startTime),
                                   false);
           if (res.status == CL_COMM_ERROR) {
             // We did not find the destination, this is could change in the
@@ -1107,6 +1112,16 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
         auto res = wait("", coordinatorTransactionID, 0, "", actionNeeded - now);
         if (res.status == CL_COMM_TIMEOUT && res.operationID == 0) {
           break;
+        }
+        if (res.status == CL_COMM_DROPPED) {
+          // Nothing in flight, simply wait:
+          now = TRI_microtime();
+          if (now >= actionNeeded) {
+            break;
+          }
+          usleep( (std::min)(500000,
+                             static_cast<int>((actionNeeded-now)*1000000)) );
+          continue;
         }
         auto it = opIDtoIndex.find(res.operationID);
         TRI_ASSERT(it != opIDtoIndex.end());  // we should really know this!
@@ -1148,6 +1163,9 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
 
   // We only get here if the global timeout was triggered, not all
   // requests are marked by done!
+
+  LOG_TOPIC(ERR, logTopic) << "ClusterComm::performRequests: "
+      << "got timeout, this will be reported...";
 
   // Forget about 
   drop("", coordinatorTransactionID, 0, "");

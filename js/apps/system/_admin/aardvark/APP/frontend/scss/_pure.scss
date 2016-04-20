@@ -29,10 +29,18 @@
     color: $c-pure-text;
     font-weight: 100;
     line-height: 40px;
+    width: 100%;
 
     &:hover {
       background-color: rgb(239, 240, 235);
       cursor: pointer;
+    }
+
+    &.disabled {
+      &:hover {
+        background-color: $c-white;
+        cursor: not-allowed;
+      }
     }
 
     .left {

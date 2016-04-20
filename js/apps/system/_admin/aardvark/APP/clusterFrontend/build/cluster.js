@@ -222,6 +222,94 @@
       }
     },
 
+    //object: {"name": "Menu 1", func: function(), active: true/false }
+    buildSubNavBar: function(menuItems) {
+      $('#subNavigationBar .bottom').html('');
+      var cssClass;
+
+      _.each(menuItems, function(menu, name) {
+        cssClass = '';
+
+        if (menu.active) {
+          cssClass += ' active';
+        }
+        if (menu.disabled) {
+          cssClass += ' disabled';
+        }
+
+        $('#subNavigationBar .bottom').append(
+          '<li class="subMenuEntry ' + cssClass + '"><a>' + name + '</a></li>'
+        );
+        if (!menu.disabled) {
+          $('#subNavigationBar .bottom').children().last().bind('click', function() {
+            window.App.navigate(menu.route, {trigger: true});
+          });
+        }
+      });
+    },
+
+    buildNodeSubNav: function(node, activeKey, disabled) {
+      var menus = {
+        Dashboard: {
+          route: '#node/' + encodeURIComponent(node)
+        },
+        Logs: {
+          route: '#nLogs/' + encodeURIComponent(node),
+          disabled: true
+        }
+      };
+
+      menus[activeKey].active = true;
+      menus[disabled].disabled = true;
+      this.buildSubNavBar(menus);
+    },
+
+    //nav for collection view
+    buildNodesSubNav: function(type) {
+
+      var menus = {
+        Coordinators: {
+          route: '#cNodes'
+        },
+        DBServers: {
+          route: '#dNodes'
+        }
+      };
+
+      if (type === 'coordinator') {
+        menus.Coordinators.active = true;
+      }
+      else {
+        menus.DBServers.active = true;
+      }
+
+      this.buildSubNavBar(menus);
+    },
+
+    //nav for collection view
+    buildCollectionSubNav: function(collectionName, activeKey) {
+
+      var defaultRoute = '#collection/' + encodeURIComponent(collectionName);
+
+      var menus = {
+        Content: {
+          route: defaultRoute + '/documents/1'
+        },
+        Indices: {
+          route: '#cIndices/' + encodeURIComponent(collectionName)
+        },
+        Info: {
+          route: '#cInfo/' + encodeURIComponent(collectionName)
+        },
+        Settings: {
+          route: '#cSettings/' + encodeURIComponent(collectionName)
+        }
+      };
+
+      menus[activeKey].active = true;
+      this.buildSubNavBar(menus);
+    },
+
     enableKeyboardHotkeys: function (enable) {
       var hotkeys = window.arangoHelper.hotkeysFunctions;
       if (enable === true) {
@@ -1948,7 +2036,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
     initialize: function () {
       //also server online check
       var self = this;
-      window.setInterval(function(){
+      window.setInterval(function() {
         self.getVersion();
       }, 15000);
       self.getVersion();
@@ -1962,7 +2050,9 @@ window.StatisticsCollection = Backbone.Collection.extend({
     template: templateEngine.createTemplate("footerView.ejs"),
 
     showServerStatus: function(isOnline) {
-      if (!window.App.isCluster) {
+      var self = this;
+
+      if (!window.App.isCluster) {
         if (isOnline === true) {
           $('#healthStatus').removeClass('negative');
           $('#healthStatus').addClass('positive');
@@ -1975,6 +2065,55 @@ window.StatisticsCollection = Backbone.Collection.extend({
           $('.health-state').html('OFFLINE');
           $('.health-icon').html('<i class="fa fa-exclamation-circle"></i>');
         }
+      }
+      else {
+        self.collection.fetch({
+          success: function() {
+            self.renderClusterState(true);
+          },
+          error: function() {
+            self.renderClusterState(false);
+          }
+        });
+      }
+    },
+
+    renderClusterState: function(connection) {
+      var ok = 0, error = 0;
+
+      if (connection) {
+        this.collection.each(function(value) {
+          if (value.toJSON().status === 'ok') {
+            ok++;
+          }
+          else {
+            error++;
+          }
+        });
+
+        if (error > 0) {
+          $('#healthStatus').removeClass('positive');
+          $('#healthStatus').addClass('negative');
+          if (error === 1) {
+            $('.health-state').html(error + ' NODE ERROR');
+          }
+          else {
+            $('.health-state').html(error + ' NODES ERROR');
+          }
+          $('.health-icon').html('<i class="fa fa-exclamation-circle"></i>');
+        }
+        else {
+          $('#healthStatus').removeClass('negative');
+          $('#healthStatus').addClass('positive');
+          $('.health-state').html('NODES OK');
+          $('.health-icon').html('<i class="fa fa-check-circle"></i>');
+        }
+      }
+      else {
+        $('#healthStatus').removeClass('positive');
+        $('#healthStatus').addClass('negative');
+        $('.health-state').html(window.location.host + ' OFFLINE');
+        $('.health-icon').html('<i class="fa fa-exclamation-circle"></i>');
       }
     },
 
@@ -3253,7 +3392,8 @@ window.StatisticsCollection = Backbone.Collection.extend({
       };
     },
 
-    show: function(templateName, title, buttons, tableContent, advancedContent, extraInfo, events, noConfirm, tabBar) {
+    show: function(templateName, title, buttons, tableContent, advancedContent,
+                   extraInfo, events, noConfirm, tabBar, divID) {
       var self = this, lastBtn, confirmMsg, closeButtonFound = false;
       buttons = buttons || [];
       noConfirm = Boolean(noConfirm);
@@ -3276,13 +3416,35 @@ window.StatisticsCollection = Backbone.Collection.extend({
       } else {
         buttons.push(self.createCloseButton('Close'));
       }
-      $(this.el).html(this.baseTemplate.render({
-        title: title,
-        buttons: buttons,
-        hideFooter: this.hideFooter,
-        confirm: confirmMsg,
-        tabBar: tabBar
-      }));
+      if (!divID) {
+        $(this.el).html(this.baseTemplate.render({
+          title: title,
+          buttons: buttons,
+          hideFooter: this.hideFooter,
+          confirm: confirmMsg,
+          tabBar: tabBar
+        }));
+      }
+      else {
+        //render into custom div
+        $('#' + divID).html(this.baseTemplate.render({
+          title: title,
+          buttons: buttons,
+          hideFooter: this.hideFooter,
+          confirm: confirmMsg,
+          tabBar: tabBar
+        }));
+        //remove not needed modal elements
+        $('#' + divID + " #modal-dialog").removeClass("fade hide modal");
+        $('#' + divID + " .modal-header").remove();
+        $('#' + divID + " .modal-tabbar").remove();
+        $('#' + divID + " .modal-tabbar").remove();
+        $('#' + divID + " .button-close").remove();
+        if ($('#' + divID + " .modal-footer").children().length === 0) {
+          $('#' + divID + " .modal-footer").remove();
+        }
+
+      }
       _.each(buttons, function(b, i) {
         if (b.disabled || !b.callback) {
           return;
@@ -3377,7 +3539,9 @@ window.StatisticsCollection = Backbone.Collection.extend({
         }, 100);
       }
 
-      $("#modal-dialog").modal("show");
+      if (!divID) {
+        $("#modal-dialog").modal("show");
+      }
 
       //enable modal hotkeys after rendering is complete
       if (this.enabledHotkey === false) {

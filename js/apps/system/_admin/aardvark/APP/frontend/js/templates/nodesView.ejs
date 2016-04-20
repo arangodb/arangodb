@@ -2,14 +2,28 @@
 
   <div id="nodesContent" class="innerContent">
 
-  <% if(coords.length > 0) { %>
+  <% if (coords.length > 0) { %>
+    <% var disabled = ''; %> 
+    <% var genClass = "pure-u-1-" + Object.keys(coords[0]).length; %>
+
+    <% if (type !== 'coordinator') { %>
+      <% disabled = " disabled"; %> 
+    <% } else { %>
+      <% disabled = " "; %> 
+    <% } %>
 
     <div class="pure-g cluster-nodes-title pure-table pure-table-header pure-title">
       <div class="pure-table-row">
-        <div class="pure-u-1-4 mid">Name</div>
-        <div class="pure-u-1-4 mid">Address</div>
-        <div class="pure-u-1-4 mid">Protocol</div>
-        <div class="pure-u-1-4 mid">Status</div>
+        <div class="<%= genClass %> mid">Name</div>
+        <div class="<%= genClass %> mid">Address</div>
+        <div class="<%= genClass %> mid">Protocol</div>
+  
+        <% if(type !== 'coordinator' ) { %>
+          <div class="<%=genClass%> mid">Role</div>
+        <% } %>
+
+        <div class="<%=genClass%> mid">Status</div>
+ 
       </div>
     </div>
 
@@ -17,16 +31,20 @@
 
       <% _.each(coords, function(node) { %>
 
-        <div class="pure-table-row" node="<%=node.name%>">
+        <div class="pure-table-row <%= disabled %>" node="<%=node.name%>">
 
-          <div class="pure-u-1-4 mid"><%= node.name %></div>
-          <div class="pure-u-1-4 mid"><%= node.address %></div>
-          <div class="pure-u-1-4 mid"><%= node.protocol %></div>
+          <div class="<%= genClass %> mid"><%= node.name %></div>
+          <div class="<%= genClass %> mid"><%= node.address %></div>
+          <div class="<%= genClass %> mid"><%= node.protocol %></div>
+
+          <% if(type !== 'coordinator' ) { %>
+            <div class="<%=genClass%> mid"><%= node.role %></div>
+          <% } %>
 
           <% if(node.status === 'ok') { %>
-            <div class="pure-u-1-4 mid"><i class="fa fa-check-circle"></i></div>
+            <div class="<%= genClass %> mid"><i class="fa fa-check-circle"></i></div>
           <% } else { %>
-            <div class="pure-u-1-4 mid"><i class="fa fa-exclamation-circle"></i></div>
+            <div class="<%= genClass %> mid"><i class="fa fa-exclamation-circle"></i></div>
           <% } %>
 
         </div>

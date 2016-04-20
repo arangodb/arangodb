@@ -63,7 +63,6 @@
         isCluster: this.isCluster
       }));
 
-      console.log(this.currentDB);
       $(this.subEl).html(this.templateSub.render({
         currentDB: this.currentDB.toJSON()
       }));
@@ -194,20 +193,6 @@
           view: undefined,
         }
       ],
-      node: [
-        {
-          name: 'Dashboard',
-          view: undefined,
-          active: true
-        },
-        {
-          name: 'Logs',
-          route: 'nodeLogs',
-          params: {
-            node: undefined
-          }
-        }
-      ],
       queries: [
         {
           name: 'Editor',
@@ -315,6 +300,7 @@
         menuItem = menuItem.substr(1, menuItem.length - 1);
       }
 
+      //Location for selecting MainView Primary Navigaation Entry
       if (menuItem === '') {
         if (window.App.isCluster) {
           menuItem = 'cluster';
@@ -322,6 +308,9 @@
         else {
           menuItem = 'dashboard';
         }
+      }
+      else if (menuItem === 'cNodes' || menuItem === 'dNodes') {
+        menuItem = 'nodes';
       }
       try {
         this.renderSubMenu(menuItem.split('-')[0]);

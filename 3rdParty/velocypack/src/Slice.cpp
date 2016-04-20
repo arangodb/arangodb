@@ -319,7 +319,7 @@ uint64_t Slice::normalizedHash(uint64_t seed) const {
 // look for the specified attribute inside an Object
 // returns a Slice(ValueType::None) if not found
 Slice Slice::get(std::string const& attribute) const {
-  if (!isType(ValueType::Object)) {
+  if (!isObject()) {
     throw Exception(Exception::InvalidValueType, "Expecting Object");
   }
 
@@ -512,7 +512,7 @@ Slice Slice::getFromCompactObject(std::string const& attribute) const {
 
 // get the offset for the nth member from an Array or Object type
 ValueLength Slice::getNthOffset(ValueLength index) const {
-  VELOCYPACK_ASSERT(type() == ValueType::Array || type() == ValueType::Object);
+  VELOCYPACK_ASSERT(isArray() || isObject());
 
   auto const h = head();
 
@@ -565,7 +565,7 @@ ValueLength Slice::getNthOffset(ValueLength index) const {
 
 // extract the nth member from an Array
 Slice Slice::getNth(ValueLength index) const {
-  VELOCYPACK_ASSERT(type() == ValueType::Array);
+  VELOCYPACK_ASSERT(isArray());
 
   return Slice(_start + getNthOffset(index));
 }

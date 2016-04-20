@@ -474,7 +474,7 @@ void ClusterFeature::stop() {
   {
     // Try only once to unregister because maybe the agencycomm
     // is shutting down as well...
-    AgencyCommLocker locker("Current", "WRITE", 120.0, 0.001);
+    AgencyCommLocker locker("Current", "WRITE", 120.0, 1.000);
 
     if (locker.successful()) {
       // unregister ourselves

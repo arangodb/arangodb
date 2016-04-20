@@ -531,6 +531,10 @@ QueryResult Query::execute(QueryRegistry* registry) {
       if (cacheEntry != nullptr) {
         // got a result from the query cache
         QueryResult res(TRI_ERROR_NO_ERROR);
+        // we don't have yet a transaction when we're here, so let's create
+        // a mimimal context to build the result
+        res.context = std::make_shared<StandaloneTransactionContext>(_vocbase);
+
         res.warnings = warningsToVelocyPack();
         TRI_ASSERT(cacheEntry->_queryResult != nullptr);
         res.result = cacheEntry->_queryResult;
@@ -539,10 +543,10 @@ QueryResult Query::execute(QueryRegistry* registry) {
       }
     }
 
-    QueryResult res = prepare(registry);
+    QueryResult result = prepare(registry);
 
-    if (res.code != TRI_ERROR_NO_ERROR) {
-      return res;
+    if (result.code != TRI_ERROR_NO_ERROR) {
+      return result;
     }
 
     if (_queryString == nullptr) {
@@ -629,11 +633,12 @@ QueryResult Query::execute(QueryRegistry* registry) {
     auto stats = std::make_shared<VPackBuilder>();
     _engine->_stats.toVelocyPack(*(stats.get()));
 
+    result.context = _trx->transactionContext();
+
     cleanupPlanAndEngine(TRI_ERROR_NO_ERROR);
 
     enterState(FINALIZATION);
 
-    QueryResult result(TRI_ERROR_NO_ERROR);
     result.warnings = warningsToVelocyPack();
     result.result = resultBuilder;
     result.stats = stats;
@@ -684,13 +689,13 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
       arangodb::aql::QueryCacheResultEntryGuard guard(cacheEntry);
 
       if (cacheEntry != nullptr) {
-        // we don't have yet a transaction when we're here, so let's create
-        // a mimimal context to build the result
-        auto transactionContext = createTransactionContext();
         // got a result from the query cache
         QueryResultV8 res(TRI_ERROR_NO_ERROR);
+        // we don't have yet a transaction when we're here, so let's create
+        // a mimimal context to build the result
+        res.context = std::make_shared<StandaloneTransactionContext>(_vocbase);
 
-        v8::Handle<v8::Value> values = TRI_VPackToV8(isolate, cacheEntry->_queryResult->slice(), transactionContext->getVPackOptions());
+        v8::Handle<v8::Value> values = TRI_VPackToV8(isolate, cacheEntry->_queryResult->slice(), res.context->getVPackOptions());
         TRI_ASSERT(values->IsArray());
         res.result = v8::Handle<v8::Array>::Cast(values); 
         res.cached = true;
@@ -698,10 +703,10 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
       }
     }
 
-    QueryResultV8 res = prepare(registry);
+    QueryResultV8 result = prepare(registry);
 
-    if (res.code != TRI_ERROR_NO_ERROR) {
-      return res;
+    if (result.code != TRI_ERROR_NO_ERROR) {
+      return result;
     }
 
     work.reset(new AqlWorkStack(_vocbase, _id, _queryString, _queryLength));
@@ -713,7 +718,6 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
       useQueryCache = false;
     }
 
-    QueryResultV8 result(TRI_ERROR_NO_ERROR);
     result.result = v8::Array::New(isolate);
 
     // this is the RegisterId our results can be found in
@@ -778,6 +782,8 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
     _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
     auto stats = std::make_shared<VPackBuilder>();
     _engine->_stats.toVelocyPack(*(stats.get()));
+
+    result.context = _trx->transactionContext();
 
     cleanupPlanAndEngine(TRI_ERROR_NO_ERROR);
 

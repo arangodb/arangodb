@@ -27,6 +27,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/process-utils.h"
 #include "Rest/GeneralRequest.h"
+#include "Statistics/StatisticsFeature.h"
 #include "Statistics/statistics.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
@@ -104,6 +105,20 @@ static void JS_ServerStatistics(
   result->Set(TRI_V8_ASCII_STRING("physicalMemory"),
               v8::Number::New(isolate, (double)TRI_PhysicalMemory));
 
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not server-side statistics are enabled
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_EnabledStatistics(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  v8::Handle<v8::Value> result = v8::Boolean::New(isolate, StatisticsFeature::enabled());
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
@@ -243,7 +258,10 @@ void TRI_InitV8Statistics(v8::Isolate* isolate,
   // .............................................................................
   // create the global functions
   // .............................................................................
-
+  
+  TRI_AddGlobalFunctionVocbase(isolate, context,
+                               TRI_V8_ASCII_STRING("SYS_ENABLED_STATISTICS"),
+                               JS_EnabledStatistics);
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("SYS_CLIENT_STATISTICS"),
                                JS_ClientStatistics);

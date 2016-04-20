@@ -132,6 +132,7 @@ function computeStatisticsRaw (result, start, clusterId) {
       + "  return s",
     { start: start - 2 * STATISTICS_INTERVAL, clusterId: clusterId });
 
+  result.enabled = internal.enabledStatistics(); 
   result.times = [];
 
   for (let key in STAT_SERIES) {
@@ -394,7 +395,7 @@ function computeStatisticsLong (attrs, clusterId) {
 
 
 router.use((req, res, next) => {
-  if (!internal.options()['server.disable-authentication'] && !req.session.uid) {
+  if (!internal.options()['server.disable-authentication'] && (!req.session || !req.session.uid)) {
     throw new httperr.Unauthorized();
   }
   next();

@@ -35,8 +35,11 @@
       "users": "userManagement",
       "userProfile": "userProfile",
       "cluster": "cluster",
-      "nodes": "nodes",
+      "nodes": "cNodes",
+      "cNodes": "cNodes",
+      "dNodes": "dNodes",
       "node/:name": "node",
+      //"nLogs/:name": "nLogs",
       "logs": "logs",
       "helpus": "helpUs"
     },
@@ -230,19 +233,16 @@
         this.nodeView = new window.NodeView({
           coordname: name,
           coordinators: this.coordinatorCollection,
+          dbServers: this.dbServers
         });
       }
       this.nodeView.render();
     },
 
-    nodeLogs: function (initialized) {
-
-    },
-
-    nodes: function (initialized) {
+    cNodes: function (initialized) {
       this.checkUser();
       if (!initialized || this.isCluster === undefined) {
-        this.waitForInit(this.nodes.bind(this));
+        this.waitForInit(this.cNodes.bind(this));
         return;
       }
       if (this.isCluster === false) {
@@ -251,12 +251,31 @@
         return;
       }
 
-      if (!this.nodesView) {
-        this.nodesView = new window.NodesView({
-          coordinators: this.coordinatorCollection,
-          dbServers: this.dbServers
-        });
+      this.nodesView = new window.NodesView({
+        coordinators: this.coordinatorCollection,
+        dbServers: this.dbServers[0],
+        toRender: 'coordinator'
+      });
+      this.nodesView.render();
+    },
+
+    dNodes: function (initialized) {
+      this.checkUser();
+      if (!initialized || this.isCluster === undefined) {
+        this.waitForInit(this.dNodes.bind(this));
+        return;
       }
+      if (this.isCluster === false) {
+        this.routes[""] = 'dashboard';
+        this.navigate("#dashboard", {trigger: true});
+        return;
+      }
+
+      this.nodesView = new window.NodesView({
+        coordinators: this.coordinatorCollection,
+        dbServers: this.dbServers[0],
+        toRender: 'dbserver'
+      });
       this.nodesView.render();
     },
 
@@ -307,6 +326,39 @@
       }
       this.logsView.render();
     },
+
+    /*
+    nLogs: function (nodename, initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.nLogs.bind(this), nodename);
+        return;
+      }
+      var newLogsAllCollection = new window.ArangoLogs(
+        {upto: true, loglevel: 4}
+      ),
+      newLogsDebugCollection = new window.ArangoLogs(
+        {loglevel: 4}
+      ),
+      newLogsInfoCollection = new window.ArangoLogs(
+        {loglevel: 3}
+      ),
+      newLogsWarningCollection = new window.ArangoLogs(
+        {loglevel: 2}
+      ),
+      newLogsErrorCollection = new window.ArangoLogs(
+        {loglevel: 1}
+      );
+      this.nLogsView = new window.LogsView({
+        logall: newLogsAllCollection,
+        logdebug: newLogsDebugCollection,
+        loginfo: newLogsInfoCollection,
+        logwarning: newLogsWarningCollection,
+        logerror: newLogsErrorCollection
+      });
+      this.nLogsView.render();
+    },
+    */
 
     applicationDetail: function (mount, initialized) {
       this.checkUser();
@@ -746,7 +798,7 @@
             host: coordinator.get('address') 
           })
         );
-      });           
+      });
       _.each(this.dbServers, function(dbservers) {
         dbservers.fetch();
       });

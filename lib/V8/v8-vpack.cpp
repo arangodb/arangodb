@@ -108,10 +108,12 @@ v8::Handle<v8::Value> TRI_VPackToV8(v8::Isolate* isolate,
                                     VPackOptions const* options,
                                     VPackSlice const* base) {
   switch (slice.type()) {
-    case VPackValueType::Null:
+    case VPackValueType::Null: {
       return v8::Null(isolate);
-    case VPackValueType::Bool:
+    }
+    case VPackValueType::Bool: {
       return v8::Boolean::New(isolate, slice.getBool());
+    }
     case VPackValueType::Double: {
       // convert NaN, +inf & -inf to null
       double value = slice.getDouble();
@@ -145,12 +147,19 @@ v8::Handle<v8::Value> TRI_VPackToV8(v8::Isolate* isolate,
     case VPackValueType::SmallInt: {
       return v8::Integer::New(isolate, slice.getNumericValue<int32_t>());
     }
-    case VPackValueType::String:
+    case VPackValueType::String: {
       return ObjectVPackString(isolate, slice);
-    case VPackValueType::Object:
-      return ObjectVPackObject(isolate, slice, options, base);
-    case VPackValueType::Array:
+    }
+    case VPackValueType::Array: {
       return ObjectVPackArray(isolate, slice, options, base);
+    }
+    case VPackValueType::Object: {
+      return ObjectVPackObject(isolate, slice, options, base);
+    }
+    case VPackValueType::External: {
+      // resolve external
+      return TRI_VPackToV8(isolate, VPackSlice(slice.getExternal()), options, base); 
+    }
     case VPackValueType::Custom: {
       if (options == nullptr || options->customTypeHandler == nullptr || base == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -161,8 +170,9 @@ v8::Handle<v8::Value> TRI_VPackToV8(v8::Isolate* isolate,
       return TRI_V8_STD_STRING(id);
     }
     case VPackValueType::None:
-    default:
+    default: {
       return v8::Undefined(isolate);
+    }
   }
 }
 

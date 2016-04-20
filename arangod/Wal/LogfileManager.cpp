@@ -515,6 +515,9 @@ void LogfileManager::stop() {
   // set WAL to read-only mode
   allowWrites(false);
 
+  // notify slots that we're shutting down
+  _slots->shutdown();
+  
   // finalize allocator thread
   // this prevents creating new (empty) WAL logfile once we flush
   // current logfile

@@ -60,12 +60,6 @@ typedef uint64_t TRI_voc_cid_t;
 typedef uint64_t TRI_voc_fid_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief document key identifier type
-////////////////////////////////////////////////////////////////////////////////
-
-typedef char* TRI_voc_key_t;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief revision identifier type
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -146,16 +140,40 @@ enum TRI_edge_direction_e {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief velocypack sub-object (for indexes, as part of TRI_index_element_t, 
-/// if offset is non-zero, then it is an offset into the VelocyPack data in
-/// the data or WAL file. If offset is 0, then data contains the actual data
-/// in place.
+/// if the last byte in data[] is 0, then it is an offset into the VelocyPack 
+/// data in the datafile or WAL file. If the last byte in data[] is 1, then 
+/// value.data contains the actual VelocyPack data in place.
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_vpack_sub_t {
-  uint32_t offset;
-  uint8_t data[8];
+  union {
+    uint8_t data[12];
+    uint32_t offset;
+  } value;
+  
+  static constexpr size_t maxValueLength() noexcept {
+    return sizeof(value.data) - 1;
+  }
+  
+  void setOffset(uint32_t offset) noexcept {
+    value.offset = offset;
+    value.data[maxValueLength()] = 0; // type = offset
+  }
+    
+  void setValue(uint8_t const* data, size_t length) noexcept {
+    memcpy(&value.data[0], data, length);
+    value.data[maxValueLength()] = 1; // type = value
+  }
 
-  VPackSlice const slice(TRI_doc_mptr_t const* mptr) const;
+  inline bool isOffset() const noexcept {
+    return value.data[maxValueLength()] == 0;
+  }
+
+  inline bool isValue() const noexcept {
+    return value.data[maxValueLength()] == 1;
+  }
+
+  VPackSlice slice(TRI_doc_mptr_t const* mptr) const;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

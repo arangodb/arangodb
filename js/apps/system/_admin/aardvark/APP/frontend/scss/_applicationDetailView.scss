@@ -133,7 +133,6 @@ main {
   background-color: $c-white;
   border: 1px solid $c-content-border;
   border-radius: 3px;
-  margin-top: 220px;
 
   .app-info {
     @include border-radius(3px);

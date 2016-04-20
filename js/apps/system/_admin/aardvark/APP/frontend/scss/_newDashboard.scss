@@ -376,13 +376,13 @@
 
   .dashboard-legend-inner {
     padding: 0 5px 5px 0;
+    text-align: right;
 
     br {
       display: none;
     }
 
     span {
-      @extend %pull-right;
       padding-left: 10px;
     }
   }

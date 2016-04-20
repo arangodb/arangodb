@@ -605,12 +605,13 @@ v8::Handle<v8::Value> AqlValue::toV8(
 
 /// @brief materializes a value into the builder
 void AqlValue::toVelocyPack(AqlTransaction* trx, 
-                             arangodb::velocypack::Builder& builder) const {
+                            arangodb::velocypack::Builder& builder) const {
   switch (type()) {
     case VPACK_DOCUMENT: 
     case VPACK_POINTER: 
     case VPACK_INLINE: 
     case VPACK_EXTERNAL: {
+      // TODO: optionally resolve externals
       builder.add(slice());
       break;
     }
@@ -619,6 +620,7 @@ void AqlValue::toVelocyPack(AqlTransaction* trx,
       for (auto const& it : *_data.docvec) {
         size_t const n = it->size();
         for (size_t i = 0; i < n; ++i) {
+          // TODO: optionally resolve externals
           it->getValueReference(i, 0).toVelocyPack(trx, builder);
         }
       }
@@ -629,6 +631,7 @@ void AqlValue::toVelocyPack(AqlTransaction* trx,
       builder.openArray();
       size_t const n = _data.range->size();
       for (size_t i = 0; i < n; ++i) {
+        // TODO: optionally resolve externals
         builder.add(VPackValue(_data.range->at(i)));
       }
       builder.close();
@@ -647,14 +650,10 @@ AqlValue AqlValue::materialize(AqlTransaction* trx, bool& hasCopied) const {
       hasCopied = false;
       return *this;
     }
-    case DOCVEC: {
-      VPackBuilder builder;
-      toVelocyPack(trx, builder);
-      hasCopied = true;
-      return AqlValue(builder);
-    }
+    case DOCVEC: 
     case RANGE: {
       VPackBuilder builder;
+      // TODO: optionally resolve externals
       toVelocyPack(trx, builder);
       hasCopied = true;
       return AqlValue(builder);
@@ -740,6 +739,7 @@ void AqlValue::destroy() {
 
 /// @brief return the slice from the value
 VPackSlice AqlValue::slice() const {
+  // TODO: optionally resolve externals
   switch (type()) {
     case VPACK_DOCUMENT: 
     case VPACK_POINTER: {

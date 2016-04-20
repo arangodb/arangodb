@@ -201,6 +201,10 @@ void Expression::replaceVariableReference(Variable const* variable,
     // must even set back the expression type so the expression will be analyzed
     // again
     _type = UNPROCESSED;
+  } else if (_type == SIMPLE) {
+    // must rebuild the expression completely, as it may have changed drastically
+    _built = false;
+    _type = UNPROCESSED;
   }
 
   const_cast<AstNode*>(_node)->clearFlags();

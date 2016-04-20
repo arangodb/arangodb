@@ -2296,12 +2296,11 @@ TRI_vocbase_t::getReplicationClients() {
 /// in place.
 ////////////////////////////////////////////////////////////////////////////////
 
-VPackSlice const TRI_vpack_sub_t::slice(TRI_doc_mptr_t const* mptr) const {
-  if (offset == 0) {
-    return VPackSlice(data);
-  } else {
-    return VPackSlice(mptr->vpack() + offset);
-  }
+VPackSlice TRI_vpack_sub_t::slice(TRI_doc_mptr_t const* mptr) const {
+  if (isValue()) {
+    return VPackSlice(&value.data[0]);
+  } 
+  return VPackSlice(mptr->vpack() + value.offset);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2310,14 +2309,12 @@ VPackSlice const TRI_vpack_sub_t::slice(TRI_doc_mptr_t const* mptr) const {
 
 void TRI_FillVPackSub(TRI_vpack_sub_t* sub,
                       VPackSlice const base, VPackSlice const value) noexcept {
-  if (value.byteSize() <= sizeof(sub->data)) {
-    sub->offset = 0;
-    memcpy(sub->data, value.start(), value.byteSize());
+  if (value.byteSize() <= TRI_vpack_sub_t::maxValueLength()) {
+    sub->setValue(value.start(), value.byteSize());
   } else {
     size_t off = value.start() - base.start();
     TRI_ASSERT(off <= UINT32_MAX);
-    sub->offset = static_cast<uint32_t>(off);
-    memset(sub->data, 0, sizeof(sub->data));
+    sub->setOffset(static_cast<uint32_t>(off));
   }
 }
 

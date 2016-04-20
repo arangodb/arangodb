@@ -10578,19 +10578,62 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       var cssClass;
 
       _.each(menuItems, function(menu, name) {
+        cssClass = '';
+
         if (menu.active) {
           cssClass += ' active';
         }
-        else {
-          cssClass = '';
+        if (menu.disabled) {
+          cssClass += ' disabled';
         }
+
         $('#subNavigationBar .bottom').append(
           '<li class="subMenuEntry ' + cssClass + '"><a>' + name + '</a></li>'
         );
-        $('#subNavigationBar .bottom').children().last().bind('click', function() {
-          window.App.navigate(menu.route, {trigger: true});
-        });
+        if (!menu.disabled) {
+          $('#subNavigationBar .bottom').children().last().bind('click', function() {
+            window.App.navigate(menu.route, {trigger: true});
+          });
+        }
       });
+    },
+
+    buildNodeSubNav: function(node, activeKey, disabled) {
+      var menus = {
+        Dashboard: {
+          route: '#node/' + encodeURIComponent(node)
+        },
+        Logs: {
+          route: '#nLogs/' + encodeURIComponent(node),
+          disabled: true
+        }
+      };
+
+      menus[activeKey].active = true;
+      menus[disabled].disabled = true;
+      this.buildSubNavBar(menus);
+    },
+
+    //nav for collection view
+    buildNodesSubNav: function(type) {
+
+      var menus = {
+        Coordinators: {
+          route: '#cNodes'
+        },
+        DBServers: {
+          route: '#dNodes'
+        }
+      };
+
+      if (type === 'coordinator') {
+        menus.Coordinators.active = true;
+      }
+      else {
+        menus.DBServers.active = true;
+      }
+
+      this.buildSubNavBar(menus);
     },
 
     //nav for collection view
@@ -13167,7 +13210,7 @@ module.define("underscore", function(exports, module) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoError
 ////////////////////////////////////////////////////////////////////////////////
-if(global.ArangoError){exports.ArangoError = global.ArangoError;delete global.ArangoError;}else {exports.ArangoError = function(error){if(error !== undefined){this.error = error.error;this.code = error.code;this.errorNum = error.errorNum;this.errorMessage = error.errorMessage;}};exports.ArangoError.prototype = new Error();}Object.defineProperty(exports.ArangoError.prototype,'message',{configurable:true,enumerable:true,get:function get(){return this.errorMessage;}});exports.ArangoError.prototype.name = 'ArangoError';exports.ArangoError.prototype._PRINT = function(context){context.output += '[' + this.toString() + ']';};exports.ArangoError.prototype.toString = function(){return this.name + ' ' + this.errorNum + ': ' + this.message;}; ////////////////////////////////////////////////////////////////////////////////
+if(global.ArangoError){exports.ArangoError = global.ArangoError;delete global.ArangoError;}else {exports.ArangoError = function(error){if(error !== undefined){this.error = error.error;this.code = error.code;this.errorNum = error.errorNum;this.errorMessage = error.errorMessage;}};exports.ArangoError.prototype = new Error();}exports.ArangoError.prototype.isArangoError = true;Object.defineProperty(exports.ArangoError.prototype,'message',{configurable:true,enumerable:true,get:function get(){return this.errorMessage;}});exports.ArangoError.prototype.name = 'ArangoError';exports.ArangoError.prototype._PRINT = function(context){context.output += '[' + this.toString() + ']';};exports.ArangoError.prototype.toString = function(){return this.name + ' ' + this.errorNum + ': ' + this.message;}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief threadNumber
 ////////////////////////////////////////////////////////////////////////////////
 exports.threadNumber = 0;if(global.THREAD_NUMBER){exports.threadNumber = global.THREAD_NUMBER;delete global.THREAD_NUMBER;} ////////////////////////////////////////////////////////////////////////////////
@@ -14924,7 +14967,7 @@ ArangoStatement.prototype.execute = function(){throw "cannot call abstract metho
 /// @author Dr. Frank Celler
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-var internal=require("internal");var fs=require("fs");var mimetypes=require("@arangodb/mimetypes").mimeTypes; ////////////////////////////////////////////////////////////////////////////////
+var internal=require("internal");var fs=require("fs"); ////////////////////////////////////////////////////////////////////////////////
 /// @brief errors
 ////////////////////////////////////////////////////////////////////////////////
 Object.keys(internal.errors).forEach(function(key){exports[key] = internal.errors[key].code;});exports.errors = internal.errors; ////////////////////////////////////////////////////////////////////////////////
@@ -14934,12 +14977,6 @@ exports.ArangoError = internal.ArangoError; ////////////////////////////////////
 /// @brief defines a module
 ////////////////////////////////////////////////////////////////////////////////
 exports.defineModule = function(path,file){var content;var m;var mc;content = fs.read(file);mc = internal.db._collection("_modules");if(mc === null){mc = internal.db._create("_modules",{isSystem:true});}path = module.normalize(path);m = mc.firstExample({path:path});if(m === null){mc.save({path:path,content:content});}else {mc.replace(m,{path:path,content:content});}}; ////////////////////////////////////////////////////////////////////////////////
-/// @brief guessContentType
-////////////////////////////////////////////////////////////////////////////////
-exports.guessContentType = function(filename,defaultValue){var re=/\.([a-zA-Z0-9]+)$/;var match=re.exec(filename);if(match !== null){var extension=match[1];if(mimetypes.hasOwnProperty(extension)){var type=mimetypes[extension];if(type[1]){ // append charset
-return type[0] + "; charset=utf-8";}return type[0];} // fall-through intentional
-} // default mimetype
-if(defaultValue){return defaultValue;}return "text/plain; charset=utf-8";}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalizeURL
 ///
 /// If @FA{path} starts with "." or "..", then it is a relative path.
@@ -15957,7 +15994,7 @@ var arangodb=require("@arangodb");var ArangoError=arangodb.ArangoError; // forwa
 var SimpleQueryArray;var SimpleQueryNear;var SimpleQueryWithin;var SimpleQueryWithinRectangle; ////////////////////////////////////////////////////////////////////////////////
 /// @brief array query
 ////////////////////////////////////////////////////////////////////////////////
-function GeneralArrayCursor(documents,skip,limit,data){this._documents = documents;this._countTotal = documents.length;this._skip = skip;this._limit = limit;this._cached = false;this._extra = {};var self=this;if(data !== null && data !== undefined && typeof data === 'object'){['stats','warnings','profile'].forEach(function(d){if(data.hasOwnProperty(d)){self._extra[d] = data[d];}});this._cached = data.cached || false;}this.execute();} ////////////////////////////////////////////////////////////////////////////////
+function GeneralArrayCursor(documents,skip,limit,data){this._documents = documents;this._countTotal = documents.length;this._skip = skip;this._limit = limit;this._cached = false;this._extra = {};var self=this;if(data !== null && data !== undefined && typeof data === 'object'){['stats','warnings','profile'].forEach(function(d){if(data.hasOwnProperty(d)){self._extra[d] = data[d];}});this._cached = data.cached || false;}this.execute();}GeneralArrayCursor.prototype.isArangoResultSet = true; ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes an array query
 ////////////////////////////////////////////////////////////////////////////////
 GeneralArrayCursor.prototype.execute = function(){if(this._skip === null){this._skip = 0;}var len=this._documents.length;var s=0;var e=len; // skip from the beginning
@@ -15987,7 +16024,7 @@ GeneralArrayCursor.prototype.next = function(){if(this._current < this._stop){re
 GeneralArrayCursor.prototype.dispose = function(){this._documents = null;this._skip = null;this._limit = null;this._countTotal = null;this._countQuery = null;this._current = null;this._stop = null;this._extra = null;}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief simple query
 ////////////////////////////////////////////////////////////////////////////////
-function SimpleQuery(){this._execution = null;this._skip = 0;this._limit = null;this._countQuery = null;this._countTotal = null;this._batchSize = null;} ////////////////////////////////////////////////////////////////////////////////
+function SimpleQuery(){this._execution = null;this._skip = 0;this._limit = null;this._countQuery = null;this._countTotal = null;this._batchSize = null;}SimpleQuery.prototype.isArangoResultSet = true; ////////////////////////////////////////////////////////////////////////////////
 /// @brief join limits
 ////////////////////////////////////////////////////////////////////////////////
 function joinLimits(query,limit){ // original limit is 0, keep it
@@ -20051,6 +20088,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         window.setInterval(function() {
           if (window.location.hash === '#cluster'
               || window.location.hash === '#') {
+
             var callback = function(data) {
               self.rerenderValues(data);
               self.rerenderGraphs(data);
@@ -20156,17 +20194,36 @@ window.ArangoUsers = Backbone.Collection.extend({
       var callback = function(data) {
         self.rerenderValues(data);
         self.rerenderGraphs(data);
-      };
+      }.bind(this);
 
       // now fetch the statistics history
       self.getCoordStatHistory(callback);
-      
-      this.updateValues();
+
+      //special case nodes
+      self.coordinators.fetch({
+        success: function() {
+          self.renderNode(true);
+        },
+        error: function() {
+          self.renderNode(false);
+        }
+      });
     },
     
     rerenderValues: function(data) {
+      var self = this;
 
-      // TODO cache value state like graph data
+      //TODO cache value state like graph data
+
+      //NODE
+      this.coordinators.fetch({
+        success: function() {
+          self.renderNode(true);
+        },
+        error: function() {
+          self.renderNode(false);
+        }
+      });
 
       //Connections
       this.renderValue('#clusterConnections', Math.round(data.clientConnectionsCurrent));
@@ -20176,12 +20233,9 @@ window.ArangoUsers = Backbone.Collection.extend({
       var totalMem = data.physicalMemory;
       var usedMem = data.residentSizeCurrent;
       this.renderValue('#clusterRam', [usedMem, totalMem]);
-
-      //NODES
-      this.renderValue('#clusterNodes', this.statCollectCoord.size());
     },
 
-    renderValue: function(id, value) {
+    renderValue: function(id, value, error) {
       if (typeof value === 'number') {
         $(id).html(value);
       }
@@ -20191,11 +20245,46 @@ window.ArangoUsers = Backbone.Collection.extend({
         var percent = 1 / (b/a) * 100;
         $(id).html(percent.toFixed(1) + ' %');
       }
+      else if (typeof value === 'string') {
+        $(id).html(value);
+      }
+
+      if (error) {
+        $(id).addClass('negative');
+        $(id).removeClass('positive');
+      }
+      else {
+        $(id).addClass('positive');
+        $(id).removeClass('negative');
+      }
+
     },
 
-    updateValues: function() {
-      this.renderValue('#clusterNodes', this.statCollectCoord.size());
-      this.renderValue('#clusterRam', [1024, 4096]);
+    renderNode: function(connection) {
+      var ok = 0, error = 0;
+
+      if (connection) {
+        this.coordinators.each(function(value) {
+          if (value.toJSON().status === 'ok') {
+            ok++;
+          }
+          else {
+            error++;
+          }
+        });
+        
+        if (error > 0) {
+          var total = error + ok;
+          this.renderValue('#clusterNodes', ok + '/' + total, true);
+        }
+        else {
+          this.renderValue('#clusterNodes', ok);
+        }
+      }
+      else {
+        this.renderValue('#clusterNodes', 'OFFLINE', true);
+      }
+
     },
 
     initValues: function() {
@@ -20461,7 +20550,6 @@ window.ArangoUsers = Backbone.Collection.extend({
       };
 
       var mergeHistory = function(data) {
-
 
         var onetime = ['times'];
         var values = [
@@ -22829,8 +22917,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       "click #databaseSearchSubmit" : "search",
       "click #databaseToggle"       : "toggleSettingsDropdown",
       "click .css-label"            : "checkBoxes",
-      "click #dbSortDesc"           : "sorting",
-      "click .tile"                 : "switchDatabase"
+      "click #dbSortDesc"           : "sorting"
     },
 
     sorting: function() {
@@ -24659,7 +24746,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     initialize: function () {
       //also server online check
       var self = this;
-      window.setInterval(function(){
+      window.setInterval(function() {
         self.getVersion();
       }, 15000);
       self.getVersion();
@@ -24673,6 +24760,8 @@ window.ArangoUsers = Backbone.Collection.extend({
     template: templateEngine.createTemplate("footerView.ejs"),
 
     showServerStatus: function(isOnline) {
+      var self = this;
+
       if (!window.App.isCluster) {
         if (isOnline === true) {
           $('#healthStatus').removeClass('negative');
@@ -24686,6 +24775,55 @@ window.ArangoUsers = Backbone.Collection.extend({
           $('.health-state').html('OFFLINE');
           $('.health-icon').html('<i class="fa fa-exclamation-circle"></i>');
         }
+      }
+      else {
+        self.collection.fetch({
+          success: function() {
+            self.renderClusterState(true);
+          },
+          error: function() {
+            self.renderClusterState(false);
+          }
+        });
+      }
+    },
+
+    renderClusterState: function(connection) {
+      var ok = 0, error = 0;
+
+      if (connection) {
+        this.collection.each(function(value) {
+          if (value.toJSON().status === 'ok') {
+            ok++;
+          }
+          else {
+            error++;
+          }
+        });
+
+        if (error > 0) {
+          $('#healthStatus').removeClass('positive');
+          $('#healthStatus').addClass('negative');
+          if (error === 1) {
+            $('.health-state').html(error + ' NODE ERROR');
+          }
+          else {
+            $('.health-state').html(error + ' NODES ERROR');
+          }
+          $('.health-icon').html('<i class="fa fa-exclamation-circle"></i>');
+        }
+        else {
+          $('#healthStatus').removeClass('negative');
+          $('#healthStatus').addClass('positive');
+          $('.health-state').html('NODES OK');
+          $('.health-icon').html('<i class="fa fa-check-circle"></i>');
+        }
+      }
+      else {
+        $('#healthStatus').removeClass('positive');
+        $('#healthStatus').addClass('negative');
+        $('.health-state').html(window.location.host + ' OFFLINE');
+        $('.health-icon').html('<i class="fa fa-exclamation-circle"></i>');
       }
     },
 
@@ -25159,7 +25297,10 @@ window.ArangoUsers = Backbone.Collection.extend({
       }
       var info = {
         name: window.arangoHelper.escapeHtml($("#new-app-name").val()),
-        collectionNames: _.map($('#new-app-collections').select2("data"), function(d) {
+        documentCollections: _.map($('#new-app-document-collections').select2("data"), function(d) {
+          return window.arangoHelper.escapeHtml(d.text);
+        }),
+        edgeCollections: _.map($('#new-app-edge-collections').select2("data"), function(d) {
           return window.arangoHelper.escapeHtml(d.text);
         }),
         //        authenticated: window.arangoHelper.escapeHtml($("#new-app-name").val()),
@@ -25209,7 +25350,13 @@ window.ArangoUsers = Backbone.Collection.extend({
       undefined,
       modalEvents
     );
-    $("#new-app-collections").select2({
+    $("#new-app-document-collections").select2({
+      tags: [],
+      showSearchBox: false,
+      minimumResultsForSearch: -1,
+      width: "336px"
+    });
+    $("#new-app-edge-collections").select2({
       tags: [],
       showSearchBox: false,
       minimumResultsForSearch: -1,
@@ -25231,7 +25378,8 @@ window.ArangoUsers = Backbone.Collection.extend({
       window.setTimeout(function() {
         if ($('.select2-drop').is(':visible')) {
           if (!$('#select2-search-field input').is(':focus')) {
-            $('#s2id_new-app-collections').select2('close');
+            $('#s2id_new-app-document-collections').select2('close');
+            $('#s2id_new-app-edge-collections').select2('close');
             checkButton();
           }
         }
@@ -26129,6 +26277,25 @@ window.ArangoUsers = Backbone.Collection.extend({
       });
       return edgeDefinitionMap;
     }
+  });
+}());
+
+/*jshint browser: true */
+/*jshint unused: false */
+/*global arangoHelper, Backbone, templateEngine, $, window*/
+(function () {
+  "use strict";
+
+  window.HelpUsView = Backbone.View.extend({
+
+    el: "#content",
+
+    template: templateEngine.createTemplate("helpUsView.ejs"),
+
+    render: function () {
+      this.$el.html(this.template.render({}));
+    }
+
   });
 }());
 
@@ -27332,7 +27499,9 @@ window.ArangoUsers = Backbone.Collection.extend({
         isCluster: this.isCluster
       }));
 
-      $(this.subEl).html(this.templateSub.render({}));
+      $(this.subEl).html(this.templateSub.render({
+        currentDB: this.currentDB.toJSON()
+      }));
       
       this.dbSelectionView.render($("#dbSelect"));
       this.notificationView.render($("#notificationBar"));
@@ -27369,9 +27538,14 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     navigateByTab: function (e) {
+
       var tab = e.target || e.srcElement,
       navigateTo = tab.id,
       dropdown = false;
+
+      if ($(tab).hasClass('fa')) {
+        return;
+      }
 
       if (navigateTo === "") {
         navigateTo = $(tab).attr("class");
@@ -27453,20 +27627,6 @@ window.ArangoUsers = Backbone.Collection.extend({
         {
           name: 'Settings',
           view: undefined,
-        }
-      ],
-      node: [
-        {
-          name: 'Dashboard',
-          view: undefined,
-          active: true
-        },
-        {
-          name: 'Logs',
-          route: 'nodeLogs',
-          params: {
-            node: undefined
-          }
         }
       ],
       queries: [
@@ -27576,6 +27736,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         menuItem = menuItem.substr(1, menuItem.length - 1);
       }
 
+      //Location for selecting MainView Primary Navigaation Entry
       if (menuItem === '') {
         if (window.App.isCluster) {
           menuItem = 'cluster';
@@ -27583,6 +27744,9 @@ window.ArangoUsers = Backbone.Collection.extend({
         else {
           menuItem = 'dashboard';
         }
+      }
+      else if (menuItem === 'cNodes' || menuItem === 'dNodes') {
+        menuItem = 'nodes';
       }
       try {
         this.renderSubMenu(menuItem.split('-')[0]);
@@ -27651,6 +27815,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
       if (window.App.isCluster) {
         this.coordinators = options.coordinators;
+        this.dbServers = options.dbServers;
         this.coordname = options.coordname;
         this.updateServerTime();
 
@@ -27667,30 +27832,41 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     breadcrumb: function(name) {
-      console.log("yes");
       $('#subNavigationBar .breadcrumb').html("Node: " + name);
     },
 
     render: function () {
-      console.log(1);
       this.$el.html(this.template.render({coords: []}));
 
       var callback = function() {
         this.continueRender();
         this.breadcrumb(this.coordname);
+        window.arangoHelper.buildNodeSubNav(this.coordname, 'Dashboard', 'Logs');
+        $(window).trigger('resize');
       }.bind(this);
 
-      if (!this.initDone) {
-        this.waitForCoordinators(callback);
+      var cb =function() {
+        console.log("dummy");
+      };
+
+      if (!this.initCoordDone) {
+        this.waitForCoordinators(cb);
+      }
+
+      if (!this.initDBDone) {
+        this.waitForDBServers(callback);
       }
       else {
         this.coordname = window.location.hash.split('/')[1];
         this.coordinator = this.coordinators.findWhere({name: this.coordname});
         callback();
       }
+
     },
 
     continueRender: function() {
+      var self = this;
+
       this.dashboards[this.coordinator.get('name')] = new window.DashboardView({
         dygraphConfig: window.dygraphConfig,
         database: window.App.arangoDatabase,
@@ -27702,6 +27878,9 @@ window.ArangoUsers = Backbone.Collection.extend({
         }
       });
       this.dashboards[this.coordinator.get('name')].render();
+      window.setTimeout(function() {
+        self.dashboards[self.coordinator.get('name')].resize();
+      }, 500);
     },
 
     waitForCoordinators: function(callback) {
@@ -27713,7 +27892,30 @@ window.ArangoUsers = Backbone.Collection.extend({
         }
         else {
           self.coordinator = self.coordinators.findWhere({name: self.coordname});
-          self.initDone = true;
+          self.initCoordDone = true;
+          callback();
+        }
+      }, 200);
+    },
+
+    waitForDBServers: function(callback) {
+      var self = this; 
+
+      window.setTimeout(function() {
+        if (self.dbServers[0].length === 0) {
+          self.waitForDBServers(callback);
+        }
+        else {
+          self.initDBDone = true;
+          self.dbServer = self.dbServers[0];
+
+          self.dbServer.each(function(model) {
+            if (model.get("name") === 'DBServer1') {
+              self.dbServer = model;
+            }
+          });
+
+          console.log(self.dbServer.toJSON());
           callback();
         }
       }, 200);
@@ -27740,21 +27942,23 @@ window.ArangoUsers = Backbone.Collection.extend({
     knownServers: [],
 
     events: {
-      "click .pure-table-body .pure-table-row": "navigateToNode"  
     },
 
     initialize: function (options) {
-      var self = this;
 
       if (window.App.isCluster) {
         this.dbServers = options.dbServers;
         this.coordinators = options.coordinators;
         this.updateServerTime();
+        this.toRender = options.toRender;
+
+        if (this.toRender !== 'coordinator') {
+          this.events["click .pure-table-body .pure-table-row"] = "navigateToNode";
+        }
 
         //start polling with interval
         window.setInterval(function() {
-          if (window.location.hash === '#nodes') {
-
+          if (window.location.hash === '#cNodes' || window.location.hash === '#dNodes') {
 
             var callback = function(data) {
             };
@@ -27770,7 +27974,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     render: function () {
-      this.$el.html(this.template.render({coords: []}));
+      window.arangoHelper.buildNodesSubNav(this.toRender);
 
       var callback = function() {
         this.continueRender();
@@ -27785,10 +27989,18 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     continueRender: function() {
-      var coords = this.coordinators.toJSON();
-      console.log(coords);
+      var coords;
+
+      if (this.toRender === 'coordinator') {
+        coords = this.coordinators.toJSON();
+      }
+      else {
+        coords = this.dbServers.toJSON();
+      }
+
       this.$el.html(this.template.render({
-        coords: coords
+        coords: coords,
+        type: this.toRender
       }));
     },
 
@@ -30266,10 +30478,11 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.bindParamAceEditor.getSession().setMode("ace/mode/json");
       this.bindParamAceEditor.setFontSize("10pt");
 
-      this.bindParamAceEditor.getSession().on('change', function() {
+      this.bindParamAceEditor.getSession().on('change', function(a, b, c) {
         try {
           self.bindParamTableObj = JSON.parse(self.bindParamAceEditor.getValue());
           self.allowParamToggle = true;
+          self.setCachedQuery(self.aqlEditor.getValue(), JSON.stringify(self.bindParamTableObj));
         }
         catch (e) {
           self.allowParamToggle = false;
@@ -34024,6 +34237,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       "query2": "query",
       "workMonitor": "workMonitor",
       "databases": "databases",
+      "settings": "databases",
       "services": "applications",
       "service/:mount": "applicationDetail",
       "graphs": "graphManagement",
@@ -34031,10 +34245,13 @@ window.ArangoUsers = Backbone.Collection.extend({
       "users": "userManagement",
       "userProfile": "userProfile",
       "cluster": "cluster",
-      "nodes": "nodes",
+      "nodes": "cNodes",
+      "cNodes": "cNodes",
+      "dNodes": "dNodes",
       "node/:name": "node",
+      //"nLogs/:name": "nLogs",
       "logs": "logs",
-      "test": "test"
+      "helpus": "helpUs"
     },
 
     execute: function(callback, args) {
@@ -34139,7 +34356,9 @@ window.ArangoUsers = Backbone.Collection.extend({
           collection: this.arangoCollectionsStore 
         });
 
-        this.footerView = new window.FooterView();
+        this.footerView = new window.FooterView({
+          collection: self.coordinatorCollection
+        });
         this.notificationList = new window.NotificationCollection();
 
         this.currentDB.fetch({
@@ -34224,19 +34443,16 @@ window.ArangoUsers = Backbone.Collection.extend({
         this.nodeView = new window.NodeView({
           coordname: name,
           coordinators: this.coordinatorCollection,
+          dbServers: this.dbServers
         });
       }
       this.nodeView.render();
     },
 
-    nodeLogs: function (initialized) {
-
-    },
-
-    nodes: function (initialized) {
+    cNodes: function (initialized) {
       this.checkUser();
       if (!initialized || this.isCluster === undefined) {
-        this.waitForInit(this.nodes.bind(this));
+        this.waitForInit(this.cNodes.bind(this));
         return;
       }
       if (this.isCluster === false) {
@@ -34245,12 +34461,31 @@ window.ArangoUsers = Backbone.Collection.extend({
         return;
       }
 
-      if (!this.nodesView) {
-        this.nodesView = new window.NodesView({
-          coordinators: this.coordinatorCollection,
-          dbServers: this.dbServers
-        });
+      this.nodesView = new window.NodesView({
+        coordinators: this.coordinatorCollection,
+        dbServers: this.dbServers[0],
+        toRender: 'coordinator'
+      });
+      this.nodesView.render();
+    },
+
+    dNodes: function (initialized) {
+      this.checkUser();
+      if (!initialized || this.isCluster === undefined) {
+        this.waitForInit(this.dNodes.bind(this));
+        return;
       }
+      if (this.isCluster === false) {
+        this.routes[""] = 'dashboard';
+        this.navigate("#dashboard", {trigger: true});
+        return;
+      }
+
+      this.nodesView = new window.NodesView({
+        coordinators: this.coordinatorCollection,
+        dbServers: this.dbServers[0],
+        toRender: 'dbserver'
+      });
       this.nodesView.render();
     },
 
@@ -34301,6 +34536,39 @@ window.ArangoUsers = Backbone.Collection.extend({
       }
       this.logsView.render();
     },
+
+    /*
+    nLogs: function (nodename, initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.nLogs.bind(this), nodename);
+        return;
+      }
+      var newLogsAllCollection = new window.ArangoLogs(
+        {upto: true, loglevel: 4}
+      ),
+      newLogsDebugCollection = new window.ArangoLogs(
+        {loglevel: 4}
+      ),
+      newLogsInfoCollection = new window.ArangoLogs(
+        {loglevel: 3}
+      ),
+      newLogsWarningCollection = new window.ArangoLogs(
+        {loglevel: 2}
+      ),
+      newLogsErrorCollection = new window.ArangoLogs(
+        {loglevel: 1}
+      );
+      this.nLogsView = new window.LogsView({
+        logall: newLogsAllCollection,
+        logdebug: newLogsDebugCollection,
+        loginfo: newLogsInfoCollection,
+        logwarning: newLogsWarningCollection,
+        logerror: newLogsErrorCollection
+      });
+      this.nLogsView.render();
+    },
+    */
 
     applicationDetail: function (mount, initialized) {
       this.checkUser();
@@ -34537,6 +34805,18 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.testView.render();
     },
     */
+    helpUs: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.helpUs.bind(this));
+        return;
+      }
+      if (!this.testView) {
+        this.helpUsView = new window.HelpUsView({
+        });
+      }
+      this.helpUsView.render();
+    },
 
     workMonitor: function (initialized) {
       this.checkUser();
@@ -34728,7 +35008,7 @@ window.ArangoUsers = Backbone.Collection.extend({
             host: coordinator.get('address') 
           })
         );
-      });           
+      });
       _.each(this.dbServers, function(dbservers) {
         dbservers.fetch();
       });
