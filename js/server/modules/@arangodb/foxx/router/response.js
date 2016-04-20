@@ -282,6 +282,14 @@ module.exports = class SyntheticResponse {
     if (typeof status === 'string') {
       status = statuses(status);
     }
+    if (reason instanceof Error) {
+      const err = reason;
+      reason = err.message;
+      args = Object.extend({
+        cause: err,
+        errorNum: err.errorNum
+      }, args);
+    }
     if (reason && typeof reason === 'object') {
       args = reason;
       reason = undefined;
