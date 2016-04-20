@@ -285,7 +285,7 @@ module.exports = class SyntheticResponse {
     if (reason instanceof Error) {
       const err = reason;
       reason = err.message;
-      args = Object.extend({
+      args = Object.assign({
         cause: err,
         errorNum: err.errorNum
       }, args);
