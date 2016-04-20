@@ -1283,7 +1283,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
       VPackArrayIterator itValue(value);
       VPackArrayIterator itResult(ourResult);
       while (itValue.valid() && itResult.valid()) {
-        TRI_ASSERT(itResult->isObject());
+        TRI_ASSERT((*itResult).isObject());
         if (!(*itResult).hasKey("error")) {
           doOneDoc(itValue.value(), itResult.value());
           count++;
