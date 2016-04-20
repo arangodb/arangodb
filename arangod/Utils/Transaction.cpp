@@ -1211,6 +1211,8 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
         !isLocked(document, TRI_TRANSACTION_WRITE));
     
     if (res != TRI_ERROR_NO_ERROR) {
+      // Error reporting in the babies case is done outside of here,
+      // in the single document case no body needs to be created at all.
       return res;
     }
 
@@ -1232,8 +1234,9 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
   };
 
   int res = TRI_ERROR_NO_ERROR;
+  bool multiCase = value.isArray();
   std::unordered_map<int, size_t> countErrorCodes;
-  if (value.isArray()) {
+  if (multiCase) {
     VPackArrayBuilder b(&resultBuilder);
     for (auto const& s : VPackArrayIterator(value)) {
       res = workForOneDocument(s);
@@ -1241,14 +1244,18 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
         createBabiesError(resultBuilder, countErrorCodes, res);
       }
     }
-    // With babies the reporting is handled somewhere else.
+    // With babies the reporting is handled in the body of the result
     res = TRI_ERROR_NO_ERROR;
   } else {
     res = workForOneDocument(value);
   }
 
-  if (doingSynchronousReplication) {
-    // Now replicate the same operation on all followers:
+  if (doingSynchronousReplication && res == TRI_ERROR_NO_ERROR) {
+    // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
+    // get here, in the single document case, we do not try to replicate
+    // in case of an error.
+ 
+    // Now replicate the good operations on all followers:
     auto cc = arangodb::ClusterComm::instance();
 
     std::string path
@@ -1275,7 +1282,10 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
       VPackArrayIterator itValue(value);
       VPackArrayIterator itResult(ourResult);
       while (itValue.valid() && itResult.valid()) {
-        doOneDoc(itValue.value(), itResult.value());
+        TRI_ASSERT(itResult->isObject());
+        if (!(*itResult).hasKey("error")) {
+          doOneDoc(itValue.value(), itResult.value());
+        }
         itValue.next();
         itResult.next();
       }
@@ -1298,12 +1308,19 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
     if (nrGood < followers->size()) {
       // we drop all followers that were not successful:
       for (size_t i = 0; i < followers->size(); ++i) {
-        if (!requests[i].done || 
-            requests[i].result.status != CL_COMM_RECEIVED ||
-            (requests[i].result.answer_code != 
-                 GeneralResponse::ResponseCode::ACCEPTED &&
-             requests[i].result.answer_code != 
-                 GeneralResponse::ResponseCode::CREATED)) {
+        bool replicationWorked 
+            = requests[i].done &&
+              requests[i].result.status == CL_COMM_RECEIVED &&
+              (requests[i].result.answer_code != 
+                   GeneralResponse::ResponseCode::ACCEPTED &&
+               requests[i].result.answer_code != 
+                   GeneralResponse::ResponseCode::CREATED);
+        if (replicationWorked) {
+          bool found;
+          requests[i].result.answer->header("x-arango-error-codes", found);
+          replicationWorked = !found;
+        }
+        if (!replicationWorked) {
           auto const& followerInfo = document->followers();
           followerInfo->remove((*followers)[i]);
           LOG_TOPIC(ERR, Logger::REPLICATION)
@@ -1314,6 +1331,11 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
     }
   }
   
+  if (doingSynchronousReplication && options.silent) {
+    // We needed the results, but do not want to report:
+    resultBuilder.clear();
+  }
+
   return OperationResult(resultBuilder.steal(), nullptr, "", res,
                          options.waitForSync, countErrorCodes);
 }
