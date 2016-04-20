@@ -346,15 +346,18 @@
       @extend %pull-left;
       margin-top: 5px;
       padding: 0 8px;
+      width: 100%;
 
       .percentage {
         @extend %pull-left;
         font-weight: 400;
+        width: 100%;
       }
 
       .absolut {
         @extend %pull-left;
-        text-align: right;
+        text-align: center;
+        width: 100%;
       }
     }
 
