@@ -29,6 +29,7 @@ const dd = require('dedent');
 const internal = require('internal');
 const db = require('@arangodb').db;
 const errors = require('@arangodb').errors;
+const joinPath = require('path').posix.join;
 const notifications = require('@arangodb/configuration').notifications;
 const examples = require('@arangodb/graph-examples/example-graph');
 const createRouter = require('@arangodb/foxx/router');
@@ -78,6 +79,18 @@ router.post('/logout', function (req, res) {
 
 
 router.post('/login', function (req, res) {
+  const currentDb = db._name();
+  const actualDb = req.body.database;
+  if (actualDb !== currentDb) {
+    res.redirect(307, joinPath(
+      '/_db',
+      encodeURIComponent(actualDb),
+      module.context.mount,
+      '/login'
+    ));
+    return;
+  }
+
   const doc = db._users.firstExample({user: req.body.username});
   const valid = auth.verify(
     doc ? doc.authData.simple : null,
@@ -96,7 +109,8 @@ router.post('/login', function (req, res) {
 })
 .body({
   username: joi.string().required(),
-  password: joi.string().required().allow('')
+  password: joi.string().required().allow(''),
+  database: joi.string().default(db._name())
 }, 'Login credentials.')
 .error('unauthorized', 'Invalid credentials.')
 .summary('Log in')
