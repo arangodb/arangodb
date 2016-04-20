@@ -293,7 +293,7 @@
             "frontend/build/scripts.html.part",
             "frontend/html/end.html.part"
           ],
-          dest: 'frontend/build/standalone.html'
+          dest: 'frontend/build/index.html'
         },
         coverage: {
           files: {
