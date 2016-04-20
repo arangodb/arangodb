@@ -63,6 +63,10 @@
         isCluster: this.isCluster
       }));
 
+      if (this.currentDB.get("name") !== '_system') {
+        $('#dashboard').parent().remove();
+      }
+
       $(this.subEl).html(this.templateSub.render({
         currentDB: this.currentDB.toJSON()
       }));
