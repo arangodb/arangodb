@@ -28,13 +28,17 @@
 #include "Cluster/HeartbeatThread.h"
 #include "Dispatcher/DispatcherQueue.h"
 #include "Logger/Logger.h"
+#include "RestServer/DatabaseFeature.h"
 #include "V8/v8-utils.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
+#include <iostream>
+
 using namespace arangodb;
+using namespace arangodb::application_features;
 using namespace arangodb::rest;
 
 static arangodb::Mutex ExecutorLock;
@@ -89,14 +93,20 @@ void ServerJob::cleanup(DispatcherQueue* queue) {
 
 bool ServerJob::execute() {
   // default to system database
-  TRI_vocbase_t* const vocbase =
-      TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
+
+  DatabaseFeature* database = dynamic_cast<DatabaseFeature*>(
+    ApplicationServer::lookupFeature("Database"));
+
+  TRI_vocbase_t* const vocbase = database->vocbase();
 
   if (vocbase == nullptr) {
+
+    std::cout << "+++++++++++++ oops ++++++++++++++" << std::endl;
     // database is gone
     return false;
   }
 
+  TRI_UseVocBase(vocbase);
   TRI_DEFER(TRI_ReleaseVocBase(vocbase));
 
   V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase, true);

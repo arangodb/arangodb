@@ -60,6 +60,10 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::string _coordinatorConfig;
 
  public:
+  AgencyCallbackRegistry* agencyCallbackRegistry() const {
+    return _agencyCallbackRegistry.get();
+  }
+
   std::string const agencyCallbacksPath() {
     return "/_api/agency/agency-callbacks";
   };

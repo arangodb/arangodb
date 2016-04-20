@@ -27,7 +27,10 @@
 #include "Agency/AgencyFeature.h"
 #include "Agency/RestAgencyHandler.h"
 #include "Agency/RestAgencyPrivHandler.h"
+#include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/RestAgencyCallbacksHandler.h"
 #include "Cluster/RestShardHandler.h"
 #include "Dispatcher/DispatcherFeature.h"
 #include "HttpServer/HttpHandlerFactory.h"
@@ -279,6 +282,10 @@ void RestServerFeature::defineHandlers() {
   AgencyFeature* agency = dynamic_cast<AgencyFeature*>(
       application_features::ApplicationServer::lookupFeature("Agency"));
   TRI_ASSERT(agency != nullptr);
+  
+  ClusterFeature* cluster = dynamic_cast<ClusterFeature*>(
+      application_features::ApplicationServer::lookupFeature("Cluster"));
+  TRI_ASSERT(cluster != nullptr);
 
   auto queryRegistry = DatabaseFeature::DATABASE->queryRegistry();
 
@@ -374,6 +381,14 @@ void RestServerFeature::defineHandlers() {
         RestVocbaseBaseHandler::AGENCY_PRIV_PATH,
         RestHandlerCreator<RestAgencyPrivHandler>::createData<consensus::Agent*>,
         agency->agent());
+  }
+  
+  if (cluster->isEnabled()) {  
+    // add "/agency-callbacks" handler
+    _handlerFactory->addPrefixHandler(
+        cluster->agencyCallbacksPath(),
+        RestHandlerCreator<RestAgencyCallbacksHandler>::createData<AgencyCallbackRegistry*>,
+        cluster->agencyCallbackRegistry());
   }
 
   // And now some handlers which are registered in both /_api and /_admin

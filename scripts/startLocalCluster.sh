@@ -51,6 +51,7 @@ build/bin/arangod -c etc/relative/arangod.conf \
   --server.threads 16 \
   --javascript.app-path ./js/apps \
   --javascript.startup-directory ./js \
+  -c none \
   > cluster/4001.stdout 2>&1 &
 sleep 1
 
