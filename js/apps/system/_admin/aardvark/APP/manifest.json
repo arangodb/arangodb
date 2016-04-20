@@ -32,13 +32,17 @@
   "main": "index.js",
   "defaultDocument": "index.html",
 
+  "configuration": {
+    "sessionPruneProb": {
+      "description": "Probability that dead sessions will be removed from the database for any given request.",
+      "type": "number",
+      "default": "0.001"
+    }
+  },
+
   "files": {
     "/index.html": {
       "path": "frontend/build/standalone-min.html",
-      "gzip": true
-    },
-    "/cluster.html": {
-      "path": "clusterFrontend/build/cluster-min.html",
       "gzip": true
     },
     "/css/sass.css": {
@@ -46,27 +50,11 @@
       "gzip": true
     },
     "/css/style.css": {
-      "path": "build/extra-minified.css",
-      "gzip": true
-    },
-    "/css/cluster.css": {
-      "path": "clusterFrontend/build/cluster-minified.css",
-      "gzip": true
-    },
-    "/css/cluster2.css": {
-      "path": "clusterFrontend/build/style-minified.css",
-      "gzip": true
-    },
-    "/cluster.js": {
-      "path": "clusterFrontend/build/cluster.min.js",
+      "path": "frontend/build/extra-minified.css",
       "gzip": true
     },
     "/ace.js": {
       "path": "frontend/src/ace.min.js",
-      "gzip": true
-    },
-    "/sharedLibs.js": {
-      "path": "build/sharedLibs.min.js",
       "gzip": true
     },
     "/arangoes5.js": {

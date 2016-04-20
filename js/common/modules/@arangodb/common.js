@@ -40,19 +40,29 @@ Object.keys(internal.errors).forEach(function (key) {
   exports[key] = internal.errors[key].code;
 });
 
-exports.aql = function () {
-  let strings = arguments[0];
+exports.aql = function (strings, ...args) {
   const bindVars = {};
+  const bindVals = [];
   let query = strings[0];
-  for (let i = 1; i < arguments.length; i++) {
-    let value = arguments[i];
-    let name = `value${i - 1}`;
-    if (value && value.isArangoCollection) {
-      name = `@${name}`;
-      value = value.name();
+  for (let i = 0; i < args.length; i++) {
+    const rawValue = args[i];
+    let value = rawValue;
+    if (rawValue && typeof rawValue.toAQL === 'function') {
+      query += `${rawValue.toAQL()}${strings[i + 1]}`;
+      continue;
     }
-    bindVars[name] = value;
-    query += `@${name}${strings[i]}`;
+    const index = bindVals.indexOf(rawValue);
+    const isKnown = index !== -1;
+    let name = `value${isKnown ? index : bindVals.length}`;
+    if (rawValue && rawValue.isArangoCollection) {
+      name = `@${name}`;
+      value = rawValue.name();
+    }
+    if (!isKnown) {
+      bindVals.push(rawValue);
+      bindVars[name] = value;
+    }
+    query += `@${name}${strings[i + 1]}`;
   }
   return {query, bindVars};
 };

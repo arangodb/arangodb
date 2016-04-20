@@ -32,10 +32,16 @@ module.context.sessions = systemStorage();
 module.context.auth = auth('sha256');
 
 module.context.use(sessionsMiddleware({
-  autoCreate: false,
   transport: cookieTransport(`arango_sid_${db._name()}`),
   storage: module.context.sessions
 }));
+
+module.context.use((req, res, next) => {
+  if (module.context.configuration.sessionPruneProb > Math.random()) {
+    module.context.sessions.prune();
+  }
+  next();
+});
 
 module.context.use(require('./aardvark'));
 module.context.use('/foxxes', require('./foxxes'));

@@ -758,7 +758,7 @@ exports.Communication = function() {
             diff.missing.push(toAdd);
             return;
           }
-          var compTo = _.extend({}, inferior[k]);
+          var compTo = Object.assign({}, inferior[k]);
           delete compTo.address;
           if (JSON.stringify(v) !== JSON.stringify(compTo)) {
             diff.difference[k] = {};

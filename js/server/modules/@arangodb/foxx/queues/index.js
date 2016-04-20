@@ -1,4 +1,5 @@
 'use strict';
+
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -42,7 +43,7 @@ function validate(data, schema) {
   }));
   if (isTuple) {
     raw = Array.isArray(raw) ? raw : [raw];
-    data = _.extend({}, raw);
+    data = Object.assign({}, raw);
   }
   var result = schema.validate(data);
   if (result.error) {
@@ -182,7 +183,7 @@ function Job(id) {
   }, this);
 }
 
-_.extend(Job.prototype, {
+Object.assign(Job.prototype, {
   abort: function () {
     var self = this;
     db._executeTransaction({
@@ -231,13 +232,13 @@ function asNumber(num) {
   return num ? Number(num) : 0;
 }
 
-_.extend(Queue.prototype, {
+Object.assign(Queue.prototype, {
   push: function (type, data, opts) {
     if (!type) {
       throw new Error('Must pass a job type!');
     }
 
-    type = _.extend({}, type);
+    type = Object.assign({}, type);
 
     if (type.schema) {
       data = validate(data, type.schema);

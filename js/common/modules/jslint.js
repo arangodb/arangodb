@@ -29,7 +29,6 @@
 var internal = require("internal");
 var fs = require("fs");
 var console = require("console");
-var _ = require('lodash');
 
 var JSHINT = require("jshint").JSHINT;
 var jshintrc = {};
@@ -57,7 +56,7 @@ function RunTest(path, options) {
 
   var result = {};
   content = content.replace("/*jslint", "/*xxxxxx");
-  result["passed"] = JSHINT(content, _.extend({}, jshintrc, options));
+  result["passed"] = JSHINT(content, Object.assign({}, jshintrc, options));
 
   if (JSHINT.errors) {
     result["errors"] = JSHINT.errors;

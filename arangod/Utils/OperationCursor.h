@@ -123,6 +123,25 @@ struct OperationCursor {
                bool useExternals = false);
 
 //////////////////////////////////////////////////////////////////////////////
+/// @brief Get next batchSize many elements. mptr variant
+///        Defaults to _batchSize
+///        Check hasMore()==true before using this
+///        NOTE: This will throw on OUT_OF_MEMORY
+//////////////////////////////////////////////////////////////////////////////
+
+  std::vector<TRI_doc_mptr_t*> getMoreMptr(uint64_t batchSize);
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Get next batchSize many elements. mptr variant
+///        Defaults to _batchSize
+///        Check hasMore()==true before using this
+///        NOTE: This will throw on OUT_OF_MEMORY
+///        NOTE: The result vector handed in will be cleared.
+//////////////////////////////////////////////////////////////////////////////
+
+  void getMoreMptr(std::vector<TRI_doc_mptr_t*>& result, uint64_t batchSize);
+
+//////////////////////////////////////////////////////////////////////////////
 /// @brief Skip the next toSkip many elements.
 ///        skipped will be increased by the amount of skipped elements afterwards
 ///        Check hasMore()==true before using this

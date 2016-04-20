@@ -225,6 +225,44 @@ TRI_doc_mptr_t* EdgeIndexIterator::next() {
   }
 }
 
+void EdgeIndexIterator::nextBabies(std::vector<TRI_doc_mptr_t*>& buffer, size_t limit) {
+  size_t atMost = _batchSize > limit ? limit : _batchSize;
+
+  while (true) {
+    if (_position >= static_cast<size_t>(_keys.length())) {
+      // we're at the end of the lookup values
+      buffer.clear();
+      return;
+    }
+
+    if (buffer.empty()) {
+      VPackSlice tmp = _keys.at(_position);
+      if (tmp.isObject()) {
+        tmp = tmp.get(TRI_SLICE_KEY_EQUAL);
+      }
+      _index->lookupByKey(_trx, &tmp, buffer, atMost);
+      // fallthrough intentional
+    } else {
+      // Continue the lookup
+      auto last = buffer.back();
+      buffer.clear();
+
+      _index->lookupByKeyContinue(_trx, last, buffer, atMost);
+    }
+
+    if (!buffer.empty()) {
+      // found something
+      return;
+      //return buffer.at(_posInBuffer++);
+    }
+
+    // found no result. now go to next lookup value in _keys
+    ++_position;
+  }
+}
+
+
+
 void EdgeIndexIterator::reset() {
   _position = 0;
   _posInBuffer = 0;
@@ -246,6 +284,17 @@ TRI_doc_mptr_t* AnyDirectionEdgeIndexIterator::next() {
   }
   _seen.emplace(res);
   return res;
+}
+
+void AnyDirectionEdgeIndexIterator::nextBabies(std::vector<TRI_doc_mptr_t*>& result, size_t limit) {
+  result.clear();
+  for (size_t i = 0; i < limit; ++i) {
+    TRI_doc_mptr_t* res = next();
+    if (res == nullptr) {
+      return;
+    }
+    result.emplace_back(res);
+  }
 }
 
 void AnyDirectionEdgeIndexIterator::reset() {

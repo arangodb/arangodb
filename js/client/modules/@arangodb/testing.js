@@ -968,7 +968,7 @@ function runInArangosh(options, instanceInfo, file, addArgs) {
   args["javascript.unit-tests"] = fs.join(TOP_DIR, file);
 
   if (addArgs !== undefined) {
-    args = _.extend(args, addArgs);
+    args = Object.assign(args, addArgs);
   }
 
   let rc = executeAndWait(ARANGOSH_BIN, toArgv(args), options);
@@ -998,7 +998,7 @@ function runArangoshCmd(options, instanceInfo, addArgs, cmds) {
   args["server.endpoint"] = instanceInfo.endpoint;
 
   if (addArgs !== undefined) {
-    args = _.extend(args, addArgs);
+    args = Object.assign(args, addArgs);
   }
 
   const argv = toArgv(args).concat(cmds);
@@ -1075,7 +1075,7 @@ function runArangoBenchmark(options, instanceInfo, cmds) {
     "server.connection-timeout": 10 // 5s default
   };
 
-  args = _.extend(args, cmds);
+  args = Object.assign(args, cmds);
 
   if (!args.hasOwnProperty('verbose')) {
     args.quiet = true;
@@ -1208,7 +1208,7 @@ function startInstanceCluster(instanceInfo, protocol, options,
     fs.makeDirectoryRecursive(subDir);
 
     let subArgs = makeArgsArangod(options, fs.join(subDir, "apps"));
-    subArgs = _.extend(subArgs, args);
+    subArgs = Object.assign(subArgs, args);
 
     return [subArgs, name, subDir];
   };
@@ -1319,10 +1319,10 @@ function startArango(protocol, options, addArgs, name, rootDir, isAgency) {
     args["server.keyfile"] = fs.join("UnitTests", "server.pem");
   }
 
-  args = _.extend(args, options.extraArgs);
+  args = Object.assign(args, options.extraArgs);
 
   if (addArgs !== undefined) {
-    args = _.extend(args, addArgs);
+    args = Object.assign(args, addArgs);
   }
   instanceInfo.url = endpointToURL(instanceInfo.endpoint);
   
@@ -2089,7 +2089,7 @@ testFuncs.arangob = function(options) {
       delete args.transaction;
 
       if (options.hasOwnProperty('benchargs')) {
-        args = _.extend(args, options.benchargs);
+        args = Object.assign(args, options.benchargs);
       }
 
       let oneResult = runArangoBenchmark(options, instanceInfo, args);

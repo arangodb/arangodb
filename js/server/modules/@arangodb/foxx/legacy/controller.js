@@ -1,4 +1,5 @@
 'use strict';
+
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -25,7 +26,6 @@
 
 const RequestContext = require('@arangodb/foxx/legacy/request_context');
 const BaseMiddleware = require('@arangodb/foxx/legacy/base_middleware').BaseMiddleware;
-const _ = require('lodash');
 const is = require('@arangodb/is');
 const internal = require('@arangodb/foxx/legacy/internals');
 const swagger = require('@arangodb/foxx/legacy/swagger');
@@ -184,7 +184,7 @@ class Controller {
 
   addInjector(name, factory) {
     if (factory === undefined) {
-      _.extend(this.injectors, name);
+      Object.assign(this.injectors, name);
     } else {
       this.injectors[name] = factory;
     }
@@ -344,7 +344,7 @@ class Controller {
 ////////////////////////////////////////////////////////////////////////////////
   activateAuthentication(opts) {
     var authentication = require('@arangodb/foxx/legacy/authentication');
-    _.extend(this, authControllerProps);
+    Object.assign(this, authControllerProps);
 
     this.auth = authentication.createAuthObject(this.applicationContext, opts);
     this.before('/*', authentication.createAuthenticationMiddleware(this.auth, this.applicationContext));
@@ -357,7 +357,7 @@ class Controller {
 
   activateSessions(opts) {
     var sessions = require('@arangodb/foxx/legacy/sessions');
-    _.extend(this, sessionControllerProps);
+    Object.assign(this, sessionControllerProps);
 
     this.sessions = new sessions.Sessions(opts);
     sessions.decorateController(this.sessions, this);

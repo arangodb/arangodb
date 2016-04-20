@@ -1,5 +1,4 @@
 'use strict';
-const _ = require('lodash');
 const dd = require('dedent');
 const joi = require('joi');
 const httpError = require('http-errors');
@@ -43,7 +42,7 @@ router.post(function (req, res) {
     }
     throw e;
   }
-  _.extend(<%= document %>, meta);
+  Object.assign(<%= document %>, meta);
   res.status(201);
   res.set('location', req.makeAbsolute(
     req.reverse('detail', {key: <%= document %>._key})
@@ -96,7 +95,7 @@ router.put(':key', function (req, res) {
     }
     throw e;
   }
-  _.extend(<%= document %>, meta);
+  Object.assign(<%= document %>, meta);
   res.send(<%= document %>);
 }, 'replace')
 .pathParam('key', keySchema)

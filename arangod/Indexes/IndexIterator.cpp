@@ -94,6 +94,14 @@ IndexIterator::~IndexIterator() {}
 TRI_doc_mptr_t* IndexIterator::next() { return nullptr; }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief default implementation for nextBabies
+////////////////////////////////////////////////////////////////////////////////
+
+void IndexIterator::nextBabies(std::vector<TRI_doc_mptr_t*>&, size_t) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief default implementation for reset
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -133,6 +141,29 @@ TRI_doc_mptr_t* MultiIndexIterator::next() {
     next = _current->next();
   }
   return next;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Get the next limit many elements
+///        If one iterator is exhausted, the next one will be used.
+///        An empty result vector indicates that all iterators are exhausted
+////////////////////////////////////////////////////////////////////////////////
+
+void MultiIndexIterator::nextBabies(std::vector<TRI_doc_mptr_t*>& result, size_t limit) {
+  if (_current == nullptr) {
+    result.clear();
+    return;
+  }
+  _current->nextBabies(result, limit);
+  while (result.empty()) {
+    _currentIdx++;
+    if (_currentIdx >= _iterators.size()) {
+      _current = nullptr;
+      return;
+    }
+    _current = _iterators.at(_currentIdx);
+    _current->nextBabies(result, limit);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -41,6 +41,8 @@ class EdgeIndexIterator final : public IndexIterator {
 
   TRI_doc_mptr_t* next() override;
 
+  void nextBabies(std::vector<TRI_doc_mptr_t*>&, size_t) override;
+
   void reset() override;
 
   EdgeIndexIterator(arangodb::Transaction* trx,
@@ -79,6 +81,8 @@ class EdgeIndexIterator final : public IndexIterator {
 class AnyDirectionEdgeIndexIterator final : public IndexIterator {
  public:
   TRI_doc_mptr_t* next() override;
+
+  void nextBabies(std::vector<TRI_doc_mptr_t*>&, size_t) override;
 
   void reset() override;
 
