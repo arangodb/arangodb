@@ -90,7 +90,7 @@ int Slots::flush(bool waitForSync) {
   }
 
   if (res == TRI_ERROR_NO_ERROR) {
-    _logfileManager->signalSync();
+    _logfileManager->signalSync(true);
 
     if (waitForSync) {
       // wait until data has been committed to disk
@@ -300,7 +300,7 @@ void Slots::returnUsed(SlotInfo& slotInfo, bool waitForSync) {
     ++_numEvents;
   }
 
-  _logfileManager->signalSync();
+  _logfileManager->signalSync(waitForSync);
 
   if (waitForSync) {
     waitForTick(tick);

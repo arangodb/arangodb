@@ -109,6 +109,14 @@ class MultiIndexIterator : public IndexIterator {
     TRI_doc_mptr_t* next() override;
 
     ////////////////////////////////////////////////////////////////////////////////
+    /// @brief Get at most the next limit many elements
+    ///        If one iterator is exhausted, the next one will be used.
+    ///        An empty result vector indicates that all iterators are exhausted
+    ////////////////////////////////////////////////////////////////////////////////
+    
+    void nextBabies(std::vector<TRI_doc_mptr_t*>&, size_t) override;
+
+    ////////////////////////////////////////////////////////////////////////////////
     /// @brief Reset the cursor
     ///        This will reset ALL internal iterators and start all over again
     ////////////////////////////////////////////////////////////////////////////////

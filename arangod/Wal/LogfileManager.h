@@ -236,7 +236,7 @@ class LogfileManager : public rest::ApplicationFeature {
   bool hasReserveLogfiles();
 
   /// @brief signal that a sync operation is required
-  void signalSync();
+  void signalSync(bool);
 
   /// @brief reserve space in a logfile
   SlotInfo allocate(uint32_t);

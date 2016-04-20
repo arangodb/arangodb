@@ -1073,10 +1073,11 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
   if (operation.marker->fid() == 0) {
     // this is a "real" marker that must be written into the logfiles
     // just append it to the WAL:
+    bool const localWaitForSync = (isSingleOperationTransaction && waitForSync);
     arangodb::wal::SlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(
             trx->_vocbase->_id, document->_info.id(), 
-            operation.marker->mem(), operation.marker->size(), false);
+            operation.marker->mem(), operation.marker->size(), localWaitForSync);
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
       // some error occurred
       return slotInfo.errorCode;

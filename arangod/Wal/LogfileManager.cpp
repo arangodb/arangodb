@@ -698,7 +698,9 @@ bool LogfileManager::hasReserveLogfiles() {
 }
 
 /// @brief signal that a sync operation is required
-void LogfileManager::signalSync() { _synchronizerThread->signalSync(); }
+void LogfileManager::signalSync(bool waitForSync) { 
+  _synchronizerThread->signalSync(waitForSync); 
+}
 
 /// @brief allocate space in a logfile for later writing
 SlotInfo LogfileManager::allocate(uint32_t size) {
@@ -998,7 +1000,7 @@ void LogfileManager::setLogfileSealRequested(Logfile* logfile) {
     logfile->setStatus(Logfile::StatusType::SEAL_REQUESTED);
   }
 
-  signalSync();
+  signalSync(true);
 }
 
 /// @brief sets the status of a logfile to sealed

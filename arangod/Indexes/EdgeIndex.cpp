@@ -286,6 +286,17 @@ TRI_doc_mptr_t* AnyDirectionEdgeIndexIterator::next() {
   return res;
 }
 
+void AnyDirectionEdgeIndexIterator::nextBabies(std::vector<TRI_doc_mptr_t*>& result, size_t limit) {
+  result.clear();
+  for (size_t i = 0; i < limit; ++i) {
+    TRI_doc_mptr_t* res = next();
+    if (res == nullptr) {
+      return;
+    }
+    result.emplace_back(res);
+  }
+}
+
 void AnyDirectionEdgeIndexIterator::reset() {
   _useInbound = false;
   _seen.clear();
