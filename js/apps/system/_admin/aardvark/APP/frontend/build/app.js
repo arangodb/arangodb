@@ -18711,14 +18711,15 @@ window.ArangoUsers = Backbone.Collection.extend({
     return a > b ? 1 : a < b ? -1 : 0;
   },
 
-  login: function (username, password, callback) {
+  login: function (username, password, database, callback) {
     var self = this;
 
     $.ajax("login", {
       method: "POST",
       data: JSON.stringify({
         username: username,
-        password: password
+        password: password,
+        database: database
       }),
       dataType: "json"
     }).success(
@@ -22872,25 +22873,35 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.startUpdating();
     }.bind(this);
 
+    var errorFunction = function() {
+        $(this.el).html('');
+        $('.contentDiv').remove();
+        $('.headerBar').remove();
+        $('.dashboard-headerbar').remove();
+        $('.dashboard-row').remove();
+        $(this.el).append(
+          '<div style="color: red">You do not have permission to view this page.</div>'
+        );
+        $(this.el).append(
+          '<div style="color: red">You can switch to \'_system\' to see the dashboard.</div>'
+        );
+    }.bind(this);
+
     var callback2 = function(error, authorized) {
       if (!error) {
         if (!authorized) {
-          $('.contentDiv').remove();
-          $('.headerBar').remove();
-          $('.dashboard-headerbar').remove();
-          $('.dashboard-row').remove();
-          $(this.el).append(
-            '<div style="color: red">You do not have permission to view this page.</div>'
-          );
-          $(this.el).append(
-            '<div style="color: red">You can switch to \'_system\' to see the dashboard.</div>'
-          );
+          errorFunction();
         }
         else {
           this.getStatistics(callback, modalView);
         }
       }
     }.bind(this);
+
+    if (window.App.currentDB.get("name") !== '_system') {
+      errorFunction();
+      return;
+    }
 
     //check if user has _system permission
     this.options.database.hasSystemAccess(callback2);
@@ -26753,6 +26764,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     render: function() {
       $(this.el).html(this.template.render({}));
+      $('#loginDatabase').val('_system');
       $(this.el2).hide();
       $(this.el3).hide();
 
@@ -26770,6 +26782,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       e.preventDefault();
       var username = $('#loginUsername').val();
       var password = $('#loginPassword').val();
+      var database = $('#loginDatabase').val();
 
       if (!username) {
         //Heiko: Form-Validator - please fill out all req. fields
@@ -26788,6 +26801,17 @@ window.ArangoUsers = Backbone.Collection.extend({
           $('.wrong-credentials').show();
         }
         else {
+          var currentDB = window.location.pathname.split('/')[2];
+          if (currentDB !== database) {
+            var path = window.location.origin + window.location.pathname.replace(currentDB, database);
+            window.location.href = path;
+            $(this.el2).show();
+            $(this.el3).show();
+            $('#currentUser').text(username);
+            this.collection.loadUserSettings(callback2);
+            return;
+          }
+          
           $(this.el2).show();
           $(this.el3).show();
           window.location.reload();
@@ -26796,7 +26820,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         } 
       }.bind(this);
 
-      this.collection.login(username, password, callback);
+      this.collection.login(username, password, database, callback);
 
     }
 
@@ -27508,6 +27532,10 @@ window.ArangoUsers = Backbone.Collection.extend({
         currentDB: this.currentDB,
         isCluster: this.isCluster
       }));
+
+      if (this.currentDB.get("name") !== '_system') {
+        $('#dashboard').parent().remove();
+      }
 
       $(this.subEl).html(this.templateSub.render({
         currentDB: this.currentDB.toJSON()
@@ -34297,7 +34325,7 @@ window.ArangoUsers = Backbone.Collection.extend({
           if (param1 && param2) {
             origin(param1, param2, false);
           }
-        }, 100);
+        }, 250);
       } else {
         if (!param1) {
           origin(true);
@@ -34423,8 +34451,14 @@ window.ArangoUsers = Backbone.Collection.extend({
         return;
       }
       if (this.isCluster === false) {
-        this.routes[""] = 'dashboard';
-        this.navigate("#dashboard", {trigger: true});
+        if (this.currentDB.get("name") === '_system') {
+          this.routes[""] = 'dashboard';
+          this.navigate("#dashboard", {trigger: true});
+        }
+        else {
+          this.routes[""] = 'collections';
+          this.navigate("#collections", {trigger: true});
+        }
         return;
       }
 
