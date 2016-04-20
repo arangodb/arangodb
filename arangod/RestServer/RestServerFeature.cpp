@@ -87,6 +87,7 @@ RestServerFeature::RestServerFeature(
   startsAfter("Endpoint");
   startsAfter("Scheduler");
   startsAfter("Server");
+  startsAfter("Agency");
 }
 
 void RestServerFeature::collectOptions(
