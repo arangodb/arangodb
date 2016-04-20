@@ -39,6 +39,7 @@ SynchronizerThread::SynchronizerThread(LogfileManager* logfileManager,
       _logfileManager(logfileManager),
       _condition(),
       _waiting(0),
+      _waitingWithSync(0),
       _syncInterval(syncInterval),
       _logfileCache({0, -1}) {}
 
@@ -51,11 +52,16 @@ void SynchronizerThread::beginShutdown() {
 }
 
 /// @brief signal that we need a sync
-void SynchronizerThread::signalSync() {
-  CONDITION_LOCKER(guard, _condition);
-  if (++_waiting == 1) {
-    // only signal once
-    _condition.signal();
+void SynchronizerThread::signalSync(bool waitForSync) {
+  if (waitForSync) {
+    CONDITION_LOCKER(guard, _condition);
+    if (++_waitingWithSync == 1) {
+      // only signal once
+      _condition.signal();
+    }
+  } else {
+    CONDITION_LOCKER(guard, _condition);
+    ++_waiting;
   }
 }
 
@@ -63,17 +69,19 @@ void SynchronizerThread::signalSync() {
 void SynchronizerThread::run() {
   uint64_t iterations = 0;
   uint32_t waiting;
+  uint32_t waitingWithSync;
 
   {
     // fetch initial value for waiting
     CONDITION_LOCKER(guard, _condition);
     waiting = _waiting;
+    waitingWithSync = _waitingWithSync;
   }
 
   // go on without the lock
 
   while (true) {
-    if (waiting > 0 || ++iterations == 10) {
+    if (waiting > 0 || waitingWithSync > 0 || ++iterations == 10) {
       iterations = 0;
 
       try {
@@ -104,10 +112,16 @@ void SynchronizerThread::run() {
       _waiting -= waiting;
     }
 
+    if (waitingWithSync > 0) {
+      TRI_ASSERT(_waitingWithSync >= waitingWithSync);
+      _waitingWithSync -= waitingWithSync;
+    }
+
     // update value of waiting
     waiting = _waiting;
+    waitingWithSync = _waitingWithSync;
 
-    if (waiting == 0) {
+    if (waitingWithSync == 0) {
       if (isStopping()) {
         // stop requested and all synced, we can exit
         break;
