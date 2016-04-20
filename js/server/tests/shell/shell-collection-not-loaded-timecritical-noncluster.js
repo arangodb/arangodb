@@ -123,7 +123,7 @@ function ThrowCollectionNotLoadedSuite() {
           var result = db._collection(params.cn + "Collect");
 
           try {
-            for (var i = 0; i < 500; ++i) {
+            for (var i = 0; i < 100; ++i) {
               db._collection(params.cn).load();
               db._collection(params.cn).unload();
             }
