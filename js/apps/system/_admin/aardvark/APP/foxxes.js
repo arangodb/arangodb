@@ -28,7 +28,6 @@ const fs = require('fs');
 const joi = require('joi');
 const dd = require('dedent');
 const marked = require('marked');
-const internal = require('internal');
 const highlightAuto = require('highlight.js').highlightAuto;
 const FoxxManager = require('@arangodb/foxx/manager');
 const fmUtils = require('@arangodb/foxx/manager-utils');
@@ -41,7 +40,7 @@ module.exports = router;
 
 
 router.use((req, res, next) => {
-  if (!internal.options()['server.disable-authentication'] && (!req.session || !req.session.uid)) {
+  if (!req.session.uid) {
     res.throw('unauthorized');
   }
   next();
