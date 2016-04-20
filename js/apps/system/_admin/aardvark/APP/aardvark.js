@@ -155,13 +155,17 @@ authRouter.post('disableVersionCheck', function(req, res) {
 authRouter.post('/query/explain', function(req, res) {
   const bindVars = req.body.bindVars;
   const query = req.body.query;
+  const id = req.body.id;
+  const batchSize = req.body.batchSize;
   let msg = null;
 
   try {
     if (bindVars) {
       msg = require('@arangodb/aql/explainer').explain({
         query: query,
-        bindVars: bindVars
+        bindVars: bindVars,
+        batchSize: batchSize,
+        id: id
       }, {colors: false}, false, bindVars);
     } else {
       msg = require('@arangodb/aql/explainer').explain(query, {colors: false}, false);
@@ -174,7 +178,9 @@ authRouter.post('/query/explain', function(req, res) {
 })
 .body(joi.object({
   query: joi.string().required(),
-  bindVars: joi.object().optional()
+  bindVars: joi.object().optional(),
+  batchSize: joi.number().optional(),
+  id: joi.string().optional()
 }).required(), 'Query and bindVars to explain.')
 .summary('Explains a query')
 .description(dd`

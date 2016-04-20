@@ -469,6 +469,10 @@ bool NeighborsOptions::matchesVertex(std::string const& collectionName,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool NeighborsOptions::matchesVertex(std::string const& id) const {
+  if (!useVertexFilter) {
+    // Nothing to do
+    return true;
+  }
   std::vector<std::string> parts =
       arangodb::basics::StringUtils::split(id, "/");
   TRI_ASSERT(parts.size() == 2);
