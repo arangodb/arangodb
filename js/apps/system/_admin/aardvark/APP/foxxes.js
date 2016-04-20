@@ -145,7 +145,7 @@ installer.put('/zip', function (req) {
 
 foxxRouter.delete('/', function (req, res) {
   const mount = decodeURIComponent(req.queryParams.mount);
-  const runTeardown = req.parameters.teardown;
+  const runTeardown = req.queryParams.teardown;
   const service = FoxxManager.uninstall(mount, {
     teardown: runTeardown,
     force: true
