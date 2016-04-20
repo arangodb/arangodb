@@ -143,7 +143,7 @@ module.exports = exports = class SwaggerContext {
       mimes.push(MIME_JSON);
     }
 
-    const contentTypes = mimes.map(function (mime) {
+    const contentTypes = mimes.map((mime) => {
       if (mime === 'binary') {
         mime = MIME_BINARY;
       }
@@ -236,7 +236,7 @@ module.exports = exports = class SwaggerContext {
       mimes.push(MIME_JSON);
     }
 
-    const contentTypes = mimes.map(function (mime) {
+    const contentTypes = mimes.map((mime) => {
       if (mime === 'binary') {
         mime = MIME_BINARY;
       }
@@ -522,9 +522,7 @@ function swaggerifyType(joi) {
     case 'func':
       return ['string'];
     case 'number':
-      if (joi._tests.some(function (test) {
-        return test.name === 'integer';
-      })) {
+      if (joi._tests.some((test) => test.name === 'integer')) {
         return ['integer'];
       }
       return ['number'];
@@ -533,9 +531,7 @@ function swaggerifyType(joi) {
     case 'object':
       return ['object'];
     case 'string':
-      if (joi._meta.some(function (meta) {
-        return meta.secret;
-      })) {
+      if (joi._meta.some((meta) => meta.secret)) {
         return ['string', 'password'];
       }
       return ['string'];
@@ -549,9 +545,7 @@ function swaggerifyParam(joi) {
     description: joi._description || undefined
   };
   let item = param;
-  if (joi._meta.some(function (meta) {
-    return meta.allowMultiple;
-  })) {
+  if (joi._meta.some((meta) => meta.allowMultiple)) {
     param.type = 'array';
     param.collectionFormat = 'multi';
     param.items = {};
