@@ -828,7 +828,6 @@ class AssocMulti {
     }
 
     // return whatever we found
-    return;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -892,9 +891,7 @@ class AssocMulti {
         i = b._table[i].next;
       } while (i != INVALID_INDEX && (limit == 0 || result.size() < limit));
     }
-
     // return whatever we found
-    return;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -993,7 +990,7 @@ class AssocMulti {
   //////////////////////////////////////////////////////////////////////////////
 
   void lookupByKeyContinue(UserData* userData, Element const* element,
-                           std::vector<Element*> result,
+                           std::vector<Element*>& result,
                            size_t limit = 0) const {
     lookupWithElementByKeyContinue(userData, element, result, limit);
   }
