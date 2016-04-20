@@ -1,4 +1,5 @@
 'use strict';
+
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -22,7 +23,6 @@
 /// @author Alan Plum
 ////////////////////////////////////////////////////////////////////////////////
 
-var _ = require('lodash');
 var tasks = require('@arangodb/tasks');
 var db = require('@arangodb').db;
 var qb = require('aqb');
@@ -85,7 +85,7 @@ var runInDatabase = function () {
             offset: 1,
             isSystem: true,
             params: {
-              job: _.extend({}, job, {status: 'progress'}),
+              job: Object.assign({}, job, {status: 'progress'}),
               db: db._name()
             }
           });

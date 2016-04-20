@@ -225,6 +225,44 @@ TRI_doc_mptr_t* EdgeIndexIterator::next() {
   }
 }
 
+void EdgeIndexIterator::nextBabies(std::vector<TRI_doc_mptr_t*>& buffer, size_t limit) {
+  size_t atMost = _batchSize > limit ? limit : _batchSize;
+
+  while (true) {
+    if (_position >= static_cast<size_t>(_keys.length())) {
+      // we're at the end of the lookup values
+      buffer.clear();
+      return;
+    }
+
+    if (buffer.empty()) {
+      VPackSlice tmp = _keys.at(_position);
+      if (tmp.isObject()) {
+        tmp = tmp.get(TRI_SLICE_KEY_EQUAL);
+      }
+      _index->lookupByKey(_trx, &tmp, buffer, atMost);
+      // fallthrough intentional
+    } else {
+      // Continue the lookup
+      auto last = buffer.back();
+      buffer.clear();
+
+      _index->lookupByKeyContinue(_trx, last, buffer, atMost);
+    }
+
+    if (!buffer.empty()) {
+      // found something
+      return;
+      //return buffer.at(_posInBuffer++);
+    }
+
+    // found no result. now go to next lookup value in _keys
+    ++_position;
+  }
+}
+
+
+
 void EdgeIndexIterator::reset() {
   _position = 0;
   _posInBuffer = 0;

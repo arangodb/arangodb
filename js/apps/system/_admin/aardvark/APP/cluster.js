@@ -28,14 +28,13 @@ const _ = require('lodash');
 const dd = require('dedent');
 const cluster = require('@arangodb/cluster');
 const createRouter = require('@arangodb/foxx/router');
-const internal = require('internal');
 
 const router = createRouter();
 module.exports = router;
 
 
 router.use((req, res, next) => {
-  if (!internal.options()['server.disable-authentication'] && (!req.session || !req.session.uid)) {
+  if (!req.session.uid) {
     res.throw('unauthorized');
   }
   next();

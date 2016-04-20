@@ -1,4 +1,5 @@
 'use strict';
+
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -212,7 +213,7 @@ function applyPathParams(route) {
 function dispatch(route, req, res) {
   const ignoreRequestBody = actions.BODYFREE_METHODS.indexOf(req.method) !== -1;
   let pathParams = {};
-  let queryParams = _.clone(req.queryParams);
+  let queryParams = Object.assign({}, req.queryParams);
 
   {
     let basePath = [];
@@ -309,7 +310,7 @@ function dispatch(route, req, res) {
         throw new Error(`Route could not be resolved: "${routeName}"`);
       }
 
-      params = _.extend({}, params);
+      params = Object.assign({}, params);
       const parts = [];
       for (const item of reversedRoute) {
         const context = item.router || item.endpoint || item.middleware;
@@ -354,13 +355,13 @@ function dispatch(route, req, res) {
     };
 
     if (item.endpoint || item.router) {
-      pathParams = _.extend(pathParams, item.pathParams);
-      queryParams = _.extend(queryParams, item.queryParams);
+      pathParams = Object.assign(pathParams, item.pathParams);
+      queryParams = Object.assign(queryParams, item.queryParams);
       req.pathParams = pathParams;
       req.queryParams = queryParams;
     } else {
-      req.pathParams = _.extend(_.clone(pathParams), item.pathParams);
-      req.queryParams = _.extend(_.clone(queryParams), item.queryParams);
+      req.pathParams = Object.assign({}, pathParams, item.pathParams);
+      req.queryParams = Object.assign({}, queryParams, item.queryParams);
     }
 
     if (!context._handler) {

@@ -44,9 +44,14 @@ exports.aql = function () {
   let strings = arguments[0];
   const bindVars = {};
   let query = strings[0];
+  let j = 0;
   for (let i = 1; i < arguments.length; i++) {
     let value = arguments[i];
-    let name = `value${i - 1}`;
+    if (value && typeof value.toAQL === 'function') {
+      query += value.toAQL();
+      continue;
+    }
+    let name = `value${j++}`;
     if (value && value.isArangoCollection) {
       name = `@${name}`;
       value = value.name();

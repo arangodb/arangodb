@@ -63,6 +63,7 @@ void OperationCursor::getMore(std::shared_ptr<OperationResult>& opRes,
     TRI_ASSERT(false);
     // You requested more even if you should have checked it before.
     opRes->code = TRI_ERROR_FORBIDDEN;
+    return;
   }
   if (batchSize == UINT64_MAX) {
     batchSize = _batchSize;
@@ -90,6 +91,69 @@ void OperationCursor::getMore(std::shared_ptr<OperationResult>& opRes,
     opRes->code = TRI_ERROR_NO_ERROR;
   } catch (arangodb::basics::Exception const& e) {
     opRes->code = e.code();
+  }
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Get next batchSize many elements. mptr variant
+///        Defaults to _batchSize
+///        Check hasMore()==true before using this
+///        NOTE: This will throw on OUT_OF_MEMORY
+//////////////////////////////////////////////////////////////////////////////
+
+std::vector<TRI_doc_mptr_t*> OperationCursor::getMoreMptr(uint64_t batchSize) {
+  std::vector<TRI_doc_mptr_t*> res;
+  getMoreMptr(res, batchSize);
+  return res;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Get next batchSize many elements. mptr variant
+///        Defaults to _batchSize
+///        Check hasMore()==true before using this
+///        NOTE: This will throw on OUT_OF_MEMORY
+///        NOTE: The result vector handed in is used to continue index lookups
+///              The caller shall NOT modify it.
+//////////////////////////////////////////////////////////////////////////////
+
+void OperationCursor::getMoreMptr(std::vector<TRI_doc_mptr_t*>& result,
+                                  uint64_t batchSize) {
+  if (!hasMore()) {
+    TRI_ASSERT(false);
+    // You requested more even if you should have checked it before.
+    return;
+  }
+  if (batchSize == UINT64_MAX) {
+    batchSize = _batchSize;
+  }
+
+  size_t atMost = batchSize > _limit ? _limit : batchSize;
+  _indexIterator->nextBabies(result, atMost);
+
+  size_t got = result.size();
+  if (got == 0) {
+    // Index is empty
+    _hasMore = false;
+    return;
+  }
+  // NOTE: None of these could fall below zero
+  batchSize -= got;
+  _limit -= got;
+
+  /*
+  // result.clear();
+  // TODO: Improve this for baby awareness
+  TRI_doc_mptr_t* mptr = nullptr;
+
+  while (batchSize > 0 && _limit > 0 && (mptr = _indexIterator->next()) != nullptr) {
+    --batchSize;
+    --_limit;
+    result.emplace_back(mptr);
+  }
+  */
+  if (batchSize > 0 || _limit == 0) {
+    // Iterator empty, there is no more
+    _hasMore = false;
   }
 }
 

@@ -68,6 +68,8 @@ class IndexIterator {
 
   virtual TRI_doc_mptr_t* next();
 
+  virtual void nextBabies(std::vector<TRI_doc_mptr_t*>&, size_t);
+
   virtual void reset();
 
   virtual void skip(uint64_t count, uint64_t& skipped);

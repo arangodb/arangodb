@@ -40,7 +40,6 @@ var fs = require("fs");
 var util = require("util");
 var mimeTypes = require("mime-types");
 var console = require("console");
-var _ = require("lodash");
 
 var arangodb = require("@arangodb");
 var foxxManager = require("@arangodb/foxx/manager");
@@ -888,7 +887,7 @@ function flattenRouting (routes, path, rexpr, urlParameters, depth, prefix) {
           routes.exact[k],
           path + "/" + k,
           rexpr + "/" + k.replace(/([\.\+\*\?\^\$\(\)\[\]])/g, "\\$1"),
-          _.clone(urlParameters),
+          Object.assign({}, urlParameters),
           depth + 1,
           false));
       }
@@ -925,7 +924,7 @@ function flattenRouting (routes, path, rexpr, urlParameters, depth, prefix) {
         cur = rexpr + match;
       }
 
-      newUrlParameters = _.clone(urlParameters);
+      newUrlParameters = Object.assign({}, urlParameters);
       newUrlParameters[parameter.parameter] = depth;
 
       result = result.concat(flattenRouting(
@@ -943,9 +942,9 @@ function flattenRouting (routes, path, rexpr, urlParameters, depth, prefix) {
   // .............................................................................
 
   if (routes.hasOwnProperty('routes')) {
-    var sorted = _.clone(routes.routes.sort(function(a,b) {
+    var sorted = [...routes.routes.sort(function(a,b) {
       return b.priority - a.priority;
-    }));
+    })];
 
     for (i = 0;  i < sorted.length;  ++i) {
       sorted[i] = {
@@ -1080,8 +1079,8 @@ function buildRouting (dbname) {
 
     while (i.hasNext()) {
       var n = i.next();
-      var c = _.extend({}, n);
-      
+      var c = Object.assign({}, n);
+
       c.name = '_routing.document("' + c._key + '")';
 
       routes.push(c);

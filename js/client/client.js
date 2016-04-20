@@ -110,7 +110,7 @@ global.db = require("@arangodb").db;
 /// @brief template string generator for building an AQL query
 ////////////////////////////////////////////////////////////////////////////////
 
-global.aqlQuery = require("@arangodb").aql;
+global.aql = global.aqlQuery = require("@arangodb").aql;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global 'arango'

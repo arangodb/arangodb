@@ -1,4 +1,5 @@
 'use strict';
+
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -92,7 +93,7 @@ function Model(attributes) {
 }
 
 Model.prototype = Object.create(EventEmitter.prototype);
-_.extend(Model.prototype, {
+Object.assign(Model.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_foxx_model_get

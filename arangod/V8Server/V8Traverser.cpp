@@ -665,7 +665,7 @@ static void OutboundNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
                               uint64_t depth = 1) {
   TRI_edge_direction_e dir = TRI_EDGE_OUT;
   std::unordered_set<std::string> nextDepth;
-  auto opRes = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
+  std::vector<TRI_doc_mptr_t*> cursor;
 
   for (auto const& col : collectionInfos) {
     TRI_ASSERT(col != nullptr);
@@ -673,12 +673,9 @@ static void OutboundNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
     for (auto const& start : startVertices) {
       auto edgeCursor = col->getEdges(dir, start);
       while (edgeCursor->hasMore()) {
-        edgeCursor->getMore(opRes, UINT64_MAX, false);
-        if (opRes->failed()) {
-          THROW_ARANGO_EXCEPTION(opRes->code);
-        }
-        VPackSlice edges = opRes->slice();
-        for (auto const& edge : VPackArrayIterator(edges)) {
+        edgeCursor->getMoreMptr(cursor, UINT64_MAX);
+        for (auto const& mptr : cursor) {
+          VPackSlice edge(mptr->vpack());
           if (opts.matchesEdge(edge)) {
             VPackValueLength l;
             char const* v = edge.get(TRI_VOC_ATTRIBUTE_TO).getString(l);

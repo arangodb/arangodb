@@ -29,6 +29,7 @@ const dd = require('dedent');
 const internal = require('internal');
 const db = require('@arangodb').db;
 const errors = require('@arangodb').errors;
+const joinPath = require('path').posix.join;
 const notifications = require('@arangodb/configuration').notifications;
 const examples = require('@arangodb/graph-examples/example-graph');
 const createRouter = require('@arangodb/foxx/router');
@@ -44,9 +45,8 @@ module.exports = router;
 
 router.get('/whoAmI', function(req, res) {
   let user = null;
-  if (internal.options()['server.disable-authentication']) {
-    user = false;
-  } else if (req.session && req.session.uid) {
+
+  if (req.session.uid) {
     try {
       const doc = db._users.document(req.session.uid);
       user = doc.user;
@@ -57,6 +57,7 @@ router.get('/whoAmI', function(req, res) {
       sessions.setUser(req.session, null);
     }
   }
+
   res.json({user});
 })
 .summary('Return the current user')
@@ -78,8 +79,16 @@ router.post('/logout', function (req, res) {
 
 
 router.post('/login', function (req, res) {
-  if (!req.session) {
-    req.session = sessions.new();
+  const currentDb = db._name();
+  const actualDb = req.body.database;
+  if (actualDb !== currentDb) {
+    res.redirect(307, joinPath(
+      '/_db',
+      encodeURIComponent(actualDb),
+      module.context.mount,
+      '/login'
+    ));
+    return;
   }
 
   const doc = db._users.firstExample({user: req.body.username});
@@ -94,12 +103,14 @@ router.post('/login', function (req, res) {
 
   sessions.setUser(req.session, doc);
   sessions.save(req.session);
+
   const user = doc.user;
   res.json({user});
 })
 .body({
   username: joi.string().required(),
-  password: joi.string().required().allow('')
+  password: joi.string().required().allow(''),
+  database: joi.string().default(db._name())
 }, 'Login credentials.')
 .error('unauthorized', 'Invalid credentials.')
 .summary('Log in')
@@ -114,7 +125,7 @@ router.use(authRouter);
 
 
 authRouter.use((req, res, next) => {
-  if (!internal.options()['server.disable-authentication'] && (!req.session || !req.session.uid)) {
+  if (!req.session.uid) {
     res.throw('unauthorized');
   }
   next();
@@ -191,16 +202,12 @@ authRouter.post('/query/explain', function(req, res) {
 authRouter.post('/query/upload/:user', function(req, res) {
   let doc;
 
-  if (req.session && req.session.uid) {
-    try {
-      doc = db._users.document(req.session.uid);
-    } catch (e) {
-      if (!e.isArangoError || e.errorNum !== errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
-        throw e;
-      }
+  try {
+    doc = db._users.document(req.session.uid);
+  } catch (e) {
+    if (!e.isArangoError || e.errorNum !== errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
+      throw e;
     }
-  } else {
-    doc = db._users.firstExample({user: req.pathParams.user});
   }
 
   if (!doc) {
@@ -240,16 +247,12 @@ authRouter.post('/query/upload/:user', function(req, res) {
 authRouter.get('/query/download/:user', function(req, res) {
   let doc;
 
-  if (req.session && req.session.uid) {
-    try {
-      doc = db._users.document(req.session.uid);
-    } catch (e) {
-      if (!e.isArangoError || e.errorNum !== errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
-        throw e;
-      }
+  try {
+    doc = db._users.document(req.session.uid);
+  } catch (e) {
+    if (!e.isArangoError || e.errorNum !== errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
+      throw e;
     }
-  } else {
-    doc = db._users.firstExample({user: req.pathParams.user});
   }
 
   if (!doc) {
