@@ -22515,7 +22515,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       });
     },
 
-    getStatistics: function (callback) {
+    getStatistics: function (callback, modalView) {
       var self = this;
       var url = "/_db/_system/_admin/aardvark/statistics/short";
       var urlParams = "?start=";
@@ -22549,7 +22549,7 @@ window.ArangoUsers = Backbone.Collection.extend({
             return;
           }
           if (callback) {
-            callback();
+            callback(d.enabled, modalView);
           }
           self.updateCharts();
       });
@@ -22848,10 +22848,20 @@ window.ArangoUsers = Backbone.Collection.extend({
   template: templateEngine.createTemplate("dashboardView.ejs"),
 
   render: function (modalView) {
-    if (!modalView)  {
-      $(this.el).html(this.template.render());
-    }
-    var callback = function() {
+
+    var callback = function(enabled, modalView) {
+      if (!modalView)  {
+        $(this.el).html(this.template.render());
+      }
+
+      if (!enabled) {
+        $(this.el).html('');
+          $(this.el).append(
+            '<div style="color: red">Server statistics are disabled.</div>'
+          );
+        return;
+      }
+
       this.prepareDygraphs();
       if (this.isUpdating) {
         this.prepareD3Charts();
@@ -22869,15 +22879,15 @@ window.ArangoUsers = Backbone.Collection.extend({
           $('.headerBar').remove();
           $('.dashboard-headerbar').remove();
           $('.dashboard-row').remove();
-          $('#content').append(
+          $(this.el).append(
             '<div style="color: red">You do not have permission to view this page.</div>'
           );
-          $('#content').append(
+          $(this.el).append(
             '<div style="color: red">You can switch to \'_system\' to see the dashboard.</div>'
           );
         }
         else {
-          this.getStatistics(callback);
+          this.getStatistics(callback, modalView);
         }
       }
     }.bind(this);
