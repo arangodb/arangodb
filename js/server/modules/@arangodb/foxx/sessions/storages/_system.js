@@ -44,19 +44,20 @@ module.exports = function systemStorage(cfg) {
     },
     fromClient(sid) {
       try {
+        const now = Date.now();
         const doc = db._sessions.document(sid);
         const internalAccessTime = internal.accessSid(sid);
         if (internalAccessTime) {
           doc.lastAccess = internalAccessTime;
         }
-        if ((doc.lastAccess + expiry) < Date.now()) {
+        if ((doc.lastAccess + expiry) < now) {
           this.clear(sid);
           return null;
         }
+        db._sessions.update(sid, {lastAccess: now});
         return {
           _key: doc._key,
           uid: doc.uid,
-          userData: doc.userData,
           created: doc.created,
           data: doc.sessionData
         };
@@ -77,7 +78,6 @@ module.exports = function systemStorage(cfg) {
       const uid = session.uid;
       const payload = {
         uid: uid || null,
-        userData: session.userData || {},
         sessionData: session.data || {},
         created: session.created || Date.now(),
         lastAccess: Date.now(),
@@ -105,13 +105,11 @@ module.exports = function systemStorage(cfg) {
     setUser(session, user) {
       if (user) {
         session.uid = user._key;
-        session.userData = user.userData;
         if (session._key) {
           internal.createSid(session._key, user.user);
         }
       } else {
         session.uid = null;
-        session.userData = {};
         if (session._key) {
           internal.clearSid(session._key);
         }
@@ -136,7 +134,6 @@ module.exports = function systemStorage(cfg) {
     new() {
       return {
         uid: null,
-        userData: {},
         created: Date.now(),
         data: {}
       };
