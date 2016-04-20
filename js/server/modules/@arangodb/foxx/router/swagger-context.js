@@ -34,7 +34,6 @@ const tokenize = require('@arangodb/foxx/router/tokenize');
 
 const MIME_JSON = 'application/json; charset=utf-8';
 const MIME_BINARY = 'application/octet-stream';
-const DEFAULT_BODY_SCHEMA = joi.object().unknown().meta({allowInvalid: true}).optional();
 const DEFAULT_ERROR_SCHEMA = joi.object().keys({
   error: joi.allow(true).required(),
   errorNum: joi.number().integer().optional(),
@@ -124,6 +123,16 @@ module.exports = exports = class SwaggerContext {
       }
       model = model[0];
       multiple = true;
+    }
+
+    if (model === null && !mimes) {
+      this._bodyParam = {
+        model: null,
+        multiple,
+        contentTypes: null,
+        description
+      };
+      return;
     }
 
     if (!mimes) {
@@ -312,10 +321,8 @@ module.exports = exports = class SwaggerContext {
       for (const response of swaggerObj._responses.entries()) {
         this._responses.set(response[0], response[1]);
       }
-      if (swaggerObj._bodyParam) {
-        if (!this._bodyParam || swaggerObj._bodyParam.type !== DEFAULT_BODY_SCHEMA) {
-          this._bodyParam = swaggerObj._bodyParam;
-        }
+      if (!this._bodyParam && swaggerObj._bodyParam) {
+        this._bodyParam = swaggerObj._bodyParam;
       }
       this._deprecated = swaggerObj._deprecated || this._deprecated;
       this._description = swaggerObj._description || this._description;
@@ -500,9 +507,6 @@ module.exports = exports = class SwaggerContext {
     return operation;
   }
 };
-
-
-exports.DEFAULT_BODY_SCHEMA = DEFAULT_BODY_SCHEMA;
 
 
 function swaggerifyType(joi) {
