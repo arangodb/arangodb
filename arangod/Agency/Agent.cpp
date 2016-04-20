@@ -167,7 +167,7 @@ void Agent::reportIn (id_t id, index_t index) {
       n += (_confirmed[i]>=index);
     }
     if (n>size()/2) { // catch up read database and commit index
-      LOG_TOPIC(INFO, Logger::AGENCY) << "Critical mass for commiting " <<
+      LOG_TOPIC(DEBUG, Logger::AGENCY) << "Critical mass for commiting " <<
         _lastCommitIndex+1 << " through " << index << " to read db";
       
       _readDB.apply(_state.slices(_lastCommitIndex+1, index));
