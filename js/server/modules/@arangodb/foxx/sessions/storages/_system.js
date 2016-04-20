@@ -1,4 +1,3 @@
-/*global aqlQuery */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -28,6 +27,7 @@ const internal = require('internal');
 const arangodb = require('@arangodb');
 const NOT_FOUND = arangodb.errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code;
 const db = arangodb.db;
+const aql = arangodb.aql;
 
 
 module.exports = function systemStorage(cfg) {
@@ -35,7 +35,7 @@ module.exports = function systemStorage(cfg) {
   const expiry = Number(internal.options()['server.session-timeout']) * 1000;
   return {
     prune() {
-      return db._query(aqlQuery`
+      return db._query(aql`
         FOR session IN _sessions
         FILTER session.lastAccess < ${Date.now() - expiry}
         REMOVE session IN _sessions
