@@ -36,6 +36,7 @@ module.exports = function collectionStorage(cfg) {
   if (!cfg) {
     cfg = {};
   }
+  const autoUpdate = Boolean(cfg.autoUpdate);
   const pruneExpired = Boolean(cfg.pruneExpired);
   const expiry = (cfg.expiry || 60) * 60 * 1000;
   const collection = (
@@ -56,12 +57,16 @@ module.exports = function collectionStorage(cfg) {
     },
     fromClient(sid) {
       try {
+        const now = Date.now();
         const session = collection.document(sid);
-        if (session.expires < Date.now()) {
+        if (session.expires < now) {
           if (pruneExpired) {
             collection.remove(session);
           }
           return null;
+        }
+        if (autoUpdate) {
+          collection.update(sid, {expires: now + expiry});
         }
         return {
           _key: session._key,
