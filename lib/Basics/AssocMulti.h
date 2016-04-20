@@ -776,6 +776,25 @@ class AssocMulti {
   std::vector<Element*>* lookupByKey(UserData* userData, Key const* key,
                                      size_t limit = 0) const {
     auto result = std::make_unique<std::vector<Element*>>();
+    lookupByKey(userData, key, *result, limit);
+    return result.release();
+  }
+
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief lookups an element given a key
+  ///        Accepts a result vector as input. The result of this lookup will
+  ///        be appended to the given vector.
+  ///        This function returns as soon as limit many elements are inside
+  ///        the given vector, no matter if the come from this lookup or
+  ///        have been in the result before.
+  //////////////////////////////////////////////////////////////////////////////
+
+  void lookupByKey(UserData* userData, Key const* key,
+                   std::vector<Element*>& result, size_t limit = 0) const {
+    if (limit > 0 && result.size() >= limit) {
+      return;
+    }
 
     // compute the hash
     uint64_t hashByKey = _hashKey(userData, key);
@@ -803,13 +822,12 @@ class AssocMulti {
       // We found the beginning of the linked list:
 
       do {
-        result->push_back(b._table[i].ptr);
+        result.push_back(b._table[i].ptr);
         i = b._table[i].next;
-      } while (i != INVALID_INDEX && (limit == 0 || result->size() < limit));
+      } while (i != INVALID_INDEX && (limit == 0 || result.size() < limit));
     }
 
     // return whatever we found
-    return result.release();
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -820,6 +838,28 @@ class AssocMulti {
                                                 Element const* element,
                                                 size_t limit = 0) const {
     auto result = std::make_unique<std::vector<Element*>>();
+    lookupWithElementByKey(userData, element, *result, limit);
+    return result.release();
+  }
+
+
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief looks up all elements with the same key as a given element
+  ///        Accepts a result vector as input. The result of this lookup will
+  ///        be appended to the given vector.
+  ///        This function returns as soon as limit many elements are inside
+  ///        the given vector, no matter if the come from this lookup or
+  ///        have been in the result before.
+  //////////////////////////////////////////////////////////////////////////////
+
+  void lookupWithElementByKey(UserData* userData, Element const* element,
+                              std::vector<Element*>& result,
+                              size_t limit = 0) const {
+    if (limit > 0 && result.size() >= limit) {
+      // The vector is full, nothing to do.
+      return;
+    }
 
     // compute the hash
     uint64_t hashByKey = _hashElement(userData, element, true);
@@ -847,13 +887,11 @@ class AssocMulti {
       // We found the beginning of the linked list:
 
       do {
-        result->push_back(b._table[i].ptr);
+        result.push_back(b._table[i].ptr);
         i = b._table[i].next;
-      } while (i != INVALID_INDEX && (limit == 0 || result->size() < limit));
+      } while (i != INVALID_INDEX && (limit == 0 || result.size() < limit));
     }
-
     // return whatever we found
-    return result.release();
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -864,6 +902,28 @@ class AssocMulti {
   std::vector<Element*>* lookupWithElementByKeyContinue(
       UserData* userData, Element const* element, size_t limit = 0) const {
     auto result = std::make_unique<std::vector<Element*>>();
+    lookupWithElementByKeyContinue(userData, element, limit);
+    return result.release();
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief looks up all elements with the same key as a given element,
+  ///        continuation.
+  ///        Accepts a result vector as input. The result of this lookup will
+  ///        be appended to the given vector.
+  ///        This function returns as soon as limit many elements are inside
+  ///        the given vector, no matter if the come from this lookup or
+  ///        have been in the result before.
+  //////////////////////////////////////////////////////////////////////////////
+
+  void lookupWithElementByKeyContinue(UserData* userData,
+                                      Element const* element,
+                                      std::vector<Element*>& result,
+                                      size_t limit = 0) const {
+    if (limit > 0 && result.size() >= limit) {
+      // The vector is full, nothing to do.
+      return;
+    }
 
     uint64_t hashByKey = _hashElement(userData, element, true);
     Bucket const& b = _buckets[hashByKey & _bucketsMask];
@@ -891,21 +951,21 @@ class AssocMulti {
 
       if (b._table[i].ptr == nullptr) {
         // This cannot really happen, but we handle it gracefully anyway
-        return nullptr;
+        return;
       }
     }
 
     // continue search of the table
     while (true) {
       i = b._table[i].next;
-      if (i == INVALID_INDEX || (limit != 0 && result->size() >= limit)) {
+      if (i == INVALID_INDEX || (limit != 0 && result.size() >= limit)) {
         break;
       }
-      result->push_back(b._table[i].ptr);
+      result.push_back(b._table[i].ptr);
     }
 
     // return whatever we found
-    return result.release();
+    return;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -918,6 +978,23 @@ class AssocMulti {
                                              size_t limit = 0) const {
     return lookupWithElementByKeyContinue(userData, element, limit);
   }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief looks up all elements with the same key as a given element,
+  ///        continuation
+  ///        Accepts a result vector as input. The result of this lookup will
+  ///        be appended to the given vector.
+  ///        This function returns as soon as limit many elements are inside
+  ///        the given vector, no matter if the come from this lookup or
+  ///        have been in the result before.
+  //////////////////////////////////////////////////////////////////////////////
+
+  void lookupByKeyContinue(UserData* userData, Element const* element,
+                           std::vector<Element*>& result,
+                           size_t limit = 0) const {
+    lookupWithElementByKeyContinue(userData, element, result, limit);
+  }
+
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief removes an element from the array, caller is responsible to free it

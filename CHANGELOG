@@ -167,10 +167,18 @@ the sort parameter.
   `json` option. The `body` instead contains the response body as a string.
 
 
-v2.8.8 (????-??-??)
+v2.8.9 (XXXX-XX-XX)
 -------------------
 
-* fixed issue #1805: Query: internal error (location: arangod/Aql/AqlValue.cpp:182). Please report this error to arangodb.com (while executing)
+* fixed access to /_admin/statistics API in case statistics are disable via option
+  `--server.disable-statistics`
+
+
+v2.8.8 (2016-04-19)
+-------------------
+
+* fixed issue #1805: Query: internal error (location: arangod/Aql/AqlValue.cpp:182). 
+  Please report this error to arangodb.com (while executing)
 
 * allow specifying collection name prefixes for `_from` and `_to` in arangoimp:
 

@@ -302,6 +302,7 @@
     .dashboard-bar-chart-container {
       $int-width: ($content-size / 3) - 18px - 2px;
       $int-height: (($dashboard-height - 30px) / 2) - $tendency-height-corrector;
+      $int-height2: ($int-height - 20px);
       height: $int-height + 2px;
 
       .dashboard-bar-chart {
@@ -317,6 +318,7 @@
           }
 
           .absolut {
+            line-height: ($int-height2 * 2 / 3) - 10px;
             width: ($int-width - (($int-width / 2) * 1.4)) - 6px;
           }
         }
@@ -324,10 +326,11 @@
         .dashboard-bar-chart-chart {
 
           $int-height2: ($int-height - 20px);
+          box-sizing: border-box;
           height: ($int-height2 * 2 / 3) - 5px;
           line-height: ($int-height2 * 2 / 3) - 5px;
           padding: 5px 8px 10px;
-          width: $int-width - 16px;
+          width: 100%;
 
           #residentSizeChart {
             height: ($int-height2 * 2 / 3);
