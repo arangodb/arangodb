@@ -196,7 +196,7 @@ TRI_doc_mptr_t* EdgeIndexIterator::next() {
       return nullptr;
     }
 
-    if (_buffer == nullptr) {
+    if (_buffer.empty()) {
       // We start a new lookup
       TRI_ASSERT(_position == 0);
       _posInBuffer = 0;
@@ -206,29 +206,28 @@ TRI_doc_mptr_t* EdgeIndexIterator::next() {
       if (tmp.isObject()) {
         tmp = tmp.get(TRI_SLICE_KEY_EQUAL);
       }
-      _buffer = _index->lookupByKey(_trx, &tmp, _batchSize);
+      _index->lookupByKey(_trx, &tmp, _buffer, _batchSize);
       // fallthrough intentional
-    } else if (_posInBuffer >= _buffer->size()) {
+    } else if (_posInBuffer >= _buffer.size()) {
       // We have to refill the buffer
-      delete _buffer;
-      _buffer = nullptr;
+      _buffer.clear();
 
       _posInBuffer = 0;
       if (_last != nullptr) {
-        _buffer = _index->lookupByKeyContinue(_trx, _last, _batchSize);
+        _index->lookupByKeyContinue(_trx, _last, _buffer, _batchSize);
       } else {
         VPackSlice tmp = _keys.at(_position);
         if (tmp.isObject()) {
           tmp = tmp.get(TRI_SLICE_KEY_EQUAL);
         }
-        _buffer = _index->lookupByKey(_trx, &tmp, _batchSize);
+        _index->lookupByKey(_trx, &tmp, _buffer, _batchSize);
       }
     }
 
-    if (!_buffer->empty()) {
+    if (!_buffer.empty()) {
       // found something
-      _last = _buffer->back();
-      return _buffer->at(_posInBuffer++);
+      _last = _buffer.back();
+      return _buffer.at(_posInBuffer++);
     }
 
     // found no result. now go to next lookup value in _keys
@@ -242,9 +241,7 @@ void EdgeIndexIterator::reset() {
   _last = nullptr;
   _position = 0;
   _posInBuffer = 0;
-  // Free the vector space, not the content
-  delete _buffer;
-  _buffer = nullptr;
+  _buffer.clear();
 }
 
 TRI_doc_mptr_t* AnyDirectionEdgeIndexIterator::next() {

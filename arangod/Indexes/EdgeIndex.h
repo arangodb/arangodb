@@ -52,9 +52,8 @@ class EdgeIndexIterator final : public IndexIterator {
         _keys(_searchValues.slice()),
         _position(0),
         _last(nullptr),
-        _buffer(nullptr),
         _posInBuffer(0),
-        _batchSize(50) {  // This might be adjusted
+        _batchSize(1000) {  // This might be adjusted
   }
 
   EdgeIndexIterator(arangodb::Transaction* trx,
@@ -66,16 +65,10 @@ class EdgeIndexIterator final : public IndexIterator {
         _keys(_searchValues.slice()),
         _position(0),
         _last(nullptr),
-        _buffer(nullptr),
         _posInBuffer(0),
-        _batchSize(50) {  // This might be adjusted
+        _batchSize(1000) {  // This might be adjusted
   }
  
-  ~EdgeIndexIterator() {
-    // Free the vector space, not the content
-    delete _buffer;
-  }
-
  private:
   arangodb::Transaction* _trx;
   TRI_EdgeIndexHash_t const* _index;
@@ -83,7 +76,7 @@ class EdgeIndexIterator final : public IndexIterator {
   arangodb::velocypack::Slice const _keys;
   size_t _position;
   TRI_doc_mptr_t* _last;
-  std::vector<TRI_doc_mptr_t*>* _buffer;
+  std::vector<TRI_doc_mptr_t*> _buffer;
   size_t _posInBuffer;
   size_t _batchSize;
 };
