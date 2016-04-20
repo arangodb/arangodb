@@ -29,7 +29,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/Mutex.h"
 
-struct TRI_server_t;
+//struct TRI_server_t;
 
 namespace arangodb {
 class HeartbeatThread;
@@ -86,7 +86,7 @@ class ServerJob : public arangodb::rest::Job {
   /// @brief server
   //////////////////////////////////////////////////////////////////////////////
 
-  TRI_server_t* _server;
+//  TRI_server_t* _server;
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
