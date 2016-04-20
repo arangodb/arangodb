@@ -106,6 +106,7 @@ bool ServerJob::execute() {
     return false;
   }
 
+  TRI_UseVocBase(vocbase);
   TRI_DEFER(TRI_ReleaseVocBase(vocbase));
 
   V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase, true);
