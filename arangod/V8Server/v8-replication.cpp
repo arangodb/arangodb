@@ -308,14 +308,6 @@ static void JS_SynchronizeReplication(
     keepBarrier = TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING("keepBarrier")));
   }
 
-  std::string shardFollower;
-  if (object->Has(TRI_V8_ASCII_STRING("shardFollower"))) {
-    if (object->Get(TRI_V8_ASCII_STRING("shardFollower"))->IsString()) {
-      shardFollower =
-          TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING("shardFollower")));
-    }
-  }
-
   std::string errorMsg = "";
   InitialSyncer syncer(vocbase, &config, restrictCollections, restrictType,
                        verbose);
