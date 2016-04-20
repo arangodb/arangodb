@@ -37,10 +37,6 @@
       "path": "frontend/build/standalone-min.html",
       "gzip": true
     },
-    "/cluster.html": {
-      "path": "clusterFrontend/build/cluster-min.html",
-      "gzip": true
-    },
     "/css/sass.css": {
       "path": "frontend/build/style-minified.css",
       "gzip": true
@@ -49,24 +45,8 @@
       "path": "build/extra-minified.css",
       "gzip": true
     },
-    "/css/cluster.css": {
-      "path": "clusterFrontend/build/cluster-minified.css",
-      "gzip": true
-    },
-    "/css/cluster2.css": {
-      "path": "clusterFrontend/build/style-minified.css",
-      "gzip": true
-    },
-    "/cluster.js": {
-      "path": "clusterFrontend/build/cluster.min.js",
-      "gzip": true
-    },
     "/ace.js": {
       "path": "frontend/src/ace.min.js",
-      "gzip": true
-    },
-    "/sharedLibs.js": {
-      "path": "build/sharedLibs.min.js",
       "gzip": true
     },
     "/arangoes5.js": {
