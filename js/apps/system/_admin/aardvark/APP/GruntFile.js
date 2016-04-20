@@ -150,17 +150,6 @@
             ext: '.css.gz'
           }]
         },
-        sharedCSS: {
-          options: {
-            mode: 'gzip'
-          },
-          files: [{
-            expand: true,
-            src: ['build/*.css'],
-            dest: '.',
-            ext: '.css.gz'
-          }]
-        },
         standaloneJSMinified: {
           options: {
             mode: 'gzip'

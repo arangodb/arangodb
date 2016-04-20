@@ -42,7 +42,7 @@
       "gzip": true
     },
     "/css/style.css": {
-      "path": "build/extra-minified.css",
+      "path": "frontend/build/extra-minified.css",
       "gzip": true
     },
     "/ace.js": {
