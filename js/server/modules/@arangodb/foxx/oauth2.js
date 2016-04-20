@@ -23,7 +23,6 @@
 /// @author Alan Plum
 ////////////////////////////////////////////////////////////////////////////////
 
-const _ = require('lodash');
 const url = require('url');
 const parseUrl = url.parse;
 const formatUrl = url.format;
@@ -44,7 +43,7 @@ function parse(str) {
 module.exports = function oauth2(cfg) {
   function getTokenRequest(code, redirect_uri) {
     const endpoint = parseUrl(cfg.tokenEndpoint);
-    const body = _.extend(
+    const body = Object.assign(
       {grant_type: 'authorization_code'},
       parseQuery(endpoint.query),
       {
@@ -64,7 +63,7 @@ module.exports = function oauth2(cfg) {
   function getActiveUserUrl(access_token) {
     const endpoint = parseUrl(cfg.activeUserEndpoint);
     delete endpoint.search;
-    endpoint.query = _.extend(
+    endpoint.query = Object.assign(
       parseQuery(endpoint.query),
       {access_token}
     );
@@ -79,7 +78,7 @@ module.exports = function oauth2(cfg) {
       }
       const endpoint = parseUrl(cfg.authEndpoint);
       delete endpoint.search;
-      endpoint.query = _.extend(
+      endpoint.query = Object.assign(
         {response_type: 'code'},
         parseQuery(endpoint.query),
         opts,

@@ -24,7 +24,6 @@
 /// @author Alan Plum
 ////////////////////////////////////////////////////////////////////////////////
 
-var _ = require('lodash');
 var db = require('@arangodb').db;
 var flatten = require('internal').flatten;
 var exponentialBackOff = require('internal').exponentialBackOff;
@@ -154,7 +153,7 @@ exports.work = function (job) {
         data.runFailures = 0;
       }
       db._jobs.update(job._key, data);
-      job = _.extend(job, data);
+      job = Object.assign(job, data);
     }
   });
 

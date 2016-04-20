@@ -567,7 +567,7 @@ AQLGenerator.prototype.neighbors = function(vertexExample, options) {
     + this.stack.length + ')';
   var opts;
   if (options) {
-    opts = _.extend({}, options);
+    opts = Object.assign({}, options);
   } else {
     opts = {};
   }
@@ -1343,7 +1343,7 @@ var _renameCollection = function(oldName, newName) {
         return;
       }
       gdb.toArray().forEach(function(doc) {
-        var c = _.extend({}, doc), i, j, changed = false;
+        var c = Object.assign({}, doc), i, j, changed = false;
         if (c.edgeDefinitions) {
           for (i = 0; i < c.edgeDefinitions.length; ++i) {
             var def = c.edgeDefinitions[i];

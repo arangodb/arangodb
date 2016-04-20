@@ -324,7 +324,7 @@ class RequestContext {
           cfg.options = [cfg.options];
         }
         _.each(cfg.options, function (options) {
-          _.extend(validateOptions, options);
+          Object.assign(validateOptions, options);
         });
       }
       construct = function (raw) {
@@ -426,7 +426,7 @@ class RequestContextBuffer {
   }
 }
 
-_.extend(RequestContextBuffer.prototype, {
+Object.assign(RequestContextBuffer.prototype, {
   applyEachFunction(target) {
     _.each(this.applyChain, function (x) {
       target[x.functionName].apply(target, x.argumentList);
@@ -460,7 +460,7 @@ _.each([
 ////////////////////////////////////////////////////////////////////////////////
   'onlyIfAuthenticated'
 ], function (functionName) {
-  _.extend(RequestContextBuffer.prototype[functionName] = function () {
+  Object.assign(RequestContextBuffer.prototype[functionName] = function () {
     this.applyChain.push({
       functionName: functionName,
       argumentList: arguments

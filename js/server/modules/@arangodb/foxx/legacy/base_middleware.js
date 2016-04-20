@@ -243,8 +243,8 @@ function BaseMiddleware() {
                   actions.stringifyRequest(request));
     }
 
-    _.extend(request, requestFunctions);
-    _.extend(response, responseFunctions);
+    Object.assign(request, requestFunctions);
+    Object.assign(response, responseFunctions);
 
     next();
 

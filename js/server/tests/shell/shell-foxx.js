@@ -56,7 +56,7 @@ FunctionStub = function(obj) {
   this.obj = obj;
 };
 
-_.extend(FunctionStub.prototype, {
+Object.assign(FunctionStub.prototype, {
   toReceive: function (functionName) {
     'use strict';
     this.functionName = functionName;

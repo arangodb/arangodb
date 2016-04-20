@@ -95,7 +95,7 @@ function Repository(collection, opts) {
 
 
 Repository.prototype = Object.create(EventEmitter.prototype);
-_.extend(Repository.prototype, {
+Object.assign(Repository.prototype, {
 
 // -----------------------------------------------------------------------------
 // --SUBSECTION--                                                 Adding Entries
