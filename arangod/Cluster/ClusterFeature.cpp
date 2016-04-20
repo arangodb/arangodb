@@ -191,6 +191,9 @@ void ClusterFeature::prepare() {
   _agencyCallbackRegistry.reset(
       new AgencyCallbackRegistry(agencyCallbacksPath()));
 
+  // Initialize ClusterInfo library:
+  ClusterInfo::createInstance(_agencyCallbackRegistry.get());
+
   // initialize ConnectionManager library
   httpclient::ConnectionManager::initialize();
 
