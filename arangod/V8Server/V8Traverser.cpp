@@ -613,19 +613,17 @@ static void InboundNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
   TRI_edge_direction_e dir = TRI_EDGE_IN;
   std::unordered_set<std::string> nextDepth;
 
-  auto opRes = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
+  std::vector<TRI_doc_mptr_t*> cursor;
   for (auto const& col : collectionInfos) {
     TRI_ASSERT(col != nullptr);
 
     for (auto const& start : startVertices) {
+      cursor.clear();
       auto edgeCursor = col->getEdges(dir, start);
       while (edgeCursor->hasMore()) {
-        edgeCursor->getMore(opRes, UINT64_MAX, false);
-        if (opRes->failed()) {
-          THROW_ARANGO_EXCEPTION(opRes->code);
-        }
-        VPackSlice edges = opRes->slice();
-        for (auto const& edge : VPackArrayIterator(edges)) {
+        edgeCursor->getMoreMptr(cursor, UINT64_MAX);
+        for (auto const& mptr : cursor) {
+          VPackSlice edge(mptr->vpack());
           if (opts.matchesEdge(edge)) {
             std::string v = edge.get(TRI_VOC_ATTRIBUTE_FROM).copyString();
             if (visited.find(v) != visited.end()) {
@@ -671,6 +669,7 @@ static void OutboundNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
     TRI_ASSERT(col != nullptr);
 
     for (auto const& start : startVertices) {
+      cursor.clear();
       auto edgeCursor = col->getEdges(dir, start);
       while (edgeCursor->hasMore()) {
         edgeCursor->getMoreMptr(cursor, UINT64_MAX);
@@ -718,20 +717,18 @@ static void AnyNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
 
   TRI_edge_direction_e dir = TRI_EDGE_ANY;
   std::unordered_set<std::string> nextDepth;
-  auto opRes = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
+  std::vector<TRI_doc_mptr_t*> cursor;
 
   for (auto const& col : collectionInfos) {
     TRI_ASSERT(col != nullptr);
 
     for (auto const& start : startVertices) {
+      cursor.clear();
       auto edgeCursor = col->getEdges(dir, start);
       while (edgeCursor->hasMore()) {
-        edgeCursor->getMore(opRes, UINT64_MAX, false);
-        if (opRes->failed()) {
-          THROW_ARANGO_EXCEPTION(opRes->code);
-        }
-        VPackSlice edges = opRes->slice();
-        for (auto const& edge : VPackArrayIterator(edges)) {
+        edgeCursor->getMoreMptr(cursor, UINT64_MAX);
+        for (auto const& mptr : cursor) {
+          VPackSlice edge(mptr->vpack());
           if (opts.matchesEdge(edge)) {
             std::string v = edge.get(TRI_VOC_ATTRIBUTE_TO).copyString();
             if (visited.find(v) == visited.end()) {

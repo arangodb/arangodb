@@ -144,6 +144,29 @@ TRI_doc_mptr_t* MultiIndexIterator::next() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Get the next limit many elements
+///        If one iterator is exhausted, the next one will be used.
+///        An empty result vector indicates that all iterators are exhausted
+////////////////////////////////////////////////////////////////////////////////
+
+void MultiIndexIterator::nextBabies(std::vector<TRI_doc_mptr_t*>& result, size_t limit) {
+  if (_current == nullptr) {
+    result.clear();
+    return;
+  }
+  _current->nextBabies(result, limit);
+  while (result.empty()) {
+    _currentIdx++;
+    if (_currentIdx >= _iterators.size()) {
+      _current = nullptr;
+      return;
+    }
+    _current = _iterators.at(_currentIdx);
+    _current->nextBabies(result, limit);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Reset the cursor
 ///        This will reset ALL internal iterators and start all over again
 ////////////////////////////////////////////////////////////////////////////////
