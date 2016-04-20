@@ -50,7 +50,7 @@ module.exports = Object.assign(
     if (path === '/') {
       return [$_TERMINAL];
     }
-    const tokens = path.slice(1).split('/').map(function (name) {
+    const tokens = path.slice(1).split('/').map((name) => {
       if (name === '*') {
         return $_WILDCARD;
       }

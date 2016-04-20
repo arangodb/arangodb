@@ -77,7 +77,7 @@
           if (param1 && param2) {
             origin(param1, param2, false);
           }
-        }, 100);
+        }, 250);
       } else {
         if (!param1) {
           origin(true);
@@ -203,8 +203,14 @@
         return;
       }
       if (this.isCluster === false) {
-        this.routes[""] = 'dashboard';
-        this.navigate("#dashboard", {trigger: true});
+        if (this.currentDB.get("name") === '_system') {
+          this.routes[""] = 'dashboard';
+          this.navigate("#dashboard", {trigger: true});
+        }
+        else {
+          this.routes[""] = 'collections';
+          this.navigate("#collections", {trigger: true});
+        }
         return;
       }
 

@@ -32,7 +32,6 @@ const SyntheticRequest = require('@arangodb/foxx/router/request');
 const SyntheticResponse = require('@arangodb/foxx/router/response');
 const tokenize = require('@arangodb/foxx/router/tokenize');
 const validation = require('@arangodb/foxx/router/validation');
-const actions = require('@arangodb/actions');
 
 const $_ROUTES = Symbol.for('@@routes'); // routes and child routers
 const $_MIDDLEWARE = Symbol.for('@@middleware'); // middleware
@@ -211,7 +210,6 @@ function applyPathParams(route) {
 
 
 function dispatch(route, req, res) {
-  const ignoreRequestBody = actions.BODYFREE_METHODS.indexOf(req.method) !== -1;
   let pathParams = {};
   let queryParams = Object.assign({}, req.queryParams);
 
@@ -252,7 +250,7 @@ function dispatch(route, req, res) {
       : (item.middleware || item.endpoint)
     );
 
-    if (!ignoreRequestBody && context._bodyParam) {
+    if (context._bodyParam) {
       try {
         if (!requestBodyParsed) {
           requestBodyParsed = true;
@@ -399,9 +397,9 @@ function* findRoutes(node, result, suffix, path) {
 
   if (wildcardNode && wildcardNode.has($_MIDDLEWARE)) {
     nodeMiddleware = wildcardNode.get($_MIDDLEWARE);
-    result = result.concat(nodeMiddleware.map(function (mw) {
-      return {middleware: mw, path: path, suffix: suffix};
-    }));
+    result = result.concat(nodeMiddleware.map(
+      (mw) => ({middleware: mw, path: path, suffix: suffix})
+    ));
   }
 
   if (!suffix.length) {
@@ -482,9 +480,7 @@ function parsePathParams(names, route, path) {
 
 
 function reverse(route, path) {
-  const routers = route.filter(function (item) {
-    return item.router;
-  });
+  const routers = route.filter((item) => item.router);
   const keys = path.split('.');
   const visited = [];
   while (routers.length) {

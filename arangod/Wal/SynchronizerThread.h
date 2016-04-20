@@ -49,7 +49,7 @@ class SynchronizerThread : public Thread {
 
  public:
   /// @brief signal that a sync is needed
-  void signalSync();
+  void signalSync(bool waitForSync);
 
  protected:
   void run() override;
@@ -70,6 +70,7 @@ class SynchronizerThread : public Thread {
 
   /// @brief number of requests waiting
   uint32_t _waiting;
+  uint32_t _waitingWithSync;
 
   /// @brief wait interval for the synchronizer thread when idle
   uint64_t const _syncInterval;

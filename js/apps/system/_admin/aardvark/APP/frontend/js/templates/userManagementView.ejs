@@ -86,26 +86,28 @@
       %>
 
       <div class="tile pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-3 pure-u-lg-1-4 pure-u-xl-1-6">
-        <div class="borderBox"></div>
-        <div class="iconSet">
-          <span class="icon_arangodb_settings2 editUser" id="<%=_.escape(username) %>_edit-user" alt="Edit user" title="Edit user"></span>
-        </div>
-        <%=avatar %>
-        <div class="tileBadge">
-          <span>
-            <%if (active) {%>
-            <div class="corneredBadge loaded">
-              active
-            </div>
-            <%} else {%>
-            <div class="corneredBadge unloaded">
-              inactive
-            </div>
-            <%}%>
-          </span>
-        </div>
+        <div class="paddingBox">
+          <div class="borderBox"></div>
+          <div class="iconSet">
+            <span class="icon_arangodb_settings2 editUser" id="<%=_.escape(username) %>_edit-user" alt="Edit user" title="Edit user"></span>
+          </div>
+          <%=avatar %>
+          <div class="tileBadge">
+            <span>
+              <%if (active) {%>
+              <div class="corneredBadge loaded">
+                active
+              </div>
+              <%} else {%>
+              <div class="corneredBadge unloaded">
+                inactive
+              </div>
+              <%}%>
+            </span>
+          </div>
 
-        <h5 class="collectionName"><%=_.escape(username) %> <% if (name !== ' ') { %>(<%=_.escape(name) %>)<%}%></h5>
+          <h5 class="collectionName"><%=_.escape(username) %> <% if (name !== ' ') { %>(<%=_.escape(name) %>)<%}%></h5>
+        </div>
       </div>
       <%});%>
      </div>

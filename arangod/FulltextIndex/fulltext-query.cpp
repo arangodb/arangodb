@@ -46,7 +46,7 @@ static TRI_fulltext_query_operation_e ParseOperation(char c) {
 /// this will create a copy of the word
 ////////////////////////////////////////////////////////////////////////////////
 
-static char* NormaliseWord(char const* word, size_t wordLength) {
+static char* NormalizeWord(char const* word, size_t wordLength) {
   // normalize string
   size_t outLength;
   char* copy = TRI_normalize_utf8_to_NFC(TRI_UNKNOWN_MEM_ZONE, word, wordLength,
@@ -236,7 +236,7 @@ int TRI_ParseQueryFulltextIndex(TRI_fulltext_query_t* query,
 
     if (!TRI_SetQueryFulltextIndex(query, (size_t)i, start,
                                    (size_t)(end - start), match, operation)) {
-      // normalisation failed
+      // normalization failed
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
@@ -270,7 +270,7 @@ bool TRI_SetQueryFulltextIndex(TRI_fulltext_query_t* query, size_t position,
     return false;
   }
 
-  normalized = NormaliseWord(word, wordLength);
+  normalized = NormalizeWord(word, wordLength);
 
   if (normalized == nullptr) {
     query->_words[position] = nullptr;

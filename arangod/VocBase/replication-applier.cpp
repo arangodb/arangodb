@@ -864,7 +864,8 @@ TRI_replication_applier_t::TRI_replication_applier_t(TRI_server_t* server,
       _starts(0),
       _server(server),
       _vocbase(vocbase),
-      _terminateThread(false) {}
+      _terminateThread(false),
+      _state() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy a replication applier

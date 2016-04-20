@@ -29,6 +29,7 @@ const joi = require('joi');
 const dd = require('dedent');
 const marked = require('marked');
 const highlightAuto = require('highlight.js').highlightAuto;
+const errors = require('@arangodb').errors;
 const FoxxManager = require('@arangodb/foxx/manager');
 const fmUtils = require('@arangodb/foxx/manager-utils');
 const createRouter = require('@arangodb/foxx/router');
@@ -80,12 +81,23 @@ installer.use(function (req, res, next) {
     options = undefined;
   }
   let service;
-  if (upgrade) {
-    service = FoxxManager.upgrade(appInfo, mount, options);
-  } else if (replace) {
-    service = FoxxManager.replace(appInfo, mount, options);
-  } else {
-    service = FoxxManager.install(appInfo, mount, options);
+  try {
+    if (upgrade) {
+      service = FoxxManager.upgrade(appInfo, mount, options);
+    } else if (replace) {
+      service = FoxxManager.replace(appInfo, mount, options);
+    } else {
+      service = FoxxManager.install(appInfo, mount, options);
+    }
+  } catch (e) {
+    if (e.isArangoError && [
+      errors.ERROR_MODULE_FAILURE.code,
+      errors.ERROR_MALFORMED_MANIFEST_FILE.code,
+      errors.ERROR_INVALID_APPLICATION_MANIFEST.code
+    ].indexOf(e.errorNum) !== -1) {
+      res.throw('bad request', e);
+    }
+    throw e;
   }
   const configuration = FoxxManager.configuration(mount);
   res.json(Object.assign(

@@ -908,25 +908,35 @@
       this.startUpdating();
     }.bind(this);
 
+    var errorFunction = function() {
+        $(this.el).html('');
+        $('.contentDiv').remove();
+        $('.headerBar').remove();
+        $('.dashboard-headerbar').remove();
+        $('.dashboard-row').remove();
+        $(this.el).append(
+          '<div style="color: red">You do not have permission to view this page.</div>'
+        );
+        $(this.el).append(
+          '<div style="color: red">You can switch to \'_system\' to see the dashboard.</div>'
+        );
+    }.bind(this);
+
     var callback2 = function(error, authorized) {
       if (!error) {
         if (!authorized) {
-          $('.contentDiv').remove();
-          $('.headerBar').remove();
-          $('.dashboard-headerbar').remove();
-          $('.dashboard-row').remove();
-          $(this.el).append(
-            '<div style="color: red">You do not have permission to view this page.</div>'
-          );
-          $(this.el).append(
-            '<div style="color: red">You can switch to \'_system\' to see the dashboard.</div>'
-          );
+          errorFunction();
         }
         else {
           this.getStatistics(callback, modalView);
         }
       }
     }.bind(this);
+
+    if (window.App.currentDB.get("name") !== '_system') {
+      errorFunction();
+      return;
+    }
 
     //check if user has _system permission
     this.options.database.hasSystemAccess(callback2);

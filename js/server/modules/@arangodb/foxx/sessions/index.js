@@ -65,7 +65,7 @@ module.exports = function sessionMiddleware(cfg) {
   if (!Array.isArray(transports)) {
     transports = [transports];
   }
-  transports = transports.map(function (transport) {
+  transports = transports.map((transport) => {
     if (transport === 'cookie') {
       return cookieTransport();
     }
@@ -86,7 +86,7 @@ module.exports = function sessionMiddleware(cfg) {
   return {
     config: {storage, transport: transports},
     register() {
-      return function (req, res, next) {
+      return (req, res, next) => {
         let sid = null;
         for (const transport of transports) {
           if (typeof transport.get === 'function') {

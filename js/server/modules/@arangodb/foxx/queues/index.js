@@ -38,9 +38,9 @@ function validate(data, schema) {
     schema = joi.forbidden();
   }
   var raw = data;
-  var isTuple = Boolean(schema._meta && schema._meta.some(function (meta) {
-    return meta.isTuple;
-  }));
+  var isTuple = Boolean(
+    schema._meta && schema._meta.some((meta) => meta.isTuple)
+  );
   if (isTuple) {
     raw = Array.isArray(raw) ? raw : [raw];
     data = Object.assign({}, raw);
@@ -50,9 +50,7 @@ function validate(data, schema) {
     throw result.error;
   }
   if (isTuple) {
-    return raw.map(function (x, i) {
-      return result.value[i];
-    });
+    return raw.map((x, i) => result.value[i]);
   }
   return result.value;
 }
@@ -63,7 +61,7 @@ function updateQueueDelay() {
       collections: {
         read: ['_queues', '_jobs']
       },
-      action: function () {
+      action() {
         var delayUntil = db._query(
           qb.let('queues', qb.for('queue').in('_queues').return('queue._key'))
           .for('job').in('_jobs')
@@ -126,7 +124,7 @@ function deleteQueue(key) {
       read: ['_queues'],
       write: ['_queues']
     },
-    action: function () {
+    action() {
       if (db._queues.exists(key)) {
         db._queues.remove(key);
         result = true;
@@ -171,27 +169,27 @@ function Job(id) {
     configurable: false,
     enumerable: true
   });
-  _.each(['data', 'status', 'type', 'failures', 'runs', 'runFailures'], function (key) {
+  _.each(['data', 'status', 'type', 'failures', 'runs', 'runFailures'], (key) => {
     Object.defineProperty(this, key, {
-      get: function () {
+      get() {
         var value = db._jobs.document(this.id)[key];
         return (value && typeof value === 'object') ? Object.freeze(value) : value;
       },
       configurable: false,
       enumerable: true
     });
-  }, this);
+  });
 }
 
 Object.assign(Job.prototype, {
-  abort: function () {
+  abort() {
     var self = this;
     db._executeTransaction({
       collections: {
         read: ['_jobs'],
         write: ['_jobs']
       },
-      action: function () {
+      action() {
         var job = db._jobs.document(self.id);
         if (job.status !== 'completed') {
           job.failures.push(flatten(new Error('Job aborted.')));
@@ -204,7 +202,7 @@ Object.assign(Job.prototype, {
       }
     });
   },
-  reset: function () {
+  reset() {
     db._jobs.update(this.id, {
       status: 'pending'
     });
@@ -214,9 +212,7 @@ Object.assign(Job.prototype, {
 
 function Queue(name) {
   Object.defineProperty(this, 'name', {
-    get: function () {
-      return name;
-    },
+    get: () => name,
     configurable: false,
     enumerable: true
   });
@@ -233,7 +229,7 @@ function asNumber(num) {
 }
 
 Object.assign(Queue.prototype, {
-  push: function (type, data, opts) {
+  push(type, data, opts) {
     if (!type) {
       throw new Error('Must pass a job type!');
     }
@@ -282,7 +278,7 @@ Object.assign(Queue.prototype, {
     updateQueueDelay();
     return job._id;
   },
-  get: function (id) {
+  get(id) {
     if (typeof id !== 'string') {
       throw new Error('Invalid job id');
     }
@@ -299,13 +295,13 @@ Object.assign(Queue.prototype, {
     }
     return jobCache[databaseName][id];
   },
-  delete: function (id) {
+  delete(id) {
     return db._executeTransaction({
       collections: {
         read: ['_jobs'],
         write: ['_jobs']
       },
-      action: function () {
+      action() {
         try {
           db._jobs.remove(id);
           return true;
@@ -315,19 +311,19 @@ Object.assign(Queue.prototype, {
       }
     });
   },
-  pending: function (type) {
+  pending(type) {
     return getJobs(this.name, 'pending', type);
   },
-  complete: function (type) {
+  complete(type) {
     return getJobs(this.name, 'complete', type);
   },
-  failed: function (type) {
+  failed(type) {
     return getJobs(this.name, 'failed', type);
   },
-  progress: function (type) {
+  progress(type) {
     return getJobs(this.name, 'progress', type);
   },
-  all: function (type) {
+  all(type) {
     return getJobs(this.name, undefined, type);
   }
 });

@@ -42,7 +42,7 @@
 
   "files": {
     "/index.html": {
-      "path": "frontend/build/standalone-min.html",
+      "path": "frontend/build/index-min.html",
       "gzip": true
     },
     "/css/sass.css": {

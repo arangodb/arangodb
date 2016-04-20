@@ -357,12 +357,12 @@ If you've edited examples, see below howto regenerate them.
 If you've edited REST-Documentation, first invoke `./utils/generateSwagger.sh`.
 Run the `make` command in `arangodb/Documentation/Books` to generate it.
 The documentation will be generated into `arangodb/Documentation/Books/books/Users` -
-use your favourite browser to read it.
+use your favorite browser to read it.
 
 You may encounter permission problem with gitbook and its NPM invokations;
 In that case you need to run the command as root / Administrator.
 
-On windows you may see "device busy" errors, retry. Make shure you don't have
+On windows you may see "device busy" errors, retry. Make sure you don't have
 intermediate files in the ppbooks / books -sub folder open (i.e. browser or editor)
 It can also temporarily occur during phases of high HDD / SSD load.
 

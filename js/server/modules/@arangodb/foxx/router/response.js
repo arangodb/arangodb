@@ -211,9 +211,7 @@ module.exports = class SyntheticResponse {
 
   set(name, value) {
     if (name && typeof name === 'object') {
-      _.each(name, function (v, k) {
-        this.set(k, v);
-      }, this);
+      _.each(name, (v, k) => this.set(k, v));
     } else {
       this.setHeader(name, value);
     }
@@ -282,6 +280,14 @@ module.exports = class SyntheticResponse {
     if (typeof status === 'string') {
       status = statuses(status);
     }
+    if (reason instanceof Error) {
+      const err = reason;
+      reason = err.message;
+      args = Object.assign({
+        cause: err,
+        errorNum: err.errorNum
+      }, args);
+    }
     if (reason && typeof reason === 'object') {
       args = reason;
       reason = undefined;
@@ -309,9 +315,7 @@ module.exports = class SyntheticResponse {
     if (response) {
       if (response.model && response.model.forClient) {
         if (response.multiple && Array.isArray(body)) {
-          body = body.map(function (item) {
-            return response.model.forClient(item);
-          });
+          body = body.map((item) => response.model.forClient(item));
         } else {
           body = response.model.forClient(body);
         }
