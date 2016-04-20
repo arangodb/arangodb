@@ -274,7 +274,7 @@ void ClusterInfo::createInstance(AgencyCallbackRegistry* agencyCallbackRegistry)
 /// @brief returns an instance of the cluster info class
 ////////////////////////////////////////////////////////////////////////////////
 
-ClusterInfo* ClusterInfo::instance() { return _instance.get(); }
+ClusterInfo* ClusterInfo::instance() {  return _instance.get(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a cluster info object
