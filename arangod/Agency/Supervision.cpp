@@ -30,7 +30,8 @@
 
 using namespace arangodb::consensus;
 
-Supervision::Supervision() : arangodb::Thread("Supervision"), _agent(nullptr) {}
+Supervision::Supervision() : arangodb::Thread("Supervision"), _agent(nullptr),
+                             _frequency(5000000) {}
 
 Supervision::~Supervision() {
   shutdown();
