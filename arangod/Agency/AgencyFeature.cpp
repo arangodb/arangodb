@@ -83,9 +83,13 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--agency.notify", "notify others",
                      new BooleanParameter(&_notify));
   
-  options->addOption("--agency.sanity-check",
-                     "perform arangodb cluster sanity checking",
+  options->addOption("--agency.supervision",
+                     "perform arangodb cluster supervision",
                      new BooleanParameter(&_supervision));
+  
+  options->addOption("--agency.supervision-frequency",
+                     "arangodb cluster supervision frequency [s]",
+                     new DoubleParameter(&_supervisionFrequency));
   
   options->addHiddenOption("--agency.wait-for-sync",
                            "wait for hard disk syncs on every persistence call "

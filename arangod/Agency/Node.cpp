@@ -34,6 +34,29 @@
 using namespace arangodb::consensus;
 using namespace arangodb::basics;
 
+struct NotEmpty {
+  bool operator()(const std::string& s) { return !s.empty(); }
+};
+
+struct Empty {
+  bool operator()(const std::string& s) { return s.empty(); }
+};
+
+/// @brief Split strings by separator
+inline std::vector<std::string> split(const std::string& value, char separator) {
+  std::vector<std::string> result;
+  std::string::size_type p = (value.find(separator) == 0) ? 1:0;
+  std::string::size_type q;
+  while ((q = value.find(separator, p)) != std::string::npos) {
+    result.emplace_back(value, p, q - p);
+    p = q + 1;
+  }
+  result.emplace_back(value, p);
+  result.erase(std::find_if(result.rbegin(), result.rend(),
+                            NotEmpty()).base(), result.end());
+  return result;
+}
+
 // Construct with node name
 Node::Node (std::string const& name) : _node_name(name), _parent(nullptr) {
   _value.clear();
@@ -164,12 +187,12 @@ Node const& Node::operator ()(std::vector<std::string> const& pv) const {
 
 // lh-value at path
 Node& Node::operator ()(std::string const& path) {
-  return this->operator()(StringUtils::split(path,'/'));
+  return this->operator()(split(path,'/'));
 }
 
 // rh-value at path
 Node const& Node::operator ()(std::string const& path) const {
-  return this->operator()(StringUtils::split(path,'/'));
+  return this->operator()(split(path,'/'));
 }
 
 // lh-store 

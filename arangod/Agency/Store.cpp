@@ -50,6 +50,21 @@ struct Empty {
   bool operator()(const std::string& s) { return s.empty(); }
 };
 
+/// @brief Split strings by separator
+inline std::vector<std::string> split(const std::string& value, char separator) {
+  std::vector<std::string> result;
+  std::string::size_type p = (value.find(separator) == 0) ? 1:0;
+  std::string::size_type q;
+  while ((q = value.find(separator, p)) != std::string::npos) {
+    result.emplace_back(value, p, q - p);
+    p = q + 1;
+  }
+  result.emplace_back(value, p);
+  result.erase(std::find_if(result.rbegin(), result.rend(),
+                            NotEmpty()).base(), result.end());
+  return result;
+}
+
 inline static bool endpointPathFromUrl (
   std::string const& url, std::string& endpoint, std::string& path) {
 
@@ -312,7 +327,7 @@ bool Store::read (VPackSlice const& query, Builder& ret) const {
     try {
       copy(path) = (*this)(path);
     } catch (StoreException const&) {
-      std::vector<std::string> pv = StringUtils::split(path,'/');
+      std::vector<std::string> pv = split(path,'/');
       while (!pv.empty()) {
         std::string end = pv.back();
         pv.pop_back();
