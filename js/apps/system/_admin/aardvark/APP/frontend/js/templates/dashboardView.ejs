@@ -100,19 +100,19 @@
         <% tendency("Number of Client Connections", "clientConnections", false); %>
       </div>
       
-      <div class="dashboard-row pure-u">
+      <div class="dashboard-row pure-u small-label-padding">
         <% largeChart("dataTransferChart", "Transfer Size per Second") %>
         <% smallChart("dataTransferDistribution", "Transfer Size per Second (distribution)", false) %>
       </div>
       
-      <div class="dashboard-row pure-u">
+      <div class="dashboard-row pure-u small-label-padding">
         <% largeChart("totalTimeChart", "Average Request Time (seconds)") %>
         <% smallChart("totalTimeDistribution", "Average Request Time (distribution)", false) %>
       </div>
     </div>
   </div>
 
-  <div id="system" style="display: none";>
+  <div id="system" class="tendency-box-sizing" style="display: none";>
 
     <div class="dashboard-row pure-u" style="width: 100%;">
       <% tendency("Number of threads", "numberOfThreads", false); %>

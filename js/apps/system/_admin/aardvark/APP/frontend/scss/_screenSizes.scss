@@ -13,12 +13,6 @@
     padding-right: 0 !important;
   }
 
-  .dashboard-bar-chart-container {
-    margin-bottom: 65px !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-  }
-
   .dashboard-medium-chart {
     margin-bottom: 10px;
   }
@@ -80,6 +74,35 @@
 
 }
 
+@media (max-width: 768px) {
+  .dashboard-large-chart,
+  .dashboard-tendency-container {
+    box-sizing: content-box;
+  }
+
+  .tendency-box-sizing {
+    .dashboard-bar-chart-container,
+    .dashboard-tendency-container {
+      margin-left: 0;
+    }
+
+    .dashboard-row:last-child {
+      .dashboard-medium-chart-outer:last-child {
+        margin-left: 0;
+      }
+    }
+
+    .dashboard-bar-chart-container {
+      height: 140px;
+
+      .dashboard-sub-bar {
+        margin-top: -3px;
+      }
+    }
+
+  }
+}
+
 @media (min-width: 569px) and (max-width: 738px) {
 
   // SINGLE NODE DASHBOARD
@@ -101,13 +124,8 @@
   }
 
   .dashboard-bar-chart-container {
-    margin-bottom: 65px !important;
     padding-left: 0 !important;
     padding-right: 0 !important;
-  }
-
-  .dashboard-medium-chart {
-    margin-bottom: 10px;
   }
 
   #repl-numbers,
@@ -157,7 +175,7 @@
       margin-top: -12px;
     }
   }
-  
+
   .dashboard-bar-chart-chart {
     margin-top: 10px;
   }
@@ -166,7 +184,7 @@
     .dashboard-sub-bar {
       font-size: 11px;
       margin-bottom: 10px;
-      margin-top: -20px;
+      margin-top: -16px;
       padding-top: 18px;
     }
   }
@@ -177,6 +195,40 @@
 
 }
 
+@media (min-width: 973px) {
+  .dashboard-large-chart {
+    .dashboard-sub-bar {
+      padding-top: 14px;
+    }
+  }
+
+  #dataTransferDistribution,
+  #totalTimeDistribution {
+    .nvd3-svg {
+      padding-top: 20px;
+    }
+  }
+
+  #requests {
+    .small-label-padding {
+      .dashboard-small-chart {
+        .dashboard-sub-bar {
+          padding-top: 30px;
+
+          font-size: 12px;
+        }
+      }
+    }
+
+    .small-label-padding:last-child {
+      .dashboard-small-chart {
+        .dashboard-sub-bar {
+          margin-bottom: 1px;
+        }
+      }
+    }
+  }
+}
 
 @media (min-width: 1042px) and (max-width: 1284px) {
 }

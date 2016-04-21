@@ -213,7 +213,6 @@
       width: 100%;
 
       .dashboard-sub-bar {
-        margin-left: -5px;
         width: 100%;
       }
 
@@ -272,7 +271,7 @@
 
       .dashboard-tendency-chart {
         $int-height: (($dashboard-height - 29px) / 2) - $tendency-height-corrector;
-        height: $int-height;
+        height: $int-height + 5px;
 
         .dashboard-tendency,
         .dashboard-subtitle-bar,

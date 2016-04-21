@@ -2,8 +2,6 @@
   @extend %pull-left;
   background-color: $c-white;
   border-left: 0 solid $c-black;
-  border-top-left-radius: 3px;
-  border-top-right-radius: 3px;
   box-sizing: border-box;
 
   &:first-child {
@@ -13,8 +11,10 @@
 
 %dashboard-chart-basic {
   @extend %pull-left;
+  border: 1px solid #d1d1d1;
+  margin-left: -1px;
+  margin-top: -2px;
 
-  margin-bottom: $dashboard-margin;
   position: relative;
 }
 
@@ -52,8 +52,6 @@
   @extend %clear-float;
   @extend %pull-left;
   background-color: $c-white;
-  border-bottom-left-radius: 3px;
-  border-bottom-right-radius: 3px;
   box-sizing: border-box;
   color: rgba(0, 0, 0, .5);
   font-family: 'Roboto', sans-serif;
@@ -78,8 +76,11 @@
     font-size: 11pt;
     font-weight: 600;
     opacity: .5;
+    overflow: hidden;
     text-align: center;
+    text-overflow: ellipsis;
     text-transform: uppercase;
+    white-space: nowrap;
     width: 100%;
   }
 }
@@ -87,7 +88,7 @@
 .dashboard-full-width-chart {
   @extend %dashboard-chart-basic;
   border: 1px solid rgba(104, 103, 102, .10);
-  border-radius: 2px;
+  border-radius: 0;
   margin-right: 12px;
   width: 100%;
 
@@ -164,7 +165,6 @@
 .dashboard-large-chart {
   @extend %dashboard-chart-basic;
   box-sizing: border-box;
-  padding-right: 10px;
 
   .dashboard-large-chart-inner {
     @extend %dashboard-chart-box;
@@ -186,7 +186,8 @@
 
 .dashboard-small-chart {
   @extend %dashboard-chart-basic;
-  border-radius: 2px;
+  background: $c-white;
+  border-radius: 0;
   //width: auto;
 
   .dashboard-small-chart-inner {
@@ -212,27 +213,16 @@
 }
 
 .dashboard-medium-chart-outer {
-  border-radius: 2px;
-
-  &:first-child {
-    box-sizing: border-box;
-    padding-right: 10px;
-  }
+  border-radius: 0;
+  box-sizing: border-box;
 }
 
 .dashboard-medium-chart {
   @extend %dashboard-chart-box;
   @extend %dashboard-chart-basic;
   background-color: $c-white;
-  border-left: $dashboard-borderwidth solid $c-white;
-  border-right: $dashboard-borderwidth solid $c-white;
-  border-top: $dashboard-borderwidth solid $c-white;
   margin-bottom: 0;
   padding-top: $dashboard-padding;
-
-  &:first-child {
-    margin-right: 12px;
-  }
 
   .dashboard-interior-chart {
     @extend %pull-left;
@@ -241,7 +231,7 @@
 
   .dashboard-medium-chart-menu {
     @extend %clear-float;
-    @include border-radius(2px);
+    @include border-radius(0);
 
     border: 0 solid $c-halfsemi-transp;
     color: $c-halfsemi-transp;
@@ -268,12 +258,23 @@
 
 }
 
+.tendency-box-sizing {
+  .dashboard-tendency-container {
+    box-sizing: border-box;
+  }
+
+  .dashboard-row:last-child {
+    .dashboard-medium-chart-outer:last-child {
+      margin-left: -2px;
+    }
+  }
+}
 
 .dashboard-tendency-container {
   @extend %dashboard-chart-box;
   @extend %dashboard-chart-basic;
   //border: 1px solid rgba(104, 103, 102, .10);
-  border-radius: 2px;
+  box-sizing: content-box;
 
   .dashboard-sub-bar {
     height: 46px;
@@ -285,8 +286,6 @@
     border-left: 5px solid $c-white;
     border-right: 5px solid $c-white;
     border-top: $dashboard-borderwidth solid $c-white;
-    border-top-left-radius: 3px;
-    border-top-right-radius: 3px;
     padding-bottom: $dashboard-padding-tendency;
 
     .dashboard-tendency {
@@ -326,14 +325,8 @@
   @extend %dashboard-chart-basic;
   background: none;
   //border: 1px solid rgba(104, 103, 102, .10);
-  border: 0;
-  border-radius: 2px;
+  border-radius: 0;
   box-sizing: border-box;
-  padding-left: 10px;
-  padding-right: 10px;
-
-  #residentSizeChart {
-  }
 
   .dashboard-sub-bar {
     padding-bottom: 17px;
@@ -346,9 +339,7 @@
     border-left: 5px solid $c-white;
     border-right: 5px solid $c-white;
     border-top: 5px solid $c-white;
-    border-top-left-radius: 3px;
-    border-top-right-radius: 3px;
-    padding-bottom: $dashboard-padding-tendency;
+    padding-bottom: $dashboard-padding-tendency + 3px;
     width: auto;
 
     .dashboard-bar-chart-title {
@@ -491,4 +482,10 @@
   .inner {
     margin-top: 0;
   }
+}
+
+#requests,
+#system,
+#replication {
+  margin-bottom: 10px;
 }
