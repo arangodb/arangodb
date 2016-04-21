@@ -337,7 +337,7 @@ class ProgramOptions {
 
   // finalizes a pass, copying touched into frozen
   void endPass() {
-    if (!_overrideOptions) {
+    if (_overrideOptions) {
       return;
     }
     for (auto const& it : _processingResult._touched) {
