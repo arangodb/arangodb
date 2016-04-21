@@ -55,7 +55,7 @@ struct Exception : std::exception {
     NeedCustomTypeHandler = 19,
     NeedAttributeTranslator = 20,
     CannotTranslateKey = 21,
-    KeyNotFound = 22,
+    KeyNotFound = 22, // not used anymore
 
     BuilderNotSealed = 30,
     BuilderNeedOpenObject = 31,

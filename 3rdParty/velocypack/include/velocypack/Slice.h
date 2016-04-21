@@ -48,7 +48,6 @@ namespace velocypack {
 // forward for fasthash64 function declared elsewhere
 uint64_t fasthash64(void const*, size_t, uint64_t);
 
-class AttributeTranslator;
 class SliceScope;
 
 class Slice {
@@ -61,8 +60,6 @@ class Slice {
   uint8_t const* _start;
 
  public:
-
-  static AttributeTranslator* attributeTranslator;
 
   // constructor for an empty Value of type None
   Slice() : Slice("\x00") {}
@@ -220,7 +217,7 @@ class Slice {
   // check if slice is any Number-type object
   bool isNumber() const throw() { return isInteger() || isDouble(); }
 
-  bool isSorted() const {
+  bool isSorted() const throw() {
     auto const h = head();
     return (h >= 0x0b && h <= 0x0e);
   }
@@ -750,6 +747,10 @@ class Slice {
   std::string hexType() const;
 
  private:
+  // return the value for a UInt object, without checks
+  // returns 0 for invalid values/types
+  uint64_t getUIntUnchecked() const;
+
   // translates an integer key into a string, without checks
   Slice translateUnchecked() const;
 
@@ -783,7 +784,7 @@ class Slice {
   // get the offset for the nth member from a compact Array or Object type
   ValueLength getNthOffsetFromCompact(ValueLength index) const;
 
-  ValueLength indexEntrySize(uint8_t head) const {
+  inline ValueLength indexEntrySize(uint8_t head) const throw() {
     VELOCYPACK_ASSERT(head <= 0x12);
     return static_cast<ValueLength>(WidthMap[head]);
   }

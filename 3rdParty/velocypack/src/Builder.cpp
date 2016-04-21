@@ -593,18 +593,17 @@ uint8_t* Builder::set(Value const& item) {
       break;
     }
     case ValueType::String: {
-      if (ctype != Value::CType::String && ctype != Value::CType::CharPtr) {
-        throw Exception(
-            Exception::BuilderUnexpectedValue,
-            "Must give a string or char const* for ValueType::String");
-      }
       std::string const* s;
       std::string value;
       if (ctype == Value::CType::String) {
         s = item.getString();
-      } else {
+      } else if (ctype == Value::CType::CharPtr) {
         value = item.getCharPtr();
         s = &value;
+      } else {
+        throw Exception(
+            Exception::BuilderUnexpectedValue,
+            "Must give a string or char const* for ValueType::String");
       }
       size_t const size = s->size();
       if (size <= 126) {
