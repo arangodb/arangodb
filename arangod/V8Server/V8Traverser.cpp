@@ -469,7 +469,7 @@ bool NeighborsOptions::matchesVertex(std::string const& collectionName,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool NeighborsOptions::matchesVertex(std::string const& id) const {
-  if (!useVertexFilter) {
+  if (!useVertexFilter && _explicitCollections.empty()) {
     // Nothing to do
     return true;
   }
