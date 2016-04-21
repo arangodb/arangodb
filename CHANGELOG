@@ -201,7 +201,7 @@ v2.8.8 (2016-04-19)
   ```
 
 * requests made with the interactive system API documentation in the web interface
-  will now respect the active database instead of always using `_system`
+  (Swagger) will now respect the active database instead of always using `_system`
 
 
 v2.8.7 (2016-04-07)
@@ -209,7 +209,7 @@ v2.8.7 (2016-04-07)
 
 * optimized primary=>secondary failover
 
-* fix to-boolean conversion for documentsin AQL
+* fix to-boolean conversion for documents in AQL
 
 * expose the User-Agent HTTP header from the ArangoShell since Github seems to
   require it now, and we use the ArangoShell for fetching Foxx repositories from Github
@@ -846,7 +846,7 @@ v2.8.0-alpha1 (2015-12-03)
 * module resolution as used by `require` now behaves more like in node.js
 
 * the `org/arangodb/request` module now returns response bodies for error responses
-  by default. The old behaviour of not returning bodies for error responses can be
+  by default. The old behavior of not returning bodies for error responses can be
   re-enabled by explicitly setting the option `returnBodyOnError` to `false` (#1437)
 
 

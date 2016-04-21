@@ -1015,12 +1015,12 @@ function synchronizeLocalFollowerCollections (plannedCollections) {
                            typeof inCurrent.servers[0] !== "string" ||
                            inCurrent.servers[0] === "") {
                       count++;
-                      if (count > 30) {
+                      if (count > 10) {
                         throw new Error("timeout waiting for leader for shard "
                                         + shard);
                       }
-                      console.info("Waiting for 3 seconds for leader to create shard...");
-                      require("internal").wait(3);
+                      console.info("Waiting for 0.5 second for leader to create shard...");
+                      require("internal").wait(0.5);
                       all = global.ArangoAgency.get("Current/Collections",
                                                     true);
                       currentCollections = getByPrefix4d(all,

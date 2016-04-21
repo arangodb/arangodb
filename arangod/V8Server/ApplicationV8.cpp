@@ -1055,7 +1055,7 @@ void ApplicationV8::close() {
 }
 
 void ApplicationV8::stop() {
-  // send all busy contexts a termate signal
+  // send all busy contexts a terminate signal
   {
     CONDITION_LOCKER(guard, _contextCondition);
 

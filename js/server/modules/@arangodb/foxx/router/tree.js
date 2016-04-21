@@ -397,9 +397,9 @@ function* findRoutes(node, result, suffix, path) {
 
   if (wildcardNode && wildcardNode.has($_MIDDLEWARE)) {
     nodeMiddleware = wildcardNode.get($_MIDDLEWARE);
-    result = result.concat(nodeMiddleware.map(function (mw) {
-      return {middleware: mw, path: path, suffix: suffix};
-    }));
+    result = result.concat(nodeMiddleware.map(
+      (mw) => ({middleware: mw, path: path, suffix: suffix})
+    ));
   }
 
   if (!suffix.length) {
@@ -480,9 +480,7 @@ function parsePathParams(names, route, path) {
 
 
 function reverse(route, path) {
-  const routers = route.filter(function (item) {
-    return item.router;
-  });
+  const routers = route.filter((item) => item.router);
   const keys = path.split('.');
   const visited = [];
   while (routers.length) {

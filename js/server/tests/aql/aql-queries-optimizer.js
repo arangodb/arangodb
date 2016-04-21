@@ -145,7 +145,7 @@ function ahuacatlOptimizerTestSuite () {
 /// @brief test special case "optimized away scope"
 ////////////////////////////////////////////////////////////////////////////////
 
-    testOptimiseAwayScope1 : function () {
+    testOptimizeAwayScope1 : function () {
       var expected = [ ];
 
       var actual = getQueryResults("FOR i IN [ 1, 2 ] FILTER i == 1 && i < 1 RETURN i");
@@ -156,7 +156,7 @@ function ahuacatlOptimizerTestSuite () {
 /// @brief test special case "optimized away scope"
 ////////////////////////////////////////////////////////////////////////////////
 
-    testOptimiseAwayScope2 : function () {
+    testOptimizeAwayScope2 : function () {
       var expected = [ ];
 
       var actual = getQueryResults("FOR i IN [ 1, 2 ] FOR j IN [ 1, 2 ] FILTER j == 1 && j < 1 RETURN j");
@@ -167,7 +167,7 @@ function ahuacatlOptimizerTestSuite () {
 /// @brief test special case "optimized away scope"
 ////////////////////////////////////////////////////////////////////////////////
 
-    testOptimiseAwayScope3 : function () {
+    testOptimizeAwayScope3 : function () {
       var expected = [ ];
 
       var actual = getQueryResults("LET a = (FOR i IN [ 1, 2 ] FILTER i > 5 RETURN i) FOR i IN a RETURN i");
@@ -178,7 +178,7 @@ function ahuacatlOptimizerTestSuite () {
 /// @brief test special case "optimized away scope"
 ////////////////////////////////////////////////////////////////////////////////
 
-    testOptimiseAwayScope4 : function () {
+    testOptimizeAwayScope4 : function () {
       var expected = [ 1 ];
 
       var actual = getQueryResults("LET a = (FILTER 1 > 2 RETURN 1) RETURN 1");
@@ -189,7 +189,7 @@ function ahuacatlOptimizerTestSuite () {
 /// @brief test special case "optimized away scope"
 ////////////////////////////////////////////////////////////////////////////////
 
-    testOptimiseAwayScope5 : function () {
+    testOptimizeAwayScope5 : function () {
       var expected = [ [ ] ];
 
       var actual = getQueryResults("LET a = (FILTER 1 > 2 RETURN 1) RETURN a");
@@ -200,7 +200,7 @@ function ahuacatlOptimizerTestSuite () {
 /// @brief test special case "optimized away scope"
 ////////////////////////////////////////////////////////////////////////////////
 
-    testOptimiseAwayScope6 : function () {
+    testOptimizeAwayScope6 : function () {
       var expected = [ ];
 
       var actual = getQueryResults("FILTER 1 > 2 RETURN 1");
@@ -211,7 +211,7 @@ function ahuacatlOptimizerTestSuite () {
 /// @brief test special case "optimized away scope"
 ////////////////////////////////////////////////////////////////////////////////
 
-    testOptimiseAwayScope7 : function () {
+    testOptimizeAwayScope7 : function () {
       var expected = [ ];
 
       var actual = getQueryResults("LET a = 1 FILTER 1 > 2 RETURN 1");
@@ -222,7 +222,7 @@ function ahuacatlOptimizerTestSuite () {
 /// @brief test special case "optimized away scope"
 ////////////////////////////////////////////////////////////////////////////////
 
-    testOptimiseAwayScope8 : function () {
+    testOptimizeAwayScope8 : function () {
       var expected = [ ];
 
       var actual = getQueryResults("LET a = 1 FILTER 1 == 1 FILTER 1 > 2 RETURN 1");
