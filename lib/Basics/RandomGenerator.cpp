@@ -63,7 +63,7 @@ uint32_t RandomDevice::interval(uint32_t left, uint32_t right) {
   int32_t l = left + INT32_MIN;
   int32_t r = right + INT32_MIN;
 
-  return static_cast<uint32_t>(random(l, r) - INT32_MIN);
+  return static_cast<uint32_t>(static_cast<int64_t>(random(l, r)) - INT32_MIN);
 }
 
 int32_t RandomDevice::random(int32_t left, int32_t right) {
