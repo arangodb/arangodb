@@ -3660,6 +3660,55 @@ static void JS_IsIP(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief SplitWordlist - splits words via the tokenizer
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_SplitWordlist(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if ((args.Length() < 2) || (args.Length() > 4)) {
+    TRI_V8_THROW_EXCEPTION_USAGE("SplitWordlist(<value>, minLength, [<maxLength>, [<lowerCase>]])");
+  }
+
+  std::string stringToTokenize = TRI_ObjectToString(args[0]);
+
+  size_t minLength = static_cast<size_t>(TRI_ObjectToUInt64(args[1], true));
+
+  size_t maxLength = 40;// -> TRI_FULLTEXT_MAX_WORD_LENGTH;
+  if (args.Length() > 2) {
+    maxLength = static_cast<size_t>(TRI_ObjectToUInt64(args[2], true));
+  }
+
+  bool lowerCase = false;
+  if (args.Length() > 3) {
+    lowerCase = TRI_ObjectToBoolean(args[3]);
+  }
+
+  std::vector<std::string> wordList;
+
+  if (!Utf8Helper::DefaultUtf8Helper.getWords(wordList,
+                                              stringToTokenize,
+                                              minLength,
+                                              maxLength,
+                                              lowerCase)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "SplitWordlist failed!");
+  }
+
+  v8::Handle<v8::Array> v8WordList =
+    v8::Array::New(isolate, static_cast<int>(wordList.size()));
+
+
+  for (uint64_t i = 0; i < wordList.size(); i++) {
+    v8::Handle<v8::String> oneWord = TRI_V8_STD_STRING(wordList[i])
+    v8WordList->Set(i, oneWord);
+  }
+
+  TRI_V8_RETURN(v8WordList);
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief reports an exception
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4219,6 +4268,8 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                TRI_V8_ASCII_STRING("SYS_HMAC"), JS_HMAC);
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("SYS_IS_IP"), JS_IsIP);
+  TRI_AddGlobalFunctionVocbase(isolate, context,
+                               TRI_V8_ASCII_STRING("SYS_SPLIT_WORDS_ICU"), JS_SplitWordlist);
   TRI_AddGlobalFunctionVocbase(isolate, context,
                                TRI_V8_ASCII_STRING("SYS_KILL_EXTERNAL"),
                                JS_KillExternal);
