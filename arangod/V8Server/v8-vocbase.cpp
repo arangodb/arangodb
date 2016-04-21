@@ -2182,7 +2182,7 @@ static void JS_QueryShortestPath(
 
 static v8::Handle<v8::Value> VertexIdsToV8(
     v8::Isolate* isolate, ExplicitTransaction* trx,
-    std::unordered_set<std::string>& ids,
+    std::vector<std::string> const& ids,
     bool includeData = false) {
   v8::EscapableHandleScope scope(isolate);
   uint32_t const vn = static_cast<uint32_t>(ids.size());
@@ -2365,7 +2365,6 @@ static void JS_QueryNeighbors(v8::FunctionCallbackInfo<v8::Value> const& args) {
     opts.addCollectionRestriction(it);
   }
 
-  std::unordered_set<std::string> neighbors;
 
   if (opts.useEdgeFilter) {
     std::string errorMessage;
@@ -2398,6 +2397,7 @@ static void JS_QueryNeighbors(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
+  std::vector<std::string> neighbors;
   for (auto const& startVertex : startVertices) {
     opts.start = startVertex;
     try {
