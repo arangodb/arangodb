@@ -750,7 +750,7 @@ static void AnyNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
             if (visited.find(std::string(v, l)) == visited.end()) {
               std::string tmp(v, l);
               if (depth >= opts.minDepth) {
-                if (opts.matchesVertex(v)) {
+                if (opts.matchesVertex(tmp)) {
                   distinct.emplace_back(tmp);
                 }
               }
