@@ -67,24 +67,30 @@ void Constituent::configure(Agent* agent) {
 Constituent::Constituent()
     : Thread("Constituent"),
       _term(0),
-      _leaderID(),
+      _leaderID((std::numeric_limits<uint32_t>::max)()),
       _id(0),
       // XXX #warning KAVEH use RandomGenerator
       _gen(std::random_device()()),
       _role(FOLLOWER),
       _agent(nullptr),
-      _votedFor(0) {
+      _votedFor((std::numeric_limits<uint32_t>::max)()) {
   _gen.seed(RandomGenerator::interval(UINT32_MAX));
 }
 
 // Shutdown if not already
-Constituent::~Constituent() { shutdown(); }
+Constituent::~Constituent() {
+  shutdown();
+}
 
 // Configuration
-config_t const& Constituent::config() const { return _agent->config(); }
+config_t const& Constituent::config() const {
+  return _agent->config();
+}
 
 // Wait for sync
-bool Constituent::waitForSync() const { return _agent->config().waitForSync; }
+bool Constituent::waitForSync() const {
+  return _agent->config().waitForSync;
+}
 
 // Random sleep times in election process
 duration_t Constituent::sleepFor(double min_t, double max_t) {
