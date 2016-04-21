@@ -119,21 +119,21 @@ describe('Foxx Swagger', function () {
 
     describe('"consumes"', function () {
       ['patch', 'post', 'put'].forEach(function (method) {
-        it(`defaults to JSON for ${method.toUpperCase()}`, function () {
-          service.router[method]('/hello', noop());
-          service.buildRoutes();
-          expect(service.docs.paths).to.have.a.property('/hello')
-          .with.a.deep.property(`${method}.consumes`)
-          .that.is.eql(['application/json']);
-        });
-      });
-
-      ['get', 'head', 'delete'].forEach(function (method) {
-        it(`is omitted for ${method.toUpperCase()}`, function () {
+        it(`is omitted for ${method.toUpperCase()} by default`, function () {
           service.router[method]('/hello', noop());
           service.buildRoutes();
           expect(service.docs.paths).to.have.a.property('/hello')
           .with.not.a.deep.property(`${method}.consumes`);
+        });
+      });
+
+      ['get', 'head', 'delete'].forEach(function (method) {
+        it(`is empty for ${method.toUpperCase()} by default`, function () {
+          service.router[method]('/hello', noop());
+          service.buildRoutes();
+          expect(service.docs.paths).to.have.a.property('/hello')
+          .with.a.deep.property(`${method}.consumes`)
+          .that.is.eql([]);
         });
       });
 
