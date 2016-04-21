@@ -504,6 +504,11 @@ struct AstNode {
   /// @brief return the number of members
   inline size_t numMembers() const noexcept { return members.size(); }
 
+  /// @brief reserve space for members
+  void reserve(size_t n) {
+    members.reserve(n);
+  }
+
   /// @brief add a member to the node
   void addMember(AstNode* node) {
     if (node == nullptr) {

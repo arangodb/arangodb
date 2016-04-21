@@ -838,6 +838,16 @@ AstNode* Ast::createNodeArray() {
   return node;
 }
 
+/// @brief create an AST array node
+AstNode* Ast::createNodeArray(size_t size) {
+  AstNode* node = createNode(NODE_TYPE_ARRAY);
+
+  TRI_ASSERT(node != nullptr);
+  node->reserve(size);
+
+  return node;
+}
+
 /// @brief create an AST unique array node, AND-merged from two other arrays
 AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs,
                                          AstNode const* rhs) {
@@ -860,7 +870,7 @@ AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs,
     cache.emplace(slice, member);
   }
 
-  auto node = createNodeArray();
+  auto node = createNodeArray(nr / 2);
 
   for (size_t i = 0; i < nr; ++i) {
     auto member = rhs->getMemberUnchecked(i);
@@ -902,7 +912,7 @@ AstNode* Ast::createNodeUnionizedArray(AstNode const* lhs, AstNode const* rhs) {
     cache.emplace(slice, member);
   }
 
-  auto node = createNodeArray();
+  auto node = createNodeArray(cache.size());
 
   for (auto& it : cache) {
     node->addMember(it.second);
@@ -1836,8 +1846,7 @@ AstNode const* Ast::deduplicateArray(AstNode const* node) {
   }
 
   // we may have got duplicates. now create a copy of the deduplicated values
-  auto copy = createNodeArray();
-  copy->members.reserve(cache.size());
+  auto copy = createNodeArray(cache.size());
 
   for (auto& it : cache) {
     copy->addMember(it.second);
@@ -2683,8 +2692,7 @@ AstNode* Ast::nodeFromVPack(VPackSlice const& slice, bool copyStringValues) {
   }
 
   if (slice.isArray()) {
-    auto node = createNodeArray();
-    node->members.reserve(slice.length());
+    auto node = createNodeArray(slice.length());
  
     for (auto const& it : VPackArrayIterator(slice)) {
       node->addMember(nodeFromVPack(it, copyStringValues)); 

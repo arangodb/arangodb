@@ -32,16 +32,26 @@
 #include "Wal/SyncRegion.h"
 
 using namespace arangodb::wal;
+  
+/// @brief returns the bitmask for the synchronous waiters
+/// for use in _waiters only
+static constexpr uint64_t syncWaitersMask() {
+  return static_cast<uint64_t>(0xffffffffULL); 
+}
+  
+/// @brief returns the numbers of bits to shift to get the
+/// number of asynchronous waiters 
+/// for use in _waiters only
+static constexpr int asyncWaitersBits() { return 32; }
 
 SynchronizerThread::SynchronizerThread(LogfileManager* logfileManager,
                                        uint64_t syncInterval)
     : Thread("WalSynchronizer"),
       _logfileManager(logfileManager),
       _condition(),
-      _waiting(0),
-      _waitingWithSync(0),
       _syncInterval(syncInterval),
-      _logfileCache({0, -1}) {}
+      _logfileCache({0, -1}),
+      _waiting(0) {}
 
 /// @brief begin shutdown sequence
 void SynchronizerThread::beginShutdown() {
@@ -54,34 +64,28 @@ void SynchronizerThread::beginShutdown() {
 /// @brief signal that we need a sync
 void SynchronizerThread::signalSync(bool waitForSync) {
   if (waitForSync) {
-    CONDITION_LOCKER(guard, _condition);
-    if (++_waitingWithSync == 1) {
-      // only signal once
+    uint64_t previous = _waiting.fetch_add(1);
+    if ((previous & syncWaitersMask()) == 0) {
+      // only signal once, but don't care if we signal a bit too often
+      CONDITION_LOCKER(guard, _condition);
       _condition.signal();
     }
   } else {
-    CONDITION_LOCKER(guard, _condition);
-    ++_waiting;
+    uint64_t updateValue = 1ULL << asyncWaitersBits();
+    _waiting.fetch_add(updateValue);
   }
 }
 
 /// @brief main loop
 void SynchronizerThread::run() {
+  // fetch initial value for waiting
+  uint64_t waitingValue = _waiting;
+  uint64_t waitingWithoutSync = waitingValue >> asyncWaitersBits();
+  uint64_t waitingWithSync = (waitingValue & syncWaitersMask());
+
   uint64_t iterations = 0;
-  uint32_t waiting;
-  uint32_t waitingWithSync;
-
-  {
-    // fetch initial value for waiting
-    CONDITION_LOCKER(guard, _condition);
-    waiting = _waiting;
-    waitingWithSync = _waitingWithSync;
-  }
-
-  // go on without the lock
-
   while (true) {
-    if (waiting > 0 || waitingWithSync > 0 || ++iterations == 10) {
+    if (waitingWithoutSync > 0 || waitingWithSync > 0 || ++iterations == 10) {
       iterations = 0;
 
       try {
@@ -104,22 +108,22 @@ void SynchronizerThread::run() {
       }
     }
 
-    // now wait until we are woken up or there is something to do
-    CONDITION_LOCKER(guard, _condition);
-
-    if (waiting > 0) {
-      TRI_ASSERT(_waiting >= waiting);
-      _waiting -= waiting;
-    }
-
-    if (waitingWithSync > 0) {
-      TRI_ASSERT(_waitingWithSync >= waitingWithSync);
-      _waitingWithSync -= waitingWithSync;
-    }
-
     // update value of waiting
-    waiting = _waiting;
-    waitingWithSync = _waitingWithSync;
+    uint64_t updateValue = waitingWithSync + (waitingWithoutSync << asyncWaitersBits());
+
+    if (updateValue > 0) {
+      // subtract and fetch previous value in one atomic operation
+      waitingValue = _waiting.fetch_sub(updateValue);
+      waitingValue -= updateValue; // subtract from previous value
+    } else {
+      // re-fetch current value
+      waitingValue = _waiting;
+    }
+
+    waitingWithoutSync = waitingValue >> asyncWaitersBits();
+    waitingWithSync = (waitingValue & syncWaitersMask());
+
+    // now wait until we are woken up or there is something to do
 
     if (waitingWithSync == 0) {
       if (isStopping()) {
@@ -128,6 +132,7 @@ void SynchronizerThread::run() {
       }
 
       // sleep if nothing to do
+      CONDITION_LOCKER(guard, _condition);
       guard.wait(_syncInterval);
     }
   }

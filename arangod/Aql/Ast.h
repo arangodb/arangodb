@@ -287,6 +287,8 @@ class Ast {
   /// @brief create an AST array node
   AstNode* createNodeArray();
 
+  AstNode* createNodeArray(size_t members);
+
   /// @brief create an AST unique array node, AND-merged from two other arrays
   AstNode* createNodeIntersectedArray(AstNode const*, AstNode const*);
 
