@@ -625,20 +625,22 @@ static void InboundNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
         for (auto const& mptr : cursor) {
           VPackSlice edge(mptr->vpack());
           if (opts.matchesEdge(edge)) {
-            std::string v = edge.get(TRI_VOC_ATTRIBUTE_FROM).copyString();
-            if (visited.find(v) != visited.end()) {
+            VPackValueLength l;
+            char const* v = edge.get(TRI_VOC_ATTRIBUTE_FROM).getString(l);
+            if (visited.find(std::string(v, l)) != visited.end()) {
               // We have already visited this vertex
               continue;
             }
-            visited.emplace(v);
+            std::string tmp(v, l);
             if (depth >= opts.minDepth) {
-              if (opts.matchesVertex(v)) {
-                distinct.emplace(v);
+              if (opts.matchesVertex(tmp)) {
+                distinct.emplace(tmp);
               }
             }
             if (depth < opts.maxDepth) {
-              nextDepth.emplace(v);
+              nextDepth.emplace(tmp);
             }
+            visited.emplace(std::move(tmp));
           }
         }
       }
@@ -710,7 +712,7 @@ static void OutboundNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
 
 static void AnyNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
                          NeighborsOptions& opts,
-                         std::unordered_set<std::string>& startVertices,
+                         std::unordered_set<std::string> const& startVertices,
                          std::unordered_set<std::string>& visited,
                          std::unordered_set<std::string>& distinct,
                          uint64_t depth = 1) {
@@ -730,29 +732,32 @@ static void AnyNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
         for (auto const& mptr : cursor) {
           VPackSlice edge(mptr->vpack());
           if (opts.matchesEdge(edge)) {
-            std::string v = edge.get(TRI_VOC_ATTRIBUTE_TO).copyString();
-            if (visited.find(v) == visited.end()) {
-              visited.emplace(v);
+            VPackValueLength l;
+            char const* v = edge.get(TRI_VOC_ATTRIBUTE_TO).getString(l);
+            if (visited.find(std::string(v, l)) == visited.end()) {
+              std::string tmp(v, l);
               if (depth >= opts.minDepth) {
-                if (opts.matchesVertex(v)) {
-                  distinct.emplace(v);
+                if (opts.matchesVertex(tmp)) {
+                  distinct.emplace(tmp);
                 }
               }
               if (depth < opts.maxDepth) {
-                nextDepth.emplace(v);
+                nextDepth.emplace(tmp);
               }
+              visited.emplace(std::move(tmp));
             }
-            v = edge.get(TRI_VOC_ATTRIBUTE_FROM).copyString();
-            if (visited.find(v) == visited.end()) {
-              visited.emplace(v);
+            v = edge.get(TRI_VOC_ATTRIBUTE_FROM).getString(l);
+            if (visited.find(std::string(v, l)) == visited.end()) {
+              std::string tmp(v, l);
               if (depth >= opts.minDepth) {
                 if (opts.matchesVertex(v)) {
-                  distinct.emplace(v);
+                  distinct.emplace(tmp);
                 }
               }
               if (depth < opts.maxDepth) {
-                nextDepth.emplace(v);
+                nextDepth.emplace(tmp);
               }
+              visited.emplace(std::move(tmp));
             }
           }
         }
