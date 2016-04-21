@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestSimpleQueryHandler.h"
+
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/Exceptions.h"
@@ -31,15 +32,14 @@
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/CollectionNameResolver.h"
-#include "V8Server/ApplicationV8.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;
 
 RestSimpleQueryHandler::RestSimpleQueryHandler(
     HttpRequest* request,
-    std::pair<arangodb::ApplicationV8*, arangodb::aql::QueryRegistry*>* pair)
-    : RestCursorHandler(request, pair) {}
+    arangodb::aql::QueryRegistry* queryRegistry)
+    : RestCursorHandler(request, queryRegistry) {}
 
 HttpHandler::status_t RestSimpleQueryHandler::execute() {
   // extract the sub-request type

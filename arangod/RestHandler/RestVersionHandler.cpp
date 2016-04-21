@@ -37,8 +37,6 @@ using namespace arangodb::rest;
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-extern ArangoServer* ArangoInstance;
-
 RestVersionHandler::RestVersionHandler(HttpRequest* request)
     : RestBaseHandler(request) {}
 
@@ -59,9 +57,12 @@ HttpHandler::status_t RestVersionHandler::execute() {
 
       Version::getVPack(result);
 
+#warning TODO
+#if 0
       if (ArangoInstance != nullptr) {
         result.add("mode", VPackValue(ArangoInstance->modeString()));
       }
+#endif
       result.close();
     }
     result.close();

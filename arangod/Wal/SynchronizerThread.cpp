@@ -162,8 +162,8 @@ int SynchronizerThread::doSync(bool& checkMore) {
 
   bool result = TRI_MSync(fd, region.mem, region.mem + region.size);
 
-  LOG(TRACE) << "syncing logfile " << id << ", region " << region.mem << " - "
-             << (region.mem + region.size) << ", length: " << region.size
+  LOG(TRACE) << "syncing logfile " << id << ", region " << (void*) region.mem << " - "
+             << (void*)(region.mem + region.size) << ", length: " << region.size
              << ", wfs: " << (region.waitForSync ? "true" : "false");
 
   if (!result) {

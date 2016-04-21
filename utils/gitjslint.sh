@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if test "`git status --short | grep '^\(.[MAU]\|[MAU].\) .*js$$' | wc -l`" -eq 0; then
+if test "`git status --short | grep '^\(.[MAU]\|[MAU].\) .*js$' | wc -l`" -eq 0; then
   exit 0;
 fi
 
@@ -14,6 +14,6 @@ if [ -z "${ARANGOSH}" ];  then
   fi
 fi
 
-for file in ` git status --short | grep '^\(.[MAU]\|[MAU].\) .*js$$' | cut -d " " -f 3`; do
-  ${ARANGOSH} -c etc/relative/arangosh.conf --jslint $$file || exit 1
+for file in ` git status --short | grep '^\(.[MAU]\|[MAU].\) .*js$' | cut -d " " -f 3`; do
+  ${ARANGOSH} -c etc/relative/arangosh.conf --log.level warning --jslint $file || exit 1
 done

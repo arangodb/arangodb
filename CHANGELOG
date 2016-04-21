@@ -1,6 +1,18 @@
 v3.0.0 (XXXX-XX-XX)
 -------------------
 
+* added AQL string comparison operator `LIKE`
+
+  The operator can be used to compare strings like this:
+
+      value LIKE search
+
+  The operator is currently implemented by calling the already existing AQL
+  function `LIKE`.
+
+  This change also makes `LIKE` an AQL keyword. Using `like` in either case as
+  an attribute or collection name in AQL thus requires quoting.
+
 * make AQL optimizer rule "remove-unnecessary-calculations" fire in more cases
 
   The rule will now remove calculations that are used exactly once in other

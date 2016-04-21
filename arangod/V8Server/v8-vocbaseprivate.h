@@ -23,6 +23,7 @@
 
 #ifndef ARANGOD_V8_SERVER_V8_VOCBASEPRIVATE_H
 #define ARANGOD_V8_SERVER_V8_VOCBASEPRIVATE_H 1
+
 #include "Basics/Common.h"
 #include "V8/v8-utils.h"
 #include "v8-vocbase.h"

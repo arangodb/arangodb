@@ -30,7 +30,6 @@
 #include "Aql/types.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "RestServer/VocbaseContext.h"
-#include "V8Server/ApplicationV8.h"
 
 struct TRI_vocbase_t;
 
@@ -41,7 +40,7 @@ namespace aql {
 class RestAqlHandler : public RestVocbaseBaseHandler {
  public:
   RestAqlHandler(HttpRequest* request,
-                 std::pair<ApplicationV8*, QueryRegistry*>* pair);
+                 QueryRegistry* queryRegistry);
 
  public:
   bool isDirect() const override;
@@ -124,9 +123,6 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
 
   /// @brief name of the queue
   static std::string const QUEUE_NAME;
-
-  /// @brief _applicationV8
-  ApplicationV8* _applicationV8;
 
   /// @brief request context
   VocbaseContext* _context;

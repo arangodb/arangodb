@@ -606,12 +606,12 @@ TRI_RunSimpleShortestPathSearch(
 
 static void InboundNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
                              NeighborsOptions& opts,
-                             std::unordered_set<std::string>& startVertices,
+                             std::vector<std::string> const& startVertices,
                              std::unordered_set<std::string>& visited,
-                             std::unordered_set<std::string>& distinct,
+                             std::vector<std::string>& distinct,
                              uint64_t depth = 1) {
   TRI_edge_direction_e dir = TRI_EDGE_IN;
-  std::unordered_set<std::string> nextDepth;
+  std::vector<std::string> nextDepth;
 
   std::vector<TRI_doc_mptr_t*> cursor;
   for (auto const& col : collectionInfos) {
@@ -625,20 +625,22 @@ static void InboundNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
         for (auto const& mptr : cursor) {
           VPackSlice edge(mptr->vpack());
           if (opts.matchesEdge(edge)) {
-            std::string v = edge.get(TRI_VOC_ATTRIBUTE_FROM).copyString();
-            if (visited.find(v) != visited.end()) {
+            VPackValueLength l;
+            char const* v = edge.get(TRI_VOC_ATTRIBUTE_FROM).getString(l);
+            if (visited.find(std::string(v, l)) != visited.end()) {
               // We have already visited this vertex
               continue;
             }
-            visited.emplace(v);
+            std::string tmp(v, l);
             if (depth >= opts.minDepth) {
-              if (opts.matchesVertex(v)) {
-                distinct.emplace(v);
+              if (opts.matchesVertex(tmp)) {
+                distinct.emplace_back(tmp);
               }
             }
             if (depth < opts.maxDepth) {
-              nextDepth.emplace(v);
+              nextDepth.emplace_back(tmp);
             }
+            visited.emplace(std::move(tmp));
           }
         }
       }
@@ -657,12 +659,12 @@ static void InboundNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
 
 static void OutboundNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
                               NeighborsOptions& opts,
-                              std::unordered_set<std::string> const& startVertices,
+                              std::vector<std::string> const& startVertices,
                               std::unordered_set<std::string>& visited,
-                              std::unordered_set<std::string>& distinct,
+                              std::vector<std::string>& distinct,
                               uint64_t depth = 1) {
   TRI_edge_direction_e dir = TRI_EDGE_OUT;
-  std::unordered_set<std::string> nextDepth;
+  std::vector<std::string> nextDepth;
   std::vector<TRI_doc_mptr_t*> cursor;
 
   for (auto const& col : collectionInfos) {
@@ -685,11 +687,11 @@ static void OutboundNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
             std::string tmp(v, l);
             if (depth >= opts.minDepth) {
               if (opts.matchesVertex(tmp)) {
-                distinct.emplace(tmp);
+                distinct.emplace_back(tmp);
               }
             }
             if (depth < opts.maxDepth) {
-              nextDepth.emplace(tmp);
+              nextDepth.emplace_back(tmp);
             }
             visited.emplace(std::move(tmp));
           }
@@ -710,13 +712,13 @@ static void OutboundNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
 
 static void AnyNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
                          NeighborsOptions& opts,
-                         std::unordered_set<std::string>& startVertices,
+                         std::vector<std::string> const& startVertices,
                          std::unordered_set<std::string>& visited,
-                         std::unordered_set<std::string>& distinct,
+                         std::vector<std::string>& distinct,
                          uint64_t depth = 1) {
 
   TRI_edge_direction_e dir = TRI_EDGE_ANY;
-  std::unordered_set<std::string> nextDepth;
+  std::vector<std::string> nextDepth;
   std::vector<TRI_doc_mptr_t*> cursor;
 
   for (auto const& col : collectionInfos) {
@@ -730,29 +732,32 @@ static void AnyNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
         for (auto const& mptr : cursor) {
           VPackSlice edge(mptr->vpack());
           if (opts.matchesEdge(edge)) {
-            std::string v = edge.get(TRI_VOC_ATTRIBUTE_TO).copyString();
-            if (visited.find(v) == visited.end()) {
-              visited.emplace(v);
+            VPackValueLength l;
+            char const* v = edge.get(TRI_VOC_ATTRIBUTE_TO).getString(l);
+            if (visited.find(std::string(v, l)) == visited.end()) {
+              std::string tmp(v, l);
               if (depth >= opts.minDepth) {
-                if (opts.matchesVertex(v)) {
-                  distinct.emplace(v);
+                if (opts.matchesVertex(tmp)) {
+                  distinct.emplace_back(tmp);
                 }
               }
               if (depth < opts.maxDepth) {
-                nextDepth.emplace(v);
+                nextDepth.emplace_back(tmp);
               }
+              visited.emplace(std::move(tmp));
             }
-            v = edge.get(TRI_VOC_ATTRIBUTE_FROM).copyString();
-            if (visited.find(v) == visited.end()) {
-              visited.emplace(v);
+            v = edge.get(TRI_VOC_ATTRIBUTE_FROM).getString(l);
+            if (visited.find(std::string(v, l)) == visited.end()) {
+              std::string tmp(v, l);
               if (depth >= opts.minDepth) {
-                if (opts.matchesVertex(v)) {
-                  distinct.emplace(v);
+                if (opts.matchesVertex(tmp)) {
+                  distinct.emplace_back(tmp);
                 }
               }
               if (depth < opts.maxDepth) {
-                nextDepth.emplace(v);
+                nextDepth.emplace_back(tmp);
               }
+              visited.emplace(std::move(tmp));
             }
           }
         }
@@ -772,10 +777,10 @@ static void AnyNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
 
 void TRI_RunNeighborsSearch(std::vector<EdgeCollectionInfo*>& collectionInfos,
                             NeighborsOptions& opts,
-                            std::unordered_set<std::string>& result) {
-  std::unordered_set<std::string> startVertices;
+                            std::vector<std::string>& result) {
+  std::vector<std::string> startVertices;
   std::unordered_set<std::string> visited;
-  startVertices.emplace(opts.start);
+  startVertices.emplace_back(opts.start);
   visited.emplace(opts.start);
 
   switch (opts.direction) {

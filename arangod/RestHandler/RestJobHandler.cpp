@@ -25,6 +25,7 @@
 #include "Basics/conversions.h"
 #include "Basics/StringUtils.h"
 #include "Dispatcher/Dispatcher.h"
+#include "Dispatcher/DispatcherFeature.h"
 #include "HttpServer/AsyncJobManager.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
@@ -37,10 +38,8 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 RestJobHandler::RestJobHandler(HttpRequest* request,
-                               std::pair<Dispatcher*, AsyncJobManager*>* data)
-    : RestBaseHandler(request),
-      _dispatcher(data->first),
-      _jobManager(data->second) {}
+                               AsyncJobManager* jobManager)
+    : RestBaseHandler(request), _jobManager(jobManager) {}
 
 bool RestJobHandler::isDirect() const { return true; }
 
@@ -58,7 +57,8 @@ HttpHandler::status_t RestJobHandler::execute() {
     } else if (suffix.size() == 2) {
       putJobMethod();
     } else {
-      generateError(GeneralResponse::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
+      generateError(GeneralResponse::ResponseCode::BAD,
+                    TRI_ERROR_HTTP_BAD_PARAMETER);
     }
   } else if (type == GeneralRequest::RequestType::DELETE_REQ) {
     deleteJob();
@@ -122,7 +122,7 @@ void RestJobHandler::putJobMethod() {
   uint64_t jobId = StringUtils::uint64(value);
 
   if (method == "cancel") {
-    bool status = _dispatcher->cancelJob(jobId);
+    bool status = DispatcherFeature::DISPATCHER->cancelJob(jobId);
 
     // unknown or already fetched job
     if (!status) {

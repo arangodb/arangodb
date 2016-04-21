@@ -25,19 +25,10 @@
 #define ARANGOD_V8_SERVER_V8_ACTIONS_H 1
 
 #include "Basics/Common.h"
-#include "V8/v8-globals.h"
-#include "VocBase/vocbase.h"
 
-namespace arangodb {
-class ApplicationV8;
-}
+#include <v8.h>
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stores the V8 actions function inside the global variable
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitV8Actions(v8::Isolate* isolate, v8::Handle<v8::Context> context,
-                       TRI_vocbase_t* vocbase, arangodb::ApplicationV8*);
+void TRI_InitV8Actions(v8::Isolate* isolate, v8::Handle<v8::Context> context);
 
 void TRI_InitV8DebugUtils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                           std::string const& startupPath,

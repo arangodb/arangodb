@@ -21,174 +21,17 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef __ARANGODB_CONSENSUS_STORE__
-#define __ARANGODB_CONSENSUS_STORE__
+#ifndef ARANGODB_CONSENSUS_STORE_H
+#define ARANGODB_CONSENSUS_STORE_H
 
-#include "AgencyCommon.h"
+#include "Node.h"
 
-#include <type_traits>
-#include <utility>
-#include <typeinfo>
-#include <string>
-#include <cassert>
-#include <map>
-#include <vector>
-#include <list>
-#include <memory>
-#include <cstdint>
-
-#include <Basics/Mutex.h>
-#include <Basics/MutexLocker.h>
-#include <Basics/Thread.h>
-#include <Basics/ConditionVariable.h>
-#include <velocypack/Buffer.h>
+//#include <velocypack/Buffer.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace consensus {
 
-enum NodeType {NODE, LEAF};
-enum Operation {SET, INCREMENT, DECREMENT, PUSH, POP,
-                PREPEND, SHIFT, OBSERVE, UNOBSERVE};
-
-using namespace arangodb::velocypack;
-
-class StoreException : public std::exception {
-public:
-  explicit StoreException(std::string const& message) : _message(message) {}
-  virtual char const* what() const noexcept override final {
-    return _message.c_str(); }
-private:
-  std::string _message;
-};
-
-enum NODE_EXCEPTION {PATH_NOT_FOUND};
-
-class Node;
-
-typedef std::chrono::system_clock::time_point TimePoint;
-typedef std::multimap<TimePoint, std::shared_ptr<Node>> TimeTable;
-
-/// @brief Simple tree implementation
-class Node {
-  
-public:
-  // @brief Slash-segemented path 
-  typedef std::vector<std::string> PathType;
-
-  // @brief Child nodes
-  typedef std::map<std::string, std::shared_ptr<Node>> Children;
-  
-  /// @brief Construct with name
-  explicit Node (std::string const& name);
-
-  /// @brief Construct with name and introduce to tree under parent
-  Node (std::string const& name, Node* parent);
-  
-  /// @brief Default dtor
-  virtual ~Node ();
-  
-  /// @brief Get name 
-  std::string const& name() const;
-
-  /// @brief Get full path
-  std::string uri() const;
-
-  /// @brief Apply rhs to this node (deep copy of rhs)
-  Node& operator= (Node const& node);
-
-  /// @brief Apply value slice to this node
-  Node& operator= (arangodb::velocypack::Slice const&);
-
-  /// @brief Check equality with slice
-  bool operator== (arangodb::velocypack::Slice const&) const;
-
-  /// @brief Type of this node (LEAF / NODE)
-  NodeType type() const;
-
-  /// @brief Get node specified by path vector  
-  Node& operator ()(std::vector<std::string> const& pv);
-  /// @brief Get node specified by path vector  
-  Node const& operator ()(std::vector<std::string> const& pv) const;
-  
-  /// @brief Get node specified by path string  
-  Node& operator ()(std::string const& path);
-  /// @brief Get node specified by path string  
-  Node const& operator ()(std::string const& path) const;
-
-  /// @brief Remove child by name
-  bool removeChild (std::string const& key);
-
-  /// @brief Remove this node and below from tree
-  bool remove();
-
-  /// @brief Get root node
-  Node const& root() const;
-
-  /// @brief Get root node
-  Node& root();
-
-  /// @brief Dump to ostream
-  std::ostream& print (std::ostream&) const;
-
-  /// #brief Get path of this node
-  std::string path (); 
-  
-  /// @brief Apply single operation as defined by "op"
-  bool applieOp (arangodb::velocypack::Slice const&);
-
-  /// @brief Apply single slice
-  bool applies (arangodb::velocypack::Slice const&);
-
-  /// @brief handle "op" keys in write json
-  template<Operation Oper>
-  bool handle (arangodb::velocypack::Slice const&);
-
-  /// @brief Create Builder representing this store
-  void toBuilder (Builder&) const;
-
-  /// @brief Create slice from value
-  Slice slice() const;
-
-  /// @brief Get value type  
-  ValueType valueType () const;
-
-  /// @brief Add observer for this node
-  bool addObserver (std::string const&);
-  
-  /// @brief Add observer for this node
-  void notifyObservers (std::string const& origin) const;
-
-  /// @brief Is this node being observed by url
-  bool observedBy (std::string const& url) const;
-
-protected:
-
-  /// @brief Add time to live entry
-  virtual bool addTimeToLive (long millis);
-
-  /// @brief Remove time to live entry
-  virtual bool removeTimeToLive ();
-
-  std::string _node_name;              /**< @brief my name */
-
-  Node* _parent;                       /**< @brief parent */
-  Children _children;                  /**< @brief child nodes */
-  TimePoint _ttl;                      /**< @brief my expiry */
-  Buffer<uint8_t> _value;              /**< @brief my value */
-
-  /// @brief Table of expiries in tree (only used in root node)
-  std::multimap<TimePoint, std::shared_ptr<Node>> _time_table;
-
-  /// @brief Table of observers in tree (only used in root node)
-  std::multimap <std::string,std::string> _observer_table;
-  std::multimap <std::string,std::string> _observed_table;
-  
-};
-
-inline std::ostream& operator<< (std::ostream& o, Node const& n) {
-  return n.print(o);
-}
 
 class Agent;
 

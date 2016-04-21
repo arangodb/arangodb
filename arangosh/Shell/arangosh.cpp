@@ -28,27 +28,23 @@
 #include "ApplicationFeatures/ConsoleFeature.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/LoggerFeature.h"
+#include "ApplicationFeatures/RandomFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
-#include "Basics/files.h"
-#include "ProgramOptions2/ProgramOptions.h"
-#include "Rest/InitializeRest.h"
+#include "Basics/ArangoGlobalContext.h"
+#include "ProgramOptions/ProgramOptions.h"
 #include "Shell/ShellFeature.h"
 #include "Shell/V8ShellFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief main
-////////////////////////////////////////////////////////////////////////////////
-
 int main(int argc, char* argv[]) {
-  ADB_WindowsEntryFunction();
-  TRIAGENS_REST_INITIALIZE();
+  ArangoGlobalContext context(argc, argv);
+  context.installHup();
 
-  std::string name = TRI_BinaryName(argv[0]);
+  std::string name = context.binaryName();
 
   std::shared_ptr<options::ProgramOptions> options(new options::ProgramOptions(
       argv[0], "Usage: " + name + " [<options>]", "For more information use:"));
@@ -57,21 +53,19 @@ int main(int argc, char* argv[]) {
 
   int ret;
 
-  server.addFeature(new ConfigFeature(&server, name));
-  server.addFeature(new TempFeature(&server, name));
-  server.addFeature(new LoggerFeature(&server));
-  server.addFeature(new LanguageFeature(&server));
   server.addFeature(new ClientFeature(&server));
+  server.addFeature(new ConfigFeature(&server, name));
   server.addFeature(new ConsoleFeature(&server));
-  server.addFeature(new V8PlatformFeature(&server));
-  server.addFeature(new V8ShellFeature(&server, name));
+  server.addFeature(new LanguageFeature(&server));
+  server.addFeature(new LoggerFeature(&server, false));
+  server.addFeature(new RandomFeature(&server));
   server.addFeature(new ShellFeature(&server, &ret));
   server.addFeature(new ShutdownFeature(&server, "Shell"));
+  server.addFeature(new TempFeature(&server, name));
+  server.addFeature(new V8PlatformFeature(&server));
+  server.addFeature(new V8ShellFeature(&server, name));
 
   server.run(argc, argv);
 
-  TRIAGENS_REST_SHUTDOWN;
-  ADB_WindowsExitFunction(ret, nullptr);
-
-  return ret;
+  return context.exit(ret);
 }

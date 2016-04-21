@@ -1,3 +1,5 @@
+<<<<<<< HEAD
+=======
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -362,18 +364,14 @@ static int ForkProcess(std::string const& workingDirectory,
 
 #endif
 
+>>>>>>> 9eb3036c2ec9bf8fe682be6523fc5b646ac3a056
 ArangoServer::ArangoServer(int argc, char** argv)
     : _mode(ServerMode::MODE_STANDALONE),
-      _daemonMode(false),
-      _supervisorMode(false),
-      _pidFile(""),
-      _workingDirectory(""),
-      _applicationServer(nullptr),
+#warning TODO
+      // _applicationServer(nullptr),
       _argc(argc),
       _argv(argv),
       _tempPath(),
-      _applicationScheduler(nullptr),
-      _applicationDispatcher(nullptr),
       _applicationEndpointServer(nullptr),
       _applicationCluster(nullptr),
       _agencyCallbackRegistry(nullptr),
@@ -383,20 +381,15 @@ ArangoServer::ArangoServer(int argc, char** argv)
       _authenticateSystemOnly(false),
       _disableAuthentication(false),
       _disableAuthenticationUnixSockets(false),
-      _dispatcherThreads(8),
-      _dispatcherQueueSize(16384),
       _v8Contexts(8),
       _indexThreads(2),
       _databasePath(),
-      _queryCacheMode("off"),
-      _queryCacheMaxResults(128),
-      _defaultMaximalSize(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
-      _defaultWaitForSync(false),
-      _forceSyncProperties(true),
-      _ignoreDatafileErrors(false),
       _disableReplicationApplier(false),
       _disableQueryTracking(false),
+<<<<<<< HEAD
+=======
       _throwCollectionNotLoadedError(false),
+>>>>>>> 9eb3036c2ec9bf8fe682be6523fc5b646ac3a056
       _foxxQueues(true),
       _foxxQueuesPollInterval(1.0),
       _server(nullptr),
@@ -405,6 +398,12 @@ ArangoServer::ArangoServer(int argc, char** argv)
       _pairForJobHandler(nullptr),
       _indexPool(nullptr),
       _threadAffinity(0) {
+<<<<<<< HEAD
+#ifndef TRI_HAVE_THREAD_AFFINITY
+  _threadAffinity = 0;
+#endif
+}
+=======
   TRI_SetApplicationName("arangod");
 
 #ifndef TRI_HAVE_THREAD_AFFINITY
@@ -1269,202 +1268,42 @@ void ArangoServer::buildApplicationServer() {
                                                    _queryCacheMaxResults};
     arangodb::aql::QueryCache::instance()->setProperties(cacheProperties);
   }
+>>>>>>> 9eb3036c2ec9bf8fe682be6523fc5b646ac3a056
+
+ArangoServer::~ArangoServer() {
+  delete _jobManager;
+  delete _server;
+}
+
+
+void ArangoServer::buildApplicationServer() {
+#warning TODO
+#if 0
+
+  _applicationCluster =
+      new ApplicationCluster(_server);
+  _applicationServer->addFeature(_applicationCluster);
 
   // .............................................................................
-  // now run arangod
+  // agency options
   // .............................................................................
 
-  // dump version details
-  LOG(INFO) << "" << rest::Version::getVerboseVersionString();
+  _applicationAgency = new ApplicationAgency();
+  _applicationServer->addFeature(_applicationAgency);
 
-  LOG(INFO) << "using default language '" << languageName << "'";
-
-  // if we got here, then we are in server mode
-
-  // .............................................................................
-  // sanity checks
-  // .............................................................................
-
-  if (_applicationServer->programOptions().has("daemon")) {
-    _daemonMode = true;
-  }
-
-  if (_applicationServer->programOptions().has("supervisor")) {
-    _supervisorMode = true;
-  }
-
-  if (_daemonMode || _supervisorMode) {
-    if (_pidFile.empty()) {
-      LOG(INFO) << "please use the '--pid-file' option";
-      LOG(FATAL)
-          << "no pid-file defined, but daemon or supervisor mode was requested";
-      FATAL_ERROR_EXIT();
-    }
-
-    OperationMode::server_operation_mode_e mode =
-        OperationMode::determineMode(_applicationServer->programOptions());
-    if (mode != OperationMode::MODE_SERVER) {
-      LOG(FATAL) << "invalid mode. must not specify --console together with "
-                    "--daemon or --supervisor";
-      FATAL_ERROR_EXIT();
-    }
-
-    // make the pid filename absolute
-    int err = 0;
-    std::string currentDir = FileUtils::currentDirectory(&err);
-    char* absoluteFile =
-        TRI_GetAbsolutePath(_pidFile.c_str(), currentDir.c_str());
-
-    if (absoluteFile != nullptr) {
-      _pidFile = std::string(absoluteFile);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, absoluteFile);
-
-      LOG(DEBUG) << "using absolute pid file '" << _pidFile << "'";
-    } else {
-      LOG(FATAL) << "cannot determine current directory";
-      FATAL_ERROR_EXIT();
-    }
-  }
-
-  if (_indexThreads > 0) {
-    if (_indexThreads > 128) {
-      // some arbitrary limit
-      _indexThreads = 128;
-    }
-  }
+#endif
 }
 
 int ArangoServer::startupServer() {
-  TRI_InitializeStatistics();
-
-  OperationMode::server_operation_mode_e mode =
-      OperationMode::determineMode(_applicationServer->programOptions());
-  bool startServer = true;
-
-  if (_applicationServer->programOptions().has("no-server")) {
-    startServer = false;
-    TRI_ENABLE_STATISTICS = false;
-    // --no-server disables all replication appliers
-    _disableReplicationApplier = true;
-  }
-
-  // check version
-  bool checkVersion = false;
-
-  if (_applicationServer->programOptions().has("check-version")) {
-    checkVersion = true;
-    // --check-version disables all replication appliers
-    _disableReplicationApplier = true;
-    if (_applicationCluster != nullptr) {
-      _applicationCluster->disable();
-    }
-  }
-
-  // run upgrade script
-  bool performUpgrade = false;
-
-  if (_applicationServer->programOptions().has("upgrade")) {
-    performUpgrade = true;
-    // --upgrade disables all replication appliers
-    _disableReplicationApplier = true;
-    if (_applicationCluster != nullptr) {
-      _applicationCluster->disable();
-    }
-  }
-
-  // skip an upgrade even if VERSION is missing
-  bool skipUpgrade = false;
-
-  if (_applicationServer->programOptions().has("no-upgrade")) {
-    skipUpgrade = true;
-  }
-
-  // special treatment for the write-ahead log
-  // the log must exist before all other server operations can start
-  LOG(TRACE) << "starting WAL logfile manager";
-
-  if (!wal::LogfileManager::instance()->prepare() ||
-      !wal::LogfileManager::instance()->start()) {
-    // unable to initialize & start WAL logfile manager
-    LOG(FATAL) << "unable to start WAL logfile manager";
-    FATAL_ERROR_EXIT();
-  }
-
-  // .............................................................................
-  // prepare the various parts of the Arango server
-  // .............................................................................
-
-  KeyGenerator::Initialize();
-
-  if (_dispatcherThreads < 1) {
-    _dispatcherThreads = 1;
-  }
-
-  // open all databases
-  bool const iterateMarkersOnOpen =
-      !wal::LogfileManager::instance()->hasFoundLastTick();
-
-  openDatabases(checkVersion, performUpgrade, iterateMarkersOnOpen);
-
-  if (!checkVersion) {
-    if (!wal::LogfileManager::instance()->open()) {
-      LOG(FATAL) << "Unable to finish WAL recovery procedure";
-      FATAL_ERROR_EXIT();
-    }
-  }
-
-  // fetch the system database
-  TRI_vocbase_t* vocbase =
-      TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
-
-  if (vocbase == nullptr) {
-    LOG(FATAL)
-        << "No _system database found in database directory. Cannot start!";
-    FATAL_ERROR_EXIT();
-  }
-
-  TRI_ASSERT(vocbase != nullptr);
-
-  // initialize V8
-  if (!_applicationServer->programOptions().has("javascript.v8-contexts")) {
-    // the option was added recently so it's not always set
-    // the behavior in older ArangoDB was to create one V8 context per
-    // dispatcher thread
-    _v8Contexts = _dispatcherThreads;
-  }
-
-  if (_v8Contexts < 1) {
-    _v8Contexts = 1;
-  }
-
-  if (mode == OperationMode::MODE_CONSOLE) {
-    // one V8 instance is taken by the console
-    if (startServer) {
-      ++_v8Contexts;
-    }
-  } else if (mode == OperationMode::MODE_UNITTESTS ||
-             mode == OperationMode::MODE_SCRIPT) {
-    if (_v8Contexts == 1) {
-      // at least two to allow both the test-runner and the scheduler to use a
-      // V8 instance
-      _v8Contexts = 2;
-    }
-  }
-
-  _applicationV8->setVocbase(vocbase);
-  _applicationV8->setConcurrency(_v8Contexts);
-  _applicationV8->defineDouble("DISPATCHER_THREADS", _dispatcherThreads);
-  _applicationV8->defineDouble("V8_CONTEXTS", _v8Contexts);
+#warning TODO
+#if 0
 
   // .............................................................................
   // prepare everything
   // .............................................................................
 
   if (!startServer) {
-    _applicationScheduler->disable();
-    _applicationDispatcher->disable();
     _applicationEndpointServer->disable();
-    _applicationV8->disableActions();
   }
 
   // prepare scheduler and dispatcher
@@ -1472,190 +1311,14 @@ int ArangoServer::startupServer() {
 
   auto const role = ServerState::instance()->getRole();
 
-  // now we can create the queues
-  if (startServer) {
-    _applicationDispatcher->buildStandardQueue(_dispatcherThreads,
-                                               (int)_dispatcherQueueSize);
-
-    if (role == ServerState::ROLE_COORDINATOR ||
-        role == ServerState::ROLE_PRIMARY ||
-        role == ServerState::ROLE_SECONDARY) {
-      _applicationDispatcher->buildAQLQueue(_dispatcherThreads,
-                                            (int)_dispatcherQueueSize);
-    }
-
-    for (size_t i = 0; i < _additionalThreads.size(); ++i) {
-      int n = _additionalThreads[i];
-
-      if (n < 1) {
-        n = 1;
-      }
-
-      _additionalThreads[i] = n;
-
-      _applicationDispatcher->buildExtraQueue(i + 1, n,
-                                              (int)_dispatcherQueueSize);
-    }
-  }
-
   // and finish prepare
   _applicationServer->prepare2();
-
-  // run version check (will exit!)
-  if (checkVersion) {
-    _applicationV8->versionCheck();
-  }
-
-  _applicationV8->upgradeDatabase(skipUpgrade, performUpgrade);
-
-  // setup the V8 actions
-  if (startServer) {
-    _applicationV8->prepareServer();
-  }
-
-  _pairForAqlHandler = new std::pair<ApplicationV8*, aql::QueryRegistry*>(
-      _applicationV8, _queryRegistry);
-  _pairForJobHandler = new std::pair<Dispatcher*, AsyncJobManager*>(
-      _applicationDispatcher->dispatcher(), _jobManager);
 
   // ...........................................................................
   // create endpoints and handlers
   // ...........................................................................
 
   // we pass the options by reference, so keep them until shutdown
-  RestActionHandler::action_options_t httpOptions;
-  httpOptions._vocbase = vocbase;
-
-  if (startServer) {
-    // start with enabled maintenance mode
-    HttpHandlerFactory::setMaintenance(true);
-
-    // create the server
-    _applicationEndpointServer->buildServers();
-
-    HttpHandlerFactory* handlerFactory =
-        _applicationEndpointServer->getHandlerFactory();
-
-    defineHandlers(handlerFactory);
-
-    // add action handler
-    handlerFactory->addPrefixHandler(
-        "/", RestHandlerCreator<RestActionHandler>::createData<
-                 RestActionHandler::action_options_t*>,
-        (void*)&httpOptions);
-  }
-
-  // .............................................................................
-  // try to figure out the thread affinity
-  // .............................................................................
-
-  size_t n = TRI_numberProcessors();
-
-  if (n > 2 && _threadAffinity > 0) {
-    size_t ns = _applicationScheduler->numberOfThreads();
-    size_t nd = _applicationDispatcher->numberOfThreads();
-
-    if (ns != 0 && nd != 0) {
-      LOG(INFO) << "the server has " << n << " (hyper) cores, using " << ns
-                << " scheduler threads, " << nd << " dispatcher threads";
-    } else {
-      _threadAffinity = 0;
-    }
-
-    switch (_threadAffinity) {
-      case 1:
-        if (n < ns + nd) {
-          ns = static_cast<size_t>(round(1.0 * n * ns / (ns + nd)));
-          nd = static_cast<size_t>(round(1.0 * n * nd / (ns + nd)));
-
-          if (ns < 1) {
-            ns = 1;
-          }
-          if (nd < 1) {
-            nd = 1;
-          }
-
-          while (n < ns + nd) {
-            if (1 < ns) {
-              ns -= 1;
-            } else if (1 < nd) {
-              nd -= 1;
-            } else {
-              ns = 1;
-              nd = 1;
-            }
-          }
-        }
-
-        break;
-
-      case 2:
-        if (n < ns) {
-          ns = n;
-        }
-
-        if (n < nd) {
-          nd = n;
-        }
-
-        break;
-
-      case 3:
-        if (n < ns) {
-          ns = n;
-        }
-
-        nd = 0;
-
-        break;
-
-      case 4:
-        if (n < nd) {
-          nd = n;
-        }
-
-        ns = 0;
-
-        break;
-
-      default:
-        _threadAffinity = 0;
-        break;
-    }
-
-    if (_threadAffinity > 0) {
-      TRI_ASSERT(ns <= n);
-      TRI_ASSERT(nd <= n);
-
-      std::vector<size_t> ps;
-      std::vector<size_t> pd;
-
-      for (size_t i = 0; i < ns; ++i) {
-        ps.push_back(i);
-      }
-
-      for (size_t i = 0; i < nd; ++i) {
-        pd.push_back(n - i - 1);
-      }
-
-      if (0 < ns) {
-        _applicationScheduler->setProcessorAffinity(ps);
-      }
-
-      if (0 < nd) {
-        _applicationDispatcher->setProcessorAffinity(pd);
-      }
-
-      if (0 < ns) {
-        LOG(INFO) << "scheduler cores: " << ToString(ps);
-      }
-      if (0 < nd) {
-        LOG(INFO) << "dispatcher cores: " << ToString(pd);
-      }
-    } else {
-      LOG(INFO) << "the server has " << n << " (hyper) cores";
-    }
-  }
 
   // active deadlock detection in case we're not running in cluster mode
   if (!arangodb::ServerState::instance()->isRunningInCluster()) {
@@ -1688,132 +1351,8 @@ int ArangoServer::startupServer() {
     _applicationAgency->agent()->load();
   }
 
-  if (_disableAuthentication) {
-    LOG(INFO) << "Authentication is turned off";
-  }
-
-  LOG(INFO) << "ArangoDB (version " << ARANGODB_VERSION_FULL
-            << ") is ready for business. Have fun!";
-
   int res;
 
-  if (mode == OperationMode::MODE_CONSOLE) {
-    res = runConsole(vocbase);
-  } else if (mode == OperationMode::MODE_UNITTESTS) {
-    res = runUnitTests(vocbase);
-  } else if (mode == OperationMode::MODE_SCRIPT) {
-    res = runScript(vocbase);
-  } else {
-    res = runServer(vocbase);
-  }
-
-  // stop the replication appliers so all replication transactions can end
-  TRI_StopReplicationAppliersServer(_server);
-
-  _applicationServer->stop();
-
-  _server->_queryRegistry = nullptr;
-
-  delete _queryRegistry;
-  _queryRegistry = nullptr;
-  delete _pairForAqlHandler;
-  _pairForAqlHandler = nullptr;
-  delete _pairForJobHandler;
-  _pairForJobHandler = nullptr;
-
-  closeDatabases();
-
-  if (mode == OperationMode::MODE_CONSOLE) {
-    std::cout << std::endl << TRI_BYE_MESSAGE << std::endl;
-  }
-
-  TRI_ShutdownStatistics();
-  ShutdownWorkMonitor();
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief run arbitrary checks at startup
-////////////////////////////////////////////////////////////////////////////////
-
-void ArangoServer::runStartupChecks() {
-#ifdef __arm__
-  // detect alignment settings for ARM
-  {
-    // To change the alignment trap behavior, simply echo a number into
-    // /proc/cpu/alignment.  The number is made up from various bits:
-    //
-    // bit             behavior when set
-    // ---             -----------------
-    //
-    // 0               A user process performing an unaligned memory access
-    //                 will cause the kernel to print a message indicating
-    //                 process name, pid, pc, instruction, address, and the
-    //                 fault code.
-    //
-    // 1               The kernel will attempt to fix up the user process
-    //                 performing the unaligned access.  This is of course
-    //                 slow (think about the floating point emulator) and
-    //                 not recommended for production use.
-    //
-    // 2               The kernel will send a SIGBUS signal to the user process
-    //                 performing the unaligned access.
-    bool alignmentDetected = false;
-
-    std::string const filename("/proc/cpu/alignment");
-    try {
-      std::string const cpuAlignment =
-          arangodb::basics::FileUtils::slurp(filename);
-      auto start = cpuAlignment.find("User faults:");
-
-      if (start != std::string::npos) {
-        start += strlen("User faults:");
-        size_t end = start;
-        while (end < cpuAlignment.size()) {
-          if (cpuAlignment[end] == ' ' || cpuAlignment[end] == '\t') {
-            ++end;
-          } else {
-            break;
-          }
-        }
-        while (end < cpuAlignment.size()) {
-          ++end;
-          if (cpuAlignment[end] < '0' || cpuAlignment[end] > '9') {
-            break;
-          }
-        }
-
-        int64_t alignment =
-            std::stol(std::string(cpuAlignment.c_str() + start, end - start));
-        if ((alignment & 2) == 0) {
-          LOG(FATAL)
-              << "possibly incompatible CPU alignment settings found in '"
-              << filename << "'. this may cause arangod to abort with "
-                             "SIGBUS. please set the value in '"
-              << filename << "' to 2";
-          FATAL_ERROR_EXIT();
-        }
-
-        alignmentDetected = true;
-      }
-
-    } catch (...) {
-      // ignore that we cannot detect the alignment
-      LOG(TRACE)
-          << "unable to detect CPU alignment settings. could not process file '"
-          << filename << "'";
-    }
-
-    if (!alignmentDetected) {
-      LOG(WARN)
-          << "unable to detect CPU alignment settings. could not process file '"
-          << filename
-          << "'. this may cause arangod to abort with SIGBUS. it may be "
-             "necessary to set the value in '"
-          << filename << "' to 2";
-    }
-  }
 #endif
 }
 
@@ -1823,289 +1362,19 @@ void ArangoServer::runStartupChecks() {
 /// run at least once
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoServer::waitForHeartbeat() {
-  if (!ServerState::instance()->isCoordinator()) {
-    // waiting for the heartbeart thread is necessary on coordinator only
-    return;
-  }
-
-  while (true) {
-    if (HeartbeatThread::hasRunOnce()) {
-      break;
-    }
-    usleep(100 * 1000);
-  }
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief runs the server
 ////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::runServer(TRI_vocbase_t* vocbase) {
-  // disable maintenance mode
+#warning TODO
+#if 0
   waitForHeartbeat();
-  HttpHandlerFactory::setMaintenance(false);
 
   // just wait until we are signalled
   _applicationServer->wait();
 
   return EXIT_SUCCESS;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the JavaScript emergency console
-////////////////////////////////////////////////////////////////////////////////
-
-int ArangoServer::runConsole(TRI_vocbase_t* vocbase) {
-  ConsoleThread console(_applicationServer, _applicationV8, vocbase);
-  console.start();
-
-#ifdef __APPLE__
-  if (_applicationServer->programOptions().has("voice")) {
-    system("say -v zarvox 'welcome to ArangoDB' &");
-  }
 #endif
-
-  // disabled maintenance mode
-  waitForHeartbeat();
-  HttpHandlerFactory::setMaintenance(false);
-
-  // just wait until we are signalled
-  _applicationServer->wait();
-
-#ifdef __APPLE__
-  if (_applicationServer->programOptions().has("voice")) {
-    system("say -v zarvox 'good-bye' &");
-  }
-#endif
-
-  // .............................................................................
-  // and cleanup
-  // .............................................................................
-
-  console.userAbort();
-  console.beginShutdown();
-
-  int iterations = 0;
-
-  while (console.isRunning() && ++iterations < 30) {
-    usleep(100 * 1000);  // spin while console is still needed
-  }
-
-  return EXIT_SUCCESS;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief runs unit tests
-////////////////////////////////////////////////////////////////////////////////
-
-int ArangoServer::runUnitTests(TRI_vocbase_t* vocbase) {
-  ApplicationV8::V8Context* context =
-      _applicationV8->enterContext(vocbase, true);
-
-  auto isolate = context->isolate;
-
-  bool ok = false;
-  {
-    v8::HandleScope scope(isolate);
-    v8::TryCatch tryCatch;
-
-    auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
-    localContext->Enter();
-    {
-      v8::Context::Scope contextScope(localContext);
-      // set-up unit tests array
-      v8::Handle<v8::Array> sysTestFiles = v8::Array::New(isolate);
-
-      for (size_t i = 0; i < _unitTests.size(); ++i) {
-        sysTestFiles->Set((uint32_t)i, TRI_V8_STD_STRING(_unitTests[i]));
-      }
-
-      localContext->Global()->Set(TRI_V8_ASCII_STRING("SYS_UNIT_TESTS"),
-                                  sysTestFiles);
-      localContext->Global()->Set(TRI_V8_ASCII_STRING("SYS_UNIT_TESTS_RESULT"),
-                                  v8::True(isolate));
-
-      v8::Local<v8::String> name(
-          TRI_V8_ASCII_STRING(TRI_V8_SHELL_COMMAND_NAME));
-
-      // run tests
-      auto input = TRI_V8_ASCII_STRING(
-          "require(\"@arangodb/testrunner\").runCommandLineTests();");
-      TRI_ExecuteJavaScriptString(isolate, localContext, input, name, true);
-
-      if (tryCatch.HasCaught()) {
-        if (tryCatch.CanContinue()) {
-          std::cerr << TRI_StringifyV8Exception(isolate, &tryCatch);
-        } else {
-          // will stop, so need for v8g->_canceled = true;
-          TRI_ASSERT(!ok);
-        }
-      } else {
-        ok = TRI_ObjectToBoolean(localContext->Global()->Get(
-            TRI_V8_ASCII_STRING("SYS_UNIT_TESTS_RESULT")));
-      }
-    }
-    localContext->Exit();
-  }
-
-  _applicationV8->exitContext(context);
-
-  return ok ? EXIT_SUCCESS : EXIT_FAILURE;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief runs a script
-////////////////////////////////////////////////////////////////////////////////
-
-int ArangoServer::runScript(TRI_vocbase_t* vocbase) {
-  bool ok = false;
-  ApplicationV8::V8Context* context =
-      _applicationV8->enterContext(vocbase, true);
-  auto isolate = context->isolate;
-
-  {
-    v8::HandleScope globalScope(isolate);
-
-    auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
-    localContext->Enter();
-    {
-      v8::Context::Scope contextScope(localContext);
-      for (size_t i = 0; i < _scriptFile.size(); ++i) {
-        bool r = TRI_ExecuteGlobalJavaScriptFile(isolate,
-                                                 _scriptFile[i].c_str(), true);
-
-        if (!r) {
-          LOG(FATAL) << "cannot load script '" << _scriptFile[i]
-                     << "', giving up";
-          FATAL_ERROR_EXIT();
-        }
-      }
-
-      v8::TryCatch tryCatch;
-      // run the garbage collection for at most 30 seconds
-      TRI_RunGarbageCollectionV8(isolate, 30.0);
-
-      // parameter array
-      v8::Handle<v8::Array> params = v8::Array::New(isolate);
-
-      params->Set(0, TRI_V8_STD_STRING(_scriptFile[_scriptFile.size() - 1]));
-
-      for (size_t i = 0; i < _scriptParameters.size(); ++i) {
-        params->Set((uint32_t)(i + 1), TRI_V8_STD_STRING(_scriptParameters[i]));
-      }
-
-      // call main
-      v8::Handle<v8::String> mainFuncName = TRI_V8_ASCII_STRING("main");
-      v8::Handle<v8::Function> main = v8::Handle<v8::Function>::Cast(
-          localContext->Global()->Get(mainFuncName));
-
-      if (main.IsEmpty() || main->IsUndefined()) {
-        LOG(FATAL) << "no main function defined, giving up";
-        FATAL_ERROR_EXIT();
-      } else {
-        v8::Handle<v8::Value> args[] = {params};
-
-        try {
-          v8::Handle<v8::Value> result = main->Call(main, 1, args);
-
-          if (tryCatch.HasCaught()) {
-            if (tryCatch.CanContinue()) {
-              TRI_LogV8Exception(isolate, &tryCatch);
-            } else {
-              // will stop, so need for v8g->_canceled = true;
-              TRI_ASSERT(!ok);
-            }
-          } else {
-            ok = TRI_ObjectToDouble(result) == 0;
-          }
-        } catch (arangodb::basics::Exception const& ex) {
-          LOG(ERR) << "caught exception " << TRI_errno_string(ex.code()) << ": "
-                   << ex.what();
-          ok = false;
-        } catch (std::bad_alloc const&) {
-          LOG(ERR) << "caught exception "
-                   << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
-          ok = false;
-        } catch (...) {
-          LOG(ERR) << "caught unknown exception";
-          ok = false;
-        }
-      }
-    }
-
-    localContext->Exit();
-  }
-
-  _applicationV8->exitContext(context);
-  return ok ? EXIT_SUCCESS : EXIT_FAILURE;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief opens all databases
-////////////////////////////////////////////////////////////////////////////////
-
-void ArangoServer::openDatabases(bool checkVersion, bool performUpgrade,
-                                 bool iterateMarkersOnOpen) {
-  TRI_vocbase_defaults_t defaults;
-
-  // override with command-line options
-  defaults.defaultMaximalSize = _defaultMaximalSize;
-  defaults.defaultWaitForSync = _defaultWaitForSync;
-  defaults.requireAuthentication = !_disableAuthentication;
-  defaults.requireAuthenticationUnixSockets =
-      !_disableAuthenticationUnixSockets;
-  defaults.authenticateSystemOnly = _authenticateSystemOnly;
-  defaults.forceSyncProperties = _forceSyncProperties;
-
-  TRI_ASSERT(_server != nullptr);
-
-  if (_indexThreads > 0) {
-    _indexPool =
-        new arangodb::basics::ThreadPool(_indexThreads, "IndexBuilder");
-  }
-
-  int res = TRI_InitServer(_server, _applicationEndpointServer, _indexPool,
-                           _databasePath.c_str(),
-                           _applicationV8->appPath().c_str(), &defaults,
-                           _disableReplicationApplier, iterateMarkersOnOpen);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG(FATAL) << "cannot create server instance: out of memory";
-    FATAL_ERROR_EXIT();
-  }
-
-  res = TRI_StartServer(_server, checkVersion, performUpgrade);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    if (checkVersion && res == TRI_ERROR_ARANGO_EMPTY_DATADIR) {
-      TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);
-    }
-
-    LOG(FATAL) << "cannot start server: " << TRI_errno_string(res);
-    FATAL_ERROR_EXIT();
-  }
-
-  LOG(TRACE) << "found system database";
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief closes all databases
-////////////////////////////////////////////////////////////////////////////////
-
-void ArangoServer::closeDatabases() {
-  TRI_ASSERT(_server != nullptr);
-
-  TRI_CleanupActions();
-
-  // stop the replication appliers so all replication transactions can end
-  TRI_StopReplicationAppliersServer(_server);
-
-  // enforce logfile manager shutdown so we are sure no one else will
-  // write to the logs
-  wal::LogfileManager::instance()->stop();
-
-  TRI_StopServer(_server);
-
-  LOG(INFO) << "ArangoDB has been shut down";
-}

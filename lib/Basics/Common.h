@@ -52,6 +52,14 @@
 #include <string.h>
 #include <time.h>
 
+#ifdef TRI_HAVE_DIRENT_H
+#include <dirent.h>
+#endif
+
+#ifdef TRI_HAVE_DIRECT_H
+#include <direct.h>
+#endif
+
 #ifdef TRI_HAVE_POSIX_THREADS
 #ifdef _GNU_SOURCE
 #include <pthread.h>
@@ -95,12 +103,20 @@
 #include <arpa/inet.h>
 #endif
 
+#ifdef TRI_HAVE_SYS_FILE_H
+#include <sys/file.h>
+#endif
+
 #ifdef TRI_HAVE_SYS_RESOURCE_H
 #include <sys/resource.h>
 #endif
 
 #ifdef TRI_HAVE_SYS_TIME_H
 #include <sys/time.h>
+#endif
+
+#ifdef TRI_HAVE_SYS_PRCTL_H
+#include <sys/prctl.h>
 #endif
 
 #ifdef TRI_HAVE_SYS_SOCKET_H

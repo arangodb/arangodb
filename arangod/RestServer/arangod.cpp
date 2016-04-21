@@ -23,80 +23,128 @@
 
 #include "Basics/Common.h"
 
-#include "Basics/VelocyPackHelper.h"
-#include "Rest/InitializeRest.h"
-#include "RestServer/ArangoServer.h"
-
-#include <signal.h>
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#include <iostream>
-#endif
+#include "Actions/ActionFeature.h"
+#include "Agency/AgencyFeature.h"
+#include "ApplicationFeatures/ConfigFeature.h"
+#include "ApplicationFeatures/DaemonFeature.h"
+#include "ApplicationFeatures/LanguageFeature.h"
+#include "ApplicationFeatures/LoggerFeature.h"
+#include "ApplicationFeatures/NonceFeature.h"
+#include "ApplicationFeatures/RandomFeature.h"
+#include "ApplicationFeatures/ShutdownFeature.h"
+#include "ApplicationFeatures/SslFeature.h"
+#include "ApplicationFeatures/SupervisorFeature.h"
+#include "ApplicationFeatures/TempFeature.h"
+#include "ApplicationFeatures/V8PlatformFeature.h"
+#include "ApplicationFeatures/WorkMonitorFeature.h"
+#include "Basics/ArangoGlobalContext.h"
+#include "Cluster/ClusterFeature.h"
+#include "Dispatcher/DispatcherFeature.h"
+#include "ProgramOptions/ProgramOptions.h"
+#include "RestServer/AffinityFeature.h"
+#include "RestServer/CheckVersionFeature.h"
+#include "RestServer/ConsoleFeature.h"
+#include "RestServer/DatabaseFeature.h"
+#include "RestServer/EndpointFeature.h"
+#include "RestServer/FileDescriptorsFeature.h"
+#include "RestServer/FrontendFeature.h"
+#include "RestServer/RestServerFeature.h"
+#include "RestServer/ServerFeature.h"
+#include "RestServer/UpgradeFeature.h"
+#include "Scheduler/SchedulerFeature.h"
+#include "Statistics/StatisticsFeature.h"
+#include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb;
-using namespace arangodb::rest;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ArangoDB server
-////////////////////////////////////////////////////////////////////////////////
-
-ArangoServer* ArangoInstance = nullptr;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Hooks for OS-Specific functions
 ////////////////////////////////////////////////////////////////////////////////
 
+#warning TODO
+#if 0
 #ifdef _WIN32
-extern void TRI_GlobalEntryFunction();
-extern void TRI_GlobalExitFunction(int, void*);
 extern bool TRI_ParseMoreArgs(int argc, char* argv[]);
 extern void TRI_StartService(int argc, char* argv[]);
 #else
-void TRI_GlobalEntryFunction() {}
-void TRI_GlobalExitFunction(int exitCode, void* data) {}
 bool TRI_ParseMoreArgs(int argc, char* argv[]) { return false; }
 void TRI_StartService(int argc, char* argv[]) {}
 #endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief handle fatal SIGNALs; print backtrace,
-///        and rethrow signal for coredumps.
-////////////////////////////////////////////////////////////////////////////////
-
-static void AbortHandler(int signum) {
-  TRI_PrintBacktrace();
-#ifdef _WIN32
-  exit(255 + signum);
-#else
-  signal(signum, SIG_DFL);
-  kill(getpid(), signum);
 #endif
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an application server
 ////////////////////////////////////////////////////////////////////////////////
 
 int main(int argc, char* argv[]) {
-  int res = EXIT_SUCCESS;
+  ArangoGlobalContext context(argc, argv);
+  context.installSegv();
+  context.maskAllSignals();
+  context.runStartupChecks();
 
-  // Note: NEVER start threads or create global objects in here. The server
-  //       might enter enter a daemon mode, in which it leave the main function
-  //       in the parent and only a forked child is running.
-  //
-  //       Any startup handling MUST be done inside "startupServer".
+  std::string name = context.binaryName();
 
-  signal(SIGSEGV, AbortHandler);
+  std::shared_ptr<options::ProgramOptions> options(new options::ProgramOptions(
+      argv[0], "Usage: " + name + " [<options>]", "For more information use:"));
+
+  application_features::ApplicationServer server(options);
+
+  std::vector<std::string> nonServerFeatures = {
+      "Action", "Agency", "Cluster", "Daemon", "Dispatcher", "Endpoint",
+      "Server", "Scheduler", "Ssl", "Supervisor"};
+#warning FRANK: does it make sense to list Agency here?
+
+  int ret = EXIT_FAILURE;
+
+  server.addFeature(new ActionFeature(&server));
+  server.addFeature(new AffinityFeature(&server));
+  server.addFeature(new AgencyFeature(&server));
+  server.addFeature(new CheckVersionFeature(&server, &ret, nonServerFeatures));
+  server.addFeature(new ClusterFeature(&server));
+  server.addFeature(new ConfigFeature(&server, name));
+  server.addFeature(new ConsoleFeature(&server));
+  server.addFeature(new DatabaseFeature(&server));
+  server.addFeature(new DispatcherFeature(&server));
+  server.addFeature(new EndpointFeature(&server));
+  server.addFeature(new FileDescriptorsFeature(&server));
+  server.addFeature(new FrontendFeature(&server));
+  server.addFeature(new LanguageFeature(&server));
+  server.addFeature(new LoggerFeature(&server, true));
+  server.addFeature(new NonceFeature(&server));
+  server.addFeature(new RandomFeature(&server));
+  server.addFeature(new RestServerFeature(&server, "arangodb"));
+  server.addFeature(new SchedulerFeature(&server));
+  server.addFeature(new ServerFeature(&server, &ret));
+  server.addFeature(new ShutdownFeature(&server, "Server"));
+  server.addFeature(new SslFeature(&server));
+  server.addFeature(new StatisticsFeature(&server));
+  server.addFeature(new TempFeature(&server, name));
+  server.addFeature(new UpgradeFeature(&server, &ret, nonServerFeatures));
+  server.addFeature(new V8DealerFeature(&server));
+  server.addFeature(new V8PlatformFeature(&server));
+  server.addFeature(new WorkMonitorFeature(&server));
+
+#ifdef ARANGODB_HAVE_FORK
+  server.addFeature(new DaemonFeature(&server));
+
+  std::unique_ptr<SupervisorFeature> supervisor =
+      std::make_unique<SupervisorFeature>(&server);
+  supervisor->supervisorStart({"Logger"});
+  server.addFeature(supervisor.release());
+#endif
+
+  server.run(argc, argv);
+
+  return context.exit(ret);
+}
+
+#warning TODO
+#if 0
 
   // windows only
   bool const startAsService = TRI_ParseMoreArgs(argc, argv);
 
   // initialize sub-systems
-  TRI_GlobalEntryFunction();
-  TRIAGENS_REST_INITIALIZE();
-
-  arangodb::basics::VelocyPackHelper::initialize();
-
   if (startAsService) {
     TRI_StartService(argc, argv);
   } else {
@@ -115,12 +163,10 @@ int main(int argc, char* argv[]) {
       std::cerr << "Caught an exception during shutdown" << std::endl;
 #endif
     }
+
     ArangoInstance = nullptr;
   }
 
   // shutdown sub-systems
-  TRIAGENS_REST_SHUTDOWN;
-  TRI_GlobalExitFunction(res, nullptr);
-
-  return res;
-}
+  return context.exit(ret);
+#endif

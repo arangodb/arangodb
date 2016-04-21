@@ -1,7 +1,7 @@
 /*jshint -W051:true */
 /*global jqconsole, Symbol */
 /*eslint-disable */
-global.DEFINE_MODULE('console', (function () {
+global.DEFINE_MODULE('console', (function() {
 'use strict';
 /*eslint-enable */
 
@@ -32,8 +32,6 @@ global.DEFINE_MODULE('console', (function () {
 /// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-
-
 var exports = {};
 var internal = require('internal');
 var sprintf = internal.sprintf;
@@ -52,11 +50,9 @@ var groupLevel = '';
 var timers;
 try {
   timers = Object.create(null);
-}
-catch (e) {
+} catch (e) {
   timers = {};
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief internal logging
@@ -68,10 +64,9 @@ if (global.SYS_LOG) {
   // this will work when we are in arangod but not in the browser / web interface
   log = global.SYS_LOG;
   delete global.SYS_LOG;
-}
-else {
+} else {
   // this will work in the web interface
-  log = function (level, message) {
+  log = function(level, message) {
     if (typeof jqconsole !== 'undefined') {
       jqconsole.Write(message + '\n', 'jssuccess');
     }
@@ -82,7 +77,7 @@ else {
 /// @brief internal logging with group level
 ////////////////////////////////////////////////////////////////////////////////
 
-function logGroup (level, msg) {
+function logGroup(level, msg) {
   log(level, groupLevel + msg);
 }
 
@@ -90,7 +85,7 @@ function logGroup (level, msg) {
 /// @brief try to prettify
 ////////////////////////////////////////////////////////////////////////////////
 
-function prepareArgs (args) {
+function prepareArgs(args) {
   var ShapedJson = require('internal').ShapedJson;
   var result = [];
 
@@ -103,16 +98,17 @@ function prepareArgs (args) {
 
     if (typeof arg === 'object') {
       if (ShapedJson !== undefined && arg instanceof ShapedJson) {
-        arg = inspect(arg, {prettyPrint: false});
-      }
-      else if (arg === null) {
+        arg = inspect(arg, {
+          prettyPrint: false
+        });
+      } else if (arg === null) {
         arg = 'null';
-      }
-      else if (arg instanceof Date || arg instanceof RegExp) {
+      } else if (arg instanceof Date || arg instanceof RegExp) {
         arg = String(arg);
-      }
-      else if (Object.prototype.isPrototypeOf(arg) || Array.isArray(arg)) {
-        arg = inspect(arg, {prettyPrint: false});
+      } else if (Object.prototype.isPrototypeOf(arg) || Array.isArray(arg)) {
+        arg = inspect(arg, {
+          prettyPrint: false
+        });
       }
     }
 
@@ -122,12 +118,11 @@ function prepareArgs (args) {
   return result;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief assert
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.assert = function (condition) {
+exports.assert = function(condition) {
   if (condition) {
     return;
   }
@@ -137,8 +132,7 @@ exports.assert = function (condition) {
 
   try {
     msg = sprintf.apply(sprintf, prepareArgs(args));
-  }
-  catch (e) {
+  } catch (e) {
     msg = msg = `${e}: ${args}`;
   }
 
@@ -151,13 +145,12 @@ exports.assert = function (condition) {
 /// @brief debug
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.debug = function () {
+exports.debug = function() {
   var msg;
 
   try {
     msg = sprintf.apply(sprintf, prepareArgs(arguments));
-  }
-  catch (e) {
+  } catch (e) {
     msg = `${e}: ${arguments}`;
   }
 
@@ -168,13 +161,12 @@ exports.debug = function () {
 /// @brief debugLines
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.debugLines = function () {
+exports.debugLines = function() {
   var msg;
 
   try {
     msg = sprintf.apply(sprintf, prepareArgs(arguments));
-  }
-  catch (e) {
+  } catch (e) {
     msg = `${e}: ${arguments}`;
   }
 
@@ -189,7 +181,7 @@ exports.debugLines = function () {
 /// @brief dir
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.dir = function (object) {
+exports.dir = function(object) {
   logGroup('info', inspect(object));
 };
 
@@ -197,13 +189,12 @@ exports.dir = function (object) {
 /// @brief error
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.error = function () {
+exports.error = function() {
   var msg;
 
   try {
     msg = sprintf.apply(sprintf, prepareArgs(arguments));
-  }
-  catch (e) {
+  } catch (e) {
     msg = `${e}: ${arguments}`;
   }
 
@@ -214,13 +205,12 @@ exports.error = function () {
 /// @brief errorLines
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.errorLines = function () {
+exports.errorLines = function() {
   var msg;
 
   try {
     msg = sprintf.apply(sprintf, prepareArgs(arguments));
-  }
-  catch (e) {
+  } catch (e) {
     msg = `${e}: ${arguments}`;
   }
 
@@ -243,13 +233,12 @@ if (global.SYS_GETLINE) {
 /// @brief group
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.group = function () {
+exports.group = function() {
   var msg;
 
   try {
     msg = sprintf.apply(sprintf, prepareArgs(arguments));
-  }
-  catch (e) {
+  } catch (e) {
     msg = `${e}: ${arguments}`;
   }
 
@@ -261,13 +250,12 @@ exports.group = function () {
 /// @brief groupCollapsed
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.groupCollapsed = function () {
+exports.groupCollapsed = function() {
   var msg;
 
   try {
     msg = sprintf.apply(sprintf, prepareArgs(arguments));
-  }
-  catch (e) {
+  } catch (e) {
     msg = `${e}: ${arguments}`;
   }
 
@@ -279,7 +267,7 @@ exports.groupCollapsed = function () {
 /// @brief groupEnd
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.groupEnd = function () {
+exports.groupEnd = function() {
   groupLevel = groupLevel.substr(2);
 };
 
@@ -287,13 +275,12 @@ exports.groupEnd = function () {
 /// @brief info
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.info = function () {
+exports.info = function() {
   var msg;
 
   try {
     msg = sprintf.apply(sprintf, prepareArgs(arguments));
-  }
-  catch (e) {
+  } catch (e) {
     msg = `${e}: ${arguments}`;
   }
   logGroup('info', msg);
@@ -303,13 +290,12 @@ exports.info = function () {
 /// @brief infoLines
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.infoLines = function () {
+exports.infoLines = function() {
   var msg;
 
   try {
     msg = sprintf.apply(sprintf, prepareArgs(arguments));
-  }
-  catch (e) {
+  } catch (e) {
     msg = `${e}: ${arguments}`;
   }
 
@@ -337,7 +323,7 @@ exports.logLines = exports.infoLines;
 /// @brief time
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.time = function (label) {
+exports.time = function(label) {
   if (typeof label !== 'string') {
     throw new Error('label must be a string');
   }
@@ -370,7 +356,7 @@ exports.timeEnd = function(label) {
 /// @brief trace
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.trace = function () {
+exports.trace = function() {
   var err = new Error();
   err.name = 'Trace';
   err.message = sprintf.apply(sprintf, prepareArgs(arguments));
@@ -388,13 +374,12 @@ exports.trace = function () {
 /// @brief warn
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.warn = function () {
+exports.warn = function() {
   var msg;
 
   try {
     msg = sprintf.apply(sprintf, prepareArgs(arguments));
-  }
-  catch (e) {
+  } catch (e) {
     msg = `${e}: ${arguments}`;
   }
 
@@ -405,13 +390,12 @@ exports.warn = function () {
 /// @brief warnLines
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.warnLines = function () {
+exports.warnLines = function() {
   var msg;
 
   try {
     msg = sprintf.apply(sprintf, prepareArgs(arguments));
-  }
-  catch (e) {
+  } catch (e) {
     msg = `${e}: ${arguments}`;
   }
 
@@ -425,5 +409,3 @@ exports.warnLines = function () {
 
 return exports;
 }()));
-
-

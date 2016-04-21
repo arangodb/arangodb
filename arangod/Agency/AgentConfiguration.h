@@ -30,54 +30,54 @@ namespace consensus {
 struct config_t {
   
   id_t id;
-  double min_ping;
-  double max_ping;
-  std::string end_point;
-  std::vector<std::string> end_points;
+  double minPing;
+  double maxPing;
+  std::string endpoint;
+  std::vector<std::string> endpoints;
   bool notify;
   bool supervision;
-  bool wait_for_sync;
-  double supervision_frequency;
+  bool waitForSync;
+  double supervisionFrequency;
   
   config_t () :
-  id(0),
-    min_ping(0.3f),
-    max_ping(1.0f),
-    end_point("tcp://localhost:8529"),
+    id(0),
+    minPing(0.3f),
+    maxPing(1.0f),
+    endpoint("tcp://localhost:8529"),
     notify(false),
     supervision(false),
-    wait_for_sync(true),
-    supervision_frequency(5.0) {}
+    waitForSync(true),
+    supervisionFrequency(5.0) {}
   
-  config_t (uint32_t i, double min_p, double max_p, std::string ep,
+  config_t (uint32_t i, double minp, double maxp, std::string ep,
 	    std::vector<std::string> const& eps, bool n,
 	    bool s, bool w, double f) :
     id(i),
-    min_ping(min_p),
-    max_ping(max_p),
-    end_point(ep),
-    end_points(eps),
+    minPing(minp),
+    maxPing(maxp),
+    endpoint(ep),
+    endpoints(eps),
     notify(n),
     supervision(s),
-    wait_for_sync(w),
-    supervision_frequency(f){}
+    waitForSync(w),
+    supervisionFrequency(f){}
   
-  inline size_t size() const {return end_points.size();}
+  inline size_t size() const {return endpoints.size();}
 
   query_t const toBuilder () const {
     query_t ret = std::make_shared<arangodb::velocypack::Builder>();
     ret->openObject();
     ret->add("endpoints", VPackValue(VPackValueType::Array));
-    for (auto const& i : end_points)
+    for (auto const& i : endpoints)
       ret->add(VPackValue(i));
     ret->close();
-    ret->add("endpoint", VPackValue(end_point));
+    ret->add("endpoint", VPackValue(endpoint));
     ret->add("id",VPackValue(id));
-    ret->add("min_ping",VPackValue(min_ping));
-    ret->add("max_ping",VPackValue(max_ping));
+    ret->add("minPing",VPackValue(minPing));
+    ret->add("maxPing",VPackValue(maxPing));
     ret->add("notify peers", VPackValue(notify));
     ret->add("supervision", VPackValue(supervision));
-    ret->add("supervision frequency", VPackValue(supervision_frequency));
+    ret->add("supervision frequency", VPackValue(supervisionFrequency));
     ret->close();
     return ret;
   }

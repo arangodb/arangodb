@@ -67,9 +67,9 @@ struct TRI_server_t {
   arangodb::Mutex _databasesMutex;
 
   TRI_thread_t _databaseManager;
+  bool _databaseManagerStarted;
 
   TRI_vocbase_defaults_t _defaults;
-  arangodb::rest::ApplicationEndpointServer* _applicationEndpointServer;
   arangodb::basics::ThreadPool* _indexPool;
   std::atomic<arangodb::aql::QueryRegistry*> _queryRegistry;
 
@@ -77,9 +77,9 @@ struct TRI_server_t {
   char* _databasePath;
   char* _lockFilename;
   char* _serverIdFilename;
-  char* _appPath;
 
   bool _disableReplicationAppliers;
+  bool _disableCompactor;
   bool _iterateMarkersOnOpen;
   bool _hasCreatedSystemDatabase;
   bool _initialized;
@@ -95,9 +95,8 @@ extern size_t PageSize;
 /// @brief initialize a server instance with configuration
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InitServer(TRI_server_t*, arangodb::rest::ApplicationEndpointServer*,
-                   arangodb::basics::ThreadPool*, char const*, char const*,
-                   TRI_vocbase_defaults_t const*, bool, bool);
+int TRI_InitServer(TRI_server_t*, arangodb::basics::ThreadPool*, char const*,
+                   TRI_vocbase_defaults_t const*, bool, bool, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize globals
@@ -153,7 +152,7 @@ int TRI_CreateDatabaseServer(TRI_server_t*, TRI_voc_tick_t, char const*,
                              bool);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief activates or deactivates deadlock detection in all existing 
+/// @brief activates or deactivates deadlock detection in all existing
 /// databases
 ////////////////////////////////////////////////////////////////////////////////
 

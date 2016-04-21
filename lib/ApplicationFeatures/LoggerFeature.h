@@ -28,15 +28,20 @@
 namespace arangodb {
 class LoggerFeature final : public application_features::ApplicationFeature {
  public:
-  explicit LoggerFeature(application_features::ApplicationServer* server);
+  LoggerFeature(application_features::ApplicationServer* server, bool threaded);
 
  public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void loadOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void prepare() override;
-  void start() override;
-  void stop() override;
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void loadOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
+  void start() override final;
+  void stop() override final;
+
+ public:
+  void setBackgrounded(bool backgrounded) { _backgrounded = backgrounded; }
+  void disableThreaded() { _threaded = false; }
+  void setSupervisor(bool supervisor) { _supervisor = supervisor; }
 
  private:
   std::vector<std::string> _output;
@@ -47,9 +52,12 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   bool _lineNumber;
   bool _thread;
   bool _performance;
+  bool _keepLogRotate;
+  bool _foregroundTty;
+  bool _forceDirect;
 
  private:
-  bool _daemon;
+  bool _supervisor;
   bool _backgrounded;
   bool _threaded;
 };

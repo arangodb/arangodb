@@ -23,8 +23,8 @@
 #include "ApplicationFeatures/ShutdownFeature.h"
 
 #include "Logger/Logger.h"
-#include "ProgramOptions2/ProgramOptions.h"
-#include "ProgramOptions2/Section.h"
+#include "ProgramOptions/ProgramOptions.h"
+#include "ProgramOptions/Section.h"
 
 using namespace arangodb;
 using namespace arangodb::options;
@@ -32,10 +32,13 @@ using namespace arangodb::options;
 ShutdownFeature::ShutdownFeature(
     application_features::ApplicationServer* server, std::string const& feature)
     : ApplicationFeature(server, "Shutdown") {
-  setOptional(false);
+  setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Logger");
-  startsAfter(feature);
+
+  if (feature != "Logger") {
+    startsAfter(feature);
+  }
 }
 
 void ShutdownFeature::start() {

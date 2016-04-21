@@ -89,7 +89,6 @@ void VelocyPackHelper::initialize() {
 
   // set the attribute translator in the global options
   VPackOptions::Defaults.attributeTranslator = Translator.get();
-  VPackSlice::attributeTranslator = Translator.get();
   // VPackOptions::Defaults.unsupportedTypeBehavior = VPackOptions::ConvertUnsupportedType;
   
   // initialize exclude handler for system attributes

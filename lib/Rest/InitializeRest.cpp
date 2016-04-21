@@ -36,17 +36,19 @@
 
 #include "Logger/Logger.h"
 #include "Basics/RandomGenerator.h"
+#include "Basics/Thread.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/error.h"
 #include "Basics/files.h"
 #include "Basics/hashes.h"
 #include "Basics/locks.h"
 #include "Basics/mimetypes.h"
 #include "Basics/process-utils.h"
-#include "Basics/random.h"
-#include "Basics/Thread.h"
 #include "Rest/Version.h"
 
 using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
 // -----------------------------------------------------------------------------
 // OPEN SSL support
@@ -153,16 +155,11 @@ void InitializeRest() {
   TRI_InitializeError();
   TRI_InitializeFiles();
   TRI_InitializeMimetypes();
-  Logger::initialize(false);
-  TRI_InitializeRandom();
   TRI_InitializeProcess();
 
   // use the rng so the linker does not remove it from the executable
   // we might need it later because .so files might refer to the symbols
-  Random::random_e v = Random::selectVersion(Random::RAND_MERSENNE);
-  Random::UniformInteger random(0, INT32_MAX);
-  random.random();
-  Random::selectVersion(v);
+  RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
 
 #ifdef TRI_BROKEN_CXA_GUARD
   pthread_cond_t cond;
@@ -178,6 +175,7 @@ void InitializeRest() {
   opensslSetup();
 
   Version::initialize();
+  VelocyPackHelper::initialize();
 }
 
 void ShutdownRest() {
@@ -187,9 +185,9 @@ void ShutdownRest() {
   EVP_cleanup();
   CRYPTO_cleanup_all_ex_data();
 
+  RandomGenerator::shutdown();
+
   TRI_ShutdownProcess();
-  TRI_ShutdownRandom();
-  Logger::shutdown(true);
   TRI_ShutdownMimetypes();
   TRI_ShutdownFiles();
   TRI_ShutdownError();

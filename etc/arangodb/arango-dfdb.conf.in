@@ -1,13 +1,14 @@
 # config file for arango-dfdb
 
-no-upgrade = true
-no-server = true
-
 [database]
+upgrade = false
+upgrade-check = false
 directory= @LOCALSTATEDIR@/lib/arangodb
 # maximal-journal-size=33554432
 
 [server]
+rest-server = false
+authenication = false
 # set number of threads to 1 so we don't have concurrency
 threads = 1
 

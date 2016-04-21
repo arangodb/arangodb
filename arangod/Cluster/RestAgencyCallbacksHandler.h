@@ -21,8 +21,8 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_REST_AGENCY_CALLBACKS_HANDLER_H
-#define ARANGOD_CLUSTER_REST_AGENCY_CALLBACKS_HANDLER_H 1
+//XXX #warning MOP nope, include guards
+#pragma once
 
 #include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
@@ -53,5 +53,3 @@ class RestAgencyCallbacksHandler : public RestVocbaseBaseHandler {
 };
 }
 }
-
-#endif

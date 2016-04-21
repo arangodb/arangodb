@@ -25,13 +25,14 @@
 #include "HttpServerJob.h"
 
 #include "Basics/WorkMonitor.h"
-#include "Logger/Logger.h"
 #include "Dispatcher/DispatcherQueue.h"
 #include "HttpServer/AsyncJobManager.h"
 #include "HttpServer/HttpCommTask.h"
 #include "HttpServer/HttpHandler.h"
 #include "HttpServer/HttpServer.h"
+#include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;
@@ -88,7 +89,7 @@ void HttpServerJob::work() {
 
       _handler->RequestStatisticsAgent::transfer(data.get());
 
-      Scheduler::SCHEDULER->signalTask(data);
+      SchedulerFeature::SCHEDULER->signalTask(data);
     }
 
     LOG(TRACE) << "finished job " << (void*)this;

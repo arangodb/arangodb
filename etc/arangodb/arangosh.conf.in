@@ -1,10 +1,9 @@
-# config file for arangosh
-
+[console]
 pretty-print = true
 
 [server]
 endpoint = tcp://127.0.0.1:8529
-disable-authentication = true
+authentication = false
 
 [javascript]
 startup-directory = @PKGDATADIR@/js

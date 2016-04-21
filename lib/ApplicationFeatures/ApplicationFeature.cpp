@@ -53,6 +53,9 @@ void ApplicationFeature::loadOptions(std::shared_ptr<ProgramOptions>) {}
 // `abortInvalidParameters()`
 void ApplicationFeature::validateOptions(std::shared_ptr<ProgramOptions>) {}
 
+// allows process control
+void ApplicationFeature::daemonize() {}
+
 // preparation phase for feature
 // in the preparation phase, the features must not start any threads
 // furthermore, they must not write any files under elevated privileges

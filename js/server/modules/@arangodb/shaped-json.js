@@ -31,8 +31,6 @@ module.isSystem = true;
 
 var internal = require("internal");
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
@@ -40,22 +38,21 @@ var internal = require("internal");
 var ShapedJson = internal.ShapedJson;
 exports.ShapedJson = ShapedJson;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
-Object.defineProperty(ShapedJson.prototype, '_PRINT', {
-  configurable: true,
-  enumerable: false,
-  writable: true,
-  value: function (context) {
-    if (this instanceof ShapedJson) {
-      internal.printObject(this, context);
-    } else {
-      context.output += this.toString();
+if (ShapedJson !== undefined) {
+  Object.defineProperty(ShapedJson.prototype, '_PRINT', {
+    configurable: true,
+    enumerable: false,
+    writable: true,
+    value: function (context) {
+      if (this instanceof ShapedJson) {
+        internal.printObject(this, context);
+      } else {
+        context.output += this.toString();
+      }
     }
-  }
-});
-
-
+  });
+}

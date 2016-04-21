@@ -24,8 +24,8 @@
 
 #include "Basics/files.h"
 #include "Logger/Logger.h"
-#include "ProgramOptions2/ProgramOptions.h"
-#include "ProgramOptions2/Section.h"
+#include "ProgramOptions/ProgramOptions.h"
+#include "ProgramOptions/Section.h"
 
 using namespace arangodb;
 using namespace arangodb::options;
@@ -36,13 +36,13 @@ TempFeature::TempFeature(application_features::ApplicationServer* server,
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Logger");
+  startsAfter("Random");
 }
 
 void TempFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
 
-  options->addSection(Section("temp", "Configure the temporary files",
-                              "temp options", false, false));
+  options->addSection("temp", "Configure the temporary files");
 
   options->addOption("--temp.path", "path for temporary files",
                      new StringParameter(&_path));
@@ -60,4 +60,8 @@ void TempFeature::start() {
   if (!_path.empty()) {
     TRI_SetUserTempPath((char*)_path.c_str());
   }
+
+  // must be used after drop privileges and be called to set it to avoid raise
+  // conditions
+  TRI_GetTempPath();
 }
