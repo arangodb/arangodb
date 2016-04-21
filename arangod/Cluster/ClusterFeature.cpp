@@ -23,6 +23,7 @@
 
 #include "ClusterFeature.h"
 
+#include "Agency/AgencyFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/VelocyPackHelper.h"
@@ -58,6 +59,7 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer* server)
   startsAfter("Database");
   startsAfter("Dispatcher");
   startsAfter("Scheduler");
+  startsAfter("V8Dealer");
 }
 
 ClusterFeature::~ClusterFeature() {
@@ -199,17 +201,14 @@ void ClusterFeature::prepare() {
 
   // create an instance (this will not yet create a thread)
   ClusterComm::instance();
-}
 
-//YYY #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-//YYY #warning FRANK split into methods
-//YYY #endif
+  AgencyFeature* agency = dynamic_cast<AgencyFeature*>(
+      application_features::ApplicationServer::lookupFeature("Agency"));
 
-void ClusterFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
-  // initialize ClusterComm library, must call initialize only once
-  ClusterComm::initialize();
+  if (agency->isEnabled() || _enableCluster) {
+    // initialize ClusterComm library, must call initialize only once
+    ClusterComm::initialize();
+  }
 
   // return if cluster is disabled
   if (!_enableCluster) {
@@ -335,6 +334,20 @@ void ClusterFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
+}
+
+//YYY #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+//YYY #warning FRANK split into methods
+//YYY #endif
+
+void ClusterFeature::start() {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
+
+  // return if cluster is disabled
+  if (!_enableCluster) {
+    return;
+  }
+
   ServerState::instance()->setState(ServerState::STATE_STARTUP);
 
   // the agency about our state
@@ -344,6 +357,10 @@ void ClusterFeature::start() {
   std::string const version = comm.getVersion();
 
   ServerState::instance()->setInitialized();
+
+  std::string const endpoints = AgencyComm::getEndpointsString();
+
+  ServerState::RoleEnum role = ServerState::instance()->getRole();
 
   LOG(INFO) << "Cluster feature is turned on. Agency version: " << version
             << ", Agency endpoints: " << endpoints << ", server id: '" << _myId
