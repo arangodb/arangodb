@@ -878,6 +878,13 @@ static void JS_GetCollectionInfoCurrentClusterInfo(
     result->Set(TRI_V8_ASCII_STRING("errorMessage"),
                 TRI_V8_STD_STRING(errorMessage));
   }
+  auto servers = cic->servers(shardID);
+  v8::Handle<v8::Array> list = v8::Array::New(isolate, servers.size());
+  uint32_t pos = 0;
+  for (auto const& s : servers) {
+    list->Set(pos++, TRI_V8_STD_STRING(s));
+  }
+  result->Set(TRI_V8_ASCII_STRING("servers"), list);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
