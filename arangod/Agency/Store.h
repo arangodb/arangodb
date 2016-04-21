@@ -36,7 +36,7 @@ namespace consensus {
 class Agent;
 
 /// @brief Key value tree 
-class Store : public Node, public arangodb::Thread {
+class Store : public arangodb::Thread {
   
 public:
 
@@ -76,7 +76,33 @@ public:
   /// @brief See how far the path matches anything in store
   size_t matchPath (std::vector<std::string> const& pv) const;
 
+  /// @brief Get node specified by path vector  
+  Node operator ()(std::vector<std::string> const& pv);
+  /// @brief Get node specified by path vector  
+  Node const operator ()(std::vector<std::string> const& pv) const;
+  
+  /// @brief Get node specified by path string  
+  Node operator ()(std::string const& path);
+  /// @brief Get node specified by path string  
+  Node const operator ()(std::string const& path) const;
+
+  /// @brief Apply single slice
+  bool applies (arangodb::velocypack::Slice const&);
+
+  /// @brief Create Builder representing this store
+  void toBuilder (Builder&) const;
+
+  friend class Node;
+
 private:
+
+  std::multimap<TimePoint, std::shared_ptr<Node>>& timeTable ();
+  std::multimap<TimePoint, std::shared_ptr<Node>> const& timeTable () const;
+  std::multimap <std::string,std::string>& observerTable();
+  std::multimap <std::string,std::string> const& observerTable() const;
+  std::multimap <std::string,std::string>& observedTable();
+  std::multimap <std::string,std::string> const& observedTable() const;
+  
   /// @brief Read individual entry specified in slice into builder
   bool read  (arangodb::velocypack::Slice const&,
               arangodb::velocypack::Builder&) const;
@@ -98,6 +124,16 @@ private:
 
   /// @brief My own agent
   Agent* _agent;
+
+  /// @brief Table of expiries in tree (only used in root node)
+  std::multimap<TimePoint, std::shared_ptr<Node>> _timeTable;
+  
+  /// @brief Table of observers in tree (only used in root node)
+  std::multimap <std::string,std::string> _observerTable;
+  std::multimap <std::string,std::string> _observedTable;
+
+  /// @brief Root node
+  Node _node;
 
 };
 

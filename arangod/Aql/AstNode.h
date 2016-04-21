@@ -319,6 +319,9 @@ struct AstNode {
 
   /// @brief reset flags in case a node is changed drastically
   inline void clearFlags() { flags = 0; }
+  
+  /// @brief recursively clear flags
+  void clearFlagsRecursive();
 
   /// @brief set a flag for the node
   inline void setFlag(AstNodeFlagType flag) const {

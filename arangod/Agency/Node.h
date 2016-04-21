@@ -64,6 +64,8 @@ class Node;
 typedef std::chrono::system_clock::time_point TimePoint;
 typedef std::multimap<TimePoint, std::shared_ptr<Node>> TimeTable;
 
+class Store;
+
 /// @brief Simple tree implementation
 class Node {
   
@@ -80,6 +82,9 @@ public:
   /// @brief Construct with name and introduce to tree under parent
   Node (std::string const& name, Node* parent);
   
+  /// @brief Construct with name and introduce to tree under parent
+  Node (std::string const& name, Store* store);
+
   /// @brief Default dtor
   virtual ~Node ();
   
@@ -157,6 +162,9 @@ public:
   /// @brief Is this node being observed by url
   bool observedBy (std::string const& url) const;
 
+  Store& store();
+  Store const& store() const;
+
 protected:
 
   /// @brief Add time to live entry
@@ -168,17 +176,11 @@ protected:
   std::string _node_name;              /**< @brief my name */
 
   Node* _parent;                       /**< @brief parent */
+  Store* _store;                       /**< @brief Store */
   Children _children;                  /**< @brief child nodes */
   TimePoint _ttl;                      /**< @brief my expiry */
   Buffer<uint8_t> _value;              /**< @brief my value */
 
-  /// @brief Table of expiries in tree (only used in root node)
-  std::multimap<TimePoint, std::shared_ptr<Node>> _timeTable;
-
-  /// @brief Table of observers in tree (only used in root node)
-  std::multimap <std::string,std::string> _observerTable;
-  std::multimap <std::string,std::string> _observedTable;
-  
 };
 
 inline std::ostream& operator<< (std::ostream& o, Node const& n) {

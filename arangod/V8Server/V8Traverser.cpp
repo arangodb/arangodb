@@ -473,6 +473,7 @@ bool NeighborsOptions::matchesVertex(std::string const& id) const {
     // Nothing to do
     return true;
   }
+
   std::vector<std::string> parts =
       arangodb::basics::StringUtils::split(id, "/");
   TRI_ASSERT(parts.size() == 2);
@@ -745,6 +746,7 @@ static void AnyNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
                 nextDepth.emplace_back(tmp);
               }
               visited.emplace(std::move(tmp));
+              continue;
             }
             v = edge.get(TRI_VOC_ATTRIBUTE_FROM).getString(l);
             if (visited.find(std::string(v, l)) == visited.end()) {
@@ -782,6 +784,12 @@ void TRI_RunNeighborsSearch(std::vector<EdgeCollectionInfo*>& collectionInfos,
   std::unordered_set<std::string> visited;
   startVertices.emplace_back(opts.start);
   visited.emplace(opts.start);
+  if (!result.empty()) {
+    // We have a continuous search. Mark previous result as visited
+    for (auto const& r : result) {
+      visited.emplace(r);
+    }
+  }
 
   switch (opts.direction) {
     case TRI_EDGE_IN:
