@@ -36,6 +36,9 @@ static inline v8::Handle<v8::Value> ObjectVPackString(v8::Isolate* isolate,
                                                       VPackSlice const& slice) {
   arangodb::velocypack::ValueLength l;
   char const* val = slice.getString(l);
+  if (l == 0) {
+    return v8::String::Empty(isolate);
+  }
   return TRI_V8_PAIR_STRING(val, l);
 }
 
