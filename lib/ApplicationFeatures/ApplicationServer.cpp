@@ -234,6 +234,11 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
 
   if (!helpSection.empty()) {
     // user asked for "--help"
+
+    // translate "all" to "*"
+    if (helpSection == "all") {
+      helpSection = "*";
+    }
     _options->printHelp(helpSection);
     exit(EXIT_SUCCESS);
   }
