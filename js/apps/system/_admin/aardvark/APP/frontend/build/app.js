@@ -16545,6 +16545,300 @@ initHelp(); // these variables are not defined in the browser context
 if(!(global.IS_EXECUTE_SCRIPT || global.IS_EXECUTE_STRING || global.IS_CHECK_SCRIPT || global.IS_UNIT_TESTS || global.IS_JS_LINT)){try{ // this will not work from within a browser
 var __fs__=require("fs");var __rcf__=__fs__.join(__fs__.home(),".arangosh.rc");if(__fs__.exists(__rcf__)){ /*jshint evil: true */var __content__=__fs__.read(__rcf__);eval(__content__);}}catch(e) {require("console").warn("arangosh.rc: %s",String(e));}}try{delete global.IS_EXECUTE_SCRIPT;delete global.IS_EXECUTE_STRING;delete global.IS_CHECK_SCRIPT;delete global.IS_UNIT_TESTS;delete global.IS_JS_LINT;}catch(e) {}}
 
+/*global _, Dygraph, window, document */
+
+(function () {
+  "use strict";
+  window.dygraphConfig = {
+    defaultFrame : 20 * 60 * 1000,
+
+    zeropad: function (x) {
+      if (x < 10) {
+        return "0" + x;
+      }
+      return x;
+    },
+
+    xAxisFormat: function (d) {
+      if (d === -1) {
+        return "";
+      }
+      var date = new Date(d);
+      return this.zeropad(date.getHours()) + ":"
+        + this.zeropad(date.getMinutes()) + ":"
+        + this.zeropad(date.getSeconds());
+    },
+
+    mergeObjects: function (o1, o2, mergeAttribList) {
+      if (!mergeAttribList) {
+        mergeAttribList = [];
+      }
+      var vals = {}, res;
+      mergeAttribList.forEach(function (a) {
+        var valO1 = o1[a],
+        valO2 = o2[a];
+        if (valO1 === undefined) {
+          valO1 = {};
+        }
+        if (valO2 === undefined) {
+          valO2 = {};
+        }
+        vals[a] = _.extend(valO1, valO2);
+      });
+      res = _.extend(o1, o2);
+      Object.keys(vals).forEach(function (k) {
+        res[k] = vals[k];
+      });
+      return res;
+    },
+
+    mapStatToFigure : {
+      residentSize : ["times", "residentSizePercent"],
+      pageFaults : ["times", "majorPageFaultsPerSecond", "minorPageFaultsPerSecond"],
+      systemUserTime : ["times", "systemTimePerSecond", "userTimePerSecond"],
+      totalTime : ["times", "avgQueueTime", "avgRequestTime", "avgIoTime"],
+      dataTransfer : ["times", "bytesSentPerSecond", "bytesReceivedPerSecond"],
+      requests : ["times", "getsPerSecond", "putsPerSecond", "postsPerSecond",
+                  "deletesPerSecond", "patchesPerSecond", "headsPerSecond",
+                  "optionsPerSecond", "othersPerSecond"]
+    },
+
+    //colors for dygraphs
+    colors: ["rgb(95, 194, 135)", "rgb(238, 190, 77)", "#81ccd8", "#7ca530", "#3c3c3c",
+             "#aa90bd", "#e1811d", "#c7d4b2", "#d0b2d4"],
+
+
+    // figure dependend options
+    figureDependedOptions: {
+      clusterRequestsPerSecond: {
+        showLabelsOnHighlight: true,
+        title: '',
+        header : "Cluster Requests per Second",
+        stackedGraph: true,
+        div: "lineGraphLegend",
+        labelsKMG2: false,
+        axes: {
+          y: {
+            valueFormatter: function (y) {
+              return parseFloat(y.toPrecision(3));
+            },
+            axisLabelFormatter: function (y) {
+              if (y === 0) {
+                return 0;
+              }
+
+              return parseFloat(y.toPrecision(3));
+            }
+          }
+        }
+      },
+
+      residentSize: {
+        header: "Resident Size",
+        axes: {
+          y: {
+            labelsKMG2: false,
+            axisLabelFormatter: function (y) {
+              return parseFloat(y.toPrecision(3) * 100) + "%";
+            },
+            valueFormatter: function (y) {
+              return parseFloat(y.toPrecision(3) * 100) + "%";
+            }
+          }
+        }
+      },
+
+      pageFaults: {
+        header : "Page Faults",
+        visibility: [true, false],
+        labels: ["datetime", "Major Page", "Minor Page"],
+        div: "pageFaultsChart",
+        labelsKMG2: false,
+        axes: {
+          y: {
+            valueFormatter: function (y) {
+              return parseFloat(y.toPrecision(3));
+            },
+            axisLabelFormatter: function (y) {
+              if (y === 0) {
+                return 0;
+              }
+              return parseFloat(y.toPrecision(3));
+            }
+          }
+        }
+      },
+
+      systemUserTime: {
+        div: "systemUserTimeChart",
+        header: "System and User Time",
+        labels: ["datetime", "System Time", "User Time"],
+        stackedGraph: true,
+        labelsKMG2: false,
+        axes: {
+          y: {
+            valueFormatter: function (y) {
+              return parseFloat(y.toPrecision(3));
+            },
+            axisLabelFormatter: function (y) {
+              if (y === 0) {
+                return 0;
+              }
+              return parseFloat(y.toPrecision(3));
+            }
+          }
+        }
+      },
+
+      totalTime: {
+        div: "totalTimeChart",
+        header: "Total Time",
+        labels: ["datetime", "Queue", "Computation", "I/O"],
+        labelsKMG2: false,
+        axes: {
+          y: {
+            valueFormatter: function (y) {
+              return parseFloat(y.toPrecision(3));
+            },
+            axisLabelFormatter: function (y) {
+              if (y === 0) {
+                return 0;
+              }
+              return parseFloat(y.toPrecision(3));
+            }
+          }
+        },
+        stackedGraph: true
+      },
+
+      dataTransfer: {
+        header: "Data Transfer",
+        labels: ["datetime", "Bytes sent", "Bytes received"],
+        stackedGraph: true,
+        div: "dataTransferChart"
+      },
+
+      requests: {
+        header: "Requests",
+        labels: ["datetime", "REQUESTS"],
+        stackedGraph: true,
+        div: "requestsChart",
+        axes: {
+          y: {
+            valueFormatter: function (y) {
+              return parseFloat(y.toPrecision(3));
+            },
+            axisLabelFormatter: function (y) {
+              if (y === 0) {
+                return 0;
+              }
+              return parseFloat(y.toPrecision(3));
+            }
+          }
+        }
+      }
+    },
+
+    getDashBoardFigures : function (all) {
+      var result = [], self = this;
+      Object.keys(this.figureDependedOptions).forEach(function (k) {
+        // ClusterRequestsPerSecond should not be ignored. Quick Fix
+        if (k !== "clusterRequestsPerSecond" && (self.figureDependedOptions[k].div || all)) {
+          result.push(k);
+        }
+      });
+      return result;
+    },
+
+    //configuration for chart overview
+    getDefaultConfig: function (figure) {
+      var self = this;
+      var result = {
+        digitsAfterDecimal: 1,
+        drawGapPoints: true,
+        fillGraph: true,
+        fillAlpha: 0.85,
+        showLabelsOnHighlight: false,
+        strokeWidth: 0.0,
+        lineWidth: 0.0,
+        strokeBorderWidth: 0.0,
+        includeZero: true,
+        highlightCircleSize: 2.5,
+        labelsSeparateLines : true,
+        strokeBorderColor: 'rgba(0,0,0,0)',
+        interactionModel: {},
+        maxNumberWidth : 10,
+        colors: [this.colors[0]],
+        xAxisLabelWidth: "50",
+        rightGap: 15,
+        showRangeSelector: false,
+        rangeSelectorHeight: 50,
+        rangeSelectorPlotStrokeColor: '#365300',
+        rangeSelectorPlotFillColor: '',
+        // rangeSelectorPlotFillColor: '#414a4c',
+        pixelsPerLabel: 50,
+        labelsKMG2: true,
+        dateWindow: [
+          new Date().getTime() -
+            this.defaultFrame,
+          new Date().getTime()
+        ],
+        axes: {
+          x: {
+            valueFormatter: function (d) {
+              return self.xAxisFormat(d);
+            }
+          },
+          y: {
+            ticker: Dygraph.numericLinearTicks
+          }
+        }
+      };
+      if (this.figureDependedOptions[figure]) {
+        result = this.mergeObjects(
+          result, this.figureDependedOptions[figure], ["axes"]
+        );
+        if (result.div && result.labels) {
+          result.colors = this.getColors(result.labels);
+          result.labelsDiv = document.getElementById(result.div + "Legend");
+          result.legend = "always";
+          result.showLabelsOnHighlight = true;
+        }
+      }
+      return result;
+
+    },
+
+    getDetailChartConfig: function (figure) {
+      var result = _.extend(
+        this.getDefaultConfig(figure),
+        {
+          showRangeSelector: true,
+          interactionModel: null,
+          showLabelsOnHighlight: true,
+          highlightCircleSize: 2.5,
+          legend: "always",
+          labelsDiv: "div#detailLegend.dashboard-legend-inner"
+        }
+      );
+      if (figure === "pageFaults") {
+        result.visibility = [true, true];
+      }
+      if (!result.labels) {
+        result.labels = ["datetime", result.header];
+        result.colors = this.getColors(result.labels);
+      }
+      return result;
+    },
+
+    getColors: function (labels) {
+      var colorList;
+      colorList = this.colors.concat([]);
+      return colorList.slice(0, labels.length - 1);
+    }
+  };
+}());
+
 /*global window, Backbone, $, arangoHelper */
 (function() {
   'use strict';
@@ -21989,6 +22283,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     events: {
       // will be filled in initialize
+      "click .subViewNavbar .subMenuEntry" : "toggleViews"
     },
 
     tendencies: {
@@ -22143,6 +22438,31 @@ window.ArangoUsers = Backbone.Collection.extend({
       }
 
       this.history[this.server] = {};
+    },
+
+    toggleViews: function(e) {
+      var id = e.currentTarget.id.split('-')[0], self = this;
+      var views = ['replication', 'requests', 'system'];
+
+      _.each(views, function(view) {
+        if (id !== view) {
+          $('#' + view).hide();
+        }
+        else {
+          $('#' + view).show();
+          self.resize();
+          $(window).resize();
+        }
+      });
+
+      $('.subMenuEntries').children().removeClass('active');
+      $('#' + id + '-statistics').addClass('active');
+
+      window.setTimeout(function() {
+        self.resize();
+        $(window).resize();
+      }, 200);
+
     },
 		
 		cleanupHistory: function(f) {
@@ -22322,6 +22642,20 @@ window.ArangoUsers = Backbone.Collection.extend({
 
         // if we found at list one value besides times, then use the entry
         if (valueList.length > 1) {
+
+          // HTTP requests combine all types to one
+          if (valueList.length === 9) {
+            var counter = 0, sum = 0;
+
+            _.each(valueList, function(value) {
+              if (counter !== 0) {
+                sum += value;
+              }
+              counter++;
+            });
+            valueList = [valueList[0], sum];
+          }
+
           self.history[self.server][f].push(valueList);
         }
       });
@@ -22871,6 +23205,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         $(window).trigger('resize');
       }
       this.startUpdating();
+      $(window).resize();
     }.bind(this);
 
     var errorFunction = function() {
