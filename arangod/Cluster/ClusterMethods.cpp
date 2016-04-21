@@ -828,14 +828,14 @@ int createDocumentOnCoordinator(
       TRI_ASSERT(it.second.size() == 1);
       auto idx = it.second.front();
       if (idx.second.empty()) {
-        body = std::make_shared<std::string>(std::move(slice.toJson()));
+        body = std::make_shared<std::string>(slice.toJson());
       } else {
         reqBuilder.clear();
         reqBuilder.openObject();
         TRI_SanitizeObject(slice, reqBuilder);
         reqBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(idx.second));
         reqBuilder.close();
-        body = std::make_shared<std::string>(std::move(reqBuilder.slice().toJson()));
+        body = std::make_shared<std::string>(reqBuilder.slice().toJson());
       }
     } else {
       reqBuilder.clear();
@@ -851,7 +851,7 @@ int createDocumentOnCoordinator(
         }
       }
       reqBuilder.close();
-      body = std::make_shared<std::string>(std::move(reqBuilder.slice().toJson()));
+      body = std::make_shared<std::string>(reqBuilder.slice().toJson());
     }
     auto headersCopy =
         std::make_unique<std::map<std::string, std::string>>(headers);
@@ -998,7 +998,7 @@ int deleteDocumentOnCoordinator(
     for (auto const& it : shardMap) {
       if (!useMultiple) {
         TRI_ASSERT(it.second.size() == 1);
-        body = std::make_shared<std::string>(std::move(slice.toJson()));
+        body = std::make_shared<std::string>(slice.toJson());
       } else {
         reqBuilder.clear();
         reqBuilder.openArray();
@@ -1006,7 +1006,7 @@ int deleteDocumentOnCoordinator(
           reqBuilder.add(slice.at(idx));
         }
         reqBuilder.close();
-        body = std::make_shared<std::string>(std::move(reqBuilder.slice().toJson()));
+        body = std::make_shared<std::string>(reqBuilder.slice().toJson());
       }
       auto headersCopy =
           std::make_unique<std::map<std::string, std::string>>(*headers);
@@ -1050,7 +1050,7 @@ int deleteDocumentOnCoordinator(
   //    end
   //    if (!skipped) => insert NOT_FOUND
  
-  auto body = std::make_shared<std::string>(std::move(slice.toJson()));
+  auto body = std::make_shared<std::string>(slice.toJson());
   auto shardList = ci->getShardList(collid);
   for (auto const& shard : *shardList) {
     auto headersCopy =
@@ -1277,7 +1277,7 @@ int getDocumentOnCoordinator(
           reqBuilder.add(slice.at(idx));
         }
         reqBuilder.close();
-        body = std::make_shared<std::string>(std::move(reqBuilder.slice().toJson()));
+        body = std::make_shared<std::string>(reqBuilder.slice().toJson());
         // We send to Babies endpoint
         cc->asyncRequest("", coordTransactionID, "shard:" + it.first, reqType,
             baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart,
@@ -1332,7 +1332,7 @@ int getDocumentOnCoordinator(
                        nullptr, headersCopy, nullptr, 60.0);
     }
   } else {
-    auto body = std::make_shared<std::string>(std::move(slice.toJson()));
+    auto body = std::make_shared<std::string>(slice.toJson());
     for (auto const& shard : *shardList) {
       auto headersCopy =
           std::make_unique<std::map<std::string, std::string>>(*headers);
@@ -1795,7 +1795,7 @@ int modifyDocumentOnCoordinator(
           std::make_unique<std::map<std::string, std::string>>(*headers);
       if (!useMultiple) {
         TRI_ASSERT(it.second.size() == 1);
-        body = std::make_shared<std::string>(std::move(slice.toJson()));
+        body = std::make_shared<std::string>(slice.toJson());
 
         // We send to single endpoint
         cc->asyncRequest("", coordTransactionID, "shard:" + it.first, reqType,
@@ -1810,7 +1810,7 @@ int modifyDocumentOnCoordinator(
           reqBuilder.add(slice.at(idx));
         }
         reqBuilder.close();
-        body = std::make_shared<std::string>(std::move(reqBuilder.slice().toJson()));
+        body = std::make_shared<std::string>(reqBuilder.slice().toJson());
         // We send to Babies endpoint
         cc->asyncRequest("", coordTransactionID, "shard:" + it.first, reqType,
             baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart,
@@ -1848,7 +1848,7 @@ int modifyDocumentOnCoordinator(
   // Not all shard keys are known in all documents.
   // We contact all shards with the complete body and ignore NOT_FOUND
 
-  auto body = std::make_shared<std::string>(std::move(slice.toJson()));
+  auto body = std::make_shared<std::string>(slice.toJson());
   auto shardList = ci->getShardList(collid);
   if (!useMultiple) {
     for (auto const& shard : *shardList) {

@@ -1270,12 +1270,8 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
     res.clear();
     res = ac.getValues(where, true);
 
-    LOG(TRACE) << "CREATE OYOYOYOY " << where;
-    
     if (res.successful() && res.parse(where + "/", false)) {
-    LOG(TRACE) << "CREATE IS SUCCESS " << where;
       if (res._values.size() == (size_t)numberOfShards) {
-    LOG(TRACE) << "CREATE has number " << where;
         std::string tmpMsg = "";
         bool tmpHaveError = false;
         for (auto const& p : res._values) {
@@ -1297,23 +1293,17 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
             }
           }
         }
-    LOG(TRACE) << "CREATE PRE LOAD has number " << where;
         loadCurrentCollections();
-    LOG(TRACE) << "CREATE POST LOAD has number " << where;
         if (tmpHaveError) {
           errorMsg = "Error in creation of collection:" + tmpMsg;
-    LOG(TRACE) << "CREATE KAP0TT " << where;
           return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION;
         }
-    LOG(TRACE) << "CREATE OK " << where;
         return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
       }
     }
 
     res.clear();
-    LOG(TRACE) << "JASSSSS " << interval;
     _agencyCallbackRegistry->awaitNextChange("Current/Version", interval);
-    LOG(TRACE) << "NNNNJASSSSS " << interval;
   }
 
   // LOG(ERR) << "GOT TIMEOUT. NUMBEROFSHARDS: " << numberOfShards;
@@ -1368,6 +1358,11 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
   while (TRI_microtime() <= endTime) {
     res.clear();
     res = ac.getValues(where, true);
+    if (!res.successful()) {
+      // It seems the collection is already gone, do not wait further
+      errorMsg = "Collection already gone.";
+      return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
+    }
     if (res.successful() && res.parse(where + "/", false)) {
       // if there are no more active shards for the collection...
       if (res._values.size() == 0) {

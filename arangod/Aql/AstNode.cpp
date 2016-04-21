@@ -1697,6 +1697,17 @@ bool AstNode::isAttributeAccessForVariable(
   return true;
 }
 
+/// @brief recursively clear flags
+void AstNode::clearFlagsRecursive() {
+  clearFlags();
+  size_t const n = numMembers();
+
+  for (size_t i = 0; i < n; ++i) {
+    auto member = getMemberUnchecked(i);
+    member->clearFlagsRecursive();
+  }
+}
+
 /// @brief whether or not a node is simple enough to be used in a simple
 /// expression
 bool AstNode::isSimple() const {

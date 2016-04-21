@@ -902,7 +902,7 @@ class AssocMulti {
   std::vector<Element*>* lookupWithElementByKeyContinue(
       UserData* userData, Element const* element, size_t limit = 0) const {
     auto result = std::make_unique<std::vector<Element*>>();
-    lookupWithElementByKeyContinue(userData, element, limit);
+    lookupWithElementByKeyContinue(userData, element, *result.get(), limit);
     return result.release();
   }
 
