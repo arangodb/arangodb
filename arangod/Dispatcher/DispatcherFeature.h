@@ -40,6 +40,7 @@ class DispatcherFeature final
 
  public:
   explicit DispatcherFeature(application_features::ApplicationServer* server);
+  ~DispatcherFeature();
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
