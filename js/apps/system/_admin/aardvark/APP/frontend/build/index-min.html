@@ -1483,14 +1483,24 @@ if (list.length > 0) {
   </tr>
 </tbody></script><script id="loginView.ejs" type="text/template"><div class="loginFixedWindow">
 
-<div class="resizecontainer"><div class="navlogo"><a class="logo" href="#"><img class="arangodbLogo" src="img/logo_arangodb_transp.png"></a></div></div>
+<!--
+  <div class="resizecontainer">
+    <div class="navlogo">
+      <a class="logo" href="#"><img class="arangodbLogo" src="img/logo_arangodb_transp.png"></a>
+    </div>
+  </div>
+-->
 
   <div id="loginWindow" class="login-window">
+    <div class="login-logo-round">
+      <img class="arangodbLogo" src="img/arangodb_logo_small.png"/>
+      <img class="" src="img/arangodb_logo_letter.png"/>
+    </div>
     <p class="wrong-credentials" style="display:none" >Wrong credentials!</p>
     <form id="loginForm">
-      <input class="login-input" placeholder="Username" id="loginUsername" type="text" name="username"><i class="fa fa-user"></i>
-      <input class="login-input" placeholder="Password" id="loginPassword" type="password" name="password"><i class="fa fa-lock"></i>
-      <input class="login-input" placeholder="Database" id="loginDatabase" type="text" name="database"><i class="fa fa-database"></i>
+      <input class="login-input" placeholder="username" id="loginUsername" type="text" name="username"><i class="fa fa-user"></i>
+      <input class="login-input" placeholder="password" id="loginPassword" type="password" name="password"><i class="fa fa-lock"></i>
+      <input class="login-input" placeholder="database" id="loginDatabase" type="text" name="database"><i class="fa fa-database"></i>
       <button id="submitLogin" class="button-success pull-right">Login</button>
     </form>
   </div>
@@ -2953,4 +2963,4 @@ var cutByResolution = function (str) {
   </div>
 
   <div id="workMonitorContent" class="innerContent">
-  </div></script></head><body><nav class="navbar"><div class="primary"><div class="navlogo"><a class="logo big" href="#"><img class="arangodbLogo" src="img/arangodb_logo_big.png"></a> <a class="logo small" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"></a></div><div class="statmenu" id="statisticBar"></div><div class="navmenu" id="navigationBar"></div></div></nav><div class="bodyWrapper"><div class="centralRow"><div id="navbar2" class="navbarWrapper secondary"><div class="subnavmenu" id="subNavigationBar"></div></div><div class="resizecontainer contentWrapper"><div id="content" class="centralContent"></div><footer class="footer"><div id="footerBar"></div></footer></div></div></div><div id="modalPlaceholder"></div><div id="progressPlaceholder" style="display:none"></div><div id="spotlightPlaceholder" style="display:none"></div><div class="arangoFrame" style=""><div class="outerDiv"><div class="innerDiv"></div></div></div><script src="libs.js?version=1461244631474"></script><script src="app.js?version=1461244631474"></script></body></html>
+  </div></script></head><body><nav class="navbar"><div class="primary"><div class="navlogo"><a class="logo big" href="#"><img class="arangodbLogo" src="img/arangodb_logo_big.png"></a> <a class="logo small" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"></a></div><div class="statmenu" id="statisticBar"></div><div class="navmenu" id="navigationBar"></div></div></nav><div class="bodyWrapper"><div class="centralRow"><div id="navbar2" class="navbarWrapper secondary"><div class="subnavmenu" id="subNavigationBar"></div></div><div class="resizecontainer contentWrapper"><div id="content" class="centralContent"></div><footer class="footer"><div id="footerBar"></div></footer></div></div></div><div id="modalPlaceholder"></div><div id="progressPlaceholder" style="display:none"></div><div id="spotlightPlaceholder" style="display:none"></div><div class="arangoFrame" style=""><div class="outerDiv"><div class="innerDiv"></div></div></div><script src="libs.js?version=1461257358510"></script><script src="app.js?version=1461257358510"></script></body></html>
