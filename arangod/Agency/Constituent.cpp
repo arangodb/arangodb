@@ -39,6 +39,7 @@
 
 #include "Constituent.h"
 #include "Agent.h"
+#include "NotifierThread.h"
 
 #include <velocypack/Iterator.h>    
 #include <velocypack/velocypack-aliases.h> 
@@ -65,7 +66,6 @@ void Constituent::configure(Agent* agent) {
       notifyAll();
     }
   }
-  
 }
 
 // Default ctor
@@ -80,7 +80,8 @@ Constituent::Constituent() :
   _gen(std::random_device()()),
   _role(FOLLOWER),
   _agent(0),
-  _voted_for(0) {
+  _voted_for(0),
+  _notifier(nullptr) {
   _gen.seed(TRI_UInt32Random());
 }
 
@@ -235,36 +236,32 @@ std::vector<std::string> const& Constituent::end_points() const {
 }
 
 /// @brief Notify peers of updated endpoints
-size_t Constituent::notifyAll () {
+void Constituent::notifyAll () {
+  std::vector<std::string> toNotify;
+  // Send request to all but myself
+  for (id_t i = 0; i < size(); ++i) {
+    if (i != _id) {
+      toNotify.push_back(end_point(i));
+    }
+  }
+
+  // Body contains endpoints list
+  auto body = std::make_shared<VPackBuilder>();
+  body->openObject();
+  body->add("endpoints", VPackValue(VPackValueType::Array));
+  for (auto const& i : end_points()) {
+    body->add(Value(i));
+  }
+  body->close();
+  body->close();
 
   // Last process notifies everyone 
   std::stringstream path;
   
   path << "/_api/agency_priv/notifyAll?term=" << _term << "&agencyId=" << _id;
-
-  // Body contains endpoints list
-  Builder body;
-  body.openObject();
-  body.add("endpoints", VPackValue(VPackValueType::Array));
-  for (auto const& i : end_points()) {
-    body.add(Value(i));
-  }
-  body.close();
-  body.close();
   
-  // Send request to all but myself
-  for (id_t i = 0; i < size(); ++i) {
-    if (i != _id) {
-      std::unique_ptr<std::map<std::string, std::string>> headerFields =
-        std::make_unique<std::map<std::string, std::string> >();
-      arangodb::ClusterComm::instance()->asyncRequest(
-        "1", 1, end_point(i), GeneralRequest::RequestType::POST, path.str(),
-        std::make_shared<std::string>(body.toString()), headerFields, nullptr,
-        0.0, true);
-    }
-  }
-  
-  return size()-1;
+  _notifier = std::make_unique<NotifierThread>(path.str(), body, toNotify);
+  _notifier->start();
 }
 
 /// @brief Vote
@@ -379,6 +376,7 @@ void Constituent::callElection() {
 }
 
 void Constituent::beginShutdown() {
+  _notifier.reset();
   Thread::beginShutdown();
 }
 
@@ -445,7 +443,6 @@ void Constituent::run() {
       dist_t dis(config().min_ping, config().max_ping);
       long rand_wait = static_cast<long>(dis(_gen)*1000000.0);
       /*bool timedout =*/ _cv.wait(rand_wait);
-
       {
         MUTEX_LOCKER(guard, _castLock);
         cast = _cast;

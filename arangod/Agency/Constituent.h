@@ -29,10 +29,9 @@
 #include <vector>
 #include <random>
 
-
 #include "AgencyCommon.h"
 #include "AgentConfiguration.h"
-#include "Basics/Thread.h"
+#include "NotifierThread.h"
 
 struct TRI_vocbase_t;
 
@@ -130,15 +129,14 @@ private:
   /// @brief Notify everyone, that we are good to go.
   ///        This is the task of the last process starting up.
   ///        Will be taken care of by gossip
-  size_t notifyAll();
+  void notifyAll();
   
   /// @brief Sleep for how long
   duration_t sleepFor(double, double);
 
-  TRI_vocbase_t* _vocbase; 
+  TRI_vocbase_t* _vocbase;
   ApplicationV8* _applicationV8;
   aql::QueryRegistry* _queryRegistry;
-
 
   term_t               _term;         /**< @brief term number */
   std::atomic<bool>    _cast;         /**< @brief cast a vote this term */
@@ -151,6 +149,8 @@ private:
   role_t               _role;         /**< @brief My role */
   Agent*               _agent;        /**< @brief My boss */
   id_t                 _voted_for;
+
+  std::unique_ptr<NotifierThread> _notifier;
 
   arangodb::basics::ConditionVariable _cv;      // agency callbacks
   mutable arangodb::Mutex _castLock;

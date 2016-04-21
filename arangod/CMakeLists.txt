@@ -72,6 +72,8 @@ add_executable(${BIN_ARANGOD}
   Agency/AgentCallback.cpp
   Agency/ApplicationAgency.cpp
   Agency/Constituent.cpp
+  Agency/NotifierThread.cpp
+  Agency/NotifyCallback.cpp
   Agency/Supervision.cpp
   Agency/RestAgencyHandler.cpp
   Agency/RestAgencyPrivHandler.cpp
