@@ -38,20 +38,22 @@ rm -rf cluster
 mkdir cluster
 echo Starting agency...
 build/bin/arangod -c etc/relative/arangod.conf \
-  --agency.size 1 \
-  --server.endpoint tcp://127.0.0.1:4001 \
+  -c none \
   --agency.endpoint tcp://127.0.0.1:4001 \
-  --agency.wait-for-sync false \
-  --database.directory cluster/data4001 \
   --agency.id 0 \
-  --javascript.v8-contexts 1 \
-  --log.file cluster/4001.log \
-  --server.statistics false \
-  --server.authentication false \
-  --server.threads 16 \
+  --agency.size 1 \
+  --agency.wait-for-sync false \
+  --agency.supervision true \
+  --agency.supervision-frequency 5 \
+  --database.directory cluster/data4001 \
   --javascript.app-path ./js/apps \
   --javascript.startup-directory ./js \
-  -c none \
+  --javascript.v8-contexts 1 \
+  --log.file cluster/4001.log \
+  --server.authentication false \
+  --server.endpoint tcp://127.0.0.1:4001 \
+  --server.statistics false \
+  --server.threads 16 \
   > cluster/4001.stdout 2>&1 &
 sleep 1
 
