@@ -126,7 +126,30 @@
   }
 }
 
-@media (min-width: 739px) and (max-width: 1041px) {
+@media (min-width: 770px) and (max-width: 972px) {
+
+  .dashboard-tendency-container {
+    .dashboard-sub-bar {
+      font-size: 10px;
+      height: 32px;
+      margin-bottom: 10px;
+      margin-top: -10px;
+    }
+  }
+
+  .dashboard-small-chart {
+    .dashboard-sub-bar {
+      font-size: 10px;
+      height: 33px;
+    }
+
+    .dashboard-sub-bar-title {
+      font-size: 10px;
+      line-height: 12px;
+      margin-top: -12px;
+    }
+  }
+
 }
 
 

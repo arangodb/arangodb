@@ -1,3 +1,60 @@
+.subViewNavbar {
+
+  border-bottom: 2px solid $c-bluegrey-nontransp;
+  height: 40px;
+  list-style: none;
+  margin: {
+    bottom: 15px;
+    left: -15px;
+    right: 0;
+    top: -57px;
+  }
+  width: 100%;
+  z-index: 1000;
+
+  li {
+    cursor: pointer;
+    float: left;
+    font-size: 10pt;
+    line-height: 30px;
+    margin-bottom: 5px;
+    margin-top: 5px;
+    padding: 0 12px;
+
+    &.active {
+      cursor: default;
+
+      a {
+        color: $c-black;
+      }
+    }
+
+    &.disabled {
+      cursor: not-allowed;
+    }
+
+    &:hover {
+      a {
+        color: rgba(51, 51, 51, 1);
+        -moz-transition: all .2s ease-in;
+        -o-transition: all .2s ease-in;
+        -webkit-transition: all .2s ease-in;
+        transition: all .2s ease-in;
+      }
+    }
+
+    a {
+      color: rgba(51, 51, 51, .6);
+      -moz-transition: all .2s ease-in;
+      -o-transition: all .2s ease-in;
+      -webkit-transition: all .2s ease-in;
+      transition: all .2s ease-in;
+
+    }
+
+  }
+}
+
 .subnavmenu {
 
   background-color: $c-white;

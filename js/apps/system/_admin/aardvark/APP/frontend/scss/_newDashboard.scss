@@ -20,6 +20,11 @@
 
 .dashboard-interior-chart {
   width: 100% !important;
+
+  > div {
+    margin-left: -15px;
+    margin-top: 10px;
+  }
 }
 
 .dashboard-sub-bar-menu {
@@ -149,9 +154,10 @@
     background-color: $c-new-grey;
     border-radius: 5px;
     color: $c-white;
+    font-weight: 300;
     margin-left: 5px;
     padding-left: 6px;
-    padding-right: 4px;
+    padding-right: 6px;
   }
 }
 
@@ -478,4 +484,8 @@
 #repl-ticks,
 #repl-progress {
   width: 33.3% !important;
+
+  .inner {
+    margin-top: 0;
+  }
 }

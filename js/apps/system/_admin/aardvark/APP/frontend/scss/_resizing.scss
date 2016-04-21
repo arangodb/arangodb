@@ -254,7 +254,7 @@
 
         .dashboard-interior-chart {
           height: $dashboard-height - $smallchart-height-corrector + 2px;
-          width: auto;
+          width: 100%;
 
           .nv-axis text {
             fill: $c-darker-grey;
@@ -582,7 +582,7 @@ div.centralContent {
   box-sizing: border-box;
   margin-top: 10px;
   padding: {
-    bottom: 43px;
+    bottom: 5px;
     left: 5px;
     right: 5px;
     top: 5px;

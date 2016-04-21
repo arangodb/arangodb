@@ -24,6 +24,7 @@
 
     events: {
       // will be filled in initialize
+      "click .subViewNavbar .subMenuEntry" : "toggleViews"
     },
 
     tendencies: {
@@ -178,6 +179,31 @@
       }
 
       this.history[this.server] = {};
+    },
+
+    toggleViews: function(e) {
+      var id = e.currentTarget.id.split('-')[0], self = this;
+      var views = ['replication', 'requests', 'system'];
+
+      _.each(views, function(view) {
+        if (id !== view) {
+          $('#' + view).hide();
+        }
+        else {
+          $('#' + view).show();
+          self.resize();
+          $(window).resize();
+        }
+      });
+
+      $('.subMenuEntries').children().removeClass('active');
+      $('#' + id + '-statistics').addClass('active');
+
+      window.setTimeout(function() {
+        self.resize();
+        $(window).resize();
+      }, 200);
+
     },
 		
 		cleanupHistory: function(f) {
@@ -357,6 +383,20 @@
 
         // if we found at list one value besides times, then use the entry
         if (valueList.length > 1) {
+
+          // HTTP requests combine all types to one
+          if (valueList.length === 9) {
+            var counter = 0, sum = 0;
+
+            _.each(valueList, function(value) {
+              if (counter !== 0) {
+                sum += value;
+              }
+              counter++;
+            });
+            valueList = [valueList[0], sum];
+          }
+
           self.history[self.server][f].push(valueList);
         }
       });
@@ -906,6 +946,7 @@
         $(window).trigger('resize');
       }
       this.startUpdating();
+      $(window).resize();
     }.bind(this);
 
     var errorFunction = function() {
