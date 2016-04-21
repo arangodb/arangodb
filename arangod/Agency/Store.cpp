@@ -99,7 +99,7 @@ inline static bool endpointPathFromUrl (
 }
 
 // Create with name
-Store::Store (std::string const& name) : Thread(name), _node(name) {}
+Store::Store (std::string const& name) : Thread(name), _node(name,this) {}
 
 // Default ctor
 Store::~Store () {}
