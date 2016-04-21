@@ -159,27 +159,20 @@ struct AgencyOperationType {
   }
 };
 
-struct AgencyOperationPrecondition {
-  AgencyOperationPrecondition() : type(NONE) {}
-  AgencyOperationPrecondition(AgencyOperationPrecondition const& other) {
-    type = other.type;
-    switch(type) {
-      case NONE:
-        break;
-      case EMPTY:
-        empty = other.empty;
-        break;
-      case VALUE:
-        value = other.value;
-        break;
-    }
-  }
+struct AgencyPrecondition {
 
-  enum {NONE, EMPTY, VALUE} type;
-  union {
-    bool empty;
-    VPackSlice value;
-  };
+  typedef enum {NONE, EMPTY, VALUE} Type;
+
+  AgencyPrecondition(std::string const& key, Type t, bool e);
+
+  AgencyPrecondition(std::string const& key, Type t, VPackSlice s);
+
+  void toVelocyPack(arangodb::velocypack::Builder& builder) const;
+
+  std::string key;
+  Type type;
+  bool empty;
+  VPackSlice value;
 };
 
 struct AgencyOperation {
@@ -201,13 +194,14 @@ struct AgencyOperation {
   );
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns to full operation formatted as a vpack slice
+  /// @brief returns to full operation formatted as a vpack slice and put
+  /// it into the argument builder
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack() const;
+  void toVelocyPack(arangodb::velocypack::Builder& builder) const;
+
   uint32_t _ttl = 0;
   VPackSlice _oldValue;
-  AgencyOperationPrecondition _precondition;
   
 private:
   std::string const _key;
@@ -218,10 +212,22 @@ private:
 struct AgencyTransaction {
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief vector of preconditions
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::vector<AgencyPrecondition> preconditions;
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief vector of operations
   //////////////////////////////////////////////////////////////////////////////
 
   std::vector<AgencyOperation> operations;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief converts the transaction to velocypack
+  //////////////////////////////////////////////////////////////////////////////
+
+  void toVelocyPack(arangodb::velocypack::Builder& builder) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief converts the transaction to json
@@ -232,8 +238,20 @@ struct AgencyTransaction {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief shortcut to create a transaction with one operation
   //////////////////////////////////////////////////////////////////////////////
+
   explicit AgencyTransaction(AgencyOperation const& operation) {
     operations.push_back(operation);
+  }
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief shortcut to create a transaction with one operation and a
+  /// precondition
+  //////////////////////////////////////////////////////////////////////////////
+ 
+  explicit AgencyTransaction(AgencyOperation const& operation,
+                             AgencyPrecondition const& precondition) {
+    operations.push_back(operation);
+    preconditions.push_back(precondition);
   }
   
   explicit AgencyTransaction() {
