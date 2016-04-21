@@ -47,12 +47,16 @@ module.exports = function systemStorage(cfg) {
         const now = Date.now();
         const doc = db._sessions.document(sid);
         const internalAccessTime = internal.accessSid(sid);
-        if (internalAccessTime) {
+        if (doc.uid && internalAccessTime) {
           doc.lastAccess = internalAccessTime;
         }
         if ((doc.lastAccess + expiry) < now) {
           this.clear(sid);
           return null;
+        }
+        if (doc.uid) {
+          const user = db._users.document(doc.uid);
+          internal.createSid(doc._key, user.user);
         }
         db._sessions.update(sid, {lastAccess: now});
         return {
@@ -93,12 +97,8 @@ module.exports = function systemStorage(cfg) {
         db._sessions.replace(sid, payload);
       }
       if (uid) {
-        if (isNew) {
-          const user = db._users.document(uid);
-          internal.createSid(session._key, user.user);
-        } else {
-          internal.accessSid(sid);
-        }
+        const user = db._users.document(uid);
+        internal.createSid(session._key, user.user);
       }
       return session;
     },
