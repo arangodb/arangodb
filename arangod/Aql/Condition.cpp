@@ -740,8 +740,8 @@ void Condition::optimize(ExecutionPlan* plan) {
               // merge other comparison operator with IN
               TRI_ASSERT(rightNode->numMembers() == 2);
 
-              auto inNode = _ast->createNodeArray();
               auto values = leftNode->getMemberUnchecked(1);
+              auto inNode = _ast->createNodeArray(values->numMembers());
 
               // enumerate over IN list
               for (size_t k = 0; k < values->numMembers(); ++k) {

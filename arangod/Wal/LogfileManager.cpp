@@ -22,9 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LogfileManager.h"
+
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
-#include "Logger/Logger.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
@@ -33,6 +33,9 @@
 #include "Basics/files.h"
 #include "Basics/hashes.h"
 #include "Basics/memory-map.h"
+#include "Logger/Logger.h"
+#include "ProgramOptions/ProgramOptions.h"
+#include "ProgramOptions/Section.h"
 #include "VocBase/server.h"
 #include "Wal/AllocatorThread.h"
 #include "Wal/CollectorThread.h"
@@ -42,7 +45,9 @@
 #include "Wal/SynchronizerThread.h"
 
 using namespace arangodb::basics;
+using namespace arangodb::options;
 using namespace arangodb::wal;
+using namespace arangodb;
 
 /// @brief the logfile manager singleton
 static LogfileManager* Instance = nullptr;
@@ -74,24 +79,25 @@ static inline uint32_t MinSlots() { return 1024 * 8; }
 /// @brief maximum number of slots
 static inline uint32_t MaxSlots() { return 1024 * 1024 * 16; }
 
+#warning JAN should not be static
+bool LogfileManager::_allowOversizeEntries = true;
+std::string LogfileManager::_directory;
+uint32_t LogfileManager::_historicLogfiles = 10;
+bool LogfileManager::_ignoreLogfileErrors = false;
+bool LogfileManager::_ignoreRecoveryErrors = false;
+uint32_t LogfileManager::_filesize = 32 * 1024 * 1024;
+uint32_t LogfileManager::_maxOpenLogfiles = 0;
+uint32_t LogfileManager::_reserveLogfiles = 4;
+uint32_t LogfileManager::_numberOfSlots = 1048576;
+uint64_t LogfileManager::_syncInterval = 100;
+uint64_t LogfileManager::_throttleWhenPending = 0;
+uint64_t LogfileManager::_maxThrottleWait = 15000;
+
 /// @brief create the logfile manager
 LogfileManager::LogfileManager(TRI_server_t* server, std::string* databasePath)
-    : ApplicationFeature("logfile-manager"),
-      _server(server),
+    : _server(server),
       _databasePath(databasePath),
-      _directory(),
       _recoverState(nullptr),
-      _filesize(32 * 1024 * 1024),
-      _reserveLogfiles(4),
-      _historicLogfiles(10),
-      _maxOpenLogfiles(0),
-      _numberOfSlots(1048576),
-      _syncInterval(100),
-      _maxThrottleWait(15000),
-      _throttleWhenPending(0),
-      _allowOversizeEntries(true),
-      _ignoreLogfileErrors(false),
-      _ignoreRecoveryErrors(false),
       _allowWrites(false),  // start in read-only mode
       _hasFoundLastTick(false),
       _inRecovery(true),
@@ -157,34 +163,63 @@ void LogfileManager::initialize(std::string* path, TRI_server_t* server) {
   Instance = new LogfileManager(server, path);
 }
 
-/// {@inheritDoc}
-void LogfileManager::setupOptions(
-    std::map<std::string, arangodb::basics::ProgramOptionsDescription>&
-        options) {
-  options["Write-ahead log options:help-wal"](
-      "wal.allow-oversize-entries", &_allowOversizeEntries,
-      "allow entries that are bigger than --wal.logfile-size")(
-      "wal.directory", &_directory, "logfile directory")(
-      "wal.historic-logfiles", &_historicLogfiles,
-      "maximum number of historic logfiles to keep after collection")(
-      "wal.ignore-logfile-errors", &_ignoreLogfileErrors,
+void LogfileManager::collectOptions(std::shared_ptr<ProgramOptions> options) {
+  options->addSection(
+      Section("wal", "Configure the WAL", "wal options", false, false));
+
+  options->addHiddenOption(
+      "--wal.allow-oversize-entries",
+      "allow entries that are bigger than '--wal.logfile-size'",
+      new BooleanParameter(&_allowOversizeEntries));
+
+  options->addOption("--wal.directory", "logfile directory",
+                     new StringParameter(&_directory));
+
+  options->addHiddenOption(
+      "--wal.historic-logfiles",
+      "maximum number of historic logfiles to keep after collection",
+      new UInt32Parameter(&_historicLogfiles));
+
+  options->addHiddenOption(
+      "--wal.ignore-logfile-errors",
       "ignore logfile errors. this will read recoverable data from corrupted "
-      "logfiles but ignore any unrecoverable data")(
-      "wal.ignore-recovery-errors", &_ignoreRecoveryErrors,
-      "continue recovery even if re-applying operations fails")(
-      "wal.logfile-size", &_filesize, "size of each logfile (in bytes)")(
-      "wal.open-logfiles", &_maxOpenLogfiles,
-      "maximum number of parallel open logfiles")(
-      "wal.reserve-logfiles", &_reserveLogfiles,
-      "maximum number of reserve logfiles to maintain")(
-      "wal.slots", &_numberOfSlots, "number of logfile slots to use")(
-      "wal.sync-interval", &_syncInterval,
-      "interval for automatic, non-requested disk syncs (in milliseconds)")(
-      "wal.throttle-when-pending", &_throttleWhenPending,
+      "logfiles but ignore any unrecoverable data",
+      new BooleanParameter(&_ignoreLogfileErrors));
+
+  options->addHiddenOption(
+      "--wal.ignore-recovery-errors",
+      "continue recovery even if re-applying operations fails",
+      new BooleanParameter(&_ignoreRecoveryErrors));
+
+  options->addOption("--wal.logfile-size", "size of each logfile (in bytes)",
+                     new UInt32Parameter(&_filesize));
+
+  options->addOption("--wal.open-logfiles",
+                     "maximum number of parallel open logfiles",
+                     new UInt32Parameter(&_maxOpenLogfiles));
+
+  options->addOption("--wal.reserve-logfiles",
+                     "maximum number of reserve logfiles to maintain",
+                     new UInt32Parameter(&_reserveLogfiles));
+
+  options->addHiddenOption("--wal.slots", "number of logfile slots to use",
+                           new UInt32Parameter(&_numberOfSlots));
+
+  options->addOption(
+      "--wal.sync-interval",
+      "interval for automatic, non-requested disk syncs (in milliseconds)",
+      new UInt64Parameter(&_syncInterval));
+
+  options->addHiddenOption(
+      "--wal.throttle-when-pending",
       "throttle writes when at least this many operations are waiting for "
-      "collection (set to 0 to deactivate write-throttling)")(
-      "wal.throttle-wait", &_maxThrottleWait,
-      "maximum wait time per operation when write-throttled (in milliseconds)");
+      "collection (set to 0 to deactivate write-throttling)",
+      new UInt64Parameter(&_throttleWhenPending));
+
+  options->addHiddenOption(
+      "--wal.throttle-wait",
+      "maximum wait time per operation when write-throttled (in milliseconds)",
+      new UInt64Parameter(&_maxThrottleWait));
 }
 
 bool LogfileManager::prepare() {
@@ -204,15 +239,13 @@ bool LogfileManager::prepare() {
       std::string systemErrorStr;
       long errorNo;
 
-      bool res = TRI_CreateRecursiveDirectory(_directory.c_str(), errorNo,
-                                              systemErrorStr);
+      int res = TRI_CreateRecursiveDirectory(_directory.c_str(), errorNo,
+                                             systemErrorStr);
 
-      if (res) {
-        LOG(INFO) << "created database directory '" << _directory
-                  << "'.";
+      if (res == TRI_ERROR_NO_ERROR) {
+        LOG(INFO) << "created database directory '" << _directory << "'.";
       } else {
-        LOG(FATAL) << "unable to create database directory: "
-                   << systemErrorStr;
+        LOG(FATAL) << "unable to create database directory: " << systemErrorStr;
         FATAL_ERROR_EXIT();
       }
     }
@@ -466,8 +499,6 @@ bool LogfileManager::open() {
   return true;
 }
 
-void LogfileManager::close() {}
-
 void LogfileManager::stop() {
   if (!_startCalled) {
     return;
@@ -494,13 +525,12 @@ void LogfileManager::stop() {
 
   if (_allocatorThread != nullptr) {
     LOG(TRACE) << "stopping allocator thread";
-    while (_allocatorThread->isRunning()) { 
-      usleep(10000); 
+    while (_allocatorThread->isRunning()) {
+      usleep(10000);
     }
     delete _allocatorThread;
     _allocatorThread = nullptr;
   }
-
 
   // do a final flush at shutdown
   this->flush(true, true, false);
@@ -510,35 +540,34 @@ void LogfileManager::stop() {
   stopRemoverThread();
   stopCollectorThread();
   stopSynchronizerThread();
-   
-  // physically destroy all threads 
+
+  // physically destroy all threads
   if (_removerThread != nullptr) {
     LOG(TRACE) << "stopping remover thread";
-    while (_removerThread->isRunning()) { 
-      usleep(10000); 
+    while (_removerThread->isRunning()) {
+      usleep(10000);
     }
     delete _removerThread;
     _removerThread = nullptr;
   }
-  
+
   if (_collectorThread != nullptr) {
     LOG(TRACE) << "stopping collector thread";
-    while (_collectorThread->isRunning()) { 
-      usleep(10000); 
+    while (_collectorThread->isRunning()) {
+      usleep(10000);
     }
     delete _collectorThread;
     _collectorThread = nullptr;
   }
-  
+
   if (_synchronizerThread != nullptr) {
     LOG(TRACE) << "stopping synchronizer thread";
-    while (_synchronizerThread->isRunning()) { 
-      usleep(10000); 
+    while (_synchronizerThread->isRunning()) {
+      usleep(10000);
     }
     delete _synchronizerThread;
     _synchronizerThread = nullptr;
   }
-
 
   // close all open logfiles
   LOG(TRACE) << "closing logfiles";
@@ -698,7 +727,9 @@ bool LogfileManager::hasReserveLogfiles() {
 }
 
 /// @brief signal that a sync operation is required
-void LogfileManager::signalSync() { _synchronizerThread->signalSync(); }
+void LogfileManager::signalSync(bool waitForSync) { 
+  _synchronizerThread->signalSync(waitForSync); 
+}
 
 /// @brief allocate space in a logfile for later writing
 SlotInfo LogfileManager::allocate(uint32_t size) {
@@ -721,8 +752,8 @@ SlotInfo LogfileManager::allocate(uint32_t size) {
 }
 
 /// @brief allocate space in a logfile for later writing
-SlotInfo LogfileManager::allocate(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-                                  uint32_t size) {
+SlotInfo LogfileManager::allocate(TRI_voc_tick_t databaseId,
+                                  TRI_voc_cid_t collectionId, uint32_t size) {
   if (!_allowWrites) {
     // no writes allowed
     return SlotInfo(TRI_ERROR_ARANGO_READ_ONLY);
@@ -901,7 +932,8 @@ bool LogfileManager::waitForSync(double maxWait) {
   while (true) {
     // fill the state
     LogfileManagerState state;
-    _slots->statistics(state.lastAssignedTick, state.lastCommittedTick, state.lastCommittedDataTick, state.numEvents);
+    _slots->statistics(state.lastAssignedTick, state.lastCommittedTick,
+                       state.lastCommittedDataTick, state.numEvents);
 
     if (lastAssignedTick == 0) {
       // get last assigned tick only once
@@ -998,7 +1030,7 @@ void LogfileManager::setLogfileSealRequested(Logfile* logfile) {
     logfile->setStatus(Logfile::StatusType::SEAL_REQUESTED);
   }
 
-  signalSync();
+  signalSync(true);
 }
 
 /// @brief sets the status of a logfile to sealed
@@ -1552,7 +1584,8 @@ LogfileManagerState LogfileManager::state() {
   LogfileManagerState state;
 
   // now fill the state
-  _slots->statistics(state.lastAssignedTick, state.lastCommittedTick, state.lastCommittedDataTick, state.numEvents);
+  _slots->statistics(state.lastAssignedTick, state.lastCommittedTick,
+                     state.lastCommittedDataTick, state.numEvents);
   state.timeString = getTimeString();
 
   return state;
@@ -1984,9 +2017,8 @@ int LogfileManager::inspectLogfiles() {
 
     if (logfile != nullptr) {
       std::string const logfileName = logfile->filename();
-      LOG(DEBUG) << "logfile " << logfile->id() << ", filename '"
-                 << logfileName << "', status "
-                 << logfile->statusText();
+      LOG(DEBUG) << "logfile " << logfile->id() << ", filename '" << logfileName
+                 << "', status " << logfile->statusText();
     }
   }
 #endif

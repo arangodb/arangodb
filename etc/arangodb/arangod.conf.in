@@ -32,10 +32,10 @@ endpoint = tcp://127.0.0.1:8529
 # reuse-address = false
 
 # disable authentication for the admin frontend
-disable-authentication = yes
+authentication = false
 
-# number of server threads
-threads = 4
+# number of server threads, 0 to use them all
+# threads = 4
 
 # the user and group are normally set in the start script
 # uid = arangodb
@@ -43,8 +43,8 @@ threads = 4
 
 [scheduler]
 
-# number of threads used for I/O
-threads = 2
+# number of threads used for I/O, 0 will select a sensible number
+# threads = 2
 
 [javascript]
 startup-directory = @PKGDATADIR@/js

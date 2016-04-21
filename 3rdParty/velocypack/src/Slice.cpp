@@ -39,8 +39,6 @@
 using namespace arangodb::velocypack;
 using VT = arangodb::velocypack::ValueType;
   
-AttributeTranslator* Slice::attributeTranslator = nullptr;
-
 VT const Slice::TypeMap[256] = {
     /* 0x00 */ VT::None,     /* 0x01 */ VT::Array,
     /* 0x02 */ VT::Array,    /* 0x03 */ VT::Array,
@@ -231,19 +229,35 @@ Slice Slice::translate() const {
     throw Exception(Exception::InvalidValueType,
                     "Cannot translate key of this type");
   }
-  if (attributeTranslator == nullptr) {
+  if (Options::Defaults.attributeTranslator == nullptr) {
     throw Exception(Exception::NeedAttributeTranslator);
   }
   return translateUnchecked();
 }
 
+// return the value for a UInt object, without checks!
+// returns 0 for invalid values/types
+uint64_t Slice::getUIntUnchecked() const {
+  uint8_t const h = head();
+  if (h >= 0x28 && h <= 0x2f) {
+    // UInt
+    return readInteger<uint64_t>(_start + 1, h - 0x27);
+  }
+
+  if (h >= 0x30 && h <= 0x39) {
+    // Smallint >= 0
+    return static_cast<uint64_t>(h - 0x30);
+  }
+  return 0;
+}
+
 // translates an integer key into a string, without checks
 Slice Slice::translateUnchecked() const {
-  uint8_t const* result = attributeTranslator->translate(getUInt());
-  if (result == nullptr) {
-    return Slice();
+  uint8_t const* result = Options::Defaults.attributeTranslator->translate(getUIntUnchecked());
+  if (result != nullptr) {
+    return Slice(result);
   }
-  return Slice(result);
+  return Slice();
 }
 
 // check if two Slices are equal on the binary level
@@ -336,7 +350,6 @@ Slice Slice::get(std::string const& attribute) const {
 
   ValueLength const offsetSize = indexEntrySize(h);
   ValueLength end = readInteger<ValueLength>(_start + 1, offsetSize);
-  ValueLength dataOffset = 0;
 
   // read number of items
   ValueLength n;
@@ -348,19 +361,19 @@ Slice Slice::get(std::string const& attribute) const {
 
   if (n == 1) {
     // Just one attribute, there is no index table!
-    if (dataOffset == 0) {
-      dataOffset = findDataOffset(h);
-    }
+    Slice key = Slice(_start + findDataOffset(h));
 
-    Slice key = Slice(_start + dataOffset);
-
-    if (key.isString() && key.isEqualString(attribute)) {
-      return Slice(key.start() + key.byteSize());
-    }
-
-    if (key.isSmallInt() || key.isUInt()) {
+    if (key.isString()) {
+      if (key.isEqualString(attribute)) {
+        return Slice(key.start() + key.byteSize());
+      }
+      // fall through to returning None Slice below
+    } else if (key.isSmallInt() || key.isUInt()) {
       // translate key
-      if (key.translate().isEqualString(attribute)) {
+      if (Options::Defaults.attributeTranslator == nullptr) {
+        throw Exception(Exception::NeedAttributeTranslator);
+      }
+      if (key.translateUnchecked().isEqualString(attribute)) {
         return Slice(key.start() + key.byteSize());
       }
     }
@@ -376,7 +389,8 @@ Slice Slice::get(std::string const& attribute) const {
   // otherwise we'll always use the linear search
   static ValueLength const SortedSearchEntriesThreshold = 4;
 
-  if (isSorted() && n >= SortedSearchEntriesThreshold) {
+  bool const isSorted = (h >= 0x0b && h <= 0x0e);
+  if (isSorted && n >= SortedSearchEntriesThreshold) {
     // This means, we have to handle the special case n == 1 only
     // in the linear search!
     return searchObjectKeyBinary(attribute, ieBase, offsetSize, n);
@@ -516,24 +530,25 @@ ValueLength Slice::getNthOffset(ValueLength index) const {
 
   auto const h = head();
 
+  if (h == 0x13 || h == 0x14) {
+    // compact Array or Object
+    return getNthOffsetFromCompact(index);
+  }
+  
   if (h == 0x01 || h == 0x0a) {
     // special case: empty Array or empty Object
     throw Exception(Exception::IndexOutOfBounds);
   }
 
-  if (h == 0x13 || h == 0x14) {
-    // compact Array or Object
-    return getNthOffsetFromCompact(index);
-  }
-
   ValueLength const offsetSize = indexEntrySize(h);
   ValueLength end = readInteger<ValueLength>(_start + 1, offsetSize);
 
-  ValueLength dataOffset = findDataOffset(h);
+  ValueLength dataOffset = 0;
 
   // find the number of items
   ValueLength n;
   if (h <= 0x05) {  // No offset table or length, need to compute:
+    dataOffset = findDataOffset(h);
     Slice first(_start + dataOffset);
     n = (end - dataOffset) / first.byteSize();
   } else if (offsetSize < 8) {
@@ -588,7 +603,7 @@ Slice Slice::makeKey() const {
     return *this;
   }
   if (isSmallInt() || isUInt()) {
-    if (attributeTranslator == nullptr) {
+    if (Options::Defaults.attributeTranslator == nullptr) {
       throw Exception(Exception::NeedAttributeTranslator);
     }
     return translateUnchecked();
@@ -613,8 +628,7 @@ ValueLength Slice::getNthOffsetFromCompact(ValueLength index) const {
     uint8_t const* s = _start + offset;
     offset += Slice(s).byteSize();
     if (h == 0x14) {
-      Slice value = Slice(_start + offset);
-      offset += value.byteSize();
+      offset += Slice(_start + offset).byteSize();
     }
     ++current;
   }
@@ -625,7 +639,7 @@ ValueLength Slice::getNthOffsetFromCompact(ValueLength index) const {
 Slice Slice::searchObjectKeyLinear(std::string const& attribute,
                                    ValueLength ieBase, ValueLength offsetSize,
                                    ValueLength n) const {
-  bool const useTranslator = (attributeTranslator != nullptr);
+  bool const useTranslator = (Options::Defaults.attributeTranslator != nullptr);
 
   for (ValueLength index = 0; index < n; ++index) {
     ValueLength offset = ieBase + index * offsetSize;
@@ -661,7 +675,7 @@ Slice Slice::searchObjectKeyLinear(std::string const& attribute,
 Slice Slice::searchObjectKeyBinary(std::string const& attribute,
                                    ValueLength ieBase, ValueLength offsetSize,
                                    ValueLength n) const {
-  bool const useTranslator = (attributeTranslator != nullptr);
+  bool const useTranslator = (Options::Defaults.attributeTranslator != nullptr);
   VELOCYPACK_ASSERT(n > 0);
 
   ValueLength l = 0;

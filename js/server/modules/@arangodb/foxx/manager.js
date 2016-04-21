@@ -236,7 +236,7 @@ function refillCaches(dbname) {
 
   while (cursor.hasNext()) {
     var config = cursor.next();
-    var app = new FoxxService(_.extend({}, config));
+    var app = new FoxxService(Object.assign({}, config));
     var mount = app.mount;
     cache[mount] = app;
     routes.push(mount);
@@ -840,7 +840,7 @@ function _scanFoxx(mount, options, activateDevelopment) {
           if (old === null) {
             throw new Error(`Could not find app for mountpoint "${mount}"`);
           }
-          var data = _.extend({}, old);
+          var data = Object.assign({}, old);
           data.manifest = app.toJSON().manifest;
           utils.getStorage().replace(old, data);
         }
@@ -884,7 +884,7 @@ function rescanFoxx(mount) {
   initCache();
   _scanFoxx(
     mount,
-    _.extend({}, old.options, {replace: true}),
+    Object.assign({}, old.options, {replace: true}),
     old.isDevelopment
   );
 }

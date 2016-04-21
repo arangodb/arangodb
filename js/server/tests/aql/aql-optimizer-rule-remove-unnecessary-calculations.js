@@ -358,7 +358,8 @@ function optimizerRuleTestSuite () {
       var queries = [ 
         [ "FOR doc IN [ { a: 1, b: 2 }, { a: 2, b: 4 } ] LET a = doc.a RETURN a * 2", [ 2, 4 ] ],
         [ "FOR doc IN [ { a: 1, b: 2 }, { a: 2, b: 4 } ] LET a = doc.a * 2 RETURN a * 2", [ 4, 8 ] ],
-        [ "FOR doc IN [ { a: 1, b: 2 }, { a: 2, b: 4 } ] LET a = doc RETURN a.a", [ 1, 2 ] ]
+        [ "FOR doc IN [ { a: 1, b: 2 }, { a: 2, b: 4 } ] LET a = doc RETURN a.a", [ 1, 2 ] ],
+        [ "FOR doc IN [ { a: 1, b: 2 }, { a: 2, b: 4 } ] LET a = SLICE(ATTRIBUTES(doc), 0, 1) RETURN KEEP(doc, a)", [ { a: 1 }, { a: 2 } ] ]
       ];
       queries.forEach(function(query) {
         var result = AQL_EXPLAIN(query[0]);

@@ -245,6 +245,8 @@ static AstNode const* GetIntoExpression(AstNode const* node) {
 %token T_LE "<= operator"
 %token T_GE ">= operator"
 
+%token T_LIKE "like operator"
+
 %token T_PLUS "+ operator"
 %token T_MINUS "- operator"
 %token T_TIMES "* operator"
@@ -283,7 +285,7 @@ static AstNode const* GetIntoExpression(AstNode const* node) {
 %left T_OR 
 %left T_AND
 %nonassoc T_OUTBOUND T_INBOUND T_ANY T_ALL T_NONE
-%left T_EQ T_NE 
+%left T_EQ T_NE T_LIKE 
 %left T_IN T_NIN 
 %left T_LT T_GT T_LE T_GE
 %left T_RANGE
@@ -1063,15 +1065,22 @@ function_name:
   ;
 
 function_call:
-    function_name {
+    function_name T_OPEN {
       parser->pushStack($1.value);
 
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
-    } T_OPEN optional_function_call_arguments T_CLOSE %prec FUNCCALL {
+    } optional_function_call_arguments T_CLOSE %prec FUNCCALL {
       auto list = static_cast<AstNode const*>(parser->popStack());
       $$ = parser->ast()->createNodeFunctionCall(static_cast<char const*>(parser->popStack()), list);
-    }
+    } 
+  | T_LIKE T_OPEN {
+      auto node = parser->ast()->createNodeArray();
+      parser->pushStack(node);
+    } optional_function_call_arguments T_CLOSE %prec FUNCCALL {
+      auto list = static_cast<AstNode const*>(parser->popStack());
+      $$ = parser->ast()->createNodeFunctionCall("LIKE", list);
+    } 
   ;
 
 operator_unary:
@@ -1131,6 +1140,12 @@ operator_binary:
     }
   | expression T_NIN expression {
       $$ = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_NIN, $1, $3);
+    }
+  | expression T_LIKE expression {
+      AstNode* arguments = parser->ast()->createNodeArray(2);
+      arguments->addMember($1);
+      arguments->addMember($3);
+      $$ = parser->ast()->createNodeFunctionCall("LIKE", arguments);
     }
   | expression quantifier T_EQ expression {
       $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ, $1, $4, $2);

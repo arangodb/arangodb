@@ -1,4 +1,5 @@
 'use strict';
+
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -31,7 +32,6 @@ const SyntheticRequest = require('@arangodb/foxx/router/request');
 const SyntheticResponse = require('@arangodb/foxx/router/response');
 const tokenize = require('@arangodb/foxx/router/tokenize');
 const validation = require('@arangodb/foxx/router/validation');
-const actions = require('@arangodb/actions');
 
 const $_ROUTES = Symbol.for('@@routes'); // routes and child routers
 const $_MIDDLEWARE = Symbol.for('@@middleware'); // middleware
@@ -210,9 +210,8 @@ function applyPathParams(route) {
 
 
 function dispatch(route, req, res) {
-  const ignoreRequestBody = actions.BODYFREE_METHODS.indexOf(req.method) !== -1;
   let pathParams = {};
-  let queryParams = _.clone(req.queryParams);
+  let queryParams = Object.assign({}, req.queryParams);
 
   {
     let basePath = [];
@@ -251,7 +250,7 @@ function dispatch(route, req, res) {
       : (item.middleware || item.endpoint)
     );
 
-    if (!ignoreRequestBody && context._bodyParam) {
+    if (context._bodyParam) {
       try {
         if (!requestBodyParsed) {
           requestBodyParsed = true;
@@ -309,7 +308,7 @@ function dispatch(route, req, res) {
         throw new Error(`Route could not be resolved: "${routeName}"`);
       }
 
-      params = _.extend({}, params);
+      params = Object.assign({}, params);
       const parts = [];
       for (const item of reversedRoute) {
         const context = item.router || item.endpoint || item.middleware;
@@ -354,13 +353,13 @@ function dispatch(route, req, res) {
     };
 
     if (item.endpoint || item.router) {
-      pathParams = _.extend(pathParams, item.pathParams);
-      queryParams = _.extend(queryParams, item.queryParams);
+      pathParams = Object.assign(pathParams, item.pathParams);
+      queryParams = Object.assign(queryParams, item.queryParams);
       req.pathParams = pathParams;
       req.queryParams = queryParams;
     } else {
-      req.pathParams = _.extend(_.clone(pathParams), item.pathParams);
-      req.queryParams = _.extend(_.clone(queryParams), item.queryParams);
+      req.pathParams = Object.assign({}, pathParams, item.pathParams);
+      req.queryParams = Object.assign({}, queryParams, item.queryParams);
     }
 
     if (!context._handler) {
@@ -398,9 +397,9 @@ function* findRoutes(node, result, suffix, path) {
 
   if (wildcardNode && wildcardNode.has($_MIDDLEWARE)) {
     nodeMiddleware = wildcardNode.get($_MIDDLEWARE);
-    result = result.concat(nodeMiddleware.map(function (mw) {
-      return {middleware: mw, path: path, suffix: suffix};
-    }));
+    result = result.concat(nodeMiddleware.map(
+      (mw) => ({middleware: mw, path: path, suffix: suffix})
+    ));
   }
 
   if (!suffix.length) {
@@ -481,9 +480,7 @@ function parsePathParams(names, route, path) {
 
 
 function reverse(route, path) {
-  const routers = route.filter(function (item) {
-    return item.router;
-  });
+  const routers = route.filter((item) => item.router);
   const keys = path.split('.');
   const visited = [];
   while (routers.length) {

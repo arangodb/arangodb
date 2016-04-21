@@ -1,5 +1,4 @@
 'use strict';
-const _ = require('lodash');
 const dd = require('dedent');
 const joi = require('joi');
 const httpError = require('http-errors');
@@ -21,8 +20,8 @@ const HTTP_CONFLICT = status('conflict');
 const router = createRouter();
 module.exports = router;
 
-const New<%= model %> = _.extend({}, <%= model %>, {
-  schema: _.extend({}, <%= model %>.schema, {
+const New<%= model %> = Object.assign({}, <%= model %>, {
+  schema: Object.assign({}, <%= model %>.schema, {
     _from: joi.string(),
     _to: joi.string()
   })
@@ -50,7 +49,7 @@ router.post(function (req, res) {
     }
     throw e;
   }
-  _.extend(<%= document %>, meta);
+  Object.assign(<%= document %>, meta);
   res.status(201);
   res.set('location', req.makeAbsolute(
     req.reverse('detail', {key: <%= document %>._key})
@@ -103,7 +102,7 @@ router.put(':key', function (req, res) {
     }
     throw e;
   }
-  _.extend(<%= document %>, meta);
+  Object.assign(<%= document %>, meta);
   res.send(<%= document %>);
 }, 'replace')
 .pathParam('key', keySchema)

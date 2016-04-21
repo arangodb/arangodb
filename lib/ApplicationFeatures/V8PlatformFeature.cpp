@@ -23,16 +23,30 @@
 #include "ApplicationFeatures/V8PlatformFeature.h"
 
 #include "Logger/Logger.h"
-#include "ProgramOptions2/ProgramOptions.h"
-#include "ProgramOptions2/Section.h"
+#include "ProgramOptions/ProgramOptions.h"
+#include "ProgramOptions/Section.h"
 
 using namespace arangodb;
 using namespace arangodb::options;
 
+namespace {
+  class ArrayBufferAllocator : public v8::ArrayBuffer::Allocator {
+   public:
+    virtual void* Allocate(size_t length) override {
+      void* data = AllocateUninitialized(length);
+      return data == nullptr ? data : memset(data, 0, length);
+    }
+    virtual void* AllocateUninitialized(size_t length) override {
+      return malloc(length);
+    }
+    virtual void Free(void* data, size_t) override { free(data); }
+  };
+}
+
 V8PlatformFeature::V8PlatformFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "V8Platform") {
-  setOptional(false);
+  setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Logger");
 }
@@ -43,8 +57,8 @@ void V8PlatformFeature::collectOptions(
 
   options->addSection("javascript", "Configure the Javascript engine");
 
-  options->addOption("--javascript.v8-options", "options to pass to v8",
-                     new StringParameter(&_v8options));
+  options->addHiddenOption("--javascript.v8-options", "options to pass to v8",
+                           new StringParameter(&_v8options));
 }
 
 void V8PlatformFeature::start() {
@@ -54,6 +68,7 @@ void V8PlatformFeature::start() {
 
   // explicit option --javascript.v8-options used
   if (!_v8options.empty()) {
+    LOG(INFO) << "using V8 options '" << _v8options << "'";
     v8::V8::SetFlagsFromString(_v8options.c_str(), (int)_v8options.size());
   }
 

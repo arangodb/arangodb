@@ -21,9 +21,10 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_AGENCY_CALLBACK_H
-#define ARANGOD_CLUSTER_AGENCY_CALLBACK_H 1
+//XXX #warning MOP nope, include guards
+#pragma once
 
+//XXX #warning MOP order, Common.h
 #include <functional>
 #include <memory>
 #include "Cluster/AgencyComm.h"
@@ -67,6 +68,3 @@ private:
 };
 
 }
-
-
-#endif

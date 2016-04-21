@@ -34,7 +34,8 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/json.h"
-#include "Basics/random.h"
+#include "Logger/Logger.h"
+#include "Basics/RandomGenerator.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
 #include "Logger/Logger.h"
@@ -73,55 +74,67 @@ AgencyOperation::AgencyOperation(std::string const& key, AgencyValueOperationTyp
 }
   
 //////////////////////////////////////////////////////////////////////////////
-/// @brief returns to full operation formatted as a vpack slice
+/// @brief adds the operation formatted as an attribute in a vpack object
 //////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> AgencyOperation::toVelocyPack() const {
-  auto builder = std::make_shared<VPackBuilder>();
+void AgencyOperation::toVelocyPack(VPackBuilder& builder) const {
+  builder.add(VPackValue(_key));
   {
-    VPackArrayBuilder operation(builder.get());
-    {
-      VPackObjectBuilder keyVPack(builder.get());
-      builder->add(VPackValue(_key));
-      {
-        VPackObjectBuilder valueOperation(builder.get());
-        builder->add("op", VPackValue(_opType.toString()));
-        if (_opType.type == AgencyOperationType::VALUE) {
-          if (_opType.value == AgencyValueOperationType::OBSERVE
-              || _opType.value == AgencyValueOperationType::UNOBSERVE) {
-            builder->add("url", _value);
-          } else {
-            builder->add("new", _value);
-          }
-          if (_ttl > 0) {
-            builder->add("ttl", VPackValue(_ttl));
-          }
-        }
+    VPackObjectBuilder valueOperation(&builder);
+    builder.add("op", VPackValue(_opType.toString()));
+    if (_opType.type == AgencyOperationType::VALUE) {
+      if (_opType.value == AgencyValueOperationType::OBSERVE
+          || _opType.value == AgencyValueOperationType::UNOBSERVE) {
+        builder.add("url", _value);
+      } else {
+        builder.add("new", _value);
       }
-    }
-    if (_precondition.type != AgencyOperationPrecondition::NONE) {
-      VPackObjectBuilder precondition(builder.get());
-      builder->add(VPackValue(_key));
-      {
-        VPackObjectBuilder preconditionDefinition(builder.get());
-        {
-          switch(_precondition.type) {
-            case AgencyOperationPrecondition::EMPTY:
-              builder->add("oldEmpty", VPackValue(_precondition.empty));
-              break;
-            case AgencyOperationPrecondition::VALUE:
-              builder->add("old", _precondition.value);
-              break;
-            // mop: useless compiler warning :S
-            case AgencyOperationPrecondition::NONE:
-              break;
-          }
-        }
+      if (_ttl > 0) {
+        builder.add("ttl", VPackValue(_ttl));
       }
     }
   }
+}
 
-  return builder;
+//////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a precondition
+//////////////////////////////////////////////////////////////////////////////
+
+AgencyPrecondition::AgencyPrecondition(std::string const& key, Type t, bool e)
+    : key(AgencyComm::prefix() + key), type(t), empty(e) {
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a precondition
+//////////////////////////////////////////////////////////////////////////////
+
+AgencyPrecondition::AgencyPrecondition(std::string const& key, Type t,
+                                       VPackSlice s)
+    : key(AgencyComm::prefix() + key), type(t), value(s) {
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief adds the precondition formatted as an attribute in a vpack obj
+//////////////////////////////////////////////////////////////////////////////
+
+void AgencyPrecondition::toVelocyPack(VPackBuilder& builder) const {
+  if (type != AgencyPrecondition::NONE) {
+    builder.add(VPackValue(key));
+    {
+      VPackObjectBuilder preconditionDefinition(&builder);
+      switch(type) {
+        case AgencyPrecondition::EMPTY:
+          builder.add("oldEmpty", VPackValue(empty));
+          break;
+        case AgencyPrecondition::VALUE:
+          builder.add("old", value);
+          break;
+        // mop: useless compiler warning :S
+        case AgencyPrecondition::NONE:
+          break;
+      }
+    }
+  }
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -131,15 +144,30 @@ std::shared_ptr<VPackBuilder> AgencyOperation::toVelocyPack() const {
 std::string AgencyTransaction::toJson() const {
   VPackBuilder builder;
   {
-    VPackArrayBuilder transaction(&builder);
-    {
-      for (AgencyOperation const& operation: operations) {
-        auto opBuilder = operation.toVelocyPack();
-        builder.add(opBuilder->slice());
-      }
-    }
+    VPackArrayBuilder guard(&builder);
+    toVelocyPack(builder);
   }
   return builder.toJson();
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief converts the transaction to velocypack
+//////////////////////////////////////////////////////////////////////////////
+
+void AgencyTransaction::toVelocyPack(VPackBuilder& builder) const {
+  VPackArrayBuilder guard(&builder);
+  {
+    VPackObjectBuilder guard2(&builder);
+    for (AgencyOperation const& operation: operations) {
+      operation.toVelocyPack(builder);
+    }
+  }
+  if (preconditions.size() > 0) {
+    VPackObjectBuilder guard3(&builder);
+    for (AgencyPrecondition const& precondition: preconditions) {
+      precondition.toVelocyPack(builder);
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1299,7 +1327,8 @@ AgencyCommResult AgencyComm::removeValues(std::string const& key,
                                           bool recursive) {
   AgencyCommResult result;
   AgencyTransaction transaction(
-      AgencyOperation(key, AgencySimpleOperationType::DELETE_OP)
+      AgencyOperation(key, AgencySimpleOperationType::DELETE_OP),
+      AgencyPrecondition(key, AgencyPrecondition::EMPTY, false)
   );
 
   sendTransactionWithFailover(result, transaction);
@@ -1322,8 +1351,7 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
   newBuilder.add(VPackValue(json.toJson()));
 
   AgencyOperation operation(key, AgencyValueOperationType::SET, newBuilder.slice());
-  operation._precondition.type = AgencyOperationPrecondition::EMPTY;
-  operation._precondition.empty = !prevExist;
+  AgencyPrecondition precondition(key, AgencyPrecondition::EMPTY, !prevExist);
   if (ttl >= 0.0) {
     operation._ttl = static_cast<uint32_t>(ttl);
   }
@@ -1332,7 +1360,7 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
 
   url += "/write";
 
-  AgencyTransaction transaction(operation);
+  AgencyTransaction transaction(operation, precondition);
 
   sendWithFailover(
       arangodb::GeneralRequest::RequestType::POST,
@@ -1362,8 +1390,8 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
   oldBuilder.add(VPackValue(oldJson.toJson()));
   
   AgencyOperation operation(key, AgencyValueOperationType::SET, newBuilder.slice());
-  operation._precondition.type = AgencyOperationPrecondition::VALUE;
-  operation._precondition.value = oldBuilder.slice();
+  AgencyPrecondition precondition(key, AgencyPrecondition::VALUE,
+                                  oldBuilder.slice());
   if (ttl >= 0.0) {
     operation._ttl = static_cast<uint32_t>(ttl);
   }
@@ -1372,7 +1400,7 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
 
   url += "/write";
 
-  AgencyTransaction transaction(operation);
+  AgencyTransaction transaction(operation, precondition);
 
   sendWithFailover(
       arangodb::GeneralRequest::RequestType::POST,

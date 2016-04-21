@@ -22,7 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Agent.h"
+
 #include "Basics/ConditionLocker.h"
+#include "RestServer/DatabaseFeature.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
@@ -31,23 +33,19 @@
 
 #include <chrono>
 
+using namespace arangodb::application_features;
 using namespace arangodb::velocypack;
 
 namespace arangodb {
 namespace consensus {
 
 //  Agent configuration
-Agent::Agent (TRI_server_t* server, config_t const& config,
-              ApplicationV8* applicationV8, aql::QueryRegistry* queryRegistry) 
+Agent::Agent (config_t const& config) 
     : Thread ("Agent"), 
-      _server(server), 
-      _vocbase(nullptr), 
-      _applicationV8(applicationV8), 
-      _queryRegistry(queryRegistry), 
       _config(config), 
       _lastCommitIndex(0) {
 
-  _state.setEndPoint(_config.end_point);
+  _state.setEndPoint(_config.endpoint);
   _constituent.configure(this);
   _confirmed.resize(size(),0); // agency's size and reset to 0
 }
@@ -58,7 +56,7 @@ id_t Agent::id() const {
 }
 
 //  Shutdown
-Agent::~Agent () {
+Agent::~Agent() {
   shutdown();
 }
 
@@ -94,7 +92,7 @@ priv_rpc_ret_t Agent::requestVote(term_t t, id_t id, index_t lastLogIndex,
         query->slice().get("endpoints").isArray()) {
       size_t j = 0;
       for (auto const& i : VPackArrayIterator(query->slice().get("endpoints"))) {
-        _config.end_points[j++] = i.copyString();
+        _config.endpoints[j++] = i.copyString();
       }
     }
   }
@@ -169,7 +167,7 @@ void Agent::reportIn (id_t id, index_t index) {
       n += (_confirmed[i]>=index);
     }
     if (n>size()/2) { // catch up read database and commit index
-      LOG_TOPIC(INFO, Logger::AGENCY) << "Critical mass for commiting " <<
+      LOG_TOPIC(DEBUG, Logger::AGENCY) << "Critical mass for commiting " <<
         _lastCommitIndex+1 << " through " << index << " to read db";
       
       _readDB.apply(_state.slices(_lastCommitIndex+1, index));
@@ -195,14 +193,14 @@ bool Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
   MUTEX_LOCKER(mutexLocker, _ioLock);
 
   index_t lastCommitIndex = _lastCommitIndex;
-  // 1. Reply false if term < currentTerm (§5.1)
+  // 1. Reply false if term < currentTerm ($5.1)
   if (this->term() > term) {
     LOG_TOPIC(WARN, Logger::AGENCY) << "I have a higher term than RPC caller.";
     return false;
   }
 
-  // 2. Reply false if log doesn’t contain an entry at prevLogIndex
-  //    whose term matches prevLogTerm (§5.3)
+  // 2. Reply false if log does not contain an entry at prevLogIndex
+  //    whose term matches prevLogTerm ($5.3)
   if (!_state.find(prevIndex,prevTerm)) {
     LOG_TOPIC(WARN, Logger::AGENCY)
       << "Unable to find matching entry to previous entry (index,term) = ("
@@ -212,14 +210,13 @@ bool Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
 
   // 3. If an existing entry conflicts with a new one (same index
   //    but different terms), delete the existing entry and all that
-  //    follow it (§5.3)
+  //    follow it ($5.3)
   // 4. Append any new entries not already in the log
   if (queries->slice().length()) {
     LOG_TOPIC(INFO, Logger::AGENCY) << "Appending "<< queries->slice().length()
                                     << " entries to state machine.";
     /* bool success = */
     _state.log (queries, term, leaderId, prevIndex, prevTerm);
-//    _constituent.vote();
   } else { 
     // heart-beat
   }
@@ -251,8 +248,8 @@ append_entries_t Agent::sendAppendEntriesRPC (id_t follower_id) {
        << unconfirmed[0].term << "&leaderCommit=" << _lastCommitIndex;
 
   // Headers
-	std::unique_ptr<std::map<std::string, std::string>> headerFields =
-	  std::make_unique<std::map<std::string, std::string> >();
+        std::unique_ptr<std::map<std::string, std::string>> headerFields =
+          std::make_unique<std::map<std::string, std::string> >();
 
   // Body
   Builder builder;
@@ -275,7 +272,7 @@ append_entries_t Agent::sendAppendEntriesRPC (id_t follower_id) {
   }
 
   arangodb::ClusterComm::instance()->asyncRequest
-    ("1", 1, _config.end_points[follower_id],
+    ("1", 1, _config.endpoints[follower_id],
      arangodb::GeneralRequest::RequestType::POST,
      path.str(), std::make_shared<std::string>(builder.toJson()), headerFields,
      std::make_shared<AgentCallback>(this, follower_id, last),
@@ -287,19 +284,19 @@ append_entries_t Agent::sendAppendEntriesRPC (id_t follower_id) {
 
 // @brief load persistent state
 bool Agent::load () {
-  TRI_vocbase_t* vocbase =
-      TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
+  DatabaseFeature* database = dynamic_cast<DatabaseFeature*>(
+    ApplicationServer::lookupFeature("Database"));
+
+  auto vocbase = database->vocbase();
 
   if (vocbase == nullptr) {
     LOG(FATAL) << "could not determine _system database";
     FATAL_ERROR_EXIT();
   }
 
-  _vocbase = vocbase;
-
   LOG_TOPIC(INFO, Logger::AGENCY) << "Loading persistent state.";
-  if (!_state.loadCollections(_vocbase, _applicationV8, _queryRegistry,
-                              _config.wait_for_sync)) {
+  if (!_state.loadCollections(vocbase, 
+                              _config.waitForSync)) {
     LOG_TOPIC(INFO, Logger::AGENCY)
       << "Failed to load persistent state on statup.";
   }
@@ -313,7 +310,7 @@ bool Agent::load () {
   _readDB.start(this);
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Starting constituent personality.";
-  _constituent.start(_vocbase, _applicationV8, _queryRegistry);
+  _constituent.start(vocbase);
 
   if (_config.supervision) {
     LOG_TOPIC(INFO, Logger::AGENCY) << "Starting cluster sanity facilities";
@@ -340,8 +337,8 @@ write_ret_t Agent::write (query_t const& query)  {
     if (!indices.empty()) {
       maxind = *std::max_element(indices.begin(), indices.end());
     }
-    _appendCV.signal();                                  // Wake up run
-
+    // _appendCV.signal();                                  // Wake up run
+    
     reportIn(id(),maxind);
     
     return write_ret_t(true,id(),applied,indices); // Indices to wait for to rest
@@ -353,7 +350,7 @@ write_ret_t Agent::write (query_t const& query)  {
 
 // Read from store
 read_ret_t Agent::read (query_t const& query) const {
-  if (_constituent.leading()) {     // Only working as leaer
+  if (_constituent.leading()) {     // Only working as leader
     query_t result = std::make_shared<arangodb::velocypack::Builder>();
     std::vector<bool> success = _readDB.read (query, result);
     return read_ret_t(true, _constituent.leaderID(), success, result);
@@ -403,11 +400,6 @@ void Agent::beginShutdown() {
   // Wake up all waiting REST handler (waitFor)
   CONDITION_LOCKER(guard, _appendCV);
   guard.broadcast();
-  
-  if (_vocbase != nullptr) {
-    TRI_ReleaseDatabaseServer(_server, _vocbase);
-  }
-  
 }
 
 // Becoming leader 

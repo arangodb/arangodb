@@ -118,8 +118,8 @@
 #define ARANGODB_HAVE_SETGID 1
 #define ARANGODB_HAVE_SETUID 1
 
-#define TRI_srandom srand
-#define TRI_random rand
+#define TRI_srandom ::srand
+#define TRI_random ::rand
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief available features
@@ -148,21 +148,21 @@
 
 #define TRI_O_CLOEXEC O_CLOEXEC
 
-#define TRI_CHDIR chdir
-#define TRI_CLOSE close
-#define TRI_CREATE(a, b, c) open((a), (b), (c))
-#define TRI_FSTAT fstat
-#define TRI_GETCWD getcwd
-#define TRI_LSEEK lseek
-#define TRI_MKDIR(a, b) mkdir((a), (b))
-#define TRI_OPEN(a, b) open((a), (b))
-#define TRI_READ read
-#define TRI_RMDIR rmdir
-#define TRI_STAT stat
+#define TRI_CHDIR ::chdir
+#define TRI_CLOSE ::close
+#define TRI_CREATE(a, b, c) ::open((a), (b), (c))
+#define TRI_FSTAT ::fstat
+#define TRI_GETCWD ::getcwd
+#define TRI_LSEEK ::lseek
+#define TRI_MKDIR(a, b) ::mkdir((a), (b))
+#define TRI_OPEN(a, b) ::open((a), (b))
+#define TRI_READ ::read
+#define TRI_RMDIR ::rmdir
+#define TRI_STAT ::stat
 #define TRI_STAT_ATIME_SEC(statbuf) statbuf.st_atim.tv_sec
 #define TRI_STAT_MTIME_SEC(statbuf) statbuf.st_mtim.tv_sec
-#define TRI_UNLINK unlink
-#define TRI_WRITE write
+#define TRI_UNLINK ::unlink
+#define TRI_WRITE ::write
 
 #define TRI_lseek_t off_t
 #define TRI_read_t size_t
@@ -171,8 +171,8 @@
 
 #define TRI_ERRORBUF \
   {}
-#define TRI_GET_ERRORBUF strerror(errno)
-#define TRI_LAST_ERROR_STR strerror(errno)
+#define TRI_GET_ERRORBUF ::strerror(errno)
+#define TRI_LAST_ERROR_STR ::strerror(errno)
 #define TRI_SYSTEM_ERROR() \
   {}
 
@@ -325,21 +325,21 @@
 
 #define TRI_O_CLOEXEC O_CLOEXEC
 
-#define TRI_CHDIR chdir
-#define TRI_CLOSE close
-#define TRI_CREATE(a, b, c) open((a), (b), (c))
-#define TRI_FSTAT fstat
-#define TRI_GETCWD getcwd
-#define TRI_LSEEK lseek
-#define TRI_MKDIR(a, b) mkdir((a), (b))
-#define TRI_OPEN(a, b) open((a), (b))
-#define TRI_READ read
-#define TRI_RMDIR rmdir
-#define TRI_STAT stat
+#define TRI_CHDIR ::chdir
+#define TRI_CLOSE ::close
+#define TRI_CREATE(a, b, c) ::open((a), (b), (c))
+#define TRI_FSTAT ::fstat
+#define TRI_GETCWD ::getcwd
+#define TRI_LSEEK ::lseek
+#define TRI_MKDIR(a, b) ::mkdir((a), (b))
+#define TRI_OPEN(a, b) ::open((a), (b))
+#define TRI_READ ::read
+#define TRI_RMDIR ::rmdir
+#define TRI_STAT ::stat
 #define TRI_STAT_ATIME_SEC(statbuf) statbuf.st_atimespec.tv_sec
 #define TRI_STAT_MTIME_SEC(statbuf) statbuf.st_mtimespec.tv_sec
-#define TRI_UNLINK unlink
-#define TRI_WRITE write
+#define TRI_UNLINK ::unlink
+#define TRI_WRITE ::write
 
 #define TRI_lseek_t off_t
 #define TRI_read_t size_t
@@ -348,8 +348,8 @@
 
 #define TRI_ERRORBUF \
   {}
-#define TRI_GET_ERRORBUF strerror(errno)
-#define TRI_LAST_ERROR_STR strerror(errno)
+#define TRI_GET_ERRORBUF ::strerror(errno)
+#define TRI_LAST_ERROR_STR ::strerror(errno)
 #define TRI_SYSTEM_ERROR() \
   {}
 
@@ -446,8 +446,8 @@
 #define ARANGODB_HAVE_SETGID 1
 #define ARANGODB_HAVE_SETUID 1
 
-#define TRI_random rand
-#define TRI_srandom srand
+#define TRI_random ::rand
+#define TRI_srandom ::srand
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief available features
@@ -486,21 +486,21 @@
 
 #define TRI_O_CLOEXEC O_CLOEXEC
 
-#define TRI_CHDIR chdir
-#define TRI_CLOSE close
-#define TRI_CREATE(a, b, c) open((a), (b), (c))
-#define TRI_FSTAT fstat
-#define TRI_GETCWD getcwd
-#define TRI_LSEEK lseek
-#define TRI_MKDIR(a, b) mkdir((a), (b))
-#define TRI_OPEN(a, b) open((a), (b))
-#define TRI_READ read
-#define TRI_RMDIR rmdir
-#define TRI_STAT stat
+#define TRI_CHDIR ::chdir
+#define TRI_CLOSE ::close
+#define TRI_CREATE(a, b, c) ::open((a), (b), (c))
+#define TRI_FSTAT ::fstat
+#define TRI_GETCWD ::getcwd
+#define TRI_LSEEK ::lseek
+#define TRI_MKDIR(a, b) ::mkdir((a), (b))
+#define TRI_OPEN(a, b) ::open((a), (b))
+#define TRI_READ ::read
+#define TRI_RMDIR ::rmdir
+#define TRI_STAT ::stat
 #define TRI_STAT_ATIME_SEC(statbuf) statbuf.st_atimespec.tv_sec
 #define TRI_STAT_MTIME_SEC(statbuf) statbuf.st_mtimespec.tv_sec
-#define TRI_UNLINK unlink
-#define TRI_WRITE write
+#define TRI_UNLINK ::unlink
+#define TRI_WRITE ::write
 
 #define TRI_lseek_t off_t
 #define TRI_read_t size_t
@@ -509,8 +509,8 @@
 
 #define TRI_ERRORBUF \
   {}
-#define TRI_GET_ERRORBUF strerror(errno)
-#define TRI_LAST_ERROR_STR strerror(errno)
+#define TRI_GET_ERRORBUF ::strerror(errno)
+#define TRI_LAST_ERROR_STR ::strerror(errno)
 #define TRI_SYSTEM_ERROR() \
   {}
 
@@ -636,13 +636,14 @@
 #define TRI_HAVE_POSIX_THREADS 1
 #define TRI_HAVE_SC_PHYS_PAGES 1
 #define TRI_HAVE_THREAD_AFFINITY 1
+#define TRI_HAVE_SETLK 1
 
 #define TRI_HAVE_ANONYMOUS_MMAP 1
 
 #define TRI_SC_NPROCESSORS_ONLN 1
 
-#define TRI_random rand
-#define TRI_srandom srand
+#define TRI_random ::rand
+#define TRI_srandom ::srand
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief alignment and limits
@@ -665,21 +666,21 @@
 
 #define TRI_O_CLOEXEC O_CLOEXEC
 
-#define TRI_CHDIR chdir
-#define TRI_CLOSE close
-#define TRI_CREATE(a, b, c) open((a), (b), (c))
-#define TRI_FSTAT fstat
-#define TRI_GETCWD getcwd
-#define TRI_LSEEK lseek
-#define TRI_MKDIR(a, b) mkdir((a), (b))
-#define TRI_OPEN(a, b) open((a), (b))
-#define TRI_READ read
-#define TRI_RMDIR rmdir
-#define TRI_STAT stat
+#define TRI_CHDIR ::chdir
+#define TRI_CLOSE ::close
+#define TRI_CREATE(a, b, c) ::open((a), (b), (c))
+#define TRI_FSTAT ::fstat
+#define TRI_GETCWD ::getcwd
+#define TRI_LSEEK ::lseek
+#define TRI_MKDIR(a, b) ::mkdir((a), (b))
+#define TRI_OPEN(a, b) ::open((a), (b))
+#define TRI_READ ::read
+#define TRI_RMDIR ::rmdir
+#define TRI_STAT ::stat
 #define TRI_STAT_ATIME_SEC(statbuf) statbuf.st_atim.tv_sec
 #define TRI_STAT_MTIME_SEC(statbuf) statbuf.st_mtim.tv_sec
-#define TRI_UNLINK unlink
-#define TRI_WRITE write
+#define TRI_UNLINK ::unlink
+#define TRI_WRITE ::write
 
 #define TRI_lseek_t off_t
 #define TRI_read_t size_t
@@ -688,8 +689,8 @@
 
 #define TRI_ERRORBUF \
   {}
-#define TRI_GET_ERRORBUF strerror(errno)
-#define TRI_LAST_ERROR_STR strerror(errno)
+#define TRI_GET_ERRORBUF ::strerror(errno)
+#define TRI_LAST_ERROR_STR ::strerror(errno)
 #define TRI_SYSTEM_ERROR() \
   {}
 
@@ -786,8 +787,8 @@
 
 #define TRI_HAVE_WIN32_GLOBAL_MEMORY_STATUS 1
 
-#define TRI_random rand
-#define TRI_srandom srand
+#define TRI_random ::rand
+#define TRI_srandom ::srand
 
 #define snprintf _snprintf
 #define strcasecmp _stricmp
@@ -880,26 +881,27 @@ typedef unsigned char bool;
 #define TRI_O_CLOEXEC 0
 
 #define O_RDONLY _O_RDONLY
-#define TRI_CHDIR _chdir
-#define TRI_CLOSE _close
+
+#define TRI_CHDIR ::_chdir
+#define TRI_CLOSE ::_close
 #define TRI_CREATE(a, b, c) TRI_createFile((a), (b), (c))
-#define TRI_FSTAT _fstat64
-#define TRI_GETCWD _getcwd
-#define TRI_LSEEK _lseeki64
-#define TRI_MKDIR(a, b) _mkdir((a))
+#define TRI_FSTAT ::_fstat64
+#define TRI_GETCWD ::_getcwd
+#define TRI_LSEEK ::_lseeki64
+#define TRI_MKDIR(a, b) ::_mkdir((a))
 #define TRI_OPEN(a, b) TRI_OPEN_WIN32((a), (b))
-#define TRI_READ _read
-#define TRI_RMDIR _rmdir
-#define TRI_STAT _stat64
-#define TRI_UNLINK _unlink
-#define TRI_WRITE _write
+#define TRI_READ ::_read
+#define TRI_RMDIR ::_rmdir
+#define TRI_STAT ::_stat64
+#define TRI_UNLINK ::_unlink
+#define TRI_WRITE ::_write
 
 #define TRI_lseek_t __int64
 #define TRI_read_t unsigned int
 #define TRI_stat_t struct _stat64
 #define TRI_write_t unsigned int
 
-#define TRI_LAST_ERROR_STR strerror(errno)
+#define TRI_LAST_ERROR_STR ::strerror(errno)
 
 #define TRI_ERRORBUF char windowsErrorBuf[256] = "";
 #define TRI_GET_ERRORBUF windowsErrorBuf

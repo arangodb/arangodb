@@ -93,7 +93,7 @@ uint8_t const* AttributeTranslator::translate(uint64_t id) const {
   auto it = _idToKey.find(id);
 
   if (it == _idToKey.end()) {
-    throw Exception(Exception::KeyNotFound);
+    return nullptr;
   }
 
   return (*it).second;

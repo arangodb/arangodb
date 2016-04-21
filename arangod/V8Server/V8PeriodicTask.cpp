@@ -22,20 +22,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "V8PeriodicTask.h"
-#include "Dispatcher/Dispatcher.h"
-#include "Scheduler/Scheduler.h"
-#include "V8Server/V8Job.h"
-#include "VocBase/server.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Basics/json.h"
+#include "Dispatcher/Dispatcher.h"
+#include "Dispatcher/DispatcherFeature.h"
+#include "V8Server/V8Job.h"
+#include "VocBase/server.h"
+
 using namespace arangodb;
+using namespace arangodb::application_features;
 using namespace arangodb::rest;
 
 V8PeriodicTask::V8PeriodicTask(std::string const& id, std::string const& name,
-                               TRI_vocbase_t* vocbase, ApplicationV8* v8Dealer,
-                               Scheduler* scheduler, Dispatcher* dispatcher,
+                               TRI_vocbase_t* vocbase, 
                                double offset, double period,
                                std::string const& command,
                                std::shared_ptr<VPackBuilder> parameters,
@@ -43,8 +45,6 @@ V8PeriodicTask::V8PeriodicTask(std::string const& id, std::string const& name,
     : Task(id, name),
       PeriodicTask(id, offset, period),
       _vocbase(vocbase),
-      _v8Dealer(v8Dealer),
-      _dispatcher(dispatcher),
       _command(command),
       _parameters(parameters),
       _created(TRI_microtime()),
@@ -79,10 +79,10 @@ void V8PeriodicTask::getDescription(VPackBuilder& builder) const {
 
 bool V8PeriodicTask::handlePeriod() {
   std::unique_ptr<Job> job(new V8Job(
-      _vocbase, _v8Dealer, "(function (params) { " + _command + " } )(params);",
+      _vocbase, "(function (params) { " + _command + " } )(params);",
       _parameters, _allowUseDatabase));
 
-  _dispatcher->addJob(job);
+  DispatcherFeature::DISPATCHER->addJob(job);
 
   return true;
 }

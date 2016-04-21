@@ -1,4 +1,5 @@
 'use strict';
+
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -312,7 +313,7 @@ module.exports = class FoxxService {
     const options = this.options.configuration;
     _.each(definitions, function (dfn, name) {
       const value = options[name] === undefined ? dfn.default : options[name];
-      config[name] = simple ? value : _.extend({}, dfn, {
+      config[name] = simple ? value : Object.assign({}, dfn, {
         title: getReadableName(name),
         current: value
       });
@@ -350,7 +351,7 @@ module.exports = class FoxxService {
 
     const module = new Module(filename, this.main);
     module[$_MODULE_CONTEXT].console = this.main[$_MODULE_CONTEXT].console;
-    module.context = _.extend(
+    module.context = Object.assign(
       new FoxxContext(this),
       this.main.context,
       options.foxxContext

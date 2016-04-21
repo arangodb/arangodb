@@ -52,8 +52,16 @@ static void CreateAgencyException(
 
   std::string const errorDetails = result.errorDetails();
   v8::Handle<v8::String> errorMessage = TRI_V8_STD_STRING(errorDetails);
+  if (errorMessage.IsEmpty()) {
+    isolate->ThrowException(v8::Object::New(isolate));
+    return;
+  }
   v8::Handle<v8::Object> errorObject =
       v8::Exception::Error(errorMessage)->ToObject();
+  if (errorObject.IsEmpty()) {
+    isolate->ThrowException(v8::Object::New(isolate));
+    return;
+  }
 
   errorObject->Set(TRI_V8_ASCII_STRING("code"),
                    v8::Number::New(isolate, result.httpCode()));
@@ -870,6 +878,13 @@ static void JS_GetCollectionInfoCurrentClusterInfo(
     result->Set(TRI_V8_ASCII_STRING("errorMessage"),
                 TRI_V8_STD_STRING(errorMessage));
   }
+  auto servers = cic->servers(shardID);
+  v8::Handle<v8::Array> list = v8::Array::New(isolate, servers.size());
+  uint32_t pos = 0;
+  for (auto const& s : servers) {
+    list->Set(pos++, TRI_V8_STD_STRING(s));
+  }
+  result->Set(TRI_V8_ASCII_STRING("servers"), list);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -2073,9 +2088,9 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
                                  TRI_V8_ASCII_STRING("ArangoAgency"), aa);
   }
 
-  // .............................................................................
+  // ...........................................................................
   // generate the cluster info template
-  // .............................................................................
+  // ...........................................................................
 
   ft = v8::FunctionTemplate::New(isolate);
   ft->SetClassName(TRI_V8_ASCII_STRING("ArangoClusterInfo"));

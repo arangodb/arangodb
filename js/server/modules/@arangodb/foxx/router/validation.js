@@ -1,4 +1,5 @@
 'use strict';
+
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -49,7 +50,7 @@ exports.parseRequestBody = function parseRequestBody(def, req) {
   let body = req.body;
 
   if (!def.contentTypes) {
-    assert(!body, 'Unexpected request body');
+    assert(!body || !body.length, 'Unexpected request body');
     return null;
   }
 

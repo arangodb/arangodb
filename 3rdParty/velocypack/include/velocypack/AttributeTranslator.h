@@ -33,6 +33,7 @@
 #include <memory>
 
 #include "velocypack/velocypack-common.h"
+#include "velocypack/Options.h"
 #include "velocypack/Slice.h"
 
 namespace arangodb {
@@ -79,8 +80,8 @@ class AttributeTranslatorScope {
 
  public:
   explicit AttributeTranslatorScope(AttributeTranslator* translator)
-      : _old(Slice::attributeTranslator) {
-    Slice::attributeTranslator = translator;
+      : _old(Options::Defaults.attributeTranslator) {
+    Options::Defaults.attributeTranslator = translator;
   }
 
   ~AttributeTranslatorScope() {
@@ -89,7 +90,7 @@ class AttributeTranslatorScope {
 
   // prematurely revert the change
   void revert() {
-    Slice::attributeTranslator = _old;
+    Options::Defaults.attributeTranslator = _old;
   }
 
  private:

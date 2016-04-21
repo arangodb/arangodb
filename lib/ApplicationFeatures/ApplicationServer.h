@@ -25,6 +25,9 @@
 
 #include "Basics/Common.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 namespace arangodb {
 namespace options {
 class ProgramOptions;
@@ -33,6 +36,56 @@ class ProgramOptions;
 namespace application_features {
 class ApplicationFeature;
 
+// the following phases exists:
+//
+// `collectOptions`
+//
+// Creates the prgramm options for a feature. Features are not
+// allowed to open files or sockets, create threads or allocate
+// other resources. This method will be called regardless of whether
+// to feature is enabled or disabled. There is no defined order in
+// which the features are traversed.
+//
+// `loadOptions`
+//
+// Allows a feature to load more options from somewhere. This method
+// will only be called for enabled features. There is no defined
+// order in which the features are traversed.
+//
+// `validateOptions`
+//
+// Validates the feature's options. This method will only be called for enabled
+// features. Help is handled before any `validateOptions` of a feature is
+// called. The `validateOptions` methods are called in a order that obeys the
+// `startsAfter `conditions.
+//
+// `daemonize`
+//
+// In this phase process control (like putting the process into the background
+// will be handled). This method will only be called for enabled features.
+// The `daemonize` methods are called in a order that obeys the `startsAfter`
+// conditions.
+//
+// `prepare`
+//
+// Now the features will actually do some preparation work
+// in the preparation phase, the features must not start any threads
+// furthermore, they must not write any files under elevated privileges
+// if they want other features to access them, or if they want to access
+// these files with dropped privileges. The `prepare` methods are called in a
+// order that obeys the `startsAfter` conditions.
+//
+// `start`
+//
+// Start the features. Features are now allowed to created threads.
+//
+// The `start` methods are called in a order that obeys the `startsAfter`
+// conditions.
+//
+// `stop`
+//
+// Stops the features. The `stop` methods are called in reversed `start` order.
+
 class ApplicationServer {
   ApplicationServer(ApplicationServer const&) = delete;
   ApplicationServer& operator=(ApplicationServer const&) = delete;
@@ -40,6 +93,7 @@ class ApplicationServer {
  public:
   static ApplicationServer* server;
   static ApplicationFeature* lookupFeature(std::string const&);
+  static void disableFeatures(std::vector<std::string> const&);
 
  public:
   explicit ApplicationServer(std::shared_ptr<options::ProgramOptions>);
@@ -79,6 +133,9 @@ class ApplicationServer {
   // signal the server to shut down
   void beginShutdown();
 
+  // return VPack options
+  VPackBuilder options(std::unordered_set<std::string> const& excludes) const;
+
  private:
   // fail and abort with the specified message
   void fail(std::string const& message);
@@ -101,6 +158,9 @@ class ApplicationServer {
 
   // setup and validate all feature dependencies, determine feature order
   void setupDependencies(bool failOnMissing);
+
+  // allows process control
+  void daemonize();
 
   // allows features to prepare themselves
   void prepare();
@@ -134,6 +194,9 @@ class ApplicationServer {
 
   // whether or not privileges have been dropped permanently
   bool _privilegesDropped;
+
+  // whether or not to dump dependencies
+  bool _dumpDependencies;
 };
 }
 }

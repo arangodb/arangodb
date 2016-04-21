@@ -40,7 +40,7 @@ const functionsDocumentation = {
   "foxx_manager": "foxx manager tests",
   "http_replication": "http replication tests",
   "http_server": "http server tests in Ruby",
-  "server_http" : "http server tests in Mocha",
+  "server_http": "http server tests in Mocha",
   "importing": "import tests",
   "recovery": "run recovery tests",
   "replication_ongoing": "replication ongoing tests",
@@ -71,7 +71,7 @@ const optionsDocumentation = [
   '   - `skipAql`: if set to true the AQL tests are skipped',
   '   - `skipArangoBNonConnKeepAlive`: if set to true benchmark do not use keep-alive',
   '   - `skipArangoB`: if set to true benchmark tests are skipped',
-  '   - `skipAuth : testing authentication and authentication_paramaters will be skipped.',
+  '   - `skipAuthenication : testing authentication and authentication_paramaters will be skipped.',
   '   - `skipBoost`: if set to true the boost unittests are skipped',
   '   - `skipConfig`: omit the noisy configuration tests',
   '   - `skipFoxxQueues`: omit the test for the foxx queues',
@@ -119,6 +119,8 @@ const optionsDocumentation = [
   '        DBServer    - flag to run DBServers with valgrind',
   '',
   '   - `extraArgs`: list of extra commandline arguments to add to arangod',
+  '',
+  '   - `verbose`: if set to true, be more verbose',
   '   - `extremeVerbosity`: if set to true, then there will be more test run',
   '     output, especially for cluster tests.',
   ''
@@ -149,6 +151,7 @@ const optionsDefaults = {
   "skipAql": false,
   "skipArangoB": false,
   "skipArangoBNonConnKeepAlive": true,
+  "skipAuthenication": false,
   "skipBoost": false,
   "skipGeo": false,
   "skipLogAnalysis": false,
@@ -165,6 +168,7 @@ const optionsDefaults = {
   "valgrindFileBase": "",
   "valgrindArgs": {},
   "valgrindHosts": false,
+  "verbose": false,
   "writeXmlReport": true
 };
 
@@ -184,6 +188,13 @@ const time = require("internal").time;
 const toArgv = require("internal").toArgv;
 const wait = require("internal").wait;
 const platform = require("internal").platform;
+
+const BLUE = require("internal").COLORS.COLOR_BLUE;
+const CYAN = require("internal").COLORS.COLOR_CYAN;
+const GREEN = require("internal").COLORS.COLOR_GREEN;
+const RED = require("internal").COLORS.COLOR_RED;
+const RESET = require("internal").COLORS.COLOR_RESET;
+const YELLOW = require("internal").COLORS.COLOR_YELLOW;
 
 let cleanupDirectories = [];
 let serverCrashed = false;
@@ -271,15 +282,16 @@ function makeArgsArangod(options, appDir) {
 
   return {
     "configuration": "none",
-    "server.keyfile": PEM_FILE,
-    "database.maximal-journal-size": "1048576",
     "database.force-sync-properties": "false",
+    "database.maximal-journal-size": "1048576",
     "javascript.app-path": appDir,
     "javascript.startup-directory": JS_DIR,
-    "server.threads": "20",
     "javascript.v8-contexts": "5",
-    "server.disable-authentication": "true",
-    "server.allow-use-database": "true"
+    "log.level": "warning",
+    "server.allow-use-database": "true",
+    "server.authentication": "false",
+    "server.threads": "20",
+    "ssl.keyfile": PEM_FILE
   };
 }
 
@@ -456,12 +468,12 @@ function checkArangoAlive(arangod, options) {
     print(arangod);
 
     if (res.hasOwnProperty('signal') &&
-        ((res.signal === 11) ||
-         (res.signal === 6) ||
-         // Windows sometimes has random numbers in signal...
-         (platform.substr(0, 3) === 'win')
-        )
-       ) {
+      ((res.signal === 11) ||
+        (res.signal === 6) ||
+        // Windows sometimes has random numbers in signal...
+        (platform.substr(0, 3) === 'win')
+      )
+    ) {
       const storeArangodPath = "/var/tmp/arangod_" + arangod.pid;
 
       print("Core dump written; copying arangod to " +
@@ -605,6 +617,11 @@ function runThere(options, instanceInfo, file) {
         'return runTest(' + JSON.stringify(file) + ', true);';
     }
 
+    if (options.propagateInstanceInfo) {
+      testCode = 'global.instanceInfo = ' + JSON.stringify(instanceInfo) 
+                 + ';\n' + testCode;
+    }
+
     let httpOptions = makeAuthorizationHeaders(options);
     httpOptions.method = "POST";
     httpOptions.timeout = 3600;
@@ -614,7 +631,7 @@ function runThere(options, instanceInfo, file) {
     }
 
     httpOptions.returnBodyOnError = true;
-    
+
     const reply = download(instanceInfo.url + "/_admin/execute?returnAsJSON=true",
       testCode,
       httpOptions);
@@ -908,9 +925,11 @@ function executeAndWait(cmd, args, options, valgrindTest) {
   let errorMessage = ' - ';
 
   if (res.status === "TERMINATED") {
-    print("Finished: " + res.status +
+    const color = (res.exit === 0 ? GREEN : RED);
+
+    print(color + "Finished: " + res.status +
       " exit code: " + res.exit +
-      " Time elapsed: " + deltaTime);
+      " Time elapsed: " + deltaTime + RESET);
 
     if (res.exit === 0) {
       return {
@@ -967,8 +986,12 @@ function runInArangosh(options, instanceInfo, file, addArgs) {
   args["server.endpoint"] = instanceInfo.endpoint;
   args["javascript.unit-tests"] = fs.join(TOP_DIR, file);
 
+  if (!options.verbose) {
+    args["log.level"] = "warning";
+  }
+
   if (addArgs !== undefined) {
-    args = _.extend(args, addArgs);
+    args = Object.assign(args, addArgs);
   }
 
   let rc = executeAndWait(ARANGOSH_BIN, toArgv(args), options);
@@ -998,7 +1021,7 @@ function runArangoshCmd(options, instanceInfo, addArgs, cmds) {
   args["server.endpoint"] = instanceInfo.endpoint;
 
   if (addArgs !== undefined) {
-    args = _.extend(args, addArgs);
+    args = Object.assign(args, addArgs);
   }
 
   const argv = toArgv(args).concat(cmds);
@@ -1075,10 +1098,11 @@ function runArangoBenchmark(options, instanceInfo, cmds) {
     "server.connection-timeout": 10 // 5s default
   };
 
-  args = _.extend(args, cmds);
+  args = Object.assign(args, cmds);
 
   if (!args.hasOwnProperty('verbose')) {
-    args.quiet = true;
+    args["log.level"] = "warning";
+    args["flatCommands"] = ["--quiet"];
   }
 
   return executeAndWait(ARANGOB_BIN, toArgv(args), options);
@@ -1089,10 +1113,10 @@ function shutdownArangod(arangod, options) {
     waitOnServerForGC(arangod, options, 60);
   }
   if (arangod.exitStatus === undefined ||
-      arangod.exitStatus.status === "RUNNING") {
+    arangod.exitStatus.status === "RUNNING") {
     print(arangod.url + "/_admin/shutdown");
     download(arangod.url + "/_admin/shutdown", "",
-        makeAuthorizationHeaders(options));
+      makeAuthorizationHeaders(options));
   } else {
     print("Server already dead, doing nothing.");
   }
@@ -1106,16 +1130,19 @@ function shutdownInstance(instanceInfo, options) {
   if (!checkInstanceAlive(instanceInfo, options)) {
     print("Server already dead, doing nothing. This shouldn't happen?");
   }
+
   // Shut down all non-agency servers:
   const n = instanceInfo.arangods.length;
+
   let nonagencies = instanceInfo.arangods
-          .filter(arangod => !arangod.isAgency);
+    .filter(arangod => !arangod.isAgency);
   nonagencies.forEach(arangod =>
     shutdownArangod(arangod, options)
   );
+
   let agentsKilled = false;
   let nrAgents = n - nonagencies.length;
-  
+
   let timeout = 60;
   if (options.valgrind) {
     timeout *= 10;
@@ -1125,7 +1152,7 @@ function shutdownInstance(instanceInfo, options) {
   }
   let count = 0;
   let bar = "[";
-  
+
   let toShutdown = instanceInfo.arangods.slice();
   while (toShutdown.length > 0) {
     // Once all other servers are shut down, we take care of the agents,
@@ -1133,8 +1160,8 @@ function shutdownInstance(instanceInfo, options) {
     // are agents:
     if (!agentsKilled && nrAgents > 0 && toShutdown.length === nrAgents) {
       instanceInfo.arangods
-            .filter(arangod => arangod.isAgency)
-            .forEach(arangod => shutdownArangod(arangod, options));
+        .filter(arangod => arangod.isAgency)
+        .forEach(arangod => shutdownArangod(arangod, options));
       agentsKilled = true;
     }
     toShutdown = toShutdown.filter(arangod => {
@@ -1149,7 +1176,7 @@ function shutdownInstance(instanceInfo, options) {
 
         if (count > timeout) {
           print("forcefully terminating " + yaml.safeDump(arangod.pid) +
-              " after " + timeout + "s grace period; marking crashy.");
+            " after " + timeout + "s grace period; marking crashy.");
           serverCrashed = true;
           killExternal(arangod.pid);
           return false;
@@ -1159,8 +1186,8 @@ function shutdownInstance(instanceInfo, options) {
       } else if (arangod.exitStatus.status !== "TERMINATED") {
         if (arangod.exitStatus.hasOwnProperty('signal')) {
           print("Server shut down with : " +
-              yaml.safeDump(arangod.exitStatus) +
-              " marking build as crashy.");
+            yaml.safeDump(arangod.exitStatus) +
+            " marking build as crashy.");
 
           serverCrashed = true;
           return false;
@@ -1179,13 +1206,13 @@ function shutdownInstance(instanceInfo, options) {
       wait(1);
     }
   }
-   
+
   if (!options.skipLogAnalysis) {
     instanceInfo.arangods.forEach(arangod => {
       let errorEntries = readImportantLogLines(arangod.rootDir);
       if (Object.keys(errorEntries).length > 0) {
         print("Found messages in the server logs: \n" +
-            yaml.safeDump(errorEntries));
+          yaml.safeDump(errorEntries));
       }
     });
   }
@@ -1203,12 +1230,12 @@ function startInstanceCluster(instanceInfo, protocol, options,
   addArgs, name, rootDir) {
   let makeArgs = function(name, args) {
     args = args || options.extraArgs;
-    
+
     let subDir = fs.join(rootDir, name);
     fs.makeDirectoryRecursive(subDir);
 
     let subArgs = makeArgsArangod(options, fs.join(subDir, "apps"));
-    subArgs = _.extend(subArgs, args);
+    subArgs = Object.assign(subArgs, args);
 
     return [subArgs, name, subDir];
   };
@@ -1216,10 +1243,10 @@ function startInstanceCluster(instanceInfo, protocol, options,
   options.agencySize = 1;
   options.agencyWaitForSync = false;
   startInstanceAgency(instanceInfo, protocol, options, ...makeArgs('agency', {}));
-  
+
   let agencyEndpoint = instanceInfo.endpoint;
   let i;
-  for (i=0;i<options.clusterNodes;i++) {
+  for (i = 0; i < options.clusterNodes; i++) {
     let endpoint = protocol + "://127.0.0.1:" + findFreePort();
     let primaryArgs = _.clone(options.extraArgs);
     primaryArgs['server.endpoint'] = endpoint;
@@ -1240,13 +1267,13 @@ function startInstanceCluster(instanceInfo, protocol, options,
   coordinatorArgs['cluster.agency-endpoint'] = agencyEndpoint;
 
   startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('coordinator', coordinatorArgs));
-  
+
   let coordinatorUrl = instanceInfo.url;
   let response;
   let httpOptions = makeAuthorizationHeaders(options);
   httpOptions.method = 'POST';
   httpOptions.returnBodyOnError = true;
-  
+
   let count = 0;
   instanceInfo.arangods.forEach(arangod => {
     while (true) {
@@ -1266,7 +1293,7 @@ function startInstanceCluster(instanceInfo, protocol, options,
       wait(0.5, false);
     }
   });
-  
+
   response = download(coordinatorUrl + '/_admin/cluster/bootstrapDbServers', '{"isRelaunch":false}', httpOptions);
 
   while (response.code !== 200) {
@@ -1280,7 +1307,7 @@ function startInstanceCluster(instanceInfo, protocol, options,
     console.log(response);
     throw new Error('Upgrading DB failed');
   }
-  
+
   response = download(coordinatorUrl + '/_admin/cluster/bootstrapCoordinator', '{"isRelaunch":false}', httpOptions);
   if (response.code !== 200) {
     throw new Error('bootstraping coordinator failed');
@@ -1294,13 +1321,14 @@ function startInstanceCluster(instanceInfo, protocol, options,
 function startArango(protocol, options, addArgs, name, rootDir, isAgency) {
   const dataDir = fs.join(rootDir, "data");
   const appDir = fs.join(rootDir, "apps");
-  
+
   fs.makeDirectoryRecursive(dataDir);
   fs.makeDirectoryRecursive(appDir);
 
   let args = makeArgsArangod(options, appDir);
   let endpoint;
   let port;
+
   if (!addArgs["server.endpoint"]) {
     port = findFreePort();
     endpoint = protocol + "://127.0.0.1:" + port;
@@ -1308,24 +1336,32 @@ function startArango(protocol, options, addArgs, name, rootDir, isAgency) {
     endpoint = addArgs["server.endpoint"];
     port = endpoint.split(":").pop();
   }
-  let instanceInfo = {isAgency, port, endpoint, rootDir};
+
+  let instanceInfo = {
+    isAgency, port, endpoint, rootDir
+  };
 
   args["server.endpoint"] = endpoint;
   args["database.directory"] = dataDir;
   args["log.file"] = fs.join(rootDir, "log");
-  args["log.level"] = 'info';
+
+  if (options.verbose) {
+    args["log.level"] = 'info';
+  } else {
+    args["log.level"] = 'error';
+  }
 
   if (protocol === "ssl") {
     args["server.keyfile"] = fs.join("UnitTests", "server.pem");
   }
 
-  args = _.extend(args, options.extraArgs);
+  args = Object.assign(args, options.extraArgs);
 
   if (addArgs !== undefined) {
-    args = _.extend(args, addArgs);
+    args = Object.assign(args, addArgs);
   }
+
   instanceInfo.url = endpointToURL(instanceInfo.endpoint);
-  
   instanceInfo.pid = executeValgrind(ARANGOD_BIN, toArgv(args), options, name).pid;
 
   if (platform.substr(0, 3) === 'win') {
@@ -1355,13 +1391,13 @@ function startInstanceAgency(instanceInfo, protocol, options,
     options.agencyWaitForSync = true;
   }
   const wfs = options.agencyWaitForSync;
-  
+
   for (let i = 0; i < N; i++) {
     let instanceArgs = _.clone(addArgs);
     instanceArgs["agency.id"] = String(i);
     instanceArgs["agency.size"] = String(N);
     instanceArgs["agency.wait-for-sync"] = String(wfs);
-    
+
     if (i === N - 1) {
       let l = [];
       for (let j = 0; j < N; j++) {
@@ -1372,7 +1408,7 @@ function startInstanceAgency(instanceInfo, protocol, options,
       }
       l.push("--agency.notify");
       l.push("true");
-      
+
       instanceArgs["flatCommands"] = l;
     }
     let dir = fs.join(rootDir, 'agency-' + i);
@@ -1392,7 +1428,7 @@ function startInstanceSingleServer(instanceInfo, protocol, options,
   addArgs, testname, rootDir) {
 
   instanceInfo.arangods.push(startArango(protocol, options, addArgs, testname, rootDir, false));
-  
+
   instanceInfo.endpoint = instanceInfo.arangods[instanceInfo.arangods.length - 1].endpoint;
   instanceInfo.url = instanceInfo.arangods[instanceInfo.arangods.length - 1].url;
 
@@ -1401,21 +1437,23 @@ function startInstanceSingleServer(instanceInfo, protocol, options,
 
 function startInstance(protocol, options, addArgs, testname, tmpDir) {
   let rootDir = fs.join(tmpDir || fs.getTempFile(), testname);
-  let instanceInfo = {rootDir, arangods: []};
-  
+  let instanceInfo = {
+    rootDir, arangods: []
+  };
+
   const startTime = time();
   try {
     if (options.cluster) {
       startInstanceCluster(instanceInfo, protocol, options,
-          addArgs, testname, rootDir);
+        addArgs, testname, rootDir);
     } else if (options.agency) {
       startInstanceAgency(instanceInfo, protocol, options,
-          addArgs, testname, rootDir);
+        addArgs, testname, rootDir);
     } else {
       startInstanceSingleServer(instanceInfo, protocol, options,
-          addArgs, testname, rootDir);
+        addArgs, testname, rootDir);
     }
-    
+
     if (!options.cluster) {
       let count = 0;
       instanceInfo.arangods.forEach(arangod => {
@@ -1437,13 +1475,13 @@ function startInstance(protocol, options, addArgs, testname, tmpDir) {
         }
       });
     }
-    print("up and running in " + (time() - startTime) + " seconds");
+    print(CYAN + "up and running in " + (time() - startTime) + " seconds" + RESET);
   } catch (e) {
     print(e, e.stack);
     return false;
   }
-  
-  
+
+
 
   return instanceInfo;
 }
@@ -1826,6 +1864,10 @@ const internalMembers = [
   "suiteName"
 ];
 
+function skipInternalMember(r, a) {
+  return !r.hasOwnProperty(a) || internalMembers.indexOf(a) !== -1;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief TEST: all
 ////////////////////////////////////////////////////////////////////////////////
@@ -1839,21 +1881,28 @@ let testFuncs = {
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.arangosh = function(options) {
-  let args = makeArgsArangosh(options);
-
   let ret = {
-    "ArangoshExitCodeTest": {
-      "testArangoshExitCodeFail": {},
-      "testArangoshExitCodeSuccess": {},
-      "testArangoshebang": {},
-      "total": 2,
-      "duration": 0.0
-    }
+    "testArangoshExitCodeFail": {
+      status: true,
+      total: 0
+    },
+    "testArangoshExitCodeSuccess": {
+      status: true,
+      total: 0
+    },
+    "testArangoshShebang": {
+      status: true,
+      total: 0
+    },
   };
 
-  // termination by throw
+  print("--------------------------------------------------------------------------------");
   print("Starting arangosh with exception throwing script:");
+  print("--------------------------------------------------------------------------------");
+
+  let args = makeArgsArangosh(options);
   args["javascript.execute-string"] = "throw('foo')";
+  args["log.level"] = "error";
 
   const startTime = time();
   let rc = executeExternalAndWait(ARANGOSH_BIN, toArgv(args));
@@ -1861,18 +1910,22 @@ testFuncs.arangosh = function(options) {
   const failSuccess = (rc.hasOwnProperty('exit') && rc.exit === 1);
 
   if (!failSuccess) {
-    ret.ArangoshExitCodeTest.testArangoshExitCodeFail['message'] =
+    ret.testArangoshExitCodeFail['message'] =
       "didn't get expected return code (1): \n" +
       yaml.safeDump(rc);
   }
 
-  ret.ArangoshExitCodeTest.testArangoshExitCodeFail['status'] = failSuccess;
-  ret.ArangoshExitCodeTest.testArangoshExitCodeFail['duration'] = deltaTime;
-  print("Status: " + ((failSuccess) ? "SUCCESS" : "FAIL") + "\n");
+  ++ret.testArangoshExitCodeFail['total'];
+  ret.testArangoshExitCodeFail['status'] = failSuccess;
+  ret.testArangoshExitCodeFail['duration'] = deltaTime;
+  print((failSuccess ? GREEN : RED) + "Status: " + (failSuccess ? "SUCCESS" : "FAIL") + RESET);
 
-  // regular termination
+  print("\n--------------------------------------------------------------------------------");
   print("Starting arangosh with regular terminating script:");
+  print("--------------------------------------------------------------------------------");
+
   args["javascript.execute-string"] = ";";
+  args["log.level"] = "warning";
 
   const startTime2 = time();
   rc = executeExternalAndWait(ARANGOSH_BIN, toArgv(args));
@@ -1881,23 +1934,30 @@ testFuncs.arangosh = function(options) {
   const successSuccess = (rc.hasOwnProperty('exit') && rc.exit === 0);
 
   if (!successSuccess) {
-    ret.ArangoshExitCodeTest.testArangoshExitCodeFail['message'] =
+    ret.testArangoshExitCodeFail['message'] =
       "didn't get expected return code (0): \n" +
       yaml.safeDump(rc);
   }
 
-  ret.ArangoshExitCodeTest.testArangoshExitCodeSuccess['status'] = failSuccess;
-  ret.ArangoshExitCodeTest.testArangoshExitCodeSuccess['duration'] = deltaTime2;
-  print("Status: " + ((successSuccess) ? "SUCCESS" : "FAIL") + "\n");
+  ++ret.testArangoshExitCodeSuccess['total'];
+  ret.testArangoshExitCodeSuccess['status'] = failSuccess;
+  ret.testArangoshExitCodeSuccess['duration'] = deltaTime2;
+  print((successSuccess ? GREEN : RED) + "Status: " + (successSuccess ? "SUCCESS" : "FAIL") + RESET);
 
   // test shebang execution with arangosh
-  var shebangSuccess = true;
-  var deltaTime3 = 0;
-
   if (!options.skipShebang && platform.substr(0, 3) !== "win") {
+    var shebangSuccess = true;
+    var deltaTime3 = 0;
     var shebangFile = fs.getTempFile();
 
-    print("Starting arangosh via shebang script: " + shebangFile);
+    print("\n--------------------------------------------------------------------------------");
+    print("Starting arangosh via shebang script");
+    print("--------------------------------------------------------------------------------");
+
+    if (options.verbose) {
+      print(CYAN + "shebang script: " + shebangFile + RESET);
+    }
+
     fs.write(shebangFile,
       "#!" + fs.makeAbsolute(ARANGOSH_BIN) + " --javascript.execute \n" +
       "print('hello world');\n");
@@ -1907,27 +1967,31 @@ testFuncs.arangosh = function(options) {
     const startTime3 = time();
     rc = executeExternalAndWait("sh", ["-c", shebangFile]);
     deltaTime3 = time() - startTime3;
-    print(rc);
+
+    if (options.verbose) {
+      print(CYAN + "execute returned: " + RESET, rc);
+    }
 
     shebangSuccess = (rc.hasOwnProperty('exit') && rc.exit === 0);
 
     if (!shebangSuccess) {
-      ret.ArangoshExitCodeTest.testArangoshebang['message'] =
+      ret.testArangoshShebang['message'] =
         "didn't get expected return code (0): \n" +
         yaml.safeDump(rc);
     }
 
     fs.remove(shebangFile);
 
-    print("Status: " + ((successSuccess) ? "SUCCESS" : "FAIL") + "\n");
+    ++ret.testArangoshShebang['total'];
+    ret.testArangoshShebang['status'] = shebangSuccess;
+    ret.testArangoshShebang['duration'] = deltaTime3;
+    print((shebangSuccess ? GREEN : RED) + "Status: " + (shebangSuccess ? "SUCCESS" : "FAIL") + RESET);
+  } else {
+    ret.testArangoshShebang['skipped'] = true;
   }
 
-  ret.ArangoshExitCodeTest.testArangoshebang['status'] = shebangSuccess;
-  ret.ArangoshExitCodeTest.testArangoshebang['duration'] = deltaTime3;
+  print();
 
-  // return result
-  ret.ArangoshExitCodeTest.status = failSuccess && successSuccess && shebangSuccess;
-  ret.ArangoshExitCodeTest.duration = deltaTime + deltaTime2 + deltaTime3;
   return ret;
 };
 
@@ -2038,7 +2102,7 @@ testFuncs.arangob = function(options) {
     };
   }
 
-  print("arangob tests...");
+  print(CYAN + "arangob tests..." + RESET);
 
   let instanceInfo = startInstance("tcp", options, {}, "arangob");
 
@@ -2051,17 +2115,12 @@ testFuncs.arangob = function(options) {
     };
   }
 
-  let results = {
-    arangob: {
-      status: true,
-      total: 0
-    }
-  };
-
+  let results = {};
   let continueTesting = true;
 
   for (let i = 0; i < benchTodos.length; i++) {
     const benchTodo = benchTodos[i];
+    const name = "case" + i;
 
     if ((options.skipArangoBNonConnKeepAlive) &&
       benchTodo.hasOwnProperty('keep-alive') &&
@@ -2073,9 +2132,9 @@ testFuncs.arangob = function(options) {
     if (!options.cluster || !benchTodo.transaction) {
 
       if (!continueTesting) {
-        print("Skipping " + benchTodo + ", server is gone.");
+        print(RED + "Skipping " + benchTodo + ", server is gone." + RESET);
 
-        results.arangob[i] = {
+        results[name] = {
           status: false,
           message: instanceInfo.exitStatus
         };
@@ -2089,16 +2148,17 @@ testFuncs.arangob = function(options) {
       delete args.transaction;
 
       if (options.hasOwnProperty('benchargs')) {
-        args = _.extend(args, options.benchargs);
+        args = Object.assign(args, options.benchargs);
       }
 
       let oneResult = runArangoBenchmark(options, instanceInfo, args);
+      print();
 
-      results.arangob[i] = oneResult;
-      results.arangob.total++;
+      results[name] = oneResult;
+      results[name].total++;
 
-      if (!results.arangob[i].status) {
-        results.arangob.status = false;
+      if (!results[name].status) {
+        results.status = false;
       }
 
       continueTesting = checkInstanceAlive(instanceInfo, options);
@@ -2109,9 +2169,9 @@ testFuncs.arangob = function(options) {
     }
   }
 
-  print("Shutting down...");
+  print(CYAN + "Shutting down..." + RESET);
   shutdownInstance(instanceInfo, options);
-  print("done.");
+  print(CYAN + "done." + RESET);
 
   return results;
 };
@@ -2121,7 +2181,7 @@ testFuncs.arangob = function(options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 testFuncs.authentication = function(options) {
-  if (options.skipAuth === true) {
+  if (options.skipAuthenication === true) {
     print("skipping Authentication tests!");
 
     return {
@@ -2132,10 +2192,10 @@ testFuncs.authentication = function(options) {
     };
   }
 
-  print("Authentication tests...");
+  print(CYAN + "Authentication tests..." + RESET);
 
   let instanceInfo = startInstance("tcp", options, {
-    "server.disable-authentication": "false"
+    "server.authentication": "true"
   }, "authentication");
 
   if (instanceInfo === false) {
@@ -2152,9 +2212,11 @@ testFuncs.authentication = function(options) {
   results.authentication = runInArangosh(options, instanceInfo,
     fs.join("js", "client", "tests", "auth.js"));
 
-  print("Shutting down...");
+  print(CYAN + "Shutting down..." + RESET);
   shutdownInstance(instanceInfo, options);
-  print("done.");
+  print(CYAN + "done." + RESET);
+
+  print();
 
   return results;
 };
@@ -2186,14 +2248,14 @@ const authTestNames = [
 ];
 
 const authTestServerParams = [{
-  "server.disable-authentication": "false",
-  "server.authenticate-system-only": "false"
+  "server.authentication": "true",
+  "server.authentication-system-only": "false"
 }, {
-  "server.disable-authentication": "false",
-  "server.authenticate-system-only": "true"
+  "server.authentication": "true",
+  "server.authentication-system-only": "true"
 }, {
-  "server.disable-authentication": "true",
-  "server.authenticate-system-only": "true"
+  "server.authentication": "false",
+  "server.authentication-system-only": "true"
 }];
 
 function checkBodyForJsonToParse(request) {
@@ -2203,8 +2265,8 @@ function checkBodyForJsonToParse(request) {
 }
 
 testFuncs.authentication_parameters = function(options) {
-  if (options.skipAuth === true) {
-    print("skipping Authentication with parameters tests!");
+  if (options.skipAuthenication === true) {
+    print(CYAN + "skipping Authentication with parameters tests!" + RESET);
     return {
       authentication_parameters: {
         status: true,
@@ -2213,7 +2275,7 @@ testFuncs.authentication_parameters = function(options) {
     };
   }
 
-  print("Authentication with parameters tests...");
+  print(CYAN + "Authentication with parameters tests..." + RESET);
 
   let downloadOptions = {
     followRedirects: false,
@@ -2243,7 +2305,7 @@ testFuncs.authentication_parameters = function(options) {
       };
     }
 
-    print(Date() + " Starting " + authTestNames[test] + " test");
+    print(CYAN + Date() + " Starting " + authTestNames[test] + " test" + RESET);
 
     const testName = 'auth_' + authTestNames[test];
     results[testName] = {
@@ -2256,10 +2318,10 @@ testFuncs.authentication_parameters = function(options) {
 
       ++results[testName].total;
 
-      print("  URL: " + instanceInfo.url + authTestUrl);
+      print(CYAN + "  URL: " + instanceInfo.url + authTestUrl + RESET);
 
       if (!continueTesting) {
-        print("Skipping " + authTestUrl + ", server is gone.");
+        print(RED + "Skipping " + authTestUrl + ", server is gone." + RESET);
 
         results[testName][authTestUrl] = {
           status: false,
@@ -2297,10 +2359,12 @@ testFuncs.authentication_parameters = function(options) {
 
     results[testName].status = results[testName].failed === 0;
 
-    print("Shutting down " + authTestNames[test] + " test...");
+    print(CYAN + "Shutting down " + authTestNames[test] + " test..." + RESET);
     shutdownInstance(instanceInfo, options);
-    print("done with " + authTestNames[test] + " test.");
+    print(CYAN + "done with " + authTestNames[test] + " test." + RESET);
   }
+
+  print();
 
   return results;
 };
@@ -2350,11 +2414,13 @@ testFuncs.config = function(options) {
   let results = {
     absolut: {
       status: true,
-      total: 0
+      total: 0,
+      duration: 0
     },
     relative: {
       status: true,
-      total: 0
+      total: 0,
+      duration: 0
     }
   };
 
@@ -2370,12 +2436,15 @@ testFuncs.config = function(options) {
   print("absolute config tests");
   print("--------------------------------------------------------------------------------");
 
+  let startTime = time();
+
   for (let i = 0; i < ts.length; i++) {
     const test = ts[i];
+    print(CYAN + "checking '" + test + "'" + RESET);
 
     const args = {
       "configuration": fs.join(CONFIG_DIR, test + ".conf"),
-      "flatCommands": ["--help"]
+      "flatCommands": ["--check-configuration"]
     };
 
     const run = fs.join(BIN_DIR, test);
@@ -2388,21 +2457,28 @@ testFuncs.config = function(options) {
 
     results.absolut.total++;
 
-    print("Args for [" + test + "]:");
-    print(yaml.safeDump(args));
-    print("Result: " + results.absolut[test].status);
+    if (options.verbose) {
+      print("Args for [" + test + "]:");
+      print(yaml.safeDump(args));
+      print("Result: " + results.absolut[test].status);
+    }
   }
 
-  print("--------------------------------------------------------------------------------");
+  results.absolut.duration = time() - startTime;
+
+  print("\n--------------------------------------------------------------------------------");
   print("relative config tests");
   print("--------------------------------------------------------------------------------");
 
+  startTime = time();
+
   for (let i = 0; i < ts.length; i++) {
     const test = ts[i];
+    print(CYAN + "checking '" + test + "'" + RESET);
 
     const args = {
       "configuration": fs.join(CONFIG_RELATIVE_DIR, test + ".conf"),
-      "flatCommands": ["--help"]
+      "flatCommands": ["--check-configuration"]
     };
 
     const run = fs.join(BIN_DIR, test);
@@ -2415,10 +2491,16 @@ testFuncs.config = function(options) {
 
     results.relative.total++;
 
-    print("Args for (relative) [" + test + "]:");
-    print(yaml.safeDump(args));
-    print("Result: " + results.relative[test].status);
+    if (options.verbose) {
+      print("Args for (relative) [" + test + "]:");
+      print(yaml.safeDump(args));
+      print("Result: " + results.relative[test].status);
+    }
   }
+
+  results.relative.duration = time() - startTime;
+
+  print();
 
   return results;
 };
@@ -2429,11 +2511,13 @@ testFuncs.config = function(options) {
 
 testFuncs.dfdb = function(options) {
   const dataDir = fs.getTempFile();
-  const args = ["-c", "etc/relative/arango-dfdb.conf", "--no-server", dataDir];
+  const args = ["-c", "etc/relative/arango-dfdb.conf", dataDir];
 
   let results = {};
 
   results.dfdb = executeAndWait(ARANGOD_BIN, args, options, "dfdb");
+
+  print();
 
   return results;
 };
@@ -2451,7 +2535,7 @@ testFuncs.dump = function(options) {
     cluster = "";
   }
 
-  print("dump tests...");
+  print(CYAN + "dump tests..." + RESET);
 
   let instanceInfo = startInstance("tcp", options, {}, "dump");
 
@@ -2464,7 +2548,7 @@ testFuncs.dump = function(options) {
     };
   }
 
-  print(Date() + ": Setting up");
+  print(CYAN + Date() + ": Setting up" + RESET);
 
   let results = {};
   results.setup = runInArangosh(options, instanceInfo,
@@ -2472,21 +2556,21 @@ testFuncs.dump = function(options) {
 
   if (checkInstanceAlive(instanceInfo, options) &&
     (results.setup.status === true)) {
-    print(Date() + ": Dump and Restore - dump");
+    print(CYAN + Date() + ": Dump and Restore - dump" + RESET);
 
     results.dump = runArangoDumpRestore(options, instanceInfo, "dump",
       "UnitTestsDumpSrc");
 
     if (checkInstanceAlive(instanceInfo, options) &&
       (results.dump.status === true)) {
-      print(Date() + ": Dump and Restore - restore");
+      print(CYAN + Date() + ": Dump and Restore - restore" + RESET);
 
       results.restore = runArangoDumpRestore(options, instanceInfo, "restore",
         "UnitTestsDumpDst");
 
       if (checkInstanceAlive(instanceInfo, options) &&
         (results.restore.status === true)) {
-        print(Date() + ": Dump and Restore - dump after restore");
+        print(CYAN + Date() + ": Dump and Restore - dump after restore" + RESET);
 
         results.test = runInArangosh(options, instanceInfo,
           makePathUnix("js/server/tests/dump/dump" + cluster + ".js"), {
@@ -2495,7 +2579,7 @@ testFuncs.dump = function(options) {
 
         if (checkInstanceAlive(instanceInfo, options) &&
           (results.test.status === true)) {
-          print(Date() + ": Dump and Restore - teardown");
+          print(CYAN + Date() + ": Dump and Restore - teardown" + RESET);
 
           results.tearDown = runInArangosh(options, instanceInfo,
             makePathUnix("js/server/tests/dump/dump-teardown" + cluster + ".js"));
@@ -2504,9 +2588,11 @@ testFuncs.dump = function(options) {
     }
   }
 
-  print("Shutting down...");
+  print(CYAN + "Shutting down..." + RESET);
   shutdownInstance(instanceInfo, options);
-  print("done.");
+  print(CYAN + "done." + RESET);
+
+  print();
 
   return results;
 };
@@ -2518,7 +2604,7 @@ testFuncs.dump = function(options) {
 testFuncs.dump_authentication = function(options) {
   if (options.cluster) {
     if (options.extremeVerbosity) {
-      print("Skipped because of cluster.");
+      print(CYAN + "Skipped because of cluster." + RESET);
     }
 
     return {
@@ -2530,17 +2616,15 @@ testFuncs.dump_authentication = function(options) {
     };
   }
 
-  print("dump_authentication tests...");
+  print(CYAN + "dump_authentication tests..." + RESET);
 
   const auth1 = {
-    "server.disable-authentication": "false"
+    "server.authentication": "true"
   };
 
   const auth2 = {
     "server.authentication": "true"
   };
-
-  print(JSON.stringify(auth1));
 
   let instanceInfo = startInstance("tcp", options, auth1, "dump_authentication");
 
@@ -2553,7 +2637,7 @@ testFuncs.dump_authentication = function(options) {
     };
   }
 
-  print(Date() + ": Setting up");
+  print(CYAN + Date() + ": Setting up" + RESET);
 
   let results = {};
   results.setup = runInArangosh(options, instanceInfo,
@@ -2562,7 +2646,7 @@ testFuncs.dump_authentication = function(options) {
 
   if (checkInstanceAlive(instanceInfo, options) &&
     (results.setup.status === true)) {
-    print(Date() + ": Dump and Restore - dump");
+    print(CYAN + Date() + ": Dump and Restore - dump" + RESET);
 
     let authOpts = {
       username: "foobaruser",
@@ -2576,14 +2660,14 @@ testFuncs.dump_authentication = function(options) {
 
     if (checkInstanceAlive(instanceInfo, options) &&
       (results.dump.status === true)) {
-      print(Date() + ": Dump and Restore - restore");
+      print(CYAN + Date() + ": Dump and Restore - restore" + RESET);
 
       results.restore = runArangoDumpRestore(authOpts, instanceInfo, "restore",
         "UnitTestsDumpDst");
 
       if (checkInstanceAlive(instanceInfo, options) &&
         (results.restore.status === true)) {
-        print(Date() + ": Dump and Restore - dump after restore");
+        print(CYAN + Date() + ": Dump and Restore - dump after restore" + RESET);
 
         results.test = runInArangosh(authOpts, instanceInfo,
           makePathUnix("js/server/tests/dump/dump-authentication.js"), {
@@ -2592,7 +2676,7 @@ testFuncs.dump_authentication = function(options) {
 
         if (checkInstanceAlive(instanceInfo, options) &&
           (results.test.status === true)) {
-          print(Date() + ": Dump and Restore - teardown");
+          print(CYAN + Date() + ": Dump and Restore - teardown" + RESET);
 
           results.tearDown = runInArangosh(options, instanceInfo,
             makePathUnix("js/server/tests/dump/dump-teardown.js"), auth2);
@@ -2601,9 +2685,11 @@ testFuncs.dump_authentication = function(options) {
     }
   }
 
-  print("Shutting down...");
+  print(CYAN + "Shutting down..." + RESET);
   shutdownInstance(instanceInfo, options);
-  print("done.");
+  print(CYAN + "done." + RESET);
+
+  print();
 
   return results;
 };
@@ -2836,7 +2922,7 @@ function runArangodRecovery(instanceInfo, options, script, setup) {
     args["wal.reserve-logfiles"] = 1;
     args["database.directory"] = instanceInfo.tmpDataDir;
 
-    instanceInfo.recoveryArgv = toArgv(args).concat(["--no-server"]);
+    instanceInfo.recoveryArgv = toArgv(args).concat(["--server.rest-server", "false"]);
   }
 
   let argv = instanceInfo.recoveryArgv;
@@ -3021,7 +3107,7 @@ testFuncs.replication_static = function(options) {
   const mr = makeResults('replication');
 
   let master = startInstance("tcp", options, {
-    "server.disable-authentication": "false"
+    "server.authentication": "true"
   }, "master_static");
 
   if (master === false) {
@@ -3218,6 +3304,7 @@ testFuncs.server_http = function(options) {
 
 testFuncs.shell_server = function(options) {
   findTests();
+  options.propagateInstanceInfo = true;
 
   return performTests(options, testsCases.server, 'shell_server');
 };
@@ -3571,11 +3658,13 @@ testFuncs.agency = function(options) {
       let agencyServers = instanceInfo.arangods.map(arangod => {
         return arangod.url;
       });
-      
+
 
       print("\narangosh: Trying", te, "...");
 
-      const reply = runInArangosh(options, instanceInfo, te, {"flatCommands": agencyServers.join(' ')});
+      const reply = runInArangosh(options, instanceInfo, te, {
+        "flatCommands": agencyServers.join(' ')
+      });
       results[te] = reply;
 
       if (reply.status !== true) {
@@ -3605,104 +3694,117 @@ testFuncs.agency = function(options) {
 /// @brief pretty prints the result
 ////////////////////////////////////////////////////////////////////////////////
 
+function testCaseMessage(test) {
+  if (typeof test.message === "object" && test.message.hasOwnProperty('body')) {
+    return test.message.body;
+  } else {
+    return test.message;
+  }
+}
+
 function unitTestPrettyPrintResults(r) {
-  let testFail = 0;
-  let testSuiteFail = 0;
-  let success = "";
-  let fail = "";
+  print(BLUE + "================================================================================");
+  print("TEST RESULTS");
+  print("================================================================================\n" + RESET);
+
+  let failedSuite = 0;
+  let failedTests = 0;
 
   try {
-    for (let testrun in r) {
-      if (r.hasOwnProperty(testrun) && (internalMembers.indexOf(testrun) === -1)) {
-        let isSuccess = true;
-        let successTests = {};
-        let oneOutput = "* Testrun: " + testrun + "\n";
+    /*jshint forin: false */
+    for (let testrunName in r) {
+      if (skipInternalMember(r, testrunName)) {
+        continue;
+      }
 
-        for (let test in r[testrun]) {
-          if (r[testrun].hasOwnProperty(test) &&
-            (internalMembers.indexOf(test) === -1)) {
-            if (r[testrun][test].status) {
-              const where = test.lastIndexOf(fs.pathSeparator);
-              let which;
+      let testrun = r[testrunName];
 
-              if (where < 0) {
-                which = 'Unittests';
-              } else {
-                which = test.substring(0, where);
-                test = test.substring(where + 1, test.length);
-              }
+      print("* Test '" + testrunName + "'");
 
-              if (!successTests.hasOwnProperty(which)) {
-                successTests[which] = [];
-              }
+      let successCases = {};
+      let failedCases = {};
+      let isSuccess = true;
 
-              successTests[which].push(test);
-            } else {
-              testSuiteFail++;
-
-              if (r[testrun][test].hasOwnProperty('message')) {
-                isSuccess = false;
-                oneOutput += "     [  Fail ] " + test +
-                  ": Whole testsuite failed!\n";
-
-                if (typeof r[testrun][test].message === "object" &&
-                  r[testrun][test].message.hasOwnProperty('body')) {
-                  oneOutput += r[testrun][test].message.body + "\n";
-                } else {
-                  oneOutput += r[testrun][test].message + "\n";
-                }
-              } else {
-                isSuccess = false;
-                oneOutput += "    [  Fail ] " + test + "\n";
-
-                for (let oneTest in r[testrun][test]) {
-                  if (r[testrun][test].hasOwnProperty(oneTest) &&
-                    (internalMembers.indexOf(oneTest) === -1) &&
-                    (!r[testrun][test][oneTest].status)) {
-                    ++testFail;
-                    oneOutput += "          -> " + oneTest +
-                      " Failed; Verbose message:\n" +
-                      r[testrun][test][oneTest].message + "\n";
-                  }
-                }
-              }
-            }
-          }
+      for (let testName in testrun) {
+        if (skipInternalMember(testrun, testName)) {
+          continue;
         }
 
-        if (successTests !== "") {
-          for (let key in successTests) {
-            if (successTests.hasOwnProperty(key)) {
-              oneOutput = "     [Success] " + key +
-                " / [" + successTests[key].join(', ') + ']\n' + oneOutput;
-            }
-          }
-        }
+        let test = testrun[testName];
 
-        if (isSuccess) {
-          success += oneOutput;
+        if (test.status) {
+          successCases[testName] = test;
         } else {
-          fail += oneOutput;
+          isSuccess = false;
+          ++failedSuite;
+
+          if (test.hasOwnProperty('message')) {
+            ++failedTests;
+            failedCases[testName] = {
+              test: testCaseMessage(test)
+            };
+          } else {
+            let fails = failedCases[testName] = {};
+
+            for (let oneName in test) {
+              if (skipInternalMember(test, oneName)) {
+                continue;
+              }
+
+              let oneTest = test[oneName];
+
+              if (!oneTest.status) {
+                ++failedTests;
+                fails[oneName] = testCaseMessage(oneTest);
+              }
+            }
+          }
+        }
+      }
+
+      for (let name in successCases) {
+        if (!successCases.hasOwnProperty(name)) {
+          continue;
+        }
+
+        let details = successCases[name];
+
+        if (details.skipped) {
+          print(YELLOW + "    [SKIPPED] " + name + RESET);
+        } else {
+          print(GREEN + "    [SUCCESS] " + name + RESET);
+        }
+      }
+
+      for (let name in failedCases) {
+        if (!failedCases.hasOwnProperty(name)) {
+          continue;
+        }
+
+        print(RED + "    [FAILED]  " + name + RESET);
+
+        let details = failedCases[name];
+
+        for (let one in details) {
+          if (!details.hasOwnProperty(one)) {
+            continue;
+          }
+
+          print(RED + "      '" + one + "' failed: " + details[one] + RESET);
         }
       }
     }
+    /*jshint forin: true */
 
-    if (success !== "") {
-      print(success);
-    }
-
-    if (fail !== "") {
-      print(fail);
-    }
-
-    print("Overall state: " + ((r.status === true) ? "Success" : "Fail"));
+    let color = (r.status === true) ? GREEN : RED;
+    print("\n" + color + "* Overall state: " + ((r.status === true) ? "Success" : "Fail") + RESET);
 
     if (r.status !== true) {
-      print("   Suites failed: " + testSuiteFail + " Tests Failed: " + testFail);
+      print(color + "   Suites failed: " + failedSuite + " Tests Failed: " + failedTests + RESET);
     }
 
     if (r.crashed === true) {
-      print("   We had at least one unclean shutdown of an arangod during the testrun.");
+      print("\nWe had at least one unclean shutdown or crash during the testrun.");
     }
   } catch (x) {
     print("exception caught while pretty printing result: ");
@@ -3849,7 +3951,13 @@ function unitTest(cases, options) {
   for (let n = 0; n < caselist.length; ++n) {
     const currentTest = caselist[n];
 
-    print("Executing test", currentTest, "with options", options);
+    print(BLUE + "================================================================================");
+    print("Executing test", currentTest);
+    print("================================================================================\n" + RESET);
+
+    if (options.verbose) {
+      print(CYAN + "with options:", options, RESET);
+    }
 
     let result = testFuncs[currentTest](options);
     results[currentTest] = result;
@@ -3881,7 +3989,12 @@ function unitTest(cases, options) {
       yaml.safeDump(cleanupDirectories));
   }
 
-  yaml.safeDump(results);
+  try {
+    yaml.safeDump(JSON.parse(JSON.stringify(results)));
+  } catch (err) {
+    print(RED + "cannot dump results: " + String(err) + RESET);
+    print(RED + require("internal").inspect(results) + RESET);
+  }
 
   if (jsonReply === true) {
     return results;

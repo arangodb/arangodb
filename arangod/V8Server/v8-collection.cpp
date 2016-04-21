@@ -1287,9 +1287,11 @@ static void JS_PropertiesVocbaseCol(
       VPackSlice const slice(keyOpts->data());
       result->Set(KeyOptionsKey, TRI_VPackToV8(isolate, slice)->ToObject());
     }
-    result->Set(TRI_V8_ASCII_STRING("replicationFactor"),
+    result->Set(
+        TRI_V8_ASCII_STRING("replicationFactor"),
         v8::Number::New(isolate, static_cast<double>(c->replicationFactor())));
-    result->Set(TRI_V8_ASCII_STRING("replicationQuorum"),
+    result->Set(
+        TRI_V8_ASCII_STRING("replicationQuorum"),
         v8::Number::New(isolate, static_cast<double>(c->replicationQuorum())));
 
     TRI_V8_RETURN(result);
@@ -1389,7 +1391,8 @@ static void JS_PropertiesVocbaseCol(
 
       if (res != TRI_ERROR_NO_ERROR) {
         // TODO: what to do here
-        LOG(WARN) << "could not save collection change marker in log: " << TRI_errno_string(res);
+        LOG(WARN) << "could not save collection change marker in log: "
+                  << TRI_errno_string(res);
       }
     }
   }
@@ -3004,9 +3007,8 @@ static void JS_DatafileScanVocbaseCol(
 // .............................................................................
 
 void TRI_InitV8collection(v8::Handle<v8::Context> context, TRI_server_t* server,
-                          TRI_vocbase_t* vocbase, JSLoader* loader,
-                          size_t const threadNumber, TRI_v8_global_t* v8g,
-                          v8::Isolate* isolate,
+                          TRI_vocbase_t* vocbase, size_t const threadNumber,
+                          TRI_v8_global_t* v8g, v8::Isolate* isolate,
                           v8::Handle<v8::ObjectTemplate> ArangoDBNS) {
   TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_changeMode"),
                        JS_ChangeOperationModeVocbase);

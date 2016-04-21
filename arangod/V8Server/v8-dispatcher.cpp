@@ -23,46 +23,29 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-dispatcher.h"
-#include "Logger/Logger.h"
-#include "Basics/tri-strings.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Basics/StringUtils.h"
-#include "Dispatcher/ApplicationDispatcher.h"
+#include "Basics/tri-strings.h"
 #include "Dispatcher/Dispatcher.h"
-#include "Scheduler/ApplicationScheduler.h"
+#include "Dispatcher/DispatcherFeature.h"
+#include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
-#include "V8Server/ApplicationV8.h"
 #include "V8Server/V8PeriodicTask.h"
 #include "V8Server/V8QueueJob.h"
 #include "V8Server/V8TimerTask.h"
 #include "VocBase/server.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
-
 using namespace arangodb;
+using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief global V8 dealer
-////////////////////////////////////////////////////////////////////////////////
-
-static ApplicationV8* GlobalV8Dealer = nullptr;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief global scheduler
-////////////////////////////////////////////////////////////////////////////////
-
-static Scheduler* GlobalScheduler = nullptr;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief global dispatcher
-////////////////////////////////////////////////////////////////////////////////
-
-static Dispatcher* GlobalDispatcher = nullptr;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief try to compile the command
@@ -111,7 +94,8 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  if (GlobalScheduler == nullptr || GlobalDispatcher == nullptr) {
+  if (DispatcherFeature::DISPATCHER == nullptr ||
+      SchedulerFeature::SCHEDULER == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no scheduler found");
   }
 
@@ -205,12 +189,10 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
     // create a new periodic task
     task =
         new V8PeriodicTask(id, name, static_cast<TRI_vocbase_t*>(v8g->_vocbase),
-                           GlobalV8Dealer, GlobalScheduler, GlobalDispatcher,
                            offset, period, command, parameters, isSystem);
   } else {
     // create a run-once timer task
     task = new V8TimerTask(id, name, static_cast<TRI_vocbase_t*>(v8g->_vocbase),
-                           GlobalV8Dealer, GlobalScheduler, GlobalDispatcher,
                            offset, command, parameters, isSystem);
   }
 
@@ -221,7 +203,7 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
-  int res = GlobalScheduler->registerTask(task);
+  int res = SchedulerFeature::SCHEDULER->registerTask(task);
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (period > 0.0) {
@@ -257,11 +239,12 @@ static void JS_UnregisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string const id = GetTaskId(isolate, args[0]);
 
-  if (GlobalScheduler == nullptr || GlobalDispatcher == nullptr) {
+  if (DispatcherFeature::DISPATCHER == nullptr ||
+      SchedulerFeature::SCHEDULER == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no scheduler found");
   }
 
-  int res = GlobalScheduler->unregisterUserTask(id);
+  int res = SchedulerFeature::SCHEDULER->unregisterUserTask(id);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -285,7 +268,8 @@ static void JS_GetTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("get(<id>)");
   }
 
-  if (GlobalScheduler == nullptr || GlobalDispatcher == nullptr) {
+  if (DispatcherFeature::DISPATCHER == nullptr ||
+      SchedulerFeature::SCHEDULER == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no scheduler found");
   }
 
@@ -294,10 +278,10 @@ static void JS_GetTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() == 1) {
     // get a single task
     std::string const id = GetTaskId(isolate, args[0]);
-    builder = GlobalScheduler->getUserTask(id);
+    builder = SchedulerFeature::SCHEDULER->getUserTask(id);
   } else {
     // get all tasks
-    builder = GlobalScheduler->getUserTasks();
+    builder = SchedulerFeature::SCHEDULER->getUserTasks();
   }
 
   if (builder == nullptr) {
@@ -314,24 +298,13 @@ static void JS_GetTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
 /// @brief stores the V8 dispatcher function inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Dispatcher(v8::Isolate* isolate, v8::Handle<v8::Context> context,
-                          TRI_vocbase_t* vocbase,
-                          ApplicationScheduler* scheduler,
-                          ApplicationDispatcher* dispatcher,
-                          ApplicationV8* applicationV8) {
+void TRI_InitV8Dispatcher(v8::Isolate* isolate,
+                          v8::Handle<v8::Context> context) {
   v8::HandleScope scope(isolate);
 
-  GlobalV8Dealer = applicationV8;
-
-  // .............................................................................
-  // create the global functions
-  // .............................................................................
-
   // we need a scheduler and a dispatcher to define periodic tasks
-  GlobalScheduler = scheduler->scheduler();
-  GlobalDispatcher = dispatcher->dispatcher();
-
-  if (GlobalScheduler != nullptr && GlobalDispatcher != nullptr) {
+  if (DispatcherFeature::DISPATCHER != nullptr &&
+      SchedulerFeature::SCHEDULER != nullptr) {
     TRI_AddGlobalFunctionVocbase(isolate, context,
                                  TRI_V8_ASCII_STRING("SYS_REGISTER_TASK"),
                                  JS_RegisterTask);

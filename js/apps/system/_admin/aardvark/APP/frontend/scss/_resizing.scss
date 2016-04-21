@@ -213,7 +213,6 @@
       width: 100%;
 
       .dashboard-sub-bar {
-        margin-left: -5px;
         width: 100%;
       }
 
@@ -254,7 +253,7 @@
 
         .dashboard-interior-chart {
           height: $dashboard-height - $smallchart-height-corrector + 2px;
-          width: auto;
+          width: 100%;
 
           .nv-axis text {
             fill: $c-darker-grey;
@@ -272,7 +271,7 @@
 
       .dashboard-tendency-chart {
         $int-height: (($dashboard-height - 29px) / 2) - $tendency-height-corrector;
-        height: $int-height;
+        height: $int-height + 5px;
 
         .dashboard-tendency,
         .dashboard-subtitle-bar,
@@ -302,6 +301,7 @@
     .dashboard-bar-chart-container {
       $int-width: ($content-size / 3) - 18px - 2px;
       $int-height: (($dashboard-height - 30px) / 2) - $tendency-height-corrector;
+      $int-height2: ($int-height - 20px);
       height: $int-height + 2px;
 
       .dashboard-bar-chart {
@@ -317,6 +317,9 @@
           }
 
           .absolut {
+            //line-height: ($int-height2 * 2 / 3) - 10px;
+            line-height: 40px;
+            padding-top: 15px;
             width: ($int-width - (($int-width / 2) * 1.4)) - 6px;
           }
         }
@@ -324,18 +327,21 @@
         .dashboard-bar-chart-chart {
 
           $int-height2: ($int-height - 20px);
-          height: ($int-height2 * 2 / 3) - 5px;
-          line-height: ($int-height2 * 2 / 3) - 5px;
-          padding: 5px 8px 10px;
-          width: $int-width - 16px;
+          box-sizing: border-box;
+          //height: ($int-height2 * 2 / 3) - 5px;
+          height: 50px;
+          margin-top: 5px;
+          //line-height: ($int-height2 * 2 / 3) - 5px;
+          width: 100%;
 
           #residentSizeChart {
-            height: ($int-height2 * 2 / 3);
+            //height: ($int-height2 * 2 / 3);
           }
         }
       }
 
       .dashboard-sub-bar {
+        padding-top: 13px;
         width: 100%;
       }
     }
@@ -579,7 +585,7 @@ div.centralContent {
   box-sizing: border-box;
   margin-top: 10px;
   padding: {
-    bottom: 43px;
+    bottom: 5px;
     left: 5px;
     right: 5px;
     top: 5px;

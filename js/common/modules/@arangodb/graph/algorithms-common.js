@@ -287,7 +287,7 @@ Vertex.prototype.pathesForTree = function (tree, path_to_here) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Get all neighbours for this vertex
+/// @brief Get all neighbors for this vertex
 ///
 /// @FUN{@FA{vertex}.getNeighbors(@FA{options})}
 ///

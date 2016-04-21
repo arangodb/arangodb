@@ -42,11 +42,9 @@ using namespace arangodb;
 using namespace arangodb::rest;
 
 RestSimpleHandler::RestSimpleHandler(
-    HttpRequest* request,
-    std::pair<arangodb::ApplicationV8*, arangodb::aql::QueryRegistry*>* pair)
+    HttpRequest* request, arangodb::aql::QueryRegistry* queryRegistry)
     : RestVocbaseBaseHandler(request),
-      _applicationV8(pair->first),
-      _queryRegistry(pair->second),
+      _queryRegistry(queryRegistry),
       _queryLock(),
       _query(nullptr),
       _queryKilled(false) {}
@@ -219,7 +217,7 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
     }
 
     arangodb::aql::Query query(
-        _applicationV8, false, _vocbase, aql.c_str(), aql.size(),
+        false, _vocbase, aql.c_str(), aql.size(),
         bindVars, nullptr, arangodb::aql::PART_MAIN);
 
     registerQuery(&query);
@@ -337,7 +335,7 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
         "FOR doc IN @@collection FILTER doc._key IN @keys RETURN doc");
 
     arangodb::aql::Query query(
-        _applicationV8, false, _vocbase, aql.c_str(), aql.size(),
+        false, _vocbase, aql.c_str(), aql.size(),
         bindVars, nullptr, arangodb::aql::PART_MAIN);
 
     registerQuery(&query);

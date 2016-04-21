@@ -1,4 +1,5 @@
 'use strict';
+
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -321,7 +322,7 @@ function mountController(service, mount, filename) {
     var foxx = foxxes[i];
     var ri = foxx.routingInfo;
 
-    _.extend(service.routes.models, foxx.models);
+    Object.assign(service.routes.models, foxx.models);
 
     if (ri.middleware) {
       createMiddlewareMatchers(ri.middleware, service.routes, mount, ri.urlPrefix);

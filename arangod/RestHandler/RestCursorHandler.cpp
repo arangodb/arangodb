@@ -30,7 +30,6 @@
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
-#include "V8Server/ApplicationV8.h"
 
 #include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
@@ -42,10 +41,9 @@ using namespace arangodb::rest;
 
 RestCursorHandler::RestCursorHandler(
     HttpRequest* request,
-    std::pair<arangodb::ApplicationV8*, arangodb::aql::QueryRegistry*>* pair)
+    arangodb::aql::QueryRegistry* queryRegistry)
     : RestVocbaseBaseHandler(request),
-      _applicationV8(pair->first),
-      _queryRegistry(pair->second),
+      _queryRegistry(queryRegistry),
       _queryLock(),
       _query(nullptr),
       _queryKilled(false) {}
@@ -112,7 +110,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
   char const* queryString = querySlice.getString(l);
 
   arangodb::aql::Query query(
-      _applicationV8, false, _vocbase, queryString, static_cast<size_t>(l),
+      false, _vocbase, queryString, static_cast<size_t>(l),
       bindVarsBuilder,
       options,
       arangodb::aql::PART_MAIN);

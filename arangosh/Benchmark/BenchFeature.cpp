@@ -26,12 +26,11 @@
 
 #include "ApplicationFeatures/ClientFeature.h"
 #include "Basics/StringUtils.h"
-#include "Basics/random.h"
 #include "Benchmark/BenchmarkCounter.h"
 #include "Benchmark/BenchmarkOperation.h"
 #include "Benchmark/BenchmarkThread.h"
-#include "ProgramOptions2/ProgramOptions.h"
-#include "ProgramOptions2/Section.h"
+#include "ProgramOptions/ProgramOptions.h"
+#include "ProgramOptions/Section.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
@@ -71,14 +70,12 @@ BenchFeature::BenchFeature(application_features::ApplicationServer* server,
   setOptional(false);
   startsAfter("Client");
   startsAfter("Config");
+  startsAfter("Random");
   startsAfter("Logger");
 }
 
 void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
-  options->addSection(
-      Section("", "Global configuration", "global options", false, false));
 
   options->addOption("--async", "send asynchronous requests",
                      new BooleanParameter(&_async));

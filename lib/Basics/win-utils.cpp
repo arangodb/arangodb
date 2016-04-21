@@ -587,7 +587,7 @@ void TRI_WindowsEmergencyLog(char const* func, char const* file, int line,
 }
 
 void ADB_WindowsEntryFunction() {
-  int maxOpenFiles = 1024;
+  int maxOpenFiles = 2048;
   int res = 0;
 
   // ...........................................................................
@@ -600,20 +600,20 @@ void ADB_WindowsEntryFunction() {
   res = initializeWindows(TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER, 0);
 
   if (res != 0) {
-    _exit(1);
+    _exit(EXIT_FAILURE);
   }
 
   res = initializeWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO,
                           (char const*)(&maxOpenFiles));
 
   if (res != 0) {
-    _exit(1);
+    _exit(EXIT_FAILURE);
   }
 
   res = initializeWindows(TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL, 0);
 
   if (res != 0) {
-    _exit(1);
+    _exit(EXIT_FAILURE);
   }
 
   TRI_Application_Exit_SetExit(ADB_WindowsExitFunction);
@@ -623,7 +623,7 @@ void ADB_WindowsExitFunction(int exitCode, void* data) {
   int res = finalizeWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
 
   if (res != 0) {
-    exit(1);
+    exit(EXIT_FAILURE);
   }
 
   exit(exitCode);

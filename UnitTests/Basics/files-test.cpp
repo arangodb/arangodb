@@ -30,9 +30,11 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/files.h"
 #include "Basics/json.h"
-#include "Basics/random.h"
+#include "Basics/RandomGenerator.h"
 
 using namespace arangodb::basics;
+
+static bool Initialized = false;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -45,10 +47,15 @@ struct CFilesSetup {
     BOOST_TEST_MESSAGE("setup files");
 
     _directory.appendText("/tmp/arangotest-");
-    _directory.appendInteger((uint64_t) TRI_microtime());
-    _directory.appendInteger((uint32_t) TRI_UInt32Random());
+    _directory.appendInteger(static_cast<uint64_t>(TRI_microtime()));
+    _directory.appendInteger(arangodb::RandomGenerator::interval(UINT32_MAX));
 
     TRI_CreateDirectory(_directory.c_str(), systemError, errorMessage);
+
+    if (!Initialized) {
+      Initialized = true;
+      arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
+    }
   }
 
   ~CFilesSetup () {
@@ -68,7 +75,7 @@ struct CFilesSetup {
     filename->appendText(_directory);
     filename->appendText("/tmp-");
     filename->appendInteger(++counter);
-    filename->appendInteger((uint32_t) TRI_UInt32Random());
+    filename->appendInteger(arangodb::RandomGenerator::interval(UINT32_MAX));
 
     FILE* fd = fopen(filename->c_str(), "wb");
 

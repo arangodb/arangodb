@@ -29,13 +29,11 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
+using namespace arangodb::application_features;
 using namespace arangodb::rest;
 
-RestShutdownHandler::RestShutdownHandler(arangodb::HttpRequest* request,
-                                         void* applicationServer)
-    : RestBaseHandler(request),
-      _applicationServer(
-          static_cast<arangodb::rest::ApplicationServer*>(applicationServer)) {}
+RestShutdownHandler::RestShutdownHandler(HttpRequest* request)
+    : RestBaseHandler(request) {}
 
 bool RestShutdownHandler::isDirect() const { return true; }
 
@@ -44,7 +42,7 @@ bool RestShutdownHandler::isDirect() const { return true; }
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_t RestShutdownHandler::execute() {
-  _applicationServer->beginShutdown();
+  ApplicationServer::server->beginShutdown();
 
   try {
     VPackBuilder result;

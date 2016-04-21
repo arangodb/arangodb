@@ -44,9 +44,8 @@ using namespace arangodb::aql;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestQueryHandler::RestQueryHandler(HttpRequest* request,
-                                   ApplicationV8* applicationV8)
-    : RestVocbaseBaseHandler(request), _applicationV8(applicationV8) {}
+RestQueryHandler::RestQueryHandler(HttpRequest* request)
+    : RestVocbaseBaseHandler(request) {}
 
 bool RestQueryHandler::isDirect() const {
   return _request->requestType() != GeneralRequest::RequestType::POST;
@@ -133,7 +132,7 @@ bool RestQueryHandler::readQuery(bool slow) {
     for (auto const& q : queries) {
       auto const& timeString = TRI_StringTimeStamp(q.started);
       auto const& queryString = q.queryString;
-      auto const& queryState = q.queryState.substr(8, q.queryState.size()-9);
+      auto const& queryState = q.queryState.substr(8, q.queryState.size() - 9);
 
       result.add(VPackValue(VPackValueType::Object));
       result.add("id", VPackValue(StringUtils::itoa(q.id)));
@@ -354,8 +353,8 @@ bool RestQueryHandler::parseQuery() {
     std::string const&& queryString =
         VelocyPackHelper::checkAndGetStringValue(body, "query");
 
-    Query query(_applicationV8, true, _vocbase, queryString.c_str(),
-                queryString.size(), nullptr, nullptr, PART_MAIN);
+    Query query(true, _vocbase, queryString.c_str(), queryString.size(),
+                nullptr, nullptr, PART_MAIN);
 
     auto parseResult = query.parse();
 

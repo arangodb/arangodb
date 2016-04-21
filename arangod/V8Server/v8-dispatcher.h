@@ -27,27 +27,8 @@
 
 #include "Basics/Common.h"
 
-#include "V8/v8-globals.h"
+#include <v8.h>
 
-#include "VocBase/vocbase.h"
-
-namespace arangodb {
-namespace rest {
-class ApplicationDispatcher;
-class ApplicationScheduler;
-}
-
-class ApplicationV8;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stores the V8 actions function inside the global variable
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitV8Dispatcher(v8::Isolate* isolate, v8::Handle<v8::Context> context,
-                          TRI_vocbase_t* vocbase,
-                          arangodb::rest::ApplicationScheduler* scheduler,
-                          arangodb::rest::ApplicationDispatcher* dispatcher,
-                          arangodb::ApplicationV8*);
+void TRI_InitV8Dispatcher(v8::Isolate* isolate, v8::Handle<v8::Context> context);
 
 #endif

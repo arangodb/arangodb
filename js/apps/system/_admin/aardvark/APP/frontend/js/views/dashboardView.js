@@ -24,6 +24,7 @@
 
     events: {
       // will be filled in initialize
+      "click .subViewNavbar .subMenuEntry" : "toggleViews"
     },
 
     tendencies: {
@@ -178,6 +179,31 @@
       }
 
       this.history[this.server] = {};
+    },
+
+    toggleViews: function(e) {
+      var id = e.currentTarget.id.split('-')[0], self = this;
+      var views = ['replication', 'requests', 'system'];
+
+      _.each(views, function(view) {
+        if (id !== view) {
+          $('#' + view).hide();
+        }
+        else {
+          $('#' + view).show();
+          self.resize();
+          $(window).resize();
+        }
+      });
+
+      $('.subMenuEntries').children().removeClass('active');
+      $('#' + id + '-statistics').addClass('active');
+
+      window.setTimeout(function() {
+        self.resize();
+        $(window).resize();
+      }, 200);
+
     },
 		
 		cleanupHistory: function(f) {
@@ -357,6 +383,20 @@
 
         // if we found at list one value besides times, then use the entry
         if (valueList.length > 1) {
+
+          // HTTP requests combine all types to one
+          if (valueList.length === 9) {
+            var counter = 0, sum = 0;
+
+            _.each(valueList, function(value) {
+              if (counter !== 0) {
+                sum += value;
+              }
+              counter++;
+            });
+            valueList = [valueList[0], sum];
+          }
+
           self.history[self.server][f].push(valueList);
         }
       });
@@ -551,7 +591,7 @@
       });
     },
 
-    getStatistics: function (callback) {
+    getStatistics: function (callback, modalView) {
       var self = this;
       var url = "/_db/_system/_admin/aardvark/statistics/short";
       var urlParams = "?start=";
@@ -585,7 +625,7 @@
             return;
           }
           if (callback) {
-            callback();
+            callback(d.enabled, modalView);
           }
           self.updateCharts();
       });
@@ -884,10 +924,20 @@
   template: templateEngine.createTemplate("dashboardView.ejs"),
 
   render: function (modalView) {
-    if (!modalView)  {
-      $(this.el).html(this.template.render());
-    }
-    var callback = function() {
+
+    var callback = function(enabled, modalView) {
+      if (!modalView)  {
+        $(this.el).html(this.template.render());
+      }
+
+      if (!enabled) {
+        $(this.el).html('');
+          $(this.el).append(
+            '<div style="color: red">Server statistics are disabled.</div>'
+          );
+        return;
+      }
+
       this.prepareDygraphs();
       if (this.isUpdating) {
         this.prepareD3Charts();
@@ -896,27 +946,38 @@
         $(window).trigger('resize');
       }
       this.startUpdating();
+      $(window).resize();
+    }.bind(this);
+
+    var errorFunction = function() {
+        $(this.el).html('');
+        $('.contentDiv').remove();
+        $('.headerBar').remove();
+        $('.dashboard-headerbar').remove();
+        $('.dashboard-row').remove();
+        $(this.el).append(
+          '<div style="color: red">You do not have permission to view this page.</div>'
+        );
+        $(this.el).append(
+          '<div style="color: red">You can switch to \'_system\' to see the dashboard.</div>'
+        );
     }.bind(this);
 
     var callback2 = function(error, authorized) {
       if (!error) {
         if (!authorized) {
-          $('.contentDiv').remove();
-          $('.headerBar').remove();
-          $('.dashboard-headerbar').remove();
-          $('.dashboard-row').remove();
-          $('#content').append(
-            '<div style="color: red">You do not have permission to view this page.</div>'
-          );
-          $('#content').append(
-            '<div style="color: red">You can switch to \'_system\' to see the dashboard.</div>'
-          );
+          errorFunction();
         }
         else {
-          this.getStatistics(callback);
+          this.getStatistics(callback, modalView);
         }
       }
     }.bind(this);
+
+    if (window.App.currentDB.get("name") !== '_system') {
+      errorFunction();
+      return;
+    }
 
     //check if user has _system permission
     this.options.database.hasSystemAccess(callback2);

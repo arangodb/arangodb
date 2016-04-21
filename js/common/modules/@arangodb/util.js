@@ -58,7 +58,7 @@ exports.union = function union() {
     result = Array.prototype.concat.apply([], things);
   } else {
     things.unshift({});
-    result = _.extend.apply(_, things);
+    result = Object.assign(...things);
   }
   return result;
 };

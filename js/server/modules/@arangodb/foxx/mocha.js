@@ -1,4 +1,5 @@
 'use strict';
+
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -21,31 +22,26 @@
 /// @author Alan Plum
 ////////////////////////////////////////////////////////////////////////////////
 
-var fs = require('fs');
-var Minimatch = require('minimatch').Minimatch;
-var isWindows = require('internal').platform.substr(0, 3) === 'win';
-
+const fs = require('fs');
+const Minimatch = require('minimatch').Minimatch;
+const isWindows = require('internal').platform.substr(0, 3) === 'win';
 const mocha = require('@arangodb/mocha');
 
+const isNotPattern = (pattern) => pattern.indexOf('*') === -1;
+
 exports.run = function runFoxxTests(app, reporterName) {
-  function run(file, context) {
-    return app.run(file, {context: context});
-  }
+  const run = (file, context) => app.run(file, {context: context});
   return mocha.run(run, findTestFiles(app), reporterName);
 };
 
-function isNotPattern(pattern) {
-  return pattern.indexOf('*') === -1;
-}
-
 function findTestFiles(app) {
-  var patterns = app.manifest.tests || [];
+  const patterns = app.manifest.tests || [];
   if (patterns.every(isNotPattern)) {
     return patterns.slice();
   }
-  var basePath = fs.join(app.root, app.path);
-  var paths = fs.listTree(basePath);
-  var matchers = patterns.map(function (pattern) {
+  const basePath = fs.join(app.root, app.path);
+  const paths = fs.listTree(basePath);
+  const matchers = patterns.map((pattern) => {
     if (pattern.charAt(0) === '/') {
       pattern = pattern.slice(1);
     } else if (pattern.charAt(0) === '.' && pattern.charAt(1) === '/') {
@@ -53,11 +49,9 @@ function findTestFiles(app) {
     }
     return new Minimatch(pattern);
   });
-  return paths.filter(function (path) {
-    return path && matchers.some(function (pattern) {
-      return pattern.match(
-        isWindows ? path.replace(/\\/g, '/') : path
-      );
-    }) && fs.isFile(fs.join(basePath, path));
-  });
+  return paths.filter(
+    (path) => path && matchers.some((pattern) => pattern.match(
+      isWindows ? path.replace(/\\/g, '/') : path
+    )) && fs.isFile(fs.join(basePath, path))
+  );
 }

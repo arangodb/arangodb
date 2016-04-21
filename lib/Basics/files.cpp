@@ -23,34 +23,22 @@
 
 #include "files.h"
 
-#ifdef TRI_HAVE_DIRENT_H
-#include <dirent.h>
-#endif
-
-#ifdef TRI_HAVE_DIRECT_H
-#include <direct.h>
-#endif
-
-#ifdef TRI_HAVE_SYS_FILE_H
-#include <sys/file.h>
+#ifdef _WIN32
+#include <tchar.h>
 #endif
 
 #include "Basics/FileUtils.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/RandomGenerator.h"
+#include "Basics/StringBuffer.h"
+#include "Basics/Thread.h"
 #include "Basics/conversions.h"
 #include "Basics/hashes.h"
 #include "Basics/locks.h"
-#include "Logger/Logger.h"
-#include "Basics/random.h"
-#include "Basics/StringBuffer.h"
-#include "Basics/Thread.h"
 #include "Basics/tri-strings.h"
 #include "Basics/vector.h"
-
-#ifdef _WIN32
-#include <tchar.h>
-#endif
+#include "Logger/Logger.h"
 
 using namespace arangodb::basics;
 using namespace arangodb;
@@ -458,8 +446,8 @@ int TRI_MTimeFile(char const* path, int64_t* mtime) {
 /// @brief creates a directory, recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CreateRecursiveDirectory(char const* path, long& systemError,
-                                  std::string& systemErrorStr) {
+int TRI_CreateRecursiveDirectory(char const* path, long& systemError,
+                                 std::string& systemErrorStr) {
   char* copy;
   char* p;
   char* s;
@@ -480,6 +468,7 @@ bool TRI_CreateRecursiveDirectory(char const* path, long& systemError,
 #endif
         *p = '\0';
         res = TRI_CreateDirectory(copy, systemError, systemErrorStr);
+
         if ((res == TRI_ERROR_FILE_EXISTS) || (res == TRI_ERROR_NO_ERROR)) {
           res = TRI_ERROR_NO_ERROR;
           *p = TRI_DIR_SEPARATOR_CHAR;
@@ -489,6 +478,7 @@ bool TRI_CreateRecursiveDirectory(char const* path, long& systemError,
         }
       }
     }
+
     p++;
   }
 
@@ -502,7 +492,7 @@ bool TRI_CreateRecursiveDirectory(char const* path, long& systemError,
 
   TRI_Free(TRI_CORE_MEM_ZONE, copy);
 
-  return res == TRI_ERROR_NO_ERROR;
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1260,6 +1250,8 @@ int TRI_VerifyLockFile(char const* filename) {
     TRI_CLOSE(fd);
     return TRI_ERROR_NO_ERROR;
   }
+
+#ifdef TRU_HAVE_SETLK
   struct flock lock;
 
   lock.l_start = 0;
@@ -1283,6 +1275,7 @@ int TRI_VerifyLockFile(char const* filename) {
   TRI_CLOSE(fd);
 
   LOG(WARN) << "fcntl on lockfile '" << filename << "' failed: " << TRI_errno_string(canLock);
+#endif
 
   return TRI_ERROR_ARANGO_DATADIR_LOCKED;
 }
@@ -2185,11 +2178,11 @@ int TRI_GetTempName(char const* directory, char** result, bool const createFile,
   // remove trailing PATH_SEPARATOR
   RemoveTrailingSeparator(dir);
 
-  bool res = TRI_CreateRecursiveDirectory(dir, systemError, errorMessage);
+  int res = TRI_CreateRecursiveDirectory(dir, systemError, errorMessage);
 
-  if (!res) {
+  if (res != TRI_ERROR_NO_ERROR) {
     TRI_Free(TRI_CORE_MEM_ZONE, dir);
-    return TRI_ERROR_SYS_ERROR;
+    return res;
   }
 
   if (!TRI_IsDirectory(dir)) {
@@ -2208,7 +2201,7 @@ int TRI_GetTempName(char const* directory, char** result, bool const createFile,
 
     pid = Thread::currentProcessId();
 
-    number = TRI_StringUInt32(TRI_UInt32Random());
+    number = TRI_StringUInt32(RandomGenerator::interval(UINT32_MAX));
     pidString = TRI_StringUInt32(pid);
     tempName = TRI_Concatenate4String("tmp-", pidString, "-", number);
     TRI_Free(TRI_CORE_MEM_ZONE, number);

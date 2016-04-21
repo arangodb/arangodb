@@ -36,6 +36,7 @@
 #include "Logger/Logger.h"
 #include "Scheduler/ListenTask.h"
 #include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -49,11 +50,11 @@ int HttpServer::sendChunk(uint64_t taskId, std::string const& data) {
   auto taskData = std::make_unique<TaskData>();
 
   taskData->_taskId = taskId;
-  taskData->_loop = Scheduler::SCHEDULER->lookupLoopById(taskId);
+  taskData->_loop = SchedulerFeature::SCHEDULER->lookupLoopById(taskId);
   taskData->_type = TaskData::TASK_DATA_CHUNK;
   taskData->_data = data;
 
-  Scheduler::SCHEDULER->signalTask(taskData);
+  SchedulerFeature::SCHEDULER->signalTask(taskData);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -267,7 +268,7 @@ bool HttpServer::openEndpoint(Endpoint* endpoint) {
   ListenTask* task = new HttpListenTask(this, endpoint);
 
   // ...................................................................
-  // For some reason we have failed in our endeavour to bind to the socket -
+  // For some reason we have failed in our endeavor to bind to the socket -
   // this effectively terminates the server
   // ...................................................................
 

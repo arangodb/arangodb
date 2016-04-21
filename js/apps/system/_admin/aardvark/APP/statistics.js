@@ -395,7 +395,7 @@ function computeStatisticsLong (attrs, clusterId) {
 
 
 router.use((req, res, next) => {
-  if (!internal.options()['server.disable-authentication'] && (!req.session || !req.session.uid)) {
+  if (!req.session.uid) {
     throw new httperr.Unauthorized();
   }
   next();

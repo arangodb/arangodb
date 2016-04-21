@@ -1,4 +1,3 @@
-/*global aqlQuery */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -27,6 +26,7 @@ const assert = require('assert');
 const arangodb = require('@arangodb');
 const NOT_FOUND = arangodb.errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code;
 const db = arangodb.db;
+const aql = arangodb.aql;
 
 
 module.exports = function collectionStorage(cfg) {
@@ -36,6 +36,7 @@ module.exports = function collectionStorage(cfg) {
   if (!cfg) {
     cfg = {};
   }
+  const autoUpdate = Boolean(cfg.autoUpdate);
   const pruneExpired = Boolean(cfg.pruneExpired);
   const expiry = (cfg.expiry || 60) * 60 * 1000;
   const collection = (
@@ -47,7 +48,7 @@ module.exports = function collectionStorage(cfg) {
   assert(collection.isArangoCollection, `No such collection: ${cfg.collection}`);
   return {
     prune() {
-      return db._query(aqlQuery`
+      return db._query(aql`
         FOR session IN ${collection}
         FILTER session.expires < DATE_NOW()
         REMOVE session IN ${collection}
@@ -56,12 +57,16 @@ module.exports = function collectionStorage(cfg) {
     },
     fromClient(sid) {
       try {
+        const now = Date.now();
         const session = collection.document(sid);
-        if (session.expires < Date.now()) {
+        if (session.expires < now) {
           if (pruneExpired) {
             collection.remove(session);
           }
           return null;
+        }
+        if (autoUpdate) {
+          collection.update(sid, {expires: now + expiry});
         }
         return {
           _key: session._key,

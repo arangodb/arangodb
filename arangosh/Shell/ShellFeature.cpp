@@ -24,7 +24,7 @@
 
 #include "ApplicationFeatures/ClientFeature.h"
 #include "Logger/Logger.h"
-#include "ProgramOptions2/ProgramOptions.h"
+#include "ProgramOptions/ProgramOptions.h"
 #include "Shell/V8ShellFeature.h"
 
 using namespace arangodb;
@@ -48,9 +48,6 @@ ShellFeature::ShellFeature(
 void ShellFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
-  options->addSection(
-      Section("", "Global configuration", "global options", false, false));
 
   options->addOption("--jslint", "do not start as shell, run jslint instead",
                      new VectorParameter<StringParameter>(&_jslint));

@@ -21,12 +21,11 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef __ARANGODB_CONSENSUS_STATE__
-#define __ARANGODB_CONSENSUS_STATE__
+#ifndef ARANGODB_CONSENSUS_STATE_H
+#define ARANGODB_CONSENSUS_STATE_H
 
 
 #include "AgencyCommon.h"
-#include "State.h"
 
 #include <Basics/Thread.h>
 #include <Cluster/ClusterComm.h>
@@ -39,11 +38,6 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-class ApplicationV8;
-namespace aql {
-class QueryRegistry;
-}
-
 namespace consensus {
 
 class Agent;
@@ -103,8 +97,7 @@ public:
 
 
   /// @brief Load persisted data from above or start with empty log
-  bool loadCollections (TRI_vocbase_t*, ApplicationV8*,
-                        aql::QueryRegistry*, bool);
+  bool loadCollections (TRI_vocbase_t*, bool);
 
   /// @brief Pipe to ostream
   friend std::ostream& operator<< (std::ostream& os, State const& s) {
@@ -142,14 +135,12 @@ private:
   bool compact ();
 
   TRI_vocbase_t* _vocbase;
-  ApplicationV8* _applicationV8;
-  aql::QueryRegistry* _queryRegistry;
 
   mutable arangodb::Mutex _logLock;  /**< @brief Mutex for modifying _log */
   std::deque<log_t> _log;           /**< @brief  State entries */
-  std::string _end_point;            /**< @brief persistence end point */
-  bool _collections_checked;                 /**< @brief Collections checked */
-  bool _collections_loaded;
+  std::string _endpoint;            /**< @brief persistence end point */
+  bool _collectionsChecked;                 /**< @brief Collections checked */
+  bool _collectionsLoaded;
 
   OperationOptions _options;
 

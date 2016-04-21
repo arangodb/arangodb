@@ -2086,7 +2086,7 @@ textarea,
   content: ""; }
 
 .dropdown-toolbar, .link-dropdown-menu,
-.user-dropdown-menu, .script-dropdown-menu, .gv-dropdown-menu, .navlogo, .navlist li, div.footer-left, div.footer-left p, div.footer-center, a.headerButton, a.button-gui, div .tile, div .bigtile, div .tile a span.add-Icon, div .bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .fixedDropdown .notificationItemContent, .innerDropdownInnerUL, .dashboard-full-width-chart .dashboard-full-width-chart-inner, .dashboard-large-chart .dashboard-large-chart-inner, .dashboard-small-chart .dashboard-small-chart-inner, .dashboard-medium-chart, .dashboard-tendency-container, .dashboard-bar-chart-container, .dashboard-full-width-chart, .dashboard-large-chart, .dashboard-small-chart, .dashboard-sub-bar, .dashboard-sub-bar .dashboard-sub-bar-title, .dashboard-full-width-chart .dashboard-full-width-chart-inner .dashboard-interior-chart, .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart, .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart, .dashboard-medium-chart .dashboard-interior-chart, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-subtitle-bar, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-figure, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart, .modal-chart-detail, .modal-chart-detail .modal-body, .modal-chart-detail .modal-dashboard-legend, .modal-chart-detail .modal-inner-detail, .dashboard-half-height-legend, .dashboard-title-bar .dashboard-half-title-bar, .dashboardModal, .pagination-line li a {
+.user-dropdown-menu, .script-dropdown-menu, .gv-dropdown-menu, .navlogo, .navlist li, div.footer-left, div.footer-center, a.headerButton, a.button-gui, div .tile, div .bigtile, div .tile a span.add-Icon, div .bigtile a span.add-Icon, div.centralContent, .contentDiv li, div.dropdownInner ul, .fixedDropdown .notificationItemContent, .innerDropdownInnerUL, .dashboard-full-width-chart .dashboard-full-width-chart-inner, .dashboard-large-chart .dashboard-large-chart-inner, .dashboard-small-chart .dashboard-small-chart-inner, .dashboard-medium-chart, .dashboard-tendency-container, .dashboard-bar-chart-container, .dashboard-full-width-chart, .dashboard-large-chart, .dashboard-small-chart, .dashboard-sub-bar, .dashboard-sub-bar .dashboard-sub-bar-title, .dashboard-full-width-chart .dashboard-full-width-chart-inner .dashboard-interior-chart, .dashboard-large-chart .dashboard-large-chart-inner .dashboard-interior-chart, .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart, .dashboard-medium-chart .dashboard-interior-chart, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-subtitle-bar, .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency .dashboard-figure, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut, .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart, .modal-chart-detail, .modal-chart-detail .modal-body, .modal-chart-detail .modal-dashboard-legend, .modal-chart-detail .modal-inner-detail, .dashboard-half-height-legend, .dashboard-title-bar .dashboard-half-title-bar, .dashboardModal, .pagination-line li a {
   float: left; }
 
 div.footer-right, div.footer-right p, ul.headerButtonList li, div .tile .iconSet span, div .bigtile .iconSet span, .search-field, .headerBar > div.headerButtonBar, .fixedDropdown button, .fixedDropdown .notificationItem i, .dashboard-sub-bar-menu, .dashboard-legend, .query-button, .arango-tab li, div.gv_colour_list, .docsThirdCol {
@@ -2313,6 +2313,43 @@ div.queryline input, input.search-input, .modal-body .select2-choices input, .mo
   .navbar .nav > li > a:hover {
     background-color: #000;
     color: #686766; }
+  .navbar .social-icons {
+    bottom: 0;
+    float: left;
+    margin-left: 9px;
+    position: absolute;
+    width: 100%; }
+    .navbar .social-icons a {
+      display: block;
+      float: left;
+      height: 25px;
+      width: 25px; }
+    .navbar .social-icons p {
+      background: none;
+      border-radius: 20px;
+      float: left;
+      height: 25px;
+      margin-right: 10px;
+      padding: 0;
+      width: 25px; }
+    .navbar .social-icons p:hover {
+      background: #7dbc42;
+      cursor: pointer; }
+      .navbar .social-icons p:hover i {
+        color: #fff; }
+    .navbar .social-icons i {
+      color: #fff;
+      margin-top: 6px;
+      position: absolute; }
+      .navbar .social-icons i.fa-twitter {
+        margin-left: 7px; }
+      .navbar .social-icons i.fa-envelope {
+        margin-left: -19px; }
+      .navbar .social-icons i.fa-google {
+        margin-left: -17px;
+        margin-top: 7px; }
+      .navbar .social-icons i.fa-stack-overflow {
+        margin-left: -17px; }
 
 .navlogo {
   height: 60px;
@@ -2359,7 +2396,7 @@ div.queryline input, input.search-input, .modal-body .select2-choices input, .mo
       height: 1px;
       margin-bottom: 0;
       margin-top: 0;
-      opacity: .2; }
+      opacity: .5; }
   .navlist .active {
     border-left: 2px solid #77cb99; }
     .navlist .active .tab {
@@ -2486,6 +2523,7 @@ div.queryline input, input.search-input, .modal-body .select2-choices input, .mo
 
 .footer {
   background-color: rgba(239, 240, 241, 0.8);
+  display: none;
   font-size: 14px;
   left: 160px;
   right: 10px;
@@ -2507,39 +2545,6 @@ div.footer-left {
   background: none repeat scroll 0 0 transparent;
   color: #686766;
   width: 45%; }
-  div.footer-left .social-icons {
-    margin-top: 5px; }
-    div.footer-left .social-icons a {
-      display: block;
-      float: left;
-      height: 25px;
-      width: 25px; }
-    div.footer-left .social-icons p {
-      background: #fff;
-      border: 1px solid rgba(104, 103, 102, 0.1);
-      border-radius: 20px;
-      height: 25px;
-      margin-right: 10px;
-      padding: 0;
-      width: 25px; }
-    div.footer-left .social-icons p:hover {
-      background: #7dbc42;
-      cursor: pointer; }
-      div.footer-left .social-icons p:hover i {
-        color: #fff; }
-    div.footer-left .social-icons i {
-      color: #000;
-      margin-top: 6px;
-      position: absolute; }
-      div.footer-left .social-icons i.fa-twitter {
-        margin-left: -5px; }
-      div.footer-left .social-icons i.fa-envelope {
-        margin-left: -19px; }
-      div.footer-left .social-icons i.fa-google {
-        margin-left: -17px;
-        margin-top: 7px; }
-      div.footer-left .social-icons i.fa-stack-overflow {
-        margin-left: -17px; }
 
 div.footer-center {
   background: none repeat scroll 0 0 transparent;
@@ -3122,10 +3127,6 @@ div .tile, div .bigtile {
         div .tile .tileBadge span .corneredBadge.development, div .bigtile .tileBadge span .corneredBadge.development {
           border-bottom-color: #ff8f35; }
 
-#installedList h5,
-#userManagementThumbnailsIn h5 {
-  margin: 0; }
-
 div .tile {
   height: 100px; }
 
@@ -3198,7 +3199,6 @@ div .bigtile {
   .dashboard-medium-chart {
     width: 100%; }
     .dashboard-medium-chart .dashboard-sub-bar {
-      margin-left: -5px;
       width: 100%; }
     .dashboard-medium-chart .dashboard-interior-chart {
       height: 185px;
@@ -3221,13 +3221,13 @@ div .bigtile {
     width: 100%; }
     .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
       height: 197px;
-      width: auto; }
+      width: 100%; }
       .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
         fill: #666;
         font-size: 10px;
         font-weight: 400; }
   .dashboard-tendency-container .dashboard-tendency-chart {
-    height: 78.25px; }
+    height: 83.25px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
@@ -3252,15 +3252,16 @@ div .bigtile {
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage {
           width: -4.2px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
+          line-height: 40px;
+          padding-top: 10px;
           width: -3px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
-        height: 33.5px;
-        line-height: 33.5px;
-        padding: 5px 8px 10px;
-        width: -6px; }
-        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart #residentSizeChart {
-          height: 38.5px; }
+        box-sizing: border-box;
+        height: 50px;
+        margin-top: 5px;
+        width: 100%; }
     .dashboard-bar-chart-container .dashboard-sub-bar {
+      padding-top: 13px;
       width: 100%; }
   .modal-chart-detail {
     bottom: 12.1% !important;
@@ -3387,7 +3388,6 @@ div .bigtile {
   .dashboard-medium-chart {
     width: 100%; }
     .dashboard-medium-chart .dashboard-sub-bar {
-      margin-left: -5px;
       width: 100%; }
     .dashboard-medium-chart .dashboard-interior-chart {
       height: 185px;
@@ -3410,13 +3410,13 @@ div .bigtile {
     width: 100%; }
     .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
       height: 197px;
-      width: auto; }
+      width: 100%; }
       .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
         fill: #666;
         font-size: 10px;
         font-weight: 400; }
   .dashboard-tendency-container .dashboard-tendency-chart {
-    height: 78.25px; }
+    height: 83.25px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
@@ -3441,15 +3441,16 @@ div .bigtile {
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage {
           width: 51.8px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
+          line-height: 40px;
+          padding-top: 10px;
           width: 21px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
-        height: 33.5px;
-        line-height: 33.5px;
-        padding: 5px 8px 10px;
-        width: 74px; }
-        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart #residentSizeChart {
-          height: 38.5px; }
+        box-sizing: border-box;
+        height: 50px;
+        margin-top: 5px;
+        width: 100%; }
     .dashboard-bar-chart-container .dashboard-sub-bar {
+      padding-top: 13px;
       width: 100%; }
   .modal-chart-detail {
     bottom: 12.1% !important;
@@ -3576,7 +3577,6 @@ div .bigtile {
   .dashboard-medium-chart {
     width: 100%; }
     .dashboard-medium-chart .dashboard-sub-bar {
-      margin-left: -5px;
       width: 100%; }
     .dashboard-medium-chart .dashboard-interior-chart {
       height: 185px;
@@ -3599,13 +3599,13 @@ div .bigtile {
     width: 100%; }
     .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
       height: 197px;
-      width: auto; }
+      width: 100%; }
       .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
         fill: #666;
         font-size: 10px;
         font-weight: 400; }
   .dashboard-tendency-container .dashboard-tendency-chart {
-    height: 78.25px; }
+    height: 83.25px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
@@ -3630,15 +3630,16 @@ div .bigtile {
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage {
           width: 107.8px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
+          line-height: 40px;
+          padding-top: 10px;
           width: 45px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
-        height: 33.5px;
-        line-height: 33.5px;
-        padding: 5px 8px 10px;
-        width: 154px; }
-        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart #residentSizeChart {
-          height: 38.5px; }
+        box-sizing: border-box;
+        height: 50px;
+        margin-top: 5px;
+        width: 100%; }
     .dashboard-bar-chart-container .dashboard-sub-bar {
+      padding-top: 13px;
       width: 100%; }
   .modal-chart-detail {
     bottom: 12.1% !important;
@@ -3763,7 +3764,6 @@ div .bigtile {
   .dashboard-medium-chart {
     width: 100%; }
     .dashboard-medium-chart .dashboard-sub-bar {
-      margin-left: -5px;
       width: 100%; }
     .dashboard-medium-chart .dashboard-interior-chart {
       height: 220px;
@@ -3786,13 +3786,13 @@ div .bigtile {
     width: 100%; }
     .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
       height: 229px;
-      width: auto; }
+      width: 100%; }
       .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
         fill: #666;
         font-size: 11px;
         font-weight: 400; }
   .dashboard-tendency-container .dashboard-tendency-chart {
-    height: 96.5px; }
+    height: 101.5px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
@@ -3817,15 +3817,16 @@ div .bigtile {
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage {
           width: 163.8px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
+          line-height: 40px;
+          padding-top: 10px;
           width: 69px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
-        height: 45.6666666667px;
-        line-height: 45.6666666667px;
-        padding: 5px 8px 10px;
-        width: 234px; }
-        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart #residentSizeChart {
-          height: 50.6666666667px; }
+        box-sizing: border-box;
+        height: 50px;
+        margin-top: 5px;
+        width: 100%; }
     .dashboard-bar-chart-container .dashboard-sub-bar {
+      padding-top: 13px;
       width: 100%; }
   .modal-chart-detail {
     bottom: 12.1% !important;
@@ -3947,7 +3948,6 @@ div .bigtile {
   .dashboard-medium-chart {
     width: 100%; }
     .dashboard-medium-chart .dashboard-sub-bar {
-      margin-left: -5px;
       width: 100%; }
     .dashboard-medium-chart .dashboard-interior-chart {
       height: 255px;
@@ -3970,13 +3970,13 @@ div .bigtile {
     width: 100%; }
     .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
       height: 264px;
-      width: auto; }
+      width: 100%; }
       .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
         fill: #666;
         font-size: 13px;
         font-weight: 400; }
   .dashboard-tendency-container .dashboard-tendency-chart {
-    height: 114px; }
+    height: 119px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
@@ -4001,15 +4001,16 @@ div .bigtile {
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage {
           width: 219.8px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
+          line-height: 40px;
+          padding-top: 10px;
           width: 93px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
-        height: 57.3333333333px;
-        line-height: 57.3333333333px;
-        padding: 5px 8px 10px;
-        width: 314px; }
-        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart #residentSizeChart {
-          height: 62.3333333333px; }
+        box-sizing: border-box;
+        height: 50px;
+        margin-top: 5px;
+        width: 100%; }
     .dashboard-bar-chart-container .dashboard-sub-bar {
+      padding-top: 13px;
       width: 100%; }
   .modal-chart-detail {
     bottom: 12.1% !important;
@@ -4131,7 +4132,6 @@ div .bigtile {
   .dashboard-medium-chart {
     width: 100%; }
     .dashboard-medium-chart .dashboard-sub-bar {
-      margin-left: -5px;
       width: 100%; }
     .dashboard-medium-chart .dashboard-interior-chart {
       height: 285px;
@@ -4154,13 +4154,13 @@ div .bigtile {
     width: 100%; }
     .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
       height: 294px;
-      width: auto; }
+      width: 100%; }
       .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
         fill: #666;
         font-size: 13px;
         font-weight: 400; }
   .dashboard-tendency-container .dashboard-tendency-chart {
-    height: 129px; }
+    height: 134px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
@@ -4185,15 +4185,16 @@ div .bigtile {
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage {
           width: 275.8px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
+          line-height: 40px;
+          padding-top: 10px;
           width: 117px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
-        height: 67.3333333333px;
-        line-height: 67.3333333333px;
-        padding: 5px 8px 10px;
-        width: 394px; }
-        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart #residentSizeChart {
-          height: 72.3333333333px; }
+        box-sizing: border-box;
+        height: 50px;
+        margin-top: 5px;
+        width: 100%; }
     .dashboard-bar-chart-container .dashboard-sub-bar {
+      padding-top: 13px;
       width: 100%; }
   .modal-chart-detail {
     bottom: 12.1% !important;
@@ -4315,7 +4316,6 @@ div .bigtile {
   .dashboard-medium-chart {
     width: 100%; }
     .dashboard-medium-chart .dashboard-sub-bar {
-      margin-left: -5px;
       width: 100%; }
     .dashboard-medium-chart .dashboard-interior-chart {
       height: 325px;
@@ -4338,13 +4338,13 @@ div .bigtile {
     width: 100%; }
     .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
       height: 334px;
-      width: auto; }
+      width: 100%; }
       .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
         fill: #666;
         font-size: 14px;
         font-weight: 400; }
   .dashboard-tendency-container .dashboard-tendency-chart {
-    height: 149px; }
+    height: 154px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
@@ -4369,15 +4369,16 @@ div .bigtile {
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage {
           width: 331.8px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
+          line-height: 40px;
+          padding-top: 10px;
           width: 141px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
-        height: 80.6666666667px;
-        line-height: 80.6666666667px;
-        padding: 5px 8px 10px;
-        width: 474px; }
-        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart #residentSizeChart {
-          height: 85.6666666667px; }
+        box-sizing: border-box;
+        height: 50px;
+        margin-top: 5px;
+        width: 100%; }
     .dashboard-bar-chart-container .dashboard-sub-bar {
+      padding-top: 13px;
       width: 100%; }
   .modal-chart-detail {
     bottom: 12.1% !important;
@@ -4499,7 +4500,6 @@ div .bigtile {
   .dashboard-medium-chart {
     width: 100%; }
     .dashboard-medium-chart .dashboard-sub-bar {
-      margin-left: -5px;
       width: 100%; }
     .dashboard-medium-chart .dashboard-interior-chart {
       height: 385px;
@@ -4522,13 +4522,13 @@ div .bigtile {
     width: 100%; }
     .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
       height: 394px;
-      width: auto; }
+      width: 100%; }
       .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
         fill: #666;
         font-size: 14px;
         font-weight: 400; }
   .dashboard-tendency-container .dashboard-tendency-chart {
-    height: 179px; }
+    height: 184px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
@@ -4553,15 +4553,16 @@ div .bigtile {
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage {
           width: 387.8px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
+          line-height: 40px;
+          padding-top: 10px;
           width: 165px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
-        height: 100.666666667px;
-        line-height: 100.666666667px;
-        padding: 5px 8px 10px;
-        width: 554px; }
-        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart #residentSizeChart {
-          height: 105.666666667px; }
+        box-sizing: border-box;
+        height: 50px;
+        margin-top: 5px;
+        width: 100%; }
     .dashboard-bar-chart-container .dashboard-sub-bar {
+      padding-top: 13px;
       width: 100%; }
   .modal-chart-detail {
     bottom: 12.1% !important;
@@ -4683,7 +4684,6 @@ div .bigtile {
   .dashboard-medium-chart {
     width: 100%; }
     .dashboard-medium-chart .dashboard-sub-bar {
-      margin-left: -5px;
       width: 100%; }
     .dashboard-medium-chart .dashboard-interior-chart {
       height: 285px;
@@ -4706,13 +4706,13 @@ div .bigtile {
     width: 100%; }
     .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
       height: 294px;
-      width: auto; }
+      width: 100%; }
       .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
         fill: #666;
         font-size: 15px;
         font-weight: 400; }
   .dashboard-tendency-container .dashboard-tendency-chart {
-    height: 129px; }
+    height: 134px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
@@ -4737,15 +4737,16 @@ div .bigtile {
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage {
           width: 443.8px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
+          line-height: 40px;
+          padding-top: 10px;
           width: 189px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
-        height: 67.3333333333px;
-        line-height: 67.3333333333px;
-        padding: 5px 8px 10px;
-        width: 634px; }
-        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart #residentSizeChart {
-          height: 72.3333333333px; }
+        box-sizing: border-box;
+        height: 50px;
+        margin-top: 5px;
+        width: 100%; }
     .dashboard-bar-chart-container .dashboard-sub-bar {
+      padding-top: 13px;
       width: 100%; }
   .modal-chart-detail {
     bottom: 12.1% !important;
@@ -4867,7 +4868,6 @@ div .bigtile {
   .dashboard-medium-chart {
     width: 100%; }
     .dashboard-medium-chart .dashboard-sub-bar {
-      margin-left: -5px;
       width: 100%; }
     .dashboard-medium-chart .dashboard-interior-chart {
       height: 285px;
@@ -4890,13 +4890,13 @@ div .bigtile {
     width: 100%; }
     .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
       height: 294px;
-      width: auto; }
+      width: 100%; }
       .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
         fill: #666;
         font-size: 15px;
         font-weight: 400; }
   .dashboard-tendency-container .dashboard-tendency-chart {
-    height: 129px; }
+    height: 134px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
@@ -4921,15 +4921,16 @@ div .bigtile {
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage {
           width: 499.8px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
+          line-height: 40px;
+          padding-top: 10px;
           width: 213px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
-        height: 67.3333333333px;
-        line-height: 67.3333333333px;
-        padding: 5px 8px 10px;
-        width: 714px; }
-        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart #residentSizeChart {
-          height: 72.3333333333px; }
+        box-sizing: border-box;
+        height: 50px;
+        margin-top: 5px;
+        width: 100%; }
     .dashboard-bar-chart-container .dashboard-sub-bar {
+      padding-top: 13px;
       width: 100%; }
   .modal-chart-detail {
     bottom: 12.1% !important;
@@ -5051,7 +5052,6 @@ div .bigtile {
   .dashboard-medium-chart {
     width: 100%; }
     .dashboard-medium-chart .dashboard-sub-bar {
-      margin-left: -5px;
       width: 100%; }
     .dashboard-medium-chart .dashboard-interior-chart {
       height: 285px;
@@ -5074,13 +5074,13 @@ div .bigtile {
     width: 100%; }
     .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart {
       height: 294px;
-      width: auto; }
+      width: 100%; }
       .dashboard-small-chart .dashboard-small-chart-inner .dashboard-interior-chart .nv-axis text {
         fill: #666;
         font-size: 15px;
         font-weight: 400; }
   .dashboard-tendency-container .dashboard-tendency-chart {
-    height: 129px; }
+    height: 134px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency,
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-subtitle-bar,
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-figure {
@@ -5105,15 +5105,16 @@ div .bigtile {
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage {
           width: 555.8px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
+          line-height: 40px;
+          padding-top: 10px;
           width: 237px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
-        height: 67.3333333333px;
-        line-height: 67.3333333333px;
-        padding: 5px 8px 10px;
-        width: 794px; }
-        .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart #residentSizeChart {
-          height: 72.3333333333px; }
+        box-sizing: border-box;
+        height: 50px;
+        margin-top: 5px;
+        width: 100%; }
     .dashboard-bar-chart-container .dashboard-sub-bar {
+      padding-top: 13px;
       width: 100%; }
   .modal-chart-detail {
     bottom: 12.1% !important;
@@ -5233,7 +5234,7 @@ div.centralContent {
   background-color: transparent;
   box-sizing: border-box;
   margin-top: 10px;
-  padding-bottom: 43px;
+  padding-bottom: 5px;
   padding-left: 5px;
   padding-right: 5px;
   padding-top: 5px;
@@ -5298,6 +5299,7 @@ div.headerDropdown,
   border-radius: 2px;
   clear: both;
   display: none;
+  margin-bottom: 15px;
   padding: 10px;
   position: relative;
   width: auto; }
@@ -6228,18 +6230,21 @@ div.headerBar {
 .dashboard-full-width-chart .dashboard-full-width-chart-inner, .dashboard-large-chart .dashboard-large-chart-inner, .dashboard-small-chart .dashboard-small-chart-inner, .dashboard-medium-chart, .dashboard-tendency-container, .dashboard-bar-chart-container {
   background-color: #fff;
   border-left: 0 solid #000;
-  border-top-left-radius: 3px;
-  border-top-right-radius: 3px;
   box-sizing: border-box; }
   .dashboard-full-width-chart .dashboard-full-width-chart-inner:first-child, .dashboard-large-chart .dashboard-large-chart-inner:first-child, .dashboard-small-chart .dashboard-small-chart-inner:first-child, .dashboard-medium-chart:first-child, .dashboard-tendency-container:first-child, .dashboard-bar-chart-container:first-child {
     margin-left: 0; }
 
 .dashboard-full-width-chart, .dashboard-large-chart, .dashboard-small-chart, .dashboard-medium-chart, .dashboard-tendency-container, .dashboard-bar-chart-container {
-  margin-bottom: 10px;
+  border: 1px solid rgba(64, 74, 83, 0.2);
+  margin-left: -1px;
+  margin-top: -2px;
   position: relative; }
 
 .dashboard-interior-chart {
   width: 100% !important; }
+  .dashboard-interior-chart > div {
+    margin-left: -15px;
+    margin-top: 10px; }
 
 .dashboard-sub-bar-menu {
   cursor: pointer;
@@ -6256,8 +6261,6 @@ div.headerBar {
 
 .dashboard-sub-bar {
   background-color: #fff;
-  border-bottom-left-radius: 3px;
-  border-bottom-right-radius: 3px;
   box-sizing: border-box;
   color: rgba(0, 0, 0, 0.5);
   font-family: 'Roboto', sans-serif;
@@ -6278,13 +6281,16 @@ div.headerBar {
     font-size: 11pt;
     font-weight: 600;
     opacity: .5;
+    overflow: hidden;
     text-align: center;
+    text-overflow: ellipsis;
     text-transform: uppercase;
+    white-space: nowrap;
     width: 100%; }
 
 .dashboard-full-width-chart {
   border: 1px solid rgba(104, 103, 102, 0.1);
-  border-radius: 2px;
+  border-radius: 0;
   margin-right: 12px;
   width: 100%; }
   .dashboard-full-width-chart .dashboard-full-width-chart-inner {
@@ -6321,13 +6327,13 @@ div.headerBar {
     background-color: #8c8a89;
     border-radius: 5px;
     color: #fff;
+    font-weight: 300;
     margin-left: 5px;
     padding-left: 6px;
-    padding-right: 4px; }
+    padding-right: 6px; }
 
 .dashboard-large-chart {
-  box-sizing: border-box;
-  padding-right: 10px; }
+  box-sizing: border-box; }
   .dashboard-large-chart .dashboard-large-chart-inner {
     background-color: #fff;
     border-left: 5px solid #fff;
@@ -6338,7 +6344,8 @@ div.headerBar {
       margin-bottom: 0; }
 
 .dashboard-small-chart {
-  border-radius: 2px; }
+  background: #fff;
+  border-radius: 0; }
   .dashboard-small-chart .dashboard-small-chart-inner {
     background-color: #fff;
     border-left: 5px solid #fff;
@@ -6352,26 +6359,19 @@ div.headerBar {
       stroke-width: .5px; }
 
 .dashboard-medium-chart-outer {
-  border-radius: 2px; }
-  .dashboard-medium-chart-outer:first-child {
-    box-sizing: border-box;
-    padding-right: 10px; }
+  border-radius: 0;
+  box-sizing: border-box; }
 
 .dashboard-medium-chart {
   background-color: #fff;
-  border-left: 5px solid #fff;
-  border-right: 5px solid #fff;
-  border-top: 5px solid #fff;
   margin-bottom: 0;
   padding-top: 10px; }
-  .dashboard-medium-chart:first-child {
-    margin-right: 12px; }
   .dashboard-medium-chart .dashboard-interior-chart {
     margin-bottom: 0; }
   .dashboard-medium-chart .dashboard-medium-chart-menu {
-    -moz-border-radius: 2px;
-    -webkit-border-radius: 2px;
-    border-radius: 2px;
+    -moz-border-radius: 0;
+    -webkit-border-radius: 0;
+    border-radius: 0;
     border: 0 solid rgba(0, 0, 0, 0.3);
     color: rgba(0, 0, 0, 0.3);
     cursor: pointer;
@@ -6387,8 +6387,14 @@ div.headerBar {
     stroke-opacity: 1;
     stroke-width: 1.5px; }
 
+.tendency-box-sizing .dashboard-tendency-container {
+  box-sizing: border-box; }
+
+.tendency-box-sizing .dashboard-row:last-child .dashboard-medium-chart-outer:last-child {
+  margin-left: -2px; }
+
 .dashboard-tendency-container {
-  border-radius: 2px; }
+  box-sizing: content-box; }
   .dashboard-tendency-container .dashboard-sub-bar {
     height: 46px; }
   .dashboard-tendency-container .dashboard-tendency-chart {
@@ -6396,8 +6402,6 @@ div.headerBar {
     border-left: 5px solid #fff;
     border-right: 5px solid #fff;
     border-top: 5px solid #fff;
-    border-top-left-radius: 3px;
-    border-top-right-radius: 3px;
     padding-bottom: 5px; }
     .dashboard-tendency-container .dashboard-tendency-chart .dashboard-tendency {
       background-color: #fff;
@@ -6420,32 +6424,32 @@ div.headerBar {
 
 .dashboard-bar-chart-container {
   background: none;
-  border: 0;
-  border-radius: 2px;
-  box-sizing: border-box;
-  padding-left: 10px;
-  padding-right: 10px; }
+  border-radius: 0;
+  box-sizing: border-box; }
   .dashboard-bar-chart-container .dashboard-sub-bar {
     padding-bottom: 17px;
-    padding-top: 5px; }
+    padding-top: 13px; }
   .dashboard-bar-chart-container .dashboard-bar-chart {
     background-color: #fff;
     border-left: 5px solid #fff;
     border-right: 5px solid #fff;
     border-top: 5px solid #fff;
-    border-top-left-radius: 3px;
-    border-top-right-radius: 3px;
-    padding-bottom: 5px;
+    padding-bottom: 8px;
     width: auto; }
     .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title {
       margin-top: 5px;
-      padding: 0 8px; }
+      padding: 0 8px;
+      width: 100%; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .percentage {
-        font-weight: 400; }
+        font-weight: 400;
+        width: 100%; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
-        text-align: right; }
+        color: #000;
+        font-weight: 500;
+        text-align: center;
+        width: 100%; }
     .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart .nv-bar rect {
-      fill-opacity: .15;
+      fill-opacity: .8;
       stroke-opacity: .8;
       stroke-width: .5px; }
 
@@ -6488,7 +6492,7 @@ div.headerBar {
 
 .dashboard-row {
   margin-bottom: 0;
-  margin-left: 0;
+  margin-left: 2px;
   margin-right: 0; }
   .dashboard-row .fa-arrows-alt {
     display: none; }
@@ -6500,6 +6504,15 @@ div.headerBar {
 #repl-ticks,
 #repl-progress {
   width: 33.3% !important; }
+  #repl-numbers .inner,
+  #repl-ticks .inner,
+  #repl-progress .inner {
+    margin-top: 0; }
+
+#requests,
+#system,
+#replication {
+  margin-bottom: 10px; }
 
 .dashboardModal {
   -moz-border-radius: 8px !important;
@@ -7530,17 +7543,6 @@ textarea,
   word-break: break-all;
   word-wrap: break-word; }
 
-.log-content-id {
-  padding-bottom: 0 !important; }
-  .log-content-id .dataTable {
-    border-collapse: separate;
-    border-spacing: 0 5px;
-    table-layout: fixed !important; }
-  .log-content-id .arango-tab {
-    border-bottom: 0 !important; }
-  .log-content-id .tab-content {
-    margin-top: 1px !important; }
-
 .tab-content {
   min-height: 390px; }
 
@@ -7615,6 +7617,36 @@ textarea,
     width: 150px; }
   #arangoLogTable tbody td:nth-child(3) {
     width: auto; }
+
+.log-content-id {
+  padding-bottom: 0 !important;
+  padding-top: 0 !important; }
+  .log-content-id .dataTable {
+    border-collapse: separate;
+    border-spacing: 0 5px;
+    table-layout: fixed !important; }
+  .log-content-id .arango-tab {
+    border-bottom: 0 !important; }
+  .log-content-id .tab-content {
+    margin-top: 1px !important; }
+  .log-content-id .arango-tabbar {
+    margin-top: -51px;
+    position: absolute; }
+    .log-content-id .arango-tabbar button {
+      background-color: #fff;
+      border: 0;
+      color: #000;
+      float: left;
+      font-size: 10.5pt;
+      opacity: .64;
+      outline: none;
+      padding-left: 0;
+      padding-right: 20px;
+      text-align: left;
+      width: auto; }
+      .log-content-id .arango-tabbar button.arango-active-tab {
+        height: 27px;
+        opacity: 1; }
 
 div.gv_zoom_widget {
   height: 300px;
@@ -7898,10 +7930,6 @@ input.gv-radio-button {
   .dashboard-large-chart,
   .dashboard-medium-chart-outer:first-child {
     padding-right: 0 !important; }
-  .dashboard-bar-chart-container {
-    margin-bottom: 65px !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important; }
   .dashboard-medium-chart {
     margin-bottom: 10px; }
   div.dropdownInner ul label {
@@ -7930,7 +7958,23 @@ input.gv-radio-button {
     display: none; }
   div.bodyWrapper,
   .footer {
-    left: 40px; } }
+    left: 40px; }
+  .dashboard-bar-chart-container .dashboard-bar-chart {
+    padding-bottom: 11px; } }
+
+@media (max-width: 768px) {
+  .dashboard-large-chart,
+  .dashboard-tendency-container {
+    box-sizing: content-box; }
+  .tendency-box-sizing .dashboard-bar-chart-container,
+  .tendency-box-sizing .dashboard-tendency-container {
+    margin-left: 0; }
+  .tendency-box-sizing .dashboard-row:last-child .dashboard-medium-chart-outer:last-child {
+    margin-left: 0; }
+  .tendency-box-sizing .dashboard-bar-chart-container {
+    height: 140px; }
+    .tendency-box-sizing .dashboard-bar-chart-container .dashboard-sub-bar {
+      margin-top: -3px; } }
 
 @media (min-width: 569px) and (max-width: 738px) {
   .dashboard-large-chart,
@@ -7941,11 +7985,8 @@ input.gv-radio-button {
   .headerButtonBar {
     display: none; }
   .dashboard-bar-chart-container {
-    margin-bottom: 65px !important;
     padding-left: 0 !important;
     padding-right: 0 !important; }
-  .dashboard-medium-chart {
-    margin-bottom: 10px; }
   #repl-numbers,
   #repl-progress,
   #repl-ticks {
@@ -7953,7 +7994,44 @@ input.gv-radio-button {
   .collection-dropdown ul {
     width: auto !important; }
   .arango-collection-select {
-    display: inline-block; } }
+    display: inline-block; }
+  .dashboard-bar-chart-container .dashboard-bar-chart {
+    padding-bottom: 11px; } }
+
+@media (min-width: 770px) and (max-width: 972px) {
+  .dashboard-tendency-container .dashboard-sub-bar {
+    font-size: 11px;
+    height: 32px;
+    margin-bottom: 10px;
+    margin-top: -10px; }
+  .dashboard-small-chart .dashboard-sub-bar {
+    font-size: 11px;
+    height: 33px; }
+  .dashboard-small-chart .dashboard-sub-bar-title {
+    font-size: 11px;
+    line-height: 12px;
+    margin-top: -12px; }
+  .dashboard-bar-chart-chart {
+    margin-top: 10px; }
+  .dashboard-bar-chart-container .dashboard-sub-bar {
+    font-size: 11px;
+    margin-bottom: 10px;
+    margin-top: -16px;
+    padding-top: 18px; }
+  .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
+    padding-top: 3px; } }
+
+@media (min-width: 973px) {
+  .dashboard-large-chart .dashboard-sub-bar {
+    padding-top: 14px; }
+  #dataTransferDistribution .nvd3-svg,
+  #totalTimeDistribution .nvd3-svg {
+    padding-top: 20px; }
+  #requests .small-label-padding .dashboard-small-chart .dashboard-sub-bar {
+    font-size: 12px;
+    padding-top: 30px; }
+  #requests .small-label-padding:last-child .dashboard-small-chart .dashboard-sub-bar {
+    margin-bottom: 1px; } }
 
 .document-info-div {
   margin-top: 20px;
@@ -8541,6 +8619,43 @@ main {
     color: #000;
     height: 28px;
     margin-bottom: -1px; }
+
+.subViewNavbar {
+  border-bottom: 2px solid #d9dbdc;
+  height: 40px;
+  list-style: none;
+  margin-bottom: 15px;
+  margin-left: -15px;
+  margin-right: 0;
+  margin-top: -57px;
+  width: 100%;
+  z-index: 1000; }
+  .subViewNavbar li {
+    cursor: pointer;
+    float: left;
+    font-size: 10pt;
+    line-height: 30px;
+    margin-bottom: 5px;
+    margin-top: 5px;
+    padding: 0 12px; }
+    .subViewNavbar li.active {
+      cursor: default; }
+      .subViewNavbar li.active a {
+        color: #000; }
+    .subViewNavbar li.disabled {
+      cursor: not-allowed; }
+    .subViewNavbar li:hover a {
+      color: #333333;
+      -moz-transition: all .2s ease-in;
+      -o-transition: all .2s ease-in;
+      -webkit-transition: all .2s ease-in;
+      transition: all .2s ease-in; }
+    .subViewNavbar li a {
+      color: rgba(51, 51, 51, 0.6);
+      -moz-transition: all .2s ease-in;
+      -o-transition: all .2s ease-in;
+      -webkit-transition: all .2s ease-in;
+      transition: all .2s ease-in; }
 
 .subnavmenu {
   background-color: #fff;

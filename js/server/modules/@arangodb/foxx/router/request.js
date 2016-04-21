@@ -1,4 +1,5 @@
 'use strict';
+
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -43,6 +44,7 @@ module.exports = class SyntheticRequest {
     this.pathParams = {};
     this.queryParams = querystring.decode(this._url.query);
     this.body = getRawBodyBuffer(req);
+    this.rawBody = this.body;
 
     const server = extractServer(req, context.trustProxy);
     this.protocol = server.protocol;
@@ -142,6 +144,13 @@ module.exports = class SyntheticRequest {
 
   get database() {
     return this._raw.database;
+  }
+
+  json() {
+    if (!this.rawBody) {
+      return undefined;
+    }
+    return JSON.parse(this.rawBody.toString('utf-8'));
   }
 
   params(name) {

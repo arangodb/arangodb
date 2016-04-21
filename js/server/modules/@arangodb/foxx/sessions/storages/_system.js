@@ -1,4 +1,3 @@
-/*global aqlQuery */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -28,6 +27,7 @@ const internal = require('internal');
 const arangodb = require('@arangodb');
 const NOT_FOUND = arangodb.errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code;
 const db = arangodb.db;
+const aql = arangodb.aql;
 
 
 module.exports = function systemStorage(cfg) {
@@ -35,7 +35,7 @@ module.exports = function systemStorage(cfg) {
   const expiry = Number(internal.options()['server.session-timeout']) * 1000;
   return {
     prune() {
-      return db._query(aqlQuery`
+      return db._query(aql`
         FOR session IN _sessions
         FILTER session.lastAccess < ${Date.now() - expiry}
         REMOVE session IN _sessions
@@ -44,19 +44,24 @@ module.exports = function systemStorage(cfg) {
     },
     fromClient(sid) {
       try {
+        const now = Date.now();
         const doc = db._sessions.document(sid);
         const internalAccessTime = internal.accessSid(sid);
-        if (internalAccessTime) {
+        if (doc.uid && internalAccessTime) {
           doc.lastAccess = internalAccessTime;
         }
-        if ((doc.lastAccess + expiry) < Date.now()) {
+        if ((doc.lastAccess + expiry) < now) {
           this.clear(sid);
           return null;
         }
+        if (doc.uid) {
+          const user = db._users.document(doc.uid);
+          internal.createSid(doc._key, user.user);
+        }
+        db._sessions.update(sid, {lastAccess: now});
         return {
           _key: doc._key,
           uid: doc.uid,
-          userData: doc.userData,
           created: doc.created,
           data: doc.sessionData
         };
@@ -77,7 +82,6 @@ module.exports = function systemStorage(cfg) {
       const uid = session.uid;
       const payload = {
         uid: uid || null,
-        userData: session.userData || {},
         sessionData: session.data || {},
         created: session.created || Date.now(),
         lastAccess: Date.now(),
@@ -93,25 +97,19 @@ module.exports = function systemStorage(cfg) {
         db._sessions.replace(sid, payload);
       }
       if (uid) {
-        if (isNew) {
-          const user = db._users.document(uid);
-          internal.createSid(session._key, user.user);
-        } else {
-          internal.accessSid(sid);
-        }
+        const user = db._users.document(uid);
+        internal.createSid(session._key, user.user);
       }
       return session;
     },
     setUser(session, user) {
       if (user) {
         session.uid = user._key;
-        session.userData = user.userData;
         if (session._key) {
           internal.createSid(session._key, user.user);
         }
       } else {
         session.uid = null;
-        session.userData = {};
         if (session._key) {
           internal.clearSid(session._key);
         }
@@ -136,7 +134,6 @@ module.exports = function systemStorage(cfg) {
     new() {
       return {
         uid: null,
-        userData: {},
         created: Date.now(),
         data: {}
       };

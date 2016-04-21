@@ -90,12 +90,12 @@ function TemplateMiddleware(templateCollection, helper) {
           throw new Error("Unknown template language '" + template.templateLanguage + "'");
         }
 
-        this.body = _.template(template.content)(_.extend(data, helper));
+        this.body = _.template(template.content)(Object.assign(data, helper));
         this.contentType = template.contentType;
       }
     };
 
-    _.extend(response, responseFunctions);
+    Object.assign(response, responseFunctions);
   };
 
   if (_.isString(templateCollection)) {

@@ -10,15 +10,12 @@ echo Starting agency...
 build/bin/arangod -c etc/relative/arangod.conf \
   --agency.size 1 \
   --server.endpoint tcp://127.0.0.1:4001 \
-  --agency.endpoint tcp://127.0.0.1:4001 \
   --agency.wait-for-sync false \
   --database.directory cluster/data4001 \
   --agency.id 0 \
   --log.file cluster/4001.log \
-  --log.requests-file cluster/4001.req \
-  --server.disable-statistics true \
-  --server.foxx-queues false \
-  --server.disable-authentication true \
+  --server.statistics false \
+  --server.authentication false \
   --javascript.app-path ./js/apps \
   --javascript.startup-directory ./js \
   > cluster/4001.stdout 2>&1 &

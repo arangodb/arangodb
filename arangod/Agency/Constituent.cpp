@@ -1,4 +1,3 @@
-
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -22,14 +21,22 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Cluster/ClusterComm.h"
-#include "Logger/Logger.h"
-#include "Basics/ConditionLocker.h"
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
+#include "Constituent.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include <chrono>
+#include <iomanip>
+#include <thread>
+
+#include "Agency/Agent.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
+#include "Basics/ConditionLocker.h"
+#include "Basics/RandomGenerator.h"
+#include "Cluster/ClusterComm.h"
+#include "Logger/Logger.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -55,34 +62,31 @@ using namespace arangodb;
 
 // Configure with agent's configuration
 void Constituent::configure(Agent* agent) {
-
   _agent = agent;
-
+  TRI_ASSERT(_agent!=nullptr);
   if (size() == 1) {
     _role = LEADER;
   } else {
     _id = _agent->config().id;
-    if (_agent->config().notify) {// (notify everyone) 
+    if (_agent->config().notify) {  // (notify everyone)
       notifyAll();
     }
   }
 }
 
 // Default ctor
-Constituent::Constituent() :
-  Thread("Constituent"),
-  _vocbase(nullptr),
-  _applicationV8(nullptr),
-  _queryRegistry(nullptr),
-  _term(0),
-  _leader_id(0),
-  _id(0),
-  _gen(std::random_device()()),
-  _role(FOLLOWER),
-  _agent(0),
-  _voted_for(0),
-  _notifier(nullptr) {
-  _gen.seed(TRI_UInt32Random());
+Constituent::Constituent()
+    : Thread("Constituent"),
+      _term(0),
+      _leaderID((std::numeric_limits<uint32_t>::max)()),
+      _id(0),
+      // XXX #warning KAVEH use RandomGenerator
+      _gen(std::random_device()()),
+      _role(FOLLOWER),
+      _agent(nullptr),
+      _votedFor((std::numeric_limits<uint32_t>::max)()), 
+      _notifier(nullptr) {
+  _gen.seed(RandomGenerator::interval(UINT32_MAX));
 }
 
 // Shutdown if not already
@@ -91,148 +95,140 @@ Constituent::~Constituent() {
 }
 
 // Configuration
-config_t const& Constituent::config () const {
+config_t const& Constituent::config() const {
   return _agent->config();
 }
 
 // Wait for sync
 bool Constituent::waitForSync() const {
-  return _agent->config().wait_for_sync;
+  return _agent->config().waitForSync;
 }
 
 // Random sleep times in election process
-duration_t Constituent::sleepFor (double min_t, double max_t) {
+duration_t Constituent::sleepFor(double min_t, double max_t) {
   dist_t dis(min_t, max_t);
-  return duration_t((long)std::round(dis(_gen)*1000.0));
+  return duration_t((long)std::round(dis(_gen) * 1000.0));
 }
 
 // Get my term
 term_t Constituent::term() const {
-  MUTEX_LOCKER (guard, _castLock);
+  MUTEX_LOCKER(guard, _castLock);
   return _term;
 }
 
 // Update my term
 void Constituent::term(term_t t) {
-
   term_t tmp;
-  
-  {
-    MUTEX_LOCKER (guard, _castLock);
-    tmp = _term;
-    _term  = t;
-  }
-  
-  if (tmp != t) {
 
+  {
+    MUTEX_LOCKER(guard, _castLock);
+    tmp = _term;
+    _term = t;
+  }
+
+  if (tmp != t) {
     LOG_TOPIC(INFO, Logger::AGENCY) << "Updating term to " << t;
-    
+
     Builder body;
     body.add(VPackValue(VPackValueType::Object));
     std::ostringstream i_str;
     i_str << std::setw(20) << std::setfill('0') << t;
     body.add("_key", Value(i_str.str()));
     body.add("term", Value(t));
-    body.add("voted_for", Value((uint32_t)_voted_for));
+    body.add("voted_for", Value((uint32_t)_votedFor));
     body.close();
-    
+
     TRI_ASSERT(_vocbase != nullptr);
     auto transactionContext =
-      std::make_shared<StandaloneTransactionContext>(_vocbase);
+        std::make_shared<StandaloneTransactionContext>(_vocbase);
     SingleCollectionTransaction trx(transactionContext, "election",
                                     TRI_TRANSACTION_WRITE);
-    
+
     int res = trx.begin();
-    
+
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }
-    
+
     OperationOptions options;
-    options.waitForSync = waitForSync(); 
+    options.waitForSync = waitForSync();
     options.silent = true;
-    
+
     OperationResult result = trx.insert("election", body.slice(), options);
-    /*res = */trx.finish(result.code); // OMG
-    
+    /*res = */ trx.finish(result.code);  // OMG
   }
-  
 }
 
 /// @brief My role
-role_t Constituent::role () const {
-  MUTEX_LOCKER (guard, _castLock);
+role_t Constituent::role() const {
+  MUTEX_LOCKER(guard, _castLock);
   return _role;
 }
 
-/// @brief Become follower in term 
-void Constituent::follow (term_t t) {
+/// @brief Become follower in term
+void Constituent::follow(term_t t) {
   MUTEX_LOCKER(guard, _castLock);
   if (_role != FOLLOWER) {
     LOG_TOPIC(INFO, Logger::AGENCY)
-      << "Role change: Converting to follower in term " << t;
+        << "Role change: Converting to follower in term " << t;
   }
   _term = t;
   _role = FOLLOWER;
 }
 
 /// @brief Become leader
-void Constituent::lead () {
+void Constituent::lead() {
   MUTEX_LOCKER(guard, _castLock);
   if (_role != LEADER) {
     LOG_TOPIC(INFO, Logger::AGENCY)
-      << "Role change: Converted to leader in term " << _term ;
-    _agent->lead(); // We need to rebuild spear_head and read_db;
+        << "Role change: Converted to leader in term " << _term;
+    _agent->lead();  // We need to rebuild spear_head and read_db;
   }
   _role = LEADER;
-  _leader_id = _id;
+  _leaderID = _id;
 }
 
 /// @brief Become follower
-void Constituent::candidate () {
+void Constituent::candidate() {
   MUTEX_LOCKER(guard, _castLock);
   if (_role != CANDIDATE)
     LOG_TOPIC(INFO, Logger::AGENCY)
-      << "Role change: Converted to candidate in term " << _term ;
+        << "Role change: Converted to candidate in term " << _term;
   _role = CANDIDATE;
 }
 
 /// @brief Leading?
-bool Constituent::leading () const {
+bool Constituent::leading() const {
   MUTEX_LOCKER(guard, _castLock);
   return _role == LEADER;
 }
 
 /// @brief Following?
-bool Constituent::following () const {
+bool Constituent::following() const {
   MUTEX_LOCKER(guard, _castLock);
   return _role == FOLLOWER;
 }
 
 /// @brief Runnig as candidate?
-bool Constituent::running () const {
+bool Constituent::running() const {
   MUTEX_LOCKER(guard, _castLock);
   return _role == CANDIDATE;
 }
 
 /// @brief Get current leader's id
-id_t Constituent::leaderID ()  const {
-  return _leader_id;
-}
+id_t Constituent::leaderID() const { return _leaderID; }
 
 /// @brief Agency size
-size_t Constituent::size() const {
-  return config().size();
-}
+size_t Constituent::size() const { return config().size(); }
 
-/// @brief Get endpoint to an id 
-std::string const& Constituent::end_point(id_t id) const {
-  return config().end_points[id];
+/// @brief Get endpoint to an id
+std::string const& Constituent::endpoint(id_t id) const {
+  return config().endpoints[id];
 }
 
 /// @brief Get all endpoints
-std::vector<std::string> const& Constituent::end_points() const {
-  return config().end_points;
+std::vector<std::string> const& Constituent::endpoints() const {
+  return config().endpoints;
 }
 
 /// @brief Notify peers of updated endpoints
@@ -241,7 +237,7 @@ void Constituent::notifyAll () {
   // Send request to all but myself
   for (id_t i = 0; i < size(); ++i) {
     if (i != _id) {
-      toNotify.push_back(end_point(i));
+      toNotify.push_back(endpoint(i));
     }
   }
 
@@ -249,7 +245,7 @@ void Constituent::notifyAll () {
   auto body = std::make_shared<VPackBuilder>();
   body->openObject();
   body->add("endpoints", VPackValue(VPackValueType::Array));
-  for (auto const& i : end_points()) {
+  for (auto const& i : endpoints()) {
     body->add(Value(i));
   }
   body->close();
@@ -265,95 +261,94 @@ void Constituent::notifyAll () {
 }
 
 /// @brief Vote
-bool Constituent::vote (
-  term_t term, id_t id, index_t prevLogIndex, term_t prevLogTerm) {
+bool Constituent::vote(term_t term, id_t id, index_t prevLogIndex,
+                       term_t prevLogTerm) {
   term_t t = 0;
   id_t lid = 0;
   {
-    MUTEX_LOCKER(guard,_castLock);
+    MUTEX_LOCKER(guard, _castLock);
     t = _term;
-    lid = _leader_id;
+    lid = _leaderID;
   }
   if (term > t || (t == term && lid == id)) {
     this->term(term);
     {
-      MUTEX_LOCKER(guard,_castLock);
-      _cast = true;      // Note that I voted this time around.
-      _voted_for = id;   // The guy I voted for I assume leader.
-      _leader_id = id;
+      MUTEX_LOCKER(guard, _castLock);
+      _cast = true;     // Note that I voted this time around.
+      _votedFor = id;  // The guy I voted for I assume leader.
+      _leaderID = id;
     }
-    if (_role>FOLLOWER) {
-      follow (_term);
+    if (_role > FOLLOWER) {
+      follow(_term);
     }
-    _agent->persist(term,id);
+    _agent->persist(term, id);
     _cv.signal();
     return true;
-  } else {             // Myself running or leading
+  } else {  // Myself running or leading
     return false;
   }
 }
 
 /// @brief Call to election
 void Constituent::callElection() {
+  std::vector<bool> votes(size(), false);
 
-  std::vector<bool> votes(size(),false);
-
-  votes.at(_id) = true; // vote for myself
+  votes.at(_id) = true;  // vote for myself
   _cast = true;
-  if(_role == CANDIDATE) {
-    this->term(_term+1);            // raise my term
+  if (_role == CANDIDATE) {
+    this->term(_term + 1);  // raise my term
   }
-  
+
   std::string body;
-  std::vector<ClusterCommResult> results(config().end_points.size());
+  std::vector<ClusterCommResult> results(config().endpoints.size());
   std::stringstream path;
-  
-  path << "/_api/agency_priv/requestVote?term=" << _term << "&candidateId="
-       << _id << "&prevLogIndex=" << _agent->lastLog().index << "&prevLogTerm="
-       << _agent->lastLog().term;
+
+  path << "/_api/agency_priv/requestVote?term=" << _term
+       << "&candidateId=" << _id << "&prevLogIndex=" << _agent->lastLog().index
+       << "&prevLogTerm=" << _agent->lastLog().term;
 
   // Ask everyone for their vote
-  for (id_t i = 0; i < config().end_points.size(); ++i) { 
-    if (i != _id && end_point(i) != "") {
+  for (id_t i = 0; i < config().endpoints.size(); ++i) {
+    if (i != _id && endpoint(i) != "") {
       std::unique_ptr<std::map<std::string, std::string>> headerFields =
-        std::make_unique<std::map<std::string, std::string> >();
+          std::make_unique<std::map<std::string, std::string>>();
       results[i] = arangodb::ClusterComm::instance()->asyncRequest(
-        "1", 1, config().end_points[i], GeneralRequest::RequestType::GET,
-        path.str(), std::make_shared<std::string>(body), headerFields, nullptr,
-        config().min_ping, true);
+          "1", 1, config().endpoints[i], GeneralRequest::RequestType::GET,
+          path.str(), std::make_shared<std::string>(body), headerFields,
+          nullptr, config().minPing, true);
     }
   }
 
   // Wait randomized timeout
   std::this_thread::sleep_for(
-    sleepFor(.5*config().min_ping, .8*config().min_ping));
+      sleepFor(.5 * config().minPing, .8 * config().minPing));
 
   // Collect votes
-  for (id_t i = 0; i < config().end_points.size(); ++i) { 
-    if (i != _id && end_point(i) != "") {
-      ClusterCommResult res = arangodb::ClusterComm::instance()->
-        enquire(results[i].operationID);
-      
-      if (res.status == CL_COMM_SENT) { // Request successfully sent 
+  for (id_t i = 0; i < config().endpoints.size(); ++i) {
+    if (i != _id && endpoint(i) != "") {
+      ClusterCommResult res =
+          arangodb::ClusterComm::instance()->enquire(results[i].operationID);
+
+      if (res.status == CL_COMM_SENT) {  // Request successfully sent
         res = arangodb::ClusterComm::instance()->wait(
-          "1", 1, results[i].operationID, "1");
-        std::shared_ptr<Builder > body = res.result->getBodyVelocyPack();
-        if (body->isEmpty()) {                                     // body empty
+            "1", 1, results[i].operationID, "1");
+        std::shared_ptr<Builder> body = res.result->getBodyVelocyPack();
+        if (body->isEmpty()) {  // body empty
           continue;
         } else {
-          if (body->slice().isObject()) {                          // body 
+          if (body->slice().isObject()) {  // body
             VPackSlice slc = body->slice();
-            if (slc.hasKey("term") && slc.hasKey("voteGranted")) { // OK
+            if (slc.hasKey("term") && slc.hasKey("voteGranted")) {  // OK
               term_t t = slc.get("term").getUInt();
-              if (t > _term) {                                     // follow?
+              if (t > _term) {  // follow?
                 follow(t);
                 break;
               }
-              votes[i] = slc.get("voteGranted").getBool();        // Get vote
-            } 
+              votes[i] = slc.get("voteGranted").getBool();  // Get vote
+            }
           }
         }
-      } else { // Request failed
+      } else {  // Request failed
         votes[i] = false;
       }
     }
@@ -362,13 +357,13 @@ void Constituent::callElection() {
   // Count votes
   size_t yea = 0;
   for (size_t i = 0; i < size(); ++i) {
-    if (votes[i]){
+    if (votes[i]) {
       yea++;
-    }    
+    }
   }
 
   // Evaluate election results
-  if (yea > size()/2){
+  if (yea > size() / 2) {
     lead();
   } else {
     follow(_term);
@@ -380,82 +375,65 @@ void Constituent::beginShutdown() {
   Thread::beginShutdown();
 }
 
-
-bool Constituent::start (TRI_vocbase_t* vocbase,
-                         ApplicationV8* applicationV8,
-                         aql::QueryRegistry* queryRegistry) {
-
+bool Constituent::start (TRI_vocbase_t* vocbase) {
   _vocbase = vocbase;
-  _applicationV8 = applicationV8;
-  _queryRegistry = queryRegistry;
-
   return Thread::start();
 }
 
-
 void Constituent::run() {
-
   TRI_ASSERT(_vocbase != nullptr);
   auto bindVars = std::make_shared<VPackBuilder>();
   bindVars->openObject();
   bindVars->close();
-  
-  TRI_ASSERT(_applicationV8 != nullptr);
-  TRI_ASSERT(_queryRegistry != nullptr);
 
   // Query
-  std::string const aql ("FOR l IN election SORT l._key DESC LIMIT 1 RETURN l");
-  arangodb::aql::Query query(_applicationV8, false, _vocbase,
-                             aql.c_str(), aql.size(), bindVars, nullptr,
-                             arangodb::aql::PART_MAIN);
-  
+  std::string const aql("FOR l IN election SORT l._key DESC LIMIT 1 RETURN l");
+  arangodb::aql::Query query(false, _vocbase, aql.c_str(), aql.size(), bindVars,
+                             nullptr, arangodb::aql::PART_MAIN);
+
   auto queryResult = query.execute(_queryRegistry);
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
   }
-  
+
   VPackSlice result = queryResult.result->slice();
-  
+
   if (result.isArray()) {
     for (auto const& i : VPackArrayIterator(result)) {
       try {
         _term = i.get("term").getUInt();
-        _voted_for = i.get("voted_for").getUInt();
+        _votedFor = i.get("voted_for").getUInt();
       } catch (std::exception const& e) {
         LOG_TOPIC(ERR, Logger::AGENCY)
-          << "Persisted election entries corrupt! Defaulting term,vote (0,0)";
-        
+            << "Persisted election entries corrupt! Defaulting term,vote (0,0)";
       }
     }
   }
-  
+
   // Always start off as follower
   while (!this->isStopping() && size() > 1) {
-
     if (_role == FOLLOWER) {
       bool cast = false;
 
       {
         MUTEX_LOCKER(guard, _castLock);
-        _cast = false;                           // New round set not cast vote
+        _cast = false;  // New round set not cast vote
       }
 
-      dist_t dis(config().min_ping, config().max_ping);
-      long rand_wait = static_cast<long>(dis(_gen)*1000000.0);
-      /*bool timedout =*/ _cv.wait(rand_wait);
+      dist_t dis(config().minPing, config().maxPing);
+      long rand_wait = static_cast<long>(dis(_gen) * 1000000.0);
+      /*bool timedout =*/_cv.wait(rand_wait);
+
       {
         MUTEX_LOCKER(guard, _castLock);
         cast = _cast;
       }
-      
+
       if (!cast) {
-        candidate();                           // Next round, we are running
+        candidate();  // Next round, we are running
       }
     } else {
-      callElection();                          // Run for office
+      callElection();  // Run for office
     }
   }
-  
 }
-
-

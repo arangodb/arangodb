@@ -1,4 +1,5 @@
 'use strict';
+
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -21,7 +22,6 @@
 /// @author Alan Plum
 ////////////////////////////////////////////////////////////////////////////////
 
-const _ = require('lodash');
 const joi = require('joi');
 const DEFAULT_PARAM_SCHEMA = joi.string().required();
 
@@ -45,12 +45,12 @@ function reverse(pathTokens, pathParamNames) {
   return '/' + path.join('/');
 }
 
-module.exports = _.extend(
+module.exports = Object.assign(
   function tokenize(path, ctx) {
     if (path === '/') {
       return [$_TERMINAL];
     }
-    const tokens = path.slice(1).split('/').map(function (name) {
+    const tokens = path.slice(1).split('/').map((name) => {
       if (name === '*') {
         return $_WILDCARD;
       }

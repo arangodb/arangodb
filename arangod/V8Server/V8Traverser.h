@@ -451,6 +451,6 @@ TRI_RunSimpleShortestPathSearch(
 void TRI_RunNeighborsSearch(
     std::vector<EdgeCollectionInfo*>& collectionInfos,
     arangodb::traverser::NeighborsOptions& opts,
-    std::unordered_set<std::string>& distinct);
+    std::vector<std::string>& distinct);
 
 #endif

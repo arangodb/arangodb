@@ -173,7 +173,7 @@
 
       requests: {
         header: "Requests",
-        labels: ["datetime", "GET", "PUT", "POST", "DELETE", "PATCH", "HEAD", "OPTIONS", "OTHER"],
+        labels: ["datetime", "REQUESTS"],
         stackedGraph: true,
         div: "requestsChart",
         axes: {

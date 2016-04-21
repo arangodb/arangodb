@@ -759,7 +759,7 @@ static AqlValue MergeParameters(arangodb::aql::Query* query,
 /// @brief Transforms an unordered_map<VertexId> to AQL VelocyPack values
 static AqlValue VertexIdsToAqlValueVPack(arangodb::aql::Query* query,
                                          arangodb::AqlTransaction* trx,
-                                         std::unordered_set<std::string>& ids,
+                                         std::vector<std::string> const& ids,
                                          bool includeData = false) {
   TransactionBuilderLeaser builder(trx);
   builder->openArray();
@@ -2112,7 +2112,7 @@ AqlValue Functions::Neighbors(arangodb::aql::Query* query,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  std::unordered_set<std::string> neighbors;
+  std::vector<std::string> neighbors;
   TRI_RunNeighborsSearch(edgeCollectionInfos, opts, neighbors);
 
   return VertexIdsToAqlValueVPack(query, trx, neighbors, includeData);

@@ -81,7 +81,7 @@ exports.createQuery = function createQuery (cfg) {
     } else {
       vars = args.shift();
     }
-    vars = _.extend({}, defaults, vars);
+    vars = Object.assign({}, defaults, vars);
     if (context) {
       _.each(vars, function (value, key) {
         if (key.charAt(0) === '@') {

@@ -24,6 +24,7 @@
 #define APPLICATION_FEATURES_CLIENT_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationFeatures/HttpEndpointProvider.h"
 
 namespace arangodb {
 class Endpoint;
@@ -33,7 +34,8 @@ class GeneralClientConnection;
 class SimpleHttpClient;
 }
 
-class ClientFeature final : public application_features::ApplicationFeature {
+class ClientFeature final : public application_features::ApplicationFeature,
+                            public HttpEndpointProvider {
  public:
   constexpr static double const DEFAULT_REQUEST_TIMEOUT = 1200.0;
   constexpr static double const DEFAULT_CONNECTION_TIMEOUT = 5.0;
@@ -41,14 +43,13 @@ class ClientFeature final : public application_features::ApplicationFeature {
   constexpr static double const LONG_TIMEOUT = 86400.0;
 
  public:
-  explicit ClientFeature(application_features::ApplicationServer* server,
-                         double connectionTimeout = DEFAULT_CONNECTION_TIMEOUT,
-                         double requestTimeout = DEFAULT_REQUEST_TIMEOUT);
+  ClientFeature(application_features::ApplicationServer* server,
+                double connectionTimeout = DEFAULT_CONNECTION_TIMEOUT,
+                double requestTimeout = DEFAULT_REQUEST_TIMEOUT);
 
  public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void validateOptions(
-      std::shared_ptr<options::ProgramOptions> options) override;
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
  public:
   std::string const& databaseName() const { return _databaseName; }
@@ -70,6 +71,7 @@ class ClientFeature final : public application_features::ApplicationFeature {
   std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient();
   std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient(
       std::string const& definition);
+  std::vector<std::string> httpEndpoints() override;
 
   void setDatabaseName(std::string const& databaseName) {
     _databaseName = databaseName;

@@ -28,7 +28,6 @@
 
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
-#include "ApplicationServer/ApplicationFeature.h"
 #include "VocBase/voc-types.h"
 #include "Wal/Logfile.h"
 #include "Wal/Marker.h"
@@ -37,6 +36,10 @@
 struct TRI_server_t;
 
 namespace arangodb {
+namespace options {
+class ProgramOptions;
+}
+
 namespace wal {
 
 class AllocatorThread;
@@ -76,21 +79,18 @@ struct LogfileManagerState {
 struct LogfileBarrier {
   LogfileBarrier() = delete;
 
-  LogfileBarrier(TRI_voc_tick_t id, double expires, TRI_voc_tick_t minTick) 
-    : id(id), expires(expires), minTick(minTick) {
-  }
+  LogfileBarrier(TRI_voc_tick_t id, double expires, TRI_voc_tick_t minTick)
+      : id(id), expires(expires), minTick(minTick) {}
 
   TRI_voc_tick_t const id;
   double expires;
   TRI_voc_tick_t minTick;
 };
 
-class LogfileManager : public rest::ApplicationFeature {
+class LogfileManager {
   friend class AllocatorThread;
   friend class CollectorThread;
 
-  /// @brief LogfileManager
- private:
   LogfileManager(LogfileManager const&) = delete;
   LogfileManager& operator=(LogfileManager const&) = delete;
 
@@ -107,18 +107,11 @@ class LogfileManager : public rest::ApplicationFeature {
   static void initialize(std::string*, TRI_server_t*);
 
  public:
-  void setupOptions(
-      std::map<std::string, arangodb::basics::ProgramOptionsDescription>&) override final;
-
-  bool prepare() override final;
-
-  bool open() override final;
-
-  bool start() override final;
-
-  void close() override final;
-
-  void stop() override final;
+  static void collectOptions(std::shared_ptr<options::ProgramOptions> options);
+  bool prepare();
+  bool open();
+  bool start();
+  void stop();
 
  public:
   /// @brief get the logfile directory
@@ -147,12 +140,6 @@ class LogfileManager : public rest::ApplicationFeature {
 
   /// @brief set the number of historic logfiles
   inline void historicLogfiles(uint32_t value) { _historicLogfiles = value; }
-
-  /// @brief whether or not shape information should be suppress when writing
-  /// markers into the write-ahead log
-  inline bool suppressShapeInformation() const {
-    return _suppressShapeInformation;
-  }
 
   /// @brief whether or not there was a SHUTDOWN file with a tick value
   /// at server start
@@ -236,7 +223,7 @@ class LogfileManager : public rest::ApplicationFeature {
   bool hasReserveLogfiles();
 
   /// @brief signal that a sync operation is required
-  void signalSync();
+  void signalSync(bool);
 
   /// @brief reserve space in a logfile
   SlotInfo allocate(uint32_t);
@@ -307,7 +294,7 @@ class LogfileManager : public rest::ApplicationFeature {
 
   /// @brief garbage collect expires logfile barriers
   void collectLogfileBarriers();
-  
+
   /// @brief returns a list of all logfile barrier ids
   std::vector<TRI_voc_tick_t> getLogfileBarriers();
 
@@ -450,36 +437,27 @@ class LogfileManager : public rest::ApplicationFeature {
   /// @brief the arangod config variable containing the database path
   std::string* _databasePath;
 
-  std::string _directory;
-
   /// @brief state during recovery
   RecoverState* _recoverState;
 
-  uint32_t _filesize;
-
-  uint32_t _reserveLogfiles;
-
-  uint32_t _historicLogfiles;
-
   /// @brief maximum number of parallel open logfiles
-  uint32_t _maxOpenLogfiles;
 
-  uint32_t _numberOfSlots;
-
-  uint64_t _syncInterval;
 
   /// @brief maximum wait time for write-throttling
-  uint64_t _maxThrottleWait;
 
-  uint64_t _throttleWhenPending;
-
-  bool _allowOversizeEntries;
-
-  bool _ignoreLogfileErrors;
-
-  bool _ignoreRecoveryErrors;
-
-  bool _suppressShapeInformation;
+#warning JAN this should be non-static, but the singleton cannot be created before 'start'
+  static bool _allowOversizeEntries;
+  static std::string _directory;
+  static uint32_t _historicLogfiles;
+  static bool _ignoreLogfileErrors;
+  static bool _ignoreRecoveryErrors;
+  static uint32_t _filesize;
+  static uint32_t _maxOpenLogfiles;
+  static uint32_t _reserveLogfiles;
+  static uint32_t _numberOfSlots;
+  static uint64_t _syncInterval;
+  static uint64_t _throttleWhenPending;
+  static uint64_t _maxThrottleWait;
 
   /// @brief whether or not writes to the WAL are allowed
   bool _allowWrites;
@@ -558,10 +536,10 @@ class LogfileManager : public rest::ApplicationFeature {
 
   /// @brief whether or not we have been shut down already
   volatile sig_atomic_t _shutdown;
-  
+
   /// @brief a lock protecting _barriers
   basics::ReadWriteLock _barriersLock;
-  
+
   /// @brief barriers that prevent WAL logfiles from being collected
   std::unordered_map<TRI_voc_tick_t, LogfileBarrier*> _barriers;
 };

@@ -66,22 +66,22 @@ endif ()
 add_executable(${BIN_ARANGOD}
   ${ARANGO_MSVC}
   ${ProductVersionFiles}
+  Actions/ActionFeature.cpp
   Actions/RestActionHandler.cpp
   Actions/actions.cpp
+  Agency/AgencyFeature.cpp
   Agency/Agent.cpp
   Agency/AgentCallback.cpp
-  Agency/ApplicationAgency.cpp
   Agency/Constituent.cpp
   Agency/NotifierThread.cpp
   Agency/NotifyCallback.cpp
+  Agency/Node.cpp
   Agency/Supervision.cpp
   Agency/RestAgencyHandler.cpp
   Agency/RestAgencyPrivHandler.cpp
   Agency/State.cpp
   Agency/Store.cpp
   Agency/StoreCallback.cpp
-  ApplicationServer/ApplicationFeature.cpp
-  ApplicationServer/ApplicationServer.cpp
   Aql/Aggregator.cpp
   Aql/AqlItemBlock.cpp
   Aql/AqlItemBlockManager.cpp
@@ -144,11 +144,11 @@ add_executable(${BIN_ARANGOD}
   Aql/VariableGenerator.cpp
   Aql/grammar.cpp
   Aql/tokens.cpp
-  Cluster/AgencyComm.cpp
   Cluster/AgencyCallback.cpp
   Cluster/AgencyCallbackRegistry.cpp
-  Cluster/ApplicationCluster.cpp
+  Cluster/AgencyComm.cpp
   Cluster/ClusterComm.cpp
+  Cluster/ClusterFeature.cpp
   Cluster/ClusterInfo.cpp
   Cluster/ClusterMethods.cpp
   Cluster/ClusterTraverser.cpp
@@ -158,8 +158,8 @@ add_executable(${BIN_ARANGOD}
   Cluster/ServerJob.cpp
   Cluster/ServerState.cpp
   Cluster/v8-cluster.cpp
-  Dispatcher/ApplicationDispatcher.cpp
   Dispatcher/Dispatcher.cpp
+  Dispatcher/DispatcherFeature.cpp
   Dispatcher/DispatcherQueue.cpp
   Dispatcher/DispatcherThread.cpp
   Dispatcher/Job.cpp
@@ -169,7 +169,6 @@ add_executable(${BIN_ARANGOD}
   FulltextIndex/fulltext-query.cpp
   FulltextIndex/fulltext-result.cpp
   GeoIndex/GeoIndex.cpp
-  HttpServer/ApplicationEndpointServer.cpp
   HttpServer/AsyncJobManager.cpp
   HttpServer/HttpCommTask.cpp
   HttpServer/HttpHandler.cpp
@@ -214,14 +213,23 @@ add_executable(${BIN_ARANGOD}
   RestHandler/RestVersionHandler.cpp
   RestHandler/RestVocbaseBaseHandler.cpp
   RestHandler/WorkMonitorHandler.cpp
-  RestServer/ArangoServer.cpp
+  RestServer/AffinityFeature.cpp
+  RestServer/CheckVersionFeature.cpp
+  RestServer/ConsoleFeature.cpp
   RestServer/ConsoleThread.cpp
+  RestServer/DatabaseFeature.cpp
+  RestServer/EndpointFeature.cpp
+  RestServer/FileDescriptorsFeature.cpp
+  RestServer/FrontendFeature.cpp
+  RestServer/RestServerFeature.cpp
+  RestServer/ServerFeature.cpp
+  RestServer/UpgradeFeature.cpp
   RestServer/VocbaseContext.cpp
   RestServer/arangod.cpp
-  Scheduler/ApplicationScheduler.cpp
   Scheduler/ListenTask.cpp
   Scheduler/PeriodicTask.cpp
   Scheduler/Scheduler.cpp
+  Scheduler/SchedulerFeature.cpp
   Scheduler/SchedulerLibev.cpp
   Scheduler/SchedulerThread.cpp
   Scheduler/SignalTask.cpp
@@ -229,6 +237,7 @@ add_executable(${BIN_ARANGOD}
   Scheduler/Task.cpp
   Scheduler/TaskManager.cpp
   Scheduler/TimerTask.cpp
+  Statistics/StatisticsFeature.cpp
   Statistics/statistics.cpp
   Utils/AqlTransaction.cpp
   Utils/CollectionExport.cpp
@@ -243,7 +252,8 @@ add_executable(${BIN_ARANGOD}
   Utils/TransactionContext.cpp
   Utils/V8TransactionContext.cpp
   Utils/WorkMonitorArangod.cpp
-  V8Server/ApplicationV8.cpp
+  V8Server/V8Context.cpp
+  V8Server/V8DealerFeature.cpp
   V8Server/V8Job.cpp
   V8Server/V8PeriodicTask.cpp
   V8Server/V8QueueJob.cpp

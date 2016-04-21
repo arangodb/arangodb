@@ -1,4 +1,5 @@
 'use strict';
+
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -33,7 +34,6 @@ const tokenize = require('@arangodb/foxx/router/tokenize');
 
 const MIME_JSON = 'application/json; charset=utf-8';
 const MIME_BINARY = 'application/octet-stream';
-const DEFAULT_BODY_SCHEMA = joi.object().unknown().meta({allowInvalid: true}).optional();
 const DEFAULT_ERROR_SCHEMA = joi.object().keys({
   error: joi.allow(true).required(),
   errorNum: joi.number().integer().optional(),
@@ -125,6 +125,16 @@ module.exports = exports = class SwaggerContext {
       multiple = true;
     }
 
+    if (model === null && !mimes) {
+      this._bodyParam = {
+        model: null,
+        multiple,
+        contentTypes: null,
+        description
+      };
+      return;
+    }
+
     if (!mimes) {
       mimes = [];
     }
@@ -133,7 +143,7 @@ module.exports = exports = class SwaggerContext {
       mimes.push(MIME_JSON);
     }
 
-    const contentTypes = mimes.map(function (mime) {
+    const contentTypes = mimes.map((mime) => {
       if (mime === 'binary') {
         mime = MIME_BINARY;
       }
@@ -226,7 +236,7 @@ module.exports = exports = class SwaggerContext {
       mimes.push(MIME_JSON);
     }
 
-    const contentTypes = mimes.map(function (mime) {
+    const contentTypes = mimes.map((mime) => {
       if (mime === 'binary') {
         mime = MIME_BINARY;
       }
@@ -311,10 +321,8 @@ module.exports = exports = class SwaggerContext {
       for (const response of swaggerObj._responses.entries()) {
         this._responses.set(response[0], response[1]);
       }
-      if (swaggerObj._bodyParam) {
-        if (!this._bodyParam || swaggerObj._bodyParam.type !== DEFAULT_BODY_SCHEMA) {
-          this._bodyParam = swaggerObj._bodyParam;
-        }
+      if (!this._bodyParam && swaggerObj._bodyParam) {
+        this._bodyParam = swaggerObj._bodyParam;
       }
       this._deprecated = swaggerObj._deprecated || this._deprecated;
       this._description = swaggerObj._description || this._description;
@@ -501,9 +509,6 @@ module.exports = exports = class SwaggerContext {
 };
 
 
-exports.DEFAULT_BODY_SCHEMA = DEFAULT_BODY_SCHEMA;
-
-
 function swaggerifyType(joi) {
   switch (joi._type) {
     default:
@@ -517,9 +522,7 @@ function swaggerifyType(joi) {
     case 'func':
       return ['string'];
     case 'number':
-      if (joi._tests.some(function (test) {
-        return test.name === 'integer';
-      })) {
+      if (joi._tests.some((test) => test.name === 'integer')) {
         return ['integer'];
       }
       return ['number'];
@@ -528,9 +531,7 @@ function swaggerifyType(joi) {
     case 'object':
       return ['object'];
     case 'string':
-      if (joi._meta.some(function (meta) {
-        return meta.secret;
-      })) {
+      if (joi._meta.some((meta) => meta.secret)) {
         return ['string', 'password'];
       }
       return ['string'];
@@ -544,9 +545,7 @@ function swaggerifyParam(joi) {
     description: joi._description || undefined
   };
   let item = param;
-  if (joi._meta.some(function (meta) {
-    return meta.allowMultiple;
-  })) {
+  if (joi._meta.some((meta) => meta.allowMultiple)) {
     param.type = 'array';
     param.collectionFormat = 'multi';
     param.items = {};

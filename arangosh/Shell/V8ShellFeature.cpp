@@ -29,8 +29,8 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/shell-colors.h"
 #include "Logger/Logger.h"
-#include "ProgramOptions2/ProgramOptions.h"
-#include "ProgramOptions2/Section.h"
+#include "ProgramOptions/ProgramOptions.h"
+#include "ProgramOptions/Section.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/Version.h"
 #include "Shell/V8ClientConnection.h"
@@ -89,7 +89,7 @@ void V8ShellFeature::validateOptions(
 
   if (_startupDirectory.empty()) {
     LOG(FATAL) << "'--javascript.startup-directory' is empty, giving up";
-    abortInvalidParameters();
+    FATAL_ERROR_EXIT();
   }
 
   LOG_TOPIC(DEBUG, Logger::V8) << "using Javascript startup files at '"

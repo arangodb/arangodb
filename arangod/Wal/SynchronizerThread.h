@@ -49,7 +49,7 @@ class SynchronizerThread : public Thread {
 
  public:
   /// @brief signal that a sync is needed
-  void signalSync();
+  void signalSync(bool waitForSync);
 
  protected:
   void run() override;
@@ -68,9 +68,6 @@ class SynchronizerThread : public Thread {
   /// @brief condition variable for the thread
   basics::ConditionVariable _condition;
 
-  /// @brief number of requests waiting
-  uint32_t _waiting;
-
   /// @brief wait interval for the synchronizer thread when idle
   uint64_t const _syncInterval;
 
@@ -79,6 +76,13 @@ class SynchronizerThread : public Thread {
     Logfile::IdType id;
     int fd;
   } _logfileCache;
+  
+  /// @brief number of requests waiting
+  /// the value stored here consists of two parts:
+  /// the lower 32 bits contain the number of waiters that requested
+  /// a synchronous write, the upper 32 bits contain the number of
+  /// waiters that requested asynchronous writes
+  std::atomic<uint64_t> _waiting;
 };
 }
 }
