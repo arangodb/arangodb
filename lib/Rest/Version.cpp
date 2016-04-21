@@ -85,6 +85,12 @@ void Version::initialize() {
   Values["tcmalloc"] = "false";
 #endif
 
+#ifdef ARANGODB_HAVE_JEMALLOC
+  Values["jemalloc"] = "true";
+#else
+  Values["jemalloc"] = "false";
+#endif
+
 #ifdef TRI_HAVE_POLL_H
   Values["fd-client-event-handler"] = "poll";
 #else
