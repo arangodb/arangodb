@@ -3700,7 +3700,7 @@ static void JS_SplitWordlist(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
 
   for (uint64_t i = 0; i < wordList.size(); i++) {
-    v8::Handle<v8::String> oneWord = TRI_V8_STD_STRING(wordList[i])
+    v8::Handle<v8::String> oneWord = TRI_V8_STD_STRING(wordList[i]);
     v8WordList->Set(i, oneWord);
   }
 
