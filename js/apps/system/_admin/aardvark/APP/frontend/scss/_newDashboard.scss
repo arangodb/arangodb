@@ -11,7 +11,7 @@
 
 %dashboard-chart-basic {
   @extend %pull-left;
-  border: 1px solid #d1d1d1;
+  border: 1px solid $c-bluegrey-border;
   margin-left: -1px;
   margin-top: -2px;
 
@@ -458,7 +458,7 @@
 .dashboard-row {
   @extend %clear-float;
   margin-bottom: 0;
-  margin-left: 0;
+  margin-left: 2px;
   margin-right: 0;
 
   .fa-arrows-alt {
