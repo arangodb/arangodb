@@ -1368,6 +1368,11 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
   while (TRI_microtime() <= endTime) {
     res.clear();
     res = ac.getValues(where, true);
+    if (!res.successful()) {
+      // It seems the collection is already gone, do not wait further
+      errorMsg = "Collection already gone.";
+      return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
+    }
     if (res.successful() && res.parse(where + "/", false)) {
       // if there are no more active shards for the collection...
       if (res._values.size() == 0) {

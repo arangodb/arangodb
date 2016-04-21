@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Node.h"
+#include "Store.h"
 
 #include "Basics/StringUtils.h"
 
@@ -58,13 +59,20 @@ inline std::vector<std::string> split(const std::string& value, char separator) 
 }
 
 // Construct with node name
-Node::Node (std::string const& name) : _node_name(name), _parent(nullptr) {
+Node::Node (std::string const& name) : _node_name(name), _parent(nullptr),
+                                       _store(nullptr) {
   _value.clear();
 }
 
 // Construct with node name in tree structure
 Node::Node (std::string const& name, Node* parent) :
-  _node_name(name), _parent(parent) {
+  _node_name(name), _parent(parent), _store(nullptr) {
+  _value.clear();
+}
+
+// Construct for store
+Node::Node (std::string const& name, Store* store) :
+  _node_name(name), _parent(nullptr), _store(store) {
   _value.clear();
 }
 
@@ -215,6 +223,14 @@ Node& Node::root() {
   return *tmp;
 }
 
+Store& Node::store() {
+  return *(root()._store);
+}
+
+Store const& Node::store() const {
+  return *(root()._store);
+}
+
 // velocypack value type of this node
 ValueType Node::valueType() const {
   return slice().type();
@@ -224,7 +240,7 @@ ValueType Node::valueType() const {
 bool Node::addTimeToLive (long millis) {
   auto tkey = std::chrono::system_clock::now() +
     std::chrono::milliseconds(millis);
-  root()._timeTable.insert(
+  store().timeTable().insert(
     std::pair<TimePoint,std::shared_ptr<Node>>(
       tkey, _parent->_children[_node_name]));
   _ttl = tkey;
@@ -234,10 +250,10 @@ bool Node::addTimeToLive (long millis) {
 // remove time to live entry for this node
 bool Node::removeTimeToLive () {
   if (_ttl != std::chrono::system_clock::time_point()) {
-    auto ret = root()._timeTable.equal_range(_ttl);
+    auto ret = store().timeTable().equal_range(_ttl);
     for (auto it = ret.first; it!=ret.second;) {
       if (it->second == _parent->_children[_node_name]) {
-        root()._timeTable.erase(it);
+        store().timeTable().erase(it);
         break;
       }
       ++it;
@@ -247,7 +263,7 @@ bool Node::removeTimeToLive () {
 }
 
 inline bool Node::observedBy (std::string const& url) const {
-  auto ret = root()._observerTable.equal_range(url);
+  auto ret = store().observerTable().equal_range(url);
   for (auto it = ret.first; it!=ret.second; ++it) {
     if (it->second == uri()) {
       return true;
@@ -406,8 +422,8 @@ template<> bool Node::handle<OBSERVE> (VPackSlice const& slice) {
   
   // check if such entry exists
   if (!observedBy(url)) {
-    root()._observerTable.emplace(std::pair<std::string,std::string>(url,uri));
-    root()._observedTable.emplace(std::pair<std::string,std::string>(uri,url));
+    store().observerTable().emplace(std::pair<std::string,std::string>(url,uri));
+    store().observedTable().emplace(std::pair<std::string,std::string>(uri,url));
     return true;
   }
 
@@ -426,17 +442,17 @@ template<> bool Node::handle<UNOBSERVE> (VPackSlice const& slice) {
 
   // delete in both cases a single entry (ensured above)
   // breaking the iterators is fine then
-  auto ret = root()._observerTable.equal_range(url);
+  auto ret = store().observerTable().equal_range(url);
   for (auto it = ret.first; it!=ret.second; ++it) {
     if (it->second == uri) {
-      root()._observerTable.erase(it);
+      store().observerTable().erase(it);
       break;
     }
   }
-  ret = root()._observedTable.equal_range(uri);
+  ret = store().observedTable().equal_range(uri);
   for (auto it = ret.first; it!=ret.second; ++it) {
     if (it->second == url) {
-      root()._observedTable.erase(it);
+      store().observedTable().erase(it);
       return true;
     }
   }
@@ -553,12 +569,6 @@ std::ostream& Node::print (std::ostream& o) const {
       o << " ttl! ";
     }
     o << std::endl;
-  }
-
-  if (!_timeTable.empty()) {
-    for (auto const& i : _timeTable) {
-      o << i.second.get() << std::endl;
-    }
   }
 
   return o;

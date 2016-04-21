@@ -54,6 +54,10 @@ DispatcherFeature::DispatcherFeature(
   startsAfter("WorkMonitor");
 }
 
+DispatcherFeature::~DispatcherFeature() {
+  delete _dispatcher;
+}
+
 void DispatcherFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";

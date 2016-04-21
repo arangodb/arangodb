@@ -365,6 +365,7 @@
 
     .dashboard-bar-chart-chart {
       @extend %pull-left;
+      padding-top: 10px;
 
       .nv-bar rect {
         fill-opacity: .8;

@@ -37,7 +37,7 @@ fi
 rm -rf cluster
 mkdir cluster
 echo Starting agency...
-build/bin/arangod -c etc/relative/arangod.conf \
+build/bin/arangod \
   -c none \
   --agency.endpoint tcp://127.0.0.1:4001 \
   --agency.id 0 \
@@ -67,7 +67,7 @@ start() {
     PORT=$2
     mkdir cluster/data$PORT
     echo Starting $TYPE on port $PORT
-    build/bin/arangod -c etc/relative/arangod.conf \
+    build/bin/arangod -c none \
                 --database.directory cluster/data$PORT \
                 --cluster.agency-endpoint tcp://127.0.0.1:4001 \
                 --cluster.my-address tcp://127.0.0.1:$PORT \
@@ -93,7 +93,7 @@ startTerminal() {
     PORT=$2
     mkdir cluster/data$PORT
     echo Starting $TYPE on port $PORT
-    xterm $XTERMOPTIONS -e build/bin/arangod -c etc/relative/arangod.conf \
+    xterm $XTERMOPTIONS -e build/bin/arangod -c none \
                 --database.directory cluster/data$PORT \
                 --cluster.agency-endpoint tcp://127.0.0.1:4001 \
                 --cluster.my-address tcp://127.0.0.1:$PORT \
@@ -118,7 +118,7 @@ startDebugger() {
     PORT=$2
     mkdir cluster/data$PORT
     echo Starting $TYPE on port $PORT with debugger
-    build/bin/arangod -c etc/relative/arangod.conf \
+    build/bin/arangod -c none \
                 --database.directory cluster/data$PORT \
                 --cluster.agency-endpoint tcp://127.0.0.1:4001 \
                 --cluster.my-address tcp://127.0.0.1:$PORT \
@@ -144,7 +144,7 @@ startRR() {
     mkdir cluster/data$PORT
     echo Starting $TYPE on port $PORT with rr tracer
     xterm $XTERMOPTIONS -title "$TYPE $PORT" -e rr build/bin/arangod \
-                -c etc/relative/arangod.conf \
+                -c none \
                 --database.directory cluster/data$PORT \
                 --cluster.agency-endpoint tcp://127.0.0.1:4001 \
                 --cluster.my-address tcp://127.0.0.1:$PORT \
@@ -221,7 +221,7 @@ if [ -n "$SECONDARIES" ]; then
     echo Registering secondary $CLUSTER_ID for "DBServer$index"
     curl -f -X PUT --data "{\"primary\": \"DBServer$index\", \"oldSecondary\": \"none\", \"newSecondary\": \"$CLUSTER_ID\"}" -H "Content-Type: application/json" localhost:8530/_admin/cluster/replaceSecondary
     echo Starting Secondary $CLUSTER_ID on port $PORT
-    build/bin/arangod -c etc/relative/arangod.conf \
+    build/bin/arangod -c none \
                 --database.directory cluster/data$PORT \
                 --cluster.agency-endpoint tcp://127.0.0.1:4001 \
                 --cluster.my-address tcp://127.0.0.1:$PORT \

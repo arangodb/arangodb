@@ -99,7 +99,7 @@ inline static bool endpointPathFromUrl (
 }
 
 // Create with name
-Store::Store (std::string const& name) : Node(name), Thread(name) {}
+Store::Store (std::string const& name) : Thread(name), _node(name,this) {}
 
 // Default ctor
 Store::~Store () {}
@@ -459,3 +459,53 @@ void Store::run() {
   
 }
 
+
+bool Store::applies (arangodb::velocypack::Slice const& slice) {
+  return _node.applies(slice);
+}
+
+
+void Store::toBuilder (Builder& b) const {
+  _node.toBuilder(b);
+}
+
+Node Store::operator ()(std::vector<std::string> const& pv) {
+  return _node(pv);
+}
+
+Node const Store::operator ()(std::vector<std::string> const& pv) const {
+  return _node(pv);
+}
+  
+
+Node Store::operator ()(std::string const& path) {
+  return _node(path);
+}
+
+Node const Store::operator ()(std::string const& path) const {
+  return _node(path);
+}
+
+
+std::multimap<TimePoint, std::shared_ptr<Node>>& Store::timeTable () {
+  return _timeTable;
+}
+
+const std::multimap<TimePoint, std::shared_ptr<Node>>& Store::timeTable () const {
+  return _timeTable;
+}
+
+std::multimap <std::string,std::string>& Store::observerTable() {
+  return _observerTable;
+}
+std::multimap <std::string,std::string> const& Store::observerTable() const {
+  return _observerTable;
+}
+
+std::multimap <std::string,std::string>& Store::observedTable() {
+  return _observedTable;
+}
+
+std::multimap <std::string,std::string> const& Store::observedTable() const {
+  return _observedTable;
+}
