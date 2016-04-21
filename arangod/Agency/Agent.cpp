@@ -337,8 +337,8 @@ write_ret_t Agent::write (query_t const& query)  {
     if (!indices.empty()) {
       maxind = *std::max_element(indices.begin(), indices.end());
     }
-    _appendCV.signal();                                  // Wake up run
-
+    // _appendCV.signal();                                  // Wake up run
+    
     reportIn(id(),maxind);
     
     return write_ret_t(true,id(),applied,indices); // Indices to wait for to rest

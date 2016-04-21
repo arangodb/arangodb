@@ -53,7 +53,7 @@ struct  constituent_t {                               // Constituent type
 
 typedef std::vector<constituent_t>    constituency_t; // Constituency type
 typedef uint32_t                      state_t;        // State type
-typedef std::chrono::duration<long,std::ratio<1,1000>> duration_t;     // Duration type
+typedef std::chrono::duration<long,std::ratio<1,1000>> duration_t; // Duration type
 
 using query_t = std::shared_ptr<arangodb::velocypack::Builder>;
 

@@ -52,7 +52,7 @@ using namespace arangodb;
 // Configure with agent's configuration
 void Constituent::configure(Agent* agent) {
   _agent = agent;
-
+  TRI_ASSERT(_agent!=nullptr);
   if (size() == 1) {
     _role = LEADER;
   } else {
@@ -67,12 +67,12 @@ void Constituent::configure(Agent* agent) {
 Constituent::Constituent()
     : Thread("Constituent"),
       _term(0),
-      _leaderID(0),
+      _leaderID(),
       _id(0),
       // XXX #warning KAVEH use RandomGenerator
       _gen(std::random_device()()),
       _role(FOLLOWER),
-      _agent(0),
+      _agent(nullptr),
       _votedFor(0) {
   _gen.seed(RandomGenerator::interval(UINT32_MAX));
 }
