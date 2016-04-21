@@ -109,6 +109,7 @@ The current list of keywords is:
 - NOT
 - AND
 - OR
+- LIKE
 - NULL
 - TRUE
 - FALSE

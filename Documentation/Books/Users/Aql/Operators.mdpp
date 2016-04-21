@@ -18,13 +18,17 @@ The following comparison operators are supported:
 - *>=* greater or equal
 - *IN* test if a value is contained in an array
 - *NOT IN* test if a value is not contained in an array
-
-These operators accept any data types for the first and second operands.
+- *LIKE* tests if a string value matches a pattern
 
 Each of the comparison operators returns a boolean value if the comparison can
 be evaluated and returns *true* if the comparison evaluates to true, and *false*
-otherwise. Please note that the comparison operators will not perform any
-implicit type casts if the compared operands have different types.
+otherwise. 
+
+The comparison operators accept any data types for the first and second operands. 
+However, *IN* and *NOT IN* will only return a meaningful result if their right-hand 
+operand is a string, and *LIKE* will only execute if both operands are string values.
+The comparison operators will not perform any implicit type casts if the compared 
+operands have different or non-sensible types.
 
 Some examples for comparison operations in AQL:
 
@@ -39,7 +43,25 @@ true != null              // true
 1.5 IN [ 2, 3, 1.5 ]      // true
 "foo" IN null             // false
 42 NOT IN [ 17, 40, 50 ]  // true
+"abc" == "abc"            // true
+"abc" == "ABC"            // false
+"foo" LIKE "f%"           // true
 ```
+
+The *LIKE* operator checks whether its left operand matches the pattern specified
+in its right operand. The pattern can consist of regular characters and wildcards.
+The supported wildcards are *_* to match a single arbitrary character, and *%* to 
+match any number of arbitrary characters. Literal *%* and *_* need to be escaped
+with a backslash.
+
+```
+"abc" LIKE "a%"              // true
+"abc" LIKE "_bc"             // true
+"a_b_foo" LIKE "a\\_b\\_f%"  // true
+```
+
+The pattern matching performed by the *LIKE* operator is case-sensitive.
+
 
 !SUBSUBSECTION Array comparison operators
 

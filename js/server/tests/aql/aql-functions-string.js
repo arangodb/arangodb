@@ -60,6 +60,11 @@ function ahuacatlStringFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testLikeInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "RETURN LIKE"); 
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "RETURN \"test\" LIKE"); 
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "RETURN LIKE \"test\""); 
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "RETURN \"test\" LIKE \"meow\", \"foo\", \"bar\")"); 
+
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN LIKE()"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN LIKE(\"test\")"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN LIKE(\"test\", \"meow\", \"foo\", \"bar\")"); 
@@ -70,6 +75,21 @@ function ahuacatlStringFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testLike : function () {
+      // containment
+      assertEqual([ false ], getQueryResults("RETURN \"this is a test string\" LIKE \"test\""));
+      assertEqual([ false ], getQueryResults("RETURN \"this is a test string\" LIKE \"%test\""));
+      assertEqual([ false ], getQueryResults("RETURN \"this is a test string\" LIKE \"test%\""));
+      assertEqual([ true ], getQueryResults("RETURN \"this is a test string\" LIKE \"%test%\""));
+      assertEqual([ true ], getQueryResults("RETURN \"this is a test string\" LIKE \"this%test%\""));
+      assertEqual([ true ], getQueryResults("RETURN \"this is a test string\" LIKE \"this%is%test%\""));
+      assertEqual([ true ], getQueryResults("RETURN \"this is a test string\" LIKE \"this%g\""));
+      assertEqual([ false ], getQueryResults("RETURN \"this is a test string\" LIKE \"this%n\""));
+      assertEqual([ false ], getQueryResults("RETURN \"this is a test string\" LIKE \"This%n\""));
+      assertEqual([ false ], getQueryResults("RETURN \"this is a test string\" LIKE \"his%\""));
+      assertEqual([ true ], getQueryResults("RETURN \"this is a test string\" LIKE \"%g\""));
+      assertEqual([ false ], getQueryResults("RETURN \"this is a test string\" LIKE \"%G\""));
+      assertEqual([ false ], getQueryResults("RETURN \"this is a test string\" LIKE \"this%test%is%\""));
+
       assertEqual([ false ], getQueryResults("RETURN LIKE(\"this is a test string\", \"test\")"));
       assertEqual([ false ], getQueryResults("RETURN LIKE(\"this is a test string\", \"%test\")"));
       assertEqual([ false ], getQueryResults("RETURN LIKE(\"this is a test string\", \"test%\")"));
@@ -83,6 +103,27 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ true ], getQueryResults("RETURN LIKE(\"this is a test string\", \"%g\")"));
       assertEqual([ false ], getQueryResults("RETURN LIKE(\"this is a test string\", \"%G\")"));
       assertEqual([ false ], getQueryResults("RETURN LIKE(\"this is a test string\", \"this%test%is%\")"));
+      
+      // special characters
+      assertEqual([ true ], getQueryResults("RETURN \"%\" LIKE \"\\%\""));
+      assertEqual([ true ], getQueryResults("RETURN \"a%c\" LIKE \"a%c\""));
+      assertEqual([ false ], getQueryResults("RETURN \"a%c\" LIKE \"ac\""));
+      assertEqual([ false ], getQueryResults("RETURN \"a%c\" LIKE \"a\\\\%\""));
+      assertEqual([ false ], getQueryResults("RETURN \"a%c\" LIKE \"\\\\%a%\""));
+      assertEqual([ false ], getQueryResults("RETURN \"a%c\" LIKE \"\\\\%\\\\%\""));
+      assertEqual([ true ], getQueryResults("RETURN \"%%\" LIKE \"\\\\%\\\\%\""));
+      assertEqual([ true ], getQueryResults("RETURN \"_\" LIKE \"\\\\_\""));
+      assertEqual([ true ], getQueryResults("RETURN \"_\" LIKE \"\\\\_%\""));
+      assertEqual([ true ], getQueryResults("RETURN \"abcd\" LIKE \"_bcd\""));
+      assertEqual([ true ], getQueryResults("RETURN \"abcde\" LIKE \"_bcd%\""));
+      assertEqual([ false ], getQueryResults("RETURN \"abcde\" LIKE \"\\\\_bcd%\""));
+      assertEqual([ true ], getQueryResults("RETURN \"\\\\abc\" LIKE \"\\\\\\\\%\""));
+      assertEqual([ true ], getQueryResults("RETURN \"\\abc\" LIKE \"\\a%\""));
+      assertEqual([ true ], getQueryResults("RETURN \"[ ] ( ) % * . + -\" LIKE \"[%\""));
+      assertEqual([ true ], getQueryResults("RETURN \"[ ] ( ) % * . + -\" LIKE \"[ ] ( ) \\% * . + -\""));
+      assertEqual([ true ], getQueryResults("RETURN \"[ ] ( ) % * . + -\" LIKE \"%. +%\""));
+      assertEqual([ true ], getQueryResults("RETURN \"abc^def$g\" LIKE \"abc^def$g\""));
+      assertEqual([ true ], getQueryResults("RETURN \"abc^def$g\" LIKE \"%^%$g\""));
     
       assertEqual([ true ], getQueryResults("RETURN LIKE(\"%\", \"\\%\")"));
       assertEqual([ true ], getQueryResults("RETURN LIKE(\"a%c\", \"a%c\")"));
@@ -103,6 +144,11 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ true ], getQueryResults("RETURN LIKE(\"[ ] ( ) % * . + -\", \"%. +%\")"));
       assertEqual([ true ], getQueryResults("RETURN LIKE(\"abc^def$g\", \"abc^def$g\")"));
       assertEqual([ true ], getQueryResults("RETURN LIKE(\"abc^def$g\", \"%^%$g\")"));
+     
+      // case-sensivity 
+      assertEqual([ false ], getQueryResults("RETURN \"ABCD\" LIKE \"abcd\""));
+      assertEqual([ false ], getQueryResults("RETURN \"abcd\" LIKE \"ABCD\""));
+      assertEqual([ false ], getQueryResults("RETURN \"MÖterTräNenMÜtterSöhne\" LIKE \"MÖTERTRÄNENMÜTTERSÖHNE\""));
       
       assertEqual([ false ], getQueryResults("RETURN LIKE(\"ABCD\", \"abcd\", false)"));
       assertEqual([ true ], getQueryResults("RETURN LIKE(\"ABCD\", \"abcd\", true)"));
@@ -129,6 +175,9 @@ function ahuacatlStringFunctionsTestSuite () {
         assertEqual([ false ], actual);
         
         actual = getQueryResults("RETURN LIKE(" + JSON.stringify(value) + ", " + JSON.stringify(value) + ")");
+        assertEqual([ true ], actual);
+        
+        actual = getQueryResults("RETURN " + JSON.stringify(value) + " LIKE " + JSON.stringify(value));
         assertEqual([ true ], actual);
       });
     },
