@@ -318,7 +318,9 @@
           }
 
           .absolut {
-            line-height: ($int-height2 * 2 / 3) - 10px;
+            //line-height: ($int-height2 * 2 / 3) - 10px;
+            line-height: 40px;
+            padding-top: 10px;
             width: ($int-width - (($int-width / 2) * 1.4)) - 6px;
           }
         }
@@ -327,18 +329,20 @@
 
           $int-height2: ($int-height - 20px);
           box-sizing: border-box;
-          height: ($int-height2 * 2 / 3) - 5px;
-          line-height: ($int-height2 * 2 / 3) - 5px;
-          padding: 5px 8px 10px;
+          //height: ($int-height2 * 2 / 3) - 5px;
+          height: 50px;
+          margin-top: 5px;
+          //line-height: ($int-height2 * 2 / 3) - 5px;
           width: 100%;
 
           #residentSizeChart {
-            height: ($int-height2 * 2 / 3);
+            //height: ($int-height2 * 2 / 3);
           }
         }
       }
 
       .dashboard-sub-bar {
+        padding-top: 13px;
         width: 100%;
       }
     }

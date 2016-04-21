@@ -74,6 +74,10 @@
     left: 40px;
   }
 
+  .dashboard-bar-chart-container .dashboard-bar-chart {
+    padding-bottom: 11px;
+  }
+
 }
 
 @media (min-width: 569px) and (max-width: 738px) {
@@ -124,13 +128,17 @@
   .arango-collection-select {
     display: inline-block;
   }
+
+  .dashboard-bar-chart-container .dashboard-bar-chart {
+    padding-bottom: 11px;
+  }
 }
 
 @media (min-width: 770px) and (max-width: 972px) {
 
   .dashboard-tendency-container {
     .dashboard-sub-bar {
-      font-size: 10px;
+      font-size: 11px;
       height: 32px;
       margin-bottom: 10px;
       margin-top: -10px;
@@ -139,15 +147,32 @@
 
   .dashboard-small-chart {
     .dashboard-sub-bar {
-      font-size: 10px;
+      font-size: 11px;
       height: 33px;
     }
 
     .dashboard-sub-bar-title {
-      font-size: 10px;
+      font-size: 11px;
       line-height: 12px;
       margin-top: -12px;
     }
+  }
+  
+  .dashboard-bar-chart-chart {
+    margin-top: 10px;
+  }
+
+  .dashboard-bar-chart-container {
+    .dashboard-sub-bar {
+      font-size: 11px;
+      margin-bottom: 10px;
+      margin-top: -20px;
+      padding-top: 18px;
+    }
+  }
+
+  .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
+    padding-top: 3px;
   }
 
 }
