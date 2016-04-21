@@ -33,16 +33,15 @@ directory = /data
 #
 # bind everything for docker, since we expect to have our own IP:
 endpoint = tcp://0.0.0.0:8529
-# endpoint = tcp://127.0.0.1:8529
 
 # resuse a port on restart or wait until it is freed by the operating system
 # reuse-address = false
 
 # disable authentication for the admin frontend
-disable-authentication = yes
+authentication = false
 
-# number of server threads
-threads = 4
+# number of server threads, 0 to use them all
+# threads = 4
 
 # the user and group are normally set in the start script
 uid = arangodb
@@ -50,8 +49,8 @@ gid = arangodb
 
 [scheduler]
 
-# number of threads used for I/O
-threads = 2
+# number of threads used for I/O, 0 will select a sensible number
+# threads = 2
 
 [javascript]
 startup-directory = @PKGDATADIR@/js

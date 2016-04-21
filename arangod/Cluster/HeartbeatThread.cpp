@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HeartbeatThread.h"
+
 #include "Basics/ConditionLocker.h"
 #include "Basics/JsonHelper.h"
 #include "Logger/Logger.h"
@@ -32,10 +33,9 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerJob.h"
 #include "Cluster/ServerState.h"
-#include "Dispatcher/ApplicationDispatcher.h"
 #include "Dispatcher/Dispatcher.h"
+#include "Dispatcher/DispatcherFeature.h"
 #include "Dispatcher/Job.h"
-#include "V8Server/ApplicationV8.h"
 #include "V8/v8-globals.h"
 #include "VocBase/auth.h"
 #include "VocBase/server.h"
@@ -50,14 +50,12 @@ volatile sig_atomic_t HeartbeatThread::HasRunOnce = 0;
 /// @brief constructs a heartbeat thread
 ////////////////////////////////////////////////////////////////////////////////
 
-HeartbeatThread::HeartbeatThread(
-    TRI_server_t* server, arangodb::rest::ApplicationDispatcher* dispatcher,
-    ApplicationV8* applicationV8, AgencyCallbackRegistry* agencyCallbackRegistry,
-    uint64_t interval, uint64_t maxFailsBeforeWarning)
+HeartbeatThread::HeartbeatThread(TRI_server_t* server,
+                                 AgencyCallbackRegistry* agencyCallbackRegistry,
+                                 uint64_t interval,
+                                 uint64_t maxFailsBeforeWarning)
     : Thread("Heartbeat"),
       _server(server),
-      _dispatcher(dispatcher),
-      _applicationV8(applicationV8),
       _agencyCallbackRegistry(agencyCallbackRegistry),
       _statusLock(),
       _agency(),
@@ -70,10 +68,8 @@ HeartbeatThread::HeartbeatThread(
       _numFails(0),
       _numDispatchedJobs(0),
       _lastDispatchedJobResult(false),
-      _versionThatTriggeredLastJob(0), 
-      _ready(false) {
-  TRI_ASSERT(_dispatcher != nullptr);
-}
+      _versionThatTriggeredLastJob(0),
+      _ready(false) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a heartbeat thread
@@ -115,13 +111,15 @@ void HeartbeatThread::runDBServer() {
   // value of Sync/Commands/my-id at startup
   uint64_t lastCommandIndex = getLastCommandIndex();
 
-  std::function<bool(VPackSlice const& result)> updatePlan = [&](VPackSlice const& result) {
+  std::function<bool(VPackSlice const& result)> updatePlan = [&](
+      VPackSlice const& result) {
     if (!result.isNumber()) {
       LOG(ERR) << "Version is not a number! " << result.toJson();
       return false;
     }
     uint64_t version = result.getNumber<uint64_t>();
-    LOG(TRACE) << "Hass " << result.toJson() << " " << version << " " << _dispatchedPlanVersion;
+    LOG(TRACE) << "Hass " << result.toJson() << " " << version << " "
+               << _dispatchedPlanVersion;
     bool mustHandlePlanChange = false;
     {
       MUTEX_LOCKER(mutexLocker, _statusLock);
@@ -131,7 +129,8 @@ void HeartbeatThread::runDBServer() {
         _numDispatchedJobs = 0;
         if (_lastDispatchedJobResult) {
           LOG(DEBUG) << "...and was successful";
-          // mop: the dispatched version is still the same => we are finally uptodate
+          // mop: the dispatched version is still the same => we are finally
+          // uptodate
           if (_dispatchedPlanVersion == version) {
             LOG(DEBUG) << "Version is correct :)";
             return true;
@@ -151,9 +150,10 @@ void HeartbeatThread::runDBServer() {
     }
     return false;
   };
-  
-  auto agencyCallback = std::make_shared<AgencyCallback>(_agency, "Plan/Version", updatePlan, true);
-  
+
+  auto agencyCallback = std::make_shared<AgencyCallback>(
+      _agency, "Plan/Version", updatePlan, true);
+
   bool registered = false;
   while (!registered) {
     registered = _agencyCallbackRegistry->registerCallback(agencyCallback);
@@ -162,7 +162,7 @@ void HeartbeatThread::runDBServer() {
       sleep(1);
     }
   }
-        
+
   while (!isStopping()) {
     LOG(DEBUG) << "sending heartbeat to agency";
 
@@ -189,11 +189,11 @@ void HeartbeatThread::runDBServer() {
     if (isStopping()) {
       break;
     }
-    
+
     double remain = interval - (TRI_microtime() - start);
     agencyCallback->waitWithFailover(remain);
   }
-  
+
   _agencyCallbackRegistry->unregisterCallback(agencyCallback);
   // Wait until any pending job is finished
   int count = 0;
@@ -260,7 +260,7 @@ void HeartbeatThread::runCoordinator() {
     }
 
     bool shouldSleep = true;
-    
+
     // get the current version of the Plan
     AgencyCommResult result = _agency.getValues("Plan/Version", false);
 
@@ -339,7 +339,7 @@ void HeartbeatThread::runCoordinator() {
         uint64_t currentVersion =
             arangodb::basics::VelocyPackHelper::stringUInt64(
                 it->second._vpack->slice());
-        
+
         if (currentVersion > lastCurrentVersionNoticed) {
           lastCurrentVersionNoticed = currentVersion;
 
@@ -347,7 +347,6 @@ void HeartbeatThread::runCoordinator() {
         }
       }
     }
-
 
     if (shouldSleep) {
       double remain = interval - (TRI_microtime() - start);
@@ -579,10 +578,11 @@ bool HeartbeatThread::handlePlanChangeDBServer(uint64_t currentPlanVersion) {
   }
 
   // schedule a job for the change
-  std::unique_ptr<arangodb::rest::Job> job(
-      new ServerJob(this, _server, _applicationV8));
+  std::unique_ptr<arangodb::rest::Job> job(new ServerJob(this));
 
-  if (_dispatcher->dispatcher()->addJob(job) == TRI_ERROR_NO_ERROR) {
+  auto dispatcher = DispatcherFeature::DISPATCHER;
+
+  if (dispatcher->addJob(job) == TRI_ERROR_NO_ERROR) {
     ++_numDispatchedJobs;
     _versionThatTriggeredLastJob = currentPlanVersion;
 

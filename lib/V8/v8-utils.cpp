@@ -31,19 +31,22 @@
 #include <fstream>
 #include <iostream>
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Basics/Exceptions.h"
-#include "Basics/files.h"
 #include "Basics/FileUtils.h"
-#include "Logger/Logger.h"
 #include "Basics/Nonce.h"
-#include "Basics/process-utils.h"
-#include "Basics/ProgramOptions.h"
 #include "Basics/RandomGenerator.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
+#include "Basics/UniformCharacter.h"
+#include "Basics/Utf8Helper.h"
+#include "Basics/files.h"
+#include "Basics/process-utils.h"
 #include "Basics/tri-strings.h"
 #include "Basics/tri-zip.h"
-#include "Basics/Utf8Helper.h"
+#include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/SslInterface.h"
 #include "Rest/Version.h"
@@ -52,12 +55,14 @@
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
+#include "V8/v8-vpack.h"
 
 #include "unicode/normalizer2.h"
 
 #include "3rdParty/valgrind/valgrind.h"
 
 using namespace arangodb;
+using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::rest;
@@ -67,10 +72,10 @@ using namespace arangodb::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace {
-static Random::UniformCharacter JSAlphaNumGenerator(
+static UniformCharacter JSAlphaNumGenerator(
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
-static Random::UniformCharacter JSNumGenerator("0123456789");
-static Random::UniformCharacter JSSaltGenerator(
+static UniformCharacter JSNumGenerator("0123456789");
+static UniformCharacter JSSaltGenerator(
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*(){}"
     "[]:;<>,.?/|");
 }
@@ -297,18 +302,10 @@ static void JS_Options(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("options()");
   }
 
-  auto json = arangodb::basics::ProgramOptions::getJson();
+  VPackBuilder builder = ApplicationServer::server->options({"server.password"});
+  auto result = TRI_VPackToV8(isolate, builder.slice());
 
-  if (json != nullptr) {
-    auto result = TRI_ObjectJson(isolate, json);
-
-    // remove this variable
-    result->ToObject()->Delete(TRI_V8_STRING("server.password"));
-
-    TRI_V8_RETURN(result);
-  }
-
-  TRI_V8_RETURN(v8::Object::New(isolate));
+  TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -550,52 +547,46 @@ static void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string url = TRI_ObjectToString(args[0]);
 
   if (!url.empty() && url[0] == '/') {
+    std::vector<std::string> endpoints;
+
+    // check if we are a server
+    HttpEndpointProvider* server = dynamic_cast<HttpEndpointProvider*>(
+        ApplicationServer::lookupFeature("Endpoint"));
+
+    if (server != nullptr) {
+      endpoints = server->httpEndpoints();
+    } else {
+      HttpEndpointProvider* client = dynamic_cast<HttpEndpointProvider*>(
+          ApplicationServer::lookupFeature("Client"));
+
+      if (client != nullptr) {
+        endpoints = client->httpEndpoints();
+      }
+    }
+
     // a relative url. now make this an absolute URL if possible
-    auto json = arangodb::basics::ProgramOptions::getJson();
+    for (auto const& endpoint : endpoints) {
+      std::string fullurl = endpoint;
 
-    if (json != nullptr) {
-      // check if there are endpoints defined in the server options
-      auto eps = TRI_LookupObjectJson(json, "server.endpoint");
+      // ipv4: replace 0.0.0.0 with 127.0.0.1
+      auto pos = fullurl.find("//0.0.0.0");
 
-      // endpoints should be an array
-      if (TRI_IsArrayJson(eps)) {
-        // it is. now iterate over the list and pick the first one
-        for (size_t i = 0; i < TRI_LengthArrayJson(eps); ++i) {
-          auto ep = static_cast<TRI_json_t const*>(
-              TRI_AtVector(&eps->_value._objects, i));
+      if (pos != std::string::npos) {
+        fullurl.replace(pos, strlen("//0.0.0.0"), "//127.0.0.1");
+      }
 
-          if (TRI_IsStringJson(ep)) {
-            // prepend host and port to relative URL
-            url = std::string(ep->_value._string.data,
-                              ep->_value._string.length - 1) +
-                  url;
+      // ipv6: replace [::] with [::1]
+      else {
+        pos = fullurl.find("//[::]");
 
-            // ipv4: replace 0.0.0.0 with 127.0.0.1
-            auto pos = url.find("0.0.0.0");
-            if (pos != std::string::npos) {
-              url.replace(pos, strlen("0.0.0.0"), "127.0.0.1");
-            }
-            // ipv6: replace [::] with [::1]
-            pos = url.find("[::]");
-            if (pos != std::string::npos) {
-              url.replace(pos, strlen("[::]"), "[::1]");
-            }
-
-            if (url.substr(0, 4) == "tcp:") {
-              url = "http:" + url.substr(4);
-            } else if (url.substr(0, 4) == "ssl:") {
-              url = "https:" + url.substr(4);
-            }
-            // note: there can be endpoints not starting with tcp:// or ssl://,
-            // e.g. unix://...
-            // for these endpoints, the generated URL will be invalid, and this
-            // will trigger an
-            // "unsupport URL error" below
-
-            break;
-          }
+        if (pos != std::string::npos) {
+          fullurl.replace(pos, strlen("//[::]"), "//[::1]");
         }
       }
+
+      url = fullurl + url;
+
+      break;
     }
   }
 
@@ -1468,9 +1459,9 @@ static void JS_MakeDirectoryRecursive(
   }
   long systemError = 0;
   std::string systemErrorStr;
-  bool res = TRI_CreateRecursiveDirectory(*name, systemError, systemErrorStr);
+  int res = TRI_CreateRecursiveDirectory(*name, systemError, systemErrorStr);
 
-  if (!res) {
+  if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, systemErrorStr);
   }
 
@@ -2063,10 +2054,10 @@ static void JS_CopyRecursive(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   std::string systemErrorStr;
   long errorNo;
-  bool res = TRI_CreateRecursiveDirectory(destination.c_str(), errorNo,
+  int res = TRI_CreateRecursiveDirectory(destination.c_str(), errorNo,
                                           systemErrorStr);
 
-  if (!res) {
+  if (res != TRI_ERROR_NO_ERROR) {
     std::string errMsg = "cannot copy file [" + source + "] to [" +
                          destination + " ] : " + std::to_string(errorNo) +
                          " - Unable to create target directory: " +

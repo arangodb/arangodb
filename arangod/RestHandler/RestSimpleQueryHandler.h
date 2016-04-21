@@ -32,8 +32,6 @@ namespace aql {
 class QueryRegistry;
 }
 
-class ApplicationV8;
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cursor request handler
 ////////////////////////////////////////////////////////////////////////////////
@@ -42,7 +40,7 @@ class RestSimpleQueryHandler : public RestCursorHandler {
  public:
   RestSimpleQueryHandler(
       HttpRequest*,
-      std::pair<arangodb::ApplicationV8*, arangodb::aql::QueryRegistry*>*);
+      arangodb::aql::QueryRegistry*);
 
  public:
   status_t execute() override final;

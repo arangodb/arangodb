@@ -1266,7 +1266,7 @@ ecb_binary32_to_binary16 (uint32_t x)
       /* handle subnormals */
 
       /* too small, will be zero */
-      if (e < (14 - 24)) /* might not be sharp, but is good enough */
+      if (e < (unsigned int)(14 - 24)) /* might not be sharp, but is good enough */
         return s;
 
       m |= 0x00800000; /* make implicit bit explicit */
@@ -1935,7 +1935,7 @@ array_nextsize (int elem, int cur, int cnt)
   while (cnt > ncur);
 
   /* if size is large, round to MALLOC_ROUND - 4 * longs to accommodate malloc overhead */
-  if (elem * ncur > MALLOC_ROUND - sizeof (void *) * 4)
+  if (elem * ncur > (int)(MALLOC_ROUND - sizeof (void *) * 4))
     {
       ncur *= elem;
       ncur = (ncur + elem + (MALLOC_ROUND - 1) + sizeof (void *) * 4) & ~(MALLOC_ROUND - 1);

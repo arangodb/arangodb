@@ -22,12 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "V8QueueJob.h"
+
 #include "Basics/json.h"
 #include "Dispatcher/DispatcherQueue.h"
 #include "Logger/Logger.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
-#include "V8Server/ApplicationV8.h"
+#include "V8Server/V8Context.h"
+#include "V8Server/V8DealerFeature.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
@@ -42,12 +44,10 @@ using namespace arangodb::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 V8QueueJob::V8QueueJob(size_t queue, TRI_vocbase_t* vocbase,
-                       ApplicationV8* v8Dealer,
                        std::shared_ptr<VPackBuilder> parameters)
     : Job("V8 Queue Job"),
       _queue(queue),
       _vocbase(vocbase),
-      _v8Dealer(v8Dealer),
       _parameters(parameters),
       _canceled(false) {}
 
@@ -64,7 +64,7 @@ void V8QueueJob::work() {
     return;
   }
 
-  ApplicationV8::V8Context* context = _v8Dealer->enterContext(_vocbase, false);
+  auto context = V8DealerFeature::DEALER->enterContext(_vocbase, false);
 
   // note: the context might be 0 in case of shut-down
   if (context == nullptr) {
@@ -73,7 +73,7 @@ void V8QueueJob::work() {
 
   // now execute the function within this context
   {
-    auto isolate = context->isolate;
+    auto isolate = context->_isolate;
     v8::HandleScope scope(isolate);
 
     // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
@@ -103,20 +103,23 @@ void V8QueueJob::work() {
             TRI_GET_GLOBALS();
 
             v8g->_canceled = true;
-            LOG(WARN) << "caught non-catchable exception (aka termination) in V8 queue job";
+            LOG(WARN) << "caught non-catchable exception (aka termination) in "
+                         "V8 queue job";
           }
         }
       } catch (arangodb::basics::Exception const& ex) {
-        LOG(ERR) << "caught exception in V8 queue job: " << TRI_errno_string(ex.code()) << " " << ex.what();
+        LOG(ERR) << "caught exception in V8 queue job: "
+                 << TRI_errno_string(ex.code()) << " " << ex.what();
       } catch (std::bad_alloc const&) {
-        LOG(ERR) << "caught exception in V8 queue job: " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
+        LOG(ERR) << "caught exception in V8 queue job: "
+                 << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
       } catch (...) {
         LOG(ERR) << "caught unknown exception in V8 queue job";
       }
     }
   }
 
-  _v8Dealer->exitContext(context);
+  V8DealerFeature::DEALER->exitContext(context);
 }
 
 bool V8QueueJob::cancel() {

@@ -31,15 +31,11 @@
 namespace arangodb {
 namespace rest {
 class Dispatcher;
-class Scheduler;
 }
-
-class ApplicationV8;
 
 class V8PeriodicTask : public rest::PeriodicTask {
  public:
-  V8PeriodicTask(std::string const&, std::string const&, TRI_vocbase_t*,
-                 ApplicationV8*, rest::Scheduler*, rest::Dispatcher*, double,
+  V8PeriodicTask(std::string const&, std::string const&, TRI_vocbase_t*, double,
                  double, std::string const&,
                  std::shared_ptr<arangodb::velocypack::Builder>, bool);
 
@@ -71,18 +67,6 @@ class V8PeriodicTask : public rest::PeriodicTask {
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_vocbase_t* _vocbase;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief V8 dealer
-  //////////////////////////////////////////////////////////////////////////////
-
-  ApplicationV8* _v8Dealer;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief dispatcher
-  //////////////////////////////////////////////////////////////////////////////
-
-  rest::Dispatcher* _dispatcher;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief command to execute

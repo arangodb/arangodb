@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Store.h"
+
 #include "StoreCallback.h"
 #include "Agency/Agent.h"
 #include "Basics/ConditionLocker.h"
@@ -260,7 +261,7 @@ ValueType Node::valueType() const {
 bool Node::addTimeToLive (long millis) {
   auto tkey = std::chrono::system_clock::now() +
     std::chrono::milliseconds(millis);
-  root()._time_table.insert(
+  root()._timeTable.insert(
     std::pair<TimePoint,std::shared_ptr<Node>>(
       tkey, _parent->_children[_node_name]));
   _ttl = tkey;
@@ -270,10 +271,10 @@ bool Node::addTimeToLive (long millis) {
 // remove time to live entry for this node
 bool Node::removeTimeToLive () {
   if (_ttl != std::chrono::system_clock::time_point()) {
-    auto ret = root()._time_table.equal_range(_ttl);
+    auto ret = root()._timeTable.equal_range(_ttl);
     for (auto it = ret.first; it!=ret.second;) {
       if (it->second == _parent->_children[_node_name]) {
-        root()._time_table.erase(it);
+        root()._timeTable.erase(it);
         break;
       }
       ++it;
@@ -283,7 +284,7 @@ bool Node::removeTimeToLive () {
 }
 
 inline bool Node::observedBy (std::string const& url) const {
-  auto ret = root()._observer_table.equal_range(url);
+  auto ret = root()._observerTable.equal_range(url);
   for (auto it = ret.first; it!=ret.second; ++it) {
     if (it->second == uri()) {
       return true;
@@ -442,8 +443,8 @@ template<> bool Node::handle<OBSERVE> (VPackSlice const& slice) {
   
   // check if such entry exists
   if (!observedBy(url)) {
-    root()._observer_table.emplace(std::pair<std::string,std::string>(url,uri));
-    root()._observed_table.emplace(std::pair<std::string,std::string>(uri,url));
+    root()._observerTable.emplace(std::pair<std::string,std::string>(url,uri));
+    root()._observedTable.emplace(std::pair<std::string,std::string>(uri,url));
     return true;
   }
 
@@ -462,17 +463,17 @@ template<> bool Node::handle<UNOBSERVE> (VPackSlice const& slice) {
 
   // delete in both cases a single entry (ensured above)
   // breaking the iterators is fine then
-  auto ret = root()._observer_table.equal_range(url);
+  auto ret = root()._observerTable.equal_range(url);
   for (auto it = ret.first; it!=ret.second; ++it) {
     if (it->second == uri) {
-      root()._observer_table.erase(it);
+      root()._observerTable.erase(it);
       break;
     }
   }
-  ret = root()._observed_table.equal_range(uri);
+  ret = root()._observedTable.equal_range(uri);
   for (auto it = ret.first; it!=ret.second; ++it) {
     if (it->second == url) {
-      root()._observed_table.erase(it);
+      root()._observedTable.erase(it);
       return true;
     }
   }
@@ -591,8 +592,8 @@ std::ostream& Node::print (std::ostream& o) const {
     o << std::endl;
   }
 
-  if (!_time_table.empty()) {
-    for (auto const& i : _time_table) {
+  if (!_timeTable.empty()) {
+    for (auto const& i : _timeTable) {
       o << i.second.get() << std::endl;
     }
   }
@@ -671,7 +672,7 @@ std::vector<bool> Store::apply (
         if (!(oper == "observe" || oper == "unobserve")) {
           std::string uri = j.key.copyString();
           while (true) {
-            auto ret = _observed_table.equal_range(uri);
+            auto ret = _observedTable.equal_range(uri);
             for (auto it = ret.first; it!=ret.second; ++it) {
               in.emplace (
                 it->second, std::make_shared<notify_t>(
@@ -865,7 +866,7 @@ query_t Store::clearExpired () const {
   tmp->openArray();
   {
     MUTEX_LOCKER(storeLocker, _storeLock);
-    for (auto it = _time_table.cbegin(); it != _time_table.cend(); ++it) {
+    for (auto it = _timeTable.cbegin(); it != _timeTable.cend(); ++it) {
       if (it->first < std::chrono::system_clock::now()) {
         tmp->openArray(); tmp->openObject();
         tmp->add(it->second->uri(), VPackValue(VPackValueType::Object));
@@ -886,7 +887,7 @@ void Store::dumpToBuilder (Builder& builder) const {
   toBuilder(builder);
   {
     VPackObjectBuilder guard(&builder);
-    for (auto const& i : _time_table) {
+    for (auto const& i : _timeTable) {
       auto in_time_t = std::chrono::system_clock::to_time_t(i.first);
       std::string ts = ctime(&in_time_t);
       ts.resize(ts.size()-1);
@@ -895,14 +896,14 @@ void Store::dumpToBuilder (Builder& builder) const {
   }
   {
     VPackArrayBuilder garray(&builder);
-    for (auto const& i : _observer_table) {
+    for (auto const& i : _observerTable) {
       VPackObjectBuilder guard(&builder);
       builder.add(i.first, VPackValue(i.second));
     }
   }
   {
     VPackArrayBuilder garray(&builder);
-    for (auto const& i : _observed_table) {
+    for (auto const& i : _observedTable) {
       VPackObjectBuilder guard(&builder);
       builder.add(i.first, VPackValue(i.second));
     }
@@ -942,9 +943,9 @@ void Store::run() {
     
     { // any entries in time table?
       MUTEX_LOCKER(storeLocker, _storeLock);
-      if (!_time_table.empty()) {
+      if (!_timeTable.empty()) {
         t = std::chrono::duration_cast<std::chrono::microseconds>(
-          _time_table.begin()->first - std::chrono::system_clock::now());
+          _timeTable.begin()->first - std::chrono::system_clock::now());
       }
     }
     

@@ -15,6 +15,8 @@ set(libev_VERSION 4.22)
 
 if (MSVC)
   set (FLAGS "${FLAGS} /FI\"${PROJECT_SOURCE_DIR}/ev_arangodb_win32.h\"")
+elseif (CMAKE_COMPILER_IS_GNUCC)
+  set (FLAGS "${FLAGS} -Wold-style-declaration")
 endif ()
 
 ################################################################################

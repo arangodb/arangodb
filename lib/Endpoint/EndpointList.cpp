@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EndpointList.h"
+
 #include "Logger/Logger.h"
 #include "Basics/StringUtils.h"
 
@@ -114,6 +115,36 @@ std::vector<std::string> EndpointList::all() const {
 
   for (auto& it : _endpoints) {
     result.emplace_back(it.first);
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return all typed endpoints
+////////////////////////////////////////////////////////////////////////////////
+
+std::vector<std::string> EndpointList::all(
+    Endpoint::TransportType transport) const {
+  std::vector<std::string> result;
+  std::string prefix;
+
+  switch (transport) {
+    case Endpoint::TransportType::HTTP:
+      prefix = "http+";
+      break;
+
+    case Endpoint::TransportType::VPP:
+      prefix = "vpp+";
+      break;
+  }
+
+  for (auto& it : _endpoints) {
+    std::string const& key = it.first;
+
+    if (StringUtils::isPrefix(key, prefix)) {
+      result.emplace_back(it.first);
+    }
   }
 
   return result;

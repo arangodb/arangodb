@@ -36,21 +36,15 @@ struct TRI_server_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
-class ApplicationV8;
-namespace aql {
-class QueryRegistry;
-}
-
 namespace consensus {
-
 class Agent : public arangodb::Thread {
 
 public:
   /// @brief Construct with program options
-  Agent(TRI_server_t*, config_t const&, ApplicationV8*, aql::QueryRegistry*);
+  Agent(config_t const&);
 
   /// @brief Clean up
-  virtual ~Agent();
+  ~Agent();
 
   /// @brief Get current term
   term_t term() const;
@@ -92,14 +86,14 @@ public:
   /// @brief Read from agency
   read_ret_t read(query_t const&) const;
 
-  /// @brief Received by followers to replicate log entries (§5.3);
-  ///        also used as heartbeat (§5.2).
+  /// @brief Received by followers to replicate log entries ($5.3);
+  ///        also used as heartbeat ($5.2).
   bool recvAppendEntriesRPC(term_t term, id_t leaderId, index_t prevIndex,
                             term_t prevTerm, index_t lastCommitIndex,
                             query_t const& queries);
 
-  /// @brief Invoked by leader to replicate log entries (§5.3);
-  ///        also used as heartbeat (§5.2).
+  /// @brief Invoked by leader to replicate log entries ($5.3);
+  ///        also used as heartbeat ($5.2).
   append_entries_t sendAppendEntriesRPC(id_t slave_id);
 
   /// @brief 1. Deal with appendEntries to slaves.
@@ -142,11 +136,7 @@ public:
   TRI_server_t*        _server;
 
   /// @brief Vocbase for agency persistence
-
   TRI_vocbase_t*       _vocbase; 
-  /// @brief V8 application for agency persistence
-
-  ApplicationV8*       _applicationV8;
 
   /// @brief Query registry for agency persistence
   aql::QueryRegistry*  _queryRegistry;

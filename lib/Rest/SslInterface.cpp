@@ -29,7 +29,7 @@
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
 
-#include "Basics/RandomGenerator.h"
+#include "Basics/UniformCharacter.h"
 #include "Basics/StringUtils.h"
 
 #ifdef OPENSSL_NO_SSL2 // OpenSSL > 1.1.0 deprecates RAND_pseudo_bytes
@@ -38,6 +38,7 @@
 #define RAND_BYTES RAND_pseudo_bytes
 #endif
 
+using namespace arangodb;
 using namespace arangodb::basics;
 
 // -----------------------------------------------------------------------------
@@ -45,7 +46,7 @@ using namespace arangodb::basics;
 // -----------------------------------------------------------------------------
 
 namespace {
-static Random::UniformCharacter SaltGenerator(
+static UniformCharacter SaltGenerator(
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*(){}"
     "[]:;<>,.?/|");
 }

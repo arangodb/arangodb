@@ -21,8 +21,8 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_AGENCY_CALLBACK_REGISTRY_H
-#define ARANGOD_CLUSTER_AGENCY_CALLBACK_REGISTRY_H 1
+//XXX #warning MOP nope, include guards
+#pragma once
 
 #include "Cluster/AgencyCallback.h"
 #include "Basics/ReadWriteLock.h"
@@ -74,5 +74,3 @@ private:
 };
 
 }
-
-#endif

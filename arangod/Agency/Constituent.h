@@ -21,23 +21,23 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef __ARANGODB_CONSENSUS_CONSTITUENT__
-#define __ARANGODB_CONSENSUS_CONSTITUENT__
+#ifndef ARANGODB_CONSENSUS_CONSTITUENT_H
+#define ARANGODB_CONSENSUS_CONSTITUENT_H
 
-#include <cstdint>
 #include <string>
 #include <vector>
 #include <random>
 
-
 #include "AgencyCommon.h"
 #include "AgentConfiguration.h"
+
+#include "Basics/Common.h"
 #include "Basics/Thread.h"
+#include "Basics/ConditionVariable.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
-class ApplicationV8;
 namespace aql {
 class QueryRegistry;
 }
@@ -99,7 +99,7 @@ public:
   /// @brief Orderly shutdown of thread
   void beginShutdown () override;
 
-  bool start (TRI_vocbase_t* vocbase, ApplicationV8*, aql::QueryRegistry*);
+  bool start (TRI_vocbase_t* vocbase);
 
 private:
 
@@ -107,10 +107,10 @@ private:
   void term (term_t);
 
   /// @brief Agency endpoints
-  std::vector<std::string> const& end_points() const;
+  std::vector<std::string> const& endpoints() const;
 
   /// @brief Endpoint of agent with id
-  std::string const& end_point(id_t) const;
+  std::string const& endpoint(id_t) const;
 
   /// @brief Run for leadership
   void candidate();
@@ -136,7 +136,6 @@ private:
   duration_t sleepFor(double, double);
 
   TRI_vocbase_t* _vocbase; 
-  ApplicationV8* _applicationV8;
   aql::QueryRegistry* _queryRegistry;
 
 
@@ -144,13 +143,13 @@ private:
   std::atomic<bool>    _cast;         /**< @brief cast a vote this term */
   std::atomic<state_t> _state;        /**< @brief State (follower, candidate, leader)*/
 
-  id_t                 _leader_id;    /**< @brief Current leader */
+  id_t                 _leaderID;     /**< @brief Current leader */
   id_t                 _id;           /**< @brief My own id */
   constituency_t       _constituency; /**< @brief List of consituents */
   std::mt19937         _gen;          /**< @brief Random number generator */
   role_t               _role;         /**< @brief My role */
   Agent*               _agent;        /**< @brief My boss */
-  id_t                 _voted_for;
+  id_t                 _votedFor;
 
   arangodb::basics::ConditionVariable _cv;      // agency callbacks
   mutable arangodb::Mutex _castLock;
@@ -159,4 +158,4 @@ private:
   
 }}
 
-#endif //__ARANGODB_CONSENSUS_CONSTITUENT__
+#endif

@@ -21,28 +21,23 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef __ARANGODB_CONSENSUS_STORE__
-#define __ARANGODB_CONSENSUS_STORE__
+#ifndef ARANGODB_CONSENSUS_STORE_H
+#define ARANGODB_CONSENSUS_STORE_H
 
 #include "AgencyCommon.h"
 
-#include <type_traits>
-#include <utility>
-#include <typeinfo>
-#include <string>
-#include <cassert>
-#include <map>
-#include <vector>
-#include <list>
-#include <memory>
-#include <cstdint>
+#include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
+#include "Basics/Thread.h"
+#include "Basics/ConditionVariable.h"
 
-#include <Basics/Mutex.h>
-#include <Basics/MutexLocker.h>
-#include <Basics/Thread.h>
-#include <Basics/ConditionVariable.h>
 #include <velocypack/Buffer.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include <type_traits>
+#include <utility>
+#include <string>
+#include <vector>
 
 namespace arangodb {
 namespace consensus {
@@ -178,11 +173,11 @@ protected:
   Buffer<uint8_t> _value;              /**< @brief my value */
 
   /// @brief Table of expiries in tree (only used in root node)
-  std::multimap<TimePoint, std::shared_ptr<Node>> _time_table;
+  std::multimap<TimePoint, std::shared_ptr<Node>> _timeTable;
 
   /// @brief Table of observers in tree (only used in root node)
-  std::multimap <std::string,std::string> _observer_table;
-  std::multimap <std::string,std::string> _observed_table;
+  std::multimap <std::string,std::string> _observerTable;
+  std::multimap <std::string,std::string> _observedTable;
   
 };
 

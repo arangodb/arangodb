@@ -91,6 +91,9 @@ if (MSVC)
   )
 else ()
   set(LIB_ARANGO_POSIX
+    ApplicationFeatures/DaemonFeature.cpp
+    ApplicationFeatures/PrivilegeFeature.cpp
+    ApplicationFeatures/SupervisorFeature.cpp
     Basics/locks-posix.cpp
     Basics/memory-map-posix.cpp
     Basics/terminal-utils-posix.cpp
@@ -149,13 +152,16 @@ add_library(${LIB_ARANGO} STATIC
   ApplicationFeatures/ClientFeature.cpp
   ApplicationFeatures/ConfigFeature.cpp
   ApplicationFeatures/ConsoleFeature.cpp
-  ApplicationFeatures/DatabaseFeature.cpp
   ApplicationFeatures/LanguageFeature.cpp
   ApplicationFeatures/LoggerFeature.cpp
+  ApplicationFeatures/NonceFeature.cpp
+  ApplicationFeatures/RandomFeature.cpp
   ApplicationFeatures/ShutdownFeature.cpp
   ApplicationFeatures/SslFeature.cpp
   ApplicationFeatures/TempFeature.cpp
   ApplicationFeatures/V8PlatformFeature.cpp
+  ApplicationFeatures/WorkMonitorFeature.cpp
+  Basics/ArangoGlobalContext.cpp
   Basics/AttributeNameParser.cpp
   Basics/Barrier.cpp
   Basics/ConditionLocker.cpp
@@ -167,8 +173,6 @@ add_library(${LIB_ARANGO} STATIC
   Basics/Mutex.cpp
   Basics/MutexLocker.cpp
   Basics/Nonce.cpp
-  Basics/ProgramOptions.cpp
-  Basics/ProgramOptionsDescription.cpp
   Basics/RandomGenerator.cpp
   Basics/ReadWriteLock.cpp
   Basics/ReadWriteLockCPP11.cpp
@@ -176,6 +180,7 @@ add_library(${LIB_ARANGO} STATIC
   Basics/StringUtils.cpp
   Basics/Thread.cpp
   Basics/ThreadPool.cpp
+  Basics/UniformCharacter.cpp
   Basics/Utf8Helper.cpp
   Basics/VelocyPackHelper.cpp
   Basics/WorkMonitor.cpp
@@ -195,7 +200,6 @@ add_library(${LIB_ARANGO} STATIC
   Basics/mimetypes.cpp
   Basics/prime-numbers.cpp
   Basics/process-utils.cpp
-  Basics/random.cpp
   Basics/socket-utils.cpp
   Basics/ssl-helper.cpp
   Basics/structures.cpp
@@ -212,8 +216,15 @@ add_library(${LIB_ARANGO} STATIC
   Endpoint/EndpointIpV6.cpp
   Endpoint/EndpointList.cpp
   JsonParser/json-parser.cpp
+  Logger/LogAppender.cpp
+  Logger/LogAppenderFile.cpp
+  Logger/LogAppenderSyslog.cpp
+  Logger/LogAppenderTty.cpp
+  Logger/LogLevel.cpp
+  Logger/LogThread.cpp
+  Logger/LogTopic.cpp
   Logger/Logger.cpp
-  ProgramOptions/program-options.cpp
+  Logger/LoggerStream.cpp
   Rest/GeneralRequest.cpp
   Rest/GeneralResponse.cpp
   Rest/HttpRequest.cpp

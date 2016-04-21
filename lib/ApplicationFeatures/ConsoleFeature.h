@@ -33,10 +33,10 @@ class ConsoleFeature final : public application_features::ApplicationFeature {
   explicit ConsoleFeature(application_features::ApplicationServer* server);
 
  public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void prepare() override;
-  void start() override;
-  void stop() override;
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
+  void start() override final;
+  void stop() override final;
 
  public:
   bool quiet() const { return _quiet; }

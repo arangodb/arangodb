@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Slots.h"
+
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
 #include "Logger/Logger.h"

@@ -29,7 +29,6 @@
 #include "Endpoint/Endpoint.h"
 
 namespace arangodb {
-
 class EndpointList {
  public:
   EndpointList();
@@ -43,6 +42,7 @@ class EndpointList {
   bool add(std::string const&, int, bool);
   bool remove(std::string const&, Endpoint**);
   std::vector<std::string> all() const;
+  std::vector<std::string> all(Endpoint::TransportType transport) const;
   std::map<std::string, Endpoint*> matching(Endpoint::TransportType,
                                             Endpoint::EncryptionType) const;
   bool hasSsl() const;

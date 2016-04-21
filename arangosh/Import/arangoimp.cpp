@@ -26,22 +26,19 @@
 #include "ApplicationFeatures/ClientFeature.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/LoggerFeature.h"
+#include "ApplicationFeatures/RandomFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
+#include "Basics/ArangoGlobalContext.h"
 #include "Import/ImportFeature.h"
-#include "ProgramOptions2/ProgramOptions.h"
-#include "Rest/InitializeRest.h"
+#include "ProgramOptions/ProgramOptions.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief main
-////////////////////////////////////////////////////////////////////////////////
-
 int main(int argc, char* argv[]) {
-  ADB_WindowsEntryFunction();
-  TRIAGENS_REST_INITIALIZE();
+  ArangoGlobalContext context(argc, argv);
+  context.installHup();
 
   std::shared_ptr<options::ProgramOptions> options(new options::ProgramOptions(
       argv[0], "Usage: arangoimp [<options>]", "For more information use:"));
@@ -50,17 +47,15 @@ int main(int argc, char* argv[]) {
 
   int ret;
 
-  server.addFeature(new LoggerFeature(&server));
-  server.addFeature(new TempFeature(&server, "arangoimp"));
-  server.addFeature(new ConfigFeature(&server, "arangoimp"));
   server.addFeature(new ClientFeature(&server));
+  server.addFeature(new ConfigFeature(&server, "arangoimp"));
   server.addFeature(new ImportFeature(&server, &ret));
+  server.addFeature(new LoggerFeature(&server, false));
+  server.addFeature(new RandomFeature(&server));
   server.addFeature(new ShutdownFeature(&server, "Import"));
+  server.addFeature(new TempFeature(&server, "arangoimp"));
 
   server.run(argc, argv);
 
-  TRIAGENS_REST_SHUTDOWN;
-  ADB_WindowsExitFunction(ret, nullptr);
-
-  return ret;
+  return context.exit(ret);
 }

@@ -51,29 +51,22 @@ Endpoint::Endpoint(DomainType domainType, EndpointType type,
   TRI_invalidatesocket(&_socket);
 }
 
-
 std::string Endpoint::uriForm (std::string const& endpoint) {
+  static std::string illegal;
+  std::string unified = unifiedForm(endpoint);
 
-  std::stringstream url;
-  size_t const prefix_len = 6;
-  
-  if (StringUtils::isPrefix(endpoint, "tcp://")) {
-    url << "http://";
+  if (StringUtils::isPrefix(endpoint, "http+tcp://")) {
+    return "http://" + endpoint.substr(11);
+  } else if (StringUtils::isPrefix(endpoint, "http+ssl://")) {
+    return "https://" + endpoint.substr(11);
+  } else if (StringUtils::isPrefix(endpoint, "tcp://")) {
+    return "http://" + endpoint.substr(6);
   } else if (StringUtils::isPrefix(endpoint, "ssl://")) {
-    url << "https://";
+    return "https://" + endpoint.substr(6);
   } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("malformed URL ") + endpoint
-      + ". Support only for ssl:// and tcp:// endpoints.");
+    return illegal;
   }
-
-  url << endpoint.substr(prefix_len,endpoint.size()+1-(prefix_len+1));
-  
-  return url.str();
-  
 }
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the endpoint specification in a unified form
-////////////////////////////////////////////////////////////////////////////////
 
 std::string Endpoint::unifiedForm(std::string const& specification) {
   static std::string illegal;
@@ -94,7 +87,7 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
   }
 
   // read protocol from string
-  if (StringUtils::isPrefix(copy, "http+") || StringUtils::isPrefix(copy, "http@")) {
+  if (StringUtils::isPrefix(copy, "http+")) {
     protocol = TransportType::HTTP;
     prefix = "http+";
     copy = copy.substr(5);

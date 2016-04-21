@@ -22,14 +22,18 @@
 
 #include "ApplicationFeatures/LoggerFeature.h"
 
+#include "Basics/StringUtils.h"
+#include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
-#include "ProgramOptions2/ProgramOptions.h"
-#include "ProgramOptions2/Section.h"
+#include "ProgramOptions/ProgramOptions.h"
+#include "ProgramOptions/Section.h"
 
 using namespace arangodb;
+using namespace arangodb::basics;
 using namespace arangodb::options;
 
-LoggerFeature::LoggerFeature(application_features::ApplicationServer* server)
+LoggerFeature::LoggerFeature(application_features::ApplicationServer* server,
+                             bool threaded)
     : ApplicationFeature(server, "Logger"),
       _output(),
       _levels(),
@@ -39,22 +43,27 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer* server)
       _lineNumber(false),
       _thread(false),
       _performance(false),
-      _daemon(false),
+      _keepLogRotate(false),
+      _foregroundTty(true),
+      _forceDirect(false),
+      _supervisor(false),
       _backgrounded(false),
-      _threaded(false) {
-  _levels.push_back("info");
+      _threaded(threaded) {
   setOptional(false);
   requiresElevatedPrivileges(false);
+
+  if (threaded) {
+    startsAfter("WorkMonitor");
+  }
+
+  _levels.push_back("info");
 }
 
 void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
 
-  options->addSection(
-      Section("", "Global configuration", "global options", false, false));
-
-  options->addOption("--log", "the global or topic-specific log level",
-                     new VectorParameter<StringParameter>(&_levels));
+  options->addHiddenOption("--log", "the global or topic-specific log level",
+                           new VectorParameter<StringParameter>(&_levels));
 
   options->addSection("log", "Configure the logging");
 
@@ -64,12 +73,13 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--log.level,-l", "the global or topic-specific log level",
                      new VectorParameter<StringParameter>(&_levels));
 
-  options->addOption("--log.use-local-time",
-                     "use local timezone instead of UTC",
-                     new BooleanParameter(&_useLocalTime));
+  options->addHiddenOption("--log.use-local-time",
+                           "use local timezone instead of UTC",
+                           new BooleanParameter(&_useLocalTime));
 
-  options->addOption("--log.prefix", "prefix log message with this string",
-                     new StringParameter(&_prefix));
+  options->addHiddenOption("--log.prefix",
+                           "prefix log message with this string",
+                           new StringParameter(&_prefix));
 
   options->addHiddenOption(
       "--log.prefix", "adds a prefix in case multiple instances are running",
@@ -83,12 +93,24 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                            "append line number and file name",
                            new BooleanParameter(&_lineNumber));
 
-  options->addHiddenOption("--log.thread", "append a thread identifier",
+  options->addHiddenOption("--log.thread", "use a seperate logging thread",
                            new BooleanParameter(&_thread));
 
   options->addHiddenOption("--log.performance",
                            "shortcut for '--log.level requests=trace'",
                            new BooleanParameter(&_performance));
+
+  options->addHiddenOption("--log.keep-logrotate",
+                           "keep the old log file after receiving a sighup",
+                           new BooleanParameter(&_keepLogRotate));
+
+  options->addHiddenOption("--log.foreground-tty",
+                           "also log to tty if not backgrounded",
+                           new BooleanParameter(&_foregroundTty));
+
+  options->addHiddenOption("--log.force-direct",
+                           "do not start a seperated thread for logging",
+                           new BooleanParameter(&_forceDirect));
 }
 
 void LoggerFeature::loadOptions(
@@ -97,7 +119,6 @@ void LoggerFeature::loadOptions(
 
   // for debugging purpose, we set the log levels NOW
   // this might be overwritten latter
-  Logger::initialize(false);
   Logger::setLogLevel(_levels);
 }
 
@@ -109,8 +130,6 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
     if (_file == "+" || _file == "-") {
       definition = _file;
-    } else if (_daemon) {
-      definition = "file://" + _file + ".daemon";
     } else {
       definition = "file://" + _file;
     }
@@ -120,10 +139,6 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   if (_performance) {
     _levels.push_back("requests=trace");
-  }
-
-  if (!_backgrounded && isatty(STDIN_FILENO) != 0) {
-    _output.push_back("*");
   }
 }
 
@@ -142,14 +157,27 @@ void LoggerFeature::prepare() {
   Logger::setShowLineNumber(_lineNumber);
   Logger::setShowThreadIdentifier(_thread);
   Logger::setOutputPrefix(_prefix);
+  Logger::setKeepLogrotate(_keepLogRotate);
+
+  for (auto definition : _output) {
+    if (_supervisor && StringUtils::isPrefix(definition, "file://")) {
+      definition += ".supervisor";
+    }
+
+    LogAppender::addAppender(definition);
+  }
+
+  if (!_backgrounded && _foregroundTty) {
+    LogAppender::addTtyAppender();
+  }
 }
 
 void LoggerFeature::start() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
 
-  if (_threaded) {
-    Logger::flush();
-    Logger::shutdown(false);
+  if (_forceDirect) {
+    Logger::initialize(false);
+  } else {
     Logger::initialize(_threaded);
   }
 }

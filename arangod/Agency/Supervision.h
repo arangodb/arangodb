@@ -21,13 +21,11 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef __ARANGODB_CONSENSUS_SUPERVISION__
-#define __ARANGODB_CONSENSUS_SUPERVISION__
+#ifndef ARANGODB_CONSENSUS_SUPERVISION_H
+#define ARANGODB_CONSENSUS_SUPERVISION_H
 
 #include "Basics/Thread.h"
 #include "Basics/ConditionVariable.h"
-
-
 
 namespace arangodb {
 namespace consensus {
@@ -70,7 +68,8 @@ private:
   
   Agent* _agent; /**< @brief My agent */
 
-  arangodb::basics::ConditionVariable _cv; /**< @brief Control if thread should run */
+  arangodb::basics::ConditionVariable _cv; /**< @brief Control if thread
+                                              should run */
 
   long _frequency;
 
@@ -79,4 +78,4 @@ private:
 
 }}
 
-#endif //__ARANGODB_CONSENSUS_SUPERVISION__
+#endif

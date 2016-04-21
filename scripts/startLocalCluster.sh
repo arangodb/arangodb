@@ -46,13 +46,12 @@ build/bin/arangod -c etc/relative/arangod.conf \
   --agency.id 0 \
   --javascript.v8-contexts 1 \
   --log.file cluster/4001.log \
-  --log.requests-file cluster/4001.req \
-  --server.disable-statistics true \
-  --server.foxx-queues false \
-  --server.disable-authentication true \
+  --server.statistics false \
+  --server.authentication false \
   --server.threads 16 \
   --javascript.app-path ./js/apps \
   --javascript.startup-directory ./js \
+  -c none \
   > cluster/4001.stdout 2>&1 &
 sleep 1
 
@@ -74,13 +73,10 @@ start() {
                 --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
                 --cluster.my-role $ROLE \
                 --log.file cluster/$PORT.log \
-                --log.buffered false \
                 --log.level info \
-                --log.requests-file cluster/$PORT.req \
-                --server.disable-statistics true \
-                --server.foxx-queues false \
+                --server.statistics false \
                 --javascript.startup-directory ./js \
-                --server.disable-authentication true \
+                --server.authentication false \
                 --javascript.app-path ./js/apps \
                 > cluster/$PORT.stdout 2>&1 &
 }
@@ -103,12 +99,10 @@ startTerminal() {
                 --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
                 --cluster.my-role $ROLE \
                 --log.file cluster/$PORT.log \
-                --log.requests-file cluster/$PORT.req \
-                --server.disable-statistics true \
-                --server.foxx-queues false \
+                --server.statistics false \
                 --javascript.startup-directory ./js \
                 --javascript.app-path ./js/apps \
-                --server.disable-authentication true \
+                --server.authentication false \
                 --console &
 }
 
@@ -130,12 +124,10 @@ startDebugger() {
                 --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
                 --cluster.my-role $ROLE \
                 --log.file cluster/$PORT.log \
-                --log.requests-file cluster/$PORT.req \
-                --server.disable-statistics true \
+                --server.statistics false \
                 --javascript.startup-directory ./js \
                 --javascript.app-path ./js/apps \
-                --server.disable-authentication true \
-                --server.foxx-queues false &
+                --server.authentication false &
     xterm $XTERMOPTIONS -title "$TYPE $PORT" -e gdb build/bin/arangod -p $! &
 }
 
@@ -158,12 +150,10 @@ startRR() {
                 --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
                 --cluster.my-role $ROLE \
                 --log.file cluster/$PORT.log \
-                --log.requests-file cluster/$PORT.req \
-                --server.disable-statistics true \
+                --server.statistics false \
                 --javascript.startup-directory ./js \
                 --javascript.app-path ./js/apps \
-                --server.disable-authentication true \
-                --server.foxx-queues false \
+                --server.authentication false \
                 --console &
 }
 
@@ -236,11 +226,9 @@ if [ -n "$SECONDARIES" ]; then
                 --server.endpoint tcp://127.0.0.1:$PORT \
                 --cluster.my-id $CLUSTER_ID \
                 --log.file cluster/$PORT.log \
-                --log.requests-file cluster/$PORT.req \
-                --server.disable-statistics true \
-                --server.foxx-queues false \
+                --server.statistics false \
                 --javascript.startup-directory ./js \
-                --server.disable-authentication true \
+                --server.authentication false \
                 --javascript.app-path ./js/apps \
                 > cluster/$PORT.stdout 2>&1 &
 

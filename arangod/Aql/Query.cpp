@@ -22,6 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Query.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
@@ -31,23 +36,20 @@
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
 #include "Basics/Exceptions.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/WorkMonitor.h"
 #include "Basics/fasthash.h"
 #include "Basics/tri-strings.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Utils/AqlTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/V8TransactionContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-vpack.h"
-#include "V8Server/ApplicationV8.h"
-#include "VocBase/vocbase.h"
+#include "V8Server/V8DealerFeature.h"
 #include "VocBase/Graphs.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
+#include "VocBase/vocbase.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -131,12 +133,10 @@ std::shared_ptr<VPackBuilder> Profile::toVelocyPack() {
 bool Query::DoDisableQueryTracking = false;
 
 /// @brief creates a query
-Query::Query(arangodb::ApplicationV8* applicationV8,
-             bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
+Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
              char const* queryString, size_t queryLength,
              std::shared_ptr<VPackBuilder> bindParameters, std::shared_ptr<VPackBuilder> options, QueryPart part)
     : _id(0),
-      _applicationV8(applicationV8),
       _vocbase(vocbase),
       _executor(nullptr),
       _context(nullptr),
@@ -169,12 +169,10 @@ Query::Query(arangodb::ApplicationV8* applicationV8,
 }
 
 /// @brief creates a query from VelocyPack
-Query::Query(arangodb::ApplicationV8* applicationV8,
-             bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
+Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
              std::shared_ptr<VPackBuilder> const queryStruct,
              std::shared_ptr<VPackBuilder> options, QueryPart part)
     : _id(0),
-      _applicationV8(applicationV8),
       _vocbase(vocbase),
       _executor(nullptr),
       _context(nullptr),
@@ -226,7 +224,7 @@ Query::~Query() {
       ctx->unregisterTransaction();
     }
 
-    _applicationV8->exitContext(_context);
+    V8DealerFeature::DEALER->exitContext(_context);
     _context = nullptr;
   }
 
@@ -252,7 +250,7 @@ Query::~Query() {
 Query* Query::clone(QueryPart part, bool withPlan) {
   std::unique_ptr<Query> clone;
 
-  clone.reset(new Query(_applicationV8, false, _vocbase, _queryString,
+  clone.reset(new Query(false, _vocbase, _queryString,
                         _queryLength, std::shared_ptr<VPackBuilder>(), _options, part));
 
   if (_plan != nullptr) {
@@ -1023,7 +1021,7 @@ char* Query::registerEscapedString(char const* p, size_t length,
 void Query::enterContext() {
   if (!_contextOwnedByExterior) {
     if (_context == nullptr) {
-      _context = _applicationV8->enterContext(_vocbase, false);
+      _context = V8DealerFeature::DEALER->enterContext(_vocbase, false);
 
       if (_context == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -1059,7 +1057,7 @@ void Query::exitContext() {
         ctx->unregisterTransaction();
       }
 
-      _applicationV8->exitContext(_context);
+      V8DealerFeature::DEALER->exitContext(_context);
       _context = nullptr;
     }
     TRI_ASSERT(_context == nullptr);

@@ -24,8 +24,8 @@
 #ifndef ARANGODB_CONSENSUS_AGENCY_COMMON_H
 #define ARANGODB_CONSENSUS_AGENCY_COMMON_H
 
-#include <Basics/VelocyPackHelper.h>
-#include <Basics/random.h>
+#include "Basics/VelocyPackHelper.h"
+#include "Logger/Logger.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/velocypack-aliases.h>
@@ -55,13 +55,13 @@ typedef std::vector<constituent_t>    constituency_t; // Constituency type
 typedef uint32_t                      state_t;        // State type
 typedef std::chrono::duration<long,std::ratio<1,1000>> duration_t; // Duration type
 
-using query_t = std::shared_ptr<arangodb::velocypack::Builder>; // Query format
+using query_t = std::shared_ptr<arangodb::velocypack::Builder>;
 
 struct vote_ret_t {
   query_t result;
   explicit vote_ret_t (query_t res) : result(res) {}
 };
- 
+
 struct read_ret_t {
   bool accepted;  // Query processed
   id_t redirect;  // Otherwise redirect to
@@ -94,7 +94,7 @@ using buffer_t = std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>;
  */
 struct log_t {
   index_t      index;
-  term_t       term; 
+  term_t       term;
   id_t         leaderId;
   buffer_t     entry;
   milliseconds timestamp;
@@ -109,7 +109,7 @@ struct log_t {
 };
 
 enum agencyException {
-  QUERY_NOT_APPLICABLE
+    QUERY_NOT_APPLICABLE
 };
 
 struct append_entries_t {
@@ -136,5 +136,4 @@ struct priv_rpc_ret_t {
 
 }}
 
-#endif // __ARANGODB_CONSENSUS_AGENT__
-
+#endif

@@ -24,33 +24,25 @@
 #ifndef ARANGOD_CLUSTER_HEARTBEAT_THREAD_H
 #define ARANGOD_CLUSTER_HEARTBEAT_THREAD_H 1
 
-#include "Basics/Common.h"
+#include "Basics/Thread.h"
+
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
-#include "Basics/Thread.h"
-#include "Logger/Logger.h"
 #include "Cluster/AgencyComm.h"
-#include "Cluster/AgencyCallbackRegistry.h"
+#include "Logger/Logger.h"
 
 struct TRI_server_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
-namespace rest {
-class ApplicationDispatcher;
-}
-
-class ApplicationV8;
+class AgencyCallbackRegistry;
 
 class HeartbeatThread : public Thread {
- private:
-  HeartbeatThread(HeartbeatThread const&);
-  HeartbeatThread& operator=(HeartbeatThread const&);
+  HeartbeatThread(HeartbeatThread const&) = delete;
+  HeartbeatThread& operator=(HeartbeatThread const&) = delete;
 
  public:
-  HeartbeatThread(TRI_server_t*, arangodb::rest::ApplicationDispatcher*,
-                  ApplicationV8*, AgencyCallbackRegistry*, uint64_t, uint64_t);
-
+  HeartbeatThread(TRI_server_t*, AgencyCallbackRegistry*, uint64_t, uint64_t);
   ~HeartbeatThread();
 
  public:
@@ -150,18 +142,6 @@ class HeartbeatThread : public Thread {
   TRI_server_t* _server;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Job dispatcher
-  //////////////////////////////////////////////////////////////////////////////
-
-  arangodb::rest::ApplicationDispatcher* _dispatcher;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief v8 dispatcher
-  //////////////////////////////////////////////////////////////////////////////
-
-  ApplicationV8* _applicationV8;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief AgencyCallbackRegistry
   //////////////////////////////////////////////////////////////////////////////
 
@@ -241,7 +221,6 @@ class HeartbeatThread : public Thread {
   //////////////////////////////////////////////////////////////////////////////
 
   std::atomic<bool> _ready;
-  
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the heartbeat thread has run at least once

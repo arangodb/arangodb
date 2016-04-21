@@ -33,7 +33,12 @@
 
 
 (function() {
-  return require("@arangodb/database-version").databaseVersion().result;
+  try {
+    console.debug("checking database version");
+    return require("@arangodb/database-version").databaseVersion().result;
+  } catch (err) {
+    console.error("database version check failed: " + err);
+  }
 }());
 
 

@@ -25,17 +25,20 @@
 #define ARANGOD_AQL_QUERY_H 1
 
 #include "Basics/Common.h"
-#include "Aql/BindParameters.h"
-#include "Aql/Collections.h"
-#include "Aql/QueryResultV8.h"
-#include "Aql/ShortStringStorage.h"
-#include "Aql/Graphs.h"
-#include "Aql/types.h"
-#include "Utils/AqlTransaction.h"
-#include "VocBase/voc-types.h"
-#include "V8Server/ApplicationV8.h"
 
 #include <velocypack/Builder.h>
+
+#include "Aql/BindParameters.h"
+#include "Aql/Collections.h"
+#include "Aql/Graphs.h"
+#include "Aql/QueryResultV8.h"
+#include "Aql/ShortStringStorage.h"
+#include "Aql/types.h"
+#include "Basics/Common.h"
+#include "Basics/JsonHelper.h"
+#include "Utils/AqlTransaction.h"
+#include "V8Server/V8Context.h"
+#include "VocBase/voc-types.h"
 
 struct TRI_vocbase_t;
 
@@ -99,11 +102,11 @@ class Query {
   Query& operator=(Query const&) = delete;
 
  public:
-  Query(arangodb::ApplicationV8*, bool, TRI_vocbase_t*, char const*, size_t,
+  Query(bool, TRI_vocbase_t*, char const*, size_t,
         std::shared_ptr<arangodb::velocypack::Builder>,
         std::shared_ptr<arangodb::velocypack::Builder>, QueryPart);
 
-  Query(arangodb::ApplicationV8*, bool, TRI_vocbase_t*,
+  Query(bool, TRI_vocbase_t*,
         std::shared_ptr<arangodb::velocypack::Builder> const,
         std::shared_ptr<arangodb::velocypack::Builder>, QueryPart);
 
@@ -115,7 +118,6 @@ class Query {
   Query* clone(QueryPart, bool);
 
  public:
- 
   /// @brief return the start timestamp of the query
   double startTime () const { return _startTime; }
 
@@ -285,7 +287,6 @@ class Query {
   Graph const* lookupGraphByName(std::string const& name);
 
  private:
-
   /// @brief initializes the query
   void init();
 
@@ -323,10 +324,6 @@ class Query {
   /// @brief query id
   TRI_voc_tick_t _id;
 
-  /// @brief application v8 used in the query, we need this for V8 context
-  /// access
-  arangodb::ApplicationV8* _applicationV8;
-
   /// @brief all nodes created in the AST - will be used for freeing them later
   std::vector<AstNode*> _nodes;
 
@@ -337,7 +334,7 @@ class Query {
   Executor* _executor;
 
   /// @brief the currently used V8 context
-  arangodb::ApplicationV8::V8Context* _context;
+  V8Context* _context;
 
   /// @brief warnings collected during execution
   std::unordered_map<std::string, Graph*> _graphs;

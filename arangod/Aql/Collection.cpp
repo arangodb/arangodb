@@ -142,4 +142,3 @@ bool Collection::usesDefaultSharding() const {
   }
   return true;
 }
-

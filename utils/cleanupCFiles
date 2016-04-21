@@ -1,15 +1,10 @@
 #!/usr/bin/perl
 ################################################################################
-### @brief updates preamble of C/C++ files
-###
-### @file
-###
 ### DISCLAIMER
 ###
-### Copyright holder is triAGENS GmbH, Cologne, Germany
+### Copyright holder is ArangoDB GmbH, Cologne, Germany
 ###
 ### @author Dr. Frank Celler
-### @author Copyright 2009-2010, triAGENS GmbH, Cologne, Germany
 ################################################################################
 
 eval 'exec /usr/bin/perl -S $0 ${1+"$@"}'

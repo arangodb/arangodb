@@ -23,6 +23,8 @@
 
 #include "Basics/Common.h"
 
+#include "Basics/RandomGenerator.h"
+
 static bool DeleteCollection(SimpleHttpClient*, std::string const&);
 
 static bool CreateCollection(SimpleHttpClient*, std::string const&, int const);
@@ -409,7 +411,7 @@ struct ShapesAppendTest : public BenchmarkOperation {
 
 struct RandomShapesTest : public BenchmarkOperation {
   RandomShapesTest() : BenchmarkOperation() {
-    _randomValue = TRI_UInt32Random();
+    _randomValue = RandomGenerator::interval(UINT32_MAX);
   }
 
   ~RandomShapesTest() {}

@@ -23,16 +23,21 @@
 #include "ApplicationServer.h"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "ProgramOptions2/ArgumentParser.h"
+#include "Basics/StringUtils.h"
+#include "ProgramOptions/ArgumentParser.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb::application_features;
+using namespace arangodb::basics;
 using namespace arangodb::options;
 
 ApplicationServer* ApplicationServer::server = nullptr;
 
 ApplicationServer::ApplicationServer(std::shared_ptr<ProgramOptions> options)
-    : _options(options), _stopping(false), _privilegesDropped(false) {
+    : _options(options),
+      _stopping(false),
+      _privilegesDropped(false),
+      _dumpDependencies(false) {
   if (ApplicationServer::server != nullptr) {
     LOG(ERR) << "ApplicationServer initialized twice";
   }
@@ -59,6 +64,16 @@ ApplicationFeature* ApplicationServer::lookupFeature(std::string const& name) {
   }
 
   return nullptr;
+}
+
+void ApplicationServer::disableFeatures(std::vector<std::string> const& names) {
+  for (auto name : names) {
+    auto feature = ApplicationServer::lookupFeature(name);
+
+    if (feature != nullptr) {
+      feature->disable();
+    }
+  }
 }
 
 // adds a feature to the application server. the application server
@@ -125,7 +140,6 @@ void ApplicationServer::run(int argc, char* argv[]) {
   _options->seal();
 
   // validate options of all features
-  // in this phase, all features are stil order-independent
   validateOptions();
 
   // enable automatic features
@@ -133,6 +147,9 @@ void ApplicationServer::run(int argc, char* argv[]) {
 
   // setup and validate all feature dependencies
   setupDependencies(true);
+
+  // allows process control
+  daemonize();
 
   // now the features will actually do some preparation work
   // in the preparation phase, the features must not start any threads
@@ -174,6 +191,11 @@ void ApplicationServer::beginShutdown() {
   // to run method
 }
 
+VPackBuilder ApplicationServer::options(
+    std::unordered_set<std::string> const& excludes) const {
+  return _options->toVPack(false, excludes);
+}
+
 // fail and abort with the specified message
 void ApplicationServer::fail(std::string const& message) {
   LOG(FATAL) << "error. cannot proceed. reason: " << message;
@@ -193,6 +215,12 @@ void ApplicationServer::apply(std::function<void(ApplicationFeature*)> callback,
 
 void ApplicationServer::collectOptions() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::collectOptions";
+
+  _options->addSection(
+      Section("", "Global configuration", "global options", false, false));
+
+  _options->addHiddenOption("--dump-dependencies", "dump dependency graph",
+                            new BooleanParameter(&_dumpDependencies, false));
 
   apply([this](ApplicationFeature* feature) {
     feature->collectOptions(_options);
@@ -216,6 +244,19 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
     exit(EXIT_FAILURE);
   }
 
+  if (_dumpDependencies) {
+    std::cout << "digraph dependencies\n"
+              << "{\n"
+              << "  overlap = false;\n";
+    for (auto feature : _features) {
+      for (auto before : feature.second->startsAfter()) {
+        std::cout << "  " << feature.first << " -> " << before << ";\n";
+      }
+    }
+    std::cout << "}\n";
+    exit(EXIT_SUCCESS);
+  }
+
   for (auto it = _orderedFeatures.begin(); it != _orderedFeatures.end(); ++it) {
     if ((*it)->isEnabled()) {
       (*it)->loadOptions(_options);
@@ -229,9 +270,11 @@ void ApplicationServer::validateOptions() {
   LOG_TOPIC(TRACE, Logger::STARTUP)
       << "------------------------------------------------";
 
-  apply([this](ApplicationFeature* feature) {
-    feature->validateOptions(_options);
-  }, true);
+  for (auto it = _orderedFeatures.begin(); it != _orderedFeatures.end(); ++it) {
+    if ((*it)->isEnabled()) {
+      (*it)->validateOptions(_options);
+    }
+  }
 }
 
 void ApplicationServer::enableAutomaticFeatures() {
@@ -284,7 +327,7 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
   std::vector<ApplicationFeature*> features;
   for (auto& it : _features) {
     auto insertPosition = features.end();
-     
+
     if (!features.empty()) {
       for (size_t i = features.size(); i > 0; --i) {
         if (it.second->doesStartBefore(features[i - 1]->name())) {
@@ -294,7 +337,22 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
     }
     features.insert(insertPosition, it.second);
   }
-  
+
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "ordered features:";
+
+  for (auto feature : features) {
+    LOG_TOPIC(TRACE, Logger::STARTUP)
+        << "  " << feature->name()
+        << (feature->isEnabled() ? "" : "(disabled)");
+
+    auto startsAfter = feature->startsAfter();
+
+    if (!startsAfter.empty()) {
+      LOG_TOPIC(TRACE, Logger::STARTUP)
+          << "    " << StringUtils::join(feature->startsAfter(), ", ");
+    }
+  }
+
   // remove all inactive features
   for (auto it = features.begin(); it != features.end(); /* no hoisting */) {
     if ((*it)->isEnabled()) {
@@ -307,6 +365,19 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
   }
 
   _orderedFeatures = features;
+}
+
+void ApplicationServer::daemonize() {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "";
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::daemonize";
+  LOG_TOPIC(TRACE, Logger::STARTUP)
+      << "------------------------------------------------";
+
+  for (auto it = _orderedFeatures.begin(); it != _orderedFeatures.end(); ++it) {
+    if ((*it)->isEnabled()) {
+      (*it)->daemonize();
+    }
+  }
 }
 
 void ApplicationServer::prepare() {

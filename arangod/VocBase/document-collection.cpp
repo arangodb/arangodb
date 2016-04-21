@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "document-collection.h"
+
 #include "Aql/QueryCache.h"
 #include "Basics/Barrier.h"
 #include "Basics/conversions.h"
@@ -176,11 +177,10 @@ int TRI_document_collection_t::beginRead() {
   // LOCKING-DEBUG
   // std::cout << "BeginRead: " << document->_info._name << std::endl;
   TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
-  
-  try { 
+
+  try {
     _vocbase->_deadlockDetector.addReader(this, false);
-  }
-  catch (...) {
+  } catch (...) {
     TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -203,13 +203,12 @@ int TRI_document_collection_t::endRead() {
       return TRI_ERROR_NO_ERROR;
     }
   }
-  
-  try { 
+
+  try {
     _vocbase->_deadlockDetector.unsetReader(this);
+  } catch (...) {
   }
-  catch (...) {
-  }
-  
+
   // LOCKING-DEBUG
   // std::cout << "EndRead: " << document->_info._name << std::endl;
   TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
@@ -236,12 +235,11 @@ int TRI_document_collection_t::beginWrite() {
   // LOCKING_DEBUG
   // std::cout << "BeginWrite: " << document->_info._name << std::endl;
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
-  
+
   // register writer
-  try { 
+  try {
     _vocbase->_deadlockDetector.addWriter(this, false);
-  }
-  catch (...) {
+  } catch (...) {
     TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -265,12 +263,11 @@ int TRI_document_collection_t::endWrite() {
       return TRI_ERROR_NO_ERROR;
     }
   }
-  
+
   // unregister writer
   try {
     _vocbase->_deadlockDetector.unsetWriter(this);
-  }
-  catch (...) {
+  } catch (...) {
     // must go on here to unlock the lock
   }
 
@@ -314,7 +311,8 @@ int TRI_document_collection_t::beginReadTimed(uint64_t timeout,
       if (!wasBlocked) {
         // insert reader
         wasBlocked = true;
-        if (_vocbase->_deadlockDetector.setReaderBlocked(this) == TRI_ERROR_DEADLOCK) {
+        if (_vocbase->_deadlockDetector.setReaderBlocked(this) ==
+            TRI_ERROR_DEADLOCK) {
           // deadlock
           LOG(TRACE) << "deadlock detected while trying to acquire read-lock on collection '" << _info.name() << "'";
           return TRI_ERROR_DEADLOCK;
@@ -324,7 +322,8 @@ int TRI_document_collection_t::beginReadTimed(uint64_t timeout,
         // periodically check for deadlocks
         TRI_ASSERT(wasBlocked);
         iterations = 0;
-        if (_vocbase->_deadlockDetector.detectDeadlock(this, false) == TRI_ERROR_DEADLOCK) {
+        if (_vocbase->_deadlockDetector.detectDeadlock(this, false) ==
+            TRI_ERROR_DEADLOCK) {
           // deadlock
           _vocbase->_deadlockDetector.unsetReaderBlocked(this);
           LOG(TRACE) << "deadlock detected while trying to acquire read-lock on collection '" << _info.name() << "'";
@@ -354,12 +353,11 @@ int TRI_document_collection_t::beginReadTimed(uint64_t timeout,
       return TRI_ERROR_LOCK_TIMEOUT;
     }
   }
-  
-  try { 
+
+  try {
     // when we are here, we've got the read lock
     _vocbase->_deadlockDetector.addReader(this, wasBlocked);
-  }
-  catch (...) {
+  } catch (...) {
     TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -400,7 +398,8 @@ int TRI_document_collection_t::beginWriteTimed(uint64_t timeout,
       if (!wasBlocked) {
         // insert writer
         wasBlocked = true;
-        if (_vocbase->_deadlockDetector.setWriterBlocked(this) == TRI_ERROR_DEADLOCK) {
+        if (_vocbase->_deadlockDetector.setWriterBlocked(this) ==
+            TRI_ERROR_DEADLOCK) {
           // deadlock
           LOG(TRACE) << "deadlock detected while trying to acquire write-lock on collection '" << _info.name() << "'";
           return TRI_ERROR_DEADLOCK;
@@ -410,7 +409,8 @@ int TRI_document_collection_t::beginWriteTimed(uint64_t timeout,
         // periodically check for deadlocks
         TRI_ASSERT(wasBlocked);
         iterations = 0;
-        if (_vocbase->_deadlockDetector.detectDeadlock(this, true) == TRI_ERROR_DEADLOCK) {
+        if (_vocbase->_deadlockDetector.detectDeadlock(this, true) ==
+            TRI_ERROR_DEADLOCK) {
           // deadlock
           _vocbase->_deadlockDetector.unsetWriterBlocked(this);
           LOG(TRACE) << "deadlock detected while trying to acquire write-lock on collection '" << _info.name() << "'";
@@ -441,11 +441,10 @@ int TRI_document_collection_t::beginWriteTimed(uint64_t timeout,
     }
   }
 
-  try { 
-    // register writer 
+  try {
+    // register writer
     _vocbase->_deadlockDetector.addWriter(this, wasBlocked);
-  }
-  catch (...) {
+  } catch (...) {
     TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(this);
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -1382,7 +1381,8 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection(
 
   if (res != TRI_ERROR_NO_ERROR) {
     document->_lastError = journal->_lastError;
-    LOG(ERR) << "cannot create collection header in file '" << journal->getName(journal) << "': " << TRI_errno_string(res);
+    LOG(ERR) << "cannot create collection header in file '"
+             << journal->getName(journal) << "': " << TRI_errno_string(res);
 
     // close the journal and remove it
     TRI_CloseDatafile(journal);
@@ -1408,7 +1408,8 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection(
 
   if (res != TRI_ERROR_NO_ERROR) {
     document->_lastError = journal->_lastError;
-    LOG(ERR) << "cannot create collection header in file '" << journal->getName(journal) << "': " << TRI_last_error();
+    LOG(ERR) << "cannot create collection header in file '"
+             << journal->getName(journal) << "': " << TRI_last_error();
 
     // close the journal and remove it
     TRI_CloseDatafile(journal);
@@ -1433,7 +1434,8 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection(
       bool ok = TRI_RenameDatafile(journal, filename.c_str());
 
       if (!ok) {
-        LOG(ERR) << "failed to rename journal '" << journal->getName(journal) << "' to '" << filename << "': " << TRI_last_error();
+        LOG(ERR) << "failed to rename journal '" << journal->getName(journal)
+                 << "' to '" << filename << "': " << TRI_last_error();
 
         TRI_CloseDatafile(journal);
         TRI_UnlinkFile(journal->getName(journal));
@@ -1443,7 +1445,8 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection(
 
         return nullptr;
       } else {
-        LOG(TRACE) << "renamed journal from '" << journal->getName(journal) << "' to '" << filename << "'";
+        LOG(TRACE) << "renamed journal from '" << journal->getName(journal)
+                   << "' to '" << filename << "'";
       }
     }
 
@@ -1524,12 +1527,14 @@ int TRI_FromVelocyPackIndexDocumentCollection(
   // ...........................................................................
   if (typeStr == "edge") {
     // we should never get here, as users cannot create their own edge indexes
-    LOG(ERR) << "logic error. there should never be a JSON file describing an edges index";
+    LOG(ERR) << "logic error. there should never be a JSON file describing an "
+                "edges index";
     return TRI_ERROR_INTERNAL;
   }
 
   // default:
-  LOG(WARN) << "index type '" << typeStr << "' is not supported in this version of ArangoDB and is ignored";
+  LOG(WARN) << "index type '" << typeStr
+            << "' is not supported in this version of ArangoDB and is ignored";
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1563,7 +1568,8 @@ bool TRI_CloseDatafileDocumentCollection(TRI_document_collection_t* document,
   int res = TRI_SealDatafile(journal);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "failed to seal datafile '" << journal->getName(journal) << "': " << TRI_last_error();
+    LOG(ERR) << "failed to seal datafile '" << journal->getName(journal)
+             << "': " << TRI_last_error();
 
     if (!isCompactor) {
       vector->erase(vector->begin() + position);
@@ -1581,7 +1587,8 @@ bool TRI_CloseDatafileDocumentCollection(TRI_document_collection_t* document,
     bool ok = TRI_RenameDatafile(journal, filename.c_str());
 
     if (!ok) {
-      LOG(ERR) << "failed to rename datafile '" << journal->getName(journal) << "' to '" << filename << "': " << TRI_last_error();
+      LOG(ERR) << "failed to rename datafile '" << journal->getName(journal)
+               << "' to '" << filename << "': " << TRI_last_error();
 
       vector->erase(vector->begin() + position);
       document->_datafiles.emplace_back(journal);
@@ -1669,8 +1676,10 @@ int TRI_FillIndexesDocumentCollection(arangodb::Transaction* trx,
   auto primaryIndex = document->primaryIndex();
 
   if (primaryIndex->size() > NotificationSizeThreshold) {
-    LOG_TOPIC(TRACE, Logger::PERFORMANCE) <<
-        "fill-indexes-document-collection { collection: " << document->_vocbase->_name << "/" << document->_info.name() << " }, indexes: " << (n - 1);
+    LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+        << "fill-indexes-document-collection { collection: "
+        << document->_vocbase->_name << "/" << document->_info.name()
+        << " }, indexes: " << (n - 1);
   }
 
   TRI_ASSERT(n > 1);
@@ -1738,7 +1747,11 @@ int TRI_FillIndexesDocumentCollection(arangodb::Transaction* trx,
     // barrier waits here until all threads have joined
   }
 
-  LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::DURATION(TRI_microtime() - start) << " s, fill-indexes-document-collection { collection: " << document->_vocbase->_name << "/" << document->_info.name() << " }, indexes: " << (n - 1);
+  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+      << "[timer] " << Logger::DURATION(TRI_microtime() - start)
+      << " s, fill-indexes-document-collection { collection: "
+      << document->_vocbase->_name << "/" << document->_info.name()
+      << " }, indexes: " << (n - 1);
 
   return result.load();
 }
@@ -1766,8 +1779,9 @@ TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
   TRI_ASSERT(document != nullptr);
 
   double start = TRI_microtime();
-  LOG_TOPIC(TRACE, Logger::PERFORMANCE) <<
-      "open-document-collection { collection: " << vocbase->_name << "/" << col->name() << " }";
+  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+      << "open-document-collection { collection: " << vocbase->_name << "/"
+      << col->name() << " }";
 
   TRI_collection_t* collection =
       TRI_OpenCollection(vocbase, document, path, ignoreErrors);
@@ -1819,8 +1833,9 @@ TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
   try {
     double start = TRI_microtime();
 
-    LOG_TOPIC(TRACE, Logger::PERFORMANCE) <<
-        "iterate-markers { collection: " << vocbase->_name << "/" << document->_info.name() << " }";
+    LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+        << "iterate-markers { collection: " << vocbase->_name << "/"
+        << document->_info.name() << " }";
 
     // iterate over all markers of the collection
     res = IterateMarkersCollection(&trx, collection);
@@ -1848,7 +1863,10 @@ TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t* vocbase,
     TRI_FillIndexesDocumentCollection(&trx, col, document);
   }
 
-  LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::DURATION(TRI_microtime() - start) << " s, open-document-collection { collection: " << vocbase->_name << "/" << document->_info.name() << " }";
+  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+      << "[timer] " << Logger::DURATION(TRI_microtime() - start)
+      << " s, open-document-collection { collection: " << vocbase->_name << "/"
+      << document->_info.name() << " }";
 
   return document;
 }
@@ -1892,7 +1910,8 @@ static VPackSlice ExtractFields(VPackSlice const& slice, TRI_idx_iid_t iid) {
 
   for (auto const& sub : VPackArrayIterator(fld)) {
     if (!sub.isString()) {
-      LOG(ERR) << "ignoring index " << iid << ", 'fields' must be an array of attribute paths";
+      LOG(ERR) << "ignoring index " << iid
+               << ", 'fields' must be an array of attribute paths";
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
     }
   }
@@ -1911,9 +1930,11 @@ static int FillIndexBatch(arangodb::Transaction* trx,
 
   double start = TRI_microtime();
 
-  LOG_TOPIC(TRACE, Logger::PERFORMANCE) <<
-      "fill-index-batch { collection: " << document->_vocbase->_name << "/" << document->_info.name() << " }, " << 
-      idx->context() << ", threads: " << indexPool->numThreads() << ", buckets: " << document->_info.indexBuckets();
+  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+      << "fill-index-batch { collection: " << document->_vocbase->_name << "/"
+      << document->_info.name() << " }, " << idx->context()
+      << ", threads: " << indexPool->numThreads()
+      << ", buckets: " << document->_info.indexBuckets();
 
   // give the index a size hint
   auto primaryIndex = document->primaryIndex();
@@ -1967,7 +1988,12 @@ static int FillIndexBatch(arangodb::Transaction* trx,
     res = idx->batchInsert(trx, &documents, indexPool->numThreads());
   }
 
-  LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::DURATION(TRI_microtime() - start) << " s, fill-index-batch { collection: " << document->_vocbase->_name << "/" << document->_info.name() << " }, " << idx->context() << ", threads: " << indexPool->numThreads() << ", buckets: " << document->_info.indexBuckets();
+  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+      << "[timer] " << Logger::DURATION(TRI_microtime() - start)
+      << " s, fill-index-batch { collection: " << document->_vocbase->_name
+      << "/" << document->_info.name() << " }, " << idx->context()
+      << ", threads: " << indexPool->numThreads()
+      << ", buckets: " << document->_info.indexBuckets();
 
   return res;
 }
@@ -1981,9 +2007,10 @@ static int FillIndexSequential(arangodb::Transaction* trx,
                                arangodb::Index* idx) {
   double start = TRI_microtime();
 
-  LOG_TOPIC(TRACE, Logger::PERFORMANCE) << 
-      "fill-index-sequential { collection: " << document->_vocbase->_name << "/" << document->_info.name() << " }, " <<
-      idx->context() << ", buckets: " << document->_info.indexBuckets();
+  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+      << "fill-index-sequential { collection: " << document->_vocbase->_name
+      << "/" << document->_info.name() << " }, " << idx->context()
+      << ", buckets: " << document->_info.indexBuckets();
 
   // give the index a size hint
   auto primaryIndex = document->primaryIndex();
@@ -2018,13 +2045,18 @@ static int FillIndexSequential(arangodb::Transaction* trx,
       if (++counter == LoopSize) {
         counter = 0;
         ++loops;
-        LOG(TRACE) << "indexed " << (LoopSize * loops) << " documents of collection " << document->_info.id();
+        LOG(TRACE) << "indexed " << (LoopSize * loops)
+                   << " documents of collection " << document->_info.id();
       }
 #endif
     }
   }
 
-  LOG_TOPIC(TRACE, Logger::PERFORMANCE) << "[timer] " << Logger::DURATION(TRI_microtime() - start) << " s, fill-index-sequential { collection: " << document->_vocbase->_name << "/" << document->_info.name() << " }, " << idx->context() << ", buckets: " << document->_info.indexBuckets();
+  LOG_TOPIC(TRACE, Logger::PERFORMANCE)
+      << "[timer] " << Logger::DURATION(TRI_microtime() - start)
+      << " s, fill-index-sequential { collection: " << document->_vocbase->_name
+      << "/" << document->_info.name() << " }, " << idx->context()
+      << ", buckets: " << document->_info.indexBuckets();
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -2209,7 +2241,8 @@ static int PathBasedIndexFromVelocyPack(
 
   // extract the list of fields
   if (fieldCount < 1) {
-    LOG(ERR) << "ignoring index " << iid << ", need at least one attribute path";
+    LOG(ERR) << "ignoring index " << iid
+             << ", need at least one attribute path";
 
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
@@ -2218,7 +2251,8 @@ static int PathBasedIndexFromVelocyPack(
   VPackSlice bv = definition.get("unique");
 
   if (!bv.isBoolean()) {
-    LOG(ERR) << "ignoring index " << iid << ", could not determine if unique or non-unique";
+    LOG(ERR) << "ignoring index " << iid
+             << ", could not determine if unique or non-unique";
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
 
@@ -2607,7 +2641,8 @@ static int GeoIndexFromVelocyPack(arangodb::Transaction* trx,
 
       return idx == nullptr ? TRI_errno() : TRI_ERROR_NO_ERROR;
     } else {
-      LOG(ERR) << "ignoring " << typeStr << "-index " << iid << ", 'fields' must be a list with 1 entries";
+      LOG(ERR) << "ignoring " << typeStr << "-index " << iid
+               << ", 'fields' must be a list with 1 entries";
 
       return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
     }
@@ -2631,7 +2666,8 @@ static int GeoIndexFromVelocyPack(arangodb::Transaction* trx,
 
       return idx == nullptr ? TRI_errno() : TRI_ERROR_NO_ERROR;
     } else {
-      LOG(ERR) << "ignoring " << typeStr << "-index " << iid << ", 'fields' must be a list with 2 entries";
+      LOG(ERR) << "ignoring " << typeStr << "-index " << iid
+               << ", 'fields' must be a list with 2 entries";
 
       return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
     }
@@ -3094,7 +3130,8 @@ static int FulltextIndexFromVelocyPack(arangodb::Transaction* trx,
 
   // extract the list of fields
   if (fieldCount != 1) {
-    LOG(ERR) << "ignoring index " << iid << ", has an invalid number of attributes";
+    LOG(ERR) << "ignoring index " << iid
+             << ", has an invalid number of attributes";
 
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
