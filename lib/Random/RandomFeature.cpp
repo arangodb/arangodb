@@ -20,14 +20,12 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationFeatures/RandomFeature.h"
+#include "RandomFeature.h"
 
-#include <iostream>
-
-#include "Basics/RandomGenerator.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Random/RandomGenerator.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;

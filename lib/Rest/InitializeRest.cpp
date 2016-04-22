@@ -34,8 +34,6 @@
 #error missing thread support for openssl, please recomple OpenSSL with threads
 #endif
 
-#include "Logger/Logger.h"
-#include "Basics/RandomGenerator.h"
 #include "Basics/Thread.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/error.h"
@@ -44,6 +42,8 @@
 #include "Basics/locks.h"
 #include "Basics/mimetypes.h"
 #include "Basics/process-utils.h"
+#include "Logger/Logger.h"
+#include "Random/RandomGenerator.h"
 #include "Rest/Version.h"
 
 using namespace arangodb;

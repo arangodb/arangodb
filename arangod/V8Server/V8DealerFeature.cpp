@@ -26,7 +26,6 @@
 
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Basics/ConditionLocker.h"
-#include "Basics/RandomGenerator.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WorkMonitor.h"
 #include "Cluster/ServerState.h"
@@ -34,6 +33,7 @@
 #include "Dispatcher/DispatcherThread.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/V8TransactionContext.h"
 #include "V8/v8-buffer.h"

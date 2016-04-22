@@ -24,12 +24,10 @@
 
 #include "Nonce.h"
 
-#include <math.h>
-
-#include "Logger/Logger.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/RandomGenerator.h"
 #include "Basics/StringUtils.h"
+#include "Logger/Logger.h"
+#include "Random/RandomGenerator.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
