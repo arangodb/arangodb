@@ -43,7 +43,7 @@ public:
   //////////////////////////////////////////////////////////////////////////////
   AgencyCallback(AgencyComm&, std::string const&, 
                  std::function<bool(VPackSlice const&)> const&, bool needsValue,
-                 bool needsInitialValue = false);
+                 bool needsInitialValue = true);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief wait a specified timeout. execute cb if watch didn't fire
