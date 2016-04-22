@@ -110,7 +110,7 @@ class v8_action_t : public TRI_action_t {
     V8Context* context = V8DealerFeature::DEALER->enterContext(
         vocbase, allowUseDatabaseInRestActions, forceContext);
 
-    // note: the context might be 0 in case of shut-down
+    // note: the context might be nullptr in case of shut-down
     if (context == nullptr) {
       return result;
     }
