@@ -225,6 +225,8 @@ void V8DealerFeature::start() {
       ApplicationServer::lookupFeature("Database"));
 
   loadJavascript(database->vocbase(), "server/initialize.js");
+
+  startGarbageCollection();
 }
 
 void V8DealerFeature::stop() {
@@ -233,9 +235,7 @@ void V8DealerFeature::stop() {
   shutdownContexts();
 
   // delete GC thread after all action threads have been stopped
-  if (_gcThread != nullptr) {
-    delete _gcThread;
-  }
+  delete _gcThread;
 
   DEALER = nullptr;
 }
@@ -489,18 +489,19 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
         V8Context* context = _dirtyContexts.back();
         _freeContexts.push_back(context);
         _dirtyContexts.pop_back();
-      } else {
-        auto currentThread = arangodb::rest::DispatcherThread::current();
+        break;
+      } 
+      
+      auto currentThread = arangodb::rest::DispatcherThread::current();
 
-        if (currentThread != nullptr) {
-          currentThread->block();
-        }
+      if (currentThread != nullptr) {
+        currentThread->block();
+      }
 
-        guard.wait();
+      guard.wait();
 
-        if (currentThread != nullptr) {
-          currentThread->unblock();
-        }
+      if (currentThread != nullptr) {
+        currentThread->unblock();
       }
     }
 
@@ -670,6 +671,8 @@ void V8DealerFeature::exitContext(V8Context* context) {
 
     _busyContexts.erase(context);
     _freeContexts.emplace_back(context);
+
+    guard.broadcast();
   }
 }
 
