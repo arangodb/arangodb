@@ -3,7 +3,7 @@ input,
 textarea,
 .page-title span,
 .pingback a.url {
-  font-family: 'Roboto', sans-serif !important;
+  @extend %font-family;
   font-weight: 400;
 }
 

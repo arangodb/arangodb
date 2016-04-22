@@ -99,7 +99,7 @@ table.arangoDataTable tr.odd {
 }
 
 .snippet-no-num {
-  font-family: 'Open Sans', sans-serif;
+  @extend %font-family;
   font-size: 1em;
   font-weight: 400;
   margin-bottom: 0;
