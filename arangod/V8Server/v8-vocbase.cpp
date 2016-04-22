@@ -3605,7 +3605,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   // whether or not statistics are enabled
   context->Global()->ForceSet(
       TRI_V8_ASCII_STRING("ENABLE_STATISTICS"),
-      v8::Boolean::New(isolate, StatisticsFeature::enabled()), v8::ReadOnly);
+      v8::Boolean::New(isolate, StatisticsFeature::enabled())); //, v8::ReadOnly);
 
   // a thread-global variable that will is supposed to contain the AQL module
   // do not remove this, otherwise AQL queries will break

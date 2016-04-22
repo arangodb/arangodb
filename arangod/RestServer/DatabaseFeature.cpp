@@ -74,6 +74,7 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
   startsAfter("Random");
   startsAfter("Temp");
   startsAfter("WorkMonitor");
+  startsAfter("Statistics");
 }
 
 void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
