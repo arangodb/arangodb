@@ -240,8 +240,6 @@ void ClusterTraverser::setStartVertex(std::string const& id) {
 }
 
 void ClusterTraverser::fetchVertices(std::unordered_set<std::string>& verticesToFetch, size_t depth) {
-  std::unique_ptr<std::map<std::string, std::string>> headers(
-      new std::map<std::string, std::string>());
   _readDocuments += verticesToFetch.size();
 
   std::vector<TraverserExpression*> expVertices;
@@ -250,7 +248,7 @@ void ClusterTraverser::fetchVertices(std::unordered_set<std::string>& verticesTo
     expVertices = found->second;
   }
 
-  int res = getFilteredDocumentsOnCoordinator(_dbname, expVertices, headers,
+  int res = getFilteredDocumentsOnCoordinator(_dbname, expVertices,
                                               verticesToFetch, _vertices);
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
