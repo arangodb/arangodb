@@ -123,11 +123,11 @@ std::string LogAppenderSyslog::details() {
 
 LogAppenderSyslog::LogAppenderSyslog(std::string const& facility,
                                      std::string const& name,
-                                     std::string const& filter) {
+                                     std::string const& filter)
+    : LogAppender(filter) {
   std::abort();
 }
 
-void LogAppenderSyslog::close() {
-}
+void LogAppenderSyslog::close() {}
 
 #endif
