@@ -118,7 +118,7 @@ void HeartbeatThread::runDBServer() {
       return false;
     }
     uint64_t version = result.getNumber<uint64_t>();
-    LOG(TRACE) << "Hass " << result.toJson() << " " << version << " "
+    LOG(TRACE) << result.toJson() << " " << version << " "
                << _dispatchedPlanVersion;
     bool mustHandlePlanChange = false;
     {
