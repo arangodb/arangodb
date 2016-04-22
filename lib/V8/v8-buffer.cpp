@@ -737,6 +737,7 @@ V8Buffer::V8Buffer(v8::Isolate* isolate, v8::Handle<v8::Object> wrapper,
                                              // used in base member initializer
                                              // list
       _length(0),
+      _data(nullptr),
       _callback(nullptr) {
   replace(isolate, NULL, length, NULL, NULL);
 }
@@ -778,6 +779,8 @@ void V8Buffer::replace(v8::Isolate* isolate, char* data, size_t length,
     delete[] _data;
     isolate->AdjustAmountOfExternalAllocatedMemory(
         -static_cast<intptr_t>(sizeof(V8Buffer) + _length));
+  } else {
+    delete[] _data;
   }
 
   _length = length;
