@@ -385,16 +385,23 @@
         if (valueList.length > 1) {
 
           // HTTP requests combine all types to one
+          // 0: date, 1: GET", 2: "PUT", 3: "POST", 4: "DELETE", 5: "PATCH",
+          // 6: "HEAD", 7: "OPTIONS", 8: "OTHER"
+          //
+          var read = 0, write = 0;
           if (valueList.length === 9) {
-            var counter = 0, sum = 0;
 
-            _.each(valueList, function(value) {
-              if (counter !== 0) {
-                sum += value;
-              }
-              counter++;
-            });
-            valueList = [valueList[0], sum];
+            read += valueList[1];
+            read += valueList[6];
+            read += valueList[7];
+            read += valueList[8];
+
+            write += valueList[2];
+            write += valueList[3];
+            write += valueList[4];
+            write += valueList[5];
+
+            valueList = [valueList[0], read, write];
           }
 
           self.history[self.server][f].push(valueList);
