@@ -509,3 +509,8 @@ std::multimap <std::string,std::string>& Store::observedTable() {
 std::multimap <std::string,std::string> const& Store::observedTable() const {
   return _observedTable;
 }
+
+Node const Store::get (std::string const& path) const {
+  MUTEX_LOCKER(storeLocker, _storeLock);  
+  return _node(path);
+}

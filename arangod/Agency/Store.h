@@ -92,6 +92,9 @@ public:
   /// @brief Create Builder representing this store
   void toBuilder (Builder&) const;
 
+  /// @brief Copy out a node
+  Node const get (std::string const& path) const;
+
   friend class Node;
 
 private:

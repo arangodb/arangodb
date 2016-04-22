@@ -147,6 +147,12 @@ public:
   /// @brief Create Builder representing this store
   void toBuilder (Builder&) const;
 
+  /// @brief Access children
+  Children& children ();
+
+  /// @brief Access children
+  Children const& children () const;
+
   /// @brief Create slice from value
   Slice slice() const;
 

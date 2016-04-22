@@ -574,3 +574,10 @@ std::ostream& Node::print (std::ostream& o) const {
   return o;
 }
 
+Node::Children& Node::children () {
+  return _children;
+}
+
+Node::Children const& Node::children () const {
+  return _children;
+}

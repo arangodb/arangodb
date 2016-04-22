@@ -31,7 +31,14 @@ namespace arangodb {
 namespace consensus {
 
 class Agent;
+class Node;
 class Store;
+
+struct check_t {
+  bool good;
+  std::string name;
+  check_t (std::string const& n, bool g) : good(g), name(n) {}
+};
 
 class Supervision : public arangodb::Thread {
   
@@ -59,6 +66,9 @@ public:
   void wakeUp ();
 
 private:
+
+  /// @Brief Check mahines under path in agency
+  std::vector<check_t> check (Node const& node, std::string const& path) const;
 
   /// @brief Read db
   Store const& store () const;

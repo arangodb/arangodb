@@ -30,6 +30,8 @@
 
 using namespace arangodb::consensus;
 
+
+
 Supervision::Supervision() : arangodb::Thread("Supervision"), _agent(nullptr),
                              _frequency(5000000) {}
 
@@ -41,9 +43,28 @@ void Supervision::wakeUp () {
   _cv.signal();
 }
 
+std::vector<check_t> Supervision::check (Node const& readDB, std::string const& path) const {
+  std::vector<check_t> ret;
+  Node::Children machines = readDB(path).children();
+  for (auto const& machine : machines) {
+    LOG_TOPIC(INFO, Logger::AGENCY) << machine.first;
+    ret.push_back(check_t(machine.first, true));
+  }
+  return ret;
+}
+
 bool Supervision::doChecks (bool timedout) {
+
+  if (_agent == nullptr) {
+    return false;
+  }
+
+  Node const& readDB = _agent->readDB().get("/");
   LOG_TOPIC(INFO, Logger::AGENCY) << "Sanity checks";
+  std::vector<check_t> ret = check(readDB, "/arango/Current/DBServers");
+  
   return true;
+  
 }
 
 void Supervision::run() {
