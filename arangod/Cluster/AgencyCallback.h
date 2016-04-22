@@ -21,16 +21,18 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-//XXX #warning MOP nope, include guards
-#pragma once
+#ifndef ARANGODB_CLUSTER_AGENCYCALLBACK_H
+#define ARANGODB_CLUSTER_AGENCYCALLBACK_H
 
-//XXX #warning MOP order, Common.h
+#include "Basics/ConditionVariable.h"
+#include "Basics/Mutex.h"
+
 #include <functional>
 #include <memory>
-#include "Cluster/AgencyComm.h"
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
-#include "Basics/Mutex.h"
+
+#include "Cluster/AgencyComm.h"
 
 namespace arangodb {
 
@@ -40,7 +42,8 @@ public:
   /// @brief ctor
   //////////////////////////////////////////////////////////////////////////////
   AgencyCallback(AgencyComm&, std::string const&, 
-                 std::function<bool(VPackSlice const&)> const&, bool needsValue);
+                 std::function<bool(VPackSlice const&)> const&, bool needsValue,
+                 bool needsInitialValue = false);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief wait a specified timeout. execute cb if watch didn't fire
@@ -50,10 +53,14 @@ public:
   std::string const key;
   
   void refetchAndUpdate();
+  void waitForExecution(double);
   
 
 private:
   arangodb::Mutex _lock;
+  arangodb::basics::ConditionVariable _cv;
+  bool _useCv;
+
   AgencyComm& _agency;
   std::function<bool(VPackSlice const&)> const _cb;
   std::shared_ptr<VPackBuilder> _lastData;
@@ -68,3 +75,5 @@ private:
 };
 
 }
+
+#endif
