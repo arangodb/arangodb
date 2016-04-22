@@ -83,7 +83,11 @@ bool V8TimerTask::handleTimeout() {
       new V8Job(_vocbase, "(function (params) { " + _command + " } )(params);",
                 _parameters, _allowUseDatabase));
 
-  DispatcherFeature::DISPATCHER->addJob(job);
+  int res = DispatcherFeature::DISPATCHER->addJob(job);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG(WARN) << "could not add task " << _command << " to queue";
+  }
 
   // note: this will destroy the task (i.e. ourselves!!)
   SchedulerFeature::SCHEDULER->destroyTask(this);
