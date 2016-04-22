@@ -29,8 +29,8 @@
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
 
-#include "Basics/UniformCharacter.h"
 #include "Basics/StringUtils.h"
+#include "Random/UniformCharacter.h"
 
 #ifdef OPENSSL_NO_SSL2 // OpenSSL > 1.1.0 deprecates RAND_pseudo_bytes
 #define RAND_BYTES RAND_bytes

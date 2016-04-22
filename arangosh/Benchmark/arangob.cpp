@@ -25,13 +25,13 @@
 
 #include "ApplicationFeatures/ClientFeature.h"
 #include "ApplicationFeatures/ConfigFeature.h"
-#include "ApplicationFeatures/LoggerFeature.h"
-#include "ApplicationFeatures/RandomFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Benchmark/BenchFeature.h"
+#include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "Random/RandomFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;

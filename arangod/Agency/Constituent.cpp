@@ -23,37 +23,30 @@
 
 #include "Constituent.h"
 
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
-
+#include <chrono>
 #include <chrono>
 #include <iomanip>
+#include <iomanip>
 #include <thread>
+#include <thread>
+
+#include <velocypack/Iterator.h>    
+#include <velocypack/velocypack-aliases.h> 
 
 #include "Agency/Agent.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/ConditionLocker.h"
-#include "Basics/RandomGenerator.h"
 #include "Cluster/ClusterComm.h"
 #include "Logger/Logger.h"
+#include "Random/RandomGenerator.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/collection.h"
 #include "VocBase/vocbase.h"
-
-#include "Constituent.h"
-#include "Agent.h"
-#include "NotifierThread.h"
-
-#include <velocypack/Iterator.h>    
-#include <velocypack/velocypack-aliases.h> 
-
-#include <chrono>
-#include <iomanip>
-#include <thread>
+#include "Agency/NotifierThread.h"
 
 using namespace arangodb::consensus;
 using namespace arangodb::rest;

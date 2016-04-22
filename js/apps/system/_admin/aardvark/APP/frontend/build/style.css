@@ -3253,7 +3253,7 @@ div .bigtile {
           width: -4.2px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
           line-height: 40px;
-          padding-top: 10px;
+          padding-top: 15px;
           width: -3px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
         box-sizing: border-box;
@@ -3442,7 +3442,7 @@ div .bigtile {
           width: 51.8px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
           line-height: 40px;
-          padding-top: 10px;
+          padding-top: 15px;
           width: 21px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
         box-sizing: border-box;
@@ -3631,7 +3631,7 @@ div .bigtile {
           width: 107.8px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
           line-height: 40px;
-          padding-top: 10px;
+          padding-top: 15px;
           width: 45px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
         box-sizing: border-box;
@@ -3818,7 +3818,7 @@ div .bigtile {
           width: 163.8px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
           line-height: 40px;
-          padding-top: 10px;
+          padding-top: 15px;
           width: 69px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
         box-sizing: border-box;
@@ -4002,7 +4002,7 @@ div .bigtile {
           width: 219.8px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
           line-height: 40px;
-          padding-top: 10px;
+          padding-top: 15px;
           width: 93px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
         box-sizing: border-box;
@@ -4186,7 +4186,7 @@ div .bigtile {
           width: 275.8px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
           line-height: 40px;
-          padding-top: 10px;
+          padding-top: 15px;
           width: 117px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
         box-sizing: border-box;
@@ -4370,7 +4370,7 @@ div .bigtile {
           width: 331.8px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
           line-height: 40px;
-          padding-top: 10px;
+          padding-top: 15px;
           width: 141px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
         box-sizing: border-box;
@@ -4554,7 +4554,7 @@ div .bigtile {
           width: 387.8px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
           line-height: 40px;
-          padding-top: 10px;
+          padding-top: 15px;
           width: 165px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
         box-sizing: border-box;
@@ -4738,7 +4738,7 @@ div .bigtile {
           width: 443.8px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
           line-height: 40px;
-          padding-top: 10px;
+          padding-top: 15px;
           width: 189px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
         box-sizing: border-box;
@@ -4922,7 +4922,7 @@ div .bigtile {
           width: 499.8px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
           line-height: 40px;
-          padding-top: 10px;
+          padding-top: 15px;
           width: 213px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
         box-sizing: border-box;
@@ -5106,7 +5106,7 @@ div .bigtile {
           width: 555.8px; }
         .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-title .absolut {
           line-height: 40px;
-          padding-top: 10px;
+          padding-top: 15px;
           width: 237px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
         box-sizing: border-box;
@@ -6448,10 +6448,12 @@ div.headerBar {
         font-weight: 500;
         text-align: center;
         width: 100%; }
-    .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart .nv-bar rect {
-      fill-opacity: .8;
-      stroke-opacity: .8;
-      stroke-width: .5px; }
+    .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
+      padding-top: 10px; }
+      .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart .nv-bar rect {
+        fill-opacity: .8;
+        stroke-opacity: .8;
+        stroke-width: .5px; }
 
 .dashboard-legend .dashboard-legend-inner {
   padding: 0 5px 5px 0;
@@ -6593,7 +6595,7 @@ div.headerBar {
     padding-left: 0; }
 
 .loginFixedWindow {
-  background: #f5f8f0;
+  background: #649068;
   height: 100%;
   left: 0;
   position: fixed;
@@ -6609,23 +6611,35 @@ div.headerBar {
       margin-top: 9px; }
 
 .login-window {
-  background-color: #fff;
+  background-color: rgba(255, 255, 255, 0.75);
   border: 1px solid rgba(140, 138, 137, 0.25);
   border-radius: 3px;
   height: auto;
-  left: 50%;
-  margin-left: -220px !important;
-  margin-top: -150px;
-  padding: 10px;
-  position: absolute;
-  top: 50%;
-  width: 400px; }
+  margin: 0 auto;
+  padding-bottom: 50px;
+  padding-left: 20px;
+  padding-right: 20px;
+  padding-top: 20px;
+  position: relative;
+  top: 100px;
+  width: 350px; }
+  .login-window .login-logo-round {
+    margin-bottom: 25px;
+    margin-top: 10px; }
+    .login-window .login-logo-round img {
+      display: block;
+      margin: 0 auto;
+      width: 150px; }
   .login-window .fa {
-    color: rgba(0, 0, 0, 0.4);
+    color: rgba(0, 0, 0, 0.2);
     float: right;
     font-size: 14pt;
-    margin-right: 5px;
-    margin-top: -34px; }
+    margin-right: 44px;
+    margin-top: 11px;
+    position: absolute;
+    right: -11px; }
+    .login-window .fa.fa-lock {
+      right: -9px; }
   .login-window .wrong-credentials {
     color: #da4f49;
     margin-top: -30px;
@@ -6633,9 +6647,25 @@ div.headerBar {
   .login-window .login-space {
     height: 50px; }
   .login-window .login-input {
-    width: 387px; }
+    background: #f2f2f2 !important;
+    background-color: #f2f2f2 !important;
+    border: 0;
+    border-bottom-left-radius: 3px;
+    border-bottom-right-radius: 3px;
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
+    box-sizing: border-box;
+    font-size: 14px;
+    height: 40px;
+    margin: 0 0 15px;
+    outline: 0;
+    padding: 15px;
+    width: 100%; }
   .login-window .form-error {
     border: 1px solid #da4f49 !important; }
+  .login-window button {
+    height: 40px;
+    width: 100%; }
 
 toolbar {
   background-color: #f0f0f0;

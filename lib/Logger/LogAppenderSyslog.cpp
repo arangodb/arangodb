@@ -23,6 +23,8 @@
 
 #include "Logger/LogAppenderSyslog.h"
 
+using namespace arangodb;
+
 #ifdef ARANGODB_ENABLE_SYSLOG
 
 // we need to define SYSLOG_NAMES for linux to get a list of names
@@ -38,7 +40,6 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 
-using namespace arangodb;
 using namespace arangodb::basics;
 
 bool LogAppenderSyslog::_opened(false);
@@ -122,8 +123,11 @@ std::string LogAppenderSyslog::details() {
 
 LogAppenderSyslog::LogAppenderSyslog(std::string const& facility,
                                      std::string const& name,
-                                     std::string const& filter) {
+                                     std::string const& filter)
+    : LogAppender(filter) {
   std::abort();
 }
+
+void LogAppenderSyslog::close() {}
 
 #endif

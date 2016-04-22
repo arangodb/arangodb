@@ -82,29 +82,25 @@ struct BasicExpander {
   std::vector<EdgeCollectionInfo*> const _colls;
   arangodb::Transaction* _trx;
   TRI_edge_direction_e _dir;
-  std::shared_ptr<OperationResult> _opRes;
+  std::vector<TRI_doc_mptr_t*> _cursor;
 
  public:
   BasicExpander(std::vector<EdgeCollectionInfo*> const& colls,
                 arangodb::Transaction* trx, TRI_edge_direction_e dir)
       : _colls(colls),
         _trx(trx),
-        _dir(dir),
-        _opRes(std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR)){};
+        _dir(dir) {}
 
   void operator()(std::string const& v, std::vector<std::string>& res_edges,
                   std::vector<std::string>& neighbors) {
     for (auto const& edgeCollection : _colls) {
+      _cursor.clear();
       TRI_ASSERT(edgeCollection != nullptr);
       std::shared_ptr<OperationCursor> edgeCursor = edgeCollection->getEdges(_dir, v);
       while (edgeCursor->hasMore()) {
-        edgeCursor->getMore(_opRes, UINT64_MAX, false);
-        if (_opRes->failed()) {
-          THROW_ARANGO_EXCEPTION(_opRes->code);
-        }
-        VPackSlice edges = _opRes->slice();
-
-        for (auto const& edge : VPackArrayIterator(edges)) {
+        edgeCursor->getMoreMptr(_cursor, UINT64_MAX);
+        for (auto const& mptr : _cursor) {
+          VPackSlice edge(mptr->vpack());
           std::string edgeId = _trx->extractIdString(edge);
           std::string from = edge.get(TRI_VOC_ATTRIBUTE_FROM).copyString();
           if (from == v) {
@@ -210,6 +206,7 @@ class MultiCollectionEdgeExpander {
 
   void operator()(std::string const& source,
                   std::vector<ArangoDBPathFinder::Step*>& result) {
+    std::vector<TRI_doc_mptr_t*> cursor;
     for (auto const& edgeCollection : _edgeCollections) {
       TRI_ASSERT(edgeCollection != nullptr);
 
@@ -235,16 +232,12 @@ class MultiCollectionEdgeExpander {
           }
         }
       };
-
-      auto opRes = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
+      
+      cursor.clear();
       while (edgeCursor->hasMore()) {
-        edgeCursor->getMore(opRes, UINT64_MAX, false);
-        if (opRes->failed()) {
-          THROW_ARANGO_EXCEPTION(opRes->code);
-        }
-        VPackSlice edges = opRes->slice();
-
-        for (auto const& edge : VPackArrayIterator(edges)) {
+        edgeCursor->getMoreMptr(cursor, UINT64_MAX);
+        for (auto const& mptr : cursor) {
+          VPackSlice edge(mptr->vpack());
           if (!_isAllowed(edge)) {
             continue;
           }

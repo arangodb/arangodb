@@ -20,48 +20,23 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef REST_SERVER_SERVER_FEATURE_H
-#define REST_SERVER_SERVER_FEATURE_H 1
+#ifndef APPLICATION_FEATURES_LOGGER_BUFFER_FEATURE_H
+#define APPLICATION_FEATURES_LOGGER_BUFFER_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
-#include "Rest/OperationMode.h"
-
 namespace arangodb {
-namespace rest {
-class HttpHandlerFactory;
-class AsyncJobManager;
-}
-
-class ServerFeature final : public application_features::ApplicationFeature {
+class LoggerBufferFeature final : public application_features::ApplicationFeature {
  public:
-  ServerFeature(application_features::ApplicationServer* server, int*);
+  explicit LoggerBufferFeature(application_features::ApplicationServer*);
 
  public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void start() override final;
-  void beginShutdown() override final;
-  void stop() override final;
-
- public:
-  OperationMode operationMode() const { return _operationMode; }
-
- private:
-  bool _console;
-  bool _restServer;
-  std::vector<std::string> _unitTests;
-  std::vector<std::string> _scripts;
-  std::vector<std::string> _scriptParameters;
-
- private:
-  void waitForHeartbeat();
-  int runUnitTests();
-  int runScript();
-
- private:
-  int* _result;
-  OperationMode _operationMode;
+  // void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  // void loadOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  // void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
+  // void start() override final;
+  // void stop() override final;
 };
 }
 

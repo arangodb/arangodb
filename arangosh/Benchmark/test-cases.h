@@ -23,7 +23,7 @@
 
 #include "Basics/Common.h"
 
-#include "Basics/RandomGenerator.h"
+#include "Random/RandomGenerator.h"
 
 static bool DeleteCollection(SimpleHttpClient*, std::string const&);
 

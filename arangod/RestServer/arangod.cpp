@@ -28,9 +28,7 @@
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/DaemonFeature.h"
 #include "ApplicationFeatures/LanguageFeature.h"
-#include "ApplicationFeatures/LoggerFeature.h"
 #include "ApplicationFeatures/NonceFeature.h"
-#include "ApplicationFeatures/RandomFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/SslFeature.h"
 #include "ApplicationFeatures/SupervisorFeature.h"
@@ -40,7 +38,10 @@
 #include "Basics/ArangoGlobalContext.h"
 #include "Cluster/ClusterFeature.h"
 #include "Dispatcher/DispatcherFeature.h"
+#include "Logger/LoggerBufferFeature.h"
+#include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "Random/RandomFeature.h"
 #include "RestServer/AffinityFeature.h"
 #include "RestServer/CheckVersionFeature.h"
 #include "RestServer/ConsoleFeature.h"
@@ -91,8 +92,7 @@ int main(int argc, char* argv[]) {
 
   std::vector<std::string> nonServerFeatures = {
       "Action", "Agency", "Cluster", "Daemon", "Dispatcher", "Endpoint",
-      "Server", "Scheduler", "Ssl", "Supervisor"};
-#warning FRANK: does it make sense to list Agency here?
+      "LoggerBufferFeature", "Server", "Scheduler", "Ssl", "Supervisor"};
 
   int ret = EXIT_FAILURE;
 
@@ -109,6 +109,7 @@ int main(int argc, char* argv[]) {
   server.addFeature(new FileDescriptorsFeature(&server));
   server.addFeature(new FrontendFeature(&server));
   server.addFeature(new LanguageFeature(&server));
+  server.addFeature(new LoggerBufferFeature(&server));
   server.addFeature(new LoggerFeature(&server, true));
   server.addFeature(new NonceFeature(&server));
   server.addFeature(new RandomFeature(&server));

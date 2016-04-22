@@ -50,6 +50,9 @@ class LogAppenderSyslog : public LogAppender {
 
 class LogAppenderSyslog : public LogAppender {
  public:
+  static void close();
+
+ public:
   LogAppenderSyslog(std::string const& facility, std::string const& name,
                     std::string const& filter);
 };

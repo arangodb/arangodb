@@ -159,19 +159,6 @@
               if (navElement) {
                 window.clearTimeout(timer);
                 timer = null;
-
-                if (name === '_system') {
-                  // show "logs" button
-                  $('.logs-menu').css('visibility', 'visible');
-                  $('.logs-menu').css('display', 'inline');
-                  // show dbs menues
-                  $('#databaseNavi').css('display','inline');
-                }
-                else {
-                  // hide "logs" button
-                  $('.logs-menu').css('visibility', 'hidden');
-                  $('.logs-menu').css('display', 'none');
-                }
                 self.render();
               }
             }, 50);
