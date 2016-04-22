@@ -3,11 +3,11 @@ html {
 }
 
 body {
+  @extend %font-family;
   //background: $c-lightgreen-2-bg !important;
   background: $c-bluegrey-bg;
   color: $c-body-color;
   display: block;
-  font-family: 'Roboto', sans-serif !important;
   font-size: 14px;
   font-weight: 400;
   height: 100%;

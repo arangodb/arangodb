@@ -1,10 +1,10 @@
 .ui-tooltip {
+  @extend %font-family;
   background-color: $c-positive !important;
   border: 0 !important;
   border-radius: 3px !important;
   box-shadow: none !important;
   color: $c-white !important;
-  font-family: 'Roboto', sans-serif !important;
   font-size: 10pt !important;
   font-weight: 100 !important;
   z-index: 99999999;
