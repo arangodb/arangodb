@@ -41,7 +41,7 @@
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 #include <functional>
-
+#include <iostream>
 using namespace arangodb;
 
 volatile sig_atomic_t HeartbeatThread::HasRunOnce = 0;
@@ -105,6 +105,7 @@ void HeartbeatThread::run() {
 void HeartbeatThread::runDBServer() {
   LOG(TRACE) << "starting heartbeat thread (DBServer version)";
 
+    std::cout << __FILE__ << __LINE__ << std::endl;
   // convert timeout to seconds
   double const interval = (double)_interval / 1000.0 / 1000.0;
 
@@ -217,6 +218,7 @@ void HeartbeatThread::runDBServer() {
 void HeartbeatThread::runCoordinator() {
   LOG(TRACE) << "starting heartbeat thread (coordinator version)";
 
+    std::cout << __FILE__ << __LINE__ << std::endl;
   uint64_t oldUserVersion = 0;
 
   // convert timeout to seconds
@@ -236,7 +238,7 @@ void HeartbeatThread::runCoordinator() {
     LOG(TRACE) << "sending heartbeat to agency";
 
     double const start = TRI_microtime();
-
+    std::cout << __FILE__ << __LINE__ << std::endl;
     // send our state to the agency.
     // we don't care if this fails
     sendState();
@@ -258,6 +260,7 @@ void HeartbeatThread::runCoordinator() {
     if (isStopping()) {
       break;
     }
+    std::cout << __FILE__ << __LINE__ << std::endl;
 
     bool shouldSleep = true;
 
@@ -267,25 +270,31 @@ void HeartbeatThread::runCoordinator() {
     if (result.successful()) {
       result.parse("", false);
 
+    std::cout << __FILE__ << __LINE__ << std::endl;
       std::map<std::string, AgencyCommResultEntry>::iterator it =
           result._values.begin();
 
       if (it != result._values.end()) {
         // there is a plan version
 
+    std::cout << __FILE__ << __LINE__ << std::endl;
         uint64_t planVersion = arangodb::basics::VelocyPackHelper::stringUInt64(
             it->second._vpack->slice());
+    std::cout << __FILE__ << __LINE__ << std::endl;
 
         if (planVersion > lastPlanVersionNoticed) {
           if (handlePlanChangeCoordinator(planVersion)) {
             lastPlanVersionNoticed = planVersion;
           }
         }
+    std::cout << __FILE__ << __LINE__ << std::endl;
       }
     }
+    std::cout << __FILE__ << __LINE__ << std::endl;
 
     result.clear();
 
+    std::cout << __FILE__ << __LINE__ << std::endl;
     result = _agency.getValues("Sync/UserVersion", false);
     if (result.successful()) {
       result.parse("", false);
@@ -327,6 +336,7 @@ void HeartbeatThread::runCoordinator() {
       }
     }
 
+    std::cout << __FILE__ << __LINE__ << std::endl;
     result = _agency.getValues("Current/Version", false);
     if (result.successful()) {
       result.parse("", false);
@@ -348,6 +358,7 @@ void HeartbeatThread::runCoordinator() {
       }
     }
 
+    std::cout << __FILE__ << __LINE__ << std::endl;
     if (shouldSleep) {
       double remain = interval - (TRI_microtime() - start);
 
@@ -363,6 +374,8 @@ void HeartbeatThread::runCoordinator() {
         }
       }
     }
+        std::cout << __FILE__ << __LINE__ << std::endl;
+
   }
 
   LOG(TRACE) << "stopped heartbeat thread";
@@ -456,8 +469,10 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
     }
   }
 
+  std::cout << result._body << std::endl;
+  
   if (result.successful()) {
-    result.parse(prefixPlanChangeCoordinator + "/", false);
+    result.parse(prefixPlanChangeCoordinator + "/", true);
 
     std::vector<TRI_voc_tick_t> ids;
 
@@ -470,6 +485,9 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
       names.push_back(it->first);
     }
     std::sort(names.begin(), names.end(), &myDBnamesComparer);
+    for (auto const& a : names) {
+      std::cout << "++++++" << a << "+++" << std::endl;
+    }
 
     // loop over all database names we got and create a local database
     // instance if not yet present:
@@ -478,17 +496,22 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
       VPackSlice const options = it->second._vpack->slice();
 
       TRI_voc_tick_t id = 0;
+      std::cout << options.toJson() << std::endl;
       if (options.hasKey("id")) {
+    std::cout << __FILE__ << __LINE__ << std::endl;
         VPackSlice const v = options.get("id");
         if (v.isString()) {
+    std::cout << __FILE__ << __LINE__ << std::endl;
           id = arangodb::basics::StringUtils::uint64(v.copyString());
         }
       }
 
+    std::cout << __FILE__ << __LINE__ << std::endl;
       if (id > 0) {
         ids.push_back(id);
       }
 
+    std::cout << __FILE__ << __LINE__ << std::endl;
       TRI_vocbase_t* vocbase =
           TRI_UseCoordinatorDatabaseServer(_server, name.c_str());
 
@@ -527,6 +550,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 
         TRI_ReleaseVocBase(vocbase);
       }
+    std::cout << __FILE__ << __LINE__ << std::endl;
 
       ++it;
     }

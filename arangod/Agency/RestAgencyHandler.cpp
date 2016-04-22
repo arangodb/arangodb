@@ -43,8 +43,6 @@ using namespace arangodb::consensus;
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-extern ArangoServer* ArangoInstance;
-
 RestAgencyHandler::RestAgencyHandler(HttpRequest* request, Agent* agent)
     : RestBaseHandler(request), _agent(agent) {}
 

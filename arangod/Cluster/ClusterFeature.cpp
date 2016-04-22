@@ -396,7 +396,6 @@ void ClusterFeature::start() {
                    "default value '"
                 << _heartbeatInterval << " ms'";
     }
-
     // start heartbeat thread
     _heartbeatThread = new HeartbeatThread(DatabaseFeature::DATABASE->server(),
                                            _agencyCallbackRegistry.get(),
