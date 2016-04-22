@@ -63,7 +63,7 @@ struct OperationResult {
   OperationResult(std::shared_ptr<VPackBuffer<uint8_t>> buffer,
                   std::shared_ptr<VPackCustomTypeHandler> handler,
                   std::string const& message, int code, bool wasSynchronous,
-                  std::unordered_map<int, size_t> countErrorCodes)
+                  std::unordered_map<int, size_t> const& countErrorCodes)
       : buffer(buffer),
         customTypeHandler(handler),
         errorMessage(message),
