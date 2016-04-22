@@ -151,7 +151,7 @@ void CheckVersionFeature::checkVersion() {
       }
     }
 
-    // issue #391: when invoked with --upgrade, the server will not always shut
+    // issue #391: when invoked with --database.upgrade, the server will not always shut
     // down
     localContext->Exit();
     V8DealerFeature::DEALER->exitContext(context);
