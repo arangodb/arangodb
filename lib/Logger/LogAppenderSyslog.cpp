@@ -126,4 +126,7 @@ LogAppenderSyslog::LogAppenderSyslog(std::string const& facility,
   std::abort();
 }
 
+void LogAppenderSyslog::close() {
+}
+
 #endif
