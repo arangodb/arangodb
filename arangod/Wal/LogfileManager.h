@@ -445,7 +445,7 @@ class LogfileManager {
 
   /// @brief maximum wait time for write-throttling
 
-#warning JAN this should be non-static, but the singleton cannot be created before 'start'
+  //YYY #warning JAN this should be non-static, but the singleton cannot be created before 'start'
   static bool _allowOversizeEntries;
   static std::string _directory;
   static uint32_t _historicLogfiles;

@@ -84,7 +84,7 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   LOG(TRACE) << "executing upgrade procedure: disabling server features";
 
-  ApplicationServer::disableFeatures(_nonServerFeatures);
+  ApplicationServer::forceDisableFeatures(_nonServerFeatures);
 
   DatabaseFeature* database = dynamic_cast<DatabaseFeature*>(
       ApplicationServer::lookupFeature("Database"));
@@ -93,7 +93,7 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   ClusterFeature* cluster = dynamic_cast<ClusterFeature*>(
       ApplicationServer::lookupFeature("Cluster"));
-  cluster->disable();
+  cluster->forceDisable();
 }
 
 void UpgradeFeature::start() {

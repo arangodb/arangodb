@@ -62,7 +62,7 @@ using namespace arangodb;
 /// @brief Hooks for OS-Specific functions
 ////////////////////////////////////////////////////////////////////////////////
 
-#warning TODO
+//YYY #warning TODO
 #if 0
 #ifdef _WIN32
 extern bool TRI_ParseMoreArgs(int argc, char* argv[]);
@@ -91,8 +91,8 @@ int main(int argc, char* argv[]) {
   application_features::ApplicationServer server(options);
 
   std::vector<std::string> nonServerFeatures = {
-      "Action", "Agency", "Cluster", "Daemon", "Dispatcher", "Endpoint",
-      "LoggerBufferFeature", "Server", "Scheduler", "Ssl", "Supervisor"};
+      "Action", "Affinity", "Agency", "Cluster", "Daemon", "Dispatcher", "Endpoint",
+      "LoggerBufferFeature", "RestServer", "Server", "Scheduler", "Ssl", "Statistics", "Supervisor"};
 
   int ret = EXIT_FAILURE;
 
@@ -139,7 +139,7 @@ int main(int argc, char* argv[]) {
   return context.exit(ret);
 }
 
-#warning TODO
+//YYY #warning TODO
 #if 0
 
   // windows only

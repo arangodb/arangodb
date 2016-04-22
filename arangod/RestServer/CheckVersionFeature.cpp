@@ -67,7 +67,7 @@ void CheckVersionFeature::validateOptions(
     return;
   }
 
-  ApplicationServer::disableFeatures(_nonServerFeatures);
+  ApplicationServer::forceDisableFeatures(_nonServerFeatures);
 
   LoggerFeature* logger =
       dynamic_cast<LoggerFeature*>(ApplicationServer::lookupFeature("Logger"));

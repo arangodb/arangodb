@@ -67,11 +67,23 @@ ApplicationFeature* ApplicationServer::lookupFeature(std::string const& name) {
 }
 
 void ApplicationServer::disableFeatures(std::vector<std::string> const& names) {
-  for (auto name : names) {
+  disableFeatures(names, false);
+}
+
+void ApplicationServer::forceDisableFeatures(std::vector<std::string> const& names) {
+  disableFeatures(names, true);
+}
+   
+void ApplicationServer::disableFeatures(std::vector<std::string> const& names, bool force) {
+  for (auto const& name : names) {
     auto feature = ApplicationServer::lookupFeature(name);
 
     if (feature != nullptr) {
-      feature->disable();
+      if (force) {
+        feature->forceDisable();
+      } else {
+        feature->disable();
+      }
     }
   }
 }

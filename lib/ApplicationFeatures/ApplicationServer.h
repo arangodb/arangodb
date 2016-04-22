@@ -94,6 +94,7 @@ class ApplicationServer {
   static ApplicationServer* server;
   static ApplicationFeature* lookupFeature(std::string const&);
   static void disableFeatures(std::vector<std::string> const&);
+  static void forceDisableFeatures(std::vector<std::string> const&);
 
  public:
   explicit ApplicationServer(std::shared_ptr<options::ProgramOptions>);
@@ -137,6 +138,8 @@ class ApplicationServer {
   VPackBuilder options(std::unordered_set<std::string> const& excludes) const;
 
  private:
+  static void disableFeatures(std::vector<std::string> const& names, bool force);
+  
   // fail and abort with the specified message
   void fail(std::string const& message);
 

@@ -57,7 +57,7 @@ HttpHandler::status_t RestVersionHandler::execute() {
 
       Version::getVPack(result);
 
-#warning TODO
+//YYY #warning TODO
 #if 0
       if (ArangoInstance != nullptr) {
         result.add("mode", VPackValue(ArangoInstance->modeString()));
