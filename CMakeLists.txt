@@ -214,13 +214,12 @@ if (MSVC)
   configure_file("Installation/Windows/vcproj.user/arangod.vcxproj.user" ${CMAKE_BINARY_DIR})
   add_definitions("-D_CRT_SECURE_NO_WARNINGS=1")
   add_definitions("-DFD_SETSIZE=2048")
-  add_definitions("-DUSE_REGEX_STATIC=1")
   add_definitions("-DU_STATIC_IMPLEMENTATION=1")
 
-  set(MSVC_LIBS crypt32.lib;WINMM.LIB;Ws2_32.lib;getopt;regex)
+  set(MSVC_LIBS crypt32.lib;WINMM.LIB;Ws2_32.lib)
 
   set(CMAKE_EXE_LINKER_FLAGS
-    "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE /SAFESEH:NO /MACHINE:x64 /ignore:4099 /ignore:1021 ${BASE_LD_FLAGS}"
+    "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE /SAFESEH:NO /MACHINE:x64 /ignore:4099 ${BASE_LD_FLAGS}"
   )
 else ()
   set(CMAKE_EXE_LINKER_FLAGS
@@ -599,22 +598,6 @@ add_subdirectory(3rdParty)
 foreach (LINK_DIR ${LINK_DIRECTORIES})
   link_directories("${LINK_DIR}")
 endforeach()
-
-################################################################################
-## GETOPT
-################################################################################
-
-if (WINDOWS)
-  include_directories(${GETOPT_INCLUDE_DIR})
-endif ()
-
-################################################################################
-## REGEX
-################################################################################
-
-if (WINDOWS)
-  include_directories(${REGEX_INCLUDE_DIR})
-endif ()
 
 ################################################################################
 ## BOOST
