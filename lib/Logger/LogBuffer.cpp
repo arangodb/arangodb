@@ -1,51 +1,69 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stores a message in a ring buffer
+/// DISCLAIMER
 ///
-/// We ignore any race conditions here.
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-static void StoreMessage(LogLevel level, std::string const& message,
-                         size_t offset) {
-  MUTEX_LOCKER(guard, RingBufferLock);
+#include "LogBuffer.h"
 
-  uint64_t n = RingBufferId++;
-  LogBuffer* ptr = &RingBuffer[n % RING_BUFFER_SIZE];
+#include <iostream>
+
+#include "Basics/MutexLocker.h"
+#include "Logger/LogAppender.h"
+#include "Logger/Logger.h"
+
+using namespace arangodb;
+
+Mutex LogBuffer::_ringBufferLock;
+uint64_t LogBuffer::_ringBufferId = 0;
+LogBuffer LogBuffer::_ringBuffer[RING_BUFFER_SIZE];
+
+static void logEntry(LogMessage* message) {
+  MUTEX_LOCKER(guard, LogBuffer::_ringBufferLock);
+
+  uint64_t n = LogBuffer::_ringBufferId++;
+  LogBuffer* ptr = &LogBuffer::_ringBuffer[n % LogBuffer::RING_BUFFER_SIZE];
 
   ptr->_id = n;
-  ptr->_level = level;
+  ptr->_level = message->_level;
   ptr->_timestamp = time(0);
-  TRI_CopyString(ptr->_message, message.c_str() + offset,
+  TRI_CopyString(ptr->_message, message->_message.c_str() + message->_offset,
                  sizeof(ptr->_message) - 1);
 }
 
-
-static Mutex Logger::_ringBufferLock;
-static uint64_t Logger::_ringBufferId = 0;
-static LogBuffer Logger::_ringBuffer[RING_BUFFER_SIZE];
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the last log entries
-////////////////////////////////////////////////////////////////////////////////
-
-std::vector<LogBuffer> Logger::bufferedEntries(LogLevel level, uint64_t start,
-                                               bool upToLevel) {
+std::vector<LogBuffer> LogBuffer::entries(LogLevel level, uint64_t start,
+                                          bool upToLevel) {
   std::vector<LogBuffer> result;
 
-  MUTEX_LOCKER(guard, RingBufferLock);
+  MUTEX_LOCKER(guard, LogBuffer::_ringBufferLock);
 
   size_t s = 0;
   size_t e;
 
-  if (RingBufferId >= RING_BUFFER_SIZE) {
-    s = e = (RingBufferId + 1) % RING_BUFFER_SIZE;
+  if (LogBuffer::_ringBufferId >= LogBuffer::RING_BUFFER_SIZE) {
+    s = e = (LogBuffer::_ringBufferId + 1) % LogBuffer::RING_BUFFER_SIZE;
   } else {
-    e = RingBufferId;
+    e = LogBuffer::_ringBufferId;
   }
 
   for (size_t i = s; i != e;) {
-    LogBuffer& p = RingBuffer[i];
+    LogBuffer& p = LogBuffer::_ringBuffer[i];
 
     if (p._id >= start) {
       if (upToLevel) {
@@ -61,7 +79,7 @@ std::vector<LogBuffer> Logger::bufferedEntries(LogLevel level, uint64_t start,
 
     ++i;
 
-    if (i >= RING_BUFFER_SIZE) {
+    if (i >= LogBuffer::RING_BUFFER_SIZE) {
       i = 0;
     }
   }
@@ -69,12 +87,4 @@ std::vector<LogBuffer> Logger::bufferedEntries(LogLevel level, uint64_t start,
   return result;
 }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the last log entries
-  //////////////////////////////////////////////////////////////////////////////
-
-  static std::vector<LogBuffer> bufferedEntries(LogLevel level, uint64_t start,
-                                                bool upToLevel);
-
-#include <iostream>
-
+void LogBuffer::initialize() { LogAppender::addLogger(logEntry); }

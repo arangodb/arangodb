@@ -1,11 +1,9 @@
 <script id="navigationView.ejs" type="text/template">
   <ul class="navlist arango-collection-ul" id="arangoCollectionUl">
     <% if (isCluster) { %>
-      <li class="navbar-spacer big"></li>
       <li class="cluster-menu"><a id="cluster" class="tab" href="#cluster"><i class="fa fa-circle-o"></i>Cluster</a></li>
       <li class="nodes-menu"><a id="nodes" class="tab" href="#cNodes"><i class="fa fa-server"></i>Nodes</a></li>
     <% } else { %>
-      <li class="navbar-spacer big"></li>
       <li class="dashboard-menu"><a id="dashboard" class="tab" href="#dashboard"><i class="fa fa-dashboard"></i>Dashboard</a></li>
     <% } %>
     <li class="navbar-spacer big"></li>
@@ -30,7 +28,7 @@
       <li class="databases-menu"><a id="databases" class="tab" href="#databases"><i class="fa fa-database"></i>Databases</a></li>
     <% } %>
     <% if (!isCluster) { %>
-      <li class="logs-menu"><a id="logs" class="tab" href="#manage"><i class="fa fa-file-text"></i>Logs</a></li>
+      <li class="logs-menu"><a id="logs" class="tab" href="#logs"><i class="fa fa-file-text"></i>Logs</a></li>
     <% } %>
     <li class="navbar-spacer big"></li>
     <li class="helpus-menu"><a id="helpus" class="tab" href="#helpus"><i class="fa fa-heart"></i>Help Us</a></li>
@@ -45,11 +43,9 @@
         </li>
 
         <% if (!isCluster) { %>
-          <% if (currentDB.get('isSystem')) { %>
-            <li class="dropdown-item">
-              <a id="logs" class="tab" href="#logs">Logs</a>
-            </li>
-          <% } %>
+          <li class="dropdown-item">
+            <a id="logs" class="tab" href="#logs">Logs</a>
+          </li>
         <% } %>
 
         <li class="dropdown-item">

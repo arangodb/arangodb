@@ -128,9 +128,10 @@ void RestServerFeature::collectOptions(
                      "keep-alive timeout in seconds",
                      new DoubleParameter(&_keepAliveTimeout));
 
-  options->addOption("--http.hide-product-header",
-                     "do not expose \"Server: ArangoDB\" header in HTTP responses",
-                     new BooleanParameter(&HttpResponse::HIDE_PRODUCT_HEADER));
+  options->addOption(
+      "--http.hide-product-header",
+      "do not expose \"Server: ArangoDB\" header in HTTP responses",
+      new BooleanParameter(&HttpResponse::HIDE_PRODUCT_HEADER));
 }
 
 void RestServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
@@ -217,6 +218,22 @@ void RestServerFeature::start() {
 
   // disabled maintenance mode
   HttpHandlerFactory::setMaintenance(false);
+
+  LOG(INFO) << "Authentication is turned " << (_authentication ? "on" : "off");
+
+  if (_authentication) {
+    if (_authenticationSystemOnly) {
+      LOG(INFO) << "Authentication system only";
+    }
+
+#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
+    LOG(INFO) << "Authentication for unix sockets is turned "
+              << (_authenticationUnixSockets ? "on" : "off");
+#endif
+  }
+  
+  LOG(INFO) << "ArangoDB (version " << ARANGODB_VERSION_FULL
+            << ") is ready for business. Have fun!";
 }
 
 void RestServerFeature::stop() {
@@ -248,7 +265,7 @@ void RestServerFeature::buildServers() {
       SchedulerFeature::SCHEDULER, DispatcherFeature::DISPATCHER,
       _handlerFactory.get(), _jobManager.get(), _keepAliveTimeout);
 
-//YYY #warning FRANK filter list
+  // YYY #warning FRANK filter list
   auto const& endpointList = endpoint->endpointList();
   httpServer->setEndpointList(&endpointList);
   _servers.push_back(httpServer);
@@ -282,7 +299,7 @@ void RestServerFeature::defineHandlers() {
   AgencyFeature* agency = dynamic_cast<AgencyFeature*>(
       application_features::ApplicationServer::lookupFeature("Agency"));
   TRI_ASSERT(agency != nullptr);
-  
+
   ClusterFeature* cluster = dynamic_cast<ClusterFeature*>(
       application_features::ApplicationServer::lookupFeature("Cluster"));
   TRI_ASSERT(cluster != nullptr);
@@ -335,7 +352,7 @@ void RestServerFeature::defineHandlers() {
       RestHandlerCreator<RestSimpleQueryHandler>::createData<
           aql::QueryRegistry*>,
       queryRegistry);
-  
+
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_KEYS_PATH,
       RestHandlerCreator<RestSimpleQueryHandler>::createData<
@@ -379,15 +396,17 @@ void RestServerFeature::defineHandlers() {
 
     _handlerFactory->addPrefixHandler(
         RestVocbaseBaseHandler::AGENCY_PRIV_PATH,
-        RestHandlerCreator<RestAgencyPrivHandler>::createData<consensus::Agent*>,
+        RestHandlerCreator<RestAgencyPrivHandler>::createData<
+            consensus::Agent*>,
         agency->agent());
   }
-  
-  if (cluster->isEnabled()) {  
+
+  if (cluster->isEnabled()) {
     // add "/agency-callbacks" handler
     _handlerFactory->addPrefixHandler(
         cluster->agencyCallbacksPath(),
-        RestHandlerCreator<RestAgencyCallbacksHandler>::createData<AgencyCallbackRegistry*>,
+        RestHandlerCreator<RestAgencyCallbacksHandler>::createData<
+            AgencyCallbackRegistry*>,
         cluster->agencyCallbackRegistry());
   }
 

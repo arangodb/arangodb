@@ -224,7 +224,7 @@
         "aqlEditor", "queryTable", "previewWrapper", "querySpotlight",
         "bindParamEditor", "toggleQueries1", "toggleQueries2",
         "saveCurrentQuery", "querySize", "executeQuery", "switchTypes", 
-        "explainQuery", "clearQuery", "importQuery", "exportQuery"
+        "explainQuery", "importQuery", "exportQuery"
       ];
       _.each(divs, function(div) {
         $("#" + div).toggle();

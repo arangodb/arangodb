@@ -1223,6 +1223,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   double const realTimeout = getTimeout(timeout);
   double const endTime = TRI_microtime() + realTimeout;
   double const interval = getPollInterval();
+
   {
     // check if a collection with the same name is already planned
     loadPlannedCollections();
@@ -1241,7 +1242,8 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
       }
     }
   }
-
+  
+  // mop: why do these ask the agency instead of checking cluster info?
   if (!ac.exists("Plan/Databases/" + databaseName)) {
     return setErrormsg(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
   }
@@ -1250,32 +1252,43 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
     return setErrormsg(TRI_ERROR_CLUSTER_COLLECTION_ID_EXISTS, errorMsg);
   }
 
-  AgencyCommResult result =
-      ac.casValue("Plan/Collections/" + databaseName + "/" + collectionID, json,
-                  false, 0.0, 0.0);
-  if (!result.successful()) {
+  VPackBuilder builder;
+  builder.add(VPackValue(json.toJson()));
+
+  AgencyOperation createCollection("Plan/Collections/" + databaseName + "/" + collectionID
+      , AgencyValueOperationType::SET, builder.slice());
+  AgencyOperation increaseVersion("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
+
+  AgencyPrecondition precondition = AgencyPrecondition(
+      "Plan/Collections/" + databaseName + "/" + collectionID
+      , AgencyPrecondition::EMPTY, true
+  );
+
+  AgencyTransaction transaction;
+
+  transaction.operations.push_back(createCollection);
+  transaction.operations.push_back(increaseVersion);
+  transaction.preconditions.push_back(precondition);
+  
+  AgencyCommResult res;
+  ac.sendTransactionWithFailover(res, transaction);
+
+  if (!res.successful()) {
     return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN,
                        errorMsg);
   }
 
-  ac.increaseVersion("Plan/Version");
-
   // Update our cache:
   loadPlannedCollections();
   
-  AgencyCommResult res;
   std::string const where =
       "Current/Collections/" + databaseName + "/" + collectionID;
   while (TRI_microtime() <= endTime) {
     res.clear();
     res = ac.getValues(where, true);
 
-    LOG(TRACE) << "CREATE OYOYOYOY " << where;
-    
     if (res.successful() && res.parse(where + "/", false)) {
-    LOG(TRACE) << "CREATE IS SUCCESS " << where;
       if (res._values.size() == (size_t)numberOfShards) {
-    LOG(TRACE) << "CREATE has number " << where;
         std::string tmpMsg = "";
         bool tmpHaveError = false;
         for (auto const& p : res._values) {
@@ -1297,23 +1310,17 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
             }
           }
         }
-    LOG(TRACE) << "CREATE PRE LOAD has number " << where;
         loadCurrentCollections();
-    LOG(TRACE) << "CREATE POST LOAD has number " << where;
         if (tmpHaveError) {
           errorMsg = "Error in creation of collection:" + tmpMsg;
-    LOG(TRACE) << "CREATE KAP0TT " << where;
           return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION;
         }
-    LOG(TRACE) << "CREATE OK " << where;
         return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
       }
     }
 
     res.clear();
-    LOG(TRACE) << "JASSSSS " << interval;
     _agencyCallbackRegistry->awaitNextChange("Current/Version", interval);
-    LOG(TRACE) << "NNNNJASSSSS " << interval;
   }
 
   // LOG(ERR) << "GOT TIMEOUT. NUMBEROFSHARDS: " << numberOfShards;

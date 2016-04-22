@@ -32,7 +32,6 @@
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
-class TransactionContext;
 
 namespace velocypack {
 class Builder;

@@ -220,7 +220,7 @@ if (MSVC)
   set(MSVC_LIBS crypt32.lib;WINMM.LIB;Ws2_32.lib;getopt;regex)
 
   set(CMAKE_EXE_LINKER_FLAGS
-    "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE /SAFESEH:NO /MACHINE:x64 /ignore:4099 ${BASE_LD_FLAGS}"
+    "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE /SAFESEH:NO /MACHINE:x64 /ignore:4099 /ignore:1021 ${BASE_LD_FLAGS}"
   )
 else ()
   set(CMAKE_EXE_LINKER_FLAGS
@@ -344,20 +344,37 @@ if (USE_FAILURE_TESTS)
 endif ()
 
 ################################################################################
+## JEMALLOC
+################################################################################
+set(JEMALLOC_DEFAULT_VALUE ON)
+if (WINDOWS OR SOLARIS OR USE_TCMALLOC)
+  set(JEMALLOC_DEFAULT_VALUE OFF)
+endif ()
+
+option(USE_JEMALLOC
+  "use JEMALLOC if the library is available"
+  ${JEMALLOC_DEFAULT_VALUE}
+  )
+
+if (USE_JEMALLOC)
+  find_package(jemalloc)
+
+  if (JEMALLOC_FOUND)
+    add_definitions("-DARANGODB_HAVE_JEMALLOC=1")
+    set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_jemalloc_LIBRARY})
+    message(STATUS "Found JEMALLOC")
+  else ()
+    message(STATUS "Missing JEMALLOC")
+  endif ()
+endif ()
+
+################################################################################
 ## TCMALLOC
 ################################################################################
-
-if (WINDOWS OR SOLARIS)
-  option(USE_TCMALLOC
-    "use TCMALLOC library"
-    FALSE
+option(USE_TCMALLOC
+  "use TCMALLOC if the library is available"
+  OFF
   )
-else ()
-  option(USE_TCMALLOC
-    "use TCMALLOC if the library is available"
-    TRUE
-  )
-endif ()
 
 if (USE_TCMALLOC)
   find_package(tcmalloc)
@@ -371,6 +388,9 @@ if (USE_TCMALLOC)
   endif ()
 endif ()
 
+if (${USE_JEMALLOC} AND ${USE_TCMALLOC})
+  MESSAGE(ERROR," you mustn't demand for tcmalloc and jemalloc at the same time!")
+endif()
 ################################################################################
 ## LIBRARY RESOLV
 ################################################################################

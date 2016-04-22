@@ -26,7 +26,6 @@
 
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Basics/ConditionLocker.h"
-#include "Basics/RandomGenerator.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WorkMonitor.h"
 #include "Cluster/ServerState.h"
@@ -34,6 +33,7 @@
 #include "Dispatcher/DispatcherThread.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/V8TransactionContext.h"
 #include "V8/v8-buffer.h"
@@ -203,7 +203,7 @@ void V8DealerFeature::start() {
     _nrContexts += _nrAdditionalContexts;
   }
 
-  defineDouble("V8_CONTEXTS", _nrContexts);
+  defineDouble("V8_CONTEXTS", static_cast<double>(_nrContexts));
 
   // setup instances
   {
@@ -225,6 +225,8 @@ void V8DealerFeature::start() {
       ApplicationServer::lookupFeature("Database"));
 
   loadJavascript(database->vocbase(), "server/initialize.js");
+
+  startGarbageCollection();
 }
 
 void V8DealerFeature::stop() {
@@ -233,9 +235,7 @@ void V8DealerFeature::stop() {
   shutdownContexts();
 
   // delete GC thread after all action threads have been stopped
-  if (_gcThread != nullptr) {
-    delete _gcThread;
-  }
+  delete _gcThread;
 
   DEALER = nullptr;
 }
@@ -489,18 +489,19 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
         V8Context* context = _dirtyContexts.back();
         _freeContexts.push_back(context);
         _dirtyContexts.pop_back();
-      } else {
-        auto currentThread = arangodb::rest::DispatcherThread::current();
+        break;
+      } 
+      
+      auto currentThread = arangodb::rest::DispatcherThread::current();
 
-        if (currentThread != nullptr) {
-          currentThread->block();
-        }
+      if (currentThread != nullptr) {
+        currentThread->block();
+      }
 
-        guard.wait();
+      guard.wait();
 
-        if (currentThread != nullptr) {
-          currentThread->unblock();
-        }
+      if (currentThread != nullptr) {
+        currentThread->unblock();
       }
     }
 
@@ -650,26 +651,26 @@ void V8DealerFeature::exitContext(V8Context* context) {
       performGarbageCollection = true;
     }
 
-    {
-      CONDITION_LOCKER(guard, _contextCondition);
+    CONDITION_LOCKER(guard, _contextCondition);
 
-      if (performGarbageCollection && !_freeContexts.empty()) {
-        // only add the context to the dirty list if there is at least one other
-        // free context
-        _dirtyContexts.emplace_back(context);
-      } else {
-        _freeContexts.emplace_back(context);
-      }
-
-      _busyContexts.erase(context);
-
-      guard.broadcast();
+    if (performGarbageCollection && !_freeContexts.empty()) {
+      // only add the context to the dirty list if there is at least one other
+      // free context
+      _dirtyContexts.emplace_back(context);
+    } else {
+      _freeContexts.emplace_back(context);
     }
+
+    _busyContexts.erase(context);
+
+    guard.broadcast();
   } else {
     CONDITION_LOCKER(guard, _contextCondition);
 
     _busyContexts.erase(context);
     _freeContexts.emplace_back(context);
+
+    guard.broadcast();
   }
 }
 
@@ -690,17 +691,26 @@ void V8DealerFeature::applyContextUpdates() {
 
       V8Context* context =
           V8DealerFeature::DEALER->enterContext(vocbase, true, i);
-      v8::HandleScope scope(context->_isolate);
-      auto localContext =
-          v8::Local<v8::Context>::New(context->_isolate, context->_context);
-      localContext->Enter();
 
-      {
-        v8::Context::Scope contextScope(localContext);
-        p.first(context->_isolate, localContext, i);
+      if (context == nullptr) {
+        LOG(FATAL) << "could not updated V8 context #" << i;
+        FATAL_ERROR_EXIT();
       }
 
-      localContext->Exit();
+      {
+        v8::HandleScope scope(context->_isolate);
+        auto localContext =
+            v8::Local<v8::Context>::New(context->_isolate, context->_context);
+        localContext->Enter();
+
+        {
+          v8::Context::Scope contextScope(localContext);
+          p.first(context->_isolate, localContext, i);
+        }
+
+        localContext->Exit();
+      }
+        
       V8DealerFeature::DEALER->exitContext(context);
 
       LOG(TRACE) << "updated V8 context #" << i;
@@ -966,31 +976,39 @@ void V8DealerFeature::initializeContext(size_t i) {
 void V8DealerFeature::loadJavascriptFiles(TRI_vocbase_t* vocbase,
                                           std::string const& file, size_t i) {
   V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase, true, i);
-  v8::HandleScope scope(context->_isolate);
-  auto localContext =
-      v8::Local<v8::Context>::New(context->_isolate, context->_context);
-  localContext->Enter();
 
-  {
-    v8::Context::Scope contextScope(localContext);
-
-    switch (_startupLoader.loadScript(context->_isolate, localContext, file)) {
-      case JSLoader::eSuccess:
-        LOG(TRACE) << "loaded JavaScript file '" << file << "'";
-        break;
-      case JSLoader::eFailLoad:
-        LOG(FATAL) << "cannot load JavaScript file '" << file << "'";
-        FATAL_ERROR_EXIT();
-        break;
-      case JSLoader::eFailExecute:
-        LOG(FATAL) << "error during execution of JavaScript file '" << file
-                   << "'";
-        FATAL_ERROR_EXIT();
-        break;
-    }
+  if (context == nullptr) {
+    LOG(FATAL) << "could not load JavaScript files in context #" << i;
+    FATAL_ERROR_EXIT();
   }
 
-  localContext->Exit();
+  {
+    v8::HandleScope scope(context->_isolate);
+    auto localContext =
+        v8::Local<v8::Context>::New(context->_isolate, context->_context);
+    localContext->Enter();
+
+    {
+      v8::Context::Scope contextScope(localContext);
+
+      switch (_startupLoader.loadScript(context->_isolate, localContext, file)) {
+        case JSLoader::eSuccess:
+          LOG(TRACE) << "loaded JavaScript file '" << file << "'";
+          break;
+        case JSLoader::eFailLoad:
+          LOG(FATAL) << "cannot load JavaScript file '" << file << "'";
+          FATAL_ERROR_EXIT();
+          break;
+        case JSLoader::eFailExecute:
+          LOG(FATAL) << "error during execution of JavaScript file '" << file
+                    << "'";
+          FATAL_ERROR_EXIT();
+          break;
+      }
+    }
+
+    localContext->Exit();
+  }
   V8DealerFeature::DEALER->exitContext(context);
 
   LOG(TRACE) << "loaded Javascript files for V8 context #" << i;

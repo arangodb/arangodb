@@ -205,6 +205,7 @@ void Expression::replaceVariableReference(Variable const* variable,
     // must rebuild the expression completely, as it may have changed drastically
     _built = false;
     _type = UNPROCESSED;
+    _node->clearFlagsRecursive(); // recursively delete the node's flags
   }
 
   const_cast<AstNode*>(_node)->clearFlags();
@@ -224,7 +225,7 @@ void Expression::invalidate() {
       _func = nullptr;
       _built = false;
     }
-  }
+  } 
   // we do not need to invalidate the other expression type
   // expression data will be freed in the destructor
 }

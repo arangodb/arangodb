@@ -51,9 +51,9 @@
 }
 
 .dygraph-label.dygraph-title {
+  @extend %font-family;
   color: $c-black;
   font: {
-    family: 'Roboto', sans-serif;
     size: 15px;
     weight: 400;
   }

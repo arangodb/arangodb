@@ -30,7 +30,6 @@
 #include "Basics/FileUtils.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/RandomGenerator.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/Thread.h"
 #include "Basics/conversions.h"
@@ -39,6 +38,7 @@
 #include "Basics/tri-strings.h"
 #include "Basics/vector.h"
 #include "Logger/Logger.h"
+#include "Random/RandomGenerator.h"
 
 using namespace arangodb::basics;
 using namespace arangodb;

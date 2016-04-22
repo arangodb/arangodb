@@ -153,9 +153,7 @@ add_library(${LIB_ARANGO} STATIC
   ApplicationFeatures/ConfigFeature.cpp
   ApplicationFeatures/ConsoleFeature.cpp
   ApplicationFeatures/LanguageFeature.cpp
-  ApplicationFeatures/LoggerFeature.cpp
   ApplicationFeatures/NonceFeature.cpp
-  ApplicationFeatures/RandomFeature.cpp
   ApplicationFeatures/ShutdownFeature.cpp
   ApplicationFeatures/SslFeature.cpp
   ApplicationFeatures/TempFeature.cpp
@@ -173,14 +171,12 @@ add_library(${LIB_ARANGO} STATIC
   Basics/Mutex.cpp
   Basics/MutexLocker.cpp
   Basics/Nonce.cpp
-  Basics/RandomGenerator.cpp
   Basics/ReadWriteLock.cpp
   Basics/ReadWriteLockCPP11.cpp
   Basics/StringBuffer.cpp
   Basics/StringUtils.cpp
   Basics/Thread.cpp
   Basics/ThreadPool.cpp
-  Basics/UniformCharacter.cpp
   Basics/Utf8Helper.cpp
   Basics/VelocyPackHelper.cpp
   Basics/WorkMonitor.cpp
@@ -220,11 +216,17 @@ add_library(${LIB_ARANGO} STATIC
   Logger/LogAppenderFile.cpp
   Logger/LogAppenderSyslog.cpp
   Logger/LogAppenderTty.cpp
+  Logger/LogBuffer.cpp
   Logger/LogLevel.cpp
   Logger/LogThread.cpp
   Logger/LogTopic.cpp
   Logger/Logger.cpp
+  Logger/LoggerBufferFeature.cpp
+  Logger/LoggerFeature.cpp
   Logger/LoggerStream.cpp
+  Random/RandomFeature.cpp
+  Random/RandomGenerator.cpp
+  Random/UniformCharacter.cpp
   Rest/GeneralRequest.cpp
   Rest/GeneralResponse.cpp
   Rest/HttpRequest.cpp
@@ -235,15 +237,15 @@ add_library(${LIB_ARANGO} STATIC
   SimpleHttpClient/ClientConnection.cpp
   SimpleHttpClient/ConnectionManager.cpp
   SimpleHttpClient/GeneralClientConnection.cpp
+  SimpleHttpClient/SimpleHttpClient.cpp
+  SimpleHttpClient/SimpleHttpResult.cpp
+  SimpleHttpClient/SslClientConnection.cpp
   Utilities/LineEditor.cpp
   Utilities/ScriptLoader.cpp
   Utilities/ShellBase.cpp
   Zip/ioapi.cpp
   Zip/unzip.cpp
   Zip/zip.cpp
-  SimpleHttpClient/SslClientConnection.cpp
-  SimpleHttpClient/SimpleHttpClient.cpp
-  SimpleHttpClient/SimpleHttpResult.cpp
 )
 
 ################################################################################

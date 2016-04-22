@@ -46,17 +46,25 @@ static OperationResult FetchDocumentById(arangodb::Transaction* trx,
                                          std::string const& id,
                                          VPackBuilder& builder,
                                          OperationOptions& options) {
-  std::vector<std::string> parts =
-          arangodb::basics::StringUtils::split(id, "/");
-  TRI_ASSERT(parts.size() == 2);
-  trx->addCollectionAtRuntime(parts[0]);
+  size_t pos = id.find('/');
+  if (pos == std::string::npos) {
+    TRI_ASSERT(false);
+    return OperationResult(TRI_ERROR_INTERNAL);
+  }
+  if (id.find('/', pos + 1) != std::string::npos) {
+    TRI_ASSERT(false);
+    return OperationResult(TRI_ERROR_INTERNAL);
+  }
+
+  std::string col = id.substr(0, pos);
+  trx->addCollectionAtRuntime(col);
   builder.clear();
   builder.openObject();
   builder.add(VPackValue(TRI_VOC_ATTRIBUTE_KEY));
-  builder.add(VPackValue(parts[1]));
+  builder.add(VPackValue(id.substr(pos + 1)));
   builder.close();
 
-  OperationResult opRes = trx->document(parts[0], builder.slice(), options);
+  OperationResult opRes = trx->document(col, builder.slice(), options);
 
   if (opRes.failed() && opRes.code != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
     THROW_ARANGO_EXCEPTION(opRes.code);
@@ -74,29 +82,25 @@ struct BasicExpander {
   std::vector<EdgeCollectionInfo*> const _colls;
   arangodb::Transaction* _trx;
   TRI_edge_direction_e _dir;
-  std::shared_ptr<OperationResult> _opRes;
+  std::vector<TRI_doc_mptr_t*> _cursor;
 
  public:
   BasicExpander(std::vector<EdgeCollectionInfo*> const& colls,
                 arangodb::Transaction* trx, TRI_edge_direction_e dir)
       : _colls(colls),
         _trx(trx),
-        _dir(dir),
-        _opRes(std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR)){};
+        _dir(dir) {}
 
   void operator()(std::string const& v, std::vector<std::string>& res_edges,
                   std::vector<std::string>& neighbors) {
     for (auto const& edgeCollection : _colls) {
+      _cursor.clear();
       TRI_ASSERT(edgeCollection != nullptr);
       std::shared_ptr<OperationCursor> edgeCursor = edgeCollection->getEdges(_dir, v);
       while (edgeCursor->hasMore()) {
-        edgeCursor->getMore(_opRes, UINT64_MAX, false);
-        if (_opRes->failed()) {
-          THROW_ARANGO_EXCEPTION(_opRes->code);
-        }
-        VPackSlice edges = _opRes->slice();
-
-        for (auto const& edge : VPackArrayIterator(edges)) {
+        edgeCursor->getMoreMptr(_cursor, UINT64_MAX);
+        for (auto const& mptr : _cursor) {
+          VPackSlice edge(mptr->vpack());
           std::string edgeId = _trx->extractIdString(edge);
           std::string from = edge.get(TRI_VOC_ATTRIBUTE_FROM).copyString();
           if (from == v) {
@@ -202,6 +206,7 @@ class MultiCollectionEdgeExpander {
 
   void operator()(std::string const& source,
                   std::vector<ArangoDBPathFinder::Step*>& result) {
+    std::vector<TRI_doc_mptr_t*> cursor;
     for (auto const& edgeCollection : _edgeCollections) {
       TRI_ASSERT(edgeCollection != nullptr);
 
@@ -227,16 +232,12 @@ class MultiCollectionEdgeExpander {
           }
         }
       };
-
-      auto opRes = std::make_shared<OperationResult>(TRI_ERROR_NO_ERROR);
+      
+      cursor.clear();
       while (edgeCursor->hasMore()) {
-        edgeCursor->getMore(opRes, UINT64_MAX, false);
-        if (opRes->failed()) {
-          THROW_ARANGO_EXCEPTION(opRes->code);
-        }
-        VPackSlice edges = opRes->slice();
-
-        for (auto const& edge : VPackArrayIterator(edges)) {
+        edgeCursor->getMoreMptr(cursor, UINT64_MAX);
+        for (auto const& mptr : cursor) {
+          VPackSlice edge(mptr->vpack());
           if (!_isAllowed(edge)) {
             continue;
           }
@@ -418,11 +419,20 @@ bool BasicOptions::matchesEdge(VPackSlice edge) const {
     return true;
   }
 
-  auto id = _trx->extractIdString(edge);
-  std::vector<std::string> parts = arangodb::basics::StringUtils::split(id, "/");
-  TRI_ASSERT(parts.size() == 2); // We have a real ID
-  auto it = _edgeFilter.find(parts[0]);
-  
+  std::string id = _trx->extractIdString(edge);
+  size_t pos = id.find('/');
+
+  if (pos == std::string::npos) {
+    // no / contained in _id!
+    return false;
+  } 
+  if (id.find('/', pos + 1) != std::string::npos) {
+    // multiple / contained in _id!
+    return false;
+  }
+
+  auto it = _edgeFilter.find(id.substr(0, pos));
+
   if (it == _edgeFilter.end()) {
     // This collection does not have any object that can match.
     // Short circuit.
@@ -473,26 +483,36 @@ bool NeighborsOptions::matchesVertex(std::string const& id) const {
     // Nothing to do
     return true;
   }
-  std::vector<std::string> parts =
-      arangodb::basics::StringUtils::split(id, "/");
-  TRI_ASSERT(parts.size() == 2);
+
+  size_t pos = id.find('/');
+  if (pos == std::string::npos) {
+    TRI_ASSERT(false);
+    return false;
+  }
+  if (id.find('/', pos + 1) != std::string::npos) {
+    TRI_ASSERT(false);
+    return false;
+  }
+  
+  std::string col = id.substr(0, pos);
   // If there are explicitly marked collections check them.
   if (!_explicitCollections.empty()) {
     // If the current collection is not stored the result is invalid
-    if (_explicitCollections.find(parts[0]) == _explicitCollections.end()) {
+    if (_explicitCollections.find(col) == _explicitCollections.end()) {
       return false;
     }
   }
+  std::string key = id.substr(pos + 1);
   VPackBuilder tmp;
   tmp.openObject();
-  tmp.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(parts[1]));
+  tmp.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
   tmp.close();
   OperationOptions opOpts;
-  OperationResult opRes = _trx->document(parts[0], tmp.slice(), opOpts);
+  OperationResult opRes = _trx->document(col, tmp.slice(), opOpts);
   if (opRes.failed()) {
     return false;
   }
-  return BasicOptions::matchesVertex(parts[0], parts[1], opRes.slice());
+  return BasicOptions::matchesVertex(col, key, opRes.slice());
 }
 
 
@@ -532,21 +552,31 @@ std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch(
   auto edgeFilterClosure = [&opts](VPackSlice edge)
                                -> bool { return opts.matchesEdge(edge); };
 
-  auto vertexFilterClosure =
-      [&opts](std::string const& v) -> bool {
-        // TODO: this closure needs to be optimized
-        std::vector<std::string> parts = arangodb::basics::StringUtils::split(v, "/");
-        VPackBuilder tmp;
-        tmp.openObject();
-        tmp.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(parts[1]));
-        tmp.close();
-        OperationOptions opOpts;
-        OperationResult opRes = opts.trx()->document(parts[0], tmp.slice(), opOpts);
-        if (opRes.failed()) {
-          return false;
-        }
-        return opts.matchesVertex(parts[0], parts[1], opRes.slice());
-      };
+  auto vertexFilterClosure = [&opts](std::string const& v) -> bool {
+    size_t pos = v.find('/');
+
+    if (pos == std::string::npos) {
+      // no / contained in _id!
+      return false;
+    }
+    if (v.find('/', pos + 1) != std::string::npos) {
+      // multiple / contained in _id!
+      return false;
+    }
+    std::string col = v.substr(0, pos);
+    std::string key = v.substr(pos + 1);
+
+    VPackBuilder tmp;
+    tmp.openObject();
+    tmp.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+    tmp.close();
+    OperationOptions opOpts;
+    OperationResult opRes = opts.trx()->document(col, tmp.slice(), opOpts);
+    if (opRes.failed()) {
+      return false;
+    }
+    return opts.matchesVertex(col, key, opRes.slice());
+  };
 
   MultiCollectionEdgeExpander forwardExpander(
       forward, collectionInfos, edgeFilterClosure, vertexFilterClosure);
@@ -745,6 +775,7 @@ static void AnyNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
                 nextDepth.emplace_back(tmp);
               }
               visited.emplace(std::move(tmp));
+              continue;
             }
             v = edge.get(TRI_VOC_ATTRIBUTE_FROM).getString(l);
             if (visited.find(std::string(v, l)) == visited.end()) {
@@ -782,6 +813,12 @@ void TRI_RunNeighborsSearch(std::vector<EdgeCollectionInfo*>& collectionInfos,
   std::unordered_set<std::string> visited;
   startVertices.emplace_back(opts.start);
   visited.emplace(opts.start);
+  if (!result.empty()) {
+    // We have a continuous search. Mark previous result as visited
+    for (auto const& r : result) {
+      visited.emplace(r);
+    }
+  }
 
   switch (opts.direction) {
     case TRI_EDGE_IN:

@@ -879,7 +879,7 @@ static void JS_GetCollectionInfoCurrentClusterInfo(
                 TRI_V8_STD_STRING(errorMessage));
   }
   auto servers = cic->servers(shardID);
-  v8::Handle<v8::Array> list = v8::Array::New(isolate, servers.size());
+  v8::Handle<v8::Array> list = v8::Array::New(isolate, static_cast<int>(servers.size()));
   uint32_t pos = 0;
   for (auto const& s : servers) {
     list->Set(pos++, TRI_V8_STD_STRING(s));

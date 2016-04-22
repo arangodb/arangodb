@@ -82,7 +82,7 @@ void ConfigFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 
 void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options) {
   if (StringUtils::tolower(_file) == "none") {
-    LOG_TOPIC(DEBUG, Logger::CONFIG) << "use 'none' config file at all";
+    LOG_TOPIC(DEBUG, Logger::CONFIG) << "use no config file at all";
     return;
   }
 

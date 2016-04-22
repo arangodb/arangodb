@@ -209,8 +209,8 @@ bool CtrlHandler(DWORD eventType) {
   if (!seen) {
     LOG(INFO) << "" << shutdownMessage << ", beginning shut down sequence";
 
-    if (Scheduler::SCHEDULER != nullptr) {
-      Scheduler::SCHEDULER->server()->beginShutdown();
+    if (SchedulerFeature::SCHEDULER != nullptr) {
+      SchedulerFeature::SCHEDULER->server()->beginShutdown();
     }
 
     seen = true;
@@ -273,7 +273,7 @@ class HangupTask : public SignalTask {
 #endif
 
 void SchedulerFeature::buildScheduler() {
-  _scheduler = new SchedulerLibev(_nrSchedulerThreads, _backend);
+  _scheduler = new SchedulerLibev(_nrSchedulerThreads, static_cast<int>(_backend));
   SCHEDULER = _scheduler;
 }
 

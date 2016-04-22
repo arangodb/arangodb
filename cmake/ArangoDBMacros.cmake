@@ -5,121 +5,68 @@ option(USE_RELATIVE
   OFF
 )
 
-if (USE_RELATIVE)
+# etc -------------------------------
+set(ETCDIR "" CACHE path "System configuration directory (defaults to prefix/etc)")
 
-  # /etc -------------------------------
-  set(ETCDIR_NATIVE "./etc/relative")
-  set(ETCDIR_INSTALL "etc/relative")
+# /etc -------------------------------
+if (ETCDIR STREQUAL "")
+  set(ETCDIR_NATIVE "${CMAKE_INSTALL_PREFIX}/etc/arangodb")
+  set(ETCDIR_INSTALL "etc/arangodb")
+else ()
+  set(ETCDIR_NATIVE "${ETCDIR}/arangodb")
+  set(ETCDIR_INSTALL "${ETCDIR}/arangodb")
+endif ()
 
-  # etcd -------------------------------
+# MS stuff ---------------------------
+if (MSVC)
+  file(TO_NATIVE_PATH "${ETCDIR_INSTALL}" ETCDIR_INSTALL)
+  STRING(REGEX REPLACE "\\\\" "\\\\\\\\" ETCDIR_ESCAPED "${ETCDIR_INSTALL}")
+else ()
   file(TO_NATIVE_PATH "${ETCDIR_NATIVE}" ETCDIR_NATIVE)
   STRING(REGEX REPLACE "\\\\" "\\\\\\\\" ETCDIR_ESCAPED "${ETCDIR_NATIVE}")
+endif ()
 
-  # /var -------------------------------
-  set(VARDIR ""
-    CACHE path
-    "System configuration directory (defaults to prefix/var/arangodb)"
-  )
+add_definitions("-D_SYSCONFDIR_=\"${ETCDIR_ESCAPED}\"")
 
-  if (VARDIR STREQUAL "")
-    set(VARDIR_NATIVE "${CMAKE_INSTALL_PREFIX}/var")
-    set(VARDIR_INSTALL "var")
-  else ()
-    set(VARDIR_NATIVE "${VARDIR}")
-    set(VARDIR_INSTALL "${VARDIR}")
-  endif ()
+# /var
+set(VARDIR ""
+  CACHE path
+  "System configuration directory (defaults to prefix/var/arangodb)"
+)
 
-  file(TO_NATIVE_PATH "${VARDIR_NATIVE}" VARDIR_NATIVE)
+if (VARDIR STREQUAL "")
+  set(VARDIR_NATIVE "${CMAKE_INSTALL_PREFIX}/var")
+  set(VARDIR_INSTALL "var")
+else ()
+  set(VARDIR_NATIVE "${VARDIR}")
+  set(VARDIR_INSTALL "${VARDIR}")
+endif ()
 
-  # database
-  FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb")
+file(TO_NATIVE_PATH "${VARDIR_NATIVE}" VARDIR_NATIVE)
 
-  # apps
-  FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb-apps")
+# database directory 
+FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb")
 
-  # logs
-  FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/log/arangodb")
+# apps
+FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb-apps")
 
-  # tri_package
-  set(TRI_PKGDATADIR "${CMAKE_INSTALL_PREFIX}/share/arangodb")
+# logs
+FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/log/arangodb")
 
-  # resources
-  set(TRI_RESOURCEDIR "resources")
+# package
+set(TRI_PKGDATADIR "${CMAKE_INSTALL_PREFIX}/share/arangodb")
 
-  # MS stuff ---------------------------
-  if (MSVC)
-    set(ARANGODB_INSTALL_SBIN "bin")
-    set(TRI_SBINDIR "${CMAKE_INSTALL_PREFIX}/bin")
-  else ()
-    set(ARANGODB_INSTALL_SBIN "sbin")
-    set(TRI_SBINDIR "${CMAKE_INSTALL_PREFIX}/sbin")
-  endif ()
+# resources
+set(TRI_RESOURCEDIR "resources")
 
-  add_definitions("-D_SYSCONFDIR_=\"${ETCDIR_ESCAPED}\"")
-else () 
-  # etcd -------------------------------
-  set(ETCDIR "" CACHE path "System configuration directory (defaults to prefix/etc)")
-
-  # /etc -------------------------------
-  if (ETCDIR STREQUAL "")
-    set(ETCDIR_NATIVE "${CMAKE_INSTALL_PREFIX}/etc/arangodb")
-    set(ETCDIR_INSTALL "etc/arangodb")
-  else ()
-    set(ETCDIR_NATIVE "${ETCDIR}/arangodb")
-    set(ETCDIR_INSTALL "${ETCDIR}/arangodb")
-  endif ()
-
-  # MS stuff ---------------------------
-  if (MSVC)
-    file(TO_NATIVE_PATH "${ETCDIR_INSTALL}" ETCDIR_INSTALL)
-    STRING(REGEX REPLACE "\\\\" "\\\\\\\\" ETCDIR_ESCAPED "${ETCDIR_INSTALL}")
-  else ()
-    file(TO_NATIVE_PATH "${ETCDIR_NATIVE}" ETCDIR_NATIVE)
-    STRING(REGEX REPLACE "\\\\" "\\\\\\\\" ETCDIR_ESCAPED "${ETCDIR_NATIVE}")
-  endif ()
-  
-  add_definitions("-D_SYSCONFDIR_=\"${ETCDIR_ESCAPED}\"")
-
-  # /var
-  set(VARDIR ""
-    CACHE path
-    "System configuration directory (defaults to prefix/var/arangodb)"
-  )
-
-  if (VARDIR STREQUAL "")
-    set(VARDIR_NATIVE "${CMAKE_INSTALL_PREFIX}/var")
-    set(VARDIR_INSTALL "var")
-  else ()
-    set(VARDIR_NATIVE "${VARDIR}")
-    set(VARDIR_INSTALL "${VARDIR}")
-  endif ()
-
-  file(TO_NATIVE_PATH "${VARDIR_NATIVE}" VARDIR_NATIVE)
-
-  # database directory 
-  FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb")
-
-  # apps
-  FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb-apps")
-
-  # logs
-  FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/log/arangodb")
-
-  # package
-  set(TRI_PKGDATADIR "${CMAKE_INSTALL_PREFIX}/share/arangodb")
-
-  # resources
-  set(TRI_RESOURCEDIR "resources")
-
-  # sbinaries
-  if (MSVC)
-    set(ARANGODB_INSTALL_SBIN "bin")
-    set(TRI_SBINDIR "${CMAKE_INSTALL_PREFIX}/bin")
-  else ()
-    set(ARANGODB_INSTALL_SBIN "sbin")
-    set(TRI_SBINDIR "${CMAKE_INSTALL_PREFIX}/sbin")
-  endif ()
-endif (USE_RELATIVE)
+# sbinaries
+if (MSVC)
+  set(ARANGODB_INSTALL_SBIN "bin")
+  set(TRI_SBINDIR "${CMAKE_INSTALL_PREFIX}/bin")
+else ()
+  set(ARANGODB_INSTALL_SBIN "sbin")
+  set(TRI_SBINDIR "${CMAKE_INSTALL_PREFIX}/sbin")
+endif ()
 
 # MS Windows -------------------------------------------------------------------
 if (MSVC)

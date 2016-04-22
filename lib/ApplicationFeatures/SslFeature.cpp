@@ -25,11 +25,11 @@
 #include <openssl/err.h>
 
 #include "Basics/FileUtils.h"
-#include "Basics/UniformCharacter.h"
 #include "Basics/ssl-helper.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Random/UniformCharacter.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

@@ -25,9 +25,9 @@
 #include <iostream>
 #include <fstream>
 
-#include "ApplicationFeatures/LoggerFeature.h"
 #include "Basics/FileUtils.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 

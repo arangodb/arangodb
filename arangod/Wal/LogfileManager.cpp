@@ -79,7 +79,7 @@ static inline uint32_t MinSlots() { return 1024 * 8; }
 /// @brief maximum number of slots
 static inline uint32_t MaxSlots() { return 1024 * 1024 * 16; }
 
-#warning JAN should not be static
+//YYY #warning JAN should not be static
 bool LogfileManager::_allowOversizeEntries = true;
 std::string LogfileManager::_directory;
 uint32_t LogfileManager::_historicLogfiles = 10;

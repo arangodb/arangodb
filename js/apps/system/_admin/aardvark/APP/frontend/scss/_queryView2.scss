@@ -52,8 +52,8 @@
     }
 
     table {
+      @extend %font-family;
       border-top: 0;
-      font-family: 'Roboto', sans-serif;
 
       tbody {
         display: block;
@@ -124,10 +124,10 @@
         }
 
         input {
+          @extend %font-family;
           @extend %inputs;
           clear: both;
           float: right;
-          font-family: 'Lato', sans-serif;
           height: 17px;
           margin-bottom: 3px;
           margin-top: 3px;
@@ -136,7 +136,7 @@
       }
 
       th {
-        font-family: 'Lato', sans-serif;
+        @extend %font-family;
         font-weight: 400;
         height: 34px;
         padding: 0;
@@ -208,9 +208,9 @@
       background-color: $c-white;
 
       .previewBar {
+        @extend %font-family;
         background-color: $c-white;
         border-bottom: 1px solid $c-content-border;
-        font-family: 'Lato', sans-serif;
         height: 34px;
 
         span {
@@ -303,6 +303,28 @@
 
   .arango-table {
     border: 0;
+
+    tr {
+      th:nth-child(1) {
+        width: 10%;
+
+        td {
+          text-align: center;
+        }
+      }
+
+      th:nth-child(2) {
+        width: 50%;
+      }
+
+      th:nth-child(3) {
+        width: 20%;
+      }
+
+      th:nth-child(4) {
+        width: 20%;
+      }
+    }
   }
 }
 

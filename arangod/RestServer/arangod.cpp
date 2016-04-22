@@ -28,9 +28,7 @@
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/DaemonFeature.h"
 #include "ApplicationFeatures/LanguageFeature.h"
-#include "ApplicationFeatures/LoggerFeature.h"
 #include "ApplicationFeatures/NonceFeature.h"
-#include "ApplicationFeatures/RandomFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/SslFeature.h"
 #include "ApplicationFeatures/SupervisorFeature.h"
@@ -40,7 +38,10 @@
 #include "Basics/ArangoGlobalContext.h"
 #include "Cluster/ClusterFeature.h"
 #include "Dispatcher/DispatcherFeature.h"
+#include "Logger/LoggerBufferFeature.h"
+#include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "Random/RandomFeature.h"
 #include "RestServer/AffinityFeature.h"
 #include "RestServer/CheckVersionFeature.h"
 #include "RestServer/ConsoleFeature.h"
@@ -61,7 +62,7 @@ using namespace arangodb;
 /// @brief Hooks for OS-Specific functions
 ////////////////////////////////////////////////////////////////////////////////
 
-#warning TODO
+//YYY #warning TODO
 #if 0
 #ifdef _WIN32
 extern bool TRI_ParseMoreArgs(int argc, char* argv[]);
@@ -90,9 +91,8 @@ int main(int argc, char* argv[]) {
   application_features::ApplicationServer server(options);
 
   std::vector<std::string> nonServerFeatures = {
-      "Action", "Agency", "Cluster", "Daemon", "Dispatcher", "Endpoint",
-      "Server", "Scheduler", "Ssl", "Supervisor"};
-#warning FRANK: does it make sense to list Agency here?
+      "Action", "Affinity", "Agency", "Cluster", "Daemon", "Dispatcher", "Endpoint",
+      "LoggerBufferFeature", "RestServer", "Server", "Scheduler", "Ssl", "Statistics", "Supervisor"};
 
   int ret = EXIT_FAILURE;
 
@@ -109,6 +109,7 @@ int main(int argc, char* argv[]) {
   server.addFeature(new FileDescriptorsFeature(&server));
   server.addFeature(new FrontendFeature(&server));
   server.addFeature(new LanguageFeature(&server));
+  server.addFeature(new LoggerBufferFeature(&server));
   server.addFeature(new LoggerFeature(&server, true));
   server.addFeature(new NonceFeature(&server));
   server.addFeature(new RandomFeature(&server));
@@ -138,7 +139,7 @@ int main(int argc, char* argv[]) {
   return context.exit(ret);
 }
 
-#warning TODO
+//YYY #warning TODO
 #if 0
 
   // windows only

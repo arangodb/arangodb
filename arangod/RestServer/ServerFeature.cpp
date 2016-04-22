@@ -51,7 +51,6 @@ ServerFeature::ServerFeature(application_features::ApplicationServer* server,
     : ApplicationFeature(server, "Server"),
       _console(false),
       _restServer(true),
-      _authentication(false),
       _result(res),
       _operationMode(OperationMode::MODE_SERVER) {
   setOptional(true);
@@ -80,7 +79,7 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "timeout of web interface server sessions (in seconds)",
                      new DoubleParameter(&VocbaseContext::ServerSessionTtl));
 
-#warning TODO
+//YYY #warning TODO
 #if 0
   // other options
       "start-service", "used to start as windows service")
@@ -149,7 +148,6 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 
   if (_operationMode == OperationMode::MODE_SCRIPT ||
       _operationMode == OperationMode::MODE_UNITTESTS) {
-    _authentication = false;
     v8dealer->setMinimumContexts(2);
   } else {
     v8dealer->setMinimumContexts(1);
@@ -179,13 +177,6 @@ void ServerFeature::start() {
   }
 
   waitForHeartbeat();
-
-  if (!_authentication) {
-    LOG(INFO) << "Authentication is turned off";
-  }
-
-  LOG(INFO) << "ArangoDB (version " << ARANGODB_VERSION_FULL
-            << ") is ready for business. Have fun!";
 
   *_result = EXIT_SUCCESS;
 

@@ -50,7 +50,6 @@ class ServerFeature final : public application_features::ApplicationFeature {
  private:
   bool _console;
   bool _restServer;
-  bool _authentication;
   std::vector<std::string> _unitTests;
   std::vector<std::string> _scripts;
   std::vector<std::string> _scriptParameters;

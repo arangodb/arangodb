@@ -20,7 +20,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationFeatures/LoggerFeature.h"
+#include "LoggerFeature.h"
 
 #include "Basics/StringUtils.h"
 #include "Logger/LogAppender.h"
@@ -170,14 +170,17 @@ void LoggerFeature::prepare() {
   if (!_backgrounded && _foregroundTty) {
     LogAppender::addTtyAppender();
   }
+    
+  Logger::initialize(false);
 }
 
 void LoggerFeature::start() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
+ 
+  if (!_forceDirect && _threaded) { 
+    Logger::flush();
+    Logger::shutdown(true);
 
-  if (_forceDirect) {
-    Logger::initialize(false);
-  } else {
     Logger::initialize(_threaded);
   }
 }

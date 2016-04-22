@@ -30,7 +30,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/files.h"
 #include "Basics/json.h"
-#include "Basics/RandomGenerator.h"
+#include "Random/RandomGenerator.h"
 
 using namespace arangodb::basics;
 
@@ -45,17 +45,17 @@ struct CFilesSetup {
     long systemError;
     std::string errorMessage;
     BOOST_TEST_MESSAGE("setup files");
+    
+    if (!Initialized) {
+      Initialized = true;
+      arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
+    }
 
     _directory.appendText("/tmp/arangotest-");
     _directory.appendInteger(static_cast<uint64_t>(TRI_microtime()));
     _directory.appendInteger(arangodb::RandomGenerator::interval(UINT32_MAX));
 
     TRI_CreateDirectory(_directory.c_str(), systemError, errorMessage);
-
-    if (!Initialized) {
-      Initialized = true;
-      arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
-    }
   }
 
   ~CFilesSetup () {

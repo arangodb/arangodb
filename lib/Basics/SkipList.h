@@ -30,7 +30,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/JsonHelper.h"
-#include "Basics/RandomGenerator.h"
+#include "Random/RandomGenerator.h"
 
 // We will probably never see more than 2^48 documents in a skip list
 #define TRI_SKIPLIST_MAX_HEIGHT 48

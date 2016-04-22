@@ -158,7 +158,7 @@ requests.
 
 
 keyfile containing server certificate
-`--server.keyfile filename`
+`--ssl.keyfile filename`
 
 If SSL encryption is used, this option must be used to specify the filename
 of the server private key. The file must be PEM formatted and contain both
@@ -208,9 +208,8 @@ following commands should create a valid keyfile:
 For further information please check the manuals of the tools you use to
 create the certificate.
 
-**Note**: the \-\-server.keyfile option must be set if the server is
-started with
-at least one SSL endpoint.
+**Note**: the \-\-ssl.keyfile option must be set if the server is
+started with at least one SSL endpoint.
 
 
 
@@ -351,15 +350,13 @@ system call).
 
 
 
-!SUBSECTION Disable server statistics 
+!SUBSECTION Toggling server statistics 
 
-`--server.disable-statistics value`
+`--server.statistics value`
 
-If this option is *value* is *true*, then ArangoDB's statistics gathering
+If this option is *value* is *false*, then ArangoDB's statistics gathering
 is turned off. Statistics gathering causes regular CPU activity so using this
-option to turn it off might relieve heavy-loaded instances.
-Note: this option is only available when ArangoDB has not been compiled with
-the option *--disable-figures*.
+option to turn it off might relieve heavy-loaded instances a bit.
 
 
 !SUBSECTION Session timeout

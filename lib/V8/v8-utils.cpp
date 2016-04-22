@@ -21,45 +21,44 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "v8-utils.h"
+
 #ifdef _WIN32
 #include "Basics/win-utils.h"
 #endif
 
-#include "v8-utils.h"
-#include "v8-buffer.h"
-
 #include <fstream>
 #include <iostream>
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "unicode/normalizer2.h"
+#include "3rdParty/valgrind/valgrind.h"
+
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Nonce.h"
-#include "Basics/RandomGenerator.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
-#include "Basics/UniformCharacter.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/files.h"
 #include "Basics/process-utils.h"
 #include "Basics/tri-strings.h"
 #include "Basics/tri-zip.h"
 #include "Logger/Logger.h"
+#include "Random/RandomGenerator.h"
+#include "Random/UniformCharacter.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/SslInterface.h"
 #include "Rest/Version.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-vpack.h"
-
-#include "unicode/normalizer2.h"
-
-#include "3rdParty/valgrind/valgrind.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -3699,7 +3698,9 @@ static void JS_SplitWordlist(v8::FunctionCallbackInfo<v8::Value> const& args) {
     v8::Array::New(isolate, static_cast<int>(wordList.size()));
 
 
-  for (uint64_t i = 0; i < wordList.size(); i++) {
+  size_t const n = static_cast<uint32_t>(wordList.size());
+
+  for (uint32_t i = 0; i < n; i++) {
     v8::Handle<v8::String> oneWord = TRI_V8_STD_STRING(wordList[i]);
     v8WordList->Set(i, oneWord);
   }

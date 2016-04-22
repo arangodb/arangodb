@@ -34,11 +34,11 @@
 
 #include "Basics/JsonHelper.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/RandomGenerator.h"
 #include "Basics/gcd.h"
 #include "Basics/memory-map.h"
 #include "Basics/prime-numbers.h"
 #include "Logger/Logger.h"
+#include "Random/RandomGenerator.h"
 
 namespace arangodb {
 namespace basics {

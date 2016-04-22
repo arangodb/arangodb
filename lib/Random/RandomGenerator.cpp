@@ -178,6 +178,8 @@ int32_t RandomDevice::other(int32_t left, uint32_t range) {
 // RandomDeviceDirect
 // -----------------------------------------------------------------------------
 
+#ifndef _WIN32
+
 namespace {
 template <int N>
 class RandomDeviceDirect : public RandomDevice {
@@ -238,9 +240,13 @@ class RandomDeviceDirect : public RandomDevice {
 };
 }
 
+#endif
+
 // -----------------------------------------------------------------------------
 // RandomDeviceCombined
 // -----------------------------------------------------------------------------
+
+#ifndef _WIN32
 
 namespace {
 template <int N>
@@ -337,6 +343,8 @@ class RandomDeviceCombined : public RandomDevice {
   uint32_t rseed;
 };
 }
+
+#endif
 
 // -----------------------------------------------------------------------------
 // RandomDeviceMersenne
@@ -439,15 +447,15 @@ void RandomGenerator::initialize(RandomType type) {
       break;
     }
 
-#endif
-
     case RandomType::COMBINED: {
       _device.reset(new RandomDeviceCombined<600>("/dev/random"));
       break;
     }
 
+#endif
+
 #ifdef _WIN32
-    case RandomType::WIN32: {
+    case RandomType::WINDOWS_CRYPT: {
       _device.reset(new RandomDeviceWin32<1024>());
       break;
     }

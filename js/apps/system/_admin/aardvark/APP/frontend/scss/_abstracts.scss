@@ -6,6 +6,10 @@
   float: right;
 }
 
+%font-family {
+  font-family: 'Roboto', sans-serif !important;
+}
+
 %clear-float {
   &:after {
     clear: both;

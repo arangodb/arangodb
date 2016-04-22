@@ -255,7 +255,6 @@
   * ["request"](ModuleRequest/README.md)
   * ["actions"](ModuleActions/README.md)
   * ["queries"](ModuleQueries/README.md)
-  * ["planner"](ModulePlanner/README.md)
   * [Write-ahead log](ModuleWal/README.md)
   * [Task Management](ModuleTasks/README.md)
   * [Using jsUnity](UsingJsUnity/README.md)

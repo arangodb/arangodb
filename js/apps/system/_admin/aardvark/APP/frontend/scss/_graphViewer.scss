@@ -1,9 +1,9 @@
 div.gv_zoom_widget {
   height: 300px;
-  left: 64px;
+  left: 62px;
   opacity: .7;
   position: absolute;
-  top: 20px;
+  top: 0;
   width: 40px;
   z-index: 1;
 
@@ -72,7 +72,7 @@ svg.graph-viewer {
   border-radius: 3px;
   left: 54px;
   position: absolute;
-  top: 10px;
+  top: -10px;
   z-index: 0;
 
   text {
@@ -109,7 +109,7 @@ div.gv-colour-list {
   position: absolute;
   right: 8px;
   text-align: right;
-  top: 20px;
+  top: 0;
   z-index: 1;
 
   li {

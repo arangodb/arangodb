@@ -1,5 +1,5 @@
 .graphLabel {
-  font-family: "Roboto", sans-serif;
+  @extend %font-family;
   font-size: 11pt;
   font-weight: 600;
   margin-top: -25px;

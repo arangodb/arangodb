@@ -23,26 +23,30 @@
 
 #include "Constituent.h"
 
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
-
+#include <chrono>
 #include <chrono>
 #include <iomanip>
+#include <iomanip>
 #include <thread>
+#include <thread>
+
+#include <velocypack/Iterator.h>    
+#include <velocypack/velocypack-aliases.h> 
 
 #include "Agency/Agent.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/ConditionLocker.h"
-#include "Basics/RandomGenerator.h"
 #include "Cluster/ClusterComm.h"
 #include "Logger/Logger.h"
+#include "Random/RandomGenerator.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "VocBase/collection.h"
 #include "VocBase/vocbase.h"
+#include "Agency/NotifierThread.h"
 
 using namespace arangodb::consensus;
 using namespace arangodb::rest;
@@ -73,7 +77,8 @@ Constituent::Constituent()
       _gen(std::random_device()()),
       _role(FOLLOWER),
       _agent(nullptr),
-      _votedFor((std::numeric_limits<uint32_t>::max)()) {
+      _votedFor((std::numeric_limits<uint32_t>::max)()), 
+      _notifier(nullptr) {
   _gen.seed(RandomGenerator::interval(UINT32_MAX));
 }
 
@@ -220,35 +225,32 @@ std::vector<std::string> const& Constituent::endpoints() const {
 }
 
 /// @brief Notify peers of updated endpoints
-size_t Constituent::notifyAll() {
-  // Last process notifies everyone
-  std::stringstream path;
-
-  path << "/_api/agency_priv/notifyAll?term=" << _term << "&agencyId=" << _id;
-
-  // Body contains endpoints list
-  Builder body;
-  body.openObject();
-  body.add("endpoints", VPackValue(VPackValueType::Array));
-  for (auto const& i : endpoints()) {
-    body.add(Value(i));
-  }
-  body.close();
-  body.close();
-
+void Constituent::notifyAll () {
+  std::vector<std::string> toNotify;
   // Send request to all but myself
   for (id_t i = 0; i < size(); ++i) {
     if (i != _id) {
-      std::unique_ptr<std::map<std::string, std::string>> headerFields =
-          std::make_unique<std::map<std::string, std::string>>();
-      arangodb::ClusterComm::instance()->asyncRequest(
-          "1", 1, endpoint(i), GeneralRequest::RequestType::POST, path.str(),
-          std::make_shared<std::string>(body.toString()), headerFields, nullptr,
-          0.0, true);
+      toNotify.push_back(endpoint(i));
     }
   }
 
-  return size() - 1;
+  // Body contains endpoints list
+  auto body = std::make_shared<VPackBuilder>();
+  body->openObject();
+  body->add("endpoints", VPackValue(VPackValueType::Array));
+  for (auto const& i : endpoints()) {
+    body->add(Value(i));
+  }
+  body->close();
+  body->close();
+
+  // Last process notifies everyone 
+  std::stringstream path;
+  
+  path << "/_api/agency_priv/notifyAll?term=" << _term << "&agencyId=" << _id;
+  
+  _notifier = std::make_unique<NotifierThread>(path.str(), body, toNotify);
+  _notifier->start();
 }
 
 /// @brief Vote
@@ -361,11 +363,13 @@ void Constituent::callElection() {
   }
 }
 
-void Constituent::beginShutdown() { Thread::beginShutdown(); }
+void Constituent::beginShutdown() {
+  _notifier.reset();
+  Thread::beginShutdown();
+}
 
-bool Constituent::start(TRI_vocbase_t* vocbase) {
+bool Constituent::start (TRI_vocbase_t* vocbase) {
   _vocbase = vocbase;
-
   return Thread::start();
 }
 
@@ -391,8 +395,8 @@ void Constituent::run() {
     for (auto const& i : VPackArrayIterator(result)) {
       try {
         _term = i.get("term").getUInt();
-        _votedFor = i.get("voted_for").getUInt();
-      } catch (std::exception const& e) {
+        _votedFor = static_cast<decltype(_votedFor)>(i.get("voted_for").getUInt());
+      } catch (std::exception const&) {
         LOG_TOPIC(ERR, Logger::AGENCY)
             << "Persisted election entries corrupt! Defaulting term,vote (0,0)";
       }

@@ -23,7 +23,7 @@
 
 #include "UniformCharacter.h"
 
-#include "Basics/RandomGenerator.h"
+#include "Random/RandomGenerator.h"
 
 using namespace arangodb;
 
