@@ -70,6 +70,8 @@ void Constituent::configure(Agent* agent) {
 // Default ctor
 Constituent::Constituent()
     : Thread("Constituent"),
+      _vocbase(nullptr),
+      _queryRegistry(nullptr),
       _term(0),
       _leaderID((std::numeric_limits<uint32_t>::max)()),
       _id(0),

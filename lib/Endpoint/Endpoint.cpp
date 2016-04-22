@@ -53,7 +53,6 @@ Endpoint::Endpoint(DomainType domainType, EndpointType type,
 
 std::string Endpoint::uriForm (std::string const& endpoint) {
   static std::string illegal;
-  std::string unified = unifiedForm(endpoint);
 
   if (StringUtils::isPrefix(endpoint, "http+tcp://")) {
     return "http://" + endpoint.substr(11);

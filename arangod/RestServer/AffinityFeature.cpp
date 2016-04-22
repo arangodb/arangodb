@@ -36,6 +36,7 @@ AffinityFeature::AffinityFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Affinity"),
       _threadAffinity(0),
+      _n(0),
       _nd(0),
       _ns(0) {
   startsAfter("Logger");

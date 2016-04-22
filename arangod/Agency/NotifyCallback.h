@@ -35,7 +35,7 @@ class NotifyCallback : public arangodb::ClusterCommCallback {
   
 public:
   
-  NotifyCallback(std::function<void(bool)>);
+  explicit NotifyCallback(std::function<void(bool)>);
   
   virtual bool operator()(arangodb::ClusterCommResult*) override final;
   
