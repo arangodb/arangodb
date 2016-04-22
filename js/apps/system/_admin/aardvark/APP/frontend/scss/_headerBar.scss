@@ -68,6 +68,10 @@ div.headerBar {
   padding-right: 5px;
   right: 0;
 
+  &.marginTop5 {
+    margin-top: -60px;
+  }
+
   select {
     &:focus {
       outline: none;
