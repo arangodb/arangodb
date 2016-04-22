@@ -54,7 +54,7 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer* server)
       _heartbeatInterval(0),
       _disableHeartbeat(false),
       _agencyCallbackRegistry(nullptr) {
-  setOptional(false);
+  setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Logger");
   startsAfter("WorkMonitor");
