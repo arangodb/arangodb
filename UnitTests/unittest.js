@@ -125,14 +125,14 @@ function resultsToXml(results, baseName, cluster) {
                 xml.elem("failure");
                 xml.text('<![CDATA[' + oneTest.message + ']]>\n');
                 xml.elem("/failure");
-                xml.elem("/testcase");
               }
+              xml.elem("/testcase");
             }
           }
 
           if (!seen) {
             xml.elem("testcase", {
-              name: 'all tests in ' + xmlName,
+              name: 'all_tests_in_' + xmlName,
               time: 0 + current.duration
             }, 0 < failuresFound);
           }
