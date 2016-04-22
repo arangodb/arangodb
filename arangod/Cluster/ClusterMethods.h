@@ -98,7 +98,6 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
 int createDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
     OperationOptions const& options, arangodb::velocypack::Slice const& slice,
-    std::map<std::string, std::string> const& headers,
     arangodb::GeneralResponse::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounters,
     std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
@@ -110,7 +109,6 @@ int createDocumentOnCoordinator(
 int deleteDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
     VPackSlice const slice, OperationOptions const& options,
-    std::unique_ptr<std::map<std::string, std::string>>& headers,
     arangodb::GeneralResponse::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounters,
     std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
@@ -137,7 +135,6 @@ int getDocumentOnCoordinator(
 int getFilteredDocumentsOnCoordinator(
     std::string const& dbname,
     std::vector<traverser::TraverserExpression*> const& expressions,
-    std::unique_ptr<std::map<std::string, std::string>>& headers,
     std::unordered_set<std::string>& documentIds,
     std::unordered_map<std::string, std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>& result);
 

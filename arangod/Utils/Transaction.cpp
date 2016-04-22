@@ -1148,14 +1148,13 @@ OperationResult Transaction::insertCoordinator(std::string const& collectionName
                                                VPackSlice const value,
                                                OperationOptions& options) {
 
-  std::map<std::string, std::string> headers;
   GeneralResponse::ResponseCode responseCode;
 
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
 
   int res = arangodb::createDocumentOnCoordinator(
-      _vocbase->_name, collectionName, options, value, headers, responseCode,
+      _vocbase->_name, collectionName, options, value, responseCode,
       errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -1617,14 +1616,13 @@ OperationResult Transaction::removeCoordinator(std::string const& collectionName
                                                VPackSlice const value,
                                                OperationOptions& options) {
 
-  auto headers = std::make_unique<std::map<std::string, std::string>>();
   GeneralResponse::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
 
   int res = arangodb::deleteDocumentOnCoordinator(
-      _vocbase->_name, collectionName, value, options, headers,
-      responseCode, errorCounter, resultBody);
+      _vocbase->_name, collectionName, value, options, responseCode,
+      errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
     if (responseCode == GeneralResponse::ResponseCode::OK ||
