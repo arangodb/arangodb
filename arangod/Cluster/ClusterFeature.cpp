@@ -56,6 +56,8 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer* server)
       _agencyCallbackRegistry(nullptr) {
   setOptional(false);
   requiresElevatedPrivileges(false);
+  startsAfter("Logger");
+  startsAfter("WorkMonitor");
   startsAfter("Database");
   startsAfter("Dispatcher");
   startsAfter("Scheduler");

@@ -132,9 +132,9 @@ function resultsToXml(results, baseName, cluster) {
 
           if (!seen) {
             xml.elem("testcase", {
-              name: 'all tests in ' + xmlName,
+              name: 'all_tests_in_' + xmlName,
               time: 0 + current.duration
-            }, 0 < failuresFound);
+            }, true);
           }
 
           xml.elem("/testsuite");

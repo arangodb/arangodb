@@ -6,7 +6,6 @@ body {
   background: rgba(64, 74, 83, 0.04);
   color: #333;
   display: block;
-  font-family: 'Roboto', sans-serif !important;
   font-size: 14px;
   font-weight: 400;
   height: 100%;
@@ -27,7 +26,6 @@ input,
 textarea,
 .page-title span,
 .pingback a.url {
-  font-family: 'Roboto', sans-serif !important;
   font-weight: 400; }
 
 @font-face {
@@ -2092,6 +2090,17 @@ textarea,
 div.footer-right, div.footer-right p, ul.headerButtonList li, div .tile .iconSet span, div .bigtile .iconSet span, .search-field, .headerBar > div.headerButtonBar, .fixedDropdown button, .fixedDropdown .notificationItem i, .dashboard-sub-bar-menu, .dashboard-legend, .query-button, .arango-tab li, div.gv_colour_list, .docsThirdCol {
   float: right; }
 
+body,
+input,
+textarea,
+.page-title span,
+.pingback a.url, button, .modal-body, .ui-tooltip, .dataNotReadyYet, .dashboard-sub-bar, .dashboard-sub-bar .dashboard-sub-bar-title, .dygraph-label.dygraph-title, .inputEditorWrapper .bindParamEditorWrapper table,
+.inputEditorWrapper .aqlEditorWrapper table, .inputEditorWrapper .bindParamEditorWrapper table td input,
+.inputEditorWrapper .aqlEditorWrapper table td input, .inputEditorWrapper .bindParamEditorWrapper table th,
+.inputEditorWrapper .aqlEditorWrapper table th, .inputEditorWrapper .aqlEditorWrapper .previewWrapper .previewBar,
+.inputEditorWrapper .bindParamEditorWrapper .previewWrapper .previewBar, .collectionTh, .collectionInfoTh2, .figuresHeader th, .graphLabel, .snippet-no-num {
+  font-family: 'Roboto', sans-serif !important; }
+
 .tileList:after, .resizecontainer:after, .headerBar > div.headerButtonBar:after, .detail-chart:after, .dashboard-sub-bar:after, .dashboard-medium-chart .dashboard-medium-chart-menu:after, .dashboard-medium-chart .dashboard-medium-chart-inner:after, .dashboard-tendency-container .dashboard-tendency-chart:after, .dashboard-bar-chart-container .dashboard-bar-chart:after, .dashboard-row:after, #distributionChartDiv:after, .lineChartDiv:after, .arango-tab:after, .pagination-line li:after, .document-info .document-info-container .document-inner-info-container .document-attribute:after {
   clear: both;
   content: '.';
@@ -2363,6 +2372,8 @@ div.queryline input, input.search-input, .modal-body .select2-choices input, .mo
 .navlist {
   list-style: none;
   margin: 0;
+  position: relative;
+  top: 0;
   width: 150px; }
   .navlist > li {
     line-height: 30px; }
@@ -2392,11 +2403,10 @@ div.queryline input, input.search-input, .modal-body .select2-choices input, .mo
     .navlist li.divider {
       background-color: rgba(0, 0, 0, 0.2); }
     .navlist li.navbar-spacer {
-      background-color: #fff;
-      height: 1px;
+      background-color: rgba(0, 0, 0, 0.2);
+      height: 2px;
       margin-bottom: 0;
-      margin-top: 0;
-      opacity: .5; }
+      margin-top: 0; }
   .navlist .active {
     border-left: 2px solid #77cb99; }
     .navlist .active .tab {
@@ -2625,95 +2635,101 @@ button.disabled,
 #closeBtnInfoView {
   margin-left: 0 !important; }
 
-button {
-  font-family: 'Roboto', sans-serif !important; }
-  button.btn-server {
-    width: 120px; }
-  button.gv-zoom-btn {
-    background-size: 14px 14px;
-    height: 14px;
-    vertical-align: baseline;
-    width: 14px; }
-    button.gv-zoom-btn.btn-zoom-right {
-      border: 0;
-      box-shadow: none;
-      right: 0;
-      top: 13px; }
-    button.gv-zoom-btn.pan-right {
-      background-image: url("../img/gv_arrow_right.png"); }
-      button.gv-zoom-btn.pan-right:hover {
-        background: inherit;
-        background-image: url("../img/gv_arrow_right.png"); }
-    button.gv-zoom-btn.pan-left {
-      background-image: url("../img/gv_arrow_left.png"); }
-      button.gv-zoom-btn.pan-left:hover {
-        background: inherit;
-        background-image: url("../img/gv_arrow_left.png"); }
-    button.gv-zoom-btn.pan-top {
-      background-image: url("../img/gv_arrow_top.png"); }
-      button.gv-zoom-btn.pan-top:hover {
-        background: inherit;
-        background-image: url("../img/gv_arrow_top.png"); }
-    button.gv-zoom-btn.pan-bottom {
-      background-image: url("../img/gv_arrow_bottom.png"); }
-      button.gv-zoom-btn.pan-bottom:hover {
-        background: inherit;
-        background-image: url("../img/gv_arrow_bottom.png"); }
-    button.gv-zoom-btn.btn-zoom {
-      height: 14px;
-      margin: 0;
-      padding: 0;
-      position: absolute;
-      width: 16px; }
-    button.gv-zoom-btn.btn-zoom-top {
-      border: 0;
-      box-shadow: none;
-      left: 13px;
-      top: 1; }
-    button.gv-zoom-btn.btn-zoom-left {
-      border: 0;
-      box-shadow: none;
-      left: 0;
-      top: 13px; }
-    button.gv-zoom-btn.btn-zoom-bottom {
-      border: 0;
-      box-shadow: none;
-      left: 13px;
-      top: 25px; }
-  button.gv-icon-btn {
-    -moz-border-radius: 0 !important;
-    -webkit-border-radius: 0 !important;
-    border-radius: 0 !important;
-    background-size: 36px 36px;
-    height: 36px;
-    width: 36px; }
-    button.gv-icon-btn.active {
-      background-color: #7dbc42; }
-  button.gv_dropdown_entry {
-    height: 30px;
-    margin: 4px 4px 4px 12px;
-    width: 160px; }
-  button.gv_context_button {
-    width: 65px; }
-  button.large-distance {
-    margin-left: 12px; }
-  button.short-distance {
-    margin-left: 6px; }
-  button.shutdown {
-    margin-top: 6px;
-    padding: 3px 14px; }
-  button.graphViewer-icon-button {
-    background-color: transparent;
+button.btn-server {
+  width: 120px; }
+
+button.gv-zoom-btn {
+  background-size: 14px 14px;
+  height: 14px;
+  vertical-align: baseline;
+  width: 14px; }
+  button.gv-zoom-btn.btn-zoom-right {
     border: 0;
-    height: 20px;
-    margin-left: 5px;
-    margin-top: -2px;
+    box-shadow: none;
+    right: 0;
+    top: 13px; }
+  button.gv-zoom-btn.pan-right {
+    background-image: url("../img/gv_arrow_right.png"); }
+    button.gv-zoom-btn.pan-right:hover {
+      background: inherit;
+      background-image: url("../img/gv_arrow_right.png"); }
+  button.gv-zoom-btn.pan-left {
+    background-image: url("../img/gv_arrow_left.png"); }
+    button.gv-zoom-btn.pan-left:hover {
+      background: inherit;
+      background-image: url("../img/gv_arrow_left.png"); }
+  button.gv-zoom-btn.pan-top {
+    background-image: url("../img/gv_arrow_top.png"); }
+    button.gv-zoom-btn.pan-top:hover {
+      background: inherit;
+      background-image: url("../img/gv_arrow_top.png"); }
+  button.gv-zoom-btn.pan-bottom {
+    background-image: url("../img/gv_arrow_bottom.png"); }
+    button.gv-zoom-btn.pan-bottom:hover {
+      background: inherit;
+      background-image: url("../img/gv_arrow_bottom.png"); }
+  button.gv-zoom-btn.btn-zoom {
+    height: 14px;
+    margin: 0;
     padding: 0;
+    position: absolute;
+    width: 16px; }
+  button.gv-zoom-btn.btn-zoom-top {
+    border: 0;
+    box-shadow: none;
+    left: 13px;
+    top: 1; }
+  button.gv-zoom-btn.btn-zoom-left {
+    border: 0;
+    box-shadow: none;
+    left: 0;
+    top: 13px; }
+  button.gv-zoom-btn.btn-zoom-bottom {
+    border: 0;
+    box-shadow: none;
+    left: 13px;
+    top: 25px; }
+
+button.gv-icon-btn {
+  -moz-border-radius: 0 !important;
+  -webkit-border-radius: 0 !important;
+  border-radius: 0 !important;
+  background-size: 36px 36px;
+  height: 36px;
+  width: 36px; }
+  button.gv-icon-btn.active {
+    background-color: #7dbc42; }
+
+button.gv_dropdown_entry {
+  height: 30px;
+  margin: 4px 4px 4px 12px;
+  width: 160px; }
+
+button.gv_context_button {
+  width: 65px; }
+
+button.large-distance {
+  margin-left: 12px; }
+
+button.short-distance {
+  margin-left: 6px; }
+
+button.shutdown {
+  margin-top: 6px;
+  padding: 3px 14px; }
+
+button.graphViewer-icon-button {
+  background-color: transparent;
+  border: 0;
+  height: 20px;
+  margin-left: 5px;
+  margin-top: -2px;
+  padding: 0;
+  width: 20px; }
+  button.graphViewer-icon-button img {
+    height: 20px;
+    padding-bottom: 10px;
     width: 20px; }
-    button.graphViewer-icon-button img {
-      height: 20px;
-      padding-bottom: 10px;
-      width: 20px; }
 
 ul.headerButtonList {
   display: inline-block;
@@ -2761,20 +2777,20 @@ a.headerButton {
     cursor: not-allowed; }
 
 div.toolbox {
-  -moz-border-radius: 3px;
-  -webkit-border-radius: 3px;
-  border-radius: 3px;
+  -moz-border-radius: 2px;
+  -webkit-border-radius: 2px;
+  border-radius: 2px;
   background-color: #fff;
   border: 1px solid rgba(140, 138, 137, 0.25);
   margin-right: 5px;
-  margin-top: -3px;
   padding-bottom: 5px;
   padding-top: 5px;
-  position: absolute; }
+  position: absolute;
+  top: -10px; }
   div.toolbox div.gv_action_button {
-    -moz-border-radius: 3px;
-    -webkit-border-radius: 3px;
-    border-radius: 3px;
+    -moz-border-radius: 2px;
+    -webkit-border-radius: 2px;
+    border-radius: 2px;
     background-color: #fff;
     color: #555;
     height: 30px;
@@ -3131,7 +3147,8 @@ div .tile {
   height: 100px; }
 
 div .tile-graph h5 {
-  margin: 0; }
+  margin-left: 5px;
+  margin-right: 5px; }
 
 div .tile-graph .tile-icon:hover {
   cursor: pointer; }
@@ -5234,7 +5251,7 @@ div.centralContent {
   background-color: transparent;
   box-sizing: border-box;
   margin-top: 10px;
-  padding-bottom: 5px;
+  padding-bottom: 20px;
   padding-left: 5px;
   padding-right: 5px;
   padding-top: 5px;
@@ -5455,10 +5472,10 @@ span.gv_caret {
 
 input.search-input {
   border: 1px solid #fff;
-  height: 15px;
-  line-height: 17px;
+  height: 20px;
+  line-height: 20px;
   margin-right: -4px;
-  margin-top: 6px;
+  margin-top: 3px;
   width: 120px; }
 
 .search-field {
@@ -5469,7 +5486,7 @@ input.search-input {
     margin-left: -20px;
     opacity: .5;
     position: relative;
-    top: -2px; }
+    top: -3px; }
     .search-field .fa-search:hover {
       cursor: pointer;
       opacity: 1; }
@@ -5682,7 +5699,6 @@ div.headerBar {
 
 .modal-body {
   color: #736b68;
-  font-family: 'Roboto', sans-serif !important;
   font-size: 14px;
   font-weight: 300;
   max-height: 410px; }
@@ -6141,7 +6157,6 @@ div.headerBar {
   border-radius: 3px !important;
   box-shadow: none !important;
   color: #fff !important;
-  font-family: 'Roboto', sans-serif !important;
   font-size: 10pt !important;
   font-weight: 100 !important;
   z-index: 99999999; }
@@ -6254,7 +6269,6 @@ div.headerBar {
 
 .dataNotReadyYet {
   color: #faa732;
-  font-family: 'Roboto', sans-serif;
   font-size: 14px;
   font-weight: 100;
   text-align: center; }
@@ -6263,7 +6277,6 @@ div.headerBar {
   background-color: #fff;
   box-sizing: border-box;
   color: rgba(0, 0, 0, 0.5);
-  font-family: 'Roboto', sans-serif;
   font-size: 11pt;
   font-weight: 600;
   height: 50px;
@@ -6277,7 +6290,6 @@ div.headerBar {
   text-transform: uppercase; }
   .dashboard-sub-bar .dashboard-sub-bar-title {
     color: #000;
-    font-family: 'Roboto', sans-serif;
     font-size: 11pt;
     font-weight: 600;
     opacity: .5;
@@ -6451,12 +6463,12 @@ div.headerBar {
     .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart {
       padding-top: 10px; }
       .dashboard-bar-chart-container .dashboard-bar-chart .dashboard-bar-chart-chart .nv-bar rect {
-        fill-opacity: .8;
-        stroke-opacity: .8;
+        fill-opacity: .6;
+        stroke-opacity: .6;
         stroke-width: .5px; }
 
 .dashboard-legend .dashboard-legend-inner {
-  padding: 0 5px 5px 0;
+  padding: 10px 5px 5px 0;
   text-align: right; }
   .dashboard-legend .dashboard-legend-inner br {
     display: none; }
@@ -6511,6 +6523,9 @@ div.headerBar {
   #repl-progress .inner {
     margin-top: 0; }
 
+.nvtooltip {
+  display: none; }
+
 #requests,
 #system,
 #replication {
@@ -6563,7 +6578,6 @@ div.headerBar {
 
 .dygraph-label.dygraph-title {
   color: #000;
-  font-family: 'Roboto', sans-serif;
   font-size: 15px;
   font-weight: 400;
   text-align: left; }
@@ -7016,8 +7030,7 @@ toolbar {
       color: #c12dad; }
     .inputEditorWrapper .bindParamEditorWrapper table,
     .inputEditorWrapper .aqlEditorWrapper table {
-      border-top: 0;
-      font-family: 'Roboto', sans-serif; }
+      border-top: 0; }
       .inputEditorWrapper .bindParamEditorWrapper table tbody,
       .inputEditorWrapper .aqlEditorWrapper table tbody {
         display: block;
@@ -7076,14 +7089,12 @@ toolbar {
         .inputEditorWrapper .aqlEditorWrapper table td input {
           clear: both;
           float: right;
-          font-family: 'Lato', sans-serif;
           height: 17px;
           margin-bottom: 3px;
           margin-top: 3px;
           width: auto !important; }
       .inputEditorWrapper .bindParamEditorWrapper table th,
       .inputEditorWrapper .aqlEditorWrapper table th {
-        font-family: 'Lato', sans-serif;
         font-weight: 400;
         height: 34px;
         padding: 0;
@@ -7136,7 +7147,6 @@ toolbar {
       .inputEditorWrapper .bindParamEditorWrapper .previewWrapper .previewBar {
         background-color: #fff;
         border-bottom: 1px solid rgba(140, 138, 137, 0.25);
-        font-family: 'Lato', sans-serif;
         height: 34px; }
         .inputEditorWrapper .aqlEditorWrapper .previewWrapper .previewBar span,
         .inputEditorWrapper .bindParamEditorWrapper .previewWrapper .previewBar span {
@@ -7194,6 +7204,16 @@ toolbar {
   padding-top: 0; }
   #queryManagementContent .arango-table {
     border: 0; }
+    #queryManagementContent .arango-table tr th:nth-child(1) {
+      width: 10%; }
+      #queryManagementContent .arango-table tr th:nth-child(1) td {
+        text-align: center; }
+    #queryManagementContent .arango-table tr th:nth-child(2) {
+      width: 50%; }
+    #queryManagementContent .arango-table tr th:nth-child(3) {
+      width: 20%; }
+    #queryManagementContent .arango-table tr th:nth-child(4) {
+      width: 20%; }
 
 #clearQuery {
   display: none; }
@@ -7636,6 +7656,7 @@ textarea,
   display: none; }
 
 #arangoLogTable {
+  border-top: 0;
   min-height: 444px; }
   #arangoLogTable tbody tr {
     height: 40px; }
@@ -7680,10 +7701,10 @@ textarea,
 
 div.gv_zoom_widget {
   height: 300px;
-  left: 64px;
+  left: 62px;
   opacity: .7;
   position: absolute;
-  top: 20px;
+  top: 0;
   width: 40px;
   z-index: 1; }
   div.gv_zoom_widget div.gv_zoom_buttons_bg {
@@ -7732,7 +7753,7 @@ svg.graph-viewer {
   border-radius: 3px;
   left: 54px;
   position: absolute;
-  top: 10px;
+  top: -10px;
   z-index: 0; }
   svg.graph-viewer text {
     max-width: 90px;
@@ -7758,7 +7779,7 @@ div.gv-colour-list {
   position: absolute;
   right: 8px;
   text-align: right;
-  top: 20px;
+  top: 0;
   z-index: 1; }
   div.gv-colour-list li {
     float: none;
@@ -7794,7 +7815,6 @@ input.gv-radio-button {
   width: auto; }
 
 .collectionTh {
-  font-family: 'Roboto', sans-serif !important;
   font-size: 14px;
   font-weight: 400 !important;
   text-align: left;
@@ -7848,7 +7868,6 @@ input.gv-radio-button {
   min-height: 200px; }
 
 .collectionInfoTh2 {
-  font-family: 'Lato', sans-serif !important;
   font-weight: 400 !important;
   text-align: left;
   width: 150px; }
@@ -7865,7 +7884,6 @@ input.gv-radio-button {
 .figuresHeader {
   border-bottom: 1px solid #c2c2c2; }
   .figuresHeader th {
-    font-family: 'Lato', sans-serif !important;
     font-weight: 400 !important; }
 
 #collectionIndexTable {
@@ -7960,8 +7978,6 @@ input.gv-radio-button {
   .dashboard-large-chart,
   .dashboard-medium-chart-outer:first-child {
     padding-right: 0 !important; }
-  .dashboard-medium-chart {
-    margin-bottom: 10px; }
   div.dropdownInner ul label {
     font-size: 13px; }
   .navlogo .big {
@@ -7984,6 +8000,11 @@ input.gv-radio-button {
     .arango-collection-ul .tab .fa {
       padding-left: 6px;
       padding-right: 20px; }
+  .social-icons p {
+    float: left;
+    margin-left: -3px; }
+    .social-icons p .fa {
+      font-size: 16px; }
   .headerButtonBar {
     display: none; }
   div.bodyWrapper,
@@ -8309,7 +8330,6 @@ input.gv-radio-button {
     outline-style: none; }
 
 .graphLabel {
-  font-family: "Roboto", sans-serif;
   font-size: 11pt;
   font-weight: 600;
   margin-top: -25px;
@@ -8752,6 +8772,12 @@ main {
   .subnavmenu #dbStatus {
     padding-right: 20px; }
 
+.helpUs iframe {
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 101px; }
+
 .arangoDataTable {
   border-spacing: 0 0;
   position: relative;
@@ -8816,7 +8842,6 @@ table.arangoDataTable tr.odd {
   visibility: hidden; }
 
 .snippet-no-num {
-  font-family: 'Open Sans', sans-serif;
   font-size: 1em;
   font-weight: 400;
   margin-bottom: 0; }

@@ -635,7 +635,7 @@
             </div>
           </div>
         </div>
-        <div class="dashboard-sub-bar"">Resident Size</div>
+        <div class="dashboard-sub-bar"">Memory</div>
       </div>
 
       <% tendency("Virtual Size in GB", "virtualSize", false); %>
@@ -783,14 +783,16 @@
 
       <% if (name !== '_system') { %>
         <div class="tile pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-3 pure-u-lg-1-4 pure-u-xl-1-6">
-          <div class="borderBox"></div>
-          <div class="iconSet">
-            <span class="icon_arangodb_settings2 editDatabase" id="<%=name %>_edit-database" alt="Edit database" title="Edit database"></span>
+          <div class="fullBorderBox" style="border: 0;">
+            <div class="borderBox"></div>
+            <div class="iconSet">
+              <span class="icon_arangodb_settings2 editDatabase" id="<%=name %>_edit-database" alt="Edit database" title="Edit database"></span>
+            </div>
+            <img src="img/databaseIcon.svg" class="tile-icon-svg svgToReplace"/>
+            <div class="tileBadge">
+            </div>
+            <h5 class="collectionName" style="margin-left: 0; margin-right: 0;"><%=name %></h5>
           </div>
-          <img src="img/databaseIcon.svg" class="tile-icon-svg svgToReplace"/>
-          <div class="tileBadge">
-          </div>
-          <h5 class="collectionName" style="margin-left: 0; margin-right: 0;"><%=name %></h5>
         </div>
       <%};%>
 
@@ -1295,17 +1297,18 @@ if (list.length > 0) {
       %>
 
       <div class="tile tile-graph pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-3 pure-u-lg-1-4 pure-u-xl-1-6" id="<%=graphName %>_tile">
-      <div class="borderBox"></div>
-      <div class="iconSet">
-        <span class="icon_arangodb_settings2 editGraph" id="<%=graphName %>_settings" alt="Edit graph" title="Edit graph"></span>
+        <div class="paddingBox">
+          <div class="borderBox"></div>
+          <div class="iconSet">
+            <span class="icon_arangodb_settings2 editGraph" id="<%=graphName %>_settings" alt="Edit graph" title="Edit graph"></span>
+          </div>
+          <span class="icon_arangodb_edge5 tile-icon"></span>
+          <span class="icon_arangodb_edge5 icon_arangodb_edge5-2 tile-icon"></span>
+          <div class="tileBadge"></div>
+          <h5 class="collectionName"><%=graphName %></h5>
+        </div>
       </div>
-      <span class="icon_arangodb_edge5 tile-icon"></span>
-      <span class="icon_arangodb_edge5 icon_arangodb_edge5-2 tile-icon"></span>
-        <div class="tileBadge">
-    </div>
 
-      <h5 class="collectionName"><%=graphName %></h5>
-    </div>
       <%});%>
      </div>
   </div>
@@ -1325,7 +1328,7 @@ if (list.length > 0) {
 <script id="helpUsView.ejs" type="text/template">
 
 <div class="helpUs">
-<div class="_form_87"></div><script src="https://arangodb.activehosted.com/f/embed.php?id=87" type="text/javascript" charset="utf-8"></script>
+  <iframe src="https://docs.google.com/forms/d/1vsIwy0mJSeToEnfo_jnBaQebewbcURL730IkZIrkyEE/viewform?embedded=true" scrolling="no" width="100%" height="1300px" frameborder="0" marginheight="0" marginwidth="0">Loading...</iframe>
 </div>
 
 </script>
@@ -2474,11 +2477,9 @@ if (list.length > 0) {
 <script id="navigationView.ejs" type="text/template">
   <ul class="navlist arango-collection-ul" id="arangoCollectionUl">
     <% if (isCluster) { %>
-      <li class="navbar-spacer big"></li>
       <li class="cluster-menu"><a id="cluster" class="tab" href="#cluster"><i class="fa fa-circle-o"></i>Cluster</a></li>
       <li class="nodes-menu"><a id="nodes" class="tab" href="#cNodes"><i class="fa fa-server"></i>Nodes</a></li>
     <% } else { %>
-      <li class="navbar-spacer big"></li>
       <li class="dashboard-menu"><a id="dashboard" class="tab" href="#dashboard"><i class="fa fa-dashboard"></i>Dashboard</a></li>
     <% } %>
     <li class="navbar-spacer big"></li>
@@ -2503,7 +2504,7 @@ if (list.length > 0) {
       <li class="databases-menu"><a id="databases" class="tab" href="#databases"><i class="fa fa-database"></i>Databases</a></li>
     <% } %>
     <% if (!isCluster) { %>
-      <li class="logs-menu"><a id="logs" class="tab" href="#manage"><i class="fa fa-file-text"></i>Logs</a></li>
+      <li class="logs-menu"><a id="logs" class="tab" href="#logs"><i class="fa fa-file-text"></i>Logs</a></li>
     <% } %>
     <li class="navbar-spacer big"></li>
     <li class="helpus-menu"><a id="helpus" class="tab" href="#helpus"><i class="fa fa-heart"></i>Help Us</a></li>
@@ -2518,11 +2519,9 @@ if (list.length > 0) {
         </li>
 
         <% if (!isCluster) { %>
-          <% if (currentDB.get('isSystem')) { %>
-            <li class="dropdown-item">
-              <a id="logs" class="tab" href="#logs">Logs</a>
-            </li>
-          <% } %>
+          <li class="dropdown-item">
+            <a id="logs" class="tab" href="#logs">Logs</a>
+          </li>
         <% } %>
 
         <li class="dropdown-item">
@@ -2810,7 +2809,7 @@ if (list.length > 0) {
         <button id="saveCurrentQuery" class="button-success"><i class="fa fa-save"></i>Save</button>
       </div>
 
-      <div class="pull-right">
+      <div class="pull-right" style="position: absolute; top: 60px; right: 0;">
         <span id="querySpotlight" class="action"><i class="fa fa-search"></i></span>
         <div class="styled-select">
           <select id="querySize" class="query-size"/>
@@ -3289,8 +3288,8 @@ var cutByResolution = function (str) {
     </div>
   </div>
 
-<script src="libs.js?version=1461257358510"></script>
-<script src="app.js?version=1461257358510"></script>
+<script src="libs.js?version=1461321201201"></script>
+<script src="app.js?version=1461321201201"></script>
 
   </body>
 </html>

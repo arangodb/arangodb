@@ -35,7 +35,7 @@ namespace arangodb {
 
 class RestQueryHandler : public RestVocbaseBaseHandler {
  public:
-  RestQueryHandler(HttpRequest*);
+  explicit RestQueryHandler(HttpRequest*);
 
  public:
   bool isDirect() const override;

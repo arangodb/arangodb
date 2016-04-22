@@ -32,7 +32,7 @@
 #include "Random/RandomGenerator.h"
 
 #include <ctime>
-#warning MOP why? use ConditionVariable
+//XXX #warning MOP why? use ConditionVariable
 #include <condition_variable>
 //XXX #warning MOP why? use Mutex
 #include <mutex>

@@ -3698,7 +3698,9 @@ static void JS_SplitWordlist(v8::FunctionCallbackInfo<v8::Value> const& args) {
     v8::Array::New(isolate, static_cast<int>(wordList.size()));
 
 
-  for (uint64_t i = 0; i < wordList.size(); i++) {
+  size_t const n = static_cast<uint32_t>(wordList.size());
+
+  for (uint32_t i = 0; i < n; i++) {
     v8::Handle<v8::String> oneWord = TRI_V8_STD_STRING(wordList[i]);
     v8WordList->Set(i, oneWord);
   }

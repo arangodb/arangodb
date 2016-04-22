@@ -288,5 +288,5 @@ system, e. g. `/etc` and `/var/lib`.
 
 When upgrading from a previous version of ArangoDB, please make sure you inspect
 ArangoDB's log file after an upgrade. It may also be necessary to start ArangoDB
-with the *--upgrade* parameter once to perform required upgrade or
+with the *--database.upgrade* parameter once to perform required upgrade or
 initialization tasks.

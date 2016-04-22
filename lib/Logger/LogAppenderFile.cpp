@@ -128,7 +128,7 @@ LogAppenderFile::LogAppenderFile(std::string const& filename,
         _fds[pos].first = fd;
       }
 
-      _pos = pos;
+      _pos = static_cast<ssize_t>(pos);
     }
   }
 }
@@ -155,7 +155,7 @@ bool LogAppenderFile::logMessage(LogLevel level, std::string const& message,
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, escaped);
   }
 
-  return isatty(fd);
+  return (isatty(fd) != 0);
 }
 
 std::string LogAppenderFile::details() {

@@ -37,7 +37,7 @@ namespace arangodb {
 
 class RestShutdownHandler : public RestBaseHandler {
  public:
-  RestShutdownHandler(HttpRequest*);
+  explicit RestShutdownHandler(HttpRequest*);
 
  public:
   bool isDirect() const override;

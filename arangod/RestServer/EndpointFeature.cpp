@@ -116,7 +116,7 @@ std::vector<std::string> EndpointFeature::httpEndpoints() {
 void EndpointFeature::buildEndpointLists() {
   for (std::vector<std::string>::const_iterator i = _endpoints.begin();
        i != _endpoints.end(); ++i) {
-    bool ok = _endpointList.add((*i), _backlogSize, _reuseAddress);
+    bool ok = _endpointList.add((*i), static_cast<int>(_backlogSize), _reuseAddress);
 
     if (!ok) {
       LOG(FATAL) << "invalid endpoint '" << (*i) << "'";

@@ -32,8 +32,8 @@
 namespace arangodb {
 class HttpResponse : public GeneralResponse {
  public:
-  static std::string const BATCH_ERROR_HEADER;
   static bool HIDE_PRODUCT_HEADER;
+  static std::string const BATCH_ERROR_HEADER;
 
  public:
   HttpResponse(ResponseCode code, uint32_t compatibility);

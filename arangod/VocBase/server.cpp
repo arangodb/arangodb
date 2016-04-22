@@ -864,7 +864,7 @@ static int InitDatabases(TRI_server_t* server, bool checkVersion,
     if (names.empty()) {
       if (!performUpgrade && HasOldCollections(server)) {
         LOG(ERR) << "no databases found. Please start the server with the "
-                    "--upgrade option";
+                    "--database.upgrade option";
 
         return TRI_ERROR_ARANGO_DATADIR_INVALID;
       }
@@ -2130,6 +2130,7 @@ TRI_vocbase_operationmode_e TRI_GetOperationModeServer() { return Mode; }
 
 TRI_server_t::TRI_server_t()
     : _databasesLists(new DatabasesLists()),
+      _databaseManagerStarted(false),
       _indexPool(nullptr),
       _queryRegistry(nullptr),
       _basePath(nullptr),
@@ -2137,6 +2138,7 @@ TRI_server_t::TRI_server_t()
       _lockFilename(nullptr),
       _serverIdFilename(nullptr),
       _disableReplicationAppliers(false),
+      _disableCompactor(false),
       _iterateMarkersOnOpen(false),
       _hasCreatedSystemDatabase(false),
       _initialized(false) {}

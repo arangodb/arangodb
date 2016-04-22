@@ -21,8 +21,8 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CONSENSUS_AGENT_CONFIGURATION_H
-#define ARANGODB_CONSENSUS_AGENT_CONFIGURATION_H
+#ifndef ARANGOD_CONSENSUS_AGENT_CONFIGURATION_H
+#define ARANGOD_CONSENSUS_AGENT_CONFIGURATION_H 1
 
 namespace arangodb {
 namespace consensus {

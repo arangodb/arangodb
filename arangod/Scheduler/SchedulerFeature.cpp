@@ -28,6 +28,7 @@
 #include <stdio.h>
 #endif
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Logger/LogAppender.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -67,9 +68,8 @@ void SchedulerFeature::collectOptions(
                      "number of threads for I/O scheduler",
                      new UInt64Parameter(&_nrSchedulerThreads));
 
-  std::unordered_set<uint64_t> backends = {0, 1, 2, 3, 4};
-
 #ifndef _WIN32
+  std::unordered_set<uint64_t> backends = {0, 1, 2, 3, 4};
   options->addHiddenOption(
       "--scheduler.backend", "1: select, 2: poll, 4: epoll",
       new DiscreteValuesParameter<UInt64Parameter>(&_backend, backends));
@@ -209,8 +209,8 @@ bool CtrlHandler(DWORD eventType) {
   if (!seen) {
     LOG(INFO) << "" << shutdownMessage << ", beginning shut down sequence";
 
-    if (Scheduler::SCHEDULER != nullptr) {
-      Scheduler::SCHEDULER->server()->beginShutdown();
+    if (application_features::ApplicationServer::server != nullptr) {
+      application_features::ApplicationServer::server->beginShutdown();
     }
 
     seen = true;
@@ -273,7 +273,7 @@ class HangupTask : public SignalTask {
 #endif
 
 void SchedulerFeature::buildScheduler() {
-  _scheduler = new SchedulerLibev(_nrSchedulerThreads, _backend);
+  _scheduler = new SchedulerLibev(_nrSchedulerThreads, static_cast<int>(_backend));
   SCHEDULER = _scheduler;
 }
 

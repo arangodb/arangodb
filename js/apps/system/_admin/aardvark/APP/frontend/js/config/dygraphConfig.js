@@ -87,7 +87,7 @@
       },
 
       residentSize: {
-        header: "Resident Size",
+        header: "Memory",
         axes: {
           y: {
             labelsKMG2: false,
@@ -173,7 +173,7 @@
 
       requests: {
         header: "Requests",
-        labels: ["datetime", "REQUESTS"],
+        labels: ["datetime", "Reads", "Writes"],
         stackedGraph: true,
         div: "requestsChart",
         axes: {

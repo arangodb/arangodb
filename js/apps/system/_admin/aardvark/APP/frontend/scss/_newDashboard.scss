@@ -41,20 +41,20 @@
 }
 
 .dataNotReadyYet {
+  @extend %font-family;
   color: $c-warning;
-  font-family: 'Roboto', sans-serif;
   font-size: 14px;
   font-weight: 100;
   text-align: center;
 }
 
 .dashboard-sub-bar {
+  @extend %font-family;
   @extend %clear-float;
   @extend %pull-left;
   background-color: $c-white;
   box-sizing: border-box;
   color: rgba(0, 0, 0, .5);
-  font-family: 'Roboto', sans-serif;
   font-size: 11pt;
   font-weight: 600;
   height: 50px;
@@ -71,8 +71,8 @@
 
   .dashboard-sub-bar-title {
     @extend %pull-left;
+    @extend %font-family;
     color: $c-black;
-    font-family: 'Roboto', sans-serif;
     font-size: 11pt;
     font-weight: 600;
     opacity: .5;
@@ -368,8 +368,8 @@
       padding-top: 10px;
 
       .nv-bar rect {
-        fill-opacity: .8;
-        stroke-opacity: .8;
+        fill-opacity: .6;
+        stroke-opacity: .6;
         stroke-width: .5px;
       }
     }
@@ -381,7 +381,7 @@
   @extend %pull-right;
 
   .dashboard-legend-inner {
-    padding: 0 5px 5px 0;
+    padding: 10px 5px 5px 0;
     text-align: right;
 
     br {
@@ -483,6 +483,10 @@
   .inner {
     margin-top: 0;
   }
+}
+
+.nvtooltip {
+  display: none;
 }
 
 #requests,
