@@ -93,6 +93,16 @@ class ApplicationServer {
  public:
   static ApplicationServer* server;
   static ApplicationFeature* lookupFeature(std::string const&);
+      
+  template<typename T> 
+  static T* getFeature(std::string const& name) {
+    T* feature = dynamic_cast<T*>(application_features::ApplicationServer::lookupFeature(name));
+    if (feature == nullptr) {
+      throwFeatureNotFoundException(name);
+    }
+    return feature;
+  }
+  
   static void disableFeatures(std::vector<std::string> const&);
   static void forceDisableFeatures(std::vector<std::string> const&);
 
@@ -138,6 +148,9 @@ class ApplicationServer {
   VPackBuilder options(std::unordered_set<std::string> const& excludes) const;
 
  private:
+  // throws an exception if a requested feature was not found
+  static void throwFeatureNotFoundException(std::string const& name);
+
   static void disableFeatures(std::vector<std::string> const& names, bool force);
   
   // fail and abort with the specified message

@@ -226,6 +226,21 @@ void ServerFeature::waitForHeartbeat() {
     usleep(100 * 1000);
   }
 }
+  
+std::string ServerFeature::operationModeString(OperationMode mode) {
+  switch (mode) {
+    case OperationMode::MODE_CONSOLE: 
+      return "console";
+    case OperationMode::MODE_UNITTESTS: 
+      return "unittests";
+    case OperationMode::MODE_SCRIPT: 
+      return "script";
+    case OperationMode::MODE_SERVER: 
+      return "server";
+    default: 
+      return "unknown";
+  }
+}
 
 int ServerFeature::runUnitTests() {
   DatabaseFeature* database = dynamic_cast<DatabaseFeature*>(

@@ -22,9 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestVersionHandler.h"
-#include "RestServer/ArangoServer.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
+#include "RestServer/ServerFeature.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -57,12 +58,11 @@ HttpHandler::status_t RestVersionHandler::execute() {
 
       Version::getVPack(result);
 
-//YYY #warning TODO
-#if 0
-      if (ArangoInstance != nullptr) {
-        result.add("mode", VPackValue(ArangoInstance->modeString()));
+      if (application_features::ApplicationServer::server != nullptr) {
+        auto server = application_features::ApplicationServer::server->getFeature<ServerFeature>("Server");
+        result.add("mode", VPackValue(server->operationModeString()));
       }
-#endif
+      
       result.close();
     }
     result.close();

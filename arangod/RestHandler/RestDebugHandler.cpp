@@ -23,7 +23,6 @@
 
 #include "RestDebugHandler.h"
 
-#include "RestServer/ArangoServer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 
@@ -35,8 +34,6 @@ using namespace arangodb::rest;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
-
-extern ArangoServer* ArangoInstance;
 
 RestDebugHandler::RestDebugHandler(HttpRequest* request)
     : RestVocbaseBaseHandler(request) {}

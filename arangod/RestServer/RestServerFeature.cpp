@@ -255,13 +255,11 @@ void RestServerFeature::stop() {
 }
 
 void RestServerFeature::buildServers() {
-  EndpointFeature* endpoint = dynamic_cast<EndpointFeature*>(
-      application_features::ApplicationServer::lookupFeature("Endpoint"));
-
-  HttpServer* httpServer;
+  EndpointFeature* endpoint = 
+      application_features::ApplicationServer::getFeature<EndpointFeature>("Endpoint");
 
   // unencrypted HTTP endpoints
-  httpServer = new HttpServer(
+  HttpServer* httpServer = new HttpServer(
       SchedulerFeature::SCHEDULER, DispatcherFeature::DISPATCHER,
       _handlerFactory.get(), _jobManager.get(), _keepAliveTimeout);
 
@@ -272,8 +270,8 @@ void RestServerFeature::buildServers() {
 
   // ssl endpoints
   if (endpointList.hasSsl()) {
-    SslFeature* ssl = dynamic_cast<SslFeature*>(
-        application_features::ApplicationServer::lookupFeature("Ssl"));
+    SslFeature* ssl = 
+        application_features::ApplicationServer::getFeature<SslFeature>("Ssl");
 
     // check the ssl context
     if (ssl == nullptr || ssl->sslContext() == nullptr) {
@@ -296,12 +294,12 @@ void RestServerFeature::buildServers() {
 }
 
 void RestServerFeature::defineHandlers() {
-  AgencyFeature* agency = dynamic_cast<AgencyFeature*>(
-      application_features::ApplicationServer::lookupFeature("Agency"));
+  AgencyFeature* agency = 
+      application_features::ApplicationServer::getFeature<AgencyFeature>("Agency");
   TRI_ASSERT(agency != nullptr);
 
-  ClusterFeature* cluster = dynamic_cast<ClusterFeature*>(
-      application_features::ApplicationServer::lookupFeature("Cluster"));
+  ClusterFeature* cluster =
+      application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
   TRI_ASSERT(cluster != nullptr);
 
   auto queryRegistry = DatabaseFeature::DATABASE->queryRegistry();

@@ -53,6 +53,11 @@ ApplicationServer::~ApplicationServer() {
   ApplicationServer::server = nullptr;
 }
 
+void ApplicationServer::throwFeatureNotFoundException(std::string const& name) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "unknown feature '" + name + "'");
+}
+
 ApplicationFeature* ApplicationServer::lookupFeature(std::string const& name) {
   if (ApplicationServer::server == nullptr) {
     return nullptr;
@@ -107,8 +112,7 @@ ApplicationFeature* ApplicationServer::feature(std::string const& name) const {
   auto it = _features.find(name);
 
   if (it == _features.end()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "unknown feature '" + name + "'");
+    throwFeatureNotFoundException(name);
   }
   return (*it).second;
 }

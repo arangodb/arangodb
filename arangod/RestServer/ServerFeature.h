@@ -46,6 +46,12 @@ class ServerFeature final : public application_features::ApplicationFeature {
 
  public:
   OperationMode operationMode() const { return _operationMode; }
+  
+  std::string operationModeString() const {
+    return operationModeString(operationMode());
+  }
+
+  static std::string operationModeString(OperationMode mode); 
 
  private:
   bool _console;
