@@ -45,6 +45,12 @@ std::map<size_t, std::vector<std::shared_ptr<LogAppender>>>
 std::map<std::pair<std::string, std::string>, std::shared_ptr<LogAppender>>
     LogAppender::_definition2appenders;
 
+std::vector<std::function<void(LogMessage*)>> LogAppender::_loggers;
+
+void LogAppender::addLogger(std::function<void(LogMessage*)> func) {
+  _loggers.emplace_back(func);
+}
+
 void LogAppender::addAppender(std::string const& definition,
                               std::string const& filter) {
   std::vector<std::string> v = StringUtils::split(definition, '=');
@@ -207,6 +213,10 @@ void LogAppender::log(LogMessage* message) {
 
   if (!shown) {
     writeStderr(level, m);
+  }
+
+  for (auto logger : _loggers) {
+    logger(message);
   }
 }
 

@@ -20,31 +20,23 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_LOGGER_BUFFER_H
-#define APPLICATION_FEATURES_LOGGER_BUFFER_H 1
+#include "LoggerBufferFeature.h"
 
-#include "Basics/Common.h"
+#include "Logger/LogBuffer.h"
+#include "ProgramOptions/ProgramOptions.h"
+#include "ProgramOptions/Section.h"
 
-#include "Basics/Mutex.h"
-#include "Logger/LogLevel.h"
+using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::options;
 
-namespace arangodb {
-
-struct LogBuffer {
-  static size_t const RING_BUFFER_SIZE = 10240;
-  static Mutex _ringBufferLock;
-  static uint64_t _ringBufferId;
-  static LogBuffer _ringBuffer[];
-
-  static std::vector<LogBuffer> entries(LogLevel, uint64_t start,
-                                        bool upToLevel);
-  static void initialize();
-
-  uint64_t _id;
-  LogLevel _level;
-  time_t _timestamp;
-  char _message[256];
-};
+LoggerBufferFeature::LoggerBufferFeature(application_features::ApplicationServer* server)
+    : ApplicationFeature(server, "LoggerBuffer") {
+  setOptional(true);
+  requiresElevatedPrivileges(false);
+  startsAfter("Logger");
 }
 
-#endif
+void LoggerBufferFeature::prepare() {
+  LogBuffer::initialize();
+}

@@ -35,6 +35,8 @@ struct LogMessage;
 
 class LogAppender {
  public:
+  static void addLogger(std::function<void(LogMessage*)>);
+
   static void addAppender(std::string const& definition,
                           std::string const& contentFilter = "");
   static void addTtyAppender();
@@ -74,6 +76,7 @@ class LogAppender {
       _topics2appenders;
   static std::map<std::pair<std::string, std::string>,
                   std::shared_ptr<LogAppender>> _definition2appenders;
+  static std::vector<std::function<void(LogMessage*)>> _loggers;
 };
 }
 

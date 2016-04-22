@@ -22,7 +22,7 @@
 
 #include "CheckVersionFeature.h"
 
-#include "ApplicationFeatures/LoggerFeature.h"
+#include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"

@@ -20,7 +20,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationFeatures/LoggerFeature.h"
+#include "LoggerFeature.h"
 
 #include "Basics/StringUtils.h"
 #include "Logger/LogAppender.h"
