@@ -74,8 +74,8 @@ class RandomGenerator {
     RANDOM = 2,
     URANDOM = 3,
     COMBINED = 4,
-    WIN32 = 5  // uses the built in cryptographic services offered and
-               // recommended by microsoft (e.g. CryptGenKey(...) )
+    WINDOWS_CRYPT = 5  // uses the built in cryptographic services offered and
+                       // recommended by microsoft (e.g. CryptGenKey(...) )
   };
 
  public:

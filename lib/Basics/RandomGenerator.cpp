@@ -447,7 +447,7 @@ void RandomGenerator::initialize(RandomType type) {
     }
 
 #ifdef _WIN32
-    case RandomType::WIN32: {
+    case RandomType::WINDOWS_CRYPT: {
       _device.reset(new RandomDeviceWin32<1024>());
       break;
     }
