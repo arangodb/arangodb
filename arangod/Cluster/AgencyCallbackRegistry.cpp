@@ -23,6 +23,14 @@
 
 #include "AgencyCallbackRegistry.h"
 
+#include "Basics/Exceptions.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/WriteLocker.h"
+
+#include "Cluster/ServerState.h"
+#include "Endpoint/Endpoint.h"
+#include "Random/RandomGenerator.h"
+
 #include <ctime>
 #warning MOP why? use ConditionVariable
 #include <condition_variable>
@@ -31,13 +39,6 @@
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
-
-#include "Basics/Exceptions.h"
-#include "Basics/ReadLocker.h"
-#include "Basics/WriteLocker.h"
-#include "Cluster/ServerState.h"
-#include "Endpoint/Endpoint.h"
-#include "Random/RandomGenerator.h"
 
 using namespace arangodb;
 
