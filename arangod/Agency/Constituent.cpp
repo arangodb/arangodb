@@ -395,8 +395,8 @@ void Constituent::run() {
     for (auto const& i : VPackArrayIterator(result)) {
       try {
         _term = i.get("term").getUInt();
-        _votedFor = i.get("voted_for").getUInt();
-      } catch (std::exception const& e) {
+        _votedFor = static_cast<decltype(_votedFor)>(i.get("voted_for").getUInt());
+      } catch (std::exception const&) {
         LOG_TOPIC(ERR, Logger::AGENCY)
             << "Persisted election entries corrupt! Defaulting term,vote (0,0)";
       }

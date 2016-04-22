@@ -312,7 +312,7 @@ void DatabaseFeature::openDatabases() {
   TRI_vocbase_defaults_t defaults;
 
   // override with command-line options
-  defaults.defaultMaximalSize = _maximalJournalSize;
+  defaults.defaultMaximalSize = static_cast<TRI_voc_size_t>(_maximalJournalSize);
   defaults.defaultWaitForSync = _defaultWaitForSync;
   defaults.forceSyncProperties = _forceSyncProperties;
 

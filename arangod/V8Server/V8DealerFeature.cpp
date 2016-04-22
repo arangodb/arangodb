@@ -203,7 +203,7 @@ void V8DealerFeature::start() {
     _nrContexts += _nrAdditionalContexts;
   }
 
-  defineDouble("V8_CONTEXTS", _nrContexts);
+  defineDouble("V8_CONTEXTS", static_cast<double>(_nrContexts));
 
   // setup instances
   {
