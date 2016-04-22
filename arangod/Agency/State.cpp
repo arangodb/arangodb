@@ -259,8 +259,8 @@ bool State::loadCollection(std::string const& name) {
         tmp->append(req.startAs<char const>(), req.byteSize());
         _log.push_back(
           log_t(std::stoi(i.get(TRI_VOC_ATTRIBUTE_KEY).copyString()),
-                i.get("term").getUInt(),
-                i.get("leader").getUInt(), tmp));
+                static_cast<term_t>(i.get("term").getUInt()),
+                static_cast<id_t>(i.get("leader").getUInt()), tmp));
       }
     }
 
