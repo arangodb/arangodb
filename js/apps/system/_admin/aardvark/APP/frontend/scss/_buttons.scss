@@ -318,18 +318,18 @@ a.headerButton {
 //Graph Viewer
 
 div.toolbox {
-  @include border-radius(3px);
+  @include border-radius(2px);
   background-color: $c-white;
   border: 1px solid $c-content-border;
   margin-right: 5px;
-  margin-top: -3px;
   padding-bottom: 5px;
   padding-top: 5px;
   position: absolute;
+  top: -10px;
 
   div.gv_action_button {
     @extend %clickable;
-    @include border-radius(3px);
+    @include border-radius(2px);
     background-color: $c-white;
     color: $c-header-btn-fg;
     height: 30px;

@@ -30,7 +30,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/files.h"
 #include "Basics/json.h"
-#include "Basics/RandomGenerator.h"
+#include "Random/RandomGenerator.h"
 
 using namespace arangodb::basics;
 
