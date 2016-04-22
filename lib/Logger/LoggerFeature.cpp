@@ -57,6 +57,9 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer* server,
   }
 
   _levels.push_back("info");
+
+  // if stdout is not a tty, then the default for _foregroundTty becomes false
+  _foregroundTty = (isatty(STDOUT_FILENO) != 0);
 }
 
 void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -166,23 +169,20 @@ void LoggerFeature::prepare() {
 
     LogAppender::addAppender(definition);
   }
-
+  
   if (!_backgrounded && _foregroundTty) {
     LogAppender::addTtyAppender();
   }
-    
-  Logger::initialize(false);
+
+  if (_forceDirect) {
+    Logger::initialize(false);
+  } else {
+    Logger::initialize(_threaded);
+  }
 }
 
 void LoggerFeature::start() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
- 
-  if (!_forceDirect && _threaded) { 
-    Logger::flush();
-    Logger::shutdown(true);
-
-    Logger::initialize(_threaded);
-  }
 }
 
 void LoggerFeature::stop() {
