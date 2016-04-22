@@ -109,7 +109,7 @@ database, and vice versa.
 
 To upgrade an EXISTING database created with a previous version of ArangoDB,
 please execute the server *arangod.exe* with the option
-*--upgrade*. Otherwise starting ArangoDB may fail with errors.
+*--database.upgrade*. Otherwise starting ArangoDB may fail with errors.
 
 Note that there is no harm in running the upgrade. So you should run this
 batch file if you are unsure of the database version you are using.

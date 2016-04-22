@@ -135,6 +135,7 @@ function resultsToXml(results, baseName, cluster) {
               name: 'all_tests_in_' + xmlName,
               time: 0 + current.duration
             }, 0 < failuresFound);
+            xml.elem("/testcase");
           }
 
           xml.elem("/testsuite");
