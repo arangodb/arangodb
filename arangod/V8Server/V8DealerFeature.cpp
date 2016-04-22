@@ -690,7 +690,7 @@ void V8DealerFeature::applyContextUpdates() {
       }
 
       V8Context* context =
-          V8DealerFeature::DEALER->enterContext(vocbase, true, i);
+          V8DealerFeature::DEALER->enterContext(vocbase, true, static_cast<ssize_t>(i));
 
       if (context == nullptr) {
         LOG(FATAL) << "could not updated V8 context #" << i;
@@ -975,7 +975,7 @@ void V8DealerFeature::initializeContext(size_t i) {
 
 void V8DealerFeature::loadJavascriptFiles(TRI_vocbase_t* vocbase,
                                           std::string const& file, size_t i) {
-  V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase, true, i);
+  V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase, true, static_cast<ssize_t>(i));
 
   if (context == nullptr) {
     LOG(FATAL) << "could not load JavaScript files in context #" << i;
