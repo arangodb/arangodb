@@ -1,4 +1,12 @@
 #!/bin/bash
+if [ -z "$XTERM" ] ; then
+    XTERM=x-terminal-emulator
+fi
+if [ -z "$XTERMOPTIONS" ] ; then
+    XTERMOPTIONS="--geometry=80x43"
+fi
+
+
 if [ ! -d arangod ] || [ ! -d arangosh ] || [ ! -d UnitTests ] ; then
     echo Must be started in the main ArangoDB source directory.
     exit 1
@@ -18,7 +26,7 @@ echo Number of Coordinators: $NRCOORDINATORS
 if [ ! -z "$3" ] ; then
     if [ "$3" == "C" ] ; then
         COORDINATORCONSOLE=1
-        echo Starting one coordinator in xterm with --console
+        echo Starting one coordinator in terminal with --console
     elif [ "$3" == "D" ] ; then
         CLUSTERDEBUGGER=1
         echo Running cluster in debugger.
@@ -29,10 +37,6 @@ if [ ! -z "$3" ] ; then
 fi
 
 SECONDARIES="$4"
-
-if [ -z "$XTERMOPTIONS" ] ; then
-    XTERMOPTIONS="-fa Monospace-14 -bg white -fg black -geometry 80x43"
-fi
 
 rm -rf cluster
 mkdir cluster
@@ -93,7 +97,7 @@ startTerminal() {
     PORT=$2
     mkdir cluster/data$PORT
     echo Starting $TYPE on port $PORT
-    xterm $XTERMOPTIONS -e build/bin/arangod -c none \
+    $XTERM $XTERMOPTIONS -e build/bin/arangod -c none \
                 --database.directory cluster/data$PORT \
                 --cluster.agency-endpoint tcp://127.0.0.1:4001 \
                 --cluster.my-address tcp://127.0.0.1:$PORT \
@@ -130,7 +134,7 @@ startDebugger() {
                 --javascript.startup-directory ./js \
                 --javascript.app-path ./js/apps \
                 --server.authentication false &
-    xterm $XTERMOPTIONS -title "$TYPE $PORT" -e gdb build/bin/arangod -p $! &
+    $XTERM $XTERMOPTIONS -e gdb build/bin/arangod -p $! &
 }
 
 startRR() {
@@ -143,7 +147,7 @@ startRR() {
     PORT=$2
     mkdir cluster/data$PORT
     echo Starting $TYPE on port $PORT with rr tracer
-    xterm $XTERMOPTIONS -title "$TYPE $PORT" -e rr build/bin/arangod \
+    $XTERM $XTERMOPTIONS -e rr build/bin/arangod \
                 -c none \
                 --database.directory cluster/data$PORT \
                 --cluster.agency-endpoint tcp://127.0.0.1:4001 \
