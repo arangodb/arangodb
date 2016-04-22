@@ -407,6 +407,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     },
 
     createSVG = function () {
+  console.log(height);
       return d3.select("#" + container.id + " #background")
         .append("svg")
         .attr("id", "graphViewerSVG")
@@ -578,8 +579,8 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
 
       buttons.id = "modifiers";
 
-      title.appendChild(document.createTextNode("Graph Viewer"));
-      title.className = "arangoHeader";
+      //title.appendChild(document.createTextNode("Graph Viewer"));
+      //title.className = "arangoHeader";
 
       /*
       nodeShaperDropDown.id = "nodeshapermenu";
@@ -593,7 +594,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       menubar.appendChild(configureLists.filter);
       menubar.appendChild(configureLists.node);
       transparentHeader.appendChild(buttons);
-      transparentHeader.appendChild(title);
+      //transparentHeader.appendChild(title);
 
       adapterUI.addControlChangeGraph(function() {
         updateAttributeExamples();

@@ -72,7 +72,7 @@
 
           var height = arangoHelper.calculateCenterDivHeight();
 
-          this.ui = new GraphViewerUI($("#content")[0], adapterConfig, width, height, {
+          this.ui = new GraphViewerUI($("#content")[0], adapterConfig, width, $('.centralRow').height() - 135, {
             nodeShaper: {
               label: "_key",
               color: {
