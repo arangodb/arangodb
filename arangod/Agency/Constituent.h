@@ -21,11 +21,9 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CONSENSUS_CONSTITUENT_H
-#define ARANGODB_CONSENSUS_CONSTITUENT_H
+#ifndef ARANGOD_CONSENSUS_CONSTITUENT_H
+#define ARANGOD_CONSENSUS_CONSTITUENT_H 1
 
-#include <string>
-#include <vector>
 #include <random>
 
 #include "AgencyCommon.h"

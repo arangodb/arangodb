@@ -138,6 +138,20 @@ void V8ShellFeature::start() {
 
 void V8ShellFeature::stop() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
+  
+  {
+    v8::Locker locker{_isolate};
+
+    v8::Isolate::Scope isolate_scope(_isolate);
+    v8::HandleScope handle_scope(_isolate);
+
+    v8::Local<v8::Context> context =
+        v8::Local<v8::Context>::New(_isolate, _context);
+
+    v8::Context::Scope context_scope{context};
+
+    TRI_RunGarbageCollectionV8(_isolate, 2500.0);
+  }
 
   {
     v8::Locker locker{_isolate};

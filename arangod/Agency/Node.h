@@ -21,8 +21,8 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CONSENSUS_NODE_H
-#define ARANGODB_CONSENSUS_NODE_H
+#ifndef ARANGOD_CONSENSUS_NODE_H
+#define ARANGOD_CONSENSUS_NODE_H 1
 
 #include "AgencyCommon.h"
 

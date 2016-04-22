@@ -21,14 +21,14 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CONSENSUS_STATE_H
-#define ARANGODB_CONSENSUS_STATE_H
-
+#ifndef ARANGOD_CONSENSUS_STATE_H
+#define ARANGOD_CONSENSUS_STATE_H 1
 
 #include "AgencyCommon.h"
 
-#include <Basics/Thread.h>
-#include <Cluster/ClusterComm.h>
+#include "Basics/Thread.h"
+#include "Cluster/ClusterComm.h"
+
 #include <velocypack/vpack.h>
 
 #include <cstdint>

@@ -106,7 +106,7 @@ void DispatcherFeature::prepare() {
       ApplicationServer::lookupFeature("V8Dealer"));
 
   if (dealer != nullptr) {
-    dealer->defineDouble("DISPATCHER_THREADS", _nrStandardThreads);
+    dealer->defineDouble("DISPATCHER_THREADS", static_cast<double>(_nrStandardThreads));
   }
 }
 
@@ -151,7 +151,7 @@ void DispatcherFeature::buildStandardQueue() {
   LOG_TOPIC(DEBUG, Logger::STARTUP) << "setting up a standard queue with "
                                     << _nrStandardThreads << " threads";
 
-  _dispatcher->addStandardQueue(_nrStandardThreads, _queueSize);
+  _dispatcher->addStandardQueue(static_cast<size_t>(_nrStandardThreads), static_cast<size_t>(_queueSize));
 }
 
 void DispatcherFeature::buildAqlQueue() {

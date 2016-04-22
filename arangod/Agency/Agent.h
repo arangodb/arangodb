@@ -21,16 +21,16 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CONSENSUS_AGENT_H
-#define ARANGODB_CONSENSUS_AGENT_H
+#ifndef ARANGOD_CONSENSUS_AGENT_H
+#define ARANGOD_CONSENSUS_AGENT_H 1
 
-#include "AgencyCommon.h"
-#include "AgentConfiguration.h"
-#include "AgentCallback.h"
-#include "Constituent.h"
-#include "Supervision.h"
-#include "State.h"
-#include "Store.h"
+#include "Agency/AgencyCommon.h"
+#include "Agency/AgentConfiguration.h"
+#include "Agency/AgentCallback.h"
+#include "Agency/Constituent.h"
+#include "Agency/Supervision.h"
+#include "Agency/State.h"
+#include "Agency/Store.h"
 
 struct TRI_server_t;
 struct TRI_vocbase_t;
@@ -41,7 +41,7 @@ class Agent : public arangodb::Thread {
 
 public:
   /// @brief Construct with program options
-  Agent(config_t const&);
+  explicit Agent(config_t const&);
 
   /// @brief Clean up
   ~Agent();
