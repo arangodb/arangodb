@@ -21,8 +21,8 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_ENUMERATE_COLLECTION_BLOCK_H
-#define ARANGODB_AQL_ENuMERATE_COLLECTION_BLOCK_H 1
+#ifndef ARANGOD_AQL_ENUMERATE_COLLECTION_BLOCK_H
+#define ARANGOD_AQL_ENUMERATE_COLLECTION_BLOCK_H 1
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"

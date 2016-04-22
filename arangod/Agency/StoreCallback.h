@@ -21,8 +21,8 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CONSENSUS_STORE_CALLBACK_H
-#define ARANGODB_CONSENSUS_STORE_CALLBACK_H
+#ifndef ARANGOD_CONSENSUS_STORE_CALLBACK_H
+#define ARANGOD_CONSENSUS_STORE_CALLBACK_H 1
 
 #include "Cluster/ClusterComm.h"
 

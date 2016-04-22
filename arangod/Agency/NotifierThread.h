@@ -21,13 +21,12 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CONSENSUS_NOTIFIER_COMMON_H
-#define ARANGODB_CONSENSUS_NOTIFIER_COMMON_H
+#ifndef ARANGOD_CONSENSUS_NOTIFIER_COMMON_H
+#define ARANGOD_CONSENSUS_NOTIFIER_COMMON_H 1
 
-#include <string>
-#include <vector>
 #include <memory>
 
+#include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
 

@@ -21,11 +21,11 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CONSENSUS_AGENT_CALLBACK_H
-#define ARANGODB_CONSENSUS_AGENT_CALLBACK_H
+#ifndef ARANGOD_CONSENSUS_AGENT_CALLBACK_H
+#define ARANGOD_CONSENSUS_AGENT_CALLBACK_H 1
 
+#include "Agency/AgencyCommon.h"
 #include "Cluster/ClusterComm.h"
-#include "AgencyCommon.h"
 
 namespace arangodb {
 namespace consensus {
