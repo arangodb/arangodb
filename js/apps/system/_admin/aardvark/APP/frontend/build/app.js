@@ -8398,6 +8398,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     },
 
     createSVG = function () {
+  console.log(height);
       return d3.select("#" + container.id + " #background")
         .append("svg")
         .attr("id", "graphViewerSVG")
@@ -8569,8 +8570,8 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
 
       buttons.id = "modifiers";
 
-      title.appendChild(document.createTextNode("Graph Viewer"));
-      title.className = "arangoHeader";
+      //title.appendChild(document.createTextNode("Graph Viewer"));
+      //title.className = "arangoHeader";
 
       /*
       nodeShaperDropDown.id = "nodeshapermenu";
@@ -8584,7 +8585,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       menubar.appendChild(configureLists.filter);
       menubar.appendChild(configureLists.node);
       transparentHeader.appendChild(buttons);
-      transparentHeader.appendChild(title);
+      //transparentHeader.appendChild(title);
 
       adapterUI.addControlChangeGraph(function() {
         updateAttributeExamples();
@@ -16634,7 +16635,7 @@ var __fs__=require("fs");var __rcf__=__fs__.join(__fs__.home(),".arangosh.rc");i
       },
 
       residentSize: {
-        header: "Resident Size",
+        header: "Memory",
         axes: {
           y: {
             labelsKMG2: false,
@@ -16720,7 +16721,7 @@ var __fs__=require("fs");var __rcf__=__fs__.join(__fs__.home(),".arangosh.rc");i
 
       requests: {
         header: "Requests",
-        labels: ["datetime", "REQUESTS"],
+        labels: ["datetime", "Reads", "Writes"],
         stackedGraph: true,
         div: "requestsChart",
         axes: {
@@ -22644,16 +22645,23 @@ window.ArangoUsers = Backbone.Collection.extend({
         if (valueList.length > 1) {
 
           // HTTP requests combine all types to one
+          // 0: date, 1: GET", 2: "PUT", 3: "POST", 4: "DELETE", 5: "PATCH",
+          // 6: "HEAD", 7: "OPTIONS", 8: "OTHER"
+          //
+          var read = 0, write = 0;
           if (valueList.length === 9) {
-            var counter = 0, sum = 0;
 
-            _.each(valueList, function(value) {
-              if (counter !== 0) {
-                sum += value;
-              }
-              counter++;
-            });
-            valueList = [valueList[0], sum];
+            read += valueList[1];
+            read += valueList[6];
+            read += valueList[7];
+            read += valueList[8];
+
+            write += valueList[2];
+            write += valueList[3];
+            write += valueList[4];
+            write += valueList[5];
+
+            valueList = [valueList[0], read, write];
           }
 
           self.history[self.server][f].push(valueList);
@@ -25243,19 +25251,6 @@ window.ArangoUsers = Backbone.Collection.extend({
               if (navElement) {
                 window.clearTimeout(timer);
                 timer = null;
-
-                if (name === '_system') {
-                  // show "logs" button
-                  $('.logs-menu').css('visibility', 'visible');
-                  $('.logs-menu').css('display', 'inline');
-                  // show dbs menues
-                  $('#databaseNavi').css('display','inline');
-                }
-                else {
-                  // hide "logs" button
-                  $('.logs-menu').css('visibility', 'hidden');
-                  $('.logs-menu').css('display', 'none');
-                }
                 self.render();
               }
             }, 50);
@@ -25863,7 +25858,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
           var height = arangoHelper.calculateCenterDivHeight();
 
-          this.ui = new GraphViewerUI($("#content")[0], adapterConfig, width, height, {
+          this.ui = new GraphViewerUI($("#content")[0], adapterConfig, width, $('.centralRow').height() - 135, {
             nodeShaper: {
               label: "_key",
               color: {
@@ -30276,7 +30271,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         "aqlEditor", "queryTable", "previewWrapper", "querySpotlight",
         "bindParamEditor", "toggleQueries1", "toggleQueries2",
         "saveCurrentQuery", "querySize", "executeQuery", "switchTypes", 
-        "explainQuery", "clearQuery", "importQuery", "exportQuery"
+        "explainQuery", "importQuery", "exportQuery"
       ];
       _.each(divs, function(div) {
         $("#" + div).toggle();

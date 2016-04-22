@@ -74,6 +74,7 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
   startsAfter("Random");
   startsAfter("Temp");
   startsAfter("WorkMonitor");
+  startsAfter("Statistics");
 }
 
 void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -249,6 +250,9 @@ void DatabaseFeature::stop() {
 
   // clear singleton
   DATABASE = nullptr;
+
+  // turn off index threads
+  _indexPool.reset();
 
   LOG(INFO) << "ArangoDB has been shut down";
 }

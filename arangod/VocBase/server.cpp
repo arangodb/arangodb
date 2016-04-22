@@ -864,7 +864,7 @@ static int InitDatabases(TRI_server_t* server, bool checkVersion,
     if (names.empty()) {
       if (!performUpgrade && HasOldCollections(server)) {
         LOG(ERR) << "no databases found. Please start the server with the "
-                    "--upgrade option";
+                    "--database.upgrade option";
 
         return TRI_ERROR_ARANGO_DATADIR_INVALID;
       }

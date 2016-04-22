@@ -108,7 +108,7 @@ button.disabled,
 
 
 button {
-  font-family: 'Roboto', sans-serif !important;
+  @extend %font-family;
 
   &.btn-server {
     width: 120px;

@@ -52,17 +52,18 @@
       %>
 
       <div class="tile tile-graph pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-3 pure-u-lg-1-4 pure-u-xl-1-6" id="<%=graphName %>_tile">
-      <div class="borderBox"></div>
-      <div class="iconSet">
-        <span class="icon_arangodb_settings2 editGraph" id="<%=graphName %>_settings" alt="Edit graph" title="Edit graph"></span>
+        <div class="paddingBox">
+          <div class="borderBox"></div>
+          <div class="iconSet">
+            <span class="icon_arangodb_settings2 editGraph" id="<%=graphName %>_settings" alt="Edit graph" title="Edit graph"></span>
+          </div>
+          <span class="icon_arangodb_edge5 tile-icon"></span>
+          <span class="icon_arangodb_edge5 icon_arangodb_edge5-2 tile-icon"></span>
+          <div class="tileBadge"></div>
+          <h5 class="collectionName"><%=graphName %></h5>
+        </div>
       </div>
-      <span class="icon_arangodb_edge5 tile-icon"></span>
-      <span class="icon_arangodb_edge5 icon_arangodb_edge5-2 tile-icon"></span>
-        <div class="tileBadge">
-    </div>
 
-      <h5 class="collectionName"><%=graphName %></h5>
-    </div>
       <%});%>
      </div>
   </div>

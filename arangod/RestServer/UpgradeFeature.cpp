@@ -168,7 +168,7 @@ void UpgradeFeature::upgradeDatabase() {
             } else {
               LOG(FATAL) << "Database '" << vocbase->_name
                          << "' needs upgrade. Please start the server with the "
-                            "--upgrade option";
+                            "--database.upgrade option";
               FATAL_ERROR_EXIT();
             }
           } else {
