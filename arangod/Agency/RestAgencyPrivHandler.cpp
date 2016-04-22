@@ -21,7 +21,6 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RestServer/ArangoServer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 #include "RestAgencyPrivHandler.h"
@@ -44,8 +43,6 @@ using namespace arangodb::consensus;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
-
-extern ArangoServer* ArangoInstance;
 
 RestAgencyPrivHandler::RestAgencyPrivHandler(HttpRequest* request, Agent* agent)
     : RestBaseHandler(request), _agent(agent) {}
