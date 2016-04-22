@@ -1352,7 +1352,7 @@ function startArango(protocol, options, addArgs, name, rootDir, isAgency) {
   }
 
   if (protocol === "ssl") {
-    args["server.keyfile"] = fs.join("UnitTests", "server.pem");
+    args["ssl.keyfile"] = fs.join("UnitTests", "server.pem");
   }
 
   args = Object.assign(args, options.extraArgs);
@@ -3523,7 +3523,7 @@ testFuncs.upgrade = function(options) {
 
   fs.makeDirectoryRecursive(fs.join(tmpDataDir, "data"));
 
-  const argv = toArgv(args).concat(["--upgrade"]);
+  const argv = toArgv(args).concat(["--database.upgrade"]);
 
   result.upgrade.first = executeAndWait(ARANGOD_BIN, argv, options, "upgrade");
 

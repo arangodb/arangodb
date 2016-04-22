@@ -43,8 +43,8 @@
 }
 
 .modal-body {
+  @extend %font-family;
   color: $c-btn-inverse;
-  font-family: 'Roboto', sans-serif !important;
   font-size: 14px;
   font-weight: 300;
   max-height: 410px;
