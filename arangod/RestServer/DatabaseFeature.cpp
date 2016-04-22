@@ -251,6 +251,9 @@ void DatabaseFeature::stop() {
   // clear singleton
   DATABASE = nullptr;
 
+  // turn off index threads
+  _indexPool.reset();
+
   LOG(INFO) << "ArangoDB has been shut down";
 }
 

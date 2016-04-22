@@ -178,9 +178,6 @@ void ServerFeature::start() {
 
   waitForHeartbeat();
 
-  LOG(INFO) << "ArangoDB (version " << ARANGODB_VERSION_FULL
-            << ") is ready for business. Have fun!";
-
   *_result = EXIT_SUCCESS;
 
   switch (_operationMode) {

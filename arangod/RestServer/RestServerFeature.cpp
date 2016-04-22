@@ -231,6 +231,9 @@ void RestServerFeature::start() {
               << (_authenticationUnixSockets ? "on" : "off");
 #endif
   }
+  
+  LOG(INFO) << "ArangoDB (version " << ARANGODB_VERSION_FULL
+            << ") is ready for business. Have fun!";
 }
 
 void RestServerFeature::stop() {
