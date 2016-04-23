@@ -23,6 +23,7 @@
 
 #include "v8-collection.h"
 #include "Aql/Query.h"
+#include "Basics/Timers.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/conversions.h"
 #include "Basics/ScopeGuard.h"
@@ -2109,6 +2110,8 @@ static void JS_InsertVocbaseCol(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
+  TIMER_START(JS_INSERT_ALL);
+
   auto collection = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == nullptr) {
@@ -2174,6 +2177,8 @@ static void JS_InsertVocbaseCol(
     // invalid value type. must be a document
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
+  
+  TIMER_START(JS_INSERT_V8_TO_VPACK);
 
   // copy default options (and set exclude handler in copy)
   VPackOptions vpackOptions = VPackOptions::Defaults;
@@ -2216,6 +2221,8 @@ static void JS_InsertVocbaseCol(
   } else {
     doOneDocument(payload);
   }
+  
+  TIMER_STOP(JS_INSERT_V8_TO_VPACK);
 
   // load collection
   auto transactionContext = std::make_shared<V8TransactionContext>(collection->_vocbase, true);
@@ -2246,8 +2253,16 @@ static void JS_InsertVocbaseCol(
 
   VPackSlice resultSlice = result.slice();
   
-  TRI_V8_RETURN(TRI_VPackToV8(isolate, resultSlice,
-                              transactionContext->getVPackOptions()));
+  TIMER_START(JS_INSERT_VPACK_TO_V8);
+  
+  auto v8Result = TRI_VPackToV8(isolate, resultSlice,
+                                transactionContext->getVPackOptions());
+  
+  TIMER_STOP(JS_INSERT_VPACK_TO_V8);
+
+  TIMER_STOP(JS_INSERT_ALL);
+  
+  TRI_V8_RETURN(v8Result);
   TRI_V8_TRY_CATCH_END
 }
 
