@@ -520,7 +520,7 @@ void LogfileManager::stop() {
   
   // finalize allocator thread
   // this prevents creating new (empty) WAL logfile once we flush
-  // current logfile
+  // the current logfile
   stopAllocatorThread();
 
   if (_allocatorThread != nullptr) {
@@ -1942,6 +1942,38 @@ int LogfileManager::startCollectorThread() {
 void LogfileManager::stopCollectorThread() {
   if (_collectorThread != nullptr) {
     LOG(TRACE) << "stopping WAL collector thread";
+ 
+    // wait for at most 5 seconds for the collector 
+    // to catch up
+    double const end = TRI_microtime() + 5.0;  
+    while (TRI_microtime() < end) {
+      bool canAbort = true;
+      {
+        READ_LOCKER(readLocker, _logfilesLock);
+        for (auto& it : _logfiles) {
+          Logfile* logfile = it.second;
+
+          if (logfile == nullptr) {
+           continue;
+          }
+
+          Logfile::StatusType status = logfile->status();
+
+          if (status == Logfile::StatusType::SEAL_REQUESTED) {
+            canAbort = false;
+          }
+        }
+      }
+
+      if (canAbort) {
+        MUTEX_LOCKER(mutexLocker, _idLock);
+        if (_lastSealedId == _lastCollectedId) {
+          break;
+        }
+      }
+
+      usleep(50000);
+    }
 
     _collectorThread->beginShutdown();
   }
