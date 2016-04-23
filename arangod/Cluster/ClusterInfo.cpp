@@ -1322,8 +1322,6 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   // Update our cache:
   loadPlannedCollections();
   
-  std::string const where =
-      "Current/Collections/" + databaseName + "/" + collectionID;
   while (TRI_microtime() <= endTime) {
     agencyCallback->waitForExecution(interval);
 
