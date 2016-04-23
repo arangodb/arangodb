@@ -55,6 +55,6 @@ int TRI_V8ToVPack(v8::Isolate* isolate, arangodb::velocypack::Builder& builder,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_V8ToVPackSimple(v8::Isolate* isolate, arangodb::velocypack::Builder& builder,
-                        v8::Handle<v8::Value> const value, bool keepTopLevelOpen);
+                        v8::Handle<v8::Value> const value);
 
 #endif

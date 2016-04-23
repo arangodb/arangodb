@@ -53,7 +53,7 @@ static const uint32_t V8DataSlot = 0;
 #define TRI_V8_TRY_CATCH_END                                       \
   }                                                                \
   catch (arangodb::basics::Exception const& ex) {                  \
-    TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), ex.what());          \
+    TRI_V8_THROW_EXCEPTION_FULL(ex.code(), ex.what());             \
   }                                                                \
   catch (std::exception const& ex) {                               \
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ex.what()); \

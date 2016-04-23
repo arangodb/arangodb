@@ -148,7 +148,7 @@ AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
     // expression had a result. convert it to JSON
     int res;
     if (_isSimple) {
-      res = TRI_V8ToVPackSimple(isolate, builder, result, false);
+      res = TRI_V8ToVPackSimple(isolate, builder, result);
     } else {
       res = TRI_V8ToVPack(isolate, builder, result, false);
     }

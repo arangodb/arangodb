@@ -47,19 +47,3 @@ std::map<std::string, std::pair<double, uint64_t>> Timers::get() {
   }
   return result;
 }
-  
-std::string Timers::translateName(TimerType type) {
-  switch (type) {
-    case JS_INSERT_ALL: 
-      return "JS_INSERT_ALL";
-    case JS_INSERT_V8_TO_VPACK: 
-      return "JS_INSERT_V8_TO_VPACK";
-    case JS_INSERT_VPACK_TO_V8: 
-      return "JS_INSERT_VPACK_TO_V8";
-
-    default: 
-      return "UNKNOWN";
-  }
-}
-
-

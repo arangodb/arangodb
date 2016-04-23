@@ -29,6 +29,7 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Timers.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterMethods.h"
@@ -40,6 +41,7 @@
 #include "Logger/Logger.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationCursor.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "Utils/TransactionContext.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/Ditch.h"
@@ -463,18 +465,11 @@ std::pair<bool, bool> Transaction::findIndexHandleForAndNode(
 thread_local std::unordered_set<std::string>* Transaction::_makeNolockHeaders =
     nullptr;
   
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Index Iterator Context
-////////////////////////////////////////////////////////////////////////////////
-
-struct OpenIndexIteratorContext {
-  arangodb::Transaction* trx;
-  TRI_document_collection_t* collection;
-};
       
 Transaction::Transaction(std::shared_ptr<TransactionContext> transactionContext,
                          TRI_voc_tid_t externalId)
     : _externalId(externalId),
+      _serverRole(ServerState::ROLE_UNDEFINED),
       _setupState(TRI_ERROR_NO_ERROR),
       _nestingLevel(0),
       _errorData(),
@@ -485,11 +480,13 @@ Transaction::Transaction(std::shared_ptr<TransactionContext> transactionContext,
       _isReal(true),
       _trx(nullptr),
       _vocbase(transactionContext->vocbase()),
+      _resolver(nullptr),
       _transactionContext(transactionContext) {
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_transactionContext != nullptr);
 
-  if (ServerState::instance()->isCoordinator()) {
+  _serverRole = ServerState::instance()->getRole();
+  if (ServerState::isCoordinator(_serverRole)) {
     _isReal = false;
   }
 
@@ -541,10 +538,12 @@ std::vector<std::string> Transaction::collectionNames() const {
 /// @brief return the collection name resolver
 ////////////////////////////////////////////////////////////////////////////////
 
-CollectionNameResolver const* Transaction::resolver() const {
-  CollectionNameResolver const* r = this->_transactionContext->getResolver();
-  TRI_ASSERT(r != nullptr);
-  return r;
+CollectionNameResolver const* Transaction::resolver() {
+  if (_resolver == nullptr) {
+    _resolver = _transactionContext->getResolver();
+    TRI_ASSERT(_resolver != nullptr);
+  }
+  return _resolver;
 }
   
 ////////////////////////////////////////////////////////////////////////////////
@@ -807,7 +806,7 @@ OperationResult Transaction::any(std::string const& collectionName) {
 
 OperationResult Transaction::any(std::string const& collectionName,
                                  uint64_t skip, uint64_t limit) {
-  if (ServerState::instance()->isCoordinator()) {
+  if (ServerState::isCoordinator(_serverRole)) {
     return anyCoordinator(collectionName, skip, limit);
   }
   return anyLocal(collectionName, skip, limit);
@@ -914,7 +913,7 @@ bool Transaction::isDocumentCollection(std::string const& collectionName) {
 //////////////////////////////////////////////////////////////////////////////
   
 TRI_col_type_t Transaction::getCollectionType(std::string const& collectionName) {
-  if (ServerState::instance()->isCoordinator()) {
+  if (ServerState::isCoordinator(_serverRole)) {
     return resolver()->getCollectionTypeCluster(collectionName);
   }
   return resolver()->getCollectionType(collectionName);
@@ -952,7 +951,7 @@ Transaction::IndexHandle Transaction::edgeIndexHandle(std::string const& collect
 void Transaction::invokeOnAllElements(std::string const& collectionName,
                                       std::function<bool(TRI_doc_mptr_t const*)> callback) {
   TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
-  if (ServerState::instance()->isCoordinator()) {
+  if (ServerState::isCoordinator(_serverRole)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
   
@@ -992,7 +991,7 @@ OperationResult Transaction::document(std::string const& collectionName,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
-  if (ServerState::instance()->isCoordinator()) {
+  if (ServerState::isCoordinator(_serverRole)) {
     return documentCoordinator(collectionName, value, options);
   }
 
@@ -1131,7 +1130,7 @@ OperationResult Transaction::insert(std::string const& collectionName,
   // Validate Edges
   OperationOptions optionsCopy = options;
 
-  if (ServerState::instance()->isCoordinator()) {
+  if (ServerState::isCoordinator(_serverRole)) {
     return insertCoordinator(collectionName, value, optionsCopy);
   }
 
@@ -1185,14 +1184,20 @@ OperationResult Transaction::insertCoordinator(std::string const& collectionName
 OperationResult Transaction::insertLocal(std::string const& collectionName,
                                          VPackSlice const value,
                                          OperationOptions& options) {
- 
-  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName); 
+  TIMER_START(TRANSACTION_INSERT_LOCAL);
+  TRI_voc_cid_t cid;
+  auto t = dynamic_cast<SingleCollectionTransaction*>(this);
+  if (t != nullptr) {
+    cid = t->cid();
+  } else {
+    cid = addCollectionAtRuntime(collectionName); 
+  }
   TRI_document_collection_t* document = documentCollection(trxCollection(cid));
 
   // First see whether or not we have to do synchronous replication:
   std::shared_ptr<std::vector<ServerID> const> followers;
   bool doingSynchronousReplication = false;
-  if (ServerState::instance()->isDBServer()) {
+  if (ServerState::isDBServer(_serverRole)) {
     // Now replicate the same operation on all followers:
     auto const& followerInfo = document->followers();
     followers = followerInfo->get();
@@ -1225,15 +1230,21 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
     std::string keyString 
         = VPackSlice(mptr.vpack()).get(TRI_VOC_ATTRIBUTE_KEY).copyString();
 
+    TIMER_START(TRANSACTION_INSERT_BUILD_DOCUMENT_IDENTITY);
+
     buildDocumentIdentity(resultBuilder, cid, keyString, 
         mptr.revisionIdAsSlice(), VPackSlice(),
         nullptr, options.returnNew ? &mptr : nullptr);
 
+    TIMER_STOP(TRANSACTION_INSERT_BUILD_DOCUMENT_IDENTITY);
+
     return TRI_ERROR_NO_ERROR;
   };
 
+  TIMER_START(TRANSACTION_INSERT_WORK_FOR_ONE);
+  
   int res = TRI_ERROR_NO_ERROR;
-  bool multiCase = value.isArray();
+  bool const multiCase = value.isArray();
   std::unordered_map<int, size_t> countErrorCodes;
   if (multiCase) {
     VPackArrayBuilder b(&resultBuilder);
@@ -1248,6 +1259,8 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
   } else {
     res = workForOneDocument(value);
   }
+  
+  TIMER_STOP(TRANSACTION_INSERT_WORK_FOR_ONE);
 
   if (doingSynchronousReplication && res == TRI_ERROR_NO_ERROR) {
     // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
@@ -1255,8 +1268,6 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
     // in case of an error.
  
     // Now replicate the good operations on all followers:
-    auto cc = arangodb::ClusterComm::instance();
-
     std::string path
         = "/_db/" +
           arangodb::basics::StringUtils::urlEncode(_vocbase->_name) +
@@ -1305,6 +1316,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
                               arangodb::GeneralRequest::RequestType::POST,
                               path, body);
       }
+      auto cc = arangodb::ClusterComm::instance();
       size_t nrDone = 0;
       size_t nrGood = cc->performRequests(requests, 15.0, nrDone,
                                           Logger::REPLICATION);
@@ -1339,6 +1351,8 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
     // We needed the results, but do not want to report:
     resultBuilder.clear();
   }
+  
+  TIMER_STOP(TRANSACTION_INSERT_LOCAL);
 
   return OperationResult(resultBuilder.steal(), nullptr, "", res,
                          options.waitForSync, countErrorCodes);
@@ -1362,7 +1376,7 @@ OperationResult Transaction::update(std::string const& collectionName,
 
   OperationOptions optionsCopy = options;
 
-  if (ServerState::instance()->isCoordinator()) {
+  if (ServerState::isCoordinator(_serverRole)) {
     return updateCoordinator(collectionName, newValue, optionsCopy);
   }
 
@@ -1436,7 +1450,7 @@ OperationResult Transaction::replace(std::string const& collectionName,
 
   OperationOptions optionsCopy = options;
 
-  if (ServerState::instance()->isCoordinator()) {
+  if (ServerState::isCoordinator(_serverRole)) {
     return replaceCoordinator(collectionName, newValue, optionsCopy);
   }
 
@@ -1508,7 +1522,7 @@ OperationResult Transaction::modifyLocal(
   // First see whether or not we have to do synchronous replication:
   std::shared_ptr<std::vector<ServerID> const> followers;
   bool doingSynchronousReplication = false;
-  if (ServerState::instance()->isDBServer()) {
+  if (ServerState::isDBServer(_serverRole)) {
     // Now replicate the same operation on all followers:
     auto const& followerInfo = document->followers();
     followers = followerInfo->get();
@@ -1699,7 +1713,7 @@ OperationResult Transaction::remove(std::string const& collectionName,
 
   OperationOptions optionsCopy = options;
 
-  if (ServerState::instance()->isCoordinator()) {
+  if (ServerState::isCoordinator(_serverRole)) {
     return removeCoordinator(collectionName, value, optionsCopy);
   }
 
@@ -1761,7 +1775,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
   // First see whether or not we have to do synchronous replication:
   std::shared_ptr<std::vector<ServerID> const> followers;
   bool doingSynchronousReplication = false;
-  if (ServerState::instance()->isDBServer()) {
+  if (ServerState::isDBServer(_serverRole)) {
     // Now replicate the same operation on all followers:
     auto const& followerInfo = document->followers();
     followers = followerInfo->get();
@@ -1937,7 +1951,7 @@ OperationResult Transaction::all(std::string const& collectionName,
   
   OperationOptions optionsCopy = options;
 
-  if (ServerState::instance()->isCoordinator()) {
+  if (ServerState::isCoordinator(_serverRole)) {
     return allCoordinator(collectionName, skip, limit, optionsCopy);
   }
 
@@ -2017,7 +2031,7 @@ OperationResult Transaction::truncate(std::string const& collectionName,
   
   OperationOptions optionsCopy = options;
 
-  if (ServerState::instance()->isCoordinator()) {
+  if (ServerState::isCoordinator(_serverRole)) {
     return truncateCoordinator(collectionName, optionsCopy);
   }
 
@@ -2080,7 +2094,7 @@ OperationResult Transaction::truncateLocal(std::string const& collectionName,
   }
   
   // Now see whether or not we have to do synchronous replication:
-  if (ServerState::instance()->isDBServer()) {
+  if (ServerState::isDBServer(_serverRole)) {
     std::shared_ptr<std::vector<ServerID> const> followers;
     // Now replicate the same operation on all followers:
     auto const& followerInfo = document->followers();
@@ -2146,7 +2160,7 @@ OperationResult Transaction::truncateLocal(std::string const& collectionName,
 OperationResult Transaction::count(std::string const& collectionName) {
   TRI_ASSERT(getStatus() == TRI_TRANSACTION_RUNNING);
 
-  if (ServerState::instance()->isCoordinator()) {
+  if (ServerState::isCoordinator(_serverRole)) {
     return countCoordinator(collectionName);
   }
 
@@ -2369,7 +2383,7 @@ std::shared_ptr<OperationCursor> Transaction::indexScanForCondition(
     arangodb::aql::Variable const* var, uint64_t limit, uint64_t batchSize,
     bool reverse) {
 
-  if (ServerState::instance()->isCoordinator()) {
+  if (ServerState::isCoordinator(_serverRole)) {
     // The index scan is only available on DBServers and Single Server.
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
   }
@@ -2412,7 +2426,7 @@ std::shared_ptr<OperationCursor> Transaction::indexScan(
     uint64_t limit, uint64_t batchSize, bool reverse) {
   // For now we assume indexId is the iid part of the index.
 
-  if (ServerState::instance()->isCoordinator()) {
+  if (ServerState::isCoordinator(_serverRole)) {
     // The index scan is only available on DBServers and Single Server.
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
   }
@@ -2572,11 +2586,11 @@ int Transaction::addCollection(TRI_voc_cid_t cid, TRI_transaction_type_e type) {
     return registerError(TRI_ERROR_TRANSACTION_INTERNAL);
   }
 
-  if (this->isEmbeddedTransaction()) {
-   return this->addCollectionEmbedded(cid, type);
+  if (isEmbeddedTransaction()) {
+   return addCollectionEmbedded(cid, type);
   } 
 
-  return this->addCollectionToplevel(cid, type);
+  return addCollectionToplevel(cid, type);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2641,8 +2655,7 @@ int Transaction::unlock(TRI_transaction_collection_t* trxCollection,
 std::vector<std::shared_ptr<Index>> Transaction::indexesForCollection(
     std::string const& collectionName) {
 
-  auto ss = ServerState::instance();
-  if (ss->isCoordinator()) {
+  if (ServerState::isCoordinator(_serverRole)) {
     return indexesForCollectionCoordinator(collectionName);
   }
   // For a DBserver we use the local case.
@@ -2785,7 +2798,7 @@ std::vector<std::shared_ptr<Index>> Transaction::indexesForCollectionCoordinator
 Transaction::IndexHandle Transaction::getIndexByIdentifier(
     std::string const& collectionName, std::string const& indexHandle) {
 
-  if (ServerState::instance()->isCoordinator()) {
+  if (ServerState::isCoordinator(_serverRole)) {
     if (indexHandle.empty()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "The index id cannot be empty.");

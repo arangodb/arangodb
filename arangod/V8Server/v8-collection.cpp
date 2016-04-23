@@ -2184,10 +2184,11 @@ static void JS_InsertVocbaseCol(
   VPackOptions vpackOptions = VPackOptions::Defaults;
   vpackOptions.attributeExcludeHandler = basics::VelocyPackHelper::getExcludeHandler();
   VPackBuilder builder(&vpackOptions);
-  v8::Handle<v8::Value> payload = args[docIdx];
 
   auto doOneDocument = [&](v8::Handle<v8::Value> obj) -> void {
+  TIMER_START(JS_INSERT_V8_TO_VPACK2);
     int res = TRI_V8ToVPack(isolate, builder, obj, true);
+  TIMER_STOP(JS_INSERT_V8_TO_VPACK2);
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
@@ -2211,7 +2212,10 @@ static void JS_InsertVocbaseCol(
     builder.close();
   };
 
+  v8::Handle<v8::Value> payload = args[docIdx];
+  bool payloadIsArray;
   if (payload->IsArray()) {
+    payloadIsArray = true;
     VPackArrayBuilder b(&builder);
     v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(payload);
     uint32_t const n = array->Length();
@@ -2219,18 +2223,21 @@ static void JS_InsertVocbaseCol(
       doOneDocument(array->Get(i));
     }
   } else {
+    payloadIsArray = false;
     doOneDocument(payload);
   }
   
   TIMER_STOP(JS_INSERT_V8_TO_VPACK);
 
+  TIMER_START(JS_INSERT_CREATE_TRX);
   // load collection
   auto transactionContext = std::make_shared<V8TransactionContext>(collection->_vocbase, true);
 
   SingleCollectionTransaction trx(transactionContext, collection->_cid, TRI_TRANSACTION_WRITE);
-  if (!payload->IsArray()) {
+  if (!payloadIsArray) {
     trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
   }
+  TIMER_STOP(JS_INSERT_CREATE_TRX);
 
   int res = trx.begin();
 
@@ -2238,7 +2245,9 @@ static void JS_InsertVocbaseCol(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
+  TIMER_START(JS_INSERT_INSERT);
   OperationResult result = trx.insert(collection->_name, builder.slice(), options);
+  TIMER_STOP(JS_INSERT_INSERT);
 
   res = trx.finish(result.code);
 

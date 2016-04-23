@@ -33,8 +33,8 @@
 
 #else
 
-#define TIMER_START(name) do { } while (false)
-#define TIMER_STOP(name) do { } while (false)
+#define TIMER_START(name) // do { } while (false)
+#define TIMER_STOP(name) // do { } while (false)
 
 #endif
 
@@ -51,13 +51,48 @@ class Timers {
     JS_INSERT_ALL,
     JS_INSERT_VPACK_TO_V8, 
     JS_INSERT_V8_TO_VPACK,
+    JS_INSERT_V8_TO_VPACK2,
+    JS_INSERT_CREATE_TRX,
+    JS_INSERT_INSERT,
+
+    TRANSACTION_INSERT_LOCAL,
+    TRANSACTION_INSERT_BUILD_DOCUMENT_IDENTITY,
+    TRANSACTION_INSERT_WORK_FOR_ONE,
 
     TIMER_MAX
   };
 
   static void clear();
   static std::map<std::string, std::pair<double, uint64_t>> get();
-  static std::string translateName(TimerType);
+  static std::string translateName(TimerType type) {
+    switch (type) {
+      case JS_INSERT_ALL: 
+        return "JS_INSERT_ALL";
+      case JS_INSERT_V8_TO_VPACK: 
+        return "JS_INSERT_V8_TO_VPACK";
+      case JS_INSERT_V8_TO_VPACK2: 
+        return "JS_INSERT_V8_TO_VPACK2";
+      case JS_INSERT_VPACK_TO_V8: 
+        return "JS_INSERT_VPACK_TO_V8";
+      case JS_INSERT_CREATE_TRX: 
+        return "JS_INSERT_CREATE_TRX";
+      case JS_INSERT_INSERT: 
+        return "JS_INSERT_INSERT";
+
+      case TRANSACTION_INSERT_LOCAL: 
+        return "TRANSACTION_INSERT_LOCAL";
+      case TRANSACTION_INSERT_BUILD_DOCUMENT_IDENTITY:
+        return "TRANSACTION_INSERT_BUILD_DOCUMENT_IDENTITY";
+      case TRANSACTION_INSERT_WORK_FOR_ONE:
+        return "TRANSACTION_INSERT_WORK_FOR_ONE";
+
+      case TIMER_MIN: 
+      case TIMER_MAX: {
+        break; 
+      }
+    }
+    return "UNKNOWN";
+  }
   
   static std::vector<double> starts;
   static std::vector<double> totals;
