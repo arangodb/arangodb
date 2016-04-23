@@ -387,7 +387,7 @@ class ProgramOptions {
 
   // handle an unknown option
   bool unknownOption(std::string const& name) {
-    fail("unknown option '" + name + "'");
+    fail("unknown option '--" + name + "'");
 
     auto similarOptions = similar(name, 8, 4);
     if (!similarOptions.empty()) {
@@ -397,6 +397,9 @@ class ProgramOptions {
       }
       std::cerr << std::endl;
     }
+    std::cerr << "Use --help or --help-all to get an overview of available options" 
+              << std::endl << std::endl; 
+    
     return false;
   }
 
@@ -454,7 +457,7 @@ class ProgramOptions {
 
   // get a list of similar options
   std::vector<std::string> similar(std::string const& value, int cutOff,
-                                   size_t max) {
+                                   size_t maxResults) {
     std::vector<std::string> result;
 
     if (_similarity != nullptr) {
@@ -479,7 +482,7 @@ class ProgramOptions {
           continue;
         }
         result.emplace_back(it.second);
-        if (result.size() >= max) {
+        if (result.size() >= maxResults) {
           break;
         }
         last = it.first;

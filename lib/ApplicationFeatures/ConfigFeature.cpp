@@ -55,6 +55,10 @@ void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--configuration,-c", "the configuration file or 'none'",
                      new StringParameter(&_file));
 
+  // add --config as an alias for --configuration. both point to the same variable!
+  options->addHiddenOption("--config", "the configuration file or 'none'",
+                     new StringParameter(&_file));
+
   options->addOption("--version", "reports the version and exists",
                      new BooleanParameter(&_version, false));
 
