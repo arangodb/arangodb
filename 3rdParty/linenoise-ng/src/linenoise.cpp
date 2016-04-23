@@ -1067,7 +1067,7 @@ static int getScreenRows(void) {
   return (rows > 0) ? rows : 24;
 }
 
-static void setDisplayAttribute(bool enhancedDisplay) {
+static void setDisplayAttribute(bool enhancedDisplay, bool error) {
 #ifdef _WIN32
   if (enhancedDisplay) {
     CONSOLE_SCREEN_BUFFER_INFO inf;
@@ -1096,7 +1096,8 @@ static void setDisplayAttribute(bool enhancedDisplay) {
   }
 #else
   if (enhancedDisplay) {
-    if (write(1, "\x1b[1;34m", 7) == -1)
+    char const* p = (error ? "\x1b[1;31m" : "\x1b[1;34m");
+    if (write(1, p, 7) == -1)
       return; /* bright blue (visible with both B&W bg) */
   } else {
     if (write(1, "\x1b[0m", 4) == -1) return; /* reset */
@@ -1202,25 +1203,62 @@ static void dynamicRefresh(PromptBase& pi, char32_t* buf32, int len, int pos) {
 void InputBuffer::refreshLine(PromptBase& pi) {
   // check for a matching brace/bracket/paren, remember its position if found
   int highlight = -1;
+  bool indicateError = false;
   if (pos < len) {
     /* this scans for a brace matching buf32[pos] to highlight */
+    unsigned char part1, part2;
     int scanDirection = 0;
-    if (strchr("}])", buf32[pos]))
+    if (strchr("}])", buf32[pos])) {
       scanDirection = -1; /* backwards */
-    else if (strchr("{[(", buf32[pos]))
+      if (buf32[pos] == '}') {
+        part1 = '}'; part2 = '{';
+      } else if (buf32[pos] == ']') {
+        part1 = ']'; part2 = '[';
+      } else {
+        part1 = ')'; part2 = '(';
+      }
+    }
+    else if (strchr("{[(", buf32[pos])) {
       scanDirection = 1; /* forwards */
+      if (buf32[pos] == '{') {
+        //part1 = '{'; part2 = '}';
+        part1 = '}'; part2 = '{';
+      } else if (buf32[pos] == '[') {
+        //part1 = '['; part2 = ']';
+        part1 = ']'; part2 = '[';
+      } else {
+        //part1 = '('; part2 = ')';
+        part1 = ')'; part2 = '(';
+      }
+    }
 
     if (scanDirection) {
       int unmatched = scanDirection;
+      int unmatchedOther = 0;
       for (int i = pos + scanDirection; i >= 0 && i < len; i += scanDirection) {
         /* TODO: the right thing when inside a string */
+        if (strchr("}])", buf32[i])) {
+          if (buf32[i] == part1) {
+            --unmatched;
+          } else {
+            --unmatchedOther;
+          }
+        } else if (strchr("{[(", buf32[i])) {
+          if (buf32[i] == part2) {
+            ++unmatched;
+          } else {
+            ++unmatchedOther;
+          }
+        }
+/*
         if (strchr("}])", buf32[i]))
           --unmatched;
         else if (strchr("{[(", buf32[i]))
           ++unmatched;
-
+*/
         if (unmatched == 0) {
           highlight = i;
+          indicateError = (unmatchedOther != 0);
           break;
         }
       }
@@ -1257,9 +1295,9 @@ void InputBuffer::refreshLine(PromptBase& pi) {
     if (write32(1, buf32, len) == -1) return;
   } else {
     if (write32(1, buf32, highlight) == -1) return;
-    setDisplayAttribute(true); /* bright blue (visible with both B&W bg) */
+    setDisplayAttribute(true, indicateError); /* bright blue (visible with both B&W bg) */
     if (write32(1, &buf32[highlight], 1) == -1) return;
-    setDisplayAttribute(false);
+    setDisplayAttribute(false, indicateError);
     if (write32(1, buf32 + highlight + 1, len - highlight - 1) == -1) return;
   }
 
@@ -1284,9 +1322,9 @@ void InputBuffer::refreshLine(PromptBase& pi) {
     if (write32(1, buf32, len) == -1) return;
   } else {  // highlight the matching brace/bracket/parenthesis
     if (write32(1, buf32, highlight) == -1) return;
-    setDisplayAttribute(true);
+    setDisplayAttribute(true, indicateError);
     if (write32(1, &buf32[highlight], 1) == -1) return;
-    setDisplayAttribute(false);
+    setDisplayAttribute(false, indicateError);
     if (write32(1, buf32 + highlight + 1, len - highlight - 1) == -1) return;
   }
 
