@@ -146,7 +146,7 @@ void FileDescriptorsFeature::adjustFileDescriptors() {
 
       LOG(INFO) << "file-descriptors (nofiles) new hard limit is "
                 << StringifyLimitValue(rlim.rlim_max) << ", new soft limit is "
-                << ", soft limit is " << StringifyLimitValue(rlim.rlim_cur);
+                << StringifyLimitValue(rlim.rlim_cur);
     }
 
     // the select backend has more restrictions

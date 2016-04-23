@@ -46,17 +46,21 @@
 #include "RestServer/CheckVersionFeature.h"
 #include "RestServer/ConsoleFeature.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/DatabaseServerFeature.h"
 #include "RestServer/EndpointFeature.h"
 #include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/FrontendFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/RestServerFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "V8Server/V8DealerFeature.h"
+#include "Wal/LogfileManager.h"
 
 using namespace arangodb;
+using namespace arangodb::wal;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Hooks for OS-Specific functions
@@ -104,14 +108,17 @@ int main(int argc, char* argv[]) {
   server.addFeature(new ConfigFeature(&server, name));
   server.addFeature(new ConsoleFeature(&server));
   server.addFeature(new DatabaseFeature(&server));
+  server.addFeature(new DatabaseServerFeature(&server));
   server.addFeature(new DispatcherFeature(&server));
   server.addFeature(new EndpointFeature(&server));
   server.addFeature(new FileDescriptorsFeature(&server));
   server.addFeature(new FrontendFeature(&server));
   server.addFeature(new LanguageFeature(&server));
+  server.addFeature(new LogfileManager(&server));
   server.addFeature(new LoggerBufferFeature(&server));
   server.addFeature(new LoggerFeature(&server, true));
   server.addFeature(new NonceFeature(&server));
+  server.addFeature(new QueryRegistryFeature(&server));
   server.addFeature(new RandomFeature(&server));
   server.addFeature(new RestServerFeature(&server, "arangodb"));
   server.addFeature(new SchedulerFeature(&server));

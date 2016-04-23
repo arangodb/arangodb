@@ -26,6 +26,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/DatabaseServerFeature.h"
 #include "V8/v8-globals.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
@@ -119,7 +120,7 @@ void UpgradeFeature::start() {
 void UpgradeFeature::upgradeDatabase() {
   LOG(TRACE) << "starting database init/upgrade";
 
-  auto* server = DatabaseFeature::DATABASE->server();
+  auto* server = DatabaseServerFeature::SERVER;
   auto* systemVocbase = DatabaseFeature::DATABASE->vocbase();
 
   // enter context and isolate

@@ -60,6 +60,8 @@
 #include "RestHandler/RestVersionHandler.h"
 #include "RestHandler/WorkMonitorHandler.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/DatabaseServerFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/EndpointFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -204,10 +206,9 @@ void RestServerFeature::start() {
   V8DealerFeature::DEALER->loadJavascript(vocbase, "server/server.js");
   _httpOptions._vocbase = vocbase;
 
-  auto server = DatabaseFeature::DATABASE->server();
-  _handlerFactory.reset(
-      new HttpHandlerFactory(_authenticationRealm, _defaultApiCompatibility,
-                             _allowMethodOverride, &SetRequestContext, server));
+  _handlerFactory.reset(new HttpHandlerFactory(
+      _authenticationRealm, _defaultApiCompatibility, _allowMethodOverride,
+      &SetRequestContext, DatabaseServerFeature::SERVER));
 
   defineHandlers();
   buildServers();
@@ -231,7 +232,7 @@ void RestServerFeature::start() {
               << (_authenticationUnixSockets ? "on" : "off");
 #endif
   }
-  
+
   LOG(INFO) << "ArangoDB (version " << ARANGODB_VERSION_FULL
             << ") is ready for business. Have fun!";
 }
@@ -255,8 +256,9 @@ void RestServerFeature::stop() {
 }
 
 void RestServerFeature::buildServers() {
-  EndpointFeature* endpoint = 
-      application_features::ApplicationServer::getFeature<EndpointFeature>("Endpoint");
+  EndpointFeature* endpoint =
+      application_features::ApplicationServer::getFeature<EndpointFeature>(
+          "Endpoint");
 
   // unencrypted HTTP endpoints
   HttpServer* httpServer = new HttpServer(
@@ -270,7 +272,7 @@ void RestServerFeature::buildServers() {
 
   // ssl endpoints
   if (endpointList.hasSsl()) {
-    SslFeature* ssl = 
+    SslFeature* ssl =
         application_features::ApplicationServer::getFeature<SslFeature>("Ssl");
 
     // check the ssl context
@@ -294,15 +296,17 @@ void RestServerFeature::buildServers() {
 }
 
 void RestServerFeature::defineHandlers() {
-  AgencyFeature* agency = 
-      application_features::ApplicationServer::getFeature<AgencyFeature>("Agency");
+  AgencyFeature* agency =
+      application_features::ApplicationServer::getFeature<AgencyFeature>(
+          "Agency");
   TRI_ASSERT(agency != nullptr);
 
   ClusterFeature* cluster =
-      application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
+      application_features::ApplicationServer::getFeature<ClusterFeature>(
+          "Cluster");
   TRI_ASSERT(cluster != nullptr);
 
-  auto queryRegistry = DatabaseFeature::DATABASE->queryRegistry();
+  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
 
   // ...........................................................................
   // /_msg
