@@ -3345,11 +3345,9 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const slice,
       return TRI_ERROR_DEBUG;
     }
 
-    arangodb::CollectionWriteLocker collectionLocker(this, lock);
-
     auto actualMarker = (options.recoveryMarker == nullptr ? marker.get() : options.recoveryMarker);
     bool const freeMarker = (options.recoveryMarker == nullptr);
-
+    
     arangodb::wal::DocumentOperation operation(
         trx, actualMarker, freeMarker, this, TRI_VOC_DOCUMENT_OPERATION_INSERT);
 
@@ -3368,6 +3366,8 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const slice,
       // test what happens if no header can be acquired
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
+    
+    arangodb::CollectionWriteLocker collectionLocker(this, lock);
 
     // create a new header
     TRI_doc_mptr_t* header = operation.header = _masterPointers.request();
