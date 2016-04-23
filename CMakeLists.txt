@@ -215,7 +215,12 @@ if (MSVC)
   add_definitions("-D_CRT_SECURE_NO_WARNINGS=1")
   add_definitions("-DFD_SETSIZE=2048")
   add_definitions("-DU_STATIC_IMPLEMENTATION=1")
-
+  
+  # https://blogs.msdn.microsoft.com/vcblog/2016/04/14/stl-fixes-in-vs-2015-update-2/
+  # https://connect.microsoft.com/VisualStudio/feedback/details/1892487
+  #http://lists.boost.org/boost-users/2016/04/85968.php
+  add_definitions("-D_ENABLE_ATOMIC_ALIGNMENT_FIX")
+  
   set(MSVC_LIBS crypt32.lib;WINMM.LIB;Ws2_32.lib)
 
   set(CMAKE_EXE_LINKER_FLAGS
