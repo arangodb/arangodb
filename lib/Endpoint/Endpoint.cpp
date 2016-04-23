@@ -381,10 +381,10 @@ bool Endpoint::setSocketFlags(TRI_socket_t s) {
 
 std::ostream& operator<<(std::ostream& stream, arangodb::Endpoint::TransportType type) {
   switch (type) {
-    case arangodb::Endpoint::TransportType::HTTP: 
+    case arangodb::Endpoint::TransportType::HTTP:
       stream << "http";
       break;
-    case arangodb::Endpoint::TransportType::VPP: 
+    case arangodb::Endpoint::TransportType::VPP:
       stream << "vsp";
       break;
   }

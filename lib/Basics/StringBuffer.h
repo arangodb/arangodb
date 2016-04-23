@@ -21,8 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_BASICS_STRING_BUFFER_H
-#define LIB_BASICS_STRING_BUFFER_H 1
+#ifndef ARANGODB_BASICS_STRING_BUFFER_H
+#define ARANGODB_BASICS_STRING_BUFFER_H 1
 
 #include "Basics/Common.h"
 #include "Logger/Logger.h"
@@ -744,7 +744,7 @@ class StringBuffer {
     _buffer._current = other->_current;
     _buffer._len = other->_len;
   }
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief make sure the buffer is null-terminated
   //////////////////////////////////////////////////////////////////////////////

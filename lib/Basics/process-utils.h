@@ -21,8 +21,8 @@
 /// @author Esteban Lombeyda
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_BASICS_PROCESS_UTILS_H
-#define LIB_BASICS_PROCESS_UTILS_H 1
+#ifndef ARANGODB_BASICS_PROCESS__UTILS_H
+#define ARANGODB_BASICS_PROCESS__UTILS_H 1
 
 #include "Basics/Common.h"
 #include "Basics/threads.h"

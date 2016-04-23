@@ -7,7 +7,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,8 +29,8 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_BASICS_LOCAL_CONFIGURATION_WIN_H
-#define LIB_BASICS_LOCAL_CONFIGURATION_WIN_H 1
+#ifndef ARANGODB_BASICS_LOCAL__CONFIGURATION__WIN_H
+#define ARANGODB_BASICS_LOCAL__CONFIGURATION__WIN_H 1
 
 #ifndef TRI_WITHIN_COMMON
 #error use <Basics/Common.h>

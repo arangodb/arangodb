@@ -138,7 +138,7 @@ void V8ShellFeature::start() {
 
 void V8ShellFeature::stop() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
-  
+
   {
     v8::Locker locker{_isolate};
 

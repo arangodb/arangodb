@@ -21,8 +21,8 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_BASICS_VELOCY_PACK_HELPER_H
-#define LIB_BASICS_VELOCY_PACK_HELPER_H 1
+#ifndef ARANGODB_BASICS_VELOCY_PACK_HELPER_H
+#define ARANGODB_BASICS_VELOCY_PACK_HELPER_H 1
 
 #include "Basics/JsonHelper.h"
 #include "Logger/Logger.h"
@@ -50,13 +50,13 @@ class VelocyPackHelper {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief static initializer for all VPack values
 ////////////////////////////////////////////////////////////////////////////////
-  
+
   static void initialize();
   static void disableAssemblerFunctions();
-  
+
   static arangodb::velocypack::AttributeExcludeHandler* getExcludeHandler();
   static arangodb::velocypack::AttributeTranslator* getTranslator();
-  
+
   struct VPackHash {
     size_t operator()(arangodb::velocypack::Slice const&) const;
   };
@@ -203,15 +203,15 @@ class VelocyPackHelper {
   /// @brief Compares two VelocyPack number values
   //////////////////////////////////////////////////////////////////////////////
 
-  static int compareNumberValues(arangodb::velocypack::Slice lhs, 
+  static int compareNumberValues(arangodb::velocypack::Slice lhs,
                                  arangodb::velocypack::Slice rhs);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Compares two VelocyPack slices
   //////////////////////////////////////////////////////////////////////////////
 
-  static int compare(arangodb::velocypack::Slice lhs, 
-                     arangodb::velocypack::Slice rhs, 
+  static int compare(arangodb::velocypack::Slice lhs,
+                     arangodb::velocypack::Slice rhs,
                      bool useUTF8, arangodb::velocypack::Options const* options = &arangodb::velocypack::Options::Defaults,
                      arangodb::velocypack::Slice const* lhsBase = nullptr,
                      arangodb::velocypack::Slice const* rhsBase = nullptr);
@@ -234,31 +234,31 @@ class VelocyPackHelper {
   static uint64_t hashByAttributes(VPackSlice, std::vector<std::string> const&,
                                    bool, int&, std::string const& key = "");
 
-  static inline arangodb::velocypack::Slice NullValue() { 
-    return arangodb::velocypack::Slice::nullSlice(); 
+  static inline arangodb::velocypack::Slice NullValue() {
+    return arangodb::velocypack::Slice::nullSlice();
   }
 
   static inline arangodb::velocypack::Slice TrueValue() {
-    return arangodb::velocypack::Slice::trueSlice(); 
+    return arangodb::velocypack::Slice::trueSlice();
   }
 
   static inline arangodb::velocypack::Slice FalseValue() {
-    return arangodb::velocypack::Slice::falseSlice(); 
+    return arangodb::velocypack::Slice::falseSlice();
   }
 
   static inline arangodb::velocypack::Slice BooleanValue(bool value) {
     if (value) {
-      return arangodb::velocypack::Slice::trueSlice(); 
+      return arangodb::velocypack::Slice::trueSlice();
     }
-    return arangodb::velocypack::Slice::falseSlice(); 
+    return arangodb::velocypack::Slice::falseSlice();
   }
 
   static inline arangodb::velocypack::Slice EmptyArrayValue() {
-    return arangodb::velocypack::Slice::emptyArraySlice(); 
+    return arangodb::velocypack::Slice::emptyArraySlice();
   }
 
   static inline arangodb::velocypack::Slice EmptyObjectValue() {
-    return arangodb::velocypack::Slice::emptyObjectSlice(); 
+    return arangodb::velocypack::Slice::emptyObjectSlice();
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -267,7 +267,7 @@ class VelocyPackHelper {
   //////////////////////////////////////////////////////////////////////////////
 
   static inline arangodb::velocypack::Slice IllegalValue() {
-    return arangodb::velocypack::Slice::illegalSlice(); 
+    return arangodb::velocypack::Slice::illegalSlice();
   }
 };
 }

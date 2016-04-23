@@ -20,8 +20,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_CONFIG_FEATURE_H
-#define APPLICATION_FEATURES_CONFIG_FEATURE_H 1
+#ifndef ARANGODB_APPLICATION_FEATURES_CONFIG_FEATURE_H
+#define ARANGODB_APPLICATION_FEATURES_CONFIG_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
@@ -43,7 +43,7 @@ class ConfigFeature final : public application_features::ApplicationFeature {
 
  private:
   void loadConfigFile(std::shared_ptr<options::ProgramOptions>);
-  
+
  private:
   std::string _progname;
 };

@@ -70,7 +70,7 @@ void ConfigFeature::loadOptions(std::shared_ptr<ProgramOptions> options) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::loadOptions";
 
   loadConfigFile(options);
- 
+
   if (_checkConfiguration) {
     exit(EXIT_SUCCESS);
   }

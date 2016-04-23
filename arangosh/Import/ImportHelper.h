@@ -22,8 +22,8 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOSH_V8_CLIENT_IMPORT_HELPER_H
-#define ARANGOSH_V8_CLIENT_IMPORT_HELPER_H 1
+#ifndef ARANGODB_IMPORT_IMPORT_HELPER_H
+#define ARANGODB_IMPORT_IMPORT_HELPER_H 1
 
 #include "Basics/Common.h"
 
@@ -108,7 +108,7 @@ class ImportHelper {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set collection name prefix for _to
   //////////////////////////////////////////////////////////////////////////////
-      
+
   void setTo (std::string const& to) {
     _toCollectionPrefix = to;
   }

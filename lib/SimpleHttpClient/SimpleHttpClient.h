@@ -22,8 +22,8 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_CLIENT_H
-#define LIB_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_CLIENT_H 1
+#ifndef ARANGODB_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_CLIENT_H
+#define ARANGODB_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_CLIENT_H 1
 
 #include "Basics/Common.h"
 
@@ -69,7 +69,7 @@ class SimpleHttpClient {
 
  public:
   void setInterrupted(bool value);
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invalidates the connection used by the client
   /// this may be called from other objects that are responsible for managing

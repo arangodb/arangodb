@@ -169,7 +169,7 @@ void LoggerFeature::prepare() {
 
     LogAppender::addAppender(definition);
   }
-  
+
   if (!_backgrounded && _foregroundTty) {
     LogAppender::addTtyAppender();
   }

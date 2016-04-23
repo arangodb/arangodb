@@ -20,8 +20,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_LOGGER_BUFFER_H
-#define APPLICATION_FEATURES_LOGGER_BUFFER_H 1
+#ifndef ARANGODB_LOGGER_LOG_BUFFER_H
+#define ARANGODB_LOGGER_LOG_BUFFER_H 1
 
 #include "Basics/Common.h"
 

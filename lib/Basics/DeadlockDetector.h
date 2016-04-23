@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_BASICS_DEADLOCK_DETECTOR_H
-#define LIB_BASICS_DEADLOCK_DETECTOR_H 1
+#ifndef ARANGODB_BASICS_DEADLOCK_DETECTOR_H
+#define ARANGODB_BASICS_DEADLOCK_DETECTOR_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
@@ -388,7 +388,7 @@ class DeadlockDetector {
 
     if (wasBlockedBefore) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto erased = 
+      auto erased =
 #endif
       _blocked.erase(tid);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

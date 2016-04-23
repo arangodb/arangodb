@@ -22,8 +22,8 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_BASICS_CONDITION_LOCKER_H
-#define LIB_BASICS_CONDITION_LOCKER_H 1
+#ifndef ARANGODB_BASICS_CONDITION_LOCKER_H
+#define ARANGODB_BASICS_CONDITION_LOCKER_H 1
 
 #include "Basics/Common.h"
 
@@ -44,7 +44,7 @@
 
 namespace arangodb {
 namespace basics {
-class ConditionVariable; 
+class ConditionVariable;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief condition locker

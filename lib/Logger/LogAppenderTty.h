@@ -21,8 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_LOGGER_LOG_APPENDER_TTY_H
-#define LIB_LOGGER_LOG_APPENDER_TTY_H 1
+#ifndef ARANGODB_LOGGER_LOG_APPENDER_TTY_H
+#define ARANGODB_LOGGER_LOG_APPENDER_TTY_H 1
 
 #include "Logger/LogAppenderFile.h"
 

@@ -886,9 +886,9 @@ std::string SimpleHttpClient::getHttpErrorMessage(SimpleHttpResult const* result
 
   try {
     std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(body.c_str(), body.length());
- 
+
     VPackSlice slice = builder->slice();
-    if (slice.isObject()) { 
+    if (slice.isObject()) {
       VPackSlice msg = slice.get("errorMessage");
       int errorNum = slice.get("errorNum").getNumericValue<int>();
 
@@ -899,7 +899,7 @@ std::string SimpleHttpClient::getHttpErrorMessage(SimpleHttpResult const* result
   } catch (...) {
     // don't rethrow here. we'll response with an error message anyway
   }
-   
+
   return "got error from server: HTTP " + std::to_string(result->getHttpReturnCode()) +
          " (" + result->getHttpReturnMessage() + ")" + details;
 }

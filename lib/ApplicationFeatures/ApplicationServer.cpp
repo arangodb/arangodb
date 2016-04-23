@@ -78,7 +78,7 @@ void ApplicationServer::disableFeatures(std::vector<std::string> const& names) {
 void ApplicationServer::forceDisableFeatures(std::vector<std::string> const& names) {
   disableFeatures(names, true);
 }
-   
+
 void ApplicationServer::disableFeatures(std::vector<std::string> const& names, bool force) {
   for (auto const& name : names) {
     auto feature = ApplicationServer::lookupFeature(name);

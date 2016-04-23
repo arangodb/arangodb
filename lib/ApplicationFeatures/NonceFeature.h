@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_FILE_NONCE_FEATURE_H
-#define ARANGOD_CLUSTER_FILE_NONCE_FEATURE_H 1
+#ifndef ARANGODB_APPLICATION_FEATURES_NONCE_FEATURE_H
+#define ARANGODB_APPLICATION_FEATURES_NONCE_FEATURE_H 1
 
 #include "Basics/Common.h"
 

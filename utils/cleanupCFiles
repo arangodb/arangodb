@@ -81,9 +81,6 @@ sub formatFile ($$$) {
   # set to true, if we handled the DISCLAIMER
   my $disclaimerDone = 0;
 
-  # set to true, if we see a "@author Copyright"
-  my $copyrightSeen = 0;
-
   # set to true, if we see a "Copyright holder"
   my $holderSeen = 0;
 
@@ -166,6 +163,7 @@ sub formatFile ($$$) {
   my $skipGroup = 0;
   my $foundEOL = 0;
   my $finalEndif = 0;
+  my $copyrightLines = "";
 
   while (<IN>) {
     chomp;
@@ -231,16 +229,6 @@ sub formatFile ($$$) {
       $line = '/// @author Dr. Oreste Costa-Panaia';
     }
 
-    if ($line =~ /^[ \t]*(\/\/\/.*)$/) {
-      $line = "$1";
-    }
-
-    if (0) {
-      if ($line =~ /^[ \t]*(\/\/ --.*)$/) {
-	$line = "$1";
-      }
-    }
-
     if ($isJavaScript == 0) {
       if ($line =~ /^#include <((Admin|ApplicationServer|Aql|Basics|Dipatcher|GeneralServer|GeoIndex|Handler|Hpdf|HttpServer|JsonParserX|LineClient|LineServer|Logger|Rest|ResultGenerator|Scheduler|Server|Session|SessionVoc|Snapshot|Variant|VocBase)\/.*)>/) {
 	$line = "#include \"$1\"";
@@ -252,38 +240,45 @@ sub formatFile ($$$) {
 	$headerSeen = 1;
 	$fileSeen = 1;
       }
-      elsif ($line =~ /^\/\/\/ \@author Copyright (\d\d\d\d).*ArangoDB/) {
-        my $y = $1;
-	$headerSeen = 1;
-	$copyrightSeen = 1;
+      elsif ($line =~ /^\/\/\/ Copyright (\d\d\d\d) ArangoDB/) {
+        $headerSeen = 1;
 
-	if ($y != $year) {
-	  if ($year != 2014) {
-	    $line = "/// \@author Copyright $y-$year, ArangoDB GmbH, Cologne, Germany\n$line";
-	  }
-	  else {
-	    $line = "/// \@author Copyright $year, ArangoDB GmbH, Cologne, Germany\n$line";
-	  }
+        my $y1 = "$1";  
+
+        if ($y1 != $year) {
+          $line = "/// Copyright $y1-$year ArangoDB GmbH, Cologne, Germany"
         }
+        
+        $copyrightLines = $copyrightLines . $line . "\n";
+      }
+      elsif ($line =~ /^\/\/\/ Copyright (\d\d\d\d)-(\d\d\d\d) ArangoDB/) {
+	$headerSeen = 1;
+
+        my $y1 = "$1";  
+        my $y2 = "$2";  
+
+        if ($y2 != $year) {
+          $line = "/// Copyright $y1-$year ArangoDB GmbH, Cologne, Germany"
+        }
+
+        $copyrightLines = $copyrightLines . $line . "\n";
+      }
+      elsif ($line =~ /^\/\/\/ Copyright (\d\d\d\d) triAGENS/) {
+        $headerSeen = 1;
+        $copyrightLines = $copyrightLines . $line . "\n";
+      }
+      elsif ($line =~ /^\/\/\/ Copyright (\d\d\d\d)-(\d\d\d\d) triAGENS/) {
+        $headerSeen = 1;
+        $copyrightLines = $copyrightLines . $line . "\n";
+      }
+      elsif ($line =~ /^\/\/\/ \@author Copyright (\d\d\d\d).*ArangoDB/) {
+	$headerSeen = 1;
       }
       elsif ($line =~ /^\/\/\/ \@author Copyright (\d\d\d\d)-(\d\d\d\d).*ArangoDB/) {
-        my $y1 = $1;
-        my $y2 = $2;
 	$headerSeen = 1;
-	$copyrightSeen = 1;
-
-	if ($y2 != $year) {
-	  if ($year != 2014) {
-	    $line = "/// \@author Copyright 2014-$year, ArangoDB GmbH, Cologne, Germany";
-	  }
-	  else {
-	    $line = "/// \@author Copyright 2014, ArangoDB GmbH, Cologne, Germany";
-	  }
-        }
       }
       elsif ($line =~ /^\/\/\/ \@author Copyright.*triAGENS/) {
 	$headerSeen = 1;
-        $copyrightSeen = 1;
       }
       elsif ($line =~ /^\/\/\/ \@author Copyright/) {
 	die "cannot parse copyright line '$line'";
@@ -312,11 +307,6 @@ sub formatFile ($$$) {
       }
     }
 
-    if ($authorSeen && ! $copyrightSeen && $breakLine) {
-      print $out "/// \@author Copyright $year, ArangoDB GmbH, Cologne, Germany\n";
-      $copyrightSeen = 1;
-    }
-
     if ($disclaimerSeen && ! $holderSeen) {
       next;
     }
@@ -330,12 +320,7 @@ sub formatFile ($$$) {
 	print $out "/// DISCLAIMER\n";
 	print $out "///\n";
 
-	if ($year != 2014) {
-	  print $out "/// Copyright 2014-$year ArangoDB GmbH, Cologne, Germany\n";
-	}
-	else {
-	  print $out "/// Copyright $year ArangoDB GmbH, Cologne, Germany\n";
-	}
+        print $out "$copyrightLines";
 
 	print $out "///\n";
 	print $out "$disclaimerText";
@@ -372,10 +357,6 @@ sub formatFile ($$$) {
     print $out "#endif\n";
     print $out "\n";
   }
-
-  print $out "// -----------------------------------------------------------------------------\n";
-  print $out "// --SECTION--                                                       END-OF-FILE\n";
-  print $out "// -----------------------------------------------------------------------------\n";
 
   if (! $dryRun) {
     close($out)

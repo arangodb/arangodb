@@ -22,7 +22,7 @@
 
 #include "PrivilegeFeature.h"
 
-//YYY #warning FRANK TODO 
+//YYY #warning FRANK TODO
 #if 0
 
 SslFeature::SslFeature(application_features::ApplicationServer* server)

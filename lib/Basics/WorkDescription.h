@@ -21,8 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILS_WORK_DESCRIPTION
-#define ARANGODB_UTILS_WORK_DESCRIPTION 1
+#ifndef ARANGODB_BASICS_WORK_DESCRIPTION_H
+#define ARANGODB_BASICS_WORK_DESCRIPTION_H 1
 
 #include "Common.h"
 

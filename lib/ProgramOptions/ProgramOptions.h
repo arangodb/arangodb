@@ -56,10 +56,10 @@ class ProgramOptions {
     bool touched(std::string const& name) const {
       return _touched.find(Option::stripPrefix(name)) != _touched.end();
     }
-    
+
     // mark an option as being frozen
     void freeze(std::string const& name) { _frozen.emplace(name); }
-    
+
     // whether or not an option was touched during options processing,
     // not including the current pass
     bool frozen(std::string const& name) const {
@@ -78,7 +78,7 @@ class ProgramOptions {
     // which options were touched during option processing
     // this includes options that are touched in the current pass
     std::unordered_set<std::string> _touched;
-    
+
     // which options were touched during option processing
     // this does not include options that are touched in the current pass
     std::unordered_set<std::string> _frozen;
@@ -342,7 +342,7 @@ class ProgramOptions {
     }
     for (auto const& it : _processingResult._touched) {
       _processingResult.freeze(it);
-    } 
+    }
   }
 
   // check whether or not an option requires a value

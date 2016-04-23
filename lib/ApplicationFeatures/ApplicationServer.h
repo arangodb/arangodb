@@ -20,8 +20,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_APPLICATION_SERVER_H
-#define APPLICATION_FEATURES_APPLICATION_SERVER_H 1
+#ifndef ARANGODB_APPLICATION_FEATURES_APPLICATION_SERVER_H
+#define ARANGODB_APPLICATION_FEATURES_APPLICATION_SERVER_H 1
 
 #include "Basics/Common.h"
 
@@ -93,8 +93,8 @@ class ApplicationServer {
  public:
   static ApplicationServer* server;
   static ApplicationFeature* lookupFeature(std::string const&);
-      
-  template<typename T> 
+
+  template<typename T>
   static T* getFeature(std::string const& name) {
     T* feature = dynamic_cast<T*>(application_features::ApplicationServer::lookupFeature(name));
     if (feature == nullptr) {
@@ -102,7 +102,7 @@ class ApplicationServer {
     }
     return feature;
   }
-  
+
   static void disableFeatures(std::vector<std::string> const&);
   static void forceDisableFeatures(std::vector<std::string> const&);
 
@@ -152,7 +152,7 @@ class ApplicationServer {
   static void throwFeatureNotFoundException(std::string const& name);
 
   static void disableFeatures(std::vector<std::string> const& names, bool force);
-  
+
   // fail and abort with the specified message
   void fail(std::string const& message);
 

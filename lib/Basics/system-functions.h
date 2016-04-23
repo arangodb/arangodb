@@ -21,8 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_BASICS_SYSTEM_FUNCTIONS_H
-#define LIB_BASICS_SYSTEM_FUNCTIONS_H 1
+#ifndef ARANGODB_BASICS_SYSTEM__FUNCTIONS_H
+#define ARANGODB_BASICS_SYSTEM__FUNCTIONS_H 1
 
 #ifndef TRI_WITHIN_COMMON
 #error use <Basics/Common.h>

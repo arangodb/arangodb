@@ -20,8 +20,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_ARANGODUMP_FEATURE_H
-#define APPLICATION_FEATURES_ARANGODUMP_FEATURE_H 1
+#ifndef ARANGODB_DUMP_DUMP_FEATURE_H
+#define ARANGODB_DUMP_DUMP_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "V8Client/ArangoClientHelper.h"

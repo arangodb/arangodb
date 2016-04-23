@@ -20,8 +20,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_SSL_FEATURE_H
-#define APPLICATION_FEATURES_SSL_FEATURE_H 1
+#ifndef ARANGODB_APPLICATION_FEATURES_SSL_FEATURE_H
+#define ARANGODB_APPLICATION_FEATURES_SSL_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
@@ -40,7 +40,7 @@ class SslFeature final : public application_features::ApplicationFeature {
 
  public:
   SSL_CTX* sslContext() const { return _sslContext; }
-  
+
  public:
   std::string _cafile;
   std::string _keyfile;
@@ -49,7 +49,7 @@ class SslFeature final : public application_features::ApplicationFeature {
   uint64_t _protocol;
   uint64_t _options;
   std::string _ecdhCurve;
-  
+
  private:
   void createSslContext();
   std::string stringifySslOptions(uint64_t opts) const;

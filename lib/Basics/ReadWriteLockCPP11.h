@@ -21,8 +21,8 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_BASICS_READ_WRITE_LOCK_CPP11_H
-#define LIB_BASICS_READ_WRITE_LOCK_CPP11_H 1
+#ifndef ARANGODB_BASICS_READ_WRITE_LOCK_CPP11_H
+#define ARANGODB_BASICS_READ_WRITE_LOCK_CPP11_H 1
 
 #include "Basics/Common.h"
 

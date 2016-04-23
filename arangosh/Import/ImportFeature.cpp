@@ -79,10 +79,10 @@ void ImportFeature::collectOptions(
 
   options->addOption("--collection", "collection name",
                      new StringParameter(&_collectionName));
-  
+
   options->addOption("--from-collection-prefix", "_from collection name prefix (will be prepended to all values in '_from')",
                      new StringParameter(&_fromCollectionPrefix));
-  
+
   options->addOption("--to-collection-prefix", "_to collection name prefix (will be prepended to all values in '_to')",
                      new StringParameter(&_toCollectionPrefix));
 

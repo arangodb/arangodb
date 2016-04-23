@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_BASICS_TRI_ZIP_H
-#define LIB_BASICS_TRI_ZIP_H 1
+#ifndef ARANGODB_BASICS_TRI__ZIP_H
+#define ARANGODB_BASICS_TRI__ZIP_H 1
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"

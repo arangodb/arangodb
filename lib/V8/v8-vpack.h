@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_V8_V8_VPACK_H
-#define LIB_V8_V8_VPACK_H 1
+#ifndef ARANGODB_V8_V8__VPACK_H
+#define ARANGODB_V8_V8__VPACK_H 1
 
 #include "Basics/Common.h"
 #include "V8/v8-globals.h"

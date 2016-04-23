@@ -133,7 +133,7 @@ bool WorkMonitor::pushThread(Thread* thread) {
   if (WORK_MONITOR_STOPPED.load()) {
     return false;
   }
-  
+
   TRI_ASSERT(thread != nullptr);
   TRI_ASSERT(Thread::CURRENT_THREAD == nullptr);
   Thread::CURRENT_THREAD = thread;
@@ -163,7 +163,7 @@ void WorkMonitor::popThread(Thread* thread) {
   if (WORK_MONITOR_STOPPED.load()) {
     return;
   }
-  
+
   TRI_ASSERT(thread != nullptr);
   WorkDescription* desc = deactivateWorkDescription();
 

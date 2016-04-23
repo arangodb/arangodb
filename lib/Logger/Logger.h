@@ -56,8 +56,8 @@
 /// Author: Ray Sidney
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_LOGGER_LOGGER_H
-#define LIB_LOGGER_LOGGER_H 1
+#ifndef ARANGODB_LOGGER_LOGGER_H
+#define ARANGODB_LOGGER_LOGGER_H 1
 
 #include "Basics/Common.h"
 
