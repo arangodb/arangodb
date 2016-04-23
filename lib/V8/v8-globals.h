@@ -76,11 +76,9 @@ static const uint32_t V8DataSlot = 0;
   v8::String::NewFromOneByte(isolate, (uint8_t const*)(name), \
                              v8::String::kNormalString, (int)strlen(name))
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shortcut for creating a v8 symbol for the specified string
-///   implicites isolate available.
-/// @param name local string constant to source
-////////////////////////////////////////////////////////////////////////////////
+#define TRI_V8_ASCII_STD_STRING(isolate, name)                   \
+  v8::String::NewFromOneByte(isolate, (uint8_t const*)(name.c_str()), \
+                             v8::String::kNormalString, (int)name.size())
 
 #define TRI_V8_ASCII_PAIR_STRING(name, length)                \
   v8::String::NewFromOneByte(isolate, (uint8_t const*)(name), \

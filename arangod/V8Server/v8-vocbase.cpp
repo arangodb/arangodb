@@ -1710,7 +1710,7 @@ static v8::Handle<v8::Value> VertexIdToData(v8::Isolate* isolate,
 
   VPackBuilder builder;
   builder.openObject();
-  builder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(parts[1]));
+  builder.add(Transaction::KeyString, VPackValue(parts[1]));
   builder.close();
 
   OperationResult opRes = trx->document(parts[0], builder.slice(), options);

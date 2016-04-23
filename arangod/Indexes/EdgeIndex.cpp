@@ -29,6 +29,7 @@
 #include "Basics/hashes.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/Transaction.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 
@@ -71,7 +72,7 @@ static uint64_t HashElementEdgeFrom(void*, TRI_doc_mptr_t const* mptr,
   } else {
     // Is identical to HashElementKey
     VPackSlice tmp(mptr->vpack());
-    tmp = tmp.get(TRI_VOC_ATTRIBUTE_FROM);
+    tmp = tmp.get(Transaction::FromString);
     TRI_ASSERT(tmp.isString());
     // we can get away with the fast hash function here, as edge
     // index values are restricted to strings
@@ -97,7 +98,7 @@ static uint64_t HashElementEdgeTo(void*, TRI_doc_mptr_t const* mptr,
     // Is identical to HashElementKey
     VPackSlice tmp(mptr->vpack());
     TRI_ASSERT(tmp.isObject());
-    tmp = tmp.get(TRI_VOC_ATTRIBUTE_TO);
+    tmp = tmp.get(Transaction::ToString);
     TRI_ASSERT(tmp.isString());
     // we can get away with the fast hash function here, as edge
     // index values are restricted to strings
@@ -118,7 +119,7 @@ static bool IsEqualKeyEdgeFrom(void*, VPackSlice const* left,
   // left is a key
   // right is an element, that is a master pointer
   VPackSlice tmp(right->vpack());
-  tmp = tmp.get(TRI_VOC_ATTRIBUTE_FROM);
+  tmp = tmp.get(Transaction::FromString);
   TRI_ASSERT(tmp.isString());
   return *left == tmp;
 }
@@ -135,7 +136,7 @@ static bool IsEqualKeyEdgeTo(void*, VPackSlice const* left,
   // left is a key
   // right is an element, that is a master pointer
   VPackSlice tmp(right->vpack());
-  tmp = tmp.get(TRI_VOC_ATTRIBUTE_TO);
+  tmp = tmp.get(Transaction::ToString);
   TRI_ASSERT(tmp.isString());
   return *left == tmp;
 }
@@ -160,11 +161,11 @@ static bool IsEqualElementEdgeFromByKey(void*,
   TRI_ASSERT(right != nullptr);
 
   VPackSlice lSlice(left->vpack());
-  lSlice = lSlice.get(TRI_VOC_ATTRIBUTE_FROM);
+  lSlice = lSlice.get(Transaction::FromString);
   TRI_ASSERT(lSlice.isString());
 
   VPackSlice rSlice(right->vpack());
-  rSlice = rSlice.get(TRI_VOC_ATTRIBUTE_FROM);
+  rSlice = rSlice.get(Transaction::FromString);
   TRI_ASSERT(rSlice.isString());
   return lSlice == rSlice;
 }
@@ -180,11 +181,11 @@ static bool IsEqualElementEdgeToByKey(void*,
   TRI_ASSERT(right != nullptr);
 
   VPackSlice lSlice(left->vpack());
-  lSlice = lSlice.get(TRI_VOC_ATTRIBUTE_TO);
+  lSlice = lSlice.get(Transaction::ToString);
   TRI_ASSERT(lSlice.isString());
 
   VPackSlice rSlice(right->vpack());
-  rSlice = rSlice.get(TRI_VOC_ATTRIBUTE_TO);
+  rSlice = rSlice.get(Transaction::ToString);
   TRI_ASSERT(rSlice.isString());
   return lSlice == rSlice;
 }
@@ -308,8 +309,8 @@ void AnyDirectionEdgeIndexIterator::reset() {
 EdgeIndex::EdgeIndex(TRI_idx_iid_t iid, TRI_document_collection_t* collection)
     : Index(iid, collection,
             std::vector<std::vector<arangodb::basics::AttributeName>>(
-                {{{TRI_VOC_ATTRIBUTE_FROM, false}},
-                 {{TRI_VOC_ATTRIBUTE_TO, false}}}),
+                {{{Transaction::FromString, false}},
+                 {{Transaction::ToString, false}}}),
             false, false),
       _edgesFrom(nullptr),
       _edgesTo(nullptr),
@@ -555,8 +556,8 @@ bool EdgeIndex::supportsFilterCondition(
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
   SimpleAttributeEqualityMatcher matcher(
-      {{arangodb::basics::AttributeName(TRI_VOC_ATTRIBUTE_FROM, false)},
-       {arangodb::basics::AttributeName(TRI_VOC_ATTRIBUTE_TO, false)}});
+      {{arangodb::basics::AttributeName(Transaction::FromString, false)},
+       {arangodb::basics::AttributeName(Transaction::ToString, false)}});
   return matcher.matchOne(this, node, reference, itemsInIndex, estimatedItems,
                           estimatedCost);
 }
@@ -572,8 +573,8 @@ IndexIterator* EdgeIndex::iteratorForCondition(
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
 
   SimpleAttributeEqualityMatcher matcher(
-      {{arangodb::basics::AttributeName(TRI_VOC_ATTRIBUTE_FROM, false)},
-       {arangodb::basics::AttributeName(TRI_VOC_ATTRIBUTE_TO, false)}});
+      {{arangodb::basics::AttributeName(Transaction::FromString, false)},
+       {arangodb::basics::AttributeName(Transaction::ToString, false)}});
 
   TRI_ASSERT(node->numMembers() == 1);
 
@@ -628,8 +629,8 @@ arangodb::aql::AstNode* EdgeIndex::specializeCondition(
     arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) const {
   SimpleAttributeEqualityMatcher matcher(
-      {{arangodb::basics::AttributeName(TRI_VOC_ATTRIBUTE_FROM, false)},
-       {arangodb::basics::AttributeName(TRI_VOC_ATTRIBUTE_TO, false)}});
+      {{arangodb::basics::AttributeName(Transaction::FromString, false)},
+       {arangodb::basics::AttributeName(Transaction::ToString, false)}});
 
   return matcher.specializeOne(this, node, reference);
 }

@@ -842,12 +842,22 @@ class Transaction {
 
   std::shared_ptr<TransactionContext> _transactionContext;
 
+ public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief makeNolockHeaders
   //////////////////////////////////////////////////////////////////////////////
 
- public:
   static thread_local std::unordered_set<std::string>* _makeNolockHeaders;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief constants for _id, _key, _rev
+  //////////////////////////////////////////////////////////////////////////////
+
+  static std::string const KeyString;
+  static std::string const RevString;
+  static std::string const IdString;
+  static std::string const FromString;
+  static std::string const ToString;
 };
 
 class TransactionBuilderLeaser {

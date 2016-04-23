@@ -2200,13 +2200,13 @@ static void JS_InsertVocbaseCol(
       if (tmpId.empty()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
       }
-      builder.add(TRI_VOC_ATTRIBUTE_FROM, VPackValue(tmpId));
+      builder.add(Transaction::FromString, VPackValue(tmpId));
 
       tmpId = ExtractIdString(isolate, args[1]);
       if (tmpId.empty()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
       }
-      builder.add(TRI_VOC_ATTRIBUTE_TO, VPackValue(tmpId));
+      builder.add(Transaction::ToString, VPackValue(tmpId));
     }
 
     builder.close();

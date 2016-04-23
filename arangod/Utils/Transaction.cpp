@@ -57,6 +57,16 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
+  
+//////////////////////////////////////////////////////////////////////////////
+/// @brief constants for _id, _key, _rev
+//////////////////////////////////////////////////////////////////////////////
+
+std::string const Transaction::KeyString(TRI_VOC_ATTRIBUTE_KEY);
+std::string const Transaction::RevString(TRI_VOC_ATTRIBUTE_REV);
+std::string const Transaction::IdString(TRI_VOC_ATTRIBUTE_ID);
+std::string const Transaction::FromString(TRI_VOC_ATTRIBUTE_FROM);
+std::string const Transaction::ToString(TRI_VOC_ATTRIBUTE_TO);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief IndexHandle getter method
@@ -593,7 +603,7 @@ DocumentDitch* Transaction::orderDitch(TRI_voc_cid_t cid) {
 std::string Transaction::extractKey(VPackSlice const slice) {
   // extract _key
   if (slice.isObject()) {
-    VPackSlice k = slice.get(TRI_VOC_ATTRIBUTE_KEY);
+    VPackSlice k = slice.get(KeyString);
     if (!k.isString()) {
       return ""; // fail
     }
@@ -630,7 +640,7 @@ std::string Transaction::extractIdString(CollectionNameResolver const* resolver,
   VPackSlice id = slice;
   if (slice.isObject()) {
     // extract id attribute from object
-    id = slice.get(TRI_VOC_ATTRIBUTE_ID);
+    id = slice.get(IdString);
   }
   if (id.isString()) {
     // already a string...
@@ -644,9 +654,9 @@ std::string Transaction::extractIdString(CollectionNameResolver const* resolver,
   // we now need to extract the _key attribute
   VPackSlice key;
   if (slice.isObject()) {
-    key = slice.get(TRI_VOC_ATTRIBUTE_KEY);
+    key = slice.get(KeyString);
   } else if (base.isObject()) {
-    key = base.get(TRI_VOC_ATTRIBUTE_KEY);
+    key = base.get(KeyString);
   }
 
   if (!key.isString()) {
@@ -680,13 +690,11 @@ void Transaction::buildDocumentIdentity(VPackBuilder& builder,
                                         VPackSlice const oldRid,
                                         TRI_doc_mptr_t const* oldMptr,
                                         TRI_doc_mptr_t const* newMptr) {
-  std::string collectionName = resolver()->getCollectionName(cid);
-
   builder.openObject();
-  builder.add(TRI_VOC_ATTRIBUTE_ID, VPackValue(collectionName + "/" + key));
-  builder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+  builder.add(IdString, VPackValue(resolver()->getCollectionName(cid) + "/" + key));
+  builder.add(KeyString, VPackValue(key));
   TRI_ASSERT(!rid.isNone());
-  builder.add(TRI_VOC_ATTRIBUTE_REV, rid);
+  builder.add(RevString, rid);
   if (!oldRid.isNone()) {
     builder.add("_oldRev", oldRid);
   }
@@ -1228,7 +1236,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
     TRI_ASSERT(mptr.getDataPtr() != nullptr);
     
     std::string keyString 
-        = VPackSlice(mptr.vpack()).get(TRI_VOC_ATTRIBUTE_KEY).copyString();
+        = VPackSlice(mptr.vpack()).get(KeyString).copyString();
 
     TIMER_START(TRANSACTION_INSERT_BUILD_DOCUMENT_IDENTITY);
 
@@ -1280,10 +1288,10 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
     auto doOneDoc = [&](VPackSlice doc, VPackSlice result) {
       VPackObjectBuilder guard(&payload);
       TRI_SanitizeObject(doc, payload);
-      VPackSlice s = result.get(TRI_VOC_ATTRIBUTE_KEY);
-      payload.add(TRI_VOC_ATTRIBUTE_KEY, s);
-      s = result.get(TRI_VOC_ATTRIBUTE_REV);
-      payload.add(TRI_VOC_ATTRIBUTE_REV, s);
+      VPackSlice s = result.get(KeyString);
+      payload.add(KeyString, s);
+      s = result.get(RevString);
+      payload.add(RevString, s);
     };
 
     VPackSlice ourResult = resultBuilder.slice();
@@ -1560,7 +1568,7 @@ OperationResult Transaction::modifyLocal(
     if (res == TRI_ERROR_ARANGO_CONFLICT) {
       // still return 
       if ((!options.silent || doingSynchronousReplication) && !isBabies) {
-        std::string key = newVal.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
+        std::string key = newVal.get(KeyString).copyString();
         buildDocumentIdentity(resultBuilder, cid, key, actualRevision,
                               VPackSlice(), 
                               options.returnOld ? &previous : nullptr, nullptr);
@@ -1573,7 +1581,7 @@ OperationResult Transaction::modifyLocal(
     TRI_ASSERT(mptr.getDataPtr() != nullptr);
 
     if (!options.silent || doingSynchronousReplication) {
-      std::string key = newVal.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
+      std::string key = newVal.get(KeyString).copyString();
       buildDocumentIdentity(resultBuilder, cid, key, 
           mptr.revisionIdAsSlice(), actualRevision, 
           options.returnOld ? &previous : nullptr , 
@@ -1622,10 +1630,10 @@ OperationResult Transaction::modifyLocal(
     auto doOneDoc = [&](VPackSlice doc, VPackSlice result) {
       VPackObjectBuilder guard(&payload);
       TRI_SanitizeObject(doc, payload);
-      VPackSlice s = result.get(TRI_VOC_ATTRIBUTE_KEY);
-      payload.add(TRI_VOC_ATTRIBUTE_KEY, s);
-      s = result.get(TRI_VOC_ATTRIBUTE_REV);
-      payload.add(TRI_VOC_ATTRIBUTE_REV, s);
+      VPackSlice s = result.get(KeyString);
+      payload.add(KeyString, s);
+      s = result.get(RevString);
+      payload.add(RevString, s);
     };
 
     VPackSlice ourResult = resultBuilder.slice();
@@ -1799,11 +1807,11 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
         value = builder->slice();
       }
     } else if (value.isObject()) {
-      VPackSlice keySlice = value.get(TRI_VOC_ATTRIBUTE_KEY);
+      VPackSlice keySlice = value.get(KeyString);
       if (!keySlice.isString()) {
         return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
       }
-      key = value.get(TRI_VOC_ATTRIBUTE_KEY).copyString();
+      key = value.get(KeyString).copyString();
     } else {
       return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
     }
@@ -1869,10 +1877,10 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
     auto doOneDoc = [&](VPackSlice doc, VPackSlice result) {
       VPackObjectBuilder guard(&payload);
       TRI_SanitizeObject(doc, payload);
-      VPackSlice s = result.get(TRI_VOC_ATTRIBUTE_KEY);
-      payload.add(TRI_VOC_ATTRIBUTE_KEY, s);
-      s = result.get(TRI_VOC_ATTRIBUTE_REV);
-      payload.add(TRI_VOC_ATTRIBUTE_REV, s);
+      VPackSlice s = result.get(KeyString);
+      payload.add(KeyString, s);
+      s = result.get(RevString);
+      payload.add(RevString, s);
     };
 
     VPackSlice ourResult = resultBuilder.slice();
