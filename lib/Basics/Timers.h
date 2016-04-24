@@ -26,15 +26,21 @@
 
 #include "Basics/Common.h"
 
-#ifdef USE_TIMERS
+#ifdef USE_DEV_TIMERS
 
-#define TIMER_START(name) arangodb::basics::Timers::starts[arangodb::basics::Timers::name] = TRI_microtime()
-#define TIMER_STOP(name) arangodb::basics::Timers::totals[arangodb::basics::Timers::name] += TRI_microtime() - arangodb::basics::Timers::starts[arangodb::basics::Timers::name]; ++arangodb::basics::Timers::counts[arangodb::basics::Timers::name]
+#define TIMER_START(name)                                            \
+  arangodb::basics::Timers::starts[arangodb::basics::Timers::name] = \
+      TRI_microtime()
+#define TIMER_STOP(name)                                                \
+  arangodb::basics::Timers::totals[arangodb::basics::Timers::name] +=   \
+      TRI_microtime() -                                                 \
+      arangodb::basics::Timers::starts[arangodb::basics::Timers::name]; \
+  ++arangodb::basics::Timers::counts[arangodb::basics::Timers::name]
 
 #else
 
-#define TIMER_START(name) // do { } while (false)
-#define TIMER_STOP(name) // do { } while (false)
+#define TIMER_START(name)  // do { } while (false)
+#define TIMER_STOP(name)   // do { } while (false)
 
 #endif
 
@@ -49,7 +55,7 @@ class Timers {
     TIMER_MIN = 0,
 
     JS_INSERT_ALL,
-    JS_INSERT_VPACK_TO_V8, 
+    JS_INSERT_VPACK_TO_V8,
     JS_INSERT_V8_TO_VPACK,
     JS_INSERT_V8_TO_VPACK2,
     JS_INSERT_CREATE_TRX,
@@ -66,34 +72,34 @@ class Timers {
   static std::map<std::string, std::pair<double, uint64_t>> get();
   static std::string translateName(TimerType type) {
     switch (type) {
-      case JS_INSERT_ALL: 
+      case JS_INSERT_ALL:
         return "JS_INSERT_ALL";
-      case JS_INSERT_V8_TO_VPACK: 
+      case JS_INSERT_V8_TO_VPACK:
         return "JS_INSERT_V8_TO_VPACK";
-      case JS_INSERT_V8_TO_VPACK2: 
+      case JS_INSERT_V8_TO_VPACK2:
         return "JS_INSERT_V8_TO_VPACK2";
-      case JS_INSERT_VPACK_TO_V8: 
+      case JS_INSERT_VPACK_TO_V8:
         return "JS_INSERT_VPACK_TO_V8";
-      case JS_INSERT_CREATE_TRX: 
+      case JS_INSERT_CREATE_TRX:
         return "JS_INSERT_CREATE_TRX";
-      case JS_INSERT_INSERT: 
+      case JS_INSERT_INSERT:
         return "JS_INSERT_INSERT";
 
-      case TRANSACTION_INSERT_LOCAL: 
+      case TRANSACTION_INSERT_LOCAL:
         return "TRANSACTION_INSERT_LOCAL";
       case TRANSACTION_INSERT_BUILD_DOCUMENT_IDENTITY:
         return "TRANSACTION_INSERT_BUILD_DOCUMENT_IDENTITY";
       case TRANSACTION_INSERT_WORK_FOR_ONE:
         return "TRANSACTION_INSERT_WORK_FOR_ONE";
 
-      case TIMER_MIN: 
+      case TIMER_MIN:
       case TIMER_MAX: {
-        break; 
+        break;
       }
     }
     return "UNKNOWN";
   }
-  
+
   static std::vector<double> starts;
   static std::vector<double> totals;
   static std::vector<uint64_t> counts;

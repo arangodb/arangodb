@@ -10,13 +10,22 @@ if (POLICY CMP0037)
   cmake_policy(SET CMP0037 NEW)
 endif ()
 
-option(VERBOSE OFF)
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9" CACHE STRING "deployment target for MacOSX")
 
 project(ArangoDB CXX C ASM)
 
 # where to find CMAKE modules
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
+
+# be verbose about flags used
+option(VERBOSE OFF)
+
+# enable timer for development
+option(USE_DEV_TIMERS OFF)
+
+if (USE_DEV_TIMERS)
+  add_definitions("-DUSE_DEV_TIMERS")
+endif ()
 
 ################################################################################
 ## ARANGODB
@@ -149,7 +158,7 @@ endif ()
 
 math(EXPR BITS "8*${CMAKE_SIZEOF_VOID_P}")
 add_definitions("-DARANGODB_BITS=${BITS}")
-
+        
 ################################################################################
 ## COMPILER FEATURES
 ################################################################################
@@ -350,7 +359,9 @@ endif ()
 ################################################################################
 ## JEMALLOC
 ################################################################################
+
 set(JEMALLOC_DEFAULT_VALUE ON)
+
 if (WINDOWS OR SOLARIS OR USE_TCMALLOC)
   set(JEMALLOC_DEFAULT_VALUE OFF)
 endif ()
@@ -358,7 +369,7 @@ endif ()
 option(USE_JEMALLOC
   "use JEMALLOC if the library is available"
   ${JEMALLOC_DEFAULT_VALUE}
-  )
+)
 
 if (USE_JEMALLOC)
   find_package(jemalloc)
@@ -375,10 +386,11 @@ endif ()
 ################################################################################
 ## TCMALLOC
 ################################################################################
+
 option(USE_TCMALLOC
   "use TCMALLOC if the library is available"
   OFF
-  )
+)
 
 if (USE_TCMALLOC)
   find_package(tcmalloc)
@@ -395,6 +407,7 @@ endif ()
 if (${USE_JEMALLOC} AND ${USE_TCMALLOC})
   MESSAGE(ERROR," you mustn't demand for tcmalloc and jemalloc at the same time!")
 endif()
+
 ################################################################################
 ## LIBRARY RESOLV
 ################################################################################
@@ -412,7 +425,7 @@ endif ()
 ################################################################################
 
 if (VERBOSE)
-message(STATUS)
+  message(STATUS)
 endif ()
 
 # compiler options
