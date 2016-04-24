@@ -34,6 +34,7 @@
 #include "ApplicationFeatures/SupervisorFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
+#include "ApplicationFeatures/VersionFeature.h"
 #include "ApplicationFeatures/WorkMonitorFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Cluster/ClusterFeature.h"
@@ -132,6 +133,7 @@ int main(int argc, char* argv[]) {
   server.addFeature(new UpgradeFeature(&server, &ret, nonServerFeatures));
   server.addFeature(new V8DealerFeature(&server));
   server.addFeature(new V8PlatformFeature(&server));
+  server.addFeature(new VersionFeature(&server));
   server.addFeature(new WorkMonitorFeature(&server));
 
 #ifdef ARANGODB_HAVE_FORK

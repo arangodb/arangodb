@@ -52,6 +52,7 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer* server,
   setOptional(false);
   requiresElevatedPrivileges(false);
 
+  startsAfter("Version");
   if (threaded) {
     startsAfter("WorkMonitor");
   }

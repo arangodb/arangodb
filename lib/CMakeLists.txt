@@ -158,6 +158,7 @@ add_library(${LIB_ARANGO} STATIC
   ApplicationFeatures/SslFeature.cpp
   ApplicationFeatures/TempFeature.cpp
   ApplicationFeatures/V8PlatformFeature.cpp
+  ApplicationFeatures/VersionFeature.cpp
   ApplicationFeatures/WorkMonitorFeature.cpp
   Basics/ArangoGlobalContext.cpp
   Basics/AttributeNameParser.cpp

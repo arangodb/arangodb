@@ -17,33 +17,25 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_CONFIG_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_CONFIG_FEATURE_H 1
+#ifndef ARANGODB_APPLICATION_FEATURES_VERSION_FEATURE_H
+#define ARANGODB_APPLICATION_FEATURES_VERSION_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
-class ConfigFeature final : public application_features::ApplicationFeature {
+class VersionFeature final : public application_features::ApplicationFeature {
  public:
-  ConfigFeature(application_features::ApplicationServer* server,
-                std::string const& progname);
+  explicit VersionFeature(application_features::ApplicationServer* server);
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void loadOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
  private:
-  std::string _file;
-  bool _checkConfiguration;
-
- private:
-  void loadConfigFile(std::shared_ptr<options::ProgramOptions>);
-
- private:
-  std::string _progname;
+  bool _printVersion;
 };
 }
 
