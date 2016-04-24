@@ -22,15 +22,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "cleanup.h"
-#include "Basics/files.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/files.h"
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 #include "Utils/CursorRepository.h"
-#include "VocBase/compactor.h"
 #include "VocBase/Ditch.h"
+#include "VocBase/compactor.h"
 #include "VocBase/document-collection.h"
 #include "Wal/LogfileManager.h"
+
+using namespace arangodb::application_features;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clean interval in microseconds
@@ -59,8 +63,9 @@ static void CleanupDocumentCollection(TRI_vocbase_col_t* collection,
   // unload operations can normally only be executed when a collection is fully
   // garbage collected
   bool unloadChecked = false;
+
   // but if we are in server shutdown, we can force unloading of collections
-  bool isInShutdown = arangodb::wal::LogfileManager::instance()->isInShutdown();
+  bool isInShutdown = ApplicationServer::isStopping();
 
   TRI_ASSERT(collection != nullptr);
   TRI_ASSERT(document != nullptr);

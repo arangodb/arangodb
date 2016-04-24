@@ -93,6 +93,7 @@ class ApplicationServer {
  public:
   static ApplicationServer* server;
   static ApplicationFeature* lookupFeature(std::string const&);
+  static bool isStopping() { return server != nullptr && server->_stopping.load(); }
 
   template<typename T>
   static T* getFeature(std::string const& name) {

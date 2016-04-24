@@ -126,11 +126,10 @@ LogfileManager::LogfileManager(ApplicationServer* server)
 LogfileManager::~LogfileManager() {
   LOG(TRACE) << "shutting down WAL logfile manager";
 
-  stop();
-
   for (auto& it : _barriers) {
     delete it.second;
   }
+
   _barriers.clear();
 
   if (_recoverState != nullptr) {
@@ -145,6 +144,8 @@ LogfileManager::~LogfileManager() {
 }
 
 void LogfileManager::collectOptions(std::shared_ptr<ProgramOptions> options) {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
+
   options->addSection(
       Section("wal", "Configure the WAL", "wal options", false, false));
 
@@ -204,6 +205,8 @@ void LogfileManager::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void LogfileManager::prepare() {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::prepare";
+
   if (_filesize < MinFileSize()) {
     // minimum filesize per logfile
     LOG(FATAL) << "invalid value for --wal.logfile-size. Please use a value of "
@@ -240,8 +243,16 @@ void LogfileManager::prepare() {
 }
 
 void LogfileManager::start() {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
+
+  Instance = this;
+
   _server = DatabaseServerFeature::SERVER;
-  _databasePath = DatabaseFeature::DATABASE->directory();
+
+  DatabaseFeature* database = dynamic_cast<DatabaseFeature*>(
+      ApplicationServer::lookupFeature("Database"));
+
+  _databasePath = database->directory();
 
   // needs server initialized
   _filesize = (uint32_t)(((_filesize + PageSize - 1) / PageSize) * PageSize);
@@ -465,6 +476,8 @@ bool LogfileManager::open() {
 }
 
 void LogfileManager::stop() {
+  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
+
   if (!_startCalled) {
     return;
   }
@@ -548,6 +561,8 @@ void LogfileManager::stop() {
   if (res != TRI_ERROR_NO_ERROR) {
     LOG(ERR) << "could not write WAL shutdown info: " << TRI_errno_string(res);
   }
+
+  Instance = nullptr;
 }
 
 // registers a transaction
