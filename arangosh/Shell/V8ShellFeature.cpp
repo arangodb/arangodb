@@ -65,8 +65,6 @@ V8ShellFeature::V8ShellFeature(application_features::ApplicationServer* server,
 }
 
 void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addSection("javascript", "Configure the Javascript engine");
 
   options->addHiddenOption("--javascript.startup-directory",
@@ -85,7 +83,6 @@ void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
 void V8ShellFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
 
   if (_startupDirectory.empty()) {
     LOG(FATAL) << "'--javascript.startup-directory' is empty, giving up";
@@ -97,11 +94,8 @@ void V8ShellFeature::validateOptions(
 }
 
 void V8ShellFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
-  _console = dynamic_cast<ConsoleFeature*>(server()->feature("Console"));
-  auto platform =
-      dynamic_cast<V8PlatformFeature*>(server()->feature("V8Platform"));
+  _console = application_features::ApplicationServer::getFeature<ConsoleFeature>("Console");
+  auto platform = application_features::ApplicationServer::getFeature<V8PlatformFeature>("V8Platform");
 
   v8::Isolate::CreateParams createParams;
   createParams.array_buffer_allocator = platform->arrayBufferAllocator();
@@ -137,8 +131,6 @@ void V8ShellFeature::start() {
 }
 
 void V8ShellFeature::stop() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
-
   {
     v8::Locker locker{_isolate};
 

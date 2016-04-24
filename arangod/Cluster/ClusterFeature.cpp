@@ -73,8 +73,6 @@ ClusterFeature::~ClusterFeature() {
 }
 
 void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addSection("cluster", "Configure the cluster");
 
   options->addOption("--cluster.agency-endpoint",
@@ -126,8 +124,6 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
-
   // check if the cluster is enabled
   _enableCluster = !_agencyEndpoints.empty();
 
@@ -182,8 +178,6 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void ClusterFeature::prepare() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::prepare";
-
   ServerState::instance()->setAuthentication(_username, _password);
   ServerState::instance()->setDataPath(_dataPath);
   ServerState::instance()->setLogPath(_logPath);
@@ -343,8 +337,6 @@ void ClusterFeature::prepare() {
 //YYY #endif
 
 void ClusterFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
   // return if cluster is disabled
   if (!_enableCluster) {
     return;

@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DumpFeature.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ClientFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
@@ -74,8 +75,6 @@ DumpFeature::DumpFeature(application_features::ApplicationServer* server,
 
 void DumpFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addOption(
       "--collection",
       "restrict to collection name (can be specified multiple times)",
@@ -118,8 +117,6 @@ void DumpFeature::collectOptions(
 
 void DumpFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
-
   auto const& positionals = options->processingResult()._positionals;
   size_t n = positionals.size();
 
@@ -154,8 +151,6 @@ void DumpFeature::validateOptions(
 }
 
 void DumpFeature::prepare() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::prepare";
-
   bool isDirectory = false;
   bool isEmptyDirectory = false;
 
@@ -969,10 +964,7 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
 }
 
 void DumpFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
-  ClientFeature* client =
-      dynamic_cast<ClientFeature*>(server()->feature("Client"));
+  ClientFeature* client = application_features::ApplicationServer::getFeature<ClientFeature>("Client");
 
   int ret = EXIT_SUCCESS;
   *_result = ret;

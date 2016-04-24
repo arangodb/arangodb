@@ -43,8 +43,6 @@ ActionFeature::ActionFeature(application_features::ApplicationServer* server)
 }
 
 void ActionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addSection("server", "Server features");
 
   options->addHiddenOption(
@@ -55,8 +53,6 @@ void ActionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void ActionFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
   ACTION = this;
 
   V8DealerFeature* dealer = dynamic_cast<V8DealerFeature*>(
@@ -72,8 +68,6 @@ void ActionFeature::start() {
 }
 
 void ActionFeature::stop() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
-
   TRI_CleanupActions();
 
   ACTION = nullptr;

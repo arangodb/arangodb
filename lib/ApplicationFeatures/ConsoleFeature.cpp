@@ -85,8 +85,6 @@ ConsoleFeature::ConsoleFeature(application_features::ApplicationServer* server)
 }
 
 void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addOption("--quiet", "silent startup",
                      new BooleanParameter(&_quiet, false));
 
@@ -121,8 +119,6 @@ void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void ConsoleFeature::prepare() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::prepare";
-
 #if _WIN32
   if (getenv("SHELL") != nullptr) {
     _cygwinShell = true;
@@ -131,8 +127,6 @@ void ConsoleFeature::prepare() {
 }
 
 void ConsoleFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
   openLog();
 
 #if _WIN32
@@ -143,8 +137,6 @@ void ConsoleFeature::start() {
 }
 
 void ConsoleFeature::stop() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
-
   closeLog();
 }
 

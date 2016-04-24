@@ -51,8 +51,6 @@ EndpointFeature::EndpointFeature(
 }
 
 void EndpointFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addSection("server", "Server features");
 
   options->addOption("--server.endpoint",
@@ -71,8 +69,6 @@ void EndpointFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void EndpointFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
-
   if (_backlogSize > SOMAXCONN) {
     LOG(WARN) << "value for --tcp.backlog-size exceeds default system "
                  "header SOMAXCONN value "
@@ -81,8 +77,6 @@ void EndpointFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 }
 
 void EndpointFeature::prepare() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::prepare";
-
   buildEndpointLists();
 
   if (_endpointList.empty()) {
@@ -93,8 +87,6 @@ void EndpointFeature::prepare() {
 }
 
 void EndpointFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
   _endpointList.dump();
 }
 

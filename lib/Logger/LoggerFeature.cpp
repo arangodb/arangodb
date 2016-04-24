@@ -63,8 +63,6 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer* server,
 }
 
 void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addHiddenOption("--log", "the global or topic-specific log level",
                            new VectorParameter<StringParameter>(&_levels));
 
@@ -118,16 +116,12 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
 void LoggerFeature::loadOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::loadOptions";
-
   // for debugging purpose, we set the log levels NOW
   // this might be overwritten latter
   Logger::setLogLevel(_levels);
 }
 
 void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
-
   if (options->processingResult().touched("log.file")) {
     std::string definition;
 
@@ -146,8 +140,6 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void LoggerFeature::prepare() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::prepare";
-
 #if _WIN32
   if (!TRI_InitWindowsEventLog()) {
     std::cerr << "failed to init event log" << std::endl;
@@ -182,12 +174,9 @@ void LoggerFeature::prepare() {
 }
 
 void LoggerFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
 }
 
 void LoggerFeature::stop() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
-
   Logger::flush();
   Logger::shutdown(true);
 }

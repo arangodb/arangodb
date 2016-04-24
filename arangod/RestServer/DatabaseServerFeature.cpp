@@ -52,8 +52,6 @@ DatabaseServerFeature::DatabaseServerFeature(ApplicationServer* server)
 }
 
 void DatabaseServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addSection("database", "Configure the database");
 
   options->addHiddenOption(
@@ -63,8 +61,6 @@ void DatabaseServerFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
 }
 
 void DatabaseServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
-
   // some arbitrary limit
   if (_indexThreads > 128) {
     _indexThreads = 128;
@@ -72,8 +68,6 @@ void DatabaseServerFeature::validateOptions(std::shared_ptr<ProgramOptions> opti
 }
 
 void DatabaseServerFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
   // create the index thread pool
   if (_indexThreads > 0) {
     _indexPool.reset(new ThreadPool(_indexThreads, "IndexBuilder"));
@@ -87,8 +81,6 @@ void DatabaseServerFeature::start() {
 }
 
 void DatabaseServerFeature::stop() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
-
   // turn off index threads
   INDEX_POOL = nullptr;
   _indexPool.reset();

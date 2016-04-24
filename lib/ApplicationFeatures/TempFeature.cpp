@@ -40,8 +40,6 @@ TempFeature::TempFeature(application_features::ApplicationServer* server,
 }
 
 void TempFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addSection("temp", "Configure the temporary files");
 
   options->addOption("--temp.path", "path for temporary files",
@@ -49,14 +47,10 @@ void TempFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void TempFeature::prepare() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::prepare";
-
   TRI_SetApplicationName(_appname.c_str());
 }
 
 void TempFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
   if (!_path.empty()) {
     TRI_SetUserTempPath((char*)_path.c_str());
   }

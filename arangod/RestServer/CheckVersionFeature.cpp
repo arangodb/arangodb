@@ -53,8 +53,6 @@ CheckVersionFeature::CheckVersionFeature(
 
 void CheckVersionFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addSection("database", "Configure the database");
 
   options->addHiddenOption("--database.check-version",

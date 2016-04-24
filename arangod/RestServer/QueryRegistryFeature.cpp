@@ -45,8 +45,6 @@ QueryRegistryFeature::QueryRegistryFeature(ApplicationServer* server)
 
 void QueryRegistryFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addSection("query", "Configure queries");
 
   options->addOption("--query.tracking", "wether to track queries",
@@ -63,12 +61,9 @@ void QueryRegistryFeature::collectOptions(
 
 void QueryRegistryFeature::validateOptions(
     std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
 }
 
 void QueryRegistryFeature::prepare() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::prepare";
-
   // set global query tracking flag
   arangodb::aql::Query::DisableQueryTracking(!_queryTracking);
 
@@ -79,16 +74,12 @@ void QueryRegistryFeature::prepare() {
 }
 
 void QueryRegistryFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
   // create the query registery
   _queryRegistry.reset(new aql::QueryRegistry());
   DatabaseServerFeature::SERVER->_queryRegistry = _queryRegistry.get();
 }
 
 void QueryRegistryFeature::stop() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
-
   // clear the query registery
   DatabaseServerFeature::SERVER->_queryRegistry = nullptr;
 }

@@ -60,8 +60,6 @@ SchedulerFeature::SchedulerFeature(
 
 void SchedulerFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addSection("scheduler", "Configure the I/O scheduler");
 
   options->addOption("--scheduler.threads",
@@ -82,8 +80,6 @@ void SchedulerFeature::collectOptions(
 
 void SchedulerFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions>) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
-
   if (_showBackends) {
     std::cout << "available io backends are: "
               << SchedulerLibev::availableBackends() << std::endl;
@@ -103,8 +99,6 @@ void SchedulerFeature::validateOptions(
 }
 
 void SchedulerFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
   buildScheduler();
   buildHangupHandler();
 
@@ -124,8 +118,6 @@ void SchedulerFeature::start() {
 }
 
 void SchedulerFeature::stop() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
-
   static size_t const MAX_TRIES = 10;
 
   if (_scheduler != nullptr) {

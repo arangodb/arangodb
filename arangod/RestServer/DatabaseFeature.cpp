@@ -67,8 +67,6 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
 }
 
 void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addSection("database", "Configure the database");
 
   options->addOption("--database.directory", "path to the database directory",
@@ -107,8 +105,6 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
-
   auto const& positionals = options->processingResult()._positionals;
 
   if (1 == positionals.size()) {
@@ -137,8 +133,6 @@ void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void DatabaseFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
   LOG(INFO) << "" << rest::Version::getVerboseVersionString();
 
   // sanity check
@@ -170,8 +164,6 @@ void DatabaseFeature::start() {
 }
 
 void DatabaseFeature::stop() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
-
   // close all databases
   closeDatabases();
 

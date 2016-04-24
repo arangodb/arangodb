@@ -22,6 +22,7 @@
 
 #include "ImportFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ClientFeature.h"
 #include "Basics/StringUtils.h"
 #include "Basics/FileUtils.h"
@@ -63,8 +64,6 @@ ImportFeature::ImportFeature(application_features::ApplicationServer* server,
 
 void ImportFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addOption("--file", "file name (\"-\" for STDIN)",
                      new StringParameter(&_filename));
 
@@ -138,8 +137,6 @@ void ImportFeature::collectOptions(
 
 void ImportFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
-
   auto const& positionals = options->processingResult()._positionals;
   size_t n = positionals.size();
 
@@ -157,10 +154,7 @@ void ImportFeature::validateOptions(
 }
 
 void ImportFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
-  ClientFeature* client =
-      dynamic_cast<ClientFeature*>(server()->feature("Client"));
+  ClientFeature* client = application_features::ApplicationServer::getFeature<ClientFeature>("Client");
 
   int ret = EXIT_SUCCESS;
   *_result = ret;

@@ -65,8 +65,6 @@ ServerFeature::ServerFeature(application_features::ApplicationServer* server,
 }
 
 void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addOption("--console", "start a JavaScript emergency console",
                      new BooleanParameter(&_console, false));
 
@@ -98,8 +96,6 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
-
   int count = 0;
 
   if (_console) {
@@ -165,8 +161,6 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 }
 
 void ServerFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
   if (_operationMode != OperationMode::MODE_CONSOLE && _restServer) {
     auto scheduler = dynamic_cast<SchedulerFeature*>(
         ApplicationServer::lookupFeature("Scheduler"));
@@ -202,15 +196,9 @@ void ServerFeature::start() {
 }
 
 void ServerFeature::beginShutdown() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::shutdown";
-
   std::string msg =
       ArangoGlobalContext::CONTEXT->binaryName() + " [shutting down]";
   TRI_SetProcessTitle(msg.c_str());
-}
-
-void ServerFeature::stop() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
 }
 
 void ServerFeature::waitForHeartbeat() {

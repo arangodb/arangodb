@@ -44,8 +44,6 @@ FileDescriptorsFeature::FileDescriptorsFeature(
 
 void FileDescriptorsFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
 #ifdef TRI_HAVE_GETRLIMIT
   options->addSection("server", "Server features");
 
@@ -56,8 +54,6 @@ void FileDescriptorsFeature::collectOptions(
 }
 
 void FileDescriptorsFeature::prepare() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::prepare";
-
   adjustFileDescriptors();
 }
 

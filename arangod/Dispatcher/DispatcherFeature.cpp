@@ -60,8 +60,6 @@ DispatcherFeature::~DispatcherFeature() {
 
 void DispatcherFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addSection("server", "Server features");
 
   options->addOption("--server.threads",
@@ -78,8 +76,6 @@ void DispatcherFeature::collectOptions(
 }
 
 void DispatcherFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
-
   if (_nrStandardThreads == 0) {
     size_t n = TRI_numberProcessors();
 
@@ -111,8 +107,6 @@ void DispatcherFeature::prepare() {
 }
 
 void DispatcherFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
   buildDispatcher();
   buildStandardQueue();
 
@@ -129,14 +123,10 @@ void DispatcherFeature::start() {
 }
 
 void DispatcherFeature::beginShutdown() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::beginShutdown";
-
   _dispatcher->beginShutdown();
 }
 
 void DispatcherFeature::stop() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
-
   _dispatcher->shutdown();
 
   DISPATCHER = nullptr;

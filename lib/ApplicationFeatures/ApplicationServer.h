@@ -95,11 +95,24 @@ class ApplicationServer {
   static ApplicationFeature* lookupFeature(std::string const&);
   static bool isStopping() { return server != nullptr && server->_stopping.load(); }
 
+  // returns the feature with the given name if known
+  // throws otherwise
   template<typename T>
   static T* getFeature(std::string const& name) {
     T* feature = dynamic_cast<T*>(application_features::ApplicationServer::lookupFeature(name));
     if (feature == nullptr) {
       throwFeatureNotFoundException(name);
+    }
+    return feature;
+  }
+
+  // returns the feature with the given name if known and enabled
+  // throws otherwise
+  template<typename T>
+  static T* getEnabledFeature(std::string const& name) {
+    T* feature = getFeature<T>(name);
+    if (!feature->isEnabled()) {
+      throwFeatureNotEnabledException(name);
     }
     return feature;
   }
@@ -151,6 +164,9 @@ class ApplicationServer {
  private:
   // throws an exception if a requested feature was not found
   static void throwFeatureNotFoundException(std::string const& name);
+  
+  // throws an exception if a requested feature is not enabled
+  static void throwFeatureNotEnabledException(std::string const& name);
 
   static void disableFeatures(std::vector<std::string> const& names, bool force);
 

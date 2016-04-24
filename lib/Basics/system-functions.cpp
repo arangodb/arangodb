@@ -30,9 +30,9 @@
 #ifdef TRI_MISSING_MEMRCHR
 
 void* memrchr(void const* block, int c, size_t size) {
-  unsigned char const* p = static_cast<unsigned char const*>(block);
-
   if (size) {
+    unsigned char const* p = static_cast<unsigned char const*>(block);
+
     for (p += size - 1; size; p--, size--) {
       if (*p == c) {
         return (void*)p;
@@ -191,6 +191,20 @@ double TRI_microtime() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the current time as string in format "YYYY-MM-DDTHH:MM:SSZ"
+////////////////////////////////////////////////////////////////////////////////
+
+std::string TRI_timeString() {
+  time_t tt = time(0);
+  struct tm tb;
+  TRI_gmtime(tt, &tb);
+  char buffer[32];
+  size_t len = strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tb);
+
+  return std::string(buffer, len);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief number of processors or 0
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -211,3 +225,4 @@ size_t TRI_numberProcessors() {
 
 #endif
 }
+

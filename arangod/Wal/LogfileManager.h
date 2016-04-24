@@ -112,6 +112,7 @@ class LogfileManager final : public application_features::ApplicationFeature {
  public:
   void collectOptions(
       std::shared_ptr<options::ProgramOptions> options) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
   void stop() override final;
@@ -432,9 +433,6 @@ class LogfileManager final : public application_features::ApplicationFeature {
 
   // return an absolute filename for a logfile id
   std::string logfileName(Logfile::IdType) const;
-
-  // return the current time as a string
-  static std::string getTimeString();
 
  private:
   // pointer to the server

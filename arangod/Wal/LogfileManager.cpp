@@ -144,8 +144,6 @@ LogfileManager::~LogfileManager() {
 }
 
 void LogfileManager::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addSection(
       Section("wal", "Configure the WAL", "wal options", false, false));
 
@@ -204,9 +202,7 @@ void LogfileManager::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new UInt64Parameter(&_maxThrottleWait));
 }
 
-void LogfileManager::prepare() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::prepare";
-
+void LogfileManager::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
   if (_filesize < MinFileSize()) {
     // minimum filesize per logfile
     LOG(FATAL) << "invalid value for --wal.logfile-size. Please use a value of "
@@ -242,20 +238,20 @@ void LogfileManager::prepare() {
   _syncInterval = _syncInterval * 1000;
 }
 
-void LogfileManager::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
+void LogfileManager::prepare() {
+}
 
+void LogfileManager::start() {
   Instance = this;
 
   _server = DatabaseServerFeature::SERVER;
 
-  DatabaseFeature* database = dynamic_cast<DatabaseFeature*>(
-      ApplicationServer::lookupFeature("Database"));
+  DatabaseFeature* database = ApplicationServer::getFeature<DatabaseFeature>("Database");
 
   _databasePath = database->directory();
 
   // needs server initialized
-  _filesize = (uint32_t)(((_filesize + PageSize - 1) / PageSize) * PageSize);
+  _filesize = static_cast<uint32_t>(((_filesize + PageSize - 1) / PageSize) * PageSize);
 
   if (_directory.empty()) {
     // use global configuration variable
@@ -476,8 +472,6 @@ bool LogfileManager::open() {
 }
 
 void LogfileManager::stop() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
-
   if (!_startCalled) {
     return;
   }
@@ -1566,7 +1560,7 @@ LogfileManagerState LogfileManager::state() {
   // now fill the state
   _slots->statistics(state.lastAssignedTick, state.lastCommittedTick,
                      state.lastCommittedDataTick, state.numEvents);
-  state.timeString = getTimeString();
+  state.timeString = TRI_timeString();
 
   return state;
 }
@@ -1837,7 +1831,7 @@ int LogfileManager::writeShutdownInfo(bool writeShutdownTime) {
     builder.add("lastSealed", VPackValue(val));
 
     if (writeShutdownTime) {
-      std::string const t(getTimeString());
+      std::string const t(TRI_timeString());
       builder.add("shutdownTime", VPackValue(t));
     }
     builder.close();
@@ -2202,14 +2196,3 @@ std::string LogfileManager::logfileName(Logfile::IdType id) const {
          std::string(".db");
 }
 
-// return the current time as a string
-std::string LogfileManager::getTimeString() {
-  char buffer[32];
-  size_t len;
-  time_t tt = time(0);
-  struct tm tb;
-  TRI_gmtime(tt, &tb);
-  len = strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tb);
-
-  return std::string(buffer, len);
-}

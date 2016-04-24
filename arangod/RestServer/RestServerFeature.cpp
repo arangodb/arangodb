@@ -97,8 +97,6 @@ RestServerFeature::RestServerFeature(
 
 void RestServerFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addSection("server", "Server features");
 
   options->addHiddenOption("--server.default-api-compatibility",
@@ -137,8 +135,6 @@ void RestServerFeature::collectOptions(
 }
 
 void RestServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
-
   if (_defaultApiCompatibility < HttpRequest::MIN_COMPATIBILITY) {
     LOG(FATAL) << "invalid value for --server.default-api-compatibility. "
                   "minimum allowed value is "
@@ -189,14 +185,10 @@ static bool SetRequestContext(HttpRequest* request, void* data) {
 }
 
 void RestServerFeature::prepare() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::prepare";
-
   HttpHandlerFactory::setMaintenance(true);
 }
 
 void RestServerFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
   LOG(DEBUG) << "using default API compatibility: "
              << (long int)_defaultApiCompatibility;
 
@@ -238,8 +230,6 @@ void RestServerFeature::start() {
 }
 
 void RestServerFeature::stop() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
-
   for (auto& server : _servers) {
     server->stopListening();
   }

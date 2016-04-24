@@ -50,8 +50,6 @@ ConfigFeature::ConfigFeature(application_features::ApplicationServer* server,
 }
 
 void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addOption("--configuration,-c", "the configuration file or 'none'",
                      new StringParameter(&_file));
 
@@ -67,8 +65,6 @@ void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void ConfigFeature::loadOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::loadOptions";
-
   loadConfigFile(options);
 
   if (_checkConfiguration) {

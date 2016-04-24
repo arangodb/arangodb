@@ -41,15 +41,11 @@ LanguageFeature::LanguageFeature(
 
 void LanguageFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addHiddenOption("--default-language", "ISO-639 language code",
                            new StringParameter(&_language));
 }
 
 void LanguageFeature::prepare() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::prepare";
-
   if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(_language)) {
     std::string msg =
         "cannot initialize ICU; please make sure ICU*dat is available; "
@@ -66,8 +62,6 @@ void LanguageFeature::prepare() {
 }
 
 void LanguageFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
   std::string languageName;
 
   if (Utf8Helper::DefaultUtf8Helper.getCollatorCountry() != "") {

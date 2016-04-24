@@ -38,11 +38,11 @@ class DumpFeature final : public application_features::ApplicationFeature,
                     int* result);
 
  public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(
-      std::shared_ptr<options::ProgramOptions> options) override;
-  void prepare() override;
-  void start() override;
+      std::shared_ptr<options::ProgramOptions> options) override final;
+  void prepare() override final;
+  void start() override final;
 
  private:
   std::vector<std::string> _collections;
