@@ -657,9 +657,6 @@ static bool IterateDatafilesVector(std::vector<TRI_datafile_t*> const& files,
   TRI_ASSERT(iterator != nullptr);
 
   for (auto const& datafile : files) {
-    LOG(TRACE) << "iterating over datafile '" << datafile->getName(datafile)
-               << "', fid " << datafile->_fid;
-
     if (!TRI_IterateDatafile(datafile, iterator, data)) {
       return false;
     }
