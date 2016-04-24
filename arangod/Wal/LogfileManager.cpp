@@ -238,9 +238,6 @@ void LogfileManager::validateOptions(std::shared_ptr<options::ProgramOptions> op
   _syncInterval = _syncInterval * 1000;
 }
 
-void LogfileManager::prepare() {
-}
-
 void LogfileManager::start() {
   Instance = this;
 
