@@ -56,6 +56,7 @@
 #include "RestServer/UpgradeFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/StatisticsFeature.h"
+#include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8DealerFeature.h"
 #include "Wal/LogfileManager.h"
 
@@ -95,7 +96,7 @@ int main(int argc, char* argv[]) {
   application_features::ApplicationServer server(options);
 
   std::vector<std::string> nonServerFeatures = {
-      "Action", "Affinity", "Agency", "Cluster", "Daemon", "Dispatcher", "Endpoint",
+      "Action", "Affinity", "Agency", "Cluster", "Daemon", "Dispatcher", "Endpoint", "FoxxQueues",
       "LoggerBufferFeature", "RestServer", "Server", "Scheduler", "Ssl", "Statistics", "Supervisor"};
 
   int ret = EXIT_FAILURE;
@@ -112,6 +113,7 @@ int main(int argc, char* argv[]) {
   server.addFeature(new DispatcherFeature(&server));
   server.addFeature(new EndpointFeature(&server));
   server.addFeature(new FileDescriptorsFeature(&server));
+  server.addFeature(new FoxxQueuesFeature(&server));
   server.addFeature(new FrontendFeature(&server));
   server.addFeature(new LanguageFeature(&server));
   server.addFeature(new LogfileManager(&server));

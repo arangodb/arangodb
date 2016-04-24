@@ -174,6 +174,11 @@ void ServerFeature::start() {
 
   *_result = EXIT_SUCCESS;
 
+  // flush all log output before we go on... this is sensible because any
+  // of the following options may print or prompt, and pending log entries
+  // might overwrite that 
+  Logger::flush();
+   
   switch (_operationMode) {
     case OperationMode::MODE_UNITTESTS:
       LOG_TOPIC(TRACE, Logger::STARTUP) << "server about to run unit-tests";

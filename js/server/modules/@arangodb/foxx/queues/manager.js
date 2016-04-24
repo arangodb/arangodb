@@ -147,7 +147,7 @@ exports.run = function() {
   var options = require('internal').options();
 
   // disable foxx queues
-  if (options['server.foxx-queues'] === false) {
+  if (options['foxx.queues'] === false) {
     return;
   }
 
@@ -156,8 +156,8 @@ exports.run = function() {
 
   // wakeup/poll interval for Foxx queues
   var period = 1;
-  if (options.hasOwnProperty('server.foxx-queues-poll-interval')) {
-    period = options['server.foxx-queues-poll-interval'];
+  if (options.hasOwnProperty('foxx.queues-poll-interval')) {
+    period = options['foxx.queues-poll-interval'];
   }
 
   global.KEYSPACE_CREATE('queue-control', 1, true);
