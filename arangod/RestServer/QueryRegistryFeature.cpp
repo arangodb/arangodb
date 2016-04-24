@@ -47,7 +47,7 @@ void QueryRegistryFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addSection("query", "Configure queries");
 
-  options->addOption("--query.tracking", "wether to track queries",
+  options->addOption("--query.tracking", "whether to track queries",
                      new BooleanParameter(&_queryTracking));
 
   options->addOption("--query.cache-mode",

@@ -75,17 +75,13 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--log.level,-l", "the global or topic-specific log level",
                      new VectorParameter<StringParameter>(&_levels));
 
-  options->addHiddenOption("--log.use-local-time",
-                           "use local timezone instead of UTC",
-                           new BooleanParameter(&_useLocalTime));
+  options->addOption("--log.use-local-time",
+                     "use local timezone instead of UTC",
+                     new BooleanParameter(&_useLocalTime));
 
   options->addHiddenOption("--log.prefix",
                            "prefix log message with this string",
                            new StringParameter(&_prefix));
-
-  options->addHiddenOption(
-      "--log.prefix", "adds a prefix in case multiple instances are running",
-      new StringParameter(&_prefix));
 
   options->addHiddenOption("--log.file",
                            "shortcut for '--log.output file://<filename>'",
@@ -111,7 +107,7 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                            new BooleanParameter(&_foregroundTty));
 
   options->addHiddenOption("--log.force-direct",
-                           "do not start a seperated thread for logging",
+                           "do not start a seperate thread for logging",
                            new BooleanParameter(&_forceDirect));
 }
 
