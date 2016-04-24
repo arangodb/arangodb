@@ -1463,10 +1463,13 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection(
 int TRI_FromVelocyPackIndexDocumentCollection(
     arangodb::Transaction* trx, TRI_document_collection_t* document,
     VPackSlice const& slice, arangodb::Index** idx) {
-  TRI_ASSERT(slice.isObject());
 
   if (idx != nullptr) {
     *idx = nullptr;
+  }
+  
+  if (!slice.isObject()) {
+    return TRI_ERROR_INTERNAL;
   }
 
   // extract the type
@@ -1494,37 +1497,22 @@ int TRI_FromVelocyPackIndexDocumentCollection(
 
   TRI_UpdateTickServer(iid);
 
-  // ...........................................................................
-  // GEO INDEX (list or attribute)
-  // ...........................................................................
   if (typeStr == "geo1" || typeStr == "geo2") {
     return GeoIndexFromVelocyPack(trx, document, slice, iid, idx);
   }
 
-  // ...........................................................................
-  // HASH INDEX
-  // ...........................................................................
   if (typeStr == "hash") {
     return HashIndexFromVelocyPack(trx, document, slice, iid, idx);
   }
 
-  // ...........................................................................
-  // SKIPLIST INDEX
-  // ...........................................................................
   if (typeStr == "skiplist") {
     return SkiplistIndexFromVelocyPack(trx, document, slice, iid, idx);
   }
 
-  // ...........................................................................
-  // FULLTEXT INDEX
-  // ...........................................................................
   if (typeStr == "fulltext") {
     return FulltextIndexFromVelocyPack(trx, document, slice, iid, idx);
   }
 
-  // ...........................................................................
-  // EDGES INDEX
-  // ...........................................................................
   if (typeStr == "edge") {
     // we should never get here, as users cannot create their own edge indexes
     LOG(ERR) << "logic error. there should never be a JSON file describing an "
@@ -1536,7 +1524,7 @@ int TRI_FromVelocyPackIndexDocumentCollection(
   LOG(WARN) << "index type '" << typeStr
             << "' is not supported in this version of ArangoDB and is ignored";
 
-  return TRI_ERROR_NO_ERROR;
+  return TRI_ERROR_NOT_IMPLEMENTED;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
