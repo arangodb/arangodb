@@ -467,6 +467,7 @@ static bool HasSSE42() {
 // that the pure assembler source cannot be assembled or linked for
 // some reason.
 
+#if 0
 extern "C" uint32_t TRI_BlockCrc32_intrinsics(uint32_t value,
                                               char const* data,
                                               size_t length) {
@@ -483,6 +484,8 @@ extern "C" uint32_t TRI_BlockCrc32_intrinsics(uint32_t value,
   }
   return value;
 }
+#endif
+
 #endif
 
 
