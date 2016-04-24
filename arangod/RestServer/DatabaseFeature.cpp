@@ -283,8 +283,6 @@ void DatabaseFeature::openDatabases() {
 }
 
 void DatabaseFeature::closeDatabases() {
-  TRI_ASSERT(_server != nullptr);
-
   // stop the replication appliers so all replication transactions can end
   if (_replicationApplier) {
     TRI_StopReplicationAppliersServer(DatabaseServerFeature::SERVER);
