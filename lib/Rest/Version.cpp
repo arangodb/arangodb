@@ -38,7 +38,6 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/build-date.h"
 #include "Basics/conversions.h"
-#include "Basics/json.h"
 
 using namespace arangodb::rest;
 
@@ -293,24 +292,6 @@ std::string Version::getDetailed() {
   }
 
   return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief JSONize all data
-////////////////////////////////////////////////////////////////////////////////
-
-void Version::getJson(TRI_memory_zone_t* zone, TRI_json_t* dst) {
-  for (auto const& it : Values) {
-    std::string const& value = it.second;
-
-    if (!value.empty()) {
-      std::string const& key = it.first;
-
-      TRI_Insert3ObjectJson(
-          zone, dst, key.c_str(),
-          TRI_CreateStringCopyJson(zone, value.c_str(), value.size()));
-    }
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
