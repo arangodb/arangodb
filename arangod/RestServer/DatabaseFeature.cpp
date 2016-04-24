@@ -255,8 +255,6 @@ void DatabaseFeature::openDatabases() {
     defaults.authenticateSystemOnly = false;
   }
 
-  TRI_ASSERT(_server != nullptr);
-
   bool const iterateMarkersOnOpen =
       !wal::LogfileManager::instance()->hasFoundLastTick();
 
