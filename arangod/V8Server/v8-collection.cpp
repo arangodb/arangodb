@@ -2907,7 +2907,7 @@ static void JS_DatafilesVocbaseCol(
 
   uint32_t i = 0;
   for (auto& it : structure.journals) {
-    journals->Set(++i, TRI_V8_STD_STRING(it));
+    journals->Set(i++, TRI_V8_STD_STRING(it));
   }
 
   // compactors
@@ -2916,7 +2916,7 @@ static void JS_DatafilesVocbaseCol(
 
   i = 0;
   for (auto& it : structure.compactors) {
-    compactors->Set(++i, TRI_V8_STD_STRING(it));
+    compactors->Set(i++, TRI_V8_STD_STRING(it));
   }
 
   // datafiles
@@ -2925,7 +2925,7 @@ static void JS_DatafilesVocbaseCol(
 
   i = 0;
   for (auto& it : structure.datafiles) {
-    datafiles->Set(++i, TRI_V8_STD_STRING(it));
+    datafiles->Set(i++, TRI_V8_STD_STRING(it));
   }
 
   TRI_V8_RETURN(result);
