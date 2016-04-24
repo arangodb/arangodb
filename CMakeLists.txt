@@ -405,7 +405,7 @@ if (USE_TCMALLOC)
 endif ()
 
 if (${USE_JEMALLOC} AND ${USE_TCMALLOC})
-  MESSAGE(ERROR," you mustn't demand for tcmalloc and jemalloc at the same time!")
+  MESSAGE(FATAL_ERROR " you mustn't demand for tcmalloc and jemalloc at the same time!")
 endif()
 
 ################################################################################
