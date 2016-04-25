@@ -3447,6 +3447,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   static_cast<V8TransactionContext*>(v8g->_transactionContext)->makeGlobal();
 
   // register the query registry
+  TRI_ASSERT(queryRegistry != nullptr);
   v8g->_queryRegistry = queryRegistry;
 
   // register the server

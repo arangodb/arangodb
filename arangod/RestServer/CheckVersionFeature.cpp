@@ -68,18 +68,15 @@ void CheckVersionFeature::validateOptions(
 
   ApplicationServer::forceDisableFeatures(_nonServerFeatures);
 
-  LoggerFeature* logger =
-      dynamic_cast<LoggerFeature*>(ApplicationServer::lookupFeature("Logger"));
+  LoggerFeature* logger = ApplicationServer::getFeature<LoggerFeature>("Logger");
   logger->disableThreaded();
 
-  DatabaseFeature* database = dynamic_cast<DatabaseFeature*>(
-      ApplicationServer::lookupFeature("Database"));
+  DatabaseFeature* database = ApplicationServer::getFeature<DatabaseFeature>("Database");
   database->disableReplicationApplier();
   database->disableCompactor();
   database->enableCheckVersion();
 
-  V8DealerFeature* v8dealer = dynamic_cast<V8DealerFeature*>(
-      ApplicationServer::lookupFeature("V8Dealer"));
+  V8DealerFeature* v8dealer = ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
 
   v8dealer->setNumberContexts(1);
 }

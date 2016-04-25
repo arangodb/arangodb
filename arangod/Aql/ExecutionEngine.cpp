@@ -821,6 +821,8 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
   bool const isCoordinator =
       arangodb::ServerState::instance()->isCoordinator(role);
   bool const isDBServer = arangodb::ServerState::instance()->isDBServer(role);
+      
+  TRI_ASSERT(queryRegistry != nullptr);
 
   ExecutionEngine* engine = nullptr;
 
@@ -836,7 +838,6 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
 
     if (isCoordinator) {
       // instantiate the engine on the coordinator
-
       auto inst =
           std::make_unique<CoordinatorInstanciator>(query, queryRegistry);
       plan->root()->walk(inst.get());

@@ -101,6 +101,7 @@ V8DealerFeature::V8DealerFeature(
   startsAfter("Action");
   startsAfter("Database");
   startsAfter("Dispatcher");
+  startsAfter("QueryRegistry");
   startsAfter("Scheduler");
   startsAfter("V8Platform");
   startsAfter("WorkMonitor");
@@ -178,8 +179,8 @@ void V8DealerFeature::start() {
 
   // try to guess a suitable number of contexts
   if (0 == _nrContexts && 0 == _forceNrContexts) {
-    DispatcherFeature* dispatcher = dynamic_cast<DispatcherFeature*>(
-        ApplicationServer::lookupFeature("Dispatcher"));
+    DispatcherFeature* dispatcher = 
+        ApplicationServer::getFeature<DispatcherFeature>("Dispatcher");
 
     if (dispatcher != nullptr) {
       _nrContexts = dispatcher->concurrency();
@@ -215,8 +216,8 @@ void V8DealerFeature::start() {
 
   applyContextUpdates();
 
-  DatabaseFeature* database = dynamic_cast<DatabaseFeature*>(
-      ApplicationServer::lookupFeature("Database"));
+  DatabaseFeature* database = 
+      ApplicationServer::getFeature<DatabaseFeature>("Database");
 
   loadJavascript(database->vocbase(), "server/initialize.js");
 

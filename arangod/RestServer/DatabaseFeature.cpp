@@ -182,23 +182,25 @@ void DatabaseFeature::updateContexts() {
   }
 
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+  TRI_ASSERT(queryRegistry != nullptr);
+
   auto server = DatabaseServerFeature::SERVER;
+  TRI_ASSERT(server != nullptr);
+
   auto vocbase = _vocbase;
 
-  V8DealerFeature* dealer = dynamic_cast<V8DealerFeature*>(
-      ApplicationServer::lookupFeature("V8Dealer"));
-
-  if (dealer != nullptr) {
-    dealer->defineContextUpdate(
-        [queryRegistry, server, vocbase](
-            v8::Isolate* isolate, v8::Handle<v8::Context> context, size_t i) {
-          TRI_InitV8VocBridge(isolate, context, queryRegistry, server, vocbase,
-                              i);
-          TRI_InitV8Queries(isolate, context);
-          TRI_InitV8Cluster(isolate, context);
-        },
-        vocbase);
-  }
+  V8DealerFeature* dealer = 
+      ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
+  
+  dealer->defineContextUpdate(
+      [queryRegistry, server, vocbase](
+          v8::Isolate* isolate, v8::Handle<v8::Context> context, size_t i) {
+        TRI_InitV8VocBridge(isolate, context, queryRegistry, server, vocbase,
+                            i);
+        TRI_InitV8Queries(isolate, context);
+        TRI_InitV8Cluster(isolate, context);
+      },
+      vocbase);
 }
 
 void DatabaseFeature::shutdownCompactor() {

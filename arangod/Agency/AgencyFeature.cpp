@@ -50,6 +50,7 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
   startsAfter("Database");
   startsAfter("Dispatcher");
   startsAfter("Endpoint");
+  startsAfter("QueryRegistry");
   startsAfter("Scheduler");
   startsAfter("Server");
 }

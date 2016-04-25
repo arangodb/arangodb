@@ -370,8 +370,10 @@ void Constituent::beginShutdown() {
   Thread::beginShutdown();
 }
 
-bool Constituent::start (TRI_vocbase_t* vocbase) {
+bool Constituent::start(TRI_vocbase_t* vocbase,
+                        aql::QueryRegistry* queryRegistry) {
   _vocbase = vocbase;
+  _queryRegistry = queryRegistry;
   return Thread::start();
 }
 
