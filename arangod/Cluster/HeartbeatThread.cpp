@@ -126,7 +126,7 @@ void HeartbeatThread::runDBServer() {
       if (version > _currentPlanVersion) {
         _currentPlanVersion = version;
 
-        mustChangePlan = _dispatchedVersion == 0 && _lastSuccessfulVersion < _currentPlanVersion;
+        mustChangePlan = _lastSuccessfulVersion < _currentPlanVersion;
         versionToChange = _currentPlanVersion;
       }
     }
@@ -602,16 +602,23 @@ bool HeartbeatThread::handlePlanChangeDBServer(uint64_t currentPlanVersion) {
 
   // schedule a job for the change
   std::unique_ptr<arangodb::rest::Job> job(new ServerJob(this));
-
+  
   auto dispatcher = DispatcherFeature::DISPATCHER;
-
-  MUTEX_LOCKER(mutexLocker, _statusLock);
-  TRI_ASSERT(_dispatchedVersion == 0);
-  if (dispatcher->addJob(job) == TRI_ERROR_NO_ERROR) {
+  {
+    MUTEX_LOCKER(mutexLocker, _statusLock);
+    // mop: only dispatch one at a time
+    if (_dispatchedVersion > 0) {
+      return false;
+    }
     _dispatchedVersion = currentPlanVersion;
+  }
+  if (dispatcher->addJob(job) == TRI_ERROR_NO_ERROR) {
     LOG(TRACE) << "scheduled plan update handler";
     return true;
   }
+  MUTEX_LOCKER(mutexLocker, _statusLock);
+  _dispatchedVersion = 0;
+
 
   LOG(ERR) << "could not schedule plan update handler";
 
