@@ -165,8 +165,6 @@ class HeartbeatThread : public Thread {
 
   arangodb::basics::ConditionVariable _condition;
 
-  uint64_t _dispatchedPlanVersion;
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief users for these databases will be re-fetched the next time the
   /// heartbeat thread runs
@@ -199,22 +197,22 @@ class HeartbeatThread : public Thread {
   uint64_t _numFails;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief current number of dispatched (pending) jobs
+  /// @brief last successfully dispatched version
   //////////////////////////////////////////////////////////////////////////////
 
-  int64_t _numDispatchedJobs;
+  uint64_t _lastSuccessfulVersion;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief flag, if last dispatched job was successfull
+  /// @brief currently dispatched version
   //////////////////////////////////////////////////////////////////////////////
 
-  bool _lastDispatchedJobResult;
+  uint64_t _dispatchedVersion;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief version of Plan that triggered the last dispatched job
+  /// @brief current plan version
   //////////////////////////////////////////////////////////////////////////////
-
-  uint64_t _versionThatTriggeredLastJob;
+  
+  uint64_t _currentPlanVersion;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the thread is ready
@@ -228,6 +226,8 @@ class HeartbeatThread : public Thread {
   //////////////////////////////////////////////////////////////////////////////
 
   static volatile sig_atomic_t HasRunOnce;
+
+  bool _wasNotified;
 };
 }
 
