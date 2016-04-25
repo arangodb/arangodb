@@ -523,7 +523,8 @@ class Transaction {
   /// argument as a single object.
   //////////////////////////////////////////////////////////////////////////////
 
-  void buildDocumentIdentity(VPackBuilder& builder,
+  void buildDocumentIdentity(std::string const& collectionName,
+                             VPackBuilder& builder,
                              TRI_voc_cid_t cid,
                              std::string const& key,
                              VPackSlice const rid,
