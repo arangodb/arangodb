@@ -42,6 +42,41 @@
 using namespace arangodb::rest;
 
 std::map<std::string, std::string> Version::Values;
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parse a version string into major, minor
+/// returns -1, -1 when the version string has an invalid format
+/// returns major, -1 when only the major version can be determined
+////////////////////////////////////////////////////////////////////////////////
+  
+std::pair<int, int> Version::parseVersionString(std::string const& str) {
+  std::pair<int, int> result{ -1, -1 };
+
+  if (!str.empty()) {
+    char const* p = str.c_str();
+    char const* q = p;
+    while (*q >= '0' && *q <= '9') {
+      ++q;
+    }
+    if (p != q) {
+      result.first = std::stoi(std::string(p, q - p));
+      result.second = 0;
+
+      if (*q == '.') {
+        ++q;
+      }
+      p = q;
+      while (*q >= '0' && *q <= '9') {
+        ++q;
+      }
+      if (p != q) {
+        result.second = std::stoi(std::string(p, q - p));
+      }
+    }
+  } 
+
+  return result;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize
