@@ -29,7 +29,7 @@ namespace consensus {
 
 struct config_t {
   
-  id_t id;
+  arangodb::consensus::id_t id;
   double minPing;
   double maxPing;
   std::string endpoint;

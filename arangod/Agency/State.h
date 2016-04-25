@@ -62,11 +62,11 @@ public:
 
 
   /// @brief Log entries (leader)
-  std::vector<index_t> log (query_t const& query, std::vector<bool> const& indices, term_t term, id_t lid);
+  std::vector<index_t> log (query_t const& query, std::vector<bool> const& indices, term_t term, arangodb::consensus::id_t lid);
 
 
   /// @brief Log entries (followers)
-  bool log (query_t const& queries, term_t term, id_t leaderId, index_t prevLogIndex, term_t prevLogTerm);
+  bool log (query_t const& queries, term_t term, arangodb::consensus::id_t leaderId, index_t prevLogIndex, term_t prevLogTerm);
 
 
   /// @brief Find entry at index with term
@@ -114,7 +114,7 @@ private:
   bool snapshot ();
 
   /// @brief Save currentTerm, votedFor, log entries
-  bool persist (index_t index, term_t term, id_t lid,
+  bool persist (index_t index, term_t term, arangodb::consensus::id_t lid,
                 arangodb::velocypack::Slice const& entry);
 
   /// @brief Load collection from persistent store

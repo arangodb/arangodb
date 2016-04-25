@@ -50,10 +50,10 @@ public:
   term_t term() const;
 
   /// @brief Get current term
-  id_t id() const;
+  arangodb::consensus::id_t id() const;
 
   /// @brief Vote request
-  priv_rpc_ret_t requestVote(term_t, id_t, index_t, index_t, query_t const&);
+  priv_rpc_ret_t requestVote(term_t, arangodb::consensus::id_t, index_t, index_t, query_t const&);
 
   /// @brief Provide configuration
   config_t const& config() const;
@@ -69,7 +69,7 @@ public:
   bool fitness() const;
 
   /// @brief Leader ID
-  id_t leaderID() const;
+  arangodb::consensus::id_t leaderID() const;
 
   /// @brief Are we leading?
   bool leading() const;
@@ -88,13 +88,13 @@ public:
 
   /// @brief Received by followers to replicate log entries ($5.3);
   ///        also used as heartbeat ($5.2).
-  bool recvAppendEntriesRPC(term_t term, id_t leaderId, index_t prevIndex,
+  bool recvAppendEntriesRPC(term_t term, arangodb::consensus::id_t leaderId, index_t prevIndex,
                             term_t prevTerm, index_t lastCommitIndex,
                             query_t const& queries);
 
   /// @brief Invoked by leader to replicate log entries ($5.3);
   ///        also used as heartbeat ($5.2).
-  append_entries_t sendAppendEntriesRPC(id_t slave_id);
+  append_entries_t sendAppendEntriesRPC(arangodb::consensus::id_t slave_id);
 
   /// @brief 1. Deal with appendEntries to slaves.
   ///        2. Report success of write processes.
@@ -104,7 +104,7 @@ public:
   void beginShutdown() override final;
 
   /// @brief Report appended entries from AgentCallback
-  void reportIn(id_t id, index_t idx);
+  void reportIn(arangodb::consensus::id_t id, index_t idx);
 
   /// @brief Wait for slaves to confirm appended entries
   bool waitFor(index_t last_entry, double timeout = 2.0);
@@ -119,7 +119,7 @@ public:
   log_t const& lastLog() const;
 
   /// @brief Persist term
-  void persist (term_t, id_t);
+  void persist (term_t, arangodb::consensus::id_t);
 
   /// @brief State machine
   State const& state() const;

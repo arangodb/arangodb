@@ -57,13 +57,13 @@ State::State(std::string const& endpoint)
   VPackSlice value = arangodb::basics::VelocyPackHelper::EmptyObjectValue();
   buf->append(value.startAs<char const>(), value.byteSize());
   if (!_log.size()) {
-    _log.push_back(log_t(index_t(0), term_t(0), id_t(0), buf));
+    _log.push_back(log_t(index_t(0), term_t(0), arangodb::consensus::id_t(0), buf));
   }
 }
 
 State::~State() {}
 
-bool State::persist(index_t index, term_t term, id_t lid,
+bool State::persist(index_t index, term_t term, arangodb::consensus::id_t lid,
                     arangodb::velocypack::Slice const& entry) {
   Builder body;
   body.add(VPackValue(VPackValueType::Object));
@@ -95,7 +95,7 @@ bool State::persist(index_t index, term_t term, id_t lid,
 
 //Leader
 std::vector<index_t> State::log (
-  query_t const& query, std::vector<bool> const& appl, term_t term, id_t lid) {
+  query_t const& query, std::vector<bool> const& appl, term_t term, arangodb::consensus::id_t lid) {
 
   std::vector<index_t> idx(appl.size());
   std::vector<bool> good = appl;
@@ -117,7 +117,7 @@ std::vector<index_t> State::log (
 }
 
 // Follower
-bool State::log(query_t const& queries, term_t term, id_t lid,
+bool State::log(query_t const& queries, term_t term, arangodb::consensus::id_t lid,
                 index_t prevLogIndex, term_t prevLogTerm) {  // TODO: Throw exc
   if (queries->slice().type() != VPackValueType::Array) {
     return false;
@@ -257,7 +257,7 @@ bool State::loadCollection(std::string const& name) {
         _log.push_back(
           log_t(std::stoi(i.get(TRI_VOC_ATTRIBUTE_KEY).copyString()),
                 static_cast<term_t>(i.get("term").getUInt()),
-                static_cast<id_t>(i.get("leader").getUInt()), tmp));
+                static_cast<arangodb::consensus::id_t>(i.get("leader").getUInt()), tmp));
       }
     }
 

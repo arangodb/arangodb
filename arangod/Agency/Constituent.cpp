@@ -211,13 +211,13 @@ bool Constituent::running() const {
 }
 
 /// @brief Get current leader's id
-id_t Constituent::leaderID() const { return _leaderID; }
+arangodb::consensus::id_t Constituent::leaderID() const { return _leaderID; }
 
 /// @brief Agency size
 size_t Constituent::size() const { return config().size(); }
 
 /// @brief Get endpoint to an id
-std::string const& Constituent::endpoint(id_t id) const {
+std::string const& Constituent::endpoint(arangodb::consensus::id_t id) const {
   return config().endpoints[id];
 }
 
@@ -230,7 +230,7 @@ std::vector<std::string> const& Constituent::endpoints() const {
 void Constituent::notifyAll () {
   std::vector<std::string> toNotify;
   // Send request to all but myself
-  for (id_t i = 0; i < size(); ++i) {
+  for (arangodb::consensus::id_t i = 0; i < size(); ++i) {
     if (i != _id) {
       toNotify.push_back(endpoint(i));
     }
@@ -256,10 +256,10 @@ void Constituent::notifyAll () {
 }
 
 /// @brief Vote
-bool Constituent::vote(term_t term, id_t id, index_t prevLogIndex,
+bool Constituent::vote(term_t term, arangodb::consensus::id_t id, index_t prevLogIndex,
                        term_t prevLogTerm) {
   term_t t = 0;
-  id_t lid = 0;
+  arangodb::consensus::id_t lid = 0;
   {
     MUTEX_LOCKER(guard, _castLock);
     t = _term;
@@ -303,7 +303,7 @@ void Constituent::callElection() {
        << "&prevLogTerm=" << _agent->lastLog().term;
 
   // Ask everyone for their vote
-  for (id_t i = 0; i < config().endpoints.size(); ++i) {
+  for (arangodb::consensus::id_t i = 0; i < config().endpoints.size(); ++i) {
     if (i != _id && endpoint(i) != "") {
       std::unique_ptr<std::map<std::string, std::string>> headerFields =
           std::make_unique<std::map<std::string, std::string>>();
@@ -319,7 +319,7 @@ void Constituent::callElection() {
       sleepFor(.5 * config().minPing, .8 * config().minPing));
 
   // Collect votes
-  for (id_t i = 0; i < config().endpoints.size(); ++i) {
+  for (arangodb::consensus::id_t i = 0; i < config().endpoints.size(); ++i) {
     if (i != _id && endpoint(i) != "") {
       ClusterCommResult res =
           arangodb::ClusterComm::instance()->enquire(results[i].operationID);

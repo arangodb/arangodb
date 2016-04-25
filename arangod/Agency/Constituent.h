@@ -78,13 +78,13 @@ public:
   bool running() const;
 
   /// @brief Called by REST handler
-  bool vote(term_t, id_t, index_t, term_t);
+  bool vote(term_t, arangodb::consensus::id_t, index_t, term_t);
 
   /// @brief My daily business
   void run() override final;
 
   /// @brief Who is leading
-  id_t leaderID () const;
+  arangodb::consensus::id_t leaderID () const;
 
   /// @brief Configuration
   config_t const& config () const;
@@ -109,7 +109,7 @@ private:
   std::vector<std::string> const& endpoints() const;
 
   /// @brief Endpoint of agent with id
-  std::string const& endpoint(id_t) const;
+  std::string const& endpoint(arangodb::consensus::id_t) const;
 
   /// @brief Run for leadership
   void candidate();
@@ -141,13 +141,13 @@ private:
   std::atomic<bool>    _cast;         /**< @brief cast a vote this term */
   std::atomic<state_t> _state;        /**< @brief State (follower, candidate, leader)*/
 
-  id_t                 _leaderID;     /**< @brief Current leader */
-  id_t                 _id;           /**< @brief My own id */
+  arangodb::consensus::id_t                 _leaderID;     /**< @brief Current leader */
+  arangodb::consensus::id_t                 _id;           /**< @brief My own id */
   constituency_t       _constituency; /**< @brief List of consituents */
   std::mt19937         _gen;          /**< @brief Random number generator */
   role_t               _role;         /**< @brief My role */
   Agent*               _agent;        /**< @brief My boss */
-  id_t                 _votedFor;
+  arangodb::consensus::id_t                 _votedFor;
 
   std::unique_ptr<NotifierThread> _notifier;
 

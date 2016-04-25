@@ -68,7 +68,7 @@ inline HttpHandler::status_t RestAgencyHandler::reportUnknownMethod() {
   return HttpHandler::status_t(HANDLER_DONE);
 }
 
-void RestAgencyHandler::redirectRequest(id_t leaderId) {
+void RestAgencyHandler::redirectRequest(arangodb::consensus::id_t leaderId) {
 
   try {
     std::string url = Endpoint::uriForm(

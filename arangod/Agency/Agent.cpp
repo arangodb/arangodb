@@ -52,7 +52,7 @@ Agent::Agent (config_t const& config)
 }
 
 //  This agent's id
-id_t Agent::id() const {
+arangodb::consensus::id_t Agent::id() const {
   return _config.id;
 }
 
@@ -84,7 +84,7 @@ inline size_t Agent::size() const {
 }
 
 //  Handle vote request
-priv_rpc_ret_t Agent::requestVote(term_t t, id_t id, index_t lastLogIndex,
+priv_rpc_ret_t Agent::requestVote(term_t t, arangodb::consensus::id_t id, index_t lastLogIndex,
                                   index_t lastLogTerm, query_t const& query) {
 
   /// Are we receiving new endpoints
@@ -110,7 +110,7 @@ config_t const& Agent::config () const {
 }
 
 //  Leader's id
-id_t Agent::leaderID () const {
+arangodb::consensus::id_t Agent::leaderID () const {
   return _constituent.leaderID();
 }
 
@@ -120,7 +120,7 @@ bool Agent::leading() const {
 }
 
 // Persist term and id we vote for
-void Agent::persist(term_t t, id_t i) {
+void Agent::persist(term_t t, arangodb::consensus::id_t i) {
 //  _state.persist(t, i);
 }
 
@@ -156,7 +156,7 @@ bool Agent::waitFor (index_t index, double timeout) {
 }
 
 //  AgentCallback reports id of follower and its highest processed index
-void Agent::reportIn (id_t id, index_t index) {
+void Agent::reportIn (arangodb::consensus::id_t id, index_t index) {
   MUTEX_LOCKER(mutexLocker, _ioLock);
 
   if (index > _confirmed[id])      // progress this follower?
@@ -181,7 +181,7 @@ void Agent::reportIn (id_t id, index_t index) {
 }
 
 //  Followers' append entries
-bool Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
+bool Agent::recvAppendEntriesRPC (term_t term, arangodb::consensus::id_t leaderId, index_t prevIndex,
   term_t prevTerm, index_t leaderCommitIndex, query_t const& queries) {
   //Update commit index
 
@@ -233,7 +233,7 @@ bool Agent::recvAppendEntriesRPC (term_t term, id_t leaderId, index_t prevIndex,
 }
 
 // Leader's append entries
-append_entries_t Agent::sendAppendEntriesRPC (id_t follower_id) {
+append_entries_t Agent::sendAppendEntriesRPC (arangodb::consensus::id_t follower_id) {
 
   index_t last_confirmed = _confirmed[follower_id];
   std::vector<log_t> unconfirmed = _state.get(last_confirmed);
@@ -374,7 +374,7 @@ void Agent::run() {
       _appendCV.wait();       // Just sit there doing nothing
 
     // Collect all unacknowledged
-    for (id_t i = 0; i < size(); ++i) {
+    for (arangodb::consensus::id_t i = 0; i < size(); ++i) {
       if (i != id()) {
         sendAppendEntriesRPC(i);
       }
