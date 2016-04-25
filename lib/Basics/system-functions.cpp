@@ -23,6 +23,8 @@
 
 #include "Basics/Common.h"
 
+#include <thread>
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief memrchr
 ////////////////////////////////////////////////////////////////////////////////
@@ -216,12 +218,14 @@ size_t TRI_numberProcessors() {
   if (n < 0) {
     n = 0;
   }
-
-  return n;
+  
+  if (n > 0) {
+    return n;
+  }
 
 #else
 
-  return 0;
+  return static_cast<size_t>(std::thread_hardware_concurrency());
 
 #endif
 }
