@@ -220,7 +220,7 @@ void GeneralRequest::addSuffix(std::string const& part) {
 
 std::string const& GeneralRequest::header(std::string const& key) const {
   static std::string EMPTY_STR = "";
-  
+
   auto it = _headers.find(key);
 
   if (it == _headers.end()) {
@@ -232,7 +232,7 @@ std::string const& GeneralRequest::header(std::string const& key) const {
 
 std::string const& GeneralRequest::header(std::string const& key, bool& found) const {
   static std::string EMPTY_STR = "";
-  
+
   auto it = _headers.find(key);
 
   if (it == _headers.end()) {
@@ -246,7 +246,7 @@ std::string const& GeneralRequest::header(std::string const& key, bool& found) c
 
 std::string const& GeneralRequest::value(std::string const& key) const {
   static std::string EMPTY_STR = "";
-  
+
   auto it = _values.find(key);
 
   if (it == _values.end()) {
@@ -258,7 +258,7 @@ std::string const& GeneralRequest::value(std::string const& key) const {
 
 std::string const& GeneralRequest::value(std::string const& key, bool& found) const {
   static std::string EMPTY_STR = "";
-  
+
   auto it = _values.find(key);
 
   if (it == _values.end()) {

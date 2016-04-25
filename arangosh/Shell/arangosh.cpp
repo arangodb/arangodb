@@ -30,6 +30,7 @@
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
+#include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -64,6 +65,7 @@ int main(int argc, char* argv[]) {
   server.addFeature(new TempFeature(&server, name));
   server.addFeature(new V8PlatformFeature(&server));
   server.addFeature(new V8ShellFeature(&server, name));
+  server.addFeature(new VersionFeature(&server));
 
   server.run(argc, argv);
 

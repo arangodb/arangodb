@@ -210,7 +210,7 @@ static void ListTreeRecursively(char const* full, char const* path,
 
   for (size_t j = 0; j < 2; ++j) {
     for (auto const& filename : dirs) {
-      std::string const newFull = arangodb::basics::FileUtils::buildFilename(full, filename); 
+      std::string const newFull = arangodb::basics::FileUtils::buildFilename(full, filename);
       std::string newPath;
 
       if (*path) {
@@ -1140,7 +1140,7 @@ int TRI_CreateLockFile(char const* filename) {
   }
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, buf);
-  
+
   struct flock lock;
 
   lock.l_start = 0;

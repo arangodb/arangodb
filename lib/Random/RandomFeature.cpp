@@ -40,8 +40,6 @@ RandomFeature::RandomFeature(application_features::ApplicationServer* server)
 }
 
 void RandomFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addSection("random", "Configure the random generator");
 
 #ifdef _WIN32

@@ -1810,6 +1810,10 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
       res = TRI_FromVelocyPackIndexDocumentCollection(&trx, document, idxDef,
                                                       &idx);
 
+      if (res == TRI_ERROR_NOT_IMPLEMENTED) {
+        continue;
+      }
+
       if (res != TRI_ERROR_NO_ERROR) {
         errorMsg =
             "could not create index: " + std::string(TRI_errno_string(res));

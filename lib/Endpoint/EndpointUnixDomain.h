@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_REST_ENDPOINT_UNIX_DOMAIN_H
-#define LIB_REST_ENDPOINT_UNIX_DOMAIN_H 1
+#ifndef ARANGODB_ENDPOINT_ENDPOINT_UNIX_DOMAIN_H
+#define ARANGODB_ENDPOINT_ENDPOINT_UNIX_DOMAIN_H 1
 
 #include "Endpoint/Endpoint.h"
 

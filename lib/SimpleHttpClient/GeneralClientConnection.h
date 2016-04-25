@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_SIMPLE_HTTP_CLIENT_GENERAL_CLIENT_CONNECTION_H
-#define LIB_SIMPLE_HTTP_CLIENT_GENERAL_CLIENT_CONNECTION_H 1
+#ifndef ARANGODB_SIMPLE_HTTP_CLIENT_GENERAL_CLIENT_CONNECTION_H
+#define ARANGODB_SIMPLE_HTTP_CLIENT_GENERAL_CLIENT_CONNECTION_H 1
 
 #include "Basics/Common.h"
 

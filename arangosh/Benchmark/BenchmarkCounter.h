@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOSH_BENCHMARK_BENCHMARK_COUNTER_H
-#define ARANGOSH_BENCHMARK_BENCHMARK_COUNTER_H 1
+#ifndef ARANGODB_BENCHMARK_BENCHMARK_COUNTER_H
+#define ARANGODB_BENCHMARK_BENCHMARK_COUNTER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"

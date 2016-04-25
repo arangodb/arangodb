@@ -21,8 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_V8_V8_GLOBALS_H
-#define LIB_V8_V8_GLOBALS_H 1
+#ifndef ARANGODB_V8_V8__GLOBALS_H
+#define ARANGODB_V8_V8__GLOBALS_H 1
 
 #include "Basics/Common.h"
 
@@ -53,7 +53,7 @@ static const uint32_t V8DataSlot = 0;
 #define TRI_V8_TRY_CATCH_END                                       \
   }                                                                \
   catch (arangodb::basics::Exception const& ex) {                  \
-    TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), ex.what());          \
+    TRI_V8_THROW_EXCEPTION_FULL(ex.code(), ex.what());             \
   }                                                                \
   catch (std::exception const& ex) {                               \
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ex.what()); \
@@ -76,11 +76,9 @@ static const uint32_t V8DataSlot = 0;
   v8::String::NewFromOneByte(isolate, (uint8_t const*)(name), \
                              v8::String::kNormalString, (int)strlen(name))
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shortcut for creating a v8 symbol for the specified string
-///   implicites isolate available.
-/// @param name local string constant to source
-////////////////////////////////////////////////////////////////////////////////
+#define TRI_V8_ASCII_STD_STRING(isolate, name)                   \
+  v8::String::NewFromOneByte(isolate, (uint8_t const*)(name.c_str()), \
+                             v8::String::kNormalString, (int)name.size())
 
 #define TRI_V8_ASCII_PAIR_STRING(name, length)                \
   v8::String::NewFromOneByte(isolate, (uint8_t const*)(name), \
@@ -893,7 +891,7 @@ typedef struct TRI_v8_global_s {
   //////////////////////////////////////////////////////////////////////////////
 
   v8::Persistent<v8::String> TimeoutKey;
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief "toJson" key name
   //////////////////////////////////////////////////////////////////////////////

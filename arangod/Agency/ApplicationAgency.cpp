@@ -63,7 +63,6 @@ ApplicationAgency::~ApplicationAgency() {}
 
 /// @brief sets the processor affinity
 void ApplicationAgency::setupOptions(
-  
     std::map<std::string, ProgramOptionsDescription>& options) {
   options["Agency Options:help-agency"]("agency.size", &_size, "Agency size")
     ("agency.id", &_agent_id, "This agent's id")
@@ -81,13 +80,12 @@ void ApplicationAgency::setupOptions(
     ("agency.supervision-frequency", &_supervision_frequency,
      "Cluster supervision frequency ")
     ("agency.wait-for-sync", &_wait_for_sync,
-     "Wait for hard disk syncs on every persistence call (Must for production)");
+     "Wait for hard disk syncs on every persistence call (must for production)");
   
 }
 
 /// @brief prepare agency with command line options
 bool ApplicationAgency::prepare() {
-
   _disabled = (_agent_id == (std::numeric_limits<uint32_t>::max)());
 
   // Disabled?
@@ -168,34 +166,19 @@ bool ApplicationAgency::prepare() {
 
 /// @brief Start agency threads
 bool ApplicationAgency::start() {
-  if (_disabled) {
-    return true;
+  if (!_disabled) {
+    _agent->start();
   }
-  _agent->start();
   return true;
 }
 
-
-bool ApplicationAgency::open() { return true; }
-
-
-void ApplicationAgency::close() {
-  if (_disabled) {
-    return;
-  }
-}
-
-
 void ApplicationAgency::stop() {
-  if (_disabled) {
-    return;
+  if (!_disabled) {
+    _agent->beginShutdown();
   }
-  _agent->beginShutdown();
 }
 
-agent_t* ApplicationAgency::agent () const {
+agent_t* ApplicationAgency::agent() const {
   return _agent.get();
 }
-
-
 

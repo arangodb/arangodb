@@ -21,8 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_BASICS_THREADS_H
-#define LIB_BASICS_THREADS_H 1
+#ifndef ARANGODB_BASICS_THREADS_H
+#define ARANGODB_BASICS_THREADS_H 1
 
 #include "Basics/Common.h"
 

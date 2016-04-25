@@ -292,7 +292,7 @@ Builder& Builder::close() {
 
   // Maybe we need to move down data:
   if (offsetSize == 1) {
-    unsigned int targetPos = 3;
+    ValueLength targetPos = 3;
     if (!needIndexTable && _start[tos] == 0x06) {
       targetPos = 2;
     }
@@ -300,9 +300,11 @@ Builder& Builder::close() {
       ValueLength len = _pos - (tos + 9);
       memmove(_start + tos + targetPos, _start + tos + 9, checkOverflow(len));
     }
-    _pos -= (9 - targetPos);
-    for (size_t i = 0; i < index.size(); i++) {
-      index[i] -= (9 - targetPos);
+    ValueLength const diff = 9 - targetPos;
+    _pos -= diff;
+    size_t const n = index.size();
+    for (size_t i = 0; i < n; i++) {
+      index[i] -= diff;
     }
   }
   // One could move down things in the offsetSize == 2 case as well,

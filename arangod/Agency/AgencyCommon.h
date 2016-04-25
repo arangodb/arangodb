@@ -21,8 +21,8 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CONSENSUS_AGENCY_COMMON_H
-#define ARANGODB_CONSENSUS_AGENCY_COMMON_H
+#ifndef ARANGOD_CONSENSUS_AGENCY_COMMON_H
+#define ARANGOD_CONSENSUS_AGENCY_COMMON_H 1
 
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
@@ -31,9 +31,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include <chrono>
-#include <string>
-#include <vector>
-
 #include <memory>
 
 namespace arangodb {

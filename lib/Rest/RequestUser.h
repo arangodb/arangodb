@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_REST_REQUEST_USER_H
-#define LIB_REST_REQUEST_USER_H 1
+#ifndef ARANGODB_REST_REQUEST_USER_H
+#define ARANGODB_REST_REQUEST_USER_H 1
 
 #include "Basics/Common.h"
 

@@ -53,6 +53,16 @@ ApplicationServer::~ApplicationServer() {
   ApplicationServer::server = nullptr;
 }
 
+void ApplicationServer::throwFeatureNotFoundException(std::string const& name) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "unknown feature '" + name + "'");
+}
+
+void ApplicationServer::throwFeatureNotEnabledException(std::string const& name) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "feature '" + name + "' is not enabled");
+}
+
 ApplicationFeature* ApplicationServer::lookupFeature(std::string const& name) {
   if (ApplicationServer::server == nullptr) {
     return nullptr;
@@ -67,11 +77,23 @@ ApplicationFeature* ApplicationServer::lookupFeature(std::string const& name) {
 }
 
 void ApplicationServer::disableFeatures(std::vector<std::string> const& names) {
-  for (auto name : names) {
+  disableFeatures(names, false);
+}
+
+void ApplicationServer::forceDisableFeatures(std::vector<std::string> const& names) {
+  disableFeatures(names, true);
+}
+
+void ApplicationServer::disableFeatures(std::vector<std::string> const& names, bool force) {
+  for (auto const& name : names) {
     auto feature = ApplicationServer::lookupFeature(name);
 
     if (feature != nullptr) {
-      feature->disable();
+      if (force) {
+        feature->forceDisable();
+      } else {
+        feature->disable();
+      }
     }
   }
 }
@@ -95,8 +117,7 @@ ApplicationFeature* ApplicationServer::feature(std::string const& name) const {
   auto it = _features.find(name);
 
   if (it == _features.end()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "unknown feature '" + name + "'");
+    throwFeatureNotFoundException(name);
   }
   return (*it).second;
 }
@@ -173,15 +194,13 @@ void ApplicationServer::run(int argc, char* argv[]) {
 
 // signal the server to shut down
 void ApplicationServer::beginShutdown() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << "";
   LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::beginShutdown";
-  LOG_TOPIC(TRACE, Logger::STARTUP)
-      << "------------------------------------------------";
 
   // fowards the begin shutdown signal to all features
   for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend();
        ++it) {
     if ((*it)->isEnabled()) {
+      LOG_TOPIC(TRACE, Logger::STARTUP) << (*it)->name() << "::beginShutdown";
       (*it)->beginShutdown();
     }
   }
@@ -223,6 +242,7 @@ void ApplicationServer::collectOptions() {
                             new BooleanParameter(&_dumpDependencies, false));
 
   apply([this](ApplicationFeature* feature) {
+    LOG_TOPIC(TRACE, Logger::STARTUP) << feature->name() << "::loadOptions";
     feature->collectOptions(_options);
   }, true);
 }
@@ -264,19 +284,18 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
 
   for (auto it = _orderedFeatures.begin(); it != _orderedFeatures.end(); ++it) {
     if ((*it)->isEnabled()) {
+      LOG_TOPIC(TRACE, Logger::STARTUP) << (*it)->name() << "::loadOptions";
       (*it)->loadOptions(_options);
     }
   }
 }
 
 void ApplicationServer::validateOptions() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << "";
   LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::validateOptions";
-  LOG_TOPIC(TRACE, Logger::STARTUP)
-      << "------------------------------------------------";
 
   for (auto it = _orderedFeatures.begin(); it != _orderedFeatures.end(); ++it) {
     if ((*it)->isEnabled()) {
+      LOG_TOPIC(TRACE, Logger::STARTUP) << (*it)->name() << "::validateOptions";
       (*it)->validateOptions(_options);
     }
   }
@@ -306,11 +325,8 @@ void ApplicationServer::enableAutomaticFeatures() {
 
 // setup and validate all feature dependencies, determine feature order
 void ApplicationServer::setupDependencies(bool failOnMissing) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << "";
   LOG_TOPIC(TRACE, Logger::STARTUP)
       << "ApplicationServer::validateDependencies";
-  LOG_TOPIC(TRACE, Logger::STARTUP)
-      << "------------------------------------------------";
 
   // first check if a feature references an unknown other feature
   if (failOnMissing) {
@@ -373,10 +389,7 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
 }
 
 void ApplicationServer::daemonize() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << "";
   LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::daemonize";
-  LOG_TOPIC(TRACE, Logger::STARTUP)
-      << "------------------------------------------------";
 
   for (auto it = _orderedFeatures.begin(); it != _orderedFeatures.end(); ++it) {
     if ((*it)->isEnabled()) {
@@ -386,10 +399,7 @@ void ApplicationServer::daemonize() {
 }
 
 void ApplicationServer::prepare() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << "";
   LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::prepare";
-  LOG_TOPIC(TRACE, Logger::STARTUP)
-      << "------------------------------------------------";
 
   // we start with elevated privileges
   bool privilegesElevated = true;
@@ -410,6 +420,7 @@ void ApplicationServer::prepare() {
       }
 
       try {
+        LOG_TOPIC(TRACE, Logger::STARTUP) << (*it)->name() << "::prepare";
         (*it)->prepare();
       } catch (...) {
         // restore original privileges
@@ -423,33 +434,26 @@ void ApplicationServer::prepare() {
 }
 
 void ApplicationServer::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << "";
   LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::start";
-  LOG_TOPIC(TRACE, Logger::STARTUP)
-      << "------------------------------------------------";
 
   for (auto it = _orderedFeatures.begin(); it != _orderedFeatures.end(); ++it) {
+    LOG_TOPIC(TRACE, Logger::STARTUP) << (*it)->name() << "::start";
     (*it)->start();
   }
 }
 
 void ApplicationServer::stop() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << "";
   LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::stop";
-  LOG_TOPIC(TRACE, Logger::STARTUP)
-      << "------------------------------------------------";
 
   for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend();
        ++it) {
+    LOG_TOPIC(TRACE, Logger::STARTUP) << (*it)->name() << "::stop";
     (*it)->stop();
   }
 }
 
 void ApplicationServer::wait() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << "";
   LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::wait";
-  LOG_TOPIC(TRACE, Logger::STARTUP)
-      << "------------------------------------------------";
 
   while (!_stopping) {
     // TODO: use condition variable for waiting for shutdown
@@ -463,6 +467,8 @@ void ApplicationServer::raisePrivilegesTemporarily() {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "must not raise privileges after dropping them");
   }
+  
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "raising privileges";
 
   // TODO
 }
@@ -474,6 +480,8 @@ void ApplicationServer::dropPrivilegesTemporarily() {
         TRI_ERROR_INTERNAL,
         "must not try to drop privileges after dropping them");
   }
+  
+  LOG_TOPIC(TRACE, Logger::STARTUP) << "dropping privileges";
 
   // TODO
 }

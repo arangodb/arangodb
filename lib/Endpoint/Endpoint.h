@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_REST_ENDPOINT_H
-#define LIB_REST_ENDPOINT_H 1
+#ifndef ARANGODB_ENDPOINT_ENDPOINT_H
+#define ARANGODB_ENDPOINT_ENDPOINT_H 1
 
 #include "Basics/Common.h"
 

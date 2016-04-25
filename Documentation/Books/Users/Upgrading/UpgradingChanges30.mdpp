@@ -1,0 +1,37 @@
+!CHAPTER Incompatible changes in ArangoDB 3.0
+
+It is recommended to check the following list of incompatible changes **before**
+upgrading to ArangoDB 2.8, and adjust any client programs if necessary.
+
+
+!SECTION Command Line Options
+
+Quite a few options in ArangoDB 2 where double negations (like
+`disable-authentication`). In ArangoDB 3 these are now express as positives
+(e. g. `authentication`). Also the options between the various programm have
+being unified. For example, the logger options are now the same over all client
+and server programs.
+
+!SECTION Logging
+
+Logging now supports log topics. You can controll these by specifying a log
+topic in front of a log level or an output. For example
+
+```
+  --log.level startup=trace --log.level info
+```
+
+will log messages concerning startup at trace level, everything else at info
+level.
+
+```
+  --log.output requests=file://requests.log --log.level requests=trace
+```
+
+will log all requests to a file called `requests.log`.
+
+!SECTION log.file
+
+`--log.file filename` ist still available for convenience. It is a shortcut
+for `--log.output file://filename`.
+

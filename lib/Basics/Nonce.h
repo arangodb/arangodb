@@ -22,8 +22,8 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_BASICS_NONCE_H
-#define LIB_BASICS_NONCE_H 1
+#ifndef ARANGODB_BASICS_NONCE_H
+#define ARANGODB_BASICS_NONCE_H 1
 
 #include "Basics/Common.h"
 

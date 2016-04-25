@@ -28,6 +28,7 @@
 #include <stdio.h>
 #endif
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Logger/LogAppender.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -59,17 +60,14 @@ SchedulerFeature::SchedulerFeature(
 
 void SchedulerFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addSection("scheduler", "Configure the I/O scheduler");
 
   options->addOption("--scheduler.threads",
                      "number of threads for I/O scheduler",
                      new UInt64Parameter(&_nrSchedulerThreads));
 
-  std::unordered_set<uint64_t> backends = {0, 1, 2, 3, 4};
-
 #ifndef _WIN32
+  std::unordered_set<uint64_t> backends = {0, 1, 2, 3, 4};
   options->addHiddenOption(
       "--scheduler.backend", "1: select, 2: poll, 4: epoll",
       new DiscreteValuesParameter<UInt64Parameter>(&_backend, backends));
@@ -82,8 +80,6 @@ void SchedulerFeature::collectOptions(
 
 void SchedulerFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions>) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
-
   if (_showBackends) {
     std::cout << "available io backends are: "
               << SchedulerLibev::availableBackends() << std::endl;
@@ -103,8 +99,6 @@ void SchedulerFeature::validateOptions(
 }
 
 void SchedulerFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
   buildScheduler();
   buildHangupHandler();
 
@@ -124,8 +118,6 @@ void SchedulerFeature::start() {
 }
 
 void SchedulerFeature::stop() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
-
   static size_t const MAX_TRIES = 10;
 
   if (_scheduler != nullptr) {
@@ -209,8 +201,8 @@ bool CtrlHandler(DWORD eventType) {
   if (!seen) {
     LOG(INFO) << "" << shutdownMessage << ", beginning shut down sequence";
 
-    if (Scheduler::SCHEDULER != nullptr) {
-      Scheduler::SCHEDULER->server()->beginShutdown();
+    if (application_features::ApplicationServer::server != nullptr) {
+      application_features::ApplicationServer::server->beginShutdown();
     }
 
     seen = true;
@@ -273,7 +265,7 @@ class HangupTask : public SignalTask {
 #endif
 
 void SchedulerFeature::buildScheduler() {
-  _scheduler = new SchedulerLibev(_nrSchedulerThreads, _backend);
+  _scheduler = new SchedulerLibev(_nrSchedulerThreads, static_cast<int>(_backend));
   SCHEDULER = _scheduler;
 }
 

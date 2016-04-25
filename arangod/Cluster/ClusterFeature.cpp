@@ -37,7 +37,7 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "RestServer/DatabaseFeature.h"
+#include "RestServer/DatabaseServerFeature.h"
 #include "SimpleHttpClient/ConnectionManager.h"
 #include "VocBase/server.h"
 
@@ -54,7 +54,7 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer* server)
       _heartbeatInterval(0),
       _disableHeartbeat(false),
       _agencyCallbackRegistry(nullptr) {
-  setOptional(false);
+  setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Logger");
   startsAfter("WorkMonitor");
@@ -73,8 +73,6 @@ ClusterFeature::~ClusterFeature() {
 }
 
 void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addSection("cluster", "Configure the cluster");
 
   options->addOption("--cluster.agency-endpoint",
@@ -126,8 +124,6 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
-
   // check if the cluster is enabled
   _enableCluster = !_agencyEndpoints.empty();
 
@@ -182,8 +178,6 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void ClusterFeature::prepare() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::prepare";
-
   ServerState::instance()->setAuthentication(_username, _password);
   ServerState::instance()->setDataPath(_dataPath);
   ServerState::instance()->setLogPath(_logPath);
@@ -343,8 +337,6 @@ void ClusterFeature::prepare() {
 //YYY #endif
 
 void ClusterFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
   // return if cluster is disabled
   if (!_enableCluster) {
     return;
@@ -398,7 +390,7 @@ void ClusterFeature::start() {
     }
 
     // start heartbeat thread
-    _heartbeatThread = new HeartbeatThread(DatabaseFeature::DATABASE->server(),
+    _heartbeatThread = new HeartbeatThread(DatabaseServerFeature::SERVER,
                                            _agencyCallbackRegistry.get(),
                                            _heartbeatInterval * 1000, 5);
 

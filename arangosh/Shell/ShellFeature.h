@@ -20,8 +20,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_ARANGOSH_FEATURE_H
-#define APPLICATION_FEATURES_ARANGOSH_FEATURE_H 1
+#ifndef ARANGODB_SHELL_SHELL_FEATURE_H
+#define ARANGODB_SHELL_SHELL_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 

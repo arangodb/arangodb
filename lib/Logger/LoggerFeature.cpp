@@ -52,16 +52,18 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer* server,
   setOptional(false);
   requiresElevatedPrivileges(false);
 
+  startsAfter("Version");
   if (threaded) {
     startsAfter("WorkMonitor");
   }
 
   _levels.push_back("info");
+
+  // if stdout is not a tty, then the default for _foregroundTty becomes false
+  _foregroundTty = (isatty(STDOUT_FILENO) != 0);
 }
 
 void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addHiddenOption("--log", "the global or topic-specific log level",
                            new VectorParameter<StringParameter>(&_levels));
 
@@ -73,17 +75,13 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--log.level,-l", "the global or topic-specific log level",
                      new VectorParameter<StringParameter>(&_levels));
 
-  options->addHiddenOption("--log.use-local-time",
-                           "use local timezone instead of UTC",
-                           new BooleanParameter(&_useLocalTime));
+  options->addOption("--log.use-local-time",
+                     "use local timezone instead of UTC",
+                     new BooleanParameter(&_useLocalTime));
 
   options->addHiddenOption("--log.prefix",
                            "prefix log message with this string",
                            new StringParameter(&_prefix));
-
-  options->addHiddenOption(
-      "--log.prefix", "adds a prefix in case multiple instances are running",
-      new StringParameter(&_prefix));
 
   options->addHiddenOption("--log.file",
                            "shortcut for '--log.output file://<filename>'",
@@ -93,7 +91,7 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                            "append line number and file name",
                            new BooleanParameter(&_lineNumber));
 
-  options->addHiddenOption("--log.thread", "use a seperate logging thread",
+  options->addHiddenOption("--log.thread", "show thread identifier in log message",
                            new BooleanParameter(&_thread));
 
   options->addHiddenOption("--log.performance",
@@ -109,22 +107,18 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                            new BooleanParameter(&_foregroundTty));
 
   options->addHiddenOption("--log.force-direct",
-                           "do not start a seperated thread for logging",
+                           "do not start a seperate thread for logging",
                            new BooleanParameter(&_forceDirect));
 }
 
 void LoggerFeature::loadOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::loadOptions";
-
   // for debugging purpose, we set the log levels NOW
   // this might be overwritten latter
   Logger::setLogLevel(_levels);
 }
 
 void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
-
   if (options->processingResult().touched("log.file")) {
     std::string definition;
 
@@ -143,8 +137,6 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void LoggerFeature::prepare() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::prepare";
-
 #if _WIN32
   if (!TRI_InitWindowsEventLog()) {
     std::cerr << "failed to init event log" << std::endl;
@@ -170,10 +162,6 @@ void LoggerFeature::prepare() {
   if (!_backgrounded && _foregroundTty) {
     LogAppender::addTtyAppender();
   }
-}
-
-void LoggerFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
 
   if (_forceDirect) {
     Logger::initialize(false);
@@ -182,9 +170,10 @@ void LoggerFeature::start() {
   }
 }
 
-void LoggerFeature::stop() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
+void LoggerFeature::start() {
+}
 
+void LoggerFeature::stop() {
   Logger::flush();
   Logger::shutdown(true);
 }

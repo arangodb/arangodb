@@ -20,8 +20,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_CONFIG_FEATURE_H
-#define APPLICATION_FEATURES_CONFIG_FEATURE_H 1
+#ifndef ARANGODB_APPLICATION_FEATURES_CONFIG_FEATURE_H
+#define ARANGODB_APPLICATION_FEATURES_CONFIG_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
@@ -34,16 +34,14 @@ class ConfigFeature final : public application_features::ApplicationFeature {
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void loadOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
  private:
   std::string _file;
-  bool _version;
   bool _checkConfiguration;
 
  private:
   void loadConfigFile(std::shared_ptr<options::ProgramOptions>);
-  
+
  private:
   std::string _progname;
 };

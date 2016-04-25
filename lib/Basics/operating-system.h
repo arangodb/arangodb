@@ -21,8 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_BASICS_OPERATING_SYSTEM_H
-#define LIB_BASICS_OPERATING_SYSTEM_H 1
+#ifndef ARANGODB_BASICS_OPERATING__SYSTEM_H
+#define ARANGODB_BASICS_OPERATING__SYSTEM_H 1
 
 #ifndef TRI_WITHIN_COMMON
 #error use <Basics/Common.h>
@@ -731,7 +731,7 @@
 #define TRI_PLATFORM "win32"
 #endif
 // Visual Studio 2013 does not support noexcept, higher versions do
-#if defined(_MSC_FULL_VER) && _MSC_FULL_VER > 180031101 
+#if defined(_MSC_FULL_VER) && _MSC_FULL_VER > 180031101
 #else
 #define noexcept throw()
 #endif

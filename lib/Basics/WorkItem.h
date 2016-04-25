@@ -21,8 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILS_WORK_ITEM
-#define ARANGODB_UTILS_WORK_ITEM 1
+#ifndef ARANGODB_BASICS_WORK_ITEM_H
+#define ARANGODB_BASICS_WORK_ITEM_H 1
 
 namespace arangodb {
 

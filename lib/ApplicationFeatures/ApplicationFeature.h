@@ -20,8 +20,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_APPLICATION_FEATURE_H
-#define APPLICATION_FEATURES_APPLICATION_FEATURE_H 1
+#ifndef ARANGODB_APPLICATION_FEATURES_APPLICATION_FEATURE_H
+#define ARANGODB_APPLICATION_FEATURES_APPLICATION_FEATURE_H 1
 
 #include "Basics/Common.h"
 
@@ -61,6 +61,9 @@ class ApplicationFeature {
   // ignored and no methods apart from `collectOptions` will be called for the
   // feature
   void disable() { setEnabled(false); }
+
+  // disable the feature, and perform no checks if it's optional
+  void forceDisable() { _enabled = false; }
 
   // enable or disable a feature
   void setEnabled(bool value) {

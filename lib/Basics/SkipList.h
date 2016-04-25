@@ -21,8 +21,8 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_BASICS_SKIP_LIST_H
-#define LIB_BASICS_SKIP_LIST_H 1
+#ifndef ARANGODB_BASICS_SKIP_LIST_H
+#define ARANGODB_BASICS_SKIP_LIST_H 1
 
 #include "Basics/Common.h"
 

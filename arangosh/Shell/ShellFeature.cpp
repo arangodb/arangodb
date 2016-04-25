@@ -22,6 +22,7 @@
 
 #include "ShellFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ClientFeature.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -47,8 +48,6 @@ ShellFeature::ShellFeature(
 
 void ShellFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addOption("--jslint", "do not start as shell, run jslint instead",
                      new VectorParameter<StringParameter>(&_jslint));
 
@@ -73,8 +72,6 @@ void ShellFeature::collectOptions(
 
 void ShellFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
-
   _positionals = options->processingResult()._positionals;
 
   ClientFeature* client =
@@ -132,12 +129,9 @@ void ShellFeature::validateOptions(
 }
 
 void ShellFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
   *_result = EXIT_FAILURE;
 
-  V8ShellFeature* shell =
-      dynamic_cast<V8ShellFeature*>(server()->feature("V8Shell"));
+  V8ShellFeature* shell = application_features::ApplicationServer::getFeature<V8ShellFeature>("V8Shell");
 
   bool ok = false;
 

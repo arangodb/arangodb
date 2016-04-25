@@ -21,8 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_REST_INITIALIZE_REST_H
-#define LIB_REST_INITIALIZE_REST_H 1
+#ifndef ARANGODB_REST_INITIALIZE_REST_H
+#define ARANGODB_REST_INITIALIZE_REST_H 1
 
 #include "Basics/Common.h"
 

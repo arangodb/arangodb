@@ -21,8 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_V8_V8_SHELL_H
-#define LIB_V8_V8_SHELL_H 1
+#ifndef ARANGODB_V8_V8__SHELL_H
+#define ARANGODB_V8_V8__SHELL_H 1
 
 #include "Basics/Common.h"
 

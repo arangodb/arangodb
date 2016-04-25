@@ -21,8 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_BASICS_UNIFORM_CHARACTER_H
-#define LIB_BASICS_UNIFORM_CHARACTER_H 1
+#ifndef ARANGODB_RANDOM_UNIFORM_CHARACTER_H
+#define ARANGODB_RANDOM_UNIFORM_CHARACTER_H 1
 
 #include "Basics/Common.h"
 

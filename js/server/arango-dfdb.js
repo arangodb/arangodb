@@ -359,7 +359,10 @@ function CheckDatafile (collection, type, datafile, issues, details) {
     return;
   }
 
-  if (scan.entries[0].type !== 1000) {
+  const TRI_DF_MARKER_HEADER = 10;
+  const TRI_DF_MARKER_COL_HEADER = 20;
+
+  if (scan.entries[0].type !== TRI_DF_MARKER_HEADER) {
     // asserting a TRI_DF_MARKER_HEADER as first marker
     statusMessage = "datafile contains no datafile header marker at pos #0!";
     color = internal.COLORS.COLOR_YELLOW;
@@ -380,7 +383,7 @@ function CheckDatafile (collection, type, datafile, issues, details) {
     return;
   }
 
-  if (scan.entries.length === 2 && scan.entries[1].type !== 2000) {
+  if (scan.entries.length === 2 && scan.entries[1].type !== TRI_DF_MARKER_COL_HEADER) {
     // asserting a TRI_COL_MARKER_HEADER as second marker
     statusMessage = "datafile contains no collection header marker at pos #1!";
     color = internal.COLORS.COLOR_YELLOW;
@@ -421,7 +424,7 @@ function CheckDatafile (collection, type, datafile, issues, details) {
     RemoveDatafile(collection, type, datafile);
     return;
   }
-
+  
   if (details) {
     // print details
     printf("Entries\n");
@@ -620,7 +623,7 @@ function main (argv) {
     if (line === "Y" || line === "YES") {
       details = true;
     }
-    else if (line === "F" || line == "FULL") {
+    else if (line === "F" || line === "FULL") {
       details = "FULL";
     }
 

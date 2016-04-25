@@ -20,8 +20,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_ARANGORESTORE_FEATURE_H
-#define APPLICATION_FEATURES_ARANGORESTORE_FEATURE_H 1
+#ifndef ARANGODB_RESTORE_RESTORE_FEATURE_H
+#define ARANGODB_RESTORE_RESTORE_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 

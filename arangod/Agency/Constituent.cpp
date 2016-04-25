@@ -70,6 +70,8 @@ void Constituent::configure(Agent* agent) {
 // Default ctor
 Constituent::Constituent()
     : Thread("Constituent"),
+      _vocbase(nullptr),
+      _queryRegistry(nullptr),
       _term(0),
       _leaderID((std::numeric_limits<uint32_t>::max)()),
       _id(0),
@@ -395,8 +397,8 @@ void Constituent::run() {
     for (auto const& i : VPackArrayIterator(result)) {
       try {
         _term = i.get("term").getUInt();
-        _votedFor = i.get("voted_for").getUInt();
-      } catch (std::exception const& e) {
+        _votedFor = static_cast<decltype(_votedFor)>(i.get("voted_for").getUInt());
+      } catch (std::exception const&) {
         LOG_TOPIC(ERR, Logger::AGENCY)
             << "Persisted election entries corrupt! Defaulting term,vote (0,0)";
       }

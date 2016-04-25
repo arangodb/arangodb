@@ -27,8 +27,8 @@
 #include "Basics/Common.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
-#include "Cluster/ServerState.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ServerState.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
@@ -40,7 +40,10 @@ class CollectionNameResolver {
   //////////////////////////////////////////////////////////////////////////////
 
   explicit CollectionNameResolver(TRI_vocbase_t* vocbase)
-      : _vocbase(vocbase), _resolvedNames(), _resolvedIds() {}
+      : _vocbase(vocbase), 
+        _serverRole(ServerState::instance()->getRole()),
+        _resolvedNames(), 
+        _resolvedIds() {}
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroy the resolver
@@ -78,7 +81,7 @@ class CollectionNameResolver {
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_voc_cid_t getCollectionIdCluster(std::string const& name) const {
-    if (!ServerState::instance()->isRunningInCluster()) {
+    if (!ServerState::isRunningInCluster(_serverRole)) {
       return getCollectionIdLocal(name);
     }
     if (name[0] >= '0' && name[0] <= '9') {
@@ -110,8 +113,8 @@ class CollectionNameResolver {
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_voc_cid_t getCollectionId(std::string const& name) const {
-    if (!ServerState::instance()->isRunningInCluster() ||
-        ServerState::instance()->isDBServer()) {
+    if (!ServerState::isRunningInCluster(_serverRole) ||
+        ServerState::isDBServer(_serverRole)) {
       return getCollectionIdLocal(name);
     }
     return getCollectionIdCluster(name);
@@ -165,7 +168,7 @@ class CollectionNameResolver {
 
   TRI_col_type_t getCollectionTypeCluster(std::string const& name) const {
     // This fires in Single server case as well
-    if (!ServerState::instance()->isCoordinator()) {
+    if (!ServerState::isCoordinator(_serverRole)) {
       return getCollectionType(name);
     }
     if (name[0] >= '0' && name[0] <= '9') {
@@ -198,33 +201,7 @@ class CollectionNameResolver {
       return (*it).second;
     }
 
-    std::string name;
-    if (ServerState::instance()->isDBServer()) {
-      READ_LOCKER(readLocker, _vocbase->_collectionsLock);
-
-      auto it = _vocbase->_collectionsById.find(cid);
-
-      if (it != _vocbase->_collectionsById.end()) {
-        if ((*it).second->_planId == 0) {
-          // DBserver local case
-          name = (*it).second->name();
-        } else {
-          // DBserver case of a shard:
-          name = arangodb::basics::StringUtils::itoa((*it).second->_planId);
-          std::shared_ptr<CollectionInfo> ci =
-              ClusterInfo::instance()->getCollection((*it).second->_dbName, name);
-          name = ci->name();  // can be empty, if collection unknown
-        }
-      }
-    } else {
-      // exactly as in the non-cluster case
-      name = TRI_GetCollectionNameByIdVocBase(_vocbase, cid);
-    }
-
-    if (name.empty()) {
-      name = "_unknown";
-    }
-
+    std::string name = localNameLookup(cid);
     _resolvedIds.emplace(cid, name);
 
     return name;
@@ -248,7 +225,8 @@ class CollectionNameResolver {
       return (*it).second.size();
     }
 
-    std::string name(getCollectionName(cid));
+    std::string name = localNameLookup(cid);
+    _resolvedIds.emplace(cid, name);
 
     memcpy(buffer, name.c_str(), name.size());
     return name.size();
@@ -260,7 +238,7 @@ class CollectionNameResolver {
   //////////////////////////////////////////////////////////////////////////////
 
   std::string getCollectionNameCluster(TRI_voc_cid_t cid) const {
-    if (!ServerState::instance()->isRunningInCluster()) {
+    if (!ServerState::isRunningInCluster(_serverRole)) {
       return getCollectionName(cid);
     }
 
@@ -292,7 +270,7 @@ class CollectionNameResolver {
   //////////////////////////////////////////////////////////////////////////////
 
   size_t getCollectionNameCluster(char* buffer, TRI_voc_cid_t cid) const {
-    if (!ServerState::instance()->isRunningInCluster()) {
+    if (!ServerState::isRunningInCluster(_serverRole)) {
       return getCollectionName(buffer, cid);
     }
 
@@ -333,11 +311,50 @@ class CollectionNameResolver {
 
  private:
 
+  std::string localNameLookup(TRI_voc_cid_t cid) const {
+    std::string name;
+
+    if (ServerState::isDBServer(_serverRole)) {
+      READ_LOCKER(readLocker, _vocbase->_collectionsLock);
+
+      auto it = _vocbase->_collectionsById.find(cid);
+
+      if (it != _vocbase->_collectionsById.end()) {
+        if ((*it).second->_planId == 0) {
+          // DBserver local case
+          name = (*it).second->name();
+        } else {
+          // DBserver case of a shard:
+          name = arangodb::basics::StringUtils::itoa((*it).second->_planId);
+          std::shared_ptr<CollectionInfo> ci =
+              ClusterInfo::instance()->getCollection((*it).second->_dbName, name);
+          name = ci->name();  // can be empty, if collection unknown
+        }
+      }
+    } else {
+      // exactly as in the non-cluster case
+      name = TRI_GetCollectionNameByIdVocBase(_vocbase, cid);
+    }
+
+    if (name.empty()) {
+      name = "_unknown";
+    }
+    return name;
+  }
+
+ private:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief vocbase base pointer
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_vocbase_t* _vocbase;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief role of server in cluster
+  //////////////////////////////////////////////////////////////////////////////
+  
+  ServerState::RoleEnum _serverRole;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief collection id => collection struct map

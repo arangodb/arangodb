@@ -39,7 +39,7 @@ class ServerJob : public arangodb::rest::Job {
   ServerJob& operator=(ServerJob const&) = delete;
 
  public:
-  ServerJob(HeartbeatThread* heartbeat);
+  explicit ServerJob(HeartbeatThread* heartbeat);
   ~ServerJob();
 
  public:

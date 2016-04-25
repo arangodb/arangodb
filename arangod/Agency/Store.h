@@ -21,17 +21,13 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CONSENSUS_STORE_H
-#define ARANGODB_CONSENSUS_STORE_H
+#ifndef ARANGOD_CONSENSUS_STORE_H
+#define ARANGOD_CONSENSUS_STORE_H 1
 
 #include "Node.h"
 
-//#include <velocypack/Buffer.h>
-#include <velocypack/velocypack-aliases.h>
-
 namespace arangodb {
 namespace consensus {
-
 
 class Agent;
 

@@ -20,8 +20,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_WORK_MONITOR_FEATURE_H
-#define APPLICATION_FEATURES_WOR_KMONITOR_FEATURE_H 1
+#ifndef ARANGODB_APPLICATION_FEATURES_WORK_MONITOR_FEATURE_H
+#define ARANGODB_APPLICATION_FEATURES_WORK_MONITOR_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 

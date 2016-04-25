@@ -21,8 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_LOGGER_LOGGER_STREAM_H
-#define LIB_LOGGER_LOGGER_STREAM_H 1
+#ifndef ARANGODB_LOGGER_LOGGER_STREAM_H
+#define ARANGODB_LOGGER_LOGGER_STREAM_H 1
 
 #include "Basics/Common.h"
 

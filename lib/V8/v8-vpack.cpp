@@ -28,6 +28,12 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+/// @brief empty attribute name
+static std::string const NoAttribute("");
+
+/// @brief maximum object nesting depth
+static int const MaxLevels = 64;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a VelocyValueType::String into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
@@ -161,7 +167,7 @@ v8::Handle<v8::Value> TRI_VPackToV8(v8::Isolate* isolate,
     }
     case VPackValueType::External: {
       // resolve external
-      return TRI_VPackToV8(isolate, VPackSlice(slice.getExternal()), options, base); 
+      return TRI_VPackToV8(isolate, VPackSlice(slice.getExternal()), options, base);
     }
     case VPackValueType::Custom: {
       if (options == nullptr || options->customTypeHandler == nullptr || base == nullptr) {
@@ -184,14 +190,13 @@ struct BuilderContext {
                  bool keepTopLevelOpen)
       : isolate(isolate),
         builder(builder),
+        level(0),
         keepTopLevelOpen(keepTopLevelOpen) {}
 
   v8::Isolate* isolate;
   v8::Handle<v8::Value> toJsonKey;
   VPackBuilder& builder;
-  std::unordered_set<int> seenHashes;
-  std::vector<v8::Handle<v8::Object>> seenObjects;
-
+  int level;
   bool keepTopLevelOpen;
 };
 
@@ -229,7 +234,7 @@ template <bool performAllChecks>
 static int V8ToVPack(BuilderContext& context,
                      v8::Handle<v8::Value> const parameter,
                      std::string const& attributeName, bool inObject) {
-
+  
   if (parameter->IsNull() || parameter->IsUndefined()) {
     AddValue(context, attributeName, inObject,
              VPackValue(VPackValueType::Null));
@@ -237,36 +242,31 @@ static int V8ToVPack(BuilderContext& context,
   }
 
   if (parameter->IsBoolean()) {
-    v8::Handle<v8::Boolean> booleanParameter = parameter->ToBoolean();
     AddValue(context, attributeName, inObject,
-             VPackValue(booleanParameter->Value()));
+             VPackValue(parameter->ToBoolean()->Value()));
     return TRI_ERROR_NO_ERROR;
   }
   
-  if (parameter->IsInt32()) {
-    v8::Handle<v8::Int32> numberParameter = parameter->ToInt32();
-    AddValue(context, attributeName, inObject,
-             VPackValue(numberParameter->Value()));
-    return TRI_ERROR_NO_ERROR;
-  }
-  
-  if (parameter->IsUint32()) {
-    v8::Handle<v8::Uint32> numberParameter = parameter->ToUint32();
-    AddValue(context, attributeName, inObject,
-             VPackValue(numberParameter->Value()));
-    return TRI_ERROR_NO_ERROR;
-  }
-
   if (parameter->IsNumber()) {
-    v8::Handle<v8::Number> numberParameter = parameter->ToNumber();
+    if (parameter->IsInt32()) {
+      AddValue(context, attributeName, inObject,
+               VPackValue(parameter->ToInt32()->Value()));
+      return TRI_ERROR_NO_ERROR;
+    }
+  
+    if (parameter->IsUint32()) {
+      AddValue(context, attributeName, inObject,
+               VPackValue(parameter->ToUint32()->Value()));
+      return TRI_ERROR_NO_ERROR;
+    }
+
     AddValue(context, attributeName, inObject,
-             VPackValue(numberParameter->Value()));
+             VPackValue(parameter->ToNumber()->Value()));
     return TRI_ERROR_NO_ERROR;
   }
 
   if (parameter->IsString()) {
-    v8::Handle<v8::String> stringParameter = parameter->ToString();
-    v8::String::Utf8Value str(stringParameter);
+    v8::String::Utf8Value str(parameter->ToString());
 
     if (*str == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
@@ -286,56 +286,57 @@ static int V8ToVPack(BuilderContext& context,
     for (uint32_t i = 0; i < n; ++i) {
       v8::Handle<v8::Value> value = array->Get(i);
       if (value->IsUndefined()) {
-        // ignore object values which are undefined
+        // ignore array values which are undefined
         continue;
       }
-      int res = V8ToVPack<performAllChecks>(context, value, "", false);
+
+      if (++context.level > MaxLevels) {
+        // too much recursion
+        return TRI_ERROR_BAD_PARAMETER;
+      }
+
+      int res = V8ToVPack<performAllChecks>(context, value, NoAttribute, false);
+      
+      --context.level;
 
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
       }
     }
 
-    if (performAllChecks) {
-      if (!context.keepTopLevelOpen || !context.seenObjects.empty()) {
-        context.builder.close();
-      }
-    } else {
-      if (!context.keepTopLevelOpen) {
-        context.builder.close();
-      }
+    if (!context.keepTopLevelOpen || context.level > 0) {
+      context.builder.close();
     }
     return TRI_ERROR_NO_ERROR;
   }
 
   if (parameter->IsObject()) {
-    if (parameter->IsBooleanObject()) {
-      AddValue(context, attributeName, inObject,
-               VPackValue(v8::Handle<v8::BooleanObject>::Cast(parameter)
-                              ->BooleanValue()));
-      return TRI_ERROR_NO_ERROR;
-    }
-
-    if (parameter->IsNumberObject()) {
-      AddValue(context, attributeName, inObject,
-               VPackValue(v8::Handle<v8::NumberObject>::Cast(parameter)
-                              ->NumberValue()));
-      return TRI_ERROR_NO_ERROR;
-    }
-
-    if (parameter->IsStringObject()) {
-      v8::Handle<v8::String> stringParameter(parameter->ToString());
-      v8::String::Utf8Value str(stringParameter);
-
-      if (*str == nullptr) {
-        return TRI_ERROR_OUT_OF_MEMORY;
+    if (performAllChecks) {
+      if (parameter->IsBooleanObject()) {
+        AddValue(context, attributeName, inObject,
+                VPackValue(v8::Handle<v8::BooleanObject>::Cast(parameter)
+                                ->BooleanValue()));
+        return TRI_ERROR_NO_ERROR;
       }
 
-      AddValuePair(context, attributeName, inObject, VPackValuePair(*str, str.length(), VPackValueType::String));
-      return TRI_ERROR_NO_ERROR;
-    }
+      if (parameter->IsNumberObject()) {
+        AddValue(context, attributeName, inObject,
+                VPackValue(v8::Handle<v8::NumberObject>::Cast(parameter)
+                                ->NumberValue()));
+        return TRI_ERROR_NO_ERROR;
+      }
 
-    if (performAllChecks) {
+      if (parameter->IsStringObject()) {
+        v8::String::Utf8Value str(parameter->ToString());
+
+        if (*str == nullptr) {
+          return TRI_ERROR_OUT_OF_MEMORY;
+        }
+
+        AddValuePair(context, attributeName, inObject, VPackValuePair(*str, str.length(), VPackValueType::String));
+        return TRI_ERROR_NO_ERROR;
+      }
+
       if (parameter->IsRegExp() || parameter->IsFunction() ||
           parameter->IsExternal()) {
         return TRI_ERROR_BAD_PARAMETER;
@@ -371,23 +372,6 @@ static int V8ToVPack(BuilderContext& context,
 
         // fall-through intentional
       }
-
-      int hash = o->GetIdentityHash();
-
-      if (context.seenHashes.find(hash) != context.seenHashes.end()) {
-        // LOG(TRACE) << "found hash " << hash;
-
-        for (auto& it : context.seenObjects) {
-          if (parameter->StrictEquals(it)) {
-            // object is recursive
-            return TRI_ERROR_BAD_PARAMETER;
-          }
-        }
-      } else {
-        context.seenHashes.emplace(hash);
-      }
-
-      context.seenObjects.emplace_back(o);
     }
 
     v8::Handle<v8::Array> names = o->GetOwnPropertyNames();
@@ -411,22 +395,22 @@ static int V8ToVPack(BuilderContext& context,
         continue;
       }
 
+      if (++context.level > MaxLevels) {
+        // too much recursion
+        return TRI_ERROR_BAD_PARAMETER;
+      }
+
       int res = V8ToVPack<performAllChecks>(context, value, *str, true);
+      
+      --context.level;
 
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
       }
     }
 
-    if (performAllChecks) {
-      context.seenObjects.pop_back();
-      if (!context.keepTopLevelOpen || !context.seenObjects.empty()) {
-        context.builder.close();
-      }
-    } else {
-      if (!context.keepTopLevelOpen) {
-        context.builder.close();
-      }
+    if (!context.keepTopLevelOpen || context.level > 0) {
+      context.builder.close();
     }
     return TRI_ERROR_NO_ERROR;
   }
@@ -441,11 +425,11 @@ static int V8ToVPack(BuilderContext& context,
 int TRI_V8ToVPack(v8::Isolate* isolate, VPackBuilder& builder,
                   v8::Handle<v8::Value> const value, bool keepTopLevelOpen) {
   v8::HandleScope scope(isolate);
-  TRI_GET_GLOBALS();
   BuilderContext context(isolate, builder, keepTopLevelOpen);
+  TRI_GET_GLOBALS();
   TRI_GET_GLOBAL_STRING(ToJsonKey);
   context.toJsonKey = ToJsonKey;
-  return V8ToVPack<true>(context, value, "", false);
+  return V8ToVPack<true>(context, value, NoAttribute, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -455,9 +439,9 @@ int TRI_V8ToVPack(v8::Isolate* isolate, VPackBuilder& builder,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_V8ToVPackSimple(v8::Isolate* isolate, arangodb::velocypack::Builder& builder,
-                        v8::Handle<v8::Value> const value, bool keepTopLevelOpen) {
+                        v8::Handle<v8::Value> const value) {
   v8::HandleScope scope(isolate);
-  BuilderContext context(isolate, builder, keepTopLevelOpen);
-  return V8ToVPack<false>(context, value, "", false);
+  BuilderContext context(isolate, builder, false);
+  return V8ToVPack<false>(context, value, NoAttribute, false);
 }
 

@@ -22,7 +22,7 @@
 
 #include "PrivilegeFeature.h"
 
-//YYY #warning FRANK TODO 
+//YYY #warning FRANK TODO
 #if 0
 
 SslFeature::SslFeature(application_features::ApplicationServer* server)
@@ -33,8 +33,6 @@ SslFeature::SslFeature(application_features::ApplicationServer* server)
 }
 
 void SslFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
 #ifdef ARANGODB_HAVE_SETUID
   options->addHiddenOption("--uid",
                            "switch to user-id after reading config files",

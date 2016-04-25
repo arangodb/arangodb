@@ -26,6 +26,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/DatabaseServerFeature.h"
 #include "V8/v8-globals.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
@@ -55,8 +56,6 @@ UpgradeFeature::UpgradeFeature(
 }
 
 void UpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addSection("database", "Configure the database");
 
   options->addOption("--database.upgrade",
@@ -69,8 +68,6 @@ void UpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
-
   if (_upgrade && !_upgradeCheck) {
     LOG(FATAL) << "cannot specify both '--database.upgrade true' and "
                   "'--database.upgrade-check false'";
@@ -84,21 +81,19 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   LOG(TRACE) << "executing upgrade procedure: disabling server features";
 
-  ApplicationServer::disableFeatures(_nonServerFeatures);
+  ApplicationServer::forceDisableFeatures(_nonServerFeatures);
 
-  DatabaseFeature* database = dynamic_cast<DatabaseFeature*>(
-      ApplicationServer::lookupFeature("Database"));
+  DatabaseFeature* database = 
+      ApplicationServer::getFeature<DatabaseFeature>("Database");
   database->disableReplicationApplier();
   database->enableUpgrade();
 
-  ClusterFeature* cluster = dynamic_cast<ClusterFeature*>(
-      ApplicationServer::lookupFeature("Cluster"));
-  cluster->disable();
+  ClusterFeature* cluster = 
+      ApplicationServer::getFeature<ClusterFeature>("Cluster");
+  cluster->forceDisable();
 }
 
 void UpgradeFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
   // open the log file for writing
   if (!wal::LogfileManager::instance()->open()) {
     LOG(FATAL) << "Unable to finish WAL recovery procedure";
@@ -119,72 +114,81 @@ void UpgradeFeature::start() {
 void UpgradeFeature::upgradeDatabase() {
   LOG(TRACE) << "starting database init/upgrade";
 
-  auto* server = DatabaseFeature::DATABASE->server();
+  auto* server = DatabaseServerFeature::SERVER;
   auto* systemVocbase = DatabaseFeature::DATABASE->vocbase();
 
   // enter context and isolate
   {
     V8Context* context =
         V8DealerFeature::DEALER->enterContext(systemVocbase, true, 0);
-    v8::HandleScope scope(context->_isolate);
-    auto localContext =
-        v8::Local<v8::Context>::New(context->_isolate, context->_context);
-    localContext->Enter();
 
-    {
-      v8::Context::Scope contextScope(localContext);
-
-      // run upgrade script
-      LOG(DEBUG) << "running database init/upgrade";
-
-      auto unuser(server->_databasesProtector.use());
-      auto theLists = server->_databasesLists.load();
-
-      for (auto& p : theLists->_databases) {
-        TRI_vocbase_t* vocbase = p.second;
-
-        // special check script to be run just once in first thread (not in
-        // all) but for all databases
-        v8::HandleScope scope(context->_isolate);
-
-        v8::Handle<v8::Object> args = v8::Object::New(context->_isolate);
-        args->Set(TRI_V8_ASCII_STRING2(context->_isolate, "upgrade"),
-                  v8::Boolean::New(context->_isolate, _upgrade));
-
-        localContext->Global()->Set(
-            TRI_V8_ASCII_STRING2(context->_isolate, "UPGRADE_ARGS"), args);
-
-        bool ok = TRI_UpgradeDatabase(vocbase, localContext);
-
-        if (!ok) {
-          if (localContext->Global()->Has(
-                  TRI_V8_ASCII_STRING2(context->_isolate, "UPGRADE_STARTED"))) {
-            localContext->Exit();
-            if (_upgrade) {
-              LOG(FATAL) << "Database '" << vocbase->_name
-                         << "' upgrade failed. Please inspect the logs from "
-                            "the upgrade procedure";
-              FATAL_ERROR_EXIT();
-            } else {
-              LOG(FATAL) << "Database '" << vocbase->_name
-                         << "' needs upgrade. Please start the server with the "
-                            "--database.upgrade option";
-              FATAL_ERROR_EXIT();
-            }
-          } else {
-            LOG(FATAL) << "JavaScript error during server start";
-            FATAL_ERROR_EXIT();
-          }
-
-          LOG(DEBUG) << "database '" << vocbase->_name << "' init/upgrade done";
-        }
-      }
+    if (context == nullptr) {
+      LOG(FATAL) << "could not enter context #0";
+      FATAL_ERROR_EXIT();
     }
 
-    // finally leave the context. otherwise v8 will crash with assertion failure
-    // when we delete
-    // the context locker below
-    localContext->Exit();
+    {
+      v8::HandleScope scope(context->_isolate);
+      auto localContext =
+          v8::Local<v8::Context>::New(context->_isolate, context->_context);
+      localContext->Enter();
+
+      {
+        v8::Context::Scope contextScope(localContext);
+
+        // run upgrade script
+        LOG(DEBUG) << "running database init/upgrade";
+
+        auto unuser(server->_databasesProtector.use());
+        auto theLists = server->_databasesLists.load();
+
+        for (auto& p : theLists->_databases) {
+          TRI_vocbase_t* vocbase = p.second;
+
+          // special check script to be run just once in first thread (not in
+          // all) but for all databases
+          v8::HandleScope scope(context->_isolate);
+
+          v8::Handle<v8::Object> args = v8::Object::New(context->_isolate);
+          args->Set(TRI_V8_ASCII_STRING2(context->_isolate, "upgrade"),
+                    v8::Boolean::New(context->_isolate, _upgrade));
+
+          localContext->Global()->Set(
+              TRI_V8_ASCII_STRING2(context->_isolate, "UPGRADE_ARGS"), args);
+
+          bool ok = TRI_UpgradeDatabase(vocbase, localContext);
+
+          if (!ok) {
+            if (localContext->Global()->Has(
+                    TRI_V8_ASCII_STRING2(context->_isolate, "UPGRADE_STARTED"))) {
+              localContext->Exit();
+              if (_upgrade) {
+                LOG(FATAL) << "Database '" << vocbase->_name
+                          << "' upgrade failed. Please inspect the logs from "
+                              "the upgrade procedure";
+                FATAL_ERROR_EXIT();
+              } else {
+                LOG(FATAL) << "Database '" << vocbase->_name
+                          << "' needs upgrade. Please start the server with the "
+                              "--database.upgrade option";
+                FATAL_ERROR_EXIT();
+              }
+            } else {
+              LOG(FATAL) << "JavaScript error during server start";
+              FATAL_ERROR_EXIT();
+            }
+
+            LOG(DEBUG) << "database '" << vocbase->_name << "' init/upgrade done";
+          }
+        }
+      }
+
+      // finally leave the context. otherwise v8 will crash with assertion failure
+      // when we delete
+      // the context locker below
+      localContext->Exit();
+    }
+
     V8DealerFeature::DEALER->exitContext(context);
   }
 

@@ -95,7 +95,7 @@ int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
 
   if (errno == ENOMEM) {
     LOG_TOPIC(DEBUG, Logger::MMAP) << "out of memory in mmap";
-    
+
     return TRI_ERROR_OUT_OF_MEMORY_MMAP;
   }
 
@@ -156,13 +156,13 @@ int TRI_ProtectMMFile(void* memoryAddress, size_t numOfBytesToProtect,
 int TRI_MMFileAdvise(void* memoryAddress, size_t numOfBytes, int advice) {
 #ifdef __linux__
   LOG_TOPIC(TRACE, Logger::MMAP) << "madvise " << advice << " for range " << Logger::RANGE(memoryAddress, numOfBytes);
-  
+
   int res = madvise(memoryAddress, numOfBytes, advice);
 
   if (res == 0) {
     return TRI_ERROR_NO_ERROR;
-  } 
-    
+  }
+
   char buffer[256];
   char* p = strerror_r(errno, buffer, 256);
   LOG_TOPIC(ERR, Logger::MMAP) << "madvise " << advice << " for range " << Logger::RANGE(memoryAddress, numOfBytes) << " failed with: " << p << " ";

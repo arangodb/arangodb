@@ -41,10 +41,7 @@ ConsoleFeature::ConsoleFeature(application_features::ApplicationServer* server)
 }
 
 void ConsoleFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
-  ServerFeature* server =
-      dynamic_cast<ServerFeature*>(ApplicationServer::lookupFeature("Server"));
+  ServerFeature* server = ApplicationServer::getFeature<ServerFeature>("Server");
 
   _operationMode = server->operationMode();
 
@@ -52,8 +49,8 @@ void ConsoleFeature::start() {
     return;
   }
 
-  DatabaseFeature* database = dynamic_cast<DatabaseFeature*>(
-      ApplicationServer::lookupFeature("Database"));
+  DatabaseFeature* database = 
+      ApplicationServer::getFeature<DatabaseFeature>("Database");
 
   _consoleThread.reset(
       new ConsoleThread(ApplicationFeature::server(), database->vocbase()));
@@ -61,8 +58,6 @@ void ConsoleFeature::start() {
 }
 
 void ConsoleFeature::stop() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
-
   if (_operationMode != OperationMode::MODE_CONSOLE) {
     return;
   }

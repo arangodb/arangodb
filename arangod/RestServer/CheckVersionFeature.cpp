@@ -26,6 +26,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/DatabaseServerFeature.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-query.h"
@@ -52,8 +53,6 @@ CheckVersionFeature::CheckVersionFeature(
 
 void CheckVersionFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addSection("database", "Configure the database");
 
   options->addHiddenOption("--database.check-version",
@@ -67,7 +66,7 @@ void CheckVersionFeature::validateOptions(
     return;
   }
 
-  ApplicationServer::disableFeatures(_nonServerFeatures);
+  ApplicationServer::forceDisableFeatures(_nonServerFeatures);
 
   LoggerFeature* logger =
       dynamic_cast<LoggerFeature*>(ApplicationServer::lookupFeature("Logger"));
@@ -113,47 +112,55 @@ void CheckVersionFeature::checkVersion() {
   {
     V8Context* context =
         V8DealerFeature::DEALER->enterContext(vocbase, true, 0);
-    v8::HandleScope scope(context->_isolate);
-    auto localContext =
-        v8::Local<v8::Context>::New(context->_isolate, context->_context);
-    localContext->Enter();
 
-    {
-      v8::Context::Scope contextScope(localContext);
-
-      // run version-check script
-      LOG(DEBUG) << "running database version check";
-
-      // can do this without a lock as this is the startup
-      auto server = DatabaseFeature::DATABASE->server();
-      auto unuser = server->_databasesProtector.use();
-      auto theLists = server->_databasesLists.load();
-
-      for (auto& p : theLists->_databases) {
-        TRI_vocbase_t* vocbase = p.second;
-
-        // special check script to be run just once in first thread (not in all)
-        // but for all databases
-
-        int status = TRI_CheckDatabaseVersion(vocbase, localContext);
-
-        LOG(DEBUG) << "version check return status " << status;
-
-        if (status < 0) {
-          LOG(FATAL) << "Database version check failed for '" << vocbase->_name
-                     << "'. Please inspect the logs from any errors";
-          FATAL_ERROR_EXIT();
-        } else if (status == 3) {
-          *_result = 3;
-        } else if (status == 2 && *_result == 1) {
-          *_result = 2;
-        }
-      }
+    if (context == nullptr) {
+      LOG(FATAL) << "could not enter context #0";
+      FATAL_ERROR_EXIT();
     }
 
-    // issue #391: when invoked with --database.upgrade, the server will not always shut
-    // down
-    localContext->Exit();
+    {
+      v8::HandleScope scope(context->_isolate);
+      auto localContext =
+          v8::Local<v8::Context>::New(context->_isolate, context->_context);
+      localContext->Enter();
+
+      {
+        v8::Context::Scope contextScope(localContext);
+
+        // run version-check script
+        LOG(DEBUG) << "running database version check";
+
+        // can do this without a lock as this is the startup
+        auto server = DatabaseServerFeature::SERVER;
+        auto unuser = server->_databasesProtector.use();
+        auto theLists = server->_databasesLists.load();
+
+        for (auto& p : theLists->_databases) {
+          TRI_vocbase_t* vocbase = p.second;
+
+          // special check script to be run just once in first thread (not in all)
+          // but for all databases
+
+          int status = TRI_CheckDatabaseVersion(vocbase, localContext);
+
+          LOG(DEBUG) << "version check return status " << status;
+
+          if (status < 0) {
+            LOG(FATAL) << "Database version check failed for '" << vocbase->_name
+                      << "'. Please inspect the logs from any errors";
+            FATAL_ERROR_EXIT();
+          } else if (status == 3) {
+            *_result = 3;
+          } else if (status == 2 && *_result == 1) {
+            *_result = 2;
+          }
+        }
+      }
+
+      // issue #391: when invoked with --database.upgrade, the server will not always shut
+      // down
+      localContext->Exit();
+    }
     V8DealerFeature::DEALER->exitContext(context);
   }
 

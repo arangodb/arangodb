@@ -34,6 +34,7 @@
 #include "ApplicationFeatures/SupervisorFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
+#include "ApplicationFeatures/VersionFeature.h"
 #include "ApplicationFeatures/WorkMonitorFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Cluster/ClusterFeature.h"
@@ -46,23 +47,28 @@
 #include "RestServer/CheckVersionFeature.h"
 #include "RestServer/ConsoleFeature.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/DatabaseServerFeature.h"
 #include "RestServer/EndpointFeature.h"
 #include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/FrontendFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/RestServerFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/StatisticsFeature.h"
+#include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8DealerFeature.h"
+#include "Wal/LogfileManager.h"
 
 using namespace arangodb;
+using namespace arangodb::wal;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Hooks for OS-Specific functions
 ////////////////////////////////////////////////////////////////////////////////
 
-#warning TODO
+//YYY #warning TODO
 #if 0
 #ifdef _WIN32
 extern bool TRI_ParseMoreArgs(int argc, char* argv[]);
@@ -91,8 +97,8 @@ int main(int argc, char* argv[]) {
   application_features::ApplicationServer server(options);
 
   std::vector<std::string> nonServerFeatures = {
-      "Action", "Agency", "Cluster", "Daemon", "Dispatcher", "Endpoint",
-      "LoggerBufferFeature", "Server", "Scheduler", "Ssl", "Supervisor"};
+      "Action", "Affinity", "Agency", "Cluster", "Daemon", "Dispatcher", "Endpoint", "FoxxQueues",
+      "LoggerBufferFeature", "RestServer", "Server", "Scheduler", "Ssl", "Statistics", "Supervisor"};
 
   int ret = EXIT_FAILURE;
 
@@ -104,14 +110,18 @@ int main(int argc, char* argv[]) {
   server.addFeature(new ConfigFeature(&server, name));
   server.addFeature(new ConsoleFeature(&server));
   server.addFeature(new DatabaseFeature(&server));
+  server.addFeature(new DatabaseServerFeature(&server));
   server.addFeature(new DispatcherFeature(&server));
   server.addFeature(new EndpointFeature(&server));
   server.addFeature(new FileDescriptorsFeature(&server));
+  server.addFeature(new FoxxQueuesFeature(&server));
   server.addFeature(new FrontendFeature(&server));
   server.addFeature(new LanguageFeature(&server));
+  server.addFeature(new LogfileManager(&server));
   server.addFeature(new LoggerBufferFeature(&server));
   server.addFeature(new LoggerFeature(&server, true));
   server.addFeature(new NonceFeature(&server));
+  server.addFeature(new QueryRegistryFeature(&server));
   server.addFeature(new RandomFeature(&server));
   server.addFeature(new RestServerFeature(&server, "arangodb"));
   server.addFeature(new SchedulerFeature(&server));
@@ -123,6 +133,7 @@ int main(int argc, char* argv[]) {
   server.addFeature(new UpgradeFeature(&server, &ret, nonServerFeatures));
   server.addFeature(new V8DealerFeature(&server));
   server.addFeature(new V8PlatformFeature(&server));
+  server.addFeature(new VersionFeature(&server));
   server.addFeature(new WorkMonitorFeature(&server));
 
 #ifdef ARANGODB_HAVE_FORK
@@ -139,7 +150,7 @@ int main(int argc, char* argv[]) {
   return context.exit(ret);
 }
 
-#warning TODO
+//YYY #warning TODO
 #if 0
 
   // windows only

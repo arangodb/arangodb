@@ -22,8 +22,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_BASICS_EXCEPTIONS_H
-#define LIB_BASICS_EXCEPTIONS_H 1
+#ifndef ARANGODB_BASICS_EXCEPTIONS_H
+#define ARANGODB_BASICS_EXCEPTIONS_H 1
 
 #include "Basics/Common.h"
 

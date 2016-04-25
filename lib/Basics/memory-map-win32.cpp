@@ -241,7 +241,7 @@ int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
     LOG(DEBUG) << "MapViewOfFile failed with error code = " << errorCode;
     return TRI_ERROR_SYS_ERROR;
   }
-  
+
   LOG_TOPIC(DEBUG, Logger::MMAP) << "memory-mapped range " << Logger::RANGE(*result, numOfBytesToInitialize) << ", file-descriptor " << fileDescriptor;
 
   return TRI_ERROR_NO_ERROR;

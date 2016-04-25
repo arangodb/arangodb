@@ -7,6 +7,8 @@
   * [ARM](Installing/ARM.md)
   * [Compiling](Installing/Compiling.md)
   * [Upgrading](Installing/Upgrading.md)
+    * [Incompatible changes in 3.0](Upgrading/UpgradingChanges30.md)
+    * [Upgrading to 3.0](Upgrading/Upgrading30.md)
     * [Incompatible changes in 2.8](Upgrading/UpgradingChanges28.md)
     * [Upgrading to 2.8](Upgrading/Upgrading28.md)
     * [Incompatible changes in 2.7](Upgrading/UpgradingChanges27.md)

@@ -22,8 +22,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_LOGGER_LOG_LEVEL_H
-#define LIB_LOGGER_LOG_LEVEL_H 1
+#ifndef ARANGODB_LOGGER_LOG_LEVEL_H
+#define ARANGODB_LOGGER_LOG_LEVEL_H 1
 
 #include "Basics/Common.h"
 

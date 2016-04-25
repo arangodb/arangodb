@@ -1251,6 +1251,47 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   if (ac.exists("Plan/Collections/" + databaseName + "/" + collectionID)) {
     return setErrormsg(TRI_ERROR_CLUSTER_COLLECTION_ID_EXISTS, errorMsg);
   }
+  
+  int dbServerResult = -1;
+
+  std::function<bool(VPackSlice const& result)> dbServerChanged = [&](VPackSlice const& result) {
+    if (result.isObject() && result.length() == (size_t) numberOfShards) {
+      std::string tmpMsg = "";
+      bool tmpHaveError = false;
+
+      for (auto const& p: VPackObjectIterator(result)) {
+        if (arangodb::basics::VelocyPackHelper::getBooleanValue(
+              p.value, "error", false)) {
+          tmpHaveError = true;
+          tmpMsg += " shardID:" + p.key.copyString() + ":";
+          tmpMsg += arangodb::basics::VelocyPackHelper::getStringValue(
+              p.value, "errorMessage", "");
+          if (p.value.hasKey("errorNum")) {
+            VPackSlice const errorNum = p.value.get("errorNum");
+            if (errorNum.isNumber()) {
+              tmpMsg += " (errNum=";
+              tmpMsg += basics::StringUtils::itoa(
+                  errorNum.getNumericValue<uint32_t>());
+              tmpMsg += ")";
+            }
+          }
+        }
+      }
+      loadCurrentCollections();
+      if (tmpHaveError) {
+        errorMsg = "Error in creation of collection:" + tmpMsg;
+        dbServerResult = TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION;
+        return true;
+      }
+      dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
+      return true;
+    }
+
+    return true;
+  };
+  auto agencyCallback = std::make_shared<AgencyCallback>(
+      ac, "Current/Collections/" + databaseName + "/" + collectionID, dbServerChanged, true, false);
+  _agencyCallbackRegistry->registerCallback(agencyCallback);
 
   VPackBuilder builder;
   builder.add(VPackValue(json.toJson()));
@@ -1281,46 +1322,16 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   // Update our cache:
   loadPlannedCollections();
   
-  std::string const where =
-      "Current/Collections/" + databaseName + "/" + collectionID;
   while (TRI_microtime() <= endTime) {
-    res.clear();
-    res = ac.getValues(where, true);
+    agencyCallback->waitForExecution(interval);
 
-    if (res.successful() && res.parse(where + "/", false)) {
-      if (res._values.size() == (size_t)numberOfShards) {
-        std::string tmpMsg = "";
-        bool tmpHaveError = false;
-        for (auto const& p : res._values) {
-          VPackSlice const slice = p.second._vpack->slice();
-          if (arangodb::basics::VelocyPackHelper::getBooleanValue(
-                  slice, "error", false)) {
-            tmpHaveError = true;
-            tmpMsg += " shardID:" + p.first + ":";
-            tmpMsg += arangodb::basics::VelocyPackHelper::getStringValue(
-                slice, "errorMessage", "");
-            if (slice.hasKey("errorNum")) {
-              VPackSlice const errorNum = slice.get("errorNum");
-              if (errorNum.isNumber()) {
-                tmpMsg += " (errNum=";
-                tmpMsg += basics::StringUtils::itoa(
-                    errorNum.getNumericValue<uint32_t>());
-                tmpMsg += ")";
-              }
-            }
-          }
-        }
-        loadCurrentCollections();
-        if (tmpHaveError) {
-          errorMsg = "Error in creation of collection:" + tmpMsg;
-          return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION;
-        }
-        return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
-      }
+    if (dbServerResult >= 0) {
+      break;
     }
-
-    res.clear();
-    _agencyCallbackRegistry->awaitNextChange("Current/Version", interval);
+  }
+  _agencyCallbackRegistry->unregisterCallback(agencyCallback);
+  if (dbServerResult >= 0) {
+    return dbServerResult;
   }
 
   // LOG(ERR) << "GOT TIMEOUT. NUMBEROFSHARDS: " << numberOfShards;
@@ -1343,7 +1354,41 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
   double const realTimeout = getTimeout(timeout);
   double const endTime = TRI_microtime() + realTimeout;
   double const interval = getPollInterval();
+  
+  int dbServerResult = -1;
+  std::function<bool(VPackSlice const& result)> dbServerChanged = [&](VPackSlice const& result) {
+    if (result.isObject() && result.length() == 0) {
+      // ...remove the entire directory for the collection
+      AgencyCommLocker locker("Current", "WRITE");
+      if (locker.successful()) {
+        AgencyCommResult res;
+        res = ac.removeValues(
+            "Current/Collections/" + databaseName + "/" + collectionID, true);
+        if (res.successful()) {
+          dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
+          return true;
+        }
+        dbServerResult = setErrormsg(
+            TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT,
+            errorMsg);
+        return true;
+      }
+      loadCurrentCollections();
+      dbServerResult = setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
+      return true;
+    }
+    return true;
+  };
+  
 
+  // monitor the entry for the collection
+  std::string const where =
+      "Current/Collections/" + databaseName + "/" + collectionID;
+  
+  auto agencyCallback = std::make_shared<AgencyCallback>(
+      ac, where, dbServerChanged, true, false);
+  _agencyCallbackRegistry->registerCallback(agencyCallback);
+  
   {
     AgencyCommLocker locker("Plan", "WRITE");
 
@@ -1369,40 +1414,14 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
   // Update our own cache:
   loadPlannedCollections();
 
-  // monitor the entry for the collection
-  std::string const where =
-      "Current/Collections/" + databaseName + "/" + collectionID;
   while (TRI_microtime() <= endTime) {
-    res.clear();
-    res = ac.getValues(where, true);
-    if (!res.successful()) {
-      // It seems the collection is already gone, do not wait further
-      errorMsg = "Collection already gone.";
-      return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
+    agencyCallback->waitForExecution(interval);
+    if (dbServerResult >= 0) {
+      break;
     }
-    if (res.successful() && res.parse(where + "/", false)) {
-      // if there are no more active shards for the collection...
-      if (res._values.size() == 0) {
-        // ...remove the entire directory for the collection
-        AgencyCommLocker locker("Current", "WRITE");
-        if (locker.successful()) {
-          res.clear();
-          res = ac.removeValues(
-              "Current/Collections/" + databaseName + "/" + collectionID, true);
-          if (res.successful()) {
-            return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
-          }
-          return setErrormsg(
-              TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT,
-              errorMsg);
-        }
-        loadCurrentCollections();
-        return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
-      }
-    }
-
-    res.clear();
-    _agencyCallbackRegistry->awaitNextChange("Current/Version", interval);
+  }
+  if (dbServerResult >= 0) {
+    return dbServerResult;
   }
   return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
 }

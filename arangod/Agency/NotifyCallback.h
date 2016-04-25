@@ -21,11 +21,12 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef __ARANGODB_CONSENSUS_NOTIFY_CALLBACK__
-#define __ARANGODB_CONSENSUS_NOTIFY_CALLBACK__
+#ifndef ARANGOD_CONSENSUS_NOTIFY_CALLBACK_H 
+#define ARANGOD_CONSENSUS_NOTIFY_CALLBACK_H 1
 
+#include "Agency/AgencyCommon.h"
 #include "Cluster/ClusterComm.h"
-#include "AgencyCommon.h"
+
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
@@ -35,7 +36,7 @@ class NotifyCallback : public arangodb::ClusterCommCallback {
   
 public:
   
-  NotifyCallback(std::function<void(bool)>);
+  explicit NotifyCallback(std::function<void(bool)>);
   
   virtual bool operator()(arangodb::ClusterCommResult*) override final;
   

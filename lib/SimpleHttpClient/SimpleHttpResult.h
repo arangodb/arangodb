@@ -22,8 +22,8 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_RESULT_H
-#define LIB_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_RESULT_H 1
+#ifndef ARANGODB_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_RESULT_H
+#define ARANGODB_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_RESULT_H 1
 
 #include "Basics/Common.h"
 #include "Basics/StringBuffer.h"

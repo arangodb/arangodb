@@ -3520,10 +3520,11 @@ testFuncs.upgrade = function(options) {
   let args = makeArgsArangod(options, appDir);
   args["server.endpoint"] = "tcp://127.0.0.1:" + port;
   args["database.directory"] = fs.join(tmpDataDir, "data");
+  args["database.upgrade"] = true;
 
   fs.makeDirectoryRecursive(fs.join(tmpDataDir, "data"));
 
-  const argv = toArgv(args).concat(["--database.upgrade"]);
+  const argv = toArgv(args);
 
   result.upgrade.first = executeAndWait(ARANGOD_BIN, argv, options, "upgrade");
 

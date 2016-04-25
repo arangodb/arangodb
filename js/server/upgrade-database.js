@@ -813,7 +813,7 @@
       task: function () {
         // needs to be big enough for assets
         return createSystemCollection("_routing", {
-          journalSize: 32 * 1024 * 1024
+          journalSize: 8 * 1024 * 1024
         });
       }
     });
@@ -984,7 +984,7 @@
 
       task: function () {
         return createSystemCollection("_aqlfunctions", {
-          journalSize: 4 * 1024 * 1024
+          journalSize: 2 * 1024 * 1024
         });
       }
     });
@@ -1164,7 +1164,7 @@
 
       task: function () {
         return createSystemCollection("_queues", {
-          journalSize: 4 * 1024 * 1024 
+          journalSize: 1024 * 1024 
         });
       }
     });

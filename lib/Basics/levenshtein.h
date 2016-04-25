@@ -21,8 +21,8 @@
 /// @author Jen Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_BASICS_LEVENSHTEIN_H
-#define LIB_BASICS_LEVENSHTEIN_H 1
+#ifndef ARANGODB_BASICS_LEVENSHTEIN_H
+#define ARANGODB_BASICS_LEVENSHTEIN_H 1
 
 #include "Basics/Common.h"
 

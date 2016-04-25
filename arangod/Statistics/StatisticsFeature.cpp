@@ -39,8 +39,6 @@ StatisticsFeature::StatisticsFeature(application_features::ApplicationServer* se
 }
 
 void StatisticsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addSection("server", "Server features");
 
   options->addHiddenOption(
@@ -50,15 +48,11 @@ void StatisticsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
 }
 
 void StatisticsFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
   STATISTICS = this;
   TRI_InitializeStatistics();
 }
 
 void StatisticsFeature::stop() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
-
   TRI_ShutdownStatistics();
   STATISTICS = nullptr;
 }

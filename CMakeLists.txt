@@ -10,13 +10,22 @@ if (POLICY CMP0037)
   cmake_policy(SET CMP0037 NEW)
 endif ()
 
-option(VERBOSE OFF)
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9" CACHE STRING "deployment target for MacOSX")
 
 project(ArangoDB CXX C ASM)
 
 # where to find CMAKE modules
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
+
+# be verbose about flags used
+option(VERBOSE OFF)
+
+# enable timer for development
+option(USE_DEV_TIMERS OFF)
+
+if (USE_DEV_TIMERS)
+  add_definitions("-DUSE_DEV_TIMERS")
+endif ()
 
 ################################################################################
 ## ARANGODB
@@ -149,7 +158,7 @@ endif ()
 
 math(EXPR BITS "8*${CMAKE_SIZEOF_VOID_P}")
 add_definitions("-DARANGODB_BITS=${BITS}")
-
+        
 ################################################################################
 ## COMPILER FEATURES
 ################################################################################
@@ -214,13 +223,17 @@ if (MSVC)
   configure_file("Installation/Windows/vcproj.user/arangod.vcxproj.user" ${CMAKE_BINARY_DIR})
   add_definitions("-D_CRT_SECURE_NO_WARNINGS=1")
   add_definitions("-DFD_SETSIZE=2048")
-  add_definitions("-DUSE_REGEX_STATIC=1")
   add_definitions("-DU_STATIC_IMPLEMENTATION=1")
-
-  set(MSVC_LIBS crypt32.lib;WINMM.LIB;Ws2_32.lib;getopt;regex)
+  
+  # https://blogs.msdn.microsoft.com/vcblog/2016/04/14/stl-fixes-in-vs-2015-update-2/
+  # https://connect.microsoft.com/VisualStudio/feedback/details/1892487
+  #http://lists.boost.org/boost-users/2016/04/85968.php
+  add_definitions("-D_ENABLE_ATOMIC_ALIGNMENT_FIX")
+  
+  set(MSVC_LIBS crypt32.lib;WINMM.LIB;Ws2_32.lib)
 
   set(CMAKE_EXE_LINKER_FLAGS
-    "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE /SAFESEH:NO /MACHINE:x64 /ignore:4099 /ignore:1021 ${BASE_LD_FLAGS}"
+    "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE /SAFESEH:NO /MACHINE:x64 /ignore:4099 ${BASE_LD_FLAGS}"
   )
 else ()
   set(CMAKE_EXE_LINKER_FLAGS
@@ -346,7 +359,9 @@ endif ()
 ################################################################################
 ## JEMALLOC
 ################################################################################
+
 set(JEMALLOC_DEFAULT_VALUE ON)
+
 if (WINDOWS OR SOLARIS OR USE_TCMALLOC)
   set(JEMALLOC_DEFAULT_VALUE OFF)
 endif ()
@@ -354,7 +369,7 @@ endif ()
 option(USE_JEMALLOC
   "use JEMALLOC if the library is available"
   ${JEMALLOC_DEFAULT_VALUE}
-  )
+)
 
 if (USE_JEMALLOC)
   find_package(jemalloc)
@@ -371,10 +386,11 @@ endif ()
 ################################################################################
 ## TCMALLOC
 ################################################################################
+
 option(USE_TCMALLOC
   "use TCMALLOC if the library is available"
   OFF
-  )
+)
 
 if (USE_TCMALLOC)
   find_package(tcmalloc)
@@ -389,8 +405,9 @@ if (USE_TCMALLOC)
 endif ()
 
 if (${USE_JEMALLOC} AND ${USE_TCMALLOC})
-  MESSAGE(ERROR," you mustn't demand for tcmalloc and jemalloc at the same time!")
+  MESSAGE(FATAL_ERROR " you mustn't demand for tcmalloc and jemalloc at the same time!")
 endif()
+
 ################################################################################
 ## LIBRARY RESOLV
 ################################################################################
@@ -408,7 +425,7 @@ endif ()
 ################################################################################
 
 if (VERBOSE)
-message(STATUS)
+  message(STATUS)
 endif ()
 
 # compiler options
@@ -601,22 +618,6 @@ foreach (LINK_DIR ${LINK_DIRECTORIES})
 endforeach()
 
 ################################################################################
-## GETOPT
-################################################################################
-
-if (WINDOWS)
-  include_directories(${GETOPT_INCLUDE_DIR})
-endif ()
-
-################################################################################
-## REGEX
-################################################################################
-
-if (WINDOWS)
-  include_directories(${REGEX_INCLUDE_DIR})
-endif ()
-
-################################################################################
 ## BOOST
 ################################################################################
 
@@ -759,14 +760,18 @@ if (USE_BOOST_UNITTESTS)
 endif()
 add_subdirectory(Documentation)
 
-add_dependencies(arangob zlibstatic v8_build)
-add_dependencies(arangod ev zlibstatic v8_build)
-add_dependencies(arangodump zlibstatic v8_build)
-add_dependencies(arangoimp zlibstatic v8_build)
-add_dependencies(arangorestore zlibstatic v8_build)
-add_dependencies(arangosh zlibstatic v8_build)
-#if (USE_MAINTAINER_MODE)
-#  add_dependencies(basics_suite v8_build)
-#  add_dependencies(geo_suite v8_build)
-#endif()
+add_dependencies(arangob       zlibstatic)
+add_dependencies(arangod       ev zlibstatic)
+add_dependencies(arangodump    zlibstatic)
+add_dependencies(arangoimp     zlibstatic)
+add_dependencies(arangorestore zlibstatic)
+add_dependencies(arangosh      zlibstatic)
 
+if (NOT USE_PRECOMPILED_V8)
+  add_dependencies(arangob       v8_build)
+  add_dependencies(arangod       v8_build)
+  add_dependencies(arangodump    v8_build)
+  add_dependencies(arangoimp     v8_build)
+  add_dependencies(arangorestore v8_build)
+  add_dependencies(arangosh      v8_build)
+endif ()
