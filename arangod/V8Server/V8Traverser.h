@@ -40,11 +40,13 @@ class Slice;
 /// @brief typedef the template instantiation of the PathFinder
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef arangodb::basics::PathFinder<std::string, std::string, double>
-    ArangoDBPathFinder;
+typedef arangodb::basics::PathFinder<arangodb::velocypack::Slice,
+                                     arangodb::velocypack::Slice,
+                                     double> ArangoDBPathFinder;
 
-typedef arangodb::basics::ConstDistanceFinder<
-    std::string, std::string> ArangoDBConstDistancePathFinder;
+typedef arangodb::basics::ConstDistanceFinder<arangodb::velocypack::Slice,
+                                              arangodb::velocypack::Slice>
+    ArangoDBConstDistancePathFinder;
 
 namespace arangodb {
 namespace traverser {
@@ -135,18 +137,19 @@ struct ShortestPathOptions : BasicOptions {
   bool bidirectional;
   bool multiThreaded;
   std::string end;
+  arangodb::velocypack::Builder startBuilder;
+  arangodb::velocypack::Builder endBuilder;
 
-  explicit ShortestPathOptions(arangodb::Transaction* trx)
-      : BasicOptions(trx),
-        direction("outbound"),
-        useWeight(false),
-        weightAttribute(""),
-        defaultWeight(1),
-        bidirectional(true),
-        multiThreaded(true) {}
-
+  explicit ShortestPathOptions(arangodb::Transaction* trx);
   bool matchesVertex(std::string const&, std::string const&,
                      arangodb::velocypack::Slice) const override;
+
+  void setStart(std::string const&);
+  void setEnd(std::string const&);
+
+  arangodb::velocypack::Slice getStart() const;
+  arangodb::velocypack::Slice getEnd() const;
+
 };
 
 
@@ -417,6 +420,9 @@ class EdgeCollectionInfo {
 
   std::shared_ptr<arangodb::OperationCursor> getEdges(
       TRI_edge_direction_e direction, std::string const&);
+
+  std::shared_ptr<arangodb::OperationCursor> getEdges(
+      TRI_edge_direction_e direction, VPackSlice const&);
 
   double weightEdge(arangodb::velocypack::Slice const);
   

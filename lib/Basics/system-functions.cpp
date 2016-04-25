@@ -223,10 +223,8 @@ size_t TRI_numberProcessors() {
     return n;
   }
 
-#else
-
-  return static_cast<size_t>(std::thread_hardware_concurrency());
-
 #endif
+
+  return static_cast<size_t>(std::thread::hardware_concurrency());
 }
 
