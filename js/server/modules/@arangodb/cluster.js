@@ -165,6 +165,8 @@ function getByPrefix (values, prefix) {
   var a;
   var n = prefix.length;
 
+  require("internal").print ("prefix::::::", prefix);
+
   for (a in values) {
     if (values.hasOwnProperty(a)) {
       if (a.substr(0, n) === prefix) {
@@ -398,10 +400,15 @@ function createLocalDatabases (plannedDatabases) {
   var localDatabases = getLocalDatabases();
   var name;
 
+  require("internal").print(plannedDatabases);
+
   // check which databases need to be created locally
   for (name in plannedDatabases) {
+    require("internal").print(name);
     if (plannedDatabases.hasOwnProperty(name)) {
       var payload = plannedDatabases[name];
+      require("internal").print("+++");
+      require("internal").print(payload);
       payload.error = false;
       payload.errorNum = 0;
       payload.errorMessage = "no error";
@@ -425,7 +432,7 @@ function createLocalDatabases (plannedDatabases) {
           payload.errorMessage = err.errorMessage;
         }
       }
-
+      
       writeLocked({ part: "Current" },
                   createDatabaseAgency,
                   [ payload ]);
@@ -539,6 +546,10 @@ function cleanupCurrentDatabases () {
 function handleDatabaseChanges (plan) {
   var plannedDatabases = getByPrefix(plan, "Plan/Databases/");
 
+  require("internal").print("++++++");
+  require("internal").print(plan);
+  require("internal").print("-----");
+  
   createLocalDatabases(plannedDatabases);
   dropLocalDatabases(plannedDatabases);
   cleanupCurrentDatabases();
@@ -1431,7 +1442,11 @@ var handlePlanChange = function () {
   }
 
   try {
+
     var plan    = global.ArangoAgency.get("Plan", true);
+
+    require("internal").print(plan);
+    
     var current = global.ArangoAgency.get("Current", true);
 
     handleChanges(plan, current);

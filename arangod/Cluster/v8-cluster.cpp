@@ -32,6 +32,9 @@
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "VocBase/server.h"
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -215,7 +218,7 @@ static void JS_IncreaseVersionAgency(
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets a value from the agency
 ////////////////////////////////////////////////////////////////////////////////
-
+#include <iostream>
 static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
@@ -235,25 +238,33 @@ static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
     withIndexes = TRI_ObjectToBoolean(args[2]);
   }
 
+  std::cout << recursive << " ::::::::::::::::::::: " << withIndexes << std::endl;
+  
   AgencyComm comm;
-  AgencyCommResult result = comm.getValues(key, recursive);
+  AgencyCommResult result = comm.getValues2(key, recursive);
+
+  std::cout << result._vpack->toJson() << std::endl;
 
   if (!result.successful()) {
     THROW_AGENCY_EXCEPTION(result);
   }
 
-  result.parse("", false);
+//  result.parse("", false);
 
   v8::Handle<v8::Object> l = v8::Object::New(isolate);
 
   if (withIndexes) {
-    std::map<std::string, AgencyCommResultEntry>::const_iterator it =
-        result._values.begin();
+//    std::map<std::string, AgencyCommResultEntry>::const_iterator it =
+    //      result._values.begin();
 
-    while (it != result._values.end()) {
-      std::string const key = (*it).first;
-      VPackSlice const slice = it->second._vpack->slice();
-      std::string const idx = StringUtils::itoa((*it).second._index);
+    
+    for (auto const& i : VPackObjectIterator(result._vpack->slice())) {
+//    while (it != result._values.end()) {
+      //std::string const key = (*it).first;
+      std::string const key = i.key.copyString();
+      //VPackSlice const slice = it->second._vpack->slice();
+      VPackSlice const slice = i.value;
+      std::string const idx = "0";//StringUtils::itoa((*it).second._index);
 
       if (!slice.isNone()) {
         v8::Handle<v8::Object> sub = v8::Object::New(isolate);
@@ -264,22 +275,18 @@ static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
         l->Set(TRI_V8_STD_STRING(key), sub);
       }
 
-      ++it;
+      //++it;
     }
   } else {
     // return just the value for each key
-    std::map<std::string, AgencyCommResultEntry>::const_iterator it =
-        result._values.begin();
+    for (auto const& i : VPackObjectIterator(result._vpack->slice())) {
 
-    while (it != result._values.end()) {
-      std::string const key = (*it).first;
-      VPackSlice const slice = it->second._vpack->slice();
+      std::string const key = i.key.copyString();
+      VPackSlice const slice = i.value;
 
       if (!slice.isNone()) {
         l->ForceSet(TRI_V8_STD_STRING(key), TRI_VPackToV8(isolate, slice));
       }
-
-      ++it;
     }
   }
 

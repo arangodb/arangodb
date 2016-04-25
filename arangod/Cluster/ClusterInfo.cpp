@@ -42,6 +42,8 @@
 #include "Rest/HttpResponse.h"
 #include "VocBase/document-collection.h"
 
+#include <iostream>
+
 #ifdef _WIN32
 // turn off warnings about too long type name for debug symbols blabla in MSVC
 // only...
@@ -488,31 +490,30 @@ void ClusterInfo::loadPlannedDatabases() {
     AgencyCommLocker locker("Plan", "READ");
 
     if (locker.successful()) {
-      result = _agency.getValues(prefixPlannedDatabases, true);
+      result = _agency.getValues2(prefixPlannedDatabases, true);
     }
   }
 
   if (result.successful()) {
-    result.parse(prefixPlannedDatabases + "/", false);
-
+    
+    velocypack::Slice databases =
+      result._vpack->slice()[0]
+      .get(AgencyComm::prefix().substr(1,AgencyComm::prefix().size()-2))
+      .get("Plan").get("Databases");
+    
     decltype(_plannedDatabases) newDatabases;
 
-    // result._values is a std::map<std::string, AgencyCommResultEntry>
-    auto it = result._values.begin();
+    for (auto const& database : VPackObjectIterator(databases)) {
 
-    while (it != result._values.end()) {
-      std::string const& name = (*it).first;
+      std::string const& name = database.key.copyString();
       // TODO: _plannedDatabases need to be moved to velocypack
       // Than this can be merged to swap
-      TRI_json_t* options =
-          arangodb::basics::VelocyPackHelper::velocyPackToJson(
-              (*it).second._vpack->slice());
 
-      // steal the VelocyPack
-      (*it).second._vpack.reset();
+      TRI_json_t* options = 
+        arangodb::basics::VelocyPackHelper::velocyPackToJson(database.value);
+
       newDatabases.insert(std::make_pair(name, options));
 
-      ++it;
     }
 
     // Now set the new value:
@@ -578,22 +579,22 @@ void ClusterInfo::loadCurrentDatabases() {
   AgencyCommResult result;
   {
     AgencyCommLocker locker("Plan", "READ");
-
     if (locker.successful()) {
-      result = _agency.getValues(prefixCurrentDatabases, true);
+      result = _agency.getValues2(prefixCurrentDatabases, true);
     }
   }
 
   if (result.successful()) {
-    result.parse(prefixCurrentDatabases + "/", false);
 
+    velocypack::Slice databases =
+      result._vpack->slice()[0]
+      .get(AgencyComm::prefix().substr(1,AgencyComm::prefix().size()-2))
+      .get("Current").get("Databases");
+    
     decltype(_currentDatabases) newDatabases;
 
-    std::map<std::string, AgencyCommResultEntry>::iterator it =
-        result._values.begin();
-
-    while (it != result._values.end()) {
-      std::string const key = (*it).first;
+    for (auto const& dbase : VPackObjectIterator(databases)) {//it != result._values.end()) {
+      std::string const key = dbase.key.copyString();
 
       // each entry consists of a database id and a collection id, separated by
       // '/'
@@ -601,7 +602,7 @@ void ClusterInfo::loadCurrentDatabases() {
           arangodb::basics::StringUtils::split(key, '/');
 
       if (parts.empty()) {
-        ++it;
+//        ++it;
         continue;
       }
       std::string const database = parts[0];
@@ -622,14 +623,11 @@ void ClusterInfo::loadCurrentDatabases() {
         // TODO: _plannedDatabases need to be moved to velocypack
         // Than this can be merged to swap
         TRI_json_t* json = arangodb::basics::VelocyPackHelper::velocyPackToJson(
-            (*it).second._vpack->slice());
+            dbase.value);
 
-        // steal the VelocyPack
-        (*it).second._vpack.reset();
         (*it2).second.insert(std::make_pair(parts[1], json));
       }
 
-      ++it;
     }
 
     // Now set the new value:
@@ -671,7 +669,7 @@ void ClusterInfo::loadPlannedCollections() {
     AgencyCommLocker locker("Plan", "READ");
 
     if (locker.successful()) {
-      result = _agency.getValues(prefixPlannedCollections, true);
+      result = _agency.getValues2(prefixPlannedCollections, true);
     } else {
       LOG(ERR) << "Error while locking " << prefixPlannedCollections;
       return;
@@ -679,17 +677,20 @@ void ClusterInfo::loadPlannedCollections() {
   }
 
   if (result.successful()) {
-    result.parse(prefixPlannedCollections + "/", false);
 
+    velocypack::Slice collections =
+      result._vpack->slice()[0]
+      .get(AgencyComm::prefix().substr(1,AgencyComm::prefix().size()-2))
+      .get("Plan").get("Collections");
+        
     decltype(_plannedCollections) newCollections;
     decltype(_shards) newShards;
     decltype(_shardKeys) newShardKeys;
 
-    std::map<std::string, AgencyCommResultEntry>::iterator it =
-        result._values.begin();
-
-    for (; it != result._values.end(); ++it) {
-      std::string const key = (*it).first;
+    for (auto const& col : VPackObjectIterator(collections)) {
+//    for (; it != result._values.end(); ++it) {
+//      std::string const key = (*it).first;
+      std::string const key = col.key.copyString();
 
       // each entry consists of a database id and a collection id, separated by
       // '/'
@@ -717,9 +718,7 @@ void ClusterInfo::loadPlannedCollections() {
 
       // TODO: The Collection info has to store VPack instead of JSON
       TRI_json_t* json = arangodb::basics::VelocyPackHelper::velocyPackToJson(
-          (*it).second._vpack->slice());
-      // steal the velocypack
-      (*it).second._vpack.reset();
+          col.value);
 
       auto collectionData = std::make_shared<CollectionInfo>(json);
       auto shardKeys = std::make_shared<std::vector<std::string>>(
@@ -884,21 +883,23 @@ void ClusterInfo::loadCurrentCollections() {
     AgencyCommLocker locker("Current", "READ");
 
     if (locker.successful()) {
-      result = _agency.getValues(prefixCurrentCollections, true);
+      result = _agency.getValues2(prefixCurrentCollections, true);
     }
   }
 
   if (result.successful()) {
-    result.parse(prefixCurrentCollections + "/", false);
 
+    velocypack::Slice collections =
+      result._vpack->slice()[0]
+      .get(AgencyComm::prefix().substr(1,AgencyComm::prefix().size()-2))
+      .get("Current").get("Collections");
+    
     decltype(_currentCollections) newCollections;
     decltype(_shardIds) newShardIds;
 
-    std::map<std::string, AgencyCommResultEntry>::iterator it =
-        result._values.begin();
+    for (auto const& col : VPackObjectIterator(collections)) {
 
-    for (; it != result._values.end(); ++it) {
-      std::string const key = (*it).first;
+      std::string const key = col.key.copyString();
 
       // each entry consists of a database id, a collection id, and a shardID,
       // separated by '/'
@@ -928,9 +929,7 @@ void ClusterInfo::loadCurrentCollections() {
 
       // TODO: The Collection info has to store VPack instead of JSON
       TRI_json_t* json = arangodb::basics::VelocyPackHelper::velocyPackToJson(
-          (*it).second._vpack->slice());
-      // steal the velocypack
-      (*it).second._vpack.reset();
+          col.value);
 
       // check whether we already have a CollectionInfoCurrent:
       DatabaseCollectionsCurrent::iterator it3 = it2->second.find(collection);
@@ -2050,26 +2049,26 @@ void ClusterInfo::loadServers() {
     AgencyCommLocker locker("Current", "READ");
 
     if (locker.successful()) {
-      result = _agency.getValues(prefixServers, true);
+      result = _agency.getValues2(prefixServers, true);
     }
   }
 
   if (result.successful()) {
-    result.parse(prefixServers + "/", false);
+    
+    velocypack::Slice serversRegistered =
+      result._vpack->slice()[0]
+      .get(AgencyComm::prefix().substr(1,AgencyComm::prefix().size()-2)).
+      get("Current").get("ServersRegistered");
 
     decltype(_servers) newServers;
 
-    std::map<std::string, AgencyCommResultEntry>::const_iterator it =
-        result._values.begin();
-
-    while (it != result._values.end()) {
-      VPackSlice const slice = it->second._vpack->slice();
+    for (auto const& res : VPackObjectIterator(serversRegistered)) {
+      velocypack::Slice slice = res.value;
       if (slice.isObject() && slice.hasKey("endpoint")) {
         std::string server = arangodb::basics::VelocyPackHelper::getStringValue(
-            slice, "endpoint", "");
-        newServers.emplace(std::make_pair((*it).first, server));
+          slice, "endpoint", "");
+        newServers.emplace(std::make_pair(res.key.copyString(), server));
       }
-      ++it;
     }
 
     // Now set the new value:
@@ -2081,7 +2080,7 @@ void ClusterInfo::loadServers() {
     }
     return;
   }
-
+  
   LOG(DEBUG) << "Error while loading " << prefixServers
              << " httpCode: " << result.httpCode()
              << " errorCode: " << result.errorCode()

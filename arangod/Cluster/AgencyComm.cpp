@@ -45,6 +45,8 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
+#include <iostream>
+
 using namespace arangodb;
 
 static void addEmptyVPackObject(std::string const& name, VPackBuilder& builder) {
@@ -332,10 +334,7 @@ bool AgencyCommResult::parseVelocyPackNode(VPackSlice const& node,
   size_t const length = keydecoded.size();
 
   std::string prefix;
-  if (offset >= length) {
-#warning not necessary see http://en.cppreference.com/w/cpp/string/basic_string/basic_string
-    prefix = ""; 
-  } else {
+  if (offset < length) {
     prefix = keydecoded.substr(offset);
   }
 
@@ -1154,15 +1153,8 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
 AgencyCommResult AgencyComm::setValue(std::string const& key,
                                       arangodb::velocypack::Slice const& slice,
                                       double ttl) {
-  // mop: old etcd didn't support writing a json structure.
-  // have to encode the structure as a json
-
-  //KV VPackBuilder builder;
-  //KV builder.add(VPackValue(slice.toJson()));
-  
 
   AgencyCommResult result;
-  //KV AgencyOperation operation(key, AgencyValueOperationType::SET, builder.slice());
   AgencyOperation operation(key, AgencyValueOperationType::SET, slice);
   operation._ttl = static_cast<uint32_t>(ttl);
   AgencyTransaction transaction(operation);
@@ -1201,7 +1193,7 @@ AgencyCommResult AgencyComm::increment(std::string const& key) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets one or multiple values from the backend
 ////////////////////////////////////////////////////////////////////////////////
-#include<iostream>
+
 AgencyCommResult AgencyComm::getValues(std::string const& key, bool recursive) {
   std::string url(buildUrl());
   
@@ -1312,6 +1304,60 @@ AgencyCommResult AgencyComm::getValues(std::string const& key, bool recursive) {
 
     LOG(TRACE) << "Created fake etcd node" << result._body;
     result._statusCode = 200;
+  } catch(std::exception &e) {
+    LOG(ERR) << "Error transforming result. " << e.what();
+    result.clear();
+  } catch(...) {
+    LOG(ERR) << "Error transforming result. Out of memory";
+    result.clear();
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets one or multiple values from the backend
+////////////////////////////////////////////////////////////////////////////////
+
+AgencyCommResult AgencyComm::getValues2(std::string const& key, bool recursive) {
+  std::string url(buildUrl());
+  
+  url += "/read";
+  AgencyCommResult result;
+  VPackBuilder builder;
+  {
+    VPackArrayBuilder root(&builder);
+    {
+      VPackArrayBuilder keys(&builder);
+      builder.add(VPackValue(AgencyComm::prefix() + key));
+    }
+  }
+
+  sendWithFailover(arangodb::GeneralRequest::RequestType::POST,
+                   _globalConnectionOptions._requestTimeout, result, url,
+                   builder.toJson(), false);
+
+  if (!result.successful()) {
+    return result;
+  }
+  
+  try {
+
+    result._vpack = VPackParser::fromJson(result.body().c_str());
+
+    if (!result._vpack->slice().isArray()) {
+      result._statusCode = 500;
+      return result;
+    }
+
+    if (result._vpack->slice().length() != 1) {
+      result._statusCode = 500;
+      return result;
+    }
+    
+    result._body.clear();
+    result._statusCode = 200;
+    
   } catch(std::exception &e) {
     LOG(ERR) << "Error transforming result. " << e.what();
     result.clear();

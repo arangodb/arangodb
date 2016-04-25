@@ -357,6 +357,7 @@ struct AgencyCommResult {
   std::string _message;
   std::string _body;
   std::string _realBody;
+  std::shared_ptr<velocypack::Builder> _vpack;
 
   std::map<std::string, AgencyCommResultEntry> _values;
   uint64_t _index;
@@ -538,6 +539,7 @@ class AgencyComm {
   //////////////////////////////////////////////////////////////////////////////
 
   AgencyCommResult getValues(std::string const&, bool);
+  AgencyCommResult getValues2(std::string const&, bool);
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief increment a value
