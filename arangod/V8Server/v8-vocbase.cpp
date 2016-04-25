@@ -1700,6 +1700,7 @@ static void JS_ThrowCollectionNotLoaded(
 ///        NOTE: Collection has to be known to the transaction.
 ////////////////////////////////////////////////////////////////////////////////
 
+
 static v8::Handle<v8::Value> VertexIdToData(v8::Isolate* isolate,
                                             Transaction* trx,
                                             std::string const& vertexId) {
@@ -1724,16 +1725,12 @@ static v8::Handle<v8::Value> VertexIdToData(v8::Isolate* isolate,
   return TRI_VPackToV8(isolate, opRes.slice(), &resultOptions);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Transforms EdgeId to v8 object
-///        NOTE: Collection has to be known to the transaction.
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> EdgeIdToData(v8::Isolate* isolate,
-                                          Transaction* trx,
-                                          std::string const& edgeId) {
-  return VertexIdToData(isolate, trx, edgeId);
+static v8::Handle<v8::Value> VertexIdToData(v8::Isolate* isolate,
+                                            Transaction* trx,
+                                            VPackSlice const& vertexId) {
+  return VertexIdToData(isolate, trx, vertexId.copyString());
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Start a new transaction for the given collections and request
@@ -1787,14 +1784,16 @@ static v8::Handle<v8::Value> PathIdsToV8(v8::Isolate* isolate,
       vertices->Set(j, VertexIdToData(isolate, trx, p.vertices[j]));
     }
     for (uint32_t j = 0; j < en; ++j) {
-      edges->Set(j, EdgeIdToData(isolate, trx, p.edges[j]));
+      VPackOptions resultOptions = VPackOptions::Defaults;
+      resultOptions.customTypeHandler = trx->transactionContext()->orderCustomTypeHandler().get();
+      edges->Set(j, TRI_VPackToV8(isolate, p.edges[j], &resultOptions));
     }
   } else {
     for (uint32_t j = 0; j < vn; ++j) {
-      vertices->Set(j, TRI_V8_STD_STRING(p.vertices[j]));
+      vertices->Set(j, TRI_V8_STD_STRING(p.vertices[j].copyString()));
     }
     for (uint32_t j = 0; j < en; ++j) {
-      edges->Set(j, TRI_V8_STD_STRING(p.edges[j]));
+      edges->Set(j, TRI_V8_STD_STRING(trx->extractIdString(p.edges[j])));
     }
   }
 
@@ -1828,14 +1827,16 @@ static v8::Handle<v8::Value> PathIdsToV8(
       vertices->Set(j, VertexIdToData(isolate, trx, p.vertices[j]));
     }
     for (uint32_t j = 0; j < en; ++j) {
-      edges->Set(j, EdgeIdToData(isolate, trx, p.edges[j]));
+      VPackOptions resultOptions = VPackOptions::Defaults;
+      resultOptions.customTypeHandler = trx->transactionContext()->orderCustomTypeHandler().get();
+      edges->Set(j, TRI_VPackToV8(isolate, p.edges[j], &resultOptions));
     }
   } else {
     for (uint32_t j = 0; j < vn; ++j) {
-      vertices->Set(j, TRI_V8_STD_STRING(p.vertices[j]));
+      vertices->Set(j, TRI_V8_STD_STRING(p.vertices[j].copyString()));
     }
     for (uint32_t j = 0; j < en; ++j) {
-      edges->Set(j, TRI_V8_STD_STRING(p.edges[j]));
+      edges->Set(j, TRI_V8_STD_STRING(trx->extractIdString(p.edges[j])));
     }
   }
 
@@ -2104,8 +2105,8 @@ static void JS_QueryShortestPath(
   }
 
   try {
-    opts.start = startVertex;
-    opts.end = targetVertex;
+    opts.setStart(startVertex);
+    opts.setEnd(targetVertex);
   } catch (Exception& e) {
     // Id string might have illegal collection name
     trx->finish(e.code());
