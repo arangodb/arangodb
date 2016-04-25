@@ -60,7 +60,7 @@ static OperationResult FetchDocumentById(arangodb::Transaction* trx,
   trx->addCollectionAtRuntime(col);
   builder.clear();
   builder.openObject();
-  builder.add(VPackValue(TRI_VOC_ATTRIBUTE_KEY));
+  builder.add(VPackValue(Transaction::KeyString));
   builder.add(VPackValue(id.substr(pos + 1)));
   builder.close();
 
@@ -101,10 +101,11 @@ struct BasicExpander {
         edgeCursor->getMoreMptr(_cursor, UINT64_MAX);
         for (auto const& mptr : _cursor) {
           VPackSlice edge(mptr->vpack());
-          std::string edgeId = _trx->extractIdString(edge);
-          std::string from = edge.get(TRI_VOC_ATTRIBUTE_FROM).copyString();
+          std::string edgeId = edgeCollection->getName() + "/" +
+                               edge.get(Transaction::KeyString).copyString();
+          std::string from = edge.get(Transaction::FromString).copyString();
           if (from == v) {
-            std::string to = edge.get(TRI_VOC_ATTRIBUTE_TO).copyString();
+            std::string to = edge.get(Transaction::ToString).copyString();
             if (to != v) {
               res_edges.emplace_back(std::move(edgeId));
               neighbors.emplace_back(std::move(to));
@@ -219,8 +220,10 @@ class MultiCollectionEdgeExpander {
           auto cand = candidates.find(t);
           if (cand == candidates.end()) {
             // Add weight
+            std::string edgeId = edgeCollection->getName() + "/" +
+                                 edge.get(Transaction::KeyString).copyString();
             auto step = std::make_unique<ArangoDBPathFinder::Step>(
-                t, s, currentWeight, edgeCollection->trx()->extractIdString(edge));
+                t, s, currentWeight, std::move(edgeId));
             result.emplace_back(step.release());
             candidates.emplace(t, result.size() - 1);
           } else {
@@ -241,8 +244,8 @@ class MultiCollectionEdgeExpander {
           if (!_isAllowed(edge)) {
             continue;
           }
-          std::string const from = edge.get(TRI_VOC_ATTRIBUTE_FROM).copyString();
-          std::string const to = edge.get(TRI_VOC_ATTRIBUTE_TO).copyString();
+          std::string const from = edge.get(Transaction::FromString).copyString();
+          std::string const to = edge.get(Transaction::ToString).copyString();
           double currentWeight = edgeCollection->weightEdge(edge);
           if (from == source) {
             inserter(from, to, currentWeight, edge);
@@ -286,8 +289,10 @@ class SimpleEdgeExpander {
       auto cand = _candidates.find(t);
       if (cand == _candidates.end()) {
         // Add weight
+        std::string edgeId = _edgeCollection->getName() + "/" +
+                             edge.get(Transaction::KeyString).copyString();
         auto step = std::make_unique<ArangoDBPathFinder::Step>(
-            std::move(t), std::move(s), currentWeight, _edgeCollection->trx()->extractIdString(edge));
+            std::move(t), std::move(s), currentWeight, edgeId);
         result.emplace_back(step.release());
       } else {
         // Compare weight
@@ -307,8 +312,8 @@ class SimpleEdgeExpander {
       }
       VPackSlice edges = opRes->slice();
       for (auto const& edge : VPackArrayIterator(edges)) {
-        std::string const from = edge.get(TRI_VOC_ATTRIBUTE_FROM).copyString();
-        std::string const to = edge.get(TRI_VOC_ATTRIBUTE_TO).copyString();
+        std::string const from = edge.get(Transaction::FromString).copyString();
+        std::string const to = edge.get(Transaction::ToString).copyString();
         double currentWeight = _edgeCollection->weightEdge(edge);
         if (from == source) {
           inserter(std::move(from), std::move(to), currentWeight, edge);
@@ -505,7 +510,7 @@ bool NeighborsOptions::matchesVertex(std::string const& id) const {
   std::string key = id.substr(pos + 1);
   VPackBuilder tmp;
   tmp.openObject();
-  tmp.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+  tmp.add(Transaction::KeyString, VPackValue(key));
   tmp.close();
   OperationOptions opOpts;
   OperationResult opRes = _trx->document(col, tmp.slice(), opOpts);
@@ -568,7 +573,7 @@ std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch(
 
     VPackBuilder tmp;
     tmp.openObject();
-    tmp.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
+    tmp.add(Transaction::KeyString, VPackValue(key));
     tmp.close();
     OperationOptions opOpts;
     OperationResult opRes = opts.trx()->document(col, tmp.slice(), opOpts);
@@ -656,7 +661,7 @@ static void InboundNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
           VPackSlice edge(mptr->vpack());
           if (opts.matchesEdge(edge)) {
             VPackValueLength l;
-            char const* v = edge.get(TRI_VOC_ATTRIBUTE_FROM).getString(l);
+            char const* v = edge.get(Transaction::FromString).getString(l);
             if (visited.find(std::string(v, l)) != visited.end()) {
               // We have already visited this vertex
               continue;
@@ -709,7 +714,7 @@ static void OutboundNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
           VPackSlice edge(mptr->vpack());
           if (opts.matchesEdge(edge)) {
             VPackValueLength l;
-            char const* v = edge.get(TRI_VOC_ATTRIBUTE_TO).getString(l);
+            char const* v = edge.get(Transaction::ToString).getString(l);
             if (visited.find(std::string(v, l)) != visited.end()) {
               // We have already visited this vertex
               continue;
@@ -763,7 +768,7 @@ static void AnyNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
           VPackSlice edge(mptr->vpack());
           if (opts.matchesEdge(edge)) {
             VPackValueLength l;
-            char const* v = edge.get(TRI_VOC_ATTRIBUTE_TO).getString(l);
+            char const* v = edge.get(Transaction::ToString).getString(l);
             if (visited.find(std::string(v, l)) == visited.end()) {
               std::string tmp(v, l);
               if (depth >= opts.minDepth) {
@@ -777,7 +782,7 @@ static void AnyNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
               visited.emplace(std::move(tmp));
               continue;
             }
-            v = edge.get(TRI_VOC_ATTRIBUTE_FROM).getString(l);
+            v = edge.get(Transaction::FromString).getString(l);
             if (visited.find(std::string(v, l)) == visited.end()) {
               std::string tmp(v, l);
               if (depth >= opts.minDepth) {
@@ -963,9 +968,9 @@ void DepthFirstTraverser::_defInternalFunctions() {
     TRI_ASSERT(it != _edges.end());
     VPackSlice v(it->second->data());
     // NOTE: We assume that we only have valid edges.
-    result = v.get(TRI_VOC_ATTRIBUTE_FROM).copyString();
+    result = v.get(Transaction::FromString).copyString();
     if (result == vertex) {
-      result = v.get(TRI_VOC_ATTRIBUTE_TO).copyString();
+      result = v.get(Transaction::ToString).copyString();
     }
     return true;
   };

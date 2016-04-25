@@ -27,6 +27,7 @@
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
+#include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -54,6 +55,7 @@ int main(int argc, char* argv[]) {
   server.addFeature(new RestoreFeature(&server, &ret));
   server.addFeature(new ShutdownFeature(&server, "Restore"));
   server.addFeature(new TempFeature(&server, "arangorestore"));
+  server.addFeature(new VersionFeature(&server));
 
   server.run(argc, argv);
 

@@ -21,8 +21,8 @@
 /// @author Dr. Oreste Costa-Panaia
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_BASICS_MEMORY_MAP_H
-#define LIB_BASICS_MEMORY_MAP_H 1
+#ifndef ARANGODB_BASICS_MEMORY__MAP_H
+#define ARANGODB_BASICS_MEMORY__MAP_H 1
 
 #include "Basics/Common.h"
 

@@ -34,7 +34,7 @@ class HeartbeatThread;
 
 class ClusterFeature : public application_features::ApplicationFeature {
  public:
-  ClusterFeature(application_features::ApplicationServer*);
+  explicit ClusterFeature(application_features::ApplicationServer*);
   ~ClusterFeature();
 
  public:

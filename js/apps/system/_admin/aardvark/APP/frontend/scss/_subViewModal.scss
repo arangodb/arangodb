@@ -1,12 +1,47 @@
 .centralContent {
 
   .createModalDialog {
+    background-color: $c-white;
     outline: none;
+  }
+
+  .contentIn {
+    background: $c-white;
+    border: 1px solid $c-bluegrey-border;
+    border-radius: 2px;
+    padding: 20px;
+
+    table {
+      border: 0;
+
+      select {
+        margin-top: -10px;
+      }
+
+      tr {
+        height: 40px;
+      }
+    }
   }
 
   .modal-body {
     color: $c-black;
     max-height: none;
+
+    .arango-table {
+      tr {
+        height: 40px;
+
+        th {
+          padding-left: 10px;
+        }
+      }
+    }
+
+    .figuresHeader {
+      background-color: $c-bluegrey-dark;
+      color: $c-white;
+    }
 
     .icon_arangodb_info {
       margin-left: 10px;
@@ -20,6 +55,12 @@
     .tab-pane {
       padding-top: 0 !important;
     }
+  }
+
+  .modal-footer {
+    background-color: rgba(0, 0, 0, 0);
+    border-top: 0;
+    box-shadow: none;
   }
 
   .figures1,

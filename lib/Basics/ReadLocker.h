@@ -22,8 +22,8 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_BASICS_READ_LOCKER_H
-#define LIB_BASICS_READ_LOCKER_H 1
+#ifndef ARANGODB_BASICS_READ_LOCKER_H
+#define ARANGODB_BASICS_READ_LOCKER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"

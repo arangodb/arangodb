@@ -27,7 +27,6 @@
 #include "Logger/Logger.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
-#include "Rest/Version.h"
 #include "ProgramOptions/IniFileParser.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -41,7 +40,6 @@ ConfigFeature::ConfigFeature(application_features::ApplicationServer* server,
                              std::string const& progname)
     : ApplicationFeature(server, "Config"),
       _file(""),
-      _version(false),
       _checkConfiguration(false),
       _progname(progname) {
   setOptional(false);
@@ -50,32 +48,21 @@ ConfigFeature::ConfigFeature(application_features::ApplicationServer* server,
 }
 
 void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addOption("--configuration,-c", "the configuration file or 'none'",
                      new StringParameter(&_file));
 
-  options->addOption("--version", "reports the version and exists",
-                     new BooleanParameter(&_version, false));
+  // add --config as an alias for --configuration. both point to the same variable!
+  options->addHiddenOption("--config", "the configuration file or 'none'",
+                     new StringParameter(&_file));
 
   options->addOption("--check-configuration", "check the configuration and exists",
                      new BooleanParameter(&_checkConfiguration, false));
 }
 
 void ConfigFeature::loadOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::loadOptions";
-
   loadConfigFile(options);
- 
-  if (_checkConfiguration) {
-    exit(EXIT_SUCCESS);
-  }
-}
 
-void ConfigFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
-  if (_version) {
-    std::cout << Version::getServerVersion() << "\n\n"
-              << Version::getDetailed() << std::endl;
+  if (_checkConfiguration) {
     exit(EXIT_SUCCESS);
   }
 }

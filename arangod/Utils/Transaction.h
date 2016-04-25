@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
+#include "Cluster/ServerState.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/transaction.h"
@@ -35,6 +36,8 @@
 #include <velocypack/Slice.h>
 
 #define TRI_DEFAULT_BATCH_SIZE 1000
+
+struct TRI_document_collection_t;
 
 namespace arangodb {
 
@@ -188,7 +191,7 @@ class Transaction {
   /// @brief return the collection name resolver
   //////////////////////////////////////////////////////////////////////////////
 
-  CollectionNameResolver const* resolver() const;
+  CollectionNameResolver const* resolver();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the transaction is embedded
@@ -522,7 +525,8 @@ class Transaction {
   /// argument as a single object.
   //////////////////////////////////////////////////////////////////////////////
 
-  void buildDocumentIdentity(VPackBuilder& builder,
+  void buildDocumentIdentity(TRI_document_collection_t* document,
+                             VPackBuilder& builder,
                              TRI_voc_cid_t cid,
                              std::string const& key,
                              VPackSlice const rid,
@@ -761,6 +765,12 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_voc_tid_t _externalId;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief role of server in cluster
+  //////////////////////////////////////////////////////////////////////////////
+  
+  ServerState::RoleEnum _serverRole;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief error that occurred on transaction initialization (before begin())
@@ -822,6 +832,12 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_vocbase_t* const _vocbase;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief collection name resolver (cached)
+  //////////////////////////////////////////////////////////////////////////////
+  
+  CollectionNameResolver const* _resolver;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the transaction context
@@ -829,12 +845,22 @@ class Transaction {
 
   std::shared_ptr<TransactionContext> _transactionContext;
 
+ public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief makeNolockHeaders
   //////////////////////////////////////////////////////////////////////////////
 
- public:
   static thread_local std::unordered_set<std::string>* _makeNolockHeaders;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief constants for _id, _key, _rev
+  //////////////////////////////////////////////////////////////////////////////
+
+  static std::string const KeyString;
+  static std::string const RevString;
+  static std::string const IdString;
+  static std::string const FromString;
+  static std::string const ToString;
 };
 
 class TransactionBuilderLeaser {

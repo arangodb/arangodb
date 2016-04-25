@@ -21,8 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_UTILITIES_SCRIPT_LOADER_H
-#define LIB_UTILITIES_SCRIPT_LOADER_H 1
+#ifndef ARANGODB_UTILITIES_SCRIPT_LOADER_H
+#define ARANGODB_UTILITIES_SCRIPT_LOADER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"

@@ -56,8 +56,6 @@ ClientFeature::ClientFeature(application_features::ApplicationServer* server,
 }
 
 void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addSection(_section, "Configure a connection to the server");
 
   options->addOption("--" + _section + ".database",
@@ -100,8 +98,6 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
-
   // if a username is specified explicitly, assume authentication is desired
   if (options->processingResult().touched(_section + ".username")) {
     _authentication = true;

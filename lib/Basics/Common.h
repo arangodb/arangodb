@@ -21,8 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_BASICS_COMMON_H
-#define LIB_BASICS_COMMON_H 1
+#ifndef ARANGODB_BASICS_COMMON_H
+#define ARANGODB_BASICS_COMMON_H 1
 
 #ifdef _WIN32
 

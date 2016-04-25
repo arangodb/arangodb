@@ -21,8 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_V8_V8_CONV_H
-#define LIB_V8_V8_CONV_H 1
+#ifndef ARANGODB_V8_V8__CONV_H
+#define ARANGODB_V8_V8__CONV_H 1
 
 #include "Basics/Common.h"
 #include "Basics/json.h"

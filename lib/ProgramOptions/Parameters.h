@@ -111,7 +111,7 @@ struct Parameter {
     }
     return "";
   }
-  
+
   virtual void toVPack(VPackBuilder&) const = 0;
 };
 
@@ -295,7 +295,7 @@ struct StringParameter : public Parameter {
 // this templated type needs a concrete value type
 template <typename T>
 struct DiscreteValuesParameter : public T {
-  DiscreteValuesParameter(typename T::ValueType* ptr, 
+  DiscreteValuesParameter(typename T::ValueType* ptr,
                    std::unordered_set<typename T::ValueType> const& allowed)
       : T(ptr), allowed(allowed) {}
 

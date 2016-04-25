@@ -21,8 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_BASICS_LOCKS_WIN32_H
-#define LIB_BASICS_LOCKS_WIN32_H 1
+#ifndef ARANGODB_BASICS_LOCKS__WIN32_H
+#define ARANGODB_BASICS_LOCKS__WIN32_H 1
 
 #include "Basics/Common.h"
 

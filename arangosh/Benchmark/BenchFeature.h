@@ -20,8 +20,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_ARANGOB_FEATURE_H
-#define APPLICATION_FEATURES_ARANGOB_FEATURE_H 1
+#ifndef ARANGODB_BENCHMARK_BENCH_FEATURE_H
+#define ARANGODB_BENCHMARK_BENCH_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 

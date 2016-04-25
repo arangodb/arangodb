@@ -26,6 +26,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/DatabaseServerFeature.h"
 #include "V8/v8-globals.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
@@ -55,8 +56,6 @@ UpgradeFeature::UpgradeFeature(
 }
 
 void UpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addSection("database", "Configure the database");
 
   options->addOption("--database.upgrade",
@@ -69,8 +68,6 @@ void UpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
-
   if (_upgrade && !_upgradeCheck) {
     LOG(FATAL) << "cannot specify both '--database.upgrade true' and "
                   "'--database.upgrade-check false'";
@@ -86,19 +83,17 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   ApplicationServer::forceDisableFeatures(_nonServerFeatures);
 
-  DatabaseFeature* database = dynamic_cast<DatabaseFeature*>(
-      ApplicationServer::lookupFeature("Database"));
+  DatabaseFeature* database = 
+      ApplicationServer::getFeature<DatabaseFeature>("Database");
   database->disableReplicationApplier();
   database->enableUpgrade();
 
-  ClusterFeature* cluster = dynamic_cast<ClusterFeature*>(
-      ApplicationServer::lookupFeature("Cluster"));
+  ClusterFeature* cluster = 
+      ApplicationServer::getFeature<ClusterFeature>("Cluster");
   cluster->forceDisable();
 }
 
 void UpgradeFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
   // open the log file for writing
   if (!wal::LogfileManager::instance()->open()) {
     LOG(FATAL) << "Unable to finish WAL recovery procedure";
@@ -119,7 +114,7 @@ void UpgradeFeature::start() {
 void UpgradeFeature::upgradeDatabase() {
   LOG(TRACE) << "starting database init/upgrade";
 
-  auto* server = DatabaseFeature::DATABASE->server();
+  auto* server = DatabaseServerFeature::SERVER;
   auto* systemVocbase = DatabaseFeature::DATABASE->vocbase();
 
   // enter context and isolate

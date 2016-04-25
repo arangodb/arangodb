@@ -42,10 +42,15 @@ class ServerFeature final : public application_features::ApplicationFeature {
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
   void beginShutdown() override final;
-  void stop() override final;
 
  public:
   OperationMode operationMode() const { return _operationMode; }
+  
+  std::string operationModeString() const {
+    return operationModeString(operationMode());
+  }
+
+  static std::string operationModeString(OperationMode mode); 
 
  private:
   bool _console;

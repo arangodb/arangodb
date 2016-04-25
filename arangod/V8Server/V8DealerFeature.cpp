@@ -107,8 +107,6 @@ V8DealerFeature::V8DealerFeature(
 }
 
 void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addSection("javascript", "Configure the Javascript engine");
 
   options->addOption(
@@ -136,8 +134,6 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
-
   // check the startup path
   if (_startupPath.empty()) {
     LOG(FATAL)
@@ -164,8 +160,6 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void V8DealerFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
   // dump paths
   {
     std::vector<std::string> paths;
@@ -230,8 +224,6 @@ void V8DealerFeature::start() {
 }
 
 void V8DealerFeature::stop() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
-
   shutdownContexts();
 
   // delete GC thread after all action threads have been stopped
@@ -690,7 +682,7 @@ void V8DealerFeature::applyContextUpdates() {
       }
 
       V8Context* context =
-          V8DealerFeature::DEALER->enterContext(vocbase, true, i);
+          V8DealerFeature::DEALER->enterContext(vocbase, true, static_cast<ssize_t>(i));
 
       if (context == nullptr) {
         LOG(FATAL) << "could not updated V8 context #" << i;
@@ -975,7 +967,7 @@ void V8DealerFeature::initializeContext(size_t i) {
 
 void V8DealerFeature::loadJavascriptFiles(TRI_vocbase_t* vocbase,
                                           std::string const& file, size_t i) {
-  V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase, true, i);
+  V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase, true, static_cast<ssize_t>(i));
 
   if (context == nullptr) {
     LOG(FATAL) << "could not load JavaScript files in context #" << i;

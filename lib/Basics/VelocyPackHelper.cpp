@@ -71,7 +71,7 @@ struct SystemAttributeExcludeHandler : public VPackAttributeExcludeHandler {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief static initializer for all VPack values
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 void VelocyPackHelper::initialize() {
   LOG(TRACE) << "initializing vpack";
 
@@ -90,11 +90,11 @@ void VelocyPackHelper::initialize() {
   // set the attribute translator in the global options
   VPackOptions::Defaults.attributeTranslator = Translator.get();
   // VPackOptions::Defaults.unsupportedTypeBehavior = VPackOptions::ConvertUnsupportedType;
-  
+
   // initialize exclude handler for system attributes
   ExcludeHandler.reset(new SystemAttributeExcludeHandler);
 }
-  
+
 void VelocyPackHelper::disableAssemblerFunctions() {
   arangodb::velocypack::disableAssemblerFunctions();
 }
@@ -134,7 +134,7 @@ static int TypeWeight(VPackSlice const& slice) {
     case VPackValueType::MinKey:
       return -99; // must be lowest
     case VPackValueType::Illegal:
-      return -1; 
+      return -1;
     case VPackValueType::None:
     case VPackValueType::Null:
       return 0;
@@ -156,7 +156,7 @@ static int TypeWeight(VPackSlice const& slice) {
       return 4;
     case VPackValueType::Object:
       return 5;
-    case VPackValueType::External: 
+    case VPackValueType::External:
       return TypeWeight(slice.resolveExternal());
     default:
       // All other values have equal weight
@@ -291,7 +291,7 @@ TRI_json_t* VelocyPackHelper::velocyPackToJson(VPackSlice const& slice, VPackOpt
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a json file to VelocyPack
-//////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<VPackBuilder> VelocyPackHelper::velocyPackFromFile(
     std::string const& path) {
@@ -362,9 +362,9 @@ static bool PrintVelocyPack(int fd, VPackSlice const& slice,
   return true;
 }
 
-//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// @brief writes a VelocyPack to a file
-//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
 bool VelocyPackHelper::velocyPackToFile(char const* filename,
                                         VPackSlice const& slice,
@@ -462,7 +462,7 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs,
     case VPackValueType::Illegal:
     case VPackValueType::MinKey:
     case VPackValueType::MaxKey:
-      return 0; 
+      return 0;
     case VPackValueType::None:
     case VPackValueType::Null:
       return 0;  // null == null;
@@ -483,7 +483,7 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs,
     case VPackValueType::SmallInt: {
       return compareNumberValues(lhs, rhs);
     }
-    case VPackValueType::Custom: 
+    case VPackValueType::Custom:
     case VPackValueType::String: {
       std::string lhsString;
       VPackValueLength nl;
@@ -500,8 +500,8 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs,
         left = lhs.getString(nl);
       }
       TRI_ASSERT(left != nullptr);
-     
-      std::string rhsString; 
+
+      std::string rhsString;
       VPackValueLength nr;
       char const* right;
       if (rhs.isCustom()) {

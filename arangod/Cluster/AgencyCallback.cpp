@@ -169,7 +169,7 @@ void AgencyCallback::waitForExecution(double maxTimeout) {
   
   _useCv = true;
   CONDITION_LOCKER(locker, _cv);
-  locker.wait(maxTimeout * 1000000);
+  locker.wait(static_cast<uint64_t>(maxTimeout * 1000000.0));
   _useCv = false;
   
   if (!_lastData || _lastData->slice().equals(compareSlice)) {

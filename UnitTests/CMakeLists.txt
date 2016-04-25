@@ -48,8 +48,6 @@ target_link_libraries(${TEST_BASICS_SUITE}
 
 if (NOT USE_PRECOMPILED_V8)
   add_dependencies(basics_suite v8_build)
-else ()
-  add_dependencies(basics_suite)
 endif ()
 
 ################################################################################
@@ -71,6 +69,4 @@ target_link_libraries(${TEST_GEO_SUITE}
 
 if (NOT USE_PRECOMPILED_V8)
   add_dependencies(geo_suite v8_build)
-else ()
-  add_dependencies(geo_suite)
 endif ()

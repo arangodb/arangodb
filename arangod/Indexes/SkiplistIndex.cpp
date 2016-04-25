@@ -27,6 +27,7 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/debugging.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Utils/Transaction.h"
 #include "VocBase/document-collection.h"
 
 #include <velocypack/Iterator.h>
@@ -543,8 +544,8 @@ int SkiplistIndex::ElementElementComparator::operator()(
   }
 
   // We break this tie in the key comparison by looking at the key:
-  VPackSlice leftKey = VPackSlice(leftElement->document()->vpack()).get(TRI_VOC_ATTRIBUTE_KEY);
-  VPackSlice rightKey = VPackSlice(rightElement->document()->vpack()).get(TRI_VOC_ATTRIBUTE_KEY);
+  VPackSlice leftKey = VPackSlice(leftElement->document()->vpack()).get(Transaction::KeyString);
+  VPackSlice rightKey = VPackSlice(rightElement->document()->vpack()).get(Transaction::KeyString);
  
   int compareResult = leftKey.compareString(rightKey.copyString());
 

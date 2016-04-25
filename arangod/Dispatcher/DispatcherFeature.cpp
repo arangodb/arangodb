@@ -60,8 +60,6 @@ DispatcherFeature::~DispatcherFeature() {
 
 void DispatcherFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addSection("server", "Server features");
 
   options->addOption("--server.threads",
@@ -78,8 +76,6 @@ void DispatcherFeature::collectOptions(
 }
 
 void DispatcherFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
-
   if (_nrStandardThreads == 0) {
     size_t n = TRI_numberProcessors();
 
@@ -106,13 +102,11 @@ void DispatcherFeature::prepare() {
       ApplicationServer::lookupFeature("V8Dealer"));
 
   if (dealer != nullptr) {
-    dealer->defineDouble("DISPATCHER_THREADS", _nrStandardThreads);
+    dealer->defineDouble("DISPATCHER_THREADS", static_cast<double>(_nrStandardThreads));
   }
 }
 
 void DispatcherFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
   buildDispatcher();
   buildStandardQueue();
 
@@ -129,14 +123,10 @@ void DispatcherFeature::start() {
 }
 
 void DispatcherFeature::beginShutdown() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::beginShutdown";
-
   _dispatcher->beginShutdown();
 }
 
 void DispatcherFeature::stop() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
-
   _dispatcher->shutdown();
 
   DISPATCHER = nullptr;
@@ -151,7 +141,7 @@ void DispatcherFeature::buildStandardQueue() {
   LOG_TOPIC(DEBUG, Logger::STARTUP) << "setting up a standard queue with "
                                     << _nrStandardThreads << " threads";
 
-  _dispatcher->addStandardQueue(_nrStandardThreads, _queueSize);
+  _dispatcher->addStandardQueue(static_cast<size_t>(_nrStandardThreads), static_cast<size_t>(_queueSize));
 }
 
 void DispatcherFeature::buildAqlQueue() {

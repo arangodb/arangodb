@@ -657,9 +657,6 @@ static bool IterateDatafilesVector(std::vector<TRI_datafile_t*> const& files,
   TRI_ASSERT(iterator != nullptr);
 
   for (auto const& datafile : files) {
-    LOG(TRACE) << "iterating over datafile '" << datafile->getName(datafile)
-               << "', fid " << datafile->_fid;
-
     if (!TRI_IterateDatafile(datafile, iterator, data)) {
       return false;
     }
@@ -986,6 +983,12 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
     if (_maximalSize == 0 && maximalSize != 0) {
       _maximalSize = static_cast<TRI_voc_size_t>(PageSize);
     }
+   
+    if (options.hasKey("count")) { 
+      _initialCount =
+          arangodb::basics::VelocyPackHelper::getNumericValue<int64_t>(
+              options, "count", -1);
+    }
 
     _doCompact = arangodb::basics::VelocyPackHelper::getBooleanValue(
         options, "doCompact", true);
@@ -1310,6 +1313,10 @@ void VocbaseCollectionInfo::update(VPackSlice const& slice, bool preferDefaults,
     _indexBuckets =
         arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
             slice, "indexBuckets", _indexBuckets);
+    
+    _initialCount =
+        arangodb::basics::VelocyPackHelper::getNumericValue<int64_t>(
+            slice, "count", _initialCount);
   }
 }
 

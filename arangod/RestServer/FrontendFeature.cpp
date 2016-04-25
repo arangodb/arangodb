@@ -37,8 +37,6 @@ FrontendFeature::FrontendFeature(application_features::ApplicationServer* server
 }
 
 void FrontendFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addSection("frontend", "Configure the frontend");
 
   options->addHiddenOption("--frontend.version-check",
@@ -47,10 +45,8 @@ void FrontendFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void FrontendFeature::prepare() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::prepare";
-
-  V8DealerFeature* dealer = dynamic_cast<V8DealerFeature*>(
-      ApplicationServer::lookupFeature("V8Dealer"));
+  V8DealerFeature* dealer = 
+      ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
   
   dealer->defineBoolean("FE_VERSION_CHECK", _versionCheck);
 }

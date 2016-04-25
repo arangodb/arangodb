@@ -21,8 +21,8 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_BASICS_ATTRIBUTE_NAME_PARSER_H
-#define LIB_BASICS_ATTRIBUTE_NAME_PARSER_H 1
+#ifndef ARANGODB_BASICS_ATTRIBUTE_NAME_PARSER_H
+#define ARANGODB_BASICS_ATTRIBUTE_NAME_PARSER_H 1
 
 #include "Common.h"
 #include <iosfwd>

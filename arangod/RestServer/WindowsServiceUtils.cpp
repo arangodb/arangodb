@@ -30,12 +30,13 @@
 #include "Logger/Logger.h"
 #include "Basics/tri-strings.h"
 #include "Rest/InitializeRest.h"
-#include "RestServer/ArangoServer.h"
 
 #include <signal.h>
 
 using namespace arangodb;
 using namespace arangodb::rest;
+
+#if 0
 
 #ifdef _WIN32
 
@@ -645,5 +646,7 @@ void TRI_StartService(int argc, char* argv[]) {
     exit(EXIT_FAILURE);
   }
 }
+
+#endif
 
 #endif

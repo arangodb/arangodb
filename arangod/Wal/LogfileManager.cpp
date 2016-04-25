@@ -36,6 +36,8 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestServer/DatabaseFeature.h"
+#include "RestServer/DatabaseServerFeature.h"
 #include "VocBase/server.h"
 #include "Wal/AllocatorThread.h"
 #include "Wal/CollectorThread.h"
@@ -44,21 +46,22 @@
 #include "Wal/Slots.h"
 #include "Wal/SynchronizerThread.h"
 
+using namespace arangodb;
+using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 using namespace arangodb::wal;
-using namespace arangodb;
 
-/// @brief the logfile manager singleton
-static LogfileManager* Instance = nullptr;
+// the logfile manager singleton
+LogfileManager* LogfileManager::Instance = nullptr;
 
-/// @brief minimum value for --wal.throttle-when-pending
+// minimum value for --wal.throttle-when-pending
 static inline uint64_t MinThrottleWhenPending() { return 1024 * 1024; }
 
-/// @brief minimum value for --wal.sync-interval
+// minimum value for --wal.sync-interval
 static inline uint64_t MinSyncInterval() { return 5; }
 
-/// @brief minimum value for --wal.logfile-size
+// minimum value for --wal.logfile-size
 static inline uint32_t MinFileSize() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // this allows testing with smaller logfile-sizes
@@ -68,35 +71,21 @@ static inline uint32_t MinFileSize() {
 #endif
 }
 
-/// @brief get the maximum size of a logfile entry
+// get the maximum size of a logfile entry
 static inline uint32_t MaxEntrySize() {
   return 2 << 30;  // 2 GB
 }
 
-/// @brief minimum number of slots
+// minimum number of slots
 static inline uint32_t MinSlots() { return 1024 * 8; }
 
-/// @brief maximum number of slots
+// maximum number of slots
 static inline uint32_t MaxSlots() { return 1024 * 1024 * 16; }
 
-//YYY #warning JAN should not be static
-bool LogfileManager::_allowOversizeEntries = true;
-std::string LogfileManager::_directory;
-uint32_t LogfileManager::_historicLogfiles = 10;
-bool LogfileManager::_ignoreLogfileErrors = false;
-bool LogfileManager::_ignoreRecoveryErrors = false;
-uint32_t LogfileManager::_filesize = 32 * 1024 * 1024;
-uint32_t LogfileManager::_maxOpenLogfiles = 0;
-uint32_t LogfileManager::_reserveLogfiles = 4;
-uint32_t LogfileManager::_numberOfSlots = 1048576;
-uint64_t LogfileManager::_syncInterval = 100;
-uint64_t LogfileManager::_throttleWhenPending = 0;
-uint64_t LogfileManager::_maxThrottleWait = 15000;
-
-/// @brief create the logfile manager
-LogfileManager::LogfileManager(TRI_server_t* server, std::string* databasePath)
-    : _server(server),
-      _databasePath(databasePath),
+// create the logfile manager
+LogfileManager::LogfileManager(ApplicationServer* server)
+    : ApplicationFeature(server, "LogfileManager"),
+      _server(nullptr),
       _recoverState(nullptr),
       _allowWrites(false),  // start in read-only mode
       _hasFoundLastTick(false),
@@ -124,19 +113,23 @@ LogfileManager::LogfileManager(TRI_server_t* server, std::string* databasePath)
   LOG(TRACE) << "creating WAL logfile manager";
   TRI_ASSERT(!_allowWrites);
 
+  setOptional(false);
+  requiresElevatedPrivileges(false);
+  startsAfter("DatabaseServer");
+  startsAfter("QueryRegistry");
+
   _transactions.reserve(32);
   _failedTransactions.reserve(32);
 }
 
-/// @brief destroy the logfile manager
+// destroy the logfile manager
 LogfileManager::~LogfileManager() {
   LOG(TRACE) << "shutting down WAL logfile manager";
-
-  stop();
 
   for (auto& it : _barriers) {
     delete it.second;
   }
+
   _barriers.clear();
 
   if (_recoverState != nullptr) {
@@ -148,19 +141,6 @@ LogfileManager::~LogfileManager() {
     delete _slots;
     _slots = nullptr;
   }
-}
-
-/// @brief get the logfile manager instance
-LogfileManager* LogfileManager::instance() {
-  TRI_ASSERT(Instance != nullptr);
-  return Instance;
-}
-
-/// @brief initialize the logfile manager instance
-void LogfileManager::initialize(std::string* path, TRI_server_t* server) {
-  TRI_ASSERT(Instance == nullptr);
-
-  Instance = new LogfileManager(server, path);
 }
 
 void LogfileManager::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -222,53 +202,7 @@ void LogfileManager::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new UInt64Parameter(&_maxThrottleWait));
 }
 
-bool LogfileManager::prepare() {
-  static bool Prepared = false;
-
-  if (Prepared) {
-    return true;
-  }
-
-  Prepared = true;
-
-  if (_directory.empty()) {
-    // use global configuration variable
-    _directory = *_databasePath;
-
-    if (!basics::FileUtils::isDirectory(_directory)) {
-      std::string systemErrorStr;
-      long errorNo;
-
-      int res = TRI_CreateRecursiveDirectory(_directory.c_str(), errorNo,
-                                             systemErrorStr);
-
-      if (res == TRI_ERROR_NO_ERROR) {
-        LOG(INFO) << "created database directory '" << _directory << "'.";
-      } else {
-        LOG(FATAL) << "unable to create database directory: " << systemErrorStr;
-        FATAL_ERROR_EXIT();
-      }
-    }
-
-    // append "/journals"
-    if (_directory[_directory.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
-      // append a trailing slash to directory name
-      _directory.push_back(TRI_DIR_SEPARATOR_CHAR);
-    }
-    _directory.append("journals");
-  }
-
-  if (_directory.empty()) {
-    LOG(FATAL) << "no directory specified for WAL logfiles. Please use the "
-                  "--wal.directory option";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (_directory[_directory.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
-    // append a trailing slash to directory name
-    _directory.push_back(TRI_DIR_SEPARATOR_CHAR);
-  }
-
+void LogfileManager::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
   if (_filesize < MinFileSize()) {
     // minimum filesize per logfile
     LOG(FATAL) << "invalid value for --wal.logfile-size. Please use a value of "
@@ -276,8 +210,6 @@ bool LogfileManager::prepare() {
                << MinFileSize();
     FATAL_ERROR_EXIT();
   }
-
-  _filesize = (uint32_t)(((_filesize + PageSize - 1) / PageSize) * PageSize);
 
   if (_numberOfSlots < MinSlots() || _numberOfSlots > MaxSlots()) {
     // invalid number of slots
@@ -304,30 +236,71 @@ bool LogfileManager::prepare() {
   // sync interval is specified in milliseconds by the user, but internally
   // we use microseconds
   _syncInterval = _syncInterval * 1000;
+}
+
+void LogfileManager::start() {
+  Instance = this;
+
+  _server = DatabaseServerFeature::SERVER;
+
+  DatabaseFeature* database = ApplicationServer::getFeature<DatabaseFeature>("Database");
+
+  _databasePath = database->directory();
+
+  // needs server initialized
+  _filesize = static_cast<uint32_t>(((_filesize + PageSize - 1) / PageSize) * PageSize);
+
+  if (_directory.empty()) {
+    // use global configuration variable
+    _directory = _databasePath;
+
+    if (!basics::FileUtils::isDirectory(_directory)) {
+      std::string systemErrorStr;
+      long errorNo;
+
+      int res = TRI_CreateRecursiveDirectory(_directory.c_str(), errorNo,
+                                             systemErrorStr);
+
+      if (res == TRI_ERROR_NO_ERROR) {
+        LOG(INFO) << "created database directory '" << _directory << "'.";
+      } else {
+        LOG(FATAL) << "unable to create database directory: " << systemErrorStr;
+        FATAL_ERROR_EXIT();
+      }
+    }
+
+    // append "/journals"
+    if (_directory[_directory.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
+      // append a trailing slash to directory name
+      _directory.push_back(TRI_DIR_SEPARATOR_CHAR);
+    }
+
+    _directory.append("journals");
+  }
+
+  if (_directory.empty()) {
+    LOG(FATAL) << "no directory specified for WAL logfiles. Please use the "
+                  "--wal.directory option";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (_directory[_directory.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
+    // append a trailing slash to directory name
+    _directory.push_back(TRI_DIR_SEPARATOR_CHAR);
+  }
 
   // initialize some objects
   _slots = new Slots(this, _numberOfSlots, 0);
   _recoverState = new RecoverState(_server, _ignoreRecoveryErrors);
-
-  return true;
-}
-
-bool LogfileManager::start() {
-  static bool started = false;
-
-  if (started) {
-    // we were already started
-    return true;
-  }
 
   TRI_ASSERT(!_allowWrites);
 
   int res = inventory();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "could not create WAL logfile inventory: "
-             << TRI_errno_string(res);
-    return false;
+    LOG(FATAL) << "could not create WAL logfile inventory: "
+               << TRI_errno_string(res);
+    FATAL_ERROR_EXIT();
   }
 
   std::string const shutdownFile = shutdownFilename();
@@ -339,9 +312,9 @@ bool LogfileManager::start() {
     res = readShutdownInfo();
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG(ERR) << "could not open shutdown file '" << shutdownFile
-               << "': " << TRI_errno_string(res);
-      return false;
+      LOG(FATAL) << "could not open shutdown file '" << shutdownFile
+                 << "': " << TRI_errno_string(res);
+      FATAL_ERROR_EXIT();
     }
   } else {
     LOG(TRACE) << "no shutdown file found";
@@ -350,18 +323,14 @@ bool LogfileManager::start() {
   res = inspectLogfiles();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG(ERR) << "could not inspect WAL logfiles: " << TRI_errno_string(res);
-    return false;
+    LOG(FATAL) << "could not inspect WAL logfiles: " << TRI_errno_string(res);
+    FATAL_ERROR_EXIT();
   }
-
-  started = true;
 
   LOG(TRACE) << "WAL logfile manager configuration: historic logfiles: "
              << _historicLogfiles << ", reserve logfiles: " << _reserveLogfiles
              << ", filesize: " << _filesize
              << ", sync interval: " << _syncInterval;
-
-  return true;
 }
 
 bool LogfileManager::open() {
@@ -517,10 +486,10 @@ void LogfileManager::stop() {
 
   // notify slots that we're shutting down
   _slots->shutdown();
-  
+
   // finalize allocator thread
   // this prevents creating new (empty) WAL logfile once we flush
-  // current logfile
+  // the current logfile
   stopAllocatorThread();
 
   if (_allocatorThread != nullptr) {
@@ -583,9 +552,11 @@ void LogfileManager::stop() {
   if (res != TRI_ERROR_NO_ERROR) {
     LOG(ERR) << "could not write WAL shutdown info: " << TRI_errno_string(res);
   }
+
+  Instance = nullptr;
 }
 
-/// @brief registers a transaction
+// registers a transaction
 int LogfileManager::registerTransaction(TRI_voc_tid_t transactionId) {
   auto lastCollectedId = _lastCollectedId.load();
   auto lastSealedId = _lastSealedId.load();
@@ -610,7 +581,7 @@ int LogfileManager::registerTransaction(TRI_voc_tid_t transactionId) {
   }
 }
 
-/// @brief unregisters a transaction
+// unregisters a transaction
 void LogfileManager::unregisterTransaction(TRI_voc_tid_t transactionId,
                                            bool markAsFailed) {
   WRITE_LOCKER(writeLocker, _transactionsLock);
@@ -622,7 +593,7 @@ void LogfileManager::unregisterTransaction(TRI_voc_tid_t transactionId,
   }
 }
 
-/// @brief return the set of failed transactions
+// return the set of failed transactions
 std::unordered_set<TRI_voc_tid_t> LogfileManager::getFailedTransactions() {
   std::unordered_set<TRI_voc_tid_t> failedTransactions;
 
@@ -634,7 +605,7 @@ std::unordered_set<TRI_voc_tid_t> LogfileManager::getFailedTransactions() {
   return failedTransactions;
 }
 
-/// @brief return the set of dropped collections
+// return the set of dropped collections
 /// this is used during recovery and not used afterwards
 std::unordered_set<TRI_voc_cid_t> LogfileManager::getDroppedCollections() {
   std::unordered_set<TRI_voc_cid_t> droppedCollections;
@@ -647,7 +618,7 @@ std::unordered_set<TRI_voc_cid_t> LogfileManager::getDroppedCollections() {
   return droppedCollections;
 }
 
-/// @brief return the set of dropped databases
+// return the set of dropped databases
 /// this is used during recovery and not used afterwards
 std::unordered_set<TRI_voc_tick_t> LogfileManager::getDroppedDatabases() {
   std::unordered_set<TRI_voc_tick_t> droppedDatabases;
@@ -660,7 +631,7 @@ std::unordered_set<TRI_voc_tick_t> LogfileManager::getDroppedDatabases() {
   return droppedDatabases;
 }
 
-/// @brief unregister a list of failed transactions
+// unregister a list of failed transactions
 void LogfileManager::unregisterFailedTransactions(
     std::unordered_set<TRI_voc_tid_t> const& failedTransactions) {
   WRITE_LOCKER(writeLocker, _transactionsLock);
@@ -669,7 +640,7 @@ void LogfileManager::unregisterFailedTransactions(
                 [&](TRI_voc_tid_t id) { _failedTransactions.erase(id); });
 }
 
-/// @brief whether or not it is currently allowed to create an additional
+// whether or not it is currently allowed to create an additional
 /// logfile
 bool LogfileManager::logfileCreationAllowed(uint32_t size) {
   if (size + DatafileHelper::JournalOverhead() > filesize()) {
@@ -702,7 +673,7 @@ bool LogfileManager::logfileCreationAllowed(uint32_t size) {
   return (numberOfLogfiles <= _maxOpenLogfiles);
 }
 
-/// @brief whether or not there are reserve logfiles
+// whether or not there are reserve logfiles
 bool LogfileManager::hasReserveLogfiles() {
   uint32_t numberOfLogfiles = 0;
 
@@ -726,12 +697,12 @@ bool LogfileManager::hasReserveLogfiles() {
   return false;
 }
 
-/// @brief signal that a sync operation is required
-void LogfileManager::signalSync(bool waitForSync) { 
-  _synchronizerThread->signalSync(waitForSync); 
+// signal that a sync operation is required
+void LogfileManager::signalSync(bool waitForSync) {
+  _synchronizerThread->signalSync(waitForSync);
 }
 
-/// @brief allocate space in a logfile for later writing
+// allocate space in a logfile for later writing
 SlotInfo LogfileManager::allocate(uint32_t size) {
   if (!_allowWrites) {
     // no writes allowed
@@ -751,7 +722,7 @@ SlotInfo LogfileManager::allocate(uint32_t size) {
   return _slots->nextUnused(size);
 }
 
-/// @brief allocate space in a logfile for later writing
+// allocate space in a logfile for later writing
 SlotInfo LogfileManager::allocate(TRI_voc_tick_t databaseId,
                                   TRI_voc_cid_t collectionId, uint32_t size) {
   if (!_allowWrites) {
@@ -772,7 +743,7 @@ SlotInfo LogfileManager::allocate(TRI_voc_tick_t databaseId,
   return _slots->nextUnused(databaseId, collectionId, size);
 }
 
-/// @brief write data into the logfile, using database id and collection id
+// write data into the logfile, using database id and collection id
 /// this is a convenience function that combines allocate, memcpy and finalize
 SlotInfoCopy LogfileManager::allocateAndWrite(TRI_voc_tick_t databaseId,
                                               TRI_voc_cid_t collectionId,
@@ -803,7 +774,7 @@ SlotInfoCopy LogfileManager::allocateAndWrite(TRI_voc_tick_t databaseId,
   }
 }
 
-/// @brief write data into the logfile
+// write data into the logfile
 /// this is a convenience function that combines allocate, memcpy and finalize
 SlotInfoCopy LogfileManager::allocateAndWrite(void* src, uint32_t size,
                                               bool waitForSync) {
@@ -832,19 +803,19 @@ SlotInfoCopy LogfileManager::allocateAndWrite(void* src, uint32_t size,
   }
 }
 
-/// @brief write data into the logfile
+// write data into the logfile
 /// this is a convenience function that combines allocate, memcpy and finalize
 SlotInfoCopy LogfileManager::allocateAndWrite(Marker const& marker,
                                               bool waitForSync) {
   return allocateAndWrite(marker.mem(), marker.size(), waitForSync);
 }
 
-/// @brief finalize a log entry
+// finalize a log entry
 void LogfileManager::finalize(SlotInfo& slotInfo, bool waitForSync) {
   _slots->returnUsed(slotInfo, waitForSync);
 }
 
-/// @brief wait for the collector queue to get cleared for the given collection
+// wait for the collector queue to get cleared for the given collection
 int LogfileManager::waitForCollectorQueue(TRI_voc_cid_t cid, double timeout) {
   double const end = TRI_microtime() + timeout;
 
@@ -859,7 +830,7 @@ int LogfileManager::waitForCollectorQueue(TRI_voc_cid_t cid, double timeout) {
   return TRI_ERROR_NO_ERROR;
 }
 
-/// @brief finalize and seal the currently open logfile
+// finalize and seal the currently open logfile
 /// this is useful to ensure that any open writes up to this point have made
 /// it into a logfile
 int LogfileManager::flush(bool waitForSync, bool waitForCollector,
@@ -956,7 +927,7 @@ bool LogfileManager::waitForSync(double maxWait) {
   }
 }
 
-/// @brief re-inserts a logfile back into the inventory only
+// re-inserts a logfile back into the inventory only
 void LogfileManager::relinkLogfile(Logfile* logfile) {
   Logfile::IdType const id = logfile->id();
 
@@ -964,7 +935,7 @@ void LogfileManager::relinkLogfile(Logfile* logfile) {
   _logfiles.emplace(id, logfile);
 }
 
-/// @brief remove a logfile from the inventory only
+// remove a logfile from the inventory only
 bool LogfileManager::unlinkLogfile(Logfile* logfile) {
   Logfile::IdType const id = logfile->id();
 
@@ -980,7 +951,7 @@ bool LogfileManager::unlinkLogfile(Logfile* logfile) {
   return true;
 }
 
-/// @brief remove a logfile from the inventory only
+// remove a logfile from the inventory only
 Logfile* LogfileManager::unlinkLogfile(Logfile::IdType id) {
   WRITE_LOCKER(writeLocker, _logfilesLock);
   auto it = _logfiles.find(id);
@@ -994,7 +965,7 @@ Logfile* LogfileManager::unlinkLogfile(Logfile::IdType id) {
   return (*it).second;
 }
 
-/// @brief removes logfiles that are allowed to be removed
+// removes logfiles that are allowed to be removed
 bool LogfileManager::removeLogfiles() {
   int iterations = 0;
   bool worked = false;
@@ -1013,7 +984,7 @@ bool LogfileManager::removeLogfiles() {
   return worked;
 }
 
-/// @brief sets the status of a logfile to open
+// sets the status of a logfile to open
 void LogfileManager::setLogfileOpen(Logfile* logfile) {
   TRI_ASSERT(logfile != nullptr);
 
@@ -1021,7 +992,7 @@ void LogfileManager::setLogfileOpen(Logfile* logfile) {
   logfile->setStatus(Logfile::StatusType::OPEN);
 }
 
-/// @brief sets the status of a logfile to seal-requested
+// sets the status of a logfile to seal-requested
 void LogfileManager::setLogfileSealRequested(Logfile* logfile) {
   TRI_ASSERT(logfile != nullptr);
 
@@ -1033,14 +1004,14 @@ void LogfileManager::setLogfileSealRequested(Logfile* logfile) {
   signalSync(true);
 }
 
-/// @brief sets the status of a logfile to sealed
+// sets the status of a logfile to sealed
 void LogfileManager::setLogfileSealed(Logfile* logfile) {
   TRI_ASSERT(logfile != nullptr);
 
   setLogfileSealed(logfile->id());
 }
 
-/// @brief sets the status of a logfile to sealed
+// sets the status of a logfile to sealed
 void LogfileManager::setLogfileSealed(Logfile::IdType id) {
   {
     WRITE_LOCKER(writeLocker, _logfilesLock);
@@ -1060,7 +1031,7 @@ void LogfileManager::setLogfileSealed(Logfile::IdType id) {
   }
 }
 
-/// @brief return the status of a logfile
+// return the status of a logfile
 Logfile::StatusType LogfileManager::getLogfileStatus(Logfile::IdType id) {
   READ_LOCKER(readLocker, _logfilesLock);
 
@@ -1073,7 +1044,7 @@ Logfile::StatusType LogfileManager::getLogfileStatus(Logfile::IdType id) {
   return (*it).second->status();
 }
 
-/// @brief return the file descriptor of a logfile
+// return the file descriptor of a logfile
 int LogfileManager::getLogfileDescriptor(Logfile::IdType id) {
   READ_LOCKER(readLocker, _logfilesLock);
 
@@ -1091,7 +1062,7 @@ int LogfileManager::getLogfileDescriptor(Logfile::IdType id) {
   return logfile->fd();
 }
 
-/// @brief get the current open region of a logfile
+// get the current open region of a logfile
 /// this uses the slots lock
 void LogfileManager::getActiveLogfileRegion(Logfile* logfile,
                                             char const*& begin,
@@ -1099,7 +1070,7 @@ void LogfileManager::getActiveLogfileRegion(Logfile* logfile,
   _slots->getActiveLogfileRegion(logfile, begin, end);
 }
 
-/// @brief garbage collect expired logfile barriers
+// garbage collect expired logfile barriers
 void LogfileManager::collectLogfileBarriers() {
   auto now = TRI_microtime();
 
@@ -1121,7 +1092,7 @@ void LogfileManager::collectLogfileBarriers() {
   }
 }
 
-/// @brief returns a list of all logfile barrier ids
+// returns a list of all logfile barrier ids
 std::vector<TRI_voc_tick_t> LogfileManager::getLogfileBarriers() {
   std::vector<TRI_voc_tick_t> result;
 
@@ -1137,7 +1108,7 @@ std::vector<TRI_voc_tick_t> LogfileManager::getLogfileBarriers() {
   return result;
 }
 
-/// @brief remove a specific logfile barrier
+// remove a specific logfile barrier
 bool LogfileManager::removeLogfileBarrier(TRI_voc_tick_t id) {
   WRITE_LOCKER(barrierLock, _barriersLock);
 
@@ -1157,7 +1128,7 @@ bool LogfileManager::removeLogfileBarrier(TRI_voc_tick_t id) {
   return true;
 }
 
-/// @brief adds a barrier that prevents removal of logfiles
+// adds a barrier that prevents removal of logfiles
 TRI_voc_tick_t LogfileManager::addLogfileBarrier(TRI_voc_tick_t minTick,
                                                  double ttl) {
   TRI_voc_tick_t id = TRI_NewTickServer();
@@ -1178,7 +1149,7 @@ TRI_voc_tick_t LogfileManager::addLogfileBarrier(TRI_voc_tick_t minTick,
   return id;
 }
 
-/// @brief extend the lifetime of a logfile barrier
+// extend the lifetime of a logfile barrier
 bool LogfileManager::extendLogfileBarrier(TRI_voc_tick_t id, double ttl,
                                           TRI_voc_tick_t tick) {
   WRITE_LOCKER(barrierLock, _barriersLock);
@@ -1204,7 +1175,7 @@ bool LogfileManager::extendLogfileBarrier(TRI_voc_tick_t id, double ttl,
   return true;
 }
 
-/// @brief get minimum tick value from all logfile barriers
+// get minimum tick value from all logfile barriers
 TRI_voc_tick_t LogfileManager::getMinBarrierTick() {
   TRI_voc_tick_t value = 0;
 
@@ -1224,7 +1195,7 @@ TRI_voc_tick_t LogfileManager::getMinBarrierTick() {
   return value;
 }
 
-/// @brief get logfiles for a tick range
+// get logfiles for a tick range
 std::vector<Logfile*> LogfileManager::getLogfilesForTickRange(
     TRI_voc_tick_t minTick, TRI_voc_tick_t maxTick, bool& minTickIncluded) {
   std::vector<Logfile*> temp;
@@ -1287,14 +1258,14 @@ std::vector<Logfile*> LogfileManager::getLogfilesForTickRange(
   return matching;
 }
 
-/// @brief return logfiles for a tick range
+// return logfiles for a tick range
 void LogfileManager::returnLogfiles(std::vector<Logfile*> const& logfiles) {
   for (auto& logfile : logfiles) {
     logfile->release();
   }
 }
 
-/// @brief get a logfile by id
+// get a logfile by id
 Logfile* LogfileManager::getLogfile(Logfile::IdType id) {
   READ_LOCKER(readLocker, _logfilesLock);
 
@@ -1307,7 +1278,7 @@ Logfile* LogfileManager::getLogfile(Logfile::IdType id) {
   return nullptr;
 }
 
-/// @brief get a logfile and its status by id
+// get a logfile and its status by id
 Logfile* LogfileManager::getLogfile(Logfile::IdType id,
                                     Logfile::StatusType& status) {
   READ_LOCKER(readLocker, _logfilesLock);
@@ -1324,7 +1295,7 @@ Logfile* LogfileManager::getLogfile(Logfile::IdType id,
   return nullptr;
 }
 
-/// @brief get a logfile for writing. this may return nullptr
+// get a logfile for writing. this may return nullptr
 int LogfileManager::getWriteableLogfile(uint32_t size,
                                         Logfile::StatusType& status,
                                         Logfile*& result) {
@@ -1405,7 +1376,7 @@ int LogfileManager::getWriteableLogfile(uint32_t size,
   return TRI_ERROR_LOCK_TIMEOUT;
 }
 
-/// @brief get a logfile to collect. this may return nullptr
+// get a logfile to collect. this may return nullptr
 Logfile* LogfileManager::getCollectableLogfile() {
   // iterate over all active readers and find their minimum used logfile id
   Logfile::IdType minId = UINT64_MAX;
@@ -1448,7 +1419,7 @@ Logfile* LogfileManager::getCollectableLogfile() {
   return nullptr;
 }
 
-/// @brief get a logfile to remove. this may return nullptr
+// get a logfile to remove. this may return nullptr
 /// if it returns a logfile, the logfile is removed from the list of available
 /// logfiles
 Logfile* LogfileManager::getRemovableLogfile() {
@@ -1513,17 +1484,17 @@ Logfile* LogfileManager::getRemovableLogfile() {
   return nullptr;
 }
 
-/// @brief increase the number of collect operations for a logfile
+// increase the number of collect operations for a logfile
 void LogfileManager::increaseCollectQueueSize(Logfile* logfile) {
   logfile->increaseCollectQueueSize();
 }
 
-/// @brief decrease the number of collect operations for a logfile
+// decrease the number of collect operations for a logfile
 void LogfileManager::decreaseCollectQueueSize(Logfile* logfile) {
   logfile->decreaseCollectQueueSize();
 }
 
-/// @brief mark a file as being requested for collection
+// mark a file as being requested for collection
 void LogfileManager::setCollectionRequested(Logfile* logfile) {
   TRI_ASSERT(logfile != nullptr);
 
@@ -1545,7 +1516,7 @@ void LogfileManager::setCollectionRequested(Logfile* logfile) {
   }
 }
 
-/// @brief mark a file as being done with collection
+// mark a file as being done with collection
 void LogfileManager::setCollectionDone(Logfile* logfile) {
   TRI_ASSERT(logfile != nullptr);
   Logfile::IdType id = logfile->id();
@@ -1569,7 +1540,7 @@ void LogfileManager::setCollectionDone(Logfile* logfile) {
   }
 }
 
-/// @brief force the status of a specific logfile
+// force the status of a specific logfile
 void LogfileManager::forceStatus(Logfile* logfile, Logfile::StatusType status) {
   TRI_ASSERT(logfile != nullptr);
 
@@ -1579,19 +1550,19 @@ void LogfileManager::forceStatus(Logfile* logfile, Logfile::StatusType status) {
   }
 }
 
-/// @brief return the current state
+// return the current state
 LogfileManagerState LogfileManager::state() {
   LogfileManagerState state;
 
   // now fill the state
   _slots->statistics(state.lastAssignedTick, state.lastCommittedTick,
                      state.lastCommittedDataTick, state.numEvents);
-  state.timeString = getTimeString();
+  state.timeString = TRI_timeString();
 
   return state;
 }
 
-/// @brief return the current available logfile ranges
+// return the current available logfile ranges
 LogfileRanges LogfileManager::ranges() {
   LogfileRanges result;
 
@@ -1617,7 +1588,7 @@ LogfileRanges LogfileManager::ranges() {
   return result;
 }
 
-/// @brief get information about running transactions
+// get information about running transactions
 std::tuple<size_t, Logfile::IdType, Logfile::IdType>
 LogfileManager::runningTransactions() {
   size_t count = 0;
@@ -1647,7 +1618,7 @@ LogfileManager::runningTransactions() {
       count, lastCollectedId, lastSealedId);
 }
 
-/// @brief remove a logfile in the file system
+// remove a logfile in the file system
 void LogfileManager::removeLogfile(Logfile* logfile) {
   // old filename
   Logfile::IdType const id = logfile->id();
@@ -1667,7 +1638,7 @@ void LogfileManager::removeLogfile(Logfile* logfile) {
   }
 }
 
-/// @brief wait until a specific logfile has been collected
+// wait until a specific logfile has been collected
 int LogfileManager::waitForCollector(Logfile::IdType logfileId,
                                      double maxWaitTime) {
   static int64_t const SingleWaitPeriod = 50 * 1000;
@@ -1709,7 +1680,7 @@ int LogfileManager::waitForCollector(Logfile::IdType logfileId,
   return TRI_ERROR_LOCK_TIMEOUT;
 }
 
-/// @brief run the recovery procedure
+// run the recovery procedure
 /// this is called after the logfiles have been scanned completely and
 /// recovery state has been build. additionally, all databases have been
 /// opened already so we can use collections
@@ -1751,7 +1722,7 @@ int LogfileManager::runRecovery() {
   return TRI_ERROR_NO_ERROR;
 }
 
-/// @brief closes all logfiles
+// closes all logfiles
 void LogfileManager::closeLogfiles() {
   WRITE_LOCKER(writeLocker, _logfilesLock);
 
@@ -1766,7 +1737,7 @@ void LogfileManager::closeLogfiles() {
   _logfiles.clear();
 }
 
-/// @brief reads the shutdown information
+// reads the shutdown information
 int LogfileManager::readShutdownInfo() {
   std::string const filename = shutdownFilename();
   std::shared_ptr<VPackBuilder> builder;
@@ -1824,7 +1795,7 @@ int LogfileManager::readShutdownInfo() {
   return TRI_ERROR_NO_ERROR;
 }
 
-/// @brief writes the shutdown information
+// writes the shutdown information
 /// this function is called at shutdown and at every logfile flush request
 int LogfileManager::writeShutdownInfo(bool writeShutdownTime) {
   TRI_IF_FAILURE("LogfileManagerWriteShutdown") { return TRI_ERROR_DEBUG; }
@@ -1857,7 +1828,7 @@ int LogfileManager::writeShutdownInfo(bool writeShutdownTime) {
     builder.add("lastSealed", VPackValue(val));
 
     if (writeShutdownTime) {
-      std::string const t(getTimeString());
+      std::string const t(TRI_timeString());
       builder.add("shutdownTime", VPackValue(t));
     }
     builder.close();
@@ -1884,7 +1855,7 @@ int LogfileManager::writeShutdownInfo(bool writeShutdownTime) {
   return TRI_ERROR_NO_ERROR;
 }
 
-/// @brief start the synchronizer thread
+// start the synchronizer thread
 int LogfileManager::startSynchronizerThread() {
   _synchronizerThread = new SynchronizerThread(this, _syncInterval);
 
@@ -1896,7 +1867,7 @@ int LogfileManager::startSynchronizerThread() {
   return TRI_ERROR_NO_ERROR;
 }
 
-/// @brief stop the synchronizer thread
+// stop the synchronizer thread
 void LogfileManager::stopSynchronizerThread() {
   if (_synchronizerThread != nullptr) {
     LOG(TRACE) << "stopping WAL synchronizer thread";
@@ -1905,7 +1876,7 @@ void LogfileManager::stopSynchronizerThread() {
   }
 }
 
-/// @brief start the allocator thread
+// start the allocator thread
 int LogfileManager::startAllocatorThread() {
   _allocatorThread = new AllocatorThread(this);
 
@@ -1917,7 +1888,7 @@ int LogfileManager::startAllocatorThread() {
   return TRI_ERROR_NO_ERROR;
 }
 
-/// @brief stop the allocator thread
+// stop the allocator thread
 void LogfileManager::stopAllocatorThread() {
   if (_allocatorThread != nullptr) {
     LOG(TRACE) << "stopping WAL allocator thread";
@@ -1926,7 +1897,7 @@ void LogfileManager::stopAllocatorThread() {
   }
 }
 
-/// @brief start the collector thread
+// start the collector thread
 int LogfileManager::startCollectorThread() {
   _collectorThread = new CollectorThread(this, _server);
 
@@ -1938,16 +1909,48 @@ int LogfileManager::startCollectorThread() {
   return TRI_ERROR_NO_ERROR;
 }
 
-/// @brief stop the collector thread
+// stop the collector thread
 void LogfileManager::stopCollectorThread() {
   if (_collectorThread != nullptr) {
     LOG(TRACE) << "stopping WAL collector thread";
+ 
+    // wait for at most 5 seconds for the collector 
+    // to catch up
+    double const end = TRI_microtime() + 5.0;  
+    while (TRI_microtime() < end) {
+      bool canAbort = true;
+      {
+        READ_LOCKER(readLocker, _logfilesLock);
+        for (auto& it : _logfiles) {
+          Logfile* logfile = it.second;
+
+          if (logfile == nullptr) {
+           continue;
+          }
+
+          Logfile::StatusType status = logfile->status();
+
+          if (status == Logfile::StatusType::SEAL_REQUESTED) {
+            canAbort = false;
+          }
+        }
+      }
+
+      if (canAbort) {
+        MUTEX_LOCKER(mutexLocker, _idLock);
+        if (_lastSealedId == _lastCollectedId) {
+          break;
+        }
+      }
+
+      usleep(50000);
+    }
 
     _collectorThread->beginShutdown();
   }
 }
 
-/// @brief start the remover thread
+// start the remover thread
 int LogfileManager::startRemoverThread() {
   _removerThread = new RemoverThread(this);
 
@@ -1959,7 +1962,7 @@ int LogfileManager::startRemoverThread() {
   return TRI_ERROR_NO_ERROR;
 }
 
-/// @brief stop the remover thread
+// stop the remover thread
 void LogfileManager::stopRemoverThread() {
   if (_removerThread != nullptr) {
     LOG(TRACE) << "stopping WAL remover thread";
@@ -1968,7 +1971,7 @@ void LogfileManager::stopRemoverThread() {
   }
 }
 
-/// @brief check which logfiles are present in the log directory
+// check which logfiles are present in the log directory
 int LogfileManager::inventory() {
   int res = ensureDirectory();
 
@@ -2004,7 +2007,7 @@ int LogfileManager::inventory() {
   return TRI_ERROR_NO_ERROR;
 }
 
-/// @brief inspect the logfiles in the log directory
+// inspect the logfiles in the log directory
 int LogfileManager::inspectLogfiles() {
   LOG(TRACE) << "inspecting WAL logfiles";
 
@@ -2110,7 +2113,7 @@ int LogfileManager::inspectLogfiles() {
   return TRI_ERROR_NO_ERROR;
 }
 
-/// @brief allocates a new reserve logfile
+// allocates a new reserve logfile
 int LogfileManager::createReserveLogfile(uint32_t size) {
   Logfile::IdType const id = nextId();
   std::string const filename = logfileName(id);
@@ -2142,12 +2145,12 @@ int LogfileManager::createReserveLogfile(uint32_t size) {
   return TRI_ERROR_NO_ERROR;
 }
 
-/// @brief get an id for the next logfile
+// get an id for the next logfile
 Logfile::IdType LogfileManager::nextId() {
   return static_cast<Logfile::IdType>(TRI_NewTickServer());
 }
 
-/// @brief ensure the wal logfiles directory is actually there
+// ensure the wal logfiles directory is actually there
 int LogfileManager::ensureDirectory() {
   // strip directory separator from path
   // this is required for Windows
@@ -2179,25 +2182,14 @@ int LogfileManager::ensureDirectory() {
   return TRI_ERROR_NO_ERROR;
 }
 
-/// @brief return the absolute name of the shutdown file
+// return the absolute name of the shutdown file
 std::string LogfileManager::shutdownFilename() const {
-  return (*_databasePath) + TRI_DIR_SEPARATOR_STR + std::string("SHUTDOWN");
+  return (_databasePath + TRI_DIR_SEPARATOR_STR) + "SHUTDOWN";
 }
 
-/// @brief return an absolute filename for a logfile id
+// return an absolute filename for a logfile id
 std::string LogfileManager::logfileName(Logfile::IdType id) const {
   return _directory + std::string("logfile-") + basics::StringUtils::itoa(id) +
          std::string(".db");
 }
 
-/// @brief return the current time as a string
-std::string LogfileManager::getTimeString() {
-  char buffer[32];
-  size_t len;
-  time_t tt = time(0);
-  struct tm tb;
-  TRI_gmtime(tt, &tb);
-  len = strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tb);
-
-  return std::string(buffer, len);
-}

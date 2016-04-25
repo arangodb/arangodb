@@ -23,8 +23,8 @@
 /// @author Michael hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_BASICS_ASSOC_UNIQUE_H
-#define LIB_BASICS_ASSOC_UNIQUE_H 1
+#ifndef ARANGODB_BASICS_ASSOC_UNIQUE_H
+#define ARANGODB_BASICS_ASSOC_UNIQUE_H 1
 
 #include "Basics/Common.h"
 
@@ -195,7 +195,7 @@ class AssocUnique {
 
     double start = TRI_microtime();
     if (targetSize > NotificationSizeThreshold) {
-      LOG_TOPIC(TRACE, Logger::PERFORMANCE) << 
+      LOG_TOPIC(TRACE, Logger::PERFORMANCE) <<
           "index-resize " << cb << ", target size: " << targetSize;
     }
 
@@ -822,7 +822,7 @@ class AssocUnique {
 
     return old;
   }
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief a method to iterate over all elements in the hash. this method
   /// can NOT be used for deleting elements

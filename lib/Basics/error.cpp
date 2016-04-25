@@ -86,7 +86,7 @@ int TRI_errno() {
 
   if (eptr == nullptr) {
     return 0;
-  } 
+  }
   return eptr->_number;
 }
 

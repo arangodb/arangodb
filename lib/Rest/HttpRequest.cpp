@@ -711,7 +711,7 @@ void HttpRequest::parseCookies(char const* buffer) {
 
 std::string const& HttpRequest::cookieValue(std::string const& key) const {
   static std::string EMPTY_STR = "";
-  
+
   auto it = _cookies.find(key);
 
   if (it == _cookies.end()) {
@@ -723,7 +723,7 @@ std::string const& HttpRequest::cookieValue(std::string const& key) const {
 
 std::string const& HttpRequest::cookieValue(std::string const& key, bool& found) const {
   static std::string EMPTY_STR = "";
-  
+
   auto it = _cookies.find(key);
 
   if (it == _cookies.end()) {

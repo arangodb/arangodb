@@ -57,8 +57,6 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
 AgencyFeature::~AgencyFeature() {}
 
 void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addSection("agency", "Configure the agency");
 
   options->addOption("--agency.size", "number of agents",
@@ -98,8 +96,6 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
-  
   if (_agentId == (std::numeric_limits<uint32_t>::max)()) {
     disable();
     return;
@@ -150,14 +146,10 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void AgencyFeature::prepare() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::prepare";
-  
   _agencyEndpoints.resize(_size);
 }
 
 void AgencyFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
   if (!isEnabled()) {
     return;
   }
@@ -190,8 +182,6 @@ void AgencyFeature::start() {
 }
 
 void AgencyFeature::stop() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
-  
   if (!isEnabled()) {
     return;
   }

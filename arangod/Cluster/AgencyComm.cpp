@@ -110,7 +110,7 @@ AgencyPrecondition::AgencyPrecondition(std::string const& key, Type t, bool e)
 
 AgencyPrecondition::AgencyPrecondition(std::string const& key, Type t,
                                        VPackSlice s)
-    : key(AgencyComm::prefix() + key), type(t), value(s) {
+    : key(AgencyComm::prefix() + key), type(t), empty(false), value(s) {
 }
 
 //////////////////////////////////////////////////////////////////////////////

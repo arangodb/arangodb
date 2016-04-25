@@ -123,8 +123,8 @@ static void EdgesQuery(TRI_edge_direction_e direction,
       builder->add(VPackValue(TRI_ObjectToString(val)));
     } else if (val->IsObject()) {
       v8::Handle<v8::Object> obj = val->ToObject();
-      if (obj->Has(TRI_V8_ASCII_STRING(TRI_VOC_ATTRIBUTE_ID))) {
-        builder->add(VPackValue(TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING(TRI_VOC_ATTRIBUTE_ID)))));
+      if (obj->Has(TRI_V8_ASCII_STD_STRING(isolate, Transaction::IdString))) {
+        builder->add(VPackValue(TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STD_STRING(isolate, Transaction::IdString)))));
       } else {
         builder->add(VPackValue(""));
       }
@@ -372,10 +372,10 @@ static void JS_ChecksumCollection(
   trx.invokeOnAllElements(col->_name, [&hash, &withData, &withRevisions](TRI_doc_mptr_t const* mptr) {
     VPackSlice const slice(mptr->vpack());
 
-    uint64_t localHash = slice.get(TRI_VOC_ATTRIBUTE_KEY).hash();
+    uint64_t localHash = slice.get(Transaction::KeyString).hash();
 
     if (withRevisions) {
-      localHash += slice.get(TRI_VOC_ATTRIBUTE_REV).hash();
+      localHash += slice.get(Transaction::RevString).hash();
     }
 
     if (withData) {

@@ -21,8 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_UTILITIES_LINE_EDITOR_H
-#define LIB_UTILITIES_LINE_EDITOR_H 1
+#ifndef ARANGODB_UTILITIES_LINE_EDITOR_H
+#define ARANGODB_UTILITIES_LINE_EDITOR_H 1
 
 #include "Basics/Common.h"
 
