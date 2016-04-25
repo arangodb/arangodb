@@ -112,6 +112,8 @@ bool RestDocumentHandler::createDocument() {
     return false;
   }
   
+  VPackSlice body = parsedBody->slice();
+  
   arangodb::OperationOptions opOptions;
   opOptions.isRestore = extractBooleanParameter("isRestore", false);
   opOptions.waitForSync = extractBooleanParameter("waitForSync", false);
@@ -121,7 +123,6 @@ bool RestDocumentHandler::createDocument() {
   auto transactionContext(StandaloneTransactionContext::Create(_vocbase));
   SingleCollectionTransaction trx(transactionContext,
                                   collectionName, TRI_TRANSACTION_WRITE);
-  VPackSlice body = parsedBody->slice();
   bool const isMultiple = body.isArray();
   if (!isMultiple) {
     trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);

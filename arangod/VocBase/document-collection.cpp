@@ -3483,7 +3483,7 @@ int TRI_document_collection_t::update(Transaction* trx,
         std::to_string(revisionId), options.mergeObjects, options.keepNull,
         *builder.get());
  
-      if (ServerState::instance()->isDBServer()) {
+      if (ServerState::isDBServer(trx->serverRole())) {
         // Need to check that no sharding keys have changed:
         if (arangodb::shardKeysChanged(
                 _vocbase->_name,
@@ -3629,7 +3629,7 @@ int TRI_document_collection_t::replace(Transaction* trx,
         trx, VPackSlice(oldHeader->vpack()),
         newSlice, std::to_string(revisionId), *builder.get());
 
-    if (ServerState::instance()->isDBServer()) {
+    if (ServerState::isDBServer(trx->serverRole())) {
       // Need to check that no sharding keys have changed:
       if (arangodb::shardKeysChanged(
               _vocbase->_name,
@@ -4178,7 +4178,7 @@ int TRI_document_collection_t::newObjectForInsert(
     uint8_t* p = builder.add(Transaction::IdString,
         VPackValuePair(9ULL, VPackValueType::Custom));
     *p++ = 0xf3;  // custom type for _id
-    if (ServerState::instance()->isDBServer()) {
+    if (ServerState::isDBServer(trx->serverRole())) {
       // db server in cluster
       DatafileHelper::StoreNumber<uint64_t>(p, _info.planId(), sizeof(uint64_t));
     } else {
