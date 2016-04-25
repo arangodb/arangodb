@@ -82,7 +82,7 @@ HttpHandler::status_t RestAgencyPrivHandler::execute() {
       return reportTooManySuffices();
     } else {
       term_t term, prevLogTerm;
-      id_t id;  // leaderId for appendEntries, cadidateId for requestVote
+      arangodb::consensus::id_t id;  // leaderId for appendEntries, cadidateId for requestVote
       index_t prevLogIndex, leaderCommit;
       if (_request->suffix()[0] == "appendEntries") {  // appendEntries
         if (_request->requestType() != GeneralRequest::RequestType::POST) {
