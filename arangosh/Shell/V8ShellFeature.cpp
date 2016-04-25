@@ -141,6 +141,9 @@ void V8ShellFeature::stop() {
         v8::Local<v8::Context>::New(_isolate, _context);
 
     v8::Context::Scope context_scope{context};
+    
+    // remove any objects stored in _last global value  
+    context->Global()->Delete(TRI_V8_ASCII_STRING2(_isolate, "_last"));
 
     TRI_RunGarbageCollectionV8(_isolate, 2500.0);
   }
