@@ -4,10 +4,20 @@
   table-layout: fixed !important;
   width: 100% !important;
 
+  tbody {
+    display: block;
+    max-height: 200px;
+    overflow-y: auto;
+    position: absolute;
+    width: 100%;
+  }
+
   thead {
     background-color: $c-white !important;
+    display: block;
     font-weight: 400 !important;
     text-align: left;
+    width: 100%;
 
     th {
       border-bottom: 0;
@@ -84,7 +94,6 @@ table.arangoDataTable tr.odd {
 }
 
 #documentsTableID_wrapper {
-  min-height: 467px !important;
   padding-bottom: 0 !important;
 
   .fg-toolbar {

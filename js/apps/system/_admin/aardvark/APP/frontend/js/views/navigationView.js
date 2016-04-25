@@ -182,6 +182,13 @@
           disabled: true
         }
       ],
+      collections: [
+        {
+          name: '',
+          view: undefined,
+          active: false
+        }
+      ],
       service: [
         {
           name: 'Info',

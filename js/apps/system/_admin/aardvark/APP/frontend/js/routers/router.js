@@ -765,6 +765,9 @@
       if (this.queryView2) {
         this.queryView2.resize();
       }
+      if (this.documentsView) {
+        this.documentsView.resize();
+      }
     },
 
     userManagement: function (initialized) {
