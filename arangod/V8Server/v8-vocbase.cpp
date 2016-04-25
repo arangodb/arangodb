@@ -3352,7 +3352,7 @@ static void JS_GetTimers(v8::FunctionCallbackInfo<v8::Value> const& args) {
   
   for (auto& it : arangodb::basics::Timers::get()) {
     totals->ForceSet(TRI_V8_STD_STRING(it.first), v8::Number::New(isolate, it.second.first));
-    counts->ForceSet(TRI_V8_STD_STRING(it.first), v8::Number::New(isolate, it.second.second));
+    counts->ForceSet(TRI_V8_STD_STRING(it.first), v8::Number::New(isolate, static_cast<double>(it.second.second)));
   }
   
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
