@@ -683,7 +683,7 @@ std::string Transaction::extractIdString(CollectionNameResolver const* resolver,
 /// added to the builder in the argument as a single object.
 //////////////////////////////////////////////////////////////////////////////
 
-void Transaction::buildDocumentIdentity(std::string const& collectionName,
+void Transaction::buildDocumentIdentity(TRI_document_collection_t* document,
                                         VPackBuilder& builder,
                                         TRI_voc_cid_t cid,
                                         std::string const& key,
@@ -695,7 +695,7 @@ void Transaction::buildDocumentIdentity(std::string const& collectionName,
   if (ServerState::isRunningInCluster(_serverRole)) {
     builder.add(IdString, VPackValue(resolver()->getCollectionName(cid) + "/" + key));
   } else {
-    builder.add(IdString, VPackValue(collectionName + "/" + key));
+    builder.add(IdString, VPackValue(document->_info.name() + "/" + key));
   }
   builder.add(KeyString, VPackValue(key));
   TRI_ASSERT(!rid.isNone());
@@ -1086,7 +1086,7 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
       if (expectedRevision != foundRevision) {
         if (!isMultiple) {
           // still return 
-          buildDocumentIdentity(collectionName, resultBuilder, cid, key, foundRevision, 
+          buildDocumentIdentity(document, resultBuilder, cid, key, foundRevision, 
                                 VPackSlice(), nullptr, nullptr);
         }
         return TRI_ERROR_ARANGO_CONFLICT;
@@ -1247,7 +1247,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
 
     TIMER_START(TRANSACTION_INSERT_BUILD_DOCUMENT_IDENTITY);
 
-    buildDocumentIdentity(collectionName, resultBuilder, cid, keyString, 
+    buildDocumentIdentity(document, resultBuilder, cid, keyString, 
         mptr.revisionIdAsSlice(), VPackSlice(),
         nullptr, options.returnNew ? &mptr : nullptr);
 
@@ -1576,7 +1576,7 @@ OperationResult Transaction::modifyLocal(
       // still return 
       if ((!options.silent || doingSynchronousReplication) && !isBabies) {
         std::string key = newVal.get(KeyString).copyString();
-        buildDocumentIdentity(collectionName, resultBuilder, cid, key, actualRevision,
+        buildDocumentIdentity(document, resultBuilder, cid, key, actualRevision,
                               VPackSlice(), 
                               options.returnOld ? &previous : nullptr, nullptr);
       }
@@ -1589,7 +1589,7 @@ OperationResult Transaction::modifyLocal(
 
     if (!options.silent || doingSynchronousReplication) {
       std::string key = newVal.get(KeyString).copyString();
-      buildDocumentIdentity(collectionName, resultBuilder, cid, key, 
+      buildDocumentIdentity(document, resultBuilder, cid, key, 
           mptr.revisionIdAsSlice(), actualRevision, 
           options.returnOld ? &previous : nullptr , 
           options.returnNew ? &mptr : nullptr);
@@ -1831,7 +1831,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
       if (res == TRI_ERROR_ARANGO_CONFLICT && 
           (!options.silent || doingSynchronousReplication) && 
           !isBabies) {
-        buildDocumentIdentity(collectionName, resultBuilder, cid, key,
+        buildDocumentIdentity(document, resultBuilder, cid, key,
                               actualRevision, VPackSlice(), 
                               options.returnOld ? &previous : nullptr, nullptr);
       }
@@ -1839,7 +1839,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
     }
 
     if (!options.silent || doingSynchronousReplication) {
-      buildDocumentIdentity(collectionName, resultBuilder, cid, key,
+      buildDocumentIdentity(document, resultBuilder, cid, key,
                             actualRevision, VPackSlice(),
                             options.returnOld ? &previous : nullptr, nullptr);
     }
