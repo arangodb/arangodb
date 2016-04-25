@@ -96,9 +96,9 @@ public:
   size_t size() const;
 
   /// @brief Orderly shutdown of thread
-  void beginShutdown () override;
+  void beginShutdown() override;
 
-  bool start (TRI_vocbase_t* vocbase);
+  bool start(TRI_vocbase_t* vocbase, aql::QueryRegistry*);
 
 private:
 

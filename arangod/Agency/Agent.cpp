@@ -25,6 +25,7 @@
 
 #include "Basics/ConditionLocker.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
@@ -279,13 +280,12 @@ append_entries_t Agent::sendAppendEntriesRPC (id_t follower_id) {
      0, true);
 
   return append_entries_t(t, true);
-  
 }
 
 // @brief load persistent state
-bool Agent::load () {
-  DatabaseFeature* database = dynamic_cast<DatabaseFeature*>(
-    ApplicationServer::lookupFeature("Database"));
+bool Agent::load() {
+  DatabaseFeature* database = 
+    ApplicationServer::getFeature<DatabaseFeature>("Database");
 
   auto vocbase = database->vocbase();
 
@@ -310,7 +310,9 @@ bool Agent::load () {
   _readDB.start(this);
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Starting constituent personality.";
-  _constituent.start(vocbase);
+  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+  TRI_ASSERT(queryRegistry != nullptr);
+  _constituent.start(vocbase, queryRegistry);
 
   if (_config.supervision) {
     LOG_TOPIC(INFO, Logger::AGENCY) << "Starting cluster sanity facilities";

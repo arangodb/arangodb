@@ -391,6 +391,8 @@ void Query::registerWarning(int code, char const* details) {
 /// to be able to only prepare a query from VelocyPack and then store it in the
 /// QueryRegistry.
 QueryResult Query::prepare(QueryRegistry* registry) {
+  TRI_ASSERT(registry != nullptr);
+
   try {
     init();
     enterState(PARSING);
@@ -513,6 +515,8 @@ QueryResult Query::prepare(QueryRegistry* registry) {
 
 /// @brief execute an AQL query
 QueryResult Query::execute(QueryRegistry* registry) {
+  TRI_ASSERT(registry != nullptr);
+
   std::unique_ptr<AqlWorkStack> work;
 
   try {

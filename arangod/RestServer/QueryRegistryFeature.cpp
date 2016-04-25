@@ -71,15 +71,18 @@ void QueryRegistryFeature::prepare() {
   std::pair<std::string, size_t> cacheProperties{_queryCacheMode,
                                                  _queryCacheEntries};
   arangodb::aql::QueryCache::instance()->setProperties(cacheProperties);
+  
+  // create the query registery
+  _queryRegistry.reset(new aql::QueryRegistry());
+  QUERY_REGISTRY = _queryRegistry.get();
 }
 
 void QueryRegistryFeature::start() {
-  // create the query registery
-  _queryRegistry.reset(new aql::QueryRegistry());
   DatabaseServerFeature::SERVER->_queryRegistry = _queryRegistry.get();
 }
 
 void QueryRegistryFeature::stop() {
   // clear the query registery
   DatabaseServerFeature::SERVER->_queryRegistry = nullptr;
+  // TODO: reset QUERY_REGISTRY as well?
 }
