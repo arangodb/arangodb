@@ -101,7 +101,8 @@ struct BasicExpander {
         edgeCursor->getMoreMptr(_cursor, UINT64_MAX);
         for (auto const& mptr : _cursor) {
           VPackSlice edge(mptr->vpack());
-          std::string edgeId = _trx->extractIdString(edge);
+          std::string edgeId = edgeCollection->getName() + "/" +
+                               edge.get(Transaction::KeyString).copyString();
           std::string from = edge.get(Transaction::FromString).copyString();
           if (from == v) {
             std::string to = edge.get(Transaction::ToString).copyString();
@@ -219,8 +220,10 @@ class MultiCollectionEdgeExpander {
           auto cand = candidates.find(t);
           if (cand == candidates.end()) {
             // Add weight
+            std::string edgeId = edgeCollection->getName() + "/" +
+                                 edge.get(Transaction::KeyString).copyString();
             auto step = std::make_unique<ArangoDBPathFinder::Step>(
-                t, s, currentWeight, edgeCollection->trx()->extractIdString(edge));
+                t, s, currentWeight, std::move(edgeId));
             result.emplace_back(step.release());
             candidates.emplace(t, result.size() - 1);
           } else {
@@ -286,8 +289,10 @@ class SimpleEdgeExpander {
       auto cand = _candidates.find(t);
       if (cand == _candidates.end()) {
         // Add weight
+        std::string edgeId = _edgeCollection->getName() + "/" +
+                             edge.get(Transaction::KeyString).copyString();
         auto step = std::make_unique<ArangoDBPathFinder::Step>(
-            std::move(t), std::move(s), currentWeight, _edgeCollection->trx()->extractIdString(edge));
+            std::move(t), std::move(s), currentWeight, edgeId);
         result.emplace_back(step.release());
       } else {
         // Compare weight
