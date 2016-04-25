@@ -2917,7 +2917,10 @@ a.button-gui {
   padding: 10px; }
 
 .tileList {
-  width: 100%; }
+  left: 10px;
+  padding-top: 5px;
+  position: absolute;
+  right: 10px; }
   .tileList legend {
     padding-left: 5px; }
   .tileList .tile:first-child a {
@@ -5519,6 +5522,8 @@ div.headerBar {
   padding-left: 5px;
   padding-right: 5px;
   right: 0; }
+  div.headerBar.marginTop5 {
+    margin-top: -60px; }
   div.headerBar select:focus {
     outline: none; }
   div.headerBar .infoField {
@@ -7656,8 +7661,7 @@ textarea,
   display: none; }
 
 #arangoLogTable {
-  border-top: 0;
-  min-height: 444px; }
+  border-top: 0; }
   #arangoLogTable tbody tr {
     height: 40px; }
   #arangoLogTable tbody td:nth-child(1) {
@@ -7681,6 +7685,7 @@ textarea,
   .log-content-id .tab-content {
     margin-top: 1px !important; }
   .log-content-id .arango-tabbar {
+    left: 0;
     margin-top: -51px;
     position: absolute; }
     .log-content-id .arango-tabbar button {
@@ -7689,15 +7694,19 @@ textarea,
       color: #000;
       float: left;
       font-size: 10.5pt;
+      min-width: 60px;
       opacity: .64;
       outline: none;
       padding-left: 0;
-      padding-right: 20px;
-      text-align: left;
+      padding-right: 0;
+      text-align: center;
       width: auto; }
       .log-content-id .arango-tabbar button.arango-active-tab {
-        height: 27px;
-        opacity: 1; }
+        border-bottom: 2px solid #77cb99;
+        font-weight: 400;
+        height: 35px;
+        opacity: 1;
+        padding-bottom: 9px; }
 
 div.gv_zoom_widget {
   height: 300px;
@@ -7940,6 +7949,7 @@ input.gv-radio-button {
 
 .snippet-no-num {
   list-style-type: none;
+  margin-left: 0;
   padding-left: 0; }
   .snippet-no-num .prettify {
     font-size: 1.2em; }
@@ -8537,11 +8547,31 @@ main {
   color: #666; }
 
 .centralContent .createModalDialog {
+  background-color: #fff;
   outline: none; }
+
+.centralContent .contentIn {
+  background: #fff;
+  border: 1px solid rgba(64, 74, 83, 0.2);
+  border-radius: 2px;
+  padding: 20px; }
+  .centralContent .contentIn table {
+    border: 0; }
+    .centralContent .contentIn table select {
+      margin-top: -10px; }
+    .centralContent .contentIn table tr {
+      height: 40px; }
 
 .centralContent .modal-body {
   color: #000;
   max-height: none; }
+  .centralContent .modal-body .arango-table tr {
+    height: 40px; }
+    .centralContent .modal-body .arango-table tr th {
+      padding-left: 10px; }
+  .centralContent .modal-body .figuresHeader {
+    background-color: #404a53;
+    color: #fff; }
   .centralContent .modal-body .icon_arangodb_info {
     margin-left: 10px;
     right: inherit; }
@@ -8549,6 +8579,11 @@ main {
     margin-top: 0; }
   .centralContent .modal-body .tab-pane {
     padding-top: 0 !important; }
+
+.centralContent .modal-footer {
+  background-color: transparent;
+  border-top: 0;
+  box-shadow: none; }
 
 .centralContent .figures1,
 .centralContent .figures2,
@@ -8630,12 +8665,12 @@ main {
   width: 30%; }
 
 .arango-table {
-  border-top: 1px solid #c2c2c2;
   width: 100%; }
   .arango-table thead {
     background-color: #fff; }
     .arango-table thead th {
       border-bottom: 1px solid #c2c2c2;
+      font-weight: 400;
       height: 43px; }
   .arango-table tbody tr:nth-child(even) {
     background-color: #fff; }
@@ -8689,7 +8724,9 @@ main {
     margin-top: 5px;
     padding: 0 12px; }
     .subViewNavbar li.active {
-      cursor: default; }
+      border-bottom: 2px solid #77cb99;
+      cursor: default;
+      padding-bottom: 5px; }
       .subViewNavbar li.active a {
         color: #000; }
     .subViewNavbar li.disabled {
@@ -8734,7 +8771,9 @@ main {
       margin-bottom: 5px;
       margin-top: 5px; }
       .subnavmenu ul li.active {
-        cursor: default; }
+        border-bottom: 2px solid #77cb99;
+        cursor: default;
+        padding-bottom: 5px; }
         .subnavmenu ul li.active a {
           color: #000; }
       .subnavmenu ul li.disabled {
@@ -8783,10 +8822,18 @@ main {
   position: relative;
   table-layout: fixed !important;
   width: 100% !important; }
+  .arangoDataTable tbody {
+    display: block;
+    max-height: 200px;
+    overflow-y: auto;
+    position: absolute;
+    width: 100%; }
   .arangoDataTable thead {
     background-color: #fff !important;
+    display: block;
     font-weight: 400 !important;
-    text-align: left; }
+    text-align: left;
+    width: 100%; }
     .arangoDataTable thead th {
       border-bottom: 0;
       cursor: default !important;
@@ -8831,7 +8878,6 @@ table.arangoDataTable tr.odd {
   display: none; }
 
 #documentsTableID_wrapper {
-  min-height: 467px !important;
   padding-bottom: 0 !important; }
   #documentsTableID_wrapper .fg-toolbar {
     visibility: hidden; }

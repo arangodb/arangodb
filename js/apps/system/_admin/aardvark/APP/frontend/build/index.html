@@ -239,38 +239,40 @@
 </script>
 
 <script id="arangoTable.ejs" type="text/template">
-<table class="arango-table" id="<%=content.id%>">
-  <thead>
-    <tr>
-      <% var hcounter = 0; %>
-      <% _.each(content.titles, function(y) {%>
-        <th class="arangob-table-th table-cell<%=hcounter%>"><%=y%></th>
-      <% hcounter++; });%>
-    </tr>
-  </thead>
-  <tbody>
-    <% _.each(content.rows, function(k) { var counter=0;%>
-      <tr>
-        <% _.each(k, function(x) { %>
-          <td class="arangob-table-td table-cell<%=counter%>"><%=(content.unescaped && content.unescaped[counter] ? x : _.escape(x))%></td>
-        <% counter++;});%>
-      </tr>
-    <%});%>
+  <div class="tableWrapper">
+    <table class="arango-table" id="<%=content.id%>">
+      <thead>
+        <tr>
+          <% var hcounter = 0; %>
+          <% _.each(content.titles, function(y) {%>
+            <th class="arangob-table-th table-cell<%=hcounter%>"><%=y%></th>
+          <% hcounter++; });%>
+        </tr>
+      </thead>
+      <tbody>
+        <% _.each(content.rows, function(k) { var counter=0;%>
+          <tr>
+            <% _.each(k, function(x) { %>
+              <td class="arangob-table-td table-cell<%=counter%>"><%=(content.unescaped && content.unescaped[counter] ? x : _.escape(x))%></td>
+            <% counter++;});%>
+          </tr>
+        <%});%>
 
-    <% if (content.rows.length === 0) { %>
-      <tr>
-        <% var xcounter = 0; %>
-        <% _.each(content.titles, function(y) {%>
-          <% if (xcounter === 0) { %>
-            <td>No content.</td>
-          <% } else { %>
-            <td></td>
-          <% } %>
-        <% xcounter++; });%>
-      </tr>
-    <% }; %>
-  </tbody>
-</table>
+        <% if (content.rows.length === 0) { %>
+          <tr>
+            <% var xcounter = 0; %>
+            <% _.each(content.titles, function(y) {%>
+              <% if (xcounter === 0) { %>
+                <td>No content.</td>
+              <% } else { %>
+                <td></td>
+              <% } %>
+            <% xcounter++; });%>
+          </tr>
+        <% }; %>
+      </tbody>
+    </table>
+  </div>
 </script>
 
 <script id="clusterView.ejs" type="text/template">
@@ -897,7 +899,7 @@ if (list.length > 0) {
 </script>
 
 <script id="documentsView.ejs" type="text/template">
-<div id="transparentHeader" class="headerBar">
+<div id="transparentHeader" class="headerBar marginTop5">
 
   <div id="documentsToolbar" class="headerButtonBar">
 
@@ -1336,7 +1338,7 @@ if (list.length > 0) {
 <script id="indicesView.ejs" type="text/template">
   <div class="contentIn" id="indexHeaderContent">
       <div id="indexEditView">
-        <table id="collectionEditIndexTable" class="edit-index-table">
+        <table id="collectionEditIndexTable" class="edit-index-table arango-table">
           <thead>
             <tr class="figuresHeader">
               <th class="collectionInfoTh">ID</th>
@@ -1594,16 +1596,16 @@ if (list.length > 0) {
 <script id="loadingTableView.ejs" type="text/template">
 <thead>
   <tr role="row">
-    <th class="sorting_disabled docsFirstCol" role="columnheader" rowspan="1" colspan="1">Content</th>
-    <th class="sorting_disabled docsSecCol" role="columnheader" rowspan="1" colspan="1">_key</th>
-    <th class="sorting_disabled docsThirdCol" role="columnheader" rowspan="1" colspan="1">
+    <th class="sorting_disabled docsFirstCol">Content</th>
+    <th class="sorting_disabled docsSecCol">_key</th>
+    <th class="sorting_disabled docsThirdCol">
       <a id="addDocumentButton" class="pull-right addButton"><span class="arangoicon icon_arangodb_roundplus" title="Add a document"></span></a>
     </th>
   </tr>
 </thead>
 <tbody>
   <tr class="odd">
-    <td valign="top" colspan="3" class="dataTables_empty">Loading...</td>
+    <td valign="top" class="dataTables_empty">Loading...</td>
   </tr>
 </tbody>
 </script>
@@ -1873,7 +1875,7 @@ if (list.length > 0) {
     var revision    = content.revision;
 %>
 
-        <table id="collectionInfoTable">
+        <table id="collectionInfoTable" class="arango-table">
           <tr id="collectionSizeBox">
             <th class="collectionInfoTh2">Journal size:</th>
             <th class="collectionInfoTh">
@@ -1959,7 +1961,7 @@ if (list.length > 0) {
 
       </div>
 
-        <table class="figures1">
+        <table class="figures1 arango-table">
           <tr class="figuresHeader">
             <th class="">Type</th>
             <th>Count</th>
@@ -2015,7 +2017,7 @@ if (list.length > 0) {
           </tr>
         </table>
 
-        <table class="figures2">
+        <table class="figures2 arango-table">
           <tr class="figuresHeader">
             <th>Type</th>
             <th>Count</th>
@@ -2039,7 +2041,7 @@ if (list.length > 0) {
           </tr>
         </table>
 
-        <table class="figures3">
+        <table class="figures3 arango-table">
           <tr class="figuresHeader">
             <th>Type</th>
             <th>Count</th>
@@ -2987,10 +2989,15 @@ if (list.length > 0) {
     <li id="dbStatus" class="infoEntry subMenuEntry pull-right">
       <a class="info">Database: <%= currentDB.name %> </a>
     </li>
+    <li id="userStatus" class="infoEntry subMenuEntry pull-right">
+      <a class="info">User: <%= currentDB.name %> </a>
+    </li>
+<!--
     <li class="subMenuEntry pull-right" style="margin-right: 10px;">
       <div class="usermenu" id="userBar"></div>
       <div class="notificationmenu" id="notificationBar"></div>
     </li>
+-->
   </ul>
 
   <ul class="subMenuEntries bottom">
@@ -3288,8 +3295,8 @@ var cutByResolution = function (str) {
     </div>
   </div>
 
-<script src="libs.js?version=1461321201201"></script>
-<script src="app.js?version=1461321201201"></script>
+<script src="libs.js?version=1461565965008"></script>
+<script src="app.js?version=1461565965008"></script>
 
   </body>
 </html>

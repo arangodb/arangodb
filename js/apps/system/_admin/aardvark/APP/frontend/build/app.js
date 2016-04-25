@@ -24068,6 +24068,11 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.tableView.setRemoveClick(this.remove.bind(this));
     },
 
+    resize: function() {
+      $('#documentsTableID_wrapper').height($('.centralRow').height() - 210);
+      $('#documentsTableID tbody').css('max-height', $('#documentsTableID_wrapper').height() - 47);
+    },
+
     setCollectionId : function (colid, page) {
       this.collection.setCollection(colid);
       this.collection.setPage(page);
@@ -24932,6 +24937,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         transparent: true,
         showNum: false
       });
+      this.resize();
     },
 
     checkCollectionState: function() {
@@ -24995,11 +25001,13 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.renderPaginationElements();
       this.selectActivePagesize();
       this.markFilterToggle();
+      this.resize();
       return this;
     },
 
     rerender: function () {
       this.collection.getDocuments(this.getDocsCallback.bind(this));
+      this.resize();
     },
 
     selectActivePagesize: function() {
@@ -27192,11 +27200,11 @@ window.ArangoUsers = Backbone.Collection.extend({
     tabbarElements: {
       id: "arangoLogTabbar",
       titles: [
-        ["Debug", "logdebug"],
-        ["Warning", "logwarning"],
-        ["Error", "logerror"],
+        ["All", "logall"],
         ["Info", "loginfo"],
-        ["All", "logall"]
+        ["Error", "logerror"],
+        ["Warning", "logwarning"],
+        ["Debug", "logdebug"]
       ]
     },
 
@@ -27980,6 +27988,13 @@ window.ArangoUsers = Backbone.Collection.extend({
           name: 'Logs',
           view: undefined,
           disabled: true
+        }
+      ],
+      collections: [
+        {
+          name: '',
+          view: undefined,
+          active: false
         }
       ],
       service: [
@@ -35342,6 +35357,9 @@ window.ArangoUsers = Backbone.Collection.extend({
       }
       if (this.queryView2) {
         this.queryView2.resize();
+      }
+      if (this.documentsView) {
+        this.documentsView.resize();
       }
     },
 
