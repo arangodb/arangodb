@@ -37,6 +37,8 @@
 
 #define TRI_DEFAULT_BATCH_SIZE 1000
 
+struct TRI_document_collection_t;
+
 namespace arangodb {
 
 namespace basics {
@@ -523,7 +525,8 @@ class Transaction {
   /// argument as a single object.
   //////////////////////////////////////////////////////////////////////////////
 
-  void buildDocumentIdentity(VPackBuilder& builder,
+  void buildDocumentIdentity(TRI_document_collection_t* document,
+                             VPackBuilder& builder,
                              TRI_voc_cid_t cid,
                              std::string const& key,
                              VPackSlice const rid,

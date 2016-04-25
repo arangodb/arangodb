@@ -28,6 +28,7 @@
 #include "Basics/conversions.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
+#include "Basics/Timers.h"
 #include "Basics/files.h"
 #include "Logger/Logger.h"
 #include "Basics/tri-strings.h"
@@ -3305,7 +3306,9 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const slice,
   VPackSlice newSlice;
   int res = TRI_ERROR_NO_ERROR;
   if (options.recoveryMarker == nullptr) {
+    TIMER_START(TRANSACTION_NEW_OBJECT_FOR_INSERT);
     res = newObjectForInsert(trx, slice, hash, *builder.get(), options.isRestore);
+    TIMER_STOP(TRANSACTION_NEW_OBJECT_FOR_INSERT);
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
@@ -3322,7 +3325,9 @@ int TRI_document_collection_t::insert(Transaction* trx, VPackSlice const slice,
 
   std::unique_ptr<arangodb::wal::Marker> marker;
   if (options.recoveryMarker == nullptr) {
+    TIMER_START(TRANSACTION_CREATE_VPACK_INSERT_MARKER);
     marker.reset(createVPackInsertMarker(trx, newSlice));
+    TIMER_STOP(TRANSACTION_CREATE_VPACK_INSERT_MARKER);
   }
 
   TRI_voc_tick_t markerTick = 0;

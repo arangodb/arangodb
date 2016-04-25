@@ -33,11 +33,11 @@
     tabbarElements: {
       id: "arangoLogTabbar",
       titles: [
-        ["Debug", "logdebug"],
-        ["Warning", "logwarning"],
-        ["Error", "logerror"],
+        ["All", "logall"],
         ["Info", "loginfo"],
-        ["All", "logall"]
+        ["Error", "logerror"],
+        ["Warning", "logwarning"],
+        ["Debug", "logdebug"]
       ]
     },
 
