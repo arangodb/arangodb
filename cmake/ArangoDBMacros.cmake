@@ -1,5 +1,10 @@
 include(GNUInstallDirs)
 
+option(USE_RELATIVE
+  "Do you want to have all path are relative to the binary"
+  OFF
+)
+
 # etc -------------------------------
 set(ETCDIR "" CACHE path "System configuration directory (defaults to prefix/etc)")
 
