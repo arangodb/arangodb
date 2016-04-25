@@ -346,7 +346,7 @@ include(CPack)
 ################################################################################
 
 install(
-  DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/client
+  DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/client 
   DESTINATION share/arangodb/js
   FILES_MATCHING PATTERN "*.js"
   REGEX "^.*/common/test-data$" EXCLUDE
@@ -367,8 +367,10 @@ install(
 ################################################################################
 
 install(
-  DIRECTORY ${PROJECT_SOURCE_DIR}/js
-  DESTINATION share/arangodb)
+  DIRECTORY ${PROJECT_SOURCE_DIR}/js/actions ${PROJECT_SOURCE_DIR}/js/apps ${PROJECT_SOURCE_DIR}/js/contrib ${PROJECT_SOURCE_DIR}/js/node ${PROJECT_SOURCE_DIR}/js/server
+  DESTINATION share/arangodb/js
+  REGEX "^.*/server/tests$" EXCLUDE
+)
 
 ################################################################################
 ### @brief install log directory
