@@ -1,10 +1,5 @@
 include(GNUInstallDirs)
 
-option(USE_RELATIVE
-  "Do you want to have all path are relative to the binary"
-  OFF
-)
-
 # etc -------------------------------
 set(ETCDIR "" CACHE path "System configuration directory (defaults to prefix/etc)")
 
@@ -352,15 +347,6 @@ install(
   REGEX "^.*/common/test-data$" EXCLUDE
   REGEX "^.*/common/tests$" EXCLUDE
   REGEX "^.*/client/tests$" EXCLUDE)
-
-## -----------------------------------------------------------------------------
-## --SECTION--                                                       END-OF-FILE
-## -----------------------------------------------------------------------------
-
-## Local Variables:
-## mode: outline-minor
-## outline-regexp: "^\\(### @brief\\|## --SECTION--\\|# -\\*- \\)"
-## End:
 
 ################################################################################
 ### @brief install server-side JavaScript files
