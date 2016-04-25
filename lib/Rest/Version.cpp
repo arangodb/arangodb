@@ -38,9 +38,10 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/build-date.h"
 #include "Basics/conversions.h"
-#include "Basics/json.h"
 
 using namespace arangodb::rest;
+
+std::map<std::string, std::string> Version::Values;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize
@@ -52,6 +53,7 @@ void Version::initialize() {
   }
 
   Values["architecture"] = (sizeof(void*) == 4 ? "32" : "64") + std::string("bit");
+
   Values["asm-crc32"] = (ENABLE_ASM_CRC32) ? "true" : "false";
   Values["boost-version"] = getBoostVersion();
   Values["build-date"] = getBuildDate();
@@ -59,13 +61,18 @@ void Version::initialize() {
   Values["icu-version"] = getICUVersion();
   Values["libev-version"] = getLibevVersion();
   Values["openssl-version"] = getOpenSSLVersion();
-  Values["repository-version"] = getRepositoryVersion();
   Values["server-version"] = getServerVersion();
   Values["sizeof int"] = arangodb::basics::StringUtils::itoa(sizeof(int));
   Values["sizeof void*"] = arangodb::basics::StringUtils::itoa(sizeof(void*));
   Values["v8-version"] = getV8Version();
   Values["vpack-version"] = getVPackVersion();
   Values["zlib-version"] = getZLibVersion();
+
+#ifdef __SANITIZE_ADDRESS__
+  Values["asan"] = "true";
+#else
+  Values["asan"] = "false";
+#endif
 
 #if defined(__SSE4_2__) && !defined(NO_SSE42)
   Values["sse42"] = "true";
@@ -221,18 +228,6 @@ std::string Version::getICUVersion() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get repository version
-////////////////////////////////////////////////////////////////////////////////
-
-std::string Version::getRepositoryVersion() {
-#ifdef TRI_REPOSITORY_VERSION
-  return std::string(TRI_REPOSITORY_VERSION);
-#else
-  return std::string("");
-#endif
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get build date
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -257,9 +252,15 @@ std::string Version::getVerboseVersionString() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
           << " maintainer mode"
 #endif
+#ifdef __SANITIZE_ADDRESS__
+          << " with ASAN"
+#endif
           << ", using "
 #ifdef TRI_HAVE_TCMALLOC
           << "tcmalloc, "
+#endif
+#ifdef TRI_HAVE_JEMALLOC
+          << "jemalloc, "
 #endif
           << "VPack " << getVPackVersion() << ", "
           << "ICU " << getICUVersion() << ", "
@@ -294,24 +295,6 @@ std::string Version::getDetailed() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief JSONize all data
-////////////////////////////////////////////////////////////////////////////////
-
-void Version::getJson(TRI_memory_zone_t* zone, TRI_json_t* dst) {
-  for (auto const& it : Values) {
-    std::string const& value = it.second;
-
-    if (!value.empty()) {
-      std::string const& key = it.first;
-
-      TRI_Insert3ObjectJson(
-          zone, dst, key.c_str(),
-          TRI_CreateStringCopyJson(zone, value.c_str(), value.size()));
-    }
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief VelocyPack all data
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -325,4 +308,3 @@ void Version::getVPack(VPackBuilder& dst) {
   }
 }
 
-std::map<std::string, std::string> Version::Values;

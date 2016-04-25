@@ -114,7 +114,8 @@ struct ClusterCommResult {
   GeneralResponse::ResponseCode answer_code;
 
   ClusterCommResult()
-      : dropped(false),
+      : status(CL_COMM_ERROR),
+        dropped(false),
         single(false),
         answer_code(GeneralResponse::ResponseCode::PROCESSING) {}
 

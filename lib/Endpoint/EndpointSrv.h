@@ -21,8 +21,8 @@
 /// @author Copyright 2016, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_ENDPOINT_SRV_H
-#define ARANGODB_REST_ENDPOINT_SRV_H 1
+#ifndef ARANGODB_ENDPOINT_ENDPOINT_SRV_H
+#define ARANGODB_ENDPOINT_ENDPOINT_SRV_H 1
 
 #include "Endpoint/Endpoint.h"
 

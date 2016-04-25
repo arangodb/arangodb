@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_BASICS_JSON_UTILITIES_H
-#define LIB_BASICS_JSON_UTILITIES_H 1
+#ifndef ARANGODB_BASICS_JSON__UTILITIES_H
+#define ARANGODB_BASICS_JSON__UTILITIES_H 1
 
 #include "Basics/Common.h"
 #include "Basics/json.h"

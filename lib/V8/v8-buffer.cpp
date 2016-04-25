@@ -1591,7 +1591,7 @@ static void MapSetIndexedBuffer(
   v8::HandleScope scope(isolate);
 
   v8::Handle<v8::Object> self = args.Holder();
-  
+
   if (self->InternalFieldCount() == 0) {
     // seems object has become a FastBuffer already
     if (self->Has(TRI_V8_ASCII_STRING("parent"))) {

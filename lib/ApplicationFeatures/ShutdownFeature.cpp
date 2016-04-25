@@ -42,7 +42,5 @@ ShutdownFeature::ShutdownFeature(
 }
 
 void ShutdownFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
   server()->beginShutdown();
 }

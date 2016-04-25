@@ -26,6 +26,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/DatabaseServerFeature.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-query.h"
@@ -52,8 +53,6 @@ CheckVersionFeature::CheckVersionFeature(
 
 void CheckVersionFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addSection("database", "Configure the database");
 
   options->addHiddenOption("--database.check-version",
@@ -69,18 +68,15 @@ void CheckVersionFeature::validateOptions(
 
   ApplicationServer::forceDisableFeatures(_nonServerFeatures);
 
-  LoggerFeature* logger =
-      dynamic_cast<LoggerFeature*>(ApplicationServer::lookupFeature("Logger"));
+  LoggerFeature* logger = ApplicationServer::getFeature<LoggerFeature>("Logger");
   logger->disableThreaded();
 
-  DatabaseFeature* database = dynamic_cast<DatabaseFeature*>(
-      ApplicationServer::lookupFeature("Database"));
+  DatabaseFeature* database = ApplicationServer::getFeature<DatabaseFeature>("Database");
   database->disableReplicationApplier();
   database->disableCompactor();
   database->enableCheckVersion();
 
-  V8DealerFeature* v8dealer = dynamic_cast<V8DealerFeature*>(
-      ApplicationServer::lookupFeature("V8Dealer"));
+  V8DealerFeature* v8dealer = ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
 
   v8dealer->setNumberContexts(1);
 }
@@ -132,7 +128,7 @@ void CheckVersionFeature::checkVersion() {
         LOG(DEBUG) << "running database version check";
 
         // can do this without a lock as this is the startup
-        auto server = DatabaseFeature::DATABASE->server();
+        auto server = DatabaseServerFeature::SERVER;
         auto unuser = server->_databasesProtector.use();
         auto theLists = server->_databasesLists.load();
 

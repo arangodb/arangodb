@@ -39,8 +39,6 @@ NonceFeature::NonceFeature(application_features::ApplicationServer* server)
 }
 
 void NonceFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addSection("nonce", "Configure the nonces");
 
   options->addOption("--nonce.size", "the size of the hash array for nonces",
@@ -48,21 +46,15 @@ void NonceFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void NonceFeature::prepare() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::prepare";
-
   if (0 < _size) {
     Nonce::create(_size);
   }
 }
 
 void NonceFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
   LOG(DEBUG) << "setting nonce hash size to " << _size;
 }
 
 void NonceFeature::stop() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
-
   Nonce::destroy();
 }

@@ -65,8 +65,6 @@ ServerFeature::ServerFeature(application_features::ApplicationServer* server,
 }
 
 void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addOption("--console", "start a JavaScript emergency console",
                      new BooleanParameter(&_console, false));
 
@@ -98,8 +96,6 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
-
   int count = 0;
 
   if (_console) {
@@ -134,17 +130,17 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
                                         "RestServer", "Scheduler", "Ssl",
                                         "Supervisor"});
 
-    DatabaseFeature* database = dynamic_cast<DatabaseFeature*>(
-        ApplicationServer::lookupFeature("Database"));
+    DatabaseFeature* database = 
+        ApplicationServer::getFeature<DatabaseFeature>("Database");
     database->disableReplicationApplier();
 
-    StatisticsFeature* statistics = dynamic_cast<StatisticsFeature*>(
-        ApplicationServer::lookupFeature("Statistics"));
+    StatisticsFeature* statistics = 
+        ApplicationServer::getFeature<StatisticsFeature>("Statistics");
     statistics->disableStatistics();
   }
 
-  V8DealerFeature* v8dealer = dynamic_cast<V8DealerFeature*>(
-      ApplicationServer::lookupFeature("V8Dealer"));
+  V8DealerFeature* v8dealer = 
+      ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
 
   if (_operationMode == OperationMode::MODE_SCRIPT ||
       _operationMode == OperationMode::MODE_UNITTESTS) {
@@ -165,11 +161,9 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 }
 
 void ServerFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
   if (_operationMode != OperationMode::MODE_CONSOLE && _restServer) {
-    auto scheduler = dynamic_cast<SchedulerFeature*>(
-        ApplicationServer::lookupFeature("Scheduler"));
+    auto scheduler = 
+        ApplicationServer::getFeature<SchedulerFeature>("Scheduler");
 
     if (scheduler != nullptr) {
       scheduler->buildControlCHandler();
@@ -180,6 +174,11 @@ void ServerFeature::start() {
 
   *_result = EXIT_SUCCESS;
 
+  // flush all log output before we go on... this is sensible because any
+  // of the following options may print or prompt, and pending log entries
+  // might overwrite that 
+  Logger::flush();
+   
   switch (_operationMode) {
     case OperationMode::MODE_UNITTESTS:
       LOG_TOPIC(TRACE, Logger::STARTUP) << "server about to run unit-tests";
@@ -202,15 +201,9 @@ void ServerFeature::start() {
 }
 
 void ServerFeature::beginShutdown() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::shutdown";
-
   std::string msg =
       ArangoGlobalContext::CONTEXT->binaryName() + " [shutting down]";
   TRI_SetProcessTitle(msg.c_str());
-}
-
-void ServerFeature::stop() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
 }
 
 void ServerFeature::waitForHeartbeat() {
@@ -226,10 +219,25 @@ void ServerFeature::waitForHeartbeat() {
     usleep(100 * 1000);
   }
 }
+  
+std::string ServerFeature::operationModeString(OperationMode mode) {
+  switch (mode) {
+    case OperationMode::MODE_CONSOLE: 
+      return "console";
+    case OperationMode::MODE_UNITTESTS: 
+      return "unittests";
+    case OperationMode::MODE_SCRIPT: 
+      return "script";
+    case OperationMode::MODE_SERVER: 
+      return "server";
+    default: 
+      return "unknown";
+  }
+}
 
 int ServerFeature::runUnitTests() {
-  DatabaseFeature* database = dynamic_cast<DatabaseFeature*>(
-      ApplicationServer::lookupFeature("Database"));
+  DatabaseFeature* database = 
+      ApplicationServer::getFeature<DatabaseFeature>("Database");
   V8Context* context =
       V8DealerFeature::DEALER->enterContext(database->vocbase(), true);
 
@@ -287,8 +295,8 @@ int ServerFeature::runUnitTests() {
 int ServerFeature::runScript() {
   bool ok = false;
 
-  DatabaseFeature* database = dynamic_cast<DatabaseFeature*>(
-      ApplicationServer::lookupFeature("Database"));
+  DatabaseFeature* database = 
+      ApplicationServer::getFeature<DatabaseFeature>("Database");
   V8Context* context =
       V8DealerFeature::DEALER->enterContext(database->vocbase(), true);
 

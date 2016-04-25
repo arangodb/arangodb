@@ -23,8 +23,8 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_BASICS_ASSOC_MULTI_H
-#define LIB_BASICS_ASSOC_MULTI_H 1
+#ifndef ARANGODB_BASICS_ASSOC_MULTI_H
+#define ARANGODB_BASICS_ASSOC_MULTI_H 1
 
 // Activate for additional debugging:
 // #define TRI_CHECK_MULTI_POINTER_HASH 1
@@ -1144,7 +1144,7 @@ class AssocMulti {
 
     LOG(TRACE) << "resizing index " << cb << ", target size: " << size;
 
-    LOG_TOPIC(TRACE, Logger::PERFORMANCE) << 
+    LOG_TOPIC(TRACE, Logger::PERFORMANCE) <<
         "index-resize " << cb << ", target size: " << size;
 
     double start = TRI_microtime();

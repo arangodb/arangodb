@@ -20,8 +20,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_APPLICATION_SERVER_H
-#define APPLICATION_FEATURES_APPLICATION_SERVER_H 1
+#ifndef ARANGODB_APPLICATION_FEATURES_APPLICATION_SERVER_H
+#define ARANGODB_APPLICATION_FEATURES_APPLICATION_SERVER_H 1
 
 #include "Basics/Common.h"
 
@@ -93,6 +93,30 @@ class ApplicationServer {
  public:
   static ApplicationServer* server;
   static ApplicationFeature* lookupFeature(std::string const&);
+  static bool isStopping() { return server != nullptr && server->_stopping.load(); }
+
+  // returns the feature with the given name if known
+  // throws otherwise
+  template<typename T>
+  static T* getFeature(std::string const& name) {
+    T* feature = dynamic_cast<T*>(application_features::ApplicationServer::lookupFeature(name));
+    if (feature == nullptr) {
+      throwFeatureNotFoundException(name);
+    }
+    return feature;
+  }
+
+  // returns the feature with the given name if known and enabled
+  // throws otherwise
+  template<typename T>
+  static T* getEnabledFeature(std::string const& name) {
+    T* feature = getFeature<T>(name);
+    if (!feature->isEnabled()) {
+      throwFeatureNotEnabledException(name);
+    }
+    return feature;
+  }
+
   static void disableFeatures(std::vector<std::string> const&);
   static void forceDisableFeatures(std::vector<std::string> const&);
 
@@ -138,8 +162,14 @@ class ApplicationServer {
   VPackBuilder options(std::unordered_set<std::string> const& excludes) const;
 
  private:
-  static void disableFeatures(std::vector<std::string> const& names, bool force);
+  // throws an exception if a requested feature was not found
+  static void throwFeatureNotFoundException(std::string const& name);
   
+  // throws an exception if a requested feature is not enabled
+  static void throwFeatureNotEnabledException(std::string const& name);
+
+  static void disableFeatures(std::vector<std::string> const& names, bool force);
+
   // fail and abort with the specified message
   void fail(std::string const& message);
 

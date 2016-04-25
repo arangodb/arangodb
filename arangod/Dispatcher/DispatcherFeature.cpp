@@ -60,8 +60,6 @@ DispatcherFeature::~DispatcherFeature() {
 
 void DispatcherFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addSection("server", "Server features");
 
   options->addOption("--server.threads",
@@ -78,21 +76,29 @@ void DispatcherFeature::collectOptions(
 }
 
 void DispatcherFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
-
   if (_nrStandardThreads == 0) {
     size_t n = TRI_numberProcessors();
 
-    if (n <= 4) {
-      _nrStandardThreads = n - 1;
-    } else {
-      _nrStandardThreads = n - 2;
+    if (n == 0) {
+      n = 1;
+    }
+
+    if (n > 1) {
+      if (n <= 4) {
+        _nrStandardThreads = n - 1;
+      } else {
+        _nrStandardThreads = n - 2;
+      }
     }
   }
+    
+  TRI_ASSERT(_nrStandardThreads >= 1);
 
   if (_nrAqlThreads == 0) {
     _nrAqlThreads = _nrStandardThreads;
   }
+  
+  TRI_ASSERT(_nrAqlThreads >= 1);
 
   if (_queueSize <= 128) {
     LOG(FATAL)
@@ -102,8 +108,8 @@ void DispatcherFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 }
 
 void DispatcherFeature::prepare() {
-  V8DealerFeature* dealer = dynamic_cast<V8DealerFeature*>(
-      ApplicationServer::lookupFeature("V8Dealer"));
+  V8DealerFeature* dealer = 
+      ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
 
   if (dealer != nullptr) {
     dealer->defineDouble("DISPATCHER_THREADS", static_cast<double>(_nrStandardThreads));
@@ -111,13 +117,11 @@ void DispatcherFeature::prepare() {
 }
 
 void DispatcherFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
   buildDispatcher();
   buildStandardQueue();
 
-  V8DealerFeature* dealer = dynamic_cast<V8DealerFeature*>(
-      ApplicationServer::lookupFeature("V8Dealer"));
+  V8DealerFeature* dealer =
+      ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
 
   if (dealer != nullptr) {
     dealer->defineContextUpdate(
@@ -129,14 +133,10 @@ void DispatcherFeature::start() {
 }
 
 void DispatcherFeature::beginShutdown() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::beginShutdown";
-
   _dispatcher->beginShutdown();
 }
 
 void DispatcherFeature::stop() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
-
   _dispatcher->shutdown();
 
   DISPATCHER = nullptr;

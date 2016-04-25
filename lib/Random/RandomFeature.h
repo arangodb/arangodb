@@ -20,8 +20,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_RANDOM_FEATURE_H
-#define APPLICATION_FEATURES_RANDOM_FEATURE_H 1
+#ifndef ARANGODB_RANDOM_RANDOM_FEATURE_H
+#define ARANGODB_RANDOM_RANDOM_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 

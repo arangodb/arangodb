@@ -218,9 +218,11 @@ add_executable(${BIN_ARANGOD}
   RestServer/ConsoleFeature.cpp
   RestServer/ConsoleThread.cpp
   RestServer/DatabaseFeature.cpp
+  RestServer/DatabaseServerFeature.cpp
   RestServer/EndpointFeature.cpp
   RestServer/FileDescriptorsFeature.cpp
   RestServer/FrontendFeature.cpp
+  RestServer/QueryRegistryFeature.cpp
   RestServer/RestServerFeature.cpp
   RestServer/ServerFeature.cpp
   RestServer/UpgradeFeature.cpp
@@ -252,6 +254,7 @@ add_executable(${BIN_ARANGOD}
   Utils/TransactionContext.cpp
   Utils/V8TransactionContext.cpp
   Utils/WorkMonitorArangod.cpp
+  V8Server/FoxxQueuesFeature.cpp
   V8Server/V8Context.cpp
   V8Server/V8DealerFeature.cpp
   V8Server/V8Job.cpp

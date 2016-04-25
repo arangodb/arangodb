@@ -21,8 +21,8 @@
 /// @author Dr. Oreste Costa-Panaia
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_BASICS_APPLICATION_EXIT_H
-#define LIB_BASICS_APPLICATION_EXIT_H 1
+#ifndef ARANGODB_BASICS_APPLICATION__EXIT_H
+#define ARANGODB_BASICS_APPLICATION__EXIT_H 1
 
 #ifndef TRI_WITHIN_COMMON
 #error use <Basics/Common.h>

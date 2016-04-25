@@ -24,6 +24,7 @@
 
 #include <iostream>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ClientFeature.h"
 #include "Basics/StringUtils.h"
 #include "Benchmark/BenchmarkCounter.h"
@@ -75,8 +76,6 @@ BenchFeature::BenchFeature(application_features::ApplicationServer* server,
 }
 
 void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addOption("--async", "send asynchronous requests",
                      new BooleanParameter(&_async));
 
@@ -153,10 +152,7 @@ void BenchFeature::updateStartCounter() { ++_started; }
 int BenchFeature::getStartCounter() { return _started; }
 
 void BenchFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
-  ClientFeature* client =
-      dynamic_cast<ClientFeature*>(server()->feature("Client"));
+  ClientFeature* client = application_features::ApplicationServer::getFeature<ClientFeature>("Client");
   client->setRetries(3);
   client->setWarn(true);
 
@@ -319,7 +315,5 @@ void BenchFeature::start() {
 }
 
 void BenchFeature::stop() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
-
   ARANGOB = nullptr;
 }

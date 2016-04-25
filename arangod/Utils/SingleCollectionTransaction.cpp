@@ -46,7 +46,7 @@ SingleCollectionTransaction::SingleCollectionTransaction(
 
   // add the (sole) collection
   if (setupState() == TRI_ERROR_NO_ERROR) {
-    this->addCollection(cid, _accessType);
+    addCollection(cid, _accessType);
   }
 }
 
@@ -64,8 +64,8 @@ SingleCollectionTransaction::SingleCollectionTransaction(
         _accessType(accessType) {
   // add the (sole) collection
   if (setupState() == TRI_ERROR_NO_ERROR) {
-    _cid = this->resolver()->getCollectionId(name);
-    this->addCollection(_cid, _accessType);
+    _cid = resolver()->getCollectionId(name);
+    addCollection(_cid, _accessType);
   }
 }
 
@@ -74,21 +74,21 @@ SingleCollectionTransaction::SingleCollectionTransaction(
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_transaction_collection_t* SingleCollectionTransaction::trxCollection() {
-  TRI_ASSERT(this->_cid > 0);
+  TRI_ASSERT(_cid > 0);
 
-  if (this->_trxCollection == nullptr) {
-    this->_trxCollection =
-        TRI_GetCollectionTransaction(this->_trx, this->_cid, _accessType);
+  if (_trxCollection == nullptr) {
+    _trxCollection =
+        TRI_GetCollectionTransaction(_trx, _cid, _accessType);
 
-    if (this->_trxCollection != nullptr &&
-        this->_trxCollection->_collection != nullptr) {
-      this->_documentCollection =
-          this->_trxCollection->_collection->_collection;
+    if (_trxCollection != nullptr &&
+        _trxCollection->_collection != nullptr) {
+      _documentCollection =
+          _trxCollection->_collection->_collection;
     }
   }
 
-  TRI_ASSERT(this->_trxCollection != nullptr);
-  return this->_trxCollection;
+  TRI_ASSERT(_trxCollection != nullptr);
+  return _trxCollection;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -98,14 +98,14 @@ TRI_transaction_collection_t* SingleCollectionTransaction::trxCollection() {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_document_collection_t* SingleCollectionTransaction::documentCollection() {
-  if (this->_documentCollection != nullptr) {
-    return this->_documentCollection;
+  if (_documentCollection != nullptr) {
+    return _documentCollection;
   }
  
-  this->trxCollection(); 
-  TRI_ASSERT(this->_documentCollection != nullptr);
+  trxCollection(); 
+  TRI_ASSERT(_documentCollection != nullptr);
 
-  return this->_documentCollection;
+  return _documentCollection;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -116,7 +116,7 @@ TRI_document_collection_t* SingleCollectionTransaction::documentCollection() {
 //////////////////////////////////////////////////////////////////////////////
 
 DocumentDitch* SingleCollectionTransaction::ditch() const {
-  return this->_transactionContext->ditch(_cid);
+  return _transactionContext->ditch(_cid);
 }
 
 DocumentDitch* SingleCollectionTransaction::ditch(TRI_voc_cid_t) const { 
@@ -136,7 +136,7 @@ bool SingleCollectionTransaction::hasDitch() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string SingleCollectionTransaction::name() { 
-  this->trxCollection(); // will ensure we have the _trxCollection object set
+  trxCollection(); // will ensure we have the _trxCollection object set
   TRI_ASSERT(_trxCollection != nullptr);
   TRI_ASSERT(_trxCollection->_collection != nullptr);
   return _trxCollection->_collection->_name; 
@@ -147,7 +147,7 @@ std::string SingleCollectionTransaction::name() {
 ////////////////////////////////////////////////////////////////////////////////
 
 int SingleCollectionTransaction::lockRead() {
-  return this->lock(this->trxCollection(), TRI_TRANSACTION_READ);
+  return lock(trxCollection(), TRI_TRANSACTION_READ);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -155,7 +155,7 @@ int SingleCollectionTransaction::lockRead() {
 //////////////////////////////////////////////////////////////////////////////
 
 int SingleCollectionTransaction::unlockRead() {
-  return this->unlock(this->trxCollection(), TRI_TRANSACTION_READ);
+  return unlock(trxCollection(), TRI_TRANSACTION_READ);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -163,6 +163,6 @@ int SingleCollectionTransaction::unlockRead() {
 ////////////////////////////////////////////////////////////////////////////////
 
 int SingleCollectionTransaction::lockWrite() {
-  return this->lock(this->trxCollection(), TRI_TRANSACTION_WRITE);
+  return lock(trxCollection(), TRI_TRANSACTION_WRITE);
 }
 

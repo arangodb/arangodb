@@ -1,5 +1,4 @@
 .arango-table {
-  border-top: 1px solid $c-c2grey;
   width: 100%;
 
   thead {
@@ -7,6 +6,7 @@
 
     th {
       border-bottom: 1px solid $c-c2grey;
+      font-weight: 400;
       height: 43px;
     }
   }

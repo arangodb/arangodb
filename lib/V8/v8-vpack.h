@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_V8_V8_VPACK_H
-#define LIB_V8_V8_VPACK_H 1
+#ifndef ARANGODB_V8_V8__VPACK_H
+#define ARANGODB_V8_V8__VPACK_H 1
 
 #include "Basics/Common.h"
 #include "V8/v8-globals.h"
@@ -55,6 +55,6 @@ int TRI_V8ToVPack(v8::Isolate* isolate, arangodb::velocypack::Builder& builder,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_V8ToVPackSimple(v8::Isolate* isolate, arangodb::velocypack::Builder& builder,
-                        v8::Handle<v8::Value> const value, bool keepTopLevelOpen);
+                        v8::Handle<v8::Value> const value);
 
 #endif

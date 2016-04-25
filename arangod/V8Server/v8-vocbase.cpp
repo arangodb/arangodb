@@ -41,6 +41,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/Timers.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
@@ -1699,6 +1700,7 @@ static void JS_ThrowCollectionNotLoaded(
 ///        NOTE: Collection has to be known to the transaction.
 ////////////////////////////////////////////////////////////////////////////////
 
+
 static v8::Handle<v8::Value> VertexIdToData(v8::Isolate* isolate,
                                             Transaction* trx,
                                             std::string const& vertexId) {
@@ -1709,7 +1711,7 @@ static v8::Handle<v8::Value> VertexIdToData(v8::Isolate* isolate,
 
   VPackBuilder builder;
   builder.openObject();
-  builder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(parts[1]));
+  builder.add(Transaction::KeyString, VPackValue(parts[1]));
   builder.close();
 
   OperationResult opRes = trx->document(parts[0], builder.slice(), options);
@@ -1723,16 +1725,12 @@ static v8::Handle<v8::Value> VertexIdToData(v8::Isolate* isolate,
   return TRI_VPackToV8(isolate, opRes.slice(), &resultOptions);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Transforms EdgeId to v8 object
-///        NOTE: Collection has to be known to the transaction.
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> EdgeIdToData(v8::Isolate* isolate,
-                                          Transaction* trx,
-                                          std::string const& edgeId) {
-  return VertexIdToData(isolate, trx, edgeId);
+static v8::Handle<v8::Value> VertexIdToData(v8::Isolate* isolate,
+                                            Transaction* trx,
+                                            VPackSlice const& vertexId) {
+  return VertexIdToData(isolate, trx, vertexId.copyString());
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Start a new transaction for the given collections and request
@@ -1786,14 +1784,16 @@ static v8::Handle<v8::Value> PathIdsToV8(v8::Isolate* isolate,
       vertices->Set(j, VertexIdToData(isolate, trx, p.vertices[j]));
     }
     for (uint32_t j = 0; j < en; ++j) {
-      edges->Set(j, EdgeIdToData(isolate, trx, p.edges[j]));
+      VPackOptions resultOptions = VPackOptions::Defaults;
+      resultOptions.customTypeHandler = trx->transactionContext()->orderCustomTypeHandler().get();
+      edges->Set(j, TRI_VPackToV8(isolate, p.edges[j], &resultOptions));
     }
   } else {
     for (uint32_t j = 0; j < vn; ++j) {
-      vertices->Set(j, TRI_V8_STD_STRING(p.vertices[j]));
+      vertices->Set(j, TRI_V8_STD_STRING(p.vertices[j].copyString()));
     }
     for (uint32_t j = 0; j < en; ++j) {
-      edges->Set(j, TRI_V8_STD_STRING(p.edges[j]));
+      edges->Set(j, TRI_V8_STD_STRING(trx->extractIdString(p.edges[j])));
     }
   }
 
@@ -1827,14 +1827,16 @@ static v8::Handle<v8::Value> PathIdsToV8(
       vertices->Set(j, VertexIdToData(isolate, trx, p.vertices[j]));
     }
     for (uint32_t j = 0; j < en; ++j) {
-      edges->Set(j, EdgeIdToData(isolate, trx, p.edges[j]));
+      VPackOptions resultOptions = VPackOptions::Defaults;
+      resultOptions.customTypeHandler = trx->transactionContext()->orderCustomTypeHandler().get();
+      edges->Set(j, TRI_VPackToV8(isolate, p.edges[j], &resultOptions));
     }
   } else {
     for (uint32_t j = 0; j < vn; ++j) {
-      vertices->Set(j, TRI_V8_STD_STRING(p.vertices[j]));
+      vertices->Set(j, TRI_V8_STD_STRING(p.vertices[j].copyString()));
     }
     for (uint32_t j = 0; j < en; ++j) {
-      edges->Set(j, TRI_V8_STD_STRING(p.edges[j]));
+      edges->Set(j, TRI_V8_STD_STRING(trx->extractIdString(p.edges[j])));
     }
   }
 
@@ -2103,8 +2105,8 @@ static void JS_QueryShortestPath(
   }
 
   try {
-    opts.start = startVertex;
-    opts.end = targetVertex;
+    opts.setStart(startVertex);
+    opts.setEnd(targetVertex);
   } catch (Exception& e) {
     // Id string might have illegal collection name
     trx->finish(e.code());
@@ -3331,6 +3333,36 @@ static void JS_ListEndpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_ClearTimers(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  arangodb::basics::Timers::clear();
+
+  TRI_V8_RETURN(v8::Undefined(isolate));
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_GetTimers(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  v8::Handle<v8::Object> totals = v8::Object::New(isolate);
+  v8::Handle<v8::Object> counts = v8::Object::New(isolate);
+  
+  for (auto& it : arangodb::basics::Timers::get()) {
+    totals->ForceSet(TRI_V8_STD_STRING(it.first), v8::Number::New(isolate, it.second.first));
+    counts->ForceSet(TRI_V8_STD_STRING(it.first), v8::Number::New(isolate, static_cast<double>(it.second.second)));
+  }
+  
+  v8::Handle<v8::Object> result = v8::Object::New(isolate);
+  result->ForceSet(TRI_V8_ASCII_STRING("totals"), totals);
+  result->ForceSet(TRI_V8_ASCII_STRING("counts"), counts);
+
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the private WRP_VOCBASE_COL_TYPE value
 ////////////////////////////////////////////////////////////////////////////////
@@ -3416,6 +3448,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   static_cast<V8TransactionContext*>(v8g->_transactionContext)->makeGlobal();
 
   // register the query registry
+  TRI_ASSERT(queryRegistry != nullptr);
   v8g->_queryRegistry = queryRegistry;
 
   // register the server
@@ -3580,6 +3613,14 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("Debug"),
                                JS_Debug, true);
+  
+  TRI_AddGlobalFunctionVocbase(isolate, context,
+                               TRI_V8_ASCII_STRING("CLEAR_TIMERS"),
+                               JS_ClearTimers, true);
+  
+  TRI_AddGlobalFunctionVocbase(isolate, context,
+                               TRI_V8_ASCII_STRING("GET_TIMERS"),
+                               JS_GetTimers, true);
 
   // .............................................................................
   // create global variables

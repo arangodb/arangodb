@@ -108,7 +108,10 @@ The alternative forms are aliases and functionally equivalent to the regular
 operators.
 
 The two-operand logical operators in AQL will be executed with short-circuit 
-evaluation. The result of the logical operators in AQL is defined as follows:
+evaluation (except if one of the operands is or includes a subquery. In this
+case the subquery will be pulled out an evaluated before the logical operator).
+
+The result of the logical operators in AQL is defined as follows:
 
 - `lhs && rhs` will return `lhs` if it is `false` or would be `false` when converted
   into a boolean. If `lhs` is `true` or would be `true` when converted to a boolean,

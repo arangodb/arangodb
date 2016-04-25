@@ -56,10 +56,10 @@ class ProgramOptions {
     bool touched(std::string const& name) const {
       return _touched.find(Option::stripPrefix(name)) != _touched.end();
     }
-    
+
     // mark an option as being frozen
     void freeze(std::string const& name) { _frozen.emplace(name); }
-    
+
     // whether or not an option was touched during options processing,
     // not including the current pass
     bool frozen(std::string const& name) const {
@@ -78,7 +78,7 @@ class ProgramOptions {
     // which options were touched during option processing
     // this includes options that are touched in the current pass
     std::unordered_set<std::string> _touched;
-    
+
     // which options were touched during option processing
     // this does not include options that are touched in the current pass
     std::unordered_set<std::string> _frozen;
@@ -342,7 +342,7 @@ class ProgramOptions {
     }
     for (auto const& it : _processingResult._touched) {
       _processingResult.freeze(it);
-    } 
+    }
   }
 
   // check whether or not an option requires a value
@@ -387,7 +387,7 @@ class ProgramOptions {
 
   // handle an unknown option
   bool unknownOption(std::string const& name) {
-    fail("unknown option '" + name + "'");
+    fail("unknown option '--" + name + "'");
 
     auto similarOptions = similar(name, 8, 4);
     if (!similarOptions.empty()) {
@@ -397,6 +397,9 @@ class ProgramOptions {
       }
       std::cerr << std::endl;
     }
+    std::cerr << "Use --help or --help-all to get an overview of available options" 
+              << std::endl << std::endl; 
+    
     return false;
   }
 
@@ -454,7 +457,7 @@ class ProgramOptions {
 
   // get a list of similar options
   std::vector<std::string> similar(std::string const& value, int cutOff,
-                                   size_t max) {
+                                   size_t maxResults) {
     std::vector<std::string> result;
 
     if (_similarity != nullptr) {
@@ -479,7 +482,7 @@ class ProgramOptions {
           continue;
         }
         result.emplace_back(it.second);
-        if (result.size() >= max) {
+        if (result.size() >= maxResults) {
           break;
         }
         last = it.first;

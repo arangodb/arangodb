@@ -21,8 +21,8 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_BASICS_TRAVERSER_H
-#define LIB_BASICS_TRAVERSER_H 1
+#ifndef ARANGODB_BASICS_TRAVERSER_H
+#define ARANGODB_BASICS_TRAVERSER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
@@ -458,14 +458,14 @@ class PathFinder {
   /// @brief callback to find neighbors
   //////////////////////////////////////////////////////////////////////////////
 
-  typedef std::function<void(std::string const&, std::vector<Step*>&)>
+  typedef std::function<void(VertexId const&, std::vector<Step*>&)>
       ExpanderFunction;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief our specialization of the priority queue
   //////////////////////////////////////////////////////////////////////////////
 
-  typedef arangodb::basics::PriorityQueue<std::string, Step, EdgeWeight> PQueue;
+  typedef arangodb::basics::PriorityQueue<VertexId, Step, EdgeWeight> PQueue;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief information for each thread
@@ -858,7 +858,7 @@ class PathFinder {
     // FORWARD Go path back from intermediate -> start.
     // Insert all vertices and edges at front of vector
     // Do NOT! insert the intermediate vertex
-    while (!s->_predecessor.empty()) {
+    while (!s->_predecessor.isNone()) {
       r_edges.push_front(s->_edge);
       r_vertices.push_front(s->_predecessor);
       s = forward._pq.find(s->_predecessor);
@@ -868,7 +868,7 @@ class PathFinder {
     // Insert all vertices and edges at back of vector
     // Also insert the intermediate vertex
     s = backward._pq.find(_intermediate);
-    while (!s->_predecessor.empty()) {
+    while (!s->_predecessor.isNone()) {
       r_vertices.emplace_back(s->_predecessor);
       s = backward._pq.find(s->_predecessor);
     }
@@ -946,7 +946,7 @@ class PathFinder {
     // FORWARD Go path back from intermediate -> start.
     // Insert all vertices and edges at front of vector
     // Do NOT! insert the intermediate vertex
-    while (!s->_predecessor.empty()) {
+    while (!s->_predecessor.isNone()) {
       r_edges.push_front(s->_edge);
       r_vertices.push_front(s->_predecessor);
       s = forward._pq.find(s->_predecessor);
@@ -956,7 +956,7 @@ class PathFinder {
     // Insert all vertices and edges at back of vector
     // Also insert the intermediate vertex
     s = backward._pq.find(_intermediate);
-    while (!s->_predecessor.empty()) {
+    while (!s->_predecessor.isNone()) {
       r_edges.emplace_back(s->_edge);
       r_vertices.emplace_back(s->_predecessor);
       s = backward._pq.find(s->_predecessor);

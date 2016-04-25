@@ -23,16 +23,6 @@
 
 #include "State.h"
 
-#include "Aql/Query.h"
-#include "Basics/VelocyPackHelper.h"
-#include "RestServer/DatabaseFeature.h"
-#include "Utils/OperationOptions.h"
-#include "Utils/OperationResult.h"
-#include "Utils/SingleCollectionTransaction.h"
-#include "Utils/StandaloneTransactionContext.h"
-#include "VocBase/collection.h"
-#include "VocBase/vocbase.h"
-
 #include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -41,6 +31,16 @@
 #include <iomanip>
 #include <sstream>
 #include <thread>
+
+#include "Aql/Query.h"
+#include "Basics/VelocyPackHelper.h"
+#include "RestServer/QueryRegistryFeature.h"
+#include "Utils/OperationOptions.h"
+#include "Utils/OperationResult.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "Utils/StandaloneTransactionContext.h"
+#include "VocBase/collection.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -240,10 +240,7 @@ bool State::loadCollection(std::string const& name) {
                                aql.c_str(), aql.size(), bindVars, nullptr,
                                arangodb::aql::PART_MAIN);
     
-    DatabaseFeature* database = dynamic_cast<DatabaseFeature*>(
-      ApplicationServer::lookupFeature("Database"));
-    
-    auto queryResult = query.execute(database->queryRegistry());
+    auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
     
     if (queryResult.code != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
@@ -259,8 +256,8 @@ bool State::loadCollection(std::string const& name) {
         tmp->append(req.startAs<char const>(), req.byteSize());
         _log.push_back(
           log_t(std::stoi(i.get(TRI_VOC_ATTRIBUTE_KEY).copyString()),
-                i.get("term").getUInt(),
-                i.get("leader").getUInt(), tmp));
+                static_cast<term_t>(i.get("term").getUInt()),
+                static_cast<id_t>(i.get("leader").getUInt()), tmp));
       }
     }
 

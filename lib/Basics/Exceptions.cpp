@@ -47,7 +47,7 @@ Exception::Exception(int code, char const* file, int line)
       _file(file),
       _line(line),
       _code(code) {
-  
+
   appendLocation();
 }
 
@@ -71,7 +71,7 @@ Exception::Exception(int code, std::string const& errorMessage,
 Exception::Exception(int code, char const* errorMessage, char const* file,
                      int line)
     : _errorMessage(errorMessage), _file(file), _line(line), _code(code) {
-  
+
   appendLocation();
 }
 

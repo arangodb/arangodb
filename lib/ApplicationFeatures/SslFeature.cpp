@@ -52,8 +52,6 @@ SslFeature::SslFeature(application_features::ApplicationServer* server)
 }
 
 void SslFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addSection("ssl", "Configure SSL communication");
 
   options->addOption("--ssl.cafile", "ca file used for secure connections",
@@ -88,14 +86,10 @@ void SslFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void SslFeature::prepare() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::prepare";
-
   createSslContext();
 }
 
 void SslFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
   LOG(INFO) << "using SSL options: " << stringifySslOptions(_options);
 
   if (!_cipherList.empty()) {

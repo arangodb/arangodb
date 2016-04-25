@@ -63,7 +63,6 @@
 //new log view - do not delete
 #arangoLogTable {
   border-top: 0;
-  min-height: 444px;
 
   tbody {
 
@@ -106,6 +105,7 @@
   }
 
   .arango-tabbar {
+    left: 0;
     margin-top: -51px;
     position: absolute;
 
@@ -115,16 +115,20 @@
       color: $c-black;
       float: left;
       font-size: 10.5pt;
+      min-width: 60px;
       opacity: .64;
       outline: none;
       padding-left: 0;
-      padding-right: 20px;
-      text-align: left;
+      padding-right: 0;
+      text-align: center;
       width: auto;
 
       &.arango-active-tab {
-        height: 27px;
+        border-bottom: 2px solid $c-active-green;
+        font-weight: 400;
+        height: 35px;
         opacity: 1;
+        padding-bottom: 9px;
       }
     }
   }

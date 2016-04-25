@@ -21,7 +21,6 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RestServer/ArangoServer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 #include "RestAgencyHandler.h"

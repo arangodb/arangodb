@@ -22,8 +22,8 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_REST_CONNECTION_INFO_H
-#define LIB_REST_CONNECTION_INFO_H 1
+#ifndef ARANGODB_ENDPOINT_CONNECTION_INFO_H
+#define ARANGODB_ENDPOINT_CONNECTION_INFO_H 1
 
 #include "Basics/Common.h"
 

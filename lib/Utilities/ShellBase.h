@@ -22,8 +22,8 @@
 /// @author Esteban Lombeyda
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_UTILITIES_SHELL_BASE_H
-#define LIB_UTILITIES_SHELL_BASE_H 1
+#ifndef ARANGODB_UTILITIES_SHELL_BASE_H
+#define ARANGODB_UTILITIES_SHELL_BASE_H 1
 
 #include "Basics/Common.h"
 

@@ -234,9 +234,6 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
     }
 
     {
-      createResponse(GeneralResponse::ResponseCode::OK);
-      _response->setContentType("application/json; charset=utf-8");
-
       size_t ignored = 0;
       size_t removed = 0;
       if (queryResult.stats != nullptr) {
@@ -261,18 +258,13 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
       result.add("removed", VPackValue(removed));
       result.add("ignored", VPackValue(ignored));
       result.add("error", VPackValue(false));
-      result.add("code", VPackValue(static_cast<int>(_response->responseCode())));
+      result.add("code", VPackValue(static_cast<int>(GeneralResponse::ResponseCode::OK)));
       if (!silent) {
         result.add("old", queryResult.result->slice());
       }
       result.close();
-      VPackSlice s = result.slice();
 
-      auto transactionContext = std::make_shared<StandaloneTransactionContext>(_vocbase);
-      arangodb::basics::VPackStringBufferAdapter buffer(
-          _response->body().stringBuffer());
-      VPackDumper dumper(&buffer, transactionContext->getVPackOptions());
-      dumper.dump(s);
+      generateResult(GeneralResponse::ResponseCode::OK, result.slice(), queryResult.context);
     }
   } catch (arangodb::basics::Exception const& ex) {
     unregisterQuery();

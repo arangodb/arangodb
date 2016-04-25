@@ -21,8 +21,8 @@
 /// @author Dr. Oreste Costa-Panaia
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_BASICS_WIN_UTILS_H
-#define LIB_BASICS_WIN_UTILS_H 1
+#ifndef ARANGODB_BASICS_WIN__UTILS_H
+#define ARANGODB_BASICS_WIN__UTILS_H 1
 
 #include <WinSock2.h>
 #include <string>

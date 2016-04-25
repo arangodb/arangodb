@@ -22,12 +22,15 @@
     padding: 0 12px;
 
     &.active {
+      border-bottom: 2px solid $c-active-green;
       cursor: default;
+      padding-bottom: 5px;
 
       a {
         color: $c-black;
       }
     }
+
 
     &.disabled {
       cursor: not-allowed;
@@ -100,7 +103,9 @@
       margin-top: 5px;
 
       &.active {
+        border-bottom: 2px solid $c-active-green;
         cursor: default;
+        padding-bottom: 5px;
 
         a {
           color: $c-black;

@@ -45,8 +45,6 @@ SupervisorFeature::SupervisorFeature(
 
 void SupervisorFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addHiddenOption("--supervisor",
                            "background the server, starts a supervisor",
                            new BooleanParameter(&_supervisor, false));
@@ -54,11 +52,8 @@ void SupervisorFeature::collectOptions(
 
 void SupervisorFeature::validateOptions(
     std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
-
   if (_supervisor) {
-    DaemonFeature* daemon = dynamic_cast<DaemonFeature*>(
-        ApplicationServer::lookupFeature("Daemon"));
+    DaemonFeature* daemon = ApplicationServer::getFeature<DaemonFeature>("Daemon");
 
     if (daemon == nullptr) {
       LOG(FATAL) << "daemon mode not available, cannot start supervisor";
@@ -74,8 +69,6 @@ void SupervisorFeature::validateOptions(
 }
 
 void SupervisorFeature::daemonize() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::daemonize";
-
   static time_t const MIN_TIME_ALIVE_IN_SEC = 30;
 
   if (!_supervisor) {

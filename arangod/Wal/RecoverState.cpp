@@ -320,6 +320,7 @@ int RecoverState::executeSingleOperation(
     trx.addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, false);
     trx.addHint(TRI_TRANSACTION_HINT_NO_THROTTLING, false);
     trx.addHint(TRI_TRANSACTION_HINT_LOCK_NEVER, false);
+    trx.addHint(TRI_TRANSACTION_HINT_RECOVERY, false); // to turn off waitForSync!
 
     res = trx.begin();
 
@@ -506,6 +507,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
               options.silent = true;
               options.recoveryMarker = envelope;
               options.isRestore = true;
+              options.waitForSync = false;
 
               // try an insert first
               OperationResult opRes = trx->insert(collectionName, VPackSlice(ptr), options);
@@ -565,6 +567,7 @@ bool RecoverState::ReplayMarker(TRI_df_marker_t const* marker, void* data,
               OperationOptions options;
               options.silent = true;
               options.recoveryMarker = envelope;
+              options.waitForSync = false;
 
               OperationResult opRes = trx->remove(collectionName, VPackSlice(ptr), options);
               int res = opRes.code;

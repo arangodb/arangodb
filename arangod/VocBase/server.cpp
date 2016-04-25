@@ -1071,8 +1071,7 @@ static void DatabaseManager(void* data) {
 
       usleep(DATABASE_MANAGER_INTERVAL);
       // The following is only necessary after a wait:
-      auto queryRegistry =
-          static_cast<arangodb::aql::QueryRegistry*>(server->_queryRegistry);
+      auto queryRegistry = server->_queryRegistry.load();
 
       if (queryRegistry != nullptr) {
         queryRegistry->expireQueries();
@@ -1092,8 +1091,7 @@ static void DatabaseManager(void* data) {
         for (auto& p : theLists->_coordinatorDatabases) {
           TRI_vocbase_t* vocbase = p.second;
           TRI_ASSERT(vocbase != nullptr);
-          auto cursorRepository = static_cast<arangodb::CursorRepository*>(
-              vocbase->_cursorRepository);
+          auto cursorRepository = vocbase->_cursorRepository;
 
           try {
             cursorRepository->garbageCollect(false);

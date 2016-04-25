@@ -22,11 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "transaction.h"
-
 #include "Aql/QueryCache.h"
-#include "Basics/conversions.h"
 #include "Logger/Logger.h"
-#include "Basics/tri-strings.h"
 #include "Basics/Exceptions.h"
 #include "VocBase/DatafileHelper.h"
 #include "VocBase/collection.h"
@@ -802,9 +799,10 @@ bool TRI_FreeTransaction(TRI_transaction_t* trx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_transaction_type_e TRI_GetTransactionTypeFromStr(char const* s) {
-  if (TRI_EqualString(s, "read")) {
+  if (strcmp(s, "read") == 0) {
     return TRI_TRANSACTION_READ;
-  } else if (TRI_EqualString(s, "write")) {
+  } 
+  if (strcmp(s, "write") == 0) {
     return TRI_TRANSACTION_WRITE;
   } 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -1044,13 +1042,17 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
   TRI_document_collection_t* document = operation.document;
   bool const isSingleOperationTransaction = IsSingleOperationTransaction(trx);
 
-  // upgrade the info for the transaction
-  if (waitForSync || document->_info.waitForSync()) {
-    trx->_waitForSync = true;
+  if (HasHint(trx, TRI_TRANSACTION_HINT_RECOVERY)) {
+    // turn off all waitForSync operations during recovery
+    waitForSync = false;
   }
 
-  if (isSingleOperationTransaction) {
+  // upgrade the info for the transaction
+  if (!waitForSync) {
     waitForSync |= document->_info.waitForSync();
+  }
+  if (waitForSync) {
+    trx->_waitForSync = true;
   }
 
   TRI_IF_FAILURE("TransactionOperationNoSlot") { return TRI_ERROR_DEBUG; }
@@ -1059,7 +1061,7 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  if (!trx->_beginWritten) {
+  if (!isSingleOperationTransaction && !trx->_beginWritten) {
     int res = WriteBeginMarker(trx);
 
     if (res != TRI_ERROR_NO_ERROR) {

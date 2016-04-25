@@ -99,7 +99,8 @@ enum TRI_transaction_hint_e {
   TRI_TRANSACTION_HINT_NO_THROTTLING = 32,
   TRI_TRANSACTION_HINT_TRY_LOCK = 64,
   TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK = 128,
-  TRI_TRANSACTION_HINT_NO_USAGE_LOCK = 256
+  TRI_TRANSACTION_HINT_NO_USAGE_LOCK = 256,
+  TRI_TRANSACTION_HINT_RECOVERY = 512
 };
 
 ////////////////////////////////////////////////////////////////////////////////

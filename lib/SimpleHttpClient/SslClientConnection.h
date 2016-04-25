@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_SIMPLE_HTTP_CLIENT_SSL_CLIENT_CONNECTION_H
-#define LIB_SIMPLE_HTTP_CLIENT_SSL_CLIENT_CONNECTION_H 1
+#ifndef ARANGODB_SIMPLE_HTTP_CLIENT_SSL_CLIENT_CONNECTION_H
+#define ARANGODB_SIMPLE_HTTP_CLIENT_SSL_CLIENT_CONNECTION_H 1
 
 #include "Basics/Common.h"
 
@@ -62,7 +62,7 @@ class SslClientConnection final : public GeneralClientConnection {
   ~SslClientConnection();
 
  protected:
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief internal initialization method, called from ctor
   //////////////////////////////////////////////////////////////////////////////

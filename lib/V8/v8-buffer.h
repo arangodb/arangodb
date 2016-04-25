@@ -46,8 +46,8 @@
 /// USE OR OTHER DEALINGS IN THE SOFTWARE.
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_V8_V8_BUFFER_H
-#define LIB_V8_V8_BUFFER_H 1
+#ifndef ARANGODB_V8_V8__BUFFER_H
+#define ARANGODB_V8_V8__BUFFER_H 1
 
 #include "Basics/Common.h"
 
@@ -108,7 +108,7 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
     if (o->InternalFieldCount() == 0) {
       // seems object has become a FastBuffer already
       ISOLATE;
-      
+
       if (o->Has(TRI_V8_ASCII_STRING("offset"))) {
         v8::Handle<v8::Value> offset = o->Get(TRI_V8_ASCII_STRING("offset"));
         if (offset->IsNumber()) {
@@ -130,7 +130,7 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
     if (buffer == nullptr || offsetValue < 0) {
       return nullptr;
     }
-    
+
     size_t length = buffer->_length;
     if (static_cast<size_t>(offsetValue) >= length) {
       return nullptr; //OOB
@@ -160,7 +160,7 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
     if (o->InternalFieldCount() == 0) {
       // seems object has become a FastBuffer already
       ISOLATE;
-      
+
       if (o->Has(TRI_V8_ASCII_STRING("length"))) {
         v8::Handle<v8::Value> length = o->Get(TRI_V8_ASCII_STRING("length"));
         if (length->IsNumber()) {
@@ -177,7 +177,7 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
         // fallthrough intentional
       }
     }
-    
+
     V8Buffer* buffer = unwrap(o);
     if (buffer == nullptr) {
       return 0;
@@ -185,7 +185,7 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
 
     if (lengthValue >= 0) {
       return static_cast<size_t>(lengthValue);
-    } 
+    }
 
     return buffer->_length;
   }

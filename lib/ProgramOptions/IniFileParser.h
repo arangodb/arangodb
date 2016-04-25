@@ -55,7 +55,7 @@ class IniFileParser {
     std::ifstream ifs(filename, std::ifstream::in);
 
     if (!ifs.is_open()) {
-      return _options->fail("unable to open file");
+      return _options->fail("unable to open configuration file '" + filename + "'");
     }
 
     std::string currentSection;

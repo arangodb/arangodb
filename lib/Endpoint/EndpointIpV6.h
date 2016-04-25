@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef LIB_REST_ENDPOINT_IP_V6_H
-#define LIB_REST_ENDPOINT_IP_V6_H 1
+#ifndef ARANGODB_ENDPOINT_ENDPOINT_IP_V6_H
+#define ARANGODB_ENDPOINT_ENDPOINT_IP_V6_H 1
 
 #include "Endpoint/EndpointIp.h"
 

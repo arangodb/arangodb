@@ -53,8 +53,6 @@ V8PlatformFeature::V8PlatformFeature(
 
 void V8PlatformFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addSection("javascript", "Configure the Javascript engine");
 
   options->addHiddenOption("--javascript.v8-options", "options to pass to v8",
@@ -62,8 +60,6 @@ void V8PlatformFeature::collectOptions(
 }
 
 void V8PlatformFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
   v8::V8::InitializeICU();
 
   // explicit option --javascript.v8-options used
@@ -85,8 +81,6 @@ void V8PlatformFeature::start() {
 }
 
 void V8PlatformFeature::stop() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
-
   v8::V8::Dispose();
   v8::V8::ShutdownPlatform();
   _platform.reset();

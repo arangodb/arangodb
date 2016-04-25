@@ -60,6 +60,8 @@
 #include "RestHandler/RestVersionHandler.h"
 #include "RestHandler/WorkMonitorHandler.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/DatabaseServerFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/EndpointFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -95,8 +97,6 @@ RestServerFeature::RestServerFeature(
 
 void RestServerFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::collectOptions";
-
   options->addSection("server", "Server features");
 
   options->addHiddenOption("--server.default-api-compatibility",
@@ -135,8 +135,6 @@ void RestServerFeature::collectOptions(
 }
 
 void RestServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::validateOptions";
-
   if (_defaultApiCompatibility < HttpRequest::MIN_COMPATIBILITY) {
     LOG(FATAL) << "invalid value for --server.default-api-compatibility. "
                   "minimum allowed value is "
@@ -187,14 +185,10 @@ static bool SetRequestContext(HttpRequest* request, void* data) {
 }
 
 void RestServerFeature::prepare() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::prepare";
-
   HttpHandlerFactory::setMaintenance(true);
 }
 
 void RestServerFeature::start() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::start";
-
   LOG(DEBUG) << "using default API compatibility: "
              << (long int)_defaultApiCompatibility;
 
@@ -204,10 +198,9 @@ void RestServerFeature::start() {
   V8DealerFeature::DEALER->loadJavascript(vocbase, "server/server.js");
   _httpOptions._vocbase = vocbase;
 
-  auto server = DatabaseFeature::DATABASE->server();
-  _handlerFactory.reset(
-      new HttpHandlerFactory(_authenticationRealm, _defaultApiCompatibility,
-                             _allowMethodOverride, &SetRequestContext, server));
+  _handlerFactory.reset(new HttpHandlerFactory(
+      _authenticationRealm, _defaultApiCompatibility, _allowMethodOverride,
+      &SetRequestContext, DatabaseServerFeature::SERVER));
 
   defineHandlers();
   buildServers();
@@ -231,14 +224,12 @@ void RestServerFeature::start() {
               << (_authenticationUnixSockets ? "on" : "off");
 #endif
   }
-  
+
   LOG(INFO) << "ArangoDB (version " << ARANGODB_VERSION_FULL
             << ") is ready for business. Have fun!";
 }
 
 void RestServerFeature::stop() {
-  LOG_TOPIC(TRACE, Logger::STARTUP) << name() << "::stop";
-
   for (auto& server : _servers) {
     server->stopListening();
   }
@@ -255,13 +246,12 @@ void RestServerFeature::stop() {
 }
 
 void RestServerFeature::buildServers() {
-  EndpointFeature* endpoint = dynamic_cast<EndpointFeature*>(
-      application_features::ApplicationServer::lookupFeature("Endpoint"));
-
-  HttpServer* httpServer;
+  EndpointFeature* endpoint =
+      application_features::ApplicationServer::getFeature<EndpointFeature>(
+          "Endpoint");
 
   // unencrypted HTTP endpoints
-  httpServer = new HttpServer(
+  HttpServer* httpServer = new HttpServer(
       SchedulerFeature::SCHEDULER, DispatcherFeature::DISPATCHER,
       _handlerFactory.get(), _jobManager.get(), _keepAliveTimeout);
 
@@ -272,8 +262,8 @@ void RestServerFeature::buildServers() {
 
   // ssl endpoints
   if (endpointList.hasSsl()) {
-    SslFeature* ssl = dynamic_cast<SslFeature*>(
-        application_features::ApplicationServer::lookupFeature("Ssl"));
+    SslFeature* ssl =
+        application_features::ApplicationServer::getFeature<SslFeature>("Ssl");
 
     // check the ssl context
     if (ssl == nullptr || ssl->sslContext() == nullptr) {
@@ -296,15 +286,17 @@ void RestServerFeature::buildServers() {
 }
 
 void RestServerFeature::defineHandlers() {
-  AgencyFeature* agency = dynamic_cast<AgencyFeature*>(
-      application_features::ApplicationServer::lookupFeature("Agency"));
+  AgencyFeature* agency =
+      application_features::ApplicationServer::getFeature<AgencyFeature>(
+          "Agency");
   TRI_ASSERT(agency != nullptr);
 
-  ClusterFeature* cluster = dynamic_cast<ClusterFeature*>(
-      application_features::ApplicationServer::lookupFeature("Cluster"));
+  ClusterFeature* cluster =
+      application_features::ApplicationServer::getFeature<ClusterFeature>(
+          "Cluster");
   TRI_ASSERT(cluster != nullptr);
 
-  auto queryRegistry = DatabaseFeature::DATABASE->queryRegistry();
+  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
 
   // ...........................................................................
   // /_msg

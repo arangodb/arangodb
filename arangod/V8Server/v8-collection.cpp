@@ -23,6 +23,7 @@
 
 #include "v8-collection.h"
 #include "Aql/Query.h"
+#include "Basics/Timers.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/conversions.h"
 #include "Basics/ScopeGuard.h"
@@ -2109,6 +2110,8 @@ static void JS_InsertVocbaseCol(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
+  TIMER_START(JS_INSERT_ALL);
+
   auto collection = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == nullptr) {
@@ -2174,15 +2177,18 @@ static void JS_InsertVocbaseCol(
     // invalid value type. must be a document
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
+  
+  TIMER_START(JS_INSERT_V8_TO_VPACK);
 
   // copy default options (and set exclude handler in copy)
   VPackOptions vpackOptions = VPackOptions::Defaults;
   vpackOptions.attributeExcludeHandler = basics::VelocyPackHelper::getExcludeHandler();
   VPackBuilder builder(&vpackOptions);
-  v8::Handle<v8::Value> payload = args[docIdx];
 
   auto doOneDocument = [&](v8::Handle<v8::Value> obj) -> void {
+  TIMER_START(JS_INSERT_V8_TO_VPACK2);
     int res = TRI_V8ToVPack(isolate, builder, obj, true);
+  TIMER_STOP(JS_INSERT_V8_TO_VPACK2);
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
@@ -2194,19 +2200,22 @@ static void JS_InsertVocbaseCol(
       if (tmpId.empty()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
       }
-      builder.add(TRI_VOC_ATTRIBUTE_FROM, VPackValue(tmpId));
+      builder.add(Transaction::FromString, VPackValue(tmpId));
 
       tmpId = ExtractIdString(isolate, args[1]);
       if (tmpId.empty()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
       }
-      builder.add(TRI_VOC_ATTRIBUTE_TO, VPackValue(tmpId));
+      builder.add(Transaction::ToString, VPackValue(tmpId));
     }
 
     builder.close();
   };
 
+  v8::Handle<v8::Value> payload = args[docIdx];
+  bool payloadIsArray;
   if (payload->IsArray()) {
+    payloadIsArray = true;
     VPackArrayBuilder b(&builder);
     v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(payload);
     uint32_t const n = array->Length();
@@ -2214,16 +2223,21 @@ static void JS_InsertVocbaseCol(
       doOneDocument(array->Get(i));
     }
   } else {
+    payloadIsArray = false;
     doOneDocument(payload);
   }
+  
+  TIMER_STOP(JS_INSERT_V8_TO_VPACK);
 
+  TIMER_START(JS_INSERT_CREATE_TRX);
   // load collection
   auto transactionContext = std::make_shared<V8TransactionContext>(collection->_vocbase, true);
 
   SingleCollectionTransaction trx(transactionContext, collection->_cid, TRI_TRANSACTION_WRITE);
-  if (!payload->IsArray()) {
+  if (!payloadIsArray) {
     trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
   }
+  TIMER_STOP(JS_INSERT_CREATE_TRX);
 
   int res = trx.begin();
 
@@ -2231,7 +2245,9 @@ static void JS_InsertVocbaseCol(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
+  TIMER_START(JS_INSERT_INSERT);
   OperationResult result = trx.insert(collection->_name, builder.slice(), options);
+  TIMER_STOP(JS_INSERT_INSERT);
 
   res = trx.finish(result.code);
 
@@ -2246,8 +2262,16 @@ static void JS_InsertVocbaseCol(
 
   VPackSlice resultSlice = result.slice();
   
-  TRI_V8_RETURN(TRI_VPackToV8(isolate, resultSlice,
-                              transactionContext->getVPackOptions()));
+  TIMER_START(JS_INSERT_VPACK_TO_V8);
+  
+  auto v8Result = TRI_VPackToV8(isolate, resultSlice,
+                                transactionContext->getVPackOptions());
+  
+  TIMER_STOP(JS_INSERT_VPACK_TO_V8);
+
+  TIMER_STOP(JS_INSERT_ALL);
+  
+  TRI_V8_RETURN(v8Result);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2883,7 +2907,7 @@ static void JS_DatafilesVocbaseCol(
 
   uint32_t i = 0;
   for (auto& it : structure.journals) {
-    journals->Set(++i, TRI_V8_STD_STRING(it));
+    journals->Set(i++, TRI_V8_STD_STRING(it));
   }
 
   // compactors
@@ -2892,7 +2916,7 @@ static void JS_DatafilesVocbaseCol(
 
   i = 0;
   for (auto& it : structure.compactors) {
-    compactors->Set(++i, TRI_V8_STD_STRING(it));
+    compactors->Set(i++, TRI_V8_STD_STRING(it));
   }
 
   // datafiles
@@ -2901,7 +2925,7 @@ static void JS_DatafilesVocbaseCol(
 
   i = 0;
   for (auto& it : structure.datafiles) {
-    datafiles->Set(++i, TRI_V8_STD_STRING(it));
+    datafiles->Set(i++, TRI_V8_STD_STRING(it));
   }
 
   TRI_V8_RETURN(result);
