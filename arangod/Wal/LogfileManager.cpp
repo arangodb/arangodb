@@ -744,75 +744,69 @@ SlotInfo LogfileManager::allocate(TRI_voc_tick_t databaseId,
 }
 
 // write data into the logfile, using database id and collection id
-/// this is a convenience function that combines allocate, memcpy and finalize
+// this is a convenience function that combines allocate, memcpy and finalize
 SlotInfoCopy LogfileManager::allocateAndWrite(TRI_voc_tick_t databaseId,
                                               TRI_voc_cid_t collectionId,
                                               void* src, uint32_t size,
-                                              bool waitForSync) {
+                                              bool wakeUpSynchronizer,
+                                              bool waitForSyncRequested,
+                                              bool waitUntilSyncDone) {
   SlotInfo slotInfo = allocate(databaseId, collectionId, size);
 
   if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
     return SlotInfoCopy(slotInfo.errorCode);
   }
-
-  TRI_ASSERT(slotInfo.slot != nullptr);
-
-  try {
-    slotInfo.slot->fill(src, size);
-
-    // we must copy the slotinfo because finalize() will set its internal to 0
-    // again
-    SlotInfoCopy copy(slotInfo.slot);
-
-    finalize(slotInfo, waitForSync);
-    return copy;
-  } catch (...) {
-    // if we don't return the slot we'll run into serious problems later
-    finalize(slotInfo, false);
-
-    return SlotInfoCopy(TRI_ERROR_INTERNAL);
-  }
+  
+  return writeSlot(slotInfo, src, size, 
+                   wakeUpSynchronizer, waitForSyncRequested, waitUntilSyncDone);
 }
 
 // write data into the logfile
-/// this is a convenience function that combines allocate, memcpy and finalize
+// this is a convenience function that combines allocate, memcpy and finalize
 SlotInfoCopy LogfileManager::allocateAndWrite(void* src, uint32_t size,
-                                              bool waitForSync) {
+                                              bool wakeUpSynchronizer,
+                                              bool waitForSyncRequested,
+                                              bool waitUntilSyncDone) {
   SlotInfo slotInfo = allocate(size);
 
   if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
     return SlotInfoCopy(slotInfo.errorCode);
   }
 
+  return writeSlot(slotInfo, src, size, 
+                   wakeUpSynchronizer, waitForSyncRequested, waitUntilSyncDone);
+}
+
+// write marker into the logfile
+// this is a convenience function with less parameters
+SlotInfoCopy LogfileManager::allocateAndWrite(Marker const& marker, bool waitForSync) {
+  return allocateAndWrite(marker.mem(), marker.size(), true, waitForSync, waitForSync);
+}
+
+// memcpy the data into the WAL region and return the filled slot
+// to the WAL logfile manager
+SlotInfoCopy LogfileManager::writeSlot(SlotInfo& slotInfo,
+                                       void* src, uint32_t size,
+                                       bool wakeUpSynchronizer,
+                                       bool waitForSyncRequested,
+                                       bool waitUntilSyncDone) {
   TRI_ASSERT(slotInfo.slot != nullptr);
 
   try {
     slotInfo.slot->fill(src, size);
 
-    // we must copy the slotinfo because finalize() will set its internals to 0
-    // again
+    // we must copy the slotinfo because Slots::returnUsed() will set the
+    // internals of slotInfo.slot to 0 again
     SlotInfoCopy copy(slotInfo.slot);
 
-    finalize(slotInfo, waitForSync);
+    _slots->returnUsed(slotInfo, wakeUpSynchronizer, waitForSyncRequested, waitUntilSyncDone);
     return copy;
   } catch (...) {
     // if we don't return the slot we'll run into serious problems later
-    finalize(slotInfo, false);
+    _slots->returnUsed(slotInfo, false, false, false);
 
     return SlotInfoCopy(TRI_ERROR_INTERNAL);
   }
-}
-
-// write data into the logfile
-/// this is a convenience function that combines allocate, memcpy and finalize
-SlotInfoCopy LogfileManager::allocateAndWrite(Marker const& marker,
-                                              bool waitForSync) {
-  return allocateAndWrite(marker.mem(), marker.size(), waitForSync);
-}
-
-// finalize a log entry
-void LogfileManager::finalize(SlotInfo& slotInfo, bool waitForSync) {
-  _slots->returnUsed(slotInfo, waitForSync);
 }
 
 // wait for the collector queue to get cleared for the given collection
@@ -904,7 +898,7 @@ bool LogfileManager::waitForSync(double maxWait) {
     // fill the state
     LogfileManagerState state;
     _slots->statistics(state.lastAssignedTick, state.lastCommittedTick,
-                       state.lastCommittedDataTick, state.numEvents);
+                       state.lastCommittedDataTick, state.numEvents, state.numEventsSync);
 
     if (lastAssignedTick == 0) {
       // get last assigned tick only once
@@ -1110,19 +1104,24 @@ std::vector<TRI_voc_tick_t> LogfileManager::getLogfileBarriers() {
 
 // remove a specific logfile barrier
 bool LogfileManager::removeLogfileBarrier(TRI_voc_tick_t id) {
-  WRITE_LOCKER(barrierLock, _barriersLock);
+  LogfileBarrier* logfileBarrier = nullptr;
+  {
+    WRITE_LOCKER(barrierLock, _barriersLock);
 
-  auto it = _barriers.find(id);
+    auto it = _barriers.find(id);
 
-  if (it == _barriers.end()) {
-    return false;
+    if (it == _barriers.end()) {
+      return false;
+    }
+
+    logfileBarrier = (*it).second;
+    _barriers.erase(it);
   }
 
-  auto logfileBarrier = (*it).second;
+  TRI_ASSERT(logfileBarrier != nullptr);
   LOG_TOPIC(DEBUG, Logger::REPLICATION) << "removing WAL logfile barrier "
                                         << logfileBarrier->id;
 
-  _barriers.erase(it);
   delete logfileBarrier;
 
   return true;
@@ -1556,7 +1555,7 @@ LogfileManagerState LogfileManager::state() {
 
   // now fill the state
   _slots->statistics(state.lastAssignedTick, state.lastCommittedTick,
-                     state.lastCommittedDataTick, state.numEvents);
+                     state.lastCommittedDataTick, state.numEvents, state.numEventsSync);
   state.timeString = TRI_timeString();
 
   return state;
