@@ -30,10 +30,6 @@
 #include "Aql/ModificationNodes.h"
 #include "Utils/AqlTransaction.h"
 
-struct TRI_df_marker_t;
-struct TRI_doc_mptr_t;
-struct TRI_json_t;
-
 namespace arangodb {
 namespace aql {
 struct Collection;

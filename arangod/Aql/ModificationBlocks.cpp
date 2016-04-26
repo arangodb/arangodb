@@ -25,7 +25,6 @@
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionEngine.h"
-#include "Basics/json-utilities.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ClusterMethods.h"
 #include "VocBase/vocbase.h"
@@ -36,9 +35,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
-
-using Json = arangodb::basics::Json;
-using JsonHelper = arangodb::basics::JsonHelper;
 
 ModificationBlock::ModificationBlock(ExecutionEngine* engine,
                                      ModificationNode const* ep)
