@@ -160,11 +160,9 @@ void AgencyCallback::waitWithFailover(double timeout) {
 }
 
 void AgencyCallback::waitForExecution(double maxTimeout) {
-  VPackSlice compareSlice;
+  auto compareBuilder = std::make_shared<VPackBuilder>();
   if (_lastData) {
-    compareSlice = _lastData->slice();
-  } else {
-    compareSlice = VPackSlice::noneSlice();
+    compareBuilder = _lastData;
   }
   
   _useCv = true;
@@ -172,7 +170,7 @@ void AgencyCallback::waitForExecution(double maxTimeout) {
   locker.wait(static_cast<uint64_t>(maxTimeout * 1000000.0));
   _useCv = false;
   
-  if (!_lastData || _lastData->slice().equals(compareSlice)) {
+  if (!_lastData || _lastData->slice().equals(compareBuilder->slice())) {
     LOG(DEBUG) << "Waiting done and nothing happended. Refetching to be sure";
     // mop: watches have not triggered during our sleep...recheck to be sure
     refetchAndUpdate();

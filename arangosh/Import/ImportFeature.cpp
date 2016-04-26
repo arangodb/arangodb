@@ -168,9 +168,7 @@ void ImportFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-  std::string dbName = client->databaseName();
-
-  httpClient->setLocationRewriter((void*)client, &rewriteLocation);
+  httpClient->setLocationRewriter(static_cast<void*>(client), &rewriteLocation);
   httpClient->setUserNamePassword("/", client->username(), client->password());
 
   // must stay here in order to establish the connection

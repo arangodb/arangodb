@@ -56,6 +56,7 @@ module.exports = function systemStorage(cfg) {
         }
         if (doc.uid) {
           const user = db._users.document(doc.uid);
+          internal.clearSid(doc._key);
           internal.createSid(doc._key, user.user);
         }
         db._sessions.update(sid, {lastAccess: now});
@@ -98,6 +99,7 @@ module.exports = function systemStorage(cfg) {
       }
       if (uid) {
         const user = db._users.document(uid);
+        internal.clearSid(session._key);
         internal.createSid(session._key, user.user);
       }
       return session;
@@ -106,6 +108,7 @@ module.exports = function systemStorage(cfg) {
       if (user) {
         session.uid = user._key;
         if (session._key) {
+          internal.clearSid(session._key);
           internal.createSid(session._key, user.user);
         }
       } else {

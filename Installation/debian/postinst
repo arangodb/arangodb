@@ -4,7 +4,7 @@ set -e
 #DEBHELPER#
 
 echo "
-ArangoDB 2 (http://www.arangodb.org)
+ArangoDB 3 (http://www.arangodb.org)
   A multi-purpose open-source database with a flexible data model for documents,
   graphs, and key-values.
 

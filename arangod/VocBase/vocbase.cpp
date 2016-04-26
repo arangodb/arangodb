@@ -140,8 +140,7 @@ static int WriteDropCollectionMarker(TRI_vocbase_t* vocbase,
     arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_DROP_COLLECTION, vocbase->_id, collectionId, builder.slice());
 
     arangodb::wal::SlotInfoCopy slotInfo =
-        arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
-                                                                    false);
+        arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
 
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
@@ -735,7 +734,7 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
             if (!isUpgrade) {
               LOG(ERR) << "collection '" << info.name()
                        << "' has a too old version. Please start the server "
-                          "with the --database.upgrade option.";
+                          "with the --database.auto-upgrade option.";
 
               return TRI_set_errno(res);
             } else {
@@ -1694,8 +1693,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase(
     arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_CREATE_COLLECTION, vocbase->_id, cid, slice);
 
     arangodb::wal::SlotInfoCopy slotInfo =
-        arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
-                                                                    false);
+        arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
 
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
@@ -1908,8 +1906,7 @@ int TRI_RenameCollectionVocBase(TRI_vocbase_t* vocbase,
       arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_RENAME_COLLECTION, vocbase->_id, collection->_cid, builder.slice());
 
       arangodb::wal::SlotInfoCopy slotInfo =
-          arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
-                                                                      false);
+          arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
 
       if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(slotInfo.errorCode);

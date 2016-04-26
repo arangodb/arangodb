@@ -57,13 +57,13 @@ State::State(std::string const& endpoint)
   VPackSlice value = arangodb::basics::VelocyPackHelper::EmptyObjectValue();
   buf->append(value.startAs<char const>(), value.byteSize());
   if (!_log.size()) {
-    _log.push_back(log_t(index_t(0), term_t(0), id_t(0), buf));
+    _log.push_back(log_t(arangodb::consensus::index_t(0), term_t(0), arangodb::consensus::id_t(0), buf));
   }
 }
 
 State::~State() {}
 
-bool State::persist(index_t index, term_t term, id_t lid,
+bool State::persist(arangodb::consensus::index_t index, term_t term, arangodb::consensus::id_t lid,
                     arangodb::velocypack::Slice const& entry) {
   Builder body;
   body.add(VPackValue(VPackValueType::Object));
@@ -94,10 +94,10 @@ bool State::persist(index_t index, term_t term, id_t lid,
 }
 
 //Leader
-std::vector<index_t> State::log (
-  query_t const& query, std::vector<bool> const& appl, term_t term, id_t lid) {
+std::vector<arangodb::consensus::index_t> State::log (
+  query_t const& query, std::vector<bool> const& appl, term_t term, arangodb::consensus::id_t lid) {
 
-  std::vector<index_t> idx(appl.size());
+  std::vector<arangodb::consensus::index_t> idx(appl.size());
   std::vector<bool> good = appl;
   size_t j = 0;
   
@@ -117,8 +117,8 @@ std::vector<index_t> State::log (
 }
 
 // Follower
-bool State::log(query_t const& queries, term_t term, id_t lid,
-                index_t prevLogIndex, term_t prevLogTerm) {  // TODO: Throw exc
+bool State::log(query_t const& queries, term_t term, arangodb::consensus::id_t lid,
+                arangodb::consensus::index_t prevLogIndex, term_t prevLogTerm) {  // TODO: Throw exc
   if (queries->slice().type() != VPackValueType::Array) {
     return false;
   }
@@ -140,7 +140,7 @@ bool State::log(query_t const& queries, term_t term, id_t lid,
 }
 
 // Get log entries from indices "start" to "end"
-std::vector<log_t> State::get(index_t start, index_t end) const {
+std::vector<log_t> State::get(arangodb::consensus::index_t start, arangodb::consensus::index_t end) const {
   std::vector<log_t> entries;
   MUTEX_LOCKER(mutexLocker, _logLock);
   if (end == (std::numeric_limits<uint64_t>::max)()) end = _log.size() - 1;
@@ -150,7 +150,7 @@ std::vector<log_t> State::get(index_t start, index_t end) const {
   return entries;
 }
 
-std::vector<VPackSlice> State::slices(index_t start, index_t end) const {
+std::vector<VPackSlice> State::slices(arangodb::consensus::index_t start, arangodb::consensus::index_t end) const {
   std::vector<VPackSlice> slices;
   MUTEX_LOCKER(mutexLocker, _logLock);
   if (end == (std::numeric_limits<uint64_t>::max)()) end = _log.size() - 1;
@@ -160,7 +160,7 @@ std::vector<VPackSlice> State::slices(index_t start, index_t end) const {
   return slices;
 }
 
-log_t const& State::operator[](index_t index) const {
+log_t const& State::operator[](arangodb::consensus::index_t index) const {
   MUTEX_LOCKER(mutexLocker, _logLock);
   return _log[index];
 }
@@ -257,7 +257,7 @@ bool State::loadCollection(std::string const& name) {
         _log.push_back(
           log_t(std::stoi(i.get(TRI_VOC_ATTRIBUTE_KEY).copyString()),
                 static_cast<term_t>(i.get("term").getUInt()),
-                static_cast<id_t>(i.get("leader").getUInt()), tmp));
+                static_cast<arangodb::consensus::id_t>(i.get("leader").getUInt()), tmp));
       }
     }
 
@@ -270,7 +270,7 @@ bool State::loadCollection(std::string const& name) {
   return false;
 }
 
-bool State::find (index_t prevIndex, term_t prevTerm) {
+bool State::find (arangodb::consensus::index_t prevIndex, term_t prevTerm) {
   MUTEX_LOCKER(mutexLocker, _logLock);
   if (prevIndex > _log.size()) {
     return false;

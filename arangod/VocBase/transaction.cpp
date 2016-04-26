@@ -1075,11 +1075,29 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
   if (operation.marker->fid() == 0) {
     // this is a "real" marker that must be written into the logfiles
     // just append it to the WAL:
+
+    // we only need to set waitForSync to true here if waitForSync was requested
+    // for the operation AND the operation is a standalone operation. In case the
+    // operation belongs to a transaction, the transaction's commit marker will
+    // be written with waitForSync, and we don't need to request a sync ourselves
     bool const localWaitForSync = (isSingleOperationTransaction && waitForSync);
+
+    // never wait until our marker was synced, even when an operation was tagged
+    // waitForSync=true. this is still safe because inside a transaction, the final
+    // commit marker will be written with waitForSync=true then, and in a standalone
+    // operation the transaction will wait until everything was synced before returning
+    // to the caller
+    bool const waitForTick = false;
+
+    // we should wake up the synchronizer in case this is a single operation
+    //
+    bool const wakeUpSynchronizer = isSingleOperationTransaction;
+
     arangodb::wal::SlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(
             trx->_vocbase->_id, document->_info.id(), 
-            operation.marker->mem(), operation.marker->size(), localWaitForSync);
+            operation.marker->mem(), operation.marker->size(), wakeUpSynchronizer,
+            localWaitForSync, waitForTick);
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
       // some error occurred
       return slotInfo.errorCode;
@@ -1133,10 +1151,25 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
         trx, document->_info.id(), TRI_TRANSACTION_WRITE);
     if (trxCollection->_operations == nullptr) {
       trxCollection->_operations = new std::vector<arangodb::wal::DocumentOperation*>;
+      trxCollection->_operations->reserve(16);
       trx->_hasOperations = true;
+    } else {
+      // reserve space for one more element so the push_back below does not fail
+      size_t oldSize = trxCollection->_operations->size();
+      if (oldSize + 1 >= trxCollection->_operations->capacity()) {
+        // double the size
+        trxCollection->_operations->reserve((oldSize + 1) * 2);
+      }
+    }
+    
+    TRI_IF_FAILURE("TransactionOperationPushBack") {
+      // test what happens if reserve above failed
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG); 
     }
 
     arangodb::wal::DocumentOperation* copy = operation.swap();
+    
+    // should not fail because we reserved enough room above 
     trxCollection->_operations->push_back(copy);
     copy->handle();
   }

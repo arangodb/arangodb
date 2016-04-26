@@ -141,6 +141,9 @@ void V8ShellFeature::stop() {
         v8::Local<v8::Context>::New(_isolate, _context);
 
     v8::Context::Scope context_scope{context};
+    
+    // remove any objects stored in _last global value  
+    context->Global()->Delete(TRI_V8_ASCII_STRING2(_isolate, "_last"));
 
     TRI_RunGarbageCollectionV8(_isolate, 2500.0);
   }
@@ -668,15 +671,11 @@ static void JS_PagerOutput(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
-  ConsoleFeature* console = (ConsoleFeature*)(wrap->Value());
+  ConsoleFeature* console = static_cast<ConsoleFeature*>(wrap->Value());
 
   for (int i = 0; i < args.Length(); i++) {
     // extract the next argument
-    v8::Handle<v8::Value> val = args[i];
-
-    std::string str = TRI_ObjectToString(val);
-
-    console->print(str);
+    console->print(TRI_ObjectToString(args[i]));
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -693,7 +692,7 @@ static void JS_StartOutputPager(
   v8::HandleScope scope(isolate);
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
-  ConsoleFeature* console = (ConsoleFeature*)(wrap->Value());
+  ConsoleFeature* console = static_cast<ConsoleFeature*>(wrap->Value());
 
   if (console->pager()) {
     console->print("Using pager already.\n");
@@ -718,7 +717,7 @@ static void JS_StopOutputPager(
   v8::HandleScope scope(isolate);
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
-  ConsoleFeature* console = (ConsoleFeature*)(wrap->Value());
+  ConsoleFeature* console = static_cast<ConsoleFeature*>(wrap->Value());
 
   if (console->pager()) {
     console->print("Stopping pager.\n");

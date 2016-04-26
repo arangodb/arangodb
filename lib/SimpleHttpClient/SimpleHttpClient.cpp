@@ -879,9 +879,13 @@ void SimpleHttpClient::processChunkedBody() {
 /// @brief extract an error message from a response
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string SimpleHttpClient::getHttpErrorMessage(SimpleHttpResult const* result) {
-  arangodb::basics::StringBuffer const& body = result->getBody();
+std::string SimpleHttpClient::getHttpErrorMessage(SimpleHttpResult const* result,
+                                                  int* errorCode) {
+  if (errorCode != nullptr) {
+    *errorCode = TRI_ERROR_NO_ERROR;
+  }
 
+  arangodb::basics::StringBuffer const& body = result->getBody();
   std::string details;
 
   try {
@@ -893,11 +897,14 @@ std::string SimpleHttpClient::getHttpErrorMessage(SimpleHttpResult const* result
       int errorNum = slice.get("errorNum").getNumericValue<int>();
 
       if (msg.isString() && msg.getStringLength() > 0 && errorNum > 0) {
+        if (errorCode != nullptr) {
+          *errorCode = errorNum;
+        }
         details = ": ArangoError " + std::to_string(errorNum) + ": " + msg.copyString();
       }
     }
   } catch (...) {
-    // don't rethrow here. we'll response with an error message anyway
+    // don't rethrow here. we'll respond with an error message anyway
   }
 
   return "got error from server: HTTP " + std::to_string(result->getHttpReturnCode()) +
@@ -908,7 +915,11 @@ std::string SimpleHttpClient::getHttpErrorMessage(SimpleHttpResult const* result
 /// @brief fetch the version from the server
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string SimpleHttpClient::getServerVersion() {
+std::string SimpleHttpClient::getServerVersion(int* errorCode) {
+  if (errorCode != nullptr) {
+    *errorCode = TRI_ERROR_INTERNAL;
+  }
+
   std::unique_ptr<SimpleHttpResult> response(
       request(GeneralRequest::RequestType::GET, "/_api/version", nullptr, 0));
 
@@ -916,36 +927,50 @@ std::string SimpleHttpClient::getServerVersion() {
     return "";
   }
 
-  std::string version;
-
-  if (response->getHttpReturnCode() == (int) GeneralResponse::ResponseCode::OK) {
+  if (response->getHttpReturnCode() == static_cast<int>(GeneralResponse::ResponseCode::OK)) {
     // default value
-    version = "arango";
+    std::string version = "arango";
 
-    // convert response body to json
-    std::unique_ptr<TRI_json_t> json(
-        TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().c_str()));
+    arangodb::basics::StringBuffer const& body = response->getBody();
+    try {
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(body.c_str(), body.length());
 
-    if (json != nullptr) {
-      // look up "server" value
-      std::string const server = arangodb::basics::JsonHelper::getStringValue(
-          json.get(), "server", "");
-
-      // "server" value is a string and content is "arango"
-      if (server == "arango") {
-        // look up "version" value
-        version = arangodb::basics::JsonHelper::getStringValue(json.get(),
-                                                               "version", "");
+      VPackSlice slice = builder->slice();
+      if (slice.isObject()) {
+        VPackSlice server = slice.get("server");
+        if (server.isString() && server.copyString() == "arango") {
+          // "server" value is a string and its content is "arango"
+          VPackSlice v = slice.get("version");
+          if (v.isString()) {
+            version = v.copyString();
+          }
+        }
       }
-    }
-  } else {
-    if (response->wasHttpError()) {
-      setErrorMessage(getHttpErrorMessage(response.get()), false);
-    }
-    _connection->disconnect();
-  }
 
-  return version;
+      if (errorCode != nullptr) {
+        *errorCode = TRI_ERROR_NO_ERROR;
+      }
+      return version;
+    } catch (std::exception const& ex) {
+      setErrorMessage(ex.what(), false);
+      return "";
+    } catch (...) {
+      setErrorMessage("Unable to parse server response", false);
+      return "";
+    }
+  } 
+  
+  if (response->wasHttpError()) {
+    std::string msg = getHttpErrorMessage(response.get(), errorCode);
+    if (errorCode != nullptr) {
+      setErrorMessage(msg, *errorCode);
+    } else {
+      setErrorMessage(msg, false);
+    }
+  }
+  _connection->disconnect();
+
+  return "";
 }
 }
 }

@@ -95,7 +95,7 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                            new BooleanParameter(&_thread));
 
   options->addHiddenOption("--log.performance",
-                           "shortcut for '--log.level requests=trace'",
+                           "shortcut for '--log.level performance=trace'",
                            new BooleanParameter(&_performance));
 
   options->addHiddenOption("--log.keep-logrotate",
@@ -132,7 +132,7 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   if (_performance) {
-    _levels.push_back("requests=trace");
+    _levels.push_back("performance=trace");
   }
 }
 

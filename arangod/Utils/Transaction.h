@@ -37,6 +37,8 @@
 
 #define TRI_DEFAULT_BATCH_SIZE 1000
 
+struct TRI_document_collection_t;
+
 namespace arangodb {
 
 namespace basics {
@@ -140,6 +142,12 @@ class Transaction {
   //////////////////////////////////////////////////////////////////////////////
 
   inline TRI_transaction_t* getInternals() const { return _trx; }
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return role of server in cluster
+  //////////////////////////////////////////////////////////////////////////////
+  
+  inline ServerState::RoleEnum serverRole() const { return _serverRole; }
   
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return a pointer to the transaction context
@@ -523,7 +531,8 @@ class Transaction {
   /// argument as a single object.
   //////////////////////////////////////////////////////////////////////////////
 
-  void buildDocumentIdentity(VPackBuilder& builder,
+  void buildDocumentIdentity(TRI_document_collection_t* document,
+                             VPackBuilder& builder,
                              TRI_voc_cid_t cid,
                              std::string const& key,
                              VPackSlice const rid,

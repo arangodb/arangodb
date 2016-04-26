@@ -864,7 +864,7 @@ static int InitDatabases(TRI_server_t* server, bool checkVersion,
     if (names.empty()) {
       if (!performUpgrade && HasOldCollections(server)) {
         LOG(ERR) << "no databases found. Please start the server with the "
-                    "--database.upgrade option";
+                    "--database.auto-upgrade option";
 
         return TRI_ERROR_ARANGO_DATADIR_INVALID;
       }
@@ -894,8 +894,7 @@ static int WriteCreateMarker(TRI_voc_tick_t id, VPackSlice const& slice) {
     arangodb::wal::DatabaseMarker marker(TRI_DF_MARKER_VPACK_CREATE_DATABASE,
                                          id, slice);
     arangodb::wal::SlotInfoCopy slotInfo =
-        arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
-                                                                    false);
+        arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
 
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
       // throw an exception which is caught at the end of this function
@@ -932,8 +931,7 @@ static int WriteDropMarker(TRI_voc_tick_t id) {
                                          builder.slice());
 
     arangodb::wal::SlotInfoCopy slotInfo =
-        arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
-                                                                    false);
+        arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
 
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
       // throw an exception which is caught at the end of this function
@@ -1071,8 +1069,7 @@ static void DatabaseManager(void* data) {
 
       usleep(DATABASE_MANAGER_INTERVAL);
       // The following is only necessary after a wait:
-      auto queryRegistry =
-          static_cast<arangodb::aql::QueryRegistry*>(server->_queryRegistry);
+      auto queryRegistry = server->_queryRegistry.load();
 
       if (queryRegistry != nullptr) {
         queryRegistry->expireQueries();
@@ -1092,8 +1089,7 @@ static void DatabaseManager(void* data) {
         for (auto& p : theLists->_coordinatorDatabases) {
           TRI_vocbase_t* vocbase = p.second;
           TRI_ASSERT(vocbase != nullptr);
-          auto cursorRepository = static_cast<arangodb::CursorRepository*>(
-              vocbase->_cursorRepository);
+          auto cursorRepository = vocbase->_cursorRepository;
 
           try {
             cursorRepository->garbageCollect(false);

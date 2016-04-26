@@ -61,7 +61,7 @@ static void JS_StateLoggerReplication(
   state->Set(TRI_V8_ASCII_STRING("lastLogTick"), V8TickId(isolate, s.lastCommittedTick));
   state->Set(TRI_V8_ASCII_STRING("lastUncommittedLogTick"), V8TickId(isolate, s.lastAssignedTick));
   state->Set(TRI_V8_ASCII_STRING("totalEvents"),
-             v8::Number::New(isolate, (double)s.numEvents));
+             v8::Number::New(isolate, static_cast<double>(s.numEvents + s.numEventsSync)));
   state->Set(TRI_V8_ASCII_STRING("time"), TRI_V8_STD_STRING(s.timeString));
   result->Set(TRI_V8_ASCII_STRING("state"), state);
 

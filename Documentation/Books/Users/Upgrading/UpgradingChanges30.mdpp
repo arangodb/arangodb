@@ -1,20 +1,43 @@
 !CHAPTER Incompatible changes in ArangoDB 3.0
 
 It is recommended to check the following list of incompatible changes **before**
-upgrading to ArangoDB 2.8, and adjust any client programs if necessary.
+upgrading to ArangoDB 3.0, and adjust any client programs if necessary.
 
 
 !SECTION Command Line Options
 
-Quite a few options in ArangoDB 2 where double negations (like
-`disable-authentication`). In ArangoDB 3 these are now express as positives
-(e. g. `authentication`). Also the options between the various programm have
-being unified. For example, the logger options are now the same over all client
-and server programs.
+Quite a few startup options in ArangoDB 2 were double negations (like
+`--server.disable-authentication false`). In ArangoDB 3 these are now expressed as 
+positives (e. g. `--server.authentication`). Also the options between the ArangoDB
+server and its client tools have being unified. For example, the logger options are 
+now the same for the server and the client tools. Additionally many options have
+been moved into more appropriate topic sections.
 
-!SECTION Logging
+!SUBSECTION Renamed options
 
-Logging now supports log topics. You can controll these by specifying a log
+The following options have been available before 3.0 and have changed their name 
+in 3.0:
+
+- `--server.disable-statistics` was renamed to `--server.statistics`. Note that the
+  meaning of the option `--server.statistics` is the opposite of the previous
+  `--server.disable-statistics`.
+- `--server.keyfile` was renamed to `--ssl.keyfile`. The meaning of the option is
+  unchanged.
+- `--server.foxx-queues` was renamed to `--foxx.queues`. The meaning of the option
+  is unchanged.
+- `--server.foxx-queues-poll-interval` was renamed to `--foxx.queues-poll-interval`.
+  The meaning of the option is unchanged.
+- `--log.tty` was renamed to `--log.foreground-tty`. The meaning of the option is
+  unchanged.
+- `--upgrade` has been renamed to `--database.auto-upgrade`. In contrast to 2.8 this
+  option now requires a boolean parameter. To actually perform an automatic database 
+  upgrade at startup use `--database.auto-upgrade true`. To not perform it, use
+  `--database.auto-upgrade false`.
+- `--check-version` has been renamed to `--database.check-version`.
+
+!SUBSECTION Log verbosity, topics and output files
+
+Logging now supports log topics. You can control these by specifying a log
 topic in front of a log level or an output. For example
 
 ```
@@ -22,16 +45,68 @@ topic in front of a log level or an output. For example
 ```
 
 will log messages concerning startup at trace level, everything else at info
-level.
+level. `--log.level` can be specified multiple times at startup, for as many 
+topics as needed.
 
-```
-  --log.output requests=file://requests.log --log.level requests=trace
-```
+Some relevant log topics available in 3.0 are:
 
-will log all requests to a file called `requests.log`.
+- *collector*: information about the WAL collector's state
+- *compactor*: information about the collection datafile compactor
+- *datafiles*: datafile-related operations
+- *mmap*: information about memory-mapping operations
+- *performance*: some performance-related information
+- *queries*: executed AQL queries
+- *replication*: replication-related info
+- *requests*: HTTP requests
+- *startup*: information about server startup and shutdown
+- *threads*: information about threads
 
-!SECTION log.file
+The new log option `--log.output <definition>` allows directing the global
+or per-topic log output to different outputs. The output definition "<definition>" 
+can be one of
 
-`--log.file filename` ist still available for convenience. It is a shortcut
-for `--log.output file://filename`.
+- "-" for stdin
+- "+" for stderr
+- "syslog://<syslog-facility>"
+- "syslog://<syslog-facility>/<application-name>"
+- "file://<relative-path>"
+
+The option can be specified multiple times in order to configure the output
+for different log topics. To set up a per-topic output configuration, use
+`--log.output <topic>=<definition>`, e.g.
+
+  queries=file://queries.txt
+
+logs all queries to the file "queries.txt".
+
+The old option `--log.file` is still available in 3.0 for convenience reasons. In
+3.0 it is a shortcut for the more general option `--log.output file://filename`.
+  
+The old option `--log.requests-file` is still available in 3.0. It is now a shortcut
+for the more general option `--log.output requests=file://...`.
+
+The old option `--log.performance` is still available in 3.0. It is now a shortcut
+for the more general option `--log.level performance=trace`.
+
+!SUBSECTION Removed options for logging
+
+The options `--log.content-filter` and `--log.source-filter` have been removed. They
+have most been used during ArangoDB's internal development.
+
+The syslog-related options `--log.application` and `--log.facility` have been removed.
+They are superseded by the more general `--log.output` option which can also handle 
+syslog targets. 
+
+!SECTION HTTP API changes
+
+The REST route HTTP GET `/_admin/log` is now accessible from within all databases. In
+previous versions of ArangoDB, this route was accessible from within the `_system`
+database only, and an HTTP 403 (Forbidden) was thrown by the server for any access
+from within another database.
+
+!SECTION Miscellaneous changes
+
+The checksum calculation algorithm for the `collection.checksum()` method and its
+corresponding REST API has changed in 3.0. Checksums calculated in 2.8 will differ
+from checksums calculated with 3.0.
 

@@ -248,10 +248,8 @@ Query::~Query() {
 /// note: as a side-effect, this will also create and start a transaction for
 /// the query
 Query* Query::clone(QueryPart part, bool withPlan) {
-  std::unique_ptr<Query> clone;
-
-  clone.reset(new Query(false, _vocbase, _queryString,
-                        _queryLength, std::shared_ptr<VPackBuilder>(), _options, part));
+  auto clone = std::make_unique<Query>(false, _vocbase, _queryString,
+                        _queryLength, std::shared_ptr<VPackBuilder>(), _options, part);
 
   if (_plan != nullptr) {
     if (withPlan) {
@@ -391,6 +389,8 @@ void Query::registerWarning(int code, char const* details) {
 /// to be able to only prepare a query from VelocyPack and then store it in the
 /// QueryRegistry.
 QueryResult Query::prepare(QueryRegistry* registry) {
+  TRI_ASSERT(registry != nullptr);
+
   try {
     init();
     enterState(PARSING);
@@ -513,6 +513,8 @@ QueryResult Query::prepare(QueryRegistry* registry) {
 
 /// @brief execute an AQL query
 QueryResult Query::execute(QueryRegistry* registry) {
+  TRI_ASSERT(registry != nullptr);
+
   std::unique_ptr<AqlWorkStack> work;
 
   try {

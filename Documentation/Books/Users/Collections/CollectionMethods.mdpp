@@ -226,18 +226,20 @@ as an opaque string, and only use it for equality/non-equality comparisons.
 calculates a checksum for the data in a collection
 `collection.checksum(withRevisions, withData)`
 
-The *checksum* operation calculates a CRC32 checksum of the keys
-contained in collection *collection*.
+The *checksum* operation calculates an aggregate hash value for all document
+keys contained in collection *collection*.
 
 If the optional argument *withRevisions* is set to *true*, then the
-revision ids of the documents are also included in the checksumming.
+revision ids of the documents are also included in the hash calculation.
 
-If the optional argument *withData* is set to *true*, then the
-actual document data is also checksummed. Including the document data in
+If the optional argument *withData* is set to *true*, then all user-defined
+document attributes are also checksummed. Including the document data in
 checksumming will make the calculation slower, but is more accurate.
 
-**Note**: this method is not available in a cluster.
+The checksum calculation algorithm changed in ArangoDB 3.0, so checksums from
+3.0 and earlier versions for the same data will differ.
 
+**Note**: this method is not available in a cluster.
 
 
 !SUBSECTION Unload

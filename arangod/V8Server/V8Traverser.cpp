@@ -35,6 +35,36 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::traverser;
 
+ShortestPathOptions::ShortestPathOptions(arangodb::Transaction* trx)
+    : BasicOptions(trx),
+      direction("outbound"),
+      useWeight(false),
+      weightAttribute(""),
+      defaultWeight(1),
+      bidirectional(true),
+      multiThreaded(true) {
+}
+
+void ShortestPathOptions::setStart(std::string const& id) {
+  start = id;
+  startBuilder.clear();
+  startBuilder.add(VPackValue(id));
+}
+
+void ShortestPathOptions::setEnd(std::string const& id) {
+  end = id;
+  endBuilder.clear();
+  endBuilder.add(VPackValue(id));
+}
+
+VPackSlice ShortestPathOptions::getStart() const {
+  return startBuilder.slice();
+}
+
+VPackSlice ShortestPathOptions::getEnd() const {
+  return endBuilder.slice();
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Get a document by it's ID. Also lazy locks the collection.
 ///        If DOCUMENT_NOT_FOUND this function will return normally
@@ -91,8 +121,8 @@ struct BasicExpander {
         _trx(trx),
         _dir(dir) {}
 
-  void operator()(std::string const& v, std::vector<std::string>& res_edges,
-                  std::vector<std::string>& neighbors) {
+  void operator()(VPackSlice const& v, std::vector<VPackSlice>& res_edges,
+                  std::vector<VPackSlice>& neighbors) {
     for (auto const& edgeCollection : _colls) {
       _cursor.clear();
       TRI_ASSERT(edgeCollection != nullptr);
@@ -101,16 +131,15 @@ struct BasicExpander {
         edgeCursor->getMoreMptr(_cursor, UINT64_MAX);
         for (auto const& mptr : _cursor) {
           VPackSlice edge(mptr->vpack());
-          std::string edgeId = _trx->extractIdString(edge);
-          std::string from = edge.get(Transaction::FromString).copyString();
+          VPackSlice from = edge.get(Transaction::FromString);
           if (from == v) {
-            std::string to = edge.get(Transaction::ToString).copyString();
+            VPackSlice to = edge.get(Transaction::ToString);
             if (to != v) {
-              res_edges.emplace_back(std::move(edgeId));
+              res_edges.emplace_back(std::move(edge));
               neighbors.emplace_back(std::move(to));
             }
           } else {
-            res_edges.emplace_back(std::move(edgeId));
+            res_edges.emplace_back(std::move(edge));
             neighbors.emplace_back(std::move(from));
           }
 
@@ -146,6 +175,17 @@ std::shared_ptr<OperationCursor> EdgeCollectionInfo::getEdges(
                          arangodb::Transaction::CursorType::INDEX, _indexId,
                          _searchBuilder.slice(), 0, UINT64_MAX, 1000, false);
 }
+
+std::shared_ptr<OperationCursor> EdgeCollectionInfo::getEdges(
+    TRI_edge_direction_e direction, VPackSlice const& vertexId) {
+  _searchBuilder.clear();
+  EdgeIndex::buildSearchValue(direction, vertexId, _searchBuilder);
+  return _trx->indexScan(_collectionName,
+                         arangodb::Transaction::CursorType::INDEX, _indexId,
+                         _searchBuilder.slice(), 0, UINT64_MAX, 1000, false);
+}
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Compute the weight of an edge
@@ -191,36 +231,36 @@ class MultiCollectionEdgeExpander {
   /// @brief function to check if the vertex passes the filter
   //////////////////////////////////////////////////////////////////////////////
 
-  std::function<bool(std::string const&)> _isAllowedVertex;
+  std::function<bool(VPackSlice const&)> _isAllowedVertex;
 
  public:
   MultiCollectionEdgeExpander(
       TRI_edge_direction_e const& direction,
       std::vector<EdgeCollectionInfo*> const& edgeCollections,
       std::function<bool(VPackSlice const)> isAllowed,
-      std::function<bool(std::string const&)> isAllowedVertex)
+      std::function<bool(VPackSlice const&)> isAllowedVertex)
       : _direction(direction),
         _edgeCollections(edgeCollections),
         _isAllowed(isAllowed),
         _isAllowedVertex(isAllowedVertex) {}
 
-  void operator()(std::string const& source,
+  void operator()(VPackSlice const& source,
                   std::vector<ArangoDBPathFinder::Step*>& result) {
     std::vector<TRI_doc_mptr_t*> cursor;
     for (auto const& edgeCollection : _edgeCollections) {
       TRI_ASSERT(edgeCollection != nullptr);
 
       auto edgeCursor = edgeCollection->getEdges(_direction, source);
-      std::unordered_map<std::string, size_t> candidates;
+      std::unordered_map<VPackSlice, size_t> candidates;
 
-      auto inserter = [&](std::string const& s, std::string const& t,
+      auto inserter = [&](VPackSlice const& s, VPackSlice const& t,
                           double currentWeight, VPackSlice edge) {
         if (_isAllowedVertex(t)) {
           auto cand = candidates.find(t);
           if (cand == candidates.end()) {
             // Add weight
             auto step = std::make_unique<ArangoDBPathFinder::Step>(
-                t, s, currentWeight, edgeCollection->trx()->extractIdString(edge));
+                t, s, currentWeight, std::move(edge));
             result.emplace_back(step.release());
             candidates.emplace(t, result.size() - 1);
           } else {
@@ -241,8 +281,8 @@ class MultiCollectionEdgeExpander {
           if (!_isAllowed(edge)) {
             continue;
           }
-          std::string const from = edge.get(Transaction::FromString).copyString();
-          std::string const to = edge.get(Transaction::ToString).copyString();
+          VPackSlice from = edge.get(Transaction::FromString);
+          VPackSlice to = edge.get(Transaction::ToString);
           double currentWeight = edgeCollection->weightEdge(edge);
           if (from == source) {
             inserter(from, to, currentWeight, edge);
@@ -268,26 +308,26 @@ class SimpleEdgeExpander {
 
   EdgeCollectionInfo* _edgeCollection;
 
-  std::unordered_map<std::string, size_t> _candidates;
+  std::unordered_map<VPackSlice, size_t> _candidates;
 
  public:
   SimpleEdgeExpander(TRI_edge_direction_e& direction,
                      EdgeCollectionInfo* edgeCollection)
       : _direction(direction), _edgeCollection(edgeCollection) {}
 
-  void operator()(std::string const& source,
+  void operator()(VPackSlice const& source,
                   std::vector<ArangoDBPathFinder::Step*>& result) {
     TRI_ASSERT(_edgeCollection != nullptr);
 
     _candidates.clear();
 
-    auto inserter = [&](std::string const& s, std::string const& t,
+    auto inserter = [&](VPackSlice const s, VPackSlice const t,
                         double currentWeight, VPackSlice edge) {
       auto cand = _candidates.find(t);
       if (cand == _candidates.end()) {
         // Add weight
         auto step = std::make_unique<ArangoDBPathFinder::Step>(
-            std::move(t), std::move(s), currentWeight, _edgeCollection->trx()->extractIdString(edge));
+            std::move(t), std::move(s), currentWeight, std::move(edge));
         result.emplace_back(step.release());
       } else {
         // Compare weight
@@ -307,8 +347,8 @@ class SimpleEdgeExpander {
       }
       VPackSlice edges = opRes->slice();
       for (auto const& edge : VPackArrayIterator(edges)) {
-        std::string const from = edge.get(Transaction::FromString).copyString();
-        std::string const to = edge.get(Transaction::ToString).copyString();
+        VPackSlice const from = edge.get(Transaction::FromString);
+        VPackSlice const to = edge.get(Transaction::ToString);
         double currentWeight = _edgeCollection->weightEdge(edge);
         if (from == source) {
           inserter(std::move(from), std::move(to), currentWeight, edge);
@@ -552,7 +592,9 @@ std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch(
   auto edgeFilterClosure = [&opts](VPackSlice edge)
                                -> bool { return opts.matchesEdge(edge); };
 
-  auto vertexFilterClosure = [&opts](std::string const& v) -> bool {
+  VPackBuilder tmpBuilder;
+  auto vertexFilterClosure = [&opts, &tmpBuilder](VPackSlice const& vertex) -> bool {
+    std::string v = vertex.copyString();
     size_t pos = v.find('/');
 
     if (pos == std::string::npos) {
@@ -566,12 +608,12 @@ std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch(
     std::string col = v.substr(0, pos);
     std::string key = v.substr(pos + 1);
 
-    VPackBuilder tmp;
-    tmp.openObject();
-    tmp.add(Transaction::KeyString, VPackValue(key));
-    tmp.close();
+    tmpBuilder.clear();
+    tmpBuilder.openObject();
+    tmpBuilder.add(Transaction::KeyString, VPackValue(key));
+    tmpBuilder.close();
     OperationOptions opOpts;
-    OperationResult opRes = opts.trx()->document(col, tmp.slice(), opOpts);
+    OperationResult opRes = opts.trx()->document(col, tmpBuilder.slice(), opOpts);
     if (opRes.failed()) {
       return false;
     }
@@ -589,10 +631,12 @@ std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch(
   // New trx api is not thread safe. Two threads only give little performance
   // gain. Maybe reactivate this in the future (MVCC).
   opts.multiThreaded = false;
+  VPackSlice start = opts.getStart();
+  VPackSlice end = opts.getEnd();
   if (opts.multiThreaded) {
-    path.reset(pathFinder.shortestPathTwoThreads(opts.start, opts.end));
+    path.reset(pathFinder.shortestPathTwoThreads(start, end));
   } else {
-    path.reset(pathFinder.shortestPath(opts.start, opts.end));
+    path.reset(pathFinder.shortestPath(start, end));
   }
   return path;
 }
@@ -624,9 +668,11 @@ TRI_RunSimpleShortestPathSearch(
   auto bwExpander = BasicExpander(collectionInfos, trx, backward);
 
   ArangoDBConstDistancePathFinder pathFinder(fwExpander, bwExpander);
+  VPackSlice start = opts.getStart();
+  VPackSlice end = opts.getEnd();
 
   auto path = std::unique_ptr<ArangoDBConstDistancePathFinder::Path>(
-      pathFinder.search(opts.start, opts.end));
+      pathFinder.search(start, end));
   return path;
 }
 

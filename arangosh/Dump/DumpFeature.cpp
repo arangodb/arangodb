@@ -31,6 +31,7 @@
 #include "Endpoint/Endpoint.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Rest/HttpResponse.h"
+#include "Rest/Version.h"
 #include "Rest/SslInterface.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
@@ -63,7 +64,8 @@ DumpFeature::DumpFeature(application_features::ApplicationServer* server,
       _tickEnd(0),
       _result(result),
       _batchId(0),
-      _clusterMode(false) {
+      _clusterMode(false),
+      _stats{ 0, 0, 0 } {
   requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter("Client");
@@ -978,10 +980,10 @@ void DumpFeature::start() {
 
   std::string dbName = client->databaseName();
 
-  _httpClient->setLocationRewriter((void*)client, &rewriteLocation);
+  _httpClient->setLocationRewriter(static_cast<void*>(client), &rewriteLocation);
   _httpClient->setUserNamePassword("/", client->username(), client->password());
 
-  std::string const versionString = getArangoVersion(nullptr);
+  std::string const versionString = _httpClient->getServerVersion();
 
   if (!_httpClient->isConnected()) {
     LOG(ERR) << "Could not connect to endpoint '" << client->endpoint()
@@ -996,15 +998,9 @@ void DumpFeature::start() {
   std::cout << "Server version: " << versionString << std::endl;
 
   // validate server version
-  int major = 0;
-  int minor = 0;
+  std::pair<int, int> version = Version::parseVersionString(versionString);
 
-  if (sscanf(versionString.c_str(), "%d.%d", &major, &minor) != 2) {
-    LOG(FATAL) << "invalid server version '" << versionString << "'";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (major != 3) {
+  if (version.first < 3) {
     // we can connect to 3.x
     LOG(ERR) << "Error: got incompatible server version '" << versionString
              << "'";
@@ -1014,15 +1010,12 @@ void DumpFeature::start() {
     }
   }
 
-  if (major >= 2) {
-    // Version 1.4 did not yet have a cluster mode
-    _clusterMode = getArangoIsCluster(nullptr);
+  _clusterMode = getArangoIsCluster(nullptr);
 
-    if (_clusterMode) {
-      if (_tickStart != 0 || _tickEnd != 0) {
-        LOG(ERR) << "Error: cannot use tick-start or tick-end on a cluster";
-        FATAL_ERROR_EXIT();
-      }
+  if (_clusterMode) {
+    if (_tickStart != 0 || _tickEnd != 0) {
+      LOG(ERR) << "Error: cannot use tick-start or tick-end on a cluster";
+      FATAL_ERROR_EXIT();
     }
   }
 
@@ -1042,8 +1035,6 @@ void DumpFeature::start() {
     std::cout << "Writing dump to output directory '" << _outputDirectory << "'"
               << std::endl;
   }
-
-  memset(&_stats, 0, sizeof(_stats));
 
   std::string errorMsg = "";
 

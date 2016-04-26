@@ -673,8 +673,7 @@ void Index::expandInSearchValues(VPackSlice const base,
     // all of them are now unique so we simply have to multiply
     
     size_t level = n - 1;
-    std::vector<size_t> positions;
-    positions.resize(n);
+    std::vector<size_t> positions(n, 0);
     bool done = false;
     while (!done) {
       TRI_IF_FAILURE("Index::permutationIN")  {

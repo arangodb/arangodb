@@ -1,10 +1,5 @@
 include(GNUInstallDirs)
 
-option(USE_RELATIVE
-  "Do you want to have all path are relative to the binary"
-  OFF
-)
-
 # etc -------------------------------
 set(ETCDIR "" CACHE path "System configuration directory (defaults to prefix/etc)")
 
@@ -346,29 +341,22 @@ include(CPack)
 ################################################################################
 
 install(
-  DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/client
+  DIRECTORY ${PROJECT_SOURCE_DIR}/js/common ${PROJECT_SOURCE_DIR}/js/client 
   DESTINATION share/arangodb/js
   FILES_MATCHING PATTERN "*.js"
   REGEX "^.*/common/test-data$" EXCLUDE
   REGEX "^.*/common/tests$" EXCLUDE
   REGEX "^.*/client/tests$" EXCLUDE)
 
-## -----------------------------------------------------------------------------
-## --SECTION--                                                       END-OF-FILE
-## -----------------------------------------------------------------------------
-
-## Local Variables:
-## mode: outline-minor
-## outline-regexp: "^\\(### @brief\\|## --SECTION--\\|# -\\*- \\)"
-## End:
-
 ################################################################################
 ### @brief install server-side JavaScript files
 ################################################################################
 
 install(
-  DIRECTORY ${PROJECT_SOURCE_DIR}/js
-  DESTINATION share/arangodb)
+  DIRECTORY ${PROJECT_SOURCE_DIR}/js/actions ${PROJECT_SOURCE_DIR}/js/apps ${PROJECT_SOURCE_DIR}/js/contrib ${PROJECT_SOURCE_DIR}/js/node ${PROJECT_SOURCE_DIR}/js/server
+  DESTINATION share/arangodb/js
+  REGEX "^.*/server/tests$" EXCLUDE
+)
 
 ################################################################################
 ### @brief install log directory
