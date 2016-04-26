@@ -86,8 +86,11 @@ struct AqlValue final {
 
  public:
   // construct an empty AqlValue
+  // note: this is the default constructor and should be as cheap as possible
   AqlValue() {
-    initFromSlice(arangodb::velocypack::Slice());
+    // construct a slice of type None
+    _data.internal[0] = '\x00';
+    setType(AqlValueType::VPACK_INLINE);
   }
 
   // construct from document
