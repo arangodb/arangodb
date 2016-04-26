@@ -1293,7 +1293,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   _agencyCallbackRegistry->registerCallback(agencyCallback);
 
   VPackBuilder builder;
-  builder.add(VPackValue(json.toJson()));
+  builder.add(json);//VPackValue(json.toJson()));
 
   AgencyOperation createCollection("Plan/Collections/" + databaseName + "/" + collectionID
       , AgencyValueOperationType::SET, builder.slice());

@@ -517,6 +517,8 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
         ids.push_back(id);
       }
 
+      std::cout << "++++++++++++++++" << name.c_str() << std::endl;
+      
       TRI_vocbase_t* vocbase =
           TRI_UseCoordinatorDatabaseServer(_server, name.c_str());
       
