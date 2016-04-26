@@ -158,7 +158,7 @@ class ObjectIterator {
     }
 
     if (slice.head() == 0x14 && slice.length() > 0) {
-      _current = slice.keyAt(0).start();
+      _current = slice.keyAt(0, false).start();
     }
   }
 
@@ -227,14 +227,14 @@ class ObjectIterator {
 
   inline bool valid() const throw() { return (_position < _size); }
 
-  inline Slice key() const {
+  inline Slice key(bool translate = true) const {
     if (_position >= _size) {
       throw Exception(Exception::IndexOutOfBounds);
     }
     if (_current != nullptr) {
       return Slice(_current);
     }
-    return _slice.keyAt(_position);
+    return _slice.keyAt(_position, translate);
   }
 
   inline Slice value() const {

@@ -321,12 +321,12 @@ class Slice {
   // attribute name
   // - 0x12      : object with 8-byte index table entries, not sorted by
   // attribute name
-  Slice keyAt(ValueLength index) const {
+  Slice keyAt(ValueLength index, bool translate = true) const {
     if (!isObject()) {
       throw Exception(Exception::InvalidValueType, "Expecting type Object");
     }
 
-    return getNthKey(index, true);
+    return getNthKey(index, translate);
   }
 
   Slice valueAt(ValueLength index) const {
@@ -427,7 +427,7 @@ class Slice {
 
   // translates an integer key into a string
   Slice translate() const;
-
+ 
   // return the value for an Int object
   int64_t getInt() const;
 

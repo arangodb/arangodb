@@ -68,8 +68,15 @@ static v8::Handle<v8::Value> ObjectVPackObject(v8::Isolate* isolate,
     v8::Handle<v8::Value> val =
         TRI_VPackToV8(isolate, it.value(), options, &slice);
     if (!val.IsEmpty()) {
-      auto k = ObjectVPackString(isolate, it.key());
-      object->ForceSet(k, val);
+      arangodb::velocypack::ValueLength l;
+      VPackSlice k = it.key(false);
+      if (k.isString()) {
+        char const* p = k.getString(l);
+        object->ForceSet(TRI_V8_PAIR_STRING(p, l), val);
+      } else {
+        char const* p = k.translate().getString(l);
+        object->ForceSet(TRI_V8_ASCII_PAIR_STRING(p, l), val);
+      }
     }
     it.next();
   }
