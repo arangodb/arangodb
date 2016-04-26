@@ -1,0 +1,198 @@
+[/
+ / Copyright (c) 2003 Boost.Test contributors 
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+
+[section:test_output Controlling outputs]
+The output produced by a test module is one of the major assets the __UTF__ brings to users. In comparison with any
+kind of manual/assert based solution the __UTF__ provide following services:
+
+[/TOFIX into proper list]
+[itemized_list 
+[All test errors are reported uniformly[br]
+  The test execution monitor along with standardized output from all included
+  [link boost_test.testing_tools testing tools] provides uniform reporting for all errors 
+  including fatal errors, like memory assess violation and uncaught exceptions.]
+[Detailed information on the source of an error[br]
+  The __UTF__ test tool's based assertion provides as much information as possible about cause of error,
+  usually  allowing you to deduce what is wrong without entering the debugger or core analysis.]
+[Separation of the test errors description (test log) from the results report summary (test results report)
+  The information produced during test execution, including all error, warning and info messages from the test
+  tools, executed test units notification constitute the test log. By default all entries in the test log are
+  directed to the standard output. Once testing is completed the __UTF__ may produce a summary test report with
+  different levels of detail. The test report is by default directed to the standard error output.]
+[Flexibility in what is shown in the output[br]
+The __UTF__ provides the ability to configure what is shown in both the test log and the test report. The
+  configuration is supported both at runtime, during test module invocation and at compile time from within a
+  test module.]
+[Flexibility in how output is formatted[br]
+The __UTF__ provides the ability to configure the format of the test module output. At the moment only 2 formats
+  are supported by the __UTF__ itself, the well defined public interface allows you to customize an output for
+  your purposes almost any way you want.]
+]
+
+[tip More details about the class implementing the formatting of the logs can be found in the following reference sections.
+
+* [classref boost::unit_test::unit_test_log_formatter] defines the interface for all loggers. Built-in HRF and XML 
+  interfaces derive from this class
+* [classref boost::unit_test::test_results] defines the information carried by the tests to provide reports and logs.
+]
+  
+[section Test log output]
+
+The test log is produced during the test execution. All entries in the test log are assigned a particular log
+level. Only the entries with level that exceeds the ['active log level threshold] actually
+appear in the test log output. Log levels are arranged by the 'importance' of the log entries. Here is
+the list of all levels in order of increasing 'importance':
+
+
+[table:id_messages Messages
+    [
+      [Notifications]
+      [Meaning]
+    ]
+    [
+      [Success]
+      [This category includes messages that provide information on successfully passed assertions]     
+    ]
+    [
+      [Test tree traversal]
+      [This category includes messages that are produced by the __UTF__ core and indicate which test suites/cases are currently being executed or skipped]
+    ]
+    [
+      [General information]
+      [This category includes general information messages produced in most cases by a test module author using the
+       macro __BOOST_TEST_MESSAGE__]
+    ]
+    [
+      [Warning]
+      [This category includes messages produced by failed warning level assertions]
+    ]
+    [
+      [Non fatal error]
+      [This category includes messages produced by failed check level assertions]
+    ]
+
+    [
+      [Uncaught C++ exceptions]
+      [This category includes messages that are produced by the __UTF__ and provide detailed information on the C++
+       exceptions uncaught by the test case body.
+      ]
+    ]
+    [
+      [Non-fatal system error]
+      [This category includes messages that are produced by the __UTF__ itself and provides information about caught
+       non-fatal system error. For example it includes messages produced in the case of test case timeout or if
+       floating  point values calculation errors are caught.
+      ]
+   ]
+   [
+      [Fatal system error]
+      [This category includes messages produced by failed require level assertions and by the __UTF__ itself in case of
+       abnormal test case termination.]
+   ]
+]
+
+[note 
+    The active log level works namely as threshold, not as selector. For the given active log level threshold, all
+    test log entries with ['importance] higher than threshold are enabled and all test log entries with
+    ['importance] below threshold are disabled.
+]
+
+In addition to the levels described above the test log defines two special log levels. The current log level can
+be set to:
+
+* All messages[br]
+  If active log level threshold is set to this value, all test log entries appear in the output. In practice
+  this is equivalent to setting the active log level threshold to ['success information messages]
+* Nothing[br]
+  If the active log level threshold is set to this value, none of test log entries appear in the output. This log level
+  is used to execute a ['silent] test that doesn't produce any test log and only generates a result code indicating 
+  whether test failed or passed.
+
+
+By default the active log level threshold is set to "non fatal error messages" and the test log output
+is generated in the human readable format. The active log level threshold and the output format can be configured
+at runtime during a test module invocation and at compile time from within a test module using the test log
+public interfaces. For example, for automated test module output processing it might be more convenient to use
+the XML based format.
+
+In most cases, the __UTF__ can't provide an exact location, where system error occurs or uncaught C++ exception
+is thrown from. To be able to pinpoint it as close as possible the __UTF__ keeps track of checkpoints - the
+location a test module passed through. A test case entrance and exit points, a test tool invocation point the
+__UTF__ tracks automatically. Any other checkpoints should be entered by you manually. The test log provides two
+macros for this purpose:
+
+* __BOOST_TEST_CHECKPOINT__ to specify a ['named] checkpoint and 
+* __BOOST_TEST_PASSPOINT__ to specify an ['unnamed] checkpoint.
+
+[endsect] [/ test log output]
+
+[/ -------------------------------------------------------------------------------------------------- ]
+[section:log_runtime_config Verbosity of the logs]
+
+The active log level threshold can be configured at runtime using the parameter 
+[link boost_test.utf_reference.rt_param_reference.log_level `log_level`]. 
+The test log output format can be selected using either parameter 
+[link boost_test.utf_reference.rt_param_reference.log_format `log_format`] or the parameter 
+[link boost_test.utf_reference.rt_param_reference.output_format `output_format`].
+
+[endsect] [/section:log_runtime_config]
+
+[/ -------------------------------------------------------------------------------------------------- ]
+[section:testing_tool_output_disable Disabling automatic printing for specific types]
+
+Most of the [link boost_test.testing_tools testing tools] print values of their 
+arguments to the output stream in some form of log statement. If arguments type does not support 
+``
+  operator<<(std::ostream&, ArgumentType const&);
+``
+interface you will get a compilation error. You can either implement above interface or prohibit 
+the [link boost_test.testing_tools testing tools] from logging argument values for
+specified type. To do so, use following statement on file level before first test case that 
+includes statement failing to compile:
+
+``
+  BOOST_TEST_DONT_PRINT_LOG_VALUE(ArgumentType)
+``
+
+[bt_example example32..BOOST_TEST_DONT_PRINT_LOG_VALUE usage..run-fail]
+
+[endsect] [/section:testing_tool_output_disable]
+
+[/ -------------------------------------------------------------------------------------------------- ]
+[section:test_output_macro_message Custom messages]
+The macro __BOOST_TEST_MESSAGE__ is intended to be used for the purpose of injecting an additional message into the
+__UTF__ test log. These messages are not intended to indicate any error or warning conditions, but rather as
+information/status notifications. The macro signature is as follows:
+
+  __BOOST_TEST_MESSAGE__(test_message);
+
+The test_message argument can be as simple as C string literal or any custom expression that you can produce with in a
+manner similar to standard `std::iostream` operation.
+
+[important Messages generated by this tool do not appear in test log output with default value of the active log level
+   threshold. For these messages to appear the active log level threshold has to be set to a value below or equal
+   to "message".
+]
+
+[bt_example example21..__BOOST_TEST_MESSAGE__ usage..run]
+
+[endsect] [/section:test_output_macro_message]
+
+[/ -------------------------------------------------------------------------------------------------- ]
+
+[include checkpoints.qbk]
+[include contexts.qbk]
+[include logging_floating_point.qbk]
+[include log_format.qbk]
+[include report_format.qbk]
+[include compilation_options.qbk]
+
+[include progress_display.qbk]
+[include testout_summary.qbk]
+
+[endsect]  [/test_output]

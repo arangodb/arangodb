@@ -1,0 +1,10 @@
+//[example_output
+> tolerance_03
+Running 2 test cases...
+test.cpp(18): error: in "failing": check x - d < x has failed [10 - 1.0000000000000001e-05 >= 10]. Relative difference is within tolerance [1e-06 < 0.001]
+test.cpp(19): error: in "failing": check x - d != x has failed [10 - 1.0000000000000001e-05 == 10]. Relative difference is within tolerance [1e-06 < 0.001]
+test.cpp(21): error: in "failing": check d > .0 has failed [1.0000000000000001e-05 <= 0]. Absolute value is within tolerance [|1e-05| < 0.001]
+test.cpp(22): error: in "failing": check d < .0 has failed [1.0000000000000001e-05 >= 0]
+
+*** 4 failures are detected in the test module "tolerance_03"
+//]

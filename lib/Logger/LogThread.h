@@ -37,14 +37,16 @@ class LogThread : public Thread {
   static void flush();
 
  public:
-  explicit LogThread(std::string const& name) : Thread(name) {}
-  ~LogThread() { shutdown(); }
+  explicit LogThread(std::string const& name);
+  ~LogThread();
 
  public:
+  bool isSilent() override { return true; }
   void run() override;
 
  private:
-  static boost::lockfree::queue<LogMessage*> _messages;
+  static boost::lockfree::queue<LogMessage*>* MESSAGES;
+  boost::lockfree::queue<LogMessage*> _messages;
 };
 }
 

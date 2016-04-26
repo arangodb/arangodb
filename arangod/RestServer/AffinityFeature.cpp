@@ -40,6 +40,8 @@ AffinityFeature::AffinityFeature(
       _nd(0),
       _ns(0) {
   startsAfter("Logger");
+  startsAfter("Dispatcher");
+  startsAfter("Scheduler");
 }
 
 void AffinityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -54,19 +56,6 @@ void AffinityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new DiscreteValuesParameter<UInt32Parameter>(&_threadAffinity, choices));
 }
 
-template <typename T>
-static std::string ToString(std::vector<T> const& v) {
-  std::string result = "";
-  std::string sep = "[";
-
-  for (auto const& e : v) {
-    result += sep + std::to_string(e);
-    sep = ",";
-  }
-
-  return result + "]";
-}
-
 void AffinityFeature::prepare() {
   _n = TRI_numberProcessors();
 
@@ -74,13 +63,13 @@ void AffinityFeature::prepare() {
     return;
   }
 
-  DispatcherFeature* dispatcher = dynamic_cast<DispatcherFeature*>(
-      ApplicationServer::lookupFeature("Dispatcher"));
+  DispatcherFeature* dispatcher = 
+      ApplicationServer::getFeature<DispatcherFeature>("Dispatcher");
 
   _nd = (dispatcher != nullptr) ? dispatcher->concurrency() : 0;
 
-  SchedulerFeature* scheduler = dynamic_cast<SchedulerFeature*>(
-      ApplicationServer::lookupFeature("Scheduler"));
+  SchedulerFeature* scheduler = 
+      ApplicationServer::getFeature<SchedulerFeature>("Scheduler");
 
   _ns = (scheduler != nullptr) ? scheduler->concurrency() : 0;
 
@@ -177,11 +166,11 @@ void AffinityFeature::start() {
               << " scheduler threads, " << _nd << " dispatcher threads";
 
     if (0 < _ns) {
-      LOG(DEBUG) << "scheduler cores: " << ToString(_ps);
+      LOG(DEBUG) << "scheduler cores: " << _ps;
     }
 
     if (0 < _nd) {
-      LOG(DEBUG) << "dispatcher cores: " << ToString(_pd);
+      LOG(DEBUG) << "dispatcher cores: " << _pd;
     }
   } else {
     DispatcherFeature* dispatcher = 

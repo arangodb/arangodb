@@ -3,7 +3,30 @@
 include_directories(.)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/tests/")
-find_package(Boost ${BOOST_MINIMUM_VERSION} REQUIRED COMPONENTS unit_test_framework)
+
+if (USE_SYSTEM_BOOST)
+  add_definitions("-DBOOST_TEST_DYN_LINK")
+else ()
+  set(BOOST_UNITTESTS_SRC
+      ${Boost_INCLUDE_DIR}/libs/test/src/compiler_log_formatter.cpp
+      ${Boost_INCLUDE_DIR}/libs/test/src/debug.cpp
+      ${Boost_INCLUDE_DIR}/libs/test/src/decorator.cpp
+      ${Boost_INCLUDE_DIR}/libs/test/src/execution_monitor.cpp
+      ${Boost_INCLUDE_DIR}/libs/test/src/framework.cpp
+      ${Boost_INCLUDE_DIR}/libs/test/src/plain_report_formatter.cpp
+      ${Boost_INCLUDE_DIR}/libs/test/src/progress_monitor.cpp
+      ${Boost_INCLUDE_DIR}/libs/test/src/results_collector.cpp
+      ${Boost_INCLUDE_DIR}/libs/test/src/results_reporter.cpp
+      ${Boost_INCLUDE_DIR}/libs/test/src/test_tools.cpp
+      ${Boost_INCLUDE_DIR}/libs/test/src/test_tree.cpp
+      ${Boost_INCLUDE_DIR}/libs/test/src/unit_test_log.cpp
+      ${Boost_INCLUDE_DIR}/libs/test/src/unit_test_main.cpp
+      ${Boost_INCLUDE_DIR}/libs/test/src/unit_test_monitor.cpp
+      ${Boost_INCLUDE_DIR}/libs/test/src/unit_test_parameters.cpp
+      ${Boost_INCLUDE_DIR}/libs/test/src/xml_log_formatter.cpp
+      ${Boost_INCLUDE_DIR}/libs/test/src/xml_report_formatter.cpp
+  )
+endif ()
 
 ################################################################################
 ## basics_suite
@@ -33,6 +56,7 @@ add_executable(${TEST_BASICS_SUITE}
   Basics/StringBufferTest.cpp
   Basics/StringUtilsTest.cpp
   ../lib/Basics/WorkMonitorDummy.cpp
+  ${BOOST_UNITTESTS_SRC}
 )
 
 target_include_directories(
@@ -59,6 +83,7 @@ add_executable(${TEST_GEO_SUITE}
   Geo/georeg.cpp
   ../lib/Basics/WorkMonitorDummy.cpp
   ../arangod/GeoIndex/GeoIndex.cpp
+  ${BOOST_UNITTESTS_SRC}
 )
 
 target_link_libraries(${TEST_GEO_SUITE}

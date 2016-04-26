@@ -44,6 +44,7 @@
 #include "RestHandler/RestCursorHandler.h"
 #include "RestHandler/RestDebugHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
+#include "RestHandler/RestEchoHandler.h"
 #include "RestHandler/RestEdgesHandler.h"
 #include "RestHandler/RestExportHandler.h"
 #include "RestHandler/RestHandlerCreator.h"
@@ -61,8 +62,8 @@
 #include "RestHandler/WorkMonitorHandler.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabaseServerFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/EndpointFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "V8Server/V8DealerFeature.h"
@@ -433,6 +434,10 @@ void RestServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       "/_admin/work-monitor",
       RestHandlerCreator<WorkMonitorHandler>::createNoData);
+
+  _handlerFactory->addHandler(
+      "/_admin/json-echo",
+      RestHandlerCreator<RestEchoHandler>::createNoData);
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // This handler is to activate SYS_DEBUG_FAILAT on DB servers

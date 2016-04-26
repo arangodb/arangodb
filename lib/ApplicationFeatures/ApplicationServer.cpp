@@ -102,6 +102,7 @@ void ApplicationServer::disableFeatures(std::vector<std::string> const& names, b
 // will take ownership of the feature object and destroy it in its
 // destructor
 void ApplicationServer::addFeature(ApplicationFeature* feature) {
+  TRI_ASSERT(feature->state() == FeatureState::UNINITIALIZED);
   _features.emplace(feature->name(), feature);
 }
 
@@ -297,6 +298,7 @@ void ApplicationServer::validateOptions() {
     if ((*it)->isEnabled()) {
       LOG_TOPIC(TRACE, Logger::STARTUP) << (*it)->name() << "::validateOptions";
       (*it)->validateOptions(_options);
+      (*it)->state(FeatureState::VALIDATED);
     }
   }
 }
@@ -327,6 +329,11 @@ void ApplicationServer::enableAutomaticFeatures() {
 void ApplicationServer::setupDependencies(bool failOnMissing) {
   LOG_TOPIC(TRACE, Logger::STARTUP)
       << "ApplicationServer::validateDependencies";
+  
+  // calculate ancestors for all features
+  for (auto& it : _features) {
+    it.second->determineAncestors();
+  }
 
   // first check if a feature references an unknown other feature
   if (failOnMissing) {
@@ -343,6 +350,7 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
       }
     }, true);
   }
+  
 
   // first insert all features, even the inactive ones
   std::vector<ApplicationFeature*> features;
@@ -359,25 +367,45 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
     features.insert(insertPosition, it.second);
   }
 
+  /* move features up a bit... still test if this is any relevant
+  for (size_t i = 1; i < features.size(); ++i) {
+    auto feature = features[i];
+    size_t insert = i;
+    for (size_t j = i; j > 0; --j) {
+      if (features[j - 1]->doesStartBefore(feature->name())) {
+        break;
+      }
+      insert = j - 1;
+    }
+    if (insert != i ){
+      for (size_t j = i; j > insert; --j) {
+        features[j] = features[j - 1];
+      }
+      features[insert] = feature;
+    }
+  }
+  */
+
   LOG_TOPIC(TRACE, Logger::STARTUP) << "ordered features:";
 
+  int position = 0;
   for (auto feature : features) {
-    LOG_TOPIC(TRACE, Logger::STARTUP)
-        << "  " << feature->name()
-        << (feature->isEnabled() ? "" : "(disabled)");
+    auto const& startsAfter = feature->startsAfter();
 
-    auto startsAfter = feature->startsAfter();
-
+    std::string dependencies;
     if (!startsAfter.empty()) {
-      LOG_TOPIC(TRACE, Logger::STARTUP)
-          << "    " << StringUtils::join(feature->startsAfter(), ", ");
+      dependencies = " - depends on: " + StringUtils::join(startsAfter, ", ");
     }
+    LOG_TOPIC(TRACE, Logger::STARTUP)
+        << "feature #" << ++position << ": " << feature->name()
+        << (feature->isEnabled() ? "" : " (disabled)") << " " << dependencies;
   }
 
   // remove all inactive features
   for (auto it = features.begin(); it != features.end(); /* no hoisting */) {
     if ((*it)->isEnabled()) {
       // keep feature
+      (*it)->state(FeatureState::INITIALIZED);
       ++it;
     } else {
       // remove feature
@@ -422,6 +450,7 @@ void ApplicationServer::prepare() {
       try {
         LOG_TOPIC(TRACE, Logger::STARTUP) << (*it)->name() << "::prepare";
         (*it)->prepare();
+        (*it)->state(FeatureState::PREPARED);
       } catch (...) {
         // restore original privileges
         if (!privilegesElevated) {
@@ -439,6 +468,7 @@ void ApplicationServer::start() {
   for (auto it = _orderedFeatures.begin(); it != _orderedFeatures.end(); ++it) {
     LOG_TOPIC(TRACE, Logger::STARTUP) << (*it)->name() << "::start";
     (*it)->start();
+    (*it)->state(FeatureState::STARTED);
   }
 }
 
@@ -449,6 +479,7 @@ void ApplicationServer::stop() {
        ++it) {
     LOG_TOPIC(TRACE, Logger::STARTUP) << (*it)->name() << "::stop";
     (*it)->stop();
+    (*it)->state(FeatureState::STOPPED);
   }
 }
 
