@@ -1045,12 +1045,11 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
   if (HasHint(trx, TRI_TRANSACTION_HINT_RECOVERY)) {
     // turn off all waitForSync operations during recovery
     waitForSync = false;
-  }
-
-  // upgrade the info for the transaction
-  if (!waitForSync) {
+  } else if (!waitForSync) {
+    // upgrade the info for the transaction based on the collection's settings
     waitForSync |= document->_info.waitForSync();
   }
+
   if (waitForSync) {
     trx->_waitForSync = true;
   }
