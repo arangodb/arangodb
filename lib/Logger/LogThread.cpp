@@ -28,10 +28,22 @@
 
 using namespace arangodb;
 
-boost::lockfree::queue<LogMessage*> LogThread::_messages(0);
+boost::lockfree::queue<LogMessage*>* LogThread::MESSAGES = nullptr;
+
+LogThread::LogThread(std::string const& name) : Thread(name), _messages(0) {
+  MESSAGES = &_messages;
+}
+
+LogThread::~LogThread() {
+  Logger::_threaded = false;
+  Logger::_active = false;
+
+  beginShutdown();
+  shutdown();
+}
 
 void LogThread::log(std::unique_ptr<LogMessage>& message) {
-  _messages.push(message.get());
+  MESSAGES->push(message.get());
   message.release();
 }
 
@@ -39,7 +51,7 @@ void LogThread::flush() {
   int tries = 0;
 
   while (++tries < 500) {
-    if (_messages.empty()) {
+    if (MESSAGES->empty()) {
       break;
     }
 
@@ -50,7 +62,7 @@ void LogThread::flush() {
 void LogThread::run() {
   LogMessage* msg;
 
-  while (Logger::_active.load()) {
+  while (! isStopping() && Logger::_active.load()) {
     while (_messages.pop(msg)) {
       try {
         LogAppender::log(msg);
