@@ -182,8 +182,14 @@
       this.enableSaveButton();
     },
 
+    resize: function() {
+      $('#documentEditor').height($('.centralRow').height() - 300);
+    },
+
     render: function() {
       $(this.el).html(this.template.render({}));
+
+      $('#documentEditor').height($('.centralRow').height() - 300);
       this.disableSaveButton();
       this.breadcrumb();
 

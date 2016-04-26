@@ -1,4 +1,27 @@
 <script id="userBarView.ejs" type="text/template">
+
+  <a class="info">User: 
+    <span class="toggle"> 
+      <%=_.escape(username)%>
+    </span>
+  </a>
+
+  <ul class="subBarDropdown">
+    <li class="dropdown-header">
+      <div style="height: 1px; background: rgb(119, 203, 153)"></div>
+      <img class="user-img" src="<%=img%>"/>
+        <p><% if (name) {%><%=_.escape(username)%><small> <%=_.escape(name)%> </small>
+        <% } else {%>
+          <%=_.escape(username)%>
+        <% } %>
+        </p>
+    </li>
+    <li class="dropdown-footer">
+      <button id="userLogout" class="button-primary btn-small pull-right">Logout</button>
+    </li>
+  </ul>
+
+<!--
 <ul class="navlist" id="userBarUl">
 
   <li class="dropdown user-menu userImg">
@@ -23,4 +46,6 @@
   </li>
 
 </ul>
+
+--> 
 </script>

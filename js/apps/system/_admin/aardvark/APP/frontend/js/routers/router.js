@@ -768,6 +768,9 @@
       if (this.documentsView) {
         this.documentsView.resize();
       }
+      if (this.documentView) {
+        this.documentView.resize();
+      }
     },
 
     userManagement: function (initialized) {

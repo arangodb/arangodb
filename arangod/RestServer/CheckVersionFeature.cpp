@@ -154,7 +154,7 @@ void CheckVersionFeature::checkVersion() {
         }
       }
 
-      // issue #391: when invoked with --database.upgrade, the server will not always shut
+      // issue #391: when invoked with --database.auto-upgrade, the server will not always shut
       // down
       localContext->Exit();
     }

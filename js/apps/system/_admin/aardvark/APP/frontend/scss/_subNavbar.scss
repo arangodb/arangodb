@@ -63,6 +63,17 @@
   background-color: $c-white;
   height: auto;
 
+  .bar-img {
+    background: none;
+    border-radius: 25px;
+    margin-right: 5px;
+    width: 25px;
+  }
+
+  .bar-img:hover {
+    cursor: pointer;
+  }
+
   ul {
 
     list-style: none;
@@ -146,6 +157,7 @@
       cursor: default;
 
       .info {
+        @extend %noselect;
         color: $c-white;
       }
     }
@@ -171,9 +183,75 @@
     color: rgba(255, 255, 255, .95);
     font-weight: 300;
     text-transform: uppercase;
+
+    span {
+      color: $c-positive;
+    }
+
+    span:hover {
+      cursor: pointer;
+    }
   }
 
   #dbStatus {
     padding-right: 20px;
   }
 }
+
+.subBarDropdown {
+  background: $c-white;
+  border: 1px solid $c-bluegrey-border;
+  display: none;
+  margin-top: 10px !important;
+  min-width: 200px;
+  position: absolute;
+  z-index: 9999;
+
+  li {
+    padding: 0;
+  }
+
+  .dropdown-header {
+    background-color: $c-active-green;
+    cursor: default;
+    margin: 0;
+    margin-left: -1px;
+    margin-right: -1px;
+    padding: 0 !important;
+
+    img {
+      border: 3px solid rgb(109, 186, 140);
+      border-radius: 75px;
+      display: block;
+      margin: 0 auto;
+      margin-top: 10px;
+      width: 75px;
+    }
+
+    p,
+    small {
+      color: $c-white;
+      text-align: center;
+    }
+
+    small {
+      display: block;
+      margin-top: -10px;
+    }
+  }
+
+  .dropdown-footer {
+    padding: {
+      bottom: 0 !important;
+      left: 0 !important;
+      right: 5px !important;
+      top: 0 !important;
+    };
+
+    button {
+      margin-bottom: 5px;
+      margin-top: -4px;
+    }
+  }
+}
+

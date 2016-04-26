@@ -25,6 +25,15 @@
   cursor: pointer;
 }
 
+%noselect {
+  -webkit-touch-callout: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 %fixedbar {
   //background-color: $c-lightgreen-2-transp-bg;
   color: $c-white;
@@ -247,16 +256,16 @@
 }
 
 %inputs {
-  @include border-radius(3px);
+  @include border-radius(4px);
   background-color: $c-white !important;
-  border: 1px solid $c-content-border;
+  border: 2px solid $c-content-border;
   box-shadow: none;
   outline: none;
   outline-color: $c-transp;
   outline-style: none;
 
   &:focus {
-    border-color: $c-dark-grey;
+    border-color: $c-positive;
     box-shadow: none;
     outline: none;
     outline-color: $c-transp;
