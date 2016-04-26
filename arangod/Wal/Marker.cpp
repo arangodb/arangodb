@@ -30,8 +30,8 @@ using namespace arangodb::wal;
 Marker::Marker(TRI_df_marker_t const* existing, TRI_voc_fid_t fid)
     : _buffer(reinterpret_cast<char*>(const_cast<TRI_df_marker_t*>(existing))),
       _size(existing->getSize()),
-      _mustFree(false),
-      _fid(fid) {}
+      _fid(fid),
+      _mustFree(false) {}
 
 /// @brief create marker from a VPackSlice
 Marker::Marker(TRI_df_marker_type_t type, VPackSlice const& properties)
@@ -44,16 +44,9 @@ Marker::Marker(TRI_df_marker_type_t type, VPackSlice const& properties)
 Marker::Marker(TRI_df_marker_type_t type, size_t size)
     : _buffer(new char[size]),
       _size(static_cast<uint32_t>(size)),
-      _mustFree(true),
-      _fid(0) {
+      _fid(0),
+      _mustFree(true) {
   DatafileHelper::InitMarker(reinterpret_cast<TRI_df_marker_t*>(begin()), type, _size);
-}
-
-/// @brief destroy marker
-Marker::~Marker() {
-  if (_buffer != nullptr && _mustFree) {
-    delete[] _buffer;
-  }
 }
 
 /// @brief store a vpack slice
