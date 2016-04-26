@@ -1151,10 +1151,20 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
         trx, document->_info.id(), TRI_TRANSACTION_WRITE);
     if (trxCollection->_operations == nullptr) {
       trxCollection->_operations = new std::vector<arangodb::wal::DocumentOperation*>;
+      trxCollection->_operations->reserve(4);
       trx->_hasOperations = true;
+    } else {
+      // reserve space for one more element
+      trxCollection->_operations->reserve(trxCollection->_operations->size() + 1);
     }
 
     arangodb::wal::DocumentOperation* copy = operation.swap();
+    
+    TRI_IF_FAILURE("TransactionOperationPushBack") {
+      // test what happens if push_back fails 
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG); 
+    }
+    
     trxCollection->_operations->push_back(copy);
     copy->handle();
   }

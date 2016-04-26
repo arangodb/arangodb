@@ -141,7 +141,7 @@ HttpHandler::status_t RestAgencyHandler::handleWrite () {
 
         // Wait for commit of highest except if it is 0?
         if (!ret.indices.empty() && call_mode == "waitForCommitted") {
-          index_t max_index =
+          arangodb::consensus::index_t max_index =
               *std::max_element(ret.indices.begin(), ret.indices.end());
           if (max_index > 0) {
             _agent->waitFor(max_index);

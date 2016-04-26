@@ -106,6 +106,7 @@ void CollectionKeys::create(TRI_voc_tick_t maxTick) {
 
   TRI_ASSERT(_markers == nullptr);
   _markers = new std::vector<TRI_df_marker_t const*>();
+  _markers->reserve(16384);
 
   // copy all datafile markers into the result under the read-lock
   {
