@@ -24,8 +24,7 @@ updated or added. When using the *REPLACE* variant of upsert, existing documents
 be replaced with the contexts of *update-expression*.
 
 Updating a document will modify the document's revision number with a server-generated value.
-The system attributes of documents (*_key*, *_id*, *_from*, *_to*, *_rev*) cannot be
-updated.
+The system attributes *_id*, *_key* and *_rev* cannot be updated, *_from* and *_to* can.
 
 The *search-expression* contains the document to be looked for. It must be an object 
 literal without dynamic attribute names. In case no such document can be found in
