@@ -51,6 +51,7 @@ Slots::Slots(LogfileManager* logfileManager, size_t numberOfSlots,
       _lastCommittedTick(0),
       _lastCommittedDataTick(0),
       _numEvents(0),
+      _numEventsSync(0),
       _lastDatabaseId(0),
       _lastCollectionId(0), 
       _shutdown(false) {
@@ -70,12 +71,14 @@ void Slots::shutdown() {
 void Slots::statistics(Slot::TickType& lastAssignedTick, 
                        Slot::TickType& lastCommittedTick,
                        Slot::TickType& lastCommittedDataTick,
-                       uint64_t& numEvents) {
+                       uint64_t& numEvents,
+                       uint64_t& numEventsSync) {
   MUTEX_LOCKER(mutexLocker, _lock);
   lastAssignedTick = _lastAssignedTick;
   lastCommittedTick = _lastCommittedTick;
   lastCommittedDataTick = _lastCommittedDataTick;
   numEvents = _numEvents;
+  numEventsSync = _numEventsSync;
 }
 
 /// @brief execute a flush operation
@@ -289,21 +292,34 @@ SlotInfo Slots::nextUnused(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId
 }
 
 /// @brief return a used slot, allowing its synchronization
-void Slots::returnUsed(SlotInfo& slotInfo, bool waitForSync) {
+void Slots::returnUsed(SlotInfo& slotInfo, bool wakeUpSynchronizer,
+                       bool waitForSyncRequested, bool waitUntilSyncDone) {
   TRI_ASSERT(slotInfo.slot != nullptr);
+  // waitUntilSyncDone does not make sense without waitForSyncRequested
+  TRI_ASSERT(!waitUntilSyncDone || waitForSyncRequested);
+
   Slot::TickType tick = slotInfo.slot->tick();
 
   TRI_ASSERT(tick > 0);
 
   {
     MUTEX_LOCKER(mutexLocker, _lock);
-    slotInfo.slot->setReturned(waitForSync);
-    ++_numEvents;
+    slotInfo.slot->setReturned(waitForSyncRequested);
+    if (waitForSyncRequested) {
+      ++_numEventsSync;
+    } else {
+      ++_numEvents;
+    }
   }
 
-  _logfileManager->signalSync(waitForSync);
+  wakeUpSynchronizer |= waitForSyncRequested;
+  wakeUpSynchronizer |= waitUntilSyncDone;
 
-  if (waitForSync) {
+  if (wakeUpSynchronizer) {
+    _logfileManager->signalSync(waitForSyncRequested);
+  }
+  
+  if (waitUntilSyncDone) {
     waitForTick(tick);
   }
 }
@@ -650,20 +666,19 @@ Slot::TickType Slots::handout() {
 
 /// @brief wait until all data has been synced up to a certain marker
 bool Slots::waitForTick(Slot::TickType tick) {
-  static uint64_t const SleepTime = 20 * 1000;
-  static int const MaxIterations = 15 * 1000 * 1000 / SleepTime;
+  static uint64_t const SleepTime = 10000;
+  static int const MaxIterations = 30 * 1000 * 1000 / SleepTime;
   int iterations = 0;
 
   // wait until data has been committed to disk
-  while (++iterations < MaxIterations) {
-    CONDITION_LOCKER(guard, _condition);
-
+  do {
     if (lastCommittedTick() >= tick) {
       return true;
     }
 
+    CONDITION_LOCKER(guard, _condition);
     guard.wait(SleepTime);
-  }
+  } while (++iterations < MaxIterations);
 
   return false;
 }

@@ -409,7 +409,7 @@ void RestReplicationHandler::handleCommandLoggerState() {
     builder.add("running", VPackValue(true));
     builder.add("lastLogTick", VPackValue(std::to_string(s.lastCommittedTick)));
     builder.add("lastUncommittedLogTick", VPackValue(std::to_string(s.lastAssignedTick)));
-    builder.add("totalEvents", VPackValue(s.numEvents));
+    builder.add("totalEvents", VPackValue(s.numEvents + s.numEventsSync));
     builder.add("time", VPackValue(s.timeString));
     builder.close();
 
@@ -1105,8 +1105,7 @@ void RestReplicationHandler::handleCommandInventory() {
     builder.add("running", VPackValue(true));
     builder.add("lastLogTick", VPackValue(std::to_string(s.lastCommittedTick)));
     builder.add("lastUncommittedLogTick", VPackValue(std::to_string(s.lastAssignedTick)));
-
-    builder.add("totalEvents", VPackValue(s.numEvents));
+    builder.add("totalEvents", VPackValue(s.numEvents + s.numEventsSync));
     builder.add("time", VPackValue(s.timeString));
     builder.close();  // state
 

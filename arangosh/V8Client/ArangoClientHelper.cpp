@@ -45,14 +45,13 @@ std::string ArangoClientHelper::rewriteLocation(void* data,
     return location;
   }
 
-  ClientFeature* client = (ClientFeature*)data;
+  ClientFeature* client = static_cast<ClientFeature*>(data);
   std::string const& dbname = client->databaseName();
 
   if (location[0] == '/') {
     return "/_db/" + dbname + location;
-  } else {
-    return "/_db/" + dbname + "/" + location;
   }
+  return "/_db/" + dbname + "/" + location;
 }
 
 // extract an error message from a response
@@ -86,54 +85,6 @@ std::string ArangoClientHelper::getHttpErrorMessage(SimpleHttpResult* result,
   return "got error from server: HTTP " +
          StringUtils::itoa(result->getHttpReturnCode()) + " (" +
          result->getHttpReturnMessage() + ")" + details;
-}
-
-// TODO(fc) is this SimpleHttpClient::getServerVersion?
-
-// fetch the version from the server
-std::string ArangoClientHelper::getArangoVersion(int* err) {
-  std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
-      GeneralRequest::RequestType::GET, "/_api/version", nullptr, 0));
-
-  if (response == nullptr || !response->isComplete()) {
-    return "";
-  }
-
-  std::string version;
-
-  if (response->getHttpReturnCode() == (int) GeneralResponse::ResponseCode::OK) {
-    // default value
-    version = "arango";
-
-    try {
-      std::shared_ptr<VPackBuilder> parsedBody = response->getBodyVelocyPack();
-      VPackSlice const body = parsedBody->slice();
-
-      // look up "server" value
-      std::string const server =
-          arangodb::basics::VelocyPackHelper::getStringValue(body, "server",
-                                                             "");
-
-      // "server" value is a string and content is "arango"
-      if (server == "arango") {
-        // look up "version" value
-        version = arangodb::basics::VelocyPackHelper::getStringValue(
-            body, "version", "");
-      }
-
-    } catch (...) {
-      // No Action
-    }
-  } else {
-    if (response->wasHttpError()) {
-      _httpClient->setErrorMessage(getHttpErrorMessage(response.get(), err),
-                                   false);
-    }
-
-    _httpClient->disconnect();
-  }
-
-  return version;
 }
 
 // check if server is a coordinator of a cluster

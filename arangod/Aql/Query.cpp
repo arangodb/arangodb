@@ -248,10 +248,8 @@ Query::~Query() {
 /// note: as a side-effect, this will also create and start a transaction for
 /// the query
 Query* Query::clone(QueryPart part, bool withPlan) {
-  std::unique_ptr<Query> clone;
-
-  clone.reset(new Query(false, _vocbase, _queryString,
-                        _queryLength, std::shared_ptr<VPackBuilder>(), _options, part));
+  auto clone = std::make_unique<Query>(false, _vocbase, _queryString,
+                        _queryLength, std::shared_ptr<VPackBuilder>(), _options, part);
 
   if (_plan != nullptr) {
     if (withPlan) {

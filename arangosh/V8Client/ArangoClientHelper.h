@@ -41,7 +41,6 @@ class ArangoClientHelper {
 
  public:
   std::string getHttpErrorMessage(httpclient::SimpleHttpResult*, int* err);
-  std::string getArangoVersion(int* err);
   bool getArangoIsCluster(int* err);
 
  protected:

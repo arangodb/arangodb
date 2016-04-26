@@ -73,6 +73,7 @@ struct LogfileManagerState {
   TRI_voc_tick_t lastCommittedTick;
   TRI_voc_tick_t lastCommittedDataTick;
   uint64_t numEvents;
+  uint64_t numEventsSync;
   std::string timeString;
 };
 
@@ -236,21 +237,21 @@ class LogfileManager final : public application_features::ApplicationFeature {
   // reserve space in a logfile
   SlotInfo allocate(TRI_voc_tick_t, TRI_voc_cid_t, uint32_t);
 
-  // finalize a log entry
-  void finalize(SlotInfo&, bool);
-
   // write data into the logfile, using database id and collection id
   /// this is a convenience function that combines allocate, memcpy and finalize
-  SlotInfoCopy allocateAndWrite(TRI_voc_tick_t, TRI_voc_cid_t, void*, uint32_t,
-                                bool);
+  SlotInfoCopy allocateAndWrite(TRI_voc_tick_t databaseId, 
+                                TRI_voc_cid_t collectionId, 
+                                void* mem, uint32_t size, bool wakeUpSynchronizer,
+                                bool waitForSyncRequested, bool waitUntilSyncDone);
 
   // write data into the logfile
   /// this is a convenience function that combines allocate, memcpy and finalize
-  SlotInfoCopy allocateAndWrite(void*, uint32_t, bool);
+  SlotInfoCopy allocateAndWrite(void* mem, uint32_t size, bool wakeUpSynchronizer, 
+                                bool waitForSyncRequested, bool waitUntilSyncDone);
 
-  // write data into the logfile
-  /// this is a convenience function that combines allocate, memcpy and finalize
-  SlotInfoCopy allocateAndWrite(Marker const&, bool);
+  // write marker into the logfile
+  // this is a convenience function with less parameters
+  SlotInfoCopy allocateAndWrite(Marker const& marker, bool waitForSync);
 
   // wait for the collector queue to get cleared for the given
   /// collection
@@ -365,6 +366,14 @@ class LogfileManager final : public application_features::ApplicationFeature {
   std::tuple<size_t, Logfile::IdType, Logfile::IdType> runningTransactions();
 
  private:
+  // memcpy the data into the WAL region and return the filled slot
+  // to the WAL logfile manager
+  SlotInfoCopy writeSlot(SlotInfo& slotInfo,
+                         void* src, uint32_t size,
+                         bool wakeUpSynchronizer,
+                         bool waitForSyncRequested,
+                         bool waitUntilSyncDone);
+
   // remove a logfile in the file system
   void removeLogfile(Logfile*);
 

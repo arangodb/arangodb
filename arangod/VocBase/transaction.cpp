@@ -1075,11 +1075,29 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
   if (operation.marker->fid() == 0) {
     // this is a "real" marker that must be written into the logfiles
     // just append it to the WAL:
+
+    // we only need to set waitForSync to true here if waitForSync was requested
+    // for the operation AND the operation is a standalone operation. In case the
+    // operation belongs to a transaction, the transaction's commit marker will
+    // be written with waitForSync, and we don't need to request a sync ourselves
     bool const localWaitForSync = (isSingleOperationTransaction && waitForSync);
+
+    // never wait until our marker was synced, even when an operation was tagged
+    // waitForSync=true. this is still safe because inside a transaction, the final
+    // commit marker will be written with waitForSync=true then, and in a standalone
+    // operation the transaction will wait until everything was synced before returning
+    // to the caller
+    bool const waitForTick = false;
+
+    // we should wake up the synchronizer in case this is a single operation
+    //
+    bool const wakeUpSynchronizer = isSingleOperationTransaction;
+
     arangodb::wal::SlotInfoCopy slotInfo =
         arangodb::wal::LogfileManager::instance()->allocateAndWrite(
             trx->_vocbase->_id, document->_info.id(), 
-            operation.marker->mem(), operation.marker->size(), localWaitForSync);
+            operation.marker->mem(), operation.marker->size(), wakeUpSynchronizer,
+            localWaitForSync, waitForTick);
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
       // some error occurred
       return slotInfo.errorCode;

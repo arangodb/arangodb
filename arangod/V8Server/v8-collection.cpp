@@ -1378,8 +1378,7 @@ static void JS_PropertiesVocbaseCol(
 
         arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_CHANGE_COLLECTION, document->_vocbase->_id, document->_info.id(), infoBuilder.slice());
         arangodb::wal::SlotInfoCopy slotInfo =
-            arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
-                                                                        false);
+            arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
 
         if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
           THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
