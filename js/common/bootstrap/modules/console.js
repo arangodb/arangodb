@@ -86,7 +86,6 @@ function logGroup(level, msg) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function prepareArgs(args) {
-  var ShapedJson = require('internal').ShapedJson;
   var result = [];
 
   if (args.length > 0 && typeof args[0] !== 'string') {
@@ -97,11 +96,7 @@ function prepareArgs(args) {
     let arg = args[i];
 
     if (typeof arg === 'object') {
-      if (ShapedJson !== undefined && arg instanceof ShapedJson) {
-        arg = inspect(arg, {
-          prettyPrint: false
-        });
-      } else if (arg === null) {
+      if (arg === null) {
         arg = 'null';
       } else if (arg instanceof Date || arg instanceof RegExp) {
         arg = String(arg);
