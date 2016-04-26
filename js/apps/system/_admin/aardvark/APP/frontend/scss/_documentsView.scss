@@ -19,6 +19,10 @@
   }
 }
 
+#documentsDiv {
+  padding-top: 0;
+}
+
 .edit-index-table {
   margin-top: 5px;
   min-width: auto !important;
@@ -50,7 +54,7 @@
     i {
       color: $c-positive;
       font-size: 19px;
-      margin-left: 16px;
+      margin-left: 22px;
       margin-top: 5px;
     }
 
@@ -81,6 +85,11 @@
   table {
     border-top: 1px solid $c-modal-table-border-bottom;
     margin-bottom: 60px;
+
+    input,
+    select {
+      @extend %inputs;
+    }
 
     select {
       margin-right: 7px;
@@ -171,7 +180,6 @@
   height: 28px;
   line-height: 18px;
   margin-left: 10px;
-  margin-right: -2px;
   margin-top: 0;
   outline: none;
   outline-color: transparent;
@@ -197,4 +205,12 @@
 
 .totalDocuments:hover {
   color: $c-black;
+}
+
+#documentsDiv {
+  .pure-table {
+    .snippet-container {
+      margin-top: 10px;
+    }
+  }
 }

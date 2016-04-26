@@ -248,6 +248,14 @@ $iconsize: 50px;
     margin-right: 5px;
     position: relative;
     width: auto;
+
+    .add {
+      color: $c-bluegrey-dark;
+
+      span {
+        color: $c-positive;
+      }
+    }
   }
 
   .paddingBox {
@@ -420,3 +428,14 @@ div {
   text-align: left;
 }
 
+#userManagementThumbnailsIn {
+  .tile {
+    .paddingBox {
+      img {
+        border-radius: 58px;
+        margin-top: -99px;
+        padding: 0;
+      }
+    }
+  }
+}

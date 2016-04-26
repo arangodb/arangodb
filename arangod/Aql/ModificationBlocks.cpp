@@ -25,7 +25,6 @@
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionEngine.h"
-#include "Basics/json-utilities.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ClusterMethods.h"
 #include "VocBase/vocbase.h"
@@ -36,9 +35,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
-
-using Json = arangodb::basics::Json;
-using JsonHelper = arangodb::basics::JsonHelper;
 
 ModificationBlock::ModificationBlock(ExecutionEngine* engine,
                                      ModificationNode const* ep)
@@ -190,6 +186,39 @@ void ModificationBlock::handleResult(int code, bool ignoreErrors,
 
   THROW_ARANGO_EXCEPTION(code);
 }
+
+/// @brief process the result of a data-modification operation
+void ModificationBlock::handleBabyResult(std::unordered_map<int, size_t> const& errorCounter,
+                                         size_t numBabies,
+                                         bool ignoreErrors,
+                                         std::string const* errorMessage) {
+  if (errorCounter.empty()) {
+    // update the success counter
+    // All successful.
+    _engine->_stats.writesExecuted += numBabies;
+    return;
+  }
+  if (ignoreErrors) {
+    for (auto const& pair : errorCounter) {
+      // update the ignored counter
+      _engine->_stats.writesIgnored += pair.second;
+      numBabies -= pair.second;
+    }
+
+    // update the success counter
+    _engine->_stats.writesExecuted += numBabies;
+    return;
+  }
+  auto const first = errorCounter.begin();
+
+  // bubble up any error
+  if (errorMessage != nullptr && !errorMessage->empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(first->first, *errorMessage);
+  }
+
+  THROW_ARANGO_EXCEPTION(first->first);
+}
+ 
   
 RemoveBlock::RemoveBlock(ExecutionEngine* engine, RemoveNode const* ep)
     : ModificationBlock(engine, ep) {}
@@ -232,8 +261,16 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
     throwIfKilled();  // check if we were aborted
 
     size_t const n = res->size();
+    bool isMultiple = (n > 1);
+    keyBuilder.clear();
+    if (isMultiple) {
+      // If we use multiple API we send an array
+      keyBuilder.openArray();
+    }
 
+    int errorCode = TRI_ERROR_NO_ERROR;
     // loop over the complete block
+    // build the request block
     for (size_t i = 0; i < n; ++i) {
       AqlValue const& a = res->getValueReference(i, registerId);
 
@@ -241,7 +278,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
       inheritRegisters(res, result.get(), i, dstRow);
 
       std::string key;
-      int errorCode = TRI_ERROR_NO_ERROR;
+      errorCode = TRI_ERROR_NO_ERROR;
 
       if (a.isObject()) {
         // value is an array. now extract the _key attribute
@@ -256,33 +293,71 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
       if (errorCode == TRI_ERROR_NO_ERROR) {
         // no error. we expect to have a key
         // create a slice for the key
-        keyBuilder.clear();
         keyBuilder.openObject();
         keyBuilder.add(TRI_VOC_ATTRIBUTE_KEY, VPackValue(key));
         keyBuilder.close();
+      } else {
+        // We have an error, handle it
+        handleResult(errorCode, ep->_options.ignoreErrors);
+      }
+    }
+    if (isMultiple) {
+      // We have to close the array
+      keyBuilder.close();
+    }
+    VPackSlice toRemove = keyBuilder.slice();
 
-        VPackSlice toRemove = keyBuilder.slice();
-      
-        // all exceptions are caught in _trx->remove()
-        OperationResult opRes = _trx->remove(_collection->name, toRemove, options);
+    if (!toRemove.isNone()) {
+      // all exceptions are caught in _trx->remove()
+      OperationResult opRes = _trx->remove(_collection->name, toRemove, options);
+      if (isMultiple) {
+        TRI_ASSERT(opRes.successful());
+        VPackSlice removedList = opRes.slice();
+        TRI_ASSERT(removedList.isArray());
+        if (producesOutput) {
+          for (auto const& it : VPackArrayIterator(removedList)) {
+            bool wasError = arangodb::basics::VelocyPackHelper::getBooleanValue(
+                it, "error", false);
+            errorCode = TRI_ERROR_NO_ERROR;
+            if (wasError) {
+              errorCode =
+                  arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+                      it, "errorNum", TRI_ERROR_NO_ERROR);
+            }
+            if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && _isDBServer &&
+                ignoreDocumentNotFound) {
+              // Ignore document not found on the DBserver:
+              errorCode = TRI_ERROR_NO_ERROR;
+            }
+            if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
+              result->setValue(dstRow, _outRegOld,
+                               AqlValue(it.get("old")));
+            }
+            handleResult(errorCode, ep->_options.ignoreErrors);
+            ++dstRow;
+          }
+        } else {
+          handleBabyResult(opRes.countErrorCodes, toRemove.length(), ep->_options.ignoreErrors);
+        }
+      } else {
         errorCode = opRes.code;
-
         if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && _isDBServer &&
             ignoreDocumentNotFound) {
           // Ignore document not found on the DBserver:
           errorCode = TRI_ERROR_NO_ERROR;
         }
-
         if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
-          result->setValue(dstRow, _outRegOld, AqlValue(opRes.slice().get("old")));
+          result->setValue(dstRow, _outRegOld,
+                           AqlValue(opRes.slice().get("old")));
         }
+        handleResult(errorCode, ep->_options.ignoreErrors);
+        ++dstRow;
       }
-
-      handleResult(errorCode, ep->_options.ignoreErrors);
+    } else {
+      // Do not send request just increase the row
       ++dstRow;
     }
     // done with a block
-
     // now free it already
     (*it) = nullptr;
     delete res;

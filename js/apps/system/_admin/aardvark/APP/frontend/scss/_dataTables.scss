@@ -1,11 +1,10 @@
 .arangoDataTable {
-  border-spacing: 0 0;
+  display: block;
   position: relative;
-  table-layout: fixed !important;
-  width: 100% !important;
+  width: 100%;
 
   tbody {
-    display: block;
+    display: inline-block;
     max-height: 200px;
     overflow-y: auto;
     position: absolute;
@@ -14,10 +13,14 @@
 
   thead {
     background-color: $c-white !important;
-    display: block;
+    display: inline-block;
     font-weight: 400 !important;
     text-align: left;
     width: 100%;
+
+    td {
+      overflow: hidden;
+    }
 
     th {
       border-bottom: 0;
