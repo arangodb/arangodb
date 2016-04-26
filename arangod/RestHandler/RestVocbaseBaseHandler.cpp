@@ -680,9 +680,25 @@ bool RestVocbaseBaseHandler::extractBooleanParameter(char const* name,
 
 std::shared_ptr<VPackBuilder> RestVocbaseBaseHandler::parseVelocyPackBody(
     VPackOptions const* options, bool& success) {
+  static std::string CONTENT_TYPE = "content-type";
+  static std::string X_VELOCYPACK = "application/x-velocypack";
+  static size_t XVN = X_VELOCYPACK.size();
+
+  bool found;
+  auto& contentType = _request->header(CONTENT_TYPE, found);
+
   try {
     success = true;
-    return _request->toVelocyPack(options);
+
+    if (found && contentType.size() == XVN && contentType[XVN-1] == 'k'
+      && contentType == X_VELOCYPACK) {
+      VPackSlice slice{_request->body().c_str()};
+      auto builder = std::make_shared<VPackBuilder>(options);
+      builder->add(slice);
+      return builder;
+    } else {
+      return _request->toVelocyPack(options);
+    }
   } catch (std::bad_alloc const&) {
     generateOOMError();
   } catch (VPackException const& e) {
