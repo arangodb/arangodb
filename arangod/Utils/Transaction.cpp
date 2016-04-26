@@ -131,11 +131,14 @@ static OperationResult DBServerResponseBad(std::shared_ptr<VPackBuilder> resultB
 
 static void createBabiesError(VPackBuilder& builder,
                               std::unordered_map<int, size_t>& countErrorCodes,
-                              int errorCode) {
-  builder.openObject();
-  builder.add("error", VPackValue(true));
-  builder.add("errorNum", VPackValue(errorCode));
-  builder.close();
+                              int errorCode,
+                              bool silent) {
+  if (!silent) {
+    builder.openObject();
+    builder.add("error", VPackValue(true));
+    builder.add("errorNum", VPackValue(errorCode));
+    builder.close();
+  }
 
   auto it = countErrorCodes.find(errorCode);
   if (it == countErrorCodes.end()) {
@@ -1113,7 +1116,7 @@ OperationResult Transaction::documentLocal(std::string const& collectionName,
     for (auto const& s : VPackArrayIterator(value)) {
       res = workOnOneDocument(s, true);
       if (res != TRI_ERROR_NO_ERROR) {
-        createBabiesError(resultBuilder, countErrorCodes, res);
+        createBabiesError(resultBuilder, countErrorCodes, res, options.silent);
       }
     }
     res = TRI_ERROR_NO_ERROR;
@@ -1266,7 +1269,7 @@ OperationResult Transaction::insertLocal(std::string const& collectionName,
     for (auto const& s : VPackArrayIterator(value)) {
       res = workForOneDocument(s);
       if (res != TRI_ERROR_NO_ERROR) {
-        createBabiesError(resultBuilder, countErrorCodes, res);
+        createBabiesError(resultBuilder, countErrorCodes, res, options.silent);
       }
     }
     // With babies the reporting is handled in the body of the result
@@ -1607,7 +1610,7 @@ OperationResult Transaction::modifyLocal(
       while (it.valid()) {
         res = workForOneDocument(it.value(), true);
         if (res != TRI_ERROR_NO_ERROR) {
-          createBabiesError(resultBuilder, errorCounter, res);
+          createBabiesError(resultBuilder, errorCounter, res, options.silent);
         }
         ++it;
       }
@@ -1855,7 +1858,7 @@ OperationResult Transaction::removeLocal(std::string const& collectionName,
     for (auto const& s : VPackArrayIterator(value)) {
       res = workOnOneDocument(s, true);
       if (res != TRI_ERROR_NO_ERROR) {
-        createBabiesError(resultBuilder, countErrorCodes, res);
+        createBabiesError(resultBuilder, countErrorCodes, res, options.silent);
       }
     }
     // With babies the reporting is handled somewhere else.
