@@ -85,7 +85,7 @@ void V8ClientConnection::init(
   } else {
     _lastHttpReturnCode = result->getHttpReturnCode();
 
-    if (result->getHttpReturnCode() == (int)GeneralResponse::ResponseCode::OK) {
+    if (result->getHttpReturnCode() == static_cast<int>(GeneralResponse::ResponseCode::OK)) {
       try {
         std::shared_ptr<VPackBuilder> parsedBody = result->getBodyVelocyPack();
         VPackSlice const body = parsedBody->slice();
@@ -165,7 +165,7 @@ void V8ClientConnection::reconnect(ClientFeature* client) {
   }
 
   if (isConnected() &&
-      _lastHttpReturnCode == (int)GeneralResponse::ResponseCode::OK) {
+      _lastHttpReturnCode == static_cast<int>(GeneralResponse::ResponseCode::OK)) {
     LOG(INFO) << "Connected to ArangoDB "
               << "'" << endpointSpecification() << "', "
               << "version " << _version << " [" << _mode << "], "
@@ -298,7 +298,7 @@ static void ClientConnection_ConstructorCallback(
   v8::HandleScope scope(isolate);
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
-  ClientFeature* client = (ClientFeature*)(wrap->Value());
+  ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
 
   std::unique_ptr<GeneralClientConnection> connection;
 
@@ -350,7 +350,7 @@ static void ClientConnection_reconnect(
       TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION);
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
-  ClientFeature* client = (ClientFeature*)(wrap->Value());
+  ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
 
   if (v8connection == nullptr || client == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
@@ -375,8 +375,8 @@ static void ClientConnection_reconnect(
   std::string password;
 
   if (args.Length() < 4) {
-    ConsoleFeature* console = dynamic_cast<ConsoleFeature*>(
-        ApplicationServer::lookupFeature("Console"));
+    ConsoleFeature* console = 
+        ApplicationServer::getFeature<ConsoleFeature>("Console");
 
     if (console == nullptr || !console->isEnabled()) {
       std::cout << "Please specify a password: " << std::flush;
@@ -853,7 +853,7 @@ static void ClientConnection_getEndpoint(
       TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION);
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
-  ClientFeature* client = (ClientFeature*)(wrap->Value());
+  ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
 
   if (v8connection == nullptr || client == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
@@ -930,7 +930,7 @@ static void ClientConnection_importCsv(
       TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION);
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
-  ClientFeature* client = (ClientFeature*)(wrap->Value());
+  ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
 
   std::unique_ptr<SimpleHttpClient> httpClient =
       client->createHttpClient(v8connection->endpointSpecification());
@@ -999,7 +999,7 @@ static void ClientConnection_importJson(
       TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION);
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
-  ClientFeature* client = (ClientFeature*)(wrap->Value());
+  ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
 
   std::unique_ptr<SimpleHttpClient> httpClient =
       client->createHttpClient(v8connection->endpointSpecification());
@@ -1232,7 +1232,7 @@ static void ClientConnection_setDatabaseName(
       TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION);
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
-  ClientFeature* client = (ClientFeature*)(wrap->Value());
+  ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
 
   if (v8connection == nullptr || client == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");

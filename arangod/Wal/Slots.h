@@ -89,7 +89,7 @@ class Slots {
   void shutdown();
 
   /// @brief get the statistics of the slots
-  void statistics(Slot::TickType&, Slot::TickType&, Slot::TickType&, uint64_t&);
+  void statistics(Slot::TickType&, Slot::TickType&, Slot::TickType&, uint64_t&, uint64_t&);
 
   /// @brief execute a flush operation
   int flush(bool);
@@ -98,12 +98,15 @@ class Slots {
   Slot::TickType lastCommittedTick();
 
   /// @brief return the next unused slot
-  SlotInfo nextUnused(uint32_t);
+  SlotInfo nextUnused(uint32_t size);
   
-  SlotInfo nextUnused(TRI_voc_tick_t, TRI_voc_cid_t, uint32_t);
+  /// @brief return the next unused slot
+  SlotInfo nextUnused(TRI_voc_tick_t databaseId, 
+                      TRI_voc_cid_t collectionId, uint32_t size);
 
   /// @brief return a used slot, allowing its synchronization
-  void returnUsed(SlotInfo&, bool);
+  void returnUsed(SlotInfo&, bool wakeUpSynchronizer,
+                  bool waitForSyncRequested, bool waitUntilSyncDone);
 
   /// @brief get the next synchronizable region
   SyncRegion getSyncRegion();
@@ -183,6 +186,9 @@ class Slots {
 
   /// @brief number of log events handled
   uint64_t _numEvents;
+
+  /// @brief number of sync log events handled
+  uint64_t _numEventsSync;
   
   /// @brief last written database id (in prologue marker)
   TRI_voc_tick_t _lastDatabaseId;

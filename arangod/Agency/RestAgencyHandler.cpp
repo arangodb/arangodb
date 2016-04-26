@@ -68,7 +68,7 @@ inline HttpHandler::status_t RestAgencyHandler::reportUnknownMethod() {
   return HttpHandler::status_t(HANDLER_DONE);
 }
 
-void RestAgencyHandler::redirectRequest(id_t leaderId) {
+void RestAgencyHandler::redirectRequest(arangodb::consensus::id_t leaderId) {
 
   try {
     std::string url = Endpoint::uriForm(
@@ -141,7 +141,7 @@ HttpHandler::status_t RestAgencyHandler::handleWrite () {
 
         // Wait for commit of highest except if it is 0?
         if (!ret.indices.empty() && call_mode == "waitForCommitted") {
-          index_t max_index =
+          arangodb::consensus::index_t max_index =
               *std::max_element(ret.indices.begin(), ret.indices.end());
           if (max_index > 0) {
             _agent->waitFor(max_index);

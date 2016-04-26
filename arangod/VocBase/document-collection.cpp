@@ -2341,8 +2341,7 @@ int TRI_SaveIndex(TRI_document_collection_t* document, arangodb::Index* idx,
     arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_CREATE_INDEX, vocbase->_id, document->_info.id(), idxSlice);
 
     arangodb::wal::SlotInfoCopy slotInfo =
-        arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
-                                                                    false);
+        arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
 
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
@@ -2419,8 +2418,7 @@ bool TRI_DropIndexDocumentCollection(TRI_document_collection_t* document,
         arangodb::wal::CollectionMarker marker(TRI_DF_MARKER_VPACK_DROP_INDEX, document->_vocbase->_id, document->_info.id(), markerBuilder.slice());
         
         arangodb::wal::SlotInfoCopy slotInfo =
-            arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker,
-                                                                        false);
+            arangodb::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
 
         if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
           THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
@@ -3483,7 +3481,7 @@ int TRI_document_collection_t::update(Transaction* trx,
         std::to_string(revisionId), options.mergeObjects, options.keepNull,
         *builder.get());
  
-      if (ServerState::instance()->isDBServer()) {
+      if (ServerState::isDBServer(trx->serverRole())) {
         // Need to check that no sharding keys have changed:
         if (arangodb::shardKeysChanged(
                 _vocbase->_name,
@@ -3629,7 +3627,7 @@ int TRI_document_collection_t::replace(Transaction* trx,
         trx, VPackSlice(oldHeader->vpack()),
         newSlice, std::to_string(revisionId), *builder.get());
 
-    if (ServerState::instance()->isDBServer()) {
+    if (ServerState::isDBServer(trx->serverRole())) {
       // Need to check that no sharding keys have changed:
       if (arangodb::shardKeysChanged(
               _vocbase->_name,
@@ -4178,7 +4176,7 @@ int TRI_document_collection_t::newObjectForInsert(
     uint8_t* p = builder.add(Transaction::IdString,
         VPackValuePair(9ULL, VPackValueType::Custom));
     *p++ = 0xf3;  // custom type for _id
-    if (ServerState::instance()->isDBServer()) {
+    if (ServerState::isDBServer(trx->serverRole())) {
       // db server in cluster
       DatafileHelper::StoreNumber<uint64_t>(p, _info.planId(), sizeof(uint64_t));
     } else {

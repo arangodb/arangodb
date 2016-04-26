@@ -34,6 +34,7 @@
 #include "Rest/HttpResponse.h"
 #include "Rest/InitializeRest.h"
 #include "Rest/SslInterface.h"
+#include "Rest/Version.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -65,7 +66,8 @@ RestoreFeature::RestoreFeature(application_features::ApplicationServer* server,
       _force(false),
       _clusterMode(false),
       _defaultNumberOfShards(1),
-      _result(result) {
+      _result(result),
+      _stats{ 0, 0, 0 } {
   requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter("Client");
@@ -191,12 +193,13 @@ int RestoreFeature::tryCreateDatabase(ClientFeature* client,
 
   auto returnCode = response->getHttpReturnCode();
 
-  if (returnCode == (int)GeneralResponse::ResponseCode::OK ||
-      returnCode == (int)GeneralResponse::ResponseCode::CREATED) {
+  if (returnCode == static_cast<int>(GeneralResponse::ResponseCode::OK) ||
+      returnCode == static_cast<int>(GeneralResponse::ResponseCode::CREATED)) {
     // all ok
     return TRI_ERROR_NO_ERROR;
-  } else if (returnCode == (int)GeneralResponse::ResponseCode::UNAUTHORIZED ||
-             returnCode == (int)GeneralResponse::ResponseCode::FORBIDDEN) {
+  } 
+  if (returnCode == static_cast<int>(GeneralResponse::ResponseCode::UNAUTHORIZED) ||
+      returnCode == static_cast<int>(GeneralResponse::ResponseCode::FORBIDDEN)) {
     // invalid authorization
     _httpClient->setErrorMessage(getHttpErrorMessage(response.get(), nullptr),
                                  false);
@@ -320,8 +323,8 @@ int RestoreFeature::sendRestoreData(std::string const& cname,
 }
 
 static bool SortCollections(VPackSlice const& l, VPackSlice const& r) {
-  VPackSlice const& left = l.get("parameters");
-  VPackSlice const& right = r.get("parameters");
+  VPackSlice const left = l.get("parameters");
+  VPackSlice const right = r.get("parameters");
 
   int leftType =
       arangodb::basics::VelocyPackHelper::getNumericValue<int>(left, "type", 0);
@@ -638,11 +641,11 @@ void RestoreFeature::start() {
 
   std::string dbName = client->databaseName();
 
-  _httpClient->setLocationRewriter((void*)client, &rewriteLocation);
+  _httpClient->setLocationRewriter(static_cast<void*>(client), &rewriteLocation);
   _httpClient->setUserNamePassword("/", client->username(), client->password());
 
-  int err;
-  std::string versionString = getArangoVersion(&err);
+  int err = TRI_ERROR_NO_ERROR;
+  std::string versionString = _httpClient->getServerVersion(&err);
 
   if (_createDatabase && err == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) {
     // database not found, but database creation requested
@@ -662,7 +665,7 @@ void RestoreFeature::start() {
     client->setDatabaseName(dbName);
 
     // re-fetch version
-    versionString = getArangoVersion(nullptr);
+    versionString = _httpClient->getServerVersion(nullptr);
   }
 
   if (!_httpClient->isConnected()) {
@@ -676,15 +679,9 @@ void RestoreFeature::start() {
   std::cout << "Server version: " << versionString << std::endl;
 
   // validate server version
-  int major = 0;
-  int minor = 0;
+  std::pair<int, int> version = Version::parseVersionString(versionString);
 
-  if (sscanf(versionString.c_str(), "%d.%d", &major, &minor) != 2) {
-    LOG(FATAL) << "Error: invalid server version '" << versionString << "'";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (major != 3) {
+  if (version.first < 3) {
     // we can connect to 3.x
     LOG(ERR) << "got incompatible server version '" << versionString << "'";
 
@@ -694,17 +691,13 @@ void RestoreFeature::start() {
     }
   }
 
-  if (major >= 2) {
-    // Version 1.4 did not yet have a cluster mode
-    _clusterMode = getArangoIsCluster(nullptr);
-  }
+  // Version 1.4 did not yet have a cluster mode
+  _clusterMode = getArangoIsCluster(nullptr);
 
   if (_progress) {
     std::cout << "# Connected to ArangoDB '"
               << _httpClient->getEndpointSpecification() << "'" << std::endl;
   }
-
-  memset(&_stats, 0, sizeof(_stats));
 
   std::string errorMsg = "";
 
@@ -739,4 +732,6 @@ void RestoreFeature::start() {
                 << std::endl;
     }
   }
+  
+  *_result = ret;
 }
