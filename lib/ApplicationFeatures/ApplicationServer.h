@@ -95,6 +95,8 @@ class ApplicationServer {
   static ApplicationFeature* lookupFeature(std::string const&);
   static bool isStopping() { return server != nullptr && server->_stopping.load(); }
 
+  enum class FeatureState { UNINITIALIZED, INITIALIZED, VALIDATED, PREPARED, STARTED, STOPPED };
+
   // returns the feature with the given name if known
   // throws otherwise
   template<typename T>
