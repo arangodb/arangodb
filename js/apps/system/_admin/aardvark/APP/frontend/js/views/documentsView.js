@@ -44,8 +44,8 @@
     },
 
     resize: function() {
-      $('#documentsTableID_wrapper').height($('.centralRow').height() - 210);
-      $('#documentsTableID tbody').css('max-height', $('#documentsTableID_wrapper').height() - 47);
+      $('#docPureTable').height($('.centralRow').height() - 210);
+      $('#docPureTable .pure-table-body').css('max-height', $('#docPureTable').height() - 47);
     },
 
     setCollectionId : function (colid, page) {
@@ -109,8 +109,8 @@
       "click #resetView"           : "resetView",
       "click #confirmDocImport"    : "startUpload",
       "click #exportDocuments"     : "startDownload",
-      "change #documentSize"            : "setPagesize",
-      "change #docsSort"                : "setSorting"
+      "change #documentSize"       : "setPagesize",
+      "change #docsSort"           : "setSorting"
     },
 
     showSpinner: function() {
@@ -342,7 +342,7 @@
 
     changeEditMode: function (enable) {
       if (enable === false || this.editMode === true) {
-        $('#documentsTableID tbody tr').css('cursor', 'default');
+        $('#docPureTable .pure-table-body .pure-table-row').css('cursor', 'default');
         $('.deleteButton').fadeIn();
         $('.addButton').fadeIn();
         $('.selected-row').removeClass('selected-row');
@@ -350,7 +350,7 @@
         this.tableView.setRowClick(this.clicked.bind(this));
       }
       else {
-        $('#documentsTableID tbody tr').css('cursor', 'copy');
+        $('#docPureTable .pure-table-body .pure-table-row').css('cursor', 'copy');
         $('.deleteButton').fadeOut();
         $('.addButton').fadeOut();
         $('.selectedCount').text(0);
@@ -789,7 +789,7 @@
 
     getSelectedDocs: function() {
       var toDelete = [];
-      _.each($('#documentsTableID tbody tr'), function(element) {
+      _.each($('#docPureTable .pure-table-body .pure-table-row'), function(element) {
         if ($(element).hasClass('selected-row')) {
           toDelete.push($($(element).children()[1]).find('.key').text());
         }
@@ -798,7 +798,7 @@
     },
 
     remove: function (a) {
-      this.docid = $(a.currentTarget).closest("tr").attr("id").substr(4);
+      this.docid = $(a.currentTarget).parent().parent().prev().find('.key').text();
       $("#confirmDeleteBtn").attr("disabled", false);
       $('#docDeleteModal').modal('show');
     },
@@ -855,6 +855,7 @@
         target.addClass('selected-row');
       }
 
+      console.log(target);
       var selected = this.getSelectedDocs();
       $('.selectedCount').text(selected.length);
 
@@ -900,8 +901,7 @@
     },
 
     drawTable: function() {
-      this.tableView.setElement($(this.table)).render();
-
+      this.tableView.setElement($('#docPureTable')).render();
       // we added some icons, so we need to fix their tooltips
       arangoHelper.fixTooltips(".icon_arangodb, .arangoicon", "top");
 

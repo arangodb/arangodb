@@ -36,7 +36,7 @@
         collection: options.notificationCollection
       });
       this.statisticBarView = new window.StatisticBarView({
-          currentDB: this.currentDB
+        currentDB: this.currentDB
       });
 
       this.isCluster = options.isCluster;
@@ -72,7 +72,7 @@
       }));
       
       this.dbSelectionView.render($("#dbSelect"));
-      this.notificationView.render($("#notificationBar"));
+      //this.notificationView.render($("#notificationBar"));
 
       var callback = function(error) {
         if (!error) {
@@ -81,11 +81,11 @@
       }.bind(this);
 
       this.userCollection.whoAmI(callback);
-      this.statisticBarView.render($("#statisticBar"));
+      //this.statisticBarView.render($("#statisticBar"));
 
       if (this.renderFirst) {
         this.renderFirst = false;
-          
+
         this.selectMenuItem();
 
         $('.arangodbLogo').on('click', function() {
@@ -343,6 +343,12 @@
         }
       }
       arangoHelper.hideArangoNotifications();
+    },
+
+    showSubDropdown: function(e) {
+      console.log($(e.currentTarget));
+      console.log($(e.currentTarget).find('.subBarDropdown'));
+      $(e.currentTarget).find('.subBarDropdown').toggle();  
     },
 
     showDropdown: function (e) {
