@@ -9,8 +9,7 @@ Each *REPLACE* operation is restricted to a single collection, and the
 Only a single *REPLACE* statement per collection is allowed per AQL query, and 
 it cannot be followed by read operations that access the same collection, by
 traversal operations, or AQL functions that can read documents.
-The system attributes of documents (*_key*, *_id*, *_from*, *_to*, *_rev*) cannot be
-replaced.
+The system attributes *_id*, *_key* and *_rev* cannot be replaced, *_from* and *_to* can.
 
 The two syntaxes for a replace operation are:
 
