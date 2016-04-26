@@ -34,6 +34,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Import/ImportHelper.h"
 #include "Rest/HttpResponse.h"
+#include "Rest/Version.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -103,7 +104,17 @@ void V8ClientConnection::init(
               _mode = mode.copyString();
             }
           }
+          std::string const versionString =
+              VelocyPackHelper::getStringValue(body, "version", "");
+          std::pair<int, int> version = rest::Version::parseVersionString(versionString);
+          if (version.first < 3) {
+            // major version of server is too low
+            _client->disconnect();
+            _lastErrorMessage = "Server version number ('" + versionString + "') is too low. Expecting 3.0 or higher";
+            return;
+          }
         }
+
       } catch (...) {
         // Ignore all parse errors
       }
@@ -1108,9 +1119,8 @@ static void ClientConnection_isConnected(
 
   if (v8connection->isConnected()) {
     TRI_V8_RETURN_TRUE();
-  } else {
-    TRI_V8_RETURN_FALSE();
-  }
+  } 
+  TRI_V8_RETURN_FALSE();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
