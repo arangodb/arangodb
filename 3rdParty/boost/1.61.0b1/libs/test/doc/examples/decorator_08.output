@@ -1,0 +1,17 @@
+//[example_output
+> decorator_08 --log_level=test_suite
+Running 4 test cases...
+Entering test module "decorator_08"
+test.cpp(6): Entering test case "test1"
+test.cpp(6): Leaving test case "test1"; testing time: 1ms
+test.cpp(11): Entering test case "test2"
+test.cpp(13): error: in "test2": check false has failed
+test.cpp(11): Leaving test case "test2"; testing time: 2ms
+test.cpp(39): Entering test case "test3"
+test.cpp(41): error: in "test3": check false has failed
+test.cpp(39): Leaving test case "test3"; testing time: 2ms
+test.cpp(45): Test case "test4" is skipped because test2 and test3 failed
+Leaving test module "decorator_08"; testing time: 16ms
+
+*** 2 failures are detected in the test module "decorator_08"
+//]
