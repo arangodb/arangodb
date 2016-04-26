@@ -30,10 +30,6 @@
 #include "Aql/ModificationNodes.h"
 #include "Utils/AqlTransaction.h"
 
-struct TRI_df_marker_t;
-struct TRI_doc_mptr_t;
-struct TRI_json_t;
-
 namespace arangodb {
 namespace aql {
 struct Collection;
@@ -58,6 +54,9 @@ class ModificationBlock : public ExecutionBlock {
 
   /// @brief process the result of a data-modification operation
   void handleResult(int, bool, std::string const* errorMessage = nullptr);
+
+  void handleBabyResult(std::unordered_map<int, size_t> const&, size_t, bool,
+                        std::string const* errorMessage = nullptr);
 
  protected:
   /// @brief output register ($OLD)
