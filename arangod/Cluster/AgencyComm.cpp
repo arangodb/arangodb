@@ -878,7 +878,7 @@ bool AgencyComm::hasEndpoint(std::string const& endpointSpecification) {
 
     while (it != _globalEndpoints.end()) {
       AgencyEndpoint const* agencyEndpoint = (*it);
-
+      
       if (agencyEndpoint->_endpoint->specification() == endpointSpecification) {
         return true;
       }
@@ -1843,16 +1843,19 @@ bool AgencyComm::sendWithFailover(arangodb::GeneralRequest::RequestType method,
       std::string endpoint;
 
       // transform location into an endpoint
+      int offset;
       if (result.location().substr(0, 7) == "http://") {
-        endpoint = "tcp://" + result.location().substr(7);
+        endpoint = "http+tcp://" + result.location().substr(7);
+        offset = 11;
       } else if (result.location().substr(0, 8) == "https://") {
         endpoint = "ssl://" + result.location().substr(8);
+        offset = 6;
       } else {
         // invalid endpoint, return an error
         return false;
       }
 
-      size_t const delim = endpoint.find('/', 6);
+      size_t const delim = endpoint.find('/', offset);
 
       if (delim == std::string::npos) {
         // invalid location header
