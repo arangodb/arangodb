@@ -1,0 +1,8 @@
+//[example_output
+> custom_init
+using custom init
+Running 1 test case...
+test.cpp(7): error: in "test1": check false has failed
+
+*** 1 failure is detected in the test module "Master Test Suite"
+//]

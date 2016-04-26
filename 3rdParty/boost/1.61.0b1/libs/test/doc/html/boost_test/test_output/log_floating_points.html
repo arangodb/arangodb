@@ -1,0 +1,86 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Logging floating point type numbers</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../index.html" title="Boost.Test">
+<link rel="up" href="../test_output.html" title="Controlling outputs">
+<link rel="prev" href="contexts.html" title="Contexts">
+<link rel="next" href="log_formats.html" title="Log formats">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="contexts.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../test_output.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="log_formats.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_test.test_output.log_floating_points"></a><a class="link" href="log_floating_points.html" title="Logging floating point type numbers">Logging floating
+      point type numbers</a>
+</h3></div></div></div>
+<p>
+        It may appear that floating-point numbers are displayed by the <span class="emphasis"><em>Unit
+        Test Framework</em></span> with an excessive number of decimal digits. However
+        the number of digits shown is chosen to avoid apparently nonsensical displays
+        like <code class="computeroutput"><span class="special">[</span><span class="number">1.00000</span>
+        <span class="special">!=</span> <span class="number">1.00000</span><span class="special">]</span></code> when comparing exactly unity against a value
+        which is increased by just one least significant binary digit using the default
+        precision for float of just 6 decimal digits, given by <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="keyword">float</span><span class="special">&gt;::</span><span class="identifier">digits10</span></code>.
+        The function used for the number of decimal digits displayed is that proposed
+        for a future C++ Standard, <a href="http://www2.open-std.org/JTC1/SC22/WG21/docs/papers/2005/n1822.pdf" target="_top">A
+        Proposal to add a max significant decimal digits value</a>, to be called
+        <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">::</span><span class="identifier">max_digits10</span><span class="special">();</span></code>.
+        For 32-bit floats, 9 decimal digits are needed to ensure a single bit change
+        produces a different decimal digit string.
+      </p>
+<p>
+        So a much more helpful display using 9 decimal digits is thus: <code class="computeroutput"><span class="special">[</span><span class="number">1.00000000</span> <span class="special">!=</span> <span class="number">1.00000012</span><span class="special">]</span></code> showing that the two values are in fact
+        different.
+      </p>
+<p>
+        For <span class="bold"><strong>IEEE754</strong></span> 32-bit float values - 9 decimal
+        digits are shown. For 64-bit <span class="bold"><strong>IEEE754</strong></span> double
+        - 17 decimal digits. For <span class="bold"><strong>IEEE754</strong></span> extended
+        long double using 80-bit - 21 decimal digits. For <span class="bold"><strong>IEEE754</strong></span>
+        quadruple long double 128-bit, and SPARC extended long double 128-bit - 36
+        decimal digits. For floating-point types, a convenient formula to calculate
+        <code class="computeroutput"><span class="identifier">max_digits10</span></code> is: <code class="computeroutput"><span class="number">2</span> <span class="special">+</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">FPT</span><span class="special">&gt;::</span><span class="identifier">digits</span>
+        <span class="special">*</span> <span class="number">3010</span><span class="special">/</span><span class="number">10000</span></code>;
+      </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          Note that a user defined floating point type UDFPT must define <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">UDFPT</span><span class="special">&gt;::</span><span class="identifier">is_specialized</span> <span class="special">=</span>
+          <span class="keyword">true</span></code> and provide an appropriate
+          value for <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">UDFPT</span><span class="special">&gt;::</span><span class="identifier">digits</span></code>, the number of bits used for the
+          significand or mantissa. For example, for the SPARC extended long double
+          128, 113 bits are used for the significand (one of which is implicit).
+        </p></td></tr>
+</table></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001-2016 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="contexts.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../test_output.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="log_formats.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

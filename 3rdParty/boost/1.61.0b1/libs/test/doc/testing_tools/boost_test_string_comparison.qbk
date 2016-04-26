@@ -1,0 +1,15 @@
+[/
+ / Copyright (c) 2015 Boost development team
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+
+[section:strings C-string comparison]
+In the general case, pointers are compared using their value. However when type of the the pointers are `char*` or `wchar_t*`, 
+__BOOST_TEST__ promotes them as null terminated `char` arrays and string comparison is used instead. 
+
+[bt_example boost_test_string..BOOST_TEST string comparison..run-fail]
+
+[endsect]
