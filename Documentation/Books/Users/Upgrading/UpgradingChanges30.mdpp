@@ -59,6 +59,13 @@ been moved into more appropriate topic sections.
 The following options have been available before 3.0 and have changed their name 
 in 3.0:
 
+- `--server.disable-authentication` was renamed to `--server.authentication`. 
+  Note that the meaning of the option `--server.authentication` is the opposite of 
+  the previous `--server.disable-authentication`.
+- `--server.disable-authentication-unix-sockets` was renamed to 
+  `--server.authentication-unix-sockets`. Note that the meaning of the option 
+  `--server.authentication-unix-sockets` is the opposite of the previous 
+  `--server.disable-authentication-unix-sockets`.
 - `--server.disable-statistics` was renamed to `--server.statistics`. Note that the
   meaning of the option `--server.statistics` is the opposite of the previous
   `--server.disable-statistics`.
