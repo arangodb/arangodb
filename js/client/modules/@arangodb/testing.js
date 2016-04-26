@@ -3520,7 +3520,7 @@ testFuncs.upgrade = function(options) {
   let args = makeArgsArangod(options, appDir);
   args["server.endpoint"] = "tcp://127.0.0.1:" + port;
   args["database.directory"] = fs.join(tmpDataDir, "data");
-  args["database.upgrade"] = true;
+  args["database.auto-upgrade"] = true;
 
   fs.makeDirectoryRecursive(fs.join(tmpDataDir, "data"));
 
