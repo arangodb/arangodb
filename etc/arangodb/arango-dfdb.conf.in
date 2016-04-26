@@ -1,7 +1,7 @@
 # config file for arango-dfdb
 
 [database]
-upgrade = false
+auto-upgrade = false
 upgrade-check = false
 directory= @LOCALSTATEDIR@/lib/arangodb
 # maximal-journal-size=33554432
