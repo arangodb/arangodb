@@ -83,7 +83,7 @@ HttpHandler::status_t RestAgencyPrivHandler::execute() {
     } else {
       term_t term, prevLogTerm;
       arangodb::consensus::id_t id;  // leaderId for appendEntries, cadidateId for requestVote
-      index_t prevLogIndex, leaderCommit;
+      arangodb::consensus::index_t prevLogIndex, leaderCommit;
       if (_request->suffix()[0] == "appendEntries") {  // appendEntries
         if (_request->requestType() != GeneralRequest::RequestType::POST) {
           return reportMethodNotAllowed();
