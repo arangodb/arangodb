@@ -42,6 +42,7 @@ DatabaseServerFeature::DatabaseServerFeature(ApplicationServer* server)
       _server(nullptr) {
   setOptional(false);
   requiresElevatedPrivileges(false);
+  startsAfter("Affinity");
   startsAfter("FileDescriptors");
   startsAfter("Language");
   startsAfter("Logger");

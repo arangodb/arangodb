@@ -93,6 +93,8 @@ RestServerFeature::RestServerFeature(
   startsAfter("Scheduler");
   startsAfter("Server");
   startsAfter("Agency");
+  startsAfter("Upgrade");
+  startsAfter("CheckVersion");
 }
 
 void RestServerFeature::collectOptions(
