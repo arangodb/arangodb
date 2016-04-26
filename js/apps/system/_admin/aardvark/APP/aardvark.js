@@ -326,7 +326,7 @@ authRouter.post('/job', function(req, res) {
 
 
 authRouter.delete('/job', function(req, res) {
-  db._frontend.removeByExample({model: 'job'}, true);
+  db._frontend.removeByExample({model: 'job'}, false);
   res.json(true);
 })
 .summary('Delete all jobs')
@@ -336,7 +336,7 @@ authRouter.delete('/job', function(req, res) {
 
 
 authRouter.delete('/job/:id', function(req, res) {
-  db._frontend.removeByExample({id: req.pathParams.id}, true);
+  db._frontend.removeByExample({id: req.pathParams.id}, false);
   res.json(true);
 })
 .summary('Delete a job id')

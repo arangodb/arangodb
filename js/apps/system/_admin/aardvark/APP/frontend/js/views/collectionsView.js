@@ -9,7 +9,7 @@
     el2: '#collectionsThumbnailsIn',
 
     searchTimeout: null,
-    refreshRate: 2000,
+    refreshRate: 10000,
 
     template: templateEngine.createTemplate("collectionsView.ejs"),
 
@@ -27,7 +27,6 @@
         var callback = function(error, lockedCollections) {
           var self = this;
           if (error) {
-            //arangoHelper.arangoError("Collections", "Could not check locked collections");
             console.log("Could not check locked collections");
           }
           else {
@@ -54,6 +53,8 @@
               if (model.get("locked") || model.get("status") === 'loading') {
                 $('#collection_' + model.get("name")).addClass('locked');
                 if (model.get("locked")) {
+                  $('#collection_' + model.get("name")).find('.corneredBadge').removeClass('loaded unloaded');
+                  $('#collection_' + model.get("name")).find('.corneredBadge').addClass('inProgress');
                   $('#collection_' + model.get("name") + ' .corneredBadge').text(model.get("desc"));
                 }
                 else {
