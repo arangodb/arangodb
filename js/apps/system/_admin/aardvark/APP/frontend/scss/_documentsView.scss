@@ -21,6 +21,12 @@
 
 #documentsDiv {
   padding-top: 0;
+
+  .pure-table {
+    .snippet-container {
+      margin-top: 10px;
+    }
+  }
 }
 
 .edit-index-table {
@@ -205,12 +211,4 @@
 
 .totalDocuments:hover {
   color: $c-black;
-}
-
-#documentsDiv {
-  .pure-table {
-    .snippet-container {
-      margin-top: 10px;
-    }
-  }
 }

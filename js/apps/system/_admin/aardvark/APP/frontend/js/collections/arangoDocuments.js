@@ -221,11 +221,12 @@
         query: query,
         bindVars: bindVars
       };
+      /*
       if (this.getTotal() < 10000 || this.filters.length > 0) {
         queryObj.options = {
           fullCount: true,
         };
-      }
+      }*/
 
       var checkCursorStatus = function(jobid) {
         $.ajax({
