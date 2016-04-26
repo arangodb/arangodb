@@ -2,7 +2,7 @@
 /// DISCLAIMER
 ///
 /// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,35 +18,22 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_LOGGER_LOG_THREAD_H
-#define ARANGODB_LOGGER_LOG_THREAD_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_ECHO_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_ECHO_HANDLER_H 1
 
-#include "Basics/Thread.h"
-
-#include <boost/lockfree/queue.hpp>
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
-struct LogMessage;
-
-class LogThread : public Thread {
+class RestEchoHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  static void log(std::unique_ptr<LogMessage>&);
-  static void flush();
+  explicit RestEchoHandler(arangodb::HttpRequest*);
 
  public:
-  explicit LogThread(std::string const& name);
-  ~LogThread();
-
- public:
-  bool isSilent() override { return true; }
-  void run() override;
-
- private:
-  static boost::lockfree::queue<LogMessage*>* MESSAGES;
-  boost::lockfree::queue<LogMessage*> _messages;
+  bool isDirect() const override { return true; }
+  status_t execute() override;
 };
 }
 

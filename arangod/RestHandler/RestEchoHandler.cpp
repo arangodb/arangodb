@@ -2,7 +2,7 @@
 /// DISCLAIMER
 ///
 /// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,36 +18,33 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_LOGGER_LOG_THREAD_H
-#define ARANGODB_LOGGER_LOG_THREAD_H 1
+#include "RestEchoHandler.h"
 
-#include "Basics/Thread.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Rest/HttpRequest.h"
 
-#include <boost/lockfree/queue.hpp>
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
-namespace arangodb {
-struct LogMessage;
+using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
-class LogThread : public Thread {
- public:
-  static void log(std::unique_ptr<LogMessage>&);
-  static void flush();
+RestEchoHandler::RestEchoHandler(HttpRequest* request)
+    : RestVocbaseBaseHandler(request) {}
 
- public:
-  explicit LogThread(std::string const& name);
-  ~LogThread();
+HttpHandler::status_t RestEchoHandler::execute() {
+  bool parseSuccess = true;
+  std::shared_ptr<VPackBuilder> parsedBody =
+      parseVelocyPackBody(&VPackOptions::Defaults, parseSuccess);
 
- public:
-  bool isSilent() override { return true; }
-  void run() override;
+  if (parseSuccess) {
+    VPackBuilder result;
+    generateResult(GeneralResponse::ResponseCode::OK, parsedBody->slice());
+  }
 
- private:
-  static boost::lockfree::queue<LogMessage*>* MESSAGES;
-  boost::lockfree::queue<LogMessage*> _messages;
-};
+  return status_t(HANDLER_DONE);
 }
-
-#endif
