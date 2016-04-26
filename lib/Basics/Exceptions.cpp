@@ -107,7 +107,7 @@ char const* Exception::what() const throw() { return _errorMessage.c_str(); }
 
 void Exception::appendLocation () {
   if (_code == TRI_ERROR_INTERNAL) {
-    _errorMessage += std::string(" (location: ") + _file + ":" + std::to_string(_line) + "). Please report this error to arangodb.com";
+    _errorMessage += std::string(" (exception location: ") + _file + ":" + std::to_string(_line) + "). Please report this error to arangodb.com";
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
