@@ -103,3 +103,10 @@ The REST route HTTP GET `/_admin/log` is now accessible from within all database
 previous versions of ArangoDB, this route was accessible from within the `_system`
 database only, and an HTTP 403 (Forbidden) was thrown by the server for any access
 from within another database.
+
+!SECTION Miscellaneous changes
+
+The checksum calculation algorithm for the `collection.checksum()` method and its
+corresponding REST API has changed in 3.0. Checksums calculated in 2.8 will differ
+from checksums calculated with 3.0.
+
