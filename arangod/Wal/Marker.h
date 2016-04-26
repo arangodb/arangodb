@@ -71,7 +71,7 @@ class Marker {
   Marker(TRI_df_marker_type_t, arangodb::velocypack::Slice const&);
 
  public:
-  virtual ~Marker();
+  virtual ~Marker() { freeBuffer(); }
 
   inline void freeBuffer() {
     if (_buffer != nullptr && _mustFree) {
@@ -106,11 +106,11 @@ class Marker {
   /// @brief size of marker data
   uint32_t const _size;
 
-  /// @brief whether or not the destructor must free the memory
-  bool _mustFree;
-
   /// @brief id of the logfile the marker is stored in
   TRI_voc_fid_t _fid;
+  
+  bool _mustFree;
+  /// @brief whether or not the destructor must free the memory
 };
 
 class MarkerEnvelope : public Marker {

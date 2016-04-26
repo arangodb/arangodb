@@ -592,7 +592,8 @@ std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch(
   auto edgeFilterClosure = [&opts](VPackSlice edge)
                                -> bool { return opts.matchesEdge(edge); };
 
-  auto vertexFilterClosure = [&opts](VPackSlice const& vertex) -> bool {
+  VPackBuilder tmpBuilder;
+  auto vertexFilterClosure = [&opts, &tmpBuilder](VPackSlice const& vertex) -> bool {
     std::string v = vertex.copyString();
     size_t pos = v.find('/');
 
@@ -607,12 +608,12 @@ std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch(
     std::string col = v.substr(0, pos);
     std::string key = v.substr(pos + 1);
 
-    VPackBuilder tmp;
-    tmp.openObject();
-    tmp.add(Transaction::KeyString, VPackValue(key));
-    tmp.close();
+    tmpBuilder.clear();
+    tmpBuilder.openObject();
+    tmpBuilder.add(Transaction::KeyString, VPackValue(key));
+    tmpBuilder.close();
     OperationOptions opOpts;
-    OperationResult opRes = opts.trx()->document(col, tmp.slice(), opOpts);
+    OperationResult opRes = opts.trx()->document(col, tmpBuilder.slice(), opOpts);
     if (opRes.failed()) {
       return false;
     }
