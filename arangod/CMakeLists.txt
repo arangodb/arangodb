@@ -225,7 +225,9 @@ add_executable(${BIN_ARANGOD}
   RestServer/FrontendFeature.cpp
   RestServer/QueryRegistryFeature.cpp
   RestServer/RestServerFeature.cpp
+  RestServer/ScriptFeature.cpp
   RestServer/ServerFeature.cpp
+  RestServer/UnitTestsFeature.cpp
   RestServer/UpgradeFeature.cpp
   RestServer/VocbaseContext.cpp
   RestServer/arangod.cpp

@@ -1,7 +1,0 @@
-//[example_output
-> example
-Running 3 test cases...
-test.cpp(15): error: in "my_test<unsigned char>": check sizeof(T) == 4U has failed [1 != 4]
-
-*** 1 failure is detected in the test module "Master Test Suite"
-//]

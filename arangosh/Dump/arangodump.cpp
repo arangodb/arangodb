@@ -52,7 +52,7 @@ int main(int argc, char* argv[]) {
   server.addFeature(new DumpFeature(&server, &ret));
   server.addFeature(new LoggerFeature(&server, false));
   server.addFeature(new RandomFeature(&server));
-  server.addFeature(new ShutdownFeature(&server, "Dump"));
+  server.addFeature(new ShutdownFeature(&server, {"Dump"}));
   server.addFeature(new VersionFeature(&server));
 
   server.run(argc, argv);

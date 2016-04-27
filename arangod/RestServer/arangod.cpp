@@ -54,7 +54,9 @@
 #include "RestServer/FrontendFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/RestServerFeature.h"
+#include "RestServer/ScriptFeature.h"
 #include "RestServer/ServerFeature.h"
+#include "RestServer/UnitTestsFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/StatisticsFeature.h"
@@ -70,7 +72,7 @@ using namespace arangodb::wal;
 /// @brief Hooks for OS-Specific functions
 ////////////////////////////////////////////////////////////////////////////////
 
-//YYY #warning TODO
+// YYY #warning TODO
 #if 0
 #ifdef _WIN32
 extern bool TRI_ParseMoreArgs(int argc, char* argv[]);
@@ -99,8 +101,11 @@ int main(int argc, char* argv[]) {
   application_features::ApplicationServer server(options);
 
   std::vector<std::string> nonServerFeatures = {
-      "Action", "Affinity", "Agency", "Cluster", "Daemon", "Dispatcher", "Endpoint", "FoxxQueues",
-      "LoggerBufferFeature", "RestServer", "Server", "Scheduler", "Ssl", "Statistics", "Supervisor"};
+      "Action",     "Affinity",   "Agency",
+      "Cluster",    "Daemon",     "Dispatcher",
+      "Endpoint",   "FoxxQueues", "LoggerBufferFeature",
+      "RestServer", "Server",     "Scheduler",
+      "Ssl",        "Statistics", "Supervisor"};
 
   int ret = EXIT_FAILURE;
 
@@ -129,11 +134,13 @@ int main(int argc, char* argv[]) {
   server.addFeature(new RecoveryFeature(&server));
   server.addFeature(new RestServerFeature(&server, "arangodb"));
   server.addFeature(new SchedulerFeature(&server));
+  server.addFeature(new ScriptFeature(&server, &ret));
   server.addFeature(new ServerFeature(&server, &ret));
-  server.addFeature(new ShutdownFeature(&server, "Server"));
+  server.addFeature(new ShutdownFeature(&server, {"UnitTests", "Script"}));
   server.addFeature(new SslFeature(&server));
   server.addFeature(new StatisticsFeature(&server));
   server.addFeature(new TempFeature(&server, name));
+  server.addFeature(new UnitTestsFeature(&server, &ret));
   server.addFeature(new UpgradeFeature(&server, &ret, nonServerFeatures));
   server.addFeature(new V8DealerFeature(&server));
   server.addFeature(new V8PlatformFeature(&server));
@@ -152,20 +159,23 @@ int main(int argc, char* argv[]) {
   try {
     server.run(argc, argv);
   } catch (arangodb::basics::Exception const& ex) {
-    LOG(ERR) << "arangod terminated because of an unhandled exception: " << ex.what();
+    LOG(ERR) << "arangod terminated because of an unhandled exception: "
+             << ex.what();
     ret = EXIT_FAILURE;
   } catch (std::exception const& ex) {
-    LOG(ERR) << "arangod terminated because of an unhandled exception: " << ex.what();
+    LOG(ERR) << "arangod terminated because of an unhandled exception: "
+             << ex.what();
     ret = EXIT_FAILURE;
   } catch (...) {
-    LOG(ERR) << "arangod terminated because of an unhandled exception of unknown type";
+    LOG(ERR) << "arangod terminated because of an unhandled exception of "
+                "unknown type";
     ret = EXIT_FAILURE;
   }
 
   return context.exit(ret);
 }
 
-//YYY #warning TODO
+// YYY #warning TODO
 #if 0
 
   // windows only

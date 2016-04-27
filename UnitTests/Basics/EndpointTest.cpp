@@ -25,14 +25,16 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Endpoint/Endpoint.h"
+#include "Basics/Common.h"
 
+#define BOOST_TEST_INCLUDED
 #include <boost/test/unit_test.hpp>
 
-#include "Endpoint/EndpointUnixDomain.h"
+#include "Endpoint/Endpoint.h"
 #include "Endpoint/EndpointIp.h"
 #include "Endpoint/EndpointIpV4.h"
 #include "Endpoint/EndpointIpV6.h"
+#include "Endpoint/EndpointUnixDomain.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
