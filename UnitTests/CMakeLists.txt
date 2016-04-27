@@ -63,7 +63,6 @@ target_include_directories(
 target_link_libraries(${TEST_BASICS_SUITE}
   ${LIB_ARANGO}
   ${SYSTEM_LIBRARIES}
-  ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
 )
 
 if (NOT USE_PRECOMPILED_V8)
@@ -85,7 +84,6 @@ add_executable(${TEST_GEO_SUITE}
 target_link_libraries(${TEST_GEO_SUITE}
   ${LIB_ARANGO}
   ${SYSTEM_LIBRARIES}
-  ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
 )
 
 if (NOT USE_PRECOMPILED_V8)
