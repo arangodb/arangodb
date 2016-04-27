@@ -48,9 +48,9 @@ class DaemonFeature final : public application_features::ApplicationFeature {
   int waitForChildProcess(int);
 
  public:
-  bool _daemon;
-  std::string _pidFile;
-  std::string _workingDirectory;
+  bool _daemon = false;
+  std::string _pidFile = "";
+  std::string _workingDirectory = ".";
 
  private:
   std::string _current;

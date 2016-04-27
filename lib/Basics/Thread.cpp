@@ -27,6 +27,7 @@
 #include <errno.h>
 #include <signal.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
@@ -36,6 +37,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
+using namespace arangodb::application_features;
 using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -260,6 +262,15 @@ bool Thread::isStopping() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Thread::start(ConditionVariable* finishedCondition) {
+  if (!isSystem() && ! ApplicationServer::isPrepared()) {
+    LOG(FATAL) << "trying to start a thread '" << _name
+               << "' before prepare has finished, current state: "
+               << (ApplicationServer::server == nullptr
+                       ? -1
+                       : (int)ApplicationServer::server->state());
+    FATAL_ERROR_EXIT();
+  }
+
   _finishedCondition = finishedCondition;
 
   if (_state.load() != ThreadState::CREATED) {

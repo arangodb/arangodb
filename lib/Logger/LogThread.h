@@ -41,6 +41,7 @@ class LogThread : public Thread {
   ~LogThread();
 
  public:
+  bool isSystem() override { return true; }
   bool isSilent() override { return true; }
   void run() override;
 
