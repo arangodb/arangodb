@@ -240,7 +240,7 @@ void ApplicationServer::collectOptions() {
       Section("", "Global configuration", "global options", false, false));
 
   _options->addHiddenOption("--dump-dependencies", "dump dependency graph",
-                            new BooleanParameter(&_dumpDependencies, false));
+                            new BooleanParameter(&_dumpDependencies));
 
   apply([this](ApplicationFeature* feature) {
     LOG_TOPIC(TRACE, Logger::STARTUP) << feature->name() << "::loadOptions";

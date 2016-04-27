@@ -54,7 +54,7 @@ DaemonFeature::DaemonFeature(application_features::ApplicationServer* server)
 void DaemonFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addHiddenOption("--daemon",
                            "background the server, running it as daemon",
-                           new BooleanParameter(&_daemon, false));
+                           new BooleanParameter(&_daemon));
 
   options->addHiddenOption("--pid-file", "pid-file in daemon mode",
                            new StringParameter(&_pidFile));
@@ -71,8 +71,7 @@ void DaemonFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       FATAL_ERROR_EXIT();
     }
 
-    LoggerFeature* logger = dynamic_cast<LoggerFeature*>(
-        ApplicationServer::lookupFeature("Logger"));
+    LoggerFeature* logger = ApplicationServer::getFeature<LoggerFeature>("Logger");
 
     if (logger != nullptr) {
       logger->setBackgrounded(true);

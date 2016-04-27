@@ -86,7 +86,7 @@ ConsoleFeature::ConsoleFeature(application_features::ApplicationServer* server)
 
 void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--quiet", "silent startup",
-                     new BooleanParameter(&_quiet, false));
+                     new BooleanParameter(&_quiet));
 
   options->addSection("console", "Configure the console");
 

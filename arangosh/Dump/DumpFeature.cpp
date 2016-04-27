@@ -95,7 +95,7 @@ void DumpFeature::collectOptions(
 
   options->addOption(
       "--force", "continue dumping even in the face of some server-side errors",
-      new BooleanParameter(&_force, false));
+      new BooleanParameter(&_force));
 
   options->addOption("--include-system-collections",
                      "include system collections",
@@ -105,7 +105,7 @@ void DumpFeature::collectOptions(
                      new StringParameter(&_outputDirectory));
 
   options->addOption("--overwrite", "overwrite data in output directory",
-                     new BooleanParameter(&_overwrite, false));
+                     new BooleanParameter(&_overwrite));
 
   options->addOption("--progress", "show progress",
                      new BooleanParameter(&_progress));

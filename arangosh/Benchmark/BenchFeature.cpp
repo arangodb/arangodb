@@ -133,10 +133,10 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--verbose",
                      "print out replies if the http-header indicates db-errors",
-                     new BooleanParameter(&_verbose, false));
+                     new BooleanParameter(&_verbose));
 
   options->addOption("--quiet", "supress status messages",
-                     new BooleanParameter(&_quiet, false));
+                     new BooleanParameter(&_quiet));
 }
 
 void BenchFeature::status(std::string const& value) {

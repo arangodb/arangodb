@@ -57,7 +57,7 @@ void CheckVersionFeature::collectOptions(
 
   options->addHiddenOption("--database.check-version",
                            "checks the versions of the database and exit",
-                           new BooleanParameter(&_checkVersion, false));
+                           new BooleanParameter(&_checkVersion));
 }
 
 void CheckVersionFeature::validateOptions(

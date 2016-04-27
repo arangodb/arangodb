@@ -56,7 +56,7 @@ void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new StringParameter(&_file));
 
   options->addOption("--check-configuration", "check the configuration and exists",
-                     new BooleanParameter(&_checkConfiguration, false));
+                     new BooleanParameter(&_checkConfiguration));
 }
 
 void ConfigFeature::loadOptions(std::shared_ptr<ProgramOptions> options) {

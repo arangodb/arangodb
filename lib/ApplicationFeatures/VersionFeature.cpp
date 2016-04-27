@@ -40,7 +40,7 @@ VersionFeature::VersionFeature(application_features::ApplicationServer* server)
 
 void VersionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--version", "reports the version and exits",
-                     new BooleanParameter(&_printVersion, false));
+                     new BooleanParameter(&_printVersion));
 }
 
 void VersionFeature::validateOptions(std::shared_ptr<ProgramOptions>) {

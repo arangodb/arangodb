@@ -119,27 +119,29 @@ struct Parameter {
 struct BooleanParameter : public Parameter {
   typedef bool ValueType;
 
-  explicit BooleanParameter(ValueType* ptr, bool requiresValue = true)
-      : ptr(ptr), required(requiresValue) {}
+  explicit BooleanParameter(ValueType* ptr, bool required = false)
+      : ptr(ptr), required(required) {}
 
   bool requiresValue() const override { return required; }
   std::string name() const override { return "boolean"; }
   std::string valueString() const override { return stringifyValue(*ptr); }
 
   std::string set(std::string const& value) override {
-    if (!required || value == "true" || value == "false" || value == "on" ||
+    if (!required && value.empty()) {
+      // the empty value "" is considered "true", e.g. "--force" will mean "--force true" 
+      *ptr = true;
+      return "";
+    }
+    if (value == "true" || value == "false" || value == "on" ||
         value == "off" || value == "1" || value == "0") {
-      *ptr = (!required || value == "true" || value == "on" || value == "1");
+      *ptr = (value == "true" || value == "on" || value == "1");
       return "";
     }
     return "invalid value. expecting 'true' or 'false'";
   }
 
   std::string typeDescription() const override {
-    if (required) {
-      return Parameter::typeDescription();
-    }
-    return "";
+    return Parameter::typeDescription();
   }
 
   void toVPack(VPackBuilder& builder) const override {
