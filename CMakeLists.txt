@@ -214,7 +214,6 @@ endif ()
 # need c++11
 set(CMAKE_CXX_STANDARD 11)
 include(CheckCXX11Features)
-include(Boost)
 
 # need threads
 find_package(Threads REQUIRED)
@@ -612,6 +611,7 @@ endif ()
 # ZLIB_INCLUDE_DIR
 
 add_subdirectory(3rdParty)
+include(Boost)
 
 foreach (LINK_DIR ${LINK_DIRECTORIES})
   link_directories("${LINK_DIR}")
