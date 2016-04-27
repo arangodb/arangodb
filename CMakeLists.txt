@@ -590,10 +590,6 @@ endif ()
 
 # 3rdParty exports:
 #
-# BOOST_VERSION
-# BOOST_INCLUDE_DIR
-# USE_BOOST_UNITTESTS
-#
 # V8_VERSION
 # V8_LIBS
 # V8_INCLUDE_DIR
@@ -611,7 +607,8 @@ endif ()
 # ZLIB_INCLUDE_DIR
 
 add_subdirectory(3rdParty)
-include(Boost)
+
+set(BOOST_VERSION 1.61.0b1)
 
 foreach (LINK_DIR ${LINK_DIRECTORIES})
   link_directories("${LINK_DIR}")
@@ -620,6 +617,18 @@ endforeach()
 ################################################################################
 ## BOOST
 ################################################################################
+
+message(STATUS "using 3rdParty BOOST")
+option(USE_BOOST_UNITTESTS "use boost unit-tests" ON)
+
+set(Boost_VERSION "1.61.0b1")
+set(Boost_INCLUDE_DIR
+  "${PROJECT_SOURCE_DIR}/3rdParty/boost/${Boost_VERSION}"
+)
+
+if (NOT USE_BOOST_UNITTESTS)
+  message(STATUS "BOOST unit-tests are disabled")
+endif ()
 
 include_directories(${Boost_INCLUDE_DIR})
 add_definitions(-DARANGODB_BOOST_VERSION=\"${Boost_VERSION}\")
