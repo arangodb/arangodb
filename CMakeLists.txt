@@ -12,7 +12,11 @@ endif ()
 
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9" CACHE STRING "deployment target for MacOSX")
 
-project(ArangoDB CXX C ASM)
+if (WIN32)
+  project(ArangoDB CXX C)
+else ()
+  project(ArangoDB CXX C ASM)
+endif ()
 
 # where to find CMAKE modules
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
