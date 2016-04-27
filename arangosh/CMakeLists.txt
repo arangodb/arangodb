@@ -207,8 +207,8 @@ target_link_libraries(${BIN_ARANGOSH}
   ${LIB_ARANGO_V8}
   ${LIB_ARANGO}
   ${LINENOISE_LIBS}
-  ${MSVC_LIBS}
   ${V8_LIBS}
+  ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
 )
 

@@ -49,8 +49,6 @@ using namespace arangodb::rest;
 ServerFeature::ServerFeature(application_features::ApplicationServer* server,
                              int* res)
     : ApplicationFeature(server, "Server"),
-      _console(false),
-      _restServer(true),
       _result(res),
       _operationMode(OperationMode::MODE_SERVER) {
   setOptional(true);
@@ -91,8 +89,6 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--javascript.script", "run scripts and exit",
                      new VectorParameter<StringParameter>(&_scripts));
 
-  options->addOption("--javascript.script-parameter", "script parameter",
-                     new VectorParameter<StringParameter>(&_scriptParameters));
 }
 
 void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
@@ -186,8 +182,6 @@ void ServerFeature::start() {
       break;
 
     case OperationMode::MODE_SCRIPT:
-      LOG_TOPIC(TRACE, Logger::STARTUP) << "server about to run scripts";
-      *_result = runScript();
       break;
 
     case OperationMode::MODE_CONSOLE:
@@ -284,93 +278,6 @@ int ServerFeature::runUnitTests() {
             TRI_V8_ASCII_STRING("SYS_UNIT_TESTS_RESULT")));
       }
     }
-    localContext->Exit();
-  }
-
-  V8DealerFeature::DEALER->exitContext(context);
-
-  return ok ? EXIT_SUCCESS : EXIT_FAILURE;
-}
-
-int ServerFeature::runScript() {
-  bool ok = false;
-
-  DatabaseFeature* database = 
-      ApplicationServer::getFeature<DatabaseFeature>("Database");
-  V8Context* context =
-      V8DealerFeature::DEALER->enterContext(database->vocbase(), true);
-
-  auto isolate = context->_isolate;
-
-  {
-    v8::HandleScope globalScope(isolate);
-
-    auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
-    localContext->Enter();
-    {
-      v8::Context::Scope contextScope(localContext);
-      for (auto script : _scripts) {
-        LOG(TRACE) << "executing script '" << script << "'";
-        bool r = TRI_ExecuteGlobalJavaScriptFile(isolate, script.c_str(), true);
-
-        if (!r) {
-          LOG(FATAL) << "cannot load script '" << script << "', giving up";
-          FATAL_ERROR_EXIT();
-        }
-      }
-
-      v8::TryCatch tryCatch;
-      // run the garbage collection for at most 30 seconds
-      TRI_RunGarbageCollectionV8(isolate, 30.0);
-
-      // parameter array
-      v8::Handle<v8::Array> params = v8::Array::New(isolate);
-
-      params->Set(0, TRI_V8_STD_STRING(_scripts[_scripts.size() - 1]));
-
-      for (size_t i = 0; i < _scriptParameters.size(); ++i) {
-        params->Set((uint32_t)(i + 1), TRI_V8_STD_STRING(_scriptParameters[i]));
-      }
-
-      // call main
-      v8::Handle<v8::String> mainFuncName = TRI_V8_ASCII_STRING("main");
-      v8::Handle<v8::Function> main = v8::Handle<v8::Function>::Cast(
-          localContext->Global()->Get(mainFuncName));
-
-      if (main.IsEmpty() || main->IsUndefined()) {
-        LOG(FATAL) << "no main function defined, giving up";
-        FATAL_ERROR_EXIT();
-      } else {
-        v8::Handle<v8::Value> args[] = {params};
-
-        try {
-          v8::Handle<v8::Value> result = main->Call(main, 1, args);
-
-          if (tryCatch.HasCaught()) {
-            if (tryCatch.CanContinue()) {
-              TRI_LogV8Exception(isolate, &tryCatch);
-            } else {
-              // will stop, so need for v8g->_canceled = true;
-              TRI_ASSERT(!ok);
-            }
-          } else {
-            ok = TRI_ObjectToDouble(result) == 0;
-          }
-        } catch (arangodb::basics::Exception const& ex) {
-          LOG(ERR) << "caught exception " << TRI_errno_string(ex.code()) << ": "
-                   << ex.what();
-          ok = false;
-        } catch (std::bad_alloc const&) {
-          LOG(ERR) << "caught exception "
-                   << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
-          ok = false;
-        } catch (...) {
-          LOG(ERR) << "caught unknown exception";
-          ok = false;
-        }
-      }
-    }
-
     localContext->Exit();
   }
 
