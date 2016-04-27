@@ -91,11 +91,15 @@ class ApplicationServer {
   ApplicationServer& operator=(ApplicationServer const&) = delete;
 
  public:
-  static ApplicationServer* server;
-  static ApplicationFeature* lookupFeature(std::string const&);
-  static bool isStopping() {
-    return server != nullptr && server->_stopping.load();
-  }
+  enum class ServerState {
+    UNINITIALIZED,
+    IN_COLLECT_OPTIONS,
+    IN_VALIDATE_OPTIONS,
+    IN_PREPARE,
+    IN_START,
+    IN_STOP,
+    STOPPED
+  };
 
   enum class FeatureState {
     UNINITIALIZED,
@@ -105,6 +109,16 @@ class ApplicationServer {
     STARTED,
     STOPPED
   };
+
+  static ApplicationServer* server;
+  static ApplicationFeature* lookupFeature(std::string const&);
+  static bool isStopping() {
+    return server != nullptr && server->_stopping.load();
+  }
+  static bool isPrepared() {
+    return server != nullptr && (server->_state == ServerState::IN_START ||
+                                 server->_state == ServerState::IN_STOP);
+  }
 
   // returns the feature with the given name if known
   // throws otherwise
@@ -173,6 +187,9 @@ class ApplicationServer {
   // return VPack options
   VPackBuilder options(std::unordered_set<std::string> const& excludes) const;
 
+  // return the server state
+  ServerState state() const { return _state; }
+
  private:
   // throws an exception if a requested feature was not found
   static void throwFeatureNotFoundException(std::string const& name);
@@ -226,6 +243,9 @@ class ApplicationServer {
   void dropPrivilegesPermanently();
 
  private:
+  // the current state
+  ServerState _state = ServerState::UNINITIALIZED;
+
   // the shared program options
   std::shared_ptr<options::ProgramOptions> _options;
 
@@ -239,10 +259,10 @@ class ApplicationServer {
   std::atomic<bool> _stopping;
 
   // whether or not privileges have been dropped permanently
-  bool _privilegesDropped;
+  bool _privilegesDropped = false;
 
   // whether or not to dump dependencies
-  bool _dumpDependencies;
+  bool _dumpDependencies = false;
 };
 }
 }
