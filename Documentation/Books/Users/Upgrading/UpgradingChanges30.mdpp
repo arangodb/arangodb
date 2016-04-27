@@ -45,17 +45,6 @@ name in AQL queries now requires quoting.
 The AQL optimizer rule "merge-traversal-filter" was renamed to "optimize-traversals".
 
 
-!SECTION ArangoShell and client tools
-
-The ArangoShell (arangosh) and the other client tools bundled with ArangoDB can only
-connect to an ArangoDB server of version 3.0 or higher. They will not connect to an
-ArangoDB 2.8. This is because the server HTTP APIs have changed between 2.8 and 3.0,
-and all client tools uses these APIs.
-
-In order to connect to earlier versions of ArangoDB with the client tools, an older
-version of the client tools needs to be kept installed.
-
-
 !SECTION Command-line options
 
 Quite a few startup options in ArangoDB 2 were double negations (like
@@ -93,6 +82,7 @@ in 3.0:
   upgrade at startup use `--database.auto-upgrade true`. To not perform it, use
   `--database.auto-upgrade false`.
 - `--check-version` has been renamed to `--database.check-version`.
+- `--temp-path` has been renamed to `--temp.path`.
 
 !SUBSECTION Log verbosity, topics and output files
 
@@ -166,6 +156,33 @@ from within another database.
 The undocumented HTTP REST endpoints `/_open/cerberus` and `/_system/cerberus` have
 been removed. These endpoints have been used by some ArangoDB-internal applications
 and were not part of ArangoDB's public API.
+
+
+!SECTION ArangoShell and client tools
+
+The ArangoShell (arangosh) and the other client tools bundled with ArangoDB can only
+connect to an ArangoDB server of version 3.0 or higher. They will not connect to an
+ArangoDB 2.8. This is because the server HTTP APIs have changed between 2.8 and 3.0,
+and all client tools uses these APIs.
+
+In order to connect to earlier versions of ArangoDB with the client tools, an older
+version of the client tools needs to be kept installed.
+
+
+!SUBSECTION Command-line options changed
+
+For all client tools, the option `--server.disable-authentication` was renamed to
+`--server.authentication`. Note that the meaning of the option `--server.authentication` 
+is the opposite of the previous `--server.disable-authentication`.
+
+The command-line option `--quiet` was removed from all client tools except arangosh 
+because it had no effect in those tools.
+
+
+!SUBSECTION Arangobench
+
+In order to make its purpose more apparent, the former `arangob` client tool has 
+been renamed to `arangobench` in 3.0.
 
 
 !SECTION Miscellaneous changes
