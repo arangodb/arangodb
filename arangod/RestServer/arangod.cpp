@@ -29,6 +29,7 @@
 #include "ApplicationFeatures/DaemonFeature.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/NonceFeature.h"
+#include "ApplicationFeatures/PrivilegeFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/SslFeature.h"
 #include "ApplicationFeatures/SupervisorFeature.h"
@@ -121,6 +122,7 @@ int main(int argc, char* argv[]) {
   server.addFeature(new LoggerBufferFeature(&server));
   server.addFeature(new LoggerFeature(&server, true));
   server.addFeature(new NonceFeature(&server));
+  server.addFeature(new PrivilegeFeature(&server));
   server.addFeature(new QueryRegistryFeature(&server));
   server.addFeature(new RandomFeature(&server));
   server.addFeature(new RestServerFeature(&server, "arangodb"));

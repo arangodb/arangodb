@@ -33,11 +33,20 @@ class PrivilegeFeature final : public application_features::ApplicationFeature {
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
-  void start() override final;
 
  public:
-  std::string _path;
-  std::string _appname;
+  std::string _uid;
+  std::string _gid;
+
+ public:
+  void dropPrivilegesPermanently();
+
+ private:
+  void extractPrivileges();
+
+ private:
+  TRI_uid_t _numericUid;
+  TRI_gid_t _numericGid;
 };
 }
 

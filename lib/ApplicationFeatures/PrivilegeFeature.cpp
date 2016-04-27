@@ -22,31 +22,49 @@
 
 #include "PrivilegeFeature.h"
 
-//YYY #warning FRANK TODO
-#if 0
+#ifdef ARANGODB_HAVE_GETGRGID
+#include <grp.h>
+#endif
 
-SslFeature::SslFeature(application_features::ApplicationServer* server)
+#ifdef ARANGODB_HAVE_GETPWUID
+#include <pwd.h>
+#endif
+
+#include "Basics/conversions.h"
+#include "ProgramOptions/ProgramOptions.h"
+#include "ProgramOptions/Section.h"
+
+using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::options;
+
+PrivilegeFeature::PrivilegeFeature(
+    application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Privilege") {
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Logger");
 }
 
-void SslFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+void PrivilegeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 #ifdef ARANGODB_HAVE_SETUID
   options->addHiddenOption("--uid",
                            "switch to user-id after reading config files",
-                           new UInt64Parameter(&_uid));
+                           new StringParameter(&_uid));
 #endif
 
 #ifdef ARANGODB_HAVE_SETGID
   options->addHiddenOption("--gid",
                            "switch to group-id after reading config files",
-                           new UInt64Parameter(&_gid));
+                           new StringParameter(&_gid));
 #endif
 }
 
-void ApplicationServer::extractPrivileges() {
+void PrivilegeFeature::prepare() {
+  extractPrivileges();
+}
+
+void PrivilegeFeature::extractPrivileges() {
 #ifdef ARANGODB_HAVE_SETGID
   if (_gid.empty()) {
     _numericGid = getgid();
@@ -121,7 +139,7 @@ void ApplicationServer::extractPrivileges() {
 #endif
 }
 
-void ApplicationServer::dropPrivilegesPermanently() {
+void PrivilegeFeature::dropPrivilegesPermanently() {
 #if defined(ARANGODB_HAVE_INITGROUPS) && defined(ARANGODB_HAVE_SETGID) && \
     defined(ARANGODB_HAVE_SETUID)
   // clear all supplementary groups
@@ -162,5 +180,3 @@ void ApplicationServer::dropPrivilegesPermanently() {
   }
 #endif
 }
-
-#endif
