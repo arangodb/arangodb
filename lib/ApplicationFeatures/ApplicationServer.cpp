@@ -375,7 +375,6 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
     features.insert(insertPosition, it.second);
   }
 
-  /* move features up a bit... still test if this is any relevant
   for (size_t i = 1; i < features.size(); ++i) {
     auto feature = features[i];
     size_t insert = i;
@@ -392,7 +391,6 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
       features[insert] = feature;
     }
   }
-  */
 
   LOG_TOPIC(TRACE, Logger::STARTUP) << "ordered features:";
 
