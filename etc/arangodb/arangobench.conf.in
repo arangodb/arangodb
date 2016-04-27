@@ -1,4 +1,4 @@
-# config file for arangob
+# config file for arangobench
 
 keep-alive = true
 progress = true

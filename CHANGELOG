@@ -1,6 +1,8 @@
 v3.0.0 (XXXX-XX-XX)
 -------------------
 
+* renamed arangob tool to arangobench
+
 * added AQL string comparison operator `LIKE`
 
   The operator can be used to compare strings like this:

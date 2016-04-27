@@ -13,7 +13,7 @@ add_custom_target(examples
 # manual pages
 if (USE_MAINTAINER_MODE)
   set(MAN_NAMES
-    man1/arangob.1
+    man1/arangobench.1
     man1/arangodump.1
     man1/arangoimp.1
     man1/arangorestore.1

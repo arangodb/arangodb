@@ -44,7 +44,7 @@ int main(int argc, char* argv[]) {
   context.installHup();
 
   std::shared_ptr<options::ProgramOptions> options(new options::ProgramOptions(
-      argv[0], "Usage: arangob [<options>]", "For more information use:"));
+      argv[0], "Usage: arangobench [<options>]", "For more information use:"));
 
   ApplicationServer server(options);
 
@@ -52,11 +52,11 @@ int main(int argc, char* argv[]) {
 
   server.addFeature(new BenchFeature(&server, &ret));
   server.addFeature(new ClientFeature(&server));
-  server.addFeature(new ConfigFeature(&server, "arangob"));
+  server.addFeature(new ConfigFeature(&server, "arangobench"));
   server.addFeature(new LoggerFeature(&server, false));
   server.addFeature(new RandomFeature(&server));
   server.addFeature(new ShutdownFeature(&server, "Bench"));
-  server.addFeature(new TempFeature(&server, "arangob"));
+  server.addFeature(new TempFeature(&server, "arangobench"));
   server.addFeature(new VersionFeature(&server));
 
   server.run(argc, argv);

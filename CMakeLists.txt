@@ -45,7 +45,7 @@ set(ARANGODB_CONTACT            "hackers@arangodb.com")
 set(ARANGODB_FRIENDLY_STRING    "ArangoDB - the multi-model database")
 
 # MSVC
-set(ARANGOB_FRIENDLY_STRING        "arangob - stress test program")
+set(ARANGO_BENCH_FRIENDLY_STRING   "arangobench - stress test program")
 set(ARANGO_DUMP_FRIENDLY_STRING    "arangodump - export")
 set(ARANGO_RESTORE_FRIENDLY_STRING "arangrestore - importer")
 set(ARANGO_IMP_FRIENDLY_STRING     "arangoimp - TSV/CSV/JSON importer")
@@ -56,7 +56,7 @@ set(LIB_ARANGO        arango)
 set(LIB_ARANGO_V8     arango_v8)
 
 # binaries
-set(BIN_ARANGOB       arangob)
+set(BIN_ARANGOBENCH   arangobench)
 set(BIN_ARANGOD       arangod)
 set(BIN_ARANGODUMP    arangodump)
 set(BIN_ARANGOIMP     arangoimp)
@@ -769,7 +769,7 @@ if (USE_BOOST_UNITTESTS)
 endif()
 add_subdirectory(Documentation)
 
-add_dependencies(arangob       zlibstatic)
+add_dependencies(arangobench   zlibstatic)
 add_dependencies(arangod       ev zlibstatic)
 add_dependencies(arangodump    zlibstatic)
 add_dependencies(arangoimp     zlibstatic)
@@ -777,7 +777,8 @@ add_dependencies(arangorestore zlibstatic)
 add_dependencies(arangosh      zlibstatic)
 
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangob       v8_build)
+  # all binaries depend on v8_build because it contains ICU as well
+  add_dependencies(arangobench   v8_build)
   add_dependencies(arangod       v8_build)
   add_dependencies(arangodump    v8_build)
   add_dependencies(arangoimp     v8_build)

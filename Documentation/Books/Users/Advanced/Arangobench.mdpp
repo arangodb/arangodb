@@ -1,6 +1,6 @@
-!CHAPTER Arangob
+!CHAPTER Arangobench
 
-Arangob is ArangoDB's benchmark and test tool. It can be used to issue test
+Arangobench is ArangoDB's benchmark and test tool. It can be used to issue test
 requests to the database for performance and server function testing.
 It supports parallel querying and batch requests.
 
@@ -77,9 +77,9 @@ Related blog posts:
 
 !SUBSECTION Examples
 
-    arangob
+    arangobench
 
-Starts Arangob with the default user and server endpoint.
+Starts Arangobench with the default user and server endpoint.
 
     --test-case version --requests 1000 --concurrency 1
 

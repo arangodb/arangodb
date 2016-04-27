@@ -36,7 +36,7 @@
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
 using namespace arangodb;
-using namespace arangodb::arangob;
+using namespace arangodb::arangobench;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::options;
@@ -48,7 +48,7 @@ using namespace arangodb::rest;
 /// We use an evil global pointer here.
 ////////////////////////////////////////////////////////////////////////////////
 
-BenchFeature* ARANGOB;
+BenchFeature* ARANGOBENCH;
 #include "Benchmark/test-cases.h"
 
 BenchFeature::BenchFeature(application_features::ApplicationServer* server,
@@ -159,12 +159,12 @@ void BenchFeature::start() {
   int ret = EXIT_SUCCESS;
 
   *_result = ret;
-  ARANGOB = this;
+  ARANGOBENCH = this;
 
   std::unique_ptr<BenchmarkOperation> benchmark(GetTestCase(_testCase));
 
   if (benchmark == nullptr) {
-    ARANGOB = nullptr;
+    ARANGOBENCH = nullptr;
     LOG(FATAL) << "invalid test case name '" << _testCase << "'";
     FATAL_ERROR_EXIT();
   }
@@ -293,11 +293,11 @@ void BenchFeature::start() {
             << std::endl;
 
   if (failures > 0) {
-    LOG(WARN) << "WARNING: " << failures << " arangob request(s) failed!";
+    LOG(WARN) << "WARNING: " << failures << " arangobench request(s) failed!";
   }
   if (incomplete > 0) {
     LOG(WARN) << "WARNING: " << incomplete
-              << " arangob requests with incomplete results!";
+              << " arangobench requests with incomplete results!";
   }
 
   benchmark->tearDown();
@@ -315,5 +315,5 @@ void BenchFeature::start() {
 }
 
 void BenchFeature::stop() {
-  ARANGOB = nullptr;
+  ARANGOBENCH = nullptr;
 }

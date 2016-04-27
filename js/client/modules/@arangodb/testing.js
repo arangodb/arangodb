@@ -28,7 +28,7 @@
 const functionsDocumentation = {
   "all": "run all tests (marked with [x])",
   "agency": "run agency tests",
-  "arangob": "arangob tests",
+  "arangobench": "arangobench tests",
   "arangosh": "arangosh exit codes tests",
   "authentication": "authentication tests",
   "authentication_parameters": "authentication parameters tests",
@@ -69,8 +69,8 @@ const optionsDocumentation = [
   '   - `force`: if set to true the tests are continued even if one fails',
   '',
   '   - `skipAql`: if set to true the AQL tests are skipped',
-  '   - `skipArangoBNonConnKeepAlive`: if set to true benchmark do not use keep-alive',
-  '   - `skipArangoB`: if set to true benchmark tests are skipped',
+  '   - `skipArangoBenchNonConnKeepAlive`: if set to true benchmark do not use keep-alive',
+  '   - `skipArangoBench`: if set to true benchmark tests are skipped',
   '   - `skipAuthenication : testing authentication and authentication_paramaters will be skipped.',
   '   - `skipBoost`: if set to true the boost unittests are skipped',
   '   - `skipConfig`: omit the noisy configuration tests',
@@ -100,7 +100,7 @@ const optionsDocumentation = [
   '   - `cleanup`: if set to true (the default), the cluster data files',
   '     and logs are removed after termination of the test.',
   '',
-  '   - `benchargs`: additional commandline arguments to arangob',
+  '   - `benchargs`: additional commandline arguments to arangobench',
   '',
   '   - `build`: the directory containing the binaries',
   '   - `buildType`: Windows build type (Debug, Release), leave empty on linux',
@@ -149,8 +149,8 @@ const optionsDefaults = {
   "ruby": "",
   "sanitizer": false,
   "skipAql": false,
-  "skipArangoB": false,
-  "skipArangoBNonConnKeepAlive": true,
+  "skipArangoBench": false,
+  "skipArangoBenchNonConnKeepAlive": true,
   "skipAuthenication": false,
   "skipBoost": false,
   "skipGeo": false,
@@ -212,7 +212,7 @@ const TOP_DIR = (function findTopDir() {
 
 let BIN_DIR;
 let CONFIG_DIR;
-let ARANGOB_BIN;
+let ARANGOBENCH_BIN;
 let ARANGODUMP_BIN;
 let ARANGOD_BIN;
 let ARANGOIMP_BIN;
@@ -1085,7 +1085,7 @@ function runArangoDumpRestore(options, instanceInfo, which, database) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief runs arangob
+/// @brief runs arangobench
 ////////////////////////////////////////////////////////////////////////////////
 
 function runArangoBenchmark(options, instanceInfo, cmds) {
@@ -1105,7 +1105,7 @@ function runArangoBenchmark(options, instanceInfo, cmds) {
     args["flatCommands"] = ["--quiet"];
   }
 
-  return executeAndWait(ARANGOB_BIN, toArgv(args), options);
+  return executeAndWait(ARANGOBENCH_BIN, toArgv(args), options);
 }
 
 function shutdownArangod(arangod, options) {
@@ -1844,7 +1844,7 @@ let allTests = [
   "shell_server_aql",
   "ssl_server",
   "upgrade",
-  "arangob"
+  "arangobench"
 ];
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1996,7 +1996,7 @@ testFuncs.arangosh = function(options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief TEST: arangob
+/// @brief TEST: arangobench
 ////////////////////////////////////////////////////////////////////////////////
 
 const benchTodos = [{
@@ -2091,24 +2091,24 @@ const benchTodos = [{
   "transaction": true
 }];
 
-testFuncs.arangob = function(options) {
-  if (options.skipArangoB === true) {
+testFuncs.arangobench = function(options) {
+  if (options.skipArangoBench === true) {
     print("skipping Benchmark tests!");
     return {
-      arangob: {
+      arangobench: {
         status: true,
         skipped: true
       }
     };
   }
 
-  print(CYAN + "arangob tests..." + RESET);
+  print(CYAN + "arangobench tests..." + RESET);
 
-  let instanceInfo = startInstance("tcp", options, {}, "arangob");
+  let instanceInfo = startInstance("tcp", options, {}, "arangobench");
 
   if (instanceInfo === false) {
     return {
-      arangob: {
+      arangobench: {
         status: false,
         message: "failed to start server!"
       }
@@ -2122,7 +2122,7 @@ testFuncs.arangob = function(options) {
     const benchTodo = benchTodos[i];
     const name = "case" + i;
 
-    if ((options.skipArangoBNonConnKeepAlive) &&
+    if ((options.skipArangoBenchNonConnKeepAlive) &&
       benchTodo.hasOwnProperty('keep-alive') &&
       (benchTodo['keep-alive'] === "false")) {
       benchTodo['keep-alive'] = true;
@@ -2425,7 +2425,7 @@ testFuncs.config = function(options) {
   };
 
   const ts = ["arangod",
-    "arangob",
+    "arangobench",
     "arangodump",
     "arangoimp",
     "arangorestore",
@@ -3904,7 +3904,7 @@ function unitTest(cases, options) {
   }
 
   CONFIG_DIR = fs.join(TOP_DIR, builddir, "etc", "arangodb");
-  ARANGOB_BIN = fs.join(BIN_DIR, "arangob");
+  ARANGOBENCH_BIN = fs.join(BIN_DIR, "arangobench");
   ARANGODUMP_BIN = fs.join(BIN_DIR, "arangodump");
   ARANGOD_BIN = fs.join(BIN_DIR, "arangod");
   ARANGOIMP_BIN = fs.join(BIN_DIR, "arangoimp");

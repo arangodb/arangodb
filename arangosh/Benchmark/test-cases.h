@@ -74,8 +74,8 @@ struct DocumentCrudAppendTest : public BenchmarkOperation {
   ~DocumentCrudAppendTest() {}
 
   bool setUp(SimpleHttpClient* client) override {
-    return DeleteCollection(client, ARANGOB->collection()) &&
-           CreateCollection(client, ARANGOB->collection(), 2);
+    return DeleteCollection(client, ARANGOBENCH->collection()) &&
+           CreateCollection(client, ARANGOBENCH->collection(), 2);
   }
 
   void tearDown() override {}
@@ -85,12 +85,12 @@ struct DocumentCrudAppendTest : public BenchmarkOperation {
     size_t const mod = globalCounter % 4;
 
     if (mod == 0) {
-      return std::string("/_api/document?collection=" + ARANGOB->collection());
+      return std::string("/_api/document?collection=" + ARANGOBENCH->collection());
     } else {
       size_t keyId = (size_t)(globalCounter / 4);
       std::string const key = "testkey" + StringUtils::itoa(keyId);
 
-      return std::string("/_api/document/" + ARANGOB->collection() + "/" + key);
+      return std::string("/_api/document/" + ARANGOBENCH->collection() + "/" + key);
     }
   }
 
@@ -119,7 +119,7 @@ struct DocumentCrudAppendTest : public BenchmarkOperation {
     size_t const mod = globalCounter % 4;
 
     if (mod == 0 || mod == 2) {
-      uint64_t const n = ARANGOB->complexity();
+      uint64_t const n = ARANGOBENCH->complexity();
       TRI_string_buffer_t* buffer;
 
       buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
@@ -165,8 +165,8 @@ struct DocumentCrudWriteReadTest : public BenchmarkOperation {
   ~DocumentCrudWriteReadTest() {}
 
   bool setUp(SimpleHttpClient* client) override {
-    return DeleteCollection(client, ARANGOB->collection()) &&
-           CreateCollection(client, ARANGOB->collection(), 2);
+    return DeleteCollection(client, ARANGOBENCH->collection()) &&
+           CreateCollection(client, ARANGOBENCH->collection(), 2);
   }
 
   void tearDown() override {}
@@ -176,12 +176,12 @@ struct DocumentCrudWriteReadTest : public BenchmarkOperation {
     size_t const mod = globalCounter % 2;
 
     if (mod == 0) {
-      return std::string("/_api/document?collection=" + ARANGOB->collection());
+      return std::string("/_api/document?collection=" + ARANGOBENCH->collection());
     } else {
       size_t keyId = (size_t)(globalCounter / 2);
       std::string const key = "testkey" + StringUtils::itoa(keyId);
 
-      return std::string("/_api/document/" + ARANGOB->collection() + "/" + key);
+      return std::string("/_api/document/" + ARANGOBENCH->collection() + "/" + key);
     }
   }
 
@@ -203,7 +203,7 @@ struct DocumentCrudWriteReadTest : public BenchmarkOperation {
     size_t const mod = globalCounter % 2;
 
     if (mod == 0) {
-      uint64_t const n = ARANGOB->complexity();
+      uint64_t const n = ARANGOBENCH->complexity();
       TRI_string_buffer_t* buffer;
 
       buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
@@ -246,8 +246,8 @@ struct ShapesTest : public BenchmarkOperation {
   ~ShapesTest() {}
 
   bool setUp(SimpleHttpClient* client) override {
-    return DeleteCollection(client, ARANGOB->collection()) &&
-           CreateCollection(client, ARANGOB->collection(), 2);
+    return DeleteCollection(client, ARANGOBENCH->collection()) &&
+           CreateCollection(client, ARANGOBENCH->collection(), 2);
   }
 
   void tearDown() override {}
@@ -257,12 +257,12 @@ struct ShapesTest : public BenchmarkOperation {
     size_t const mod = globalCounter % 3;
 
     if (mod == 0) {
-      return std::string("/_api/document?collection=" + ARANGOB->collection());
+      return std::string("/_api/document?collection=" + ARANGOBENCH->collection());
     } else {
       size_t keyId = (size_t)(globalCounter / 3);
       std::string const key = "testkey" + StringUtils::itoa(keyId);
 
-      return std::string("/_api/document/" + ARANGOB->collection() + "/" + key);
+      return std::string("/_api/document/" + ARANGOBENCH->collection() + "/" + key);
     }
   }
 
@@ -286,7 +286,7 @@ struct ShapesTest : public BenchmarkOperation {
     size_t const mod = globalCounter % 3;
 
     if (mod == 0) {
-      uint64_t const n = ARANGOB->complexity();
+      uint64_t const n = ARANGOBENCH->complexity();
       TRI_string_buffer_t* buffer;
 
       buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
@@ -298,7 +298,7 @@ struct ShapesTest : public BenchmarkOperation {
       TRI_AppendStringStringBuffer(buffer, "\"");
 
       for (uint64_t i = 1; i <= n; ++i) {
-        uint64_t mod = ARANGOB->operations() / 10;
+        uint64_t mod = ARANGOBENCH->operations() / 10;
         if (mod < 100) {
           mod = 100;
         }
@@ -332,8 +332,8 @@ struct ShapesAppendTest : public BenchmarkOperation {
   ~ShapesAppendTest() {}
 
   bool setUp(SimpleHttpClient* client) override {
-    return DeleteCollection(client, ARANGOB->collection()) &&
-           CreateCollection(client, ARANGOB->collection(), 2);
+    return DeleteCollection(client, ARANGOBENCH->collection()) &&
+           CreateCollection(client, ARANGOBENCH->collection(), 2);
   }
 
   void tearDown() override {}
@@ -343,12 +343,12 @@ struct ShapesAppendTest : public BenchmarkOperation {
     size_t const mod = globalCounter % 2;
 
     if (mod == 0) {
-      return std::string("/_api/document?collection=" + ARANGOB->collection());
+      return std::string("/_api/document?collection=" + ARANGOBENCH->collection());
     } else {
       size_t keyId = (size_t)(globalCounter / 2);
       std::string const key = "testkey" + StringUtils::itoa(keyId);
 
-      return std::string("/_api/document/" + ARANGOB->collection() + "/" + key);
+      return std::string("/_api/document/" + ARANGOBENCH->collection() + "/" + key);
     }
   }
 
@@ -369,7 +369,7 @@ struct ShapesAppendTest : public BenchmarkOperation {
     size_t const mod = globalCounter % 2;
 
     if (mod == 0) {
-      uint64_t const n = ARANGOB->complexity();
+      uint64_t const n = ARANGOBENCH->complexity();
       TRI_string_buffer_t* buffer;
 
       buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
@@ -381,7 +381,7 @@ struct ShapesAppendTest : public BenchmarkOperation {
       TRI_AppendStringStringBuffer(buffer, "\"");
 
       for (uint64_t i = 1; i <= n; ++i) {
-        uint64_t mod = ARANGOB->operations() / 10;
+        uint64_t mod = ARANGOBENCH->operations() / 10;
         if (mod < 100) {
           mod = 100;
         }
@@ -417,8 +417,8 @@ struct RandomShapesTest : public BenchmarkOperation {
   ~RandomShapesTest() {}
 
   bool setUp(SimpleHttpClient* client) override {
-    return DeleteCollection(client, ARANGOB->collection()) &&
-           CreateCollection(client, ARANGOB->collection(), 2);
+    return DeleteCollection(client, ARANGOBENCH->collection()) &&
+           CreateCollection(client, ARANGOBENCH->collection(), 2);
   }
 
   void tearDown() override {}
@@ -428,12 +428,12 @@ struct RandomShapesTest : public BenchmarkOperation {
     size_t const mod = globalCounter % 3;
 
     if (mod == 0) {
-      return std::string("/_api/document?collection=") + ARANGOB->collection();
+      return std::string("/_api/document?collection=") + ARANGOBENCH->collection();
     } else {
       size_t keyId = (size_t)(globalCounter / 3);
       std::string const key = "testkey" + StringUtils::itoa(keyId);
 
-      return std::string("/_api/document/") + ARANGOB->collection() +
+      return std::string("/_api/document/") + ARANGOBENCH->collection() +
              std::string("/") + key;
     }
   }
@@ -458,7 +458,7 @@ struct RandomShapesTest : public BenchmarkOperation {
     size_t const mod = globalCounter % 3;
 
     if (mod == 0) {
-      uint64_t const n = ARANGOB->complexity();
+      uint64_t const n = ARANGOBENCH->complexity();
       TRI_string_buffer_t* buffer;
 
       buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
@@ -509,8 +509,8 @@ struct DocumentCrudTest : public BenchmarkOperation {
   ~DocumentCrudTest() {}
 
   bool setUp(SimpleHttpClient* client) override {
-    return DeleteCollection(client, ARANGOB->collection()) &&
-           CreateCollection(client, ARANGOB->collection(), 2);
+    return DeleteCollection(client, ARANGOBENCH->collection()) &&
+           CreateCollection(client, ARANGOBENCH->collection(), 2);
   }
 
   void tearDown() override {}
@@ -520,12 +520,12 @@ struct DocumentCrudTest : public BenchmarkOperation {
     size_t const mod = globalCounter % 5;
 
     if (mod == 0) {
-      return std::string("/_api/document?collection=" + ARANGOB->collection());
+      return std::string("/_api/document?collection=" + ARANGOBENCH->collection());
     } else {
       size_t keyId = (size_t)(globalCounter / 5);
       std::string const key = "testkey" + StringUtils::itoa(keyId);
 
-      return std::string("/_api/document/" + ARANGOB->collection() + "/" + key);
+      return std::string("/_api/document/" + ARANGOBENCH->collection() + "/" + key);
     }
   }
 
@@ -556,7 +556,7 @@ struct DocumentCrudTest : public BenchmarkOperation {
     size_t const mod = globalCounter % 5;
 
     if (mod == 0 || mod == 2) {
-      uint64_t const n = ARANGOB->complexity();
+      uint64_t const n = ARANGOBENCH->complexity();
       TRI_string_buffer_t* buffer;
 
       buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
@@ -602,8 +602,8 @@ struct EdgeCrudTest : public BenchmarkOperation {
   ~EdgeCrudTest() {}
 
   bool setUp(SimpleHttpClient* client) override {
-    return DeleteCollection(client, ARANGOB->collection()) &&
-           CreateCollection(client, ARANGOB->collection(), 3);
+    return DeleteCollection(client, ARANGOBENCH->collection()) &&
+           CreateCollection(client, ARANGOBENCH->collection(), 3);
   }
 
   void tearDown() override {}
@@ -613,12 +613,12 @@ struct EdgeCrudTest : public BenchmarkOperation {
     size_t const mod = globalCounter % 4;
 
     if (mod == 0) {
-      return std::string("/_api/document?collection=" + ARANGOB->collection());
+      return std::string("/_api/document?collection=" + ARANGOBENCH->collection());
     } else {
       size_t keyId = (size_t)(globalCounter / 4);
       std::string const key = "testkey" + StringUtils::itoa(keyId);
 
-      return std::string("/_api/document/" + ARANGOB->collection() + "/" + key);
+      return std::string("/_api/document/" + ARANGOBENCH->collection() + "/" + key);
     }
   }
 
@@ -653,7 +653,7 @@ struct EdgeCrudTest : public BenchmarkOperation {
     size_t const mod = globalCounter % 4;
 
     if (mod == 0 || mod == 2) {
-      uint64_t const n = ARANGOB->complexity();
+      uint64_t const n = ARANGOBENCH->complexity();
       TRI_string_buffer_t* buffer;
 
       buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
@@ -667,11 +667,11 @@ struct EdgeCrudTest : public BenchmarkOperation {
       if (mod == 0) {
         // append edge information
         TRI_AppendStringStringBuffer(buffer, ",\"_from\":\"");
-        TRI_AppendStringStringBuffer(buffer, ARANGOB->collection().c_str());
+        TRI_AppendStringStringBuffer(buffer, ARANGOBENCH->collection().c_str());
         TRI_AppendStringStringBuffer(buffer, "/testfrom");
         TRI_AppendUInt64StringBuffer(buffer, globalCounter);
         TRI_AppendStringStringBuffer(buffer, "\",\"_to\":\"");
-        TRI_AppendStringStringBuffer(buffer, ARANGOB->collection().c_str());
+        TRI_AppendStringStringBuffer(buffer, ARANGOBENCH->collection().c_str());
         TRI_AppendStringStringBuffer(buffer, "/testto");
         TRI_AppendUInt64StringBuffer(buffer, globalCounter);
         TRI_AppendStringStringBuffer(buffer, "\"");
@@ -712,9 +712,9 @@ struct SkiplistTest : public BenchmarkOperation {
   ~SkiplistTest() {}
 
   bool setUp(SimpleHttpClient* client) override {
-    return DeleteCollection(client, ARANGOB->collection()) &&
-           CreateCollection(client, ARANGOB->collection(), 2) &&
-           CreateIndex(client, ARANGOB->collection(), "skiplist",
+    return DeleteCollection(client, ARANGOBENCH->collection()) &&
+           CreateCollection(client, ARANGOBENCH->collection(), 2) &&
+           CreateIndex(client, ARANGOBENCH->collection(), "skiplist",
                        "[\"value\"]");
   }
 
@@ -725,12 +725,12 @@ struct SkiplistTest : public BenchmarkOperation {
     size_t const mod = globalCounter % 4;
 
     if (mod == 0) {
-      return std::string("/_api/document?collection=" + ARANGOB->collection());
+      return std::string("/_api/document?collection=" + ARANGOBENCH->collection());
     } else {
       size_t keyId = (size_t)(globalCounter / 4);
       std::string const key = "testkey" + StringUtils::itoa(keyId);
 
-      return std::string("/_api/document/" + ARANGOB->collection() + "/" + key);
+      return std::string("/_api/document/" + ARANGOBENCH->collection() + "/" + key);
     }
   }
 
@@ -796,9 +796,9 @@ struct HashTest : public BenchmarkOperation {
   ~HashTest() {}
 
   bool setUp(SimpleHttpClient* client) override {
-    return DeleteCollection(client, ARANGOB->collection()) &&
-           CreateCollection(client, ARANGOB->collection(), 2) &&
-           CreateIndex(client, ARANGOB->collection(), "hash", "[\"value\"]");
+    return DeleteCollection(client, ARANGOBENCH->collection()) &&
+           CreateCollection(client, ARANGOBENCH->collection(), 2) &&
+           CreateIndex(client, ARANGOBENCH->collection(), "hash", "[\"value\"]");
   }
 
   void tearDown() override {}
@@ -808,12 +808,12 @@ struct HashTest : public BenchmarkOperation {
     size_t const mod = globalCounter % 4;
 
     if (mod == 0) {
-      return std::string("/_api/document?collection=" + ARANGOB->collection());
+      return std::string("/_api/document?collection=" + ARANGOBENCH->collection());
     } else {
       size_t keyId = (size_t)(globalCounter / 4);
       std::string const key = "testkey" + StringUtils::itoa(keyId);
 
-      return std::string("/_api/document/" + ARANGOB->collection() + "/" + key);
+      return std::string("/_api/document/" + ARANGOBENCH->collection() + "/" + key);
     }
   }
 
@@ -876,9 +876,9 @@ struct HashTest : public BenchmarkOperation {
 struct DocumentImportTest : public BenchmarkOperation {
   DocumentImportTest() : BenchmarkOperation(), _url(), _buffer(0) {
     _url =
-        "/_api/import?collection=" + ARANGOB->collection() + "&type=documents";
+        "/_api/import?collection=" + ARANGOBENCH->collection() + "&type=documents";
 
-    uint64_t const n = ARANGOB->complexity();
+    uint64_t const n = ARANGOBENCH->complexity();
 
     _buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 16384);
     for (uint64_t i = 0; i < n; ++i) {
@@ -895,8 +895,8 @@ struct DocumentImportTest : public BenchmarkOperation {
   ~DocumentImportTest() { TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, _buffer); }
 
   bool setUp(SimpleHttpClient* client) override {
-    return DeleteCollection(client, ARANGOB->collection()) &&
-           CreateCollection(client, ARANGOB->collection(), 2);
+    return DeleteCollection(client, ARANGOBENCH->collection()) &&
+           CreateCollection(client, ARANGOBENCH->collection(), 2);
   }
 
   void tearDown() override {}
@@ -929,9 +929,9 @@ struct DocumentImportTest : public BenchmarkOperation {
 
 struct DocumentCreationTest : public BenchmarkOperation {
   DocumentCreationTest() : BenchmarkOperation(), _url(), _buffer(0) {
-    _url = "/_api/document?collection=" + ARANGOB->collection();
+    _url = "/_api/document?collection=" + ARANGOBENCH->collection();
 
-    uint64_t const n = ARANGOB->complexity();
+    uint64_t const n = ARANGOBENCH->complexity();
 
     _buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 4096);
     TRI_AppendCharStringBuffer(_buffer, '{');
@@ -955,8 +955,8 @@ struct DocumentCreationTest : public BenchmarkOperation {
   }
 
   bool setUp(SimpleHttpClient* client) override {
-    return DeleteCollection(client, ARANGOB->collection()) &&
-           CreateCollection(client, ARANGOB->collection(), 2);
+    return DeleteCollection(client, ARANGOBENCH->collection()) &&
+           CreateCollection(client, ARANGOBENCH->collection(), 2);
   }
 
   void tearDown() override {}
@@ -1020,7 +1020,7 @@ struct CollectionCreationTest : public BenchmarkOperation {
       return 0;
     }
     TRI_AppendStringStringBuffer(buffer, "{\"name\":\"");
-    TRI_AppendStringStringBuffer(buffer, ARANGOB->collection().c_str());
+    TRI_AppendStringStringBuffer(buffer, ARANGOBENCH->collection().c_str());
     TRI_AppendUInt64StringBuffer(buffer, ++_counter);
     TRI_AppendStringStringBuffer(buffer, "\"}");
 
@@ -1047,9 +1047,9 @@ struct TransactionAqlTest : public BenchmarkOperation {
   ~TransactionAqlTest() {}
 
   bool setUp(SimpleHttpClient* client) override {
-    _c1 = std::string(ARANGOB->collection() + "1");
-    _c2 = std::string(ARANGOB->collection() + "2");
-    _c3 = std::string(ARANGOB->collection() + "3");
+    _c1 = std::string(ARANGOBENCH->collection() + "1");
+    _c2 = std::string(ARANGOBENCH->collection() + "2");
+    _c3 = std::string(ARANGOBENCH->collection() + "3");
 
     return DeleteCollection(client, _c1) && DeleteCollection(client, _c2) &&
            DeleteCollection(client, _c3) && CreateCollection(client, _c1, 2) &&
@@ -1141,8 +1141,8 @@ struct TransactionCountTest : public BenchmarkOperation {
   ~TransactionCountTest() {}
 
   bool setUp(SimpleHttpClient* client) override {
-    return DeleteCollection(client, ARANGOB->collection()) &&
-           CreateCollection(client, ARANGOB->collection(), 2);
+    return DeleteCollection(client, ARANGOBENCH->collection()) &&
+           CreateCollection(client, ARANGOBENCH->collection(), 2);
   }
 
   void tearDown() override {}
@@ -1165,11 +1165,11 @@ struct TransactionCountTest : public BenchmarkOperation {
     buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
 
     TRI_AppendStringStringBuffer(buffer, "{ \"collections\": { \"write\": \"");
-    TRI_AppendStringStringBuffer(buffer, ARANGOB->collection().c_str());
+    TRI_AppendStringStringBuffer(buffer, ARANGOBENCH->collection().c_str());
     TRI_AppendStringStringBuffer(buffer,
                                  "\" }, \"action\": \"function () { var c = "
                                  "require(\\\"internal\\\").db[\\\"");
-    TRI_AppendStringStringBuffer(buffer, ARANGOB->collection().c_str());
+    TRI_AppendStringStringBuffer(buffer, ARANGOBENCH->collection().c_str());
     TRI_AppendStringStringBuffer(buffer,
                                  "\\\"]; var startcount = c.count(); for (var "
                                  "i = 0; i < 50; ++i) { if (startcount + i !== "
@@ -1191,8 +1191,8 @@ struct TransactionDeadlockTest : public BenchmarkOperation {
   ~TransactionDeadlockTest() {}
 
   bool setUp(SimpleHttpClient* client) override {
-    _c1 = std::string(ARANGOB->collection() + "1");
-    _c2 = std::string(ARANGOB->collection() + "2");
+    _c1 = std::string(ARANGOBENCH->collection() + "1");
+    _c2 = std::string(ARANGOBENCH->collection() + "2");
 
     return DeleteCollection(client, _c1) && DeleteCollection(client, _c2) &&
            CreateCollection(client, _c1, 2) &&
@@ -1260,8 +1260,8 @@ struct TransactionMultiTest : public BenchmarkOperation {
   ~TransactionMultiTest() {}
 
   bool setUp(SimpleHttpClient* client) override {
-    _c1 = std::string(ARANGOB->collection() + "1");
-    _c2 = std::string(ARANGOB->collection() + "2");
+    _c1 = std::string(ARANGOBENCH->collection() + "1");
+    _c2 = std::string(ARANGOBENCH->collection() + "2");
 
     return DeleteCollection(client, _c1) && DeleteCollection(client, _c2) &&
            CreateCollection(client, _c1, 2) &&
@@ -1344,8 +1344,8 @@ struct TransactionMultiCollectionTest : public BenchmarkOperation {
   ~TransactionMultiCollectionTest() {}
 
   bool setUp(SimpleHttpClient* client) override {
-    _c1 = std::string(ARANGOB->collection() + "1");
-    _c2 = std::string(ARANGOB->collection() + "2");
+    _c1 = std::string(ARANGOBENCH->collection() + "1");
+    _c2 = std::string(ARANGOBENCH->collection() + "2");
 
     return DeleteCollection(client, _c1) && DeleteCollection(client, _c2) &&
            CreateCollection(client, _c1, 2) && CreateCollection(client, _c2, 2);
@@ -1388,7 +1388,7 @@ struct TransactionMultiCollectionTest : public BenchmarkOperation {
     TRI_AppendStringStringBuffer(buffer, "\\\"]; ");
 
     TRI_AppendStringStringBuffer(buffer, "var doc = {");
-    uint64_t const n = ARANGOB->complexity();
+    uint64_t const n = ARANGOBENCH->complexity();
     for (uint64_t i = 0; i < n; ++i) {
       if (i > 0) {
         TRI_AppendStringStringBuffer(buffer, ", ");
@@ -1420,8 +1420,8 @@ struct AqlInsertTest : public BenchmarkOperation {
   ~AqlInsertTest() {}
 
   bool setUp(SimpleHttpClient* client) override {
-    return DeleteCollection(client, ARANGOB->collection()) &&
-           CreateCollection(client, ARANGOB->collection(), 2);
+    return DeleteCollection(client, ARANGOBENCH->collection()) &&
+           CreateCollection(client, ARANGOBENCH->collection(), 2);
   }
 
   void tearDown() override {}
@@ -1448,7 +1448,7 @@ struct AqlInsertTest : public BenchmarkOperation {
     TRI_AppendInt64StringBuffer(buffer, (int64_t)globalCounter);
     TRI_AppendStringStringBuffer(buffer, "\\\"");
 
-    uint64_t const n = ARANGOB->complexity();
+    uint64_t const n = ARANGOBENCH->complexity();
     for (uint64_t i = 1; i <= n; ++i) {
       TRI_AppendStringStringBuffer(buffer, ",\\\"value");
       TRI_AppendUInt64StringBuffer(buffer, i);
@@ -1456,7 +1456,7 @@ struct AqlInsertTest : public BenchmarkOperation {
     }
 
     TRI_AppendStringStringBuffer(buffer, " } INTO ");
-    TRI_AppendStringStringBuffer(buffer, ARANGOB->collection().c_str());
+    TRI_AppendStringStringBuffer(buffer, ARANGOBENCH->collection().c_str());
     TRI_AppendStringStringBuffer(buffer, "\"}");
 
     *length = TRI_LengthStringBuffer(buffer);
@@ -1474,8 +1474,8 @@ struct AqlV8Test : public BenchmarkOperation {
   ~AqlV8Test() {}
 
   bool setUp(SimpleHttpClient* client) override {
-    return DeleteCollection(client, ARANGOB->collection()) &&
-           CreateCollection(client, ARANGOB->collection(), 2);
+    return DeleteCollection(client, ARANGOBENCH->collection()) &&
+           CreateCollection(client, ARANGOBENCH->collection(), 2);
   }
 
   void tearDown() override {}
@@ -1502,7 +1502,7 @@ struct AqlV8Test : public BenchmarkOperation {
     TRI_AppendInt64StringBuffer(buffer, (int64_t)globalCounter);
     TRI_AppendStringStringBuffer(buffer, "\\\"");
 
-    uint64_t const n = ARANGOB->complexity();
+    uint64_t const n = ARANGOBENCH->complexity();
     for (uint64_t i = 1; i <= n; ++i) {
       TRI_AppendStringStringBuffer(buffer, ",\\\"value");
       TRI_AppendUInt64StringBuffer(buffer, i);
@@ -1512,7 +1512,7 @@ struct AqlV8Test : public BenchmarkOperation {
     }
 
     TRI_AppendStringStringBuffer(buffer, " } INTO ");
-    TRI_AppendStringStringBuffer(buffer, ARANGOB->collection().c_str());
+    TRI_AppendStringStringBuffer(buffer, ARANGOBENCH->collection().c_str());
     TRI_AppendStringStringBuffer(buffer, "\"}");
 
     *length = TRI_LengthStringBuffer(buffer);
