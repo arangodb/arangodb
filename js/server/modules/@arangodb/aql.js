@@ -32,7 +32,6 @@
 var INTERNAL = require("internal");
 var TRAVERSAL = require("@arangodb/graph/traversal");
 var ArangoError = require("@arangodb").ArangoError;
-var ShapedJson = INTERNAL.ShapedJson;
 var isCoordinator = require("@arangodb/cluster").isCoordinator();
 var underscore = require("lodash");
 var graphModule = require("@arangodb/general-graph");
@@ -734,7 +733,7 @@ function TO_LIST (param, isStringHash) {
 function CLONE (obj) {
   'use strict';
 
-  if (obj === null || typeof(obj) !== "object" || obj instanceof ShapedJson) {
+  if (obj === null || typeof(obj) !== "object") {
     return obj;
   }
 
@@ -761,10 +760,6 @@ function CLONE (obj) {
 
 function FIX_VALUE (value) {
   'use strict';
-
-  if (value instanceof ShapedJson) {
-    return value;
-  }
 
   var type = typeof(value);
 

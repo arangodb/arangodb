@@ -1,0 +1,15 @@
+//[example_output
+> decorator_20
+Running 2 test cases...
+test.cpp(18): error: in "suite1/test_2": check 2 != 2 has failed [2 == 2]
+test.cpp(24): error: in "suite1/test_io": check 3 != 3 has failed [3 == 3]
+
+*** 2 failures are detected in the test module "decorator_20"
+
+> decorator_20 --list_content
+suite1*
+    test_1
+    test_2*
+    test_io*
+    test_db
+//]

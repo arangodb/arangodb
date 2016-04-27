@@ -9,8 +9,7 @@ Each *UPDATE* operation is restricted to a single collection, and the
 Only a single *UPDATE* statement per collection is allowed per AQL query, and 
 it cannot be followed by read operations that access the same collection, by
 traversal operations, or AQL functions that can read documents.
-The system attributes of documents (*_key*, *_id*, *_from*, *_to*, *_rev*) cannot be
-updated.
+The system attributes *_id*, *_key* and *_rev* cannot be updated, *_from* and *_to* can.
 
 The two syntaxes for an update operation are:
 

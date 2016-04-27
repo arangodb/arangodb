@@ -262,7 +262,7 @@
   * [Using jsUnity](UsingJsUnity/README.md)
 * [Administrating ArangoDB](AdministratingArango/README.md)
 * [Advanced](Advanced/README.md)
-  * [Arangob](Advanced/Arangob.md)
+  * [Arangobench](Advanced/Arangobench.md)
   * [Write-ahead log](Advanced/WriteAheadLog.md)
   * [Server Internals](Advanced/ServerInternals.md)
   * [Datafile Debugger](Advanced/DatafileDebugger.md)

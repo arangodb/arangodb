@@ -1,0 +1,12 @@
+//[example_output
+> decorator_13
+Running 5 test cases...
+test.cpp(9): error: in "test1": check 0.001 == 0.000 has failed [0.001 != 0]. Absolute value exceeds tolerance [|0.001| > 0.0005]
+test.cpp(10): error: in "test1": check 1.100 == 1.101 has failed [1.1000000000000001 != 1.101]. Relative difference exceeds tolerance [0.000908265 > 0.0005]
+test.cpp(21): error: in "test3": check 0.001 == 0.000 has failed [0.001 != 0]. Absolute value exceeds tolerance [|0.001| > 0]
+test.cpp(22): error: in "test3": check 1.100 == 1.101 has failed [1.1000000000000001 != 1.101]
+test.cpp(28): error: in "test4": check 0.001 == 0.000 has failed [0.001 != 0]. Absolute value exceeds tolerance [|0.001| > 0.0005]
+test.cpp(29): error: in "test4": check 1.100 == 1.101 has failed [1.1000000000000001 != 1.101]. Relative difference exceeds tolerance [0.000908265 > 0.0005]
+
+*** 6 failures are detected in the test module "decorator_13"
+//]

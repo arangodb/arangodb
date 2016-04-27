@@ -131,8 +131,8 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       !options->processingResult().touched(_section + ".password")) {
     usleep(10 * 1000);
 
-    ConsoleFeature* console = dynamic_cast<ConsoleFeature*>(
-        ApplicationServer::lookupFeature("Console"));
+    ConsoleFeature* console =
+        ApplicationServer::getFeature<ConsoleFeature>("Console");
 
     if (console != nullptr) {
       _password = console->readPassword("Please specify a password: ");

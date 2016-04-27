@@ -95,10 +95,11 @@ button.disabled,
   i {
     @extend %clickable;
     @extend %icon-negative;
+    float: right;
     font-size: 16pt;
-    padding-right: 3px;
+    padding-right: 7px;
     position: relative;
-    top: 3px;
+    top: 12px;
   }
 }
 
@@ -114,6 +115,9 @@ button {
     width: 120px;
   }
 
+  &.btn-small {
+    padding: 0 8px;
+  }
 
   &.gv-zoom-btn {
     background-size: 14px 14px;

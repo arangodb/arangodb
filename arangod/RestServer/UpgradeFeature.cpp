@@ -58,18 +58,18 @@ UpgradeFeature::UpgradeFeature(
 void UpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("database", "Configure the database");
 
-  options->addOption("--database.upgrade",
+  options->addOption("--database.auto-upgrade",
                      "perform a database upgrade if necessary",
-                     new BooleanParameter(&_upgrade, true));
+                     new BooleanParameter(&_upgrade));
 
   options->addHiddenOption("--database.upgrade-check",
                            "skip a database upgrade",
-                           new BooleanParameter(&_upgradeCheck, true));
+                           new BooleanParameter(&_upgradeCheck));
 }
 
 void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (_upgrade && !_upgradeCheck) {
-    LOG(FATAL) << "cannot specify both '--database.upgrade true' and "
+    LOG(FATAL) << "cannot specify both '--database.auto-upgrade true' and "
                   "'--database.upgrade-check false'";
     FATAL_ERROR_EXIT();
   }
@@ -170,7 +170,7 @@ void UpgradeFeature::upgradeDatabase() {
               } else {
                 LOG(FATAL) << "Database '" << vocbase->_name
                           << "' needs upgrade. Please start the server with the "
-                              "--database.upgrade option";
+                              "--database.auto-upgrade option";
                 FATAL_ERROR_EXIT();
               }
             } else {

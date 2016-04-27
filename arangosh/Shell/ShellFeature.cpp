@@ -161,6 +161,9 @@ void ShellFeature::start() {
         ok = shell->jslint(_jslint);
         break;
     }
+  } catch (basics::Exception const& ex) {
+    LOG(ERR) << "caught exception " << ex.what();
+    ok = false;
   } catch (std::exception const& ex) {
     LOG(ERR) << "caught exception " << ex.what();
     ok = false;

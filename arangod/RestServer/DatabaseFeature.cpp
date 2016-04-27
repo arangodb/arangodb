@@ -138,7 +138,7 @@ void DatabaseFeature::start() {
   // sanity check
   if (_checkVersion && _upgrade) {
     LOG(FATAL) << "cannot specify both '--database.check-version' and "
-                  "'--database.upgrade'";
+                  "'--database.auto-upgrade'";
     FATAL_ERROR_EXIT();
   }
 
@@ -235,8 +235,8 @@ void DatabaseFeature::openDatabases() {
   defaults.forceSyncProperties = _forceSyncProperties;
 
   // get authentication (if available)
-  RestServerFeature* rest = dynamic_cast<RestServerFeature*>(
-      ApplicationServer::lookupFeature("RestServer"));
+  RestServerFeature* rest = 
+      ApplicationServer::getFeature<RestServerFeature>("RestServer");
 
   if (rest != nullptr) {
     defaults.requireAuthentication = rest->authentication();

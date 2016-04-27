@@ -52,12 +52,16 @@
                 <%=revision.revision%>
               </div>
             </th>
+            <th class="collectionInfoTh">
+            </th>
           </tr>
 
           <tr>
             <th class="collectionInfoTh2">Type:</th>
             <th class="collectionInfoTh">
               <div class="modal-text"><%=content.model.get("type")%></div>
+            </th>
+            <th class="collectionInfoTh">
             </th>
           </tr>
 
@@ -66,6 +70,8 @@
             <th class="collectionInfoTh">
               <div class="modal-text"><%=content.model.get("status")%></div>
             </th>
+            <th class="collectionInfoTh">
+            </th>
           </tr>
           
           <tr>
@@ -73,17 +79,23 @@
             <th class="collectionInfoTh">
               <div class="modal-text"><%=figuresData.indexBuckets%></div>
             </th>
+            <th class="collectionInfoTh">
+            </th>
           </tr>
           <tr>
             <th class="collectionInfoTh2">Compaction status:</th>
             <th class="collectionInfoTh">
               <div class="modal-text"><%=figuresData.figures.compactionStatus.message + " (" + figuresData.figures.compactionStatus.time + ")" %></div>
             </th>
+            <th class="collectionInfoTh">
+            </th>
           </tr>
           <tr>
             <th class="collectionInfoTh2">Waiting for:</th>
             <th class="collectionInfoTh">
               <div class="modal-text"><%=figuresData.figures.waitingFor%></div>
+            </th>
+            <th class="collectionInfoTh">
             </th>
           </tr>
         </table>

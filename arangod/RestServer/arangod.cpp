@@ -29,6 +29,7 @@
 #include "ApplicationFeatures/DaemonFeature.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/NonceFeature.h"
+#include "ApplicationFeatures/PrivilegeFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/SslFeature.h"
 #include "ApplicationFeatures/SupervisorFeature.h"
@@ -121,6 +122,7 @@ int main(int argc, char* argv[]) {
   server.addFeature(new LoggerBufferFeature(&server));
   server.addFeature(new LoggerFeature(&server, true));
   server.addFeature(new NonceFeature(&server));
+  server.addFeature(new PrivilegeFeature(&server));
   server.addFeature(new QueryRegistryFeature(&server));
   server.addFeature(new RandomFeature(&server));
   server.addFeature(new RestServerFeature(&server, "arangodb"));
@@ -145,7 +147,18 @@ int main(int argc, char* argv[]) {
   server.addFeature(supervisor.release());
 #endif
 
-  server.run(argc, argv);
+  try {
+    server.run(argc, argv);
+  } catch (arangodb::basics::Exception const& ex) {
+    LOG(ERR) << "arangod terminated because of an unhandled exception: " << ex.what();
+    ret = EXIT_FAILURE;
+  } catch (std::exception const& ex) {
+    LOG(ERR) << "arangod terminated because of an unhandled exception: " << ex.what();
+    ret = EXIT_FAILURE;
+  } catch (...) {
+    LOG(ERR) << "arangod terminated because of an unhandled exception of unknown type";
+    ret = EXIT_FAILURE;
+  }
 
   return context.exit(ret);
 }

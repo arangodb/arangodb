@@ -1045,12 +1045,11 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
   if (HasHint(trx, TRI_TRANSACTION_HINT_RECOVERY)) {
     // turn off all waitForSync operations during recovery
     waitForSync = false;
-  }
-
-  // upgrade the info for the transaction
-  if (!waitForSync) {
+  } else if (!waitForSync) {
+    // upgrade the info for the transaction based on the collection's settings
     waitForSync |= document->_info.waitForSync();
   }
+
   if (waitForSync) {
     trx->_waitForSync = true;
   }
@@ -1151,20 +1150,25 @@ int TRI_AddOperationTransaction(TRI_transaction_t* trx,
         trx, document->_info.id(), TRI_TRANSACTION_WRITE);
     if (trxCollection->_operations == nullptr) {
       trxCollection->_operations = new std::vector<arangodb::wal::DocumentOperation*>;
-      trxCollection->_operations->reserve(4);
+      trxCollection->_operations->reserve(16);
       trx->_hasOperations = true;
     } else {
-      // reserve space for one more element
-      trxCollection->_operations->reserve(trxCollection->_operations->size() + 1);
+      // reserve space for one more element so the push_back below does not fail
+      size_t oldSize = trxCollection->_operations->size();
+      if (oldSize + 1 >= trxCollection->_operations->capacity()) {
+        // double the size
+        trxCollection->_operations->reserve((oldSize + 1) * 2);
+      }
+    }
+    
+    TRI_IF_FAILURE("TransactionOperationPushBack") {
+      // test what happens if reserve above failed
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG); 
     }
 
     arangodb::wal::DocumentOperation* copy = operation.swap();
     
-    TRI_IF_FAILURE("TransactionOperationPushBack") {
-      // test what happens if push_back fails 
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG); 
-    }
-    
+    // should not fail because we reserved enough room above 
     trxCollection->_operations->push_back(copy);
     copy->handle();
   }

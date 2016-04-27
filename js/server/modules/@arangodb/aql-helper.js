@@ -29,11 +29,6 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
-var ShapedJson = internal.ShapedJson;
-var printYaml = function (plan) { require("internal").print(require("js-yaml").safeDump(plan));};
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize a single row result
 ////////////////////////////////////////////////////////////////////////////////
@@ -150,9 +145,6 @@ function typeName (value) {
   }
   if (value === undefined) {
     return "undefined";
-  }
-  if (value instanceof ShapedJson) {
-    return "object";
   }
   if (Array.isArray(value)) {
     return "array";
@@ -383,6 +375,9 @@ function findReferencedNodes(plan, testNode) {
 }
 
 function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug) {
+  var printYaml = function (plan) { 
+    require("internal").print(require("js-yaml").safeDump(plan));
+  };
   var i;
   var plans = [];
   var allPlans = [];

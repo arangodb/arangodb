@@ -1006,10 +1006,18 @@ if (list.length > 0) {
 <div id="documentsDiv" class="innerContent">
 
 <div id="uploadMessages"></div>
+
+<div id="docPureTable">
+
+</div>
+
+<!--
 <div id="documentsTableID_wrapper" class="dataTables_wrapper" role="grid">
-  <table cellpadding="0" cellspacing="0" border="0" class="display arangoDataTable dataTable" id="documentsTableID">
+  <table class="display arangoDataTable dataTable" id="documentsTableID">
   </table>
 </div>
+-->
+
     <div id="documentsToolbarFL">
       <div id="documentsToolbarF" class="pagination-line">
       </div>
@@ -1579,7 +1587,7 @@ if (list.length > 0) {
         </div>
     </div>
     <div id="modal-dialog">
-      <div class="modal-footer"></div>
+      <div class="modal-footer" style="border: none"></div>
     </div>
   </div>
 </script>
@@ -1923,12 +1931,16 @@ if (list.length > 0) {
                 <%=revision.revision%>
               </div>
             </th>
+            <th class="collectionInfoTh">
+            </th>
           </tr>
 
           <tr>
             <th class="collectionInfoTh2">Type:</th>
             <th class="collectionInfoTh">
               <div class="modal-text"><%=content.model.get("type")%></div>
+            </th>
+            <th class="collectionInfoTh">
             </th>
           </tr>
 
@@ -1937,6 +1949,8 @@ if (list.length > 0) {
             <th class="collectionInfoTh">
               <div class="modal-text"><%=content.model.get("status")%></div>
             </th>
+            <th class="collectionInfoTh">
+            </th>
           </tr>
           
           <tr>
@@ -1944,17 +1958,23 @@ if (list.length > 0) {
             <th class="collectionInfoTh">
               <div class="modal-text"><%=figuresData.indexBuckets%></div>
             </th>
+            <th class="collectionInfoTh">
+            </th>
           </tr>
           <tr>
             <th class="collectionInfoTh2">Compaction status:</th>
             <th class="collectionInfoTh">
               <div class="modal-text"><%=figuresData.figures.compactionStatus.message + " (" + figuresData.figures.compactionStatus.time + ")" %></div>
             </th>
+            <th class="collectionInfoTh">
+            </th>
           </tr>
           <tr>
             <th class="collectionInfoTh2">Waiting for:</th>
             <th class="collectionInfoTh">
               <div class="modal-text"><%=figuresData.figures.waitingFor%></div>
+            </th>
+            <th class="collectionInfoTh">
             </th>
           </tr>
         </table>
@@ -2987,17 +3007,14 @@ if (list.length > 0) {
       </a>
     </li>
     <li id="dbStatus" class="infoEntry subMenuEntry pull-right">
-      <a class="info">Database: <%= currentDB.name %> </a>
+      <a class="info">DB: <%= currentDB.name %> </a>
     </li>
-    <li id="userStatus" class="infoEntry subMenuEntry pull-right">
-      <a class="info">User: <%= currentDB.name %> </a>
-    </li>
+    <li id="userBar" class="infoEntry subMenuEntry pull-right" style="margin-right: 10px;">
 <!--
-    <li class="subMenuEntry pull-right" style="margin-right: 10px;">
       <div class="usermenu" id="userBar"></div>
       <div class="notificationmenu" id="notificationBar"></div>
-    </li>
 -->
+    </li>
   </ul>
 
   <ul class="subMenuEntries bottom">
@@ -3012,29 +3029,34 @@ var escaped = function (value) {
   .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 };
 var cutByResolution = function (str) {
-  if (str.length > 1024) {
-    return escaped(str.substr(0, 1024)) + '...';
+  if (str.length > 256) {
+    return escaped(str.substr(0, 256)) + '...';
   }
   return escaped(str);
 };
 %>
 
-<thead>
-  <tr role="row">
-    <th class="sorting_disabled docsFirstCol" role="columnheader" rowspan="1" colspan="1">Content</th>
-    <th class="sorting_disabled docsSecCol" role="columnheader" rowspan="1" colspan="1">_key</th>
-    <th class="sorting_disabled docsThirdCol" role="columnheader" rowspan="1" colspan="1">
-      <a id="addDocumentButton" class="pull-right addButton"><span title="Add a document"><i class="fa fa-plus-circle"></i></span></a>
-    </th>
-  </tr>
-</thead>
-<tbody>
-  <%
-  if (docs.length === 0) {
-  %>
-    <tr class="odd">
-      <td valign="top" colspan="3" class="dataTables_empty">No documents</td>
-    </tr>
+<div class="pure-g pure-table pure-table-header pure-title no-padding">
+  <div class="pure-table-row">
+    <div class="pure-u-19-24">
+      <div class="title">Content</div>
+    </div>
+    <div class="pure-u-3-24">
+      <div class="">_key</div>
+    </div>
+    <div class="pure-u-2-24">
+      <div class="actions">
+        <a id="addDocumentButton" class="pull-right addButton"><span title="Add a document"><i class="fa fa-plus-circle"></i></span></a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="pure-g pure-table pure-table-body no-padding">
+  <% if (docs.length === 0) { %>
+    <div class="pure-table-row pure-u-1-1">
+      <span class="dataTables_empty">No documents</span>
+    </div>
   <%
   }
   var odd = true;
@@ -3046,23 +3068,33 @@ var cutByResolution = function (str) {
       }
     });
     var tmpObj = JSON.stringify(tempObj); %>
-  <tr class="<%=odd?'odd':'even'%>" id="row_<%=d.attributes.key %>">
-    <td class="docsFirstCol">
-      <pre class="prettify" title="<%=escaped(tmpObj)%>"><%= cutByResolution(tmpObj) %></pre>
-    </td>
-    <td class="docsSecCol">
-    <div class="key"><%= d.attributes.key %></div>
-    </td>
-    <td class="docsThirdCol">
-      <a class="deleteButton">
-      <span data-original-title="Delete document" title="Delete document"><i class="fa fa-minus-circle"></i></i></span></a>
-    </td>
-  </tr>
+
+  <div class="pure-table-row <%=odd?'odd':'even'%>" id="row_<%=d.attributes.key %>">
+
+    <div class="pure-u-19-24">
+      <div class="padding-right">
+        <pre class="prettify" title="<%=escaped(tmpObj)%>"><%= cutByResolution(tmpObj) %></pre>
+      </div>
+    </div>
+    <div class="pure-u-3-24">
+      <div class="key"><%= d.attributes.key %></div>
+    </div>
+    <div class="pure-u-2-24">
+      <div class="actions">
+        <a class="deleteButton">
+        <span data-original-title="Delete document" title="Delete document"><i class="fa fa-minus-circle"></i></i></span></a>
+      </div>
+    </div>
+
+  </div>
+
+
   <% 
     odd = !odd;
     });
   %>
-</tbody>
+
+</div>
 </script>
 
 <script id="testView.ejs" type="text/template">
@@ -3077,6 +3109,29 @@ var cutByResolution = function (str) {
 </script>
 
 <script id="userBarView.ejs" type="text/template">
+
+  <a class="info">User: 
+    <span class="toggle"> 
+      <%=_.escape(username)%>
+    </span>
+  </a>
+
+  <ul class="subBarDropdown">
+    <li class="dropdown-header">
+      <div style="height: 1px; background: rgb(119, 203, 153)"></div>
+      <img class="user-img" src="<%=img%>"/>
+        <p><% if (name) {%><%=_.escape(username)%><small> <%=_.escape(name)%> </small>
+        <% } else {%>
+          <%=_.escape(username)%>
+        <% } %>
+        </p>
+    </li>
+    <li class="dropdown-footer">
+      <button id="userLogout" class="button-primary btn-small pull-right">Logout</button>
+    </li>
+  </ul>
+
+<!--
 <ul class="navlist" id="userBarUl">
 
   <li class="dropdown user-menu userImg">
@@ -3101,6 +3156,8 @@ var cutByResolution = function (str) {
   </li>
 
 </ul>
+
+--> 
 </script>
 
 <script id="userManagementView.ejs" type="text/template">
@@ -3295,8 +3352,8 @@ var cutByResolution = function (str) {
     </div>
   </div>
 
-<script src="libs.js?version=1461565965008"></script>
-<script src="app.js?version=1461565965008"></script>
+<script src="libs.js?version=1461674146144"></script>
+<script src="app.js?version=1461674146144"></script>
 
   </body>
 </html>

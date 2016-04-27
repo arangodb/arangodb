@@ -109,7 +109,7 @@ void RestoreFeature::collectOptions(
                      new BooleanParameter(&_progress));
 
   options->addOption("--overwrite", "overwrite collections if they exist",
-                     new BooleanParameter(&_overwrite, false));
+                     new BooleanParameter(&_overwrite));
 
   options->addOption("--recycle-ids",
                      "recycle collection and revision ids from dump",
@@ -121,7 +121,7 @@ void RestoreFeature::collectOptions(
 
   options->addOption(
       "--force", "continue restore even in the face of some server-side errors",
-      new BooleanParameter(&_force, false));
+      new BooleanParameter(&_force));
 }
 
 void RestoreFeature::validateOptions(

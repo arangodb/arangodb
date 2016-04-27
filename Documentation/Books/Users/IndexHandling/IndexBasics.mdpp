@@ -13,8 +13,8 @@ other index types allow indexing multiple attributes at the same time.
 The system attributes `_id`, `_key`, `_from` and `_to` are automatically indexed
 by ArangoDB, without the user being required to create extra indexes for them.
 
-Therefore, indexing `_id`, `_key`, `_rev`, `_from`, and `_to` in a user-defined 
-index is often not required and is currently not supported by ArangoDB.
+Using the system attribute `_id` in user-defined indexes is not possible, but 
+indexing `_key`, `_rev`, `_from`, and `_to` is.
 
 ArangoDB provides the following index types:
 

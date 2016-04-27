@@ -837,8 +837,8 @@ replaces documents matching an example
 
 Replaces all documents matching an example with a new document body.
 The entire document body of each document matching the *example* will be
-replaced with *newValue*. The document meta-attributes such as *_id*,
-*_key*, *_from*, *_to* will not be replaced.
+replaced with *newValue*. The document meta-attributes *_id*, *_key* and
+*_rev* will not be replaced.
 
 `collection.replaceByExample(document, newValue, waitForSync)`
 
@@ -884,8 +884,7 @@ partially updates documents matching an example
 Partially updates all documents matching an example with a new document body.
 Specific attributes in the document body of each document matching the
 *example* will be updated with the values from *newValue*.
-The document meta-attributes such as *_id*, *_key*, *_from*,
-*_to* cannot be updated.
+The document meta-attributes *_id*, *_key* and *_rev* cannot be updated.
 
 Partial update could also be used to append new fields,
 if there were no old field with same name.

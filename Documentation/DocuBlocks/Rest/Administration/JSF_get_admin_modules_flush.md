@@ -2,7 +2,7 @@
 /// @startDocuBlock JSF_get_admin_modules_flush
 /// @brief returns the log files
 ///
-/// @RESTHEADER{GET /_admin/log, Read global log from the server}
+/// @RESTHEADER{GET /_admin/log, Read global logs from the server}
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -59,9 +59,6 @@
 ///
 /// @RESTRETURNCODE{400}
 /// is returned if invalid values are specified for *upto* or *level*.
-///
-/// @RESTRETURNCODE{403}
-/// is returned if the log is requested for any database other than *_system*.
 ///
 /// @RESTRETURNCODE{500}
 /// is returned if the server cannot generate the result due to an out-of-memory

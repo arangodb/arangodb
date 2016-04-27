@@ -1,0 +1,200 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Suite-level decorators</title>
+<link rel="stylesheet" href="../../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.76.1">
+<link rel="home" href="../../../index.html" title="Boost.Test">
+<link rel="up" href="../decorators.html" title="Decorators">
+<link rel="prev" href="../decorators.html" title="Decorators">
+<link rel="next" href="explicit_decorator_declaration.html" title="Explicit decorator declaration">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../decorators.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../decorators.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="explicit_decorator_declaration.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_test.tests_organization.decorators.suite_level_decorators"></a><a class="link" href="suite_level_decorators.html" title="Suite-level decorators">Suite-level
+        decorators</a>
+</h4></div></div></div>
+<p>
+          Similarly to test case it is possible to apply list of decorators to test
+          suite. It is done by specifying a list of decorators as the second argument
+          to the macro <a class="link" href="../../utf_reference/test_org_reference/test_org_boost_auto_test_suite.html" title="BOOST_AUTO_TEST_SUITE"><code class="computeroutput"><span class="identifier">BOOST_AUTO_TEST_SUITE</span></code></a> or the third
+          argument to the macro <a class="link" href="../../utf_reference/test_org_reference/test_org_boost_test_suite_fixture.html" title="BOOST_FIXTURE_TEST_SUITE"><code class="computeroutput"><span class="identifier">BOOST_FIXTURE_TEST_SUITE</span></code></a>.
+        </p>
+<h6>
+<a name="boost_test.tests_organization.decorators.suite_level_decorators.h0"></a>
+          <span><a name="boost_test.tests_organization.decorators.suite_level_decorators.example_descr"></a></span><a class="link" href="suite_level_decorators.html#boost_test.tests_organization.decorators.suite_level_decorators.example_descr">Example:
+          Test suite decorators</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Code
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">decorator_02</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="keyword">namespace</span> <span class="identifier">utf</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">;</span>
+
+<span class="identifier">BOOST_AUTO_TEST_SUITE</span><span class="special">(</span><span class="identifier">suite1</span><span class="special">,</span> <span class="special">*</span> <span class="identifier">utf</span><span class="special">::</span><span class="identifier">label</span><span class="special">(</span><span class="string">"trivial"</span><span class="special">))</span>
+
+  <span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">test_case1</span><span class="special">)</span>
+  <span class="special">{</span>
+    <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="keyword">true</span><span class="special">);</span>
+  <span class="special">}</span>
+
+  <span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">test_case2</span><span class="special">)</span>
+  <span class="special">{</span>
+    <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="number">1</span> <span class="special">==</span> <span class="number">1</span><span class="special">);</span>
+  <span class="special">}</span>
+
+<span class="identifier">BOOST_AUTO_TEST_SUITE_END</span><span class="special">()</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Output
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">decorator_02</span> <span class="special">--</span><span class="identifier">run_test</span><span class="special">=</span><span class="error">@</span><span class="identifier">trivial</span>
+<span class="identifier">Running</span> <span class="number">2</span> <span class="identifier">test</span> <span class="identifier">cases</span><span class="special">...</span>
+
+<span class="special">***</span> <span class="identifier">No</span> <span class="identifier">errors</span> <span class="identifier">detected</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<p>
+          How a test suite decorator affects the processing of the test units inside
+          of it varies with the decorator and is described for each decorator in
+          subsequent sections. For instance, the function of the decorator in the
+          above example is that when tests are filtered by label <code class="computeroutput"><span class="string">"trivial"</span></code>,
+          every test unit in suite <code class="computeroutput"><span class="identifier">suite1</span></code>
+          will be run.
+        </p>
+<p>
+          Similar to C++ namespace test suite can be closed and reopened within the
+          same test file or span more than one file and you are allowed to apply
+          different decorators in each point, where test suite is opened. If this
+          is the case, the list of decorators applied to the test suite is the union
+          of decorators specified in each place. Here an example.
+        </p>
+<h6>
+<a name="boost_test.tests_organization.decorators.suite_level_decorators.h1"></a>
+          <span><a name="boost_test.tests_organization.decorators.suite_level_decorators.example_descr0"></a></span><a class="link" href="suite_level_decorators.html#boost_test.tests_organization.decorators.suite_level_decorators.example_descr0">Example:
+          Decorators on multiple suite openings</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Code
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">decorator_03</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="keyword">namespace</span> <span class="identifier">utf</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">;</span>
+
+<span class="identifier">BOOST_AUTO_TEST_SUITE</span><span class="special">(</span><span class="identifier">suite1</span><span class="special">,</span> <span class="special">*</span> <span class="identifier">utf</span><span class="special">::</span><span class="identifier">label</span><span class="special">(</span><span class="string">"trivial"</span><span class="special">))</span>
+
+  <span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">test_case1</span><span class="special">)</span>
+  <span class="special">{</span>
+    <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="keyword">true</span><span class="special">);</span>
+  <span class="special">}</span>
+
+<span class="identifier">BOOST_AUTO_TEST_SUITE_END</span><span class="special">()</span>
+
+<span class="identifier">BOOST_AUTO_TEST_SUITE</span><span class="special">(</span><span class="identifier">suite1</span><span class="special">,</span> <span class="special">*</span> <span class="identifier">utf</span><span class="special">::</span><span class="identifier">label</span><span class="special">(</span><span class="string">"simple"</span><span class="special">))</span>
+
+  <span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">test_case2</span><span class="special">)</span>
+  <span class="special">{</span>
+    <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="keyword">true</span><span class="special">);</span>
+  <span class="special">}</span>
+
+<span class="identifier">BOOST_AUTO_TEST_SUITE_END</span><span class="special">()</span>
+
+<span class="identifier">BOOST_AUTO_TEST_SUITE</span><span class="special">(</span><span class="identifier">suite1</span><span class="special">)</span>
+
+  <span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">test_case3</span><span class="special">)</span>
+  <span class="special">{</span>
+    <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="keyword">true</span><span class="special">);</span>
+  <span class="special">}</span>
+
+<span class="identifier">BOOST_AUTO_TEST_SUITE_END</span><span class="special">()</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Output
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">decorator_03</span> <span class="special">--</span><span class="identifier">run_test</span><span class="special">=</span><span class="error">@</span><span class="identifier">trivial</span>
+<span class="identifier">Running</span> <span class="number">3</span> <span class="identifier">test</span> <span class="identifier">cases</span><span class="special">...</span>
+
+<span class="special">***</span> <span class="identifier">No</span> <span class="identifier">errors</span> <span class="identifier">detected</span>
+
+
+<span class="special">&gt;</span> <span class="identifier">decorator_03</span> <span class="special">--</span><span class="identifier">run_test</span><span class="special">=</span><span class="error">@</span><span class="identifier">simple</span>
+<span class="identifier">Running</span> <span class="number">3</span> <span class="identifier">test</span> <span class="identifier">cases</span><span class="special">...</span>
+
+<span class="special">***</span> <span class="identifier">No</span> <span class="identifier">errors</span> <span class="identifier">detected</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<p>
+          In the above example, the scope of test suite <code class="computeroutput"><span class="identifier">suite1</span></code>
+          is opened three times. This results in a test suite containing three test
+          cases and associated with two <a class="link" href="../../utf_reference/test_org_reference/decorator_label.html" title="label (decorator)"><code class="computeroutput"><span class="identifier">label</span></code></a> decorators. Therefore running
+          tests by label <code class="computeroutput"><span class="string">"trivial"</span></code>
+          as well as by label <code class="computeroutput"><span class="string">"simple"</span></code>
+          both result in executing all three test cases from the suite.
+        </p>
+<div class="caution"><table border="0" summary="Caution">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Caution]" src="../../../../../../../doc/src/images/caution.png"></td>
+<th align="left">Caution</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            The above syntax for decorators requires that the compiler supports variadic
+            macros (added in C++11). If you intend for your test program to also
+            work for compilers without variadic macros, use explicit decorator syntax,
+            described below.
+          </p></td></tr>
+</table></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001-2016 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../decorators.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../decorators.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="explicit_decorator_declaration.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

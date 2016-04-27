@@ -15,8 +15,8 @@
     },
 
     events: {
-      "click tbody tr": "rowClick",
-      "click .deleteButton": "removeClick",
+      "click .pure-table-body .pure-table-row": "rowClick",
+      "click .deleteButton": "removeClick"
     },
 
     rowClick: function(event) {
