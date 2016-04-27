@@ -102,6 +102,8 @@ V8DealerFeature::V8DealerFeature(
   startsAfter("Database");
   startsAfter("Dispatcher");
   startsAfter("QueryRegistry");
+  startsAfter("Random");
+  startsAfter("Recovery");
   startsAfter("Scheduler");
   startsAfter("V8Platform");
   startsAfter("WorkMonitor");

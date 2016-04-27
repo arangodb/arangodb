@@ -94,6 +94,8 @@ RestServerFeature::RestServerFeature(
   startsAfter("Scheduler");
   startsAfter("Server");
   startsAfter("Agency");
+  startsAfter("LogfileManager");
+  startsAfter("Database");
   startsAfter("Upgrade");
   startsAfter("CheckVersion");
 }

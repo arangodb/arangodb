@@ -302,6 +302,7 @@ add_executable(${BIN_ARANGOD}
   Wal/LogfileManager.cpp
   Wal/Marker.cpp
   Wal/RecoverState.cpp
+  Wal/RecoveryFeature.cpp
   Wal/RemoverThread.cpp
   Wal/Slot.cpp
   Wal/Slots.cpp

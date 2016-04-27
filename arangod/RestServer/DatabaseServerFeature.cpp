@@ -67,17 +67,19 @@ void DatabaseServerFeature::validateOptions(std::shared_ptr<ProgramOptions> opti
   }
 }
 
+void DatabaseServerFeature::prepare() {
+  // create the server
+  TRI_InitServerGlobals();
+  _server.reset(new TRI_server_t());
+  SERVER = _server.get();
+}
+
 void DatabaseServerFeature::start() {
   // create the index thread pool
   if (_indexThreads > 0) {
     _indexPool.reset(new ThreadPool(_indexThreads, "IndexBuilder"));
     INDEX_POOL = _indexPool.get();
   }
-
-  // create the server
-  TRI_InitServerGlobals();
-  _server.reset(new TRI_server_t());
-  SERVER = _server.get();
 }
 
 void DatabaseServerFeature::stop() {

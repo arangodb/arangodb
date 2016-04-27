@@ -50,7 +50,6 @@ static thread_local uint64_t LOCAL_THREAD_NUMBER = 0;
 
 namespace {
 std::atomic<uint64_t> NEXT_THREAD_ID(1);
-std::atomic<bool> ALLOW_THREAD_CREATION(true);
 }
 
 #endif
@@ -148,7 +147,7 @@ std::string Thread::stringify(ThreadState state) {
 /// @brief constructs a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-Thread::Thread(std::string const& name, bool allowCreationDuringPrepare)
+Thread::Thread(std::string const& name) 
     : _name(name),
       _thread(),
       _threadNumber(0),
@@ -158,10 +157,6 @@ Thread::Thread(std::string const& name, bool allowCreationDuringPrepare)
       _affinity(-1),
       _workDescription(nullptr) {
   
-  if (!ALLOW_THREAD_CREATION && !allowCreationDuringPrepare) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "thread creation is disabled at this stage");
-  }
-
   TRI_InitThread(&_thread);
 }
 
@@ -190,22 +185,6 @@ Thread::~Thread() {
                << ". shutting down hard";
     FATAL_ERROR_EXIT();
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief allows starting threads
-////////////////////////////////////////////////////////////////////////////////
-
-void Thread::allowThreadCreation() {
-  ALLOW_THREAD_CREATION = true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief disallows starting threads
-////////////////////////////////////////////////////////////////////////////////
-
-void Thread::disallowThreadCreation() {
-  ALLOW_THREAD_CREATION = false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

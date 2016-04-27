@@ -58,8 +58,10 @@ ServerFeature::ServerFeature(application_features::ApplicationServer* server,
   startsAfter("Cluster");
   startsAfter("Database");
   startsAfter("Dispatcher");
+  startsAfter("Recovery");
   startsAfter("Scheduler");
   startsAfter("Statistics");
+  startsAfter("Upgrade");
   startsAfter("V8Dealer");
   startsAfter("WorkMonitor");
 }

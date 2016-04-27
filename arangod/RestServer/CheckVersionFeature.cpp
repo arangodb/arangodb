@@ -143,7 +143,7 @@ void CheckVersionFeature::checkVersion() {
 
           if (status < 0) {
             LOG(FATAL) << "Database version check failed for '" << vocbase->_name
-                      << "'. Please inspect the logs from any errors";
+                      << "'. Please inspect the logs for any errors";
             FATAL_ERROR_EXIT();
           } else if (status == 3) {
             *_result = 3;

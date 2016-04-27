@@ -244,7 +244,7 @@ void DatabaseFeature::openDatabases() {
   defaults.authenticateSystemOnly = rest->authenticationSystemOnly();
   
   bool const iterateMarkersOnOpen =
-      !wal::LogfileManager::instance()->hasFoundLastTick();
+      !wal::LogfileManager::instance()->hasFoundLastTick(); 
 
   int res = TRI_InitServer(
       DatabaseServerFeature::SERVER, DatabaseServerFeature::INDEX_POOL,

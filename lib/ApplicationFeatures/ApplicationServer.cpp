@@ -147,9 +147,6 @@ bool ApplicationServer::isRequired(std::string const& name) const {
 void ApplicationServer::run(int argc, char* argv[]) {
   LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::run";
   
-  // disallow the creation of threads from here on
-  Thread::disallowThreadCreation();
-
   // collect options from all features
   // in this phase, all features are order-independent
   _state = ServerState::IN_COLLECT_OPTIONS;
@@ -189,9 +186,6 @@ void ApplicationServer::run(int argc, char* argv[]) {
   // permanently drop the privileges
   dropPrivilegesPermanently();
   
-  // allow the creation of threads from here on
-  Thread::allowThreadCreation();
-
   // start features. now features are allowed to start threads, write files etc.
   _state = ServerState::IN_START;
   start();

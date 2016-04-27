@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,48 +18,36 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_DATABASE_SERVER_FEATURE_H
-#define APPLICATION_FEATURES_DATABASE_SERVER_FEATURE_H 1
+#ifndef ARANGOD_WAL_RECOVERY_FEATURE_H
+#define ARANGOD_WAL_RECOVERY_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
-struct TRI_server_t;
-
 namespace arangodb {
-namespace basics {
-class ThreadPool;
+namespace options {
+class ProgramOptions;
 }
 
-class DatabaseServerFeature final
-    : public application_features::ApplicationFeature {
- public:
-  static TRI_server_t* SERVER;
-  static basics::ThreadPool* INDEX_POOL;
+namespace wal {
+struct RecoverState;
+
+class RecoveryFeature final : public application_features::ApplicationFeature {
+
+  RecoveryFeature(RecoveryFeature const&) = delete;
+  RecoveryFeature& operator=(RecoveryFeature const&) = delete;
 
  public:
-  explicit DatabaseServerFeature(
-      application_features::ApplicationServer* server);
+  explicit RecoveryFeature(application_features::ApplicationServer* server);
+  ~RecoveryFeature() {}
 
  public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void prepare() override final;
   void start() override final;
-  void stop() override final;
 
- private:
-  uint64_t _indexThreads = 2;
-
- public:
-  TRI_server_t* server() const { return _server.get(); }
-
- private:
-  std::unique_ptr<TRI_server_t> _server;
-  std::unique_ptr<basics::ThreadPool> _indexPool;
 };
+}
 }
 
 #endif

@@ -61,6 +61,7 @@
 #include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8DealerFeature.h"
 #include "Wal/LogfileManager.h"
+#include "Wal/RecoveryFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::wal;
@@ -125,6 +126,7 @@ int main(int argc, char* argv[]) {
   server.addFeature(new PrivilegeFeature(&server));
   server.addFeature(new QueryRegistryFeature(&server));
   server.addFeature(new RandomFeature(&server));
+  server.addFeature(new RecoveryFeature(&server));
   server.addFeature(new RestServerFeature(&server, "arangodb"));
   server.addFeature(new SchedulerFeature(&server));
   server.addFeature(new ServerFeature(&server, &ret));
