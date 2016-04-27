@@ -373,7 +373,6 @@ bool AgencyCommResult::parseVelocyPackNode(VPackSlice const& node,
     // not a directory
 
     // get "value" attribute
-#warning TODO unstrigify will need is object
     VPackSlice const value = node.get("value");
 
     if (!prefix.empty()) {
@@ -611,7 +610,6 @@ bool AgencyComm::initialize() {
 /// @brief will try to initialize a new agency
 //////////////////////////////////////////////////////////////////////////////
 
-#warning TODO: unstringify
 bool AgencyComm::tryInitializeStructure() { 
   VPackBuilder builder;
   try {
@@ -1453,9 +1451,6 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
 
   AgencyTransaction transaction(operation, precondition);
   
-#warning must remove
-  std::cout << " +++++ " << transaction.toJson() << std::endl;
-
   sendWithFailover(
       arangodb::GeneralRequest::RequestType::POST,
       timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout,

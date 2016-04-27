@@ -921,15 +921,6 @@ void ClusterInfo::loadCurrentCollections() {
             it3->second->servers(shardID));
           newShardIds.insert(make_pair(shardID, servers));
 
-          for (auto const& i : newShardIds) {
-            std::stringstream ss;
-            ss << i.first << ": ";
-            for (auto const& j : *(i.second)) {
-              ss << j << " ";
-            }
-            LOG(WARN) << ss.str();
-          }
-
         }
       }
     }
@@ -1007,7 +998,6 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
                                            std::string& errorMsg,
                                            double timeout) {
   
-  LOG(WARN) << __FILE__ << __func__ << __LINE__ ;
   AgencyComm ac;
   AgencyCommResult res;
 
@@ -1115,7 +1105,6 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
                                          std::string& errorMsg,
                                          double timeout) {
   
-  LOG(WARN) << __FILE__ << __func__ << __LINE__ ;
   AgencyComm ac;
   AgencyCommResult res;
 
@@ -1207,7 +1196,6 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
                                              std::string& errorMsg,
                                              double timeout) {
 
-  LOG(WARN) << __FILE__ << __func__ << __LINE__ ;
   using arangodb::velocypack::Slice;
 
   AgencyComm ac;
@@ -1246,7 +1234,6 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   
   int dbServerResult = -1;
 
-  LOG(WARN) << __FILE__ << __func__ << __LINE__ ;
   std::function<bool(VPackSlice const& result)> dbServerChanged =
     [&](VPackSlice const& result) {
     if (result.isObject() && result.length() == (size_t) numberOfShards) {
@@ -1284,7 +1271,6 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
     return true;
   };
 
-  LOG(WARN) << __FILE__ << __func__ << __LINE__ ;
   auto agencyCallback = std::make_shared<AgencyCallback>(
     ac, "Current/Collections/" + databaseName + "/"
     + collectionID, dbServerChanged, true, false);
@@ -1303,7 +1289,6 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
       "Plan/Collections/" + databaseName + "/" + collectionID
       , AgencyPrecondition::EMPTY, true
   );
-  LOG(WARN) << __FILE__ << __func__ << __LINE__ ;
 
   AgencyTransaction transaction;
 
@@ -1322,7 +1307,6 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   // Update our cache:
   loadPlannedCollections();
 
-  LOG(WARN) << __FILE__ << __func__ << __LINE__ ;
   while (TRI_microtime() <= endTime) {
     agencyCallback->waitForExecution(interval);
 
@@ -1335,8 +1319,6 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
     return dbServerResult;
   }
 
-  // LOG(ERR) << "GOT TIMEOUT. NUMBEROFSHARDS: " << numberOfShards;
-  LOG(WARN) << __FILE__ << __func__ << __LINE__ ;
   return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
 }
 
@@ -1351,7 +1333,6 @@ int ClusterInfo::dropCollectionCoordinator(std::string const& databaseName,
                                            std::string& errorMsg,
                                            double timeout) {
 
-  LOG(WARN) << __FILE__ << __func__ << __LINE__ ;
   AgencyComm ac;
   AgencyCommResult res;
 
@@ -1438,8 +1419,6 @@ int ClusterInfo::setCollectionPropertiesCoordinator(
     std::string const& databaseName, std::string const& collectionID,
     VocbaseCollectionInfo const* info) {
 
-  LOG(WARN) << __FILE__ << __func__ << __LINE__ ;
-
   AgencyComm ac;
   AgencyCommResult res;
 
@@ -1472,12 +1451,10 @@ int ClusterInfo::setCollectionPropertiesCoordinator(
     
     //if (it == res._values.end()) {
     if (cols.size() == 0) {
-      LOG(WARN) << "TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND";
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
 
     if (collection.isNone()) {
-      LOG(WARN) << "TRI_ERROR_OUT_OF_MEMORY";      
       return TRI_ERROR_OUT_OF_MEMORY;
     }
     
@@ -1498,7 +1475,6 @@ int ClusterInfo::setCollectionPropertiesCoordinator(
       copy.add("waitForSync", VPackValue(info->waitForSync()));
       copy.add("indexBuckets", VPackValue(info->indexBuckets()));
     } catch (...) {
-      LOG(WARN) << "TRI_ERROR_OUT_OF_MEMORY";
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
@@ -1522,7 +1498,7 @@ int ClusterInfo::setCollectionPropertiesCoordinator(
 int ClusterInfo::setCollectionStatusCoordinator(
     std::string const& databaseName, std::string const& collectionID,
     TRI_vocbase_col_status_e status) {
-  LOG(WARN) << __FILE__ << __func__ << __LINE__ ;
+
   AgencyComm ac;
   AgencyCommResult res;
 
@@ -1812,7 +1788,6 @@ int ClusterInfo::ensureIndexCoordinator(
         for (auto const& shard : cit) {
 
           VPackSlice const slice = shard.value;
-          LOG(WARN) << slice.toJson();
           if (slice.hasKey("indexes")) {
             VPackSlice const indexes = slice.get("indexes");
             if (!indexes.isArray()) {
@@ -1874,7 +1849,6 @@ int ClusterInfo::ensureIndexCoordinator(
     _agencyCallbackRegistry->awaitNextChange("Current/Version", interval);
   }
 
-  LOG(WARN) << __FILE__ << __func__ << __LINE__ ;
   return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
 }
 
@@ -1886,7 +1860,7 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
                                       std::string const& collectionID,
                                       TRI_idx_iid_t iid, std::string& errorMsg,
                                       double timeout) {
-  LOG(WARN) << __FILE__ << __func__ << __LINE__ ;
+
   AgencyComm ac;
 
   double const realTimeout = getTimeout(timeout);
@@ -2078,7 +2052,6 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
 static std::string const prefixServers = "Current/ServersRegistered";
 
 void ClusterInfo::loadServers() {
-  LOG(WARN) << __FILE__ << __func__ << __LINE__ ;
 
   uint64_t storedVersion = _serversProt.version;
   MUTEX_LOCKER(mutexLocker, _serversProt.mutex);
@@ -2400,7 +2373,7 @@ std::string ClusterInfo::getTargetServerEndpoint(ServerID const& serverID) {
 
 std::shared_ptr<std::vector<ServerID>> ClusterInfo::getResponsibleServer(
     ShardID const& shardID) {
-  LOG(WARN) << __FILE__ << __func__ << __LINE__;
+
   int tries = 0;
   
   if (!_currentCollectionsProt.isValid) {
@@ -2408,7 +2381,6 @@ std::shared_ptr<std::vector<ServerID>> ClusterInfo::getResponsibleServer(
     tries++;
   }
 
-  LOG(WARN) << __FILE__ << __func__ << __LINE__ << " " << shardID << tries;
   while (true) {
     {
       READ_LOCKER(readLocker, _currentCollectionsProt.lock);
@@ -2416,23 +2388,11 @@ std::shared_ptr<std::vector<ServerID>> ClusterInfo::getResponsibleServer(
       // std::shared_ptr<std::vector<ServerId>>>
       auto it = _shardIds.find(shardID);
 
-      for (auto const& i : _shardIds) {
-        std::stringstream ss;
-        ss << i.first << ": ";
-        for (auto const& j : *(i.second)) {
-          ss << j << " ";
-        }
-        LOG(WARN) << ss.str();
-      }
-
       if (it != _shardIds.end()) {
         return (*it).second;
       }
     }
 
-
-
-  LOG(WARN) << __FILE__ << __func__ << __LINE__ ;
     if (++tries >= 2) {
       break;
     }
